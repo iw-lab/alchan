@@ -1,0 +1,228 @@
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  background-color: #f8f8f8;
+  color: #333;
+}
+
+/* Login wrapper */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  background-color: #f5f5f5;
+}
+
+/* Login container */
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+/* Header styles */
+.login-header {
+  text-align: center;
+  background-color: #f2f4f6; /* 회색 배경으로 변경 */
+  padding: 24px 20px;
+  border-radius: 12px; /* 헤더에 둥근 테두리 적용 */
+  margin: 15px 15px 12px; /* 상하좌우 여백 추가 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* 약간의 그림자 추가 */
+}
+
+.app-title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #f97316;
+  line-height: 1.1;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 16px 0 12px;
+}
+
+.app-description {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Tab styles */
+.login-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  background-color: #fff;
+  margin: 0 15px;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: #888;
+}
+
+.tab-button.active {
+  color: #f97316;
+  font-weight: 600;
+  background-color: #fafafa;
+}
+
+/* Form styles */
+.login-form-container {
+  padding: 20px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  outline: none;
+  font-size: 0.95rem;
+  background-color: #fff;
+}
+
+.form-input:focus {
+  border-color: #f97316;
+}
+
+.form-input::placeholder {
+  color: #bbb;
+}
+
+/* 체크박스 스타일 */
+.checkbox-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 2px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #f97316;
+}
+
+.checkbox-group label {
+  font-size: 0.85rem;
+  color: #666;
+  cursor: pointer;
+}
+
+.login-button {
+  width: 100%;
+  padding: 14px 0;
+  background-color: #f97316;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button:hover {
+  background-color: #ea580c;
+}
+
+/* Test account info */
+.test-accounts {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.test-accounts p {
+  margin: 4px 0;
+}
+
+/* 반응형 */
+@media (max-width: 480px) {
+  .login-container {
+    max-width: 100%;
+  }
+
+  .app-title {
+    font-size: 2.2rem;
+  }
+
+  .login-header {
+    padding: 20px 16px;
+    margin: 10px 10px 10px;
+  }
+
+  .login-tabs {
+    margin: 0 10px;
+  }
+
+  .login-form-container {
+    padding: 16px;
+  }
+
+  .form-input {
+    padding: 10px 12px;
+  }
+
+  .checkbox-container {
+    padding: 0 2px;
+  }
+
+  .checkbox-group label {
+    font-size: 0.8rem;
+  }
+}

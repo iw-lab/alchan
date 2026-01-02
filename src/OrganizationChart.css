@@ -1,0 +1,527 @@
+/* src/OrganizationChart.css */
+.org-chart-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: "Noto Sans KR", sans-serif;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+.org-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #3b5998;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+  gap: 10px; /* Add gap for wrapped items */
+}
+
+.org-title {
+  font-size: 2.2rem;
+  color: #3b5998;
+  margin: 0;
+}
+
+.admin-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.admin-toggle {
+  background-color: #e9ecef;
+  color: #495057;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+  min-width: max-content; /* Ensure text isn't truncated */
+}
+
+.admin-toggle.admin-active {
+  background-color: #28a745;
+  color: white;
+}
+
+.settings-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.settings-button:hover {
+  background-color: #5a6268;
+}
+
+.president-section {
+  margin-top: 20px;
+  width: 100%; /* Ensure full width */
+}
+
+.president-office {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+  gap: 10px; /* Add gap for wrapped items */
+}
+
+.president-office h2 {
+  margin: 0;
+  color: #495057;
+  font-size: 1.6rem;
+}
+
+.admin-indicator {
+  background-color: #28a745;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.law-approval-section,
+.vetoed-laws-section {
+  margin-bottom: 30px;
+  width: 100%; /* Ensure full width */
+}
+
+.law-approval-section h3,
+.vetoed-laws-section h3 {
+  font-size: 1.4rem;
+  color: #343a40;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dee2e6;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+}
+
+.empty-state {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.pending-laws,
+.vetoed-laws {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  width: 100%; /* Ensure full width */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+/* Adjust grid for small screens */
+@media (max-width: 640px) {
+  .pending-laws,
+  .vetoed-laws {
+    grid-template-columns: 1fr; /* Single column on very small screens */
+  }
+}
+
+.law-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s;
+  border: 1px solid #e9ecef;
+  width: 100%; /* Ensure cards take full width of their grid cell */
+  display: flex;
+  flex-direction: column; /* Stack content vertically */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.law-card:hover {
+  transform: translateY(-5px);
+}
+
+.law-card.vetoed {
+  border-left: 4px solid #dc3545;
+}
+
+.law-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+  gap: 8px; /* Add gap for wrapped items */
+}
+
+.law-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #343a40;
+  flex: 1;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Show maximum of 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden; /* Hide overflow */
+  text-overflow: ellipsis; /* Add ellipsis for long titles */
+}
+
+/* On small screens, allow title to use full width */
+@media (max-width: 480px) {
+  .law-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .law-title {
+    margin-bottom: 8px;
+    width: 100%;
+  }
+}
+
+.law-status {
+  background-color: #6c757d;
+  color: white;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+.veto-status {
+  background-color: #dc3545;
+  color: white;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+.law-content {
+  padding: 15px 20px;
+  flex-grow: 1; /* Allow content to grow */
+}
+
+.law-content p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  color: #495057;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+}
+
+.law-content strong {
+  color: #343a40;
+}
+
+.law-actions {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #e9ecef;
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+}
+
+/* For very small screens, stack buttons */
+@media (max-width: 360px) {
+  .law-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .approve-button,
+  .veto-button {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
+.approve-button,
+.veto-button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center; /* Center text in buttons */
+}
+
+.approve-button {
+  background-color: #28a745;
+  color: white;
+  margin-right: 10px;
+}
+
+.approve-button:hover {
+  background-color: #218838;
+}
+
+.approve-button:disabled {
+  background-color: #8fd19e;
+  cursor: not-allowed;
+}
+
+.veto-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.veto-button:hover {
+  background-color: #c82333;
+}
+
+.veto-button:disabled {
+  background-color: #e4606d;
+  cursor: not-allowed;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 15px; /* Add padding for small screens */
+}
+
+.modal-container {
+  background-color: white;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  max-height: 90vh; /* Limit height on small screens */
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-container.small {
+  max-width: 400px;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #343a40;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+}
+
+.modal-content {
+  padding: 20px;
+  overflow-y: auto; /* Allow scrolling if content is too long */
+  flex-grow: 1; /* Allow content to grow */
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #343a40;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  font-size: 1rem;
+  color: #495057;
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-hint {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 4px;
+  word-break: keep-all; /* Prevent Korean text from breaking inappropriately */
+  overflow-wrap: break-word; /* Allow long words to break */
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  border-top: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+/* For very small screens, stack buttons in modals */
+@media (max-width: 480px) {
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-button {
+    width: 100%;
+  }
+}
+
+.modal-button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center; /* Center text in buttons */
+}
+
+.modal-button.cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.modal-button.cancel:hover {
+  background-color: #5a6268;
+}
+
+.modal-button.submit {
+  background-color: #007bff;
+  color: white;
+}
+
+.modal-button.submit:hover {
+  background-color: #0069d9;
+}
+
+.modal-button.veto {
+  background-color: #dc3545;
+  color: white;
+}
+
+.modal-button.veto:hover {
+  background-color: #c82333;
+}
+
+.modal-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 다크 모드 */
+@media (prefers-color-scheme: dark) {
+  .org-chart-container {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+  }
+
+  .org-header {
+    border-bottom-color: #4a6bab;
+  }
+
+  .org-title {
+    color: #4a6bab;
+  }
+
+  .admin-toggle {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+  }
+
+  .president-office,
+  .empty-state,
+  .law-card,
+  .law-header,
+  .law-actions {
+    background-color: #2c2c2c;
+  }
+
+  .law-card {
+    border-color: #444;
+  }
+
+  .law-header,
+  .law-actions {
+    border-color: #444;
+  }
+
+  .law-title {
+    color: #e0e0e0;
+  }
+
+  .law-content p {
+    color: #ccc;
+  }
+
+  .law-content strong {
+    color: #e0e0e0;
+  }
+
+  .modal-container,
+  .modal-header,
+  .modal-content,
+  .modal-footer {
+    background-color: #2c2c2c;
+  }
+
+  .modal-title {
+    color: #e0e0e0;
+  }
+
+  .form-label {
+    color: #e0e0e0;
+  }
+
+  .form-input,
+  .form-textarea {
+    background-color: #3a3a3a;
+    border-color: #555;
+    color: #e0e0e0;
+  }
+}

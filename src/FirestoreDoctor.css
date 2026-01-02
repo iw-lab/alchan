@@ -1,0 +1,81 @@
+
+.firestore-doctor {
+  padding: 20px;
+  font-family: sans-serif;
+  max-width: 800px;
+  margin: 40px auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.firestore-doctor h2 {
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.firestore-doctor button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.firestore-doctor button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+.firestore-doctor hr {
+  margin: 20px 0;
+}
+
+.results-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.test-result {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+}
+
+.test-result h4 {
+  margin-top: 0;
+  color: #0056b3;
+}
+
+.test-result p {
+  margin: 5px 0;
+}
+
+.test-result pre {
+  background-color: #eee;
+  padding: 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.status-success {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.status-failure {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.status-pending {
+  color: #ffc107;
+  font-weight: bold;
+}

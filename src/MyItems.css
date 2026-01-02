@@ -1,0 +1,589 @@
+/* src/MyItems.css - Cyberpunk Dark Theme */
+
+/* --- 기본 카드 스타일 (다크 테마) --- */
+.store-item-card,
+.shop-item-card {
+  background: rgba(20, 20, 35, 0.95);
+  border-radius: 16px;
+  padding: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  border: 1px solid rgba(0, 255, 242, 0.15);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.store-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 255, 242, 0.3);
+  border-color: rgba(0, 255, 242, 0.4);
+}
+
+/* --- 컴팩트 내 아이템 카드 --- */
+.compact-myitem-card {
+  padding: 0 !important;
+}
+
+.compact-myitem-card>.item-content {
+  padding: 16px;
+}
+
+.my-item-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.my-item-name-compact {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  padding: 6px 12px;
+  background: rgba(0, 255, 242, 0.1);
+  border: 1px solid rgba(0, 255, 242, 0.3);
+  border-radius: 8px;
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-item-description-compact {
+  font-size: 0.8rem;
+  color: #9999bb;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.compact-myitem-card .quantity-badge {
+  position: static;
+  margin-left: 8px;
+}
+
+.item-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.page-container {
+  padding: 20px;
+}
+
+.page-title {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #00fff2;
+  margin-top: 32px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid rgba(0, 255, 242, 0.3);
+  padding-bottom: 8px;
+}
+
+/* --- 아이템 카드 내부 스타일 (다크 테마) --- */
+.my-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.item-icon-group {
+  position: relative;
+}
+
+.item-icon {
+  font-size: 2rem;
+  background-color: rgba(0, 255, 242, 0.1);
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 255, 242, 0.2);
+}
+
+.quantity-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #8b5cf6, #00fff2);
+  color: #0a0a12;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 2px solid rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+.item-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #ffffff;
+}
+
+.item-description {
+  color: #9999bb;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  flex-grow: 1;
+}
+
+.my-item-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  /* 3개 버튼을 위한 그리드 */
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* 사용 중인 아이템 카드의 버튼 그리드는 1개만 차지하도록 수정 */
+.active-item-card .my-item-actions {
+  grid-template-columns: 1fr;
+}
+
+
+.my-item-actions button {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.use-item-button {
+  background-color: #4f46e5;
+  color: white;
+}
+
+.use-item-button:hover {
+  background-color: #4338ca;
+}
+
+.use-item-button:disabled {
+  background-color: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.gift-item-button {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.gift-item-button:hover {
+  background-color: #d97706;
+}
+
+.gift-item-button:disabled {
+  background-color: #fcd34d;
+  cursor: not-allowed;
+}
+
+.sell-to-market-button {
+  background-color: #10b981;
+  color: white;
+}
+
+.sell-to-market-button:hover {
+  background-color: #059669;
+}
+
+.sell-to-market-button:disabled {
+  background-color: #6ee7b7;
+  cursor: not-allowed;
+}
+
+/* --- ✨새로운 스타일✨ 사용 중지 버튼 --- */
+.stop-using-button {
+  background-color: #ef4444;
+  /* 빨간색 계열 */
+  color: white;
+}
+
+.stop-using-button:hover {
+  background-color: #dc2626;
+}
+
+.stop-using-button:disabled {
+  background-color: #fca5a5;
+  cursor: not-allowed;
+}
+
+
+/* --- 사용 중인 아이템 스타일 (다크 테마) --- */
+.active-item-card {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(0, 255, 242, 0.1));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.timer-container {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.timer-bar {
+  width: 100%;
+  height: 8px;
+  background-color: rgba(0, 255, 242, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.timer-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #00fff2, #8b5cf6);
+  border-radius: 4px;
+  transition: width 1s linear;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+}
+
+.timer-text {
+  font-size: 0.9rem;
+  color: #9999bb;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  /* 왼쪽 정렬로 변경 */
+  margin-bottom: 12px;
+  flex-grow: 1;
+}
+
+.active-item-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.active-status {
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 255, 242, 0.2), rgba(139, 92, 246, 0.2));
+  color: #00fff2;
+  border: 1px solid rgba(0, 255, 242, 0.3);
+}
+
+/* --- 로딩 및 메시지 스타일 (다크 테마) --- */
+.empty-message {
+  text-align: center;
+  padding: 40px;
+  color: #9999bb;
+  font-size: 1rem;
+}
+
+/* ========================================
+    모달 (Modal) 스타일 - myitems- 접두사 사용 (다크 테마)
+   ======================================== */
+.myitems-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+  backdrop-filter: blur(5px);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.myitems-modal-container {
+  background: rgba(20, 20, 35, 0.98);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 242, 0.15);
+  width: 90%;
+  max-width: 450px;
+  animation: slideUp 0.3s ease-out;
+  border: 1px solid rgba(0, 255, 242, 0.2);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.myitems-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.myitems-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.myitems-close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #9999bb;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.myitems-close-button:hover {
+  color: #00fff2;
+}
+
+.myitems-modal-body {
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #9999bb;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group .form-select {
+  /* ✨새로운 스타일✨ select 추가 */
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(0, 255, 242, 0.3);
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #e8e8ff;
+}
+
+.form-group input:focus,
+.form-group .form-select:focus {
+  /* ✨새로운 스타일✨ select 추가 */
+  outline: none;
+  border-color: #00fff2;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+}
+
+.quantity-controls button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(0, 255, 242, 0.3);
+  background-color: rgba(0, 255, 242, 0.1);
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #e8e8ff;
+  transition: all 0.2s ease;
+}
+
+.quantity-controls button:hover {
+  background-color: rgba(0, 255, 242, 0.2);
+  border-color: #00fff2;
+}
+
+.quantity-controls button:first-of-type {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.quantity-controls button:last-of-type {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.quantity-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.quantity-controls input {
+  text-align: center;
+  border-top: 1px solid rgba(0, 255, 242, 0.3);
+  border-bottom: 1px solid rgba(0, 255, 242, 0.3);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+  width: 60px;
+  height: 38px;
+  box-sizing: border-box;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #e8e8ff;
+}
+
+.myitems-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.button-secondary {
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 255, 242, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #e8e8ff;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.button-secondary:hover {
+  background-color: rgba(0, 255, 242, 0.1);
+  border-color: #00fff2;
+}
+
+.button-primary {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background: linear-gradient(135deg, #00fff2, #8b5cf6);
+  color: #0a0a12;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.button-primary:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+  transform: translateY(-1px);
+}
+
+.item-preview-simple {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: rgba(0, 255, 242, 0.1);
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(0, 255, 242, 0.2);
+}
+
+.item-icon-small {
+  font-size: 1.5rem;
+}
+
+.total-price-preview {
+  padding: 12px;
+  background: rgba(0, 255, 242, 0.1);
+  border-radius: 4px;
+  margin-top: 8px;
+  text-align: right;
+  font-size: 1rem;
+  border: 1px solid rgba(0, 255, 242, 0.2);
+  color: #e8e8ff;
+}
+
+.total-price-preview strong {
+  color: #00fff2;
+  font-size: 1.1rem;
+}
+
+.sell-button {
+  background: linear-gradient(135deg, #00ff88, #00cc70);
+  color: #0a0a12;
+}
+
+.sell-button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+
+/* ========================================
+    반응형 (모바일) 스타일 추가
+   ======================================== */
+@media (max-width: 640px) {
+  .my-item-actions {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .my-item-actions button {
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  .item-name {
+    font-size: 1rem;
+  }
+}

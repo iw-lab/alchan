@@ -1,0 +1,19 @@
+<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef08a"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+  </defs>
+  <!-- 배경 둥근 사각형 -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+  <!-- 체크마크 -->
+  <path d="M150 265 L225 340 L362 175" stroke="url(#checkGrad)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 반짝이는 별 -->
+  <circle cx="385" cy="127" r="22" fill="#fef08a"/>
+  <path d="M385 90 L385 110 M385 144 L385 164 M348 127 L368 127 M402 127 L422 127" stroke="#fef08a" stroke-width="10" stroke-linecap="round"/>
+</svg>

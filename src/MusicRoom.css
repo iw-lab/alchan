@@ -1,0 +1,563 @@
+/* MusicRoom.css - Cyberpunk Edit */
+.music-room-container-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1920px;
+    margin: 0 auto;
+    height: calc(100vh - 100px);
+    box-sizing: border-box;
+    background-color: #0a0a12 !important;
+    /* Deep Dark Background */
+    color: #e8e8ff;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    background: rgba(20, 20, 35, 0.8) !important;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border: 1px solid rgba(0, 255, 242, 0.2);
+}
+
+.video-player-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background-color: #000;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+}
+
+.youtube-player {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.youtube-player iframe {
+    width: 100%;
+    height: 100%;
+}
+
+.no-video-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: #1a1a2e;
+    color: #a0a0c0;
+    font-size: 1.2rem;
+}
+
+.room-header {
+    padding: 1rem 1.5rem;
+    background: rgba(10, 10, 20, 0.95);
+    border-top: 1px solid rgba(0, 255, 242, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.room-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #00fff2;
+    text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+
+.room-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn,
+.delete-room-btn {
+    padding: 0.6rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.control-btn {
+    background: rgba(0, 255, 242, 0.1);
+    color: #00fff2;
+    border-color: #00fff2;
+}
+
+.control-btn:hover {
+    background: rgba(0, 255, 242, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+    transform: translateY(-2px);
+}
+
+.control-btn:disabled {
+    background: #333;
+    border-color: #555;
+    color: #777;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.delete-room-btn {
+    background: rgba(255, 0, 60, 0.1);
+    color: #ff003c;
+    border-color: #ff003c;
+}
+
+.delete-room-btn:hover {
+    background: rgba(255, 0, 60, 0.2);
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.3);
+    transform: translateY(-2px);
+}
+
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 0;
+}
+
+.share-info-panel {
+    display: none;
+}
+
+.playlist-panel {
+    background: rgba(20, 20, 35, 0.8) !important;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    border: 1px solid rgba(0, 255, 242, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.share-info-panel h4 {
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    text-align: center;
+    color: #e8e8ff;
+    font-size: 1rem;
+}
+
+.playlist-panel h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #d633ff;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.qr-code-container-room {
+    text-align: center;
+    margin-bottom: 0.8rem;
+    background: #fff;
+    /* QR code needs white background */
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.qr-code-container-room svg {
+    width: 120px !important;
+    height: 120px !important;
+}
+
+.room-link-title {
+    margin: 10px 0 0.3rem 0;
+    font-weight: bold;
+    font-size: 0.75rem;
+    color: #a0a0c0;
+    text-align: center;
+}
+
+.room-link-box {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 0.6rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    text-align: center;
+    word-break: break-all;
+    font-family: monospace;
+    color: #00fff2;
+    border: 1px solid rgba(0, 255, 242, 0.3);
+}
+
+.playlist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.playlist::-webkit-scrollbar {
+    width: 6px;
+}
+
+.playlist::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+.playlist li {
+    padding: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.02);
+    margin-bottom: 4px;
+    border-radius: 4px;
+}
+
+.playlist li:last-child {
+    border-bottom: none;
+}
+
+.playlist li:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.song-title {
+    font-weight: 500;
+    color: #e8e8ff;
+}
+
+.playlist li.playing {
+    background: rgba(0, 255, 242, 0.1);
+    border-left: 3px solid #00fff2;
+}
+
+.playlist li.playing .song-title {
+    color: #00fff2;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+}
+
+.requester {
+    font-size: 0.8rem;
+    color: #777;
+    align-self: flex-end;
+}
+
+.no-playlist-message {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #666;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-playlist-message p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+}
+
+.no-playlist-message p:first-child {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #888;
+}
+
+/* 반응형 디자인 - 태블릿 */
+@media (max-width: 1200px) {
+    .music-room-container-grid {
+        grid-template-columns: 1fr 260px;
+    }
+}
+
+/* 반응형 디자인 - 모바일 */
+@media (max-width: 768px) {
+    .music-room-container-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .sidebar-content {
+        gap: 15px;
+    }
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.video-player-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    /* 16:9 Aspect Ratio (9 / 16 = 0.5625) */
+    background-color: #000;
+    overflow: hidden;
+}
+
+.youtube-player {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.youtube-player iframe {
+    width: 100%;
+    height: 100%;
+}
+
+.no-video-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: #f0f0f0;
+    color: #888;
+    font-size: 1.2rem;
+}
+
+.room-header {
+    padding: 1rem 1.5rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.room-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.room-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn,
+.delete-room-btn {
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.control-btn {
+    background: linear-gradient(90deg, #5e72e4, #825ee4);
+    color: white;
+}
+
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(94, 114, 228, 0.3);
+}
+
+.control-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.delete-room-btn {
+    background-color: #f5365c;
+    color: white;
+}
+
+.delete-room-btn:hover {
+    background-color: #e02146;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(245, 54, 92, 0.3);
+}
+
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-height: 0;
+    /* Fix for flexbox overflow */
+}
+
+/* QR 패널 제거 - 더 이상 사용하지 않음 */
+.share-info-panel {
+    display: none;
+}
+
+.playlist-panel {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    /* 전체 높이 사용 */
+}
+
+.share-info-panel h4 {
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+    text-align: center;
+    color: #333;
+    font-size: 1rem;
+}
+
+.playlist-panel h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.qr-code-container-room {
+    text-align: center;
+    margin-bottom: 0.8rem;
+}
+
+.qr-code-container-room svg {
+    width: 120px !important;
+    height: 120px !important;
+}
+
+.room-link-title {
+    margin: 0 0 0.3rem 0;
+    font-weight: bold;
+    font-size: 0.75rem;
+    color: #555;
+    text-align: center;
+}
+
+.room-link-box {
+    background-color: #f0f2f5;
+    padding: 0.4rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    text-align: center;
+    word-break: break-all;
+    font-family: monospace;
+    color: #333;
+}
+
+.playlist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex-grow: 1;
+    /* Takes remaining space */
+}
+
+.playlist li {
+    padding: 0.8rem;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.playlist li:last-child {
+    border-bottom: none;
+}
+
+.song-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.playlist li.playing {
+    background-color: #e9f5ff;
+}
+
+.playlist li.playing .song-title {
+    color: #0056b3;
+    font-weight: bold;
+}
+
+.requester {
+    font-size: 0.8rem;
+    color: #777;
+    align-self: flex-end;
+}
+
+.no-playlist-message {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #999;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.no-playlist-message p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+}
+
+.no-playlist-message p:first-child {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+/* 반응형 디자인 - 태블릿 */
+@media (max-width: 1200px) {
+    .music-room-container-grid {
+        grid-template-columns: 1fr 260px;
+        /* 태블릿에서도 재생목록 좁게 */
+    }
+}
+
+/* 반응형 디자인 - 모바일 */
+@media (max-width: 768px) {
+    .music-room-container-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .sidebar-content {
+        gap: 15px;
+    }
+}

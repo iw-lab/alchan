@@ -1,0 +1,237 @@
+/* src/App.css */
+.app-container {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* 전역 폰트 설정은 styles.css body에서 하는 것이 더 일반적 */
+  max-width: 1280px; /* 앱 전체의 최대 너비 */
+  margin: 0 auto; /* 화면 중앙 정렬 */
+  padding: 0; /* 중요: 내부 패딩 제거! */
+  width: 100%; /* 부모(body) 너비를 따름 */
+  box-sizing: border-box; /* .app-container 자체도 border-box를 따르도록 합니다. */
+  /* background-color: rgba(0, 255, 0, 0.1); */ /* 개발 중 레이아웃 확인용 */
+}
+
+/* .app-header, .user-info 등 App.js의 메인 레이아웃과 직접 관련 없는 스타일은
+   App.js 구조를 정확히 알 수 없으므로 일단 그대로 둡니다.
+   만약 App.js의 Header, cash-bar, main 바깥에 위치하는 요소들이라면
+   이 스타일들이 영향을 미칠 수 있습니다. 
+   App.js의 AppLayoutContent 내에서 사용되는 Header는 Header.css의 .header 클래스를 사용합니다.
+   여기 .app-header는 다른 용도로 사용되거나 현재 레이아웃에 직접적인 영향이 없을 수 있습니다.
+*/
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #203549;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-name {
+  font-weight: 600;
+}
+
+.user-role {
+  color: #a8c6df;
+  font-size: 0.9rem;
+}
+
+.user-coupons {
+  background-color: #ffd166;
+  color: #203549;
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.user-selector {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 1px dashed #ced4da;
+  box-sizing: border-box;
+}
+
+.user-selector label {
+  margin-right: 1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.user-selector select {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  font-size: 0.9rem;
+  min-width: 300px;
+  box-sizing: border-box;
+}
+
+.app-content {
+  /* App.js의 <main> 태그에 해당하는 내용이 아니라,
+     .app-container 내부에 별도의 콘텐츠 영역이 있을 경우 사용될 수 있습니다.
+     App.js의 메인 콘텐츠는 App.js 내의 mainStyle 객체로 직접 제어됩니다. */
+  margin-top: 1.5rem;
+  box-sizing: border-box;
+}
+
+.loading,
+.no-user-message {
+  padding: 3rem;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  color: #6c757d;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin: 2rem 0;
+  box-sizing: border-box;
+}
+
+.loading::after {
+  content: "...";
+  animation: dots-animation 1.5s infinite;
+}
+
+@keyframes dots-animation {
+  0% {
+    content: ".";
+  }
+  33% {
+    content: "..";
+  }
+  66% {
+    content: "...";
+  }
+  100% {
+    content: ".";
+  }
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .user-selector select {
+    min-width: unset;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  .user-selector {
+    display: flex;
+    flex-direction: column;
+  }
+}
+/* src/App.css (파일 하단에 추가) */
+
+/* 모든 것을 해결할 Z-index 솔루션
+  ------------------------------------
+  가장 기본적인 쌓임 순서(stacking context)를 정의합니다.
+*/
+
+/* 메인 앱 컨테이너 */
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* 모달 컨테이너 */
+#modal-root {
+  position: relative;
+  z-index: 1000; /* root보다 훨씬 높은 숫자로 설정하여 항상 위에 있도록 보장 */
+}
+
+/* Police.css에서 이미 z-index가 있지만, 
+  부모(#modal-root)의 z-index가 낮으면 자식은 절대 위로 올라올 수 없습니다.
+  따라서 #modal-root 자체의 z-index를 설정하는 것이 매우 중요합니다.
+*/
+/* src/App.css (파일 하단에 추가) */
+
+/* ==========================================================================
+   🚨 최종 모달 문제 해결을 위한 전역 스타일 🚨
+   ==========================================================================
+   메인 앱 컨테이너(#root)와 모달 컨테이너(#modal-root)의 쌓임 순서를
+   명확하게 분리하여 모달이 항상 최상위에 오도록 보장합니다.
+*/
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+#modal-root {
+  position: relative;
+  z-index: 9998; /* 모달 오버레이(9999) 바로 아래에 위치하여 모든 모달의 기준점이 됨 */
+}
+
+.user-management-container .class-group {
+  margin-bottom: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: #f9f9f9;
+}
+
+.user-management-container .class-group h3 {
+  margin-top: 0;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 0.5rem;
+  color: #007bff;
+}
+
+.user-management-container .users-list ul {
+  list-style-type: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.user-management-container .users-list li {
+  background-color: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.user-management-container .user-info p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.user-management-container .user-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.password-change-container {
+  margin-top: 1rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+}

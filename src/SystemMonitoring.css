@@ -1,0 +1,365 @@
+/* SystemMonitoring.css */
+
+.system-monitoring {
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.monitoring-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.monitoring-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #2c3e50;
+}
+
+.monitoring-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+}
+
+.auto-refresh-toggle input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.refresh-button {
+  padding: 8px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.refresh-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.last-update {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 5px 0 15px 0;
+}
+
+.error-message {
+  padding: 12px;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.error-message p {
+  margin: 0;
+  color: #c00;
+}
+
+/* 시스템 상태 카드 */
+.system-health-card {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.system-health-card h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+}
+
+.health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.health-icon {
+  font-size: 32px;
+}
+
+.health-healthy .health-text {
+  color: #2ecc71;
+}
+
+.health-warning .health-text {
+  color: #f39c12;
+}
+
+.health-critical .health-text {
+  color: #e74c3c;
+}
+
+/* 통계 그리드 */
+.stats-card {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.stats-card h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* 비정상 패턴 카드 */
+.anomalies-card {
+  padding: 20px;
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.anomalies-card h4 {
+  margin: 0 0 15px 0;
+  color: #856404;
+}
+
+.anomalies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.anomaly-item {
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid;
+}
+
+.anomaly-warning {
+  background: #fff3cd;
+  border-left-color: #ffc107;
+}
+
+.anomaly-error {
+  background: #f8d7da;
+  border-left-color: #dc3545;
+}
+
+.anomaly-critical {
+  background: #f8d7da;
+  border-left-color: #721c24;
+}
+
+.anomaly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.anomaly-severity {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.anomaly-type {
+  font-size: 12px;
+  color: #6c757d;
+  font-family: monospace;
+}
+
+.anomaly-message {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+/* 활성 경고 카드 */
+.alerts-card {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.alerts-card h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alert-item {
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border-left: 4px solid;
+}
+
+.alert-warning {
+  border-left-color: #ffc107;
+}
+
+.alert-error {
+  border-left-color: #dc3545;
+}
+
+.alert-critical {
+  border-left-color: #721c24;
+  background: #fff5f5;
+}
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.alert-time {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.resolve-alert-button {
+  padding: 4px 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.resolve-alert-button:hover {
+  background: #218838;
+}
+
+.alert-message {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+/* 에러 로그 카드 */
+.error-logs-card {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.error-logs-card h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.error-logs-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-log-item {
+  padding: 10px;
+  background: white;
+  border-radius: 4px;
+  border-left: 3px solid #dc3545;
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.log-time {
+  flex-shrink: 0;
+  color: #6c757d;
+  font-family: monospace;
+}
+
+.log-message {
+  color: #333;
+  flex: 1;
+}
+
+/* 데이터 없음 메시지 */
+.no-data-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .monitoring-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .alert-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

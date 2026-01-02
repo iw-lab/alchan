@@ -1,0 +1,299 @@
+/* src/Dashboard.css - Cyberpunk Theme (Direct Colors) */
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #0a0a12 !important;
+}
+
+.dashboard-content-area {
+  padding: 20px;
+  background-color: transparent !important;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.dashboard-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.2rem;
+  color: #00fff2 !important;
+  text-shadow: 0 0 15px rgba(0, 255, 242, 0.5), 0 0 30px rgba(0, 255, 242, 0.2) !important;
+}
+
+/* Cyberpunk Page Title and Header */
+.dashboard-page-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(20, 20, 35, 0.85) !important;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3) !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.page-title-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #e8e8ff !important;
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3) !important;
+}
+
+.welcome-message {
+  font-size: 20px;
+  font-weight: 600;
+  color: #00fff2 !important;
+}
+
+/* Cyberpunk Section Styles */
+.section-container {
+  background: rgba(20, 20, 35, 0.85) !important;
+  padding: 20px;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3) !important;
+  margin-bottom: 25px;
+  border: 1px solid rgba(0, 255, 242, 0.15) !important;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
+}
+
+.section-header-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #e8e8ff !important;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.subsection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+.subsection-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #9999bb !important;
+}
+
+/* Grid Layout for Tasks */
+.job-tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* Cyberpunk Button Styles */
+.admin-settings-button {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8b5cf6, #cc00cc) !important;
+  color: white !important;
+  border: 1px solid rgba(139, 92, 246, 0.5) !important;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3) !important;
+  transition: all 0.25s ease;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.admin-settings-button:hover {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+.go-back-button {
+  padding: 8px 16px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #e8e8ff !important;
+  border: 1px solid rgba(0, 255, 242, 0.15) !important;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.go-back-button:hover {
+  background: rgba(0, 255, 242, 0.1) !important;
+  border-color: #00fff2 !important;
+}
+
+.header-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00ff88, #00cc70) !important;
+  color: #0a0a12 !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.header-button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+.green-button {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00ff88, #00cc70) !important;
+  color: #0a0a12 !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.green-button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+.add-job-task-button {
+  padding: 6px 10px;
+  font-size: 13px;
+  background: linear-gradient(135deg, #00fff2, #0088ff) !important;
+  color: #0a0a12 !important;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-weight: 600;
+}
+
+.add-job-task-button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5), 0 0 30px rgba(0, 255, 242, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .dashboard-content-area {
+    padding: 12px;
+  }
+
+  .section-container {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-page-title {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .welcome-message {
+    font-size: 18px;
+  }
+
+  .page-title-text {
+    font-size: 20px;
+  }
+
+  .section-header-title {
+    font-size: 18px;
+  }
+
+  .subsection-header-title {
+    font-size: 16px;
+  }
+
+  .job-tasks-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admin-settings-button,
+  .go-back-button,
+  .header-button,
+  .green-button,
+  .add-job-task-button {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+}
+
+/* 더 작은 모바일 화면 */
+@media (max-width: 480px) {
+  .dashboard-content-area {
+    padding: 8px;
+  }
+
+  .section-container {
+    padding: 12px;
+  }
+
+  .welcome-message {
+    font-size: 16px;
+  }
+
+  .page-title-text {
+    font-size: 18px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .subsection-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* PC 화면 폰트 크기 증가 */
+@media (min-width: 1024px) {
+  .page-title-text {
+    font-size: 28px;
+  }
+
+  .welcome-message {
+    font-size: 24px;
+  }
+
+  .section-header-title {
+    font-size: 26px;
+  }
+
+  .subsection-header-title {
+    font-size: 20px;
+  }
+
+  .admin-settings-button,
+  .header-button,
+  .green-button {
+    font-size: 15px;
+    padding: 10px 20px;
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "short_name": "알찬",
+  "name": "알찬 - 학급 경제 교육",
+  "description": "학급 경제 시뮬레이션 교육 앱. 학생들이 직접 경제 활동을 체험하며 배웁니다.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc",
+  "categories": ["education", "finance", "games"],
+  "lang": "ko",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "알찬 대시보드"
+    },
+    {
+      "src": "screenshots/mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "알찬 모바일"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "오늘의 할일",
+      "short_name": "할일",
+      "description": "오늘의 알찬 할일 확인",
+      "url": "/dashboard/tasks",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "나의 자산",
+      "short_name": "자산",
+      "description": "나의 알찬 자산 확인",
+      "url": "/my-assets",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "게임",
+      "short_name": "게임",
+      "description": "알찬 학습 게임",
+      "url": "/learning-games/omok",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

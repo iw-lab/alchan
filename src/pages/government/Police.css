@@ -1,0 +1,1081 @@
+/* src/Police.css - Cyberpunk Dark Theme */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap");
+
+/* --- 기본 설정 및 변수 (Cyberpunk Palette) --- */
+:root {
+  --primary-color: #00fff2;
+  /* Neon Cyan */
+  --primary-dark: #0088ff;
+  /* Neon Blue */
+  --secondary-color: #a0a0c0;
+  /* Muted Lavender */
+  --light-gray: rgba(20, 20, 35, 0.6);
+  /* Translucent Card Bg */
+  --medium-gray: rgba(0, 255, 242, 0.2);
+  /* Neon Border */
+  --dark-gray: #e8e8ff;
+  /* Light Text */
+  --text-color: #ffffff;
+  /* White Text */
+  --white-color: #0a0a12;
+  /* Dark Background */
+  --success-color: #00ff9d;
+  /* Neon Green */
+  --danger-color: #ff003c;
+  /* Neon Red */
+  --warning-color: #fcee0a;
+  /* Neon Yellow */
+  --info-color: #00fff2;
+  /* Neon Cyan */
+  --fine-color: #ff003c;
+  /* Neon Red */
+
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  --box-shadow-sm: 0 0 10px rgba(0, 136, 255, 0.1);
+  --box-shadow-md: 0 0 20px rgba(0, 0, 0, 0.6);
+  --box-shadow-lg: 0 0 30px rgba(0, 255, 242, 0.15);
+}
+
+body {
+  font-family: "Noto Sans KR", sans-serif;
+  background-color: var(--white-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+/* --- 기본 컨테이너 --- */
+.police-container {
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 30px;
+  background-color: var(--white-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-lg);
+  border: 1px solid var(--medium-gray);
+  overflow: visible;
+  position: relative;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* --- 헤더 영역 --- */
+.police-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding-bottom: 20px;
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--primary-color);
+}
+
+.police-header {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 10px var(--primary-dark);
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 0.95rem;
+  color: var(--secondary-color);
+}
+
+.welcome-message {
+  font-weight: 500;
+  color: var(--primary-color);
+}
+
+.treasury-balance {
+  font-weight: 500;
+  background-color: rgba(30, 30, 50, 0.8);
+  padding: 5px 10px;
+  border-radius: var(--border-radius-sm);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+  box-shadow: 0 0 5px rgba(0, 255, 157, 0.3);
+}
+
+/* 관리 설정 버튼 (헤더 오른쪽) */
+.admin-settings-button {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  border: 1px solid var(--medium-gray);
+  color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease-in-out;
+  box-shadow: var(--box-shadow-sm);
+}
+
+.admin-settings-button:hover {
+  background-color: rgba(0, 136, 255, 0.2);
+  border-color: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 0 10px var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.admin-settings-button.active {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-color);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 15px var(--primary-dark);
+}
+
+/* --- 탭 버튼 영역 --- */
+.police-tabs,
+.tabs-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 25px;
+  border-bottom: 1px solid var(--medium-gray);
+}
+
+.police-tab-button,
+.tab-button {
+  padding: 12px 24px;
+  cursor: pointer;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background-color: transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--secondary-color);
+  transition: all 0.25s ease-in-out;
+  border-radius: 0;
+  position: relative;
+  bottom: -1px;
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
+}
+
+.police-tab-button.active,
+.tab-button.active {
+  color: var(--primary-color) !important;
+  border-bottom-color: var(--primary-color) !important;
+  font-weight: 700;
+  text-shadow: 0 0 5px var(--primary-color);
+  background-color: rgba(0, 255, 242, 0.1) !important;
+}
+
+.police-tab-button:hover:not(.active),
+.tab-button:hover:not(.active) {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* --- 탭 컨텐츠 영역 --- */
+.police-tab-content {
+  padding: 25px;
+  background-color: var(--light-gray);
+  border-radius: var(--border-radius-md);
+  min-height: 350px;
+  border: 1px solid var(--medium-gray);
+  margin-top: -1px;
+  overflow: visible;
+  backdrop-filter: blur(5px);
+}
+
+.police-admin-content {
+  padding: 25px;
+  background-color: var(--light-gray);
+  border-radius: var(--border-radius-md);
+  margin-bottom: 25px;
+  border: 1px solid var(--medium-gray);
+  overflow: visible;
+  backdrop-filter: blur(5px);
+}
+
+/* --- 공통 버튼 스타일 --- */
+button {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-family: inherit;
+}
+
+.submit-button,
+.report-actions button,
+.form-actions button,
+.police-admin-settings-container button,
+.save-button,
+.add-button,
+.deleteAllButton,
+.admin-button,
+.danger-zone-button,
+.reason-delete-button,
+.reason-add-button,
+.reason-save-button {
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: var(--border-radius-md);
+  border: 1px solid transparent;
+  color: #fff;
+  box-shadow: var(--box-shadow-sm);
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.submit-button:hover,
+.report-actions button:hover,
+.form-actions button:hover,
+.police-admin-settings-container button:hover,
+.save-button:hover,
+.add-button:hover,
+.deleteAllButton:hover,
+.admin-button:hover,
+.danger-zone-button:hover,
+.reason-delete-button:hover,
+.reason-add-button:hover,
+.reason-save-button:hover {
+  opacity: 1;
+  box-shadow: 0 0 10px currentColor;
+  transform: translateY(-1px);
+}
+
+/* 개별 버튼 배경색 */
+.submit-button {
+  background-color: rgba(0, 136, 255, 0.2);
+  border-color: var(--primary-dark);
+  color: var(--primary-dark);
+}
+
+.submit-button:hover {
+  background-color: rgba(0, 136, 255, 0.4);
+}
+
+.accept-button,
+.reason-save-button {
+  background-color: rgba(0, 255, 157, 0.2);
+  border-color: var(--success-color);
+  color: var(--success-color);
+}
+
+.accept-button:hover,
+.reason-save-button:hover {
+  background-color: rgba(0, 255, 157, 0.4);
+}
+
+.fine-button,
+.danger-zone-button,
+.reason-delete-button {
+  background-color: rgba(255, 0, 60, 0.2);
+  border-color: var(--fine-color);
+  color: var(--fine-color);
+}
+
+.fine-button:hover,
+.danger-zone-button:hover,
+.reason-delete-button:hover {
+  background-color: rgba(255, 0, 60, 0.4);
+}
+
+.settlement-button {
+  background-color: rgba(0, 255, 242, 0.2);
+  border-color: var(--info-color);
+  color: var(--info-color);
+}
+
+.settlement-button:hover {
+  background-color: rgba(0, 255, 242, 0.4);
+}
+
+.dismiss-button,
+.delete-button,
+.deleteAllButton {
+  background-color: rgba(252, 238, 10, 0.2);
+  border-color: var(--warning-color);
+  color: var(--warning-color);
+}
+
+.dismiss-button:hover,
+.delete-button:hover,
+.deleteAllButton:hover {
+  background-color: rgba(252, 238, 10, 0.4);
+}
+
+.edit-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.edit-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.save-button {
+  background-color: rgba(0, 136, 255, 0.2);
+  border-color: var(--primary-dark);
+  color: var(--primary-dark);
+}
+
+.save-button:hover {
+  background-color: rgba(0, 136, 255, 0.4);
+}
+
+.add-button,
+.reason-add-button {
+  background-color: rgba(0, 255, 242, 0.2);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.add-button:hover,
+.reason-add-button:hover {
+  background-color: rgba(0, 255, 242, 0.4);
+}
+
+.small-button {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+/* --- 폼 스타일 --- */
+.submit-report-container,
+.report-status-container,
+.report-results-container,
+.police-admin-settings-container,
+.admin-settings-container {
+
+  h2,
+  h3,
+  h4 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-weight: 700;
+    color: #fff;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--medium-gray);
+  }
+}
+
+.admin-settings-h2 {
+  font-size: 24px;
+  color: #fff;
+  border-bottom: 2px solid var(--medium-gray);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.report-form,
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: var(--secondary-color);
+  font-size: 0.9rem;
+}
+
+.form-group select,
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--medium-gray);
+  border-radius: var(--border-radius-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.form-group select:focus,
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--primary-color);
+  outline: 0;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-select option {
+  background-color: #1a1a2e;
+  color: #fff;
+}
+
+.submit-report-form button,
+.report-form .submit-button {
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+/* --- 신고 목록 카드 스타일 --- */
+.report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.report-item {
+  background-color: rgba(20, 20, 35, 0.4);
+  border: 1px solid var(--medium-gray);
+  border-left: 4px solid var(--secondary-color);
+  border-radius: var(--border-radius-md);
+  padding: 20px;
+  box-shadow: var(--box-shadow-sm);
+  backdrop-filter: blur(5px);
+}
+
+.report-item.law-report {
+  border-left-color: var(--primary-color);
+  background: linear-gradient(90deg, rgba(0, 255, 242, 0.05) 0%, rgba(20, 20, 35, 0.4) 100%);
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--secondary-color);
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--medium-gray);
+}
+
+.report-content p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  color: var(--secondary-color);
+}
+
+.report-content strong {
+  font-weight: 500;
+  color: #fff;
+  margin-right: 8px;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.law-reason-highlight {
+  font-weight: bold;
+  color: var(--primary-color);
+  background-color: rgba(0, 255, 242, 0.1);
+  padding: 2px 5px;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--primary-color);
+}
+
+/* --- 관리자 설정 탭 내부 --- */
+.admin-settings-container {
+  background-color: #1a1a2e;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--medium-gray);
+}
+
+.admin-section,
+.settings-section {
+  background-color: rgba(20, 20, 35, 0.4);
+  border-radius: var(--border-radius-md);
+  padding: 25px;
+  margin-bottom: 30px;
+  box-shadow: var(--box-shadow-md);
+  border: 1px solid var(--medium-gray);
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.police-admin-settings-container h3,
+.admin-section-title {
+  color: #fff;
+  border-bottom-color: var(--medium-gray);
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.settings-section h4 {
+  color: #fff;
+  border-bottom-color: var(--medium-gray);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.admin-section-desc {
+  font-size: 14px;
+  color: var(--secondary-color);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.reasons-list,
+.reason-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reason-list-item,
+.reason-item-editor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--medium-gray);
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  gap: 10px;
+}
+
+.reason-list-item:hover,
+.reason-item-editor:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.reason-text {
+  font-size: 0.95rem;
+  color: #fff;
+  flex-grow: 1;
+  margin-right: 15px;
+}
+
+.reason-input {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--medium-gray);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #fff;
+  flex-grow: 1;
+}
+
+.reason-amount-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--secondary-color);
+}
+
+.reason-amount-input {
+  width: 100px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--medium-gray);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #fff;
+}
+
+.reason-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.danger-zone {
+  border-color: var(--danger-color);
+  background-color: rgba(255, 0, 60, 0.05);
+}
+
+.danger-zone-title {
+  color: var(--danger-color) !important;
+}
+
+.danger-zone-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.danger-zone-p {
+  margin: 0;
+  color: var(--secondary-color);
+  flex-basis: 60%;
+}
+
+.amount-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.amount-input {
+  width: 100px;
+  padding: 8px 10px;
+  border: 1px solid var(--medium-gray);
+  border-radius: var(--border-radius-md);
+  text-align: right;
+  font-size: 0.9rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.amount-input.small-input {
+  width: 120px;
+}
+
+.currency-unit {
+  font-size: 0.9rem;
+  color: var(--secondary-color);
+}
+
+.settings-section .save-button {
+  margin-top: 15px;
+  display: block;
+}
+
+.settings-section .add-form {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid var(--medium-gray);
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.settings-section .reason-input {
+  flex-grow: 1;
+}
+
+.settings-section .deleteAllButton {
+  margin-right: 15px;
+}
+
+.warningText {
+  color: var(--danger-color);
+  font-size: 0.85rem;
+  margin-top: 8px;
+  display: inline-block;
+}
+
+/* --- 기타 스타일 --- */
+.empty-state,
+.no-results-message {
+  text-align: center;
+  color: var(--secondary-color);
+  margin-top: 30px;
+  font-style: italic;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: var(--border-radius-md);
+  border: 1px dashed var(--medium-gray);
+}
+
+/* ==========================================================================
+   모달 (Modal) 스타일 - Cyberpunk Dark Theme
+   ========================================================================== */
+.modal-overlay,
+.settlement-modal-overlay,
+.process-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 999999 !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+.modal-container,
+.settlement-modal-container,
+.settlement-modal-safe-container,
+.process-modal-container {
+  background-color: #1a1a2e !important;
+  border-radius: var(--border-radius-lg) !important;
+  box-shadow: 0 0 30px rgba(0, 136, 255, 0.2), 0 0 10px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid var(--primary-color) !important;
+  width: 90% !important;
+  max-width: 500px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 1000000 !important;
+  animation: modalFadeIn 0.3s ease-out !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  position: relative !important;
+  color: #fff !important;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header,
+.settlement-modal-header,
+.process-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid var(--medium-gray);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.modal-header h2,
+.modal-header h3,
+.settlement-modal-header h3,
+.process-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 5px var(--primary-dark);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--secondary-color);
+  cursor: pointer;
+  padding: 0;
+}
+
+.close-button:hover {
+  color: #fff;
+  text-shadow: 0 0 5px #fff;
+}
+
+.modal-content,
+.settlement-modal-content,
+.process-modal-content {
+  padding: 25px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-content .form-group {
+  margin-bottom: 15px;
+}
+
+.modal-content .form-input,
+.modal-content .form-textarea,
+.modal-content .form-select {
+  padding: 10px;
+}
+
+.report-summary {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--medium-gray) !important;
+  border-radius: var(--border-radius-md) !important;
+  padding: 15px !important;
+  margin-bottom: 20px !important;
+  font-size: 0.9rem !important;
+  color: var(--secondary-color) !important;
+}
+
+.report-summary p {
+  margin: 5px 0;
+}
+
+.form-hint {
+  font-size: 0.85rem;
+  color: var(--secondary-color);
+  margin-top: 5px;
+}
+
+.modal-footer,
+.settlement-modal-footer,
+.process-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px 25px;
+  border-top: 1px solid var(--medium-gray);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.modal-button {
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: var(--border-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.modal-button.cancel {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-color);
+  color: #ccc;
+}
+
+.modal-button.cancel:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.modal-button.process {
+  background-color: rgba(0, 136, 255, 0.2);
+  border-color: var(--primary-dark);
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
+.modal-button.process:hover {
+  background-color: rgba(0, 136, 255, 0.4);
+  box-shadow: 0 0 10px var(--primary-dark);
+}
+
+.quick-reasons-container {
+  margin-top: 15px;
+}
+
+.quick-reasons-label {
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.quick-reasons-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-reason-btn {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  border: 1px solid var(--primary-dark);
+  background-color: rgba(0, 136, 255, 0.1);
+  color: var(--primary-dark);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-reason-btn:hover {
+  background-color: rgba(0, 136, 255, 0.3);
+  color: #fff;
+  box-shadow: 0 0 5px var(--primary-dark);
+}
+
+/* --- 반응형 디자인 --- */
+@media (max-width: 768px) {
+  .police-container {
+    padding: 20px;
+    overflow: visible;
+  }
+
+  .police-header-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .admin-settings-button {
+    align-self: flex-start;
+  }
+
+  .police-tabs {
+    flex-direction: column;
+    align-items: stretch;
+    border-bottom: none;
+  }
+
+  .police-tab-button {
+    text-align: center;
+    border-bottom: none;
+    border: 1px solid var(--medium-gray);
+    border-radius: var(--border-radius-md);
+    margin-bottom: 5px;
+  }
+
+  .police-tab-button.active {
+    border-color: var(--primary-color);
+    background-color: rgba(0, 255, 242, 0.2);
+    color: var(--primary-color);
+  }
+
+  .police-tab-content,
+  .police-admin-content {
+    padding: 15px;
+    overflow: visible;
+  }
+
+  .report-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .report-actions,
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-actions button,
+  .form-actions button {
+    width: 100%;
+  }
+
+  .settings-section .add-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-section .reason-input,
+  .settings-section .amount-input.small-input {
+    width: 100%;
+  }
+
+  .reason-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .amount-control {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .reason-list-item .delete-button {
+    align-self: flex-end;
+  }
+
+  .settings-section .warningText {
+    display: block;
+    margin-top: 10px;
+  }
+
+  .modal-overlay {
+    z-index: 9999999;
+  }
+
+  .modal-container {
+    width: 95%;
+    z-index: 10000000;
+  }
+
+  .modal-content {
+    padding: 20px 15px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .police-header {
+    font-size: 1.8rem;
+  }
+
+  .police-tab-button {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+  }
+
+  .modal-container {
+    width: 95%;
+  }
+
+  .modal-content {
+    padding: 20px 15px;
+  }
+
+  .modal-header,
+  .modal-footer {
+    padding: 15px;
+  }
+}
+
+.admin-nav-buttons {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
+
+.back-to-police-button {
+  background-color: rgba(59, 89, 152, 0.3);
+  color: #fff;
+  border: 1px solid #3b5998;
+  border-radius: 5px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-to-police-button:hover {
+  background-color: rgba(59, 89, 152, 0.6);
+}
+
+.back-to-police-button::before {
+  content: "←";
+  display: inline-block;
+  margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+  .admin-nav-buttons {
+    margin-bottom: 15px;
+  }
+
+  .back-to-police-button {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    width: 100%;
+    justify-content: center;
+  }
+}

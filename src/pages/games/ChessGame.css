@@ -1,0 +1,778 @@
+/* ChessGame.css - Cyberpunk Theme */
+.chess-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #0a0a12 !important;
+    /* Force Deep Dark Background */
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(0, 255, 242, 0.05) 0%, transparent 50%),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.2) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 40px 40px, 40px 40px !important;
+    padding: 20px;
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    color: #e8e8ff;
+    min-height: calc(100vh - 80px);
+    /* Fill available space */
+}
+
+/* 방 생성 화면 */
+.room-creation {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(20, 20, 35, 0.8) !important;
+    backdrop-filter: blur(12px);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0, 255, 242, 0.2), inset 0 0 0 1px rgba(0, 255, 242, 0.3);
+    text-align: center;
+    color: #e8e8ff;
+    border: 1px solid rgba(0, 255, 242, 0.3);
+}
+
+.room-creation h2 {
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: #00fff2;
+    text-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.room-creation p {
+    margin-bottom: 30px;
+    color: #a0a0c0;
+    font-size: 1.1em;
+}
+
+.time-control-selector h3,
+.available-rooms h3 {
+    margin-bottom: 20px;
+    color: #00fff2;
+    font-size: 1.5em;
+    text-transform: uppercase;
+}
+
+.time-options {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.time-options button {
+    padding: 12px 20px;
+    border: 1px solid rgba(0, 255, 242, 0.3);
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: #a0a0c0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+}
+
+.time-options button.selected,
+.time-options button:hover {
+    background-color: rgba(0, 255, 242, 0.2);
+    color: #00fff2;
+    border-color: #00fff2;
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+}
+
+.room-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.create-room-btn {
+    padding: 15px;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #0a0a12;
+    background: #00fff2;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px rgba(0, 255, 242, 0.4);
+}
+
+.create-room-btn:hover {
+    background: #fff;
+    box-shadow: 0 0 30px rgba(0, 255, 242, 0.6);
+    transform: translateY(-2px);
+}
+
+.join-room {
+    display: flex;
+    gap: 15px;
+}
+
+.join-room input {
+    flex-grow: 1;
+    padding: 15px;
+    border: 1px solid rgba(0, 255, 242, 0.3);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-family: monospace;
+    font-size: 1.1em;
+}
+
+.join-room input:focus {
+    outline: none;
+    border-color: #00fff2;
+    box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}
+
+.join-room button {
+    padding: 0 25px;
+    background-color: transparent;
+    color: #00fff2;
+    border: 1px solid #00fff2;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.join-room button:hover {
+    background-color: rgba(0, 255, 242, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+}
+
+.available-rooms {
+    margin-top: 40px;
+    width: 100%;
+}
+
+.rooms-list {
+    max-height: 250px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.rooms-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.rooms-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.rooms-list::-webkit-scrollbar-thumb {
+    background: #00fff2;
+    border-radius: 4px;
+}
+
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px 20px;
+    border-radius: 12px;
+    border-left: 4px solid #00fff2;
+    transition: all 0.2s ease;
+}
+
+.room-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.room-info {
+    text-align: left;
+}
+
+.room-info span {
+    display: block;
+    font-size: 0.95em;
+    margin: 4px 0;
+}
+
+.room-host {
+    font-weight: bold;
+    color: #fff;
+}
+
+.room-code {
+    color: #a0a0c0;
+    font-family: monospace;
+}
+
+.room-rank-limit {
+    color: #ff00ea;
+    font-size: 0.85em;
+}
+
+.room-item-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.join-btn {
+    padding: 8px 16px;
+    background-color: rgba(0, 255, 242, 0.2);
+    color: #00fff2;
+    border: 1px solid #00fff2;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.join-btn:hover {
+    background-color: #00fff2;
+    color: #000;
+}
+
+.delete-btn {
+    padding: 8px 16px;
+    background-color: rgba(255, 0, 60, 0.2);
+    color: #ff003c;
+    border: 1px solid #ff003c;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.delete-btn:hover {
+    background-color: #ff003c;
+    color: #fff;
+}
+
+.chess-rules {
+    margin-top: 30px;
+    font-size: 0.95em;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chess-rules ul {
+    list-style-position: inside;
+    color: #ccc;
+}
+
+.chess-rules li {
+    margin-bottom: 8px;
+}
+
+/* 게임 화면 */
+.game-info {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    color: white;
+    padding: 15px;
+    background: rgba(20, 20, 35, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 242, 0.2);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.player {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 12px 18px;
+    border-radius: 8px;
+    text-align: center;
+    width: 40%;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.player.active {
+    background: rgba(0, 255, 242, 0.1);
+    border-color: #00fff2;
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+    transform: scale(1.05);
+}
+
+.player.my-player {
+    border-bottom: 3px solid #ff00ea;
+}
+
+.player-name {
+    font-weight: bold;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+    font-size: 1.1em;
+}
+
+.player-rank {
+    font-weight: normal;
+    font-size: 0.85em;
+    color: #00fff2;
+    margin-left: 5px;
+}
+
+.player-time {
+    font-size: 1.4em;
+    font-family: 'Courier New', monospace;
+    color: #ff003c;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+.game-status {
+    font-weight: bold;
+    text-align: center;
+    color: #a0a0c0;
+}
+
+.winner {
+    color: #00ff9d;
+    text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
+.loser {
+    color: #ff003c;
+}
+
+/* 체스판 */
+.board-container {
+    position: relative;
+    width: 90vw;
+    max-width: 600px;
+    aspect-ratio: 1;
+    margin: 0 auto;
+}
+
+.chess-board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 0 30px rgba(0, 255, 242, 0.15);
+    border: 2px solid #00fff2;
+    border-radius: 4px;
+}
+
+.square {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.square.light {
+    background-color: #2a2a40;
+}
+
+/* Dark Blue-Gray */
+.square.dark {
+    background-color: #151520;
+}
+
+/* Deep Dark */
+.square.selected {
+    background-color: rgba(0, 255, 242, 0.3) !important;
+    box-shadow: inset 0 0 15px #00fff2;
+}
+
+.square.check {
+    background-image: radial-gradient(circle, rgba(255, 0, 60, 0.5) 20%, transparent 80%);
+}
+
+.piece {
+    font-size: clamp(2rem, 8vw, 60px);
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+
+.white-piece {
+    color: #e8e8ff;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.black-piece {
+    color: #111;
+    text-shadow: 0 0 2px #fff, 0 0 5px rgba(0, 0, 0, 0.8);
+}
+
+.possible::after {
+    content: '';
+    position: absolute;
+    width: 20%;
+    height: 20%;
+    background: #00fff2;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00fff2;
+}
+
+.move-dot {
+    /* Deprecated but kept for compatibility */
+    width: 20%;
+    height: 20%;
+    background-color: #00fff2;
+    border-radius: 50%;
+}
+
+.capture-hint {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 4px solid rgba(255, 0, 60, 0.6);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 0, 60, 0.4);
+}
+
+/* 프로모션 모달 */
+.promotion-modal {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.promotion-content {
+    background: #1a1a2e;
+    border: 1px solid #00fff2;
+    color: #fff;
+    box-shadow: 0 0 30px rgba(0, 255, 242, 0.3);
+}
+
+.promotion-pieces button:hover {
+    background: rgba(0, 255, 242, 0.1);
+    border-radius: 8px;
+}
+
+/* 게임 컨트롤 & 기록 */
+.game-controls {
+    margin-top: 20px;
+}
+
+.leave-button {
+    padding: 12px 25px;
+    background-color: transparent;
+    color: #ff003c;
+    border: 1px solid #ff003c;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.leave-button:hover {
+    background-color: #ff003c;
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 0, 60, 0.4);
+}
+
+.move-history {
+    width: 100%;
+    max-width: 600px;
+    margin-top: 20px;
+    background: rgba(20, 20, 35, 0.8);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 242, 0.1);
+    color: #a0a0c0;
+}
+
+.move-history h4 {
+    color: #00fff2;
+    border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+    padding-bottom: 8px;
+}
+
+.moves-list {
+    max-height: 120px;
+}
+
+.move {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 2px;
+    color: #fff;
+    font-family: monospace;
+}
+
+/* 피드백 메시지 */
+.feedback {
+    background: rgba(20, 20, 35, 0.95);
+    border: 1px solid #00fff2;
+    color: #00fff2;
+    box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+}
+
+.feedback.error {
+    border-color: #ff003c;
+    color: #ff003c;
+    box-shadow: 0 0 20px rgba(255, 0, 60, 0.3);
+}
+
+/* 랭크 정보 표시 */
+.rank-info {
+    background: rgba(0, 255, 242, 0.1);
+    border: 1px solid rgba(0, 255, 242, 0.2);
+    color: #fff;
+}
+
+/* 사용자 랭크 정보 */
+.user-rank-info {
+    background: rgba(20, 20, 35, 0.8);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding: 20px;
+    color: #e8e8ff;
+}
+
+.user-rank-info p {
+    color: #e8e8ff;
+}
+
+.user-rank-info strong {
+    color: #d633ff;
+}
+
+.next-rank-guide {
+    color: #a0a0c0;
+}
+
+/* 게임 모드 및 AI 난이도 선택 (공통 스타일 재사용) */
+.mode-options button,
+.difficulty-options button {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+    color: #aaa;
+}
+
+.mode-options button.selected,
+.difficulty-options button.selected {
+    background: rgba(0, 255, 242, 0.2);
+    border-color: #00fff2;
+    color: #00fff2;
+    box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}
+
+/* AI 사고 중 */
+.thinking-content {
+    background: #0a0a12;
+    border: 1px solid #00fff2;
+    box-shadow: 0 0 30px rgba(0, 255, 242, 0.4);
+    color: #fff;
+}
+
+.spinner {
+    border-color: rgba(255, 255, 255, 0.1);
+    border-top-color: #00fff2;
+}
+
+/* 보상 카드 모달 */
+.reward-content {
+    background: #0a0a12;
+    border: 1px solid #d633ff;
+    box-shadow: 0 0 40px rgba(214, 51, 255, 0.3);
+}
+
+.reward-content h3 {
+    color: #d633ff;
+}
+
+.reward-content p {
+    color: #e8e8ff;
+}
+
+.reward-card {
+    background: linear-gradient(135deg, rgba(20, 20, 35, 0.9) 0%, rgba(40, 40, 60, 0.9) 100%);
+    border: 1px solid #d633ff;
+    box-shadow: 0 0 15px rgba(214, 51, 255, 0.2);
+}
+
+.reward-card:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 0 25px rgba(214, 51, 255, 0.5);
+    border-color: #fff;
+}
+
+@media (max-width: 480px) {
+    .chess-container {
+        padding: 10px;
+    }
+
+    .room-creation {
+        padding: 20px;
+    }
+
+    .square.selected {
+        background-color: rgba(0, 255, 242, 0.5) !important;
+    }
+
+    .game-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .player {
+        width: 100%;
+    }
+
+    .player.black {
+        order: -1;
+    }
+
+    .player.white {
+        order: 1;
+    }
+
+    .game-status {
+        order: 0;
+    }
+
+    .reward-cards {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .reward-card {
+        min-width: 120px;
+    }
+}
+
+/* 게임 모드 선택 */
+.game-mode-selector {
+    margin-bottom: 20px;
+}
+
+.game-mode-selector h3 {
+    margin-bottom: 10px;
+    color: #00fff2;
+}
+
+/* AI 난이도 선택 */
+.ai-difficulty-selector {
+    margin-bottom: 20px;
+}
+
+.ai-difficulty-selector h3 {
+    margin-bottom: 10px;
+    color: #00fff2;
+}
+
+/* AI 사고 중 표시 */
+.ai-thinking {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 99;
+}
+
+/* 프로모션 모달 */
+.promotion-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.promotion-pieces button {
+    font-size: 2.5em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+}
+
+/* 보상 카드 모달 */
+.reward-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.reward-cards {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.card-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.card-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.card-amount {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+/* 반응형 디자인 */
+@media (min-width: 620px) {
+    .game-info {
+        max-width: 600px;
+    }
+
+    .move-history {
+        max-width: 600px;
+    }
+
+    .piece {
+        font-size: 50px;
+    }
+}

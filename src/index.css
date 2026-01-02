@@ -1,0 +1,1017 @@
+/* src/index.css */
+
+/* ============================================
+   🌌 CYBERPUNK DESIGN SYSTEM
+   ============================================ */
+
+/* Tailwind CSS v3 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Fonts for Cyberpunk UI */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ============================================
+   Cyberpunk CSS Variables (Design Tokens)
+   ============================================ */
+:root {
+  /* Dark Backgrounds */
+  --cyber-bg-darkest: #050508;
+  --cyber-bg-dark: #0a0a12;
+  --cyber-bg-medium: #12121f;
+  --cyber-bg-light: #1a1a2e;
+  --cyber-bg-card: rgba(20, 20, 35, 0.85);
+  --cyber-bg-glass: rgba(15, 15, 25, 0.75);
+
+  /* Neon Accent Colors */
+  --cyber-neon-cyan: #00fff2;
+  --cyber-neon-cyan-dim: #00b8b0;
+  --cyber-neon-magenta: #ff00ff;
+  --cyber-neon-magenta-dim: #cc00cc;
+  --cyber-neon-blue: #0088ff;
+  --cyber-neon-purple: #8b5cf6;
+  --cyber-neon-pink: #ff4ecf;
+  --cyber-neon-yellow: #ffd166;
+  --cyber-neon-green: #00ff88;
+  --cyber-neon-orange: #ff6b35;
+  --cyber-neon-red: #ff3366;
+
+  /* Semantic Colors */
+  --cyber-primary: var(--cyber-neon-cyan);
+  --cyber-secondary: var(--cyber-neon-purple);
+  --cyber-success: var(--cyber-neon-green);
+  --cyber-warning: var(--cyber-neon-yellow);
+  --cyber-danger: var(--cyber-neon-red);
+  --cyber-info: var(--cyber-neon-blue);
+
+  /* Text Colors */
+  --cyber-text-primary: #e8e8ff;
+  --cyber-text-secondary: #9999bb;
+  --cyber-text-muted: #6666888;
+  --cyber-text-highlight: var(--cyber-neon-cyan);
+
+  /* Borders */
+  --cyber-border-dim: rgba(0, 255, 242, 0.15);
+  --cyber-border-glow: rgba(0, 255, 242, 0.4);
+  --cyber-border-bright: rgba(0, 255, 242, 0.7);
+
+  /* Glow Effects */
+  --cyber-glow-cyan: 0 0 15px rgba(0, 255, 242, 0.5), 0 0 30px rgba(0, 255, 242, 0.2);
+  --cyber-glow-cyan-intense: 0 0 20px rgba(0, 255, 242, 0.8), 0 0 40px rgba(0, 255, 242, 0.4), 0 0 60px rgba(0, 255, 242, 0.2);
+  --cyber-glow-magenta: 0 0 15px rgba(255, 0, 255, 0.5), 0 0 30px rgba(255, 0, 255, 0.2);
+  --cyber-glow-purple: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.2);
+  --cyber-glow-green: 0 0 15px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2);
+  --cyber-glow-red: 0 0 15px rgba(255, 51, 102, 0.5), 0 0 30px rgba(255, 51, 102, 0.2);
+  --cyber-glow-yellow: 0 0 15px rgba(255, 209, 102, 0.5), 0 0 30px rgba(255, 209, 102, 0.2);
+
+  /* Card Shadows */
+  --cyber-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3);
+  --cyber-shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.6), var(--cyber-glow-cyan);
+  --cyber-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Gradients */
+  --cyber-gradient-header: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 50%, #0a0a12 100%);
+  --cyber-gradient-card: linear-gradient(180deg, rgba(25, 25, 45, 0.9) 0%, rgba(15, 15, 30, 0.95) 100%);
+  --cyber-gradient-button: linear-gradient(135deg, rgba(0, 255, 242, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  --cyber-gradient-neon: linear-gradient(90deg, var(--cyber-neon-cyan), var(--cyber-neon-magenta));
+
+  /* Border Radius */
+  --cyber-radius-sm: 4px;
+  --cyber-radius-md: 8px;
+  --cyber-radius-lg: 12px;
+  --cyber-radius-xl: 16px;
+
+  /* Transitions */
+  --cyber-transition-fast: 0.15s ease;
+  --cyber-transition-normal: 0.25s ease;
+  --cyber-transition-slow: 0.4s ease;
+}
+
+/* ============================================
+   전역 폰트 크기 설정 - 가독성 최적화
+   ============================================ */
+html {
+  font-size: 18px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* 태블릿 (768px 이하) */
+@media (max-width: 768px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+/* 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* ============================================
+   Cyberpunk Body Styles - Direct Colors
+   ============================================ */
+body {
+  margin: 0;
+  font-family: "Rajdhani", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+  background-color: #0a0a12 !important;
+  background-image:
+    linear-gradient(rgba(0, 255, 242, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 242, 0.03) 1px, transparent 1px) !important;
+  background-size: 50px 50px !important;
+  background-attachment: fixed !important;
+  color: #e8e8ff !important;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+code {
+  font-family: "Orbitron", source-code-pro, Menlo, Monaco, Consolas, monospace;
+  color: #00fff2;
+  background: rgba(0, 255, 242, 0.1);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+}
+
+/* ============================================
+   전역 반응성 개선 유틸리티
+   ============================================ */
+
+/* 모바일 터치 영역 최소 크기 보장 */
+button,
+a,
+input[type="button"],
+input[type="submit"],
+.clickable {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* 모바일에서 작은 버튼 허용 */
+@media (max-width: 768px) {
+
+  .btn-sm,
+  button.small,
+  .small-button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}
+
+/* 텍스트 가독성 개선 */
+p,
+li,
+td,
+th {
+  line-height: 1.7;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.4;
+}
+
+/* 제목 폰트 스타일 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* PC에서 가독성 좋은 폰트 크기 */
+@media (min-width: 1024px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+  }
+
+  p,
+  li,
+  td,
+  th {
+    font-size: 0.9375rem;
+  }
+}
+
+/* 입력 필드 크기 개선 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+textarea,
+select {
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+@media (min-width: 1024px) {
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 1.05rem;
+    padding: 0.85rem 1.1rem;
+  }
+}
+
+/* 카드 및 컨테이너 반응성 */
+.page-container,
+.card,
+.panel,
+.section-container {
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+
+  .page-container,
+  .card,
+  .panel,
+  .section-container {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+
+  .page-container,
+  .card,
+  .panel,
+  .section-container {
+    padding: 2rem;
+  }
+}
+
+/* 그리드 반응성 개선 */
+.responsive-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 모바일 스크롤 성능 개선 */
+@media (max-width: 768px) {
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ============================================
+   Cyberpunk UI Elements
+   ============================================ */
+
+/* Neon Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cyber-bg-medium);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--cyber-neon-cyan-dim), var(--cyber-neon-purple));
+  border-radius: 4px;
+  border: 1px solid var(--cyber-border-dim);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--cyber-neon-cyan), var(--cyber-neon-magenta));
+  box-shadow: var(--cyber-glow-cyan);
+}
+
+/* Selection Style */
+::selection {
+  background-color: rgba(0, 255, 242, 0.3);
+  color: var(--cyber-text-primary);
+  text-shadow: 0 0 8px var(--cyber-neon-cyan);
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all var(--cyber-transition-normal);
+}
+
+/* Cyberpunk Focus Style */
+*:focus-visible {
+  outline: 2px solid var(--cyber-neon-cyan);
+  outline-offset: 2px;
+  box-shadow: var(--cyber-glow-cyan);
+}
+
+/* Cyberpunk Card Hover Effects */
+.hover-lift {
+  transition: transform var(--cyber-transition-normal), box-shadow var(--cyber-transition-normal);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--cyber-shadow-card-hover);
+}
+
+/* Cyberpunk Gradient Background */
+.gradient-bg {
+  background: var(--cyber-gradient-card);
+}
+
+/* Cyberpunk Font Classes */
+.font-cyber {
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.font-cyber-ui {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+}
+
+.font-display {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* 숫자 전용 폰트 (가독성) */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Cyberpunk Animations
+   ============================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Cyber Neon Glow Animation */
+@keyframes neonPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px var(--cyber-neon-cyan), 0 0 15px rgba(0, 255, 242, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--cyber-neon-cyan), 0 0 40px rgba(0, 255, 242, 0.6);
+  }
+}
+
+@keyframes borderGlow {
+
+  0%,
+  100% {
+    border-color: var(--cyber-border-dim);
+  }
+
+  50% {
+    border-color: var(--cyber-border-bright);
+  }
+}
+
+@keyframes scanLine {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.animate-neon-pulse {
+  animation: neonPulse 2s ease-in-out infinite;
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* ============================================
+   스크롤 문제 수정 - 전역
+   ============================================ */
+
+/* 메인 컨테이너 스크롤 수정 */
+html,
+body,
+#root {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+/* 페이지별 컨테이너 overflow 수정 */
+.government-container,
+.national-assembly-container,
+.banking-container,
+.court-container,
+.police-container,
+.auction-container,
+.stock-exchange-container,
+.real-estate-container,
+.item-store-container,
+.my-items-container,
+.item-market-container,
+.dashboard-container,
+.my-assets-container,
+.coupon-goal-container,
+.learning-board-container {
+  overflow: visible !important;
+  min-height: auto !important;
+}
+
+/* ============================================
+   🌌 사이버펑크 다크 테마 - 글씨 시인성 (PC + 모바일)
+   ============================================ */
+
+/* 기본 텍스트 색상 - 다크 테마용 밝은 색상 */
+body {
+  color: #e8e8ff !important;
+}
+
+/* 제목들 - 밝고 선명하게 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* 본문 텍스트 - 밝은 색상 */
+p,
+span,
+div,
+li,
+td,
+th,
+label {
+  color: #e8e8ff;
+}
+
+/* 회색 텍스트 - 보이도록 밝게 */
+.text-gray-400,
+.text-gray-500,
+.text-slate-400,
+.text-slate-500 {
+  color: #9999bb !important;
+}
+
+.text-gray-600,
+.text-slate-600 {
+  color: #b0b0cc !important;
+}
+
+/* 탭 버튼 텍스트 */
+.gov-tab-button,
+.assembly-tab,
+button[class*="tab"] {
+  color: #9999bb !important;
+  font-weight: 600 !important;
+}
+
+.gov-tab-button.active,
+.assembly-tab.active,
+button[class*="tab"].active {
+  color: #00fff2 !important;
+  font-weight: 700 !important;
+}
+
+/* 카드 내 텍스트 - 카드 배경에 맞게 */
+.law-content p,
+.law-content span,
+.card p,
+.card span {
+  color: #e8e8ff !important;
+}
+
+.law-content strong,
+.card strong {
+  color: #ffffff !important;
+}
+
+/* 입력 필드 placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: #6666aa !important;
+}
+
+/* 버튼 텍스트 */
+button {
+  font-weight: 600 !important;
+}
+
+/* 테이블 */
+table th {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+table td {
+  color: #e8e8ff !important;
+}
+
+/* 빈 상태 메시지 */
+.empty-state,
+.empty-message {
+  color: #9999bb !important;
+  font-weight: 500 !important;
+}
+
+/* 라벨 */
+label,
+.form-label {
+  color: #e8e8ff !important;
+  font-weight: 600 !important;
+}
+
+/* 설명 텍스트 */
+.description,
+.subtitle,
+.info-text,
+[class*="description"],
+[class*="subtitle"] {
+  color: #9999bb !important;
+}
+
+/* 법안/게시물 내용 */
+.law-title,
+.post-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* 상태 배지 텍스트 */
+.law-status,
+.status-badge,
+[class*="status"] {
+  font-weight: 600 !important;
+}
+
+/* 금액 표시 - 네온 시안 하이라이트 */
+.price,
+.amount,
+.money,
+[class*="price"],
+[class*="amount"] {
+  color: #00fff2 !important;
+  font-weight: 700 !important;
+}
+
+/* 네비게이션/메뉴 */
+.nav-item,
+.menu-item,
+[class*="nav-"],
+[class*="menu-"] {
+  color: #e8e8ff !important;
+}
+
+.nav-item.active,
+.menu-item.active {
+  color: #00fff2 !important;
+}
+
+/* 헤더 텍스트 */
+.government-header,
+.assembly-title,
+.page-title,
+[class*="header"] h1,
+[class*="header"] h2 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* 섹션 제목 */
+.section-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* 투표 수/숫자 표시 */
+.vote-number,
+.count,
+[class*="count"] {
+  color: #00fff2 !important;
+  font-weight: 700 !important;
+}
+
+/* 타임스탬프 */
+.timestamp,
+.date,
+.law-timestamp,
+[class*="timestamp"],
+[class*="date"] {
+  color: #9999bb !important;
+}
+
+/* 설정/관리자 영역 */
+.setting-label,
+.admin-label {
+  color: #e8e8ff !important;
+  font-weight: 600 !important;
+}
+
+.setting-description {
+  color: #9999bb !important;
+}
+
+/* 직업 헤더 시인성 개선 */
+.job-header-container,
+.job-header-container * {
+  color: #ffffff !important;
+}
+
+.job-title-text {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* ============================================
+   🎴 카드 컴포넌트 - 다크 테마
+   (MyItems.css에서 정의된 스타일 보완)
+   ============================================ */
+
+/* 카드 텍스트 시인성 - 다크 배경에 밝은 텍스트 */
+.store-item-card p,
+.store-item-card span,
+.store-item-card h3,
+.store-item-card .item-name,
+.store-item-card .my-item-name-compact,
+.shop-item-card p,
+.shop-item-card span,
+.shop-item-card h3 {
+  color: #e8e8ff !important;
+}
+
+.store-item-card .item-description,
+.store-item-card .my-item-description-compact,
+.shop-item-card .item-description {
+  color: #9999bb !important;
+}
+
+.store-item-card .timer-text,
+.shop-item-card .timer-text {
+  color: #9999bb !important;
+}
+
+/* 🔢 수량 배지 - 어두운 배경에서도 보이도록 */
+.quantity-badge {
+  color: #0a0a12 !important;
+}
+
+/* ============================================
+   📝 모달 - 다크 테마
+   (MyItems.css에서 정의된 스타일 보완)
+   ============================================ */
+.myitems-modal-container h3,
+.myitems-modal-container p,
+.myitems-modal-container span,
+.myitems-modal-container label {
+  color: #e8e8ff !important;
+}
+
+.myitems-modal-container .form-group label {
+  color: #9999bb !important;
+}
+
+/* 모달 입력 필드 */
+.myitems-modal-container input,
+.myitems-modal-container select,
+.myitems-modal-container textarea {
+  color: #e8e8ff !important;
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(0, 255, 242, 0.3) !important;
+}
+
+/* ============================================
+   🌌 관리자 설정 모달 - 다크 테마
+   ============================================ */
+
+.admin-settings-modal {
+  background-color: rgba(5, 5, 8, 0.95) !important;
+}
+
+.admin-settings-content {
+  background: linear-gradient(180deg, rgba(20, 20, 35, 0.98) 0%, rgba(10, 10, 18, 0.98) 100%) !important;
+  border: 1px solid rgba(0, 255, 242, 0.3) !important;
+  box-shadow: 0 0 30px rgba(0, 255, 242, 0.2), 0 20px 60px rgba(0, 0, 0, 0.8) !important;
+}
+
+.admin-settings-content h2 {
+  color: #00fff2 !important;
+  text-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+  border-bottom-color: rgba(0, 255, 242, 0.3) !important;
+}
+
+.admin-menu-tabs {
+  background: rgba(10, 10, 18, 0.8) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+}
+
+.admin-menu-tabs button {
+  background: rgba(20, 20, 35, 0.8) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+  color: #9999bb !important;
+}
+
+.admin-menu-tabs button:hover {
+  background: rgba(0, 255, 242, 0.1) !important;
+  border-color: rgba(0, 255, 242, 0.4) !important;
+  color: #00fff2 !important;
+}
+
+.admin-menu-tabs button.active {
+  background: linear-gradient(135deg, rgba(0, 255, 242, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+  border-color: rgba(0, 255, 242, 0.6) !important;
+  color: #00fff2 !important;
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3) !important;
+}
+
+.section-card {
+  background: rgba(15, 15, 25, 0.9) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.section-card h3 {
+  color: #00fff2 !important;
+  border-bottom-color: rgba(0, 255, 242, 0.3) !important;
+  text-shadow: 0 0 8px rgba(0, 255, 242, 0.4);
+}
+
+.section-card h4 {
+  color: #e8e8ff !important;
+}
+
+.admin-section-desc {
+  background: rgba(0, 255, 242, 0.05) !important;
+  border-left: 3px solid rgba(0, 255, 242, 0.5) !important;
+  color: #9999bb !important;
+}
+
+/* 목록 아이템 */
+.admin-job-item,
+.admin-task-item,
+.code-item {
+  background: rgba(20, 20, 35, 0.8) !important;
+  border: 1px solid rgba(0, 255, 242, 0.15) !important;
+}
+
+.admin-job-item:hover,
+.admin-task-item:hover,
+.code-item:hover {
+  border-color: rgba(0, 255, 242, 0.4) !important;
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.2) !important;
+}
+
+/* 테이블 스타일 */
+.members-table-container {
+  border-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+.members-table th {
+  background: rgba(0, 255, 242, 0.1) !important;
+  color: #00fff2 !important;
+  border-bottom-color: rgba(0, 255, 242, 0.3) !important;
+}
+
+.members-table td {
+  background: rgba(15, 15, 25, 0.6) !important;
+  color: #e8e8ff !important;
+  border-bottom-color: rgba(0, 255, 242, 0.1) !important;
+}
+
+.members-table tbody tr:hover {
+  background: rgba(0, 255, 242, 0.08) !important;
+}
+
+/* 유저 카드 */
+.user-card {
+  background: rgba(20, 20, 35, 0.9) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+}
+
+.user-card:hover {
+  border-color: rgba(0, 255, 242, 0.5) !important;
+  box-shadow: 0 0 20px rgba(0, 255, 242, 0.2) !important;
+}
+
+.user-card-header {
+  border-bottom-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+.user-card-name {
+  color: #e8e8ff !important;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  background-color: rgba(5, 5, 8, 0.95) !important;
+}
+
+.edit-student-jobs-modal {
+  background: rgba(20, 20, 35, 0.98) !important;
+  border: 1px solid rgba(0, 255, 242, 0.3) !important;
+}
+
+.modal-header {
+  background: rgba(0, 255, 242, 0.08) !important;
+  border-bottom-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+.modal-header h3 {
+  color: #00fff2 !important;
+}
+
+.modal-footer {
+  background: rgba(10, 10, 18, 0.8) !important;
+  border-top-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+/* 급여 관련 스타일 */
+.salary-management {
+  background: rgba(15, 15, 25, 0.9) !important;
+  border-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+.salary-info h4 {
+  color: #00fff2 !important;
+}
+
+.salary-info p {
+  color: #9999bb !important;
+}
+
+.current-salary-settings {
+  background: rgba(15, 15, 25, 0.9) !important;
+  border-color: rgba(0, 255, 242, 0.2) !important;
+}
+
+.settings-display {
+  background: rgba(10, 10, 18, 0.8) !important;
+}
+
+.salary-calculation-example {
+  background: rgba(139, 92, 246, 0.1) !important;
+  border-left-color: rgba(139, 92, 246, 0.6) !important;
+}
+
+.auto-payment-info {
+  background: rgba(255, 209, 102, 0.1) !important;
+  border-left-color: rgba(255, 209, 102, 0.6) !important;
+}
+
+/* 학급 정보 헤더 */
+.class-info-header {
+  background: linear-gradient(135deg, rgba(0, 255, 242, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+  border: 1px solid rgba(0, 255, 242, 0.3) !important;
+}
+
+.current-class-info {
+  color: #e8e8ff !important;
+}
+
+.current-class-info strong {
+  color: #00fff2 !important;
+}
+
+/* 폼 그룹 */
+.form-group label {
+  color: #e8e8ff !important;
+}
+
+.form-help {
+  color: #9999bb !important;
+}
+
+/* 에러 메시지 */
+.error-message {
+  background: rgba(255, 51, 102, 0.15) !important;
+  border-left-color: #ff3366 !important;
+  color: #ff6688 !important;
+}
+
+/* 빈 상태 메시지 */
+.no-items-message,
+.no-codes-message,
+.no-members-message {
+  background: rgba(20, 20, 35, 0.8) !important;
+  color: #9999bb !important;
+}

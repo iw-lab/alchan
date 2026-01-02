@@ -1,0 +1,30 @@
+name: Deploy to Firebase Hosting on merge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'build/**'  # build 폴더가 변경될 때만 배포
+
+  # 수동 실행 옵션
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check if build folder exists
+        run: |
+          if [ ! -d "build" ]; then
+            echo "Error: build folder not found. Please run 'npm run build' locally first."
+            exit 1
+          fi
+
+      - name: Deploy to Firebase
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive

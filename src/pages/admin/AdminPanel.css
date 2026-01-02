@@ -1,0 +1,524 @@
+/* AdminPanel.css - Cyberpunk Dark Theme */
+
+/* AdminPanel이 페이지 내부에 직접 렌더링될 때의 스타일 */
+.admin-panel {
+  background-color: transparent;
+  border-radius: 8px;
+  box-shadow: none;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* 탭 스타일 */
+.admin-tabs {
+  display: flex;
+  background-color: rgba(20, 20, 35, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #00fff2 rgba(0, 0, 0, 0.3);
+}
+
+.admin-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-tabs::-webkit-scrollbar-thumb {
+  background: #00fff2;
+  border-radius: 3px;
+}
+
+.admin-tabs::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.admin-tabs button {
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.admin-tabs button:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.05);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.admin-tabs button.active {
+  color: #00fff2;
+  border-bottom-color: #00fff2;
+  background-color: rgba(0, 255, 242, 0.1);
+  text-shadow: 0 0 10px rgba(0, 255, 242, 0.4);
+}
+
+/* admin-content */
+.admin-content {
+  padding: 20px;
+  height: auto;
+  overflow: visible;
+  background: rgba(10, 10, 15, 0.6);
+  border-radius: 0 0 8px 8px;
+  color: #e2e8f0;
+}
+
+/* 아이템 관리 섹션 및 기타 내부 스타일 */
+.items-management h3,
+.settings-panel h3,
+.add-item-panel h3,
+.edit-item-panel h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.2rem;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.3);
+  padding-bottom: 10px;
+  text-shadow: 0 0 5px rgba(0, 255, 242, 0.2);
+}
+
+.items-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.admin-item-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(30, 30, 45, 0.6);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: row;
+  transition: transform 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(5px);
+}
+
+.admin-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 255, 242, 0.2);
+  border-color: rgba(0, 255, 242, 0.5);
+}
+
+.item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  min-width: 60px;
+  color: #e2e8f0;
+}
+
+.item-details {
+  padding: 12px 16px;
+  flex-grow: 1;
+}
+
+.item-details h4 {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.item-details p {
+  margin: 0 0 10px 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.item-meta span {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 10px;
+  gap: 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.edit-button,
+.delete-button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all 0.2s;
+  color: #94a3b8;
+  background-color: transparent;
+}
+
+.edit-button:hover {
+  background-color: rgba(0, 255, 242, 0.1);
+  color: #00fff2;
+  text-shadow: 0 0 5px rgba(0, 255, 242, 0.5);
+}
+
+.delete-button:hover {
+  background-color: rgba(255, 56, 96, 0.1);
+  color: #ff3860;
+  text-shadow: 0 0 5px rgba(255, 56, 96, 0.5);
+}
+
+/* 설정 패널 */
+.setting-group {
+  background-color: rgba(30, 30, 45, 0.6);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setting-group label {
+  display: block;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.input-with-button input[type="number"] {
+  flex-grow: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+
+.input-with-button input[type="number"]:focus {
+  border-color: #00fff2;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}
+
+.input-with-button button {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+
+.input-with-button button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+}
+
+.setting-description {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* 아이템 폼 (추가/수정) */
+.item-form {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  transition: all 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #00fff2;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.form-group.half {
+  flex: 1 1 calc(50% - 8px);
+  min-width: 150px;
+}
+
+.icon-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+  gap: 8px;
+  background-color: rgba(30, 30, 45, 0.6);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.icon-selector button {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #fff;
+}
+
+.icon-selector button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #00fff2;
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}
+
+.icon-selector button.selected {
+  background-color: rgba(0, 255, 242, 0.2);
+  color: #fff;
+  border-color: #00fff2;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+}
+
+.form-group.checkbox {
+  display: flex;
+  align-items: center;
+  background-color: rgba(30, 30, 45, 0.6);
+  padding: 12px 15px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-group.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 0;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.form-group.checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #00fff2;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cancel-button,
+.submit-button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.cancel-button {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+}
+
+.cancel-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%);
+  color: #000;
+  border: none;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+
+.submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 255, 242, 0.5);
+}
+
+/* 새 아이템 추가 버튼 */
+.add-item-btn {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(30, 30, 45, 0.4);
+  border: 2px dashed rgba(0, 255, 242, 0.3);
+  border-radius: 8px;
+  color: #00fff2;
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-item-btn:hover {
+  background-color: rgba(0, 255, 242, 0.1);
+  border-color: #00fff2;
+  box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+  .admin-tabs {
+    flex-wrap: wrap;
+  }
+
+  .admin-tabs button {
+    flex-grow: 1;
+    min-width: 80px;
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+
+  .items-list {
+    grid-template-columns: 1fr;
+  }
+
+  .item-form {
+    max-width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-group.half {
+    flex-basis: 100%;
+    min-width: auto;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .cancel-button,
+  .submit-button {
+    width: 100%;
+  }
+}
+
+/* 사용자 관리 탭 애니메이션 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  border-color: #00fff2;
+}
+
+.user-card-hover button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px rgba(0, 255, 242, 0.4);
+}
+
+.user-card-hover input:focus {
+  outline: none;
+  border-color: #00fff2;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+}

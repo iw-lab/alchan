@@ -1,0 +1,910 @@
+/* src/Court.css - Cyberpunk Dark Theme */
+
+/* --- 기본 변수 (Cyberpunk Palette) --- */
+:root {
+  --court-primary-bg: var(--cyber-bg-dark);
+  /* #0a0a12 */
+  --court-secondary-bg: var(--cyber-bg-card);
+  /* rgba(20, 20, 35, 0.6) */
+  --court-border-color: var(--cyber-border-dim);
+  /* rgba(0, 255, 242, 0.2) */
+  --court-header-border: var(--cyber-neon-blue);
+  /* #0088ff */
+  --court-text-primary: var(--cyber-text-primary);
+  /* #ffffff */
+  --court-text-secondary: var(--cyber-text-secondary);
+  /* #a0a0c0 */
+  --court-accent-color: var(--cyber-neon-blue);
+  /* #0088ff */
+  --court-success-color: var(--cyber-neon-green);
+  /* #00ff9d */
+  --court-warning-color: var(--cyber-neon-yellow);
+  /* #fcee0a */
+  --court-danger-color: var(--cyber-neon-red);
+  /* #ff003c */
+  --court-info-color: var(--cyber-neon-cyan);
+  /* #00fff2 */
+  --court-trial-color: #d633ff;
+  /* Neon Purple */
+  --court-resolved-color: #ff9d00;
+  /* Neon Orange */
+  --court-settlement-color: #00ff9d;
+  /* Neon Green */
+  --court-settlement-paid-bg: rgba(255, 255, 255, 0.1);
+  --court-settlement-paid-text: #888;
+  --court-shadow-sm: 0 0 10px rgba(0, 136, 255, 0.1);
+  --court-shadow-md: var(--cyber-shadow-card);
+  --court-border-radius: 8px;
+  --court-border-radius-lg: 12px;
+}
+
+/* --- 기본 레이아웃 --- */
+.court-container {
+  padding: 25px;
+  background-color: var(--court-primary-bg);
+  border-radius: var(--court-border-radius-lg);
+  border: 1px solid var(--court-border-color);
+  box-shadow: var(--court-shadow-md);
+  margin-bottom: 30px;
+  font-family: 'Rajdhani', "Segoe UI", "Roboto", sans-serif;
+  color: var(--court-text-primary);
+}
+
+/* --- 헤더 영역 (제목 + 관리자 버튼) --- */
+.court-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--court-header-border);
+}
+
+.court-header {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-family: 'Orbitron', sans-serif;
+  text-shadow: 0 0 10px rgba(0, 136, 255, 0.4);
+}
+
+/* --- 관리자 설정 탭 버튼 스타일 --- */
+.admin-tab-button {
+  padding: 10px 18px;
+  cursor: pointer;
+  border: 1px solid var(--court-border-color);
+  background-color: rgba(255, 255, 255, 0.05);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--court-text-secondary);
+  transition: all 0.3s ease;
+  border-radius: var(--court-border-radius);
+}
+
+.admin-tab-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--court-accent-color);
+  color: #fff;
+}
+
+.admin-tab-button.active {
+  background-color: rgba(0, 136, 255, 0.2);
+  color: var(--court-accent-color);
+  border-color: var(--court-accent-color);
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(0, 136, 255, 0.2);
+}
+
+/* --- 탭 스타일 --- */
+.court-tabs {
+  display: flex;
+  margin-bottom: 0px;
+  border-bottom: 1px solid var(--court-border-color);
+}
+
+.main-tabs {
+  display: flex;
+}
+
+.court-tab-button {
+  padding: 14px 22px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background-color: transparent;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--court-text-secondary);
+  transition: all 0.3s ease;
+  margin-right: 8px;
+  border-radius: var(--court-border-radius) var(--court-border-radius) 0 0;
+  position: relative;
+  bottom: -1px;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.court-tab-button.active {
+  color: var(--court-accent-color);
+  background: var(--court-secondary-bg);
+  border: 1px solid var(--court-border-color);
+  border-bottom: 1px solid var(--court-secondary-bg);
+  font-weight: 700;
+  z-index: 1;
+  text-shadow: 0 0 5px rgba(0, 136, 255, 0.4);
+}
+
+.court-tab-button:hover:not(.active) {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* --- 탭 콘텐츠 영역 --- */
+.court-tab-content {
+  padding: 30px;
+  background: var(--court-secondary-bg);
+  border: 1px solid var(--court-border-color);
+  border-top: none;
+  border-radius: 0 0 var(--court-border-radius-lg) var(--court-border-radius-lg);
+  min-height: 400px;
+  box-shadow: var(--court-shadow-sm);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* --- 고소장 목록 스타일 --- */
+.complaint-list-container {
+  margin-top: 0;
+}
+
+.complaint-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* --- 개별 고소장 카드 --- */
+.complaint-card {
+  background: rgba(20, 20, 35, 0.4);
+  border: 1px solid var(--court-border-color);
+  border-radius: var(--court-border-radius-lg);
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-wrap: break-word;
+  backdrop-filter: blur(5px);
+}
+
+.complaint-card:hover {
+  box-shadow: 0 0 15px rgba(0, 136, 255, 0.2);
+  border-color: var(--court-accent-color);
+  transform: translateY(-2px);
+}
+
+.complaint-card.indicted-card {
+  border-left: 4px solid var(--court-success-color);
+  background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, rgba(20, 20, 35, 0.4) 100%);
+}
+
+.complaint-card.on-trial-card {
+  border-left: 4px solid var(--court-trial-color);
+  background: linear-gradient(90deg, rgba(214, 51, 255, 0.05) 0%, rgba(20, 20, 35, 0.4) 100%);
+}
+
+.complaint-card.dismissed-card {
+  border-left: 4px solid var(--court-warning-color);
+  background: linear-gradient(90deg, rgba(252, 238, 10, 0.05) 0%, rgba(20, 20, 35, 0.4) 100%);
+  opacity: 0.8;
+}
+
+/* 카드 헤더 */
+.complaint-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px dashed var(--court-border-color);
+  padding-bottom: 10px;
+}
+
+.complaint-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.complaint-card-info strong {
+  font-weight: 600;
+  color: var(--court-text-primary);
+  min-width: 60px;
+  display: inline-block;
+}
+
+.parties-display {
+  font-weight: 600;
+  color: var(--court-accent-color);
+}
+
+.case-status {
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #000;
+  /* Dark text for contrast on neon backgrounds */
+  white-space: nowrap;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.status-pending {
+  background-color: var(--court-text-secondary);
+  color: #fff;
+  box-shadow: none;
+}
+
+.status-indicted {
+  background-color: var(--court-success-color);
+}
+
+.status-on_trial {
+  background-color: var(--court-trial-color);
+  color: #fff;
+}
+
+.status-dismissed {
+  background-color: var(--court-warning-color);
+}
+
+.status-resolved {
+  background-color: var(--court-resolved-color);
+}
+
+/* 카드 내용 */
+.complaint-card-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.complaint-card-content h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #fff;
+}
+
+.complaint-card-content p {
+  margin: 0 0 8px 0;
+  color: var(--court-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 카드 투표 영역 */
+.complaint-voting {
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid var(--court-border-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.vote-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 14px;
+  border-radius: 15px;
+  cursor: pointer;
+  border: 1px solid var(--court-border-color);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--court-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.vote-button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #fff;
+  color: #fff;
+}
+
+.vote-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vote-button.like-button.voted {
+  background-color: rgba(0, 255, 157, 0.2);
+  border-color: var(--court-success-color);
+  color: var(--court-success-color);
+  font-weight: bold;
+  box-shadow: 0 0 5px rgba(0, 255, 157, 0.2);
+}
+
+.vote-button.dislike-button.voted {
+  background-color: rgba(255, 0, 60, 0.2);
+  border-color: var(--court-danger-color);
+  color: var(--court-danger-color);
+  font-weight: bold;
+  box-shadow: 0 0 5px rgba(255, 0, 60, 0.2);
+}
+
+.vote-count {
+  font-size: 13px;
+  font-weight: bold;
+  min-width: 10px;
+  text-align: right;
+  color: #fff;
+}
+
+/* 카드 액션 버튼 영역 */
+.complaint-card-actions {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--court-border-color);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.complaint-card-actions button {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--court-border-radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: #000;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.complaint-card-actions button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.indict-button {
+  background-color: rgba(0, 255, 157, 0.2);
+  color: var(--court-success-color) !important;
+  border-color: var(--court-success-color) !important;
+}
+
+.dismiss-button {
+  background-color: rgba(252, 238, 10, 0.2);
+  color: var(--court-warning-color) !important;
+  border-color: var(--court-warning-color) !important;
+}
+
+.edit-button {
+  background-color: rgba(0, 255, 242, 0.2);
+  color: var(--court-info-color) !important;
+  border-color: var(--court-info-color) !important;
+}
+
+.delete-button {
+  background-color: rgba(255, 0, 60, 0.2);
+  color: var(--court-danger-color) !important;
+  border-color: var(--court-danger-color) !important;
+}
+
+.start-trial-button {
+  background-color: rgba(214, 51, 255, 0.2);
+  color: var(--court-trial-color) !important;
+  border-color: var(--court-trial-color) !important;
+}
+
+.write-judgment-button {
+  background-color: rgba(0, 136, 255, 0.2);
+  color: var(--court-accent-color) !important;
+  border-color: var(--court-accent-color) !important;
+}
+
+/* --- 제출 폼 스타일 --- */
+.submit-complaint-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 700px;
+}
+
+.form-label {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 5px;
+  display: block;
+  color: var(--court-text-primary);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--court-border-color);
+  border-radius: var(--court-border-radius);
+  font-size: 15px;
+  color: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: var(--court-accent-color);
+  box-shadow: 0 0 10px rgba(0, 136, 255, 0.3);
+  outline: none;
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  appearance: none;
+}
+
+.form-select option {
+  background-color: #1a1a2e;
+  color: #fff;
+}
+
+.submit-complaint-form button {
+  padding: 12px 20px;
+  background-color: rgba(0, 136, 255, 0.2);
+  color: var(--court-accent-color);
+  border: 1px solid var(--court-accent-color);
+  border-radius: var(--court-border-radius);
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.submit-complaint-form button:hover {
+  background-color: rgba(0, 136, 255, 0.4);
+  box-shadow: 0 0 15px rgba(0, 136, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* --- 편집/판결문 모달 공통 스타일 --- */
+.edit-modal-overlay,
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(5px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+}
+
+.edit-modal-container,
+.modal-container,
+.settlement-modal-container {
+  background-color: #1a1a2e !important;
+  padding: 30px !important;
+  border-radius: var(--court-border-radius-lg) !important;
+  width: 90% !important;
+  max-width: 600px !important;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 136, 255, 0.2) !important;
+  border: 1px solid var(--court-border-color) !important;
+  color: #fff !important;
+}
+
+.edit-modal-header,
+.modal-header,
+.settlement-modal-header {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #fff;
+  border-bottom: 1px solid var(--court-border-color);
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  color: #fff;
+}
+
+.edit-modal-content .form-group,
+.modal-content .form-group,
+.settlement-modal-content .form-group {
+  margin-bottom: 15px;
+}
+
+.edit-modal-actions,
+.modal-footer,
+.settlement-modal-actions {
+  margin-top: 25px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--court-border-color);
+  padding-top: 15px;
+}
+
+.edit-modal-actions button,
+.modal-footer button,
+.settlement-modal-actions button {
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--court-border-radius);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.edit-modal-actions .save-button,
+.modal-button.process,
+.settlement-modal-actions .save-button {
+  background-color: rgba(0, 136, 255, 0.2);
+  color: var(--court-accent-color);
+  border-color: var(--court-accent-color);
+}
+
+.edit-modal-actions .save-button:hover,
+.modal-button.process:hover,
+.settlement-modal-actions .save-button:hover {
+  background-color: rgba(0, 136, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0, 136, 255, 0.4);
+}
+
+.edit-modal-actions .cancel-button,
+.modal-button.cancel,
+.settlement-modal-actions .cancel-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+  border-color: var(--court-border-color);
+}
+
+.edit-modal-actions .cancel-button:hover,
+.modal-button.cancel:hover,
+.settlement-modal-actions .cancel-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.judgment-textarea {
+  min-height: 200px;
+}
+
+/* --- 재판 결과 탭 스타일 --- */
+.trial-results-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 25px;
+}
+
+.result-card {
+  background-color: rgba(20, 20, 35, 0.6);
+  border: 1px solid var(--court-border-color);
+  border-radius: var(--court-border-radius-lg);
+  box-shadow: var(--court-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+}
+
+.result-header {
+  padding: 15px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--court-border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.case-id {
+  font-weight: 500;
+  color: var(--court-text-secondary);
+}
+
+.result-content {
+  padding: 20px;
+  flex-grow: 1;
+}
+
+.result-content h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.result-content p.summary {
+  font-size: 14px;
+  color: var(--court-text-secondary);
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+.judgment-display {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--court-border-color);
+  border-radius: var(--court-border-radius);
+  padding: 15px;
+  margin-top: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.judgment-display p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #ddd;
+  white-space: pre-wrap;
+}
+
+.result-actions {
+  padding: 15px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid var(--court-border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.settlement-button {
+  padding: 8px 15px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--court-border-radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: #000;
+  background-color: var(--court-settlement-color);
+  transition: all 0.2s ease;
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
+}
+
+.settlement-button:hover:not(.paid) {
+  background-color: #00e08b;
+  box-shadow: 0 0 10px var(--court-settlement-color);
+}
+
+.settlement-button.paid {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #888;
+  cursor: default;
+  border: 1px solid var(--court-border-color);
+}
+
+.settlement-button.paid:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.7;
+}
+
+/* --- 기타 유틸리티 --- */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--court-text-secondary);
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px dashed var(--court-border-color);
+}
+
+/* --- 모바일 반응형 스타일 (768px 이하) --- */
+@media (max-width: 768px) {
+  .court-container {
+    padding: 15px;
+  }
+
+  .court-header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    border-bottom-width: 1px;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+
+  .court-header {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  .admin-tab-button {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
+  .court-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .court-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .main-tabs {
+    flex-wrap: nowrap;
+  }
+
+  .court-tab-button {
+    padding: 12px 15px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .court-tab-content {
+    padding: 15px;
+    min-height: 300px;
+  }
+
+  /* 사건 현황 카드 목록 */
+  .complaint-list {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .complaint-card {
+    padding: 15px;
+    gap: 10px;
+  }
+
+  .complaint-card-header {
+    padding-bottom: 8px;
+    gap: 5px;
+  }
+
+  .complaint-card-info {
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .case-status {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .complaint-card-content {
+    font-size: 13px;
+  }
+
+  .complaint-card-content h4 {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .complaint-card-content p {
+    margin-bottom: 6px;
+  }
+
+  .complaint-voting {
+    padding-top: 10px;
+    gap: 8px;
+  }
+
+  .vote-button {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .vote-count {
+    font-size: 12px;
+  }
+
+  .complaint-card-actions {
+    padding-top: 10px;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .complaint-card-actions button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* 재판 결과 카드 목록 */
+  .trial-results-container {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .result-header {
+    padding: 12px 15px;
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .result-content {
+    padding: 15px;
+  }
+
+  .result-content h4 {
+    font-size: 15px;
+  }
+
+  .result-content p.summary {
+    font-size: 13px;
+  }
+
+  .judgment-display {
+    padding: 12px;
+    font-size: 14px;
+    max-height: 150px;
+  }
+
+  .result-actions {
+    padding: 12px 15px;
+    gap: 8px;
+  }
+
+  .settlement-button {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  /* 제출 폼 */
+  .submit-complaint-form {
+    gap: 15px;
+  }
+
+  .form-label {
+    font-size: 15px;
+  }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .submit-complaint-form button {
+    padding: 10px 15px;
+  }
+}

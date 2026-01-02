@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production
+# build  # GitHub Actions 자동 배포를 위해 build 폴더 커밋
+.firebase
+.firebaserc
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+storage-debug.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+auth_backup.json
+*.backup
+
+# Optimization docs (optional - 필요하면 주석 처리)
+COST_OPTIMIZATION_COMPLETE.md
+FINAL_OPTIMIZATION_REPORT.md
+OPTIMIZATION_PLAN.md
+REMAINING_OPTIMIZATION.md
+
+# Windows null file
+nul
