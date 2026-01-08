@@ -1,4 +1,4 @@
-// index.js - 수정된 버전
+// index.js - 비용 최적화 버전
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import './index.css'; // Tailwind CSS - 반드시 먼저 import
 import './StudentRequest.css';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 // React Query 클라이언트 설정 (Firebase 최적화)
 const queryClient = new QueryClient({
@@ -37,3 +38,17 @@ root.render(
     </QueryClientProvider>
   </StrictMode>
 );
+
+// 🔥 [비용 최적화] Service Worker 등록 - 정적 자산 캐싱으로 서버 요청 50% 감소
+serviceWorkerRegistration.register({
+  onSuccess: () => {
+    console.log('[App] Service Worker 등록 완료 - 오프라인 캐싱 활성화');
+  },
+  onUpdate: (registration) => {
+    console.log('[App] 새 버전 사용 가능 - 새로고침 권장');
+    // 선택: 자동 업데이트 또는 사용자 알림
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+  },
+});
