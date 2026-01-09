@@ -293,13 +293,13 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
             {/* 아바타 */}
             <div
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="w-10 h-10 rounded-xl overflow-hidden cursor-pointer"
+              className="w-10 h-10 rounded-full overflow-hidden cursor-pointer flex items-center justify-center"
               style={{
                 border: `2px solid ${levelInfo?.color || '#a78bfa'}`,
                 boxShadow: `0 0 8px ${levelInfo?.color || '#a78bfa'}40`
               }}
             >
-              <Avatar config={avatarConfig} size={36} />
+              <Avatar config={avatarConfig} size={48} showBorder={false} />
             </div>
           </div>
         </div>
@@ -496,13 +496,16 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
                 style={{
                   width: '40px',
                   height: '40px',
-                  borderRadius: '10px',
+                  borderRadius: '50%',
                   overflow: 'hidden',
                   border: `2px solid ${levelInfo?.color || '#a78bfa'}`,
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                <Avatar config={avatarConfig} size={36} />
+                <Avatar config={avatarConfig} size={48} showBorder={false} />
               </div>
             </button>
 
