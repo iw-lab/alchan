@@ -1,6 +1,15 @@
 // src/AdminSettingsModal.js
-import React, { useState, useEffect, useCallback } from "react";
+// ========================================
+// 통합 관리자 설정 모달 v2.0
+// ========================================
+// 권한 체계:
+// - isSuperAdmin (최고 관리자): 시스템 전체 관리, 모든 학급 접근, 학급 코드 관리
+// - isAdmin (관리자): 자기 학급만 관리, 금융/시장/학생/직업/할일 관리
+// ========================================
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import {
   db,
   functions,
@@ -32,6 +41,14 @@ import SystemMonitoring from "../../SystemMonitoring";
 
 // 데이터베이스 관리 컴포넌트
 import AdminDatabase from "../../pages/admin/AdminDatabase";
+
+// 주식 초기화를 위한 기본 데이터
+const initialStocks = [
+  { id: 'KP', name: '코딩 파트너', price: 10000, history: [{ price: 10000, timestamp: new Date() }] },
+  { id: 'SS', name: '삼성전자', price: 80000, history: [{ price: 80000, timestamp: new Date() }] },
+  { id: 'LG', name: 'LG에너지솔루션', price: 350000, history: [{ price: 350000, timestamp: new Date() }] },
+  { id: 'SK', name: 'SK하이닉스', price: 230000, history: [{ price: 230000, timestamp: new Date() }] },
+];
 
 const AdminSettingsModal = ({
   isAdmin,
@@ -100,6 +117,37 @@ const AdminSettingsModal = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [selectAllStudents, setSelectAllStudents] = useState(false);
   const [error, setError] = useState("");
+
+  // ========================================
+  // 금융 상품 관리 상태
+  // ========================================
+  const [depositProducts, setDepositProducts] = useState([]);
+  const [savingProducts, setSavingProducts] = useState([]);
+  const [loanProducts, setLoanProducts] = useState([]);
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPeriod, setNewProductPeriod] = useState("");
+  const [newProductRate, setNewProductRate] = useState("");
+  const [financialSubTab, setFinancialSubTab] = useState("deposit");
+  const [financialMessage, setFinancialMessage] = useState(null);
+
+  // ========================================
+  // 시장 제어 상태
+  // ========================================
+  const [marketStatus, setMarketStatus] = useState({ isOpen: false });
+  const [marketMessage, setMarketMessage] = useState('');
+  const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
+  const marketStatusCache = useRef(null);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5분
+
+  // ========================================
+  // 파킹 통장 상태
+  // ========================================
+  const [parkingInterestRate, setParkingInterestRate] = useState(0.1);
+  const [newInterestRate, setNewInterestRate] = useState("");
+  const [parkingMessage, setParkingMessage] = useState(null);
+
+  // Firebase Functions
+  const toggleMarketManually = httpsCallable(functions, 'toggleMarketManually');
 
   // 급여 설정 상태
   const [salarySettings, setSalarySettings] = useState({
@@ -767,6 +815,217 @@ const AdminSettingsModal = ({
     [db, isSuperAdmin]
   );
 
+  // ========================================
+  // 금융 상품 관리 함수들
+  // ========================================
+
+  // 금융 상품 로드
+  const loadFinancialProducts = useCallback(() => {
+    try {
+      const savedDeposit = localStorage.getItem("depositProducts");
+      const savedSaving = localStorage.getItem("savingProducts");
+      const savedLoan = localStorage.getItem("loanProducts");
+
+      if (savedDeposit) setDepositProducts(JSON.parse(savedDeposit));
+      if (savedSaving) setSavingProducts(JSON.parse(savedSaving));
+      if (savedLoan) setLoanProducts(JSON.parse(savedLoan));
+    } catch (error) {
+      console.error("금융 상품 로드 오류:", error);
+    }
+  }, []);
+
+  // 금융 상품 추가
+  const handleAddProduct = useCallback(() => {
+    if (!newProductName || newProductName.trim() === "") {
+      setFinancialMessage({ type: "error", text: "상품명을 입력해주세요." });
+      return;
+    }
+    if (!newProductPeriod || isNaN(newProductPeriod) || parseInt(newProductPeriod) <= 0) {
+      setFinancialMessage({ type: "error", text: "유효한 기간을 입력해주세요." });
+      return;
+    }
+    if (!newProductRate || isNaN(newProductRate) || parseFloat(newProductRate) < 0) {
+      setFinancialMessage({ type: "error", text: "유효한 이율을 입력해주세요." });
+      return;
+    }
+
+    const newProduct = {
+      id: Date.now(),
+      name: newProductName.trim(),
+      period: parseInt(newProductPeriod),
+      rate: parseFloat(newProductRate),
+    };
+
+    const typeText = financialSubTab === "deposit" ? "예금" : financialSubTab === "saving" ? "적금" : "대출";
+    let updatedProducts = [];
+    let storageKey = "";
+
+    if (financialSubTab === "deposit") {
+      updatedProducts = [...depositProducts, newProduct];
+      setDepositProducts(updatedProducts);
+      storageKey = "depositProducts";
+    } else if (financialSubTab === "saving") {
+      updatedProducts = [...savingProducts, newProduct];
+      setSavingProducts(updatedProducts);
+      storageKey = "savingProducts";
+    } else if (financialSubTab === "loan") {
+      updatedProducts = [...loanProducts, newProduct];
+      setLoanProducts(updatedProducts);
+      storageKey = "loanProducts";
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
+    setFinancialMessage({ type: "success", text: `${typeText} 상품이 추가되었습니다.` });
+    setNewProductName("");
+    setNewProductPeriod("");
+    setNewProductRate("");
+    setTimeout(() => setFinancialMessage(null), 3000);
+  }, [newProductName, newProductPeriod, newProductRate, financialSubTab, depositProducts, savingProducts, loanProducts]);
+
+  // 금융 상품 삭제
+  const handleDeleteProduct = useCallback((id, type) => {
+    const typeText = type === "deposit" ? "예금" : type === "saving" ? "적금" : "대출";
+
+    if (!window.confirm(`이 ${typeText} 상품을 삭제하시겠습니까?`)) return;
+
+    let updatedProducts = [];
+    let storageKey = "";
+
+    if (type === "deposit") {
+      updatedProducts = depositProducts.filter((p) => p.id !== id);
+      setDepositProducts(updatedProducts);
+      storageKey = "depositProducts";
+    } else if (type === "saving") {
+      updatedProducts = savingProducts.filter((p) => p.id !== id);
+      setSavingProducts(updatedProducts);
+      storageKey = "savingProducts";
+    } else if (type === "loan") {
+      updatedProducts = loanProducts.filter((p) => p.id !== id);
+      setLoanProducts(updatedProducts);
+      storageKey = "loanProducts";
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
+    setFinancialMessage({ type: "success", text: `${typeText} 상품이 삭제되었습니다.` });
+    setTimeout(() => setFinancialMessage(null), 3000);
+  }, [depositProducts, savingProducts, loanProducts]);
+
+  // ========================================
+  // 시장 제어 함수들
+  // ========================================
+
+  // 시장 상태 가져오기
+  const fetchMarketStatus = useCallback(async (forceRefresh = false) => {
+    if (!userClassCode) return;
+
+    // 캐시 확인
+    if (!forceRefresh && marketStatusCache.current && isMarketDataLoaded) {
+      setMarketStatus(marketStatusCache.current);
+      return;
+    }
+
+    try {
+      const marketStatusRef = doc(db, `ClassStock/${userClassCode}/marketStatus/status`);
+      const docSnap = await getDoc(marketStatusRef);
+
+      let statusData;
+      if (docSnap.exists()) {
+        statusData = docSnap.data();
+      } else {
+        statusData = { isOpen: false };
+        await setDoc(marketStatusRef, statusData);
+      }
+
+      marketStatusCache.current = statusData;
+      setMarketStatus(statusData);
+      setIsMarketDataLoaded(true);
+    } catch (error) {
+      console.error("시장 상태 조회 실패:", error);
+      setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
+    }
+  }, [userClassCode, isMarketDataLoaded]);
+
+  // 시장 개장/폐장 제어
+  const handleMarketControl = useCallback(async (newIsOpenState) => {
+    const actionText = newIsOpenState ? '수동 개장' : '수동 폐장';
+    if (!window.confirm(`정말로 시장을 '${actionText}' 상태로 변경하시겠습니까?`)) return;
+
+    try {
+      // 낙관적 업데이트
+      const optimisticStatus = { isOpen: newIsOpenState };
+      setMarketStatus(optimisticStatus);
+      marketStatusCache.current = optimisticStatus;
+
+      const result = await toggleMarketManually({
+        classCode: userClassCode,
+        isOpen: newIsOpenState
+      });
+
+      setMarketMessage(result.data.message);
+    } catch (error) {
+      console.error("시장 상태 변경 오류:", error);
+      setMarketMessage(`오류가 발생했습니다: ${error.message}`);
+
+      // 롤백
+      if (marketStatusCache.current) {
+        setMarketStatus(marketStatusCache.current);
+      } else {
+        fetchMarketStatus(true);
+      }
+    }
+    setTimeout(() => setMarketMessage(''), 5000);
+  }, [userClassCode, toggleMarketManually, fetchMarketStatus]);
+
+  // 주식 정보 초기화
+  const handleInitializeStocks = useCallback(async () => {
+    if (!window.confirm("모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      initialStocks.forEach((stock) => {
+        const stockRef = doc(db, "CentralStocks", stock.id);
+        batch.set(stockRef, stock);
+      });
+
+      await batch.commit();
+      alert("주식 정보가 성공적으로 초기화되었습니다.");
+      setMarketMessage("주식 정보가 성공적으로 초기화되었습니다.");
+    } catch (error) {
+      console.error("주식 정보 초기화 중 오류 발생:", error);
+      setMarketMessage(`초기화 실패: ${error.message}`);
+    }
+    setTimeout(() => setMarketMessage(''), 5000);
+  }, []);
+
+  // ========================================
+  // 파킹 통장 함수들
+  // ========================================
+
+  // 파킹 이자율 로드
+  const loadParkingRate = useCallback(() => {
+    const savedRate = localStorage.getItem("parkingInterestRate");
+    if (savedRate) {
+      setParkingInterestRate(parseFloat(savedRate));
+    }
+  }, []);
+
+  // 파킹 이자율 변경
+  const handleParkingRateChange = useCallback(() => {
+    if (!newInterestRate || isNaN(newInterestRate) || parseFloat(newInterestRate) < 0) {
+      setParkingMessage({ type: "error", text: "유효한 이자율을 입력해주세요 (0 이상)." });
+      return;
+    }
+
+    const rate = parseFloat(newInterestRate);
+    setParkingInterestRate(rate);
+    localStorage.setItem("parkingInterestRate", rate.toString());
+
+    setParkingMessage({ type: "success", text: `파킹 통장 일일 이자율이 ${rate}%로 변경되었습니다.` });
+    setNewInterestRate("");
+    setTimeout(() => setParkingMessage(null), 3000);
+  }, [newInterestRate]);
+
   // 학급 코드 추가
   const handleAddClassCode = useCallback(async () => {
     if (!onAddClassCode || typeof onAddClassCode !== "function") {
@@ -821,6 +1080,10 @@ const AdminSettingsModal = ({
       // 데이터 프리로딩 (필요한 탭들 미리 로드)
       preloadAdminData();
       setError("");
+
+      // 금융 상품 및 파킹 이자율 로드
+      loadFinancialProducts();
+      loadParkingRate();
     }
 
     if (!showAdminSettingsModal) {
@@ -838,6 +1101,10 @@ const AdminSettingsModal = ({
       setStudentsLoading(false);
       setAppLoading(false);
       setError("");
+      // 금융/시장/파킹 상태 초기화
+      setFinancialMessage(null);
+      setMarketMessage('');
+      setParkingMessage(null);
     }
   }, [
     showAdminSettingsModal,
@@ -845,7 +1112,16 @@ const AdminSettingsModal = ({
     loadClassMembers,
     loadStudents,
     loadSalarySettings,
+    loadFinancialProducts,
+    loadParkingRate,
   ]);
+
+  // 시장 제어 탭 선택 시 시장 상태 로드
+  useEffect(() => {
+    if (showAdminSettingsModal && adminSelectedMenu === 'marketControl') {
+      fetchMarketStatus();
+    }
+  }, [showAdminSettingsModal, adminSelectedMenu, fetchMarketStatus]);
 
   // 마지막 월급 지급일 포맷
   const formatLastSalaryDate = () => {
@@ -899,6 +1175,11 @@ const AdminSettingsModal = ({
           <p className="admin-class-info">관리 학급: {userClassCode}</p>
         )}
 
+        {/* ========================================
+            관리자 탭 메뉴 v2.0
+            - 최고관리자(isSuperAdmin): 모든 탭 접근 가능
+            - 관리자(isAdmin): 시스템 관리 제외 모든 탭 접근 가능
+            ======================================== */}
         <div className="admin-menu-tabs">
           <button
             className={adminSelectedMenu === "generalSettings" ? "active" : ""}
@@ -934,13 +1215,31 @@ const AdminSettingsModal = ({
             급여 설정
           </button>
           <button
+            className={adminSelectedMenu === "financialProducts" ? "active" : ""}
+            onClick={() => setAdminSelectedMenu("financialProducts")}
+          >
+            금융 상품
+          </button>
+          <button
+            className={adminSelectedMenu === "marketControl" ? "active" : ""}
+            onClick={() => setAdminSelectedMenu("marketControl")}
+          >
+            시장 제어
+          </button>
+          <button
+            className={adminSelectedMenu === "parkingAccount" ? "active" : ""}
+            onClick={() => setAdminSelectedMenu("parkingAccount")}
+          >
+            파킹 통장
+          </button>
+          <button
             className={adminSelectedMenu === "memberManagement" ? "active" : ""}
             onClick={() => {
               setAdminSelectedMenu("memberManagement");
               loadClassMembers();
             }}
           >
-            학급 구성원 관리
+            학급 구성원
           </button>
           <button
             className={adminSelectedMenu === "databaseManagement" ? "active" : ""}
@@ -1518,6 +1817,383 @@ const AdminSettingsModal = ({
                       : "학생 정보가 없습니다."}
                   </p>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================
+            금융 상품 관리 탭 (새로 추가)
+            ======================================== */}
+        {adminSelectedMenu === "financialProducts" && (
+          <div className="financial-products-tab">
+            {!isSuperAdmin && userClassCode && (
+              <div className="class-info-header">
+                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+              </div>
+            )}
+            <div className="financial-products-settings section-card">
+              <h3>금융 상품 관리</h3>
+              <p className="admin-section-desc">
+                예금, 적금, 대출 상품을 추가하거나 삭제합니다.
+              </p>
+
+              {/* 금융 상품 서브 탭 */}
+              <div className="financial-sub-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <button
+                  className={`sub-tab-button ${financialSubTab === 'deposit' ? 'active' : ''}`}
+                  onClick={() => setFinancialSubTab('deposit')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: financialSubTab === 'deposit' ? '2px solid #4f46e5' : '1px solid #374151',
+                    background: financialSubTab === 'deposit' ? '#4f46e5' : 'transparent',
+                    color: financialSubTab === 'deposit' ? 'white' : '#9ca3af',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  예금 상품
+                </button>
+                <button
+                  className={`sub-tab-button ${financialSubTab === 'saving' ? 'active' : ''}`}
+                  onClick={() => setFinancialSubTab('saving')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: financialSubTab === 'saving' ? '2px solid #4f46e5' : '1px solid #374151',
+                    background: financialSubTab === 'saving' ? '#4f46e5' : 'transparent',
+                    color: financialSubTab === 'saving' ? 'white' : '#9ca3af',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  적금 상품
+                </button>
+                <button
+                  className={`sub-tab-button ${financialSubTab === 'loan' ? 'active' : ''}`}
+                  onClick={() => setFinancialSubTab('loan')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: financialSubTab === 'loan' ? '2px solid #4f46e5' : '1px solid #374151',
+                    background: financialSubTab === 'loan' ? '#4f46e5' : 'transparent',
+                    color: financialSubTab === 'loan' ? 'white' : '#9ca3af',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  대출 상품
+                </button>
+              </div>
+
+              {/* 메시지 */}
+              {financialMessage && (
+                <div className={`message-box ${financialMessage.type}`} style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '8px',
+                  background: financialMessage.type === 'success' ? '#065f46' : '#991b1b',
+                  color: 'white'
+                }}>
+                  {financialMessage.text}
+                </div>
+              )}
+
+              {/* 상품 추가 폼 */}
+              <div className="add-product-form" style={{
+                padding: '16px',
+                background: 'rgba(55, 65, 81, 0.5)',
+                borderRadius: '12px',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{ marginBottom: '12px', color: 'white' }}>
+                  {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 추가
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>상품명</label>
+                    <input
+                      type="text"
+                      value={newProductName}
+                      onChange={(e) => setNewProductName(e.target.value)}
+                      placeholder="상품명 입력"
+                      className="admin-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>기간 (일)</label>
+                    <input
+                      type="number"
+                      value={newProductPeriod}
+                      onChange={(e) => setNewProductPeriod(e.target.value)}
+                      placeholder="기간 (일)"
+                      min="1"
+                      className="admin-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>이율 (%)</label>
+                    <input
+                      type="number"
+                      value={newProductRate}
+                      onChange={(e) => setNewProductRate(e.target.value)}
+                      placeholder="이율 (%)"
+                      min="0"
+                      step="0.1"
+                      className="admin-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+                <button onClick={handleAddProduct} className="admin-save-button" style={{ width: '100%' }}>
+                  상품 추가하기
+                </button>
+              </div>
+
+              {/* 상품 목록 */}
+              <div className="product-list">
+                <h4 style={{ marginBottom: '12px', color: 'white' }}>
+                  {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 목록
+                </h4>
+                {(() => {
+                  const products = financialSubTab === 'deposit' ? depositProducts :
+                                   financialSubTab === 'saving' ? savingProducts : loanProducts;
+                  if (products.length === 0) {
+                    return <p className="no-items-message">등록된 상품이 없습니다.</p>;
+                  }
+                  return (
+                    <div className="members-table-container">
+                      <table className="members-table">
+                        <thead>
+                          <tr>
+                            <th>상품명</th>
+                            <th>기간 (일)</th>
+                            <th>이율 (%)</th>
+                            <th>관리</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {products.map((product) => (
+                            <tr key={product.id}>
+                              <td>{product.name}</td>
+                              <td>{product.period}일</td>
+                              <td>{product.rate}%</td>
+                              <td>
+                                <button
+                                  onClick={() => handleDeleteProduct(product.id, financialSubTab)}
+                                  className="delete-button"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================
+            시장 제어 탭 (새로 추가)
+            ======================================== */}
+        {adminSelectedMenu === "marketControl" && (
+          <div className="market-control-tab">
+            {!isSuperAdmin && userClassCode && (
+              <div className="class-info-header">
+                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+              </div>
+            )}
+            <div className="market-control-settings section-card">
+              <h3>주식 시장 제어</h3>
+              <p className="admin-section-desc">
+                주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
+              </p>
+
+              {/* 시장 상태 */}
+              <div style={{
+                padding: '16px',
+                background: 'rgba(55, 65, 81, 0.5)',
+                borderRadius: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <p style={{ color: 'white' }}>
+                    현재 상태:{" "}
+                    <span style={{
+                      fontWeight: 'bold',
+                      color: marketStatus.isOpen ? '#22c55e' : '#ef4444',
+                      padding: '4px 12px',
+                      borderRadius: '16px',
+                      background: marketStatus.isOpen ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+                    }}>
+                      {marketStatus.isOpen ? '🟢 개장' : '🔴 폐장'}
+                    </span>
+                  </p>
+                  <button
+                    onClick={() => fetchMarketStatus(true)}
+                    className="admin-button"
+                    disabled={!userClassCode}
+                  >
+                    새로고침
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                  <button
+                    onClick={() => handleMarketControl(true)}
+                    disabled={marketStatus.isOpen}
+                    className="admin-save-button"
+                    style={{
+                      flex: 1,
+                      background: marketStatus.isOpen ? '#374151' : '#22c55e',
+                      cursor: marketStatus.isOpen ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    수동 개장
+                  </button>
+                  <button
+                    onClick={() => handleMarketControl(false)}
+                    disabled={!marketStatus.isOpen}
+                    className="admin-cancel-button"
+                    style={{
+                      flex: 1,
+                      background: !marketStatus.isOpen ? '#374151' : '#ef4444',
+                      cursor: !marketStatus.isOpen ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    수동 폐장
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#9ca3af' }}>
+                  버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시 변경됩니다.<br />
+                  자동 개장/폐장 시간(월-금, 오전 8시/오후 3시)이 되면 자동으로 상태가 변경됩니다.
+                </p>
+              </div>
+
+              {/* 메시지 */}
+              {marketMessage && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '8px',
+                  background: '#d97706',
+                  color: 'white',
+                  textAlign: 'center'
+                }}>
+                  {marketMessage}
+                </div>
+              )}
+
+              {/* 주식 초기화 */}
+              <div style={{
+                padding: '16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '12px',
+                border: '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                <h4 style={{ marginBottom: '12px', color: '#ef4444' }}>⚠️ 주식 정보 초기화</h4>
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>
+                  주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이 기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
+                </p>
+                <button
+                  onClick={handleInitializeStocks}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: '#ea580c',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  모든 주식 정보 초기화
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================
+            파킹 통장 관리 탭 (새로 추가)
+            ======================================== */}
+        {adminSelectedMenu === "parkingAccount" && (
+          <div className="parking-account-tab">
+            {!isSuperAdmin && userClassCode && (
+              <div className="class-info-header">
+                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+              </div>
+            )}
+            <div className="parking-account-settings section-card">
+              <h3>파킹 통장 이자율 관리</h3>
+              <p className="admin-section-desc">
+                파킹 통장의 일일 이자율을 설정합니다.
+              </p>
+
+              {/* 메시지 */}
+              {parkingMessage && (
+                <div style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '8px',
+                  background: parkingMessage.type === 'success' ? '#065f46' : '#991b1b',
+                  color: 'white'
+                }}>
+                  {parkingMessage.text}
+                </div>
+              )}
+
+              {/* 현재 이자율 */}
+              <div style={{
+                padding: '16px',
+                background: 'rgba(55, 65, 81, 0.5)',
+                borderRadius: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ color: '#9ca3af', fontSize: '14px' }}>현재 일일 이자율</p>
+                  <p style={{ color: '#22c55e', fontSize: '32px', fontWeight: 'bold' }}>
+                    {parkingInterestRate}%
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#9ca3af' }}>
+                    새 일일 이자율 (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={newInterestRate}
+                    onChange={(e) => setNewInterestRate(e.target.value)}
+                    placeholder="새 이자율 입력 (%)"
+                    min="0"
+                    step="0.01"
+                    className="admin-input"
+                    style={{ marginBottom: '12px' }}
+                  />
+                  <button
+                    onClick={handleParkingRateChange}
+                    className="admin-save-button"
+                    disabled={!newInterestRate || isNaN(newInterestRate) || parseFloat(newInterestRate) < 0}
+                    style={{ width: '100%' }}
+                  >
+                    이자율 변경
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
+                  파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가 발생합니다.
+                </p>
               </div>
             </div>
           </div>

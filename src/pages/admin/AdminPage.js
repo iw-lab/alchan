@@ -1,3 +1,23 @@
+// src/AdminPage.js
+// ========================================
+// ⚠️ DEPRECATED - 레거시 관리자 페이지
+// ========================================
+// 이 컴포넌트는 더 이상 사용되지 않습니다.
+// 모든 관리자 기능은 AdminSettingsModal.js로 통합되었습니다.
+//
+// 통합된 위치:
+// - 금융 상품 관리 → AdminSettingsModal > "금융 상품" 탭
+// - 데이터베이스 → AdminSettingsModal > "데이터베이스" 탭
+// - 시장 제어 → AdminSettingsModal > "시장 제어" 탭
+// - 사용자 관리 → AdminSettingsModal > "학생 관리" / "학급 구성원" 탭
+//
+// AdminSettingsModal.js 경로:
+// src/components/modals/AdminSettingsModal.js
+//
+// 권한 체계:
+// - isAdmin (관리자): 자기 학급만 관리
+// - isSuperAdmin (최고관리자): 모든 학급 + 시스템 관리
+// ========================================
 import React, { useState, useEffect, useContext } from 'react';
 import { db, functions } from '../../firebase';
 import { doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';

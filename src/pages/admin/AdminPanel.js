@@ -1,4 +1,16 @@
 // src/AdminPanel.js
+// ========================================
+// ⚠️ DEPRECATED - 레거시 관리자 패널
+// ========================================
+// 이 컴포넌트는 더 이상 사용되지 않습니다.
+// 금융 상품 관리 기능은 AdminSettingsModal.js의 "금융 상품" 탭으로 통합되었습니다.
+//
+// AdminSettingsModal.js 경로:
+// src/components/modals/AdminSettingsModal.js
+//
+// 사용 방법:
+// Dashboard.js에서 관리자 설정 버튼을 클릭하여 접근
+// ========================================
 import React, { useState, useEffect } from "react";
 import "./AdminPanel.css";
 

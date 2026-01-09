@@ -1,4 +1,27 @@
 // src/Admin.js - Firestore 비용 최적화 버전
+// ========================================
+// ⚠️ DEPRECATED - 레거시 관리자 컴포넌트
+// ========================================
+// 이 컴포넌트는 더 이상 사용되지 않습니다.
+// 모든 관리자 기능은 AdminSettingsModal.js로 통합되었습니다.
+//
+// 통합된 관리자 기능 (AdminSettingsModal.js):
+// - 일반 설정 (목표, 쿠폰 가치)
+// - 할일 관리
+// - 직업 관리
+// - 학생 관리
+// - 급여 설정
+// - 금융 상품 관리 (예금/적금/대출) ← 이전 이 파일의 기능
+// - 시장 제어 (주식 시장 개장/폐장) ← 이전 이 파일의 기능
+// - 파킹 통장 관리 ← 이전 이 파일의 기능
+// - 학급 구성원 관리
+// - 데이터베이스
+// - 시스템 관리 (최고관리자 전용)
+//
+// 권한 체계:
+// - isAdmin (관리자): 자기 학급만 관리
+// - isSuperAdmin (최고관리자): 모든 학급 + 시스템 관리
+// ========================================
 import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from "react";
 import AdminParking from "./AdminParking";
 import AdminUserManagement from "./AdminUserManagement";
