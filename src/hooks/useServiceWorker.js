@@ -42,6 +42,12 @@ export function useServiceWorker() {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // 최근에 업데이트했으면 알림 안 띄우기 (5분 이내)
+              const lastUpdated = sessionStorage.getItem('alchan_updated');
+              if (lastUpdated && Date.now() - parseInt(lastUpdated) < 5 * 60 * 1000) {
+                console.log('[PWA] 최근 업데이트됨 - 알림 생략');
+                return;
+              }
               console.log('[PWA] 새 버전 사용 가능');
               setUpdateAvailable(true);
             }
@@ -60,6 +66,12 @@ export function useServiceWorker() {
   };
 
   const updateServiceWorker = useCallback(() => {
+    // 먼저 알림 숨기기
+    setUpdateAvailable(false);
+
+    // 세션 스토리지에 업데이트 완료 표시 (새로고침 후 알림 다시 안 뜨게)
+    sessionStorage.setItem('alchan_updated', Date.now().toString());
+
     if (registration && registration.waiting) {
       // 새 서비스 워커가 활성화되면 페이지 새로고침
       navigator.serviceWorker.addEventListener('controllerchange', () => {
