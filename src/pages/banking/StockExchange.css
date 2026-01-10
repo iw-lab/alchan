@@ -148,7 +148,7 @@
 
 .asset-cards {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-md);
 }
 
@@ -357,7 +357,7 @@
 /* Market Grid & Stock Card */
 .market-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-md);
 }
 
@@ -580,7 +580,7 @@
 
 .portfolio-cards {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-md);
 }
 
@@ -1072,6 +1072,21 @@
 
 @media (max-width: 768px) {
   .admin-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 모바일에서 1열 레이아웃 */
+@media (max-width: 600px) {
+  .asset-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-cards {
     grid-template-columns: 1fr;
   }
 }
