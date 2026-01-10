@@ -48,8 +48,8 @@ service cloud.firestore {
     // 📁 users 컬렉션
     // ========================================================
     match /users/{userId} {
-      // 읽기: 본인 또는 같은 학급
-      allow read: if isOwner(userId) || isSameClass(resource.data.classCode) || isAdmin();
+      // 읽기: 본인, 같은 학급, 관리자, 또는 SuperAdmin (전체 목록 조회용)
+      allow read: if isOwner(userId) || isSameClass(resource.data.classCode) || isAdmin() || isSuperAdmin();
 
       // 생성: 본인만 (회원가입)
       allow create: if isOwner(userId) && isValidUserData();
@@ -402,6 +402,18 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🔴 에러 로그 (errorLogs) - SuperAdmin 전용
+    // ========================================================
+    match /errorLogs/{logId} {
+      // 읽기: SuperAdmin만
+      allow read: if isSuperAdmin();
+      // 쓰기: 모든 로그인 사용자 (에러 발생 시 자동 기록) 또는 SuperAdmin
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ========================================================
     // 🚨 경찰서 (policeReports)
     // ========================================================
     match /policeReports/{reportId} {
@@ -517,7 +529,26 @@ service cloud.firestore {
     }
 
     // ========================================================
-    // 🏫 학급 데이터 (classes)
+    // 🏫 Class 컬렉션 (대문자 - 실제 학급 데이터)
+    // SuperAdmin은 모든 학급 조회 가능
+    // ========================================================
+    match /Class/{classCode} {
+      // 읽기: 로그인한 사용자 (학급 목록 조회용)
+      allow read: if isSignedIn();
+      // 쓰기: 관리자 또는 SuperAdmin
+      allow write: if isAdmin() || isSuperAdmin();
+
+      // 학생 서브컬렉션
+      match /students/{studentId} {
+        // 읽기: 로그인한 사용자
+        allow read: if isSignedIn();
+        // 쓰기: 관리자 또는 SuperAdmin
+        allow write: if isAdmin() || isSuperAdmin();
+      }
+    }
+
+    // ========================================================
+    // 🏫 학급 데이터 (classes - 소문자)
     // ========================================================
     match /classes/{classCode} {
       allow read: if isSameClass(classCode) || isAdmin();

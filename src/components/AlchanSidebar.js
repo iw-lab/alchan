@@ -112,6 +112,10 @@ export const ALCHAN_MENU_ITEMS = [
   { id: 'adminSystemGroup', label: '🔧 시스템', icon: Settings, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
   { id: 'activityLog', label: '데이터베이스', icon: FileText, path: '/admin/activity-log', parentId: 'adminCategory', adminOnly: true },
   { id: 'adminPage', label: '관리자 제어판', icon: Settings, path: '/admin/page', parentId: 'adminCategory', adminOnly: true },
+
+  // 🔥 SuperAdmin Category - 앱 관리자 전용 (isSuperAdmin만 접근 가능)
+  { id: 'superAdminCategory', label: '앱 관리자', icon: Shield, isCategory: true, category: 'superadmin', superAdminOnly: true },
+  { id: 'superAdminDashboard', label: '앱 관리 대시보드', icon: Shield, path: '/super-admin', parentId: 'superAdminCategory', superAdminOnly: true },
 ];
 
 // 카테고리 라벨
@@ -122,6 +126,7 @@ const CATEGORY_LABELS = {
   society: '사회',
   community: '커뮤니티',
   admin: '관리',
+  superadmin: '앱 관리',
 };
 
 // ============================================
@@ -474,6 +479,7 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
           {renderMenuSection('society')}
           {renderMenuSection('community')}
           {renderMenuSection('admin')}
+          {renderMenuSection('superadmin')}
         </nav>
 
         {/* 하단 사용자 프로필 */}

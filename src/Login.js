@@ -198,6 +198,7 @@ const Login = () => {
         isAdmin: true, // 선생님은 관리자
         isSuperAdmin: false,
         isTeacher: true, // 선생님 표시
+        isApproved: false, // 🔥 앱 관리자 승인 대기 상태
         cash: 0,
         coupons: 0,
         selectedJobIds: [],

@@ -39,6 +39,9 @@ const FirestoreDoctor = lazy(() => import('../FirestoreDoctor'));
 const RecoverDonations = lazy(() => import('../RecoverDonations'));
 const StudentManager = lazy(() => import('./StudentManager'));
 
+// 🔥 앱 관리자(SuperAdmin) 전용 대시보드
+const SuperAdminDashboard = lazy(() => import('../pages/superadmin/SuperAdminDashboard'));
+
 // 🔥 덜 자주 사용하는 페이지 - 동적 로딩
 const LearningBoard = lazy(() => import('../LearningBoard'));
 const MusicRequest = lazy(() => import('../MusicRequest'));
@@ -124,6 +127,26 @@ const TeacherRoute = ({ children }) => {
 
   const isTeacher = userDoc?.isTeacher || userDoc?.isAdmin || userDoc?.isSuperAdmin;
   if (!isTeacher) {
+    return <Navigate to="/dashboard/tasks" replace />;
+  }
+
+  return children;
+};
+
+// 🔥 앱 관리자(SuperAdmin) 전용 Route 컴포넌트
+const SuperAdminRoute = ({ children }) => {
+  const { user, userDoc, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <AlchanLoading />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!userDoc?.isSuperAdmin) {
     return <Navigate to="/dashboard/tasks" replace />;
   }
 
@@ -305,6 +328,10 @@ export default function AlchanLayout() {
             <Route path="/admin/page" element={<AdminRoute><AdminPage /></AdminRoute>} />
             <Route path="/admin-panel" element={<AdminRoute><AdminPanel onClose={() => navigate(-1)} classCode={userClassCode} /></AdminRoute>} />
             <Route path="/admin/students" element={<TeacherRoute><StudentManager /></TeacherRoute>} />
+
+            {/* 🔥 앱 관리자(SuperAdmin) 전용 */}
+            <Route path="/super-admin" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
+            <Route path="/super-admin/*" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
 
             {/* 유틸리티 */}
             <Route path="/doctor" element={<ProtectedRoute><FirestoreDoctor /></ProtectedRoute>} />
