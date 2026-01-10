@@ -109,7 +109,7 @@ exports.simpleScheduler = onRequest({
 });
 
 // 주식 가격 업데이트용 스케줄러 (15분마다 실행 - cron-job.org)
-// 🔥 최적화: 실제 주식만 업데이트 (시뮬레이션 로직 제거)
+// 🔥 최적화 v6.0: 시장 시간 체크를 먼저 해서 불필요한 Firestore 읽기 방지
 exports.stockPriceScheduler = onRequest({
   region: "asia-northeast3",
   timeoutSeconds: 540,
@@ -122,15 +122,7 @@ exports.stockPriceScheduler = onRequest({
       return;
     }
 
-    // 🔥 방학 모드 체크 - 비용 절감을 위해 즉시 종료
-    const vacationMode = await isVacationMode();
-    if (vacationMode) {
-      logger.info(`[stockPriceScheduler] 방학 모드 - 작업 건너뜀`);
-      res.json({ success: true, message: '방학 모드 - 스케줄러 비활성화됨', vacationMode: true });
-      return;
-    }
-
-    // 🔥 force 파라미터를 먼저 확인 (시장 시간/활성 사용자 체크 우회)
+    // 🔥 force 파라미터를 먼저 확인 (모든 체크 우회)
     const forceUpdate = req.query.force === 'true';
 
     const now = new Date();
@@ -139,22 +131,30 @@ exports.stockPriceScheduler = onRequest({
     const hour = kstTime.getUTCHours();
     const day = kstTime.getUTCDay();
 
-    logger.info(`[stockPriceScheduler] 호출됨 - KST ${hour}시, 요일: ${day}, force: ${forceUpdate}`);
-
+    // 🔥 [최적화 v6.0] 시장 시간 체크를 먼저 수행 (Firestore 읽기 0회)
     // 평일(1-5) 6시~24시 + 0시~1시 KST (한국 장 + 미국 장 커버)
-    // 한국 장: 9:00~15:30 KST
-    // 미국 장: 23:30~06:00 KST (서머타임 22:30~05:00)
     const isWeekday = day >= 1 && day <= 5;
     const isExtendedHours = hour >= 6 || hour < 1; // 6시~24시 + 0시~1시
 
     if (!forceUpdate && (!isWeekday || !isExtendedHours)) {
-      logger.info(`[stockPriceScheduler] 시장 시간 아님 - 작업 건너뜀`);
+      // 🔥 시장 시간 아니면 Firestore 읽기 없이 즉시 반환
       res.json({
         success: true,
-        message: '시장 시간 아님 - 작업 건너뜀',
+        message: '시장 시간 아님 - Firestore 읽기 없이 건너뜀',
         kstHour: hour,
-        day: day
+        day: day,
+        firestoreReads: 0
       });
+      return;
+    }
+
+    logger.info(`[stockPriceScheduler] 호출됨 - KST ${hour}시, 요일: ${day}, force: ${forceUpdate}`);
+
+    // 🔥 방학 모드 체크 - 시장 시간일 때만 Firestore 읽기 발생
+    const vacationMode = await isVacationMode();
+    if (vacationMode) {
+      logger.info(`[stockPriceScheduler] 방학 모드 - 작업 건너뜀`);
+      res.json({ success: true, message: '방학 모드 - 스케줄러 비활성화됨', vacationMode: true });
       return;
     }
 
