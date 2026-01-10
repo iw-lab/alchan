@@ -272,7 +272,7 @@ export default function AvatarEditor({ isOpen, onClose, userId, onSave }) {
           }}
         >
           <div style={{ position: "relative" }}>
-            <Avatar config={config} size={150} />
+            <Avatar key={JSON.stringify(config)} config={config} size={150} />
             {/* 랜덤 버튼 */}
             <button
               onClick={handleRandomize}
@@ -305,8 +305,12 @@ export default function AvatarEditor({ isOpen, onClose, userId, onSave }) {
             display: "flex",
             gap: "6px",
             overflowX: "auto",
-            paddingBottom: "8px",
+            overflowY: "hidden",
+            paddingBottom: "12px",
             marginBottom: "12px",
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "thin",
+            msOverflowStyle: "auto",
           }}
         >
           {AVATAR_CATEGORIES.map((cat) => (

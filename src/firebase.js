@@ -270,8 +270,8 @@ if (typeof window !== 'undefined') {
   console.log('📊 DB 통계: window.dbStats.reads() - 읽기 횟수 확인');
 }
 
-// 🔥 [최적화 v3.0] globalCacheService와 통합 - 단일 캐시 시스템
-const CACHE_TTL = 60 * 60 * 1000; // 1시간 TTL
+// 🔥 [최적화 v6.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6시간 TTL (1시간→6시간)
 
 const setCache = (key, data) => {
   // globalCacheService를 통해 캐시 저장 (localStorage/IndexedDB 영구화)

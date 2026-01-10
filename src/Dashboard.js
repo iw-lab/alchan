@@ -47,14 +47,14 @@ import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft 
 // Cloud Functions 호출 함수 설정
 const manualResetClassTasks = httpsCallable(functions, 'manualResetClassTasks');
 
-// 🔥 [최적화 v2.0] 자체 DataCache 제거 → globalCacheService로 통합
+// 🔥 [최적화 v3.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
 // TTL 상수 - 캐시 일관성을 위해 globalCacheService와 동일하게 설정
 const CACHE_TTL = {
-  JOBS: 30 * 60 * 1000,        // 30분 (직업 데이터)
-  TASKS: 30 * 60 * 1000,       // 30분 (할일 데이터)
-  SETTINGS: 60 * 60 * 1000,    // 1시간 (설정)
-  GOALS: 30 * 60 * 1000,       // 30분 (목표)
-  CLASS_CODES: 2 * 60 * 60 * 1000, // 2시간 (학급 코드)
+  JOBS: 6 * 60 * 60 * 1000,        // 6시간 (직업 데이터)
+  TASKS: 6 * 60 * 60 * 1000,       // 6시간 (할일 데이터)
+  SETTINGS: 12 * 60 * 60 * 1000,   // 12시간 (설정)
+  GOALS: 6 * 60 * 60 * 1000,       // 6시간 (목표)
+  CLASS_CODES: 24 * 60 * 60 * 1000, // 24시간 (학급 코드)
 };
 
 // 🔥 globalCacheService 래퍼 (기존 dataCache 인터페이스 호환)
@@ -458,8 +458,9 @@ function Dashboard({ adminTabMode }) {
     // 즉시 한 번 실행
     await pollData();
 
-    // 🔥 [최적화] 15분마다 실행 (5분에서 15분으로 변경 - Firestore 읽기 최소화)
-    const intervalId = setInterval(pollData, 15 * 60 * 1000);
+    // 🔥 [최적화 v3.0] 2시간마다 실행 (15분→2시간 - Firestore 읽기 극소화)
+    // 데이터 변경 시 사용자가 수동 새로고침하거나 페이지 재진입 시 갱신됨
+    const intervalId = setInterval(pollData, 2 * 60 * 60 * 1000);
 
     // Cleanup 함수 저장
     realtimeManager.current.addListener('polling', () => clearInterval(intervalId));
@@ -504,8 +505,8 @@ function Dashboard({ adminTabMode }) {
       return fetchPromise.current;
     }
 
-    // 🔥 [최적화] 최소 요청 간격 보장 (15분)
-    if (!forceRefresh && now - lastFetchTime.current < 15 * 60 * 1000) {
+    // 🔥 [최적화 v3.0] 최소 요청 간격 보장 (2시간)
+    if (!forceRefresh && now - lastFetchTime.current < 2 * 60 * 60 * 1000) {
       setAppLoading(false);
       return;
     }
@@ -701,10 +702,11 @@ function Dashboard({ adminTabMode }) {
       checkDateAndRefresh();
     }
 
-    // 5분마다 날짜 체크 (서버 리셋 후 브라우저가 켜져있을 때 감지)
+    // 🔥 [최적화 v3.0] 1시간마다 날짜 체크 (5분→1시간, Firestore 읽기 최소화)
+    // 서버 리셋 후 브라우저가 켜져있을 때 감지
     const dateCheckInterval = setInterval(() => {
       checkDateAndRefresh();
-    }, 5 * 60 * 1000); // 5분
+    }, 60 * 60 * 1000); // 1시간
 
     // 클린업
     return () => {

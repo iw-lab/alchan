@@ -1180,22 +1180,25 @@ const AdminSettingsModal = ({
             - 최고관리자(isSuperAdmin): 모든 탭 접근 가능
             - 관리자(isAdmin): 시스템 관리 제외 모든 탭 접근 가능
             ======================================== */}
-        <div className="admin-menu-tabs">
+        <div className="admin-menu-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '16px', background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)', borderRadius: '16px', border: '1px solid #374151' }}>
           <button
             className={adminSelectedMenu === "generalSettings" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("generalSettings")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             일반 설정
           </button>
           <button
             className={adminSelectedMenu === "taskManagement" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("taskManagement")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             할일 관리
           </button>
           <button
             className={adminSelectedMenu === "jobSettings" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("jobSettings")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             직업 관리
           </button>
@@ -1205,30 +1208,35 @@ const AdminSettingsModal = ({
               setAdminSelectedMenu("studentManagement");
               loadStudents();
             }}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             학생 관리
           </button>
           <button
             className={adminSelectedMenu === "salarySettings" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("salarySettings")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             급여 설정
           </button>
           <button
             className={adminSelectedMenu === "financialProducts" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("financialProducts")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             금융 상품
           </button>
           <button
             className={adminSelectedMenu === "marketControl" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("marketControl")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             시장 제어
           </button>
           <button
             className={adminSelectedMenu === "parkingAccount" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("parkingAccount")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             파킹 통장
           </button>
@@ -1238,12 +1246,14 @@ const AdminSettingsModal = ({
               setAdminSelectedMenu("memberManagement");
               loadClassMembers();
             }}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             학급 구성원
           </button>
           <button
             className={adminSelectedMenu === "databaseManagement" ? "active" : ""}
             onClick={() => setAdminSelectedMenu("databaseManagement")}
+            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             데이터베이스
           </button>
@@ -1251,6 +1261,7 @@ const AdminSettingsModal = ({
             <button
               className={adminSelectedMenu === "systemManagement" ? "active" : ""}
               onClick={() => setAdminSelectedMenu("systemManagement")}
+              style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
             >
               시스템 관리
             </button>

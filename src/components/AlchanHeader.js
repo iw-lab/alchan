@@ -86,9 +86,23 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
   else if (userDoc?.isAdmin) userRole = "교사";
 
   // 아바타, 레벨, 업적 정보
-  const avatarConfig = useMemo(() => {
-    if (user?.uid) return getAvatarConfig(user.uid);
-    return null;
+  const [avatarConfig, setAvatarConfig] = useState(null);
+
+  // 아바타 설정 로드 및 변경 이벤트 구독
+  useEffect(() => {
+    if (user?.uid) {
+      setAvatarConfig(getAvatarConfig(user.uid));
+    }
+
+    // 아바타 변경 이벤트 구독
+    const handleAvatarChange = (e) => {
+      if (e.detail.userId === user?.uid) {
+        setAvatarConfig(e.detail.config);
+      }
+    };
+
+    window.addEventListener('avatarChanged', handleAvatarChange);
+    return () => window.removeEventListener('avatarChanged', handleAvatarChange);
   }, [user?.uid]);
 
   const levelInfo = useMemo(() => {
@@ -293,13 +307,9 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
             {/* 아바타 */}
             <div
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="w-10 h-10 rounded-full overflow-hidden cursor-pointer flex items-center justify-center"
-              style={{
-                border: `2px solid ${levelInfo?.color || '#a78bfa'}`,
-                boxShadow: `0 0 8px ${levelInfo?.color || '#a78bfa'}40`
-              }}
+              className="cursor-pointer"
             >
-              <Avatar config={avatarConfig} size={48} showBorder={false} />
+              <Avatar config={avatarConfig} size={40} showBorder={true} />
             </div>
           </div>
         </div>
@@ -493,19 +503,9 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
                   e.stopPropagation();
                   navigate('/my-profile');
                 }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: `2px solid ${levelInfo?.color || '#a78bfa'}`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                style={{ cursor: 'pointer' }}
               >
-                <Avatar config={avatarConfig} size={48} showBorder={false} />
+                <Avatar config={avatarConfig} size={40} showBorder={true} />
               </div>
             </button>
 

@@ -27,15 +27,15 @@ class GlobalCacheService {
     this.subscribers = new Map();
     this.pendingRequests = new Map();
 
-    // 🔥 [비용 최적화 v4.0] 캐시 TTL 대폭 증가 - 1만명+ 사용자 대응
-    // 거래/업데이트 시 강제 무효화되므로 긴 TTL이 안전함
-    this.DEFAULT_TTL = 2 * 60 * 60 * 1000; // 2시간 (45분→2시간)
-    this.USER_TTL = 6 * 60 * 60 * 1000; // 6시간 (3시간→6시간, 거래 시 강제 무효화)
-    this.ACTIVITY_LOG_TTL = 30 * 60 * 1000; // 30분 (15분→30분)
-    this.ITEMS_TTL = 12 * 60 * 60 * 1000; // 12시간 (2시간→12시간, 아이템은 거의 안 바뀜)
-    this.CLASS_DATA_TTL = 12 * 60 * 60 * 1000; // 12시간 (3시간→12시간)
-    this.SETTINGS_TTL = 24 * 60 * 60 * 1000; // 24시간 (6시간→24시간, 설정은 거의 안 바뀜)
-    this.GOVERNMENT_SETTINGS_TTL = 24 * 60 * 60 * 1000; // 24시간 (정부 설정)
+    // 🔥 [비용 최적화 v6.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
+    // 거래/업데이트 시 강제 무효화되므로 매우 긴 TTL이 안전함
+    this.DEFAULT_TTL = 6 * 60 * 60 * 1000; // 6시간 (2시간→6시간)
+    this.USER_TTL = 12 * 60 * 60 * 1000; // 12시간 (6시간→12시간, 거래 시 강제 무효화)
+    this.ACTIVITY_LOG_TTL = 2 * 60 * 60 * 1000; // 2시간 (30분→2시간)
+    this.ITEMS_TTL = 24 * 60 * 60 * 1000; // 24시간 (12시간→24시간, 아이템은 거의 안 바뀜)
+    this.CLASS_DATA_TTL = 24 * 60 * 60 * 1000; // 24시간 (12시간→24시간)
+    this.SETTINGS_TTL = 48 * 60 * 60 * 1000; // 48시간 (24시간→48시간, 설정은 거의 안 바뀜)
+    this.GOVERNMENT_SETTINGS_TTL = 48 * 60 * 60 * 1000; // 48시간 (정부 설정)
 
     // 재시도 설정
     this.MAX_RETRIES = 3;

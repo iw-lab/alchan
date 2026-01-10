@@ -81,12 +81,12 @@ export const AuthProvider = ({ children }) => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }, []);
 
-  // 🔥 [비용 최적화 v5.0] 1만명+ 사용자 대응 - TTL 대폭 증가
-  // 거래/업데이트 시 강제 무효화되므로 긴 TTL이 안전함
-  const CLASSMATES_CACHE_TTL = 8 * 60 * 60 * 1000; // 🔥 [최적화] 학급 구성원 캐시 8시간 (4시간→8시간, 학급은 거의 안 바뀜)
-  const USER_DOC_CACHE_TTL = 24 * 60 * 60 * 1000; // 🔥 [최적화] 24시간 (12시간→24시간, 거래 시 강제 무효화됨)
-  const LASTLOGIN_UPDATE_COOLDOWN = 72 * 60 * 60 * 1000; // 🔥 [최적화] 72시간 (48시간→72시간, 주 2-3회면 충분)
-  const LAST_ACTIVE_UPDATE_INTERVAL = 60 * 60 * 1000; // 🔥 [최적화] 활성 상태 업데이트 1시간 간격 (30분→1시간)
+  // 🔥 [비용 최적화 v6.0] 극단적 최적화 - 읽기 95% 감소 목표
+  // 거래/업데이트 시 강제 무효화되므로 매우 긴 TTL이 안전함
+  const CLASSMATES_CACHE_TTL = 24 * 60 * 60 * 1000; // 🔥 [최적화] 학급 구성원 캐시 24시간 (8시간→24시간, 학급은 하루에 1번 변경되면 많은 것)
+  const USER_DOC_CACHE_TTL = 48 * 60 * 60 * 1000; // 🔥 [최적화] 48시간 (24시간→48시간, 거래 시 강제 무효화됨)
+  const LASTLOGIN_UPDATE_COOLDOWN = 168 * 60 * 60 * 1000; // 🔥 [최적화] 168시간=7일 (72시간→7일, 주 1회면 충분)
+  const LAST_ACTIVE_UPDATE_INTERVAL = 4 * 60 * 60 * 1000; // 🔥 [최적화] 활성 상태 업데이트 4시간 간격 (1시간→4시간)
   const lastActiveUpdateRef = useRef(0); // 마지막 활성 상태 업데이트 시간
 
   // Firebase 초기화 확인 (한 번만 실행) - 타임아웃 추가

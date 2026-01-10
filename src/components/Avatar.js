@@ -50,7 +50,7 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
   const mouthStyle = MOUTH_STYLES.find(m => m.id === avatarConfig.mouthStyle) || MOUTH_STYLES[0];
   const hairstyle = HAIRSTYLES.find(h => h.id === avatarConfig.hairstyle) || HAIRSTYLES[1];
   const hairColor = HAIR_COLORS.find(h => h.id === avatarConfig.hairColor) || HAIR_COLORS[0];
-  const outfit = OUTFITS.find(o => o.id === avatarConfig.outfit);
+  const outfit = OUTFITS.find(o => o.id === avatarConfig.outfit) || OUTFITS[1];
   const outfitColor = OUTFIT_COLORS.find(o => o.id === avatarConfig.outfitColor) || OUTFIT_COLORS[0];
   const accessory = ACCESSORIES.find(a => a.id === avatarConfig.accessory);
   const background = BACKGROUNDS.find(b => b.id === avatarConfig.background) || BACKGROUNDS[0];
@@ -88,10 +88,9 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
     return hairColor?.color || "#1a1a1a";
   };
 
-  // 의상이 있으면 상반신까지 보이도록 viewBox 확장
-  const hasOutfit = outfit && outfit.id !== "none";
-  const viewBoxY = -30; // 머리카락 위쪽 공간
-  const viewBoxHeight = hasOutfit ? 155 : 135; // 의상 포함 시 더 넓게
+  // 항상 상반신까지 보이도록 viewBox 설정
+  const viewBoxY = -25; // 머리카락 위쪽 공간
+  const viewBoxHeight = 150; // 항상 몸까지 보이게
 
   return (
     <svg
@@ -153,96 +152,137 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
         </clipPath>
       </defs>
 
-      {/* 배경 */}
-      <rect
-        x="-15"
-        y={viewBoxY}
-        width="130"
-        height={viewBoxHeight}
-        rx="12"
-        fill={getBackgroundStyle()}
-      />
+      {/* ======= 배경 ======= */}
+      {background && background.id !== "none" && (
+        <rect
+          x="-15"
+          y={viewBoxY}
+          width="130"
+          height={viewBoxHeight}
+          fill={getBackgroundStyle()}
+          rx="10"
+        />
+      )}
 
       {/* 배경 별 (은하수) */}
       {background?.stars && (
         <g>
-          <circle cx="15" cy="10" r="1" fill="white" opacity="0.8" />
-          <circle cx="85" cy="15" r="1.2" fill="white" opacity="0.7" />
-          <circle cx="45" cy="8" r="0.8" fill="white" opacity="0.9" />
-          <circle cx="70" cy="5" r="1" fill="white" opacity="0.6" />
-          <circle cx="25" cy="20" r="0.6" fill="white" opacity="0.8" />
-          <circle cx="90" cy="25" r="0.8" fill="white" opacity="0.7" />
-          <circle cx="10" cy="30" r="1" fill="white" opacity="0.5" />
-          <circle cx="60" cy="12" r="0.7" fill="white" opacity="0.9" />
+          <circle cx="15" cy="10" r="1.5" fill="white" opacity="0.9" />
+          <circle cx="85" cy="15" r="2" fill="white" opacity="0.8" />
+          <circle cx="45" cy="-5" r="1.2" fill="white" opacity="0.9" />
+          <circle cx="70" cy="0" r="1.5" fill="white" opacity="0.7" />
+          <circle cx="25" cy="20" r="1" fill="white" opacity="0.8" />
+          <circle cx="95" cy="25" r="1.2" fill="white" opacity="0.7" />
+          <circle cx="5" cy="30" r="1.5" fill="white" opacity="0.6" />
+          <circle cx="60" cy="100" r="1" fill="white" opacity="0.9" />
+          <circle cx="30" cy="110" r="1.2" fill="white" opacity="0.7" />
         </g>
       )}
 
-      {/* ======= 의상 (맨 아래 레이어) ======= */}
+      {/* ======= 목 ======= */}
+      <rect
+        x="42"
+        y="85"
+        width="16"
+        height="12"
+        fill={skinTone.color}
+      />
+
+      {/* ======= 의상 ======= */}
       {outfit && outfit.id !== "none" && (
-        <g filter="url(#shadow)">
-          {/* 목 */}
-          <rect
-            x="42"
-            y="88"
-            width="16"
-            height="12"
-            fill={skinTone.color}
-          />
+        <g>
           {/* 의상 본체 */}
           <path
             d={outfit.path}
             fill={outfitColor?.color || outfit.baseColor}
           />
-          {/* 칼라 */}
+          {/* 칼라 (교복) */}
           {outfit.collar && (
-            <path
-              d="M40,95 L50,100 L60,95"
-              stroke="#ffffff"
-              strokeWidth="2"
-              fill="none"
-            />
+            <g>
+              <path d="M40,95 L50,103 L60,95" stroke="#ffffff" strokeWidth="3" fill="none" />
+            </g>
           )}
-          {/* 넥타이 */}
+          {/* 버튼 (교복) */}
+          {outfit.buttons && (
+            <g>
+              <circle cx="50" cy="103" r="2" fill="#f1c40f" />
+              <circle cx="50" cy="110" r="2" fill="#f1c40f" />
+            </g>
+          )}
+          {/* 넥타이 (정장) */}
           {outfit.tie && (
-            <path
-              d="M50,95 L47,105 L50,125 L53,105 Z"
-              fill="#e74c3c"
-            />
+            <g>
+              <path d="M47,95 L50,98 L53,95" fill="#c0392b" />
+              <path d="M48,98 L50,118 L52,98 Z" fill="#e74c3c" />
+            </g>
           )}
           {/* 후드 */}
           {outfit.hood && (
             <path
-              d="M25,90 Q20,80 30,75 L70,75 Q80,80 75,90"
-              fill={darkenColor(outfitColor?.color || outfit.baseColor, 20)}
-              stroke="none"
+              d="M25,92 Q22,80 35,75 L65,75 Q78,80 75,92"
+              fill={darkenColor(outfitColor?.color || outfit.baseColor, 15)}
             />
           )}
         </g>
       )}
 
-      {/* ======= 뒷머리 (긴 머리 등) ======= */}
-      {hairstyle && hairstyle.paths && hairstyle.paths.length > 1 && (
-        <g filter="url(#shadow)">
-          {hairstyle.paths.slice(1).map((path, idx) => (
-            <path
-              key={`back-hair-${idx}`}
-              d={path}
-              fill={getHairFill()}
-            />
-          ))}
-        </g>
-      )}
-
       {/* ======= 얼굴 ======= */}
-      <g filter="url(#shadow)">
+      <g>
+        {/* 얼굴형에 따른 귀 위치 계산 - 얼굴 path 바깥에 위치해야 보임 */}
+        {(() => {
+          // 얼굴형별 귀 위치 (얼굴 path 바깥쪽으로!)
+          // round/square/heart: x=10~90, oval: x=12~88, long: x=20~80
+          const earPositions = {
+            round: { leftX: 7, rightX: 93, y: 50 },
+            oval: { leftX: 9, rightX: 91, y: 48 },
+            square: { leftX: 7, rightX: 93, y: 50 },
+            heart: { leftX: 7, rightX: 93, y: 48 },
+            long: { leftX: 17, rightX: 83, y: 50 },
+          };
+          const earPos = earPositions[faceShape.id] || earPositions.round;
+          return (
+            <>
+              {/* 귀 (왼쪽) - 얼굴 뒤에 배치 */}
+              <ellipse
+                cx={earPos.leftX}
+                cy={earPos.y}
+                rx="5"
+                ry="8"
+                fill={skinTone.color}
+              />
+              <ellipse
+                cx={earPos.leftX + 1}
+                cy={earPos.y}
+                rx="2"
+                ry="4"
+                fill={darkenColor(skinTone.color, 12)}
+              />
+              {/* 귀 (오른쪽) */}
+              <ellipse
+                cx={earPos.rightX}
+                cy={earPos.y}
+                rx="5"
+                ry="8"
+                fill={skinTone.color}
+              />
+              <ellipse
+                cx={earPos.rightX - 1}
+                cy={earPos.y}
+                rx="2"
+                ry="4"
+                fill={darkenColor(skinTone.color, 12)}
+              />
+            </>
+          );
+        })()}
         {/* 얼굴 윤곽 */}
         <path
           d={faceShape.path}
           fill={skinTone.color}
         />
         {/* 볼 홍조 */}
-        <ellipse cx="28" cy="58" rx="7" ry="4" fill="#ffb6c1" opacity="0.35" />
-        <ellipse cx="72" cy="58" rx="7" ry="4" fill="#ffb6c1" opacity="0.35" />
+        <ellipse cx="30" cy="60" rx="8" ry="5" fill="#ffb6c1" opacity="0.3" />
+        <ellipse cx="70" cy="60" rx="8" ry="5" fill="#ffb6c1" opacity="0.3" />
       </g>
 
       {/* ======= 눈 ======= */}
@@ -326,18 +366,34 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
       />
 
       {/* ======= 앞머리 및 메인 헤어 ======= */}
-      {hairstyle && hairstyle.paths && hairstyle.paths.length > 0 && (
-        <g filter="url(#shadow)">
+      {hairstyle && hairstyle.id !== "none" && (
+        <g>
           {/* 메인 헤어 */}
-          <path
-            d={hairstyle.paths[0]}
-            fill={getHairFill()}
-          />
-          {/* 단발 앞머리 */}
+          {hairstyle.paths && hairstyle.paths[0] && (
+            <path
+              d={hairstyle.paths[0]}
+              fill={getHairFill()}
+              stroke={hairColor?.color === "#1a1a1a" ? "#333" : "none"}
+              strokeWidth="1"
+            />
+          )}
+          {/* 뒤쪽 머리 (긴머리/포니테일 등) */}
+          {hairstyle.paths && hairstyle.paths.slice(1).map((p, i) => (
+            <path
+              key={`hair-${i}`}
+              d={p}
+              fill={getHairFill()}
+              stroke={hairColor?.color === "#1a1a1a" ? "#333" : "none"}
+              strokeWidth="1"
+            />
+          ))}
+          {/* 앞머리 */}
           {hairstyle.bangsPath && (
             <path
               d={hairstyle.bangsPath}
               fill={getHairFill()}
+              stroke={hairColor?.color === "#1a1a1a" ? "#333" : "none"}
+              strokeWidth="1"
             />
           )}
         </g>
@@ -346,56 +402,119 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
       {/* ======= 악세서리 ======= */}
       {accessory && accessory.id !== "none" && (
         <g>
-          {/* 일반 path 악세서리 */}
-          {accessory.path && (
-            <path
-              d={accessory.path}
-              stroke={accessory.fill ? "none" : accessory.color}
-              strokeWidth="2.5"
-              fill={accessory.fill ? accessory.color : "none"}
-              strokeLinecap="round"
-            />
-          )}
-          {/* 왕관 */}
-          {accessory.type === "crown" && (
-            <g filter="url(#shadow)">
-              <path
-                d="M25,-2 L30,15 L40,8 L50,18 L60,8 L70,15 L75,-2 Z"
-                fill="#f1c40f"
-              />
-              <circle cx="40" cy="5" r="3" fill="#e74c3c" />
-              <circle cx="50" cy="8" r="4" fill="#3498db" />
-              <circle cx="60" cy="5" r="3" fill="#2ecc71" />
+          {/* 안경 */}
+          {accessory.id === "glasses" && (
+            <g>
+              {/* 왼쪽 렌즈 */}
+              <circle cx="35" cy="45" r="10" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+              {/* 오른쪽 렌즈 */}
+              <circle cx="65" cy="45" r="10" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+              {/* 브릿지 */}
+              <path d="M45,45 Q50,42 55,45" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+              {/* 다리 */}
+              <path d="M25,45 L10,42" stroke="#1a1a1a" strokeWidth="2" />
+              <path d="M75,45 L90,42" stroke="#1a1a1a" strokeWidth="2" />
             </g>
           )}
-          {/* 리본 */}
-          {accessory.type === "bow" && (
-            <g transform="translate(72, 18)" filter="url(#shadow)">
-              <ellipse cx="-8" cy="0" rx="10" ry="6" fill={accessory.color} />
-              <ellipse cx="8" cy="0" rx="10" ry="6" fill={accessory.color} />
-              <circle cx="0" cy="0" r="5" fill={darkenColor(accessory.color, 20)} />
+          {/* 선글라스 */}
+          {accessory.id === "sunglasses" && (
+            <g>
+              <ellipse cx="35" cy="45" rx="12" ry="8" fill="#1a1a1a" />
+              <ellipse cx="65" cy="45" rx="12" ry="8" fill="#1a1a1a" />
+              <path d="M47,45 Q50,42 53,45" fill="none" stroke="#1a1a1a" strokeWidth="2" />
+              <path d="M23,45 L8,42" stroke="#1a1a1a" strokeWidth="2" />
+              <path d="M77,45 L92,42" stroke="#1a1a1a" strokeWidth="2" />
+              {/* 반사광 */}
+              <ellipse cx="32" cy="43" rx="3" ry="2" fill="white" opacity="0.3" />
+              <ellipse cx="62" cy="43" rx="3" ry="2" fill="white" opacity="0.3" />
             </g>
           )}
           {/* 귀걸이 */}
-          {accessory.type === "earrings" && (
+          {accessory.id === "earrings" && (
             <g>
-              <circle cx="10" cy="55" r="4" fill={accessory.color} filter="url(#shadow)" />
-              <circle cx="90" cy="55" r="4" fill={accessory.color} filter="url(#shadow)" />
+              <circle cx="6" cy="58" r="4" fill="#f1c40f" />
+              <circle cx="94" cy="58" r="4" fill="#f1c40f" />
+              <circle cx="5" cy="56" r="1" fill="white" opacity="0.6" />
+              <circle cx="93" cy="56" r="1" fill="white" opacity="0.6" />
+            </g>
+          )}
+          {/* 목걸이 */}
+          {accessory.id === "necklace" && (
+            <g>
+              <path d="M30,88 Q50,95 70,88" fill="none" stroke="#f1c40f" strokeWidth="2" />
+              <circle cx="50" cy="94" r="4" fill="#f1c40f" />
+              <circle cx="49" cy="92" r="1" fill="white" opacity="0.5" />
+            </g>
+          )}
+          {/* 모자 */}
+          {accessory.id === "hat" && (
+            <g>
+              <ellipse cx="50" cy="8" rx="45" ry="8" fill="#e74c3c" />
+              <path d="M15,8 Q15,-15 50,-18 Q85,-15 85,8" fill="#e74c3c" />
+              <rect x="15" y="5" width="70" height="5" fill="#c0392b" />
+            </g>
+          )}
+          {/* 왕관 */}
+          {accessory.id === "crown" && (
+            <g>
+              <path
+                d="M18,12 L22,0 L32,-12 L42,5 L50,-15 L58,5 L68,-12 L78,0 L82,12 Z"
+                fill="#f1c40f"
+                stroke="#d4ac0d"
+                strokeWidth="1"
+              />
+              <circle cx="32" cy="-2" r="4" fill="#e74c3c" />
+              <circle cx="50" cy="-5" r="5" fill="#3498db" />
+              <circle cx="68" cy="-2" r="4" fill="#2ecc71" />
+              <circle cx="31" cy="-4" r="1.5" fill="white" opacity="0.5" />
+              <circle cx="49" cy="-7" r="2" fill="white" opacity="0.5" />
+              <circle cx="67" cy="-4" r="1.5" fill="white" opacity="0.5" />
+            </g>
+          )}
+          {/* 머리띠 */}
+          {accessory.id === "headband" && (
+            <path
+              d="M10,22 Q50,15 90,22"
+              fill="none"
+              stroke="#ff69b4"
+              strokeWidth="4"
+            />
+          )}
+          {/* 리본 */}
+          {accessory.id === "bow" && (
+            <g transform="translate(78, 15)">
+              <ellipse cx="-10" cy="0" rx="10" ry="6" fill="#ff69b4" />
+              <ellipse cx="10" cy="0" rx="10" ry="6" fill="#ff69b4" />
+              <circle cx="0" cy="0" r="5" fill="#e91e8c" />
+            </g>
+          )}
+          {/* 마스크 */}
+          {accessory.id === "mask" && (
+            <g>
+              <path
+                d="M20,55 Q50,72 80,55 L80,70 Q50,88 20,70 Z"
+                fill="#ffffff"
+                stroke="#e0e0e0"
+                strokeWidth="1"
+              />
+              <path d="M35,62 L65,62" stroke="#e0e0e0" strokeWidth="1" />
             </g>
           )}
         </g>
       )}
 
       {/* ======= 테두리 ======= */}
-      {borderStyle && (
+      {borderStyle && showBorder && (
         <rect
           x="-13"
           y={viewBoxY + 2}
           width="126"
           height={viewBoxHeight - 4}
-          rx="11"
           fill="none"
-          {...borderStyle}
+          stroke={borderStyle.stroke}
+          strokeWidth={borderStyle.strokeWidth}
+          rx="12"
+          style={{ filter: borderStyle.filter }}
         />
       )}
     </svg>
