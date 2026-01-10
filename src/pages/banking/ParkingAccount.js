@@ -436,53 +436,56 @@ const ParkingAccountSection = ({ balance, dailyInterest, onDeposit, onWithdraw, 
   return (
     <div style={{
       ...styles.card,
-      background: 'linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)',
+      background: 'linear-gradient(135deg, rgba(6, 78, 117, 0.85) 0%, rgba(20, 40, 60, 0.9) 100%)',
       color: 'white',
-      boxShadow: '0 8px 24px rgba(3, 105, 161, 0.3)'
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+      border: '1px solid rgba(0, 180, 216, 0.25)'
     }}>
-      <div style={{ ...styles.cardHeader, borderBottom: '2px solid rgba(255,255,255,0.2)' }}>
-        <Wallet size={32} style={{ color: 'white' }} />
-        <h2 style={{ ...styles.cardTitle, color: 'white' }}>파킹통장</h2>
+      <div style={{ ...styles.cardHeader, borderBottom: '2px solid rgba(0, 180, 216, 0.2)' }}>
+        <Wallet size={32} style={{ color: '#67e8f9' }} />
+        <h2 style={{ ...styles.cardTitle, color: '#e0f7fa' }}>파킹통장</h2>
       </div>
 
       {/* 보유현금 표시 추가 */}
       <div style={{
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(0, 180, 216, 0.15)',
         padding: '12px 16px',
         borderRadius: '10px',
         marginBottom: '16px',
         backdropFilter: 'blur(10px)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        border: '1px solid rgba(0, 180, 216, 0.2)'
       }}>
-        <span style={{ fontSize: '16px', fontWeight: '500', opacity: 0.9 }}>보유 현금</span>
-        <span style={{ fontSize: '20px', fontWeight: '700' }}>{formatCurrency(userCash || 0)}원</span>
+        <span style={{ fontSize: '16px', fontWeight: '500', color: '#94a3b8' }}>보유 현금</span>
+        <span style={{ fontSize: '20px', fontWeight: '700', color: '#e0f7fa' }}>{formatCurrency(userCash || 0)}원</span>
       </div>
 
-      <div style={{ fontSize: '42px', fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>
+      <div style={{ fontSize: '42px', fontWeight: 'bold', color: '#e0f7fa', marginBottom: '8px' }}>
         {formatCurrency(balance)}원
       </div>
 
-      <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.9)', marginBottom: '16px', fontWeight: '500' }}>
+      <p style={{ fontSize: '16px', color: 'rgba(224, 247, 250, 0.8)', marginBottom: '16px', fontWeight: '500' }}>
         매일 이자가 자동 지급되는 자유 입출금 통장
       </p>
 
       <div style={{
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(0, 180, 216, 0.12)',
         padding: '16px',
         borderRadius: '10px',
         marginBottom: '24px',
-        backdropFilter: 'blur(10px)'
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(0, 180, 216, 0.2)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <TrendingUp size={20} />
-          <span style={{ fontSize: '15px', fontWeight: '600' }}>일일 이자 수익</span>
+          <TrendingUp size={20} style={{ color: '#67e8f9' }} />
+          <span style={{ fontSize: '15px', fontWeight: '600', color: '#94a3b8' }}>일일 이자 수익</span>
         </div>
-        <div style={{ fontSize: '28px', fontWeight: '700' }}>
+        <div style={{ fontSize: '28px', fontWeight: '700', color: '#67e8f9' }}>
           +{formatCurrency(dailyInterest)}원/일
         </div>
-        <div style={{ fontSize: '14px', marginTop: '6px', opacity: 0.9 }}>
+        <div style={{ fontSize: '14px', marginTop: '6px', color: 'rgba(148, 163, 184, 0.9)' }}>
           (일 1% 복리 기준)
         </div>
       </div>
@@ -497,7 +500,9 @@ const ParkingAccountSection = ({ balance, dailyInterest, onDeposit, onWithdraw, 
             ...styles.input,
             marginBottom: 0,
             fontSize: '17px',
-            flex: 1
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(0, 180, 216, 0.3)'
           }}
           disabled={isProcessing}
         />
@@ -517,7 +522,7 @@ const ParkingAccountSection = ({ balance, dailyInterest, onDeposit, onWithdraw, 
           disabled={isProcessing}
           style={{
             ...styles.button(isProcessing),
-            backgroundColor: 'rgba(255,255,255,0.25)',
+            backgroundColor: 'rgba(100, 116, 139, 0.5)',
             color: 'white',
             fontSize: '17px',
             padding: '14px 24px'

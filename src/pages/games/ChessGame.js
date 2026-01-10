@@ -322,12 +322,12 @@ const ChessGame = () => {
             const currentGameId = gameIdRef.current;
             const currentGameData = gameDataRef.current;
             const currentUser = userRef.current;
+            // 호스트(백 플레이어)가 나가면 항상 방 삭제 (상태 무관)
             if (
                 currentGameId &&
                 currentGameData &&
                 currentUser &&
-                currentGameData.status === 'waiting' &&
-                currentGameData.players.white === currentUser.uid
+                currentGameData.players?.white === currentUser.uid
             ) {
                 deleteDoc(doc(db, 'chessGames', currentGameId));
             }
@@ -928,7 +928,8 @@ const ChessGame = () => {
 
 
     const handleLeaveGame = useCallback(async () => {
-        if (gameData && gameData.status === 'waiting' && gameId && gameData.players.white === user.uid) {
+        // 호스트(백 플레이어)가 나가면 항상 방 삭제 (상태 무관)
+        if (gameData && gameId && gameData.players?.white === user?.uid) {
             try {
                 await deleteDoc(doc(db, 'chessGames', gameId));
             } catch (error) {

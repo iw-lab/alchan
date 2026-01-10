@@ -171,13 +171,14 @@
 
 .item-card {
   background: rgba(30, 30, 45, 0.6);
-  border: 1px solid var(--glass-border);
+  border: 1.5px solid rgba(0, 243, 255, 0.35);
   border-radius: 16px;
   padding: 20px;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 8px rgba(0, 243, 255, 0.15);
 }
 
 .item-card:hover {
@@ -435,4 +436,22 @@
   padding: 2px 6px;
   border-radius: 4px;
   margin-left: 8px;
+}
+
+/* 아이템 시장 로딩 스타일 - 스피너 없이 심플하게 */
+.market-container.loading,
+.market-container .loading {
+  padding: 60px 20px;
+  text-align: center;
+  background-color: var(--panel-bg);
+  color: var(--text-dim);
+  font-size: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+.market-container.loading::after,
+.market-container .loading::after {
+  content: none !important;
+  animation: none !important;
 }

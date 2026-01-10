@@ -593,11 +593,11 @@ const OmokGame = () => {
             const currentGameId = gameIdRef.current;
             const currentGame = gameRef.current;
             const currentUser = userRef.current;
+            // 호스트가 나가면 항상 방 삭제 (상태 무관)
             if (
                 currentGameId &&
                 currentGame &&
                 currentUser &&
-                currentGame.gameStatus === 'waiting' &&
                 currentGame.host === currentUser.uid
             ) {
                 deleteDoc(doc(db, 'omokGames', currentGameId));
