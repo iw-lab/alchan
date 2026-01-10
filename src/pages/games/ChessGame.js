@@ -261,7 +261,7 @@ const findBestMove = (board, color, difficulty, getValidMovesFunc) => {
 
 
 const ChessGame = () => {
-    const { user, userDoc } = useAuth();
+    const { user, userDoc, isAdmin } = useAuth();
     // ... (state definitions)
 
     // Force strict dark mode background via inline style
@@ -872,7 +872,7 @@ const ChessGame = () => {
     };
 
     const handleAdminDeleteRoom = async (roomId) => {
-        if (!userDoc?.isAdmin) {
+        if (!isAdmin?.()) {
             setFeedback({ message: '삭제 권한이 없습니다.', type: 'error' });
             return;
         }
@@ -1293,7 +1293,7 @@ const ChessGame = () => {
                                             >
                                                 참가
                                             </button>
-                                            {userDoc?.isAdmin && (
+                                            {isAdmin?.() && (
                                                 <button
                                                     onClick={() => handleAdminDeleteRoom(room.id)}
                                                     className="delete-btn"
