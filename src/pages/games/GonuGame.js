@@ -23,111 +23,103 @@ import { AlchanLoading } from '../../components/AlchanLayout';
 // ═══════════════════════════════════════════════════════════════
 // 우물고누 정의 (가장 기본적인 고누)
 // 동그라미 안에 X 표시 형태, 각자 2개의 말
+// 원 둘레 4개 위치 + 빈 시작 위치 1개 = 총 5개 위치
+// 중앙(우물)은 선이 교차하는 곳이지만 이동 불가
 // ═══════════════════════════════════════════════════════════════
 
-// 우물고누 노드 배치 (9개의 점 - 3x3 격자)
-// 실제 우물고누 말판:
-//   0---1---2
-//   |\ /|\ /|
-//   3--4--5   (4는 우물 - 이동 불가)
-//   |/ \|/ \|
-//   6---7---8
+// 우물고누 노드 배치 (나무위키 기준 5개 위치)
+// 말판 (원 + X):
+//       1 (상) - 흑1 시작
+//      /|\
+//     / | \
+//    4-(우물)-2 (우) - 흑2 시작
+//     \ | /
+//      \|/
+//       3 (하) - 백3 시작
+//       |
+//       5 (하단 추가 위치) - 백4 시작?
+//
+// 나무위키 표기: [1 2 ; 3 4 ;흑] = 1,2에 흑, 3,4에 백
+// "2 위치의 흑돌을 5로 옮길 수 없다" = 2→5 이동 제한
+//
+// 재해석: 원 둘레(1,2,3,4)와 빈 위치(5)
+// 실제로는 원 둘레를 따라 시계/반시계 방향으로 한 칸씩 이동
 const UMUL_NODES = [
-    { id: 0, x: 50, y: 50 },    // 좌상
-    { id: 1, x: 150, y: 50 },   // 상단 중앙
-    { id: 2, x: 250, y: 50 },   // 우상
-    { id: 3, x: 50, y: 150 },   // 좌측 중앙
-    { id: 4, x: 150, y: 150 },  // 중앙 (우물 - 이동 불가)
-    { id: 5, x: 250, y: 150 },  // 우측 중앙
-    { id: 6, x: 50, y: 250 },   // 좌하
-    { id: 7, x: 150, y: 250 },  // 하단 중앙
-    { id: 8, x: 250, y: 250 },  // 우하
+    { id: 1, x: 150, y: 40 },   // 1번 (상)
+    { id: 2, x: 260, y: 150 },  // 2번 (우)
+    { id: 3, x: 150, y: 260 },  // 3번 (하)
+    { id: 4, x: 40, y: 150 },   // 4번 (좌)
+    { id: 5, x: 150, y: 150 },  // 5번 (중앙) - 우물 위치, 이동 가능하지만 첫수 제한
 ];
 
-// 우물고누 연결 (선) - 격자 + 대각선
+// 우물고누 연결 (선) - 원 + X
 const UMUL_EDGES = [
-    // 가로
-    [0, 1], [1, 2],
-    [3, 4], [4, 5],
-    [6, 7], [7, 8],
-    // 세로
-    [0, 3], [3, 6],
-    [1, 4], [4, 7],
-    [2, 5], [5, 8],
-    // 대각선
-    [0, 4], [4, 8],
-    [2, 4], [4, 6],
+    // 원 둘레
+    [1, 2], [2, 3], [3, 4], [4, 1],
+    // X 대각선 (중앙 통과)
+    [1, 5], [5, 3],  // 상-중앙-하
+    [2, 5], [5, 4],  // 우-중앙-좌
 ];
 
-// 우물고누에서 이동 가능한 연결 (우물(4) 제외, 선을 따라 이동)
+// 우물고누에서 이동 가능한 연결
+// 원 둘레를 따라 한 칸씩 + 중앙(5)으로/에서 이동
+// "각 수마다 각각의 돌이 움직일 수 있는 곳은 하나밖에 없습니다"
+// → 이건 특정 상황에서의 설명, 실제로는 여러 방향 가능
 const UMUL_VALID_MOVES = {
-    0: [1, 3, 8],    // 좌상: 우(1), 하(3), 대각선(8)
-    1: [0, 2, 7],    // 상단: 좌(0), 우(2), 하(7)
-    2: [1, 5, 6],    // 우상: 좌(1), 하(5), 대각선(6)
-    3: [0, 6, 5],    // 좌측: 상(0), 하(6), 우(5)
-    5: [2, 8, 3],    // 우측: 상(2), 하(8), 좌(3)
-    6: [3, 7, 2],    // 좌하: 상(3), 우(7), 대각선(2)
-    7: [6, 8, 1],    // 하단: 좌(6), 우(8), 상(1)
-    8: [5, 7, 0],    // 우하: 상(5), 좌(7), 대각선(0)
+    1: [2, 4, 5],    // 상: 우(2), 좌(4), 중앙(5)
+    2: [1, 3, 5],    // 우: 상(1), 하(3), 중앙(5)
+    3: [2, 4, 5],    // 하: 우(2), 좌(4), 중앙(5)
+    4: [1, 3, 5],    // 좌: 상(1), 하(3), 중앙(5)
+    5: [1, 2, 3, 4], // 중앙: 모든 방향
 };
 
 // ═══════════════════════════════════════════════════════════════
 // 호박고누 정의
-// 출발선 부분이 있는 말판, 각자 3개의 말
+// 출발선 2개 + 가운데 원(우물고누 형태), 각자 3개의 말
+// 전진만 가능, 후퇴 불가, 출발선 재진입 불가
 // ═══════════════════════════════════════════════════════════════
 
-// 호박고누 노드 배치 (10개의 점)
-//   0       (흑 출발선)
-//   |
-//   1---2---3
-//   |\ /|\ /|
-//   4--5--6
-//   |/ \|/ \|
-//   7---8---9
-//   |
-//   10      (적 출발선)
-
+// 호박고누 노드 배치 (7개의 점)
+// 단순화된 말판:
+//
+//     0 (파랑 출발선) - 파랑 3개 시작
+//     |
+//     1
+//    /|\
+//   4-5-2  (5는 중앙)
+//    \|/
+//     3
+//     |
+//     6 (빨강 출발선) - 빨강 3개 시작
+//
 const HOBAK_NODES = [
-    { id: 0, x: 150, y: 20, isHome: 'B' },   // 흑 출발선
-    { id: 1, x: 50, y: 80 },
-    { id: 2, x: 150, y: 80 },
-    { id: 3, x: 250, y: 80 },
-    { id: 4, x: 50, y: 160 },
-    { id: 5, x: 150, y: 160 },  // 중앙
-    { id: 6, x: 250, y: 160 },
-    { id: 7, x: 50, y: 240 },
-    { id: 8, x: 150, y: 240 },
-    { id: 9, x: 250, y: 240 },
-    { id: 10, x: 150, y: 300, isHome: 'R' },  // 적 출발선
+    { id: 0, x: 150, y: 30, isHome: 'B' },   // 파랑 출발선
+    { id: 1, x: 150, y: 90 },                 // 상단
+    { id: 2, x: 230, y: 150 },                // 우측
+    { id: 3, x: 150, y: 210 },                // 하단
+    { id: 4, x: 70, y: 150 },                 // 좌측
+    { id: 5, x: 150, y: 150 },                // 중앙
+    { id: 6, x: 150, y: 270, isHome: 'R' },  // 빨강 출발선
 ];
 
 // 호박고누 연결 (선)
 const HOBAK_EDGES = [
-    [0, 2],                      // 출발선 연결
-    [1, 2], [2, 3],              // 상단 가로
-    [1, 4], [2, 5], [3, 6],      // 세로
-    [4, 5], [5, 6],              // 중앙 가로
-    [4, 7], [5, 8], [6, 9],      // 세로
-    [7, 8], [8, 9],              // 하단 가로
-    [8, 10],                     // 출발선 연결
-    // 대각선
-    [1, 5], [2, 4], [2, 6], [3, 5],
-    [4, 8], [5, 7], [5, 9], [6, 8],
+    [0, 1],                      // 파랑 출발선 → 상단
+    [1, 2], [2, 3], [3, 4], [4, 1],  // 원 둘레
+    [1, 5], [2, 5], [3, 5], [4, 5],  // 원 둘레 → 중앙
+    [3, 6],                      // 하단 → 빨강 출발선
 ];
 
 // 호박고누에서 이동 가능한 연결 (인접 리스트)
+// 출발선에서 나온 말은 출발선으로 못 돌아감 (게임 로직에서 처리)
 const HOBAK_ADJACENCY = {
-    0: [2],
-    1: [2, 4, 5],
-    2: [0, 1, 3, 4, 5, 6],
-    3: [2, 5, 6],
-    4: [1, 2, 5, 7, 8],
-    5: [1, 2, 3, 4, 6, 7, 8, 9],
-    6: [2, 3, 5, 8, 9],
-    7: [4, 5, 8],
-    8: [4, 5, 6, 7, 9, 10],
-    9: [5, 6, 8],
-    10: [8],
+    0: [1],              // 파랑 출발선: 상단으로만
+    1: [2, 4, 5],        // 상단: 우, 좌, 중앙 (0으로 못 돌아감 - 게임 로직)
+    2: [1, 3, 5],        // 우: 상, 하, 중앙
+    3: [2, 4, 5],        // 하: 우, 좌, 중앙 (6으로 못 감 - 상대 출발선)
+    4: [1, 3, 5],        // 좌: 상, 하, 중앙
+    5: [1, 2, 3, 4],     // 중앙: 상하좌우
+    6: [3],              // 빨강 출발선: 하단으로만
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -196,22 +188,28 @@ const GONU_TYPES = {
         description: '가장 기본적인 고누. 각자 2개의 말로 상대를 봉쇄하면 승리!',
         rules: [
             '각자 2개의 말을 가지고 시작합니다',
-            '말은 선을 따라 한 칸씩만 이동합니다',
+            '말은 원 둘레를 따라 한 칸씩만 이동합니다',
             '중앙(우물)으로는 이동할 수 없습니다',
             '상대의 말이 더 이상 움직일 수 없게 만들면 승리!',
+            '실수하지 않으면 무승부가 될 수 있습니다',
         ],
         nodes: UMUL_NODES,
         edges: UMUL_EDGES,
         adjacency: UMUL_VALID_MOVES,
         initialPieces: () => ({
-            0: 'B',  // 좌상 - 파랑
-            2: 'B',  // 우상 - 파랑
-            6: 'R',  // 좌하 - 빨강
-            8: 'R',  // 우하 - 빨강
+            // 나무위키: [1 2 ; 3 4 ;흑] = 1,2에 흑(파랑), 3,4에 백(빨강)
+            // 5번(중앙)은 처음에 비어있음
+            1: 'B',  // 상 - 파랑1
+            2: 'B',  // 우 - 파랑2
+            3: 'R',  // 하 - 빨강3
+            4: 'R',  // 좌 - 빨강4
+            // 5(중앙)는 비어있음 - 첫 수로 여기에 이동 가능 (단, 2→5는 금지)
         }),
         piecesPerPlayer: 2,
         boardWidth: 300,
         boardHeight: 300,
+        // 첫 수 제한: 2번 위치에서 5번으로 바로 이동 금지
+        firstMoveRestriction: { from: 2, to: 5 },
         checkWin: (pieces, currentPlayer) => {
             // 상대방이 움직일 수 없으면 승리
             const opponent = currentPlayer === 'B' ? 'R' : 'B';
@@ -229,7 +227,7 @@ const GONU_TYPES = {
             }
             return currentPlayer; // 상대방이 움직일 수 없음 = 현재 플레이어 승리
         },
-        isWell: (nodeId) => nodeId === 4, // 중앙(4)이 우물
+        isWell: (nodeId) => nodeId === 5, // 5번이 우물(중앙)
     },
     hobak: {
         name: '호박고누',
@@ -245,12 +243,19 @@ const GONU_TYPES = {
         edges: HOBAK_EDGES,
         adjacency: HOBAK_ADJACENCY,
         initialPieces: () => ({
-            0: 'B', 1: 'B', 3: 'B',   // 흑 (상단)
-            10: 'R', 7: 'R', 9: 'R',  // 적 (하단)
+            // 파랑: 출발선(0)에 1개, 나머지는 가운데 영역에서 시작
+            // 단순화: 파랑 출발선(0), 상단(1), 좌측(4)
+            // 빨강: 출발선(6), 하단(3), 우측(2)
+            0: 'B',  // 파랑 출발선
+            1: 'B',  // 상단
+            4: 'B',  // 좌측
+            6: 'R',  // 빨강 출발선
+            3: 'R',  // 하단
+            2: 'R',  // 우측
         }),
         piecesPerPlayer: 3,
         boardWidth: 300,
-        boardHeight: 320,
+        boardHeight: 300,
         checkWin: (pieces, currentPlayer) => {
             const opponent = currentPlayer === 'B' ? 'R' : 'B';
             const opponentPieces = Object.entries(pieces)
@@ -264,7 +269,6 @@ const GONU_TYPES = {
                         // 출발선 제한 체크
                         const targetNode = HOBAK_NODES.find(n => n.id === target);
                         if (targetNode?.isHome) {
-                            // 자신의 출발선은 다시 못 들어감, 상대 출발선도 못 들어감
                             continue;
                         }
                         return null;
@@ -273,7 +277,7 @@ const GONU_TYPES = {
             }
             return currentPlayer;
         },
-        getHomeNode: (color) => color === 'B' ? 0 : 10,
+        getHomeNode: (color) => color === 'B' ? 0 : 6,
     },
     bat: {
         name: '밭고누 (네줄고누)',
@@ -550,12 +554,16 @@ const GonuGame = () => {
 
         const moves = [];
         const targets = adjacency[pieceId] || [];
+        const moveCount = localGame?.moveCount || 0;
 
         for (const target of targets) {
             if (currentPieces[target]) continue;
 
-            // 우물고누 우물 제한
-            if (gameType === 'umul' && config.isWell && config.isWell(target)) continue;
+            // 우물고누 첫 수 제한: 2→5 금지 (우물고누 첫수 규칙)
+            if (gameType === 'umul' && moveCount === 0 && config.firstMoveRestriction) {
+                const { from, to } = config.firstMoveRestriction;
+                if (pieceId === from && target === to) continue;
+            }
 
             // 호박고누 출발선 제한
             if (gameType === 'hobak') {
@@ -637,52 +645,82 @@ const GonuGame = () => {
         }
     }, [feedback.message]);
 
-    // AI 턴 처리
+    // AI 턴 처리 - ref 사용하여 cleanup 문제 방지
+    const aiTimerRef = useRef(null);
+    const localGameRef = useRef(localGame);
+
     useEffect(() => {
-        if (!localGame || localGame.status !== 'active' || localGame.turn !== 'R' || aiThinking || pendingCapture) return;
+        localGameRef.current = localGame;
+    }, [localGame]);
+
+    useEffect(() => {
+        if (!localGame || localGame.status !== 'active' || localGame.turn !== 'R' || aiThinking || pendingCapture) {
+            return;
+        }
 
         setAiThinking(true);
 
-        const timer = setTimeout(() => {
-            const move = getAIMove(localGame.gameType, localGame.pieces, 'R');
+        // 기존 타이머 정리
+        if (aiTimerRef.current) {
+            clearTimeout(aiTimerRef.current);
+        }
 
-            if (move) {
-                const newPieces = { ...localGame.pieces };
-                delete newPieces[move.from];
-                newPieces[move.to] = 'R';
-
-                const config = GONU_TYPES[localGame.gameType];
-
-                // 밭고누에서 3연속 체크
-                if (localGame.gameType === 'bat' && config.checkThreeInRow(newPieces, move.to, 'R')) {
-                    // AI가 3연속을 만들었을 때 - 플레이어 말 중 하나 제거
-                    const playerPieces = Object.entries(newPieces)
-                        .filter(([, color]) => color === 'B')
-                        .map(([nodeId]) => parseInt(nodeId));
-
-                    if (playerPieces.length > 0) {
-                        // AI는 랜덤하게 하나 제거 (또는 전략적으로)
-                        const targetIdx = Math.floor(Math.random() * playerPieces.length);
-                        delete newPieces[playerPieces[targetIdx]];
-                    }
-                }
-
-                const winner = config.checkWin(newPieces, 'R');
-
-                setLocalGame(prev => ({
-                    ...prev,
-                    pieces: newPieces,
-                    turn: 'B',
-                    status: winner ? 'finished' : 'active',
-                    winner: winner,
-                }));
+        aiTimerRef.current = setTimeout(() => {
+            const currentGame = localGameRef.current;
+            if (!currentGame || currentGame.turn !== 'R') {
+                setAiThinking(false);
+                return;
             }
 
-            setAiThinking(false);
-        }, 800);
+            try {
+                const move = getAIMove(currentGame.gameType, currentGame.pieces, 'R');
 
-        return () => clearTimeout(timer);
-    }, [localGame, aiThinking, pendingCapture]);
+                if (move) {
+                    const newPieces = { ...currentGame.pieces };
+                    delete newPieces[move.from];
+                    newPieces[move.to] = 'R';
+
+                    const config = GONU_TYPES[currentGame.gameType];
+
+                    // 밭고누에서 3연속 체크
+                    if (currentGame.gameType === 'bat' && config.checkThreeInRow(newPieces, move.to, 'R')) {
+                        const playerPieces = Object.entries(newPieces)
+                            .filter(([, color]) => color === 'B')
+                            .map(([nodeId]) => parseInt(nodeId));
+
+                        if (playerPieces.length > 0) {
+                            const targetIdx = Math.floor(Math.random() * playerPieces.length);
+                            delete newPieces[playerPieces[targetIdx]];
+                        }
+                    }
+
+                    const winner = config.checkWin(newPieces, 'R');
+
+                    setLocalGame({
+                        ...currentGame,
+                        pieces: newPieces,
+                        turn: 'B',
+                        status: winner ? 'finished' : 'active',
+                        winner: winner,
+                        moveCount: (currentGame.moveCount || 0) + 1,
+                    });
+                } else {
+                    // AI가 이동할 수 없으면 플레이어 승리
+                    setLocalGame({
+                        ...currentGame,
+                        status: 'finished',
+                        winner: 'B',
+                    });
+                }
+            } catch (error) {
+                console.error('AI move error:', error);
+            } finally {
+                setAiThinking(false);
+            }
+        }, 1200);
+
+        // cleanup에서 타이머 정리하지 않음 (aiThinking이 true인 동안)
+    }, [localGame?.turn, localGame?.status, aiThinking, pendingCapture]);
 
     const handleStartAIGame = () => {
         const config = GONU_TYPES[selectedGameType];
@@ -692,6 +730,7 @@ const GonuGame = () => {
             turn: 'B',
             status: 'active',
             winner: null,
+            moveCount: 0, // 첫 수 제한 체크용
         });
         setShowCreateRoom(false);
     };
@@ -862,6 +901,7 @@ const GonuGame = () => {
                 turn: 'R',
                 status: winner ? 'finished' : 'active',
                 winner: winner,
+                moveCount: (prev.moveCount || 0) + 1,
             }));
             setSelectedPiece(null);
 
@@ -996,8 +1036,26 @@ const GonuGame = () => {
                 {/* 배경 */}
                 <rect x="0" y="0" width={config.boardWidth} height={config.boardHeight} fill="#2a2a3a" rx="10" />
 
-                {/* 연결선 */}
-                {config.edges.map(([from, to], idx) => {
+                {/* 우물고누: 원형 둘레 + X 대각선 */}
+                {gameType === 'umul' && (
+                    <>
+                        {/* 원 둘레 */}
+                        <circle
+                            cx={150}
+                            cy={150}
+                            r={110}
+                            fill="none"
+                            stroke="#555"
+                            strokeWidth="3"
+                        />
+                        {/* X 대각선 (상-중앙-하, 좌-중앙-우) */}
+                        <line x1={150} y1={40} x2={150} y2={260} stroke="#555" strokeWidth="3" />
+                        <line x1={40} y1={150} x2={260} y2={150} stroke="#555" strokeWidth="3" />
+                    </>
+                )}
+
+                {/* 다른 게임 타입: 일반 연결선 */}
+                {gameType !== 'umul' && config.edges.map(([from, to], idx) => {
                     const fromNode = config.nodes.find(n => n.id === from);
                     const toNode = config.nodes.find(n => n.id === to);
                     return (
