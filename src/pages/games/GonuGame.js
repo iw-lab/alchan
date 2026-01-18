@@ -531,7 +531,7 @@ const GonuGame = () => {
 
     // 유효한 이동 위치 계산
     useEffect(() => {
-        if (!selectedPiece) {
+        if (selectedPiece === null || selectedPiece === undefined) {
             setValidMoves([]);
             return;
         }
@@ -541,14 +541,15 @@ const GonuGame = () => {
         const config = GONU_TYPES[gameType];
         const adjacency = config.adjacency;
         const currentColor = localGame ? 'B' : myColor;
+        const pieceId = parseInt(selectedPiece);
 
-        if (currentPieces[selectedPiece] !== currentColor) {
+        if (currentPieces[pieceId] !== currentColor) {
             setValidMoves([]);
             return;
         }
 
         const moves = [];
-        const targets = adjacency[selectedPiece] || [];
+        const targets = adjacency[pieceId] || [];
 
         for (const target of targets) {
             if (currentPieces[target]) continue;
