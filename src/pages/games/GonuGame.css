@@ -7,6 +7,81 @@
     padding: 0;
 }
 
+/* 게임 모드 선택 */
+.game-mode-selector {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.game-mode-selector h3 {
+    color: #fff;
+    margin-bottom: 1.2rem;
+    font-size: 1.4rem;
+}
+
+.mode-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.mode-btn {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.mode-btn.selected {
+    background: linear-gradient(135deg, #BBD2C5, #536976);
+    border-color: #BBD2C5;
+    box-shadow: 0 0 20px rgba(187, 210, 197, 0.4);
+}
+
+/* SVG 보드 스타일 */
+.gonu-svg-board {
+    display: block;
+    margin: 0 auto;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.gonu-svg-board circle {
+    transition: all 0.2s ease;
+}
+
+.gonu-svg-board g:hover circle {
+    filter: brightness(1.2);
+}
+
+/* 캡처 모드 상태 */
+.game-status.capture-mode {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    animation: captureFlash 0.5s infinite alternate;
+}
+
+@keyframes captureFlash {
+    from {
+        box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    }
+    to {
+        box-shadow: 0 0 25px rgba(255, 107, 107, 0.8);
+    }
+}
+
 .gonu-container {
     background-color: #0a0a12 !important;
     /* Force Deep Dark Background */

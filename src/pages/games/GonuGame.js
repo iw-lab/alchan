@@ -1,4 +1,4 @@
-// src/GonuGame.js - UI/UX 개선
+// src/GonuGame.js - 실제 고누 규칙 적용 + AI 모드
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
@@ -20,85 +20,445 @@ import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 import './GonuGame.css';
 import { AlchanLoading } from '../../components/AlchanLayout';
 
-const BOARD_SIZE = 5;
+// ═══════════════════════════════════════════════════════════════
+// 우물고누 정의 (가장 기본적인 고누)
+// 동그라미 안에 X 표시 형태, 각자 2개의 말
+// ═══════════════════════════════════════════════════════════════
 
-// 고누 게임 종류와 설정
+// 우물고누 노드 배치 (5개의 점)
+// 노드 인덱스:
+//     0
+//    /|\
+//   1-2-3
+//    \|/
+//     4
+const UMUL_NODES = [
+    { id: 0, x: 150, y: 30 },   // 상단
+    { id: 1, x: 30, y: 150 },   // 좌측
+    { id: 2, x: 150, y: 150 },  // 중앙 (우물 - 이동 불가)
+    { id: 3, x: 270, y: 150 },  // 우측
+    { id: 4, x: 150, y: 270 },  // 하단
+];
+
+// 우물고누 연결 (선)
+const UMUL_EDGES = [
+    [0, 1], [0, 2], [0, 3],  // 상단에서 연결
+    [1, 2], [2, 3],          // 가로선
+    [1, 4], [2, 4], [3, 4],  // 하단으로 연결
+];
+
+// 우물고누에서 이동 가능한 연결 (우물 제외)
+const UMUL_VALID_MOVES = {
+    0: [1, 3],      // 상단에서는 좌우로만 (중앙은 우물)
+    1: [0, 4],      // 좌측에서는 상하로만 (중앙은 우물)
+    3: [0, 4],      // 우측에서는 상하로만 (중앙은 우물)
+    4: [1, 3],      // 하단에서는 좌우로만 (중앙은 우물)
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 호박고누 정의
+// 출발선 부분이 있는 말판, 각자 3개의 말
+// ═══════════════════════════════════════════════════════════════
+
+// 호박고누 노드 배치 (10개의 점)
+//   0       (흑 출발선)
+//   |
+//   1---2---3
+//   |\ /|\ /|
+//   4--5--6
+//   |/ \|/ \|
+//   7---8---9
+//   |
+//   10      (적 출발선)
+
+const HOBAK_NODES = [
+    { id: 0, x: 150, y: 20, isHome: 'B' },   // 흑 출발선
+    { id: 1, x: 50, y: 80 },
+    { id: 2, x: 150, y: 80 },
+    { id: 3, x: 250, y: 80 },
+    { id: 4, x: 50, y: 160 },
+    { id: 5, x: 150, y: 160 },  // 중앙
+    { id: 6, x: 250, y: 160 },
+    { id: 7, x: 50, y: 240 },
+    { id: 8, x: 150, y: 240 },
+    { id: 9, x: 250, y: 240 },
+    { id: 10, x: 150, y: 300, isHome: 'R' },  // 적 출발선
+];
+
+// 호박고누 연결 (선)
+const HOBAK_EDGES = [
+    [0, 2],                      // 출발선 연결
+    [1, 2], [2, 3],              // 상단 가로
+    [1, 4], [2, 5], [3, 6],      // 세로
+    [4, 5], [5, 6],              // 중앙 가로
+    [4, 7], [5, 8], [6, 9],      // 세로
+    [7, 8], [8, 9],              // 하단 가로
+    [8, 10],                     // 출발선 연결
+    // 대각선
+    [1, 5], [2, 4], [2, 6], [3, 5],
+    [4, 8], [5, 7], [5, 9], [6, 8],
+];
+
+// 호박고누에서 이동 가능한 연결 (인접 리스트)
+const HOBAK_ADJACENCY = {
+    0: [2],
+    1: [2, 4, 5],
+    2: [0, 1, 3, 4, 5, 6],
+    3: [2, 5, 6],
+    4: [1, 2, 5, 7, 8],
+    5: [1, 2, 3, 4, 6, 7, 8, 9],
+    6: [2, 3, 5, 8, 9],
+    7: [4, 5, 8],
+    8: [4, 5, 6, 7, 9, 10],
+    9: [5, 6, 8],
+    10: [8],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 밭고누 (네줄고누) 정의
+// 4x4 격자, 각자 4개의 말, 3연속 만들면 상대 말 제거
+// ═══════════════════════════════════════════════════════════════
+
+// 밭고누 노드 배치 (16개의 점, 4x4 격자)
+const BAT_NODES = [];
+for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+        BAT_NODES.push({
+            id: row * 4 + col,
+            x: 60 + col * 80,
+            y: 60 + row * 80,
+            row: row,
+            col: col
+        });
+    }
+}
+
+// 밭고누 연결 (가로, 세로, 대각선)
+const BAT_EDGES = [];
+// 가로 연결
+for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 3; col++) {
+        BAT_EDGES.push([row * 4 + col, row * 4 + col + 1]);
+    }
+}
+// 세로 연결
+for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 4; col++) {
+        BAT_EDGES.push([row * 4 + col, (row + 1) * 4 + col]);
+    }
+}
+// 대각선 연결 (오른쪽 아래)
+for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+        BAT_EDGES.push([row * 4 + col, (row + 1) * 4 + col + 1]);
+    }
+}
+// 대각선 연결 (왼쪽 아래)
+for (let row = 0; row < 3; row++) {
+    for (let col = 1; col < 4; col++) {
+        BAT_EDGES.push([row * 4 + col, (row + 1) * 4 + col - 1]);
+    }
+}
+
+// 밭고누 인접 리스트 생성
+const BAT_ADJACENCY = {};
+for (let i = 0; i < 16; i++) {
+    BAT_ADJACENCY[i] = [];
+}
+BAT_EDGES.forEach(([a, b]) => {
+    BAT_ADJACENCY[a].push(b);
+    BAT_ADJACENCY[b].push(a);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 게임 타입 설정
+// ═══════════════════════════════════════════════════════════════
+
 const GONU_TYPES = {
+    umul: {
+        name: '우물고누',
+        description: '가장 기본적인 고누. 각자 2개의 말로 상대를 봉쇄하면 승리!',
+        rules: [
+            '각자 2개의 말을 가지고 시작합니다',
+            '말은 선을 따라 한 칸씩만 이동합니다',
+            '중앙(우물)으로는 이동할 수 없습니다',
+            '상대의 말이 더 이상 움직일 수 없게 만들면 승리!',
+        ],
+        nodes: UMUL_NODES,
+        edges: UMUL_EDGES,
+        adjacency: UMUL_VALID_MOVES,
+        initialPieces: () => ({
+            0: 'B',  // 상단 - 흑
+            4: 'B',  // 하단 - 흑 (대각선 위치)
+            1: 'R',  // 좌측 - 적
+            3: 'R',  // 우측 - 적
+        }),
+        piecesPerPlayer: 2,
+        boardWidth: 300,
+        boardHeight: 300,
+        checkWin: (pieces, currentPlayer) => {
+            // 상대방이 움직일 수 없으면 승리
+            const opponent = currentPlayer === 'B' ? 'R' : 'B';
+            const opponentPieces = Object.entries(pieces)
+                .filter(([, color]) => color === opponent)
+                .map(([nodeId]) => parseInt(nodeId));
+
+            for (const nodeId of opponentPieces) {
+                const moves = UMUL_VALID_MOVES[nodeId] || [];
+                for (const target of moves) {
+                    if (!pieces[target]) {
+                        return null; // 움직일 수 있는 곳이 있음
+                    }
+                }
+            }
+            return currentPlayer; // 상대방이 움직일 수 없음 = 현재 플레이어 승리
+        },
+        isWell: (nodeId) => nodeId === 2, // 중앙이 우물
+    },
     hobak: {
         name: '호박고누',
-        description: '각 플레이어가 5개의 말을 가지고 시작. 상하좌우로만 이동 가능.',
+        description: '출발선이 있는 고누. 각자 3개의 말로 상대를 봉쇄하면 승리!',
         rules: [
-            '말은 상하좌우 인접한 빈 칸으로만 이동 가능',
-            '상대방이 더 이상 움직일 수 없게 만들면 승리',
-            '대각선 이동 불가',
-            '말을 잡는 기능은 없음'
+            '각자 3개의 말을 가지고 시작합니다',
+            '말은 선을 따라 한 칸씩만 이동합니다',
+            '출발선에서 나온 말은 출발선으로 돌아갈 수 없습니다',
+            '상대 출발선으로도 들어갈 수 없습니다',
+            '상대의 말이 더 이상 움직일 수 없게 만들면 승리!',
         ],
-        initialBoard: () => {
-            const board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-            board[0][0] = 'B'; board[0][1] = 'B'; board[0][2] = 'B'; board[0][3] = 'B'; board[0][4] = 'B';
-            board[4][0] = 'R'; board[4][1] = 'R'; board[4][2] = 'R'; board[4][3] = 'R'; board[4][4] = 'R';
-            return board;
-        },
-        canCapture: false,
-        allowDiagonal: false
-    },
-    cham: {
-        name: '참고누',
-        description: '각 플레이어가 4개의 말을 가지고 시작. 상하좌우와 대각선 이동 가능.',
-        rules: [
-            '말은 상하좌우 및 대각선 인접한 빈 칸으로 이동 가능',
-            '상대방 말을 뛰어넘어 잡을 수 있음',
-            '상대방 말을 모두 잡으면 승리'
-        ],
-        initialBoard: () => {
-            const board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-            board[0][1] = 'B'; board[0][3] = 'B'; board[1][1] = 'B'; board[1][3] = 'B';
-            board[3][1] = 'R'; board[3][3] = 'R'; board[4][1] = 'R'; board[4][3] = 'R';
-            return board;
-        },
-        canCapture: true,
-        allowDiagonal: true
-    },
-    gonjil: {
-        name: '곤질고누',
-        description: '각 플레이어가 6개의 말을 가지고 시작. 포위하여 잡기 가능.',
-        rules: [
-            '말은 상하좌우로만 이동 가능',
-            '상대방 말을 포위하면 잡을 수 있음',
-            '상대방 말을 모두 잡거나 움직일 수 없게 만들면 승리'
-        ],
-        initialBoard: () => {
-            const board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-            board[0][0] = 'B'; board[0][2] = 'B'; board[0][4] = 'B'; board[1][1] = 'B'; board[1][2] = 'B'; board[1][3] = 'B';
-            board[3][1] = 'R'; board[3][2] = 'R'; board[3][3] = 'R'; board[4][0] = 'R'; board[4][2] = 'R'; board[4][4] = 'R';
-            return board;
-        },
-        canCapture: true,
-        allowDiagonal: false
-    }
-};
+        nodes: HOBAK_NODES,
+        edges: HOBAK_EDGES,
+        adjacency: HOBAK_ADJACENCY,
+        initialPieces: () => ({
+            0: 'B', 1: 'B', 3: 'B',   // 흑 (상단)
+            10: 'R', 7: 'R', 9: 'R',  // 적 (하단)
+        }),
+        piecesPerPlayer: 3,
+        boardWidth: 300,
+        boardHeight: 320,
+        checkWin: (pieces, currentPlayer) => {
+            const opponent = currentPlayer === 'B' ? 'R' : 'B';
+            const opponentPieces = Object.entries(pieces)
+                .filter(([, color]) => color === opponent)
+                .map(([nodeId]) => parseInt(nodeId));
 
-// Firestore 직렬화/역직렬화 함수
-const serializeBoard = (board) => {
-    const serialized = {};
-    board.forEach((row, rIndex) => {
-        row.forEach((cell, cIndex) => {
-            if (cell) {
-                serialized[`${rIndex}-${cIndex}`] = cell;
+            for (const nodeId of opponentPieces) {
+                const moves = HOBAK_ADJACENCY[nodeId] || [];
+                for (const target of moves) {
+                    if (!pieces[target]) {
+                        // 출발선 제한 체크
+                        const targetNode = HOBAK_NODES.find(n => n.id === target);
+                        if (targetNode?.isHome) {
+                            // 자신의 출발선은 다시 못 들어감, 상대 출발선도 못 들어감
+                            continue;
+                        }
+                        return null;
+                    }
+                }
             }
-        });
-    });
-    return serialized;
+            return currentPlayer;
+        },
+        getHomeNode: (color) => color === 'B' ? 0 : 10,
+    },
+    bat: {
+        name: '밭고누 (네줄고누)',
+        description: '4x4 격자에서 자기 말 3개를 일렬로 만들면 상대 말을 제거!',
+        rules: [
+            '각자 4개의 말을 가지고 시작합니다',
+            '말은 선을 따라 한 칸씩만 이동합니다',
+            '자기 말 3개가 가로/세로/대각선 일렬이 되면 상대 말 1개 제거',
+            '상대 말을 1개만 남기면 승리!',
+        ],
+        nodes: BAT_NODES,
+        edges: BAT_EDGES,
+        adjacency: BAT_ADJACENCY,
+        initialPieces: () => ({
+            0: 'B', 1: 'B', 2: 'B', 3: 'B',   // 흑 (상단 행)
+            12: 'R', 13: 'R', 14: 'R', 15: 'R', // 적 (하단 행)
+        }),
+        piecesPerPlayer: 4,
+        boardWidth: 320,
+        boardHeight: 320,
+        checkWin: (pieces) => {
+            // 상대 말이 1개만 남으면 승리
+            const blackCount = Object.values(pieces).filter(c => c === 'B').length;
+            const redCount = Object.values(pieces).filter(c => c === 'R').length;
+            if (blackCount <= 1) return 'R';
+            if (redCount <= 1) return 'B';
+            return null;
+        },
+        checkThreeInRow: (pieces, nodeId, color) => {
+            // 해당 노드를 포함해서 3개 일렬인지 확인
+            const node = BAT_NODES.find(n => n.id === nodeId);
+            if (!node) return false;
+
+            const { row, col } = node;
+
+            // 가로 체크
+            for (let startCol = Math.max(0, col - 2); startCol <= Math.min(1, col); startCol++) {
+                let count = 0;
+                for (let c = startCol; c < startCol + 3 && c < 4; c++) {
+                    const id = row * 4 + c;
+                    if (pieces[id] === color) count++;
+                }
+                if (count === 3) return true;
+            }
+
+            // 세로 체크
+            for (let startRow = Math.max(0, row - 2); startRow <= Math.min(1, row); startRow++) {
+                let count = 0;
+                for (let r = startRow; r < startRow + 3 && r < 4; r++) {
+                    const id = r * 4 + col;
+                    if (pieces[id] === color) count++;
+                }
+                if (count === 3) return true;
+            }
+
+            // 대각선 체크 (오른쪽 아래 방향)
+            for (let offset = -2; offset <= 0; offset++) {
+                let count = 0;
+                for (let d = 0; d < 3; d++) {
+                    const r = row + offset + d;
+                    const c = col + offset + d;
+                    if (r >= 0 && r < 4 && c >= 0 && c < 4) {
+                        const id = r * 4 + c;
+                        if (pieces[id] === color) count++;
+                    }
+                }
+                if (count === 3) return true;
+            }
+
+            // 대각선 체크 (왼쪽 아래 방향)
+            for (let offset = -2; offset <= 0; offset++) {
+                let count = 0;
+                for (let d = 0; d < 3; d++) {
+                    const r = row + offset + d;
+                    const c = col - offset - d;
+                    if (r >= 0 && r < 4 && c >= 0 && c < 4) {
+                        const id = r * 4 + c;
+                        if (pieces[id] === color) count++;
+                    }
+                }
+                if (count === 3) return true;
+            }
+
+            return false;
+        },
+    },
 };
 
-const deserializeBoard = (serializedBoard) => {
-    const board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
-    for (const key in serializedBoard) {
-        const [r, c] = key.split('-').map(Number);
-        board[r][c] = serializedBoard[key];
+// Firestore 직렬화/역직렬화
+const serializePieces = (pieces) => pieces;
+const deserializePieces = (data) => {
+    const result = {};
+    for (const key in data) {
+        result[parseInt(key)] = data[key];
     }
-    return board;
+    return result;
 };
+
+// ═══════════════════════════════════════════════════════════════
+// AI 로직
+// ═══════════════════════════════════════════════════════════════
+
+const getAIMove = (gameType, pieces, aiColor) => {
+    const config = GONU_TYPES[gameType];
+    const adjacency = config.adjacency;
+    const opponentColor = aiColor === 'B' ? 'R' : 'B';
+
+    // AI의 모든 말 찾기
+    const aiPieces = Object.entries(pieces)
+        .filter(([, color]) => color === aiColor)
+        .map(([nodeId]) => parseInt(nodeId));
+
+    // 가능한 모든 이동 찾기
+    const possibleMoves = [];
+
+    for (const fromNode of aiPieces) {
+        const targets = adjacency[fromNode] || [];
+        for (const toNode of targets) {
+            if (pieces[toNode]) continue; // 이미 말이 있음
+
+            // 호박고누 출발선 제한 체크
+            if (gameType === 'hobak') {
+                const targetNodeInfo = HOBAK_NODES.find(n => n.id === toNode);
+                if (targetNodeInfo?.isHome) continue;
+            }
+
+            // 우물고누 우물 제한 체크
+            if (gameType === 'umul' && config.isWell && config.isWell(toNode)) continue;
+
+            possibleMoves.push({ from: fromNode, to: toNode });
+        }
+    }
+
+    if (possibleMoves.length === 0) return null;
+
+    // 각 이동에 대한 점수 계산
+    const scoredMoves = possibleMoves.map(move => {
+        let score = 0;
+
+        // 시뮬레이션: 이 이동을 했을 때
+        const simulatedPieces = { ...pieces };
+        delete simulatedPieces[move.from];
+        simulatedPieces[move.to] = aiColor;
+
+        // 1. 승리 가능한 이동은 최우선
+        const winner = config.checkWin(simulatedPieces, aiColor);
+        if (winner === aiColor) {
+            score += 1000;
+        }
+
+        // 2. 상대방의 이동 가능 수 줄이기
+        const opponentPieces = Object.entries(simulatedPieces)
+            .filter(([, color]) => color === opponentColor)
+            .map(([nodeId]) => parseInt(nodeId));
+
+        let opponentMoves = 0;
+        for (const nodeId of opponentPieces) {
+            const moves = adjacency[nodeId] || [];
+            for (const target of moves) {
+                if (!simulatedPieces[target]) {
+                    if (gameType === 'hobak') {
+                        const targetNode = HOBAK_NODES.find(n => n.id === target);
+                        if (!targetNode?.isHome) opponentMoves++;
+                    } else if (gameType === 'umul') {
+                        if (!config.isWell || !config.isWell(target)) opponentMoves++;
+                    } else {
+                        opponentMoves++;
+                    }
+                }
+            }
+        }
+        score -= opponentMoves * 5; // 상대방 이동 가능 수가 적을수록 좋음
+
+        // 3. 중앙에 가까울수록 좋음 (밭고누)
+        if (gameType === 'bat') {
+            const toNode = BAT_NODES.find(n => n.id === move.to);
+            if (toNode) {
+                const centerDist = Math.abs(toNode.row - 1.5) + Math.abs(toNode.col - 1.5);
+                score -= centerDist * 2;
+            }
+
+            // 3연속 만들 수 있으면 보너스
+            if (config.checkThreeInRow(simulatedPieces, move.to, aiColor)) {
+                score += 100;
+            }
+        }
+
+        // 4. 약간의 랜덤성 추가
+        score += Math.random() * 3;
+
+        return { ...move, score };
+    });
+
+    // 가장 높은 점수의 이동 선택
+    scoredMoves.sort((a, b) => b.score - a.score);
+    return scoredMoves[0];
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 메인 컴포넌트
+// ═══════════════════════════════════════════════════════════════
 
 const GonuGame = () => {
     const { user, userDoc } = useAuth();
@@ -108,10 +468,17 @@ const GonuGame = () => {
     const [newRoomId, setNewRoomId] = useState('');
     const [feedback, setFeedback] = useState({ message: '', type: '' });
     const [selectedPiece, setSelectedPiece] = useState(null);
-    const [selectedGameType, setSelectedGameType] = useState('hobak');
+    const [selectedGameType, setSelectedGameType] = useState('umul');
     const [availableRooms, setAvailableRooms] = useState([]);
     const [showRules, setShowRules] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [gameMode, setGameMode] = useState('pvp'); // 'pvp' or 'ai'
+    const [aiThinking, setAiThinking] = useState(false);
+    const [validMoves, setValidMoves] = useState([]);
+    const [pendingCapture, setPendingCapture] = useState(null); // 밭고누에서 상대 말 제거 대기
+
+    // 로컬 AI 게임 상태
+    const [localGame, setLocalGame] = useState(null);
 
     const isMyTurn = gameData && user && gameData.turn === (gameData.players.B === user.uid ? 'B' : 'R');
     const myColor = gameData && user && (gameData.players.B === user.uid ? 'B' : 'R');
@@ -146,6 +513,45 @@ const GonuGame = () => {
         };
     }, []);
 
+    // 유효한 이동 위치 계산
+    useEffect(() => {
+        if (!selectedPiece) {
+            setValidMoves([]);
+            return;
+        }
+
+        const currentPieces = localGame?.pieces || (gameData ? deserializePieces(gameData.pieces) : {});
+        const gameType = localGame?.gameType || gameData?.gameType || 'umul';
+        const config = GONU_TYPES[gameType];
+        const adjacency = config.adjacency;
+        const currentColor = localGame ? 'B' : myColor;
+
+        if (currentPieces[selectedPiece] !== currentColor) {
+            setValidMoves([]);
+            return;
+        }
+
+        const moves = [];
+        const targets = adjacency[selectedPiece] || [];
+
+        for (const target of targets) {
+            if (currentPieces[target]) continue;
+
+            // 우물고누 우물 제한
+            if (gameType === 'umul' && config.isWell && config.isWell(target)) continue;
+
+            // 호박고누 출발선 제한
+            if (gameType === 'hobak') {
+                const targetNode = HOBAK_NODES.find(n => n.id === target);
+                if (targetNode?.isHome) continue;
+            }
+
+            moves.push(target);
+        }
+
+        setValidMoves(moves);
+    }, [selectedPiece, localGame, gameData, myColor]);
+
     const fetchAvailableRooms = useCallback(async () => {
         if (!user) return;
         setLoading(true);
@@ -171,13 +577,12 @@ const GonuGame = () => {
     }, [user]);
 
     useEffect(() => {
-        if (showCreateRoom && user) {
+        if (showCreateRoom && user && gameMode === 'pvp') {
             fetchAvailableRooms();
-            // 🔥 [최적화] 5초 → 60초로 변경 (읽기 비용 절감)
             const interval = setInterval(fetchAvailableRooms, 60000);
             return () => clearInterval(interval);
         }
-    }, [showCreateRoom, user, fetchAvailableRooms]);
+    }, [showCreateRoom, user, fetchAvailableRooms, gameMode]);
 
     const fetchGameData = useCallback(async () => {
         if (!gameId) return;
@@ -187,8 +592,7 @@ const GonuGame = () => {
             const docSnap = await getDoc(gameDocRef);
             if (docSnap.exists()) {
                 const rawData = docSnap.data();
-                const deserializedData = { ...rawData, board: deserializeBoard(rawData.board) };
-                setGameData(deserializedData);
+                setGameData(rawData);
                 setShowCreateRoom(false);
 
                 if (rawData.status === 'finished') {
@@ -207,8 +611,7 @@ const GonuGame = () => {
         }
     }, [gameId]);
 
-    // 🔥 [최적화] 60초 → 3분으로 변경 (읽기 비용 절감)
-    usePolling(fetchGameData, { interval: 180000, enabled: !!gameId });
+    usePolling(fetchGameData, { interval: 3000, enabled: !!gameId });
 
     useEffect(() => {
         if (feedback.message) {
@@ -216,6 +619,65 @@ const GonuGame = () => {
             return () => clearTimeout(timer);
         }
     }, [feedback.message]);
+
+    // AI 턴 처리
+    useEffect(() => {
+        if (!localGame || localGame.status !== 'active' || localGame.turn !== 'R' || aiThinking || pendingCapture) return;
+
+        setAiThinking(true);
+
+        const timer = setTimeout(() => {
+            const move = getAIMove(localGame.gameType, localGame.pieces, 'R');
+
+            if (move) {
+                const newPieces = { ...localGame.pieces };
+                delete newPieces[move.from];
+                newPieces[move.to] = 'R';
+
+                const config = GONU_TYPES[localGame.gameType];
+
+                // 밭고누에서 3연속 체크
+                if (localGame.gameType === 'bat' && config.checkThreeInRow(newPieces, move.to, 'R')) {
+                    // AI가 3연속을 만들었을 때 - 플레이어 말 중 하나 제거
+                    const playerPieces = Object.entries(newPieces)
+                        .filter(([, color]) => color === 'B')
+                        .map(([nodeId]) => parseInt(nodeId));
+
+                    if (playerPieces.length > 0) {
+                        // AI는 랜덤하게 하나 제거 (또는 전략적으로)
+                        const targetIdx = Math.floor(Math.random() * playerPieces.length);
+                        delete newPieces[playerPieces[targetIdx]];
+                    }
+                }
+
+                const winner = config.checkWin(newPieces, 'R');
+
+                setLocalGame(prev => ({
+                    ...prev,
+                    pieces: newPieces,
+                    turn: 'B',
+                    status: winner ? 'finished' : 'active',
+                    winner: winner,
+                }));
+            }
+
+            setAiThinking(false);
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [localGame, aiThinking, pendingCapture]);
+
+    const handleStartAIGame = () => {
+        const config = GONU_TYPES[selectedGameType];
+        setLocalGame({
+            gameType: selectedGameType,
+            pieces: config.initialPieces(),
+            turn: 'B',
+            status: 'active',
+            winner: null,
+        });
+        setShowCreateRoom(false);
+    };
 
     const handleCreateRoom = async () => {
         if (!user) {
@@ -229,7 +691,7 @@ const GonuGame = () => {
         const gameType = GONU_TYPES[selectedGameType];
 
         const initialGameData = {
-            board: serializeBoard(gameType.initialBoard()),
+            pieces: serializePieces(gameType.initialPieces()),
             players: { B: user.uid, R: null },
             playerNames: { B: userDoc.name, R: null },
             turn: 'B',
@@ -306,49 +768,104 @@ const GonuGame = () => {
         }
     };
 
-    const handleMove = useCallback(async (targetRow, targetCol) => {
-        if (!isMyTurn || !selectedPiece || !gameData) return;
+    // 밭고누에서 상대 말 제거
+    const handleCaptureClick = (nodeId) => {
+        if (!pendingCapture) return;
 
-        const { row: fromRow, col: fromCol } = selectedPiece;
-        const currentBoard = gameData.board;
-        const piece = currentBoard[fromRow][fromCol];
-        const gameType = GONU_TYPES[gameData.gameType || 'hobak'];
+        const pieces = localGame?.pieces || deserializePieces(gameData.pieces);
+        const opponentColor = pendingCapture.capturer === 'B' ? 'R' : 'B';
 
-        if (piece !== myColor) return;
-
-        const opponentColor = myColor === 'B' ? 'R' : 'B';
-
-        const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        if (gameType.allowDiagonal) {
-            directions.push([-1, -1], [-1, 1], [1, -1], [1, 1]);
+        if (pieces[nodeId] !== opponentColor) {
+            setFeedback({ message: '상대방의 말을 선택하세요.', type: 'error' });
+            return;
         }
 
-        let newRow = targetRow, newCol = targetCol, captured = [], isValidMove = false;
+        const newPieces = { ...pieces };
+        delete newPieces[nodeId];
 
-        if (targetRow < 0 || targetRow >= BOARD_SIZE || targetCol < 0 || targetCol >= BOARD_SIZE) return;
+        const config = GONU_TYPES[localGame?.gameType || gameData.gameType];
+        const winner = config.checkWin(newPieces, pendingCapture.capturer);
 
-        if (gameType.name === '참고누' && gameType.canCapture) {
-            const clickedPiece = currentBoard[targetRow][targetCol];
-            if (Math.abs(targetRow - fromRow) <= 1 && Math.abs(targetCol - fromCol) <= 1 && clickedPiece === opponentColor) {
-                const jumpRow = targetRow + (targetRow - fromRow), jumpCol = targetCol + (targetCol - fromCol);
-                if (jumpRow >= 0 && jumpRow < BOARD_SIZE && jumpCol >= 0 && jumpCol < BOARD_SIZE && currentBoard[jumpRow][jumpCol] === null) {
-                    newRow = jumpRow; newCol = jumpCol; captured.push([targetRow, targetCol]); isValidMove = true;
-                }
-            } else if (currentBoard[targetRow][targetCol] === null) {
-                isValidMove = directions.some(([dr, dc]) => fromRow + dr === targetRow && fromCol + dc === targetCol);
-            }
-        } else {
-            if (currentBoard[targetRow][targetCol] === null) {
-                isValidMove = directions.some(([dr, dc]) => fromRow + dr === targetRow && fromCol + dc === targetCol);
-            }
+        if (localGame) {
+            setLocalGame(prev => ({
+                ...prev,
+                pieces: newPieces,
+                turn: pendingCapture.capturer === 'B' ? 'R' : 'B',
+                status: winner ? 'finished' : 'active',
+                winner: winner,
+            }));
         }
 
-        if (!isValidMove) {
-            setFeedback({ message: '유효하지 않은 이동입니다.', type: 'error' });
+        setPendingCapture(null);
+    };
+
+    const handleMove = useCallback(async (targetNode) => {
+        if (pendingCapture) {
+            handleCaptureClick(targetNode);
+            return;
+        }
+
+        if (selectedPiece === null) return;
+
+        // 로컬 AI 게임
+        if (localGame) {
+            if (localGame.status !== 'active' || localGame.turn !== 'B') return;
+
+            const pieces = localGame.pieces;
+            if (pieces[selectedPiece] !== 'B') return;
+            if (!validMoves.includes(targetNode)) {
+                setFeedback({ message: '이동할 수 없는 위치입니다.', type: 'error' });
+                return;
+            }
+
+            const newPieces = { ...pieces };
+            delete newPieces[selectedPiece];
+            newPieces[targetNode] = 'B';
+
+            const config = GONU_TYPES[localGame.gameType];
+
+            // 밭고누에서 3연속 체크
+            if (localGame.gameType === 'bat' && config.checkThreeInRow(newPieces, targetNode, 'B')) {
+                // 상대 말 제거 대기 상태로
+                setLocalGame(prev => ({
+                    ...prev,
+                    pieces: newPieces,
+                }));
+                setPendingCapture({ capturer: 'B' });
+                setSelectedPiece(null);
+                setFeedback({ message: '3연속! 제거할 상대 말을 선택하세요.', type: 'success' });
+                return;
+            }
+
+            const winner = config.checkWin(newPieces, 'B');
+
+            setLocalGame(prev => ({
+                ...prev,
+                pieces: newPieces,
+                turn: 'R',
+                status: winner ? 'finished' : 'active',
+                winner: winner,
+            }));
+            setSelectedPiece(null);
+
+            if (winner === 'B') {
+                setFeedback({ message: '🎉 승리했습니다!', type: 'success' });
+            }
+            return;
+        }
+
+        // 온라인 게임
+        if (!isMyTurn || !gameData) return;
+
+        const pieces = deserializePieces(gameData.pieces);
+        if (pieces[selectedPiece] !== myColor) return;
+        if (!validMoves.includes(targetNode)) {
+            setFeedback({ message: '이동할 수 없는 위치입니다.', type: 'error' });
             return;
         }
 
         const gameRef = doc(db, 'gonuGames', gameId);
+
         try {
             await runTransaction(db, async (transaction) => {
                 const gameDoc = await transaction.get(gameRef);
@@ -356,25 +873,25 @@ const GonuGame = () => {
                 const currentData = gameDoc.data();
                 if (currentData.turn !== myColor) throw new Error('상대방의 턴입니다.');
 
-                let board = deserializeBoard(currentData.board);
-                board[fromRow][fromCol] = null;
-                captured.forEach(([r, c]) => { board[r][c] = null; });
-                board[newRow][newCol] = myColor;
+                const newPieces = { ...deserializePieces(currentData.pieces) };
+                delete newPieces[selectedPiece];
+                newPieces[targetNode] = myColor;
 
-                let winner = null;
-                // 승리 조건 검사 로직 (생략)
+                const config = GONU_TYPES[gameData.gameType];
+                const winner = config.checkWin(newPieces, myColor);
+                const opponentColor = myColor === 'B' ? 'R' : 'B';
 
                 transaction.update(gameRef, {
-                    board: serializeBoard(board),
+                    pieces: serializePieces(newPieces),
                     turn: opponentColor,
                     status: winner ? 'finished' : 'active',
                     winner: winner,
                 });
+
                 if (winner) {
                     const userDocRef = doc(db, 'users', user.uid);
                     transaction.update(userDocRef, { coupons: increment(1) });
 
-                    // 🔥 활동 로그 기록 (고누 승리)
                     logActivity(db, {
                         classCode: userDoc?.classCode,
                         userId: user.uid,
@@ -395,19 +912,44 @@ const GonuGame = () => {
             console.error('Move error:', error);
             setFeedback({ message: `이동 실패: ${error.message}`, type: 'error' });
         }
-    }, [gameId, gameData, isMyTurn, myColor, selectedPiece, user?.uid]);
+    }, [gameId, gameData, isMyTurn, myColor, selectedPiece, user?.uid, localGame, validMoves, pendingCapture]);
 
-    const handlePieceClick = (row, col) => {
-        if (!isMyTurn || gameData.status !== 'active') return;
-        const piece = gameData.board[row][col];
-        if (piece === myColor) {
-            setSelectedPiece({ row, col });
-        } else if (selectedPiece) {
-            handleMove(row, col);
+    const handleNodeClick = (nodeId) => {
+        if (pendingCapture) {
+            handleCaptureClick(nodeId);
+            return;
+        }
+
+        const pieces = localGame?.pieces || (gameData ? deserializePieces(gameData.pieces) : {});
+        const currentTurn = localGame?.turn || gameData?.turn;
+        const currentColor = localGame ? 'B' : myColor;
+        const status = localGame?.status || gameData?.status;
+
+        if (status !== 'active') return;
+        if (localGame && currentTurn !== 'B') return;
+        if (!localGame && !isMyTurn) return;
+
+        // 자기 말 선택
+        if (pieces[nodeId] === currentColor) {
+            setSelectedPiece(nodeId);
+            return;
+        }
+
+        // 빈 칸으로 이동
+        if (selectedPiece !== null && !pieces[nodeId]) {
+            handleMove(nodeId);
         }
     };
 
     const handleLeaveGame = async () => {
+        if (localGame) {
+            setLocalGame(null);
+            setShowCreateRoom(true);
+            setSelectedPiece(null);
+            setPendingCapture(null);
+            return;
+        }
+
         if (gameData && gameData.status === 'waiting' && gameId && gameData.players.B === user.uid) {
             try { await deleteDoc(doc(db, 'gonuGames', gameId)); } catch (error) { console.error("Error deleting room:", error); }
         }
@@ -416,6 +958,141 @@ const GonuGame = () => {
         setGameData(null);
         setShowCreateRoom(true);
         setSelectedPiece(null);
+        setPendingCapture(null);
+    };
+
+    // 게임 보드 렌더링
+    const renderBoard = () => {
+        const gameType = localGame?.gameType || gameData?.gameType || 'umul';
+        const config = GONU_TYPES[gameType];
+        const pieces = localGame?.pieces || (gameData ? deserializePieces(gameData.pieces) : {});
+        const currentTurn = localGame?.turn || gameData?.turn;
+
+        return (
+            <svg
+                className="gonu-svg-board"
+                viewBox={`0 0 ${config.boardWidth} ${config.boardHeight}`}
+                style={{ maxWidth: config.boardWidth, maxHeight: config.boardHeight }}
+            >
+                {/* 배경 */}
+                <rect x="0" y="0" width={config.boardWidth} height={config.boardHeight} fill="#2a2a3a" rx="10" />
+
+                {/* 연결선 */}
+                {config.edges.map(([from, to], idx) => {
+                    const fromNode = config.nodes.find(n => n.id === from);
+                    const toNode = config.nodes.find(n => n.id === to);
+                    return (
+                        <line
+                            key={`edge-${idx}`}
+                            x1={fromNode.x}
+                            y1={fromNode.y}
+                            x2={toNode.x}
+                            y2={toNode.y}
+                            stroke="#555"
+                            strokeWidth="3"
+                        />
+                    );
+                })}
+
+                {/* 노드 및 말 */}
+                {config.nodes.map(node => {
+                    const piece = pieces[node.id];
+                    const isSelected = selectedPiece === node.id;
+                    const isValidMove = validMoves.includes(node.id);
+                    const isWell = gameType === 'umul' && config.isWell && config.isWell(node.id);
+                    const isHome = node.isHome;
+                    const isPendingCapture = pendingCapture && piece && piece !== pendingCapture.capturer;
+
+                    return (
+                        <g
+                            key={`node-${node.id}`}
+                            onClick={() => handleNodeClick(node.id)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            {/* 노드 배경 */}
+                            <circle
+                                cx={node.x}
+                                cy={node.y}
+                                r={isWell ? 20 : 22}
+                                fill={isWell ? '#333' : isValidMove ? '#4a7' : isHome ? (isHome === 'B' ? '#334' : '#433') : '#444'}
+                                stroke={isSelected ? '#0ff' : isValidMove ? '#4f7' : isPendingCapture ? '#f44' : '#666'}
+                                strokeWidth={isSelected || isValidMove || isPendingCapture ? 3 : 2}
+                            />
+
+                            {/* 우물 표시 */}
+                            {isWell && (
+                                <text
+                                    x={node.x}
+                                    y={node.y + 5}
+                                    textAnchor="middle"
+                                    fill="#666"
+                                    fontSize="12"
+                                    fontWeight="bold"
+                                >
+                                    우물
+                                </text>
+                            )}
+
+                            {/* 출발선 표시 */}
+                            {isHome && !piece && (
+                                <text
+                                    x={node.x}
+                                    y={node.y + 5}
+                                    textAnchor="middle"
+                                    fill={isHome === 'B' ? '#88f' : '#f88'}
+                                    fontSize="10"
+                                >
+                                    출발
+                                </text>
+                            )}
+
+                            {/* 말 */}
+                            {piece && (
+                                <>
+                                    <circle
+                                        cx={node.x}
+                                        cy={node.y}
+                                        r={18}
+                                        fill={piece === 'B' ? '#222' : '#c00'}
+                                        stroke={piece === 'B' ? '#555' : '#f66'}
+                                        strokeWidth="2"
+                                    />
+                                    <circle
+                                        cx={node.x - 4}
+                                        cy={node.y - 4}
+                                        r={5}
+                                        fill={piece === 'B' ? '#444' : '#f44'}
+                                        opacity="0.5"
+                                    />
+                                </>
+                            )}
+
+                            {/* 이동 가능 표시 */}
+                            {isValidMove && !piece && (
+                                <circle
+                                    cx={node.x}
+                                    cy={node.y}
+                                    r={8}
+                                    fill="#4f7"
+                                    opacity="0.6"
+                                />
+                            )}
+                        </g>
+                    );
+                })}
+
+                {/* 턴 표시 */}
+                <text
+                    x={config.boardWidth / 2}
+                    y={config.boardHeight - 8}
+                    textAnchor="middle"
+                    fill="#aaa"
+                    fontSize="11"
+                >
+                    {currentTurn === 'B' ? '⚫ 흑 차례' : '🔴 적 차례'}
+                </text>
+            </svg>
+        );
     };
 
     if (showCreateRoom) {
@@ -423,9 +1100,28 @@ const GonuGame = () => {
             <div className="gonu-container">
                 <div className="room-creation">
                     <h2>🎯 고누 게임</h2>
-                    <p>전통 한국 보드게임을 온라인으로 즐겨보세요!</p>
+                    <p>한국 전통 보드게임을 즐겨보세요!</p>
 
                     {feedback.message && <div className={`feedback ${feedback.type}`}>{feedback.message}</div>}
+
+                    {/* 게임 모드 선택 */}
+                    <div className="game-mode-selector">
+                        <h3>🎮 게임 모드</h3>
+                        <div className="mode-buttons">
+                            <button
+                                className={`mode-btn ${gameMode === 'ai' ? 'selected' : ''}`}
+                                onClick={() => setGameMode('ai')}
+                            >
+                                🤖 AI 대전
+                            </button>
+                            <button
+                                className={`mode-btn ${gameMode === 'pvp' ? 'selected' : ''}`}
+                                onClick={() => setGameMode('pvp')}
+                            >
+                                👥 친구 대전
+                            </button>
+                        </div>
+                    </div>
 
                     <div className="game-type-selector">
                         <h3>게임 종류 선택</h3>
@@ -455,17 +1151,25 @@ const GonuGame = () => {
                     </div>
 
                     <div className="room-actions">
-                        <button onClick={handleCreateRoom} className="create-room-btn" disabled={loading}>
-                            {loading ? <span className="loading"></span> : '새로운 방 만들기'}
-                        </button>
+                        {gameMode === 'ai' ? (
+                            <button onClick={handleStartAIGame} className="create-room-btn" disabled={loading}>
+                                🤖 AI와 대전 시작
+                            </button>
+                        ) : (
+                            <>
+                                <button onClick={handleCreateRoom} className="create-room-btn" disabled={loading}>
+                                    {loading ? <span className="loading"></span> : '새로운 방 만들기'}
+                                </button>
 
-                        <div className="join-room">
-                            <input type="text" value={newRoomId} onChange={(e) => setNewRoomId(e.target.value)} placeholder="방 코드 입력" maxLength="6" />
-                            <button onClick={() => handleJoinRoom()} disabled={loading}>{loading ? <span className="loading"></span> : '코드로 참가'}</button>
-                        </div>
+                                <div className="join-room">
+                                    <input type="text" value={newRoomId} onChange={(e) => setNewRoomId(e.target.value)} placeholder="방 코드 입력" maxLength="6" />
+                                    <button onClick={() => handleJoinRoom()} disabled={loading}>{loading ? <span className="loading"></span> : '코드로 참가'}</button>
+                                </div>
+                            </>
+                        )}
                     </div>
 
-                    {availableRooms.length > 0 && (
+                    {gameMode === 'pvp' && availableRooms.length > 0 && (
                         <div className="available-rooms">
                             <h3>📋 대기 중인 방 목록</h3>
                             <div className="rooms-list">
@@ -492,62 +1196,78 @@ const GonuGame = () => {
         );
     }
 
-    if (!gameData) {
+    // 온라인 게임 로딩
+    if (!localGame && !gameData) {
         return <AlchanLoading />;
     }
 
-    // Force strict dark mode background via inline style
-    const containerStyle = {
-        backgroundColor: '#0a0a12',
-        minHeight: '100%',
-        width: '100%'
-    };
+    const currentGameType = localGame?.gameType || gameData?.gameType || 'umul';
+    const currentStatus = localGame?.status || gameData?.status;
+    const currentWinner = localGame?.winner || gameData?.winner;
+    const currentTurn = localGame?.turn || gameData?.turn;
 
     return (
-        <div className="gonu-container" style={containerStyle}>
+        <div className="gonu-container">
             <div className="game-info">
-                <h2>{gameData.gameName || '고누 게임'} (방: {gameId})</h2>
-                <div className="player-info">
-                    <p className={`player-b ${gameData.turn === 'B' ? 'active-turn' : ''}`}>
-                        ⚫ {gameData.playerNames.B || '플레이어 1'} {gameData.players.B === user?.uid && '(나)'}
-                    </p>
-                    <p className={`player-r ${gameData.turn === 'R' ? 'active-turn' : ''}`}>
-                        🔴 {gameData.playerNames.R || '대기중...'} {gameData.players.R === user?.uid && '(나)'}
-                    </p>
-                </div>
+                <h2>
+                    {GONU_TYPES[currentGameType].name}
+                    {localGame && ' (AI 대전)'}
+                    {gameId && ` (방: ${gameId})`}
+                </h2>
 
-                {gameData.status === 'finished' ? (
-                    <div className="game-status winner">
-                        {gameData.winner === myColor ? '🎉 승리! 쿠폰 1개를 획득했습니다!' : '😢 패배했습니다.'}
+                {!localGame && (
+                    <div className="player-info">
+                        <p className={`player-b ${currentTurn === 'B' ? 'active-turn' : ''}`}>
+                            ⚫ {gameData?.playerNames?.B || '플레이어 1'} {gameData?.players?.B === user?.uid && '(나)'}
+                        </p>
+                        <p className={`player-r ${currentTurn === 'R' ? 'active-turn' : ''}`}>
+                            🔴 {gameData?.playerNames?.R || '대기중...'} {gameData?.players?.R === user?.uid && '(나)'}
+                        </p>
                     </div>
-                ) : gameData.status === 'waiting' ? (
+                )}
+
+                {localGame && (
+                    <div className="player-info">
+                        <p className={`player-b ${currentTurn === 'B' ? 'active-turn' : ''}`}>
+                            ⚫ 나 (흑)
+                        </p>
+                        <p className={`player-r ${currentTurn === 'R' ? 'active-turn' : ''}`}>
+                            🔴 AI (적) {aiThinking && '🤔 생각 중...'}
+                        </p>
+                    </div>
+                )}
+
+                {currentStatus === 'finished' ? (
+                    <div className="game-status winner">
+                        {localGame ? (
+                            currentWinner === 'B' ? '🎉 승리했습니다!' : '😢 AI에게 패배했습니다.'
+                        ) : (
+                            currentWinner === myColor ? '🎉 승리! 쿠폰 1개를 획득했습니다!' : '😢 패배했습니다.'
+                        )}
+                    </div>
+                ) : currentStatus === 'waiting' ? (
                     <div className="game-status">상대방을 기다리는 중...</div>
+                ) : pendingCapture ? (
+                    <div className="game-status capture-mode">🎯 제거할 상대 말을 선택하세요!</div>
                 ) : (
-                    <div className="game-status">{isMyTurn ? "🎯 당신의 턴입니다." : "⏳ 상대방의 턴을 기다리는 중..."}</div>
+                    <div className="game-status">
+                        {localGame ? (
+                            currentTurn === 'B' ? "🎯 당신의 턴입니다." : "⏳ AI가 생각 중..."
+                        ) : (
+                            isMyTurn ? "🎯 당신의 턴입니다." : "⏳ 상대방의 턴을 기다리는 중..."
+                        )}
+                    </div>
                 )}
             </div>
 
             <div className="board-area">
-                <div className="gonu-board">
-                    {gameData.board.map((row, rIndex) => (
-                        row.map((cell, cIndex) => (
-                            <div
-                                key={`${rIndex}-${cIndex}`}
-                                className={`cell ${selectedPiece && selectedPiece.row === rIndex && selectedPiece.col === cIndex ? 'selected' : ''}`}
-                                onClick={() => handlePieceClick(rIndex, cIndex)}
-                            >
-                                {cell === 'B' && <div className="piece black"></div>}
-                                {cell === 'R' && <div className="piece red"></div>}
-                            </div>
-                        ))
-                    ))}
-                </div>
+                {renderBoard()}
             </div>
 
             {feedback.message && <div className={`feedback ${feedback.type}`}>{feedback.message}</div>}
 
             <button onClick={handleLeaveGame} className="leave-button">
-                {gameData.status === 'finished' ? '나가기' : '게임 나가기'}
+                {currentStatus === 'finished' ? '나가기' : '게임 나가기'}
             </button>
         </div>
     );
