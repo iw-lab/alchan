@@ -971,8 +971,10 @@ const GonuGame = () => {
         return (
             <svg
                 className="gonu-svg-board"
+                width={config.boardWidth}
+                height={config.boardHeight}
                 viewBox={`0 0 ${config.boardWidth} ${config.boardHeight}`}
-                style={{ maxWidth: config.boardWidth, maxHeight: config.boardHeight }}
+                style={{ width: '100%', maxWidth: config.boardWidth, height: 'auto' }}
             >
                 {/* 배경 */}
                 <rect x="0" y="0" width={config.boardWidth} height={config.boardHeight} fill="#2a2a3a" rx="10" />
