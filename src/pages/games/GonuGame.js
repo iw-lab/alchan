@@ -189,10 +189,10 @@ const GONU_TYPES = {
         edges: UMUL_EDGES,
         adjacency: UMUL_VALID_MOVES,
         initialPieces: () => ({
-            0: 'B',  // 상단 - 흑
-            4: 'B',  // 하단 - 흑 (대각선 위치)
-            1: 'R',  // 좌측 - 적
-            3: 'R',  // 우측 - 적
+            0: 'B',  // 상단 - 파랑
+            1: 'B',  // 좌측 - 파랑
+            3: 'R',  // 우측 - 빨강
+            4: 'R',  // 하단 - 빨강
         }),
         piecesPerPlayer: 2,
         boardWidth: 300,
