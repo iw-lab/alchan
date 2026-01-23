@@ -968,7 +968,7 @@ const RealEstateRegistry = () => {
     }
   };
 
-  // 🔥 [추가] 모든 미입주 학생을 자동으로 빈 부동산에 배정
+  // 🔥 [최적화] 모든 미입주 학생을 자동으로 빈 부동산에 배정 - 배치 쓰기로 변경
   const handleAdminAssignAllSeats = async () => {
     if (!classCode || !currentUser || !isAdmin()) {
       alert("권한이 없거나 학급 정보가 없습니다.");
@@ -1000,85 +1000,62 @@ const RealEstateRegistry = () => {
 
     setOperationLoading(true);
 
-    let successCount = 0;
-    let failCount = 0;
-
     try {
-      // 각 미입주 학생을 순차적으로 배정
+      // 🔥 [최적화] 배치 쓰기로 모든 배정을 한 번에 처리 (N개 쓰기 → 1개 쓰기)
+      const batch = writeBatch(db);
+      const assignments = []; // 로컬 상태 업데이트용
+
       for (let i = 0; i < nonTenantsList.length; i++) {
         const user = nonTenantsList[i];
+        const targetProperty = emptyProperties[i];
 
-        // 현재 빈 부동산 다시 확인 (이전 배정으로 상태가 변경될 수 있음)
-        const currentEmptyProperties = properties.filter(p => !p.tenantId);
+        const propertyRef = doc(
+          db,
+          "classes",
+          classCode,
+          "realEstateProperties",
+          targetProperty.id
+        );
 
-        if (currentEmptyProperties.length === 0) {
-          console.warn(`[RealEstate] 빈 부동산 부족: ${user.name} 배정 실패`);
-          failCount++;
-          continue;
-        }
+        batch.update(propertyRef, {
+          tenant: user.name,
+          tenantId: user.id,
+          tenantName: user.name,
+          lastRentPayment: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
 
-        const targetProperty = currentEmptyProperties[0];
+        assignments.push({
+          propertyId: targetProperty.id,
+          userId: user.id,
+          userName: user.name,
+        });
 
-        try {
-          const propertyRef = doc(
-            db,
-            "classes",
-            classCode,
-            "realEstateProperties",
-            targetProperty.id
-          );
-
-          await runTransaction(db, async (transaction) => {
-            const propertyDoc = await transaction.get(propertyRef);
-            if (!propertyDoc.exists()) {
-              throw new Error("부동산 정보를 찾을 수 없습니다.");
-            }
-            const propertyData = propertyDoc.data();
-
-            // 이미 다른 사람이 입주했는지 확인
-            if (propertyData.tenantId) {
-              throw new Error("이미 다른 사람이 입주해 있습니다.");
-            }
-
-            // 강제 입주 처리
-            transaction.update(propertyRef, {
-              tenant: user.name,
-              tenantId: user.id,
-              tenantName: user.name,
-              lastRentPayment: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
-          });
-
-          // 로컬 상태 업데이트 (다음 학생 배정을 위해)
-          setProperties(prevProperties =>
-            prevProperties.map(p =>
-              p.id === targetProperty.id
-                ? {
-                    ...p,
-                    tenant: user.name,
-                    tenantId: user.id,
-                    tenantName: user.name,
-                  }
-                : p
-            )
-          );
-
-          console.log(`[RealEstate] 자동 배정 성공: ${user.name} -> 부동산 #${targetProperty.id}`);
-          successCount++;
-
-          // 유저 캐시 무효화
-          if (user.id) {
-            globalCache.invalidate(`user_${user.id}`);
-          }
-
-        } catch (error) {
-          console.error(`[RealEstate] ${user.name} 배정 실패:`, error);
-          failCount++;
-        }
+        // 유저 캐시 무효화
+        globalCache.invalidate(`user_${user.id}`);
       }
 
-      alert(`자동 배정 완료!\n\n성공: ${successCount}명\n실패: ${failCount}명`);
+      // 🔥 한 번에 커밋 (Firestore 쓰기 비용 대폭 절감)
+      await batch.commit();
+
+      // 로컬 상태 일괄 업데이트
+      setProperties(prevProperties =>
+        prevProperties.map(p => {
+          const assignment = assignments.find(a => a.propertyId === p.id);
+          if (assignment) {
+            return {
+              ...p,
+              tenant: assignment.userName,
+              tenantId: assignment.userId,
+              tenantName: assignment.userName,
+            };
+          }
+          return p;
+        })
+      );
+
+      console.log(`[RealEstate] 배치 자동 배정 완료: ${assignments.length}명`);
+      alert(`자동 배정 완료!\n\n성공: ${assignments.length}명`);
 
       // 🔥 서버 데이터와 동기화
       await refreshProperties();

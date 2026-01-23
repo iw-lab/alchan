@@ -3,10 +3,33 @@
 
 import React, { useEffect, Suspense, lazy, Component } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ItemProvider } from "./contexts/ItemContext";
+// 🔥 [최적화] ItemProvider는 AlchanLayout으로 이동 (로그인 후에만 마운트)
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SkeletonPage } from "./components/ui/Skeleton";
+
+// 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 🔥 캐시 유지 시간: 30분 (Firestore 재요청 방지)
+      staleTime: 30 * 60 * 1000,
+      // 🔥 캐시 저장 시간: 2시간
+      gcTime: 2 * 60 * 60 * 1000,
+      // 🔥 창 포커스 시 자동 refetch 비활성화 (비용 절감)
+      refetchOnWindowFocus: false,
+      // 🔥 재연결 시 자동 refetch 비활성화
+      refetchOnReconnect: false,
+      // 🔥 마운트 시 자동 refetch 비활성화 (캐시 우선)
+      refetchOnMount: false,
+      // 🔥 실패 시 재시도 1회만
+      retry: 1,
+      // 🔥 네트워크 에러 시에만 재시도
+      retryOnMount: false,
+    },
+  },
+});
 
 // 코드 스플리팅 - 레이아웃과 로그인 페이지
 const AlchanLayout = lazy(() => import("./components/AlchanLayout"));
@@ -139,9 +162,10 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <ItemProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
             <Router>
               <Suspense fallback={<SkeletonPage />}>
                 <Routes>
@@ -150,9 +174,9 @@ function App() {
                 </Routes>
               </Suspense>
             </Router>
-          </ItemProvider>
-        </AuthProvider>
-      </ThemeProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

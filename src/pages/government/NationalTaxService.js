@@ -1,4 +1,10 @@
 // src/NationalTaxService.js
+// ========================================
+// 국세청 - 관리자(선생님) 현금 = 국고
+// ========================================
+// 국고는 별도의 문서가 아닌 학급 관리자(선생님)의 현금으로 통합됨
+// 모든 세금은 관리자 계정으로 직접 입금됨
+// ========================================
 import React, { useState, useEffect, useCallback } from "react";
 import { db, getCachedDocument, invalidateCache } from "../../firebase";
 import {
@@ -8,6 +14,10 @@ import {
   setDoc,
   serverTimestamp,
   increment,
+  collection,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
 import { formatKoreanCurrency } from "../../numberFormatter";
@@ -19,8 +29,9 @@ const formatDate = (timestamp) => {
   return date.toLocaleString("ko-KR");
 };
 
+// 세수 통계용 (국고 잔액은 관리자 현금에서 가져옴)
 const DEFAULT_TREASURY_DATA = {
-  totalAmount: 0,
+  totalAmount: 0, // 이 값은 사용하지 않음 - 관리자 현금으로 대체
   stockTaxRevenue: 0,
   stockCommissionRevenue: 0,
   realEstateTransactionTaxRevenue: 0,
@@ -48,11 +59,39 @@ const DEFAULT_TAX_SETTINGS = {
 const NationalTaxService = ({ classCode }) => {
   const [treasuryData, setTreasuryData] = useState(DEFAULT_TREASURY_DATA);
   const [taxSettings, setTaxSettings] = useState(DEFAULT_TAX_SETTINGS);
+  const [adminCash, setAdminCash] = useState(0); // 관리자(선생님) 현금 = 국고
   const [loadingTreasury, setLoadingTreasury] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [editableSettings, setEditableSettings] = useState(DEFAULT_TAX_SETTINGS);
 
+  // 관리자(선생님) 현금 가져오기 - 이것이 곧 국고
+  const fetchAdminCash = useCallback(async () => {
+    if (!classCode) {
+      setAdminCash(0);
+      return;
+    }
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(
+        usersRef,
+        where("classCode", "==", classCode),
+        where("isAdmin", "==", true)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const adminData = snapshot.docs[0].data();
+        setAdminCash(adminData.cash || 0);
+      } else {
+        setAdminCash(0);
+      }
+    } catch (error) {
+      console.error(`[${classCode}] 관리자 현금(국고) 로드 실패:`, error);
+      setAdminCash(0);
+    }
+  }, [classCode]);
+
+  // 세수 통계 데이터 가져오기 (참고용 - 국고 잔액은 관리자 현금 사용)
   const fetchTreasuryData = useCallback(async () => {
     if (!classCode) {
       setLoadingTreasury(false);
@@ -60,6 +99,10 @@ const NationalTaxService = ({ classCode }) => {
       return;
     }
     setLoadingTreasury(true);
+
+    // 관리자 현금 먼저 가져오기
+    await fetchAdminCash();
+
     const treasuryRef = doc(db, "nationalTreasuries", classCode);
     try {
       const cached = await getCachedDocument("nationalTreasuries", classCode, 5 * 60 * 1000);
@@ -74,6 +117,7 @@ const NationalTaxService = ({ classCode }) => {
         setTreasuryData({ ...DEFAULT_TREASURY_DATA, ...docSnap.data() });
         invalidateCache(`doc_nationalTreasuries_${classCode}`);
       } else {
+        // 세수 통계 문서가 없으면 생성 (국고 잔액은 관리자 현금이므로 totalAmount는 0으로)
         await setDoc(treasuryRef, {
           ...DEFAULT_TREASURY_DATA,
           createdAt: serverTimestamp(),
@@ -87,10 +131,10 @@ const NationalTaxService = ({ classCode }) => {
       }
       setLoadingTreasury(false);
     } catch (error) {
-      console.error(`[${classCode}] 국고 데이터 로드 실패:`, error);
+      console.error(`[${classCode}] 세수 통계 데이터 로드 실패:`, error);
       setLoadingTreasury(false);
     }
-  }, [classCode]);
+  }, [classCode, fetchAdminCash]);
 
   const { refetch: refetchTreasury } = usePolling(fetchTreasuryData, { interval: 300000, enabled: !!classCode });
 
@@ -262,10 +306,11 @@ const NationalTaxService = ({ classCode }) => {
       {activeTab === "overview" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {/* 총 국고 */}
+            {/* 총 국고 = 관리자(선생님) 현금 */}
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg border border-emerald-400/30">
               <p className="text-emerald-100 text-sm font-medium mb-1">💰 총 국고</p>
-              <p className="text-2xl font-bold text-shadow-sm">{formatKoreanCurrency(treasuryData.totalAmount)}</p>
+              <p className="text-2xl font-bold text-shadow-sm">{formatKoreanCurrency(adminCash)}</p>
+              <p className="text-emerald-200 text-xs mt-1">= 학급 관리자 현금</p>
             </div>
 
             {/* 주식 거래세 수입 */}

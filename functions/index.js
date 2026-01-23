@@ -1077,15 +1077,36 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
   const itemRef = db.collection("storeItems").doc(itemId);
   const userItemRef = userRef.collection("inventory").doc(itemId);
 
+  // 재고 보충 비용을 관리자에게 청구하기 위해 관리자 찾기
+  let adminRef = null;
+  const adminSnapshot = await db.collection("users")
+    .where("classCode", "==", classCode)
+    .where("isAdmin", "==", true)
+    .limit(1)
+    .get();
+
+  if (!adminSnapshot.empty) {
+    adminRef = adminSnapshot.docs[0].ref;
+  }
+
   try {
     // 🔥 Transaction으로 변경하여 원자적 처리 및 재고 보충 정보 포함
     const result = await db.runTransaction(async (transaction) => {
       // 모든 읽기 작업을 먼저 수행
-      const [userDoc, itemDoc, userItemDoc] = await Promise.all([
+      const readPromises = [
         transaction.get(userRef),
         transaction.get(itemRef),
         transaction.get(userItemRef),
-      ]);
+      ];
+
+      // 관리자 문서도 읽기 (재고 보충 시 필요)
+      if (adminRef) {
+        readPromises.push(transaction.get(adminRef));
+      }
+
+      const results = await Promise.all(readPromises);
+      const [userDoc, itemDoc, userItemDoc] = results;
+      const adminDoc = adminRef ? results[3] : null;
 
       if (!userDoc.exists) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
@@ -1117,6 +1138,7 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
       let restocked = false;
       let finalStock = newStock;
       let finalPrice = itemData.price;
+      let restockCost = 0;
 
       if (itemData.stock !== undefined && newStock === 0) {
         restocked = true;
@@ -1125,7 +1147,34 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
         finalStock = initialStock;
         finalPrice = Math.round(itemData.price * (1 + priceIncreasePercentage / 100));
 
-        logger.info(`[purchaseStoreItem] ${itemData.name} 품절 -> 재고 ${initialStock}개 보충, 가격 ${itemData.price}원 -> ${finalPrice}원 (${priceIncreasePercentage}% 인상)`);
+        // 재고 보충 비용 계산 (현재 가격 * 보충 수량)
+        restockCost = itemData.price * initialStock;
+
+        // 관리자 잔액 확인
+        if (adminDoc && adminDoc.exists) {
+          const adminData = adminDoc.data();
+          const adminCash = adminData.cash || 0;
+
+          if (adminCash < restockCost) {
+            logger.warn(`[purchaseStoreItem] 재고 보충 실패 - 관리자 잔액 부족 (필요: ${restockCost.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`);
+            // 잔액 부족 시 재고 보충하지 않음
+            restocked = false;
+            finalStock = 0;
+            finalPrice = itemData.price;
+            restockCost = 0;
+          }
+        } else {
+          logger.warn(`[purchaseStoreItem] 재고 보충 실패 - 관리자 계정 없음`);
+          // 관리자 없으면 재고 보충하지 않음
+          restocked = false;
+          finalStock = 0;
+          finalPrice = itemData.price;
+          restockCost = 0;
+        }
+
+        if (restocked) {
+          logger.info(`[purchaseStoreItem] ${itemData.name} 품절 -> 재고 ${initialStock}개 보충, 가격 ${itemData.price}원 -> ${finalPrice}원 (${priceIncreasePercentage}% 인상), 관리자 비용: ${restockCost.toLocaleString()}원`);
+        }
       }
 
       // 모든 쓰기 작업 수행
@@ -1148,6 +1197,14 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
         }
 
         transaction.update(itemRef, stockUpdate);
+      }
+
+      // 재고 보충 시 관리자 계정에서 비용 차감
+      if (restocked && adminRef && restockCost > 0) {
+        transaction.update(adminRef, {
+          cash: admin.firestore.FieldValue.increment(-restockCost),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
       // 사용자 아이템에 추가
@@ -1181,10 +1238,11 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
         restocked: restocked,
         newStock: finalStock,
         newPrice: finalPrice,
+        restockCost: restockCost,
       };
     });
 
-    logger.info(`[purchaseStoreItem] ${uid}님이 ${result.itemName} ${result.quantity}개 구매 (${result.totalCost}원)${result.restocked ? ' [재고 자동 보충됨]' : ''}`);
+    logger.info(`[purchaseStoreItem] ${uid}님이 ${result.itemName} ${result.quantity}개 구매 (${result.totalCost}원)${result.restocked ? ` [재고 자동 보충됨 - 관리자 비용: ${result.restockCost.toLocaleString()}원]` : ''}`);
 
     return {
       success: true,

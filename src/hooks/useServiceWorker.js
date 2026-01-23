@@ -27,6 +27,18 @@ export function useServiceWorker() {
     };
   }, []);
 
+  // 🔥 [최적화] interval ID 저장용 state (cleanup을 위해)
+  const [updateIntervalId, setUpdateIntervalId] = useState(null);
+
+  // 🔥 [최적화] cleanup을 위한 effect
+  useEffect(() => {
+    return () => {
+      if (updateIntervalId) {
+        clearInterval(updateIntervalId);
+      }
+    };
+  }, [updateIntervalId]);
+
   const registerServiceWorker = async () => {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js', {
@@ -55,10 +67,11 @@ export function useServiceWorker() {
         }
       });
 
-      // 주기적 업데이트 확인 (1시간마다)
-      setInterval(() => {
+      // 🔥 [최적화] 주기적 업데이트 확인 (1시간마다) - cleanup 가능하도록 ID 저장
+      const intervalId = setInterval(() => {
         reg.update();
       }, 60 * 60 * 1000);
+      setUpdateIntervalId(intervalId);
 
     } catch (error) {
       console.error('[PWA] 서비스 워커 등록 실패:', error);

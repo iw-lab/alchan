@@ -67,7 +67,7 @@ export const ALCHAN_MENU_ITEMS = [
   { id: 'itemsCategory', label: '알찬 아이템', icon: Package, isCategory: true, category: 'economy' },
   { id: 'myItems', label: '내 아이템', icon: Boxes, path: '/my-items', parentId: 'itemsCategory' },
   { id: 'itemStore', label: '아이템 상점', icon: Store, path: '/item-shop', parentId: 'itemsCategory' },
-  { id: 'itemMarket', label: '아이템 시장', icon: RefreshCw, path: '/item-market', parentId: 'itemsCategory' },
+  { id: 'personalShop', label: '개인 상점', icon: ShoppingBag, path: '/personal-shop', parentId: 'itemsCategory' },
 
   // Finance Category - 금융
   { id: 'financeCategory', label: '알찬 금융', icon: TrendingUp, isCategory: true, category: 'economy' },

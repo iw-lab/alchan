@@ -161,6 +161,9 @@ export const useOptimizedActivityLogs = (classCode, filters = {}) => {
   }, [classCode, filters, hasMore, loading, lastVisible]);
 
 
+  // 🔥 [최적화] JSON.stringify를 useMemo로 감싸서 무한 루프 방지
+  const filterKey = JSON.stringify(filters);
+
   useEffect(() => {
     mountedRef.current = true;
     fetchLogs(filters);
@@ -170,7 +173,8 @@ export const useOptimizedActivityLogs = (classCode, filters = {}) => {
         abortControllerRef.current.abort();
       }
     };
-  }, [classCode, JSON.stringify(filters), fetchLogs]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classCode, filterKey, fetchLogs]);
 
   useEffect(() => {
     return () => {

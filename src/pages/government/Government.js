@@ -3,8 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import "./Government.css";
 import "./NationalAssembly.css"; // 법안 카드 스타일 재사용
 import NationalTaxService from "./NationalTaxService";
-import Investment from "../banking/Investment";
-import SendReceive from "../banking/SendReceive";
+// 투자하기, 보내기/가져오기 탭 제거됨 - 국고는 관리자 현금으로 통합
 import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
 import { db } from "../../firebase";
@@ -201,6 +200,7 @@ const Government = () => {
   const { userDoc } = useAuth();
   const classCode = userDoc?.classCode;
 
+  // 탭: 법안 관리, 국세청만 유지 (투자하기, 보내기/가져오기 제거됨)
   const [activeTab, setActiveTab] = useState("lawManage");
 
   const handleTabClick = (tabName) => {
@@ -217,10 +217,6 @@ const Government = () => {
         return <LawManagement classCode={classCode} />;
       case "tax":
         return <NationalTaxService classCode={classCode} />;
-      case "investment":
-        return <Investment classCode={classCode} />;
-      case "transfer":
-        return <SendReceive classCode={classCode} />;
       default:
         return <LawManagement classCode={classCode} />;
     }
@@ -248,24 +244,6 @@ const Government = () => {
           disabled={!classCode}
         >
           국세청
-        </button>
-        <button
-          className={`gov-tab-button ${
-            activeTab === "investment" ? "active" : ""
-          }`}
-          onClick={() => handleTabClick("investment")}
-          disabled={!classCode}
-        >
-          투자하기
-        </button>
-        <button
-          className={`gov-tab-button ${
-            activeTab === "transfer" ? "active" : ""
-          }`}
-          onClick={() => handleTabClick("transfer")}
-          disabled={!classCode}
-        >
-          보내기/가져오기
         </button>
       </div>
 

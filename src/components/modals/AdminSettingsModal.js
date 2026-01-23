@@ -2210,6 +2210,10 @@ const AdminSettingsModal = ({
           </div>
         )}
 
+        {/* ========================================
+            국고 관리 탭 - 제거됨 (세금은 관리자 현금으로 직접 입금됨)
+            ======================================== */}
+
         {/* 학급 구성원 관리 탭 */}
         {adminSelectedMenu === "memberManagement" && (
           <div className="member-management-tab">

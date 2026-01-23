@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ItemProvider } from '../contexts/ItemContext'; // 🔥 [최적화] 로그인 후에만 마운트
 import AlchanSidebar, { AppIcon } from './AlchanSidebar';
 import AlchanHeader from './AlchanHeader';
 import MobileNav from './MobileNav';
@@ -19,7 +20,7 @@ import Dashboard from '../Dashboard';
 import ItemStore from '../pages/market/ItemStore';
 import MyItems from '../MyItems';
 import MyAssets from '../MyAssets';
-import ItemMarket from '../pages/market/ItemMarket';
+import PersonalShop from '../pages/market/PersonalShop';
 import Login from '../Login';
 import Banking from '../pages/banking/Banking';
 import MyProfile from '../MyProfile';
@@ -257,6 +258,8 @@ export default function AlchanLayout() {
   const userClassCode = userDoc?.classCode;
 
   return (
+    // 🔥 [최적화] ItemProvider를 여기에 배치 - 로그인 후에만 마운트되어 불필요한 Firestore 읽기 방지
+    <ItemProvider>
     <div className="min-h-screen bg-[#0a0a12] text-gray-100 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 flex">
       {/* PC 사이드바 */}
       <AlchanSidebar
@@ -294,7 +297,8 @@ export default function AlchanLayout() {
             {/* 아이템 */}
             <Route path="/item-shop" element={<ProtectedRoute><ItemStore /></ProtectedRoute>} />
             <Route path="/my-items" element={<ProtectedRoute><MyItems /></ProtectedRoute>} />
-            <Route path="/item-market" element={<ProtectedRoute><ItemMarket /></ProtectedRoute>} />
+            <Route path="/item-market" element={<ProtectedRoute><PersonalShop /></ProtectedRoute>} />
+            <Route path="/personal-shop" element={<ProtectedRoute><PersonalShop /></ProtectedRoute>} />
 
             {/* 금융 */}
             <Route path="/banking" element={<ProtectedRoute><Banking /></ProtectedRoute>} />
@@ -388,6 +392,7 @@ export default function AlchanLayout() {
         .animate-spin-slow { animation: spin-slow 2s linear infinite; }
       `}</style>
     </div>
+    </ItemProvider>
   );
 }
 

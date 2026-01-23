@@ -305,6 +305,39 @@ const setBatchCache = (dataMap) => {
   });
 };
 
+// 🔥 학급 관리자(선생님) uid 조회 헬퍼 함수
+// 세금 징수 시 국고 대신 관리자 현금으로 입금하기 위해 사용
+export const getClassAdminUid = async (classCode) => {
+  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
+  if (!classCode) throw new Error("학급 코드가 필요합니다.");
+
+  const cacheKey = `admin_uid_${classCode}`;
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const usersQuery = originalFirebaseQuery(
+      collection(db, "users"),
+      originalFirebaseWhere("classCode", "==", classCode),
+      originalFirebaseWhere("isAdmin", "==", true)
+    );
+    const querySnapshot = await getDocs(usersQuery);
+
+    if (querySnapshot.empty) {
+      console.warn(`[firebase.js] 학급(${classCode})에 관리자가 없습니다.`);
+      return null;
+    }
+
+    const adminUid = querySnapshot.docs[0].id;
+    setCache(cacheKey, adminUid);
+    console.log(`[firebase.js] 학급(${classCode}) 관리자 uid 조회: ${adminUid}`);
+    return adminUid;
+  } catch (error) {
+    console.error(`[firebase.js] 학급 관리자 조회 오류:`, error);
+    return null;
+  }
+};
+
 const isInitialized = () => {
   const initialized = Boolean(app && db && auth);
   if (!initialized) {
@@ -1154,25 +1187,27 @@ export const processStockSaleTransaction = async (userId, classCode, profit, sto
     return { success: true, taxAmount: 0 };
   }
 
-  const nationalTreasuryRef = doc(db, "nationalTreasuries", classCode);
-
   try {
     const governmentSettings = await getGovernmentSettings(classCode);
     const taxRate = governmentSettings?.taxSettings?.stockTransactionTaxRate || 0;
     const taxAmount = Math.round(profit * taxRate);
 
     if (taxAmount > 0) {
-      await updateDoc(nationalTreasuryRef, {
-        totalAmount: increment(taxAmount),
-        stockTaxRevenue: increment(taxAmount),
-        lastUpdated: serverTimestamp(),
-      });
+      // 🔥 세금을 관리자(선생님) 현금으로 직접 입금
+      const adminUid = await getClassAdminUid(classCode);
+      if (adminUid) {
+        const adminRef = doc(db, "users", adminUid);
+        await updateDoc(adminRef, {
+          cash: increment(taxAmount),
+        });
+        invalidateCache(`user_${adminUid}`);
+      }
       const logDescription = `${stockName} 주식 판매로 발생한 이익 ${profit}원에 대한 거래세 ${taxAmount}원을 납부했습니다.`;
       await addActivityLog(userId, '세금 납부 (주식)', logDescription);
     }
 
     console.log(
-      `[${classCode}] 주식 거래세 징수 성공: ${taxAmount}원 (이익: ${profit}원)`
+      `[${classCode}] 주식 거래세 징수 성공: ${taxAmount}원 (이익: ${profit}원) → 관리자 현금으로 입금`
     );
     return { success: true, taxAmount };
   } catch (error) {
@@ -1185,6 +1220,7 @@ export const processStockSaleTransaction = async (userId, classCode, profit, sto
 };
 
 // 🔥 [최적화] 범용 판매 거래 처리 - 배치 처리 및 캐시 관리 개선
+// 🔥 세금은 국고가 아닌 관리자(선생님) 현금으로 직접 입금
 export const processGenericSaleTransaction = async (
   classCode,
   buyerId,
@@ -1199,9 +1235,15 @@ export const processGenericSaleTransaction = async (
   invalidateCache(`user_${buyerId}`);
   invalidateCache(`user_${sellerId}`);
 
-  const nationalTreasuryRef = doc(db, "nationalTreasuries", classCode);
+  // 🔥 세금 입금을 위해 관리자 uid 조회
+  const adminUid = await getClassAdminUid(classCode);
+  if (adminUid) {
+    invalidateCache(`user_${adminUid}`);
+  }
+
   const buyerRef = doc(db, "users", buyerId);
   const sellerRef = doc(db, "users", sellerId);
+  const adminRef = adminUid ? doc(db, "users", adminUid) : null;
 
   try {
     let taxAmount = 0;
@@ -1226,20 +1268,16 @@ export const processGenericSaleTransaction = async (
 
       const taxSettings = governmentSettings ? governmentSettings.taxSettings : {};
       let taxRate = 0;
-      let taxRevenueField = "";
 
       switch (taxType) {
         case "realEstate":
           taxRate = taxSettings?.realEstateTransactionTaxRate || 0;
-          taxRevenueField = "realEstateTransactionTaxRevenue";
           break;
         case "auction":
           taxRate = taxSettings?.auctionTransactionTaxRate || 0;
-          taxRevenueField = "auctionTaxRevenue";
           break;
         case "itemMarket":
           taxRate = taxSettings?.itemMarketTransactionTaxRate || 0;
-          taxRevenueField = "itemMarketTaxRevenue";
           break;
         default:
           throw new Error("유효하지 않은 세금 종류입니다.");
@@ -1255,11 +1293,10 @@ export const processGenericSaleTransaction = async (
       transaction.update(buyerRef, { cash: increment(-transactionPrice) });
       transaction.update(sellerRef, { cash: increment(sellerProceeds) });
 
-      if (taxAmount > 0) {
-        transaction.update(nationalTreasuryRef, {
-          totalAmount: increment(taxAmount),
-          [taxRevenueField]: increment(taxAmount),
-          lastUpdated: serverTimestamp(),
+      // 🔥 세금을 관리자(선생님) 현금으로 직접 입금
+      if (taxAmount > 0 && adminRef) {
+        transaction.update(adminRef, {
+          cash: increment(taxAmount),
         });
       }
 
@@ -1288,7 +1325,7 @@ export const processGenericSaleTransaction = async (
       addActivityLog(sellerId, '판매', sellerLog)
     ]);
 
-    console.log(`[${classCode}] ${taxType} 거래 성공. 세금: ${taxAmount}원, 거래액: ${transactionPrice}원`);
+    console.log(`[${classCode}] ${taxType} 거래 성공. 세금: ${taxAmount}원, 거래액: ${transactionPrice}원 → 관리자 현금으로 입금`);
     return { success: true, taxAmount };
   } catch (error) {
     console.error(`[firebase.js] ${taxType} 거래 트랜잭션 오류:`, error);
@@ -1297,10 +1334,12 @@ export const processGenericSaleTransaction = async (
 };
 
 // 🔥 [최적화] 부동산 보유세 징수 - 배치 처리
+// 🔥 세금은 국고가 아닌 관리자(선생님) 현금으로 직접 입금
 export const collectPropertyHoldingTaxes = async (classCode) => {
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
 
-  const nationalTreasuryRef = doc(db, "nationalTreasuries", classCode);
+  // 🔥 세금 입금을 위해 관리자 uid 조회
+  const adminUid = await getClassAdminUid(classCode);
 
   try {
     const governmentSettings = await getGovernmentSettings(classCode);
@@ -1352,18 +1391,19 @@ export const collectPropertyHoldingTaxes = async (classCode) => {
       }
     }
 
-    if (totalTaxCollected > 0) {
-      batch.update(nationalTreasuryRef, {
-        totalAmount: increment(totalTaxCollected),
-        propertyHoldingTaxRevenue: increment(totalTaxCollected),
-        lastUpdated: serverTimestamp(),
+    // 🔥 세금을 관리자(선생님) 현금으로 직접 입금
+    if (totalTaxCollected > 0 && adminUid) {
+      const adminRef = doc(db, "users", adminUid);
+      invalidateCache(`user_${adminUid}`);
+      batch.update(adminRef, {
+        cash: increment(totalTaxCollected),
       });
     }
 
     await batch.commit();
     await Promise.all(logPromises);
 
-    console.log(`[${classCode}] 부동산 보유세 징수 완료. 총 ${totalTaxCollected}원 (${processedUserCount}명)`);
+    console.log(`[${classCode}] 부동산 보유세 징수 완료. 총 ${totalTaxCollected}원 (${processedUserCount}명) → 관리자 현금으로 입금`);
     return {
       success: true,
       totalCollected: totalTaxCollected,
