@@ -1,0 +1,1114 @@
+/* PersonalShop.css - Cyberpunk Theme (ItemMarket 스타일 일관성) */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+
+:root {
+  --neon-blue: #00f3ff;
+  --neon-purple: #bc13fe;
+  --neon-pink: #ff0055;
+  --neon-green: #00ff88;
+  --dark-bg: #0a0a12;
+  --panel-bg: rgba(20, 20, 35, 0.7);
+  --panel-bg-solid: #14142b;
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-main: #e2e8f0;
+  --text-dim: #94a3b8;
+}
+
+/* 메인 컨테이너 */
+.personal-shop-container {
+  max-width: 100%;
+  margin: 0;
+  padding: 20px;
+  color: var(--text-main);
+  background-color: var(--dark-bg);
+  min-height: 100vh;
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* 헤더 */
+.market-header {
+  margin-bottom: 30px;
+  border-bottom: 2px solid var(--neon-blue);
+  padding-bottom: 15px;
+}
+
+.market-header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 2.2rem;
+  background: linear-gradient(to right, #fff, var(--neon-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+  margin: 0 0 8px 0;
+}
+
+.header-subtitle {
+  color: var(--text-dim);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* 탭 버튼 */
+.market-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.tab-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  padding: 12px 20px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-button.active {
+  background: linear-gradient(180deg, rgba(0, 243, 255, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
+  border-color: var(--neon-blue);
+  border-bottom-color: transparent;
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+}
+
+.tab-button:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.tab-icon {
+  font-size: 1.1rem;
+}
+
+/* 탭 콘텐츠 */
+.tab-content {
+  background: var(--panel-bg);
+  border-radius: 0 12px 12px 12px;
+  border: 1px solid var(--glass-border);
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  min-height: 400px;
+}
+
+/* 컨트롤 섹션 (검색 & 필터) */
+.controls-section {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input,
+.category-filter {
+  background-color: rgba(30, 30, 50, 0.6) !important;
+  color: #fff !important;
+  border: 1px solid var(--neon-blue) !important;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.search-input:focus,
+.category-filter:focus {
+  background-color: rgba(40, 40, 60, 0.8) !important;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+  outline: none;
+}
+
+.category-filter {
+  min-width: 150px;
+  flex: 0 0 auto;
+}
+
+/* 상점 그리드 */
+.shops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* 상점 카드 */
+.shop-card {
+  background: linear-gradient(145deg, rgba(30, 30, 50, 0.8), rgba(20, 20, 40, 0.9));
+  border: 1px solid rgba(0, 243, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.shop-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 243, 255, 0.2);
+  border-color: var(--neon-blue);
+}
+
+.shop-card:hover::before {
+  opacity: 1;
+}
+
+.shop-card-header {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.shop-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.shop-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-owner {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.shop-description {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin: 12px 0 0 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shop-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.shop-category {
+  background: rgba(188, 19, 254, 0.2);
+  color: var(--neon-purple);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.shop-sales {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* 상품 그리드 */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* 상품 카드 */
+.product-card {
+  background: linear-gradient(145deg, rgba(30, 30, 50, 0.8), rgba(20, 20, 40, 0.9));
+  border: 1px solid rgba(0, 243, 255, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.product-card:hover {
+  border-color: var(--neon-blue);
+  box-shadow: 0 4px 20px rgba(0, 243, 255, 0.15);
+}
+
+.product-card-header {
+  display: flex;
+  gap: 12px;
+}
+
+.product-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.product-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.product-type-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.product-type-badge.product {
+  background: rgba(0, 136, 255, 0.2);
+  color: #00aaff;
+}
+
+.product-type-badge.service {
+  background: rgba(0, 255, 136, 0.2);
+  color: var(--neon-green);
+}
+
+.product-description {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.product-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.product-price {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.vat-included {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.stock-badge {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0, 243, 255, 0.15);
+  color: var(--neon-blue);
+  margin-left: auto;
+}
+
+.stock-badge.soldout {
+  background: rgba(255, 0, 85, 0.2);
+  color: var(--neon-pink);
+}
+
+.product-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.action-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.action-btn.buy {
+  background: linear-gradient(45deg, var(--neon-purple), #8a00d4);
+  color: white;
+  box-shadow: 0 4px 15px rgba(188, 19, 254, 0.3);
+}
+
+.action-btn.buy:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(188, 19, 254, 0.4);
+}
+
+.action-btn.buy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.edit {
+  background: rgba(0, 243, 255, 0.15);
+  color: var(--neon-blue);
+  border: 1px solid var(--neon-blue);
+}
+
+.action-btn.edit:hover {
+  background: rgba(0, 243, 255, 0.25);
+}
+
+.action-btn.delete {
+  background: rgba(255, 0, 85, 0.15);
+  color: var(--neon-pink);
+  border: 1px solid var(--neon-pink);
+  flex: 0 0 auto;
+}
+
+.action-btn.delete:hover {
+  background: rgba(255, 0, 85, 0.25);
+}
+
+/* 네온 텍스트 */
+.neon-text {
+  color: var(--neon-blue);
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.empty-hint {
+  display: block;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+/* Loading State */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--neon-blue);
+  font-size: 1.1rem;
+}
+
+/* 뒤로가기 버튼 */
+.back-button {
+  background: transparent;
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: rgba(0, 243, 255, 0.15);
+}
+
+/* 상점 상세 헤더 */
+.shop-detail-header {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, rgba(188, 19, 254, 0.15), rgba(0, 243, 255, 0.1));
+  border: 1px solid var(--neon-purple);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 30px;
+}
+
+.shop-detail-icon {
+  font-size: 4rem;
+}
+
+.shop-detail-info h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  color: #fff;
+  margin: 0 0 8px 0;
+}
+
+.shop-detail-info .owner {
+  color: var(--neon-purple);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.shop-detail-info .description {
+  color: var(--text-dim);
+  margin: 12px 0 0 0;
+  line-height: 1.5;
+}
+
+/* 상품 섹션 */
+.products-section h3 {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--neon-blue);
+  font-size: 1.2rem;
+  margin: 0 0 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* 내 상점 헤더 */
+.my-shop-header {
+  background: linear-gradient(135deg, rgba(188, 19, 254, 0.15), rgba(0, 243, 255, 0.1));
+  border: 1px solid var(--neon-purple);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 30px;
+}
+
+.my-shop-info {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.my-shop-icon {
+  font-size: 3.5rem;
+}
+
+.my-shop-details {
+  flex: 1;
+}
+
+.my-shop-details h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.6rem;
+  color: #fff;
+  margin: 0 0 8px 0;
+}
+
+.my-shop-details .category {
+  color: var(--neon-purple);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.my-shop-details .description {
+  color: var(--text-dim);
+  margin: 10px 0 0 0;
+}
+
+.edit-shop-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.edit-shop-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.my-shop-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 상품 헤더 */
+.products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.products-header h3 {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--neon-blue);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.add-product-btn {
+  background: linear-gradient(45deg, var(--neon-purple), #8a00d4);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(188, 19, 254, 0.3);
+}
+
+.add-product-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(188, 19, 254, 0.4);
+}
+
+/* 상점 생성 뷰 */
+.create-shop-view {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.create-shop-card {
+  text-align: center;
+  padding: 60px 40px;
+  background: linear-gradient(145deg, rgba(30, 30, 50, 0.8), rgba(20, 20, 40, 0.9));
+  border: 1px dashed var(--neon-purple);
+  border-radius: 20px;
+  max-width: 400px;
+}
+
+.create-icon {
+  font-size: 5rem;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.create-shop-card h2 {
+  font-family: 'Orbitron', sans-serif;
+  color: #fff;
+  font-size: 1.5rem;
+  margin: 0 0 12px 0;
+}
+
+.create-shop-card p {
+  color: var(--text-dim);
+  margin: 0 0 24px 0;
+}
+
+.create-shop-btn {
+  background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+  color: white;
+  padding: 14px 32px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 243, 255, 0.3);
+}
+
+.create-shop-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 243, 255, 0.4);
+}
+
+/* ==================== 모달 스타일 ==================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.modal-container {
+  background: linear-gradient(145deg, #1a1a2e, #16162b);
+  border-radius: 20px;
+  min-width: 400px;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: auto;
+  border: 1px solid var(--neon-blue);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 243, 255, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-header h3 {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--neon-blue);
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.close-button {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.3s ease;
+}
+
+.close-button:hover {
+  color: var(--neon-pink);
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* 폼 그룹 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  color: var(--text-main);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  background: rgba(30, 30, 50, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.input-with-suffix {
+  position: relative;
+}
+
+.input-with-suffix input {
+  padding-right: 50px;
+}
+
+.input-with-suffix .suffix {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+}
+
+/* 타입 선택기 */
+.type-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.type-button {
+  background: rgba(30, 30, 50, 0.6);
+  border: 2px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.type-button:hover {
+  border-color: var(--neon-purple);
+}
+
+.type-button.active {
+  border-color: var(--neon-purple);
+  background: rgba(188, 19, 254, 0.15);
+}
+
+.type-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.type-label {
+  display: block;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.type-desc {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+/* 부가세 정보 박스 */
+.tax-info-box {
+  background: rgba(255, 200, 0, 0.1);
+  border: 1px solid rgba(255, 200, 0, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.tax-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.tax-row.highlight {
+  color: #ffc800;
+}
+
+.tax-row.total {
+  border-top: 1px solid rgba(255, 200, 0, 0.3);
+  padding-top: 12px;
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.tax-notice {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 12px 0 0 0;
+  text-align: center;
+}
+
+/* 모달 버튼 */
+.modal-button {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.modal-button.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  border: 1px solid var(--glass-border);
+}
+
+.modal-button.cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.modal-button.confirm {
+  background: linear-gradient(45deg, var(--neon-purple), #8a00d4);
+  color: white;
+  box-shadow: 0 4px 15px rgba(188, 19, 254, 0.3);
+}
+
+.modal-button.confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(188, 19, 254, 0.4);
+}
+
+.modal-button.confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 구매 모달 */
+.purchase-item-info {
+  display: flex;
+  gap: 16px;
+  background: rgba(30, 30, 50, 0.6);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.item-icon {
+  font-size: 2.5rem;
+}
+
+.item-details h4 {
+  color: #fff;
+  font-size: 1.1rem;
+  margin: 0 0 4px 0;
+}
+
+.item-details .shop-name {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.item-details .item-price {
+  color: var(--neon-purple);
+  font-weight: 700;
+  margin: 8px 0 0 0;
+}
+
+.quantity-selector {
+  margin-bottom: 20px;
+}
+
+.quantity-selector label {
+  display: block;
+  color: var(--text-main);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quantity-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(30, 30, 50, 0.8);
+  border: 1px solid var(--neon-blue);
+  border-radius: 8px;
+  color: var(--neon-blue);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantity-btn:hover {
+  background: rgba(0, 243, 255, 0.15);
+}
+
+.quantity-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  color: #fff;
+  min-width: 50px;
+  text-align: center;
+}
+
+.stock-info {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-left: 8px;
+}
+
+.total-amount-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(188, 19, 254, 0.15);
+  border: 1px solid var(--neon-purple);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.total-amount-box span:first-child {
+  color: var(--text-main);
+}
+
+.total-price {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .personal-shop-container {
+    padding: 15px;
+  }
+
+  .market-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .market-tabs {
+    gap: 8px;
+  }
+
+  .tab-button {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+
+  .tab-label {
+    display: none;
+  }
+
+  .tab-icon {
+    font-size: 1.3rem;
+  }
+
+  .controls-section {
+    flex-direction: column;
+  }
+
+  .category-filter {
+    width: 100%;
+  }
+
+  .shops-grid,
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-detail-header,
+  .my-shop-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .my-shop-info {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .modal-container {
+    min-width: auto;
+    width: 100%;
+    margin: 10px;
+  }
+
+  .type-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .products-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .add-product-btn {
+    width: 100%;
+  }
+}

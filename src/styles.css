@@ -19,17 +19,18 @@ body {
   overflow-x: hidden;
 }
 
-/* Cyberpunk Page Container */
+/* Cyberpunk Page Container - 전체 화면 사용 */
 .page-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 1.5rem;
   background-color: rgba(20, 20, 35, 0.85) !important;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3) !important;
+  border-radius: 0;
+  box-shadow: none !important;
   position: relative;
   width: 100%;
-  border: 1px solid rgba(0, 255, 242, 0.15) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
 }
 
 /* Remove duplicate body definition */

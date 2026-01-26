@@ -48,8 +48,8 @@ body {
 
 /* --- 기본 컨테이너 --- */
 .police-container {
-  max-width: 1000px;
-  margin: 30px auto;
+  max-width: 100%;
+  margin: 0;
   padding: 30px;
   background-color: var(--white-color);
   border-radius: var(--border-radius-lg);

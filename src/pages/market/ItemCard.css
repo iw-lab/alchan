@@ -12,8 +12,8 @@ body {
 
 .page-container {
   padding: 24px 15px;
-  max-width: 1280px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   background-color: #f8fafc;
   /* min-height: 100vh 제거 - AlchanLayout 내부 스크롤과 충돌 방지 */
   box-sizing: border-box;

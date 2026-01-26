@@ -1,12 +1,11 @@
 /* src/App.css */
 .app-container {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* 전역 폰트 설정은 styles.css body에서 하는 것이 더 일반적 */
-  max-width: 1280px; /* 앱 전체의 최대 너비 */
-  margin: 0 auto; /* 화면 중앙 정렬 */
-  padding: 0; /* 중요: 내부 패딩 제거! */
-  width: 100%; /* 부모(body) 너비를 따름 */
-  box-sizing: border-box; /* .app-container 자체도 border-box를 따르도록 합니다. */
-  /* background-color: rgba(0, 255, 0, 0.1); */ /* 개발 중 레이아웃 확인용 */
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 100%; /* 전체 화면 사용 */
+  margin: 0; /* 좌우 여백 제거 */
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* .app-header, .user-info 등 App.js의 메인 레이아웃과 직접 관련 없는 스타일은

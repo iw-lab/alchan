@@ -29,18 +29,35 @@ const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || "github-actions-scheduler
 // [삭제됨] SECTOR_NEWS_TEMPLATES - 뉴스 기능 제거됨
 
 
-// 🔥 방학 모드 - Firestore에서 동적으로 읽어옴
+// 🔥 방학 모드 - 메모리 캐시 + Firestore 폴백
 // Settings/scheduler 문서의 vacationMode 필드로 관리
+// 🔥 비용 절감: 30분 캐시로 Firestore 읽기 최소화
+let vacationModeCache = {
+  value: true,  // 🔥 기본값: 방학 모드 ON (안전 모드)
+  lastChecked: 0
+};
+const VACATION_CACHE_TTL = 30 * 60 * 1000; // 30분 캐시
+
 async function isVacationMode() {
+  const now = Date.now();
+
+  // 캐시가 유효하면 Firestore 읽기 없이 반환
+  if (now - vacationModeCache.lastChecked < VACATION_CACHE_TTL) {
+    return vacationModeCache.value;
+  }
+
   try {
     const settingsDoc = await db.doc("Settings/scheduler").get();
     if (settingsDoc.exists) {
-      return settingsDoc.data()?.vacationMode === true;
+      vacationModeCache.value = settingsDoc.data()?.vacationMode === true;
+    } else {
+      vacationModeCache.value = true; // 문서 없으면 방학 모드로 간주 (안전)
     }
-    return false; // 기본값: 방학 모드 OFF
+    vacationModeCache.lastChecked = now;
+    return vacationModeCache.value;
   } catch (error) {
     logger.error('[isVacationMode] 설정 조회 오류:', error);
-    return false;
+    return true; // 오류 시 방학 모드로 간주 (비용 절감)
   }
 }
 
@@ -125,13 +142,23 @@ exports.stockPriceScheduler = onRequest({
     // 🔥 force 파라미터를 먼저 확인 (모든 체크 우회)
     const forceUpdate = req.query.force === 'true';
 
+    // 🔥 [최적화 v7.0] 방학 모드 체크를 가장 먼저! (30분 캐시로 Firestore 읽기 최소화)
+    if (!forceUpdate) {
+      const vacationMode = await isVacationMode();
+      if (vacationMode) {
+        // 방학 모드면 다른 체크 없이 즉시 종료 (비용 최소화)
+        res.json({ success: true, message: '방학 모드 - 스케줄러 비활성화됨', vacationMode: true, firestoreReads: 0 });
+        return;
+      }
+    }
+
     const now = new Date();
     const kstOffset = 9 * 60;
     const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
     const hour = kstTime.getUTCHours();
     const day = kstTime.getUTCDay();
 
-    // 🔥 [최적화 v6.0] 시장 시간 체크를 먼저 수행 (Firestore 읽기 0회)
+    // 🔥 시장 시간 체크 (방학 모드가 아닐 때만 실행됨)
     // 평일(1-5) 6시~24시 + 0시~1시 KST (한국 장 + 미국 장 커버)
     const isWeekday = day >= 1 && day <= 5;
     const isExtendedHours = hour >= 6 || hour < 1; // 6시~24시 + 0시~1시
@@ -149,14 +176,6 @@ exports.stockPriceScheduler = onRequest({
     }
 
     logger.info(`[stockPriceScheduler] 호출됨 - KST ${hour}시, 요일: ${day}, force: ${forceUpdate}`);
-
-    // 🔥 방학 모드 체크 - 시장 시간일 때만 Firestore 읽기 발생
-    const vacationMode = await isVacationMode();
-    if (vacationMode) {
-      logger.info(`[stockPriceScheduler] 방학 모드 - 작업 건너뜀`);
-      res.json({ success: true, message: '방학 모드 - 스케줄러 비활성화됨', vacationMode: true });
-      return;
-    }
 
     if (!forceUpdate) {
       // 🔥 Settings 문서에서 마지막 활성 시간 확인 (1회 읽기로 최적화)

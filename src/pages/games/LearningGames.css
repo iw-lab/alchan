@@ -1,23 +1,37 @@
-/* src/LearningGames.css */
+/* src/LearningGames.css - Cyberpunk Dark Theme */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+
+:root {
+  --neon-blue: #00f3ff;
+  --neon-purple: #bc13fe;
+  --dark-bg: #0a0a12;
+  --panel-bg: rgba(20, 20, 35, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-main: #e2e8f0;
+  --text-dim: #94a3b8;
+}
+
 .learning-games-container {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   padding: 20px;
   box-sizing: border-box;
-  background-color: #f0f2f5; /* 전체 배경색 */
+  background-color: var(--dark-bg);
 }
 
 .coming-soon-card {
   text-align: center;
   padding: 40px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
+  background: var(--panel-bg);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 243, 255, 0.1);
+  max-width: 100%;
   width: 100%;
+  backdrop-filter: blur(10px);
 }
 
 .coming-soon-icon {
@@ -29,13 +43,16 @@
 .coming-soon-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #333;
+  font-family: 'Orbitron', sans-serif;
+  color: var(--text-main);
   margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
 }
 
 .coming-soon-message {
   font-size: 1.1rem;
-  color: #666;
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--text-dim);
   line-height: 1.6;
 }
 

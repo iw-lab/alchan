@@ -54,8 +54,8 @@
 
 /* Remaining CSS - Preserving existing styles but ensuring dark theme */
 .market-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 20px;
   color: var(--text-main);
   background-color: var(--dark-bg);

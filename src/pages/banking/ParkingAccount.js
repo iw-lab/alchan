@@ -1,10 +1,38 @@
 // src/ParkingAccount.js
 import React, { useState, useEffect, useCallback } from "react";
-import { db, doc, getDoc, setDoc, serverTimestamp, updateDoc, increment, runTransaction, collection, getDocs, deleteDoc } from "../../firebase";
+import { db, doc, getDoc, setDoc, serverTimestamp, updateDoc, increment, runTransaction, collection, getDocs, deleteDoc, query, where, limit } from "../../firebase";
 import { format, isToday, differenceInDays, isPast } from 'date-fns';
-import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp } from 'lucide-react';
+import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp, Building2 } from 'lucide-react';
 import { formatKoreanCurrency } from '../../numberFormatter';
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
+
+// 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
+const getTeacherAccount = async (classCode) => {
+  if (!classCode) return null;
+
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(
+      usersRef,
+      where("classCode", "==", classCode),
+      where("isAdmin", "==", true),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const teacherDoc = snapshot.docs[0];
+      return {
+        id: teacherDoc.id,
+        ...teacherDoc.data()
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("선생님 계정 조회 오류:", error);
+    return null;
+  }
+};
 
 // --- Styles ---
 // --- Styles ---
@@ -683,6 +711,15 @@ const ParkingAccount = ({
     setIsProcessing(true);
     handleCloseModal(); // UX 개선을 위해 모달 즉시 닫기
 
+    // --- 선생님 계정 조회 ---
+    const teacherAccount = await getTeacherAccount(userDoc?.classCode);
+    if (!teacherAccount) {
+      displayMessage("선생님(은행) 계정을 찾을 수 없습니다. 관리자에게 문의하세요.", "error");
+      setIsProcessing(false);
+      return;
+    }
+    console.log("선생님 계정:", teacherAccount.name, teacherAccount.id);
+
     // --- 낙관적 업데이트 (Optimistic Update) ---
     const tempId = `temp_${Date.now()}`;
     const maturityDate = new Date(Date.now() + product.termInDays * 24 * 60 * 60 * 1000);
@@ -714,12 +751,25 @@ const ParkingAccount = ({
     try {
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, "users", userId);
+        const teacherRef = doc(db, "users", teacherAccount.id);
+
         const userSnapshot = await transaction.get(userRef);
+        const teacherSnapshot = await transaction.get(teacherRef);
+
         if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
 
         const currentCashInDb = userSnapshot.data()?.cash ?? 0;
+        const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
+
+        // 예금/적금: 학생 현금 확인
         if (type !== 'loans' && currentCashInDb < amount) {
           throw new Error("보유 현금이 부족합니다.");
+        }
+
+        // 대출: 선생님(은행) 현금 확인
+        if (type === 'loans' && teacherCashInDb < amount) {
+          throw new Error("은행(선생님)에 대출 가능한 자금이 부족합니다.");
         }
 
         const newProductData = {
@@ -730,14 +780,28 @@ const ParkingAccount = ({
           startDate: serverTimestamp(),
           maturityDate: maturityDate,
           type: type === 'deposits' ? 'deposit' : (type === 'savings' ? 'savings' : 'loan'),
+          teacherId: teacherAccount.id, // 선생님 계정 ID 저장
+          teacherName: teacherAccount.name || '선생님'
         };
 
         const newProductRef = doc(collection(db, "users", userId, "products"));
         transaction.set(newProductRef, newProductData);
-        transaction.update(userRef, { cash: increment(cashChangeAmount) });
+
+        // 예금/적금: 학생 → 선생님
+        // 대출: 선생님 → 학생
+        if (type === 'loans') {
+          // 대출: 선생님에서 학생으로
+          transaction.update(userRef, { cash: increment(amount) });
+          transaction.update(teacherRef, { cash: increment(-amount) });
+        } else {
+          // 예금/적금: 학생에서 선생님으로
+          transaction.update(userRef, { cash: increment(-amount) });
+          transaction.update(teacherRef, { cash: increment(amount) });
+        }
       });
 
-      displayMessage("상품 가입이 완료되었습니다.", "success");
+      const actionText = type === 'loans' ? '대출' : '가입';
+      displayMessage(`${product.name} ${actionText}이 완료되었습니다. (선생님 계정과 연동)`, "success");
 
       // 🔥 활동 로그 기록 (예금/적금/대출 가입)
       const activityType = type === 'deposits' ? ACTIVITY_TYPES.DEPOSIT_CREATE
@@ -748,14 +812,16 @@ const ParkingAccount = ({
         userId: userId,
         userName: userDoc?.name || '사용자',
         type: activityType,
-        description: `${product.name} 가입 (${formatCurrency(amount)}원)`,
+        description: `${product.name} ${type === 'loans' ? '대출' : '가입'} (${formatCurrency(amount)}원) - 선생님 계정 연동`,
         amount: cashChangeAmount,
         metadata: {
           productName: product.name,
           productType: type,
           termInDays: product.termInDays,
           dailyRate: product.dailyRate,
-          maturityDate: maturityDate.toISOString()
+          maturityDate: maturityDate.toISOString(),
+          teacherId: teacherAccount.id,
+          teacherName: teacherAccount.name
         }
       });
 
@@ -765,7 +831,7 @@ const ParkingAccount = ({
 
     } catch (error) {
       console.error("가입 처리 중 오류 발생:", error);
-      displayMessage(`가입 처리 오류: ${error.message}`, "error");
+      displayMessage(`처리 오류: ${error.message}`, "error");
 
       // --- 낙관적 업데이트 롤백 ---
       if (optimisticProduct.type === 'deposit') {
@@ -789,7 +855,7 @@ const ParkingAccount = ({
     console.log("--- handleMaturity 시작 ---");
     console.log("처리할 상품:", product);
 
-    const { id, name, type, balance, termInDays, rate } = product;
+    const { id, name, type, balance, termInDays, rate, teacherId } = product;
     const isLoan = type === 'loan';
 
     if (!userId) {
@@ -803,13 +869,30 @@ const ParkingAccount = ({
 
     console.log(`계산 결과: 원금=${balance}, 이자=${interest}, 총액=${total}`);
 
-    if (!window.confirm(`만기 수령: 원금 ${formatCurrency(balance)}원 + 이자 ${formatCurrency(interest)}원 = ${formatCurrency(total)}원을 수령하시겠습니까?`)) {
-      console.log("사용자가 만기 수령을 취소했습니다.");
+    const confirmMsg = isLoan
+      ? `대출 만기 상환: 원금 ${formatCurrency(balance)}원 + 이자 ${formatCurrency(interest)}원 = ${formatCurrency(total)}원을 상환하시겠습니까?`
+      : `만기 수령: 원금 ${formatCurrency(balance)}원 + 이자 ${formatCurrency(interest)}원 = ${formatCurrency(total)}원을 수령하시겠습니까?`;
+
+    if (!window.confirm(confirmMsg)) {
+      console.log("사용자가 만기 처리를 취소했습니다.");
       return;
     }
 
     setIsProcessing(true);
     console.log("만기 처리 시작...");
+
+    // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
+    let teacherAccountId = teacherId;
+    if (!teacherAccountId) {
+      const teacherAccount = await getTeacherAccount(userDoc?.classCode);
+      if (!teacherAccount) {
+        displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
+        setIsProcessing(false);
+        return;
+      }
+      teacherAccountId = teacherAccount.id;
+    }
+    console.log("선생님 계정 ID:", teacherAccountId);
 
     try {
       const productRef = doc(db, "users", userId, "products", String(id));
@@ -818,13 +901,34 @@ const ParkingAccount = ({
       await runTransaction(db, async (transaction) => {
         console.log("트랜잭션 시작");
         const userRef = doc(db, "users", userId);
+        const teacherRef = doc(db, "users", teacherAccountId);
 
-        // 대출인 경우 상환, 예적금인 경우 수령
-        const cashChange = isLoan ? -total : total;
-        console.log(`현금 변경: ${cashChange}`);
+        const userSnapshot = await transaction.get(userRef);
+        const teacherSnapshot = await transaction.get(teacherRef);
 
-        transaction.update(userRef, { cash: increment(cashChange) });
-        console.log("사용자 현금 업데이트 예약");
+        if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+
+        const currentCashInDb = userSnapshot.data()?.cash ?? 0;
+        const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
+
+        if (isLoan) {
+          // 대출 만기 상환: 학생 → 선생님 (원금+이자)
+          if (currentCashInDb < total) {
+            throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(total)}원, 보유: ${formatCurrency(currentCashInDb)}원)`);
+          }
+          transaction.update(userRef, { cash: increment(-total) });
+          transaction.update(teacherRef, { cash: increment(total) });
+          console.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
+        } else {
+          // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자)
+          if (teacherCashInDb < total) {
+            throw new Error(`은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(total)}원)`);
+          }
+          transaction.update(userRef, { cash: increment(total) });
+          transaction.update(teacherRef, { cash: increment(-total) });
+          console.log(`만기 수령: 학생 +${total}, 선생님 -${total}`);
+        }
 
         transaction.delete(productRef);
         console.log("상품 문서 삭제 예약");
@@ -833,22 +937,29 @@ const ParkingAccount = ({
 
       console.log("트랜잭션 성공");
 
-      displayMessage(`만기 수령 완료: ${formatCurrency(total)}원`, "success");
+      const successMsg = isLoan
+        ? `대출 상환 완료: ${formatCurrency(total)}원 (선생님 계정으로 이체)`
+        : `만기 수령 완료: ${formatCurrency(total)}원 (선생님 계정에서 지급)`;
+      displayMessage(successMsg, "success");
 
-      // 🔥 활동 로그 기록 (예금 만기)
+      // 🔥 활동 로그 기록 (예금 만기 / 대출 상환)
+      const activityType = isLoan ? ACTIVITY_TYPES.LOAN_REPAY : ACTIVITY_TYPES.DEPOSIT_MATURITY;
       logActivity(db, {
         classCode: userDoc?.classCode,
         userId: userId,
         userName: userDoc?.name || '사용자',
-        type: ACTIVITY_TYPES.DEPOSIT_MATURITY,
-        description: `${name} 만기 수령 (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(interest)})`,
-        amount: total,
+        type: activityType,
+        description: isLoan
+          ? `대출 만기 상환: ${name} (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(interest)}) - 선생님 계정으로`
+          : `${name} 만기 수령 (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(interest)}) - 선생님 계정에서`,
+        amount: isLoan ? -total : total,
         metadata: {
           productName: name,
           productType: type,
           principal: balance,
           interest,
-          total
+          total,
+          teacherId: teacherAccountId
         }
       });
 
@@ -856,7 +967,7 @@ const ParkingAccount = ({
       if (refreshUserDocument) {
         console.log("userDoc 갱신 시작");
         refreshUserDocument().then(() => {
-          console.log("[ParkingAccount] 만기 수령 후 userDoc 갱신 완료");
+          console.log("[ParkingAccount] 만기 처리 후 userDoc 갱신 완료");
         });
       }
 
@@ -903,6 +1014,20 @@ const ParkingAccount = ({
     setIsProcessing(true);
     console.log("중도 해지 처리 시작...");
 
+    // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
+    const teacherId = product.teacherId;
+    let teacherAccountId = teacherId;
+    if (!teacherAccountId) {
+      const teacherAccount = await getTeacherAccount(userDoc?.classCode);
+      if (!teacherAccount) {
+        displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
+        setIsProcessing(false);
+        return;
+      }
+      teacherAccountId = teacherAccount.id;
+    }
+    console.log("선생님 계정 ID:", teacherAccountId);
+
     // --- 낙관적 업데이트 (Optimistic Update) ---
     const originalProducts = {
       deposit: [...userDeposits],
@@ -929,19 +1054,35 @@ const ParkingAccount = ({
       await runTransaction(db, async (transaction) => {
         console.log("트랜잭션 시작");
         const userRef = doc(db, "users", userId);
+        const teacherRef = doc(db, "users", teacherAccountId);
+
         const userSnapshot = await transaction.get(userRef);
-        if (!userSnapshot.exists()) {
-          throw new Error("사용자 정보를 찾을 수 없습니다.");
-        }
+        const teacherSnapshot = await transaction.get(teacherRef);
+
+        if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+
         const currentCashInDb = userSnapshot.data()?.cash ?? 0;
-        console.log(`현재 보유 현금 (DB): ${currentCashInDb}`);
+        const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
+        console.log(`현재 보유 현금 (DB): ${currentCashInDb}, 선생님 보유 현금: ${teacherCashInDb}`);
 
-        if (isLoan && currentCashInDb < balance) {
-          throw new Error("대출금을 상환하기에 현금이 부족합니다.");
+        if (isLoan) {
+          // 대출 중도 상환: 학생 → 선생님 (원금만)
+          if (currentCashInDb < balance) {
+            throw new Error("대출금을 상환하기에 현금이 부족합니다.");
+          }
+          transaction.update(userRef, { cash: increment(-balance) });
+          transaction.update(teacherRef, { cash: increment(balance) });
+          console.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
+        } else {
+          // 예금/적금 중도 해지: 선생님 → 학생 (원금만, 이자 없음)
+          if (teacherCashInDb < balance) {
+            throw new Error(`은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(balance)}원)`);
+          }
+          transaction.update(userRef, { cash: increment(balance) });
+          transaction.update(teacherRef, { cash: increment(-balance) });
+          console.log(`중도 해지: 학생 +${balance}, 선생님 -${balance}`);
         }
-
-        transaction.update(userRef, { cash: increment(cashChangeAmount) });
-        console.log(`사용자 현금 변경 (${cashChangeAmount}) 예약`);
 
         transaction.delete(productRef);
         console.log("상품 문서 삭제 예약");
@@ -950,7 +1091,10 @@ const ParkingAccount = ({
 
       console.log("트랜잭션 성공");
 
-      displayMessage(`${isLoan ? '대출 상환' : '중도 해지'} 완료. 원금 ${formatCurrency(balance)}원이 반환되었습니다.`, "success");
+      const successMsg = isLoan
+        ? `대출 상환 완료: ${formatCurrency(balance)}원 (선생님 계정으로 이체)`
+        : `중도 해지 완료: 원금 ${formatCurrency(balance)}원 반환 (선생님 계정에서 지급)`;
+      displayMessage(successMsg, "success");
 
       // 🔥 활동 로그 기록 (중도 해지 / 대출 상환)
       const activityType = isLoan ? ACTIVITY_TYPES.LOAN_REPAY : ACTIVITY_TYPES.DEPOSIT_WITHDRAW;
@@ -960,14 +1104,15 @@ const ParkingAccount = ({
         userName: userDoc?.name || '사용자',
         type: activityType,
         description: isLoan
-          ? `대출 상환: ${name} (${formatCurrency(balance)}원)`
-          : `중도 해지: ${name} (원금 ${formatCurrency(balance)}원 반환)`,
+          ? `대출 중도 상환: ${name} (${formatCurrency(balance)}원) - 선생님 계정으로`
+          : `중도 해지: ${name} (원금 ${formatCurrency(balance)}원) - 선생님 계정에서`,
         amount: cashChangeAmount,
         metadata: {
           productName: name,
           productType: type,
           principal: balance,
-          isEarlyCancellation: true
+          isEarlyCancellation: true,
+          teacherId: teacherAccountId
         }
       });
 

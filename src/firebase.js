@@ -23,6 +23,7 @@ import {
   Timestamp,
   onSnapshot,
   orderBy,
+  limit as firebaseLimit,
   // ⭐️ [수정] Firestore 초기화 방식 변경
   initializeFirestore,
   persistentLocalCache,
@@ -2718,7 +2719,8 @@ export {
   updatePassword,
   deleteUser,
   onSnapshot,
-  invalidateCache
+  invalidateCache,
+  firebaseLimit as limit
 };
 
 export const processSettlement = async (settlementData) => {

@@ -1,7 +1,7 @@
 /* src/OrganizationChart.css */
 .org-chart-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 20px;
   font-family: "Noto Sans KR", sans-serif;
   overflow-x: hidden; /* Prevent horizontal scroll */

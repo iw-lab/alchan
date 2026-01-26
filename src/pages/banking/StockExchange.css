@@ -91,8 +91,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1280px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   flex-wrap: wrap;
   gap: var(--spacing-md);
 }
@@ -128,8 +128,8 @@
 
 /* Main Section */
 .market-section {
-  max-width: 1280px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 0 var(--spacing-lg) var(--spacing-lg);
   display: flex;
   flex-direction: column;

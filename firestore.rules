@@ -807,6 +807,74 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🏪 개인 상점 (personalShops)
+    // ========================================================
+    match /personalShops/{shopId} {
+      // 읽기: 로그인한 모든 사용자 (상점 목록 조회)
+      allow read: if isSignedIn();
+
+      // 생성: 본인 상점만
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+
+      // 수정: 본인 또는 관리자
+      allow update: if isOwner(resource.data.ownerId) || isAdmin();
+
+      // 삭제: 본인 또는 관리자
+      allow delete: if isOwner(resource.data.ownerId) || isAdmin();
+    }
+
+    // ========================================================
+    // 📦 상점 상품 (shopProducts)
+    // ========================================================
+    match /shopProducts/{productId} {
+      // 읽기: 로그인한 모든 사용자
+      allow read: if isSignedIn();
+
+      // 생성: 상점 소유자
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+
+      // 수정: 상품 소유자 또는 관리자 (구매 시 재고 감소 포함)
+      allow update: if isSignedIn();
+
+      // 삭제: 상품 소유자 또는 관리자
+      allow delete: if isOwner(resource.data.ownerId) || isAdmin();
+    }
+
+    // ========================================================
+    // 📜 활동 기록 (activities)
+    // ========================================================
+    match /activities/{activityId} {
+      // 읽기: 로그인한 사용자
+      allow read: if isSignedIn();
+
+      // 생성: 로그인한 사용자
+      allow create: if isSignedIn();
+
+      // 수정: 불가
+      allow update: if false;
+
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
+    // 💰 국세청 (nationalTax)
+    // ========================================================
+    match /nationalTax/{docId} {
+      // 읽기: 로그인한 사용자
+      allow read: if isSignedIn();
+
+      // 생성: 관리자
+      allow create: if isAdmin();
+
+      // 수정: 로그인한 사용자 (거래 시 세금 자동 추가)
+      allow update: if isSignedIn();
+
+      // 삭제: 관리자만
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
     // 🚫 기타 모든 컬렉션은 기본적으로 차단
     // ========================================================
     match /{document=**} {

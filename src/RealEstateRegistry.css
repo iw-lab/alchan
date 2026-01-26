@@ -41,8 +41,8 @@ body {
 
 /* 통계 바 */
 .stats-container {
-  max-width: 1200px;
-  margin: -1.5rem auto 2rem;
+  max-width: 100%;
+  margin: -1.5rem 0 2rem;
   padding: 0 1rem;
   position: relative;
   z-index: 2;
@@ -102,8 +102,8 @@ body {
 
 /* 메인 컨텐츠 */
 .exchange-content {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 0 1rem 2rem;
 }
 

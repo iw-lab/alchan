@@ -1,7 +1,7 @@
 /* src/NationalAssembly.css - Cyberpunk Dark Theme */
 .national-assembly-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 20px;
   font-family: 'Rajdhani', "Noto Sans KR", sans-serif;
   color: var(--cyber-text-primary);
