@@ -50,8 +50,8 @@ const LawManagement = ({ classCode }) => {
       }));
     },
     {
-      // 🔥 [최적화] 1분 → 5분으로 변경 (읽기 비용 절감)
-      interval: 300000,
+      // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
+      interval: 30 * 60 * 1000,
       enabled: !!classCode,
       deps: [classCode],
     }
@@ -96,8 +96,8 @@ const LawManagement = ({ classCode }) => {
     }
   };
 
-  // usePolling hook 사용 (30초 간격)
-  const { loading, refetch } = usePolling(fetchLaws, { interval: 300000, enabled: !!classCode });
+  // 🔥 [비용 최적화] 5분 → 15분 (법안 데이터는 자주 안 바뀜)
+  const { loading, refetch } = usePolling(fetchLaws, { interval: 15 * 60 * 1000, enabled: !!classCode });
 
   // 법안 승인 핸들러
   const handleApprove = async (lawId) => {

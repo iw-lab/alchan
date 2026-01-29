@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 // import { useAuth } from "./App"; // App.js에서 useAuth를 import -> AuthContext에서 직접 import
 import { useAuth } from "../../contexts/AuthContext"; // AuthContext에서 useAuth를 import
-import "../../Header.css";
-import { formatKoreanCurrency } from '../../numberFormatter';
+import "../../components/Header.css";
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useNavigate } from "react-router-dom"; // navigate 사용을 위해 임포트
 
 // AuthContext의 userDoc (Firestore 사용자 정보)를 prop으로 받도록 수정
@@ -36,14 +36,25 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
   };
 
   // 닉네임 변경
-  const handleChangeNickname = () => {
-    // 이 기능은 AuthContext의 updateUserData를 사용하도록 수정 필요
+  const handleChangeNickname = async () => {
     const newNickname = prompt("새로운 닉네임을 입력하세요:");
     if (newNickname && newNickname.trim() !== "") {
-      // TODO: 닉네임 변경 로직 구현 (AuthContext의 updateUserData 호출)
-      console.log("TODO: 닉네임 변경 로직 구현 필요 - AuthContext 사용");
-      // 예시: auth.updateUserData({ nickname: newNickname });
-      alert(`닉네임 변경 요청: '${newNickname}' (기능 구현 필요)`);
+      try {
+        const { updateUserData } = await import("../../contexts/AuthContext");
+        // userDoc이 있으면 Firestore에서 닉네임 업데이트
+        if (user?.uid) {
+          const { doc, updateDoc } = await import("firebase/firestore");
+          const { db } = await import("../../firebase");
+          await updateDoc(doc(db, "users", user.uid), {
+            nickname: newNickname.trim(),
+            name: newNickname.trim()
+          });
+          alert(`닉네임이 '${newNickname.trim()}'(으)로 변경되었습니다.`);
+        }
+      } catch (error) {
+        console.error("닉네임 변경 실패:", error);
+        alert("닉네임 변경에 실패했습니다. 다시 시도해주세요.");
+      }
     }
     setShowUserMenu(false);
   };
@@ -56,24 +67,94 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
   };
 
   // 비밀번호 변경
-  const handleChangePassword = () => {
-    // TODO: 비밀번호 변경 페이지로 이동 또는 모달 표시 구현 필요
-    console.log("TODO: 비밀번호 변경 기능 구현 필요");
-    alert("비밀번호 변경 기능은 구현 중입니다.");
+  const handleChangePassword = async () => {
+    const currentPassword = prompt("현재 비밀번호를 입력하세요:");
+    if (!currentPassword) {
+      setShowUserMenu(false);
+      return;
+    }
+
+    const newPassword = prompt("새로운 비밀번호를 입력하세요 (6자 이상):");
+    if (!newPassword || newPassword.length < 6) {
+      alert("비밀번호는 6자 이상이어야 합니다.");
+      setShowUserMenu(false);
+      return;
+    }
+
+    const confirmPassword = prompt("새로운 비밀번호를 다시 입력하세요:");
+    if (newPassword !== confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.");
+      setShowUserMenu(false);
+      return;
+    }
+
+    try {
+      const { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import("firebase/auth");
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (currentUser && currentUser.email) {
+        const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+        await reauthenticateWithCredential(currentUser, credential);
+        await updatePassword(currentUser, newPassword);
+        alert("비밀번호가 성공적으로 변경되었습니다.");
+      }
+    } catch (error) {
+      console.error("비밀번호 변경 실패:", error);
+      if (error.code === "auth/wrong-password") {
+        alert("현재 비밀번호가 올바르지 않습니다.");
+      } else {
+        alert("비밀번호 변경에 실패했습니다. 다시 시도해주세요.");
+      }
+    }
     setShowUserMenu(false);
   };
 
   // 계정 삭제
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
       "정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
     );
-    if (confirmed) {
-      // TODO: 계정 삭제 로직 구현 필요
-      console.log("TODO: 계정 삭제 로직 구현 필요");
-      alert("계정 삭제 기능은 구현 중입니다.");
-      // 삭제 성공 시 자동으로 로그아웃 처리 필요
-      // if (logout) logout();
+    if (!confirmed) {
+      setShowUserMenu(false);
+      return;
+    }
+
+    const password = prompt("계정 삭제를 위해 비밀번호를 입력하세요:");
+    if (!password) {
+      setShowUserMenu(false);
+      return;
+    }
+
+    try {
+      const { getAuth, EmailAuthProvider, reauthenticateWithCredential, deleteUser } = await import("firebase/auth");
+      const { doc, deleteDoc } = await import("firebase/firestore");
+      const { db } = await import("../../firebase");
+
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (currentUser && currentUser.email) {
+        // 재인증
+        const credential = EmailAuthProvider.credential(currentUser.email, password);
+        await reauthenticateWithCredential(currentUser, credential);
+
+        // Firestore 사용자 문서 삭제
+        await deleteDoc(doc(db, "users", currentUser.uid));
+
+        // Firebase Auth 계정 삭제
+        await deleteUser(currentUser);
+
+        alert("계정이 삭제되었습니다.");
+        if (logout) logout();
+      }
+    } catch (error) {
+      console.error("계정 삭제 실패:", error);
+      if (error.code === "auth/wrong-password") {
+        alert("비밀번호가 올바르지 않습니다.");
+      } else {
+        alert("계정 삭제에 실패했습니다. 다시 시도해주세요.");
+      }
     }
     setShowUserMenu(false);
   };

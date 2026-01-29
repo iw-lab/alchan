@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext"; // ItemContext가 classCode를 사용하도록 수정되어야 함
 import "./ItemStore.css";
 import "../admin/AdminPanel.css";
-import LoginWarning from "../../LoginWarning";
+import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 
 const StockBadge = ({ stock }) => {

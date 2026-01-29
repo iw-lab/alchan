@@ -41,8 +41,8 @@ const NationalAssembly = () => {
       }));
     },
     {
-      // 🔥 [최적화] 1분 → 5분으로 변경 (읽기 비용 절감)
-      interval: 300000,
+      // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
+      interval: 30 * 60 * 1000,
       enabled: !!currentUser?.classCode,
       deps: [currentUser?.classCode],
     }
@@ -101,7 +101,7 @@ const NationalAssembly = () => {
       }
     },
     {
-      interval: 300000,
+      interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (설정은 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
       defaultValue: { totalStudents: 25 },
@@ -145,7 +145,7 @@ const NationalAssembly = () => {
       }
     },
     {
-      interval: 300000,
+      interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (설정은 거의 안 바뀜)
       enabled: !!classCode && !adminSettingsLoading,
       deps: [classCode, adminSettings?.totalStudents, adminSettingsLoading],
       defaultValue: {
@@ -191,7 +191,7 @@ const NationalAssembly = () => {
       }));
     },
     {
-      interval: 300000,
+      interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (법안은 투표 시 수동 갱신됨)
       enabled: !!classCode,
       deps: [classCode],
       defaultValue: [],
@@ -223,7 +223,7 @@ const NationalAssembly = () => {
       }
     },
     {
-      interval: 300000,
+      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (투표 이력은 투표 시 업데이트됨)
       enabled: !!classCode && !!currentUser?.id,
       deps: [classCode, currentUser?.id],
       defaultValue: {},

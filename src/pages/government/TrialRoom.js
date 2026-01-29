@@ -190,7 +190,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   }, [roomId, classCode]);
 
   const { data: polledMessages } = usePolling(fetchMessages, {
-    interval: 300000, // 1분 주기
+    interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분
     enabled: !!roomId && !!classCode,
     deps: [roomId, classCode],
   });

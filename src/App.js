@@ -33,7 +33,7 @@ const queryClient = new QueryClient({
 
 // 코드 스플리팅 - 레이아웃과 로그인 페이지
 const AlchanLayout = lazy(() => import("./components/AlchanLayout"));
-const Login = lazy(() => import("./Login"));
+const Login = lazy(() => import("./pages/auth/Login"));
 
 // 기본 스타일 (Tailwind 이전에 로드하여 Tailwind가 우선권을 가지도록)
 import "./styles.css";

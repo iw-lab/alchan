@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "./App"; // 가정: useAuth는 App.js 또는 AuthContext.js에서 export됨
 import { useItems } from "../../contexts/ItemContext"; // 가정: useItems는 ItemContext.js에서 export됨
 import "./styles.css"; // 가정: 해당 CSS 파일이 있음
-import LoginWarning from "../../LoginWarning"; // 가정: 해당 컴포넌트가 있음
+import LoginWarning from "../../components/LoginWarning";
 
 // --- 아이콘 목록 ---
 const iconOptions = [

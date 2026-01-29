@@ -351,10 +351,118 @@
 /* 체스판 */
 .board-container {
     position: relative;
-    width: 90vw;
+    width: 95vw;
     max-width: 600px;
-    aspect-ratio: 1;
     margin: 0 auto;
+}
+
+/* PC에서 꽉 차게 */
+@media (min-width: 768px) {
+    .board-container {
+        width: 70vw;
+        max-width: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .board-container {
+        width: 60vw;
+        max-width: none;
+    }
+}
+
+@media (min-width: 1400px) {
+    .board-container {
+        width: 55vw;
+        max-width: none;
+    }
+}
+
+/* 3D/2D 토글 버튼 */
+.view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.toggle-btn {
+    padding: 8px 20px;
+    border: 1px solid rgba(0, 255, 242, 0.3);
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #a0a0c0;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn.active {
+    background: linear-gradient(135deg, #00fff2 0%, #00d4ff 100%);
+    color: #0a0a12;
+    border-color: #00fff2;
+    box-shadow: 0 0 15px rgba(0, 255, 242, 0.4);
+}
+
+.toggle-btn:hover:not(.active) {
+    background: rgba(0, 255, 242, 0.1);
+    border-color: #00fff2;
+    color: #00fff2;
+}
+
+/* 3D 보드 컨테이너 */
+.chess-board-3d {
+    width: 100%;
+    height: 500px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(0, 255, 242, 0.2);
+    border: 2px solid rgba(0, 255, 242, 0.3);
+    background: linear-gradient(135deg, #0a0a15 0%, #151525 100%);
+}
+
+.loading-3d {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #00fff2;
+    font-size: 1.2em;
+    background: #0a0a15;
+}
+
+@media (min-width: 768px) {
+    .chess-board-3d {
+        height: 70vh;
+        min-height: 500px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .chess-board-3d {
+        height: 75vh;
+        min-height: 600px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .chess-board-3d {
+        height: 78vh;
+        min-height: 700px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chess-board-3d {
+        height: 400px;
+    }
+
+    .toggle-btn {
+        padding: 6px 15px;
+        font-size: 0.85em;
+    }
 }
 
 .chess-board {
@@ -362,7 +470,7 @@
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
     width: 100%;
-    height: 100%;
+    aspect-ratio: 1;
     box-shadow: 0 0 30px rgba(0, 255, 242, 0.15);
     border: 2px solid #00fff2;
     border-radius: 4px;
@@ -774,5 +882,41 @@
 
     .piece {
         font-size: 50px;
+    }
+}
+
+@media (min-width: 768px) {
+    .game-info {
+        width: 70vw;
+        max-width: none;
+    }
+
+    .move-history {
+        width: 70vw;
+        max-width: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .game-info {
+        width: 60vw;
+        max-width: none;
+    }
+
+    .move-history {
+        width: 60vw;
+        max-width: none;
+    }
+}
+
+@media (min-width: 1400px) {
+    .game-info {
+        width: 55vw;
+        max-width: none;
+    }
+
+    .move-history {
+        width: 55vw;
+        max-width: none;
     }
 }

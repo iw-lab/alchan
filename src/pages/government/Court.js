@@ -502,7 +502,7 @@ const Court = () => {
           : null,
       }));
     },
-    { interval: 300000, enabled: !!classCode, deps: [classCode] }
+    { interval: 10 * 60 * 1000, enabled: !!classCode, deps: [classCode] } // 🔥 [비용 최적화] 5분 → 10분
   );
 
   // usePolling for trial rooms
@@ -517,7 +517,7 @@ const Court = () => {
         ...doc.data(),
       }));
     },
-    { interval: 300000, enabled: !!classCode, deps: [classCode] }
+    { interval: 10 * 60 * 1000, enabled: !!classCode, deps: [classCode] } // 🔥 [비용 최적화] 5분 → 10분
   );
 
   // Jobs polling - for prosecutor check
@@ -537,7 +537,7 @@ const Court = () => {
       }));
     },
     {
-      interval: 300000,
+      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
     }

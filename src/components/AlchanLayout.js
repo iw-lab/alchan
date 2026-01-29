@@ -16,17 +16,16 @@ import { AlchanLoadingScreen } from './ui/Skeleton';
 import { WifiOff } from 'lucide-react';
 
 // 🔥 핵심 페이지 - 즉시 로드 (자주 사용)
-import Dashboard from '../Dashboard';
+import Dashboard from '../pages/dashboard/Dashboard';
 import ItemStore from '../pages/market/ItemStore';
-import MyItems from '../MyItems';
-import MyAssets from '../MyAssets';
+import MyItems from '../pages/my-items/MyItems';
+import MyAssets from '../pages/my-assets/MyAssets';
 import PersonalShop from '../pages/market/PersonalShop';
-import Login from '../Login';
+import Login from '../pages/auth/Login';
 import Banking from '../pages/banking/Banking';
-import MyProfile from '../MyProfile';
+import MyProfile from '../pages/my-profile/MyProfile';
 
 // 🔥 게임 페이지 - 동적 로딩 (번들 크기 절감)
-const GonuGame = lazy(() => import('../pages/games/GonuGame'));
 const OmokGame = lazy(() => import('../pages/games/OmokGame'));
 const ChessGame = lazy(() => import('../pages/games/ChessGame'));
 const TypingPracticeGame = lazy(() => import('../pages/games/TypingPracticeGame'));
@@ -36,20 +35,20 @@ const AdminItemPage = lazy(() => import('../pages/admin/AdminItemPage'));
 const AdminPage = lazy(() => import('../pages/admin/AdminPage'));
 const AdminPanel = lazy(() => import('../pages/admin/AdminPanel'));
 const AdminDatabase = lazy(() => import('../pages/admin/AdminDatabase'));
-const FirestoreDoctor = lazy(() => import('../FirestoreDoctor'));
-const RecoverDonations = lazy(() => import('../RecoverDonations'));
+const FirestoreDoctor = lazy(() => import('../pages/admin/FirestoreDoctor'));
+const RecoverDonations = lazy(() => import('../pages/admin/RecoverDonations'));
 const StudentManager = lazy(() => import('./StudentManager'));
 
 // 🔥 앱 관리자(SuperAdmin) 전용 대시보드
 const SuperAdminDashboard = lazy(() => import('../pages/superadmin/SuperAdminDashboard'));
 
 // 🔥 덜 자주 사용하는 페이지 - 동적 로딩
-const LearningBoard = lazy(() => import('../LearningBoard'));
-const MusicRequest = lazy(() => import('../MusicRequest'));
-const MusicRoom = lazy(() => import('../MusicRoom'));
-const StudentRequest = lazy(() => import('../StudentRequest'));
+const LearningBoard = lazy(() => import('../pages/learning/LearningBoard'));
+const MusicRequest = lazy(() => import('../pages/music/MusicRequest'));
+const MusicRoom = lazy(() => import('../pages/music/MusicRoom'));
+const StudentRequest = lazy(() => import('../pages/student/StudentRequest'));
 const StockExchange = lazy(() => import('../pages/banking/StockExchange'));
-const RealEstateRegistry = lazy(() => import('../RealEstateRegistry'));
+const RealEstateRegistry = lazy(() => import('../pages/real-estate/RealEstateRegistry'));
 const NationalAssembly = lazy(() => import('../pages/government/NationalAssembly'));
 const Government = lazy(() => import('../pages/government/Government'));
 const Court = lazy(() => import('../pages/government/Court'));
@@ -57,14 +56,14 @@ const PoliceStation = lazy(() => import('../pages/government/PoliceStation'));
 const Auction = lazy(() => import('../pages/market/Auction'));
 const MoneyTransfer = lazy(() => import('../pages/banking/MoneyTransfer'));
 const CouponTransfer = lazy(() => import('../pages/banking/CouponTransfer'));
-const CouponGoalPage = lazy(() => import('../CouponGoalPage'));
+const CouponGoalPage = lazy(() => import('../pages/coupon/CouponGoalPage'));
+const OrganizationChart = lazy(() => import('../pages/organization/OrganizationChart'));
 
 // 전체 화면이 필요한 페이지 경로 (자동으로 사이드바 접기)
 const FULLSCREEN_PAGES = [
   '/learning-games/omok',
   '/learning-games/science',
   '/learning-games/typing',
-  '/gonu-game',
   '/auction',
   '/court',
   '/national-assembly',
@@ -292,7 +291,6 @@ export default function AlchanLayout() {
             <Route path="/learning-games/omok" element={<ProtectedRoute><OmokGame /></ProtectedRoute>} />
             <Route path="/learning-games/typing" element={<ProtectedRoute><TypingPracticeGame /></ProtectedRoute>} />
             <Route path="/learning-games/science" element={<ProtectedRoute><ChessGame /></ProtectedRoute>} />
-            <Route path="/gonu-game" element={<ProtectedRoute><GonuGame /></ProtectedRoute>} />
 
             {/* 아이템 */}
             <Route path="/item-shop" element={<ProtectedRoute><ItemStore /></ProtectedRoute>} />

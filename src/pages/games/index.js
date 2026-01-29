@@ -2,7 +2,6 @@
 // 게임 페이지 통합 export
 
 export { default as ChessGame } from './ChessGame';
-export { default as GonuGame } from './GonuGame';
 export { default as OmokGame } from './OmokGame';
 export { default as TypingPracticeGame } from './TypingPracticeGame';
 export { default as GeographyGame } from './GeographyGame';

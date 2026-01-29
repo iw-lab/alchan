@@ -90,29 +90,9 @@ export const SidebarItem = ({ item, isActive, onClick }) => (
 );
 
 // --- 유틸리티 함수 ---
-export const formatMoney = (amount) => {
-  if (amount >= 100000000) {
-    const ok = Math.floor(amount / 100000000);
-    const man = Math.floor((amount % 100000000) / 10000);
-    if (man > 0) {
-      return `${ok}억 ${man.toLocaleString()}만`;
-    }
-    return `${ok}억`;
-  }
-  if (amount >= 10000) {
-    const man = Math.floor(amount / 10000);
-    const remainder = amount % 10000;
-    if (remainder > 0) {
-      return `${man.toLocaleString()}만 ${remainder.toLocaleString()}`;
-    }
-    return `${man.toLocaleString()}만`;
-  }
-  return new Intl.NumberFormat('ko-KR').format(amount);
-};
-
-export const formatMoneyWithUnit = (amount) => {
-  return formatMoney(amount) + '원';
-};
+// 중복 함수 제거 - numberFormatter.js의 formatKoreanCurrency/formatKoreanNumber 사용 권장
+// 하위 호환성을 위해 re-export
+export { formatKoreanNumber as formatMoney, formatKoreanCurrency as formatMoneyWithUnit } from '../utils/numberFormatter';
 
 // --- 글로벌 스타일 ---
 export const GlobalStyles = () => (
@@ -142,13 +122,17 @@ export const GlobalStyles = () => (
   </style>
 );
 
+// default export - 하위 호환성 유지
+// formatMoney/formatMoneyWithUnit은 numberFormatter.js에서 import
+import { formatKoreanNumber, formatKoreanCurrency } from '../utils/numberFormatter';
+
 export default {
   APP_NAME_KR,
   APP_NAME_EN,
   WonIcon,
   AlchanLogo,
   SidebarItem,
-  formatMoney,
-  formatMoneyWithUnit,
+  formatMoney: formatKoreanNumber,
+  formatMoneyWithUnit: formatKoreanCurrency,
   GlobalStyles
 };

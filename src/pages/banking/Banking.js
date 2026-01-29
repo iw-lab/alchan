@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import ParkingAccount from "./ParkingAccount";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
 import { collection, query, where, getDocs, collectionGroup, doc, deleteDoc } from "firebase/firestore";
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import {
   PageContainer,
   PageHeader,

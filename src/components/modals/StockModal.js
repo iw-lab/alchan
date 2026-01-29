@@ -2,7 +2,7 @@
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, useEffect, memo } from "react";
 import "../../StockExchange.css"; // 스타일 공유
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 
 const StockModal = memo(function StockModal({ isOpen, onClose, onSave, stock, isAdmin }) {
   const [name, setName] = useState("");

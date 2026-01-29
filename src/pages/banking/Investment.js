@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // AuthContext에서 user 정보 가져오기
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { usePolling } from '../../hooks/usePolling';
 
 // Firestore 관련 함수 임포트
@@ -96,7 +96,7 @@ const Investment = ({ classCode }) => {
         }
       }
     },
-    { interval: 300000, enabled: !!classCode && !!treasuryRef, deps: [classCode] }
+    { interval: 15 * 60 * 1000, enabled: !!classCode && !!treasuryRef, deps: [classCode] } // 🔥 [비용 최적화] 5분 → 15분
   );
 
   // 최근 거래 내역 폴링
@@ -115,7 +115,7 @@ const Investment = ({ classCode }) => {
         ...doc.data(),
       }));
     },
-    { interval: 300000, enabled: !!classCode && !!treasuryTransactionsColRef, deps: [classCode] }
+    { interval: 15 * 60 * 1000, enabled: !!classCode && !!treasuryTransactionsColRef, deps: [classCode] } // 🔥 [비용 최적화] 5분 → 15분
   );
 
   // treasuryData와 transactionsData를 state에 반영

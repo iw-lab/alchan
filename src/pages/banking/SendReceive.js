@@ -11,7 +11,7 @@ import {
   setDoc,
   increment,
 } from "../../firebase";
-import { logActivity, LOG_TYPES } from "../../database"; // logActivity와 LOG_TYPES 가져오기
+import { logActivity, LOG_TYPES } from "../../services/database"; // logActivity와 LOG_TYPES 가져오기
 import { usePolling } from "../../hooks/usePolling";
 import "./SendReceive.css";
 
@@ -83,7 +83,8 @@ const SendReceive = ({ classCode }) => {
     }
   };
 
-  const { refetch: refetchTreasuryBalance } = usePolling(fetchTreasuryBalance, { interval: 300000, enabled: !!classCode });
+  // 🔥 [비용 최적화] 5분 → 15분 (금고 잔액은 거래 시 수동 갱신됨)
+  const { refetch: refetchTreasuryBalance } = usePolling(fetchTreasuryBalance, { interval: 15 * 60 * 1000, enabled: !!classCode });
 
   useEffect(() => {
     setUserCash(userDoc?.cash || 0);

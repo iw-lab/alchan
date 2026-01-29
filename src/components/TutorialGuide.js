@@ -79,7 +79,7 @@ const TUTORIAL_STEPS = [
     icon: Gamepad2,
     color: 'from-purple-500 to-violet-600',
     tips: [
-      '오목, 고누, 체스 게임이 있어요',
+      '오목, 체스 게임이 있어요',
       '타자연습으로 실력을 키워요',
       '게임에서 이기면 보상을 받을 수도!'
     ],

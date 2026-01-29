@@ -5,7 +5,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import './index.css'; // Tailwind CSS - 반드시 먼저 import
-import './StudentRequest.css';
+import './pages/student/StudentRequest.css';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 // React Query 클라이언트 설정 (Firebase 최적화)

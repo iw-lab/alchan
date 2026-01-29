@@ -14,21 +14,10 @@ import Avatar from './Avatar';
 import { getAvatarConfig } from '../utils/avatarSystem';
 import { getLevelInfo } from '../utils/levelSystem';
 import { getUserAchievements, getAchievementById } from '../utils/achievementSystem';
+import { formatKoreanNumber } from '../utils/numberFormatter';
 
-// 금액 포맷
-const formatMoney = (amount) => {
-  if (amount >= 100000000) {
-    const ok = Math.floor(amount / 100000000);
-    const man = Math.floor((amount % 100000000) / 10000);
-    if (man > 0) return `${ok}억 ${man.toLocaleString()}만`;
-    return `${ok}억`;
-  }
-  if (amount >= 10000) {
-    const man = Math.floor(amount / 10000);
-    return `${man.toLocaleString()}만`;
-  }
-  return new Intl.NumberFormat('ko-KR').format(amount);
-};
+// 금액 포맷 - numberFormatter.js 사용
+const formatMoney = (amount) => formatKoreanNumber(amount, '');
 
 // 모달 컴포넌트
 const Modal = ({ isOpen, onClose, title, children }) => {

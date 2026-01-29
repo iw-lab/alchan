@@ -6,7 +6,7 @@ import React, {
   useRef,
 } from "react";
 import "./StockExchange.css";
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
 import { applyStockTax } from "../../utils/taxUtils";
@@ -35,151 +35,32 @@ import {
 import { globalCache, cacheStats } from "../../services/globalCacheService";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 
-// === 배치 데이터 로딩 시스템 ===
-const batchDataLoader = {
-  pendingRequests: new Map(),
+// 서비스 레이어 import
+import {
+  batchDataLoader,
+  PRODUCT_TYPES,
+  SECTORS,
+  HOLDING_LOCK_PERIOD,
+  COMMISSION_RATE,
+  TAX_RATE,
+  BOND_TAX_RATE,
+  CACHE_TTL,
+  getRealtimeMarketState,
+  getMarketStateLabel,
+  formatCurrency,
+  formatPercent,
+  formatTime,
+  calculateStockTax,
+  updateNationalTreasury,
+  calculateMarketIndex,
+  canSellHolding,
+  getRemainingLockTime,
+  getProductIcon,
+  getProductBadgeClass,
+  invalidateStockCache as invalidateCache,
+  clearLocalStorageBatchCache,
+} from "./stockExchangeService";
 
-  // 배치로 여러 데이터를 한 번에 로드
-  loadBatchData: async function (classCode, userId, forceRefresh = false) {
-    const batchKey = globalCache.generateKey('BATCH', { classCode, userId });
-
-    if (!forceRefresh) {
-      const cached = globalCache.get(batchKey);
-      if (cached) {
-        console.log('[batchDataLoader] Cache HIT - 캐시된 데이터 사용');
-        return cached;
-      }
-    } else {
-      console.log('[batchDataLoader] forceRefresh=true - 캐시 무시하고 서버에서 로드');
-      // 강제 새로고침 시 캐시 무효화
-      globalCache.invalidate(batchKey);
-    }
-
-    // 이미 같은 배치 요청이 진행 중이면 대기
-    if (this.pendingRequests.has(batchKey)) {
-      return await this.pendingRequests.get(batchKey);
-    }
-
-    const batchPromise = this._executeBatchLoad(classCode, userId);
-    this.pendingRequests.set(batchKey, batchPromise);
-
-    try {
-      const result = await batchPromise;
-      globalCache.set(batchKey, result, 30 * 60 * 1000); // 🔥 [최적화] 30분 캐시 - 거래 시 강제 무효화되므로 안전
-      return result;
-    } finally {
-      this.pendingRequests.delete(batchKey);
-    }
-  },
-
-  _executeBatchLoad: async function (classCode, userId) {
-    const [stocks, portfolio] = await Promise.all([
-      this._loadStocks(classCode),
-      this._loadPortfolio(userId, classCode),
-    ]);
-
-    return {
-      stocks: stocks || [],
-      portfolio: portfolio || [],
-      errors: []
-    };
-  },
-
-  _loadStocks: async function (classCode) {
-    try {
-      // 1) Cloud Function 우선: Firestore Rules 우회 + 단일 호출
-      try {
-        const getSnapshotFn = httpsCallable(functions, 'getStocksSnapshot');
-        const result = await getSnapshotFn({});
-        if (result.data && Array.isArray(result.data.stocks) && result.data.stocks.length > 0) {
-          return result.data.stocks;
-        }
-      } catch (fnError) {
-        console.warn('[batchDataLoader] 스냅샷 함수 호출 실패, 문서/쿼리 폴백 시도:', fnError);
-      }
-
-      // 2) 스냅샷 문서 직접 읽기 (권한 허용 시)
-      try {
-        const cacheRef = doc(db, "Settings", "centralStocksCache");
-        const cacheDoc = await getDoc(cacheRef);
-        const cacheData = cacheDoc.exists() ? cacheDoc.data() : null;
-
-        if (cacheData && Array.isArray(cacheData.stocks) && cacheData.stocks.length > 0) {
-          return cacheData.stocks;
-        }
-      } catch (snapshotError) {
-        console.warn('[batchDataLoader] 스냅샷 문서 읽기 실패:', snapshotError);
-      }
-
-      // 3) 최종 폴백: 컬렉션 쿼리
-      const stocksRef = collection(db, "CentralStocks");
-      const q = query(stocksRef, where("isListed", "==", true));
-      const querySnapshot = await getDocs(q);
-
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('[batchDataLoader] Stocks load error:', error);
-      return [];
-    }
-  },
-
-  _loadPortfolio: async function (userId, classCode) {
-    try {
-      const portfolioRef = collection(db, "users", userId, "portfolio");
-      const q = query(portfolioRef, where("classCode", "==", classCode));
-      const querySnapshot = await getDocs(q);
-
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          // 🔥 Timestamp를 Date로 변환하여 캐시 호환성 확보
-          lastBuyTime: data.lastBuyTime?.toDate ? data.lastBuyTime.toDate() : data.lastBuyTime,
-          delistedAt: data.delistedAt?.toDate ? data.delistedAt.toDate() : data.delistedAt,
-        };
-      });
-    } catch (error) {
-      console.error('[batchDataLoader] Portfolio load error:', error);
-      return [];
-    }
-  },
-
-
-};
-
-// 🔥 [최적화] 실시간 marketState 계산 함수 (서버 데이터 의존성 제거)
-// 주식 심볼을 기반으로 현재 시간에서 장중/장마감 상태를 계산
-const getRealtimeMarketState = (stock) => {
-  // 실시간 주식이 아니면 null 반환
-  if (!stock?.isRealStock) {
-    return null;
-  }
-
-  // realStockData에 이미 서버에서 계산된 marketState가 있으면 그것을 사용
-  if (stock.realStockData?.marketState) {
-    return stock.realStockData.marketState;
-  }
-
-  // realStockData가 없으면 null 반환
-  return null;
-};
-
-// marketState를 한글로 변환
-const getMarketStateLabel = (stock) => {
-  const state = getRealtimeMarketState(stock);
-  if (!state) return null;
-
-  switch (state) {
-    case 'REGULAR': return '장중';
-    case 'PRE': return '장전';
-    case 'POST': return '장후';
-    default: return '장마감';
-  }
-};
 
 // === 아이콘 컴포넌트들 ===
 const TrendingUp = ({ size = 24, color = "currentColor" }) => (
@@ -207,227 +88,7 @@ const Lock = ({ size = 24, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
 );
 
-// === 상수 및 유틸리티 함수들 ===
-const PRODUCT_TYPES = {
-  STOCK: "stock",
-  ETF: "etf",
-  BOND: "bond"
-};
-
-const SECTORS = {
-  TECH: { name: "기술" },
-  FINANCE: { name: "금융" },
-  CONSUMER: { name: "소비재" },
-  HEALTHCARE: { name: "헬스케어" },
-  ENERGY: { name: "에너지" },
-  INDUSTRIAL: { name: "산업" },
-  MATERIALS: { name: "소재" },
-  REALESTATE: { name: "부동산" },
-  UTILITIES: { name: "유틸리티" },
-  COMMUNICATION: { name: "통신" },
-  ENTERTAINMENT: { name: "엔터테인먼트" },
-  INDEX: { name: "지수" },
-  GOVERNMENT: { name: "국채" },
-  CORPORATE: { name: "회사채" }
-};
-
-const HOLDING_LOCK_PERIOD = 60 * 60 * 1000; // 1시간 (60분)
-const COMMISSION_RATE = 0.003;
-const TAX_RATE = 0.22;
-const BOND_TAX_RATE = 0.154;
-
-const CACHE_TTL = {
-  BATCH_DATA: 1000 * 60 * 30, // 🔥 [최적화] 30분 캐시 - 실시간 주가가 15분 주기이므로 2사이클 캐시
-  STOCKS: 1000 * 60 * 30, // 30분 (가격 반영 주기 2배)
-  PORTFOLIO: 1000 * 60 * 30, // 🔥 거래 시 forceRefresh로 즉시 무효화하므로 기본 주기는 30분
-  MARKET_STATUS: 1000 * 60 * 120, // 120분 (시장 상태는 거의 변경되지 않음)
-};
-
-// === 유틸리티 함수들 ===
-const formatCurrency = (amount) => {
-  if (typeof amount !== "number" || isNaN(amount)) return "0원";
-  return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + "원";
-};
-
-const formatPercent = (percent) => {
-  const num = parseFloat(percent);
-  if (isNaN(num)) return "0.00%";
-  return (num >= 0 ? "+" : "") + num.toFixed(2) + "%";
-};
-
-const calculateStockTax = (profit, productType = PRODUCT_TYPES.STOCK) => {
-  if (profit <= 0) return 0;
-  if (productType === PRODUCT_TYPES.BOND) {
-    return Math.round(profit * BOND_TAX_RATE);
-  }
-  return Math.round(profit * TAX_RATE);
-};
-
-// 배치 처리를 위한 국고 업데이트 최적화
-const treasuryUpdateQueue = new Map();
-const updateNationalTreasury = async (amount, type, classCode) => {
-  if (amount <= 0 || !classCode) return;
-
-  const key = `${classCode}_${type}`;
-  const existing = treasuryUpdateQueue.get(key) || { amount: 0, type, classCode };
-  existing.amount += amount;
-  treasuryUpdateQueue.set(key, existing);
-
-  // 배치 처리를 위해 지연
-  setTimeout(() => processTreasuryQueue(), 1000);
-};
-
-const processTreasuryQueue = async () => {
-  if (treasuryUpdateQueue.size === 0) return;
-
-  const batch = writeBatch(db);
-  const updates = Array.from(treasuryUpdateQueue.values());
-  treasuryUpdateQueue.clear();
-
-  for (const { amount, type, classCode } of updates) {
-    const treasuryRef = doc(db, "nationalTreasuries", classCode);
-    const updateData = {
-      totalAmount: increment(amount),
-      lastUpdated: serverTimestamp(),
-    };
-
-    if (type === 'tax') {
-      updateData.stockTaxRevenue = increment(amount);
-    } else if (type === 'commission') {
-      updateData.stockCommissionRevenue = increment(amount);
-    }
-
-    batch.update(treasuryRef, updateData, { merge: true });
-  }
-
-  try {
-    await batch.commit();
-  } catch (error) {
-    // 실패한 업데이트들을 다시 큐에 추가
-    updates.forEach(update => {
-      const key = `${update.classCode}_${update.type}`;
-      treasuryUpdateQueue.set(key, update);
-    });
-  }
-};
-
-const calculateMarketIndex = (stocks) => {
-  if (!stocks || stocks.length === 0) return 1000;
-  const listedStocks = stocks.filter(s => s && s.isListed && s.productType === PRODUCT_TYPES.STOCK);
-  if (listedStocks.length === 0) return 1000;
-
-  const totalMarketCap = listedStocks.reduce((sum, stock) => {
-    const shares = 1000;
-    return sum + (stock.price * shares);
-  }, 0);
-
-  const baseMarketCap = listedStocks.reduce((sum, stock) => {
-    const shares = 1000;
-    const basePrice = stock.initialPrice || stock.minListingPrice || stock.price;
-    return sum + (basePrice * shares);
-  }, 0);
-
-  if (baseMarketCap === 0) return 1000;
-
-  return Math.round((totalMarketCap / baseMarketCap) * 1000);
-};
-
-const canSellHolding = (holding) => {
-  if (!holding.lastBuyTime) return true;
-
-  // 🔥 Date 객체, Timestamp, 문자열 모두 처리
-  let lastBuyTimeMs;
-  if (holding.lastBuyTime instanceof Date) {
-    lastBuyTimeMs = holding.lastBuyTime.getTime();
-  } else if (holding.lastBuyTime?.toDate) {
-    lastBuyTimeMs = holding.lastBuyTime.toDate().getTime();
-  } else if (typeof holding.lastBuyTime === 'number') {
-    lastBuyTimeMs = holding.lastBuyTime;
-  } else if (typeof holding.lastBuyTime === 'string') {
-    lastBuyTimeMs = new Date(holding.lastBuyTime).getTime();
-  } else {
-    return true; // 알 수 없는 형식이면 매도 가능
-  }
-
-  const timeSinceBuy = Date.now() - lastBuyTimeMs;
-  return timeSinceBuy >= HOLDING_LOCK_PERIOD;
-};
-
-const getRemainingLockTime = (holding) => {
-  if (!holding.lastBuyTime) return 0;
-
-  // 🔥 Date 객체, Timestamp, 문자열 모두 처리
-  let lastBuyTimeMs;
-  if (holding.lastBuyTime instanceof Date) {
-    lastBuyTimeMs = holding.lastBuyTime.getTime();
-  } else if (holding.lastBuyTime?.toDate) {
-    lastBuyTimeMs = holding.lastBuyTime.toDate().getTime();
-  } else if (typeof holding.lastBuyTime === 'number') {
-    lastBuyTimeMs = holding.lastBuyTime;
-  } else if (typeof holding.lastBuyTime === 'string') {
-    lastBuyTimeMs = new Date(holding.lastBuyTime).getTime();
-  } else {
-    return 0; // 알 수 없는 형식이면 0 반환
-  }
-
-  const now = Date.now();
-  const timeSinceBuy = now - lastBuyTimeMs;
-  const remaining = HOLDING_LOCK_PERIOD - timeSinceBuy;
-
-  return Math.max(0, remaining);
-};
-
-const formatTime = (milliseconds) => {
-  const seconds = Math.floor(milliseconds / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}분 ${remainingSeconds}초`;
-};
-
-const getProductIcon = (productType) => {
-  switch (productType) {
-    case PRODUCT_TYPES.ETF: return "📊";
-    case PRODUCT_TYPES.BOND: return "📜";
-    default: return "📈";
-  }
-};
-
-const getProductBadgeClass = (productType) => {
-  switch (productType) {
-    case PRODUCT_TYPES.ETF: return "etf";
-    case PRODUCT_TYPES.BOND: return "bond";
-    default: return "stock";
-  }
-};
-
-// === 캐시 무효화 함수 ===
-const invalidateCache = (pattern) => {
-  // globalCache.invalidatePattern 메서드 사용 (더 안전함)
-  if (globalCache && typeof globalCache.invalidatePattern === 'function') {
-    globalCache.invalidatePattern(pattern);
-  }
-};
-
-// 🔥 [최적화] localStorage BATCH 캐시 일괄 삭제 헬퍼
-const clearLocalStorageBatchCache = () => {
-  try {
-    const keysToDelete = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.includes('BATCH')) {
-        keysToDelete.push(key);
-      }
-    }
-    keysToDelete.forEach(key => {
-      localStorage.removeItem(key);
-    });
-    if (keysToDelete.length > 0) {
-      console.log('[캐시] localStorage BATCH 캐시 삭제:', keysToDelete.length, '개');
-    }
-  } catch (error) {
-    console.warn('[캐시] localStorage 정리 오류:', error);
-  }
-};
+// === 상수 및 유틸리티 함수 → stockExchangeService.js에서 import됨 ===
 
 // === 개별 실제 주식 추가 컴포넌트 ===
 const RealStockAdder = React.memo(({ onAddStock }) => {

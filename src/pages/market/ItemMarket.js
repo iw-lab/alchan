@@ -27,7 +27,7 @@ import {
 } from "firebase/firestore";
 
 import "./ItemMarket.css";
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 
 const formatDate = (date) => {
   if (!date) return '알 수 없음';

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { db, doc, getDoc, setDoc, serverTimestamp, updateDoc, increment, runTransaction, collection, getDocs, deleteDoc, query, where, limit } from "../../firebase";
 import { format, isToday, differenceInDays, isPast } from 'date-fns';
 import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp, Building2 } from 'lucide-react';
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자

@@ -1,5 +1,5 @@
 // src/ChessGame.js
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePolling } from '../../hooks/usePolling';
 import {
@@ -15,11 +15,13 @@ import {
     where,
     getDocs,
     deleteDoc,
-    // ✨ updateUserChessResult import 구문을 여기서 제거했습니다.
 } from '../../firebase';
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 import './ChessGame.css';
 import { AlchanLoading } from '../../components/AlchanLayout';
+
+// 3D 보드 지연 로딩
+const Chess3DCanvas = lazy(() => import('./Chess3DBoard'));
 
 const PIECES = {
     'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
@@ -293,6 +295,9 @@ const ChessGame = () => {
     const [aiDifficulty, setAiDifficulty] = useState('intermediate'); // 'beginner', 'intermediate', 'advanced'
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
+
+    // 3D 모드 관련 state
+    const [is3DMode, setIs3DMode] = useState(true); // 기본값 3D 모드
 
     // 보상 관련 state
     const [showRewardSelection, setShowRewardSelection] = useState(false);
@@ -1366,35 +1371,68 @@ const ChessGame = () => {
             </div>
 
             <div className="board-container">
-                <div className={`chess-board ${myColor === 'b' ? 'flipped' : ''}`}>
-                    {gameData.board.map((row, rIndex) => (
-                        row.map((piece, cIndex) => {
-                            const isSelected = selectedPiece?.row === rIndex && selectedPiece?.col === cIndex;
-                            const isPossibleMove = possibleMoves.some(([r, c]) => r === rIndex && c === cIndex);
-                            const isLight = (rIndex + cIndex) % 2 === 0;
-                            const isCheck = piece && piece[1] === 'K' && isInCheck(gameData.board, piece[0]);
-
-                            return (
-                                <div
-                                    key={`${rIndex}-${cIndex}`}
-                                    className={`square ${isLight ? 'light' : 'dark'} 
-                                               ${isSelected ? 'selected' : ''} 
-                                               ${isPossibleMove ? 'possible' : ''}
-                                               ${isCheck ? 'check' : ''}`}
-                                    onClick={() => handlePieceClick(rIndex, cIndex)}
-                                >
-                                    {piece && (
-                                        <div className={`piece ${piece[0] === 'w' ? 'white-piece' : 'black-piece'}`}>
-                                            {PIECES[piece]}
-                                        </div>
-                                    )}
-                                    {isPossibleMove && !piece && <div className="move-dot" />}
-                                    {isPossibleMove && piece && <div className="capture-hint" />}
-                                </div>
-                            );
-                        })
-                    ))}
+                {/* 3D/2D 토글 버튼 */}
+                <div className="view-toggle">
+                    <button
+                        className={`toggle-btn ${!is3DMode ? 'active' : ''}`}
+                        onClick={() => setIs3DMode(false)}
+                    >
+                        2D
+                    </button>
+                    <button
+                        className={`toggle-btn ${is3DMode ? 'active' : ''}`}
+                        onClick={() => setIs3DMode(true)}
+                    >
+                        3D
+                    </button>
                 </div>
+
+                {is3DMode ? (
+                    // 3D 체스 보드
+                    <div className="chess-board-3d">
+                        <Suspense fallback={<div className="loading-3d">3D 보드 로딩 중...</div>}>
+                            <Chess3DCanvas
+                                board={gameData.board}
+                                selectedPiece={selectedPiece}
+                                possibleMoves={possibleMoves}
+                                onSquareClick={handlePieceClick}
+                                myColor={myColor}
+                                isInCheck={isInCheck}
+                            />
+                        </Suspense>
+                    </div>
+                ) : (
+                    // 2D 체스 보드
+                    <div className={`chess-board ${myColor === 'b' ? 'flipped' : ''}`}>
+                        {gameData.board.map((row, rIndex) => (
+                            row.map((piece, cIndex) => {
+                                const isSelected = selectedPiece?.row === rIndex && selectedPiece?.col === cIndex;
+                                const isPossibleMove = possibleMoves.some(([r, c]) => r === rIndex && c === cIndex);
+                                const isLight = (rIndex + cIndex) % 2 === 0;
+                                const isCheck = piece && piece[1] === 'K' && isInCheck(gameData.board, piece[0]);
+
+                                return (
+                                    <div
+                                        key={`${rIndex}-${cIndex}`}
+                                        className={`square ${isLight ? 'light' : 'dark'}
+                                                   ${isSelected ? 'selected' : ''}
+                                                   ${isPossibleMove ? 'possible' : ''}
+                                                   ${isCheck ? 'check' : ''}`}
+                                        onClick={() => handlePieceClick(rIndex, cIndex)}
+                                    >
+                                        {piece && (
+                                            <div className={`piece ${piece[0] === 'w' ? 'white-piece' : 'black-piece'}`}>
+                                                {PIECES[piece]}
+                                            </div>
+                                        )}
+                                        {isPossibleMove && !piece && <div className="move-dot" />}
+                                        {isPossibleMove && piece && <div className="capture-hint" />}
+                                    </div>
+                                );
+                            })
+                        ))}
+                    </div>
+                )}
 
                 {showPromotion && (
                     <div className="promotion-modal">

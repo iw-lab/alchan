@@ -473,7 +473,7 @@ const PoliceStation = () => {
       }));
     },
     {
-      interval: 300000,
+      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (사용자 목록은 거의 안 바뀜)
       enabled: !!usersQuery && !auth.loading,
       deps: [classCode, auth.loading, usersQuery],
     }
@@ -529,7 +529,7 @@ const PoliceStation = () => {
       }));
     },
     {
-      interval: 300000,
+      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
     }
@@ -579,7 +579,7 @@ const PoliceStation = () => {
       return balance;
     },
     {
-      interval: 300000,
+      interval: 15 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 15분 (국고 데이터는 자주 안 바뀜)
       enabled: !!classCode && !auth.loading,
       deps: [classCode, auth.loading, hasPoliceAdminRights],
     }
@@ -607,7 +607,7 @@ const PoliceStation = () => {
       }));
     },
     {
-      interval: 300000,
+      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (법안은 자주 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
     }
@@ -641,7 +641,7 @@ const PoliceStation = () => {
       return reasons;
     },
     {
-      interval: 300000,
+      interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (신고 사유는 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode, hasPoliceAdminRights],
     }
@@ -694,7 +694,7 @@ const PoliceStation = () => {
       });
     },
     {
-      interval: 300000,
+      interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (신고 목록)
       enabled: !!classCode,
       deps: [classCode],
     }

@@ -1,16 +1,16 @@
 // src/components/AlchanSidebar.js
 // 알찬 UI 사이드바 컴포넌트 - 새로운 슬레이트 기반 디자인
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   X, ChevronRight, ChevronDown,
-  LayoutDashboard, Wallet, Target, Gamepad2, Package, TrendingUp,
+  Wallet, Target, Gamepad2, Package, TrendingUp,
   Landmark, FileText, Crown, ShoppingBag, Building2, Music,
   Settings, Users, Banknote, Scale, Shield, Sparkles, LogOut,
   Boxes, Store, RefreshCw, Hammer, BarChart3, BookOpen, Keyboard, Circle,
-  Briefcase, ListTodo
+  Briefcase, ListTodo, LayoutDashboard
 } from 'lucide-react';
 
 // ============================================
@@ -60,7 +60,6 @@ export const ALCHAN_MENU_ITEMS = [
   { id: 'gamesCategory', label: '알찬 학습 게임', icon: Gamepad2, isCategory: true, category: 'play' },
   { id: 'omokGame', label: '오목', icon: Circle, path: '/learning-games/omok', parentId: 'gamesCategory' },
   { id: 'typingGame', label: '타자연습', icon: Keyboard, path: '/learning-games/typing', parentId: 'gamesCategory' },
-  { id: 'gonuGame', label: '고누 게임', icon: LayoutDashboard, path: '/gonu-game', parentId: 'gamesCategory' },
   { id: 'chessGame', label: '체스 게임', icon: Crown, path: '/learning-games/science', parentId: 'gamesCategory' },
 
   // Items Category - 아이템
@@ -232,37 +231,37 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const toggleCategory = (categoryId) => {
+  const toggleCategory = useCallback((categoryId) => {
     setExpandedCategories(prev => ({
       ...prev,
       [categoryId]: !prev[categoryId]
     }));
-  };
+  }, []);
 
-  const isActive = (path) => {
+  const isActive = useCallback((path) => {
     if (!path) return false;
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
+  }, [location.pathname]);
 
-  const hasActiveChild = (categoryId) => {
+  const hasActiveChild = useCallback((categoryId) => {
     return ALCHAN_MENU_ITEMS.some(item =>
       item.parentId === categoryId && isActive(item.path)
     );
-  };
+  }, [isActive]);
 
-  const handleItemClick = (item) => {
+  const handleItemClick = useCallback((item) => {
     if (item.path) {
       navigate(item.path);
       if (isMobile) onClose?.();
     }
-  };
+  }, [navigate, isMobile, onClose]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     if (logout) {
       await logout();
       navigate('/login');
     }
-  };
+  }, [logout, navigate]);
 
   const isAdmin = userDoc?.isAdmin || userDoc?.isSuperAdmin;
   const isSuperAdmin = userDoc?.isSuperAdmin;

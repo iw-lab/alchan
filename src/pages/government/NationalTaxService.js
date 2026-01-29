@@ -20,7 +20,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
-import { formatKoreanCurrency } from "../../numberFormatter";
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "-";
@@ -136,7 +136,8 @@ const NationalTaxService = ({ classCode }) => {
     }
   }, [classCode, fetchAdminCash]);
 
-  const { refetch: refetchTreasury } = usePolling(fetchTreasuryData, { interval: 300000, enabled: !!classCode });
+  // 🔥 [비용 최적화] 5분 → 15분 (국고 데이터는 자주 안 바뀜)
+  const { refetch: refetchTreasury } = usePolling(fetchTreasuryData, { interval: 15 * 60 * 1000, enabled: !!classCode });
 
   const fetchTaxSettings = useCallback(async () => {
     if (!classCode) {
@@ -181,7 +182,8 @@ const NationalTaxService = ({ classCode }) => {
     }
   }, [classCode]);
 
-  const { refetch: refetchSettings } = usePolling(fetchTaxSettings, { interval: 300000, enabled: !!classCode });
+  // 🔥 [비용 최적화] 5분 → 1시간 (세금 설정은 거의 안 바뀜)
+  const { refetch: refetchSettings } = usePolling(fetchTaxSettings, { interval: 60 * 60 * 1000, enabled: !!classCode });
 
   const handleSettingChange = (e) => {
     const { name, value } = e.target;

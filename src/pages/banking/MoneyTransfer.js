@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { adminCashAction } from "../../database";
+import { adminCashAction } from "../../services/database";
 import "./MoneyTransfer.css";
-import { formatKoreanCurrency } from '../../numberFormatter';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.

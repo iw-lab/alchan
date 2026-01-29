@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext"; // 올바른 경로로 수
 import { useItems } from "../../contexts/ItemContext"; // 올바른 경로로 수정
 import "./styles.css"; // CombinedShop에서 사용된 스타일
 import "./ItemCard.css"; // ItemCard에서 사용된 스타일 (원본 ItemCard.js 코드에서 가져옴)
-import LoginWarning from "../../LoginWarning"; // 가정: 해당 컴포넌트가 있음
+import LoginWarning from "../../components/LoginWarning";
 
 // --- ItemCard 컴포넌트 (원본 ItemCard.js 코드) ---
 const ItemCard = ({ item, iconUrl, onBuy }) => {

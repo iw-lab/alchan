@@ -37,7 +37,7 @@ import {
 } from "../../hooks/useOptimizedAdminData";
 
 // 시스템 모니터링 컴포넌트
-import SystemMonitoring from "../../SystemMonitoring";
+import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 
 // 데이터베이스 관리 컴포넌트
 import AdminDatabase from "../../pages/admin/AdminDatabase";
