@@ -67,15 +67,13 @@ export function VirtualList({
       style={{ height: containerHeight }}
       onScroll={handleScroll}
     >
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      <div className="relative" style={{ height: totalHeight }}>
         {visibleItems.map(({ item, index }) => (
           <div
             key={index}
+            className="absolute left-0 right-0"
             style={{
-              position: 'absolute',
               top: index * itemHeight,
-              left: 0,
-              right: 0,
               height: itemHeight
             }}
           >
@@ -184,7 +182,7 @@ export function DynamicVirtualList({
       style={{ height: containerHeight }}
       onScroll={handleScroll}
     >
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      <div className="relative" style={{ height: totalHeight }}>
         {items.slice(visibleRange.startIndex, visibleRange.endIndex + 1).map((item, i) => {
           const index = visibleRange.startIndex + i;
           return (
@@ -217,11 +215,9 @@ function VirtualItem({ index, offset, onMeasure, children }) {
   return (
     <div
       ref={ref}
+      className="absolute left-0 right-0"
       style={{
-        position: 'absolute',
-        top: offset,
-        left: 0,
-        right: 0
+        top: offset
       }}
     >
       {children}

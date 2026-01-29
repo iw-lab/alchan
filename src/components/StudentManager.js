@@ -773,11 +773,9 @@ const StudentManager = () => {
         {bulkStep === 3 && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div style={{
+              <div className="rounded-2xl p-5" style={{
                 background: 'rgba(16, 185, 129, 0.15)',
                 border: '2px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: '16px',
-                padding: '20px',
               }}>
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400" />
@@ -787,11 +785,9 @@ const StudentManager = () => {
                   </div>
                 </div>
               </div>
-              <div style={{
+              <div className="rounded-2xl p-5" style={{
                 background: 'rgba(239, 68, 68, 0.15)',
                 border: '2px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: '16px',
-                padding: '20px',
               }}>
                 <div className="flex items-center gap-3">
                   <AlertCircle className="w-8 h-8 text-red-400" />

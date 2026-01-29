@@ -95,14 +95,11 @@ export function LazyImage({
         <img
           src={src}
           alt={alt}
-          className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+          className={`transition-opacity duration-300 top-0 left-0 ${isLoaded ? 'opacity-100 relative' : 'opacity-0 absolute'} ${className}`}
           style={{
             width,
             height,
-            objectFit,
-            position: isLoaded ? 'relative' : 'absolute',
-            top: 0,
-            left: 0
+            objectFit
           }}
           {...props}
         />
@@ -124,11 +121,9 @@ export function LazyBackground({
   return (
     <div
       ref={imgRef}
-      className={`${className} ${!isLoaded ? placeholder : ''} transition-all duration-300`}
+      className={`bg-cover bg-center ${className} ${!isLoaded ? placeholder : ''} transition-all duration-300`}
       style={{
-        backgroundImage: isInView && isLoaded ? `url(${src})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center'
+        backgroundImage: isInView && isLoaded ? `url(${src})` : 'none'
       }}
       {...props}
     >

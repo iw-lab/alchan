@@ -12,7 +12,7 @@ export default function CommonTaskList({
   // tasks가 배열이 아니거나 비어있는 경우 표시할 내용
   if (!Array.isArray(tasks) || tasks.length === 0) {
     return (
-      <div style={{ padding: "20px", textAlign: "center", color: "#6b7280" }}>
+      <div className="p-5 text-center" style={{ color: "#6b7280" }}>
         {isAdmin
           ? "등록된 공통 할일이 없습니다. 관리자 설정에서 추가해주세요."
           : "현재 수행할 수 있는 공통 할일이 없습니다."}
@@ -24,8 +24,7 @@ export default function CommonTaskList({
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   return (
-    <div style={{
-      display: "grid",
+    <div className="grid" style={{
       gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
       gap: isMobile ? "8px" : "10px",
     }}>

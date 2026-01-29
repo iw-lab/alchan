@@ -112,35 +112,27 @@ const TransactionCard = ({ title, amount, color, showFullCard = false }) => {
   if (!showFullCard) {
     return (
       <div
+        className="flex flex-col justify-between h-full rounded-lg p-3"
         style={{
           backgroundColor: colorStyle.bg,
-          borderRadius: "8px",
-          padding: "12px",
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          height: "100%",
           borderLeft: `4px solid ${colorStyle.border}`,
         }}
       >
         {/* 제목 */}
         <div
+          className="font-semibold text-sm mb-2"
           style={{
             color: colorStyle.text,
-            fontWeight: "600",
-            fontSize: "14px",
-            marginBottom: "8px",
           }}
         >
           {title}
         </div>
         {/* 금액 (toLocaleString 사용하여 콤마 포함) */}
         <div
+          className="font-bold text-lg"
           style={{
             color: colorStyle.text,
-            fontWeight: "bold",
-            fontSize: "18px",
           }}
         >
           {/* amount가 숫자로 전달된다고 가정 */}

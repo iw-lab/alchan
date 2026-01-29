@@ -529,23 +529,16 @@ export function MiniAvatar({ config, size = 40, onClick }) {
   return (
     <div
       onClick={onClick}
+      className="rounded-full overflow-hidden relative"
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
-        overflow: "hidden",
         cursor: onClick ? "pointer" : "default",
         boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         border: "2px solid rgba(255,255,255,0.3)",
-        position: "relative",
       }}
     >
-      <div style={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -60%)", // 얼굴이 중앙에 오도록 조정
-      }}>
+      <div className="absolute top-1/2 left-1/2" style={{ transform: "translate(-50%, -60%)" }}>
         <Avatar config={config} size={size * 1.6} showBorder={false} />
       </div>
     </div>

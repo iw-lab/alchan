@@ -17,27 +17,22 @@ export function AchievementBadge({ achievement, unlocked = true, size = "normal"
 
   return (
     <div
+      className="flex flex-col items-center rounded-xl cursor-pointer transition-all"
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
         padding: isSmall ? "8px" : "12px",
-        borderRadius: "12px",
         background: unlocked
           ? `linear-gradient(135deg, ${rarity.bg} 0%, ${rarity.bg}dd 100%)`
           : "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
         border: `2px solid ${unlocked ? rarity.color : "#374151"}`,
         opacity: unlocked ? 1 : 0.5,
-        transition: "all 0.3s ease",
-        cursor: "pointer",
         minWidth: isSmall ? "60px" : "80px",
       }}
       title={`${achievement.name}: ${achievement.description}`}
     >
       <div
+        className="mb-1"
         style={{
           fontSize: isSmall ? "24px" : "32px",
-          marginBottom: "4px",
           filter: unlocked ? "none" : "grayscale(100%)",
         }}
       >
@@ -46,23 +41,20 @@ export function AchievementBadge({ achievement, unlocked = true, size = "normal"
       {!isSmall && (
         <>
           <div
+            className="text-center font-semibold"
             style={{
               fontSize: "11px",
-              fontWeight: "600",
               color: unlocked ? rarity.color : "#6b7280",
-              textAlign: "center",
               lineHeight: "1.2",
             }}
           >
             {achievement.name}
           </div>
           <div
+            className="mt-0.5 px-1.5 py-0.5 rounded-lg"
             style={{
               fontSize: "9px",
               color: unlocked ? rarity.color : "#4b5563",
-              marginTop: "2px",
-              padding: "2px 6px",
-              borderRadius: "8px",
               background: unlocked ? `${rarity.color}20` : "transparent",
             }}
           >
@@ -87,76 +79,39 @@ export function AchievementSummary({ userStats, onClick }) {
   return (
     <div
       onClick={onClick}
+      className="rounded-2xl p-4"
       style={{
         background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
-        borderRadius: "16px",
-        padding: "16px",
         border: "2px solid #a78bfa40",
         cursor: onClick ? "pointer" : "default",
         boxShadow: "0 4px 20px rgba(167, 139, 250, 0.1)",
       }}
     >
       {/* 헤더 */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "20px" }}>🏆</span>
-          <span
-            style={{
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "#e8e8ff",
-            }}
-          >
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏆</span>
+          <span className="text-sm font-semibold" style={{ color: "#e8e8ff" }}>
             업적
           </span>
         </div>
-        <div
-          style={{
-            fontSize: "13px",
-            color: "#a78bfa",
-            fontWeight: "600",
-          }}
-        >
+        <div className="text-sm font-semibold" style={{ color: "#a78bfa" }}>
           {progress.points} pt
         </div>
       </div>
 
       {/* 진행 바 */}
-      <div style={{ marginBottom: "12px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            fontSize: "11px",
-            color: "#9ca3af",
-            marginBottom: "4px",
-          }}
-        >
+      <div className="mb-3">
+        <div className="flex justify-between text-xs mb-1" style={{ color: "#9ca3af" }}>
           <span>달성 진행도</span>
           <span>{progress.unlocked} / {progress.total}</span>
         </div>
-        <div
-          style={{
-            height: "6px",
-            backgroundColor: "#374151",
-            borderRadius: "3px",
-            overflow: "hidden",
-          }}
-        >
+        <div className="h-1.5 rounded overflow-hidden" style={{ backgroundColor: "#374151" }}>
           <div
+            className="h-full rounded transition-all duration-500"
             style={{
               width: `${progress.percentage}%`,
-              height: "100%",
               background: "linear-gradient(90deg, #a78bfa 0%, #c4b5fd 100%)",
-              borderRadius: "3px",
-              transition: "width 0.5s ease",
             }}
           />
         </div>
@@ -165,22 +120,10 @@ export function AchievementSummary({ userStats, onClick }) {
       {/* 최근 달성 업적 */}
       {recentAchievements.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize: "10px",
-              color: "#6b7280",
-              marginBottom: "8px",
-            }}
-          >
+          <div className="text-xs mb-2" style={{ color: "#6b7280" }}>
             최근 달성
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "6px",
-              justifyContent: "flex-start",
-            }}
-          >
+          <div className="flex gap-1.5 justify-start">
             {recentAchievements.map((achievement) => (
               <AchievementBadge
                 key={achievement.id}
@@ -194,14 +137,7 @@ export function AchievementSummary({ userStats, onClick }) {
       )}
 
       {onClick && (
-        <div
-          style={{
-            marginTop: "10px",
-            fontSize: "11px",
-            color: "#6b7280",
-            textAlign: "center",
-          }}
-        >
+        <div className="mt-2.5 text-xs text-center" style={{ color: "#6b7280" }}>
           탭하여 전체 업적 보기
         </div>
       )}
@@ -227,68 +163,29 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
 
   return (
     <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="fixed inset-0 flex items-center justify-center z-[1000] p-5"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}
       onClick={onClose}
     >
       <div
+        className="rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto"
         style={{
           background: "linear-gradient(145deg, #1a1a2e 0%, #0f0f23 100%)",
-          borderRadius: "20px",
-          padding: "24px",
-          maxWidth: "500px",
-          width: "100%",
-          maxHeight: "80vh",
-          overflowY: "auto",
           border: "2px solid #a78bfa40",
           boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: "700",
-              color: "#e8e8ff",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <span style={{ fontSize: "28px" }}>🏆</span>
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="m-0 text-xl font-bold flex items-center gap-2.5" style={{ color: "#e8e8ff" }}>
+            <span className="text-3xl">🏆</span>
             업적 컬렉션
           </h2>
           <button
             onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#9ca3af",
-              fontSize: "24px",
-              cursor: "pointer",
-              padding: "4px",
-            }}
+            className="bg-transparent border-none text-2xl cursor-pointer p-1"
+            style={{ color: "#9ca3af" }}
           >
             ✕
           </button>
@@ -296,89 +193,45 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
 
         {/* 총 진행도 */}
         <div
+          className="rounded-xl p-4 mb-5"
           style={{
             background: "linear-gradient(135deg, #a78bfa20 0%, #c4b5fd10 100%)",
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "20px",
             border: "1px solid #a78bfa30",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ color: "#c4b5fd", fontSize: "14px" }}>
+          <div className="flex justify-between items-center mb-2.5">
+            <span className="text-sm" style={{ color: "#c4b5fd" }}>
               총 {progress.unlocked}개 달성
             </span>
-            <span
-              style={{
-                color: "#a78bfa",
-                fontSize: "18px",
-                fontWeight: "700",
-              }}
-            >
+            <span className="text-lg font-bold" style={{ color: "#a78bfa" }}>
               {progress.points} pt
             </span>
           </div>
-          <div
-            style={{
-              height: "8px",
-              backgroundColor: "#374151",
-              borderRadius: "4px",
-              overflow: "hidden",
-            }}
-          >
+          <div className="h-2 rounded overflow-hidden" style={{ backgroundColor: "#374151" }}>
             <div
+              className="h-full rounded"
               style={{
                 width: `${progress.percentage}%`,
-                height: "100%",
                 background: "linear-gradient(90deg, #a78bfa 0%, #c4b5fd 100%)",
-                borderRadius: "4px",
               }}
             />
           </div>
-          <div
-            style={{
-              marginTop: "6px",
-              fontSize: "11px",
-              color: "#6b7280",
-              textAlign: "right",
-            }}
-          >
+          <div className="mt-1.5 text-xs text-right" style={{ color: "#6b7280" }}>
             {progress.percentage}% 완료
           </div>
         </div>
 
         {/* 카테고리 필터 */}
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            marginBottom: "16px",
-            overflowX: "auto",
-            paddingBottom: "4px",
-          }}
-        >
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedCategory("all")}
+            className="px-3 py-1.5 rounded-2xl border-none text-xs font-medium cursor-pointer whitespace-nowrap"
             style={{
-              padding: "6px 12px",
-              borderRadius: "16px",
-              border: "none",
               background:
                 selectedCategory === "all"
                   ? "linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)"
                   : "#374151",
               color: selectedCategory === "all" ? "#fff" : "#9ca3af",
-              fontSize: "12px",
-              fontWeight: "500",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
             }}
           >
             전체
@@ -387,22 +240,13 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
             <button
               key={key}
               onClick={() => setSelectedCategory(key)}
+              className="px-3 py-1.5 rounded-2xl border-none text-xs font-medium cursor-pointer whitespace-nowrap flex items-center gap-1"
               style={{
-                padding: "6px 12px",
-                borderRadius: "16px",
-                border: "none",
                 background:
                   selectedCategory === key
                     ? "linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)"
                     : "#374151",
                 color: selectedCategory === key ? "#fff" : "#9ca3af",
-                fontSize: "12px",
-                fontWeight: "500",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
               }}
             >
               {cat.icon} {cat.name}
@@ -411,13 +255,7 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
         </div>
 
         {/* 업적 그리드 */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "10px",
-          }}
-        >
+        <div className="grid grid-cols-3 gap-2.5">
           {filteredAchievements.map((achievement) => (
             <AchievementBadge
               key={achievement.id}
@@ -428,47 +266,16 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
         </div>
 
         {/* 희귀도 범례 */}
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "12px",
-            background: "#11182780",
-            borderRadius: "10px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "11px",
-              color: "#6b7280",
-              marginBottom: "8px",
-            }}
-          >
+        <div className="mt-5 p-3 rounded-xl" style={{ background: "#11182780" }}>
+          <div className="text-xs mb-2" style={{ color: "#6b7280" }}>
             희귀도
           </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex gap-3 flex-wrap">
             {Object.entries(RARITY_COLORS).map(([key, rarity]) => (
-              <div
-                key={key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontSize: "10px",
-                }}
-              >
+              <div key={key} className="flex items-center gap-1 text-xs">
                 <div
-                  style={{
-                    width: "10px",
-                    height: "10px",
-                    borderRadius: "50%",
-                    backgroundColor: rarity.color,
-                  }}
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: rarity.color }}
                 />
                 <span style={{ color: rarity.color }}>{rarity.label}</span>
               </div>

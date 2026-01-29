@@ -145,7 +145,7 @@ const StockModal = memo(function StockModal({ isOpen, onClose, onSave, stock, is
                 min="1.01"
                 max="3.00"
               />
-              <small style={{ fontSize: "0.8em", color: "#555" }}>
+              <small className="text-[0.8em] text-gray-600">
                 자동 주식 가격이 초기 상장가에 도달 시, (초기 상장가 * 이
                 비율)로 리셋됩니다.
               </small>

@@ -1181,88 +1181,77 @@ const AdminSettingsModal = ({
             - 최고관리자(isSuperAdmin): 모든 탭 접근 가능
             - 관리자(isAdmin): 시스템 관리 제외 모든 탭 접근 가능
             ======================================== */}
-        <div className="admin-menu-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '16px', background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)', borderRadius: '16px', border: '1px solid #374151' }}>
+        <div className="admin-menu-tabs flex flex-wrap gap-2.5 p-4 rounded-2xl border border-gray-700" style={{ background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)' }}>
           <button
-            className={adminSelectedMenu === "generalSettings" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "generalSettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("generalSettings")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             일반 설정
           </button>
           <button
-            className={adminSelectedMenu === "taskManagement" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "taskManagement" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("taskManagement")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             할일 관리
           </button>
           <button
-            className={adminSelectedMenu === "jobSettings" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "jobSettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("jobSettings")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             직업 관리
           </button>
           <button
-            className={adminSelectedMenu === "studentManagement" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "studentManagement" ? "active" : ""}`}
             onClick={() => {
               setAdminSelectedMenu("studentManagement");
               loadStudents();
             }}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             학생 관리
           </button>
           <button
-            className={adminSelectedMenu === "salarySettings" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "salarySettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("salarySettings")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             급여 설정
           </button>
           <button
-            className={adminSelectedMenu === "financialProducts" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "financialProducts" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("financialProducts")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             금융 상품
           </button>
           <button
-            className={adminSelectedMenu === "marketControl" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "marketControl" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("marketControl")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             시장 제어
           </button>
           <button
-            className={adminSelectedMenu === "parkingAccount" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "parkingAccount" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("parkingAccount")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             파킹 통장
           </button>
           <button
-            className={adminSelectedMenu === "memberManagement" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "memberManagement" ? "active" : ""}`}
             onClick={() => {
               setAdminSelectedMenu("memberManagement");
               loadClassMembers();
             }}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             학급 구성원
           </button>
           <button
-            className={adminSelectedMenu === "databaseManagement" ? "active" : ""}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "databaseManagement" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("databaseManagement")}
-            style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
           >
             데이터베이스
           </button>
           {isSuperAdmin && (
             <button
-              className={adminSelectedMenu === "systemManagement" ? "active" : ""}
+              className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "systemManagement" ? "active" : ""}`}
               onClick={() => setAdminSelectedMenu("systemManagement")}
-              style={{ padding: '10px 16px', borderRadius: '16px', fontSize: '13px', whiteSpace: 'nowrap' }}
             >
               시스템 관리
             </button>
@@ -1851,48 +1840,36 @@ const AdminSettingsModal = ({
               </p>
 
               {/* 금융 상품 서브 탭 */}
-              <div className="financial-sub-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <div className="financial-sub-tabs flex gap-2 mb-4">
                 <button
-                  className={`sub-tab-button ${financialSubTab === 'deposit' ? 'active' : ''}`}
+                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'deposit' ? 'active' : ''}`}
                   onClick={() => setFinancialSubTab('deposit')}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
                     border: financialSubTab === 'deposit' ? '2px solid #4f46e5' : '1px solid #374151',
                     background: financialSubTab === 'deposit' ? '#4f46e5' : 'transparent',
                     color: financialSubTab === 'deposit' ? 'white' : '#9ca3af',
-                    cursor: 'pointer',
-                    fontWeight: '600'
                   }}
                 >
                   예금 상품
                 </button>
                 <button
-                  className={`sub-tab-button ${financialSubTab === 'saving' ? 'active' : ''}`}
+                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'saving' ? 'active' : ''}`}
                   onClick={() => setFinancialSubTab('saving')}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
                     border: financialSubTab === 'saving' ? '2px solid #4f46e5' : '1px solid #374151',
                     background: financialSubTab === 'saving' ? '#4f46e5' : 'transparent',
                     color: financialSubTab === 'saving' ? 'white' : '#9ca3af',
-                    cursor: 'pointer',
-                    fontWeight: '600'
                   }}
                 >
                   적금 상품
                 </button>
                 <button
-                  className={`sub-tab-button ${financialSubTab === 'loan' ? 'active' : ''}`}
+                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'loan' ? 'active' : ''}`}
                   onClick={() => setFinancialSubTab('loan')}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
                     border: financialSubTab === 'loan' ? '2px solid #4f46e5' : '1px solid #374151',
                     background: financialSubTab === 'loan' ? '#4f46e5' : 'transparent',
                     color: financialSubTab === 'loan' ? 'white' : '#9ca3af',
-                    cursor: 'pointer',
-                    fontWeight: '600'
                   }}
                 >
                   대출 상품
@@ -1901,53 +1878,45 @@ const AdminSettingsModal = ({
 
               {/* 메시지 */}
               {financialMessage && (
-                <div className={`message-box ${financialMessage.type}`} style={{
-                  padding: '12px',
-                  marginBottom: '16px',
-                  borderRadius: '8px',
-                  background: financialMessage.type === 'success' ? '#065f46' : '#991b1b',
-                  color: 'white'
-                }}>
+                <div
+                  className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-white`}
+                  style={{
+                    background: financialMessage.type === 'success' ? '#065f46' : '#991b1b',
+                  }}
+                >
                   {financialMessage.text}
                 </div>
               )}
 
               {/* 상품 추가 폼 */}
-              <div className="add-product-form" style={{
-                padding: '16px',
-                background: 'rgba(55, 65, 81, 0.5)',
-                borderRadius: '12px',
-                marginBottom: '16px'
-              }}>
-                <h4 style={{ marginBottom: '12px', color: 'white' }}>
+              <div className="add-product-form p-4 rounded-xl mb-4 bg-gray-700/50">
+                <h4 className="mb-3 text-white">
                   {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 추가
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div className="grid grid-cols-3 gap-3 mb-3">
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>상품명</label>
+                    <label className="block mb-1 text-gray-400 text-xs">상품명</label>
                     <input
                       type="text"
                       value={newProductName}
                       onChange={(e) => setNewProductName(e.target.value)}
                       placeholder="상품명 입력"
-                      className="admin-input"
-                      style={{ width: '100%' }}
+                      className="admin-input w-full"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>기간 (일)</label>
+                    <label className="block mb-1 text-gray-400 text-xs">기간 (일)</label>
                     <input
                       type="number"
                       value={newProductPeriod}
                       onChange={(e) => setNewProductPeriod(e.target.value)}
                       placeholder="기간 (일)"
                       min="1"
-                      className="admin-input"
-                      style={{ width: '100%' }}
+                      className="admin-input w-full"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '4px', color: '#9ca3af', fontSize: '12px' }}>이율 (%)</label>
+                    <label className="block mb-1 text-gray-400 text-xs">이율 (%)</label>
                     <input
                       type="number"
                       value={newProductRate}
@@ -1955,19 +1924,18 @@ const AdminSettingsModal = ({
                       placeholder="이율 (%)"
                       min="0"
                       step="0.1"
-                      className="admin-input"
-                      style={{ width: '100%' }}
+                      className="admin-input w-full"
                     />
                   </div>
                 </div>
-                <button onClick={handleAddProduct} className="admin-save-button" style={{ width: '100%' }}>
+                <button onClick={handleAddProduct} className="admin-save-button w-full">
                   상품 추가하기
                 </button>
               </div>
 
               {/* 상품 목록 */}
               <div className="product-list">
-                <h4 style={{ marginBottom: '12px', color: 'white' }}>
+                <h4 className="mb-3 text-white">
                   {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 목록
                 </h4>
                 {(() => {
@@ -2030,22 +1998,17 @@ const AdminSettingsModal = ({
               </p>
 
               {/* 시장 상태 */}
-              <div style={{
-                padding: '16px',
-                background: 'rgba(55, 65, 81, 0.5)',
-                borderRadius: '12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <p style={{ color: 'white' }}>
+              <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-white">
                     현재 상태:{" "}
-                    <span style={{
-                      fontWeight: 'bold',
-                      color: marketStatus.isOpen ? '#22c55e' : '#ef4444',
-                      padding: '4px 12px',
-                      borderRadius: '16px',
-                      background: marketStatus.isOpen ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
-                    }}>
+                    <span
+                      className="font-bold px-3 py-1 rounded-2xl"
+                      style={{
+                        color: marketStatus.isOpen ? '#22c55e' : '#ef4444',
+                        background: marketStatus.isOpen ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+                      }}
+                    >
                       {marketStatus.isOpen ? '🟢 개장' : '🔴 폐장'}
                     </span>
                   </p>
@@ -2058,13 +2021,12 @@ const AdminSettingsModal = ({
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <div className="flex gap-3 mb-4">
                   <button
                     onClick={() => handleMarketControl(true)}
                     disabled={marketStatus.isOpen}
-                    className="admin-save-button"
+                    className="admin-save-button flex-1"
                     style={{
-                      flex: 1,
                       background: marketStatus.isOpen ? '#374151' : '#22c55e',
                       cursor: marketStatus.isOpen ? 'not-allowed' : 'pointer'
                     }}
@@ -2074,9 +2036,8 @@ const AdminSettingsModal = ({
                   <button
                     onClick={() => handleMarketControl(false)}
                     disabled={!marketStatus.isOpen}
-                    className="admin-cancel-button"
+                    className="admin-cancel-button flex-1"
                     style={{
-                      flex: 1,
                       background: !marketStatus.isOpen ? '#374151' : '#ef4444',
                       cursor: !marketStatus.isOpen ? 'not-allowed' : 'pointer'
                     }}
@@ -2085,7 +2046,7 @@ const AdminSettingsModal = ({
                   </button>
                 </div>
 
-                <p style={{ fontSize: '12px', color: '#9ca3af' }}>
+                <p className="text-xs text-gray-400">
                   버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시 변경됩니다.<br />
                   자동 개장/폐장 시간(월-금, 오전 8시/오후 3시)이 되면 자동으로 상태가 변경됩니다.
                 </p>
@@ -2093,41 +2054,20 @@ const AdminSettingsModal = ({
 
               {/* 메시지 */}
               {marketMessage && (
-                <div style={{
-                  padding: '12px',
-                  marginBottom: '16px',
-                  borderRadius: '8px',
-                  background: '#d97706',
-                  color: 'white',
-                  textAlign: 'center'
-                }}>
+                <div className="p-3 mb-4 rounded-lg bg-amber-600 text-white text-center">
                   {marketMessage}
                 </div>
               )}
 
               {/* 주식 초기화 */}
-              <div style={{
-                padding: '16px',
-                background: 'rgba(239, 68, 68, 0.1)',
-                borderRadius: '12px',
-                border: '1px solid rgba(239, 68, 68, 0.3)'
-              }}>
-                <h4 style={{ marginBottom: '12px', color: '#ef4444' }}>⚠️ 주식 정보 초기화</h4>
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '12px' }}>
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                <h4 className="mb-3 text-red-500">⚠️ 주식 정보 초기화</h4>
+                <p className="text-xs text-gray-400 mb-3">
                   주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이 기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
                 </p>
                 <button
                   onClick={handleInitializeStocks}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    background: '#ea580c',
-                    color: 'white',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                  }}
+                  className="w-full p-3 rounded-lg bg-orange-600 text-white border-0 cursor-pointer font-semibold"
                 >
                   모든 주식 정보 초기화
                 </button>
@@ -2154,33 +2094,27 @@ const AdminSettingsModal = ({
 
               {/* 메시지 */}
               {parkingMessage && (
-                <div style={{
-                  padding: '12px',
-                  marginBottom: '16px',
-                  borderRadius: '8px',
-                  background: parkingMessage.type === 'success' ? '#065f46' : '#991b1b',
-                  color: 'white'
-                }}>
+                <div
+                  className="p-3 mb-4 rounded-lg text-white"
+                  style={{
+                    background: parkingMessage.type === 'success' ? '#065f46' : '#991b1b',
+                  }}
+                >
                   {parkingMessage.text}
                 </div>
               )}
 
               {/* 현재 이자율 */}
-              <div style={{
-                padding: '16px',
-                background: 'rgba(55, 65, 81, 0.5)',
-                borderRadius: '12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ color: '#9ca3af', fontSize: '14px' }}>현재 일일 이자율</p>
-                  <p style={{ color: '#22c55e', fontSize: '32px', fontWeight: 'bold' }}>
+              <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                <div className="mb-4">
+                  <p className="text-gray-400 text-sm">현재 일일 이자율</p>
+                  <p className="text-green-500 text-[32px] font-bold">
                     {parkingInterestRate}%
                   </p>
                 </div>
 
                 <div className="form-group">
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#9ca3af' }}>
+                  <label className="block mb-2 text-gray-400">
                     새 일일 이자율 (%)
                   </label>
                   <input
@@ -2190,20 +2124,18 @@ const AdminSettingsModal = ({
                     placeholder="새 이자율 입력 (%)"
                     min="0"
                     step="0.01"
-                    className="admin-input"
-                    style={{ marginBottom: '12px' }}
+                    className="admin-input mb-3"
                   />
                   <button
                     onClick={handleParkingRateChange}
-                    className="admin-save-button"
+                    className="admin-save-button w-full"
                     disabled={!newInterestRate || isNaN(newInterestRate) || parseFloat(newInterestRate) < 0}
-                    style={{ width: '100%' }}
                   >
                     이자율 변경
                   </button>
                 </div>
 
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
+                <p className="text-xs text-gray-400 mt-3">
                   파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가 발생합니다.
                 </p>
               </div>
@@ -2395,7 +2327,7 @@ const AdminSettingsModal = ({
                 <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
               </div>
             )}
-            <div className="database-management-container section-card" style={{ minHeight: "500px", maxHeight: "70vh", overflow: "auto" }}>
+            <div className="database-management-container section-card min-h-[500px] max-h-[70vh] overflow-auto">
               <AdminDatabase />
             </div>
           </div>

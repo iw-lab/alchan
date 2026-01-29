@@ -8,7 +8,7 @@ const CircularProgress = ({ percentage, size = 140, strokeWidth = 12, color, chi
   const offset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div style={{ position: "relative", width: size, height: size }}>
+    <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
         {/* 배경 원 */}
         <circle
@@ -34,15 +34,7 @@ const CircularProgress = ({ percentage, size = 140, strokeWidth = 12, color, chi
         />
       </svg>
       {/* 중앙 콘텐츠 */}
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-        }}
-      >
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
         {children}
       </div>
     </div>
@@ -82,52 +74,34 @@ export default function CouponGoal({
 
   return (
     <div
-      className="class-coupon-goal"
+      className="class-coupon-goal p-6 rounded-2xl relative overflow-hidden"
       style={{
         backgroundColor: "rgba(20, 20, 35, 0.6)",
-        padding: "24px",
-        borderRadius: "20px",
         boxShadow: goalAchieved
           ? "0 4px 20px rgba(16, 185, 129, 0.25)"
           : "0 4px 20px rgba(0, 255, 242, 0.15)",
         border: goalAchieved ? "2px solid #10b981" : "1px solid rgba(0, 255, 242, 0.2)",
-        position: "relative",
-        overflow: "hidden",
         backdropFilter: "blur(10px)",
       }}
     >
       {/* 배경 장식 */}
       <div
+        className="absolute -top-12 -right-12 w-36 h-36 rounded-full"
         style={{
-          position: "absolute",
-          top: "-50px",
-          right: "-50px",
-          width: "150px",
-          height: "150px",
           background: goalAchieved
             ? "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)"
             : "radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)",
-          borderRadius: "50%",
         }}
       />
 
       {/* 헤더 */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "28px" }}>🎯</span>
+      <div className="flex justify-between items-center mb-5">
+        <div className="flex items-center gap-2.5">
+          <span className="text-3xl">🎯</span>
           <h3
+            className="text-xl font-bold m-0"
             style={{
-              fontSize: "20px",
-              fontWeight: "700",
               color: "#e8e8ff",
-              margin: 0,
               textShadow: "0 0 5px rgba(0, 255, 242, 0.5)",
             }}
           >
@@ -135,16 +109,12 @@ export default function CouponGoal({
           </h3>
         </div>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div className="flex gap-2 items-center">
           {goalAchieved && (
             <span
+              className="text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
               style={{
                 background: "linear-gradient(135deg, #10b981, #059669)",
-                color: "white",
-                padding: "6px 14px",
-                borderRadius: "20px",
-                fontSize: "13px",
-                fontWeight: "700",
                 boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
                 animation: "pulse 2s infinite",
               }}
@@ -156,14 +126,9 @@ export default function CouponGoal({
             <button
               onClick={resetGoalButton}
               disabled={isResettingGoal}
+              className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold"
               style={{
                 backgroundColor: isResettingGoal ? "#9ca3af" : "#ef4444",
-                color: "white",
-                border: "none",
-                borderRadius: "12px",
-                padding: "6px 12px",
-                fontSize: "12px",
-                fontWeight: "600",
                 cursor: isResettingGoal ? "not-allowed" : "pointer",
                 opacity: isResettingGoal ? 0.7 : 1,
               }}
@@ -175,179 +140,125 @@ export default function CouponGoal({
       </div>
 
       {/* 메인 프로그레스 영역 */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "30px",
-          padding: "20px 0",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="flex items-center justify-center gap-7 py-5 flex-wrap">
         {/* 학급 목표 원형 프로그레스 */}
-        <div style={{ textAlign: "center" }}>
+        <div className="text-center">
           <CircularProgress
             percentage={goalPercentage}
             size={150}
             strokeWidth={14}
             color={mainColor}
           >
-            <div style={{ fontSize: "32px", fontWeight: "800", color: mainColor }}>
+            <div className="text-3xl font-extrabold" style={{ color: mainColor }}>
               {goalPercentage}%
             </div>
-            <div style={{ fontSize: "11px", color: "#a0a0c0", fontWeight: "500" }}>
+            <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
               달성률
             </div>
           </CircularProgress>
-          <div style={{ marginTop: "12px" }}>
-            <div style={{ fontSize: "22px", fontWeight: "800", color: "#e8e8ff" }}>
+          <div className="mt-3">
+            <div className="text-2xl font-extrabold" style={{ color: "#e8e8ff" }}>
               {(goalProgress || 0).toLocaleString()}
-              <span style={{ fontSize: "14px", color: "#a0a0c0", fontWeight: "500" }}> / {validClassCouponGoal.toLocaleString()}</span>
+              <span className="text-sm font-medium" style={{ color: "#a0a0c0" }}> / {validClassCouponGoal.toLocaleString()}</span>
             </div>
-            <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>학급 전체 기부량</div>
+            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>학급 전체 기부량</div>
           </div>
         </div>
 
         {/* 내 기여도 원형 프로그레스 */}
-        <div style={{ textAlign: "center" }}>
+        <div className="text-center">
           <CircularProgress
             percentage={myContributionPercentage}
             size={120}
             strokeWidth={10}
             color="#f59e0b"
           >
-            <div style={{ fontSize: "24px", fontWeight: "800", color: "#f59e0b" }}>
+            <div className="text-2xl font-extrabold" style={{ color: "#f59e0b" }}>
               {myContributionPercentage}%
             </div>
-            <div style={{ fontSize: "10px", color: "#a0a0c0", fontWeight: "500" }}>
+            <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
               내 기여
             </div>
           </CircularProgress>
-          <div style={{ marginTop: "12px" }}>
-            <div style={{ fontSize: "18px", fontWeight: "700", color: "#e8e8ff" }}>
+          <div className="mt-3">
+            <div className="text-lg font-bold" style={{ color: "#e8e8ff" }}>
               {(myContribution || 0).toLocaleString()}
-              <span style={{ fontSize: "12px", color: "#a0a0c0", fontWeight: "500" }}> 쿠폰</span>
+              <span className="text-xs font-medium" style={{ color: "#a0a0c0" }}> 쿠폰</span>
             </div>
-            <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "2px" }}>내가 기부한 쿠폰</div>
+            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>내가 기부한 쿠폰</div>
           </div>
         </div>
 
         {/* 내 보유량 카드 */}
         <div
+          className="rounded-2xl p-5 text-center min-w-[130px]"
           style={{
             background: "linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%)",
-            borderRadius: "16px",
-            padding: "20px",
-            textAlign: "center",
-            minWidth: "130px",
             boxShadow: "0 4px 12px rgba(245, 158, 11, 0.1)",
             border: "1px solid rgba(251, 191, 36, 0.3)",
           }}
         >
-          <div style={{ fontSize: "32px", marginBottom: "8px" }}>🎫</div>
-          <div style={{ fontSize: "28px", fontWeight: "800", color: "#fbbf24", textShadow: "0 0 10px rgba(251, 191, 36, 0.3)" }}>
+          <div className="text-3xl mb-2">🎫</div>
+          <div className="text-3xl font-extrabold" style={{ color: "#fbbf24", textShadow: "0 0 10px rgba(251, 191, 36, 0.3)" }}>
             {(currentCoupons || 0).toLocaleString()}
           </div>
-          <div style={{ fontSize: "12px", color: "#fcd34d", fontWeight: "600", marginTop: "4px" }}>
+          <div className="text-xs font-semibold mt-1" style={{ color: "#fcd34d" }}>
             보유 쿠폰
           </div>
-          <div style={{ fontSize: "10px", color: "#fcd34d", marginTop: "8px", padding: "4px 8px", background: "rgba(0,0,0,0.3)", borderRadius: "8px" }}>
+          <div className="text-xs mt-2 px-2 py-1 rounded-lg" style={{ color: "#fcd34d", background: "rgba(0,0,0,0.3)" }}>
             1쿠폰 = {typeof couponValue === "number" ? couponValue.toLocaleString() : "0"}원
           </div>
         </div>
       </div>
 
       {/* 액션 버튼들 */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "8px",
-          marginTop: "20px",
-        }}
-      >
+      <div className="grid grid-cols-4 gap-2 mt-5">
         <button
           onClick={() => setShowDonateModal(true)}
+          className="border-none rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
             background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-            border: "none",
-            borderRadius: "14px",
-            padding: "14px 8px",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "6px",
             boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
-            transition: "transform 0.2s, box-shadow 0.2s",
           }}
         >
-          <span style={{ fontSize: "22px" }}>💰</span>
-          <span style={{ color: "#fff", fontSize: "12px", fontWeight: "700" }}>쿠폰 기부</span>
+          <span className="text-2xl">💰</span>
+          <span className="text-white text-xs font-bold">쿠폰 기부</span>
         </button>
 
         <button
           onClick={() => setShowSellCouponModal(true)}
+          className="border-none rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
             background: "linear-gradient(135deg, #f87171 0%, #ef4444 100%)",
-            border: "none",
-            borderRadius: "14px",
-            padding: "14px 8px",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "6px",
             boxShadow: "0 4px 12px rgba(239, 68, 68, 0.35)",
-            transition: "transform 0.2s, box-shadow 0.2s",
           }}
         >
-          <span style={{ fontSize: "22px" }}>💵</span>
-          <span style={{ color: "#fff", fontSize: "12px", fontWeight: "700" }}>쿠폰 판매</span>
+          <span className="text-2xl">💵</span>
+          <span className="text-white text-xs font-bold">쿠폰 판매</span>
         </button>
 
         <button
           onClick={() => setShowGiftCouponModal(true)}
+          className="border-none rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
             background: "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
-            border: "none",
-            borderRadius: "14px",
-            padding: "14px 8px",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "6px",
             boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
-            transition: "transform 0.2s, box-shadow 0.2s",
           }}
         >
-          <span style={{ fontSize: "22px" }}>🎁</span>
-          <span style={{ color: "#fff", fontSize: "12px", fontWeight: "700" }}>쿠폰 선물</span>
+          <span className="text-2xl">🎁</span>
+          <span className="text-white text-xs font-bold">쿠폰 선물</span>
         </button>
 
         <button
           onClick={() => setShowDonationHistoryModal(true)}
+          className="rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
             background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
             border: "1px solid #d1d5db",
-            borderRadius: "14px",
-            padding: "14px 8px",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "6px",
-            transition: "transform 0.2s, box-shadow 0.2s",
           }}
         >
-          <span style={{ fontSize: "22px" }}>📋</span>
-          <span style={{ color: "#a0a0c0", fontSize: "12px", fontWeight: "700" }}>기부 내역</span>
+          <span className="text-2xl">📋</span>
+          <span className="text-xs font-bold" style={{ color: "#a0a0c0" }}>기부 내역</span>
         </button>
       </div>
 

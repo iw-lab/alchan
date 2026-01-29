@@ -327,7 +327,7 @@ export default function AssetSummary({
   // [수정] user 객체가 아직 없을 경우 로딩 상태 표시
   if (!user) {
     return (
-        <div style={{...styles.sectionContainer, padding: '20px', textAlign: 'center'}}>
+        <div className="p-5 text-center" style={{...styles.sectionContainer}}>
             자산 정보를 불러오는 중입니다...
         </div>
     );
@@ -347,29 +347,16 @@ export default function AssetSummary({
       </h3>
       {/* 총 자산 (순자산) */}
       <div style={styles.totalAssetBox}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "3px",
-          }}
-        >
+        <div className="flex justify-between items-center mb-1">
           <span style={styles.totalAssetTitle}>📊 총 자산 (순자산)</span>
           <span style={styles.totalAssetAmount}>
             {formatKoreanCurrency(totalAssets)}
           </span>
         </div>
         {/* 레벨 배지 표시 */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: "8px",
-          marginBottom: "4px"
-        }}>
+        <div className="flex items-center justify-between mt-2 mb-1">
           <LevelInline netAssets={totalAssets} />
-          <p style={{ ...styles.totalAssetDesc, margin: 0 }}>
+          <p className="m-0" style={styles.totalAssetDesc}>
             (현금 + 쿠폰 + 파킹 + 주식 + 부동산 - 대출)
           </p>
         </div>
@@ -406,7 +393,7 @@ export default function AssetSummary({
               </div>
             </div>
             {/* 파킹통장에는 버튼 없음, 공간 확보 위해 빈 div 추가 */}
-            <div style={{ marginTop: "auto" }}></div>
+            <div className="mt-auto"></div>
           </div>
           {/* 보유 쿠폰 (기존과 동일) */}
           <div style={styles.assetItemBox("#fffbeb", "#fef3c7")}>
@@ -418,7 +405,7 @@ export default function AssetSummary({
               </p>
             </div>
             {/* 쿠폰에도 버튼 없음, 공간 확보 */}
-            <div style={{ marginTop: "auto" }}></div>
+            <div className="mt-auto"></div>
           </div>
 
           {/* 보유 주식 <-- 수정된 로직 반영 */}
@@ -477,7 +464,7 @@ export default function AssetSummary({
               )}
             </div>
             {/* 주식에도 버튼 없음, 공간 확보 */}
-            <div style={{ marginTop: "auto" }}></div>
+            <div className="mt-auto"></div>
           </div>
         </div>
       </div>
@@ -485,9 +472,7 @@ export default function AssetSummary({
       {/* 투자 자산 섹션 (기존과 동일) */}
       <div style={styles.sectionContainer}>
         <h4 style={styles.sectionTitle}>투자 자산</h4>
-        <div
-          style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}
-        >
+        <div className="grid grid-cols-1 gap-2.5">
           {/* 부동산 현황 */}
           <div style={styles.assetItemBox("#f0fdf4", "#dcfce7")}>
             <div>
@@ -518,7 +503,7 @@ export default function AssetSummary({
               )}
             </div>
             {/* 부동산에도 버튼 없음, 공간 확보 */}
-            <div style={{ marginTop: "auto" }}></div>
+            <div className="mt-auto"></div>
           </div>
         </div>
       </div>
@@ -526,9 +511,7 @@ export default function AssetSummary({
       {/* 부채 섹션 (기존과 동일) */}
       <div style={styles.sectionContainer}>
         <h4 style={styles.sectionTitle}>부채 (대출)</h4>
-        <div
-          style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}
-        >
+        <div className="grid grid-cols-1 gap-2.5">
           {/* 대출 현황 */}
           <div style={styles.assetItemBox("#fff1f2", "#ffe4e6")}>
             <div>
@@ -553,7 +536,7 @@ export default function AssetSummary({
               )}
             </div>
             {/* 대출에도 버튼 없음, 공간 확보 */}
-            <div style={{ marginTop: "auto" }}></div>
+            <div className="mt-auto"></div>
           </div>
         </div>
       </div>

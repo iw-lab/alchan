@@ -40,48 +40,21 @@ const GiftCouponModal = memo(function GiftCouponModal({
 
   return (
     <div
-      className="modal-backdrop"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        zIndex: 1000,
-      }}
+      className="modal-backdrop fixed inset-0 bg-black/50 flex justify-center items-center z-[1000]"
       onClick={closeModal} // 배경 클릭 시 닫기
     >
       <div
-        className="gift-coupon-modal"
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "24px",
-          width: "90%",
-          maxWidth: "400px",
-          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-        }}
+        className="gift-coupon-modal bg-white rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl"
         onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫힘 방지
       >
-        <h3 style={{ marginTop: 0, color: "#374151" }}>쿠폰 선물하기</h3>
-        <div style={{ marginBottom: "16px", color: "#6b7280" }}>
+        <h3 className="mt-0 text-gray-700">쿠폰 선물하기</h3>
+        <div className="mb-4 text-gray-500">
           <p>
             현재 보유 쿠폰: <strong>{currentCoupons}개</strong>
           </p>
         </div>
-        <div className="form-group" style={{ marginBottom: "16px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: "500",
-              color: "#4b5563",
-            }}
-          >
+        <div className="form-group mb-4">
+          <label className="block mb-2 font-medium text-gray-600">
             받는 사람
           </label>
           <select
@@ -92,13 +65,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 ? setGiftRecipient(e.target.value)
                 : console.error("setGiftRecipient is not a function")
             }
-            style={{
-              width: "100%",
-              padding: "10px",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              fontSize: "14px",
-            }}
+            className="w-full p-2.5 border border-gray-300 rounded-md text-sm"
           >
             <option value="">받는 분을 선택하세요</option>
             {validRecipients
@@ -110,15 +77,8 @@ const GiftCouponModal = memo(function GiftCouponModal({
               ))}
           </select>
         </div>
-        <div className="form-group" style={{ marginBottom: "24px" }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: "8px",
-              fontWeight: "500",
-              color: "#4b5563",
-            }}
-          >
+        <div className="form-group mb-6">
+          <label className="block mb-2 font-medium text-gray-600">
             선물할 쿠폰 수량
           </label>
           <input
@@ -131,38 +91,20 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 : console.error("setGiftAmount is not a function")
             }
             placeholder="선물할 쿠폰 수량을 입력하세요"
-            style={{
-              width: "100%",
-              padding: "10px",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              fontSize: "14px",
-            }}
+            className="w-full p-2.5 border border-gray-300 rounded-md text-sm"
             max={currentCoupons}
             min="1"
           />
         </div>
-        <div
-          className="modal-actions"
-          style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}
-        >
+        <div className="modal-actions flex justify-end gap-2.5">
           <button
-            className="cancel-button"
+            className="cancel-button px-4 py-2 bg-gray-100 text-gray-600 border-0 rounded-md cursor-pointer font-medium"
             onClick={closeModal}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#f3f4f6",
-              color: "#4b5563",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: "500",
-            }}
           >
             취소
           </button>
           <button
-            className="confirm-button"
+            className="confirm-button px-4 py-2 bg-emerald-500 text-white border-0 rounded-md text-sm font-medium"
             onClick={handleGiftCoupon}
             disabled={
               !giftRecipient ||
@@ -171,13 +113,6 @@ const GiftCouponModal = memo(function GiftCouponModal({
               parseInt(giftAmount) > currentCoupons
             }
             style={{
-              padding: "8px 16px",
-              backgroundColor: "#10b981",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              fontSize: "14px",
-              fontWeight: "500",
               cursor:
                 !giftRecipient ||
                 !giftAmount ||

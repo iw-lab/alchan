@@ -154,15 +154,13 @@ export function DailyRewardBanner({ userId, onClaim }) {
 
   return (
     <div
+      className="rounded-2xl p-5 mb-5"
       style={{
         background: claimed
           ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
           : isBigReward
             ? "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)"
             : "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-        borderRadius: "16px",
-        padding: "20px",
-        marginBottom: "20px",
         boxShadow: claimed
           ? "0 4px 20px rgba(16, 185, 129, 0.4)"
           : isBigReward
@@ -177,12 +175,9 @@ export function DailyRewardBanner({ userId, onClaim }) {
           {/* 스트릭 끊김 알림 */}
           {streakInfo.streakBroken && (
             <div
+              className="px-3 py-2 rounded-lg mb-3 text-sm"
               style={{
                 background: "rgba(0,0,0,0.2)",
-                padding: "8px 12px",
-                borderRadius: "8px",
-                marginBottom: "12px",
-                fontSize: "13px",
                 color: "rgba(255,255,255,0.9)",
               }}
             >
@@ -190,67 +185,33 @@ export function DailyRewardBanner({ userId, onClaim }) {
             </div>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
+          <div className="flex justify-between items-center">
             <div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "6px",
-                }}
-              >
-                <span style={{ fontSize: "32px" }}>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="text-3xl">
                   {isBigReward ? "🏆" : "🎁"}
                 </span>
                 <div>
-                  <div
-                    style={{
-                      color: "#fff",
-                      fontSize: "18px",
-                      fontWeight: "700",
-                    }}
-                  >
+                  <div className="text-white text-lg font-bold">
                     {nextDay}일차 출석 보상
                   </div>
                   {nextDay >= 10 && (
-                    <div style={{
-                      fontSize: "11px",
-                      color: "rgba(255,255,255,0.8)",
-                      marginTop: "2px"
-                    }}>
+                    <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>
                       🔥 {nextDay}일 연속 출석 중!
                     </div>
                   )}
                 </div>
               </div>
-              <div style={{
-                color: "rgba(255,255,255,0.95)",
-                fontSize: "24px",
-                fontWeight: "800",
-                marginTop: "4px"
-              }}>
+              <div className="text-2xl font-extrabold mt-1" style={{ color: "rgba(255,255,255,0.95)" }}>
                 +{nextReward.toLocaleString()}원
               </div>
             </div>
             <button
               onClick={handleClaim}
+              className="border-none py-3.5 px-7 rounded-xl text-base font-bold cursor-pointer transition-all"
               style={{
                 background: "rgba(255,255,255,0.95)",
-                border: "none",
                 color: isBigReward ? "#ea580c" : "#6366f1",
-                padding: "14px 28px",
-                borderRadius: "14px",
-                fontSize: "16px",
-                fontWeight: "700",
-                cursor: "pointer",
-                transition: "all 0.2s",
                 boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
               }}
             >
@@ -259,43 +220,23 @@ export function DailyRewardBanner({ userId, onClaim }) {
           </div>
 
           {/* 스트릭 진행도 */}
-          <div style={{ marginTop: "16px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "4px",
-              }}
-            >
+          <div className="mt-4">
+            <div className="flex justify-between gap-1">
               {STREAK_REWARDS.map((day, idx) => (
-                <div
-                  key={day.day}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
+                <div key={day.day} className="flex-1 flex flex-col items-center">
                   <div
+                    className="w-full h-2 rounded mb-1"
                     style={{
-                      width: "100%",
-                      height: "8px",
-                      borderRadius: "4px",
                       background:
                         idx < streakInfo.streak
                           ? "rgba(255,255,255,0.9)"
                           : idx === streakInfo.streak
                             ? "rgba(255,255,255,0.5)"
                             : "rgba(255,255,255,0.2)",
-                      marginBottom: "4px",
                     }}
                   />
                   {(idx === 0 || idx === 4 || idx === 9) && (
-                    <span style={{
-                      fontSize: "9px",
-                      color: "rgba(255,255,255,0.7)"
-                    }}>
+                    <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.7)" }}>
                       {idx + 1}일
                     </span>
                   )}
@@ -303,53 +244,28 @@ export function DailyRewardBanner({ userId, onClaim }) {
               ))}
             </div>
             {nextDay > 10 && (
-              <div style={{
-                textAlign: "center",
-                marginTop: "8px",
-                fontSize: "12px",
-                color: "rgba(255,255,255,0.8)",
-              }}>
+              <div className="text-center mt-2 text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>
                 ✨ 10일 이상 연속 출석 시 매일 10만원!
               </div>
             )}
           </div>
         </>
       ) : (
-        <div style={{ textAlign: "center", padding: "10px 0" }}>
-          <div style={{
-            fontSize: "48px",
-            marginBottom: "12px",
-            animation: "bounce 0.5s ease"
-          }}>
+        <div className="text-center py-2.5">
+          <div className="text-5xl mb-3" style={{ animation: "bounce 0.5s ease" }}>
             {rewardResult?.icon || "🎉"}
           </div>
-          <div
-            style={{
-              color: "#fff",
-              fontSize: "28px",
-              fontWeight: "800",
-              marginBottom: "8px",
-            }}
-          >
+          <div className="text-white text-3xl font-extrabold mb-2">
             +{rewardResult?.reward?.toLocaleString()}원
           </div>
-          <div style={{
-            color: "rgba(255,255,255,0.9)",
-            fontSize: "16px",
-            fontWeight: "600"
-          }}>
+          <div className="text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
             🔥 {rewardResult?.newStreak}일 연속 출석!
           </div>
           {rewardResult?.isMilestone && (
-            <div style={{
-              marginTop: "10px",
-              padding: "8px 16px",
-              background: "rgba(255,255,255,0.2)",
-              borderRadius: "20px",
-              display: "inline-block",
-              fontSize: "14px",
-              color: "#fff",
-            }}>
+            <div
+              className="mt-2.5 px-4 py-2 rounded-2xl inline-block text-sm text-white"
+              style={{ background: "rgba(255,255,255,0.2)" }}
+            >
               🏆 축하합니다! 마일스톤 달성!
             </div>
           )}
@@ -378,19 +294,13 @@ export function StreakDisplay({ userId }) {
 
   return (
     <div
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-sm font-semibold"
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 12px",
         background: currentStreak >= 10
           ? "linear-gradient(135deg, #f59e0b20 0%, #ea580c20 100%)"
           : "linear-gradient(135deg, #8b5cf620 0%, #6366f120 100%)",
         border: `1px solid ${currentStreak >= 10 ? "#f59e0b40" : "#8b5cf640"}`,
-        borderRadius: "14px",
-        fontSize: "13px",
         color: currentStreak >= 10 ? "#f59e0b" : "#a78bfa",
-        fontWeight: "600",
       }}
     >
       <span>🔥</span>
@@ -406,64 +316,50 @@ export function StreakDisplay({ userId }) {
 export function StreakRewardInfo() {
   return (
     <div
+      className="rounded-2xl p-4"
       style={{
         background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
-        borderRadius: "16px",
-        padding: "16px",
         border: "2px solid #8b5cf640",
       }}
     >
-      <h4 style={{
-        color: "#e8e8ff",
-        fontSize: "15px",
-        fontWeight: "700",
-        marginBottom: "12px",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px"
-      }}>
+      <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "#e8e8ff" }}>
         🎁 일일 출석 보상 안내
       </h4>
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <div className="flex flex-col gap-1.5">
         {STREAK_REWARDS.map((day) => (
           <div
             key={day.day}
+            className="flex justify-between items-center px-2.5 py-1.5 rounded-lg"
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "6px 10px",
               background: day.day === 10 ? "#f59e0b15" : "transparent",
-              borderRadius: "8px",
               border: day.day === 10 ? "1px solid #f59e0b30" : "none",
             }}
           >
-            <span style={{
-              color: day.day === 10 ? "#f59e0b" : "#9ca3af",
-              fontSize: "13px",
-            }}>
+            <span
+              className="text-sm"
+              style={{ color: day.day === 10 ? "#f59e0b" : "#9ca3af" }}
+            >
               {day.icon} {day.label}
             </span>
-            <span style={{
-              color: day.day === 10 ? "#f59e0b" : "#e8e8ff",
-              fontWeight: day.day === 10 ? "700" : "500",
-              fontSize: day.day === 10 ? "15px" : "13px",
-            }}>
+            <span
+              style={{
+                color: day.day === 10 ? "#f59e0b" : "#e8e8ff",
+                fontWeight: day.day === 10 ? "700" : "500",
+                fontSize: day.day === 10 ? "15px" : "13px",
+              }}
+            >
               {day.reward.toLocaleString()}원
             </span>
           </div>
         ))}
         <div
+          className="mt-2 p-2.5 rounded-xl text-center"
           style={{
-            marginTop: "8px",
-            padding: "10px",
             background: "#f59e0b15",
-            borderRadius: "10px",
             border: "1px solid #f59e0b30",
-            textAlign: "center",
           }}
         >
-          <span style={{ color: "#f59e0b", fontSize: "13px", fontWeight: "600" }}>
+          <span className="text-sm font-semibold" style={{ color: "#f59e0b" }}>
             🏆 10일 이후: 매일 100,000원!
           </span>
         </div>

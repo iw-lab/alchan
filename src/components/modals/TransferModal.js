@@ -14,94 +14,6 @@ const TransferModal = memo(function TransferModal({
   userId,
   userCash = 0,
 }) {
-  // 모달 스타일
-  const modalOverlayStyle = {
-    display: showTransferModal ? "flex" : "none",
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-    padding: "20px",
-  };
-
-  const modalContentStyle = {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    padding: "30px",
-    maxWidth: "450px",
-    width: "100%",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-    position: "relative",
-  };
-
-  const closeButtonStyle = {
-    position: "absolute",
-    top: "15px",
-    right: "15px",
-    background: "none",
-    border: "none",
-    fontSize: "24px",
-    cursor: "pointer",
-    color: "#6b7280",
-    padding: "0",
-    width: "30px",
-    height: "30px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
-
-  const inputStyle = {
-    width: "100%",
-    padding: "10px 12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
-    fontSize: "14px",
-    outline: "none",
-    transition: "border-color 0.2s",
-  };
-
-  const selectStyle = {
-    ...inputStyle,
-    cursor: "pointer",
-    backgroundColor: "white",
-  };
-
-  const labelStyle = {
-    display: "block",
-    marginBottom: "8px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#374151",
-  };
-
-  const buttonStyle = {
-    padding: "10px 20px",
-    borderRadius: "6px",
-    border: "none",
-    fontSize: "14px",
-    fontWeight: "500",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  };
-
-  const primaryButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: "#4f46e5",
-    color: "white",
-  };
-
-  const secondaryButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: "#e5e7eb",
-    color: "#374151",
-    marginRight: "10px",
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -118,51 +30,37 @@ const TransferModal = memo(function TransferModal({
     });
 
   return (
-    <div style={modalOverlayStyle} onClick={() => setShowTransferModal(false)}>
-      <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
+    <div className={`${showTransferModal ? 'flex' : 'hidden'} fixed inset-0 bg-black/50 items-center justify-center z-[1000] p-5`} onClick={() => setShowTransferModal(false)}>
+      <div className="bg-white rounded-xl p-8 max-w-[450px] w-full shadow-lg relative" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => setShowTransferModal(false)}
-          style={closeButtonStyle}
+          className="absolute top-4 right-4 bg-transparent border-0 text-2xl cursor-pointer text-gray-500 p-0 w-8 h-8 flex items-center justify-center"
           aria-label="닫기"
         >
           ×
         </button>
 
-        <h2 style={{ 
-          fontSize: "20px", 
-          fontWeight: "600", 
-          marginBottom: "25px", 
-          color: "#1f2937" 
-        }}>
+        <h2 className="text-xl font-semibold mb-6 text-gray-800">
           💸 송금하기
         </h2>
 
-        <div style={{ 
-          backgroundColor: "#f3f4f6", 
-          borderRadius: "8px", 
-          padding: "12px", 
-          marginBottom: "20px" 
-        }}>
-          <p style={{ 
-            fontSize: "14px", 
-            color: "#4b5563", 
-            margin: "0" 
-          }}>
-            현재 보유 현금: <strong style={{ color: "#1f2937" }}>
+        <div className="bg-gray-100 rounded-lg p-3 mb-5">
+          <p className="text-sm text-gray-600 m-0">
+            현재 보유 현금: <strong className="text-gray-800">
               {userCash.toLocaleString()}원
             </strong>
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "20px" }}>
-            <label style={labelStyle}>
+          <div className="mb-5">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
               받는 사람
             </label>
             <select
               value={transferRecipient}
               onChange={(e) => setTransferRecipient(e.target.value)}
-              style={selectStyle}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none transition-colors cursor-pointer bg-white"
               required
             >
               <option value="">받는 분을 선택하세요</option>
@@ -179,18 +77,14 @@ const TransferModal = memo(function TransferModal({
               )}
             </select>
             {validRecipients.length === 0 && (
-              <p style={{ 
-                marginTop: "8px", 
-                fontSize: "12px", 
-                color: "#ef4444" 
-              }}>
+              <p className="mt-2 text-xs text-red-500">
                 ⚠️ 같은 학급의 다른 사용자가 없거나 데이터를 불러오는 중입니다.
               </p>
             )}
           </div>
 
-          <div style={{ marginBottom: "25px" }}>
-            <label style={labelStyle}>
+          <div className="mb-6">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
               송금 금액
             </label>
             <input
@@ -198,55 +92,30 @@ const TransferModal = memo(function TransferModal({
               value={transferAmount}
               onChange={(e) => setTransferAmount(e.target.value)}
               placeholder="송금할 금액을 입력하세요"
-              style={inputStyle}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none transition-colors"
               min="1"
               max={userCash}
               required
             />
             {transferAmount && parseInt(transferAmount) > userCash && (
-              <p style={{ 
-                marginTop: "8px", 
-                fontSize: "12px", 
-                color: "#ef4444" 
-              }}>
+              <p className="mt-2 text-xs text-red-500">
                 보유 현금보다 많은 금액은 송금할 수 없습니다.
               </p>
             )}
           </div>
 
-          <div style={{ 
-            display: "flex", 
-            justifyContent: "flex-end", 
-            paddingTop: "10px", 
-            borderTop: "1px solid #e5e7eb" 
-          }}>
+          <div className="flex justify-end pt-2.5 border-t border-gray-200">
             <button
               type="button"
               onClick={() => setShowTransferModal(false)}
-              style={secondaryButtonStyle}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = "#d1d5db";
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = "#e5e7eb";
-              }}
+              className="px-5 py-2.5 rounded-md border-0 text-sm font-medium cursor-pointer transition-all duration-200 bg-gray-200 text-gray-700 mr-2.5 hover:bg-gray-300"
             >
               취소
             </button>
             <button
               type="submit"
-              style={primaryButtonStyle}
+              className="px-5 py-2.5 rounded-md border-0 text-sm font-medium cursor-pointer transition-all duration-200 bg-indigo-600 text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!transferRecipient || !transferAmount || parseInt(transferAmount) > userCash || validRecipients.length === 0}
-              onMouseOver={(e) => {
-                if (!e.target.disabled) {
-                  e.target.style.backgroundColor = "#4338ca";
-                }
-              }}
-              onMouseOut={(e) => {
-                if (!e.target.disabled) {
-                  e.target.style.backgroundColor = "#4f46e5";
-                }
-              }}
             >
               송금
             </button>

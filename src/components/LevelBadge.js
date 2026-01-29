@@ -12,17 +12,12 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
   if (compact) {
     return (
       <span
+        className="inline-flex items-center gap-1 rounded-xl font-semibold text-xs"
         style={{
           background: `linear-gradient(135deg, ${levelInfo.color}20 0%, ${levelInfo.color}40 100%)`,
           border: `1.5px solid ${levelInfo.color}`,
           color: levelInfo.color,
           padding: "2px 8px",
-          borderRadius: "12px",
-          fontWeight: "600",
-          fontSize: "12px",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "4px",
           boxShadow: `0 0 8px ${levelInfo.color}30`,
         }}
       >
@@ -34,48 +29,37 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
 
   return (
     <div
+      className="rounded-2xl p-4"
       style={{
         background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
-        borderRadius: "16px",
-        padding: "16px",
         border: `2px solid ${levelInfo.color}40`,
         boxShadow: `0 4px 20px ${levelInfo.color}20`,
       }}
     >
       {/* 레벨 헤더 */}
       <div
+        className="flex items-center justify-between"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           marginBottom: showProgress ? "12px" : "0",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div className="flex items-center gap-3">
           {/* 레벨 아이콘 & 배지 */}
           <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-3xl relative"
             style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
               background: `linear-gradient(135deg, ${levelInfo.color}30 0%, ${levelInfo.color}60 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "28px",
               boxShadow: `0 0 25px ${levelInfo.color}50`,
               border: `3px solid ${levelInfo.color}`,
-              position: "relative",
             }}
           >
             {levelInfo.icon}
             {/* 배지 표시 */}
             <span
+              className="absolute text-lg"
               style={{
-                position: "absolute",
                 bottom: "-4px",
                 right: "-4px",
-                fontSize: "18px",
                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
               }}
             >
@@ -86,19 +70,17 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
           {/* 레벨 정보 */}
           <div>
             <div
+              className="text-xs mb-0.5"
               style={{
-                fontSize: "11px",
                 color: "#9ca3af",
-                marginBottom: "2px",
                 letterSpacing: "1px",
               }}
             >
               LEVEL {levelInfo.level}
             </div>
             <div
+              className="text-xl font-bold mt-0.5"
               style={{
-                fontSize: "20px",
-                fontWeight: "700",
                 color: levelInfo.color,
                 textShadow: `0 0 15px ${levelInfo.color}50`,
               }}
@@ -106,10 +88,9 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
               {levelInfo.title}
             </div>
             <div
+              className="text-xs mt-0.5"
               style={{
-                fontSize: "11px",
                 color: "#6b7280",
-                marginTop: "2px",
               }}
             >
               {levelInfo.description}
@@ -119,21 +100,16 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
 
         {/* 레벨 배지 (큰 버전) */}
         <div
+          className="flex items-center gap-1.5 rounded-3xl font-bold text-base"
           style={{
             background: `linear-gradient(135deg, ${levelInfo.color}20 0%, ${levelInfo.color}40 100%)`,
             border: `2px solid ${levelInfo.color}`,
             color: levelInfo.color,
             padding: "8px 16px",
-            borderRadius: "24px",
-            fontWeight: "700",
-            fontSize: "16px",
             boxShadow: `0 0 20px ${levelInfo.color}40`,
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
           }}
         >
-          <span style={{ fontSize: "20px" }}>{levelInfo.badge}</span>
+          <span className="text-xl">{levelInfo.badge}</span>
           <span>Lv.{levelInfo.level}</span>
         </div>
       </div>
@@ -142,12 +118,9 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
       {showProgress && levelInfo.nextLevel && (
         <div>
           <div
+            className="flex justify-between text-xs mb-1.5"
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "11px",
               color: "#9ca3af",
-              marginBottom: "6px",
             }}
           >
             <span>다음 레벨: {levelInfo.nextLevel.title}</span>
@@ -156,32 +129,25 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
             </span>
           </div>
           <div
+            className="h-2.5 rounded overflow-hidden"
             style={{
-              height: "10px",
               backgroundColor: "#374151",
-              borderRadius: "5px",
-              overflow: "hidden",
               border: "1px solid #4b5563",
             }}
           >
             <div
+              className="h-full rounded transition-all duration-500"
               style={{
                 width: `${levelInfo.progress}%`,
-                height: "100%",
                 background: `linear-gradient(90deg, ${levelInfo.color} 0%, ${levelInfo.color}80 100%)`,
-                borderRadius: "5px",
-                transition: "width 0.5s ease",
                 boxShadow: `0 0 15px ${levelInfo.color}`,
               }}
             />
           </div>
           <div
+            className="flex justify-between text-[10px] mt-1.5"
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "10px",
               color: "#6b7280",
-              marginTop: "6px",
             }}
           >
             <span>{levelInfo.title}</span>
@@ -195,14 +161,10 @@ export default function LevelBadge({ netAssets, showProgress = false, compact = 
       {/* 최고 레벨 달성 시 */}
       {showProgress && !levelInfo.nextLevel && (
         <div
+          className="text-center p-3 rounded-lg text-sm font-bold"
           style={{
-            textAlign: "center",
-            padding: "12px",
             background: `linear-gradient(135deg, ${levelInfo.color}10 0%, ${levelInfo.color}25 100%)`,
-            borderRadius: "10px",
             color: levelInfo.color,
-            fontSize: "14px",
-            fontWeight: "700",
             border: `1px solid ${levelInfo.color}40`,
           }}
         >
@@ -221,22 +183,18 @@ export function LevelInline({ netAssets }) {
 
   return (
     <span
+      className="inline-flex items-center gap-1 text-sm rounded-lg"
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        fontSize: "13px",
         padding: "2px 8px",
-        borderRadius: "10px",
         background: `${levelInfo.color}15`,
         border: `1px solid ${levelInfo.color}40`,
       }}
     >
       <span>{levelInfo.badge}</span>
-      <span style={{ color: levelInfo.color, fontWeight: "600" }}>
+      <span className="font-semibold" style={{ color: levelInfo.color }}>
         Lv.{levelInfo.level}
       </span>
-      <span style={{ color: "#9ca3af", fontSize: "11px" }}>
+      <span className="text-xs" style={{ color: "#9ca3af" }}>
         {levelInfo.title}
       </span>
     </span>
@@ -251,7 +209,7 @@ export function LevelList({ currentNetAssets }) {
   const currentLevelInfo = getLevelInfo(currentNetAssets);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div className="flex flex-col gap-2">
       {levels.map((level) => {
         const isCurrentLevel = level.level === currentLevelInfo.level;
         const isUnlocked = currentNetAssets >= level.minAssets;
@@ -259,12 +217,9 @@ export function LevelList({ currentNetAssets }) {
         return (
           <div
             key={level.level}
+            className="flex items-center gap-3 rounded-xl"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
               padding: "10px 14px",
-              borderRadius: "12px",
               background: isCurrentLevel
                 ? `linear-gradient(135deg, ${level.color}20 0%, ${level.color}10 100%)`
                 : isUnlocked
@@ -277,37 +232,30 @@ export function LevelList({ currentNetAssets }) {
             }}
           >
             <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
                 background: isUnlocked
                   ? `linear-gradient(135deg, ${level.color}30 0%, ${level.color}50 100%)`
                   : "#374151",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "20px",
                 filter: isUnlocked ? "none" : "grayscale(100%)",
               }}
             >
               {level.icon}
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1">
               <div
+                className="text-sm font-semibold"
                 style={{
-                  fontSize: "14px",
-                  fontWeight: "600",
                   color: isUnlocked ? level.color : "#6b7280",
                 }}
               >
                 Lv.{level.level} {level.title}
               </div>
-              <div style={{ fontSize: "11px", color: "#9ca3af" }}>
+              <div className="text-xs" style={{ color: "#9ca3af" }}>
                 {formatAssetsShort(level.minAssets)}원 이상
               </div>
             </div>
-            <div style={{ fontSize: "20px" }}>
+            <div className="text-xl">
               {isUnlocked ? level.badge : "🔒"}
             </div>
           </div>

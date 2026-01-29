@@ -2,32 +2,6 @@
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, memo } from "react";
 
-// 모달 배경 스타일
-const modalBackdropStyle = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-// 모달 컨테이너 스타일
-const modalContainerStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  maxWidth: "500px",
-  width: "90%",
-  maxHeight: "90vh",
-  overflowY: "auto",
-  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-};
-
 const SellCouponModal = memo(function SellCouponModal({
   showSellCouponModal,
   setShowSellCouponModal,
@@ -122,67 +96,28 @@ const SellCouponModal = memo(function SellCouponModal({
     parseInt(sellAmount) > currentCoupons;
 
   return (
-    <div style={modalBackdropStyle} onClick={handleCancel}>
-      <div style={modalContainerStyle} onClick={(e) => e.stopPropagation()}>
-        <h3
-          style={{
-            fontSize: "18px",
-            fontWeight: "600",
-            marginBottom: "15px",
-            color: "#1f2937",
-          }}
-        >
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]" onClick={handleCancel}>
+      <div className="bg-white p-5 rounded-lg max-w-[500px] w-[90%] max-h-[90vh] overflow-y-auto shadow-md" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">
           쿠폰 판매하기
         </h3>
-        <p
-          style={{
-            marginBottom: "10px",
-            fontSize: "14px",
-            color: "#4b5563",
-          }}
-        >
+        <p className="mb-2.5 text-sm text-gray-600">
           쿠폰을 판매하고 현금으로 교환하세요.
         </p>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: "15px",
-            padding: "10px",
-            backgroundColor: "#f9fafb",
-            borderRadius: "6px",
-            fontSize: "15px",
-          }}
-        >
+        <div className="flex justify-between mb-4 p-2.5 bg-gray-50 rounded-md text-[15px]">
           <span>현재 보유 쿠폰:</span>
           <strong>{currentCoupons.toLocaleString()}</strong>
         </div>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: "15px",
-            padding: "10px",
-            backgroundColor: "#f9fafb",
-            borderRadius: "6px",
-            fontSize: "15px",
-            color: "#4f46e5",
-          }}
-        >
+        <div className="flex justify-between mb-4 p-2.5 bg-gray-50 rounded-md text-[15px] text-indigo-600">
           <span>1쿠폰 판매가:</span>
           <strong>{couponValue.toLocaleString()}원</strong>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "15px" }}>
+          <div className="mb-4">
             <label
               htmlFor="sellAmount"
-              style={{
-                display: "block",
-                marginBottom: "5px",
-                fontWeight: "500",
-                color: "#374151",
-              }}
+              className="block mb-1 font-medium text-gray-700"
             >
               판매할 쿠폰 수:
             </label>
@@ -193,14 +128,7 @@ const SellCouponModal = memo(function SellCouponModal({
               onChange={(e) => setSellAmount(e.target.value)}
               min="1"
               max={currentCoupons} // 최대값 설정
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                outline: "none", // 포커스 시 기본 테두리 제거
-              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm outline-none"
               disabled={isProcessing}
               required // HTML5 기본 유효성 검사
             />
@@ -208,87 +136,38 @@ const SellCouponModal = memo(function SellCouponModal({
 
           {/* 에러 메시지 표시 */}
           {error && (
-            <div
-              style={{
-                backgroundColor: "#fee2e2", // 빨간색 배경
-                border: "1px solid #fecaca", // 빨간색 테두리
-                borderRadius: "6px",
-                padding: "12px 15px",
-                marginBottom: "15px",
-                color: "#b91c1c", // 어두운 빨간색 텍스트
-                fontSize: "14px",
-              }}
-            >
-              <p style={{ margin: 0 }}>⚠️ {error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 mb-4 text-red-800 text-sm">
+              <p className="m-0">⚠️ {error}</p>
             </div>
           )}
 
-          <div
-            style={{
-              marginBottom: "20px",
-              padding: "10px 15px",
-              backgroundColor: "#eef2ff", // 연한 파란색 배경
-              borderRadius: "6px",
-              borderLeft: "4px solid #4f46e5", // 파란색 왼쪽 테두리
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "#1f2937", // 어두운 회색 텍스트
-              }}
-            >
+          <div className="mb-5 px-4 py-2.5 bg-indigo-50 rounded-md border-l-4 border-indigo-600">
+            <div className="flex justify-between text-base font-semibold text-gray-800">
               <span>예상 수령액:</span>
-              <span style={{ color: "#4f46e5" /* 파란색 텍스트 */ }}>
+              <span className="text-indigo-600">
                 {calculateValue().toLocaleString()}원
               </span>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "10px",
-              marginTop: "20px",
-            }}
-          >
+          <div className="flex justify-end gap-2.5 mt-5">
             <button
               type="button"
               onClick={handleCancel}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#f3f4f6", // 연한 회색 배경
-                color: "#4b5563", // 중간 회색 텍스트
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                transition: "background-color 0.2s ease",
-              }}
+              className="px-4 py-2 bg-gray-100 text-gray-600 border-0 rounded-md text-sm cursor-pointer transition-colors duration-200"
               disabled={isProcessing}
             >
               취소
             </button>
             <button
               type="submit"
+              className="px-4 py-2 bg-red-500 text-white border-0 rounded-md text-sm font-medium transition-all duration-200"
               style={{
-                padding: "8px 16px",
-                backgroundColor: "#ef4444", // 빨간색 배경 (판매 버튼이므로)
-                color: "white", // 흰색 텍스트
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "14px",
-                fontWeight: "500",
                 cursor:
-                  isInvalidAmount || isProcessing ? "not-allowed" : "pointer", // 조건부 커서 변경
-                opacity: isInvalidAmount || isProcessing ? 0.6 : 1, // 조건부 투명도
-                transition: "background-color 0.2s ease, opacity 0.2s ease",
+                  isInvalidAmount || isProcessing ? "not-allowed" : "pointer",
+                opacity: isInvalidAmount || isProcessing ? 0.6 : 1,
               }}
-              disabled={isInvalidAmount || isProcessing} // 조건부 비활성화
+              disabled={isInvalidAmount || isProcessing}
             >
               {isProcessing ? "처리 중..." : "판매하기"}
             </button>

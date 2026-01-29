@@ -93,48 +93,24 @@ const TaskItem = memo(function TaskItem({
 
   const taskItemStyle = {
     backgroundColor: isCompleted ? "rgba(20, 20, 35, 0.4)" : "rgba(30, 30, 50, 0.6)",
-    borderRadius: "8px",
-    cursor: isCompleted ? "default" : "pointer",
-    transition: "all 0.2s ease",
     border: `1px solid ${isCompleted ? "rgba(100, 116, 139, 0.1)" : "rgba(0, 255, 242, 0.15)"}`,
-    display: "flex",
-    flexDirection: "row", // 모바일에서도 가로 배치
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
     opacity: isCompleted ? 0.6 : 1,
     padding: isMobile ? "8px 10px" : "12px",
-    marginBottom: "8px",
     boxShadow: isCompleted ? "none" : "0 4px 12px rgba(0, 0, 0, 0.1)",
-    gap: isMobile ? "6px" : "8px",
   };
 
   const taskInfoStyle = {
-    display: "flex",
-    alignItems: "center",
     gap: isMobile ? "6px" : "10px",
-    flexGrow: 1,
-    minWidth: 0,
-    overflow: "hidden",
   };
 
   const taskNameStyle = {
     color: isCompleted ? "#64748b" : "#e8e8ff",
-    fontWeight: "600",
     fontSize: isMobile ? "12px" : "16px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
     lineHeight: "1.4",
-    flex: 1,
-    minWidth: 0,
   };
 
   const taskActionsStyle = {
-    display: "flex",
-    alignItems: "center",
     gap: isMobile ? "4px" : "8px",
-    flexShrink: 0,
   };
 
   const couponStyle = {
@@ -142,10 +118,7 @@ const TaskItem = memo(function TaskItem({
     color: isJobTask ? "#818cf8" : "#34d399",
     border: isJobTask ? "1px solid rgba(99, 102, 241, 0.5)" : "1px solid rgba(52, 211, 153, 0.5)",
     padding: isMobile ? "3px 6px" : "4px 10px",
-    borderRadius: "10px",
     fontSize: isMobile ? "10px" : "13px",
-    fontWeight: "500",
-    whiteSpace: "nowrap",
   };
 
   const renderCardModal = () => {
@@ -154,19 +127,16 @@ const TaskItem = memo(function TaskItem({
     const mobileModalContentStyle = {
       ...modalContentStyle,
       padding: isMobile ? "20px" : "40px",
-      width: isMobile ? "95%" : "90%",
     };
 
     const mobileModalTitleStyle = {
       ...modalTitleStyle,
       fontSize: isMobile ? "20px" : "28px",
-      marginBottom: isMobile ? "8px" : "10px",
     };
 
     const mobileModalSubtitleStyle = {
       ...modalSubtitleStyle,
       fontSize: isMobile ? "13px" : "16px",
-      marginBottom: isMobile ? "20px" : "30px",
     };
 
     const mobileCardsContainerStyle = {
@@ -202,54 +172,56 @@ const TaskItem = memo(function TaskItem({
     };
 
     return createPortal(
-      <div style={modalOverlayStyle} onClick={() => setShowCardModal(false)}>
-        <div style={mobileModalContentStyle} onClick={(e) => e.stopPropagation()}>
-          <h3 style={mobileModalTitleStyle}>🎁 보상 선택</h3>
-          <p style={mobileModalSubtitleStyle}>두 개의 카드 중 하나를 선택하세요!</p>
+      <div className="fixed inset-0 flex items-center justify-center z-[10000]" style={modalOverlayStyle} onClick={() => setShowCardModal(false)}>
+        <div className="rounded-[20px] max-w-[600px]" style={{...mobileModalContentStyle, width: isMobile ? "95%" : "90%"}} onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-center font-bold" style={{...mobileModalTitleStyle, marginBottom: isMobile ? "8px" : "10px"}}>🎁 보상 선택</h3>
+          <p className="text-center" style={{...mobileModalSubtitleStyle, marginBottom: isMobile ? "20px" : "30px"}}>두 개의 카드 중 하나를 선택하세요!</p>
 
-          <div style={mobileCardsContainerStyle}>
+          <div className="flex justify-center flex-wrap" style={mobileCardsContainerStyle}>
             {/* 현금 카드 */}
             <div
+              className="cursor-pointer"
               style={{
                 ...mobileCardStyle,
                 ...(selectedCard === "cash" && selectedCardStyle),
               }}
               onClick={() => !selectedCard && handleCardSelect("cash")}
             >
-              <div style={{
+              <div className="relative w-full h-full" style={{
                 ...cardInnerStyle,
                 transform: selectedCard === "cash" ? "rotateY(180deg)" : "rotateY(0deg)",
               }}>
-                <div style={cardFrontStyle}>
+                <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{...cardFrontStyle, backfaceVisibility: "hidden"}}>
                   <div style={mobileCardIconStyle}>💰</div>
-                  <div style={mobileCardTextStyle}>현금</div>
+                  <div className="text-2xl font-bold" style={mobileCardTextStyle}>현금</div>
                 </div>
-                <div style={{ ...cardBackStyle, ...(selectedCard === "cash" && cardBackVisibleStyle) }}>
-                  <div style={mobileRewardAmountStyle}>{rewardData.cash.toLocaleString()}원</div>
-                  <div style={mobileRewardLabelStyle}>💰 현금 획득!</div>
+                <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{ ...cardBackStyle, ...(selectedCard === "cash" && cardBackVisibleStyle), backfaceVisibility: "hidden" }}>
+                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{rewardData.cash.toLocaleString()}원</div>
+                  <div className="text-lg" style={mobileRewardLabelStyle}>💰 현금 획득!</div>
                 </div>
               </div>
             </div>
 
             {/* 쿠폰 카드 */}
             <div
+              className="cursor-pointer"
               style={{
                 ...mobileCardStyle,
                 ...(selectedCard === "coupon" && selectedCardStyle),
               }}
               onClick={() => !selectedCard && handleCardSelect("coupon")}
             >
-              <div style={{
+              <div className="relative w-full h-full" style={{
                 ...cardInnerStyle,
                 transform: selectedCard === "coupon" ? "rotateY(180deg)" : "rotateY(0deg)",
               }}>
-                <div style={cardFrontStyle}>
+                <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{...cardFrontStyle, backfaceVisibility: "hidden"}}>
                   <div style={mobileCardIconStyle}>🎫</div>
-                  <div style={mobileCardTextStyle}>쿠폰</div>
+                  <div className="text-2xl font-bold" style={mobileCardTextStyle}>쿠폰</div>
                 </div>
-                <div style={{ ...cardBackStyle, ...(selectedCard === "coupon" && cardBackVisibleStyle) }}>
-                  <div style={mobileRewardAmountStyle}>{rewardData.coupon}개</div>
-                  <div style={mobileRewardLabelStyle}>🎫 쿠폰 획득!</div>
+                <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{ ...cardBackStyle, ...(selectedCard === "coupon" && cardBackVisibleStyle), backfaceVisibility: "hidden" }}>
+                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{rewardData.coupon}개</div>
+                  <div className="text-lg" style={mobileRewardLabelStyle}>🎫 쿠폰 획득!</div>
                 </div>
               </div>
             </div>
@@ -263,18 +235,23 @@ const TaskItem = memo(function TaskItem({
   return (
     <>
       <div
-        style={taskItemStyle}
+        className="flex flex-row items-center justify-between relative rounded-lg mb-2 transition-all"
+        style={{
+          ...taskItemStyle,
+          cursor: isCompleted ? "default" : "pointer",
+          gap: isMobile ? "6px" : "8px",
+        }}
         onClick={isCompleted ? null : handleInternalClick}
       >
-        <div style={taskInfoStyle}>
-          <span style={taskNameStyle} title={task.name}>
+        <div className="flex items-center flex-grow min-w-0 overflow-hidden" style={taskInfoStyle}>
+          <span className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0" style={taskNameStyle} title={task.name}>
             {task.name}
           </span>
         </div>
 
-        <div style={taskActionsStyle}>
+        <div className="flex items-center flex-shrink-0" style={taskActionsStyle}>
           {/* 🔥 모든 할일에 랜덤보상 표시 */}
-          <span style={couponStyle}>
+          <span className="rounded-lg font-medium whitespace-nowrap" style={couponStyle}>
             🎁 랜덤보상
           </span>
 
@@ -285,6 +262,7 @@ const TaskItem = memo(function TaskItem({
                   e.stopPropagation();
                   onEditTask();
                 }}
+                className="cursor-pointer p-1 flex items-center justify-center"
                 style={adminButtonStyles}
                 aria-label="할일 수정"
               >
@@ -295,6 +273,7 @@ const TaskItem = memo(function TaskItem({
                   e.stopPropagation();
                   onDeleteTask();
                 }}
+                className="cursor-pointer p-1 flex items-center justify-center"
                 style={adminButtonStyles}
                 aria-label="할일 삭제"
               >
@@ -305,9 +284,9 @@ const TaskItem = memo(function TaskItem({
         </div>
 
         {showBubble && (
-          <div style={bubbleStyle}>
+          <div className="absolute left-1/2 -translate-x-1/2 rounded-md font-medium whitespace-nowrap z-10 pointer-events-none" style={bubbleStyle}>
             {bubbleText}
-            <div style={bubbleTailStyle}></div>
+            <div className="absolute" style={bubbleTailStyle}></div>
           </div>
         )}
       </div>
@@ -322,35 +301,21 @@ export default TaskItem;
 const adminButtonStyles = {
   background: "none",
   border: "none",
-  cursor: "pointer",
-  padding: "4px",
   fontSize: "16px",
   color: "#94a3b8",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
 };
 
 const bubbleStyle = {
-  position: "absolute",
   bottom: "calc(100% + 8px)",
-  left: "50%",
-  transform: "translateX(-50%)",
   backgroundColor: "rgba(0, 0, 0, 0.75)",
   color: "white",
   padding: "5px 10px",
-  borderRadius: "6px",
   fontSize: "12px",
-  fontWeight: "500",
-  whiteSpace: "nowrap",
-  zIndex: 10,
-  pointerEvents: "none",
   boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
 };
 
 const bubbleTailStyle = {
   content: '""',
-  position: "absolute",
   top: "100%",
   left: "50%",
   marginLeft: "-5px",
@@ -361,58 +326,32 @@ const bubbleTailStyle = {
 
 // 카드 모달 스타일
 const modalOverlayStyle = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
   backgroundColor: "rgba(0, 0, 0, 0.7)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 10000,
   animation: "fadeIn 0.3s ease",
 };
 
 const modalContentStyle = {
   backgroundColor: "#1a1a2e",
   border: "1px solid rgba(0, 255, 242, 0.3)",
-  borderRadius: "20px",
-  padding: "40px",
-  maxWidth: "600px",
-  width: "90%",
   boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
   animation: "zoomIn 0.3s ease",
 };
 
 const modalTitleStyle = {
-  fontSize: "28px",
-  fontWeight: "bold",
-  textAlign: "center",
-  marginBottom: "10px",
   color: "#ffffff",
   textShadow: "0 0 10px rgba(0, 255, 242, 0.5)",
 };
 
 const modalSubtitleStyle = {
-  fontSize: "16px",
-  textAlign: "center",
   color: "#a0a0c0",
-  marginBottom: "30px",
 };
 
 const cardsContainerStyle = {
-  display: "flex",
   gap: "20px",
-  justifyContent: "center",
-  flexWrap: "wrap",
 };
 
 const cardStyle = {
-  width: "200px",
-  height: "280px",
   perspective: "1000px",
-  cursor: "pointer",
   transition: "transform 0.2s ease",
 };
 
@@ -421,40 +360,18 @@ const selectedCardStyle = {
 };
 
 const cardInnerStyle = {
-  position: "relative",
-  width: "100%",
-  height: "100%",
   transition: "transform 0.8s",
   transformStyle: "preserve-3d",
 };
 
 const cardFrontStyle = {
-  position: "absolute",
-  width: "100%",
-  height: "100%",
-  backfaceVisibility: "hidden",
-  backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  borderRadius: "15px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
   boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
   border: "3px solid #fff",
 };
 
 const cardBackStyle = {
-  position: "absolute",
-  width: "100%",
-  height: "100%",
-  backfaceVisibility: "hidden",
   backgroundColor: "#fff",
-  borderRadius: "15px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
   boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
   border: "3px solid #667eea",
   transform: "rotateY(180deg)",
@@ -472,19 +389,13 @@ const cardIconStyle = {
 };
 
 const cardTextStyle = {
-  fontSize: "24px",
-  fontWeight: "bold",
   color: "white",
 };
 
 const rewardAmountStyle = {
-  fontSize: "36px",
-  fontWeight: "bold",
   color: "#667eea",
-  marginBottom: "10px",
 };
 
 const rewardLabelStyle = {
-  fontSize: "18px",
   color: "#666",
 };

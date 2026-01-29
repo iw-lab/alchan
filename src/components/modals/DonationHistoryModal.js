@@ -20,54 +20,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
   const [error, setError] = useState(null);
   const [totalDonationForThisClassGoal, setTotalDonationForThisClassGoal] = useState(0);
 
-  // 스타일 정의
-  const modalOverlayStyle = {
-    display: showDonationHistoryModal ? "flex" : "none",
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-    padding: "20px",
-  };
-
-  const modalContentStyle = {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-    width: "100%",
-    maxWidth: "600px",
-    maxHeight: "85vh",
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-  };
-
-  const modalHeaderStyle = {
-    padding: "16px 20px",
-    borderBottom: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#f9fafb",
-  };
-
-  const modalBodyStyle = {
-    padding: "20px",
-    overflowY: "auto",
-    maxHeight: "calc(85vh - 120px)",
-  };
-
-  const modalFooterStyle = {
-    padding: "16px 20px",
-    borderTop: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "flex-end",
-  };
+  // 스타일은 Tailwind 클래스로 변환됨
 
   const tableStyles = {
     table: {
@@ -266,83 +219,52 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
     studentDonationSummary.find((s) => s.isCurrentUser)?.cumulativeAmount || 0;
 
   return (
-    <div style={modalOverlayStyle} onClick={handleClose}>
-      <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={modalHeaderStyle}>
-          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "600", color: "#1f2937" }}>
+    <div className={`${showDonationHistoryModal ? 'flex' : 'hidden'} fixed inset-0 bg-black/50 items-center justify-center z-[1000] p-5`} onClick={handleClose}>
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <h3 className="m-0 text-lg font-semibold text-gray-800">
             우리 학급 기부 현황
             {userClassCode && (
-              <span style={{ 
-                marginLeft: "8px", 
-                fontSize: "14px", 
-                backgroundColor: "#dbeafe", 
-                color: "#1e40af", 
-                padding: "4px 8px", 
-                borderRadius: "12px", 
-                fontWeight: "500" 
-              }}>
+              <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-xl font-medium">
                 {userClassCode}
               </span>
             )}
           </h3>
-          <button 
-            onClick={handleClose} 
-            style={{ 
-              background: "none", 
-              border: "none", 
-              cursor: "pointer", 
-              fontSize: "20px", 
-              color: "#9ca3af", 
-              padding: "0", 
-              lineHeight: "1" 
-            }} 
+          <button
+            onClick={handleClose}
+            className="bg-transparent border-0 cursor-pointer text-xl text-gray-400 p-0 leading-none"
             aria-label="닫기"
           >
             &times;
           </button>
         </div>
 
-        <div style={modalBodyStyle}>
-          <div style={{ 
-            backgroundColor: "#eef2ff", 
-            padding: "12px 15px", 
-            borderRadius: "8px", 
-            marginBottom: "20px", 
-            border: "1px solid #c7d2fe" 
-          }}>
-            <div style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center", 
-              marginBottom: "8px" 
-            }}>
-              <span style={{ fontSize: "14px", fontWeight: "500", color: "#4338ca" }}>
+        <div className="p-5 overflow-y-auto max-h-[calc(85vh-120px)]">
+          <div className="bg-indigo-50 px-4 py-3 rounded-lg mb-5 border border-indigo-200">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-indigo-700">
                 내 누적 기부액
               </span>
-              <span style={{ fontSize: "16px", fontWeight: "600", color: "#4f46e5" }}>
+              <span className="text-base font-semibold text-indigo-600">
                 {formatAmount(myTotalDonation)} 쿠폰
               </span>
             </div>
-            <div style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center" 
-            }}>
-              <span style={{ fontSize: "14px", fontWeight: "500", color: "#4338ca" }}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-indigo-700">
                 우리 학급 총 기부액
               </span>
-              <span style={{ fontSize: "16px", fontWeight: "600", color: "#4f46e5" }}>
+              <span className="text-base font-semibold text-indigo-600">
                 {formatAmount(totalDonationForThisClassGoal)} 쿠폰
               </span>
             </div>
           </div>
 
           {loading ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#6b7280" }}>
+            <div className="text-center py-10 text-gray-500">
               기부 현황을 불러오는 중...
             </div>
           ) : error ? (
-            <div style={{ color: "#ef4444", textAlign: "center", padding: "40px 0" }}>
+            <div className="text-red-500 text-center py-10">
               {error}
             </div>
           ) : (
@@ -384,26 +306,19 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                         <td style={tableStyles.td}>
                           {student.name}
                           {student.isCurrentUser && (
-                            <span style={{ 
-                              marginLeft: "8px", 
-                              fontSize: "12px", 
-                              backgroundColor: "#dbeafe", 
-                              color: "#1e40af", 
-                              padding: "2px 6px", 
-                              borderRadius: "10px", 
-                              fontWeight: "600", 
-                              verticalAlign: "middle" 
-                            }}>
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-lg font-semibold align-middle">
                               나
                             </span>
                           )}
                         </td>
-                        <td style={{ 
-                          ...tableStyles.td, 
-                          textAlign: "right", 
-                          color: student.cumulativeAmount > 0 ? "#4f46e5" : "#6b7280", 
-                          fontWeight: student.cumulativeAmount > 0 ? "600" : "normal" 
-                        }}>
+                        <td
+                          style={{
+                            ...tableStyles.td,
+                            textAlign: "right",
+                            color: student.cumulativeAmount > 0 ? "#4f46e5" : "#6b7280",
+                            fontWeight: student.cumulativeAmount > 0 ? "600" : "normal"
+                          }}
+                        >
                           {formatAmount(student.cumulativeAmount)} 쿠폰
                         </td>
                       </tr>
@@ -413,10 +328,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
               ) : (
                 <div style={tableStyles.emptyContainer}>
                   <div style={tableStyles.emptyIcon}>👥</div>
-                  <p style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: "500" }}>
+                  <p className="m-0 mb-2 text-base font-medium">
                     학급 학생 정보를 불러올 수 없거나 등록된 학생이 없습니다
                   </p>
-                  <p style={{ margin: 0, fontSize: "14px" }}>
+                  <p className="m-0 text-sm">
                     관리자에게 문의하여 학급 설정을 확인해주세요.
                   </p>
                 </div>
@@ -425,27 +340,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
           )}
         </div>
 
-        <div style={modalFooterStyle}>
-          <button 
-            onClick={handleClose} 
-            style={{ 
-              padding: "8px 16px", 
-              backgroundColor: "#e5e7eb", 
-              color: "#374151", 
-              border: "none", 
-              borderRadius: "6px", 
-              cursor: "pointer", 
-              fontWeight: "500", 
-              transition: "background-color 0.2s, color 0.2s" 
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = "#d1d5db";
-              e.target.style.color = "#1f2937";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = "#e5e7eb";
-              e.target.style.color = "#374151";
-            }}
+        <div className="px-5 py-4 border-t border-gray-200 flex justify-end">
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 border-0 rounded-md cursor-pointer font-medium transition-all duration-200 hover:bg-gray-300 hover:text-gray-800"
           >
             닫기
           </button>

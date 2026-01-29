@@ -23,40 +23,30 @@ const JobList = memo(function JobList({
   return (
     <div
       key={job.id} // 상위에서 map을 사용하므로 여기서 key는 필수 X, 식별용으로 유지
+      className="flex flex-col h-full rounded-lg overflow-hidden mb-4"
       style={{
         backgroundColor: "rgba(20, 20, 35, 0.6)",
-        borderRadius: "10px",
         border: "1px solid rgba(0, 255, 242, 0.2)",
-        overflow: "hidden",
         boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-        marginBottom: "15px",
         backdropFilter: "blur(5px)",
-        display: "flex", // Flexbox 레이아웃 사용
-        flexDirection: "column", // 세로 방향 배치
-        height: "100%", // 부모 그리드 셀 높이 채우기 (선택 사항)
       }}
     >
       {/* 직업 헤더 - 시인성 개선 */}
       <div
-        className="job-header-container"
+        className="job-header-container flex justify-between items-center"
         style={{
           background: "linear-gradient(135deg, rgba(79, 70, 229, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%)",
           padding: isMobile ? "12px 14px" : "14px 16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
           borderBottom: "1px solid rgba(0, 255, 242, 0.2)",
         }}
       >
         <div
-          className="job-title-text"
+          className="job-title-text font-bold"
           style={{
-            fontWeight: "700",
             fontSize: isMobile ? "15px" : "18px",
-            textShadow: "0 1px 3px rgba(0,0,0,0.2)",
+            textShadow: "0 0 10px rgba(0, 255, 242, 0.3)",
             letterSpacing: "-0.01em",
             color: "#e8e8ff", // 밝은 텍스트
-            textShadow: "0 0 10px rgba(0, 255, 242, 0.3)",
           }}
         >
           {job.title}
@@ -66,13 +56,11 @@ const JobList = memo(function JobList({
           <div>
             <button
               onClick={() => onEditJob(job.id)} // job.id 전달 확인
+              className="cursor-pointer p-0 mr-2"
               style={{
                 background: "none",
                 border: "none",
-                cursor: "pointer",
                 color: "rgba(255, 255, 255, 0.7)",
-                marginRight: "8px",
-                padding: "0",
               }}
               aria-label={`${job.title} 직업 수정`}
             >
@@ -80,12 +68,11 @@ const JobList = memo(function JobList({
             </button>
             <button
               onClick={() => onDeleteJob(job.id)} // job.id 전달 확인
+              className="cursor-pointer p-0"
               style={{
                 background: "none",
                 border: "none",
-                cursor: "pointer",
                 color: "rgba(255, 255, 255, 0.7)",
-                padding: "0",
               }}
               aria-label={`${job.title} 직업 삭제`}
             >
@@ -96,7 +83,7 @@ const JobList = memo(function JobList({
       </div>
 
       {/* 직업 할일 목록 (flex-grow로 남은 공간 채우기) */}
-      <div style={{ padding: isMobile ? "8px" : "10px", flexGrow: 1, overflowY: "auto" }}>
+      <div className="flex-grow overflow-y-auto" style={{ padding: isMobile ? "8px" : "10px" }}>
         {job.tasks && job.tasks.length > 0 ? (
           job.tasks.map((task) => (
             <TaskItem
@@ -114,11 +101,10 @@ const JobList = memo(function JobList({
           ))
         ) : (
           <p
+            className="text-center my-2.5"
             style={{
               fontSize: "13px",
               color: "#9999bb",
-              textAlign: "center",
-              margin: "10px 0",
             }}
           >
             등록된 할일이 없습니다.
@@ -132,19 +118,16 @@ const JobList = memo(function JobList({
           <button
             onClick={onAddTask} // Dashboard에서 job.id 포함하여 생성된 핸들러 전달
             // --- 인라인 스타일 대신 전달받은 스타일 적용 ---
+            className="w-full cursor-pointer rounded-md mt-0 transition-all"
             style={
               addJobTaskButtonStyle || {
-                /* 기본 스타일 (선택 사항) */ width: "100%",
+                /* 기본 스타일 (선택 사항) */
                 padding: isMobile ? "6px" : "8px",
                 backgroundColor: "rgba(0, 255, 242, 0.1)",
                 border: "1px solid rgba(0, 255, 242, 0.3)",
                 color: "#00fff2",
-                borderRadius: "6px",
-                cursor: "pointer",
                 fontSize: isMobile ? "12px" : "13px",
                 fontWeight: "500",
-                marginTop: "0", // 위쪽 마진 제거
-                transition: "all 0.2s ease",
               }
             }
           >
