@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import globalCacheService from '../services/globalCacheService';
 
+import { logger } from "../utils/logger";
 // ============================================
 // 🔥 TTL 상수 - 대폭 증가 (Firestore 읽기 80% 감소)
 // ============================================
@@ -144,7 +145,7 @@ class BatchWriteManager {
       }
 
       await batch.commit();
-      console.log(`[BatchWrite] ${operations.length}개 작업 완료`);
+      logger.log(`[BatchWrite] ${operations.length}개 작업 완료`);
     } catch (error) {
       console.error('[BatchWrite] 오류:', error);
       // 실패한 작업 다시 큐에 추가
@@ -178,12 +179,12 @@ export async function getCachedDoc(path, options = {}) {
   if (!forceRefresh) {
     const cached = memoryCache.get(cacheKey);
     if (cached) {
-      console.log(`[Cache HIT] ${path}`);
+      logger.log(`[Cache HIT] ${path}`);
       return cached;
     }
   }
 
-  console.log(`[Cache MISS] ${path}`);
+  logger.log(`[Cache MISS] ${path}`);
   const docRef = doc(db, ...path.split('/'));
   const docSnap = await getDoc(docRef);
 
@@ -204,12 +205,12 @@ export async function getCachedCollection(path, queryConstraints = [], options =
   if (!forceRefresh) {
     const cached = memoryCache.get(cacheKey);
     if (cached) {
-      console.log(`[Cache HIT] ${path} (${cached.length} items)`);
+      logger.log(`[Cache HIT] ${path} (${cached.length} items)`);
       return cached;
     }
   }
 
-  console.log(`[Cache MISS] ${path}`);
+  logger.log(`[Cache MISS] ${path}`);
   const colRef = collection(db, ...path.split('/'));
   const q = query(colRef, ...queryConstraints);
   const querySnap = await getDocs(q);
@@ -272,7 +273,7 @@ export function debouncedUpdate(path, data, delay = 1000) {
         ...entry.data,
         updatedAt: serverTimestamp()
       });
-      console.log(`[Debounced Update] ${path}`);
+      logger.log(`[Debounced Update] ${path}`);
       memoryCache.delete(`doc:${path}`);
     } catch (error) {
       console.error('[Debounced Update Error]', error);
@@ -367,7 +368,7 @@ class ListenerManager {
     }
 
     this.listeners.set(key, unsubscribe);
-    console.log(`[Listener] 등록: ${key}`);
+    logger.log(`[Listener] 등록: ${key}`);
 
     return () => this.unsubscribe(key);
   }
@@ -378,7 +379,7 @@ class ListenerManager {
     if (unsubscribe) {
       unsubscribe();
       this.listeners.delete(key);
-      console.log(`[Listener] 해제: ${key}`);
+      logger.log(`[Listener] 해제: ${key}`);
     }
   }
 
@@ -386,7 +387,7 @@ class ListenerManager {
   unsubscribeAll() {
     for (const [key, unsubscribe] of this.listeners) {
       unsubscribe();
-      console.log(`[Listener] 해제: ${key}`);
+      logger.log(`[Listener] 해제: ${key}`);
     }
     this.listeners.clear();
   }

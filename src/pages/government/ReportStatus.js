@@ -1,6 +1,7 @@
 // src/ReportStatus.js
 import React, { useState, useEffect } from "react";
 
+import { logger } from "../../utils/logger";
 const ReportStatus = ({
   reports,
   onProcessReport,
@@ -312,7 +313,7 @@ const ReportStatus = ({
                         <div className="report-actions">
                           <button
                             onClick={() => {
-                              console.log("벌금 처리 버튼 클릭됨:", report);
+                              logger.log("벌금 처리 버튼 클릭됨:", report);
                               openProcessModal(report);
                             }}
                             className="action-button process-button fine-button"
@@ -321,7 +322,7 @@ const ReportStatus = ({
                           </button>
                           <button
                             onClick={() => {
-                              console.log("합의 처리 버튼 클릭됨:", report);
+                              logger.log("합의 처리 버튼 클릭됨:", report);
                               handleSettlementClick(report);
                             }}
                             className="action-button settlement-button"
@@ -330,7 +331,7 @@ const ReportStatus = ({
                           </button>
                           <button
                             onClick={() => {
-                              console.log("반려 버튼 클릭됨:", report.id);
+                              logger.log("반려 버튼 클릭됨:", report.id);
                               if (onDismissReport) {
                                 onDismissReport(report.id);
                               } else {
@@ -397,7 +398,7 @@ const ReportStatus = ({
                         <div className="report-actions">
                           <button
                             onClick={() => {
-                              console.log("접수 버튼 클릭됨:", report.id);
+                              logger.log("접수 버튼 클릭됨:", report.id);
                               if (onAcceptReport) {
                                 onAcceptReport(report.id);
                               } else {
@@ -410,7 +411,7 @@ const ReportStatus = ({
                           </button>
                           <button
                             onClick={() => {
-                              console.log("반려 버튼 클릭됨:", report.id);
+                              logger.log("반려 버튼 클릭됨:", report.id);
                               if (onDismissReport) {
                                 onDismissReport(report.id);
                               } else {

@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext"; // AuthContext에서 user 
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { usePolling } from '../../hooks/usePolling';
 
+import { logger } from "../../utils/logger";
 // Firestore 관련 함수 임포트
 import {
   db,
@@ -84,7 +85,7 @@ const Investment = ({ classCode }) => {
             createdAt: serverTimestamp(),
             lastUpdated: serverTimestamp(),
           });
-          console.log(`학급 [${classCode}]의 국고가 없어 새로 생성했습니다.`);
+          logger.log(`학급 [${classCode}]의 국고가 없어 새로 생성했습니다.`);
           return 0;
         } catch (error) {
           console.error("국고 생성 중 오류:", error);

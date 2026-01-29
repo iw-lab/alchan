@@ -23,6 +23,7 @@ import { db, storage } from "../../firebase";
 import { usePolling, POLLING_INTERVALS } from "../../hooks/usePolling";
 import "./TrialRoom.css";
 
+import { logger } from "../../utils/logger";
 // 개선된 아바타 컴포넌트
 const Avatar = ({ role, name, isActive, userId, onAvatarClick, showSpeechBubble, canGrantPermission }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -543,7 +544,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     const reason = window.prompt("판결 이유를 입력하세요:");
     if (!reason || !reason.trim()) return;
 
-    console.log("Making verdict...", { verdict, reason });
+    logger.log("Making verdict...", { verdict, reason });
 
     try {
       // 1. Parse payment from verdict string
@@ -558,28 +559,28 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       if (fineMatch && fineMatch[1]) {
         paymentType = 'fine';
         paymentAmount = parseInt(fineMatch[1].replace(/,/g, ''), 10);
-        console.log(`Fine detected: ${paymentAmount}`);
+        logger.log(`Fine detected: ${paymentAmount}`);
       } else if (settlementMatch && settlementMatch[1]) {
         paymentType = 'settlement';
         paymentAmount = parseInt(settlementMatch[1].replace(/,/g, ''), 10);
-        console.log(`Settlement detected: ${paymentAmount}`);
+        logger.log(`Settlement detected: ${paymentAmount}`);
       }
 
       // 2. Process payment if any
       if (paymentType && paymentAmount > 0) {
         if (paymentType === 'fine') {
-          console.log(`Processing fine of ${paymentAmount} from ${roomData.defendantId}`);
+          logger.log(`Processing fine of ${paymentAmount} from ${roomData.defendantId}`);
           await processFineTransaction(roomData.defendantId, classCode, paymentAmount, `재판 판결 벌금: ${reason}`);
-          console.log("Fine processed successfully.");
+          logger.log("Fine processed successfully.");
         } else if (paymentType === 'settlement') {
-          console.log(`Processing settlement of ${paymentAmount} from ${roomData.defendantId} to ${roomData.complainantId}`);
+          logger.log(`Processing settlement of ${paymentAmount} from ${roomData.defendantId} to ${roomData.complainantId}`);
           await transferCash(roomData.defendantId, roomData.complainantId, paymentAmount, `재판 합의금: ${reason}`);
-          console.log("Settlement processed successfully.");
+          logger.log("Settlement processed successfully.");
         }
       }
 
       // 3. Save trial result
-      console.log("Saving trial result...");
+      logger.log("Saving trial result...");
       const resultsRef = collection(db, "classes", classCode, "trialResults");
       await addDoc(resultsRef, {
         roomId: roomId,
@@ -597,27 +598,27 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         paymentAmount: paymentAmount || 0,
         paymentType: paymentType || null,
       });
-      console.log("Trial result saved.");
+      logger.log("Trial result saved.");
 
       // 4. Update trial room status
-      console.log("Updating trial room status...");
+      logger.log("Updating trial room status...");
       const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
       await updateDoc(roomRef, {
         status: "completed",
         verdict: verdict,
         verdictDate: serverTimestamp(),
       });
-      console.log("Trial room status updated.");
+      logger.log("Trial room status updated.");
 
       // 5. Post system message
-      console.log("Posting system message...");
+      logger.log("Posting system message...");
       const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
       await addDoc(messagesRef, {
         type: "system",
         text: `⚖️ 판결이 내려졌습니다: ${verdict}\n사유: ${reason}`,
         timestamp: serverTimestamp(),
       });
-      console.log("System message posted.");
+      logger.log("System message posted.");
 
       alert("판결이 완료되었습니다. 재판 결과 탭에서 확인할 수 있습니다.");
 

@@ -23,6 +23,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { globalCache } from "../../services/globalCacheService";
 
+import { logger } from "../../utils/logger";
 // onSnapshot과 orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
   onSnapshot as firebaseOnSnapshot,
@@ -175,7 +176,7 @@ const RealEstateRegistry = () => {
       propsData.sort((a, b) => parseInt(a.id) - parseInt(b.id));
 
       setProperties(propsData);
-      console.log('[RealEstate] Properties refreshed:', propsData.length);
+      logger.log('[RealEstate] Properties refreshed:', propsData.length);
     } catch (error) {
       console.error("[RealEstate] Error refreshing properties:", error);
     }
@@ -343,7 +344,7 @@ const RealEstateRegistry = () => {
 
     const purchasePrice = property.salePrice || property.price;
 
-    console.log('[RealEstate] 부동산 구매 시작:', { propertyId, purchasePrice });
+    logger.log('[RealEstate] 부동산 구매 시작:', { propertyId, purchasePrice });
 
     // 🔥 낙관적 업데이트 1: 현금 차감
     if (optimisticUpdate) {
@@ -383,7 +384,7 @@ const RealEstateRegistry = () => {
       const purchaseRealEstateFunction = httpsCallable(functions, 'purchaseRealEstate');
       const result = await purchaseRealEstateFunction({ propertyId });
 
-      console.log('[RealEstate] 구매 성공:', result.data);
+      logger.log('[RealEstate] 구매 성공:', result.data);
 
       // 🔥 서버 데이터와 동기화 (낙관적 업데이트 확정)
       await refreshProperties();
@@ -781,7 +782,7 @@ const RealEstateRegistry = () => {
         // 🔥 [중요] 유저 캐시 무효화 후 서버에서 최신 데이터 가져오기
         if (currentUser?.id) {
           globalCache.invalidate(`user_${currentUser.id}`);
-          console.log('[RealEstate] 입주 완료 - 유저 캐시 무효화:', currentUser.id);
+          logger.log('[RealEstate] 입주 완료 - 유저 캐시 무효화:', currentUser.id);
         }
       }
 
@@ -944,7 +945,7 @@ const RealEstateRegistry = () => {
         });
       });
 
-      console.log(`[RealEstate] 관리자 강제 입주 완료: ${userName} -> 부동산 #${targetProperty.id}`);
+      logger.log(`[RealEstate] 관리자 강제 입주 완료: ${userName} -> 부동산 #${targetProperty.id}`);
       alert(`'${userName}' 학생이 부동산 #${targetProperty.id}에 입주했습니다.`);
 
       // 🔥 서버 데이터와 동기화
@@ -953,7 +954,7 @@ const RealEstateRegistry = () => {
       // 🔥 [중요] 유저 캐시 무효화
       if (userId) {
         globalCache.invalidate(`user_${userId}`);
-        console.log('[RealEstate] 강제 입주 - 유저 캐시 무효화:', userId);
+        logger.log('[RealEstate] 강제 입주 - 유저 캐시 무효화:', userId);
       }
 
     } catch (error) {
@@ -1054,7 +1055,7 @@ const RealEstateRegistry = () => {
         })
       );
 
-      console.log(`[RealEstate] 배치 자동 배정 완료: ${assignments.length}명`);
+      logger.log(`[RealEstate] 배치 자동 배정 완료: ${assignments.length}명`);
       alert(`자동 배정 완료!\n\n성공: ${assignments.length}명`);
 
       // 🔥 서버 데이터와 동기화
@@ -1078,7 +1079,7 @@ const RealEstateRegistry = () => {
 
     // 🔥 [중요] 현재 설정값 확인
     const currentRentPercentage = settings.rentPercentage || 1;
-    console.log(`[FixRent] 현재 월세 비율: ${currentRentPercentage}%`);
+    logger.log(`[FixRent] 현재 월세 비율: ${currentRentPercentage}%`);
 
     if (!window.confirm(
       `월세가 0원인 부동산을 모두 수정하시겠습니까?\n\n현재 설정:\n- 월세 비율: ${currentRentPercentage}%\n- 기본 부동산 가격: ${(settings.basePrice / 10000).toFixed(0)}만원\n\n각 부동산의 가격 × ${currentRentPercentage}%로 월세가 설정됩니다.`
@@ -1107,7 +1108,7 @@ const RealEstateRegistry = () => {
             updatedAt: serverTimestamp(),
           });
           fixedCount++;
-          console.log(`[FixRent] 부동산 #${data.id}: 가격 ${(propertyPrice / 10000).toFixed(0)}만원 × ${currentRentPercentage}% = 월세 ${(calculatedRent / 10000).toFixed(1)}만원`);
+          logger.log(`[FixRent] 부동산 #${data.id}: 가격 ${(propertyPrice / 10000).toFixed(0)}만원 × ${currentRentPercentage}% = 월세 ${(calculatedRent / 10000).toFixed(1)}만원`);
         }
       });
 
@@ -1258,7 +1259,7 @@ const RealEstateRegistry = () => {
             if (result.status === "unpaid") {
               unpaidUsers.push(result.name);
             } else if (result.status === "tenant_not_found") {
-              console.log(`부동산 ID ${result.propertyId}의 계약이 해지되었습니다 (세입자 ${result.tenantId} 미존재)`);
+              logger.log(`부동산 ID ${result.propertyId}의 계약이 해지되었습니다 (세입자 ${result.tenantId} 미존재)`);
               // 계약 해지는 실패로 카운트하지 않음 (자동 처리)
             } else {
               successCount++;

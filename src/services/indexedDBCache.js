@@ -1,5 +1,7 @@
 // src/services/indexedDBCache.js - IndexedDB를 사용한 영구 캐시 서비스
 
+import { logger } from "../utils/logger";
+
 const DB_NAME = 'EconomyClassCache';
 const DB_VERSION = 1;
 const STORE_NAME = 'dataCache';
@@ -35,7 +37,7 @@ class IndexedDBCacheService {
 
       request.onsuccess = () => {
         this.db = request.result;
-        console.log('[IndexedDBCache] DB 초기화 완료');
+        logger.log('[IndexedDBCache] DB 초기화 완료');
         resolve(this.db);
       };
 
@@ -51,7 +53,7 @@ class IndexedDBCacheService {
         const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'key' });
         objectStore.createIndex('expiry', 'expiry', { unique: false });
 
-        console.log('[IndexedDBCache] Object Store 생성 완료');
+        logger.log('[IndexedDBCache] Object Store 생성 완료');
       };
     });
 
@@ -157,7 +159,7 @@ class IndexedDBCacheService {
         request.onerror = () => reject(request.error);
       });
 
-      console.log('[IndexedDBCache] 전체 캐시 삭제 완료');
+      logger.log('[IndexedDBCache] 전체 캐시 삭제 완료');
       return true;
     } catch (error) {
       console.error('[IndexedDBCache] 전체 삭제 오류:', error);
@@ -197,7 +199,7 @@ class IndexedDBCacheService {
       });
 
       if (deletedCount > 0) {
-        console.log(`[IndexedDBCache] 만료된 항목 ${deletedCount}개 삭제 완료`);
+        logger.log(`[IndexedDBCache] 만료된 항목 ${deletedCount}개 삭제 완료`);
       }
 
       return deletedCount;

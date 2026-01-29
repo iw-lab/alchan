@@ -23,6 +23,7 @@ import GiftCouponModal from "../../components/modals/GiftCouponModal";
 import DonationHistoryModal from "../../components/modals/DonationHistoryModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
 
+import { logger } from "../../utils/logger";
 export default function CouponGoalPage() {
   const {
     user,
@@ -398,7 +399,7 @@ export default function CouponGoalPage() {
       userCash: userDoc?.cash,
     };
 
-    console.log('[CouponGoalPage Debug]', debugInfo);
+    logger.log('[CouponGoalPage Debug]', debugInfo);
     alert(`디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`);
   };
 
@@ -497,7 +498,7 @@ export default function CouponGoalPage() {
   };
 
   const handleGiftCoupon = async () => {
-    console.log("handleGiftCoupon called"); // 함수 호출 확인 로그
+    logger.log("handleGiftCoupon called"); // 함수 호출 확인 로그
     const recipientUser = users.find((u) => u.id === giftRecipient);
     const amount = parseInt(giftAmount, 10);
 

@@ -2,6 +2,8 @@
 // 🔥 [비용 최적화] Firebase 비용 실시간 모니터링
 // 100+ 앱 교차검증된 패턴: 사용량 추적 및 알림
 
+import { logger } from "../utils/logger";
+
 class CostMonitor {
   constructor() {
     this.stats = {
@@ -44,7 +46,7 @@ class CostMonitor {
     this.saveToStorage();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📖 [CostMonitor] Read +${count} (total: ${this.stats.reads}) from ${source}`);
+      logger.log(`📖 [CostMonitor] Read +${count} (total: ${this.stats.reads}) from ${source}`);
     }
   }
 
@@ -57,7 +59,7 @@ class CostMonitor {
     this.saveToStorage();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`✏️ [CostMonitor] Write +${count} (total: ${this.stats.writes}) from ${source}`);
+      logger.log(`✏️ [CostMonitor] Write +${count} (total: ${this.stats.writes}) from ${source}`);
     }
   }
 
@@ -70,7 +72,7 @@ class CostMonitor {
     this.saveToStorage();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🗑️ [CostMonitor] Delete +${count} (total: ${this.stats.deletes}) from ${source}`);
+      logger.log(`🗑️ [CostMonitor] Delete +${count} (total: ${this.stats.deletes}) from ${source}`);
     }
   }
 
@@ -180,7 +182,7 @@ class CostMonitor {
     const perMinute = this.getUsagePerMinute();
     const elapsed = Math.floor(this.getElapsedTime() / 1000);
 
-    console.log(`
+    logger.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║                 🔥 Firebase 비용 모니터링 리포트                ║
 ╠════════════════════════════════════════════════════════════════╣
@@ -269,7 +271,7 @@ class CostMonitor {
    * 통계 리셋
    */
   reset() {
-    console.log('[CostMonitor] 일일 통계 리셋');
+    logger.log('[CostMonitor] 일일 통계 리셋');
     this.stats = {
       reads: 0,
       writes: 0,
@@ -291,7 +293,7 @@ if (typeof window !== 'undefined') {
   window.costMonitor = costMonitor;
   window.firebaseCost = () => costMonitor.printReport();
 
-  console.log('💰 Firebase 비용 모니터링: window.firebaseCost() 또는 window.costMonitor.printReport()');
+  logger.log('💰 Firebase 비용 모니터링: window.firebaseCost() 또는 window.costMonitor.printReport()');
 }
 
 export default costMonitor;

@@ -1,6 +1,7 @@
 // src/pages/admin/RecoverDonations.js - 기부 내역 복구 유틸리티
 import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { logger } from "../../utils/logger";
 import {
   db,
   collection,
@@ -19,7 +20,7 @@ export default function RecoverDonations() {
   const [log, setLog] = useState([]);
 
   const addLog = (message) => {
-    console.log(message);
+    logger.log(message);
     setLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
   };
 

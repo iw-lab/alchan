@@ -14,6 +14,7 @@ import {
 } from '../firebase';
 import { applyTransactionTax, applyIncomeTax } from '../utils/taxUtils';
 
+import { logger } from "../utils/logger";
 /**
  * 활동 로그 타입 정의
  */
@@ -83,7 +84,7 @@ const LOG_TYPES = {
  */
 const logActivity = async (userId, type, description, metadata = {}) => {
   if (!userId || userId === 'system') {
-    console.log(`[System Log] ${type}: ${description}`);
+    logger.log(`[System Log] ${type}: ${description}`);
     return;
   }
 
@@ -93,7 +94,7 @@ const logActivity = async (userId, type, description, metadata = {}) => {
 
     // 메타데이터가 있으면 콘솔에도 기록
     if (Object.keys(metadata).length > 0) {
-      console.log(`[Activity Log] User: ${userId}, Type: ${type}`, metadata);
+      logger.log(`[Activity Log] User: ${userId}, Type: ${type}`, metadata);
     }
   } catch (error) {
     console.error('[Activity Log Error]', error);
@@ -121,7 +122,7 @@ export const adminCashAction = async ({
   amount,
   taxRate,
 }) => {
-  console.log('[database.js] adminCashAction 시작:', {
+  logger.log('[database.js] adminCashAction 시작:', {
     adminName,
     action,
     takeMode,
@@ -148,7 +149,7 @@ export const adminCashAction = async ({
       }
 
       if (baseAmount <= 0) {
-        console.log(`[database.js] ${user.name}: 처리할 금액이 0원이므로 스킵`);
+        logger.log(`[database.js] ${user.name}: 처리할 금액이 0원이므로 스킵`);
         continue;
       }
 
@@ -170,7 +171,7 @@ export const adminCashAction = async ({
       // *** 추가: 반환할 배열에 사용자 정보 추가
       updatedUsers.push({ id: user.id, newCash });
 
-      console.log(`[database.js] ${user.name} 처리:`, {
+      logger.log(`[database.js] ${user.name} 처리:`, {
         현재잔액: currentCash,
         기본금액: baseAmount,
         세금: taxAmount,
@@ -268,7 +269,7 @@ export const adminCashAction = async ({
 
   try {
     await batch.commit();
-    console.log(`[database.js] adminCashAction 완료: ${successCount}명 처리, 총 ${totalProcessed.toLocaleString()}원`);
+    logger.log(`[database.js] adminCashAction 완료: ${successCount}명 처리, 총 ${totalProcessed.toLocaleString()}원`);
 
     // *** 수정: 업데이트된 사용자 정보와 함께 결과 반환
     return {
@@ -287,10 +288,10 @@ export const adminCashAction = async ({
  * Initialize the database with default values
  */
 export const initializeDatabase = async () => {
-  console.log("Initializing database...");
+  logger.log("Initializing database...");
 
   if (!localStorage.getItem("dbInitialized")) {
-    console.log("First time initialization...");
+    logger.log("First time initialization...");
 
     // Initialize items
     const defaultItems = [
@@ -392,9 +393,9 @@ export const initializeDatabase = async () => {
     localStorage.setItem("activity_logs", JSON.stringify([]));
     localStorage.setItem("dbInitialized", "true");
 
-    console.log("Database initialization complete.");
+    logger.log("Database initialization complete.");
   } else {
-    console.log("Database already initialized.");
+    logger.log("Database already initialized.");
   }
 };
 
@@ -624,7 +625,7 @@ export const addTransaction = async (transaction, updateFirebase = true) => {
           await firebaseAddTransaction(transaction.userId, transaction.amount, transaction.description);
         }
 
-        console.log('[DB] Firebase 동기화 완료:', newTransaction);
+        logger.log('[DB] Firebase 동기화 완료:', newTransaction);
       } catch (firebaseError) {
         console.error('[DB] Firebase 동기화 중 오류:', firebaseError);
       }
@@ -763,7 +764,7 @@ export const completeTask = async (taskId, userId, updateFirebase = true) => {
           }
         );
 
-        console.log(`[DB] 과제 완료 Firebase 동기화 완료: ${completedTask.title}`);
+        logger.log(`[DB] 과제 완료 Firebase 동기화 완료: ${completedTask.title}`);
       } catch (firebaseError) {
         console.error('[DB] Firebase 동기화 중 오류:', firebaseError);
       }
@@ -797,7 +798,7 @@ export const useItem = async (userId, itemName, effect, quantity = 1, context = 
         usageTime: new Date().toISOString()
       }
     );
-    console.log(`[DB] 아이템 사용 기록 완료: ${itemName}`);
+    logger.log(`[DB] 아이템 사용 기록 완료: ${itemName}`);
     return true;
   } catch (error) {
     console.error('[DB] 아이템 사용 기록 중 오류:', error);
@@ -825,7 +826,7 @@ export const obtainItem = async (userId, itemName, quantity = 1, source = 'unkno
         obtainTime: new Date().toISOString()
       }
     );
-    console.log(`[DB] 아이템 획득 기록 완료: ${itemName}`);
+    logger.log(`[DB] 아이템 획득 기록 완료: ${itemName}`);
     return true;
   } catch (error) {
     console.error('[DB] 아이템 획득 기록 중 오류:', error);
@@ -887,7 +888,7 @@ export const recordGameResult = async (userId, gameName, result, reward = null, 
       score: gameDetails.score || null
     });
 
-    console.log(`[DB] 게임 결과 기록 완료: ${gameName} - ${result}`);
+    logger.log(`[DB] 게임 결과 기록 완료: ${gameName} - ${result}`);
     return true;
   } catch (error) {
     console.error('[DB] 게임 결과 기록 중 오류:', error);
@@ -910,7 +911,7 @@ export const recordAdminAction = async (adminId, action, targetUserId, details) 
       `관리자가 ${action} 작업을 수행했습니다. 대상: ${targetUserId}`,
       { action, targetUserId, details }
     );
-    console.log(`[DB] 관리자 액션 기록 완료: ${action}`);
+    logger.log(`[DB] 관리자 액션 기록 완료: ${action}`);
     return true;
   } catch (error) {
     console.error('[DB] 관리자 액션 기록 중 오류:', error);
@@ -952,7 +953,7 @@ export const recordSalaryPayment = async (userId, amount, period, details = {}) 
         }
       );
 
-      console.log(`[DB] 급여 지급 기록 완료: ${userId} - 총 ${amount}원 (세후 ${netIncome}원)`);
+      logger.log(`[DB] 급여 지급 기록 완료: ${userId} - 총 ${amount}원 (세후 ${netIncome}원)`);
     } else {
       // 클래스 코드가 없는 경우 기존 방식
       await updateUserCashInFirestore(userId, amount, `${period} 급여 지급`);
@@ -965,7 +966,7 @@ export const recordSalaryPayment = async (userId, amount, period, details = {}) 
           paymentDate: new Date().toISOString()
         }
       );
-      console.log(`[DB] 급여 지급 기록 완료: ${userId} - ${amount}원`);
+      logger.log(`[DB] 급여 지급 기록 완료: ${userId} - ${amount}원`);
     }
 
     return true;
@@ -1014,7 +1015,7 @@ export const adminCouponAction = async (adminId, targetUserId, action, amount, r
       reason
     });
 
-    console.log(`[DB] 관리자 쿠폰 액션 완료: ${action} - ${amount}개`);
+    logger.log(`[DB] 관리자 쿠폰 액션 완료: ${action} - ${amount}개`);
     return true;
   } catch (error) {
     console.error('[DB] 관리자 쿠폰 액션 중 오류:', error);

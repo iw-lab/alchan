@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { addActivityLog } from '../firebase';
 
+import { logger } from "../utils/logger";
 // 기본 세금 설정
 const DEFAULT_TAX_SETTINGS = {
   stockTransactionTaxRate: 0.01, // 주식 거래세율 (1%)
@@ -63,7 +64,7 @@ export const addTaxToTreasury = async (classCode, taxType, amount, description) 
     });
 
     await batch.commit();
-    console.log(`[Tax] ${taxType}: ${amount}원이 국고에 추가되었습니다.`);
+    logger.log(`[Tax] ${taxType}: ${amount}원이 국고에 추가되었습니다.`);
     return true;
   } catch (error) {
     console.error('국고 세금 추가 실패:', error);
@@ -298,7 +299,7 @@ export const deductTaxFromUser = async (userId, taxAmount, description) => {
       updatedAt: serverTimestamp()
     });
 
-    console.log(`[Tax] 사용자 ${userId}에게서 세금 ${taxAmount}원 차감됨`);
+    logger.log(`[Tax] 사용자 ${userId}에게서 세금 ${taxAmount}원 차감됨`);
     return true;
   } catch (error) {
     console.error('사용자 세금 차감 실패:', error);

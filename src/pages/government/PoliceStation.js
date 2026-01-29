@@ -27,6 +27,7 @@ import ReportResults from "./ReportResults";
 import PoliceAdminSettings from "./PoliceAdminSettings";
 import { usePolling } from "../../hooks/usePolling";
 
+import { logger } from "../../utils/logger";
 import {
   collection,
   doc,
@@ -205,7 +206,7 @@ const SettlementModal = ({
 
   // 모달이 열릴 때 디버깅 로그
   useEffect(() => {
-    console.log("SettlementModal이 렌더링됨", {
+    logger.log("SettlementModal이 렌더링됨", {
       complaintId: safeComplaint.id,
       senderId,
       recipientId
@@ -213,7 +214,7 @@ const SettlementModal = ({
   }, [safeComplaint.id, senderId, recipientId]);
 
   const handleSave = async () => {
-    console.log("Settlement Modal - handleSave 호출됨", {
+    logger.log("Settlement Modal - handleSave 호출됨", {
       reportId: safeComplaint.id,
       amount,
       senderId,
@@ -754,7 +755,7 @@ const PoliceStation = () => {
   };
 
   const handleAcceptReport = async (id) => {
-    console.log("handleAcceptReport 호출됨:", id);
+    logger.log("handleAcceptReport 호출됨:", id);
     if (!hasPoliceAdminRights || !classCode || !currentUserId) {
       alert("권한이 없거나 정보가 부족합니다.");
       return;
@@ -769,7 +770,7 @@ const PoliceStation = () => {
           currentUser.name || currentUser.displayName || "관리자",
       });
       refetchReports(); // 🔥 즉시 새로고침
-      console.log("신고 접수 성공:", id);
+      logger.log("신고 접수 성공:", id);
       alert("신고가 접수되었습니다.");
     } catch (error) {
       console.error("Error accepting report:", error);
@@ -778,7 +779,7 @@ const PoliceStation = () => {
   };
 
   const handleDismissReport = async (id) => {
-    console.log("handleDismissReport 호출됨:", id);
+    logger.log("handleDismissReport 호출됨:", id);
     if (!hasPoliceAdminRights || !classCode || !currentUserId) {
       alert("권한이 없거나 정보가 부족합니다.");
       return;
@@ -794,7 +795,7 @@ const PoliceStation = () => {
           currentUser.name || currentUser.displayName || "관리자",
       });
       refetchReports(); // 🔥 즉시 새로고침
-      console.log("신고 반려 성공:", id);
+      logger.log("신고 반려 성공:", id);
       alert("신고가 반려되었습니다.");
     } catch (error) {
       console.error("Error dismissing report:", error);
@@ -807,7 +808,7 @@ const PoliceStation = () => {
     processingAmount,
     processingReason
   ) => {
-    console.log("handleProcessReport 호출됨:", {
+    logger.log("handleProcessReport 호출됨:", {
       id,
       processingAmount,
       processingReason,
@@ -901,7 +902,7 @@ const PoliceStation = () => {
     reason,
     adminId
   ) => {
-    console.log("handleSendSettlement 호출됨 (Cloud Function):", { reportId, amount, senderId, recipientId, reason, adminId });
+    logger.log("handleSendSettlement 호출됨 (Cloud Function):", { reportId, amount, senderId, recipientId, reason, adminId });
 
     if (!hasPoliceAdminRights || !classCode) {
       alert("권한이 없거나 학급 정보가 없습니다.");
@@ -1079,7 +1080,7 @@ const PoliceStation = () => {
   };
 
   const handleOpenSettlementModal = (reportToProcess) => {
-    console.log("handleOpenSettlementModal 호출됨:", reportToProcess);
+    logger.log("handleOpenSettlementModal 호출됨:", reportToProcess);
 
     if (!reportToProcess || !reportToProcess.id) {
       console.error("합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.", reportToProcess);
@@ -1099,7 +1100,7 @@ const PoliceStation = () => {
       return;
     }
 
-    console.log("합의 모달 열기 준비 완료, 상태 업데이트 직전:", mappedReport);
+    logger.log("합의 모달 열기 준비 완료, 상태 업데이트 직전:", mappedReport);
     setSettlementComplaint(mappedReport);
     setIsSettlementModalOpen(true);
   };

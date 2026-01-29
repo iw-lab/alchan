@@ -25,6 +25,7 @@ import TransferModal from "../../components/modals/TransferModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { DailyRewardBanner } from "../../components/DailyReward";
 
+import { logger } from "../../utils/logger";
 export default function MyAssets() {
   const {
     user,
@@ -395,7 +396,7 @@ export default function MyAssets() {
         setCachedFirestoreData(cacheKey, goalData);
       } else {
         // 목표 문서가 없으면 기본값 생성
-        console.log('[MyAssets] 목표 문서가 없어 기본값 생성');
+        logger.log('[MyAssets] 목표 문서가 없어 기본값 생성');
         await createDefaultGoalForClass(currentUserClassCode, currentGoalId);
       }
     } catch (error) {
@@ -411,7 +412,7 @@ export default function MyAssets() {
 
     // 이미 로딩 중이면 중복 실행 방지
     if (loadingRef.current) {
-      console.log('[MyAssets] ⏸️ 이미 로딩 중이므로 중복 실행 방지');
+      logger.log('[MyAssets] ⏸️ 이미 로딩 중이므로 중복 실행 방지');
       return;
     }
 
@@ -512,7 +513,7 @@ export default function MyAssets() {
           // 현금 또는 쿠폰 변동이 있는 항목만 필터링
           .filter(tx => tx.amount !== 0 || tx.couponAmount !== 0);
       } catch (activityError) {
-        console.log('[MyAssets] activity_logs 조회 실패:', activityError);
+        logger.log('[MyAssets] activity_logs 조회 실패:', activityError);
       }
 
       // 2. 기존 transactions 서브컬렉션에서도 조회 (하위 호환성)
@@ -536,7 +537,7 @@ export default function MyAssets() {
           })
           .filter(tx => tx.amount !== 0);
       } catch (transactionsError) {
-        console.log('[MyAssets] transactions 조회 실패:', transactionsError);
+        logger.log('[MyAssets] transactions 조회 실패:', transactionsError);
       }
 
       // 두 소스 합치기 (중복 제거는 ID 기반)
@@ -804,7 +805,7 @@ export default function MyAssets() {
       localStorage.removeItem(`firestore_cache_settings_${userId}`);
       localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
 
-      console.log('[MyAssets] 캐시 삭제 완료, Firestore에서 최신 데이터 로드 중...');
+      logger.log('[MyAssets] 캐시 삭제 완료, Firestore에서 최신 데이터 로드 중...');
 
       // 🔥 Firestore에서 직접 최신 데이터 가져오기
       const goalDocRef = doc(db, "goals", currentGoalId);
@@ -1169,7 +1170,7 @@ export default function MyAssets() {
     const cacheKey = `myAssets_${userId}`;
     localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
 
-    console.log('[MyAssets] 🔄 캐시 삭제 및 강제 새로고침');
+    logger.log('[MyAssets] 🔄 캐시 삭제 및 강제 새로고침');
 
     // 데이터 다시 로드
     loadMyAssetsData();
@@ -1628,7 +1629,7 @@ export default function MyAssets() {
                 optimisticUpdate({ cash: (userDoc?.cash || 0) + reward });
               }
 
-              console.log(`Daily reward claimed and added: ${reward}`);
+              logger.log(`Daily reward claimed and added: ${reward}`);
             } catch (error) {
               console.error("일일 보상 지급 오류:", error);
               alert("보상 지급 중 오류가 발생했습니다. 다시 시도해주세요.");

@@ -109,6 +109,7 @@ export const formatCouponCount = (count) => {
 /*
 import { formatKoreanCurrency, formatKoreanQuantity, formatCouponCount } from './utils/numberFormatter';
 
+import { logger } from "../utils/logger";
 const data = {
   totalAssets: 22766445,
   couponRemaining: 38,
@@ -128,10 +129,10 @@ formatKoreanCurrency(data.profit)         // "1100원"
 */
 
 // 테스트 예제 (주석 처리됨)
-// console.log(formatKoreanCurrency(22766445));     // "2276만 6445원"
-// console.log(formatKoreanCurrency(19508239));     // "1950만 8239원"
-// console.log(formatKoreanCurrency(1500));         // "1500원"
-// console.log(formatKoreanCurrency(1100));         // "1100원"
-// console.log(formatKoreanCurrency(123456789012)); // "1234억 5678만 9012원"
-// console.log(formatCouponCount(782));             // "782개"
-// console.log(formatCouponCount(38));              // "38개"
+// logger.log(formatKoreanCurrency(22766445));     // "2276만 6445원"
+// logger.log(formatKoreanCurrency(19508239));     // "1950만 8239원"
+// logger.log(formatKoreanCurrency(1500));         // "1500원"
+// logger.log(formatKoreanCurrency(1100));         // "1100원"
+// logger.log(formatKoreanCurrency(123456789012)); // "1234억 5678만 9012원"
+// logger.log(formatCouponCount(782));             // "782개"
+// logger.log(formatCouponCount(38));              // "38개"

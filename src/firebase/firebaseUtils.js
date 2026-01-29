@@ -2,6 +2,7 @@
 
 import globalCacheService from "../services/globalCacheService";
 
+import { logger } from "../utils/logger";
 // =================================================================
 // DB 로깅 시스템
 // =================================================================
@@ -69,7 +70,7 @@ export const logDbOperation = (type, collection, docId = null, details = {}) => 
     CACHE_MISS: '\u{274C}'
   };
 
-  console.log(
+  logger.log(
     `%c[DB ${type}] ${emoji[type]} ${collection}${docId ? '/' + docId : ''} | Tab: ${details.tab || 'unknown'}`,
     colors[type] || '',
     details.extra || ''
@@ -104,7 +105,7 @@ export const getDbStats = () => {
 
 export const printRecentOperations = (count = 20) => {
   const recent = dbStats.operations.slice(-count);
-  console.log(`\n\u{1F4CA} \uCD5C\uADFC ${count}\uAC1C DB \uC791\uC5C5:`);
+  logger.log(`\n\u{1F4CA} \uCD5C\uADFC ${count}\uAC1C DB \uC791\uC5C5:`);
   console.table(recent.map(op => ({
     '\uC2DC\uAC04': op.timestamp.split('T')[1].split('.')[0],
     '\uD0C0\uC785': op.type,
@@ -126,7 +127,7 @@ export const getTabStats = () => {
     else if (op.type === 'DELETE') tabStats[tab].deletes++;
     else if (op.type === 'SUBSCRIBE') tabStats[tab].subscribes++;
   });
-  console.log('\n\u{1F4CA} \uD0ED\uBCC4 DB \uC0AC\uC6A9 \uD1B5\uACC4:');
+  logger.log('\n\u{1F4CA} \uD0ED\uBCC4 DB \uC0AC\uC6A9 \uD1B5\uACC4:');
   console.table(tabStats);
   return tabStats;
 };
@@ -140,7 +141,7 @@ export const resetDbStats = () => {
   dbStats.cacheMisses = 0;
   dbStats.startTime = Date.now();
   dbStats.operations = [];
-  console.log('\u{1F4CA} DB \uD1B5\uACC4\uAC00 \uB9AC\uC14B\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
+  logger.log('\u{1F4CA} DB \uD1B5\uACC4\uAC00 \uB9AC\uC14B\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
 };
 
 // window.dbStats
@@ -151,20 +152,20 @@ if (typeof window !== 'undefined') {
     byTab: getTabStats,
     reset: resetDbStats,
     reads: () => {
-      console.log(`\n\u{1F4CA} ===== DB \uC77D\uAE30 \uD1B5\uACC4 =====`);
-      console.log(`\u{1F4D6} \uCD1D \uC77D\uAE30: ${dbStats.reads}\uD68C`);
-      console.log(`\u{1F4BE} \uCE90\uC2DC \uD788\uD2B8: ${dbStats.cacheHits}\uD68C`);
-      console.log(`\u{274C} \uCE90\uC2DC \uBBF8\uC2A4: ${dbStats.cacheMisses}\uD68C`);
+      logger.log(`\n\u{1F4CA} ===== DB \uC77D\uAE30 \uD1B5\uACC4 =====`);
+      logger.log(`\u{1F4D6} \uCD1D \uC77D\uAE30: ${dbStats.reads}\uD68C`);
+      logger.log(`\u{1F4BE} \uCE90\uC2DC \uD788\uD2B8: ${dbStats.cacheHits}\uD68C`);
+      logger.log(`\u{274C} \uCE90\uC2DC \uBBF8\uC2A4: ${dbStats.cacheMisses}\uD68C`);
       const hitRate = dbStats.cacheHits + dbStats.cacheMisses > 0
         ? ((dbStats.cacheHits / (dbStats.cacheHits + dbStats.cacheMisses)) * 100).toFixed(1)
         : 0;
-      console.log(`\u{1F4C8} \uCE90\uC2DC \uC801\uC911\uB960: ${hitRate}%`);
-      console.log(`\u{23F1}\u{FE0F} \uACBD\uACFC \uC2DC\uAC04: ${((Date.now() - dbStats.startTime) / 1000).toFixed(0)}\uCD08`);
-      console.log(`===========================\n`);
+      logger.log(`\u{1F4C8} \uCE90\uC2DC \uC801\uC911\uB960: ${hitRate}%`);
+      logger.log(`\u{23F1}\u{FE0F} \uACBD\uACFC \uC2DC\uAC04: ${((Date.now() - dbStats.startTime) / 1000).toFixed(0)}\uCD08`);
+      logger.log(`===========================\n`);
       return { reads: dbStats.reads, cacheHits: dbStats.cacheHits, cacheMisses: dbStats.cacheMisses, hitRate: hitRate + '%' };
     }
   };
-  console.log('\u{1F4CA} DB \uD1B5\uACC4: window.dbStats.reads() - \uC77D\uAE30 \uD69F\uC218 \uD655\uC778');
+  logger.log('\u{1F4CA} DB \uD1B5\uACC4: window.dbStats.reads() - \uC77D\uAE30 \uD69F\uC218 \uD655\uC778');
 }
 
 // =================================================================
@@ -192,7 +193,7 @@ export const invalidateCache = (key) => {
 
 export const invalidateCachePattern = (pattern) => {
   globalCacheService.invalidatePattern(`fb_${pattern}`);
-  console.log(`[Cache] PATTERN_INVALIDATED: fb_${pattern}`);
+  logger.log(`[Cache] PATTERN_INVALIDATED: fb_${pattern}`);
 };
 
 export const setBatchCache = (dataMap) => {
@@ -204,12 +205,12 @@ export const setBatchCache = (dataMap) => {
 // 캐시 관리 유틸리티
 export const clearCache = () => {
   globalCacheService.clearAll();
-  console.log('[Cache] \uBAA8\uB4E0 \uCE90\uC2DC\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
+  logger.log('[Cache] \uBAA8\uB4E0 \uCE90\uC2DC\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
 };
 
 export const getCacheStats = () => {
   const stats = globalCacheService.getStats();
-  console.log('[Cache] \uCE90\uC2DC \uD1B5\uACC4:', stats);
+  logger.log('[Cache] \uCE90\uC2DC \uD1B5\uACC4:', stats);
   return stats;
 };
 

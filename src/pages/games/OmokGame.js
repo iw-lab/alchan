@@ -22,6 +22,7 @@ import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 import './OmokGame.css';
 import './GamePage.css';
 
+import { logger } from "../../utils/logger";
 // [랭크 시스템] 랭크 포인트(RP) 기준 정의
 const RANKS = [
     { title: 'LEGEND', color: '#ff0066', minRP: 2000, icon: '👑' },
@@ -310,7 +311,7 @@ const findBestMove = (board, aiColor, difficulty) => {
         testBoard[getIndex(move.r, move.c)] = aiColor;
         const patternScore = evaluatePattern(testBoard, move.r, move.c, aiColor);
         if (patternScore >= 500000) { // 열린 4
-            console.log('[AI] 내 열린 4 발견:', move);
+            logger.log('[AI] 내 열린 4 발견:', move);
             return move;
         }
     }
@@ -321,7 +322,7 @@ const findBestMove = (board, aiColor, difficulty) => {
         testBoard[getIndex(move.r, move.c)] = opponentColor;
         const patternScore = evaluatePattern(testBoard, move.r, move.c, opponentColor);
         if (patternScore >= 50000) { // 닫힌 4 이상
-            console.log('[AI] 상대 4목 막기:', move, 'score:', patternScore);
+            logger.log('[AI] 상대 4목 막기:', move, 'score:', patternScore);
             return move;
         }
     }
@@ -332,7 +333,7 @@ const findBestMove = (board, aiColor, difficulty) => {
         testBoard[getIndex(move.r, move.c)] = aiColor;
         const patternScore = evaluatePattern(testBoard, move.r, move.c, aiColor);
         if (patternScore >= 10000) { // 열린 3
-            console.log('[AI] 내 열린 3 발견:', move);
+            logger.log('[AI] 내 열린 3 발견:', move);
             return move;
         }
     }
@@ -343,7 +344,7 @@ const findBestMove = (board, aiColor, difficulty) => {
         testBoard[getIndex(move.r, move.c)] = opponentColor;
         const patternScore = evaluatePattern(testBoard, move.r, move.c, opponentColor);
         if (patternScore >= 10000) { // 열린 3
-            console.log('[AI] 상대 열린 3 막기:', move, 'score:', patternScore);
+            logger.log('[AI] 상대 열린 3 막기:', move, 'score:', patternScore);
             if (difficulty === '상급') {
                 return move; // 상급은 반드시 막음
             } else if (difficulty === '중급' && Math.random() > 0.1) {
@@ -359,7 +360,7 @@ const findBestMove = (board, aiColor, difficulty) => {
             testBoard[getIndex(move.r, move.c)] = opponentColor;
             const patternScore = evaluatePattern(testBoard, move.r, move.c, opponentColor);
             if (patternScore >= 1000) { // 닫힌 3
-                console.log('[AI] 상대 닫힌 3 막기:', move, 'score:', patternScore);
+                logger.log('[AI] 상대 닫힌 3 막기:', move, 'score:', patternScore);
                 if (difficulty === '상급' && Math.random() > 0.3) {
                     return move; // 상급은 70% 확률로 막음
                 } else if (difficulty === '중급' && Math.random() > 0.5) {
@@ -398,7 +399,7 @@ const findBestMove = (board, aiColor, difficulty) => {
         }
     }
 
-    console.log('[AI] 최종 선택:', bestMove);
+    logger.log('[AI] 최종 선택:', bestMove);
     return bestMove;
 };
 // =======================
@@ -468,7 +469,7 @@ const updateUserOmokRecord = async (userId, result) => {
             };
 
             transaction.update(userDocRef, { omok: updatedOmok });
-            console.log(`사용자 ${userId} 오목 기록 업데이트:`, updatedOmok);
+            logger.log(`사용자 ${userId} 오목 기록 업데이트:`, updatedOmok);
         });
     } catch (error) {
         console.error('사용자 오목 기록 업데이트 중 오류:', error);
@@ -571,7 +572,7 @@ const OmokGame = () => {
                 losses: newLosses,
                 totalRP: newRP
             };
-            console.log('[LocalOptimistic] 전적 로컬 업데이트:', newStats);
+            logger.log('[LocalOptimistic] 전적 로컬 업데이트:', newStats);
             return newStats;
         });
     }, []);
@@ -642,7 +643,7 @@ const OmokGame = () => {
         if (!window.confirm('이 게임방을 삭제하시겠습니까?')) return;
         try {
             await deleteDoc(doc(db, 'omokGames', roomId));
-            console.log(`[관리자] 게임방 ${roomId} 삭제 완료`);
+            logger.log(`[관리자] 게임방 ${roomId} 삭제 완료`);
             fetchAvailableGames();
         } catch (err) {
             console.error('게임방 삭제 오류:', err);
@@ -767,7 +768,7 @@ const OmokGame = () => {
         try {
             // 호스트가 떠나는 경우 항상 방 삭제
             if (game.host === user.uid) {
-                console.log('[LeaveGame] 호스트가 방을 떠남 - 방 삭제');
+                logger.log('[LeaveGame] 호스트가 방을 떠남 - 방 삭제');
 
                 // 게임 진행 중이고 상대방이 있으면 전적 처리
                 if (game.gameStatus === 'playing' && !game.winner) {
@@ -823,20 +824,20 @@ const OmokGame = () => {
     const checkForbiddenMove = (board, row, col, player) => false;
 
     const placeStone = async (row, col) => {
-        console.log('[Player] placeStone 함수 시작:', { row, col, gameId, userId: user.uid });
+        logger.log('[Player] placeStone 함수 시작:', { row, col, gameId, userId: user.uid });
 
         const boardWithNewStone = [...game.board];
         const myColor = game.players[user.uid];
         boardWithNewStone[getIndex(row, col)] = myColor;
 
-        console.log('[Player] 내 색:', myColor, '위치:', getIndex(row, col));
+        logger.log('[Player] 내 색:', myColor, '위치:', getIndex(row, col));
 
         if (myColor === 'black') {
           const forbiddenMove = checkForbiddenMove(boardWithNewStone, row, col, 'black');
           if (forbiddenMove) {
               setError(`금수입니다: ${forbiddenMove}. 다른 곳에 두세요.`);
               setSelectedCell(null);
-              console.log('[Player] 금수로 인해 중단');
+              logger.log('[Player] 금수로 인해 중단');
               return;
           }
         }
@@ -846,7 +847,7 @@ const OmokGame = () => {
         const moveData = { row, col, player: myColor, timestamp: new Date() };
         const newHistory = [...(game.history || []), moveData];
 
-        console.log('[Player] 승자 체크:', winner, '다음 플레이어:', nextPlayer);
+        logger.log('[Player] 승자 체크:', winner, '다음 플레이어:', nextPlayer);
 
         try {
             const gameDocRef = doc(db, 'omokGames', gameId);
@@ -865,7 +866,7 @@ const OmokGame = () => {
                 if (shouldAwardCoupon) updateData.couponAwardedTo = user.uid;
             }
 
-            console.log('[Player] Firestore 업데이트 시작...', updateData);
+            logger.log('[Player] Firestore 업데이트 시작...', updateData);
 
             // 낙관적 업데이트: Firestore 업데이트 전에 즉시 UI 업데이트
             setGame({
@@ -881,11 +882,11 @@ const OmokGame = () => {
             setSelectedCell(null);
 
             await updateDoc(gameDocRef, updateData);
-            console.log('[Player] Firestore 업데이트 완료!');
+            logger.log('[Player] Firestore 업데이트 완료!');
 
             setError('');
 
-            console.log('[Player] 플레이어 돌 배치 완료. 다음 차례:', nextPlayer);
+            logger.log('[Player] 플레이어 돌 배치 완료. 다음 차례:', nextPlayer);
 
             if (winner) {
                 if (game.aiMode) {
@@ -914,8 +915,8 @@ const OmokGame = () => {
     };
 
     const handleCellClick = async (row, col) => {
-        console.log('[Click] 셀 클릭:', { row, col });
-        console.log('[Click] 상태 체크:', {
+        logger.log('[Click] 셀 클릭:', { row, col });
+        logger.log('[Click] 상태 체크:', {
             hasGame: !!game,
             winner: game?.winner,
             cellValue: getBoardValue(game?.board, row, col),
@@ -928,22 +929,22 @@ const OmokGame = () => {
 
         if (!game || game.winner || getBoardValue(game.board, row, col) ||
             game.currentPlayer !== user.uid || !isThinking) {
-            console.log('[Click] 클릭 무시됨');
+            logger.log('[Click] 클릭 무시됨');
             return;
         }
 
         // AI 모드가 아닐 때만 2명 체크
         if (!game.aiMode && Object.keys(game.players).length < 2) {
-            console.log('[Click] 플레이어 2명 미만');
+            logger.log('[Click] 플레이어 2명 미만');
             return;
         }
 
         if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
-            console.log('[Click] 두 번째 클릭 - 돌 배치 시작');
+            logger.log('[Click] 두 번째 클릭 - 돌 배치 시작');
             await placeStone(row, col);
             setSelectedCell(null);
         } else {
-            console.log('[Click] 첫 번째 클릭 - 미리보기');
+            logger.log('[Click] 첫 번째 클릭 - 미리보기');
             setSelectedCell({ row, col });
         }
     };
@@ -964,7 +965,7 @@ const OmokGame = () => {
 
         // 로비 화면에서만 게임 목록 로드 (한 번만)
         if (user && !gameId && !hasFetchedGamesRef.current) {
-            console.log('[Lobby] 게임 목록 최초 로드');
+            logger.log('[Lobby] 게임 목록 최초 로드');
             fetchAvailableGames();
             hasFetchedGamesRef.current = true;
         }
@@ -1092,7 +1093,7 @@ const OmokGame = () => {
 
         // AI 차례가 아니면 실행하지 않음
         if (game.currentPlayer !== 'AI') {
-            console.log('[AI] 현재 차례:', game.currentPlayer, '(AI 아님)');
+            logger.log('[AI] 현재 차례:', game.currentPlayer, '(AI 아님)');
             setIsAiThinking(false);
             aiTurnProcessedRef.current = false;
             return;
@@ -1100,11 +1101,11 @@ const OmokGame = () => {
 
         // 이미 처리 중이면 중복 실행 방지
         if (aiTurnProcessedRef.current) {
-            console.log('[AI] 이미 처리 중 - 중복 실행 방지');
+            logger.log('[AI] 이미 처리 중 - 중복 실행 방지');
             return;
         }
 
-        console.log('[AI] AI 차례 시작');
+        logger.log('[AI] AI 차례 시작');
         aiTurnProcessedRef.current = true;
         setIsAiThinking(true);
         const thinkingTime = 500 + Math.random() * 1000;
@@ -1112,10 +1113,10 @@ const OmokGame = () => {
         const timer = setTimeout(async () => {
             try {
                 const aiColor = game.players['AI'];
-                console.log('[AI] AI 색상:', aiColor);
+                logger.log('[AI] AI 색상:', aiColor);
 
                 const bestMove = findBestMove(game.board, aiColor, game.aiDifficulty);
-                console.log('[AI] 최적의 수:', bestMove);
+                logger.log('[AI] 최적의 수:', bestMove);
 
                 if (!bestMove) {
                     console.error('[AI] 유효한 수를 찾을 수 없음');
@@ -1148,10 +1149,10 @@ const OmokGame = () => {
                     updateData.statsUpdated = false;
                 }
 
-                console.log('[AI] Firestore 업데이트 시작');
+                logger.log('[AI] Firestore 업데이트 시작');
 
                 // 낙관적 업데이트: Firestore 업데이트 전에 즉시 UI 업데이트
-                console.log('[AI] setGame 호출 전 - board[', getIndex(r, c), ']:', boardWithNewStone[getIndex(r, c)]);
+                logger.log('[AI] setGame 호출 전 - board[', getIndex(r, c), ']:', boardWithNewStone[getIndex(r, c)]);
                 setGame(prevGame => {
                     const newGame = {
                         ...prevGame,
@@ -1161,8 +1162,8 @@ const OmokGame = () => {
                         history: newHistory,
                         gameStatus: winner ? 'finished' : 'playing'
                     };
-                    console.log('[AI] setGame 호출 - 새로운 currentPlayer:', newGame.currentPlayer);
-                    console.log('[AI] setGame 호출 - board[', getIndex(r, c), ']:', newGame.board[getIndex(r, c)]);
+                    logger.log('[AI] setGame 호출 - 새로운 currentPlayer:', newGame.currentPlayer);
+                    logger.log('[AI] setGame 호출 - board[', getIndex(r, c), ']:', newGame.board[getIndex(r, c)]);
                     return newGame;
                 });
                 setLastMove({ row: r, col: c });
@@ -1170,12 +1171,12 @@ const OmokGame = () => {
 
                 // AI가 돌을 놓고 플레이어 차례가 되면 isThinking을 true로 설정
                 if (!winner && nextPlayer === user?.uid) {
-                    console.log('[AI] 플레이어 차례로 변경 - isThinking을 true로 설정');
+                    logger.log('[AI] 플레이어 차례로 변경 - isThinking을 true로 설정');
                     setIsThinking(true);
                 }
 
                 await updateDoc(gameDocRef, updateData);
-                console.log('[AI] 돌 배치 완료:', r, c);
+                logger.log('[AI] 돌 배치 완료:', r, c);
 
                 // AI 승리 시 즉시 사용자 패배 기록 업데이트
                 if (winner && user?.uid) {
@@ -1183,7 +1184,7 @@ const OmokGame = () => {
                     await updateUserOmokRecord(user.uid, 'loss');
                     await updateDoc(gameDocRef, { statsUpdated: true });
                     setGameResult({ outcome: 'loss', rpChange: -RP_ON_LOSS });
-                    console.log('[AI] AI 승리 처리 완료');
+                    logger.log('[AI] AI 승리 처리 완료');
                 }
 
                 setIsAiThinking(false);
@@ -1218,11 +1219,11 @@ const OmokGame = () => {
     // 보상 선택 처리
     const handleRewardSelection = async (selectedCard) => {
         if (!user || !gameId) {
-            console.log('[Reward] user 또는 gameId 없음');
+            logger.log('[Reward] user 또는 gameId 없음');
             return;
         }
 
-        console.log('[Reward] 보상 선택:', selectedCard);
+        logger.log('[Reward] 보상 선택:', selectedCard);
 
         // 낙관적 업데이트: 즉시 UI에 반영
         const today = new Date().toDateString();
@@ -1244,18 +1245,18 @@ const OmokGame = () => {
             // 낙관적 업데이트: 헤더에 즉시 반영
             if (selectedCard.type === 'cash') {
                 // optimisticUpdate({ cash: selectedCard.amount });
-                console.log('[Reward] 현금 낙관적 업데이트:', selectedCard.amount);
+                logger.log('[Reward] 현금 낙관적 업데이트:', selectedCard.amount);
             } else if (selectedCard.type === 'coupon') {
                 // optimisticUpdate({ coupons: selectedCard.amount });
-                console.log('[Reward] 쿠폰 낙관적 업데이트:', selectedCard.amount);
+                logger.log('[Reward] 쿠폰 낙관적 업데이트:', selectedCard.amount);
             }
 
             // Firestore 업데이트
             if (selectedCard.type === 'cash') {
-                console.log('[Reward] 현금 지급:', selectedCard.amount);
+                logger.log('[Reward] 현금 지급:', selectedCard.amount);
                 await addCash(selectedCard.amount, 'AI 오목 승리 보상');
             } else if (selectedCard.type === 'coupon') {
-                console.log('[Reward] 쿠폰 지급:', selectedCard.amount);
+                logger.log('[Reward] 쿠폰 지급:', selectedCard.amount);
                 await addCouponsToUserById(user.uid, selectedCard.amount);
             }
 
@@ -1277,7 +1278,7 @@ const OmokGame = () => {
                 }
             });
 
-            console.log('[Reward] 보상 지급 완료');
+            logger.log('[Reward] 보상 지급 완료');
             setTimeout(() => leaveGame(), 2000);
 
         } catch (error) {

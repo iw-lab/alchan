@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import indexedDBCache from './indexedDBCache';
 
+import { logger } from "../utils/logger";
 export const cacheStats = {
   hits: 0,
   misses: 0,
@@ -88,7 +89,7 @@ class GlobalCacheService {
             if (key.includes('BATCH') && createdAt) {
               const age = Date.now() - createdAt;
               if (age > 5 * 60 * 1000) { // 5분 이상
-                console.log(`[GlobalCache] ⚠️ 오래된 BATCH 캐시 무효화: ${key} (${Math.floor(age/1000)}초 경과)`);
+                logger.log(`[GlobalCache] ⚠️ 오래된 BATCH 캐시 무효화: ${key} (${Math.floor(age/1000)}초 경과)`);
                 localStorage.removeItem(lsKey);
                 cacheStats.misses++;
                 return null;
@@ -98,7 +99,7 @@ class GlobalCacheService {
             // localStorage에서 복원하여 메모리 캐시에 저장
             this.cache.set(key, data);
             this.timestamps.set(key, expiry);
-            console.log(`[GlobalCache] ✅ localStorage에서 복원: ${key}`);
+            logger.log(`[GlobalCache] ✅ localStorage에서 복원: ${key}`);
             cacheStats.hits++;
             cacheStats.savings++;
             return data;
@@ -135,7 +136,7 @@ class GlobalCacheService {
         // IndexedDB에서 복원하여 메모리 캐시에 저장
         this.cache.set(key, cachedData);
         this.timestamps.set(key, Date.now() + this.DEFAULT_TTL);
-        console.log(`[GlobalCache] ✅ IndexedDB에서 복원: ${key}`);
+        logger.log(`[GlobalCache] ✅ IndexedDB에서 복원: ${key}`);
         cacheStats.hits++;
         cacheStats.savings++;
         return cachedData;
@@ -158,7 +159,7 @@ class GlobalCacheService {
             if (key.includes('BATCH') && createdAt) {
               const age = Date.now() - createdAt;
               if (age > 5 * 60 * 1000) {
-                console.log(`[GlobalCache] ⚠️ 오래된 BATCH 캐시 무효화: ${key} (${Math.floor(age/1000)}초 경과)`);
+                logger.log(`[GlobalCache] ⚠️ 오래된 BATCH 캐시 무효화: ${key} (${Math.floor(age/1000)}초 경과)`);
                 localStorage.removeItem(lsKey);
                 cacheStats.misses++;
                 return null;
@@ -167,7 +168,7 @@ class GlobalCacheService {
 
             this.cache.set(key, data);
             this.timestamps.set(key, expiry);
-            console.log(`[GlobalCache] ✅ localStorage에서 복원: ${key}`);
+            logger.log(`[GlobalCache] ✅ localStorage에서 복원: ${key}`);
             cacheStats.hits++;
             cacheStats.savings++;
             return data;
@@ -243,7 +244,7 @@ class GlobalCacheService {
       // 가장 오래된 항목 삭제
       for (let i = 0; i < Math.min(count, items.length); i++) {
         localStorage.removeItem(items[i].key);
-        console.log(`[GlobalCache] 오래된 캐시 삭제: ${items[i].key}`);
+        logger.log(`[GlobalCache] 오래된 캐시 삭제: ${items[i].key}`);
       }
     } catch (error) {
       console.warn('[GlobalCache] 캐시 정리 오류:', error);
@@ -296,7 +297,7 @@ class GlobalCacheService {
     }
 
     keysToInvalidate.forEach(key => this.invalidate(key));
-    console.log(`[GlobalCache] 패턴 '${pattern}' 매칭: ${keysToInvalidate.length}개 캐시 무효화`);
+    logger.log(`[GlobalCache] 패턴 '${pattern}' 매칭: ${keysToInvalidate.length}개 캐시 무효화`);
   }
 
   // 구독 추가
@@ -350,18 +351,18 @@ class GlobalCacheService {
   async executeOrWait(key, operation) {
     // 이미 진행 중인 요청이 있으면 대기
     if (this.pendingRequests.has(key)) {
-      console.log('[GlobalCache] 이미 진행 중인 요청 대기:', key);
+      logger.log('[GlobalCache] 이미 진행 중인 요청 대기:', key);
       return await this.pendingRequests.get(key);
     }
 
     // 새 요청 실행 (재시도 로직 포함)
-    console.log('[GlobalCache] 새 요청 실행:', key);
+    logger.log('[GlobalCache] 새 요청 실행:', key);
     const promise = this.retryWithBackoff(operation);
     this.pendingRequests.set(key, promise);
 
     try {
       const result = await promise;
-      console.log('[GlobalCache] 요청 성공:', key, '결과 타입:', Array.isArray(result) ? `배열(${result.length}개)` : typeof result);
+      logger.log('[GlobalCache] 요청 성공:', key, '결과 타입:', Array.isArray(result) ? `배열(${result.length}개)` : typeof result);
       this.pendingRequests.delete(key);
       this.retryCount.delete(key);
       return result;
@@ -379,14 +380,14 @@ class GlobalCacheService {
     if (!forceRefresh) {
       const cached = this.get(key);
       if (cached) {
-        console.log(`%c[DB] ✅ 캐시 히트: users/${uid}`, 'color: #22c55e;');
+        logger.log(`%c[DB] ✅ 캐시 히트: users/${uid}`, 'color: #22c55e;');
         return cached;
       }
     }
 
     return await this.executeOrWait(key, async () => {
       try {
-        console.log(`%c[DB] 🔥 Firestore 읽기: users/${uid}`, 'color: #f97316; font-weight: bold;');
+        logger.log(`%c[DB] 🔥 Firestore 읽기: users/${uid}`, 'color: #f97316; font-weight: bold;');
         const userRef = doc(db, 'users', uid);
         const docSnap = await getDoc(userRef);
 
@@ -415,14 +416,14 @@ class GlobalCacheService {
     if (!forceRefresh) {
       const cached = this.get(key);
       if (cached) {
-        console.log(`%c[DB] ✅ 캐시 히트: ${collectionPath}/${docId}`, 'color: #22c55e;');
+        logger.log(`%c[DB] ✅ 캐시 히트: ${collectionPath}/${docId}`, 'color: #22c55e;');
         return cached;
       }
     }
 
     return await this.executeOrWait(key, async () => {
       try {
-        console.log(`%c[DB] 🔥 Firestore 읽기: ${collectionPath}/${docId}`, 'color: #f97316; font-weight: bold;');
+        logger.log(`%c[DB] 🔥 Firestore 읽기: ${collectionPath}/${docId}`, 'color: #f97316; font-weight: bold;');
         const docRef = doc(db, collectionPath, docId);
         const docSnap = await getDoc(docRef);
 
@@ -450,14 +451,14 @@ class GlobalCacheService {
     if (!forceRefresh) {
       const cached = this.get(key);
       if (cached) {
-        console.log(`%c[DB] ✅ 캐시 히트: classMembers/${classCode} (${cached.length}명)`, 'color: #22c55e;');
+        logger.log(`%c[DB] ✅ 캐시 히트: classMembers/${classCode} (${cached.length}명)`, 'color: #22c55e;');
         return cached;
       }
     }
 
     return await this.executeOrWait(key, async () => {
       try {
-        console.log(`%c[DB] 🔥 Firestore 컬렉션 읽기: users (classCode=${classCode})`, 'color: #f97316; font-weight: bold;');
+        logger.log(`%c[DB] 🔥 Firestore 컬렉션 읽기: users (classCode=${classCode})`, 'color: #f97316; font-weight: bold;');
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('classCode', '==', classCode));
         const querySnapshot = await getDocs(q);
@@ -468,7 +469,7 @@ class GlobalCacheService {
           ...doc.data()
         }));
 
-        console.log(`%c[DB] 📄 학급 구성원: ${members.length}명 읽음`, 'color: #f97316;');
+        logger.log(`%c[DB] 📄 학급 구성원: ${members.length}명 읽음`, 'color: #f97316;');
         this.set(key, members, this.USER_TTL);
         return members;
       } catch (error) {
@@ -488,17 +489,17 @@ class GlobalCacheService {
   async getActivityLogs(classCode, filters = {}, forceRefresh = false) {
     const { lastVisible, ...restFilters } = filters;
     const key = this.generateKey('activityLogs', { classCode, ...restFilters });
-    console.log('[GlobalCache] getActivityLogs 호출:', { classCode, filters, forceRefresh, key });
+    logger.log('[GlobalCache] getActivityLogs 호출:', { classCode, filters, forceRefresh, key });
 
     if (!forceRefresh && !lastVisible) { // lastVisible이 있으면 항상 새로 가져옴
       const cached = this.get(key);
       if (cached) {
-        console.log('[GlobalCache] 활동 로그 캐시 히트:', cached.logs.length, '개');
+        logger.log('[GlobalCache] 활동 로그 캐시 히트:', cached.logs.length, '개');
         return cached;
       }
     }
 
-    console.log('[GlobalCache] Firestore 활동 로그 조회 시작:', classCode);
+    logger.log('[GlobalCache] Firestore 활동 로그 조회 시작:', classCode);
     const operation = async () => {
       try {
         const logsRef = collection(db, 'activity_logs');
@@ -555,14 +556,14 @@ class GlobalCacheService {
     if (!forceRefresh) {
       const cached = this.get(key);
       if (cached) {
-        console.log('[GlobalCache] ✅ getItems - 캐시 히트 (Firestore 읽기 0건):', cached?.length, '개');
+        logger.log('[GlobalCache] ✅ getItems - 캐시 히트 (Firestore 읽기 0건):', cached?.length, '개');
         return cached;
       }
     }
 
     return await this.executeOrWait(key, async () => {
       try {
-        console.log('[GlobalCache] 🔥 getItems - Firestore 조회 시작 (19건 읽기 예상)');
+        logger.log('[GlobalCache] 🔥 getItems - Firestore 조회 시작 (19건 읽기 예상)');
         const itemsRef = collection(db, 'storeItems');
         const querySnapshot = await getDocs(itemsRef);
 
@@ -571,7 +572,7 @@ class GlobalCacheService {
           ...doc.data()
         }));
 
-        console.log('[GlobalCache] ✅ getItems - Firestore 조회 완료 (' + items.length + '건 읽음)');
+        logger.log('[GlobalCache] ✅ getItems - Firestore 조회 완료 (' + items.length + '건 읽음)');
         this.set(key, items, this.ITEMS_TTL);
         return items;
       } catch (error) {
@@ -593,14 +594,14 @@ class GlobalCacheService {
     if (!forceRefresh) {
       const cached = this.get(key);
       if (cached) {
-        console.log('[GlobalCache] ✅ getUserItems - 캐시 히트 (Firestore 읽기 0건):', cached?.length, '개');
+        logger.log('[GlobalCache] ✅ getUserItems - 캐시 히트 (Firestore 읽기 0건):', cached?.length, '개');
         return cached;
       }
     }
 
     return await this.executeOrWait(key, async () => {
       try {
-        console.log('[GlobalCache] 🔥 getUserItems - Firestore 조회 시작 (' + userId + '/inventory)');
+        logger.log('[GlobalCache] 🔥 getUserItems - Firestore 조회 시작 (' + userId + '/inventory)');
         const userInventoryRef = collection(db, 'users', userId, 'inventory');
         const querySnapshot = await getDocs(userInventoryRef);
 
@@ -610,7 +611,7 @@ class GlobalCacheService {
           ...doc.data()
         }));
 
-        console.log('[GlobalCache] ✅ getUserItems - Firestore 조회 완료 (' + userItems.length + '건 읽음)');
+        logger.log('[GlobalCache] ✅ getUserItems - Firestore 조회 완료 (' + userItems.length + '건 읽음)');
         this.set(key, userItems, this.ITEMS_TTL);
         return userItems;
       } catch (error) {
@@ -651,7 +652,7 @@ class GlobalCacheService {
         keysToDelete.forEach(key => localStorage.removeItem(key));
 
         if (keysToDelete.length > 0) {
-          console.log(`[GlobalCache] localStorage 정리: ${keysToDelete.length}개 만료된 항목 제거`);
+          logger.log(`[GlobalCache] localStorage 정리: ${keysToDelete.length}개 만료된 항목 제거`);
         }
       } catch (error) {
         console.warn('[GlobalCache] localStorage 정리 오류:', error);
@@ -674,7 +675,7 @@ class GlobalCacheService {
       expiredKeys.forEach(key => this.invalidate(key));
 
       if (expiredKeys.length > 0) {
-        console.log(`[GlobalCache] 메모리 캐시 정리: ${expiredKeys.length}개 만료된 항목 제거`);
+        logger.log(`[GlobalCache] 메모리 캐시 정리: ${expiredKeys.length}개 만료된 항목 제거`);
       }
     }, 60000); // 1분마다 정리
   }

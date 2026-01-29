@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
 
+import { logger } from "../../utils/logger";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -70,7 +71,7 @@ const OrganizationChart = ({ classCode }) => {
           vetoOverrideRequired: DEFAULT_ADMIN_SETTINGS.vetoOverrideRequired,
           adminPassword: "",
         });
-        console.log(`[${classCode}] 정부 기본 설정 생성 완료`);
+        logger.log(`[${classCode}] 정부 기본 설정 생성 완료`);
       }
     } catch (error) {
       console.error("정부 설정 로드 오류:", error);
@@ -300,14 +301,14 @@ const OrganizationChart = ({ classCode }) => {
   //           finalDecisionDate: serverTimestamp(),
   //         });
   //         needsUpdate = true;
-  //         console.log(`법안 "${law.title}" 자동 부결 처리됨.`);
+  //         logger.log(`법안 "${law.title}" 자동 부결 처리됨.`);
   //       }
   //     }
   //   });
 
   //   if (needsUpdate) {
   //     batch.commit()
-  //       .then(() => console.log("자동 부결 법안 상태 일괄 업데이트 완료."))
+  //       .then(() => logger.log("자동 부결 법안 상태 일괄 업데이트 완료."))
   //       .catch(error => console.error("자동 부결 법안 상태 업데이트 오류:", error));
   //   }
   //   // 이 로직은 NationalAssembly.js에서 주기적으로 실행되거나 Cloud Function으로 처리하는 것이 더 적합합니다.

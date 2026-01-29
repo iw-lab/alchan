@@ -281,15 +281,15 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer"
               style={{ background: 'rgba(167, 139, 250, 0.2)' }}
             >
-              <span style={{ fontSize: '14px' }}>{levelInfo?.icon || '🌟'}</span>
+              <span className="text-sm">{levelInfo?.icon || '🌟'}</span>
               <div className="flex flex-col leading-none">
-                <span style={{ fontSize: '9px', color: '#9ca3af' }}>LEVEL</span>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: levelInfo?.color || '#a78bfa' }}>
+                <span className="text-[9px] text-gray-400">LEVEL</span>
+                <span className="text-xs font-bold" style={{ color: levelInfo?.color || '#a78bfa' }}>
                   {levelInfo?.level || 1}
                 </span>
               </div>
               {bestAchievement && (
-                <span style={{ fontSize: '14px', marginLeft: '2px' }}>{bestAchievement.icon}</span>
+                <span className="text-sm ml-0.5">{bestAchievement.icon}</span>
               )}
             </div>
 
@@ -331,168 +331,93 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
 
       {/* PC 헤더 */}
       <header
-        className="hidden md:flex items-center justify-between bg-[#141423] border-b border-[#00fff2]/10 shadow-sm z-10"
-        style={{ height: '64px', minHeight: '64px', maxHeight: '64px', padding: '0 16px' }}
+        className="hidden md:flex items-center justify-between bg-[#141423] border-b border-[#00fff2]/10 shadow-sm z-10 h-16 min-h-16 max-h-16 px-4"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3">
           {/* 사이드바 토글 버튼 */}
           <button
             onClick={onToggleSidebarCollapse}
-            style={{
-              padding: '8px',
-              borderRadius: '8px',
-              border: '1px solid rgba(0, 255, 242, 0.1)',
-              background: 'rgba(255, 255, 255, 0.05)',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
+            className="p-2 rounded-lg border border-[#00fff2]/10 bg-white/5 text-white cursor-pointer flex items-center justify-center"
           >
             {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', lineHeight: '1.2' }}>
-              오늘도 <span style={{ color: '#00fff2', fontFamily: "'Jua', sans-serif" }}>알찬</span> 하루! 👋
+            <div className="text-[15px] font-bold text-white whitespace-nowrap leading-tight">
+              오늘도 <span className="text-[#00fff2]" style={{ fontFamily: "'Jua', sans-serif" }}>알찬</span> 하루! 👋
             </div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap', lineHeight: '1.2' }}>{displayName}님 환영합니다</div>
+            <div className="text-xs text-slate-400 whitespace-nowrap leading-tight">{displayName}님 환영합니다</div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3">
           {/* 현금 위젯 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 12px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            borderRadius: '8px',
-            color: '#34d399'
-          }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: '#10b981',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '12px'
-            }}>₩</div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/10 rounded-lg text-emerald-400">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">₩</div>
             <div>
-              <div style={{ fontSize: '10px', fontWeight: '600', opacity: 0.7, lineHeight: '1.2' }}>현금</div>
-              <div style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap', lineHeight: '1.2' }}>{formatMoney(userDoc?.cash || 0)}원</div>
+              <div className="text-[10px] font-semibold opacity-70 leading-tight">현금</div>
+              <div className="text-[13px] font-bold whitespace-nowrap leading-tight">{formatMoney(userDoc?.cash || 0)}원</div>
             </div>
           </div>
 
           {/* 쿠폰 위젯 */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 12px',
-            background: 'rgba(244, 63, 94, 0.1)',
-            borderRadius: '8px',
-            color: '#fb7185'
-          }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: '#f43f5e',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}><Gift size={14} /></div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-900/10 rounded-lg text-rose-400">
+            <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center"><Gift size={14} /></div>
             <div>
-              <div style={{ fontSize: '10px', fontWeight: '600', opacity: 0.7, lineHeight: '1.2' }}>쿠폰</div>
-              <div style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap', lineHeight: '1.2' }}>{userDoc?.coupons || 0}개</div>
+              <div className="text-[10px] font-semibold opacity-70 leading-tight">쿠폰</div>
+              <div className="text-[13px] font-bold whitespace-nowrap leading-tight">{userDoc?.coupons || 0}개</div>
             </div>
           </div>
 
           {/* 레벨 & 업적 위젯 */}
           <div
             onClick={() => navigate('/my-profile')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 12px',
-              background: `rgba(167, 139, 250, 0.1)`,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(167, 139, 250, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(167, 139, 250, 0.1)'}
+            className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 rounded-lg cursor-pointer transition-all duration-200 hover:bg-violet-500/20"
           >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '28px',
-              height: '28px',
-              borderRadius: '6px',
-              background: levelInfo?.color || '#a78bfa',
-              fontSize: '14px',
-            }}>
+            <div
+              className="flex items-center justify-center w-7 h-7 rounded-md text-sm"
+              style={{ background: levelInfo?.color || '#a78bfa' }}
+            >
               {levelInfo?.icon || '🌟'}
             </div>
             <div>
-              <div style={{ fontSize: '10px', fontWeight: '600', color: levelInfo?.color || '#a78bfa', lineHeight: '1.2' }}>
+              <div className="text-[10px] font-semibold leading-tight" style={{ color: levelInfo?.color || '#a78bfa' }}>
                 Lv.{levelInfo?.level || 1}
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#e8e8ff', whiteSpace: 'nowrap', lineHeight: '1.2' }}>
+              <div className="text-[11px] font-bold text-[#e8e8ff] whitespace-nowrap leading-tight">
                 {levelInfo?.title || '새싹'}
               </div>
             </div>
             {bestAchievement && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                marginLeft: '4px',
-                padding: '2px 6px',
-                background: bestAchievement.rarity === 'legendary' ? 'rgba(245, 158, 11, 0.2)' :
-                           bestAchievement.rarity === 'epic' ? 'rgba(167, 139, 250, 0.2)' :
-                           bestAchievement.rarity === 'rare' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)',
-                borderRadius: '4px',
-              }}>
-                <span style={{ fontSize: '12px' }}>{bestAchievement.icon}</span>
+              <div
+                className="flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded"
+                style={{
+                  background: bestAchievement.rarity === 'legendary' ? 'rgba(245, 158, 11, 0.2)' :
+                             bestAchievement.rarity === 'epic' ? 'rgba(167, 139, 250, 0.2)' :
+                             bestAchievement.rarity === 'rare' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+                }}
+              >
+                <span className="text-xs">{bestAchievement.icon}</span>
               </div>
             )}
           </div>
 
           {/* 사용자 메뉴 */}
-          <div style={{ position: 'relative' }} ref={userMenuRef}>
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                paddingLeft: '12px',
-                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className="flex items-center gap-2 pl-3 border-l border-white/10 bg-transparent cursor-pointer"
+              style={{ border: 'none' }}
             >
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', lineHeight: '1.2' }}>{displayName}</div>
-                <div style={{ fontSize: '11px', color: '#818cf8', fontWeight: '500', whiteSpace: 'nowrap', lineHeight: '1.2' }}>{userRole}</div>
+              <div className="text-right">
+                <div className="text-[13px] font-bold text-white whitespace-nowrap leading-tight">{displayName}</div>
+                <div className="text-[11px] text-indigo-400 font-medium whitespace-nowrap leading-tight">{userRole}</div>
               </div>
               <div
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate('/my-profile');
                 }}
-                style={{ cursor: 'pointer' }}
+                className="cursor-pointer"
               >
                 <Avatar config={avatarConfig} size={40} showBorder={true} />
               </div>

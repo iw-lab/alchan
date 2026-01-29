@@ -31,6 +31,7 @@ import {
 } from "../firebase";
 import { doc, onSnapshot, Timestamp, getDoc } from "firebase/firestore";
 
+import { logger } from "../utils/logger";
 export const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }) => {
       const initialized = isInitialized();
 
       if (initialized) {
-        console.log("[AuthContext] Firebase 초기화 완료");
+        logger.log("[AuthContext] Firebase 초기화 완료");
         setFirebaseReady(true);
         initializationCompleteRef.current = true;
       } else if (attempts >= maxAttempts) {
@@ -867,14 +868,14 @@ export const AuthProvider = ({ children }) => {
       const targetUserId = userId || userDoc?.id || userDoc?.uid;
       if (!targetUserId) return null;
 
-      console.log("[AuthContext] refreshUserDocument 호출 (강제 새로고침):", targetUserId);
+      logger.log("[AuthContext] refreshUserDocument 호출 (강제 새로고침):", targetUserId);
 
       // 서버에서 강제로 새로 가져오기
       const freshDoc = await getUserDocument(targetUserId, true);
 
       // 현재 로그인한 사용자의 문서라면 즉시 상태 업데이트
       if (freshDoc && targetUserId === (userDoc?.id || userDoc?.uid)) {
-        console.log("[AuthContext] userDoc 즉시 업데이트:", freshDoc.cash);
+        logger.log("[AuthContext] userDoc 즉시 업데이트:", freshDoc.cash);
         setUserDoc(freshDoc);
         // AuthContext 레벨의 캐시도 업데이트
         setCachedUserDoc(targetUserId, freshDoc);
@@ -910,7 +911,7 @@ export const AuthProvider = ({ children }) => {
 
         userDocCacheRef.current.set(currentUserDoc.id, updatedUserDoc);
 
-        console.log('[AuthContext] 낙관적 업데이트 완료:', {
+        logger.log('[AuthContext] 낙관적 업데이트 완료:', {
           updates,
           newCash: updatedUserDoc.cash,
           newCoupons: updatedUserDoc.coupons

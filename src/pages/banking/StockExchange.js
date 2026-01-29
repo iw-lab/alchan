@@ -35,6 +35,7 @@ import {
 import { globalCache, cacheStats } from "../../services/globalCacheService";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 
+import { logger } from "../../utils/logger";
 // 서비스 레이어 import
 import {
   batchDataLoader,
@@ -590,7 +591,7 @@ const StockExchange = () => {
     if (!classCode) return; // classCode가 없으면 데이터 로드하지 않음
 
     if (isFetchingRef.current && !forceRefresh) {
-      console.log('[StockExchange] 이미 fetching 중이므로 대기');
+      logger.log('[StockExchange] 이미 fetching 중이므로 대기');
       return;
     }
 
@@ -698,7 +699,7 @@ const StockExchange = () => {
     try {
       const updateSnapshotFn = httpsCallable(functions, 'updateStocksSnapshot');
       await updateSnapshotFn({});
-      console.log('[updateStocksSnapshot] 스냅샷 갱신 완료');
+      logger.log('[updateStocksSnapshot] 스냅샷 갱신 완료');
     } catch (error) {
       console.error('[updateStocksSnapshot] 스냅샷 갱신 실패:', error);
     }
@@ -864,7 +865,7 @@ const StockExchange = () => {
     const taxAmount = Math.floor(cost * taxRate);
     const totalCost = cost + commission + taxAmount;
 
-    console.log('[buyStock] 매수 시작:', { stockId, stockName: stock.name, quantity, totalCost });
+    logger.log('[buyStock] 매수 시작:', { stockId, stockName: stock.name, quantity, totalCost });
 
     // 🔥 즉시 UI 업데이트 (낙관적 업데이트)
     if (optimisticUpdate) {
@@ -877,14 +878,14 @@ const StockExchange = () => {
       const buyStockFunction = httpsCallable(functions, 'buyStock');
       const result = await buyStockFunction({ stockId, quantity });
 
-      console.log('[buyStock] 매수 성공:', result.data);
+      logger.log('[buyStock] 매수 성공:', result.data);
 
       // 🔥 [수정] 서버에서 받은 정확한 잔액으로 낙관적 업데이트 보정
       if (result.data.newBalance !== undefined && optimisticUpdate) {
         const currentCash = userDoc?.cash || 0;
         const cashDiff = result.data.newBalance - currentCash;
         optimisticUpdate({ cash: cashDiff });
-        console.log('[buyStock] 현금 정확한 값으로 업데이트:', result.data.newBalance);
+        logger.log('[buyStock] 현금 정확한 값으로 업데이트:', result.data.newBalance);
       }
 
       // 🔥 [최적화] 캐시 무효화 (통합)
@@ -981,7 +982,7 @@ const StockExchange = () => {
     const totalTax = profitTax + transactionTax;
     const estimatedNetRevenue = sellPrice - commission - totalTax;
 
-    console.log('[sellStock] 매도 시작:', { holdingId, stockName: stock.name, quantity, estimatedNetRevenue });
+    logger.log('[sellStock] 매도 시작:', { holdingId, stockName: stock.name, quantity, estimatedNetRevenue });
 
     // 🔥 즉시 UI 업데이트 (낙관적 업데이트)
     if (optimisticUpdate) {
@@ -994,14 +995,14 @@ const StockExchange = () => {
       const sellStockFunction = httpsCallable(functions, 'sellStock');
       const result = await sellStockFunction({ holdingId, quantity });
 
-      console.log('[sellStock] 매도 성공:', result.data);
+      logger.log('[sellStock] 매도 성공:', result.data);
 
       // 🔥 [수정] 서버에서 받은 정확한 잔액으로 낙관적 업데이트 보정
       if (result.data.newBalance !== undefined && optimisticUpdate) {
         const currentCash = userDoc?.cash || 0;
         const cashDiff = result.data.newBalance - currentCash;
         optimisticUpdate({ cash: cashDiff });
-        console.log('[sellStock] 현금 정확한 값으로 업데이트:', result.data.newBalance);
+        logger.log('[sellStock] 현금 정확한 값으로 업데이트:', result.data.newBalance);
       }
 
       // 🔥 [최적화] 캐시 무효화 (통합)
@@ -1096,11 +1097,11 @@ const StockExchange = () => {
     }
 
     try {
-      console.log('[manualUpdateStockMarket] 수동 업데이트 시작');
+      logger.log('[manualUpdateStockMarket] 수동 업데이트 시작');
       const manualUpdateFunction = httpsCallable(functions, 'manualUpdateStockMarket');
       const result = await manualUpdateFunction({});
 
-      console.log('[manualUpdateStockMarket] 업데이트 성공:', result.data);
+      logger.log('[manualUpdateStockMarket] 업데이트 성공:', result.data);
 
       // 캐시 무효화 및 데이터 새로고침
       const batchKey = globalCache.generateKey('BATCH', { classCode, userId: user.uid });
@@ -1122,11 +1123,11 @@ const StockExchange = () => {
     }
 
     try {
-      console.log('[createRealStocks] 실제 주식 생성 시작');
+      logger.log('[createRealStocks] 실제 주식 생성 시작');
       const createRealStocksFunction = httpsCallable(functions, 'createRealStocks');
       const result = await createRealStocksFunction({});
 
-      console.log('[createRealStocks] 생성 성공:', result.data);
+      logger.log('[createRealStocks] 생성 성공:', result.data);
 
       // 캐시 무효화 및 데이터 새로고침
       const batchKey = globalCache.generateKey('BATCH', { classCode, userId: user.uid });
@@ -1148,11 +1149,11 @@ const StockExchange = () => {
     }
 
     try {
-      console.log('[updateRealStocks] 실제 주식 업데이트 시작');
+      logger.log('[updateRealStocks] 실제 주식 업데이트 시작');
       const updateRealStocksFunction = httpsCallable(functions, 'updateRealStocks');
       const result = await updateRealStocksFunction({});
 
-      console.log('[updateRealStocks] 업데이트 성공:', result.data);
+      logger.log('[updateRealStocks] 업데이트 성공:', result.data);
 
       // 캐시 무효화 및 데이터 새로고침
       const batchKey = globalCache.generateKey('BATCH', { classCode, userId: user.uid });
@@ -1174,11 +1175,11 @@ const StockExchange = () => {
     }
 
     try {
-      console.log('[addSingleRealStock] 개별 실제 주식 추가 시작:', name);
+      logger.log('[addSingleRealStock] 개별 실제 주식 추가 시작:', name);
       const addSingleRealStockFunction = httpsCallable(functions, 'addSingleRealStock');
       const result = await addSingleRealStockFunction({ name, symbol, sector, productType });
 
-      console.log('[addSingleRealStock] 추가 성공:', result.data);
+      logger.log('[addSingleRealStock] 추가 성공:', result.data);
 
       // 캐시 무효화 및 데이터 새로고침
       const batchKey = globalCache.generateKey('BATCH', { classCode, userId: user.uid });
@@ -1200,11 +1201,11 @@ const StockExchange = () => {
     }
 
     try {
-      console.log('[deleteSimulationStocks] 시뮬레이션 주식 삭제 시작');
+      logger.log('[deleteSimulationStocks] 시뮬레이션 주식 삭제 시작');
       const deleteSimulationStocksFunction = httpsCallable(functions, 'deleteSimulationStocks');
       const result = await deleteSimulationStocksFunction({});
 
-      console.log('[deleteSimulationStocks] 삭제 성공:', result.data);
+      logger.log('[deleteSimulationStocks] 삭제 성공:', result.data);
 
       // 캐시 무효화 및 데이터 새로고침
       const batchKey = globalCache.generateKey('BATCH', { classCode, userId: user.uid });

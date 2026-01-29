@@ -7,6 +7,7 @@ import "./MyItems.css";
 import LoginWarning from "../../components/LoginWarning";
 import { useNavigate } from "react-router-dom";
 
+import { logger } from "../../utils/logger";
 // Firebase
 import {
   db,
@@ -356,7 +357,7 @@ const MyItems = () => {
     const recipient = classmates.find(c => (c.uid || c.id) === giftRecipientUid);
     const recipientName = recipient ? recipient.name : '알 수 없는 사용자';
 
-    console.log('[MyItems] 선물 시작:', {
+    logger.log('[MyItems] 선물 시작:', {
       아이템: group.displayInfo.name,
       수량: quantity,
       보내는사람: userDoc?.name || user.uid,
@@ -377,9 +378,9 @@ const MyItems = () => {
         quantity: doc.data().quantity
       }));
 
-      console.log('[MyItems] 🔍 실제 inventory 컬렉션 전체 조회:');
-      console.log('총문서수:', allInventoryDocs.size);
-      console.log('문서들:', actualDocs);
+      logger.log('[MyItems] 🔍 실제 inventory 컬렉션 전체 조회:');
+      logger.log('총문서수:', allInventoryDocs.size);
+      logger.log('문서들:', actualDocs);
 
       // itemId로 그룹핑
       const itemIdGroups = {};
@@ -388,13 +389,13 @@ const MyItems = () => {
         if (!itemIdGroups[key]) itemIdGroups[key] = [];
         itemIdGroups[key].push(doc.id);
       });
-      console.log('[MyItems] itemId별 그룹:', itemIdGroups);
+      logger.log('[MyItems] itemId별 그룹:', itemIdGroups);
 
       // 🔥 보내는 사람의 실제 아이템 문서를 Firestore에서 다시 조회
       // group.sourceDocs에서 문서 ID 목록 가져오기
       const docIds = group.sourceDocs.map(doc => doc.id);
 
-      console.log('[MyItems] 캐시된 문서 ID 목록:', docIds);
+      logger.log('[MyItems] 캐시된 문서 ID 목록:', docIds);
 
       // 각 문서 ID로 직접 조회 (getDoc 사용)
       const actualSourceDocs = [];
@@ -411,13 +412,13 @@ const MyItems = () => {
             ...data
           });
           actualTotalQuantity += (data.quantity || 0);
-          console.log('[MyItems] ✅ 문서 발견:', { id: docSnap.id, quantity: data.quantity });
+          logger.log('[MyItems] ✅ 문서 발견:', { id: docSnap.id, quantity: data.quantity });
         } else {
           console.warn('[MyItems] ⚠️ 문서 없음:', docId);
         }
       }
 
-      console.log('[MyItems] 보내는 사람 인벤토리 실제 조회 완료:', {
+      logger.log('[MyItems] 보내는 사람 인벤토리 실제 조회 완료:', {
         캐시문서수: group.sourceDocs.length,
         실제문서수: actualSourceDocs.length,
         실제총수량: actualTotalQuantity
@@ -438,7 +439,7 @@ const MyItems = () => {
 
       const recipientExistingDocRef = recipientQuerySnapshot.empty ? null : recipientQuerySnapshot.docs[0].ref;
 
-      console.log('[MyItems] 받는 사람 인벤토리 조회 (트랜잭션 외부):', {
+      logger.log('[MyItems] 받는 사람 인벤토리 조회 (트랜잭션 외부):', {
         기존아이템존재: !recipientQuerySnapshot.empty,
         문서수: recipientQuerySnapshot.size
       });
@@ -506,7 +507,7 @@ const MyItems = () => {
 
           if (recipientSnap.exists()) {
             recipientCurrentQuantity = recipientSnap.data().quantity || 0;
-            console.log('[MyItems] 받는 사람 기존 아이템 발견:', {
+            logger.log('[MyItems] 받는 사람 기존 아이템 발견:', {
               문서ID: recipientItemRef.id,
               현재수량: recipientCurrentQuantity
             });
@@ -515,7 +516,7 @@ const MyItems = () => {
             recipientItemRef = null;
           }
         } else {
-          console.log('[MyItems] 받는 사람에게 새 아이템 생성 예정');
+          logger.log('[MyItems] 받는 사람에게 새 아이템 생성 예정');
         }
 
         // ===== 2단계: 모든 쓰기 작업 =====
@@ -530,7 +531,7 @@ const MyItems = () => {
           const amountFromThisDoc = Math.min(currentQuantity, remainingToSend);
           const newSenderQty = currentQuantity - amountFromThisDoc;
 
-          console.log('[MyItems] 아이템 차감:', {
+          logger.log('[MyItems] 아이템 차감:', {
             문서ID: senderItemRef.id,
             기존수량: currentQuantity,
             차감수량: amountFromThisDoc,
@@ -556,7 +557,7 @@ const MyItems = () => {
         // 2-2. 받는 사람에게 아이템 추가
         if (recipientItemRef) {
           // 기존 아이템에 수량 추가
-          console.log('[MyItems] 받는 사람 아이템 업데이트 (기존 아이템에 추가):', {
+          logger.log('[MyItems] 받는 사람 아이템 업데이트 (기존 아이템에 추가):', {
             기존수량: recipientCurrentQuantity,
             추가수량: processedAmount,
             최종수량: recipientCurrentQuantity + processedAmount
@@ -567,7 +568,7 @@ const MyItems = () => {
           });
         } else {
           // 새 아이템 생성
-          console.log('[MyItems] 받는 사람 아이템 생성 (새 아이템):', { 수량: processedAmount });
+          logger.log('[MyItems] 받는 사람 아이템 생성 (새 아이템):', { 수량: processedAmount });
           const newRecipientItemRef = firebaseDoc(recipientInventoryRef);
           transaction.set(newRecipientItemRef, {
             itemId: group.displayInfo.itemId,
@@ -582,7 +583,7 @@ const MyItems = () => {
         }
       });
 
-      console.log('[MyItems] ✅ 선물 트랜잭션 완료');
+      logger.log('[MyItems] ✅ 선물 트랜잭션 완료');
       showNotification("success", `${recipientName}님에게 ${group.displayInfo.name} ${quantity}개를 선물했습니다.`);
       handleCloseGiftModal();
 
@@ -595,7 +596,7 @@ const MyItems = () => {
 
       // 낙관적 업데이트 롤백
       if (updateLocalUserItems && originalUserItems) {
-        console.log('[MyItems] 낙관적 업데이트 롤백 - 원래 상태로 복원');
+        logger.log('[MyItems] 낙관적 업데이트 롤백 - 원래 상태로 복원');
         updateLocalUserItems(originalUserItems);
       }
 
@@ -604,13 +605,13 @@ const MyItems = () => {
 
       // 항상 데이터 새로고침
       if (refreshData) {
-        console.log('[MyItems] 데이터 새로고침 시작');
+        logger.log('[MyItems] 데이터 새로고침 시작');
         try {
           const result = refreshData();
           if (result && typeof result.then === 'function') {
             await result;
           }
-          console.log('[MyItems] 데이터 새로고침 완료');
+          logger.log('[MyItems] 데이터 새로고침 완료');
         } catch (syncError) {
           console.error("[MyItems] 데이터 새로고침 실패:", syncError);
         }
@@ -647,7 +648,7 @@ const MyItems = () => {
         }
       }
 
-      console.log('[MyItems] 시장에 팔기 - 실제 조회:', {
+      logger.log('[MyItems] 시장에 팔기 - 실제 조회:', {
         요청수량: quantity,
         실제보유: actualTotalQuantity,
         문서수: actualSourceDocs.length

@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
 
+import { logger } from "../utils/logger";
 // 깊은 비교를 위한 유틸리티 함수
 const deepEqual = (a, b) => {
   if (a === b) return true;
@@ -117,7 +118,7 @@ export const useRenderCount = (componentName) => {
   useEffect(() => {
     renderCount.current += 1;
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[${componentName}] 렌더링 횟수: ${renderCount.current}`);
+      logger.log(`[${componentName}] 렌더링 횟수: ${renderCount.current}`);
     }
   });
 
@@ -143,7 +144,7 @@ export const useWhyDidYouUpdate = (name, props) => {
       });
 
       if (Object.keys(changedProps).length) {
-        console.log('[why-did-you-update]', name, changedProps);
+        logger.log('[why-did-you-update]', name, changedProps);
       }
     }
 
@@ -161,7 +162,7 @@ export const useExpensiveCalculation = (calculation, deps, shouldSkip = false) =
     const endTime = performance.now();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`계산 시간: ${endTime - startTime}ms`);
+      logger.log(`계산 시간: ${endTime - startTime}ms`);
     }
 
     return result;

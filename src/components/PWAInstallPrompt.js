@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, Smartphone, Share, Plus } from 'lucide-react';
 
+import { logger } from "../utils/logger";
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -65,9 +66,9 @@ export default function PWAInstallPrompt() {
     const { outcome } = await deferredPrompt.userChoice;
 
     if (outcome === 'accepted') {
-      console.log('PWA 설치 수락');
+      logger.log('PWA 설치 수락');
     } else {
-      console.log('PWA 설치 거절');
+      logger.log('PWA 설치 거절');
     }
 
     setDeferredPrompt(null);

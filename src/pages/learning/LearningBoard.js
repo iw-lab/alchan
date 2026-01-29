@@ -30,6 +30,7 @@ import {
 
 import { usePolling } from "../../hooks/usePolling";
 
+import { logger } from "../../utils/logger";
 // formatDate 함수 (컴포넌트 외부에 정의하거나 유틸리티 파일로 분리 가능)
 const formatDate = (isoString) => {
   if (!isoString) return "날짜 정보 없음";
@@ -300,7 +301,7 @@ const LearningBoard = () => {
   const toggleAdminPanel = () => {
     if (!currentUserIsAdmin) return;
     setShowAdminPanel((prev) => {
-      console.log("[Debug] Admin panel toggle:", !prev);
+      logger.log("[Debug] Admin panel toggle:", !prev);
       return !prev;
     });
   };

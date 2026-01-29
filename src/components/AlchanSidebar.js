@@ -350,17 +350,8 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
     return (
       <aside className="hidden md:flex flex-col w-20 bg-[#141423] border-r border-[#00fff2]/10 h-screen sticky top-0 left-0 z-50 shadow-xl transition-all duration-300">
         {/* 로고 */}
-        <div
-          style={{
-            height: '64px',
-            minHeight: '64px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #4f46e5, #7c3aed, #4f46e5)'
-          }}
-        >
-          <div style={{ padding: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+        <div className="h-16 min-h-16 flex items-center justify-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">
+          <div className="p-1 bg-white/10 rounded-lg shadow-md">
             <AppIcon style={{ width: '32px', height: '32px' }} />
           </div>
         </div>
@@ -420,31 +411,19 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
         `}
       >
         {/* 로고 영역 - 세련된 디자인 */}
-        <div
-          style={{
-            height: '72px',
-            minHeight: '72px',
-            margin: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, rgba(10, 10, 18, 0.95), rgba(20, 20, 35, 0.95))',
-            border: '1px solid rgba(0, 255, 242, 0.2)',
-            boxShadow: '0 0 15px rgba(0, 255, 242, 0.1)',
-          }}
-        >
+        <div className="h-[72px] min-h-[72px] m-3 flex items-center relative rounded-2xl bg-gradient-to-br from-[#0a0a12]/95 to-[#141423]/95 border border-[#00fff2]/20 shadow-[0_0_15px_rgba(0,255,242,0.1)]">
           {/* 배경 장식 */}
-          <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }} />
-          <div style={{ position: 'absolute', bottom: '-30px', left: '-10px', width: '60px', height: '60px', background: 'rgba(255,255,255,0.08)', borderRadius: '50%' }} />
+          <div className="absolute -top-5 -right-5 w-20 h-20 bg-white/10 rounded-full" />
+          <div className="absolute -bottom-7 -left-2 w-15 h-15 bg-white/[0.08] rounded-full" />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '0 18px', width: '100%', position: 'relative', zIndex: 10 }}>
+          <div className="flex items-center gap-3.5 px-4 w-full relative z-10">
             {/* 아이콘 박스 */}
-            <div style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="p-1.5 bg-white/5 rounded-xl shadow-md border border-white/10">
               <AppIcon style={{ width: '36px', height: '36px' }} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <span style={{ fontSize: '22px', fontWeight: '900', color: '#00fff2', fontFamily: "'Jua', sans-serif", lineHeight: '1.1', textShadow: '0 0 10px rgba(0, 255, 242, 0.5)' }}>알찬</span>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'rgba(232, 232, 255, 0.7)', letterSpacing: '0.2em', lineHeight: '1.1', marginTop: '3px' }}>ALCHAN</span>
+            <div className="flex flex-col justify-center">
+              <span className="text-[22px] font-black text-[#00fff2] leading-tight" style={{ fontFamily: "'Jua', sans-serif", textShadow: '0 0 10px rgba(0, 255, 242, 0.5)' }}>알찬</span>
+              <span className="text-[11px] font-bold text-[#e8e8ff]/70 tracking-[0.2em] leading-tight mt-0.5">ALCHAN</span>
             </div>
           </div>
 
@@ -452,18 +431,7 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
           {isMobile && (
             <button
               onClick={onClose}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                padding: '6px',
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer'
-              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/20 border-0 text-white cursor-pointer"
             >
               <X size={18} />
             </button>

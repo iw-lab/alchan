@@ -3,6 +3,7 @@
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy, limit, startAfter, Timestamp } from 'firebase/firestore';
 
+import { logger } from "../utils/logger";
 /**
  * 관리자용 데이터베이스 서비스
  * 🔥 최적화: 서버 사이드 필터링으로 불필요한 문서 읽기 제거
@@ -96,11 +97,11 @@ export const getActivityLogs = async (classCode, options = {}) => {
     const cacheKey = getCacheKey(classCode, 'activity_logs', options);
     const cached = getFromCache(cacheKey);
     if (cached) {
-      console.log('[AdminDatabaseService] 캐시된 활동 로그 사용');
+      logger.log('[AdminDatabaseService] 캐시된 활동 로그 사용');
       return cached;
     }
 
-    console.log('[AdminDatabaseService] 활동 로그 서버 사이드 필터링 조회:', { classCode, userId, type, limitCount });
+    logger.log('[AdminDatabaseService] 활동 로그 서버 사이드 필터링 조회:', { classCode, userId, type, limitCount });
 
     // 🔥 최적화: 서버 사이드 필터링으로 필요한 문서만 가져오기
     const constraints = [
@@ -157,7 +158,7 @@ export const getActivityLogs = async (classCode, options = {}) => {
     const paginatedLogs = logs.slice(0, limitCount);
     const newLastDoc = paginatedLogs.length > 0 ? paginatedLogs[paginatedLogs.length - 1].id : null;
 
-    console.log(`[AdminDatabaseService] 활동 로그 조회 완료: ${paginatedLogs.length}개 (서버 필터링)`);
+    logger.log(`[AdminDatabaseService] 활동 로그 조회 완료: ${paginatedLogs.length}개 (서버 필터링)`);
 
     const result = {
       logs: paginatedLogs,
@@ -288,11 +289,11 @@ export const getActivitySummary = async (classCode, userId = null) => {
     const cacheKey = getCacheKey(classCode, 'activity_summary', { userId });
     const cached = getFromCache(cacheKey);
     if (cached) {
-      console.log('[AdminDatabaseService] 캐시된 활동 요약 사용');
+      logger.log('[AdminDatabaseService] 캐시된 활동 요약 사용');
       return cached;
     }
 
-    console.log('[AdminDatabaseService] 활동 요약 조회 시작 (서버 필터링):', { classCode, userId });
+    logger.log('[AdminDatabaseService] 활동 요약 조회 시작 (서버 필터링):', { classCode, userId });
 
     // 🔥 최적화: classCode 필터를 서버에서 적용
     const constraints = [where('classCode', '==', classCode)];
@@ -310,7 +311,7 @@ export const getActivitySummary = async (classCode, userId = null) => {
     // 필터링된 활동 로그만 조회
     const snapshot = await getDocs(baseQuery);
 
-    console.log(`[AdminDatabaseService] 조회된 문서 수: ${snapshot.size} (classCode 필터 적용)`);
+    logger.log(`[AdminDatabaseService] 조회된 문서 수: ${snapshot.size} (classCode 필터 적용)`);
 
     const summary = {
       totalActivities: 0,
@@ -383,7 +384,7 @@ export const getActivitySummary = async (classCode, userId = null) => {
       }
     });
 
-    console.log(`[AdminDatabaseService] 활동 요약 조회 완료:`, {
+    logger.log(`[AdminDatabaseService] 활동 요약 조회 완료:`, {
       totalActivities: summary.totalActivities,
       couponEarned: summary.couponEarned,
       couponUsed: summary.couponUsed,
@@ -410,7 +411,7 @@ export const getActivitySummary = async (classCode, userId = null) => {
  */
 export const clearCache = () => {
   cache.clear();
-  console.log('[AdminDatabaseService] 캐시 초기화 완료');
+  logger.log('[AdminDatabaseService] 캐시 초기화 완료');
 };
 
 /**
@@ -424,7 +425,7 @@ export const clearClassCache = (classCode) => {
     }
   });
   keysToDelete.forEach(key => cache.delete(key));
-  console.log(`[AdminDatabaseService] ${classCode} 학급 캐시 초기화 완료`);
+  logger.log(`[AdminDatabaseService] ${classCode} 학급 캐시 초기화 완료`);
 };
 
 /**
@@ -437,7 +438,7 @@ export const getTransactionsData = async (userIds = [], options = {}) => {
   try {
     const { limitCount = 100 } = options;
 
-    console.log('[AdminDatabaseService] transactions 컬렉션 조회 시작:', { userIdsCount: userIds.length });
+    logger.log('[AdminDatabaseService] transactions 컬렉션 조회 시작:', { userIdsCount: userIds.length });
 
     if (userIds.length === 0) {
       console.warn('[AdminDatabaseService] userIds가 비어있음');
@@ -472,7 +473,7 @@ export const getTransactionsData = async (userIds = [], options = {}) => {
       });
     }
 
-    console.log(`[AdminDatabaseService] transactions 조회 완료: ${allTransactions.length}개`);
+    logger.log(`[AdminDatabaseService] transactions 조회 완료: ${allTransactions.length}개`);
     return allTransactions;
 
   } catch (error) {

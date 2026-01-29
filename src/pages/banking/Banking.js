@@ -40,6 +40,7 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
 
 import "./Banking.css";
 
+import { logger } from "../../utils/logger";
 const Banking = () => {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -111,7 +112,7 @@ const Banking = () => {
       });
 
       setAllUserProducts(allProducts);
-      console.log("유저 상품 로드 완료:", allProducts);
+      logger.log("유저 상품 로드 완료:", allProducts);
     } catch (error) {
       console.error("유저 상품 로드 중 오류:", error);
       setMessage("유저 상품 로드 중 오류가 발생했습니다.");
@@ -123,16 +124,16 @@ const Banking = () => {
 
   // 관리자가 유저 상품 강제 삭제
   const handleAdminDeleteUserProduct = async (product) => {
-    console.log("삭제 시도:", product);
+    logger.log("삭제 시도:", product);
 
     if (!(auth.userDoc?.isAdmin || auth.userDoc?.role === "admin")) {
-      console.log("관리자 권한 없음");
+      logger.log("관리자 권한 없음");
       alert("관리자 권한이 필요합니다.");
       return;
     }
 
     if (!window.confirm(`'${product.userName}'님의 '${product.name}' 상품을 강제로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
-      console.log("사용자가 삭제 취소");
+      logger.log("사용자가 삭제 취소");
       return;
     }
 
@@ -140,21 +141,21 @@ const Banking = () => {
     try {
       // firestoreId를 사용 (실제 Firestore 문서 ID)
       const productId = product.firestoreId || String(product.id);
-      console.log("삭제 경로:", `users/${product.userId}/products/${productId}`);
-      console.log("사용할 문서 ID:", productId);
+      logger.log("삭제 경로:", `users/${product.userId}/products/${productId}`);
+      logger.log("사용할 문서 ID:", productId);
 
       const productRef = doc(db, "users", product.userId, "products", productId);
-      console.log("삭제 시작...");
+      logger.log("삭제 시작...");
       await deleteDoc(productRef);
-      console.log("삭제 완료");
+      logger.log("삭제 완료");
 
       setMessage("상품이 삭제되었습니다.");
       setMessageType("success");
 
       // 목록 새로고침
-      console.log("목록 새로고침 시작...");
+      logger.log("목록 새로고침 시작...");
       await loadAllUserProducts();
-      console.log("목록 새로고침 완료");
+      logger.log("목록 새로고침 완료");
 
       setTimeout(() => {
         setMessage(null);

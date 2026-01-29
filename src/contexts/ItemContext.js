@@ -11,6 +11,7 @@ import { functions, httpsCallable, db } from "../firebase";
 import { usePolling, POLLING_INTERVALS } from "../hooks/usePolling";
 import { logActivity, ACTIVITY_TYPES } from "../utils/firestoreHelpers";
 
+import { logger } from "../utils/logger";
 export const ItemContext = createContext(null);
 
 export const useItems = () => {
@@ -118,7 +119,7 @@ export const ItemProvider = ({ children }) => {
 
   // 🔥 로컬 상태 즉시 업데이트 함수 (Firestore 읽기 없이)
   const updateLocalUserItems = useCallback((newUserItems) => {
-    console.log('[ItemContext] 로컬 userItems 업데이트:', newUserItems?.length, '개');
+    logger.log('[ItemContext] 로컬 userItems 업데이트:', newUserItems?.length, '개');
     setUserItems(newUserItems);
   }, []);
 
@@ -222,7 +223,7 @@ export const ItemProvider = ({ children }) => {
       purchasedAt: new Date(),
     };
 
-    console.log('[ItemContext] 낙관적 업데이트: Store 아이템 추가', newUserItem);
+    logger.log('[ItemContext] 낙관적 업데이트: Store 아이템 추가', newUserItem);
 
     // 기존 상태 백업 (롤백용)
     const originalUserItems = [...userItems];
@@ -251,7 +252,7 @@ export const ItemProvider = ({ children }) => {
         // 🎯 서버 응답에서 재고 보충 정보를 받아서 즉시 로컬 상태 업데이트
         const { restocked, newStock, newPrice } = result.data;
 
-        console.log('[ItemContext] 구매 성공:', {
+        logger.log('[ItemContext] 구매 성공:', {
           itemId,
           quantity,
           restocked,
@@ -294,7 +295,7 @@ export const ItemProvider = ({ children }) => {
         }
 
         // 🎯 서버 데이터로 동기화 (정확한 inventory 데이터 가져오기)
-        console.log('[ItemContext] 구매 성공, 서버 데이터로 동기화');
+        logger.log('[ItemContext] 구매 성공, 서버 데이터로 동기화');
         refreshData();
 
         return { success: true, restocked, newStock, newPrice };
@@ -421,7 +422,7 @@ export const ItemProvider = ({ children }) => {
       purchasedAt: new Date(),
     };
 
-    console.log('[ItemContext] 낙관적 업데이트: 아이템 추가', newUserItem);
+    logger.log('[ItemContext] 낙관적 업데이트: 아이템 추가', newUserItem);
 
     // 기존 상태 백업 (롤백용)
     const originalUserItems = [...userItems];
@@ -449,7 +450,7 @@ export const ItemProvider = ({ children }) => {
     try {
       const result = await firebaseFunctions.buyMarketItem({ listingId });
       if (result.data.success) {
-        console.log('[ItemContext] 구매 성공, 서버 데이터로 동기화');
+        logger.log('[ItemContext] 구매 성공, 서버 데이터로 동기화');
 
         // 🔥 활동 로그 기록 (아이템 시장 구매)
         logActivity(db, {

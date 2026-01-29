@@ -29,6 +29,7 @@ import {
 import { AlchanLoading } from "../../components/AlchanLayout";
 import "./Auction.css";
 
+import { logger } from "../../utils/logger";
 export default function Auction() {
   // --- Context Data ---
   const authContext = useAuth();
@@ -85,7 +86,7 @@ export default function Auction() {
     if (!classCode) return;
     const auctionRef = doc(db, "classes", classCode, "auctions", auction.id);
 
-    console.log(`[Auction Settle] 정산 시도: ${auction.id}`);
+    logger.log(`[Auction Settle] 정산 시도: ${auction.id}`);
 
     // --- 사전 작업: 낙찰자가 있을 경우, 인벤토리에서 동일 아이템 검색 ---
     let winnerExistingItemQuerySnap = null;
@@ -108,7 +109,7 @@ export default function Auction() {
         // ====== 모든 읽기 작업을 먼저 실행 ======
         const auctionDoc = await transaction.get(auctionRef);
         if (!auctionDoc.exists() || auctionDoc.data().status !== "ongoing") {
-          console.log(`[Auction Settle] 경매가 이미 처리되었거나 삭제됨: ${auction.id}`);
+          logger.log(`[Auction Settle] 경매가 이미 처리되었거나 삭제됨: ${auction.id}`);
           return;
         }
 
@@ -117,7 +118,7 @@ export default function Auction() {
         const endTime = auctionData.endTime.toDate();
 
         if (endTime > now) {
-          console.log(`[Auction Settle] 경매가 아직 종료되지 않음: ${auction.id}`);
+          logger.log(`[Auction Settle] 경매가 아직 종료되지 않음: ${auction.id}`);
           return;
         }
 
@@ -220,7 +221,7 @@ export default function Auction() {
         });
       });
 
-      console.log(`[Auction Settle] 성공적으로 정산 완료: ${auction.id}.`);
+      logger.log(`[Auction Settle] 성공적으로 정산 완료: ${auction.id}.`);
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
       if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
     } catch (error) {
@@ -261,7 +262,7 @@ export default function Auction() {
         );
 
         if (auctionsToSettle.length > 0) {
-          console.log(`[Auction] 정산할 경매 ${auctionsToSettle.length}개 발견.`);
+          logger.log(`[Auction] 정산할 경매 ${auctionsToSettle.length}개 발견.`);
           auctionsToSettle.forEach((auction) => settleAuction(auction));
         }
       } catch (error) {
@@ -532,7 +533,7 @@ export default function Auction() {
       showNotification(`경매 등록 실패: ${error.message}`, "error");
       if (itemDeducted && newAuction.assetId && typeof updateUserItemQuantity === "function") {
         await updateUserItemQuantity(newAuction.assetId, 1);
-        console.log("[Auction Create Error] 아이템 수량 롤백 성공:", newAuction.assetId);
+        logger.log("[Auction Create Error] 아이템 수량 롤백 성공:", newAuction.assetId);
       }
     }
   };
@@ -619,7 +620,7 @@ export default function Auction() {
     }
 
     const auctionRef = doc(db, "classes", classCode, "auctions", auction.id);
-    console.log(`[Admin Cancel] 관리자 취소 시도: ${auction.id}`);
+    logger.log(`[Admin Cancel] 관리자 취소 시도: ${auction.id}`);
 
     try {
       await runTransaction(db, async (transaction) => {

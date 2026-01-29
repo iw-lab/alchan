@@ -45,6 +45,7 @@ import globalCacheService from "../../services/globalCacheService";
 import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft, X } from "lucide-react";
 import { DailyRewardBanner, getStreakInfo, claimDailyReward } from "../../components/DailyReward";
 
+import { logger } from "../../utils/logger";
 // Cloud Functions 호출 함수 설정
 const manualResetClassTasks = httpsCallable(functions, 'manualResetClassTasks');
 
@@ -123,7 +124,7 @@ class BatchManager {
       });
 
       await batch.commit();
-      console.log(`배치 실행 완료: ${operations.length}개 작업`);
+      logger.log(`배치 실행 완료: ${operations.length}개 작업`);
     } catch (error) {
       console.error('배치 실행 실패:', error);
       // 실패한 작업들을 다시 큐에 추가할 수 있음
@@ -648,12 +649,12 @@ function Dashboard({ adminTabMode }) {
   const refreshTasksAfterReset = useCallback(async () => {
     // 🔥 이미 새로고침 중이면 중복 실행 방지
     if (refreshInProgressRef.current) {
-      console.log("[Dashboard] 이미 새로고침 진행 중 - 중복 실행 방지");
+      logger.log("[Dashboard] 이미 새로고침 진행 중 - 중복 실행 방지");
       return;
     }
 
     refreshInProgressRef.current = true;
-    console.log("[Dashboard] 서버 리셋 감지 - 클라이언트 상태 새로고침");
+    logger.log("[Dashboard] 서버 리셋 감지 - 클라이언트 상태 새로고침");
 
     try {
       // 사용자 문서 새로고침 (한 번만)
@@ -670,7 +671,7 @@ function Dashboard({ adminTabMode }) {
       const today = new Date().toDateString();
       localStorage.setItem('lastTaskResetDate', today);
 
-      console.log("[Dashboard] 클라이언트 상태 새로고침 완료");
+      logger.log("[Dashboard] 클라이언트 상태 새로고침 완료");
     } catch (error) {
       console.error("[Dashboard] 상태 새로고침 오류:", error);
     } finally {
@@ -1169,7 +1170,7 @@ function Dashboard({ adminTabMode }) {
       }
 
       setIsHandlingTask(true);
-      console.log("[Dashboard] 할일 완료 처리 시작:", { taskId, jobId, isJobTask, cardType, rewardAmount });
+      logger.log("[Dashboard] 할일 완료 처리 시작:", { taskId, jobId, isJobTask, cardType, rewardAmount });
 
       // 🔥 낙관적 업데이트: 예상 보상 계산
       let expectedCashReward = 0;
@@ -1217,14 +1218,14 @@ function Dashboard({ adminTabMode }) {
         const result = await completeTaskFunction({ taskId, jobId, isJobTask, cardType, rewardAmount });
 
         const resultData = result.data;
-        console.log("✅ [디버그] 서버로부터 받은 결과:", resultData);
+        logger.log("✅ [디버그] 서버로부터 받은 결과:", resultData);
 
         if (resultData.success) {
           // 서버에서 반환한 정확한 값으로 재조정
           const newCash = typeof resultData.updatedCash === 'number' ? resultData.updatedCash : optimisticCash;
           const newCoupons = typeof resultData.updatedCoupons === 'number' ? resultData.updatedCoupons : optimisticCoupons;
 
-          console.log(`✅ [디버그] 낙관적 업데이트: 현금 ${optimisticCash}원, 쿠폰 ${optimisticCoupons}개 → 서버 확정: 현금 ${newCash}원, 쿠폰 ${newCoupons}개`);
+          logger.log(`✅ [디버그] 낙관적 업데이트: 현금 ${optimisticCash}원, 쿠폰 ${optimisticCoupons}개 → 서버 확정: 현금 ${newCash}원, 쿠폰 ${newCoupons}개`);
 
           setUserDoc(prevDoc => ({ ...prevDoc, cash: newCash, coupons: newCoupons }));
 
@@ -1254,7 +1255,7 @@ function Dashboard({ adminTabMode }) {
   }, [classCouponGoal, couponValue]);
 
   const handleSaveAdminSettings = useCallback(async () => {
-    console.log("--- [DEBUG] EXECUTING handleSaveAdminSettings with LATEST code ---");
+    logger.log("--- [DEBUG] EXECUTING handleSaveAdminSettings with LATEST code ---");
     if (!db) {
       alert("데이터베이스 연결 오류.");
       return;
@@ -1504,7 +1505,7 @@ function Dashboard({ adminTabMode }) {
   }, [loadTasksData, userDoc?.classCode, setupPolling]);
 
   const handleManualTaskReset = useCallback(async () => {
-    console.log("[Dashboard] 수동 할일 리셋 시작");
+    logger.log("[Dashboard] 수동 할일 리셋 시작");
     if (!userDoc?.classCode) {
       console.error("[Dashboard] 학급 코드 정보가 없어 리셋을 중단합니다.");
       alert("학급 코드 정보가 없습니다.");
@@ -1512,16 +1513,16 @@ function Dashboard({ adminTabMode }) {
     }
 
     if (!window.confirm(`'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
-      console.log("[Dashboard] 사용자가 리셋을 취소했습니다.");
+      logger.log("[Dashboard] 사용자가 리셋을 취소했습니다.");
       return;
     }
 
-    console.log(`[Dashboard] ${userDoc.classCode} 클래스 리셋 실행...`);
+    logger.log(`[Dashboard] ${userDoc.classCode} 클래스 리셋 실행...`);
     setAppLoading(true);
     try {
       const manualResetClassTasks = httpsCallable(functions, 'manualResetClassTasks');
       const result = await manualResetClassTasks({ classCode: userDoc.classCode });
-      console.log("[Dashboard] 클라우드 함수 결과 수신:", result.data);
+      logger.log("[Dashboard] 클라우드 함수 결과 수신:", result.data);
 
       if (result.data.success) {
         // 성공 시, 새로고침 대신 클라이언트 상태를 직접 초기화하여 즉시 UI에 반영
@@ -1538,7 +1539,7 @@ function Dashboard({ adminTabMode }) {
         localStorage.setItem('lastTaskResetDate', today);
 
         alert(`리셋 성공!\n${result.data.message}`);
-        console.log(`[Dashboard] 리셋 성공: ${result.data.message}`);
+        logger.log(`[Dashboard] 리셋 성공: ${result.data.message}`);
 
       } else {
         throw new Error(result.data.message || "알 수 없는 오류");
@@ -1548,7 +1549,7 @@ function Dashboard({ adminTabMode }) {
       alert(`오류: 할일 리셋에 실패했습니다.\n\n${error.message}`);
     } finally {
       setAppLoading(false);
-      console.log("[Dashboard] 수동 할일 리셋 종료");
+      logger.log("[Dashboard] 수동 할일 리셋 종료");
     }
   }, [userDoc?.classCode, setUserDoc, setJobs]);
 

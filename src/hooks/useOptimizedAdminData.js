@@ -3,6 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
+import { logger } from "../utils/logger";
 import {
   optimizedFirebaseService,
   queryKeys,
@@ -142,7 +143,7 @@ export const useOptimizedSettingsSave = () => {
   return useMutation({
     mutationFn: async ({ type, data }) => {
       // 향후 Firebase Function으로 통합 예정
-      console.log("설정 저장:", type, data);
+      logger.log("설정 저장:", type, data);
       return { success: true };
     },
     onSuccess: (data, variables) => {

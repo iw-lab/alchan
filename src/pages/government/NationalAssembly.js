@@ -6,6 +6,7 @@ import { db } from "../../firebase";
 import { usePolling } from "../../hooks/usePolling";
 import { AlchanLoading } from "../../components/AlchanLayout";
 
+import { logger } from "../../utils/logger";
 // Firestore v9 모듈식 API에서 필요한 함수들을 직접 한 번에 가져옵니다.
 import {
   collection,
@@ -235,18 +236,18 @@ const NationalAssembly = () => {
 
   // --- 🔥 [수정] 새 법안 제안 함수 (낙관적 업데이트 적용) ---
   const handleProposeLaw = async () => {
-    console.log("[NationalAssembly] handleProposeLaw 시작");
-    console.log("[NationalAssembly] classCode:", classCode);
-    console.log("[NationalAssembly] currentUser:", currentUser);
-    console.log("[NationalAssembly] newLaw:", newLaw);
+    logger.log("[NationalAssembly] handleProposeLaw 시작");
+    logger.log("[NationalAssembly] classCode:", classCode);
+    logger.log("[NationalAssembly] currentUser:", currentUser);
+    logger.log("[NationalAssembly] newLaw:", newLaw);
 
     if (!classCode || !currentUser) {
-      console.log("[NationalAssembly] 학급 정보 또는 유저 정보 없음");
+      logger.log("[NationalAssembly] 학급 정보 또는 유저 정보 없음");
       alert("학급 정보가 없거나 로그인되지 않았습니다.");
       return;
     }
     if (!newLaw.title || !newLaw.description || !newLaw.fine) {
-      console.log("[NationalAssembly] 필수 필드 누락");
+      logger.log("[NationalAssembly] 필수 필드 누락");
       alert("모든 필드를 입력해주세요.");
       return;
     }
@@ -292,7 +293,7 @@ const NationalAssembly = () => {
     try {
       // 🔥 수정된 collection 참조를 사용하여 문서를 추가합니다.
       const docRef = await addDoc(lawsCollectionRef, newLawData);
-      console.log("새 법안이 성공적으로 제안되었습니다:", newLawData.title);
+      logger.log("새 법안이 성공적으로 제안되었습니다:", newLawData.title);
 
       // 성공 시: 즉시 서버에서 최신 법안 목록을 가져옴
       await refetchLaws();
@@ -1371,7 +1372,7 @@ const NationalAssembly = () => {
         <div
           className="modal-overlay"
           onClick={() => {
-            console.log("[NationalAssembly] 모달 오버레이 클릭됨 (닫기)");
+            logger.log("[NationalAssembly] 모달 오버레이 클릭됨 (닫기)");
             setShowProposeLawModal(false);
           }}
         >
@@ -1432,7 +1433,7 @@ const NationalAssembly = () => {
             <div className="modal-footer">
               <button
                 onClick={() => {
-                  console.log("[NationalAssembly] 취소 버튼 클릭됨");
+                  logger.log("[NationalAssembly] 취소 버튼 클릭됨");
                   setShowProposeLawModal(false);
                 }}
                 className="modal-button cancel"
@@ -1441,8 +1442,8 @@ const NationalAssembly = () => {
               </button>
               <button
                 onClick={() => {
-                  console.log("[NationalAssembly] 제안하기 버튼 클릭됨");
-                  console.log("[NationalAssembly] 버튼 disabled 상태:", !newLaw.title || !newLaw.description || !newLaw.fine);
+                  logger.log("[NationalAssembly] 제안하기 버튼 클릭됨");
+                  logger.log("[NationalAssembly] 버튼 disabled 상태:", !newLaw.title || !newLaw.description || !newLaw.fine);
                   handleProposeLaw();
                 }}
                 className="modal-button submit"

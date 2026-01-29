@@ -10,15 +10,16 @@ import {
 import { auth } from "./firebaseConfig";
 import { invalidateCache, invalidateCachePattern } from "./firebaseUtils";
 
+import { logger } from "../utils/logger";
 export const authStateListener = (callback) => {
   if (!auth) {
     console.error("[firebase.js] Auth 서비스가 초기화되지 않았습니다.");
     setTimeout(() => callback(null), 0);
     return () => {};
   }
-  console.log("[firebase.js] Auth 상태 리스너 등록");
+  logger.log("[firebase.js] Auth 상태 리스너 등록");
   return onAuthStateChanged(auth, (user) => {
-    console.log(
+    logger.log(
       "[firebase.js] Auth 상태 변경:",
       user ? `로그인됨 (${user.uid})` : "로그아웃됨"
     );

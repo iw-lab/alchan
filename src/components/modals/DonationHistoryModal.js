@@ -3,6 +3,7 @@
 import React, { useState, useEffect, memo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
+import { logger } from "../../utils/logger";
 const DonationHistoryModal = memo(function DonationHistoryModal({
   showDonationHistoryModal,
   setShowDonationHistoryModal,
@@ -126,7 +127,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
         setStudentDonationSummary([]);
         setTotalDonationForThisClassGoal(0);
 
-        console.log("[DonationHistoryModal] 데이터 처리 시작:", {
+        logger.log("[DonationHistoryModal] 데이터 처리 시작:", {
           userClassCode,
           studentsCount: students.length,
           donationsCount: donations.length,
@@ -175,7 +176,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
 
           setTotalDonationForThisClassGoal(currentClassGoalTotal);
 
-          console.log("[DonationHistoryModal] 기부 집계:", {
+          logger.log("[DonationHistoryModal] 기부 집계:", {
             donationsByStudent,
             totalAmount: currentClassGoalTotal,
             uniqueDonors: Object.keys(donationsByStudent).length
@@ -233,7 +234,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
             // 이름 기준으로 가나다순 정렬 (ㄱ, ㄴ, ㄷ 순)
             .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 
-          console.log("[DonationHistoryModal] 최종 학생 목록:", {
+          logger.log("[DonationHistoryModal] 최종 학생 목록:", {
             totalStudents: summary.length,
             studentsWithDonations: summary.filter(s => s.cumulativeAmount > 0).length,
             summary

@@ -42,6 +42,7 @@ import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 // 데이터베이스 관리 컴포넌트
 import AdminDatabase from "../../pages/admin/AdminDatabase";
 
+import { logger } from "../../utils/logger";
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
   { id: 'KP', name: '코딩 파트너', price: 10000, history: [{ price: 10000, timestamp: new Date() }] },
@@ -277,7 +278,7 @@ const AdminSettingsModal = ({
   // 직업 편집 핸들러
   const handleJobEdit = useCallback(
     (job) => {
-      console.log("[AdminSettingsModal] 직업 편집 클릭:", job);
+      logger.log("[AdminSettingsModal] 직업 편집 클릭:", job);
       if (handleEditJob && typeof handleEditJob === "function") {
         handleEditJob(job);
       } else {
@@ -293,7 +294,7 @@ const AdminSettingsModal = ({
   // 직업 삭제 핸들러
   const handleJobDelete = useCallback(
     (jobId) => {
-      console.log("[AdminSettingsModal] 직업 삭제 클릭:", jobId);
+      logger.log("[AdminSettingsModal] 직업 삭제 클릭:", jobId);
       if (handleDeleteJob && typeof handleDeleteJob === "function") {
         handleDeleteJob(jobId);
       } else {
@@ -309,7 +310,7 @@ const AdminSettingsModal = ({
   // 할일 편집 핸들러
   const handleTaskEdit = useCallback(
     (task, jobId = null) => {
-      console.log(
+      logger.log(
         "[AdminSettingsModal] 할일 편집 클릭:",
         task,
         "jobId:",
@@ -330,7 +331,7 @@ const AdminSettingsModal = ({
   // 할일 삭제 핸들러
   const handleTaskDelete = useCallback(
     (taskId, jobId = null) => {
-      console.log(
+      logger.log(
         "[AdminSettingsModal] 할일 삭제 클릭:",
         taskId,
         "jobId:",
@@ -351,7 +352,7 @@ const AdminSettingsModal = ({
   // 할일 추가 핸들러
   const handleTaskAdd = useCallback(
     (jobId = null, isJobTask = false) => {
-      console.log(
+      logger.log(
         "[AdminSettingsModal] 할일 추가 클릭:",
         jobId,
         "isJobTask:",
@@ -645,7 +646,7 @@ const AdminSettingsModal = ({
       });
 
       setClassMembers(usersList);
-      console.log(
+      logger.log(
         `[AdminSettingsModal] ${usersList.length}명의 구성원 로드 완료`
       );
     } catch (error) {
@@ -1378,7 +1379,7 @@ const AdminSettingsModal = ({
                   <div className="task-form-buttons">
                     <button
                       onClick={() => {
-                        console.log("[AdminSettingsModal] 할일 저장 버튼 클릭");
+                        logger.log("[AdminSettingsModal] 할일 저장 버튼 클릭");
                         if (
                           handleSaveTask &&
                           typeof handleSaveTask === "function"
@@ -1411,7 +1412,7 @@ const AdminSettingsModal = ({
                   <div className="task-management-buttons">
                     <button
                       onClick={() => {
-                        console.log(
+                        logger.log(
                           "[AdminSettingsModal] 공통 할일 추가 버튼 클릭"
                         );
                         handleTaskAdd(null, false);
@@ -1423,7 +1424,7 @@ const AdminSettingsModal = ({
                     <select
                       onChange={(e) => {
                         if (e.target.value) {
-                          console.log(
+                          logger.log(
                             "[AdminSettingsModal] 직업별 할일 추가 선택:",
                             e.target.value
                           );
@@ -1467,7 +1468,7 @@ const AdminSettingsModal = ({
                                   <div className="task-actions">
                                     <button
                                       onClick={() => {
-                                        console.log(
+                                        logger.log(
                                           "[AdminSettingsModal] 직업 할일 수정 버튼 클릭:",
                                           task,
                                           job.id
@@ -1480,7 +1481,7 @@ const AdminSettingsModal = ({
                                     </button>
                                     <button
                                       onClick={() => {
-                                        console.log(
+                                        logger.log(
                                           "[AdminSettingsModal] 직업 할일 삭제 버튼 클릭:",
                                           task.id,
                                           job.id
@@ -1526,7 +1527,7 @@ const AdminSettingsModal = ({
                             <div className="task-actions">
                               <button
                                 onClick={() => {
-                                  console.log(
+                                  logger.log(
                                     "[AdminSettingsModal] 공통 할일 수정 버튼 클릭:",
                                     task
                                   );
@@ -1538,7 +1539,7 @@ const AdminSettingsModal = ({
                               </button>
                               <button
                                 onClick={() => {
-                                  console.log(
+                                  logger.log(
                                     "[AdminSettingsModal] 공통 할일 삭제 버튼 클릭:",
                                     task.id
                                   );
@@ -1585,7 +1586,7 @@ const AdminSettingsModal = ({
                 />
                 <button
                   onClick={() => {
-                    console.log("[AdminSettingsModal] 직업 저장 버튼 클릭");
+                    logger.log("[AdminSettingsModal] 직업 저장 버튼 클릭");
                     if (handleSaveJob && typeof handleSaveJob === "function") {
                       handleSaveJob();
                     } else {
@@ -1621,7 +1622,7 @@ const AdminSettingsModal = ({
                         <div className="job-actions">
                           <button
                             onClick={() => {
-                              console.log(
+                              logger.log(
                                 "[AdminSettingsModal] 직업 수정 버튼 클릭:",
                                 job
                               );
@@ -1633,7 +1634,7 @@ const AdminSettingsModal = ({
                           </button>
                           <button
                             onClick={() => {
-                              console.log(
+                              logger.log(
                                 "[AdminSettingsModal] 직업 삭제 버튼 클릭:",
                                 job.id
                               );

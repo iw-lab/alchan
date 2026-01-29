@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { logger } from "../utils/logger";
 // import { useAuth } from "./App"; // App.js에서 useAuth 훅 가져오기 (주석 처리, Dashboard에서 user를 직접 받음)
 import { formatKoreanCurrency } from "./utils/numberFormatter"; // 숫자 포맷팅 헬퍼
 import LevelBadge, { LevelInline } from "./components/LevelBadge"; // 레벨 배지 컴포넌트
@@ -78,7 +79,7 @@ export default function AssetSummary({
           const parsedStocks = JSON.parse(savedStocksData);
           if (Array.isArray(parsedStocks)) {
             setAllStocks(parsedStocks); // 전체 주식 목록 상태 업데이트
-            console.log("AssetSummary: stocksData 로드 성공", parsedStocks);
+            logger.log("AssetSummary: stocksData 로드 성공", parsedStocks);
           } else {
             setAllStocks([]);
           }
@@ -105,18 +106,18 @@ export default function AssetSummary({
                 h.quantity >= 0
             );
             setUserPortfolio({ holdings: validHoldings }); // 사용자 포트폴리오 상태 업데이트
-            console.log("AssetSummary: userStockPortfolio 로드 성공", {
+            logger.log("AssetSummary: userStockPortfolio 로드 성공", {
               holdings: validHoldings,
             });
           } else {
             setUserPortfolio({ holdings: [] }); // 유효하지 않으면 초기화
-            console.log(
+            logger.log(
               "AssetSummary: 로드된 userStockPortfolio 형식이 잘못됨, 초기화"
             );
           }
         } else {
           setUserPortfolio({ holdings: [] }); // 저장된 데이터 없으면 초기화
-          console.log("AssetSummary: 저장된 userStockPortfolio 없음, 초기화");
+          logger.log("AssetSummary: 저장된 userStockPortfolio 없음, 초기화");
         }
       } catch (error) {
         console.error("AssetSummary: userStockPortfolio 로딩 오류", error);

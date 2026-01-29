@@ -12,6 +12,7 @@ import {
 import { getStorage } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
+import { logger } from "../utils/logger";
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -22,13 +23,13 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
-console.log("[firebase.js] Firebase 앱 초기화 시작...");
+logger.log("[firebase.js] Firebase 앱 초기화 시작...");
 const app = initializeApp(firebaseConfig);
 
 let db;
 try {
   db = getFirestore(app);
-  console.log("[firebase.js] Firestore 초기화 완료 (기본 모드)");
+  logger.log("[firebase.js] Firestore 초기화 완료 (기본 모드)");
 } catch (error) {
   console.error("[firebase.js] Firestore 초기화 실패:", error);
   db = getFirestore(app);
@@ -37,15 +38,15 @@ try {
 const auth = getAuth(app);
 const storage = getStorage(app);
 const functions = getFunctions(app, 'asia-northeast3');
-console.log("[firebase.js] Firebase 앱 초기화 완료");
+logger.log("[firebase.js] Firebase 앱 초기화 완료");
 
 if (process.env.NODE_ENV === 'development') {
-  console.log('[firebase.js] 로컬 개발 환경: 에뮬레이터에 연결합니다...');
+  logger.log('[firebase.js] 로컬 개발 환경: 에뮬레이터에 연결합니다...');
   try {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
     connectAuthEmulator(auth, 'http://127.0.0.1:9099');
     connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-    console.log('[firebase.js] 로컬 에뮬레이터 연결 성공.');
+    logger.log('[firebase.js] 로컬 에뮬레이터 연결 성공.');
   } catch (error) {
     console.error('[firebase.js] 에뮬레이터 연결 오류:', error);
   }

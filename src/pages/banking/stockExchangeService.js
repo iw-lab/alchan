@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { globalCache } from "../../services/globalCacheService";
 
+import { logger } from "../../utils/logger";
 // === 상수 ===
 export const PRODUCT_TYPES = {
   STOCK: "stock",
@@ -62,11 +63,11 @@ export const batchDataLoader = {
     if (!forceRefresh) {
       const cached = globalCache.get(batchKey);
       if (cached) {
-        console.log('[batchDataLoader] Cache HIT - 캐시된 데이터 사용');
+        logger.log('[batchDataLoader] Cache HIT - 캐시된 데이터 사용');
         return cached;
       }
     } else {
-      console.log('[batchDataLoader] forceRefresh=true - 캐시 무시하고 서버에서 로드');
+      logger.log('[batchDataLoader] forceRefresh=true - 캐시 무시하고 서버에서 로드');
       globalCache.invalidate(batchKey);
     }
 
@@ -344,7 +345,7 @@ export const clearLocalStorageBatchCache = () => {
       localStorage.removeItem(key);
     });
     if (keysToDelete.length > 0) {
-      console.log('[캐시] localStorage BATCH 캐시 삭제:', keysToDelete.length, '개');
+      logger.log('[캐시] localStorage BATCH 캐시 삭제:', keysToDelete.length, '개');
     }
   } catch (error) {
     console.warn('[캐시] localStorage 정리 오류:', error);

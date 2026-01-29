@@ -5,6 +5,7 @@
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
+import { logger } from "../utils/logger";
 // 에러 심각도 수준
 export const ErrorSeverity = {
   INFO: 'info',
@@ -50,7 +51,7 @@ export const logError = async ({
     };
 
     await addDoc(collection(db, 'errorLogs'), errorLog);
-    console.log('[ErrorLogger] 에러 기록됨:', message);
+    logger.log('[ErrorLogger] 에러 기록됨:', message);
   } catch (logError) {
     console.error('[ErrorLogger] 에러 기록 실패:', logError);
   }
@@ -176,7 +177,7 @@ export const setupGlobalErrorHandler = (userId) => {
     });
   };
 
-  console.log('[ErrorLogger] 전역 에러 핸들러 설정됨');
+  logger.log('[ErrorLogger] 전역 에러 핸들러 설정됨');
 };
 
 // React Error Boundary에서 사용할 에러 로깅

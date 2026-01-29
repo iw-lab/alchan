@@ -1,5 +1,6 @@
 // src/services/salaryService.js
 import { db } from "../firebase";
+import { logger } from "../utils/logger";
 import {
   collection,
   doc,
@@ -79,7 +80,7 @@ const getAllStudents = async (classCode) => {
  * @returns {Promise<{success: boolean, message: string, paidCount: number, totalPaid: number}>}
  */
 export const payWeeklySalaries = async (classCode) => {
-  console.log(`[${classCode}] 주급 지급 절차를 시작합니다.`);
+  logger.log(`[${classCode}] 주급 지급 절차를 시작합니다.`);
 
   const settings = await getSalarySettings(classCode);
   const { taxRate, weeklySalaryIncreaseRate } = settings;
@@ -120,7 +121,7 @@ export const payWeeklySalaries = async (classCode) => {
         paidCount++;
         totalPaid += netSalary;
         
-        console.log(`${student.name} 학생에게 주급 ${netSalary}원 (세금: ${taxAmount}원) 지급`);
+        logger.log(`${student.name} 학생에게 주급 ${netSalary}원 (세금: ${taxAmount}원) 지급`);
       }
     }
   }
@@ -132,7 +133,7 @@ export const payWeeklySalaries = async (classCode) => {
       const newSalary = Math.round(job.weeklySalary * increaseMultiplier);
       const jobRef = doc(db, "jobs", job.id);
       batch.update(jobRef, { weeklySalary: newSalary });
-      console.log(`직업 [${job.title}] 주급 인상: ${job.weeklySalary}원 -> ${newSalary}원`);
+      logger.log(`직업 [${job.title}] 주급 인상: ${job.weeklySalary}원 -> ${newSalary}원`);
     }
   }
   
@@ -143,7 +144,7 @@ export const payWeeklySalaries = async (classCode) => {
   await batch.commit();
 
   const message = `${paidCount}명의 학생에게 총 ${totalPaid.toLocaleString()}원의 주급이 지급되었고, 직업별 주급이 ${weeklySalaryIncreaseRate}% 인상되었습니다.`;
-  console.log(message);
+  logger.log(message);
   
   return { success: true, message, paidCount, totalPaid };
 };

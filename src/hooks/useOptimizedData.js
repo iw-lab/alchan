@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { globalCache } from '../services/globalCacheService';
 
+import { logger } from "../utils/logger";
 export const useOptimizedUserDoc = (uid) => {
   const [userDoc, setUserDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -248,7 +249,7 @@ export const useOptimizedItems = () => {
   }, [fetchItems]);
 
   const refresh = useCallback(() => {
-    console.log('[useOptimizedItems] 수동 새로고침 실행');
+    logger.log('[useOptimizedItems] 수동 새로고침 실행');
     fetchItems(true);
   }, [fetchItems]);
 
@@ -286,7 +287,7 @@ export const useOptimizedUserItems = (userId) => {
   }, [fetchUserItems]);
 
   const refresh = useCallback(() => {
-    console.log('[useOptimizedUserItems] 수동 새로고침 실행, userId:', userId);
+    logger.log('[useOptimizedUserItems] 수동 새로고침 실행, userId:', userId);
     fetchUserItems(true);
   }, [fetchUserItems, userId]);
 

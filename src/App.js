@@ -98,32 +98,13 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-          color: 'white',
-          padding: '20px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>😢</div>
-          <h1 style={{ fontSize: '24px', marginBottom: '8px' }}>앱을 불러오는 중 문제가 발생했습니다</h1>
-          <p style={{ marginBottom: '24px', opacity: 0.8 }}>잠시 후 자동으로 다시 시도합니다...</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-5 text-center">
+          <div className="text-5xl mb-4">😢</div>
+          <h1 className="text-2xl mb-2">앱을 불러오는 중 문제가 발생했습니다</h1>
+          <p className="mb-6 opacity-80">잠시 후 자동으로 다시 시도합니다...</p>
           <button
             onClick={this.clearCachesAndReload}
-            style={{
-              padding: '12px 24px',
-              background: 'white',
-              color: '#4f46e5',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
+            className="px-6 py-3 bg-white text-indigo-600 border-0 rounded-xl text-base font-bold cursor-pointer"
           >
             지금 다시 시도
           </button>

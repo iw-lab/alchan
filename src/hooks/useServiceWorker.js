@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+import { logger } from "../utils/logger";
 export function useServiceWorker() {
   const [registration, setRegistration] = useState(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -46,7 +47,7 @@ export function useServiceWorker() {
       });
 
       setRegistration(reg);
-      console.log('[PWA] 서비스 워커 등록 성공:', reg.scope);
+      logger.log('[PWA] 서비스 워커 등록 성공:', reg.scope);
 
       // 업데이트 확인
       reg.addEventListener('updatefound', () => {
@@ -57,10 +58,10 @@ export function useServiceWorker() {
               // 최근에 업데이트했으면 알림 안 띄우기 (5분 이내)
               const lastUpdated = sessionStorage.getItem('alchan_updated');
               if (lastUpdated && Date.now() - parseInt(lastUpdated) < 5 * 60 * 1000) {
-                console.log('[PWA] 최근 업데이트됨 - 알림 생략');
+                logger.log('[PWA] 최근 업데이트됨 - 알림 생략');
                 return;
               }
-              console.log('[PWA] 새 버전 사용 가능');
+              logger.log('[PWA] 새 버전 사용 가능');
               setUpdateAvailable(true);
             }
           });
@@ -88,7 +89,7 @@ export function useServiceWorker() {
     if (registration && registration.waiting) {
       // 새 서비스 워커가 활성화되면 페이지 새로고침
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[PWA] 새 서비스 워커 활성화됨 - 새로고침');
+        logger.log('[PWA] 새 서비스 워커 활성화됨 - 새로고침');
         window.location.reload();
       });
 
@@ -96,14 +97,14 @@ export function useServiceWorker() {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
       // waiting 상태의 서비스 워커가 없으면 그냥 새로고침
-      console.log('[PWA] 대기 중인 서비스 워커 없음 - 강제 새로고침');
+      logger.log('[PWA] 대기 중인 서비스 워커 없음 - 강제 새로고침');
       window.location.reload();
     }
   }, [registration]);
 
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
-      console.log('[PWA] 이 브라우저는 알림을 지원하지 않습니다.');
+      logger.log('[PWA] 이 브라우저는 알림을 지원하지 않습니다.');
       return false;
     }
 

@@ -1,6 +1,8 @@
 // 이 스크립트는 프로젝트에서 모든 SVG 파일을 제거하고 빈 파일로 대체합니다.
 // Node.js로 실행하며 실제 파일 시스템에 접근해야 합니다.
 
+import { logger } from "../utils/logger";
+
 const fs = require("fs");
 const path = require("path");
 
@@ -20,9 +22,9 @@ function deleteSvgFiles() {
       if (fs.existsSync(filePath)) {
         // 파일 삭제
         fs.unlinkSync(filePath);
-        console.log(`${svgFile} 파일이 성공적으로 삭제되었습니다.`);
+        logger.log(`${svgFile} 파일이 성공적으로 삭제되었습니다.`);
       } else {
-        console.log(`${svgFile} 파일이 존재하지 않습니다.`);
+        logger.log(`${svgFile} 파일이 존재하지 않습니다.`);
       }
     } catch (err) {
       console.error(`${svgFile} 파일 삭제 중 오류 발생:`, err);
@@ -31,11 +33,11 @@ function deleteSvgFiles() {
 }
 
 // 실행
-console.log("SVG 파일 삭제 시작...");
+logger.log("SVG 파일 삭제 시작...");
 deleteSvgFiles();
-console.log("SVG 파일 삭제 완료.");
+logger.log("SVG 파일 삭제 완료.");
 
 // 추가 작업: 필요한 경우 App.js와 Dashboard.js 등에서 SVG 파일 참조를 수정해야 합니다.
-console.log(
+logger.log(
   "주의: App.js, Dashboard.js 등에서 SVG 파일 참조를 확인하고 수정해주세요."
 );

@@ -4,6 +4,7 @@
 
 import { db, writeBatch, doc, serverTimestamp } from '../firebase';
 
+import { logger } from "../utils/logger";
 class BatchWriteManager {
   constructor() {
     this.pendingWrites = new Map();
@@ -140,7 +141,7 @@ class BatchWriteManager {
         this.stats.batchedWrites++;
         this.stats.savedOperations += chunk.length - 1;
 
-        console.log(`[BatchWriteManager] ${chunk.length}개 쓰기 배치 완료`);
+        logger.log(`[BatchWriteManager] ${chunk.length}개 쓰기 배치 완료`);
       }
     } catch (error) {
       console.error('[BatchWriteManager] 배치 쓰기 실패:', error);
@@ -172,7 +173,7 @@ class BatchWriteManager {
       // 백엔드 엔드포인트가 있다면 여기에 전송
       // navigator.sendBeacon('/api/batch-write', data);
 
-      console.log('[BatchWriteManager] 페이지 종료 - 미완료 쓰기:', writes.length);
+      logger.log('[BatchWriteManager] 페이지 종료 - 미완료 쓰기:', writes.length);
     }
 
     this.pendingWrites.clear();

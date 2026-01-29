@@ -1,6 +1,8 @@
 // src/serviceWorkerRegistration.js
 // [비용 최적화] Service Worker 등록 헬퍼
 
+import { logger } from "./utils/logger";
+
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
   window.location.hostname === '[::1]' ||
@@ -22,14 +24,14 @@ export function register(config) {
       if (isLocalhost) {
         // localhost에서는 서비스 워커 확인
         checkValidServiceWorker(swUrl, config);
-        console.log('[SW Registration] Running on localhost, service worker will be validated');
+        logger.log('[SW Registration] Running on localhost, service worker will be validated');
       } else {
         // 프로덕션 환경에서 서비스 워커 등록
         registerValidSW(swUrl, config);
       }
     });
   } else {
-    console.log('[SW Registration] Service workers are not supported');
+    logger.log('[SW Registration] Service workers are not supported');
   }
 }
 
@@ -37,7 +39,7 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
-      console.log('[SW Registration] Service Worker registered:', registration.scope);
+      logger.log('[SW Registration] Service Worker registered:', registration.scope);
 
       // 업데이트 확인
       registration.onupdatefound = () => {
@@ -50,7 +52,7 @@ function registerValidSW(swUrl, config) {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
               // 새 콘텐츠 사용 가능
-              console.log('[SW Registration] New content available; please refresh');
+              logger.log('[SW Registration] New content available; please refresh');
 
               // 업데이트 콜백 호출
               if (config && config.onUpdate) {
@@ -58,7 +60,7 @@ function registerValidSW(swUrl, config) {
               }
             } else {
               // 콘텐츠가 오프라인용으로 캐시됨
-              console.log('[SW Registration] Content is cached for offline use');
+              logger.log('[SW Registration] Content is cached for offline use');
 
               // 성공 콜백 호출
               if (config && config.onSuccess) {
@@ -97,7 +99,7 @@ function checkValidServiceWorker(swUrl, config) {
       }
     })
     .catch(() => {
-      console.log('[SW Registration] No internet connection. App running in offline mode.');
+      logger.log('[SW Registration] No internet connection. App running in offline mode.');
     });
 }
 
@@ -106,7 +108,7 @@ export function unregister() {
     navigator.serviceWorker.ready
       .then((registration) => {
         registration.unregister();
-        console.log('[SW Registration] Service Worker unregistered');
+        logger.log('[SW Registration] Service Worker unregistered');
       })
       .catch((error) => {
         console.error('[SW Registration] Unregister error:', error);

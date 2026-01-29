@@ -4,6 +4,7 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebase";
 
+import { logger } from "../utils/logger";
 // Firebase Functions 래퍼
 const createOptimizedFunction = (functionName) => {
   const fn = httpsCallable(functions, functionName);
@@ -58,13 +59,13 @@ export const batchOperations = {
   // 여러 학생의 직업을 한 번에 업데이트
   updateMultipleStudentJobs: async (updates) => {
     // 실제 구현 시 Firebase Function으로 배치 처리
-    console.log("배치 직업 업데이트:", updates);
+    logger.log("배치 직업 업데이트:", updates);
   },
 
   // 여러 설정을 한 번에 저장
   saveMultipleSettings: async (settings) => {
     // 실제 구현 시 Firebase Function으로 배치 처리
-    console.log("배치 설정 저장:", settings);
+    logger.log("배치 설정 저장:", settings);
   },
 };
 

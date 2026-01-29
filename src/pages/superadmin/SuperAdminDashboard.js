@@ -52,6 +52,7 @@ import {
 } from 'lucide-react';
 import './SuperAdminDashboard.css';
 
+import { logger } from "../../utils/logger";
 // 탭 목록
 const TABS = [
   { id: 'overview', label: '개요', icon: BarChart3 },
@@ -262,7 +263,7 @@ export default function SuperAdminDashboard() {
   // 🔥 학생 데이터가 users 컬렉션에 저장되어 있으므로 users에서 직접 집계
   const loadClasses = async () => {
     try {
-      console.log('[SuperAdmin] 학급 목록 로드 시작...');
+      logger.log('[SuperAdmin] 학급 목록 로드 시작...');
 
       // users 컬렉션에서 모든 사용자 조회
       const usersRef = collection(db, 'users');
@@ -303,12 +304,12 @@ export default function SuperAdminDashboard() {
         }
       });
 
-      console.log(`[SuperAdmin] 발견된 학급 수: ${classMap.size}개`);
+      logger.log(`[SuperAdmin] 발견된 학급 수: ${classMap.size}개`);
 
       // 학급 데이터 배열로 변환
       const classesData = [];
       for (const [classCode, classInfo] of classMap.entries()) {
-        console.log(`[SuperAdmin] ${classCode}: 선생님=${classInfo.teacher?.name}, 학생=${classInfo.students.length}명`);
+        logger.log(`[SuperAdmin] ${classCode}: 선생님=${classInfo.teacher?.name}, 학생=${classInfo.students.length}명`);
 
         classesData.push({
           id: classCode,
@@ -325,7 +326,7 @@ export default function SuperAdminDashboard() {
       // 학급 코드 순으로 정렬
       classesData.sort((a, b) => a.classCode.localeCompare(b.classCode, 'ko'));
 
-      console.log(`[SuperAdmin] 최종 학급 데이터:`, classesData);
+      logger.log(`[SuperAdmin] 최종 학급 데이터:`, classesData);
       setClasses(classesData);
     } catch (error) {
       console.error('[SuperAdmin] 학급 로드 오류:', error);

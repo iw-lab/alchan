@@ -6,6 +6,7 @@ import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp, Building2 } from
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 
+import { logger } from "../../utils/logger";
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
 const getTeacherAccount = async (classCode) => {
   if (!classCode) return null;
@@ -680,7 +681,7 @@ const ParkingAccount = ({
   useEffect(() => {
     if (userDoc?.cash !== undefined) {
       setCurrentCash(userDoc.cash);
-      console.log("[ParkingAccount] currentCash 업데이트:", userDoc.cash);
+      logger.log("[ParkingAccount] currentCash 업데이트:", userDoc.cash);
     }
   }, [userDoc?.cash]);
 
@@ -688,12 +689,12 @@ const ParkingAccount = ({
   const handleCloseModal = () => setModal({ isOpen: false, product: null, type: '' });
 
   const handleSubscribe = async (subscribeAmount) => {
-    console.log("--- handleSubscribe 시작 ---");
+    logger.log("--- handleSubscribe 시작 ---");
     const amount = parseFloat(subscribeAmount);
     const { product, type } = modal;
 
-    console.log("가입할 상품:", product);
-    console.log(`가입 유형: ${type}, 가입 금액: ${amount}`);
+    logger.log("가입할 상품:", product);
+    logger.log(`가입 유형: ${type}, 가입 금액: ${amount}`);
 
     if (isNaN(amount) || amount <= 0) {
       console.error("유효하지 않은 금액:", subscribeAmount);
@@ -718,7 +719,7 @@ const ParkingAccount = ({
       setIsProcessing(false);
       return;
     }
-    console.log("선생님 계정:", teacherAccount.name, teacherAccount.id);
+    logger.log("선생님 계정:", teacherAccount.name, teacherAccount.id);
 
     // --- 낙관적 업데이트 (Optimistic Update) ---
     const tempId = `temp_${Date.now()}`;
@@ -852,8 +853,8 @@ const ParkingAccount = ({
 
   // 만기 수령
   const handleMaturity = async (product) => {
-    console.log("--- handleMaturity 시작 ---");
-    console.log("처리할 상품:", product);
+    logger.log("--- handleMaturity 시작 ---");
+    logger.log("처리할 상품:", product);
 
     const { id, name, type, balance, termInDays, rate, teacherId } = product;
     const isLoan = type === 'loan';
@@ -867,19 +868,19 @@ const ParkingAccount = ({
     const dailyRate = rate;
     const { total, interest } = calculateCompoundInterest(balance, dailyRate, termInDays);
 
-    console.log(`계산 결과: 원금=${balance}, 이자=${interest}, 총액=${total}`);
+    logger.log(`계산 결과: 원금=${balance}, 이자=${interest}, 총액=${total}`);
 
     const confirmMsg = isLoan
       ? `대출 만기 상환: 원금 ${formatCurrency(balance)}원 + 이자 ${formatCurrency(interest)}원 = ${formatCurrency(total)}원을 상환하시겠습니까?`
       : `만기 수령: 원금 ${formatCurrency(balance)}원 + 이자 ${formatCurrency(interest)}원 = ${formatCurrency(total)}원을 수령하시겠습니까?`;
 
     if (!window.confirm(confirmMsg)) {
-      console.log("사용자가 만기 처리를 취소했습니다.");
+      logger.log("사용자가 만기 처리를 취소했습니다.");
       return;
     }
 
     setIsProcessing(true);
-    console.log("만기 처리 시작...");
+    logger.log("만기 처리 시작...");
 
     // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
     let teacherAccountId = teacherId;
@@ -892,14 +893,14 @@ const ParkingAccount = ({
       }
       teacherAccountId = teacherAccount.id;
     }
-    console.log("선생님 계정 ID:", teacherAccountId);
+    logger.log("선생님 계정 ID:", teacherAccountId);
 
     try {
       const productRef = doc(db, "users", userId, "products", String(id));
-      console.log("Firestore 문서 참조:", productRef.path);
+      logger.log("Firestore 문서 참조:", productRef.path);
 
       await runTransaction(db, async (transaction) => {
-        console.log("트랜잭션 시작");
+        logger.log("트랜잭션 시작");
         const userRef = doc(db, "users", userId);
         const teacherRef = doc(db, "users", teacherAccountId);
 
@@ -919,7 +920,7 @@ const ParkingAccount = ({
           }
           transaction.update(userRef, { cash: increment(-total) });
           transaction.update(teacherRef, { cash: increment(total) });
-          console.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
+          logger.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
         } else {
           // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자)
           if (teacherCashInDb < total) {
@@ -927,15 +928,15 @@ const ParkingAccount = ({
           }
           transaction.update(userRef, { cash: increment(total) });
           transaction.update(teacherRef, { cash: increment(-total) });
-          console.log(`만기 수령: 학생 +${total}, 선생님 -${total}`);
+          logger.log(`만기 수령: 학생 +${total}, 선생님 -${total}`);
         }
 
         transaction.delete(productRef);
-        console.log("상품 문서 삭제 예약");
-        console.log("트랜잭션 커밋 시도");
+        logger.log("상품 문서 삭제 예약");
+        logger.log("트랜잭션 커밋 시도");
       });
 
-      console.log("트랜잭션 성공");
+      logger.log("트랜잭션 성공");
 
       const successMsg = isLoan
         ? `대출 상환 완료: ${formatCurrency(total)}원 (선생님 계정으로 이체)`
@@ -965,13 +966,13 @@ const ParkingAccount = ({
 
       // 백그라운드에서 userDoc 갱신
       if (refreshUserDocument) {
-        console.log("userDoc 갱신 시작");
+        logger.log("userDoc 갱신 시작");
         refreshUserDocument().then(() => {
-          console.log("[ParkingAccount] 만기 처리 후 userDoc 갱신 완료");
+          logger.log("[ParkingAccount] 만기 처리 후 userDoc 갱신 완료");
         });
       }
 
-      console.log("전체 데이터 다시 로드");
+      logger.log("전체 데이터 다시 로드");
       await loadAllData();
 
     } catch (error) {
@@ -979,19 +980,19 @@ const ParkingAccount = ({
       displayMessage(`처리 오류: ${error.message}`, "error");
       // 에러 발생 시 currentCash 롤백
       if (userDoc?.cash !== undefined) {
-        console.log("오류 발생으로 현금 롤백:", userDoc.cash);
+        logger.log("오류 발생으로 현금 롤백:", userDoc.cash);
         setCurrentCash(userDoc.cash);
       }
     } finally {
       setIsProcessing(false);
-      console.log("--- handleMaturity 종료 ---");
+      logger.log("--- handleMaturity 종료 ---");
     }
   };
 
   // 중도 해지
   const handleCancelEarly = async (product) => {
-    console.log("--- handleCancelEarly 시작 ---");
-    console.log("중도 해지할 상품:", product);
+    logger.log("--- handleCancelEarly 시작 ---");
+    logger.log("중도 해지할 상품:", product);
 
     const { id, name, type, balance } = product;
     const isLoan = type === 'loan';
@@ -1007,12 +1008,12 @@ const ParkingAccount = ({
       : `'${name}'을(를) 중도 해지하시겠습니까? (이자 없이 원금만 반환됩니다)`;
 
     if (!window.confirm(confirmMessage)) {
-      console.log("사용자가 중도 해지를 취소했습니다.");
+      logger.log("사용자가 중도 해지를 취소했습니다.");
       return;
     }
 
     setIsProcessing(true);
-    console.log("중도 해지 처리 시작...");
+    logger.log("중도 해지 처리 시작...");
 
     // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
     const teacherId = product.teacherId;
@@ -1026,7 +1027,7 @@ const ParkingAccount = ({
       }
       teacherAccountId = teacherAccount.id;
     }
-    console.log("선생님 계정 ID:", teacherAccountId);
+    logger.log("선생님 계정 ID:", teacherAccountId);
 
     // --- 낙관적 업데이트 (Optimistic Update) ---
     const originalProducts = {
@@ -1049,10 +1050,10 @@ const ParkingAccount = ({
 
     try {
       const productRef = doc(db, "users", userId, "products", String(id));
-      console.log("Firestore 문서 참조:", productRef.path);
+      logger.log("Firestore 문서 참조:", productRef.path);
 
       await runTransaction(db, async (transaction) => {
-        console.log("트랜잭션 시작");
+        logger.log("트랜잭션 시작");
         const userRef = doc(db, "users", userId);
         const teacherRef = doc(db, "users", teacherAccountId);
 
@@ -1064,7 +1065,7 @@ const ParkingAccount = ({
 
         const currentCashInDb = userSnapshot.data()?.cash ?? 0;
         const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
-        console.log(`현재 보유 현금 (DB): ${currentCashInDb}, 선생님 보유 현금: ${teacherCashInDb}`);
+        logger.log(`현재 보유 현금 (DB): ${currentCashInDb}, 선생님 보유 현금: ${teacherCashInDb}`);
 
         if (isLoan) {
           // 대출 중도 상환: 학생 → 선생님 (원금만)
@@ -1073,7 +1074,7 @@ const ParkingAccount = ({
           }
           transaction.update(userRef, { cash: increment(-balance) });
           transaction.update(teacherRef, { cash: increment(balance) });
-          console.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
+          logger.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
         } else {
           // 예금/적금 중도 해지: 선생님 → 학생 (원금만, 이자 없음)
           if (teacherCashInDb < balance) {
@@ -1081,15 +1082,15 @@ const ParkingAccount = ({
           }
           transaction.update(userRef, { cash: increment(balance) });
           transaction.update(teacherRef, { cash: increment(-balance) });
-          console.log(`중도 해지: 학생 +${balance}, 선생님 -${balance}`);
+          logger.log(`중도 해지: 학생 +${balance}, 선생님 -${balance}`);
         }
 
         transaction.delete(productRef);
-        console.log("상품 문서 삭제 예약");
-        console.log("트랜잭션 커밋 시도");
+        logger.log("상품 문서 삭제 예약");
+        logger.log("트랜잭션 커밋 시도");
       });
 
-      console.log("트랜잭션 성공");
+      logger.log("트랜잭션 성공");
 
       const successMsg = isLoan
         ? `대출 상환 완료: ${formatCurrency(balance)}원 (선생님 계정으로 이체)`
@@ -1118,7 +1119,7 @@ const ParkingAccount = ({
 
       // 백그라운드에서 userDoc 갱신
       if (refreshUserDocument) {
-        console.log("userDoc 갱신 시작");
+        logger.log("userDoc 갱신 시작");
         refreshUserDocument();
       }
       await loadAllData();
@@ -1135,7 +1136,7 @@ const ParkingAccount = ({
 
     } finally {
       setIsProcessing(false);
-      console.log("--- handleCancelEarly 종료 ---");
+      logger.log("--- handleCancelEarly 종료 ---");
     }
   };
 

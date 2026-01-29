@@ -3,6 +3,7 @@ import React, { useState, useEffect, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { generateJobTaskReward } from "../utils/jobTaskRewards";
 
+import { logger } from "../utils/logger";
 const TaskItem = memo(function TaskItem({
   task,
   onEarnCoupon,
@@ -21,7 +22,7 @@ const TaskItem = memo(function TaskItem({
   const [isFlipping, setIsFlipping] = useState(false);
 
   const handleInternalClick = () => {
-    console.log("[TaskItem] handleInternalClick 호출됨:", { taskName: task?.name, isJobTask, taskId, jobId });
+    logger.log("[TaskItem] handleInternalClick 호출됨:", { taskName: task?.name, isJobTask, taskId, jobId });
 
     // 기본 검증
     if (
@@ -37,7 +38,7 @@ const TaskItem = memo(function TaskItem({
     }
 
     // 🔥 모든 할일에 랜덤 보상 카드 모달 표시
-    console.log("[TaskItem] 카드 모달 열기");
+    logger.log("[TaskItem] 카드 모달 열기");
     const rewards = generateJobTaskReward();
     setRewardData(rewards);
     setSelectedCard(null);
@@ -48,7 +49,7 @@ const TaskItem = memo(function TaskItem({
   const handleCardSelect = (cardType) => {
     if (isFlipping || selectedCard) return;
 
-    console.log("[TaskItem] 카드 선택:", { cardType, taskId, jobId, isJobTask });
+    logger.log("[TaskItem] 카드 선택:", { cardType, taskId, jobId, isJobTask });
 
     setSelectedCard(cardType);
     setIsFlipping(true);
@@ -58,7 +59,7 @@ const TaskItem = memo(function TaskItem({
       const reward = cardType === "cash" ? rewardData.cash : rewardData.coupon;
       const rewardText = cardType === "cash" ? `${reward.toLocaleString()}원` : `${reward}개`;
 
-      console.log("[TaskItem] onEarnCoupon 호출 준비:", { taskId, jobId, isJobTask, cardType, reward });
+      logger.log("[TaskItem] onEarnCoupon 호출 준비:", { taskId, jobId, isJobTask, cardType, reward });
 
       // onEarnCoupon 호출 - taskId, jobId, isJobTask, cardType, reward 전달
       if (typeof onEarnCoupon === "function") {

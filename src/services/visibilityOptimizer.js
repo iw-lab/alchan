@@ -4,6 +4,7 @@
 
 import { onSnapshot } from 'firebase/firestore';
 
+import { logger } from "../utils/logger";
 class VisibilityOptimizer {
   constructor() {
     this.activeListeners = new Map(); // 활성 리스너들
@@ -51,7 +52,7 @@ class VisibilityOptimizer {
 
           // 최소 간격 체크 (쓰로틀링)
           if (now - lastUpdateTime < minInterval) {
-            console.log(`[VisibilityOptimizer] ${id}: 쓰로틀링 (${minInterval}ms 이내)`);
+            logger.log(`[VisibilityOptimizer] ${id}: 쓰로틀링 (${minInterval}ms 이내)`);
             return;
           }
           lastUpdateTime = now;
@@ -91,7 +92,7 @@ class VisibilityOptimizer {
         startListener,
       });
 
-      console.log(`[VisibilityOptimizer] ${id}: 리스너 시작됨`);
+      logger.log(`[VisibilityOptimizer] ${id}: 리스너 시작됨`);
     };
 
     // 화면이 보이는 경우에만 시작
@@ -112,7 +113,7 @@ class VisibilityOptimizer {
         callback(cached.data, null);
       }
 
-      console.log(`[VisibilityOptimizer] ${id}: 백그라운드 - 일시중지됨`);
+      logger.log(`[VisibilityOptimizer] ${id}: 백그라운드 - 일시중지됨`);
       this.stats.paused++;
     }
 
@@ -128,7 +129,7 @@ class VisibilityOptimizer {
     if (listener?.unsubscribe) {
       listener.unsubscribe();
       this.activeListeners.delete(id);
-      console.log(`[VisibilityOptimizer] ${id}: 리스너 해제됨`);
+      logger.log(`[VisibilityOptimizer] ${id}: 리스너 해제됨`);
     }
     this.pausedListeners.delete(id);
   }
@@ -166,12 +167,12 @@ class VisibilityOptimizer {
    */
   setupNetworkListener() {
     window.addEventListener('online', () => {
-      console.log('[VisibilityOptimizer] 온라인 복구 - 리스너 재시작');
+      logger.log('[VisibilityOptimizer] 온라인 복구 - 리스너 재시작');
       this.resumeListeners();
     });
 
     window.addEventListener('offline', () => {
-      console.log('[VisibilityOptimizer] 오프라인 - 캐시 모드');
+      logger.log('[VisibilityOptimizer] 오프라인 - 캐시 모드');
       // 오프라인에서는 리스너를 유지하되 캐시 우선 사용
     });
   }
@@ -194,7 +195,7 @@ class VisibilityOptimizer {
         this.activeListeners.delete(id);
         this.stats.paused++;
 
-        console.log(`[VisibilityOptimizer] ${id}: 일시중지 (비용 절감 중)`);
+        logger.log(`[VisibilityOptimizer] ${id}: 일시중지 (비용 절감 중)`);
       }
     }
 
@@ -215,7 +216,7 @@ class VisibilityOptimizer {
         this.pausedListeners.delete(id);
         this.stats.resumed++;
 
-        console.log(`[VisibilityOptimizer] ${id}: 재개됨`);
+        logger.log(`[VisibilityOptimizer] ${id}: 재개됨`);
       }
     }
   }

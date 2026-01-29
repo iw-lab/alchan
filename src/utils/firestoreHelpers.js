@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 
+import { logger } from "../utils/logger";
 // ============================================================
 // 🔥 활동 로그 (현금 흐름) 헬퍼 함수
 // ============================================================
@@ -142,7 +143,7 @@ export async function logActivity(dbInstance, {
     };
 
     const docRef = await addDoc(logsRef, logData);
-    console.log('[logActivity] 활동 로그 기록:', type, description);
+    logger.log('[logActivity] 활동 로그 기록:', type, description);
 
     return { success: true, logId: docRef.id };
   } catch (error) {
@@ -185,7 +186,7 @@ export async function logActivitiesBatch(db, classCode, logs) {
     });
 
     await batch.commit();
-    console.log('[logActivitiesBatch] 배치 로그 기록:', logs.length, '개');
+    logger.log('[logActivitiesBatch] 배치 로그 기록:', logs.length, '개');
 
     return { success: true, count: logs.length };
   } catch (error) {

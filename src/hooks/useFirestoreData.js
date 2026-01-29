@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import globalCacheService, { cacheStats } from '../services/globalCacheService';
 
+import { logger } from "../utils/logger";
 // ============================================
 // 🔥 TTL 상수 - v3.0 극단적 최적화 (Firestore 읽기 95% 감소 목표)
 // 거래/업데이트 시 캐시가 강제 무효화되므로 긴 TTL이 안전함
@@ -182,7 +183,7 @@ export function useDocument(path, options = {}) {
     if (!forceRefresh) {
       const cached = globalCache.get(cacheKey);
       if (cached) {
-        console.log(`%c[DB] ✅ 캐시 히트: ${path}`, 'color: #22c55e;');
+        logger.log(`%c[DB] ✅ 캐시 히트: ${path}`, 'color: #22c55e;');
         if (mountedRef.current) {
           setData(cached);
           setLoading(false);
@@ -196,7 +197,7 @@ export function useDocument(path, options = {}) {
     }
 
     try {
-      console.log(`%c[DB] 🔥 Firestore 읽기: ${path}`, 'color: #f97316; font-weight: bold;');
+      logger.log(`%c[DB] 🔥 Firestore 읽기: ${path}`, 'color: #f97316; font-weight: bold;');
       const docRef = doc(db, ...path.split('/'));
       const docSnap = await getDoc(docRef);
 
@@ -283,7 +284,7 @@ export function useCollection(path, queryConstraints = [], options = {}) {
     if (!forceRefresh) {
       const cached = globalCache.get(cacheKey);
       if (cached) {
-        console.log(`%c[DB] ✅ 캐시 히트: ${path} (${cached.length}개)`, 'color: #22c55e;');
+        logger.log(`%c[DB] ✅ 캐시 히트: ${path} (${cached.length}개)`, 'color: #22c55e;');
         if (mountedRef.current) {
           setData(cached);
           setLoading(false);
@@ -297,7 +298,7 @@ export function useCollection(path, queryConstraints = [], options = {}) {
     }
 
     try {
-      console.log(`%c[DB] 🔥 Firestore 컬렉션 읽기: ${path}`, 'color: #f97316; font-weight: bold;');
+      logger.log(`%c[DB] 🔥 Firestore 컬렉션 읽기: ${path}`, 'color: #f97316; font-weight: bold;');
       const colRef = collection(db, ...path.split('/'));
       const q = queryConstraints.length > 0
         ? query(colRef, ...queryConstraints)
@@ -309,7 +310,7 @@ export function useCollection(path, queryConstraints = [], options = {}) {
         ...doc.data(),
       }));
 
-      console.log(`%c[DB] 📄 ${path}: ${docs.length}개 문서 읽음`, 'color: #f97316;');
+      logger.log(`%c[DB] 📄 ${path}: ${docs.length}개 문서 읽음`, 'color: #f97316;');
       globalCache.set(cacheKey, docs, ttl);
       if (mountedRef.current) {
         setData(docs);

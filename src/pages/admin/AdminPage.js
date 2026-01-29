@@ -27,6 +27,7 @@ import AdminDatabase from './AdminDatabase';
 import { AuthContext } from '../../contexts/AuthContext';
 import './AdminPanel.css';
 
+import { logger } from "../../utils/logger";
 const AdminPage = () => {
   const { currentUser, classCode } = useContext(AuthContext);
   const [students, setStudents] = useState([]);
@@ -128,7 +129,7 @@ const AdminPage = () => {
         isOpen: newIsOpenState
       });
 
-      console.log('Market status change result:', result.data);
+      logger.log('Market status change result:', result.data);
       setMessage(result.data.message);
 
       // 프론트엔드 화면의 상태를 즉시 업데이트합니다.
@@ -149,7 +150,7 @@ const AdminPage = () => {
       setMessage('환불 처리 중...');
       const result = await refundOldMarketItems();
 
-      console.log('Refund result:', result.data);
+      logger.log('Refund result:', result.data);
       setMessage(result.data.message);
 
     } catch (error) {

@@ -31,6 +31,7 @@ import { db, functions } from "../../firebase";
 import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
+import { logger } from "../../utils/logger";
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
   { id: 'KP', name: '코딩 파트너', price: 10000, history: [{ price: 10000, timestamp: new Date() }] },
@@ -92,7 +93,7 @@ const Admin = ({
 
     const marketStatusRef = doc(db, `ClassStock/${classCode}/marketStatus/status`);
     try {
-      console.log('Firestore 읽기: 시장 상태 조회');
+      logger.log('Firestore 읽기: 시장 상태 조회');
       const docSnap = await getDoc(marketStatusRef);
       let statusData;
       
@@ -101,7 +102,7 @@ const Admin = ({
       } else {
         // 문서가 없는 경우에만 쓰기 작업 수행
         statusData = { isOpen: false };
-        console.log('Firestore 쓰기: 시장 상태 초기화');
+        logger.log('Firestore 쓰기: 시장 상태 초기화');
         await setDoc(marketStatusRef, statusData);
       }
       
@@ -137,7 +138,7 @@ const Admin = ({
       if (pendingWrites.length > 0) {
         try {
           const batch = writeBatch(db);
-          console.log(`Firestore 배치 쓰기: ${pendingWrites.length}개 작업`);
+          logger.log(`Firestore 배치 쓰기: ${pendingWrites.length}개 작업`);
           
           pendingWrites.forEach(operation => {
             if (operation.type === 'set') {
@@ -185,7 +186,7 @@ const Admin = ({
       setMarketStatus(optimisticStatus);
       marketStatusCache.current = optimisticStatus;
       
-      console.log('Firebase Function 호출: 시장 상태 변경');
+      logger.log('Firebase Function 호출: 시장 상태 변경');
       const result = await toggleMarketManually({ 
         classCode: classCode, 
         isOpen: newIsOpenState 
@@ -218,7 +219,7 @@ const Admin = ({
     try {
       const batch = writeBatch(db);
       
-      console.log(`Firestore 배치 쓰기: ${initialStocks.length}개 주식 초기화`);
+      logger.log(`Firestore 배치 쓰기: ${initialStocks.length}개 주식 초기화`);
       initialStocks.forEach((stock) => {
         const stockRef = doc(db, "CentralStocks", stock.id);
         batch.set(stockRef, stock);
