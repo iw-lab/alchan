@@ -40,7 +40,7 @@ export default function AssetSummary({
           savedParkingAccount ? JSON.parse(savedParkingAccount).balance || 0 : 0
         );
       } catch (error) {
-        console.error("파킹통장 데이터 로딩 오류:", error);
+        logger.error("파킹통장 데이터 로딩 오류:", error);
         setParkingBalance(0);
       }
       // 대출 (기존과 동일)
@@ -52,7 +52,7 @@ export default function AssetSummary({
           savedUserProducts ? JSON.parse(savedUserProducts).loans || [] : []
         );
       } catch (error) {
-        console.error("대출 데이터 로딩 오류:", error);
+        logger.error("대출 데이터 로딩 오류:", error);
         setLoans([]);
       }
       // 부동산 (기존과 동일)
@@ -67,7 +67,7 @@ export default function AssetSummary({
           setRealEstateAssets([]);
         }
       } catch (error) {
-        console.error("부동산 데이터 로딩 오류:", error);
+        logger.error("부동산 데이터 로딩 오류:", error);
         setRealEstateAssets([]);
       }
 
@@ -87,7 +87,7 @@ export default function AssetSummary({
           setAllStocks([]);
         }
       } catch (error) {
-        console.error("AssetSummary: stocksData 로딩 오류", error);
+        logger.error("AssetSummary: stocksData 로딩 오류", error);
         setAllStocks([]);
       }
 
@@ -120,7 +120,7 @@ export default function AssetSummary({
           logger.log("AssetSummary: 저장된 userStockPortfolio 없음, 초기화");
         }
       } catch (error) {
-        console.error("AssetSummary: userStockPortfolio 로딩 오류", error);
+        logger.error("AssetSummary: userStockPortfolio 로딩 오류", error);
         setUserPortfolio({ holdings: [] });
       }
       // --- 보유 주식 데이터 로딩 수정 끝 ---

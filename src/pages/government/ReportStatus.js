@@ -48,20 +48,20 @@ const ReportStatus = ({
   const handleSettlementClick = (report) => {
 
     if (!onSettlement) {
-      console.error("onSettlement 함수가 전달되지 않았습니다");
+      logger.error("onSettlement 함수가 전달되지 않았습니다");
       alert("합의 처리 기능을 사용할 수 없습니다. 관리자에게 문의하세요.");
       return;
     }
 
     if (!report) {
-      console.error("handleSettlementClick: report가 없습니다");
+      logger.error("handleSettlementClick: report가 없습니다");
       return;
     }
 
     try {
       onSettlement(report);
     } catch (error) {
-      console.error("합의 처리 중 오류:", error);
+      logger.error("합의 처리 중 오류:", error);
       alert("합의 처리 중 오류가 발생했습니다.");
     }
   };
@@ -96,7 +96,7 @@ const ReportStatus = ({
       onProcessReport(selectedReport.id, amount, processingReason);
       closeModals();
     } catch (error) {
-      console.error("벌금 처리 중 오류:", error);
+      logger.error("벌금 처리 중 오류:", error);
       alert("벌금 처리 중 오류가 발생했습니다.");
     }
   };
@@ -240,6 +240,7 @@ const ReportStatus = ({
         </div>
       </div>
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showProcessModal, selectedReport, processingAmount, processingReason, reportReasons]);
 
   return (
@@ -335,7 +336,7 @@ const ReportStatus = ({
                               if (onDismissReport) {
                                 onDismissReport(report.id);
                               } else {
-                                console.error("onDismissReport 함수가 없습니다");
+                                logger.error("onDismissReport 함수가 없습니다");
                               }
                             }}
                             className="action-button dismiss-button"
@@ -402,7 +403,7 @@ const ReportStatus = ({
                               if (onAcceptReport) {
                                 onAcceptReport(report.id);
                               } else {
-                                console.error("onAcceptReport 함수가 없습니다");
+                                logger.error("onAcceptReport 함수가 없습니다");
                               }
                             }}
                             className="action-button accept-button"
@@ -415,7 +416,7 @@ const ReportStatus = ({
                               if (onDismissReport) {
                                 onDismissReport(report.id);
                               } else {
-                                console.error("onDismissReport 함수가 없습니다");
+                                logger.error("onDismissReport 함수가 없습니다");
                               }
                             }}
                             className="action-button dismiss-button"

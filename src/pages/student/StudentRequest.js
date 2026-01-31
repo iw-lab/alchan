@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { searchVideos } from '../../utils/youtube-api';
+import { logger } from '../../utils/logger';
 
 const StudentRequest = () => {
     const { roomId } = useParams();
@@ -39,7 +40,7 @@ const StudentRequest = () => {
             setRequestSuccess(false); // 새로운 검색 시 성공 상태 초기화
         } catch (err) {
             setError('YouTube 영상을 검색하는 중 오류가 발생했습니다.');
-            console.error(err);
+            logger.error(err);
         } finally {
             setIsLoading(false);
         }
@@ -60,7 +61,7 @@ const StudentRequest = () => {
             setRequestSuccess(true); // 신청 성공 상태로 변경
         } catch (err) {
             setError('음악을 신청하는 중 오류가 발생했습니다.');
-            console.error(err);
+            logger.error(err);
         }
     };
 

@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../firebaseConfig";
+import { logger } from '../../utils/logger';
 import {
   logDbOperation,
   setCache,
@@ -37,7 +38,7 @@ export const batchGetDocs = async (documentRefs, tab = 'unknown') => {
     logDbOperation('READ', 'batch', null, { tab, extra: `${allDocs.length}개 문서` });
     return allDocs;
   } catch (error) {
-    console.error('[firebase.js] 배치 읽기 오류:', error);
+    logger.error('[firebase.js] 배치 읽기 오류:', error);
     throw error;
   }
 };
@@ -57,7 +58,7 @@ export const batchGetUsers = async (userIds, useCache = true, tab = 'unknown') =
     if (useCache) setCache(cacheKey, users);
     return users;
   } catch (error) {
-    console.error('[firebase.js] 배치 사용자 조회 오류:', error);
+    logger.error('[firebase.js] 배치 사용자 조회 오류:', error);
     throw error;
   }
 };
@@ -92,7 +93,7 @@ export const processSettlement = async (settlementData) => {
     const result = await processSettlementFunction(settlementData);
     return result.data;
   } catch (error) {
-    console.error("[firebase.js] processSettlement Cloud Function 호출 오류:", error);
+    logger.error("[firebase.js] processSettlement Cloud Function 호출 오류:", error);
     throw new Error(error.message || "서버 함수 호출에 실패했습니다.");
   }
 };

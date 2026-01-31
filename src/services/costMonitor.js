@@ -105,10 +105,10 @@ class CostMonitor {
     const threshold = quota * this.warningThreshold;
 
     if (current >= quota) {
-      console.warn(`🚨 [CostMonitor] ${type.toUpperCase()} 무료 한도 초과! (${current}/${quota})`);
+      logger.warn(`🚨 [CostMonitor] ${type.toUpperCase()} 무료 한도 초과! (${current}/${quota})`);
       this.notifyUser(`Firebase ${type} 무료 한도를 초과했습니다. 비용이 발생할 수 있습니다.`);
     } else if (current >= threshold) {
-      console.warn(`⚠️ [CostMonitor] ${type.toUpperCase()} 80% 도달 (${current}/${quota})`);
+      logger.warn(`⚠️ [CostMonitor] ${type.toUpperCase()} 80% 도달 (${current}/${quota})`);
     }
   }
 
@@ -122,7 +122,7 @@ class CostMonitor {
     }
 
     // 콘솔 알림
-    console.warn(`🔔 ${message}`);
+    logger.warn(`🔔 ${message}`);
   }
 
   /**

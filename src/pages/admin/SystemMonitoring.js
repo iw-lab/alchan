@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../firebase";
 import "./SystemMonitoring.css";
+import { logger } from '../../utils/logger';
 
 const SystemMonitoring = ({ isSuperAdmin }) => {
   const [systemStatus, setSystemStatus] = useState(null);
@@ -32,7 +33,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
         throw new Error(result.data.message || "시스템 상태 조회 실패");
       }
     } catch (err) {
-      console.error("[SystemMonitoring] 상태 조회 오류:", err);
+      logger.error("[SystemMonitoring] 상태 조회 오류:", err);
       setError(err.message || "시스템 상태를 불러오는 중 오류가 발생했습니다.");
 
       // 🔥 연속 에러 카운트 증가
@@ -41,7 +42,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
       // 🔥 3회 이상 연속 에러 시 자동 새로고침 중지
       if (errorCount >= 2) {
         setAutoRefresh(false);
-        console.warn("[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.");
+        logger.warn("[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.");
       }
     } finally {
       setLoading(false);
@@ -63,7 +64,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
           fetchSystemStatus();
         }
       } catch (err) {
-        console.error("[SystemMonitoring] 경고 해결 오류:", err);
+        logger.error("[SystemMonitoring] 경고 해결 오류:", err);
         alert(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
       }
     },

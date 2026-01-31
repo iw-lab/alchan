@@ -37,7 +37,7 @@ export const AuthContext = createContext(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    console.warn(
+    logger.warn(
       "useAuth was called outside of the AuthProvider, or AuthProvider is not fully initialized yet. Returning default/loading state."
     );
     return {
@@ -84,10 +84,10 @@ export const AuthProvider = ({ children }) => {
 
   // 🔥 [비용 최적화 v6.0] 극단적 최적화 - 읽기 95% 감소 목표
   // 거래/업데이트 시 강제 무효화되므로 매우 긴 TTL이 안전함
-  const CLASSMATES_CACHE_TTL = 24 * 60 * 60 * 1000; // 🔥 [최적화] 학급 구성원 캐시 24시간 (8시간→24시간, 학급은 하루에 1번 변경되면 많은 것)
-  const USER_DOC_CACHE_TTL = 48 * 60 * 60 * 1000; // 🔥 [최적화] 48시간 (24시간→48시간, 거래 시 강제 무효화됨)
-  const LASTLOGIN_UPDATE_COOLDOWN = 168 * 60 * 60 * 1000; // 🔥 [최적화] 168시간=7일 (72시간→7일, 주 1회면 충분)
-  const LAST_ACTIVE_UPDATE_INTERVAL = 4 * 60 * 60 * 1000; // 🔥 [최적화] 활성 상태 업데이트 4시간 간격 (1시간→4시간)
+  const CACHE_TTL_CLASSMATES = 24 * 60 * 60 * 1000; // 🔥 [최적화] 학급 구성원 캐시 24시간
+  const CACHE_TTL_USER_DOC = 48 * 60 * 60 * 1000; // 🔥 [최적화] 48시간 (거래 시 강제 무효화됨)
+  const COOLDOWN_LASTLOGIN = 168 * 60 * 60 * 1000; // 🔥 [최적화] 168시간=7일
+  const INTERVAL_LAST_ACTIVE = 4 * 60 * 60 * 1000; // 🔥 [최적화] 활성 상태 업데이트 4시간 간격
   const lastActiveUpdateRef = useRef(0); // 마지막 활성 상태 업데이트 시간
 
   // Firebase 초기화 확인 (한 번만 실행) - 타임아웃 추가
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
         initializationCompleteRef.current = true;
       } else if (attempts >= maxAttempts) {
         // 3초 후에도 초기화 안 되면 강제로 진행 (흰화면 방지)
-        console.warn("[AuthContext] Firebase 초기화 타임아웃 - 강제 진행");
+        logger.warn("[AuthContext] Firebase 초기화 타임아웃 - 강제 진행");
         setFirebaseReady(true);
         initializationCompleteRef.current = true;
         setLoading(false);
@@ -171,20 +171,20 @@ export const AuthProvider = ({ children }) => {
       }
 
       const now = Date.now();
-      
+
       // 캐시 확인 - 강제 새로고침이 아니고, 같은 학급이고, 캐시가 유효한 경우만 캐시 사용
-      if (!forceRefresh && 
-          users.length > 0 && 
-          currentClassCodeRef.current === classCode && 
-          now - classmatesFetchTimeRef.current < CLASSMATES_CACHE_TTL) {
-        
+      if (!forceRefresh &&
+          users.length > 0 &&
+          currentClassCodeRef.current === classCode &&
+          now - classmatesFetchTimeRef.current < CACHE_TTL_CLASSMATES) {
+
         // 캐시 사용 시에도 계산된 데이터가 없으면 다시 계산
         if (classmates.length === 0 && allClassMembers.length === 0) {
           const { allMembers, classmates: newClassmates } = calculateClassMembers(users, currentUserId);
           setAllClassMembers(allMembers);
           setClassmates(newClassmates);
         }
-        
+
         return users;
       }
 
@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }) => {
       try {
         // 핵심: 해당 학급의 구성원만 직접 쿼리 (강제 새로고침 시 캐시 무효화)
         const classMembers = await getClassmates(classCode, forceRefresh);
-        
+
         if (!classMembers || classMembers.length === 0) {
           setUsers([]);
           setAllClassMembers([]);
@@ -207,14 +207,14 @@ export const AuthProvider = ({ children }) => {
         setUsers(classMembers);
         currentClassCodeRef.current = classCode;
         classmatesFetchTimeRef.current = now;
-        
+
         // 학급 구성원 계산 및 설정
-        const { allMembers, classmates } = calculateClassMembers(classMembers, currentUserId);
+        const { allMembers, classmates: calculatedClassmates } = calculateClassMembers(classMembers, currentUserId);
         setAllClassMembers(allMembers);
-        setClassmates(classmates);
-        
+        setClassmates(calculatedClassmates);
+
         return classMembers;
-        
+
       } catch (error) {
         setUsers([]);
         setAllClassMembers([]);
@@ -224,7 +224,7 @@ export const AuthProvider = ({ children }) => {
         pendingClassmatesFetchRef.current = false;
       }
     },
-    [firebaseReady, calculateClassMembers]
+    [firebaseReady, calculateClassMembers, users, classmates, allClassMembers, CACHE_TTL_CLASSMATES]
   );
 
   // 🔥 [최적화] 활성 사용자 추적 - 최소화된 버전
@@ -234,7 +234,7 @@ export const AuthProvider = ({ children }) => {
 
       const now = Date.now();
       // 10분 이내에 이미 업데이트했으면 건너뛰기
-      if (now - lastActiveUpdateRef.current < LAST_ACTIVE_UPDATE_INTERVAL) {
+      if (now - lastActiveUpdateRef.current < INTERVAL_LAST_ACTIVE) {
         return;
       }
 
@@ -247,7 +247,7 @@ export const AuthProvider = ({ children }) => {
         // 네트워크 오류 등은 무시 (중요하지 않음)
       }
     },
-    [firebaseReady]
+    [firebaseReady, INTERVAL_LAST_ACTIVE] // updateUserDocument와 serverTimestamp는 firebase.js에서 가져온 안정적인 함수이므로 의존성 불필요
   );
 
   // 최적화: lastLogin 업데이트 - 더 긴 간격으로 업데이트
@@ -264,7 +264,7 @@ export const AuthProvider = ({ children }) => {
         shouldUpdate = true;
       } else if (currentLastLogin instanceof Timestamp) {
         const lastLoginTime = currentLastLogin.toDate().getTime();
-        if (now - lastLoginTime > LASTLOGIN_UPDATE_COOLDOWN) {
+        if (now - lastLoginTime > COOLDOWN_LASTLOGIN) {
           shouldUpdate = true;
         }
       } else if (
@@ -277,7 +277,7 @@ export const AuthProvider = ({ children }) => {
         )
           .toDate()
           .getTime();
-        if (now - lastLoginTime > LASTLOGIN_UPDATE_COOLDOWN) {
+        if (now - lastLoginTime > COOLDOWN_LASTLOGIN) {
           shouldUpdate = true;
         }
       }
@@ -297,7 +297,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     },
-    []
+    [COOLDOWN_LASTLOGIN] // updateUserDocument와 serverTimestamp는 firebase.js에서 가져온 안정적인 함수이므로 의존성 불필요
   );
 
   // 최적화: 사용자 문서 캐시 관리
@@ -307,20 +307,20 @@ export const AuthProvider = ({ children }) => {
 
     const now = Date.now();
     const lastFetch = userDocFetchTimeRef.current.get(uid) || 0;
-    
-    if (now - lastFetch > USER_DOC_CACHE_TTL) {
+
+    if (now - lastFetch > CACHE_TTL_USER_DOC) {
       userDocCacheRef.current.delete(uid);
       userDocFetchTimeRef.current.delete(uid);
       return null;
     }
 
     return cached;
-  }, []);
+  }, [CACHE_TTL_USER_DOC]); // Ref 기반 함수이므로 의존성 불필요
 
   const setCachedUserDoc = useCallback((uid, docData) => {
     userDocCacheRef.current.set(uid, docData);
     userDocFetchTimeRef.current.set(uid, Date.now());
-  }, []);
+  }, []); // Ref 기반 함수이므로 의존성 불필요
 
   // 핵심 최적화: Auth 상태 리스너 - 학급 구성원만 조회 (수정된 부분)
   useEffect(() => {
@@ -483,7 +483,8 @@ export const AuthProvider = ({ children }) => {
       }
       authListenerSetupRef.current = false;
     };
-  }, [firebaseReady]); // firebaseReady만 의존성으로 사용
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseReady]); // 의존성: getCachedUserDoc, setCachedUserDoc, updateLastLoginAtSeparately, updateLastActiveAt, fetchClassmatesFromFirestore는 내부에서 사용되지만 추가하면 무한루프 발생
   
   const loginWithEmailPassword = useCallback(
     async (email, password, isReauth = false) => {
@@ -739,11 +740,11 @@ export const AuthProvider = ({ children }) => {
           return false;
         }
       } catch (error) {
-        console.error("Error in modifyUserCashById:", error);
+        logger.error("Error in modifyUserCashById:", error);
         return false;
       }
     },
-    [firebaseReady, userDoc, getCachedUserDoc, setCachedUserDoc, setUserDoc]
+    [firebaseReady] // updateUserCashInFirestore, addTransaction은 firebase.js에서 가져온 안정적인 함수이므로 의존성 불필요
   );
 
   const deductCashFromUserById = useCallback(
@@ -796,9 +797,9 @@ export const AuthProvider = ({ children }) => {
         );
 
         if (success) {
-          // 수정: 현금과 마찬가지로, 쿠폰도 로컬에서 미리 계산하지 않고 
+          // 수정: 현금과 마찬가지로, 쿠폰도 로컬에서 미리 계산하지 않고
           // onSnapshot 리스너가 서버의 정확한 데이터를 받아오도록 합니다.
-          
+
           return true;
         } else {
           return false;
@@ -807,7 +808,7 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
     },
-    [firebaseReady, userDoc]
+    [firebaseReady] // updateUserCouponsInFirestore는 firebase.js에서 가져온 안정적인 함수이므로 의존성 불필요
   );
 
   const deductCouponsFromUserById = useCallback(
@@ -891,7 +892,7 @@ export const AuthProvider = ({ children }) => {
     (updates) => {
       setUserDoc(currentUserDoc => {
         if (!currentUserDoc?.id) {
-          console.warn('[AuthContext] optimisticUpdate: currentUserDoc is not available');
+          logger.warn('[AuthContext] optimisticUpdate: currentUserDoc is not available');
           return currentUserDoc;
         }
 

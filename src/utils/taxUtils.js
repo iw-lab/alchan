@@ -10,6 +10,7 @@ import {
   collection
 } from 'firebase/firestore';
 import { addActivityLog } from '../firebase';
+import { getClassAdminUid } from '../firebase/db/core';
 
 import { logger } from "../utils/logger";
 // 기본 세금 설정
@@ -35,12 +36,12 @@ export const getTaxSettings = async (classCode) => {
     }
     return DEFAULT_TAX_SETTINGS;
   } catch (error) {
-    console.error('세금 설정 가져오기 실패:', error);
+    logger.error('세금 설정 가져오기 실패:', error);
     return DEFAULT_TAX_SETTINGS;
   }
 };
 
-// 국고에 세금 추가
+// 국고에 세금 추가 (관리자 cash에도 연동)
 export const addTaxToTreasury = async (classCode, taxType, amount, description) => {
   try {
     const treasuryRef = doc(db, 'treasury', classCode);
@@ -63,11 +64,24 @@ export const addTaxToTreasury = async (classCode, taxType, amount, description) 
       timestamp: serverTimestamp()
     });
 
+    // 🔥 [추가] 관리자(선생님) cash에도 세금 추가
+    const adminUid = await getClassAdminUid(classCode);
+    if (adminUid) {
+      const adminRef = doc(db, 'users', adminUid);
+      batch.update(adminRef, {
+        cash: increment(amount),
+        updatedAt: serverTimestamp()
+      });
+      logger.log(`[Tax] 관리자(${adminUid}) cash에 ${amount}원 추가`);
+    } else {
+      logger.log(`[Tax] 경고: 클래스(${classCode})에 관리자가 없어 cash 업데이트 건너뜀`);
+    }
+
     await batch.commit();
     logger.log(`[Tax] ${taxType}: ${amount}원이 국고에 추가되었습니다.`);
     return true;
   } catch (error) {
-    console.error('국고 세금 추가 실패:', error);
+    logger.error('국고 세금 추가 실패:', error);
     return false;
   }
 };
@@ -102,7 +116,7 @@ export const applyTransactionTax = async (classCode, userId, amount, transaction
       netAmount: amount - taxAmount
     };
   } catch (error) {
-    console.error('거래세 적용 실패:', error);
+    logger.error('거래세 적용 실패:', error);
     return {
       originalAmount: amount,
       taxAmount: 0,
@@ -153,7 +167,7 @@ export const applyIncomeTax = async (classCode, userId, income, incomeType) => {
       netIncome: income - taxAmount
     };
   } catch (error) {
-    console.error('소득세 적용 실패:', error);
+    logger.error('소득세 적용 실패:', error);
     return {
       grossIncome: income,
       taxAmount: 0,
@@ -203,7 +217,7 @@ export const applyItemTax = async (classCode, userId, amount, isMarketPlace = fa
       netAmount: amount - taxAmount
     };
   } catch (error) {
-    console.error('아이템 거래세 적용 실패:', error);
+    logger.error('아이템 거래세 적용 실패:', error);
     return {
       originalAmount: amount,
       taxAmount: 0,
@@ -242,7 +256,7 @@ export const applyStockTax = async (classCode, userId, amount, transactionType) 
       netAmount: amount - taxAmount
     };
   } catch (error) {
-    console.error('주식 거래세 적용 실패:', error);
+    logger.error('주식 거래세 적용 실패:', error);
     return {
       originalAmount: amount,
       taxAmount: 0,
@@ -281,7 +295,7 @@ export const applyRealEstateTax = async (classCode, userId, amount, transactionT
       netAmount: amount - taxAmount
     };
   } catch (error) {
-    console.error('부동산 거래세 적용 실패:', error);
+    logger.error('부동산 거래세 적용 실패:', error);
     return {
       originalAmount: amount,
       taxAmount: 0,
@@ -302,7 +316,7 @@ export const deductTaxFromUser = async (userId, taxAmount, description) => {
     logger.log(`[Tax] 사용자 ${userId}에게서 세금 ${taxAmount}원 차감됨`);
     return true;
   } catch (error) {
-    console.error('사용자 세금 차감 실패:', error);
+    logger.error('사용자 세금 차감 실패:', error);
     return false;
   }
 };

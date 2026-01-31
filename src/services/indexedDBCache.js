@@ -19,7 +19,7 @@ class IndexedDBCacheService {
 
   async init() {
     if (!this.isSupported) {
-      console.warn('[IndexedDBCache] IndexedDB가 지원되지 않는 환경입니다.');
+      logger.warn('[IndexedDBCache] IndexedDB가 지원되지 않는 환경입니다.');
       return null;
     }
 
@@ -31,7 +31,7 @@ class IndexedDBCacheService {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onerror = () => {
-        console.error('[IndexedDBCache] DB 열기 실패:', request.error);
+        logger.error('[IndexedDBCache] DB 열기 실패:', request.error);
         reject(request.error);
       };
 
@@ -84,7 +84,7 @@ class IndexedDBCacheService {
 
       return true;
     } catch (error) {
-      console.error('[IndexedDBCache] 저장 오류:', error);
+      logger.error('[IndexedDBCache] 저장 오류:', error);
       return false;
     }
   }
@@ -117,7 +117,7 @@ class IndexedDBCacheService {
 
       return cacheItem.data;
     } catch (error) {
-      console.error('[IndexedDBCache] 조회 오류:', error);
+      logger.error('[IndexedDBCache] 조회 오류:', error);
       return null;
     }
   }
@@ -139,7 +139,7 @@ class IndexedDBCacheService {
 
       return true;
     } catch (error) {
-      console.error('[IndexedDBCache] 삭제 오류:', error);
+      logger.error('[IndexedDBCache] 삭제 오류:', error);
       return false;
     }
   }
@@ -162,7 +162,7 @@ class IndexedDBCacheService {
       logger.log('[IndexedDBCache] 전체 캐시 삭제 완료');
       return true;
     } catch (error) {
-      console.error('[IndexedDBCache] 전체 삭제 오류:', error);
+      logger.error('[IndexedDBCache] 전체 삭제 오류:', error);
       return false;
     }
   }
@@ -204,7 +204,7 @@ class IndexedDBCacheService {
 
       return deletedCount;
     } catch (error) {
-      console.error('[IndexedDBCache] 만료 항목 정리 오류:', error);
+      logger.error('[IndexedDBCache] 만료 항목 정리 오류:', error);
       return 0;
     }
   }
@@ -226,7 +226,7 @@ class IndexedDBCacheService {
 
       return count;
     } catch (error) {
-      console.error('[IndexedDBCache] 크기 조회 오류:', error);
+      logger.error('[IndexedDBCache] 크기 조회 오류:', error);
       return 0;
     }
   }
@@ -237,7 +237,7 @@ const indexedDBCache = new IndexedDBCacheService();
 
 // 초기화 (앱 시작 시)
 indexedDBCache.init().catch(err => {
-  console.error('[IndexedDBCache] 초기화 실패:', err);
+  logger.error('[IndexedDBCache] 초기화 실패:', err);
 });
 
 // 주기적으로 만료된 항목 정리 (10분마다)

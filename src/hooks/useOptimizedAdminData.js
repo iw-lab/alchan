@@ -129,7 +129,7 @@ export const useBatchPaySalaries = () => {
       localBackup.clear(`admin_${classCode}_salarySettings`);
     },
     onError: (error) => {
-      console.error("급여 지급 실패:", error);
+      logger.error("급여 지급 실패:", error);
     },
   });
 };

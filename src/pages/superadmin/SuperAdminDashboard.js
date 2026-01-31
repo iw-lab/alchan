@@ -121,7 +121,7 @@ export default function SuperAdminDashboard() {
         loadErrorLogs(),
       ]);
     } catch (error) {
-      console.error('데이터 로드 오류:', error);
+      logger.error('데이터 로드 오류:', error);
     } finally {
       setLoading(false);
     }
@@ -192,7 +192,7 @@ export default function SuperAdminDashboard() {
         activeUsers24h: activeUsers || Math.floor(totalStudents * 0.3),
       });
     } catch (error) {
-      console.error('통계 로드 오류:', error);
+      logger.error('통계 로드 오류:', error);
     }
   };
 
@@ -222,7 +222,7 @@ export default function SuperAdminDashboard() {
 
       setPendingTeachers(pending);
     } catch (error) {
-      console.error('승인 대기 선생님 로드 오류:', error);
+      logger.error('승인 대기 선생님 로드 오류:', error);
       setPendingTeachers([]);
     }
   };
@@ -254,7 +254,7 @@ export default function SuperAdminDashboard() {
 
       setApprovedTeachers(approved);
     } catch (error) {
-      console.error('승인된 선생님 로드 오류:', error);
+      logger.error('승인된 선생님 로드 오류:', error);
       setApprovedTeachers([]);
     }
   };
@@ -329,8 +329,8 @@ export default function SuperAdminDashboard() {
       logger.log(`[SuperAdmin] 최종 학급 데이터:`, classesData);
       setClasses(classesData);
     } catch (error) {
-      console.error('[SuperAdmin] 학급 로드 오류:', error);
-      console.error('[SuperAdmin] 오류 상세:', error.code, error.message);
+      logger.error('[SuperAdmin] 학급 로드 오류:', error);
+      logger.error('[SuperAdmin] 오류 상세:', error.code, error.message);
       setClasses([]);
     }
   };
@@ -350,7 +350,7 @@ export default function SuperAdminDashboard() {
 
       setErrorLogs(logs);
     } catch (error) {
-      console.error('에러 로그 로드 오류:', error);
+      logger.error('에러 로그 로드 오류:', error);
       // 컬렉션이 없으면 빈 배열 유지
       setErrorLogs([]);
     }
@@ -395,10 +395,10 @@ export default function SuperAdminDashboard() {
         }));
         setErrorLogs(logs);
       }, (error) => {
-        console.error('에러 로그 리스너 오류:', error);
+        logger.error('에러 로그 리스너 오류:', error);
       });
     } catch (error) {
-      console.error('에러 로그 리스너 설정 실패:', error);
+      logger.error('에러 로그 리스너 설정 실패:', error);
     }
 
     return () => {
@@ -442,7 +442,7 @@ export default function SuperAdminDashboard() {
       await loadStats();
       alert('선생님이 승인되었습니다.');
     } catch (error) {
-      console.error('승인 오류:', error);
+      logger.error('승인 오류:', error);
       alert('승인 처리 중 오류가 발생했습니다.');
     }
   };
@@ -459,7 +459,7 @@ export default function SuperAdminDashboard() {
       await loadStats();
       alert('선생님 가입이 거절되었습니다.');
     } catch (error) {
-      console.error('거절 오류:', error);
+      logger.error('거절 오류:', error);
       alert('거절 처리 중 오류가 발생했습니다.');
     }
   };
@@ -485,7 +485,7 @@ export default function SuperAdminDashboard() {
       await loadStats();
       alert('승인이 취소되었습니다.');
     } catch (error) {
-      console.error('승인 취소 오류:', error);
+      logger.error('승인 취소 오류:', error);
       alert('승인 취소 중 오류가 발생했습니다.');
     }
   };
@@ -496,7 +496,7 @@ export default function SuperAdminDashboard() {
       await deleteDoc(doc(db, 'errorLogs', logId));
       setErrorLogs(prev => prev.filter(log => log.id !== logId));
     } catch (error) {
-      console.error('에러 로그 삭제 오류:', error);
+      logger.error('에러 로그 삭제 오류:', error);
     }
   };
 
@@ -514,7 +514,7 @@ export default function SuperAdminDashboard() {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error('테스트 에러 생성 실패:', error);
+      logger.error('테스트 에러 생성 실패:', error);
     }
   };
 

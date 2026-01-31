@@ -31,7 +31,7 @@ try {
   db = getFirestore(app);
   logger.log("[firebase.js] Firestore 초기화 완료 (기본 모드)");
 } catch (error) {
-  console.error("[firebase.js] Firestore 초기화 실패:", error);
+  logger.error("[firebase.js] Firestore 초기화 실패:", error);
   db = getFirestore(app);
 }
 
@@ -48,14 +48,14 @@ if (process.env.NODE_ENV === 'development') {
     connectFunctionsEmulator(functions, '127.0.0.1', 5001);
     logger.log('[firebase.js] 로컬 에뮬레이터 연결 성공.');
   } catch (error) {
-    console.error('[firebase.js] 에뮬레이터 연결 오류:', error);
+    logger.error('[firebase.js] 에뮬레이터 연결 오류:', error);
   }
 }
 
 const isInitialized = () => {
   const initialized = Boolean(app && db && auth);
   if (!initialized) {
-    console.warn(
+    logger.warn(
       "[firebase.js] Firebase 서비스가 아직 초기화되지 않았습니다.",
       { app: !!app, db: !!db, auth: !!auth }
     );

@@ -9,9 +9,10 @@
  * @returns {Array<Object>} ParkingAccount 형식의 상품 배열
  * - 예: { id, name, rate (dailyRate), term (termInDays), minAmount?, maxAmount? }
  */
+import { logger } from '../../utils/logger';
 export const convertAdminProductsToAccountFormat = (adminProducts) => {
   if (!Array.isArray(adminProducts)) {
-    console.error(
+    logger.error(
       "BankingProductAdapter: adminProducts가 배열이 아닙니다.",
       adminProducts
     );

@@ -125,7 +125,7 @@ const RealEstateRegistry = () => {
                 updatedAt: serverTimestamp(),
               });
             } catch (error) {
-              console.warn("[RealEstate] 기본 설정 생성 실패 (관리자만 가능):", error.message);
+              logger.warn("[RealEstate] 기본 설정 생성 실패 (관리자만 가능):", error.message);
             }
           }
         }
@@ -134,7 +134,7 @@ const RealEstateRegistry = () => {
         }
       } catch (error) {
         // 학생 계정은 settings 읽기 권한이 없을 수 있으므로 warn으로 처리
-        console.warn("[RealEstate] Settings 읽기 실패 (기본값 사용):", error.message);
+        logger.warn("[RealEstate] Settings 읽기 실패 (기본값 사용):", error.message);
         if (mounted) {
           setSettings(DEFAULT_SETTINGS);
           setAdminInputs({ ...DEFAULT_SETTINGS });
@@ -150,6 +150,7 @@ const RealEstateRegistry = () => {
       mounted = false;
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classCode]);
 
   // 🔥 Properties 새로고침 함수 (낙관적 업데이트 후 서버 데이터와 동기화)
@@ -178,7 +179,7 @@ const RealEstateRegistry = () => {
       setProperties(propsData);
       logger.log('[RealEstate] Properties refreshed:', propsData.length);
     } catch (error) {
-      console.error("[RealEstate] Error refreshing properties:", error);
+      logger.error("[RealEstate] Error refreshing properties:", error);
     }
   }, [classCode]);
 
@@ -222,7 +223,7 @@ const RealEstateRegistry = () => {
           setPropertiesLoading(false);
         }
       } catch (error) {
-        console.error("[RealEstate] Error fetching properties:", error);
+        logger.error("[RealEstate] Error fetching properties:", error);
         if (mounted) {
           setProperties([]);
           setPropertiesLoading(false);
@@ -265,7 +266,7 @@ const RealEstateRegistry = () => {
           );
         })
         .catch((error) => {
-          console.error("[RealEstate] Error fetching users by classCode:", error);
+          logger.error("[RealEstate] Error fetching users by classCode:", error);
           setAllUsersData([]);
         })
         .finally(() => setUsersLoading(false));
@@ -323,7 +324,7 @@ const RealEstateRegistry = () => {
       alert("부동산이 성공적으로 초기화되었습니다.");
       setShowAdminPanel(false);
     } catch (error) {
-      console.error("[RealEstate] Error initializing properties:", error);
+      logger.error("[RealEstate] Error initializing properties:", error);
       alert("부동산 초기화 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
@@ -394,7 +395,7 @@ const RealEstateRegistry = () => {
       setSelectedProperty(null);
       alert(`부동산 #${propertyId}를 성공적으로 구매했습니다.`);
     } catch (error) {
-      console.error('[RealEstate] 구매 실패:', error);
+      logger.error('[RealEstate] 구매 실패:', error);
 
       // 실패 시 롤백 1: 현금 복구
       if (optimisticUpdate) {
@@ -461,7 +462,7 @@ const RealEstateRegistry = () => {
       setSelectedProperty(null);
       alert("판매 설정이 완료되었습니다.");
     } catch (error) {
-      console.error("판매 설정 오류:", error);
+      logger.error("판매 설정 오류:", error);
 
       // 실패 시 롤백
       setProperties(prevProperties =>
@@ -517,7 +518,7 @@ const RealEstateRegistry = () => {
             setSelectedProperty(null);
             alert("정부 소유 부동산 판매 설정이 완료되었습니다.");
         } catch (error) {
-            console.error("정부 소유 부동산 판매 설정 오류:", error);
+            logger.error("정부 소유 부동산 판매 설정 오류:", error);
 
             // 실패 시 롤백
             if (previousPropertyState) {
@@ -568,7 +569,7 @@ const RealEstateRegistry = () => {
             setSelectedProperty(null);
             alert("정부 소유 부동산 판매가 취소되었습니다.");
         } catch (error) {
-            console.error("정부 소유 부동산 판매 취소 오류:", error);
+            logger.error("정부 소유 부동산 판매 취소 오류:", error);
 
             // 실패 시 롤백
             if (previousPropertyState) {
@@ -622,7 +623,7 @@ const RealEstateRegistry = () => {
       setSelectedProperty(null);
       alert("판매가 취소되었습니다.");
     } catch (error) {
-      console.error("판매 취소 오류:", error);
+      logger.error("판매 취소 오류:", error);
 
       // 실패 시 롤백
       if (previousPropertyState) {
@@ -792,7 +793,7 @@ const RealEstateRegistry = () => {
       setShowQuickAction(null);
       setSelectedProperty(null);
     } catch (error) {
-      console.error("입주/퇴거 처리 오류:", error);
+      logger.error("입주/퇴거 처리 오류:", error);
 
       // 🔥 롤백: 이전 상태로 복구
       setProperties(previousProperties);
@@ -852,7 +853,7 @@ const RealEstateRegistry = () => {
       );
       setShowAdminPanel(false);
     } catch (error) {
-      console.error("설정 저장 오류:", error);
+      logger.error("설정 저장 오류:", error);
       alert("설정 저장 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
@@ -958,7 +959,7 @@ const RealEstateRegistry = () => {
       }
 
     } catch (error) {
-      console.error("[RealEstate] 강제 입주 오류:", error);
+      logger.error("[RealEstate] 강제 입주 오류:", error);
 
       // 🔥 롤백: 이전 상태로 복구
       setProperties(previousProperties);
@@ -1062,7 +1063,7 @@ const RealEstateRegistry = () => {
       await refreshProperties();
 
     } catch (error) {
-      console.error("[RealEstate] 자동 배정 전체 오류:", error);
+      logger.error("[RealEstate] 자동 배정 전체 오류:", error);
       alert(`자동 배정 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
@@ -1120,7 +1121,7 @@ const RealEstateRegistry = () => {
         alert("월세가 0원인 부동산이 없습니다.");
       }
     } catch (error) {
-      console.error("[FixRent] 오류:", error);
+      logger.error("[FixRent] 오류:", error);
       alert("월세 수정 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
@@ -1177,7 +1178,7 @@ const RealEstateRegistry = () => {
 
               if (!tenantSnap.exists()) {
                 // 세입자를 찾을 수 없으면 계약 해지 처리
-                console.warn(`세입자 ID ${property.tenantId}를 찾을 수 없습니다. 계약을 자동으로 해지합니다.`);
+                logger.warn(`세입자 ID ${property.tenantId}를 찾을 수 없습니다. 계약을 자동으로 해지합니다.`);
                 transaction.update(propDoc.ref, {
                   tenantId: null,
                   tenant: null,
@@ -1265,7 +1266,7 @@ const RealEstateRegistry = () => {
               successCount++;
             }
           } catch (transactionError) {
-            console.error(
+            logger.error(
               `부동산 ID ${property.id} 월세 징수 트랜잭션 실패:`,
               transactionError
             );
@@ -1294,7 +1295,7 @@ const RealEstateRegistry = () => {
 
       if (refreshUserDocument) refreshUserDocument();
     } catch (error) {
-      console.error("월세 징수 중 전체 오류:", error);
+      logger.error("월세 징수 중 전체 오류:", error);
       alert("월세 징수 중 심각한 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);

@@ -113,7 +113,7 @@ const Admin = ({
       setIsMarketDataLoaded(true);
       
     } catch (error) {
-      console.error("Failed to fetch market status:", error);
+      logger.error("Failed to fetch market status:", error);
       setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
       
       // 에러 발생 시 캐시된 데이터가 있으면 사용
@@ -151,7 +151,7 @@ const Admin = ({
           await batch.commit();
           setPendingWrites([]);
         } catch (error) {
-          console.error("배치 쓰기 실패:", error);
+          logger.error("배치 쓰기 실패:", error);
           setMarketMessage(`배치 쓰기 실패: ${error.message}`);
         }
       }
@@ -198,7 +198,7 @@ const Admin = ({
       setLastFetchTime(Date.now());
 
     } catch (error) {
-      console.error("시장 상태 변경 오류:", error);
+      logger.error("시장 상태 변경 오류:", error);
       setMarketMessage(`오류가 발생했습니다: ${error.message}`);
       
       // 실패 시 원래 상태로 롤백
@@ -229,7 +229,7 @@ const Admin = ({
       alert("주식 정보가 성공적으로 초기화되었습니다.");
       setMarketMessage("주식 정보가 성공적으로 초기화되었습니다.");
     } catch (error) {
-      console.error("주식 정보 초기화 중 오류 발생:", error);
+      logger.error("주식 정보 초기화 중 오류 발생:", error);
       alert("주식 정보 초기화에 실패했습니다. 콘솔을 확인해주세요.");
       setMarketMessage(`초기화 실패: ${error.message}`);
     }

@@ -171,6 +171,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     return () => {
       handleLeaveRoom();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, classCode]);
 
   // 채팅/증거는 폴링으로 조회 (읽기 비용 절감)
@@ -217,7 +218,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       // Get the latest room data to check for available roles
       const roomSnap = await getDoc(roomRef);
       if (!roomSnap.exists()) {
-          console.error("Trial room not found!");
+          logger.error("Trial room not found!");
           return;
       }
       const currentRoomData = roomSnap.data();
@@ -255,7 +256,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
 
     } catch (error) {
-      console.error("Error joining room:", error);
+      logger.error("Error joining room:", error);
     }
   };
 
@@ -267,7 +268,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         lastActivity: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error leaving room:", error);
+      logger.error("Error leaving room:", error);
     }
   };
 
@@ -314,7 +315,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error taking role:", error);
+      logger.error("Error taking role:", error);
       alert("역할 배정 중 오류가 발생했습니다.");
     }
   };
@@ -340,7 +341,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
       setInputMessage("");
     } catch (error) {
-      console.error("Error sending message:", error);
+      logger.error("Error sending message:", error);
     }
   };
 
@@ -361,7 +362,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error applying silence:", error);
+      logger.error("Error applying silence:", error);
     }
   };
 
@@ -382,7 +383,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error removing silence:", error);
+      logger.error("Error removing silence:", error);
     }
   };
   
@@ -419,7 +420,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       
       alert("증거 자료가 제출되었습니다.");
     } catch (error) {
-      console.error("Error uploading evidence:", error);
+      logger.error("Error uploading evidence:", error);
       alert("증거 자료 업로드 중 오류가 발생했습니다.");
     } finally {
       setUploadingEvidence(false);
@@ -452,7 +453,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error starting vote:", error);
+      logger.error("Error starting vote:", error);
     }
   };
 
@@ -479,7 +480,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       setMyVote(vote);
       alert(`투표가 완료되었습니다: ${vote === "guilty" ? "유죄" : "무죄"}`);
     } catch (error) {
-      console.error("Error voting:", error);
+      logger.error("Error voting:", error);
     }
   };
 
@@ -515,7 +516,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      console.error("Error ending vote:", error);
+      logger.error("Error ending vote:", error);
     }
   };
 
@@ -625,7 +626,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       // 6. Close the trial room
       if (onClose) onClose();
     } catch (error) {
-      console.error("Error making verdict:", error);
+      logger.error("Error making verdict:", error);
       alert(`판결 처리 중 오류가 발생했습니다: ${error.message}`);
     }
   };

@@ -19,7 +19,7 @@ export const useItems = () => {
   if (!context) {
     // This fallback is for components that might render outside the provider.
     // It provides a safe, non-functional version of the context values.
-    console.warn("useItems: ItemContext 범위 밖에서 사용됨");
+    logger.warn("useItems: ItemContext 범위 밖에서 사용됨");
     return {
       items: [], userItems: [], marketListings: [], marketOffers: [],
       loading: true, error: null,
@@ -97,7 +97,7 @@ export const ItemProvider = ({ children }) => {
         throw new Error(result.data.message || '데이터를 불러오는데 실패했습니다.');
       }
     } catch (err) {
-      console.error('[ItemContext] 데이터 로드 오류:', err);
+      logger.error('[ItemContext] 데이터 로드 오류:', err);
       setError(err);
     } finally {
       setDataLoading(false);
@@ -301,7 +301,7 @@ export const ItemProvider = ({ children }) => {
         return { success: true, restocked, newStock, newPrice };
       } else {
         // 🔥 실패: 모든 변경사항 롤백
-        console.warn('[ItemContext] 구매 실패, 롤백 수행');
+        logger.warn('[ItemContext] 구매 실패, 롤백 수행');
         if (optimisticUpdate) {
           optimisticUpdate({ cash: totalPrice });
         }
@@ -310,7 +310,7 @@ export const ItemProvider = ({ children }) => {
       }
     } catch (error) {
       // 🔥 에러: 모든 변경사항 롤백
-      console.error('[ItemContext] 구매 에러, 롤백 수행:', error);
+      logger.error('[ItemContext] 구매 에러, 롤백 수행:', error);
       if (optimisticUpdate) {
         optimisticUpdate({ cash: totalPrice });
       }
@@ -324,7 +324,7 @@ export const ItemProvider = ({ children }) => {
       }
       return { success: false, message: error.message };
     }
-  }, [userId, firebaseFunctions, refreshData, items, userItems, optimisticUpdate]);
+  }, [userId, firebaseFunctions, refreshData, items, userItems, optimisticUpdate, currentUserClassCode, userDoc]);
 
   const useItem = useCallback(async (inventoryItemId, quantity = 1) => {
     if (!userId) return { success: false, message: "로그인 필요" };
@@ -395,7 +395,7 @@ export const ItemProvider = ({ children }) => {
       }
       return { success: false, message: error.message };
     }
-  }, [userId, firebaseFunctions, refreshData]);
+  }, [userId, firebaseFunctions, refreshData, userItems, currentUserClassCode, userDoc]);
 
   const buyMarketItem = useCallback(async (listingId) => {
     if (!userId) return { success: false, message: "로그인 필요" };
@@ -475,7 +475,7 @@ export const ItemProvider = ({ children }) => {
         return { success: true };
       } else {
         // 🔥 실패: 모든 변경사항 롤백
-        console.warn('[ItemContext] 구매 실패, 롤백 수행');
+        logger.warn('[ItemContext] 구매 실패, 롤백 수행');
         await addCash(itemPrice, `${itemToBuy.itemName} 구매 실패 (롤백)`);
         setUserItems(originalUserItems);
         setMarketListings(originalMarketListings);
@@ -483,7 +483,7 @@ export const ItemProvider = ({ children }) => {
       }
     } catch (error) {
       // 🔥 에러: 모든 변경사항 롤백
-      console.error('[ItemContext] 구매 에러, 롤백 수행:', error);
+      logger.error('[ItemContext] 구매 에러, 롤백 수행:', error);
       await addCash(itemPrice, `${itemToBuy.itemName} 구매 실패 (롤백)`);
       setUserItems(originalUserItems);
       setMarketListings(originalMarketListings);
@@ -493,7 +493,7 @@ export const ItemProvider = ({ children }) => {
       }
       return { success: false, message: error.message };
     }
-  }, [userId, firebaseFunctions, refreshData, marketListings, userItems, deductCash, addCash]);
+  }, [userId, firebaseFunctions, refreshData, marketListings, userItems, deductCash, addCash, currentUserClassCode, userDoc]);
 
   const cancelSale = useCallback(async (listingId) => {
     if (!userId) return { success: false, message: "로그인 필요" };

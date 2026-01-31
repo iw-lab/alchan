@@ -25,6 +25,7 @@ import {
 } from "../firebaseUtils";
 import { addActivityLog } from "./users";
 import { getGovernmentSettings } from "./settings";
+import { logger } from '../../utils/logger';
 
 // =================================================================
 // 상점 아이템
@@ -252,7 +253,7 @@ export const purchaseItemTransaction = async (userId, storeItemId, userClassCode
     await addActivityLog(userId, '아이템 구매', logDescription);
     return { success: true, itemPrice: totalItemPrice, vat: vatAmount, autoRestocked: autoRestockOccurred };
   } catch (error) {
-    console.error(`[firebase.js] purchaseItemTransaction 오류:`, error);
+    logger.error(`[firebase.js] purchaseItemTransaction 오류:`, error);
     throw error;
   }
 };
@@ -273,7 +274,7 @@ export const getUserInventory = async (userId, useCache = true, tab = 'unknown')
     if (useCache) setCache(cacheKey, inventory);
     return inventory;
   } catch (error) {
-    console.error(`[firebase.js] 인벤토리 조회 오류 (사용자: ${userId}):`, error);
+    logger.error(`[firebase.js] 인벤토리 조회 오류 (사용자: ${userId}):`, error);
     throw error;
   }
 };
@@ -319,7 +320,7 @@ export const updateUserInventoryItemQuantity = async (userId, inventoryItemId, q
       return { success: true, newQuantity, deleted: false };
     }
   } catch (error) {
-    console.error(`[firebase.js] 인벤토리 아이템 수량 변경 오류 (ID: ${inventoryItemId}):`, error);
+    logger.error(`[firebase.js] 인벤토리 아이템 수량 변경 오류 (ID: ${inventoryItemId}):`, error);
     throw error;
   }
 };
@@ -349,7 +350,7 @@ export const addMarketListing = async (listingData, classCode) => {
     await addActivityLog(listingData.sellerId, '아이템 시장 등록', logDescription);
     return { success: true, listingId: docRef.id, data: { ...listingData, classCode } };
   } catch (error) {
-    console.error("[firebase.js] 아이템 시장 등록 실패:", error);
+    logger.error("[firebase.js] 아이템 시장 등록 실패:", error);
     throw error;
   }
 };
@@ -377,7 +378,7 @@ export const getMarketItems = async (classCode, status = "active", useCache = tr
     if (useCache) setCache(cacheKey, marketItems);
     return marketItems;
   } catch (error) {
-    console.error(`[firebase.js] 마켓 아이템 조회 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 마켓 아이템 조회 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -392,7 +393,7 @@ export const updateMarketListing = async (listingId, updates, tab = 'unknown') =
     await updateDoc(listingRef, { ...updates, updatedAt: serverTimestamp() });
     return true;
   } catch (error) {
-    console.error(`[firebase.js] 마켓 리스팅 업데이트 오류 (ID: ${listingId}):`, error);
+    logger.error(`[firebase.js] 마켓 리스팅 업데이트 오류 (ID: ${listingId}):`, error);
     throw error;
   }
 };

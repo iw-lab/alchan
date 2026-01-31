@@ -225,7 +225,7 @@ export default function Auction() {
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
       if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
     } catch (error) {
-      console.error(`[Auction Settle] 정산 중 오류 발생 ${auction.id}:`, error);
+      logger.error(`[Auction Settle] 정산 중 오류 발생 ${auction.id}:`, error);
       // 오류 발생 시 경매 상태를 'error'로 변경하여 재시도를 방지하고 문제 파악을 용이하게 할 수 있습니다.
       await updateDoc(auctionRef, { status: "error", error: error.message });
     }
@@ -266,7 +266,7 @@ export default function Auction() {
           auctionsToSettle.forEach((auction) => settleAuction(auction));
         }
       } catch (error) {
-        console.error("[Auction] 경매 데이터 로드 오류:", error);
+        logger.error("[Auction] 경매 데이터 로드 오류:", error);
         showNotification("경매 데이터를 불러오는 중 오류가 발생했습니다.", "error");
         setAuctionsLoading(false);
       }
@@ -276,6 +276,7 @@ export default function Auction() {
     loadAuctions();
 
     // 🔥 [최적화] 폴링 제거 - 사용자가 페이지 새로고침으로 경매 확인
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classCode, currentUserId]);
 
   useEffect(() => {
@@ -453,7 +454,7 @@ export default function Auction() {
       showNotification("입찰이 성공적으로 완료되었습니다.", "success");
       setBidAmount({ ...bidAmount, [auctionId]: "" });
     } catch (error) {
-      console.error("[Auction Bid] 입찰 오류:", error);
+      logger.error("[Auction Bid] 입찰 오류:", error);
       showNotification(`입찰 실패: ${error.message}`, "error");
 
       // 실패 시 롤백
@@ -529,7 +530,7 @@ export default function Auction() {
       showNotification("경매가 성공적으로 등록되었습니다.", "success");
       setActiveTab("myAuctions");
     } catch (error) {
-      console.error("[Auction Create] 경매 생성 오류:", error);
+      logger.error("[Auction Create] 경매 생성 오류:", error);
       showNotification(`경매 등록 실패: ${error.message}`, "error");
       if (itemDeducted && newAuction.assetId && typeof updateUserItemQuantity === "function") {
         await updateUserItemQuantity(newAuction.assetId, 1);
@@ -600,7 +601,7 @@ export default function Auction() {
       if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
 
     } catch (error) {
-      console.error("[Auction Cancel] 경매 취소 오류:", error);
+      logger.error("[Auction Cancel] 경매 취소 오류:", error);
       showNotification(`경매 취소 실패: ${error.message}`, "error");
     }
   };
@@ -666,7 +667,7 @@ export default function Auction() {
       if (authContext.fetchAllUsers) authContext.fetchAllUsers(true);
 
     } catch (error) {
-      console.error("[Admin Cancel] 관리자 경매 취소 오류:", error);
+      logger.error("[Admin Cancel] 관리자 경매 취소 오류:", error);
       showNotification(`관리자 취소 실패: ${error.message}`, "error");
     }
   };

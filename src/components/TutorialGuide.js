@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 import {
   X, ChevronLeft, ChevronRight, Sparkles, Wallet, Target,
   Gamepad2, ShoppingBag, TrendingUp, Users, Check, Play
@@ -284,7 +285,7 @@ export function useTutorial() {
           setShowTutorial(true);
         }
       } catch (error) {
-        console.error('튜토리얼 체크 오류:', error);
+        logger.error('튜토리얼 체크 오류:', error);
       } finally {
         setLoading(false);
       }
@@ -304,7 +305,7 @@ export function useTutorial() {
       });
       setShowTutorial(false);
     } catch (error) {
-      console.error('튜토리얼 완료 저장 오류:', error);
+      logger.error('튜토리얼 완료 저장 오류:', error);
     }
   }, [user?.uid]);
 
@@ -320,7 +321,7 @@ export function useTutorial() {
       });
       setShowTutorial(false);
     } catch (error) {
-      console.error('튜토리얼 스킵 저장 오류:', error);
+      logger.error('튜토리얼 스킵 저장 오류:', error);
     }
   }, [user?.uid]);
 
@@ -334,7 +335,7 @@ export function useTutorial() {
       });
       setShowTutorial(true);
     } catch (error) {
-      console.error('튜토리얼 리셋 오류:', error);
+      logger.error('튜토리얼 리셋 오류:', error);
     }
   }, [user?.uid]);
 

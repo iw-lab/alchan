@@ -252,7 +252,7 @@ const SettlementModal = ({
         // 성공하면 모달이 부모 컴포넌트에서 닫힘
       }
     } catch (error) {
-      console.error("Settlement Modal - 저장 중 오류:", error);
+      logger.error("Settlement Modal - 저장 중 오류:", error);
       alert(`오류 발생: ${error.message}`);
     }
   };
@@ -450,7 +450,7 @@ const PoliceStation = () => {
         hour12: false,
       });
     } catch (error) {
-      console.error("Error formatting date:", dateInput, error);
+      logger.error("Error formatting date:", dateInput, error);
       return "날짜 오류";
     }
   };
@@ -574,7 +574,7 @@ const PoliceStation = () => {
           createdAt: serverTimestamp(),
           lastUpdated: serverTimestamp(),
         }).catch((err) =>
-          console.error("Error creating national treasury:", err)
+          logger.error("Error creating national treasury:", err)
         );
       }
       return balance;
@@ -635,7 +635,7 @@ const PoliceStation = () => {
             updatedAt: serverTimestamp(),
             classCode: classCode,
           }).catch((err) =>
-            console.error("Error creating default custom reasons:", err)
+            logger.error("Error creating default custom reasons:", err)
           );
         }
       }
@@ -749,7 +749,7 @@ const PoliceStation = () => {
       handleTabChange("status");
       alert("신고가 성공적으로 제출되었습니다.");
     } catch (error) {
-      console.error("Error adding report:", error);
+      logger.error("Error adding report:", error);
       alert("신고 제출 오류.");
     }
   };
@@ -773,7 +773,7 @@ const PoliceStation = () => {
       logger.log("신고 접수 성공:", id);
       alert("신고가 접수되었습니다.");
     } catch (error) {
-      console.error("Error accepting report:", error);
+      logger.error("Error accepting report:", error);
       alert("신고 접수 오류.");
     }
   };
@@ -798,7 +798,7 @@ const PoliceStation = () => {
       logger.log("신고 반려 성공:", id);
       alert("신고가 반려되었습니다.");
     } catch (error) {
-      console.error("Error dismissing report:", error);
+      logger.error("Error dismissing report:", error);
       alert("신고 반려 오류.");
     }
   };
@@ -870,7 +870,7 @@ const PoliceStation = () => {
         refetchReports(); // 🔥 즉시 새로고침
         alert("벌금 처리가 완료되었습니다.");
       } catch (error) {
-        console.error("벌금 처리 트랜잭션 오류:", error);
+        logger.error("벌금 처리 트랜잭션 오류:", error);
         alert(`벌금 처리 실패: ${error.message}`);
         return;
       }
@@ -888,7 +888,7 @@ const PoliceStation = () => {
         refetchReports(); // 🔥 즉시 새로고침
         alert("경고 처리가 완료되었습니다.");
       } catch (error) {
-        console.error("벌금 0원 처리 오류:", error);
+        logger.error("벌금 0원 처리 오류:", error);
         alert("처리 중 오류가 발생했습니다.");
       }
     }
@@ -930,7 +930,7 @@ const PoliceStation = () => {
         throw new Error(result.message || "서버에서 처리를 실패했습니다.");
       }
     } catch (error) {
-      console.error("합의금 처리 실패 (Cloud Function):", error);
+      logger.error("합의금 처리 실패 (Cloud Function):", error);
       alert(`오류: ${error.message || '합의금 처리 중 오류가 발생했습니다.'}`);
       return false;
     }
@@ -960,7 +960,7 @@ const PoliceStation = () => {
       setIsEditModalOpen(false);
       setEditingComplaint(null);
     } catch (error) {
-      console.error("고소장 업데이트 오류:", error);
+      logger.error("고소장 업데이트 오류:", error);
       alert("고소장 정보 업데이트에 실패했습니다.");
     }
   };
@@ -986,7 +986,7 @@ const PoliceStation = () => {
       setIsJudgmentModalOpen(false);
       setJudgingComplaint(null);
     } catch (error) {
-      console.error("판결 저장 오류:", error);
+      logger.error("판결 저장 오류:", error);
       alert("판결 내용 저장에 실패했습니다.");
     }
   };
@@ -1007,7 +1007,7 @@ const PoliceStation = () => {
         await batch.commit();
         alert("모든 신고 기록 삭제 완료.");
       } catch (error) {
-        console.error("Error deleting all reports:", error);
+        logger.error("Error deleting all reports:", error);
         alert("모든 신고 기록 삭제 오류.");
       }
     }
@@ -1029,7 +1029,7 @@ const PoliceStation = () => {
         await deleteDoc(reportRef);
         alert("신고 기록 삭제 완료.");
       } catch (error) {
-        console.error("Error deleting report:", error);
+        logger.error("Error deleting report:", error);
         alert("신고 기록 삭제 오류.");
       }
     }
@@ -1074,7 +1074,7 @@ const PoliceStation = () => {
       });
       alert("사용자 정의 신고 사유 업데이트 완료.");
     } catch (error) {
-      console.error("Error updating reasons:", error);
+      logger.error("Error updating reasons:", error);
       alert("신고 사유 업데이트 오류.");
     }
   };
@@ -1083,7 +1083,7 @@ const PoliceStation = () => {
     logger.log("handleOpenSettlementModal 호출됨:", reportToProcess);
 
     if (!reportToProcess || !reportToProcess.id) {
-      console.error("합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.", reportToProcess);
+      logger.error("합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.", reportToProcess);
       alert("오류: 사건 정보를 찾지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.");
       return;
     }
@@ -1095,7 +1095,7 @@ const PoliceStation = () => {
     };
 
     if (!mappedReport.complainantId || !mappedReport.defendantId) {
-      console.error("합의 처리 오류: 고소인 또는 피고소인 정보가 누락되었습니다.", mappedReport);
+      logger.error("합의 처리 오류: 고소인 또는 피고소인 정보가 누락되었습니다.", mappedReport);
       alert("오류: 고소인 또는 피고소인 정보가 없는 사건은 처리할 수 없습니다.");
       return;
     }
@@ -1115,7 +1115,7 @@ const PoliceStation = () => {
         ? getUserNameById(r.processedById)
         : null,
     }));
-  }, [reports, users, usersLoading, reportsLoading, getUserNameById]);
+  }, [reports, usersLoading, reportsLoading, getUserNameById]); // users는 getUserNameById 내부에서 사용되므로 제거
 
   const statusReports = useMemo(() => {
     return reportsWithNames.filter(

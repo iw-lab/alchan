@@ -28,7 +28,7 @@ export const useOptimizedUserDoc = (uid) => {
     } catch (err) {
       if (mountedRef.current) {
         setError(err);
-        console.error('사용자 문서 로딩 오류:', err);
+        logger.error('사용자 문서 로딩 오류:', err);
       }
     } finally {
       if (mountedRef.current) {
@@ -76,7 +76,7 @@ export const useOptimizedClassMembers = (classCode) => {
     } catch (err) {
       if (mountedRef.current) {
         setError(err);
-        console.error('학급 구성원 로딩 오류:', err);
+        logger.error('학급 구성원 로딩 오류:', err);
       }
     } finally {
       if (mountedRef.current) {
@@ -237,7 +237,7 @@ export const useOptimizedItems = () => {
       setError(null);
     } catch (err) {
       setError(err);
-      console.error('[useOptimizedItems] 아이템 로딩 오류:', err);
+      logger.error('[useOptimizedItems] 아이템 로딩 오류:', err);
       setItems([]);
     } finally {
       setLoading(false);
@@ -275,7 +275,7 @@ export const useOptimizedUserItems = (userId) => {
       setError(null);
     } catch (err) {
       setError(err);
-      console.error('[useOptimizedUserItems] 사용자 아이템 로딩 오류:', err);
+      logger.error('[useOptimizedUserItems] 사용자 아이템 로딩 오류:', err);
       setUserItems([]);
     } finally {
       setLoading(false);

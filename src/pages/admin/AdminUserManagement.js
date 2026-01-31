@@ -16,6 +16,7 @@ import { db, functions } from '../../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../contexts/AuthContext';
 import './AdminUserManagement.css';
+import { logger } from '../../utils/logger';
 
 const AdminUserManagement = () => {
   const { userDoc } = useAuth();
@@ -96,7 +97,7 @@ const AdminUserManagement = () => {
 
       setUsers(prev => (reset ? usersData : [...prev, ...usersData]));
     } catch (error) {
-      console.error("학생 정보를 불러오는 데 실패했습니다:", error);
+      logger.error("학생 정보를 불러오는 데 실패했습니다:", error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -124,7 +125,7 @@ const AdminUserManagement = () => {
           )
         );
       } catch (error) {
-        console.error("개인회생 처리 중 오류 발생:", error);
+        logger.error("개인회생 처리 중 오류 발생:", error);
         alert(`오류가 발생했습니다: ${error.message}`);
       }
     }
@@ -139,7 +140,7 @@ const AdminUserManagement = () => {
       });
       alert(`${user.name} 학생의 비밀번호가 '${newPassword}'로 초기화되었습니다.`);
     } catch (error) {
-      console.error("비밀번호 초기화 중 오류 발생:", error);
+      logger.error("비밀번호 초기화 중 오류 발생:", error);
       alert(`비밀번호 초기화에 실패했습니다: ${error.message}`);
     }
   };
@@ -167,7 +168,7 @@ const AdminUserManagement = () => {
         });
         successCount++;
       } catch (error) {
-        console.error(`${user.name} 비밀번호 초기화 실패:`, error);
+        logger.error(`${user.name} 비밀번호 초기화 실패:`, error);
         failCount++;
       }
     }
@@ -207,7 +208,7 @@ const AdminUserManagement = () => {
 
       alert(`${user.name} 학생이 ${actionText}되었습니다.`);
     } catch (error) {
-      console.error("관리자 권한 변경 중 오류 발생:", error);
+      logger.error("관리자 권한 변경 중 오류 발생:", error);
       alert(`권한 변경에 실패했습니다: ${error.message}`);
     }
   };
@@ -248,7 +249,7 @@ const AdminUserManagement = () => {
       setEditingUserId(null);
       setEditFormData({});
     } catch (error) {
-      console.error("학생 정보 업데이트 중 오류 발생:", error);
+      logger.error("학생 정보 업데이트 중 오류 발생:", error);
       alert(`정보 업데이트에 실패했습니다: ${error.message}`);
     }
   };
@@ -265,7 +266,7 @@ const AdminUserManagement = () => {
         setUsers(prevUsers => prevUsers.filter(user => user.id !== id));
         alert('학생이 삭제되었습니다.');
       } catch (error) {
-        console.error("학생 삭제 중 오류 발생:", error);
+        logger.error("학생 삭제 중 오류 발생:", error);
         alert('학생 삭제에 실패했습니다.');
       }
     }

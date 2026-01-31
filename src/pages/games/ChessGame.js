@@ -19,6 +19,7 @@ import {
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 import './ChessGame.css';
 import { AlchanLoading } from '../../components/AlchanLayout';
+import { logger } from '../../utils/logger';
 
 // 3D 보드 지연 로딩
 const Chess3DCanvas = lazy(() => import('./Chess3DBoard'));
@@ -418,7 +419,7 @@ const ChessGame = () => {
             });
             setAvailableRooms(rooms);
         } catch (error) {
-            console.error("Error fetching rooms:", error);
+            logger.error("Error fetching rooms:", error);
         }
     }, [user]);
 
@@ -600,6 +601,7 @@ const ChessGame = () => {
         }
 
         return moves;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameData]);
 
     const isSquareUnderAttack = useCallback((board, row, col, color) => {
@@ -756,7 +758,7 @@ const ChessGame = () => {
             }, 2000);
 
         } catch (error) {
-            console.error("Error applying reward:", error);
+            logger.error("Error applying reward:", error);
             setFeedback({ message: '보상 지급에 실패했습니다.', type: 'error' });
         }
     };
@@ -832,7 +834,7 @@ const ChessGame = () => {
             setFeedback({ message: isAiMode ? `AI 대전 시작!` : `체스 방 생성 완료! 코드: ${newGameId}`, type: 'success' });
             if (refetchRef.current) await refetchRef.current();
         } catch (error) {
-            console.error("Error creating room:", error);
+            logger.error("Error creating room:", error);
             setFeedback({ message: '방 생성에 실패했습니다.', type: 'error' });
         }
     };
@@ -871,7 +873,7 @@ const ChessGame = () => {
             setGameId(targetRoomId);
             if (refetchRef.current) await refetchRef.current();
         } catch (error) {
-            console.error("Error joining room: ", error);
+            logger.error("Error joining room: ", error);
             setFeedback({ message: `참가 실패: ${error.message}`, type: 'error' });
         }
     };
@@ -886,7 +888,7 @@ const ChessGame = () => {
             setFeedback({ message: `방 ${roomId}가 삭제되었습니다.`, type: 'success' });
             fetchAvailableRooms();
         } catch (error) {
-            console.error("Error deleting room by admin:", error);
+            logger.error("Error deleting room by admin:", error);
             setFeedback({ message: '방 삭제에 실패했습니다.', type: 'error' });
         }
     };
@@ -938,7 +940,7 @@ const ChessGame = () => {
             try {
                 await deleteDoc(doc(db, 'chessGames', gameId));
             } catch (error) {
-                console.error("Error deleting room:", error);
+                logger.error("Error deleting room:", error);
             }
         }
 
@@ -1088,7 +1090,7 @@ const ChessGame = () => {
             }
 
         } catch (error) {
-            console.error("Error making move: ", error);
+            logger.error("Error making move: ", error);
             setFeedback({ message: `이동 중 오류 발생: ${error.message}`, type: 'error' });
             if (refetchRef.current) {
                 await refetchRef.current();
@@ -1157,7 +1159,7 @@ const ChessGame = () => {
                         await executeMove(from[0], from[1], to[0], to[1], piece);
                     }
                 } catch (error) {
-                    console.error("AI move error:", error);
+                    logger.error("AI move error:", error);
                     setIsAiThinking(false);
                 }
 
@@ -1167,6 +1169,7 @@ const ChessGame = () => {
         };
 
         makeAiMove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameData?.turn, gameData?.status, gameData?.moveHistory?.length, gameId, aiDifficulty, executeMove, getValidMoves, isMoving]);
 
     const formatTime = (seconds) => {

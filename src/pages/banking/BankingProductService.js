@@ -1,5 +1,6 @@
 // src/BankingProductService.js
 import { convertAdminProductsToAccountFormat } from "./BankingProductAdapter";
+import { logger } from '../../utils/logger';
 
 /**
  * 뱅킹 상품 정보를 가져오고 관리하는 서비스
@@ -50,7 +51,7 @@ export class BankingProductService {
 
       return this.products;
     } catch (error) {
-      console.error("상품 목록을 가져오는데 실패했습니다:", error);
+      logger.error("상품 목록을 가져오는데 실패했습니다:", error);
       return [];
     }
   }

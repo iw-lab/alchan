@@ -8,6 +8,7 @@ import {
   convertTransactionsToLogs
 } from '../../services/AdminDatabaseService';
 import './AdminDatabase.css';
+import { logger } from '../../utils/logger';
 
 const AdminDatabase = () => {
   const { userDoc, allClassMembers } = useAuth();
@@ -67,7 +68,7 @@ const AdminDatabase = () => {
       setLastDoc(result.lastDoc);
 
     } catch (err) {
-      console.error('[AdminDatabase] 데이터 로드 오류:', err);
+      logger.error('[AdminDatabase] 데이터 로드 오류:', err);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -79,7 +80,8 @@ const AdminDatabase = () => {
     setLastDoc(null);
     setHasMore(false);
     loadData(true, null);
-  }, [selectedUser, classCode]); // loadData 제거하여 무한 루프 방지
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUser, classCode]); // loadData 추가하면 무한 루프 발생
 
   // 🔥 필터나 검색이 변경되면 데이터 다시 로드
   useEffect(() => {
@@ -89,7 +91,8 @@ const AdminDatabase = () => {
       setHasMore(false);
       loadData(true, null);
     }
-  }, [activityTypeFilter, searchTerm]); // 필터와 검색어 변경 시에만 실행
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityTypeFilter, searchTerm]); // loadData와 activityData 추가하면 무한 루프 발생
 
   const handleRefresh = () => {
     clearClassCache(classCode);
@@ -204,7 +207,7 @@ const AdminDatabase = () => {
       setDebugInfo(debugText);
 
     } catch (error) {
-      console.error('[AdminDatabase DEBUG] 오류:', error);
+      logger.error('[AdminDatabase DEBUG] 오류:', error);
       setDebugInfo(`오류: ${error.message}`);
     }
   };

@@ -1,6 +1,7 @@
 // src/SellCouponModal.js
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, memo } from "react";
+import { logger } from '../../utils/logger';
 
 const SellCouponModal = memo(function SellCouponModal({
   showSellCouponModal,
@@ -51,7 +52,7 @@ const SellCouponModal = memo(function SellCouponModal({
     // SellCoupon prop이 함수인지 확인
     if (typeof SellCoupon !== "function") {
       setError("판매 처리 함수가 올바르게 전달되지 않았습니다.");
-      console.error("SellCoupon prop is not a function:", SellCoupon);
+      logger.error("SellCoupon prop is not a function:", SellCoupon);
       // 사용자에게 이 오류를 직접 알릴 수도 있습니다.
       // alert("판매 처리 중 시스템 오류가 발생했습니다. 관리자에게 문의하세요.");
       return;
@@ -70,7 +71,7 @@ const SellCouponModal = memo(function SellCouponModal({
       // (예: setShowSellCouponModal(false); setSellAmount(""); 등을 해당 함수 내에서 호출)
       // 현재 Dashboard.js의 handleSellCoupon 함수는 성공 시 모달을 닫고 sellAmount를 초기화하도록 되어 있습니다.
     } catch (err) {
-      console.error("판매 처리 중 예상치 못한 오류:", err);
+      logger.error("판매 처리 중 예상치 못한 오류:", err);
       // err.message가 사용자에게 보여주기에 적절한 내용인지 확인 필요
       setError(
         err.message || "판매 처리 중 오류가 발생했습니다. 다시 시도해주세요."

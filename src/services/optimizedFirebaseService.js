@@ -18,7 +18,7 @@ const createOptimizedFunction = (functionName) => {
         throw new Error(result.data.message || "함수 실행 실패");
       }
     } catch (error) {
-      console.error(`${functionName} 오류:`, error);
+      logger.error(`${functionName} 오류:`, error);
       throw error;
     }
   };
@@ -93,7 +93,7 @@ export const localBackup = {
         timestamp: Date.now(),
       }));
     } catch (error) {
-      console.warn("로컬 백업 저장 실패:", error);
+      logger.warn("로컬 백업 저장 실패:", error);
     }
   },
 
@@ -107,7 +107,7 @@ export const localBackup = {
         }
       }
     } catch (error) {
-      console.warn("로컬 백업 로드 실패:", error);
+      logger.warn("로컬 백업 로드 실패:", error);
     }
     return null;
   },
@@ -116,7 +116,7 @@ export const localBackup = {
     try {
       localStorage.removeItem(`backup_${key}`);
     } catch (error) {
-      console.warn("로컬 백업 삭제 실패:", error);
+      logger.warn("로컬 백업 삭제 실패:", error);
     }
   },
 };

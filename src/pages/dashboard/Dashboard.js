@@ -126,7 +126,7 @@ class BatchManager {
       await batch.commit();
       logger.log(`배치 실행 완료: ${operations.length}개 작업`);
     } catch (error) {
-      console.error('배치 실행 실패:', error);
+      logger.error('배치 실행 실패:', error);
       // 실패한 작업들을 다시 큐에 추가할 수 있음
     }
   }
@@ -178,7 +178,7 @@ const fetchClassData = async (classCode) => {
     dataCache.set(cacheKey, data);
     return data;
   } catch (error) {
-    console.error("Error fetching class data:", error);
+    logger.error("Error fetching class data:", error);
     return [];
   }
 };
@@ -201,7 +201,7 @@ const saveSharedData = async (data, classCode) => {
     dataCache.invalidate(`classData_${classCode}`);
     return true;
   } catch (error) {
-    console.error("Error saving shared data:", error);
+    logger.error("Error saving shared data:", error);
     return false;
   }
 };
@@ -372,7 +372,7 @@ function Dashboard({ adminTabMode }) {
         setShowDailyRewardPopup(false);
       }, 3000);
     } catch (error) {
-      console.error("출석 보상 지급 실패:", error);
+      logger.error("출석 보상 지급 실패:", error);
     }
   }, [userDoc?.uid]);
 
@@ -425,7 +425,7 @@ function Dashboard({ adminTabMode }) {
     try {
       return doc(firestoreCollection(db, "temp")).id;
     } catch (error) {
-      console.error("Error generating ID:", error);
+      logger.error("Error generating ID:", error);
       return Date.now().toString() + Math.random().toString(36).substr(2, 9);
     }
   }, []);
@@ -490,7 +490,7 @@ function Dashboard({ adminTabMode }) {
         setCommonTasks(loadedCommonTasks);
         dataCache.set(`commonTasks_${classCode}`, loadedCommonTasks, CACHE_TTL.TASKS);
       } catch (error) {
-        console.error("Polling 에러:", error);
+        logger.error("Polling 에러:", error);
       }
     };
 
@@ -673,7 +673,7 @@ function Dashboard({ adminTabMode }) {
 
       logger.log("[Dashboard] 클라이언트 상태 새로고침 완료");
     } catch (error) {
-      console.error("[Dashboard] 상태 새로고침 오류:", error);
+      logger.error("[Dashboard] 상태 새로고침 오류:", error);
     } finally {
       refreshInProgressRef.current = false;
     }
@@ -702,9 +702,11 @@ function Dashboard({ adminTabMode }) {
     }
 
     // 컴포넌트 언마운트 시 리스너 정리
+    const manager = realtimeManager.current;
     return () => {
-      realtimeManager.current.removeAllListeners();
+      manager.removeAllListeners();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, userDoc?.id, userDoc?.classCode, loadTasksData]);
 
   // 🔥 [최적화] 날짜 변경 감지 및 UI 새로고침 (중복 실행 방지)
@@ -806,7 +808,7 @@ function Dashboard({ adminTabMode }) {
       // 캐시 무효화
       dataCache.invalidate(`jobs_${userDoc.classCode}`);
     } catch (error) {
-      console.error("handleSaveJob 오류:", error);
+      logger.error("handleSaveJob 오류:", error);
       alert("직업 저장 중 오류 발생");
     } finally {
       setAppLoading(false);
@@ -856,7 +858,7 @@ function Dashboard({ adminTabMode }) {
         // 캐시 무효화
         dataCache.invalidate(`jobs_${userDoc.classCode}`);
       } catch (error) {
-        console.error("handleDeleteJob 오류:", error);
+        logger.error("handleDeleteJob 오류:", error);
         alert("직업 삭제 중 오류 발생");
       } finally {
         setAppLoading(false);
@@ -1019,7 +1021,7 @@ function Dashboard({ adminTabMode }) {
         dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
       }
     } catch (error) {
-      console.error("handleSaveTask 오류:", error);
+      logger.error("handleSaveTask 오류:", error);
       alert("할일 저장 중 오류 발생: " + error.message);
     } finally {
       setAppLoading(false);
@@ -1090,7 +1092,7 @@ function Dashboard({ adminTabMode }) {
           dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
         }
       } catch (error) {
-        console.error("handleDeleteTask 오류:", error);
+        logger.error("handleDeleteTask 오류:", error);
         alert("할일 삭제 중 오류 발생: " + error.message);
       } finally {
         setAppLoading(false);
@@ -1126,12 +1128,13 @@ function Dashboard({ adminTabMode }) {
           alert("선택한 직업 저장 중 오류 발생.");
         }
       } catch (error) {
-        console.error("handleConfirmJobSelection 오류:", error);
+        logger.error("handleConfirmJobSelection 오류:", error);
         alert("선택 직업 저장 중 예상치 못한 오류 발생.");
       } finally {
         setAppLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, updateUser]
   );
 
@@ -1156,7 +1159,7 @@ function Dashboard({ adminTabMode }) {
           ?.tasks?.find(t => t.id === taskId);
 
         if (jobTask && jobTask.maxClicks > 0 && currentClicks >= jobTask.maxClicks) {
-          console.warn("[Dashboard] 이미 완료된 직업 할일:", { taskKey, currentClicks, maxClicks: jobTask.maxClicks });
+          logger.warn("[Dashboard] 이미 완료된 직업 할일:", { taskKey, currentClicks, maxClicks: jobTask.maxClicks });
           return;
         }
       } else if (!isJobTask) {
@@ -1164,7 +1167,7 @@ function Dashboard({ adminTabMode }) {
         const commonTask = commonTasks?.find(t => t.id === taskId);
 
         if (commonTask && commonTask.maxClicks > 0 && currentClicks >= commonTask.maxClicks) {
-          console.warn("[Dashboard] 이미 완료된 공통 할일:", { taskId, currentClicks, maxClicks: commonTask.maxClicks });
+          logger.warn("[Dashboard] 이미 완료된 공통 할일:", { taskId, currentClicks, maxClicks: commonTask.maxClicks });
           return;
         }
       }
@@ -1234,7 +1237,7 @@ function Dashboard({ adminTabMode }) {
           throw new Error(resultData.message || "알 수 없는 서버 오류");
         }
       } catch (error) {
-        console.error("[Dashboard] 할일 완료 처리 중 심각한 오류:", error);
+        logger.error("[Dashboard] 할일 완료 처리 중 심각한 오류:", error);
         alert(`할일 완료에 실패했습니다: ${error.message}`);
 
         // 롤백: 이전 상태로 복원
@@ -1297,7 +1300,7 @@ function Dashboard({ adminTabMode }) {
           }, { merge: true });
 
         } catch (goalError) {
-          console.warn(
+          logger.warn(
             "목표 설정 권한이 없어 목표 금액 설정을 건너뜀:",
             goalError.code
           );
@@ -1317,7 +1320,7 @@ function Dashboard({ adminTabMode }) {
         dataCache.invalidate(`goal_${currentGoalId}`);
       }
     } catch (error) {
-      console.error("관리자 설정 저장 오류:", error);
+      logger.error("관리자 설정 저장 오류:", error);
       alert("관리자 설정 저장 중 오류: " + error.message);
     } finally {
       setAppLoading(false);
@@ -1364,7 +1367,7 @@ function Dashboard({ adminTabMode }) {
         setClassCodes([]);
       }
     } catch (error) {
-      console.error("학급 코드 로드 오류:", error);
+      logger.error("학급 코드 로드 오류:", error);
       setClassCodes([]);
     }
   }, [isAdmin]);
@@ -1416,7 +1419,7 @@ function Dashboard({ adminTabMode }) {
             alert(`학급 코드 '${trimmedCode}'가 추가되었습니다.\n\n⚠️ 기본 데이터 복사 중 오류: ${copyResult.error}\n(나중에 직접 추가해주세요)`);
           }
         } catch (copyError) {
-          console.error("기본 데이터 복사 오류:", copyError);
+          logger.error("기본 데이터 복사 오류:", copyError);
           alert(`학급 코드 '${trimmedCode}'가 추가되었습니다.\n\n⚠️ 기본 데이터 복사 실패\n(나중에 직접 추가해주세요)`);
         }
 
@@ -1428,7 +1431,7 @@ function Dashboard({ adminTabMode }) {
 
         return true;
       } catch (error) {
-        console.error("학급 코드 추가 오류:", error);
+        logger.error("학급 코드 추가 오류:", error);
         alert("학급 코드 추가 중 오류 발생");
         return false;
       } finally {
@@ -1479,7 +1482,7 @@ function Dashboard({ adminTabMode }) {
 
         return true;
       } catch (error) {
-        console.error("학급 코드 삭제 오류:", error);
+        logger.error("학급 코드 삭제 오류:", error);
         alert("학급 코드 삭제 중 오류 발생: " + error.message);
         return false;
       } finally {
@@ -1507,7 +1510,7 @@ function Dashboard({ adminTabMode }) {
   const handleManualTaskReset = useCallback(async () => {
     logger.log("[Dashboard] 수동 할일 리셋 시작");
     if (!userDoc?.classCode) {
-      console.error("[Dashboard] 학급 코드 정보가 없어 리셋을 중단합니다.");
+      logger.error("[Dashboard] 학급 코드 정보가 없어 리셋을 중단합니다.");
       alert("학급 코드 정보가 없습니다.");
       return;
     }
@@ -1545,13 +1548,14 @@ function Dashboard({ adminTabMode }) {
         throw new Error(result.data.message || "알 수 없는 오류");
       }
     } catch (error) {
-      console.error("[Dashboard] 할일 리셋 실패:", error);
+      logger.error("[Dashboard] 할일 리셋 실패:", error);
       alert(`오류: 할일 리셋에 실패했습니다.\n\n${error.message}`);
     } finally {
       setAppLoading(false);
       logger.log("[Dashboard] 수동 할일 리셋 종료");
     }
-  }, [userDoc?.classCode, setUserDoc, setJobs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDoc?.classCode, setUserDoc]);
 
   // Loading and error states
   if (authLoading || appLoading) {

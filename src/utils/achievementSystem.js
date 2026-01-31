@@ -5,6 +5,7 @@
  * 다양한 활동과 마일스톤에 대한 배지를 부여합니다.
  */
 
+import { logger } from './logger';
 export const ACHIEVEMENTS = {
   // 자산 관련 업적
   FIRST_THOUSAND: {
@@ -346,7 +347,7 @@ export function getUserAchievements(userId) {
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error("업적 데이터 로드 실패:", error);
+    logger.error("업적 데이터 로드 실패:", error);
     return [];
   }
 }
@@ -378,7 +379,7 @@ export function grantAchievement(userId, achievementId) {
     localStorage.setItem(key, JSON.stringify(achievements));
     return true;
   } catch (error) {
-    console.error("업적 부여 실패:", error);
+    logger.error("업적 부여 실패:", error);
     return false;
   }
 }

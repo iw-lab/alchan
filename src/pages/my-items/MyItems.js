@@ -160,7 +160,8 @@ const MyItems = () => {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // isAdmin은 함수이므로 의존성 불필요
 
   const [useItemModal, setUseItemModal] = useState({
     isOpen: false,
@@ -293,7 +294,8 @@ const MyItems = () => {
         if (remainingToUse <= 0) break;
 
         const amountToUse = Math.min(doc.quantity, remainingToUse);
-        
+
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         const result = await useItem(doc.id, amountToUse);
         results.push(result);
 
@@ -342,13 +344,13 @@ const MyItems = () => {
 
     const { item: group } = giftModal;
     if (!user || !giftRecipientUid || !group) {
-      console.error('[MyItems] 선물 정보 오류:', { user: !!user, giftRecipientUid, group: !!group });
+      logger.error('[MyItems] 선물 정보 오류:', { user: !!user, giftRecipientUid, group: !!group });
       showNotification("error", "선물 정보가 올바르지 않습니다.");
       return;
     }
     const quantity = Number(giftQuantity) || 1;
     if (quantity <= 0 || quantity > group.totalQuantity) {
-      console.error('[MyItems] 선물 수량 오류:', { quantity, totalQuantity: group.totalQuantity });
+      logger.error('[MyItems] 선물 수량 오류:', { quantity, totalQuantity: group.totalQuantity });
       showNotification("error", "선물 수량이 올바르지 않습니다.");
       return;
     }
@@ -414,7 +416,7 @@ const MyItems = () => {
           actualTotalQuantity += (data.quantity || 0);
           logger.log('[MyItems] ✅ 문서 발견:', { id: docSnap.id, quantity: data.quantity });
         } else {
-          console.warn('[MyItems] ⚠️ 문서 없음:', docId);
+          logger.warn('[MyItems] ⚠️ 문서 없음:', docId);
         }
       }
 
@@ -479,13 +481,13 @@ const MyItems = () => {
           const senderItemSnap = await transaction.get(senderItemRef);
 
           if (!senderItemSnap.exists()) {
-            console.error('[MyItems] ❌ 트랜잭션 중 아이템 문서가 사라짐:', senderDoc.id);
+            logger.error('[MyItems] ❌ 트랜잭션 중 아이템 문서가 사라짐:', senderDoc.id);
             throw new Error('트랜잭션 중 아이템이 사라졌습니다. 다시 시도해주세요.');
           }
 
           const currentQuantity = senderItemSnap.data().quantity || 0;
           if (currentQuantity <= 0) {
-            console.error('[MyItems] ❌ 트랜잭션 중 아이템 수량이 0:', senderDoc.id);
+            logger.error('[MyItems] ❌ 트랜잭션 중 아이템 수량이 0:', senderDoc.id);
             throw new Error('트랜잭션 중 아이템 수량이 변경되었습니다. 다시 시도해주세요.');
           }
 
@@ -512,7 +514,7 @@ const MyItems = () => {
               현재수량: recipientCurrentQuantity
             });
           } else {
-            console.warn('[MyItems] ⚠️ 받는 사람의 기존 아이템이 사라짐, 새로 생성합니다.');
+            logger.warn('[MyItems] ⚠️ 받는 사람의 기존 아이템이 사라짐, 새로 생성합니다.');
             recipientItemRef = null;
           }
         } else {
@@ -550,7 +552,7 @@ const MyItems = () => {
 
         // 실제로 처리된 수량 확인
         if (processedAmount < quantity) {
-          console.error('[MyItems] 처리된 수량 부족:', { 요청: quantity, 처리됨: processedAmount });
+          logger.error('[MyItems] 처리된 수량 부족:', { 요청: quantity, 처리됨: processedAmount });
           throw new Error(`아이템 수량이 부족합니다. (필요: ${quantity}, 실제 보유: ${processedAmount})`);
         }
 
@@ -592,7 +594,7 @@ const MyItems = () => {
       }, 2000);
 
     } catch (error) {
-      console.error('[MyItems] 선물하기 실패:', error);
+      logger.error('[MyItems] 선물하기 실패:', error);
 
       // 낙관적 업데이트 롤백
       if (updateLocalUserItems && originalUserItems) {
@@ -613,7 +615,7 @@ const MyItems = () => {
           }
           logger.log('[MyItems] 데이터 새로고침 완료');
         } catch (syncError) {
-          console.error("[MyItems] 데이터 새로고침 실패:", syncError);
+          logger.error("[MyItems] 데이터 새로고침 실패:", syncError);
         }
       }
     } finally {
@@ -673,15 +675,15 @@ const MyItems = () => {
         // 🔥 FIX: 판매 전 필수 필드가 undefined인 경우 기본값으로 업데이트
         const updateFields = {};
         if (doc.description === undefined) {
-          console.warn(`[MyItems] 누락된 description 필드 수정: ${doc.id}`);
+          logger.warn(`[MyItems] 누락된 description 필드 수정: ${doc.id}`);
           updateFields.description = "";
         }
         if (doc.icon === undefined) {
-          console.warn(`[MyItems] 누락된 icon 필드 수정: ${doc.id}`);
+          logger.warn(`[MyItems] 누락된 icon 필드 수정: ${doc.id}`);
           updateFields.icon = "🔮";
         }
         if (doc.type === undefined) {
-          console.warn(`[MyItems] 누락된 type 필드 수정: ${doc.id}`);
+          logger.warn(`[MyItems] 누락된 type 필드 수정: ${doc.id}`);
           updateFields.type = "general";
         }
         if (Object.keys(updateFields).length > 0) {
@@ -713,7 +715,7 @@ const MyItems = () => {
       }, 500);
 
     } catch(error) {
-      console.error('[MyItems] 시장 판매 등록 실패:', error);
+      logger.error('[MyItems] 시장 판매 등록 실패:', error);
 
       if (error.message.includes('아이템을 찾을 수 없') || error.message.includes('수량이 부족합니다')) {
         showNotification("warning", "아이템 정보가 변경되었습니다. 데이터를 동기화합니다.");
@@ -724,7 +726,7 @@ const MyItems = () => {
                 showNotification("success", "동기화가 완료되었습니다. 다시 시도해주세요.");
                 setIsSyncing(false);
             }).catch((syncError) => {
-                console.error("[MyItems] 데이터 동기화 실패:", syncError);
+                logger.error("[MyItems] 데이터 동기화 실패:", syncError);
                 showNotification("error", "데이터 동기화에 실패했습니다.");
                 setIsSyncing(false);
             });

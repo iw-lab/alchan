@@ -195,7 +195,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
 
           setStudentDonationSummary(summary);
         } catch (err) {
-          console.error("[DonationHistoryModal] 기부 내역 처리 중 오류:", err);
+          logger.error("[DonationHistoryModal] 기부 내역 처리 중 오류:", err);
           setError("기부 내역을 처리하는 중 오류가 발생했습니다.");
         } finally {
           setLoading(false);

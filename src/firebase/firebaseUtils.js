@@ -88,7 +88,7 @@ export const getDbStats = () => {
       ? ((dbStats.cacheHits / (dbStats.cacheHits + dbStats.cacheMisses)) * 100).toFixed(1) + '%'
       : 'N/A'
   };
-  console.table({
+  logger.table({
     '\uCD1D \uC77D\uAE30': dbStats.reads,
     '\uCD1D \uC4F0\uAE30': dbStats.writes,
     '\uCD1D \uC0AD\uC81C': dbStats.deletes,
@@ -106,7 +106,7 @@ export const getDbStats = () => {
 export const printRecentOperations = (count = 20) => {
   const recent = dbStats.operations.slice(-count);
   logger.log(`\n\u{1F4CA} \uCD5C\uADFC ${count}\uAC1C DB \uC791\uC5C5:`);
-  console.table(recent.map(op => ({
+  logger.table(recent.map(op => ({
     '\uC2DC\uAC04': op.timestamp.split('T')[1].split('.')[0],
     '\uD0C0\uC785': op.type,
     '\uCEEC\uB809\uC158': op.collection,
@@ -128,7 +128,7 @@ export const getTabStats = () => {
     else if (op.type === 'SUBSCRIBE') tabStats[tab].subscribes++;
   });
   logger.log('\n\u{1F4CA} \uD0ED\uBCC4 DB \uC0AC\uC6A9 \uD1B5\uACC4:');
-  console.table(tabStats);
+  logger.table(tabStats);
   return tabStats;
 };
 

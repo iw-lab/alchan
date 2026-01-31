@@ -203,9 +203,10 @@ const AdminSettingsModal = ({
         });
       }
     } catch (error) {
-      console.error("급여 설정 로드 오류:", error);
+      logger.error("급여 설정 로드 오류:", error);
     }
-  }, [db, userClassCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userClassCode]); // db는 외부 스코프 값으로 의존성에서 제외
 
   // 급여 설정 저장
   const handleSaveSalarySettings = useCallback(async () => {
@@ -248,12 +249,13 @@ const AdminSettingsModal = ({
 
       alert("급여 설정이 저장되었습니다.");
     } catch (error) {
-      console.error("급여 설정 저장 오류:", error);
+      logger.error("급여 설정 저장 오류:", error);
       alert("급여 설정 저장 중 오류가 발생했습니다: " + error.message);
     } finally {
       setSalarySettingsLoading(false);
     }
-  }, [db, userClassCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
   // 월급 계산 함수 (세금 공제 포함)
   const calculateSalary = useCallback((selectedJobIds, includesTax = false) => {
@@ -282,7 +284,7 @@ const AdminSettingsModal = ({
       if (handleEditJob && typeof handleEditJob === "function") {
         handleEditJob(job);
       } else {
-        console.error(
+        logger.error(
           "[AdminSettingsModal] handleEditJob 함수가 정의되지 않았습니다."
         );
         alert("직업 편집 기능을 사용할 수 없습니다.");
@@ -298,7 +300,7 @@ const AdminSettingsModal = ({
       if (handleDeleteJob && typeof handleDeleteJob === "function") {
         handleDeleteJob(jobId);
       } else {
-        console.error(
+        logger.error(
           "[AdminSettingsModal] handleDeleteJob 함수가 정의되지 않았습니다."
         );
         alert("직업 삭제 기능을 사용할 수 없습니다.");
@@ -319,7 +321,7 @@ const AdminSettingsModal = ({
       if (handleEditTask && typeof handleEditTask === "function") {
         handleEditTask(task, jobId);
       } else {
-        console.error(
+        logger.error(
           "[AdminSettingsModal] handleEditTask 함수가 정의되지 않았습니다."
         );
         alert("할일 편집 기능을 사용할 수 없습니다.");
@@ -340,7 +342,7 @@ const AdminSettingsModal = ({
       if (handleDeleteTask && typeof handleDeleteTask === "function") {
         handleDeleteTask(taskId, jobId);
       } else {
-        console.error(
+        logger.error(
           "[AdminSettingsModal] handleDeleteTask 함수가 정의되지 않았습니다."
         );
         alert("할일 삭제 기능을 사용할 수 없습니다.");
@@ -361,7 +363,7 @@ const AdminSettingsModal = ({
       if (handleAddTaskClick && typeof handleAddTaskClick === "function") {
         handleAddTaskClick(jobId, isJobTask);
       } else {
-        console.error(
+        logger.error(
           "[AdminSettingsModal] handleAddTaskClick 함수가 정의되지 않았습니다."
         );
         alert("할일 추가 기능을 사용할 수 없습니다.");
@@ -373,7 +375,7 @@ const AdminSettingsModal = ({
   // 학생 목록 로드 함수 (Class/students 구조와 users 구조 모두 지원)
   const loadStudents = useCallback(async () => {
     if (!db) {
-      console.error("loadStudents: Firestore 데이터베이스 연결이 없습니다.");
+      logger.error("loadStudents: Firestore 데이터베이스 연결이 없습니다.");
       setError("데이터베이스 연결 오류로 학생 정보를 가져올 수 없습니다.");
       setStudents([]);
       setStudentsLoading(false);
@@ -480,20 +482,21 @@ const AdminSettingsModal = ({
           setLastSalaryPaidDate(null);
         }
       } catch (settingsError) {
-        console.error("급여 설정 로드 오류:", settingsError);
+        logger.error("급여 설정 로드 오류:", settingsError);
         setLastSalaryPaidDate(null);
       }
 
       setSelectedStudentIds([]);
       setSelectAllStudents(false);
     } catch (error) {
-      console.error("loadStudents: 학생 목록 로드 오류:", error);
+      logger.error("loadStudents: 학생 목록 로드 오류:", error);
       setError("학생 목록을 불러오는 중 오류가 발생했습니다: " + error.message);
       setStudents([]);
     } finally {
       setStudentsLoading(false);
     }
-  }, [db, isSuperAdmin, userClassCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin, userClassCode]); // db는 외부 스코프 값으로 의존성에서 제외
 
   // 최적화된 선택 학생 급여 지급
   const handlePaySalariesToSelected = async () => {
@@ -539,7 +542,7 @@ const AdminSettingsModal = ({
         alert(result.message || "주급 지급에 실패했습니다.");
       }
     } catch (error) {
-      console.error("[AdminSettingsModal] 선택된 학생 주급 지급 오류:", error);
+      logger.error("[AdminSettingsModal] 선택된 학생 주급 지급 오류:", error);
       alert("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
       setIsPayingSalary(false);
@@ -587,7 +590,7 @@ const AdminSettingsModal = ({
         alert(result.message || "주급 지급에 실패했습니다.");
       }
     } catch (error) {
-      console.error("[AdminSettingsModal] 전체 학생 주급 지급 오류:", error);
+      logger.error("[AdminSettingsModal] 전체 학생 주급 지급 오류:", error);
       alert("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
       setIsPayingSalary(false);
@@ -597,7 +600,7 @@ const AdminSettingsModal = ({
   // 학급 구성원 로드
   const loadClassMembers = useCallback(async () => {
     if (!db) {
-      console.error(
+      logger.error(
         "loadClassMembers: Firestore 데이터베이스 연결이 없습니다."
       );
       setError(
@@ -623,7 +626,7 @@ const AdminSettingsModal = ({
       } else if (isSuperAdmin) {
         queryRef = usersRef;
       } else {
-        console.warn("관리자의 학급 코드가 설정되지 않았습니다.");
+        logger.warn("관리자의 학급 코드가 설정되지 않았습니다.");
         setError("학급 코드가 설정되지 않아 구성원 정보를 가져올 수 없습니다.");
         setClassMembers([]);
         setMembersLoading(false);
@@ -650,7 +653,7 @@ const AdminSettingsModal = ({
         `[AdminSettingsModal] ${usersList.length}명의 구성원 로드 완료`
       );
     } catch (error) {
-      console.error("loadClassMembers: 학급 구성원 로드 오류:", error);
+      logger.error("loadClassMembers: 학급 구성원 로드 오류:", error);
       setError(
         "학급 구성원을 불러오는 중 오류가 발생했습니다: " + error.message
       );
@@ -658,7 +661,8 @@ const AdminSettingsModal = ({
     } finally {
       setMembersLoading(false);
     }
-  }, [db, isSuperAdmin, userClassCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin, userClassCode]); // db는 외부 스코프 값으로 의존성에서 제외
 
   // 학생 직업 편집 모달 열기
   const handleEditStudentJobs = (student) => {
@@ -730,7 +734,7 @@ const AdminSettingsModal = ({
       alert("학생 직업이 성공적으로 업데이트되었습니다.");
       setShowEditStudentJobsModal(false);
     } catch (error) {
-      console.error("학생 직업 업데이트 오류:", error);
+      logger.error("학생 직업 업데이트 오류:", error);
       alert("학생 직업 업데이트 중 오류가 발생했습니다: " + error.message);
     } finally {
       setAppLoading(false);
@@ -762,7 +766,7 @@ const AdminSettingsModal = ({
           throw new Error(result.data.message || "알 수 없는 오류");
         }
       } catch (error) {
-        console.error("비밀번호 초기화 오류:", error);
+        logger.error("비밀번호 초기화 오류:", error);
         alert(`비밀번호 초기화 중 오류가 발생했습니다: ${error.message}`);
       } finally {
         setMembersLoading(false);
@@ -806,14 +810,15 @@ const AdminSettingsModal = ({
 
           alert(`관리자 권한이 ${!currentStatus ? "부여" : "제거"}되었습니다.`);
         } catch (error) {
-          console.error("관리자 권한 변경 오류:", error);
+          logger.error("관리자 권한 변경 오류:", error);
           alert("관리자 권한 변경 중 오류가 발생했습니다.");
         } finally {
           setMembersLoading(false);
         }
       }
     },
-    [db, isSuperAdmin]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSuperAdmin] // db는 외부 스코프 값으로 의존성에서 제외
   );
 
   // ========================================
@@ -831,7 +836,7 @@ const AdminSettingsModal = ({
       if (savedSaving) setSavingProducts(JSON.parse(savedSaving));
       if (savedLoan) setLoanProducts(JSON.parse(savedLoan));
     } catch (error) {
-      console.error("금융 상품 로드 오류:", error);
+      logger.error("금융 상품 로드 오류:", error);
     }
   }, []);
 
@@ -941,7 +946,7 @@ const AdminSettingsModal = ({
       setMarketStatus(statusData);
       setIsMarketDataLoaded(true);
     } catch (error) {
-      console.error("시장 상태 조회 실패:", error);
+      logger.error("시장 상태 조회 실패:", error);
       setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
     }
   }, [userClassCode, isMarketDataLoaded]);
@@ -964,7 +969,7 @@ const AdminSettingsModal = ({
 
       setMarketMessage(result.data.message);
     } catch (error) {
-      console.error("시장 상태 변경 오류:", error);
+      logger.error("시장 상태 변경 오류:", error);
       setMarketMessage(`오류가 발생했습니다: ${error.message}`);
 
       // 롤백
@@ -993,7 +998,7 @@ const AdminSettingsModal = ({
       alert("주식 정보가 성공적으로 초기화되었습니다.");
       setMarketMessage("주식 정보가 성공적으로 초기화되었습니다.");
     } catch (error) {
-      console.error("주식 정보 초기화 중 오류 발생:", error);
+      logger.error("주식 정보 초기화 중 오류 발생:", error);
       setMarketMessage(`초기화 실패: ${error.message}`);
     }
     setTimeout(() => setMarketMessage(''), 5000);
@@ -1048,7 +1053,7 @@ const AdminSettingsModal = ({
         setNewClassCode("");
       }
     } catch (error) {
-      console.error("AdminSettingsModal: 학급 코드 추가 중 오류:", error);
+      logger.error("AdminSettingsModal: 학급 코드 추가 중 오류:", error);
     } finally {
       setClassCodeOperationLoading(false);
     }
@@ -1067,7 +1072,7 @@ const AdminSettingsModal = ({
       try {
         await onRemoveClassCode(codeToRemove);
       } catch (error) {
-        console.error("AdminSettingsModal: 학급 코드 삭제 중 오류:", error);
+        logger.error("AdminSettingsModal: 학급 코드 삭제 중 오류:", error);
       } finally {
         setClassCodeOperationLoading(false);
       }
@@ -1107,6 +1112,7 @@ const AdminSettingsModal = ({
       setMarketMessage('');
       setParkingMessage(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     showAdminSettingsModal,
     adminSelectedMenu,
@@ -1115,7 +1121,7 @@ const AdminSettingsModal = ({
     loadSalarySettings,
     loadFinancialProducts,
     loadParkingRate,
-  ]);
+  ]); // preloadAdminData는 내부적으로 adminSelectedMenu에 따라 loadClassMembers, loadStudents, loadSalarySettings를 호출하므로 추가하면 무한루프 발생
 
   // 시장 제어 탭 선택 시 시장 상태 로드
   useEffect(() => {
@@ -1137,7 +1143,7 @@ const AdminSettingsModal = ({
         date.getHours()
       ).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
     } catch (e) {
-      console.error("formatLastSalaryDate 오류:", e);
+      logger.error("formatLastSalaryDate 오류:", e);
       return "날짜 형식 오류";
     }
   };
@@ -1375,7 +1381,7 @@ const AdminSettingsModal = ({
                         ) {
                           handleSaveTask();
                         } else {
-                          console.error(
+                          logger.error(
                             "[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다."
                           );
                           alert("할일 저장 기능을 사용할 수 없습니다.");
@@ -1579,7 +1585,7 @@ const AdminSettingsModal = ({
                     if (handleSaveJob && typeof handleSaveJob === "function") {
                       handleSaveJob();
                     } else {
-                      console.error(
+                      logger.error(
                         "[AdminSettingsModal] handleSaveJob 함수가 정의되지 않았습니다."
                       );
                       alert("직업 저장 기능을 사용할 수 없습니다.");

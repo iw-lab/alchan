@@ -6,6 +6,7 @@ import { useItems } from "../../contexts/ItemContext"; // 올바른 경로로 �
 import "./styles.css"; // CombinedShop에서 사용된 스타일
 import "./ItemCard.css"; // ItemCard에서 사용된 스타일 (원본 ItemCard.js 코드에서 가져옴)
 import LoginWarning from "../../components/LoginWarning";
+import { logger } from '../../utils/logger';
 
 // --- ItemCard 컴포넌트 (원본 ItemCard.js 코드) ---
 const ItemCard = ({ item, iconUrl, onBuy }) => {
@@ -231,7 +232,7 @@ const CombinedShop = () => {
   // 새 아이템 추가 핸들러 (AdminItemForm에서 호출)
   const handleAddItem = async (newItemData) => {
     if (!addItem) {
-      console.error("addItem 함수를 ItemContext에서 찾을 수 없습니다."); //
+      logger.error("addItem 함수를 ItemContext에서 찾을 수 없습니다."); //
       showNotification("error", "아이템 추가 기능을 사용할 수 없습니다.");
       return;
     }
@@ -245,7 +246,7 @@ const CombinedShop = () => {
         showNotification("error", "아이템 추가에 실패했습니다.");
       }
     } catch (error) {
-      console.error("아이템 추가 중 오류:", error);
+      logger.error("아이템 추가 중 오류:", error);
       showNotification("error", "아이템 추가 중 오류가 발생했습니다.");
     }
   };
@@ -265,7 +266,7 @@ const CombinedShop = () => {
       return;
     }
     if (typeof userDoc?.cash === "undefined") {
-      console.error("사용자 잔액 정보를 찾을 수 없습니다."); //
+      logger.error("사용자 잔액 정보를 찾을 수 없습니다."); //
       showNotification("error", "사용자 잔액 정보를 불러올 수 없습니다.");
       return;
     }
@@ -279,7 +280,7 @@ const CombinedShop = () => {
       return;
     }
     if (!purchaseItem) {
-      console.error("필수 함수(purchaseItem)를 찾을 수 없습니다."); //
+      logger.error("필수 함수(purchaseItem)를 찾을 수 없습니다."); //
       showNotification("error", "구매 처리 중 오류가 발생했습니다.");
       return;
     }
@@ -294,7 +295,7 @@ const CombinedShop = () => {
         showNotification("error", result.message || "구매에 실패했습니다.");
       }
     } catch (error) {
-      console.error("구매 처리 중 오류:", error);
+      logger.error("구매 처리 중 오류:", error);
       showNotification("error", "구매 처리 중 오류가 발생했습니다.");
     }
   };

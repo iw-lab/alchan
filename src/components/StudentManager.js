@@ -45,6 +45,7 @@ import {
   Lock,
   GraduationCap,
 } from 'lucide-react';
+import { logger } from '../utils/logger';
 import {
   Card,
   CardHeader,
@@ -116,9 +117,9 @@ const StudentManager = () => {
   // 학생 목록 로드
   useEffect(() => {
     loadStudents();
-  }, [classCode, classmates]);
+  }, [classCode, classmates, loadStudents]);
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     if (!classCode) {
       setLoading(false);
       return;
@@ -141,11 +142,11 @@ const StudentManager = () => {
         setStudents(studentList);
       }
     } catch (error) {
-      console.error('Failed to load students:', error);
+      logger.error('Failed to load students:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [classCode, classmates]);
 
   // 검색 필터링
   const filteredStudents = useMemo(() => {
@@ -224,7 +225,7 @@ const StudentManager = () => {
       loadStudents();
 
     } catch (error) {
-      console.error('Failed to add student:', error);
+      logger.error('Failed to add student:', error);
       alert(`학생 추가 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -392,7 +393,7 @@ const StudentManager = () => {
       alert('학생이 삭제되었습니다.');
       loadStudents();
     } catch (error) {
-      console.error('Failed to delete student:', error);
+      logger.error('Failed to delete student:', error);
       alert(`삭제 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -432,7 +433,7 @@ const StudentManager = () => {
       alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
       loadStudents();
     } catch (error) {
-      console.error('Failed to bulk delete:', error);
+      logger.error('Failed to bulk delete:', error);
       alert(`일괄 삭제 실패: ${error.message}`);
     } finally {
       setProcessing(false);

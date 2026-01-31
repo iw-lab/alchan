@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Trophy, Star, Target, Coins, Users, Gamepad2, BookOpen, TrendingUp, Award, X } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 // 배지 정의
 export const BADGES = {
@@ -171,7 +172,7 @@ export async function checkAndAwardBadges(userId, stats) {
 
     return newBadges;
   } catch (error) {
-    console.error('배지 체크 오류:', error);
+    logger.error('배지 체크 오류:', error);
     return [];
   }
 }
@@ -327,7 +328,7 @@ export function useBadges() {
           setEarnedBadges(badgeDoc.data().badges || []);
         }
       } catch (error) {
-        console.error('배지 로드 오류:', error);
+        logger.error('배지 로드 오류:', error);
       } finally {
         setLoading(false);
       }

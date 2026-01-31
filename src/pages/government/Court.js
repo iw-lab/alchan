@@ -17,6 +17,7 @@ import {
 } from "../../components/PageWrapper";
 import { Scale, FileText, Clock, Gavel } from "lucide-react";
 
+import { logger } from '../../utils/logger';
 import {
   collection,
   doc,
@@ -212,7 +213,7 @@ const SettlementModal = ({
         onCancel(); // 성공하면 모달 닫기
       }
     } catch (error) {
-      console.error("Settlement error:", error);
+      logger.error("Settlement error:", error);
       alert("합의금 처리 중 오류가 발생했습니다.");
     }
   };
@@ -378,7 +379,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
           const querySnapshot = await getDocs(q);
           setHasPendingBankruptcyCase(!querySnapshot.empty);
         } catch (error) {
-          console.error("파산 신청 확인 중 오류:", error);
+          logger.error("파산 신청 확인 중 오류:", error);
         } finally {
           setIsLoading(false);
         }
@@ -410,7 +411,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
         alert("파산 신청이 정상적으로 접수되었습니다. 재판 결과를 기다려주세요.");
         setHasPendingBankruptcyCase(true);
       } catch (error) {
-        console.error("파산 신청 중 오류 발생:", error);
+        logger.error("파산 신청 중 오류 발생:", error);
         alert("오류가 발생하여 파산 신청에 실패했습니다.");
       }
     }
@@ -600,7 +601,7 @@ const Court = () => {
       setActiveTab("status");
       alert("고소장이 성공적으로 제출되었습니다.");
     } catch (error) {
-      console.error("Error adding complaint to Firestore:", error);
+      logger.error("Error adding complaint to Firestore:", error);
       alert("고소장 제출 중 오류가 발생했습니다.");
     }
   };
@@ -617,7 +618,7 @@ const Court = () => {
       refetchComplaints();
       alert(`사건번호 ${id.slice(-6)}이(가) 기소되었습니다.`);
     } catch (error) {
-      console.error("Error indicting complaint:", error);
+      logger.error("Error indicting complaint:", error);
       alert("기소 처리 중 오류가 발생했습니다.");
     }
   };
@@ -635,7 +636,7 @@ const Court = () => {
         refetchComplaints();
         alert("기록이 삭제되었습니다.");
       } catch (error) {
-        console.error("Error deleting complaint:", error);
+        logger.error("Error deleting complaint:", error);
         alert("기록 삭제 중 오류가 발생했습니다.");
       }
     }
@@ -650,7 +651,7 @@ const Court = () => {
       refetchComplaints();
       alert(`사건번호 ${id.slice(-6)}이(가) 불기소/기각 처리되었습니다.`);
     } catch (error) {
-      console.error("Error dismissing complaint:", error);
+      logger.error("Error dismissing complaint:", error);
       alert("처리 중 오류가 발생했습니다.");
     }
   };
@@ -709,7 +710,7 @@ const Court = () => {
       setEditingComplaint(null);
       alert(`사건번호 ${editingComplaint.id.slice(-6)} 정보가 수정되었습니다.`);
     } catch (error) {
-      console.error("Error updating complaint:", error);
+      logger.error("Error updating complaint:", error);
       alert("고소장 수정 중 오류가 발생했습니다.");
     }
   };
@@ -761,7 +762,7 @@ const Court = () => {
       });
       refetchComplaints();
     } catch (error) {
-      console.error("Error voting on complaint:", error);
+      logger.error("Error voting on complaint:", error);
       alert("투표 처리 중 오류가 발생했습니다: " + error.message);
     }
   };
@@ -811,7 +812,7 @@ const Court = () => {
       setActiveTrialRoom(newRoomRef.id);
       setActiveTab("trial-room");
     } catch (error) {
-      console.error("Error starting trial:", error);
+      logger.error("Error starting trial:", error);
       alert("재판 시작 처리 중 오류가 발생했습니다.");
     }
   };
@@ -863,7 +864,7 @@ const Court = () => {
       alert(`사건번호 ${complaintId.slice(-6)}의 판결문이 저장되었습니다.`);
       setActiveTab("results");
     } catch (error) {
-      console.error("Error saving judgment:", error);
+      logger.error("Error saving judgment:", error);
       alert("판결문 저장 중 오류가 발생했습니다.");
     }
   };
@@ -979,7 +980,7 @@ const Court = () => {
       handleCloseSettlementModal();
       return true;
     } catch (error) {
-      console.error("합의금 지급 트랜잭션 오류:", error);
+      logger.error("합의금 지급 트랜잭션 오류:", error);
       alert(`합의금 지급에 실패했습니다: ${error.message}`);
       return false;
     }
@@ -1003,7 +1004,7 @@ const Court = () => {
         minute: "2-digit",
       });
     } catch (error) {
-      console.error("Date formatting error:", dateString, error);
+      logger.error("Date formatting error:", dateString, error);
       return "날짜 변환 오류";
     }
   };

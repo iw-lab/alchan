@@ -216,7 +216,7 @@ export function useDocument(path, options = {}) {
         setError(null);
       }
     } catch (err) {
-      console.error(`[useDocument] Error fetching ${path}:`, err);
+      logger.error(`[useDocument] Error fetching ${path}:`, err);
       if (mountedRef.current) {
         setError(err);
         onError?.(err);
@@ -317,7 +317,7 @@ export function useCollection(path, queryConstraints = [], options = {}) {
         setError(null);
       }
     } catch (err) {
-      console.error(`[useCollection] Error fetching ${path}:`, err);
+      logger.error(`[useCollection] Error fetching ${path}:`, err);
       if (mountedRef.current) {
         setError(err);
         onError?.(err);
@@ -477,7 +477,7 @@ export function usePaginatedCollection(path, queryConstraints = [], pageSize = 2
         setHasMore(newDocs.length === pageSize);
       }
     } catch (err) {
-      console.error('[usePaginatedCollection] Error:', err);
+      logger.error('[usePaginatedCollection] Error:', err);
     } finally {
       if (mountedRef.current) {
         setLoading(false);

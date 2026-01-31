@@ -15,6 +15,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { logger } from '../../utils/logger';
 import {
   logDbOperation,
   setCache,
@@ -43,7 +44,7 @@ export const getClassAdminUid = async (classCode) => {
     const querySnapshot = await getDocs(usersQuery);
 
     if (querySnapshot.empty) {
-      console.warn(`[firebase.js] 학급(${classCode})에 관리자가 없습니다.`);
+      logger.warn(`[firebase.js] 학급(${classCode})에 관리자가 없습니다.`);
       return null;
     }
 
@@ -51,7 +52,7 @@ export const getClassAdminUid = async (classCode) => {
     setCache(cacheKey, adminUid);
     return adminUid;
   } catch (error) {
-    console.error(`[firebase.js] 학급 관리자 조회 오류:`, error);
+    logger.error(`[firebase.js] 학급 관리자 조회 오류:`, error);
     return null;
   }
 };
@@ -117,14 +118,14 @@ export const fetchCollectionOnce = async (collectionName, useCache = true, tab =
     }
     return data;
   } catch (error) {
-    console.error(`[firebase.js] ${collectionName} 컬렉션 조회 오류:`, error);
+    logger.error(`[firebase.js] ${collectionName} 컬렉션 조회 오류:`, error);
     throw error;
   }
 };
 
 export const subscribeToCollection = (collectionName, callback, conditions = [], tab = 'unknown') => {
   if (!db) {
-    console.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
+    logger.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
     return () => {};
   }
   logDbOperation('SUBSCRIBE', collectionName, null, { tab, extra: '실시간 구독 시작' });
@@ -141,7 +142,7 @@ export const subscribeToCollection = (collectionName, callback, conditions = [],
       callback(data);
     },
     (error) => {
-      console.error(`[firebase.js] ${collectionName} 구독 오류:`, error);
+      logger.error(`[firebase.js] ${collectionName} 구독 오류:`, error);
       callback([]);
     }
   );
@@ -154,7 +155,7 @@ export const subscribeToCollection = (collectionName, callback, conditions = [],
 export const getClassmates = async (classCode, forceRefresh = false, tab = 'unknown') => {
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
   if (!classCode || classCode === '미지정') {
-    console.warn("[firebase.js] getClassmates: 유효하지 않은 학급 코드");
+    logger.warn("[firebase.js] getClassmates: 유효하지 않은 학급 코드");
     return [];
   }
   const cacheKey = `classmates_${classCode}`;
@@ -175,7 +176,7 @@ export const getClassmates = async (classCode, forceRefresh = false, tab = 'unkn
     setCache(cacheKey, classMembers);
     return classMembers;
   } catch (error) {
-    console.error(`[firebase.js] 학급 구성원 조회 오류 (${classCode}):`, error);
+    logger.error(`[firebase.js] 학급 구성원 조회 오류 (${classCode}):`, error);
     throw error;
   }
 };

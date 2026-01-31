@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import { logger } from '../../utils/logger';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "-";
@@ -86,7 +87,7 @@ const NationalTaxService = ({ classCode }) => {
         setAdminCash(0);
       }
     } catch (error) {
-      console.error(`[${classCode}] 관리자 현금(국고) 로드 실패:`, error);
+      logger.error(`[${classCode}] 관리자 현금(국고) 로드 실패:`, error);
       setAdminCash(0);
     }
   }, [classCode]);
@@ -131,7 +132,7 @@ const NationalTaxService = ({ classCode }) => {
       }
       setLoadingTreasury(false);
     } catch (error) {
-      console.error(`[${classCode}] 세수 통계 데이터 로드 실패:`, error);
+      logger.error(`[${classCode}] 세수 통계 데이터 로드 실패:`, error);
       setLoadingTreasury(false);
     }
   }, [classCode, fetchAdminCash]);
@@ -177,7 +178,7 @@ const NationalTaxService = ({ classCode }) => {
       }
       setLoadingSettings(false);
     } catch (error) {
-      console.error(`[${classCode}] 세금 정책 로드 실패:`, error);
+      logger.error(`[${classCode}] 세금 정책 로드 실패:`, error);
       setLoadingSettings(false);
     }
   }, [classCode]);
@@ -232,7 +233,7 @@ const NationalTaxService = ({ classCode }) => {
       refetchSettings();
       alert("세금 정책이 성공적으로 업데이트되었습니다.");
     } catch (error) {
-      console.error("세금 정책 업데이트 실패:", error);
+      logger.error("세금 정책 업데이트 실패:", error);
       alert("세금 정책 업데이트 중 오류가 발생했습니다.");
     }
   };

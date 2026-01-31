@@ -39,6 +39,7 @@ const Login = lazy(() => import("./pages/auth/Login"));
 import "./styles.css";
 import "./App.css";
 import "./index.css"; // Tailwind CSS - 마지막에 import하여 우선 적용
+import { logger } from './utils/logger';
 
 // 🔥 에러 바운더리 - PWA 흰화면 방지
 class ErrorBoundary extends Component {
@@ -52,7 +53,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[알찬] 앱 오류 발생:', error, errorInfo);
+    logger.error('[알찬] 앱 오류 발생:', error, errorInfo);
 
     // IndexedDB나 캐시 관련 오류면 캐시 삭제 후 새로고침
     const errorString = error?.toString() || '';
@@ -60,7 +61,7 @@ class ErrorBoundary extends Component {
         errorString.includes('QuotaExceeded') ||
         errorString.includes('SecurityError') ||
         errorString.includes('InvalidStateError')) {
-      console.log('[알찬] 스토리지 오류 감지 - 캐시 초기화');
+      logger.log('[알찬] 스토리지 오류 감지 - 캐시 초기화');
       this.clearCachesAndReload();
     }
   }
@@ -90,7 +91,7 @@ class ErrorBoundary extends Component {
       // 새로고침
       window.location.reload(true);
     } catch (e) {
-      console.error('[알찬] 캐시 삭제 실패:', e);
+      logger.error('[알찬] 캐시 삭제 실패:', e);
       window.location.reload(true);
     }
   };
@@ -136,7 +137,7 @@ function App() {
           });
         }
       }).catch(err => {
-        console.warn('[알찬] 서비스워커 준비 실패 (무시):', err);
+        logger.warn('[알찬] 서비스워커 준비 실패 (무시):', err);
       });
     }
   }, []);

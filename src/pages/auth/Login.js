@@ -12,6 +12,7 @@ import {
   db,
 } from "../../firebase";
 import { doc, setDoc, getDoc, collection } from "firebase/firestore";
+import { logger } from '../../utils/logger';
 import {
   User,
   Mail,
@@ -254,7 +255,7 @@ const Login = () => {
       setClassName("");
 
     } catch (error) {
-      console.error("Teacher registration error:", error);
+      logger.error("Teacher registration error:", error);
       setError(getFirebaseErrorMessage(error));
     } finally {
       setIsLoading(false);
@@ -419,6 +420,7 @@ const Login = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="이메일을 입력하세요"
+                    autoComplete="email"
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-400 focus:bg-white transition-all font-medium"
                     style={{ paddingLeft: '4rem', paddingRight: '1rem', paddingTop: '1rem', paddingBottom: '1rem' }}
                     disabled={isLoading}
@@ -440,6 +442,7 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
+                    autoComplete="current-password"
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-400 focus:bg-white transition-all font-medium"
                     style={{ paddingLeft: '4rem', paddingRight: '3.5rem', paddingTop: '1rem', paddingBottom: '1rem' }}
                     disabled={isLoading}
@@ -600,6 +603,7 @@ const Login = () => {
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     placeholder="6자 이상"
+                    autoComplete="new-password"
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-400 focus:bg-white transition-all font-medium text-sm"
                     style={{ padding: '0.75rem 1rem' }}
                     required
@@ -615,6 +619,7 @@ const Login = () => {
                     value={registerConfirmPassword}
                     onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                     placeholder="재입력"
+                    autoComplete="new-password"
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-400 focus:bg-white transition-all font-medium text-sm"
                     style={{ padding: '0.75rem 1rem' }}
                     required

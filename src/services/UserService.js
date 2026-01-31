@@ -2,6 +2,7 @@
 // 사용자 데이터 관리를 위한 서비스
 
 // 로컬 스토리지 키
+import { logger } from '../utils/logger';
 const USERS_STORAGE_KEY = "learningSystemUsers";
 
 // 초기 사용자 데이터 (로컬 스토리지에 데이터가 없을 경우 사용)
@@ -71,7 +72,7 @@ export const getUsers = async () => {
         resolve(users);
       }, 300);
     } catch (error) {
-      console.error("사용자 데이터 로드 오류:", error);
+      logger.error("사용자 데이터 로드 오류:", error);
       // 오류 발생 시 초기 데이터 반환
       resolve(initialUsers);
     }
@@ -112,7 +113,7 @@ export const updateUserCoupons = async (userId, amount) => {
         resolve(users[userIndex]);
       }, 300);
     } catch (error) {
-      console.error("쿠폰 업데이트 오류:", error);
+      logger.error("쿠폰 업데이트 오류:", error);
       reject(error);
     }
   });
@@ -140,7 +141,7 @@ export const getUserById = async (userId) => {
         resolve(user);
       }, 200);
     } catch (error) {
-      console.error("사용자 조회 오류:", error);
+      logger.error("사용자 조회 오류:", error);
       reject(error);
     }
   });
@@ -173,7 +174,7 @@ export const updateUser = async (userId, updatedData) => {
         resolve(users[userIndex]);
       }, 200);
     } catch (error) {
-      console.error("사용자 정보 업데이트 오류:", error);
+      logger.error("사용자 정보 업데이트 오류:", error);
       reject(error);
     }
   });

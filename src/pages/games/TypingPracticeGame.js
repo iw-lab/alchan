@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { difficultyConfig, getRandomSentences, generateRandomReward } from "../../data/typingWords";
 import "./TypingPracticeGame.css";
+import { logger } from '../../utils/logger';
 
 const TypingPracticeGame = ({ onClose }) => {
   const { user, userDoc, updateUser } = useAuth();
@@ -58,7 +59,7 @@ const TypingPracticeGame = ({ onClose }) => {
         }
       }
     } catch (error) {
-      console.error("일일 플레이 횟수 확인 오류:", error);
+      logger.error("일일 플레이 횟수 확인 오류:", error);
     }
   }, [user]);
 
@@ -92,6 +93,7 @@ const TypingPracticeGame = ({ onClose }) => {
         clearTimeout(timerRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, timeLeft]);
 
   // 게임 종료
@@ -185,7 +187,7 @@ const TypingPracticeGame = ({ onClose }) => {
           setLoading(false);
         }, 1000);
       } catch (error) {
-        console.error("보상 처리 오류:", error);
+        logger.error("보상 처리 오류:", error);
         setError("보상 처리 중 오류가 발생했습니다.");
         setLoading(false);
       }

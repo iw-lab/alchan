@@ -6,6 +6,7 @@ import YouTube from 'react-youtube';
 import { usePolling } from '../../hooks/usePolling';
 import '../../MusicRoom.css';
 import { AlchanLoading } from '../../components/AlchanLayout';
+import { logger } from '../../utils/logger';
 
 const MusicRoom = ({ user }) => {
     const { roomId } = useParams();
@@ -109,7 +110,7 @@ const MusicRoom = ({ user }) => {
                 alert('방이 삭제되었습니다.');
                 navigate('/learning-board/music-request');
             } catch (error) {
-                console.error("Error deleting room: ", error);
+                logger.error("Error deleting room: ", error);
                 alert('방을 삭제하는 중 오류가 발생했습니다.');
             }
         }

@@ -139,7 +139,7 @@ export default function RecoverDonations() {
       alert(`기부 내역 복구 완료!\n총 ${donations.length}개 기록, ${totalAmount}쿠폰`);
 
     } catch (error) {
-      console.error("복구 실패:", error);
+      logger.error("복구 실패:", error);
       addLog(`❌ 오류 발생: ${error.message}`);
       alert(`복구 실패: ${error.message}`);
     } finally {

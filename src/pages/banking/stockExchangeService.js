@@ -109,7 +109,7 @@ export const batchDataLoader = {
           return result.data.stocks;
         }
       } catch (fnError) {
-        console.warn('[batchDataLoader] 스냅샷 함수 호출 실패, 문서/쿼리 폴백 시도:', fnError);
+        logger.warn('[batchDataLoader] 스냅샷 함수 호출 실패, 문서/쿼리 폴백 시도:', fnError);
       }
 
       try {
@@ -121,7 +121,7 @@ export const batchDataLoader = {
           return cacheData.stocks;
         }
       } catch (snapshotError) {
-        console.warn('[batchDataLoader] 스냅샷 문서 읽기 실패:', snapshotError);
+        logger.warn('[batchDataLoader] 스냅샷 문서 읽기 실패:', snapshotError);
       }
 
       const stocksRef = collection(db, "CentralStocks");
@@ -133,7 +133,7 @@ export const batchDataLoader = {
         ...doc.data()
       }));
     } catch (error) {
-      console.error('[batchDataLoader] Stocks load error:', error);
+      logger.error('[batchDataLoader] Stocks load error:', error);
       return [];
     }
   },
@@ -154,7 +154,7 @@ export const batchDataLoader = {
         };
       });
     } catch (error) {
-      console.error('[batchDataLoader] Portfolio load error:', error);
+      logger.error('[batchDataLoader] Portfolio load error:', error);
       return [];
     }
   },
@@ -348,6 +348,6 @@ export const clearLocalStorageBatchCache = () => {
       logger.log('[캐시] localStorage BATCH 캐시 삭제:', keysToDelete.length, '개');
     }
   } catch (error) {
-    console.warn('[캐시] localStorage 정리 오류:', error);
+    logger.warn('[캐시] localStorage 정리 오류:', error);
   }
 };

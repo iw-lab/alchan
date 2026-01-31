@@ -2,6 +2,7 @@
 // 풀투리프레시 기능 훅
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from '../utils/logger';
 
 export function usePullToRefresh(onRefresh, options = {}) {
   const {
@@ -56,7 +57,7 @@ export function usePullToRefresh(onRefresh, options = {}) {
       try {
         await onRefresh();
       } catch (error) {
-        console.error('Refresh failed:', error);
+        logger.error('Refresh failed:', error);
       } finally {
         setIsRefreshing(false);
       }

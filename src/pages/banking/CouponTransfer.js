@@ -5,6 +5,7 @@ import { db } from "../../firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
 import "./CouponTransfer.css";
+import { logger } from '../../utils/logger';
 
 function CouponTransfer() {
   // AuthContext에서 필요한 모든 데이터를 가져옵니다.
@@ -204,7 +205,7 @@ function CouponTransfer() {
 
           successCount++;
         } catch (userError) {
-          console.error(`사용자 ${userId} 처리 중 오류:`, userError);
+          logger.error(`사용자 ${userId} 처리 중 오류:`, userError);
         }
       }
 
@@ -224,7 +225,7 @@ function CouponTransfer() {
       setTimeout(() => setMessage(""), 3000);
       
     } catch (err) {
-      console.error("대량 처리 중 오류:", err);
+      logger.error("대량 처리 중 오류:", err);
       setError(`오류 발생: ${err.message}`);
       
       // 오류 메시지를 5초 후 자동 제거

@@ -18,7 +18,7 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
   if (!Array.isArray(adminProducts)) {
-    console.error(
+    logger.error(
       "convertAdminProductsToAccountFormat: 입력값이 배열이 아닙니다.",
       adminProducts
     );
@@ -39,8 +39,8 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
 };
 
 import "./Banking.css";
-
 import { logger } from "../../utils/logger";
+
 const Banking = () => {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -114,7 +114,7 @@ const Banking = () => {
       setAllUserProducts(allProducts);
       logger.log("유저 상품 로드 완료:", allProducts);
     } catch (error) {
-      console.error("유저 상품 로드 중 오류:", error);
+      logger.error("유저 상품 로드 중 오류:", error);
       setMessage("유저 상품 로드 중 오류가 발생했습니다.");
       setMessageType("error");
     } finally {
@@ -162,7 +162,7 @@ const Banking = () => {
         setMessageType("");
       }, 3000);
     } catch (error) {
-      console.error("상품 삭제 중 오류:", error);
+      logger.error("상품 삭제 중 오류:", error);
       setMessage(`삭제 중 오류가 발생했습니다: ${error.message}`);
       setMessageType("error");
     } finally {
@@ -179,7 +179,7 @@ const Banking = () => {
   const loadAllData = async () => {
     const classCode = auth?.userDoc?.classCode;
     if (!classCode || classCode === '미지정') {
-      console.warn("[Banking] 유효한 학급 코드가 없어 뱅킹 상품을 로드하지 않습니다.");
+      logger.warn("[Banking] 유효한 학급 코드가 없어 뱅킹 상품을 로드하지 않습니다.");
       return;
     }
 
@@ -209,7 +209,7 @@ const Banking = () => {
       }
 
     } catch (error) {
-      console.error("뱅킹 상품 로드 중 오류:", error);
+      logger.error("뱅킹 상품 로드 중 오류:", error);
       setMessage("데이터 로딩 중 오류가 발생했습니다.");
       setMessageType("error");
     } finally {
@@ -225,7 +225,8 @@ const Banking = () => {
       setParkingInstallmentProducts([]);
       setParkingLoanProducts([]);
     }
-  }, [auth?.user, auth?.loading, auth?.userDoc?.classCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth?.user, auth?.loading, auth?.userDoc?.classCode]); // loadAllData 추가하면 무한루프, auth 객체 전체 추가도 불필요한 리렌더링 발생
 
   useEffect(() => {
     setFormattedDepositProducts(
@@ -336,7 +337,7 @@ const Banking = () => {
         setMessageType("");
       }, 3000);
     } catch (error) {
-      console.error(`${type} 상품 저장 중 오류:`, error);
+      logger.error(`${type} 상품 저장 중 오류:`, error);
       setMessage("저장 중 오류가 발생했습니다.");
       setMessageType("error");
     } finally {
@@ -425,7 +426,7 @@ const Banking = () => {
           setMessageType("");
         }, 2000);
       } catch (error) {
-        console.error("상품 삭제 중 오류:", error);
+        logger.error("상품 삭제 중 오류:", error);
         setMessage("삭제 중 오류가 발생했습니다.");
         setMessageType("error");
         // 삭제 실패 시 원래 상태로 되돌릴 수 있습니다 (선택적)

@@ -13,7 +13,7 @@ import { invalidateCache, invalidateCachePattern } from "./firebaseUtils";
 import { logger } from "../utils/logger";
 export const authStateListener = (callback) => {
   if (!auth) {
-    console.error("[firebase.js] Auth 서비스가 초기화되지 않았습니다.");
+    logger.error("[firebase.js] Auth 서비스가 초기화되지 않았습니다.");
     setTimeout(() => callback(null), 0);
     return () => {};
   }

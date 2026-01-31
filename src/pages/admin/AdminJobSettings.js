@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext"; // AuthContext에서 useAu
 import "../../components/Header.css";
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useNavigate } from "react-router-dom"; // navigate 사용을 위해 임포트
+import { logger } from '../../utils/logger';
 
 // AuthContext의 userDoc (Firestore 사용자 정보)를 prop으로 받도록 수정
 // isAdmin 정보도 userDoc에서 오므로 prop으로 받아 사용
@@ -31,7 +32,7 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
       logout(); // AuthContext의 logout 함수 호출
       setShowUserMenu(false); // 메뉴 닫기
     } else {
-      console.error("logout 함수를 찾을 수 없습니다.");
+      logger.error("logout 함수를 찾을 수 없습니다.");
     }
   };
 
@@ -52,7 +53,7 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
           alert(`닉네임이 '${newNickname.trim()}'(으)로 변경되었습니다.`);
         }
       } catch (error) {
-        console.error("닉네임 변경 실패:", error);
+        logger.error("닉네임 변경 실패:", error);
         alert("닉네임 변경에 실패했습니다. 다시 시도해주세요.");
       }
     }
@@ -100,7 +101,7 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
         alert("비밀번호가 성공적으로 변경되었습니다.");
       }
     } catch (error) {
-      console.error("비밀번호 변경 실패:", error);
+      logger.error("비밀번호 변경 실패:", error);
       if (error.code === "auth/wrong-password") {
         alert("현재 비밀번호가 올바르지 않습니다.");
       } else {
@@ -149,7 +150,7 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
         if (logout) logout();
       }
     } catch (error) {
-      console.error("계정 삭제 실패:", error);
+      logger.error("계정 삭제 실패:", error);
       if (error.code === "auth/wrong-password") {
         alert("비밀번호가 올바르지 않습니다.");
       } else {

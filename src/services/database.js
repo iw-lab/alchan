@@ -10,9 +10,13 @@ import {
   doc,
   collection,
   serverTimestamp,
-  updateUserDocument // 추가된 import
+  updateUserDocument, // 추가된 import
+  runTransaction,
+  getDoc,
+  increment
 } from '../firebase';
 import { applyTransactionTax, applyIncomeTax } from '../utils/taxUtils';
+import { validateAmount } from '../utils/validation';
 
 import { logger } from "../utils/logger";
 /**
@@ -97,12 +101,12 @@ const logActivity = async (userId, type, description, metadata = {}) => {
       logger.log(`[Activity Log] User: ${userId}, Type: ${type}`, metadata);
     }
   } catch (error) {
-    console.error('[Activity Log Error]', error);
+    logger.error('[Activity Log Error]', error);
   }
 };
 
 /**
- * 관리자 현금 지급/회수 (MoneyTransfer.js용) - 수정 버전
+ * 관리자 현금 지급/회수 (MoneyTransfer.js용) - Firestore 트랜잭션 적용
  * @param {object} params - 함수 파라미터
  * @param {string} params.adminName - 관리자 이름
  * @param {string} params.adminClassCode - 관리자 학급 코드
@@ -132,155 +136,174 @@ export const adminCashAction = async ({
     targetUsersCount: targetUsers.length
   });
 
-  const batch = writeBatch(db);
+  // 입력 검증
+  try {
+    if (amountType === 'percentage') {
+      if (amount < 0 || amount > 100) {
+        throw new Error('퍼센트는 0과 100 사이의 값이어야 합니다.');
+      }
+    } else {
+      validateAmount(amount, { min: 1, fieldName: '금액' });
+    }
+  } catch (error) {
+    throw new Error(`입력 검증 실패: ${error.message}`);
+  }
+
+  const updatedUsers = [];
   let totalProcessed = 0;
   let successCount = 0;
-  const updatedUsers = []; // *** 추가: 업데이트된 사용자 정보를 담을 배열
 
+  // 각 사용자에 대해 트랜잭션 처리
   for (const user of targetUsers) {
     try {
-      const currentCash = Number(user.cash || 0);
-      let baseAmount;
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", user.id);
+        const userDoc = await transaction.get(userRef);
 
-      if (amountType === "percentage") {
-        baseAmount = Math.floor((currentCash * amount) / 100);
-      } else {
-        baseAmount = Number(amount);
-      }
+        if (!userDoc.exists()) {
+          throw new Error(`사용자 ${user.name}을 찾을 수 없습니다.`);
+        }
 
-      if (baseAmount <= 0) {
-        logger.log(`[database.js] ${user.name}: 처리할 금액이 0원이므로 스킵`);
-        continue;
-      }
+        const userData = userDoc.data();
+        const currentCash = Number(userData.cash || 0);
+        let baseAmount;
 
-      let finalAmount = baseAmount;
-      let taxAmount = 0;
-
-      if (action === "send" && taxRate > 0) {
-        taxAmount = Math.floor((baseAmount * taxRate) / 100);
-        finalAmount = baseAmount - taxAmount;
-      }
-
-      let newCash;
-      if (action === "send") {
-        newCash = currentCash + finalAmount;
-      } else { // take
-        newCash = currentCash - baseAmount;
-      }
-
-      // *** 추가: 반환할 배열에 사용자 정보 추가
-      updatedUsers.push({ id: user.id, newCash });
-
-      logger.log(`[database.js] ${user.name} 처리:`, {
-        현재잔액: currentCash,
-        기본금액: baseAmount,
-        세금: taxAmount,
-        최종금액: finalAmount,
-        새잔액: newCash
-      });
-
-      const userRef = doc(db, "users", user.id);
-      batch.update(userRef, {
-        cash: newCash,
-        updatedAt: serverTimestamp()
-      });
-      
-      // ✨ 수정된 부분: totalProcessed는 세금과 상관없이 실제 이동하는 총액(baseAmount)을 기준으로 계산해야 합니다.
-      // 이렇게 해야 관리자 계좌에서 정확한 금액이 빠져나가거나 더해집니다.
-      totalProcessed += baseAmount;
-      successCount++;
-
-      const logRef = doc(collection(db, "activity_logs"));
-      let logType, logDescription;
-
-      if (action === "send") {
-        logType = "ADMIN_CASH_SEND";
         if (amountType === "percentage") {
-          logDescription = `관리자(${adminName})가 ${user.name}님에게 ${amount}% (${finalAmount.toLocaleString()}원)을 지급했습니다.`;
-          if (taxAmount > 0) {
-            logDescription += ` (원금 ${baseAmount.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원 제외)`;
-          }
+          baseAmount = Math.floor((currentCash * amount) / 100);
         } else {
-          logDescription = `관리자(${adminName})가 ${user.name}님에게 ${finalAmount.toLocaleString()}원을 지급했습니다.`;
-          if (taxAmount > 0) {
-            logDescription += ` (원금 ${baseAmount.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원 제외)`;
-          }
+          baseAmount = validateAmount(amount, { min: 1, fieldName: '금액' });
         }
-      } else if (action === "take") {
-        if (takeMode === "remove") {
-          logType = "ADMIN_CASH_REMOVE";
+
+        if (baseAmount <= 0) {
+          logger.log(`[database.js] ${user.name}: 처리할 금액이 0원이므로 스킵`);
+          return;
+        }
+
+        let finalAmount = baseAmount;
+        let taxAmount = 0;
+
+        if (action === "send" && taxRate > 0) {
+          taxAmount = Math.floor((baseAmount * taxRate) / 100);
+          finalAmount = baseAmount - taxAmount;
+        }
+
+        let newCash;
+        if (action === "send") {
+          newCash = currentCash + finalAmount;
+        } else { // take
+          // 잔액 확인
+          if (currentCash < baseAmount) {
+            throw new Error(`${user.name}님의 잔액이 부족합니다. (보유: ${currentCash.toLocaleString()}원, 필요: ${baseAmount.toLocaleString()}원)`);
+          }
+          newCash = currentCash - baseAmount;
+        }
+
+        // 사용자 잔액 업데이트
+        transaction.update(userRef, {
+          cash: newCash,
+          updatedAt: serverTimestamp()
+        });
+
+        // 로그 기록
+        const logRef = doc(collection(db, "activity_logs"));
+        let logType, logDescription;
+
+        if (action === "send") {
+          logType = "ADMIN_CASH_SEND";
           if (amountType === "percentage") {
-            logDescription = `관리자(${adminName})가 ${user.name}님의 ${amount}% (${baseAmount.toLocaleString()}원)을 제거했습니다.`;
+            logDescription = `관리자(${adminName})가 ${user.name}님에게 ${amount}% (${finalAmount.toLocaleString()}원)을 지급했습니다.`;
+            if (taxAmount > 0) {
+              logDescription += ` (원금 ${baseAmount.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원 제외)`;
+            }
           } else {
-            logDescription = `관리자(${adminName})가 ${user.name}님의 ${baseAmount.toLocaleString()}원을 제거했습니다.`;
+            logDescription = `관리자(${adminName})가 ${user.name}님에게 ${finalAmount.toLocaleString()}원을 지급했습니다.`;
+            if (taxAmount > 0) {
+              logDescription += ` (원금 ${baseAmount.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원 제외)`;
+            }
           }
-        } else {
-          logType = "ADMIN_CASH_TAKE";
-          if (amountType === "percentage") {
-            logDescription = `관리자(${adminName})가 ${user.name}님으로부터 ${amount}% (${baseAmount.toLocaleString()}원)을 회수했습니다.`;
+        } else if (action === "take") {
+          if (takeMode === "remove") {
+            logType = "ADMIN_CASH_REMOVE";
+            if (amountType === "percentage") {
+              logDescription = `관리자(${adminName})가 ${user.name}님의 ${amount}% (${baseAmount.toLocaleString()}원)을 제거했습니다.`;
+            } else {
+              logDescription = `관리자(${adminName})가 ${user.name}님의 ${baseAmount.toLocaleString()}원을 제거했습니다.`;
+            }
           } else {
-            logDescription = `관리자(${adminName})가 ${user.name}님으로부터 ${baseAmount.toLocaleString()}원을 회수했습니다.`;
+            logType = "ADMIN_CASH_TAKE";
+            if (amountType === "percentage") {
+              logDescription = `관리자(${adminName})가 ${user.name}님으로부터 ${amount}% (${baseAmount.toLocaleString()}원)을 회수했습니다.`;
+            } else {
+              logDescription = `관리자(${adminName})가 ${user.name}님으로부터 ${baseAmount.toLocaleString()}원을 회수했습니다.`;
+            }
           }
         }
-      }
 
-      const logData = {
-        userId: user.id,
-        userName: user.name,
-        timestamp: serverTimestamp(),
-        type: logType,
-        description: logDescription,
-        classCode: adminClassCode,
-        metadata: {
-          adminName,
-          action,
-          amountType,
-          inputValue: amount,
-          taxRate: action === 'send' ? taxRate : 0,
-          baseAmount,
-          taxAmount,
-          finalAmount,
-          previousCash: currentCash,
-          newCash
-        }
-      };
-      batch.set(logRef, logData);
+        const logData = {
+          userId: user.id,
+          userName: user.name,
+          timestamp: serverTimestamp(),
+          type: logType,
+          description: logDescription,
+          classCode: adminClassCode,
+          metadata: {
+            adminName,
+            action,
+            amountType,
+            inputValue: amount,
+            taxRate: action === 'send' ? taxRate : 0,
+            baseAmount,
+            taxAmount,
+            finalAmount,
+            previousCash: currentCash,
+            newCash
+          }
+        };
+        transaction.set(logRef, logData);
 
-      const transactionRef = doc(collection(db, "transactions"));
-      const transactionData = {
-        userId: user.id,
-        amount: action === 'send' ? finalAmount : -baseAmount,
-        type: action === 'send' ? 'income' : 'expense',
-        category: 'admin',
-        description: action === 'send' ? '관리자 지급' : '관리자 회수',
-        timestamp: serverTimestamp(),
-        metadata: {
-          adminName,
-          amountType,
-          taxRate: action === 'send' ? taxRate : 0
-        }
-      };
-      batch.set(transactionRef, transactionData);
+        // 거래 기록
+        const transactionRef = doc(collection(db, "transactions"));
+        const transactionData = {
+          userId: user.id,
+          amount: action === 'send' ? finalAmount : -baseAmount,
+          type: action === 'send' ? 'income' : 'expense',
+          category: 'admin',
+          description: action === 'send' ? '관리자 지급' : '관리자 회수',
+          timestamp: serverTimestamp(),
+          metadata: {
+            adminName,
+            amountType,
+            taxRate: action === 'send' ? taxRate : 0
+          }
+        };
+        transaction.set(transactionRef, transactionData);
 
+        // 성공 정보 저장
+        updatedUsers.push({ id: user.id, newCash });
+        totalProcessed += baseAmount;
+        successCount++;
+
+        logger.log(`[database.js] ${user.name} 트랜잭션 처리 완료:`, {
+          현재잔액: currentCash,
+          기본금액: baseAmount,
+          세금: taxAmount,
+          최종금액: finalAmount,
+          새잔액: newCash
+        });
+      });
     } catch (userError) {
-      console.error(`[database.js] 사용자 ${user.name} 처리 중 오류:`, userError);
+      logger.error(`[database.js] 사용자 ${user.name} 처리 중 오류:`, userError);
+      throw new Error(`${user.name}님 처리 실패: ${userError.message}`);
     }
   }
 
-  try {
-    await batch.commit();
-    logger.log(`[database.js] adminCashAction 완료: ${successCount}명 처리, 총 ${totalProcessed.toLocaleString()}원`);
+  logger.log(`[database.js] adminCashAction 완료: ${successCount}명 처리, 총 ${totalProcessed.toLocaleString()}원`);
 
-    // *** 수정: 업데이트된 사용자 정보와 함께 결과 반환
-    return {
-      count: successCount,
-      totalProcessed,
-      updatedUsers,
-    };
-  } catch (batchError) {
-    console.error('[database.js] batch commit 오류:', batchError);
-    throw batchError;
-  }
+  return {
+    count: successCount,
+    totalProcessed,
+    updatedUsers,
+  };
 };
 
 
@@ -487,7 +510,7 @@ export const transferCash = async (senderId, receiverId, amount, message = '') =
       message: taxAmount > 0 ? `송금 완료. 거래세 ${taxAmount}원이 부과되었습니다.` : '송금 완료.'
     };
   } catch (error) {
-    console.error('현금 전송 실패:', error);
+    logger.error('현금 전송 실패:', error);
     throw error;
   }
 };
@@ -576,7 +599,7 @@ export const transferCoupons = async (senderId, receiverId, amount, message = ''
       message: taxAmount > 0 ? `쿠폰 전송 완료. 거래세 ${taxAmount}원이 부과되었습니다.` : '쿠폰 전송 완료.'
     };
   } catch (error) {
-    console.error('쿠폰 전송 실패:', error);
+    logger.error('쿠폰 전송 실패:', error);
     throw error;
   }
 };
@@ -627,13 +650,13 @@ export const addTransaction = async (transaction, updateFirebase = true) => {
 
         logger.log('[DB] Firebase 동기화 완료:', newTransaction);
       } catch (firebaseError) {
-        console.error('[DB] Firebase 동기화 중 오류:', firebaseError);
+        logger.error('[DB] Firebase 동기화 중 오류:', firebaseError);
       }
     }
 
     return newTransaction;
   } catch (error) {
-    console.error("Error adding transaction:", error);
+    logger.error("Error adding transaction:", error);
     return null;
   }
 };
@@ -661,7 +684,7 @@ export const getUserTransactions = (userId, limit = null) => {
 
     return sortedTransactions;
   } catch (error) {
-    console.error("Error getting transactions:", error);
+    logger.error("Error getting transactions:", error);
     return [];
   }
 };
@@ -680,7 +703,7 @@ export const getUserTasks = (userId, completed = null) => {
 
     return tasks;
   } catch (error) {
-    console.error("Error getting tasks:", error);
+    logger.error("Error getting tasks:", error);
     return [];
   }
 };
@@ -695,7 +718,7 @@ export const completeTask = async (taskId, userId, updateFirebase = true) => {
 
     const taskIndex = tasks.findIndex((task) => task.id === taskId);
     if (taskIndex === -1) {
-      console.warn(`Task with ID ${taskId} not found`);
+      logger.warn(`Task with ID ${taskId} not found`);
       return false;
     }
 
@@ -766,13 +789,13 @@ export const completeTask = async (taskId, userId, updateFirebase = true) => {
 
         logger.log(`[DB] 과제 완료 Firebase 동기화 완료: ${completedTask.title}`);
       } catch (firebaseError) {
-        console.error('[DB] Firebase 동기화 중 오류:', firebaseError);
+        logger.error('[DB] Firebase 동기화 중 오류:', firebaseError);
       }
     }
 
     return true;
   } catch (error) {
-    console.error("Error completing task:", error);
+    logger.error("Error completing task:", error);
     return false;
   }
 };
@@ -782,7 +805,7 @@ export const completeTask = async (taskId, userId, updateFirebase = true) => {
  */
 export const useItem = async (userId, itemName, effect, quantity = 1, context = '') => {
   if (!userId || !itemName) {
-    console.warn('[DB] useItem: userId와 itemName이 필요합니다.');
+    logger.warn('[DB] useItem: userId와 itemName이 필요합니다.');
     return false;
   }
 
@@ -801,7 +824,7 @@ export const useItem = async (userId, itemName, effect, quantity = 1, context = 
     logger.log(`[DB] 아이템 사용 기록 완료: ${itemName}`);
     return true;
   } catch (error) {
-    console.error('[DB] 아이템 사용 기록 중 오류:', error);
+    logger.error('[DB] 아이템 사용 기록 중 오류:', error);
     return false;
   }
 };
@@ -811,7 +834,7 @@ export const useItem = async (userId, itemName, effect, quantity = 1, context = 
  */
 export const obtainItem = async (userId, itemName, quantity = 1, source = 'unknown') => {
   if (!userId || !itemName) {
-    console.warn('[DB] obtainItem: userId와 itemName이 필요합니다.');
+    logger.warn('[DB] obtainItem: userId와 itemName이 필요합니다.');
     return false;
   }
 
@@ -829,7 +852,7 @@ export const obtainItem = async (userId, itemName, quantity = 1, source = 'unkno
     logger.log(`[DB] 아이템 획득 기록 완료: ${itemName}`);
     return true;
   } catch (error) {
-    console.error('[DB] 아이템 획득 기록 중 오류:', error);
+    logger.error('[DB] 아이템 획득 기록 중 오류:', error);
     return false;
   }
 };
@@ -839,7 +862,7 @@ export const obtainItem = async (userId, itemName, quantity = 1, source = 'unkno
  */
 export const recordGameResult = async (userId, gameName, result, reward = null, gameDetails = {}) => {
   if (!userId || !gameName || !result) {
-    console.warn('[DB] recordGameResult: 모든 매개변수가 필요합니다.');
+    logger.warn('[DB] recordGameResult: 모든 매개변수가 필요합니다.');
     return false;
   }
 
@@ -891,7 +914,7 @@ export const recordGameResult = async (userId, gameName, result, reward = null, 
     logger.log(`[DB] 게임 결과 기록 완료: ${gameName} - ${result}`);
     return true;
   } catch (error) {
-    console.error('[DB] 게임 결과 기록 중 오류:', error);
+    logger.error('[DB] 게임 결과 기록 중 오류:', error);
     return false;
   }
 };
@@ -902,7 +925,7 @@ export const recordGameResult = async (userId, gameName, result, reward = null, 
  */
 export const recordAdminAction = async (adminId, action, targetUserId, details) => {
   if (!adminId || !action || !targetUserId) {
-    console.warn('[DB] recordAdminAction: 필수 매개변수가 누락되었습니다.');
+    logger.warn('[DB] recordAdminAction: 필수 매개변수가 누락되었습니다.');
     return false;
   }
 
@@ -914,7 +937,7 @@ export const recordAdminAction = async (adminId, action, targetUserId, details) 
     logger.log(`[DB] 관리자 액션 기록 완료: ${action}`);
     return true;
   } catch (error) {
-    console.error('[DB] 관리자 액션 기록 중 오류:', error);
+    logger.error('[DB] 관리자 액션 기록 중 오류:', error);
     return false;
   }
 };
@@ -924,7 +947,7 @@ export const recordAdminAction = async (adminId, action, targetUserId, details) 
  */
 export const recordSalaryPayment = async (userId, amount, period, details = {}) => {
   if (!userId || !amount || amount <= 0) {
-    console.warn('[DB] recordSalaryPayment: 필수 매개변수가 누락되었습니다.');
+    logger.warn('[DB] recordSalaryPayment: 필수 매개변수가 누락되었습니다.');
     return false;
   }
 
@@ -971,7 +994,7 @@ export const recordSalaryPayment = async (userId, amount, period, details = {}) 
 
     return true;
   } catch (error) {
-    console.error('[DB] 급여 지급 기록 중 오류:', error);
+    logger.error('[DB] 급여 지급 기록 중 오류:', error);
     return false;
   }
 };
@@ -981,7 +1004,7 @@ export const recordSalaryPayment = async (userId, amount, period, details = {}) 
  */
 export const adminCouponAction = async (adminId, targetUserId, action, amount, reason) => {
   if (!adminId || !targetUserId || !action || !amount) {
-    console.warn('[DB] adminCouponAction: 필수 매개변수가 누락되었습니다.');
+    logger.warn('[DB] adminCouponAction: 필수 매개변수가 누락되었습니다.');
     return false;
   }
 
@@ -1018,7 +1041,7 @@ export const adminCouponAction = async (adminId, targetUserId, action, amount, r
     logger.log(`[DB] 관리자 쿠폰 액션 완료: ${action} - ${amount}개`);
     return true;
   } catch (error) {
-    console.error('[DB] 관리자 쿠폰 액션 중 오류:', error);
+    logger.error('[DB] 관리자 쿠폰 액션 중 오류:', error);
     return false;
   }
 };

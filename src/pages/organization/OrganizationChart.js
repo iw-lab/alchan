@@ -74,7 +74,7 @@ const OrganizationChart = ({ classCode }) => {
         logger.log(`[${classCode}] 정부 기본 설정 생성 완료`);
       }
     } catch (error) {
-      console.error("정부 설정 로드 오류:", error);
+      logger.error("정부 설정 로드 오류:", error);
     } finally {
       setLoadingSettings(false);
     }
@@ -105,7 +105,7 @@ const OrganizationChart = ({ classCode }) => {
       setApprovedLaws(approved);
       setVetoPendingLaws(vetoPending);
     } catch (error) {
-      console.error("법안 데이터 로드 오류:", error);
+      logger.error("법안 데이터 로드 오류:", error);
     } finally {
       setLoadingLaws(false);
     }
@@ -161,7 +161,7 @@ const OrganizationChart = ({ classCode }) => {
       setShowSettingsModal(false);
       alert("설정이 저장되었습니다.");
     } catch (error) {
-      console.error("설정 저장 오류:", error);
+      logger.error("설정 저장 오류:", error);
       alert("설정 저장 중 오류가 발생했습니다.");
     }
   };
@@ -183,7 +183,7 @@ const OrganizationChart = ({ classCode }) => {
       await fetchLaws();
       alert(`"${law.title}" 법안이 최종 승인되었습니다.`);
     } catch (error) {
-      console.error("법안 승인 오류:", error);
+      logger.error("법안 승인 오류:", error);
       alert("법안 승인 중 오류가 발생했습니다.");
     }
   };
@@ -238,7 +238,7 @@ const OrganizationChart = ({ classCode }) => {
         `"${selectedLaw.title}" 법안에 거부권이 행사되었습니다. 국회에서 재의결 절차가 시작됩니다.`
       );
     } catch (error) {
-      console.error("거부권 행사 오류:", error);
+      logger.error("거부권 행사 오류:", error);
       alert("거부권 행사 중 오류가 발생했습니다.");
     }
   };
@@ -309,7 +309,7 @@ const OrganizationChart = ({ classCode }) => {
   //   if (needsUpdate) {
   //     batch.commit()
   //       .then(() => logger.log("자동 부결 법안 상태 일괄 업데이트 완료."))
-  //       .catch(error => console.error("자동 부결 법안 상태 업데이트 오류:", error));
+  //       .catch(error => logger.error("자동 부결 법안 상태 업데이트 오류:", error));
   //   }
   //   // 이 로직은 NationalAssembly.js에서 주기적으로 실행되거나 Cloud Function으로 처리하는 것이 더 적합합니다.
   //   // 여기서는 참고용으로만 남겨둡니다.

@@ -14,6 +14,7 @@ import {
   where as originalFirebaseWhere,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { logger } from '../../utils/logger';
 import {
   logDbOperation,
   setCache,
@@ -48,7 +49,7 @@ export const getGovernmentSettings = async (classCode, useCache = true, tab = 'u
     if (result && useCache) setCache(cacheKey, result);
     return result;
   } catch (error) {
-    console.error(`[firebase.js] 정부 설정 조회 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 정부 설정 조회 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -63,7 +64,7 @@ export const updateGovernmentSettings = async (classCode, settings, tab = 'unkno
     await setDoc(settingsRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
     return true;
   } catch (error) {
-    console.error(`[firebase.js] 정부 설정 업데이트 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 정부 설정 업데이트 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -87,7 +88,7 @@ export const getNationalTreasury = async (classCode, useCache = true, tab = 'unk
     if (result && useCache) setCache(cacheKey, result);
     return result;
   } catch (error) {
-    console.error(`[firebase.js] 국고 조회 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 국고 조회 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -152,11 +153,11 @@ export const updateBankingProducts = async (classCode, productType, products, ta
 // =================================================================
 export const subscribeToMarketSummary = (classCode, callback, tab = 'unknown') => {
   if (!db) {
-    console.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
+    logger.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
     return () => {};
   }
   if (!classCode) {
-    console.error("학급 코드가 없어 마켓 요약 데이터를 구독할 수 없습니다.");
+    logger.error("학급 코드가 없어 마켓 요약 데이터를 구독할 수 없습니다.");
     return () => {};
   }
   const summaryRef = doc(db, "classes", classCode, "marketSummary", "summary");
@@ -173,7 +174,7 @@ export const subscribeToMarketSummary = (classCode, callback, tab = 'unknown') =
       }
     },
     (error) => {
-      console.error("[Market] 마켓 요약 데이터 구독 중 오류 발생:", error);
+      logger.error("[Market] 마켓 요약 데이터 구독 중 오류 발생:", error);
       callback(null);
     }
   );
@@ -225,7 +226,7 @@ export const copyDefaultDataToNewClass = async (newClassCode) => {
     if (batchCount > 0) await batch.commit();
     return { success: true, results, message: `직업 ${results.jobs.copied}개, 상점 아이템 ${results.storeItems.copied}개 복사 완료` };
   } catch (error) {
-    console.error(`[firebase.js] 기본 데이터 복사 오류:`, error);
+    logger.error(`[firebase.js] 기본 데이터 복사 오류:`, error);
     return { success: false, results, error: error.message };
   }
 };

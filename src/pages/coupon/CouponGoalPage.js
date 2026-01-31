@@ -69,7 +69,7 @@ export default function CouponGoalPage() {
           }
         }
       } catch (error) {
-        console.error("[CouponGoalPage] 쿠폰 가치 설정 로드 실패:", error);
+        logger.error("[CouponGoalPage] 쿠폰 가치 설정 로드 실패:", error);
       }
     };
 
@@ -130,7 +130,7 @@ export default function CouponGoalPage() {
     } catch (error) {
     }
     return null;
-  }, [userId]);
+  }, [userId, CACHE_DURATION]);
 
   const setCachedFirestoreData = useCallback((key, data) => {
     try {
@@ -225,10 +225,10 @@ export default function CouponGoalPage() {
         const cacheKey = `goal_${currentGoalId}`;
         setCachedFirestoreData(cacheKey, goalData);
       } else {
-        console.warn('[CouponGoalPage] 목표 문서가 존재하지 않습니다');
+        logger.warn('[CouponGoalPage] 목표 문서가 존재하지 않습니다');
       }
     } catch (error) {
-      console.error('[CouponGoalPage] 목표 데이터 로드 실패:', error);
+      logger.error('[CouponGoalPage] 목표 데이터 로드 실패:', error);
     } finally {
       setAssetsLoading(false);
       loadingRef.current = false;
@@ -304,7 +304,7 @@ export default function CouponGoalPage() {
 
       return true;
     } catch (error) {
-      console.error('[CouponGoalPage] 기부 오류 (상세):', {
+      logger.error('[CouponGoalPage] 기부 오류 (상세):', {
         error,
         message: error.message,
         code: error.code,

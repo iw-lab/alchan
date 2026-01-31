@@ -27,7 +27,7 @@ function deleteSvgFiles() {
         logger.log(`${svgFile} 파일이 존재하지 않습니다.`);
       }
     } catch (err) {
-      console.error(`${svgFile} 파일 삭제 중 오류 발생:`, err);
+      logger.error(`${svgFile} 파일 삭제 중 오류 발생:`, err);
     }
   });
 }

@@ -88,7 +88,7 @@ const Investment = ({ classCode }) => {
           logger.log(`학급 [${classCode}]의 국고가 없어 새로 생성했습니다.`);
           return 0;
         } catch (error) {
-          console.error("국고 생성 중 오류:", error);
+          logger.error("국고 생성 중 오류:", error);
           setMessage({
             type: "error",
             text: "국고 정보를 초기화하는 데 실패했습니다.",
@@ -249,7 +249,7 @@ const Investment = ({ classCode }) => {
       setTransferAmount("");
       if (refreshUserDocument) refreshUserDocument();
     } catch (error) {
-      console.error("자금 이체 오류:", error);
+      logger.error("자금 이체 오류:", error);
       setMessage({ text: `오류: ${error.message}`, type: "error" });
     } finally {
       setIsLoading(false);

@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import {
+import { logger } from '../utils/logger';
   TrendingUp, TrendingDown, Minus, BarChart3, PieChart,
   Calendar, Trophy, Target, Coins, Gamepad2, Users, ArrowRight
 } from 'lucide-react';
@@ -174,7 +175,7 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
         loginDays: Math.floor(Math.random() * 30)
       });
     } catch (error) {
-      console.error('통계 로드 오류:', error);
+      logger.error('통계 로드 오류:', error);
     } finally {
       setLoading(false);
     }

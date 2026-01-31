@@ -1,5 +1,6 @@
 // src/Button.js
 import React, { useState } from 'react';
+import { logger } from '../utils/logger';
 
 /**
  * 중복 클릭을 방지하는 버튼 컴포넌트입니다.
@@ -23,7 +24,7 @@ const Button = ({ onClick, children, disabled, ...props }) => {
         await onClick(event);
       }
     } catch (error) {
-      console.error("Button onClick handler error:", error);
+      logger.error("Button onClick handler error:", error);
     } finally {
       // 1초 후에 버튼을 다시 활성화하여 중복 클릭 방지
       setTimeout(() => setIsProcessing(false), 1000);

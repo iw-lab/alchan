@@ -14,6 +14,7 @@ import {
 import { logActivity, LOG_TYPES } from "../../services/database"; // logActivity와 LOG_TYPES 가져오기
 import { usePolling } from "../../hooks/usePolling";
 import "./SendReceive.css";
+import { logger } from '../../utils/logger';
 
 const SendReceive = ({ classCode }) => {
   const { user, userDoc, refreshUserDocument, isAdmin } = useAuth();
@@ -75,7 +76,7 @@ const SendReceive = ({ classCode }) => {
         setTreasuryBalance(0);
       }
     } catch (error) {
-      console.error("금고 잔액 조회 중 오류:", error);
+      logger.error("금고 잔액 조회 중 오류:", error);
       setFeedback({
         type: "error",
         message: "금고 잔액을 가져오는데 실패했습니다.",
@@ -184,7 +185,7 @@ const SendReceive = ({ classCode }) => {
       refetchTreasuryBalance();
 
     } catch (error) {
-      console.error("거래 처리 중 오류:", error);
+      logger.error("거래 처리 중 오류:", error);
       setFeedback({ type: "error", message: `오류: ${error.message}` });
     } finally {
       setIsLoading(false);

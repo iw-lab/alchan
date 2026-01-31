@@ -6,6 +6,7 @@ import "./ItemStore.css";
 import "../admin/AdminPanel.css";
 import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
+import { logger } from '../../utils/logger';
 
 const StockBadge = ({ stock }) => {
   if (stock === undefined || stock === null) return null;
@@ -119,7 +120,7 @@ const ItemStore = () => {
       await deleteItem(itemToDelete.id); // classCode는 서버에서 처리하므로 ID만 전달
       showNotification("success", `${itemToDelete.name} 삭제 완료`);
     } catch (error) {
-      console.error("아이템 삭제 중 오류:", error);
+      logger.error("아이템 삭제 중 오류:", error);
       showNotification("error", "아이템 삭제 중 오류가 발생했습니다.");
     } finally {
       setShowDeleteConfirm(false);
@@ -182,7 +183,7 @@ const ItemStore = () => {
         );
       }
     } catch (error) {
-      console.error("구매 처리 중 오류:", error);
+      logger.error("구매 처리 중 오류:", error);
       showNotification("error", error.message || "구매 중 문제가 발생했습니다.");
     }
   };
@@ -205,7 +206,7 @@ const ItemStore = () => {
       showNotification("error", result.message || "아이템 추가 실패");
       return false;
     } catch (error) {
-      console.error("아이템 추가 중 오류:", error);
+      logger.error("아이템 추가 중 오류:", error);
       showNotification("error", "아이템 추가 중 오류가 발생했습니다.");
       return false;
     }
@@ -238,7 +239,7 @@ const ItemStore = () => {
       showNotification("error", result.message || "아이템 업데이트 실패");
       return false;
     } catch (error) {
-      console.error("아이템 업데이트 중 오류:", error);
+      logger.error("아이템 업데이트 중 오류:", error);
       showNotification("error", "아이템 업데이트 중 오류가 발생했습니다.");
       return false;
     }

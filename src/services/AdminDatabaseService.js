@@ -172,7 +172,7 @@ export const getActivityLogs = async (classCode, options = {}) => {
     return result;
 
   } catch (error) {
-    console.error('[AdminDatabaseService] 활동 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 활동 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -192,7 +192,7 @@ export const getCouponEarnLogs = async (classCode, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('[AdminDatabaseService] 쿠폰 획득 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 쿠폰 획득 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -212,7 +212,7 @@ export const getCouponUseLogs = async (classCode, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('[AdminDatabaseService] 쿠폰 사용 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 쿠폰 사용 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -232,7 +232,7 @@ export const getItemPurchaseLogs = async (classCode, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('[AdminDatabaseService] 아이템 구매 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 아이템 구매 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -252,7 +252,7 @@ export const getItemUseLogs = async (classCode, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('[AdminDatabaseService] 아이템 사용 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 아이템 사용 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -272,7 +272,7 @@ export const getItemSellLogs = async (classCode, options = {}) => {
 
     return result;
   } catch (error) {
-    console.error('[AdminDatabaseService] 아이템 판매 로그 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 아이템 판매 로그 조회 오류:', error);
     throw error;
   }
 };
@@ -400,8 +400,8 @@ export const getActivitySummary = async (classCode, userId = null) => {
     return summary;
 
   } catch (error) {
-    console.error('[AdminDatabaseService] 활동 요약 조회 오류:', error);
-    console.error('[AdminDatabaseService] 오류 상세:', error.message, error.code);
+    logger.error('[AdminDatabaseService] 활동 요약 조회 오류:', error);
+    logger.error('[AdminDatabaseService] 오류 상세:', error.message, error.code);
     throw error;
   }
 };
@@ -441,7 +441,7 @@ export const getTransactionsData = async (userIds = [], options = {}) => {
     logger.log('[AdminDatabaseService] transactions 컬렉션 조회 시작:', { userIdsCount: userIds.length });
 
     if (userIds.length === 0) {
-      console.warn('[AdminDatabaseService] userIds가 비어있음');
+      logger.warn('[AdminDatabaseService] userIds가 비어있음');
       return [];
     }
 
@@ -477,7 +477,7 @@ export const getTransactionsData = async (userIds = [], options = {}) => {
     return allTransactions;
 
   } catch (error) {
-    console.error('[AdminDatabaseService] transactions 조회 오류:', error);
+    logger.error('[AdminDatabaseService] transactions 조회 오류:', error);
     return [];
   }
 };

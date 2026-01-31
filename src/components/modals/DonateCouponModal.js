@@ -1,6 +1,7 @@
 // src/DonateCouponModal.js
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, memo } from "react";
+import { logger } from '../../utils/logger';
 
 const DonateCouponModal = memo(function DonateCouponModal({
   showDonateModal,
@@ -35,7 +36,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
         setShowDonateModal(false);
       }
     } catch (error) {
-      console.error("[DonateCouponModal] 기부 처리 중 오류:", error);
+      logger.error("[DonateCouponModal] 기부 처리 중 오류:", error);
       alert("기부 처리 중 오류가 발생했습니다.");
     } finally {
       setIsDonating(false);

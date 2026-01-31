@@ -1,5 +1,6 @@
 // 🔥 성능 최적화: React.memo 적용
 import React, { memo } from "react";
+import { logger } from '../../utils/logger';
 
 const GiftCouponModal = memo(function GiftCouponModal({
   showGiftCouponModal,
@@ -26,12 +27,12 @@ const GiftCouponModal = memo(function GiftCouponModal({
     if (typeof setGiftAmount === "function") {
       setGiftAmount(""); // 모달 닫을 때 상태 초기화
     } else {
-      console.error("setGiftAmount prop is not a function!", setGiftAmount); // 디버깅 로그 추가
+      logger.error("setGiftAmount prop is not a function!", setGiftAmount); // 디버깅 로그 추가
     }
     if (typeof setGiftRecipient === "function") {
       setGiftRecipient("");
     } else {
-      console.error(
+      logger.error(
         "setGiftRecipient prop is not a function!",
         setGiftRecipient
       ); // 디버깅 로그 추가
@@ -63,7 +64,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
             onChange={(e) =>
               typeof setGiftRecipient === "function"
                 ? setGiftRecipient(e.target.value)
-                : console.error("setGiftRecipient is not a function")
+                : logger.error("setGiftRecipient is not a function")
             }
             className="w-full p-2.5 border border-gray-300 rounded-md text-sm"
           >
@@ -88,7 +89,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
             onChange={(e) =>
               typeof setGiftAmount === "function"
                 ? setGiftAmount(e.target.value)
-                : console.error("setGiftAmount is not a function")
+                : logger.error("setGiftAmount is not a function")
             }
             placeholder="선물할 쿠폰 수량을 입력하세요"
             className="w-full p-2.5 border border-gray-300 rounded-md text-sm"

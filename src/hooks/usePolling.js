@@ -1,5 +1,6 @@
 // src/hooks/usePolling.js - onSnapshot 대체용 Polling Hook (최적화 버전)
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from '../utils/logger';
 
 // 🔥 [최적화] 페이지별 폴링 간격 상수 - Firestore 읽기 최소화
 export const POLLING_INTERVALS = {
@@ -71,7 +72,7 @@ export const usePolling = (queryFn, options = {}) => {
         setLoading(false);
       }
     } catch (err) {
-      console.error('[usePolling] 데이터 조회 오류:', err);
+      logger.error('[usePolling] 데이터 조회 오류:', err);
       if (mountedRef.current) {
         setError(err);
         setLoading(false);
@@ -115,7 +116,8 @@ export const usePolling = (queryFn, options = {}) => {
         intervalRef.current = null;
       }
     };
-  }, [fetchData, interval, enabled, ...deps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchData, interval, enabled, ...deps]); // deps는 스프레드 연산자로 동적 배열이므로 경고 발생, 하지만 의도된 동작
 
   return { data, loading, error, refetch };
 };
@@ -165,7 +167,7 @@ export const useMultiPolling = (queries, options = {}) => {
             newData[key] = result.value.result;
           } else {
             newErrors[key] = result.reason;
-            console.error(`[useMultiPolling] ${key} 조회 오류:`, result.reason);
+            logger.error(`[useMultiPolling] ${key} 조회 오류:`, result.reason);
           }
         });
 
@@ -174,7 +176,7 @@ export const useMultiPolling = (queries, options = {}) => {
         setLoading(false);
       }
     } catch (err) {
-      console.error('[useMultiPolling] 전체 조회 오류:', err);
+      logger.error('[useMultiPolling] 전체 조회 오류:', err);
       if (mountedRef.current) {
         setLoading(false);
       }
@@ -216,7 +218,8 @@ export const useMultiPolling = (queries, options = {}) => {
         intervalRef.current = null;
       }
     };
-  }, [fetchAllData, interval, enabled, ...deps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchAllData, interval, enabled, ...deps]); // deps는 스프레드 연산자로 동적 배열이므로 경고 발생, 하지만 의도된 동작
 
   return { data, loading, errors, refetchAll };
 };

@@ -75,7 +75,7 @@ export function useServiceWorker() {
       setUpdateIntervalId(intervalId);
 
     } catch (error) {
-      console.error('[PWA] 서비스 워커 등록 실패:', error);
+      logger.error('[PWA] 서비스 워커 등록 실패:', error);
     }
   };
 

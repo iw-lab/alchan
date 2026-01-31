@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePolling } from '../../hooks/usePolling';
 import '../../MusicRequest.css';
+import { logger } from '../../utils/logger';
 
 const MusicRequest = ({ user }) => {
     const [roomName, setRoomName] = useState('');
@@ -84,7 +85,7 @@ const MusicRequest = ({ user }) => {
             setCreatedRoom({ id: docRef.id, name: roomName });
             setRoomName(''); // 입력 필드 초기화
         } catch (e) {
-            console.error("Error adding document: ", e);
+            logger.error("Error adding document: ", e);
             setError('방을 만드는 중 오류가 발생했습니다.');
         }
     };
@@ -123,7 +124,7 @@ const MusicRequest = ({ user }) => {
 
             alert('방이 삭제되었습니다.');
         } catch (error) {
-            console.error("Error deleting room: ", error);
+            logger.error("Error deleting room: ", error);
             alert('방을 삭제하는 중 오류가 발생했습니다.');
         }
     };

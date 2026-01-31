@@ -14,6 +14,7 @@ import {
 } from "firebase/firestore";
 import { addDoc as originalFirebaseAddDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { logger } from '../../utils/logger';
 import {
   logDbOperation,
   setCache,
@@ -27,13 +28,13 @@ import {
 // =================================================================
 export const addActivityLog = async (userId, type, description) => {
   if (!db || !userId) {
-    console.error("활동 로그 기록 실패: 필수 정보 부족(db, userId)", { userId, type, description });
+    logger.error("활동 로그 기록 실패: 필수 정보 부족(db, userId)", { userId, type, description });
     return;
   }
   try {
     const userDoc = await getUserDocument(userId);
     if (!userDoc) {
-      console.error(`활동 로그 기록 실패: 사용자 문서(${userId})를 찾을 수 없습니다.`);
+      logger.error(`활동 로그 기록 실패: 사용자 문서(${userId})를 찾을 수 없습니다.`);
       return;
     }
     if (!userDoc.classCode || userDoc.classCode === '미지정') {
@@ -49,13 +50,13 @@ export const addActivityLog = async (userId, type, description) => {
       timestamp: serverTimestamp(),
     });
   } catch (error) {
-    console.error("활동 로그 기록 중 오류 발생:", error);
+    logger.error("활동 로그 기록 중 오류 발생:", error);
   }
 };
 
 export const addTransaction = async (userId, amount, description) => {
   if (!db || !userId) {
-    console.error("거래 기록 실패: 필수 정보 부족 (db, userId)");
+    logger.error("거래 기록 실패: 필수 정보 부족 (db, userId)");
     return false;
   }
   try {
@@ -67,7 +68,7 @@ export const addTransaction = async (userId, amount, description) => {
     });
     return true;
   } catch (error) {
-    console.error(`[Transaction] 사용자(${userId}) 거래 기록 중 오류 발생:`, error);
+    logger.error(`[Transaction] 사용자(${userId}) 거래 기록 중 오류 발생:`, error);
     return false;
   }
 };
@@ -106,7 +107,7 @@ export const getUserDocument = async (userId, forceRefresh = false, tab = 'unkno
     }
     return result;
   } catch (error) {
-    console.error(`[firebase.js] getUserDocument(${userId}) 오류:`, error);
+    logger.error(`[firebase.js] getUserDocument(${userId}) 오류:`, error);
     throw error;
   }
 };
@@ -134,7 +135,7 @@ export const addUserDocument = async (userId, userData) => {
     await addActivityLog(userId, '시스템', '신규 사용자 계정이 생성되었습니다.');
     return true;
   } catch (error) {
-    console.error(`[firebase.js] 사용자 문서 추가 실패: ${userId}`, error);
+    logger.error(`[firebase.js] 사용자 문서 추가 실패: ${userId}`, error);
     throw error;
   }
 };
@@ -238,7 +239,7 @@ export const getAllUsersDocuments = async (useCache = true) => {
     }
     return result;
   } catch (error) {
-    console.error("[firebase.js] getAllUsersDocuments 오류:", error);
+    logger.error("[firebase.js] getAllUsersDocuments 오류:", error);
     throw error;
   }
 };
@@ -281,7 +282,7 @@ export const getActivityLogs = async (classCode, limit = 50, useCache = false, t
     }
     return logs;
   } catch (error) {
-    console.error(`[firebase.js] 활동 로그 조회 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 활동 로그 조회 오류 (학급: ${classCode}):`, error);
     return [];
   }
 };

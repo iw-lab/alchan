@@ -30,7 +30,7 @@ const TaskItem = memo(function TaskItem({
       typeof task.clicks !== "number" ||
       typeof task.maxClicks !== "number"
     ) {
-      console.error("Invalid task prop:", task);
+      logger.error("Invalid task prop:", task);
       return;
     }
     if (task.maxClicks > 0 && task.clicks >= task.maxClicks) {

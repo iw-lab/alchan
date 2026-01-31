@@ -13,6 +13,7 @@ import {
   increment,
   setDoc,
 } from "firebase/firestore";
+import { getClassAdminUid } from "../firebase/db/core";
 
 // 기본 세금 및 주급 인상률 설정
 const DEFAULT_SETTINGS = {
@@ -75,7 +76,7 @@ const getAllStudents = async (classCode) => {
 
 
 /**
- * 주급을 지급하는 메인 함수
+ * 주급을 지급하는 메인 함수 (관리자 cash에서 차감)
  * @param {string} classCode 학급 코드
  * @returns {Promise<{success: boolean, message: string, paidCount: number, totalPaid: number}>}
  */
@@ -87,19 +88,32 @@ export const payWeeklySalaries = async (classCode) => {
 
   const allJobs = await getAllJobs(classCode);
   const allStudents = await getAllStudents(classCode);
-  
+
   if (allStudents.length === 0) {
     return { success: true, message: "주급을 받을 학생이 없습니다.", paidCount: 0, totalPaid: 0 };
   }
 
+  // 🔥 [추가] 관리자 UID 조회
+  const adminUid = await getClassAdminUid(classCode);
+  if (!adminUid) {
+    logger.log(`[${classCode}] 관리자가 없어 주급 지급을 건너뜁니다.`);
+    return { success: false, message: "관리자 계정을 찾을 수 없습니다.", paidCount: 0, totalPaid: 0 };
+  }
+
+  // 🔥 [추가] 관리자 현재 cash 확인
+  const adminRef = doc(db, "users", adminUid);
+  const adminDoc = await getDoc(adminRef);
+  const adminCash = adminDoc.exists() ? (adminDoc.data().cash || 0) : 0;
+
   const batch = writeBatch(db);
   let paidCount = 0;
   let totalPaid = 0;
+  let totalTax = 0;
 
   for (const student of allStudents) {
     if (student.selectedJobIds && student.selectedJobIds.length > 0) {
       let weeklySalary = 0;
-      
+
       // 학생이 가진 각 직업에 대한 주급을 합산합니다.
       student.selectedJobIds.forEach(jobId => {
         const job = allJobs.find(j => j.id === jobId);
@@ -111,19 +125,42 @@ export const payWeeklySalaries = async (classCode) => {
       if (weeklySalary > 0) {
         const taxAmount = Math.round(weeklySalary * taxRate);
         const netSalary = weeklySalary - taxAmount;
-        
+
         const userRef = doc(db, "users", student.id);
         batch.update(userRef, {
           cash: increment(netSalary),
           lastSalaryDate: serverTimestamp(),
         });
-        
+
         paidCount++;
         totalPaid += netSalary;
-        
+        totalTax += taxAmount;
+
         logger.log(`${student.name} 학생에게 주급 ${netSalary}원 (세금: ${taxAmount}원) 지급`);
       }
     }
+  }
+
+  // 🔥 [추가] 관리자 cash에서 총 지급액 차감 (세금은 관리자에게 남음)
+  // 관리자가 지출하는 금액 = 순 지급액 (세금 제외한 금액)
+  // 세금은 관리자(국고)에 이미 남아있으므로 순 지급액만 차감
+  if (totalPaid > 0) {
+    // 관리자 잔액 부족 체크
+    if (adminCash < totalPaid) {
+      logger.log(`[${classCode}] 관리자 잔액 부족 (필요: ${totalPaid}, 보유: ${adminCash})`);
+      return {
+        success: false,
+        message: `관리자 잔액이 부족합니다. (필요: ${totalPaid.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
+        paidCount: 0,
+        totalPaid: 0
+      };
+    }
+
+    batch.update(adminRef, {
+      cash: increment(-totalPaid),
+      updatedAt: serverTimestamp(),
+    });
+    logger.log(`[${classCode}] 관리자 cash에서 ${totalPaid}원 차감 (세금 ${totalTax}원은 관리자에게 유지)`);
   }
 
   // 모든 직업의 주급을 인상합니다.
@@ -136,16 +173,16 @@ export const payWeeklySalaries = async (classCode) => {
       logger.log(`직업 [${job.title}] 주급 인상: ${job.weeklySalary}원 -> ${newSalary}원`);
     }
   }
-  
+
   // 마지막 지급일 업데이트
   const settingsRef = doc(db, `classes/${classCode}/settings/salary`);
   batch.set(settingsRef, { lastPaidDate: serverTimestamp() }, { merge: true });
 
   await batch.commit();
 
-  const message = `${paidCount}명의 학생에게 총 ${totalPaid.toLocaleString()}원의 주급이 지급되었고, 직업별 주급이 ${weeklySalaryIncreaseRate}% 인상되었습니다.`;
+  const message = `${paidCount}명의 학생에게 총 ${totalPaid.toLocaleString()}원의 주급이 지급되었고 (관리자 계정에서 차감), 직업별 주급이 ${weeklySalaryIncreaseRate}% 인상되었습니다.`;
   logger.log(message);
-  
+
   return { success: true, message, paidCount, totalPaid };
 };
 

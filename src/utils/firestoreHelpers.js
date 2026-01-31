@@ -116,7 +116,7 @@ export async function logActivity(dbInstance, {
   metadata = {}
 }) {
   if (!classCode || !userId || !type) {
-    console.warn('[logActivity] 필수 파라미터 누락:', { classCode, userId, type });
+    logger.warn('[logActivity] 필수 파라미터 누락:', { classCode, userId, type });
     return { success: false, error: '필수 파라미터 누락' };
   }
 
@@ -147,7 +147,7 @@ export async function logActivity(dbInstance, {
 
     return { success: true, logId: docRef.id };
   } catch (error) {
-    console.error('[logActivity] 로그 기록 실패:', error);
+    logger.error('[logActivity] 로그 기록 실패:', error);
     return { success: false, error: error.message };
   }
 }
@@ -190,7 +190,7 @@ export async function logActivitiesBatch(db, classCode, logs) {
 
     return { success: true, count: logs.length };
   } catch (error) {
-    console.error('[logActivitiesBatch] 배치 로그 실패:', error);
+    logger.error('[logActivitiesBatch] 배치 로그 실패:', error);
     return { success: false, error: error.message };
   }
 }

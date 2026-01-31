@@ -4,6 +4,7 @@ import { useAuth } from "./App"; // 가정: useAuth는 App.js 또는 AuthContext
 import { useItems } from "../../contexts/ItemContext"; // 가정: useItems는 ItemContext.js에서 export됨
 import "./styles.css"; // 가정: 해당 CSS 파일이 있음
 import LoginWarning from "../../components/LoginWarning";
+import { logger } from '../../utils/logger';
 
 // --- 아이콘 목록 ---
 const iconOptions = [
@@ -408,7 +409,7 @@ const CombinedShop = () => {
   // 아이템 추가 핸들러
   const handleAddItem = (newItemData) => {
     if (!addItem) {
-      console.error("addItem 함수를 ItemContext에서 찾을 수 없습니다.");
+      logger.error("addItem 함수를 ItemContext에서 찾을 수 없습니다.");
       showNotification("error", "아이템 추가 기능을 사용할 수 없습니다.");
       return;
     }
@@ -422,7 +423,7 @@ const CombinedShop = () => {
   // 아이템 수정 핸들러
   const handleUpdateItem = (updatedItemData) => {
     if (!updateItem) {
-      console.error("updateItem 함수를 ItemContext에서 찾을 수 없습니다.");
+      logger.error("updateItem 함수를 ItemContext에서 찾을 수 없습니다.");
       showNotification("error", "아이템 수정 기능을 사용할 수 없습니다.");
       return;
     }

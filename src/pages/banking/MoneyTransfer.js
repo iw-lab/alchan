@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { adminCashAction } from "../../services/database";
 import "./MoneyTransfer.css";
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
+import { logger } from '../../utils/logger';
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
@@ -67,21 +68,21 @@ function MoneyTransfer() {
   };
   
   // 미리보기 금액 계산 함수
-  const calculatePreviewAmount = (userCash, inputValue, applyTax = false) => {
+  const calculatePreviewAmount = useCallback((userCash, inputValue, applyTax = false) => {
     let baseAmount;
     if (amountType === "percentage") {
       baseAmount = Math.floor((userCash * Number(inputValue)) / 100);
     } else {
       baseAmount = Number(inputValue);
     }
-    
+
     if (applyTax && action === "send") {
       const taxAmount = Math.floor((baseAmount * taxRate) / 100);
       return baseAmount - taxAmount;
     }
-    
+
     return baseAmount;
-  };
+  }, [amountType, action, taxRate]);
 
   // 폼 제출 (보내기/가져오기 실행) 핸들러
   const handleSubmit = async (e) => {
@@ -161,7 +162,7 @@ function MoneyTransfer() {
       setTimeout(() => setMessage(""), 3000);
 
     } catch (err) {
-      console.error("처리 중 오류 발생:", err);
+      logger.error("처리 중 오류 발생:", err);
       setError(`오류가 발생했습니다: ${err.message}`);
       // 오류 발생 시에는 데이터를 다시 불러오는 것이 가장 정확하지만,
       // Firestore 사용 최소화를 위해 여기서는 에러 메시지만 표시합니다.
@@ -183,7 +184,8 @@ function MoneyTransfer() {
       }
     });
     return preview;
-  }, [selectedUsers, amount, amountType, action, taxRate, users]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUsers, amount, action, users, calculatePreviewAmount]); // amountType과 taxRate는 calculatePreviewAmount 내부에서 사용됨
 
   return (
     <div className="money-transfer-container">

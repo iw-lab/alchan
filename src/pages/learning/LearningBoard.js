@@ -44,7 +44,7 @@ const formatDate = (isoString) => {
       minute: "2-digit",
     });
   } catch (error) {
-    console.error("Error formatting date:", error);
+    logger.error("Error formatting date:", error);
     return "날짜 형식 오류";
   }
 };
@@ -362,7 +362,7 @@ const LearningBoard = () => {
       alert("게시글이 성공적으로 등록되었습니다!");
       // 게시글 작성 후에도 현재 상태 유지 (글쓰기 모드와 선택된 게시판 유지)
     } catch (error) {
-      console.error("Error submitting post:", error);
+      logger.error("Error submitting post:", error);
       alert(`게시글 제출 중 오류가 발생했습니다: ${error.message}`);
     }
   };
@@ -458,7 +458,7 @@ const LearningBoard = () => {
         setCustomCouponAmount(0);
       }
     } catch (error) {
-      console.error(`Error updating post ${updateType}:`, error);
+      logger.error(`Error updating post ${updateType}:`, error);
       alert(`게시글 ${updateType} 처리 중 오류: ${error.message}`);
     }
   };
@@ -494,7 +494,7 @@ const LearningBoard = () => {
       refetchBoards();
       setNewBoardName("");
     } catch (error) {
-      console.error("Error adding board:", error);
+      logger.error("Error adding board:", error);
       alert("게시판 추가 오류.");
     }
   };
@@ -537,7 +537,7 @@ const LearningBoard = () => {
       refetchBoards();
       handleCancelEditBoard();
     } catch (error) {
-      console.error("Error updating board name:", error);
+      logger.error("Error updating board name:", error);
       alert("게시판 이름 수정 오류.");
     }
   };
@@ -553,7 +553,7 @@ const LearningBoard = () => {
       refetchBoards();
       if (selectedBoard && selectedBoard.id === boardId) setSelectedBoard(null);
     } catch (error) {
-      console.error("Error hiding board:", error);
+      logger.error("Error hiding board:", error);
     }
   };
 
@@ -567,7 +567,7 @@ const LearningBoard = () => {
       });
       refetchBoards();
     } catch (error) {
-      console.error("Error restoring board:", error);
+      logger.error("Error restoring board:", error);
     }
   };
 
@@ -597,7 +597,7 @@ const LearningBoard = () => {
         if (selectedBoard && selectedBoard.id === boardId)
           setSelectedBoard(null);
       } catch (error) {
-        console.error("Error deleting board:", error);
+        logger.error("Error deleting board:", error);
         alert("게시판 삭제 오류.");
       }
     }

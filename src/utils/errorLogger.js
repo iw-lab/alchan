@@ -53,7 +53,7 @@ export const logError = async ({
     await addDoc(collection(db, 'errorLogs'), errorLog);
     logger.log('[ErrorLogger] 에러 기록됨:', message);
   } catch (logError) {
-    console.error('[ErrorLogger] 에러 기록 실패:', logError);
+    logger.error('[ErrorLogger] 에러 기록 실패:', logError);
   }
 };
 

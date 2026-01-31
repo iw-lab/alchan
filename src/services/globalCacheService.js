@@ -108,7 +108,7 @@ class GlobalCacheService {
           }
         }
       } catch (error) {
-        console.warn('[GlobalCache] localStorage 읽기 오류:', error);
+        logger.warn('[GlobalCache] localStorage 읽기 오류:', error);
       }
     }
 
@@ -142,7 +142,7 @@ class GlobalCacheService {
         return cachedData;
       }
     } catch (error) {
-      console.warn('[GlobalCache] IndexedDB 읽기 오류:', error);
+      logger.warn('[GlobalCache] IndexedDB 읽기 오류:', error);
     }
 
     // 3. localStorage 폴백
@@ -177,7 +177,7 @@ class GlobalCacheService {
           }
         }
       } catch (error) {
-        console.warn('[GlobalCache] localStorage 읽기 오류:', error);
+        logger.warn('[GlobalCache] localStorage 읽기 오류:', error);
       }
     }
 
@@ -196,7 +196,7 @@ class GlobalCacheService {
 
     // IndexedDB 저장 (비동기, 실패해도 무시)
     indexedDBCache.set(key, data, ttl / 1000).catch(err => {
-      console.warn('[GlobalCache] IndexedDB 저장 실패:', err);
+      logger.warn('[GlobalCache] IndexedDB 저장 실패:', err);
     });
 
     // localStorage 저장 (폴백)
@@ -205,7 +205,7 @@ class GlobalCacheService {
         const lsKey = this.localStoragePrefix + key;
         localStorage.setItem(lsKey, JSON.stringify({data, expiry, createdAt})); // 🔥 [수정] createdAt 추가
       } catch (error) {
-        console.warn('[GlobalCache] localStorage 쓰기 오류 (용량 초과 가능):', error);
+        logger.warn('[GlobalCache] localStorage 쓰기 오류 (용량 초과 가능):', error);
         // localStorage 용량 초과 시 가장 오래된 항목 삭제
         this.cleanupOldestLocalStorageItems(5);
       }
@@ -217,7 +217,7 @@ class GlobalCacheService {
         try {
           callback(data);
         } catch (error) {
-          console.error('구독자 콜백 오류:', error);
+          logger.error('구독자 콜백 오류:', error);
         }
       });
     }
@@ -247,7 +247,7 @@ class GlobalCacheService {
         logger.log(`[GlobalCache] 오래된 캐시 삭제: ${items[i].key}`);
       }
     } catch (error) {
-      console.warn('[GlobalCache] 캐시 정리 오류:', error);
+      logger.warn('[GlobalCache] 캐시 정리 오류:', error);
     }
   }
 
@@ -292,7 +292,7 @@ class GlobalCacheService {
           }
         }
       } catch (error) {
-        console.warn('[GlobalCache] localStorage 패턴 검색 오류:', error);
+        logger.warn('[GlobalCache] localStorage 패턴 검색 오류:', error);
       }
     }
 
@@ -333,7 +333,7 @@ class GlobalCacheService {
 
       if (isNetworkError && retryCount < this.MAX_RETRIES) {
         const delay = this.RETRY_DELAY * Math.pow(2, retryCount);
-        console.warn(`[GlobalCache] 재시도 중... (${retryCount + 1}/${this.MAX_RETRIES}) - ${delay}ms 대기`);
+        logger.warn(`[GlobalCache] 재시도 중... (${retryCount + 1}/${this.MAX_RETRIES}) - ${delay}ms 대기`);
 
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.retryWithBackoff(operation, retryCount + 1);
@@ -341,7 +341,7 @@ class GlobalCacheService {
 
       // 재시도 횟수 초과 또는 재시도 불가능한 에러
       if (retryCount >= this.MAX_RETRIES) {
-        console.error('[GlobalCache] 최대 재시도 횟수 초과:', error);
+        logger.error('[GlobalCache] 최대 재시도 횟수 초과:', error);
       }
       throw error;
     }
@@ -367,7 +367,7 @@ class GlobalCacheService {
       this.retryCount.delete(key);
       return result;
     } catch (error) {
-      console.error('[GlobalCache] executeOrWait 최종 실패:', key, error);
+      logger.error('[GlobalCache] executeOrWait 최종 실패:', key, error);
       this.pendingRequests.delete(key);
       throw error;
     }
@@ -398,11 +398,11 @@ class GlobalCacheService {
         }
         return null;
       } catch (error) {
-        console.error('[GlobalCache] 사용자 문서 조회 오류:', error);
+        logger.error('[GlobalCache] 사용자 문서 조회 오류:', error);
         // 캐시된 데이터가 있으면 반환 (오프라인 모드 대응)
         const cached = this.cache.get(key);
         if (cached) {
-          console.warn('[GlobalCache] 네트워크 오류 - 만료된 캐시 반환:', uid);
+          logger.warn('[GlobalCache] 네트워크 오류 - 만료된 캐시 반환:', uid);
           return cached;
         }
         throw error;
@@ -434,7 +434,7 @@ class GlobalCacheService {
         }
         return null;
       } catch (error) {
-        console.error(`[GlobalCache] ${collectionPath}/${docId} 문서 조회 오류:`, error);
+        logger.error(`[GlobalCache] ${collectionPath}/${docId} 문서 조회 오류:`, error);
         const cached = this.cache.get(key);
         if (cached) {
           return cached;
@@ -473,11 +473,11 @@ class GlobalCacheService {
         this.set(key, members, this.USER_TTL);
         return members;
       } catch (error) {
-        console.error('[GlobalCache] 학급 구성원 조회 오류:', error);
+        logger.error('[GlobalCache] 학급 구성원 조회 오류:', error);
         // 캐시된 데이터가 있으면 반환
         const cached = this.cache.get(key);
         if (cached) {
-          console.warn('[GlobalCache] 네트워크 오류 - 만료된 캐시 반환:', classCode);
+          logger.warn('[GlobalCache] 네트워크 오류 - 만료된 캐시 반환:', classCode);
           return cached;
         }
         throw error;
@@ -536,7 +536,7 @@ class GlobalCacheService {
 
         return result;
       } catch (error) {
-        console.error('[GlobalCache] 활동 로그 조회 오류:', error);
+        logger.error('[GlobalCache] 활동 로그 조회 오류:', error);
         const cached = this.cache.get(key);
         if (cached) {
           return cached;
@@ -576,10 +576,10 @@ class GlobalCacheService {
         this.set(key, items, this.ITEMS_TTL);
         return items;
       } catch (error) {
-        console.error('[GlobalCache] ❌ getItems - 조회 오류:', error.message);
+        logger.error('[GlobalCache] ❌ getItems - 조회 오류:', error.message);
         const cached = this.cache.get(key);
         if (cached) {
-          console.warn('[GlobalCache] ⚠️ 네트워크 오류 - 만료된 캐시 반환 (Firestore 읽기 0건)');
+          logger.warn('[GlobalCache] ⚠️ 네트워크 오류 - 만료된 캐시 반환 (Firestore 읽기 0건)');
           return cached.data;
         }
         throw error;
@@ -615,10 +615,10 @@ class GlobalCacheService {
         this.set(key, userItems, this.ITEMS_TTL);
         return userItems;
       } catch (error) {
-        console.error('[GlobalCache] ❌ getUserItems - 조회 오류:', error.message);
+        logger.error('[GlobalCache] ❌ getUserItems - 조회 오류:', error.message);
         const cached = this.cache.get(key);
         if (cached) {
-          console.warn('[GlobalCache] ⚠️ 네트워크 오류 - 만료된 캐시 반환 (Firestore 읽기 0건)');
+          logger.warn('[GlobalCache] ⚠️ 네트워크 오류 - 만료된 캐시 반환 (Firestore 읽기 0건)');
           return cached.data;
         }
         throw error;
@@ -655,7 +655,7 @@ class GlobalCacheService {
           logger.log(`[GlobalCache] localStorage 정리: ${keysToDelete.length}개 만료된 항목 제거`);
         }
       } catch (error) {
-        console.warn('[GlobalCache] localStorage 정리 오류:', error);
+        logger.warn('[GlobalCache] localStorage 정리 오류:', error);
       }
     }, 30 * 60 * 1000); // 30분마다
   }

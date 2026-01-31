@@ -107,7 +107,7 @@ const NationalAssembly = () => {
       deps: [classCode],
       defaultValue: { totalStudents: 25 },
       onError: (error) => {
-        console.error("Error fetching admin settings:", error);
+        logger.error("Error fetching admin settings:", error);
       }
     }
   );
@@ -155,7 +155,7 @@ const NationalAssembly = () => {
         ),
       },
       onError: (error) => {
-        console.error("Error fetching government settings:", error);
+        logger.error("Error fetching government settings:", error);
       }
     }
   );
@@ -197,7 +197,7 @@ const NationalAssembly = () => {
       deps: [classCode],
       defaultValue: [],
       onError: (error) => {
-        console.error("Error fetching laws:", error);
+        logger.error("Error fetching laws:", error);
       }
     }
   );
@@ -229,7 +229,7 @@ const NationalAssembly = () => {
       deps: [classCode, currentUser?.id],
       defaultValue: {},
       onError: (error) => {
-        console.error("Error fetching user votes:", error);
+        logger.error("Error fetching user votes:", error);
       }
     }
   );
@@ -301,7 +301,7 @@ const NationalAssembly = () => {
       // refetch 완료 후 임시 법안 제거
       setOptimisticNewLaws(prev => prev.filter(law => law.id !== tempId));
     } catch (error) {
-      console.error("Error proposing new law:", error);
+      logger.error("Error proposing new law:", error);
 
       // 롤백: 낙관적으로 추가된 법안 제거
       setOptimisticNewLaws(prev => prev.filter(law => law.id !== tempId));
@@ -370,7 +370,7 @@ const NationalAssembly = () => {
         return newState;
       });
     } catch (error) {
-      console.error("Error saving edited law:", error);
+      logger.error("Error saving edited law:", error);
 
       // 롤백: 수정 취소
       setOptimisticEditedLaws(prev => {
@@ -486,7 +486,7 @@ const NationalAssembly = () => {
       // 트랜잭션 성공 시 낙관적 업데이트 상태 정리 (서버 데이터로 대체됨)
       // usePolling이 자동으로 최신 데이터를 가져올 것이므로 여기서는 별도 처리 불필요
     } catch (error) {
-      console.error("Error voting on law:", error);
+      logger.error("Error voting on law:", error);
 
       // 롤백: 낙관적 업데이트 취소
       setOptimisticUserVotes(prev => {
@@ -542,7 +542,7 @@ const NationalAssembly = () => {
         });
         alert("법안 투표가 초기화되었습니다.");
       } catch (error) {
-        console.error("Error resetting votes:", error);
+        logger.error("Error resetting votes:", error);
         alert("투표 초기화 중 오류가 발생했습니다.");
       }
     }
@@ -588,7 +588,7 @@ const NationalAssembly = () => {
           return newSet;
         });
       } catch (error) {
-        console.error("Error deleting law:", error);
+        logger.error("Error deleting law:", error);
 
         // 롤백: 삭제 취소
         setOptimisticDeletedLaws(prev => {
@@ -626,7 +626,7 @@ const NationalAssembly = () => {
       setLocalAdminSettings(null);
       alert("관리자 설정이 저장되었습니다.");
     } catch (error) {
-      console.error("Error saving admin settings:", error);
+      logger.error("Error saving admin settings:", error);
       alert("관리자 설정 저장 중 오류가 발생했습니다.");
     }
   };
@@ -657,7 +657,7 @@ const NationalAssembly = () => {
       setLocalGovSettings(null);
       alert("재의결 설정이 저장되었습니다.");
     } catch (error) {
-      console.error("Error saving government settings:", error);
+      logger.error("Error saving government settings:", error);
       alert("재의결 설정 저장 중 오류가 발생했습니다.");
     }
   };
@@ -1348,7 +1348,7 @@ const NationalAssembly = () => {
                             alert("모든 법안이 삭제되었습니다.");
                           })
                           .catch((err) => {
-                            console.error("Error deleting all laws:", err);
+                            logger.error("Error deleting all laws:", err);
                             alert("모든 법안 삭제 중 오류가 발생했습니다.");
                           });
                       }

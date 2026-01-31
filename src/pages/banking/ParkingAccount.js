@@ -30,7 +30,7 @@ const getTeacherAccount = async (classCode) => {
     }
     return null;
   } catch (error) {
-    console.error("선생님 계정 조회 오류:", error);
+    logger.error("선생님 계정 조회 오류:", error);
     return null;
   }
 };
@@ -666,7 +666,7 @@ const ParkingAccount = ({
       setUserSavings(savings);
       setUserLoans(loans);
     } catch (error) {
-      console.error("데이터 로드 오류:", error);
+      logger.error("데이터 로드 오류:", error);
       displayMessage("데이터를 불러오는 데 실패했습니다.", "error");
     } finally {
       setIsProcessing(false);
@@ -697,15 +697,15 @@ const ParkingAccount = ({
     logger.log(`가입 유형: ${type}, 가입 금액: ${amount}`);
 
     if (isNaN(amount) || amount <= 0) {
-      console.error("유효하지 않은 금액:", subscribeAmount);
+      logger.error("유효하지 않은 금액:", subscribeAmount);
       return displayMessage("유효한 금액을 입력하세요.", "error");
     }
     if (product.minAmount && amount < product.minAmount) {
-      console.error(`최소 가입 금액 미달: ${amount} < ${product.minAmount}`);
+      logger.error(`최소 가입 금액 미달: ${amount} < ${product.minAmount}`);
       return displayMessage(`최소 가입 금액은 ${formatCurrency(product.minAmount)}원입니다.`, "error");
     }
     if (product.maxAmount && amount > product.maxAmount) {
-      console.error(`최대 가입 한도 초과: ${amount} > ${product.maxAmount}`);
+      logger.error(`최대 가입 한도 초과: ${amount} > ${product.maxAmount}`);
       return displayMessage(`최대 가입 한도는 ${formatCurrency(product.maxAmount)}원입니다.`, "error");
     }
 
@@ -831,7 +831,7 @@ const ParkingAccount = ({
       if (refreshUserDocument) refreshUserDocument();
 
     } catch (error) {
-      console.error("가입 처리 중 오류 발생:", error);
+      logger.error("가입 처리 중 오류 발생:", error);
       displayMessage(`처리 오류: ${error.message}`, "error");
 
       // --- 낙관적 업데이트 롤백 ---
@@ -861,7 +861,7 @@ const ParkingAccount = ({
 
     if (!userId) {
       displayMessage("사용자 정보가 없습니다. 다시 로그인해주세요.", "error");
-      console.error("handleMaturity: userId가 없습니다.");
+      logger.error("handleMaturity: userId가 없습니다.");
       return;
     }
 
@@ -976,7 +976,7 @@ const ParkingAccount = ({
       await loadAllData();
 
     } catch (error) {
-      console.error("만기 처리 중 오류 발생:", error);
+      logger.error("만기 처리 중 오류 발생:", error);
       displayMessage(`처리 오류: ${error.message}`, "error");
       // 에러 발생 시 currentCash 롤백
       if (userDoc?.cash !== undefined) {
@@ -999,7 +999,7 @@ const ParkingAccount = ({
 
     if (!userId) {
       displayMessage("사용자 정보가 없습니다. 다시 로그인해주세요.", "error");
-      console.error("handleCancelEarly: userId가 없습니다.");
+      logger.error("handleCancelEarly: userId가 없습니다.");
       return;
     }
 
@@ -1125,7 +1125,7 @@ const ParkingAccount = ({
       await loadAllData();
 
     } catch (error) {
-      console.error("중도 해지 처리 중 오류 발생:", error);
+      logger.error("중도 해지 처리 중 오류 발생:", error);
       displayMessage(`처리 오류: ${error.message}`, "error");
 
       // --- 낙관적 업데이트 롤백 ---
@@ -1262,7 +1262,7 @@ const ParkingAccount = ({
       displayMessage("상품이 강제로 삭제되었습니다.", "success");
       loadAllData();
     } catch (error) {
-      console.error("관리자 상품 삭제 중 오류:", error);
+      logger.error("관리자 상품 삭제 중 오류:", error);
       displayMessage(`삭제 처리 오류: ${error.message}`, "error");
     } finally {
       setIsProcessing(false);

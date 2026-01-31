@@ -443,7 +443,7 @@ const updateUserOmokRecord = async (userId, result) => {
         await runTransaction(db, async (transaction) => {
             const userDoc = await transaction.get(userDocRef);
             if (!userDoc.exists()) {
-                console.error(`사용자 ${userId}를 찾을 수 없습니다.`);
+                logger.error(`사용자 ${userId}를 찾을 수 없습니다.`);
                 return;
             }
 
@@ -472,7 +472,7 @@ const updateUserOmokRecord = async (userId, result) => {
             logger.log(`사용자 ${userId} 오목 기록 업데이트:`, updatedOmok);
         });
     } catch (error) {
-        console.error('사용자 오목 기록 업데이트 중 오류:', error);
+        logger.error('사용자 오목 기록 업데이트 중 오류:', error);
     }
 };
 
@@ -627,17 +627,18 @@ const OmokGame = () => {
             const games = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAvailableGames(games);
         } catch (err) {
-            console.error('게임 목록 불러오기 오류:', err);
+            logger.error('게임 목록 불러오기 오류:', err);
             setError('게임 목록을 불러오는 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // user 의존성 제거 - 필요 시 user는 클로저로 접근
 
     const deleteGameRoom = async (roomId, e) => {
         e.stopPropagation();
         if (!isAdmin()) {
-            console.error('관리자 권한이 필요합니다.');
+            logger.error('관리자 권한이 필요합니다.');
             return;
         }
         if (!window.confirm('이 게임방을 삭제하시겠습니까?')) return;
@@ -646,7 +647,7 @@ const OmokGame = () => {
             logger.log(`[관리자] 게임방 ${roomId} 삭제 완료`);
             fetchAvailableGames();
         } catch (err) {
-            console.error('게임방 삭제 오류:', err);
+            logger.error('게임방 삭제 오류:', err);
             setError('게임방 삭제 중 오류가 발생했습니다.');
         }
     };
@@ -718,7 +719,7 @@ const OmokGame = () => {
             setError('');
             if (refetchGameDataRef.current) refetchGameDataRef.current();
         } catch (err) {
-            console.error('게임 생성 오류:', err);
+            logger.error('게임 생성 오류:', err);
             setError('게임 생성 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);
@@ -753,7 +754,7 @@ const OmokGame = () => {
                 setGameId(id);
             });
         } catch (err) {
-            console.error('게임 참가 오류:', err);
+            logger.error('게임 참가 오류:', err);
             setError(err.message);
             fetchAvailableGames();
         } finally {
@@ -812,13 +813,14 @@ const OmokGame = () => {
                 }
             }
         } catch (error) {
-            console.error("게임 나가기 처리 중 오류 발생:", error);
+            logger.error("게임 나가기 처리 중 오류 발생:", error);
         } finally {
             setGameId(null); setGame(null); setError(''); setCreatedGameId(null);
             setShowWinAnimation(false); setSelectedCell(null); setGameResult(null);
             setShowRewardSelection(false);
             fetchAvailableGames();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [game, gameId, user, fetchAvailableGames, addCouponsToUserById]);
 
     const checkForbiddenMove = (board, row, col, player) => false;
@@ -907,7 +909,7 @@ const OmokGame = () => {
                 }
             }
         } catch (err) {
-            console.error('움직임 처리 오류:', err);
+            logger.error('움직임 처리 오류:', err);
             setError('움직임을 처리하는 중 오류가 발생했습니다.');
             // 에러 시 다시 내 차례로 설정
             setIsThinking(true);
@@ -1016,7 +1018,7 @@ const OmokGame = () => {
                 setGameId(null); setGame(null); setError('게임이 종료되었거나 찾을 수 없습니다.');
             }
         } catch (error) {
-            console.error('게임 데이터 로드 오류:', error);
+            logger.error('게임 데이터 로드 오류:', error);
             setError('게임 연결 중 오류가 발생했습니다.');
         }
     }, [gameId, user, localOptimisticOmokUpdate]);
@@ -1039,7 +1041,7 @@ const OmokGame = () => {
         try {
             await updateDoc(doc(db, 'omokGames', gameId), { [`rematch.${user.uid}`]: true });
         } catch (err) {
-            console.error("재대결 요청 오류:", err);
+            logger.error("재대결 요청 오류:", err);
             setError("재대결을 요청하는 중 오류가 발생했습니다.");
         }
     };
@@ -1051,7 +1053,7 @@ const OmokGame = () => {
         if (playerIds.length < 2) return;
 
         const winnerId = game.winner, loserId = playerIds.find(p => p !== winnerId);
-        if (!loserId) { console.error("재대결을 위한 패자를 결정할 수 없습니다."); return; }
+        if (!loserId) { logger.error("재대결을 위한 패자를 결정할 수 없습니다."); return; }
 
         const newPlayers = { [loserId]: 'black', [winnerId]: 'white' };
         const newCurrentPlayer = loserId;
@@ -1067,7 +1069,7 @@ const OmokGame = () => {
             
             setGameResult(null); setShowWinAnimation(false); setLastMove(null); setSelectedCell(null); setError('');
         } catch (error) {
-            console.error("재대결 리셋 오류:", error);
+            logger.error("재대결 리셋 오류:", error);
             setError("재대결 시작에 실패했습니다.");
         }
     }, [game, gameId]);
@@ -1119,7 +1121,7 @@ const OmokGame = () => {
                 logger.log('[AI] 최적의 수:', bestMove);
 
                 if (!bestMove) {
-                    console.error('[AI] 유효한 수를 찾을 수 없음');
+                    logger.error('[AI] 유효한 수를 찾을 수 없음');
                     setIsAiThinking(false);
                     aiTurnProcessedRef.current = false;
                     return;
@@ -1190,7 +1192,7 @@ const OmokGame = () => {
                 setIsAiThinking(false);
                 aiTurnProcessedRef.current = false;
             } catch (err) {
-                console.error('[AI] 움직임 처리 오류:', err);
+                logger.error('[AI] 움직임 처리 오류:', err);
                 setIsAiThinking(false);
                 aiTurnProcessedRef.current = false;
             }
@@ -1199,7 +1201,8 @@ const OmokGame = () => {
         return () => {
             clearTimeout(timer);
         };
-    }, [game?.currentPlayer, game?.aiMode, game?.winner, gameId, user, localOptimisticOmokUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [game?.currentPlayer, game?.aiMode, game?.winner, gameId, user]);
 
     // 보상 카드 생성
     const generateRewardCards = (difficulty) => {
@@ -1282,7 +1285,7 @@ const OmokGame = () => {
             setTimeout(() => leaveGame(), 2000);
 
         } catch (error) {
-            console.error("[Reward] Error applying reward:", error);
+            logger.error("[Reward] Error applying reward:", error);
             setFeedback({ message: '보상 지급에 실패했습니다. 다시 시도해주세요.', type: 'error' });
 
             // 에러 발생 시 롤백 (플레이 카운트만)

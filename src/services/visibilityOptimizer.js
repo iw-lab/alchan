@@ -73,12 +73,12 @@ class VisibilityOptimizer {
           callback(data, snapshot);
         },
         (error) => {
-          console.error(`[VisibilityOptimizer] ${id} 오류:`, error);
+          logger.error(`[VisibilityOptimizer] ${id} 오류:`, error);
 
           // 캐시된 데이터가 있으면 반환
           if (cacheData && this.cachedData.has(id)) {
             const cached = this.cachedData.get(id);
-            console.warn(`[VisibilityOptimizer] ${id}: 캐시 데이터 사용`);
+            logger.warn(`[VisibilityOptimizer] ${id}: 캐시 데이터 사용`);
             callback(cached.data, null);
           }
         }

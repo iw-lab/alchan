@@ -1,3 +1,4 @@
+import { logger } from './logger';
 const API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY; // .env 파일에서 API 키를 불러옵니다.
 
 export const searchVideos = async (query) => {
@@ -5,7 +6,7 @@ export const searchVideos = async (query) => {
     
     if (!response.ok) {
         const errorData = await response.json();
-        console.error("YouTube API Error:", errorData);
+        logger.error("YouTube API Error:", errorData);
         throw new Error('YouTube 영상을 검색하는 데 실패했습니다. API 키나 요청을 확인해주세요.');
     }
     

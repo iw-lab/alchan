@@ -18,6 +18,7 @@ import { getUserDocument, addActivityLog, addTransaction } from "./users";
 import { getClassAdminUid } from "./core";
 import { getGovernmentSettings } from "./settings";
 import { addItemToInventory } from "./store";
+import { logger } from '../../utils/logger';
 
 // =================================================================
 // 현금/쿠폰 트랜잭션
@@ -73,12 +74,12 @@ export const updateUserCashInFirestore = async (userId, amount, logMessage = '',
     }
 
     addActivityLog(userId, logType, activityLogMessage).catch(err =>
-      console.error('[firebase.js] Activity Log 기록 실패 (무시됨):', err)
+      logger.error('[firebase.js] Activity Log 기록 실패 (무시됨):', err)
     );
 
     return true;
   } catch (error) {
-    console.error(`[firebase.js] 사용자 ${userId} 현금 업데이트 트랜잭션 오류:`, error);
+    logger.error(`[firebase.js] 사용자 ${userId} 현금 업데이트 트랜잭션 오류:`, error);
     return false;
   }
 };
@@ -108,7 +109,7 @@ export const updateUserCouponsInFirestore = async (userId, amount, logMessage) =
 
     return true;
   } catch (error) {
-    console.error(`[firebase.js] 사용자 ${userId} 쿠폰 업데이트 트랜잭션 오류:`, error);
+    logger.error(`[firebase.js] 사용자 ${userId} 쿠폰 업데이트 트랜잭션 오류:`, error);
     return false;
   }
 };
@@ -156,7 +157,7 @@ export const transferCash = async (senderId, receiverId, amount, message = '', a
     invalidateCache(`user_${receiverId}`);
     return { success: true, amount };
   } catch (error) {
-    console.error('현금 전송 트랜잭션 실패:', error);
+    logger.error('현금 전송 트랜잭션 실패:', error);
     throw error;
   }
 };
@@ -203,10 +204,10 @@ export const processFineTransaction = async (userId, classCode, amount, reason) 
     Promise.all([
       addActivityLog(userId, '벌금 납부', reason),
       addTransaction(userId, -amount, reason)
-    ]).catch(err => console.error('[Police] 로그 기록 실패 (무시됨):', err));
+    ]).catch(err => logger.error('[Police] 로그 기록 실패 (무시됨):', err));
     return { success: true };
   } catch (error) {
-    console.error("[Police] 벌금 처리 트랜잭션 실패:", error);
+    logger.error("[Police] 벌금 처리 트랜잭션 실패:", error);
     throw error;
   }
 };
@@ -218,7 +219,7 @@ export const adminDepositCash = async (adminId, targetUserId, amount, reason = '
     await updateUserCashInFirestore(targetUserId, amount, '', { name: adminName, isAdmin: true, reason }, null);
     return { success: true, amount };
   } catch (error) {
-    console.error('관리자 입금 실패:', error);
+    logger.error('관리자 입금 실패:', error);
     throw error;
   }
 };
@@ -230,7 +231,7 @@ export const adminWithdrawCash = async (adminId, targetUserId, amount, reason = 
     await updateUserCashInFirestore(targetUserId, -Math.abs(amount), '', null, { name: adminName, isAdmin: true, reason });
     return { success: true, amount: Math.abs(amount) };
   } catch (error) {
-    console.error('관리자 출금 실패:', error);
+    logger.error('관리자 출금 실패:', error);
     throw error;
   }
 };
@@ -257,7 +258,7 @@ export const processStockSaleTransaction = async (userId, classCode, profit, sto
     }
     return { success: true, taxAmount };
   } catch (error) {
-    console.error(`[firebase.js] 주식 거래세 처리 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 주식 거래세 처리 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -332,7 +333,7 @@ export const processGenericSaleTransaction = async (classCode, buyerId, sellerId
 
     return { success: true, taxAmount };
   } catch (error) {
-    console.error(`[firebase.js] ${taxType} 거래 트랜잭션 오류:`, error);
+    logger.error(`[firebase.js] ${taxType} 거래 트랜잭션 오류:`, error);
     throw error;
   }
 };
@@ -386,7 +387,7 @@ export const collectPropertyHoldingTaxes = async (classCode) => {
     await Promise.all(logPromises);
     return { success: true, totalCollected: totalTaxCollected, userCount: processedUserCount };
   } catch (error) {
-    console.error(`[firebase.js] 부동산 보유세 징수 오류 (학급: ${classCode}):`, error);
+    logger.error(`[firebase.js] 부동산 보유세 징수 오류 (학급: ${classCode}):`, error);
     throw error;
   }
 };
@@ -409,7 +410,7 @@ export const addDonationRecord = async (donationData) => {
     const docRef = await addDoc(collection(db, "donations"), donationWithTimestamp);
     return docRef;
   } catch (error) {
-    console.error("[firebase.js] 기부 기록 추가 중 오류 발생:", error);
+    logger.error("[firebase.js] 기부 기록 추가 중 오류 발생:", error);
     throw error;
   }
 };
@@ -425,7 +426,7 @@ export const addSettlementRecord = async (settlementData) => {
     const docRef = await addDoc(collection(db, "settlements"), settlementWithTimestamp);
     return docRef;
   } catch (error) {
-    console.error("[firebase.js] 합의 기록 추가 중 오류 발생:", error);
+    logger.error("[firebase.js] 합의 기록 추가 중 오류 발생:", error);
     throw error;
   }
 };
@@ -457,7 +458,7 @@ export const getDonationsForClass = async (classCode, goalId = "default_goal", u
     if (useCache) setCacheImport(cacheKey, donations);
     return donations;
   } catch (error) {
-    console.error(`[firebase.js] 학급(${classCode}) 기부 내역 조회 중 오류 발생:`, error);
+    logger.error(`[firebase.js] 학급(${classCode}) 기부 내역 조회 중 오류 발생:`, error);
     throw error;
   }
 };

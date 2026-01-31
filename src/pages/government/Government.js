@@ -8,6 +8,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
 import { db } from "../../firebase";
 import { AlchanLoading } from "../../components/AlchanLayout";
+import { logger } from '../../utils/logger';
 import {
   collection,
   query,
@@ -91,7 +92,7 @@ const LawManagement = ({ classCode }) => {
       }));
       setLaws(loadedLaws);
     } catch (error) {
-      console.error("Error fetching pending laws:", error);
+      logger.error("Error fetching pending laws:", error);
       alert("정부 이송 법안을 불러오는 데 실패했습니다. 콘솔을 확인해주세요.");
     }
   };
@@ -116,7 +117,7 @@ const LawManagement = ({ classCode }) => {
             alert("법안이 최종 승인되었습니다.");
             refetch(); // 즉시 데이터 갱신
         } catch (error) {
-            console.error("Error approving law:", error);
+            logger.error("Error approving law:", error);
             alert("법안 승인 중 오류가 발생했습니다.");
         }
     }
@@ -147,7 +148,7 @@ const LawManagement = ({ classCode }) => {
             alert("거부권이 행사되었습니다. 해당 법안은 국회에서 재의결 절차를 거칩니다.");
             refetch(); // 즉시 데이터 갱신
         } catch (error) {
-            console.error("Error vetoing law:", error);
+            logger.error("Error vetoing law:", error);
             alert("거부권 행사 중 오류가 발생했습니다.");
         }
     } else {

@@ -144,7 +144,7 @@ class BatchWriteManager {
         logger.log(`[BatchWriteManager] ${chunk.length}개 쓰기 배치 완료`);
       }
     } catch (error) {
-      console.error('[BatchWriteManager] 배치 쓰기 실패:', error);
+      logger.error('[BatchWriteManager] 배치 쓰기 실패:', error);
       // 실패한 쓰기 복구
       for (const [key, write] of writes) {
         this.pendingWrites.set(key, write);
@@ -185,7 +185,7 @@ class BatchWriteManager {
   startAutoFlush() {
     setInterval(() => {
       if (this.pendingWrites.size > 0 && !this.processing) {
-        this.flush().catch(console.error);
+        this.flush().catch(logger.error);
       }
     }, this.flushInterval);
   }

@@ -87,7 +87,7 @@ export default function MyAssets() {
           }
         }
       } catch (error) {
-        console.error("[MyAssets] 쿠폰 가치 설정 로드 실패:", error);
+        logger.error("[MyAssets] 쿠폰 가치 설정 로드 실패:", error);
       }
     };
 
@@ -320,6 +320,7 @@ export default function MyAssets() {
     } catch (error) {
       throw error;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // 🔥 [수정] 목표 데이터 로드 함수 - 캐시 추가 및 최적화
@@ -400,9 +401,10 @@ export default function MyAssets() {
         await createDefaultGoalForClass(currentUserClassCode, currentGoalId);
       }
     } catch (error) {
-      console.error('[MyAssets] 목표 데이터 로드 실패:', error);
+      logger.error('[MyAssets] 목표 데이터 로드 실패:', error);
     }
-  }, [currentGoalId, currentUserClassCode, userId, createDefaultGoalForClass, getCachedFirestoreData, setCachedFirestoreData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGoalId, currentUserClassCode, userId, createDefaultGoalForClass]);
 
   const loadMyAssetsData = useCallback(async () => {
     if (!userId || !db) {
@@ -554,7 +556,7 @@ export default function MyAssets() {
       setTransactionHistory(allTransactions.slice(0, 20));
 
     } catch (fallbackError) {
-      console.error('[MyAssets] 🚨 클라이언트 측 직접 조회 실패:', fallbackError);
+      logger.error('[MyAssets] 🚨 클라이언트 측 직접 조회 실패:', fallbackError);
     } finally {
       setAssetsLoading(false);
       loadingRef.current = false;
@@ -580,6 +582,7 @@ export default function MyAssets() {
     } else if (authLoading) {
       setAssetsLoading(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]); // loadMyAssetsData 제거하여 무한 루프 방지
 
   useEffect(() => {
@@ -638,6 +641,7 @@ export default function MyAssets() {
     }
 
     loadGoalData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentGoalId]); // loadGoalData 제거하여 무한 루프 방지
 
   // 🔥 [수정] 기부 처리 함수 - 캐시 무효화 개선
@@ -770,7 +774,7 @@ export default function MyAssets() {
 
       return true;
     } catch (error) {
-      console.error('[MyAssets] 기부 오류:', error);
+      logger.error('[MyAssets] 기부 오류:', error);
       alert(`기부 오류: ${error.message}`);
 
       // 에러 발생 시 낙관적 업데이트 롤백
@@ -859,7 +863,7 @@ export default function MyAssets() {
         alert("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
       }
     } catch (error) {
-      console.error('[MyAssets] 데이터 새로고침 오류:', error);
+      logger.error('[MyAssets] 데이터 새로고침 오류:', error);
       alert(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setAssetsLoading(false);
@@ -1154,7 +1158,7 @@ export default function MyAssets() {
         alert("계좌에서 현금을 인출하는 데 실패했습니다.");
       }
     } catch (error) {
-      console.error("!!! 송금 처리 중 예기치 않은 오류 발생 !!!", error);
+      logger.error("!!! 송금 처리 중 예기치 않은 오류 발생 !!!", error);
       alert(`송금 중 오류가 발생했습니다: ${error.message}`);
       // 실패 시 롤백
       if (optimisticUpdate) {
@@ -1631,7 +1635,7 @@ export default function MyAssets() {
 
               logger.log(`Daily reward claimed and added: ${reward}`);
             } catch (error) {
-              console.error("일일 보상 지급 오류:", error);
+              logger.error("일일 보상 지급 오류:", error);
               alert("보상 지급 중 오류가 발생했습니다. 다시 시도해주세요.");
             }
           }}

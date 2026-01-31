@@ -612,7 +612,7 @@ const StockExchange = () => {
       const batchResult = await batchDataLoader.loadBatchData(classCode, user.uid, forceRefresh);
 
       if (batchResult.errors && batchResult.errors.length > 0) {
-        console.warn('[StockExchange] 배치 로드 중 일부 오류 발생:', batchResult.errors);
+        logger.warn('[StockExchange] 배치 로드 중 일부 오류 발생:', batchResult.errors);
       }
 
       setStocks(batchResult.stocks || []);
@@ -627,14 +627,14 @@ const StockExchange = () => {
       setLastUpdated(new Date());
 
     } catch (error) {
-      console.error('[StockExchange] 배치 로드 실패:', error);
+      logger.error('[StockExchange] 배치 로드 실패:', error);
       // Polling 중에는 alert을 띄우지 않는 것이 사용자 경험에 좋음
       // alert('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       isFetchingRef.current = false;
       setIsFetching(false);
     }
-  }, [classCode, user, isAdmin]);
+  }, [classCode, user]); // isAdmin은 함수이므로 의존성 불필요
 
   // === 데이터 자동 갱신 (Polling) ===
   // 🔥 [최적화] 폴링 간격을 60분으로 완화 - 거래 시 forceRefresh로 즉시 갱신되므로 자동 갱신은 최소화
@@ -666,7 +666,7 @@ const StockExchange = () => {
       const result = await getVacationModeStatusFn({});
       setVacationMode(result.data.vacationMode);
     } catch (error) {
-      console.error('[fetchVacationMode] 조회 실패:', error);
+      logger.error('[fetchVacationMode] 조회 실패:', error);
     }
   }, [functions, userDoc?.isSuperAdmin]);
 
@@ -687,7 +687,7 @@ const StockExchange = () => {
       setVacationMode(result.data.vacationMode);
       alert(result.data.message);
     } catch (error) {
-      console.error('[toggleVacationMode] 토글 실패:', error);
+      logger.error('[toggleVacationMode] 토글 실패:', error);
       alert('방학 모드 설정 실패: ' + error.message);
     } finally {
       setVacationLoading(false);
@@ -701,7 +701,7 @@ const StockExchange = () => {
       await updateSnapshotFn({});
       logger.log('[updateStocksSnapshot] 스냅샷 갱신 완료');
     } catch (error) {
-      console.error('[updateStocksSnapshot] 스냅샷 갱신 실패:', error);
+      logger.error('[updateStocksSnapshot] 스냅샷 갱신 실패:', error);
     }
   }, [functions]);
 
@@ -723,7 +723,7 @@ const StockExchange = () => {
 
       alert(`${stockData.name} 상품이 추가되었습니다.`);
     } catch (error) {
-      console.error('[addStock] 함수 추가 실패, Firestore 직접 시도:', error);
+      logger.error('[addStock] 함수 추가 실패, Firestore 직접 시도:', error);
       try {
         const stockRef = doc(collection(db, "CentralStocks"));
         await setDoc(stockRef, {
@@ -749,7 +749,7 @@ const StockExchange = () => {
 
         alert(`${stockData.name} 상품이 추가되었습니다.`);
       } catch (innerError) {
-        console.error('[addStock] Firestore 직접 추가 실패:', innerError);
+        logger.error('[addStock] Firestore 직접 추가 실패:', innerError);
         alert("상품 추가 중 오류가 발생했습니다. 관리자 권한/Rules를 확인해주세요.");
       }
     }
@@ -943,7 +943,7 @@ const StockExchange = () => {
 
       alert(`${stock.name} ${quantity}주 매수 완료!\n수수료: ${formatCurrency(commission)}`);
     } catch (error) {
-      console.error('[buyStock] 매수 실패:', error);
+      logger.error('[buyStock] 매수 실패:', error);
 
       // 실패 시 롤백 (낙관적 업데이트 취소)
       if (optimisticUpdate) {
@@ -954,7 +954,8 @@ const StockExchange = () => {
     } finally {
       setIsTrading(false);
     }
-  }, [stocks, user, isTrading, classCode, marketOpen, functions, fetchAllData, invalidateCache, optimisticUpdate, refreshUserDocument]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stocks, user, userDoc?.cash, userDoc?.name, isTrading, classCode, marketOpen, functions, optimisticUpdate]); // fetchAllData, invalidateCache, refreshUserDocument는 외부 스코프 함수로 제외
 
   const sellStock = useCallback(async (holdingId, quantityString) => {
     if (!marketOpen) return alert("주식시장이 마감되었습니다. 운영 시간: 월-금 오전 8시-오후 3시");
@@ -1058,7 +1059,7 @@ const StockExchange = () => {
       const taxInfo = actualTax > 0 ? `\n세금: ${formatCurrency(actualTax)}` : '';
       alert(`${stockName} ${quantity}주 매도 완료!\n수익: ${formatCurrency(actualProfit)}${taxInfo}\n수수료: ${formatCurrency(actualCommission)}\n순수익: ${formatCurrency(netRevenue)}`);
     } catch (error) {
-      console.error('[sellStock] 매도 실패:', error);
+      logger.error('[sellStock] 매도 실패:', error);
 
       // 실패 시 롤백 (낙관적 업데이트 취소)
       if (optimisticUpdate) {
@@ -1069,7 +1070,7 @@ const StockExchange = () => {
     } finally {
       setIsTrading(false);
     }
-  }, [stocks, portfolio, user, userDoc, isTrading, classCode, marketOpen, fetchAllData, functions, optimisticUpdate, refreshUserDocument]);
+  }, [stocks, portfolio, user, userDoc, isTrading, classCode, marketOpen, functions, optimisticUpdate]); // fetchAllData와 refreshUserDocument 제거 - 불필요한 리렌더링 방지
 
   const deleteHolding = useCallback(async (holdingId) => {
     if (!user || !classCode) return;
@@ -1111,7 +1112,7 @@ const StockExchange = () => {
 
       return result.data;
     } catch (error) {
-      console.error('[manualUpdateStockMarket] 업데이트 실패:', error);
+      logger.error('[manualUpdateStockMarket] 업데이트 실패:', error);
       throw error;
     }
   }, [functions, classCode, user, fetchAllData]);
@@ -1137,7 +1138,7 @@ const StockExchange = () => {
 
       return result.data;
     } catch (error) {
-      console.error('[createRealStocks] 생성 실패:', error);
+      logger.error('[createRealStocks] 생성 실패:', error);
       throw error;
     }
   }, [functions, classCode, user, fetchAllData]);
@@ -1163,7 +1164,7 @@ const StockExchange = () => {
 
       return result.data;
     } catch (error) {
-      console.error('[updateRealStocks] 업데이트 실패:', error);
+      logger.error('[updateRealStocks] 업데이트 실패:', error);
       throw error;
     }
   }, [functions, classCode, user, fetchAllData]);
@@ -1189,7 +1190,7 @@ const StockExchange = () => {
 
       return result.data;
     } catch (error) {
-      console.error('[addSingleRealStock] 추가 실패:', error);
+      logger.error('[addSingleRealStock] 추가 실패:', error);
       throw error;
     }
   }, [functions, classCode, user, fetchAllData]);
@@ -1215,7 +1216,7 @@ const StockExchange = () => {
 
       return result.data;
     } catch (error) {
-      console.error('[deleteSimulationStocks] 삭제 실패:', error);
+      logger.error('[deleteSimulationStocks] 삭제 실패:', error);
       throw error;
     }
   }, [functions, classCode, user, fetchAllData]);

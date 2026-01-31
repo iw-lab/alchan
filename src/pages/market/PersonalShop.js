@@ -21,6 +21,7 @@ import {
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import "./PersonalShop.css";
+import { logger } from '../../utils/logger';
 
 // 숫자를 한국 원화 형식으로 포맷팅
 const formatKoreanCurrency = (amount) => {
@@ -80,7 +81,7 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
       await onSave(formData);
       onClose();
     } catch (error) {
-      console.error("상점 저장 오류:", error);
+      logger.error("상점 저장 오류:", error);
       alert("저장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -212,7 +213,7 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
       await onSave(productData);
       onClose();
     } catch (error) {
-      console.error("상품 저장 오류:", error);
+      logger.error("상품 저장 오류:", error);
       alert("저장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
@@ -530,26 +531,31 @@ const PersonalShop = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 상점 목록 로드
+  // 상점 목록 로드 (인덱스 없이 클라이언트 필터링)
   const loadShops = useCallback(async () => {
     try {
       setLoading(true);
       const shopsRef = collection(db, "personalShops");
-      let q = query(
-        shopsRef,
-        where("status", "==", "active"),
-        orderBy("createdAt", "desc"),
-        limit(50)
-      );
+      // 🔥 [수정] 복합 인덱스 오류 방지 - 단일 필드 쿼리 후 클라이언트 필터링
+      const q = query(shopsRef, where("status", "==", "active"));
 
       const snapshot = await getDocs(q);
-      const shopsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const shopsData = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        // 클라이언트에서 정렬 및 제한
+        .sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.createdAt?.toDate?.() || new Date(0);
+          return dateB - dateA; // 최신순
+        })
+        .slice(0, 50);
+
       setShops(shopsData);
     } catch (error) {
-      console.error("상점 목록 로드 오류:", error);
+      logger.error("상점 목록 로드 오류:", error);
     } finally {
       setLoading(false);
     }
@@ -578,7 +584,7 @@ const PersonalShop = () => {
         setMyProducts(pSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
       }
     } catch (error) {
-      console.error("내 상점 로드 오류:", error);
+      logger.error("내 상점 로드 오류:", error);
     }
   }, [currentUser]);
 
@@ -596,7 +602,7 @@ const PersonalShop = () => {
       const snapshot = await getDocs(q);
       setSelectedShopProducts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (error) {
-      console.error("상품 로드 오류:", error);
+      logger.error("상품 로드 오류:", error);
     } finally {
       setLoadingProducts(false);
     }

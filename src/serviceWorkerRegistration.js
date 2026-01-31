@@ -72,7 +72,7 @@ function registerValidSW(swUrl, config) {
       };
     })
     .catch((error) => {
-      console.error('[SW Registration] Error during registration:', error);
+      logger.error('[SW Registration] Error during registration:', error);
     });
 }
 
@@ -111,7 +111,7 @@ export function unregister() {
         logger.log('[SW Registration] Service Worker unregistered');
       })
       .catch((error) => {
-        console.error('[SW Registration] Unregister error:', error);
+        logger.error('[SW Registration] Unregister error:', error);
       });
   }
 }

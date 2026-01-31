@@ -98,7 +98,7 @@ const AdminPage = () => {
 
         setClassList(classes);
       } catch (error) {
-        console.error("학급 목록 조회 중 오류:", error);
+        logger.error("학급 목록 조회 중 오류:", error);
       }
     };
 
@@ -136,7 +136,7 @@ const AdminPage = () => {
       setMarketStatus({ isOpen: newIsOpenState });
 
     } catch (error) {
-      console.error("시장 상태 변경 오류:", error);
+      logger.error("시장 상태 변경 오류:", error);
       setMessage(`오류가 발생했습니다: ${error.message}`);
     }
   };
@@ -154,7 +154,7 @@ const AdminPage = () => {
       setMessage(result.data.message);
 
     } catch (error) {
-      console.error("마켓 아이템 환불 오류:", error);
+      logger.error("마켓 아이템 환불 오류:", error);
       setMessage(`오류가 발생했습니다: ${error.message}`);
     }
   };
@@ -209,7 +209,7 @@ const AdminPage = () => {
       setEditingUserId(null);
       setEditFormData({});
     } catch (error) {
-      console.error("사용자 정보 업데이트 중 오류 발생:", error);
+      logger.error("사용자 정보 업데이트 중 오류 발생:", error);
       alert(`정보 업데이트에 실패했습니다: ${error.message}`);
     }
   };
@@ -236,7 +236,7 @@ const AdminPage = () => {
 
       alert(`${user.name} 학생이 ${actionText}되었습니다.`);
     } catch (error) {
-      console.error("관리자 권한 변경 중 오류 발생:", error);
+      logger.error("관리자 권한 변경 중 오류 발생:", error);
       alert(`권한 변경에 실패했습니다: ${error.message}`);
     }
   };
@@ -248,7 +248,7 @@ const AdminPage = () => {
         setStudents(prevStudents => prevStudents.filter(student => student.id !== userId));
         alert('학생이 삭제되었습니다.');
       } catch (error) {
-        console.error("학생 삭제 중 오류 발생:", error);
+        logger.error("학생 삭제 중 오류 발생:", error);
         alert('학생 삭제에 실패했습니다.');
       }
     }
@@ -263,7 +263,7 @@ const AdminPage = () => {
       });
       alert(`${user.name} 학생의 비밀번호가 '${newPassword}'로 초기화되었습니다.`);
     } catch (error) {
-      console.error("비밀번호 초기화 중 오류 발생:", error);
+      logger.error("비밀번호 초기화 중 오류 발생:", error);
       alert(`비밀번호 초기화에 실패했습니다: ${error.message}`);
     }
   };
@@ -286,7 +286,7 @@ const AdminPage = () => {
 
       setStudents(studentsList);
     } catch (error) {
-      console.error("학생 정보를 불러오는 데 실패했습니다:", error);
+      logger.error("학생 정보를 불러오는 데 실패했습니다:", error);
     }
   };
 

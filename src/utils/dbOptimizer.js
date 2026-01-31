@@ -147,7 +147,7 @@ class BatchWriteManager {
       await batch.commit();
       logger.log(`[BatchWrite] ${operations.length}개 작업 완료`);
     } catch (error) {
-      console.error('[BatchWrite] 오류:', error);
+      logger.error('[BatchWrite] 오류:', error);
       // 실패한 작업 다시 큐에 추가
       this.queue.unshift(...operations);
     } finally {
@@ -276,7 +276,7 @@ export function debouncedUpdate(path, data, delay = 1000) {
       logger.log(`[Debounced Update] ${path}`);
       memoryCache.delete(`doc:${path}`);
     } catch (error) {
-      console.error('[Debounced Update Error]', error);
+      logger.error('[Debounced Update Error]', error);
     } finally {
       updateDebounceMap.delete(path);
     }
