@@ -51,6 +51,206 @@ const initialStocks = [
   { id: 'SK', name: 'SK하이닉스', price: 230000, history: [{ price: 230000, timestamp: new Date() }] },
 ];
 
+// 학급 데이터 삭제 컴포넌트
+const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const handleDeleteClassData = async () => {
+    if (!userClassCode) {
+      alert("학급 코드가 없습니다.");
+      return;
+    }
+
+    if (deleteConfirmText !== "삭제") {
+      alert("'삭제'를 정확히 입력해주세요.");
+      return;
+    }
+
+    // 이중 확인
+    const finalConfirm = window.confirm(
+      `정말로 '${userClassCode}' 학급의 모든 학생 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 다음 데이터가 영구 삭제됩니다:\n- 학생 계정 (role: 'student')\n- 활동 로그\n- 거래 내역\n\n선생님(admin) 계정은 유지됩니다.`
+    );
+
+    if (!finalConfirm) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      logger.log(`[ClassDataDeletion] ${userClassCode} 학급 데이터 삭제 시작`);
+
+      // 1. 학생 계정 조회 (role === 'student' AND classCode === userClassCode)
+      const usersRef = firestoreCollection(db, "users");
+      const studentsQuery = firebaseQuery(
+        usersRef,
+        firebaseWhere("classCode", "==", userClassCode),
+        firebaseWhere("role", "==", "student")
+      );
+      const studentsSnapshot = await firebaseGetDocs(studentsQuery);
+
+      logger.log(`[ClassDataDeletion] 삭제할 학생 수: ${studentsSnapshot.size}명`);
+
+      // 2. 활동 로그 조회
+      const activityLogsRef = firestoreCollection(db, "activity_logs");
+      const activityLogsQuery = firebaseQuery(
+        activityLogsRef,
+        firebaseWhere("classCode", "==", userClassCode)
+      );
+      const activityLogsSnapshot = await firebaseGetDocs(activityLogsQuery);
+
+      logger.log(`[ClassDataDeletion] 삭제할 활동 로그: ${activityLogsSnapshot.size}개`);
+
+      // 3. 거래 내역 조회 (학생들의 userId로 조회)
+      const studentIds = studentsSnapshot.docs.map(doc => doc.id);
+      let transactionsToDelete = [];
+
+      if (studentIds.length > 0) {
+        // Firestore 'in' 쿼리는 최대 10개까지만 지원하므로 배치 처리
+        const batches = [];
+        for (let i = 0; i < studentIds.length; i += 10) {
+          batches.push(studentIds.slice(i, i + 10));
+        }
+
+        for (const batch of batches) {
+          const transactionsRef = firestoreCollection(db, "transactions");
+          const transactionsQuery = firebaseQuery(
+            transactionsRef,
+            firebaseWhere("userId", "in", batch)
+          );
+          const transactionsSnapshot = await firebaseGetDocs(transactionsQuery);
+          transactionsToDelete.push(...transactionsSnapshot.docs);
+        }
+      }
+
+      logger.log(`[ClassDataDeletion] 삭제할 거래 내역: ${transactionsToDelete.length}개`);
+
+      // 4. 배치 삭제 실행 (Firestore 배치는 최대 500개 제한)
+      const allDocsToDelete = [
+        ...studentsSnapshot.docs,
+        ...activityLogsSnapshot.docs,
+        ...transactionsToDelete,
+      ];
+
+      logger.log(`[ClassDataDeletion] 총 삭제할 문서: ${allDocsToDelete.length}개`);
+
+      // 배치 단위로 삭제
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < allDocsToDelete.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const batchDocs = allDocsToDelete.slice(i, i + BATCH_SIZE);
+
+        batchDocs.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+
+        await batch.commit();
+        logger.log(`[ClassDataDeletion] 배치 ${Math.floor(i / BATCH_SIZE) + 1} 삭제 완료`);
+      }
+
+      alert(
+        `학급 데이터 삭제 완료!\n\n삭제된 데이터:\n- 학생 계정: ${studentsSnapshot.size}명\n- 활동 로그: ${activityLogsSnapshot.size}개\n- 거래 내역: ${transactionsToDelete.length}개`
+      );
+
+      logger.log(`[ClassDataDeletion] ${userClassCode} 학급 데이터 삭제 완료`);
+
+      // 초기화
+      setDeleteConfirmText("");
+      setShowConfirmation(false);
+    } catch (error) {
+      logger.error("[ClassDataDeletion] 삭제 중 오류:", error);
+      alert(`오류 발생: ${error.message}\n\n일부 데이터만 삭제되었을 수 있습니다. 다시 시도해주세요.`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (!isAdmin && !isSuperAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="section-card mt-6 border-2 border-red-500/50 bg-red-900/10">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">⚠️</span>
+        <h3 className="text-xl font-bold text-red-400">위험 구역: 학급 데이터 삭제</h3>
+      </div>
+
+      <div className="bg-red-900/20 rounded-lg p-4 mb-4 border border-red-500/30">
+        <p className="text-sm text-red-200 mb-2">
+          <strong>이 작업은 되돌릴 수 없습니다!</strong>
+        </p>
+        <p className="text-sm text-red-200 mb-2">
+          개인정보 파기 의무를 위해 학년 말에 사용하세요.
+        </p>
+        <p className="text-sm text-gray-300 mb-2">삭제 대상:</p>
+        <ul className="text-sm text-gray-300 list-disc list-inside ml-2 space-y-1">
+          <li>학생 계정 (role: 'student')</li>
+          <li>활동 로그 (activity_logs)</li>
+          <li>거래 내역 (transactions)</li>
+        </ul>
+        <p className="text-sm text-green-300 mt-2">
+          ✓ 선생님(admin) 계정은 유지됩니다.
+        </p>
+        <p className="text-sm text-green-300">
+          ✓ 직업, 할일, 상점 아이템 설정은 유지됩니다.
+        </p>
+      </div>
+
+      {!showConfirmation ? (
+        <button
+          onClick={() => setShowConfirmation(true)}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+        >
+          학급 데이터 삭제 시작
+        </button>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              확인을 위해 "<strong className="text-red-400">삭제</strong>"를 정확히 입력하세요:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="삭제"
+              disabled={isDeleting}
+              className="w-full px-4 py-2 bg-[#1a1a2e] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleDeleteClassData}
+              disabled={isDeleting || deleteConfirmText !== "삭제"}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                deleteConfirmText === "삭제" && !isDeleting
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {isDeleting ? "삭제 중..." : "최종 삭제 실행"}
+            </button>
+            <button
+              onClick={() => {
+                setShowConfirmation(false);
+                setDeleteConfirmText("");
+              }}
+              disabled={isDeleting}
+              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminSettingsModal = ({
   isAdmin,
   isSuperAdmin,
@@ -2336,6 +2536,37 @@ const AdminSettingsModal = ({
             <div className="database-management-container section-card min-h-[500px] max-h-[70vh] overflow-auto">
               <AdminDatabase />
             </div>
+
+            {/* 개인정보 관련 문서 */}
+            <div className="section-card mt-6 p-6 rounded-2xl bg-violet-500/5 border border-violet-500/30">
+              <h3 className="text-lg font-bold text-violet-300 mb-3">개인정보 보호 문서</h3>
+              <p className="text-sm text-gray-400 mb-4">학부모 동의서 양식과 개인정보처리방침을 확인하세요.</p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/consent-form"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  📄 가정통신문 (동의서 양식)
+                </a>
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  🔒 개인정보처리방침
+                </a>
+              </div>
+            </div>
+
+            {/* 위험 구역: 학급 데이터 삭제 */}
+            <ClassDataDeletionSection
+              userClassCode={userClassCode}
+              isAdmin={isAdmin}
+              isSuperAdmin={isSuperAdmin}
+            />
           </div>
         )}
 

@@ -504,7 +504,7 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
 
 // ==================== 메인 컴포넌트 ====================
 const PersonalShop = () => {
-  const { currentUser, userProfile, refreshBalance } = useAuth();
+  const { user: currentUser, userDoc: userProfile, refreshUserDocument } = useAuth();
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState("browse"); // browse, myshop, sales
@@ -573,34 +573,40 @@ const PersonalShop = () => {
         const shopData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
         setMyShop(shopData);
 
-        // 내 상품 로드
+        // 내 상품 로드 (복합 인덱스 불필요 - 클라이언트 정렬)
         const productsRef = collection(db, "shopProducts");
-        const pq = query(
-          productsRef,
-          where("shopId", "==", shopData.id),
-          orderBy("createdAt", "desc")
-        );
+        const pq = query(productsRef, where("shopId", "==", shopData.id));
         const pSnapshot = await getDocs(pq);
-        setMyProducts(pSnapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const products = pSnapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => {
+            const dateA = a.createdAt?.toDate?.() || new Date(0);
+            const dateB = b.createdAt?.toDate?.() || new Date(0);
+            return dateB - dateA;
+          });
+        setMyProducts(products);
       }
     } catch (error) {
       logger.error("내 상점 로드 오류:", error);
     }
   }, [currentUser]);
 
-  // 상점의 상품 로드
+  // 상점의 상품 로드 (복합 인덱스 불필요 - 클라이언트 필터+정렬)
   const loadShopProducts = useCallback(async (shopId) => {
     try {
       setLoadingProducts(true);
       const productsRef = collection(db, "shopProducts");
-      const q = query(
-        productsRef,
-        where("shopId", "==", shopId),
-        where("status", "==", "available"),
-        orderBy("createdAt", "desc")
-      );
+      const q = query(productsRef, where("shopId", "==", shopId));
       const snapshot = await getDocs(q);
-      setSelectedShopProducts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const products = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((p) => p.status === "available")
+        .sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.createdAt?.toDate?.() || new Date(0);
+          return dateB - dateA;
+        });
+      setSelectedShopProducts(products);
     } catch (error) {
       logger.error("상품 로드 오류:", error);
     } finally {
@@ -695,7 +701,7 @@ const PersonalShop = () => {
     const sellerAmount = purchaseProduct.price * quantity;
 
     // 잔액 확인
-    if ((userProfile?.balance || 0) < totalAmount) {
+    if ((userProfile?.cash || 0) < totalAmount) {
       throw new Error("잔액이 부족합니다!");
     }
 
@@ -764,8 +770,8 @@ const PersonalShop = () => {
     });
 
     // 잔액 갱신
-    if (refreshBalance) {
-      await refreshBalance();
+    if (refreshUserDocument) {
+      await refreshUserDocument();
     }
 
     // 상품 목록 갱신

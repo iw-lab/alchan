@@ -490,22 +490,23 @@ export default function MyAssets() {
       let activityData = [];
       let transactionsData = [];
 
-      // 1. activity_logs 컬렉션에서 활동 가져오기
+      // 1. activity_logs 컬렉션에서 활동 가져오기 (인덱스 불필요 - 클라이언트 정렬)
       try {
         const activityLogsRef = query(
           collection(db, "activity_logs"),
           where("classCode", "==", currentUserClassCode),
           where("userId", "==", userId),
-          limit(30)
+          limit(50)
         );
         const activityLogsSnap = await getDocs(activityLogsRef);
         activityData = activityLogsSnap.docs
           .map(doc => {
             const data = doc.data();
+            const desc = data.description || data.type || '거래 내역';
             return {
               id: doc.id,
               amount: data.amount || 0,
-              description: data.description || data.type || '거래 내역',
+              description: desc === 'undefined' ? '거래 내역' : desc,
               timestamp: data.timestamp,
               type: data.type,
               couponAmount: data.couponAmount || 0,
@@ -522,16 +523,17 @@ export default function MyAssets() {
       try {
         const transactionsRef = query(
           collection(db, "users", userId, "transactions"),
-          limit(30)
+          limit(50)
         );
         const transactionsSnap = await getDocs(transactionsRef);
         transactionsData = transactionsSnap.docs
           .map(doc => {
             const data = doc.data();
+            const desc = data.description || '거래 내역';
             return {
               id: doc.id,
               amount: data.amount || 0,
-              description: data.description || '거래 내역',
+              description: (!desc || desc === 'undefined') ? '거래 내역' : desc,
               timestamp: data.timestamp || data.createdAt,
               type: data.type || 'transaction',
               source: 'transactions'
@@ -1317,7 +1319,8 @@ export default function MyAssets() {
                   }
 
                   const txAmount = Number(tx.amount) || 0;
-                  const txDescription = String(tx.description) || "내역 없음";
+                  const rawDesc = tx.description;
+                  const txDescription = (!rawDesc || rawDesc === 'undefined' || rawDesc === 'null') ? "거래 내역" : String(rawDesc);
 
                   return (
                     <div

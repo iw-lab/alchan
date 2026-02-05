@@ -251,7 +251,7 @@ export const getActivityLogs = async (classCode, limit = 50, useCache = false, t
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
   if (!classCode) throw new Error("학급 코드가 필요합니다.");
 
-  const { query, where } = await import("firebase/firestore");
+  const { query, where, limit: firestoreLimit } = await import("firebase/firestore");
   const { globalCacheService } = await import("../firebaseUtils");
 
   const cacheKey = `activity_logs_${classCode}_${limit}`;
@@ -261,7 +261,7 @@ export const getActivityLogs = async (classCode, limit = 50, useCache = false, t
   }
   try {
     const logsRef = collection(db, "activity_logs");
-    const q = query(logsRef, where("classCode", "==", classCode));
+    const q = query(logsRef, where("classCode", "==", classCode), firestoreLimit(limit > 0 ? limit : 50));
     const logsSnapshot = await getDocs(q);
     let logs = logsSnapshot.docs.map((d) => {
       const data = d.data();

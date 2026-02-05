@@ -1,7 +1,7 @@
 // src/components/StudentManager.js
 // 학생 일괄 생성 및 관리 컴포넌트
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, auth as firebaseAuth } from '../firebase';
 import {
@@ -103,22 +103,20 @@ const StudentManager = () => {
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentNumber, setNewStudentNumber] = useState('');
   const [newStudentPassword, setNewStudentPassword] = useState('');
+  const [parentalConsent, setParentalConsent] = useState(false);
 
   // 일괄 추가 폼
   const [bulkInput, setBulkInput] = useState('');
   const [bulkStudents, setBulkStudents] = useState([]);
   const [bulkStep, setBulkStep] = useState(1); // 1: 입력, 2: 미리보기, 3: 결과
+  const [bulkParentalConsent, setBulkParentalConsent] = useState(false);
 
   // 작업 상태
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState({ success: [], failed: [] });
   const [copiedId, setCopiedId] = useState(null);
 
-  // 학생 목록 로드
-  useEffect(() => {
-    loadStudents();
-  }, [classCode, classmates, loadStudents]);
-
+  // 학생 목록 로드 함수
   const loadStudents = useCallback(async () => {
     if (!classCode) {
       setLoading(false);
@@ -148,6 +146,11 @@ const StudentManager = () => {
     }
   }, [classCode, classmates]);
 
+  // 학생 목록 로드
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
+
   // 검색 필터링
   const filteredStudents = useMemo(() => {
     if (!searchTerm) return students;
@@ -163,6 +166,11 @@ const StudentManager = () => {
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
       alert('이름과 번호를 입력해주세요.');
+      return;
+    }
+
+    if (!parentalConsent) {
+      alert('법정대리인(학부모) 동의 확인이 필요합니다.');
       return;
     }
 
@@ -204,6 +212,8 @@ const StudentManager = () => {
         myContribution: 0,
         createdAt: serverTimestamp(),
         createdBy: userDoc?.id,
+        parentalConsentConfirmed: true,
+        consentDate: serverTimestamp(),
       });
 
       // 학급 학생 수 업데이트
@@ -221,6 +231,7 @@ const StudentManager = () => {
       setNewStudentName('');
       setNewStudentNumber('');
       setNewStudentPassword('');
+      setParentalConsent(false);
       setShowAddModal(false);
       loadStudents();
 
@@ -273,6 +284,11 @@ const StudentManager = () => {
   const handleBulkCreate = async () => {
     if (bulkStudents.length === 0) return;
 
+    if (!bulkParentalConsent) {
+      alert('법정대리인(학부모) 동의 확인이 필요합니다.');
+      return;
+    }
+
     setProcessing(true);
     const successList = [];
     const failedList = [];
@@ -314,6 +330,8 @@ const StudentManager = () => {
           myContribution: 0,
           createdAt: serverTimestamp(),
           createdBy: userDoc?.id,
+          parentalConsentConfirmed: true,
+          consentDate: serverTimestamp(),
         });
 
         student.status = 'success';
@@ -453,6 +471,7 @@ const StudentManager = () => {
     setBulkStep(1);
     setBulkInput('');
     setBulkStudents([]);
+    setBulkParentalConsent(false);
     setResults({ success: [], failed: [] });
   };
 
@@ -649,7 +668,7 @@ const StudentManager = () => {
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>
               취소
             </Button>
-            <Button onClick={handleAddStudent} loading={processing}>
+            <Button onClick={handleAddStudent} loading={processing} disabled={!parentalConsent}>
               추가
             </Button>
           </>
@@ -682,6 +701,38 @@ const StudentManager = () => {
           <Alert variant="info">
             생성되는 이메일: {newStudentNumber ? createStudentEmail(newStudentNumber, classCode) : '번호를 입력하세요'}
           </Alert>
+
+          {/* 법정대리인 동의 체크박스 */}
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                  개인정보 수집 법정대리인 동의
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                  14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의 동의가 필요합니다.
+                </p>
+                <label className="flex items-start gap-2.5 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={parentalConsent}
+                    onChange={(e) => setParentalConsent(e.target.checked)}
+                    className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
+                  />
+                  <span className="text-sm text-amber-900 dark:text-amber-100 group-hover:text-amber-700">
+                    학부모(법정대리인)의 개인정보 수집·이용 동의를 확인하였습니다
+                  </span>
+                </label>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 ml-7">
+                  가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{' '}
+                  <a href="/privacy" target="_blank" className="underline hover:text-amber-800">
+                    개인정보처리방침 보기
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -706,7 +757,7 @@ const StudentManager = () => {
               <Button variant="secondary" onClick={() => setBulkStep(1)}>
                 이전
               </Button>
-              <Button onClick={handleBulkCreate} loading={processing}>
+              <Button onClick={handleBulkCreate} loading={processing} disabled={!bulkParentalConsent}>
                 {bulkStudents.length}명 생성
               </Button>
             </>
@@ -745,6 +796,39 @@ const StudentManager = () => {
             <Alert variant="warning">
               아래 {bulkStudents.length}명의 학생 계정을 생성합니다. 확인 후 진행해주세요.
             </Alert>
+
+            {/* 법정대리인 동의 체크박스 */}
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                    개인정보 수집 법정대리인 동의
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
+                    14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의 동의가 필요합니다.
+                  </p>
+                  <label className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={bulkParentalConsent}
+                      onChange={(e) => setBulkParentalConsent(e.target.checked)}
+                      className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
+                    />
+                    <span className="text-sm text-amber-900 dark:text-amber-100 group-hover:text-amber-700">
+                      학부모(법정대리인)의 개인정보 수집·이용 동의를 확인하였습니다
+                    </span>
+                  </label>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 ml-7">
+                    가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{' '}
+                    <a href="/privacy" target="_blank" className="underline hover:text-amber-800">
+                      개인정보처리방침 보기
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">

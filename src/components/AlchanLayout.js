@@ -14,6 +14,11 @@ import UpdateNotification from './UpdateNotification';
 import { useServiceWorker } from '../hooks/useServiceWorker';
 import { AlchanLoadingScreen } from './ui/Skeleton';
 import { WifiOff } from 'lucide-react';
+import { DailyRewardBanner, getStreakInfo } from './DailyReward';
+import { doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../firebase';
+import globalCacheService from '../services/globalCacheService';
+import { logger } from '../utils/logger';
 
 // 🔥 핵심 페이지 - 즉시 로드 (자주 사용)
 import Dashboard from '../pages/dashboard/Dashboard';
@@ -58,6 +63,7 @@ const MoneyTransfer = lazy(() => import('../pages/banking/MoneyTransfer'));
 const CouponTransfer = lazy(() => import('../pages/banking/CouponTransfer'));
 const CouponGoalPage = lazy(() => import('../pages/coupon/CouponGoalPage'));
 const OrganizationChart = lazy(() => import('../pages/organization/OrganizationChart'));
+
 
 // 전체 화면이 필요한 페이지 경로 (자동으로 사이드바 접기)
 const FULLSCREEN_PAGES = [
@@ -163,9 +169,36 @@ export default function AlchanLayout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showUpdateDismissed, setShowUpdateDismissed] = useState(false);
+  const [showDailyRewardPopup, setShowDailyRewardPopup] = useState(false);
 
   // PWA 서비스 워커 훅
   const { updateAvailable, updateServiceWorker, isOnline } = useServiceWorker();
+
+  // 🎁 출석 보상 팝업 - 앱 진입(탭 열기) 시 자동 표시
+  useEffect(() => {
+    if (userDoc?.uid && userDoc?.role === 'student') {
+      const streakInfo = getStreakInfo(userDoc.uid);
+      if (streakInfo.canClaim) {
+        const timer = setTimeout(() => {
+          setShowDailyRewardPopup(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [userDoc?.uid, userDoc?.role]);
+
+  // 🎁 출석 보상 수령 처리
+  const handleDailyRewardClaim = useCallback(async (rewardAmount) => {
+    if (!userDoc?.uid || !rewardAmount) return;
+    try {
+      const userRef = doc(db, "users", userDoc.uid);
+      await updateDoc(userRef, { cash: increment(rewardAmount) });
+      globalCacheService.invalidate(`user_${userDoc.uid}`);
+      setTimeout(() => setShowDailyRewardPopup(false), 3000);
+    } catch (error) {
+      logger.error("출석 보상 지급 실패:", error);
+    }
+  }, [userDoc?.uid]);
 
   // Jua 폰트 로드
   useEffect(() => {
@@ -371,6 +404,43 @@ export default function AlchanLayout() {
         <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-center py-2 text-sm font-medium z-50 flex items-center justify-center gap-2">
           <WifiOff size={16} />
           오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.
+        </div>
+      )}
+
+      {/* 🎁 출석 보상 팝업 모달 */}
+      {showDailyRewardPopup && userDoc?.uid && (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-5"
+          style={{
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            animation: "fadeIn 0.3s ease-out",
+          }}
+          onClick={() => setShowDailyRewardPopup(false)}
+        >
+          <div
+            className="w-full max-w-[400px]"
+            style={{ animation: "slideUp 0.3s ease-out" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-right mb-2">
+              <button
+                onClick={() => setShowDailyRewardPopup(false)}
+                className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-white flex items-center justify-center ml-auto"
+                style={{ background: "rgba(255,255,255,0.2)" }}
+              >
+                ✕
+              </button>
+            </div>
+            <DailyRewardBanner
+              userId={userDoc.uid}
+              onClaim={handleDailyRewardClaim}
+            />
+            <div className="text-center mt-3 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+              배경을 터치하면 닫힙니다
+            </div>
+          </div>
         </div>
       )}
 

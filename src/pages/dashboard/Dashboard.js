@@ -43,7 +43,6 @@ import {
 } from "../../components/PageWrapper";
 import globalCacheService from "../../services/globalCacheService";
 import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft, X } from "lucide-react";
-import { DailyRewardBanner, getStreakInfo, claimDailyReward } from "../../components/DailyReward";
 
 import { logger } from "../../utils/logger";
 // Cloud Functions 호출 함수 설정
@@ -315,7 +314,6 @@ function Dashboard({ adminTabMode }) {
   const [currentJobIdForTask, setCurrentJobIdForTask] = useState(null);
   const [isJobTaskForForm, setIsJobTaskForForm] = useState(false);
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
-  const [showDailyRewardPopup, setShowDailyRewardPopup] = useState(false);
   const [adminNewTaskName, setAdminNewTaskName] = useState("");
   const [adminNewTaskReward, setAdminNewTaskReward] = useState("");
   const [adminNewTaskMaxClicks, setAdminNewTaskMaxClicks] = useState("5");
@@ -340,41 +338,6 @@ function Dashboard({ adminTabMode }) {
     }
   }, [adminTabMode, isAdmin]);
 
-  // 🎁 출석 보상 팝업 - 학생 로그인 시 자동 표시
-  useEffect(() => {
-    if (userDoc?.uid && userDoc?.role === 'student') {
-      const streakInfo = getStreakInfo(userDoc.uid);
-      if (streakInfo.canClaim) {
-        // 약간의 지연 후 팝업 표시 (페이지 로딩 후)
-        const timer = setTimeout(() => {
-          setShowDailyRewardPopup(true);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [userDoc?.uid, userDoc?.role]);
-
-  // 🎁 출석 보상 수령 처리
-  const handleDailyRewardClaim = useCallback(async (rewardAmount) => {
-    if (!userDoc?.uid || !rewardAmount) return;
-
-    try {
-      const userRef = doc(db, "users", userDoc.uid);
-      await updateDoc(userRef, {
-        cash: increment(rewardAmount),
-      });
-
-      // 캐시 무효화
-      globalCacheService.invalidate(`user_${userDoc.uid}`);
-
-      // 팝업 닫기 (약간의 지연 후)
-      setTimeout(() => {
-        setShowDailyRewardPopup(false);
-      }, 3000);
-    } catch (error) {
-      logger.error("출석 보상 지급 실패:", error);
-    }
-  }, [userDoc?.uid]);
 
   // Memoized values
   const currentGoalId = useMemo(() => {
@@ -1788,74 +1751,6 @@ function Dashboard({ adminTabMode }) {
         />
       )}
 
-      {/* 🎁 출석 보상 팝업 모달 */}
-      {showDailyRewardPopup && userDoc?.uid && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.7)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: "20px",
-            animation: "fadeIn 0.3s ease-out",
-          }}
-          onClick={() => setShowDailyRewardPopup(false)}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "400px",
-              animation: "slideUp 0.3s ease-out",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 닫기 버튼 */}
-            <div style={{ textAlign: "right", marginBottom: "8px" }}>
-              <button
-                onClick={() => setShowDailyRewardPopup(false)}
-                style={{
-                  background: "rgba(255,255,255,0.2)",
-                  border: "none",
-                  color: "#fff",
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  cursor: "pointer",
-                  fontSize: "18px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 출석 보상 배너 */}
-            <DailyRewardBanner
-              userId={userDoc.uid}
-              onClaim={handleDailyRewardClaim}
-            />
-
-            {/* 터치해서 닫기 안내 */}
-            <div style={{
-              textAlign: "center",
-              marginTop: "12px",
-              color: "rgba(255,255,255,0.6)",
-              fontSize: "13px",
-            }}>
-              배경을 터치하면 닫힙니다
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 // 상용화 수준의 세련된 로그인 시스템
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   registerWithEmailAndPassword,
@@ -706,9 +706,19 @@ const Login = () => {
         </div>
 
         {/* 하단 정보 */}
-        <p className="text-center text-xs text-white/50 mt-6 font-medium">
-          © 2025 알찬 경제교육. All rights reserved.
-        </p>
+        <div className="mt-6 space-y-3">
+          <div className="text-center">
+            <Link
+              to="/privacy"
+              className="text-sm text-white/70 hover:text-white transition-colors underline underline-offset-4"
+            >
+              개인정보처리방침
+            </Link>
+          </div>
+          <p className="text-center text-xs text-white/50 font-medium">
+            © 2025 알찬 경제교육. All rights reserved.
+          </p>
+        </div>
       </div>
 
       {/* 애니메이션 스타일 */}
