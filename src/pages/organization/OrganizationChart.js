@@ -20,7 +20,7 @@ import { logger } from "../../utils/logger";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
-  adminPassword: "1234", // 실제 운영 시에는 더 안전한 방식으로 관리 필요
+  adminPassword: process.env.REACT_APP_ADMIN_DEFAULT_PASSWORD || "",
   lastUpdated: null,
 };
 

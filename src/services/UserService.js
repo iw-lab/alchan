@@ -14,7 +14,6 @@ const initialUsers = [
     coupons: 0,
     email: "minjun@example.com",
     classCode: "A-101",
-    password: "password123",
   },
   {
     id: "user2",
@@ -23,7 +22,6 @@ const initialUsers = [
     coupons: 0,
     email: "seoyeon@example.com",
     classCode: "B-202",
-    password: "password456",
   },
   {
     id: "admin1",
@@ -33,7 +31,6 @@ const initialUsers = [
     coupons: 0,
     email: "admin@example.com",
     classCode: "ADMIN",
-    password: "adminpassword",
   },
   {
     id: "homework1",
@@ -43,7 +40,6 @@ const initialUsers = [
     coupons: 0,
     email: "homework@example.com",
     classCode: "STAFF",
-    password: "staffpassword",
   },
 ];
 
