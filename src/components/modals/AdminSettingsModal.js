@@ -331,6 +331,12 @@ const AdminSettingsModal = ({
   const [financialSubTab, setFinancialSubTab] = useState("deposit");
   const [financialMessage, setFinancialMessage] = useState(null);
 
+  // 통합 탭 서브탭 상태
+  const [jobTaskSubTab, setJobTaskSubTab] = useState("job");
+  const [studentMemberSubTab, setStudentMemberSubTab] = useState("student");
+  const [financeMarketSubTab, setFinanceMarketSubTab] = useState("financial");
+  const [systemSubTab, setSystemSubTab] = useState("database");
+
   // ========================================
   // 시장 제어 상태
   // ========================================
@@ -1323,12 +1329,49 @@ const AdminSettingsModal = ({
     loadParkingRate,
   ]); // preloadAdminData는 내부적으로 adminSelectedMenu에 따라 loadClassMembers, loadStudents, loadSalarySettings를 호출하므로 추가하면 무한루프 발생
 
-  // 시장 제어 탭 선택 시 시장 상태 로드
+  // 이전 탭 ID → 통합 탭 매핑 (하위 호환)
   useEffect(() => {
-    if (showAdminSettingsModal && adminSelectedMenu === 'marketControl') {
+    const mapping = {
+      taskManagement: ['jobAndTask', () => setJobTaskSubTab('task')],
+      jobSettings: ['jobAndTask', () => setJobTaskSubTab('job')],
+      studentManagement: ['studentAndMember', () => setStudentMemberSubTab('student')],
+      salarySettings: ['studentAndMember', () => setStudentMemberSubTab('salary')],
+      memberManagement: ['studentAndMember', () => setStudentMemberSubTab('member')],
+      financialProducts: ['financeAndMarket', () => setFinanceMarketSubTab('financial')],
+      parkingAccount: ['financeAndMarket', () => setFinanceMarketSubTab('parking')],
+      marketControl: ['financeAndMarket', () => setFinanceMarketSubTab('market')],
+      databaseManagement: ['system', () => setSystemSubTab('database')],
+      systemManagement: ['system', () => setSystemSubTab('system')],
+    };
+    const mapped = mapping[adminSelectedMenu];
+    if (mapped) {
+      setAdminSelectedMenu(mapped[0]);
+      mapped[1]();
+    }
+  }, [adminSelectedMenu, setAdminSelectedMenu]);
+
+  // 학생 서브탭 선택 시 학생 데이터 로드
+  useEffect(() => {
+    if (showAdminSettingsModal && adminSelectedMenu === 'studentAndMember' && studentMemberSubTab === 'student') {
+      loadStudents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab]);
+
+  // 구성원 서브탭 선택 시 구성원 데이터 로드
+  useEffect(() => {
+    if (showAdminSettingsModal && adminSelectedMenu === 'studentAndMember' && studentMemberSubTab === 'member') {
+      loadClassMembers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab]);
+
+  // 시장 서브탭 선택 시 시장 상태 로드
+  useEffect(() => {
+    if (showAdminSettingsModal && adminSelectedMenu === 'financeAndMarket' && financeMarketSubTab === 'market') {
       fetchMarketStatus();
     }
-  }, [showAdminSettingsModal, adminSelectedMenu, fetchMarketStatus]);
+  }, [showAdminSettingsModal, adminSelectedMenu, financeMarketSubTab, fetchMarketStatus]);
 
   // 마지막 월급 지급일 포맷
   const formatLastSalaryDate = () => {
@@ -1392,76 +1435,32 @@ const AdminSettingsModal = ({
             className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "generalSettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("generalSettings")}
           >
-            일반 설정
+            ⚙️ 일반 설정
           </button>
           <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "taskManagement" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("taskManagement")}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "jobAndTask" ? "active" : ""}`}
+            onClick={() => setAdminSelectedMenu("jobAndTask")}
           >
-            할일 관리
+            💼 직업/할일
           </button>
           <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "jobSettings" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("jobSettings")}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "studentAndMember" ? "active" : ""}`}
+            onClick={() => setAdminSelectedMenu("studentAndMember")}
           >
-            직업 관리
+            👥 학생/구성원
           </button>
           <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "studentManagement" ? "active" : ""}`}
-            onClick={() => {
-              setAdminSelectedMenu("studentManagement");
-              loadStudents();
-            }}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "financeAndMarket" ? "active" : ""}`}
+            onClick={() => setAdminSelectedMenu("financeAndMarket")}
           >
-            학생 관리
+            🏦 금융/시장
           </button>
           <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "salarySettings" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("salarySettings")}
+            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "system" ? "active" : ""}`}
+            onClick={() => setAdminSelectedMenu("system")}
           >
-            급여 설정
+            🔧 시스템
           </button>
-          <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "financialProducts" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("financialProducts")}
-          >
-            금융 상품
-          </button>
-          <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "marketControl" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("marketControl")}
-          >
-            시장 제어
-          </button>
-          <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "parkingAccount" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("parkingAccount")}
-          >
-            파킹 통장
-          </button>
-          <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "memberManagement" ? "active" : ""}`}
-            onClick={() => {
-              setAdminSelectedMenu("memberManagement");
-              loadClassMembers();
-            }}
-          >
-            학급 구성원
-          </button>
-          <button
-            className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "databaseManagement" ? "active" : ""}`}
-            onClick={() => setAdminSelectedMenu("databaseManagement")}
-          >
-            데이터베이스
-          </button>
-          {isSuperAdmin && (
-            <button
-              className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "systemManagement" ? "active" : ""}`}
-              onClick={() => setAdminSelectedMenu("systemManagement")}
-            >
-              시스템 관리
-            </button>
-          )}
         </div>
 
         {/* 일반 설정 탭 */}
@@ -1509,8 +1508,26 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 할일 관리 탭 */}
-        {adminSelectedMenu === "taskManagement" && (
+        {/* ===== 직업/할일 통합 탭 ===== */}
+        {adminSelectedMenu === "jobAndTask" && (
+          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === 'job' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setJobTaskSubTab('job')}
+            >
+              직업 관리
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === 'task' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setJobTaskSubTab('task')}
+            >
+              할일 관리
+            </button>
+          </div>
+        )}
+
+        {/* 할일 관리 서브탭 */}
+        {adminSelectedMenu === "jobAndTask" && jobTaskSubTab === "task" && (
           <div className="task-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -1760,8 +1777,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 직업 관리 탭 */}
-        {adminSelectedMenu === "jobSettings" && (
+        {/* 직업 관리 서브탭 */}
+        {adminSelectedMenu === "jobAndTask" && jobTaskSubTab === "job" && (
           <div className="job-settings-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -1851,8 +1868,32 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 학생 관리 탭 */}
-        {adminSelectedMenu === "studentManagement" && (
+        {/* ===== 학생/구성원 통합 탭 ===== */}
+        {adminSelectedMenu === "studentAndMember" && (
+          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'student' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setStudentMemberSubTab('student')}
+            >
+              학생/급여 관리
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'salary' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setStudentMemberSubTab('salary')}
+            >
+              급여 설정
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'member' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setStudentMemberSubTab('member')}
+            >
+              구성원 관리
+            </button>
+          </div>
+        )}
+
+        {/* 학생 관리 서브탭 */}
+        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "student" && (
           <div className="student-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2029,10 +2070,32 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* ========================================
-            금융 상품 관리 탭 (새로 추가)
-            ======================================== */}
-        {adminSelectedMenu === "financialProducts" && (
+        {/* ===== 금융/시장 통합 탭 ===== */}
+        {adminSelectedMenu === "financeAndMarket" && (
+          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'financial' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setFinanceMarketSubTab('financial')}
+            >
+              금융 상품
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'parking' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setFinanceMarketSubTab('parking')}
+            >
+              파킹 통장
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'market' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setFinanceMarketSubTab('market')}
+            >
+              시장 제어
+            </button>
+          </div>
+        )}
+
+        {/* 금융 상품 서브탭 */}
+        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "financial" && (
           <div className="financial-products-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2187,10 +2250,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* ========================================
-            시장 제어 탭 (새로 추가)
-            ======================================== */}
-        {adminSelectedMenu === "marketControl" && (
+        {/* 시장 제어 서브탭 */}
+        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "market" && (
           <div className="market-control-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2282,10 +2343,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* ========================================
-            파킹 통장 관리 탭 (새로 추가)
-            ======================================== */}
-        {adminSelectedMenu === "parkingAccount" && (
+        {/* 파킹 통장 서브탭 */}
+        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "parking" && (
           <div className="parking-account-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2349,12 +2408,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* ========================================
-            국고 관리 탭 - 제거됨 (세금은 관리자 현금으로 직접 입금됨)
-            ======================================== */}
-
-        {/* 학급 구성원 관리 탭 */}
-        {adminSelectedMenu === "memberManagement" && (
+        {/* 구성원 관리 서브탭 */}
+        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "member" && (
           <div className="member-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2439,8 +2494,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 급여 설정 탭 */}
-        {adminSelectedMenu === "salarySettings" && (
+        {/* 급여 설정 서브탭 */}
+        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "salary" && (
           <div className="salary-settings-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2525,8 +2580,28 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 데이터베이스 관리 탭 */}
-        {adminSelectedMenu === "databaseManagement" && (
+        {/* ===== 시스템 통합 탭 ===== */}
+        {adminSelectedMenu === "system" && (
+          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+            <button
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === 'database' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+              onClick={() => setSystemSubTab('database')}
+            >
+              데이터베이스
+            </button>
+            {isSuperAdmin && (
+              <button
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === 'system' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+                onClick={() => setSystemSubTab('system')}
+              >
+                시스템 관리
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* 데이터베이스 서브탭 */}
+        {adminSelectedMenu === "system" && systemSubTab === "database" && (
           <div className="database-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
@@ -2570,8 +2645,8 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 시스템 관리 탭 */}
-        {adminSelectedMenu === "systemManagement" && (
+        {/* 시스템 관리 서브탭 */}
+        {adminSelectedMenu === "system" && systemSubTab === "system" && (
           <div className="system-management-tab">
             {isSuperAdmin && (
               <div className="class-info-header">

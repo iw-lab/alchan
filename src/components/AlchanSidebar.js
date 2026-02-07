@@ -91,7 +91,7 @@ export const ALCHAN_MENU_ITEMS = [
   { id: 'adminCategory', label: '알찬 관리자', icon: Settings, isCategory: true, category: 'admin', adminOnly: true },
 
   // 👥 학생/구성원 관리 그룹
-  { id: 'adminUserGroup', label: '👥 학생 관리', icon: Users, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
+  { id: 'adminUserGroup', label: '👥 학생/구성원', icon: Users, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
   { id: 'studentManagement', label: '학생 목록', icon: Users, path: '/admin/students', parentId: 'adminCategory', adminOnly: true },
   { id: 'classMemberManagement', label: '학급 구성원', icon: Users, path: '/admin/class-members', parentId: 'adminCategory', adminOnly: true },
 
@@ -102,15 +102,12 @@ export const ALCHAN_MENU_ITEMS = [
 
   // ⚙️ 학급 설정 그룹
   { id: 'adminSettingsGroup', label: '⚙️ 학급 설정', icon: Settings, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
-  { id: 'adminAppSettings', label: '목표/쿠폰 설정', icon: Target, path: '/admin/app-settings', parentId: 'adminCategory', adminOnly: true },
-  { id: 'taskManagement', label: '할일 관리', icon: ListTodo, path: '/admin/task-management', parentId: 'adminCategory', adminOnly: true },
-  { id: 'jobManagement', label: '직업 관리', icon: Briefcase, path: '/admin/job-settings', parentId: 'adminCategory', adminOnly: true },
-  { id: 'salarySettings', label: '급여 설정', icon: Banknote, path: '/admin/salary-settings', parentId: 'adminCategory', adminOnly: true },
+  { id: 'adminAppSettings', label: '일반 설정', icon: Target, path: '/admin/app-settings', parentId: 'adminCategory', adminOnly: true },
+  { id: 'jobManagement', label: '직업/할일', icon: Briefcase, path: '/admin/job-settings', parentId: 'adminCategory', adminOnly: true },
 
   // 🔧 시스템 그룹
   { id: 'adminSystemGroup', label: '🔧 시스템', icon: Settings, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
   { id: 'activityLog', label: '데이터베이스', icon: FileText, path: '/admin/activity-log', parentId: 'adminCategory', adminOnly: true },
-  { id: 'adminPage', label: '관리자 제어판', icon: Settings, path: '/admin/page', parentId: 'adminCategory', adminOnly: true },
 
   // 🔥 SuperAdmin Category - 앱 관리자 전용 (isSuperAdmin만 접근 가능)
   { id: 'superAdminCategory', label: '앱 관리자', icon: Shield, isCategory: true, category: 'superadmin', superAdminOnly: true },
