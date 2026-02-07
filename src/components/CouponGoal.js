@@ -222,7 +222,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💰</span>
-          <span className="text-white text-xs font-bold">쿠폰 기부</span>
+          <span className="text-white text-sm font-bold">쿠폰 응모</span>
         </button>
 
         <button
@@ -234,7 +234,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💵</span>
-          <span className="text-white text-xs font-bold">쿠폰 판매</span>
+          <span className="text-white text-sm font-bold">쿠폰 판매</span>
         </button>
 
         <button
@@ -246,21 +246,31 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">🎁</span>
-          <span className="text-white text-xs font-bold">쿠폰 선물</span>
+          <span className="text-white text-sm font-bold">쿠폰 선물</span>
         </button>
 
         <button
           onClick={() => setShowDonationHistoryModal(true)}
           className="rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
-            background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
-            border: "1px solid #d1d5db",
+            background: "linear-gradient(135deg, #374151 0%, #1f2937 100%)",
+            border: "1px solid #4b5563",
           }}
         >
           <span className="text-2xl">📋</span>
-          <span className="text-xs font-bold" style={{ color: "#a0a0c0" }}>기부 내역</span>
+          <span className="text-sm font-bold" style={{ color: "#4b5563" }}>기부 내역</span>
         </button>
       </div>
+
+      {/* 쿠폰 목표 글씨 크기 전체 확대 */}
+      <style>{`
+        .class-coupon-goal { font-size: 1.05rem; }
+        .class-coupon-goal h3 { font-size: 1.3rem !important; }
+        .class-coupon-goal .text-xs { font-size: 0.85rem !important; }
+        .class-coupon-goal .text-sm { font-size: 0.95rem !important; }
+        .class-coupon-goal .text-2xl { font-size: 1.6rem !important; }
+        .class-coupon-goal .text-3xl { font-size: 2rem !important; }
+      `}</style>
 
       {/* 애니메이션 스타일 */}
       <style>{`

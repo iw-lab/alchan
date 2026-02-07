@@ -414,58 +414,75 @@ export default function MyAssets() {
 
     // 이미 로딩 중이면 중복 실행 방지
     if (loadingRef.current) {
-      logger.log('[MyAssets] ⏸️ 이미 로딩 중이므로 중복 실행 방지');
       return;
     }
 
     loadingRef.current = true;
-    setAssetsLoading(true);
+
+    // 🔥 [최적화] 캐시 데이터가 있으면 즉시 표시 (로딩 스피너 없이)
+    const cachedAssets = getCachedFirestoreData('myAssets');
+    if (cachedAssets) {
+      setParkingBalance(cachedAssets.parkingBalance || 0);
+      setDeposits(cachedAssets.deposits || []);
+      setSavings(cachedAssets.savings || []);
+      setLoans(cachedAssets.loans || []);
+      setRealEstateAssets(cachedAssets.realEstateAssets || []);
+      setTransactionHistory(cachedAssets.transactionHistory || []);
+      setAssetsLoading(false); // 캐시로 즉시 로딩 해제
+    } else {
+      setAssetsLoading(true);
+    }
 
     try {
-      // 🔥 [최적화] 모든 잠재적 경로를 쿼리합니다 (limit 추가)
+      // 🔥 [최적화] 모든 쿼리를 하나의 Promise.all로 병렬 실행
       const realEstateRef1 = query(collection(db, "classes", currentUserClassCode, "realEstateProperties"), where("owner", "==", userId), limit(50));
       const realEstateRef2 = query(collection(db, "ClassStock", currentUserClassCode, "students", userId, "realestates"), limit(50));
       const realEstateRef3 = query(collection(db, "realEstate"), where("ownerId", "==", userId), limit(50));
+      const parkingRef1 = doc(db, "users", userId, "financials", "parkingAccount");
+      const parkingRef2 = collection(db, "ClassStock", currentUserClassCode, "students", userId, "parkingAccounts");
+      const productsRef = query(collection(db, "users", userId, "products"), limit(50));
+      const activityLogsRef = query(
+        collection(db, "activity_logs"),
+        where("classCode", "==", currentUserClassCode),
+        where("userId", "==", userId),
+        limit(50)
+      );
+      const transactionsRef = query(
+        collection(db, "users", userId, "transactions"),
+        limit(50)
+      );
 
-      const [snap1, snap2, snap3] = await Promise.all([
+      const [snap1, snap2, snap3, parkingSnap1, parkingSnap2, productsSnap, activityLogsSnap, transactionsSnap] = await Promise.all([
         getDocs(realEstateRef1),
         getDocs(realEstateRef2),
         getDocs(realEstateRef3),
+        getDoc(parkingRef1),
+        getDocs(parkingRef2),
+        getDocs(productsRef),
+        getDocs(activityLogsRef).catch(() => ({ docs: [] })),
+        getDocs(transactionsRef).catch(() => ({ docs: [] })),
       ]);
 
+      // 부동산 처리
       const allRealEstateAssets = [];
       snap1.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
       snap2.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
       snap3.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
 
-      // 파킹통장 데이터 조회 (모든 잠재적 경로)
-      const parkingRef1 = doc(db, "users", userId, "financials", "parkingAccount");
-      const parkingRef2 = collection(db, "ClassStock", currentUserClassCode, "students", userId, "parkingAccounts");
-
-      const [parkingSnap1, parkingSnap2] = await Promise.all([
-        getDoc(parkingRef1),
-        getDocs(parkingRef2),
-      ]);
-
+      // 파킹통장 처리
       let totalParkingBalance = 0;
       if (parkingSnap1.exists()) {
         totalParkingBalance += parkingSnap1.data().balance || 0;
       }
-
       parkingSnap2.forEach(doc => {
         totalParkingBalance += doc.data().balance || 0;
       });
-
       setParkingBalance(totalParkingBalance);
 
-      // 🔥 [최적화] 가입 상품 조회 (예금, 적금, 대출 모두 products 컬렉션에 저장됨)
-      const productsRef = query(collection(db, "users", userId, "products"), limit(50));
-      const productsSnap = await getDocs(productsRef);
-
+      // 상품(예금/적금/대출) 처리
       const depositsData = [];
       const savingsData = [];
       const loansData = [];
-
       productsSnap.forEach(docSnap => {
         const product = {
           id: docSnap.id,
@@ -476,86 +493,64 @@ export default function MyAssets() {
         else if (product.type === 'savings') savingsData.push(product);
         else if (product.type === 'loan') loansData.push(product);
       });
-
       setDeposits(depositsData);
       setSavings(savingsData);
       setLoans(loansData);
-
       setRealEstateAssets(allRealEstateAssets);
 
-      // 🔥 [최적화] 목표 데이터는 별도 useEffect에서 로드 (중복 호출 방지)
-      // loadGoalData()는 [user, currentGoalId] 의존성의 useEffect에서 호출됨
+      // 거래 내역 처리
+      const activityData = (activityLogsSnap.docs || [])
+        .map(doc => {
+          const data = doc.data();
+          const desc = data.description || data.type || '거래 내역';
+          return {
+            id: doc.id,
+            amount: data.amount || 0,
+            description: desc === 'undefined' ? '거래 내역' : desc,
+            timestamp: data.timestamp,
+            type: data.type,
+            couponAmount: data.couponAmount || 0,
+            source: 'activity_logs'
+          };
+        })
+        .filter(tx => tx.amount !== 0 || tx.couponAmount !== 0);
 
-      // 🔥 거래 내역 로드 - activity_logs + transactions 컬렉션 모두 조회
-      let activityData = [];
-      let transactionsData = [];
+      const transactionsData = (transactionsSnap.docs || [])
+        .map(doc => {
+          const data = doc.data();
+          const desc = data.description || '거래 내역';
+          return {
+            id: doc.id,
+            amount: data.amount || 0,
+            description: (!desc || desc === 'undefined') ? '거래 내역' : desc,
+            timestamp: data.timestamp || data.createdAt,
+            type: data.type || 'transaction',
+            source: 'transactions'
+          };
+        })
+        .filter(tx => tx.amount !== 0);
 
-      // 1. activity_logs 컬렉션에서 활동 가져오기 (인덱스 불필요 - 클라이언트 정렬)
-      try {
-        const activityLogsRef = query(
-          collection(db, "activity_logs"),
-          where("classCode", "==", currentUserClassCode),
-          where("userId", "==", userId),
-          limit(50)
-        );
-        const activityLogsSnap = await getDocs(activityLogsRef);
-        activityData = activityLogsSnap.docs
-          .map(doc => {
-            const data = doc.data();
-            const desc = data.description || data.type || '거래 내역';
-            return {
-              id: doc.id,
-              amount: data.amount || 0,
-              description: desc === 'undefined' ? '거래 내역' : desc,
-              timestamp: data.timestamp,
-              type: data.type,
-              couponAmount: data.couponAmount || 0,
-              source: 'activity_logs'
-            };
-          })
-          // 현금 또는 쿠폰 변동이 있는 항목만 필터링
-          .filter(tx => tx.amount !== 0 || tx.couponAmount !== 0);
-      } catch (activityError) {
-        logger.log('[MyAssets] activity_logs 조회 실패:', activityError);
-      }
-
-      // 2. 기존 transactions 서브컬렉션에서도 조회 (하위 호환성)
-      try {
-        const transactionsRef = query(
-          collection(db, "users", userId, "transactions"),
-          limit(50)
-        );
-        const transactionsSnap = await getDocs(transactionsRef);
-        transactionsData = transactionsSnap.docs
-          .map(doc => {
-            const data = doc.data();
-            const desc = data.description || '거래 내역';
-            return {
-              id: doc.id,
-              amount: data.amount || 0,
-              description: (!desc || desc === 'undefined') ? '거래 내역' : desc,
-              timestamp: data.timestamp || data.createdAt,
-              type: data.type || 'transaction',
-              source: 'transactions'
-            };
-          })
-          .filter(tx => tx.amount !== 0);
-      } catch (transactionsError) {
-        logger.log('[MyAssets] transactions 조회 실패:', transactionsError);
-      }
-
-      // 두 소스 합치기 (중복 제거는 ID 기반)
       const allTransactions = [...activityData, ...transactionsData];
-
-      // timestamp 기준으로 정렬
       allTransactions.sort((a, b) => {
         const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp?.seconds * 1000 || 0);
         const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp?.seconds * 1000 || 0);
         return dateB - dateA;
       });
+      const recentTransactions = allTransactions.slice(0, 20);
+      setTransactionHistory(recentTransactions);
 
-      // 최근 20개만 유지
-      setTransactionHistory(allTransactions.slice(0, 20));
+      // 🔥 [최적화] 결과를 localStorage에 캐시 (다음 로드시 즉시 표시)
+      setCachedFirestoreData('myAssets', {
+        parkingBalance: totalParkingBalance,
+        deposits: depositsData,
+        savings: savingsData,
+        loans: loansData,
+        realEstateAssets: allRealEstateAssets,
+        transactionHistory: recentTransactions.map(tx => ({
+          ...tx,
+          timestamp: tx.timestamp?.toDate ? tx.timestamp.toDate().toISOString() : tx.timestamp?.seconds ? new Date(tx.timestamp.seconds * 1000).toISOString() : null,
+        })),
+      });
 
     } catch (fallbackError) {
       logger.error('[MyAssets] 🚨 클라이언트 측 직접 조회 실패:', fallbackError);

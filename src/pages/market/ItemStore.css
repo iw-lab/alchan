@@ -89,7 +89,7 @@ body {
   border-radius: var(--border-radius-base);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid rgba(0, 255, 242, 0.15) !important;
+  border: 2.5px solid rgba(0, 255, 242, 0.5) !important;
   display: flex;
   flex-direction: column;
   position: relative;

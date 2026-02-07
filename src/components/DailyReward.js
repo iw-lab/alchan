@@ -117,19 +117,24 @@ export function claimDailyReward(userId) {
 /**
  * 일일 보상 배너 컴포넌트
  */
-export function DailyRewardBanner({ userId, onClaim }) {
+export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
   const [streakInfo, setStreakInfo] = useState(null);
   const [claimed, setClaimed] = useState(false);
   const [rewardResult, setRewardResult] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     if (userId) {
       const info = getStreakInfo(userId);
       setStreakInfo(info);
       setIsVisible(info.canClaim);
+      // PC에서 자동 팝업 표시
+      if (autoPopup && info.canClaim) {
+        setShowPopup(true);
+      }
     }
-  }, [userId]);
+  }, [userId, autoPopup]);
 
   const handleClaim = () => {
     const result = claimDailyReward(userId);
@@ -151,6 +156,49 @@ export function DailyRewardBanner({ userId, onClaim }) {
   const nextDay = streakInfo.streak + 1;
   const nextReward = getRewardForDay(nextDay);
   const isBigReward = nextDay >= 10;
+
+  // 팝업 모드 (PC 자동 팝업)
+  if (showPopup && !claimed) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
+        <div className="rounded-3xl p-8 max-w-md w-[90%] relative animate-slide-up" onClick={(e) => e.stopPropagation()}
+          style={{
+            background: isBigReward
+              ? "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)"
+              : "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            border: "2px solid rgba(255,255,255,0.3)",
+          }}
+        >
+          <button onClick={() => setShowPopup(false)} className="absolute top-3 right-3 text-white/60 hover:text-white text-2xl bg-transparent border-none cursor-pointer">✕</button>
+          <div className="text-center mb-6">
+            <div className="text-6xl mb-4">{isBigReward ? "🏆" : "🎁"}</div>
+            <div className="text-white text-2xl font-bold mb-2">{nextDay}일차 출석 보상</div>
+            {streakInfo.streakBroken && (
+              <div className="px-4 py-2 rounded-xl mb-3 text-sm" style={{ background: "rgba(0,0,0,0.2)", color: "rgba(255,255,255,0.9)" }}>
+                😢 연속 출석이 끊어졌어요. 다시 1일차부터!
+              </div>
+            )}
+            <div className="text-4xl font-extrabold text-white mt-3">+{nextReward.toLocaleString()}원</div>
+          </div>
+          <button
+            onClick={() => { handleClaim(); setShowPopup(false); }}
+            className="w-full py-4 rounded-2xl text-xl font-bold cursor-pointer border-none transition-all hover:scale-105"
+            style={{ background: "rgba(255,255,255,0.95)", color: isBigReward ? "#ea580c" : "#6366f1", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}
+          >
+            받기! 🎉
+          </button>
+          <div className="flex justify-between gap-1 mt-5">
+            {STREAK_REWARDS.map((day, idx) => (
+              <div key={day.day} className="flex-1">
+                <div className="w-full h-2 rounded" style={{ background: idx < streakInfo.streak ? "rgba(255,255,255,0.9)" : idx === streakInfo.streak ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)" }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

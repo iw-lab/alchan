@@ -800,9 +800,6 @@ const MyItems = () => {
                           >
                             {isSyncing ? '동기화 중' : '선물하기'}
                           </button>
-                          <button className="sell-to-market-button" onClick={() => {
-                            handleOpenSellToMarketModal(group);
-                          }} disabled={isSyncing}>시장에 팔기</button>
                         </div>
                       </div>
                     </div>

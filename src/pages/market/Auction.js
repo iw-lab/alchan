@@ -264,6 +264,29 @@ export default function Auction() {
           logger.log(`[Auction] 정산할 경매 ${auctionsToSettle.length}개 발견.`);
           auctionsToSettle.forEach((auction) => settleAuction(auction));
         }
+
+        // --- 3일 이상 지난 완료/오류 경매 자동 삭제 ---
+        const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+        const oldCompletedAuctions = auctionsData.filter(
+          (a) => (a.status === "completed" || a.status === "error") &&
+                 a.endTime && (now.getTime() - a.endTime.getTime() > THREE_DAYS_MS)
+        );
+
+        if (oldCompletedAuctions.length > 0) {
+          logger.log(`[Auction] ${oldCompletedAuctions.length}개 오래된 완료 경매 자동 삭제`);
+          const auctionsRef2 = collection(db, "classes", classCode, "auctions");
+          for (const auction of oldCompletedAuctions) {
+            try {
+              await deleteDoc(doc(auctionsRef2, auction.id));
+            } catch (err) {
+              logger.error(`[Auction] 자동 삭제 실패 ${auction.id}:`, err);
+            }
+          }
+          // 삭제 후 목록 업데이트
+          setAuctions(prev => prev.filter(a =>
+            !oldCompletedAuctions.some(old => old.id === a.id)
+          ));
+        }
       } catch (error) {
         logger.error("[Auction] 경매 데이터 로드 오류:", error);
         showNotification("경매 데이터를 불러오는 중 오류가 발생했습니다.", "error");

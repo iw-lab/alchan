@@ -1585,7 +1585,7 @@ function Dashboard({ adminTabMode }) {
           </div>
           {isAdmin?.() && viewMode === "list" && !showAdminSettingsModal && (
             <div className="flex flex-wrap gap-1.5">
-              <ActionButton variant="primary" icon={Settings} onClick={() => handleOpenAdminSettings("generalSettings")} size="sm">관리자 기능</ActionButton>
+              <ActionButton variant="primary" icon={Settings} onClick={() => handleOpenAdminSettings("generalSettings")} size="sm" className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm">⚙️ 관리자 기능</ActionButton>
               <ActionButton variant="success" icon={RefreshCw} onClick={handleForceRefresh} size="sm">새로고침</ActionButton>
               <ActionButton variant="danger" icon={RotateCcw} onClick={handleManualTaskReset} size="sm" title="이 클래스의 모든 사용자 할일을 리셋합니다">할일 리셋</ActionButton>
             </div>
