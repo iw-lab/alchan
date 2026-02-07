@@ -5,12 +5,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  X, ChevronRight, ChevronDown,
+  X, ChevronDown,
   Wallet, Target, Gamepad2, Package, TrendingUp,
   Landmark, FileText, Crown, ShoppingBag, Building2, Music,
-  Settings, Users, Banknote, Scale, Shield, Sparkles, LogOut,
-  Boxes, Store, RefreshCw, Hammer, BarChart3, BookOpen, Keyboard, Circle,
-  Briefcase, ListTodo, LayoutDashboard
+  Settings, Users, Banknote, Scale, Shield, LogOut,
+  Boxes, Store, Hammer, BarChart3, BookOpen, Keyboard, Circle,
+  LayoutDashboard
 } from 'lucide-react';
 
 // ============================================
@@ -87,26 +87,12 @@ export const ALCHAN_MENU_ITEMS = [
   { id: 'learningBoard', label: '학습 게시판', icon: BookOpen, path: '/learning-board', parentId: 'boardCategory' },
   { id: 'musicRequest', label: '음악 신청', icon: Music, path: '/learning-board/music-request', parentId: 'boardCategory' },
 
-  // Admin Category - 관리자 (그룹별로 정리)
+  // Admin Category - 관리자
   { id: 'adminCategory', label: '알찬 관리자', icon: Settings, isCategory: true, category: 'admin', adminOnly: true },
-
-  // 👥 학생/구성원 관리 그룹
-  { id: 'adminUserGroup', label: '👥 학생/구성원', icon: Users, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
+  { id: 'adminSettings', label: '관리자 설정', icon: Settings, path: '/admin/app-settings', parentId: 'adminCategory', adminOnly: true },
   { id: 'studentManagement', label: '학생 목록', icon: Users, path: '/admin/students', parentId: 'adminCategory', adminOnly: true },
-  { id: 'classMemberManagement', label: '학급 구성원', icon: Users, path: '/admin/class-members', parentId: 'adminCategory', adminOnly: true },
-
-  // 💰 자산 관리 그룹
-  { id: 'adminAssetGroup', label: '💰 자산 관리', icon: Banknote, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
   { id: 'moneyTransfer', label: '돈 보내기/가져오기', icon: Banknote, path: '/admin/money-transfer', parentId: 'adminCategory', adminOnly: true },
   { id: 'couponTransfer', label: '쿠폰 보내기/가져오기', icon: Target, path: '/admin/coupon-transfer', parentId: 'adminCategory', adminOnly: true },
-
-  // ⚙️ 학급 설정 그룹
-  { id: 'adminSettingsGroup', label: '⚙️ 학급 설정', icon: Settings, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
-  { id: 'adminAppSettings', label: '일반 설정', icon: Target, path: '/admin/app-settings', parentId: 'adminCategory', adminOnly: true },
-  { id: 'jobManagement', label: '직업/할일', icon: Briefcase, path: '/admin/job-settings', parentId: 'adminCategory', adminOnly: true },
-
-  // 🔧 시스템 그룹
-  { id: 'adminSystemGroup', label: '🔧 시스템', icon: Settings, isSubGroup: true, parentId: 'adminCategory', adminOnly: true },
   { id: 'activityLog', label: '데이터베이스', icon: FileText, path: '/admin/activity-log', parentId: 'adminCategory', adminOnly: true },
 
   // 🔥 SuperAdmin Category - 앱 관리자 전용 (isSuperAdmin만 접근 가능)

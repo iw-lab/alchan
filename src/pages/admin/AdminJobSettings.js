@@ -162,7 +162,7 @@ const Header = ({ toggleSidebar, user, logout, isAdmin }) => {
 
   // 관리자 패널 열기
   const handleAdminPanelClick = () => {
-    navigate("/admin-panel"); // AdminPanel 경로로 이동
+    navigate("/admin/app-settings"); // 관리자 설정 모달로 이동
     setShowUserMenu(false); // 메뉴 닫기
   };
 

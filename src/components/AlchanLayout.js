@@ -39,8 +39,6 @@ const TypingPracticeGame = lazy(() => import('../pages/games/TypingPracticeGame'
 
 // 🔥 관리자/선생님 페이지 - 동적 로딩
 const AdminItemPage = lazy(() => import('../pages/admin/AdminItemPage'));
-const AdminPage = lazy(() => import('../pages/admin/AdminPage'));
-const AdminPanel = lazy(() => import('../pages/admin/AdminPanel'));
 const AdminDatabase = lazy(() => import('../pages/admin/AdminDatabase'));
 const FirestoreDoctor = lazy(() => import('../pages/admin/FirestoreDoctor'));
 const RecoverDonations = lazy(() => import('../pages/admin/RecoverDonations'));
@@ -342,17 +340,12 @@ export default function AlchanLayout() {
 
             {/* 관리자 페이지 */}
             <Route path="/admin/app-settings" element={<AdminRoute><Dashboard adminTabMode="generalSettings" /></AdminRoute>} />
-            <Route path="/admin/task-management" element={<AdminRoute><Dashboard adminTabMode="taskManagement" /></AdminRoute>} />
             <Route path="/admin/job-settings" element={<AdminRoute><Dashboard adminTabMode="jobSettings" /></AdminRoute>} />
-            <Route path="/admin/salary-settings" element={<AdminRoute><Dashboard adminTabMode="salarySettings" /></AdminRoute>} />
             <Route path="/admin/class-members" element={<AdminRoute><Dashboard adminTabMode="memberManagement" /></AdminRoute>} />
-            <Route path="/admin/app-management" element={<AdminRoute><Dashboard adminTabMode="appManagement" /></AdminRoute>} />
             <Route path="/admin/coupon-transfer" element={<AdminRoute><CouponTransfer /></AdminRoute>} />
             <Route path="/admin/money-transfer" element={<AdminRoute><MoneyTransfer /></AdminRoute>} />
             <Route path="/admin/activity-log" element={<AdminRoute><AdminDatabase /></AdminRoute>} />
             <Route path="/admin/items" element={<AdminRoute><AdminItemPage /></AdminRoute>} />
-            <Route path="/admin/page" element={<AdminRoute><AdminPage /></AdminRoute>} />
-            <Route path="/admin-panel" element={<AdminRoute><AdminPanel onClose={() => navigate(-1)} classCode={userClassCode} /></AdminRoute>} />
             <Route path="/admin/students" element={<TeacherRoute><StudentManager /></TeacherRoute>} />
 
             {/* 🔥 앱 관리자(SuperAdmin) 전용 */}
