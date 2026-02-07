@@ -1065,8 +1065,8 @@ export default function Auction() {
         /* --- Global & Layout - Dark Theme --- */
         .auction-container {
           font-family: "Rajdhani", "Noto Sans KR", sans-serif;
-          max-width: 1200px;
-          margin: 0 auto;
+          max-width: none;
+          margin: 0;
           padding: 15px;
           color: #e2e8f0;
           background-color: transparent;

@@ -43,7 +43,7 @@ const cls = {
       ? 'text-red-400 bg-red-500/10 border border-red-500/30'
       : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
   }`,
-  grid: "grid gap-7 max-w-[1200px] mx-auto",
+  grid: "grid gap-7 w-full",
   card: "bg-[rgba(20,20,35,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
   cardHeader: "flex items-center gap-4 mb-6 pb-5 border-b-2 border-white/5",
   cardTitle: "text-[26px] font-bold text-white tracking-tight drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]",
