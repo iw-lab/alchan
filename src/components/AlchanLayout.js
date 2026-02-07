@@ -70,7 +70,6 @@ const FULLSCREEN_PAGES = [
   '/learning-games/omok',
   '/learning-games/science',
   '/learning-games/typing',
-  '/auction',
   '/court',
   '/national-assembly',
   '/music-room',

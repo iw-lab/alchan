@@ -1,7 +1,6 @@
 // src/Banking.js - Tailwind UI 리팩토링
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import ParkingAccount from "./ParkingAccount";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
 import { collection, query, where, getDocs, collectionGroup, doc, deleteDoc } from "firebase/firestore";
@@ -11,9 +10,8 @@ import {
   PageHeader,
   SectionTitle,
   LoadingState,
-  ActionButton,
 } from "../../components/PageWrapper";
-import { Landmark, ChevronLeft, Save, Plus, Trash2 } from "lucide-react";
+import { Landmark, ChevronLeft } from "lucide-react";
 import { AlchanLoading } from "../../components/AlchanLayout";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
@@ -43,7 +41,6 @@ import { logger } from "../../utils/logger";
 
 const Banking = () => {
   const auth = useAuth();
-  const navigate = useNavigate();
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
   const [activeView, setActiveView] = useState("parking");
@@ -456,15 +453,6 @@ const Banking = () => {
           title="통합 금융 관리"
           subtitle="예금, 적금, 대출 상품을 관리하세요"
           icon={Landmark}
-          backButton={
-            <ActionButton
-              variant="ghost"
-              icon={ChevronLeft}
-              onClick={() => navigate(-1)}
-            >
-              뒤로가기
-            </ActionButton>
-          }
         />
 
         {/* 메시지 표시 */}
@@ -498,6 +486,15 @@ const Banking = () => {
             auth.user &&
             (auth.userDoc?.isAdmin || auth.userDoc?.role === "admin") && (
               <div>
+                <div className="flex items-center gap-4 mb-4">
+                  <button
+                    onClick={() => setActiveView("parking")}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+                  >
+                    <ChevronLeft size={16} />
+                    은행으로 돌아가기
+                  </button>
+                </div>
                 <h2 className="admin-header">
                   관리자 - 금융 상품 관리 (일 복리 기준)
                 </h2>
