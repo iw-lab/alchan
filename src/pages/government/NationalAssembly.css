@@ -57,6 +57,65 @@
   text-shadow: 0 0 5px rgba(0, 136, 255, 0.3);
 }
 
+/* 투표 미참여 알림 배너 */
+.vote-reminder-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 170, 0, 0.1);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.vote-reminder-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.vote-reminder-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+}
+
+.vote-reminder-content strong {
+  color: #fbbf24;
+}
+
+.vote-reminder-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 8px;
+  color: #0a0a12;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.vote-reminder-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+@media (max-width: 600px) {
+  .vote-reminder-banner {
+    flex-wrap: wrap;
+  }
+
+  .vote-reminder-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 .content-actions {
   display: flex;
   justify-content: flex-end;

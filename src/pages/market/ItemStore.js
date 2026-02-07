@@ -290,9 +290,9 @@ const ItemStore = () => {
               if (showAdminPanel) setEditingItem(null);
             }}
             className="admin-icon-button"
-            title={showAdminPanel ? "상점 보기" : "관리자 기능"}
+            title={showAdminPanel ? "상점 보기" : "아이템 상점 설정"}
           >
-            {showAdminPanel && canOpenAdminPanel ? "🛒" : "⚙️"}
+            {showAdminPanel && canOpenAdminPanel ? "🛒 상점 보기" : "⚙️ 아이템 상점 설정"}
           </button>
         )}
       </div>

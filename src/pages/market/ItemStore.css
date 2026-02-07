@@ -45,7 +45,7 @@ body {
 }
 
 .page-container {
-  padding: 20px;
+  padding: 12px 20px;
   max-width: 100%;
   margin: 0;
   background-color: #0a0a12 !important;
@@ -56,14 +56,40 @@ body {
   min-height: 100vh;
 }
 
-/* ... headers ... */
+/* --- 헤더 --- */
+.page-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.admin-icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  color: #a5b4fc;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.admin-icon-button:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.5);
+}
 
 /* --- 콘텐츠 카드 --- */
 .content-card-section {
   background-color: rgba(20, 20, 35, 0.8) !important;
   border-radius: var(--border-radius-large);
   padding: 16px;
-  margin-bottom: 25px;
+  margin-bottom: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
   border: 1px solid rgba(0, 255, 242, 0.2);
   overflow: hidden;
@@ -676,9 +702,9 @@ body {
   }
 
   .page-header-container {
-    align-items: center;
-    padding-right: 50px;
-    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 0.5rem;
   }
 
   .page-title {
@@ -811,7 +837,7 @@ body {
   }
 
   .page-header-container {
-    padding-right: 45px;
+    gap: 6px;
   }
 
   .page-title {
@@ -819,9 +845,8 @@ body {
   }
 
   .admin-icon-button {
-    width: 35px;
-    height: 35px;
-    font-size: 1.1rem;
+    font-size: 0.8rem;
+    padding: 5px 10px;
   }
 }
 

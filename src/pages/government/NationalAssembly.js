@@ -683,6 +683,39 @@ const NationalAssembly = () => {
     return result;
   }, [laws, optimisticDeletedLaws, optimisticEditedLaws, optimisticNewLaws]);
 
+  // 투표 미참여 법안 알림 시스템
+  const unvotedPendingLaws = useMemo(() => {
+    if (!currentUser?.id || isAdmin()) return [];
+    return (displayLaws || []).filter(law => {
+      if (law.status !== "pending") return false;
+      // 이미 투표했는지 확인 (낙관적 + 서버 + voters 필드)
+      if (optimisticUserVotes[law.id]) return false;
+      if (userVotes && userVotes[law.id]) return false;
+      if (law.voters && law.voters[currentUser.id]) return false;
+      return true;
+    });
+  }, [displayLaws, currentUser?.id, isAdmin, optimisticUserVotes, userVotes]);
+
+  // 하루에 한번 투표 미참여 알림
+  useEffect(() => {
+    if (unvotedPendingLaws.length === 0 || !currentUser?.id) return;
+
+    const storageKey = `alchan-vote-reminder-${currentUser.id}`;
+    const today = new Date().toDateString();
+    const lastReminder = localStorage.getItem(storageKey);
+
+    if (lastReminder === today) return;
+
+    // 오늘 처음 방문 시 알림 표시
+    localStorage.setItem(storageKey, today);
+    const lawTitles = unvotedPendingLaws.map(l => `• ${l.title}`).join('\n');
+    setTimeout(() => {
+      alert(
+        `📢 투표 참여 안내\n\n아직 투표하지 않은 법안이 ${unvotedPendingLaws.length}건 있습니다:\n\n${lawTitles}\n\n법안 심의에 참여해주세요!`
+      );
+    }, 500);
+  }, [unvotedPendingLaws, currentUser?.id]);
+
   const approvedLaws = displayLaws.filter(
     (law) =>
       law.status === "veto_overridden" ||
@@ -867,6 +900,23 @@ const NationalAssembly = () => {
           )}
         </div>
       </div>
+
+      {/* 투표 미참여 법안 알림 배너 */}
+      {unvotedPendingLaws.length > 0 && !isAdmin() && (
+        <div className="vote-reminder-banner">
+          <span className="vote-reminder-icon">📢</span>
+          <div className="vote-reminder-content">
+            <strong>투표 참여 안내</strong>
+            <span>아직 투표하지 않은 심의중 법안이 <strong>{unvotedPendingLaws.length}건</strong> 있습니다. 찬반 투표에 참여해주세요!</span>
+          </div>
+          <button
+            className="vote-reminder-btn"
+            onClick={() => setActiveTab("propose")}
+          >
+            투표하러 가기
+          </button>
+        </div>
+      )}
 
       <div className="assembly-content">
         {activeTab === "propose" && (
