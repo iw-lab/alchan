@@ -2,11 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  db, // db는 firebase.js에서 가져옵니다.
-} from "../../firebase";
-
-// Firestore v9 모듈식 API에서 필요한 함수들을 직접 가져옵니다.
+import { db } from "../../firebase";
 import {
   collection,
   doc,
@@ -25,61 +21,47 @@ import {
   arrayRemove,
   writeBatch,
   setDoc,
-  runTransaction, // runTransaction 임포트 추가
+  runTransaction,
 } from "firebase/firestore";
-
 import { usePolling } from "../../hooks/usePolling";
-
 import { logger } from "../../utils/logger";
-// formatDate 함수 (컴포넌트 외부에 정의하거나 유틸리티 파일로 분리 가능)
+
 const formatDate = (isoString) => {
-  if (!isoString) return "날짜 정보 없음";
+  if (!isoString) return "";
   try {
     const date = new Date(isoString);
     return date.toLocaleString("ko-KR", {
       year: "numeric",
-      month: "long",
-      day: "numeric",
+      month: "2-digit",
+      day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     });
   } catch (error) {
-    logger.error("Error formatting date:", error);
-    return "날짜 형식 오류";
+    return "";
   }
 };
 
 const calculateCouponChange = (postData, interactionType, userId) => {
   const { likes = 0, dislikes = 0, likedBy = [], dislikedBy = [] } = postData;
-
   const userHasLiked = likedBy.includes(userId);
   const userHasDisliked = dislikedBy.includes(userId);
-
   let oldEffectiveLikes, newEffectiveLikes;
 
   if (interactionType === 'like') {
     if (userHasLiked) return 0;
     oldEffectiveLikes = likes - dislikes;
-    if (userHasDisliked) {
-      newEffectiveLikes = (likes + 1) - (dislikes - 1);
-    } else {
-      newEffectiveLikes = (likes + 1) - dislikes;
-    }
+    newEffectiveLikes = userHasDisliked ? (likes + 1) - (dislikes - 1) : (likes + 1) - dislikes;
   } else if (interactionType === 'dislike') {
     if (userHasDisliked) return 0;
     oldEffectiveLikes = likes - dislikes;
-    if (userHasLiked) {
-      newEffectiveLikes = (likes - 1) - (dislikes + 1);
-    } else {
-      newEffectiveLikes = likes - (dislikes + 1);
-    }
+    newEffectiveLikes = userHasLiked ? (likes - 1) - (dislikes + 1) : likes - (dislikes + 1);
   } else {
     return 0;
   }
 
   const prevThreshold = Math.max(0, Math.floor(oldEffectiveLikes / 3));
   const currThreshold = Math.max(0, Math.floor(newEffectiveLikes / 3));
-
   return currThreshold - prevThreshold;
 };
 
@@ -95,234 +77,95 @@ const LearningBoard = () => {
   const classCode = currentUser?.classCode;
 
   const [selectedBoard, setSelectedBoard] = useState(null);
-
+  const [selectedPost, setSelectedPost] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
-  const [showBoardSelection, setShowBoardSelection] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", content: "" });
   const [customCouponAmount, setCustomCouponAmount] = useState(0);
   const [newBoardName, setNewBoardName] = useState("");
-
-  // 관리자 패널 초기값을 명시적으로 false로 설정
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-
   const [showHiddenBoardsView, setShowHiddenBoardsView] = useState(false);
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [editingBoardName, setEditingBoardName] = useState("");
-  const [isFullScreenMode, setIsFullScreenMode] = useState(false);
 
-    // boardsCollectionRef 정의
-    const boardsCollectionRef = useMemo(() => {
-      if (classCode) {
-        return collection(db, "classes", classCode, "learningBoards");
-      }
-      return null;
-    }, [classCode]);
-  
-    const boardsQueryFn = useCallback(async () => {
-      if (!classCode) {
-        return [];
-      }
-      const boardsPathRef = collection(
-        db,
-        "classes",
-        classCode,
-        "learningBoards"
-      );
-      // 🔥 [최적화] limit 추가 - 최대 100개 게시판만 조회
-      const q = query(boardsPathRef, orderBy("name"), limit(100));
-      const snapshot = await getDocs(q);
-      const loadedBoards = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        isHidden:
-          typeof doc.data().isHidden === "boolean"
-            ? doc.data().isHidden
-            : false,
-      }));
-      return loadedBoards;
-    }, [classCode]);
-  
-    // 게시판 목록 로드 - usePolling으로 변환
-    const {
-      data: boards = [],
-      loading: boardsLoading,
-      refetch: refetchBoards,
-    } = usePolling(boardsQueryFn, {
-      interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (게시판 목록은 거의 안 바뀜)
-      enabled: !!classCode,
-      deps: [classCode],
-    });
-  
-    const postsQueryFn = useCallback(async () => {
-      if (!selectedBoard || !classCode) {
-        return [];
-      }
-      const postsCollectionRef = collection(
-        db,
-        "classes",
-        classCode,
-        "learningBoards",
-        selectedBoard.id,
-        "posts"
-      );
-      // 🔥 [최적화] limit 추가 - 최신 게시글 100개만 조회
-      const q = query(postsCollectionRef, orderBy("timestamp", "desc"), limit(100));
-      const snapshot = await getDocs(q);
-      const loadedPosts = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        adminCouponGiven:
-          typeof doc.data().adminCouponGiven === "boolean"
-            ? doc.data().adminCouponGiven
-            : false,
-        coupons: Number(doc.data().coupons) || 0,
-        likes: Number(doc.data().likes) || 0,
-        dislikes: Number(doc.data().dislikes) || 0,
-        likedBy: Array.isArray(doc.data().likedBy) ? doc.data().likedBy : [],
-        dislikedBy: Array.isArray(doc.data().dislikedBy)
-          ? doc.data().dislikedBy
-          : [],
-        timestamp: doc.data().timestamp?.toDate
-          ? doc.data().timestamp.toDate().toISOString()
-          : new Date().toISOString(),
-      }));
-      return loadedPosts;
-    }, [selectedBoard, classCode]);
-  
-    // 선택된 게시판의 게시글 로드 - usePolling으로 변환
-    const {
-      data: selectedBoardPosts = [],
-      loading: postsLoading,
-      refetch: refetchPosts,
-    } = usePolling(postsQueryFn, {
-      interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (게시글은 적당한 실시간성 유지)
-      enabled: !!selectedBoard && !!classCode,
-      deps: [selectedBoard?.id, classCode],
-    });
-  // 🔥 [수정] useMemo는 조기 return 전에 호출되어야 함 (Hooks 규칙)
+  const boardsCollectionRef = useMemo(() => {
+    if (classCode) return collection(db, "classes", classCode, "learningBoards");
+    return null;
+  }, [classCode]);
+
+  const boardsQueryFn = useCallback(async () => {
+    if (!classCode) return [];
+    const ref = collection(db, "classes", classCode, "learningBoards");
+    const q = query(ref, orderBy("name"), limit(100));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      isHidden: typeof doc.data().isHidden === "boolean" ? doc.data().isHidden : false,
+    }));
+  }, [classCode]);
+
+  const { data: rawBoards, loading: boardsLoading, refetch: refetchBoards } = usePolling(boardsQueryFn, {
+    interval: 30 * 60 * 1000,
+    enabled: !!classCode,
+    deps: [classCode],
+  });
+
+  // usePolling의 data 초기값이 null이므로 항상 배열로 보장
+  const boards = rawBoards || [];
+
+  const postsQueryFn = useCallback(async () => {
+    if (!selectedBoard || !classCode) return [];
+    const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
+    const q = query(ref, orderBy("timestamp", "desc"), limit(100));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      adminCouponGiven: typeof doc.data().adminCouponGiven === "boolean" ? doc.data().adminCouponGiven : false,
+      coupons: Number(doc.data().coupons) || 0,
+      likes: Number(doc.data().likes) || 0,
+      dislikes: Number(doc.data().dislikes) || 0,
+      likedBy: Array.isArray(doc.data().likedBy) ? doc.data().likedBy : [],
+      dislikedBy: Array.isArray(doc.data().dislikedBy) ? doc.data().dislikedBy : [],
+      timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate().toISOString() : new Date().toISOString(),
+    }));
+  }, [selectedBoard, classCode]);
+
+  const { data: rawPosts, loading: postsLoading, refetch: refetchPosts } = usePolling(postsQueryFn, {
+    interval: 10 * 60 * 1000,
+    enabled: !!selectedBoard && !!classCode,
+    deps: [selectedBoard?.id, classCode],
+  });
+
+  // usePolling의 data 초기값이 null이므로 항상 배열로 보장
+  const selectedBoardPosts = rawPosts || [];
+
   const currentUserIsAdmin = useMemo(() => isAdmin && isAdmin(), [isAdmin]);
 
-  // 전체 화면 모드 관리 useEffect 수정 - 관리자 패널 자동 열림 방지
-  useEffect(() => {
-    const isViewingOrWriting = selectedBoard && !showBoardSelection;
-    const isAdminView = showAdminPanel || showHiddenBoardsView;
-    setIsFullScreenMode(isViewingOrWriting || isAdminView);
-  }, [selectedBoard, showBoardSelection, showAdminPanel, showHiddenBoardsView]);
+  // Loading / guard screens
+  if (authLoading) return <div className="lb-msg">사용자 정보 로딩 중...</div>;
+  if (!currentUser) return <div className="lb-msg">게시판을 이용하려면 로그인이 필요합니다.</div>;
+  if (!classCode && !currentUserIsAdmin) return <div className="lb-msg">학급 코드가 설정되어야 합니다.</div>;
+  if (classCode && boardsLoading) return <div className="lb-msg">게시판 목록 로딩 중...</div>;
+  if (currentUserIsAdmin && !classCode) return <div className="lb-msg">학급 코드를 설정해주세요.</div>;
 
-  if (authLoading) {
-    return (
-      <div className="info-message">학습 게시판 사용자 정보 로딩 중...</div>
-    );
-  }
-  if (!currentUser) {
-    return (
-      <div className="info-message">
-        게시판을 이용하려면 로그인이 필요합니다.
-      </div>
-    );
-  }
-
-  if (!classCode && !currentUserIsAdmin) {
-    return (
-      <div className="info-message">
-        게시판을 이용하려면 학급 코드가 설정되어야 합니다.
-      </div>
-    );
-  }
-
-  if (classCode && boardsLoading) {
-    return (
-      <div className="info-message">
-        게시판 목록 로딩 중... (학급: {classCode})
-      </div>
-    );
-  }
-
-  if (selectedBoard && postsLoading) {
-    return (
-      <div className="info-message">
-        '{selectedBoard.name}' 게시글 로딩 중... (학급: {classCode})
-      </div>
-    );
-  }
-
-  if (currentUserIsAdmin && !classCode) {
-    return (
-      <div className="info-message">
-        관리자님, 현재 학급 코드가 설정되지 않아 게시판 내용을 볼 수 없습니다.
-        프로필에서 학급 코드를 설정해주세요.
-      </div>
-    );
-  }
-
+  // Board selection handler
   const handleBoardSelect = (boardId, fromHiddenView = false) => {
     const board = boards.find((b) => b.id === boardId);
-    const adminAccess =
-      currentUserIsAdmin && typeof currentUserIsAdmin === "boolean"
-        ? currentUserIsAdmin
-        : false;
-    if (board && (fromHiddenView || !board.isHidden || adminAccess)) {
+    if (board && (fromHiddenView || !board.isHidden || currentUserIsAdmin)) {
       setSelectedBoard(board);
-      setShowBoardSelection(false);
-      if (!fromHiddenView) {
-        setShowHiddenBoardsView(false);
-      }
-    } else if (board && board.isHidden && !adminAccess && !fromHiddenView) {
-      alert("이 게시판은 현재 접근할 수 없습니다.");
-      setSelectedBoard(null);
-    } else {
-      setSelectedBoard(null);
-    }
-  };
-
-  const handleWriteClick = () => {
-    if (!classCode && !currentUserIsAdmin) {
-      alert("글을 작성할 학급이 설정되지 않았습니다.");
-      return;
-    }
-    setIsWriting(true);
-    setShowBoardSelection(true);
-    setSelectedBoard(null);
-    setShowHiddenBoardsView(false);
-  };
-
-  const handleViewClick = () => {
-    if (!classCode && !currentUserIsAdmin) {
-      alert("글을 조회할 학급이 설정되지 않았습니다.");
-      return;
-    }
-    setIsWriting(false);
-    setShowBoardSelection(true);
-    setSelectedBoard(null);
-    setShowHiddenBoardsView(false);
-  };
-
-  // 관리자 패널 토글 함수 수정 - 명시적 제어
-  const toggleAdminPanel = () => {
-    if (!currentUserIsAdmin) return;
-    setShowAdminPanel((prev) => {
-      logger.log("[Debug] Admin panel toggle:", !prev);
-      return !prev;
-    });
-  };
-
-  const toggleHiddenBoardView = () => {
-    if (!currentUserIsAdmin) return;
-    const nextShowHiddenBoardsView = !showHiddenBoardsView;
-    setShowHiddenBoardsView(nextShowHiddenBoardsView);
-    if (nextShowHiddenBoardsView) {
-      setShowBoardSelection(false);
-      setSelectedBoard(null);
+      setSelectedPost(null);
       setIsWriting(false);
+      if (!fromHiddenView) setShowHiddenBoardsView(false);
+    } else if (board && board.isHidden && !currentUserIsAdmin && !fromHiddenView) {
+      alert("이 게시판은 현재 접근할 수 없습니다.");
     }
   };
 
+  // Post submit
   const handlePostSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedBoard || !classCode || !currentUserId) {
-      alert("글을 작성할 게시판을 선택하거나 로그인 정보를 확인해주세요.");
-      return;
-    }
+    if (!selectedBoard || !classCode || !currentUserId) return;
     if (selectedBoard.isHidden && !currentUserIsAdmin) {
       alert("숨겨진 게시판에는 글을 작성할 수 없습니다.");
       return;
@@ -331,68 +174,40 @@ const LearningBoard = () => {
       alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
-
-    const postData = {
-      title: newPost.title,
-      content: newPost.content,
-      author: currentUser?.name || currentUser?.nickname || "익명",
-      authorId: currentUserId,
-      likes: 0,
-      dislikes: 0,
-      likedBy: [],
-      dislikedBy: [],
-      coupons: 0,
-      timestamp: serverTimestamp(),
-      adminCouponGiven: false,
-      classCode: classCode,
-    };
-
     try {
-      const postsCollectionRef = collection(
-        db,
-        "classes",
+      const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
+      await addDoc(ref, {
+        title: newPost.title,
+        content: newPost.content,
+        author: currentUser?.name || currentUser?.nickname || "익명",
+        authorId: currentUserId,
+        likes: 0, dislikes: 0, likedBy: [], dislikedBy: [],
+        coupons: 0,
+        timestamp: serverTimestamp(),
+        adminCouponGiven: false,
         classCode,
-        "learningBoards",
-        selectedBoard.id,
-        "posts"
-      );
-      await addDoc(postsCollectionRef, postData);
+      });
       refetchPosts();
       setNewPost({ title: "", content: "" });
-      alert("게시글이 성공적으로 등록되었습니다!");
-      // 게시글 작성 후에도 현재 상태 유지 (글쓰기 모드와 선택된 게시판 유지)
+      setIsWriting(false);
+      alert("게시글이 등록되었습니다!");
     } catch (error) {
       logger.error("Error submitting post:", error);
-      alert(`게시글 제출 중 오류가 발생했습니다: ${error.message}`);
+      alert(`게시글 제출 오류: ${error.message}`);
     }
   };
 
-  const updatePostInteraction = async (
-    boardId,
-    postId,
-    updateType,
-    interactionValue = null
-  ) => {
+  // Post interactions (like, dislike, adminCoupon)
+  const updatePostInteraction = async (boardId, postId, updateType, interactionValue = null) => {
     if (!classCode || !currentUserId) return;
-    const postRef = doc(
-      db,
-      "classes",
-      classCode,
-      "learningBoards",
-      boardId,
-      "posts",
-      postId
-    );
-
+    const postRef = doc(db, "classes", classCode, "learningBoards", boardId, "posts", postId);
     try {
       await runTransaction(db, async (transaction) => {
         const postDoc = await transaction.get(postRef);
-        if (!postDoc.exists()) throw "게시글을 찾을 수 없습니다.";
-
+        if (!postDoc.exists()) throw new Error("게시글을 찾을 수 없습니다.");
         const postData = postDoc.data();
         const updates = {};
         let couponChange = 0;
-
         const userHasLiked = postData.likedBy?.includes(currentUserId);
         const userHasDisliked = postData.dislikedBy?.includes(currentUserId);
 
@@ -400,97 +215,52 @@ const LearningBoard = () => {
           if (userHasLiked) return;
           updates.likedBy = arrayUnion(currentUserId);
           updates.likes = increment(1);
-          if (userHasDisliked) {
-            updates.dislikedBy = arrayRemove(currentUserId);
-            updates.dislikes = increment(-1);
-          }
+          if (userHasDisliked) { updates.dislikedBy = arrayRemove(currentUserId); updates.dislikes = increment(-1); }
           couponChange = calculateCouponChange(postData, "like", currentUserId);
         } else if (updateType === "dislike") {
           if (userHasDisliked) return;
           updates.dislikedBy = arrayUnion(currentUserId);
           updates.dislikes = increment(1);
-          if (userHasLiked) {
-            updates.likedBy = arrayRemove(currentUserId);
-            updates.likes = increment(-1);
-          }
+          if (userHasLiked) { updates.likedBy = arrayRemove(currentUserId); updates.likes = increment(-1); }
           couponChange = calculateCouponChange(postData, "dislike", currentUserId);
-        } else if (
-          updateType === "adminCoupon" &&
-          currentUserIsAdmin &&
-          typeof interactionValue === "number" &&
-          interactionValue > 0
-        ) {
-          if (postData.adminCouponGiven) {
-            alert("이 게시글에는 이미 관리자 쿠폰이 지급되었습니다.");
-            return;
-          }
+        } else if (updateType === "adminCoupon" && currentUserIsAdmin && typeof interactionValue === "number" && interactionValue > 0) {
+          if (postData.adminCouponGiven) { alert("이미 관리자 쿠폰이 지급되었습니다."); return; }
           updates.adminCouponGiven = true;
           couponChange = interactionValue;
-        } else {
-          return;
-        }
+        } else { return; }
 
-        if (couponChange !== 0) {
-          updates.coupons = increment(couponChange);
-        }
-
+        if (couponChange !== 0) updates.coupons = increment(couponChange);
         updates.updatedAt = serverTimestamp();
         transaction.update(postRef, updates);
 
-        if (
-          couponChange !== 0 &&
-          postData.authorId &&
-          postData.authorId !== currentUserId &&
-          addCouponsToUser
-        ) {
+        if (couponChange !== 0 && postData.authorId && postData.authorId !== currentUserId && addCouponsToUser) {
           addCouponsToUser(postData.authorId, couponChange);
         }
       });
-
       refetchPosts();
-
       if (updateType === "adminCoupon" && currentUserIsAdmin) {
-        alert(
-          `게시글(ID: ${postId.slice(
-            -6
-          )})에 관리자 쿠폰 ${interactionValue}개가 지급 처리되었습니다.`
-        );
+        alert(`관리자 쿠폰 ${interactionValue}개가 지급되었습니다.`);
         setCustomCouponAmount(0);
       }
     } catch (error) {
       logger.error(`Error updating post ${updateType}:`, error);
-      alert(`게시글 ${updateType} 처리 중 오류: ${error.message}`);
+      alert(`처리 중 오류: ${error.message}`);
     }
   };
 
-  const handleLike = (boardId, postId) =>
-    updatePostInteraction(boardId, postId, "like");
-  const handleDislike = (boardId, postId) =>
-    updatePostInteraction(boardId, postId, "dislike");
-  const handleGiveCoupons = (boardId, postId, amount) =>
-    updatePostInteraction(boardId, postId, "adminCoupon", amount);
+  const handleLike = (boardId, postId) => updatePostInteraction(boardId, postId, "like");
+  const handleDislike = (boardId, postId) => updatePostInteraction(boardId, postId, "dislike");
+  const handleGiveCoupons = (boardId, postId, amount) => updatePostInteraction(boardId, postId, "adminCoupon", amount);
 
+  // Board CRUD
   const handleAddBoard = async (e) => {
     e.preventDefault();
-    // boardsCollectionRef가 null일 수 있으므로 유효성 검사 추가
-    if (!currentUserIsAdmin || !classCode || !boardsCollectionRef) {
-      alert(
-        "게시판을 추가할 수 있는 조건이 충족되지 않았습니다. (관리자, 학급코드, 게시판 참조 확인)"
-      );
-      return;
-    }
+    if (!currentUserIsAdmin || !classCode || !boardsCollectionRef) return;
     const trimmedName = newBoardName.trim();
     if (!trimmedName) return alert("게시판 이름을 입력해주세요.");
-    if (boards.some((board) => board.name === trimmedName))
-      return alert("이미 존재하는 게시판 이름입니다.");
+    if (boards.some((b) => b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
     try {
-      await addDoc(boardsCollectionRef, {
-        // 이제 boardsCollectionRef는 올바르게 참조됩니다.
-        name: trimmedName,
-        isHidden: false,
-        createdAt: serverTimestamp(),
-        classCode: classCode,
-      });
+      await addDoc(boardsCollectionRef, { name: trimmedName, isHidden: false, createdAt: serverTimestamp(), classCode });
       refetchBoards();
       setNewBoardName("");
     } catch (error) {
@@ -499,540 +269,345 @@ const LearningBoard = () => {
     }
   };
 
-  const handleStartEditBoard = (board) => {
-    setEditingBoardId(board.id);
-    setEditingBoardName(board.name);
-  };
-  const handleCancelEditBoard = () => {
-    setEditingBoardId(null);
-    setEditingBoardName("");
-  };
-  const handleUpdateBoardNameInput = (e) => {
-    setEditingBoardName(e.target.value);
-  };
+  const handleStartEditBoard = (board) => { setEditingBoardId(board.id); setEditingBoardName(board.name); };
+  const handleCancelEditBoard = () => { setEditingBoardId(null); setEditingBoardName(""); };
 
   const handleSaveEditBoard = async (e) => {
     e.preventDefault();
     if (!editingBoardId || !classCode || !currentUserIsAdmin) return;
     const trimmedName = editingBoardName.trim();
-    if (!trimmedName) return alert("게시판 이름은 비워둘 수 없습니다.");
-    if (
-      boards.some(
-        (board) => board.id !== editingBoardId && board.name === trimmedName
-      )
-    )
-      return alert("이미 존재하는 이름입니다.");
-    const boardRef = doc(
-      db,
-      "classes",
-      classCode,
-      "learningBoards",
-      editingBoardId
-    );
+    if (!trimmedName) return alert("이름을 입력해주세요.");
+    if (boards.some((b) => b.id !== editingBoardId && b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
     try {
-      await updateDoc(boardRef, {
-        name: trimmedName,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(doc(db, "classes", classCode, "learningBoards", editingBoardId), { name: trimmedName, updatedAt: serverTimestamp() });
       refetchBoards();
       handleCancelEditBoard();
     } catch (error) {
       logger.error("Error updating board name:", error);
-      alert("게시판 이름 수정 오류.");
     }
   };
 
   const handleHideBoard = async (boardId) => {
     if (!currentUserIsAdmin || !classCode) return;
-    const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
     try {
-      await updateDoc(boardRef, {
-        isHidden: true,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isHidden: true, updatedAt: serverTimestamp() });
       refetchBoards();
-      if (selectedBoard && selectedBoard.id === boardId) setSelectedBoard(null);
-    } catch (error) {
-      logger.error("Error hiding board:", error);
-    }
+      if (selectedBoard?.id === boardId) setSelectedBoard(null);
+    } catch (error) { logger.error("Error hiding board:", error); }
   };
 
   const handleRestoreBoard = async (boardId) => {
     if (!currentUserIsAdmin || !classCode) return;
-    const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
     try {
-      await updateDoc(boardRef, {
-        isHidden: false,
-        updatedAt: serverTimestamp(),
-      });
+      await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isHidden: false, updatedAt: serverTimestamp() });
       refetchBoards();
-    } catch (error) {
-      logger.error("Error restoring board:", error);
-    }
+    } catch (error) { logger.error("Error restoring board:", error); }
   };
 
   const handleDeleteBoard = async (boardId) => {
     if (!currentUserIsAdmin || !classCode) return;
     const boardToDelete = boards.find((b) => b.id === boardId);
-    if (
-      window.confirm(
-        `'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`
-      )
-    ) {
-      try {
-        const boardRef = doc(
-          db,
-          "classes",
-          classCode,
-          "learningBoards",
-          boardId
-        );
-        const postsRef = collection(boardRef, "posts");
-        const postsSnapshot = await getDocs(postsRef);
-        const batch = writeBatch(db);
-        postsSnapshot.docs.forEach((postDoc) => batch.delete(postDoc.ref));
-        batch.delete(boardRef);
-        await batch.commit();
-        refetchBoards();
-        if (selectedBoard && selectedBoard.id === boardId)
-          setSelectedBoard(null);
-      } catch (error) {
-        logger.error("Error deleting board:", error);
-        alert("게시판 삭제 오류.");
-      }
+    if (!window.confirm(`'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`)) return;
+    try {
+      const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
+      const postsRef = collection(boardRef, "posts");
+      const postsSnapshot = await getDocs(postsRef);
+      const batch = writeBatch(db);
+      postsSnapshot.docs.forEach((d) => batch.delete(d.ref));
+      batch.delete(boardRef);
+      await batch.commit();
+      refetchBoards();
+      if (selectedBoard?.id === boardId) setSelectedBoard(null);
+    } catch (error) {
+      logger.error("Error deleting board:", error);
+      alert("삭제 오류.");
     }
   };
 
-  const boardsForGeneralSelection = (boards || []).filter((board) => !board.isHidden);
-  const allBoardsForHiddenViewSelection = boards || [];
-
-  // 컨테이너 클래스 설정 수정
-  const containerClasses = `learning-board-container ${
-    isFullScreenMode ? "full-width-mode" : ""
-  } ${showAdminPanel && currentUserIsAdmin ? "admin-panel-active" : ""}`;
+  const visibleBoards = (boards || []).filter((b) => !b.isHidden);
+  const hiddenBoards = (boards || []).filter((b) => b.isHidden);
 
   return (
-    <div className={containerClasses}>
-      <div className="main-board">
+    <div className="lb">
+      {/* Header */}
+      <div className="lb-header">
+        <h1 className="lb-title">학습 게시판 {classCode && <span className="lb-class-code">({classCode})</span>}</h1>
         {currentUserIsAdmin && (
-          <button className="admin-panel-toggle-btn" onClick={toggleAdminPanel}>
+          <button className="lb-admin-toggle" onClick={() => setShowAdminPanel((p) => !p)}>
             {showAdminPanel ? "관리자 닫기" : "관리자 열기"}
           </button>
         )}
-
-        <h1>학습 게시판 {classCode && `(학급: ${classCode})`}</h1>
-
-        <div className="board-actions">
-          <button
-            className={`write-btn ${
-              isWriting && showBoardSelection ? "active" : ""
-            }`}
-            onClick={handleWriteClick}
-          >
-            글쓰기
-          </button>
-          <button
-            className={`view-btn ${
-              !isWriting && showBoardSelection ? "active" : ""
-            }`}
-            onClick={handleViewClick}
-          >
-            글보기
-          </button>
-          {currentUserIsAdmin && (
-            <button
-              className={`hidden-boards-toggle-btn ${
-                showHiddenBoardsView ? "active" : ""
-              }`}
-              onClick={toggleHiddenBoardView}
-            >
-              숨김 관리 ({boards.filter((b) => b.isHidden).length})
-            </button>
-          )}
-        </div>
-
-        <div className="board-content-area">
-          {showBoardSelection && !showHiddenBoardsView && (
-            <div className="board-selection">
-              <h2>
-                {isWriting ? "글 작성할 게시판 선택" : "조회할 게시판 선택"}
-              </h2>
-              <div className="board-buttons-container">
-                {boardsForGeneralSelection.length > 0 ? (
-                  boardsForGeneralSelection.map((board) => (
-                    <div key={board.id} className="board-button-item">
-                      <button
-                        className={`board-btn ${
-                          selectedBoard?.id === board.id ? "selected" : ""
-                        }`}
-                        onClick={() => handleBoardSelect(board.id, false)}
-                        title={
-                          board.isHidden ? `${board.name} (숨김)` : board.name
-                        }
-                      >
-                        <span className="board-name">{board.name}</span>
-                        {currentUserIsAdmin && board.isHidden && (
-                          <span className="hidden-icon" title="숨겨진 게시판">
-                            👁️
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="info-message small">
-                    {boardsLoading
-                      ? "게시판 목록 로딩 중..."
-                      : "표시할 게시판이 없습니다."}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-          {showHiddenBoardsView && currentUserIsAdmin && (
-            <div className="hidden-boards-list admin-section">
-              <h2>숨김 게시판 관리 및 보기/쓰기</h2>
-              {allBoardsForHiddenViewSelection.length === 0 && (
-                <p className="info-message small">
-                  {boardsLoading
-                    ? "게시판 목록 로딩 중..."
-                    : "생성된 게시판이 없습니다."}
-                </p>
-              )}
-              <div className="board-buttons-container">
-                {allBoardsForHiddenViewSelection.map((board) => (
-                  <div
-                    key={`hidden-view-${board.id}`}
-                    className="board-button-item"
-                  >
-                    <button
-                      className={`board-btn ${
-                        selectedBoard?.id === board.id ? "selected" : ""
-                      } ${board.isHidden ? "hidden-board-for-admin" : ""}`}
-                      onClick={() => handleBoardSelect(board.id, true)}
-                      title={
-                        board.isHidden
-                          ? `${board.name} (숨겨진 게시판)`
-                          : board.name
-                      }
-                    >
-                      {board.isHidden ? "🔒" : "📂"} {board.name}
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {selectedBoard && (
-                <div
-                  className="board-actions"
-                  style={{ marginTop: "1rem", marginBottom: "1rem" }}
-                >
-                  <button
-                    className="write-btn"
-                    onClick={() => setIsWriting(true)}
-                  >
-                    '{selectedBoard.name}'에 글쓰기
-                  </button>
-                  <button
-                    className="view-btn"
-                    onClick={() => setIsWriting(false)}
-                  >
-                    '{selectedBoard.name}' 글보기
-                  </button>
-                </div>
-              )}
-              <h3>숨김/복구/삭제 처리:</h3>
-              {boards.length === 0 ? (
-                <p className="info-message small">관리할 게시판이 없습니다.</p>
-              ) : (
-                <ul>
-                  {boards
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((board) => (
-                      <li
-                        key={`manage-${board.id}`}
-                        className={`hidden-board-item ${
-                          board.isHidden ? "item-is-hidden" : "item-is-visible"
-                        }`}
-                      >
-                        <span>
-                          {board.name} (
-                          {board.isHidden ? "숨김 상태" : "공개 상태"})
-                        </span>
-                        <div className="hidden-board-actions">
-                          {board.isHidden ? (
-                            <button
-                              className="restore-board-btn action-btn"
-                              title={`${board.name} 복구`}
-                              onClick={() => handleRestoreBoard(board.id)}
-                            >
-                              ✅ 공개로
-                            </button>
-                          ) : (
-                            <button
-                              className="hide-board-btn action-btn"
-                              title={`${board.name} 숨기기`}
-                              onClick={() => handleHideBoard(board.id)}
-                            >
-                              👁️‍🗨️ 숨기기
-                            </button>
-                          )}
-                          <button
-                            className="delete-board-btn action-btn"
-                            title={`${board.name} 영구 삭제`}
-                            onClick={() => handleDeleteBoard(board.id)}
-                          >
-                            ❌ 삭제
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {isWriting &&
-            selectedBoard &&
-            (!selectedBoard.isHidden || currentUserIsAdmin) && (
-              <div className="post-form-container">
-                <h2>
-                  {selectedBoard.name}에 글쓰기{" "}
-                  {selectedBoard.isHidden ? "(숨김 게시판)" : ""}
-                </h2>
-                <form onSubmit={handlePostSubmit} className="post-form">
-                  <div className="form-group">
-                    <label>제목</label>
-                    <input
-                      type="text"
-                      value={newPost.title}
-                      onChange={(e) =>
-                        setNewPost({ ...newPost, title: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>내용</label>
-                    <textarea
-                      value={newPost.content}
-                      onChange={(e) =>
-                        setNewPost({ ...newPost, content: e.target.value })
-                      }
-                      required
-                      rows="8"
-                    />
-                  </div>
-                  <button type="submit" className="submit-btn">
-                    게시하기
-                  </button>
-                </form>
-              </div>
-            )}
-          {isWriting &&
-            selectedBoard &&
-            selectedBoard.isHidden &&
-            !currentUserIsAdmin &&
-            !showHiddenBoardsView && (
-              <p className="info-message">
-                선택한 게시판은 숨겨져 있어 글을 작성할 수 없습니다.
-              </p>
-            )}
-          {isWriting && !selectedBoard && (
-            <p className="info-message">
-              글을 작성할 게시판을 선택해주세요. (상단 목록에서 선택)
-            </p>
-          )}
-          {!isWriting &&
-            selectedBoard &&
-            (!selectedBoard.isHidden ||
-              (currentUserIsAdmin && showHiddenBoardsView)) && (
-              <div className="posts-container">
-                <h2>
-                  {selectedBoard.name} 글 목록{" "}
-                  {selectedBoard.isHidden ? "(숨김 게시판 - 관리자 뷰)" : ""}
-                </h2>
-                {postsLoading ? (
-                  <p className="info-message small">게시글 로딩 중...</p>
-                ) : (selectedBoardPosts?.length || 0) === 0 ? (
-                  <p className="no-posts">아직 작성된 글이 없습니다.</p>
-                ) : (
-                  <div className="posts-list">
-                    {selectedBoardPosts.map((post) => (
-                      <div key={post.id} className="post-card">
-                        <h3>{post.title}</h3>
-                        <div className="post-meta">
-                          <span>작성자: {post.author || "알 수 없음"}</span>
-                          <span>작성일: {formatDate(post.timestamp)}</span>
-                        </div>
-                        <p className="post-content">{post.content}</p>
-                        <div className="post-stats">
-                          <div className="likes-container">
-                            <button
-                              className={`like-btn ${
-                                post.likedBy?.includes(currentUserId)
-                                  ? "active"
-                                  : ""
-                              } ${
-                                post.authorId === currentUserId
-                                  ? "disabled"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                handleLike(selectedBoard.id, post.id)
-                              }
-                              disabled={
-                                post.likedBy?.includes(currentUserId) ||
-                                post.dislikedBy?.includes(currentUserId) ||
-                                post.authorId === currentUserId
-                              }
-                            >
-                              👍 좋아요 {post.likes || 0}
-                            </button>
-                            <button
-                              className={`dislike-btn ${
-                                post.dislikedBy?.includes(currentUserId)
-                                  ? "active"
-                                  : ""
-                              } ${
-                                post.authorId === currentUserId
-                                  ? "disabled"
-                                  : ""
-                              }`}
-                              onClick={() =>
-                                handleDislike(selectedBoard.id, post.id)
-                              }
-                              disabled={
-                                post.likedBy?.includes(currentUserId) ||
-                                post.dislikedBy?.includes(currentUserId) ||
-                                post.authorId === currentUserId
-                              }
-                            >
-                              👎 싫어요 {post.dislikes || 0}
-                            </button>
-                          </div>
-                          <div className="coupon-info">
-                            <span>획득 쿠폰: {post.coupons || 0}개</span>
-                            <span>
-                              실효 좋아요:{" "}
-                              {(post.likes || 0) - (post.dislikes || 0)}
-                            </span>
-                            {post.adminCouponGiven && !currentUserIsAdmin && (
-                              <span
-                                className="admin-verified-badge"
-                                title="관리자가 확인하고 쿠폰을 지급한 글입니다."
-                              >
-                                ✨ 관리자 확인 완료
-                              </span>
-                            )}
-                          </div>
-                          {currentUserIsAdmin && (
-                            <div className="admin-coupon-controls">
-                              <h4>
-                                관리자 쿠폰 지급 (글 ID: {post.id.slice(-4)})
-                              </h4>
-                              {post.adminCouponGiven ? (
-                                <p className="coupon-given-message">
-                                  ✅ 이 글에는 관리자 쿠폰이 이미
-                                  지급되었습니다.
-                                </p>
-                              ) : (
-                                <>
-                                  <div className="coupon-buttons">
-                                    {[1, 3, 5].map((amount) => (
-                                      <button
-                                        key={amount}
-                                        onClick={() =>
-                                          handleGiveCoupons(
-                                            selectedBoard.id,
-                                            post.id,
-                                            amount
-                                          )
-                                        }
-                                      >
-                                        +{amount} 쿠폰
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="custom-coupon">
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      value={
-                                        customCouponAmount === 0
-                                          ? ""
-                                          : customCouponAmount
-                                      }
-                                      onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setCustomCouponAmount(
-                                          Number.isNaN(val) ? 0 : val
-                                        );
-                                      }}
-                                      placeholder="직접 입력"
-                                    />
-                                    <button
-                                      onClick={() =>
-                                        handleGiveCoupons(
-                                          selectedBoard.id,
-                                          post.id,
-                                          customCouponAmount
-                                        )
-                                      }
-                                      disabled={customCouponAmount <= 0}
-                                    >
-                                      지급
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          {!isWriting &&
-            selectedBoard &&
-            selectedBoard.isHidden &&
-            !currentUserIsAdmin &&
-            !showHiddenBoardsView && (
-              <p className="info-message">
-                이 게시판은 현재 접근할 수 없습니다.
-              </p>
-            )}
-          {!isWriting &&
-            !selectedBoard &&
-            !showHiddenBoardsView &&
-            !showBoardSelection && (
-              <p className="info-message">
-                게시판 기능을 사용하려면 상단의 '글쓰기' 또는 '글보기' 버튼을
-                클릭하여 게시판을 선택해주세요.
-              </p>
-            )}
-        </div>
       </div>
 
-      {currentUserIsAdmin && (
-        <div
-          className={`admin-panel ${showAdminPanel ? "visible" : ""}`}
-          style={{
-            // 더 강력한 숨김 처리
-            right: showAdminPanel ? "0px" : "-100vw",
-            transition: "right 0.4s ease-in-out",
-            display: showAdminPanel ? "block" : "none",
-            visibility: showAdminPanel ? "visible" : "hidden",
-            opacity: showAdminPanel ? 1 : 0,
-          }}
-        >
-          <button className="admin-panel-close-btn" onClick={toggleAdminPanel}>
-            ×
+      {/* Board Tabs */}
+      <div className="lb-tabs">
+        {visibleBoards.map((board) => (
+          <button
+            key={board.id}
+            className={`lb-tab ${selectedBoard?.id === board.id && !showHiddenBoardsView ? "active" : ""}`}
+            onClick={() => { handleBoardSelect(board.id, false); setShowHiddenBoardsView(false); }}
+          >
+            {board.name}
           </button>
+        ))}
+        {currentUserIsAdmin && (
+          <button
+            className={`lb-tab lb-tab-manage ${showHiddenBoardsView ? "active" : ""}`}
+            onClick={() => {
+              setShowHiddenBoardsView((p) => !p);
+              if (!showHiddenBoardsView) { setSelectedBoard(null); setSelectedPost(null); setIsWriting(false); }
+            }}
+          >
+            숨김 관리 ({hiddenBoards.length})
+          </button>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="lb-body">
+        {/* Empty state */}
+        {!selectedBoard && !showHiddenBoardsView && (
+          <div className="lb-empty">
+            {visibleBoards.length === 0
+              ? "게시판이 없습니다. 관리자에게 문의해주세요."
+              : "게시판을 선택해주세요."}
+          </div>
+        )}
+
+        {/* Post List (table) */}
+        {selectedBoard && !selectedPost && !isWriting && !showHiddenBoardsView && (
+          <>
+            <div className="lb-toolbar">
+              <h2 className="lb-board-name">{selectedBoard.name}</h2>
+              <button
+                className="lb-write-btn"
+                onClick={() => setIsWriting(true)}
+                disabled={selectedBoard.isHidden && !currentUserIsAdmin}
+              >
+                글쓰기
+              </button>
+            </div>
+
+            {postsLoading ? (
+              <div className="lb-empty">로딩 중...</div>
+            ) : selectedBoardPosts.length === 0 ? (
+              <div className="lb-empty">아직 작성된 글이 없습니다.</div>
+            ) : (
+              <div className="lb-table-wrap">
+                <table className="lb-table">
+                  <thead>
+                    <tr>
+                      <th className="lb-col-num">번호</th>
+                      <th className="lb-col-title">제목</th>
+                      <th className="lb-col-author">작성자</th>
+                      <th className="lb-col-date">날짜</th>
+                      <th className="lb-col-likes">좋아요</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBoardPosts.map((post, idx) => (
+                      <tr
+                        key={post.id}
+                        className="lb-row"
+                        onClick={() => setSelectedPost(post)}
+                      >
+                        <td className="lb-cell-num">{selectedBoardPosts.length - idx}</td>
+                        <td className="lb-cell-title">
+                          <span className="lb-post-title-text">{post.title}</span>
+                          {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
+                        </td>
+                        <td className="lb-cell-author">{post.author || "익명"}</td>
+                        <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
+                        <td className="lb-cell-likes">
+                          <span className="lb-like-num">👍 {post.likes || 0}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Post Detail */}
+        {selectedBoard && selectedPost && !isWriting && !showHiddenBoardsView && (
+          <div className="lb-detail">
+            <button className="lb-back" onClick={() => setSelectedPost(null)}>← 목록으로</button>
+            <div className="lb-detail-card">
+              <h2 className="lb-detail-title">{selectedPost.title}</h2>
+              <div className="lb-detail-meta">
+                <span>작성자: {selectedPost.author || "익명"}</span>
+                <span>{formatDate(selectedPost.timestamp)}</span>
+              </div>
+              <div className="lb-detail-content">{selectedPost.content}</div>
+
+              {/* Like / Dislike */}
+              <div className="lb-detail-actions">
+                <div className="lb-action-row">
+                  <button
+                    className={`lb-like-btn ${selectedPost.likedBy?.includes(currentUserId) ? "active" : ""}`}
+                    onClick={() => handleLike(selectedBoard.id, selectedPost.id)}
+                    disabled={
+                      selectedPost.likedBy?.includes(currentUserId) ||
+                      selectedPost.dislikedBy?.includes(currentUserId) ||
+                      selectedPost.authorId === currentUserId
+                    }
+                  >
+                    👍 좋아요 {selectedPost.likes || 0}
+                  </button>
+                  <button
+                    className={`lb-dislike-btn ${selectedPost.dislikedBy?.includes(currentUserId) ? "active" : ""}`}
+                    onClick={() => handleDislike(selectedBoard.id, selectedPost.id)}
+                    disabled={
+                      selectedPost.likedBy?.includes(currentUserId) ||
+                      selectedPost.dislikedBy?.includes(currentUserId) ||
+                      selectedPost.authorId === currentUserId
+                    }
+                  >
+                    👎 싫어요 {selectedPost.dislikes || 0}
+                  </button>
+                  <span className="lb-stat">획득 쿠폰: {selectedPost.coupons || 0}개</span>
+                  <span className="lb-stat">실효 좋아요: {(selectedPost.likes || 0) - (selectedPost.dislikes || 0)}</span>
+                  {selectedPost.adminCouponGiven && !currentUserIsAdmin && (
+                    <span className="lb-verified-badge">✨ 관리자 확인</span>
+                  )}
+                </div>
+
+                {/* Admin coupon controls */}
+                {currentUserIsAdmin && (
+                  <div className="lb-admin-coupon">
+                    <h4>관리자 쿠폰 지급</h4>
+                    {selectedPost.adminCouponGiven ? (
+                      <p className="lb-coupon-done">이미 지급되었습니다.</p>
+                    ) : (
+                      <div className="lb-coupon-row">
+                        {[1, 3, 5].map((amount) => (
+                          <button
+                            key={amount}
+                            className="lb-coupon-quick"
+                            onClick={() => handleGiveCoupons(selectedBoard.id, selectedPost.id, amount)}
+                          >
+                            +{amount}
+                          </button>
+                        ))}
+                        <input
+                          type="number"
+                          min="1"
+                          value={customCouponAmount === 0 ? "" : customCouponAmount}
+                          onChange={(e) => setCustomCouponAmount(parseInt(e.target.value) || 0)}
+                          placeholder="직접"
+                          className="lb-coupon-input"
+                        />
+                        <button
+                          className="lb-coupon-give"
+                          onClick={() => handleGiveCoupons(selectedBoard.id, selectedPost.id, customCouponAmount)}
+                          disabled={customCouponAmount <= 0}
+                        >
+                          지급
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Write Form */}
+        {isWriting && selectedBoard && (!selectedBoard.isHidden || currentUserIsAdmin) && !showHiddenBoardsView && (
+          <div className="lb-write">
+            <button className="lb-back" onClick={() => setIsWriting(false)}>← 목록으로</button>
+            <h2 className="lb-write-heading">{selectedBoard.name}에 글쓰기</h2>
+            <form onSubmit={handlePostSubmit} className="lb-form">
+              <div className="lb-field">
+                <label>제목</label>
+                <input
+                  type="text"
+                  value={newPost.title}
+                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                  placeholder="제목을 입력하세요"
+                  required
+                />
+              </div>
+              <div className="lb-field">
+                <label>내용</label>
+                <textarea
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                  placeholder="내용을 입력하세요"
+                  required
+                  rows="10"
+                />
+              </div>
+              <button type="submit" className="lb-submit">게시하기</button>
+            </form>
+          </div>
+        )}
+
+        {/* Hidden Board Management */}
+        {showHiddenBoardsView && currentUserIsAdmin && (
+          <div className="lb-hidden-manage">
+            <h2>숨김 게시판 관리</h2>
+
+            {/* All boards for selection */}
+            <div className="lb-hidden-tabs">
+              {boards.map((board) => (
+                <button
+                  key={board.id}
+                  className={`lb-tab ${selectedBoard?.id === board.id ? "active" : ""} ${board.isHidden ? "lb-tab-hidden" : ""}`}
+                  onClick={() => handleBoardSelect(board.id, true)}
+                >
+                  {board.isHidden ? "🔒" : "📂"} {board.name}
+                </button>
+              ))}
+            </div>
+
+            {/* If a board is selected in hidden view, show write/view */}
+            {selectedBoard && (
+              <div className="lb-hidden-actions">
+                <button className="lb-write-btn" onClick={() => { setIsWriting(true); setShowHiddenBoardsView(false); }}>
+                  '{selectedBoard.name}' 글쓰기
+                </button>
+                <button className="lb-view-btn-sm" onClick={() => { setShowHiddenBoardsView(false); setSelectedPost(null); setIsWriting(false); }}>
+                  '{selectedBoard.name}' 글보기
+                </button>
+              </div>
+            )}
+
+            {/* Board management list */}
+            <h3>숨김/복구/삭제</h3>
+            <div className="lb-manage-list">
+              {boards.sort((a, b) => a.name.localeCompare(b.name)).map((board) => (
+                <div key={board.id} className={`lb-manage-item ${board.isHidden ? "hidden" : "visible"}`}>
+                  <span className="lb-manage-name">
+                    {board.name} ({board.isHidden ? "숨김" : "공개"})
+                  </span>
+                  <div className="lb-manage-btns">
+                    {board.isHidden ? (
+                      <button className="lb-btn-restore" onClick={() => handleRestoreBoard(board.id)}>공개로</button>
+                    ) : (
+                      <button className="lb-btn-hide" onClick={() => handleHideBoard(board.id)}>숨기기</button>
+                    )}
+                    <button className="lb-btn-delete" onClick={() => handleDeleteBoard(board.id)}>삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Admin Side Panel */}
+      {currentUserIsAdmin && showAdminPanel && (
+        <div className="lb-admin-panel">
+          <button className="lb-admin-close" onClick={() => setShowAdminPanel(false)}>×</button>
           <h2>관리자 기능</h2>
-          <div className="admin-section board-management">
-            <h3>게시판 관리 (생성/이름변경)</h3>
-            <form onSubmit={handleAddBoard} className="add-board-form">
+
+          <div className="lb-admin-section">
+            <h3>게시판 추가</h3>
+            <form onSubmit={handleAddBoard} className="lb-admin-form">
               <input
                 type="text"
                 value={newBoardName}
@@ -1040,83 +615,39 @@ const LearningBoard = () => {
                 placeholder="새 게시판 이름"
                 required
               />
-              <button type="submit" className="add-board-btn">
-                추가
-              </button>
+              <button type="submit">추가</button>
             </form>
-            <ul className="admin-board-list">
-              {[...boards]
-                .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
-                .map((board) => (
-                  <li
-                    key={board.id}
-                    className={`admin-board-manage-item ${
-                      board.isHidden ? "hidden" : ""
-                    }`}
-                  >
-                    {editingBoardId === board.id ? (
-                      <form
-                        onSubmit={handleSaveEditBoard}
-                        className="edit-board-form"
-                      >
-                        <input
-                          type="text"
-                          value={editingBoardName}
-                          onChange={handleUpdateBoardNameInput}
-                          autoFocus
-                        />
-                        <button
-                          type="submit"
-                          className="save-board-btn action-btn"
-                        >
-                          💾
-                        </button>
-                        <button
-                          type="button"
-                          className="cancel-edit-btn action-btn"
-                          onClick={handleCancelEditBoard}
-                        >
-                          ↩️
-                        </button>
-                      </form>
-                    ) : (
-                      <>
-                        <span>
-                          {board.name} {board.isHidden ? "(숨김)" : ""}
-                        </span>
-                        <div className="admin-board-item-actions">
-                          <button
-                            className="edit-board-btn action-btn"
-                            title={`${board.name} 이름 수정`}
-                            onClick={() => handleStartEditBoard(board)}
-                          >
-                            ✏️
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
+          </div>
+
+          <div className="lb-admin-section">
+            <h3>게시판 이름 변경</h3>
+            <ul className="lb-admin-board-list">
+              {[...boards].sort((a, b) => a.name.localeCompare(b.name)).map((board) => (
+                <li key={board.id} className={board.isHidden ? "hidden" : ""}>
+                  {editingBoardId === board.id ? (
+                    <form onSubmit={handleSaveEditBoard} className="lb-edit-form">
+                      <input type="text" value={editingBoardName} onChange={(e) => setEditingBoardName(e.target.value)} autoFocus />
+                      <button type="submit">💾</button>
+                      <button type="button" onClick={handleCancelEditBoard}>↩️</button>
+                    </form>
+                  ) : (
+                    <div className="lb-board-row">
+                      <span>{board.name} {board.isHidden ? "(숨김)" : ""}</span>
+                      <button onClick={() => handleStartEditBoard(board)}>✏️</button>
+                    </div>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="admin-section admin-stats">
+
+          <div className="lb-admin-section">
             <h3>통계</h3>
-            <ul>
-              <li>
-                총 게시판 (공개): {boards.filter((b) => !b.isHidden).length}개
-              </li>
-              <li>
-                총 게시판 (숨김): {boards.filter((b) => b.isHidden).length}개
-              </li>
-              <li>(선택된 게시판) 총 게시글: {selectedBoardPosts?.length || 0} 개</li>
-              <li>
-                (선택된 게시판) 총 획득 쿠폰:{" "}
-                {(selectedBoardPosts || []).reduce(
-                  (sum, post) => sum + (post.coupons || 0),
-                  0
-                )}{" "}
-                개
-              </li>
+            <ul className="lb-stats-list">
+              <li>공개 게시판: {visibleBoards.length}개</li>
+              <li>숨김 게시판: {hiddenBoards.length}개</li>
+              <li>선택된 게시판 게시글: {selectedBoardPosts?.length || 0}개</li>
+              <li>선택된 게시판 총 쿠폰: {(selectedBoardPosts || []).reduce((s, p) => s + (p.coupons || 0), 0)}개</li>
             </ul>
           </div>
         </div>
