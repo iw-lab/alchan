@@ -1,7 +1,7 @@
 // src/contexts/ThemeContext.js
 // 다크 모드 및 테마 설정 Context
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const ThemeContext = createContext();
 
@@ -65,14 +65,14 @@ export function ThemeProvider({ children }) {
     }
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     isDarkMode,
     toggleDarkMode,
     setIsDarkMode,
     fontSize,
     setFontSize: changeFontSize,
     fontSizes: FONT_SIZES
-  };
+  }), [isDarkMode, toggleDarkMode, fontSize, changeFontSize]);
 
   return (
     <ThemeContext.Provider value={value}>

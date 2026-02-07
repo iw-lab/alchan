@@ -692,12 +692,36 @@ class GlobalCacheService {
     this.invalidatePattern(`activityLogs_${classCode}`);
   }
 
-  // 전체 캐시 정리
-  clearAll() {
+  // 전체 캐시 정리 (Memory + IndexedDB + localStorage)
+  async clearAll() {
     this.cache.clear();
     this.timestamps.clear();
     this.subscribers.clear();
     this.pendingRequests.clear();
+
+    // IndexedDB 정리
+    try {
+      if (window.indexedDB) {
+        const databases = await window.indexedDB.databases?.() || [];
+        for (const db of databases) {
+          if (db.name?.startsWith('alchan-cache')) {
+            window.indexedDB.deleteDatabase(db.name);
+          }
+        }
+      }
+    } catch (e) { /* IndexedDB 미지원 환경 무시 */ }
+
+    // localStorage 캐시 키 정리
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('cache_') || key?.startsWith('alchan_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (e) { /* localStorage 미지원 환경 무시 */ }
   }
 
   // 캐시 상태 정보

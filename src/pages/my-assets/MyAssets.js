@@ -1183,35 +1183,16 @@ export default function MyAssets() {
   };
 
   const renderTitle = () => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-      <h2
-        style={{
-          fontSize: "24px",
-          fontWeight: "bold",
-          color: "#00fff2",
-          borderBottom: "2px solid rgba(0, 255, 242, 0.2)",
-          paddingBottom: "10px",
-          margin: 0,
-          textShadow: "0 0 10px rgba(0, 255, 242, 0.3)",
-        }}
-      >
+    <div className="flex justify-between items-center mb-5">
+      <h2 className="text-2xl font-bold text-cyber-cyan border-b-2 border-cyber-cyan/20 pb-2.5 m-0 drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]">
         나의 자산 현황 💳
       </h2>
       <button
         onClick={handleForceRefresh}
         disabled={assetsLoading}
-        style={{
-          padding: "8px 16px",
-          backgroundColor: "rgba(0, 255, 242, 0.1)",
-          color: "#00fff2",
-          border: "1px solid rgba(0, 255, 242, 0.3)",
-          borderRadius: "8px",
-          fontSize: "14px",
-          fontWeight: "600",
-          cursor: assetsLoading ? "not-allowed" : "pointer",
-          opacity: assetsLoading ? 0.6 : 1,
-          transition: "all 0.2s ease",
-        }}
+        className={`px-4 py-2 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 rounded-lg text-sm font-semibold transition-all duration-200 ${
+          assetsLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-cyber-cyan/20'
+        }`}
       >
         🔄 새로고침
       </button>
@@ -1228,63 +1209,22 @@ export default function MyAssets() {
       : transactionHistory.slice(0, 5);
 
     return (
-      <div
-        style={{
-          padding: "0",
-          background: "transparent",
-          marginBottom: "25px",
-        }}
-      >
+      <div className="p-0 bg-transparent mb-6">
         {/* 보유 현금 - 메인 강조 카드 */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            borderRadius: "20px",
-            padding: "30px",
-            marginBottom: "20px",
-            boxShadow: "0 10px 30px rgba(102, 126, 234, 0.3)",
-            border: "none",
-          }}
-        >
-          <div style={{ marginBottom: "10px" }}>
-            <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "16px", fontWeight: "500" }}>
+        <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
+          <div className="mb-2.5">
+            <span className="text-white/90 text-base font-medium">
               💰 보유 현금
             </span>
           </div>
-          <div style={{
-            fontSize: "42px",
-            fontWeight: "800",
-            color: "#ffffff",
-            letterSpacing: "-1px",
-            marginBottom: "15px",
-            textAlign: "right"
-          }}>
-            {displayCash.toLocaleString()} <span style={{ fontSize: "28px", fontWeight: "600" }}>원</span>
+          <div className="text-[42px] font-extrabold text-white tracking-tight mb-4 text-right">
+            {displayCash.toLocaleString()} <span className="text-[28px] font-semibold">원</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div className="flex justify-end">
             <button
               onClick={() => setShowTransferModal(true)}
-              style={{
-                padding: "14px 28px",
-                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                color: "#667eea",
-                border: "none",
-                borderRadius: "12px",
-                fontSize: "16px",
-                fontWeight: "700",
-                cursor: "pointer",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
-                transition: "all 0.3s ease",
-              }}
+              className="px-7 py-3.5 bg-white/95 text-[#667eea] border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
               disabled={assetsLoading || authLoading}
-              onMouseOver={(e) => {
-                e.target.style.transform = "translateY(-2px)";
-                e.target.style.boxShadow = "0 6px 20px rgba(0,0,0,0.15)";
-              }}
-              onMouseOut={(e) => {
-                e.target.style.transform = "translateY(0)";
-                e.target.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
-              }}
             >
               💸 송금하기
             </button>
@@ -1292,20 +1232,13 @@ export default function MyAssets() {
         </div>
 
         {/* 최근 입출금 내역 - 보유 현금 바로 밑에 배치 */}
-        <div style={{ marginBottom: "20px" }}>
-          <h4
-            style={{
-              fontSize: "15px",
-              color: "#e8e8ff",
-              fontWeight: "700",
-              marginBottom: "12px",
-            }}
-          >
+        <div className="mb-5">
+          <h4 className="text-[15px] text-[#e8e8ff] font-bold mb-3">
             💳 최근 입출금 내역
           </h4>
           {transactionHistory.length > 0 ? (
             <div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div className="flex flex-col gap-2">
                 {displayedTransactions.map((tx) => {
                   let displayDate = "날짜 없음";
                   try {
@@ -1325,40 +1258,18 @@ export default function MyAssets() {
                   return (
                     <div
                       key={tx.id || Math.random()}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: "14px",
-                        color: "#a0a0c0",
-                        padding: "14px 16px",
-                        backgroundColor: txAmount > 0 ? "rgba(5, 150, 105, 0.1)" : "rgba(220, 38, 38, 0.1)",
-                        border: txAmount > 0 ? "1px solid rgba(5, 150, 105, 0.3)" : "1px solid rgba(220, 38, 38, 0.3)",
-                        borderRadius: "10px",
-                      }}
+                      className={`flex justify-between items-center text-sm text-[#a0a0c0] px-4 py-3.5 rounded-[10px] ${
+                        txAmount > 0
+                          ? 'bg-emerald-600/10 border border-emerald-600/30'
+                          : 'bg-red-600/10 border border-red-600/30'
+                      }`}
                     >
-                      <span
-                        style={{
-                          flex: "1",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          marginRight: "10px",
-                          fontWeight: "500",
-                          color: "#e8e8ff"
-                        }}
-                      >
+                      <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis mr-2.5 font-medium text-[#e8e8ff]">
                         {displayDate} • {txDescription}
                       </span>
-                      <span
-                        style={{
-                          fontWeight: "700",
-                          fontSize: "15px",
-                          color: txAmount > 0 ? "#34d399" : "#f87171",
-                          minWidth: "110px",
-                          textAlign: "right",
-                        }}
-                      >
+                      <span className={`font-bold text-[15px] min-w-[110px] text-right ${
+                        txAmount > 0 ? 'text-emerald-400' : 'text-red-400'
+                      }`}>
                         {txAmount > 0 ? "+" : ""}
                         {txAmount.toLocaleString()}원
                       </span>
@@ -1369,190 +1280,68 @@ export default function MyAssets() {
               {transactionHistory.length > 5 && (
                 <button
                   onClick={() => setShowAllTransactions(!showAllTransactions)}
-                  style={{
-                    width: "100%",
-                    marginTop: "12px",
-                    padding: "12px",
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    color: "#a0a0c0",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = "#f9fafb";
-                  }}
+                  className="w-full mt-3 p-3 bg-white/5 text-[#a0a0c0] border border-white/10 rounded-[10px] text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-white/10"
                 >
                   {showAllTransactions ? "▲ 접기" : `▼ ${transactionHistory.length - 5}개 더 보기`}
                 </button>
               )}
             </div>
           ) : (
-            <div
-              style={{
-                fontSize: "13px",
-                color: "#6b7280",
-                textAlign: "center",
-                padding: "20px",
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                borderRadius: "10px",
-                border: "1px dashed rgba(255, 255, 255, 0.1)"
-              }}
-            >
+            <div className="text-[13px] text-gray-500 text-center p-5 bg-white/[0.03] rounded-[10px] border border-dashed border-white/10">
               최근 거래 내역이 없습니다.
             </div>
           )}
         </div>
 
         {/* 총 순자산 - 두 번째 강조 카드 */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-            borderRadius: "20px",
-            padding: "25px 30px",
-            marginBottom: "20px",
-            boxShadow: "0 10px 30px rgba(240, 147, 251, 0.3)",
-            border: "none",
-          }}
-        >
-          <div style={{ marginBottom: "8px" }}>
-            <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "16px", fontWeight: "500" }}>
+        <div className="bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-[20px] py-6 px-[30px] mb-5 shadow-[0_10px_30px_rgba(240,147,251,0.3)] border-none">
+          <div className="mb-2">
+            <span className="text-white/90 text-base font-medium">
               📊 총 순자산
             </span>
           </div>
-          <div style={{
-            fontSize: "38px",
-            fontWeight: "800",
-            color: "#ffffff",
-            letterSpacing: "-1px",
-            textAlign: "right"
-          }}>
-            {Number(totalNetAssets).toLocaleString()} <span style={{ fontSize: "24px", fontWeight: "600" }}>원</span>
+          <div className="text-[38px] font-extrabold text-white tracking-tight text-right">
+            {Number(totalNetAssets).toLocaleString()} <span className="text-2xl font-semibold">원</span>
           </div>
-          <p style={{
-            marginTop: "8px",
-            fontSize: "12px",
-            color: "rgba(255,255,255,0.8)",
-            margin: "8px 0 0 0"
-          }}>
+          <p className="mt-2 text-xs text-white/80">
             현금 + 쿠폰가치 + 파킹통장 + 예금 + 적금 + 부동산 - 대출
           </p>
         </div>
 
         {/* 파킹통장 */}
-        <div style={{ marginBottom: "20px" }}>
-          <h4
-            style={{
-              fontSize: "15px",
-              color: "#e8e8ff",
-              fontWeight: "700",
-              marginBottom: "12px",
-            }}
-          >
+        <div className="mb-5">
+          <h4 className="text-[15px] text-[#e8e8ff] font-bold mb-3">
             🅿️ 파킹통장
           </h4>
-          <div
-            style={{
-              background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
-              borderRadius: "14px",
-              padding: "20px",
-              border: "none",
-              boxShadow: "0 4px 15px rgba(6, 182, 212, 0.2)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span style={{ color: "rgba(255,255,255,0.9)", fontWeight: "500", fontSize: "14px" }}>
+          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(6,182,212,0.2)]">
+            <div className="flex justify-between items-center">
+              <span className="text-white/90 font-medium text-sm">
                 잔액
               </span>
-              <span
-                style={{
-                  fontWeight: "800",
-                  fontSize: "26px",
-                  color: "#ffffff",
-                  letterSpacing: "-0.5px",
-                  textAlign: "right",
-                  display: "block"
-                }}
-              >
-                {Number(parkingBalance).toLocaleString()}<span style={{ fontSize: "18px", fontWeight: "600" }}>원</span>
+              <span className="font-extrabold text-[26px] text-white tracking-tight text-right block">
+                {Number(parkingBalance).toLocaleString()}<span className="text-lg font-semibold">원</span>
               </span>
             </div>
           </div>
-          <p style={{ marginTop: "10px", fontSize: "12px", color: "#9ca3af", textAlign: "center" }}>
+          <p className="mt-2.5 text-xs text-gray-400 text-center">
             파킹통장 메뉴에서 입출금 및 상품 가입 가능
           </p>
         </div>
 
         {/* 기타 자산 정보 - 깔끔한 카드 */}
-        <div
-          style={{
-            padding: "25px",
-            background: "rgba(20, 20, 35, 0.4)",
-            borderRadius: "16px",
-            border: "1px solid rgba(0, 255, 242, 0.1)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-          }}
-        >
-
+        <div className="p-6 bg-[rgba(20,20,35,0.4)] rounded-2xl border border-cyber-cyan/10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
           {/* 보유 쿠폰 */}
-          <div
-            style={{
-              marginBottom: "20px",
-            }}
-          >
-            <h4
-              style={{
-                fontSize: "15px",
-                color: "#374151",
-                fontWeight: "700",
-                marginBottom: "12px",
-              }}
-            >
+          <div className="mb-5">
+            <h4 className="text-[15px] text-gray-700 font-bold mb-3">
               🎟️ 보유 쿠폰
             </h4>
-            <div
-              style={{
-                background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-                borderRadius: "14px",
-                padding: "20px",
-                border: "none",
-                boxShadow: "0 4px 15px rgba(251, 191, 36, 0.2)",
-              }}
-            >
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}>
-                <div style={{ width: "100%" }}>
-                  <div style={{
-                    fontSize: "26px",
-                    fontWeight: "800",
-                    color: "#ffffff",
-                    letterSpacing: "-0.5px",
-                    textAlign: "right"
-                  }}>
-                    {displayCoupons.toLocaleString()} <span style={{ fontSize: "18px", fontWeight: "600" }}>개</span>
+            <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(251,191,36,0.2)]">
+              <div className="flex justify-between items-center">
+                <div className="w-full">
+                  <div className="text-[26px] font-extrabold text-white tracking-tight text-right">
+                    {displayCoupons.toLocaleString()} <span className="text-lg font-semibold">개</span>
                   </div>
-                  <div style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.85)",
-                    fontWeight: "500",
-                    marginTop: "4px",
-                    textAlign: "right"
-                  }}>
+                  <div className="text-xs text-white/85 font-medium mt-1 text-right">
                     1쿠폰 = {Number(couponValue).toLocaleString()}원
                   </div>
                 </div>
@@ -1572,39 +1361,21 @@ export default function MyAssets() {
   }
   if (!userDoc && !authLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "80vh",
-          fontSize: "1.2em",
-          color: "#ef4444",
-        }}
-      >
+      <div className="flex justify-center items-center h-[80vh] text-[1.2em] text-red-500">
         사용자 데이터를 불러오는 중입니다. 잠시 후에도 이 메시지가 보이면 앱을 새로고침하거나 재로그인해주세요.
       </div>
     );
   }
   if (!currentUserClassCode && !authLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "80vh",
-          fontSize: "1.2em",
-          color: "#ef4444",
-        }}
-      >
+      <div className="flex justify-center items-center h-[80vh] text-[1.2em] text-red-500">
         학급 코드 정보가 없습니다. 관리자에게 문의하여 학급 코드를 할당받으세요.
       </div>
     );
   }
 
   return (
-    <div className="w-full min-h-full" style={{ backgroundColor: "#0a0a12" }}>
+    <div className="w-full min-h-full bg-cyber-dark">
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
         {renderTitle()}
 

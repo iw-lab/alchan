@@ -24,9 +24,8 @@ import { httpsCallable } from "firebase/functions";
 import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
-// onSnapshot과 orderBy는 firebase/firestore에서 직접 가져옵니다.
+// orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
-  onSnapshot as firebaseOnSnapshot,
   orderBy as firebaseOrderBy,
 } from "firebase/firestore";
 

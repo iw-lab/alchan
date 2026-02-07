@@ -278,8 +278,7 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
             {/* 레벨 & 업적 배지 */}
             <div
               onClick={() => navigate('/my-profile')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer"
-              style={{ background: 'rgba(167, 139, 250, 0.2)' }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer bg-[#a78bfa]/20"
             >
               <span className="text-sm">{levelInfo?.icon || '🌟'}</span>
               <div className="flex flex-col leading-none">
@@ -343,7 +342,7 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
           </button>
           <div>
             <div className="text-[15px] font-bold text-white whitespace-nowrap leading-tight">
-              오늘도 <span className="text-[#00fff2]" style={{ fontFamily: "'Jua', sans-serif" }}>알찬</span> 하루! 👋
+              오늘도 <span className="text-[#00fff2] font-jua">알찬</span> 하루! 👋
             </div>
             <div className="text-xs text-slate-400 whitespace-nowrap leading-tight">{displayName}님 환영합니다</div>
           </div>
@@ -405,8 +404,7 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 pl-3 border-l border-white/10 bg-transparent cursor-pointer"
-              style={{ border: 'none' }}
+              className="flex items-center gap-2 pl-3 border-none bg-transparent cursor-pointer"
             >
               <div className="text-right">
                 <div className="text-[13px] font-bold text-white whitespace-nowrap leading-tight">{displayName}</div>

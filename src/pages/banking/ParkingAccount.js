@@ -35,161 +35,35 @@ const getTeacherAccount = async (classCode) => {
   }
 };
 
-// --- Styles ---
-// --- Styles ---
-const styles = {
-  container: {
-    fontFamily: 'sans-serif',
-    backgroundColor: 'transparent',
-    padding: '32px',
-    minHeight: 'auto'
-  },
-  message: (type) => ({
-    padding: '16px 20px',
-    borderRadius: '12px',
-    marginBottom: '28px',
-    textAlign: 'center',
-    fontSize: '16px',
-    fontWeight: '500',
-    color: type === 'error' ? '#f87171' : '#34d399',
-    backgroundColor: type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    border: `1px solid ${type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
-  }),
-  grid: {
-    display: 'grid',
-    gap: '28px',
-    maxWidth: '1200px',
-    margin: '0 auto'
-  },
-  card: {
-    backgroundColor: 'rgba(20, 20, 35, 0.6)',
-    boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
-    borderRadius: '16px',
-    padding: '32px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-    backdropFilter: 'blur(10px)'
-  },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    marginBottom: '24px',
-    paddingBottom: '20px',
-    borderBottom: '2px solid rgba(255, 255, 255, 0.05)'
-  },
-  cardTitle: {
-    fontSize: '26px',
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: '-0.5px',
-    textShadow: '0 0 10px rgba(0, 255, 242, 0.3)'
-  },
-  tabContainer: {
-    display: 'flex',
-    borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
-    marginBottom: '20px',
-    gap: '8px'
-  },
-  tabButton: (isActive) => ({
-    padding: '12px 24px',
-    border: 'none',
-    background: isActive ? 'rgba(99, 102, 241, 0.2)' : 'none',
-    cursor: 'pointer',
-    fontSize: '17px',
-    fontWeight: isActive ? '700' : '500',
-    color: isActive ? '#00fff2' : '#94a3b8',
-    borderBottom: `3px solid ${isActive ? '#00fff2' : 'transparent'}`,
-    marginBottom: '-2px',
-    borderRadius: '8px 8px 0 0',
-    transition: 'all 0.2s ease',
-    textShadow: isActive ? '0 0 5px rgba(0, 255, 242, 0.3)' : 'none'
-  }),
-  button: (disabled, variant = 'primary') => ({
-    backgroundColor: variant === 'primary' ? 'rgba(3, 105, 161, 0.8)' : (variant === 'danger' ? 'rgba(220, 38, 38, 0.8)' : (variant === 'success' ? 'rgba(5, 150, 105, 0.8)' : '#4b5563')),
-    color: 'white',
-    padding: '12px 20px',
-    borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.1)',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-    fontSize: '15px',
-    fontWeight: '600',
-    boxShadow: disabled ? 'none' : '0 4px 12px rgba(0,0,0,0.3)',
-    transition: 'all 0.2s ease',
-    ':hover': !disabled && {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
-      filter: 'brightness(1.1)'
-    }
-  }),
-  noProduct: {
-    textAlign: 'center',
-    color: '#94a3b8',
-    padding: '32px 0',
-    fontSize: '16px',
-    fontStyle: 'italic'
-  },
-  input: {
-    width: '100%',
-    padding: '14px 16px',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    border: '2px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '10px',
-    marginBottom: '16px',
-    fontSize: '16px',
-    color: 'white',
-    transition: 'border-color 0.2s ease',
-    ':focus': {
-      outline: 'none',
-      borderColor: '#00fff2',
-      boxShadow: '0 0 0 2px rgba(0, 255, 242, 0.1)'
-    }
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    backdropFilter: 'blur(8px)'
-  },
-  modalContent: {
-    background: '#1a1a2e',
-    padding: '32px',
-    borderRadius: '16px',
-    width: '90%',
-    maxWidth: '450px',
-    position: 'relative',
-    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: '#e2e8f0'
-  },
-  modalTitle: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    marginBottom: '20px',
-    color: '#fff',
-    textShadow: '0 0 10px rgba(0, 255, 242, 0.3)'
-  },
-  modalCloseBtn: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: '#94a3b8',
-    transition: 'color 0.2s ease',
-    ':hover': {
-      color: '#fff'
-    }
-  },
+// --- Tailwind class helpers ---
+const cls = {
+  container: "font-sans bg-transparent p-8 min-h-0",
+  message: (type) => `px-5 py-4 rounded-xl mb-7 text-center text-base font-medium shadow-sm ${
+    type === 'error'
+      ? 'text-red-400 bg-red-500/10 border border-red-500/30'
+      : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30'
+  }`,
+  grid: "grid gap-7 max-w-[1200px] mx-auto",
+  card: "bg-[rgba(20,20,35,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
+  cardHeader: "flex items-center gap-4 mb-6 pb-5 border-b-2 border-white/5",
+  cardTitle: "text-[26px] font-bold text-white tracking-tight drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]",
+  tabContainer: "flex border-b-2 border-white/10 mb-5 gap-2",
+  tabButton: (isActive) => `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
+    isActive
+      ? 'bg-indigo-500/20 font-bold text-cyber-cyan border-b-[3px] border-b-cyber-cyan drop-shadow-[0_0_5px_rgba(0,255,242,0.3)]'
+      : 'font-medium text-slate-400 border-b-[3px] border-b-transparent'
+  }`,
+  button: (disabled, variant = 'primary') => `text-white px-5 py-3 rounded-[10px] border border-white/10 text-[15px] font-semibold transition-all duration-200 ${
+    disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 hover:brightness-110'
+  } ${
+    variant === 'primary' ? 'bg-sky-700/80' : variant === 'danger' ? 'bg-red-600/80' : variant === 'success' ? 'bg-emerald-600/80' : 'bg-gray-600'
+  }`,
+  noProduct: "text-center text-slate-400 py-8 text-base italic",
+  input: "w-full py-3.5 px-4 bg-black/20 border-2 border-white/10 rounded-[10px] mb-4 text-base text-white transition-colors duration-200 focus:outline-none focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/10",
+  modalOverlay: "fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-[8px]",
+  modalContent: "bg-[#1a1a2e] p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
+  modalTitle: "text-2xl font-bold mb-5 text-white drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]",
+  modalCloseBtn: "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-white",
 };
 
 // --- Helper Functions & Sub-Components ---
@@ -210,10 +84,10 @@ const calculateDailyInterest = (principal, dailyRate) => {
 };
 
 const ICON_MAP = {
-  parking: <Wallet size={28} style={{ color: '#0369a1' }} />,
-  deposits: <Landmark size={28} style={{ color: '#059669' }} />,
-  savings: <PiggyBank size={28} style={{ color: '#7c3aed' }} />,
-  loans: <HandCoins size={28} style={{ color: '#dc2626' }} />,
+  parking: <Wallet size={28} className="text-sky-700" />,
+  deposits: <Landmark size={28} className="text-emerald-600" />,
+  savings: <PiggyBank size={28} className="text-violet-600" />,
+  loans: <HandCoins size={28} className="text-red-600" />,
 };
 
 const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
@@ -230,79 +104,67 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
   const dailyInterestAmount = calculateDailyInterest(product.balance, product.rate);
 
   return (
-    <div style={{
-      padding: '20px',
-      border: `2px solid ${isMatured ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-      borderRadius: '12px',
-      marginBottom: '16px',
-      background: isMatured ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 0, 0, 0.2)',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+    <div className={`p-5 border-2 rounded-xl mb-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
+      isMatured ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-black/20'
+    }`}>
+      <div className="flex justify-between items-start mb-3">
         <div>
-          <div style={{ fontWeight: '700', fontSize: '18px', color: '#e2e8f0', marginBottom: '4px' }}>{product.name}</div>
-          {isMatured && <span style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '4px 12px',
-            borderRadius: '20px',
-            fontSize: '13px',
-            fontWeight: '600'
-          }}>만기</span>}
+          <div className="font-bold text-lg text-slate-200 mb-1">{product.name}</div>
+          {isMatured && <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[13px] font-semibold">만기</span>}
         </div>
-        <span style={{ fontSize: '20px', fontWeight: '700', color: '#00fff2' }}>{formatCurrency(product.balance)}원</span>
+        <span className="text-xl font-bold text-cyber-cyan">{formatCurrency(product.balance)}원</span>
       </div>
 
-      <div style={{ fontSize: '15px', color: '#94a3b8', marginTop: '16px', display: 'grid', gap: '10px', backgroundColor: 'rgba(0, 0, 0, 0.2)', padding: '16px', borderRadius: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: '500' }}>금리 (일):</span>
-          <span style={{ fontWeight: '700', color: '#00fff2' }}>{product.rate}%</span>
+      <div className="text-[15px] text-slate-400 mt-4 grid gap-2.5 bg-black/20 p-4 rounded-lg">
+        <div className="flex justify-between">
+          <span className="font-medium">금리 (일):</span>
+          <span className="font-bold text-cyber-cyan">{product.rate}%</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: '500' }}>일일 이자:</span>
-          <span style={{ fontWeight: '700', color: '#34d399' }}>+{formatCurrency(dailyInterestAmount)}원/일</span>
+        <div className="flex justify-between">
+          <span className="font-medium">일일 이자:</span>
+          <span className="font-bold text-emerald-400">+{formatCurrency(dailyInterestAmount)}원/일</span>
         </div>
         {product.maturityDate && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: '500' }}>만기일:</span>
-              <span style={{ fontWeight: '600', color: '#e2e8f0' }}>{format(product.maturityDate, 'yyyy-MM-dd')}</span>
+            <div className="flex justify-between">
+              <span className="font-medium">만기일:</span>
+              <span className="font-semibold text-slate-200">{format(product.maturityDate, 'yyyy-MM-dd')}</span>
             </div>
             {!isMatured && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: '500' }}>남은 기간:</span>
-                <span style={{ fontWeight: '600', color: '#00fff2' }}>{daysRemaining}일</span>
+              <div className="flex justify-between">
+                <span className="font-medium">남은 기간:</span>
+                <span className="font-semibold text-cyber-cyan">{daysRemaining}일</span>
               </div>
             )}
           </>
         )}
       </div>
 
-      <div style={{ borderTop: '1px dashed rgba(255, 255, 255, 0.1)', margin: '16px 0' }}></div>
+      <div className="border-t border-dashed border-white/10 my-4"></div>
 
-      <div style={{ fontSize: '15px', color: '#e2e8f0', display: 'grid', gap: '10px', backgroundColor: 'rgba(0, 255, 242, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(0, 255, 242, 0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: '600' }}>만기 시 이자 (세전):</span>
-          <span style={{ fontWeight: '700', color: '#34d399', fontSize: '17px' }}>+{formatCurrency(interest)}원</span>
+      <div className="text-[15px] text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
+        <div className="flex justify-between">
+          <span className="font-semibold">만기 시 이자 (세전):</span>
+          <span className="font-bold text-emerald-400 text-[17px]">+{formatCurrency(interest)}원</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px' }}>
-          <span style={{ fontWeight: '700' }}>만기 시 총액:</span>
-          <span style={{ fontWeight: '700', color: '#00fff2' }}>{formatCurrency(total)}원</span>
+        <div className="flex justify-between text-[17px]">
+          <span className="font-bold">만기 시 총액:</span>
+          <span className="font-bold text-cyber-cyan">{formatCurrency(total)}원</span>
         </div>
       </div>
 
-      <div style={{ marginTop: '20px', textAlign: 'right' }}>
+      <div className="mt-5 text-right">
         {isMatured ? (
           <button
             onClick={onMaturity}
-            style={{ ...styles.button(false, 'success'), padding: '10px 20px', fontSize: '15px' }}
+            className={cls.button(false, 'success') + ' px-5 py-2.5 text-[15px]'}
           >
             만기 수령 ({formatCurrency(total)}원)
           </button>
         ) : (
           <button
             onClick={onCancel}
-            style={{ ...styles.button(false, 'danger'), padding: '10px 20px', fontSize: '15px' }}
+            className={cls.button(false, 'danger') + ' px-5 py-2.5 text-[15px]'}
           >
             {product.type === 'loan' ? '대출 상환' : '중도 해지'}
           </button>
@@ -317,31 +179,20 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
   const { interest: projectedInterest } = calculateCompoundInterest(100000, dailyRate, product.termInDays);
 
   return (
-    <div style={{
-      padding: '20px',
-      border: '2px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '12px',
-      marginBottom: '12px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      background: 'rgba(0, 0, 0, 0.2)',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-      transition: 'all 0.2s ease'
-    }}>
+    <div className="p-5 border-2 border-white/10 rounded-xl mb-3 flex justify-between items-center bg-black/20 shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200">
       <div>
-        <div style={{ fontWeight: '700', fontSize: '18px', color: '#e2e8f0', marginBottom: '8px' }}>{product.name}</div>
-        <div style={{ fontSize: '15px', color: '#94a3b8', marginBottom: '6px' }}>
-          <strong style={{ color: '#00fff2' }}>일 {product.dailyRate}%</strong> (기간: {product.termInDays}일)
+        <div className="font-bold text-lg text-slate-200 mb-2">{product.name}</div>
+        <div className="text-[15px] text-slate-400 mb-1.5">
+          <strong className="text-cyber-cyan">일 {product.dailyRate}%</strong> (기간: {product.termInDays}일)
         </div>
-        <div style={{ fontSize: '14px', color: '#34d399', fontWeight: '600' }}>
-          <TrendingUp size={14} style={{ display: 'inline', marginRight: '4px' }} />
+        <div className="text-sm text-emerald-400 font-semibold">
+          <TrendingUp size={14} className="inline mr-1" />
           10만원 가입 시 예상 이자: +{formatCurrency(projectedInterest)}원
         </div>
       </div>
       <button
         onClick={onSubscribe}
-        style={{ ...styles.button(false), padding: '12px 24px', fontSize: '16px' }}
+        className={cls.button(false) + ' px-6 py-3 text-base'}
       >
         가입
       </button>
@@ -352,21 +203,21 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
 const ProductSection = ({ title, icon, subscribedProducts, availableProducts, onSubscribe, onCancel, onMaturity }) => {
   const [activeTab, setActiveTab] = useState('subscribed');
   return (
-    <div style={styles.card}>
-      <div style={styles.cardHeader}>
+    <div className={cls.card}>
+      <div className={cls.cardHeader}>
         {icon}
-        <h2 style={styles.cardTitle}>{title}</h2>
+        <h2 className={cls.cardTitle}>{title}</h2>
       </div>
-      <div style={styles.tabContainer}>
+      <div className={cls.tabContainer}>
         <button
           onClick={() => setActiveTab('subscribed')}
-          style={styles.tabButton(activeTab === 'subscribed')}
+          className={cls.tabButton(activeTab === 'subscribed')}
         >
           가입한 상품
         </button>
         <button
           onClick={() => setActiveTab('available')}
-          style={styles.tabButton(activeTab === 'available')}
+          className={cls.tabButton(activeTab === 'available')}
         >
           가입 가능한 상품
         </button>
@@ -382,7 +233,7 @@ const ProductSection = ({ title, icon, subscribedProducts, availableProducts, on
                 onMaturity={() => onMaturity(p)}
               />
             ))
-            : <p style={styles.noProduct}>가입한 상품이 없습니다.</p>
+            : <p className={cls.noProduct}>가입한 상품이 없습니다.</p>
         )}
         {activeTab === 'available' && (
           availableProducts.length > 0
@@ -393,7 +244,7 @@ const ProductSection = ({ title, icon, subscribedProducts, availableProducts, on
                 onSubscribe={() => onSubscribe(p)}
               />
             ))
-            : <p style={styles.noProduct}>가입 가능한 상품이 없습니다.</p>
+            : <p className={cls.noProduct}>가입 가능한 상품이 없습니다.</p>
         )}
       </div>
     </div>
@@ -412,36 +263,36 @@ const SubscriptionModal = ({ isOpen, onClose, product, onConfirm, isProcessing }
     : { interest: 0, total: 0 };
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} style={styles.modalCloseBtn}><X size={24} /></button>
-        <h3 style={styles.modalTitle}>{product.name} 가입</h3>
+    <div className={cls.modalOverlay} onClick={onClose}>
+      <div className={cls.modalContent} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className={cls.modalCloseBtn} aria-label="닫기"><X size={24} /></button>
+        <h3 className={cls.modalTitle}>{product.name} 가입</h3>
 
-        <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'rgba(0, 255, 242, 0.05)', borderRadius: '10px', border: '1px solid rgba(0, 255, 242, 0.2)' }}>
-          <div style={{ fontSize: '15px', color: '#94a3b8', marginBottom: '8px' }}>
-            <strong style={{ color: '#00fff2' }}>금리:</strong> 일 {product.dailyRate}% (일복리)
+        <div className="mb-5 p-4 bg-cyber-cyan/5 rounded-[10px] border border-cyber-cyan/20">
+          <div className="text-[15px] text-slate-400 mb-2">
+            <strong className="text-cyber-cyan">금리:</strong> 일 {product.dailyRate}% (일복리)
           </div>
-          <div style={{ fontSize: '15px', color: '#94a3b8' }}>
-            <strong style={{ color: '#00fff2' }}>기간:</strong> {product.termInDays}일
+          <div className="text-[15px] text-slate-400">
+            <strong className="text-cyber-cyan">기간:</strong> {product.termInDays}일
           </div>
         </div>
 
-        <p style={{ marginBottom: '12px', fontSize: '16px', fontWeight: '600', color: '#e2e8f0' }}>가입 금액을 입력해주세요</p>
+        <p className="mb-3 text-base font-semibold text-slate-200">가입 금액을 입력해주세요</p>
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          style={styles.input}
+          className={cls.input}
           placeholder={`${formatCurrency(product.minAmount || 0)}원 이상`}
           autoFocus
         />
 
         {numAmount > 0 && (
-          <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-            <div style={{ fontSize: '15px', color: '#34d399', marginBottom: '6px' }}>
+          <div className="mb-5 p-4 bg-emerald-500/10 rounded-[10px] border border-emerald-500/30">
+            <div className="text-[15px] text-emerald-400 mb-1.5">
               예상 만기 이자: <strong>+{formatCurrency(projectedInterest)}원</strong>
             </div>
-            <div style={{ fontSize: '16px', color: '#34d399', fontWeight: '700' }}>
+            <div className="text-base text-emerald-400 font-bold">
               만기 시 총액: {formatCurrency(projectedTotal)}원
             </div>
           </div>
@@ -450,7 +301,7 @@ const SubscriptionModal = ({ isOpen, onClose, product, onConfirm, isProcessing }
         <button
           onClick={() => { onConfirm(amount); setAmount(""); }}
           disabled={isProcessing || !amount}
-          style={{ ...styles.button(isProcessing || !amount), width: '100%', fontSize: '17px', padding: '16px' }}
+          className={cls.button(isProcessing || !amount) + ' w-full text-[17px] py-4'}
         >
           {isProcessing ? '처리 중...' : '가입하기'}
         </button>
@@ -463,99 +314,59 @@ const ParkingAccountSection = ({ balance, dailyInterest, onDeposit, onWithdraw, 
   const [amount, setAmount] = useState("");
 
   return (
-    <div style={{
-      ...styles.card,
-      background: 'linear-gradient(135deg, rgba(6, 78, 117, 0.85) 0%, rgba(20, 40, 60, 0.9) 100%)',
-      color: 'white',
-      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-      border: '1px solid rgba(0, 180, 216, 0.25)'
-    }}>
-      <div style={{ ...styles.cardHeader, borderBottom: '2px solid rgba(0, 180, 216, 0.2)' }}>
-        <Wallet size={32} style={{ color: '#67e8f9' }} />
-        <h2 style={{ ...styles.cardTitle, color: '#e0f7fa' }}>파킹통장</h2>
+    <div className="bg-gradient-to-br from-[rgba(6,78,117,0.85)] to-[rgba(20,40,60,0.9)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] rounded-2xl p-8 border border-[rgba(0,180,216,0.25)] backdrop-blur-[10px]">
+      <div className="flex items-center gap-4 mb-6 pb-5 border-b-2 border-[rgba(0,180,216,0.2)]">
+        <Wallet size={32} className="text-cyan-300" />
+        <h2 className="text-[26px] font-bold text-[#e0f7fa] tracking-tight drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]">파킹통장</h2>
       </div>
 
-      {/* 보유현금 표시 추가 */}
-      <div style={{
-        backgroundColor: 'rgba(0, 180, 216, 0.15)',
-        padding: '12px 16px',
-        borderRadius: '10px',
-        marginBottom: '16px',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        border: '1px solid rgba(0, 180, 216, 0.2)'
-      }}>
-        <span style={{ fontSize: '16px', fontWeight: '500', color: '#94a3b8' }}>보유 현금</span>
-        <span style={{ fontSize: '20px', fontWeight: '700', color: '#e0f7fa' }}>{formatCurrency(userCash || 0)}원</span>
+      {/* 보유현금 표시 */}
+      <div className="bg-[rgba(0,180,216,0.15)] px-4 py-3 rounded-[10px] mb-4 backdrop-blur-[10px] flex justify-between items-center border border-[rgba(0,180,216,0.2)]">
+        <span className="text-base font-medium text-slate-400">보유 현금</span>
+        <span className="text-xl font-bold text-[#e0f7fa]">{formatCurrency(userCash || 0)}원</span>
       </div>
 
-      <div style={{ fontSize: '42px', fontWeight: 'bold', color: '#e0f7fa', marginBottom: '8px' }}>
+      <div className="text-[42px] font-bold text-[#e0f7fa] mb-2">
         {formatCurrency(balance)}원
       </div>
 
-      <p style={{ fontSize: '16px', color: 'rgba(224, 247, 250, 0.8)', marginBottom: '16px', fontWeight: '500' }}>
+      <p className="text-base text-[#e0f7fa]/80 mb-4 font-medium">
         매일 이자가 자동 지급되는 자유 입출금 통장
       </p>
 
-      <div style={{
-        backgroundColor: 'rgba(0, 180, 216, 0.12)',
-        padding: '16px',
-        borderRadius: '10px',
-        marginBottom: '24px',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(0, 180, 216, 0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <TrendingUp size={20} style={{ color: '#67e8f9' }} />
-          <span style={{ fontSize: '15px', fontWeight: '600', color: '#94a3b8' }}>일일 이자 수익</span>
+      <div className="bg-[rgba(0,180,216,0.12)] p-4 rounded-[10px] mb-6 backdrop-blur-[10px] border border-[rgba(0,180,216,0.2)]">
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp size={20} className="text-cyan-300" />
+          <span className="text-[15px] font-semibold text-slate-400">일일 이자 수익</span>
         </div>
-        <div style={{ fontSize: '28px', fontWeight: '700', color: '#67e8f9' }}>
+        <div className="text-[28px] font-bold text-cyan-300">
           +{formatCurrency(dailyInterest)}원/일
         </div>
-        <div style={{ fontSize: '14px', marginTop: '6px', color: 'rgba(148, 163, 184, 0.9)' }}>
+        <div className="text-sm mt-1.5 text-slate-400/90">
           (일 1% 복리 기준)
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div className="flex gap-2.5">
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="금액 입력"
-          style={{
-            ...styles.input,
-            marginBottom: 0,
-            fontSize: '17px',
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(0, 180, 216, 0.3)'
-          }}
+          className="flex-1 py-3.5 px-4 bg-black/30 border border-[rgba(0,180,216,0.3)] rounded-[10px] text-[17px] text-white focus:outline-none focus:border-cyber-cyan"
           disabled={isProcessing}
         />
         <button
           onClick={() => { onDeposit(amount); setAmount(""); }}
           disabled={isProcessing}
-          style={{
-            ...styles.button(isProcessing, 'success'),
-            fontSize: '17px',
-            padding: '14px 24px'
-          }}
+          className={cls.button(isProcessing, 'success') + ' text-[17px] px-6 py-3.5'}
         >
           입금
         </button>
         <button
           onClick={() => { onWithdraw(amount); setAmount(""); }}
           disabled={isProcessing}
-          style={{
-            ...styles.button(isProcessing),
-            backgroundColor: 'rgba(100, 116, 139, 0.5)',
-            color: 'white',
-            fontSize: '17px',
-            padding: '14px 24px'
-          }}
+          className={cls.button(isProcessing) + ' !bg-slate-500/50 text-[17px] px-6 py-3.5'}
         >
           출금
         </button>
@@ -1269,35 +1080,22 @@ const ParkingAccount = ({
     }
   };
 
-  if (loading) return <div style={styles.container}>금융 정보를 불러오는 중입니다...</div>;
-  if (!user) return <div style={styles.container}>로그인이 필요합니다.</div>;
+  if (loading) return <div className={cls.container}>금융 정보를 불러오는 중입니다...</div>;
+  if (!user) return <div className={cls.container}>로그인이 필요합니다.</div>;
+
+  const mainTabClass = (isActive) => `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
+    isActive
+      ? 'bg-cyber-cyan/10 font-bold text-cyber-cyan border-b-[3px] border-b-cyber-cyan'
+      : 'font-medium text-slate-400 border-b-[3px] border-b-transparent'
+  }`;
 
   return (
-    <div style={styles.container}>
+    <div className={cls.container}>
       {/* 탭 메뉴 */}
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '24px',
-        borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
-        paddingBottom: '0',
-        position: 'relative'
-      }}>
+      <div className="flex gap-2.5 mb-6 border-b-2 border-white/10 relative">
         <button
           onClick={() => onViewChange && onViewChange('parking')}
-          style={{
-            padding: '12px 24px',
-            border: 'none',
-            background: activeView === 'parking' ? 'rgba(0, 255, 242, 0.1)' : 'none',
-            cursor: 'pointer',
-            fontSize: '17px',
-            fontWeight: activeView === 'parking' ? '700' : '500',
-            color: activeView === 'parking' ? '#00fff2' : '#94a3b8',
-            borderBottom: `3px solid ${activeView === 'parking' ? '#00fff2' : 'transparent'}`,
-            marginBottom: '-2px',
-            borderRadius: '8px 8px 0 0',
-            transition: 'all 0.2s ease'
-          }}
+          className={mainTabClass(activeView === 'parking')}
         >
           나의 금융 현황
         </button>
@@ -1305,19 +1103,7 @@ const ParkingAccount = ({
           <>
             <button
               onClick={() => onViewChange && onViewChange('admin')}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                background: activeView === 'admin' ? 'rgba(0, 255, 242, 0.1)' : 'none',
-                cursor: 'pointer',
-                fontSize: '17px',
-                fontWeight: activeView === 'admin' ? '700' : '500',
-                color: activeView === 'admin' ? '#00fff2' : '#94a3b8',
-                borderBottom: `3px solid ${activeView === 'admin' ? '#00fff2' : 'transparent'}`,
-                marginBottom: '-2px',
-                borderRadius: '8px 8px 0 0',
-                transition: 'all 0.2s ease'
-              }}
+              className={mainTabClass(activeView === 'admin')}
             >
               상품 관리
             </button>
@@ -1326,19 +1112,7 @@ const ParkingAccount = ({
                 if (onViewChange) onViewChange('userProducts');
                 if (onLoadUserProducts) onLoadUserProducts();
               }}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                background: activeView === 'userProducts' ? 'rgba(0, 255, 242, 0.1)' : 'none',
-                cursor: 'pointer',
-                fontSize: '17px',
-                fontWeight: activeView === 'userProducts' ? '700' : '500',
-                color: activeView === 'userProducts' ? '#00fff2' : '#94a3b8',
-                borderBottom: `3px solid ${activeView === 'userProducts' ? '#00fff2' : 'transparent'}`,
-                marginBottom: '-2px',
-                borderRadius: '8px 8px 0 0',
-                transition: 'all 0.2s ease'
-              }}
+              className={mainTabClass(activeView === 'userProducts')}
             >
               유저 상품 조회
             </button>
@@ -1346,41 +1120,35 @@ const ParkingAccount = ({
         )}
       </div>
 
-      {message && <div style={styles.message(messageType)}>{message}</div>}
+      {message && <div className={cls.message(messageType)}>{message}</div>}
 
       {/* 유저 상품 조회 화면 */}
       {activeView === 'userProducts' && isAdmin && isAdmin() && (
-        <div style={{
-          backgroundColor: 'rgba(20, 20, 35, 0.6)',
-          borderRadius: '16px',
-          padding: '32px',
-          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
-          border: '1px solid rgba(255, 255, 255, 0.05)'
-        }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: '#fff' }}>
+        <div className="bg-[rgba(20,20,35,0.6)] rounded-2xl p-8 shadow-[0_6px_20px_rgba(0,0,0,0.3)] border border-white/5">
+          <h2 className="text-2xl font-bold mb-4 text-white">
             유저별 가입 상품 조회 및 관리
           </h2>
-          <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '20px' }}>
+          <p className="text-sm text-slate-400 mb-5">
             클래스 내 모든 유저의 가입 상품을 조회하고 필요시 강제 삭제할 수 있습니다.
           </p>
 
           {allUserProducts.length === 0 ? (
-            <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+            <p className="text-center p-10 text-slate-400">
               가입된 상품이 없습니다.
             </p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>사용자</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>상품명</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>종류</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>잔액/금액</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>금리(일)</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>기간(일)</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>만기일</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>관리</th>
+                  <tr className="bg-white/5 border-b-2 border-white/10">
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">사용자</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">상품명</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">종류</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">잔액/금액</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">금리(일)</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">기간(일)</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">만기일</th>
+                    <th className="p-3 text-left text-sm font-semibold text-slate-400">관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1389,26 +1157,22 @@ const ParkingAccount = ({
                       product.type === 'savings' ? '적금' :
                         product.type === 'loan' ? '대출' : '기타';
                     return (
-                      <tr key={`${product.userId}-${product.id}-${index}`} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>{product.userName}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>{product.name}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>{typeLabel}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#00fff2' }}>{formatKoreanCurrency(product.balance || 0)}원</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>{product.rate}%</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>{product.termInDays}일</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#e2e8f0' }}>
+                      <tr key={`${product.userId}-${product.id}-${index}`} className="border-b border-white/5">
+                        <td className="p-3 text-sm text-slate-200">{product.userName}</td>
+                        <td className="p-3 text-sm text-slate-200">{product.name}</td>
+                        <td className="p-3 text-sm text-slate-200">{typeLabel}</td>
+                        <td className="p-3 text-sm text-cyber-cyan">{formatKoreanCurrency(product.balance || 0)}원</td>
+                        <td className="p-3 text-sm text-slate-200">{product.rate}%</td>
+                        <td className="p-3 text-sm text-slate-200">{product.termInDays}일</td>
+                        <td className="p-3 text-sm text-slate-200">
                           {product.maturityDate
                             ? new Date(product.maturityDate).toLocaleDateString('ko-KR')
                             : '-'}
                         </td>
-                        <td style={{ padding: '12px' }}>
+                        <td className="p-3">
                           <button
                             onClick={() => onDeleteUserProduct && onDeleteUserProduct(product)}
-                            style={{
-                              ...styles.button(false, 'danger'),
-                              fontSize: '12px',
-                              padding: '6px 12px'
-                            }}
+                            className={cls.button(false, 'danger') + ' text-xs px-3 py-1.5'}
                           >
                             삭제
                           </button>
@@ -1418,7 +1182,7 @@ const ParkingAccount = ({
                   })}
                 </tbody>
               </table>
-              <div style={{ marginTop: '20px', textAlign: 'right', color: '#94a3b8', fontSize: '14px' }}>
+              <div className="mt-5 text-right text-slate-400 text-sm">
                 총 {allUserProducts.length}개의 상품
               </div>
             </div>
@@ -1428,7 +1192,7 @@ const ParkingAccount = ({
 
       {/* 기존 금융 현황 화면 */}
       {activeView === 'parking' && (
-        <div style={styles.grid}>
+        <div className={cls.grid}>
           <ParkingAccountSection
             balance={parkingBalance}
             dailyInterest={parkingDailyInterest}

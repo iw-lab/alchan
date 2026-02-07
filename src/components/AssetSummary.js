@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { logger } from "../utils/logger";
 // import { useAuth } from "./App"; // App.js에서 useAuth 훅 가져오기 (주석 처리, Dashboard에서 user를 직접 받음)
-import { formatKoreanCurrency } from "./utils/numberFormatter"; // 숫자 포맷팅 헬퍼
-import LevelBadge, { LevelInline } from "./components/LevelBadge"; // 레벨 배지 컴포넌트
+import { formatKoreanCurrency } from "../utils/numberFormatter"; // 숫자 포맷팅 헬퍼
+import LevelBadge, { LevelInline } from "./LevelBadge"; // 레벨 배지 컴포넌트
 
 // Dashboard에서 전달하는 props: { user, couponValue, setShowTransferModal }
 export default function AssetSummary({

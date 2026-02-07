@@ -1,7 +1,7 @@
 // src/TradeModal.js
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, useEffect, memo } from "react";
-import "../../StockExchange.css"; // 스타일 공유
+import "../../pages/banking/StockExchange.css"; // 스타일 공유
 import { useAuth } from "../../contexts/AuthContext"; // 사용자 잔고 확인용
 
 const TradeModal = memo(function TradeModal({

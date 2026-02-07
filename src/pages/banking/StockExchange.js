@@ -152,60 +152,56 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
   };
 
   return (
-    <div style={{ marginTop: '10px' }}>
-      <button onClick={() => setShowForm(!showForm)} className="btn btn-secondary" style={{ width: '100%', marginBottom: '10px' }}>
+    <div className="mt-2.5">
+      <button onClick={() => setShowForm(!showForm)} className="btn btn-secondary w-full mb-2.5">
         {showForm ? '접기' : '➕ 개별 주식/ETF 추가'}
       </button>
       {showForm && (
-        <div style={{ background: 'rgba(20, 20, 35, 0.8)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '10px' }}>
+        <div className="bg-[rgba(20,20,35,0.8)] p-3 rounded-lg border border-white/10">
+          <p className="text-[0.85rem] text-slate-400 mb-2.5">
             📌 빠른 추가 (클릭하면 바로 추가됩니다)
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '15px' }}>
+          <div className="flex flex-wrap gap-1.5 mb-4">
             {commonStocks.map(stock => (
               <button
                 key={stock.symbol}
                 onClick={() => handleQuickAdd(stock)}
                 disabled={isAdding}
-                style={{
-                  padding: '4px 8px',
-                  fontSize: '0.75rem',
-                  background: stock.type.includes('ETF') ? 'rgba(59, 130, 246, 0.2)' : stock.type.includes('채권') ? 'rgba(245, 158, 11, 0.2)' : stock.type.includes('원자재') ? 'rgba(236, 72, 153, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                  border: stock.type.includes('ETF') ? '1px solid rgba(59, 130, 246, 0.3)' : stock.type.includes('채권') ? '1px solid rgba(245, 158, 11, 0.3)' : stock.type.includes('원자재') ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
-                  color: 'white',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
+                className={`px-2 py-1 text-xs text-white rounded cursor-pointer whitespace-nowrap ${
+                  stock.type.includes('ETF') ? 'bg-blue-500/20 border border-blue-500/30'
+                  : stock.type.includes('채권') ? 'bg-amber-500/20 border border-amber-500/30'
+                  : stock.type.includes('원자재') ? 'bg-pink-500/20 border border-pink-500/30'
+                  : 'bg-emerald-500/20 border border-emerald-500/30'
+                }`}
                 title={`${stock.type} - ${stock.symbol}`}
               >
                 {stock.name}
               </button>
             ))}
           </div>
-          <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '8px' }}>
+          <p className="text-[0.85rem] text-slate-400 mb-2">
             ✏️ 직접 입력 (Yahoo Finance 심볼 사용)
           </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="flex gap-2 flex-wrap">
             <input
               type="text"
               placeholder="이름 (예: 삼성전자)"
               value={formData.name}
               onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
-              style={{ flex: 1, minWidth: '120px', padding: '8px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-white"
             />
             <input
               type="text"
               placeholder="심볼 (예: 005930.KS)"
               value={formData.symbol}
               onChange={e => setFormData(p => ({ ...p, symbol: e.target.value }))}
-              style={{ flex: 1, minWidth: '120px', padding: '8px', borderRadius: '4px', border: '1px solid rgba(255, 255, 255, 0.2)', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-white"
             />
-            <button onClick={handleCustomAdd} disabled={isAdding} className="btn btn-success" style={{ padding: '8px 16px' }}>
+            <button onClick={handleCustomAdd} disabled={isAdding} className="btn btn-success px-4 py-2">
               {isAdding ? '추가 중...' : '추가'}
             </button>
           </div>
-          <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '8px' }}>
+          <p className="text-xs text-gray-400 mt-2">
             💡 한국 주식: 종목코드.KS (예: 005930.KS) | 미국 주식: 티커 (예: AAPL, TSLA)
           </p>
         </div>
@@ -330,8 +326,8 @@ const AdminPanel = React.memo(({ stocks, classCode, onClose, onAddStock, onDelet
     <div className="admin-panel-fullscreen">
       <div className="admin-header">
         <h2><Settings size={24} /> 관리자 패널 ({classCode})</h2>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.85rem', color: '#666' }}>
+        <div className="flex gap-2.5 items-center">
+          <div className="text-[0.85rem] text-gray-500">
             캐시 통계: 적중 {cacheStats.hits}, 누락 {cacheStats.misses}, 절약 {cacheStats.savings}회
           </div>
           <button onClick={onClose} className="btn btn-danger">닫기</button>
@@ -340,41 +336,38 @@ const AdminPanel = React.memo(({ stocks, classCode, onClose, onAddStock, onDelet
       <div className="admin-content">
         <div className="admin-section">
           <h3>📊 실제 주식 관리 (Yahoo Finance)</h3>
-          <div style={{ marginBottom: '20px', padding: '15px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-            <p style={{ marginBottom: '10px', color: '#34d399', fontSize: '0.9rem' }}>
+          <div className="mb-5 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+            <p className="mb-2.5 text-emerald-400 text-[0.9rem]">
               🌐 실제 주식 데이터를 Yahoo Finance에서 가져옵니다.<br />
               📈 삼성전자, SK하이닉스, 애플, 테슬라, ETF, 채권 ETF 등 지원<br />
               ⏰ 15분마다 자동으로 가격이 업데이트됩니다. | 💱 환율: 하루 1회 자동 업데이트
             </p>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <div className="flex gap-2.5 mb-2.5">
               <button
                 onClick={handleCreateRealStocks}
                 disabled={isCreatingRealStocks}
-                className="btn btn-success"
-                style={{ flex: 1, padding: '12px', fontSize: '0.9rem', fontWeight: 'bold' }}
+                className="btn btn-success flex-1 p-3 text-[0.9rem] font-bold"
               >
                 {isCreatingRealStocks ? '⏳ 생성 중...' : '🏢 기본 주식 생성'}
               </button>
               <button
                 onClick={handleUpdateRealStocks}
                 disabled={isUpdatingRealStocks}
-                className="btn btn-primary"
-                style={{ flex: 1, padding: '12px', fontSize: '0.9rem', fontWeight: 'bold' }}
+                className="btn btn-primary flex-1 p-3 text-[0.9rem] font-bold"
               >
                 {isUpdatingRealStocks ? '⏳ 업데이트 중...' : '🔄 가격 즉시 업데이트'}
               </button>
             </div>
             <RealStockAdder onAddStock={onAddSingleRealStock} />
-            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="mt-2.5 pt-2.5 border-t border-white/10">
               <button
                 onClick={handleDeleteSimulationStocks}
                 disabled={isDeletingSimulation}
-                className="btn btn-danger"
-                style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+                className="btn btn-danger w-full p-2.5 text-[0.85rem]"
               >
                 {isDeletingSimulation ? '⏳ 삭제 중...' : '🗑️ 시뮬레이션 주식 전체 삭제'}
               </button>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '5px', textAlign: 'center' }}>
+              <p className="text-xs text-gray-400 mt-1 text-center">
                 ⚠️ 실제 주식(실시간)만 남기고 가상 주식을 모두 삭제합니다
               </p>
             </div>
@@ -388,7 +381,7 @@ const AdminPanel = React.memo(({ stocks, classCode, onClose, onAddStock, onDelet
                 <div className="admin-stock-info">
                   <span className="stock-name">
                     {getProductIcon(stock.productType)} {stock.name}
-                    {stock.isRealStock && <span style={{ marginLeft: '6px', background: '#10b981', color: 'white', fontSize: '0.65rem', padding: '1px 4px', borderRadius: '3px', fontWeight: 'bold' }}>실시간</span>}
+                    {stock.isRealStock && <span className="ml-1.5 bg-emerald-500 text-white text-[0.65rem] px-1 py-px rounded-sm font-bold">실시간</span>}
                   </span>
                   <span className="stock-details">
                     {formatCurrency(stock.price)} | {SECTORS[stock.sector]?.name || '기타'} | {stock.isListed ? '상장' : '상장폐지'} | {stock.isManual ? '수동' : stock.isRealStock ? '실시간' : '자동'}
@@ -1298,13 +1291,13 @@ const StockExchange = () => {
             </div>
           </div>
         </header>
-        <main className="market-section" style={{ justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
-          <div style={{ textAlign: 'center', padding: '20px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <main className="market-section flex justify-center items-center">
+          <div className="text-center p-5 bg-white rounded-lg shadow-[0_2px_10px_rgba(0,0,0,0.1)]">
             <h2>학급 미배정 안내</h2>
-            <p style={{ marginTop: '10px', fontSize: '1rem', color: '#333' }}>
+            <p className="mt-2.5 text-base text-gray-700">
               소속된 학급이 없어 주식 시장을 이용할 수 없습니다.
             </p>
-            <p style={{ marginTop: '5px', fontSize: '0.9rem', color: '#666' }}>
+            <p className="mt-1 text-[0.9rem] text-gray-500">
               담당 선생님께 문의하여 학급에 등록해주세요.
             </p>
           </div>
@@ -1335,7 +1328,7 @@ const StockExchange = () => {
                 onClick={toggleVacationMode}
                 disabled={vacationLoading}
                 className={`btn ${vacationMode ? "btn-warning" : "btn-secondary"}`}
-                style={{ marginLeft: '8px' }}
+                className="ml-2"
                 title={vacationMode ? '방학 모드 ON - 스케줄러 중지됨' : '방학 모드 OFF - 스케줄러 작동 중'}
               >
                 {vacationLoading ? '...' : vacationMode ? '🏖️ 방학모드 ON' : '📅 방학모드 OFF'}
@@ -1355,17 +1348,7 @@ const StockExchange = () => {
 
           {/* 성능 통계 표시 (관리자 전용) */}
           {isAdmin() && (
-            <div style={{
-              marginTop: '10px',
-              padding: '8px 12px',
-              background: '#f0f9ff',
-              borderRadius: '6px',
-              fontSize: '0.8rem',
-              color: '#0369a1',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
+            <div className="mt-2.5 px-3 py-2 bg-sky-50 rounded-md text-[0.8rem] text-sky-700 flex justify-between items-center">
               <div>
                 🚀 성능 최적화 상태: 캐시 적중 {cacheStatus.hits}회, 누락 {cacheStatus.misses}회
                 (절약률: {cacheStatus.hits + cacheStatus.misses > 0 ? Math.round((cacheStatus.hits / (cacheStatus.hits + cacheStatus.misses)) * 100) : 0}%)
@@ -1381,11 +1364,11 @@ const StockExchange = () => {
           <div className="section-header">
             <h2 className="section-title">📈 투자 시장</h2>
             <div className="update-indicator">
-              <button onClick={handleManualRefresh} disabled={isFetching} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+              <button onClick={handleManualRefresh} disabled={isFetching} className="btn btn-secondary px-2 py-1 text-xs">
                 <RefreshCw size={12} />
                 {isFetching ? '갱신중...' : '새로고침'}
               </button>
-              {lastUpdated && <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>마지막 갱신: {lastUpdated.toLocaleTimeString()}</span>}
+              {lastUpdated && <span className="text-xs text-gray-500">마지막 갱신: {lastUpdated.toLocaleTimeString()}</span>}
             </div>
           </div>
 
@@ -1407,15 +1390,7 @@ const StockExchange = () => {
                       <h3>{getProductIcon(stock.productType)} {stock.name}</h3>
                       <div className="stock-badges">
                         {isRealStock && (
-                          <span className="stock-badge real" style={{
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '0.7rem',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            marginRight: '4px'
-                          }}>
+                          <span className="stock-badge real bg-gradient-to-br from-emerald-500 to-emerald-600 text-white font-bold text-[0.7rem] px-1.5 py-0.5 rounded mr-1">
                             실시간
                           </span>
                         )}
@@ -1430,7 +1405,7 @@ const StockExchange = () => {
                         <span>{formatPercent(priceChange)}</span>
                       </div>
                       {isRealStock && (
-                        <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>
+                        <div className="text-[0.7rem] text-gray-500 mt-0.5">
                           {getMarketStateLabel(stock) || '장마감'}
                         </div>
                       )}
@@ -1476,11 +1451,11 @@ const StockExchange = () => {
                     </div>
                     <div className="portfolio-metrics-compact">
                       <div className="metrics-row">
-                        <div className="metric-item"><span className="metric-label">현재 가치</span><span className="metric-value" style={{ color: '#ef4444', fontWeight: 'bold' }}>0원</span></div>
-                        <div className="metric-item"><span className="metric-label">손실</span><span className="metric-value" style={{ color: '#ef4444' }}>-100%</span></div>
+                        <div className="metric-item"><span className="metric-label">현재 가치</span><span className="metric-value text-red-500 font-bold">0원</span></div>
+                        <div className="metric-item"><span className="metric-label">손실</span><span className="metric-value text-red-500">-100%</span></div>
                       </div>
                     </div>
-                    <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '8px' }}>상장폐지된 상품입니다. 10분 후 자동 삭제됩니다.</p>
+                    <p className="text-[0.85rem] text-gray-500 mt-2">상장폐지된 상품입니다. 10분 후 자동 삭제됩니다.</p>
                     <div className="portfolio-card-actions">
                       <button onClick={() => deleteHolding(holding.id)} className="action-btn delete-btn">지금 삭제</button>
                     </div>
@@ -1502,17 +1477,7 @@ const StockExchange = () => {
                     <div className="stock-title-section">
                       <h3 className="stock-name">{getProductIcon(stock.productType)} {holding.stockName}</h3>
                       {isLocked && (
-                        <span style={{
-                          fontSize: '0.75rem',
-                          padding: '2px 8px',
-                          background: '#fef3c7',
-                          color: '#92400e',
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
+                        <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold inline-flex items-center gap-1">
                           <Lock size={12} />
                           매도 불가
                         </span>
@@ -1531,35 +1496,12 @@ const StockExchange = () => {
                     <div className="profit-percent">{formatPercent(profitPercent)}</div>
                   </div>
                   {isLocked && (
-                    <div style={{
-                      padding: '10px 12px',
-                      background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      marginTop: '8px',
-                      border: '1px solid #fbbf24'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '0.9rem',
-                        color: '#92400e',
-                        fontWeight: 'bold'
-                      }}>
+                    <div className="px-3 py-2.5 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex flex-col gap-1 mt-2 border border-amber-400">
+                      <div className="flex items-center gap-2 text-[0.9rem] text-amber-800 font-bold">
                         <Lock size={16} />
                         <span>매도 제한 시간</span>
                       </div>
-                      <div style={{
-                        fontSize: '1.1rem',
-                        color: '#78350f',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        marginTop: '4px',
-                        fontFamily: 'monospace'
-                      }}>
+                      <div className="text-[1.1rem] text-amber-900 font-bold text-center mt-1 font-mono">
                         ⏱️ {formatTime(lockTimers[holding.id])} 남음
                       </div>
                     </div>

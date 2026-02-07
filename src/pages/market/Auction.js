@@ -21,9 +21,8 @@ import {
   getDocs, // getDocs 추가
 } from "../../firebase";
 
-// onSnapshot과 orderBy는 firebase/firestore에서 직접 가져옵니다.
+// orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
-  onSnapshot as firebaseOnSnapshot,
   orderBy as firebaseOrderBy,
 } from "firebase/firestore";
 import { AlchanLoading } from "../../components/AlchanLayout";

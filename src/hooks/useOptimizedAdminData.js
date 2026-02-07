@@ -36,7 +36,7 @@ export const useOptimizedAdminSettings = (tab) => {
     },
     enabled: !!(isAdmin?.() && classCode && tab),
     staleTime: 5 * 60 * 1000, // 5분
-    cacheTime: 10 * 60 * 1000, // 10분
+    gcTime: 10 * 60 * 1000, // 10분
     retry: (failureCount, error) => {
       if (error?.code === 'permission-denied') return false;
       return failureCount < 2;
@@ -61,7 +61,7 @@ export const useOptimizedStudents = () => {
     },
     enabled: !!(isAdmin?.() && classCode),
     staleTime: 3 * 60 * 1000, // 3분 (학생 데이터는 더 자주 변경)
-    cacheTime: 8 * 60 * 1000,
+    gcTime: 8 * 60 * 1000,
   });
 };
 
@@ -80,7 +80,7 @@ export const useOptimizedSalarySettings = () => {
     },
     enabled: !!(isAdmin?.() && classCode),
     staleTime: 10 * 60 * 1000, // 10분 (설정은 덜 자주 변경)
-    cacheTime: 15 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 };
 
@@ -98,7 +98,7 @@ export const useOptimizedSystemManagement = () => {
     },
     enabled: !!(isSuperAdmin?.()),
     staleTime: 15 * 60 * 1000, // 15분 (시스템 데이터는 가장 덜 자주 변경)
-    cacheTime: 20 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
   });
 };
 

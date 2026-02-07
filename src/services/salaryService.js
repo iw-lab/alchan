@@ -191,7 +191,16 @@ export const payWeeklySalaries = async (classCode) => {
  * 주급 지급 스케줄러를 설정합니다.
  * @param {string} classCode 학급 코드
  */
+// 활성 스케줄러 인터벌 ID (중복 방지)
+let salarySchedulerIntervalId = null;
+
 export const setupSalaryScheduler = (classCode) => {
+    // 기존 스케줄러가 있으면 정리 (중복 방지)
+    if (salarySchedulerIntervalId !== null) {
+      clearInterval(salarySchedulerIntervalId);
+      salarySchedulerIntervalId = null;
+    }
+
     const checkAndPay = async () => {
         const now = new Date();
         // 한국 시간 기준 금요일 오전 8시
@@ -214,8 +223,16 @@ export const setupSalaryScheduler = (classCode) => {
     };
 
     // 1분마다 체크
-    setInterval(checkAndPay, 60 * 1000); 
+    salarySchedulerIntervalId = setInterval(checkAndPay, 60 * 1000); 
     
     // 앱 시작 시 즉시 체크
     checkAndPay();
+
+    // 클린업 함수 반환
+    return () => {
+      if (salarySchedulerIntervalId !== null) {
+        clearInterval(salarySchedulerIntervalId);
+        salarySchedulerIntervalId = null;
+      }
+    };
 };

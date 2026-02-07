@@ -9,6 +9,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Reusable Cyberpunk Component Classes
+   ============================================ */
+@layer components {
+  /* Section Card - gradient dark card */
+  .cyber-section-card {
+    @apply bg-gradient-to-br from-[#1e1e3f] to-[#16213e] rounded-[20px] p-6 mb-6 border-2 border-gray-700;
+  }
+
+  /* Section Title - purple accent */
+  .cyber-section-title {
+    @apply text-[#a78bfa] text-lg font-bold mb-4 flex items-center gap-2;
+  }
+
+  /* Modal Overlay */
+  .cyber-modal-overlay {
+    @apply fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-5;
+  }
+
+  /* Modal Content */
+  .cyber-modal-content {
+    @apply bg-gradient-to-br from-[#1a1a2e] to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700;
+  }
+
+  /* Settings Button - list-style button */
+  .cyber-settings-btn {
+    @apply flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50;
+  }
+
+  /* Modal Input */
+  .cyber-modal-input {
+    @apply w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-[#e8e8ff] text-sm mb-3 focus:border-[#a78bfa] focus:outline-none;
+  }
+
+  /* Primary Button (purple gradient) */
+  .cyber-btn-primary {
+    @apply flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed;
+  }
+
+  /* Cancel Button */
+  .cyber-btn-cancel {
+    @apply flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-[#e8e8ff] text-sm cursor-pointer hover:bg-gray-600;
+  }
+
+  /* Info card display */
+  .cyber-info-card {
+    @apply p-4 bg-[#0f0f23] rounded-xl border border-gray-700;
+  }
+}
+
 /* Google Fonts for Cyberpunk UI */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap');
 
@@ -48,7 +98,7 @@
   /* Text Colors */
   --cyber-text-primary: #e8e8ff;
   --cyber-text-secondary: #9999bb;
-  --cyber-text-muted: #6666888;
+  --cyber-text-muted: #666688;
   --cyber-text-highlight: var(--cyber-neon-cyan);
 
   /* Borders */

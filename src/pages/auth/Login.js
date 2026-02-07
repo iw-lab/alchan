@@ -279,18 +279,18 @@ const Login = () => {
               <path d="M25 52 L42 69 L75 31" stroke="url(#checkGradLogin)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M78 22 L80 27 L85 27 L81 31 L82 36 L78 33 L74 36 L75 31 L71 27 L76 27 Z" fill="#FCD34D" />
             </svg>
-            <div className="absolute -inset-4 border-4 border-white/20 border-t-white/60 rounded-full animate-spin" style={{ animationDuration: '2s' }} />
+            <div className="absolute -inset-4 border-4 border-white/20 border-t-white/60 rounded-full animate-spin [animation-duration:2s]" />
           </div>
         </div>
-        <h1 className="text-[42px] text-white font-normal tracking-tight" style={{ fontFamily: "'Jua', sans-serif", textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>알찬</h1>
-        <p className="mt-2 text-xl text-white font-bold tracking-widest" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>경제 교육</p>
+        <h1 className="text-[42px] text-white font-normal tracking-tight font-jua drop-shadow-lg">알찬</h1>
+        <p className="mt-2 text-xl text-white font-bold tracking-widest drop-shadow-md">경제 교육</p>
         <div className="mt-8 flex items-center gap-2">
           <div className="flex gap-1.5">
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:150ms]" />
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:300ms]" />
           </div>
-          <span className="ml-3 text-[15px] text-white font-semibold" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>로딩 중...</span>
+          <span className="ml-3 text-[15px] text-white font-semibold drop-shadow">로딩 중...</span>
         </div>
         <p className="absolute bottom-8 text-[13px] text-white/70 font-medium">알찬 경제교육 v2.0</p>
       </div>
@@ -308,9 +308,9 @@ const Login = () => {
 
         {/* 떠다니는 작은 원들 */}
         <div className="absolute top-20 left-10 w-3 h-3 bg-white/20 rounded-full animate-pulse" />
-        <div className="absolute top-40 right-20 w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-40 left-1/4 w-4 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-yellow-300/40 rounded-full animate-pulse" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-40 right-20 w-2 h-2 bg-white/30 rounded-full animate-pulse [animation-delay:0.5s]" />
+        <div className="absolute bottom-40 left-1/4 w-4 h-4 bg-white/10 rounded-full animate-pulse [animation-delay:1s]" />
+        <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-yellow-300/40 rounded-full animate-pulse [animation-delay:1.5s]" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -343,7 +343,7 @@ const Login = () => {
             <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-300 animate-pulse" />
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-1" style={{ fontFamily: "'Jua', sans-serif" }}>
+          <h1 className="text-4xl font-bold text-white mb-1 font-jua">
             알찬
           </h1>
           <p className="text-white/70 font-medium">

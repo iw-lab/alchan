@@ -22,12 +22,9 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import "./PersonalShop.css";
 import { logger } from '../../utils/logger';
+import { formatKoreanCurrency } from '../../utils/numberFormatter';
 
-// 숫자를 한국 원화 형식으로 포맷팅
-const formatKoreanCurrency = (amount) => {
-  if (amount === null || amount === undefined) return "0원";
-  return `${Number(amount).toLocaleString()}원`;
-};
+
 
 // 부가세율 (10%)
 const VAT_RATE = 0.10;

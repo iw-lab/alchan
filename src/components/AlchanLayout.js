@@ -24,11 +24,13 @@ import { logger } from '../utils/logger';
 import Dashboard from '../pages/dashboard/Dashboard';
 import ItemStore from '../pages/market/ItemStore';
 import MyItems from '../pages/my-items/MyItems';
-import MyAssets from '../pages/my-assets/MyAssets';
-import PersonalShop from '../pages/market/PersonalShop';
 import Login from '../pages/auth/Login';
-import Banking from '../pages/banking/Banking';
-import MyProfile from '../pages/my-profile/MyProfile';
+
+// 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
+const PersonalShop = lazy(() => import('../pages/market/PersonalShop'));
+const Banking = lazy(() => import('../pages/banking/Banking'));
+const MyProfile = lazy(() => import('../pages/my-profile/MyProfile'));
+const MyAssets = lazy(() => import('../pages/my-assets/MyAssets'));
 
 // 🔥 게임 페이지 - 동적 로딩 (번들 크기 절감)
 const OmokGame = lazy(() => import('../pages/games/OmokGame'));
@@ -200,18 +202,7 @@ export default function AlchanLayout() {
     }
   }, [userDoc?.uid]);
 
-  // Jua 폰트 로드
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Jua&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-    return () => {
-      if (document.head.contains(link)) {
-        document.head.removeChild(link);
-      }
-    };
-  }, []);
+  // Jua 폰트는 index.html에서 preload로 로드됨 (중복 제거)
 
   // 전체 화면 페이지에서 자동으로 사이드바 접기
   useEffect(() => {
@@ -410,25 +401,17 @@ export default function AlchanLayout() {
       {/* 🎁 출석 보상 팝업 모달 */}
       {showDailyRewardPopup && userDoc?.uid && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-5"
-          style={{
-            background: "rgba(0, 0, 0, 0.7)",
-            backdropFilter: "blur(4px)",
-            zIndex: 9999,
-            animation: "fadeIn 0.3s ease-out",
-          }}
+          className="fixed inset-0 flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm z-[9999] animate-fadeIn"
           onClick={() => setShowDailyRewardPopup(false)}
         >
           <div
-            className="w-full max-w-[400px]"
-            style={{ animation: "slideUp 0.3s ease-out" }}
+            className="w-full max-w-[400px] animate-slideUp"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-right mb-2">
               <button
                 onClick={() => setShowDailyRewardPopup(false)}
-                className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-white flex items-center justify-center ml-auto"
-                style={{ background: "rgba(255,255,255,0.2)" }}
+                className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-white flex items-center justify-center ml-auto bg-white/20"
               >
                 ✕
               </button>
@@ -437,7 +420,7 @@ export default function AlchanLayout() {
               userId={userDoc.uid}
               onClaim={handleDailyRewardClaim}
             />
-            <div className="text-center mt-3 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+            <div className="text-center mt-3 text-[13px] text-white/60">
               배경을 터치하면 닫힙니다
             </div>
           </div>

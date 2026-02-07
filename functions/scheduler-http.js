@@ -23,8 +23,12 @@ const {
   getCentralStocksSnapshot
 } = require("./realStockService");
 
-// 보안: 간단한 인증 토큰 체크 (GitHub Actions에서 호출 가능)
-const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || "github-actions-scheduler-2024";
+// 보안: 인증 토큰 체크 (GitHub Actions에서 호출 가능)
+// 환경변수 미설정 시 모든 요청을 거부
+const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN;
+if (!AUTH_TOKEN) {
+  logger.warn("SCHEDULER_AUTH_TOKEN 환경변수가 설정되지 않았습니다. 스케줄러 엔드포인트가 비활성화됩니다.");
+}
 
 // [삭제됨] SECTOR_NEWS_TEMPLATES - 뉴스 기능 제거됨
 

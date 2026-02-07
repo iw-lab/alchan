@@ -422,7 +422,7 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
               <AppIcon style={{ width: '36px', height: '36px' }} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[22px] font-black text-[#00fff2] leading-tight" style={{ fontFamily: "'Jua', sans-serif", textShadow: '0 0 10px rgba(0, 255, 242, 0.5)' }}>알찬</span>
+              <span className="text-[22px] font-black text-[#00fff2] leading-tight font-jua drop-shadow-[0_0_10px_rgba(0,255,242,0.5)]">알찬</span>
               <span className="text-[11px] font-bold text-[#e8e8ff]/70 tracking-[0.2em] leading-tight mt-0.5">ALCHAN</span>
             </div>
           </div>

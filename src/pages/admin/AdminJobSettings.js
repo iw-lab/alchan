@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 // import { useAuth } from "./App"; // App.js에서 useAuth를 import -> AuthContext에서 직접 import
 import { useAuth } from "../../contexts/AuthContext"; // AuthContext에서 useAuth를 import
-import "../../components/Header.css";
+// Header.css removed - using Tailwind CSS
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useNavigate } from "react-router-dom"; // navigate 사용을 위해 임포트
 import { logger } from '../../utils/logger';

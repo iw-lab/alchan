@@ -415,7 +415,7 @@ const AdminPage = () => {
               <button
                 onClick={handleRefundOldItems}
                 className="control-button close"
-                style={{ marginTop: '10px' }}
+                className="mt-2.5"
               >
                 기존 마켓 아이템 환불
               </button>
