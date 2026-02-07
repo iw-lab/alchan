@@ -707,25 +707,45 @@ const PersonalShop = () => {
       throw new Error("본인 상점에서는 구매할 수 없습니다!");
     }
 
+    // 트랜잭션 전에 관리자 UID 조회 (세금 입금용)
+    const classCode = userProfile?.classCode;
+    let adminUid = null;
+    if (classCode) {
+      const { getClassAdminUid } = await import("../../firebase/db/core");
+      adminUid = await getClassAdminUid(classCode);
+    }
+
     await runTransaction(db, async (transaction) => {
       // 구매자 잔액 차감
       const buyerRef = doc(db, "users", currentUser.uid);
       transaction.update(buyerRef, {
-        balance: increment(-totalAmount),
+        cash: increment(-totalAmount),
       });
 
       // 판매자 잔액 증가 (세전 금액)
       const sellerRef = doc(db, "users", purchaseShop.ownerId);
       transaction.update(sellerRef, {
-        balance: increment(sellerAmount),
+        cash: increment(sellerAmount),
       });
 
-      // 국세청 세금 기록 (부가세)
-      const taxRef = doc(db, "nationalTax", "treasury");
-      transaction.update(taxRef, {
-        totalVAT: increment(taxAmount),
-        totalTaxCollected: increment(taxAmount),
-      });
+      // 국세청 세금 기록 (부가세) - nationalTreasuries 컬렉션 사용
+      if (classCode) {
+        const treasuryRef = doc(db, "nationalTreasuries", classCode);
+        transaction.set(treasuryRef, {
+          totalAmount: increment(taxAmount),
+          vatRevenue: increment(taxAmount),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
+
+        // 관리자(선생님) cash에 세금 추가
+        if (adminUid) {
+          const adminRef = doc(db, "users", adminUid);
+          transaction.update(adminRef, {
+            cash: increment(taxAmount),
+            updatedAt: serverTimestamp(),
+          });
+        }
+      }
 
       // 상점 매출 업데이트
       const shopRef = doc(db, "personalShops", purchaseShop.id);

@@ -309,6 +309,21 @@ export const processGenericSaleTransaction = async (classCode, buyerId, sellerId
       if (taxAmount > 0 && adminRef) {
         transaction.update(adminRef, { cash: increment(taxAmount) });
       }
+
+      // 국고 통계 업데이트 (nationalTreasuries)
+      if (taxAmount > 0) {
+        const treasuryStatsRef = doc(db, "nationalTreasuries", classCode);
+        const revenueField = taxType === "realEstate" ? "realEstateTransactionTaxRevenue"
+          : taxType === "auction" ? "auctionTaxRevenue"
+          : taxType === "itemMarket" ? "itemMarketTaxRevenue"
+          : "otherTaxRevenue";
+        transaction.set(treasuryStatsRef, {
+          totalAmount: increment(taxAmount),
+          [revenueField]: increment(taxAmount),
+          lastUpdated: serverTimestamp()
+        }, { merge: true });
+      }
+
       if (taxType === "itemMarket" && inventoryUpdate) {
         const sellerInventoryItemRef = doc(db, "users", sellerId, "inventory", inventoryUpdate.inventoryItemId);
         const sellerItemSnap = await transaction.get(sellerInventoryItemRef);

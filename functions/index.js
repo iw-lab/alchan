@@ -1964,11 +1964,71 @@ exports.purchaseRealEstate = onCall({region: "asia-northeast3"}, async (request)
         }
       });
 
-      // 4-2. 현금 차감
+      // 4-2. 부동산 거래세 계산
+      const govSettingsRef = db.collection("governmentSettings").doc(classCode);
+      const govSettingsDoc = await transaction.get(govSettingsRef);
+      const govSettings = govSettingsDoc.exists ? govSettingsDoc.data() : {};
+      const realEstateTaxRate = govSettings?.taxSettings?.realEstateTransactionTaxRate || 0.03;
+      const taxAmount = Math.round(purchasePrice * realEstateTaxRate);
+
+      // 4-3. 현금 차감 (구매가 전액)
       transaction.update(userRef, {
         cash: admin.firestore.FieldValue.increment(-purchasePrice),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      // 4-4. 이전 소유자에게 판매 대금 지급 (정부 소유가 아닌 경우)
+      if (propertyData.owner !== "government" && propertyData.owner) {
+        const sellerRef = db.collection("users").doc(propertyData.owner);
+        const sellerProceeds = purchasePrice - taxAmount;
+        transaction.update(sellerRef, {
+          cash: admin.firestore.FieldValue.increment(sellerProceeds),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 4-5. 관리자(국고)에 세금 입금
+      if (taxAmount > 0) {
+        // 관리자 현금에 세금 추가
+        const usersSnapshot = await db.collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+        if (!usersSnapshot.empty) {
+          const adminRef = usersSnapshot.docs[0].ref;
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(taxAmount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 국고 통계 업데이트
+        const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+        const treasuryDoc = await transaction.get(treasuryRef);
+        if (treasuryDoc.exists) {
+          transaction.update(treasuryRef, {
+            totalAmount: admin.firestore.FieldValue.increment(taxAmount),
+            realEstateTransactionTaxRevenue: admin.firestore.FieldValue.increment(taxAmount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(treasuryRef, {
+            totalAmount: taxAmount,
+            stockTaxRevenue: 0,
+            stockCommissionRevenue: 0,
+            realEstateTransactionTaxRevenue: taxAmount,
+            vatRevenue: 0,
+            auctionTaxRevenue: 0,
+            propertyHoldingTaxRevenue: 0,
+            itemMarketTaxRevenue: 0,
+            otherTaxRevenue: 0,
+            classCode: classCode,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
 
       // 5. 부동산 소유자 변경 + 자동 입주 처리
       transaction.update(propertyRef, {
@@ -1976,7 +2036,7 @@ exports.purchaseRealEstate = onCall({region: "asia-northeast3"}, async (request)
         ownerName: userData.name,
         forSale: false,
         salePrice: admin.firestore.FieldValue.delete(),
-        rent: rent, // 🔥 [추가] 월세 명시적으로 보존/설정
+        rent: rent,
         tenant: userData.name,
         tenantId: uid,
         tenantName: userData.name,
@@ -1985,15 +2045,18 @@ exports.purchaseRealEstate = onCall({region: "asia-northeast3"}, async (request)
       });
 
       // 6. 활동 로그 기록
+      const taxInfo = taxAmount > 0 ? ` (거래세 ${taxAmount.toLocaleString()}원 납부)` : '';
       logActivity(
           transaction,
           uid,
           "부동산 구매",
-          `부동산 #${propertyId}를 ${purchasePrice.toLocaleString()}원에 구매하고 입주했습니다.`,
+          `부동산 #${propertyId}를 ${purchasePrice.toLocaleString()}원에 구매하고 입주했습니다.${taxInfo}`,
           {
             propertyId,
             propertyName: propertyData.name,
             purchasePrice,
+            taxAmount,
+            taxRate: realEstateTaxRate,
             previousOwner: propertyData.owner,
             previousOwnerName: propertyData.ownerName,
             previousTenantPropertyId,
@@ -2005,6 +2068,7 @@ exports.purchaseRealEstate = onCall({region: "asia-northeast3"}, async (request)
         message: "부동산을 성공적으로 구매하고 입주했습니다.",
         propertyId,
         purchasePrice,
+        taxAmount,
         remainingCash: currentCash - purchasePrice,
         movedIn: true,
         vacatedFrom: previousTenantPropertyId,

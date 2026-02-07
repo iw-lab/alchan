@@ -237,14 +237,16 @@ const Government = () => {
           onClick={() => handleTabClick("lawManage")}
           disabled={!classCode}
         >
-          법안 관리
+          <span className="gov-tab-icon">📜</span>
+          <span className="gov-tab-label">법안 관리</span>
         </button>
         <button
           className={`gov-tab-button ${activeTab === "tax" ? "active" : ""}`}
           onClick={() => handleTabClick("tax")}
           disabled={!classCode}
         >
-          국세청
+          <span className="gov-tab-icon">🏛️</span>
+          <span className="gov-tab-label">국세청</span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-/* src/Government.css - Cyberpunk Dark Theme */
+/* src/Government.css - Cyberpunk Dark Theme - Refined UI */
 
 .government-container {
   padding: 20px;
@@ -22,49 +22,89 @@
   text-shadow: 0 0 10px rgba(0, 136, 255, 0.4);
 }
 
-/* 탭 메뉴 스타일 */
+/* ========================================
+   탭 메뉴 스타일 - 세련된 네온 디자인
+   ======================================== */
 .government-tabs {
   display: flex;
-  margin-bottom: -1px;
-  border-bottom: 1px solid var(--cyber-border-dim);
+  gap: 4px;
+  margin-bottom: 0;
+  padding: 4px;
+  background: rgba(10, 10, 18, 0.6);
+  border-radius: 14px 14px 0 0;
+  border: 1px solid rgba(0, 255, 242, 0.1);
+  border-bottom: none;
 }
 
 .gov-tab-button {
-  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
   cursor: pointer;
   border: 1px solid transparent;
-  border-bottom: none;
-  background-color: transparent;
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--cyber-text-secondary);
-  transition: all 0.3s ease;
-  margin-right: 5px;
-  border-radius: 8px 8px 0 0;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 10px;
   font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.5px;
+  position: relative;
+  flex: 1;
+  justify-content: center;
+}
+
+.gov-tab-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.gov-tab-label {
+  font-size: 15px;
 }
 
 .gov-tab-button.active {
-  color: var(--cyber-neon-blue);
-  background: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
-  border-bottom: 1px solid var(--cyber-bg-card);
-  font-weight: 600;
-  box-shadow: 0 -4px 10px rgba(0, 136, 255, 0.1);
-  text-shadow: 0 0 5px rgba(0, 136, 255, 0.3);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 136, 255, 0.2), rgba(0, 255, 242, 0.1));
+  border: 1px solid rgba(0, 255, 242, 0.3);
+  font-weight: 700;
+  box-shadow:
+    0 0 15px rgba(0, 136, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  text-shadow: 0 0 8px rgba(0, 255, 242, 0.4);
 }
 
-.gov-tab-button:hover:not(.active) {
-  color: var(--cyber-text-primary);
-  background-color: rgba(255, 255, 255, 0.05);
+.gov-tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00fff2, transparent);
+  border-radius: 1px;
+}
+
+.gov-tab-button:hover:not(.active):not(:disabled) {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.gov-tab-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* 탭 콘텐츠 영역 스타일 */
 .government-tab-content {
   padding: 25px;
   background-color: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
-  border-radius: 0 8px 8px 8px;
+  border: 1px solid rgba(0, 255, 242, 0.1);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
   min-height: 300px;
   box-shadow: var(--cyber-shadow-card);
 }
@@ -133,7 +173,9 @@
   transform: translateY(-2px);
 }
 
-/* 법안 관리 컨테이너 */
+/* ========================================
+   법안 관리 스타일
+   ======================================== */
 .law-management-container h2 {
   font-size: 1.5rem;
   font-weight: 700;
@@ -151,49 +193,73 @@
   border: 1px dashed var(--cyber-border-dim);
 }
 
-/* 정부 액션 버튼 */
+/* ========================================
+   정부 액션 버튼 - 세련된 디자인
+   ======================================== */
 .government-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
   margin-top: 1rem;
-  border-top: 1px solid var(--cyber-border-dim);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 1rem;
 }
 
 .gov-action-button {
-  padding: 10px 20px;
+  padding: 10px 24px;
   border: 1px solid transparent;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Rajdhani', sans-serif;
   text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.gov-action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.gov-action-button:hover::before {
+  left: 100%;
 }
 
 .gov-action-button.approve {
-  background: rgba(16, 185, 129, 0.2);
-  color: var(--cyber-neon-green);
-  border-color: rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(52, 211, 153, 0.1));
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.1);
 }
 
 .gov-action-button.approve:hover {
-  background: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(52, 211, 153, 0.2));
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
   transform: translateY(-2px);
 }
 
 .gov-action-button.veto {
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--cyber-neon-red);
-  border-color: rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(248, 113, 113, 0.1));
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.1);
 }
 
 .gov-action-button.veto:hover {
-  background: rgba(239, 68, 68, 0.4);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(248, 113, 113, 0.2));
+  border-color: rgba(248, 113, 113, 0.6);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
   transform: translateY(-2px);
 }
 

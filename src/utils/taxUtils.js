@@ -44,7 +44,7 @@ export const getTaxSettings = async (classCode) => {
 // 국고에 세금 추가 (관리자 cash에도 연동)
 export const addTaxToTreasury = async (classCode, taxType, amount, description) => {
   try {
-    const treasuryRef = doc(db, 'treasury', classCode);
+    const treasuryRef = doc(db, 'nationalTreasuries', classCode);
     const batch = writeBatch(db);
 
     // 🔥 [수정] update 대신 set with merge를 사용 (문서가 없을 때 자동 생성)
