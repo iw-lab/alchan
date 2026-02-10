@@ -15,6 +15,7 @@ import { useServiceWorker } from '../hooks/useServiceWorker';
 import { AlchanLoadingScreen } from './ui/Skeleton';
 import { WifiOff } from 'lucide-react';
 import { DailyRewardBanner, getStreakInfo } from './DailyReward';
+import WelcomePopup from './WelcomePopup';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import globalCacheService from '../services/globalCacheService';
@@ -389,6 +390,9 @@ export default function AlchanLayout() {
           오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.
         </div>
       )}
+
+      {/* 첫 접속 안내 팝업 */}
+      <WelcomePopup />
 
       {/* 🎁 출석 보상 팝업 모달 */}
       {showDailyRewardPopup && userDoc?.uid && (
