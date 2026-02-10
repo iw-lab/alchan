@@ -1,5 +1,5 @@
 // src/components/HelpButton.js
-// 각 페이지 도움말 버튼 + 모달 컴포넌트
+// 플로팅 도움말 버튼 + 모달 컴포넌트 (모든 페이지에서 표시)
 
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -11,17 +11,18 @@ export default function HelpButton() {
   const location = useLocation();
   const helpData = getHelpContent(location.pathname);
 
+  // 도움말 데이터가 없는 페이지에서는 숨김
   if (!helpData) return null;
 
   return (
     <>
-      {/* 도움말 버튼 */}
+      {/* 플로팅 도움말 버튼 - 우측 하단 고정 */}
       <button
         onClick={() => setIsOpen(true)}
-        className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 hover:bg-indigo-500/30 hover:border-indigo-400 hover:text-indigo-300 transition-all duration-200 hover:shadow-[0_0_12px_rgba(99,102,241,0.3)]"
+        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
         title="도움말"
       >
-        <HelpCircle className="w-4 h-4" />
+        <HelpCircle className="w-5 h-5" />
       </button>
 
       {/* 도움말 모달 */}

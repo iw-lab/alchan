@@ -55,9 +55,9 @@ export function useServiceWorker() {
         if (newWorker) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // 최근에 업데이트했으면 알림 안 띄우기 (5분 이내)
-              const lastUpdated = sessionStorage.getItem('alchan_updated');
-              if (lastUpdated && Date.now() - parseInt(lastUpdated) < 5 * 60 * 1000) {
+              // 최근에 업데이트했으면 알림 안 띄우기 (1시간 이내)
+              const lastUpdated = localStorage.getItem('alchan_updated');
+              if (lastUpdated && Date.now() - parseInt(lastUpdated) < 60 * 60 * 1000) {
                 logger.log('[PWA] 최근 업데이트됨 - 알림 생략');
                 return;
               }
@@ -83,8 +83,8 @@ export function useServiceWorker() {
     // 먼저 알림 숨기기
     setUpdateAvailable(false);
 
-    // 세션 스토리지에 업데이트 완료 표시 (새로고침 후 알림 다시 안 뜨게)
-    sessionStorage.setItem('alchan_updated', Date.now().toString());
+    // localStorage에 업데이트 완료 표시 (새 세션에서도 알림 다시 안 뜨게)
+    localStorage.setItem('alchan_updated', Date.now().toString());
 
     if (registration && registration.waiting) {
       // 새 서비스 워커가 활성화되면 페이지 새로고침

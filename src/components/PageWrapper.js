@@ -4,7 +4,6 @@
 import React from 'react';
 import { Loader2, CheckSquare } from 'lucide-react';
 import { AlchanLoadingScreen } from './ui/Skeleton';
-import HelpButton from './HelpButton';
 
 // ============================================
 // 페이지 컨테이너
@@ -51,10 +50,11 @@ export const PageHeader = ({
         )}
       </div>
     </div>
-    <div className="flex flex-wrap items-center gap-2 md:gap-3 md:ml-auto">
-      {action}
-      <HelpButton />
-    </div>
+    {action && (
+      <div className="flex flex-wrap items-center gap-2 md:gap-3 md:ml-auto">
+        {action}
+      </div>
+    )}
   </section>
 );
 

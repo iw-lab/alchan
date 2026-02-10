@@ -16,6 +16,7 @@ import { AlchanLoadingScreen } from './ui/Skeleton';
 import { WifiOff } from 'lucide-react';
 import { DailyRewardBanner, getStreakInfo } from './DailyReward';
 import WelcomePopup from './WelcomePopup';
+import HelpButton from './HelpButton';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import globalCacheService from '../services/globalCacheService';
@@ -168,7 +169,14 @@ export default function AlchanLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showUpdateDismissed, setShowUpdateDismissed] = useState(false);
+  const [showUpdateDismissed, setShowUpdateDismissed] = useState(() => {
+    try {
+      const dismissed = localStorage.getItem('alchan_update_dismissed');
+      if (!dismissed) return false;
+      // 24시간 이내에 닫았으면 계속 숨김
+      return Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000;
+    } catch { return false; }
+  });
   const [showDailyRewardPopup, setShowDailyRewardPopup] = useState(false);
 
   // PWA 서비스 워커 훅
@@ -379,7 +387,10 @@ export default function AlchanLayout() {
       {updateAvailable && !showUpdateDismissed && (
         <UpdateNotification
           onUpdate={updateServiceWorker}
-          onDismiss={() => setShowUpdateDismissed(true)}
+          onDismiss={() => {
+            setShowUpdateDismissed(true);
+            try { localStorage.setItem('alchan_update_dismissed', Date.now().toString()); } catch {}
+          }}
         />
       )}
 
@@ -390,6 +401,9 @@ export default function AlchanLayout() {
           오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.
         </div>
       )}
+
+      {/* 플로팅 도움말 버튼 */}
+      <HelpButton />
 
       {/* 첫 접속 안내 팝업 */}
       <WelcomePopup />
