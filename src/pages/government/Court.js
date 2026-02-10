@@ -1,5 +1,5 @@
 // src/Court.js - Tailwind UI 리팩토링
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
@@ -12,10 +12,7 @@ import {
   PageContainer,
   PageHeader,
   LoadingState,
-  EmptyState,
-  ActionButton,
 } from "../../components/PageWrapper";
-import { Scale, FileText, Clock, Gavel } from "lucide-react";
 
 import { logger } from '../../utils/logger';
 import {

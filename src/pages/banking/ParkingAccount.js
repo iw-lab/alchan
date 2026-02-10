@@ -1,8 +1,8 @@
 // src/ParkingAccount.js
 import React, { useState, useEffect, useCallback } from "react";
 import { db, doc, getDoc, setDoc, serverTimestamp, updateDoc, increment, runTransaction, collection, getDocs, deleteDoc, query, where, limit } from "../../firebase";
-import { format, isToday, differenceInDays, isPast } from 'date-fns';
-import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp, Building2 } from 'lucide-react';
+import { format, isToday, differenceInDays } from 'date-fns';
+import { PiggyBank, Landmark, HandCoins, Wallet, X, TrendingUp } from 'lucide-react';
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
 

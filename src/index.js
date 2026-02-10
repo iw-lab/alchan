@@ -4,7 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import './index.css'; // Tailwind CSS - 반드시 먼저 import
-import './pages/student/StudentRequest.css';
+
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 import { logger } from "./utils/logger";

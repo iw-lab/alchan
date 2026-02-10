@@ -240,8 +240,12 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
   }, [navigate, isMobile, onClose]);
 
   const handleLogout = useCallback(async () => {
-    if (logout) {
-      await logout();
+    try {
+      if (logout) {
+        await logout();
+        navigate('/login');
+      }
+    } catch (e) {
       navigate('/login');
     }
   }, [logout, navigate]);

@@ -26,7 +26,6 @@ import {
   query,
   orderBy,
   limit,
-  Timestamp,
 } from "firebase/firestore";
 
 // Investment 컴포넌트

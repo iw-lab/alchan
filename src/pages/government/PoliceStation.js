@@ -5,20 +5,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
   processSettlement,
-  addActivityLog,
-  addTransaction,
   processFineTransaction,
-  addSettlementRecord,
 } from "../../firebase";
-import {
-  PageContainer,
-  PageHeader,
-  LoadingState,
-  EmptyState,
-  ActionButton,
-  TabGroup,
-} from "../../components/PageWrapper";
-import { Shield, Settings, FileText, Clock, CheckCircle } from "lucide-react";
 
 import "./Police.css";
 import SubmitReport from "./SubmitReport";

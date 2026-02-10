@@ -1,18 +1,17 @@
 // src/Banking.js - Tailwind UI 리팩토링
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import ParkingAccount from "./ParkingAccount";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
 import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import {
   PageContainer,
   PageHeader,
-  SectionTitle,
-  LoadingState,
 } from "../../components/PageWrapper";
 import { Landmark, ChevronLeft } from "lucide-react";
 import { AlchanLoading } from "../../components/AlchanLayout";
+import "./Banking.css";
+import { logger } from "../../utils/logger";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
   if (!Array.isArray(adminProducts)) {
@@ -35,9 +34,6 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
       product.maxAmount !== undefined && !isNaN(product.maxAmount) ? parseInt(product.maxAmount) : 0,
   }));
 };
-
-import "./Banking.css";
-import { logger } from "../../utils/logger";
 
 const Banking = () => {
   const auth = useAuth();
@@ -167,10 +163,12 @@ const Banking = () => {
     }
   };
 
-  const [formattedDepositProducts, setFormattedDepositProducts] = useState([]);
-  const [formattedInstallmentProducts, setFormattedInstallmentProducts] =
-    useState([]);
-  const [formattedLoanProducts, setFormattedLoanProducts] = useState([]);
+  const formattedDepositProducts = useMemo(() =>
+    convertAdminProductsToAccountFormat(parkingDepositProducts), [parkingDepositProducts]);
+  const formattedInstallmentProducts = useMemo(() =>
+    convertAdminProductsToAccountFormat(parkingInstallmentProducts), [parkingInstallmentProducts]);
+  const formattedLoanProducts = useMemo(() =>
+    convertAdminProductsToAccountFormat(parkingLoanProducts), [parkingLoanProducts]);
 
   // Firestore에서 데이터 로드
   const loadAllData = async () => {
@@ -224,18 +222,6 @@ const Banking = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth?.user, auth?.loading, auth?.userDoc?.classCode]); // loadAllData 추가하면 무한루프, auth 객체 전체 추가도 불필요한 리렌더링 발생
-
-  useEffect(() => {
-    setFormattedDepositProducts(
-      convertAdminProductsToAccountFormat(parkingDepositProducts)
-    );
-    setFormattedInstallmentProducts(
-      convertAdminProductsToAccountFormat(parkingInstallmentProducts)
-    );
-    setFormattedLoanProducts(
-      convertAdminProductsToAccountFormat(parkingLoanProducts)
-    );
-  }, [parkingDepositProducts, parkingInstallmentProducts, parkingLoanProducts]);
 
   const handleParkingProductChange = (type, index, field, value) => {
     let productsState, setProductsState;

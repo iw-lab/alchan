@@ -1,5 +1,5 @@
 // src/ItemMarket.js - Firestore 비용 최적화 버전 (캐싱, 배치 처리, 리스너 최소화)
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
 import {
@@ -14,7 +14,6 @@ import {
   runTransaction,
   increment,
   serverTimestamp,
-  addDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -23,7 +22,6 @@ import {
   getDoc,
   getDocs,
   limit,
-  startAfter,
 } from "firebase/firestore";
 
 import "./ItemMarket.css";

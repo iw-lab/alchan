@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { searchVideos } from '../../utils/youtube-api';
 import { logger } from '../../utils/logger';
+import './StudentRequest.css';
 
 const StudentRequest = () => {
     const { roomId } = useParams();
