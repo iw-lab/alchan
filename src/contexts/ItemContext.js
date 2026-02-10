@@ -125,7 +125,7 @@ export const ItemProvider = ({ children }) => {
 
   // All context functions now use firebaseFunctions and refreshData
   const addItem = useCallback(async (newItemData) => {
-    if (!isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
+    if (typeof isAuthAdmin !== 'function' || !isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
 
     // Optimistic Update: Add item to local state immediately
     const tempId = `temp_${Date.now()}`;
@@ -170,7 +170,7 @@ export const ItemProvider = ({ children }) => {
   }, [isAuthAdmin, user, refreshData]);
 
   const updateItem = useCallback(async (itemId, updatesToApply) => {
-    if (!isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
+    if (typeof isAuthAdmin !== 'function' || !isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
     try {
       await firebaseFunctions.updateStoreItem({ itemId, updatesToApply });
       refreshData();
@@ -184,7 +184,7 @@ export const ItemProvider = ({ children }) => {
   }, [isAuthAdmin, firebaseFunctions, refreshData]);
 
   const deleteItem = useCallback(async (itemId) => {
-    if (!isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
+    if (typeof isAuthAdmin !== 'function' || !isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
     try {
       await firebaseFunctions.deleteStoreItem({ itemId });
       refreshData();
@@ -541,7 +541,7 @@ export const ItemProvider = ({ children }) => {
   }, [userId, firebaseFunctions, refreshData]);
 
   const adminCancelSale = useCallback(async (listingId) => {
-    if (!isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
+    if (typeof isAuthAdmin !== 'function' || !isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
     try {
       await firebaseFunctions.adminCancelSale({ listingId });
       refreshData();
@@ -556,7 +556,7 @@ export const ItemProvider = ({ children }) => {
   }, [isAuthAdmin, firebaseFunctions, refreshData]);
 
   const adminDeleteItem = useCallback(async (listingId) => {
-    if (!isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
+    if (typeof isAuthAdmin !== 'function' || !isAuthAdmin()) return { success: false, message: "관리자 권한 필요" };
     try {
       await firebaseFunctions.adminDeleteItem({ listingId });
       refreshData();

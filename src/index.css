@@ -9,6 +9,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AlchanLayout global utilities */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 2s linear infinite; }
+
 /* ============================================
    Reusable Cyberpunk Component Classes
    ============================================ */

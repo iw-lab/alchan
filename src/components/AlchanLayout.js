@@ -22,11 +22,13 @@ import { db } from '../firebase';
 import globalCacheService from '../services/globalCacheService';
 import { logger } from '../utils/logger';
 
-// 🔥 핵심 페이지 - 즉시 로드 (자주 사용)
+// 🔥 핵심 페이지 - 즉시 로드
 import Dashboard from '../pages/dashboard/Dashboard';
-import ItemStore from '../pages/market/ItemStore';
-import MyItems from '../pages/my-items/MyItems';
 import Login from '../pages/auth/Login';
+
+// 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
+const ItemStore = lazy(() => import('../pages/market/ItemStore'));
+const MyItems = lazy(() => import('../pages/my-items/MyItems'));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
 const PersonalShop = lazy(() => import('../pages/market/PersonalShop'));
@@ -184,7 +186,7 @@ export default function AlchanLayout() {
 
   // 🎁 출석 보상 팝업 - 앱 진입(탭 열기) 시 자동 표시
   useEffect(() => {
-    if (userDoc?.uid && userDoc?.role === 'student') {
+    if (userDoc?.uid && !userDoc?.isAdmin && !userDoc?.isSuperAdmin && !userDoc?.isTeacher) {
       const streakInfo = getStreakInfo(userDoc.uid);
       if (streakInfo.canClaim) {
         const timer = setTimeout(() => {
@@ -193,7 +195,7 @@ export default function AlchanLayout() {
         return () => clearTimeout(timer);
       }
     }
-  }, [userDoc?.uid, userDoc?.role]);
+  }, [userDoc?.uid, userDoc?.isAdmin, userDoc?.isSuperAdmin, userDoc?.isTeacher]);
 
   // 🎁 출석 보상 수령 처리
   const handleDailyRewardClaim = useCallback(async (rewardAmount) => {
@@ -437,21 +439,7 @@ export default function AlchanLayout() {
         </div>
       )}
 
-      {/* 전역 스타일 */}
-      <style>{`
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        .font-jua { font-family: 'Jua', sans-serif; }
-        @keyframes slide-up {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-up { animation: slide-up 0.3s ease-out; }
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow { animation: spin-slow 2s linear infinite; }
-      `}</style>
+      {/* 전역 스타일은 index.css로 이동됨 */}
     </div>
     </ItemProvider>
   );

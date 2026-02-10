@@ -466,7 +466,7 @@ const NationalAssembly = () => {
             updates.finalApprovalDate = serverTimestamp();
           }
         } else if (["pending", "rejected", "auto_rejected"].includes(lawData.status)) {
-          if (voteType === "approvals" && newApprovals >= 13) {
+          if (voteType === "approvals" && newApprovals >= halfStudents) {
             updates.status = "pending_government_approval";
             updates.approvalDate = serverTimestamp();
           } else if (voteType === "disapprovals" && newDisapprovals >= halfStudents) {

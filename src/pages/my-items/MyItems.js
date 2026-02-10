@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
-import "../../styles.css";
 import "./MyItems.css";
 import LoginWarning from "../../components/LoginWarning";
 import { useNavigate } from "react-router-dom";
@@ -141,7 +140,9 @@ const MyItems = () => {
     }
   }, [recentlyUsedItems, user?.uid]);
 
+  const hasRecentlyUsedItems = Object.keys(recentlyUsedItems).length > 0;
   useEffect(() => {
+    if (!hasRecentlyUsedItems) return;
     const timer = setInterval(() => {
       setRecentlyUsedItems((prevItems) => {
         let itemsChanged = false;
@@ -160,8 +161,7 @@ const MyItems = () => {
       });
     }, 1000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // isAdmin은 함수이므로 의존성 불필요
+  }, [hasRecentlyUsedItems]);
 
   const [useItemModal, setUseItemModal] = useState({
     isOpen: false,

@@ -17,8 +17,7 @@
     "react-router-dom": "^6.21.0",
     "react-scripts": "^5.0.1",
     "react-youtube": "^10.1.0",
-    "three": "^0.182.0",
-    "use-sound": "5.0.0"
+    "three": "^0.182.0"
   },
   "devDependencies": {
     "@babel/runtime": "^7.28.6",

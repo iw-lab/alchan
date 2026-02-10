@@ -1,5 +1,5 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
@@ -59,10 +59,10 @@ export default function MyAssets() {
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [forceReload, setForceReload] = useState(0); // 캐시 문제 해결을 위한 상태 변수
 
-  // 🔥 [최적화 2] Firebase Functions 호출 함수들 (기부 제외)
-  const getUserAssetsDataFunction = httpsCallable(functions, 'getUserAssetsData');
-  const sellCouponFunction = httpsCallable(functions, 'sellCoupon');
-  const giftCouponFunction = httpsCallable(functions, 'giftCoupon');
+  // 🔥 [최적화 2] Firebase Functions 호출 함수들 (기부 제외) - 메모이제이션
+  const getUserAssetsDataFunction = useMemo(() => httpsCallable(functions, 'getUserAssetsData'), []);
+  const sellCouponFunction = useMemo(() => httpsCallable(functions, 'sellCoupon'), []);
+  const giftCouponFunction = useMemo(() => httpsCallable(functions, 'giftCoupon'), []);
 
   // 🔥 [최적화 4] 캐시 유효 시간 설정
   const CACHE_DURATION = 60 * 60 * 1000; // 🔥 [최적화] 1시간 (Firestore 읽기 최소화)

@@ -222,7 +222,7 @@ export default function Auction() {
 
       logger.log(`[Auction Settle] 성공적으로 정산 완료: ${auction.id}.`);
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
-      if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
+      if (itemsContext.refreshData) itemsContext.refreshData();
     } catch (error) {
       logger.error(`[Auction Settle] 정산 중 오류 발생 ${auction.id}:`, error);
       // 오류 발생 시 경매 상태를 'error'로 변경하여 재시도를 방지하고 문제 파악을 용이하게 할 수 있습니다.
@@ -620,7 +620,7 @@ export default function Auction() {
       });
 
       showNotification("경매가 취소되었습니다.", "success");
-      if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
+      if (itemsContext.refreshData) itemsContext.refreshData();
 
     } catch (error) {
       logger.error("[Auction Cancel] 경매 취소 오류:", error);
@@ -685,7 +685,7 @@ export default function Auction() {
       });
 
       showNotification(`'${auction.name}' 경매가 관리자에 의해 취소되었습니다.`, "success");
-      if (itemsContext.fetchUserItems) itemsContext.fetchUserItems();
+      if (itemsContext.refreshData) itemsContext.refreshData();
       if (authContext.fetchAllUsers) authContext.fetchAllUsers(true);
 
     } catch (error) {

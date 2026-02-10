@@ -159,28 +159,6 @@ class RealtimeManager {
 }
 
 // Utility functions - 캐시 및 최적화 적용
-const fetchClassData = async (classCode) => {
-  const cacheKey = `classData_${classCode}`;
-  const cached = dataCache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const q = query(
-      firestoreCollection(db, "sharedData"),
-      where("classCode", "==", classCode),
-      limit(100) // 제한 추가
-    );
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    dataCache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    logger.error("Error fetching class data:", error);
-    return [];
-  }
-};
-
 const saveSharedData = async (data, classCode) => {
   try {
     // 배치 매니저 사용
@@ -1083,7 +1061,7 @@ function Dashboard({ adminTabMode }) {
       try {
         const success = await updateUser({ selectedJobIds: idsToSave });
         if (success) {
-          setUserDoc({ ...userDoc, selectedJobIds: idsToSave }); // Optimistic update
+          setUserDoc(prev => ({ ...prev, selectedJobIds: idsToSave })); // Optimistic update
           setViewMode("list");
           alert("선택한 직업이 저장되었습니다.");
         } else {

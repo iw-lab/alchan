@@ -3,7 +3,7 @@
 
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
+import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
 // 공통 재질 설정
 const getMaterial = (color, isSelected, isCheck) => {
@@ -93,14 +93,14 @@ const King = ({ color, isSelected, isCheck }) => {
         <meshStandardMaterial {...mat} />
       </mesh>
       {/* 외곽선 - 베이스 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.38, 0.42, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.38, 0.42, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
       {/* 외곽선 - 몸체 실루엣 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.22, 0.32, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.22, 0.32, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
       {/* 외곽선 - 왕관 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.2, 0.16, 0.1, 16)} position={[0, 0.88, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.2, 0.16, 0.1, 16)} position={[0, 0.88, 0]} color={edgeCol} opacity={edgeOp} />
       {/* 외곽선 - 십자가 */}
-      <OutlineEdge geometry={new THREE.BoxGeometry(0.05, 0.3, 0.05)} position={[0, 1.08, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.BoxGeometry(0.18, 0.05, 0.05)} position={[0, 1.0, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new BoxGeometry(0.05, 0.3, 0.05)} position={[0, 1.08, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new BoxGeometry(0.18, 0.05, 0.05)} position={[0, 1.0, 0]} color={edgeCol} opacity={edgeOp} />
     </group>
   );
 };
@@ -154,9 +154,9 @@ const Queen = ({ color, isSelected, isCheck }) => {
         <meshStandardMaterial {...mat} />
       </mesh>
       {/* 외곽선 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.36, 0.4, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.18, 0.3, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.SphereGeometry(0.16, 16, 12)} position={[0, 0.86, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.36, 0.4, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.18, 0.3, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new SphereGeometry(0.16, 16, 12)} position={[0, 0.86, 0]} color={edgeCol} opacity={edgeOp} />
     </group>
   );
 };
@@ -211,12 +211,12 @@ const Rook = ({ color, isSelected, isCheck }) => {
         </mesh>
       ))}
       {/* 외곽선 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.34, 0.38, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.24, 0.28, 0.32, 16)} position={[0, 0.28, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.28, 0.24, 0.06, 16)} position={[0, 0.76, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.34, 0.38, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.24, 0.28, 0.32, 16)} position={[0, 0.28, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.28, 0.24, 0.06, 16)} position={[0, 0.76, 0]} color={edgeCol} opacity={edgeOp} />
       {/* 톱니 외곽선 */}
       {[0, 1, 2, 3, 4].map((i) => (
-        <OutlineEdge key={`e${i}`} geometry={new THREE.BoxGeometry(0.1, 0.18, 0.1)} position={[
+        <OutlineEdge key={`e${i}`} geometry={new BoxGeometry(0.1, 0.18, 0.1)} position={[
           Math.cos(i * Math.PI * 2 / 5) * 0.2,
           0.88,
           Math.sin(i * Math.PI * 2 / 5) * 0.2
@@ -276,9 +276,9 @@ const Bishop = ({ color, isSelected, isCheck }) => {
         <meshStandardMaterial {...mat} />
       </mesh>
       {/* 외곽선 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.32, 0.36, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.18, 0.26, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.ConeGeometry(0.16, 0.36, 16)} position={[0, 0.76, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.32, 0.36, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.18, 0.26, 0.28, 16)} position={[0, 0.26, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new ConeGeometry(0.16, 0.36, 16)} position={[0, 0.76, 0]} color={edgeCol} opacity={edgeOp} />
     </group>
   );
 };
@@ -356,8 +356,8 @@ const Knight = ({ color, isSelected, isCheck }) => {
         <meshBasicMaterial color={eyeColor} />
       </mesh>
       {/* 외곽선 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.32, 0.36, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.BoxGeometry(0.14, 0.22, 0.2)} position={[0, 0.68, 0.14]} rotation={[-0.7, 0, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.32, 0.36, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new BoxGeometry(0.14, 0.22, 0.2)} position={[0, 0.68, 0.14]} rotation={[-0.7, 0, 0]} color={edgeCol} opacity={edgeOp} />
     </group>
   );
 };
@@ -401,8 +401,8 @@ const Pawn = ({ color, isSelected, isCheck }) => {
         <meshStandardMaterial {...mat} />
       </mesh>
       {/* 외곽선 */}
-      <OutlineEdge geometry={new THREE.CylinderGeometry(0.28, 0.32, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
-      <OutlineEdge geometry={new THREE.SphereGeometry(0.12, 16, 12)} position={[0, 0.6, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new CylinderGeometry(0.28, 0.32, 0.08, 32)} position={[0, 0.04, 0]} color={edgeCol} opacity={edgeOp} />
+      <OutlineEdge geometry={new SphereGeometry(0.12, 16, 12)} position={[0, 0.6, 0]} color={edgeCol} opacity={edgeOp} />
     </group>
   );
 };
@@ -421,7 +421,7 @@ const ChessPiece = ({ piece, position, isSelected, isCheck, onClick }) => {
       } else if (hovered) {
         targetY = 0.1;
       }
-      groupRef.current.position.y = THREE.MathUtils.lerp(
+      groupRef.current.position.y = MathUtils.lerp(
         groupRef.current.position.y, targetY, 0.15
       );
     }
@@ -476,7 +476,7 @@ const BoardSquare = ({ position, isLight, isSelected, isPossibleMove, onClick })
         <meshBasicMaterial color={finalColor} />
       </mesh>
       <lineSegments rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(1, 1)]} />
+        <edgesGeometry args={[new PlaneGeometry(1, 1)]} />
         <lineBasicMaterial color="#222222" linewidth={2} />
       </lineSegments>
     </group>
