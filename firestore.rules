@@ -58,7 +58,8 @@ service cloud.firestore {
       // - 본인: 중요 필드(isAdmin, isSuperAdmin, classCode) 제외 모든 필드 수정 가능
       // - 같은 학급: cash, updatedAt 필드만 수정 가능 (송금, 벌금 등)
       // - 관리자: 모든 필드 수정 가능
-      allow update: if isOwner(userId) ||
+      allow update: if (isOwner(userId) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role'])) ||
                        (isSameClass(resource.data.classCode) &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt'])) ||
                        isAdmin();

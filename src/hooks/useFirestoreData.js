@@ -151,8 +151,8 @@ class UnifiedCache {
 
 export const globalCache = new UnifiedCache();
 
-// 전역 접근 (디버깅용)
-if (typeof window !== 'undefined') {
+// 전역 접근 (개발 환경에서만)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   window.__firestoreCache = globalCache;
 }
 

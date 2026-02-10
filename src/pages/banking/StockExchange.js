@@ -9,7 +9,6 @@ import "./StockExchange.css";
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
-import { applyStockTax } from "../../utils/taxUtils";
 // 🔥 자동 상장/폐지: Firebase Functions에서 처리 (10분마다)
 import { httpsCallable } from "firebase/functions";
 import { usePolling, POLLING_INTERVALS } from "../../hooks/usePolling";
@@ -22,12 +21,10 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  orderBy,
   limit,
   serverTimestamp,
   increment,
   writeBatch,
-  runTransaction,
   where,
   collectionGroup,
 } from "firebase/firestore";
@@ -544,7 +541,13 @@ const StockExchange = () => {
   }, [portfolio]);
 
   useEffect(() => {
+    // 포트폴리오가 없으면 타이머 불필요
+    if (!portfolioRef.current || portfolioRef.current.length === 0) return;
+
     const interval = setInterval(() => {
+      const hasLocks = portfolioRef.current.some(h => getRemainingLockTime(h) > 0);
+      if (!hasLocks) return; // 잠금된 보유 주식이 없으면 상태 업데이트 스킵
+
       setLockTimers(prevTimers => {
         const newTimers = {};
         portfolioRef.current.forEach(holding => {
@@ -555,16 +558,9 @@ const StockExchange = () => {
         });
         return newTimers;
       });
-
-      // 캐시 통계 업데이트
-      setCacheStatus({
-        hits: cacheStats.hits,
-        misses: cacheStats.misses,
-        savings: cacheStats.savings
-      });
     }, 1000);
     return () => clearInterval(interval);
-  }, []); // 빈 의존성 배열 - portfolioRef를 통해 최신 portfolio 참조
+  }, [portfolio.length]); // portfolio 변경 시 타이머 재설정
 
   // 🔥 portfolio가 변경되면 즉시 타이머 재계산
   useEffect(() => {
@@ -1327,8 +1323,7 @@ const StockExchange = () => {
               <button
                 onClick={toggleVacationMode}
                 disabled={vacationLoading}
-                className={`btn ${vacationMode ? "btn-warning" : "btn-secondary"}`}
-                className="ml-2"
+                className={`btn ml-2 ${vacationMode ? "btn-warning" : "btn-secondary"}`}
                 title={vacationMode ? '방학 모드 ON - 스케줄러 중지됨' : '방학 모드 OFF - 스케줄러 작동 중'}
               >
                 {vacationLoading ? '...' : vacationMode ? '🏖️ 방학모드 ON' : '📅 방학모드 OFF'}

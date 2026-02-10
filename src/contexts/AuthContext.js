@@ -533,11 +533,10 @@ export const AuthProvider = ({ children }) => {
         }
         
         if (docData) {
-          setUser(
-            auth.currentUser && auth.currentUser.uid === firebaseUid
-              ? auth.currentUser
-              : { uid: firebaseUid, email: docData.email }
-          );
+          if (!auth.currentUser || auth.currentUser.uid !== firebaseUid) {
+            return false;
+          }
+          setUser(auth.currentUser);
           setUserDoc(docData);
           localStorage.setItem("currentUserAuthUID", firebaseUid);
           currentUserUidRef.current = firebaseUid;

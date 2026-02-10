@@ -1,6 +1,6 @@
 // src/pages/dashboard/Dashboard.js - Firestore 최적화 버전 + 일일 할일 리셋 기능 + Tailwind UI
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, copyDefaultDataToNewClass } from "../../firebase";
@@ -45,8 +45,7 @@ import globalCacheService from "../../services/globalCacheService";
 import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft, X } from "lucide-react";
 
 import { logger } from "../../utils/logger";
-// Cloud Functions 호출 함수 설정
-const manualResetClassTasks = httpsCallable(functions, 'manualResetClassTasks');
+// Cloud Functions 호출 함수 설정 (handleManualTaskReset 내부에서 사용)
 
 // 🔥 [최적화 v3.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
 // TTL 상수 - 캐시 일관성을 위해 globalCacheService와 동일하게 설정

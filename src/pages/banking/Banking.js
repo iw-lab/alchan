@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import ParkingAccount from "./ParkingAccount";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
-import { collection, query, where, getDocs, collectionGroup, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import {
   PageContainer,
@@ -218,7 +218,7 @@ const Banking = () => {
     if (auth && !auth.loading && auth.user && auth.userDoc?.classCode) {
       loadAllData();
     } else if (auth && !auth.loading && !auth.user) {
-      setParkingSavingsProducts([]);
+      setParkingDepositProducts([]);
       setParkingInstallmentProducts([]);
       setParkingLoanProducts([]);
     }

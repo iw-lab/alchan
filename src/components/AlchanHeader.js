@@ -6,8 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { verifyClassCode } from '../firebase';
 import {
-  Menu, Bell, X, LogOut, User, Key, Building2, Trash2,
-  ChevronLeft, ChevronRight, Sparkles, Gift, Settings, LayoutDashboard, Wallet
+  X, LogOut, User, Key, Building2, Trash2,
+  ChevronLeft, ChevronRight, Gift, Settings, LayoutDashboard
 } from 'lucide-react';
 import SettingsPanel from './SettingsPanel';
 import Avatar from './Avatar';
@@ -141,8 +141,12 @@ const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onTogg
   };
 
   const handleLogout = async () => {
-    if (logout) {
-      await logout();
+    try {
+      if (logout) {
+        await logout();
+        navigate('/login');
+      }
+    } catch (e) {
       navigate('/login');
     }
     setShowUserMenu(false);
