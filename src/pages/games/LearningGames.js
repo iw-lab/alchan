@@ -106,6 +106,7 @@ function LearningGames({ isFullScreen, setFullScreen }) {
             width="100%"
             height="100%"
             style={{ border: "none" }}
+            sandbox="allow-scripts allow-same-origin allow-popups"
             allowFullScreen
           ></iframe>
         ) : selectedGame.component ? (

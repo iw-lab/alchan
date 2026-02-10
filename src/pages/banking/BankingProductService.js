@@ -19,9 +19,16 @@ export class BankingProductService {
    */
   async getAllProducts() {
     // 로컬 스토리지에서 먼저 상품 정보를 불러옵니다.
-    const localDepositProducts = JSON.parse(localStorage.getItem("depositProducts"));
-    const localSavingProducts = JSON.parse(localStorage.getItem("savingProducts"));
-    const localLoanProducts = JSON.parse(localStorage.getItem("loanProducts"));
+    let localDepositProducts, localSavingProducts, localLoanProducts;
+    try {
+      localDepositProducts = JSON.parse(localStorage.getItem("depositProducts"));
+      localSavingProducts = JSON.parse(localStorage.getItem("savingProducts"));
+      localLoanProducts = JSON.parse(localStorage.getItem("loanProducts"));
+    } catch {
+      localDepositProducts = null;
+      localSavingProducts = null;
+      localLoanProducts = null;
+    }
 
     // 로컬 스토리지에 데이터가 있으면 로컬 데이터를 우선적으로 사용합니다.
     if (localDepositProducts || localSavingProducts || localLoanProducts) {

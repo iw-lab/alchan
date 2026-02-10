@@ -1,7 +1,8 @@
 // src/pages/organization/OrganizationChart.js
 import React, { useState, useEffect, useCallback } from "react";
 import "./OrganizationChart.css";
-import { db } from "../../firebase"; // Firestore 인스턴스
+import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   doc,
   collection,
@@ -25,7 +26,7 @@ const DEFAULT_ADMIN_SETTINGS = {
 };
 
 const OrganizationChart = ({ classCode }) => {
-  // props로 classCode 받기
+  const { isAdmin: isAuthAdmin } = useAuth() || {};
   const [approvedLaws, setApprovedLaws] = useState([]);
   const [vetoPendingLaws, setVetoPendingLaws] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -123,9 +124,9 @@ const OrganizationChart = ({ classCode }) => {
     }
   };
 
-  // 비밀번호 확인
+  // 관리자 권한 확인 (AuthContext 기반)
   const verifyPassword = () => {
-    if (passwordInput === adminSettings.adminPassword) {
+    if ((typeof isAuthAdmin === 'function' && isAuthAdmin()) || passwordInput === adminSettings.adminPassword) {
       setIsAdminMode(true);
       setShowPasswordModal(false);
       setPasswordInput("");

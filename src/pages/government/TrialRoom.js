@@ -391,6 +391,11 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     const file = event.target.files[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) return alert("파일 크기는 10MB 이하여야 합니다.");
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return alert("허용되지 않는 파일 형식입니다. (이미지, PDF, Word만 가능)");
+    }
     
     setUploadingEvidence(true);
     

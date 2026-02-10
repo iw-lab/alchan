@@ -125,7 +125,13 @@ const initializeDatabase = () => {
 // 전체 데이터베이스 가져오기
 const getDatabase = () => {
   initializeDatabase();
-  return JSON.parse(localStorage.getItem("database"));
+  try {
+    return JSON.parse(localStorage.getItem("database"));
+  } catch {
+    localStorage.removeItem("database");
+    initializeDatabase();
+    return JSON.parse(localStorage.getItem("database"));
+  }
 };
 
 // 데이터베이스 업데이트

@@ -32,7 +32,7 @@ const SubmitComplaint = ({
     // 로컬 스토리지에서 고소 사유 목록 로드
     const savedReasons = localStorage.getItem("predefinedComplaintReasons");
     if (savedReasons) {
-      setPredefinedReasons(JSON.parse(savedReasons));
+      try { setPredefinedReasons(JSON.parse(savedReasons)); } catch { /* corrupted data, use defaults */ }
     } else {
       // 기본 고소 사유
       const initialReasons = [
@@ -52,7 +52,8 @@ const SubmitComplaint = ({
     // 로컬 스토리지에서 가결된 법안 로드
     const savedLaws = localStorage.getItem("nationalAssemblyLaws");
     if (savedLaws) {
-      const parsedLaws = JSON.parse(savedLaws);
+      let parsedLaws;
+      try { parsedLaws = JSON.parse(savedLaws); } catch { parsedLaws = []; }
       // 가결된 법안만 필터링 (approved, veto_overridden, final_approved 상태)
       const lawsFiltered = parsedLaws.filter(
         (law) =>

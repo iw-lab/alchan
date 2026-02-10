@@ -14,17 +14,18 @@ import UpdateNotification from './UpdateNotification';
 import { useServiceWorker } from '../hooks/useServiceWorker';
 import { AlchanLoadingScreen } from './ui/Skeleton';
 import { WifiOff } from 'lucide-react';
-import { DailyRewardBanner, getStreakInfo } from './DailyReward';
-import WelcomePopup from './WelcomePopup';
-import HelpButton from './HelpButton';
+import { getStreakInfo } from './DailyReward';
+const DailyRewardBanner = lazy(() => import('./DailyReward').then(m => ({ default: m.DailyRewardBanner })));
+const WelcomePopup = lazy(() => import('./WelcomePopup'));
+const HelpButton = lazy(() => import('./HelpButton'));
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import globalCacheService from '../services/globalCacheService';
 import { logger } from '../utils/logger';
 
-// 🔥 핵심 페이지 - 즉시 로드
-import Dashboard from '../pages/dashboard/Dashboard';
+// 🔥 핵심 페이지 - Login만 즉시 로드 (Dashboard도 lazy로 전환)
 import Login from '../pages/auth/Login';
+const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
 const ItemStore = lazy(() => import('../pages/market/ItemStore'));

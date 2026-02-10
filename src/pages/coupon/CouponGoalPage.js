@@ -1,5 +1,5 @@
 // src/pages/coupon/CouponGoalPage.js - 쿠폰 목표 전용 페이지
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
@@ -43,9 +43,9 @@ export default function CouponGoalPage() {
   const loadGoalDataRef = useRef(null); // 🔥 loadGoalData 함수를 저장할 ref
   const [goalDonations, setGoalDonations] = useState([]);
 
-  const donateCouponFunction = httpsCallable(functions, 'donateCoupon');
-  const sellCouponFunction = httpsCallable(functions, 'sellCoupon');
-  const giftCouponFunction = httpsCallable(functions, 'giftCoupon');
+  const donateCouponFunction = useMemo(() => httpsCallable(functions, 'donateCoupon'), []);
+  const sellCouponFunction = useMemo(() => httpsCallable(functions, 'sellCoupon'), []);
+  const giftCouponFunction = useMemo(() => httpsCallable(functions, 'giftCoupon'), []);
 
   const CACHE_DURATION = 5 * 60 * 1000;
 

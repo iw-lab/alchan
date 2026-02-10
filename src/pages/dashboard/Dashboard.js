@@ -295,6 +295,10 @@ function Dashboard({ adminTabMode }) {
   const [adminNewTaskReward, setAdminNewTaskReward] = useState("");
   const [adminNewTaskMaxClicks, setAdminNewTaskMaxClicks] = useState("5");
 
+  // 🔥 [최적화] httpsCallable 메모이제이션
+  const completeTaskFunction = useMemo(() => httpsCallable(functions, "completeTask"), []);
+  const manualResetClassTasksFn = useMemo(() => httpsCallable(functions, 'manualResetClassTasks'), []);
+
   const [isHandlingTask, setIsHandlingTask] = useState(false);
 
   const [classCouponGoal, setClassCouponGoal] = useState(1000);
@@ -1157,7 +1161,6 @@ function Dashboard({ adminTabMode }) {
       }
 
       try {
-        const completeTaskFunction = httpsCallable(functions, "completeTask");
         const result = await completeTaskFunction({ taskId, jobId, isJobTask, cardType, rewardAmount });
 
         const resultData = result.data;
@@ -1463,7 +1466,7 @@ function Dashboard({ adminTabMode }) {
     logger.log(`[Dashboard] ${userDoc.classCode} 클래스 리셋 실행...`);
     setAppLoading(true);
     try {
-      const manualResetClassTasks = httpsCallable(functions, 'manualResetClassTasks');
+      const manualResetClassTasks = manualResetClassTasksFn;
       const result = await manualResetClassTasks({ classCode: userDoc.classCode });
       logger.log("[Dashboard] 클라우드 함수 결과 수신:", result.data);
 

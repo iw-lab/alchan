@@ -2,7 +2,7 @@ import { logger } from './logger';
 const API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY; // .env 파일에서 API 키를 불러옵니다.
 
 export const searchVideos = async (query) => {
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&key=${API_KEY}&maxResults=10`);
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}&maxResults=10`);
     
     if (!response.ok) {
         const errorData = await response.json();

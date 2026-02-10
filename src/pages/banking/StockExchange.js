@@ -463,6 +463,21 @@ const AdminPanel = React.memo(({ stocks, classCode, onClose, onAddStock, onDelet
 const StockExchange = () => {
   const { user, userDoc, isAdmin, loading: authLoading, firebaseReady, functions, optimisticUpdate, refreshUserDocument } = useAuth();
 
+  // 🔥 [최적화] httpsCallable 메모이제이션 (매 렌더마다 재생성 방지)
+  const callables = useMemo(() => ({
+    getVacationModeStatus: httpsCallable(functions, 'getVacationModeStatus'),
+    toggleVacationMode: httpsCallable(functions, 'toggleVacationMode'),
+    updateStocksSnapshot: httpsCallable(functions, 'updateStocksSnapshot'),
+    addStockDoc: httpsCallable(functions, 'addStockDoc'),
+    buyStock: httpsCallable(functions, 'buyStock'),
+    sellStock: httpsCallable(functions, 'sellStock'),
+    manualUpdateStockMarket: httpsCallable(functions, 'manualUpdateStockMarket'),
+    createRealStocks: httpsCallable(functions, 'createRealStocks'),
+    updateRealStocks: httpsCallable(functions, 'updateRealStocks'),
+    addSingleRealStock: httpsCallable(functions, 'addSingleRealStock'),
+    deleteSimulationStocks: httpsCallable(functions, 'deleteSimulationStocks'),
+  }), [functions]);
+
   const [classCode, setClassCode] = useState(null);
   const [stocks, setStocks] = useState([]);
   const [portfolio, setPortfolio] = useState([]);
@@ -651,7 +666,7 @@ const StockExchange = () => {
   const fetchVacationMode = useCallback(async () => {
     if (!userDoc?.isSuperAdmin) return;
     try {
-      const getVacationModeStatusFn = httpsCallable(functions, 'getVacationModeStatus');
+      const getVacationModeStatusFn = callables.getVacationModeStatus;
       const result = await getVacationModeStatusFn({});
       setVacationMode(result.data.vacationMode);
     } catch (error) {
@@ -671,7 +686,7 @@ const StockExchange = () => {
     if (!userDoc?.isSuperAdmin) return;
     setVacationLoading(true);
     try {
-      const toggleVacationModeFn = httpsCallable(functions, 'toggleVacationMode');
+      const toggleVacationModeFn = callables.toggleVacationMode;
       const result = await toggleVacationModeFn({ enabled: !vacationMode });
       setVacationMode(result.data.vacationMode);
       alert(result.data.message);
@@ -686,7 +701,7 @@ const StockExchange = () => {
   // 중앙 주식 스냅샷 문서 강제 갱신 (관리자 작업 후 읽기 최적화 유지)
   const refreshStocksSnapshot = useCallback(async () => {
     try {
-      const updateSnapshotFn = httpsCallable(functions, 'updateStocksSnapshot');
+      const updateSnapshotFn = callables.updateStocksSnapshot;
       await updateSnapshotFn({});
       logger.log('[updateStocksSnapshot] 스냅샷 갱신 완료');
     } catch (error) {
@@ -699,7 +714,7 @@ const StockExchange = () => {
     if (!classCode || !user) return alert("클래스 정보가 없습니다.");
     try {
       // 관리자 권한으로 Cloud Function 먼저 시도 (Rules 우회)
-      const addStockFn = httpsCallable(functions, 'addStockDoc');
+      const addStockFn = callables.addStockDoc;
       await addStockFn({ stock: stockData });
 
       await refreshStocksSnapshot();
@@ -864,7 +879,7 @@ const StockExchange = () => {
     setIsTrading(true);
     try {
       // Cloud Function 호출
-      const buyStockFunction = httpsCallable(functions, 'buyStock');
+      const buyStockFunction = callables.buyStock;
       const result = await buyStockFunction({ stockId, quantity });
 
       logger.log('[buyStock] 매수 성공:', result.data);
@@ -982,7 +997,7 @@ const StockExchange = () => {
     setIsTrading(true);
 
     try {
-      const sellStockFunction = httpsCallable(functions, 'sellStock');
+      const sellStockFunction = callables.sellStock;
       const result = await sellStockFunction({ holdingId, quantity });
 
       logger.log('[sellStock] 매도 성공:', result.data);
@@ -1088,7 +1103,7 @@ const StockExchange = () => {
 
     try {
       logger.log('[manualUpdateStockMarket] 수동 업데이트 시작');
-      const manualUpdateFunction = httpsCallable(functions, 'manualUpdateStockMarket');
+      const manualUpdateFunction = callables.manualUpdateStockMarket;
       const result = await manualUpdateFunction({});
 
       logger.log('[manualUpdateStockMarket] 업데이트 성공:', result.data);
@@ -1114,7 +1129,7 @@ const StockExchange = () => {
 
     try {
       logger.log('[createRealStocks] 실제 주식 생성 시작');
-      const createRealStocksFunction = httpsCallable(functions, 'createRealStocks');
+      const createRealStocksFunction = callables.createRealStocks;
       const result = await createRealStocksFunction({});
 
       logger.log('[createRealStocks] 생성 성공:', result.data);
@@ -1140,7 +1155,7 @@ const StockExchange = () => {
 
     try {
       logger.log('[updateRealStocks] 실제 주식 업데이트 시작');
-      const updateRealStocksFunction = httpsCallable(functions, 'updateRealStocks');
+      const updateRealStocksFunction = callables.updateRealStocks;
       const result = await updateRealStocksFunction({});
 
       logger.log('[updateRealStocks] 업데이트 성공:', result.data);
@@ -1166,7 +1181,7 @@ const StockExchange = () => {
 
     try {
       logger.log('[addSingleRealStock] 개별 실제 주식 추가 시작:', name);
-      const addSingleRealStockFunction = httpsCallable(functions, 'addSingleRealStock');
+      const addSingleRealStockFunction = callables.addSingleRealStock;
       const result = await addSingleRealStockFunction({ name, symbol, sector, productType });
 
       logger.log('[addSingleRealStock] 추가 성공:', result.data);
@@ -1192,7 +1207,7 @@ const StockExchange = () => {
 
     try {
       logger.log('[deleteSimulationStocks] 시뮬레이션 주식 삭제 시작');
-      const deleteSimulationStocksFunction = httpsCallable(functions, 'deleteSimulationStocks');
+      const deleteSimulationStocksFunction = callables.deleteSimulationStocks;
       const result = await deleteSimulationStocksFunction({});
 
       logger.log('[deleteSimulationStocks] 삭제 성공:', result.data);
