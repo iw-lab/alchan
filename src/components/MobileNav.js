@@ -1,7 +1,7 @@
 // src/components/MobileNav.js
 // 모바일 하단 네비게이션 컴포넌트
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Wallet, Gamepad2, Users } from 'lucide-react';
 
@@ -12,7 +12,7 @@ const tabs = [
   { id: 'community', icon: Users, label: '커뮤니티', path: '/learning-board' },
 ];
 
-export default function MobileNav() {
+const MobileNav = memo(function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -59,4 +59,6 @@ export default function MobileNav() {
       </div>
     </nav>
   );
-}
+});
+
+export default MobileNav;

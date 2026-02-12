@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import {
   registerWithEmailAndPassword,
   updateUserProfile,
@@ -59,6 +60,7 @@ const generateClassCode = () => {
 };
 
 const Login = () => {
+  useDocumentTitle('로그인 - 학급경제 교육 시작하기');
   const navigate = useNavigate();
   const location = useLocation();
   const {

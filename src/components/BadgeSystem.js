@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { Trophy, Star, Target, Coins, Users, Gamepad2, BookOpen, TrendingUp, Award, X } from 'lucide-react';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Trophy, Star, Target, Coins, Users, Gamepad2, BookOpen, TrendingUp, Award } from 'lucide-react';
 import { logger } from '../utils/logger';
 
 // 배지 정의

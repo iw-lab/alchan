@@ -40,7 +40,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-const AlchanHeader = memo(({ toggleSidebar, isMobile, isSidebarCollapsed, onToggleSidebarCollapse }) => {
+const AlchanHeader = memo(({ toggleSidebar, isSidebarCollapsed, onToggleSidebarCollapse }) => {
   const navigate = useNavigate();
   const { user, userDoc, logout, updateUser, changePassword, deleteCurrentUserAccount, loginWithEmailPassword } = useAuth();
 

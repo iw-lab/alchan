@@ -3,10 +3,10 @@
 // 🔥 성능 최적화: 게임/관리자 페이지 lazy loading 적용
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ItemProvider } from '../contexts/ItemContext'; // 🔥 [최적화] 로그인 후에만 마운트
-import AlchanSidebar, { AppIcon } from './AlchanSidebar';
+import AlchanSidebar from './AlchanSidebar';
 import AlchanHeader from './AlchanHeader';
 import MobileNav from './MobileNav';
 import PWAInstallPrompt from './PWAInstallPrompt';
@@ -18,13 +18,11 @@ import { getStreakInfo } from './DailyReward';
 const DailyRewardBanner = lazy(() => import('./DailyReward').then(m => ({ default: m.DailyRewardBanner })));
 const WelcomePopup = lazy(() => import('./WelcomePopup'));
 const HelpButton = lazy(() => import('./HelpButton'));
-import { doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, doc, updateDoc, increment } from '../firebase';
 import globalCacheService from '../services/globalCacheService';
 import { logger } from '../utils/logger';
 
-// 🔥 핵심 페이지 - Login만 즉시 로드 (Dashboard도 lazy로 전환)
-import Login from '../pages/auth/Login';
+// 🔥 핵심 페이지 - Dashboard도 lazy로 전환
 const Dashboard = lazy(() => import('../pages/dashboard/Dashboard'));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
@@ -67,7 +65,6 @@ const Auction = lazy(() => import('../pages/market/Auction'));
 const MoneyTransfer = lazy(() => import('../pages/banking/MoneyTransfer'));
 const CouponTransfer = lazy(() => import('../pages/banking/CouponTransfer'));
 const CouponGoalPage = lazy(() => import('../pages/coupon/CouponGoalPage'));
-const OrganizationChart = lazy(() => import('../pages/organization/OrganizationChart'));
 
 
 // 전체 화면이 필요한 페이지 경로 (자동으로 사이드바 접기)
@@ -165,7 +162,6 @@ const SuperAdminRoute = ({ children }) => {
 
 // 메인 레이아웃 컴포넌트
 export default function AlchanLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { user, userDoc, loading, logout } = useAuth();
 
@@ -221,20 +217,27 @@ export default function AlchanLayout() {
     }
   }, [location.pathname, isMobile]);
 
-  // 화면 크기 감지
+  // 화면 크기 감지 (디바운스 적용)
   useEffect(() => {
+    let timeoutId;
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setIsSidebarOpen(false);
-      }
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const mobile = window.innerWidth < 768;
+        setIsMobile(mobile);
+        if (mobile) {
+          setIsSidebarOpen(false);
+        }
+      }, 150);
     };
 
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const toggleSidebar = useCallback(() => {
@@ -261,7 +264,7 @@ export default function AlchanLayout() {
 
   // 로그인 페이지 (이미 로그인했으면 대시보드로)
   if (location.pathname === '/login') {
-    return user ? <Navigate to="/dashboard/tasks" replace /> : <Login />;
+    return <Navigate to={user ? '/dashboard/tasks' : '/login'} replace />;
   }
 
   // 학급 코드 없음
@@ -286,8 +289,6 @@ export default function AlchanLayout() {
       </div>
     );
   }
-
-  const userClassCode = userDoc?.classCode;
 
   return (
     // 🔥 [최적화] ItemProvider를 여기에 배치 - 로그인 후에만 마운트되어 불필요한 Firestore 읽기 방지

@@ -115,7 +115,7 @@ const StudentRequest = () => {
                                         className={`video-item ${selectedVideo?.id.videoId === video.id.videoId ? 'selected' : ''}`}
                                         onClick={() => setSelectedVideo(video)}
                                     >
-                                        <img src={video.snippet.thumbnails.default.url} alt={video.snippet.title} />
+                                        <img src={video.snippet.thumbnails.default.url} alt={video.snippet.title} loading="lazy" width="120" height="90" />
                                         <p>{video.snippet.title}</p>
                                     </li>
                                 ))}

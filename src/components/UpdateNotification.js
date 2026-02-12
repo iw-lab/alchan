@@ -1,10 +1,10 @@
 // src/components/UpdateNotification.js
 // 앱 업데이트 알림 컴포넌트
 
-import React from 'react';
+import React, { memo } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 
-export default function UpdateNotification({ onUpdate, onDismiss }) {
+const UpdateNotification = memo(function UpdateNotification({ onUpdate, onDismiss }) {
   return (
     <div className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up">
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-2xl p-4 text-white">
@@ -43,4 +43,6 @@ export default function UpdateNotification({ onUpdate, onDismiss }) {
       </div>
     </div>
   );
-}
+});
+
+export default UpdateNotification;

@@ -1,7 +1,7 @@
 // src/components/AlchanSidebar.js
 // 알찬 UI 사이드바 컴포넌트 - 새로운 슬레이트 기반 디자인
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -114,19 +114,19 @@ const CATEGORY_LABELS = {
 // ============================================
 // 메뉴 섹션 컴포넌트
 // ============================================
-const MenuSection = ({ title, children }) => (
+const MenuSection = memo(({ title, children }) => (
   <div className="mb-6">
     <h3 className="px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{title}</h3>
     <ul className="space-y-1">
       {children}
     </ul>
   </div>
-);
+));
 
 // ============================================
 // 메뉴 아이템 컴포넌트
 // ============================================
-const MenuItem = ({ icon: Icon, label, active, hasSubmenu, onClick }) => (
+const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
   <li>
     <button
       onClick={onClick}
@@ -142,12 +142,12 @@ const MenuItem = ({ icon: Icon, label, active, hasSubmenu, onClick }) => (
       {hasSubmenu && <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
     </button>
   </li>
-);
+));
 
 // ============================================
 // 서브메뉴 아이템 컴포넌트
 // ============================================
-const SubMenuItem = ({ icon: Icon, label, active, onClick }) => (
+const SubMenuItem = memo(({ icon: Icon, label, active, onClick }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${active
@@ -158,7 +158,7 @@ const SubMenuItem = ({ icon: Icon, label, active, onClick }) => (
     <Icon className="w-3.5 h-3.5" />
     {label}
   </button>
-);
+));
 
 // ============================================
 // 카테고리 컴포넌트
@@ -209,9 +209,16 @@ export default function AlchanSidebar({ isOpen, onClose, isCollapsed = false }) 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    let timeoutId;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => setIsMobile(window.innerWidth < 768), 150);
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const toggleCategory = useCallback((categoryId) => {

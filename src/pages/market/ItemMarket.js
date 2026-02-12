@@ -9,24 +9,16 @@ import {
 } from "../../firebase";
 
 import {
-  collection,
   doc,
   runTransaction,
   increment,
   serverTimestamp,
   updateDoc,
-  deleteDoc,
-  setDoc,
-  query,
-  orderBy,
-  where,
   getDoc,
-  getDocs,
-  limit,
 } from "firebase/firestore";
 
 import "./ItemMarket.css";
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
+import { logger } from "../../utils/logger";
 
 const formatDate = (date) => {
   if (!date) return '알 수 없음';
@@ -486,11 +478,9 @@ const ItemMarket = () => {
     refreshData,
     buyMarketItem,
     makeOffer,
-    respondToOffer,
     listItemForSale,
     cancelSale,
-    adminDeleteItem,
-    userItems
+    adminDeleteItem
   } = useItems();
 
   const { classmates, loading: authLoading } = useAuth();
@@ -681,7 +671,7 @@ const ItemMarket = () => {
         const { getClassAdminUid } = await import("../../firebase/db/core");
         adminUid = await getClassAdminUid(classCode);
       } catch (e) {
-        console.error("세금 설정 로드 실패:", e);
+        logger.error("세금 설정 로드 실패:", e);
       }
 
       // 세금 계산
@@ -893,13 +883,6 @@ const ItemMarket = () => {
     const sent = (proposals || []).filter(proposal => proposal.buyerId === currentUserId);
     return { receivedProposals: received, sentProposals: sent };
   }, [proposals, currentUserId]);
-
-  // 시세 데이터 정렬 (메모이제이션)
-  const sortedMarketData = useMemo(() => {
-    return marketSummary
-      ? Object.entries(marketSummary).sort(([nameA], [nameB]) => nameA.localeCompare(nameB))
-      : [];
-  }, [marketSummary]);
 
   if (loading) {
     return <div className="market-container loading">로딩 중...</div>;

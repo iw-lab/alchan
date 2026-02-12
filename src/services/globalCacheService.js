@@ -9,8 +9,7 @@ import {
   where,
   collection,
   orderBy,
-  limit,
-  onSnapshot
+  limit
 } from 'firebase/firestore';
 import indexedDBCache from './indexedDBCache';
 

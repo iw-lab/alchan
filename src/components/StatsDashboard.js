@@ -5,8 +5,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import {
 import { logger } from '../utils/logger';
+import {
   TrendingUp, TrendingDown, Minus, BarChart3, PieChart,
   Calendar, Trophy, Target, Coins, Gamepad2, Users, ArrowRight
 } from 'lucide-react';

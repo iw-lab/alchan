@@ -29,7 +29,7 @@ import {
   addTransaction,
   serverTimestamp,
 } from "../firebase";
-import { doc, onSnapshot, Timestamp, getDoc } from "firebase/firestore";
+import { doc, Timestamp, getDoc } from "firebase/firestore";
 
 import { logger } from "../utils/logger";
 export const AuthContext = createContext(null);
@@ -78,9 +78,6 @@ export const AuthProvider = ({ children }) => {
   const visibilityChangeHandlerRef = useRef(null);
 
   // 최적화: 캐시 TTL 설정
-  const isMobile = useCallback(() => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }, []);
 
   // 🔥 [비용 최적화 v6.0] 극단적 최적화 - 읽기 95% 감소 목표
   // 거래/업데이트 시 강제 무효화되므로 매우 긴 TTL이 안전함

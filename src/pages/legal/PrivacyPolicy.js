@@ -4,8 +4,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Mail, Calendar, Lock, FileText, ChevronRight, AlertCircle, Printer } from 'lucide-react';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const PrivacyPolicy = () => {
+  useDocumentTitle('개인정보처리방침');
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#0a0a12] text-gray-100 py-8 px-4 md:px-8">

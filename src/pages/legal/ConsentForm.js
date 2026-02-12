@@ -4,6 +4,7 @@
 import React, { useRef } from 'react';
 import { Printer, Download, ArrowLeft, FileText, Scissors } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 // 인쇄 전용 스타일 (화면에는 안 보이고 인쇄 시에만 적용)
 const printStyles = `
@@ -30,6 +31,7 @@ const printStyles = `
 `;
 
 const ConsentForm = () => {
+  useDocumentTitle('개인정보 수집 동의서');
   const navigate = useNavigate();
   const printRef = useRef(null);
 

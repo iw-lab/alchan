@@ -1,6 +1,5 @@
 // src/pages/dashboard/Dashboard.js - Firestore 최적화 버전 + 일일 할일 리셋 기능 + Tailwind UI
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, copyDefaultDataToNewClass } from "../../firebase";
@@ -8,39 +7,27 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   getDocs,
   writeBatch,
   serverTimestamp,
-  increment,
   arrayUnion,
   query,
   where,
   collection as firestoreCollection,
   limit,
-  orderBy,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { formatKoreanCurrency, formatCouponCount } from '../../utils/numberFormatter';
 import JobList from "../../components/JobList";
 import CommonTaskList from "../../components/CommonTaskList";
-import TransferModal from "../../components/modals/TransferModal";
-import DonateCouponModal from "../../components/modals/DonateCouponModal";
-import DonationHistoryModal from "../../components/modals/DonationHistoryModal";
-import SellCouponModal from "../../components/modals/SellCouponModal";
 import AdminSettingsModal from "../../components/modals/AdminSettingsModal";
-import GiftCouponModal from "../../components/modals/GiftCouponModal";
 import {
   PageContainer,
-  PageHeader,
-  SectionTitle,
   LoadingState,
   EmptyState,
   ActionButton,
-  CardGrid,
 } from "../../components/PageWrapper";
 import globalCacheService from "../../services/globalCacheService";
-import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft, X } from "lucide-react";
+import { Briefcase, ListTodo, Settings, RefreshCw, RotateCcw, Plus, ChevronLeft } from "lucide-react";
 
 import { logger } from "../../utils/logger";
 // Cloud Functions 호출 함수 설정 (handleManualTaskReset 내부에서 사용)
@@ -256,7 +243,6 @@ function SelectMultipleJobsView({
 }
 
 function Dashboard({ adminTabMode }) {
-  const navigate = useNavigate();
   const {
     user,
     userDoc,
@@ -1544,7 +1530,6 @@ function Dashboard({ adminTabMode }) {
     );
   }
 
-  const userId = user?.uid;
   // 닉네임 우선 표시 (닉네임 -> 이름 -> displayName -> "사용자")
   const userNickname = userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 

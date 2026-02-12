@@ -224,7 +224,13 @@ exports.completeTask = onCall({region: "asia-northeast3"}, async (request) => {
           [`completedTasks.${taskId}`]: admin.firestore.FieldValue.increment(1),
         };
 
-        // 🔥 카드 선택 보상 적용 (공통 할일도 동일)
+        // 🔥 카드 선택 보상 적용 (공통 할일도 동일) + 서버 검증
+        const maxRewardCommon = taskData.maxReward || taskData.reward || 100;
+        if (rewardAmount !== null && rewardAmount !== undefined) {
+          if (typeof rewardAmount !== 'number' || rewardAmount < 0 || rewardAmount > maxRewardCommon) {
+            throw new Error(`유효하지 않은 보상 금액입니다.`);
+          }
+        }
         if (cardType && rewardAmount) {
           if (cardType === "cash") {
             cashReward = rewardAmount;
@@ -943,7 +949,7 @@ exports.getItemContextData = onCall({region: "asia-northeast3"}, async (request)
 //   }
 // });
 
-const cors = require("cors")({origin: true});
+const cors = require("cors")({origin: ["https://inconomysu-class.web.app", "https://inconomysu-class.firebaseapp.com", "http://localhost:3000", "http://localhost:5000"]});
 const {onRequest} = require("firebase-functions/v2/https");
 
 // ... (other exports)

@@ -6,30 +6,26 @@ import React, {
   useRef,
 } from "react";
 import "./StockExchange.css";
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
 // 🔥 자동 상장/폐지: Firebase Functions에서 처리 (10분마다)
 import { httpsCallable } from "firebase/functions";
-import { usePolling, POLLING_INTERVALS } from "../../hooks/usePolling";
+import { usePolling } from "../../hooks/usePolling";
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
   query,
-  limit,
   serverTimestamp,
-  increment,
   writeBatch,
   where,
   collectionGroup,
 } from "firebase/firestore";
 
-import { globalCache, cacheStats } from "../../services/globalCacheService";
+import { globalCache } from "../../services/globalCacheService";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 
 import { logger } from "../../utils/logger";
@@ -38,19 +34,13 @@ import {
   batchDataLoader,
   PRODUCT_TYPES,
   SECTORS,
-  HOLDING_LOCK_PERIOD,
   COMMISSION_RATE,
-  TAX_RATE,
-  BOND_TAX_RATE,
   CACHE_TTL,
-  getRealtimeMarketState,
   getMarketStateLabel,
   formatCurrency,
   formatPercent,
   formatTime,
   calculateStockTax,
-  updateNationalTreasury,
-  calculateMarketIndex,
   canSellHolding,
   getRemainingLockTime,
   getProductIcon,

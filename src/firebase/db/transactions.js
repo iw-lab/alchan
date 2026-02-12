@@ -13,7 +13,7 @@ import {
   where as originalFirebaseWhere,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { invalidateCache, invalidateCachePattern } from "../firebaseUtils";
+import { invalidateCache } from "../firebaseUtils";
 import { getUserDocument, addActivityLog, addTransaction } from "./users";
 import { getClassAdminUid } from "./core";
 import { getGovernmentSettings } from "./settings";

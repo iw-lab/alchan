@@ -112,7 +112,7 @@ exports.simpleScheduler = onRequest({
   try {
     // URL 파라미터로 인증 토큰 확인
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -138,7 +138,7 @@ exports.stockPriceScheduler = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -237,7 +237,7 @@ exports.midnightReset = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -261,7 +261,7 @@ exports.weeklySalary = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -285,7 +285,7 @@ exports.weeklyRent = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -309,7 +309,7 @@ exports.weeklyPropertyTax = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
@@ -549,7 +549,7 @@ exports.exchangeRateScheduler = onRequest({
 }, async (req, res) => {
   try {
     const token = req.query.token;
-    if (token !== AUTH_TOKEN) {
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }

@@ -1,0 +1,37 @@
+# robots.txt for 알찬 - 학급경제 시뮬레이션 교육 앱
+# https://inconomysu-class.web.app
+
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /privacy
+Allow: /consent-form
+
+# Protected routes (require authentication)
+Disallow: /dashboard/
+Disallow: /my-assets
+Disallow: /my-profile
+Disallow: /my-items
+Disallow: /banking
+Disallow: /stock-trading
+Disallow: /auction
+Disallow: /real-estate
+Disallow: /government
+Disallow: /national-assembly
+Disallow: /court
+Disallow: /police
+Disallow: /admin/
+Disallow: /super-admin/
+Disallow: /doctor
+Disallow: /recover-donations
+Disallow: /item-shop
+Disallow: /item-market
+Disallow: /personal-shop
+Disallow: /coupon-goal
+Disallow: /learning-games/
+Disallow: /learning-board/
+Disallow: /music-room/
+Disallow: /student-request/
+
+# Sitemap
+Sitemap: https://inconomysu-class.web.app/sitemap.xml
