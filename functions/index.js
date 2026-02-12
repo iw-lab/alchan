@@ -30,6 +30,7 @@ exports.midnightReset = scheduler.midnightReset; // 자정 리셋용 엔드포�
 exports.weeklySalary = scheduler.weeklySalary; // 주급 지급용 엔드포인트
 exports.weeklyRent = scheduler.weeklyRent; // 월세 징수용 엔드포인트
 exports.exchangeRateScheduler = scheduler.exchangeRateScheduler; // 환율 자동 업데이트 (하루 1회)
+exports.weeklyPropertyTax = scheduler.weeklyPropertyTax; // 부동산 보유세 자동 징수 (매주 금요일 8시)
 
 // 🔥 방학 모드 관리 (슈퍼관리자 전용)
 exports.toggleVacationMode = scheduler.toggleVacationMode; // 방학 모드 토글

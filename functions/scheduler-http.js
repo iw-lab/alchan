@@ -301,6 +301,38 @@ exports.weeklyRent = onRequest({
   }
 });
 
+// 부동산 보유세 자동 징수용 GET 엔드포인트 (매주 금요일 오전 8시에 실행)
+exports.weeklyPropertyTax = onRequest({
+  region: "asia-northeast3",
+  timeoutSeconds: 540,
+  invoker: 'public',
+}, async (req, res) => {
+  try {
+    const token = req.query.token;
+    if (token !== AUTH_TOKEN) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    // 방학 모드 체크
+    const vacationMode = await isVacationMode();
+    if (vacationMode) {
+      logger.info(`[weeklyPropertyTax] 방학 모드 - 작업 건너뜀`);
+      res.json({ success: true, message: '방학 모드 - 스케줄러 비활성화됨', vacationMode: true });
+      return;
+    }
+
+    logger.info(`[weeklyPropertyTax] 부동산 보유세 자동 징수 시작`);
+
+    await collectPropertyHoldingTaxesLogic();
+
+    res.json({ success: true, message: '부동산 보유세 징수 완료' });
+  } catch (error) {
+    logger.error('[weeklyPropertyTax] 오류:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Deprecated: cleanupOldNews 함수 제거
 // 이유: simpleScheduler의 cleanupExpiredCentralNews와 중복
 // 또한 simpleScheduler가 15분마다 자동으로 만료된 뉴스를 정리함
@@ -980,6 +1012,128 @@ async function collectWeeklyRentLogic() {
   } catch (error)
  {
     logger.error("→ 월세 징수 중 오류:", error);
+    throw error;
+  }
+}
+
+async function collectPropertyHoldingTaxesLogic() {
+  logger.info(">>> [스케줄러] 부동산 보유세 징수 시작");
+  try {
+    const classCodesDoc = await db.collection("settings").doc("classCodes").get();
+    if (!classCodesDoc.exists) {
+      logger.warn("classCodes 문서가 없습니다.");
+      return;
+    }
+
+    const classCodes = classCodesDoc.data().validCodes || [];
+    let totalCollected = 0;
+    let totalUsersProcessed = 0;
+
+    for (const classCode of classCodes) {
+      logger.info(`[보유세 징수] ${classCode} 클래스 처리 시작`);
+
+      // 세금 설정 조회
+      const govSettingsDoc = await db.collection("governmentSettings").doc(classCode).get();
+      const taxSettings = govSettingsDoc.exists ? govSettingsDoc.data()?.taxSettings : {};
+      const taxRate = taxSettings?.propertyHoldingTaxRate || 0;
+
+      if (taxRate === 0) {
+        logger.info(`[보유세 징수] ${classCode}: 보유세율이 0% - 건너뜀`);
+        continue;
+      }
+
+      // 관리자(선생님) 찾기
+      const adminSnapshot = await db.collection("users")
+        .where("classCode", "==", classCode)
+        .where("isAdmin", "==", true)
+        .limit(1)
+        .get();
+
+      if (adminSnapshot.empty) {
+        logger.warn(`[보유세 징수] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
+        continue;
+      }
+
+      const adminDoc = adminSnapshot.docs[0];
+
+      // 학급 사용자 조회
+      const usersSnapshot = await db.collection("users")
+        .where("classCode", "==", classCode)
+        .get();
+
+      if (usersSnapshot.empty) continue;
+
+      const batch = db.batch();
+      let classTotalTax = 0;
+      let classUsersProcessed = 0;
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        let userTotalTax = 0;
+        let totalPropertyValue = 0;
+
+        // 사용자의 부동산 서브컬렉션 조회
+        const propertiesSnapshot = await db.collection("users")
+          .doc(userId)
+          .collection("properties")
+          .get();
+
+        if (propertiesSnapshot.empty) continue;
+
+        propertiesSnapshot.forEach((propDoc) => {
+          const propertyValue = propDoc.data().value || 0;
+          totalPropertyValue += propertyValue;
+          userTotalTax += Math.round(propertyValue * taxRate);
+        });
+
+        if (userTotalTax > 0) {
+          const userRef = db.collection("users").doc(userId);
+          batch.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(-userTotalTax),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 활동 로그 기록
+          const logRef = db.collection("activity_logs").doc();
+          batch.set(logRef, {
+            userId: userId,
+            userName: userDoc.data().name || "알 수 없음",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            type: "taxPayment",
+            description: `[자동] 소유 부동산 (총 가치 ${totalPropertyValue.toLocaleString()}원)에 대한 보유세 ${userTotalTax.toLocaleString()}원이 징수되었습니다.`,
+            classCode: classCode,
+          });
+
+          classTotalTax += userTotalTax;
+          classUsersProcessed++;
+        }
+      }
+
+      if (classTotalTax > 0) {
+        // 관리자에게 세금 수입 입금
+        batch.update(adminDoc.ref, {
+          cash: admin.firestore.FieldValue.increment(classTotalTax),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 국고 통계 업데이트
+        const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+        batch.set(treasuryRef, {
+          propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(classTotalTax),
+          totalAmount: admin.firestore.FieldValue.increment(classTotalTax),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+
+      await batch.commit();
+      totalCollected += classTotalTax;
+      totalUsersProcessed += classUsersProcessed;
+      logger.info(`[보유세 징수] ${classCode} 완료: ${classUsersProcessed}명, 총 ${classTotalTax.toLocaleString()}원`);
+    }
+
+    logger.info(`→ 보유세 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`);
+  } catch (error) {
+    logger.error("→ 보유세 징수 중 오류:", error);
     throw error;
   }
 }
