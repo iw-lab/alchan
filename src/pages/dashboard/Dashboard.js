@@ -370,7 +370,7 @@ function Dashboard({ adminTabMode }) {
       return doc(firestoreCollection(db, "temp")).id;
     } catch (error) {
       logger.error("Error generating ID:", error);
-      return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      return Date.now().toString() + Math.random().toString(36).substring(2, 11);
     }
   }, []);
 
@@ -577,6 +577,7 @@ function Dashboard({ adminTabMode }) {
 
         lastFetchTime.current = now;
       } catch (error) {
+        logger.warn('[Dashboard] data fetch failed:', error);
       } finally {
         setAppLoading(false);
         fetchPromise.current = null;

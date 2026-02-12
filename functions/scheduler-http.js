@@ -1067,18 +1067,23 @@ async function collectPropertyHoldingTaxesLogic() {
       let classTotalTax = 0;
       let classUsersProcessed = 0;
 
-      for (const userDoc of usersSnapshot.docs) {
+      // 모든 사용자의 부동산을 병렬 조회 (N+1 → 1+N 병렬)
+      const userPropertyResults = await Promise.all(
+        usersSnapshot.docs.map(async (userDoc) => {
+          const propertiesSnapshot = await db.collection("users")
+            .doc(userDoc.id)
+            .collection("properties")
+            .get();
+          return { userDoc, propertiesSnapshot };
+        })
+      );
+
+      for (const { userDoc, propertiesSnapshot } of userPropertyResults) {
+        if (propertiesSnapshot.empty) continue;
+
         const userId = userDoc.id;
         let userTotalTax = 0;
         let totalPropertyValue = 0;
-
-        // 사용자의 부동산 서브컬렉션 조회
-        const propertiesSnapshot = await db.collection("users")
-          .doc(userId)
-          .collection("properties")
-          .get();
-
-        if (propertiesSnapshot.empty) continue;
 
         propertiesSnapshot.forEach((propDoc) => {
           const propertyValue = propDoc.data().value || 0;
@@ -1093,7 +1098,6 @@ async function collectPropertyHoldingTaxesLogic() {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
-          // 활동 로그 기록
           const logRef = db.collection("activity_logs").doc();
           batch.set(logRef, {
             userId: userId,

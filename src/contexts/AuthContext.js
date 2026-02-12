@@ -577,6 +577,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await fbSignOut(auth);
     } catch (error) {
+      logger.warn('[AuthContext] logout failed:', error);
     }
   }, [firebaseReady]);
 
@@ -731,6 +732,7 @@ export const AuthProvider = ({ children }) => {
               if (!txSuccess) {
               }
             } catch (txError) {
+              logger.warn('[AuthContext] addTransaction failed:', txError);
             }
           }
 

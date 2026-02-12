@@ -26,14 +26,8 @@ const firebaseConfig = {
 logger.log("[firebase.js] Firebase 앱 초기화 시작...");
 const app = initializeApp(firebaseConfig);
 
-let db;
-try {
-  db = getFirestore(app);
-  logger.log("[firebase.js] Firestore 초기화 완료 (기본 모드)");
-} catch (error) {
-  logger.error("[firebase.js] Firestore 초기화 실패:", error);
-  db = getFirestore(app);
-}
+const db = getFirestore(app);
+logger.log("[firebase.js] Firestore 초기화 완료 (기본 모드)");
 
 const auth = getAuth(app);
 const storage = getStorage(app);

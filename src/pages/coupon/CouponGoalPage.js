@@ -128,6 +128,7 @@ export default function CouponGoalPage() {
         }
       }
     } catch (error) {
+      logger.warn('[CouponGoalPage] getCachedFirestoreData failed:', error);
     }
     return null;
   }, [userId, CACHE_DURATION]);
@@ -140,6 +141,7 @@ export default function CouponGoalPage() {
       };
       localStorage.setItem(`firestore_cache_${key}_${userId}`, JSON.stringify(cacheItem));
     } catch (error) {
+      logger.warn('[CouponGoalPage] setCachedFirestoreData failed:', error);
     }
   }, [userId]);
 

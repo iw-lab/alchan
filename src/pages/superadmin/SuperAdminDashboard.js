@@ -360,17 +360,15 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     if (!userDoc?.isSuperAdmin) return;
 
-    // 시스템 메트릭 시뮬레이션 (실제로는 Cloud Functions에서 가져와야 함)
-    metricsIntervalRef.current = setInterval(() => {
-      setSystemMetrics(prev => ({
-        cpuUsage: Math.min(100, Math.max(0, prev.cpuUsage + (Math.random() - 0.5) * 10)),
-        memoryUsage: Math.min(100, Math.max(0, prev.memoryUsage + (Math.random() - 0.5) * 5)),
-        activeConnections: Math.floor(Math.random() * 50) + 10,
-        requestsPerMinute: Math.floor(Math.random() * 200) + 50,
-        avgResponseTime: Math.floor(Math.random() * 300) + 100,
-        errorRate: Math.max(0, Math.min(10, prev.errorRate + (Math.random() - 0.5) * 2)),
-      }));
-    }, 5000);
+    // 시스템 메트릭은 정적 기본값 사용 (5초 타이머 제거 → 불필요한 리렌더링 방지)
+    setSystemMetrics({
+      cpuUsage: 25,
+      memoryUsage: 40,
+      activeConnections: 15,
+      requestsPerMinute: 80,
+      avgResponseTime: 150,
+      errorRate: 0.5,
+    });
 
     return () => {
       if (metricsIntervalRef.current) {

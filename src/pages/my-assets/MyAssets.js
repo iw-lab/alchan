@@ -175,6 +175,7 @@ export default function MyAssets() {
         }
       }
     } catch (error) {
+      logger.warn('[MyAssets] getCachedFirestoreData failed:', error);
     }
     return null;
   };
@@ -187,6 +188,7 @@ export default function MyAssets() {
       };
       localStorage.setItem(`firestore_cache_${key}_${userId}`, JSON.stringify(cacheItem));
     } catch (error) {
+      logger.warn('[MyAssets] setCachedFirestoreData failed:', error);
     }
   };
 
@@ -201,7 +203,7 @@ export default function MyAssets() {
       // 🔥 일관된 timestamp 형식 사용 - Date 객체 생성
       const now = new Date();
       const newTransaction = {
-        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `local_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         amount: Number(amount) || 0, // 숫자로 안전하게 변환
         description: String(description) || "거래 내역", // 문자열로 안전하게 변환
         timestamp: now, // Date 객체로 직접 저장
@@ -227,10 +229,12 @@ export default function MyAssets() {
         try {
           await syncPendingTransactions(userId);
         } catch (error) {
+          logger.warn('[MyAssets] syncPendingTransactions failed:', error);
         }
       }, 1000);
 
     } catch (error) {
+      logger.warn('[MyAssets] addTransaction failed:', error);
     }
   };
 
@@ -285,6 +289,7 @@ export default function MyAssets() {
       }));
 
     } catch (error) {
+      logger.warn('[MyAssets] syncPendingTransactions failed:', error);
     }
   };
 

@@ -152,6 +152,14 @@ exports.completeTask = onCall({region: "asia-northeast3"}, async (request) => {
         const task = jobTasks[taskIndex];
         taskName = task.name;
 
+        // 🔥 보안: rewardAmount 서버 검증 (클라이언트가 임의 금액 전송 방지)
+        const maxReward = task.maxReward || task.reward || 100;
+        if (rewardAmount !== null && rewardAmount !== undefined) {
+          if (typeof rewardAmount !== 'number' || rewardAmount < 0 || rewardAmount > maxReward) {
+            throw new Error(`유효하지 않은 보상 금액입니다. (최대: ${maxReward})`);
+          }
+        }
+
         // 사용자별 진행 상황 확인 (개인별 클릭 횟수)
         const userData = userDoc.data();
         const completedJobTasks = userData.completedJobTasks || {};
@@ -499,6 +507,11 @@ exports.buyStock = onCall({region: "asia-northeast3"}, async (request) => {
     throw new HttpsError("invalid-argument", "유효한 주식 ID와 수량을 입력해야 합니다.");
   }
 
+  // 🔥 보안: 정수 및 범위 검증
+  if (!Number.isInteger(quantity) || quantity > 10000) {
+    throw new HttpsError("invalid-argument", "수량은 1~10000 사이의 정수여야 합니다.");
+  }
+
   if (!classCode) {
     throw new HttpsError("failed-precondition", "학급 코드가 할당되지 않았습니다.");
   }
@@ -645,6 +658,11 @@ exports.sellStock = onCall({region: "asia-northeast3"}, async (request) => {
 
   if (!holdingId || !quantity || quantity <= 0) {
     throw new HttpsError("invalid-argument", "유효한 보유 주식 ID와 수량을 입력해야 합니다.");
+  }
+
+  // 🔥 보안: 정수 및 범위 검증
+  if (!Number.isInteger(quantity) || quantity > 10000) {
+    throw new HttpsError("invalid-argument", "수량은 1~10000 사이의 정수여야 합니다.");
   }
 
   if (!classCode) {
@@ -813,10 +831,14 @@ exports.getItemContextData = onCall({region: "asia-northeast3"}, async (request)
   const {uid, classCode} = await checkAuthAndGetUserData(request);
 
   try {
-    // 1. 상점 아이템 조회 (인덱스 없이 단순 조회)
-    const storeItemsSnapshot = await db.collection("storeItems")
-      .where("classCode", "==", classCode)
-      .get();
+    // 4개 독립 쿼리를 병렬로 실행 (성능 ~3x 개선)
+    const [storeItemsSnapshot, userItemsSnapshot, marketListingsSnapshot, marketOffersSnapshot] =
+      await Promise.all([
+        db.collection("storeItems").where("classCode", "==", classCode).get(),
+        db.collection("users").doc(uid).collection("inventory").get(),
+        db.collection("marketListings").where("classCode", "==", classCode).where("status", "==", "active").get(),
+        db.collection("marketOffers").where("sellerId", "==", uid).where("status", "==", "pending").get(),
+      ]);
 
     const storeItems = storeItemsSnapshot.docs
       .map(doc => ({
@@ -830,24 +852,15 @@ exports.getItemContextData = onCall({region: "asia-northeast3"}, async (request)
         return a.name.localeCompare(b.name);
       });
 
-    // 2. 사용자 아이템 조회
-    const userItemsSnapshot = await db.collection("users")
-      .doc(uid)
-      .collection("inventory")
-      .get();
-
     const userItems = userItemsSnapshot.docs.map(doc => {
       const data = doc.data();
       const itemId = data.itemId || doc.id;
-
-      // storeItems에서 아이템 정보 찾기
       const storeItem = storeItems.find(item => item.id === itemId);
 
       return {
         id: doc.id,
         ...data,
         itemId: itemId,
-        // 아이템 정보가 없으면 storeItems에서 가져오기
         name: data.name || (storeItem ? storeItem.name : '알 수 없는 아이템'),
         icon: data.icon || (storeItem ? storeItem.icon : '🔮'),
         description: data.description || (storeItem ? storeItem.description : ''),
@@ -855,15 +868,6 @@ exports.getItemContextData = onCall({region: "asia-northeast3"}, async (request)
         category: data.category || (storeItem ? storeItem.category : ''),
       };
     });
-
-    logger.info(`[getItemContextData] User ${uid} has ${userItems.length} items in subcollection:`,
-      userItems.map(item => `${item.itemId}:${item.name}(${item.quantity})`).join(', '));
-
-    // 3. 마켓 리스팅 조회
-    const marketListingsSnapshot = await db.collection("marketListings")
-      .where("classCode", "==", classCode)
-      .where("status", "==", "active")
-      .get();
 
     const marketListings = marketListingsSnapshot.docs
       .map(doc => ({
@@ -875,12 +879,6 @@ exports.getItemContextData = onCall({region: "asia-northeast3"}, async (request)
         const bTime = b.listedAt?.toMillis() || 0;
         return bTime - aTime;
       });
-
-    // 4. 마켓 제안 조회 (사용자가 받은 제안)
-    const marketOffersSnapshot = await db.collection("marketOffers")
-      .where("sellerId", "==", uid)
-      .where("status", "==", "pending")
-      .get();
 
     const marketOffers = marketOffersSnapshot.docs
       .map(doc => ({
@@ -1051,6 +1049,11 @@ exports.purchaseStoreItem = onCall({region: "asia-northeast3"}, async (request) 
 
   if (!itemId || quantity <= 0) {
     throw new HttpsError("invalid-argument", "유효한 아이템 ID와 수량을 입력해야 합니다.");
+  }
+
+  // 🔥 보안: 정수 및 범위 검증
+  if (!Number.isInteger(quantity) || quantity > 100) {
+    throw new HttpsError("invalid-argument", "수량은 1~100 사이의 정수여야 합니다.");
   }
 
   const userRef = db.collection("users").doc(uid);
@@ -2237,6 +2240,12 @@ exports.updateUserItemQuantity = onCall({region: "asia-northeast3"}, async (requ
 
   if (typeof quantityChange !== 'number' || quantityChange === 0) {
     throw new HttpsError("invalid-argument", "유효한 수량 변경값이 필요합니다.");
+  }
+
+  // 🔥 보안: sourceCollection 화이트리스트 검증 (경로 주입 방지)
+  const ALLOWED_COLLECTIONS = ['inventory'];
+  if (!ALLOWED_COLLECTIONS.includes(sourceCollection)) {
+    throw new HttpsError("invalid-argument", "유효하지 않은 컬렉션입니다.");
   }
 
   try {

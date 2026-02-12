@@ -253,7 +253,7 @@ const NationalAssembly = () => {
     }
 
     // 임시 ID 생성 (낙관적 업데이트용)
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     // 낙관적 업데이트: 즉시 UI에 새 법안 추가
     const optimisticLaw = {
