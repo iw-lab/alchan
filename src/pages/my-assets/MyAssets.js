@@ -491,7 +491,7 @@ export default function MyAssets() {
       setAssetsLoading(false);
       loadingRef.current = false;
     }
-  }, [userId, currentUserClassCode]); // loadGoalData 제거하여 무한 루프 방지
+  }, [userId, currentUserClassCode, CACHE_DURATION]); // loadGoalData 제거하여 무한 루프 방지
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

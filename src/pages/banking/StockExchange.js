@@ -662,7 +662,7 @@ const StockExchange = () => {
     } catch (error) {
       logger.error('[fetchVacationMode] 조회 실패:', error);
     }
-  }, [functions, userDoc?.isSuperAdmin]);
+  }, [callables, userDoc?.isSuperAdmin]);
 
   // 🔥 방학 모드 초기 로드
   useEffect(() => {
@@ -686,7 +686,7 @@ const StockExchange = () => {
     } finally {
       setVacationLoading(false);
     }
-  }, [functions, userDoc?.isSuperAdmin, vacationMode]);
+  }, [callables, userDoc?.isSuperAdmin, vacationMode]);
 
   // 중앙 주식 스냅샷 문서 강제 갱신 (관리자 작업 후 읽기 최적화 유지)
   const refreshStocksSnapshot = useCallback(async () => {
@@ -697,7 +697,7 @@ const StockExchange = () => {
     } catch (error) {
       logger.error('[updateStocksSnapshot] 스냅샷 갱신 실패:', error);
     }
-  }, [functions]);
+  }, [callables]);
 
   // === 거래 함수들 (최적화된 캐시 무효화) ===
   const addStock = useCallback(async (stockData) => {
@@ -747,7 +747,7 @@ const StockExchange = () => {
         alert("상품 추가 중 오류가 발생했습니다. 관리자 권한/Rules를 확인해주세요.");
       }
     }
-  }, [classCode, user, fetchAllData, refreshStocksSnapshot, functions]);
+  }, [classCode, user, fetchAllData, refreshStocksSnapshot, callables]);
 
   const deleteStock = useCallback(async (stockId, stockName) => {
     if (!classCode || !user) return alert("클래스 정보가 없습니다.");
@@ -1064,7 +1064,7 @@ const StockExchange = () => {
     } finally {
       setIsTrading(false);
     }
-  }, [stocks, portfolio, user, userDoc, isTrading, classCode, marketOpen, functions, optimisticUpdate]); // fetchAllData와 refreshUserDocument 제거 - 불필요한 리렌더링 방지
+  }, [stocks, portfolio, user, userDoc, isTrading, classCode, marketOpen, callables, optimisticUpdate]); // fetchAllData와 refreshUserDocument 제거 - 불필요한 리렌더링 방지
 
   const deleteHolding = useCallback(async (holdingId) => {
     if (!user || !classCode) return;
@@ -1087,7 +1087,7 @@ const StockExchange = () => {
 
   // 🔥 수동으로 주식 시장 업데이트 (관리자 전용)
   const manualUpdateStockMarket = useCallback(async () => {
-    if (!functions || !classCode || !user) {
+    if (!classCode || !user) {
       throw new Error("Firebase Functions가 초기화되지 않았습니다.");
     }
 
@@ -1109,11 +1109,11 @@ const StockExchange = () => {
       logger.error('[manualUpdateStockMarket] 업데이트 실패:', error);
       throw error;
     }
-  }, [functions, classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // 🔥 실제 주식 생성 (관리자 전용)
   const createRealStocks = useCallback(async () => {
-    if (!functions || !classCode || !user) {
+    if (!classCode || !user) {
       throw new Error("Firebase Functions가 초기화되지 않았습니다.");
     }
 
@@ -1135,11 +1135,11 @@ const StockExchange = () => {
       logger.error('[createRealStocks] 생성 실패:', error);
       throw error;
     }
-  }, [functions, classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // 🔥 실제 주식 가격 수동 업데이트 (관리자 전용)
   const updateRealStocks = useCallback(async () => {
-    if (!functions || !classCode || !user) {
+    if (!classCode || !user) {
       throw new Error("Firebase Functions가 초기화되지 않았습니다.");
     }
 
@@ -1161,11 +1161,11 @@ const StockExchange = () => {
       logger.error('[updateRealStocks] 업데이트 실패:', error);
       throw error;
     }
-  }, [functions, classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // 🔥 개별 실제 주식 추가 (관리자 전용)
   const addSingleRealStock = useCallback(async ({ name, symbol, sector, productType }) => {
-    if (!functions || !classCode || !user) {
+    if (!classCode || !user) {
       throw new Error("Firebase Functions가 초기화되지 않았습니다.");
     }
 
@@ -1187,11 +1187,11 @@ const StockExchange = () => {
       logger.error('[addSingleRealStock] 추가 실패:', error);
       throw error;
     }
-  }, [functions, classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // 🔥 시뮬레이션 주식 전체 삭제 (관리자 전용)
   const deleteSimulationStocks = useCallback(async () => {
-    if (!functions || !classCode || !user) {
+    if (!classCode || !user) {
       throw new Error("Firebase Functions가 초기화되지 않았습니다.");
     }
 
@@ -1213,7 +1213,7 @@ const StockExchange = () => {
       logger.error('[deleteSimulationStocks] 삭제 실패:', error);
       throw error;
     }
-  }, [functions, classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // === stocks 데이터를 Map으로 변환하여 조회 성능 향상 ===
   const stocksMap = useMemo(() => {

@@ -1174,7 +1174,7 @@ function Dashboard({ adminTabMode }) {
         setIsHandlingTask(false);
       }
     },
-    [isHandlingTask, userDoc, commonTasks, jobs, setUserDoc]
+    [isHandlingTask, userDoc, commonTasks, jobs, setUserDoc, completeTaskFunction]
   );
 
   // Admin settings handlers

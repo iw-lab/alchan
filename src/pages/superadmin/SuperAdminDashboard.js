@@ -370,9 +370,10 @@ export default function SuperAdminDashboard() {
       errorRate: 0.5,
     });
 
+    const intervalId = metricsIntervalRef.current;
     return () => {
-      if (metricsIntervalRef.current) {
-        clearInterval(metricsIntervalRef.current);
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
   }, [userDoc]);
