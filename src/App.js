@@ -91,10 +91,10 @@ class ErrorBoundary extends Component {
       sessionStorage.clear();
 
       // 새로고침
-      window.location.reload(true);
+      window.location.reload();
     } catch (e) {
       logger.error('[알찬] 캐시 삭제 실패:', e);
-      window.location.reload(true);
+      window.location.reload();
     }
   };
 

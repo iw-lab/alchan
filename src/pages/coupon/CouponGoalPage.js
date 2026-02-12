@@ -22,6 +22,7 @@ import SellCouponModal from "../../components/modals/SellCouponModal";
 import GiftCouponModal from "../../components/modals/GiftCouponModal";
 import DonationHistoryModal from "../../components/modals/DonationHistoryModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
+import { safeTimestampToDate, getCachedFirestoreData, setCachedFirestoreData } from '../../utils/firestoreHelpers';
 
 import { logger } from "../../utils/logger";
 export default function CouponGoalPage() {
@@ -90,61 +91,6 @@ export default function CouponGoalPage() {
   const [giftAmount, setGiftAmount] = useState("");
   const [showDonationHistoryModal, setShowDonationHistoryModal] = useState(false);
 
-  const safeTimestampToDate = (timestamp) => {
-    try {
-      if (!timestamp) return new Date();
-      if (timestamp instanceof Date) {
-        return isNaN(timestamp.getTime()) ? new Date() : timestamp;
-      }
-      if (timestamp && typeof timestamp.toDate === 'function') {
-        const date = timestamp.toDate();
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-      if (timestamp && timestamp.seconds) {
-        const date = new Date(timestamp.seconds * 1000);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-      if (typeof timestamp === 'string') {
-        const date = new Date(timestamp);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-      if (typeof timestamp === 'number') {
-        const date = new Date(timestamp);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-      return new Date();
-    } catch (error) {
-      return new Date();
-    }
-  };
-
-  const getCachedFirestoreData = useCallback((key) => {
-    try {
-      const cached = localStorage.getItem(`firestore_cache_${key}_${userId}`);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          return data;
-        }
-      }
-    } catch (error) {
-      logger.warn('[CouponGoalPage] getCachedFirestoreData failed:', error);
-    }
-    return null;
-  }, [userId, CACHE_DURATION]);
-
-  const setCachedFirestoreData = useCallback((key, data) => {
-    try {
-      const cacheItem = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(`firestore_cache_${key}_${userId}`, JSON.stringify(cacheItem));
-    } catch (error) {
-      logger.warn('[CouponGoalPage] setCachedFirestoreData failed:', error);
-    }
-  }, [userId]);
-
   // 🔥 [최적화] 데이터 처리 헬퍼 함수 (캐시/Firestore 공용)
   const processGoalData = useCallback((goalData) => {
     setClassCouponGoal(Number(goalData.targetAmount) || 1000);
@@ -204,7 +150,7 @@ export default function CouponGoalPage() {
       // 🔥 [최적화] 캐시 우선 로드 - Firestore 읽기 절감
       const cacheKey = `goal_${currentGoalId}`;
       if (!forceRefresh) {
-        const cachedData = getCachedFirestoreData(cacheKey);
+        const cachedData = getCachedFirestoreData(cacheKey, userId, CACHE_DURATION);
         if (cachedData) {
           processGoalData(cachedData);
           setAssetsLoading(false);
@@ -225,7 +171,7 @@ export default function CouponGoalPage() {
 
         // 🔥 캐시에 저장
         const cacheKey = `goal_${currentGoalId}`;
-        setCachedFirestoreData(cacheKey, goalData);
+        setCachedFirestoreData(cacheKey, userId, goalData);
       } else {
         logger.warn('[CouponGoalPage] 목표 문서가 존재하지 않습니다');
       }
@@ -374,7 +320,7 @@ export default function CouponGoalPage() {
           : [];
 
         setGoalDonations(freshDonations);
-        setCachedFirestoreData(`goal_${currentGoalId}`, latestGoalData);
+        setCachedFirestoreData(`goal_${currentGoalId}`, userId, latestGoalData);
 
         alert(`목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개`);
       } else {

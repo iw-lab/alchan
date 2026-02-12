@@ -17,6 +17,79 @@ import {
 import { db } from "../firebase";
 
 import { logger } from "../utils/logger";
+
+// ============================================================
+// 🔥 공통 유틸리티 함수
+// ============================================================
+
+/**
+ * Firestore Timestamp, Date, ISO 문자열, 숫자 등 다양한 형태의 타임스탬프를 Date 객체로 변환
+ * @param {any} timestamp - 변환할 타임스탬프
+ * @returns {Date}
+ */
+export function safeTimestampToDate(timestamp) {
+  try {
+    if (!timestamp) return new Date();
+    if (timestamp instanceof Date) {
+      return isNaN(timestamp.getTime()) ? new Date() : timestamp;
+    }
+    if (typeof timestamp.toDate === 'function') {
+      const date = timestamp.toDate();
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    if (timestamp.seconds) {
+      const date = new Date(timestamp.seconds * 1000);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+      const date = new Date(timestamp);
+      return isNaN(date.getTime()) ? new Date() : date;
+    }
+    return new Date();
+  } catch {
+    return new Date();
+  }
+}
+
+/**
+ * localStorage 기반 Firestore 데이터 캐시 읽기
+ * @param {string} key - 캐시 키
+ * @param {string} userId - 사용자 ID
+ * @param {number} cacheDuration - 캐시 유효 시간(ms)
+ * @returns {any|null}
+ */
+export function getCachedFirestoreData(key, userId, cacheDuration) {
+  try {
+    const cached = localStorage.getItem(`firestore_cache_${key}_${userId}`);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < cacheDuration) {
+        return data;
+      }
+    }
+  } catch (error) {
+    logger.warn('[Cache] getCachedFirestoreData failed:', error);
+  }
+  return null;
+}
+
+/**
+ * localStorage 기반 Firestore 데이터 캐시 쓰기
+ * @param {string} key - 캐시 키
+ * @param {string} userId - 사용자 ID
+ * @param {any} data - 캐시할 데이터
+ */
+export function setCachedFirestoreData(key, userId, data) {
+  try {
+    localStorage.setItem(
+      `firestore_cache_${key}_${userId}`,
+      JSON.stringify({ data, timestamp: Date.now() })
+    );
+  } catch (error) {
+    logger.warn('[Cache] setCachedFirestoreData failed:', error);
+  }
+}
+
 // ============================================================
 // 🔥 활동 로그 (현금 흐름) 헬퍼 함수
 // ============================================================

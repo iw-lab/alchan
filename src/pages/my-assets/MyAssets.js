@@ -19,7 +19,7 @@ import {
 } from "../../firebase";
 import { limit, runTransaction } from "firebase/firestore";
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
-import { logActivity, ACTIVITY_TYPES } from '../../utils/firestoreHelpers';
+import { logActivity, ACTIVITY_TYPES, safeTimestampToDate, getCachedFirestoreData, setCachedFirestoreData } from '../../utils/firestoreHelpers';
 import LoginWarning from "../../components/LoginWarning";
 import TransferModal from "../../components/modals/TransferModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
@@ -114,82 +114,10 @@ export default function MyAssets() {
   const [transferAmount, setTransferAmount] = useState("");
   const [showAllTransactions, setShowAllTransactions] = useState(false); // 거래 내역 펼치기/접기 상태
 
-  // 🔥 [수정 1] 안전한 timestamp 변환 함수
-  const safeTimestampToDate = (timestamp) => {
-    try {
-      // null이나 undefined인 경우
-      if (!timestamp) {
-        return new Date();
-      }
-
-      // 이미 Date 객체인 경우
-      if (timestamp instanceof Date) {
-        return isNaN(timestamp.getTime()) ? new Date() : timestamp;
-      }
-
-      // Firestore Timestamp 객체인 경우
-      if (timestamp && typeof timestamp.toDate === 'function') {
-        const date = timestamp.toDate();
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // seconds 필드가 있는 Firestore Timestamp 형태인 경우
-      if (timestamp && timestamp.seconds) {
-        const date = new Date(timestamp.seconds * 1000);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // ISO 문자열인 경우
-      if (typeof timestamp === 'string') {
-        const date = new Date(timestamp);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // 숫자 타임스탬프인 경우
-      if (typeof timestamp === 'number') {
-        const date = new Date(timestamp);
-        return isNaN(date.getTime()) ? new Date() : date;
-      }
-
-      // 기타 경우 현재 날짜 반환
-      return new Date();
-    } catch (error) {
-      return new Date();
-    }
-  };
-
   // 🔥 [최적화 5] 캐시 유효성 확인 함수
   const isCacheValid = (cacheKey) => {
     const cachedTime = dataFetchRef.current[cacheKey];
     return cachedTime && (Date.now() - cachedTime) < CACHE_DURATION;
-  };
-
-  // 🔥 [최적화 6] localStorage 기반 캐시 함수들
-  const getCachedFirestoreData = (key) => {
-    try {
-      const cached = localStorage.getItem(`firestore_cache_${key}_${userId}`);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_DURATION) {
-          return data;
-        }
-      }
-    } catch (error) {
-      logger.warn('[MyAssets] getCachedFirestoreData failed:', error);
-    }
-    return null;
-  };
-
-  const setCachedFirestoreData = (key, data) => {
-    try {
-      const cacheItem = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(`firestore_cache_${key}_${userId}`, JSON.stringify(cacheItem));
-    } catch (error) {
-      logger.warn('[MyAssets] setCachedFirestoreData failed:', error);
-    }
   };
 
   // 🔥 [수정 2] 안전한 트랜잭션 기록 함수 - 로컬에서만 처리하고 나중에 배치로 동기화
@@ -315,10 +243,10 @@ export default function MyAssets() {
         const goalDoc = await transaction.get(goalDocRef);
         if (!goalDoc.exists()) {
           transaction.set(goalDocRef, defaultGoalData);
-          setCachedFirestoreData(`goal_${goalId}`, defaultGoalData);
+          setCachedFirestoreData(`goal_${goalId}`, userId, defaultGoalData);
         } else {
           const existingData = goalDoc.data();
-          setCachedFirestoreData(`goal_${goalId}`, existingData);
+          setCachedFirestoreData(`goal_${goalId}`, userId, existingData);
         }
       });
 
@@ -336,7 +264,7 @@ export default function MyAssets() {
 
     // 🔥 캐시 먼저 확인
     const cacheKey = `goal_${currentGoalId}`;
-    const cachedData = getCachedFirestoreData(cacheKey);
+    const cachedData = getCachedFirestoreData(cacheKey, userId, CACHE_DURATION);
 
     if (cachedData) {
       setClassCouponGoal(Number(cachedData.targetAmount) || 1000);
@@ -399,7 +327,7 @@ export default function MyAssets() {
         setMyContribution(myTotal);
 
         // 🔥 캐시에 저장
-        setCachedFirestoreData(cacheKey, goalData);
+        setCachedFirestoreData(cacheKey, userId, goalData);
       } else {
         // 목표 문서가 없으면 기본값 생성
         logger.log('[MyAssets] 목표 문서가 없어 기본값 생성');
@@ -425,7 +353,7 @@ export default function MyAssets() {
     loadingRef.current = true;
 
     // 🔥 [최적화] 캐시 데이터가 있으면 즉시 표시 (로딩 스피너 없이)
-    const cachedAssets = getCachedFirestoreData('myAssets');
+    const cachedAssets = getCachedFirestoreData('myAssets', userId, CACHE_DURATION);
     if (cachedAssets) {
       setParkingBalance(cachedAssets.parkingBalance || 0);
       setDeposits(cachedAssets.deposits || []);
@@ -545,7 +473,7 @@ export default function MyAssets() {
       setTransactionHistory(recentTransactions);
 
       // 🔥 [최적화] 결과를 localStorage에 캐시 (다음 로드시 즉시 표시)
-      setCachedFirestoreData('myAssets', {
+      setCachedFirestoreData('myAssets', userId, {
         parkingBalance: totalParkingBalance,
         deposits: depositsData,
         savings: savingsData,
@@ -858,7 +786,7 @@ export default function MyAssets() {
         setMyContribution(myTotal);
 
         // 캐시에 저장
-        setCachedFirestoreData(cacheKey, latestGoalData);
+        setCachedFirestoreData(cacheKey, userId, latestGoalData);
 
         alert(`목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개\n내 기여도: ${myTotal}개`);
       } else {
