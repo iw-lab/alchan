@@ -1548,6 +1548,17 @@ exports.buyMarketItem = onCall({
   const buyerRef = db.collection("users").doc(uid);
 
   try {
+    // 세금 설정 및 관리자 정보 사전 조회 (트랜잭션 외부)
+    const govSettingsDoc = await db.collection("governmentSettings").doc(userData.classCode).get();
+    const taxSettings = govSettingsDoc.exists ? govSettingsDoc.data()?.taxSettings : {};
+    const itemMarketTaxRate = taxSettings?.itemMarketTransactionTaxRate || 0.03;
+
+    const adminQuery = await db.collection("users")
+      .where("classCode", "==", userData.classCode)
+      .where("isAdmin", "==", true)
+      .limit(1).get();
+    const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
+
     await db.runTransaction(async (transaction) => {
       const listingDoc = await transaction.get(listingRef);
 
@@ -1577,18 +1588,37 @@ exports.buyMarketItem = onCall({
         throw new Error(`현금이 부족합니다. (필요: ${totalPrice.toLocaleString()}원, 보유: ${buyerData.cash.toLocaleString()}원)`);
       }
 
-      // 구매자 현금 차감
+      // 세금 계산
+      const taxAmount = Math.round(totalPrice * itemMarketTaxRate);
+      const sellerProceeds = totalPrice - taxAmount;
+
+      // 구매자 현금 차감 (전체 가격)
       transaction.update(buyerRef, {
         cash: admin.firestore.FieldValue.increment(-totalPrice),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // 판매자에게 현금 지급
+      // 판매자에게 세금 차감 금액 지급
       const sellerRef = db.collection("users").doc(listingData.sellerId);
       transaction.update(sellerRef, {
-        cash: admin.firestore.FieldValue.increment(totalPrice),
+        cash: admin.firestore.FieldValue.increment(sellerProceeds),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      // 관리자(교사)에게 세금 입금 및 국고 통계 업데이트
+      if (taxAmount > 0 && adminDocRef) {
+        transaction.update(adminDocRef, {
+          cash: admin.firestore.FieldValue.increment(taxAmount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const treasuryRef = db.collection("nationalTreasuries").doc(userData.classCode);
+        transaction.set(treasuryRef, {
+          totalAmount: admin.firestore.FieldValue.increment(taxAmount),
+          itemMarketTaxRevenue: admin.firestore.FieldValue.increment(taxAmount),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
 
       // 구매자 인벤토리에 아이템 추가
       const buyerInventoryRef = db.collection("users").doc(uid).collection("inventory");
@@ -1755,7 +1785,7 @@ exports.respondToOffer = onCall({
   region: "asia-northeast3",
   cors: true,
 }, async (request) => {
-  const {uid} = await checkAuthAndGetUserData(request);
+  const {uid, userData} = await checkAuthAndGetUserData(request);
   const {offerId, response} = request.data;
 
   if (!offerId || !response || !['accept', 'reject'].includes(response)) {
@@ -1765,6 +1795,17 @@ exports.respondToOffer = onCall({
   const offerRef = db.collection("marketOffers").doc(offerId);
 
   try {
+    // 세금 설정 및 관리자 정보 사전 조회 (트랜잭션 외부)
+    const govSettingsDoc = await db.collection("governmentSettings").doc(userData.classCode).get();
+    const taxSettings = govSettingsDoc.exists ? govSettingsDoc.data()?.taxSettings : {};
+    const itemMarketTaxRate = taxSettings?.itemMarketTransactionTaxRate || 0.03;
+
+    const adminQuery = await db.collection("users")
+      .where("classCode", "==", userData.classCode)
+      .where("isAdmin", "==", true)
+      .limit(1).get();
+    const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
+
     await db.runTransaction(async (transaction) => {
       const offerDoc = await transaction.get(offerRef);
 
@@ -1805,17 +1846,36 @@ exports.respondToOffer = onCall({
           throw new Error(`구매자의 현금이 부족합니다. (필요: ${totalPrice.toLocaleString()}원, 보유: ${buyerCash.toLocaleString()}원)`);
         }
 
-        // 구매자 현금 차감
+        // 세금 계산
+        const taxAmount = Math.round(totalPrice * itemMarketTaxRate);
+        const sellerProceeds = totalPrice - taxAmount;
+
+        // 구매자 현금 차감 (전체 가격)
         transaction.update(buyerRef, {
           cash: admin.firestore.FieldValue.increment(-totalPrice),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 판매자에게 현금 지급
+        // 판매자에게 세금 차감 금액 지급
         transaction.update(sellerRef, {
-          cash: admin.firestore.FieldValue.increment(totalPrice),
+          cash: admin.firestore.FieldValue.increment(sellerProceeds),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // 관리자(교사)에게 세금 입금 및 국고 통계 업데이트
+        if (taxAmount > 0 && adminDocRef) {
+          transaction.update(adminDocRef, {
+            cash: admin.firestore.FieldValue.increment(taxAmount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const treasuryRef = db.collection("nationalTreasuries").doc(userData.classCode);
+          transaction.set(treasuryRef, {
+            totalAmount: admin.firestore.FieldValue.increment(taxAmount),
+            itemMarketTaxRevenue: admin.firestore.FieldValue.increment(taxAmount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+        }
 
         // 구매자 인벤토리에 아이템 추가
         const buyerInventoryRef = db.collection("users").doc(offerData.buyerId).collection("inventory");

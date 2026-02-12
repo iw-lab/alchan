@@ -65,6 +65,7 @@ const NationalTaxService = ({ classCode }) => {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [editableSettings, setEditableSettings] = useState(DEFAULT_TAX_SETTINGS);
+  const [collectingTax, setCollectingTax] = useState(false);
 
   // 관리자(선생님) 현금 가져오기 - 이것이 곧 국고
   const fetchAdminCash = useCallback(async () => {
@@ -238,6 +239,35 @@ const NationalTaxService = ({ classCode }) => {
     }
   };
 
+  const handleCollectPropertyTax = async () => {
+    if (!classCode) return;
+    if (!window.confirm("부동산 보유세를 징수하시겠습니까? 모든 부동산 소유자에게서 보유세가 차감됩니다.")) return;
+
+    setCollectingTax(true);
+    try {
+      const { collectPropertyHoldingTaxes } = await import("../../firebase/db/transactions");
+      const result = await collectPropertyHoldingTaxes(classCode);
+      if (result.success) {
+        alert(`보유세 징수 완료!\n징수 대상: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
+        // 국고 통계에도 기록
+        const treasuryRef = doc(db, "nationalTreasuries", classCode);
+        await setDoc(treasuryRef, {
+          propertyHoldingTaxRevenue: increment(result.totalCollected || 0),
+          totalAmount: increment(result.totalCollected || 0),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
+        refetchTreasury();
+      } else {
+        alert("보유세 징수에 실패했습니다.");
+      }
+    } catch (error) {
+      logger.error("보유세 징수 실패:", error);
+      alert("보유세 징수 중 오류가 발생했습니다: " + error.message);
+    } finally {
+      setCollectingTax(false);
+    }
+  };
+
   if (!classCode) {
     return (
       <div className="p-8 text-center">
@@ -358,6 +388,35 @@ const NationalTaxService = ({ classCode }) => {
                 {card.sub && <p className="text-xs mt-1" style={{ color: 'rgba(148, 163, 184, 0.6)' }}>{card.sub}</p>}
               </div>
             ))}
+          </div>
+
+          {/* 부동산 보유세 징수 버튼 */}
+          <div className="rounded-xl p-5" style={{ background: 'rgba(15, 15, 25, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+                  🏘️ 부동산 보유세 징수
+                </h3>
+                <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.7)' }}>
+                  모든 부동산 소유자에게서 보유세({((taxSettings.propertyHoldingTaxRate || 0.002) * 100).toFixed(1)}%)를 징수합니다.
+                </p>
+              </div>
+              <button
+                onClick={handleCollectPropertyTax}
+                disabled={collectingTax}
+                className="px-5 py-2.5 rounded-lg font-bold text-sm text-white transition-all duration-300"
+                style={{
+                  background: collectingTax ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
+                  border: `1px solid ${collectingTax ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
+                  color: collectingTax ? '#64748b' : '#a3e635',
+                  cursor: collectingTax ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Rajdhani, sans-serif',
+                  letterSpacing: '1px',
+                }}
+              >
+                {collectingTax ? "징수 중..." : "보유세 징수"}
+              </button>
+            </div>
           </div>
 
           {/* 최근 업데이트 */}

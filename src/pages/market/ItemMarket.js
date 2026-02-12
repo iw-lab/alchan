@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   updateDoc,
   deleteDoc,
+  setDoc,
   query,
   orderBy,
   where,
@@ -638,7 +639,7 @@ const ItemMarket = () => {
     }
   };
 
-  // 제안 수락 처리 (최적화: 로컬 상태 즉시 업데이트)
+  // 제안 수락 처리 (최적화: 로컬 상태 즉시 업데이트 + 세금 적용)
   const handleAcceptProposal = async (proposalId) => {
     if (!currentUserId || !classCode) return;
 
@@ -669,6 +670,24 @@ const ItemMarket = () => {
     }
 
     try {
+      // 세금 설정 및 관리자 조회
+      let itemMarketTaxRate = 0.03;
+      let adminUid = null;
+      try {
+        const govSettingsDoc = await getDoc(doc(db, "governmentSettings", classCode));
+        if (govSettingsDoc.exists() && govSettingsDoc.data()?.taxSettings) {
+          itemMarketTaxRate = govSettingsDoc.data().taxSettings.itemMarketTransactionTaxRate ?? 0.03;
+        }
+        const { getClassAdminUid } = await import("../../firebase/db/core");
+        adminUid = await getClassAdminUid(classCode);
+      } catch (e) {
+        console.error("세금 설정 로드 실패:", e);
+      }
+
+      // 세금 계산
+      const taxAmount = Math.round(proposal.proposedPrice * itemMarketTaxRate);
+      const sellerProceeds = proposal.proposedPrice - taxAmount;
+
       await runTransaction(db, async (transaction) => {
         const buyerRef = doc(db, "users", proposal.buyerId);
         const buyerSnap = await transaction.get(buyerRef);
@@ -706,9 +725,28 @@ const ItemMarket = () => {
         });
 
         transaction.update(sellerRef, {
-          cash: increment(proposal.proposedPrice),
+          cash: increment(sellerProceeds), // 세금 차감 금액
           updatedAt: serverTimestamp(),
         });
+
+        // 관리자에게 세금 입금
+        if (taxAmount > 0 && adminUid) {
+          const adminRef = doc(db, "users", adminUid);
+          transaction.update(adminRef, {
+            cash: increment(taxAmount),
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        // 국고 통계 업데이트
+        if (taxAmount > 0) {
+          const treasuryRef = doc(db, "nationalTreasuries", classCode);
+          transaction.set(treasuryRef, {
+            totalAmount: increment(taxAmount),
+            itemMarketTaxRevenue: increment(taxAmount),
+            lastUpdated: serverTimestamp(),
+          }, { merge: true });
+        }
       });
 
       // 로컬 상태 즉시 업데이트 대신 데이터 새로고침
@@ -718,11 +756,11 @@ const ItemMarket = () => {
         addActivityLog(proposal.buyerId, "상품 구매",
           `${proposal.itemName}을(를) ${proposal.proposedPrice.toLocaleString()}원에 구매했습니다.`),
         addActivityLog(proposal.sellerId, "상품 판매",
-          `${proposal.itemName}을(를) ${proposal.proposedPrice.toLocaleString()}원에 판매했습니다.`),
+          `${proposal.itemName}을(를) ${sellerProceeds.toLocaleString()}원에 판매했습니다. (세금 ${taxAmount.toLocaleString()}원 차감)`),
         addTransaction(proposal.buyerId, -proposal.proposedPrice,
           `상품 구매: ${proposal.itemName}`),
-        addTransaction(proposal.sellerId, proposal.proposedPrice,
-          `상품 판매: ${proposal.itemName}`)
+        addTransaction(proposal.sellerId, sellerProceeds,
+          `상품 판매: ${proposal.itemName} (세금 ${taxAmount.toLocaleString()}원 차감)`)
       ]);
 
       alert("제안이 수락되어 거래가 완료되었습니다.");

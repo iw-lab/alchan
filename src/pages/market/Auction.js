@@ -80,12 +80,27 @@ export default function Auction() {
     return () => clearInterval(timer);
   }, []);
 
-  // 경매 정산 로직 (수정됨 - 아이템 반환/지급 로직 개선)
+  // 경매 정산 로직 (수정됨 - 아이템 반환/지급 로직 개선 + 거래세 적용)
   const settleAuction = async (auction) => {
     if (!classCode) return;
     const auctionRef = doc(db, "classes", classCode, "auctions", auction.id);
 
     logger.log(`[Auction Settle] 정산 시도: ${auction.id}`);
+
+    // 세금 설정 및 관리자 정보 사전 조회 (트랜잭션 밖)
+    let auctionTaxRate = 0.03;
+    let adminUid = null;
+    try {
+      const govSettingsDoc = await getDoc(doc(db, "governmentSettings", classCode));
+      if (govSettingsDoc.exists() && govSettingsDoc.data()?.taxSettings) {
+        auctionTaxRate = govSettingsDoc.data().taxSettings.auctionTransactionTaxRate ?? 0.03;
+      }
+      // 관리자 UID 조회
+      const { getClassAdminUid } = await import("../../firebase/db/core");
+      adminUid = await getClassAdminUid(classCode);
+    } catch (e) {
+      logger.error("[Auction Settle] 세금 설정 로드 실패:", e);
+    }
 
     // --- 사전 작업: 낙찰자가 있을 경우, 인벤토리에서 동일 아이템 검색 ---
     let winnerExistingItemQuerySnap = null;
@@ -136,13 +151,36 @@ export default function Auction() {
           // --- 성공적인 경매 (낙찰자 있음) ---
           const sellerRef = doc(db, "users", auctionData.seller);
 
-          // 1. 판매자에게 낙찰금 지급
+          // 세금 계산
+          const taxAmount = Math.round(auctionData.currentBid * auctionTaxRate);
+          const sellerProceeds = auctionData.currentBid - taxAmount;
+
+          // 1. 판매자에게 세금 차감 금액 지급
           transaction.update(sellerRef, {
-            cash: increment(auctionData.currentBid),
+            cash: increment(sellerProceeds),
             updatedAt: serverTimestamp(),
           });
 
-          // 2. 낙찰자에게 아이템 지급 (개선된 로직)
+          // 2. 관리자(교사)에게 세금 입금
+          if (taxAmount > 0 && adminUid) {
+            const adminRef = doc(db, "users", adminUid);
+            transaction.update(adminRef, {
+              cash: increment(taxAmount),
+              updatedAt: serverTimestamp(),
+            });
+          }
+
+          // 3. 국고 통계 업데이트
+          if (taxAmount > 0) {
+            const treasuryRef = doc(db, "nationalTreasuries", classCode);
+            transaction.set(treasuryRef, {
+              totalAmount: increment(taxAmount),
+              auctionTaxRevenue: increment(taxAmount),
+              lastUpdated: serverTimestamp(),
+            }, { merge: true });
+          }
+
+          // 4. 낙찰자에게 아이템 지급 (개선된 로직)
           if (winnerExistingItemQuerySnap && !winnerExistingItemQuerySnap.empty) {
             // 이미 동일 종류의 아이템을 가지고 있으면 수량 증가
             const winnerItemRef = winnerExistingItemQuerySnap.docs[0].ref;
@@ -166,11 +204,13 @@ export default function Auction() {
             });
           }
 
-          // 3. 활동 로그 기록 (기존과 동일)
+          // 5. 활동 로그 기록 (세금 정보 포함)
           const sellerLogRef = collection(db, "users", auctionData.seller, "activityLogs");
           transaction.set(doc(sellerLogRef), {
             timestamp: serverTimestamp(), type: "auction_sold",
-            message: `'${auctionData.name}' 아이템이 ${formatPrice(auctionData.currentBid)}에 판매되었습니다.`,
+            message: taxAmount > 0
+              ? `'${auctionData.name}' 아이템이 ${formatPrice(auctionData.currentBid)}에 판매되었습니다. (거래세 ${formatPrice(taxAmount)} 차감, 실수령 ${formatPrice(sellerProceeds)})`
+              : `'${auctionData.name}' 아이템이 ${formatPrice(auctionData.currentBid)}에 판매되었습니다.`,
             relatedDocId: auction.id,
           });
 
@@ -213,7 +253,7 @@ export default function Auction() {
           });
         }
 
-        // 4. 경매 상태를 'completed'로 변경
+        // 6. 경매 상태를 'completed'로 변경
         transaction.update(auctionRef, {
           status: "completed",
           updatedAt: serverTimestamp(),
