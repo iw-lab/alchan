@@ -278,6 +278,7 @@ function Dashboard({ adminTabMode }) {
   const [adminNewTaskName, setAdminNewTaskName] = useState("");
   const [adminNewTaskReward, setAdminNewTaskReward] = useState("");
   const [adminNewTaskMaxClicks, setAdminNewTaskMaxClicks] = useState("5");
+  const [adminNewTaskRequiresApproval, setAdminNewTaskRequiresApproval] = useState(false);
 
   // 🔥 [최적화] httpsCallable 메모이제이션
   const completeTaskFunction = useMemo(() => httpsCallable(functions, "completeTask"), []);
@@ -826,6 +827,7 @@ function Dashboard({ adminTabMode }) {
       setAdminNewTaskName(taskToEdit.name);
       setAdminNewTaskReward(String(taskToEdit.reward || 0));
       setAdminNewTaskMaxClicks(String(taskToEdit.maxClicks || 5));
+      setAdminNewTaskRequiresApproval(!!taskToEdit.requiresApproval);
       setIsJobTaskForForm(!!jobId);
       setCurrentJobIdForTask(jobId);
       setAdminSelectedMenu("taskManagement");
@@ -865,6 +867,7 @@ function Dashboard({ adminTabMode }) {
       reward,
       maxClicks,
       clicks: editingTask?.clicks || 0,
+      requiresApproval: adminNewTaskRequiresApproval,
     };
 
     try {
@@ -940,6 +943,7 @@ function Dashboard({ adminTabMode }) {
         setAdminNewTaskName("");
         setAdminNewTaskReward("");
         setAdminNewTaskMaxClicks("5");
+        setAdminNewTaskRequiresApproval(false);
         alert(`할일이 추가되었습니다.`);
       }
 
@@ -959,6 +963,7 @@ function Dashboard({ adminTabMode }) {
     adminNewTaskName,
     adminNewTaskReward,
     adminNewTaskMaxClicks,
+    adminNewTaskRequiresApproval,
     editingTask,
     isJobTaskForForm,
     currentJobIdForTask,
@@ -1175,6 +1180,59 @@ function Dashboard({ adminTabMode }) {
       }
     },
     [isHandlingTask, userDoc, commonTasks, jobs, setUserDoc, completeTaskFunction]
+  );
+
+  // 🔥 승인 필요 할일 요청 핸들러
+  const submitTaskApprovalFunction = useMemo(() => httpsCallable(functions, "submitTaskApproval"), []);
+
+  const handleTaskApprovalRequest = useCallback(
+    async (taskId, jobId = null, isJobTask = false, cardType = null, rewardAmount = null) => {
+      if (isHandlingTask) return;
+      if (!userDoc?.id) {
+        alert("사용자 정보가 로드되지 않았습니다.");
+        return;
+      }
+
+      setIsHandlingTask(true);
+      logger.log("[Dashboard] 할일 승인 요청:", { taskId, jobId, isJobTask, cardType, rewardAmount });
+
+      // 낙관적 업데이트: 클릭 카운터만 증가 (보상은 미지급)
+      const prevUserDoc = { ...userDoc };
+
+      if (isJobTask && jobId) {
+        setUserDoc(prevDoc => ({
+          ...prevDoc,
+          completedJobTasks: {
+            ...(prevDoc.completedJobTasks || {}),
+            [`${jobId}_${taskId}`]: ((prevDoc.completedJobTasks || {})[`${jobId}_${taskId}`] || 0) + 1,
+          }
+        }));
+      } else {
+        setUserDoc(prevDoc => ({
+          ...prevDoc,
+          completedTasks: {
+            ...(prevDoc.completedTasks || {}),
+            [taskId]: (prevDoc.completedTasks?.[taskId] || 0) + 1,
+          }
+        }));
+      }
+
+      try {
+        const result = await submitTaskApprovalFunction({ taskId, jobId, isJobTask, cardType, rewardAmount });
+        if (result.data.success) {
+          alert(result.data.message);
+        } else {
+          throw new Error(result.data.message || "알 수 없는 오류");
+        }
+      } catch (error) {
+        logger.error("[Dashboard] 할일 승인 요청 실패:", error);
+        alert(`승인 요청에 실패했습니다: ${error.message}`);
+        setUserDoc(prevUserDoc);
+      } finally {
+        setIsHandlingTask(false);
+      }
+    },
+    [isHandlingTask, userDoc, setUserDoc, submitTaskApprovalFunction]
   );
 
   // Admin settings handlers
@@ -1595,6 +1653,9 @@ function Dashboard({ adminTabMode }) {
                       onEarnCoupon={(taskId, jobId, isJobTask, cardType, rewardAmount) =>
                         handleTaskEarnCoupon(taskId, jobId, isJobTask, cardType, rewardAmount)
                       }
+                      onRequestApproval={(taskId, jobId, isJobTask, cardType, rewardAmount) =>
+                        handleTaskApprovalRequest(taskId, jobId, isJobTask, cardType, rewardAmount)
+                      }
                       onEditTask={(task) => handleEditTask(task, job.id)}
                       onDeleteTask={(taskId) =>
                         handleDeleteTask(taskId, job.id)
@@ -1650,6 +1711,9 @@ function Dashboard({ adminTabMode }) {
                     onEarnCoupon={(taskId, jobId, isJobTask, cardType, rewardAmount) =>
                       handleTaskEarnCoupon(taskId, jobId, isJobTask, cardType, rewardAmount)
                     }
+                    onRequestApproval={(taskId, jobId, isJobTask, cardType, rewardAmount) =>
+                      handleTaskApprovalRequest(taskId, jobId, isJobTask, cardType, rewardAmount)
+                    }
                     onEditTask={(taskId) => handleEditTask(commonTasks.find(t => t.id === taskId), null)}
                     onDeleteTask={(taskId) => handleDeleteTask(taskId, null)}
                     isHandlingTask={isHandlingTask}
@@ -1704,6 +1768,8 @@ function Dashboard({ adminTabMode }) {
           setAdminNewTaskReward={setAdminNewTaskReward}
           adminNewTaskMaxClicks={adminNewTaskMaxClicks}
           setAdminNewTaskMaxClicks={setAdminNewTaskMaxClicks}
+          adminNewTaskRequiresApproval={adminNewTaskRequiresApproval}
+          setAdminNewTaskRequiresApproval={setAdminNewTaskRequiresApproval}
           adminEditingTask={editingTask}
           setAdminEditingTask={setEditingTask}
           handleSaveTask={handleSaveTask}

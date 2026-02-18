@@ -127,6 +127,29 @@ exports.completeTask = onCall({region: "asia-northeast3"}, async (request) => {
     throw new HttpsError("invalid-argument", "할일 ID가 필요합니다.");
   }
   const userRef = db.collection("users").doc(uid);
+
+  // 🔥 보안 가드: requiresApproval 할일은 completeTask로 직접 완료 불가
+  try {
+    if (isJobTask && jobId) {
+      const jobDoc = await db.collection("jobs").doc(jobId).get();
+      if (jobDoc.exists) {
+        const jobTasks = jobDoc.data().tasks || [];
+        const targetTask = jobTasks.find((t) => t.id === taskId);
+        if (targetTask && targetTask.requiresApproval) {
+          throw new HttpsError("permission-denied", "이 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.");
+        }
+      }
+    } else {
+      const commonTaskDoc = await db.collection("commonTasks").doc(taskId).get();
+      if (commonTaskDoc.exists && commonTaskDoc.data().requiresApproval) {
+        throw new HttpsError("permission-denied", "이 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.");
+      }
+    }
+  } catch (guardError) {
+    if (guardError instanceof HttpsError) throw guardError;
+    logger.warn("[completeTask] requiresApproval 가드 체크 중 오류:", guardError);
+  }
+
   try {
     let taskReward = 0;
     let taskName = "";
@@ -292,6 +315,217 @@ exports.completeTask = onCall({region: "asia-northeast3"}, async (request) => {
   } catch (error) {
     logger.error(`[completeTask] User: ${uid}, Task: ${taskId}, Error:`, error);
     throw new HttpsError("aborted", error.message || "할일 완료 처리 중 오류가 발생했습니다.");
+  }
+});
+
+// 🔥 할일 승인 요청 (학생이 보너스 할일 완료 시 호출)
+exports.submitTaskApproval = onCall({region: "asia-northeast3"}, async (request) => {
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+  const { taskId, jobId = null, isJobTask = false, cardType = null, rewardAmount = null } = request.data;
+
+  if (!taskId) {
+    throw new HttpsError("invalid-argument", "할일 ID가 필요합니다.");
+  }
+  if (!cardType || !rewardAmount) {
+    throw new HttpsError("invalid-argument", "카드 타입과 보상 금액이 필요합니다.");
+  }
+
+  const userRef = db.collection("users").doc(uid);
+
+  try {
+    let taskName = "";
+
+    if (isJobTask && jobId) {
+      // 직업 할일 검증
+      const jobRef = db.collection("jobs").doc(jobId);
+      await db.runTransaction(async (transaction) => {
+        const jobDoc = await transaction.get(jobRef);
+        if (!jobDoc.exists) throw new Error("직업을 찾을 수 없습니다.");
+
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+
+        const jobData = jobDoc.data();
+        const jobTasks = jobData.tasks || [];
+        const taskIndex = jobTasks.findIndex((t) => t.id === taskId);
+        if (taskIndex === -1) throw new Error("직업 할일을 찾을 수 없습니다.");
+
+        const task = jobTasks[taskIndex];
+        taskName = task.name;
+
+        if (!task.requiresApproval) {
+          throw new Error("이 할일은 승인이 필요하지 않습니다. completeTask를 사용하세요.");
+        }
+
+        // 보상 금액 서버 검증
+        const maxReward = task.maxReward || task.reward || 100;
+        if (typeof rewardAmount !== 'number' || rewardAmount < 0 || rewardAmount > maxReward) {
+          throw new Error(`유효하지 않은 보상 금액입니다. (최대: ${maxReward})`);
+        }
+
+        // 클릭 횟수 확인
+        const uData = userDoc.data();
+        const completedJobTasks = uData.completedJobTasks || {};
+        const jobTaskKey = `${jobId}_${taskId}`;
+        const currentClicks = completedJobTasks[jobTaskKey] || 0;
+
+        if (currentClicks >= task.maxClicks) {
+          throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
+        }
+
+        // 클릭 카운터만 증가 (보상은 지급하지 않음)
+        transaction.update(userRef, {
+          [`completedJobTasks.${jobTaskKey}`]: admin.firestore.FieldValue.increment(1),
+        });
+      });
+    } else {
+      // 공통 할일 검증
+      const commonTaskRef = db.collection("commonTasks").doc(taskId);
+      await db.runTransaction(async (transaction) => {
+        const commonTaskDoc = await transaction.get(commonTaskRef);
+        if (!commonTaskDoc.exists) throw new Error("공통 할일을 찾을 수 없습니다.");
+
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+
+        const taskData = commonTaskDoc.data();
+        taskName = taskData.name;
+
+        if (!taskData.requiresApproval) {
+          throw new Error("이 할일은 승인이 필요하지 않습니다. completeTask를 사용하세요.");
+        }
+
+        // 보상 금액 서버 검증
+        const maxReward = taskData.maxReward || taskData.reward || 100;
+        if (typeof rewardAmount !== 'number' || rewardAmount < 0 || rewardAmount > maxReward) {
+          throw new Error(`유효하지 않은 보상 금액입니다.`);
+        }
+
+        // 클릭 횟수 확인
+        const uData = userDoc.data();
+        const completedTasks = uData.completedTasks || {};
+        const currentClicks = completedTasks[taskId] || 0;
+
+        if (currentClicks >= taskData.maxClicks) {
+          throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
+        }
+
+        // 클릭 카운터만 증가 (보상은 지급하지 않음)
+        transaction.update(userRef, {
+          [`completedTasks.${taskId}`]: admin.firestore.FieldValue.increment(1),
+        });
+      });
+    }
+
+    // pendingApprovals 문서 생성
+    const approvalRef = db.collection("pendingApprovals").doc();
+    await approvalRef.set({
+      classCode,
+      studentId: uid,
+      studentName: userData.name || "알 수 없음",
+      taskId,
+      taskName,
+      isJobTask: !!isJobTask,
+      jobId: jobId || null,
+      cardType,
+      rewardAmount,
+      status: "pending",
+      requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+      processedAt: null,
+      processedBy: null,
+    });
+
+    // 활동 로그
+    try {
+      await logActivity(null, uid, LOG_TYPES.TASK_APPROVAL_REQUEST,
+        `'${taskName}' 할일 승인 요청 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`,
+        { taskName, taskId, isJobTask, jobId, cardType, rewardAmount }
+      );
+    } catch (logError) {
+      logger.warn("[submitTaskApproval] 로그 기록 실패:", logError);
+    }
+
+    return {
+      success: true,
+      message: `'${taskName}' 승인 요청이 완료되었습니다. 관리자 승인 후 보상이 지급됩니다.`,
+      taskName,
+    };
+  } catch (error) {
+    logger.error(`[submitTaskApproval] User: ${uid}, Task: ${taskId}, Error:`, error);
+    throw new HttpsError("aborted", error.message || "승인 요청 처리 중 오류가 발생했습니다.");
+  }
+});
+
+// 🔥 할일 승인/거절 처리 (관리자 전용)
+exports.processTaskApproval = onCall({region: "asia-northeast3"}, async (request) => {
+  const { uid, classCode: adminClassCode } = await checkAuthAndGetUserData(request, true);
+  const { approvalId, action } = request.data;
+
+  if (!approvalId) {
+    throw new HttpsError("invalid-argument", "승인 요청 ID가 필요합니다.");
+  }
+  if (!action || !["approve", "reject"].includes(action)) {
+    throw new HttpsError("invalid-argument", "유효한 액션이 필요합니다. (approve 또는 reject)");
+  }
+
+  try {
+    const approvalRef = db.collection("pendingApprovals").doc(approvalId);
+    let resultMessage = "";
+
+    await db.runTransaction(async (transaction) => {
+      const approvalDoc = await transaction.get(approvalRef);
+      if (!approvalDoc.exists) throw new Error("승인 요청을 찾을 수 없습니다.");
+
+      const approval = approvalDoc.data();
+
+      if (approval.status !== "pending") {
+        throw new Error(`이미 처리된 요청입니다. (상태: ${approval.status})`);
+      }
+
+      // 같은 학급인지 확인
+      if (approval.classCode !== adminClassCode) {
+        throw new Error("다른 학급의 승인 요청은 처리할 수 없습니다.");
+      }
+
+      if (action === "approve") {
+        // 학생에게 보상 지급
+        const studentRef = db.collection("users").doc(approval.studentId);
+        const studentDoc = await transaction.get(studentRef);
+        if (!studentDoc.exists) throw new Error("학생 정보를 찾을 수 없습니다.");
+
+        const updateData = {};
+        if (approval.cardType === "cash") {
+          updateData.cash = admin.firestore.FieldValue.increment(approval.rewardAmount);
+        } else if (approval.cardType === "coupon") {
+          updateData.coupons = admin.firestore.FieldValue.increment(approval.rewardAmount);
+        }
+        transaction.update(studentRef, updateData);
+
+        resultMessage = `${approval.studentName}의 '${approval.taskName}' 승인 완료! ${approval.cardType === "cash" ? `${approval.rewardAmount.toLocaleString()}원` : `${approval.rewardAmount}쿠폰`} 지급됨.`;
+      } else {
+        resultMessage = `${approval.studentName}의 '${approval.taskName}' 요청이 거절되었습니다.`;
+      }
+
+      // 승인 상태 업데이트
+      transaction.update(approvalRef, {
+        status: action === "approve" ? "approved" : "rejected",
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedBy: uid,
+      });
+    });
+
+    // 활동 로그
+    const logType = action === "approve" ? LOG_TYPES.TASK_APPROVAL_APPROVED : LOG_TYPES.TASK_APPROVAL_REJECTED;
+    try {
+      await logActivity(null, uid, logType, resultMessage, { approvalId, action });
+    } catch (logError) {
+      logger.warn("[processTaskApproval] 로그 기록 실패:", logError);
+    }
+
+    return { success: true, message: resultMessage };
+  } catch (error) {
+    logger.error(`[processTaskApproval] Admin: ${uid}, Approval: ${approvalId}, Error:`, error);
+    throw new HttpsError("aborted", error.message || "승인 처리 중 오류가 발생했습니다.");
   }
 });
 

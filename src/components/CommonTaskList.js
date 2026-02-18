@@ -8,6 +8,7 @@ export default function CommonTaskList({
   onEditTask,
   onDeleteTask,
   onEarnCoupon,
+  onRequestApproval,
 }) {
   // tasks가 배열이 아니거나 비어있는 경우 표시할 내용
   if (!Array.isArray(tasks) || tasks.length === 0) {
@@ -34,6 +35,7 @@ export default function CommonTaskList({
           task={task}
           taskId={task.id}
           onEarnCoupon={onEarnCoupon}
+          onRequestApproval={onRequestApproval}
           onEditTask={() => onEditTask(task.id)}
           onDeleteTask={() => onDeleteTask(task.id)}
           isAdmin={isAdmin}

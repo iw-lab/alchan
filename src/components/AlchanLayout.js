@@ -41,6 +41,7 @@ const ChessGame = lazy(() => import('../pages/games/ChessGame'));
 const TypingPracticeGame = lazy(() => import('../pages/games/TypingPracticeGame'));
 
 // 🔥 관리자/선생님 페이지 - 동적 로딩
+const AdminApprovalPanel = lazy(() => import('../pages/admin/AdminApprovalPanel'));
 const AdminItemPage = lazy(() => import('../pages/admin/AdminItemPage'));
 const AdminDatabase = lazy(() => import('../pages/admin/AdminDatabase'));
 const FirestoreDoctor = lazy(() => import('../pages/admin/FirestoreDoctor'));
@@ -356,6 +357,7 @@ export default function AlchanLayout() {
             <Route path="/admin/class-members" element={<AdminRoute><Dashboard adminTabMode="memberManagement" /></AdminRoute>} />
             <Route path="/admin/coupon-transfer" element={<AdminRoute><CouponTransfer /></AdminRoute>} />
             <Route path="/admin/money-transfer" element={<AdminRoute><MoneyTransfer /></AdminRoute>} />
+            <Route path="/admin/approvals" element={<AdminRoute><AdminApprovalPanel /></AdminRoute>} />
             <Route path="/admin/activity-log" element={<AdminRoute><AdminDatabase /></AdminRoute>} />
             <Route path="/admin/items" element={<AdminRoute><AdminItemPage /></AdminRoute>} />
             <Route path="/admin/students" element={<TeacherRoute><StudentManager /></TeacherRoute>} />

@@ -11,6 +11,7 @@ const JobList = memo(function JobList({
   onEditTask, // 할일 수정 핸들러
   onDeleteTask, // 할일 삭제 핸들러
   onEarnCoupon, // 쿠폰 획득 핸들러
+  onRequestApproval, // 승인 요청 핸들러
   addJobTaskButtonStyle, // Dashboard에서 전달받는 버튼 스타일 <-- 스타일 prop 추가
 }) {
   // job 객체가 유효하지 않으면 아무것도 렌더링하지 않음 (오류 방지)
@@ -93,6 +94,7 @@ const JobList = memo(function JobList({
               jobId={job.id}
               // 핸들러에 task.id 전달 확인
               onEarnCoupon={onEarnCoupon}
+              onRequestApproval={onRequestApproval}
               onEditTask={() => onEditTask(task.id, job.id)} // Dashboard 핸들러 형식에 맞게 job.id 전달
               onDeleteTask={() => onDeleteTask(task.id, job.id)} // Dashboard 핸들러 형식에 맞게 job.id 전달
               isAdmin={isAdmin}

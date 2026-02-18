@@ -287,6 +287,8 @@ const AdminSettingsModal = ({
   setAdminNewTaskReward,
   adminNewTaskMaxClicks,
   setAdminNewTaskMaxClicks,
+  adminNewTaskRequiresApproval,
+  setAdminNewTaskRequiresApproval,
   adminEditingTask,
   setAdminEditingTask,
   handleSaveTask,
@@ -1588,6 +1590,23 @@ const AdminSettingsModal = ({
                     />
                   </div>
 
+                  <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <label style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={adminNewTaskRequiresApproval || false}
+                        onChange={(e) => setAdminNewTaskRequiresApproval(e.target.checked)}
+                        style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                      />
+                      <span>승인 필요 (보너스 할일)</span>
+                    </label>
+                    {adminNewTaskRequiresApproval && (
+                      <span style={{ fontSize: "12px", color: "#f59e0b", fontWeight: "500" }}>
+                        학생이 완료 시 관리자 승인 후 보상 지급
+                      </span>
+                    )}
+                  </div>
+
                   <div className="task-form-buttons">
                     <button
                       onClick={() => {
@@ -1668,7 +1687,14 @@ const AdminSettingsModal = ({
                               {job.tasks.map((task) => (
                                 <li key={task.id} className="admin-task-item">
                                   <div className="task-info">
-                                    <span className="task-name">{task.name}</span>
+                                    <span className="task-name">
+                                      {task.name}
+                                      {task.requiresApproval && (
+                                        <span style={{ marginLeft: "6px", fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
+                                          [승인필요]
+                                        </span>
+                                      )}
+                                    </span>
                                     <span className="task-reward">
                                       보상: {task.reward || 0} 쿠폰
                                     </span>
@@ -1728,7 +1754,14 @@ const AdminSettingsModal = ({
                         {commonTasks.map((task) => (
                           <li key={task.id} className="admin-task-item">
                             <div className="task-info">
-                              <span className="task-name">{task.name}</span>
+                              <span className="task-name">
+                                {task.name}
+                                {task.requiresApproval && (
+                                  <span style={{ marginLeft: "6px", fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
+                                    [승인필요]
+                                  </span>
+                                )}
+                              </span>
                               <span className="task-reward">
                                 보상: {task.reward || 0} 쿠폰
                               </span>

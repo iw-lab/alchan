@@ -7,6 +7,7 @@ import { logger } from "../utils/logger";
 const TaskItem = memo(function TaskItem({
   task,
   onEarnCoupon,
+  onRequestApproval,
   isJobTask,
   isAdmin,
   onEditTask,
@@ -49,7 +50,7 @@ const TaskItem = memo(function TaskItem({
   const handleCardSelect = (cardType) => {
     if (isFlipping || selectedCard) return;
 
-    logger.log("[TaskItem] 카드 선택:", { cardType, taskId, jobId, isJobTask });
+    logger.log("[TaskItem] 카드 선택:", { cardType, taskId, jobId, isJobTask, requiresApproval: task.requiresApproval });
 
     setSelectedCard(cardType);
     setIsFlipping(true);
@@ -59,6 +60,17 @@ const TaskItem = memo(function TaskItem({
       const reward = cardType === "cash" ? rewardData.cash : rewardData.coupon;
       const rewardText = cardType === "cash" ? `${reward.toLocaleString()}원` : `${reward}개`;
 
+      // 🔥 승인 필요 할일: onRequestApproval 호출 (보상 미지급)
+      if (task.requiresApproval && typeof onRequestApproval === "function") {
+        logger.log("[TaskItem] onRequestApproval 호출:", { taskId, jobId, isJobTask, cardType, reward });
+        onRequestApproval(taskId || task.id, jobId, isJobTask, cardType, reward);
+        setShowCardModal(false);
+        setBubbleText("승인 요청 완료! 관리자 승인 후 보상이 지급됩니다.");
+        setShowBubble(true);
+        setIsFlipping(false);
+        return;
+      }
+
       logger.log("[TaskItem] onEarnCoupon 호출 준비:", { taskId, jobId, isJobTask, cardType, reward });
 
       // onEarnCoupon 호출 - taskId, jobId, isJobTask, cardType, reward 전달
@@ -67,7 +79,7 @@ const TaskItem = memo(function TaskItem({
       }
 
       setShowCardModal(false);
-      setBubbleText(`${cardType === "cash" ? "💰 현금" : "🎫 쿠폰"} ${rewardText} 획득! 😊`);
+      setBubbleText(`${cardType === "cash" ? "💰 현금" : "🎫 쿠폰"} ${rewardText} 획득!`);
       setShowBubble(true);
       setIsFlipping(false);
     }, 800);
@@ -250,9 +262,9 @@ const TaskItem = memo(function TaskItem({
         </div>
 
         <div className="flex items-center flex-shrink-0" style={taskActionsStyle}>
-          {/* 🔥 모든 할일에 랜덤보상 표시 */}
-          <span className="rounded-lg font-medium whitespace-nowrap" style={couponStyle}>
-            🎁 랜덤보상
+          {/* 🔥 승인필요/랜덤보상 뱃지 */}
+          <span className="rounded-lg font-medium whitespace-nowrap" style={task.requiresApproval ? approvalBadgeStyle : couponStyle}>
+            {task.requiresApproval ? "⏳ 승인필요" : "🎁 랜덤보상"}
           </span>
 
           {isAdmin && (
@@ -297,6 +309,14 @@ const TaskItem = memo(function TaskItem({
 });
 
 export default TaskItem;
+
+const approvalBadgeStyle = {
+  backgroundColor: "rgba(245, 158, 11, 0.3)",
+  color: "#fbbf24",
+  border: "1px solid rgba(245, 158, 11, 0.5)",
+  padding: "4px 10px",
+  fontSize: "13px",
+};
 
 const adminButtonStyles = {
   background: "none",

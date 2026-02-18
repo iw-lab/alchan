@@ -33,6 +33,9 @@ const LOG_TYPES = {
     ITEM_MOVE: "아이템 이동",
     TASK_COMPLETE: "과제 완료",
     TASK_REWARD: "과제 보상",
+    TASK_APPROVAL_REQUEST: "할일 승인 요청",
+    TASK_APPROVAL_APPROVED: "할일 승인 완료",
+    TASK_APPROVAL_REJECTED: "할일 승인 거절",
     SYSTEM: "시스템",
     ADMIN_ACTION: "관리자 조치",
   };

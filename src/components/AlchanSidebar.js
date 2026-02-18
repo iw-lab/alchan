@@ -10,7 +10,7 @@ import {
   Landmark, FileText, Crown, ShoppingBag, Building2, Music,
   Settings, Users, Banknote, Scale, Shield, LogOut,
   Boxes, Store, Hammer, BarChart3, BookOpen, Keyboard, Circle,
-  LayoutDashboard
+  LayoutDashboard, CheckCircle
 } from 'lucide-react';
 
 // ============================================
@@ -89,6 +89,7 @@ export const ALCHAN_MENU_ITEMS = [
 
   // Admin Category - 관리자
   { id: 'adminCategory', label: '알찬 관리자', icon: Settings, isCategory: true, category: 'admin', adminOnly: true },
+  { id: 'taskApprovals', label: '할일 승인', icon: CheckCircle, path: '/admin/approvals', parentId: 'adminCategory', adminOnly: true },
   { id: 'adminSettings', label: '관리자 설정', icon: Settings, path: '/admin/app-settings', parentId: 'adminCategory', adminOnly: true },
   { id: 'studentManagement', label: '학생 목록', icon: Users, path: '/admin/students', parentId: 'adminCategory', adminOnly: true },
   { id: 'moneyTransfer', label: '돈 보내기/가져오기', icon: Banknote, path: '/admin/money-transfer', parentId: 'adminCategory', adminOnly: true },
