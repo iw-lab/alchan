@@ -1000,6 +1000,7 @@ const COMMISSION_RATE = 0.003; // 수수료율 0.3%
 const TAX_RATE = 0.22; // 양도소득세율 22%
 const BOND_TAX_RATE = 0.154; // 채권세율 15.4%
 const TRANSACTION_TAX_RATE = 0.01; // 거래세율 1%
+const { getStockTaxMultiplier } = require("./economicEvents");
 
 exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode } = await checkAuthAndGetUserData(request);
@@ -1031,6 +1032,9 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const stockRef = db.collection("CentralStocks").doc(stockId);
   const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
+  // 🔥 경제 이벤트 주식세금 멀티플라이어 사전 조회 (트랜잭션 외부)
+  const stockTaxMult = await getStockTaxMultiplier(classCode);
+
   try {
     const result = await db.runTransaction(async (transaction) => {
       // 🔥 모든 읽기 작업을 먼저 수행
@@ -1060,7 +1064,9 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
       const stockPrice = stockData.price || 0;
       const cost = stockPrice * quantity;
       const commission = Math.round(cost * COMMISSION_RATE);
-      const transactionTax = Math.floor(cost * TRANSACTION_TAX_RATE);
+      const transactionTax = Math.floor(
+        cost * TRANSACTION_TAX_RATE * stockTaxMult,
+      );
       const totalCost = cost + commission + transactionTax;
 
       const currentCash = userData.cash || 0;
@@ -1209,6 +1215,9 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
     .doc(holdingId);
   const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
+  // 🔥 경제 이벤트 주식세금 멀티플라이어 사전 조회 (트랜잭션 외부)
+  const stockTaxMult = await getStockTaxMultiplier(classCode);
+
   try {
     const result = await db.runTransaction(async (transaction) => {
       // 🔥 먼저 portfolioData에서 stockId를 가져오기 위해 포트폴리오를 읽어야 함
@@ -1284,14 +1293,16 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
       let profitTax = 0;
       if (profit > 0) {
         if (productType === "bond") {
-          profitTax = Math.floor(profit * BOND_TAX_RATE);
+          profitTax = Math.floor(profit * BOND_TAX_RATE * stockTaxMult);
         } else {
-          profitTax = Math.floor(profit * TAX_RATE);
+          profitTax = Math.floor(profit * TAX_RATE * stockTaxMult);
         }
       }
 
       // 거래세
-      const transactionTax = Math.floor(sellPrice * TRANSACTION_TAX_RATE);
+      const transactionTax = Math.floor(
+        sellPrice * TRANSACTION_TAX_RATE * stockTaxMult,
+      );
       const totalTax = profitTax + transactionTax;
       const netRevenue = sellPrice - commission - totalTax;
 

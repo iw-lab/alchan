@@ -8,6 +8,7 @@ const { db, admin, logger } = require("./utils");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
+  // ── 부동산 ──
   {
     id: "real_estate_up_20",
     type: "REAL_ESTATE_PRICE_CHANGE",
@@ -26,6 +27,7 @@ const DEFAULT_EVENT_TEMPLATES = [
     emoji: "🏠📉",
     enabled: true,
   },
+  // ── 세금 ──
   {
     id: "tax_refund",
     type: "TAX_REFUND",
@@ -44,6 +46,7 @@ const DEFAULT_EVENT_TEMPLATES = [
     emoji: "💸😱",
     enabled: true,
   },
+  // ── 현금 지급/차감 ──
   {
     id: "cash_bonus",
     type: "CASH_BONUS",
@@ -54,15 +57,104 @@ const DEFAULT_EVENT_TEMPLATES = [
     enabled: true,
   },
   {
-    id: "lottery",
-    type: "LOTTERY",
-    title: "이번 주 복권 당첨!",
-    description: "복권 추첨 결과가 발표됩니다! 누가 행운의 주인공일까요?",
-    params: { amount: 300000, winnerCount: 1 },
-    emoji: "🎰🍀",
+    id: "cash_penalty",
+    type: "CASH_PENALTY",
+    title: "경제 위기 긴급 부담금!",
+    description: "경제 위기로 인해 모든 시민의 현금이 5% 삭감됩니다!",
+    params: { penaltyRate: 0.05 },
+    emoji: "📉💔",
+    enabled: true,
+  },
+  // ── 상점 물가 ──
+  {
+    id: "store_price_up",
+    type: "STORE_PRICE_CHANGE",
+    title: "물가 폭등!",
+    description:
+      "인플레이션으로 관리자 상점의 모든 상품 가격이 2배로 올랐습니다!",
+    params: { multiplier: 2 },
+    emoji: "🛒📈",
+    enabled: true,
+  },
+  {
+    id: "store_price_down",
+    type: "STORE_PRICE_CHANGE",
+    title: "물가 대폭 안정!",
+    description:
+      "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 절반으로 내렸습니다!",
+    params: { multiplier: 0.5 },
+    emoji: "🛒📉",
+    enabled: true,
+  },
+  // ── 주식 세금 (24시간) ──
+  {
+    id: "stock_tax_exempt",
+    type: "STOCK_TAX_CHANGE",
+    title: "주식 거래세 24시간 면제!",
+    description: "오늘 하루 주식 거래세·양도세가 모두 면제됩니다! 지금이 기회!",
+    params: { multiplier: 0 },
+    emoji: "📊🎉",
+    enabled: true,
+  },
+  {
+    id: "stock_tax_double",
+    type: "STOCK_TAX_CHANGE",
+    title: "주식 거래세 2배 부과!",
+    description: "24시간 동안 주식 거래세·양도세가 2배로 인상됩니다!",
+    params: { multiplier: 2 },
+    emoji: "📊💸",
+    enabled: true,
+  },
+  // ── 개인상점 거래세 (SaaS 특화, 24시간) ──
+  {
+    id: "market_fee_exempt",
+    type: "MARKET_FEE_CHANGE",
+    title: "개인상점 거래세 면제!",
+    description:
+      "오늘 하루 개인상점 거래 수수료가 0%입니다! 활발하게 거래하세요!",
+    params: { multiplier: 0 },
+    emoji: "🏪✨",
+    enabled: true,
+  },
+  {
+    id: "market_fee_double",
+    type: "MARKET_FEE_CHANGE",
+    title: "개인상점 사치세 부과!",
+    description: "24시간 동안 개인상점 거래 수수료가 2배로 인상됩니다!",
+    params: { multiplier: 2 },
+    emoji: "🏪💸",
     enabled: true,
   },
 ];
+
+// ============================================================
+// 주식 세금 멀티플라이어 조회 (index.js buyStock/sellStock에서 사용)
+// ============================================================
+
+/**
+ * 현재 유효한 주식 세금 멀티플라이어를 반환합니다.
+ * 0 = 면제, 1 = 기본, 2 = 2배
+ */
+async function getStockTaxMultiplier(classCode) {
+  try {
+    const settingsDoc = await db
+      .collection("economicEventSettings")
+      .doc(classCode)
+      .get();
+    if (!settingsDoc.exists) return 1;
+    const data = settingsDoc.data();
+    if (
+      data.stockTaxMultiplier === undefined ||
+      data.stockTaxMultiplier === null
+    )
+      return 1;
+    const expires = data.stockTaxExpiresAt?.toDate?.();
+    if (expires && expires < new Date()) return 1; // 만료됨
+    return data.stockTaxMultiplier;
+  } catch {
+    return 1; // 에러 시 기본값 (세금 정상 적용)
+  }
+}
 
 // ============================================================
 // 이벤트 실행 함수들
@@ -156,7 +248,6 @@ async function executeRealEstatePriceChange(classCode, params) {
 async function executeTaxRefund(classCode, params) {
   const { refundRate = 0.3 } = params;
 
-  // 국고 잔액 조회
   const treasuryDoc = await db
     .collection("nationalTreasuries")
     .doc(classCode)
@@ -170,18 +261,14 @@ async function executeTaxRefund(classCode, params) {
     return { affectedCount: 0, refundedAmount: 0 };
   }
 
-  // 학생 목록 조회 (관리자 제외)
   const studentsSnapshot = await db
     .collection("users")
     .where("classCode", "==", classCode)
     .where("isAdmin", "==", false)
     .get();
 
-  if (studentsSnapshot.empty) {
-    return { affectedCount: 0, refundedAmount: 0 };
-  }
+  if (studentsSnapshot.empty) return { affectedCount: 0, refundedAmount: 0 };
 
-  // 실제 학생만 필터 (role 무관하게 isAdmin=false인 사람)
   const studentDocs = studentsSnapshot.docs.filter(
     (d) => !d.data().isSuperAdmin,
   );
@@ -199,20 +286,16 @@ async function executeTaxRefund(classCode, params) {
 
   for (let i = 0; i < studentDocs.length; i += batchSize) {
     const batch = db.batch();
-    const chunk = studentDocs.slice(i, i + batchSize);
-
-    chunk.forEach((d) => {
+    studentDocs.slice(i, i + batchSize).forEach((d) => {
       batch.update(d.ref, {
         cash: admin.firestore.FieldValue.increment(refundPerStudent),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       affectedCount++;
     });
-
     await batch.commit();
   }
 
-  // 국고에서 차감
   await db
     .collection("nationalTreasuries")
     .doc(classCode)
@@ -225,7 +308,7 @@ async function executeTaxRefund(classCode, params) {
     );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 세금 환급 - ${affectedCount}명 × ${refundPerStudent.toLocaleString()}원 = ${totalRefund.toLocaleString()}원`,
+    `[경제이벤트] ${classCode}: 세금 환급 - ${affectedCount}명 × ${refundPerStudent.toLocaleString()}원`,
   );
   return {
     affectedCount,
@@ -240,7 +323,6 @@ async function executeTaxRefund(classCode, params) {
 async function executeTaxExtra(classCode, params) {
   const { taxRate = 0.03 } = params;
 
-  // 관리자 계정 조회
   const adminSnapshot = await db
     .collection("users")
     .where("classCode", "==", classCode)
@@ -255,16 +337,13 @@ async function executeTaxExtra(classCode, params) {
 
   const adminDoc = adminSnapshot.docs[0];
 
-  // 학생 목록 조회
   const studentsSnapshot = await db
     .collection("users")
     .where("classCode", "==", classCode)
     .where("isAdmin", "==", false)
     .get();
 
-  if (studentsSnapshot.empty) {
-    return { affectedCount: 0, collectedAmount: 0 };
-  }
+  if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
 
   let totalCollected = 0;
   const taxItems = [];
@@ -281,9 +360,7 @@ async function executeTaxExtra(classCode, params) {
     }
   });
 
-  if (taxItems.length === 0) {
-    return { affectedCount: 0, collectedAmount: 0 };
-  }
+  if (taxItems.length === 0) return { affectedCount: 0, collectedAmount: 0 };
 
   const batchSize = 400;
   for (let i = 0; i < taxItems.length; i += batchSize) {
@@ -297,7 +374,6 @@ async function executeTaxExtra(classCode, params) {
     await batch.commit();
   }
 
-  // 관리자에게 징수금 추가
   await db
     .collection("users")
     .doc(adminDoc.id)
@@ -306,7 +382,6 @@ async function executeTaxExtra(classCode, params) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-  // 국고 업데이트
   await db
     .collection("nationalTreasuries")
     .doc(classCode)
@@ -352,9 +427,7 @@ async function executeCashBonus(classCode, params) {
     .where("isAdmin", "==", false)
     .get();
 
-  if (studentsSnapshot.empty) {
-    return { affectedCount: 0 };
-  }
+  if (studentsSnapshot.empty) return { affectedCount: 0 };
 
   const studentDocs = studentsSnapshot.docs.filter(
     (d) => !d.data().isSuperAdmin,
@@ -376,7 +449,6 @@ async function executeCashBonus(classCode, params) {
     await batch.commit();
   }
 
-  // 관리자에서 차감
   await db
     .collection("users")
     .doc(adminDoc.id)
@@ -392,24 +464,10 @@ async function executeCashBonus(classCode, params) {
 }
 
 /**
- * 복권 이벤트 - 랜덤 학생에게 상금 지급
+ * 현금 차감 이벤트 - 학생 현금의 일정 비율 차감 → 국고 납입
  */
-async function executeLottery(classCode, params) {
-  const { amount = 300000, winnerCount = 1 } = params;
-
-  const adminSnapshot = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
-
-  if (adminSnapshot.empty) {
-    logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
-    return { affectedCount: 0 };
-  }
-
-  const adminDoc = adminSnapshot.docs[0];
+async function executeCashPenalty(classCode, params) {
+  const { penaltyRate = 0.05 } = params;
 
   const studentsSnapshot = await db
     .collection("users")
@@ -417,50 +475,223 @@ async function executeLottery(classCode, params) {
     .where("isAdmin", "==", false)
     .get();
 
-  if (studentsSnapshot.empty) {
-    return { affectedCount: 0 };
+  if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
+
+  let totalPenalty = 0;
+  const penaltyItems = [];
+
+  studentsSnapshot.docs.forEach((d) => {
+    if (d.data().isSuperAdmin) return;
+    const cash = d.data().cash || 0;
+    if (cash > 0) {
+      const penalty = Math.floor(cash * penaltyRate);
+      if (penalty > 0) {
+        penaltyItems.push({ ref: d.ref, penalty });
+        totalPenalty += penalty;
+      }
+    }
+  });
+
+  if (penaltyItems.length === 0)
+    return { affectedCount: 0, collectedAmount: 0 };
+
+  const batchSize = 400;
+  for (let i = 0; i < penaltyItems.length; i += batchSize) {
+    const batch = db.batch();
+    penaltyItems.slice(i, i + batchSize).forEach(({ ref, penalty }) => {
+      batch.update(ref, {
+        cash: admin.firestore.FieldValue.increment(-penalty),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    await batch.commit();
   }
 
-  const studentDocs = studentsSnapshot.docs.filter(
-    (d) => !d.data().isSuperAdmin,
-  );
-
-  // 랜덤으로 당첨자 선택
-  const shuffled = [...studentDocs].sort(() => Math.random() - 0.5);
-  const winners = shuffled.slice(0, Math.min(winnerCount, studentDocs.length));
-  const totalPaid = amount * winners.length;
-
-  const batch = db.batch();
-  const winnerNames = [];
-
-  winners.forEach((winner) => {
-    batch.update(winner.ref, {
-      cash: admin.firestore.FieldValue.increment(amount),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    winnerNames.push(winner.data().name || "알 수 없음");
-  });
-
-  batch.update(adminDoc.ref, {
-    cash: admin.firestore.FieldValue.increment(-totalPaid),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  await batch.commit();
+  // 국고에 납입
+  await db
+    .collection("nationalTreasuries")
+    .doc(classCode)
+    .set(
+      {
+        totalAmount: admin.firestore.FieldValue.increment(totalPenalty),
+        economicEventRevenue:
+          admin.firestore.FieldValue.increment(totalPenalty),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 복권 당첨 - ${winnerNames.join(", ")} 각 ${amount.toLocaleString()}원`,
+    `[경제이벤트] ${classCode}: 현금 차감 - ${penaltyItems.length}명 총 ${totalPenalty.toLocaleString()}원 → 국고`,
   );
-  return {
-    affectedCount: winners.length,
-    winnerNames,
-    totalAmount: totalPaid,
-    prizeAmount: amount,
-  };
+  return { affectedCount: penaltyItems.length, collectedAmount: totalPenalty };
 }
 
 /**
- * 메인 이벤트 실행 함수
+ * 상점 물가 변경 이벤트 - 관리자 상점 아이템 가격 일괄 변경
+ */
+async function executeStorePriceChange(classCode, params) {
+  const { multiplier = 1 } = params; // 2 = 2배, 0.5 = 절반
+
+  const itemsSnapshot = await db
+    .collection("storeItems")
+    .where("classCode", "==", classCode)
+    .get();
+
+  if (itemsSnapshot.empty) {
+    logger.info(`[경제이벤트] ${classCode}: 상점 아이템 없음 - 건너뜀`);
+    return { affectedCount: 0 };
+  }
+
+  let affectedCount = 0;
+  const docs = itemsSnapshot.docs;
+  const batchSize = 400;
+
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const batch = db.batch();
+    docs.slice(i, i + batchSize).forEach((doc) => {
+      const currentPrice = doc.data().price || 0;
+      if (currentPrice > 0) {
+        batch.update(doc.ref, {
+          price: Math.max(100, Math.round(currentPrice * multiplier)),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        affectedCount++;
+      }
+    });
+    await batch.commit();
+  }
+
+  logger.info(
+    `[경제이벤트] ${classCode}: 상점 물가 ${multiplier}배 변경 - ${affectedCount}개 아이템`,
+  );
+  return { affectedCount, multiplier };
+}
+
+/**
+ * 주식 세금 변경 이벤트 - 24시간 동안 세금 배율 적용
+ * multiplier: 0 = 면제, 1 = 기본, 2 = 2배
+ */
+async function executeStockTaxChange(classCode, params) {
+  const { multiplier = 1 } = params;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  await db
+    .collection("economicEventSettings")
+    .doc(classCode)
+    .update({
+      stockTaxMultiplier: multiplier,
+      stockTaxExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+
+  const label = multiplier === 0 ? "면제" : `${multiplier}배`;
+  logger.info(`[경제이벤트] ${classCode}: 주식 세금 ${label} (24시간)`);
+  return { multiplier, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * 개인상점 거래세 변경 이벤트 - 24시간 동안 수수료 배율 적용
+ * multiplier: 0 = 면제, 2 = 2배
+ */
+async function executeMarketFeeChange(classCode, params) {
+  const { multiplier = 1 } = params;
+  const BASE_RATE = 0.03;
+  const newRate = multiplier === 0 ? 0 : BASE_RATE * multiplier;
+
+  // 기존 값 백업
+  const govRef = db.collection("governmentSettings").doc(classCode);
+  const govDoc = await govRef.get();
+  const originalRate = govDoc.exists
+    ? (govDoc.data()?.taxSettings?.itemMarketTransactionTaxRate ?? BASE_RATE)
+    : BASE_RATE;
+
+  // 새 값 설정 (buyMarketItem이 매번 이 값을 읽으므로 즉시 적용됨)
+  await govRef.set(
+    { taxSettings: { itemMarketTransactionTaxRate: newRate } },
+    { merge: true },
+  );
+
+  // 복원 정보 저장
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  await db
+    .collection("economicEventSettings")
+    .doc(classCode)
+    .update({
+      marketFeeBackup: originalRate,
+      marketFeeNewRate: newRate,
+      marketFeeExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+
+  const label = multiplier === 0 ? "면제" : `${multiplier}배`;
+  logger.info(
+    `[경제이벤트] ${classCode}: 개인상점 거래세 ${label} (24시간, ${originalRate * 100}% → ${newRate * 100}%)`,
+  );
+  return { originalRate, newRate, expiresAt: expiresAt.toISOString() };
+}
+
+/**
+ * 만료된 시간제한 이벤트 오버라이드 복원 (스케줄러 매 시간 호출)
+ */
+async function restoreExpiredOverrides(classCode) {
+  const settingsDoc = await db
+    .collection("economicEventSettings")
+    .doc(classCode)
+    .get();
+  if (!settingsDoc.exists) return;
+
+  const settings = settingsDoc.data();
+  const now = new Date();
+  const updates = {};
+
+  // 주식 세금 복원
+  if (settings.stockTaxMultiplier !== undefined) {
+    const expires = settings.stockTaxExpiresAt?.toDate?.();
+    if (expires && expires < now) {
+      updates.stockTaxMultiplier = admin.firestore.FieldValue.delete();
+      updates.stockTaxExpiresAt = admin.firestore.FieldValue.delete();
+      logger.info(
+        `[경제이벤트] ${classCode}: 주식 세금 오버라이드 만료 → 복원`,
+      );
+    }
+  }
+
+  // 개인상점 거래세 복원
+  if (settings.marketFeeBackup !== undefined) {
+    const expires = settings.marketFeeExpiresAt?.toDate?.();
+    if (expires && expires < now) {
+      await db
+        .collection("governmentSettings")
+        .doc(classCode)
+        .set(
+          {
+            taxSettings: {
+              itemMarketTransactionTaxRate: settings.marketFeeBackup,
+            },
+          },
+          { merge: true },
+        );
+      updates.marketFeeBackup = admin.firestore.FieldValue.delete();
+      updates.marketFeeNewRate = admin.firestore.FieldValue.delete();
+      updates.marketFeeExpiresAt = admin.firestore.FieldValue.delete();
+      logger.info(
+        `[경제이벤트] ${classCode}: 개인상점 거래세 만료 → ${settings.marketFeeBackup * 100}% 복원`,
+      );
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.collection("economicEventSettings").doc(classCode).update(updates);
+  }
+}
+
+/**
+ * 메인 이벤트 실행 분기
  */
 async function executeEvent(classCode, event) {
   const { type, params = {} } = event;
@@ -474,8 +705,14 @@ async function executeEvent(classCode, event) {
       return await executeTaxExtra(classCode, params);
     case "CASH_BONUS":
       return await executeCashBonus(classCode, params);
-    case "LOTTERY":
-      return await executeLottery(classCode, params);
+    case "CASH_PENALTY":
+      return await executeCashPenalty(classCode, params);
+    case "STORE_PRICE_CHANGE":
+      return await executeStorePriceChange(classCode, params);
+    case "STOCK_TAX_CHANGE":
+      return await executeStockTaxChange(classCode, params);
+    case "MARKET_FEE_CHANGE":
+      return await executeMarketFeeChange(classCode, params);
     default:
       logger.warn(`[경제이벤트] 알 수 없는 이벤트 타입: ${type}`);
       return { affectedCount: 0 };
@@ -507,7 +744,7 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
   if (!forceEventId) {
     const now = new Date();
     const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const todayStr = kstDate.toISOString().split("T")[0]; // YYYY-MM-DD
+    const todayStr = kstDate.toISOString().split("T")[0];
 
     if (settings.lastEventDate === todayStr) {
       logger.info(
@@ -517,7 +754,6 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     }
   }
 
-  // 활성화된 이벤트 목록 (커스텀 이벤트 포함)
   const allEvents =
     settings.events && settings.events.length > 0
       ? settings.events
@@ -530,7 +766,6 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     return null;
   }
 
-  // 특정 이벤트 강제 실행 or 랜덤 선택
   let selectedEvent;
   if (forceEventId) {
     selectedEvent =
@@ -545,17 +780,14 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     `[경제이벤트] ${classCode}: 이벤트 시작 - "${selectedEvent.title}"`,
   );
 
-  // 이벤트 실행
   const result = await executeEvent(classCode, selectedEvent);
 
-  // 현재 KST 시간
   const nowTs = admin.firestore.Timestamp.now();
   const now = new Date();
   const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const todayStr = kstDate.toISOString().split("T")[0];
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  // 활성 이벤트 기록 (24시간 표시용)
   await db
     .collection("activeEconomicEvent")
     .doc(classCode)
@@ -567,19 +799,12 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
       expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
     });
 
-  // 히스토리 저장
   await db
     .collection("economicEventLogs")
     .doc(classCode)
     .collection("entries")
-    .add({
-      classCode,
-      event: selectedEvent,
-      result,
-      triggeredAt: nowTs,
-    });
+    .add({ classCode, event: selectedEvent, result, triggeredAt: nowTs });
 
-  // 마지막 이벤트 날짜 업데이트
   if (!forceEventId) {
     await db.collection("economicEventSettings").doc(classCode).update({
       lastEventDate: todayStr,
@@ -597,7 +822,6 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
 
 /**
  * 모든 학급의 경제 이벤트 처리 (스케줄러에서 호출)
- * 각 학급의 설정된 시간에 맞춰 실행
  */
 async function runEconomicEventsForAllClasses() {
   logger.info("[경제이벤트] 전체 학급 경제 이벤트 처리 시작");
@@ -606,7 +830,7 @@ async function runEconomicEventsForAllClasses() {
   const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   const currentHour = kstTime.getUTCHours();
   const currentMinute = kstTime.getUTCMinutes();
-  const dayOfWeek = kstTime.getUTCDay(); // 0=일, 1=월, ..., 5=금, 6=토
+  const dayOfWeek = kstTime.getUTCDay(); // 0=일, 1=월~5=금, 6=토
 
   // 평일 체크 (월~금)
   if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -614,7 +838,6 @@ async function runEconomicEventsForAllClasses() {
     return { processed: 0, triggered: 0, results: [] };
   }
 
-  // 이벤트가 활성화된 학급 조회
   const settingsSnapshot = await db
     .collection("economicEventSettings")
     .where("enabled", "==", true)
@@ -625,13 +848,24 @@ async function runEconomicEventsForAllClasses() {
     return { processed: 0, triggered: 0, results: [] };
   }
 
+  // 만료된 오버라이드 복원 (매시간 체크)
+  for (const settingDoc of settingsSnapshot.docs) {
+    try {
+      await restoreExpiredOverrides(settingDoc.id);
+    } catch (err) {
+      logger.warn(
+        `[경제이벤트] ${settingDoc.id}: 오버라이드 복원 실패`,
+        err.message,
+      );
+    }
+  }
+
   const results = [];
   let triggered = 0;
 
   for (const settingDoc of settingsSnapshot.docs) {
     const settings = settingDoc.data();
     const classCode = settingDoc.id;
-
     const triggerHour = settings.triggerHour ?? 13; // 기본 오후 1시
 
     // 현재 시간이 트리거 시간 ±29분 이내인지 확인
@@ -665,6 +899,7 @@ async function runEconomicEventsForAllClasses() {
 
 module.exports = {
   DEFAULT_EVENT_TEMPLATES,
+  getStockTaxMultiplier,
   triggerClassEconomicEvent,
   runEconomicEventsForAllClasses,
   executeEvent,

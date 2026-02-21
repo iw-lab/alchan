@@ -35,7 +35,14 @@ const EVENT_TYPES = [
   { value: "TAX_REFUND", label: "세금 환급", emoji: "💰" },
   { value: "TAX_EXTRA", label: "추가 세금 부과", emoji: "💸" },
   { value: "CASH_BONUS", label: "현금 지원금 지급", emoji: "🎁" },
-  { value: "LOTTERY", label: "복권 당첨", emoji: "🎰" },
+  { value: "CASH_PENALTY", label: "현금 긴급 차감", emoji: "📉" },
+  { value: "STORE_PRICE_CHANGE", label: "상점 물가 변동", emoji: "🛒" },
+  { value: "STOCK_TAX_CHANGE", label: "주식 세금 변경(24h)", emoji: "📊" },
+  {
+    value: "MARKET_FEE_CHANGE",
+    label: "개인상점 거래세 변경(24h)",
+    emoji: "🏪",
+  },
 ];
 
 // 기본 이벤트 템플릿
@@ -86,12 +93,69 @@ const DEFAULT_EVENTS = [
     enabled: true,
   },
   {
-    id: "lottery",
-    type: "LOTTERY",
-    title: "이번 주 복권 당첨!",
-    description: "복권 추첨 결과가 발표됩니다! 누가 행운의 주인공일까요?",
-    params: { amount: 300000, winnerCount: 1 },
-    emoji: "🎰🍀",
+    id: "cash_penalty",
+    type: "CASH_PENALTY",
+    title: "경제 위기 긴급 부담금!",
+    description: "경제 위기로 인해 모든 시민의 현금이 5% 삭감됩니다!",
+    params: { penaltyRate: 0.05 },
+    emoji: "📉💔",
+    enabled: true,
+  },
+  {
+    id: "store_price_up",
+    type: "STORE_PRICE_CHANGE",
+    title: "물가 폭등!",
+    description:
+      "인플레이션으로 관리자 상점의 모든 상품 가격이 2배로 올랐습니다!",
+    params: { multiplier: 2 },
+    emoji: "🛒📈",
+    enabled: true,
+  },
+  {
+    id: "store_price_down",
+    type: "STORE_PRICE_CHANGE",
+    title: "물가 대폭 안정!",
+    description:
+      "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 절반으로 내렸습니다!",
+    params: { multiplier: 0.5 },
+    emoji: "🛒📉",
+    enabled: true,
+  },
+  {
+    id: "stock_tax_exempt",
+    type: "STOCK_TAX_CHANGE",
+    title: "주식 거래세 24시간 면제!",
+    description: "오늘 하루 주식 거래세·양도세가 모두 면제됩니다! 지금이 기회!",
+    params: { multiplier: 0 },
+    emoji: "📊🎉",
+    enabled: true,
+  },
+  {
+    id: "stock_tax_double",
+    type: "STOCK_TAX_CHANGE",
+    title: "주식 거래세 2배 부과!",
+    description: "24시간 동안 주식 거래세·양도세가 2배로 인상됩니다!",
+    params: { multiplier: 2 },
+    emoji: "📊💸",
+    enabled: true,
+  },
+  {
+    id: "market_fee_exempt",
+    type: "MARKET_FEE_CHANGE",
+    title: "개인상점 거래세 면제!",
+    description:
+      "오늘 하루 개인상점 거래 수수료가 0%입니다! 활발하게 거래하세요!",
+    params: { multiplier: 0 },
+    emoji: "🏪✨",
+    enabled: true,
+  },
+  {
+    id: "market_fee_double",
+    type: "MARKET_FEE_CHANGE",
+    title: "개인상점 사치세 부과!",
+    description: "24시간 동안 개인상점 거래 수수료가 2배로 인상됩니다!",
+    params: { multiplier: 2 },
+    emoji: "🏪💸",
     enabled: true,
   },
 ];
@@ -119,8 +183,14 @@ const getDefaultParams = (type) => {
       return { taxRate: 0.03 };
     case "CASH_BONUS":
       return { amount: 50000 };
-    case "LOTTERY":
-      return { amount: 300000, winnerCount: 1 };
+    case "CASH_PENALTY":
+      return { penaltyRate: 0.05 };
+    case "STORE_PRICE_CHANGE":
+      return { multiplier: 2 };
+    case "STOCK_TAX_CHANGE":
+      return { multiplier: 0 };
+    case "MARKET_FEE_CHANGE":
+      return { multiplier: 0 };
     default:
       return {};
   }
@@ -366,8 +436,20 @@ export default function AdminEconomicEvents() {
       return `${result.collectedAmount?.toLocaleString() || 0}원 징수`;
     if (type === "CASH_BONUS")
       return `${result.affectedCount || 0}명에게 ${result.perStudent?.toLocaleString() || 0}원`;
-    if (type === "LOTTERY")
-      return result.winnerNames?.join(", ") || "추첨 완료";
+    if (type === "CASH_PENALTY")
+      return `${result.affectedCount || 0}명 ${result.collectedAmount?.toLocaleString() || 0}원 차감`;
+    if (type === "STORE_PRICE_CHANGE")
+      return `상점 ${result.affectedCount || 0}개 아이템 ${result.multiplier}배 변경`;
+    if (type === "STOCK_TAX_CHANGE") {
+      const m = entry.event?.params?.multiplier;
+      return m === 0 ? "주식세금 24h 면제" : `주식세금 ${m}배 24h 적용`;
+    }
+    if (type === "MARKET_FEE_CHANGE") {
+      const m = entry.event?.params?.multiplier;
+      return m === 0
+        ? "개인상점 수수료 24h 면제"
+        : `개인상점 수수료 ${m}배 24h 적용`;
+    }
     return "";
   };
 
@@ -450,33 +532,96 @@ export default function AdminEconomicEvents() {
             <span className="text-xs text-slate-400">원</span>
           </div>
         );
-      case "LOTTERY":
+      case "CASH_PENALTY":
         return (
-          <div className="flex items-center gap-2 flex-wrap gap-y-1">
-            <span className="text-xs text-slate-400">상금</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">차감율</span>
             <input
               type="number"
-              value={event.params?.amount ?? 300000}
+              value={Math.round((event.params?.penaltyRate ?? 0.05) * 100)}
               onChange={(e) =>
-                updateEventParam(event.id, "amount", e.target.value)
+                updateEventParam(
+                  event.id,
+                  "penaltyRate",
+                  (parseFloat(e.target.value) || 0) / 100,
+                )
               }
-              className="w-28 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
-              step="50000"
-              min="10000"
-            />
-            <span className="text-xs text-slate-400">원, 당첨자</span>
-            <input
-              type="number"
-              value={event.params?.winnerCount ?? 1}
-              onChange={(e) =>
-                updateEventParam(event.id, "winnerCount", e.target.value)
-              }
-              className="w-16 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
+              className="w-20 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
               min="1"
-              max="10"
+              max="50"
               step="1"
             />
-            <span className="text-xs text-slate-400">명</span>
+            <span className="text-xs text-slate-400">% (현금 기준)</span>
+          </div>
+        );
+      case "STORE_PRICE_CHANGE":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">가격 배율</span>
+            <input
+              type="number"
+              value={event.params?.multiplier ?? 2}
+              onChange={(e) =>
+                updateEventParam(
+                  event.id,
+                  "multiplier",
+                  parseFloat(e.target.value) || 1,
+                )
+              }
+              className="w-20 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
+              min="0.1"
+              max="10"
+              step="0.5"
+            />
+            <span className="text-xs text-slate-400">배 (0.5 = 절반)</span>
+          </div>
+        );
+      case "STOCK_TAX_CHANGE":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">세금 배율</span>
+            <input
+              type="number"
+              value={event.params?.multiplier ?? 0}
+              onChange={(e) =>
+                updateEventParam(
+                  event.id,
+                  "multiplier",
+                  parseFloat(e.target.value) ?? 0,
+                )
+              }
+              className="w-20 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
+              min="0"
+              max="5"
+              step="1"
+            />
+            <span className="text-xs text-slate-400">
+              배 (0 = 면제, 24시간)
+            </span>
+          </div>
+        );
+      case "MARKET_FEE_CHANGE":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">수수료 배율</span>
+            <input
+              type="number"
+              value={event.params?.multiplier ?? 0}
+              onChange={(e) =>
+                updateEventParam(
+                  event.id,
+                  "multiplier",
+                  parseFloat(e.target.value) ?? 0,
+                )
+              }
+              className="w-20 text-xs bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white"
+              min="0"
+              max="5"
+              step="1"
+            />
+            <span className="text-xs text-slate-400">
+              배 (0 = 면제, 24시간)
+            </span>
           </div>
         );
       default:
@@ -792,7 +937,83 @@ export default function AdminEconomicEvents() {
                   <span className="text-xs text-slate-400">원</span>
                 </div>
               )}
-              {newEvent.type === "LOTTERY" && (
+              {newEvent.type === "CASH_PENALTY" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">차감율</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={Math.round(
+                      (newEvent.params?.penaltyRate ?? 0.05) * 100,
+                    )}
+                    onChange={(e) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        params: {
+                          ...prev.params,
+                          penaltyRate: (parseFloat(e.target.value) || 0) / 100,
+                        },
+                      }))
+                    }
+                    className="w-20 text-xs bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                  />
+                  <span className="text-xs text-slate-400">% (현금 기준)</span>
+                </div>
+              )}
+              {newEvent.type === "STORE_PRICE_CHANGE" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">가격 배율</span>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.5"
+                    value={newEvent.params?.multiplier ?? 2}
+                    onChange={(e) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        params: {
+                          ...prev.params,
+                          multiplier: parseFloat(e.target.value) || 1,
+                        },
+                      }))
+                    }
+                    className="w-20 text-xs bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                  />
+                  <span className="text-xs text-slate-400">
+                    배 (0.5 = 절반)
+                  </span>
+                </div>
+              )}
+              {(newEvent.type === "STOCK_TAX_CHANGE" ||
+                newEvent.type === "MARKET_FEE_CHANGE") && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">배율</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="1"
+                    value={newEvent.params?.multiplier ?? 0}
+                    onChange={(e) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        params: {
+                          ...prev.params,
+                          multiplier: parseFloat(e.target.value) ?? 0,
+                        },
+                      }))
+                    }
+                    className="w-20 text-xs bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white"
+                  />
+                  <span className="text-xs text-slate-400">
+                    배 (0 = 면제, 24시간)
+                  </span>
+                </div>
+              )}
+              {newEvent.type === "FAKE_LOTTERY_PLACEHOLDER" && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-400">상금</span>
                   <input
