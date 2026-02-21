@@ -4,10 +4,10 @@
 // - 학급 목록 관리
 // - 시스템 모니터링 (오류, 성능)
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../firebase';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../firebase";
 import {
   collection,
   getDocs,
@@ -21,8 +21,7 @@ import {
   serverTimestamp,
   getDoc,
   limit,
-  addDoc
-} from 'firebase/firestore';
+} from "firebase/firestore";
 import {
   Shield,
   Users,
@@ -48,25 +47,25 @@ import {
   Server,
   Cpu,
   HardDrive,
-  Wifi
-} from 'lucide-react';
-import './SuperAdminDashboard.css';
+  Wifi,
+} from "lucide-react";
+import "./SuperAdminDashboard.css";
 
 import { logger } from "../../utils/logger";
 // 탭 목록
 const TABS = [
-  { id: 'overview', label: '개요', icon: BarChart3 },
-  { id: 'pending', label: '승인 대기', icon: Clock },
-  { id: 'teachers', label: '선생님 관리', icon: UserCheck },
-  { id: 'classes', label: '학급 관리', icon: School },
-  { id: 'monitoring', label: '시스템 모니터링', icon: Activity },
-  { id: 'errors', label: '오류 로그', icon: Bug },
+  { id: "overview", label: "개요", icon: BarChart3 },
+  { id: "pending", label: "승인 대기", icon: Clock },
+  { id: "teachers", label: "선생님 관리", icon: UserCheck },
+  { id: "classes", label: "학급 관리", icon: School },
+  { id: "monitoring", label: "시스템 모니터링", icon: Activity },
+  { id: "errors", label: "오류 로그", icon: Bug },
 ];
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const { userDoc, user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -93,8 +92,8 @@ export default function SuperAdminDashboard() {
   });
 
   // 검색/필터 상태
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   // 실시간 에러 모니터링
   const errorListenerRef = useRef(null);
@@ -103,7 +102,7 @@ export default function SuperAdminDashboard() {
   // 권한 체크
   useEffect(() => {
     if (userDoc && !userDoc.isSuperAdmin) {
-      navigate('/dashboard/tasks');
+      navigate("/dashboard/tasks");
     }
   }, [userDoc, navigate]);
 
@@ -121,7 +120,7 @@ export default function SuperAdminDashboard() {
         loadErrorLogs(),
       ]);
     } catch (error) {
-      logger.error('데이터 로드 오류:', error);
+      logger.error("데이터 로드 오류:", error);
     } finally {
       setLoading(false);
     }
@@ -132,14 +131,14 @@ export default function SuperAdminDashboard() {
     try {
       // 🔥 users 컬렉션에서 관리자(선생님) 조회
       // isTeacher === true 또는 isAdmin === true인 사용자 (isSuperAdmin 제외)
-      const usersRef = collection(db, 'users');
+      const usersRef = collection(db, "users");
       const usersSnap = await getDocs(usersRef);
 
       let totalTeachers = 0;
       let pending = 0;
       let approved = 0;
 
-      usersSnap.docs.forEach(doc => {
+      usersSnap.docs.forEach((doc) => {
         const data = doc.data();
         // isSuperAdmin은 앱 관리자이므로 제외
         if (data.isSuperAdmin) return;
@@ -158,41 +157,43 @@ export default function SuperAdminDashboard() {
         }
       });
 
-      // 학급 수
-      const classesRef = collection(db, 'Class');
-      const classesSnap = await getDocs(classesRef);
-
-      // 전체 학생 수
+      // 학급 수 + 학생 수: users 컬렉션에서 classCode로 집계
+      const classCodes = new Set();
       let totalStudents = 0;
-      for (const classDoc of classesSnap.docs) {
-        const studentsRef = collection(db, 'Class', classDoc.id, 'students');
-        const studentsSnap = await getDocs(studentsRef);
-        totalStudents += studentsSnap.size;
-      }
-
-      // 24시간 내 활성 사용자
       const now = new Date();
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
       let activeUsers = 0;
-      usersSnap.docs.forEach(doc => {
+
+      usersSnap.docs.forEach((doc) => {
         const data = doc.data();
-        const lastActive = data.lastActiveAt?.toDate?.() || data.lastLoginAt?.toDate?.();
-        if (lastActive && lastActive > yesterday) {
-          activeUsers++;
-        }
+        if (data.isSuperAdmin) return;
+
+        // 24시간 내 활성 사용자
+        const lastActive =
+          data.lastActiveAt?.toDate?.() || data.lastLoginAt?.toDate?.();
+        if (lastActive && lastActive > yesterday) activeUsers++;
+
+        const code = data.classCode;
+        if (!code || code === "미지정") return;
+
+        // 학급 코드 수집
+        classCodes.add(code);
+
+        // 선생님이 아닌 경우 학생으로 집계
+        const isTeacher = data.isTeacher === true || data.isAdmin === true;
+        if (!isTeacher) totalStudents++;
       });
 
       setStats({
         totalTeachers,
         pendingTeachers: pending,
         approvedTeachers: approved,
-        totalClasses: classesSnap.size,
+        totalClasses: classCodes.size,
         totalStudents,
-        activeUsers24h: activeUsers || Math.floor(totalStudents * 0.3),
+        activeUsers24h: activeUsers,
       });
     } catch (error) {
-      logger.error('통계 로드 오류:', error);
+      logger.error("통계 로드 오류:", error);
     }
   };
 
@@ -201,12 +202,12 @@ export default function SuperAdminDashboard() {
     try {
       // 🔥 모든 users를 가져와서 클라이언트에서 필터링
       // Firestore OR 쿼리가 없으므로 isTeacher || isAdmin 조건을 클라이언트에서 처리
-      const usersRef = collection(db, 'users');
+      const usersRef = collection(db, "users");
       const snapshot = await getDocs(usersRef);
 
       const pending = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(user => {
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((user) => {
           // isSuperAdmin은 앱 관리자이므로 제외
           if (user.isSuperAdmin) return false;
           // isTeacher 또는 isAdmin이 true인 경우 선생님으로 간주
@@ -222,7 +223,7 @@ export default function SuperAdminDashboard() {
 
       setPendingTeachers(pending);
     } catch (error) {
-      logger.error('승인 대기 선생님 로드 오류:', error);
+      logger.error("승인 대기 선생님 로드 오류:", error);
       setPendingTeachers([]);
     }
   };
@@ -232,12 +233,12 @@ export default function SuperAdminDashboard() {
     try {
       // 🔥 모든 users를 가져와서 클라이언트에서 필터링
       // Firestore OR 쿼리가 없으므로 isTeacher || isAdmin 조건을 클라이언트에서 처리
-      const usersRef = collection(db, 'users');
+      const usersRef = collection(db, "users");
       const snapshot = await getDocs(usersRef);
 
       const approved = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(user => {
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((user) => {
           // isSuperAdmin은 앱 관리자이므로 제외
           if (user.isSuperAdmin) return false;
           // isTeacher 또는 isAdmin이 true인 경우 선생님으로 간주
@@ -247,14 +248,14 @@ export default function SuperAdminDashboard() {
           return isTeacher && user.isApproved !== false;
         })
         .sort((a, b) => {
-          const aName = a.name || '';
-          const bName = b.name || '';
-          return aName.localeCompare(bName, 'ko');
+          const aName = a.name || "";
+          const bName = b.name || "";
+          return aName.localeCompare(bName, "ko");
         });
 
       setApprovedTeachers(approved);
     } catch (error) {
-      logger.error('승인된 선생님 로드 오류:', error);
+      logger.error("승인된 선생님 로드 오류:", error);
       setApprovedTeachers([]);
     }
   };
@@ -263,21 +264,21 @@ export default function SuperAdminDashboard() {
   // 🔥 학생 데이터가 users 컬렉션에 저장되어 있으므로 users에서 직접 집계
   const loadClasses = async () => {
     try {
-      logger.log('[SuperAdmin] 학급 목록 로드 시작...');
+      logger.log("[SuperAdmin] 학급 목록 로드 시작...");
 
       // users 컬렉션에서 모든 사용자 조회
-      const usersRef = collection(db, 'users');
+      const usersRef = collection(db, "users");
       const usersSnap = await getDocs(usersRef);
 
       // classCode별로 사용자 그룹화
       const classMap = new Map(); // classCode -> { students: [], teacher: null }
 
-      usersSnap.docs.forEach(userDoc => {
+      usersSnap.docs.forEach((userDoc) => {
         const data = userDoc.data();
         const classCode = data.classCode;
 
         // SuperAdmin이거나 classCode가 없으면 건너뜀
-        if (data.isSuperAdmin || !classCode || classCode === '미지정') {
+        if (data.isSuperAdmin || !classCode || classCode === "미지정") {
           return;
         }
 
@@ -291,8 +292,8 @@ export default function SuperAdminDashboard() {
         if (data.isAdmin || data.isTeacher) {
           classInfo.teacher = {
             id: userDoc.id,
-            name: data.name || '이름 없음',
-            email: data.email || '',
+            name: data.name || "이름 없음",
+            email: data.email || "",
           };
         } else {
           // 일반 학생
@@ -309,7 +310,9 @@ export default function SuperAdminDashboard() {
       // 학급 데이터 배열로 변환
       const classesData = [];
       for (const [classCode, classInfo] of classMap.entries()) {
-        logger.log(`[SuperAdmin] ${classCode}: 선생님=${classInfo.teacher?.name}, 학생=${classInfo.students.length}명`);
+        logger.log(
+          `[SuperAdmin] ${classCode}: 선생님=${classInfo.teacher?.name}, 학생=${classInfo.students.length}명`,
+        );
 
         classesData.push({
           id: classCode,
@@ -317,20 +320,20 @@ export default function SuperAdminDashboard() {
           className: classCode,
           studentCount: classInfo.students.length,
           totalMembers: classInfo.students.length + (classInfo.teacher ? 1 : 0),
-          adminName: classInfo.teacher?.name || '미지정',
-          adminEmail: classInfo.teacher?.email || '',
-          adminId: classInfo.teacher?.id || '',
+          adminName: classInfo.teacher?.name || "미지정",
+          adminEmail: classInfo.teacher?.email || "",
+          adminId: classInfo.teacher?.id || "",
         });
       }
 
       // 학급 코드 순으로 정렬
-      classesData.sort((a, b) => a.classCode.localeCompare(b.classCode, 'ko'));
+      classesData.sort((a, b) => a.classCode.localeCompare(b.classCode, "ko"));
 
       logger.log(`[SuperAdmin] 최종 학급 데이터:`, classesData);
       setClasses(classesData);
     } catch (error) {
-      logger.error('[SuperAdmin] 학급 로드 오류:', error);
-      logger.error('[SuperAdmin] 오류 상세:', error.code, error.message);
+      logger.error("[SuperAdmin] 학급 로드 오류:", error);
+      logger.error("[SuperAdmin] 오류 상세:", error.code, error.message);
       setClasses([]);
     }
   };
@@ -338,11 +341,15 @@ export default function SuperAdminDashboard() {
   // 에러 로그 로드
   const loadErrorLogs = async () => {
     try {
-      const logsRef = collection(db, 'errorLogs');
-      const logsQuery = query(logsRef, orderBy('timestamp', 'desc'), limit(100));
+      const logsRef = collection(db, "errorLogs");
+      const logsQuery = query(
+        logsRef,
+        orderBy("timestamp", "desc"),
+        limit(100),
+      );
       const snapshot = await getDocs(logsQuery);
 
-      const logs = snapshot.docs.map(doc => ({
+      const logs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate?.() || new Date(),
@@ -350,7 +357,7 @@ export default function SuperAdminDashboard() {
 
       setErrorLogs(logs);
     } catch (error) {
-      logger.error('에러 로그 로드 오류:', error);
+      logger.error("에러 로그 로드 오류:", error);
       // 컬렉션이 없으면 빈 배열 유지
       setErrorLogs([]);
     }
@@ -383,21 +390,25 @@ export default function SuperAdminDashboard() {
     if (!userDoc?.isSuperAdmin) return;
 
     try {
-      const logsRef = collection(db, 'errorLogs');
-      const logsQuery = query(logsRef, orderBy('timestamp', 'desc'), limit(50));
+      const logsRef = collection(db, "errorLogs");
+      const logsQuery = query(logsRef, orderBy("timestamp", "desc"), limit(50));
 
-      errorListenerRef.current = onSnapshot(logsQuery, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate?.() || new Date(),
-        }));
-        setErrorLogs(logs);
-      }, (error) => {
-        logger.error('에러 로그 리스너 오류:', error);
-      });
+      errorListenerRef.current = onSnapshot(
+        logsQuery,
+        (snapshot) => {
+          const logs = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate?.() || new Date(),
+          }));
+          setErrorLogs(logs);
+        },
+        (error) => {
+          logger.error("에러 로그 리스너 오류:", error);
+        },
+      );
     } catch (error) {
-      logger.error('에러 로그 리스너 설정 실패:', error);
+      logger.error("에러 로그 리스너 설정 실패:", error);
     }
 
     return () => {
@@ -421,10 +432,10 @@ export default function SuperAdminDashboard() {
 
   // 선생님 승인
   const handleApproveTeacher = async (teacherId) => {
-    if (!window.confirm('이 선생님을 승인하시겠습니까?')) return;
+    if (!window.confirm("이 선생님을 승인하시겠습니까?")) return;
 
     try {
-      const userRef = doc(db, 'users', teacherId);
+      const userRef = doc(db, "users", teacherId);
       await updateDoc(userRef, {
         isApproved: true,
         approvedAt: serverTimestamp(),
@@ -432,88 +443,100 @@ export default function SuperAdminDashboard() {
       });
 
       // 로컬 상태 업데이트
-      const teacher = pendingTeachers.find(t => t.id === teacherId);
+      const teacher = pendingTeachers.find((t) => t.id === teacherId);
       if (teacher) {
-        setPendingTeachers(prev => prev.filter(t => t.id !== teacherId));
-        setApprovedTeachers(prev => [...prev, { ...teacher, isApproved: true }]);
+        setPendingTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+        setApprovedTeachers((prev) => [
+          ...prev,
+          { ...teacher, isApproved: true },
+        ]);
       }
 
       await loadStats();
-      alert('선생님이 승인되었습니다.');
+      alert("선생님이 승인되었습니다.");
     } catch (error) {
-      logger.error('승인 오류:', error);
-      alert('승인 처리 중 오류가 발생했습니다.');
+      logger.error("승인 오류:", error);
+      alert("승인 처리 중 오류가 발생했습니다.");
     }
   };
 
   // 선생님 거절/삭제
   const handleRejectTeacher = async (teacherId, teacherName) => {
-    if (!window.confirm(`'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    if (
+      !window.confirm(
+        `'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+      )
+    )
+      return;
 
     try {
-      const userRef = doc(db, 'users', teacherId);
+      const userRef = doc(db, "users", teacherId);
       await deleteDoc(userRef);
 
-      setPendingTeachers(prev => prev.filter(t => t.id !== teacherId));
+      setPendingTeachers((prev) => prev.filter((t) => t.id !== teacherId));
       await loadStats();
-      alert('선생님 가입이 거절되었습니다.');
+      alert("선생님 가입이 거절되었습니다.");
     } catch (error) {
-      logger.error('거절 오류:', error);
-      alert('거절 처리 중 오류가 발생했습니다.');
+      logger.error("거절 오류:", error);
+      alert("거절 처리 중 오류가 발생했습니다.");
     }
   };
 
   // 선생님 승인 취소
   const handleRevokeApproval = async (teacherId, teacherName) => {
-    if (!window.confirm(`'${teacherName}' 선생님의 승인을 취소하시겠습니까?`)) return;
+    if (!window.confirm(`'${teacherName}' 선생님의 승인을 취소하시겠습니까?`))
+      return;
 
     try {
-      const userRef = doc(db, 'users', teacherId);
+      const userRef = doc(db, "users", teacherId);
       await updateDoc(userRef, {
         isApproved: false,
         revokedAt: serverTimestamp(),
         revokedBy: userDoc?.id || user?.uid,
       });
 
-      const teacher = approvedTeachers.find(t => t.id === teacherId);
+      const teacher = approvedTeachers.find((t) => t.id === teacherId);
       if (teacher) {
-        setApprovedTeachers(prev => prev.filter(t => t.id !== teacherId));
-        setPendingTeachers(prev => [...prev, { ...teacher, isApproved: false }]);
+        setApprovedTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+        setPendingTeachers((prev) => [
+          ...prev,
+          { ...teacher, isApproved: false },
+        ]);
       }
 
       await loadStats();
-      alert('승인이 취소되었습니다.');
+      alert("승인이 취소되었습니다.");
     } catch (error) {
-      logger.error('승인 취소 오류:', error);
-      alert('승인 취소 중 오류가 발생했습니다.');
+      logger.error("승인 취소 오류:", error);
+      alert("승인 취소 중 오류가 발생했습니다.");
     }
   };
 
   // 에러 로그 삭제
   const handleDeleteErrorLog = async (logId) => {
     try {
-      await deleteDoc(doc(db, 'errorLogs', logId));
-      setErrorLogs(prev => prev.filter(log => log.id !== logId));
+      await deleteDoc(doc(db, "errorLogs", logId));
+      setErrorLogs((prev) => prev.filter((log) => log.id !== logId));
     } catch (error) {
-      logger.error('에러 로그 삭제 오류:', error);
+      logger.error("에러 로그 삭제 오류:", error);
     }
   };
 
-  // 테스트 에러 생성 (개발용)
-  const handleCreateTestError = async () => {
+  // 에러 로그 전체 삭제
+  const handleClearAllErrorLogs = async () => {
+    if (
+      !window.confirm(
+        `에러 로그 ${errorLogs.length}개를 모두 삭제하시겠습니까?`,
+      )
+    )
+      return;
     try {
-      await addDoc(collection(db, 'errorLogs'), {
-        type: 'test',
-        severity: ['info', 'warning', 'error', 'critical'][Math.floor(Math.random() * 4)],
-        message: `테스트 에러 메시지 - ${new Date().toLocaleTimeString()}`,
-        stack: 'Error: Test error\n    at SuperAdminDashboard.js:123',
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        userId: userDoc?.id || 'unknown',
-        timestamp: serverTimestamp(),
-      });
+      await Promise.all(
+        errorLogs.map((log) => deleteDoc(doc(db, "errorLogs", log.id))),
+      );
+      setErrorLogs([]);
     } catch (error) {
-      logger.error('테스트 에러 생성 실패:', error);
+      logger.error("에러 로그 전체 삭제 실패:", error);
     }
   };
 
@@ -525,7 +548,7 @@ export default function SuperAdminDashboard() {
           <Shield size={64} />
           <h2>접근 권한이 없습니다</h2>
           <p>앱 관리자만 접근할 수 있는 페이지입니다.</p>
-          <button onClick={() => navigate('/dashboard/tasks')}>
+          <button onClick={() => navigate("/dashboard/tasks")}>
             대시보드로 이동
           </button>
         </div>
@@ -534,26 +557,30 @@ export default function SuperAdminDashboard() {
   }
 
   // 필터링된 데이터
-  const filteredPendingTeachers = pendingTeachers.filter(teacher =>
-    teacher.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPendingTeachers = pendingTeachers.filter(
+    (teacher) =>
+      teacher.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const filteredApprovedTeachers = approvedTeachers.filter(teacher =>
-    teacher.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredApprovedTeachers = approvedTeachers.filter(
+    (teacher) =>
+      teacher.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const filteredClasses = classes.filter(cls =>
-    cls.classCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cls.adminName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredClasses = classes.filter(
+    (cls) =>
+      cls.classCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cls.adminName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const filteredErrorLogs = errorLogs.filter(log => {
+  const filteredErrorLogs = errorLogs.filter((log) => {
     const matchesSearch =
       log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.type?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || log.severity === filterStatus;
+    const matchesFilter =
+      filterStatus === "all" || log.severity === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
@@ -570,7 +597,7 @@ export default function SuperAdminDashboard() {
         </div>
         <div className="sad-header-right">
           <button
-            className={`refresh-btn ${refreshing ? 'spinning' : ''}`}
+            className={`refresh-btn ${refreshing ? "spinning" : ""}`}
             onClick={handleRefresh}
             disabled={refreshing}
           >
@@ -582,22 +609,30 @@ export default function SuperAdminDashboard() {
 
       {/* 탭 네비게이션 */}
       <nav className="sad-tabs">
-        {TABS.map(tab => (
+        {TABS.map((tab) => (
           <button
             key={tab.id}
-            className={`sad-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`sad-tab ${activeTab === tab.id ? "active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={18} />
             <span>{tab.label}</span>
-            {tab.id === 'pending' && stats.pendingTeachers > 0 && (
+            {tab.id === "pending" && stats.pendingTeachers > 0 && (
               <span className="badge">{stats.pendingTeachers}</span>
             )}
-            {tab.id === 'errors' && errorLogs.filter(l => l.severity === 'critical' || l.severity === 'error').length > 0 && (
-              <span className="badge error">
-                {errorLogs.filter(l => l.severity === 'critical' || l.severity === 'error').length}
-              </span>
-            )}
+            {tab.id === "errors" &&
+              errorLogs.filter(
+                (l) => l.severity === "critical" || l.severity === "error",
+              ).length > 0 && (
+                <span className="badge error">
+                  {
+                    errorLogs.filter(
+                      (l) =>
+                        l.severity === "critical" || l.severity === "error",
+                    ).length
+                  }
+                </span>
+              )}
           </button>
         ))}
       </nav>
@@ -612,7 +647,7 @@ export default function SuperAdminDashboard() {
         ) : (
           <>
             {/* 개요 탭 */}
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <div className="overview-tab">
                 <div className="stats-grid">
                   <div className="stat-card teachers">
@@ -630,13 +665,15 @@ export default function SuperAdminDashboard() {
                       <Clock size={24} />
                     </div>
                     <div className="stat-info">
-                      <span className="stat-value">{stats.pendingTeachers}</span>
+                      <span className="stat-value">
+                        {stats.pendingTeachers}
+                      </span>
                       <span className="stat-label">승인 대기</span>
                     </div>
                     {stats.pendingTeachers > 0 && (
                       <button
                         className="stat-action"
-                        onClick={() => setActiveTab('pending')}
+                        onClick={() => setActiveTab("pending")}
                       >
                         확인하기
                       </button>
@@ -648,7 +685,9 @@ export default function SuperAdminDashboard() {
                       <CheckCircle size={24} />
                     </div>
                     <div className="stat-info">
-                      <span className="stat-value">{stats.approvedTeachers}</span>
+                      <span className="stat-value">
+                        {stats.approvedTeachers}
+                      </span>
                       <span className="stat-label">승인된 선생님</span>
                     </div>
                   </div>
@@ -691,7 +730,7 @@ export default function SuperAdminDashboard() {
                     {stats.pendingTeachers > 0 && (
                       <button
                         className="action-btn warning"
-                        onClick={() => setActiveTab('pending')}
+                        onClick={() => setActiveTab("pending")}
                       >
                         <Clock size={20} />
                         승인 대기 {stats.pendingTeachers}명 처리
@@ -699,14 +738,14 @@ export default function SuperAdminDashboard() {
                     )}
                     <button
                       className="action-btn"
-                      onClick={() => setActiveTab('monitoring')}
+                      onClick={() => setActiveTab("monitoring")}
                     >
                       <Activity size={20} />
                       시스템 상태 확인
                     </button>
                     <button
                       className="action-btn"
-                      onClick={() => setActiveTab('errors')}
+                      onClick={() => setActiveTab("errors")}
                     >
                       <Bug size={20} />
                       에러 로그 확인
@@ -721,12 +760,16 @@ export default function SuperAdminDashboard() {
                     <p className="no-data">에러 로그가 없습니다.</p>
                   ) : (
                     <div className="error-list-mini">
-                      {errorLogs.slice(0, 5).map(log => (
-                        <div key={log.id} className={`error-item ${log.severity}`}>
+                      {errorLogs.slice(0, 5).map((log) => (
+                        <div
+                          key={log.id}
+                          className={`error-item ${log.severity}`}
+                        >
                           <span className="error-severity">{log.severity}</span>
                           <span className="error-message">{log.message}</span>
                           <span className="error-time">
-                            {log.timestamp?.toLocaleTimeString?.() || '알 수 없음'}
+                            {log.timestamp?.toLocaleTimeString?.() ||
+                              "알 수 없음"}
                           </span>
                         </div>
                       ))}
@@ -737,7 +780,7 @@ export default function SuperAdminDashboard() {
             )}
 
             {/* 승인 대기 탭 */}
-            {activeTab === 'pending' && (
+            {activeTab === "pending" && (
               <div className="pending-tab">
                 <div className="tab-header">
                   <h2>승인 대기 선생님</h2>
@@ -760,16 +803,19 @@ export default function SuperAdminDashboard() {
                   </div>
                 ) : (
                   <div className="teacher-list">
-                    {filteredPendingTeachers.map(teacher => (
+                    {filteredPendingTeachers.map((teacher) => (
                       <div key={teacher.id} className="teacher-card pending">
                         <div className="teacher-avatar">
-                          {teacher.name?.charAt(0) || '?'}
+                          {teacher.name?.charAt(0) || "?"}
                         </div>
                         <div className="teacher-info">
-                          <h4>{teacher.name || '이름 없음'}</h4>
+                          <h4>{teacher.name || "이름 없음"}</h4>
                           <p>{teacher.email}</p>
                           <span className="join-date">
-                            가입일: {teacher.createdAt?.toDate?.().toLocaleDateString() || '알 수 없음'}
+                            가입일:{" "}
+                            {teacher.createdAt
+                              ?.toDate?.()
+                              .toLocaleDateString() || "알 수 없음"}
                           </span>
                         </div>
                         <div className="teacher-actions">
@@ -782,7 +828,9 @@ export default function SuperAdminDashboard() {
                           </button>
                           <button
                             className="reject-btn"
-                            onClick={() => handleRejectTeacher(teacher.id, teacher.name)}
+                            onClick={() =>
+                              handleRejectTeacher(teacher.id, teacher.name)
+                            }
                           >
                             <XCircle size={18} />
                             거절
@@ -796,7 +844,7 @@ export default function SuperAdminDashboard() {
             )}
 
             {/* 선생님 관리 탭 */}
-            {activeTab === 'teachers' && (
+            {activeTab === "teachers" && (
               <div className="teachers-tab">
                 <div className="tab-header">
                   <h2>승인된 선생님 목록</h2>
@@ -819,24 +867,24 @@ export default function SuperAdminDashboard() {
                   </div>
                 ) : (
                   <div className="teacher-list">
-                    {filteredApprovedTeachers.map(teacher => (
+                    {filteredApprovedTeachers.map((teacher) => (
                       <div key={teacher.id} className="teacher-card approved">
                         <div className="teacher-avatar">
-                          {teacher.name?.charAt(0) || '?'}
+                          {teacher.name?.charAt(0) || "?"}
                         </div>
                         <div className="teacher-info">
-                          <h4>{teacher.name || '이름 없음'}</h4>
+                          <h4>{teacher.name || "이름 없음"}</h4>
                           <p>{teacher.email}</p>
                           <span className="class-code">
-                            학급: {teacher.classCode || '미지정'}
+                            학급: {teacher.classCode || "미지정"}
                           </span>
                         </div>
                         <div className="teacher-actions">
                           <button
                             className="view-btn"
                             onClick={() => {
-                              setSearchTerm(teacher.classCode || '');
-                              setActiveTab('classes');
+                              setSearchTerm(teacher.classCode || "");
+                              setActiveTab("classes");
                             }}
                           >
                             <Eye size={18} />
@@ -844,7 +892,9 @@ export default function SuperAdminDashboard() {
                           </button>
                           <button
                             className="revoke-btn"
-                            onClick={() => handleRevokeApproval(teacher.id, teacher.name)}
+                            onClick={() =>
+                              handleRevokeApproval(teacher.id, teacher.name)
+                            }
                           >
                             <UserX size={18} />
                             승인 취소
@@ -858,7 +908,7 @@ export default function SuperAdminDashboard() {
             )}
 
             {/* 학급 관리 탭 */}
-            {activeTab === 'classes' && (
+            {activeTab === "classes" && (
               <div className="classes-tab">
                 <div className="tab-header">
                   <h2>학급 목록</h2>
@@ -880,7 +930,7 @@ export default function SuperAdminDashboard() {
                   </div>
                 ) : (
                   <div className="class-grid">
-                    {filteredClasses.map(cls => (
+                    {filteredClasses.map((cls) => (
                       <div key={cls.id} className="class-card">
                         <div className="class-header">
                           <School size={24} />
@@ -898,7 +948,9 @@ export default function SuperAdminDashboard() {
                           {cls.adminEmail && (
                             <div className="detail-row">
                               <span className="label">이메일</span>
-                              <span className="value email">{cls.adminEmail}</span>
+                              <span className="value email">
+                                {cls.adminEmail}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -910,7 +962,7 @@ export default function SuperAdminDashboard() {
             )}
 
             {/* 시스템 모니터링 탭 */}
-            {activeTab === 'monitoring' && (
+            {activeTab === "monitoring" && (
               <div className="monitoring-tab">
                 <div className="tab-header">
                   <h2>시스템 모니터링</h2>
@@ -927,13 +979,15 @@ export default function SuperAdminDashboard() {
                       <span>CPU 사용량</span>
                     </div>
                     <div className="metric-value">
-                      <span className={systemMetrics.cpuUsage > 80 ? 'warning' : ''}>
+                      <span
+                        className={systemMetrics.cpuUsage > 80 ? "warning" : ""}
+                      >
                         {systemMetrics.cpuUsage.toFixed(1)}%
                       </span>
                     </div>
                     <div className="metric-bar">
                       <div
-                        className={`bar-fill ${systemMetrics.cpuUsage > 80 ? 'warning' : systemMetrics.cpuUsage > 60 ? 'caution' : ''}`}
+                        className={`bar-fill ${systemMetrics.cpuUsage > 80 ? "warning" : systemMetrics.cpuUsage > 60 ? "caution" : ""}`}
                         style={{ width: `${systemMetrics.cpuUsage}%` }}
                       />
                     </div>
@@ -945,13 +999,17 @@ export default function SuperAdminDashboard() {
                       <span>메모리 사용량</span>
                     </div>
                     <div className="metric-value">
-                      <span className={systemMetrics.memoryUsage > 80 ? 'warning' : ''}>
+                      <span
+                        className={
+                          systemMetrics.memoryUsage > 80 ? "warning" : ""
+                        }
+                      >
                         {systemMetrics.memoryUsage.toFixed(1)}%
                       </span>
                     </div>
                     <div className="metric-bar">
                       <div
-                        className={`bar-fill ${systemMetrics.memoryUsage > 80 ? 'warning' : systemMetrics.memoryUsage > 60 ? 'caution' : ''}`}
+                        className={`bar-fill ${systemMetrics.memoryUsage > 80 ? "warning" : systemMetrics.memoryUsage > 60 ? "caution" : ""}`}
                         style={{ width: `${systemMetrics.memoryUsage}%` }}
                       />
                     </div>
@@ -993,7 +1051,9 @@ export default function SuperAdminDashboard() {
                       <span>에러율</span>
                     </div>
                     <div className="metric-value">
-                      <span className={systemMetrics.errorRate > 5 ? 'warning' : ''}>
+                      <span
+                        className={systemMetrics.errorRate > 5 ? "warning" : ""}
+                      >
                         {systemMetrics.errorRate.toFixed(2)}%
                       </span>
                     </div>
@@ -1024,7 +1084,7 @@ export default function SuperAdminDashboard() {
             )}
 
             {/* 에러 로그 탭 */}
-            {activeTab === 'errors' && (
+            {activeTab === "errors" && (
               <div className="errors-tab">
                 <div className="tab-header">
                   <h2>에러 로그</h2>
@@ -1051,11 +1111,11 @@ export default function SuperAdminDashboard() {
                     </select>
                     <button
                       className="test-error-btn"
-                      onClick={handleCreateTestError}
-                      title="테스트 에러 생성"
+                      onClick={handleClearAllErrorLogs}
+                      title="전체 에러 로그 삭제"
                     >
-                      <Bug size={18} />
-                      테스트 에러
+                      <Trash2 size={18} />
+                      전체 삭제
                     </button>
                   </div>
                 </div>
@@ -1068,19 +1128,28 @@ export default function SuperAdminDashboard() {
                   </div>
                 ) : (
                   <div className="error-log-list">
-                    {filteredErrorLogs.map(log => (
-                      <div key={log.id} className={`error-log-item ${log.severity}`}>
+                    {filteredErrorLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className={`error-log-item ${log.severity}`}
+                      >
                         <div className="error-log-header">
                           <span className={`severity-badge ${log.severity}`}>
-                            {log.severity === 'critical' && <AlertOctagon size={14} />}
-                            {log.severity === 'error' && <XCircle size={14} />}
-                            {log.severity === 'warning' && <AlertTriangle size={14} />}
-                            {log.severity === 'info' && <Activity size={14} />}
+                            {log.severity === "critical" && (
+                              <AlertOctagon size={14} />
+                            )}
+                            {log.severity === "error" && <XCircle size={14} />}
+                            {log.severity === "warning" && (
+                              <AlertTriangle size={14} />
+                            )}
+                            {log.severity === "info" && <Activity size={14} />}
                             {log.severity}
                           </span>
-                          <span className="error-type">{log.type || 'unknown'}</span>
+                          <span className="error-type">
+                            {log.type || "unknown"}
+                          </span>
                           <span className="error-timestamp">
-                            {log.timestamp?.toLocaleString?.() || '알 수 없음'}
+                            {log.timestamp?.toLocaleString?.() || "알 수 없음"}
                           </span>
                           <button
                             className="delete-log-btn"
