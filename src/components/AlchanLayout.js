@@ -22,6 +22,8 @@ const DailyRewardBanner = lazy(() =>
 );
 const WelcomePopup = lazy(() => import("./WelcomePopup"));
 const HelpButton = lazy(() => import("./HelpButton"));
+const IOSInstallPrompt = lazy(() => import("./IOSInstallPrompt"));
+const AppUpdateChecker = lazy(() => import("./AppUpdateChecker"));
 import { db, doc, updateDoc, increment } from "../firebase";
 import globalCacheService from "../services/globalCacheService";
 import { logger } from "../utils/logger";
@@ -724,6 +726,16 @@ export default function AlchanLayout() {
         {/* 🔥 경제 이벤트 팝업 (학생/모든 유저) */}
         <Suspense fallback={null}>
           <EconomicEventPopup />
+        </Suspense>
+
+        {/* 📱 iOS 홈화면 설치 안내 */}
+        <Suspense fallback={null}>
+          <IOSInstallPrompt />
+        </Suspense>
+
+        {/* 🔄 Android 앱 업데이트 체커 */}
+        <Suspense fallback={null}>
+          <AppUpdateChecker />
         </Suspense>
 
         {/* 🎁 출석 보상 팝업 모달 */}

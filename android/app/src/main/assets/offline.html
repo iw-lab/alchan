@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오프라인 - 알찬</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a12;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+    text-align: center;
+  }
+  .logo {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, #1e1e3a, #14142a);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border: 1px solid rgba(99,102,241,0.3);
+  }
+  h1 { font-size: 28px; margin-bottom: 8px; }
+  p { color: #94a3b8; font-size: 15px; line-height: 1.6; margin-bottom: 32px; }
+  button {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="logo">
+    <svg viewBox="0 0 100 100" width="48" height="48" fill="none">
+      <path d="M25 52 L42 69 L75 31" stroke="#818cf8" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M78 22 L80 27 L85 27 L81 31 L82 36 L78 33 L74 36 L75 31 L71 27 L76 27 Z" fill="#FCD34D"/>
+    </svg>
+  </div>
+  <h1>알찬</h1>
+  <p>인터넷에 연결되어 있지 않습니다.<br>네트워크 연결을 확인하고 다시 시도해주세요.</p>
+  <button onclick="window.location.reload()">다시 시도</button>
+</body>
+</html>

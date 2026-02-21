@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <defs>
+        <linearGradient
+            android:id="grad"
+            android:startX="0"
+            android:startY="0"
+            android:endX="108"
+            android:endY="108"
+            android:gradientUnits="userSpaceOnUse">
+        </linearGradient>
+    </defs>
+    <!-- 체크마크 (인디고 그라디언트) -->
+    <path
+        android:pathData="M27,54 L44,72 L81,30"
+        android:strokeColor="#818cf8"
+        android:strokeWidth="10"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"/>
+    <!-- 별 (황금색) -->
+    <path
+        android:pathData="M84,22 L86,28 L92,28 L87,32 L89,38 L84,35 L79,38 L81,32 L76,28 L82,28 Z"
+        android:fillColor="#FCD34D"/>
+</vector>

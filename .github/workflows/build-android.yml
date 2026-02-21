@@ -1,0 +1,135 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'android/**'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '버전 태그 (예: 1.2.0) - 비워두면 자동 생성'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # GitHub Releases 업로드 권한
+
+    steps:
+      # ── 1. 코드 체크아웃 ─────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. 버전 결정 ──────────────────────────────────────────
+      - name: Set version
+        id: version
+        run: |
+          INPUT="${{ github.event.inputs.version }}"
+          if [ -n "$INPUT" ]; then
+            VERSION="$INPUT"
+          else
+            VERSION="1.0.${{ github.run_number }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION" >> $GITHUB_ENV
+          echo "📦 버전: $VERSION (code: ${{ github.run_number }})"
+
+      # ── 3. Java 17 ────────────────────────────────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ── 4. Android SDK ────────────────────────────────────────
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # ── 5. Gradle 캐시 ────────────────────────────────────────
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      # ── 6. Gradle wrapper 다운로드 ────────────────────────────
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+
+      # ── 7. Keystore 복원 (Secrets에서) ────────────────────────
+      - name: Decode Keystore
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
+            echo "KEYSTORE_PATH=keystore.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+            echo "✅ Keystore 복원 완료 (서명된 APK 빌드)"
+          else
+            echo "⚠️ Keystore 없음 - Debug APK 빌드"
+          fi
+
+      # ── 8. APK 빌드 ───────────────────────────────────────────
+      - name: Build APK
+        working-directory: android
+        run: |
+          gradle --no-daemon assembleRelease 2>&1 || gradle --no-daemon assembleDebug 2>&1
+
+      # ── 9. APK 파일 찾기 ──────────────────────────────────────
+      - name: Find APK
+        id: apk
+        run: |
+          APK=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "📱 APK: $APK"
+          ls -lh "$APK"
+
+      # ── 10. APK 이름 변경 ─────────────────────────────────────
+      - name: Rename APK
+        run: |
+          cp "${{ steps.apk.outputs.path }}" "alchan-v${{ steps.version.outputs.version }}.apk"
+
+      # ── 11. GitHub Releases 업로드 ────────────────────────────
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: 알찬 v${{ steps.version.outputs.version }}
+          body: |
+            ## 📱 알찬 앱 v${{ steps.version.outputs.version }}
+
+            ### 설치 방법 (Android)
+            1. **`alchan-v${{ steps.version.outputs.version }}.apk`** 다운로드
+            2. 안드로이드 기기에서 파일 실행
+            3. 최초 설치 시: **설정 → 보안 → 알 수 없는 앱 허용**
+
+            ### 자동 업데이트 안내
+            - ✅ **웹 콘텐츠**: 앱 실행 시 항상 최신 버전 자동 로드
+            - 🔄 **앱 자체**: 새 APK가 올라오면 여기서 다운로드하여 재설치
+
+            ### iOS 사용자
+            Safari에서 [알찬 웹앱](https://inconomysu-class.web.app) 접속 후 **공유 → 홈 화면에 추가**
+
+            ---
+            빌드: #${{ github.run_number }} | 커밋: ${{ github.sha }}
+          files: alchan-v${{ steps.version.outputs.version }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
