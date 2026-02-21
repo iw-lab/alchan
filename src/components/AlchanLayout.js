@@ -16,6 +16,7 @@ import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
+const EconomicEventPopup = lazy(() => import("./EconomicEventPopup"));
 const DailyRewardBanner = lazy(() =>
   import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
@@ -719,6 +720,11 @@ export default function AlchanLayout() {
 
         {/* 첫 접속 안내 팝업 */}
         <WelcomePopup />
+
+        {/* 🔥 경제 이벤트 팝업 (학생/모든 유저) */}
+        <Suspense fallback={null}>
+          <EconomicEventPopup />
+        </Suspense>
 
         {/* 🎁 출석 보상 팝업 모달 */}
         {showDailyRewardPopup && userDoc?.uid && (
