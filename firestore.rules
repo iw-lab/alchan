@@ -875,6 +875,27 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // ⚡ 경제 이벤트 설정 (economicEventSettings)
+    // ========================================================
+    match /economicEventSettings/{classCode} {
+      allow read: if isSameClass(classCode) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
+    // 📋 경제 이벤트 로그 (economicEventLogs)
+    // ========================================================
+    match /economicEventLogs/{classCode} {
+      allow read: if isSameClass(classCode) || isAdmin();
+      allow write: if isAdmin();
+
+      match /entries/{entryId} {
+        allow read: if isSameClass(classCode) || isAdmin();
+        allow write: if isAdmin();
+      }
+    }
+
+    // ========================================================
     // 🚫 기타 모든 컬렉션은 기본적으로 차단
     // ========================================================
     match /{document=**} {
