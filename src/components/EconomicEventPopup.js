@@ -1,6 +1,7 @@
 // src/components/EconomicEventPopup.js
 // 경제 이벤트 발생 시 학생에게 팝업으로 알려주는 모달
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -95,7 +96,6 @@ export default function EconomicEventPopup() {
 
   const [activeEvent, setActiveEvent] = useState(null);
   const [visible, setVisible] = useState(false);
-  const [animating, setAnimating] = useState(false);
   const lastEventIdRef = useRef(null);
 
   useEffect(() => {
@@ -121,17 +121,15 @@ export default function EconomicEventPopup() {
       const eventId = data.triggeredAt?.toMillis?.() || data.event?.id || "";
       const seenKey = `evePopup_${classCode}_${eventId}`;
 
-      if (localStorage.getItem(seenKey)) return; // 이미 확인함
+      if (localStorage.getItem(seenKey)) return;
 
       // 새 이벤트
       if (lastEventIdRef.current !== eventId) {
         lastEventIdRef.current = eventId;
         setActiveEvent({ ...data, _seenKey: seenKey });
-        setAnimating(true);
-        setTimeout(() => {
-          setVisible(true);
-          setAnimating(false);
-        }, 50);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setVisible(true));
+        });
       }
     });
 
@@ -145,7 +143,6 @@ export default function EconomicEventPopup() {
     setVisible(false);
     setTimeout(() => {
       setActiveEvent(null);
-      setAnimating(false);
     }, 300);
   };
 
@@ -170,14 +167,17 @@ export default function EconomicEventPopup() {
     day: "numeric",
   });
 
-  return (
+  const positiveGrad = "from-emerald-600/90 via-emerald-700/95 to-teal-800/95";
+  const negativeGrad = "from-red-600/90 via-red-700/95 to-rose-800/95";
+
+  const popup = (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-4"
       style={{
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(4px)",
-        opacity: visible ? 1 : 0,
-        transition: "opacity 0.3s ease",
+        zIndex: 99999,
+        background: visible ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0)",
+        backdropFilter: visible ? "blur(6px)" : "none",
+        transition: "background 0.3s ease, backdrop-filter 0.3s ease",
         pointerEvents: visible ? "auto" : "none",
       }}
       onClick={(e) => {
@@ -185,73 +185,64 @@ export default function EconomicEventPopup() {
       }}
     >
       <div
+        className="w-full"
         style={{
+          maxWidth: 420,
           transform: visible
             ? "scale(1) translateY(0)"
-            : "scale(0.9) translateY(20px)",
-          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          maxWidth: 480,
-          width: "100%",
+            : "scale(0.85) translateY(30px)",
+          opacity: visible ? 1 : 0,
+          transition:
+            "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease",
         }}
       >
         {/* 카드 */}
         <div
-          className={`relative rounded-2xl overflow-hidden shadow-2xl border ${
-            isPositive
-              ? "border-emerald-500/40 bg-gradient-to-br from-slate-900 via-emerald-950/40 to-slate-900"
-              : "border-red-500/40 bg-gradient-to-br from-slate-900 via-red-950/40 to-slate-900"
-          }`}
+          className={`relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br ${isPositive ? positiveGrad : negativeGrad}`}
+          style={{
+            boxShadow: isPositive
+              ? "0 0 60px rgba(16,185,129,0.3), 0 25px 50px rgba(0,0,0,0.5)"
+              : "0 0 60px rgba(239,68,68,0.3), 0 25px 50px rgba(0,0,0,0.5)",
+          }}
         >
-          {/* 상단 글로우 */}
+          {/* 상단 글로우 라인 */}
           <div
-            className={`absolute top-0 left-0 right-0 h-1 ${isPositive ? "bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400" : "bg-gradient-to-r from-red-400 via-orange-400 to-red-400"}`}
-          />
-
-          {/* 배경 패턴 */}
-          <div
-            className="absolute inset-0 opacity-5"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 50% 50%, white 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
+            className={`h-1 ${isPositive ? "bg-gradient-to-r from-emerald-300 via-cyan-300 to-emerald-300" : "bg-gradient-to-r from-red-300 via-orange-300 to-red-300"}`}
           />
 
           {/* 헤더 */}
-          <div className={`relative px-6 pt-6 pb-4 flex items-start gap-4`}>
+          <div className="px-5 pt-5 pb-3 flex items-start gap-3">
             {/* 이모지 아이콘 */}
             <div
-              className={`flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg ${
-                isPositive
-                  ? "bg-emerald-500/20 ring-1 ring-emerald-500/30"
-                  : "bg-red-500/20 ring-1 ring-red-500/30"
-              }`}
+              className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                backdropFilter: "blur(8px)",
+              }}
             >
               {event.emoji || "⚡"}
             </div>
 
             <div className="flex-1 min-w-0">
               {/* 태그 */}
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 {isPositive ? (
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-200" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                  <TrendingDown className="w-3.5 h-3.5 text-red-200" />
                 )}
-                <span
-                  className={`text-xs font-bold uppercase tracking-widest ${isPositive ? "text-emerald-400" : "text-red-400"}`}
-                >
-                  오늘의 경제 이벤트
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">
+                  경제 이벤트
                 </span>
               </div>
 
               {/* 제목 */}
-              <h2 className="text-xl font-bold text-white leading-tight">
+              <h2 className="text-lg font-bold text-white leading-tight font-jua">
                 {event.title}
               </h2>
 
               {/* 날짜 */}
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-white/50 mt-0.5">
                 {dateStr} {timeStr} 발생
               </p>
             </div>
@@ -259,36 +250,34 @@ export default function EconomicEventPopup() {
             {/* 닫기 버튼 */}
             <button
               onClick={handleClose}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/70 hover:text-white active:scale-90 transition-all"
+              style={{ background: "rgba(255,255,255,0.15)" }}
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* 구분선 */}
-          <div
-            className={`mx-6 h-px ${isPositive ? "bg-emerald-500/20" : "bg-red-500/20"}`}
-          />
+          <div className="mx-5 h-px bg-white/15" />
 
           {/* 본문 */}
-          <div className="relative px-6 py-4 space-y-3">
+          <div className="px-5 py-4 space-y-3">
             {/* 이벤트 설명 */}
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {event.description}
-            </p>
+            {event.description && (
+              <p className="text-sm text-white/80 leading-relaxed">
+                {event.description}
+              </p>
+            )}
 
             {/* 영향 */}
             {detail.impact && (
               <div
-                className={`rounded-xl p-3 ${isPositive ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-red-500/10 border border-red-500/20"}`}
+                className="rounded-xl p-3"
+                style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <div className="flex items-start gap-2">
-                  <Zap
-                    className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isPositive ? "text-emerald-400" : "text-red-400"}`}
-                  />
-                  <p
-                    className={`text-sm font-medium ${isPositive ? "text-emerald-300" : "text-red-300"}`}
-                  >
+                  <Zap className="w-4 h-4 mt-0.5 flex-shrink-0 text-yellow-300" />
+                  <p className="text-sm font-semibold text-white leading-relaxed">
                     {detail.impact}
                   </p>
                 </div>
@@ -297,25 +286,29 @@ export default function EconomicEventPopup() {
 
             {/* 팁 */}
             {detail.tip && (
-              <p className="text-xs text-slate-300 pl-1">💡 {detail.tip}</p>
+              <p className="text-xs text-white/60 pl-1">💡 {detail.tip}</p>
             )}
           </div>
 
           {/* 확인 버튼 */}
-          <div className="px-6 pb-6">
+          <div className="px-5 pb-5">
             <button
               onClick={handleClose}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] ${
-                isPositive
-                  ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25"
-                  : "bg-red-500 hover:bg-red-400 text-white shadow-lg shadow-red-500/25"
-              }`}
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-white font-jua"
+              style={{
+                background: "rgba(255,255,255,0.2)",
+                backdropFilter: "blur(8px)",
+              }}
             >
-              확인했어요
+              확인했어요 ✓
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  // portal로 렌더링하여 부모 요소의 overflow/transform에 영향받지 않음
+  const portalTarget = document.getElementById("modal-root") || document.body;
+  return ReactDOM.createPortal(popup, portalTarget);
 }
