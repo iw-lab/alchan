@@ -875,6 +875,15 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // ⚡ 경제 이벤트 - 활성 이벤트 팝업 (activeEconomicEvent)
+    // 클라우드 함수가 쓰기, 같은 학급 사용자가 읽기 (팝업 표시용)
+    // ========================================================
+    match /activeEconomicEvent/{classCode} {
+      allow read: if isSameClass(classCode) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ========================================================
     // ⚡ 경제 이벤트 설정 (economicEventSettings)
     // ========================================================
     match /economicEventSettings/{classCode} {
