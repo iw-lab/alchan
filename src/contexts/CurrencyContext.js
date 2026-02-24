@@ -41,7 +41,7 @@ export const CurrencyProvider = ({ children }) => {
     setGlobalCurrencyUnit(initial);
     return initial;
   });
-  const { firebaseReady } = useAuth();
+  const { firebaseReady, user } = useAuth();
 
   // currencyUnit이 변경될 때마다 전역 변수 동기화
   useEffect(() => {
@@ -50,7 +50,8 @@ export const CurrencyProvider = ({ children }) => {
 
   // mainSettings에서 currencyUnit 로드
   useEffect(() => {
-    if (!firebaseReady || !db) return;
+    // user가 있어야 isSignedIn() 규칙을 통과함
+    if (!firebaseReady || !db || !user) return;
 
     // Firestore에서 실시간 구독 (가벼운 문서이므로 비용 부담 적음)
     const settingsRef = doc(db, "settings", "mainSettings");
@@ -71,7 +72,7 @@ export const CurrencyProvider = ({ children }) => {
     );
 
     return () => unsubscribe();
-  }, [firebaseReady]);
+  }, [firebaseReady, user]);
 
   // 로컬 상태만 업데이트 (낙관적 업데이트용, Firestore 저장은 별도)
   const setCurrencyUnitLocal = useCallback((unit) => {
