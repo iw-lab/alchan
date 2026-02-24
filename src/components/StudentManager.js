@@ -1,9 +1,9 @@
 // src/components/StudentManager.js
 // 학생 일괄 생성 및 관리 컴포넌트
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { db, auth as firebaseAuth } from '../firebase';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { db, auth as firebaseAuth } from "../firebase";
 import {
   collection,
   doc,
@@ -16,11 +16,8 @@ import {
   where,
   serverTimestamp,
   writeBatch,
-} from 'firebase/firestore';
-import {
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from 'firebase/auth';
+} from "firebase/firestore";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import {
   Users,
   UserPlus,
@@ -44,8 +41,8 @@ import {
   Mail,
   Lock,
   GraduationCap,
-} from 'lucide-react';
-import { logger } from '../utils/logger';
+} from "lucide-react";
+import { logger } from "../utils/logger";
 import {
   Card,
   CardHeader,
@@ -66,12 +63,12 @@ import {
   EmptyState,
   PageHeader,
   Spinner,
-} from './ui/index';
+} from "./ui/index";
 
 // 랜덤 비밀번호 생성
 const generatePassword = (length = 8) => {
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let password = '';
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let password = "";
   for (let i = 0; i < length; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -90,7 +87,7 @@ const StudentManager = () => {
   // 상태
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudents, setSelectedStudents] = useState(new Set());
 
   // 모달 상태
@@ -100,13 +97,13 @@ const StudentManager = () => {
   const [editingStudent, setEditingStudent] = useState(null);
 
   // 단일 추가 폼
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentNumber, setNewStudentNumber] = useState('');
-  const [newStudentPassword, setNewStudentPassword] = useState('');
+  const [newStudentName, setNewStudentName] = useState("");
+  const [newStudentNumber, setNewStudentNumber] = useState("");
+  const [newStudentPassword, setNewStudentPassword] = useState("");
   const [parentalConsent, setParentalConsent] = useState(false);
 
   // 일괄 추가 폼
-  const [bulkInput, setBulkInput] = useState('');
+  const [bulkInput, setBulkInput] = useState("");
   const [bulkStudents, setBulkStudents] = useState([]);
   const [bulkStep, setBulkStep] = useState(1); // 1: 입력, 2: 미리보기, 3: 결과
   const [bulkParentalConsent, setBulkParentalConsent] = useState(false);
@@ -127,20 +124,22 @@ const StudentManager = () => {
     try {
       // AuthContext의 classmates 사용
       if (classmates && classmates.length > 0) {
-        const studentList = classmates.filter(u => !u.isTeacher && !u.isAdmin);
+        const studentList = classmates.filter(
+          (u) => !u.isTeacher && !u.isAdmin,
+        );
         setStudents(studentList);
       } else {
         // 직접 로드
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('classCode', '==', classCode));
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("classCode", "==", classCode));
         const snapshot = await getDocs(q);
         const studentList = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(u => !u.isTeacher && !u.isAdmin);
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((u) => !u.isTeacher && !u.isAdmin);
         setStudents(studentList);
       }
     } catch (error) {
-      logger.error('Failed to load students:', error);
+      logger.error("Failed to load students:", error);
     } finally {
       setLoading(false);
     }
@@ -155,22 +154,23 @@ const StudentManager = () => {
   const filteredStudents = useMemo(() => {
     if (!searchTerm) return students;
     const term = searchTerm.toLowerCase();
-    return students.filter(s =>
-      s.name?.toLowerCase().includes(term) ||
-      s.studentNumber?.toString().includes(term) ||
-      s.email?.toLowerCase().includes(term)
+    return students.filter(
+      (s) =>
+        s.name?.toLowerCase().includes(term) ||
+        s.studentNumber?.toString().includes(term) ||
+        s.email?.toLowerCase().includes(term),
     );
   }, [students, searchTerm]);
 
   // 단일 학생 추가
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
-      alert('이름과 번호를 입력해주세요.');
+      alert("이름과 번호를 입력해주세요.");
       return;
     }
 
     if (!parentalConsent) {
-      alert('법정대리인(학부모) 동의 확인이 필요합니다.');
+      alert("법정대리인(학부모) 동의 확인이 필요합니다.");
       return;
     }
 
@@ -183,7 +183,7 @@ const StudentManager = () => {
       const userCredential = await createUserWithEmailAndPassword(
         firebaseAuth,
         email,
-        password
+        password,
       );
       const newUser = userCredential.user;
 
@@ -191,13 +191,13 @@ const StudentManager = () => {
       await updateProfile(newUser, { displayName: newStudentName.trim() });
 
       // 학급 설정 가져오기
-      const classDoc = await getDoc(doc(db, 'classes', classCode));
+      const classDoc = await getDoc(doc(db, "classes", classCode));
       const classSettings = classDoc.exists() ? classDoc.data().settings : {};
       const initialCash = classSettings.initialCash || 100000;
       const initialCoupons = classSettings.initialCoupons || 10;
 
       // Firestore 문서 생성
-      await setDoc(doc(db, 'users', newUser.uid), {
+      await setDoc(doc(db, "users", newUser.uid), {
         name: newStudentName.trim(),
         nickname: newStudentName.trim(),
         email: email,
@@ -217,7 +217,7 @@ const StudentManager = () => {
       });
 
       // 학급 학생 수 업데이트
-      const classRef = doc(db, 'classes', classCode);
+      const classRef = doc(db, "classes", classCode);
       const currentClass = await getDoc(classRef);
       if (currentClass.exists()) {
         await updateDoc(classRef, {
@@ -228,15 +228,14 @@ const StudentManager = () => {
       alert(`학생 추가 완료!\n이메일: ${email}\n비밀번호: ${password}`);
 
       // 폼 초기화
-      setNewStudentName('');
-      setNewStudentNumber('');
-      setNewStudentPassword('');
+      setNewStudentName("");
+      setNewStudentNumber("");
+      setNewStudentPassword("");
       setParentalConsent(false);
       setShowAddModal(false);
       loadStudents();
-
     } catch (error) {
-      logger.error('Failed to add student:', error);
+      logger.error("Failed to add student:", error);
       alert(`학생 추가 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -245,12 +244,15 @@ const StudentManager = () => {
 
   // 일괄 입력 파싱
   const parseBulkInput = () => {
-    const lines = bulkInput.trim().split('\n').filter(line => line.trim());
+    const lines = bulkInput
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim());
     const parsed = [];
 
     for (const line of lines) {
       // 탭 또는 쉼표로 구분
-      const parts = line.split(/[\t,]/).map(p => p.trim());
+      const parts = line.split(/[\t,]/).map((p) => p.trim());
 
       if (parts.length >= 2) {
         const [number, name] = parts;
@@ -262,7 +264,7 @@ const StudentManager = () => {
           name,
           email,
           password,
-          status: 'pending',
+          status: "pending",
         });
       } else if (parts.length === 1 && parts[0]) {
         // 이름만 있는 경우 자동 번호 부여
@@ -271,7 +273,7 @@ const StudentManager = () => {
           name: parts[0],
           email: createStudentEmail((parsed.length + 1).toString(), classCode),
           password: generatePassword(),
-          status: 'pending',
+          status: "pending",
         });
       }
     }
@@ -285,7 +287,7 @@ const StudentManager = () => {
     if (bulkStudents.length === 0) return;
 
     if (!bulkParentalConsent) {
-      alert('법정대리인(학부모) 동의 확인이 필요합니다.');
+      alert("법정대리인(학부모) 동의 확인이 필요합니다.");
       return;
     }
 
@@ -294,7 +296,7 @@ const StudentManager = () => {
     const failedList = [];
 
     // 학급 설정 가져오기
-    const classDoc = await getDoc(doc(db, 'classes', classCode));
+    const classDoc = await getDoc(doc(db, "classes", classCode));
     const classSettings = classDoc.exists() ? classDoc.data().settings : {};
     const initialCash = classSettings.initialCash || 100000;
     const initialCoupons = classSettings.initialCoupons || 10;
@@ -307,7 +309,7 @@ const StudentManager = () => {
         const userCredential = await createUserWithEmailAndPassword(
           firebaseAuth,
           student.email,
-          student.password
+          student.password,
         );
         const newUser = userCredential.user;
 
@@ -315,7 +317,7 @@ const StudentManager = () => {
         await updateProfile(newUser, { displayName: student.name });
 
         // Firestore 문서 생성
-        await setDoc(doc(db, 'users', newUser.uid), {
+        await setDoc(doc(db, "users", newUser.uid), {
           name: student.name,
           nickname: student.name,
           email: student.email,
@@ -334,12 +336,11 @@ const StudentManager = () => {
           consentDate: serverTimestamp(),
         });
 
-        student.status = 'success';
+        student.status = "success";
         student.uid = newUser.uid;
         successList.push(student);
-
       } catch (error) {
-        student.status = 'failed';
+        student.status = "failed";
         student.error = error.message;
         failedList.push(student);
       }
@@ -350,11 +351,12 @@ const StudentManager = () => {
 
     // 학급 학생 수 업데이트
     if (successList.length > 0) {
-      const classRef = doc(db, 'classes', classCode);
+      const classRef = doc(db, "classes", classCode);
       const currentClass = await getDoc(classRef);
       if (currentClass.exists()) {
         await updateDoc(classRef, {
-          studentCount: (currentClass.data().studentCount || 0) + successList.length,
+          studentCount:
+            (currentClass.data().studentCount || 0) + successList.length,
         });
       }
     }
@@ -367,51 +369,60 @@ const StudentManager = () => {
 
   // 결과 CSV 다운로드
   const downloadResultsCSV = () => {
-    const rows = [['번호', '이름', '이메일', '비밀번호', '상태']];
+    const rows = [["번호", "이름", "이메일", "비밀번호", "상태"]];
 
-    [...results.success, ...results.failed].forEach(s => {
+    [...results.success, ...results.failed].forEach((s) => {
       rows.push([
         s.number,
         s.name,
         s.email,
         s.password,
-        s.status === 'success' ? '성공' : `실패: ${s.error}`,
+        s.status === "success" ? "성공" : `실패: ${s.error}`,
       ]);
     });
 
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `학생목록_${classCode}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `학생목록_${classCode}_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
 
   // 학생 삭제
   const handleDeleteStudent = async (student) => {
-    if (!window.confirm(`${student.name} 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`)) {
+    if (
+      !window.confirm(
+        `${student.name} 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`,
+      )
+    ) {
       return;
     }
 
     setProcessing(true);
     try {
       // Firestore 문서 삭제
-      await deleteDoc(doc(db, 'users', student.id));
+      await deleteDoc(doc(db, "users", student.id));
 
       // 학급 학생 수 감소
-      const classRef = doc(db, 'classes', classCode);
+      const classRef = doc(db, "classes", classCode);
       const currentClass = await getDoc(classRef);
       if (currentClass.exists()) {
         await updateDoc(classRef, {
-          studentCount: Math.max(0, (currentClass.data().studentCount || 0) - 1),
+          studentCount: Math.max(
+            0,
+            (currentClass.data().studentCount || 0) - 1,
+          ),
         });
       }
 
-      alert('학생이 삭제되었습니다.');
+      alert("학생이 삭제되었습니다.");
       loadStudents();
     } catch (error) {
-      logger.error('Failed to delete student:', error);
+      logger.error("Failed to delete student:", error);
       alert(`삭제 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -422,7 +433,11 @@ const StudentManager = () => {
   const handleBulkDelete = async () => {
     if (selectedStudents.size === 0) return;
 
-    if (!window.confirm(`선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?`)) {
+    if (
+      !window.confirm(
+        `선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?`,
+      )
+    ) {
       return;
     }
 
@@ -431,7 +446,7 @@ const StudentManager = () => {
     let deleteCount = 0;
 
     for (const studentId of selectedStudents) {
-      batch.delete(doc(db, 'users', studentId));
+      batch.delete(doc(db, "users", studentId));
       deleteCount++;
     }
 
@@ -439,11 +454,14 @@ const StudentManager = () => {
       await batch.commit();
 
       // 학급 학생 수 업데이트
-      const classRef = doc(db, 'classes', classCode);
+      const classRef = doc(db, "classes", classCode);
       const currentClass = await getDoc(classRef);
       if (currentClass.exists()) {
         await updateDoc(classRef, {
-          studentCount: Math.max(0, (currentClass.data().studentCount || 0) - deleteCount),
+          studentCount: Math.max(
+            0,
+            (currentClass.data().studentCount || 0) - deleteCount,
+          ),
         });
       }
 
@@ -451,7 +469,7 @@ const StudentManager = () => {
       alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
       loadStudents();
     } catch (error) {
-      logger.error('Failed to bulk delete:', error);
+      logger.error("Failed to bulk delete:", error);
       alert(`일괄 삭제 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -469,7 +487,7 @@ const StudentManager = () => {
   const closeBulkModal = () => {
     setShowBulkModal(false);
     setBulkStep(1);
-    setBulkInput('');
+    setBulkInput("");
     setBulkStudents([]);
     setBulkParentalConsent(false);
     setResults({ success: [], failed: [] });
@@ -524,7 +542,7 @@ const StudentManager = () => {
       <Card>
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
@@ -581,7 +599,9 @@ const StudentManager = () => {
                     checked={selectedStudents.size === filteredStudents.length}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
+                        setSelectedStudents(
+                          new Set(filteredStudents.map((s) => s.id)),
+                        );
                       } else {
                         setSelectedStudents(new Set());
                       }
@@ -617,7 +637,7 @@ const StudentManager = () => {
                     />
                   </TableCell>
                   <TableCell className="font-medium">
-                    {student.studentNumber || '-'}
+                    {student.studentNumber || "-"}
                   </TableCell>
                   <TableCell className="font-semibold">
                     {student.name}
@@ -628,9 +648,7 @@ const StudentManager = () => {
                   <TableCell>
                     {(student.cash || 0).toLocaleString()}원
                   </TableCell>
-                  <TableCell>
-                    {student.coupons || 0}장
-                  </TableCell>
+                  <TableCell>{student.coupons || 0}장</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -638,13 +656,13 @@ const StudentManager = () => {
                           setEditingStudent(student);
                           setShowEditModal(true);
                         }}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                       >
                         <Edit2 size={16} className="text-gray-500" />
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(student)}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
                       >
                         <Trash2 size={16} className="text-red-500" />
                       </button>
@@ -668,7 +686,11 @@ const StudentManager = () => {
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>
               취소
             </Button>
-            <Button onClick={handleAddStudent} loading={processing} disabled={!parentalConsent}>
+            <Button
+              onClick={handleAddStudent}
+              loading={processing}
+              disabled={!parentalConsent}
+            >
               추가
             </Button>
           </>
@@ -699,19 +721,23 @@ const StudentManager = () => {
             placeholder="자동 생성됨"
           />
           <Alert variant="info">
-            생성되는 이메일: {newStudentNumber ? createStudentEmail(newStudentNumber, classCode) : '번호를 입력하세요'}
+            생성되는 이메일:{" "}
+            {newStudentNumber
+              ? createStudentEmail(newStudentNumber, classCode)
+              : "번호를 입력하세요"}
           </Alert>
 
           {/* 법정대리인 동의 체크박스 */}
-          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+          <div className="p-4 bg-amber-900/20 border-2 border-amber-800 rounded-xl space-y-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                <p className="text-sm font-semibold text-amber-100 mb-1">
                   개인정보 수집 법정대리인 동의
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
-                  14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의 동의가 필요합니다.
+                <p className="text-xs text-amber-300 mb-2">
+                  14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의
+                  동의가 필요합니다.
                 </p>
                 <label className="flex items-start gap-2.5 cursor-pointer group">
                   <input
@@ -720,13 +746,18 @@ const StudentManager = () => {
                     onChange={(e) => setParentalConsent(e.target.checked)}
                     className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
                   />
-                  <span className="text-sm text-amber-900 dark:text-amber-100 group-hover:text-amber-700">
-                    학부모(법정대리인)의 개인정보 수집·이용 동의를 확인하였습니다
+                  <span className="text-sm text-amber-100 group-hover:text-amber-700">
+                    학부모(법정대리인)의 개인정보 수집·이용 동의를
+                    확인하였습니다
                   </span>
                 </label>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 ml-7">
-                  가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{' '}
-                  <a href="/privacy" target="_blank" className="underline hover:text-amber-800">
+                <p className="text-xs text-amber-400 mt-2 ml-7">
+                  가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    className="underline hover:text-amber-800"
+                  >
                     개인정보처리방침 보기
                   </a>
                 </p>
@@ -757,18 +788,24 @@ const StudentManager = () => {
               <Button variant="secondary" onClick={() => setBulkStep(1)}>
                 이전
               </Button>
-              <Button onClick={handleBulkCreate} loading={processing} disabled={!bulkParentalConsent}>
+              <Button
+                onClick={handleBulkCreate}
+                loading={processing}
+                disabled={!bulkParentalConsent}
+              >
                 {bulkStudents.length}명 생성
               </Button>
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={downloadResultsCSV} icon={Download}>
+              <Button
+                variant="secondary"
+                onClick={downloadResultsCSV}
+                icon={Download}
+              >
                 CSV 다운로드
               </Button>
-              <Button onClick={closeBulkModal}>
-                완료
-              </Button>
+              <Button onClick={closeBulkModal}>완료</Button>
             </>
           )
         }
@@ -777,15 +814,18 @@ const StudentManager = () => {
         {bulkStep === 1 && (
           <div className="space-y-4">
             <Alert variant="info" title="입력 형식">
-              각 줄에 학생 정보를 입력하세요.<br/>
-              형식: <code>번호, 이름</code> 또는 <code>번호, 이름, 비밀번호</code><br/>
+              각 줄에 학생 정보를 입력하세요.
+              <br />
+              형식: <code>번호, 이름</code> 또는{" "}
+              <code>번호, 이름, 비밀번호</code>
+              <br />
               예: 1, 홍길동 또는 1, 홍길동, password123
             </Alert>
             <textarea
               value={bulkInput}
               onChange={(e) => setBulkInput(e.target.value)}
               placeholder={`1, 홍길동\n2, 김철수\n3, 이영희, mypassword`}
-              className="w-full h-64 px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         )}
@@ -794,19 +834,21 @@ const StudentManager = () => {
         {bulkStep === 2 && (
           <div className="space-y-4">
             <Alert variant="warning">
-              아래 {bulkStudents.length}명의 학생 계정을 생성합니다. 확인 후 진행해주세요.
+              아래 {bulkStudents.length}명의 학생 계정을 생성합니다. 확인 후
+              진행해주세요.
             </Alert>
 
             {/* 법정대리인 동의 체크박스 */}
-            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl space-y-3">
+            <div className="p-4 bg-amber-900/20 border-2 border-amber-800 rounded-xl space-y-3">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                  <p className="text-sm font-semibold text-amber-100 mb-1">
                     개인정보 수집 법정대리인 동의
                   </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">
-                    14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의 동의가 필요합니다.
+                  <p className="text-xs text-amber-300 mb-2">
+                    14세 미만 학생의 개인정보 수집을 위해서는
+                    학부모(법정대리인)의 동의가 필요합니다.
                   </p>
                   <label className="flex items-start gap-2.5 cursor-pointer group">
                     <input
@@ -815,13 +857,18 @@ const StudentManager = () => {
                       onChange={(e) => setBulkParentalConsent(e.target.checked)}
                       className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
                     />
-                    <span className="text-sm text-amber-900 dark:text-amber-100 group-hover:text-amber-700">
-                      학부모(법정대리인)의 개인정보 수집·이용 동의를 확인하였습니다
+                    <span className="text-sm text-amber-100 group-hover:text-amber-700">
+                      학부모(법정대리인)의 개인정보 수집·이용 동의를
+                      확인하였습니다
                     </span>
                   </label>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 ml-7">
-                    가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{' '}
-                    <a href="/privacy" target="_blank" className="underline hover:text-amber-800">
+                  <p className="text-xs text-amber-400 mt-2 ml-7">
+                    가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      className="underline hover:text-amber-800"
+                    >
                       개인정보처리방침 보기
                     </a>
                   </p>
@@ -829,9 +876,9 @@ const StudentManager = () => {
               </div>
             </div>
 
-            <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-700">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                <thead className="bg-gray-800 sticky top-0">
                   <tr>
                     <th className="px-4 py-2 text-left">번호</th>
                     <th className="px-4 py-2 text-left">이름</th>
@@ -839,13 +886,17 @@ const StudentManager = () => {
                     <th className="px-4 py-2 text-left">비밀번호</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-700">
                   {bulkStudents.map((student, index) => (
                     <tr key={index}>
                       <td className="px-4 py-2">{student.number}</td>
                       <td className="px-4 py-2 font-medium">{student.name}</td>
-                      <td className="px-4 py-2 text-gray-500">{student.email}</td>
-                      <td className="px-4 py-2 font-mono">{student.password}</td>
+                      <td className="px-4 py-2 text-gray-500">
+                        {student.email}
+                      </td>
+                      <td className="px-4 py-2 font-mono">
+                        {student.password}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -858,26 +909,36 @@ const StudentManager = () => {
         {bulkStep === 3 && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-2xl p-5" style={{
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '2px solid rgba(16, 185, 129, 0.3)',
-              }}>
+              <div
+                className="rounded-2xl p-5"
+                style={{
+                  background: "rgba(16, 185, 129, 0.15)",
+                  border: "2px solid rgba(16, 185, 129, 0.3)",
+                }}
+              >
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                   <div>
-                    <p className="text-2xl font-bold text-emerald-400">{results.success.length}</p>
+                    <p className="text-2xl font-bold text-emerald-400">
+                      {results.success.length}
+                    </p>
                     <p className="text-sm text-emerald-300">성공</p>
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl p-5" style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '2px solid rgba(239, 68, 68, 0.3)',
-              }}>
+              <div
+                className="rounded-2xl p-5"
+                style={{
+                  background: "rgba(239, 68, 68, 0.15)",
+                  border: "2px solid rgba(239, 68, 68, 0.3)",
+                }}
+              >
                 <div className="flex items-center gap-3">
                   <AlertCircle className="w-8 h-8 text-red-400" />
                   <div>
-                    <p className="text-2xl font-bold text-red-400">{results.failed.length}</p>
+                    <p className="text-2xl font-bold text-red-400">
+                      {results.failed.length}
+                    </p>
                     <p className="text-sm text-red-300">실패</p>
                   </div>
                 </div>
@@ -886,10 +947,12 @@ const StudentManager = () => {
 
             {results.success.length > 0 && (
               <div>
-                <h4 className="font-semibold text-emerald-700 mb-2">생성된 계정</h4>
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <h4 className="font-semibold text-emerald-400 mb-2">
+                  생성된 계정
+                </h4>
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-700">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                    <thead className="bg-gray-800 sticky top-0">
                       <tr>
                         <th className="px-4 py-2 text-left">이름</th>
                         <th className="px-4 py-2 text-left">이메일</th>
@@ -897,16 +960,27 @@ const StudentManager = () => {
                         <th className="px-4 py-2 w-10"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-gray-700">
                       {results.success.map((student, index) => (
                         <tr key={index}>
-                          <td className="px-4 py-2 font-medium">{student.name}</td>
-                          <td className="px-4 py-2 text-gray-500">{student.email}</td>
-                          <td className="px-4 py-2 font-mono">{student.password}</td>
+                          <td className="px-4 py-2 font-medium">
+                            {student.name}
+                          </td>
+                          <td className="px-4 py-2 text-gray-500">
+                            {student.email}
+                          </td>
+                          <td className="px-4 py-2 font-mono">
+                            {student.password}
+                          </td>
                           <td className="px-4 py-2">
                             <button
-                              onClick={() => copyToClipboard(`${student.email}\t${student.password}`, index)}
-                              className="p-1 hover:bg-gray-100 rounded"
+                              onClick={() =>
+                                copyToClipboard(
+                                  `${student.email}\t${student.password}`,
+                                  index,
+                                )
+                              }
+                              className="p-1 hover:bg-gray-700 rounded"
                             >
                               {copiedId === index ? (
                                 <Check size={16} className="text-emerald-500" />
@@ -925,11 +999,13 @@ const StudentManager = () => {
 
             {results.failed.length > 0 && (
               <div>
-                <h4 className="font-semibold text-red-700 mb-2">실패한 항목</h4>
+                <h4 className="font-semibold text-red-400 mb-2">실패한 항목</h4>
                 <div className="space-y-2">
                   {results.failed.map((student, index) => (
-                    <div key={index} className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <p className="font-medium">{student.name} ({student.email})</p>
+                    <div key={index} className="p-3 bg-red-900/20 rounded-lg">
+                      <p className="font-medium">
+                        {student.name} ({student.email})
+                      </p>
                       <p className="text-sm text-red-600">{student.error}</p>
                     </div>
                   ))}
@@ -959,7 +1035,7 @@ const StudentManager = () => {
                 if (!editingStudent) return;
                 setProcessing(true);
                 try {
-                  await updateDoc(doc(db, 'users', editingStudent.id), {
+                  await updateDoc(doc(db, "users", editingStudent.id), {
                     name: editingStudent.name,
                     nickname: editingStudent.name,
                     studentNumber: editingStudent.studentNumber,
@@ -985,23 +1061,30 @@ const StudentManager = () => {
             <Input
               label="이름"
               value={editingStudent.name}
-              onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
+              onChange={(e) =>
+                setEditingStudent({ ...editingStudent, name: e.target.value })
+              }
             />
             <Input
               label="번호"
               type="number"
-              value={editingStudent.studentNumber || ''}
-              onChange={(e) => setEditingStudent({ ...editingStudent, studentNumber: parseInt(e.target.value) })}
+              value={editingStudent.studentNumber || ""}
+              onChange={(e) =>
+                setEditingStudent({
+                  ...editingStudent,
+                  studentNumber: parseInt(e.target.value),
+                })
+              }
             />
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-300">
                 이메일 (읽기 전용)
               </label>
               <input
                 type="text"
                 value={editingStudent.email}
                 disabled
-                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-500"
+                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-gray-500"
               />
             </div>
           </div>

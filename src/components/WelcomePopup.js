@@ -1,22 +1,22 @@
 // src/components/WelcomePopup.js
 // 첫 접속 시 사용법 안내 팝업
 
-import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import { WELCOME_GUIDE } from '../utils/helpContent';
+import React, { useState, useEffect } from "react";
+import { X } from "lucide-react";
+import { WELCOME_GUIDE } from "../utils/helpContent";
 
-const STORAGE_KEY_NEVER = 'alchan_welcome_never_show';
-const STORAGE_KEY_TODAY = 'alchan_welcome_closed_date';
+const STORAGE_KEY_NEVER = "alchan_welcome_never_show";
+const STORAGE_KEY_TODAY = "alchan_welcome_closed_date";
 
 function shouldShowPopup() {
   try {
     // "다시 열지 않기" 체크
-    if (localStorage.getItem(STORAGE_KEY_NEVER) === 'true') return false;
+    if (localStorage.getItem(STORAGE_KEY_NEVER) === "true") return false;
 
     // "오늘은 닫기" 체크
     const closedDate = localStorage.getItem(STORAGE_KEY_TODAY);
     if (closedDate) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       if (closedDate === today) return false;
     }
 
@@ -39,13 +39,15 @@ export default function WelcomePopup() {
   if (!isVisible) return null;
 
   const handleNeverShow = () => {
-    try { localStorage.setItem(STORAGE_KEY_NEVER, 'true'); } catch {}
+    try {
+      localStorage.setItem(STORAGE_KEY_NEVER, "true");
+    } catch {}
     setIsVisible(false);
   };
 
   const handleCloseToday = () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       localStorage.setItem(STORAGE_KEY_TODAY, today);
     } catch {}
     setIsVisible(false);
@@ -88,7 +90,7 @@ export default function WelcomePopup() {
                 <h4 className="text-sm font-bold text-white mb-0.5">
                   {section.title}
                 </h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-300 leading-relaxed">
                   {section.description}
                 </p>
               </div>

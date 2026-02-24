@@ -1,4 +1,5 @@
 // src/utils/validation.js - 입력 검증 유틸리티
+import { getCurrencyUnit } from "./numberFormatter";
 
 /**
  * 금액 검증 및 정규화
@@ -12,7 +13,7 @@ export const validateAmount = (amount, options = {}) => {
     min = 0,
     max = Number.MAX_SAFE_INTEGER,
     allowZero = false,
-    fieldName = '금액'
+    fieldName = "금액",
   } = options;
 
   // 숫자로 변환
@@ -40,11 +41,15 @@ export const validateAmount = (amount, options = {}) => {
 
   // 범위 체크
   if (numAmount < min) {
-    throw new Error(`${fieldName}는 최소 ${min.toLocaleString()}원 이상이어야 합니다.`);
+    throw new Error(
+      `${fieldName}는 최소 ${min.toLocaleString()}${getCurrencyUnit()} 이상이어야 합니다.`,
+    );
   }
 
   if (numAmount > max) {
-    throw new Error(`${fieldName}는 최대 ${max.toLocaleString()}원을 초과할 수 없습니다.`);
+    throw new Error(
+      `${fieldName}는 최대 ${max.toLocaleString()}${getCurrencyUnit()}을 초과할 수 없습니다.`,
+    );
   }
 
   // 정수로 변환 (소수점 제거)
@@ -62,7 +67,7 @@ export const validateQuantity = (quantity, options = {}) => {
   const {
     min = 1,
     max = Number.MAX_SAFE_INTEGER,
-    fieldName = '수량'
+    fieldName = "수량",
   } = options;
 
   const numQuantity = Number(quantity);
@@ -97,11 +102,7 @@ export const validateQuantity = (quantity, options = {}) => {
  * @throws {Error} - 검증 실패 시
  */
 export const validatePercent = (percent, options = {}) => {
-  const {
-    min = 0,
-    max = 100,
-    fieldName = '퍼센트'
-  } = options;
+  const { min = 0, max = 100, fieldName = "퍼센트" } = options;
 
   const numPercent = Number(percent);
 
@@ -123,17 +124,21 @@ export const validatePercent = (percent, options = {}) => {
  * @param {string} fieldName - 필드 이름
  * @throws {Error} - 잔액 부족 시
  */
-export const validateSufficientBalance = (currentBalance, requiredAmount, fieldName = '잔액') => {
+export const validateSufficientBalance = (
+  currentBalance,
+  requiredAmount,
+  fieldName = "잔액",
+) => {
   const balance = Number(currentBalance);
   const required = Number(requiredAmount);
 
   if (isNaN(balance) || isNaN(required)) {
-    throw new Error('잔액 검증에 실패했습니다.');
+    throw new Error("잔액 검증에 실패했습니다.");
   }
 
   if (balance < required) {
     throw new Error(
-      `${fieldName}이 부족합니다. (보유: ${balance.toLocaleString()}원, 필요: ${required.toLocaleString()}원)`
+      `${fieldName}이 부족합니다. (보유: ${balance.toLocaleString()}${getCurrencyUnit()}, 필요: ${required.toLocaleString()}${getCurrencyUnit()})`,
     );
   }
 };
@@ -150,10 +155,10 @@ export const validateString = (value, options = {}) => {
     minLength = 0,
     maxLength = 1000,
     allowEmpty = false,
-    fieldName = '입력값'
+    fieldName = "입력값",
   } = options;
 
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     throw new Error(`${fieldName}는 문자열이어야 합니다.`);
   }
 
@@ -186,7 +191,7 @@ export const validateArray = (value, options = {}) => {
     minLength = 0,
     maxLength = Number.MAX_SAFE_INTEGER,
     allowEmpty = false,
-    fieldName = '배열'
+    fieldName = "배열",
   } = options;
 
   if (!Array.isArray(value)) {

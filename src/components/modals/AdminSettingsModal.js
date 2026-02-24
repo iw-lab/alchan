@@ -42,6 +42,7 @@ import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 // 데이터베이스 관리 컴포넌트
 import AdminDatabase from "../../pages/admin/AdminDatabase";
 
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { logger } from "../../utils/logger";
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
@@ -401,6 +402,50 @@ const AdminSettingsModal = ({
   const [tempTaxRate, setTempTaxRate] = useState("10");
   const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("3");
   const [salarySettingsLoading, setSalarySettingsLoading] = useState(false);
+
+  // 화폐 단위 설정
+  const { currencyUnit, setCurrencyUnitLocal } = useCurrency();
+  const [tempCurrencyUnit, setTempCurrencyUnit] = useState(currencyUnit);
+  const [currencyUnitSaving, setCurrencyUnitSaving] = useState(false);
+
+  // currencyUnit이 외부에서 변경되면 tempCurrencyUnit도 동기화
+  useEffect(() => {
+    setTempCurrencyUnit(currencyUnit);
+  }, [currencyUnit]);
+
+  const handleSaveCurrencyUnit = useCallback(async () => {
+    if (!db || !tempCurrencyUnit.trim()) {
+      alert("화폐 단위를 입력해주세요.");
+      return;
+    }
+
+    setCurrencyUnitSaving(true);
+    try {
+      const settingsRef = firebaseDoc(db, "settings", "mainSettings");
+      await firebaseUpdateDoc(settingsRef, {
+        currencyUnit: tempCurrencyUnit.trim(),
+        updatedAt: serverTimestamp(),
+      }).catch(async () => {
+        // 문서가 없으면 setDoc으로 생성
+        await firebaseSetDoc(
+          settingsRef,
+          {
+            currencyUnit: tempCurrencyUnit.trim(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      });
+
+      setCurrencyUnitLocal(tempCurrencyUnit.trim());
+      alert("화폐 단위가 저장되었습니다.");
+    } catch (error) {
+      logger.error("화폐 단위 저장 오류:", error);
+      alert("화폐 단위 저장 중 오류가 발생했습니다: " + error.message);
+    } finally {
+      setCurrencyUnitSaving(false);
+    }
+  }, [tempCurrencyUnit, setCurrencyUnitLocal]);
 
   // 최적화된 데이터 훅들
   const studentsQuery = useOptimizedStudents();
@@ -1656,7 +1701,7 @@ const AdminSettingsModal = ({
                 />
               </div>
               <div className="form-group">
-                <label>쿠폰 가치 (원):</label>
+                <label>쿠폰 가치 ({currencyUnit}):</label>
                 <input
                   type="number"
                   min="1"
@@ -1672,6 +1717,43 @@ const AdminSettingsModal = ({
                 className="admin-save-button"
               >
                 저장
+              </button>
+            </div>
+
+            {/* 화폐 단위 설정 섹션 */}
+            <div
+              className="admin-goal-settings section-card"
+              style={{ marginTop: "16px" }}
+            >
+              <h3>화폐 단위 설정</h3>
+              <p
+                className="admin-section-desc"
+                style={{ fontSize: "13px", opacity: 0.7, marginBottom: "12px" }}
+              >
+                앱에서 사용하는 화폐 단위를 변경합니다. (기본: 알찬)
+              </p>
+              <div className="form-group">
+                <label>화폐 단위:</label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={tempCurrencyUnit}
+                  onChange={(e) => setTempCurrencyUnit(e.target.value)}
+                  placeholder="예: 알찬, 원, 골드"
+                  className="admin-input"
+                />
+              </div>
+              <div
+                style={{ fontSize: "12px", opacity: 0.6, marginBottom: "8px" }}
+              >
+                미리보기: 1000{tempCurrencyUnit}, 1억 2000만 {tempCurrencyUnit}
+              </div>
+              <button
+                onClick={handleSaveCurrencyUnit}
+                className="admin-save-button"
+                disabled={currencyUnitSaving || !tempCurrencyUnit.trim()}
+              >
+                {currencyUnitSaving ? "저장 중..." : "화폐 단위 저장"}
               </button>
             </div>
           </div>

@@ -2,11 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  db,
-  processSettlement,
-  processFineTransaction,
-} from "../../firebase";
+import { db, processSettlement, processFineTransaction } from "../../firebase";
 
 import "./Police.css";
 import SubmitReport from "./SubmitReport";
@@ -35,14 +31,13 @@ import {
   limit,
 } from "firebase/firestore";
 
-
 // --- Helper Components ---
 
 // EditComplaintModal: 고소장 수정 모달
 const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
   const [reason, setReason] = useState(complaint.reason);
   const [desiredResolution, setDesiredResolution] = useState(
-    complaint.desiredResolution
+    complaint.desiredResolution,
   );
   const [defendantId, setDefendantId] = useState(complaint.defendantId);
 
@@ -116,7 +111,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
         </div>
       </div>
     </div>,
-    document.getElementById("modal-root") || document.body
+    document.getElementById("modal-root") || document.body,
   );
 };
 
@@ -134,10 +129,7 @@ const JudgmentModal = ({ complaint, onSave, onCancel }) => {
 
   return ReactDOM.createPortal(
     <div className="modal-overlay" onClick={onCancel}>
-      <div
-        className="modal-container"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>판결문 작성 (ID: {complaint.id.slice(-6)})</h3>
           <button className="close-button" onClick={onCancel}>
@@ -169,7 +161,7 @@ const JudgmentModal = ({ complaint, onSave, onCancel }) => {
         </div>
       </div>
     </div>,
-    document.getElementById("modal-root") || document.body
+    document.getElementById("modal-root") || document.body,
   );
 };
 
@@ -185,10 +177,14 @@ const SettlementModal = ({
 
   const [amount, setAmount] = useState(safeComplaint.amount?.toString() || "");
   const [reason, setReason] = useState(
-    safeComplaint.resolution || "상호 합의에 따른 합의금 지급"
+    safeComplaint.resolution || "상호 합의에 따른 합의금 지급",
   );
-  const [senderId, setSenderId] = useState(safeComplaint.defendantId || safeComplaint.reportedUserId || "");
-  const [recipientId, setRecipientId] = useState(safeComplaint.complainantId || safeComplaint.reporterId || "");
+  const [senderId, setSenderId] = useState(
+    safeComplaint.defendantId || safeComplaint.reportedUserId || "",
+  );
+  const [recipientId, setRecipientId] = useState(
+    safeComplaint.complainantId || safeComplaint.reporterId || "",
+  );
   const auth = useAuth();
   const currentAdminId = auth.userDoc?.id;
 
@@ -197,7 +193,7 @@ const SettlementModal = ({
     logger.log("SettlementModal이 렌더링됨", {
       complaintId: safeComplaint.id,
       senderId,
-      recipientId
+      recipientId,
     });
   }, [safeComplaint.id, senderId, recipientId]);
 
@@ -207,7 +203,7 @@ const SettlementModal = ({
       amount,
       senderId,
       recipientId,
-      reason
+      reason,
     });
 
     if (!safeComplaint.id) {
@@ -234,7 +230,7 @@ const SettlementModal = ({
         senderId,
         recipientId,
         reason,
-        currentAdminId
+        currentAdminId,
       );
       if (success) {
         // 성공하면 모달이 부모 컴포넌트에서 닫힘
@@ -250,22 +246,16 @@ const SettlementModal = ({
 
   // Portal 대신 직접 렌더링으로 변경하여 z-index 문제 해결
   return (
-    <div
-      className="settlement-modal-overlay"
-      onClick={onCancel}
-    >
+    <div className="settlement-modal-overlay" onClick={onCancel}>
       <div
         className="settlement-modal-safe-container"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="settlement-modal-header">
           <h3>
-            합의금 지급 처리 (사건번호: {safeComplaint.id?.slice(-6) || '없음'})
+            합의금 지급 처리 (사건번호: {safeComplaint.id?.slice(-6) || "없음"})
           </h3>
-          <button
-            className="close-button"
-            onClick={onCancel}
-          >
+          <button className="close-button" onClick={onCancel}>
             &times;
           </button>
         </div>
@@ -343,16 +333,10 @@ const SettlementModal = ({
         </div>
 
         <div className="settlement-modal-footer">
-          <button
-            onClick={onCancel}
-            className="modal-button cancel"
-          >
+          <button onClick={onCancel} className="modal-button cancel">
             취소
           </button>
-          <button
-            onClick={handleSave}
-            className="modal-button process"
-          >
+          <button onClick={handleSave} className="modal-button process">
             지급 처리
           </button>
         </div>
@@ -373,8 +357,7 @@ const defaultReasons = [
 ];
 
 // 국세청과 동일한 nationalTreasuries 컬렉션 사용
-const getClassTreasuryPath = (classCode) =>
-  `nationalTreasuries/${classCode}`;
+const getClassTreasuryPath = (classCode) => `nationalTreasuries/${classCode}`;
 
 const PoliceStation = () => {
   const auth = useAuth();
@@ -418,7 +401,7 @@ const PoliceStation = () => {
       const user = users.find((u) => u.id === userId);
       return user?.name || user?.displayName || userId || "알 수 없음";
     },
-    [users]
+    [users],
   );
 
   const formatDate = (dateInput) => {
@@ -446,10 +429,7 @@ const PoliceStation = () => {
   // Users data from AuthContext or fallback to polling
   const usersQuery = useMemo(() => {
     if (!classCode || auth.classmates?.length > 0) return null;
-    return query(
-      collection(db, "users"),
-      where("classCode", "==", classCode)
-    );
+    return query(collection(db, "users"), where("classCode", "==", classCode));
   }, [classCode, auth.classmates]);
 
   const { data: polledUsers, loading: pollingUsersLoading } = usePolling(
@@ -465,7 +445,7 @@ const PoliceStation = () => {
       interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (사용자 목록은 거의 안 바뀜)
       enabled: !!usersQuery && !auth.loading,
       deps: [classCode, auth.loading, usersQuery],
-    }
+    },
   );
 
   // AuthContext의 classmates 데이터 활용 (중복 읽기 방지)
@@ -479,12 +459,12 @@ const PoliceStation = () => {
     if (auth.classmates && auth.classmates.length > 0) {
       // 현재 사용자 포함
       const allUsers = auth.classmates;
-      if (currentUser && !allUsers.find(u => u.id === currentUser.id)) {
+      if (currentUser && !allUsers.find((u) => u.id === currentUser.id)) {
         allUsers.push({
           id: currentUser.id,
           name: currentUser.name,
           displayName: currentUser.displayName,
-          ...currentUser
+          ...currentUser,
         });
       }
       setUsers(allUsers);
@@ -499,7 +479,14 @@ const PoliceStation = () => {
     } else {
       setUsersLoading(pollingUsersLoading);
     }
-  }, [auth.loading, auth.classmates, classCode, currentUser, polledUsers, pollingUsersLoading]);
+  }, [
+    auth.loading,
+    auth.classmates,
+    classCode,
+    currentUser,
+    polledUsers,
+    pollingUsersLoading,
+  ]);
 
   // Jobs polling - for police chief check
   const jobsQuery = useMemo(() => {
@@ -521,16 +508,16 @@ const PoliceStation = () => {
       interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
-    }
+    },
   );
 
   // Check if user is police chief
   const isPoliceChief = useMemo(() => {
     if (!currentUser?.selectedJobIds || !jobs) return false;
-    const selectedJobs = jobs.filter(job =>
-      currentUser.selectedJobIds.includes(job.id)
+    const selectedJobs = jobs.filter((job) =>
+      currentUser.selectedJobIds.includes(job.id),
     );
-    return selectedJobs.some(job => job.title === '경찰청장');
+    return selectedJobs.some((job) => job.title === "경찰청장");
   }, [currentUser?.selectedJobIds, jobs]);
 
   const hasPoliceAdminRights = isSystemAdmin || isPoliceChief;
@@ -546,7 +533,7 @@ const PoliceStation = () => {
       if (!treasuryRef) return 0;
       const docSnap = await getDoc(treasuryRef);
       // NationalTaxService.js와 동일하게 totalAmount 필드 사용
-      const balance = docSnap.exists() ? (docSnap.data().totalAmount || 0) : 0;
+      const balance = docSnap.exists() ? docSnap.data().totalAmount || 0 : 0;
       if (!docSnap.exists() && hasPoliceAdminRights) {
         // NationalTaxService.js의 DEFAULT_TREASURY_DATA와 동일한 구조로 생성
         setDoc(treasuryRef, {
@@ -562,7 +549,7 @@ const PoliceStation = () => {
           createdAt: serverTimestamp(),
           lastUpdated: serverTimestamp(),
         }).catch((err) =>
-          logger.error("Error creating national treasury:", err)
+          logger.error("Error creating national treasury:", err),
         );
       }
       return balance;
@@ -571,18 +558,23 @@ const PoliceStation = () => {
       interval: 15 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 15분 (국고 데이터는 자주 안 바뀜)
       enabled: !!classCode && !auth.loading,
       deps: [classCode, auth.loading, hasPoliceAdminRights],
-    }
+    },
   );
 
   // Approved laws polling
   const lawsQuery = useMemo(() => {
     if (!classCode) return null;
-    const lawsRef = collection(db, "classes", classCode, "nationalAssemblyLaws");
+    const lawsRef = collection(
+      db,
+      "classes",
+      classCode,
+      "nationalAssemblyLaws",
+    );
     return query(
       lawsRef,
       where("finalStatus", "==", "final_approved"),
       orderBy("timestamp", "desc"),
-      limit(50)
+      limit(50),
     );
   }, [classCode]);
 
@@ -599,7 +591,7 @@ const PoliceStation = () => {
       interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (법안은 자주 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
-    }
+    },
   );
 
   // Custom report reasons polling
@@ -610,7 +602,8 @@ const PoliceStation = () => {
 
   const { data: customReportReasons, loading: reasonsLoading } = usePolling(
     async () => {
-      if (!customReasonsDocRef) return [...defaultReasons.filter((r) => !r.isLaw)];
+      if (!customReasonsDocRef)
+        return [...defaultReasons.filter((r) => !r.isLaw)];
       const docSnap = await getDoc(customReasonsDocRef);
       let reasons;
       if (docSnap.exists() && docSnap.data().reasons) {
@@ -623,7 +616,7 @@ const PoliceStation = () => {
             updatedAt: serverTimestamp(),
             classCode: classCode,
           }).catch((err) =>
-            logger.error("Error creating default custom reasons:", err)
+            logger.error("Error creating default custom reasons:", err),
           );
         }
       }
@@ -633,7 +626,7 @@ const PoliceStation = () => {
       interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (신고 사유는 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode, hasPoliceAdminRights],
-    }
+    },
   );
 
   useEffect(() => {
@@ -661,7 +654,11 @@ const PoliceStation = () => {
     return query(reportsRef, orderBy("submitDate", "desc"), limit(100));
   }, [classCode]);
 
-  const { data: reports, loading: reportsLoading, refetch: refetchReports } = usePolling(
+  const {
+    data: reports,
+    loading: reportsLoading,
+    refetch: refetchReports,
+  } = usePolling(
     async () => {
       if (!reportsQuery) return [];
       const querySnapshot = await getDocs(reportsQuery);
@@ -686,7 +683,7 @@ const PoliceStation = () => {
       interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (신고 목록)
       enabled: !!classCode,
       deps: [classCode],
-    }
+    },
   );
 
   const handleTabChange = (newTab) => {
@@ -708,7 +705,7 @@ const PoliceStation = () => {
       return;
     }
     const reasonInfo = reportReasons.find(
-      (r) => r.reason === newReportData.reason
+      (r) => r.reason === newReportData.reason,
     );
     const reportsRef = collection(db, "classes", classCode, "policeReports");
     const newReport = {
@@ -794,7 +791,7 @@ const PoliceStation = () => {
   const handleProcessReport = async (
     id,
     processingAmount,
-    processingReason
+    processingReason,
   ) => {
     logger.log("handleProcessReport 호출됨:", {
       id,
@@ -826,8 +823,9 @@ const PoliceStation = () => {
 
     let finalResolution = processingReason || "벌금 부과 처리";
     if (report.isLawReport && report.description) {
-      finalResolution = `${processingReason || "법안 위반"}: ${report.description
-        }`;
+      finalResolution = `${processingReason || "법안 위반"}: ${
+        report.description
+      }`;
     }
 
     const reportRef = doc(db, "classes", classCode, "policeReports", id);
@@ -842,7 +840,7 @@ const PoliceStation = () => {
           reportedUserId,
           classCode,
           numericProcessingAmount,
-          reasonForLog
+          reasonForLog,
         );
 
         await updateDoc(reportRef, {
@@ -888,9 +886,16 @@ const PoliceStation = () => {
     senderId,
     recipientId,
     reason,
-    adminId
+    adminId,
   ) => {
-    logger.log("handleSendSettlement 호출됨 (Cloud Function):", { reportId, amount, senderId, recipientId, reason, adminId });
+    logger.log("handleSendSettlement 호출됨 (Cloud Function):", {
+      reportId,
+      amount,
+      senderId,
+      recipientId,
+      reason,
+      adminId,
+    });
 
     if (!hasPoliceAdminRights || !classCode) {
       alert("권한이 없거나 학급 정보가 없습니다.");
@@ -905,11 +910,13 @@ const PoliceStation = () => {
         senderId,
         recipientId,
         reason,
-        adminId // adminId is the uid of the caller
+        adminId, // adminId is the uid of the caller
       });
 
       if (result.success) {
-        alert(result.message || "합의금 지급 처리가 성공적으로 완료되었습니다.");
+        alert(
+          result.message || "합의금 지급 처리가 성공적으로 완료되었습니다.",
+        );
         refetchReports(); // Refresh the reports list
         setIsSettlementModalOpen(false);
         setSettlementComplaint(null);
@@ -919,7 +926,7 @@ const PoliceStation = () => {
       }
     } catch (error) {
       logger.error("합의금 처리 실패 (Cloud Function):", error);
-      alert(`오류: ${error.message || '합의금 처리 중 오류가 발생했습니다.'}`);
+      alert(`오류: ${error.message || "합의금 처리 중 오류가 발생했습니다."}`);
       return false;
     }
   };
@@ -934,7 +941,7 @@ const PoliceStation = () => {
       "classes",
       classCode,
       "policeReports",
-      updatedComplaint.id
+      updatedComplaint.id,
     );
     try {
       await updateDoc(reportRef, {
@@ -963,7 +970,7 @@ const PoliceStation = () => {
       "classes",
       classCode,
       "policeReports",
-      complaintId
+      complaintId,
     );
     try {
       await updateDoc(reportRef, {
@@ -987,7 +994,7 @@ const PoliceStation = () => {
           db,
           "classes",
           classCode,
-          "policeReports"
+          "policeReports",
         );
         const snapshot = await getDocs(reportsRef);
         const batch = writeBatch(db);
@@ -1012,7 +1019,7 @@ const PoliceStation = () => {
           "classes",
           classCode,
           "policeReports",
-          idToDelete
+          idToDelete,
         );
         await deleteDoc(reportRef);
         alert("신고 기록 삭제 완료.");
@@ -1041,7 +1048,7 @@ const PoliceStation = () => {
       !Array.isArray(updatedCustomReasons) ||
       updatedCustomReasons.some(
         (r) =>
-          typeof r !== "object" || !r.reason || typeof r.amount !== "number"
+          typeof r !== "object" || !r.reason || typeof r.amount !== "number",
       )
     ) {
       alert("신고 사유 데이터 형식 오류.");
@@ -1053,7 +1060,7 @@ const PoliceStation = () => {
         "classes",
         classCode,
         "policeReportReasons",
-        "custom"
+        "custom",
       );
       await setDoc(customReasonsDocRef, {
         reasons: updatedCustomReasons,
@@ -1071,20 +1078,32 @@ const PoliceStation = () => {
     logger.log("handleOpenSettlementModal 호출됨:", reportToProcess);
 
     if (!reportToProcess || !reportToProcess.id) {
-      logger.error("합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.", reportToProcess);
-      alert("오류: 사건 정보를 찾지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.");
+      logger.error(
+        "합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.",
+        reportToProcess,
+      );
+      alert(
+        "오류: 사건 정보를 찾지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.",
+      );
       return;
     }
 
     const mappedReport = {
       ...reportToProcess,
-      complainantId: reportToProcess.complainantId || reportToProcess.reporterId,
-      defendantId: reportToProcess.defendantId || reportToProcess.reportedUserId,
+      complainantId:
+        reportToProcess.complainantId || reportToProcess.reporterId,
+      defendantId:
+        reportToProcess.defendantId || reportToProcess.reportedUserId,
     };
 
     if (!mappedReport.complainantId || !mappedReport.defendantId) {
-      logger.error("합의 처리 오류: 고소인 또는 피고소인 정보가 누락되었습니다.", mappedReport);
-      alert("오류: 고소인 또는 피고소인 정보가 없는 사건은 처리할 수 없습니다.");
+      logger.error(
+        "합의 처리 오류: 고소인 또는 피고소인 정보가 누락되었습니다.",
+        mappedReport,
+      );
+      alert(
+        "오류: 고소인 또는 피고소인 정보가 없는 사건은 처리할 수 없습니다.",
+      );
       return;
     }
 
@@ -1107,14 +1126,14 @@ const PoliceStation = () => {
 
   const statusReports = useMemo(() => {
     return reportsWithNames.filter(
-      (r) => r.status === "submitted" || r.status === "accepted"
+      (r) => r.status === "submitted" || r.status === "accepted",
     );
   }, [reportsWithNames]);
 
   const resultReports = useMemo(() => {
     return reportsWithNames
       .filter(
-        (r) => r.status.startsWith("resolved_") || r.status === "dismissed"
+        (r) => r.status.startsWith("resolved_") || r.status === "dismissed",
       )
       .sort((a, b) => {
         const dateA = a.resolutionDate || a.submitDate;
@@ -1134,7 +1153,7 @@ const PoliceStation = () => {
   if (auth.loading) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+        <div className="p-8 text-center text-gray-400">
           사용자 인증 정보를 확인 중입니다...
         </div>
       </div>
@@ -1144,7 +1163,7 @@ const PoliceStation = () => {
   if (!currentUser) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+        <div className="p-8 text-center text-gray-400">
           로그인이 필요합니다. 경찰서 기능을 사용하려면 다시 로그인해주세요.
         </div>
       </div>
@@ -1154,9 +1173,9 @@ const PoliceStation = () => {
   if (!classCode && !hasPoliceAdminRights) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-          경찰서 기능을 사용하려면 학급 코드가 사용자 정보에 설정되어 있어야 합니다.
-          프로필에서 학급 코드를 설정해주세요.
+        <div className="p-8 text-center text-gray-400">
+          경찰서 기능을 사용하려면 학급 코드가 사용자 정보에 설정되어 있어야
+          합니다. 프로필에서 학급 코드를 설정해주세요.
         </div>
       </div>
     );
@@ -1173,7 +1192,7 @@ const PoliceStation = () => {
   ) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+        <div className="p-8 text-center text-gray-400">
           데이터를 불러오는 중...
         </div>
       </div>
@@ -1275,9 +1294,9 @@ const PoliceStation = () => {
                 classCode
                   ? handleDeleteAllReports
                   : () =>
-                    alert(
-                      "모든 신고 삭제는 학급 코드가 설정된 후 가능합니다."
-                    )
+                      alert(
+                        "모든 신고 삭제는 학급 코드가 설정된 후 가능합니다.",
+                      )
               }
             />
             <div className="law-reasons-info">
@@ -1330,8 +1349,8 @@ const PoliceStation = () => {
             lawsLoading ||
             jobsLoading ||
             reasonsLoading))) && (
-          <div className="loading-overlay-transparent">데이터 동기화 중...</div>
-        )}
+        <div className="loading-overlay-transparent">데이터 동기화 중...</div>
+      )}
       <div className="police-header-container">
         <h1 className="police-header">
           경찰서 {classCode && `(학급: ${classCode})`}
@@ -1349,8 +1368,9 @@ const PoliceStation = () => {
           {hasPoliceAdminRights && (
             <button
               onClick={() => handleTabChange("admin")}
-              className={`admin-settings-button ${activeTab === "admin" ? "active" : ""
-                }`}
+              className={`admin-settings-button ${
+                activeTab === "admin" ? "active" : ""
+              }`}
               title="관리 설정 열기"
             >
               관리 설정
@@ -1366,22 +1386,25 @@ const PoliceStation = () => {
               <div className="police-tabs">
                 <button
                   onClick={() => handleTabChange("submit")}
-                  className={`police-tab-button ${activeTab === "submit" ? "active" : ""
-                    }`}
+                  className={`police-tab-button ${
+                    activeTab === "submit" ? "active" : ""
+                  }`}
                 >
                   신고하기
                 </button>
                 <button
                   onClick={() => handleTabChange("status")}
-                  className={`police-tab-button ${activeTab === "status" ? "active" : ""
-                    }`}
+                  className={`police-tab-button ${
+                    activeTab === "status" ? "active" : ""
+                  }`}
                 >
                   처리 현황 ({statusReports.length})
                 </button>
                 <button
                   onClick={() => handleTabChange("results")}
-                  className={`police-tab-button ${activeTab === "results" ? "active" : ""
-                    }`}
+                  className={`police-tab-button ${
+                    activeTab === "results" ? "active" : ""
+                  }`}
                 >
                   처리 결과 ({resultReports.length})
                 </button>
@@ -1413,8 +1436,9 @@ const PoliceStation = () => {
           }}
           users={users.filter(
             (u) =>
-              u.id !== (editingComplaint.complainantId || editingComplaint.reporterId) &&
-              u.classCode === classCode
+              u.id !==
+                (editingComplaint.complainantId ||
+                  editingComplaint.reporterId) && u.classCode === classCode,
           )}
         />
       )}

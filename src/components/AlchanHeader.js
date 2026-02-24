@@ -26,10 +26,10 @@ import {
   getUserAchievements,
   getAchievementById,
 } from "../utils/achievementSystem";
-import { formatKoreanNumber } from "../utils/numberFormatter";
+import { formatKoreanNumber, getCurrencyUnit } from "../utils/numberFormatter";
 
-// 금액 포맷 - numberFormatter.js 사용
-const formatMoney = (amount) => formatKoreanNumber(amount, "");
+// 금액 포맷 - numberFormatter.js 사용 (화폐 단위 포함)
+const formatMoney = (amount) => formatKoreanNumber(amount, getCurrencyUnit());
 
 // 모달 컴포넌트
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -376,7 +376,7 @@ const AlchanHeader = memo(
                   현금
                 </p>
                 <p className="text-sm font-bold text-white truncate">
-                  {formatMoney(userDoc?.cash || 0)}원
+                  {formatMoney(userDoc?.cash || 0)}
                 </p>
               </div>
             </div>
@@ -434,7 +434,7 @@ const AlchanHeader = memo(
                   현금
                 </div>
                 <div className="text-[13px] font-bold whitespace-nowrap leading-tight">
-                  {formatMoney(userDoc?.cash || 0)}원
+                  {formatMoney(userDoc?.cash || 0)}
                 </div>
               </div>
             </div>
@@ -542,7 +542,7 @@ const AlchanHeader = memo(
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-slate-400">현금</span>
                       <span className="font-bold text-emerald-400">
-                        {formatMoney(userDoc?.cash || 0)}원
+                        {formatMoney(userDoc?.cash || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">

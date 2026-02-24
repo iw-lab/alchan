@@ -5,6 +5,7 @@ import React, { useEffect, Suspense, lazy, Component } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
+import { CurrencyProvider } from "./contexts/CurrencyContext";
 // 🔥 [최적화] ItemProvider는 AlchanLayout으로 이동 (로그인 후에만 마운트)
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SkeletonPage } from "./components/ui/Skeleton";
@@ -156,17 +157,19 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
-            <Router>
-              <Suspense fallback={<SkeletonPage />}>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/privacy" element={<PrivacyPolicy />} />
-                  <Route path="/consent-form" element={<ConsentForm />} />
-                  <Route path="/*" element={<AlchanLayout />} />
-                </Routes>
-              </Suspense>
-            </Router>
+            <CurrencyProvider>
+              {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
+              <Router>
+                <Suspense fallback={<SkeletonPage />}>
+                  <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/consent-form" element={<ConsentForm />} />
+                    <Route path="/*" element={<AlchanLayout />} />
+                  </Routes>
+                </Suspense>
+              </Router>
+            </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

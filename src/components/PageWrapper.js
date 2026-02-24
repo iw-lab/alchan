@@ -122,7 +122,7 @@ export const EmptyState = ({ icon: Icon, title, description, action }) => (
       <h3 className="text-lg font-bold text-slate-300 mb-2">{title}</h3>
     )}
     {description && (
-      <p className="text-slate-500 font-medium mb-6 max-w-md">{description}</p>
+      <p className="text-slate-400 font-medium mb-6 max-w-md">{description}</p>
     )}
     {action}
   </div>
@@ -316,11 +316,11 @@ export const InfoBadge = ({
   className = "",
 }) => {
   const variants = {
-    default: "bg-slate-100 text-slate-700",
-    primary: "bg-indigo-100 text-indigo-700",
-    success: "bg-emerald-100 text-emerald-700",
-    warning: "bg-amber-100 text-amber-700",
-    danger: "bg-red-100 text-red-700",
+    default: "bg-slate-800 text-slate-300",
+    primary: "bg-indigo-900/50 text-indigo-300",
+    success: "bg-emerald-900/50 text-emerald-300",
+    warning: "bg-amber-900/50 text-amber-300",
+    danger: "bg-red-900/50 text-red-300",
   };
 
   return (
@@ -343,10 +343,10 @@ export const AlertBanner = ({
   className = "",
 }) => {
   const variants = {
-    info: "bg-blue-50 border-blue-200 text-blue-800",
-    success: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    warning: "bg-amber-50 border-amber-200 text-amber-800",
-    danger: "bg-red-50 border-red-200 text-red-800",
+    info: "bg-blue-900/30 border-blue-500/30 text-blue-300",
+    success: "bg-emerald-900/30 border-emerald-500/30 text-emerald-300",
+    warning: "bg-amber-900/30 border-amber-500/30 text-amber-300",
+    danger: "bg-red-900/30 border-red-500/30 text-red-300",
   };
 
   return (
@@ -552,10 +552,10 @@ export const MoneyDisplay = ({
     <span
       className={`font-bold tabular-nums ${sizes[size]} ${
         isNegative
-          ? "text-red-500"
+          ? "text-red-400"
           : isPositive && showSign
-            ? "text-emerald-500"
-            : "text-slate-900"
+            ? "text-emerald-400"
+            : "text-white"
       } ${className}`}
     >
       {showSign && isPositive && "+"}

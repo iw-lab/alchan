@@ -735,7 +735,7 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
 
   const settings = settingsDoc.data();
 
-  if (!settings.enabled) {
+  if (!settings.enabled && !forceEventId) {
     logger.info(`[경제이벤트] ${classCode}: 이벤트 비활성화됨 - 건너뜀`);
     return null;
   }

@@ -14,6 +14,7 @@ import {
 import { PageContainer, PageHeader } from "../../components/PageWrapper";
 import { Landmark, ChevronLeft } from "lucide-react";
 import { AlchanLoading } from "../../components/AlchanLayout";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import "./Banking.css";
 import { logger } from "../../utils/logger";
 
@@ -49,6 +50,7 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
 
 const Banking = () => {
   const auth = useAuth();
+  const { currencyUnit } = useCurrency();
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState("");
   const [activeView, setActiveView] = useState("parking");
@@ -532,7 +534,9 @@ const Banking = () => {
                         <th style={{ width: "25%" }}>상품명</th>
                         <th style={{ width: "15%" }}>기간(일)</th>
                         <th style={{ width: "18%" }}>일 이율(%)</th>
-                        <th style={{ width: "18%" }}>최소금액(원)</th>
+                        <th style={{ width: "18%" }}>
+                          최소금액({currencyUnit})
+                        </th>
                         <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>
@@ -674,7 +678,9 @@ const Banking = () => {
                         <th style={{ width: "25%" }}>상품명</th>
                         <th style={{ width: "15%" }}>기간(일)</th>
                         <th style={{ width: "18%" }}>일 이율(%)</th>
-                        <th style={{ width: "18%" }}>최소 월납입(원)</th>
+                        <th style={{ width: "18%" }}>
+                          최소 월납입({currencyUnit})
+                        </th>
                         <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>
@@ -816,7 +822,9 @@ const Banking = () => {
                         <th style={{ width: "25%" }}>상품명</th>
                         <th style={{ width: "15%" }}>기간(일)</th>
                         <th style={{ width: "18%" }}>일 이율(%)</th>
-                        <th style={{ width: "18%" }}>최대 대출액(원)</th>
+                        <th style={{ width: "18%" }}>
+                          최대 대출액({currencyUnit})
+                        </th>
                         <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>

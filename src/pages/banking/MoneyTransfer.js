@@ -2,20 +2,22 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { adminCashAction } from "../../services/database";
 import "./MoneyTransfer.css";
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
-import { logger } from '../../utils/logger';
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import { logger } from "../../utils/logger";
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
-  const { 
-    userDoc, 
-    allClassMembers, 
+  const {
+    userDoc,
+    allClassMembers,
     loading: authLoading,
     setUserDoc,
-    setAllClassMembers
+    setAllClassMembers,
   } = useAuth();
+  const { currencyUnit } = useCurrency();
 
   // 컴포넌트 내부 상태 관리
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -54,35 +56,38 @@ function MoneyTransfer() {
     setSelectedUsers((prevSelected) =>
       prevSelected.includes(userId)
         ? prevSelected.filter((id) => id !== userId)
-        : [...prevSelected, userId]
+        : [...prevSelected, userId],
     );
   };
 
   // 전체 선택 핸들러
   const handleSelectAll = () => {
-    setSelectAll(prev => {
+    setSelectAll((prev) => {
       const newSelectAll = !prev;
       setSelectedUsers(newSelectAll ? users.map((user) => user.id) : []);
       return newSelectAll;
     });
   };
-  
+
   // 미리보기 금액 계산 함수
-  const calculatePreviewAmount = useCallback((userCash, inputValue, applyTax = false) => {
-    let baseAmount;
-    if (amountType === "percentage") {
-      baseAmount = Math.floor((userCash * Number(inputValue)) / 100);
-    } else {
-      baseAmount = Number(inputValue);
-    }
+  const calculatePreviewAmount = useCallback(
+    (userCash, inputValue, applyTax = false) => {
+      let baseAmount;
+      if (amountType === "percentage") {
+        baseAmount = Math.floor((userCash * Number(inputValue)) / 100);
+      } else {
+        baseAmount = Number(inputValue);
+      }
 
-    if (applyTax && action === "send") {
-      const taxAmount = Math.floor((baseAmount * taxRate) / 100);
-      return baseAmount - taxAmount;
-    }
+      if (applyTax && action === "send") {
+        const taxAmount = Math.floor((baseAmount * taxRate) / 100);
+        return baseAmount - taxAmount;
+      }
 
-    return baseAmount;
-  }, [amountType, action, taxRate]);
+      return baseAmount;
+    },
+    [amountType, action, taxRate],
+  );
 
   // 폼 제출 (보내기/가져오기 실행) 핸들러
   const handleSubmit = async (e) => {
@@ -94,10 +99,12 @@ function MoneyTransfer() {
 
     const inputValue = Number(amount);
     if (inputValue <= 0) {
-      setError(`${amountType === 'percentage' ? '퍼센트' : '금액'}은 0보다 커야 합니다.`);
+      setError(
+        `${amountType === "percentage" ? "퍼센트" : "금액"}은 0보다 커야 합니다.`,
+      );
       return;
     }
-    if (amountType === 'percentage' && (inputValue > 100 || inputValue < 0)) {
+    if (amountType === "percentage" && (inputValue > 100 || inputValue < 0)) {
       setError("퍼센트는 0과 100 사이의 값이어야 합니다.");
       return;
     }
@@ -107,8 +114,10 @@ function MoneyTransfer() {
     setError("");
 
     try {
-      const targetUsersData = users.filter(user => selectedUsers.includes(user.id));
-      
+      const targetUsersData = users.filter((user) =>
+        selectedUsers.includes(user.id),
+      );
+
       // ✨ DB 작업 실행하고 서버로부터 실제 결과 받기
       const { count, totalProcessed, updatedUsers } = await adminCashAction({
         adminName,
@@ -124,15 +133,17 @@ function MoneyTransfer() {
       // ✨ 서버에서 받은 '진짜' 데이터로 로컬 상태 업데이트
       if (updatedUsers && updatedUsers.length > 0) {
         // 1. 대상 사용자들의 잔액 업데이트
-        setAllClassMembers(currentMembers =>
-          currentMembers.map(member => {
-            const updatedInfo = updatedUsers.find(u => u.id === member.id);
-            return updatedInfo ? { ...member, cash: updatedInfo.newCash } : member;
-          })
+        setAllClassMembers((currentMembers) =>
+          currentMembers.map((member) => {
+            const updatedInfo = updatedUsers.find((u) => u.id === member.id);
+            return updatedInfo
+              ? { ...member, cash: updatedInfo.newCash }
+              : member;
+          }),
         );
 
         // 2. 관리자 본인의 잔액 업데이트
-        setUserDoc(currentAdminDoc => {
+        setUserDoc((currentAdminDoc) => {
           const currentAdminCash = Number(currentAdminDoc.cash || 0);
           let newAdminCash;
           if (action === "send") {
@@ -150,17 +161,21 @@ function MoneyTransfer() {
       }
 
       // 성공 메시지 설정
-      const actionText = action === "send" ? "보내기" : (takeMode === "toMe" ? "가져오기" : "없애기");
+      const actionText =
+        action === "send"
+          ? "보내기"
+          : takeMode === "toMe"
+            ? "가져오기"
+            : "없애기";
       setMessage(
-        `${count}명에게 ${amountType === 'percentage' ? `${inputValue}%` : `${inputValue.toLocaleString()}원`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}원 처리${action === 'send' && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ''})`
+        `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})`,
       );
-      
+
       setAmount("");
       setSelectedUsers([]);
       setSelectAll(false);
 
       setTimeout(() => setMessage(""), 3000);
-
     } catch (err) {
       logger.error("처리 중 오류 발생:", err);
       setError(`오류가 발생했습니다: ${err.message}`);
@@ -171,15 +186,15 @@ function MoneyTransfer() {
       setIsProcessing(false);
     }
   };
-  
+
   const previewAmounts = useMemo(() => {
     if (!amount || selectedUsers.length === 0) return {};
     const preview = {};
-    selectedUsers.forEach(userId => {
-      const user = users.find(u => u.id === userId);
+    selectedUsers.forEach((userId) => {
+      const user = users.find((u) => u.id === userId);
       if (user) {
         const userCash = Number(user.cash || 0);
-        const applyTax = action === 'send';
+        const applyTax = action === "send";
         preview[userId] = calculatePreviewAmount(userCash, amount, applyTax);
       }
     });
@@ -193,7 +208,10 @@ function MoneyTransfer() {
         <div className="admin-info">
           <span className="admin-label">관리자</span>
           <span className="admin-name">{adminName || "로딩 중..."}</span>
-          <span className="admin-cash">현금: {(userDoc?.cash || 0).toLocaleString()}원</span>
+          <span className="admin-cash">
+            현금: {(userDoc?.cash || 0).toLocaleString()}
+            {currencyUnit}
+          </span>
         </div>
       </div>
 
@@ -202,10 +220,18 @@ function MoneyTransfer() {
 
       <form onSubmit={handleSubmit} className="transfer-form">
         <div className="action-selector">
-          <button type="button" className={`action-btn ${action === "send" ? "active send" : ""}`} onClick={() => setAction("send")}>
+          <button
+            type="button"
+            className={`action-btn ${action === "send" ? "active send" : ""}`}
+            onClick={() => setAction("send")}
+          >
             <span className="icon">📤</span> 보내기
           </button>
-          <button type="button" className={`action-btn ${action === "take" ? "active take" : ""}`} onClick={() => setAction("take")}>
+          <button
+            type="button"
+            className={`action-btn ${action === "take" ? "active take" : ""}`}
+            onClick={() => setAction("take")}
+          >
             <span className="icon">📥</span> 가져오기
           </button>
         </div>
@@ -214,12 +240,14 @@ function MoneyTransfer() {
           <div className="take-mode-section">
             <h4>가져오기 옵션</h4>
             <div className="take-mode-selector">
-              <label className={`mode-option ${takeMode === 'toMe' ? 'active' : ''}`}>
+              <label
+                className={`mode-option ${takeMode === "toMe" ? "active" : ""}`}
+              >
                 <input
                   type="radio"
                   name="takeMode"
                   value="toMe"
-                  checked={takeMode === 'toMe'}
+                  checked={takeMode === "toMe"}
                   onChange={(e) => setTakeMode(e.target.value)}
                 />
                 <span className="radio-custom"></span>
@@ -228,12 +256,14 @@ function MoneyTransfer() {
                   <small>선택한 학생들의 돈을 내 계좌로 가져옵니다</small>
                 </span>
               </label>
-              <label className={`mode-option ${takeMode === 'remove' ? 'active' : ''}`}>
+              <label
+                className={`mode-option ${takeMode === "remove" ? "active" : ""}`}
+              >
                 <input
                   type="radio"
                   name="takeMode"
                   value="remove"
-                  checked={takeMode === 'remove'}
+                  checked={takeMode === "remove"}
                   onChange={(e) => setTakeMode(e.target.value)}
                 />
                 <span className="radio-custom"></span>
@@ -248,18 +278,45 @@ function MoneyTransfer() {
 
         <div className="amount-section">
           <div className="amount-type-selector">
-            <label className={`type-option ${amountType === 'fixed' ? 'active' : ''}`}>
-              <input type="radio" name="amountType" value="fixed" checked={amountType === 'fixed'} onChange={(e) => setAmountType(e.target.value)} />
+            <label
+              className={`type-option ${amountType === "fixed" ? "active" : ""}`}
+            >
+              <input
+                type="radio"
+                name="amountType"
+                value="fixed"
+                checked={amountType === "fixed"}
+                onChange={(e) => setAmountType(e.target.value)}
+              />
               <span className="radio-custom"></span> 고정 금액
             </label>
-            <label className={`type-option ${amountType === 'percentage' ? 'active' : ''}`}>
-              <input type="radio" name="amountType" value="percentage" checked={amountType === 'percentage'} onChange={(e) => setAmountType(e.target.value)} />
+            <label
+              className={`type-option ${amountType === "percentage" ? "active" : ""}`}
+            >
+              <input
+                type="radio"
+                name="amountType"
+                value="percentage"
+                checked={amountType === "percentage"}
+                onChange={(e) => setAmountType(e.target.value)}
+              />
               <span className="radio-custom"></span> 퍼센트 (%)
             </label>
           </div>
           <div className="amount-input-group">
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={amountType === 'fixed' ? '금액 입력' : '퍼센트 입력'} min="1" max={amountType === 'percentage' ? "100" : undefined} required className="amount-input" />
-            <span className="amount-unit">{amountType === 'fixed' ? '원' : '%'}</span>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={amountType === "fixed" ? "금액 입력" : "퍼센트 입력"}
+              min="1"
+              max={amountType === "percentage" ? "100" : undefined}
+              required
+              className="amount-input"
+            />
+            <span className="amount-unit">
+              {amountType === "fixed" ? currencyUnit : "%"}
+            </span>
           </div>
         </div>
 
@@ -267,17 +324,38 @@ function MoneyTransfer() {
           <div className="tax-section">
             <div className="tax-header">
               <h4>💸 세금 설정</h4>
-              <span className="tax-description">보내는 금액에서 세금을 제외하고 지급됩니다.</span>
+              <span className="tax-description">
+                보내는 금액에서 세금을 제외하고 지급됩니다.
+              </span>
             </div>
             <div className="tax-input-group">
               <label htmlFor="taxRate">세금율:</label>
-              <input type="number" id="taxRate" value={taxRate} onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))} min="0" max="100" className="tax-input" />
+              <input
+                type="number"
+                id="taxRate"
+                value={taxRate}
+                onChange={(e) =>
+                  setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))
+                }
+                min="0"
+                max="100"
+                className="tax-input"
+              />
               <span className="tax-unit">%</span>
             </div>
             {amount && (
               <div className="tax-preview">
-                {amountType === 'fixed' ? (
-                  <>실제 지급액: {calculatePreviewAmount(0, amount, true).toLocaleString()}원 (세금 {Math.floor((Number(amount) * taxRate) / 100).toLocaleString()}원 제외)</>
+                {amountType === "fixed" ? (
+                  <>
+                    실제 지급액:{" "}
+                    {calculatePreviewAmount(0, amount, true).toLocaleString()}
+                    {currencyUnit}
+                    (세금{" "}
+                    {Math.floor(
+                      (Number(amount) * taxRate) / 100,
+                    ).toLocaleString()}
+                    {currencyUnit} 제외)
+                  </>
                 ) : (
                   `각 학생 잔액의 ${amount}%에서 세금 ${taxRate}%가 추가로 차감됩니다.`
                 )}
@@ -290,7 +368,12 @@ function MoneyTransfer() {
           <div className="section-header">
             <h3>대상 선택</h3>
             <label className="select-all-label">
-              <input type="checkbox" checked={selectAll} onChange={handleSelectAll} className="checkbox-custom" />
+              <input
+                type="checkbox"
+                checked={selectAll}
+                onChange={handleSelectAll}
+                className="checkbox-custom"
+              />
               <span className="checkmark"></span> 전체 선택
             </label>
           </div>
@@ -304,14 +387,24 @@ function MoneyTransfer() {
                 return (
                   <div key={user.id} className="user-item">
                     <label className="user-label">
-                      <input type="checkbox" checked={selectedUsers.includes(user.id)} onChange={() => handleUserSelection(user.id)} className="checkbox-custom" />
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={() => handleUserSelection(user.id)}
+                        className="checkbox-custom"
+                      />
                       <span className="checkmark"></span>
                       <div className="user-info">
                         <span className="user-name">{user.name}</span>
-                        <span className="user-balance">잔액: {user.cash?.toLocaleString() || 0}원</span>
+                        <span className="user-balance">
+                          잔액: {user.cash?.toLocaleString() || 0}
+                          {currencyUnit}
+                        </span>
                         {previewAmount !== undefined && (
                           <span className={`preview-amount ${action}`}>
-                            {action === 'send' ? '+' : '−'}{previewAmount.toLocaleString()}원
+                            {action === "send" ? "+" : "−"}
+                            {previewAmount.toLocaleString()}
+                            {currencyUnit}
                           </span>
                         )}
                       </div>
@@ -323,11 +416,20 @@ function MoneyTransfer() {
           )}
         </div>
 
-        <button type="submit" className={`submit-btn ${action}`} disabled={authLoading || isProcessing}>
+        <button
+          type="submit"
+          className={`submit-btn ${action}`}
+          disabled={authLoading || isProcessing}
+        >
           {isProcessing ? (
-            <><span className="spinner"></span> 처리 중...</>
+            <>
+              <span className="spinner"></span> 처리 중...
+            </>
           ) : (
-            <><span className="icon">{action === 'send' ? '📤' : '📥'}</span> {action === 'send' ? '보내기' : '가져오기'} 실행</>
+            <>
+              <span className="icon">{action === "send" ? "📤" : "📥"}</span>{" "}
+              {action === "send" ? "보내기" : "가져오기"} 실행
+            </>
           )}
         </button>
       </form>

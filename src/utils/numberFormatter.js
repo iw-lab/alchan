@@ -15,8 +15,11 @@ export const formatKoreanNumber = (number, unit = "") => {
   // 문자열인 경우 숫자로 변환
   let num = number;
   if (typeof num === "string") {
-    // 쉼표와 기존 단위 제거
-    num = num.replace(/[,원개]/g, "").trim();
+    // 쉼표와 기존 단위 제거 (알찬, 원, 개 등)
+    num = num
+      .replace(/,/g, "")
+      .replace(/알찬|원|개/g, "")
+      .trim();
     num = parseFloat(num);
     if (isNaN(num)) {
       return "0" + unit;
@@ -56,7 +59,9 @@ export const formatKoreanNumber = (number, unit = "") => {
   if (remaining > 0) {
     // 소수점 처리
     if (remaining % 1 !== 0) {
-      resultParts.push(remaining.toLocaleString('ko-KR', { maximumFractionDigits: 2 }));
+      resultParts.push(
+        remaining.toLocaleString("ko-KR", { maximumFractionDigits: 2 }),
+      );
     } else {
       resultParts.push(Math.floor(remaining)); // 쉼표(,)를 추가하는 toLocaleString 제거
     }
@@ -64,7 +69,7 @@ export const formatKoreanNumber = (number, unit = "") => {
 
   // 결과 조합
   let result = resultParts.join(" ");
-  
+
   // 단위 추가
   if (unit) {
     result += unit;
@@ -81,10 +86,31 @@ export const formatKoreanNumber = (number, unit = "") => {
 /**
  * 금액을 한국식 통화 형식으로 포맷팅합니다
  * @param {number|string} amount - 포맷팅할 금액
+ * @param {string} [unit] - 화폐 단위 (지정하지 않으면 getCurrencyUnit()의 값 사용)
  * @returns {string} 포맷팅된 통화 문자열
  */
-export const formatKoreanCurrency = (amount) => {
-  return formatKoreanNumber(amount, "원");
+export const formatKoreanCurrency = (amount, unit) => {
+  const currencyUnit = unit !== undefined ? unit : getCurrencyUnit();
+  return formatKoreanNumber(amount, currencyUnit);
+};
+
+// 전역 화폐 단위 저장소
+let _globalCurrencyUnit = "알찬";
+
+/**
+ * 전역 화폐 단위를 설정합니다 (CurrencyContext에서 호출)
+ * @param {string} unit - 새 화폐 단위
+ */
+export const setGlobalCurrencyUnit = (unit) => {
+  _globalCurrencyUnit = unit || "알찬";
+};
+
+/**
+ * 현재 전역 화폐 단위를 반환합니다
+ * @returns {string} 현재 화폐 단위
+ */
+export const getCurrencyUnit = () => {
+  return _globalCurrencyUnit;
 };
 
 /**

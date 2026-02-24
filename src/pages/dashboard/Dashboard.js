@@ -112,6 +112,9 @@ class BatchManager {
           case "set":
             batch.set(ref, data);
             break;
+          case "setMerge":
+            batch.set(ref, data, { merge: true });
+            break;
           case "update":
             batch.update(ref, data);
             break;
@@ -1417,7 +1420,7 @@ function Dashboard({ adminTabMode }) {
         settingsSnap.data().couponValue !== newValue
       ) {
         batchManager.addWrite({
-          type: "set",
+          type: "setMerge",
           ref: settingsRef,
           data: { couponValue: newValue, updatedAt: serverTimestamp() },
         });

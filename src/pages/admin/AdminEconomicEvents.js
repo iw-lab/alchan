@@ -684,7 +684,7 @@ export default function AdminEconomicEvents() {
             <p className="text-sm font-medium text-slate-200">
               경제 이벤트 시스템
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               평일 설정된 시간에 자동으로 이벤트가 발생합니다
             </p>
           </div>
@@ -714,7 +714,7 @@ export default function AdminEconomicEvents() {
             <p className="text-sm font-medium text-slate-200">
               이벤트 발생 시간
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               평일 매일 이 시간에 이벤트가 랜덤으로 발생합니다 (KST)
             </p>
           </div>
@@ -749,7 +749,7 @@ export default function AdminEconomicEvents() {
             <Play className="w-3.5 h-3.5" />
             {triggering ? "실행 중..." : "지금 바로 랜덤 실행"}
           </button>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             활성 이벤트 {enabledEventCount}개 중 랜덤 선택
           </p>
         </div>
@@ -760,7 +760,7 @@ export default function AdminEconomicEvents() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-white">이벤트 목록</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               랜덤 추첨에 포함될 이벤트를 관리합니다
             </p>
           </div>
@@ -1200,7 +1200,7 @@ export default function AdminEconomicEvents() {
                         {getResultText(entry)}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-500 flex-shrink-0">
+                    <span className="text-xs text-slate-400 flex-shrink-0">
                       {formatTriggeredAt(entry.triggeredAt)}
                     </span>
                   </div>
@@ -1216,7 +1216,7 @@ export default function AdminEconomicEvents() {
         <p className="text-xs font-medium text-slate-400 mb-2">
           ⚙️ cron-job.org 설정 안내
         </p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           자동 이벤트가 작동하려면 cron-job.org에서{" "}
           <code className="bg-slate-800 px-1 rounded text-slate-300">
             economicEventScheduler
@@ -1225,7 +1225,7 @@ export default function AdminEconomicEvents() {
           <strong className="text-slate-400"> 매시간</strong> 호출하도록
           설정하세요.
         </p>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           현재 설정된 시간(
           {HOUR_OPTIONS.find((o) => o.value === settings.triggerHour)?.label})에
           이벤트가 발생합니다.

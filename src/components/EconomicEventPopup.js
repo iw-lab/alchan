@@ -297,7 +297,7 @@ export default function EconomicEventPopup() {
 
             {/* 팁 */}
             {detail.tip && (
-              <p className="text-xs text-slate-500 pl-1">💡 {detail.tip}</p>
+              <p className="text-xs text-slate-300 pl-1">💡 {detail.tip}</p>
             )}
           </div>
 
