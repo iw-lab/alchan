@@ -354,9 +354,9 @@ const AlchanHeader = memo(
                 )}
               </div>
 
-              {/* 아바타 */}
+              {/* 아바타 - 모바일에서 프로필로 이동 */}
               <div
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={() => navigate("/my-profile")}
                 className="cursor-pointer"
               >
                 <Avatar config={avatarConfig} size={40} showBorder={true} />

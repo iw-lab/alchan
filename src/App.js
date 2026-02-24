@@ -41,7 +41,7 @@ const ConsentForm = lazy(() => import("./pages/legal/ConsentForm"));
 import "./styles.css";
 import "./App.css";
 import "./index.css"; // Tailwind CSS - 마지막에 import하여 우선 적용
-import { logger } from './utils/logger';
+import { logger } from "./utils/logger";
 
 // 🔥 에러 바운더리 - PWA 흰화면 방지
 class ErrorBoundary extends Component {
@@ -55,15 +55,17 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    logger.error('[알찬] 앱 오류 발생:', error, errorInfo);
+    logger.error("[알찬] 앱 오류 발생:", error, errorInfo);
 
     // IndexedDB나 캐시 관련 오류면 캐시 삭제 후 새로고침
-    const errorString = error?.toString() || '';
-    if (errorString.includes('IndexedDB') ||
-        errorString.includes('QuotaExceeded') ||
-        errorString.includes('SecurityError') ||
-        errorString.includes('InvalidStateError')) {
-      logger.log('[알찬] 스토리지 오류 감지 - 캐시 초기화');
+    const errorString = error?.toString() || "";
+    if (
+      errorString.includes("IndexedDB") ||
+      errorString.includes("QuotaExceeded") ||
+      errorString.includes("SecurityError") ||
+      errorString.includes("InvalidStateError")
+    ) {
+      logger.log("[알찬] 스토리지 오류 감지 - 캐시 초기화");
       this.clearCachesAndReload();
     }
   }
@@ -72,8 +74,8 @@ class ErrorBoundary extends Component {
     try {
       // IndexedDB 삭제
       if (window.indexedDB) {
-        const databases = await window.indexedDB.databases?.() || [];
-        databases.forEach(db => {
+        const databases = (await window.indexedDB.databases?.()) || [];
+        databases.forEach((db) => {
           if (db.name) {
             window.indexedDB.deleteDatabase(db.name);
           }
@@ -81,9 +83,9 @@ class ErrorBoundary extends Component {
       }
 
       // 캐시 삭제
-      if ('caches' in window) {
+      if ("caches" in window) {
         const names = await caches.keys();
-        await Promise.all(names.map(name => caches.delete(name)));
+        await Promise.all(names.map((name) => caches.delete(name)));
       }
 
       // 로컬스토리지 삭제
@@ -93,7 +95,7 @@ class ErrorBoundary extends Component {
       // 새로고침
       window.location.reload();
     } catch (e) {
-      logger.error('[알찬] 캐시 삭제 실패:', e);
+      logger.error("[알찬] 캐시 삭제 실패:", e);
       window.location.reload();
     }
   };
@@ -101,9 +103,11 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-5 text-center">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a12] to-[#1a1a2e] text-white p-5 text-center">
           <div className="text-5xl mb-4">😢</div>
-          <h1 className="text-2xl mb-2">앱을 불러오는 중 문제가 발생했습니다</h1>
+          <h1 className="text-2xl mb-2">
+            앱을 불러오는 중 문제가 발생했습니다
+          </h1>
           <p className="mb-6 opacity-80">잠시 후 자동으로 다시 시도합니다...</p>
           <button
             onClick={this.clearCachesAndReload}
@@ -122,25 +126,28 @@ class ErrorBoundary extends Component {
 function App() {
   // FCM 서비스 워커에 설정 전달
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          const firebaseConfig = {
-            apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-            authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-            projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-            storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-            messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-            appId: process.env.REACT_APP_FIREBASE_APP_ID
-          };
-          registration.active.postMessage({
-            type: 'FIREBASE_CONFIG',
-            config: firebaseConfig
-          });
-        }
-      }).catch(err => {
-        logger.warn('[알찬] 서비스워커 준비 실패 (무시):', err);
-      });
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          if (registration.active) {
+            const firebaseConfig = {
+              apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+              authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+              projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+              storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+              messagingSenderId:
+                process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+              appId: process.env.REACT_APP_FIREBASE_APP_ID,
+            };
+            registration.active.postMessage({
+              type: "FIREBASE_CONFIG",
+              config: firebaseConfig,
+            });
+          }
+        })
+        .catch((err) => {
+          logger.warn("[알찬] 서비스워커 준비 실패 (무시):", err);
+        });
     }
   }, []);
 

@@ -1055,6 +1055,71 @@ label,
   color: #00fff2 !important;
 }
 
+/* 직업 선택 리스트 (관리자 모달) */
+.job-selection-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+@media (min-width: 640px) {
+  .job-selection-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .job-selection-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.job-selection-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 242, 0.15);
+  background: rgba(15, 15, 28, 0.7);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.job-selection-item:hover {
+  border-color: rgba(0, 255, 242, 0.4);
+  background: rgba(0, 255, 242, 0.06);
+}
+
+.job-selection-item:has(input:checked) {
+  border-color: rgba(0, 255, 242, 0.5);
+  background: rgba(0, 255, 242, 0.1);
+}
+
+.job-selection-item label {
+  color: #ffffff !important;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.job-selection-item:has(input:checked) label {
+  color: #00fff2 !important;
+}
+
+.job-selection-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #00fff2;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* 폼 그룹 */
 .form-group label {
   color: #e8e8ff !important;

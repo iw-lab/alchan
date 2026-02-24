@@ -1,10 +1,10 @@
 // src/components/HelpButton.js
 // 플로팅 도움말 버튼 + 모달 컴포넌트 (모든 페이지에서 표시)
 
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { HelpCircle, X } from 'lucide-react';
-import { getHelpContent } from '../utils/helpContent';
+import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
+import { HelpCircle, X } from "lucide-react";
+import { getHelpContent } from "../utils/helpContent";
 
 export default function HelpButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,7 +39,9 @@ export default function HelpButton() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{helpData.icon}</span>
-                <h3 className="text-lg font-bold text-white">{helpData.title}</h3>
+                <h3 className="text-lg font-bold text-white">
+                  {helpData.title}
+                </h3>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -82,7 +84,7 @@ export default function HelpButton() {
             <div className="px-5 pb-4">
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 text-sm font-bold border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 text-sm font-bold border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
               >
                 확인
               </button>

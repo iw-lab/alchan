@@ -45,10 +45,30 @@ import AdminDatabase from "../../pages/admin/AdminDatabase";
 import { logger } from "../../utils/logger";
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
-  { id: 'KP', name: '코딩 파트너', price: 10000, history: [{ price: 10000, timestamp: new Date() }] },
-  { id: 'SS', name: '삼성전자', price: 80000, history: [{ price: 80000, timestamp: new Date() }] },
-  { id: 'LG', name: 'LG에너지솔루션', price: 350000, history: [{ price: 350000, timestamp: new Date() }] },
-  { id: 'SK', name: 'SK하이닉스', price: 230000, history: [{ price: 230000, timestamp: new Date() }] },
+  {
+    id: "KP",
+    name: "코딩 파트너",
+    price: 10000,
+    history: [{ price: 10000, timestamp: new Date() }],
+  },
+  {
+    id: "SS",
+    name: "삼성전자",
+    price: 80000,
+    history: [{ price: 80000, timestamp: new Date() }],
+  },
+  {
+    id: "LG",
+    name: "LG에너지솔루션",
+    price: 350000,
+    history: [{ price: 350000, timestamp: new Date() }],
+  },
+  {
+    id: "SK",
+    name: "SK하이닉스",
+    price: 230000,
+    history: [{ price: 230000, timestamp: new Date() }],
+  },
 ];
 
 // 학급 데이터 삭제 컴포넌트
@@ -70,7 +90,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
 
     // 이중 확인
     const finalConfirm = window.confirm(
-      `정말로 '${userClassCode}' 학급의 모든 학생 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 다음 데이터가 영구 삭제됩니다:\n- 학생 계정 (role: 'student')\n- 활동 로그\n- 거래 내역\n\n선생님(admin) 계정은 유지됩니다.`
+      `정말로 '${userClassCode}' 학급의 모든 학생 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 다음 데이터가 영구 삭제됩니다:\n- 학생 계정 (role: 'student')\n- 활동 로그\n- 거래 내역\n\n선생님(admin) 계정은 유지됩니다.`,
     );
 
     if (!finalConfirm) {
@@ -87,24 +107,28 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       const studentsQuery = firebaseQuery(
         usersRef,
         firebaseWhere("classCode", "==", userClassCode),
-        firebaseWhere("role", "==", "student")
+        firebaseWhere("role", "==", "student"),
       );
       const studentsSnapshot = await firebaseGetDocs(studentsQuery);
 
-      logger.log(`[ClassDataDeletion] 삭제할 학생 수: ${studentsSnapshot.size}명`);
+      logger.log(
+        `[ClassDataDeletion] 삭제할 학생 수: ${studentsSnapshot.size}명`,
+      );
 
       // 2. 활동 로그 조회
       const activityLogsRef = firestoreCollection(db, "activity_logs");
       const activityLogsQuery = firebaseQuery(
         activityLogsRef,
-        firebaseWhere("classCode", "==", userClassCode)
+        firebaseWhere("classCode", "==", userClassCode),
       );
       const activityLogsSnapshot = await firebaseGetDocs(activityLogsQuery);
 
-      logger.log(`[ClassDataDeletion] 삭제할 활동 로그: ${activityLogsSnapshot.size}개`);
+      logger.log(
+        `[ClassDataDeletion] 삭제할 활동 로그: ${activityLogsSnapshot.size}개`,
+      );
 
       // 3. 거래 내역 조회 (학생들의 userId로 조회)
-      const studentIds = studentsSnapshot.docs.map(doc => doc.id);
+      const studentIds = studentsSnapshot.docs.map((doc) => doc.id);
       let transactionsToDelete = [];
 
       if (studentIds.length > 0) {
@@ -118,14 +142,16 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
           const transactionsRef = firestoreCollection(db, "transactions");
           const transactionsQuery = firebaseQuery(
             transactionsRef,
-            firebaseWhere("userId", "in", batch)
+            firebaseWhere("userId", "in", batch),
           );
           const transactionsSnapshot = await firebaseGetDocs(transactionsQuery);
           transactionsToDelete.push(...transactionsSnapshot.docs);
         }
       }
 
-      logger.log(`[ClassDataDeletion] 삭제할 거래 내역: ${transactionsToDelete.length}개`);
+      logger.log(
+        `[ClassDataDeletion] 삭제할 거래 내역: ${transactionsToDelete.length}개`,
+      );
 
       // 4. 배치 삭제 실행 (Firestore 배치는 최대 500개 제한)
       const allDocsToDelete = [
@@ -134,7 +160,9 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         ...transactionsToDelete,
       ];
 
-      logger.log(`[ClassDataDeletion] 총 삭제할 문서: ${allDocsToDelete.length}개`);
+      logger.log(
+        `[ClassDataDeletion] 총 삭제할 문서: ${allDocsToDelete.length}개`,
+      );
 
       // 배치 단위로 삭제
       const BATCH_SIZE = 500;
@@ -147,11 +175,13 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         });
 
         await batch.commit();
-        logger.log(`[ClassDataDeletion] 배치 ${Math.floor(i / BATCH_SIZE) + 1} 삭제 완료`);
+        logger.log(
+          `[ClassDataDeletion] 배치 ${Math.floor(i / BATCH_SIZE) + 1} 삭제 완료`,
+        );
       }
 
       alert(
-        `학급 데이터 삭제 완료!\n\n삭제된 데이터:\n- 학생 계정: ${studentsSnapshot.size}명\n- 활동 로그: ${activityLogsSnapshot.size}개\n- 거래 내역: ${transactionsToDelete.length}개`
+        `학급 데이터 삭제 완료!\n\n삭제된 데이터:\n- 학생 계정: ${studentsSnapshot.size}명\n- 활동 로그: ${activityLogsSnapshot.size}개\n- 거래 내역: ${transactionsToDelete.length}개`,
       );
 
       logger.log(`[ClassDataDeletion] ${userClassCode} 학급 데이터 삭제 완료`);
@@ -161,7 +191,9 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       setShowConfirmation(false);
     } catch (error) {
       logger.error("[ClassDataDeletion] 삭제 중 오류:", error);
-      alert(`오류 발생: ${error.message}\n\n일부 데이터만 삭제되었을 수 있습니다. 다시 시도해주세요.`);
+      alert(
+        `오류 발생: ${error.message}\n\n일부 데이터만 삭제되었을 수 있습니다. 다시 시도해주세요.`,
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -175,7 +207,9 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
     <div className="section-card mt-6 border-2 border-red-500/50 bg-red-900/10">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">⚠️</span>
-        <h3 className="text-xl font-bold text-red-400">위험 구역: 학급 데이터 삭제</h3>
+        <h3 className="text-xl font-bold text-red-400">
+          위험 구역: 학급 데이터 삭제
+        </h3>
       </div>
 
       <div className="bg-red-900/20 rounded-lg p-4 mb-4 border border-red-500/30">
@@ -210,7 +244,8 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              확인을 위해 "<strong className="text-red-400">삭제</strong>"를 정확히 입력하세요:
+              확인을 위해 "<strong className="text-red-400">삭제</strong>"를
+              정확히 입력하세요:
             </label>
             <input
               type="text"
@@ -343,7 +378,7 @@ const AdminSettingsModal = ({
   // 시장 제어 상태
   // ========================================
   const [marketStatus, setMarketStatus] = useState({ isOpen: false });
-  const [marketMessage, setMarketMessage] = useState('');
+  const [marketMessage, setMarketMessage] = useState("");
   const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
   const marketStatusCache = useRef(null);
   const CACHE_DURATION = 5 * 60 * 1000; // 5분
@@ -356,12 +391,12 @@ const AdminSettingsModal = ({
   const [parkingMessage, setParkingMessage] = useState(null);
 
   // Firebase Functions
-  const toggleMarketManually = httpsCallable(functions, 'toggleMarketManually');
+  const toggleMarketManually = httpsCallable(functions, "toggleMarketManually");
 
   // 급여 설정 상태
   const [salarySettings, setSalarySettings] = useState({
     taxRate: 0.1, // 10% 세율
-    salaryIncreaseRate: 0.03, // 3% 주급 인상률 
+    salaryIncreaseRate: 0.03, // 3% 주급 인상률
   });
   const [tempTaxRate, setTempTaxRate] = useState("10");
   const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("3");
@@ -385,7 +420,7 @@ const AdminSettingsModal = ({
         ? firebaseDoc(db, "settings", `salarySettings_${userClassCode}`)
         : firebaseDoc(db, "settings", "salarySettings");
       const settingsSnap = await firebaseGetSingleDoc(classSettingsRef);
-      
+
       if (settingsSnap.exists()) {
         const data = settingsSnap.data();
         const settings = {
@@ -394,8 +429,10 @@ const AdminSettingsModal = ({
         };
         setSalarySettings(settings);
         setTempTaxRate(String((settings.taxRate * 100).toFixed(1)));
-        setTempSalaryIncreaseRate(String((settings.salaryIncreaseRate * 100).toFixed(1)));
-        
+        setTempSalaryIncreaseRate(
+          String((settings.salaryIncreaseRate * 100).toFixed(1)),
+        );
+
         if (data.lastPaidDate) {
           setLastSalaryPaidDate(data.lastPaidDate.toDate());
         }
@@ -431,7 +468,11 @@ const AdminSettingsModal = ({
       return;
     }
 
-    if (isNaN(increaseRateNum) || increaseRateNum < 0 || increaseRateNum > 100) {
+    if (
+      isNaN(increaseRateNum) ||
+      increaseRateNum < 0 ||
+      increaseRateNum > 100
+    ) {
       alert("주급 인상률은 0~100 사이의 숫자여야 합니다.");
       return;
     }
@@ -466,24 +507,28 @@ const AdminSettingsModal = ({
   }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
   // 월급 계산 함수 (세금 공제 포함)
-  const calculateSalary = useCallback((selectedJobIds, includesTax = false) => {
-    if (!Array.isArray(selectedJobIds) || selectedJobIds.length === 0) {
-      return { gross: 0, tax: 0, net: 0 };
-    }
-    
-    const baseSalary = 2000000;
-    const additionalSalary = 500000;
-    const grossSalary = baseSalary + Math.max(0, selectedJobIds.length - 1) * additionalSalary;
-    
-    if (!includesTax) {
-      return grossSalary;
-    }
-    
-    const tax = Math.floor(grossSalary * salarySettings.taxRate);
-    const netSalary = grossSalary - tax;
-    
-    return { gross: grossSalary, tax, net: netSalary };
-  }, [salarySettings.taxRate]);
+  const calculateSalary = useCallback(
+    (selectedJobIds, includesTax = false) => {
+      if (!Array.isArray(selectedJobIds) || selectedJobIds.length === 0) {
+        return { gross: 0, tax: 0, net: 0 };
+      }
+
+      const baseSalary = 2000000;
+      const additionalSalary = 500000;
+      const grossSalary =
+        baseSalary + Math.max(0, selectedJobIds.length - 1) * additionalSalary;
+
+      if (!includesTax) {
+        return grossSalary;
+      }
+
+      const tax = Math.floor(grossSalary * salarySettings.taxRate);
+      const netSalary = grossSalary - tax;
+
+      return { gross: grossSalary, tax, net: netSalary };
+    },
+    [salarySettings.taxRate],
+  );
 
   // 직업 편집 핸들러
   const handleJobEdit = useCallback(
@@ -493,12 +538,12 @@ const AdminSettingsModal = ({
         handleEditJob(job);
       } else {
         logger.error(
-          "[AdminSettingsModal] handleEditJob 함수가 정의되지 않았습니다."
+          "[AdminSettingsModal] handleEditJob 함수가 정의되지 않았습니다.",
         );
         alert("직업 편집 기능을 사용할 수 없습니다.");
       }
     },
-    [handleEditJob]
+    [handleEditJob],
   );
 
   // 직업 삭제 핸들러
@@ -509,33 +554,28 @@ const AdminSettingsModal = ({
         handleDeleteJob(jobId);
       } else {
         logger.error(
-          "[AdminSettingsModal] handleDeleteJob 함수가 정의되지 않았습니다."
+          "[AdminSettingsModal] handleDeleteJob 함수가 정의되지 않았습니다.",
         );
         alert("직업 삭제 기능을 사용할 수 없습니다.");
       }
     },
-    [handleDeleteJob]
+    [handleDeleteJob],
   );
 
   // 할일 편집 핸들러
   const handleTaskEdit = useCallback(
     (task, jobId = null) => {
-      logger.log(
-        "[AdminSettingsModal] 할일 편집 클릭:",
-        task,
-        "jobId:",
-        jobId
-      );
+      logger.log("[AdminSettingsModal] 할일 편집 클릭:", task, "jobId:", jobId);
       if (handleEditTask && typeof handleEditTask === "function") {
         handleEditTask(task, jobId);
       } else {
         logger.error(
-          "[AdminSettingsModal] handleEditTask 함수가 정의되지 않았습니다."
+          "[AdminSettingsModal] handleEditTask 함수가 정의되지 않았습니다.",
         );
         alert("할일 편집 기능을 사용할 수 없습니다.");
       }
     },
-    [handleEditTask]
+    [handleEditTask],
   );
 
   // 할일 삭제 핸들러
@@ -545,18 +585,18 @@ const AdminSettingsModal = ({
         "[AdminSettingsModal] 할일 삭제 클릭:",
         taskId,
         "jobId:",
-        jobId
+        jobId,
       );
       if (handleDeleteTask && typeof handleDeleteTask === "function") {
         handleDeleteTask(taskId, jobId);
       } else {
         logger.error(
-          "[AdminSettingsModal] handleDeleteTask 함수가 정의되지 않았습니다."
+          "[AdminSettingsModal] handleDeleteTask 함수가 정의되지 않았습니다.",
         );
         alert("할일 삭제 기능을 사용할 수 없습니다.");
       }
     },
-    [handleDeleteTask]
+    [handleDeleteTask],
   );
 
   // 할일 추가 핸들러
@@ -566,18 +606,18 @@ const AdminSettingsModal = ({
         "[AdminSettingsModal] 할일 추가 클릭:",
         jobId,
         "isJobTask:",
-        isJobTask
+        isJobTask,
       );
       if (handleAddTaskClick && typeof handleAddTaskClick === "function") {
         handleAddTaskClick(jobId, isJobTask);
       } else {
         logger.error(
-          "[AdminSettingsModal] handleAddTaskClick 함수가 정의되지 않았습니다."
+          "[AdminSettingsModal] handleAddTaskClick 함수가 정의되지 않았습니다.",
         );
         alert("할일 추가 기능을 사용할 수 없습니다.");
       }
     },
-    [handleAddTaskClick]
+    [handleAddTaskClick],
   );
 
   // 학생 목록 로드 함수 (Class/students 구조와 users 구조 모두 지원)
@@ -606,7 +646,12 @@ const AdminSettingsModal = ({
       // 1. Class/{classCode}/students 구조에서 시도
       if (!isSuperAdmin && userClassCode) {
         try {
-          const classStudentsRef = firebaseCollection(db, "Class", userClassCode, "students");
+          const classStudentsRef = firebaseCollection(
+            db,
+            "Class",
+            userClassCode,
+            "students",
+          );
           const classStudentsSnapshot = await firebaseGetDocs(classStudentsRef);
 
           classStudentsSnapshot.forEach((doc) => {
@@ -641,7 +686,7 @@ const AdminSettingsModal = ({
         if (!isSuperAdmin && userClassCode) {
           queryRef = firebaseQuery(
             usersRef,
-            firebaseWhere("classCode", "==", userClassCode)
+            firebaseWhere("classCode", "==", userClassCode),
           );
         } else if (isSuperAdmin) {
           queryRef = usersRef;
@@ -681,7 +726,9 @@ const AdminSettingsModal = ({
         const settingsDoc = await firebaseGetSingleDoc(classSettingsRef);
         if (settingsDoc.exists()) {
           const data = settingsDoc.data();
-          setLastSalaryPaidDate(data.lastPaidDate ? data.lastPaidDate.toDate() : null);
+          setLastSalaryPaidDate(
+            data.lastPaidDate ? data.lastPaidDate.toDate() : null,
+          );
           setSalarySettings({
             taxRate: data.taxRate || 0.1,
             salaryIncreaseRate: data.salaryIncreaseRate || 0.03,
@@ -713,11 +760,12 @@ const AdminSettingsModal = ({
       return;
     }
 
-    const currentSalarySettings = salarySettingsQuery.data?.settings || salarySettings;
+    const currentSalarySettings =
+      salarySettingsQuery.data?.settings || salarySettings;
 
     if (
       !window.confirm(
-        `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`
+        `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`,
       )
     ) {
       return;
@@ -740,7 +788,7 @@ const AdminSettingsModal = ({
             summary.totalTaxDeducted / 10000
           ).toFixed(0)}만원\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만원`
+          ).toFixed(0)}만원`,
         );
 
         // 선택 상태 초기화
@@ -760,7 +808,8 @@ const AdminSettingsModal = ({
   // 최적화된 전체 학생 급여 지급
   const handlePaySalariesToAll = async () => {
     const currentStudents = studentsQuery.data?.students || students;
-    const currentSalarySettings = salarySettingsQuery.data?.settings || salarySettings;
+    const currentSalarySettings =
+      salarySettingsQuery.data?.settings || salarySettings;
 
     if (!currentStudents || currentStudents.length === 0) {
       alert("학생 정보가 없습니다.");
@@ -769,7 +818,7 @@ const AdminSettingsModal = ({
 
     if (
       !window.confirm(
-        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`
+        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`,
       )
     ) {
       return;
@@ -792,7 +841,7 @@ const AdminSettingsModal = ({
             summary.totalTaxDeducted / 10000
           ).toFixed(0)}만원\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만원`
+          ).toFixed(0)}만원`,
         );
       } else {
         alert(result.message || "주급 지급에 실패했습니다.");
@@ -808,11 +857,9 @@ const AdminSettingsModal = ({
   // 학급 구성원 로드
   const loadClassMembers = useCallback(async () => {
     if (!db) {
-      logger.error(
-        "loadClassMembers: Firestore 데이터베이스 연결이 없습니다."
-      );
+      logger.error("loadClassMembers: Firestore 데이터베이스 연결이 없습니다.");
       setError(
-        "데이터베이스 연결 오류로 학급 구성원 정보를 가져올 수 없습니다."
+        "데이터베이스 연결 오류로 학급 구성원 정보를 가져올 수 없습니다.",
       );
       setClassMembers([]);
       setMembersLoading(false);
@@ -829,7 +876,7 @@ const AdminSettingsModal = ({
       if (!isSuperAdmin && userClassCode) {
         queryRef = firebaseQuery(
           usersRef,
-          firebaseWhere("classCode", "==", userClassCode)
+          firebaseWhere("classCode", "==", userClassCode),
         );
       } else if (isSuperAdmin) {
         queryRef = usersRef;
@@ -858,12 +905,12 @@ const AdminSettingsModal = ({
 
       setClassMembers(usersList);
       logger.log(
-        `[AdminSettingsModal] ${usersList.length}명의 구성원 로드 완료`
+        `[AdminSettingsModal] ${usersList.length}명의 구성원 로드 완료`,
       );
     } catch (error) {
       logger.error("loadClassMembers: 학급 구성원 로드 오류:", error);
       setError(
-        "학급 구성원을 불러오는 중 오류가 발생했습니다: " + error.message
+        "학급 구성원을 불러오는 중 오류가 발생했습니다: " + error.message,
       );
       setClassMembers([]);
     } finally {
@@ -876,7 +923,7 @@ const AdminSettingsModal = ({
   const handleEditStudentJobs = (student) => {
     setSelectedStudent(student);
     setTempSelectedJobIds(
-      Array.isArray(student.selectedJobIds) ? [...student.selectedJobIds] : []
+      Array.isArray(student.selectedJobIds) ? [...student.selectedJobIds] : [],
     );
     setShowEditStudentJobsModal(true);
   };
@@ -909,7 +956,7 @@ const AdminSettingsModal = ({
       setSelectedStudentIds([]);
     } else {
       setSelectedStudentIds(
-        students.map((student) => student.id).filter((id) => id != null)
+        students.map((student) => student.id).filter((id) => id != null),
       );
     }
     setSelectAllStudents(!selectAllStudents);
@@ -935,8 +982,8 @@ const AdminSettingsModal = ({
         prevStudents.map((student) =>
           student.id === selectedStudent.id
             ? { ...student, selectedJobIds: tempSelectedJobIds }
-            : student
-        )
+            : student,
+        ),
       );
 
       alert("학생 직업이 성공적으로 업데이트되었습니다.");
@@ -949,38 +996,50 @@ const AdminSettingsModal = ({
     }
   };
 
-  const adminResetUserPassword = httpsCallable(functions, 'adminResetUserPassword');
+  const adminResetUserPassword = httpsCallable(
+    functions,
+    "adminResetUserPassword",
+  );
 
-  const handleResetPassword = useCallback(async (userId) => {
-    if (!isAdmin && !isSuperAdmin) {
-      alert("관리자만 비밀번호를 초기화할 수 있습니다.");
-      return;
-    }
-
-    const newPassword = prompt("새로운 비밀번호를 입력하세요. 6자 이상이어야 합니다.");
-
-    if (!newPassword || newPassword.length < 6) {
-      alert("비밀번호는 6자 이상이어야 합니다.");
-      return;
-    }
-
-    if (window.confirm(`사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`)) {
-      try {
-        setMembersLoading(true);
-        const result = await adminResetUserPassword({ userId, newPassword });
-        if (result.data.success) {
-          alert(result.data.message);
-        } else {
-          throw new Error(result.data.message || "알 수 없는 오류");
-        }
-      } catch (error) {
-        logger.error("비밀번호 초기화 오류:", error);
-        alert(`비밀번호 초기화 중 오류가 발생했습니다: ${error.message}`);
-      } finally {
-        setMembersLoading(false);
+  const handleResetPassword = useCallback(
+    async (userId) => {
+      if (!isAdmin && !isSuperAdmin) {
+        alert("관리자만 비밀번호를 초기화할 수 있습니다.");
+        return;
       }
-    }
-  }, [isAdmin, isSuperAdmin, adminResetUserPassword]);
+
+      const newPassword = prompt(
+        "새로운 비밀번호를 입력하세요. 6자 이상이어야 합니다.",
+      );
+
+      if (!newPassword || newPassword.length < 6) {
+        alert("비밀번호는 6자 이상이어야 합니다.");
+        return;
+      }
+
+      if (
+        window.confirm(
+          `사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`,
+        )
+      ) {
+        try {
+          setMembersLoading(true);
+          const result = await adminResetUserPassword({ userId, newPassword });
+          if (result.data.success) {
+            alert(result.data.message);
+          } else {
+            throw new Error(result.data.message || "알 수 없는 오류");
+          }
+        } catch (error) {
+          logger.error("비밀번호 초기화 오류:", error);
+          alert(`비밀번호 초기화 중 오류가 발생했습니다: ${error.message}`);
+        } finally {
+          setMembersLoading(false);
+        }
+      }
+    },
+    [isAdmin, isSuperAdmin, adminResetUserPassword],
+  );
 
   // 관리자 권한 토글
   const toggleAdminStatus = useCallback(
@@ -999,7 +1058,7 @@ const AdminSettingsModal = ({
         window.confirm(
           `이 사용자의 관리자 권한을 ${
             currentStatus ? "제거" : "부여"
-          }하시겠습니까?`
+          }하시겠습니까?`,
         )
       ) {
         setMembersLoading(true);
@@ -1012,8 +1071,8 @@ const AdminSettingsModal = ({
             prevMembers.map((member) =>
               member.id === userId
                 ? { ...member, isAdmin: !currentStatus }
-                : member
-            )
+                : member,
+            ),
           );
 
           alert(`관리자 권한이 ${!currentStatus ? "부여" : "제거"}되었습니다.`);
@@ -1026,7 +1085,7 @@ const AdminSettingsModal = ({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isSuperAdmin] // db는 외부 스코프 값으로 의존성에서 제외
+    [isSuperAdmin], // db는 외부 스코프 값으로 의존성에서 제외
   );
 
   // ========================================
@@ -1054,12 +1113,26 @@ const AdminSettingsModal = ({
       setFinancialMessage({ type: "error", text: "상품명을 입력해주세요." });
       return;
     }
-    if (!newProductPeriod || isNaN(newProductPeriod) || parseInt(newProductPeriod) <= 0) {
-      setFinancialMessage({ type: "error", text: "유효한 기간을 입력해주세요." });
+    if (
+      !newProductPeriod ||
+      isNaN(newProductPeriod) ||
+      parseInt(newProductPeriod) <= 0
+    ) {
+      setFinancialMessage({
+        type: "error",
+        text: "유효한 기간을 입력해주세요.",
+      });
       return;
     }
-    if (!newProductRate || isNaN(newProductRate) || parseFloat(newProductRate) < 0) {
-      setFinancialMessage({ type: "error", text: "유효한 이율을 입력해주세요." });
+    if (
+      !newProductRate ||
+      isNaN(newProductRate) ||
+      parseFloat(newProductRate) < 0
+    ) {
+      setFinancialMessage({
+        type: "error",
+        text: "유효한 이율을 입력해주세요.",
+      });
       return;
     }
 
@@ -1070,7 +1143,12 @@ const AdminSettingsModal = ({
       rate: parseFloat(newProductRate),
     };
 
-    const typeText = financialSubTab === "deposit" ? "예금" : financialSubTab === "saving" ? "적금" : "대출";
+    const typeText =
+      financialSubTab === "deposit"
+        ? "예금"
+        : financialSubTab === "saving"
+          ? "적금"
+          : "대출";
     let updatedProducts = [];
     let storageKey = "";
 
@@ -1089,110 +1167,147 @@ const AdminSettingsModal = ({
     }
 
     localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
-    setFinancialMessage({ type: "success", text: `${typeText} 상품이 추가되었습니다.` });
+    setFinancialMessage({
+      type: "success",
+      text: `${typeText} 상품이 추가되었습니다.`,
+    });
     setNewProductName("");
     setNewProductPeriod("");
     setNewProductRate("");
     setTimeout(() => setFinancialMessage(null), 3000);
-  }, [newProductName, newProductPeriod, newProductRate, financialSubTab, depositProducts, savingProducts, loanProducts]);
+  }, [
+    newProductName,
+    newProductPeriod,
+    newProductRate,
+    financialSubTab,
+    depositProducts,
+    savingProducts,
+    loanProducts,
+  ]);
 
   // 금융 상품 삭제
-  const handleDeleteProduct = useCallback((id, type) => {
-    const typeText = type === "deposit" ? "예금" : type === "saving" ? "적금" : "대출";
+  const handleDeleteProduct = useCallback(
+    (id, type) => {
+      const typeText =
+        type === "deposit" ? "예금" : type === "saving" ? "적금" : "대출";
 
-    if (!window.confirm(`이 ${typeText} 상품을 삭제하시겠습니까?`)) return;
+      if (!window.confirm(`이 ${typeText} 상품을 삭제하시겠습니까?`)) return;
 
-    let updatedProducts = [];
-    let storageKey = "";
+      let updatedProducts = [];
+      let storageKey = "";
 
-    if (type === "deposit") {
-      updatedProducts = depositProducts.filter((p) => p.id !== id);
-      setDepositProducts(updatedProducts);
-      storageKey = "depositProducts";
-    } else if (type === "saving") {
-      updatedProducts = savingProducts.filter((p) => p.id !== id);
-      setSavingProducts(updatedProducts);
-      storageKey = "savingProducts";
-    } else if (type === "loan") {
-      updatedProducts = loanProducts.filter((p) => p.id !== id);
-      setLoanProducts(updatedProducts);
-      storageKey = "loanProducts";
-    }
+      if (type === "deposit") {
+        updatedProducts = depositProducts.filter((p) => p.id !== id);
+        setDepositProducts(updatedProducts);
+        storageKey = "depositProducts";
+      } else if (type === "saving") {
+        updatedProducts = savingProducts.filter((p) => p.id !== id);
+        setSavingProducts(updatedProducts);
+        storageKey = "savingProducts";
+      } else if (type === "loan") {
+        updatedProducts = loanProducts.filter((p) => p.id !== id);
+        setLoanProducts(updatedProducts);
+        storageKey = "loanProducts";
+      }
 
-    localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
-    setFinancialMessage({ type: "success", text: `${typeText} 상품이 삭제되었습니다.` });
-    setTimeout(() => setFinancialMessage(null), 3000);
-  }, [depositProducts, savingProducts, loanProducts]);
+      localStorage.setItem(storageKey, JSON.stringify(updatedProducts));
+      setFinancialMessage({
+        type: "success",
+        text: `${typeText} 상품이 삭제되었습니다.`,
+      });
+      setTimeout(() => setFinancialMessage(null), 3000);
+    },
+    [depositProducts, savingProducts, loanProducts],
+  );
 
   // ========================================
   // 시장 제어 함수들
   // ========================================
 
   // 시장 상태 가져오기
-  const fetchMarketStatus = useCallback(async (forceRefresh = false) => {
-    if (!userClassCode) return;
+  const fetchMarketStatus = useCallback(
+    async (forceRefresh = false) => {
+      if (!userClassCode) return;
 
-    // 캐시 확인
-    if (!forceRefresh && marketStatusCache.current && isMarketDataLoaded) {
-      setMarketStatus(marketStatusCache.current);
-      return;
-    }
-
-    try {
-      const marketStatusRef = doc(db, `ClassStock/${userClassCode}/marketStatus/status`);
-      const docSnap = await getDoc(marketStatusRef);
-
-      let statusData;
-      if (docSnap.exists()) {
-        statusData = docSnap.data();
-      } else {
-        statusData = { isOpen: false };
-        await setDoc(marketStatusRef, statusData);
+      // 캐시 확인
+      if (!forceRefresh && marketStatusCache.current && isMarketDataLoaded) {
+        setMarketStatus(marketStatusCache.current);
+        return;
       }
 
-      marketStatusCache.current = statusData;
-      setMarketStatus(statusData);
-      setIsMarketDataLoaded(true);
-    } catch (error) {
-      logger.error("시장 상태 조회 실패:", error);
-      setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
-    }
-  }, [userClassCode, isMarketDataLoaded]);
+      try {
+        const marketStatusRef = doc(
+          db,
+          `ClassStock/${userClassCode}/marketStatus/status`,
+        );
+        const docSnap = await getDoc(marketStatusRef);
+
+        let statusData;
+        if (docSnap.exists()) {
+          statusData = docSnap.data();
+        } else {
+          statusData = { isOpen: false };
+          await setDoc(marketStatusRef, statusData);
+        }
+
+        marketStatusCache.current = statusData;
+        setMarketStatus(statusData);
+        setIsMarketDataLoaded(true);
+      } catch (error) {
+        logger.error("시장 상태 조회 실패:", error);
+        setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
+      }
+    },
+    [userClassCode, isMarketDataLoaded],
+  );
 
   // 시장 개장/폐장 제어
-  const handleMarketControl = useCallback(async (newIsOpenState) => {
-    const actionText = newIsOpenState ? '수동 개장' : '수동 폐장';
-    if (!window.confirm(`정말로 시장을 '${actionText}' 상태로 변경하시겠습니까?`)) return;
+  const handleMarketControl = useCallback(
+    async (newIsOpenState) => {
+      const actionText = newIsOpenState ? "수동 개장" : "수동 폐장";
+      if (
+        !window.confirm(
+          `정말로 시장을 '${actionText}' 상태로 변경하시겠습니까?`,
+        )
+      )
+        return;
 
-    try {
-      // 낙관적 업데이트
-      const optimisticStatus = { isOpen: newIsOpenState };
-      setMarketStatus(optimisticStatus);
-      marketStatusCache.current = optimisticStatus;
+      try {
+        // 낙관적 업데이트
+        const optimisticStatus = { isOpen: newIsOpenState };
+        setMarketStatus(optimisticStatus);
+        marketStatusCache.current = optimisticStatus;
 
-      const result = await toggleMarketManually({
-        classCode: userClassCode,
-        isOpen: newIsOpenState
-      });
+        const result = await toggleMarketManually({
+          classCode: userClassCode,
+          isOpen: newIsOpenState,
+        });
 
-      setMarketMessage(result.data.message);
-    } catch (error) {
-      logger.error("시장 상태 변경 오류:", error);
-      setMarketMessage(`오류가 발생했습니다: ${error.message}`);
+        setMarketMessage(result.data.message);
+      } catch (error) {
+        logger.error("시장 상태 변경 오류:", error);
+        setMarketMessage(`오류가 발생했습니다: ${error.message}`);
 
-      // 롤백
-      if (marketStatusCache.current) {
-        setMarketStatus(marketStatusCache.current);
-      } else {
-        fetchMarketStatus(true);
+        // 롤백
+        if (marketStatusCache.current) {
+          setMarketStatus(marketStatusCache.current);
+        } else {
+          fetchMarketStatus(true);
+        }
       }
-    }
-    setTimeout(() => setMarketMessage(''), 5000);
-  }, [userClassCode, toggleMarketManually, fetchMarketStatus]);
+      setTimeout(() => setMarketMessage(""), 5000);
+    },
+    [userClassCode, toggleMarketManually, fetchMarketStatus],
+  );
 
   // 주식 정보 초기화
   const handleInitializeStocks = useCallback(async () => {
-    if (!window.confirm("모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+    if (
+      !window.confirm(
+        "모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      )
+    )
+      return;
 
     try {
       const batch = writeBatch(db);
@@ -1209,7 +1324,7 @@ const AdminSettingsModal = ({
       logger.error("주식 정보 초기화 중 오류 발생:", error);
       setMarketMessage(`초기화 실패: ${error.message}`);
     }
-    setTimeout(() => setMarketMessage(''), 5000);
+    setTimeout(() => setMarketMessage(""), 5000);
   }, []);
 
   // ========================================
@@ -1226,8 +1341,15 @@ const AdminSettingsModal = ({
 
   // 파킹 이자율 변경
   const handleParkingRateChange = useCallback(() => {
-    if (!newInterestRate || isNaN(newInterestRate) || parseFloat(newInterestRate) < 0) {
-      setParkingMessage({ type: "error", text: "유효한 이자율을 입력해주세요 (0 이상)." });
+    if (
+      !newInterestRate ||
+      isNaN(newInterestRate) ||
+      parseFloat(newInterestRate) < 0
+    ) {
+      setParkingMessage({
+        type: "error",
+        text: "유효한 이자율을 입력해주세요 (0 이상).",
+      });
       return;
     }
 
@@ -1235,7 +1357,10 @@ const AdminSettingsModal = ({
     setParkingInterestRate(rate);
     localStorage.setItem("parkingInterestRate", rate.toString());
 
-    setParkingMessage({ type: "success", text: `파킹 통장 일일 이자율이 ${rate}%로 변경되었습니다.` });
+    setParkingMessage({
+      type: "success",
+      text: `파킹 통장 일일 이자율이 ${rate}%로 변경되었습니다.`,
+    });
     setNewInterestRate("");
     setTimeout(() => setParkingMessage(null), 3000);
   }, [newInterestRate]);
@@ -1285,7 +1410,7 @@ const AdminSettingsModal = ({
         setClassCodeOperationLoading(false);
       }
     },
-    [onRemoveClassCode]
+    [onRemoveClassCode],
   );
 
   // 최적화된 데이터 동기화
@@ -1317,7 +1442,7 @@ const AdminSettingsModal = ({
       setError("");
       // 금융/시장/파킹 상태 초기화
       setFinancialMessage(null);
-      setMarketMessage('');
+      setMarketMessage("");
       setParkingMessage(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1334,16 +1459,34 @@ const AdminSettingsModal = ({
   // 이전 탭 ID → 통합 탭 매핑 (하위 호환)
   useEffect(() => {
     const mapping = {
-      taskManagement: ['jobAndTask', () => setJobTaskSubTab('task')],
-      jobSettings: ['jobAndTask', () => setJobTaskSubTab('job')],
-      studentManagement: ['studentAndMember', () => setStudentMemberSubTab('student')],
-      salarySettings: ['studentAndMember', () => setStudentMemberSubTab('salary')],
-      memberManagement: ['studentAndMember', () => setStudentMemberSubTab('member')],
-      financialProducts: ['financeAndMarket', () => setFinanceMarketSubTab('financial')],
-      parkingAccount: ['financeAndMarket', () => setFinanceMarketSubTab('parking')],
-      marketControl: ['financeAndMarket', () => setFinanceMarketSubTab('market')],
-      databaseManagement: ['system', () => setSystemSubTab('database')],
-      systemManagement: ['system', () => setSystemSubTab('system')],
+      taskManagement: ["jobAndTask", () => setJobTaskSubTab("task")],
+      jobSettings: ["jobAndTask", () => setJobTaskSubTab("job")],
+      studentManagement: [
+        "studentAndMember",
+        () => setStudentMemberSubTab("student"),
+      ],
+      salarySettings: [
+        "studentAndMember",
+        () => setStudentMemberSubTab("salary"),
+      ],
+      memberManagement: [
+        "studentAndMember",
+        () => setStudentMemberSubTab("member"),
+      ],
+      financialProducts: [
+        "financeAndMarket",
+        () => setFinanceMarketSubTab("financial"),
+      ],
+      parkingAccount: [
+        "financeAndMarket",
+        () => setFinanceMarketSubTab("parking"),
+      ],
+      marketControl: [
+        "financeAndMarket",
+        () => setFinanceMarketSubTab("market"),
+      ],
+      databaseManagement: ["system", () => setSystemSubTab("database")],
+      systemManagement: ["system", () => setSystemSubTab("system")],
     };
     const mapped = mapping[adminSelectedMenu];
     if (mapped) {
@@ -1354,7 +1497,11 @@ const AdminSettingsModal = ({
 
   // 학생 서브탭 선택 시 학생 데이터 로드
   useEffect(() => {
-    if (showAdminSettingsModal && adminSelectedMenu === 'studentAndMember' && studentMemberSubTab === 'student') {
+    if (
+      showAdminSettingsModal &&
+      adminSelectedMenu === "studentAndMember" &&
+      studentMemberSubTab === "student"
+    ) {
       loadStudents();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1362,7 +1509,11 @@ const AdminSettingsModal = ({
 
   // 구성원 서브탭 선택 시 구성원 데이터 로드
   useEffect(() => {
-    if (showAdminSettingsModal && adminSelectedMenu === 'studentAndMember' && studentMemberSubTab === 'member') {
+    if (
+      showAdminSettingsModal &&
+      adminSelectedMenu === "studentAndMember" &&
+      studentMemberSubTab === "member"
+    ) {
       loadClassMembers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1370,10 +1521,19 @@ const AdminSettingsModal = ({
 
   // 시장 서브탭 선택 시 시장 상태 로드
   useEffect(() => {
-    if (showAdminSettingsModal && adminSelectedMenu === 'financeAndMarket' && financeMarketSubTab === 'market') {
+    if (
+      showAdminSettingsModal &&
+      adminSelectedMenu === "financeAndMarket" &&
+      financeMarketSubTab === "market"
+    ) {
       fetchMarketStatus();
     }
-  }, [showAdminSettingsModal, adminSelectedMenu, financeMarketSubTab, fetchMarketStatus]);
+  }, [
+    showAdminSettingsModal,
+    adminSelectedMenu,
+    financeMarketSubTab,
+    fetchMarketStatus,
+  ]);
 
   // 마지막 월급 지급일 포맷
   const formatLastSalaryDate = () => {
@@ -1383,9 +1543,9 @@ const AdminSettingsModal = ({
       const date = lastSalaryPaidDate;
       return `${date.getFullYear()}년 ${String(date.getMonth() + 1).padStart(
         2,
-        "0"
+        "0",
       )}월 ${String(date.getDate()).padStart(2, "0")}일 ${String(
-        date.getHours()
+        date.getHours(),
       ).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
     } catch (e) {
       logger.error("formatLastSalaryDate 오류:", e);
@@ -1432,7 +1592,12 @@ const AdminSettingsModal = ({
             - 최고관리자(isSuperAdmin): 모든 탭 접근 가능
             - 관리자(isAdmin): 시스템 관리 제외 모든 탭 접근 가능
             ======================================== */}
-        <div className="admin-menu-tabs flex flex-wrap gap-2.5 p-4 rounded-2xl border border-gray-700" style={{ background: 'linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)' }}>
+        <div
+          className="admin-menu-tabs flex flex-wrap gap-2.5 p-4 rounded-2xl border border-gray-700"
+          style={{
+            background: "linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)",
+          }}
+        >
           <button
             className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "generalSettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("generalSettings")}
@@ -1470,7 +1635,9 @@ const AdminSettingsModal = ({
           <div className="general-settings-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+                <p className="current-class-info">
+                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                </p>
               </div>
             )}
             {/* 목표 설정 섹션 */}
@@ -1514,14 +1681,14 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "jobAndTask" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === 'job' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setJobTaskSubTab('job')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "job" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setJobTaskSubTab("job")}
             >
               직업 관리
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === 'task' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setJobTaskSubTab('task')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "task" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setJobTaskSubTab("task")}
             >
               할일 관리
             </button>
@@ -1533,7 +1700,9 @@ const AdminSettingsModal = ({
           <div className="task-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+                <p className="current-class-info">
+                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                </p>
               </div>
             )}
             {/* 할일 관리 섹션 */}
@@ -1590,18 +1759,45 @@ const AdminSettingsModal = ({
                     />
                   </div>
 
-                  <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <label style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                  <div
+                    className="form-group"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <label
+                      style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        margin: 0,
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={adminNewTaskRequiresApproval || false}
-                        onChange={(e) => setAdminNewTaskRequiresApproval(e.target.checked)}
-                        style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        onChange={(e) =>
+                          setAdminNewTaskRequiresApproval(e.target.checked)
+                        }
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer",
+                        }}
                       />
                       <span>승인 필요 (보너스 할일)</span>
                     </label>
                     {adminNewTaskRequiresApproval && (
-                      <span style={{ fontSize: "12px", color: "#f59e0b", fontWeight: "500" }}>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#f59e0b",
+                          fontWeight: "500",
+                        }}
+                      >
                         학생이 완료 시 관리자 승인 후 보상 지급
                       </span>
                     )}
@@ -1618,7 +1814,7 @@ const AdminSettingsModal = ({
                           handleSaveTask();
                         } else {
                           logger.error(
-                            "[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다."
+                            "[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다.",
                           );
                           alert("할일 저장 기능을 사용할 수 없습니다.");
                         }
@@ -1644,7 +1840,7 @@ const AdminSettingsModal = ({
                     <button
                       onClick={() => {
                         logger.log(
-                          "[AdminSettingsModal] 공통 할일 추가 버튼 클릭"
+                          "[AdminSettingsModal] 공통 할일 추가 버튼 클릭",
                         );
                         handleTaskAdd(null, false);
                       }}
@@ -1657,7 +1853,7 @@ const AdminSettingsModal = ({
                         if (e.target.value) {
                           logger.log(
                             "[AdminSettingsModal] 직업별 할일 추가 선택:",
-                            e.target.value
+                            e.target.value,
                           );
                           handleTaskAdd(e.target.value, true);
                         }
@@ -1690,7 +1886,14 @@ const AdminSettingsModal = ({
                                     <span className="task-name">
                                       {task.name}
                                       {task.requiresApproval && (
-                                        <span style={{ marginLeft: "6px", fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
+                                        <span
+                                          style={{
+                                            marginLeft: "6px",
+                                            fontSize: "11px",
+                                            color: "#f59e0b",
+                                            fontWeight: "bold",
+                                          }}
+                                        >
                                           [승인필요]
                                         </span>
                                       )}
@@ -1709,7 +1912,7 @@ const AdminSettingsModal = ({
                                         logger.log(
                                           "[AdminSettingsModal] 직업 할일 수정 버튼 클릭:",
                                           task,
-                                          job.id
+                                          job.id,
                                         );
                                         handleTaskEdit(task, job.id);
                                       }}
@@ -1722,7 +1925,7 @@ const AdminSettingsModal = ({
                                         logger.log(
                                           "[AdminSettingsModal] 직업 할일 삭제 버튼 클릭:",
                                           task.id,
-                                          job.id
+                                          job.id,
                                         );
                                         handleTaskDelete(task.id, job.id);
                                       }}
@@ -1742,7 +1945,9 @@ const AdminSettingsModal = ({
                         </div>
                       ))
                     ) : (
-                      <p className="no-items-message">등록된 직업이 없습니다.</p>
+                      <p className="no-items-message">
+                        등록된 직업이 없습니다.
+                      </p>
                     )}
                   </div>
 
@@ -1757,7 +1962,14 @@ const AdminSettingsModal = ({
                               <span className="task-name">
                                 {task.name}
                                 {task.requiresApproval && (
-                                  <span style={{ marginLeft: "6px", fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
+                                  <span
+                                    style={{
+                                      marginLeft: "6px",
+                                      fontSize: "11px",
+                                      color: "#f59e0b",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
                                     [승인필요]
                                   </span>
                                 )}
@@ -1774,7 +1986,7 @@ const AdminSettingsModal = ({
                                 onClick={() => {
                                   logger.log(
                                     "[AdminSettingsModal] 공통 할일 수정 버튼 클릭:",
-                                    task
+                                    task,
                                   );
                                   handleTaskEdit(task);
                                 }}
@@ -1786,7 +1998,7 @@ const AdminSettingsModal = ({
                                 onClick={() => {
                                   logger.log(
                                     "[AdminSettingsModal] 공통 할일 삭제 버튼 클릭:",
-                                    task.id
+                                    task.id,
                                   );
                                   handleTaskDelete(task.id);
                                 }}
@@ -1815,7 +2027,9 @@ const AdminSettingsModal = ({
           <div className="job-settings-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+                <p className="current-class-info">
+                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                </p>
               </div>
             )}
             {/* 직업 관리 섹션 */}
@@ -1826,7 +2040,9 @@ const AdminSettingsModal = ({
                   type="text"
                   value={adminNewJobTitle}
                   onChange={(e) => setAdminNewJobTitle(e.target.value)}
-                  placeholder={adminEditingJob ? "직업명 수정" : "새 직업명 입력"}
+                  placeholder={
+                    adminEditingJob ? "직업명 수정" : "새 직업명 입력"
+                  }
                   className="admin-input"
                 />
                 <button
@@ -1836,7 +2052,7 @@ const AdminSettingsModal = ({
                       handleSaveJob();
                     } else {
                       logger.error(
-                        "[AdminSettingsModal] handleSaveJob 함수가 정의되지 않았습니다."
+                        "[AdminSettingsModal] handleSaveJob 함수가 정의되지 않았습니다.",
                       );
                       alert("직업 저장 기능을 사용할 수 없습니다.");
                     }
@@ -1869,7 +2085,7 @@ const AdminSettingsModal = ({
                             onClick={() => {
                               logger.log(
                                 "[AdminSettingsModal] 직업 수정 버튼 클릭:",
-                                job
+                                job,
                               );
                               handleJobEdit(job);
                             }}
@@ -1881,7 +2097,7 @@ const AdminSettingsModal = ({
                             onClick={() => {
                               logger.log(
                                 "[AdminSettingsModal] 직업 삭제 버튼 클릭:",
-                                job.id
+                                job.id,
                               );
                               handleJobDelete(job.id);
                             }}
@@ -1905,20 +2121,20 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "studentAndMember" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'student' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setStudentMemberSubTab('student')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "student" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setStudentMemberSubTab("student")}
             >
               학생/급여 관리
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'salary' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setStudentMemberSubTab('salary')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "salary" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setStudentMemberSubTab("salary")}
             >
               급여 설정
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === 'member' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setStudentMemberSubTab('member')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "member" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setStudentMemberSubTab("member")}
             >
               구성원 관리
             </button>
@@ -1926,201 +2142,221 @@ const AdminSettingsModal = ({
         )}
 
         {/* 학생 관리 서브탭 */}
-        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "student" && (
-          <div className="student-management-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            {/* 학생직업 관리 섹션 */}
-            <div className="student-jobs-settings section-card">
-              <h3>학생직업 관리</h3>
-              {error && <p className="error-message">{error}</p>}
-              <p className="admin-section-desc">
-                학생들에게 직업을 배정하거나 관리합니다. 주급은 직업 수에 따라
-                차등 지급됩니다.
-              </p>
-
-              <div className="salary-management">
-                <div className="salary-info">
-                  <h4>주급 지급 관리</h4>
-                  <p>기본 주급: 200만원, 추가 직업당: 50만원</p>
-                  <p>세율: {(salarySettings.taxRate * 100).toFixed(1)}%</p>
-                  <p>주급 인상률: {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}% (매주)</p>
-                  <p>마지막 주급 지급일: {formatLastSalaryDate()}</p>
-                  <p className="auto-payment-info">
-                    ⏰ 자동 주급 지급: 매주 금요일 오전 8시 (서버 자동 실행)
+        {adminSelectedMenu === "studentAndMember" &&
+          studentMemberSubTab === "student" && (
+            <div className="student-management-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
                   </p>
                 </div>
-                <div className="salary-buttons">
-                  <button
-                    className="admin-button pay-salary-button"
-                    onClick={handlePaySalariesToAll}
-                    disabled={isPayingSalary || studentsLoading}
-                  >
-                    {isPayingSalary ? "주급 지급 중..." : "전체 학생 주급 지급"}
-                  </button>
-                  <button
-                    className="admin-button pay-selected-salary-button"
-                    onClick={handlePaySalariesToSelected}
-                    disabled={
-                      isPayingSalary ||
-                      studentsLoading ||
-                      selectedStudentIds.length === 0
-                    }
-                  >
-                    {isPayingSalary
-                      ? "주급 지급 중..."
-                      : `선택 학생(${selectedStudentIds.length}) 주급 지급`}
-                  </button>
-                </div>
-              </div>
+              )}
+              {/* 학생직업 관리 섹션 */}
+              <div className="student-jobs-settings section-card">
+                <h3>학생직업 관리</h3>
+                {error && <p className="error-message">{error}</p>}
+                <p className="admin-section-desc">
+                  학생들에게 직업을 배정하거나 관리합니다. 주급은 직업 수에 따라
+                  차등 지급됩니다.
+                </p>
 
-              <div className="student-jobs-container">
-                <div className="student-list-header">
-                  <h4>
-                    학생 목록{" "}
-                    {!isSuperAdmin && userClassCode && `(${userClassCode} 학급)`}
-                  </h4>
-                  <button
-                    onClick={loadStudents}
-                    className="admin-button"
-                    disabled={studentsLoading}
-                  >
-                    {studentsLoading ? "로딩 중..." : "학생 목록 새로고침"}
-                  </button>
-                </div>
-                {studentsLoading ? (
-                  <p>학생 정보 로딩 중...</p>
-                ) : students.length > 0 ? (
-                  <div className="members-table-container">
-                    <table className="members-table">
-                      <thead>
-                        <tr>
-                          <th>
-                            <input
-                              type="checkbox"
-                              checked={selectAllStudents}
-                              onChange={handleToggleSelectAll}
-                              disabled={students.length === 0}
-                            />
-                          </th>
-                          <th>학생 이름</th>
-                          <th>이메일</th>
-                          <th>학급</th>
-                          <th>현재 직업</th>
-                          <th>예상 총급여</th>
-                          <th>세금 공제</th>
-                          <th>실급여</th>
-                          <th>보유 현금</th>
-                          <th>최근 주급일</th>
-                          <th>관리</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student) => {
-                          const salaryCalc = calculateSalary(student.selectedJobIds, true);
-                          return (
-                            <tr
-                              key={student.id}
-                              className={
-                                selectedStudentIds.includes(student.id)
-                                  ? "selected-student-row"
-                                  : ""
-                              }
-                            >
-                              <td>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedStudentIds.includes(student.id)}
-                                  onChange={() =>
-                                    handleToggleStudentSelection(student.id)
-                                  }
-                                />
-                              </td>
-                              <td>
-                                {student.nickname || student.name || "이름 없음"}
-                              </td>
-                              <td>{student.email || "-"}</td>
-                              <td>{student.classCode || "미지정"}</td>
-                              <td>
-                                {Array.isArray(student.selectedJobIds) &&
-                                student.selectedJobIds.length > 0 ? (
-                                  student.selectedJobIds
-                                    .map((jobId) => {
-                                      const job = Array.isArray(jobs)
-                                        ? jobs.find((j) => j.id === jobId)
-                                        : null;
-                                      return job ? job.title : null;
-                                    })
-                                    .filter(Boolean)
-                                    .join(", ")
-                                ) : (
-                                  <span className="no-jobs">직업 없음</span>
-                                )}
-                              </td>
-                              <td className="salary-column">
-                                {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}
-                              </td>
-                              <td className="tax-column">
-                                {`${(salaryCalc.tax / 10000).toFixed(0)}만원`}
-                              </td>
-                              <td className="net-salary-column">
-                                {`${(salaryCalc.net / 10000).toFixed(0)}만원`}
-                              </td>
-                              <td className="cash-column">
-                                {(student.cash || 0).toLocaleString()}원
-                              </td>
-                              <td>
-                                {student.lastSalaryDate
-                                  ? student.lastSalaryDate.toLocaleDateString()
-                                  : "없음"}
-                              </td>
-                              <td>
-                                <button
-                                  className="edit-button"
-                                  onClick={() => handleEditStudentJobs(student)}
-                                >
-                                  직업 설정
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                <div className="salary-management">
+                  <div className="salary-info">
+                    <h4>주급 지급 관리</h4>
+                    <p>기본 주급: 200만원, 추가 직업당: 50만원</p>
+                    <p>세율: {(salarySettings.taxRate * 100).toFixed(1)}%</p>
+                    <p>
+                      주급 인상률:{" "}
+                      {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
+                      (매주)
+                    </p>
+                    <p>마지막 주급 지급일: {formatLastSalaryDate()}</p>
+                    <p className="auto-payment-info">
+                      ⏰ 자동 주급 지급: 매주 금요일 오전 8시 (서버 자동 실행)
+                    </p>
                   </div>
-                ) : (
-                  <p className="no-items-message">
-                    {!isSuperAdmin && !userClassCode
-                      ? "학급 코드가 설정되지 않았습니다."
-                      : "학생 정보가 없습니다."}
-                  </p>
-                )}
+                  <div className="salary-buttons">
+                    <button
+                      className="admin-button pay-salary-button"
+                      onClick={handlePaySalariesToAll}
+                      disabled={isPayingSalary || studentsLoading}
+                    >
+                      {isPayingSalary
+                        ? "주급 지급 중..."
+                        : "전체 학생 주급 지급"}
+                    </button>
+                    <button
+                      className="admin-button pay-selected-salary-button"
+                      onClick={handlePaySalariesToSelected}
+                      disabled={
+                        isPayingSalary ||
+                        studentsLoading ||
+                        selectedStudentIds.length === 0
+                      }
+                    >
+                      {isPayingSalary
+                        ? "주급 지급 중..."
+                        : `선택 학생(${selectedStudentIds.length}) 주급 지급`}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="student-jobs-container">
+                  <div className="student-list-header">
+                    <h4>
+                      학생 목록{" "}
+                      {!isSuperAdmin &&
+                        userClassCode &&
+                        `(${userClassCode} 학급)`}
+                    </h4>
+                    <button
+                      onClick={loadStudents}
+                      className="admin-button"
+                      disabled={studentsLoading}
+                    >
+                      {studentsLoading ? "로딩 중..." : "학생 목록 새로고침"}
+                    </button>
+                  </div>
+                  {studentsLoading ? (
+                    <p>학생 정보 로딩 중...</p>
+                  ) : students.length > 0 ? (
+                    <div className="members-table-container">
+                      <table className="members-table">
+                        <thead>
+                          <tr>
+                            <th>
+                              <input
+                                type="checkbox"
+                                checked={selectAllStudents}
+                                onChange={handleToggleSelectAll}
+                                disabled={students.length === 0}
+                              />
+                            </th>
+                            <th>학생 이름</th>
+                            <th>이메일</th>
+                            <th>학급</th>
+                            <th>현재 직업</th>
+                            <th>예상 총급여</th>
+                            <th>세금 공제</th>
+                            <th>실급여</th>
+                            <th>보유 현금</th>
+                            <th>최근 주급일</th>
+                            <th>관리</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students.map((student) => {
+                            const salaryCalc = calculateSalary(
+                              student.selectedJobIds,
+                              true,
+                            );
+                            return (
+                              <tr
+                                key={student.id}
+                                className={
+                                  selectedStudentIds.includes(student.id)
+                                    ? "selected-student-row"
+                                    : ""
+                                }
+                              >
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStudentIds.includes(
+                                      student.id,
+                                    )}
+                                    onChange={() =>
+                                      handleToggleStudentSelection(student.id)
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  {student.nickname ||
+                                    student.name ||
+                                    "이름 없음"}
+                                </td>
+                                <td>{student.email || "-"}</td>
+                                <td>{student.classCode || "미지정"}</td>
+                                <td>
+                                  {Array.isArray(student.selectedJobIds) &&
+                                  student.selectedJobIds.length > 0 ? (
+                                    student.selectedJobIds
+                                      .map((jobId) => {
+                                        const job = Array.isArray(jobs)
+                                          ? jobs.find((j) => j.id === jobId)
+                                          : null;
+                                        return job ? job.title : null;
+                                      })
+                                      .filter(Boolean)
+                                      .join(", ")
+                                  ) : (
+                                    <span className="no-jobs">직업 없음</span>
+                                  )}
+                                </td>
+                                <td className="salary-column">
+                                  {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}
+                                </td>
+                                <td className="tax-column">
+                                  {`${(salaryCalc.tax / 10000).toFixed(0)}만원`}
+                                </td>
+                                <td className="net-salary-column">
+                                  {`${(salaryCalc.net / 10000).toFixed(0)}만원`}
+                                </td>
+                                <td className="cash-column">
+                                  {(student.cash || 0).toLocaleString()}원
+                                </td>
+                                <td>
+                                  {student.lastSalaryDate
+                                    ? student.lastSalaryDate.toLocaleDateString()
+                                    : "없음"}
+                                </td>
+                                <td>
+                                  <button
+                                    className="edit-button"
+                                    onClick={() =>
+                                      handleEditStudentJobs(student)
+                                    }
+                                  >
+                                    직업 설정
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="no-items-message">
+                      {!isSuperAdmin && !userClassCode
+                        ? "학급 코드가 설정되지 않았습니다."
+                        : "학생 정보가 없습니다."}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* ===== 금융/시장 통합 탭 ===== */}
         {adminSelectedMenu === "financeAndMarket" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'financial' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setFinanceMarketSubTab('financial')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "financial" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setFinanceMarketSubTab("financial")}
             >
               금융 상품
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'parking' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setFinanceMarketSubTab('parking')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "parking" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setFinanceMarketSubTab("parking")}
             >
               파킹 통장
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === 'market' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setFinanceMarketSubTab('market')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "market" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setFinanceMarketSubTab("market")}
             >
               시장 제어
             </button>
@@ -2128,504 +2364,642 @@ const AdminSettingsModal = ({
         )}
 
         {/* 금융 상품 서브탭 */}
-        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "financial" && (
-          <div className="financial-products-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            <div className="financial-products-settings section-card">
-              <h3>금융 상품 관리</h3>
-              <p className="admin-section-desc">
-                예금, 적금, 대출 상품을 추가하거나 삭제합니다.
-              </p>
-
-              {/* 금융 상품 서브 탭 */}
-              <div className="financial-sub-tabs flex gap-2 mb-4">
-                <button
-                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'deposit' ? 'active' : ''}`}
-                  onClick={() => setFinancialSubTab('deposit')}
-                  style={{
-                    border: financialSubTab === 'deposit' ? '2px solid #4f46e5' : '1px solid #374151',
-                    background: financialSubTab === 'deposit' ? '#4f46e5' : 'transparent',
-                    color: financialSubTab === 'deposit' ? 'white' : '#9ca3af',
-                  }}
-                >
-                  예금 상품
-                </button>
-                <button
-                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'saving' ? 'active' : ''}`}
-                  onClick={() => setFinancialSubTab('saving')}
-                  style={{
-                    border: financialSubTab === 'saving' ? '2px solid #4f46e5' : '1px solid #374151',
-                    background: financialSubTab === 'saving' ? '#4f46e5' : 'transparent',
-                    color: financialSubTab === 'saving' ? 'white' : '#9ca3af',
-                  }}
-                >
-                  적금 상품
-                </button>
-                <button
-                  className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === 'loan' ? 'active' : ''}`}
-                  onClick={() => setFinancialSubTab('loan')}
-                  style={{
-                    border: financialSubTab === 'loan' ? '2px solid #4f46e5' : '1px solid #374151',
-                    background: financialSubTab === 'loan' ? '#4f46e5' : 'transparent',
-                    color: financialSubTab === 'loan' ? 'white' : '#9ca3af',
-                  }}
-                >
-                  대출 상품
-                </button>
-              </div>
-
-              {/* 메시지 */}
-              {financialMessage && (
-                <div
-                  className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-white`}
-                  style={{
-                    background: financialMessage.type === 'success' ? '#065f46' : '#991b1b',
-                  }}
-                >
-                  {financialMessage.text}
+        {adminSelectedMenu === "financeAndMarket" &&
+          financeMarketSubTab === "financial" && (
+            <div className="financial-products-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                  </p>
                 </div>
               )}
+              <div className="financial-products-settings section-card">
+                <h3>금융 상품 관리</h3>
+                <p className="admin-section-desc">
+                  예금, 적금, 대출 상품을 추가하거나 삭제합니다.
+                </p>
 
-              {/* 상품 추가 폼 */}
-              <div className="add-product-form p-4 rounded-xl mb-4 bg-gray-700/50">
-                <h4 className="mb-3 text-white">
-                  {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 추가
-                </h4>
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  <div>
-                    <label className="block mb-1 text-gray-400 text-xs">상품명</label>
-                    <input
-                      type="text"
-                      value={newProductName}
-                      onChange={(e) => setNewProductName(e.target.value)}
-                      placeholder="상품명 입력"
-                      className="admin-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-gray-400 text-xs">기간 (일)</label>
-                    <input
-                      type="number"
-                      value={newProductPeriod}
-                      onChange={(e) => setNewProductPeriod(e.target.value)}
-                      placeholder="기간 (일)"
-                      min="1"
-                      className="admin-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-gray-400 text-xs">이율 (%)</label>
-                    <input
-                      type="number"
-                      value={newProductRate}
-                      onChange={(e) => setNewProductRate(e.target.value)}
-                      placeholder="이율 (%)"
-                      min="0"
-                      step="0.1"
-                      className="admin-input w-full"
-                    />
-                  </div>
+                {/* 금융 상품 서브 탭 */}
+                <div className="financial-sub-tabs flex gap-2 mb-4">
+                  <button
+                    className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === "deposit" ? "active" : ""}`}
+                    onClick={() => setFinancialSubTab("deposit")}
+                    style={{
+                      border:
+                        financialSubTab === "deposit"
+                          ? "2px solid #4f46e5"
+                          : "1px solid #374151",
+                      background:
+                        financialSubTab === "deposit"
+                          ? "#4f46e5"
+                          : "transparent",
+                      color:
+                        financialSubTab === "deposit" ? "white" : "#9ca3af",
+                    }}
+                  >
+                    예금 상품
+                  </button>
+                  <button
+                    className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === "saving" ? "active" : ""}`}
+                    onClick={() => setFinancialSubTab("saving")}
+                    style={{
+                      border:
+                        financialSubTab === "saving"
+                          ? "2px solid #4f46e5"
+                          : "1px solid #374151",
+                      background:
+                        financialSubTab === "saving"
+                          ? "#4f46e5"
+                          : "transparent",
+                      color: financialSubTab === "saving" ? "white" : "#9ca3af",
+                    }}
+                  >
+                    적금 상품
+                  </button>
+                  <button
+                    className={`sub-tab-button px-4 py-2 rounded-lg cursor-pointer font-semibold ${financialSubTab === "loan" ? "active" : ""}`}
+                    onClick={() => setFinancialSubTab("loan")}
+                    style={{
+                      border:
+                        financialSubTab === "loan"
+                          ? "2px solid #4f46e5"
+                          : "1px solid #374151",
+                      background:
+                        financialSubTab === "loan" ? "#4f46e5" : "transparent",
+                      color: financialSubTab === "loan" ? "white" : "#9ca3af",
+                    }}
+                  >
+                    대출 상품
+                  </button>
                 </div>
-                <button onClick={handleAddProduct} className="admin-save-button w-full">
-                  상품 추가하기
-                </button>
-              </div>
 
-              {/* 상품 목록 */}
-              <div className="product-list">
-                <h4 className="mb-3 text-white">
-                  {financialSubTab === 'deposit' ? '예금' : financialSubTab === 'saving' ? '적금' : '대출'} 상품 목록
-                </h4>
-                {(() => {
-                  const products = financialSubTab === 'deposit' ? depositProducts :
-                                   financialSubTab === 'saving' ? savingProducts : loanProducts;
-                  if (products.length === 0) {
-                    return <p className="no-items-message">등록된 상품이 없습니다.</p>;
-                  }
-                  return (
-                    <div className="members-table-container">
-                      <table className="members-table">
-                        <thead>
-                          <tr>
-                            <th>상품명</th>
-                            <th>기간 (일)</th>
-                            <th>이율 (%)</th>
-                            <th>관리</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {products.map((product) => (
-                            <tr key={product.id}>
-                              <td>{product.name}</td>
-                              <td>{product.period}일</td>
-                              <td>{product.rate}%</td>
-                              <td>
-                                <button
-                                  onClick={() => handleDeleteProduct(product.id, financialSubTab)}
-                                  className="delete-button"
-                                >
-                                  삭제
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                {/* 메시지 */}
+                {financialMessage && (
+                  <div
+                    className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-white`}
+                    style={{
+                      background:
+                        financialMessage.type === "success"
+                          ? "#065f46"
+                          : "#991b1b",
+                    }}
+                  >
+                    {financialMessage.text}
+                  </div>
+                )}
+
+                {/* 상품 추가 폼 */}
+                <div className="add-product-form p-4 rounded-xl mb-4 bg-gray-700/50">
+                  <h4 className="mb-3 text-white">
+                    {financialSubTab === "deposit"
+                      ? "예금"
+                      : financialSubTab === "saving"
+                        ? "적금"
+                        : "대출"}{" "}
+                    상품 추가
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="block mb-1 text-gray-400 text-xs">
+                        상품명
+                      </label>
+                      <input
+                        type="text"
+                        value={newProductName}
+                        onChange={(e) => setNewProductName(e.target.value)}
+                        placeholder="상품명 입력"
+                        className="admin-input w-full"
+                      />
                     </div>
-                  );
-                })()}
+                    <div>
+                      <label className="block mb-1 text-gray-400 text-xs">
+                        기간 (일)
+                      </label>
+                      <input
+                        type="number"
+                        value={newProductPeriod}
+                        onChange={(e) => setNewProductPeriod(e.target.value)}
+                        placeholder="기간 (일)"
+                        min="1"
+                        className="admin-input w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-gray-400 text-xs">
+                        이율 (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={newProductRate}
+                        onChange={(e) => setNewProductRate(e.target.value)}
+                        placeholder="이율 (%)"
+                        min="0"
+                        step="0.1"
+                        className="admin-input w-full"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleAddProduct}
+                    className="admin-save-button w-full"
+                  >
+                    상품 추가하기
+                  </button>
+                </div>
+
+                {/* 상품 목록 */}
+                <div className="product-list">
+                  <h4 className="mb-3 text-white">
+                    {financialSubTab === "deposit"
+                      ? "예금"
+                      : financialSubTab === "saving"
+                        ? "적금"
+                        : "대출"}{" "}
+                    상품 목록
+                  </h4>
+                  {(() => {
+                    const products =
+                      financialSubTab === "deposit"
+                        ? depositProducts
+                        : financialSubTab === "saving"
+                          ? savingProducts
+                          : loanProducts;
+                    if (products.length === 0) {
+                      return (
+                        <p className="no-items-message">
+                          등록된 상품이 없습니다.
+                        </p>
+                      );
+                    }
+                    return (
+                      <div className="members-table-container">
+                        <table className="members-table">
+                          <thead>
+                            <tr>
+                              <th>상품명</th>
+                              <th>기간 (일)</th>
+                              <th>이율 (%)</th>
+                              <th>관리</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {products.map((product) => (
+                              <tr key={product.id}>
+                                <td>{product.name}</td>
+                                <td>{product.period}일</td>
+                                <td>{product.rate}%</td>
+                                <td>
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteProduct(
+                                        product.id,
+                                        financialSubTab,
+                                      )
+                                    }
+                                    className="delete-button"
+                                  >
+                                    삭제
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* 시장 제어 서브탭 */}
-        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "market" && (
-          <div className="market-control-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            <div className="market-control-settings section-card">
-              <h3>주식 시장 제어</h3>
-              <p className="admin-section-desc">
-                주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
-              </p>
+        {adminSelectedMenu === "financeAndMarket" &&
+          financeMarketSubTab === "market" && (
+            <div className="market-control-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                  </p>
+                </div>
+              )}
+              <div className="market-control-settings section-card">
+                <h3>주식 시장 제어</h3>
+                <p className="admin-section-desc">
+                  주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
+                </p>
 
-              {/* 시장 상태 */}
-              <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-white">
-                    현재 상태:{" "}
-                    <span
-                      className="font-bold px-3 py-1 rounded-2xl"
+                {/* 시장 상태 */}
+                <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-white">
+                      현재 상태:{" "}
+                      <span
+                        className="font-bold px-3 py-1 rounded-2xl"
+                        style={{
+                          color: marketStatus.isOpen ? "#22c55e" : "#ef4444",
+                          background: marketStatus.isOpen
+                            ? "rgba(34, 197, 94, 0.2)"
+                            : "rgba(239, 68, 68, 0.2)",
+                        }}
+                      >
+                        {marketStatus.isOpen ? "🟢 개장" : "🔴 폐장"}
+                      </span>
+                    </p>
+                    <button
+                      onClick={() => fetchMarketStatus(true)}
+                      className="admin-button"
+                      disabled={!userClassCode}
+                    >
+                      새로고침
+                    </button>
+                  </div>
+
+                  <div className="flex gap-3 mb-4">
+                    <button
+                      onClick={() => handleMarketControl(true)}
+                      disabled={marketStatus.isOpen}
+                      className="admin-save-button flex-1"
                       style={{
-                        color: marketStatus.isOpen ? '#22c55e' : '#ef4444',
-                        background: marketStatus.isOpen ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+                        background: marketStatus.isOpen ? "#374151" : "#22c55e",
+                        cursor: marketStatus.isOpen ? "not-allowed" : "pointer",
                       }}
                     >
-                      {marketStatus.isOpen ? '🟢 개장' : '🔴 폐장'}
-                    </span>
+                      수동 개장
+                    </button>
+                    <button
+                      onClick={() => handleMarketControl(false)}
+                      disabled={!marketStatus.isOpen}
+                      className="admin-cancel-button flex-1"
+                      style={{
+                        background: !marketStatus.isOpen
+                          ? "#374151"
+                          : "#ef4444",
+                        cursor: !marketStatus.isOpen
+                          ? "not-allowed"
+                          : "pointer",
+                      }}
+                    >
+                      수동 폐장
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-400">
+                    버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시
+                    변경됩니다.
+                    <br />
+                    자동 개장/폐장 시간(월-금, 오전 8시/오후 3시)이 되면
+                    자동으로 상태가 변경됩니다.
+                  </p>
+                </div>
+
+                {/* 메시지 */}
+                {marketMessage && (
+                  <div className="p-3 mb-4 rounded-lg bg-amber-600 text-white text-center">
+                    {marketMessage}
+                  </div>
+                )}
+
+                {/* 주식 초기화 */}
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                  <h4 className="mb-3 text-red-500">⚠️ 주식 정보 초기화</h4>
+                  <p className="text-xs text-gray-400 mb-3">
+                    주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이
+                    기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
                   </p>
                   <button
-                    onClick={() => fetchMarketStatus(true)}
-                    className="admin-button"
-                    disabled={!userClassCode}
+                    onClick={handleInitializeStocks}
+                    className="w-full p-3 rounded-lg bg-orange-600 text-white border-0 cursor-pointer font-semibold"
                   >
-                    새로고침
+                    모든 주식 정보 초기화
                   </button>
                 </div>
-
-                <div className="flex gap-3 mb-4">
-                  <button
-                    onClick={() => handleMarketControl(true)}
-                    disabled={marketStatus.isOpen}
-                    className="admin-save-button flex-1"
-                    style={{
-                      background: marketStatus.isOpen ? '#374151' : '#22c55e',
-                      cursor: marketStatus.isOpen ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    수동 개장
-                  </button>
-                  <button
-                    onClick={() => handleMarketControl(false)}
-                    disabled={!marketStatus.isOpen}
-                    className="admin-cancel-button flex-1"
-                    style={{
-                      background: !marketStatus.isOpen ? '#374151' : '#ef4444',
-                      cursor: !marketStatus.isOpen ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    수동 폐장
-                  </button>
-                </div>
-
-                <p className="text-xs text-gray-400">
-                  버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시 변경됩니다.<br />
-                  자동 개장/폐장 시간(월-금, 오전 8시/오후 3시)이 되면 자동으로 상태가 변경됩니다.
-                </p>
-              </div>
-
-              {/* 메시지 */}
-              {marketMessage && (
-                <div className="p-3 mb-4 rounded-lg bg-amber-600 text-white text-center">
-                  {marketMessage}
-                </div>
-              )}
-
-              {/* 주식 초기화 */}
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-                <h4 className="mb-3 text-red-500">⚠️ 주식 정보 초기화</h4>
-                <p className="text-xs text-gray-400 mb-3">
-                  주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이 기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
-                </p>
-                <button
-                  onClick={handleInitializeStocks}
-                  className="w-full p-3 rounded-lg bg-orange-600 text-white border-0 cursor-pointer font-semibold"
-                >
-                  모든 주식 정보 초기화
-                </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* 파킹 통장 서브탭 */}
-        {adminSelectedMenu === "financeAndMarket" && financeMarketSubTab === "parking" && (
-          <div className="parking-account-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            <div className="parking-account-settings section-card">
-              <h3>파킹 통장 이자율 관리</h3>
-              <p className="admin-section-desc">
-                파킹 통장의 일일 이자율을 설정합니다.
-              </p>
-
-              {/* 메시지 */}
-              {parkingMessage && (
-                <div
-                  className="p-3 mb-4 rounded-lg text-white"
-                  style={{
-                    background: parkingMessage.type === 'success' ? '#065f46' : '#991b1b',
-                  }}
-                >
-                  {parkingMessage.text}
-                </div>
-              )}
-
-              {/* 현재 이자율 */}
-              <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
-                <div className="mb-4">
-                  <p className="text-gray-400 text-sm">현재 일일 이자율</p>
-                  <p className="text-green-500 text-[32px] font-bold">
-                    {parkingInterestRate}%
+        {adminSelectedMenu === "financeAndMarket" &&
+          financeMarketSubTab === "parking" && (
+            <div className="parking-account-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
                   </p>
                 </div>
+              )}
+              <div className="parking-account-settings section-card">
+                <h3>파킹 통장 이자율 관리</h3>
+                <p className="admin-section-desc">
+                  파킹 통장의 일일 이자율을 설정합니다.
+                </p>
 
-                <div className="form-group">
-                  <label className="block mb-2 text-gray-400">
-                    새 일일 이자율 (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={newInterestRate}
-                    onChange={(e) => setNewInterestRate(e.target.value)}
-                    placeholder="새 이자율 입력 (%)"
-                    min="0"
-                    step="0.01"
-                    className="admin-input mb-3"
-                  />
-                  <button
-                    onClick={handleParkingRateChange}
-                    className="admin-save-button w-full"
-                    disabled={!newInterestRate || isNaN(newInterestRate) || parseFloat(newInterestRate) < 0}
+                {/* 메시지 */}
+                {parkingMessage && (
+                  <div
+                    className="p-3 mb-4 rounded-lg text-white"
+                    style={{
+                      background:
+                        parkingMessage.type === "success"
+                          ? "#065f46"
+                          : "#991b1b",
+                    }}
                   >
-                    이자율 변경
+                    {parkingMessage.text}
+                  </div>
+                )}
+
+                {/* 현재 이자율 */}
+                <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                  <div className="mb-4">
+                    <p className="text-gray-400 text-sm">현재 일일 이자율</p>
+                    <p className="text-green-500 text-[32px] font-bold">
+                      {parkingInterestRate}%
+                    </p>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="block mb-2 text-gray-400">
+                      새 일일 이자율 (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={newInterestRate}
+                      onChange={(e) => setNewInterestRate(e.target.value)}
+                      placeholder="새 이자율 입력 (%)"
+                      min="0"
+                      step="0.01"
+                      className="admin-input mb-3"
+                    />
+                    <button
+                      onClick={handleParkingRateChange}
+                      className="admin-save-button w-full"
+                      disabled={
+                        !newInterestRate ||
+                        isNaN(newInterestRate) ||
+                        parseFloat(newInterestRate) < 0
+                      }
+                    >
+                      이자율 변경
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-400 mt-3">
+                    파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가
+                    발생합니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* 구성원 관리 서브탭 */}
+        {adminSelectedMenu === "studentAndMember" &&
+          studentMemberSubTab === "member" && (
+            <div className="member-management-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                  </p>
+                </div>
+              )}
+              <div className="admin-class-members-container section-card">
+                <h3>학급 구성원 관리</h3>
+                {error && <p className="error-message">{error}</p>}
+                <p className="admin-section-desc">
+                  학급 구성원의 정보를 확인하고 관리합니다.
+                  {isSuperAdmin &&
+                    " 최고 관리자는 모든 학급의 구성원을 확인할 수 있습니다."}
+                </p>
+
+                {membersLoading ? (
+                  <p>구성원 정보 로딩 중...</p>
+                ) : classMembers.length > 0 ? (
+                  <div className="user-cards-container">
+                    {classMembers.map((member) => (
+                      <div key={member.id} className="user-card">
+                        <div className="user-card-header">
+                          <span className="user-card-name">{member.name}</span>
+                          <span
+                            className={`user-card-role role-${member.isSuperAdmin ? "super" : member.isAdmin ? "admin" : "student"}`}
+                          >
+                            {member.isSuperAdmin
+                              ? "최고 관리자"
+                              : member.isAdmin
+                                ? "관리자"
+                                : "학생"}
+                          </span>
+                        </div>
+                        <div className="user-card-body">
+                          <p>
+                            <strong>이메일:</strong> {member.email}
+                          </p>
+                          <p>
+                            <strong>학급 코드:</strong> {member.classCode}
+                          </p>
+                        </div>
+                        {isSuperAdmin && (
+                          <div className="user-card-actions">
+                            {!member.isSuperAdmin && (
+                              <button
+                                onClick={() =>
+                                  toggleAdminStatus(member.id, member.isAdmin)
+                                }
+                                className={`admin-action-button ${
+                                  member.isAdmin
+                                    ? "remove-admin-button"
+                                    : "add-admin-button"
+                                }`}
+                                disabled={membersLoading}
+                              >
+                                {member.isAdmin ? "관리자 해제" : "관리자 지정"}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleResetPassword(member.id)}
+                              className="admin-action-button reset-password-button"
+                              disabled={membersLoading}
+                            >
+                              비밀번호 초기화
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="no-members-message">
+                    {!isSuperAdmin && !userClassCode
+                      ? "학급 코드가 설정되지 않았습니다."
+                      : "등록된 학급 구성원이 없습니다."}
+                  </p>
+                )}
+
+                <div className="refresh-members-section">
+                  <button
+                    onClick={loadClassMembers}
+                    className="admin-button"
+                    disabled={membersLoading}
+                  >
+                    {membersLoading ? "로딩 중..." : "구성원 목록 새로고침"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* 급여 설정 서브탭 */}
+        {adminSelectedMenu === "studentAndMember" &&
+          studentMemberSubTab === "salary" && (
+            <div className="salary-settings-tab">
+              {!isSuperAdmin && userClassCode && (
+                <div className="class-info-header">
+                  <p className="current-class-info">
+                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                  </p>
+                </div>
+              )}
+              {/* 급여 설정 섹션 */}
+              <div className="salary-settings section-card">
+                <h3>급여 설정</h3>
+                <p className="admin-section-desc">
+                  세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 금요일
+                  오전 8시에 실행됩니다.
+                </p>
+
+                <div className="salary-settings-form">
+                  <div className="form-group">
+                    <label>세율 (%):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={tempTaxRate}
+                      onChange={(e) => setTempTaxRate(e.target.value)}
+                      className="admin-input"
+                      placeholder="예: 10 (10%)"
+                    />
+                    <small className="form-help">
+                      학생들의 주급에서 공제될 세율을 설정합니다.
+                    </small>
+                  </div>
+
+                  <div className="form-group">
+                    <label>주급 인상률 (%):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={tempSalaryIncreaseRate}
+                      onChange={(e) =>
+                        setTempSalaryIncreaseRate(e.target.value)
+                      }
+                      className="admin-input"
+                      placeholder="예: 3 (3%)"
+                    />
+                    <small className="form-help">
+                      매주 자동으로 적용될 주급 인상률을 설정합니다.
+                    </small>
+                  </div>
+
+                  <button
+                    onClick={handleSaveSalarySettings}
+                    className="admin-save-button"
+                    disabled={salarySettingsLoading}
+                  >
+                    {salarySettingsLoading ? "저장 중..." : "급여 설정 저장"}
                   </button>
                 </div>
 
-                <p className="text-xs text-gray-400 mt-3">
-                  파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가 발생합니다.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+                <div className="current-salary-settings">
+                  <h4>현재 급여 설정</h4>
+                  <div className="settings-display">
+                    <p>
+                      현재 세율:{" "}
+                      <strong>
+                        {(salarySettings.taxRate * 100).toFixed(1)}%
+                      </strong>
+                    </p>
+                    <p>
+                      현재 주급 인상률:{" "}
+                      <strong>
+                        {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
+                      </strong>
+                    </p>
+                    <p>
+                      마지막 자동 지급일:{" "}
+                      <strong>{formatLastSalaryDate()}</strong>
+                    </p>
+                  </div>
 
-        {/* 구성원 관리 서브탭 */}
-        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "member" && (
-          <div className="member-management-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            <div className="admin-class-members-container section-card">
-              <h3>학급 구성원 관리</h3>
-              {error && <p className="error-message">{error}</p>}
-              <p className="admin-section-desc">
-                학급 구성원의 정보를 확인하고 관리합니다.
-                {isSuperAdmin && " 최고 관리자는 모든 학급의 구성원을 확인할 수 있습니다."}
-              </p>
+                  <div className="salary-calculation-example">
+                    <h5>주급 계산 예시</h5>
+                    <p>
+                      • 직업 1개: 총 200만원 → 세금{" "}
+                      {((2000000 * salarySettings.taxRate) / 10000).toFixed(0)}
+                      만원 공제 → 실급여{" "}
+                      {(
+                        (2000000 * (1 - salarySettings.taxRate)) /
+                        10000
+                      ).toFixed(0)}
+                      만원
+                    </p>
+                    <p>
+                      • 직업 2개: 총 250만원 → 세금{" "}
+                      {((2500000 * salarySettings.taxRate) / 10000).toFixed(0)}
+                      만원 공제 → 실급여{" "}
+                      {(
+                        (2500000 * (1 - salarySettings.taxRate)) /
+                        10000
+                      ).toFixed(0)}
+                      만원
+                    </p>
+                    <p>
+                      • 직업 3개: 총 300만원 → 세금{" "}
+                      {((3000000 * salarySettings.taxRate) / 10000).toFixed(0)}
+                      만원 공제 → 실급여{" "}
+                      {(
+                        (3000000 * (1 - salarySettings.taxRate)) /
+                        10000
+                      ).toFixed(0)}
+                      만원
+                    </p>
+                  </div>
 
-              {membersLoading ? (
-                <p>구성원 정보 로딩 중...</p>
-              ) : classMembers.length > 0 ? (
-                <div className="user-cards-container">
-                  {classMembers.map((member) => (
-                    <div key={member.id} className="user-card">
-                      <div className="user-card-header">
-                        <span className="user-card-name">{member.name}</span>
-                        <span className={`user-card-role role-${member.isSuperAdmin ? 'super' : member.isAdmin ? 'admin' : 'student'}`}>
-                          {member.isSuperAdmin
-                            ? "최고 관리자"
-                            : member.isAdmin
-                            ? "관리자"
-                            : "학생"}
-                        </span>
-                      </div>
-                      <div className="user-card-body">
-                        <p><strong>이메일:</strong> {member.email}</p>
-                        <p><strong>학급 코드:</strong> {member.classCode}</p>
-                      </div>
-                      {isSuperAdmin && (
-                        <div className="user-card-actions">
-                          {!member.isSuperAdmin && (
-                            <button
-                              onClick={() =>
-                                toggleAdminStatus(member.id, member.isAdmin)
-                              }
-                              className={`admin-action-button ${
-                                member.isAdmin
-                                  ? "remove-admin-button"
-                                  : "add-admin-button"
-                              }`}
-                              disabled={membersLoading}
-                            >
-                              {member.isAdmin ? "관리자 해제" : "관리자 지정"}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleResetPassword(member.id)}
-                            className="admin-action-button reset-password-button"
-                            disabled={membersLoading}
-                          >
-                            비밀번호 초기화
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="no-members-message">
-                  {!isSuperAdmin && !userClassCode
-                    ? "학급 코드가 설정되지 않았습니다."
-                    : "등록된 학급 구성원이 없습니다."}
-                </p>
-              )}
-
-              <div className="refresh-members-section">
-                <button
-                  onClick={loadClassMembers}
-                  className="admin-button"
-                  disabled={membersLoading}
-                >
-                  {membersLoading ? "로딩 중..." : "구성원 목록 새로고침"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 급여 설정 서브탭 */}
-        {adminSelectedMenu === "studentAndMember" && studentMemberSubTab === "salary" && (
-          <div className="salary-settings-tab">
-            {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
-              </div>
-            )}
-            {/* 급여 설정 섹션 */}
-            <div className="salary-settings section-card">
-              <h3>급여 설정</h3>
-              <p className="admin-section-desc">
-                세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 금요일 오전 8시에 실행됩니다.
-              </p>
-
-              <div className="salary-settings-form">
-                <div className="form-group">
-                  <label>세율 (%):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={tempTaxRate}
-                    onChange={(e) => setTempTaxRate(e.target.value)}
-                    className="admin-input"
-                    placeholder="예: 10 (10%)"
-                  />
-                  <small className="form-help">
-                    학생들의 주급에서 공제될 세율을 설정합니다.
-                  </small>
-                </div>
-
-                <div className="form-group">
-                  <label>주급 인상률 (%):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={tempSalaryIncreaseRate}
-                    onChange={(e) => setTempSalaryIncreaseRate(e.target.value)}
-                    className="admin-input"
-                    placeholder="예: 3 (3%)"
-                  />
-                  <small className="form-help">
-                    매주 자동으로 적용될 주급 인상률을 설정합니다.
-                  </small>
-                </div>
-
-                <button
-                  onClick={handleSaveSalarySettings}
-                  className="admin-save-button"
-                  disabled={salarySettingsLoading}
-                >
-                  {salarySettingsLoading ? "저장 중..." : "급여 설정 저장"}
-                </button>
-              </div>
-
-              <div className="current-salary-settings">
-                <h4>현재 급여 설정</h4>
-                <div className="settings-display">
-                  <p>현재 세율: <strong>{(salarySettings.taxRate * 100).toFixed(1)}%</strong></p>
-                  <p>현재 주급 인상률: <strong>{(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%</strong></p>
-                  <p>마지막 자동 지급일: <strong>{formatLastSalaryDate()}</strong></p>
-                </div>
-                
-                <div className="salary-calculation-example">
-                  <h5>주급 계산 예시</h5>
-                  <p>• 직업 1개: 총 200만원 → 세금 {(2000000 * salarySettings.taxRate / 10000).toFixed(0)}만원 공제 → 실급여 {((2000000 * (1 - salarySettings.taxRate)) / 10000).toFixed(0)}만원</p>
-                  <p>• 직업 2개: 총 250만원 → 세금 {(2500000 * salarySettings.taxRate / 10000).toFixed(0)}만원 공제 → 실급여 {((2500000 * (1 - salarySettings.taxRate)) / 10000).toFixed(0)}만원</p>
-                  <p>• 직업 3개: 총 300만원 → 세금 {(3000000 * salarySettings.taxRate / 10000).toFixed(0)}만원 공제 → 실급여 {((3000000 * (1 - salarySettings.taxRate)) / 10000).toFixed(0)}만원</p>
-                </div>
-                
-                <div className="auto-payment-info">
-                  <h5>자동 주급 지급 시스템</h5>
-                  <p>🤖 매주 금요일 오전 8시에 서버에서 자동으로 주급이 지급됩니다.</p>
-                  <p>📈 매주 주급 인상률만큼 급여가 자동으로 인상됩니다.</p>
-                  <p>💰 세금이 자동으로 공제되어 실급여가 지급됩니다.</p>
-                  <p>⚙️ 관리자가 로그인하지 않아도 자동으로 실행됩니다.</p>
+                  <div className="auto-payment-info">
+                    <h5>자동 주급 지급 시스템</h5>
+                    <p>
+                      🤖 매주 금요일 오전 8시에 서버에서 자동으로 주급이
+                      지급됩니다.
+                    </p>
+                    <p>📈 매주 주급 인상률만큼 급여가 자동으로 인상됩니다.</p>
+                    <p>💰 세금이 자동으로 공제되어 실급여가 지급됩니다.</p>
+                    <p>⚙️ 관리자가 로그인하지 않아도 자동으로 실행됩니다.</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* ===== 시스템 통합 탭 ===== */}
         {adminSelectedMenu === "system" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === 'database' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-              onClick={() => setSystemSubTab('database')}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              onClick={() => setSystemSubTab("database")}
             >
               데이터베이스
             </button>
             {isSuperAdmin && (
               <button
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === 'system' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
-                onClick={() => setSystemSubTab('system')}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "system" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+                onClick={() => setSystemSubTab("system")}
               >
                 시스템 관리
               </button>
@@ -2638,7 +3012,9 @@ const AdminSettingsModal = ({
           <div className="database-management-tab">
             {!isSuperAdmin && userClassCode && (
               <div className="class-info-header">
-                <p className="current-class-info">🏫 현재 관리 학급: <strong>{userClassCode}</strong></p>
+                <p className="current-class-info">
+                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
+                </p>
               </div>
             )}
             <div className="database-management-container section-card min-h-[500px] max-h-[70vh] overflow-auto">
@@ -2647,8 +3023,12 @@ const AdminSettingsModal = ({
 
             {/* 개인정보 관련 문서 */}
             <div className="section-card mt-6 p-6 rounded-2xl bg-violet-500/5 border border-violet-500/30">
-              <h3 className="text-lg font-bold text-violet-300 mb-3">개인정보 보호 문서</h3>
-              <p className="text-sm text-gray-400 mb-4">학부모 동의서 양식과 개인정보처리방침을 확인하세요.</p>
+              <h3 className="text-lg font-bold text-violet-300 mb-3">
+                개인정보 보호 문서
+              </h3>
+              <p className="text-sm text-gray-400 mb-4">
+                학부모 동의서 양식과 개인정보처리방침을 확인하세요.
+              </p>
               <div className="flex flex-wrap gap-3">
                 <a
                   href="/consent-form"
@@ -2683,7 +3063,9 @@ const AdminSettingsModal = ({
           <div className="system-management-tab">
             {isSuperAdmin && (
               <div className="class-info-header">
-                <p className="current-class-info">🌐 시스템 전체 관리 (최고 관리자)</p>
+                <p className="current-class-info">
+                  🌐 시스템 전체 관리 (최고 관리자)
+                </p>
               </div>
             )}
             {/* 학급 코드 관리 섹션 */}
@@ -2729,7 +3111,9 @@ const AdminSettingsModal = ({
                       ))}
                     </ul>
                   ) : (
-                    <p className="no-codes-message">등록된 학급 코드가 없습니다.</p>
+                    <p className="no-codes-message">
+                      등록된 학급 코드가 없습니다.
+                    </p>
                   )}
                 </div>
               </div>
@@ -2782,14 +3166,24 @@ const AdminSettingsModal = ({
                   const salaryCalc = calculateSalary(tempSelectedJobIds, true);
                   return (
                     <>
-                      <p>예상 총급여: {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}</p>
-                      <p>세금 공제: {`${(salaryCalc.tax / 10000).toFixed(0)}만원`} ({(salarySettings.taxRate * 100).toFixed(1)}%)</p>
-                      <p>실급여: {`${(salaryCalc.net / 10000).toFixed(0)}만원`}</p>
+                      <p>
+                        예상 총급여:{" "}
+                        {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}
+                      </p>
+                      <p>
+                        세금 공제:{" "}
+                        {`${(salaryCalc.tax / 10000).toFixed(0)}만원`} (
+                        {(salarySettings.taxRate * 100).toFixed(1)}%)
+                      </p>
+                      <p>
+                        실급여: {`${(salaryCalc.net / 10000).toFixed(0)}만원`}
+                      </p>
                     </>
                   );
                 })()}
                 <p className="salary-explanation">
-                  (기본 200만원 + 추가 직업당 50만원, 세금 {(salarySettings.taxRate * 100).toFixed(1)}% 공제)
+                  (기본 200만원 + 추가 직업당 50만원, 세금{" "}
+                  {(salarySettings.taxRate * 100).toFixed(1)}% 공제)
                 </p>
               </div>
               <div className="job-selection-list">

@@ -3,11 +3,15 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import ParkingAccount from "./ParkingAccount";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
-import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
 import {
-  PageContainer,
-  PageHeader,
-} from "../../components/PageWrapper";
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  deleteDoc,
+} from "firebase/firestore";
+import { PageContainer, PageHeader } from "../../components/PageWrapper";
 import { Landmark, ChevronLeft } from "lucide-react";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import "./Banking.css";
@@ -17,7 +21,7 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
   if (!Array.isArray(adminProducts)) {
     logger.error(
       "convertAdminProductsToAccountFormat: 입력값이 배열이 아닙니다.",
-      adminProducts
+      adminProducts,
     );
     return [];
   }
@@ -25,13 +29,21 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
     id: product.id,
     name: product.name,
     dailyRate:
-      product.dailyRate !== undefined && !isNaN(product.dailyRate) ? parseFloat(product.dailyRate) : 0,
+      product.dailyRate !== undefined && !isNaN(product.dailyRate)
+        ? parseFloat(product.dailyRate)
+        : 0,
     termInDays:
-      product.termInDays !== undefined && !isNaN(product.termInDays) ? parseInt(product.termInDays) : 1,
+      product.termInDays !== undefined && !isNaN(product.termInDays)
+        ? parseInt(product.termInDays)
+        : 1,
     minAmount:
-      product.minAmount !== undefined && !isNaN(product.minAmount) ? parseInt(product.minAmount) : 0,
+      product.minAmount !== undefined && !isNaN(product.minAmount)
+        ? parseInt(product.minAmount)
+        : 0,
     maxAmount:
-      product.maxAmount !== undefined && !isNaN(product.maxAmount) ? parseInt(product.maxAmount) : 0,
+      product.maxAmount !== undefined && !isNaN(product.maxAmount)
+        ? parseInt(product.maxAmount)
+        : 0,
   }));
 };
 
@@ -44,7 +56,7 @@ const Banking = () => {
 
   const [parkingDepositProducts, setParkingDepositProducts] = useState([]);
   const [parkingInstallmentProducts, setParkingInstallmentProducts] = useState(
-    []
+    [],
   );
   const [parkingLoanProducts, setParkingLoanProducts] = useState([]);
 
@@ -53,7 +65,10 @@ const Banking = () => {
 
   // 모든 유저의 가입 상품 로드
   const loadAllUserProducts = async () => {
-    if (!auth?.userDoc?.classCode || !(auth.userDoc?.isAdmin || auth.userDoc?.role === "admin")) {
+    if (
+      !auth?.userDoc?.classCode ||
+      !(auth.userDoc?.isAdmin || auth.userDoc?.role === "admin")
+    ) {
       return;
     }
 
@@ -62,7 +77,7 @@ const Banking = () => {
       // 먼저 해당 클래스의 모든 유저 조회
       const usersQuery = query(
         collection(db, "users"),
-        where("classCode", "==", auth.userDoc.classCode)
+        where("classCode", "==", auth.userDoc.classCode),
       );
       const usersSnapshot = await getDocs(usersQuery);
 
@@ -71,7 +86,7 @@ const Banking = () => {
         userMap[doc.id] = {
           id: doc.id,
           name: doc.data().name || doc.data().nickname || "알 수 없음",
-          ...doc.data()
+          ...doc.data(),
         };
       });
 
@@ -91,7 +106,9 @@ const Banking = () => {
             userId: userId,
             userName: userMap[userId].name,
             ...productData,
-            maturityDate: productData.maturityDate?.toDate ? productData.maturityDate.toDate() : productData.maturityDate
+            maturityDate: productData.maturityDate?.toDate
+              ? productData.maturityDate.toDate()
+              : productData.maturityDate,
           };
         });
       });
@@ -100,7 +117,7 @@ const Banking = () => {
       const productsArrays = await Promise.all(productPromises);
 
       // 2D 배열을 1D 배열로 평탄화
-      productsArrays.forEach(productsArray => {
+      productsArrays.forEach((productsArray) => {
         allProducts.push(...productsArray);
       });
 
@@ -125,7 +142,11 @@ const Banking = () => {
       return;
     }
 
-    if (!window.confirm(`'${product.userName}'님의 '${product.name}' 상품을 강제로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+    if (
+      !window.confirm(
+        `'${product.userName}'님의 '${product.name}' 상품을 강제로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+      )
+    ) {
       logger.log("사용자가 삭제 취소");
       return;
     }
@@ -137,7 +158,13 @@ const Banking = () => {
       logger.log("삭제 경로:", `users/${product.userId}/products/${productId}`);
       logger.log("사용할 문서 ID:", productId);
 
-      const productRef = doc(db, "users", product.userId, "products", productId);
+      const productRef = doc(
+        db,
+        "users",
+        product.userId,
+        "products",
+        productId,
+      );
       logger.log("삭제 시작...");
       await deleteDoc(productRef);
       logger.log("삭제 완료");
@@ -163,24 +190,32 @@ const Banking = () => {
     }
   };
 
-  const formattedDepositProducts = useMemo(() =>
-    convertAdminProductsToAccountFormat(parkingDepositProducts), [parkingDepositProducts]);
-  const formattedInstallmentProducts = useMemo(() =>
-    convertAdminProductsToAccountFormat(parkingInstallmentProducts), [parkingInstallmentProducts]);
-  const formattedLoanProducts = useMemo(() =>
-    convertAdminProductsToAccountFormat(parkingLoanProducts), [parkingLoanProducts]);
+  const formattedDepositProducts = useMemo(
+    () => convertAdminProductsToAccountFormat(parkingDepositProducts),
+    [parkingDepositProducts],
+  );
+  const formattedInstallmentProducts = useMemo(
+    () => convertAdminProductsToAccountFormat(parkingInstallmentProducts),
+    [parkingInstallmentProducts],
+  );
+  const formattedLoanProducts = useMemo(
+    () => convertAdminProductsToAccountFormat(parkingLoanProducts),
+    [parkingLoanProducts],
+  );
 
   // Firestore에서 데이터 로드
   const loadAllData = async () => {
     const classCode = auth?.userDoc?.classCode;
-    if (!classCode || classCode === '미지정') {
-      logger.warn("[Banking] 유효한 학급 코드가 없어 뱅킹 상품을 로드하지 않습니다.");
+    if (!classCode || classCode === "미지정") {
+      logger.warn(
+        "[Banking] 유효한 학급 코드가 없어 뱅킹 상품을 로드하지 않습니다.",
+      );
       return;
     }
 
     setIsLoading(true);
     try {
-      const bankingData = await getBankingProducts(classCode, true, 'Banking');
+      const bankingData = await getBankingProducts(classCode, true, "Banking");
 
       // deposits를 savings로 매핑 (예금 상품)
       if (bankingData.deposits) {
@@ -202,7 +237,6 @@ const Banking = () => {
       } else {
         setParkingLoanProducts([]);
       }
-
     } catch (error) {
       logger.error("뱅킹 상품 로드 중 오류:", error);
       setMessage("데이터 로딩 중 오류가 발생했습니다.");
@@ -302,16 +336,17 @@ const Banking = () => {
       await updateBankingProducts(
         auth.userDoc.classCode,
         firestoreType,
-        products
+        products,
       );
 
       setMessage(
-        `${type === "deposits"
-          ? "예금"
-          : type === "installments"
-            ? "적금"
-            : "대출"
-        } 상품이 성공적으로 저장되었습니다.`
+        `${
+          type === "deposits"
+            ? "예금"
+            : type === "installments"
+              ? "적금"
+              : "대출"
+        } 상품이 성공적으로 저장되었습니다.`,
       );
       setMessageType("success");
 
@@ -331,12 +366,9 @@ const Banking = () => {
   const addParkingProduct = (type) => {
     const newProduct = {
       id: Date.now(),
-      name: `새 ${type === "deposits"
-        ? "예금"
-        : type === "installments"
-          ? "적금"
-          : "대출"
-        } 상품`,
+      name: `새 ${
+        type === "deposits" ? "예금" : type === "installments" ? "적금" : "대출"
+      } 상품`,
       dailyRate: 0.01,
       termInDays: 365,
       minAmount: type === "loans" ? 0 : 100000,
@@ -383,7 +415,7 @@ const Banking = () => {
     }
 
     const updatedProducts = productsState.filter(
-      (_, index) => index !== indexToDelete
+      (_, index) => index !== indexToDelete,
     );
     setProductsState(updatedProducts);
 
@@ -400,7 +432,7 @@ const Banking = () => {
         await updateBankingProducts(
           auth.userDoc.classCode,
           firestoreType,
-          updatedProducts
+          updatedProducts,
         );
         setMessage("상품이 삭제되었습니다.");
         setMessageType("info");
@@ -443,12 +475,15 @@ const Banking = () => {
 
         {/* 메시지 표시 */}
         {message && (
-          <div className={`mb-4 p-4 rounded-xl ${messageType === 'error'
-            ? 'bg-red-900/40 text-red-200 border border-red-800/50'
-            : messageType === 'success'
-              ? 'bg-emerald-900/40 text-emerald-200 border border-emerald-800/50'
-              : 'bg-blue-900/40 text-blue-200 border border-blue-800/50'
-            }`}>
+          <div
+            className={`mb-4 p-4 rounded-xl ${
+              messageType === "error"
+                ? "bg-red-900/40 text-red-200 border border-red-800/50"
+                : messageType === "success"
+                  ? "bg-emerald-900/40 text-emerald-200 border border-emerald-800/50"
+                  : "bg-blue-900/40 text-blue-200 border border-blue-800/50"
+            }`}
+          >
             {message}
           </div>
         )}
@@ -475,7 +510,7 @@ const Banking = () => {
                 <div className="flex items-center gap-4 mb-4">
                   <button
                     onClick={() => setActiveView("parking")}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan hover:bg-cyber-cyan/20 hover:text-white transition-all text-sm font-semibold shadow-[0_0_8px_rgba(0,243,255,0.15)]"
                   >
                     <ChevronLeft size={16} />
                     은행으로 돌아가기
@@ -494,21 +529,11 @@ const Banking = () => {
                   <table className="admin-table">
                     <thead>
                       <tr>
-                        <th style={{ width: "25%" }}>
-                          상품명
-                        </th>
-                        <th style={{ width: "15%" }}>
-                          기간(일)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          일 이율(%)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          최소금액(원)
-                        </th>
-                        <th style={{ width: "12%" }}>
-                          관리
-                        </th>
+                        <th style={{ width: "25%" }}>상품명</th>
+                        <th style={{ width: "15%" }}>기간(일)</th>
+                        <th style={{ width: "18%" }}>일 이율(%)</th>
+                        <th style={{ width: "18%" }}>최소금액(원)</th>
+                        <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -517,18 +542,22 @@ const Banking = () => {
                           <td className="admin-td">
                             <input
                               type="text"
-                              value={p.name || ''}
+                              value={p.name || ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "deposits",
                                   index,
                                   "name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -541,12 +570,16 @@ const Banking = () => {
                                   "deposits",
                                   index,
                                   "termInDays",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -560,13 +593,17 @@ const Banking = () => {
                                   "deposits",
                                   index,
                                   "dailyRate",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               placeholder="예: 0.01"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -579,12 +616,16 @@ const Banking = () => {
                                   "deposits",
                                   index,
                                   "minAmount",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -593,7 +634,8 @@ const Banking = () => {
                                 deleteParkingProduct("deposits", index)
                               }
                               className={`admin-button-small delete-button ${isLoading ? "disabled-button" : ""}`}
-                              disabled={isLoading}>
+                              disabled={isLoading}
+                            >
                               삭제
                             </button>
                           </td>
@@ -605,13 +647,15 @@ const Banking = () => {
                     <button
                       onClick={() => addParkingProduct("deposits")}
                       className={`admin-button-small add-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       추가
                     </button>
                     <button
                       onClick={() => saveParkingProducts("deposits")}
                       className={`admin-button-small save-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       예금 상품 저장
                     </button>
                   </div>
@@ -627,21 +671,11 @@ const Banking = () => {
                   <table className="admin-table">
                     <thead>
                       <tr>
-                        <th style={{ width: "25%" }}>
-                          상품명
-                        </th>
-                        <th style={{ width: "15%" }}>
-                          기간(일)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          일 이율(%)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          최소 월납입(원)
-                        </th>
-                        <th style={{ width: "12%" }}>
-                          관리
-                        </th>
+                        <th style={{ width: "25%" }}>상품명</th>
+                        <th style={{ width: "15%" }}>기간(일)</th>
+                        <th style={{ width: "18%" }}>일 이율(%)</th>
+                        <th style={{ width: "18%" }}>최소 월납입(원)</th>
+                        <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -650,18 +684,22 @@ const Banking = () => {
                           <td className="admin-td">
                             <input
                               type="text"
-                              value={p.name || ''}
+                              value={p.name || ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "installments",
                                   index,
                                   "name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -674,12 +712,16 @@ const Banking = () => {
                                   "installments",
                                   index,
                                   "termInDays",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -693,13 +735,17 @@ const Banking = () => {
                                   "installments",
                                   index,
                                   "dailyRate",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               placeholder="예: 0.011"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -712,12 +758,16 @@ const Banking = () => {
                                   "installments",
                                   index,
                                   "minAmount",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -726,7 +776,8 @@ const Banking = () => {
                                 deleteParkingProduct("installments", index)
                               }
                               className={`admin-button-small delete-button ${isLoading ? "disabled-button" : ""}`}
-                              disabled={isLoading}>
+                              disabled={isLoading}
+                            >
                               삭제
                             </button>
                           </td>
@@ -738,13 +789,15 @@ const Banking = () => {
                     <button
                       onClick={() => addParkingProduct("installments")}
                       className={`admin-button-small add-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       추가
                     </button>
                     <button
                       onClick={() => saveParkingProducts("installments")}
                       className={`admin-button-small save-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       적금 상품 저장
                     </button>
                   </div>
@@ -760,21 +813,11 @@ const Banking = () => {
                   <table className="admin-table">
                     <thead>
                       <tr>
-                        <th style={{ width: "25%" }}>
-                          상품명
-                        </th>
-                        <th style={{ width: "15%" }}>
-                          기간(일)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          일 이율(%)
-                        </th>
-                        <th style={{ width: "18%" }}>
-                          최대 대출액(원)
-                        </th>
-                        <th style={{ width: "12%" }}>
-                          관리
-                        </th>
+                        <th style={{ width: "25%" }}>상품명</th>
+                        <th style={{ width: "15%" }}>기간(일)</th>
+                        <th style={{ width: "18%" }}>일 이율(%)</th>
+                        <th style={{ width: "18%" }}>최대 대출액(원)</th>
+                        <th style={{ width: "12%" }}>관리</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -783,18 +826,22 @@ const Banking = () => {
                           <td className="admin-td">
                             <input
                               type="text"
-                              value={p.name || ''}
+                              value={p.name || ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "loans",
                                   index,
                                   "name",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -807,12 +854,16 @@ const Banking = () => {
                                   "loans",
                                   index,
                                   "termInDays",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -826,13 +877,17 @@ const Banking = () => {
                                   "loans",
                                   index,
                                   "dailyRate",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               placeholder="예: 0.05"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -845,12 +900,16 @@ const Banking = () => {
                                   "loans",
                                   index,
                                   "maxAmount",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="admin-input"
                               disabled={isLoading}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                              }}
                             />
                           </td>
                           <td className="admin-td">
@@ -859,7 +918,8 @@ const Banking = () => {
                                 deleteParkingProduct("loans", index)
                               }
                               className={`admin-button-small delete-button ${isLoading ? "disabled-button" : ""}`}
-                              disabled={isLoading}>
+                              disabled={isLoading}
+                            >
                               삭제
                             </button>
                           </td>
@@ -871,13 +931,15 @@ const Banking = () => {
                     <button
                       onClick={() => addParkingProduct("loans")}
                       className={`admin-button-small add-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       추가
                     </button>
                     <button
                       onClick={() => saveParkingProducts("loans")}
                       className={`admin-button-small save-button ${isLoading ? "disabled-button" : ""}`}
-                      disabled={isLoading}>
+                      disabled={isLoading}
+                    >
                       대출 상품 저장
                     </button>
                   </div>

@@ -684,7 +684,7 @@ const Login = () => {
                       value={schoolName}
                       onChange={(e) => setSchoolName(e.target.value)}
                       placeholder="초등학교"
-                      className={`${darkInput} pl-9 pr-3 py-2.5`}
+                      className={`${darkInput} pl-10 pr-3 py-2.5`}
                       disabled={isLoading}
                     />
                   </div>
@@ -700,7 +700,7 @@ const Login = () => {
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       placeholder="6-1반"
-                      className={`${darkInput} pl-9 pr-3 py-2.5`}
+                      className={`${darkInput} pl-10 pr-3 py-2.5`}
                       disabled={isLoading}
                     />
                   </div>

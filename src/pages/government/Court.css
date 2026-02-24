@@ -262,7 +262,9 @@
 }
 
 .status-dismissed {
-  background-color: var(--court-warning-color);
+  background-color: rgba(252, 238, 10, 0.15);
+  border-left-color: var(--court-warning-color) !important;
+  color: #fff;
 }
 
 .status-resolved {

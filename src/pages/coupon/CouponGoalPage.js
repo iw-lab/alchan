@@ -1,5 +1,11 @@
 // src/pages/coupon/CouponGoalPage.js - 쿠폰 목표 전용 페이지
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
@@ -22,7 +28,11 @@ import SellCouponModal from "../../components/modals/SellCouponModal";
 import GiftCouponModal from "../../components/modals/GiftCouponModal";
 import DonationHistoryModal from "../../components/modals/DonationHistoryModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
-import { safeTimestampToDate, getCachedFirestoreData, setCachedFirestoreData } from '../../utils/firestoreHelpers';
+import {
+  safeTimestampToDate,
+  getCachedFirestoreData,
+  setCachedFirestoreData,
+} from "../../utils/firestoreHelpers";
 
 import { logger } from "../../utils/logger";
 export default function CouponGoalPage() {
@@ -44,9 +54,18 @@ export default function CouponGoalPage() {
   const loadGoalDataRef = useRef(null); // 🔥 loadGoalData 함수를 저장할 ref
   const [goalDonations, setGoalDonations] = useState([]);
 
-  const donateCouponFunction = useMemo(() => httpsCallable(functions, 'donateCoupon'), []);
-  const sellCouponFunction = useMemo(() => httpsCallable(functions, 'sellCoupon'), []);
-  const giftCouponFunction = useMemo(() => httpsCallable(functions, 'giftCoupon'), []);
+  const donateCouponFunction = useMemo(
+    () => httpsCallable(functions, "donateCoupon"),
+    [],
+  );
+  const sellCouponFunction = useMemo(
+    () => httpsCallable(functions, "sellCoupon"),
+    [],
+  );
+  const giftCouponFunction = useMemo(
+    () => httpsCallable(functions, "giftCoupon"),
+    [],
+  );
 
   const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -89,48 +108,54 @@ export default function CouponGoalPage() {
   const [showGiftCouponModal, setShowGiftCouponModal] = useState(false);
   const [giftRecipient, setGiftRecipient] = useState("");
   const [giftAmount, setGiftAmount] = useState("");
-  const [showDonationHistoryModal, setShowDonationHistoryModal] = useState(false);
+  const [showDonationHistoryModal, setShowDonationHistoryModal] =
+    useState(false);
 
   // 🔥 [최적화] 데이터 처리 헬퍼 함수 (캐시/Firestore 공용)
-  const processGoalData = useCallback((goalData) => {
-    setClassCouponGoal(Number(goalData.targetAmount) || 1000);
-    setGoalProgress(Number(goalData.progress) || 0);
+  const processGoalData = useCallback(
+    (goalData) => {
+      setClassCouponGoal(Number(goalData.targetAmount) || 1000);
+      setGoalProgress(Number(goalData.progress) || 0);
 
-    // 기부 내역 처리 - timestamp 일관성 유지
-    const donations = Array.isArray(goalData.donations)
-      ? goalData.donations.map((donation) => {
-        let processedTimestamp;
-        if (donation.timestamp && donation.timestamp.toDate) {
-          processedTimestamp = donation.timestamp.toDate().toISOString();
-        } else if (donation.timestamp && donation.timestamp.seconds) {
-          processedTimestamp = new Date(donation.timestamp.seconds * 1000).toISOString();
-        } else if (donation.timestampISO) {
-          processedTimestamp = donation.timestampISO;
-        } else if (typeof donation.timestamp === 'string') {
-          processedTimestamp = donation.timestamp;
-        } else {
-          processedTimestamp = new Date().toISOString();
-        }
+      // 응모 내역 처리 - timestamp 일관성 유지
+      const donations = Array.isArray(goalData.donations)
+        ? goalData.donations.map((donation) => {
+            let processedTimestamp;
+            if (donation.timestamp && donation.timestamp.toDate) {
+              processedTimestamp = donation.timestamp.toDate().toISOString();
+            } else if (donation.timestamp && donation.timestamp.seconds) {
+              processedTimestamp = new Date(
+                donation.timestamp.seconds * 1000,
+              ).toISOString();
+            } else if (donation.timestampISO) {
+              processedTimestamp = donation.timestampISO;
+            } else if (typeof donation.timestamp === "string") {
+              processedTimestamp = donation.timestamp;
+            } else {
+              processedTimestamp = new Date().toISOString();
+            }
 
-        return {
-          ...donation,
-          amount: Number(donation.amount) || 0,
-          timestamp: processedTimestamp,
-          userId: donation.userId || '',
-          userName: donation.userName || '알 수 없는 사용자',
-          message: donation.message || '',
-          classCode: donation.classCode || currentUserClassCode,
-        };
-      })
-      : [];
+            return {
+              ...donation,
+              amount: Number(donation.amount) || 0,
+              timestamp: processedTimestamp,
+              userId: donation.userId || "",
+              userName: donation.userName || "알 수 없는 사용자",
+              message: donation.message || "",
+              classCode: donation.classCode || currentUserClassCode,
+            };
+          })
+        : [];
 
-    setGoalDonations(donations);
+      setGoalDonations(donations);
 
-    // 내 기여도 계산
-    const myDonations = donations.filter(d => d.userId === userId);
-    const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
-    setMyContribution(myTotal);
-  }, [currentUserClassCode, userId]);
+      // 내 기여도 계산
+      const myDonations = donations.filter((d) => d.userId === userId);
+      const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
+      setMyContribution(myTotal);
+    },
+    [currentUserClassCode, userId],
+  );
 
   // 🔥 loadGoalData 함수 - useCallback 제거하고 일반 함수로 변경
   const loadGoalData = async (forceRefresh = false) => {
@@ -150,7 +175,11 @@ export default function CouponGoalPage() {
       // 🔥 [최적화] 캐시 우선 로드 - Firestore 읽기 절감
       const cacheKey = `goal_${currentGoalId}`;
       if (!forceRefresh) {
-        const cachedData = getCachedFirestoreData(cacheKey, userId, CACHE_DURATION);
+        const cachedData = getCachedFirestoreData(
+          cacheKey,
+          userId,
+          CACHE_DURATION,
+        );
         if (cachedData) {
           processGoalData(cachedData);
           setAssetsLoading(false);
@@ -173,10 +202,10 @@ export default function CouponGoalPage() {
         const cacheKey = `goal_${currentGoalId}`;
         setCachedFirestoreData(cacheKey, userId, goalData);
       } else {
-        logger.warn('[CouponGoalPage] 목표 문서가 존재하지 않습니다');
+        logger.warn("[CouponGoalPage] 목표 문서가 존재하지 않습니다");
       }
     } catch (error) {
-      logger.error('[CouponGoalPage] 목표 데이터 로드 실패:', error);
+      logger.error("[CouponGoalPage] 목표 데이터 로드 실패:", error);
     } finally {
       setAssetsLoading(false);
       loadingRef.current = false;
@@ -212,7 +241,7 @@ export default function CouponGoalPage() {
 
   const handleDonateCoupon = async (amount, memo) => {
     if (!userId || !currentUserClassCode || !userDoc) {
-      alert("사용자 또는 학급 정보가 없어 기부할 수 없습니다.");
+      alert("사용자 또는 학급 정보가 없어 응모할 수 없습니다.");
       return false;
     }
 
@@ -226,20 +255,25 @@ export default function CouponGoalPage() {
     if (optimisticUpdate) {
       optimisticUpdate({ coupons: -donationAmount });
     }
-    setMyContribution(prev => prev + donationAmount);
-    setGoalProgress(prev => prev + donationAmount);
+    setMyContribution((prev) => prev + donationAmount);
+    setGoalProgress((prev) => prev + donationAmount);
 
     // 🔥 로딩 상태 표시
     setAssetsLoading(true);
 
     try {
       // Call the server function in the background
-      const result = await donateCouponFunction({ amount: donationAmount, message: memo });
+      const result = await donateCouponFunction({
+        amount: donationAmount,
+        message: memo,
+      });
 
       // 🔥 캐시 무효화
       const cacheKey = `goal_${currentGoalId}`;
       localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
-      localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
 
       // 🔥 즉시 최신 데이터 로드
       loadingRef.current = false;
@@ -247,19 +281,19 @@ export default function CouponGoalPage() {
         await loadGoalDataRef.current();
       }
 
-      alert(`${donationAmount} 쿠폰 기부 완료!`);
+      alert(`${donationAmount} 쿠폰 응모 완료!`);
       setShowDonateModal(false);
 
       return true;
     } catch (error) {
-      logger.error('[CouponGoalPage] 기부 오류 (상세):', {
+      logger.error("[CouponGoalPage] 응모 오류 (상세):", {
         error,
         message: error.message,
         code: error.code,
         details: error.details,
-        stack: error.stack
+        stack: error.stack,
       });
-      alert(`기부 오류: ${error.message}`);
+      alert(`응모 오류: ${error.message}`);
 
       // 실패 시 롤백
       if (optimisticUpdate) {
@@ -281,7 +315,9 @@ export default function CouponGoalPage() {
     setAssetsLoading(true);
 
     try {
-      localStorage.removeItem(`firestore_cache_goal_${currentGoalId}_${userId}`);
+      localStorage.removeItem(
+        `firestore_cache_goal_${currentGoalId}_${userId}`,
+      );
 
       const goalDocRef = doc(db, "goals", currentGoalId);
       const goalDocSnap = await getDoc(goalDocRef);
@@ -294,35 +330,39 @@ export default function CouponGoalPage() {
 
         const freshDonations = Array.isArray(latestGoalData.donations)
           ? latestGoalData.donations.map((donation) => {
-            let processedTimestamp;
-            if (donation.timestamp && donation.timestamp.toDate) {
-              processedTimestamp = donation.timestamp.toDate().toISOString();
-            } else if (donation.timestamp && donation.timestamp.seconds) {
-              processedTimestamp = new Date(donation.timestamp.seconds * 1000).toISOString();
-            } else if (donation.timestampISO) {
-              processedTimestamp = donation.timestampISO;
-            } else if (typeof donation.timestamp === 'string') {
-              processedTimestamp = donation.timestamp;
-            } else {
-              processedTimestamp = new Date().toISOString();
-            }
+              let processedTimestamp;
+              if (donation.timestamp && donation.timestamp.toDate) {
+                processedTimestamp = donation.timestamp.toDate().toISOString();
+              } else if (donation.timestamp && donation.timestamp.seconds) {
+                processedTimestamp = new Date(
+                  donation.timestamp.seconds * 1000,
+                ).toISOString();
+              } else if (donation.timestampISO) {
+                processedTimestamp = donation.timestampISO;
+              } else if (typeof donation.timestamp === "string") {
+                processedTimestamp = donation.timestamp;
+              } else {
+                processedTimestamp = new Date().toISOString();
+              }
 
-            return {
-              ...donation,
-              amount: Number(donation.amount) || 0,
-              timestamp: processedTimestamp,
-              userId: donation.userId || '',
-              userName: donation.userName || '알 수 없는 사용자',
-              message: donation.message || '',
-              classCode: donation.classCode || currentUserClassCode,
-            };
-          })
+              return {
+                ...donation,
+                amount: Number(donation.amount) || 0,
+                timestamp: processedTimestamp,
+                userId: donation.userId || "",
+                userName: donation.userName || "알 수 없는 사용자",
+                message: donation.message || "",
+                classCode: donation.classCode || currentUserClassCode,
+              };
+            })
           : [];
 
         setGoalDonations(freshDonations);
         setCachedFirestoreData(`goal_${currentGoalId}`, userId, latestGoalData);
 
-        alert(`목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개`);
+        alert(
+          `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n응모 내역: ${freshDonations.length}개`,
+        );
       } else {
         alert("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
       }
@@ -347,8 +387,10 @@ export default function CouponGoalPage() {
       userCash: userDoc?.cash,
     };
 
-    logger.log('[CouponGoalPage Debug]', debugInfo);
-    alert(`디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`);
+    logger.log("[CouponGoalPage Debug]", debugInfo);
+    alert(
+      `디버그 정보가 콘솔에 출력되었습니다.\n응모 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
+    );
   };
 
   const resetCouponGoal = async () => {
@@ -360,7 +402,11 @@ export default function CouponGoalPage() {
       alert("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
       return;
     }
-    if (!window.confirm(`정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`)) {
+    if (
+      !window.confirm(
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`,
+      )
+    ) {
       return;
     }
 
@@ -371,7 +417,7 @@ export default function CouponGoalPage() {
 
       const usersQuery = query(
         collection(db, "users"),
-        where("classCode", "==", currentUserClassCode)
+        where("classCode", "==", currentUserClassCode),
       );
       const usersSnapshot = await getDocs(usersQuery);
 
@@ -394,14 +440,20 @@ export default function CouponGoalPage() {
 
       await batch.commit();
 
-      localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
-      localStorage.removeItem(`firestore_cache_goal_${currentGoalId}_${userId}`);
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
+      localStorage.removeItem(
+        `firestore_cache_goal_${currentGoalId}_${userId}`,
+      );
 
       setMyContribution(0);
       setGoalProgress(0);
       setGoalDonations([]);
 
-      alert(`학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`);
+      alert(
+        `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
+      );
     } catch (error) {
       alert(`목표 초기화 오류: ${error.message}`);
     } finally {
@@ -420,7 +472,7 @@ export default function CouponGoalPage() {
     if (optimisticUpdate) {
       optimisticUpdate({
         coupons: -amount,
-        cash: amount * couponValue
+        cash: amount * couponValue,
       });
     }
 
@@ -464,10 +516,18 @@ export default function CouponGoalPage() {
       optimisticUpdate({ coupons: -amount });
     }
 
-    if (window.confirm(`${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`)) {
+    if (
+      window.confirm(
+        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`,
+      )
+    ) {
       setAssetsLoading(true);
       try {
-        await giftCouponFunction({ recipientId: recipientUser.id, amount, message: "" });
+        await giftCouponFunction({
+          recipientId: recipientUser.id,
+          amount,
+          message: "",
+        });
         alert("쿠폰 선물이 완료되었습니다.");
         setShowGiftCouponModal(false);
         setGiftRecipient("");
@@ -520,7 +580,10 @@ export default function CouponGoalPage() {
   return (
     <div className="w-full min-h-full" style={{ backgroundColor: "#0a0a12" }}>
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
-        <h2 className="text-2xl font-bold text-emerald-400 border-b-2 border-emerald-900 pb-3 mb-6" style={{ textShadow: "0 0 10px rgba(52, 211, 153, 0.3)" }}>
+        <h2
+          className="text-2xl font-bold text-emerald-400 border-b-2 border-emerald-900 pb-3 mb-6"
+          style={{ textShadow: "0 0 10px rgba(52, 211, 153, 0.3)" }}
+        >
           🎯 쿠폰 목표 (학급: {currentUserClassCode})
         </h2>
 
@@ -538,7 +601,9 @@ export default function CouponGoalPage() {
               setShowGiftCouponModal={setShowGiftCouponModal}
               goalAchieved={goalAchieved}
               resetGoalButton={
-                userDoc?.isAdmin || userDoc?.isSuperAdmin ? resetCouponGoal : null
+                userDoc?.isAdmin || userDoc?.isSuperAdmin
+                  ? resetCouponGoal
+                  : null
               }
               isResettingGoal={isResettingGoal}
             />
@@ -597,7 +662,9 @@ export default function CouponGoalPage() {
                 <button
                   onClick={() => {
                     localStorage.clear();
-                    alert("로컬 캐시가 모두 삭제되었습니다. 페이지를 새로고침해주세요.");
+                    alert(
+                      "로컬 캐시가 모두 삭제되었습니다. 페이지를 새로고침해주세요.",
+                    );
                     window.location.reload();
                   }}
                   style={{
@@ -623,11 +690,12 @@ export default function CouponGoalPage() {
                   lineHeight: "1.4",
                 }}
               >
-                • 기부 내역이 표시되지 않으면 "목표 데이터 새로고침" 버튼을 클릭하세요
+                • 응모 내역이 표시되지 않으면 "목표 데이터 새로고침" 버튼을
+                클릭하세요
                 <br />
                 • 문제가 지속되면 "캐시 삭제 후 새로고침"을 시도해보세요
-                <br />• 현재 상태: 기부 내역 {goalDonations.length}개, 목표 진행률{" "}
-                {goalProgress}/{classCouponGoal}
+                <br />• 현재 상태: 응모 내역 {goalDonations.length}개, 목표
+                진행률 {goalProgress}/{classCouponGoal}
               </p>
             </div>
           </>

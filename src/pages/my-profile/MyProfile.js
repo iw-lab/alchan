@@ -3,20 +3,37 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { verifyClassCode, db } from "../../firebase";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from "firebase/auth";
+import {
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  deleteUser,
+} from "firebase/auth";
 import Avatar from "../../components/Avatar";
 import AvatarEditor from "../../components/AvatarEditor";
 import { getAvatarConfig } from "../../utils/avatarSystem";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "../../utils/levelSystem";
-import { getUserAchievements, getAchievementById } from "../../utils/achievementSystem";
+import {
+  getUserAchievements,
+  getAchievementById,
+} from "../../utils/achievementSystem";
 import { StreakDisplay, StreakRewardInfo } from "../../components/DailyReward";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
-import { User, Key, Building2, Trash2, LogOut, Settings, ChevronRight } from "lucide-react";
+import {
+  User,
+  Key,
+  Building2,
+  Trash2,
+  LogOut,
+  Settings,
+  ChevronRight,
+} from "lucide-react";
 
 export default function MyProfile() {
   const { user, userDoc, logout } = useAuth();
   const userId = user?.uid;
-  const userName = userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
+  const userName =
+    userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
   const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   const [avatarConfig, setAvatarConfig] = useState(null);
@@ -67,6 +84,7 @@ export default function MyProfile() {
     setConfirmPassword("");
     setNewClassCode("");
     setDeleteConfirmText("");
+    setDeletePassword("");
     setError("");
     setIsLoading(false);
   };
@@ -113,7 +131,10 @@ export default function MyProfile() {
 
     setIsLoading(true);
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword,
+      );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
       alert("비밀번호가 변경되었습니다.");
@@ -159,25 +180,41 @@ export default function MyProfile() {
   };
 
   // 계정 삭제
+  const [deletePassword, setDeletePassword] = useState("");
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "계정삭제") {
       setError("'계정삭제'를 정확히 입력해주세요.");
       return;
     }
+    if (!deletePassword) {
+      setError("비밀번호를 입력해주세요.");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // Firestore 사용자 문서 삭제
+      // 재인증
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        deletePassword,
+      );
+      await reauthenticateWithCredential(user, credential);
+
+      // Firebase Auth 계정 삭제 (먼저! 실패하면 Firestore 데이터 보존)
+      await deleteUser(user);
+
+      // Auth 삭제 성공 후 Firestore 사용자 문서 삭제
       const userRef = doc(db, "users", userId);
       await deleteDoc(userRef);
 
-      // Firebase Auth 계정 삭제
-      await deleteUser(user);
-
       alert("계정이 삭제되었습니다.");
     } catch (err) {
-      if (err.code === "auth/requires-recent-login") {
-        setError("보안을 위해 다시 로그인 후 시도해주세요.");
+      if (
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/invalid-credential"
+      ) {
+        setError("비밀번호가 올바르지 않습니다.");
       } else {
         setError("계정 삭제에 실패했습니다.");
       }
@@ -191,13 +228,16 @@ export default function MyProfile() {
   const sortedAchievements = [...achievements].sort((a, b) => {
     const achA = getAchievementById(a.id);
     const achB = getAchievementById(b.id);
-    return (rarityOrder[achA?.rarity] || 99) - (rarityOrder[achB?.rarity] || 99);
+    return (
+      (rarityOrder[achA?.rarity] || 99) - (rarityOrder[achB?.rarity] || 99)
+    );
   });
 
   // 최고 업적 (가장 레어한 것)
-  const bestAchievement = sortedAchievements.length > 0
-    ? getAchievementById(sortedAchievements[0].id)
-    : null;
+  const bestAchievement =
+    sortedAchievements.length > 0
+      ? getAchievementById(sortedAchievements[0].id)
+      : null;
 
   if (!user) {
     return (
@@ -245,7 +285,10 @@ export default function MyProfile() {
                 }}
               >
                 <span className="text-xl">{levelInfo.icon}</span>
-                <span className="font-bold text-sm" style={{ color: levelInfo.color }}>
+                <span
+                  className="font-bold text-sm"
+                  style={{ color: levelInfo.color }}
+                >
                   Lv.{levelInfo.level} {levelInfo.title}
                 </span>
               </div>
@@ -257,9 +300,14 @@ export default function MyProfile() {
                   <span
                     className="font-semibold text-[13px]"
                     style={{
-                      color: bestAchievement.rarity === "legendary" ? "#f59e0b" :
-                             bestAchievement.rarity === "epic" ? "#a78bfa" :
-                             bestAchievement.rarity === "rare" ? "#3b82f6" : "#9ca3af",
+                      color:
+                        bestAchievement.rarity === "legendary"
+                          ? "#f59e0b"
+                          : bestAchievement.rarity === "epic"
+                            ? "#a78bfa"
+                            : bestAchievement.rarity === "rare"
+                              ? "#3b82f6"
+                              : "#9ca3af",
                     }}
                   >
                     {bestAchievement.name}
@@ -302,7 +350,12 @@ export default function MyProfile() {
             <div className="flex justify-between mt-2 text-xs text-gray-500">
               <span>현재: {formatKoreanCurrency(netAssets)}</span>
               {levelInfo.level < LEVEL_THRESHOLDS.length - 1 && (
-                <span>다음: {formatKoreanCurrency(LEVEL_THRESHOLDS[levelInfo.level + 1]?.minAssets || 0)}</span>
+                <span>
+                  다음:{" "}
+                  {formatKoreanCurrency(
+                    LEVEL_THRESHOLDS[levelInfo.level + 1]?.minAssets || 0,
+                  )}
+                </span>
               )}
             </div>
           </div>
@@ -325,12 +378,21 @@ export default function MyProfile() {
                 if (!achievement) return null;
 
                 const rarityColors = {
-                  legendary: { bg: "#f59e0b20", border: "#f59e0b", text: "#f59e0b" },
+                  legendary: {
+                    bg: "#f59e0b20",
+                    border: "#f59e0b",
+                    text: "#f59e0b",
+                  },
                   epic: { bg: "#a78bfa20", border: "#a78bfa", text: "#a78bfa" },
                   rare: { bg: "#3b82f620", border: "#3b82f6", text: "#3b82f6" },
-                  common: { bg: "#6b728020", border: "#6b7280", text: "#9ca3af" },
+                  common: {
+                    bg: "#6b728020",
+                    border: "#6b7280",
+                    text: "#9ca3af",
+                  },
                 };
-                const colors = rarityColors[achievement.rarity] || rarityColors.common;
+                const colors =
+                  rarityColors[achievement.rarity] || rarityColors.common;
 
                 return (
                   <div
@@ -341,10 +403,11 @@ export default function MyProfile() {
                       border: `2px solid ${colors.border}`,
                     }}
                   >
-                    <div className="text-[32px] mb-2">
-                      {achievement.icon}
-                    </div>
-                    <div className="text-xs font-semibold mb-1" style={{ color: colors.text }}>
+                    <div className="text-[32px] mb-2">{achievement.icon}</div>
+                    <div
+                      className="text-xs font-semibold mb-1"
+                      style={{ color: colors.text }}
+                    >
                       {achievement.name}
                     </div>
                     <div className="text-[10px] text-gray-500">
@@ -379,31 +442,46 @@ export default function MyProfile() {
 
             {/* 닉네임 변경 */}
             <button
-              onClick={() => { setShowNicknameModal(true); setError(""); }}
+              onClick={() => {
+                setShowNicknameModal(true);
+                setError("");
+              }}
               className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <User size={20} className="text-[#a78bfa]" />
-              <span className="text-cyber-text text-sm flex-1 text-left">닉네임 변경</span>
+              <span className="text-cyber-text text-sm flex-1 text-left">
+                닉네임 변경
+              </span>
               <ChevronRight size={18} className="text-gray-500" />
             </button>
 
             {/* 비밀번호 변경 */}
             <button
-              onClick={() => { setShowPasswordModal(true); setError(""); }}
+              onClick={() => {
+                setShowPasswordModal(true);
+                setError("");
+              }}
               className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <Key size={20} className="text-[#a78bfa]" />
-              <span className="text-cyber-text text-sm flex-1 text-left">비밀번호 변경</span>
+              <span className="text-cyber-text text-sm flex-1 text-left">
+                비밀번호 변경
+              </span>
               <ChevronRight size={18} className="text-gray-500" />
             </button>
 
             {/* 학급 코드 변경 */}
             <button
-              onClick={() => { setShowClassCodeModal(true); setError(""); }}
+              onClick={() => {
+                setShowClassCodeModal(true);
+                setError("");
+              }}
               className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <Building2 size={20} className="text-[#a78bfa]" />
-              <span className="text-cyber-text text-sm flex-1 text-left">학급 코드 변경</span>
+              <span className="text-cyber-text text-sm flex-1 text-left">
+                학급 코드 변경
+              </span>
               <ChevronRight size={18} className="text-gray-500" />
             </button>
 
@@ -413,17 +491,24 @@ export default function MyProfile() {
               className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
             >
               <LogOut size={20} className="text-[#9ca3af]" />
-              <span className="text-cyber-text text-sm flex-1 text-left">로그아웃</span>
+              <span className="text-cyber-text text-sm flex-1 text-left">
+                로그아웃
+              </span>
               <ChevronRight size={18} className="text-gray-500" />
             </button>
 
             {/* 계정 삭제 */}
             <button
-              onClick={() => { setShowDeleteModal(true); setError(""); }}
+              onClick={() => {
+                setShowDeleteModal(true);
+                setError("");
+              }}
               className="flex items-center gap-3 p-4 bg-red-500/10 rounded-xl border border-red-500/30 cursor-pointer transition-all duration-200 hover:border-red-500/60"
             >
               <Trash2 size={20} className="text-red-500" />
-              <span className="text-red-500 text-sm flex-1 text-left">계정 삭제</span>
+              <span className="text-red-500 text-sm flex-1 text-left">
+                계정 삭제
+              </span>
               <ChevronRight size={18} className="text-red-500" />
             </button>
           </div>
@@ -442,11 +527,14 @@ export default function MyProfile() {
       {showNicknameModal && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-5"
-          onClick={() => { setShowNicknameModal(false); resetModals(); }}
+          onClick={() => {
+            setShowNicknameModal(false);
+            resetModals();
+          }}
         >
           <div
             className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-cyber-text text-lg font-bold mb-5">
               닉네임 변경
@@ -454,7 +542,7 @@ export default function MyProfile() {
             <input
               type="text"
               value={newNickname}
-              onChange={e => setNewNickname(e.target.value)}
+              onChange={(e) => setNewNickname(e.target.value)}
               placeholder="새 닉네임 (2~10자)"
               maxLength={10}
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
@@ -462,7 +550,10 @@ export default function MyProfile() {
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
               <button
-                onClick={() => { setShowNicknameModal(false); resetModals(); }}
+                onClick={() => {
+                  setShowNicknameModal(false);
+                  resetModals();
+                }}
                 className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
               >
                 취소
@@ -483,11 +574,14 @@ export default function MyProfile() {
       {showPasswordModal && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-5"
-          onClick={() => { setShowPasswordModal(false); resetModals(); }}
+          onClick={() => {
+            setShowPasswordModal(false);
+            resetModals();
+          }}
         >
           <div
             className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-cyber-text text-lg font-bold mb-5">
               비밀번호 변경
@@ -495,28 +589,31 @@ export default function MyProfile() {
             <input
               type="password"
               value={currentPassword}
-              onChange={e => setCurrentPassword(e.target.value)}
+              onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="현재 비밀번호"
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
             />
             <input
               type="password"
               value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
+              onChange={(e) => setNewPassword(e.target.value)}
               placeholder="새 비밀번호 (6자 이상)"
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
             />
             <input
               type="password"
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="새 비밀번호 확인"
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
               <button
-                onClick={() => { setShowPasswordModal(false); resetModals(); }}
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  resetModals();
+                }}
                 className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
               >
                 취소
@@ -537,29 +634,38 @@ export default function MyProfile() {
       {showClassCodeModal && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-5"
-          onClick={() => { setShowClassCodeModal(false); resetModals(); }}
+          onClick={() => {
+            setShowClassCodeModal(false);
+            resetModals();
+          }}
         >
           <div
             className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-cyber-text text-lg font-bold mb-5">
               학급 코드 변경
             </h3>
             <p className="text-[#9ca3af] text-[13px] mb-4">
-              현재 학급: <span className="text-[#a78bfa] font-semibold">{userDoc?.classCode || "없음"}</span>
+              현재 학급:{" "}
+              <span className="text-[#a78bfa] font-semibold">
+                {userDoc?.classCode || "없음"}
+              </span>
             </p>
             <input
               type="text"
               value={newClassCode}
-              onChange={e => setNewClassCode(e.target.value.toUpperCase())}
+              onChange={(e) => setNewClassCode(e.target.value.toUpperCase())}
               placeholder="새 학급 코드"
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 uppercase focus:border-[#a78bfa] focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
               <button
-                onClick={() => { setShowClassCodeModal(false); resetModals(); }}
+                onClick={() => {
+                  setShowClassCodeModal(false);
+                  resetModals();
+                }}
                 className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
               >
                 취소
@@ -580,30 +686,45 @@ export default function MyProfile() {
       {showDeleteModal && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-5"
-          onClick={() => { setShowDeleteModal(false); resetModals(); }}
+          onClick={() => {
+            setShowDeleteModal(false);
+            resetModals();
+          }}
         >
           <div
             className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-red-500"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-red-500 text-lg font-bold mb-4">
               ⚠️ 계정 삭제
             </h3>
             <p className="text-[#9ca3af] text-[13px] mb-4 leading-relaxed">
-              계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.
-              정말 삭제하시려면 아래에 <span className="text-red-500 font-semibold">'계정삭제'</span>를 입력하세요.
+              계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수
+              없습니다. 정말 삭제하시려면 아래에{" "}
+              <span className="text-red-500 font-semibold">'계정삭제'</span>를
+              입력하세요.
             </p>
             <input
               type="text"
               value={deleteConfirmText}
-              onChange={e => setDeleteConfirmText(e.target.value)}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="계정삭제"
+              className="w-full p-3.5 bg-[#0f0f23] border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-2.5 focus:outline-none"
+            />
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="비밀번호 확인"
               className="w-full p-3.5 bg-[#0f0f23] border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-3 focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
               <button
-                onClick={() => { setShowDeleteModal(false); resetModals(); }}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  resetModals();
+                }}
                 className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
               >
                 취소
@@ -612,7 +733,9 @@ export default function MyProfile() {
                 onClick={handleDeleteAccount}
                 disabled={isLoading || deleteConfirmText !== "계정삭제"}
                 className={`flex-1 p-3 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed ${
-                  deleteConfirmText === "계정삭제" ? "bg-red-500 opacity-100" : "bg-gray-700 opacity-50"
+                  deleteConfirmText === "계정삭제"
+                    ? "bg-red-500 opacity-100"
+                    : "bg-gray-700 opacity-50"
                 } ${isLoading ? "opacity-50" : ""}`}
               >
                 {isLoading ? "삭제 중..." : "삭제"}

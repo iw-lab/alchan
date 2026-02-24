@@ -17,6 +17,7 @@ import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
 const EconomicEventPopup = lazy(() => import("./EconomicEventPopup"));
+const NewBillPopup = lazy(() => import("./NewBillPopup"));
 const DailyRewardBanner = lazy(() =>
   import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
@@ -726,6 +727,11 @@ export default function AlchanLayout() {
         {/* 🔥 경제 이벤트 팝업 (학생/모든 유저) */}
         <Suspense fallback={null}>
           <EconomicEventPopup />
+        </Suspense>
+
+        {/* 🏛️ 새 법안 제안 팝업 (투표 미참여 학생) */}
+        <Suspense fallback={null}>
+          <NewBillPopup />
         </Suspense>
 
         {/* 📱 iOS 홈화면 설치 안내 */}

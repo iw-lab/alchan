@@ -2,15 +2,15 @@
 
 /* 전역 스타일 및 애니메이션 */
 :root {
-  --board-size: 21;
+  --board-size: 15;
   /* JS에서 BOARD_SIZE와 동기화 */
-  --cell-size: 28px;
+  --cell-size: min(40px, calc((100vw - 80px) / 15));
   --board-padding: 22px;
   --stone-size: calc(var(--cell-size) * 0.85);
   --line-thickness: 1px;
   --board-bg: #d1b587;
   --line-color: #a07d5a;
-  --star-point-size: 7px;
+  --star-point-size: 8px;
 }
 
 @keyframes fadeIn {
@@ -152,7 +152,8 @@
   justify-content: center;
   align-items: center;
   width: 100%;
-  margin: 2rem 0;
+  max-width: 100%;
+  margin: 1rem 0;
 }
 
 .omok-board {
@@ -198,6 +199,9 @@
   height: var(--star-point-size);
   border-radius: 50%;
   background-color: var(--line-color);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1;
 }
 
@@ -387,8 +391,8 @@
 /* 반응형 */
 @media (max-width: 768px) {
   :root {
-    --cell-size: 22px;
-    --board-padding: 18px;
+    --cell-size: min(34px, calc((100vw - 60px) / 15));
+    --board-padding: 16px;
   }
 
   .player-status {
@@ -399,13 +403,14 @@
 
 @media (max-width: 480px) {
   :root {
-    --cell-size: 18px;
-    --board-padding: 12px;
+    --cell-size: min(28px, calc((100vw - 40px) / 15));
+    --board-padding: 10px;
+    --star-point-size: 6px;
   }
 
   .omok-container,
   .game-page-container {
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .omok-header h2 {

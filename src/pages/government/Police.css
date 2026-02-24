@@ -694,6 +694,174 @@ button {
   border: 1px dashed var(--medium-gray);
 }
 
+/* --- 처리 결과 스타일 (ReportResults) --- */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  color: var(--secondary-color);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-button {
+  padding: 8px 16px;
+  border: 1px solid var(--medium-gray);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--secondary-color);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: 'Rajdhani', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.filter-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.filter-button.active {
+  background-color: rgba(0, 255, 242, 0.15);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.result-item {
+  background-color: rgba(20, 20, 35, 0.4);
+  border: 1px solid var(--medium-gray);
+  border-left: 4px solid var(--secondary-color);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+}
+
+.result-item.status-resolved_fine {
+  border-left-color: var(--fine-color);
+}
+
+.result-item.status-resolved_settlement {
+  border-left-color: var(--info-color);
+}
+
+.result-item.status-dismissed {
+  border-left-color: var(--warning-color);
+  background-color: rgba(252, 238, 10, 0.05);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--medium-gray);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-id {
+  color: var(--secondary-color);
+  font-weight: 500;
+}
+
+.result-status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.result-item.status-resolved_fine .result-status {
+  background-color: rgba(255, 0, 60, 0.2);
+  color: var(--fine-color);
+}
+
+.result-item.status-resolved_settlement .result-status {
+  background-color: rgba(0, 255, 242, 0.2);
+  color: var(--info-color);
+}
+
+.result-item.status-dismissed .result-status {
+  background-color: rgba(252, 238, 10, 0.15);
+  color: var(--warning-color);
+}
+
+.result-date {
+  color: var(--secondary-color);
+}
+
+.result-content {
+  padding: 20px;
+}
+
+.result-content p {
+  margin: 6px 0;
+  color: var(--secondary-color);
+  font-size: 0.95rem;
+}
+
+.result-content strong {
+  color: #fff;
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+.result-parties {
+  margin-bottom: 12px;
+}
+
+.result-details {
+  margin-bottom: 12px;
+}
+
+.result-details .amount {
+  color: var(--fine-color);
+  font-weight: 600;
+}
+
+.result-details .resolution {
+  color: var(--primary-color);
+}
+
+.processed-by {
+  padding-top: 10px;
+  border-top: 1px dashed var(--medium-gray);
+  font-size: 0.85rem;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--medium-gray);
+}
+
+.admin-actions .admin-button {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
 /* ==========================================================================
    모달 (Modal) 스타일 - Cyberpunk Dark Theme
    ========================================================================== */

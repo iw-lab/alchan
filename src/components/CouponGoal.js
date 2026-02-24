@@ -2,7 +2,13 @@
 import React from "react";
 
 // 원형 프로그레스 컴포넌트
-const CircularProgress = ({ percentage, size = 140, strokeWidth = 12, color, children }) => {
+const CircularProgress = ({
+  percentage,
+  size = 140,
+  strokeWidth = 12,
+  color,
+  children,
+}) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
@@ -62,7 +68,7 @@ export default function CouponGoal({
 
   const goalPercentage = Math.min(
     Math.round((goalProgress / validClassCouponGoal) * 100),
-    100
+    100,
   );
 
   const myContributionPercentage =
@@ -80,7 +86,9 @@ export default function CouponGoal({
         boxShadow: goalAchieved
           ? "0 4px 20px rgba(16, 185, 129, 0.25)"
           : "0 4px 20px rgba(0, 255, 242, 0.15)",
-        border: goalAchieved ? "2px solid #10b981" : "1px solid rgba(0, 255, 242, 0.2)",
+        border: goalAchieved
+          ? "2px solid #10b981"
+          : "1px solid rgba(0, 255, 242, 0.2)",
         backdropFilter: "blur(10px)",
       }}
     >
@@ -149,7 +157,10 @@ export default function CouponGoal({
             strokeWidth={14}
             color={mainColor}
           >
-            <div className="text-3xl font-extrabold" style={{ color: mainColor }}>
+            <div
+              className="text-3xl font-extrabold"
+              style={{ color: mainColor }}
+            >
               {goalPercentage}%
             </div>
             <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
@@ -157,11 +168,22 @@ export default function CouponGoal({
             </div>
           </CircularProgress>
           <div className="mt-3">
-            <div className="text-2xl font-extrabold" style={{ color: "#e8e8ff" }}>
+            <div
+              className="text-2xl font-extrabold"
+              style={{ color: "#e8e8ff" }}
+            >
               {(goalProgress || 0).toLocaleString()}
-              <span className="text-sm font-medium" style={{ color: "#a0a0c0" }}> / {validClassCouponGoal.toLocaleString()}</span>
+              <span
+                className="text-sm font-medium"
+                style={{ color: "#a0a0c0" }}
+              >
+                {" "}
+                / {validClassCouponGoal.toLocaleString()}
+              </span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>학급 전체 기부량</div>
+            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>
+              학급 전체 응모량
+            </div>
           </div>
         </div>
 
@@ -173,7 +195,10 @@ export default function CouponGoal({
             strokeWidth={10}
             color="#f59e0b"
           >
-            <div className="text-2xl font-extrabold" style={{ color: "#f59e0b" }}>
+            <div
+              className="text-2xl font-extrabold"
+              style={{ color: "#f59e0b" }}
+            >
               {myContributionPercentage}%
             </div>
             <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
@@ -183,9 +208,17 @@ export default function CouponGoal({
           <div className="mt-3">
             <div className="text-lg font-bold" style={{ color: "#e8e8ff" }}>
               {(myContribution || 0).toLocaleString()}
-              <span className="text-xs font-medium" style={{ color: "#a0a0c0" }}> 쿠폰</span>
+              <span
+                className="text-xs font-medium"
+                style={{ color: "#a0a0c0" }}
+              >
+                {" "}
+                쿠폰
+              </span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>내가 기부한 쿠폰</div>
+            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>
+              내가 응모한 쿠폰
+            </div>
           </div>
         </div>
 
@@ -193,20 +226,37 @@ export default function CouponGoal({
         <div
           className="rounded-2xl p-5 text-center min-w-[130px]"
           style={{
-            background: "linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%)",
+            background:
+              "linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%)",
             boxShadow: "0 4px 12px rgba(245, 158, 11, 0.1)",
             border: "1px solid rgba(251, 191, 36, 0.3)",
           }}
         >
           <div className="text-3xl mb-2">🎫</div>
-          <div className="text-3xl font-extrabold" style={{ color: "#fbbf24", textShadow: "0 0 10px rgba(251, 191, 36, 0.3)" }}>
+          <div
+            className="text-3xl font-extrabold"
+            style={{
+              color: "#fbbf24",
+              textShadow: "0 0 10px rgba(251, 191, 36, 0.3)",
+            }}
+          >
             {(currentCoupons || 0).toLocaleString()}
           </div>
-          <div className="text-xs font-semibold mt-1" style={{ color: "#fcd34d" }}>
+          <div
+            className="text-xs font-semibold mt-1"
+            style={{ color: "#fcd34d" }}
+          >
             보유 쿠폰
           </div>
-          <div className="text-xs mt-2 px-2 py-1 rounded-lg" style={{ color: "#fcd34d", background: "rgba(0,0,0,0.3)" }}>
-            1쿠폰 = {typeof couponValue === "number" ? couponValue.toLocaleString() : "0"}원
+          <div
+            className="text-xs mt-2 px-2 py-1 rounded-lg"
+            style={{ color: "#fcd34d", background: "rgba(0,0,0,0.3)" }}
+          >
+            1쿠폰 ={" "}
+            {typeof couponValue === "number"
+              ? couponValue.toLocaleString()
+              : "0"}
+            원
           </div>
         </div>
       </div>
@@ -258,7 +308,9 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">📋</span>
-          <span className="text-sm font-bold" style={{ color: "#4b5563" }}>기부 내역</span>
+          <span className="text-sm font-bold" style={{ color: "#4b5563" }}>
+            응모 내역
+          </span>
         </button>
       </div>
 

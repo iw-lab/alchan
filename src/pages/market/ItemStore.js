@@ -6,7 +6,7 @@ import "./ItemStore.css";
 import "../admin/AdminPanel.css";
 import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
-import { logger } from '../../utils/logger';
+import { logger } from "../../utils/logger";
 
 const StockBadge = ({ stock }) => {
   if (stock === undefined || stock === null) return null;
@@ -56,7 +56,7 @@ const ItemStore = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [priceIncreasePercentage, setPriceIncreasePercentage] = useState(
-    adminPriceIncreasePercentage || 10
+    adminPriceIncreasePercentage || 10,
   );
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseQuantities, setPurchaseQuantities] = useState({});
@@ -71,7 +71,7 @@ const ItemStore = () => {
         initialStock: item.initialStock ?? item.stock ?? 10,
       }));
       const availableItems = itemsWithDefaults.filter(
-        (item) => item?.available !== false
+        (item) => item?.available !== false,
       );
       setShopItems(availableItems);
 
@@ -134,14 +134,11 @@ const ItemStore = () => {
       showNotification("error", "가격 인상률은 0 이상의 숫자여야 합니다.");
       setPriceIncreasePercentage(adminPriceIncreasePercentage || 10);
       if (setAdminPriceIncrease)
-        setAdminPriceIncrease(
-          adminPriceIncreasePercentage || 10
-        );
+        setAdminPriceIncrease(adminPriceIncreasePercentage || 10);
       return;
     }
     setPriceIncreasePercentage(numericValue);
-    if (setAdminPriceIncrease)
-      setAdminPriceIncrease(numericValue);
+    if (setAdminPriceIncrease) setAdminPriceIncrease(numericValue);
   };
 
   const handleQuantityChange = (itemId, value) => {
@@ -168,23 +165,51 @@ const ItemStore = () => {
     if (currentUserCash < totalPrice)
       return showNotification("error", "잔액 부족");
 
-    if (!purchaseItem)
-      return showNotification("error", "구매 기능 오류");
+    if (!purchaseItem) return showNotification("error", "구매 기능 오류");
 
+    // 🔥 낙관적 업데이트: 즉시 성공 표시 + 재고 로컬 차감
+    showNotification("success", `${item.name} ${quantity}개 구매 완료!`);
+    setShopItems((prev) =>
+      prev.map((shopItem) =>
+        shopItem.id === item.id
+          ? { ...shopItem, stock: Math.max(0, shopItem.stock - quantity) }
+          : shopItem,
+      ),
+    );
+    setPurchaseQuantities((prev) => ({ ...prev, [item.id]: 1 }));
+
+    // 🔥 백그라운드에서 서버 확인 (purchaseItem 내부에서 이미 cash/userItems 낙관적 처리)
     try {
       const purchaseResult = await purchaseItem(item.id, quantity);
 
-      if (purchaseResult.success) {
-        showNotification("success", `${item.name} ${quantity}개 구매 완료!`);
-      } else {
+      if (!purchaseResult.success) {
+        // 서버 실패 시: 재고 복원 + 에러 알림
+        setShopItems((prev) =>
+          prev.map((shopItem) =>
+            shopItem.id === item.id
+              ? { ...shopItem, stock: item.stock }
+              : shopItem,
+          ),
+        );
         showNotification(
           "error",
-          purchaseResult.message || "구매에 실패했습니다. 다시 시도해 주세요."
+          purchaseResult.message || "구매에 실패했습니다. 다시 시도해 주세요.",
         );
       }
     } catch (error) {
+      // 서버 에러 시: 재고 복원 + 에러 알림
       logger.error("구매 처리 중 오류:", error);
-      showNotification("error", error.message || "구매 중 문제가 발생했습니다.");
+      setShopItems((prev) =>
+        prev.map((shopItem) =>
+          shopItem.id === item.id
+            ? { ...shopItem, stock: item.stock }
+            : shopItem,
+        ),
+      );
+      showNotification(
+        "error",
+        error.message || "구매 중 문제가 발생했습니다.",
+      );
     }
   };
 
@@ -192,7 +217,7 @@ const ItemStore = () => {
     if (!addItem || !currentUserClassCode) {
       showNotification(
         "error",
-        "아이템 추가 기능 사용 불가 또는 학급 코드 없음"
+        "아이템 추가 기능 사용 불가 또는 학급 코드 없음",
       );
       return false;
     }
@@ -216,7 +241,7 @@ const ItemStore = () => {
     if (!updateItem || !currentUserClassCode) {
       showNotification(
         "error",
-        "아이템 업데이트 기능 사용 불가 또는 학급 코드 없음"
+        "아이템 업데이트 기능 사용 불가 또는 학급 코드 없음",
       );
       return false;
     }
@@ -260,8 +285,9 @@ const ItemStore = () => {
 
   return (
     <div
-      className={`page-container ${showAdminPanel && canOpenAdminPanel ? "admin-mode" : ""
-        }`}
+      className={`page-container ${
+        showAdminPanel && canOpenAdminPanel ? "admin-mode" : ""
+      }`}
     >
       <div className="page-header-container">
         <h2 className="page-title">
@@ -282,7 +308,7 @@ const ItemStore = () => {
               if (!currentUserClassCode) {
                 showNotification(
                   "error",
-                  "관리자의 학급 코드가 없어 관리자 패널을 열 수 없습니다."
+                  "관리자의 학급 코드가 없어 관리자 패널을 열 수 없습니다.",
                 );
                 return;
               }
@@ -292,19 +318,22 @@ const ItemStore = () => {
             className="admin-icon-button"
             title={showAdminPanel ? "상점 보기" : "아이템 상점 설정"}
           >
-            {showAdminPanel && canOpenAdminPanel ? "🛒 상점 보기" : "⚙️ 아이템 상점 설정"}
+            {showAdminPanel && canOpenAdminPanel
+              ? "🛒 상점 보기"
+              : "⚙️ 아이템 상점 설정"}
           </button>
         )}
       </div>
 
       {notification && (
         <div
-          className={`notification ${notification.type === "success"
+          className={`notification ${
+            notification.type === "success"
               ? "bg-green-100 text-green-800"
               : notification.type === "error"
                 ? "bg-red-100 text-red-800"
                 : "bg-blue-100 text-blue-800"
-            }`}
+          }`}
         >
           {notification.message}
         </div>
@@ -380,11 +409,14 @@ const ItemStore = () => {
                             <StockBadge stock={item.stock} />
                           </div>
                           {item.description && item.description.trim() && (
-                            <p className="item-description-compact">{item.description}</p>
+                            <p className="item-description-compact">
+                              {item.description}
+                            </p>
                           )}
                           <div
-                            className={`item-actions-primary ${isMobile ? "flex-col" : ""
-                              }`}
+                            className={`item-actions-primary ${
+                              isMobile ? "flex-col" : ""
+                            }`}
                           >
                             <span className="item-price">
                               {item.price?.toLocaleString() || 0} 원
@@ -403,43 +435,43 @@ const ItemStore = () => {
                               />
                               <button
                                 onClick={() => handlePurchase(item)}
-                                className={`buy-item-button ${isMobile ? "w-full" : ""
-                                  }`}
+                                className={`buy-item-button ${
+                                  isMobile ? "w-full" : ""
+                                }`}
                                 disabled={
                                   !user ||
                                   item.stock <= 0 ||
                                   (userDoc?.cash !== undefined
                                     ? userDoc.cash
                                     : user?.cash) <
-                                  item.price *
-                                  (purchaseQuantities[item.id] || 1)
+                                    item.price *
+                                      (purchaseQuantities[item.id] || 1)
                                 }
                               >
                                 {getButtonText(item)}
                               </button>
                             </div>
                           </div>
-                          {isCurrentUserAdmin &&
-                            currentUserClassCode && (
-                              <div className="item-actions-admin">
-                                <button
-                                  onClick={() => handleEditItem(item)}
-                                  className="edit-item-button"
-                                  title="아이템 수정"
-                                >
-                                  수정
-                                  <span className="admin-button-icon">✏️</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteConfirm(item)}
-                                  className="delete-item-button"
-                                  title="아이템 삭제"
-                                >
-                                  삭제
-                                  <span className="admin-button-icon">🗑️</span>
-                                </button>
-                              </div>
-                            )}
+                          {isCurrentUserAdmin && currentUserClassCode && (
+                            <div className="item-actions-admin">
+                              <button
+                                onClick={() => handleEditItem(item)}
+                                className="edit-item-button"
+                                title="아이템 수정"
+                              >
+                                수정
+                                <span className="admin-button-icon">✏️</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteConfirm(item)}
+                                className="delete-item-button"
+                                title="아이템 삭제"
+                              >
+                                삭제
+                                <span className="admin-button-icon">🗑️</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
