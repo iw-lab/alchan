@@ -176,6 +176,13 @@ export const ALCHAN_MENU_ITEMS = [
     path: "/personal-shop",
     parentId: "itemsCategory",
   },
+  {
+    id: "groupPurchase",
+    label: "함께구매",
+    icon: Users,
+    path: "/group-purchase",
+    parentId: "itemsCategory",
+  },
 
   // Finance Category - 금융
   {

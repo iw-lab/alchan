@@ -38,6 +38,7 @@ const MyItems = lazy(() => import("../pages/my-items/MyItems"));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
 const PersonalShop = lazy(() => import("../pages/market/PersonalShop"));
+const GroupPurchase = lazy(() => import("../pages/market/GroupPurchase"));
 const Banking = lazy(() => import("../pages/banking/Banking"));
 const MyProfile = lazy(() => import("../pages/my-profile/MyProfile"));
 const MyAssets = lazy(() => import("../pages/my-assets/MyAssets"));
@@ -449,6 +450,14 @@ export default function AlchanLayout() {
                   element={
                     <ProtectedRoute>
                       <PersonalShop />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/group-purchase"
+                  element={
+                    <ProtectedRoute>
+                      <GroupPurchase />
                     </ProtectedRoute>
                   }
                 />

@@ -905,6 +905,16 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🤝 함께구매 (groupPurchases)
+    // ========================================================
+    match /groupPurchases/{purchaseId} {
+      allow read: if isSignedIn() && isSameClass(resource.data.classCode);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isSameClass(resource.data.classCode);
+      allow delete: if isOwner(resource.data.initiatorId) || isAdmin();
+    }
+
+    // ========================================================
     // 🚫 기타 모든 컬렉션은 기본적으로 차단
     // ========================================================
     match /{document=**} {
