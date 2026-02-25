@@ -703,9 +703,24 @@ export default function AdminEconomicEvents() {
             </p>
           </div>
           <button
-            onClick={() =>
-              setSettings((prev) => ({ ...prev, enabled: !prev.enabled }))
-            }
+            onClick={async () => {
+              const newEnabled = !settings.enabled;
+              setSettings((prev) => ({ ...prev, enabled: newEnabled }));
+              // 즉시 서버에 저장
+              try {
+                const saveSettings = httpsCallable(
+                  functions,
+                  "saveEconomicEventSettings",
+                );
+                await saveSettings({
+                  enabled: newEnabled,
+                  triggerHour: settings.triggerHour,
+                  events: settings.events,
+                });
+              } catch (err) {
+                logger.error("[AdminEconomicEvents] 토글 저장 실패:", err);
+              }
+            }}
             className="flex items-center gap-2"
           >
             {settings.enabled ? (
