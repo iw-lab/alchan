@@ -104,7 +104,7 @@ export default function EconomicEventBanner() {
     >
       {/* 애니메이션 배경 */}
       <div
-        className={`absolute inset-0 opacity-10 ${isPositive ? "bg-emerald-400" : "bg-red-400"}`}
+        className={`absolute inset-0 opacity-10 pointer-events-none ${isPositive ? "bg-emerald-400" : "bg-red-400"}`}
         style={{
           backgroundImage:
             "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px)",
@@ -129,12 +129,12 @@ export default function EconomicEventBanner() {
           >
             경제 이벤트
           </span>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-gray-400">
             {dateStr} {timeStr}
           </span>
         </div>
         <p className="text-sm font-bold text-white mt-0.5">{event.title}</p>
-        <p className="text-xs text-slate-300 mt-0.5">{event.description}</p>
+        <p className="text-xs text-gray-300 mt-0.5">{event.description}</p>
         {getResultSummary() && (
           <p
             className={`text-xs mt-1 font-medium ${isPositive ? "text-emerald-300" : "text-red-300"}`}
@@ -147,10 +147,10 @@ export default function EconomicEventBanner() {
       {/* 닫기 버튼 */}
       <button
         onClick={() => setDismissed(true)}
-        className="flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors"
+        className="relative z-10 flex-shrink-0 p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
         aria-label="배너 닫기"
       >
-        <X className="w-4 h-4" />
+        <X className="w-5 h-5" />
       </button>
     </div>
   );
