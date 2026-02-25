@@ -1,5 +1,12 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
@@ -18,8 +25,14 @@ import {
   httpsCallable,
 } from "../../firebase";
 import { limit, runTransaction } from "firebase/firestore";
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
-import { logActivity, ACTIVITY_TYPES, safeTimestampToDate, getCachedFirestoreData, setCachedFirestoreData } from '../../utils/firestoreHelpers';
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import {
+  logActivity,
+  ACTIVITY_TYPES,
+  safeTimestampToDate,
+  getCachedFirestoreData,
+  setCachedFirestoreData,
+} from "../../utils/firestoreHelpers";
 import LoginWarning from "../../components/LoginWarning";
 import TransferModal from "../../components/modals/TransferModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
@@ -60,9 +73,18 @@ export default function MyAssets() {
   const [forceReload, setForceReload] = useState(0); // 캐시 문제 해결을 위한 상태 변수
 
   // 🔥 [최적화 2] Firebase Functions 호출 함수들 (기부 제외) - 메모이제이션
-  const getUserAssetsDataFunction = useMemo(() => httpsCallable(functions, 'getUserAssetsData'), []);
-  const sellCouponFunction = useMemo(() => httpsCallable(functions, 'sellCoupon'), []);
-  const giftCouponFunction = useMemo(() => httpsCallable(functions, 'giftCoupon'), []);
+  const getUserAssetsDataFunction = useMemo(
+    () => httpsCallable(functions, "getUserAssetsData"),
+    [],
+  );
+  const sellCouponFunction = useMemo(
+    () => httpsCallable(functions, "sellCoupon"),
+    [],
+  );
+  const giftCouponFunction = useMemo(
+    () => httpsCallable(functions, "giftCoupon"),
+    [],
+  );
 
   // 🔥 [최적화 4] 캐시 유효 시간 설정
   const CACHE_DURATION = 60 * 60 * 1000; // 🔥 [최적화] 1시간 (Firestore 읽기 최소화)
@@ -109,15 +131,24 @@ export default function MyAssets() {
   const [giftAmount, setGiftAmount] = useState("");
   const [showDonationHistoryModal, setShowDonationHistoryModal] =
     useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferRecipient, setTransferRecipient] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [showAllTransactions, setShowAllTransactions] = useState(false); // 거래 내역 펼치기/접기 상태
 
+  // URL 파라미터로 송금 모달 자동 열기
+  useEffect(() => {
+    if (searchParams.get("transfer") === "true") {
+      setShowTransferModal(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // 🔥 [최적화 5] 캐시 유효성 확인 함수
   const isCacheValid = (cacheKey) => {
     const cachedTime = dataFetchRef.current[cacheKey];
-    return cachedTime && (Date.now() - cachedTime) < CACHE_DURATION;
+    return cachedTime && Date.now() - cachedTime < CACHE_DURATION;
   };
 
   // 🔥 [수정 2] 안전한 트랜잭션 기록 함수 - 로컬에서만 처리하고 나중에 배치로 동기화
@@ -140,29 +171,30 @@ export default function MyAssets() {
       };
 
       pendingTransactions.push(newTransaction);
-      localStorage.setItem(localKey, JSON.stringify(pendingTransactions, (key, value) => {
-        // Date 객체를 JSON으로 직렬화할 때 ISO 문자열로 변환
-        if (key === 'timestamp' && value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      }));
+      localStorage.setItem(
+        localKey,
+        JSON.stringify(pendingTransactions, (key, value) => {
+          // Date 객체를 JSON으로 직렬화할 때 ISO 문자열로 변환
+          if (key === "timestamp" && value instanceof Date) {
+            return value.toISOString();
+          }
+          return value;
+        }),
+      );
 
       // 로컬 상태 즉시 업데이트
-      setTransactionHistory(prev => [newTransaction, ...prev.slice(0, 4)]);
-
+      setTransactionHistory((prev) => [newTransaction, ...prev.slice(0, 4)]);
 
       // 🔥 [수정 3] 백그라운드에서 비동기 동기화 (실패해도 메인 기능에 영향 없음)
       setTimeout(async () => {
         try {
           await syncPendingTransactions(userId);
         } catch (error) {
-          logger.warn('[MyAssets] syncPendingTransactions failed:', error);
+          logger.warn("[MyAssets] syncPendingTransactions failed:", error);
         }
       }, 1000);
-
     } catch (error) {
-      logger.warn('[MyAssets] addTransaction failed:', error);
+      logger.warn("[MyAssets] addTransaction failed:", error);
     }
   };
 
@@ -176,20 +208,27 @@ export default function MyAssets() {
     try {
       const pendingTransactions = JSON.parse(pendingStr, (key, value) => {
         // JSON에서 Date 객체로 복원
-        if (key === 'timestamp' && typeof value === 'string') {
+        if (key === "timestamp" && typeof value === "string") {
           return new Date(value);
         }
         return value;
       });
 
-      const unsyncedTransactions = pendingTransactions.filter(tx => !tx.synced);
+      const unsyncedTransactions = pendingTransactions.filter(
+        (tx) => !tx.synced,
+      );
 
       if (unsyncedTransactions.length === 0) return;
 
       const batch = writeBatch(db);
-      const userTransactionsRef = collection(db, "users", userId, "transactions");
+      const userTransactionsRef = collection(
+        db,
+        "users",
+        userId,
+        "transactions",
+      );
 
-      unsyncedTransactions.forEach(tx => {
+      unsyncedTransactions.forEach((tx) => {
         const docRef = doc(userTransactionsRef);
         batch.set(docRef, {
           amount: tx.amount,
@@ -203,58 +242,62 @@ export default function MyAssets() {
       await batch.commit();
 
       // 동기화 완료 표시
-      const updatedTransactions = pendingTransactions.map(tx =>
-        unsyncedTransactions.find(utx => utx.id === tx.id)
+      const updatedTransactions = pendingTransactions.map((tx) =>
+        unsyncedTransactions.find((utx) => utx.id === tx.id)
           ? { ...tx, synced: true }
-          : tx
+          : tx,
       );
 
-      localStorage.setItem(localKey, JSON.stringify(updatedTransactions, (key, value) => {
-        if (key === 'timestamp' && value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      }));
-
+      localStorage.setItem(
+        localKey,
+        JSON.stringify(updatedTransactions, (key, value) => {
+          if (key === "timestamp" && value instanceof Date) {
+            return value.toISOString();
+          }
+          return value;
+        }),
+      );
     } catch (error) {
-      logger.warn('[MyAssets] syncPendingTransactions failed:', error);
+      logger.warn("[MyAssets] syncPendingTransactions failed:", error);
     }
   };
 
   // 🔥 [핵심 수정] 데이터 덮어쓰기 방지를 위해 트랜잭션을 사용한 안전한 목표 생성 함수
-  const createDefaultGoalForClass = useCallback(async (classCode, goalId) => {
-    try {
-      const goalDocRef = doc(db, "goals", goalId);
-      const defaultGoalData = {
-        classCode: classCode,
-        targetAmount: 1000,
-        progress: 0,
-        donations: [],
-        donationCount: 0,
-        title: `${classCode} 학급 목표`,
-        description: `${classCode} 학급의 쿠폰 목표입니다.`,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        createdBy: userId,
-      };
+  const createDefaultGoalForClass = useCallback(
+    async (classCode, goalId) => {
+      try {
+        const goalDocRef = doc(db, "goals", goalId);
+        const defaultGoalData = {
+          classCode: classCode,
+          targetAmount: 1000,
+          progress: 0,
+          donations: [],
+          donationCount: 0,
+          title: `${classCode} 학급 목표`,
+          description: `${classCode} 학급의 쿠폰 목표입니다.`,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdBy: userId,
+        };
 
-      // 트랜잭션을 사용하여 문서가 없을 때만 안전하게 생성 (덮어쓰기 방지)
-      await runTransaction(db, async (transaction) => {
-        const goalDoc = await transaction.get(goalDocRef);
-        if (!goalDoc.exists()) {
-          transaction.set(goalDocRef, defaultGoalData);
-          setCachedFirestoreData(`goal_${goalId}`, userId, defaultGoalData);
-        } else {
-          const existingData = goalDoc.data();
-          setCachedFirestoreData(`goal_${goalId}`, userId, existingData);
-        }
-      });
-
-    } catch (error) {
-      throw error;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+        // 트랜잭션을 사용하여 문서가 없을 때만 안전하게 생성 (덮어쓰기 방지)
+        await runTransaction(db, async (transaction) => {
+          const goalDoc = await transaction.get(goalDocRef);
+          if (!goalDoc.exists()) {
+            transaction.set(goalDocRef, defaultGoalData);
+            setCachedFirestoreData(`goal_${goalId}`, userId, defaultGoalData);
+          } else {
+            const existingData = goalDoc.data();
+            setCachedFirestoreData(`goal_${goalId}`, userId, existingData);
+          }
+        });
+      } catch (error) {
+        throw error;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [userId],
+  );
 
   // 🔥 [수정] 목표 데이터 로드 함수 - 캐시 추가 및 최적화
   const loadGoalData = useCallback(async () => {
@@ -270,10 +313,12 @@ export default function MyAssets() {
       setClassCouponGoal(Number(cachedData.targetAmount) || 1000);
       setGoalProgress(Number(cachedData.progress) || 0);
 
-      const donations = Array.isArray(cachedData.donations) ? cachedData.donations : [];
+      const donations = Array.isArray(cachedData.donations)
+        ? cachedData.donations
+        : [];
       setGoalDonations(donations);
 
-      const myDonations = donations.filter(d => d.userId === userId);
+      const myDonations = donations.filter((d) => d.userId === userId);
       const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
       setMyContribution(myTotal);
 
@@ -294,35 +339,37 @@ export default function MyAssets() {
         // 기부 내역 처리
         const donations = Array.isArray(goalData.donations)
           ? goalData.donations.map((donation) => {
-            let processedTimestamp;
-            if (donation.timestamp && donation.timestamp.toDate) {
-              processedTimestamp = donation.timestamp.toDate().toISOString();
-            } else if (donation.timestamp && donation.timestamp.seconds) {
-              processedTimestamp = new Date(donation.timestamp.seconds * 1000).toISOString();
-            } else if (donation.timestampISO) {
-              processedTimestamp = donation.timestampISO;
-            } else if (typeof donation.timestamp === 'string') {
-              processedTimestamp = donation.timestamp;
-            } else {
-              processedTimestamp = new Date().toISOString();
-            }
+              let processedTimestamp;
+              if (donation.timestamp && donation.timestamp.toDate) {
+                processedTimestamp = donation.timestamp.toDate().toISOString();
+              } else if (donation.timestamp && donation.timestamp.seconds) {
+                processedTimestamp = new Date(
+                  donation.timestamp.seconds * 1000,
+                ).toISOString();
+              } else if (donation.timestampISO) {
+                processedTimestamp = donation.timestampISO;
+              } else if (typeof donation.timestamp === "string") {
+                processedTimestamp = donation.timestamp;
+              } else {
+                processedTimestamp = new Date().toISOString();
+              }
 
-            return {
-              ...donation,
-              amount: Number(donation.amount) || 0,
-              timestamp: processedTimestamp,
-              userId: donation.userId || '',
-              userName: donation.userName || '알 수 없는 사용자',
-              message: donation.message || '',
-              classCode: donation.classCode || currentUserClassCode,
-            };
-          })
+              return {
+                ...donation,
+                amount: Number(donation.amount) || 0,
+                timestamp: processedTimestamp,
+                userId: donation.userId || "",
+                userName: donation.userName || "알 수 없는 사용자",
+                message: donation.message || "",
+                classCode: donation.classCode || currentUserClassCode,
+              };
+            })
           : [];
 
         setGoalDonations(donations);
 
         // 내 기여 계산
-        const myDonations = donations.filter(d => d.userId === userId);
+        const myDonations = donations.filter((d) => d.userId === userId);
         const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
         setMyContribution(myTotal);
 
@@ -330,11 +377,11 @@ export default function MyAssets() {
         setCachedFirestoreData(cacheKey, userId, goalData);
       } else {
         // 목표 문서가 없으면 기본값 생성
-        logger.log('[MyAssets] 목표 문서가 없어 기본값 생성');
+        logger.log("[MyAssets] 목표 문서가 없어 기본값 생성");
         await createDefaultGoalForClass(currentUserClassCode, currentGoalId);
       }
     } catch (error) {
-      logger.error('[MyAssets] 목표 데이터 로드 실패:', error);
+      logger.error("[MyAssets] 목표 데이터 로드 실패:", error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentGoalId, currentUserClassCode, userId, createDefaultGoalForClass]);
@@ -353,7 +400,11 @@ export default function MyAssets() {
     loadingRef.current = true;
 
     // 🔥 [최적화] 캐시 데이터가 있으면 즉시 표시 (로딩 스피너 없이)
-    const cachedAssets = getCachedFirestoreData('myAssets', userId, CACHE_DURATION);
+    const cachedAssets = getCachedFirestoreData(
+      "myAssets",
+      userId,
+      CACHE_DURATION,
+    );
     if (cachedAssets) {
       setParkingBalance(cachedAssets.parkingBalance || 0);
       setDeposits(cachedAssets.deposits || []);
@@ -368,24 +419,67 @@ export default function MyAssets() {
 
     try {
       // 🔥 [최적화] 모든 쿼리를 하나의 Promise.all로 병렬 실행
-      const realEstateRef1 = query(collection(db, "classes", currentUserClassCode, "realEstateProperties"), where("owner", "==", userId), limit(50));
-      const realEstateRef2 = query(collection(db, "ClassStock", currentUserClassCode, "students", userId, "realestates"), limit(50));
-      const realEstateRef3 = query(collection(db, "realEstate"), where("ownerId", "==", userId), limit(50));
-      const parkingRef1 = doc(db, "users", userId, "financials", "parkingAccount");
-      const parkingRef2 = collection(db, "ClassStock", currentUserClassCode, "students", userId, "parkingAccounts");
-      const productsRef = query(collection(db, "users", userId, "products"), limit(50));
+      const realEstateRef1 = query(
+        collection(db, "classes", currentUserClassCode, "realEstateProperties"),
+        where("owner", "==", userId),
+        limit(50),
+      );
+      const realEstateRef2 = query(
+        collection(
+          db,
+          "ClassStock",
+          currentUserClassCode,
+          "students",
+          userId,
+          "realestates",
+        ),
+        limit(50),
+      );
+      const realEstateRef3 = query(
+        collection(db, "realEstate"),
+        where("ownerId", "==", userId),
+        limit(50),
+      );
+      const parkingRef1 = doc(
+        db,
+        "users",
+        userId,
+        "financials",
+        "parkingAccount",
+      );
+      const parkingRef2 = collection(
+        db,
+        "ClassStock",
+        currentUserClassCode,
+        "students",
+        userId,
+        "parkingAccounts",
+      );
+      const productsRef = query(
+        collection(db, "users", userId, "products"),
+        limit(50),
+      );
       const activityLogsRef = query(
         collection(db, "activity_logs"),
         where("classCode", "==", currentUserClassCode),
         where("userId", "==", userId),
-        limit(50)
+        limit(50),
       );
       const transactionsRef = query(
         collection(db, "users", userId, "transactions"),
-        limit(50)
+        limit(50),
       );
 
-      const [snap1, snap2, snap3, parkingSnap1, parkingSnap2, productsSnap, activityLogsSnap, transactionsSnap] = await Promise.all([
+      const [
+        snap1,
+        snap2,
+        snap3,
+        parkingSnap1,
+        parkingSnap2,
+        productsSnap,
+        activityLogsSnap,
+        transactionsSnap,
+      ] = await Promise.all([
         getDocs(realEstateRef1),
         getDocs(realEstateRef2),
         getDocs(realEstateRef3),
@@ -398,16 +492,22 @@ export default function MyAssets() {
 
       // 부동산 처리
       const allRealEstateAssets = [];
-      snap1.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
-      snap2.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
-      snap3.forEach(doc => allRealEstateAssets.push({ id: doc.id, ...doc.data() }));
+      snap1.forEach((doc) =>
+        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
+      );
+      snap2.forEach((doc) =>
+        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
+      );
+      snap3.forEach((doc) =>
+        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
+      );
 
       // 파킹통장 처리
       let totalParkingBalance = 0;
       if (parkingSnap1.exists()) {
         totalParkingBalance += parkingSnap1.data().balance || 0;
       }
-      parkingSnap2.forEach(doc => {
+      parkingSnap2.forEach((doc) => {
         totalParkingBalance += doc.data().balance || 0;
       });
       setParkingBalance(totalParkingBalance);
@@ -416,15 +516,17 @@ export default function MyAssets() {
       const depositsData = [];
       const savingsData = [];
       const loansData = [];
-      productsSnap.forEach(docSnap => {
+      productsSnap.forEach((docSnap) => {
         const product = {
           id: docSnap.id,
           ...docSnap.data(),
-          maturityDate: docSnap.data().maturityDate?.toDate ? docSnap.data().maturityDate.toDate() : docSnap.data().maturityDate
+          maturityDate: docSnap.data().maturityDate?.toDate
+            ? docSnap.data().maturityDate.toDate()
+            : docSnap.data().maturityDate,
         };
-        if (product.type === 'deposit') depositsData.push(product);
-        else if (product.type === 'savings') savingsData.push(product);
-        else if (product.type === 'loan') loansData.push(product);
+        if (product.type === "deposit") depositsData.push(product);
+        else if (product.type === "savings") savingsData.push(product);
+        else if (product.type === "loan") loansData.push(product);
       });
       setDeposits(depositsData);
       setSavings(savingsData);
@@ -433,60 +535,70 @@ export default function MyAssets() {
 
       // 거래 내역 처리
       const activityData = (activityLogsSnap.docs || [])
-        .map(doc => {
+        .map((doc) => {
           const data = doc.data();
-          const desc = data.description || data.type || '거래 내역';
+          const desc = data.description || data.type || "거래 내역";
           return {
             id: doc.id,
             amount: data.amount || 0,
-            description: desc === 'undefined' ? '거래 내역' : desc,
+            description: desc === "undefined" ? "거래 내역" : desc,
             timestamp: data.timestamp,
             type: data.type,
             couponAmount: data.couponAmount || 0,
-            source: 'activity_logs'
+            source: "activity_logs",
           };
         })
-        .filter(tx => tx.amount !== 0 || tx.couponAmount !== 0);
+        .filter((tx) => tx.amount !== 0 || tx.couponAmount !== 0);
 
       const transactionsData = (transactionsSnap.docs || [])
-        .map(doc => {
+        .map((doc) => {
           const data = doc.data();
-          const desc = data.description || '거래 내역';
+          const desc = data.description || "거래 내역";
           return {
             id: doc.id,
             amount: data.amount || 0,
-            description: (!desc || desc === 'undefined') ? '거래 내역' : desc,
+            description: !desc || desc === "undefined" ? "거래 내역" : desc,
             timestamp: data.timestamp || data.createdAt,
-            type: data.type || 'transaction',
-            source: 'transactions'
+            type: data.type || "transaction",
+            source: "transactions",
           };
         })
-        .filter(tx => tx.amount !== 0);
+        .filter((tx) => tx.amount !== 0);
 
       const allTransactions = [...activityData, ...transactionsData];
       allTransactions.sort((a, b) => {
-        const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp?.seconds * 1000 || 0);
-        const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp?.seconds * 1000 || 0);
+        const dateA = a.timestamp?.toDate
+          ? a.timestamp.toDate()
+          : new Date(a.timestamp?.seconds * 1000 || 0);
+        const dateB = b.timestamp?.toDate
+          ? b.timestamp.toDate()
+          : new Date(b.timestamp?.seconds * 1000 || 0);
         return dateB - dateA;
       });
       const recentTransactions = allTransactions.slice(0, 20);
       setTransactionHistory(recentTransactions);
 
       // 🔥 [최적화] 결과를 localStorage에 캐시 (다음 로드시 즉시 표시)
-      setCachedFirestoreData('myAssets', userId, {
+      setCachedFirestoreData("myAssets", userId, {
         parkingBalance: totalParkingBalance,
         deposits: depositsData,
         savings: savingsData,
         loans: loansData,
         realEstateAssets: allRealEstateAssets,
-        transactionHistory: recentTransactions.map(tx => ({
+        transactionHistory: recentTransactions.map((tx) => ({
           ...tx,
-          timestamp: tx.timestamp?.toDate ? tx.timestamp.toDate().toISOString() : tx.timestamp?.seconds ? new Date(tx.timestamp.seconds * 1000).toISOString() : null,
+          timestamp: tx.timestamp?.toDate
+            ? tx.timestamp.toDate().toISOString()
+            : tx.timestamp?.seconds
+              ? new Date(tx.timestamp.seconds * 1000).toISOString()
+              : null,
         })),
       });
-
     } catch (fallbackError) {
-      logger.error('[MyAssets] 🚨 클라이언트 측 직접 조회 실패:', fallbackError);
+      logger.error(
+        "[MyAssets] 🚨 클라이언트 측 직접 조회 실패:",
+        fallbackError,
+      );
     } finally {
       setAssetsLoading(false);
       loadingRef.current = false;
@@ -512,30 +624,32 @@ export default function MyAssets() {
     } else if (authLoading) {
       setAssetsLoading(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]); // loadMyAssetsData 제거하여 무한 루프 방지
 
   useEffect(() => {
     const cashValue = Number(userDoc?.cash) || 0;
-    const couponMonetaryValue = (Number(userDoc?.coupons) || 0) * Number(couponValue);
+    const couponMonetaryValue =
+      (Number(userDoc?.coupons) || 0) * Number(couponValue);
     const realEstateValue = realEstateAssets.reduce(
       (sum, asset) => sum + (Number(asset.price) || 0),
-      0
+      0,
     );
     // 예금 총액 (balance 기준)
     const depositsTotal = deposits.reduce(
       (sum, deposit) => sum + (Number(deposit.balance) || 0),
-      0
+      0,
     );
     // 적금 총액 (balance 기준)
     const savingsTotal = savings.reduce(
       (sum, saving) => sum + (Number(saving.balance) || 0),
-      0
+      0,
     );
     // 대출 총액 (balance 기준 - remainingPrincipal이 없으면 balance 사용)
     const loanTotal = loans.reduce(
-      (sum, loan) => sum + (Number(loan.remainingPrincipal) || Number(loan.balance) || 0),
-      0
+      (sum, loan) =>
+        sum + (Number(loan.remainingPrincipal) || Number(loan.balance) || 0),
+      0,
     );
     const calculatedTotalAssets =
       cashValue +
@@ -571,7 +685,7 @@ export default function MyAssets() {
     }
 
     loadGoalData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentGoalId]); // loadGoalData 제거하여 무한 루프 방지
 
   // 🔥 [수정] 기부 처리 함수 - 캐시 무효화 개선
@@ -590,7 +704,9 @@ export default function MyAssets() {
     // 쿠폰 보유량 확인
     const currentCoupons = Number(userDoc?.coupons) || 0;
     if (currentCoupons < donationAmount) {
-      alert(`쿠폰이 부족합니다. (보유: ${currentCoupons}개, 필요: ${donationAmount}개)`);
+      alert(
+        `쿠폰이 부족합니다. (보유: ${currentCoupons}개, 필요: ${donationAmount}개)`,
+      );
       return false;
     }
 
@@ -607,13 +723,13 @@ export default function MyAssets() {
       amount: donationAmount,
       timestamp: new Date().toISOString(),
       timestampISO: new Date().toISOString(),
-      message: memo || '',
+      message: memo || "",
       classCode: currentUserClassCode,
     };
 
-    setGoalProgress(prev => prev + donationAmount);
-    setMyContribution(prev => prev + donationAmount);
-    setGoalDonations(prev => [...prev, newDonation]);
+    setGoalProgress((prev) => prev + donationAmount);
+    setMyContribution((prev) => prev + donationAmount);
+    setGoalDonations((prev) => [...prev, newDonation]);
 
     // 🔥 쿠폰 즉시 UI 업데이트 (낙관적 업데이트)
     if (optimisticUpdate) {
@@ -623,7 +739,7 @@ export default function MyAssets() {
     try {
       // 1. 사용자 쿠폰 차감 (AuthContext 사용)
       const couponDeducted = await updateUserInAuth({
-        coupons: increment(-donationAmount)
+        coupons: increment(-donationAmount),
       });
 
       if (!couponDeducted) {
@@ -646,7 +762,7 @@ export default function MyAssets() {
           amount: donationAmount,
           timestamp: serverTimestamp(),
           timestampISO: new Date().toISOString(),
-          message: memo || '',
+          message: memo || "",
           classCode: currentUserClassCode,
         };
 
@@ -666,13 +782,17 @@ export default function MyAssets() {
         amount: donationAmount,
         timestamp: serverTimestamp(),
         timestampISO: new Date().toISOString(),
-        message: memo || '',
+        message: memo || "",
         classCode: currentUserClassCode,
         goalId: currentGoalId,
       });
 
       // 4. 트랜잭션 기록
-      await addTransaction(userId, -donationAmount * couponValue, `학급 목표에 ${donationAmount}쿠폰 기부`);
+      await addTransaction(
+        userId,
+        -donationAmount * couponValue,
+        `학급 목표에 ${donationAmount}쿠폰 기부`,
+      );
 
       // 🔥 활동 로그 기록 (쿠폰 기부)
       logActivity(db, {
@@ -685,14 +805,16 @@ export default function MyAssets() {
         metadata: {
           goalId: currentGoalId,
           goalProgress: goalProgress + donationAmount,
-          message: memo || ''
-        }
+          message: memo || "",
+        },
       });
 
       // 🔥 5. 캐시 무효화 (모든 관련 캐시 삭제)
       const cacheKey = `goal_${currentGoalId}`;
       localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
-      localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
 
       alert(`${donationAmount}개 쿠폰 기부가 완료되었습니다!`);
       setShowDonateModal(false);
@@ -704,7 +826,7 @@ export default function MyAssets() {
 
       return true;
     } catch (error) {
-      logger.error('[MyAssets] 기부 오류:', error);
+      logger.error("[MyAssets] 기부 오류:", error);
       alert(`기부 오류: ${error.message}`);
 
       // 에러 발생 시 낙관적 업데이트 롤백
@@ -737,9 +859,13 @@ export default function MyAssets() {
       const cacheKey = `goal_${currentGoalId}`;
       localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
       localStorage.removeItem(`firestore_cache_settings_${userId}`);
-      localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
 
-      logger.log('[MyAssets] 캐시 삭제 완료, Firestore에서 최신 데이터 로드 중...');
+      logger.log(
+        "[MyAssets] 캐시 삭제 완료, Firestore에서 최신 데이터 로드 중...",
+      );
 
       // 🔥 Firestore에서 직접 최신 데이터 가져오기
       const goalDocRef = doc(db, "goals", currentGoalId);
@@ -753,47 +879,51 @@ export default function MyAssets() {
 
         const freshDonations = Array.isArray(latestGoalData.donations)
           ? latestGoalData.donations.map((donation) => {
-            let processedTimestamp;
-            if (donation.timestamp && donation.timestamp.toDate) {
-              processedTimestamp = donation.timestamp.toDate().toISOString();
-            } else if (donation.timestamp && donation.timestamp.seconds) {
-              processedTimestamp = new Date(donation.timestamp.seconds * 1000).toISOString();
-            } else if (donation.timestampISO) {
-              processedTimestamp = donation.timestampISO;
-            } else if (typeof donation.timestamp === 'string') {
-              processedTimestamp = donation.timestamp;
-            } else {
-              processedTimestamp = new Date().toISOString();
-            }
+              let processedTimestamp;
+              if (donation.timestamp && donation.timestamp.toDate) {
+                processedTimestamp = donation.timestamp.toDate().toISOString();
+              } else if (donation.timestamp && donation.timestamp.seconds) {
+                processedTimestamp = new Date(
+                  donation.timestamp.seconds * 1000,
+                ).toISOString();
+              } else if (donation.timestampISO) {
+                processedTimestamp = donation.timestampISO;
+              } else if (typeof donation.timestamp === "string") {
+                processedTimestamp = donation.timestamp;
+              } else {
+                processedTimestamp = new Date().toISOString();
+              }
 
-            return {
-              ...donation,
-              amount: Number(donation.amount) || 0,
-              timestamp: processedTimestamp,
-              userId: donation.userId || '',
-              userName: donation.userName || '알 수 없는 사용자',
-              message: donation.message || '',
-              classCode: donation.classCode || currentUserClassCode,
-            };
-          })
+              return {
+                ...donation,
+                amount: Number(donation.amount) || 0,
+                timestamp: processedTimestamp,
+                userId: donation.userId || "",
+                userName: donation.userName || "알 수 없는 사용자",
+                message: donation.message || "",
+                classCode: donation.classCode || currentUserClassCode,
+              };
+            })
           : [];
 
         setGoalDonations(freshDonations);
 
         // 내 기여도 재계산
-        const myDonations = freshDonations.filter(d => d.userId === userId);
+        const myDonations = freshDonations.filter((d) => d.userId === userId);
         const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
         setMyContribution(myTotal);
 
         // 캐시에 저장
         setCachedFirestoreData(cacheKey, userId, latestGoalData);
 
-        alert(`목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개\n내 기여도: ${myTotal}개`);
+        alert(
+          `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개\n내 기여도: ${myTotal}개`,
+        );
       } else {
         alert("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
       }
     } catch (error) {
-      logger.error('[MyAssets] 데이터 새로고침 오류:', error);
+      logger.error("[MyAssets] 데이터 새로고침 오류:", error);
       alert(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setAssetsLoading(false);
@@ -815,7 +945,9 @@ export default function MyAssets() {
       userCash: userDoc?.cash,
     };
 
-    alert(`디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`);
+    alert(
+      `디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
+    );
   };
 
   // 🔥 [핵심 수정] 'resetCouponGoal' 함수에 async 키워드 추가
@@ -830,7 +962,7 @@ export default function MyAssets() {
     }
     if (
       !window.confirm(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`,
       )
     )
       return;
@@ -844,7 +976,7 @@ export default function MyAssets() {
       const usersQuery = query(
         collection(db, "users"),
         where("classCode", "==", currentUserClassCode),
-        limit(100)
+        limit(100),
       );
       const usersSnapshot = await getDocs(usersQuery);
 
@@ -868,14 +1000,20 @@ export default function MyAssets() {
       await batch.commit();
 
       // 🔥 [최적화 23] 초기화 후 관련 캐시 모두 삭제
-      localStorage.removeItem(`goalDonationHistory_${currentUserClassCode}_goal`);
-      localStorage.removeItem(`firestore_cache_goal_${currentGoalId}_${userId}`);
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
+      localStorage.removeItem(
+        `firestore_cache_goal_${currentGoalId}_${userId}`,
+      );
 
       setMyContribution(0);
       setGoalProgress(0);
       setGoalDonations([]);
 
-      alert(`학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`);
+      alert(
+        `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
+      );
     } catch (error) {
       alert(`목표 초기화 오류: ${error.message}`);
     } finally {
@@ -912,8 +1050,8 @@ export default function MyAssets() {
         metadata: {
           couponsSold: amount,
           cashReceived: cashGained,
-          couponValue: couponValue
-        }
+          couponValue: couponValue,
+        },
       });
 
       alert(`${amount}개 쿠폰을 판매했습니다.`);
@@ -946,7 +1084,11 @@ export default function MyAssets() {
       return;
     }
 
-    if (window.confirm(`${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`)) {
+    if (
+      window.confirm(
+        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`,
+      )
+    ) {
       // 🔥 쿠폰 즉시 UI 업데이트 (낙관적 업데이트)
       if (optimisticUpdate) {
         optimisticUpdate({ coupons: -amount });
@@ -954,7 +1096,11 @@ export default function MyAssets() {
 
       setAssetsLoading(true);
       try {
-        await giftCouponFunction({ recipientId: recipientUser.id, amount, message: "" });
+        await giftCouponFunction({
+          recipientId: recipientUser.id,
+          amount,
+          message: "",
+        });
 
         // 🔥 활동 로그 기록 (쿠폰 선물 발송)
         logActivity(db, {
@@ -966,8 +1112,8 @@ export default function MyAssets() {
           couponAmount: -amount,
           metadata: {
             recipientId: recipientUser.id,
-            recipientName: recipientUser.name
-          }
+            recipientName: recipientUser.name,
+          },
         });
 
         // 🔥 활동 로그 기록 (쿠폰 선물 수신) - 받는 사람도 기록
@@ -980,8 +1126,8 @@ export default function MyAssets() {
           couponAmount: amount,
           metadata: {
             senderId: userId,
-            senderName: userName
-          }
+            senderName: userName,
+          },
         });
 
         alert("쿠폰 선물이 완료되었습니다.");
@@ -1031,7 +1177,9 @@ export default function MyAssets() {
 
       const recipientUser = users.find((u) => u.id === transferRecipient);
       if (!recipientUser) {
-        alert("송금 대상을 찾을 수 없습니다. 목록을 새로고침하고 다시 시도해주세요.");
+        alert(
+          "송금 대상을 찾을 수 없습니다. 목록을 새로고침하고 다시 시도해주세요.",
+        );
         return;
       }
 
@@ -1040,12 +1188,20 @@ export default function MyAssets() {
         return;
       }
 
-      const recipientName = recipientUser.name || recipientUser.nickname || "사용자";
+      const recipientName =
+        recipientUser.name || recipientUser.nickname || "사용자";
 
       // 사용자의 요청에 따라 확인 창을 제거합니다.
-      const deductSuccess = await deductCash(amount, `${recipientName}님에게 송금`);
+      const deductSuccess = await deductCash(
+        amount,
+        `${recipientName}님에게 송금`,
+      );
       if (deductSuccess) {
-        const addSuccess = await addCashToUserById(recipientUser.id, amount, `${userName}님으로부터 입금`);
+        const addSuccess = await addCashToUserById(
+          recipientUser.id,
+          amount,
+          `${userName}님으로부터 입금`,
+        );
         if (addSuccess) {
           // 🔥 활동 로그 기록 (송금 발송)
           logActivity(db, {
@@ -1057,8 +1213,8 @@ export default function MyAssets() {
             amount: -amount,
             metadata: {
               recipientId: recipientUser.id,
-              recipientName: recipientName
-            }
+              recipientName: recipientName,
+            },
           });
 
           // 🔥 활동 로그 기록 (송금 수신) - 받는 사람도 기록
@@ -1071,8 +1227,8 @@ export default function MyAssets() {
             amount: amount,
             metadata: {
               senderId: userId,
-              senderName: userName
-            }
+              senderName: userName,
+            },
           });
 
           alert("송금이 완료되었습니다.");
@@ -1080,7 +1236,9 @@ export default function MyAssets() {
           setTransferRecipient("");
           setTransferAmount("");
         } else {
-          alert("받는 사람에게 현금을 전달하는 데 실패했습니다. 송금이 취소됩니다.");
+          alert(
+            "받는 사람에게 현금을 전달하는 데 실패했습니다. 송금이 취소됩니다.",
+          );
           // 송금 실패 시 차감했던 금액을 다시 복원합니다.
           await addCashToUserById(userId, amount, "송금 실패로 인한 복원");
         }
@@ -1104,7 +1262,7 @@ export default function MyAssets() {
     const cacheKey = `myAssets_${userId}`;
     localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
 
-    logger.log('[MyAssets] 🔄 캐시 삭제 및 강제 새로고침');
+    logger.log("[MyAssets] 🔄 캐시 삭제 및 강제 새로고침");
 
     // 데이터 다시 로드
     loadMyAssetsData();
@@ -1119,7 +1277,9 @@ export default function MyAssets() {
         onClick={handleForceRefresh}
         disabled={assetsLoading}
         className={`px-4 py-2 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 rounded-lg text-sm font-semibold transition-all duration-200 ${
-          assetsLoading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-cyber-cyan/20'
+          assetsLoading
+            ? "cursor-not-allowed opacity-60"
+            : "cursor-pointer hover:bg-cyber-cyan/20"
         }`}
       >
         🔄 새로고침
@@ -1146,7 +1306,8 @@ export default function MyAssets() {
             </span>
           </div>
           <div className="text-[42px] font-extrabold text-white tracking-tight mb-4 text-right">
-            {displayCash.toLocaleString()} <span className="text-[28px] font-semibold">원</span>
+            {displayCash.toLocaleString()}{" "}
+            <span className="text-[28px] font-semibold">원</span>
           </div>
           <div className="flex justify-end">
             <button
@@ -1181,23 +1342,28 @@ export default function MyAssets() {
 
                   const txAmount = Number(tx.amount) || 0;
                   const rawDesc = tx.description;
-                  const txDescription = (!rawDesc || rawDesc === 'undefined' || rawDesc === 'null') ? "거래 내역" : String(rawDesc);
+                  const txDescription =
+                    !rawDesc || rawDesc === "undefined" || rawDesc === "null"
+                      ? "거래 내역"
+                      : String(rawDesc);
 
                   return (
                     <div
                       key={tx.id || Math.random()}
                       className={`flex justify-between items-center text-sm text-[#a0a0c0] px-4 py-3.5 rounded-[10px] ${
                         txAmount > 0
-                          ? 'bg-emerald-600/10 border border-emerald-600/30'
-                          : 'bg-red-600/10 border border-red-600/30'
+                          ? "bg-emerald-600/10 border border-emerald-600/30"
+                          : "bg-red-600/10 border border-red-600/30"
                       }`}
                     >
                       <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis mr-2.5 font-medium text-[#e8e8ff]">
                         {displayDate} • {txDescription}
                       </span>
-                      <span className={`font-bold text-[15px] min-w-[110px] text-right ${
-                        txAmount > 0 ? 'text-emerald-400' : 'text-red-400'
-                      }`}>
+                      <span
+                        className={`font-bold text-[15px] min-w-[110px] text-right ${
+                          txAmount > 0 ? "text-emerald-400" : "text-red-400"
+                        }`}
+                      >
                         {txAmount > 0 ? "+" : ""}
                         {txAmount.toLocaleString()}원
                       </span>
@@ -1210,7 +1376,9 @@ export default function MyAssets() {
                   onClick={() => setShowAllTransactions(!showAllTransactions)}
                   className="w-full mt-3 p-3 bg-white/5 text-[#a0a0c0] border border-white/10 rounded-[10px] text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-white/10"
                 >
-                  {showAllTransactions ? "▲ 접기" : `▼ ${transactionHistory.length - 5}개 더 보기`}
+                  {showAllTransactions
+                    ? "▲ 접기"
+                    : `▼ ${transactionHistory.length - 5}개 더 보기`}
                 </button>
               )}
             </div>
@@ -1229,7 +1397,8 @@ export default function MyAssets() {
             </span>
           </div>
           <div className="text-[38px] font-extrabold text-white tracking-tight text-right">
-            {Number(totalNetAssets).toLocaleString()} <span className="text-2xl font-semibold">원</span>
+            {Number(totalNetAssets).toLocaleString()}{" "}
+            <span className="text-2xl font-semibold">원</span>
           </div>
           <p className="mt-2 text-xs text-white/80">
             현금 + 쿠폰가치 + 파킹통장 + 예금 + 적금 + 부동산 - 대출
@@ -1243,11 +1412,10 @@ export default function MyAssets() {
           </h4>
           <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(6,182,212,0.2)]">
             <div className="flex justify-between items-center">
-              <span className="text-white/90 font-medium text-sm">
-                잔액
-              </span>
+              <span className="text-white/90 font-medium text-sm">잔액</span>
               <span className="font-extrabold text-[26px] text-white tracking-tight text-right block">
-                {Number(parkingBalance).toLocaleString()}<span className="text-lg font-semibold">원</span>
+                {Number(parkingBalance).toLocaleString()}
+                <span className="text-lg font-semibold">원</span>
               </span>
             </div>
           </div>
@@ -1267,7 +1435,8 @@ export default function MyAssets() {
               <div className="flex justify-between items-center">
                 <div className="w-full">
                   <div className="text-[26px] font-extrabold text-white tracking-tight text-right">
-                    {displayCoupons.toLocaleString()} <span className="text-lg font-semibold">개</span>
+                    {displayCoupons.toLocaleString()}{" "}
+                    <span className="text-lg font-semibold">개</span>
                   </div>
                   <div className="text-xs text-white/85 font-medium mt-1 text-right">
                     1쿠폰 = {Number(couponValue).toLocaleString()}원
@@ -1290,7 +1459,8 @@ export default function MyAssets() {
   if (!userDoc && !authLoading) {
     return (
       <div className="flex justify-center items-center h-[80vh] text-[1.2em] text-red-500">
-        사용자 데이터를 불러오는 중입니다. 잠시 후에도 이 메시지가 보이면 앱을 새로고침하거나 재로그인해주세요.
+        사용자 데이터를 불러오는 중입니다. 잠시 후에도 이 메시지가 보이면 앱을
+        새로고침하거나 재로그인해주세요.
       </div>
     );
   }
@@ -1314,10 +1484,14 @@ export default function MyAssets() {
             try {
               // 실제 현금 지급
               const userRef = doc(db, "users", userId);
-              await setDoc(userRef, {
-                cash: increment(reward),
-                updatedAt: serverTimestamp(),
-              }, { merge: true });
+              await setDoc(
+                userRef,
+                {
+                  cash: increment(reward),
+                  updatedAt: serverTimestamp(),
+                },
+                { merge: true },
+              );
 
               // 활동 로그 기록
               await logActivity(db, {
@@ -1327,7 +1501,7 @@ export default function MyAssets() {
                 type: "일일 출석 보상",
                 description: `일일 출석 보상으로 ${reward.toLocaleString()}원 획득`,
                 amount: reward,
-                metadata: { rewardType: "daily_streak" }
+                metadata: { rewardType: "daily_streak" },
               });
 
               // 로컬 상태 업데이트
@@ -1358,7 +1532,6 @@ export default function MyAssets() {
             userCash={Number(userDoc?.cash) || 0}
           />
         )}
-
       </div>
     </div>
   );

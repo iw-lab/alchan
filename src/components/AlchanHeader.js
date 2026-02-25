@@ -17,6 +17,7 @@ import {
   Gift,
   Settings,
   LayoutDashboard,
+  Send,
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import Avatar from "./Avatar";
@@ -371,7 +372,7 @@ const AlchanHeader = memo(
               <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
                 <span className="font-bold text-xs">₩</span>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider leading-none">
                   현금
                 </p>
@@ -379,6 +380,15 @@ const AlchanHeader = memo(
                   {formatMoney(userDoc?.cash || 0)}
                 </p>
               </div>
+              {!userDoc?.isAdmin && (
+                <button
+                  onClick={() => navigate("/my-assets?transfer=true")}
+                  className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+                  title="송금"
+                >
+                  <Send size={12} />
+                </button>
+              )}
             </div>
 
             {/* 쿠폰 */}
@@ -437,6 +447,15 @@ const AlchanHeader = memo(
                   {formatMoney(userDoc?.cash || 0)}
                 </div>
               </div>
+              {!userDoc?.isAdmin && (
+                <button
+                  onClick={() => navigate("/my-assets?transfer=true")}
+                  className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
+                  title="송금"
+                >
+                  <Send size={13} />
+                </button>
+              )}
             </div>
 
             {/* 쿠폰 위젯 */}
