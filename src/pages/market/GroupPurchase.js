@@ -552,87 +552,54 @@ export default function GroupPurchase() {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* 상점 아이템 선택 (옵션) */}
-              {items?.length > 0 && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                    상점 아이템에서 선택 (선택사항)
-                  </label>
-                  <select
-                    value={newCampaign.selectedItemId}
-                    onChange={(e) => handleSelectStoreItem(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none"
-                  >
-                    <option value="">직접 입력</option>
-                    {items
-                      .filter((i) => i.available !== false)
-                      .map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.icon || "🎁"} {i.name} -{" "}
-                          {formatKoreanNumber(i.price)}
-                          {currencyUnit}
-                        </option>
-                      ))}
-                  </select>
+              {/* 상점 아이템 선택 (필수) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-400 mb-1.5">
+                  아이템 선택 *
+                </label>
+                <select
+                  value={newCampaign.selectedItemId}
+                  onChange={(e) => handleSelectStoreItem(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#1a1a2e] border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none [&>option]:bg-[#1a1a2e] [&>option]:text-white"
+                >
+                  <option value="">-- 아이템을 선택하세요 --</option>
+                  {(items || [])
+                    .filter((i) => i.available !== false)
+                    .map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.icon || "🎁"} {i.name} -{" "}
+                        {formatKoreanNumber(i.price)}
+                        {currencyUnit}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* 선택된 아이템 미리보기 */}
+              {newCampaign.selectedItemId && (
+                <div className="flex items-center gap-3 bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
+                  <span className="text-2xl">{newCampaign.itemIcon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white">
+                      {newCampaign.itemName}
+                    </p>
+                    {newCampaign.itemDescription && (
+                      <p className="text-xs text-gray-400 truncate">
+                        {newCampaign.itemDescription}
+                      </p>
+                    )}
+                    <p className="text-xs text-purple-300 font-bold mt-0.5">
+                      목표: {formatKoreanNumber(newCampaign.targetPrice)}
+                      {currencyUnit}
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* 아이템 이름 */}
+              {/* 목표 금액 (수정 가능) */}
               <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                  아이템 이름 *
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newCampaign.itemIcon}
-                    onChange={(e) =>
-                      setNewCampaign((p) => ({
-                        ...p,
-                        itemIcon: e.target.value,
-                      }))
-                    }
-                    className="w-14 px-2 py-2.5 rounded-xl bg-white/5 border border-white/10 text-center text-lg focus:border-purple-500/50 focus:outline-none"
-                    placeholder="🎁"
-                  />
-                  <input
-                    type="text"
-                    value={newCampaign.itemName}
-                    onChange={(e) =>
-                      setNewCampaign((p) => ({
-                        ...p,
-                        itemName: e.target.value,
-                      }))
-                    }
-                    className="flex-1 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none"
-                    placeholder="예: 자유시간, 피자파티"
-                  />
-                </div>
-              </div>
-
-              {/* 설명 */}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                  설명 (선택)
-                </label>
-                <input
-                  type="text"
-                  value={newCampaign.itemDescription}
-                  onChange={(e) =>
-                    setNewCampaign((p) => ({
-                      ...p,
-                      itemDescription: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none"
-                  placeholder="예: 우리반 모두 함께 자유시간을 즐겨요!"
-                />
-              </div>
-
-              {/* 목표 금액 */}
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1.5">
-                  목표 금액 *
+                  목표 금액 (수정 가능)
                 </label>
                 <div className="relative">
                   <input
@@ -658,7 +625,7 @@ export default function GroupPurchase() {
               <button
                 onClick={handleCreate}
                 disabled={
-                  !newCampaign.itemName.trim() ||
+                  !newCampaign.selectedItemId ||
                   !newCampaign.targetPrice ||
                   parseInt(newCampaign.targetPrice) <= 0
                 }

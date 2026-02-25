@@ -144,6 +144,20 @@
       ],
       "density": "SPARSE_ALL"
     }
+    ,{
+      "collectionGroup": "groupPurchases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "classCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
   ],
   "fieldOverrides": []
 }
