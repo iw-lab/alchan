@@ -202,7 +202,7 @@ export default function AdminEconomicEvents() {
 
   // 설정 상태
   const [settings, setSettings] = useState({
-    enabled: false,
+    enabled: true,
     triggerHour: 13,
     events: DEFAULT_EVENTS,
   });
@@ -246,11 +246,27 @@ export default function AdminEconomicEvents() {
               : DEFAULT_EVENTS,
         });
       } else {
-        setSettings({
-          enabled: false,
+        // 첫 방문: 기본값 ON으로 설정하고 자동 저장
+        const defaultSettings = {
+          enabled: true,
           triggerHour: 13,
           events: DEFAULT_EVENTS,
-        });
+        };
+        setSettings(defaultSettings);
+        // 서버에 기본 설정 자동 저장
+        try {
+          const saveSettings = httpsCallable(
+            functions,
+            "saveEconomicEventSettings",
+          );
+          await saveSettings(defaultSettings);
+          logger.info("[AdminEconomicEvents] 기본 설정 자동 저장 완료");
+        } catch (saveErr) {
+          logger.warn(
+            "[AdminEconomicEvents] 기본 설정 자동 저장 실패:",
+            saveErr,
+          );
+        }
       }
     } catch (err) {
       logger.error("[AdminEconomicEvents] 설정 로드 오류:", err);

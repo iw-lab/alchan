@@ -32,7 +32,16 @@ export default function EconomicEventBanner() {
         return;
       }
 
-      setActiveEvent(data);
+      // localStorage로 닫기 상태 유지
+      const eventId = data.triggeredAt?.toMillis?.() || data.event?.id || "";
+      const dismissKey = `eveBanner_${classCode}_${eventId}`;
+      if (localStorage.getItem(dismissKey)) {
+        setDismissed(true);
+        setActiveEvent(data);
+        return;
+      }
+
+      setActiveEvent({ ...data, _dismissKey: dismissKey });
       setDismissed(false); // 새 이벤트 발생 시 배너 다시 표시
     });
 
@@ -146,7 +155,12 @@ export default function EconomicEventBanner() {
 
       {/* 닫기 버튼 */}
       <button
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          if (activeEvent?._dismissKey) {
+            localStorage.setItem(activeEvent._dismissKey, "1");
+          }
+          setDismissed(true);
+        }}
         className="relative z-10 flex-shrink-0 p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
         aria-label="배너 닫기"
       >
