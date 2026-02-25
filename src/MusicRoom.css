@@ -50,13 +50,34 @@
     top: 0;
     left: 0;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     width: 100%;
     height: 100%;
-    background-color: #1a1a2e;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #1a1a2e 100%);
     color: #a0a0c0;
     font-size: 1.2rem;
+    gap: 1rem;
+}
+
+.no-video-placeholder::before {
+    content: '🎵';
+    font-size: 3rem;
+    opacity: 0.6;
+    animation: pulse-music 2s ease-in-out infinite;
+}
+
+@keyframes pulse-music {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 1; }
+}
+
+.no-video-placeholder p {
+    color: #c0c0e0;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
 }
 
 .room-header {
@@ -264,23 +285,32 @@
 .no-playlist-message {
     text-align: center;
     padding: 3rem 1rem;
-    color: #666;
+    color: #a0a0c0;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.no-playlist-message::before {
+    content: '📋';
+    font-size: 2rem;
+    opacity: 0.5;
+    margin-bottom: 0.5rem;
 }
 
 .no-playlist-message p {
-    margin: 0.5rem 0;
+    margin: 0.25rem 0;
     font-size: 0.95rem;
+    color: #8888bb;
 }
 
 .no-playlist-message p:first-child {
     font-weight: 600;
     font-size: 1.1rem;
-    color: #888;
+    color: #c0c0e0;
 }
 
 /* 반응형 디자인 - 태블릿 */
@@ -302,262 +332,4 @@
     }
 }
 
-.main-content {
-    display: flex;
-    flex-direction: column;
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-}
-
-.video-player-wrapper {
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%;
-    /* 16:9 Aspect Ratio (9 / 16 = 0.5625) */
-    background-color: #000;
-    overflow: hidden;
-}
-
-.youtube-player {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.youtube-player iframe {
-    width: 100%;
-    height: 100%;
-}
-
-.no-video-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    background-color: #f0f0f0;
-    color: #888;
-    font-size: 1.2rem;
-}
-
-.room-header {
-    padding: 1rem 1.5rem;
-    background-color: #f8f9fa;
-    border-top: 1px solid #dee2e6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.room-header h2 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: #333;
-}
-
-.room-controls {
-    display: flex;
-    gap: 10px;
-}
-
-.control-btn,
-.delete-room-btn {
-    padding: 0.6rem 1rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: bold;
-    transition: all 0.2s ease;
-}
-
-.control-btn {
-    background: linear-gradient(90deg, #5e72e4, #825ee4);
-    color: white;
-}
-
-.control-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(94, 114, 228, 0.3);
-}
-
-.control-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-.delete-room-btn {
-    background-color: #f5365c;
-    color: white;
-}
-
-.delete-room-btn:hover {
-    background-color: #e02146;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(245, 54, 92, 0.3);
-}
-
-
-.sidebar-content {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-height: 0;
-    /* Fix for flexbox overflow */
-}
-
-/* QR 패널 제거 - 더 이상 사용하지 않음 */
-.share-info-panel {
-    display: none;
-}
-
-.playlist-panel {
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-    /* 전체 높이 사용 */
-}
-
-.share-info-panel h4 {
-    margin-top: 0;
-    margin-bottom: 0.8rem;
-    text-align: center;
-    color: #333;
-    font-size: 1rem;
-}
-
-.playlist-panel h3 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    text-align: center;
-    color: #333;
-    font-size: 1.2rem;
-}
-
-.qr-code-container-room {
-    text-align: center;
-    margin-bottom: 0.8rem;
-}
-
-.qr-code-container-room svg {
-    width: 120px !important;
-    height: 120px !important;
-}
-
-.room-link-title {
-    margin: 0 0 0.3rem 0;
-    font-weight: bold;
-    font-size: 0.75rem;
-    color: #555;
-    text-align: center;
-}
-
-.room-link-box {
-    background-color: #f0f2f5;
-    padding: 0.4rem;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    text-align: center;
-    word-break: break-all;
-    font-family: monospace;
-    color: #333;
-}
-
-.playlist {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    overflow-y: auto;
-    flex-grow: 1;
-    /* Takes remaining space */
-}
-
-.playlist li {
-    padding: 0.8rem;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    transition: background-color 0.2s;
-}
-
-.playlist li:last-child {
-    border-bottom: none;
-}
-
-.song-title {
-    font-weight: 500;
-    color: #333;
-}
-
-.playlist li.playing {
-    background-color: #e9f5ff;
-}
-
-.playlist li.playing .song-title {
-    color: #0056b3;
-    font-weight: bold;
-}
-
-.requester {
-    font-size: 0.8rem;
-    color: #777;
-    align-self: flex-end;
-}
-
-.no-playlist-message {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #999;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.no-playlist-message p {
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
-}
-
-.no-playlist-message p:first-child {
-    font-weight: 600;
-    font-size: 1.1rem;
-    color: #666;
-}
-
-/* 반응형 디자인 - 태블릿 */
-@media (max-width: 1200px) {
-    .music-room-container-grid {
-        grid-template-columns: 1fr 260px;
-        /* 태블릿에서도 재생목록 좁게 */
-    }
-}
-
-/* 반응형 디자인 - 모바일 */
-@media (max-width: 768px) {
-    .music-room-container-grid {
-        grid-template-columns: 1fr;
-        height: auto;
-    }
-
-    .sidebar-content {
-        gap: 15px;
-    }
-}
+/* ↑ 라이트 테마 중복 제거 완료 - 사이버펑크 스타일만 유지 */
