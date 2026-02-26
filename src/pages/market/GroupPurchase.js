@@ -18,6 +18,7 @@ import {
   serverTimestamp,
   runTransaction,
 } from "../../firebase";
+import { addItemToInventory } from "../../firebase/firebaseDb";
 import {
   Users,
   Plus,
@@ -91,6 +92,7 @@ export default function GroupPurchase() {
         itemName: newCampaign.itemName.trim(),
         itemIcon: newCampaign.itemIcon || "🎁",
         itemDescription: newCampaign.itemDescription.trim(),
+        selectedItemId: newCampaign.selectedItemId || null,
         targetPrice: target,
         currentAmount: 0,
         initiatorId: user.uid,
@@ -99,6 +101,8 @@ export default function GroupPurchase() {
         status: "active",
         createdAt: serverTimestamp(),
         completedAt: null,
+        winnerId: null,
+        winnerName: null,
       });
       setShowCreateModal(false);
       setNewCampaign({
@@ -175,17 +179,62 @@ export default function GroupPurchase() {
         const newTotal = cData.currentAmount + finalAmount;
         const isCompleted = newTotal >= cData.targetPrice;
 
+        // 최다 기여자 계산
+        let winnerId = null;
+        let winnerName = null;
+        if (isCompleted) {
+          const topContributor = [...newContributors].sort(
+            (a, b) => b.amount - a.amount,
+          )[0];
+          winnerId = topContributor?.userId || null;
+          winnerName = topContributor?.userName || null;
+        }
+
         transaction.update(campaignRef, {
           currentAmount: newTotal,
           contributors: newContributors,
           status: isCompleted ? "completed" : "active",
           completedAt: isCompleted ? new Date() : null,
+          winnerId,
+          winnerName,
         });
 
         transaction.update(userRef, {
           cash: uData.cash - finalAmount,
         });
+
+        // 트랜잭션 밖에서 아이템 지급을 위한 데이터 반환
+        return { isCompleted, winnerId, winnerName, cData };
       });
+
+      // 목표 달성 시 최다 기여자에게 아이템 지급
+      if (
+        result?.isCompleted &&
+        result.winnerId &&
+        result.cData?.selectedItemId
+      ) {
+        try {
+          await addItemToInventory(
+            result.winnerId,
+            result.cData.selectedItemId,
+            1,
+            {
+              name: result.cData.itemName,
+              icon: result.cData.itemIcon || "🎁",
+            },
+          );
+          alert(
+            `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
+          );
+        } catch (itemErr) {
+          logger.error("아이템 지급 실패:", itemErr);
+          alert(
+            "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+          );
+        }
+      } else if (result?.isCompleted) {
+        alert(`🎉 목표 달성! 최다 기여자: ${result.winnerName}님`);
+      }
 
       setContributeModal(null);
       setContributeAmount("");
@@ -279,7 +328,7 @@ export default function GroupPurchase() {
           <div>
             <h1 className="text-xl font-bold text-white font-jua">함께구매</h1>
             <p className="text-xs text-gray-400">
-              친구들과 모금하여 함께 아이템을 구매해요
+              친구들과 모금하고, 최다 기여자가 아이템을 획득해요!
             </p>
           </div>
         </div>
@@ -373,6 +422,11 @@ export default function GroupPurchase() {
                             달성
                           </span>
                         )}
+                        {isCompleted && campaign.winnerName && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">
+                            🏆 {campaign.winnerName}
+                          </span>
+                        )}
                       </div>
 
                       {campaign.itemDescription && (
@@ -463,6 +517,21 @@ export default function GroupPurchase() {
                         : ""}
                     </div>
 
+                    {/* 당첨자 안내 */}
+                    {isCompleted && campaign.winnerName && (
+                      <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
+                        <span className="text-lg">🏆</span>
+                        <div>
+                          <p className="text-sm font-bold text-amber-300">
+                            아이템 획득: {campaign.winnerName}
+                          </p>
+                          <p className="text-xs text-amber-400/70">
+                            최다 기여자에게 아이템이 지급되었습니다
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 참여자 목록 */}
                     {campaign.contributors?.length > 0 && (
                       <div>
@@ -472,25 +541,38 @@ export default function GroupPurchase() {
                         <div className="space-y-1.5">
                           {campaign.contributors
                             .sort((a, b) => b.amount - a.amount)
-                            .map((c, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-gray-300">
-                                    {i + 1}.
-                                  </span>
-                                  <span className="text-sm text-white">
-                                    {c.userName}
+                            .map((c, i) => {
+                              const isWinner = campaign.winnerId === c.userId;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex items-center justify-between rounded-lg px-3 py-2 ${isWinner ? "bg-amber-500/10 border border-amber-500/20" : "bg-white/5"}`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-300">
+                                      {i === 0
+                                        ? "🥇"
+                                        : i === 1
+                                          ? "🥈"
+                                          : i === 2
+                                            ? "🥉"
+                                            : `${i + 1}.`}
+                                    </span>
+                                    <span
+                                      className={`text-sm ${isWinner ? "text-amber-300 font-bold" : "text-white"}`}
+                                    >
+                                      {c.userName}
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`text-sm font-bold ${isWinner ? "text-amber-300" : "text-purple-300"}`}
+                                  >
+                                    {formatKoreanNumber(c.amount)}
+                                    {currencyUnit}
                                   </span>
                                 </div>
-                                <span className="text-sm font-bold text-purple-300">
-                                  {formatKoreanNumber(c.amount)}
-                                  {currencyUnit}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                         </div>
                       </div>
                     )}
