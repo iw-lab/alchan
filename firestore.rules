@@ -972,6 +972,12 @@ service cloud.firestore {
     match /classSettings/{classCode} {
       allow read: if isSameClass(classCode) || isAdmin();
       allow write: if isAdmin();
+
+      // 급여 등 세부 설정 서브컬렉션 (classSettings/{classCode}/settings/{settingId})
+      match /settings/{settingId} {
+        allow read: if isSameClass(classCode) || isAdmin();
+        allow write: if isAdmin();
+      }
     }
 
     // ========================================================
