@@ -905,6 +905,16 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // ✅ 보너스 할일 승인 요청 (pendingApprovals)
+    // ========================================================
+    match /pendingApprovals/{approvalId} {
+      allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
     // 🤝 함께구매 (groupPurchases)
     // ========================================================
     match /groupPurchases/{purchaseId} {
