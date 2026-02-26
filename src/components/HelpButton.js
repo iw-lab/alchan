@@ -53,7 +53,7 @@ export default function HelpButton() {
 
             {/* 설명 */}
             <div className="px-5 py-4">
-              <p className="text-slate-200 text-sm leading-relaxed mb-4">
+              <p className="text-[#e8e8ff] text-sm leading-relaxed mb-4">
                 {helpData.description}
               </p>
 
@@ -71,7 +71,7 @@ export default function HelpButton() {
                       <span className="text-cyan-400 text-xs mt-0.5 font-bold shrink-0">
                         {index + 1}.
                       </span>
-                      <p className="text-slate-200 text-sm leading-relaxed">
+                      <p className="text-[#e8e8ff] text-sm leading-relaxed">
                         {tip}
                       </p>
                     </div>
