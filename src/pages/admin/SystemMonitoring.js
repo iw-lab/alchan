@@ -1,15 +1,13 @@
 // src/pages/admin/SystemMonitoring.js - 시스템 모니터링 컴포넌트
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../firebase";
 import "./SystemMonitoring.css";
 import { logger } from "../../utils/logger";
+
+// 컴포넌트 외부에 선언하여 매 렌더마다 새 참조 생성 방지
+const getSystemStatusFn = httpsCallable(functions, "getSystemStatus");
+const resolveSystemAlertFn = httpsCallable(functions, "resolveSystemAlert");
 
 const SystemMonitoring = ({ isSuperAdmin }) => {
   const [systemStatus, setSystemStatus] = useState(null);
@@ -18,36 +16,23 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [errorCount, setErrorCount] = useState(0);
-
-  // httpsCallable을 useMemo로 안정화 (매 렌더마다 새 참조 생성 방지)
-  const getSystemStatus = useMemo(
-    () => httpsCallable(functions, "getSystemStatus"),
-    [],
-  );
-  const resolveSystemAlert = useMemo(
-    () => httpsCallable(functions, "resolveSystemAlert"),
-    [],
-  );
+  const hasFetchedRef = useRef(false);
   const errorCountRef = useRef(0);
 
-  // errorCount 동기화
-  useEffect(() => {
-    errorCountRef.current = errorCount;
-  }, [errorCount]);
-
-  // 시스템 상태 조회
-  const fetchSystemStatus = useCallback(async () => {
+  // 시스템 상태 조회 (일반 함수 - useCallback 불필요)
+  const fetchSystemStatus = async () => {
     if (!isSuperAdmin) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getSystemStatus();
+      const result = await getSystemStatusFn();
       if (result.data.success) {
         setSystemStatus(result.data.data);
         setLastUpdate(new Date());
         setErrorCount(0);
+        errorCountRef.current = 0;
       } else {
         throw new Error(result.data.message || "시스템 상태 조회 실패");
       }
@@ -55,52 +40,53 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
       logger.error("[SystemMonitoring] 상태 조회 오류:", err);
       setError(err.message || "시스템 상태를 불러오는 중 오류가 발생했습니다.");
 
-      setErrorCount((prev) => {
-        const next = prev + 1;
-        if (next >= 3) {
-          setAutoRefresh(false);
-          logger.warn(
-            "[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.",
-          );
-        }
-        return next;
-      });
+      errorCountRef.current += 1;
+      setErrorCount(errorCountRef.current);
+
+      if (errorCountRef.current >= 3) {
+        setAutoRefresh(false);
+        logger.warn(
+          "[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.",
+        );
+      }
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, getSystemStatus]);
+  };
 
   // 경고 해결 처리
-  const handleResolveAlert = useCallback(
-    async (alertId) => {
-      if (!window.confirm("이 경고를 해결 처리하시겠습니까?")) {
-        return;
-      }
+  const handleResolveAlert = async (alertId) => {
+    if (!window.confirm("이 경고를 해결 처리하시겠습니까?")) {
+      return;
+    }
 
-      try {
-        const result = await resolveSystemAlert({ alertId });
-        if (result.data.success) {
-          alert("경고가 해결되었습니다.");
-          fetchSystemStatus();
-        }
-      } catch (err) {
-        logger.error("[SystemMonitoring] 경고 해결 오류:", err);
-        alert(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
+    try {
+      const result = await resolveSystemAlertFn({ alertId });
+      if (result.data.success) {
+        alert("경고가 해결되었습니다.");
+        fetchSystemStatus();
       }
-    },
-    [resolveSystemAlert, fetchSystemStatus],
-  );
+    } catch (err) {
+      logger.error("[SystemMonitoring] 경고 해결 오류:", err);
+      alert(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
+    }
+  };
 
-  // 초기 로드 (한 번만 실행)
+  // 초기 로드 - 마운트 시 단 한 번만 실행 (의존성 배열 빈 배열)
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (isSuperAdmin && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchSystemStatus();
     }
-  }, [isSuperAdmin, fetchSystemStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 자동 새로고침 (2분마다)
   useEffect(() => {
     if (!autoRefresh || !isSuperAdmin) return;
+
+    errorCountRef.current = 0;
+    setErrorCount(0);
 
     const intervalId = setInterval(
       () => {
@@ -110,14 +96,8 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
     );
 
     return () => clearInterval(intervalId);
-  }, [autoRefresh, isSuperAdmin, fetchSystemStatus]);
-
-  // 자동 새로고침 활성화 시 에러 카운트 리셋
-  useEffect(() => {
-    if (autoRefresh) {
-      setErrorCount(0);
-    }
-  }, [autoRefresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, isSuperAdmin]);
 
   if (!isSuperAdmin) {
     return (
@@ -139,7 +119,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
             />
-            <span>자동 새로고침 (30초)</span>
+            <span>자동 새로고침 (2분)</span>
           </label>
           <button
             onClick={fetchSystemStatus}
@@ -171,7 +151,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
 
       {systemStatus && (
         <>
-          {/* 초기화 메시지 표시 */}
           {systemStatus.message && (
             <div
               className="info-message"
@@ -188,7 +167,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           )}
 
-          {/* 전체 시스템 상태 */}
           <div className="system-health-card">
             <h4>시스템 상태</h4>
             <div className={`health-indicator health-${systemStatus.health}`}>
@@ -215,7 +193,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           </div>
 
-          {/* 실시간 통계 */}
           <div className="stats-card">
             <h4>최근 1분 통계</h4>
             <div className="stats-grid">
@@ -252,7 +229,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           </div>
 
-          {/* 비정상 패턴 감지 */}
           {systemStatus.anomalies && systemStatus.anomalies.length > 0 && (
             <div className="anomalies-card">
               <h4>⚠️ 비정상 패턴 감지</h4>
@@ -279,7 +255,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           )}
 
-          {/* 활성 경고 */}
           {systemStatus.alerts && systemStatus.alerts.length > 0 && (
             <div className="alerts-card">
               <h4>🔔 활성 경고 ({systemStatus.alerts.length})</h4>
@@ -313,7 +288,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           )}
 
-          {/* 최근 에러 로그 */}
           {systemStatus.errorLogs && systemStatus.errorLogs.length > 0 && (
             <div className="error-logs-card">
               <h4>📝 최근 에러 로그 (1시간)</h4>
@@ -338,7 +312,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
             </div>
           )}
 
-          {/* 최근 5분 통계 */}
           <div className="stats-card">
             <h4>최근 5분 통계</h4>
             <div className="stats-grid">

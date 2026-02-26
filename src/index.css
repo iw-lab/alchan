@@ -1143,3 +1143,129 @@ label,
   background: rgba(20, 20, 35, 0.8) !important;
   color: #9999bb !important;
 }
+
+/* 관리자 설정 내부 기본 텍스트 색상 */
+.admin-settings-content {
+  color: #e8e8ff !important;
+}
+
+.admin-settings-content p,
+.admin-settings-content span,
+.admin-settings-content div,
+.admin-settings-content label {
+  color: inherit;
+}
+
+.admin-settings-content .form-group label {
+  color: #e8e8ff !important;
+  font-weight: 600;
+}
+
+/* 관리자 input */
+.admin-settings-content .admin-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+  border-radius: 8px;
+  color: #fff !important;
+  font-size: 0.95rem;
+}
+
+.admin-settings-content .admin-input:focus {
+  border-color: #00fff2 !important;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  outline: none;
+}
+
+/* 저장 버튼 */
+.admin-save-button {
+  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%) !important;
+  color: #000 !important;
+  border: none !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3) !important;
+}
+
+.admin-save-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 255, 242, 0.5) !important;
+}
+
+.admin-save-button:disabled {
+  background: rgba(75, 85, 99, 0.5) !important;
+  color: #6b7280 !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* 닫기 버튼 */
+.admin-close-button {
+  background: rgba(75, 85, 99, 0.4) !important;
+  color: #e8e8ff !important;
+  border: 1px solid rgba(0, 255, 242, 0.3) !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-close-button:hover {
+  background: rgba(0, 255, 242, 0.1) !important;
+  border-color: rgba(0, 255, 242, 0.5) !important;
+  color: #00fff2 !important;
+}
+
+/* 관리자 설정 푸터 */
+.admin-settings-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 255, 242, 0.2);
+  text-align: center;
+}
+
+/* 관리자 설정 내 모든 일반 버튼 기본 */
+.admin-settings-content button:not(.admin-save-button):not(.admin-close-button):not(.admin-menu-tabs button) {
+  color: #e8e8ff;
+}
+
+/* 급여 설정 input/label */
+.admin-settings-content .salary-settings-form label,
+.admin-settings-content .salary-settings-form span {
+  color: #e8e8ff !important;
+}
+
+.admin-settings-content .salary-settings-form input {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+/* 금융 상품 서브탭 버튼 */
+.admin-settings-content .sub-tab-button {
+  background: rgba(20, 20, 35, 0.8) !important;
+  border: 1px solid rgba(0, 255, 242, 0.2) !important;
+  color: #9999bb !important;
+  transition: all 0.2s ease;
+}
+
+.admin-settings-content .sub-tab-button:hover {
+  background: rgba(0, 255, 242, 0.08) !important;
+  color: #00fff2 !important;
+}
+
+.admin-settings-content .sub-tab-button.active {
+  background: rgba(0, 255, 242, 0.12) !important;
+  border-color: rgba(0, 255, 242, 0.4) !important;
+  color: #00fff2 !important;
+}
