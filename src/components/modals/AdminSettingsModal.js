@@ -1617,11 +1617,44 @@ const AdminSettingsModal = ({
     );
   }
 
+  // 버튼 인라인 스타일 (CSS 클래스 로딩 문제 방지)
+  const saveBtnStyle = {
+    background: "linear-gradient(135deg, #00fff2, #00a8ff)",
+    color: "#000",
+    padding: "10px 24px",
+    borderRadius: "8px",
+    fontWeight: 700,
+    fontSize: "0.95rem",
+    border: "none",
+    cursor: "pointer",
+    boxShadow: "0 0 10px rgba(0,255,242,0.3)",
+  };
+  const closeBtnStyle = {
+    background: "rgba(75,85,99,0.4)",
+    color: "#e8e8ff",
+    padding: "10px 24px",
+    borderRadius: "8px",
+    fontWeight: 600,
+    fontSize: "0.95rem",
+    border: "1px solid rgba(0,255,242,0.3)",
+    cursor: "pointer",
+  };
+  const labelStyle = { color: "#e8e8ff", fontWeight: 600 };
+  const inputStyle = {
+    background: "rgba(0,0,0,0.3)",
+    border: "1px solid rgba(0,255,242,0.2)",
+    borderRadius: "8px",
+    color: "#fff",
+    padding: "10px 12px",
+    width: "100%",
+    fontSize: "0.95rem",
+  };
+
   return (
     <div
       className={`admin-settings-modal ${showAdminSettingsModal ? "show" : ""}`}
     >
-      <div className="admin-settings-content">
+      <div className="admin-settings-content" style={{ color: "#e8e8ff" }}>
         <h2>
           관리자 설정{" "}
           {isSuperAdmin && (
@@ -1689,7 +1722,7 @@ const AdminSettingsModal = ({
             <div className="admin-goal-settings section-card">
               <h3>목표 및 쿠폰 가치 설정</h3>
               <div className="form-group">
-                <label>클래스 목표 쿠폰 수:</label>
+                <label style={labelStyle}>클래스 목표 쿠폰 수:</label>
                 <input
                   type="number"
                   min="1"
@@ -1697,11 +1730,11 @@ const AdminSettingsModal = ({
                   onChange={(e) =>
                     setNewGoalAmount && setNewGoalAmount(e.target.value)
                   }
-                  className="admin-input"
+                  style={inputStyle}
                 />
               </div>
               <div className="form-group">
-                <label>쿠폰 가치 ({currencyUnit}):</label>
+                <label style={labelStyle}>쿠폰 가치 ({currencyUnit}):</label>
                 <input
                   type="number"
                   min="1"
@@ -1709,13 +1742,10 @@ const AdminSettingsModal = ({
                   onChange={(e) =>
                     setAdminCouponValue && setAdminCouponValue(e.target.value)
                   }
-                  className="admin-input"
+                  style={inputStyle}
                 />
               </div>
-              <button
-                onClick={handleSaveAdminSettings}
-                className="admin-save-button"
-              >
+              <button onClick={handleSaveAdminSettings} style={saveBtnStyle}>
                 저장
               </button>
             </div>
@@ -1727,30 +1757,47 @@ const AdminSettingsModal = ({
             >
               <h3>화폐 단위 설정</h3>
               <p
-                className="admin-section-desc"
-                style={{ fontSize: "13px", opacity: 0.7, marginBottom: "12px" }}
+                style={{
+                  fontSize: "13px",
+                  color: "#9999bb",
+                  marginBottom: "12px",
+                }}
               >
                 앱에서 사용하는 화폐 단위를 변경합니다. (기본: 알찬)
               </p>
               <div className="form-group">
-                <label>화폐 단위:</label>
+                <label style={labelStyle}>화폐 단위:</label>
                 <input
                   type="text"
                   maxLength={10}
                   value={tempCurrencyUnit}
                   onChange={(e) => setTempCurrencyUnit(e.target.value)}
                   placeholder="예: 알찬, 원, 골드"
-                  className="admin-input"
+                  style={inputStyle}
                 />
               </div>
               <div
-                style={{ fontSize: "12px", opacity: 0.6, marginBottom: "8px" }}
+                style={{
+                  fontSize: "12px",
+                  color: "#9999bb",
+                  marginBottom: "8px",
+                }}
               >
                 미리보기: 1000{tempCurrencyUnit}, 1억 2000만 {tempCurrencyUnit}
               </div>
               <button
                 onClick={handleSaveCurrencyUnit}
-                className="admin-save-button"
+                style={
+                  currencyUnitSaving || !tempCurrencyUnit.trim()
+                    ? {
+                        ...saveBtnStyle,
+                        background: "rgba(75,85,99,0.5)",
+                        color: "#6b7280",
+                        boxShadow: "none",
+                        cursor: "not-allowed",
+                      }
+                    : saveBtnStyle
+                }
                 disabled={currencyUnitSaving || !tempCurrencyUnit.trim()}
               >
                 {currencyUnitSaving ? "저장 중..." : "화폐 단위 저장"}
@@ -1813,7 +1860,7 @@ const AdminSettingsModal = ({
                       value={adminNewTaskName}
                       onChange={(e) => setAdminNewTaskName(e.target.value)}
                       placeholder="할일 이름 입력"
-                      className="admin-input"
+                      style={inputStyle}
                     />
                   </div>
 
@@ -1825,7 +1872,7 @@ const AdminSettingsModal = ({
                       value={adminNewTaskReward}
                       onChange={(e) => setAdminNewTaskReward(e.target.value)}
                       placeholder="쿠폰 보상"
-                      className="admin-input"
+                      style={inputStyle}
                     />
                   </div>
 
@@ -1837,7 +1884,7 @@ const AdminSettingsModal = ({
                       value={adminNewTaskMaxClicks}
                       onChange={(e) => setAdminNewTaskMaxClicks(e.target.value)}
                       placeholder="최대 클릭 수"
-                      className="admin-input"
+                      style={inputStyle}
                     />
                   </div>
 
@@ -1901,7 +1948,7 @@ const AdminSettingsModal = ({
                           alert("할일 저장 기능을 사용할 수 없습니다.");
                         }
                       }}
-                      className="admin-save-button"
+                      style={saveBtnStyle}
                     >
                       {adminEditingTask ? "수정" : "추가"}
                     </button>
@@ -2125,7 +2172,7 @@ const AdminSettingsModal = ({
                   placeholder={
                     adminEditingJob ? "직업명 수정" : "새 직업명 입력"
                   }
-                  className="admin-input"
+                  style={inputStyle}
                 />
                 <button
                   onClick={() => {
@@ -2139,7 +2186,7 @@ const AdminSettingsModal = ({
                       alert("직업 저장 기능을 사용할 수 없습니다.");
                     }
                   }}
-                  className="admin-save-button"
+                  style={saveBtnStyle}
                 >
                   {adminEditingJob ? "수정" : "추가"}
                 </button>
@@ -2554,7 +2601,8 @@ const AdminSettingsModal = ({
                         value={newProductName}
                         onChange={(e) => setNewProductName(e.target.value)}
                         placeholder="상품명 입력"
-                        className="admin-input w-full"
+                        className="w-full"
+                        style={inputStyle}
                       />
                     </div>
                     <div>
@@ -2567,7 +2615,8 @@ const AdminSettingsModal = ({
                         onChange={(e) => setNewProductPeriod(e.target.value)}
                         placeholder="기간 (일)"
                         min="1"
-                        className="admin-input w-full"
+                        className="w-full"
+                        style={inputStyle}
                       />
                     </div>
                     <div>
@@ -2581,13 +2630,15 @@ const AdminSettingsModal = ({
                         placeholder="이율 (%)"
                         min="0"
                         step="0.1"
-                        className="admin-input w-full"
+                        className="w-full"
+                        style={inputStyle}
                       />
                     </div>
                   </div>
                   <button
                     onClick={handleAddProduct}
-                    className="admin-save-button w-full"
+                    className="w-full"
+                    style={saveBtnStyle}
                   >
                     상품 추가하기
                   </button>
@@ -2706,8 +2757,9 @@ const AdminSettingsModal = ({
                     <button
                       onClick={() => handleMarketControl(true)}
                       disabled={marketStatus.isOpen}
-                      className="admin-save-button flex-1"
+                      className="flex-1"
                       style={{
+                        ...saveBtnStyle,
                         background: marketStatus.isOpen ? "#374151" : "#22c55e",
                         cursor: marketStatus.isOpen ? "not-allowed" : "pointer",
                       }}
@@ -2817,11 +2869,13 @@ const AdminSettingsModal = ({
                       placeholder="새 이자율 입력 (%)"
                       min="0"
                       step="0.01"
-                      className="admin-input mb-3"
+                      className="mb-3"
+                      style={inputStyle}
                     />
                     <button
                       onClick={handleParkingRateChange}
-                      className="admin-save-button w-full"
+                      className="w-full"
+                      style={saveBtnStyle}
                       disabled={
                         !newInterestRate ||
                         isNaN(newInterestRate) ||
@@ -2966,7 +3020,7 @@ const AdminSettingsModal = ({
                       step="0.1"
                       value={tempTaxRate}
                       onChange={(e) => setTempTaxRate(e.target.value)}
-                      className="admin-input"
+                      style={inputStyle}
                       placeholder="예: 10 (10%)"
                     />
                     <small className="form-help">
@@ -2985,7 +3039,7 @@ const AdminSettingsModal = ({
                       onChange={(e) =>
                         setTempSalaryIncreaseRate(e.target.value)
                       }
-                      className="admin-input"
+                      style={inputStyle}
                       placeholder="예: 3 (3%)"
                     />
                     <small className="form-help">
@@ -2995,7 +3049,7 @@ const AdminSettingsModal = ({
 
                   <button
                     onClick={handleSaveSalarySettings}
-                    className="admin-save-button"
+                    style={saveBtnStyle}
                     disabled={salarySettingsLoading}
                   >
                     {salarySettingsLoading ? "저장 중..." : "급여 설정 저장"}
@@ -3165,7 +3219,7 @@ const AdminSettingsModal = ({
                     onChange={(e) => setNewClassCode(e.target.value)}
                     placeholder="새 학급 코드 입력"
                     disabled={classCodeOperationLoading}
-                    className="admin-input"
+                    style={inputStyle}
                   />
                   <button
                     onClick={handleAddClassCode}
@@ -3212,7 +3266,7 @@ const AdminSettingsModal = ({
         <div className="admin-settings-footer">
           <button
             onClick={() => setShowAdminSettingsModal(false)}
-            className="admin-close-button"
+            style={closeBtnStyle}
           >
             닫기
           </button>
@@ -3304,7 +3358,7 @@ const AdminSettingsModal = ({
                 취소
               </button>
               <button
-                className="admin-save-button"
+                style={saveBtnStyle}
                 onClick={handleSaveStudentJobs}
                 disabled={appLoading}
               >
