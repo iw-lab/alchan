@@ -208,32 +208,34 @@ export default function GroupPurchase() {
       });
 
       // 목표 달성 시 최다 기여자에게 아이템 지급
-      if (
-        result?.isCompleted &&
-        result.winnerId &&
-        result.cData?.selectedItemId
-      ) {
-        try {
-          await addItemToInventory(
-            result.winnerId,
-            result.cData.selectedItemId,
-            1,
-            {
+      if (result?.isCompleted && result.winnerId) {
+        // selectedItemId가 없으면 (기존 캠페인) 아이템 이름으로 매칭
+        let storeItemId = result.cData?.selectedItemId;
+        if (!storeItemId && result.cData?.itemName && items?.length > 0) {
+          const matched = items.find((i) => i.name === result.cData.itemName);
+          if (matched) storeItemId = matched.id;
+        }
+
+        if (storeItemId) {
+          try {
+            await addItemToInventory(result.winnerId, storeItemId, 1, {
               name: result.cData.itemName,
               icon: result.cData.itemIcon || "🎁",
-            },
-          );
+            });
+            alert(
+              `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
+            );
+          } catch (itemErr) {
+            logger.error("아이템 지급 실패:", itemErr);
+            alert(
+              "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+            );
+          }
+        } else {
           alert(
-            `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
-          );
-        } catch (itemErr) {
-          logger.error("아이템 지급 실패:", itemErr);
-          alert(
-            "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+            `🎉 목표 달성! 최다 기여자: ${result.winnerName}님\n(상점에서 아이템을 찾을 수 없어 수동 지급이 필요합니다)`,
           );
         }
-      } else if (result?.isCompleted) {
-        alert(`🎉 목표 달성! 최다 기여자: ${result.winnerName}님`);
       }
 
       setContributeModal(null);
