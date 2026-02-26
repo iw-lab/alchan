@@ -138,6 +138,22 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow write: if isOwner(userId) || isAdmin();
       }
+
+      // ========================================================
+      // 🏅 배지 서브컬렉션 (users/{userId}/badges/{document})
+      // ========================================================
+      match /badges/{document} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
+      // ========================================================
+      // 🏠 부동산 서브컬렉션 (users/{userId}/properties/{propertyId})
+      // ========================================================
+      match /properties/{propertyId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin();
+      }
     }
 
     // ========================================================
@@ -711,6 +727,12 @@ service cloud.firestore {
         allow update: if false; // 로그는 수정 불가
         allow delete: if isAdmin();
       }
+
+      // 📊 마켓 요약 서브컬렉션 (classes/{classCode}/marketSummary/{document})
+      match /marketSummary/{document} {
+        allow read: if isSameClass(classCode) || isAdmin();
+        allow write: if isAdmin();
+      }
     }
 
     // ========================================================
@@ -912,6 +934,34 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // ========================================================
+    // 🛍️ 마켓 리스팅 (marketListings) - CF가 작성, 클라이언트 읽기
+    // ========================================================
+    match /marketListings/{listingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isOwner(resource.data.sellerId) || isAdmin());
+      allow delete: if isOwner(resource.data.sellerId) || isAdmin();
+    }
+
+    // ========================================================
+    // 💬 마켓 오퍼 (marketOffers) - CF가 작성, 클라이언트 읽기
+    // ========================================================
+    match /marketOffers/{offerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
+    // ⚙️ 학급 설정 (classSettings) - CF가 읽기/쓰기
+    // ========================================================
+    match /classSettings/{classCode} {
+      allow read: if isSameClass(classCode) || isAdmin();
+      allow write: if isAdmin();
     }
 
     // ========================================================
