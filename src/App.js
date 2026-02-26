@@ -32,11 +32,30 @@ const queryClient = new QueryClient({
   },
 });
 
+// 🔥 ChunkLoadError 방지 - lazy import 실패 시 1회 재시도 후 리로드
+function lazyWithRetry(importFn) {
+  return lazy(() =>
+    importFn().catch(() => {
+      // 이미 리로드 시도했으면 그냥 에러 throw
+      const reloaded = sessionStorage.getItem("chunk_reload");
+      if (reloaded) {
+        sessionStorage.removeItem("chunk_reload");
+        return importFn(); // 마지막 시도
+      }
+      sessionStorage.setItem("chunk_reload", "1");
+      window.location.reload();
+      return new Promise(() => {}); // 리로드 중 pending 유지
+    }),
+  );
+}
+
 // 코드 스플리팅 - 레이아웃과 로그인 페이지
-const AlchanLayout = lazy(() => import("./components/AlchanLayout"));
-const Login = lazy(() => import("./pages/auth/Login"));
-const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
-const ConsentForm = lazy(() => import("./pages/legal/ConsentForm"));
+const AlchanLayout = lazyWithRetry(() => import("./components/AlchanLayout"));
+const Login = lazyWithRetry(() => import("./pages/auth/Login"));
+const PrivacyPolicy = lazyWithRetry(
+  () => import("./pages/legal/PrivacyPolicy"),
+);
+const ConsentForm = lazyWithRetry(() => import("./pages/legal/ConsentForm"));
 
 // 기본 스타일 (Tailwind 이전에 로드하여 Tailwind가 우선권을 가지도록)
 import "./styles.css";
@@ -58,8 +77,26 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     logger.error("[알찬] 앱 오류 발생:", error, errorInfo);
 
-    // IndexedDB나 캐시 관련 오류면 캐시 삭제 후 새로고침
+    // ChunkLoadError면 즉시 리로드 (새 빌드 배포 후 구 청크 로드 실패)
     const errorString = error?.toString() || "";
+    if (
+      errorString.includes("ChunkLoadError") ||
+      errorString.includes("Loading chunk") ||
+      error?.name === "ChunkLoadError"
+    ) {
+      logger.log("[알찬] ChunkLoadError 감지 - 페이지 리로드");
+      const reloaded = sessionStorage.getItem("chunk_reload");
+      if (!reloaded) {
+        sessionStorage.setItem("chunk_reload", "1");
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem("chunk_reload");
+      this.clearCachesAndReload();
+      return;
+    }
+
+    // IndexedDB나 캐시 관련 오류면 캐시 삭제 후 새로고침
     if (
       errorString.includes("IndexedDB") ||
       errorString.includes("QuotaExceeded") ||

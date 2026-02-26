@@ -3,6 +3,22 @@
 // 🔥 성능 최적화: 게임/관리자 페이지 lazy loading 적용
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+
+// 🔥 ChunkLoadError 방지 - lazy import 실패 시 1회 재시도 후 리로드
+function lazyWithRetry(importFn) {
+  return lazy(() =>
+    importFn().catch(() => {
+      const reloaded = sessionStorage.getItem("chunk_reload");
+      if (reloaded) {
+        sessionStorage.removeItem("chunk_reload");
+        return importFn();
+      }
+      sessionStorage.setItem("chunk_reload", "1");
+      window.location.reload();
+      return new Promise(() => {});
+    }),
+  );
+}
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { ItemProvider } from "../contexts/ItemContext"; // 🔥 [최적화] 로그인 후에만 마운트
@@ -16,77 +32,105 @@ import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
-const EconomicEventPopup = lazy(() => import("./EconomicEventPopup"));
-const NewBillPopup = lazy(() => import("./NewBillPopup"));
-const DailyRewardBanner = lazy(() =>
+const EconomicEventPopup = lazyWithRetry(() => import("./EconomicEventPopup"));
+const NewBillPopup = lazyWithRetry(() => import("./NewBillPopup"));
+const DailyRewardBanner = lazyWithRetry(() =>
   import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
-const WelcomePopup = lazy(() => import("./WelcomePopup"));
-const HelpButton = lazy(() => import("./HelpButton"));
-const IOSInstallPrompt = lazy(() => import("./IOSInstallPrompt"));
-const AppUpdateChecker = lazy(() => import("./AppUpdateChecker"));
+const WelcomePopup = lazyWithRetry(() => import("./WelcomePopup"));
+const HelpButton = lazyWithRetry(() => import("./HelpButton"));
+const IOSInstallPrompt = lazyWithRetry(() => import("./IOSInstallPrompt"));
+const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
 import { db, doc, updateDoc, increment } from "../firebase";
 import globalCacheService from "../services/globalCacheService";
 import { logger } from "../utils/logger";
 
 // 🔥 핵심 페이지 - Dashboard도 lazy로 전환
-const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
+const Dashboard = lazyWithRetry(() => import("../pages/dashboard/Dashboard"));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
-const ItemStore = lazy(() => import("../pages/market/ItemStore"));
-const MyItems = lazy(() => import("../pages/my-items/MyItems"));
+const ItemStore = lazyWithRetry(() => import("../pages/market/ItemStore"));
+const MyItems = lazyWithRetry(() => import("../pages/my-items/MyItems"));
 
 // 🔥 [최적화] 자주 사용하지만 초기 로드 불필요한 페이지 - 동적 로딩
-const PersonalShop = lazy(() => import("../pages/market/PersonalShop"));
-const GroupPurchase = lazy(() => import("../pages/market/GroupPurchase"));
-const Banking = lazy(() => import("../pages/banking/Banking"));
-const MyProfile = lazy(() => import("../pages/my-profile/MyProfile"));
-const MyAssets = lazy(() => import("../pages/my-assets/MyAssets"));
+const PersonalShop = lazyWithRetry(
+  () => import("../pages/market/PersonalShop"),
+);
+const GroupPurchase = lazyWithRetry(
+  () => import("../pages/market/GroupPurchase"),
+);
+const Banking = lazyWithRetry(() => import("../pages/banking/Banking"));
+const MyProfile = lazyWithRetry(() => import("../pages/my-profile/MyProfile"));
+const MyAssets = lazyWithRetry(() => import("../pages/my-assets/MyAssets"));
 
 // 🔥 게임 페이지 - 동적 로딩 (번들 크기 절감)
-const OmokGame = lazy(() => import("../pages/games/OmokGame"));
-const ChessGame = lazy(() => import("../pages/games/ChessGame"));
-const TypingPracticeGame = lazy(
+const OmokGame = lazyWithRetry(() => import("../pages/games/OmokGame"));
+const ChessGame = lazyWithRetry(() => import("../pages/games/ChessGame"));
+const TypingPracticeGame = lazyWithRetry(
   () => import("../pages/games/TypingPracticeGame"),
 );
 
 // 🔥 관리자/선생님 페이지 - 동적 로딩
-const AdminApprovalPanel = lazy(
+const AdminApprovalPanel = lazyWithRetry(
   () => import("../pages/admin/AdminApprovalPanel"),
 );
-const AdminItemPage = lazy(() => import("../pages/admin/AdminItemPage"));
-const AdminDatabase = lazy(() => import("../pages/admin/AdminDatabase"));
-const AdminEconomicEvents = lazy(
+const AdminItemPage = lazyWithRetry(
+  () => import("../pages/admin/AdminItemPage"),
+);
+const AdminDatabase = lazyWithRetry(
+  () => import("../pages/admin/AdminDatabase"),
+);
+const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
-const FirestoreDoctor = lazy(() => import("../pages/admin/FirestoreDoctor"));
-const RecoverDonations = lazy(() => import("../pages/admin/RecoverDonations"));
-const StudentManager = lazy(() => import("./StudentManager"));
+const FirestoreDoctor = lazyWithRetry(
+  () => import("../pages/admin/FirestoreDoctor"),
+);
+const RecoverDonations = lazyWithRetry(
+  () => import("../pages/admin/RecoverDonations"),
+);
+const StudentManager = lazyWithRetry(() => import("./StudentManager"));
 
 // 🔥 앱 관리자(SuperAdmin) 전용 대시보드
-const SuperAdminDashboard = lazy(
+const SuperAdminDashboard = lazyWithRetry(
   () => import("../pages/superadmin/SuperAdminDashboard"),
 );
 
 // 🔥 덜 자주 사용하는 페이지 - 동적 로딩
-const LearningBoard = lazy(() => import("../pages/learning/LearningBoard"));
-const MusicRequest = lazy(() => import("../pages/music/MusicRequest"));
-const MusicRoom = lazy(() => import("../pages/music/MusicRoom"));
-const StudentRequest = lazy(() => import("../pages/student/StudentRequest"));
-const StockExchange = lazy(() => import("../pages/banking/StockExchange"));
-const RealEstateRegistry = lazy(
+const LearningBoard = lazyWithRetry(
+  () => import("../pages/learning/LearningBoard"),
+);
+const MusicRequest = lazyWithRetry(() => import("../pages/music/MusicRequest"));
+const MusicRoom = lazyWithRetry(() => import("../pages/music/MusicRoom"));
+const StudentRequest = lazyWithRetry(
+  () => import("../pages/student/StudentRequest"),
+);
+const StockExchange = lazyWithRetry(
+  () => import("../pages/banking/StockExchange"),
+);
+const RealEstateRegistry = lazyWithRetry(
   () => import("../pages/real-estate/RealEstateRegistry"),
 );
-const NationalAssembly = lazy(
+const NationalAssembly = lazyWithRetry(
   () => import("../pages/government/NationalAssembly"),
 );
-const Government = lazy(() => import("../pages/government/Government"));
-const Court = lazy(() => import("../pages/government/Court"));
-const PoliceStation = lazy(() => import("../pages/government/PoliceStation"));
-const Auction = lazy(() => import("../pages/market/Auction"));
-const MoneyTransfer = lazy(() => import("../pages/banking/MoneyTransfer"));
-const CouponTransfer = lazy(() => import("../pages/banking/CouponTransfer"));
-const CouponGoalPage = lazy(() => import("../pages/coupon/CouponGoalPage"));
+const Government = lazyWithRetry(
+  () => import("../pages/government/Government"),
+);
+const Court = lazyWithRetry(() => import("../pages/government/Court"));
+const PoliceStation = lazyWithRetry(
+  () => import("../pages/government/PoliceStation"),
+);
+const Auction = lazyWithRetry(() => import("../pages/market/Auction"));
+const MoneyTransfer = lazyWithRetry(
+  () => import("../pages/banking/MoneyTransfer"),
+);
+const CouponTransfer = lazyWithRetry(
+  () => import("../pages/banking/CouponTransfer"),
+);
+const CouponGoalPage = lazyWithRetry(
+  () => import("../pages/coupon/CouponGoalPage"),
+);
 
 // 전체 화면이 필요한 페이지 경로 (자동으로 사이드바 접기)
 const FULLSCREEN_PAGES = [
