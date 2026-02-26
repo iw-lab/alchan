@@ -1763,13 +1763,13 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "jobAndTask" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "job" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "job" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setJobTaskSubTab("job")}
             >
               직업 관리
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "task" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${jobTaskSubTab === "task" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setJobTaskSubTab("task")}
             >
               할일 관리
@@ -2158,11 +2158,14 @@ const AdminSettingsModal = ({
               <div className="jobs-list">
                 <h4>등록된 직업 목록</h4>
                 {jobs && jobs.length > 0 ? (
-                  <ul className="admin-jobs">
+                  <ul className="admin-jobs grid grid-cols-2 md:grid-cols-3 gap-2">
                     {jobs.map((job) => (
-                      <li key={job.id} className="admin-job-item">
-                        <span className="job-title">{job.title}</span>
-                        <div className="job-actions">
+                      <li
+                        key={job.id}
+                        className="admin-job-item flex items-center justify-between gap-1 px-3 py-1.5 text-sm"
+                      >
+                        <span className="job-title truncate">{job.title}</span>
+                        <div className="job-actions flex gap-1 shrink-0">
                           <button
                             onClick={() => {
                               logger.log(
@@ -2171,7 +2174,7 @@ const AdminSettingsModal = ({
                               );
                               handleJobEdit(job);
                             }}
-                            className="edit-button"
+                            className="edit-button text-xs px-2 py-0.5"
                           >
                             수정
                           </button>
@@ -2183,7 +2186,7 @@ const AdminSettingsModal = ({
                               );
                               handleJobDelete(job.id);
                             }}
-                            className="delete-button"
+                            className="delete-button text-xs px-2 py-0.5"
                           >
                             삭제
                           </button>
@@ -2203,19 +2206,19 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "studentAndMember" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "student" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "student" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setStudentMemberSubTab("student")}
             >
               학생/급여 관리
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "salary" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "salary" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setStudentMemberSubTab("salary")}
             >
               급여 설정
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "member" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "member" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setStudentMemberSubTab("member")}
             >
               구성원 관리
@@ -2425,19 +2428,19 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "financeAndMarket" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "financial" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "financial" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setFinanceMarketSubTab("financial")}
             >
               금융 상품
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "parking" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "parking" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setFinanceMarketSubTab("parking")}
             >
               파킹 통장
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "market" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "market" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setFinanceMarketSubTab("market")}
             >
               시장 제어
@@ -3073,14 +3076,14 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "system" && (
           <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
               onClick={() => setSystemSubTab("database")}
             >
               데이터베이스
             </button>
             {isSuperAdmin && (
               <button
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "system" ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" : "text-slate-300 hover:text-white hover:bg-gray-700/50"}`}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "system" ? "bg-[rgba(0,255,242,0.15)] text-[#00fff2] border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(0,255,242,0.2)]" : "text-[#9999bb] border border-transparent hover:text-[#00fff2] hover:bg-[rgba(0,255,242,0.06)]"}`}
                 onClick={() => setSystemSubTab("system")}
               >
                 시스템 관리

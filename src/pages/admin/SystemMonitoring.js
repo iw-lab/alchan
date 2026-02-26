@@ -1,20 +1,39 @@
 // src/pages/admin/SystemMonitoring.js - 시스템 모니터링 컴포넌트
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../firebase";
 import "./SystemMonitoring.css";
-import { logger } from '../../utils/logger';
+import { logger } from "../../utils/logger";
 
 const SystemMonitoring = ({ isSuperAdmin }) => {
   const [systemStatus, setSystemStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(false); // 🔥 기본값을 false로 변경
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [errorCount, setErrorCount] = useState(0); // 🔥 연속 에러 카운트
+  const [errorCount, setErrorCount] = useState(0);
 
-  const getSystemStatus = httpsCallable(functions, "getSystemStatus");
-  const resolveSystemAlert = httpsCallable(functions, "resolveSystemAlert");
+  // httpsCallable을 useMemo로 안정화 (매 렌더마다 새 참조 생성 방지)
+  const getSystemStatus = useMemo(
+    () => httpsCallable(functions, "getSystemStatus"),
+    [],
+  );
+  const resolveSystemAlert = useMemo(
+    () => httpsCallable(functions, "resolveSystemAlert"),
+    [],
+  );
+  const errorCountRef = useRef(0);
+
+  // errorCount 동기화
+  useEffect(() => {
+    errorCountRef.current = errorCount;
+  }, [errorCount]);
 
   // 시스템 상태 조회
   const fetchSystemStatus = useCallback(async () => {
@@ -28,7 +47,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
       if (result.data.success) {
         setSystemStatus(result.data.data);
         setLastUpdate(new Date());
-        setErrorCount(0); // 🔥 성공 시 에러 카운트 리셋
+        setErrorCount(0);
       } else {
         throw new Error(result.data.message || "시스템 상태 조회 실패");
       }
@@ -36,18 +55,20 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
       logger.error("[SystemMonitoring] 상태 조회 오류:", err);
       setError(err.message || "시스템 상태를 불러오는 중 오류가 발생했습니다.");
 
-      // 🔥 연속 에러 카운트 증가
-      setErrorCount(prev => prev + 1);
-
-      // 🔥 3회 이상 연속 에러 시 자동 새로고침 중지
-      if (errorCount >= 2) {
-        setAutoRefresh(false);
-        logger.warn("[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.");
-      }
+      setErrorCount((prev) => {
+        const next = prev + 1;
+        if (next >= 3) {
+          setAutoRefresh(false);
+          logger.warn(
+            "[SystemMonitoring] 연속 에러 발생으로 자동 새로고침을 중지합니다.",
+          );
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, getSystemStatus, errorCount]);
+  }, [isSuperAdmin, getSystemStatus]);
 
   // 경고 해결 처리
   const handleResolveAlert = useCallback(
@@ -60,7 +81,6 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
         const result = await resolveSystemAlert({ alertId });
         if (result.data.success) {
           alert("경고가 해결되었습니다.");
-          // 상태 새로고침
           fetchSystemStatus();
         }
       } catch (err) {
@@ -68,28 +88,31 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
         alert(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
       }
     },
-    [resolveSystemAlert, fetchSystemStatus]
+    [resolveSystemAlert, fetchSystemStatus],
   );
 
-  // 초기 로드
+  // 초기 로드 (한 번만 실행)
   useEffect(() => {
     if (isSuperAdmin) {
       fetchSystemStatus();
     }
   }, [isSuperAdmin, fetchSystemStatus]);
 
-  // 자동 새로고침 (30초마다)
+  // 자동 새로고침 (2분마다)
   useEffect(() => {
     if (!autoRefresh || !isSuperAdmin) return;
 
-    const intervalId = setInterval(() => {
-      fetchSystemStatus();
-    }, 2 * 60 * 1000); // 🔥 [최적화] 2분 (관리자 전용 페이지이므로 30초에서 증가)
+    const intervalId = setInterval(
+      () => {
+        fetchSystemStatus();
+      },
+      2 * 60 * 1000,
+    );
 
     return () => clearInterval(intervalId);
   }, [autoRefresh, isSuperAdmin, fetchSystemStatus]);
 
-  // 🔥 자동 새로고침 활성화 시 에러 카운트 리셋
+  // 자동 새로고침 활성화 시 에러 카운트 리셋
   useEffect(() => {
     if (autoRefresh) {
       setErrorCount(0);
@@ -139,7 +162,8 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
           <p>❌ {error}</p>
           {errorCount >= 3 && (
             <p style={{ marginTop: "8px", fontSize: "14px" }}>
-              ⚠️ 연속 에러가 발생하여 자동 새로고침이 중지되었습니다. 수동으로 새로고침하거나 자동 새로고침을 다시 활성화해주세요.
+              ⚠️ 연속 에러가 발생하여 자동 새로고침이 중지되었습니다. 수동으로
+              새로고침하거나 자동 새로고침을 다시 활성화해주세요.
             </p>
           )}
         </div>
@@ -149,14 +173,17 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
         <>
           {/* 초기화 메시지 표시 */}
           {systemStatus.message && (
-            <div className="info-message" style={{
-              padding: "12px",
-              background: "#e3f2fd",
-              border: "1px solid #90caf9",
-              borderRadius: "4px",
-              marginBottom: "15px",
-              color: "#1976d2"
-            }}>
+            <div
+              className="info-message"
+              style={{
+                padding: "12px",
+                background: "#e3f2fd",
+                border: "1px solid #90caf9",
+                borderRadius: "4px",
+                marginBottom: "15px",
+                color: "#1976d2",
+              }}
+            >
               <p style={{ margin: 0 }}>ℹ️ {systemStatus.message}</p>
             </div>
           )}
@@ -169,15 +196,15 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
                 {systemStatus.health === "healthy"
                   ? "✅"
                   : systemStatus.health === "warning"
-                  ? "⚠️"
-                  : "🚨"}
+                    ? "⚠️"
+                    : "🚨"}
               </span>
               <span className="health-text">
                 {systemStatus.health === "healthy"
                   ? "정상"
                   : systemStatus.health === "warning"
-                  ? "주의"
-                  : "위험"}
+                    ? "주의"
+                    : "위험"}
               </span>
             </div>
             <div className="stats-grid">
@@ -240,8 +267,8 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
                         {anomaly.severity === "critical"
                           ? "🚨 심각"
                           : anomaly.severity === "error"
-                          ? "❌ 오류"
-                          : "⚠️ 경고"}
+                            ? "❌ 오류"
+                            : "⚠️ 경고"}
                       </span>
                       <span className="anomaly-type">{anomaly.type}</span>
                     </div>
