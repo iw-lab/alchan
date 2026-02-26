@@ -1608,7 +1608,7 @@ const AdminSettingsModal = ({
           <p>관리자만 접근할 수 있습니다.</p>
           <button
             onClick={() => setShowAdminSettingsModal(false)}
-            className="admin-cancel-button"
+            style={cancelBtnStyle}
           >
             닫기
           </button>
@@ -1648,6 +1648,35 @@ const AdminSettingsModal = ({
     padding: "10px 12px",
     width: "100%",
     fontSize: "0.95rem",
+  };
+  const actionBtnStyle = {
+    background: "rgba(0,255,242,0.12)",
+    color: "#00fff2",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    fontWeight: 600,
+    fontSize: "0.9rem",
+    border: "1px solid rgba(0,255,242,0.3)",
+    cursor: "pointer",
+  };
+  const cancelBtnStyle = {
+    background: "rgba(75,85,99,0.3)",
+    color: "#9999bb",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    fontWeight: 500,
+    fontSize: "0.9rem",
+    border: "1px solid rgba(75,85,99,0.5)",
+    cursor: "pointer",
+  };
+  const selectStyle = {
+    background: "rgba(0,0,0,0.3)",
+    border: "1px solid rgba(0,255,242,0.2)",
+    borderRadius: "8px",
+    color: "#e8e8ff",
+    padding: "10px 12px",
+    fontSize: "0.9rem",
+    cursor: "pointer",
   };
 
   return (
@@ -1957,7 +1986,7 @@ const AdminSettingsModal = ({
                         setShowAddTaskForm(false);
                         setAdminEditingTask(null);
                       }}
-                      className="admin-cancel-button"
+                      style={cancelBtnStyle}
                     >
                       취소
                     </button>
@@ -1973,7 +2002,7 @@ const AdminSettingsModal = ({
                         );
                         handleTaskAdd(null, false);
                       }}
-                      className="admin-button"
+                      style={actionBtnStyle}
                     >
                       공통 할일 추가
                     </button>
@@ -1987,7 +2016,7 @@ const AdminSettingsModal = ({
                           handleTaskAdd(e.target.value, true);
                         }
                       }}
-                      className="job-select"
+                      style={selectStyle}
                       value=""
                     >
                       <option value="">직업별 할일 추가...</option>
@@ -2196,7 +2225,7 @@ const AdminSettingsModal = ({
                       setAdminEditingJob(null);
                       setAdminNewJobTitle("");
                     }}
-                    className="admin-cancel-button"
+                    style={cancelBtnStyle}
                   >
                     취소
                   </button>
@@ -2344,7 +2373,7 @@ const AdminSettingsModal = ({
                     </h4>
                     <button
                       onClick={loadStudents}
-                      className="admin-button"
+                      style={actionBtnStyle}
                       disabled={studentsLoading}
                     >
                       {studentsLoading ? "로딩 중..." : "학생 목록 새로고침"}
@@ -2746,7 +2775,7 @@ const AdminSettingsModal = ({
                     </p>
                     <button
                       onClick={() => fetchMarketStatus(true)}
-                      className="admin-button"
+                      style={actionBtnStyle}
                       disabled={!userClassCode}
                     >
                       새로고침
@@ -2981,7 +3010,7 @@ const AdminSettingsModal = ({
                 <div className="refresh-members-section">
                   <button
                     onClick={loadClassMembers}
-                    className="admin-button"
+                    style={actionBtnStyle}
                     disabled={membersLoading}
                   >
                     {membersLoading ? "로딩 중..." : "구성원 목록 새로고침"}
@@ -3224,7 +3253,7 @@ const AdminSettingsModal = ({
                   <button
                     onClick={handleAddClassCode}
                     disabled={classCodeOperationLoading || !newClassCode.trim()}
-                    className="admin-button"
+                    style={actionBtnStyle}
                   >
                     {classCodeOperationLoading ? "추가 중..." : "코드 추가"}
                   </button>
@@ -3352,7 +3381,7 @@ const AdminSettingsModal = ({
             </div>
             <div className="modal-footer">
               <button
-                className="admin-cancel-button"
+                style={cancelBtnStyle}
                 onClick={() => setShowEditStudentJobsModal(false)}
               >
                 취소

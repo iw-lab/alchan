@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   db,
 } from "../../firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { logger } from "../../utils/logger";
 import {
   User,
@@ -54,6 +54,169 @@ const generateClassCode = () => {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   return code;
 };
+
+// 새 학급 기본 직업 목록 (초등학교 교실 경제)
+const DEFAULT_JOBS = [
+  {
+    title: "경찰청장",
+    tasks: [
+      {
+        name: "사건 처리",
+        reward: 1,
+        maxClicks: 10,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "교실 질서 유지하기",
+        reward: 2,
+        maxClicks: 5,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "환경 미화원",
+    tasks: [
+      {
+        name: "쓰레기통 비우기",
+        reward: 50,
+        maxClicks: 1,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "아침 쓸기",
+        reward: 10,
+        maxClicks: 1,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "분리수거 정리하기",
+        reward: 20,
+        maxClicks: 1,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "글씨 감사인",
+    tasks: [
+      {
+        name: "검사해주기",
+        reward: 1,
+        maxClicks: 25,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "공책 정리 확인하기",
+        reward: 2,
+        maxClicks: 10,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "국세청 직원",
+    tasks: [
+      {
+        name: "세금 안내하기",
+        reward: 1,
+        maxClicks: 25,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "가계부 점검하기",
+        reward: 2,
+        maxClicks: 5,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "아르바이트",
+    tasks: [
+      {
+        name: "아르바이트",
+        reward: 1,
+        maxClicks: 10,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "심부름하기",
+        reward: 2,
+        maxClicks: 5,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "학급 반장",
+    tasks: [
+      {
+        name: "조회/종회 진행하기",
+        reward: 3,
+        maxClicks: 2,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "출석 확인하기",
+        reward: 2,
+        maxClicks: 1,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "도서 관리인",
+    tasks: [
+      {
+        name: "도서 정리하기",
+        reward: 5,
+        maxClicks: 2,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "대출/반납 기록하기",
+        reward: 2,
+        maxClicks: 10,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+  {
+    title: "방송 담당",
+    tasks: [
+      {
+        name: "아침 방송하기",
+        reward: 10,
+        maxClicks: 1,
+        clicks: 0,
+        requiresApproval: false,
+      },
+      {
+        name: "공지 전달하기",
+        reward: 3,
+        maxClicks: 3,
+        clicks: 0,
+        requiresApproval: false,
+      },
+    ],
+  },
+];
 
 // 다크 인풋 공통 스타일
 const darkInput =
@@ -208,6 +371,24 @@ const Login = () => {
         { codes: [...existingCodes, classCode], updatedAt: serverTimestamp() },
         { merge: true },
       );
+
+      // 기본 직업 자동 생성
+      const jobsRef = collection(db, "jobs");
+      for (const jobTemplate of DEFAULT_JOBS) {
+        const tasks = jobTemplate.tasks.map((t, i) => ({
+          ...t,
+          id: `task_${Date.now()}_${i}`,
+        }));
+        await addDoc(jobsRef, {
+          title: jobTemplate.title,
+          active: true,
+          tasks,
+          classCode,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
       if (contextLogout) await contextLogout();
       else if (auth?.signOut) await auth.signOut();
       setSuccess(`가입 완료! 학급 코드: ${classCode}`);
