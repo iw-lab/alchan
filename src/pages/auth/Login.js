@@ -218,6 +218,166 @@ const DEFAULT_JOBS = [
   },
 ];
 
+// 새 학급 기본 상점 아이템
+const DEFAULT_STORE_ITEMS = [
+  {
+    name: "자유 시간 10분",
+    price: 2000,
+    stock: 5,
+    icon: "⏰",
+    description: "10분간 자유 시간을 사용할 수 있습니다",
+  },
+  {
+    name: "자리 바꾸기",
+    price: 500,
+    stock: 10,
+    icon: "💺",
+    description: "원하는 자리로 이동할 수 있습니다",
+  },
+  {
+    name: "과자",
+    price: 200,
+    stock: 30,
+    icon: "🍪",
+    description: "맛있는 과자 1개",
+  },
+  {
+    name: "사탕",
+    price: 200,
+    stock: 50,
+    icon: "🍬",
+    description: "달콤한 사탕 1개",
+  },
+  {
+    name: "음료수",
+    price: 200,
+    stock: 20,
+    icon: "🧃",
+    description: "시원한 음료수 1개",
+  },
+  {
+    name: "초콜릿",
+    price: 200,
+    stock: 20,
+    icon: "🍫",
+    description: "초콜릿 1개",
+  },
+  {
+    name: "숙제 면제권",
+    price: 500,
+    stock: 5,
+    icon: "📝",
+    description: "숙제 1회 면제",
+  },
+  {
+    name: "1일 반장 체험",
+    price: 300,
+    stock: 3,
+    icon: "👑",
+    description: "하루 동안 반장 역할 체험",
+  },
+  {
+    name: "선생님 의자 사용권",
+    price: 300,
+    stock: 3,
+    icon: "🪑",
+    description: "하루 동안 선생님 의자 사용",
+  },
+  {
+    name: "젤리",
+    price: 200,
+    stock: 30,
+    icon: "🧸",
+    description: "말랑말랑 젤리 1개",
+  },
+];
+
+// 새 학급 기본 은행 설정
+const DEFAULT_BANKING = {
+  deposits: [
+    {
+      id: 1,
+      name: "일복리예금 90일",
+      annualRate: 0.01,
+      termInDays: 90,
+      minAmount: 500000,
+    },
+    {
+      id: 2,
+      name: "일복리예금 180일",
+      annualRate: 0.012,
+      termInDays: 180,
+      minAmount: 1000000,
+    },
+    {
+      id: 3,
+      name: "일복리예금 365일",
+      annualRate: 0.015,
+      termInDays: 365,
+      minAmount: 2000000,
+    },
+  ],
+  savings: [
+    {
+      id: 1,
+      name: "일복리적금 180일",
+      annualRate: 0.011,
+      termInDays: 180,
+      minAmount: 100000,
+    },
+    {
+      id: 2,
+      name: "일복리적금 365일",
+      annualRate: 0.014,
+      termInDays: 365,
+      minAmount: 100000,
+    },
+    {
+      id: 3,
+      name: "일복리적금 730일",
+      annualRate: 0.018,
+      termInDays: 730,
+      minAmount: 50000,
+    },
+  ],
+  loans: [
+    {
+      id: 1,
+      name: "일복리대출 90일",
+      annualRate: 0.05,
+      termInDays: 90,
+      maxAmount: 3000000,
+    },
+    {
+      id: 2,
+      name: "일복리대출 365일",
+      annualRate: 0.08,
+      termInDays: 365,
+      maxAmount: 10000000,
+    },
+    {
+      id: 3,
+      name: "일복리대출 730일",
+      annualRate: 0.1,
+      termInDays: 730,
+      maxAmount: 50000000,
+    },
+  ],
+};
+
+// 새 학급 기본 급여 설정
+const DEFAULT_SALARIES = {
+  경찰청장: 4500,
+  "환경 미화원": 4000,
+  "글씨 감사인": 4000,
+  "국세청 직원": 4500,
+  아르바이트: 2000,
+  "학급 반장": 5000,
+  "도서 관리인": 3500,
+  "방송 담당": 3500,
+  무직: 1000,
+};
+
 // 다크 인풋 공통 스타일
 const darkInput =
   "w-full bg-[#0d0d1a] border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm font-medium";
@@ -388,6 +548,43 @@ const Login = () => {
           updatedAt: serverTimestamp(),
         });
       }
+
+      // 기본 상점 아이템 자동 생성
+      const storeItemsRef = collection(db, "storeItems");
+      for (const item of DEFAULT_STORE_ITEMS) {
+        await addDoc(storeItemsRef, {
+          ...item,
+          initialStock: item.stock,
+          available: true,
+          type: "item",
+          classCode,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // 기본 은행 설정 자동 생성
+      await setDoc(doc(db, "bankingSettings", classCode), {
+        ...DEFAULT_BANKING,
+        classCode,
+        updatedAt: serverTimestamp(),
+      });
+
+      // 기본 급여 설정 자동 생성
+      const classSettingsRef = doc(db, "classSettings", classCode);
+      await setDoc(
+        classSettingsRef,
+        { classCode, createdAt: serverTimestamp() },
+        { merge: true },
+      );
+      await setDoc(doc(db, "classSettings", classCode, "settings", "salary"), {
+        salaries: DEFAULT_SALARIES,
+        payDay: "friday",
+        autoPay: true,
+        classCode,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
 
       if (contextLogout) await contextLogout();
       else if (auth?.signOut) await auth.signOut();
