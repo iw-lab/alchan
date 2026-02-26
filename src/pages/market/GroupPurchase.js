@@ -166,26 +166,39 @@ export default function GroupPurchase() {
         );
         if (existingIdx >= 0) {
           newContributors[existingIdx].amount += finalAmount;
-          newContributors[existingIdx].contributedAt = new Date();
+          newContributors[existingIdx].lastContributedAt = new Date();
+          // firstContributedAt은 유지 (없으면 기존 contributedAt 사용)
+          if (!newContributors[existingIdx].firstContributedAt) {
+            newContributors[existingIdx].firstContributedAt =
+              newContributors[existingIdx].contributedAt || new Date();
+          }
         } else {
+          const now = new Date();
           newContributors.push({
             userId: user.uid,
             userName: userDoc?.name || "알 수 없음",
             amount: finalAmount,
-            contributedAt: new Date(),
+            contributedAt: now,
+            firstContributedAt: now,
+            lastContributedAt: now,
           });
         }
 
         const newTotal = cData.currentAmount + finalAmount;
         const isCompleted = newTotal >= cData.targetPrice;
 
-        // 최다 기여자 계산
+        // 최다 기여자 계산 (동률 시 먼저 참여한 사람 우선)
         let winnerId = null;
         let winnerName = null;
         if (isCompleted) {
-          const topContributor = [...newContributors].sort(
-            (a, b) => b.amount - a.amount,
-          )[0];
+          const getTime = (c) => {
+            const t = c.firstContributedAt || c.contributedAt;
+            return t?.toMillis?.() || t?.getTime?.() || 0;
+          };
+          const topContributor = [...newContributors].sort((a, b) => {
+            if (b.amount !== a.amount) return b.amount - a.amount;
+            return getTime(a) - getTime(b); // 먼저 참여한 사람 우선
+          })[0];
           winnerId = topContributor?.userId || null;
           winnerName = topContributor?.userName || null;
         }
@@ -541,8 +554,20 @@ export default function GroupPurchase() {
                           참여자 ({campaign.contributors.length}명)
                         </p>
                         <div className="space-y-1.5">
-                          {campaign.contributors
-                            .sort((a, b) => b.amount - a.amount)
+                          {[...campaign.contributors]
+                            .sort((a, b) => {
+                              if (b.amount !== a.amount)
+                                return b.amount - a.amount;
+                              const aT =
+                                a.firstContributedAt || a.contributedAt;
+                              const bT =
+                                b.firstContributedAt || b.contributedAt;
+                              const aMs =
+                                aT?.toMillis?.() || aT?.getTime?.() || 0;
+                              const bMs =
+                                bT?.toMillis?.() || bT?.getTime?.() || 0;
+                              return aMs - bMs;
+                            })
                             .map((c, i) => {
                               const isWinner = campaign.winnerId === c.userId;
                               return (
