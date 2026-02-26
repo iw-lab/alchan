@@ -435,24 +435,49 @@ const StudentManager = () => {
 
     if (
       !window.confirm(
-        `선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?`,
+        `선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`,
       )
     ) {
       return;
     }
 
     setProcessing(true);
-    const batch = writeBatch(db);
     let deleteCount = 0;
+    const failed = [];
 
     for (const studentId of selectedStudents) {
-      batch.delete(doc(db, "users", studentId));
-      deleteCount++;
+      try {
+        // 서브컬렉션 정리
+        const subCollections = [
+          "transactions",
+          "portfolio",
+          "inventory",
+          "completedTasks",
+          "financials",
+          "products",
+          "loans",
+          "settings",
+          "badges",
+          "properties",
+        ];
+        for (const sub of subCollections) {
+          const subSnap = await getDocs(
+            collection(db, "users", studentId, sub),
+          );
+          for (const subDoc of subSnap.docs) {
+            await deleteDoc(subDoc.ref);
+          }
+        }
+        // 유저 문서 삭제
+        await deleteDoc(doc(db, "users", studentId));
+        deleteCount++;
+      } catch (err) {
+        logger.error(`Failed to delete student ${studentId}:`, err);
+        failed.push(studentId);
+      }
     }
 
     try {
-      await batch.commit();
-
       // 학급 학생 수 업데이트
       const classRef = doc(db, "classes", classCode);
       const currentClass = await getDoc(classRef);
@@ -464,16 +489,18 @@ const StudentManager = () => {
           ),
         });
       }
-
-      setSelectedStudents(new Set());
-      alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
-      loadStudents();
-    } catch (error) {
-      logger.error("Failed to bulk delete:", error);
-      alert(`일괄 삭제 실패: ${error.message}`);
-    } finally {
-      setProcessing(false);
+    } catch (err) {
+      logger.error("Failed to update student count:", err);
     }
+
+    setSelectedStudents(new Set());
+    if (failed.length > 0) {
+      alert(`${deleteCount}명 삭제 완료, ${failed.length}명 실패`);
+    } else {
+      alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
+    }
+    loadStudents();
+    setProcessing(false);
   };
 
   // 비밀번호 복사
