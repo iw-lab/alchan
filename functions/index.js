@@ -202,9 +202,9 @@ exports.completeTask = onCall(
           const task = jobTasks[taskIndex];
           taskName = task.name;
 
-          // 🔥 보안: rewardAmount 서버 검증 (클라이언트가 임의 금액 전송 방지)
-          const maxReward = task.maxReward || task.reward || 100;
+          // 🔥 보안: rewardAmount 서버 검증 (카드 선택 랜덤 보상 범위 기준)
           if (rewardAmount !== null && rewardAmount !== undefined) {
+            const maxReward = cardType === "cash" ? 50000 : 20; // 랜덤 보상 최대값
             if (
               typeof rewardAmount !== "number" ||
               rewardAmount < 0 ||
@@ -287,8 +287,8 @@ exports.completeTask = onCall(
           };
 
           // 🔥 카드 선택 보상 적용 (공통 할일도 동일) + 서버 검증
-          const maxRewardCommon = taskData.maxReward || taskData.reward || 100;
           if (rewardAmount !== null && rewardAmount !== undefined) {
+            const maxRewardCommon = cardType === "cash" ? 50000 : 20;
             if (
               typeof rewardAmount !== "number" ||
               rewardAmount < 0 ||
@@ -460,8 +460,8 @@ exports.submitTaskApproval = onCall(
             );
           }
 
-          // 보상 금액 서버 검증
-          const maxReward = task.maxReward || task.reward || 100;
+          // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
+          const maxReward = cardType === "cash" ? 50000 : 20;
           if (
             typeof rewardAmount !== "number" ||
             rewardAmount < 0 ||
@@ -509,12 +509,12 @@ exports.submitTaskApproval = onCall(
             );
           }
 
-          // 보상 금액 서버 검증
-          const maxReward = taskData.maxReward || taskData.reward || 100;
+          // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
+          const maxRewardApproval = cardType === "cash" ? 50000 : 20;
           if (
             typeof rewardAmount !== "number" ||
             rewardAmount < 0 ||
-            rewardAmount > maxReward
+            rewardAmount > maxRewardApproval
           ) {
             throw new Error(`유효하지 않은 보상 금액입니다.`);
           }
