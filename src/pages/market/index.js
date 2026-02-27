@@ -1,5 +1,4 @@
 // src/pages/market/index.js
-export { default as Auction } from './Auction';
-export { default as ItemMarket } from './ItemMarket';
-export { default as ItemStore } from './ItemStore';
-export { default as PersonalShop } from './PersonalShop';
+export { default as Auction } from "./Auction";
+export { default as ItemStore } from "./ItemStore";
+export { default as PersonalShop } from "./PersonalShop";

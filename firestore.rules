@@ -154,6 +154,16 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow write: if isOwner(userId) || isAdmin();
       }
+
+      // ========================================================
+      // 📋 활동 로그 서브컬렉션 (users/{userId}/activityLogs/{logId})
+      // 경매 낙찰/유찰 등 활동 기록
+      // ========================================================
+      match /activityLogs/{logId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin();
+      }
     }
 
     // ========================================================
