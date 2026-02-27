@@ -121,6 +121,9 @@ const Court = lazyWithRetry(() => import("../pages/government/Court"));
 const PoliceStation = lazyWithRetry(
   () => import("../pages/government/PoliceStation"),
 );
+const OrganizationChart = lazyWithRetry(
+  () => import("../pages/organization/OrganizationChart"),
+);
 const Auction = lazyWithRetry(() => import("../pages/market/Auction"));
 const MoneyTransfer = lazyWithRetry(
   () => import("../pages/banking/MoneyTransfer"),
@@ -570,6 +573,14 @@ export default function AlchanLayout() {
                   element={
                     <ProtectedRoute>
                       <PoliceStation />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organization-chart"
+                  element={
+                    <ProtectedRoute>
+                      <OrganizationChart classCode={userDoc.classCode} />
                     </ProtectedRoute>
                   }
                 />

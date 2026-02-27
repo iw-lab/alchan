@@ -257,6 +257,13 @@ export const ALCHAN_MENU_ITEMS = [
     path: "/police",
     parentId: "publicCategory",
   },
+  {
+    id: "organizationChart",
+    label: "대통령실",
+    icon: Building2,
+    path: "/organization-chart",
+    parentId: "publicCategory",
+  },
 
   // Board Category - 게시판
   {
