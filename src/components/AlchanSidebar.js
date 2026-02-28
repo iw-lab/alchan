@@ -230,13 +230,6 @@ export const ALCHAN_MENU_ITEMS = [
     category: "society",
   },
   {
-    id: "government",
-    label: "정부",
-    icon: Landmark,
-    path: "/government",
-    parentId: "publicCategory",
-  },
-  {
     id: "nationalAssembly",
     label: "국회",
     icon: Users,
@@ -262,6 +255,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "대통령실",
     icon: Building2,
     path: "/organization-chart",
+    parentId: "publicCategory",
+  },
+  {
+    id: "nationalTax",
+    label: "국세청",
+    icon: Banknote,
+    path: "/national-tax",
     parentId: "publicCategory",
   },
 

@@ -114,8 +114,8 @@ const RealEstateRegistry = lazyWithRetry(
 const NationalAssembly = lazyWithRetry(
   () => import("../pages/government/NationalAssembly"),
 );
-const Government = lazyWithRetry(
-  () => import("../pages/government/Government"),
+const NationalTaxService = lazyWithRetry(
+  () => import("../pages/government/NationalTaxService"),
 );
 const Court = lazyWithRetry(() => import("../pages/government/Court"));
 const PoliceStation = lazyWithRetry(
@@ -545,10 +545,10 @@ export default function AlchanLayout() {
 
                 {/* 공공기관 */}
                 <Route
-                  path="/government"
+                  path="/national-tax"
                   element={
                     <ProtectedRoute>
-                      <Government />
+                      <NationalTaxService classCode={userDoc.classCode} />
                     </ProtectedRoute>
                   }
                 />

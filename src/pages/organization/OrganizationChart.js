@@ -29,6 +29,7 @@ const OrganizationChart = ({ classCode }) => {
   const { isAdmin: isAuthAdmin } = useAuth() || {};
   const [approvedLaws, setApprovedLaws] = useState([]);
   const [vetoPendingLaws, setVetoPendingLaws] = useState([]);
+  const [pendingGovLaws, setPendingGovLaws] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedLaw, setSelectedLaw] = useState(null);
   const [vetoReason, setVetoReason] = useState("");
@@ -99,7 +100,7 @@ const OrganizationChart = ({ classCode }) => {
       }));
 
       const approved = allLaws.filter(
-        (law) => law.status === "approved" && !law.presidentAction // 국회 통과, 대통령 조치 전
+        (law) => law.status === "approved" && !law.presidentAction, // 국회 통과, 대통령 조치 전
       );
       const vetoPending = allLaws.filter((law) => law.status === "vetoed"); // 대통령 거부, 재의결 대기
 
@@ -115,6 +116,95 @@ const OrganizationChart = ({ classCode }) => {
   // 🔥 [비용 최적화] 5분 → 30분 (법안 데이터는 자주 안 바뀜)
   usePolling(fetchLaws, { interval: 30 * 60 * 1000, enabled: !!classCode });
 
+  // 정부 이송 법안 (nationalAssemblyLaws 컬렉션) 로드
+  const fetchGovLaws = useCallback(async () => {
+    if (!classCode) return;
+    try {
+      const lawsRef = collection(
+        db,
+        "classes",
+        classCode,
+        "nationalAssemblyLaws",
+      );
+      const q = query(
+        lawsRef,
+        where("status", "==", "pending_government_approval"),
+      );
+      const snapshot = await getDocs(q);
+      setPendingGovLaws(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      logger.error("정부 이송 법안 로드 오류:", error);
+    }
+  }, [classCode]);
+
+  usePolling(fetchGovLaws, { interval: 15 * 60 * 1000, enabled: !!classCode });
+
+  // 정부 이송 법안 승인
+  const approveGovLaw = async (law) => {
+    if (!isAdminMode || !classCode) {
+      alert("관리자 모드에서만 승인할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("이 법안을 최종 승인하시겠습니까?")) return;
+    const lawDocRef = doc(
+      db,
+      "classes",
+      classCode,
+      "nationalAssemblyLaws",
+      law.id,
+    );
+    try {
+      await updateDoc(lawDocRef, {
+        status: "approved",
+        finalStatus: "final_approved",
+        finalApprovalDate: serverTimestamp(),
+      });
+      await fetchGovLaws();
+      alert(`"${law.title}" 법안이 최종 승인되었습니다.`);
+    } catch (error) {
+      logger.error("정부 이송 법안 승인 오류:", error);
+      alert("법안 승인 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 정부 이송 법안 거부권
+  const vetoGovLaw = async (law) => {
+    if (!isAdminMode || !classCode) {
+      alert("관리자 모드에서만 거부권을 행사할 수 있습니다.");
+      return;
+    }
+    const reason = prompt("거부권 행사 사유를 입력해주세요.");
+    if (!reason || !reason.trim()) {
+      alert("거부 사유를 반드시 입력해야 합니다.");
+      return;
+    }
+    const lawDocRef = doc(
+      db,
+      "classes",
+      classCode,
+      "nationalAssemblyLaws",
+      law.id,
+    );
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+    try {
+      await updateDoc(lawDocRef, {
+        status: "vetoed",
+        vetoReason: reason,
+        vetoDate: serverTimestamp(),
+        vetoDeadline: deadline,
+        approvals: 0,
+        disapprovals: 0,
+        voters: {},
+      });
+      await fetchGovLaws();
+      alert(`"${law.title}" 법안에 거부권이 행사되었습니다.`);
+    } catch (error) {
+      logger.error("정부 이송 법안 거부 오류:", error);
+      alert("거부권 행사 중 오류가 발생했습니다.");
+    }
+  };
+
   // 관리자 모드 토글
   const toggleAdminMode = () => {
     if (isAdminMode) {
@@ -126,7 +216,10 @@ const OrganizationChart = ({ classCode }) => {
 
   // 관리자 권한 확인 (AuthContext 기반)
   const verifyPassword = () => {
-    if ((typeof isAuthAdmin === 'function' && isAuthAdmin()) || passwordInput === adminSettings.adminPassword) {
+    if (
+      (typeof isAuthAdmin === "function" && isAuthAdmin()) ||
+      passwordInput === adminSettings.adminPassword
+    ) {
       setIsAdminMode(true);
       setShowPasswordModal(false);
       setPasswordInput("");
@@ -213,7 +306,7 @@ const OrganizationChart = ({ classCode }) => {
     // (예: nationalAssemblyVotes 컬렉션에서 해당 법안 투표 이력 삭제 등은 NationalAssembly 컴포넌트의 역할과 중복될 수 있어, 여기서는 법안 상태만 변경)
     // 국회에서 재의결을 위해 사용하는 필드들을 초기화/설정해줍니다.
     const vetoDeadline = new Date(
-      Date.now() + 24 * 60 * 60 * 1000
+      Date.now() + 24 * 60 * 60 * 1000,
     ).toISOString(); // 24시간 후
 
     try {
@@ -236,7 +329,7 @@ const OrganizationChart = ({ classCode }) => {
       setShowModal(false);
       setSelectedLaw(null);
       alert(
-        `"${selectedLaw.title}" 법안에 거부권이 행사되었습니다. 국회에서 재의결 절차가 시작됩니다.`
+        `"${selectedLaw.title}" 법안에 거부권이 행사되었습니다. 국회에서 재의결 절차가 시작됩니다.`,
       );
     } catch (error) {
       logger.error("거부권 행사 오류:", error);
@@ -371,6 +464,63 @@ const OrganizationChart = ({ classCode }) => {
           )}
         </div>
 
+        {/* 정부 이송 법안 (nationalAssemblyLaws 컬렉션) */}
+        <div className="law-approval-section">
+          <h3>정부 이송 법안</h3>
+          {pendingGovLaws.length === 0 ? (
+            <div className="empty-state">정부로 이송된 법안이 없습니다.</div>
+          ) : (
+            <div className="pending-laws">
+              {pendingGovLaws.map((law) => (
+                <div key={law.id} className="law-card">
+                  <div className="law-header">
+                    <h3 className="law-title">{law.title}</h3>
+                    <div className="law-status">정부 심의중</div>
+                  </div>
+                  <div className="law-content">
+                    <p>
+                      <strong>제안자:</strong> {law.proposerName || "정보 없음"}
+                    </p>
+                    <p>
+                      <strong>취지:</strong> {law.purpose}
+                    </p>
+                    <p>
+                      <strong>설명:</strong> {law.description}
+                    </p>
+                    <p>
+                      <strong>벌금:</strong>{" "}
+                      {law.fine
+                        ? `${law.fine.toLocaleString()}원`
+                        : "정보 없음"}
+                    </p>
+                    <p>
+                      <strong>국회 통과일:</strong>{" "}
+                      {formatDate(law.approvalDate)}
+                    </p>
+                  </div>
+                  <div className="law-actions">
+                    <button
+                      className="approve-button"
+                      onClick={() => approveGovLaw(law)}
+                      disabled={!isAdminMode}
+                    >
+                      승인
+                    </button>
+                    <button
+                      className="veto-button"
+                      onClick={() => vetoGovLaw(law)}
+                      disabled={!isAdminMode}
+                    >
+                      거부권 행사
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 승인 대기 법안 (laws 컬렉션) */}
         <div className="law-approval-section">
           <h3>승인 대기 중인 법안</h3>
           {approvedLaws.length === 0 ? (
