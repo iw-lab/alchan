@@ -263,7 +263,7 @@ service cloud.firestore {
     match /activity_logs/{logId} {
       allow read: if isSameClass(resource.data.classCode) || isAdmin();
       allow create: if isSignedIn();
-      allow update: if false; // 로그는 수정 불가
+      allow update: if false;
       allow delete: if isAdmin();
     }
 
@@ -701,7 +701,7 @@ service cloud.firestore {
         match /messages/{messageId} {
           allow read: if isSameClass(classCode) || isAdmin();
           allow create: if isSignedIn() && isSameClass(classCode);
-          allow update: if false; // 메시지는 수정 불가
+          allow update: if false;
           allow delete: if isAdmin();
         }
 
@@ -734,7 +734,7 @@ service cloud.firestore {
       match /activityLogs/{logId} {
         allow read: if isSameClass(classCode) || isAdmin();
         allow create: if isSignedIn() && isSameClass(classCode);
-        allow update: if false; // 로그는 수정 불가
+        allow update: if false;
         allow delete: if isAdmin();
       }
 
@@ -799,8 +799,8 @@ service cloud.firestore {
       // 생성: 로그인한 사용자 (자신의 거래만)
       allow create: if isSignedIn();
 
-      // 수정: 불가 (거래 기록은 불변)
-      allow update: if false;
+      // 수정: 임시: 이름 교체용
+      allow update: if isAdmin();
 
       // 삭제: 관리자만
       allow delete: if isAdmin();

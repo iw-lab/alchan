@@ -3,7 +3,7 @@
  * 방학 모드를 임시 비활성화하고 이벤트를 강제 실행합니다.
  */
 
-const TOKEN = 'c7183bbd61ba842e3cb57f003cebfdffd8aafc4c988240724c36d3233e2a6831';
+const TOKEN = 'my-super-secret-token-2024-isw';
 const SCHEDULER_URL = 'https://economiceventscheduler-j7kazbsvxq-du.a.run.app';
 
 // 1. 먼저 방학 모드 체크

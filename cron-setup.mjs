@@ -2,7 +2,7 @@ import { chromium } from '@playwright/test';
 
 const EMAIL = '[REDACTED_EMAIL]';
 const PASSWORD = '[REDACTED_PASS]';
-const CRON_URL = 'https://economiceventscheduler-j7kazbsvxq-du.a.run.app';
+const CRON_URL = 'https://economiceventscheduler-j7kazbsvxq-du.a.run.app?token=[REDACTED_TOKEN]';
 const CRON_TITLE = '알찬 경제이벤트 스케줄러';
 
 (async () => {
