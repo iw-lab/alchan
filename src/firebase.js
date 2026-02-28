@@ -2,8 +2,16 @@
 // 모든 firebase 기능을 서브모듈에서 가져와 기존 import 호환성을 유지합니다.
 // 실제 구현은 src/firebase/ 디렉토리의 서브모듈에 있습니다.
 
-// Config: app, db, auth, storage, functions, isInitialized
-export { app, db, auth, storage, functions, isInitialized } from "./firebase/firebaseConfig";
+// Config: app, db, auth, storage, functions, isInitialized, firebaseConfig
+export {
+  app,
+  db,
+  auth,
+  storage,
+  functions,
+  isInitialized,
+  firebaseConfig,
+} from "./firebase/firebaseConfig";
 
 // Utils: DB 로깅, 캐시 시스템
 export {

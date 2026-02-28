@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { db, auth as firebaseAuth } from "../firebase";
+import { db, auth as firebaseAuth, firebaseConfig } from "../firebase";
 import {
   collection,
   doc,
@@ -17,7 +17,13 @@ import {
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { initializeApp, deleteApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut as firebaseSignOut,
+} from "firebase/auth";
 import {
   Users,
   UserPlus,
@@ -180,10 +186,14 @@ const StudentManager = () => {
     const password = newStudentPassword || generatePassword();
     const email = createStudentEmail(newStudentNumber, classCode);
 
+    // 보조 Firebase 앱으로 계정 생성 (메인 세션 유지)
+    const secondaryApp = initializeApp(firebaseConfig, "singleStudentCreator");
+    const secondaryAuth = getAuth(secondaryApp);
+
     try {
-      // Firebase Auth 계정 생성
+      // 보조 Auth로 계정 생성
       const userCredential = await createUserWithEmailAndPassword(
-        firebaseAuth,
+        secondaryAuth,
         email,
         password,
       );
@@ -191,6 +201,10 @@ const StudentManager = () => {
 
       // 프로필 업데이트
       await updateProfile(newUser, { displayName: newStudentName.trim() });
+
+      // 보조 Auth에서 즉시 sign out
+      await firebaseSignOut(secondaryAuth);
+      await deleteApp(secondaryApp);
 
       // 학급 설정 가져오기
       const classDoc = await getDoc(doc(db, "classes", classCode));
@@ -238,6 +252,12 @@ const StudentManager = () => {
       loadStudents();
     } catch (error) {
       logger.error("Failed to add student:", error);
+      // 보조 앱 정리 시도
+      try {
+        await deleteApp(secondaryApp);
+      } catch (_) {
+        /* ignore */
+      }
       alert(`학생 추가 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -293,52 +313,64 @@ const StudentManager = () => {
     const initialCash = classSettings.initialCash || 100000;
     const initialCoupons = classSettings.initialCoupons || 10;
 
-    for (let i = 0; i < bulkStudents.length; i++) {
-      const student = bulkStudents[i];
+    // 보조 Firebase 앱으로 계정 생성 (메인 세션 유지)
+    const secondaryApp = initializeApp(firebaseConfig, "studentCreator");
+    const secondaryAuth = getAuth(secondaryApp);
 
-      try {
-        // Firebase Auth 계정 생성
-        const userCredential = await createUserWithEmailAndPassword(
-          firebaseAuth,
-          student.email,
-          student.password,
-        );
-        const newUser = userCredential.user;
+    try {
+      for (let i = 0; i < bulkStudents.length; i++) {
+        const student = bulkStudents[i];
 
-        // 프로필 업데이트
-        await updateProfile(newUser, { displayName: student.name });
+        try {
+          // 보조 Auth로 계정 생성 (메인 관리자 세션 영향 없음)
+          const userCredential = await createUserWithEmailAndPassword(
+            secondaryAuth,
+            student.email,
+            student.password,
+          );
+          const newUser = userCredential.user;
 
-        // Firestore 문서 생성
-        await setDoc(doc(db, "users", newUser.uid), {
-          name: student.name,
-          nickname: student.name,
-          email: student.email,
-          classCode: classCode,
-          studentNumber: student.number,
-          isAdmin: false,
-          isSuperAdmin: false,
-          isTeacher: false,
-          cash: initialCash,
-          coupons: initialCoupons,
-          selectedJobIds: [],
-          myContribution: 0,
-          createdAt: serverTimestamp(),
-          createdBy: userDoc?.id,
-          parentalConsentConfirmed: true,
-          consentDate: serverTimestamp(),
-        });
+          // 프로필 업데이트
+          await updateProfile(newUser, { displayName: student.name });
 
-        student.status = "success";
-        student.uid = newUser.uid;
-        successList.push(student);
-      } catch (error) {
-        student.status = "failed";
-        student.error = error.message;
-        failedList.push(student);
+          // 보조 Auth에서 즉시 sign out
+          await firebaseSignOut(secondaryAuth);
+
+          // Firestore 문서 생성 (메인 db 인스턴스 사용)
+          await setDoc(doc(db, "users", newUser.uid), {
+            name: student.name,
+            nickname: student.name,
+            email: student.email,
+            classCode: classCode,
+            studentNumber: student.number,
+            isAdmin: false,
+            isSuperAdmin: false,
+            isTeacher: false,
+            cash: initialCash,
+            coupons: initialCoupons,
+            selectedJobIds: [],
+            myContribution: 0,
+            createdAt: serverTimestamp(),
+            createdBy: userDoc?.id,
+            parentalConsentConfirmed: true,
+            consentDate: serverTimestamp(),
+          });
+
+          student.status = "success";
+          student.uid = newUser.uid;
+          successList.push(student);
+        } catch (error) {
+          student.status = "failed";
+          student.error = error.message;
+          failedList.push(student);
+        }
+
+        // 진행률 업데이트
+        setBulkStudents([...bulkStudents]);
       }
-
-      // 진행률 업데이트
-      setBulkStudents([...bulkStudents]);
+    } finally {
+      // 보조 앱 정리
+      await deleteApp(secondaryApp);
     }
 
     // 학급 학생 수 업데이트
@@ -869,11 +901,9 @@ const StudentManager = () => {
                     type="number"
                     value={bulkStartNum}
                     onChange={(e) =>
-                      setBulkStartNum(
-                        Math.max(1, parseInt(e.target.value) || 1),
-                      )
+                      setBulkStartNum(parseInt(e.target.value) || 0)
                     }
-                    min="1"
+                    min="0"
                     className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -885,12 +915,7 @@ const StudentManager = () => {
                     type="number"
                     value={bulkCount}
                     onChange={(e) =>
-                      setBulkCount(
-                        Math.max(
-                          1,
-                          Math.min(100, parseInt(e.target.value) || 1),
-                        ),
-                      )
+                      setBulkCount(Math.min(100, parseInt(e.target.value) || 0))
                     }
                     min="1"
                     max="100"
