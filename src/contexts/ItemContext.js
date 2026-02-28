@@ -397,8 +397,16 @@ export const ItemProvider = ({ children }) => {
             );
           }
 
-          // 🎯 refreshData() 제거 — 이미 setItems로 newStock/newPrice 반영 완료
-          // refreshData()는 전체 재페칭하여 낙관적 업데이트와 race condition 유발
+          // 🎯 낙관적 업데이트의 임시 ID를 실제 inventory doc ID로 교체
+          // purchaseStoreItem은 inventory doc ID = storeItems doc ID (itemId) 로 저장함
+          setUserItems((prev) =>
+            prev.map((item) => {
+              if (item.itemId === itemId && item.id?.startsWith("temp-")) {
+                return { ...item, id: itemId };
+              }
+              return item;
+            }),
+          );
 
           return { success: true, restocked, newStock, newPrice };
         } else {
