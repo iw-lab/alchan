@@ -26,16 +26,16 @@ const DEFAULT_ADMIN_SETTINGS = {
 };
 
 const OrganizationChart = ({ classCode }) => {
-  const { isAdmin: isAuthAdmin } = useAuth() || {};
+  const { isAdmin: isAuthAdmin, userDoc } = useAuth() || {};
+  const isPresident = userDoc?.job === "대통령";
+  const canManage = isAuthAdmin || isPresident; // 관리자 또는 대통령 직업
+
   const [approvedLaws, setApprovedLaws] = useState([]);
   const [vetoPendingLaws, setVetoPendingLaws] = useState([]);
   const [pendingGovLaws, setPendingGovLaws] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedLaw, setSelectedLaw] = useState(null);
   const [vetoReason, setVetoReason] = useState("");
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminSettings, setAdminSettings] = useState(DEFAULT_ADMIN_SETTINGS);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [newSettings, setNewSettings] = useState({
@@ -141,7 +141,7 @@ const OrganizationChart = ({ classCode }) => {
 
   // 정부 이송 법안 승인
   const approveGovLaw = async (law) => {
-    if (!isAdminMode || !classCode) {
+    if (!canManage || !classCode) {
       alert("관리자 모드에서만 승인할 수 있습니다.");
       return;
     }
@@ -169,7 +169,7 @@ const OrganizationChart = ({ classCode }) => {
 
   // 정부 이송 법안 거부권
   const vetoGovLaw = async (law) => {
-    if (!isAdminMode || !classCode) {
+    if (!canManage || !classCode) {
       alert("관리자 모드에서만 거부권을 행사할 수 있습니다.");
       return;
     }
@@ -202,29 +202,6 @@ const OrganizationChart = ({ classCode }) => {
     } catch (error) {
       logger.error("정부 이송 법안 거부 오류:", error);
       alert("거부권 행사 중 오류가 발생했습니다.");
-    }
-  };
-
-  // 관리자 모드 토글
-  const toggleAdminMode = () => {
-    if (isAdminMode) {
-      setIsAdminMode(false);
-    } else {
-      setShowPasswordModal(true);
-    }
-  };
-
-  // 관리자 권한 확인 (AuthContext 기반)
-  const verifyPassword = () => {
-    if (
-      (typeof isAuthAdmin === "function" && isAuthAdmin()) ||
-      passwordInput === adminSettings.adminPassword
-    ) {
-      setIsAdminMode(true);
-      setShowPasswordModal(false);
-      setPasswordInput("");
-    } else {
-      alert("비밀번호가 일치하지 않습니다.");
     }
   };
 
@@ -262,7 +239,7 @@ const OrganizationChart = ({ classCode }) => {
 
   // 법안 승인 처리 (Firestore)
   const approveLaw = async (law) => {
-    if (!isAdminMode || !classCode) {
+    if (!canManage || !classCode) {
       alert("관리자 모드에서만 승인할 수 있습니다.");
       return;
     }
@@ -284,7 +261,7 @@ const OrganizationChart = ({ classCode }) => {
 
   // 거부권 행사 모달 열기
   const openVetoModal = (law) => {
-    if (!isAdminMode) {
+    if (!canManage) {
       alert("관리자 모드에서만 거부권을 행사할 수 있습니다.");
       return;
     }
@@ -430,22 +407,19 @@ const OrganizationChart = ({ classCode }) => {
       <div className="org-header">
         <h1 className="org-title">정부 조직도 (학급: {classCode})</h1>
         <div className="admin-controls">
-          <button
-            className={`admin-toggle ${isAdminMode ? "admin-active" : ""}`}
-            onClick={toggleAdminMode}
-          >
-            {isAdminMode ? "관리자 모드 해제" : "관리자 모드"}
-          </button>
+          {canManage && (
+            <div className="admin-indicator">
+              {isAuthAdmin ? "관리자" : "대통령"} 권한 활성화
+            </div>
+          )}
 
-          {isAdminMode && (
+          {isAuthAdmin && (
             <button
               className="settings-button"
               onClick={() => {
-                // setNewSettings는 useEffect에서 adminSettings 변경 시 자동으로 업데이트 됨
-                // 현재 adminSettings 값으로 모달 초기화
                 setNewSettings({
                   vetoOverrideRequired: adminSettings.vetoOverrideRequired,
-                  adminPassword: "", // 비밀번호 필드는 항상 비워둠
+                  adminPassword: "",
                 });
                 setShowSettingsModal(true);
               }}
@@ -459,8 +433,10 @@ const OrganizationChart = ({ classCode }) => {
       <div className="president-section">
         <div className="president-office">
           <h2>대통령실</h2>
-          {isAdminMode && (
-            <div className="admin-indicator">관리자 로그인됨</div>
+          {canManage && (
+            <div className="admin-indicator">
+              {isPresident ? "대통령 권한" : "관리자 권한"}
+            </div>
           )}
         </div>
 
@@ -502,14 +478,14 @@ const OrganizationChart = ({ classCode }) => {
                     <button
                       className="approve-button"
                       onClick={() => approveGovLaw(law)}
-                      disabled={!isAdminMode}
+                      disabled={!canManage}
                     >
                       승인
                     </button>
                     <button
                       className="veto-button"
                       onClick={() => vetoGovLaw(law)}
-                      disabled={!isAdminMode}
+                      disabled={!canManage}
                     >
                       거부권 행사
                     </button>
@@ -559,14 +535,14 @@ const OrganizationChart = ({ classCode }) => {
                     <button
                       className="approve-button"
                       onClick={() => approveLaw(law)}
-                      disabled={!isAdminMode}
+                      disabled={!canManage}
                     >
                       최종 승인
                     </button>
                     <button
                       className="veto-button"
                       onClick={() => openVetoModal(law)}
-                      disabled={!isAdminMode}
+                      disabled={!canManage}
                     >
                       거부권 행사
                     </button>
@@ -670,41 +646,6 @@ const OrganizationChart = ({ classCode }) => {
                 disabled={!vetoReason}
               >
                 거부권 행사
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 관리자 비밀번호 모달 */}
-      {showPasswordModal && (
-        <div className="modal-overlay">
-          <div className="modal-container small">
-            <div className="modal-header">
-              <h2 className="modal-title">관리자 로그인</h2>
-            </div>
-            <div className="modal-content">
-              <div className="form-group">
-                <label className="form-label">비밀번호</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="관리자 비밀번호를 입력하세요"
-                  onKeyPress={(e) => e.key === "Enter" && verifyPassword()}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                className="modal-button cancel"
-                onClick={() => setShowPasswordModal(false)}
-              >
-                취소
-              </button>
-              <button className="modal-button submit" onClick={verifyPassword}>
-                로그인
               </button>
             </div>
           </div>
