@@ -1,17 +1,41 @@
+/* StudentRequest.css — 알찬 다크 사이버펑크 테마 */
 .student-request-container {
     max-width: 800px;
     margin: 2rem auto;
     padding: 2rem;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: rgba(20, 20, 35, 0.8);
+    border-radius: 16px;
+    border: 1px solid rgba(0, 255, 242, 0.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     text-align: center;
-    box-sizing: border-box; /* 패딩과 테두리를 너비에 포함 */
+    box-sizing: border-box;
+    color: #e8e8ff;
 }
 
-h2 {
-    color: #333;
+.student-request-container h2 {
+    color: #00fff2;
     margin-bottom: 1.5rem;
+    font-family: "Jua", sans-serif;
+    text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+}
+
+.student-request-container h4 {
+    color: #c4b5fd;
+    margin-bottom: 0.75rem;
+}
+
+.price-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
 .search-form {
@@ -22,46 +46,72 @@ h2 {
 }
 
 .search-input {
-    flex-grow: 1; /* 남은 공간을 모두 차지하도록 변경 */
-    min-width: 0; /* flex item의 크기가 줄어들 수 있도록 설정 */
-    padding: 0.8rem;
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0.8rem 1rem;
     font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px 0 0 4px;
+    border: 1px solid rgba(0, 255, 242, 0.15);
+    border-radius: 12px 0 0 12px;
+    background: rgba(10, 10, 18, 0.6);
+    color: #e8e8ff;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.search-input::placeholder {
+    color: #7777aa;
 }
 
 .search-btn {
     padding: 0.8rem 1.5rem;
     font-size: 1rem;
     border: none;
-    background-color: #007bff;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     cursor: pointer;
-    border-radius: 0 4px 4px 0;
-    transition: background-color 0.2s;
+    border-radius: 0 12px 12px 0;
+    transition: all 0.2s;
+    font-weight: 600;
 }
 
 .search-btn:hover {
-    background-color: #0056b3;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.search-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .search-results {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid rgba(0, 255, 242, 0.1);
+    border-radius: 12px;
 }
 
 .video-list {
     list-style: none;
     padding: 0;
+    margin: 0;
     text-align: left;
 }
 
 .video-item {
     display: flex;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.75rem;
     cursor: pointer;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.2s;
+    border-bottom: 1px solid rgba(0, 255, 242, 0.06);
+    transition: all 0.2s;
+    color: #e8e8ff;
 }
 
 .video-item:last-child {
@@ -69,62 +119,91 @@ h2 {
 }
 
 .video-item:hover {
-    background-color: #f0f0f0;
+    background-color: rgba(99, 102, 241, 0.1);
 }
 
 .video-item.selected {
-    background-color: #d4edda;
+    background-color: rgba(0, 255, 157, 0.1);
+    border-left: 3px solid #00ff9d;
 }
 
 .video-item img {
     width: 120px;
     height: 90px;
     margin-right: 1rem;
-    border-radius: 4px;
-    object-fit: cover; /* 이미지 비율 유지 */
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .video-item p {
     font-size: 0.9rem;
-    color: #333;
+    color: #e8e8ff;
     margin: 0;
+    line-height: 1.4;
 }
 
 .request-section {
     margin-top: 2rem;
     padding-top: 1.5rem;
-    border-top: 1px solid #eee;
+    border-top: 1px solid rgba(0, 255, 242, 0.1);
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
 }
 
+.request-section p {
+    color: #c4b5fd;
+    font-weight: 500;
+}
+
 .requester-name-input {
-    padding: 0.8rem;
+    padding: 0.8rem 1rem;
     font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid rgba(0, 255, 242, 0.15);
+    border-radius: 10px;
     width: 100%;
     max-width: 400px;
     box-sizing: border-box;
+    background: rgba(10, 10, 18, 0.6);
+    color: #e8e8ff;
+    transition: border-color 0.2s;
+}
+
+.requester-name-input:focus {
+    outline: none;
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.requester-name-input::placeholder {
+    color: #7777aa;
 }
 
 .request-btn {
-    padding: 0.8rem 1.5rem;
+    padding: 0.8rem 2rem;
     font-size: 1rem;
     border: none;
-    background-color: #28a745;
-    color: white;
+    background: linear-gradient(135deg, #00ff9d, #00d4aa);
+    color: #0a0a12;
+    font-weight: 700;
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    border-radius: 12px;
+    transition: all 0.2s;
     width: 100%;
     max-width: 400px;
 }
 
 .request-btn:hover {
-    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 255, 157, 0.3);
+}
+
+.request-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .success-section {
@@ -132,13 +211,16 @@ h2 {
 }
 
 .success-section h3 {
-    color: #155724;
+    color: #00fff2;
     font-size: 1.1rem;
+    margin-bottom: 0.5rem;
 }
 
 .success-section p {
     font-size: 1.2rem;
+    color: #4ade80;
     margin-bottom: 2rem;
+    font-weight: 600;
 }
 
 .success-actions {
@@ -152,7 +234,7 @@ h2 {
     padding: 0.8rem;
     font-size: 1rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 12px;
     cursor: pointer;
     width: 100%;
     max-width: 300px;
@@ -161,24 +243,60 @@ h2 {
 }
 
 .continue-btn {
-    background-color: #007bff;
-    color: white;
-}
-
-.back-btn {
-    background-color: #6c757d;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
 }
 
 .continue-btn:hover {
-    background-color: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.back-btn {
+    background: rgba(100, 116, 139, 0.25);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
 .back-btn:hover {
-    background-color: #5a6268;
+    background: rgba(100, 116, 139, 0.4);
+    color: #e2e8f0;
 }
 
-/* --- 반응형 웹 디자인을 위한 미디어 쿼리 --- */
+.error-container {
+    color: #f87171;
+    font-size: 1.1rem;
+}
+
+.login-required {
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.login-required p {
+    color: #9999bb;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.login-btn {
+    padding: 0.8rem 2rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* --- 반응형 --- */
 @media (max-width: 768px) {
     .student-request-container {
         margin: 1rem;
@@ -186,17 +304,17 @@ h2 {
     }
 
     .search-form {
-        flex-direction: column; /* 작은 화면에서는 세로로 쌓이도록 변경 */
+        flex-direction: column;
     }
 
     .search-input {
         width: 100%;
-        border-radius: 4px 4px 0 0;
+        border-radius: 12px 12px 0 0;
     }
-    
+
     .search-btn {
         width: 100%;
-        border-radius: 0 0 4px 4px;
+        border-radius: 0 0 12px 12px;
     }
 
     .video-item {
