@@ -650,8 +650,8 @@ export default function AlchanSidebar({
     return (
       <aside className="hidden md:flex flex-col w-20 bg-[#141423] border-r border-[#00fff2]/10 h-screen sticky top-0 left-0 z-50 shadow-xl transition-all duration-300">
         {/* 로고 */}
-        <div className="h-16 min-h-16 flex items-center justify-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">
-          <div className="p-1 bg-white/10 rounded-lg shadow-md">
+        <div className="h-16 min-h-16 flex items-center justify-center bg-[#0a0a12]/95 border-b border-[#00fff2]/10">
+          <div className="p-1.5 rounded-lg border border-[#00fff2]/20 shadow-[0_0_10px_rgba(0,255,242,0.08)]">
             <AppIcon style={{ width: "32px", height: "32px" }} />
           </div>
         </div>

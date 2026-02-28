@@ -103,7 +103,9 @@ const StudentManager = () => {
   const [parentalConsent, setParentalConsent] = useState(false);
 
   // 일괄 추가 폼
-  const [bulkInput, setBulkInput] = useState("");
+  const [bulkPrefix, setBulkPrefix] = useState("alchan");
+  const [bulkStartNum, setBulkStartNum] = useState(1);
+  const [bulkCount, setBulkCount] = useState(30);
   const [bulkStudents, setBulkStudents] = useState([]);
   const [bulkStep, setBulkStep] = useState(1); // 1: 입력, 2: 미리보기, 3: 결과
   const [bulkParentalConsent, setBulkParentalConsent] = useState(false);
@@ -242,40 +244,30 @@ const StudentManager = () => {
     }
   };
 
-  // 일괄 입력 파싱
-  const parseBulkInput = () => {
-    const lines = bulkInput
-      .trim()
-      .split("\n")
-      .filter((line) => line.trim());
+  // 접두어+번호 기반 학생 목록 생성
+  const generateBulkStudents = () => {
+    const prefix = bulkPrefix.trim().toLowerCase();
+    if (!prefix) {
+      alert("접두어를 입력해주세요.");
+      return;
+    }
+    if (bulkCount < 1 || bulkCount > 100) {
+      alert("학생 수는 1~100명 사이로 입력해주세요.");
+      return;
+    }
+
     const parsed = [];
-
-    for (const line of lines) {
-      // 탭 또는 쉼표로 구분
-      const parts = line.split(/[\t,]/).map((p) => p.trim());
-
-      if (parts.length >= 2) {
-        const [number, name] = parts;
-        const password = parts[2] || generatePassword();
-        const email = createStudentEmail(number, classCode);
-
-        parsed.push({
-          number: parseInt(number) || number,
-          name,
-          email,
-          password,
-          status: "pending",
-        });
-      } else if (parts.length === 1 && parts[0]) {
-        // 이름만 있는 경우 자동 번호 부여
-        parsed.push({
-          number: parsed.length + 1,
-          name: parts[0],
-          email: createStudentEmail((parsed.length + 1).toString(), classCode),
-          password: generatePassword(),
-          status: "pending",
-        });
-      }
+    for (let i = 0; i < bulkCount; i++) {
+      const num = bulkStartNum + i;
+      const padded = String(num).padStart(2, "0");
+      const id = `${prefix}${padded}`;
+      parsed.push({
+        number: num,
+        name: id, // 이름 대신 ID 사용 (개인정보 최소화)
+        email: createStudentEmail(id, classCode),
+        password: id, // 비밀번호 = ID와 동일
+        status: "pending",
+      });
     }
 
     setBulkStudents(parsed);
@@ -369,7 +361,7 @@ const StudentManager = () => {
 
   // 결과 CSV 다운로드
   const downloadResultsCSV = () => {
-    const rows = [["번호", "이름", "이메일", "비밀번호", "상태"]];
+    const rows = [["번호", "아이디", "이메일", "비밀번호", "상태"]];
 
     [...results.success, ...results.failed].forEach((s) => {
       rows.push([
@@ -514,7 +506,9 @@ const StudentManager = () => {
   const closeBulkModal = () => {
     setShowBulkModal(false);
     setBulkStep(1);
-    setBulkInput("");
+    setBulkPrefix("alchan");
+    setBulkStartNum(1);
+    setBulkCount(30);
     setBulkStudents([]);
     setBulkParentalConsent(false);
     setResults({ success: [], failed: [] });
@@ -806,7 +800,10 @@ const StudentManager = () => {
               <Button variant="secondary" onClick={closeBulkModal}>
                 취소
               </Button>
-              <Button onClick={parseBulkInput} disabled={!bulkInput.trim()}>
+              <Button
+                onClick={generateBulkStudents}
+                disabled={!bulkPrefix.trim()}
+              >
                 다음
               </Button>
             </>
@@ -840,20 +837,81 @@ const StudentManager = () => {
         {/* Step 1: 입력 */}
         {bulkStep === 1 && (
           <div className="space-y-4">
-            <Alert variant="info" title="입력 형식">
-              각 줄에 학생 정보를 입력하세요.
+            <Alert variant="info" title="일괄 생성 방식">
+              접두어 + 번호로 아이디와 비밀번호가 자동 생성됩니다.
               <br />
-              형식: <code>번호, 이름</code> 또는{" "}
-              <code>번호, 이름, 비밀번호</code>
+              예: <code>alchan01</code> / <code>alchan01</code> (아이디 =
+              비밀번호)
               <br />
-              예: 1, 홍길동 또는 1, 홍길동, password123
+              개인정보(이름)를 수집하지 않아 안전합니다.
             </Alert>
-            <textarea
-              value={bulkInput}
-              onChange={(e) => setBulkInput(e.target.value)}
-              placeholder={`1, 홍길동\n2, 김철수\n3, 이영희, mypassword`}
-              className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  접두어
+                </label>
+                <input
+                  type="text"
+                  value={bulkPrefix}
+                  onChange={(e) =>
+                    setBulkPrefix(e.target.value.replace(/\s/g, ""))
+                  }
+                  placeholder="alchan"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    시작 번호
+                  </label>
+                  <input
+                    type="number"
+                    value={bulkStartNum}
+                    onChange={(e) =>
+                      setBulkStartNum(
+                        Math.max(1, parseInt(e.target.value) || 1),
+                      )
+                    }
+                    min="1"
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    학생 수
+                  </label>
+                  <input
+                    type="number"
+                    value={bulkCount}
+                    onChange={(e) =>
+                      setBulkCount(
+                        Math.max(
+                          1,
+                          Math.min(100, parseInt(e.target.value) || 1),
+                        ),
+                      )
+                    }
+                    min="1"
+                    max="100"
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <div className="p-3 bg-gray-800 rounded-xl text-sm text-gray-400">
+                미리보기:{" "}
+                <span className="text-indigo-400 font-mono">
+                  {bulkPrefix.trim().toLowerCase()}
+                  {String(bulkStartNum).padStart(2, "0")}
+                </span>{" "}
+                ~{" "}
+                <span className="text-indigo-400 font-mono">
+                  {bulkPrefix.trim().toLowerCase()}
+                  {String(bulkStartNum + bulkCount - 1).padStart(2, "0")}
+                </span>{" "}
+                ({bulkCount}명)
+              </div>
+            </div>
           </div>
         )}
 
@@ -908,7 +966,7 @@ const StudentManager = () => {
                 <thead className="bg-gray-800 sticky top-0">
                   <tr>
                     <th className="px-4 py-2 text-left">번호</th>
-                    <th className="px-4 py-2 text-left">이름</th>
+                    <th className="px-4 py-2 text-left">아이디</th>
                     <th className="px-4 py-2 text-left">이메일</th>
                     <th className="px-4 py-2 text-left">비밀번호</th>
                   </tr>
@@ -917,7 +975,9 @@ const StudentManager = () => {
                   {bulkStudents.map((student, index) => (
                     <tr key={index}>
                       <td className="px-4 py-2">{student.number}</td>
-                      <td className="px-4 py-2 font-medium">{student.name}</td>
+                      <td className="px-4 py-2 font-medium font-mono">
+                        {student.name}
+                      </td>
                       <td className="px-4 py-2 text-gray-500">
                         {student.email}
                       </td>
@@ -981,7 +1041,7 @@ const StudentManager = () => {
                   <table className="w-full text-sm">
                     <thead className="bg-gray-800 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left">이름</th>
+                        <th className="px-4 py-2 text-left">아이디</th>
                         <th className="px-4 py-2 text-left">이메일</th>
                         <th className="px-4 py-2 text-left">비밀번호</th>
                         <th className="px-4 py-2 w-10"></th>
@@ -990,7 +1050,7 @@ const StudentManager = () => {
                     <tbody className="divide-y divide-gray-700">
                       {results.success.map((student, index) => (
                         <tr key={index}>
-                          <td className="px-4 py-2 font-medium">
+                          <td className="px-4 py-2 font-medium font-mono">
                             {student.name}
                           </td>
                           <td className="px-4 py-2 text-gray-500">
