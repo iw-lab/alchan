@@ -397,9 +397,8 @@ export const ItemProvider = ({ children }) => {
             );
           }
 
-          // 🎯 서버 데이터로 동기화 (정확한 inventory 데이터 가져오기)
-          logger.log("[ItemContext] 구매 성공, 서버 데이터로 동기화");
-          refreshData();
+          // 🎯 refreshData() 제거 — 이미 setItems로 newStock/newPrice 반영 완료
+          // refreshData()는 전체 재페칭하여 낙관적 업데이트와 race condition 유발
 
           return { success: true, restocked, newStock, newPrice };
         } else {
