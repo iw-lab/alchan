@@ -35,7 +35,7 @@ import { formatKoreanNumber } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
 
 export default function GroupPurchase() {
-  const { user, userDoc, isAdmin } = useAuth();
+  const { user, userDoc, isAdmin, optimisticUpdate } = useAuth();
   const { items } = useItems() || { items: [] };
   const { currencyUnit } = useCurrency?.() || { currencyUnit: "알찬" };
   const classCode = userDoc?.classCode;
@@ -134,11 +134,17 @@ export default function GroupPurchase() {
       return;
     }
 
+    // 🔥 낙관적 업데이트: 즉시 현금 차감 표시
+    const finalAmount = actualAmount;
+    if (optimisticUpdate) {
+      optimisticUpdate({ cash: -finalAmount });
+    }
+
     try {
       const campaignRef = doc(db, "groupPurchases", campaign.id);
       const userRef = doc(db, "users", user.uid);
 
-      await runTransaction(db, async (transaction) => {
+      const result = await runTransaction(db, async (transaction) => {
         const campaignSnap = await transaction.get(campaignRef);
         const userSnap = await transaction.get(userRef);
 
@@ -255,6 +261,10 @@ export default function GroupPurchase() {
       setContributeAmount("");
       fetchCampaigns();
     } catch (err) {
+      // 에러 시 낙관적 업데이트 롤백
+      if (optimisticUpdate) {
+        optimisticUpdate({ cash: finalAmount });
+      }
       logger.error("모금 참여 실패:", err);
       alert(err.message || "참여에 실패했습니다.");
     }

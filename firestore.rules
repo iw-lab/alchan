@@ -848,8 +848,9 @@ service cloud.firestore {
       // 생성: 본인 상점만
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // 수정: 본인 또는 관리자
-      allow update: if isOwner(resource.data.ownerId) || isAdmin();
+      // 수정: 본인/관리자는 전체, 같은 학급 구매자는 매출 관련 필드만
+      allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
+                       (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalSales', 'totalTaxPaid', 'updatedAt']));
 
       // 삭제: 본인 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();

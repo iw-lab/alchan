@@ -21,13 +21,11 @@ import {
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import "./PersonalShop.css";
-import { logger } from '../../utils/logger';
-import { formatKoreanCurrency } from '../../utils/numberFormatter';
-
-
+import { logger } from "../../utils/logger";
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
 
 // 부가세율 (10%)
-const VAT_RATE = 0.10;
+const VAT_RATE = 0.1;
 
 // 업종 카테고리
 const SHOP_CATEGORIES = [
@@ -42,8 +40,18 @@ const SHOP_CATEGORIES = [
 
 // 상품/서비스 타입
 const PRODUCT_TYPES = [
-  { value: "product", label: "상품", icon: "📦", description: "물건을 판매합니다" },
-  { value: "service", label: "서비스", icon: "🛠️", description: "서비스를 제공합니다" },
+  {
+    value: "product",
+    label: "상품",
+    icon: "📦",
+    description: "물건을 판매합니다",
+  },
+  {
+    value: "service",
+    label: "서비스",
+    icon: "🛠️",
+    description: "서비스를 제공합니다",
+  },
 ];
 
 // ==================== 상점 생성/수정 모달 ====================
@@ -92,7 +100,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{shop ? "상점 수정" : "새 상점 만들기"}</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
         <form onSubmit={handleSubmit} className="modal-content">
           <div className="form-group">
@@ -100,7 +110,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
             <input
               type="text"
               value={formData.shopName}
-              onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, shopName: e.target.value })
+              }
               placeholder="예: 민수네 간식가게"
               maxLength={20}
             />
@@ -110,7 +122,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
             <label>업종</label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
             >
               {SHOP_CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
@@ -124,7 +138,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
             <label>상점 소개</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="우리 가게를 소개해주세요!"
               rows={3}
               maxLength={100}
@@ -132,10 +148,18 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
           </div>
 
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="modal-button cancel">
+            <button
+              type="button"
+              onClick={onClose}
+              className="modal-button cancel"
+            >
               취소
             </button>
-            <button type="submit" disabled={loading} className="modal-button confirm">
+            <button
+              type="submit"
+              disabled={loading}
+              className="modal-button confirm"
+            >
               {loading ? "저장 중..." : shop ? "수정하기" : "만들기"}
             </button>
           </div>
@@ -177,7 +201,13 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
         stock: product.stock >= 0 ? product.stock.toString() : "",
       });
     } else {
-      setFormData({ type: "product", name: "", description: "", price: "", stock: "" });
+      setFormData({
+        type: "product",
+        name: "",
+        description: "",
+        price: "",
+        stock: "",
+      });
     }
   }, [product, isOpen]);
 
@@ -191,7 +221,10 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
       alert("올바른 가격을 입력해주세요!");
       return;
     }
-    if (formData.type === "product" && (!formData.stock || parseInt(formData.stock) <= 0)) {
+    if (
+      formData.type === "product" &&
+      (!formData.stock || parseInt(formData.stock) <= 0)
+    ) {
       alert("상품의 재고 수량을 입력해주세요!");
       return;
     }
@@ -224,7 +257,9 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{product ? "상품/서비스 수정" : "새 상품/서비스 등록"}</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
         <form onSubmit={handleSubmit} className="modal-content">
           {/* 타입 선택 */}
@@ -248,12 +283,18 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
 
           {/* 이름 */}
           <div className="form-group">
-            <label>{formData.type === "product" ? "상품명" : "서비스명"} *</label>
+            <label>
+              {formData.type === "product" ? "상품명" : "서비스명"} *
+            </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder={formData.type === "product" ? "예: 수제 쿠키" : "예: 수학 과외"}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder={
+                formData.type === "product" ? "예: 수제 쿠키" : "예: 수학 과외"
+              }
               maxLength={30}
             />
           </div>
@@ -263,7 +304,9 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
             <label>설명</label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="상품/서비스에 대해 설명해주세요"
               rows={2}
               maxLength={100}
@@ -277,7 +320,9 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
               <input
                 type="number"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
                 placeholder="0"
                 min="1"
               />
@@ -298,9 +343,13 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
               </div>
               <div className="tax-row total">
                 <span>판매 가격</span>
-                <span className="neon-text">{formatKoreanCurrency(totalPrice)}</span>
+                <span className="neon-text">
+                  {formatKoreanCurrency(totalPrice)}
+                </span>
               </div>
-              <p className="tax-notice">부가세 10%는 국세청에 자동 납부됩니다</p>
+              <p className="tax-notice">
+                부가세 10%는 국세청에 자동 납부됩니다
+              </p>
             </div>
           )}
 
@@ -312,7 +361,9 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
                 <input
                   type="number"
                   value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: e.target.value })
+                  }
                   placeholder="0"
                   min="1"
                 />
@@ -322,10 +373,18 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
           )}
 
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="modal-button cancel">
+            <button
+              type="button"
+              onClick={onClose}
+              className="modal-button cancel"
+            >
               취소
             </button>
-            <button type="submit" disabled={loading} className="modal-button confirm">
+            <button
+              type="submit"
+              disabled={loading}
+              className="modal-button confirm"
+            >
               {loading ? "저장 중..." : product ? "수정하기" : "등록하기"}
             </button>
           </div>
@@ -358,29 +417,38 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
 
   if (!isOpen || !product) return null;
 
-  const maxQuantity = product.type === "service" ? 10 : Math.min(product.stock, 10);
+  const maxQuantity =
+    product.type === "service" ? 10 : Math.min(product.stock, 10);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>구매 확인</h3>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="modal-content">
           <div className="purchase-item-info">
-            <div className="item-icon">{product.type === "product" ? "📦" : "🛠️"}</div>
+            <div className="item-icon">
+              {product.type === "product" ? "📦" : "🛠️"}
+            </div>
             <div className="item-details">
               <h4>{product.name}</h4>
               <p className="shop-name">{shop?.shopName}</p>
-              <p className="item-price">{formatKoreanCurrency(product.totalPrice)} (부가세 포함)</p>
+              <p className="item-price">
+                {formatKoreanCurrency(product.totalPrice)} (부가세 포함)
+              </p>
             </div>
           </div>
 
           {/* 수량 선택 */}
           <div className="quantity-selector">
-            <label>{product.type === "product" ? "구매 수량" : "이용 횟수"}</label>
+            <label>
+              {product.type === "product" ? "구매 수량" : "이용 횟수"}
+            </label>
             <div className="quantity-controls">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -404,7 +472,9 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
           {/* 결제 금액 */}
           <div className="total-amount-box">
             <span>총 결제 금액</span>
-            <span className="total-price neon-text">{formatKoreanCurrency(totalAmount)}</span>
+            <span className="total-price neon-text">
+              {formatKoreanCurrency(totalAmount)}
+            </span>
           </div>
         </div>
 
@@ -412,7 +482,11 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
           <button onClick={onClose} className="modal-button cancel">
             취소
           </button>
-          <button onClick={handleConfirm} disabled={loading} className="modal-button confirm">
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className="modal-button confirm"
+          >
             {loading ? "처리 중..." : "구매하기"}
           </button>
         </div>
@@ -439,7 +513,9 @@ const ShopCard = ({ shop, onClick }) => {
       )}
       <div className="shop-card-footer">
         <span className="shop-category">{category?.label || "기타"}</span>
-        <span className="shop-sales">총 매출: {formatKoreanCurrency(shop.totalSales || 0)}</span>
+        <span className="shop-sales">
+          총 매출: {formatKoreanCurrency(shop.totalSales || 0)}
+        </span>
       </div>
     </div>
   );
@@ -450,7 +526,9 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
   return (
     <div className="product-card">
       <div className="product-card-header">
-        <div className="product-icon">{product.type === "product" ? "📦" : "🛠️"}</div>
+        <div className="product-icon">
+          {product.type === "product" ? "📦" : "🛠️"}
+        </div>
         <div className="product-info">
           <div className="product-title-row">
             <h4 className="product-name">{product.name}</h4>
@@ -467,7 +545,9 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
             </span>
             <span className="vat-included">(VAT 포함)</span>
             {product.type === "product" && (
-              <span className={`stock-badge ${product.stock > 0 ? "" : "soldout"}`}>
+              <span
+                className={`stock-badge ${product.stock > 0 ? "" : "soldout"}`}
+              >
                 {product.stock > 0 ? `재고 ${product.stock}개` : "품절"}
               </span>
             )}
@@ -481,7 +561,10 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
             <button onClick={() => onEdit(product)} className="action-btn edit">
               ✏️ 수정
             </button>
-            <button onClick={() => onDelete(product)} className="action-btn delete">
+            <button
+              onClick={() => onDelete(product)}
+              className="action-btn delete"
+            >
               🗑️ 삭제
             </button>
           </>
@@ -491,7 +574,9 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
             disabled={product.type === "product" && product.stock <= 0}
             className="action-btn buy"
           >
-            {product.type === "product" && product.stock <= 0 ? "품절" : "🛒 구매하기"}
+            {product.type === "product" && product.stock <= 0
+              ? "품절"
+              : "🛒 구매하기"}
           </button>
         )}
       </div>
@@ -501,7 +586,12 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
 
 // ==================== 메인 컴포넌트 ====================
 const PersonalShop = () => {
-  const { user: currentUser, userDoc: userProfile, refreshUserDocument } = useAuth();
+  const {
+    user: currentUser,
+    userDoc: userProfile,
+    refreshUserDocument,
+    optimisticUpdate,
+  } = useAuth();
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState("browse"); // browse, myshop, sales
@@ -563,11 +653,18 @@ const PersonalShop = () => {
     if (!currentUser) return;
     try {
       const shopsRef = collection(db, "personalShops");
-      const q = query(shopsRef, where("ownerId", "==", currentUser.uid), limit(1));
+      const q = query(
+        shopsRef,
+        where("ownerId", "==", currentUser.uid),
+        limit(1),
+      );
       const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
-        const shopData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        const shopData = {
+          id: snapshot.docs[0].id,
+          ...snapshot.docs[0].data(),
+        };
         setMyShop(shopData);
 
         // 내 상품 로드 (복합 인덱스 불필요 - 클라이언트 정렬)
@@ -715,76 +812,93 @@ const PersonalShop = () => {
       adminUid = await getClassAdminUid(classCode);
     }
 
-    await runTransaction(db, async (transaction) => {
-      // 구매자 잔액 차감
-      const buyerRef = doc(db, "users", currentUser.uid);
-      transaction.update(buyerRef, {
-        cash: increment(-totalAmount),
-      });
+    // 🔥 낙관적 업데이트: 즉시 현금 차감 표시
+    if (optimisticUpdate) {
+      optimisticUpdate({ cash: -totalAmount });
+    }
 
-      // 판매자 잔액 증가 (세전 금액)
-      const sellerRef = doc(db, "users", purchaseShop.ownerId);
-      transaction.update(sellerRef, {
-        cash: increment(sellerAmount),
-      });
+    try {
+      await runTransaction(db, async (transaction) => {
+        // 구매자 잔액 차감
+        const buyerRef = doc(db, "users", currentUser.uid);
+        transaction.update(buyerRef, {
+          cash: increment(-totalAmount),
+        });
 
-      // 국세청 세금 기록 (부가세) - nationalTreasuries 컬렉션 사용
-      if (classCode) {
-        const treasuryRef = doc(db, "nationalTreasuries", classCode);
-        transaction.set(treasuryRef, {
-          totalAmount: increment(taxAmount),
-          vatRevenue: increment(taxAmount),
-          lastUpdated: serverTimestamp(),
-        }, { merge: true });
+        // 판매자 잔액 증가 (세전 금액)
+        const sellerRef = doc(db, "users", purchaseShop.ownerId);
+        transaction.update(sellerRef, {
+          cash: increment(sellerAmount),
+        });
 
-        // 관리자(선생님) cash에 세금 추가
-        if (adminUid) {
-          const adminRef = doc(db, "users", adminUid);
-          transaction.update(adminRef, {
-            cash: increment(taxAmount),
-            updatedAt: serverTimestamp(),
-          });
+        // 국세청 세금 기록 (부가세) - nationalTreasuries 컬렉션 사용
+        if (classCode) {
+          const treasuryRef = doc(db, "nationalTreasuries", classCode);
+          transaction.set(
+            treasuryRef,
+            {
+              totalAmount: increment(taxAmount),
+              vatRevenue: increment(taxAmount),
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true },
+          );
+
+          // 관리자(선생님) cash에 세금 추가
+          if (adminUid) {
+            const adminRef = doc(db, "users", adminUid);
+            transaction.update(adminRef, {
+              cash: increment(taxAmount),
+              updatedAt: serverTimestamp(),
+            });
+          }
         }
-      }
 
-      // 상점 매출 업데이트
-      const shopRef = doc(db, "personalShops", purchaseShop.id);
-      transaction.update(shopRef, {
-        totalSales: increment(sellerAmount),
-        totalTaxPaid: increment(taxAmount),
-      });
+        // 상점 매출 업데이트
+        const shopRef = doc(db, "personalShops", purchaseShop.id);
+        transaction.update(shopRef, {
+          totalSales: increment(sellerAmount),
+          totalTaxPaid: increment(taxAmount),
+        });
 
-      // 상품 재고/판매량 업데이트
-      const productRef = doc(db, "shopProducts", purchaseProduct.id);
-      const updates = { soldCount: increment(quantity) };
-      if (purchaseProduct.type === "product") {
-        updates.stock = increment(-quantity);
-        if (purchaseProduct.stock - quantity <= 0) {
-          updates.status = "soldout";
+        // 상품 재고/판매량 업데이트
+        const productRef = doc(db, "shopProducts", purchaseProduct.id);
+        const updates = { soldCount: increment(quantity) };
+        if (purchaseProduct.type === "product") {
+          updates.stock = increment(-quantity);
+          if (purchaseProduct.stock - quantity <= 0) {
+            updates.status = "soldout";
+          }
         }
-      }
-      transaction.update(productRef, updates);
+        transaction.update(productRef, updates);
 
-      // 거래 기록
-      const activityRef = collection(db, "activities");
-      transaction.set(doc(activityRef), {
-        type: "shop_purchase",
-        buyerId: currentUser.uid,
-        buyerName: userProfile?.name || "익명",
-        sellerId: purchaseShop.ownerId,
-        sellerName: purchaseShop.ownerName,
-        shopId: purchaseShop.id,
-        shopName: purchaseShop.shopName,
-        productId: purchaseProduct.id,
-        productName: purchaseProduct.name,
-        productType: purchaseProduct.type,
-        quantity: quantity,
-        unitPrice: purchaseProduct.totalPrice,
-        totalAmount: totalAmount,
-        taxAmount: taxAmount,
-        timestamp: serverTimestamp(),
+        // 거래 기록
+        const activityRef = collection(db, "activities");
+        transaction.set(doc(activityRef), {
+          type: "shop_purchase",
+          buyerId: currentUser.uid,
+          buyerName: userProfile?.name || "익명",
+          sellerId: purchaseShop.ownerId,
+          sellerName: purchaseShop.ownerName,
+          shopId: purchaseShop.id,
+          shopName: purchaseShop.shopName,
+          productId: purchaseProduct.id,
+          productName: purchaseProduct.name,
+          productType: purchaseProduct.type,
+          quantity: quantity,
+          unitPrice: purchaseProduct.totalPrice,
+          totalAmount: totalAmount,
+          taxAmount: taxAmount,
+          timestamp: serverTimestamp(),
+        });
       });
-    });
+    } catch (error) {
+      // 트랜잭션 실패 시 낙관적 업데이트 롤백
+      if (optimisticUpdate) {
+        optimisticUpdate({ cash: totalAmount });
+      }
+      throw error;
+    }
 
     // 잔액 갱신
     if (refreshUserDocument) {
@@ -804,7 +918,8 @@ const PersonalShop = () => {
   // 필터링된 상점 목록
   const filteredShops = useMemo(() => {
     return shops.filter((shop) => {
-      if (categoryFilter !== "all" && shop.category !== categoryFilter) return false;
+      if (categoryFilter !== "all" && shop.category !== categoryFilter)
+        return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -839,7 +954,9 @@ const PersonalShop = () => {
                 {/* 상점 정보 */}
                 <div className="shop-detail-header">
                   <div className="shop-detail-icon">
-                    {SHOP_CATEGORIES.find((c) => c.value === selectedShop.category)?.icon || "🏪"}
+                    {SHOP_CATEGORIES.find(
+                      (c) => c.value === selectedShop.category,
+                    )?.icon || "🏪"}
                   </div>
                   <div className="shop-detail-info">
                     <h2>{selectedShop.shopName}</h2>
@@ -943,29 +1060,41 @@ const PersonalShop = () => {
                 <div className="my-shop-header">
                   <div className="my-shop-info">
                     <div className="my-shop-icon">
-                      {SHOP_CATEGORIES.find((c) => c.value === myShop.category)?.icon || "🏪"}
+                      {SHOP_CATEGORIES.find((c) => c.value === myShop.category)
+                        ?.icon || "🏪"}
                     </div>
                     <div className="my-shop-details">
                       <h2>{myShop.shopName}</h2>
                       <p className="category">
-                        {SHOP_CATEGORIES.find((c) => c.value === myShop.category)?.label}
+                        {
+                          SHOP_CATEGORIES.find(
+                            (c) => c.value === myShop.category,
+                          )?.label
+                        }
                       </p>
                       {myShop.description && (
                         <p className="description">{myShop.description}</p>
                       )}
                     </div>
-                    <button onClick={() => setShowShopModal(true)} className="edit-shop-btn">
+                    <button
+                      onClick={() => setShowShopModal(true)}
+                      className="edit-shop-btn"
+                    >
                       ✏️ 수정
                     </button>
                   </div>
                   <div className="my-shop-stats">
                     <div className="stat-item">
                       <span className="stat-label">총 매출</span>
-                      <span className="stat-value neon-text">{formatKoreanCurrency(myShop.totalSales || 0)}</span>
+                      <span className="stat-value neon-text">
+                        {formatKoreanCurrency(myShop.totalSales || 0)}
+                      </span>
                     </div>
                     <div className="stat-item">
                       <span className="stat-label">납부한 부가세</span>
-                      <span className="stat-value">{formatKoreanCurrency(myShop.totalTaxPaid || 0)}</span>
+                      <span className="stat-value">
+                        {formatKoreanCurrency(myShop.totalTaxPaid || 0)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -989,7 +1118,9 @@ const PersonalShop = () => {
                   <div className="empty-state">
                     <span className="empty-icon">📦</span>
                     <p>등록된 상품이 없습니다</p>
-                    <span className="empty-hint">상품이나 서비스를 등록해보세요!</span>
+                    <span className="empty-hint">
+                      상품이나 서비스를 등록해보세요!
+                    </span>
                   </div>
                 ) : (
                   <div className="products-grid">
@@ -1016,7 +1147,10 @@ const PersonalShop = () => {
                   <span className="create-icon">🏪</span>
                   <h2>나만의 상점을 만들어보세요!</h2>
                   <p>상품이나 서비스를 판매하고 수익을 올려보세요</p>
-                  <button onClick={() => setShowShopModal(true)} className="create-shop-btn">
+                  <button
+                    onClick={() => setShowShopModal(true)}
+                    className="create-shop-btn"
+                  >
                     🏪 상점 만들기
                   </button>
                 </div>
@@ -1045,7 +1179,9 @@ const PersonalShop = () => {
       {/* 헤더 */}
       <div className="market-header">
         <h1>개인 상점</h1>
-        <p className="header-subtitle">나만의 상점을 열고 상품/서비스를 판매해보세요!</p>
+        <p className="header-subtitle">
+          나만의 상점을 열고 상품/서비스를 판매해보세요!
+        </p>
       </div>
 
       {/* 탭 네비게이션 */}
