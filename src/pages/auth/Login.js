@@ -988,7 +988,7 @@ const Login = () => {
                     type="text"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
-                    placeholder="선생님 성함"
+                    placeholder="예: 김알찬"
                     className={`${darkInput} pl-10 pr-4 py-2.5`}
                     required
                     disabled={isLoading}
@@ -1007,7 +1007,7 @@ const Login = () => {
                     type="email"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
-                    placeholder="이메일 주소"
+                    placeholder="예: teacher@school.com"
                     className={`${darkInput} pl-10 pr-4 py-2.5`}
                     required
                     disabled={isLoading}
@@ -1061,7 +1061,7 @@ const Login = () => {
                       type="text"
                       value={schoolName}
                       onChange={(e) => setSchoolName(e.target.value)}
-                      placeholder="초등학교"
+                      placeholder="예: 알찬초등학교"
                       className={`${darkInput} pl-10 pr-3 py-2.5`}
                       disabled={isLoading}
                     />
@@ -1077,7 +1077,7 @@ const Login = () => {
                       type="text"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
-                      placeholder="6-1반"
+                      placeholder="예: 6-1반"
                       className={`${darkInput} pl-10 pr-3 py-2.5`}
                       disabled={isLoading}
                     />
@@ -1126,7 +1126,7 @@ const Login = () => {
             개인정보처리방침
           </Link>
           <p className="text-xs text-slate-700">
-            © 2025 알찬 경제교육. All rights reserved.
+            © 2026 알찬 경제교육. All rights reserved.
           </p>
         </div>
       </div>

@@ -354,6 +354,44 @@ export default function AlchanLayout() {
     return <Navigate to={user ? "/dashboard/tasks" : "/login"} replace />;
   }
 
+  // 🔥 선생님 승인 대기 중 (isApproved === false인 경우만 차단)
+  if (
+    (userDoc.isTeacher || userDoc.isAdmin) &&
+    !userDoc.isSuperAdmin &&
+    userDoc.isApproved === false
+  ) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+            ⏳
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">승인 대기 중</h2>
+          <p className="text-gray-500 mb-2">
+            앱 관리자의 승인을 기다리고 있습니다.
+          </p>
+          <p className="text-gray-400 text-sm mb-6">
+            승인이 완료되면 모든 기능을 사용할 수 있습니다.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-semibold transition-colors"
+            >
+              새로고침
+            </button>
+            <button
+              onClick={() => logout()}
+              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 학급 코드 없음
   if (!userDoc.classCode) {
     return (
@@ -748,7 +786,7 @@ export default function AlchanLayout() {
 
           {/* 푸터 - PC만 */}
           <footer className="hidden md:block py-8 text-center text-sm text-gray-400 font-medium">
-            © 2025 알찬 Corp. All rights reserved.
+            © 2026 알찬 Corp. All rights reserved.
           </footer>
         </main>
 

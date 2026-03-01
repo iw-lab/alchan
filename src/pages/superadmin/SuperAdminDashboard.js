@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebase";
+import { db, functions } from "../../firebase";
 import {
   collection,
   getDocs,
@@ -22,6 +22,7 @@ import {
   getDoc,
   limit,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import {
   Shield,
   Users,
@@ -48,13 +49,19 @@ import {
   Cpu,
   HardDrive,
   Wifi,
+  UserCog,
 } from "lucide-react";
 import "./SuperAdminDashboard.css";
 
 import { logger } from "../../utils/logger";
 // 탭 목록
+// Cloud Function 참조 (모듈 스코프)
+const listAllAuthUsersFn = httpsCallable(functions, "listAllAuthUsers");
+const deleteAuthUserFn = httpsCallable(functions, "deleteAuthUser");
+
 const TABS = [
   { id: "overview", label: "개요", icon: BarChart3 },
+  { id: "accounts", label: "전체 계정", icon: UserCog },
   { id: "pending", label: "승인 대기", icon: Clock },
   { id: "teachers", label: "선생님 관리", icon: UserCheck },
   { id: "classes", label: "학급 관리", icon: School },
@@ -90,6 +97,13 @@ export default function SuperAdminDashboard() {
     avgResponseTime: 0,
     errorRate: 0,
   });
+
+  // 전체 계정 상태
+  const [allAuthUsers, setAllAuthUsers] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountFilter, setAccountFilter] = useState("all");
+  const [selectedAccounts, setSelectedAccounts] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // 검색/필터 상태
   const [searchTerm, setSearchTerm] = useState("");
@@ -512,6 +526,89 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  // 전체 Auth 계정 로드
+  const loadAllAuthUsers = async () => {
+    setAccountsLoading(true);
+    try {
+      const result = await listAllAuthUsersFn();
+      setAllAuthUsers(result.data.users || []);
+    } catch (error) {
+      logger.error("전체 계정 로드 오류:", error);
+      alert("전체 계정 로드 실패: " + error.message);
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
+  // 체크박스 토글
+  const toggleAccountSelect = (uid) => {
+    setSelectedAccounts((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  // 전체 선택/해제 (필터링된 목록 중 슈퍼관리자 제외)
+  const toggleSelectAll = () => {
+    const selectableUids = filteredAuthUsers
+      .filter((u) => !u.firestoreData?.isSuperAdmin)
+      .map((u) => u.uid);
+    const allSelected = selectableUids.every((uid) =>
+      selectedAccounts.has(uid),
+    );
+    if (allSelected) {
+      setSelectedAccounts(new Set());
+    } else {
+      setSelectedAccounts(new Set(selectableUids));
+    }
+  };
+
+  // 선택 일괄 삭제
+  const handleBulkDelete = async () => {
+    if (selectedAccounts.size === 0) return;
+    if (
+      !window.confirm(
+        `선택된 ${selectedAccounts.size}개 계정을 모두 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`,
+      )
+    )
+      return;
+    setBulkDeleting(true);
+    let success = 0;
+    let fail = 0;
+    for (const uid of selectedAccounts) {
+      try {
+        await deleteAuthUserFn({ targetUid: uid });
+        success++;
+      } catch {
+        fail++;
+      }
+    }
+    setAllAuthUsers((prev) => prev.filter((u) => !selectedAccounts.has(u.uid)));
+    setSelectedAccounts(new Set());
+    setBulkDeleting(false);
+    alert(`삭제 완료: ${success}개 성공${fail > 0 ? `, ${fail}개 실패` : ""}`);
+  };
+
+  // Auth 계정 삭제
+  const handleDeleteAuthUser = async (targetUid, email) => {
+    if (
+      !window.confirm(
+        `정말 '${email}' 계정을 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`,
+      )
+    )
+      return;
+    try {
+      await deleteAuthUserFn({ targetUid });
+      setAllAuthUsers((prev) => prev.filter((u) => u.uid !== targetUid));
+      alert("계정이 삭제되었습니다.");
+    } catch (error) {
+      logger.error("계정 삭제 오류:", error);
+      alert("계정 삭제 실패: " + error.message);
+    }
+  };
+
   // 에러 로그 삭제
   const handleDeleteErrorLog = async (logId) => {
     try {
@@ -574,6 +671,36 @@ export default function SuperAdminDashboard() {
       cls.classCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cls.adminName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // 전체 계정 필터링
+  const filteredAuthUsers = allAuthUsers.filter((u) => {
+    const matchesSearch =
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.firestoreData?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.firestoreData?.classCode
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      u.uid?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (accountFilter === "auth-only") return !u.firestoreExists;
+    if (accountFilter === "firestore-only")
+      return u.firestoreExists && !u.email;
+    if (accountFilter === "student")
+      return (
+        u.firestoreExists &&
+        !u.firestoreData?.isAdmin &&
+        !u.firestoreData?.isTeacher &&
+        !u.firestoreData?.isSuperAdmin
+      );
+    if (accountFilter === "teacher")
+      return (
+        u.firestoreExists &&
+        (u.firestoreData?.isAdmin || u.firestoreData?.isTeacher)
+      );
+    return true;
+  });
 
   const filteredErrorLogs = errorLogs.filter((log) => {
     const matchesSearch =
@@ -957,6 +1084,409 @@ export default function SuperAdminDashboard() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* 전체 계정 탭 */}
+            {activeTab === "accounts" && (
+              <div className="accounts-tab">
+                <div className="tab-header">
+                  <h2>전체 Firebase 계정</h2>
+                  <div className="header-controls">
+                    <div className="search-box">
+                      <Search size={18} />
+                      <input
+                        type="text"
+                        placeholder="이메일, 이름, 학급코드 검색..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <select
+                      value={accountFilter}
+                      onChange={(e) => setAccountFilter(e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">전체 ({allAuthUsers.length})</option>
+                      <option value="student">학생만</option>
+                      <option value="teacher">선생님만</option>
+                      <option value="auth-only">
+                        Auth만 있음 (Firestore 없음)
+                      </option>
+                    </select>
+                    <button
+                      className="action-btn"
+                      onClick={loadAllAuthUsers}
+                      disabled={accountsLoading}
+                    >
+                      <RefreshCw
+                        size={18}
+                        className={accountsLoading ? "spinning" : ""}
+                      />
+                      {accountsLoading ? "로딩 중..." : "계정 불러오기"}
+                    </button>
+                  </div>
+                </div>
+
+                {allAuthUsers.length === 0 ? (
+                  <div className="empty-state">
+                    <UserCog size={64} />
+                    <h3>계정 데이터를 불러오세요</h3>
+                    <p>
+                      "계정 불러오기" 버튼을 클릭하면 Firebase Auth의 모든
+                      계정을 조회합니다.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className="accounts-summary"
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        marginBottom: "16px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {[
+                        {
+                          key: "all",
+                          label: "전체",
+                          count: allAuthUsers.length,
+                          bg: "99,102,241",
+                          color: "#a5b4fc",
+                        },
+                        {
+                          key: "auth-only",
+                          label: "Auth만",
+                          count: allAuthUsers.filter((u) => !u.firestoreExists)
+                            .length,
+                          bg: "239,68,68",
+                          color: "#fca5a5",
+                        },
+                        {
+                          key: "student",
+                          label: "학생",
+                          count: allAuthUsers.filter(
+                            (u) =>
+                              u.firestoreExists &&
+                              !u.firestoreData?.isAdmin &&
+                              !u.firestoreData?.isTeacher &&
+                              !u.firestoreData?.isSuperAdmin,
+                          ).length,
+                          bg: "16,185,129",
+                          color: "#6ee7b7",
+                        },
+                        {
+                          key: "teacher",
+                          label: "선생님",
+                          count: allAuthUsers.filter(
+                            (u) =>
+                              u.firestoreData?.isAdmin ||
+                              u.firestoreData?.isTeacher,
+                          ).length,
+                          bg: "245,158,11",
+                          color: "#fcd34d",
+                        },
+                      ].map((f) => (
+                        <button
+                          key={f.key}
+                          onClick={() => {
+                            setAccountFilter(f.key);
+                            setSelectedAccounts(new Set());
+                          }}
+                          style={{
+                            padding: "7px 14px",
+                            borderRadius: "8px",
+                            border:
+                              accountFilter === f.key
+                                ? `2px solid rgba(${f.bg},0.6)`
+                                : "2px solid transparent",
+                            background:
+                              accountFilter === f.key
+                                ? `rgba(${f.bg},0.3)`
+                                : `rgba(${f.bg},0.1)`,
+                            color: f.color,
+                            fontSize: "13px",
+                            fontWeight: accountFilter === f.key ? "700" : "500",
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {f.label}: {f.count}
+                        </button>
+                      ))}
+                    </div>
+                    {/* 전체 선택 바 */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 16px",
+                        marginBottom: "8px",
+                        background: "rgba(99,102,241,0.08)",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(99,102,241,0.15)",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          cursor: "pointer",
+                          color: "#c4c4e0",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            filteredAuthUsers.filter(
+                              (u) => !u.firestoreData?.isSuperAdmin,
+                            ).length > 0 &&
+                            filteredAuthUsers
+                              .filter((u) => !u.firestoreData?.isSuperAdmin)
+                              .every((u) => selectedAccounts.has(u.uid))
+                          }
+                          onChange={toggleSelectAll}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            accentColor: "#6366f1",
+                            cursor: "pointer",
+                          }}
+                        />
+                        전체 선택 ({selectedAccounts.size}/
+                        {
+                          filteredAuthUsers.filter(
+                            (u) => !u.firestoreData?.isSuperAdmin,
+                          ).length
+                        }
+                        )
+                      </label>
+                      {selectedAccounts.size > 0 && (
+                        <button
+                          className="reject-btn"
+                          style={{
+                            padding: "8px 16px",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                          }}
+                          onClick={handleBulkDelete}
+                          disabled={bulkDeleting}
+                        >
+                          <Trash2 size={15} />
+                          {bulkDeleting
+                            ? `삭제 중...`
+                            : `선택 삭제 (${selectedAccounts.size}개)`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="error-log-list">
+                      {filteredAuthUsers.map((u) => (
+                        <div
+                          key={u.uid}
+                          className={`error-log-item ${!u.firestoreExists ? "warning" : "info"}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            padding: "12px 16px",
+                            outline: selectedAccounts.has(u.uid)
+                              ? "2px solid rgba(99,102,241,0.5)"
+                              : "none",
+                            background: selectedAccounts.has(u.uid)
+                              ? "rgba(99,102,241,0.1)"
+                              : undefined,
+                          }}
+                        >
+                          {/* 체크박스 */}
+                          {!u.firestoreData?.isSuperAdmin ? (
+                            <input
+                              type="checkbox"
+                              checked={selectedAccounts.has(u.uid)}
+                              onChange={() => toggleAccountSelect(u.uid)}
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                accentColor: "#6366f1",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                              }}
+                            />
+                          ) : (
+                            <div style={{ width: "18px", flexShrink: 0 }} />
+                          )}
+                          <div
+                            className="teacher-avatar"
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "14px",
+                              fontWeight: "700",
+                              flexShrink: 0,
+                              background: u.firestoreData?.isSuperAdmin
+                                ? "linear-gradient(135deg,#ef4444,#dc2626)"
+                                : u.firestoreData?.isAdmin
+                                  ? "linear-gradient(135deg,#f59e0b,#d97706)"
+                                  : u.firestoreExists
+                                    ? "linear-gradient(135deg,#6366f1,#4f46e5)"
+                                    : "linear-gradient(135deg,#6b7280,#4b5563)",
+                              color: "white",
+                            }}
+                          >
+                            {(u.firestoreData?.name || u.email || "?")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <strong style={{ color: "#e0e0ff" }}>
+                                {u.firestoreData?.name ||
+                                  u.displayName ||
+                                  "(이름 없음)"}
+                              </strong>
+                              {u.firestoreData?.isSuperAdmin && (
+                                <span
+                                  style={{
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                    background: "rgba(239,68,68,0.3)",
+                                    color: "#fca5a5",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  슈퍼관리자
+                                </span>
+                              )}
+                              {u.firestoreData?.isAdmin &&
+                                !u.firestoreData?.isSuperAdmin && (
+                                  <span
+                                    style={{
+                                      padding: "2px 8px",
+                                      borderRadius: "4px",
+                                      background: "rgba(245,158,11,0.3)",
+                                      color: "#fcd34d",
+                                      fontSize: "11px",
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    선생님
+                                  </span>
+                                )}
+                              {u.firestoreExists &&
+                                !u.firestoreData?.isAdmin &&
+                                !u.firestoreData?.isSuperAdmin && (
+                                  <span
+                                    style={{
+                                      padding: "2px 8px",
+                                      borderRadius: "4px",
+                                      background: "rgba(99,102,241,0.3)",
+                                      color: "#a5b4fc",
+                                      fontSize: "11px",
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    학생
+                                  </span>
+                                )}
+                              {!u.firestoreExists && (
+                                <span
+                                  style={{
+                                    padding: "2px 8px",
+                                    borderRadius: "4px",
+                                    background: "rgba(239,68,68,0.3)",
+                                    color: "#fca5a5",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  Auth만 존재
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#9ca3af",
+                                marginTop: "2px",
+                              }}
+                            >
+                              {u.email}
+                              {u.firestoreData?.classCode && (
+                                <span
+                                  style={{
+                                    marginLeft: "8px",
+                                    color: "#6ee7b7",
+                                  }}
+                                >
+                                  학급: {u.firestoreData.classCode}
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "11px",
+                                color: "#6b7280",
+                                marginTop: "2px",
+                              }}
+                            >
+                              가입:{" "}
+                              {u.createdAt
+                                ? new Date(u.createdAt).toLocaleDateString(
+                                    "ko-KR",
+                                  )
+                                : "?"}
+                              {u.lastSignIn && (
+                                <span style={{ marginLeft: "8px" }}>
+                                  마지막 로그인:{" "}
+                                  {new Date(u.lastSignIn).toLocaleDateString(
+                                    "ko-KR",
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {!u.firestoreData?.isSuperAdmin && (
+                            <button
+                              className="reject-btn"
+                              style={{
+                                flexShrink: 0,
+                                padding: "6px 12px",
+                                fontSize: "12px",
+                              }}
+                              onClick={() =>
+                                handleDeleteAuthUser(
+                                  u.uid,
+                                  u.email || u.firestoreData?.name || u.uid,
+                                )
+                              }
+                            >
+                              <Trash2 size={14} />
+                              삭제
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}

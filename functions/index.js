@@ -3104,6 +3104,540 @@ exports.processSettlement = onCall(
 );
 
 // ============================================
+// 전체 Firebase Auth 계정 목록 조회 (SuperAdmin 전용)
+// ============================================
+exports.listAllAuthUsers = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { isSuperAdmin } = await checkAuthAndGetUserData(request, true);
+    if (!isSuperAdmin) {
+      throw new HttpsError(
+        "permission-denied",
+        "슈퍼관리자 권한이 필요합니다.",
+      );
+    }
+
+    try {
+      const listAllUsers = async (nextPageToken) => {
+        const result = await admin.auth().listUsers(1000, nextPageToken);
+        let users = result.users.map((u) => ({
+          uid: u.uid,
+          email: u.email || "",
+          displayName: u.displayName || "",
+          disabled: u.disabled,
+          createdAt: u.metadata.creationTime,
+          lastSignIn: u.metadata.lastSignInTime,
+        }));
+        if (result.pageToken) {
+          const moreUsers = await listAllUsers(result.pageToken);
+          users = users.concat(moreUsers);
+        }
+        return users;
+      };
+
+      const authUsers = await listAllUsers();
+
+      // Firestore users와 매칭
+      const usersSnap = await db.collection("users").get();
+      const firestoreMap = {};
+      usersSnap.docs.forEach((doc) => {
+        firestoreMap[doc.id] = { id: doc.id, ...doc.data() };
+      });
+
+      const merged = authUsers.map((au) => ({
+        ...au,
+        firestoreExists: !!firestoreMap[au.uid],
+        firestoreData: firestoreMap[au.uid] || null,
+      }));
+
+      return { success: true, users: merged, total: merged.length };
+    } catch (error) {
+      logger.error("[listAllAuthUsers] 오류:", error);
+      throw new HttpsError("internal", "계정 목록 조회 실패: " + error.message);
+    }
+  },
+);
+
+// ============================================
+// Firebase Auth 계정 삭제 (SuperAdmin 전용)
+// ============================================
+exports.deleteAuthUser = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid: callerUid, isSuperAdmin } = await checkAuthAndGetUserData(
+      request,
+      true,
+    );
+    if (!isSuperAdmin) {
+      throw new HttpsError(
+        "permission-denied",
+        "슈퍼관리자 권한이 필요합니다.",
+      );
+    }
+
+    const { targetUid } = request.data;
+    if (!targetUid) {
+      throw new HttpsError(
+        "invalid-argument",
+        "삭제할 사용자 UID가 필요합니다.",
+      );
+    }
+    if (targetUid === callerUid) {
+      throw new HttpsError(
+        "invalid-argument",
+        "자기 자신은 삭제할 수 없습니다.",
+      );
+    }
+
+    try {
+      // Firebase Auth에서 삭제 (없으면 무시하고 Firestore만 삭제)
+      try {
+        await admin.auth().deleteUser(targetUid);
+      } catch (authErr) {
+        if (authErr.code !== "auth/user-not-found") throw authErr;
+        logger.info(
+          `[deleteAuthUser] Auth에 없는 사용자 ${targetUid} - Firestore만 삭제`,
+        );
+      }
+
+      // Firestore에서도 삭제
+      const userRef = db.collection("users").doc(targetUid);
+      const userDoc = await userRef.get();
+      if (userDoc.exists) {
+        await userRef.delete();
+      }
+
+      logger.info(
+        `[deleteAuthUser] 슈퍼관리자 ${callerUid}가 사용자 ${targetUid} 삭제`,
+      );
+      return { success: true, message: "계정이 삭제되었습니다." };
+    } catch (error) {
+      logger.error("[deleteAuthUser] 오류:", error);
+      throw new HttpsError("internal", "계정 삭제 실패: " + error.message);
+    }
+  },
+);
+
+// ============================================
+// 법원 데이터 초기화 + 데모 시드 (SuperAdmin 전용)
+// ============================================
+exports.seedCourtData = onCall(
+  { region: "asia-northeast3", timeoutSeconds: 120 },
+  async (request) => {
+    const {
+      uid: callerUid,
+      isSuperAdmin,
+      classCode,
+    } = await checkAuthAndGetUserData(request, true);
+    if (!isSuperAdmin) {
+      throw new HttpsError(
+        "permission-denied",
+        "슈퍼관리자 권한이 필요합니다.",
+      );
+    }
+
+    const targetClassCode = request.data?.classCode || classCode;
+    logger.info(
+      `[seedCourtData] 학급 ${targetClassCode} 법원 데이터 초기화 시작`,
+    );
+
+    try {
+      // 헬퍼: 컬렉션 내 모든 문서 삭제 (서브컬렉션 포함)
+      async function deleteAll(collRef, subNames = []) {
+        const snap = await collRef.get();
+        let count = 0;
+        for (const doc of snap.docs) {
+          for (const sub of subNames) {
+            const subSnap = await doc.ref.collection(sub).get();
+            for (const sd of subSnap.docs) await sd.ref.delete();
+          }
+          await doc.ref.delete();
+          count++;
+        }
+        return count;
+      }
+
+      // 1. 기존 데이터 삭제
+      const classRef = db.collection("classes").doc(targetClassCode);
+      const cDel = await deleteAll(classRef.collection("courtComplaints"));
+      const rDel = await deleteAll(classRef.collection("trialRooms"), [
+        "messages",
+        "evidence",
+        "voting",
+      ]);
+      const tDel = await deleteAll(classRef.collection("trialResults"));
+      logger.info(
+        `[seedCourtData] 삭제: complaints=${cDel}, rooms=${rDel}, results=${tDel}`,
+      );
+
+      // 2. 학생 목록
+      const usersSnap = await db
+        .collection("users")
+        .where("classCode", "==", targetClassCode)
+        .where("isAdmin", "==", false)
+        .get();
+      const students = [];
+      usersSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (!data.isSuperAdmin && !data.isTeacher) {
+          students.push({
+            uid: d.id,
+            name: data.name,
+            num: data.studentNumber || 0,
+          });
+        }
+      });
+      students.sort((a, b) => a.num - b.num);
+
+      if (students.length < 3) {
+        return {
+          success: true,
+          message: `기존 데이터 삭제 완료 (학생 ${students.length}명 — 시드 생성 스킵)`,
+        };
+      }
+
+      // 관리자 정보
+      const adminUserDoc = await db.collection("users").doc(callerUid).get();
+      const adminName = adminUserDoc.exists
+        ? adminUserDoc.data().name
+        : "선생님";
+
+      const now = admin.firestore.Timestamp.now();
+      const daysAgo = (n) =>
+        admin.firestore.Timestamp.fromMillis(now.toMillis() - n * 86400000);
+
+      // 3. 데모 고소장
+      const complaintsRef = classRef.collection("courtComplaints");
+      const resultsRef = classRef.collection("trialResults");
+
+      // 사건1: 해결됨
+      await complaintsRef.add({
+        complainantId: students[0].uid,
+        complainantName: students[0].name,
+        defendantId: students[1].uid,
+        defendantName: students[1].name,
+        caseType: "general",
+        status: "resolved",
+        reason: `${students[1].name} 학생이 제 필통을 허락 없이 가져가서 잃어버렸습니다. 새 필통 값 3,000알찬을 배상해주세요.`,
+        desiredResolution: "물건 배상 3,000알찬",
+        judgment: `피고 ${students[1].name}은 원고의 필통을 분실한 사실이 인정되어, 배상금 3,000알찬을 지급하라.`,
+        submissionDate: daysAgo(7),
+        indictmentDate: daysAgo(6),
+        resolvedAt: daysAgo(4),
+        settlementPaid: true,
+        settlementAmount: 3000,
+        settlementDate: daysAgo(4),
+        caseNumber: "CT0001",
+        classCode: targetClassCode,
+        likedBy: [],
+        dislikedBy: [],
+      });
+
+      // 사건2: 재판 중
+      const case2 = await complaintsRef.add({
+        complainantId: students[2].uid,
+        complainantName: students[2].name,
+        defendantId: students[3 % students.length].uid,
+        defendantName: students[3 % students.length].name,
+        caseType: "general",
+        status: "on_trial",
+        reason: `${students[3 % students.length].name} 학생이 다른 친구들 앞에서 저에 대해 거짓말을 퍼뜨렸습니다.`,
+        desiredResolution: "공개 사과 및 벌금 2,000알찬",
+        submissionDate: daysAgo(3),
+        indictmentDate: daysAgo(2),
+        caseNumber: "CT0002",
+        classCode: targetClassCode,
+        likedBy: [],
+        dislikedBy: [],
+      });
+
+      // 재판방
+      const s3 = students[3 % students.length];
+      const room2 = await classRef.collection("trialRooms").add({
+        caseId: case2.id,
+        caseNumber: "CT0002",
+        judgeId: callerUid,
+        judgeName: adminName,
+        complainantId: students[2].uid,
+        defendantId: s3.uid,
+        prosecutorId: students[0].uid,
+        prosecutorName: students[0].name,
+        lawyerId: students[1].uid,
+        lawyerName: students[1].name,
+        juryIds: students.length >= 5 ? [students[4].uid] : [],
+        participants: [
+          callerUid,
+          students[2].uid,
+          s3.uid,
+          students[0].uid,
+          students[1].uid,
+        ],
+        status: "active",
+        createdAt: daysAgo(2),
+        lastActivity: now,
+        silencedUsers: [],
+      });
+
+      // 재판방 메시지
+      const msgs = [
+        {
+          type: "system",
+          text: "재판이 시작되었습니다.",
+          userName: "시스템",
+          userRole: "system",
+          timestamp: daysAgo(2),
+        },
+        {
+          type: "chat",
+          userId: callerUid,
+          userName: adminName,
+          userRole: "judge",
+          text: "본 재판을 시작하겠습니다. 원고 측 진술을 먼저 듣겠습니다.",
+          timestamp: daysAgo(2),
+        },
+        {
+          type: "chat",
+          userId: students[2].uid,
+          userName: students[2].name,
+          userRole: "complainant",
+          text: "피고가 다른 친구들에게 제가 시험에서 커닝했다고 말하는 것을 들었습니다. 이것은 사실이 아닙니다.",
+          timestamp: daysAgo(2),
+        },
+        {
+          type: "chat",
+          userId: students[0].uid,
+          userName: students[0].name,
+          userRole: "prosecutor",
+          text: "원고의 진술을 뒷받침하는 목격자가 있습니다.",
+          timestamp: daysAgo(1),
+        },
+        {
+          type: "chat",
+          userId: students[1].uid,
+          userName: students[1].name,
+          userRole: "lawyer",
+          text: "피고는 농담으로 한 말이며 악의적 의도가 없었습니다.",
+          timestamp: daysAgo(1),
+        },
+        {
+          type: "chat",
+          userId: s3.uid,
+          userName: s3.name,
+          userRole: "defendant",
+          text: "정말 죄송합니다. 농담이었는데 상처를 줄 줄 몰랐습니다.",
+          timestamp: now,
+        },
+      ];
+      for (const msg of msgs) {
+        await room2.collection("messages").add(msg);
+      }
+
+      // 사건3: 접수 대기
+      if (students.length >= 5) {
+        await complaintsRef.add({
+          complainantId: students[3].uid,
+          complainantName: students[3].name,
+          defendantId: students[4].uid,
+          defendantName: students[4].name,
+          caseType: "general",
+          status: "pending",
+          reason: `${students[4].name} 학생이 제 자리에 있던 간식을 허락 없이 먹었습니다.`,
+          desiredResolution: "간식 값 1,000알찬 배상",
+          submissionDate: daysAgo(1),
+          caseNumber: "CT0003",
+          classCode: targetClassCode,
+          likedBy: [],
+          dislikedBy: [],
+        });
+      }
+
+      // 사건4: 기각
+      await complaintsRef.add({
+        complainantId: students[1].uid,
+        complainantName: students[1].name,
+        defendantId: students[0].uid,
+        defendantName: students[0].name,
+        caseType: "general",
+        status: "dismissed",
+        reason: "쉬는 시간에 제 의자를 밀어서 넘어졌습니다.",
+        desiredResolution: "사과 및 벌금 1,500알찬",
+        judgment: "증거 불충분으로 기각합니다.",
+        submissionDate: daysAgo(10),
+        resolvedAt: daysAgo(8),
+        caseNumber: "CT0004",
+        classCode: targetClassCode,
+        likedBy: [],
+        dislikedBy: [],
+      });
+
+      // 재판 결과
+      await resultsRef.add({
+        roomId: "demo",
+        caseNumber: "CT0001",
+        caseTitle: `${students[0].name} vs ${students[1].name} — 물건 분실 배상`,
+        judgeId: callerUid,
+        judgeName: adminName,
+        complainantId: students[0].uid,
+        defendantId: students[1].uid,
+        verdict: "유죄 — 배상금 3,000알찬 지급",
+        verdictReason:
+          "피고가 원고의 필통을 분실한 사실이 확인되어 배상을 명합니다.",
+        verdictDate: daysAgo(4),
+        paymentAmount: 3000,
+        paymentType: "settlement",
+        participants: [callerUid, students[0].uid, students[1].uid],
+      });
+
+      // ==========================================
+      // 경찰서 데이터 초기화 + 데모 시드
+      // ==========================================
+      logger.info("[seedCourtData] 경찰서 데이터 초기화...");
+      const policeRef = classRef.collection("policeReports");
+      const pDel = await deleteAll(policeRef);
+      logger.info(`[seedCourtData] 경찰 신고 ${pDel}건 삭제`);
+
+      // 데모 경찰 신고
+      // 신고1: 벌금 처리됨
+      await policeRef.add({
+        reporterId: students[0].uid,
+        complainantId: students[0].uid,
+        reporterName: students[0].name,
+        reportedUserId: students[2].uid,
+        defendantId: students[2].uid,
+        reportedUserName: students[2].name,
+        reason: "수업 중 장난",
+        description:
+          "수업 시간에 계속 떠들고 장난을 쳐서 수업에 방해가 되었습니다.",
+        details:
+          "3교시 수학 시간에 옆 자리 친구와 계속 장난을 치며 수업을 방해했습니다.",
+        status: "resolved_fine",
+        amount: 1500,
+        resolution: "수업 방해 행위로 벌금 1,500알찬 부과",
+        isLawReport: false,
+        lawId: null,
+        classCode: targetClassCode,
+        submitDate: daysAgo(6),
+        acceptanceDate: daysAgo(5),
+        resolutionDate: daysAgo(4),
+        processedById: callerUid,
+        processedByName: adminName,
+        settlementPaid: true,
+      });
+
+      // 신고2: 접수됨 (처리 대기)
+      await policeRef.add({
+        reporterId: students[1].uid,
+        complainantId: students[1].uid,
+        reporterName: students[1].name,
+        reportedUserId: students[4 % students.length].uid,
+        defendantId: students[4 % students.length].uid,
+        reportedUserName: students[4 % students.length].name,
+        reason: "물건 손상",
+        description:
+          "제 색연필 세트를 빌려갔다가 여러 개를 부러뜨려서 돌려줬습니다.",
+        details: "12색 색연필 중 4자루가 부러진 채로 반납되었습니다.",
+        status: "accepted",
+        amount: 2000,
+        isLawReport: false,
+        lawId: null,
+        classCode: targetClassCode,
+        submitDate: daysAgo(2),
+        acceptanceDate: daysAgo(1),
+        resolutionDate: null,
+        processedById: null,
+        processedByName: null,
+        settlementPaid: false,
+      });
+
+      // 신고3: 제출됨 (검토 전)
+      await policeRef.add({
+        reporterId: students[3 % students.length].uid,
+        complainantId: students[3 % students.length].uid,
+        reporterName: students[3 % students.length].name,
+        reportedUserId: students[0].uid,
+        defendantId: students[0].uid,
+        reportedUserName: students[0].name,
+        reason: "자리 무단 사용",
+        description: "제 자리에 앉아서 제 물건을 허락 없이 사용했습니다.",
+        status: "submitted",
+        amount: 0,
+        isLawReport: false,
+        lawId: null,
+        classCode: targetClassCode,
+        submitDate: daysAgo(0),
+        acceptanceDate: null,
+        resolutionDate: null,
+        processedById: null,
+        processedByName: null,
+        settlementPaid: false,
+      });
+
+      // 신고4: 기각됨
+      await policeRef.add({
+        reporterId: students[2].uid,
+        complainantId: students[2].uid,
+        reporterName: students[2].name,
+        reportedUserId: students[1].uid,
+        defendantId: students[1].uid,
+        reportedUserName: students[1].name,
+        reason: "줄서기 새치기",
+        description: "급식 줄에서 새치기를 했습니다.",
+        status: "dismissed",
+        amount: 0,
+        resolution:
+          "목격자 확인 결과 새치기가 아닌 자리를 양보받은 것으로 확인되어 기각합니다.",
+        isLawReport: false,
+        lawId: null,
+        classCode: targetClassCode,
+        submitDate: daysAgo(8),
+        acceptanceDate: daysAgo(7),
+        resolutionDate: daysAgo(7),
+        processedById: callerUid,
+        processedByName: adminName,
+        settlementPaid: false,
+      });
+
+      // 신고5: 합의 해결
+      if (students.length >= 5) {
+        await policeRef.add({
+          reporterId: students[4].uid,
+          complainantId: students[4].uid,
+          reporterName: students[4].name,
+          reportedUserId: students[2].uid,
+          defendantId: students[2].uid,
+          reportedUserName: students[2].name,
+          reason: "교실 내 뛰기",
+          description:
+            "쉬는 시간에 교실에서 뛰어다니다가 제 물통을 쳐서 넘어뜨렸습니다.",
+          status: "resolved_settlement",
+          amount: 1000,
+          resolution: "당사자 간 합의로 물통 값 1,000알찬 배상",
+          isLawReport: false,
+          lawId: null,
+          classCode: targetClassCode,
+          submitDate: daysAgo(5),
+          acceptanceDate: daysAgo(4),
+          resolutionDate: daysAgo(3),
+          processedById: callerUid,
+          processedByName: adminName,
+          settlementPaid: true,
+        });
+      }
+
+      const policeCount = students.length >= 5 ? 5 : 4;
+
+      return {
+        success: true,
+        message: `데모 시드 완료 — 법원: 사건 4건, 재판방 1개, 메시지 ${msgs.length}건 / 경찰서: 신고 ${policeCount}건`,
+      };
+    } catch (error) {
+      logger.error("[seedCourtData] 오류:", error);
+      throw new HttpsError("internal", "데이터 초기화 실패: " + error.message);
+    }
+  },
+);
+
+// ============================================
 // 사용자 아이템 수량 업데이트 (경매 등록/취소 시 사용)
 // ============================================
 exports.updateUserItemQuantity = onCall(
