@@ -1000,3 +1000,27 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+@media (max-width: 480px) {
+  .super-admin-dashboard {
+    padding: 8px;
+  }
+
+  .sad-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .sad-tab {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .metrics-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-card {
+    padding: 12px;
+  }
+}

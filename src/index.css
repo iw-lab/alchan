@@ -375,6 +375,12 @@ select {
     -webkit-overflow-scrolling: touch;
   }
 
+  html,
+  body {
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
   .scroll-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -384,6 +390,13 @@ select {
 
   .scroll-container::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* 초소형 모바일 (480px 이하) */
+@media (max-width: 480px) {
+  html {
+    font-size: 15px;
   }
 }
 

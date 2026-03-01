@@ -741,9 +741,9 @@ export default function AlchanSidebar({
           {isMobile && (
             <button
               onClick={onClose}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/20 border-0 text-white cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 border-0 text-white cursor-pointer"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           )}
         </div>

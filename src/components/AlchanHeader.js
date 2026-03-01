@@ -324,7 +324,7 @@ const AlchanHeader = memo(
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleSidebar}
-                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                className="p-2.5 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <LayoutDashboard size={22} className="text-white" />
               </button>
