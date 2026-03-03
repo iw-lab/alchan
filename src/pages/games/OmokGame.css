@@ -7,10 +7,10 @@
   --cell-size: min(40px, calc((100vw - 80px) / 15));
   --board-padding: 22px;
   --stone-size: calc(var(--cell-size) * 0.85);
-  --line-thickness: 1px;
-  --board-bg: #d1b587;
-  --line-color: #a07d5a;
-  --star-point-size: 8px;
+  --line-thickness: 1.5px;
+  --board-bg: #dcb468;
+  --line-color: #5a3e1b;
+  --star-point-size: 9px;
 }
 
 @keyframes fadeIn {

@@ -41,6 +41,7 @@ import {
   RotateCcw,
   Plus,
   ChevronLeft,
+  Trash2,
 } from "lucide-react";
 
 import { logger } from "../../utils/logger";
@@ -190,10 +191,15 @@ function SelectMultipleJobsView({
   currentSelectedJobIds = [],
   onConfirmSelection,
   onCancel,
+  isAdmin,
+  onAddJob,
+  onDeleteJob,
 }) {
   const [tempSelection, setTempSelection] = useState(
     Array.isArray(currentSelectedJobIds) ? [...currentSelectedJobIds] : [],
   );
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const activeJobs = useMemo(() => {
     return Array.isArray(availableJobs)
@@ -209,6 +215,19 @@ function SelectMultipleJobsView({
     );
   }, []);
 
+  const handleAddNewJob = useCallback(() => {
+    const title = newJobTitle.trim();
+    if (!title) {
+      alert("직업 이름을 입력해주세요.");
+      return;
+    }
+    if (onAddJob) {
+      onAddJob(title);
+    }
+    setNewJobTitle("");
+    setShowAddForm(false);
+  }, [newJobTitle, onAddJob]);
+
   return (
     <div className="bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
       <h4 className="text-xl font-semibold text-white text-center mb-2">
@@ -219,30 +238,41 @@ function SelectMultipleJobsView({
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {activeJobs.map((job) => (
-          <label
+          <div
             key={job.id}
-            className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${
+            className={`p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${
               tempSelection.includes(job.id)
                 ? "border-cyan-500 bg-cyan-900/30"
                 : "border-cyan-900/20 bg-[#14142380] hover:border-cyan-500/50"
             }`}
           >
-            <input
-              type="checkbox"
-              checked={tempSelection.includes(job.id)}
-              onChange={() => handleCheckboxChange(job.id)}
-              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer accent-cyan-400"
-            />
-            <span
-              className={`font-medium ${
-                tempSelection.includes(job.id) ? "text-cyan-300" : "text-white"
-              }`}
-            >
-              {job.title}
-            </span>
-          </label>
+            <label className="flex items-center gap-3 flex-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tempSelection.includes(job.id)}
+                onChange={() => handleCheckboxChange(job.id)}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer accent-cyan-400"
+              />
+              <span
+                className={`font-medium ${
+                  tempSelection.includes(job.id) ? "text-cyan-300" : "text-white"
+                }`}
+              >
+                {job.title}
+              </span>
+            </label>
+            {isAdmin && onDeleteJob && (
+              <button
+                onClick={() => onDeleteJob(job.id)}
+                className="p-1 text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                title="직업 삭제"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         ))}
-        {activeJobs.length === 0 && (
+        {activeJobs.length === 0 && !isAdmin && (
           <EmptyState
             icon={Briefcase}
             title="선택 가능한 직업이 없습니다"
@@ -250,6 +280,40 @@ function SelectMultipleJobsView({
           />
         )}
       </div>
+
+      {/* 관리자용 직업 추가 */}
+      {isAdmin && (
+        <div className="mt-4 border-t border-cyan-900/30 pt-4">
+          {showAddForm ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newJobTitle}
+                onChange={(e) => setNewJobTitle(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddNewJob()}
+                placeholder="새 직업 이름 입력"
+                className="flex-1 px-3 py-2 bg-[#0a0a1a] border border-cyan-900/30 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                autoFocus
+              />
+              <ActionButton variant="primary" size="sm" onClick={handleAddNewJob}>
+                추가
+              </ActionButton>
+              <ActionButton variant="secondary" size="sm" onClick={() => { setShowAddForm(false); setNewJobTitle(""); }}>
+                취소
+              </ActionButton>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="w-full p-3 rounded-xl border-2 border-dashed border-cyan-900/40 text-cyan-400 hover:border-cyan-500 hover:bg-cyan-900/20 transition-all flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              직업 추가
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-end gap-3 mt-6">
         <ActionButton variant="secondary" onClick={onCancel}>
           취소
@@ -851,8 +915,9 @@ function Dashboard({ adminTabMode }) {
           setEditingJob(null);
         }
 
+        // 로컬 state 즉시 업데이트
+        setJobs((prev) => prev.filter((j) => j.id !== jobIdToDelete));
         setShowAdminSettingsModal(false);
-        alert("직업이 삭제되었습니다.");
 
         // 캐시 무효화
         dataCache.invalidate(`jobs_${userDoc.classCode}`);
@@ -1984,6 +2049,37 @@ function Dashboard({ adminTabMode }) {
           currentSelectedJobIds={currentSelectedJobIdsFromUserDoc}
           onConfirmSelection={handleConfirmJobSelection}
           onCancel={handleCancelForm}
+          isAdmin={isAdmin?.()}
+          onAddJob={async (title) => {
+            if (!db || !userDoc?.classCode) {
+              alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+              return;
+            }
+            try {
+              const newJobId = generateId();
+              const jobRef = doc(db, "jobs", newJobId);
+              const newJobData = {
+                title,
+                active: true,
+                tasks: [],
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                classCode: userDoc.classCode,
+              };
+              batchManager.addWrite({
+                type: "set",
+                ref: jobRef,
+                data: newJobData,
+              });
+              // 로컬 state 즉시 업데이트
+              setJobs((prev) => [...prev, { id: newJobId, ...newJobData, tasks: [] }]);
+              dataCache.invalidate(`jobs_${userDoc.classCode}`);
+            } catch (error) {
+              console.error("직업 추가 오류:", error);
+              alert("직업 추가 중 오류 발생");
+            }
+          }}
+          onDeleteJob={(jobId) => handleDeleteJob(jobId)}
         />
       )}
 

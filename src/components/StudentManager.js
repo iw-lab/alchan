@@ -3,27 +3,18 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { db, auth as firebaseAuth, firebaseConfig } from "../firebase";
+import { db, functions as firebaseFunctions } from "../firebase";
 import {
   collection,
   doc,
-  setDoc,
   getDoc,
   getDocs,
   updateDoc,
   deleteDoc,
   query,
   where,
-  serverTimestamp,
-  writeBatch,
 } from "firebase/firestore";
-import { initializeApp, deleteApp } from "firebase/app";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  updateProfile,
-  signOut as firebaseSignOut,
-} from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 import {
   Users,
   UserPlus,
@@ -170,7 +161,7 @@ const StudentManager = () => {
     );
   }, [students, searchTerm]);
 
-  // 단일 학생 추가
+  // 단일 학생 추가 (Cloud Function 사용)
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
       alert("이름과 번호를 입력해주세요.");
@@ -186,78 +177,32 @@ const StudentManager = () => {
     const password = newStudentPassword || generatePassword();
     const email = createStudentEmail(newStudentNumber, classCode);
 
-    // 보조 Firebase 앱으로 계정 생성 (메인 세션 유지)
-    const secondaryApp = initializeApp(firebaseConfig, "singleStudentCreator");
-    const secondaryAuth = getAuth(secondaryApp);
-
     try {
-      // 보조 Auth로 계정 생성
-      const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth,
-        email,
-        password,
-      );
-      const newUser = userCredential.user;
-
-      // 프로필 업데이트
-      await updateProfile(newUser, { displayName: newStudentName.trim() });
-
-      // 보조 Auth에서 즉시 sign out
-      await firebaseSignOut(secondaryAuth);
-      await deleteApp(secondaryApp);
-
-      // 학급 설정 가져오기
-      const classDoc = await getDoc(doc(db, "classes", classCode));
-      const classSettings = classDoc.exists() ? classDoc.data().settings : {};
-      const initialCash = classSettings.initialCash || 100000;
-      const initialCoupons = classSettings.initialCoupons || 10;
-
-      // Firestore 문서 생성
-      await setDoc(doc(db, "users", newUser.uid), {
-        name: newStudentName.trim(),
-        nickname: newStudentName.trim(),
-        email: email,
-        classCode: classCode,
-        studentNumber: parseInt(newStudentNumber),
-        isAdmin: false,
-        isSuperAdmin: false,
-        isTeacher: false,
-        cash: initialCash,
-        coupons: initialCoupons,
-        selectedJobIds: [],
-        myContribution: 0,
-        createdAt: serverTimestamp(),
-        createdBy: userDoc?.id,
-        parentalConsentConfirmed: true,
-        consentDate: serverTimestamp(),
+      const createStudentAccounts = httpsCallable(firebaseFunctions, "createStudentAccounts");
+      const result = await createStudentAccounts({
+        students: [{
+          name: newStudentName.trim(),
+          email: email,
+          password: password,
+          number: parseInt(newStudentNumber),
+        }],
       });
 
-      // 학급 학생 수 업데이트
-      const classRef = doc(db, "classes", classCode);
-      const currentClass = await getDoc(classRef);
-      if (currentClass.exists()) {
-        await updateDoc(classRef, {
-          studentCount: (currentClass.data().studentCount || 0) + 1,
-        });
+      const data = result.data;
+      if (data.success.length > 0) {
+        alert(`학생 추가 완료!\n이메일: ${email}\n비밀번호: ${password}`);
+        setNewStudentName("");
+        setNewStudentNumber("");
+        setNewStudentPassword("");
+        setParentalConsent(false);
+        setShowAddModal(false);
+        loadStudents();
+      } else {
+        const errMsg = data.failed[0]?.error || "알 수 없는 오류";
+        alert(`학생 추가 실패: ${errMsg}`);
       }
-
-      alert(`학생 추가 완료!\n이메일: ${email}\n비밀번호: ${password}`);
-
-      // 폼 초기화
-      setNewStudentName("");
-      setNewStudentNumber("");
-      setNewStudentPassword("");
-      setParentalConsent(false);
-      setShowAddModal(false);
-      loadStudents();
     } catch (error) {
       logger.error("Failed to add student:", error);
-      // 보조 앱 정리 시도
-      try {
-        await deleteApp(secondaryApp);
-      } catch (_) {
-        /* ignore */
-      }
       alert(`학생 추가 실패: ${error.message}`);
     } finally {
       setProcessing(false);
@@ -294,7 +239,7 @@ const StudentManager = () => {
     setBulkStep(2);
   };
 
-  // 일괄 학생 생성
+  // 일괄 학생 생성 (Cloud Function 사용)
   const handleBulkCreate = async () => {
     if (bulkStudents.length === 0) return;
 
@@ -304,88 +249,49 @@ const StudentManager = () => {
     }
 
     setProcessing(true);
-    const successList = [];
-    const failedList = [];
-
-    // 학급 설정 가져오기
-    const classDoc = await getDoc(doc(db, "classes", classCode));
-    const classSettings = classDoc.exists() ? classDoc.data().settings : {};
-    const initialCash = classSettings.initialCash || 100000;
-    const initialCoupons = classSettings.initialCoupons || 10;
-
-    // 보조 Firebase 앱으로 계정 생성 (메인 세션 유지)
-    const secondaryApp = initializeApp(firebaseConfig, "studentCreator");
-    const secondaryAuth = getAuth(secondaryApp);
 
     try {
-      for (let i = 0; i < bulkStudents.length; i++) {
-        const student = bulkStudents[i];
+      const createStudentAccounts = httpsCallable(firebaseFunctions, "createStudentAccounts");
+      const result = await createStudentAccounts({
+        students: bulkStudents.map((s) => ({
+          name: s.name,
+          email: s.email,
+          password: s.password,
+          number: s.number,
+        })),
+      });
 
-        try {
-          // 보조 Auth로 계정 생성 (메인 관리자 세션 영향 없음)
-          const userCredential = await createUserWithEmailAndPassword(
-            secondaryAuth,
-            student.email,
-            student.password,
-          );
-          const newUser = userCredential.user;
+      const data = result.data;
 
-          // 프로필 업데이트
-          await updateProfile(newUser, { displayName: student.name });
-
-          // 보조 Auth에서 즉시 sign out
-          await firebaseSignOut(secondaryAuth);
-
-          // Firestore 문서 생성 (메인 db 인스턴스 사용)
-          await setDoc(doc(db, "users", newUser.uid), {
-            name: student.name,
-            nickname: student.name,
-            email: student.email,
-            classCode: classCode,
-            studentNumber: student.number,
-            isAdmin: false,
-            isSuperAdmin: false,
-            isTeacher: false,
-            cash: initialCash,
-            coupons: initialCoupons,
-            selectedJobIds: [],
-            myContribution: 0,
-            createdAt: serverTimestamp(),
-            createdBy: userDoc?.id,
-            parentalConsentConfirmed: true,
-            consentDate: serverTimestamp(),
-          });
-
-          student.status = "success";
-          student.uid = newUser.uid;
-          successList.push(student);
-        } catch (error) {
-          student.status = "failed";
-          student.error = error.message;
-          failedList.push(student);
+      // 결과를 bulkStudents에 반영
+      for (const s of data.success) {
+        const found = bulkStudents.find((b) => b.email === s.email);
+        if (found) {
+          found.status = "success";
+          found.uid = s.uid;
         }
-
-        // 진행률 업데이트
-        setBulkStudents([...bulkStudents]);
       }
-    } finally {
-      // 보조 앱 정리
-      await deleteApp(secondaryApp);
+      for (const s of data.failed) {
+        const found = bulkStudents.find((b) => b.email === s.email);
+        if (found) {
+          found.status = "failed";
+          found.error = s.error;
+        }
+      }
+
+      setBulkStudents([...bulkStudents]);
+      setResults({ success: data.success, failed: data.failed });
+    } catch (error) {
+      logger.error("Failed to bulk create students:", error);
+      // 전체 실패 시 모든 학생을 실패로 처리
+      const failedAll = bulkStudents.map((s) => ({
+        ...s,
+        status: "failed",
+        error: error.message,
+      }));
+      setResults({ success: [], failed: failedAll });
     }
 
-    // 학급 학생 수 업데이트
-    if (successList.length > 0) {
-      const classRef = doc(db, "classes", classCode);
-      const currentClass = await getDoc(classRef);
-      if (currentClass.exists()) {
-        await updateDoc(classRef, {
-          studentCount:
-            (currentClass.data().studentCount || 0) + successList.length,
-        });
-      }
-    }
-
-    setResults({ success: successList, failed: failedList });
     setBulkStep(3);
     setProcessing(false);
     loadStudents();

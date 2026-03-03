@@ -126,6 +126,252 @@ const deserializeBoard = (serializedBoard) => {
   return board;
 };
 
+// ===== 순수 함수 기반 체스 로직 (순환 참조 해결) =====
+
+// 특정 칸이 공격받는지 확인 (checkForCheck 없이 원시 이동만 사용)
+const isSquareAttackedPure = (board, row, col, byColor) => {
+  // 폰 공격 체크
+  const pawnDir = byColor === "w" ? 1 : -1; // 공격하는 색의 폰 방향
+  for (const dc of [-1, 1]) {
+    const pr = row + pawnDir;
+    const pc = col + dc;
+    if (pr >= 0 && pr < 8 && pc >= 0 && pc < 8) {
+      const p = board[pr][pc];
+      if (p && p[0] === byColor && p[1] === "P") return true;
+    }
+  }
+
+  // 나이트 공격
+  const knightMoves = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+  for (const [dr, dc] of knightMoves) {
+    const r = row + dr, c = col + dc;
+    if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+      const p = board[r][c];
+      if (p && p[0] === byColor && p[1] === "N") return true;
+    }
+  }
+
+  // 킹 공격 (인접)
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const r = row + dr, c = col + dc;
+      if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+        const p = board[r][c];
+        if (p && p[0] === byColor && p[1] === "K") return true;
+      }
+    }
+  }
+
+  // 직선 방향 (룩, 퀸)
+  const straightDirs = [[0,1],[0,-1],[1,0],[-1,0]];
+  for (const [dr, dc] of straightDirs) {
+    for (let i = 1; i < 8; i++) {
+      const r = row + dr * i, c = col + dc * i;
+      if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+      const p = board[r][c];
+      if (p) {
+        if (p[0] === byColor && (p[1] === "R" || p[1] === "Q")) return true;
+        break;
+      }
+    }
+  }
+
+  // 대각선 방향 (비숍, 퀸)
+  const diagDirs = [[1,1],[1,-1],[-1,1],[-1,-1]];
+  for (const [dr, dc] of diagDirs) {
+    for (let i = 1; i < 8; i++) {
+      const r = row + dr * i, c = col + dc * i;
+      if (r < 0 || r >= 8 || c < 0 || c >= 8) break;
+      const p = board[r][c];
+      if (p) {
+        if (p[0] === byColor && (p[1] === "B" || p[1] === "Q")) return true;
+        break;
+      }
+    }
+  }
+
+  return false;
+};
+
+// 킹이 체크 상태인지 확인
+const isInCheckPure = (board, color) => {
+  let kingRow = -1, kingCol = -1;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (board[r][c] === color + "K") {
+        kingRow = r;
+        kingCol = c;
+        break;
+      }
+    }
+    if (kingRow >= 0) break;
+  }
+  if (kingRow < 0) return false;
+  const opponentColor = color === "w" ? "b" : "w";
+  return isSquareAttackedPure(board, kingRow, kingCol, opponentColor);
+};
+
+// 유효한 이동 계산 (순수 함수 - castling/enPassant 정보를 인자로 받음)
+const getValidMovesPure = (board, row, col, piece, castling, enPassant, checkForCheck = true) => {
+  const moves = [];
+  const color = piece[0];
+  const type = piece[1];
+
+  const addMove = (r, c) => {
+    if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+      const target = board[r][c];
+      if (!target || target[0] !== color) {
+        if (checkForCheck) {
+          const testBoard = board.map((row) => [...row]);
+          testBoard[r][c] = piece;
+          testBoard[row][col] = null;
+          // 앙파상 캡처
+          if (type === "P" && enPassant && r === enPassant[0] && c === enPassant[1]) {
+            testBoard[row][c] = null;
+          }
+          if (!isInCheckPure(testBoard, color)) {
+            moves.push([r, c]);
+          }
+        } else {
+          moves.push([r, c]);
+        }
+      }
+    }
+  };
+
+  switch (type) {
+    case "P": {
+      const direction = color === "w" ? -1 : 1;
+      const startRow = color === "w" ? 6 : 1;
+
+      if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
+        addMove(row + direction, col);
+        if (row === startRow && !board[row + 2 * direction][col]) {
+          addMove(row + 2 * direction, col);
+        }
+      }
+
+      [-1, 1].forEach((dc) => {
+        if (row + direction >= 0 && row + direction < 8 && col + dc >= 0 && col + dc < 8) {
+          const target = board[row + direction][col + dc];
+          if (target && target[0] !== color) {
+            addMove(row + direction, col + dc);
+          }
+        }
+      });
+
+      // 앙파상
+      if (enPassant) {
+        const [epRow, epCol] = enPassant;
+        if (row + direction === epRow && Math.abs(col - epCol) === 1) {
+          addMove(epRow, epCol);
+        }
+      }
+      break;
+    }
+
+    case "N":
+      [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr, dc]) => {
+        addMove(row + dr, col + dc);
+      });
+      break;
+
+    case "B":
+    case "R":
+    case "Q": {
+      const directions = {
+        B: [[1,1],[1,-1],[-1,1],[-1,-1]],
+        R: [[0,1],[0,-1],[1,0],[-1,0]],
+        Q: [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],
+      }[type];
+
+      directions.forEach(([dr, dc]) => {
+        for (let i = 1; i < 8; i++) {
+          const r = row + dr * i;
+          const c = col + dc * i;
+          if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+            if (!board[r][c]) {
+              addMove(r, c);
+            } else {
+              if (board[r][c][0] !== color) addMove(r, c);
+              break;
+            }
+          } else break;
+        }
+      });
+      break;
+    }
+
+    case "K":
+      [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr, dc]) => {
+        addMove(row + dr, col + dc);
+      });
+
+      // 캐슬링
+      if (checkForCheck && castling) {
+        const kingRow = color === "w" ? 7 : 0;
+        const opponentColor = color === "w" ? "b" : "w";
+        if (row === kingRow && col === 4) {
+          // 킹사이드 캐슬링
+          if (
+            castling[color + "K"] &&
+            !board[kingRow][5] &&
+            !board[kingRow][6] &&
+            board[kingRow][7] === color + "R"
+          ) {
+            if (
+              !isSquareAttackedPure(board, kingRow, 4, opponentColor) &&
+              !isSquareAttackedPure(board, kingRow, 5, opponentColor) &&
+              !isSquareAttackedPure(board, kingRow, 6, opponentColor)
+            ) {
+              moves.push([kingRow, 6]);
+            }
+          }
+          // 퀸사이드 캐슬링
+          if (
+            castling[color + "Q"] &&
+            !board[kingRow][3] &&
+            !board[kingRow][2] &&
+            !board[kingRow][1] &&
+            board[kingRow][0] === color + "R"
+          ) {
+            if (
+              !isSquareAttackedPure(board, kingRow, 4, opponentColor) &&
+              !isSquareAttackedPure(board, kingRow, 3, opponentColor) &&
+              !isSquareAttackedPure(board, kingRow, 2, opponentColor)
+            ) {
+              moves.push([kingRow, 2]);
+            }
+          }
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+  return moves;
+};
+
+// 게임 종료 체크 (순수 함수)
+const checkGameEndPure = (board, color, castling, enPassant) => {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (piece && piece[0] === color) {
+        const moves = getValidMovesPure(board, r, c, piece, castling, enPassant, true);
+        if (moves.length > 0) return null;
+      }
+    }
+  }
+  if (isInCheckPure(board, color)) {
+    return "checkmate";
+  } else {
+    return "stalemate";
+  }
+};
+
 // ===== AI 엔진 =====
 const PIECE_VALUES = {
   P: 100,
@@ -136,7 +382,6 @@ const PIECE_VALUES = {
   K: 20000,
 };
 
-// 위치 가중치 테이블 (폰의 중앙 진출 선호)
 const PAWN_POSITION_BONUS = [
   [0, 0, 0, 0, 0, 0, 0, 0],
   [50, 50, 50, 50, 50, 50, 50, 50],
@@ -159,7 +404,6 @@ const KNIGHT_POSITION_BONUS = [
   [-50, -40, -30, -30, -30, -30, -40, -50],
 ];
 
-// 보드 평가 함수
 const evaluateBoard = (board, color) => {
   let score = 0;
 
@@ -193,29 +437,56 @@ const evaluateBoard = (board, color) => {
   return score;
 };
 
+// AI용 이동 시뮬레이션 (프로모션 자동 처리)
+const simulateMove = (board, from, to, piece, enPassant) => {
+  const newBoard = board.map((row) => [...row]);
+  const [fromR, fromC] = from;
+  const [toR, toC] = to;
+  const color = piece[0];
+  const type = piece[1];
+
+  newBoard[fromR][fromC] = null;
+
+  // 프로모션: 폰이 마지막 랭크에 도달하면 자동으로 퀸으로 승격
+  if (type === "P" && (toR === 0 || toR === 7)) {
+    newBoard[toR][toC] = color + "Q";
+  } else {
+    newBoard[toR][toC] = piece;
+  }
+
+  // 캐슬링 룩 이동
+  if (type === "K" && Math.abs(fromC - toC) === 2) {
+    if (toC === 6) {
+      newBoard[fromR][5] = newBoard[fromR][7];
+      newBoard[fromR][7] = null;
+    } else if (toC === 2) {
+      newBoard[fromR][3] = newBoard[fromR][0];
+      newBoard[fromR][0] = null;
+    }
+  }
+
+  // 앙파상 캡처
+  if (type === "P" && enPassant && toR === enPassant[0] && toC === enPassant[1]) {
+    newBoard[fromR][toC] = null;
+  }
+
+  return newBoard;
+};
+
 // Minimax 알고리즘
-const minimax = (
-  board,
-  depth,
-  isMaximizing,
-  alpha,
-  beta,
-  color,
-  getValidMovesFunc,
-) => {
+const minimax = (board, depth, isMaximizing, alpha, beta, color, castling, enPassant) => {
   if (depth === 0) {
     return evaluateBoard(board, color);
   }
 
   const currentColor = isMaximizing ? color : color === "w" ? "b" : "w";
 
-  // 모든 가능한 수 찾기
   const allMoves = [];
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
       if (piece && piece[0] === currentColor) {
-        const moves = getValidMovesFunc(board, r, c, piece, true);
+        const moves = getValidMovesPure(board, r, c, piece, castling, enPassant, true);
         moves.forEach(([toR, toC]) => {
           allMoves.push({ from: [r, c], to: [toR, toC], piece });
         });
@@ -224,25 +495,17 @@ const minimax = (
   }
 
   if (allMoves.length === 0) {
-    return isMaximizing ? -999999 : 999999;
+    if (isInCheckPure(board, currentColor)) {
+      return isMaximizing ? -999999 : 999999;
+    }
+    return 0; // 스테일메이트
   }
 
   if (isMaximizing) {
     let maxEval = -Infinity;
     for (const move of allMoves) {
-      const newBoard = board.map((row) => [...row]);
-      newBoard[move.to[0]][move.to[1]] = move.piece;
-      newBoard[move.from[0]][move.from[1]] = null;
-
-      const evaluation = minimax(
-        newBoard,
-        depth - 1,
-        false,
-        alpha,
-        beta,
-        color,
-        getValidMovesFunc,
-      );
+      const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
+      const evaluation = minimax(newBoard, depth - 1, false, alpha, beta, color, castling, null);
       maxEval = Math.max(maxEval, evaluation);
       alpha = Math.max(alpha, evaluation);
       if (beta <= alpha) break;
@@ -251,19 +514,8 @@ const minimax = (
   } else {
     let minEval = Infinity;
     for (const move of allMoves) {
-      const newBoard = board.map((row) => [...row]);
-      newBoard[move.to[0]][move.to[1]] = move.piece;
-      newBoard[move.from[0]][move.from[1]] = null;
-
-      const evaluation = minimax(
-        newBoard,
-        depth - 1,
-        true,
-        alpha,
-        beta,
-        color,
-        getValidMovesFunc,
-      );
+      const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
+      const evaluation = minimax(newBoard, depth - 1, true, alpha, beta, color, castling, null);
       minEval = Math.min(minEval, evaluation);
       beta = Math.min(beta, evaluation);
       if (beta <= alpha) break;
@@ -273,14 +525,14 @@ const minimax = (
 };
 
 // AI가 최적의 수 찾기
-const findBestMove = (board, color, difficulty, getValidMovesFunc) => {
+const findBestMove = (board, color, difficulty, castling, enPassant) => {
   const allMoves = [];
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
       if (piece && piece[0] === color) {
-        const moves = getValidMovesFunc(board, r, c, piece, true);
+        const moves = getValidMovesPure(board, r, c, piece, castling, enPassant, true);
         moves.forEach(([toR, toC]) => {
           allMoves.push({ from: [r, c], to: [toR, toC], piece });
         });
@@ -292,30 +544,22 @@ const findBestMove = (board, color, difficulty, getValidMovesFunc) => {
 
   // 초급: 랜덤 선택
   if (difficulty === "beginner") {
+    // 캡처 가능한 수가 있으면 50% 확률로 선택 (완전 랜덤보다 자연스럽게)
+    const captures = allMoves.filter(m => board[m.to[0]][m.to[1]] !== null);
+    if (captures.length > 0 && Math.random() < 0.5) {
+      return captures[Math.floor(Math.random() * captures.length)];
+    }
     return allMoves[Math.floor(Math.random() * allMoves.length)];
   }
 
-  // 중급: Depth 2
-  // 고급: Depth 3
   const depth = difficulty === "intermediate" ? 2 : 3;
 
   let bestMove = null;
   let bestValue = -Infinity;
 
   for (const move of allMoves) {
-    const newBoard = board.map((row) => [...row]);
-    newBoard[move.to[0]][move.to[1]] = move.piece;
-    newBoard[move.from[0]][move.from[1]] = null;
-
-    const moveValue = minimax(
-      newBoard,
-      depth - 1,
-      false,
-      -Infinity,
-      Infinity,
-      color,
-      getValidMovesFunc,
-    );
+    const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
+    const moveValue = minimax(newBoard, depth - 1, false, -Infinity, Infinity, color, castling, null);
 
     if (moveValue > bestValue) {
       bestValue = moveValue;
@@ -328,9 +572,7 @@ const findBestMove = (board, color, difficulty, getValidMovesFunc) => {
 
 const ChessGame = () => {
   const { user, userDoc, isAdmin } = useAuth();
-  // ... (state definitions)
 
-  // Force strict dark mode background via inline style
   const containerStyle = {
     backgroundColor: "#0a0a12",
     minHeight: "100%",
@@ -352,16 +594,15 @@ const ChessGame = () => {
   const intervalRef = useRef(null);
   const refetchRef = useRef(null);
   const aiTimeoutRef = useRef(null);
-  const lastAiMoveCountRef = useRef(0);
 
   // AI 모드 관련 state
-  const [gameMode, setGameMode] = useState("player"); // 'player' or 'ai'
-  const [aiDifficulty, setAiDifficulty] = useState("intermediate"); // 'beginner', 'intermediate', 'advanced'
+  const [gameMode, setGameMode] = useState("player");
+  const [aiDifficulty, setAiDifficulty] = useState("intermediate");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
 
   // 3D 모드 관련 state
-  const [is3DMode, setIs3DMode] = useState(true); // 기본값 3D 모드
+  const [is3DMode, setIs3DMode] = useState(true);
 
   // 보상 관련 state
   const [showRewardSelection, setShowRewardSelection] = useState(false);
@@ -404,7 +645,6 @@ const ChessGame = () => {
       const currentGameId = gameIdRef.current;
       const currentGameData = gameDataRef.current;
       const currentUser = userRef.current;
-      // 호스트(백 플레이어)가 나가면 항상 방 삭제 (상태 무관)
       if (
         currentGameId &&
         currentGameData &&
@@ -416,7 +656,6 @@ const ChessGame = () => {
     };
 
     window.addEventListener("beforeunload", cleanup);
-
     return () => {
       window.removeEventListener("beforeunload", cleanup);
     };
@@ -434,11 +673,6 @@ const ChessGame = () => {
           return;
         }
 
-        const winnerId =
-          gameDoc.data().players[winnerColor === "w" ? "white" : "black"];
-        const loserId =
-          gameDoc.data().players[loserColor === "w" ? "white" : "black"];
-
         transaction.update(gameRef, {
           status: "finished",
           winner: winnerColor,
@@ -448,8 +682,6 @@ const ChessGame = () => {
             [loserColor === "w" ? "white" : "black"]: RATING_CHANGE.LOSS,
           },
         });
-
-        // ✨ updateUserChessResult 함수 호출을 여기서 제거했습니다.
       });
       if (refetchRef.current) await refetchRef.current();
     },
@@ -459,7 +691,6 @@ const ChessGame = () => {
   useEffect(() => {
     if (gameData && gameData.status === "active" && isMyTurn) {
       intervalRef.current = setInterval(async () => {
-        const gameDocRef = doc(db, "chessGames", gameId);
         const currentTurn = gameData.turn;
         if (currentTurn === "w") {
           const newTime = Math.max(0, whiteTime - 1);
@@ -492,10 +723,7 @@ const ChessGame = () => {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.players.white !== user.uid) {
-          rooms.push({
-            id: doc.id,
-            ...data,
-          });
+          rooms.push({ id: doc.id, ...data });
         }
       });
       setAvailableRooms(rooms);
@@ -507,7 +735,6 @@ const ChessGame = () => {
   useEffect(() => {
     if (showCreateRoom && user) {
       fetchAvailableRooms();
-      // 🔥 [최적화] 5초 → 60초로 변경 (읽기 비용 절감)
       const interval = setInterval(fetchAvailableRooms, 60000);
       return () => clearInterval(interval);
     }
@@ -539,7 +766,6 @@ const ChessGame = () => {
     }
   }, [gameId]);
 
-  // 🔥 [최적화] 60초 → 3분으로 변경 (읽기 비용 절감)
   const { refetch } = usePolling(fetchGameData, {
     interval: 180000,
     enabled: !!gameId,
@@ -549,17 +775,14 @@ const ChessGame = () => {
     refetchRef.current = refetch;
   }, [refetch]);
 
-  // 일일 플레이 횟수 로드
   useEffect(() => {
     const loadDailyPlayCount = () => {
       if (!user) return;
-
       const today = new Date().toDateString();
       const storageKey = `chessPlayCount_${user.uid}_${today}`;
       const count = parseInt(localStorage.getItem(storageKey) || "0", 10);
       setDailyPlayCount(count);
     };
-
     loadDailyPlayCount();
   }, [user]);
 
@@ -573,244 +796,21 @@ const ChessGame = () => {
     }
   }, [feedback.message]);
 
+  // useCallback 래퍼 (컴포넌트 내 UI에서 사용)
   const getValidMoves = useCallback(
     (board, row, col, piece, checkForCheck = true) => {
-      const moves = [];
-      const color = piece[0];
-      const type = piece[1];
-
-      const addMove = (r, c) => {
-        if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-          const target = board[r][c];
-          if (!target || target[0] !== color) {
-            if (checkForCheck) {
-              const testBoard = board.map((row) => [...row]);
-              testBoard[r][c] = piece;
-              testBoard[row][col] = null;
-              if (!isInCheck(testBoard, color)) {
-                moves.push([r, c]);
-              }
-            } else {
-              moves.push([r, c]);
-            }
-          }
-        }
-      };
-
-      switch (type) {
-        case "P":
-          const direction = color === "w" ? -1 : 1;
-          const startRow = color === "w" ? 6 : 1;
-
-          if (
-            row + direction >= 0 &&
-            row + direction < 8 &&
-            !board[row + direction][col]
-          ) {
-            addMove(row + direction, col);
-            if (row === startRow && !board[row + 2 * direction][col]) {
-              addMove(row + 2 * direction, col);
-            }
-          }
-
-          [-1, 1].forEach((dc) => {
-            if (
-              row + direction >= 0 &&
-              row + direction < 8 &&
-              col + dc >= 0 &&
-              col + dc < 8
-            ) {
-              const target = board[row + direction][col + dc];
-              if (target && target[0] !== color) {
-                addMove(row + direction, col + dc);
-              }
-            }
-          });
-
-          if (gameData?.enPassant) {
-            const [epRow, epCol] = gameData.enPassant;
-            if (row + direction === epRow && Math.abs(col - epCol) === 1) {
-              addMove(epRow, epCol);
-            }
-          }
-          break;
-
-        case "N":
-          [
-            [-2, -1],
-            [-2, 1],
-            [-1, -2],
-            [-1, 2],
-            [1, -2],
-            [1, 2],
-            [2, -1],
-            [2, 1],
-          ].forEach(([dr, dc]) => {
-            addMove(row + dr, col + dc);
-          });
-          break;
-
-        case "B":
-        case "R":
-        case "Q":
-          const directions = {
-            B: [
-              [1, 1],
-              [1, -1],
-              [-1, 1],
-              [-1, -1],
-            ],
-            R: [
-              [0, 1],
-              [0, -1],
-              [1, 0],
-              [-1, 0],
-            ],
-            Q: [
-              [0, 1],
-              [0, -1],
-              [1, 0],
-              [-1, 0],
-              [1, 1],
-              [1, -1],
-              [-1, 1],
-              [-1, -1],
-            ],
-          }[type];
-
-          directions.forEach(([dr, dc]) => {
-            for (let i = 1; i < 8; i++) {
-              const r = row + dr * i;
-              const c = col + dc * i;
-              if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                if (!board[r][c]) {
-                  addMove(r, c);
-                } else {
-                  if (board[r][c][0] !== color) addMove(r, c);
-                  break;
-                }
-              } else break;
-            }
-          });
-          break;
-
-        case "K":
-          [
-            [-1, -1],
-            [-1, 0],
-            [-1, 1],
-            [0, -1],
-            [0, 1],
-            [1, -1],
-            [1, 0],
-            [1, 1],
-          ].forEach(([dr, dc]) => {
-            addMove(row + dr, col + dc);
-          });
-
-          if (checkForCheck && gameData?.castling) {
-            const kingRow = color === "w" ? 7 : 0;
-            if (row === kingRow && col === 4) {
-              if (
-                gameData.castling[color + "K"] &&
-                !board[kingRow][5] &&
-                !board[kingRow][6] &&
-                board[kingRow][7] === color + "R"
-              ) {
-                if (
-                  !isSquareUnderAttack(board, kingRow, 4, color) &&
-                  !isSquareUnderAttack(board, kingRow, 5, color) &&
-                  !isSquareUnderAttack(board, kingRow, 6, color)
-                ) {
-                  addMove(kingRow, 6);
-                }
-              }
-              if (
-                gameData.castling[color + "Q"] &&
-                !board[kingRow][3] &&
-                !board[kingRow][2] &&
-                !board[kingRow][1] &&
-                board[kingRow][0] === color + "R"
-              ) {
-                if (
-                  !isSquareUnderAttack(board, kingRow, 4, color) &&
-                  !isSquareUnderAttack(board, kingRow, 3, color) &&
-                  !isSquareUnderAttack(board, kingRow, 2, color)
-                ) {
-                  addMove(kingRow, 2);
-                }
-              }
-            }
-          }
-          break;
-        default:
-          break;
-      }
-
-      return moves;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const castling = gameData?.castling || null;
+      const enPassant = gameData?.enPassant || null;
+      return getValidMovesPure(board, row, col, piece, castling, enPassant, checkForCheck);
     },
-    [gameData],
-  );
-
-  const isSquareUnderAttack = useCallback(
-    (board, row, col, color) => {
-      const opponentColor = color === "w" ? "b" : "w";
-
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          const piece = board[r][c];
-          if (piece && piece[0] === opponentColor) {
-            const moves = getValidMoves(board, r, c, piece, false);
-            if (moves.some(([mr, mc]) => mr === row && mc === col)) {
-              return true;
-            }
-          }
-        }
-      }
-      return false;
-    },
-    [getValidMoves],
+    [gameData?.castling, gameData?.enPassant],
   );
 
   const isInCheck = useCallback(
     (board, color) => {
-      let kingPos = null;
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          if (board[r][c] === color + "K") {
-            kingPos = [r, c];
-            break;
-          }
-        }
-        if (kingPos) break;
-      }
-
-      if (!kingPos) return false;
-
-      return isSquareUnderAttack(board, kingPos[0], kingPos[1], color);
+      return isInCheckPure(board, color);
     },
-    [isSquareUnderAttack],
-  );
-
-  const checkGameEnd = useCallback(
-    (board, color) => {
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          const piece = board[r][c];
-          if (piece && piece[0] === color) {
-            const moves = getValidMoves(board, r, c, piece, true);
-            if (moves.length > 0) return null;
-          }
-        }
-      }
-      if (isInCheck(board, color)) {
-        return "checkmate";
-      } else {
-        return "stalemate";
-      }
-    },
-    [getValidMoves, isInCheck],
+    [],
   );
 
   // 보상 카드 생성
@@ -838,14 +838,10 @@ const ChessGame = () => {
     const weightedRandom = (items) => {
       const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
       let random = Math.random() * totalWeight;
-
       for (const item of items) {
         random -= item.weight;
-        if (random <= 0) {
-          return item.amount;
-        }
+        if (random <= 0) return item.amount;
       }
-
       return items[items.length - 1].amount;
     };
 
@@ -869,17 +865,14 @@ const ChessGame = () => {
         if (!userDocSnap.exists()) return;
 
         const updateData = {};
-
         if (selectedCard.type === "cash") {
           updateData.balance = increment(selectedCard.amount);
         } else if (selectedCard.type === "coupon") {
           updateData.couponBalance = increment(selectedCard.amount);
         }
-
         transaction.update(userRef, updateData);
       });
 
-      // 일일 플레이 횟수 증가
       const newCount = dailyPlayCount + 1;
       localStorage.setItem(storageKey, newCount.toString());
       setDailyPlayCount(newCount);
@@ -893,7 +886,6 @@ const ChessGame = () => {
         type: "success",
       });
 
-      // 🔥 활동 로그 기록 (AI 체스 승리 보상)
       logActivity(db, {
         classCode: userDoc?.classCode,
         userId: user.uid,
@@ -911,7 +903,6 @@ const ChessGame = () => {
         },
       });
 
-      // 게임 나가기
       setTimeout(() => {
         handleLeaveGame();
       }, 2000);
@@ -927,7 +918,6 @@ const ChessGame = () => {
       return;
     }
 
-    // AI 모드일 때 일일 플레이 횟수 체크 (localStorage에서 직접 확인)
     if (gameMode === "ai") {
       const today = new Date().toDateString();
       const storageKey = `chessPlayCount_${user.uid}_${today}`;
@@ -949,7 +939,7 @@ const ChessGame = () => {
     const gameRef = doc(db, "chessGames", newGameId);
 
     const isAiMode = gameMode === "ai";
-    const playerColor = Math.random() > 0.5 ? "w" : "b"; // AI 모드에서 랜덤 색상
+    const playerColor = Math.random() > 0.5 ? "w" : "b";
     const aiColor = playerColor === "w" ? "b" : "w";
 
     const initialGameData = {
@@ -1114,7 +1104,6 @@ const ChessGame = () => {
   };
 
   const handleLeaveGame = useCallback(async () => {
-    // 호스트(백 플레이어)가 나가면 항상 방 삭제 (상태 무관)
     if (gameData && gameId && gameData.players?.white === user?.uid) {
       try {
         await deleteDoc(doc(db, "chessGames", gameId));
@@ -1186,6 +1175,7 @@ const ChessGame = () => {
           if (piece === "bR" && fromRow === 0 && fromCol === 7)
             newCastling.bK = false;
 
+          // 캐슬링 룩 이동
           if (piece[1] === "K" && Math.abs(fromCol - toCol) === 2) {
             if (toCol === 6) {
               newBoard[fromRow][5] = newBoard[fromRow][7];
@@ -1196,6 +1186,7 @@ const ChessGame = () => {
             }
           }
 
+          // 앙파상 캡처
           if (piece[1] === "P" && currentData.enPassant) {
             const [epRow, epCol] = currentData.enPassant;
             if (toRow === epRow && toCol === epCol) {
@@ -1203,6 +1194,7 @@ const ChessGame = () => {
             }
           }
 
+          // 앙파상 설정
           if (piece[1] === "P" && Math.abs(fromRow - toRow) === 2) {
             newEnPassant = [(fromRow + toRow) / 2, fromCol];
           }
@@ -1217,7 +1209,7 @@ const ChessGame = () => {
           let endReason = null;
           let newRatingChange = null;
 
-          const gameEndState = checkGameEnd(newBoard, nextTurn);
+          const gameEndState = checkGameEndPure(newBoard, nextTurn, newCastling, newEnPassant);
           if (gameEndState) {
             newStatus = "finished";
             endReason = gameEndState;
@@ -1307,7 +1299,6 @@ const ChessGame = () => {
       myColor,
       dailyPlayCount,
       user,
-      checkGameEnd,
       setRewardCards,
       setShowRewardSelection,
       setDailyPlayCount,
@@ -1318,9 +1309,8 @@ const ChessGame = () => {
     ],
   );
 
-  // AI 턴 처리 (모든 함수가 정의된 후 실행)
+  // AI 턴 처리
   useEffect(() => {
-    // Cleanup 이전 timeout
     return () => {
       if (aiTimeoutRef.current) {
         clearTimeout(aiTimeoutRef.current);
@@ -1338,24 +1328,12 @@ const ChessGame = () => {
       const aiColor = gameData.aiColor;
       if (gameData.turn !== aiColor) return;
 
-      // 같은 턴에 이미 처리했는지 확인 (moveHistory 길이로 체크)
-      const currentMoveCount = gameData.moveHistory?.length || 0;
-      if (
-        currentMoveCount === lastAiMoveCountRef.current &&
-        currentMoveCount > 0
-      ) {
-        return;
-      }
-
       setIsAiThinking(true);
-      lastAiMoveCountRef.current = currentMoveCount + 1; // 다음 수를 예상
 
-      // AI 사고 시간 시뮬레이션 (500ms ~ 1500ms)
       const thinkingTime = 500 + Math.random() * 1000;
 
       aiTimeoutRef.current = setTimeout(async () => {
         try {
-          // 최신 게임 데이터를 다시 가져옴
           const gameRef = doc(db, "chessGames", gameId);
           const gameSnap = await getDoc(gameRef);
 
@@ -1366,7 +1344,6 @@ const ChessGame = () => {
 
           const currentGameData = gameSnap.data();
 
-          // 여전히 AI 턴인지 확인
           if (
             currentGameData.status !== "active" ||
             currentGameData.turn !== aiColor
@@ -1379,17 +1356,22 @@ const ChessGame = () => {
           const bestMove = findBestMove(
             currentBoard,
             aiColor,
-            aiDifficulty,
-            getValidMoves,
+            currentGameData.aiDifficulty || aiDifficulty,
+            currentGameData.castling,
+            currentGameData.enPassant,
           );
 
           if (bestMove) {
             const { from, to, piece } = bestMove;
-            await executeMove(from[0], from[1], to[0], to[1], piece);
+            // AI 프로모션 처리
+            let promotionPiece = null;
+            if (piece[1] === "P" && (to[0] === 0 || to[0] === 7)) {
+              promotionPiece = "Q";
+            }
+            await executeMove(from[0], from[1], to[0], to[1], piece, promotionPiece);
           }
         } catch (error) {
           logger.error("AI move error:", error);
-          setIsAiThinking(false);
         }
 
         setIsAiThinking(false);
@@ -1404,10 +1386,6 @@ const ChessGame = () => {
     gameData?.status,
     gameData?.moveHistory?.length,
     gameId,
-    aiDifficulty,
-    executeMove,
-    getValidMoves,
-    isMoving,
   ]);
 
   const formatTime = (seconds) => {
@@ -1438,7 +1416,6 @@ const ChessGame = () => {
             )}
           </div>
 
-          {/* 게임 모드 선택 */}
           <div className="game-mode-selector">
             <h3>게임 모드 선택</h3>
             <div className="mode-options">
@@ -1457,7 +1434,6 @@ const ChessGame = () => {
             </div>
           </div>
 
-          {/* AI 난이도 선택 (AI 모드일 때만 표시) */}
           {gameMode === "ai" && (
             <div className="ai-difficulty-selector">
               <h3>AI 난이도</h3>
@@ -1510,7 +1486,6 @@ const ChessGame = () => {
               {gameMode === "ai" ? "🤖 AI 대전 시작" : "새로운 방 만들기"}
             </button>
 
-            {/* 플레이어 대전 모드일 때만 방 참가 기능 표시 */}
             {gameMode === "player" && (
               <div className="join-room">
                 <input
@@ -1614,16 +1589,16 @@ const ChessGame = () => {
             ) : gameData.winner === myColor ? (
               <span className="winner">
                 🎉 승리! (
-                {gameData.ratingChange[myColor === "w" ? "white" : "black"] > 0
+                {gameData.ratingChange?.[myColor === "w" ? "white" : "black"] > 0
                   ? "+"
                   : ""}
-                {gameData.ratingChange[myColor === "w" ? "white" : "black"]}점)
+                {gameData.ratingChange?.[myColor === "w" ? "white" : "black"]}점)
                 쿠폰 3개 획득!
               </span>
             ) : (
               <span className="loser">
                 패배! (
-                {gameData.ratingChange[myColor === "w" ? "white" : "black"]}점)
+                {gameData.ratingChange?.[myColor === "w" ? "white" : "black"]}점)
               </span>
             )
           ) : gameData.status === "waiting" ? (
@@ -1648,7 +1623,6 @@ const ChessGame = () => {
       </div>
 
       <div className="board-container">
-        {/* 3D/2D 토글 버튼 */}
         <div className="view-toggle">
           <button
             className={`toggle-btn ${!is3DMode ? "active" : ""}`}
@@ -1665,7 +1639,6 @@ const ChessGame = () => {
         </div>
 
         {is3DMode ? (
-          // 3D 체스 보드
           <div className="chess-board-3d">
             <Suspense
               fallback={<div className="loading-3d">3D 보드 로딩 중...</div>}
@@ -1681,7 +1654,6 @@ const ChessGame = () => {
             </Suspense>
           </div>
         ) : (
-          // 2D 체스 보드
           <div className={`chess-board ${myColor === "b" ? "flipped" : ""}`}>
             {gameData.board.map((row, rIndex) =>
               row.map((piece, cIndex) => {
@@ -1692,10 +1664,10 @@ const ChessGame = () => {
                   ([r, c]) => r === rIndex && c === cIndex,
                 );
                 const isLight = (rIndex + cIndex) % 2 === 0;
-                const isCheck =
+                const isCheckSquare =
                   piece &&
                   piece[1] === "K" &&
-                  isInCheck(gameData.board, piece[0]);
+                  isInCheckPure(gameData.board, piece[0]);
 
                 return (
                   <div
@@ -1703,7 +1675,7 @@ const ChessGame = () => {
                     className={`square ${isLight ? "light" : "dark"}
                                                    ${isSelected ? "selected" : ""}
                                                    ${isPossibleMove ? "possible" : ""}
-                                                   ${isCheck ? "check" : ""}`}
+                                                   ${isCheckSquare ? "check" : ""}`}
                     onClick={() => handlePieceClick(rIndex, cIndex)}
                   >
                     {piece && (
@@ -1743,7 +1715,6 @@ const ChessGame = () => {
           </div>
         )}
 
-        {/* AI 사고 중 표시 */}
         {isAiThinking && (
           <div className="ai-thinking">
             <div className="thinking-content">
@@ -1753,7 +1724,6 @@ const ChessGame = () => {
           </div>
         )}
 
-        {/* 보상 카드 선택 모달 */}
         {showRewardSelection && rewardCards.length === 2 && (
           <div className="reward-modal">
             <div className="reward-content">

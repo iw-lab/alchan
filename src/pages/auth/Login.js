@@ -400,6 +400,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [classCode, setClassCode] = useState("");
   const [saveId, setSaveId] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -425,6 +427,10 @@ const Login = () => {
       setEmail(savedId);
       setSaveId(true);
     }
+    const savedClassCode = localStorage.getItem("savedClassCode");
+    if (savedClassCode) setClassCode(savedClassCode);
+    const savedStudentId = localStorage.getItem("savedStudentId");
+    if (savedStudentId) setStudentId(savedStudentId);
   }, []);
 
   const handleTabChange = (tab) => {
@@ -436,20 +442,47 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!email.trim() || !password) {
-      setError("이메일과 비밀번호를 모두 입력해주세요.");
-      return;
+
+    let loginEmail = email.trim();
+
+    // 학생 탭: 아이디 + 학급코드로 이메일 자동 생성
+    if (activeTab === "student") {
+      if (!studentId.trim() || !classCode.trim()) {
+        setError("아이디와 학급코드를 모두 입력해주세요.");
+        return;
+      }
+      if (!password) {
+        setError("비밀번호를 입력해주세요.");
+        return;
+      }
+      loginEmail = `${studentId.trim().toLowerCase()}@${classCode.trim().toLowerCase()}.alchan`;
+    } else {
+      if (!loginEmail || !password) {
+        setError("이메일과 비밀번호를 모두 입력해주세요.");
+        return;
+      }
     }
+
     if (!firebaseReady) {
       setError("서비스가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
       return;
     }
     setIsLoading(true);
     try {
-      const firebaseUser = await loginWithEmailPassword(email.trim(), password);
+      const firebaseUser = await loginWithEmailPassword(loginEmail, password);
       if (firebaseUser) {
-        if (saveId) localStorage.setItem("savedLoginId", email.trim());
-        else localStorage.removeItem("savedLoginId");
+        if (activeTab === "student") {
+          if (saveId) {
+            localStorage.setItem("savedStudentId", studentId.trim());
+            localStorage.setItem("savedClassCode", classCode.trim());
+          } else {
+            localStorage.removeItem("savedStudentId");
+            localStorage.removeItem("savedClassCode");
+          }
+        } else {
+          if (saveId) localStorage.setItem("savedLoginId", loginEmail);
+          else localStorage.removeItem("savedLoginId");
+        }
       }
     } catch (error) {
       setError(getFirebaseErrorMessage(error));
@@ -834,24 +867,67 @@ const Login = () => {
           {/* 로그인 폼 */}
           {(activeTab === "student" || activeTab === "teacher") && (
             <form onSubmit={handleLogin} className="p-5 space-y-4">
-              {/* 이메일 */}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-300">
-                  이메일
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="이메일을 입력하세요"
-                    autoComplete="email"
-                    className={`${darkInput} pl-10 pr-4 py-3`}
-                    disabled={isLoading}
-                  />
+              {/* 학생: 아이디 + 학급코드 */}
+              {activeTab === "student" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-slate-300">
+                      아이디
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={studentId}
+                        onChange={(e) => setStudentId(e.target.value)}
+                        placeholder="예: alchan01"
+                        autoComplete="username"
+                        className={darkInput}
+                        style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-slate-300">
+                      학급코드
+                    </label>
+                    <div className="relative">
+                      <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={classCode}
+                        onChange={(e) => setClassCode(e.target.value)}
+                        placeholder="선생님이 알려준 코드"
+                        autoComplete="off"
+                        className={darkInput}
+                        style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* 선생님: 이메일 */
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-slate-300">
+                    이메일
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="이메일을 입력하세요"
+                      autoComplete="email"
+                      className={darkInput}
+                      style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
+                      disabled={isLoading}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 비밀번호 */}
               <div className="space-y-1.5">
@@ -859,14 +935,15 @@ const Login = () => {
                   비밀번호
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
                     autoComplete="current-password"
-                    className={`${darkInput} pl-10 pr-11 py-3`}
+                    className={darkInput}
+                    style={{ paddingLeft: "2.5rem", paddingRight: "2.75rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
                     disabled={isLoading}
                   />
                   <button
@@ -983,13 +1060,14 @@ const Login = () => {
                   이름 <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type="text"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     placeholder="예: 김알찬"
-                    className={`${darkInput} pl-10 pr-4 py-2.5`}
+                    className={darkInput}
+                    style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
                     required
                     disabled={isLoading}
                   />
@@ -1002,13 +1080,14 @@ const Login = () => {
                   이메일 <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                   <input
                     type="email"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     placeholder="예: teacher@school.com"
-                    className={`${darkInput} pl-10 pr-4 py-2.5`}
+                    className={darkInput}
+                    style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
                     required
                     disabled={isLoading}
                   />
@@ -1056,13 +1135,14 @@ const Login = () => {
                     학교명
                   </label>
                   <div className="relative">
-                    <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                     <input
                       type="text"
                       value={schoolName}
                       onChange={(e) => setSchoolName(e.target.value)}
                       placeholder="예: 알찬초등학교"
-                      className={`${darkInput} pl-10 pr-3 py-2.5`}
+                      className={darkInput}
+                      style={{ paddingLeft: "2.5rem", paddingRight: "0.75rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
                       disabled={isLoading}
                     />
                   </div>
@@ -1072,13 +1152,14 @@ const Login = () => {
                     학급
                   </label>
                   <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                     <input
                       type="text"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       placeholder="예: 6-1반"
-                      className={`${darkInput} pl-10 pr-3 py-2.5`}
+                      className={darkInput}
+                      style={{ paddingLeft: "2.5rem", paddingRight: "0.75rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
                       disabled={isLoading}
                     />
                   </div>

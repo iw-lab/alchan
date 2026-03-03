@@ -22,9 +22,9 @@ const {
   getCentralStocksSnapshot,
 } = require("./realStockService");
 
-// 보안: 인증 토큰 체크 (GitHub Actions에서 호출 가능)
-// 환경변수 미설정 시 모든 요청을 거부
-const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN;
+// 보안: 인증 토큰 체크 (cron-job.org에서 호출 가능)
+// Secret Manager 또는 환경변수에서 읽기
+const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 if (!AUTH_TOKEN) {
   logger.warn(
     "SCHEDULER_AUTH_TOKEN 환경변수가 설정되지 않았습니다. 스케줄러 엔드포인트가 비활성화됩니다.",
@@ -37,7 +37,7 @@ if (!AUTH_TOKEN) {
 // Settings/scheduler 문서의 vacationMode 필드로 관리
 // 🔥 비용 절감: 30분 캐시로 Firestore 읽기 최소화
 let vacationModeCache = {
-  value: true, // 🔥 기본값: 방학 모드 ON (안전 모드)
+  value: false, // 🔥 기본값: 방학 모드 OFF (정상 운영)
   lastChecked: 0,
 };
 const VACATION_CACHE_TTL = 30 * 60 * 1000; // 30분 캐시
@@ -55,7 +55,7 @@ async function isVacationMode() {
     if (settingsDoc.exists) {
       vacationModeCache.value = settingsDoc.data()?.vacationMode === true;
     } else {
-      vacationModeCache.value = true; // 문서 없으면 방학 모드로 간주 (안전)
+      vacationModeCache.value = false; // 문서 없으면 정상 운영
     }
     vacationModeCache.lastChecked = now;
     return vacationModeCache.value;
