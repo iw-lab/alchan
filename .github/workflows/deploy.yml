@@ -38,9 +38,8 @@ jobs:
         run: |
           VERSION="1.0.${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          # 커밋 메시지에서 릴리스 노트 추출
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          # 멀티라인 커밋 메시지를 파일로 저장
+          git log -1 --pretty=%s > /tmp/commit_subject.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -50,9 +49,6 @@ jobs:
           body: |
             ## 알찬 v${{ steps.version.outputs.version }}
 
-            ${{ steps.version.outputs.commit_msg }}
-
-            ---
             ### 사용 방법
             - **웹**: [알찬 웹앱](https://inconomysu-class.web.app) 접속 (자동 최신 버전)
             - **Android**: APK 다운로드 후 설치 (별도 빌드 시 첨부)
