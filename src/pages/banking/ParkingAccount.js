@@ -126,9 +126,28 @@ const calculateCompoundInterest = (principal, dailyRate, days) => {
   return { interest: Math.round(interest), total: Math.round(total) };
 };
 
+// 적금 이자 계산: 매일 납입 시 각 납입금이 남은 기간만큼 복리
+// Day 0 → termInDays일간 이자, Day 1 → (termInDays-1)일간 이자, ...
+const calculateSavingsInterest = (dailyAmount, dailyRate, termInDays, depositsCount) => {
+  if (!dailyAmount || !dailyRate || termInDays <= 0)
+    return { interest: 0, total: 0, totalDeposited: 0 };
+  const r = dailyRate / 100;
+  const actualDeposits = depositsCount != null ? depositsCount : termInDays;
+  let total = 0;
+  for (let i = 0; i < actualDeposits; i++) {
+    const daysOfInterest = termInDays - i;
+    total += dailyAmount * Math.pow(1 + r, daysOfInterest);
+  }
+  const totalDeposited = dailyAmount * actualDeposits;
+  return {
+    interest: Math.round(total - totalDeposited),
+    total: Math.round(total),
+    totalDeposited,
+  };
+};
+
 // 일일 이자 계산 (메모이제이션으로 최적화)
 const calculateDailyInterest = (principal, dailyRate) => {
-  // 콘솔 로그 제거 - 성능 최적화
   return Math.round(principal * (dailyRate / 100));
 };
 
@@ -144,16 +163,26 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
   const daysRemaining = product.maturityDate
     ? Math.max(0, differenceInDays(product.maturityDate, new Date()))
     : 0;
-  const dailyRate = product.rate; // 연이율을 일이율로 변환
+  const isSavings = product.type === "savings";
 
-  const { interest, total } = calculateCompoundInterest(
-    product.balance,
-    product.rate, // 일복리
-    product.termInDays,
-  );
+  // 적금: dailyAmount 기반 계산 / 예금·대출: 기존 방식
+  const dailyAmount = product.dailyAmount || 0;
+  const depositsCount = product.depositsCount || 0;
+  const totalDeposited = product.totalDeposited || product.balance;
+
+  let interest, total;
+  if (isSavings && dailyAmount > 0) {
+    const result = calculateSavingsInterest(dailyAmount, product.rate, product.termInDays, product.termInDays);
+    interest = result.interest;
+    total = result.total;
+  } else {
+    const result = calculateCompoundInterest(product.balance, product.rate, product.termInDays);
+    interest = result.interest;
+    total = result.total;
+  }
 
   const dailyInterestAmount = calculateDailyInterest(
-    product.balance,
+    isSavings ? totalDeposited : product.balance,
     product.rate,
   );
 
@@ -177,7 +206,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
           )}
         </div>
         <span className="text-xl font-bold text-cyber-cyan">
-          {formatCurrencyWithUnit(product.balance)}
+          {isSavings ? formatCurrencyWithUnit(totalDeposited) : formatCurrencyWithUnit(product.balance)}
         </span>
       </div>
 
@@ -186,12 +215,35 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
           <span className="font-medium">금리 (일):</span>
           <span className="font-bold text-cyber-cyan">{product.rate}%</span>
         </div>
-        <div className="flex justify-between">
-          <span className="font-medium">일일 이자:</span>
-          <span className="font-bold text-emerald-400">
-            +{formatCurrencyWithUnit(dailyInterestAmount)}/일
-          </span>
-        </div>
+        {isSavings && dailyAmount > 0 ? (
+          <>
+            <div className="flex justify-between">
+              <span className="font-medium">일 납입금:</span>
+              <span className="font-bold text-violet-400">
+                {formatCurrencyWithUnit(dailyAmount)}/일
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">납입 진행:</span>
+              <span className="font-bold text-violet-400">
+                {depositsCount}/{product.termInDays}일
+              </span>
+            </div>
+            <div className="w-full bg-white/10 rounded-full h-2 mt-1">
+              <div
+                className="bg-violet-500 h-2 rounded-full transition-all"
+                style={{ width: `${Math.min(100, (depositsCount / product.termInDays) * 100)}%` }}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-between">
+            <span className="font-medium">일일 이자:</span>
+            <span className="font-bold text-emerald-400">
+              +{formatCurrencyWithUnit(dailyInterestAmount)}/일
+            </span>
+          </div>
+        )}
         {product.maturityDate && (
           <>
             <div className="flex justify-between">
@@ -215,6 +267,14 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
       <div className="border-t border-dashed border-white/10 my-4"></div>
 
       <div className="text-[15px] text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
+        {isSavings && dailyAmount > 0 && (
+          <div className="flex justify-between">
+            <span className="font-semibold">총 납입 예정액:</span>
+            <span className="font-bold text-slate-200">
+              {formatCurrencyWithUnit(dailyAmount * product.termInDays)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="font-semibold">만기 시 이자 (세전):</span>
           <span className="font-bold text-emerald-400 text-[17px]">
@@ -222,7 +282,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
           </span>
         </div>
         <div className="flex justify-between text-[17px]">
-          <span className="font-bold">만기 시 총액:</span>
+          <span className="font-bold">만기 시 총 수령액:</span>
           <span className="font-bold text-cyber-cyan">
             {formatCurrencyWithUnit(total)}
           </span>
@@ -351,6 +411,7 @@ const SubscriptionModal = ({
   isOpen,
   onClose,
   product,
+  productType,
   onConfirm,
   isProcessing,
 }) => {
@@ -360,10 +421,22 @@ const SubscriptionModal = ({
 
   const numAmount = parseFloat(amount);
   const dailyRate = product.dailyRate;
-  const { interest: projectedInterest, total: projectedTotal } =
-    !isNaN(numAmount) && numAmount > 0
-      ? calculateCompoundInterest(numAmount, dailyRate, product.termInDays)
-      : { interest: 0, total: 0 };
+  const isSavings = productType === "savings";
+
+  // 적금: 일 납입금 기반 예상 이자 / 예금: 일시불 기반
+  let projectedInterest = 0, projectedTotal = 0, projectedTotalDeposited = 0;
+  if (!isNaN(numAmount) && numAmount > 0) {
+    if (isSavings) {
+      const result = calculateSavingsInterest(numAmount, dailyRate, product.termInDays);
+      projectedInterest = result.interest;
+      projectedTotal = result.total;
+      projectedTotalDeposited = result.totalDeposited;
+    } else {
+      const result = calculateCompoundInterest(numAmount, dailyRate, product.termInDays);
+      projectedInterest = result.interest;
+      projectedTotal = result.total;
+    }
+  }
 
   return (
     <div className={cls.modalOverlay} onClick={onClose}>
@@ -386,10 +459,15 @@ const SubscriptionModal = ({
             <strong className="text-cyber-cyan">기간:</strong>{" "}
             {product.termInDays}일
           </div>
+          {isSavings && (
+            <div className="text-[15px] text-violet-400 mt-2 font-semibold">
+              매일 자동으로 납입됩니다 (첫 납입은 즉시 처리)
+            </div>
+          )}
         </div>
 
         <p className="mb-3 text-base font-semibold text-slate-200">
-          가입 금액을 입력해주세요
+          {isSavings ? "일 납입 금액을 입력해주세요" : "가입 금액을 입력해주세요"}
         </p>
         <input
           type="number"
@@ -402,12 +480,18 @@ const SubscriptionModal = ({
 
         {numAmount > 0 && (
           <div className="mb-5 p-4 bg-emerald-500/10 rounded-[10px] border border-emerald-500/30">
+            {isSavings && (
+              <div className="text-[15px] text-slate-300 mb-1.5">
+                총 납입 예정액: <strong>{formatCurrencyWithUnit(projectedTotalDeposited)}</strong>
+                <span className="text-slate-500 text-sm"> ({formatCurrencyWithUnit(numAmount)} x {product.termInDays}일)</span>
+              </div>
+            )}
             <div className="text-[15px] text-emerald-400 mb-1.5">
               예상 만기 이자:{" "}
               <strong>+{formatCurrencyWithUnit(projectedInterest)}</strong>
             </div>
             <div className="text-base text-emerald-400 font-bold">
-              만기 시 총액: {formatCurrencyWithUnit(projectedTotal)}
+              만기 시 총 수령액: {formatCurrencyWithUnit(projectedTotal)}
             </div>
           </div>
         )}
@@ -780,11 +864,12 @@ const ParkingAccount = ({
           throw new Error("은행(선생님)에 대출 가능한 자금이 부족합니다.");
         }
 
+        const isSavingsType = type === "savings";
         const newProductData = {
           name: product.name,
           termInDays: product.termInDays,
           rate: product.dailyRate,
-          balance: amount,
+          balance: isSavingsType ? amount : amount, // 적금: 첫 납입금 = 1일치
           startDate: serverTimestamp(),
           maturityDate: maturityDate,
           type:
@@ -793,8 +878,14 @@ const ParkingAccount = ({
               : type === "savings"
                 ? "savings"
                 : "loan",
-          teacherId: teacherAccount.id, // 선생님 계정 ID 저장
+          teacherId: teacherAccount.id,
           teacherName: teacherAccount.name || "선생님",
+          // 적금 전용 필드
+          ...(isSavingsType && {
+            dailyAmount: amount,        // 일 납입금
+            totalDeposited: amount,     // 누적 납입액 (첫 1일치)
+            depositsCount: 1,           // 납입 횟수
+          }),
         };
 
         const newProductRef = doc(collection(db, "users", userId, "products"));
@@ -807,7 +898,7 @@ const ParkingAccount = ({
           transaction.update(userRef, { cash: increment(amount) });
           transaction.update(teacherRef, { cash: increment(-amount) });
         } else {
-          // 예금/적금: 학생에서 선생님으로
+          // 예금/적금: 학생에서 선생님으로 (적금은 첫 1일치만)
           transaction.update(userRef, { cash: increment(-amount) });
           transaction.update(teacherRef, { cash: increment(amount) });
         }
@@ -882,13 +973,19 @@ const ParkingAccount = ({
     }
 
     const dailyRate = rate;
-    const { total, interest } = calculateCompoundInterest(
-      balance,
-      dailyRate,
-      termInDays,
-    );
+    const isSavings = type === "savings" && product.dailyAmount > 0;
+    let total, interest;
+    if (isSavings) {
+      const result = calculateSavingsInterest(product.dailyAmount, dailyRate, termInDays, termInDays);
+      total = result.total;
+      interest = result.interest;
+    } else {
+      const result = calculateCompoundInterest(balance, dailyRate, termInDays);
+      total = result.total;
+      interest = result.interest;
+    }
 
-    logger.log(`계산 결과: 원금=${balance}, 이자=${interest}, 총액=${total}`);
+    logger.log(`계산 결과: ${isSavings ? '적금' : '예금'} 원금=${isSavings ? product.totalDeposited : balance}, 이자=${interest}, 총액=${total}`);
 
     const confirmMsg = isLoan
       ? `대출 만기 상환: 원금 ${formatCurrency(balance)}${currencyUnit} + 이자 ${formatCurrency(interest)}${currencyUnit} = ${formatCurrency(total)}${currencyUnit}을 상환하시겠습니까?`
@@ -1023,6 +1120,8 @@ const ParkingAccount = ({
 
     const { id, name, type, balance } = product;
     const isLoan = type === "loan";
+    // 적금: totalDeposited 사용 (실제 납입한 금액만 반환)
+    const refundAmount = (type === "savings" && product.totalDeposited) ? product.totalDeposited : balance;
 
     if (!userId) {
       displayMessage("사용자 정보가 없습니다. 다시 로그인해주세요.", "error");
@@ -1032,7 +1131,7 @@ const ParkingAccount = ({
 
     const confirmMessage = isLoan
       ? `대출금 ${formatCurrency(balance)}${currencyUnit}을 상환하시겠습니까?`
-      : `'${name}'을(를) 중도 해지하시겠습니까? (이자 없이 원금만 반환됩니다)`;
+      : `'${name}'을(를) 중도 해지하시겠습니까? (이자 없이 납입 원금 ${formatCurrency(refundAmount)}${currencyUnit}만 반환됩니다)`;
 
     if (!window.confirm(confirmMessage)) {
       logger.log("사용자가 중도 해지를 취소했습니다.");
@@ -1064,7 +1163,7 @@ const ParkingAccount = ({
     };
     const originalCash = currentCash;
 
-    const cashChangeAmount = isLoan ? -balance : balance;
+    const cashChangeAmount = isLoan ? -balance : refundAmount;
     setCurrentCash((prev) => prev + cashChangeAmount);
 
     if (type === "deposit") {
@@ -1107,15 +1206,15 @@ const ParkingAccount = ({
           transaction.update(teacherRef, { cash: increment(balance) });
           logger.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
         } else {
-          // 예금/적금 중도 해지: 선생님 → 학생 (원금만, 이자 없음)
-          if (teacherCashInDb < balance) {
+          // 예금/적금 중도 해지: 선생님 → 학생 (납입 원금만, 이자 없음)
+          if (teacherCashInDb < refundAmount) {
             throw new Error(
-              `은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(balance)}${currencyUnit})`,
+              `은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(refundAmount)}${currencyUnit})`,
             );
           }
-          transaction.update(userRef, { cash: increment(balance) });
-          transaction.update(teacherRef, { cash: increment(-balance) });
-          logger.log(`중도 해지: 학생 +${balance}, 선생님 -${balance}`);
+          transaction.update(userRef, { cash: increment(refundAmount) });
+          transaction.update(teacherRef, { cash: increment(-refundAmount) });
+          logger.log(`중도 해지: 학생 +${refundAmount}, 선생님 -${refundAmount}`);
         }
 
         transaction.delete(productRef);
@@ -1551,6 +1650,7 @@ const ParkingAccount = ({
         isOpen={modal.isOpen}
         onClose={handleCloseModal}
         product={modal.product}
+        productType={modal.type}
         onConfirm={handleSubscribe}
         isProcessing={isProcessing}
       />

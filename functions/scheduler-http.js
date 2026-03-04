@@ -273,11 +273,25 @@ exports.midnightReset = onRequest(
         return;
       }
 
-      logger.info(`[midnightReset] 일일 과제 리셋 시작`);
+      logger.info(`[midnightReset] 일일 과제 리셋 + 적금 자동 납입 시작`);
 
       await resetDailyTasksLogic();
 
-      res.json({ success: true, message: "일일 과제 리셋 완료" });
+      // 🔥 적금 매일 자동 납입 처리
+      let savingsResult = { processed: 0, skipped: 0, failed: 0 };
+      try {
+        savingsResult = await processDailySavingsDeposits();
+        logger.info(`[midnightReset] 적금 자동 납입 완료:`, savingsResult);
+      } catch (savingsError) {
+        logger.error("[midnightReset] 적금 자동 납입 오류:", savingsError);
+        savingsResult.error = savingsError.message;
+      }
+
+      res.json({
+        success: true,
+        message: "일일 과제 리셋 + 적금 자동 납입 완료",
+        savings: savingsResult,
+      });
     } catch (error) {
       logger.error("[midnightReset] 오류:", error);
       res.status(500).json({ success: false, error: error.message });
@@ -958,6 +972,88 @@ exports.deleteSimulationStocksFunction = onCall(
 //     logger.error(`FCM 메시지 발송 실패:`, error);
 //   }
 // }
+
+// 🔥 적금 매일 자동 납입 처리
+async function processDailySavingsDeposits() {
+  logger.info("[적금] 매일 자동 납입 처리 시작");
+  let processed = 0, skipped = 0, failed = 0;
+
+  // 모든 사용자의 적금 상품 조회 (collectionGroup)
+  const savingsQuery = await db.collectionGroup("products")
+    .where("type", "==", "savings")
+    .where("dailyAmount", ">", 0)
+    .get();
+
+  if (savingsQuery.empty) {
+    logger.info("[적금] 처리할 적금 상품 없음");
+    return { processed, skipped, failed };
+  }
+
+  for (const productDoc of savingsQuery.docs) {
+    const product = productDoc.data();
+    const productRef = productDoc.ref;
+    // users/{userId}/products/{productId} 에서 userId 추출
+    const userId = productRef.parent.parent.id;
+
+    try {
+      // 이미 모든 납입 완료된 경우 건너뛰기
+      if ((product.depositsCount || 0) >= product.termInDays) {
+        skipped++;
+        continue;
+      }
+
+      const teacherId = product.teacherId;
+      if (!teacherId) {
+        logger.warn(`[적금] ${userId} - teacherId 없음, 건너뜀`);
+        skipped++;
+        continue;
+      }
+
+      const dailyAmount = product.dailyAmount;
+      const userRef = db.collection("users").doc(userId);
+      const teacherRef = db.collection("users").doc(teacherId);
+
+      await db.runTransaction(async (transaction) => {
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) {
+          throw new Error("사용자 없음");
+        }
+
+        const userCash = userSnap.data().cash || 0;
+
+        // 현금 부족 시 건너뛰기 (에러 아님)
+        if (userCash < dailyAmount) {
+          logger.info(`[적금] ${userId} - 현금 부족 (보유: ${userCash}, 필요: ${dailyAmount}), 건너뜀`);
+          skipped++;
+          return;
+        }
+
+        // 학생 → 선생님 이체
+        transaction.update(userRef, {
+          cash: admin.firestore.FieldValue.increment(-dailyAmount),
+        });
+        transaction.update(teacherRef, {
+          cash: admin.firestore.FieldValue.increment(dailyAmount),
+        });
+
+        // 적금 상품 업데이트
+        transaction.update(productRef, {
+          totalDeposited: admin.firestore.FieldValue.increment(dailyAmount),
+          depositsCount: admin.firestore.FieldValue.increment(1),
+          balance: admin.firestore.FieldValue.increment(dailyAmount),
+        });
+
+        processed++;
+      });
+    } catch (error) {
+      logger.error(`[적금] ${userId} 처리 오류:`, error.message);
+      failed++;
+    }
+  }
+
+  logger.info(`[적금] 자동 납입 완료 - 처리: ${processed}, 건너뜀: ${skipped}, 실패: ${failed}`);
+  return { processed, skipped, failed };
+}
 
 // [삭제됨] 시뮬레이션 로직 - 실제 주식만 사용
 // updateMarketConditionLogic, updateCentralStockMarketLogic, autoManageStocksLogic 등 제거됨

@@ -286,17 +286,20 @@ const Banking = () => {
           field === "minAmount" ||
           field === "maxAmount"
         ) {
-          const numValue = parseInt(value);
-          updatedProduct[field] =
-            isNaN(numValue) || numValue < (field === "termInDays" ? 1 : 0)
-              ? field === "termInDays"
-                ? 1
-                : 0
-              : numValue;
+          // 빈 값 허용 (입력 중 편의) → 저장 시 검증
+          if (value === "" || value === undefined) {
+            updatedProduct[field] = "";
+          } else {
+            const numValue = parseInt(value);
+            updatedProduct[field] = isNaN(numValue) ? "" : numValue;
+          }
         } else if (field === "dailyRate") {
-          const dailyRateValue = parseFloat(value);
-          updatedProduct.dailyRate =
-            isNaN(dailyRateValue) || dailyRateValue < 0 ? 0 : dailyRateValue;
+          if (value === "" || value === undefined) {
+            updatedProduct.dailyRate = "";
+          } else {
+            const dailyRateValue = parseFloat(value);
+            updatedProduct.dailyRate = isNaN(dailyRateValue) ? "" : dailyRateValue;
+          }
         } else if (field === "name") {
           updatedProduct[field] = value;
         }
@@ -568,7 +571,7 @@ const Banking = () => {
                             <input
                               type="number"
                               min="1"
-                              value={p.termInDays || 0}
+                              value={p.termInDays ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "deposits",
@@ -591,7 +594,7 @@ const Banking = () => {
                               type="number"
                               step="0.001"
                               min="0"
-                              value={p.dailyRate || 0}
+                              value={p.dailyRate ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "deposits",
@@ -614,7 +617,7 @@ const Banking = () => {
                             <input
                               type="number"
                               min="0"
-                              value={p.minAmount || 0}
+                              value={p.minAmount ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "deposits",
@@ -679,7 +682,7 @@ const Banking = () => {
                         <th style={{ width: "15%" }}>기간(일)</th>
                         <th style={{ width: "18%" }}>일 이율(%)</th>
                         <th style={{ width: "18%" }}>
-                          최소 월납입({currencyUnit})
+                          최소 일납입({currencyUnit})
                         </th>
                         <th style={{ width: "12%" }}>관리</th>
                       </tr>
@@ -712,7 +715,7 @@ const Banking = () => {
                             <input
                               type="number"
                               min="1"
-                              value={p.termInDays || 0}
+                              value={p.termInDays ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "installments",
@@ -735,7 +738,7 @@ const Banking = () => {
                               type="number"
                               step="0.001"
                               min="0"
-                              value={p.dailyRate || 0}
+                              value={p.dailyRate ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "installments",
@@ -758,7 +761,7 @@ const Banking = () => {
                             <input
                               type="number"
                               min="0"
-                              value={p.minAmount || 0}
+                              value={p.minAmount ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "installments",
@@ -856,7 +859,7 @@ const Banking = () => {
                             <input
                               type="number"
                               min="1"
-                              value={p.termInDays || 0}
+                              value={p.termInDays ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "loans",
@@ -879,7 +882,7 @@ const Banking = () => {
                               type="number"
                               step="0.001"
                               min="0"
-                              value={p.dailyRate || 0}
+                              value={p.dailyRate ?? ""}
                               onChange={(e) =>
                                 handleParkingProductChange(
                                   "loans",

@@ -2,17 +2,18 @@
 
 // 가중치 기반 랜덤 보상 생성 (직업 할일용)
 export const generateJobTaskReward = () => {
-  // 현금 보상 (100원 ~ 50,000원) - 높은 보상 확률 증가
+  // 현금 보상 (1,000원 ~ 500,000원) - 높은 금액일수록 낮은 확률
   const cashRewards = [
-    { amount: 50000, weight: 5 },     // 5만원: 확률 증가
-    { amount: 30000, weight: 10 },    // 3만원: 확률 증가
-    { amount: 20000, weight: 15 },    // 2만원: 확률 증가
-    { amount: 10000, weight: 20 },    // 1만원: 확률 증가
-    { amount: 5000, weight: 18 },     // 5천원
-    { amount: 3000, weight: 12 },     // 3천원
-    { amount: 1000, weight: 10 },     // 1천원: 확률 감소
-    { amount: 500, weight: 7 },       // 500원: 확률 감소
-    { amount: 100, weight: 3 }        // 100원: 확률 대폭 감소
+    { amount: 500000, weight: 0.5 },  // 50만원: 0.5% (초대박)
+    { amount: 300000, weight: 1 },    // 30만원: 1%
+    { amount: 100000, weight: 2 },    // 10만원: 2%
+    { amount: 50000, weight: 4 },     // 5만원: 4%
+    { amount: 30000, weight: 6 },     // 3만원: 6%
+    { amount: 20000, weight: 8 },     // 2만원: 8%
+    { amount: 10000, weight: 13 },    // 1만원: 13%
+    { amount: 5000, weight: 18 },     // 5천원: 18%
+    { amount: 3000, weight: 20 },     // 3천원: 20%
+    { amount: 1000, weight: 27.5 },   // 1천원: 27.5% (가장 높은 확률)
   ];
 
   // 쿠폰 보상 (1개, 3개, 5개, 10개, 20개만)

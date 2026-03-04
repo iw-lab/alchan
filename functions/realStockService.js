@@ -458,6 +458,7 @@ async function updateCentralStocksSnapshot() {
       recentBuyVolume: data.recentBuyVolume,
       recentSellVolume: data.recentSellVolume,
       priceHistory: (data.priceHistory || []).slice(-20), // 최근 20개까지만
+      realStockSymbol: data.realStockSymbol || null,
       realStockData: data.realStockData || null,
       lastUpdated: data.lastUpdated || null,
     };

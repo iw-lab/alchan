@@ -1501,42 +1501,42 @@ exports.getItemContextData = onCall(
   },
 );
 
-// exports.updateStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
-//   const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
-//   const {itemId, updatesToApply} = request.data;
-//
-//   if (!itemId || !updatesToApply || Object.keys(updatesToApply).length === 0) {
-//     throw new HttpsError("invalid-argument", "아이템 ID 또는 업데이트 데이터가 유효하지 않습니다.");
-//   }
-//
-//   const itemRef = db.collection("storeItems").doc(itemId);
-//
-//   try {
-//     const itemDoc = await itemRef.get();
-//
-//     if (!itemDoc.exists) {
-//       throw new Error("아이템을 찾을 수 없습니다.");
-//     }
-//
-//     // updatedAt 타임스탬프 추가
-//     const updates = {
-//       ...updatesToApply,
-//       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-//     };
-//
-//     await itemRef.update(updates);
-//
-//     logger.info(`[updateStoreItem] ${uid}님이 아이템 ${itemId} 수정: ${JSON.stringify(updatesToApply)}`);
-//
-//     return {
-//       success: true,
-//       message: "아이템이 성공적으로 수정되었습니다.",
-//     };
-//   } catch (error) {
-//     logger.error(`[updateStoreItem] Error for user ${uid}:`, error);
-//     throw new HttpsError("aborted", error.message || "아이템 수정에 실패했습니다.");
-//   }
-// });
+exports.updateStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
+  const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
+  const {itemId, updatesToApply} = request.data;
+
+  if (!itemId || !updatesToApply || Object.keys(updatesToApply).length === 0) {
+    throw new HttpsError("invalid-argument", "아이템 ID 또는 업데이트 데이터가 유효하지 않습니다.");
+  }
+
+  const itemRef = db.collection("storeItems").doc(itemId);
+
+  try {
+    const itemDoc = await itemRef.get();
+
+    if (!itemDoc.exists) {
+      throw new Error("아이템을 찾을 수 없습니다.");
+    }
+
+    // updatedAt 타임스탬프 추가
+    const updates = {
+      ...updatesToApply,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await itemRef.update(updates);
+
+    logger.info(`[updateStoreItem] ${uid}님이 아이템 ${itemId} 수정: ${JSON.stringify(updatesToApply)}`);
+
+    return {
+      success: true,
+      message: "아이템이 성공적으로 수정되었습니다.",
+    };
+  } catch (error) {
+    logger.error(`[updateStoreItem] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "아이템 수정에 실패했습니다.");
+  }
+});
 
 const cors = require("cors")({
   origin: [
@@ -1622,37 +1622,37 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
   });
 });
 
-// exports.deleteStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
-//   const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
-//   const {itemId} = request.data;
-//
-//   if (!itemId) {
-//     throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
-//   }
-//
-//   const itemRef = db.collection("storeItems").doc(itemId);
-//
-//   try {
-//     const itemDoc = await itemRef.get();
-//
-//     if (!itemDoc.exists) {
-//       throw new Error("아이템을 찾을 수 없습니다.");
-//     }
-//
-//     const itemData = itemDoc.data();
-//     await itemRef.delete();
-//
-//     logger.info(`[deleteStoreItem] ${uid}님이 아이템 삭제: ${itemData.name} (ID: ${itemId})`);
-//
-//     return {
-//       success: true,
-//       message: "아이템이 성공적으로 삭제되었습니다.",
-//     };
-//   } catch (error) {
-//     logger.error(`[deleteStoreItem] Error for user ${uid}:`, error);
-//     throw new HttpsError("aborted", error.message || "아이템 삭제에 실패했습니다.");
-//   }
-// });
+exports.deleteStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
+  const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
+  const {itemId} = request.data;
+
+  if (!itemId) {
+    throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
+  }
+
+  const itemRef = db.collection("storeItems").doc(itemId);
+
+  try {
+    const itemDoc = await itemRef.get();
+
+    if (!itemDoc.exists) {
+      throw new Error("아이템을 찾을 수 없습니다.");
+    }
+
+    const itemData = itemDoc.data();
+    await itemRef.delete();
+
+    logger.info(`[deleteStoreItem] ${uid}님이 아이템 삭제: ${itemData.name} (ID: ${itemId})`);
+
+    return {
+      success: true,
+      message: "아이템이 성공적으로 삭제되었습니다.",
+    };
+  } catch (error) {
+    logger.error(`[deleteStoreItem] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "아이템 삭제에 실패했습니다.");
+  }
+});
 
 exports.purchaseStoreItem = onCall(
   { region: "asia-northeast3" },

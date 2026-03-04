@@ -161,10 +161,50 @@ export const batchDataLoader = {
 };
 
 // === 시장 상태 함수 ===
+// 한국 주식인지 확인 (.KS/.KQ 심볼 또는 currency=KRW)
+const isKoreanStock = (stock) => {
+  const symbol = stock?.realStockSymbol || '';
+  if (symbol.endsWith('.KS') || symbol.endsWith('.KQ')) return true;
+  // 스냅샷에 심볼이 없을 때 currency 폴백
+  if (stock?.realStockData?.currency === 'KRW') return true;
+  return false;
+};
+
+// 클라이언트 사이드에서 현재 시간 기반으로 실시간 시장 상태 계산
 export const getRealtimeMarketState = (stock) => {
   if (!stock?.isRealStock) return null;
-  if (stock.realStockData?.marketState) return stock.realStockData.marketState;
-  return null;
+
+  const now = new Date();
+
+  if (isKoreanStock(stock)) {
+    // 한국 시장: 09:00 ~ 15:30 KST (평일)
+    const koreaTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    const day = koreaTime.getDay();
+    const hour = koreaTime.getHours();
+    const minute = koreaTime.getMinutes();
+    const totalMin = hour * 60 + minute;
+    const isWeekday = day >= 1 && day <= 5;
+
+    if (!isWeekday) return 'CLOSED';
+    if (totalMin >= 9 * 60 && totalMin < 15 * 60 + 30) return 'REGULAR';
+    if (totalMin >= 8 * 60 && totalMin < 9 * 60) return 'PRE';
+    return 'CLOSED';
+  } else {
+    // 미국 시장: 09:30 ~ 16:00 EST (평일)
+    // + Pre: 04:00~09:30, Post: 16:00~20:00
+    const usTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const day = usTime.getDay();
+    const hour = usTime.getHours();
+    const minute = usTime.getMinutes();
+    const totalMin = hour * 60 + minute;
+    const isWeekday = day >= 1 && day <= 5;
+
+    if (!isWeekday) return 'CLOSED';
+    if (totalMin >= 9 * 60 + 30 && totalMin < 16 * 60) return 'REGULAR';
+    if (totalMin >= 4 * 60 && totalMin < 9 * 60 + 30) return 'PRE';
+    if (totalMin >= 16 * 60 && totalMin < 20 * 60) return 'POST';
+    return 'CLOSED';
+  }
 };
 
 export const getMarketStateLabel = (stock) => {

@@ -26,17 +26,18 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(20, 20, 35, 0.8)',
     borderRadius: '16px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-    padding: '30px',
-    marginBottom: '20px'
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+    border: '1px solid rgba(0, 255, 242, 0.2)',
+    padding: '0',
+    marginBottom: '20px',
+    overflow: 'hidden'
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: 'white',
     padding: '30px',
-    borderRadius: '16px 16px 0 0',
     marginBottom: '0'
   },
   title: {
@@ -50,9 +51,9 @@ const styles = {
   },
   tabs: {
     display: 'flex',
-    borderBottom: '2px solid #e5e7eb',
-    backgroundColor: '#f9fafb',
-    marginTop: '-4px'
+    borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(15, 15, 28, 0.9)',
+    marginTop: '0'
   },
   tab: {
     flex: 1,
@@ -61,30 +62,31 @@ const styles = {
     border: 'none',
     fontSize: '16px',
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#9999bb',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     borderBottom: '3px solid transparent'
   },
   activeTab: {
-    color: '#667eea',
-    backgroundColor: 'white',
-    borderBottom: '3px solid #667eea'
+    color: '#00fff2',
+    backgroundColor: 'rgba(0, 255, 242, 0.05)',
+    borderBottom: '3px solid #00fff2'
   },
   disabledTab: {
     opacity: '0.5',
     cursor: 'not-allowed'
   },
   formSection: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'rgba(15, 15, 28, 0.6)',
     padding: '20px',
     borderRadius: '12px',
-    marginBottom: '20px'
+    marginBottom: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.08)'
   },
   formTitle: {
     fontSize: '20px',
     fontWeight: '700',
-    color: '#374151',
+    color: '#e8e8ff',
     marginBottom: '20px'
   },
   inputGroup: {
@@ -94,27 +96,31 @@ const styles = {
     display: 'block',
     fontSize: '14px',
     fontWeight: '600',
-    color: '#374151',
+    color: '#ccccee',
     marginBottom: '8px'
   },
   input: {
     width: '100%',
     padding: '12px',
-    border: '2px solid #e5e7eb',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
     borderRadius: '8px',
     fontSize: '14px',
     transition: 'border-color 0.3s ease',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    color: '#e8e8ff'
   },
   textarea: {
     width: '100%',
     padding: '12px',
-    border: '2px solid #e5e7eb',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
     borderRadius: '8px',
     fontSize: '14px',
     minHeight: '100px',
     resize: 'vertical',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    color: '#e8e8ff'
   },
   gridTwo: {
     display: 'grid',
@@ -122,10 +128,10 @@ const styles = {
     gap: '20px'
   },
   iconSelector: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     padding: '20px',
     borderRadius: '12px',
-    border: '2px solid #e5e7eb'
+    border: '1px solid rgba(255, 255, 255, 0.1)'
   },
   selectedIcon: {
     fontSize: '48px',
@@ -134,7 +140,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(0, 255, 242, 0.1)',
     borderRadius: '12px',
     marginBottom: '16px'
   },
@@ -152,9 +158,9 @@ const styles = {
     color: 'white'
   },
   secondaryButton: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '2px solid #e5e7eb'
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#9999bb',
+    border: '1px solid rgba(255, 255, 255, 0.2)'
   },
   iconGrid: {
     display: 'grid',
@@ -167,7 +173,7 @@ const styles = {
     padding: '8px',
     border: '2px solid transparent',
     borderRadius: '8px',
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   },
@@ -180,8 +186,9 @@ const styles = {
   categoryButton: {
     padding: '8px 16px',
     borderRadius: '8px',
-    border: '2px solid #e5e7eb',
-    backgroundColor: 'white',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#ccccee',
     fontSize: '13px',
     fontWeight: '500',
     cursor: 'pointer',
@@ -193,15 +200,15 @@ const styles = {
     borderColor: '#667eea'
   },
   priceIncreaseSection: {
-    backgroundColor: '#fef3c7',
-    border: '2px solid #fcd34d',
+    backgroundColor: 'rgba(255, 209, 102, 0.1)',
+    border: '1px solid rgba(255, 209, 102, 0.3)',
     padding: '20px',
     borderRadius: '12px',
     marginBottom: '20px'
   },
   helpText: {
     fontSize: '13px',
-    color: '#6b7280',
+    color: '#9999bb',
     marginTop: '8px',
     lineHeight: '1.5'
   },
@@ -221,7 +228,7 @@ const styles = {
     alignItems: 'center',
     marginTop: '30px',
     paddingTop: '20px',
-    borderTop: '2px solid #e5e7eb'
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
   }
 };
 
@@ -384,7 +391,7 @@ const AdminItemPage = ({
           </button>
         </div>
 
-        <div style={{ padding: '30px' }}>
+        <div style={{ padding: '30px', backgroundColor: 'rgba(20, 20, 35, 0.9)' }}>
           {(activeTab === "addItem" || activeTab === "editItem") && (
             <form onSubmit={handleSubmit}>
               <div style={styles.formSection}>
@@ -409,15 +416,16 @@ const AdminItemPage = ({
                   </div>
 
                   {showIconPicker && (
-                    <div style={{ 
-                      marginTop: '20px', 
-                      padding: '16px', 
-                      backgroundColor: '#f9fafb', 
-                      borderRadius: '8px', 
-                      width: '100%', 
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '16px',
+                      backgroundColor: 'rgba(10, 10, 18, 0.8)',
+                      borderRadius: '8px',
+                      width: '100%',
                       boxSizing: 'border-box',
                       maxHeight: '400px',
-                      overflowY: 'auto'
+                      overflowY: 'auto',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
                     }}>
                       <div style={styles.categoryButtons}>
                         {Object.keys(iconCollection).map((category) => (
@@ -442,11 +450,11 @@ const AdminItemPage = ({
                             onClick={() => handleIconSelect(icon)}
                             style={styles.iconButton}
                             onMouseEnter={(e) => {
-                              e.target.style.backgroundColor = '#e5e7eb';
+                              e.target.style.backgroundColor = 'rgba(0, 255, 242, 0.15)';
                               e.target.style.transform = 'scale(1.1)';
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.backgroundColor = '#f9fafb';
+                              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
                               e.target.style.transform = 'scale(1)';
                             }}
                           >
@@ -570,7 +578,7 @@ const AdminItemPage = ({
                     onChange={handleChange}
                     style={styles.checkbox}
                   />
-                  <label style={{ fontSize: '16px', fontWeight: '500' }}>
+                  <label style={{ fontSize: '16px', fontWeight: '500', color: '#e8e8ff' }}>
                     {item.available ? "🟢 판매중" : "🔴 판매중지"}
                   </label>
                 </div>

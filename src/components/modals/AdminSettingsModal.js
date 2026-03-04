@@ -1857,169 +1857,122 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "jobAndTask" && jobTaskSubTab === "task" && (
           <div className="task-management-tab">
             {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">
-                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                </p>
+              <div style={{ marginBottom: '16px', padding: '10px 16px', background: 'rgba(0,255,242,0.08)', borderRadius: '10px', border: '1px solid rgba(0,255,242,0.15)' }}>
+                <span style={{ color: '#00fff2', fontWeight: 600, fontSize: '14px' }}>🏫 현재 관리 학급: <strong>{userClassCode}</strong></span>
               </div>
             )}
             {/* 할일 관리 섹션 */}
             <div className="admin-tasks-settings section-card">
-              <h3>할일 관리</h3>
-              <p className="admin-section-desc">
-                직업별 할일과 공통 할일을 관리합니다.
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h3 style={{ margin: 0 }}>할일 관리</h3>
+                <span style={{ fontSize: '12px', color: '#00fff2', background: 'rgba(0,255,242,0.1)', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(0,255,242,0.2)' }}>🎁 보상은 랜덤 지급 (1,000~500,000원)</span>
+              </div>
+              <p className="admin-section-desc" style={{ marginBottom: '20px' }}>
+                직업별 할일과 공통 할일을 관리합니다. 학생이 할일 완료 시 현금 또는 쿠폰이 랜덤 지급됩니다.
               </p>
 
               {showAddTaskForm ? (
-                <div className="add-task-form">
-                  <h4>{adminEditingTask ? "할일 수정" : "새 할일 추가"}</h4>
-                  <p>
-                    {taskFormIsJobTask && jobs && taskFormJobId
-                      ? `직업: ${
-                          jobs.find((j) => j.id === taskFormJobId)?.title ||
-                          "알 수 없는 직업"
-                        }`
-                      : "공통 할일"}
-                  </p>
-
-                  <div className="form-group">
-                    <label>할일 이름:</label>
-                    <input
-                      type="text"
-                      value={adminNewTaskName}
-                      onChange={(e) => setAdminNewTaskName(e.target.value)}
-                      placeholder="할일 이름 입력"
-                      style={inputStyle}
-                    />
+                <div style={{ background: 'rgba(15,15,28,0.8)', borderRadius: '14px', padding: '24px', border: '1px solid rgba(0,255,242,0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '24px' }}>{adminEditingTask ? "✏️" : "➕"}</span>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#e8e8ff', fontSize: '18px' }}>{adminEditingTask ? "할일 수정" : "새 할일 추가"}</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9999bb' }}>
+                        {taskFormIsJobTask && jobs && taskFormJobId
+                          ? `직업: ${jobs.find((j) => j.id === taskFormJobId)?.title || "알 수 없는 직업"}`
+                          : "공통 할일"}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>보상 (쿠폰):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={adminNewTaskReward}
-                      onChange={(e) => setAdminNewTaskReward(e.target.value)}
-                      placeholder="쿠폰 보상"
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>최대 클릭 수:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={adminNewTaskMaxClicks}
-                      onChange={(e) => setAdminNewTaskMaxClicks(e.target.value)}
-                      placeholder="최대 클릭 수"
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  <div
-                    className="form-group"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    <label
-                      style={{
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        margin: 0,
-                      }}
-                    >
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ccccee', marginBottom: '6px' }}>할일 이름</label>
                       <input
-                        type="checkbox"
-                        checked={adminNewTaskRequiresApproval || false}
-                        onChange={(e) =>
-                          setAdminNewTaskRequiresApproval(e.target.checked)
-                        }
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          cursor: "pointer",
-                        }}
+                        type="text"
+                        value={adminNewTaskName}
+                        onChange={(e) => setAdminNewTaskName(e.target.value)}
+                        placeholder="할일 이름 입력"
+                        style={{ ...inputStyle, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff', borderRadius: '10px', padding: '12px 14px' }}
                       />
-                      <span>승인 필요 (보너스 할일)</span>
-                    </label>
-                    {adminNewTaskRequiresApproval && (
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          color: "#f59e0b",
-                          fontWeight: "500",
-                        }}
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#ccccee', marginBottom: '6px' }}>하루 최대 횟수</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={adminNewTaskMaxClicks}
+                        onChange={(e) => setAdminNewTaskMaxClicks(e.target.value)}
+                        placeholder="5"
+                        style={{ ...inputStyle, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff', borderRadius: '10px', padding: '12px 14px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <label
+                        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}
                       >
-                        학생이 완료 시 관리자 승인 후 보상 지급
-                      </span>
-                    )}
+                        <input
+                          type="checkbox"
+                          checked={adminNewTaskRequiresApproval || false}
+                          onChange={(e) => setAdminNewTaskRequiresApproval(e.target.checked)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: '#f59e0b' }}
+                        />
+                        <span style={{ color: '#e8e8ff', fontSize: '14px' }}>승인 필요</span>
+                      </label>
+                      {adminNewTaskRequiresApproval && (
+                        <span style={{ fontSize: "11px", color: "#f59e0b", marginLeft: '8px' }}>
+                          관리자 승인 후 보상 지급
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="task-form-buttons">
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                     <button
-                      onClick={() => {
-                        logger.log("[AdminSettingsModal] 할일 저장 버튼 클릭");
-                        if (
-                          handleSaveTask &&
-                          typeof handleSaveTask === "function"
-                        ) {
-                          handleSaveTask();
-                        } else {
-                          logger.error(
-                            "[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다.",
-                          );
-                          alert("할일 저장 기능을 사용할 수 없습니다.");
-                        }
-                      }}
-                      style={saveBtnStyle}
+                      onClick={() => { setShowAddTaskForm(false); setAdminEditingTask(null); }}
+                      style={{ ...cancelBtnStyle, borderRadius: '10px', padding: '10px 20px' }}
                     >
-                      {adminEditingTask ? "수정" : "추가"}
+                      취소
                     </button>
                     <button
                       onClick={() => {
-                        setShowAddTaskForm(false);
-                        setAdminEditingTask(null);
+                        logger.log("[AdminSettingsModal] 할일 저장 버튼 클릭");
+                        if (handleSaveTask && typeof handleSaveTask === "function") {
+                          handleSaveTask();
+                        } else {
+                          logger.error("[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다.");
+                          alert("할일 저장 기능을 사용할 수 없습니다.");
+                        }
                       }}
-                      style={cancelBtnStyle}
+                      style={{ ...saveBtnStyle, borderRadius: '10px', padding: '10px 24px' }}
                     >
-                      취소
+                      {adminEditingTask ? "수정" : "추가"}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="task-management">
-                  <div className="task-management-buttons">
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => {
-                        logger.log(
-                          "[AdminSettingsModal] 공통 할일 추가 버튼 클릭",
-                        );
+                        logger.log("[AdminSettingsModal] 공통 할일 추가 버튼 클릭");
                         handleTaskAdd(null, false);
                       }}
-                      style={actionBtnStyle}
+                      style={{ ...actionBtnStyle, borderRadius: '10px', padding: '10px 18px', fontSize: '14px' }}
                     >
-                      공통 할일 추가
+                      + 공통 할일 추가
                     </button>
                     <select
                       onChange={(e) => {
                         if (e.target.value) {
-                          logger.log(
-                            "[AdminSettingsModal] 직업별 할일 추가 선택:",
-                            e.target.value,
-                          );
+                          logger.log("[AdminSettingsModal] 직업별 할일 추가 선택:", e.target.value);
                           handleTaskAdd(e.target.value, true);
                         }
                       }}
-                      style={selectStyle}
+                      style={{ ...selectStyle, borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
                       value=""
                     >
-                      <option value="">직업별 할일 추가...</option>
+                      <option value="">+ 직업별 할일 추가...</option>
                       {Array.isArray(jobs) &&
                         jobs.map((job) => (
                           <option key={job.id} value={job.id}>
@@ -2029,148 +1982,108 @@ const AdminSettingsModal = ({
                     </select>
                   </div>
 
-                  {/* 직업별 할일 목록 */}
-                  <div className="tasks-by-job">
-                    <h4>직업별 할일</h4>
-                    {Array.isArray(jobs) && jobs.length > 0 ? (
-                      jobs.map((job) => (
-                        <div key={job.id} className="job-tasks">
-                          <h5>{job.title}</h5>
-                          {Array.isArray(job.tasks) && job.tasks.length > 0 ? (
-                            <ul className="admin-tasks">
-                              {job.tasks.map((task) => (
-                                <li key={task.id} className="admin-task-item">
-                                  <div className="task-info">
-                                    <span className="task-name">
-                                      {task.name}
-                                      {task.requiresApproval && (
-                                        <span
-                                          style={{
-                                            marginLeft: "6px",
-                                            fontSize: "11px",
-                                            color: "#f59e0b",
-                                            fontWeight: "bold",
-                                          }}
-                                        >
-                                          [승인필요]
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="task-reward">
-                                      보상: {task.reward || 0} 쿠폰
-                                    </span>
-                                    <span className="task-clicks">
-                                      클릭: {task.clicks || 0}/
-                                      {task.maxClicks || 5}
-                                    </span>
-                                  </div>
-                                  <div className="task-actions">
-                                    <button
-                                      onClick={() => {
-                                        logger.log(
-                                          "[AdminSettingsModal] 직업 할일 수정 버튼 클릭:",
-                                          task,
-                                          job.id,
-                                        );
-                                        handleTaskEdit(task, job.id);
-                                      }}
-                                      className="edit-button"
-                                    >
-                                      수정
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        logger.log(
-                                          "[AdminSettingsModal] 직업 할일 삭제 버튼 클릭:",
-                                          task.id,
-                                          job.id,
-                                        );
-                                        handleTaskDelete(task.id, job.id);
-                                      }}
-                                      className="delete-button"
-                                    >
-                                      삭제
-                                    </button>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="no-items-message">
-                              이 직업에 등록된 할일이 없습니다.
-                            </p>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="no-items-message">
-                        등록된 직업이 없습니다.
-                      </p>
-                    )}
-                  </div>
-
                   {/* 공통 할일 목록 */}
-                  <div className="common-tasks">
-                    <h4>공통 할일</h4>
+                  <div style={{ marginBottom: '24px' }}>
+                    <h4 style={{ color: '#00fff2', fontSize: '15px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '4px', height: '16px', background: '#00fff2', borderRadius: '2px', display: 'inline-block' }}></span>
+                      공통 할일
+                      <span style={{ fontSize: '12px', color: '#9999bb', fontWeight: 400 }}>({Array.isArray(commonTasks) ? commonTasks.length : 0}개)</span>
+                    </h4>
                     {Array.isArray(commonTasks) && commonTasks.length > 0 ? (
-                      <ul className="admin-tasks">
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
                         {commonTasks.map((task) => (
-                          <li key={task.id} className="admin-task-item">
-                            <div className="task-info">
-                              <span className="task-name">
-                                {task.name}
-                                {task.requiresApproval && (
-                                  <span
-                                    style={{
-                                      marginLeft: "6px",
-                                      fontSize: "11px",
-                                      color: "#f59e0b",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    [승인필요]
-                                  </span>
-                                )}
-                              </span>
-                              <span className="task-reward">
-                                보상: {task.reward || 0} 쿠폰
-                              </span>
-                              <span className="task-clicks">
-                                클릭: {task.clicks || 0}/{task.maxClicks || 5}
-                              </span>
+                          <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(15,15,28,0.6)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', transition: 'border-color 0.2s' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: '18px' }}>📋</span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {task.name}
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '10px' }}>🎁 랜덤보상</span>
+                                  <span style={{ fontSize: '11px', color: '#9999bb' }}>횟수 {task.maxClicks || 5}회</span>
+                                  {task.requiresApproval && <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px' }}>승인필요</span>}
+                                </div>
+                              </div>
                             </div>
-                            <div className="task-actions">
+                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                               <button
-                                onClick={() => {
-                                  logger.log(
-                                    "[AdminSettingsModal] 공통 할일 수정 버튼 클릭:",
-                                    task,
-                                  );
-                                  handleTaskEdit(task);
-                                }}
-                                className="edit-button"
+                                onClick={() => { logger.log("[AdminSettingsModal] 공통 할일 수정 버튼 클릭:", task); handleTaskEdit(task); }}
+                                style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
                               >
                                 수정
                               </button>
                               <button
-                                onClick={() => {
-                                  logger.log(
-                                    "[AdminSettingsModal] 공통 할일 삭제 버튼 클릭:",
-                                    task.id,
-                                  );
-                                  handleTaskDelete(task.id);
-                                }}
-                                className="delete-button"
+                                onClick={() => { logger.log("[AdminSettingsModal] 공통 할일 삭제 버튼 클릭:", task.id); handleTaskDelete(task.id); }}
+                                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
                               >
                                 삭제
                               </button>
                             </div>
-                          </li>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     ) : (
-                      <p className="no-items-message">
+                      <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px', background: 'rgba(15,15,28,0.4)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)' }}>
                         등록된 공통 할일이 없습니다.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* 직업별 할일 목록 */}
+                  <div>
+                    <h4 style={{ color: '#818cf8', fontSize: '15px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '4px', height: '16px', background: '#818cf8', borderRadius: '2px', display: 'inline-block' }}></span>
+                      직업별 할일
+                    </h4>
+                    {Array.isArray(jobs) && jobs.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {jobs.map((job) => (
+                          <div key={job.id} style={{ background: 'rgba(15,15,28,0.4)', borderRadius: '12px', border: '1px solid rgba(129,140,248,0.15)', overflow: 'hidden' }}>
+                            <div style={{ padding: '10px 16px', background: 'rgba(129,140,248,0.08)', borderBottom: '1px solid rgba(129,140,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#c4b5fd', fontWeight: 700, fontSize: '14px' }}>💼 {job.title}</span>
+                              <span style={{ fontSize: '11px', color: '#9999bb' }}>{Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
+                            </div>
+                            {Array.isArray(job.tasks) && job.tasks.length > 0 ? (
+                              <div style={{ padding: '8px' }}>
+                                {job.tasks.map((task, idx) => (
+                                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '8px', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                      <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {task.name}
+                                      </span>
+                                      <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '10px', flexShrink: 0 }}>🎁 랜덤</span>
+                                      <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                                      {task.requiresApproval && <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px', flexShrink: 0 }}>승인</span>}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
+                                      <button
+                                        onClick={() => { logger.log("[AdminSettingsModal] 직업 할일 수정 버튼 클릭:", task, job.id); handleTaskEdit(task, job.id); }}
+                                        style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
+                                      >
+                                        수정
+                                      </button>
+                                      <button
+                                        onClick={() => { logger.log("[AdminSettingsModal] 직업 할일 삭제 버튼 클릭:", task.id, job.id); handleTaskDelete(task.id, job.id); }}
+                                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px', margin: 0 }}>
+                                할일 없음
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px', background: 'rgba(15,15,28,0.4)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        등록된 직업이 없습니다.
                       </p>
                     )}
                   </div>
