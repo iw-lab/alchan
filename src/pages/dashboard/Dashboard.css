@@ -11,7 +11,6 @@
   padding: 20px;
   background-color: transparent !important;
   flex-grow: 1;
-  overflow-y: auto;
 }
 
 .dashboard-loading {

@@ -371,13 +371,7 @@ select {
 
 /* 모바일 스크롤 성능 개선 */
 @media (max-width: 768px) {
-  * {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  html,
   body {
-    overscroll-behavior: none;
     touch-action: manipulation;
   }
 
@@ -584,8 +578,15 @@ textarea {
    ============================================ */
 
 /* 메인 컨테이너 스크롤 수정 */
-html,
-body,
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
 #root {
   min-height: 100%;
   overflow-x: hidden;

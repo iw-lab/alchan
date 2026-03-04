@@ -420,7 +420,7 @@ export default function AlchanLayout() {
   return (
     // 🔥 [최적화] ItemProvider를 여기에 배치 - 로그인 후에만 마운트되어 불필요한 Firestore 읽기 방지
     <ItemProvider>
-      <div className="min-h-screen bg-[#0a0a12] text-gray-100 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 flex">
+      <div className="min-h-screen bg-[#0a0a12] text-gray-100 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 flex flex-col md:flex-row">
         {/* PC 사이드바 */}
         <AlchanSidebar
           isOpen={isSidebarOpen}
@@ -429,7 +429,7 @@ export default function AlchanLayout() {
         />
 
         {/* 메인 콘텐츠 영역 - 스크롤 문제 수정 */}
-        <main className="flex-1 min-w-0 md:min-h-screen relative bg-[#0a0a12] overflow-visible">
+        <main className="flex-1 min-w-0 md:min-h-screen relative bg-[#0a0a12]">
           {/* 헤더 */}
           <AlchanHeader
             toggleSidebar={toggleSidebar}
