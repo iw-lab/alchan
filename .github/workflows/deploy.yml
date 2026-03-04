@@ -13,9 +13,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # GitHub Releases 생성 권한
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check if build folder exists
         run: |
@@ -28,3 +31,35 @@ jobs:
         run: |
           npm install -g firebase-tools
           firebase deploy --only hosting --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+
+      # GitHub Release 생성 (AppUpdateChecker가 감지)
+      - name: Set version
+        id: version
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # 커밋 메시지에서 릴리스 노트 추출
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: "v${{ steps.version.outputs.version }}"
+          body: |
+            ## 알찬 v${{ steps.version.outputs.version }}
+
+            ${{ steps.version.outputs.commit_msg }}
+
+            ---
+            ### 사용 방법
+            - **웹**: [알찬 웹앱](https://inconomysu-class.web.app) 접속 (자동 최신 버전)
+            - **Android**: APK 다운로드 후 설치 (별도 빌드 시 첨부)
+            - **iOS**: Safari에서 웹앱 접속 → 공유 → 홈 화면에 추가
+
+            빌드: #${{ github.run_number }} | 커밋: ${{ github.sha }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
