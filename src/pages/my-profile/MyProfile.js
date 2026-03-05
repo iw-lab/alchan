@@ -92,18 +92,18 @@ export default function MyProfile() {
 
   // 닉네임 변경
   const handleChangeNickname = async () => {
-    if (!newNickname.trim()) {
+    const trimmed = newNickname.trim();
+    if (!trimmed) {
       setError("닉네임을 입력해주세요.");
       return;
     }
-    if (newNickname.length < 2 || newNickname.length > 10) {
+    if (trimmed.length < 2 || trimmed.length > 10) {
       setError("닉네임은 2~10자 사이여야 합니다.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const trimmed = newNickname.trim();
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, { nickname: trimmed, name: trimmed });
       // 로컬 상태도 즉시 갱신
@@ -114,7 +114,8 @@ export default function MyProfile() {
       setShowNicknameModal(false);
       resetModals();
     } catch (err) {
-      setError("닉네임 변경에 실패했습니다.");
+      console.error("[MyProfile] 닉네임 변경 실패:", err);
+      setError("닉네임 변경에 실패했습니다: " + (err.message || err));
     } finally {
       setIsLoading(false);
     }

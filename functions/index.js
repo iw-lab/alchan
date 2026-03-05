@@ -4027,14 +4027,27 @@ exports.repairStudentLogin = onCall(
         const existingDoc = usersSnapshot.docs[0];
         const oldUid = existingDoc.id;
 
-        // UID가 다르면 기존 데이터를 새 UID로 복사
+        // UID가 다르면 기존 데이터를 새 UID로 이동 (서브컬렉션 포함)
         if (oldUid !== userRecord.uid) {
           const existingData = existingDoc.data();
           await db.collection("users").doc(userRecord.uid).set({
             ...existingData,
             email,
           });
-          logger.info(`[repairStudentLogin] Firestore 문서 복사: ${oldUid} → ${userRecord.uid}`);
+
+          // 서브컬렉션 이동 (inventory, portfolio)
+          const subcollections = ["inventory", "portfolio"];
+          for (const sub of subcollections) {
+            const subSnap = await db.collection("users").doc(oldUid).collection(sub).get();
+            for (const subDoc of subSnap.docs) {
+              await db.collection("users").doc(userRecord.uid).collection(sub).doc(subDoc.id).set(subDoc.data());
+              await subDoc.ref.delete();
+            }
+          }
+
+          // 기존 문서 삭제 (중복 방지)
+          await db.collection("users").doc(oldUid).delete();
+          logger.info(`[repairStudentLogin] Firestore 문서 이동: ${oldUid} → ${userRecord.uid} (기존 삭제)`);
         }
       } else {
         // Firestore 문서가 아예 없으면 기본 문서 생성
@@ -4063,6 +4076,104 @@ exports.repairStudentLogin = onCall(
     } catch (error) {
       logger.error(`[repairStudentLogin] 실패: ${email}`, error);
       throw new HttpsError("internal", error.message || "계정 복구에 실패했습니다.");
+    }
+  },
+);
+
+// 임시: 학생 UID 불일치 진단 및 수복
+exports.fixDuplicateUser = onRequest(
+  { region: "asia-northeast3", invoker: "public" },
+  async (req, res) => {
+    const token = req.query.token;
+    if (token !== "my-super-secret-token-2024-isw") {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const email = req.query.email;
+    const searchName = req.query.name;
+    const searchClass = req.query.classCode;
+
+    // 이름 또는 학급 전체 검색 모드
+    if (searchClass) {
+      const snap = await db.collection("users")
+        .where("classCode", "==", searchClass)
+        .get();
+      const matches = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (!data.isAdmin && !data.isSuperAdmin && !data.isTeacher) {
+          if (!searchName || (data.name && data.name.includes(searchName)) || (data.nickname && data.nickname.includes(searchName))) {
+            matches.push({ id: d.id, name: data.name, nickname: data.nickname, email: data.email, cash: data.cash, coupons: data.coupons });
+          }
+        }
+      });
+      res.json({ total: matches.length, matches });
+      return;
+    }
+
+    if (!email) {
+      res.status(400).json({ error: "email or name+classCode required" });
+      return;
+    }
+
+    try {
+      // 1. Auth UID 확인
+      let authUid = null;
+      try {
+        const authUser = await admin.auth().getUserByEmail(email);
+        authUid = authUser.uid;
+      } catch (e) {
+        res.json({ error: "Auth 계정 없음", code: e.code });
+        return;
+      }
+
+      // 2. Firestore에서 이 이메일의 모든 문서 찾기
+      const snap = await db.collection("users").where("email", "==", email).get();
+      const docs = [];
+      snap.forEach(d => docs.push({ id: d.id, data: d.data() }));
+
+      // 3. Auth UID로 직접 문서 확인
+      const authDoc = await db.collection("users").doc(authUid).get();
+
+      const fix = req.query.fix === "true";
+      const result = {
+        authUid,
+        authDocExists: authDoc.exists,
+        authDocData: authDoc.exists ? { cash: authDoc.data().cash, coupons: authDoc.data().coupons, name: authDoc.data().name, nickname: authDoc.data().nickname } : null,
+        firestoreDocs: docs.map(d => ({ id: d.id, name: d.data.name, cash: d.data.cash, coupons: d.data.coupons, nickname: d.data.nickname })),
+        fixed: false,
+      };
+
+      // 4. 수복: Auth UID와 다른 문서에 진짜 데이터가 있으면 이동
+      if (fix && docs.length > 0) {
+        const correctDoc = docs.find(d => d.id !== authUid && d.data.cash > 0);
+        if (correctDoc) {
+          // 진짜 데이터를 Auth UID 문서로 덮어쓰기
+          await db.collection("users").doc(authUid).set(correctDoc.data);
+
+          // 서브컬렉션 이동
+          const subcollections = ["inventory", "portfolio"];
+          for (const sub of subcollections) {
+            const subSnap = await db.collection("users").doc(correctDoc.id).collection(sub).get();
+            for (const subDoc of subSnap.docs) {
+              await db.collection("users").doc(authUid).collection(sub).doc(subDoc.id).set(subDoc.data());
+              await subDoc.ref.delete();
+            }
+            result[`${sub}Moved`] = subSnap.size;
+          }
+
+          // 기존 문서 삭제
+          await db.collection("users").doc(correctDoc.id).delete();
+          result.fixed = true;
+          result.movedFrom = correctDoc.id;
+          result.movedTo = authUid;
+        }
+      }
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   },
 );
