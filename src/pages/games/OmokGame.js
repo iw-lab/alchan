@@ -628,6 +628,7 @@ const OmokGame = () => {
   const [showWinAnimation, setShowWinAnimation] = useState(false);
   const [availableGames, setAvailableGames] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [joinRoomCode, setJoinRoomCode] = useState("");
   const [selectedCell, setSelectedCell] = useState(null);
   const [gameResult, setGameResult] = useState(null);
   const refetchGameDataRef = useRef(null);
@@ -1700,15 +1701,92 @@ const OmokGame = () => {
                     : "새 게임 만들기"}
               </button>
               {createdGameId && !error && gameMode === "player" && (
-                <div className="omok-success">
-                  게임방이 생성되었습니다!{" "}
-                  <strong>게임 ID: {createdGameId.slice(-6)}</strong>
+                <div className="omok-success" style={{ textAlign: "center" }}>
+                  게임방이 생성되었습니다!
+                  <br />
+                  <strong
+                    style={{ fontSize: 18, color: "#00fff2", cursor: "pointer", textDecoration: "underline", letterSpacing: 2 }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdGameId);
+                      setFeedback({ message: "방 코드가 복사되었습니다! 친구에게 공유하세요.", type: "success" });
+                    }}
+                    title="클릭하여 복사"
+                  >
+                    방 코드: {createdGameId.slice(-6)}
+                  </strong>
+                  <br />
+                  <span style={{ fontSize: 12, color: "#94a3b8" }}>코드를 클릭하면 복사됩니다</span>
                   <br />
                   다른 플레이어가 참가하기를 기다리고 있습니다.
                 </div>
               )}
             </div>
           </div>
+
+          {gameMode === "player" && (
+            <div className="lobby-section" style={{ marginBottom: 12 }}>
+              <h3>🔗 코드로 참가</h3>
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <input
+                  type="text"
+                  value={joinRoomCode}
+                  onChange={(e) => setJoinRoomCode(e.target.value)}
+                  placeholder="방 코드 입력"
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(100,116,139,0.4)",
+                    background: "rgba(15,18,37,0.8)",
+                    color: "#fff",
+                    fontSize: 15,
+                    outline: "none",
+                  }}
+                />
+                <button
+                  className="omok-button primary"
+                  disabled={loading || !joinRoomCode.trim()}
+                  onClick={async () => {
+                    const code = joinRoomCode.trim();
+                    if (!code) return;
+                    // 전체 ID 또는 마지막 6자리로 검색
+                    const allGames = availableGames;
+                    let matchId = null;
+                    // 정확한 ID 매치
+                    for (const g of allGames) {
+                      if (g.id === code || g.id.endsWith(code)) {
+                        matchId = g.id;
+                        break;
+                      }
+                    }
+                    if (!matchId) {
+                      // Firestore에서 직접 검색
+                      try {
+                        const gamesRef = collection(db, "omokGames");
+                        const q = query(gamesRef, where("gameStatus", "==", "waiting"));
+                        const snap = await getDocs(q);
+                        for (const d of snap.docs) {
+                          if (d.id === code || d.id.endsWith(code)) {
+                            matchId = d.id;
+                            break;
+                          }
+                        }
+                      } catch {}
+                    }
+                    if (matchId) {
+                      joinGame(matchId);
+                      setJoinRoomCode("");
+                    } else {
+                      setError("해당 코드의 대기 중인 방을 찾을 수 없습니다.");
+                    }
+                  }}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  참가
+                </button>
+              </div>
+            </div>
+          )}
 
           {gameMode === "player" && (
             <div className="lobby-section">

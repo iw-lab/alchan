@@ -22,6 +22,7 @@ import {
   where,
   getDocs,
   deleteDoc,
+  onSnapshot,
 } from "../../firebase";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 import "./ChessGame.css";
@@ -732,13 +733,27 @@ const ChessGame = () => {
     }
   }, [user]);
 
+  // 실시간 대기방 목록 리스너
   useEffect(() => {
-    if (showCreateRoom && user) {
-      fetchAvailableRooms();
-      const interval = setInterval(fetchAvailableRooms, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [showCreateRoom, user, fetchAvailableRooms]);
+    if (!showCreateRoom || !user) return;
+    const q = query(
+      collection(db, "chessGames"),
+      where("status", "==", "waiting"),
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const rooms = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.players.white !== user.uid) {
+          rooms.push({ id: d.id, ...data });
+        }
+      });
+      setAvailableRooms(rooms);
+    }, (err) => {
+      logger.error("대기방 목록 리스너 오류:", err);
+    });
+    return () => unsubscribe();
+  }, [showCreateRoom, user]);
 
   const fetchGameData = useCallback(async () => {
     if (!gameId) return;
@@ -766,10 +781,35 @@ const ChessGame = () => {
     }
   }, [gameId]);
 
-  const { refetch } = usePolling(fetchGameData, {
-    interval: 180000,
-    enabled: !!gameId,
-  });
+  // 실시간 게임 데이터 리스너 (상대방 입장/수 두기 즉시 반영)
+  useEffect(() => {
+    if (!gameId) return;
+    const gameRef = doc(db, "chessGames", gameId);
+    const unsubscribe = onSnapshot(gameRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const rawData = docSnap.data();
+        const deserializedData = {
+          ...rawData,
+          board: deserializeBoard(rawData.board),
+        };
+        setGameData(deserializedData);
+        setShowCreateRoom(false);
+        if (rawData.whiteTime !== undefined) setWhiteTime(rawData.whiteTime);
+        if (rawData.blackTime !== undefined) setBlackTime(rawData.blackTime);
+        if (rawData.moveHistory) setMoveHistory(rawData.moveHistory);
+      } else {
+        setFeedback({ message: "게임을 찾을 수 없습니다.", type: "error" });
+        setGameId(null);
+        setGameData(null);
+        setShowCreateRoom(true);
+      }
+    }, (err) => {
+      logger.error("게임 데이터 리스너 오류:", err);
+    });
+    return () => unsubscribe();
+  }, [gameId]);
+
+  const refetch = fetchGameData;
 
   useEffect(() => {
     refetchRef.current = refetch;
@@ -1602,7 +1642,7 @@ const ChessGame = () => {
               </span>
             )
           ) : gameData.status === "waiting" ? (
-            <span>상대방을 기다리는 중... (코드: {gameId})</span>
+            <span>상대방을 기다리는 중... (코드: <strong style={{color:"#00fff2",cursor:"pointer",textDecoration:"underline"}} onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(gameId);setFeedback({message:"방 코드가 복사되었습니다!",type:"success"})}}>{gameId}</strong>)</span>
           ) : (
             <span>{isMyTurn ? "당신의 차례" : "상대방 차례"}</span>
           )}

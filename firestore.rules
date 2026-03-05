@@ -386,13 +386,14 @@ service cloud.firestore {
     match /chessGames/{gameId} {
       allow read, create: if isSignedIn();
       allow update: if isSignedIn() &&
-                       (resource.data.player1 == request.auth.uid ||
-                        resource.data.player2 == request.auth.uid ||
+                       (resource.data.players.white == request.auth.uid ||
+                        resource.data.players.black == request.auth.uid ||
                         resource.data.aiMode == true ||
+                        resource.data.status == "waiting" ||
                         isAdmin());
       allow delete: if isSignedIn() &&
-                       (resource.data.player1 == request.auth.uid ||
-                        resource.data.player2 == request.auth.uid ||
+                       (resource.data.players.white == request.auth.uid ||
+                        resource.data.players.black == request.auth.uid ||
                         isAdmin());
     }
 
