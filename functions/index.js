@@ -2149,19 +2149,25 @@ exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) =
     // 지급할 학생 목록 결정
     let targetStudents = [];
     if (payAll) {
+      // classCode로만 쿼리 후 서버에서 필터 (isAdmin 필드 없는 학생도 포함)
       const studentsSnapshot = await db.collection("users")
         .where("classCode", "==", classCode)
-        .where("isAdmin", "==", false)
         .get();
-      targetStudents = studentsSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      targetStudents = studentsSnapshot.docs
+        .filter(d => {
+          const data = d.data();
+          return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
+        })
+        .map(d => ({ id: d.id, ...d.data() }));
     } else if (studentIds && studentIds.length > 0) {
-      // 배치로 조회 (최대 30개씩)
       for (let i = 0; i < studentIds.length; i += 30) {
         const chunk = studentIds.slice(i, i + 30);
         const docs = await Promise.all(chunk.map(id => db.collection("users").doc(id).get()));
         docs.filter(d => d.exists).forEach(d => targetStudents.push({ id: d.id, ...d.data() }));
       }
     }
+
+    logger.info(`[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`);
 
     // 급여 계산: 기본급 200만 + 추가 직업당 50만
     const BASE_SALARY = 2000000;
@@ -2171,10 +2177,14 @@ exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) =
     let totalGrossPaid = 0;
     let totalTaxDeducted = 0;
     let totalNetPaid = 0;
+    const skippedStudents = [];
 
     for (const student of targetStudents) {
       const jobIds = student.selectedJobIds || [];
-      if (jobIds.length === 0) continue; // 직업 없으면 스킵
+      if (jobIds.length === 0) {
+        skippedStudents.push(student.name || student.nickname || student.id);
+        continue;
+      }
 
       const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
       const tax = Math.floor(grossSalary * taxRate);
@@ -2183,6 +2193,11 @@ exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) =
       const studentRef = db.collection("users").doc(student.id);
       batch.update(studentRef, {
         cash: admin.firestore.FieldValue.increment(netSalary),
+        lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
+        lastGrossSalary: grossSalary,
+        lastTaxAmount: tax,
+        lastNetSalary: netSalary,
+        totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -2196,7 +2211,7 @@ exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) =
       await batch.commit();
     }
 
-    logger.info(`[batchPaySalaries] ${uid}님이 ${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 (세전 ${totalGrossPaid.toLocaleString()}원, 세금 ${totalTaxDeducted.toLocaleString()}원)`);
+    logger.info(`[batchPaySalaries] ${uid}님이 ${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 (세전 ${totalGrossPaid.toLocaleString()}원, 세금 ${totalTaxDeducted.toLocaleString()}원)${skippedStudents.length > 0 ? ` / 직업없음 스킵: ${skippedStudents.length}명` : ""}`);
 
     return {
       success: true,
