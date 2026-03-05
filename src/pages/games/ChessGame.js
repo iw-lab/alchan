@@ -734,27 +734,13 @@ const ChessGame = () => {
     }
   }, [user]);
 
-  // 실시간 대기방 목록 리스너
+  // 로비 대기방 목록: 초기 로드 + 10초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
     if (!showCreateRoom || !user) return;
-    const q = query(
-      collection(db, "chessGames"),
-      where("status", "==", "waiting"),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const rooms = [];
-      snapshot.forEach((d) => {
-        const data = d.data();
-        if (data.players.white !== user.uid) {
-          rooms.push({ id: d.id, ...data });
-        }
-      });
-      setAvailableRooms(rooms);
-    }, (err) => {
-      logger.error("대기방 목록 리스너 오류:", err);
-    });
-    return () => unsubscribe();
-  }, [showCreateRoom, user]);
+    fetchAvailableRooms();
+    const interval = setInterval(fetchAvailableRooms, 10000);
+    return () => clearInterval(interval);
+  }, [showCreateRoom, user, fetchAvailableRooms]);
 
   const fetchGameData = useCallback(async () => {
     if (!gameId) return;

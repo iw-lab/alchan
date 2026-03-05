@@ -740,26 +740,13 @@ const OmokGame = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // user 의존성 제거 - 필요 시 user는 클로저로 접근
 
-  // 실시간 게임 목록 리스너 (방 생성/삭제 즉시 반영)
+  // 로비 게임 목록: 초기 로드 + 10초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
-    if (!user || gameId) return; // 로비에서만 리스닝
-    const gamesRef = collection(db, "omokGames");
-    const q = query(
-      gamesRef,
-      where("gameStatus", "==", "waiting"),
-      orderBy("createdAt", "desc"),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const games = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-      setAvailableGames(games);
-    }, (err) => {
-      logger.error("게임 목록 실시간 리스너 오류:", err);
-    });
-    return () => unsubscribe();
-  }, [user, gameId]);
+    if (!user || gameId) return;
+    fetchAvailableGames();
+    const interval = setInterval(fetchAvailableGames, 10000);
+    return () => clearInterval(interval);
+  }, [user, gameId, fetchAvailableGames]);
 
   // [멀티플레이어] 게임 데이터 실시간 리스너 (게임 참가 후 상태 변경 감지)
   useEffect(() => {
