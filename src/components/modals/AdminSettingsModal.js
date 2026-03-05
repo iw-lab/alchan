@@ -836,9 +836,10 @@ const AdminSettingsModal = ({
           ).toFixed(0)}만원`,
         );
 
-        // 선택 상태 초기화
+        // 선택 상태 초기화 + 학생 목록 새로고침
         setSelectedStudentIds([]);
         setSelectAllStudents(false);
+        loadStudents(); // 잔액 갱신
       } else {
         alert(result.message || "주급 지급에 실패했습니다.");
       }
@@ -852,14 +853,8 @@ const AdminSettingsModal = ({
 
   // 최적화된 전체 학생 급여 지급
   const handlePaySalariesToAll = async () => {
-    const currentStudents = studentsQuery.data?.students || students;
     const currentSalarySettings =
       salarySettingsQuery.data?.settings || salarySettings;
-
-    if (!currentStudents || currentStudents.length === 0) {
-      alert("학생 정보가 없습니다.");
-      return;
-    }
 
     if (
       !window.confirm(
@@ -888,6 +883,7 @@ const AdminSettingsModal = ({
             summary.totalNetPaid / 10000
           ).toFixed(0)}만원`,
         );
+        loadStudents(); // 잔액 갱신
       } else {
         alert(result.message || "주급 지급에 실패했습니다.");
       }

@@ -2053,17 +2053,21 @@ exports.getAdminSettingsData = onCall(
 
       switch (tab) {
         case "studentManagement":
-          // 학생 데이터 조회
+          // 학생 데이터 조회 (classCode로만 쿼리 후 관리자 필터)
           const studentsSnapshot = await db
             .collection("users")
             .where("classCode", "==", classCode)
-            .where("role", "==", "student")
             .get();
 
-          data.students = studentsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
+          data.students = studentsSnapshot.docs
+            .filter((doc) => {
+              const d = doc.data();
+              return !d.isAdmin && !d.isSuperAdmin && !d.isTeacher;
+            })
+            .map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
           break;
 
         case "salarySettings":
