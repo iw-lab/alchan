@@ -41,7 +41,7 @@ const MobileNav = memo(function MobileNav() {
   );
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100/50 pb-safe pt-2 px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] z-50">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-md border-t pb-safe pt-2 px-6 z-50" style={{ backgroundColor: "rgba(15, 18, 37, 0.95)", borderColor: "rgba(100, 116, 139, 0.2)" }}>
       <div className="flex justify-between items-center max-w-md mx-auto">
         {tabs.map((tab) => {
           const isActive = isTabActive(tab);
@@ -51,8 +51,9 @@ const MobileNav = memo(function MobileNav() {
               key={tab.id}
               onClick={() => handleTabClick(tab)}
               className={`flex flex-col items-center gap-1 p-2 min-w-[64px] transition-all duration-300 ${
-                isActive ? "text-indigo-600 -translate-y-1" : "text-gray-400"
+                isActive ? "-translate-y-1" : ""
               }`}
+              style={{ color: isActive ? "#60a5fa" : "#94a3b8" }}
             >
               <Icon
                 size={24}
@@ -60,7 +61,7 @@ const MobileNav = memo(function MobileNav() {
                 className={isActive ? "drop-shadow-md" : ""}
               />
               <span
-                className={`text-[11px] font-medium ${isActive ? "opacity-100" : "opacity-70"}`}
+                className={`text-[11px] font-medium ${isActive ? "opacity-100" : "opacity-80"}`}
               >
                 {tab.label}
               </span>
