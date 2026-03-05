@@ -119,10 +119,16 @@ export default function NewBillPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       style={{
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(4px)",
+        position: "fixed",
+        inset: 0,
+        zIndex: 99999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+        background: "rgba(0,0,0,0.8)",
+        backdropFilter: "blur(6px)",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.3s ease",
         pointerEvents: visible ? "auto" : "none",
@@ -139,46 +145,46 @@ export default function NewBillPopup() {
           transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           maxWidth: 440,
           width: "100%",
+          pointerEvents: "auto",
         }}
       >
         {/* 카드 */}
-        <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-amber-500/40 bg-gradient-to-br from-slate-900 via-amber-950/30 to-slate-900">
+        <div
+          style={{
+            position: "relative",
+            borderRadius: "16px",
+            overflow: "hidden",
+            boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+            border: "1px solid rgba(245,158,11,0.4)",
+            background: "linear-gradient(135deg, #0f172a 0%, #1c1917 50%, #0f172a 100%)",
+          }}
+        >
           {/* 상단 글로우 */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400" />
-
-          {/* 배경 패턴 */}
-          <div
-            className="absolute inset-0 opacity-5"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 50% 50%, white 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          />
+          <div style={{ height: 3, background: "linear-gradient(90deg, #f59e0b, #eab308, #f59e0b)" }} />
 
           {/* 헤더 */}
-          <div className="relative px-6 pt-6 pb-4 flex items-start gap-4">
+          <div style={{ padding: "24px 24px 16px", display: "flex", alignItems: "flex-start", gap: "16px" }}>
             {/* 아이콘 */}
-            <div className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-amber-500/20 ring-1 ring-amber-500/30">
-              <ScrollText className="w-8 h-8 text-amber-400" />
+            <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)" }}>
+              <ScrollText style={{ width: 28, height: 28, color: "#f59e0b" }} />
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div style={{ flex: 1, minWidth: 0 }}>
               {/* 태그 */}
-              <div className="flex items-center gap-2 mb-1">
-                <Vote className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <Vote style={{ width: 14, height: 14, color: "#f59e0b" }} />
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: "#f59e0b", textTransform: "uppercase" }}>
                   새 법안 제안
                 </span>
               </div>
 
               {/* 제목 */}
-              <h2 className="text-xl font-bold text-white leading-tight">
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", lineHeight: 1.3, margin: 0 }}>
                 {pendingBill.title}
               </h2>
 
               {/* 제안자 */}
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                 제안자: {pendingBill.proposerName || "익명"}
               </p>
             </div>
@@ -186,58 +192,64 @@ export default function NewBillPopup() {
             {/* 닫기 버튼 */}
             <button
               onClick={handleClose}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              style={{ flexShrink: 0, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "#1e293b", border: "none", color: "#94a3b8", cursor: "pointer", pointerEvents: "auto" }}
             >
-              <X className="w-4 h-4" />
+              <X style={{ width: 16, height: 16 }} />
             </button>
           </div>
 
           {/* 구분선 */}
-          <div className="mx-6 h-px bg-amber-500/20" />
+          <div style={{ margin: "0 24px", height: 1, background: "rgba(245,158,11,0.2)" }} />
 
           {/* 본문 */}
-          <div className="relative px-6 py-4 space-y-3">
+          <div style={{ padding: "16px 24px" }}>
             {/* 메시지 */}
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p style={{ fontSize: 14, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 12 }}>
               새 법안이 제안되었습니다! 찬반 투표에 참여해주세요.
             </p>
 
             {/* 법안 정보 */}
-            <div className="rounded-xl p-3 bg-amber-500/10 border border-amber-500/20">
+            <div style={{ borderRadius: 12, padding: 14, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
               {pendingBill.purpose && (
-                <p className="text-sm text-amber-200 mb-1">
-                  <span className="font-semibold text-amber-300">취지:</span>{" "}
+                <p style={{ fontSize: 14, color: "#fde68a", marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: "#fbbf24" }}>취지:</span>{" "}
                   {pendingBill.purpose}
                 </p>
               )}
               {pendingBill.description && (
-                <p className="text-sm text-amber-200 mb-1">
-                  <span className="font-semibold text-amber-300">설명:</span>{" "}
+                <p style={{ fontSize: 14, color: "#fde68a", marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: "#fbbf24" }}>설명:</span>{" "}
                   {pendingBill.description.length > 80
                     ? pendingBill.description.substring(0, 80) + "..."
                     : pendingBill.description}
                 </p>
               )}
-              {pendingBill.fine && (
-                <p className="text-sm text-amber-200">
-                  <span className="font-semibold text-amber-300">벌금:</span>{" "}
-                  {pendingBill.fine}
+              {pendingBill.fine != null && (
+                <p style={{ fontSize: 14, color: "#fde68a" }}>
+                  <span style={{ fontWeight: 700, color: "#fbbf24" }}>벌금:</span>{" "}
+                  {typeof pendingBill.fine === "number"
+                    ? `${pendingBill.fine.toLocaleString()}알찬`
+                    : pendingBill.fine}
                 </p>
               )}
             </div>
           </div>
 
           {/* 버튼 영역 */}
-          <div className="px-6 pb-6 flex gap-3">
+          <div style={{ padding: "8px 24px 24px", display: "flex", gap: 12 }}>
             <button
               onClick={handleClose}
-              className="flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] bg-slate-700 hover:bg-slate-600 text-slate-300"
+              style={{ flex: 1, padding: "14px 0", borderRadius: 12, fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer", pointerEvents: "auto", background: "#334155", color: "#e2e8f0", transition: "background 0.2s" }}
+              onMouseEnter={(e) => { e.target.style.background = "#475569"; }}
+              onMouseLeave={(e) => { e.target.style.background = "#334155"; }}
             >
               나중에
             </button>
             <button
               onClick={handleGoVote}
-              className="flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/25"
+              style={{ flex: 1, padding: "14px 0", borderRadius: 12, fontWeight: 700, fontSize: 15, border: "none", cursor: "pointer", pointerEvents: "auto", background: "#f59e0b", color: "#ffffff", boxShadow: "0 4px 15px rgba(245,158,11,0.3)", transition: "background 0.2s" }}
+              onMouseEnter={(e) => { e.target.style.background = "#d97706"; }}
+              onMouseLeave={(e) => { e.target.style.background = "#f59e0b"; }}
             >
               투표하러 가기
             </button>
