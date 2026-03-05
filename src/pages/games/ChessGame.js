@@ -690,27 +690,35 @@ const ChessGame = () => {
     [gameId],
   );
 
+  // 타이머 값을 ref로 추적 (dependency 순환 방지)
+  const whiteTimeRef = useRef(whiteTime);
+  const blackTimeRef = useRef(blackTime);
+  useEffect(() => { whiteTimeRef.current = whiteTime; }, [whiteTime]);
+  useEffect(() => { blackTimeRef.current = blackTime; }, [blackTime]);
+
   useEffect(() => {
     if (gameData && gameData.status === "active" && isMyTurn) {
       intervalRef.current = setInterval(async () => {
         const currentTurn = gameData.turn;
         if (currentTurn === "w") {
-          const newTime = Math.max(0, whiteTime - 1);
+          const newTime = Math.max(0, whiteTimeRef.current - 1);
           setWhiteTime(newTime);
           if (newTime <= 0) {
+            clearInterval(intervalRef.current);
             await handleTimeout("w");
           }
         } else {
-          const newTime = Math.max(0, blackTime - 1);
+          const newTime = Math.max(0, blackTimeRef.current - 1);
           setBlackTime(newTime);
           if (newTime <= 0) {
+            clearInterval(intervalRef.current);
             await handleTimeout("b");
           }
         }
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
-  }, [gameData, isMyTurn, whiteTime, blackTime, gameId, handleTimeout]);
+  }, [gameData?.status, gameData?.turn, isMyTurn, gameId, handleTimeout]);
 
   const fetchAvailableRooms = useCallback(async () => {
     if (!user) return;

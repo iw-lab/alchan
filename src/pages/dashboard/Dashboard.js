@@ -575,7 +575,7 @@ function Dashboard({ adminTabMode }) {
             id: d.id,
             ...d.data(),
             reward: d.data().reward || 0,
-            clicks: d.data().clicks || 0,
+            clicks: 0, // 개인별 진행률은 commonTasksWithUserProgress에서 설정
             maxClicks: d.data().maxClicks || 5,
           }))
           // 클라이언트 측에서 정렬 (updatedAt이 있는 경우)
@@ -1122,7 +1122,7 @@ function Dashboard({ adminTabMode }) {
         alert(`할일이 수정되었습니다.`);
       } else {
         const newTaskId = generateId();
-        const newTaskDataWithId = { ...taskData, id: newTaskId, clicks: 0 };
+        const newTaskDataWithId = { ...taskData, id: newTaskId };
         if (isJobTaskForForm && currentJobIdForTask) {
           const jobRef = doc(db, "jobs", currentJobIdForTask);
           batchManager.addWrite({

@@ -31,15 +31,19 @@ const linkifyContent = (text) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s<]+)/g;
   const parts = text.split(urlRegex);
-  return parts.map((part, i) =>
-    urlRegex.test(part) ? (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer"
-        style={{ color: '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}
-        onClick={(e) => e.stopPropagation()}>
-        {part}
-      </a>
-    ) : part
-  );
+  return parts.map((part, i) => {
+    // global flag regex의 lastIndex 문제 방지 - 별도 regex 사용
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          style={{ color: '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}
+          onClick={(e) => e.stopPropagation()}>
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
 };
 
 const formatDate = (isoString) => {
