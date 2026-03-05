@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   db,
 } from "../../firebase";
-import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { logger } from "../../utils/logger";
 import {
   User,
@@ -469,7 +469,87 @@ const Login = () => {
     }
     setIsLoading(true);
     try {
-      const firebaseUser = await loginWithEmailPassword(loginEmail, password);
+      let firebaseUser;
+      try {
+        firebaseUser = await loginWithEmailPassword(loginEmail, password);
+      } catch (loginError) {
+        // 학생 계정이 Firebase Auth에 없는 경우 자동 복구 시도
+        if (
+          activeTab === "student" &&
+          (loginError.code === "auth/user-not-found" ||
+            loginError.code === "auth/invalid-credential")
+        ) {
+          logger.log("[Login] 학생 계정 자동 복구 시도:", loginEmail);
+          try {
+            // 1. Firestore에 이 이메일로 된 기존 문서가 있는지 확인
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", loginEmail));
+            const snap = await getDocs(q);
+
+            if (!snap.empty) {
+              // 기존 문서가 있으면 → Auth 계정만 없는 상태. 새로 생성
+              const existingDoc = snap.docs[0];
+              const existingData = existingDoc.data();
+              const oldUid = existingDoc.id;
+
+              const userCredential = await registerWithEmailAndPassword(
+                auth,
+                loginEmail,
+                password,
+              );
+              const newUser = userCredential.user;
+
+              // 기존 Firestore 데이터를 새 UID로 복사
+              if (newUser.uid !== oldUid) {
+                await setDoc(doc(db, "users", newUser.uid), {
+                  ...existingData,
+                  email: loginEmail,
+                  lastLoginAt: serverTimestamp(),
+                });
+              }
+
+              logger.log("[Login] 학생 계정 자동 복구 성공:", loginEmail);
+              firebaseUser = newUser;
+            } else {
+              // Firestore 문서도 없으면 → 완전 신규 생성
+              const userCredential = await registerWithEmailAndPassword(
+                auth,
+                loginEmail,
+                password,
+              );
+              const newUser = userCredential.user;
+              const displayName = studentId.trim();
+              const studentClassCode = classCode.trim().toUpperCase();
+
+              await setDoc(doc(db, "users", newUser.uid), {
+                name: displayName,
+                nickname: displayName,
+                email: loginEmail,
+                classCode: studentClassCode,
+                isAdmin: false,
+                isSuperAdmin: false,
+                isTeacher: false,
+                cash: 0,
+                coupons: 0,
+                selectedJobIds: [],
+                myContribution: 0,
+                createdAt: serverTimestamp(),
+                lastLoginAt: serverTimestamp(),
+              });
+
+              logger.log("[Login] 학생 계정 신규 생성:", loginEmail);
+              firebaseUser = newUser;
+            }
+          } catch (repairError) {
+            logger.error("[Login] 학생 계정 복구 실패:", repairError);
+            // 복구 실패 시 원래 에러 표시
+            throw loginError;
+          }
+        } else {
+          throw loginError;
+        }
+      }
+
       if (firebaseUser) {
         if (activeTab === "student") {
           if (saveId) {
