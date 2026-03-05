@@ -716,7 +716,6 @@ const OmokGame = () => {
 
   const fetchAvailableGames = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
     try {
       const gamesRef = collection(db, "omokGames");
       const q = query(
@@ -733,12 +732,8 @@ const OmokGame = () => {
       setAvailableGames(games);
     } catch (err) {
       logger.error("게임 목록 불러오기 오류:", err);
-      setError("게임 목록을 불러오는 중 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // user 의존성 제거 - 필요 시 user는 클로저로 접근
+  }, [user]);
 
   // 로비 게임 목록: 초기 로드 + 10초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
@@ -1195,25 +1190,7 @@ const OmokGame = () => {
     }
   };
 
-  // 로비 화면 진입 시 1회만 게임 목록 로드 (자동 폴링 제거)
-  // 🔥 [최적화] sessionStorage 사용으로 중복 호출 완전 방지
-  const hasFetchedGamesRef = useRef(false);
-  const lastGameIdRef = useRef(null);
-
-  useEffect(() => {
-    // 게임에서 나왔을 때만 플래그 리셋 (gameId가 있었다가 없어진 경우)
-    if (lastGameIdRef.current && !gameId) {
-      hasFetchedGamesRef.current = false;
-    }
-    lastGameIdRef.current = gameId;
-
-    // 로비 화면에서만 게임 목록 로드 (한 번만)
-    if (user && !gameId && !hasFetchedGamesRef.current) {
-      logger.log("[Lobby] 게임 목록 최초 로드");
-      fetchAvailableGames();
-      hasFetchedGamesRef.current = true;
-    }
-  }, [user, gameId, fetchAvailableGames]);
+  // (로비 폴링은 위의 useEffect에서 처리 - 10초 자동갱신)
 
   const fetchGameData = useCallback(async () => {
     if (!gameId) return;
@@ -1819,29 +1796,20 @@ const OmokGame = () => {
                   onClick={async () => {
                     const code = joinRoomCode.trim();
                     if (!code) return;
-                    // 전체 ID 또는 마지막 6자리로 검색
-                    const allGames = availableGames;
                     let matchId = null;
-                    // 정확한 ID 매치
-                    for (const g of allGames) {
-                      if (g.id === code || g.id.endsWith(code)) {
-                        matchId = g.id;
-                        break;
-                      }
-                    }
-                    if (!matchId) {
-                      // Firestore에서 직접 검색
-                      try {
-                        const gamesRef = collection(db, "omokGames");
-                        const q = query(gamesRef, where("gameStatus", "==", "waiting"));
-                        const snap = await getDocs(q);
-                        for (const d of snap.docs) {
-                          if (d.id === code || d.id.endsWith(code)) {
-                            matchId = d.id;
-                            break;
-                          }
+                    // Firestore에서 대기 중인 방 검색 (로컬 캐시 대신 항상 최신 조회)
+                    try {
+                      const gamesRef = collection(db, "omokGames");
+                      const q = query(gamesRef, where("gameStatus", "==", "waiting"));
+                      const snap = await getDocs(q);
+                      for (const d of snap.docs) {
+                        if (d.id === code || d.id.endsWith(code)) {
+                          matchId = d.id;
+                          break;
                         }
-                      } catch {}
+                      }
+                    } catch (e) {
+                      logger.error("방 코드 검색 오류:", e);
                     }
                     if (matchId) {
                       joinGame(matchId);
@@ -1948,6 +1916,61 @@ const OmokGame = () => {
       </div>
     );
   }
+
+  // 멀티플레이어 대기 화면 (상대방 참가 대기 중)
+  if (game.gameStatus === "waiting" && !game.aiMode) {
+    return (
+      <div className="game-page-container">
+        <div className="omok-container">
+          <div className="omok-header">
+            <h2>상대방 대기 중...</h2>
+          </div>
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 16, padding: "40px 20px", textAlign: "center",
+          }}>
+            <div style={{
+              width: 48, height: 48, border: "3px solid #60a5fa",
+              borderTopColor: "transparent", borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }} />
+            <p style={{ color: "#94a3b8", fontSize: 15 }}>
+              친구에게 아래 방 코드를 공유해주세요!
+            </p>
+            <div
+              style={{
+                fontSize: 28, fontWeight: "bold", color: "#00fff2",
+                cursor: "pointer", letterSpacing: 4, padding: "12px 24px",
+                background: "rgba(0, 255, 242, 0.1)", borderRadius: 12,
+                border: "1px solid rgba(0, 255, 242, 0.3)",
+              }}
+              onClick={() => {
+                navigator.clipboard.writeText(gameId);
+                setFeedback({ message: "방 코드가 복사되었습니다!", type: "success" });
+              }}
+              title="클릭하여 복사"
+            >
+              {gameId.slice(-6)}
+            </div>
+            <p style={{ color: "#64748b", fontSize: 12 }}>
+              코드를 클릭하면 복사됩니다
+            </p>
+            <button
+              className="omok-button"
+              onClick={leaveGame}
+              style={{ marginTop: 16 }}
+            >
+              나가기
+            </button>
+            {feedback.message && (
+              <div className={`feedback ${feedback.type}`}>{feedback.message}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const myColor = game.players[user.uid];
   const opponentId = Object.keys(game.players).find((p) => p !== user.uid);
   const opponentColor = opponentId ? game.players[opponentId] : null;
