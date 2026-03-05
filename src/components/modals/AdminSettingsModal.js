@@ -895,6 +895,21 @@ const AdminSettingsModal = ({
     }
   };
 
+  // 주급 1회분 회수 (임시)
+  const handleReverseSalary = async () => {
+    if (!window.confirm("주급 1회분을 모든 학생에게서 회수하시겠습니까?")) return;
+    try {
+      const reverseFn = httpsCallable(firebaseFunctions, "reverseSalaryOnce");
+      const result = await reverseFn({});
+      if (result.data.success) {
+        alert(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만원 회수`);
+        loadStudents();
+      }
+    } catch (error) {
+      alert("회수 오류: " + error.message);
+    }
+  };
+
   // 학급 구성원 로드
   const loadClassMembers = useCallback(async () => {
     if (!db) {
@@ -2299,6 +2314,21 @@ const AdminSettingsModal = ({
                       {isPayingSalary
                         ? "지급 중..."
                         : `💰 선택 학생(${selectedStudentIds.length}) 주급 지급`}
+                    </button>
+                    <button
+                      onClick={handleReverseSalary}
+                      style={{
+                        padding: '12px 20px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(239,68,68,0.4)',
+                        background: 'rgba(239,68,68,0.15)',
+                        color: '#ef4444',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🔄 주급 1회분 회수
                     </button>
                   </div>
                 </div>

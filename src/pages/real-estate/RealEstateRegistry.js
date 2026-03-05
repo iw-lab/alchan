@@ -846,7 +846,9 @@ const RealEstateRegistry = () => {
         "realEstateSettings",
         "settingsDoc"
       );
-      await updateDoc(settingsRefInstance, newSettingsData);
+      await setDoc(settingsRefInstance, newSettingsData, { merge: true });
+      // 로컬 상태도 즉시 업데이트
+      setSettings(prev => ({ ...prev, ...newSettingsData, updatedAt: new Date() }));
       alert(
         "설정이 성공적으로 저장되었습니다. 변경된 총 부동산 개수 등은 '부동산 초기화'를 통해 반영해야 할 수 있습니다."
       );
@@ -1948,16 +1950,18 @@ const RealEstateRegistry = () => {
             className="admin-panel"
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: '#1a1a2e',
               borderRadius: '16px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(0, 255, 242, 0.15)',
               width: '100%',
               maxWidth: '600px',
               maxHeight: '90vh',
               display: 'flex',
               flexDirection: 'column',
               position: 'relative',
-              zIndex: 1000000
+              zIndex: 1000000,
+              color: '#e8e8ff'
             }}
           >
             <div className="panel-header">
@@ -2019,11 +2023,12 @@ const RealEstateRegistry = () => {
                         alignItems: 'center',
                         padding: '8px 12px',
                         marginBottom: '6px',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: 'rgba(30, 30, 50, 0.6)',
                         borderRadius: '6px',
-                        border: '1px solid #e5e7eb'
+                        border: '1px solid rgba(0, 255, 242, 0.1)',
+                        color: '#e8e8ff'
                       }}>
-                        <span style={{ fontWeight: '500' }}>{user.name}</span>
+                        <span style={{ fontWeight: '500', color: '#e8e8ff' }}>{user.name}</span>
                         <button
                           onClick={() => handleAdminAssignSeat(user.id, user.name)}
                           disabled={operationLoading}

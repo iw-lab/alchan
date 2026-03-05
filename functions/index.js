@@ -2234,6 +2234,73 @@ exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) =
 });
 
 // ===================================================================================
+// 주급 회수 (1회분) - 임시 함수
+// ===================================================================================
+exports.reverseSalaryOnce = onCall({region: "asia-northeast3"}, async (request) => {
+  const {uid, classCode, isAdmin, isSuperAdmin} = await checkAuthAndGetUserData(request, true);
+
+  try {
+    // 급여 설정 가져오기 (세율)
+    let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
+    if (!salarySettingsDoc.exists) {
+      salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
+    }
+    const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
+
+    // 해당 클래스 학생 조회
+    const studentsSnapshot = await db.collection("users")
+      .where("classCode", "==", classCode)
+      .get();
+    const targetStudents = studentsSnapshot.docs
+      .filter(d => {
+        const data = d.data();
+        return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
+      })
+      .map(d => ({ id: d.id, ...d.data() }));
+
+    const BASE_SALARY = 2000000;
+    const ADDITIONAL_SALARY = 500000;
+    const batch = db.batch();
+    let totalReversed = 0;
+    let totalAmount = 0;
+
+    for (const student of targetStudents) {
+      const jobIds = student.selectedJobIds || [];
+      if (jobIds.length === 0) continue;
+
+      const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+      const tax = Math.floor(grossSalary * taxRate);
+      const netSalary = grossSalary - tax;
+
+      const studentRef = db.collection("users").doc(student.id);
+      batch.update(studentRef, {
+        cash: admin.firestore.FieldValue.increment(-netSalary),
+        totalSalaryReceived: admin.firestore.FieldValue.increment(-netSalary),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      totalReversed++;
+      totalAmount += netSalary;
+    }
+
+    if (totalReversed > 0) {
+      await batch.commit();
+    }
+
+    logger.info(`[reverseSalaryOnce] ${uid}님이 ${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수`);
+
+    return {
+      success: true,
+      message: `${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수 완료`,
+      summary: { totalReversed, totalAmount },
+    };
+  } catch (error) {
+    logger.error(`[reverseSalaryOnce] Error:`, error);
+    throw new HttpsError("internal", error.message || "급여 회수에 실패했습니다.");
+  }
+});
+
+// ===================================================================================
 // 아이템 시장 거래 함수
 // ===================================================================================
 

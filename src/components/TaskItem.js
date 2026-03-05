@@ -262,6 +262,18 @@ const TaskItem = memo(function TaskItem({
         </div>
 
         <div className="flex items-center flex-shrink-0" style={taskActionsStyle}>
+          {/* 진행 횟수 표시 */}
+          {task.maxClicks > 0 && (
+            <span className="rounded-lg font-medium whitespace-nowrap" style={{
+              backgroundColor: isCompleted ? "rgba(100, 116, 139, 0.2)" : "rgba(59, 130, 246, 0.2)",
+              color: isCompleted ? "#94a3b8" : "#60a5fa",
+              border: `1px solid ${isCompleted ? "rgba(100, 116, 139, 0.3)" : "rgba(59, 130, 246, 0.4)"}`,
+              padding: isMobile ? "2px 6px" : "4px 8px",
+              fontSize: isMobile ? "10px" : "12px",
+            }}>
+              {task.clicks}/{task.maxClicks}
+            </span>
+          )}
           {/* 🔥 승인필요/랜덤보상 뱃지 */}
           <span className="rounded-lg font-medium whitespace-nowrap" style={task.requiresApproval ? approvalBadgeStyle : couponStyle}>
             {task.requiresApproval ? "⏳ 승인필요" : "🎁 랜덤보상"}
