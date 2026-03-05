@@ -8,7 +8,6 @@ import React, {
   lazy,
 } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { usePolling } from "../../hooks/usePolling";
 import {
   db,
   doc,
@@ -650,8 +649,10 @@ const ChessGame = () => {
         currentGameId &&
         currentGameData &&
         currentUser &&
+        currentGameData.status === "waiting" &&
         currentGameData.players?.white === currentUser.uid
       ) {
+        // 대기 중인 방만 삭제 (진행 중인 게임은 보존)
         deleteDoc(doc(db, "chessGames", currentGameId));
       }
     };
@@ -1030,13 +1031,17 @@ const ChessGame = () => {
     try {
       await setDoc(gameRef, initialGameData);
       setGameId(newGameId);
+      setGameData({
+        ...initialGameData,
+        board: getInitialBoard(),
+      });
+      setShowCreateRoom(false);
       setFeedback({
         message: isAiMode
           ? `AI 대전 시작!`
           : `체스 방 생성 완료! 코드: ${newGameId}`,
         type: "success",
       });
-      if (refetchRef.current) await refetchRef.current();
     } catch (error) {
       logger.error("Error creating room:", error);
       setFeedback({ message: "방 생성에 실패했습니다.", type: "error" });
@@ -1076,7 +1081,7 @@ const ChessGame = () => {
         });
       });
       setGameId(targetRoomId);
-      if (refetchRef.current) await refetchRef.current();
+      setShowCreateRoom(false);
     } catch (error) {
       logger.error("Error joining room: ", error);
       setFeedback({ message: `참가 실패: ${error.message}`, type: "error" });
@@ -1144,11 +1149,35 @@ const ChessGame = () => {
   };
 
   const handleLeaveGame = useCallback(async () => {
-    if (gameData && gameId && gameData.players?.white === user?.uid) {
+    if (gameData && gameId) {
       try {
-        await deleteDoc(doc(db, "chessGames", gameId));
+        if (gameData.status === "waiting") {
+          // 대기 중인 방은 삭제
+          await deleteDoc(doc(db, "chessGames", gameId));
+        } else if (gameData.status === "active" && !gameData.aiMode) {
+          // 진행 중인 멀티플레이어 게임은 기권 처리
+          const gameRef = doc(db, "chessGames", gameId);
+          const loserColor = myColor;
+          const winnerColor = loserColor === "w" ? "b" : "w";
+          await runTransaction(db, async (transaction) => {
+            const gameDoc = await transaction.get(gameRef);
+            if (!gameDoc.exists() || gameDoc.data().status !== "active") return;
+            transaction.update(gameRef, {
+              status: "finished",
+              winner: winnerColor,
+              endReason: "forfeit",
+              ratingChange: {
+                [winnerColor === "w" ? "white" : "black"]: RATING_CHANGE.WIN,
+                [loserColor === "w" ? "white" : "black"]: RATING_CHANGE.LOSS,
+              },
+            });
+          });
+        } else if (gameData.aiMode || gameData.status === "finished") {
+          // AI 모드 게임이나 끝난 게임은 삭제
+          await deleteDoc(doc(db, "chessGames", gameId));
+        }
       } catch (error) {
-        logger.error("Error deleting room:", error);
+        logger.error("Error leaving game:", error);
       }
     }
 
@@ -1157,7 +1186,7 @@ const ChessGame = () => {
     setShowCreateRoom(true);
     setSelectedPiece(null);
     setPossibleMoves([]);
-  }, [gameData, gameId, user]);
+  }, [gameData, gameId, user, myColor]);
 
   const executeMove = useCallback(
     async (fromRow, fromCol, toRow, toCol, piece, promotionPiece = null) => {
@@ -1277,6 +1306,9 @@ const ChessGame = () => {
             winner: newWinner,
             endReason: endReason,
             ratingChange: newRatingChange,
+            whiteTime: color === "w" ? whiteTime : (currentData.whiteTime ?? whiteTime),
+            blackTime: color === "b" ? blackTime : (currentData.blackTime ?? blackTime),
+            lastMoveAt: serverTimestamp(),
           };
 
           transaction.update(gameRef, updateData);
@@ -1316,19 +1348,12 @@ const ChessGame = () => {
 
         setSelectedPiece(null);
         setPossibleMoves([]);
-
-        if (refetchRef.current) {
-          await refetchRef.current();
-        }
       } catch (error) {
         logger.error("Error making move: ", error);
         setFeedback({
           message: `이동 중 오류 발생: ${error.message}`,
           type: "error",
         });
-        if (refetchRef.current) {
-          await refetchRef.current();
-        }
       } finally {
         setIsMoving(false);
       }
@@ -1339,6 +1364,8 @@ const ChessGame = () => {
       myColor,
       dailyPlayCount,
       user,
+      whiteTime,
+      blackTime,
       setRewardCards,
       setShowRewardSelection,
       setDailyPlayCount,

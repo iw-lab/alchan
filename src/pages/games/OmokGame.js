@@ -761,6 +761,85 @@ const OmokGame = () => {
     return () => unsubscribe();
   }, [user, gameId]);
 
+  // [멀티플레이어] 게임 데이터 실시간 리스너 (게임 참가 후 상태 변경 감지)
+  useEffect(() => {
+    if (!gameId || !user) return;
+    // AI 모드에서는 실시간 리스너 불필요
+    if (game?.aiMode) return;
+
+    logger.log("[GameListener] 게임 데이터 실시간 리스너 등록:", gameId);
+    const gameDocRef = doc(db, "omokGames", gameId);
+    const unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const gameData = docSnap.data();
+        logger.log("[GameListener] 게임 데이터 수신:", {
+          gameStatus: gameData.gameStatus,
+          currentPlayer: gameData.currentPlayer,
+          playerCount: Object.keys(gameData.players).length,
+        });
+        setGame(gameData);
+
+        // 승리 처리
+        if (gameData.winner && !gameData.statsUpdated && !gameData.aiMode) {
+          const winnerId = gameData.winner;
+          const loserId = Object.keys(gameData.players).find(
+            (p) => p !== winnerId,
+          );
+
+          if (loserId) {
+            if (user.uid === winnerId) {
+              localOptimisticOmokUpdate("win");
+              setGameResult({ outcome: "win", rpChange: RP_ON_WIN });
+            } else if (user.uid === loserId) {
+              localOptimisticOmokUpdate("loss");
+              setGameResult({ outcome: "loss", rpChange: -RP_ON_LOSS });
+            }
+
+            // 호스트만 통계 업데이트 실행 (중복 방지)
+            if (user.uid === gameData.host) {
+              updateUserOmokRecord(winnerId, "win");
+              updateUserOmokRecord(loserId, "loss");
+              updateDoc(gameDocRef, { statsUpdated: true });
+            }
+          }
+        }
+
+        // 마지막 수 표시
+        const history = gameData.history || [];
+        if (history.length > 0) {
+          setLastMove({
+            row: history[history.length - 1].row,
+            col: history[history.length - 1].col,
+          });
+        }
+
+        // 내 차례 여부에 따라 isThinking 설정
+        if (
+          gameData.currentPlayer === user.uid &&
+          gameData.gameStatus === "playing"
+        ) {
+          setIsThinking(true);
+        } else {
+          setIsThinking(false);
+          setSelectedCell(null);
+        }
+      } else {
+        // 게임이 삭제됨 (상대방이 방을 나감)
+        setGameId(null);
+        setGame(null);
+        setError("게임이 종료되었거나 찾을 수 없습니다.");
+      }
+    }, (err) => {
+      logger.error("[GameListener] 게임 데이터 리스너 오류:", err);
+      setError("게임 연결 중 오류가 발생했습니다.");
+    });
+
+    return () => {
+      logger.log("[GameListener] 게임 데이터 리스너 해제:", gameId);
+      unsubscribe();
+    };
+  }, [gameId, user, game?.aiMode, localOptimisticOmokUpdate]);
+
   const deleteGameRoom = async (roomId, e) => {
     e.stopPropagation();
     if (!isAdmin()) {
@@ -889,6 +968,11 @@ const OmokGame = () => {
         }
       });
       // 트랜잭션 성공 후에 gameId 설정 (트랜잭션 내부에서 하면 재시도 시 문제)
+      // 참가 후 즉시 게임 데이터를 로드하여 UI 전환
+      const updatedDoc = await getDoc(doc(db, "omokGames", id));
+      if (updatedDoc.exists()) {
+        setGame(updatedDoc.data());
+      }
       setGameId(id);
     } catch (err) {
       logger.error("게임 참가 오류:", err);
@@ -1208,11 +1292,10 @@ const OmokGame = () => {
     }
   }, [gameId, user, localOptimisticOmokUpdate]);
 
-  // 폴링 활성화 조건: 게임 ID가 있고, 게임이 진행 중이며, AI 모드가 아닐 때만
-  // AI 모드에서는 로컬에서 즉시 처리하므로 폴링 불필요
-  const shouldPoll =
-    !!gameId && game?.gameStatus === "playing" && !game?.aiMode;
-  const pollingInterval = 30000; // 🔥 [최적화] 10초 → 30초 (읽기 비용 절감)
+  // 폴링 비활성화: 멀티플레이어는 onSnapshot 실시간 리스너 사용, AI 모드는 로컬 처리
+  // onSnapshot이 모든 실시간 업데이트를 처리하므로 폴링 불필요
+  const shouldPoll = false;
+  const pollingInterval = 30000;
   const { refetch: refetchGameData } = usePolling(fetchGameData, {
     interval: pollingInterval,
     enabled: shouldPoll,
