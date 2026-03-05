@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 
 export default function MyProfile() {
-  const { user, userDoc, logout } = useAuth();
+  const { user, userDoc, setUserDoc, logout } = useAuth();
   const userId = user?.uid;
   const userName =
     userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
@@ -52,6 +52,7 @@ export default function MyProfile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [newClassCode, setNewClassCode] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -102,8 +103,13 @@ export default function MyProfile() {
 
     setIsLoading(true);
     try {
+      const trimmed = newNickname.trim();
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { nickname: newNickname.trim() });
+      await updateDoc(userRef, { nickname: trimmed, name: trimmed });
+      // 로컬 상태도 즉시 갱신
+      if (setUserDoc) {
+        setUserDoc((prev) => prev ? { ...prev, nickname: trimmed, name: trimmed } : prev);
+      }
       alert("닉네임이 변경되었습니다.");
       setShowNicknameModal(false);
       resetModals();
@@ -180,8 +186,6 @@ export default function MyProfile() {
   };
 
   // 계정 삭제
-  const [deletePassword, setDeletePassword] = useState("");
-
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "계정삭제") {
       setError("'계정삭제'를 정확히 입력해주세요.");

@@ -2261,28 +2261,48 @@ const AdminSettingsModal = ({
                       ⏰ 자동 주급 지급: 매주 금요일 오전 8시 (서버 자동 실행)
                     </p>
                   </div>
-                  <div className="salary-buttons">
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
                     <button
-                      className="admin-button pay-salary-button"
                       onClick={handlePaySalariesToAll}
                       disabled={isPayingSalary || studentsLoading}
+                      style={{
+                        padding: '12px 20px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(16,185,129,0.4)',
+                        background: 'rgba(16,185,129,0.15)',
+                        color: '#10b981',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        cursor: isPayingSalary ? 'not-allowed' : 'pointer',
+                        opacity: isPayingSalary ? 0.6 : 1,
+                      }}
                     >
                       {isPayingSalary
-                        ? "주급 지급 중..."
-                        : "전체 학생 주급 지급"}
+                        ? "지급 중..."
+                        : "💰 전체 학생 주급 지급"}
                     </button>
                     <button
-                      className="admin-button pay-selected-salary-button"
                       onClick={handlePaySalariesToSelected}
                       disabled={
                         isPayingSalary ||
                         studentsLoading ||
                         selectedStudentIds.length === 0
                       }
+                      style={{
+                        padding: '12px 20px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(99,102,241,0.4)',
+                        background: 'rgba(99,102,241,0.15)',
+                        color: '#818cf8',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        cursor: (isPayingSalary || selectedStudentIds.length === 0) ? 'not-allowed' : 'pointer',
+                        opacity: (isPayingSalary || selectedStudentIds.length === 0) ? 0.5 : 1,
+                      }}
                     >
                       {isPayingSalary
-                        ? "주급 지급 중..."
-                        : `선택 학생(${selectedStudentIds.length}) 주급 지급`}
+                        ? "지급 중..."
+                        : `💰 선택 학생(${selectedStudentIds.length}) 주급 지급`}
                     </button>
                   </div>
                 </div>
