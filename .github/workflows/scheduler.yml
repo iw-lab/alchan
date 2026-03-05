@@ -1,26 +1,26 @@
 name: Scheduled Tasks
 
 on:
-  # 🔥 자동 스케줄 비활성화: cron-job.org를 사용하여 중복 실행 방지
-  # schedule:
-  #   - cron: '*/15 * * * *'
+  schedule:
+    # 15분마다 실행 (주식 가격 + 자정 리셋 + 경제 이벤트)
+    - cron: '*/15 * * * *'
 
-  # 수동 실행만 허용 (긴급 상황용)
+  # 수동 실행 (긴급 상황용)
   workflow_dispatch:
 
 jobs:
-  run-scheduled-functions:
+  stock-price-update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Determine tasks to run
-        id: tasks
+      - name: Calculate KST time
+        id: time
         run: |
-          MINUTE=$(date -u +%M)
           HOUR=$(date -u +%H)
+          MINUTE=$(date -u +%M)
           DAY=$(date -u +%u) # 1=Monday, 7=Sunday
 
-          # KST 시간 및 요일 계산 (UTC+9)
+          # KST 시간 계산 (UTC+9)
           KST_HOUR=$(( (HOUR + 9) % 24 ))
           if [ $HOUR -ge 15 ]; then
             KST_DAY=$(( (DAY % 7) + 1 ))
@@ -28,53 +28,44 @@ jobs:
             KST_DAY=$DAY
           fi
 
-          TASKS=""
-          IS_MARKET_HOURS=false
-
-          # 평일(월-금, 1-5) 8시-15시 KST 시장 시간에만 실행
-          if [ $KST_DAY -ge 1 ] && [ $KST_DAY -le 5 ] && [ $KST_HOUR -ge 8 ] && [ $KST_HOUR -lt 15 ]; then
-            IS_MARKET_HOURS=true
-            TASKS="\"updateMarketCondition\",\"updateCentralStockMarket\",\"createCentralMarketNews\",\"cleanupExpiredCentralNews\",\"autoManageStocks\""
-          else
-            # 시장 시간 외에는 불필요한 작업 실행 안함
-            TASKS=""
-          fi
-
-          # 일일 작업 리셋 (매일 자정 KST 부근)
-          if [ $KST_HOUR -eq 0 ] && [ $MINUTE -lt 5 ]; then
-            if [ -n "$TASKS" ]; then TASKS="$TASKS,"; fi
-            TASKS="${TASKS}\"resetDailyTasks\""
-          fi
-
-          TASKS_ARRAY="[${TASKS}]"
-          if [ -z "$TASKS" ]; then
-            TASKS_ARRAY="[]"
-          fi
-
-          echo "tasks=${TASKS_ARRAY}" >> $GITHUB_OUTPUT
+          echo "kst_hour=$KST_HOUR" >> $GITHUB_OUTPUT
+          echo "kst_day=$KST_DAY" >> $GITHUB_OUTPUT
+          echo "minute=$MINUTE" >> $GITHUB_OUTPUT
           echo "KST Time: ${KST_HOUR}:${MINUTE} (Day: ${KST_DAY})"
-          echo "Is Market Hours: $IS_MARKET_HOURS"
-          echo "Tasks to run: $TASKS_ARRAY"
 
-      - name: Call Firebase Function
-        if: steps.tasks.outputs.tasks != '[]'
-        env:
-          TASKS_JSON: ${{ steps.tasks.outputs.tasks }}
-          AUTH_TOKEN: "github-actions-scheduler-2024"
+      # 주식 가격 업데이트 (평일 6~25시 KST)
+      - name: Update stock prices
+        if: |
+          steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
+          (steps.time.outputs.kst_hour >= 6 || steps.time.outputs.kst_hour < 1)
         run: |
-          echo "Calling runScheduler with tasks: ${TASKS_JSON}"
-          RESPONSE=$(curl -X POST \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${AUTH_TOKEN}" \
-            -d "{\"tasks\": ${TASKS_JSON}}" \
-            -w "\nHTTP_STATUS:%{http_code}" \
-            "https://runscheduler-j7kazbsvxq-du.a.run.app")
-
+          echo "Calling stockPriceScheduler..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://stockpricescheduler-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&force=false")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "Error: Scheduler call failed with status $HTTP_STATUS"
-            exit 1
-          fi
+      # 자정 리셋 (매일 KST 0:00~0:05)
+      - name: Midnight reset
+        if: steps.time.outputs.kst_hour == 0 && steps.time.outputs.minute < 5
+        run: |
+          echo "Calling midnightReset..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://midnightreset-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
+
+      # 경제 이벤트 (평일 KST 13:00~13:15)
+      - name: Economic event
+        if: |
+          steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
+          steps.time.outputs.kst_hour == 13 && steps.time.outputs.minute < 15
+        run: |
+          echo "Calling economicEventScheduler..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://economiceventscheduler-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
