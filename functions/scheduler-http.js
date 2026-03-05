@@ -227,6 +227,16 @@ exports.stockPriceScheduler = onRequest(
 
       const results = {};
 
+      // 🔥 환율 먼저 갱신 (미국 주식 가격 변환에 필요)
+      try {
+        const exchangeResult = await updateExchangeRate();
+        results.exchangeRate = `${exchangeResult.rate}원 (updated: ${exchangeResult.updated})`;
+        logger.info(`[stockPriceScheduler] 환율 갱신: ${exchangeResult.rate}원`);
+      } catch (error) {
+        logger.warn("[stockPriceScheduler] 환율 갱신 실패, 기존 환율 사용:", error.message);
+        results.exchangeRate = `error: ${error.message}`;
+      }
+
       // 🔥 실제 주식 데이터만 업데이트 (Yahoo Finance)
       try {
         const realStockResult = await updateRealStockPrices();

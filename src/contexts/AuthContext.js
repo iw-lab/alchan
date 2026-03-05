@@ -29,7 +29,7 @@ import {
   addTransaction,
   serverTimestamp,
 } from "../firebase";
-import { doc, Timestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, Timestamp, getDoc } from "firebase/firestore";
 
 import { logger } from "../utils/logger";
 export const AuthContext = createContext(null);
@@ -248,6 +248,13 @@ export const AuthProvider = ({ children }) => {
         await updateUserDocument(firebaseUid, {
           lastActiveAt: serverTimestamp(),
         });
+        // 스케줄러용 activeStatus 업데이트 (주식 가격 업데이트 트리거)
+        if (db) {
+          setDoc(doc(db, "Settings", "activeStatus"), {
+            lastActiveAt: serverTimestamp(),
+            lastActiveUserId: firebaseUid,
+          }, { merge: true }).catch(() => {});
+        }
         lastActiveUpdateRef.current = now;
       } catch (error) {
         // 네트워크 오류 등은 무시 (중요하지 않음)

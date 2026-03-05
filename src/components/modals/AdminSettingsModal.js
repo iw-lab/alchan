@@ -2078,6 +2078,17 @@ const AdminSettingsModal = ({
                                 할일 없음
                               </p>
                             )}
+                            {/* 직업 카드 내 할일 추가 버튼 */}
+                            <div style={{ padding: '8px', borderTop: '1px solid rgba(129,140,248,0.1)' }}>
+                              <button
+                                onClick={() => { logger.log("[AdminSettingsModal] 직업 카드 내 할일 추가:", job.id); handleTaskAdd(job.id, true); }}
+                                style={{ width: '100%', padding: '8px', background: 'rgba(129,140,248,0.08)', border: '1px dashed rgba(129,140,248,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '13px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
+                                onMouseEnter={(e) => { e.target.style.background = 'rgba(129,140,248,0.15)'; e.target.style.borderColor = 'rgba(129,140,248,0.5)'; }}
+                                onMouseLeave={(e) => { e.target.style.background = 'rgba(129,140,248,0.08)'; e.target.style.borderColor = 'rgba(129,140,248,0.3)'; }}
+                              >
+                                + 할일 추가
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -42,6 +42,9 @@ import {
   Plus,
   ChevronLeft,
   Trash2,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 
 import { logger } from "../../utils/logger";
@@ -194,12 +197,15 @@ function SelectMultipleJobsView({
   isAdmin,
   onAddJob,
   onDeleteJob,
+  onEditJob,
 }) {
   const [tempSelection, setTempSelection] = useState(
     Array.isArray(currentSelectedJobIds) ? [...currentSelectedJobIds] : [],
   );
   const [newJobTitle, setNewJobTitle] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingJobId, setEditingJobId] = useState(null);
+  const [editingJobTitle, setEditingJobTitle] = useState("");
 
   const activeJobs = useMemo(() => {
     return Array.isArray(availableJobs)
@@ -228,6 +234,29 @@ function SelectMultipleJobsView({
     setShowAddForm(false);
   }, [newJobTitle, onAddJob]);
 
+  const handleStartEdit = useCallback((job) => {
+    setEditingJobId(job.id);
+    setEditingJobTitle(job.title);
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    const title = editingJobTitle.trim();
+    if (!title) {
+      alert("직업 이름을 입력해주세요.");
+      return;
+    }
+    if (onEditJob) {
+      onEditJob(editingJobId, title);
+    }
+    setEditingJobId(null);
+    setEditingJobTitle("");
+  }, [editingJobId, editingJobTitle, onEditJob]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingJobId(null);
+    setEditingJobTitle("");
+  }, []);
+
   return (
     <div className="bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
       <h4 className="text-xl font-semibold text-white text-center mb-2">
@@ -246,29 +275,72 @@ function SelectMultipleJobsView({
                 : "border-cyan-900/20 bg-[#14142380] hover:border-cyan-500/50"
             }`}
           >
-            <label className="flex items-center gap-3 flex-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tempSelection.includes(job.id)}
-                onChange={() => handleCheckboxChange(job.id)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer accent-cyan-400"
-              />
-              <span
-                className={`font-medium ${
-                  tempSelection.includes(job.id) ? "text-cyan-300" : "text-white"
-                }`}
-              >
-                {job.title}
-              </span>
-            </label>
-            {isAdmin && onDeleteJob && (
-              <button
-                onClick={() => onDeleteJob(job.id)}
-                className="p-1 text-slate-500 hover:text-red-400 transition-colors shrink-0"
-                title="직업 삭제"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+            {editingJobId === job.id ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={editingJobTitle}
+                  onChange={(e) => setEditingJobTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit();
+                    if (e.key === "Escape") handleCancelEdit();
+                  }}
+                  className="flex-1 px-2 py-1 bg-[#0a0a1a] border border-cyan-500 rounded text-white text-sm focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveEdit}
+                  className="p-1 text-green-400 hover:text-green-300 transition-colors shrink-0"
+                  title="저장"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="p-1 text-slate-400 hover:text-slate-300 transition-colors shrink-0"
+                  title="취소"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tempSelection.includes(job.id)}
+                    onChange={() => handleCheckboxChange(job.id)}
+                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer accent-cyan-400"
+                  />
+                  <span
+                    className={`font-medium ${
+                      tempSelection.includes(job.id) ? "text-cyan-300" : "text-white"
+                    }`}
+                  >
+                    {job.title}
+                  </span>
+                </label>
+                {isAdmin && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleStartEdit(job)}
+                      className="p-1 text-slate-500 hover:text-cyan-400 transition-colors"
+                      title="직업 수정"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {onDeleteJob && (
+                      <button
+                        onClick={() => onDeleteJob(job.id)}
+                        className="p-1 text-slate-500 hover:text-red-400 transition-colors"
+                        title="직업 삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -363,7 +435,7 @@ function Dashboard({ adminTabMode }) {
   const [isJobTaskForForm, setIsJobTaskForForm] = useState(false);
   const [showAddTaskForm, setShowAddTaskForm] = useState(false);
   const [adminNewTaskName, setAdminNewTaskName] = useState("");
-  const [adminNewTaskReward, setAdminNewTaskReward] = useState("");
+  const [adminNewTaskReward, setAdminNewTaskReward] = useState("0");
   const [adminNewTaskMaxClicks, setAdminNewTaskMaxClicks] = useState("5");
   const [adminNewTaskRequiresApproval, setAdminNewTaskRequiresApproval] =
     useState(false);
@@ -947,7 +1019,7 @@ function Dashboard({ adminTabMode }) {
     setIsJobTaskForForm(isJobTask);
     setCurrentJobIdForTask(jobId);
     setAdminNewTaskName("");
-    setAdminNewTaskReward("");
+    setAdminNewTaskReward("0");
     setAdminNewTaskMaxClicks("5");
     setEditingTask(null);
     setAdminSelectedMenu("taskManagement");
@@ -1075,7 +1147,7 @@ function Dashboard({ adminTabMode }) {
           });
         }
         setAdminNewTaskName("");
-        setAdminNewTaskReward("");
+        setAdminNewTaskReward("0");
         setAdminNewTaskMaxClicks("5");
         setAdminNewTaskRequiresApproval(false);
         alert(`할일이 추가되었습니다.`);
@@ -2080,6 +2152,27 @@ function Dashboard({ adminTabMode }) {
             }
           }}
           onDeleteJob={(jobId) => handleDeleteJob(jobId)}
+          onEditJob={async (jobId, newTitle) => {
+            if (!db || !userDoc?.classCode) {
+              alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+              return;
+            }
+            try {
+              const jobRef = doc(db, "jobs", jobId);
+              batchManager.addWrite({
+                type: "update",
+                ref: jobRef,
+                data: { title: newTitle, updatedAt: serverTimestamp() },
+              });
+              setJobs((prev) =>
+                prev.map((j) => (j.id === jobId ? { ...j, title: newTitle } : j))
+              );
+              dataCache.invalidate(`jobs_${userDoc.classCode}`);
+            } catch (error) {
+              console.error("직업 수정 오류:", error);
+              alert("직업 수정 중 오류 발생");
+            }
+          }}
         />
       )}
 

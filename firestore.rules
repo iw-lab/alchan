@@ -518,7 +518,8 @@ service cloud.firestore {
     // ========================================================
     match /Settings/{documentId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // activeStatus는 로그인한 모든 사용자가 업데이트 가능 (주식 스케줄러 트리거용)
+      allow write: if isAdmin() || (isSignedIn() && documentId == 'activeStatus');
     }
 
     // settings (소문자) - classCodes 등

@@ -89,8 +89,8 @@ const REAL_STOCK_SYMBOLS = {
   'USO': 'USO',           // 원유
 };
 
-// 기본 환율 (실시간 환율로 업데이트됨)
-let USD_TO_KRW = 1350;
+// 기본 환율 (실시간 환율로 업데이트됨, Firestore에서 로드 후 덮어씌워짐)
+let USD_TO_KRW = 1477;
 
 /**
  * 실시간 환율 가져오기 (Frankfurter API - 무료, 무제한)
