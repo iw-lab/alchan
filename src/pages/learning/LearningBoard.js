@@ -26,6 +26,22 @@ import {
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
 
+// URL을 클릭 가능한 링크로 변환
+const linkifyContent = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+        style={{ color: '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}
+        onClick={(e) => e.stopPropagation()}>
+        {part}
+      </a>
+    ) : part
+  );
+};
+
 const formatDate = (isoString) => {
   if (!isoString) return "";
   try {
@@ -440,7 +456,7 @@ const LearningBoard = () => {
                 <span>작성자: {selectedPost.author || "익명"}</span>
                 <span>{formatDate(selectedPost.timestamp)}</span>
               </div>
-              <div className="lb-detail-content">{selectedPost.content}</div>
+              <div className="lb-detail-content" style={{ whiteSpace: 'pre-wrap' }}>{linkifyContent(selectedPost.content)}</div>
 
               {/* Like / Dislike */}
               <div className="lb-detail-actions">
