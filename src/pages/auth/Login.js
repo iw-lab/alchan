@@ -11,6 +11,7 @@ import {
   addUserDocument,
   serverTimestamp,
   db,
+  httpsCallable,
 } from "../../firebase";
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { logger } from "../../utils/logger";
@@ -473,76 +474,25 @@ const Login = () => {
       try {
         firebaseUser = await loginWithEmailPassword(loginEmail, password);
       } catch (loginError) {
-        // 학생 계정이 Firebase Auth에 없는 경우 자동 복구 시도
+        // 학생 계정이 Firebase Auth에 없거나 비밀번호 불일치 시 자동 복구
         if (
           activeTab === "student" &&
           (loginError.code === "auth/user-not-found" ||
             loginError.code === "auth/invalid-credential")
         ) {
-          logger.log("[Login] 학생 계정 자동 복구 시도:", loginEmail);
+          logger.log("[Login] 학생 계정 자동 복구 시도 (Cloud Function):", loginEmail);
           try {
-            // 1. Firestore에 이 이메일로 된 기존 문서가 있는지 확인
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("email", "==", loginEmail));
-            const snap = await getDocs(q);
+            // Cloud Function으로 계정 복구 (Auth 생성/비밀번호 리셋 + Firestore 문서 보장)
+            const { functions: firebaseFunctions } = await import("../../firebase");
+            const repairFn = httpsCallable(firebaseFunctions, "repairStudentLogin");
+            const result = await repairFn({ email: loginEmail, password });
+            logger.log("[Login] 복구 결과:", result.data);
 
-            if (!snap.empty) {
-              // 기존 문서가 있으면 → Auth 계정만 없는 상태. 새로 생성
-              const existingDoc = snap.docs[0];
-              const existingData = existingDoc.data();
-              const oldUid = existingDoc.id;
-
-              const userCredential = await registerWithEmailAndPassword(
-                auth,
-                loginEmail,
-                password,
-              );
-              const newUser = userCredential.user;
-
-              // 기존 Firestore 데이터를 새 UID로 복사
-              if (newUser.uid !== oldUid) {
-                await setDoc(doc(db, "users", newUser.uid), {
-                  ...existingData,
-                  email: loginEmail,
-                  lastLoginAt: serverTimestamp(),
-                });
-              }
-
-              logger.log("[Login] 학생 계정 자동 복구 성공:", loginEmail);
-              firebaseUser = newUser;
-            } else {
-              // Firestore 문서도 없으면 → 완전 신규 생성
-              const userCredential = await registerWithEmailAndPassword(
-                auth,
-                loginEmail,
-                password,
-              );
-              const newUser = userCredential.user;
-              const displayName = studentId.trim();
-              const studentClassCode = classCode.trim().toUpperCase();
-
-              await setDoc(doc(db, "users", newUser.uid), {
-                name: displayName,
-                nickname: displayName,
-                email: loginEmail,
-                classCode: studentClassCode,
-                isAdmin: false,
-                isSuperAdmin: false,
-                isTeacher: false,
-                cash: 0,
-                coupons: 0,
-                selectedJobIds: [],
-                myContribution: 0,
-                createdAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp(),
-              });
-
-              logger.log("[Login] 학생 계정 신규 생성:", loginEmail);
-              firebaseUser = newUser;
-            }
+            // 복구 성공 후 다시 로그인 시도
+            firebaseUser = await loginWithEmailPassword(loginEmail, password);
+            logger.log("[Login] 학생 계정 복구 후 로그인 성공:", loginEmail);
           } catch (repairError) {
             logger.error("[Login] 학생 계정 복구 실패:", repairError);
-            // 복구 실패 시 원래 에러 표시
             throw loginError;
           }
         } else {

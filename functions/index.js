@@ -3880,6 +3880,104 @@ exports.resetStudentPassword = onCall(
   },
 );
 
+// 학생 로그인 자동 복구 (Auth 계정 없거나 비밀번호 불일치 시)
+// 인증 불필요 - .alchan 학생 이메일만 허용
+exports.repairStudentLogin = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { email, password } = request.data;
+
+    if (!email || !password) {
+      throw new HttpsError("invalid-argument", "이메일과 비밀번호가 필요합니다.");
+    }
+
+    // .alchan 도메인 학생 계정만 허용
+    if (!email.endsWith(".alchan")) {
+      throw new HttpsError("permission-denied", "학생 계정만 복구할 수 있습니다.");
+    }
+
+    // 비밀번호는 6자 이상
+    if (password.length < 6) {
+      throw new HttpsError("invalid-argument", "비밀번호는 6자 이상이어야 합니다.");
+    }
+
+    try {
+      let userRecord;
+      let action;
+
+      try {
+        // Auth 계정이 있는지 확인
+        userRecord = await admin.auth().getUserByEmail(email);
+        // 있으면 비밀번호 리셋
+        await admin.auth().updateUser(userRecord.uid, { password });
+        action = "password_reset";
+        logger.info(`[repairStudentLogin] 비밀번호 리셋: ${email} (uid: ${userRecord.uid})`);
+      } catch (e) {
+        if (e.code === "auth/user-not-found") {
+          // Auth 계정이 없으면 새로 생성
+          const displayName = email.split("@")[0];
+          userRecord = await admin.auth().createUser({
+            email,
+            password,
+            displayName,
+          });
+          action = "account_created";
+          logger.info(`[repairStudentLogin] 계정 생성: ${email} (uid: ${userRecord.uid})`);
+        } else {
+          throw e;
+        }
+      }
+
+      // Firestore 문서 확인 및 생성
+      const usersSnapshot = await db.collection("users")
+        .where("email", "==", email)
+        .limit(1)
+        .get();
+
+      if (!usersSnapshot.empty) {
+        const existingDoc = usersSnapshot.docs[0];
+        const oldUid = existingDoc.id;
+
+        // UID가 다르면 기존 데이터를 새 UID로 복사
+        if (oldUid !== userRecord.uid) {
+          const existingData = existingDoc.data();
+          await db.collection("users").doc(userRecord.uid).set({
+            ...existingData,
+            email,
+          });
+          logger.info(`[repairStudentLogin] Firestore 문서 복사: ${oldUid} → ${userRecord.uid}`);
+        }
+      } else {
+        // Firestore 문서가 아예 없으면 기본 문서 생성
+        const parts = email.split("@");
+        const studentId = parts[0];
+        const classCode = parts[1].replace(".alchan", "").toUpperCase();
+
+        await db.collection("users").doc(userRecord.uid).set({
+          name: studentId,
+          nickname: studentId,
+          email,
+          classCode,
+          isAdmin: false,
+          isSuperAdmin: false,
+          isTeacher: false,
+          cash: 0,
+          coupons: 0,
+          selectedJobIds: [],
+          myContribution: 0,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        logger.info(`[repairStudentLogin] Firestore 문서 생성: ${email} (classCode: ${classCode})`);
+      }
+
+      return { success: true, uid: userRecord.uid, action };
+    } catch (error) {
+      logger.error(`[repairStudentLogin] 실패: ${email}`, error);
+      throw new HttpsError("internal", error.message || "계정 복구에 실패했습니다.");
+    }
+  },
+);
+
 // 임시: 토큰 인증 기반 비밀번호 리셋 HTTP 엔드포인트
 exports.resetPasswordHttp = onRequest(
   { region: "asia-northeast3" },
