@@ -18,6 +18,7 @@ import {
   query,
   where,
   getDocs,
+  onSnapshot,
   orderBy,
   increment,
 } from "firebase/firestore";
@@ -738,6 +739,27 @@ const OmokGame = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // user 의존성 제거 - 필요 시 user는 클로저로 접근
 
+  // 실시간 게임 목록 리스너 (방 생성/삭제 즉시 반영)
+  useEffect(() => {
+    if (!user || gameId) return; // 로비에서만 리스닝
+    const gamesRef = collection(db, "omokGames");
+    const q = query(
+      gamesRef,
+      where("gameStatus", "==", "waiting"),
+      orderBy("createdAt", "desc"),
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const games = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      setAvailableGames(games);
+    }, (err) => {
+      logger.error("게임 목록 실시간 리스너 오류:", err);
+    });
+    return () => unsubscribe();
+  }, [user, gameId]);
+
   const deleteGameRoom = async (roomId, e) => {
     e.stopPropagation();
     if (!isAdmin()) {
@@ -864,8 +886,9 @@ const OmokGame = () => {
             turnStartTime: serverTimestamp(),
           });
         }
-        setGameId(id);
       });
+      // 트랜잭션 성공 후에 gameId 설정 (트랜잭션 내부에서 하면 재시도 시 문제)
+      setGameId(id);
     } catch (err) {
       logger.error("게임 참가 오류:", err);
       setError(err.message);

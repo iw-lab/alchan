@@ -975,7 +975,7 @@ const NationalAssembly = () => {
                               </span>
                               {/* ✨ 수정된 부분: 필요 투표 수 안내 문구 변경 */}
                               <span className="vote-required">
-                                /13표 필요 (정부 이송)
+                                /{Math.ceil(adminSettings.totalStudents / 2)}표 필요 (정부 이송)
                               </span>
                             </div>
                             <div className="vote-type disapproval">
