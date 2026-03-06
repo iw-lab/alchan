@@ -1739,6 +1739,19 @@ exports.purchaseStoreItem = onCall(
     const userRef = db.collection("users").doc(uid);
     const itemRef = db.collection("storeItems").doc(itemId);
     const userItemRef = userRef.collection("inventory").doc(itemId);
+    const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+
+    // VAT 세율 조회
+    let itemStoreVATRate = 0.1; // 기본 10%
+    try {
+      const govDoc = await db.doc(`governments/${classCode}`).get();
+      if (govDoc.exists) {
+        const vatRate = govDoc.data()?.taxSettings?.itemStoreVATRate;
+        if (vatRate !== undefined) itemStoreVATRate = vatRate;
+      }
+    } catch (e) {
+      logger.warn("[purchaseStoreItem] VAT 세율 조회 실패, 기본값 사용:", e.message);
+    }
 
     // 재고 보충 비용을 관리자에게 청구하기 위해 관리자 찾기
     let adminRef = null;
@@ -1757,6 +1770,7 @@ exports.purchaseStoreItem = onCall(
       // 🔥 Transaction으로 변경하여 원자적 처리 및 재고 보충 정보 포함
       const result = await db.runTransaction(async (transaction) => {
         // 모든 읽기 작업을 먼저 수행
+        // [0]=user, [1]=item, [2]=userItem, [3]=admin(optional), last=treasury
         const readPromises = [
           transaction.get(userRef),
           transaction.get(itemRef),
@@ -1767,10 +1781,12 @@ exports.purchaseStoreItem = onCall(
         if (adminRef) {
           readPromises.push(transaction.get(adminRef));
         }
+        readPromises.push(transaction.get(treasuryRef));
 
         const results = await Promise.all(readPromises);
         const [userDoc, itemDoc, userItemDoc] = results;
         const adminDoc = adminRef ? results[3] : null;
+        const treasuryDoc = results[results.length - 1]; // 마지막이 항상 treasury
 
         if (!userDoc.exists) {
           throw new Error("사용자 정보를 찾을 수 없습니다.");
@@ -1951,11 +1967,32 @@ exports.purchaseStoreItem = onCall(
           transaction.set(userItemRef, newItemData);
         }
 
+        // 국고에 부가세(VAT) 기록 (기존 가격을 VAT 포함가로 간주)
+        const vatAmount = Math.round(totalCost * itemStoreVATRate / (1 + itemStoreVATRate));
+        if (vatAmount > 0) {
+          if (treasuryDoc.exists) {
+            transaction.update(treasuryRef, {
+              totalAmount: admin.firestore.FieldValue.increment(vatAmount),
+              vatRevenue: admin.firestore.FieldValue.increment(vatAmount),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            transaction.set(treasuryRef, {
+              totalAmount: vatAmount,
+              vatRevenue: vatAmount,
+              classCode: classCode,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
+
         // 트랜잭션 결과 반환
         return {
           itemName: itemData.name,
           quantity: quantity,
           totalCost: totalCost,
+          vatAmount: vatAmount,
           restocked: restocked,
           newStock: finalStock,
           newPrice: finalPrice,
