@@ -1722,10 +1722,32 @@ exports.purchaseStoreItem = onCall(
         const userData = userDoc.data();
         const itemData = itemDoc.data();
 
-        const totalCost = itemData.price * quantity;
-        const currentCash = userData.cash || 0;
-        const currentStock =
+        // 품절(stock=0)인데 자동충전 설정이 있으면 먼저 충전
+        let preRestocked = false;
+        let currentPrice = itemData.price;
+        let currentStock =
           itemData.stock !== undefined ? itemData.stock : Infinity;
+
+        if (
+          itemData.stock !== undefined &&
+          currentStock === 0 &&
+          (itemData.initialStock || itemData.initialStock === undefined)
+        ) {
+          const initialStock = itemData.initialStock || 10;
+          const priceIncreasePercentage =
+            itemData.priceIncreasePercentage || 10;
+          currentStock = initialStock;
+          currentPrice = Math.round(
+            itemData.price * (1 + priceIncreasePercentage / 100),
+          );
+          preRestocked = true;
+          logger.info(
+            `[purchaseStoreItem] ${itemData.name} 품절 상태에서 구매 시도 -> 선충전: 재고 ${initialStock}개, 가격 ${itemData.price}원 -> ${currentPrice}원`,
+          );
+        }
+
+        const totalCost = currentPrice * quantity;
+        const currentCash = userData.cash || 0;
 
         if (currentCash < totalCost) {
           throw new Error(
@@ -1743,12 +1765,26 @@ exports.purchaseStoreItem = onCall(
         const newStock = currentStock - quantity;
 
         // 품절 시 재고 보충 및 가격 인상 계산
-        let restocked = false;
+        let restocked = preRestocked;
         let finalStock = newStock;
-        let finalPrice = itemData.price;
+        let finalPrice = currentPrice;
         let restockCost = 0;
 
-        if (itemData.stock !== undefined && newStock === 0) {
+        // 선충전 시 관리자 비용 계산
+        if (preRestocked) {
+          const initialStock = itemData.initialStock || 10;
+          restockCost = itemData.price * initialStock;
+          if (adminDoc && adminDoc.exists) {
+            const adminData = adminDoc.data();
+            logger.info(
+              `[purchaseStoreItem] 선충전 관리자 비용: ${restockCost.toLocaleString()}원 (보유: ${(adminData.cash || 0).toLocaleString()}원)`,
+            );
+          } else {
+            restockCost = 0;
+          }
+        }
+
+        if (itemData.stock !== undefined && newStock === 0 && !preRestocked) {
           restocked = true;
           const initialStock = itemData.initialStock || 10;
           const priceIncreasePercentage =

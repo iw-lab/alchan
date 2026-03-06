@@ -8,11 +8,11 @@ import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 import { logger } from "../../utils/logger";
 
-const StockBadge = ({ stock }) => {
+const StockBadge = ({ stock, autoRestock }) => {
   if (stock === undefined || stock === null) return null;
   let badgeClass = "";
   if (stock <= 0) {
-    badgeClass = "stock-low";
+    badgeClass = autoRestock ? "stock-medium" : "stock-low";
   } else if (stock <= 3) {
     badgeClass = "stock-low";
   } else if (stock <= 5) {
@@ -20,7 +20,12 @@ const StockBadge = ({ stock }) => {
   } else {
     badgeClass = "stock-high";
   }
-  const label = stock <= 0 ? "품절" : `재고(${stock}개)`;
+  const label =
+    stock <= 0
+      ? autoRestock
+        ? "자동충전"
+        : "품절"
+      : `재고(${stock}개)`;
   return <span className={`stock-badge ${badgeClass}`}>{label}</span>;
 };
 
@@ -146,12 +151,14 @@ const ItemStore = () => {
     if (!item) return;
     let quantity = parseInt(value, 10);
     if (isNaN(quantity) || quantity < 1) quantity = 1;
-    if (quantity > item.stock) quantity = item.stock;
+    const maxStock = item.stock <= 0 && item.initialStock > 0 ? item.initialStock : item.stock;
+    if (quantity > maxStock) quantity = maxStock;
     setPurchaseQuantities((prev) => ({ ...prev, [itemId]: quantity }));
   };
 
   const handlePurchase = async (item) => {
-    if (!item || item.stock <= 0) return showNotification("error", "재고 없음");
+    const canAutoRestock = item.initialStock > 0;
+    if (!item || (item.stock <= 0 && !canAutoRestock)) return showNotification("error", "재고 없음");
     if (!user || !currentUserClassCode)
       return showNotification("error", "로그인 또는 학급 정보 필요");
 
@@ -271,7 +278,7 @@ const ItemStore = () => {
   };
 
   const getButtonText = (item) => {
-    if (item.stock <= 0) return "품절";
+    if (item.stock <= 0 && !(item.initialStock > 0)) return "품절";
     const currentUserCash =
       userDoc?.cash !== undefined ? userDoc.cash : user?.cash;
     const quantity = purchaseQuantities[item.id] || 1;
@@ -406,7 +413,7 @@ const ItemStore = () => {
                         <div className="item-content">
                           <div className="item-header-compact">
                             <h3 className="item-name-compact">{item.name}</h3>
-                            <StockBadge stock={item.stock} />
+                            <StockBadge stock={item.stock} autoRestock={item.initialStock > 0} />
                           </div>
                           {item.description && item.description.trim() && (
                             <p className="item-description-compact">
@@ -425,13 +432,13 @@ const ItemStore = () => {
                               <input
                                 type="number"
                                 min="1"
-                                max={item.stock}
+                                max={item.stock <= 0 && item.initialStock > 0 ? item.initialStock : item.stock}
                                 value={purchaseQuantities[item.id] || 1}
                                 onChange={(e) =>
                                   handleQuantityChange(item.id, e.target.value)
                                 }
                                 className="quantity-input"
-                                disabled={item.stock <= 0}
+                                disabled={item.stock <= 0 && !(item.initialStock > 0)}
                               />
                               <button
                                 onClick={() => handlePurchase(item)}
@@ -440,7 +447,7 @@ const ItemStore = () => {
                                 }`}
                                 disabled={
                                   !user ||
-                                  item.stock <= 0 ||
+                                  (item.stock <= 0 && !(item.initialStock > 0)) ||
                                   (userDoc?.cash !== undefined
                                     ? userDoc.cash
                                     : user?.cash) <
