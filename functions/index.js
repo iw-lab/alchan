@@ -1822,9 +1822,14 @@ exports.purchaseStoreItem = onCall(
         }
 
         // 모든 쓰기 작업 수행
-        // 현금 차감
+        // 현금 차감 + 관리자가 본인이면 보충 비용도 합산
+        const isAdminBuyer = adminRef && adminRef.path === userRef.path;
+        const userCashDeduction = isAdminBuyer && restocked && restockCost > 0
+          ? totalCost + restockCost
+          : totalCost;
+
         transaction.update(userRef, {
-          cash: admin.firestore.FieldValue.increment(-totalCost),
+          cash: admin.firestore.FieldValue.increment(-userCashDeduction),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -1843,8 +1848,8 @@ exports.purchaseStoreItem = onCall(
           transaction.update(itemRef, stockUpdate);
         }
 
-        // 재고 보충 시 관리자 계정에서 비용 차감
-        if (restocked && adminRef && restockCost > 0) {
+        // 재고 보충 시 관리자 계정에서 비용 차감 (관리자≠구매자일 때만)
+        if (restocked && adminRef && restockCost > 0 && !isAdminBuyer) {
           transaction.update(adminRef, {
             cash: admin.firestore.FieldValue.increment(-restockCost),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
