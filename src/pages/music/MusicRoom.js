@@ -104,8 +104,8 @@ const MusicRoom = ({ user }) => {
 
     const onError = (event) => {
         logger.error("[MusicRoom] YouTube error:", event.data);
-        // 에러 시 다음 곡으로
-        playNextSong();
+        // 에러 시 재생 버튼 표시 (곡 삭제하지 않음)
+        setNeedsPlay(true);
     };
 
     const handleManualPlay = () => {
