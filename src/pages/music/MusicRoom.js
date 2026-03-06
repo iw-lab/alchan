@@ -13,6 +13,8 @@ const MusicRoom = ({ user }) => {
     const [room, setRoom] = useState(null);
     const [playlist, setPlaylist] = useState([]);
     const [currentVideoId, setCurrentVideoId] = useState(null);
+    const [playerRef, setPlayerRef] = useState(null);
+    const [needsPlay, setNeedsPlay] = useState(false);
     const navigate = useNavigate();
 
     // Use polling for room data
@@ -59,7 +61,7 @@ const MusicRoom = ({ user }) => {
             setPlaylist(newPlaylist);
             return newPlaylist;
         },
-        { interval: 10 * 60 * 1000, enabled: !!room, deps: [room, roomId] } // 🔥 [비용 최적화] 5분 → 10분
+        { interval: 30 * 1000, enabled: !!room, deps: [room, roomId] } // 🔥 재생목록은 30초마다 갱신
     );
 
     useEffect(() => {
@@ -79,13 +81,37 @@ const MusicRoom = ({ user }) => {
     }, [playlist, currentVideoId]);
 
     const onReady = (event) => {
-        // 플레이어가 준비되면 자동 재생 시작
-        event.target.playVideo();
+        setPlayerRef(event.target);
+        // 자동 재생 시도 (브라우저 정책으로 차단될 수 있음)
+        try {
+            event.target.playVideo();
+        } catch {
+            setNeedsPlay(true);
+        }
     };
 
     const onStateChange = (event) => {
-        if (event.data === 0) {
+        // -1 = unstarted (autoplay blocked), 0 = ended
+        if (event.data === -1) {
+            setNeedsPlay(true);
+        } else if (event.data === 1) {
+            // playing
+            setNeedsPlay(false);
+        } else if (event.data === 0) {
             playNextSong();
+        }
+    };
+
+    const onError = (event) => {
+        logger.error("[MusicRoom] YouTube error:", event.data);
+        // 에러 시 다음 곡으로
+        playNextSong();
+    };
+
+    const handleManualPlay = () => {
+        if (playerRef) {
+            playerRef.playVideo();
+            setNeedsPlay(false);
         }
     };
 
@@ -133,7 +159,33 @@ const MusicRoom = ({ user }) => {
             <div className="main-content">
                 <div className="video-player-wrapper">
                     {currentVideoId ? (
-                        <YouTube videoId={currentVideoId} opts={opts} onReady={onReady} onStateChange={onStateChange} className="youtube-player" />
+                        <>
+                            <YouTube videoId={currentVideoId} opts={opts} onReady={onReady} onStateChange={onStateChange} onError={onError} className="youtube-player" />
+                            {needsPlay && (
+                                <button
+                                    onClick={handleManualPlay}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        zIndex: 10,
+                                        background: 'rgba(0, 255, 242, 0.2)',
+                                        border: '2px solid #00fff2',
+                                        borderRadius: '50%',
+                                        width: '80px',
+                                        height: '80px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backdropFilter: 'blur(4px)',
+                                    }}
+                                >
+                                    <span style={{ fontSize: '2rem', color: '#00fff2', marginLeft: '4px' }}>▶</span>
+                                </button>
+                            )}
+                        </>
                     ) : (
                         <div className="no-video-placeholder">
                             <p>재생목록이 비어있습니다. 학생들에게 음악을 신청하도록 해주세요.</p>
