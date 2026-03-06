@@ -1761,29 +1761,20 @@ exports.purchaseStoreItem = onCall(
           // 재고 보충 비용 계산 (현재 가격 * 보충 수량)
           restockCost = itemData.price * initialStock;
 
-          // 관리자 잔액 확인
+          // 관리자 잔액 확인 (부족해도 마이너스로 충전 진행)
           if (adminDoc && adminDoc.exists) {
             const adminData = adminDoc.data();
             const adminCash = adminData.cash || 0;
-
             if (adminCash < restockCost) {
-              logger.warn(
-                `[purchaseStoreItem] 재고 보충 실패 - 관리자 잔액 부족 (필요: ${restockCost.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
+              logger.info(
+                `[purchaseStoreItem] 재고 보충 - 관리자 잔액 부족하지만 진행 (필요: ${restockCost.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원, 차감 후: ${(adminCash - restockCost).toLocaleString()}원)`,
               );
-              // 잔액 부족 시 재고 보충하지 않음
-              restocked = false;
-              finalStock = 0;
-              finalPrice = itemData.price;
-              restockCost = 0;
             }
           } else {
-            logger.warn(
-              `[purchaseStoreItem] 재고 보충 실패 - 관리자 계정 없음`,
+            // 관리자 없으면 비용 청구 없이 재고만 보충
+            logger.info(
+              `[purchaseStoreItem] 재고 보충 - 관리자 계정 없음, 비용 없이 보충`,
             );
-            // 관리자 없으면 재고 보충하지 않음
-            restocked = false;
-            finalStock = 0;
-            finalPrice = itemData.price;
             restockCost = 0;
           }
 

@@ -337,12 +337,26 @@ async function updateRealStockPrices() {
       return { updated: 0, failed: 0, skipped: 0 };
     }
 
+    // 현재 KST 시간 계산 (미국주식 fetch 시간 판단용)
+    const now = new Date();
+    const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const kstHour = kstTime.getUTCHours();
+    // 미국주식은 아침 6~8시 KST에만 fetch (미국 장 마감 후 최종 데이터)
+    const isUSStockFetchTime = kstHour >= 6 && kstHour < 8;
+
     // 심볼 수집
     const stocksToUpdate = [];
+    let usSkipped = 0;
     stocksSnapshot.docs.forEach(doc => {
       const data = doc.data();
       const symbol = data.realStockSymbol || REAL_STOCK_SYMBOLS[data.name];
       if (symbol) {
+        const isUSD = !symbol.includes('.KS') && !symbol.includes('.KQ');
+        // 미국주식은 아침 시간대에만 fetch
+        if (isUSD && !isUSStockFetchTime) {
+          usSkipped++;
+          return;
+        }
         stocksToUpdate.push({
           docRef: doc.ref,
           docId: doc.id,
@@ -350,7 +364,7 @@ async function updateRealStockPrices() {
           symbol: symbol,
           currentPrice: data.price,
           priceHistory: data.priceHistory || [],
-          isUSD: !symbol.includes('.KS') && !symbol.includes('.KQ')
+          isUSD: isUSD
         });
       } else {
         logger.warn(`[RealStock] ${data.name} - 심볼을 찾을 수 없음`);
@@ -358,9 +372,13 @@ async function updateRealStockPrices() {
       }
     });
 
+    if (usSkipped > 0) {
+      logger.info(`[RealStock] 미국주식 ${usSkipped}개 건너뜀 (KST ${kstHour}시 - 아침 6~8시에만 fetch)`);
+    }
+
     if (stocksToUpdate.length === 0) {
       logger.info("[RealStock] 업데이트할 실제 주식이 없습니다.");
-      return { updated: 0, failed: 0, skipped };
+      return { updated: 0, failed: 0, skipped: skipped + usSkipped };
     }
 
     // Yahoo Finance에서 가격 가져오기
