@@ -418,11 +418,18 @@
 }
 
 /* --- 제출 폼 스타일 --- */
+.complaint-submission-container {
+  position: relative;
+  z-index: 1;
+}
+
 .submit-complaint-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
   max-width: 700px;
+  position: relative;
+  z-index: 1;
 }
 
 .form-label {
@@ -445,6 +452,10 @@
   color: #fff;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: text;
 }
 
 .form-input:focus,
@@ -468,9 +479,72 @@
   appearance: none;
 }
 
+.form-select {
+  cursor: pointer;
+}
+
 .form-select option {
   background-color: #1a1a2e;
   color: #fff;
+}
+
+/* --- 고소 사유 선택 영역 --- */
+.reason-type-selection {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+
+.reason-type-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.reason-type-option label {
+  cursor: pointer;
+  color: var(--court-text-secondary);
+  font-size: 14px;
+}
+
+.reason-type-option input[type="radio"] {
+  cursor: pointer;
+  accent-color: var(--court-accent-color);
+}
+
+.predefined-reason-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selected-reason-display,
+.selected-law-display {
+  margin-top: 8px;
+  padding: 10px 15px;
+  background: rgba(0, 136, 255, 0.1);
+  border: 1px solid rgba(0, 136, 255, 0.2);
+  border-radius: var(--court-border-radius);
+  font-size: 14px;
+  color: var(--court-text-secondary);
+}
+
+.add-reason-button {
+  padding: 8px 15px;
+  font-size: 14px;
+  background: rgba(0, 136, 255, 0.15);
+  border: 1px solid rgba(0, 136, 255, 0.3);
+  border-radius: var(--court-border-radius);
+  color: var(--court-accent-color);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.add-reason-button:hover {
+  background: rgba(0, 136, 255, 0.3);
 }
 
 .submit-complaint-form button {
