@@ -1037,6 +1037,18 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const stockRef = db.collection("CentralStocks").doc(stockId);
   const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
+  // 관리자 조회 (세금 수입용)
+  let adminRef = null;
+  const adminSnap = await db
+    .collection("users")
+    .where("classCode", "==", classCode)
+    .where("isAdmin", "==", true)
+    .limit(1)
+    .get();
+  if (!adminSnap.empty) {
+    adminRef = adminSnap.docs[0].ref;
+  }
+
   // 🔥 경제 이벤트 주식세금 멀티플라이어 사전 조회 (트랜잭션 외부)
   const stockTaxMult = await getStockTaxMultiplier(classCode);
 
@@ -1048,8 +1060,10 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         .doc(uid)
         .collection("portfolio")
         .doc(stockId);
-      const [userDoc, stockDoc, portfolioDoc, treasuryDoc] =
-        await transaction.getAll(userRef, stockRef, portfolioRef, treasuryRef);
+      const refsToRead = [userRef, stockRef, portfolioRef, treasuryRef];
+      if (adminRef) refsToRead.push(adminRef);
+      const results = await transaction.getAll(...refsToRead);
+      const [userDoc, stockDoc, portfolioDoc, treasuryDoc] = results;
 
       if (!userDoc.exists) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
@@ -1153,6 +1167,24 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         });
       }
 
+      // 관리자에게 수수료+거래세 입금
+      const taxRevenue = commission + transactionTax;
+      if (adminRef && taxRevenue > 0) {
+        const isAdminBuyer = adminRef.path === userRef.path;
+        if (isAdminBuyer) {
+          // 관리자 본인 매수: 차감액에서 세금 수입 상계
+          // 이미 userRef에 -totalCost 했으므로 taxRevenue만큼 되돌림
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(taxRevenue),
+          });
+        } else {
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(taxRevenue),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
       // 🔥 [추가] 거래 후 잔액 계산 및 반환
       const newBalance = currentCash - totalCost;
 
@@ -1219,6 +1251,18 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
     .collection("portfolio")
     .doc(holdingId);
   const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+
+  // 관리자 조회 (세금 수입용)
+  let sellAdminRef = null;
+  const sellAdminSnap = await db
+    .collection("users")
+    .where("classCode", "==", classCode)
+    .where("isAdmin", "==", true)
+    .limit(1)
+    .get();
+  if (!sellAdminSnap.empty) {
+    sellAdminRef = sellAdminSnap.docs[0].ref;
+  }
 
   // 🔥 경제 이벤트 주식세금 멀티플라이어 사전 조회 (트랜잭션 외부)
   const stockTaxMult = await getStockTaxMultiplier(classCode);
@@ -1362,6 +1406,23 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
         });
+      }
+
+      // 관리자에게 수수료+세금 입금
+      const sellTaxRevenue = commission + totalTax;
+      if (sellAdminRef && sellTaxRevenue > 0) {
+        const isAdminSeller = sellAdminRef.path === userRef.path;
+        if (isAdminSeller) {
+          // 관리자 본인 매도: 이미 netRevenue로 차감된 세금을 되돌림
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(sellTaxRevenue),
+          });
+        } else {
+          transaction.update(sellAdminRef, {
+            cash: admin.firestore.FieldValue.increment(sellTaxRevenue),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       // 🔥 [추가] 거래 후 잔액 계산 및 반환
@@ -1822,16 +1883,34 @@ exports.purchaseStoreItem = onCall(
         }
 
         // 모든 쓰기 작업 수행
-        // 현금 차감 + 관리자가 본인이면 보충 비용도 합산
         const isAdminBuyer = adminRef && adminRef.path === userRef.path;
-        const userCashDeduction = isAdminBuyer && restocked && restockCost > 0
-          ? totalCost + restockCost
-          : totalCost;
 
-        transaction.update(userRef, {
-          cash: admin.firestore.FieldValue.increment(-userCashDeduction),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        // 관리자 cash 변동 계산: +구매금(매출) -재고보충비
+        const adminCashDelta = totalCost - (restocked ? restockCost : 0);
+
+        if (isAdminBuyer) {
+          // 관리자 본인 구매: 구매비 차감 + 매출 입금 + 보충비 차감을 합산
+          // 순변동 = -totalCost(구매) + totalCost(매출) - restockCost(보충) = -restockCost
+          const netDeduction = restocked ? restockCost : 0;
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(-netDeduction),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          // 학생 구매: 학생에게서 차감
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(-totalCost),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 관리자에게: 구매 매출 입금 - 재고보충비 차감 (한번에 처리)
+          if (adminRef) {
+            transaction.update(adminRef, {
+              cash: admin.firestore.FieldValue.increment(adminCashDelta),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
 
         // 재고 업데이트 (stock 필드가 있는 경우에만)
         if (itemData.stock !== undefined) {
@@ -1846,14 +1925,6 @@ exports.purchaseStoreItem = onCall(
           }
 
           transaction.update(itemRef, stockUpdate);
-        }
-
-        // 재고 보충 시 관리자 계정에서 비용 차감 (관리자≠구매자일 때만)
-        if (restocked && adminRef && restockCost > 0 && !isAdminBuyer) {
-          transaction.update(adminRef, {
-            cash: admin.firestore.FieldValue.increment(-restockCost),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
         }
 
         // 사용자 아이템에 추가
