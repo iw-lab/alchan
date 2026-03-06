@@ -28,6 +28,7 @@ const StudentRequest = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState("");
+  const [roomError, setRoomError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState(false);
   const navigate = useNavigate();
 
@@ -40,7 +41,7 @@ const StudentRequest = () => {
         setPricePerSong(data.pricePerSong || 0);
         setTeacherId(data.teacherId || "");
       } else {
-        setError("존재하지 않는 방입니다.");
+        setRoomError("존재하지 않는 방입니다.");
       }
     };
     fetchRoomInfo();
@@ -63,7 +64,7 @@ const StudentRequest = () => {
       setVideos(results);
       setRequestSuccess(false);
     } catch (err) {
-      setError("YouTube 영상을 검색하는 중 오류가 발생했습니다.");
+      setError(err.message || "YouTube 영상을 검색하는 중 오류가 발생했습니다.");
       logger.error(err);
     } finally {
       setIsLoading(false);
@@ -146,9 +147,25 @@ const StudentRequest = () => {
     setVideos([]);
   };
 
-  if (error && !videos.length) {
+  if (roomError) {
     return (
-      <div className="student-request-container error-container">{error}</div>
+      <div className="student-request-container error-container">
+        <p>{roomError}</p>
+        <button
+          onClick={() => navigate("/learning-board/music-request")}
+          style={{
+            marginTop: "1rem",
+            padding: "0.5rem 1.5rem",
+            borderRadius: "8px",
+            backgroundColor: "rgba(99, 102, 241, 0.3)",
+            border: "1px solid rgba(99, 102, 241, 0.5)",
+            color: "#818cf8",
+            cursor: "pointer",
+          }}
+        >
+          돌아가기
+        </button>
+      </div>
     );
   }
 
