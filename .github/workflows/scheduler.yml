@@ -57,6 +57,19 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
+      # 부동산 보유세 징수 (금요일 KST 8:00~8:15)
+      - name: Property holding tax
+        if: |
+          steps.time.outputs.kst_day == 5 &&
+          steps.time.outputs.kst_hour == 8 && steps.time.outputs.minute < 15
+        run: |
+          echo "Calling weeklyPropertyTax..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://weeklypropertytax-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
+
       # 경제 이벤트 (평일 KST 13:00~13:15)
       - name: Economic event
         if: |
