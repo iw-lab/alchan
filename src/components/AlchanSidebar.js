@@ -4,6 +4,13 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { db as firebaseDb } from "../firebase";
+import {
+  collection as fbCollection,
+  query as fbQuery,
+  where as fbWhere,
+  getDocs,
+} from "firebase/firestore";
 import {
   X,
   ChevronDown,
@@ -288,6 +295,16 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "boardCategory",
   },
 
+  // 위임된 학생용 할일 승인 (관리자가 아닌 학생에게만 표시)
+  {
+    id: "delegatedTaskApproval",
+    label: "할일 승인",
+    icon: CheckCircle,
+    path: "/admin/approvals",
+    category: "community",
+    delegatedOnly: "taskApproval", // 특수 플래그: 위임된 학생/대통령만
+  },
+
   // Admin Category - 관리자
   {
     id: "adminCategory",
@@ -302,6 +319,14 @@ export const ALCHAN_MENU_ITEMS = [
     label: "할일 승인",
     icon: CheckCircle,
     path: "/admin/approvals",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
+  {
+    id: "permissionManager",
+    label: "권한 위임",
+    icon: Shield,
+    path: "/admin/permissions",
     parentId: "adminCategory",
     adminOnly: true,
   },
@@ -564,19 +589,64 @@ export default function AlchanSidebar({
   const isAdmin = userDoc?.isAdmin || userDoc?.isSuperAdmin;
   const isSuperAdmin = userDoc?.isSuperAdmin;
 
+  // 대통령 직업 체크 (학생만)
+  const [isPresident, setIsPresident] = useState(false);
+  useEffect(() => {
+    if (isAdmin || !userDoc?.selectedJobIds?.length || !userDoc?.classCode)
+      return void setIsPresident(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const q = fbQuery(
+          fbCollection(firebaseDb, "jobs"),
+          fbWhere("classCode", "==", userDoc.classCode),
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const found = snap.docs.some(
+          (d) =>
+            userDoc.selectedJobIds.includes(d.id) &&
+            d.data().title === "대통령",
+        );
+        setIsPresident(found);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, userDoc?.selectedJobIds, userDoc?.classCode]);
+
+  const hasDelegatedTaskApproval =
+    userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
+
   let userRole = "학생";
   if (userDoc?.isSuperAdmin) userRole = "앱 관리자";
   else if (userDoc?.isAdmin) userRole = "교사";
 
   const userName = userDoc?.name || userDoc?.nickname || "사용자";
 
+  // 아이템 표시 여부 체크
+  const shouldShowItem = useCallback(
+    (item) => {
+      if (item.adminOnly && !isAdmin) return false;
+      if (item.superAdminOnly && !isSuperAdmin) return false;
+      // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생만 표시
+      if (item.delegatedOnly) {
+        if (isAdmin) return false; // 관리자는 관리자 카테고리에서 이미 보임
+        return hasDelegatedTaskApproval;
+      }
+      return true;
+    },
+    [isAdmin, isSuperAdmin, hasDelegatedTaskApproval],
+  );
+
   // 카테고리별 메뉴 렌더링
   const renderMenuSection = (categoryKey) => {
     const items = ALCHAN_MENU_ITEMS.filter((item) => {
       if (item.category !== categoryKey) return false;
-      if (item.adminOnly && !isAdmin) return false;
-      if (item.superAdminOnly && !isSuperAdmin) return false;
-      return true;
+      return shouldShowItem(item);
     });
 
     if (items.length === 0) return null;
@@ -587,9 +657,7 @@ export default function AlchanSidebar({
           if (item.isCategory) {
             const childItems = ALCHAN_MENU_ITEMS.filter((child) => {
               if (child.parentId !== item.id) return false;
-              if (child.adminOnly && !isAdmin) return false;
-              if (child.superAdminOnly && !isSuperAdmin) return false;
-              return true;
+              return shouldShowItem(child);
             });
 
             if (childItems.length === 0) return null;

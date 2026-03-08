@@ -83,6 +83,9 @@ const AdminDatabase = lazyWithRetry(
 const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
+const AdminPermissionManager = lazyWithRetry(
+  () => import("../pages/admin/AdminPermissionManager"),
+);
 const FirestoreDoctor = lazyWithRetry(
   () => import("../pages/admin/FirestoreDoctor"),
 );
@@ -697,8 +700,16 @@ export default function AlchanLayout() {
                 <Route
                   path="/admin/approvals"
                   element={
-                    <AdminRoute>
+                    <ProtectedRoute>
                       <AdminApprovalPanel />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/permissions"
+                  element={
+                    <AdminRoute>
+                      <AdminPermissionManager />
                     </AdminRoute>
                   }
                 />

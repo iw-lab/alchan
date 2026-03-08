@@ -594,10 +594,37 @@ exports.submitTaskApproval = onCall(
 exports.processTaskApproval = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode: adminClassCode } = await checkAuthAndGetUserData(
-      request,
-      true,
-    );
+    // 관리자 OR 대통령 OR 위임된 학생 모두 처리 가능
+    const {
+      uid,
+      classCode: adminClassCode,
+      isAdmin: isSysAdmin,
+      userData,
+    } = await checkAuthAndGetUserData(request, false);
+
+    // 권한 체크: 관리자 / 대통령 직업 / delegatedPermissions.taskApproval
+    const hasTaskApprovalPermission =
+      isSysAdmin ||
+      userData?.isSuperAdmin ||
+      userData?.delegatedPermissions?.taskApproval === true;
+
+    // 대통령 직업 체크 (selectedJobIds 기반)
+    let isPresident = false;
+    if (!hasTaskApprovalPermission && userData?.selectedJobIds?.length > 0) {
+      const jobsSnapshot = await db
+        .collection("jobs")
+        .where("classCode", "==", adminClassCode)
+        .get();
+      const userJobIds = userData.selectedJobIds;
+      isPresident = jobsSnapshot.docs.some(
+        (doc) => userJobIds.includes(doc.id) && doc.data().title === "대통령",
+      );
+    }
+
+    if (!hasTaskApprovalPermission && !isPresident) {
+      throw new HttpsError("permission-denied", "할일 승인 권한이 없습니다.");
+    }
+
     const { approvalId, action } = request.data;
 
     if (!approvalId) {
@@ -1562,42 +1589,57 @@ exports.getItemContextData = onCall(
   },
 );
 
-exports.updateStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
-  const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
-  const {itemId, updatesToApply} = request.data;
+exports.updateStoreItem = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid } = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
+    const { itemId, updatesToApply } = request.data;
 
-  if (!itemId || !updatesToApply || Object.keys(updatesToApply).length === 0) {
-    throw new HttpsError("invalid-argument", "아이템 ID 또는 업데이트 데이터가 유효하지 않습니다.");
-  }
-
-  const itemRef = db.collection("storeItems").doc(itemId);
-
-  try {
-    const itemDoc = await itemRef.get();
-
-    if (!itemDoc.exists) {
-      throw new Error("아이템을 찾을 수 없습니다.");
+    if (
+      !itemId ||
+      !updatesToApply ||
+      Object.keys(updatesToApply).length === 0
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "아이템 ID 또는 업데이트 데이터가 유효하지 않습니다.",
+      );
     }
 
-    // updatedAt 타임스탬프 추가
-    const updates = {
-      ...updatesToApply,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    const itemRef = db.collection("storeItems").doc(itemId);
 
-    await itemRef.update(updates);
+    try {
+      const itemDoc = await itemRef.get();
 
-    logger.info(`[updateStoreItem] ${uid}님이 아이템 ${itemId} 수정: ${JSON.stringify(updatesToApply)}`);
+      if (!itemDoc.exists) {
+        throw new Error("아이템을 찾을 수 없습니다.");
+      }
 
-    return {
-      success: true,
-      message: "아이템이 성공적으로 수정되었습니다.",
-    };
-  } catch (error) {
-    logger.error(`[updateStoreItem] Error for user ${uid}:`, error);
-    throw new HttpsError("aborted", error.message || "아이템 수정에 실패했습니다.");
-  }
-});
+      // updatedAt 타임스탬프 추가
+      const updates = {
+        ...updatesToApply,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await itemRef.update(updates);
+
+      logger.info(
+        `[updateStoreItem] ${uid}님이 아이템 ${itemId} 수정: ${JSON.stringify(updatesToApply)}`,
+      );
+
+      return {
+        success: true,
+        message: "아이템이 성공적으로 수정되었습니다.",
+      };
+    } catch (error) {
+      logger.error(`[updateStoreItem] Error for user ${uid}:`, error);
+      throw new HttpsError(
+        "aborted",
+        error.message || "아이템 수정에 실패했습니다.",
+      );
+    }
+  },
+);
 
 const cors = require("cors")({
   origin: [
@@ -1683,37 +1725,45 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
   });
 });
 
-exports.deleteStoreItem = onCall({region: "asia-northeast3"}, async (request) => {
-  const {uid} = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
-  const {itemId} = request.data;
+exports.deleteStoreItem = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid } = await checkAuthAndGetUserData(request, true); // 관리자 권한 필요
+    const { itemId } = request.data;
 
-  if (!itemId) {
-    throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
-  }
-
-  const itemRef = db.collection("storeItems").doc(itemId);
-
-  try {
-    const itemDoc = await itemRef.get();
-
-    if (!itemDoc.exists) {
-      throw new Error("아이템을 찾을 수 없습니다.");
+    if (!itemId) {
+      throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
     }
 
-    const itemData = itemDoc.data();
-    await itemRef.delete();
+    const itemRef = db.collection("storeItems").doc(itemId);
 
-    logger.info(`[deleteStoreItem] ${uid}님이 아이템 삭제: ${itemData.name} (ID: ${itemId})`);
+    try {
+      const itemDoc = await itemRef.get();
 
-    return {
-      success: true,
-      message: "아이템이 성공적으로 삭제되었습니다.",
-    };
-  } catch (error) {
-    logger.error(`[deleteStoreItem] Error for user ${uid}:`, error);
-    throw new HttpsError("aborted", error.message || "아이템 삭제에 실패했습니다.");
-  }
-});
+      if (!itemDoc.exists) {
+        throw new Error("아이템을 찾을 수 없습니다.");
+      }
+
+      const itemData = itemDoc.data();
+      await itemRef.delete();
+
+      logger.info(
+        `[deleteStoreItem] ${uid}님이 아이템 삭제: ${itemData.name} (ID: ${itemId})`,
+      );
+
+      return {
+        success: true,
+        message: "아이템이 성공적으로 삭제되었습니다.",
+      };
+    } catch (error) {
+      logger.error(`[deleteStoreItem] Error for user ${uid}:`, error);
+      throw new HttpsError(
+        "aborted",
+        error.message || "아이템 삭제에 실패했습니다.",
+      );
+    }
+  },
+);
 
 exports.purchaseStoreItem = onCall(
   { region: "asia-northeast3" },
@@ -1750,7 +1800,10 @@ exports.purchaseStoreItem = onCall(
         if (vatRate !== undefined) itemStoreVATRate = vatRate;
       }
     } catch (e) {
-      logger.warn("[purchaseStoreItem] VAT 세율 조회 실패, 기본값 사용:", e.message);
+      logger.warn(
+        "[purchaseStoreItem] VAT 세율 조회 실패, 기본값 사용:",
+        e.message,
+      );
     }
 
     // 재고 보충 비용을 관리자에게 청구하기 위해 관리자 찾기
@@ -1968,7 +2021,9 @@ exports.purchaseStoreItem = onCall(
         }
 
         // 국고에 부가세(VAT) 기록 (기존 가격을 VAT 포함가로 간주)
-        const vatAmount = Math.round(totalCost * itemStoreVATRate / (1 + itemStoreVATRate));
+        const vatAmount = Math.round(
+          (totalCost * itemStoreVATRate) / (1 + itemStoreVATRate),
+        );
         if (vatAmount > 0) {
           if (treasuryDoc.exists) {
             transaction.update(treasuryRef, {
@@ -2278,167 +2333,211 @@ exports.getAdminSettingsData = onCall(
 // 배치 급여 지급
 // ===================================================================================
 
-exports.batchPaySalaries = onCall({region: "asia-northeast3"}, async (request) => {
-  const {uid, classCode, isAdmin, isSuperAdmin} = await checkAuthAndGetUserData(request, true);
-  const {studentIds, payAll} = request.data;
+exports.batchPaySalaries = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin, isSuperAdmin } =
+      await checkAuthAndGetUserData(request, true);
+    const { studentIds, payAll } = request.data;
 
-  try {
-    // 급여 설정 가져오기 (세율)
-    let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
-    if (!salarySettingsDoc.exists) {
-      salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
-    }
-    const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
-
-    // 지급할 학생 목록 결정
-    let targetStudents = [];
-    if (payAll) {
-      // classCode로만 쿼리 후 서버에서 필터 (isAdmin 필드 없는 학생도 포함)
-      const studentsSnapshot = await db.collection("users")
-        .where("classCode", "==", classCode)
+    try {
+      // 급여 설정 가져오기 (세율)
+      let salarySettingsDoc = await db
+        .collection("settings")
+        .doc(`salarySettings_${classCode}`)
         .get();
-      targetStudents = studentsSnapshot.docs
-        .filter(d => {
-          const data = d.data();
-          return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
-        })
-        .map(d => ({ id: d.id, ...d.data() }));
-    } else if (studentIds && studentIds.length > 0) {
-      for (let i = 0; i < studentIds.length; i += 30) {
-        const chunk = studentIds.slice(i, i + 30);
-        const docs = await Promise.all(chunk.map(id => db.collection("users").doc(id).get()));
-        docs.filter(d => d.exists).forEach(d => targetStudents.push({ id: d.id, ...d.data() }));
+      if (!salarySettingsDoc.exists) {
+        salarySettingsDoc = await db
+          .collection("settings")
+          .doc("salarySettings")
+          .get();
       }
-    }
+      const taxRate = salarySettingsDoc.exists
+        ? salarySettingsDoc.data().taxRate || 0.1
+        : 0.1;
 
-    logger.info(`[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`);
-
-    // 급여 계산: 기본급 200만 + 추가 직업당 50만
-    const BASE_SALARY = 2000000;
-    const ADDITIONAL_SALARY = 500000;
-    const batch = db.batch();
-    let totalStudentsPaid = 0;
-    let totalGrossPaid = 0;
-    let totalTaxDeducted = 0;
-    let totalNetPaid = 0;
-    const skippedStudents = [];
-
-    for (const student of targetStudents) {
-      const jobIds = student.selectedJobIds || [];
-      if (jobIds.length === 0) {
-        skippedStudents.push(student.name || student.nickname || student.id);
-        continue;
+      // 지급할 학생 목록 결정
+      let targetStudents = [];
+      if (payAll) {
+        // classCode로만 쿼리 후 서버에서 필터 (isAdmin 필드 없는 학생도 포함)
+        const studentsSnapshot = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .get();
+        targetStudents = studentsSnapshot.docs
+          .filter((d) => {
+            const data = d.data();
+            return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
+          })
+          .map((d) => ({ id: d.id, ...d.data() }));
+      } else if (studentIds && studentIds.length > 0) {
+        for (let i = 0; i < studentIds.length; i += 30) {
+          const chunk = studentIds.slice(i, i + 30);
+          const docs = await Promise.all(
+            chunk.map((id) => db.collection("users").doc(id).get()),
+          );
+          docs
+            .filter((d) => d.exists)
+            .forEach((d) => targetStudents.push({ id: d.id, ...d.data() }));
+        }
       }
 
-      const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-      const tax = Math.floor(grossSalary * taxRate);
-      const netSalary = grossSalary - tax;
+      logger.info(
+        `[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`,
+      );
 
-      const studentRef = db.collection("users").doc(student.id);
-      batch.update(studentRef, {
-        cash: admin.firestore.FieldValue.increment(netSalary),
-        lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
-        lastGrossSalary: grossSalary,
-        lastTaxAmount: tax,
-        lastNetSalary: netSalary,
-        totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // 급여 계산: 기본급 200만 + 추가 직업당 50만
+      const BASE_SALARY = 2000000;
+      const ADDITIONAL_SALARY = 500000;
+      const batch = db.batch();
+      let totalStudentsPaid = 0;
+      let totalGrossPaid = 0;
+      let totalTaxDeducted = 0;
+      let totalNetPaid = 0;
+      const skippedStudents = [];
 
-      totalStudentsPaid++;
-      totalGrossPaid += grossSalary;
-      totalTaxDeducted += tax;
-      totalNetPaid += netSalary;
+      for (const student of targetStudents) {
+        const jobIds = student.selectedJobIds || [];
+        if (jobIds.length === 0) {
+          skippedStudents.push(student.name || student.nickname || student.id);
+          continue;
+        }
+
+        const grossSalary =
+          BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+        const tax = Math.floor(grossSalary * taxRate);
+        const netSalary = grossSalary - tax;
+
+        const studentRef = db.collection("users").doc(student.id);
+        batch.update(studentRef, {
+          cash: admin.firestore.FieldValue.increment(netSalary),
+          lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
+          lastGrossSalary: grossSalary,
+          lastTaxAmount: tax,
+          lastNetSalary: netSalary,
+          totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        totalStudentsPaid++;
+        totalGrossPaid += grossSalary;
+        totalTaxDeducted += tax;
+        totalNetPaid += netSalary;
+      }
+
+      if (totalStudentsPaid > 0) {
+        await batch.commit();
+      }
+
+      logger.info(
+        `[batchPaySalaries] ${uid}님이 ${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 (세전 ${totalGrossPaid.toLocaleString()}원, 세금 ${totalTaxDeducted.toLocaleString()}원)${skippedStudents.length > 0 ? ` / 직업없음 스킵: ${skippedStudents.length}명` : ""}`,
+      );
+
+      return {
+        success: true,
+        message: `${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 완료`,
+        summary: {
+          totalStudentsPaid,
+          totalGrossPaid,
+          totalTaxDeducted,
+          totalNetPaid,
+        },
+      };
+    } catch (error) {
+      logger.error(`[batchPaySalaries] Error for user ${uid}:`, error);
+      throw new HttpsError(
+        "internal",
+        error.message || "급여 지급에 실패했습니다.",
+      );
     }
-
-    if (totalStudentsPaid > 0) {
-      await batch.commit();
-    }
-
-    logger.info(`[batchPaySalaries] ${uid}님이 ${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 (세전 ${totalGrossPaid.toLocaleString()}원, 세금 ${totalTaxDeducted.toLocaleString()}원)${skippedStudents.length > 0 ? ` / 직업없음 스킵: ${skippedStudents.length}명` : ""}`);
-
-    return {
-      success: true,
-      message: `${totalStudentsPaid}명에게 총 ${totalNetPaid.toLocaleString()}원 지급 완료`,
-      summary: {
-        totalStudentsPaid,
-        totalGrossPaid,
-        totalTaxDeducted,
-        totalNetPaid,
-      },
-    };
-  } catch (error) {
-    logger.error(`[batchPaySalaries] Error for user ${uid}:`, error);
-    throw new HttpsError("internal", error.message || "급여 지급에 실패했습니다.");
-  }
-});
+  },
+);
 
 // ===================================================================================
 // 주급 회수 (1회분) - 임시 함수
 // ===================================================================================
-exports.reverseSalaryOnce = onCall({region: "asia-northeast3"}, async (request) => {
-  const {uid, classCode, isAdmin, isSuperAdmin} = await checkAuthAndGetUserData(request, true);
+exports.reverseSalaryOnce = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin, isSuperAdmin } =
+      await checkAuthAndGetUserData(request, true);
 
-  try {
-    // 급여 설정 가져오기 (세율)
-    let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
-    if (!salarySettingsDoc.exists) {
-      salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
+    try {
+      // 급여 설정 가져오기 (세율)
+      let salarySettingsDoc = await db
+        .collection("settings")
+        .doc(`salarySettings_${classCode}`)
+        .get();
+      if (!salarySettingsDoc.exists) {
+        salarySettingsDoc = await db
+          .collection("settings")
+          .doc("salarySettings")
+          .get();
+      }
+      const taxRate = salarySettingsDoc.exists
+        ? salarySettingsDoc.data().taxRate || 0.1
+        : 0.1;
+
+      // 해당 클래스 학생 조회
+      const studentsSnapshot = await db
+        .collection("users")
+        .where("classCode", "==", classCode)
+        .get();
+      const targetStudents = studentsSnapshot.docs
+        .filter((d) => {
+          const data = d.data();
+          return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
+        })
+        .map((d) => ({ id: d.id, ...d.data() }));
+
+      const BASE_SALARY = 2000000;
+      const ADDITIONAL_SALARY = 500000;
+      const batch = db.batch();
+      let totalReversed = 0;
+      let totalAmount = 0;
+
+      for (const student of targetStudents) {
+        const jobIds = student.selectedJobIds || [];
+        if (jobIds.length === 0) continue;
+
+        const grossSalary =
+          BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+        const tax = Math.floor(grossSalary * taxRate);
+        const netSalary = grossSalary - tax;
+
+        const studentRef = db.collection("users").doc(student.id);
+        batch.update(studentRef, {
+          cash: admin.firestore.FieldValue.increment(-netSalary),
+          totalSalaryReceived: admin.firestore.FieldValue.increment(-netSalary),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        totalReversed++;
+        totalAmount += netSalary;
+      }
+
+      if (totalReversed > 0) {
+        await batch.commit();
+      }
+
+      logger.info(
+        `[reverseSalaryOnce] ${uid}님이 ${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수`,
+      );
+
+      return {
+        success: true,
+        message: `${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수 완료`,
+        summary: { totalReversed, totalAmount },
+      };
+    } catch (error) {
+      logger.error(`[reverseSalaryOnce] Error:`, error);
+      throw new HttpsError(
+        "internal",
+        error.message || "급여 회수에 실패했습니다.",
+      );
     }
-    const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
-
-    // 해당 클래스 학생 조회
-    const studentsSnapshot = await db.collection("users")
-      .where("classCode", "==", classCode)
-      .get();
-    const targetStudents = studentsSnapshot.docs
-      .filter(d => {
-        const data = d.data();
-        return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
-      })
-      .map(d => ({ id: d.id, ...d.data() }));
-
-    const BASE_SALARY = 2000000;
-    const ADDITIONAL_SALARY = 500000;
-    const batch = db.batch();
-    let totalReversed = 0;
-    let totalAmount = 0;
-
-    for (const student of targetStudents) {
-      const jobIds = student.selectedJobIds || [];
-      if (jobIds.length === 0) continue;
-
-      const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-      const tax = Math.floor(grossSalary * taxRate);
-      const netSalary = grossSalary - tax;
-
-      const studentRef = db.collection("users").doc(student.id);
-      batch.update(studentRef, {
-        cash: admin.firestore.FieldValue.increment(-netSalary),
-        totalSalaryReceived: admin.firestore.FieldValue.increment(-netSalary),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      totalReversed++;
-      totalAmount += netSalary;
-    }
-
-    if (totalReversed > 0) {
-      await batch.commit();
-    }
-
-    logger.info(`[reverseSalaryOnce] ${uid}님이 ${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수`);
-
-    return {
-      success: true,
-      message: `${totalReversed}명에게서 총 ${totalAmount.toLocaleString()}원 회수 완료`,
-      summary: { totalReversed, totalAmount },
-    };
-  } catch (error) {
-    logger.error(`[reverseSalaryOnce] Error:`, error);
-    throw new HttpsError("internal", error.message || "급여 회수에 실패했습니다.");
-  }
-});
+  },
+);
 
 // ===================================================================================
 // 아이템 시장 거래 함수
@@ -4001,7 +4100,9 @@ exports.createStudentAccounts = onCall(
         } catch (e) {
           // auth/user-not-found는 정상 (신규 계정)
           if (e.code !== "auth/user-not-found") {
-            logger.warn(`[createStudentAccounts] 기존 계정 정리 중 오류: ${e.message}`);
+            logger.warn(
+              `[createStudentAccounts] 기존 계정 정리 중 오류: ${e.message}`,
+            );
           }
         }
 
@@ -4013,27 +4114,24 @@ exports.createStudentAccounts = onCall(
         });
 
         // Firestore 문서 생성
-        await db
-          .collection("users")
-          .doc(userRecord.uid)
-          .set({
-            name: student.name,
-            nickname: student.name,
-            email: student.email,
-            classCode: classCode,
-            studentNumber: student.number,
-            isAdmin: false,
-            isSuperAdmin: false,
-            isTeacher: false,
-            cash: initialCash,
-            coupons: initialCoupons,
-            selectedJobIds: [],
-            myContribution: 0,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            createdBy: uid,
-            parentalConsentConfirmed: true,
-            consentDate: admin.firestore.FieldValue.serverTimestamp(),
-          });
+        await db.collection("users").doc(userRecord.uid).set({
+          name: student.name,
+          nickname: student.name,
+          email: student.email,
+          classCode: classCode,
+          studentNumber: student.number,
+          isAdmin: false,
+          isSuperAdmin: false,
+          isTeacher: false,
+          cash: initialCash,
+          coupons: initialCoupons,
+          selectedJobIds: [],
+          myContribution: 0,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: uid,
+          parentalConsentConfirmed: true,
+          consentDate: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
         results.success.push({
           name: student.name,
@@ -4117,17 +4215,26 @@ exports.repairStudentLogin = onCall(
     const { email, password } = request.data;
 
     if (!email || !password) {
-      throw new HttpsError("invalid-argument", "이메일과 비밀번호가 필요합니다.");
+      throw new HttpsError(
+        "invalid-argument",
+        "이메일과 비밀번호가 필요합니다.",
+      );
     }
 
     // .alchan 도메인 학생 계정만 허용
     if (!email.endsWith(".alchan")) {
-      throw new HttpsError("permission-denied", "학생 계정만 복구할 수 있습니다.");
+      throw new HttpsError(
+        "permission-denied",
+        "학생 계정만 복구할 수 있습니다.",
+      );
     }
 
     // 비밀번호는 6자 이상
     if (password.length < 6) {
-      throw new HttpsError("invalid-argument", "비밀번호는 6자 이상이어야 합니다.");
+      throw new HttpsError(
+        "invalid-argument",
+        "비밀번호는 6자 이상이어야 합니다.",
+      );
     }
 
     try {
@@ -4140,7 +4247,9 @@ exports.repairStudentLogin = onCall(
         // 있으면 비밀번호 리셋
         await admin.auth().updateUser(userRecord.uid, { password });
         action = "password_reset";
-        logger.info(`[repairStudentLogin] 비밀번호 리셋: ${email} (uid: ${userRecord.uid})`);
+        logger.info(
+          `[repairStudentLogin] 비밀번호 리셋: ${email} (uid: ${userRecord.uid})`,
+        );
       } catch (e) {
         if (e.code === "auth/user-not-found") {
           // Auth 계정이 없으면 새로 생성
@@ -4151,14 +4260,17 @@ exports.repairStudentLogin = onCall(
             displayName,
           });
           action = "account_created";
-          logger.info(`[repairStudentLogin] 계정 생성: ${email} (uid: ${userRecord.uid})`);
+          logger.info(
+            `[repairStudentLogin] 계정 생성: ${email} (uid: ${userRecord.uid})`,
+          );
         } else {
           throw e;
         }
       }
 
       // Firestore 문서 확인 및 생성
-      const usersSnapshot = await db.collection("users")
+      const usersSnapshot = await db
+        .collection("users")
         .where("email", "==", email)
         .limit(1)
         .get();
@@ -4170,24 +4282,38 @@ exports.repairStudentLogin = onCall(
         // UID가 다르면 기존 데이터를 새 UID로 이동 (서브컬렉션 포함)
         if (oldUid !== userRecord.uid) {
           const existingData = existingDoc.data();
-          await db.collection("users").doc(userRecord.uid).set({
-            ...existingData,
-            email,
-          });
+          await db
+            .collection("users")
+            .doc(userRecord.uid)
+            .set({
+              ...existingData,
+              email,
+            });
 
           // 서브컬렉션 이동 (inventory, portfolio)
           const subcollections = ["inventory", "portfolio"];
           for (const sub of subcollections) {
-            const subSnap = await db.collection("users").doc(oldUid).collection(sub).get();
+            const subSnap = await db
+              .collection("users")
+              .doc(oldUid)
+              .collection(sub)
+              .get();
             for (const subDoc of subSnap.docs) {
-              await db.collection("users").doc(userRecord.uid).collection(sub).doc(subDoc.id).set(subDoc.data());
+              await db
+                .collection("users")
+                .doc(userRecord.uid)
+                .collection(sub)
+                .doc(subDoc.id)
+                .set(subDoc.data());
               await subDoc.ref.delete();
             }
           }
 
           // 기존 문서 삭제 (중복 방지)
           await db.collection("users").doc(oldUid).delete();
-          logger.info(`[repairStudentLogin] Firestore 문서 이동: ${oldUid} → ${userRecord.uid} (기존 삭제)`);
+          logger.info(
+            `[repairStudentLogin] Firestore 문서 이동: ${oldUid} → ${userRecord.uid} (기존 삭제)`,
+          );
         }
       } else {
         // Firestore 문서가 아예 없으면 기본 문서 생성
@@ -4209,13 +4335,18 @@ exports.repairStudentLogin = onCall(
           myContribution: 0,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        logger.info(`[repairStudentLogin] Firestore 문서 생성: ${email} (classCode: ${classCode})`);
+        logger.info(
+          `[repairStudentLogin] Firestore 문서 생성: ${email} (classCode: ${classCode})`,
+        );
       }
 
       return { success: true, uid: userRecord.uid, action };
     } catch (error) {
       logger.error(`[repairStudentLogin] 실패: ${email}`, error);
-      throw new HttpsError("internal", error.message || "계정 복구에 실패했습니다.");
+      throw new HttpsError(
+        "internal",
+        error.message || "계정 복구에 실패했습니다.",
+      );
     }
   },
 );
@@ -4236,15 +4367,27 @@ exports.fixDuplicateUser = onRequest(
 
     // 이름 또는 학급 전체 검색 모드
     if (searchClass) {
-      const snap = await db.collection("users")
+      const snap = await db
+        .collection("users")
         .where("classCode", "==", searchClass)
         .get();
       const matches = [];
-      snap.forEach(d => {
+      snap.forEach((d) => {
         const data = d.data();
         if (!data.isAdmin && !data.isSuperAdmin && !data.isTeacher) {
-          if (!searchName || (data.name && data.name.includes(searchName)) || (data.nickname && data.nickname.includes(searchName))) {
-            matches.push({ id: d.id, name: data.name, nickname: data.nickname, email: data.email, cash: data.cash, coupons: data.coupons });
+          if (
+            !searchName ||
+            (data.name && data.name.includes(searchName)) ||
+            (data.nickname && data.nickname.includes(searchName))
+          ) {
+            matches.push({
+              id: d.id,
+              name: data.name,
+              nickname: data.nickname,
+              email: data.email,
+              cash: data.cash,
+              coupons: data.coupons,
+            });
           }
         }
       });
@@ -4269,9 +4412,12 @@ exports.fixDuplicateUser = onRequest(
       }
 
       // 2. Firestore에서 이 이메일의 모든 문서 찾기
-      const snap = await db.collection("users").where("email", "==", email).get();
+      const snap = await db
+        .collection("users")
+        .where("email", "==", email)
+        .get();
       const docs = [];
-      snap.forEach(d => docs.push({ id: d.id, data: d.data() }));
+      snap.forEach((d) => docs.push({ id: d.id, data: d.data() }));
 
       // 3. Auth UID로 직접 문서 확인
       const authDoc = await db.collection("users").doc(authUid).get();
@@ -4280,14 +4426,29 @@ exports.fixDuplicateUser = onRequest(
       const result = {
         authUid,
         authDocExists: authDoc.exists,
-        authDocData: authDoc.exists ? { cash: authDoc.data().cash, coupons: authDoc.data().coupons, name: authDoc.data().name, nickname: authDoc.data().nickname } : null,
-        firestoreDocs: docs.map(d => ({ id: d.id, name: d.data.name, cash: d.data.cash, coupons: d.data.coupons, nickname: d.data.nickname })),
+        authDocData: authDoc.exists
+          ? {
+              cash: authDoc.data().cash,
+              coupons: authDoc.data().coupons,
+              name: authDoc.data().name,
+              nickname: authDoc.data().nickname,
+            }
+          : null,
+        firestoreDocs: docs.map((d) => ({
+          id: d.id,
+          name: d.data.name,
+          cash: d.data.cash,
+          coupons: d.data.coupons,
+          nickname: d.data.nickname,
+        })),
         fixed: false,
       };
 
       // 4. 수복: Auth UID와 다른 문서에 진짜 데이터가 있으면 이동
       if (fix && docs.length > 0) {
-        const correctDoc = docs.find(d => d.id !== authUid && d.data.cash > 0);
+        const correctDoc = docs.find(
+          (d) => d.id !== authUid && d.data.cash > 0,
+        );
         if (correctDoc) {
           // 진짜 데이터를 Auth UID 문서로 덮어쓰기
           await db.collection("users").doc(authUid).set(correctDoc.data);
@@ -4295,9 +4456,18 @@ exports.fixDuplicateUser = onRequest(
           // 서브컬렉션 이동
           const subcollections = ["inventory", "portfolio"];
           for (const sub of subcollections) {
-            const subSnap = await db.collection("users").doc(correctDoc.id).collection(sub).get();
+            const subSnap = await db
+              .collection("users")
+              .doc(correctDoc.id)
+              .collection(sub)
+              .get();
             for (const subDoc of subSnap.docs) {
-              await db.collection("users").doc(authUid).collection(sub).doc(subDoc.id).set(subDoc.data());
+              await db
+                .collection("users")
+                .doc(authUid)
+                .collection(sub)
+                .doc(subDoc.id)
+                .set(subDoc.data());
               await subDoc.ref.delete();
             }
             result[`${sub}Moved`] = subSnap.size;
@@ -4347,11 +4517,23 @@ exports.resetPasswordHttp = onRequest(
           password: newPassword,
           displayName,
         });
-        res.json({ success: true, uid: newUser.uid, email, action: "recreated" });
+        res.json({
+          success: true,
+          uid: newUser.uid,
+          email,
+          action: "recreated",
+        });
       } else {
         const userRecord = await admin.auth().getUserByEmail(email);
-        await admin.auth().updateUser(userRecord.uid, { password: newPassword });
-        res.json({ success: true, uid: userRecord.uid, email, action: "reset" });
+        await admin
+          .auth()
+          .updateUser(userRecord.uid, { password: newPassword });
+        res.json({
+          success: true,
+          uid: userRecord.uid,
+          email,
+          action: "reset",
+        });
       }
     } catch (error) {
       res.status(500).json({ error: error.message });
