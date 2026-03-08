@@ -6,6 +6,8 @@ const ComplaintStatus = ({
   complaints,
   users,
   isAdmin,
+  hasProsecutorPrivileges, // 검찰총장 + 관리자: 기소/기각 결정
+  hasJudgePrivileges, // 판사 + 관리자: 재판/판결
   currentUserId,
   onVote,
   onStartTrial,
@@ -15,6 +17,9 @@ const ComplaintStatus = ({
   onIndictComplaint, // 기소 핸들러 (필요시)
   onDismissComplaint, // 기각 핸들러 (필요시)
 }) => {
+  // 검찰총장 또는 판사 또는 관리자 중 하나라도 해당하면 수정/삭제 등 공통 권한
+  const hasAnyPrivileges =
+    isAdmin || hasProsecutorPrivileges || hasJudgePrivileges;
   const getUserNameById = (userId) =>
     users.find((u) => u.id === userId)?.name || "알 수 없음";
 
@@ -66,14 +71,14 @@ const ComplaintStatus = ({
                     {complaint.status === "pending"
                       ? "검토대기"
                       : complaint.status === "indicted"
-                      ? "기소됨"
-                      : complaint.status === "on_trial"
-                      ? "재판중"
-                      : complaint.status === "dismissed"
-                      ? "기각/불기소"
-                      : complaint.status === "resolved"
-                      ? "재판완료"
-                      : complaint.status}
+                        ? "기소됨"
+                        : complaint.status === "on_trial"
+                          ? "재판중"
+                          : complaint.status === "dismissed"
+                            ? "기각/불기소"
+                            : complaint.status === "resolved"
+                              ? "재판완료"
+                              : complaint.status}
                   </span>
                 </div>
                 {/* 카드 본문: 고소 사유, 원하는 결과 */}
@@ -112,24 +117,28 @@ const ComplaintStatus = ({
                     </button>
                   </div>
                 )}
-                {/* 관리자/판사 액션 버튼 (조건부 렌더링) */}
-                {isAdmin && (
+                {/* 권한별 액션 버튼 (조건부 렌더링) */}
+                {hasAnyPrivileges && (
                   <div className="complaint-card-actions">
-                    {/* 상태별 버튼 표시 */}
+                    {/* pending: 기소/기각은 검찰총장+관리자만 */}
                     {complaint.status === "pending" && (
                       <>
-                        <button
-                          onClick={() => onIndictComplaint(complaint.id)}
-                          className="indict-button"
-                        >
-                          기소
-                        </button>
-                        <button
-                          onClick={() => onDismissComplaint(complaint.id)}
-                          className="dismiss-button"
-                        >
-                          기각
-                        </button>
+                        {(hasProsecutorPrivileges || isAdmin) && (
+                          <>
+                            <button
+                              onClick={() => onIndictComplaint(complaint.id)}
+                              className="indict-button"
+                            >
+                              기소
+                            </button>
+                            <button
+                              onClick={() => onDismissComplaint(complaint.id)}
+                              className="dismiss-button"
+                            >
+                              기각
+                            </button>
+                          </>
+                        )}
                         <button
                           onClick={() => onEditComplaint(complaint)}
                           className="edit-button"
@@ -144,44 +153,42 @@ const ComplaintStatus = ({
                         </button>
                       </>
                     )}
+                    {/* indicted: 재판하기는 판사+관리자만 */}
                     {complaint.status === "indicted" && (
                       <>
-                        {/* "재판하기" 버튼 추가 */}
-                        <button
-                          onClick={() => onStartTrial(complaint.id)}
-                          className="start-trial-button"
-                        >
-                          재판하기
-                        </button>
+                        {(hasJudgePrivileges || isAdmin) && (
+                          <button
+                            onClick={() => onStartTrial(complaint.id)}
+                            className="start-trial-button"
+                          >
+                            재판하기
+                          </button>
+                        )}
                         <button
                           onClick={() => onEditComplaint(complaint)}
                           className="edit-button"
                         >
                           정보 수정
-                        </button>{" "}
-                        {/* 기소 후에도 정보 수정 가능? */}
+                        </button>
                         <button
                           onClick={() => onDeleteComplaint(complaint.id)}
                           className="delete-button"
                         >
                           기소 취소/삭제
-                        </button>{" "}
-                        {/* 필요시 */}
+                        </button>
                       </>
                     )}
-                    {complaint.status === "on_trial" && (
-                      <>
-                        {/* "판결문 쓰기" 버튼 추가 */}
+                    {/* on_trial: 판결문은 판사+관리자만 */}
+                    {complaint.status === "on_trial" &&
+                      (hasJudgePrivileges || isAdmin) && (
                         <button
                           onClick={() => onOpenJudgment(complaint)}
                           className="write-judgment-button"
                         >
                           판결문 쓰기
                         </button>
-                        {/* 재판 중 정보 수정/삭제는 정책에 따라 결정 */}
-                      </>
-                    )}
-                    {/* 기각/완료된 사건에 대한 버튼 (예: 기록 삭제) */}
+                      )}
+                    {/* 기각/완료된 사건 기록 삭제 */}
                     {(complaint.status === "dismissed" ||
                       complaint.status === "resolved") && (
                       <button

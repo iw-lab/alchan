@@ -1,5 +1,5 @@
 // src/pages/organization/OrganizationChart.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import "./OrganizationChart.css";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -27,7 +27,31 @@ const DEFAULT_ADMIN_SETTINGS = {
 
 const OrganizationChart = ({ classCode }) => {
   const { isAdmin: isAuthAdmin, userDoc } = useAuth() || {};
-  const isPresident = userDoc?.job === "대통령";
+
+  // 직업 목록 로드 (selectedJobIds 기반 대통령 체크용)
+  const { data: jobs } = usePolling(
+    async () => {
+      if (!classCode) return [];
+      const jobsRef = collection(db, "jobs");
+      const q = query(jobsRef, where("classCode", "==", classCode));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    {
+      interval: 30 * 60 * 1000,
+      enabled: !!classCode,
+      deps: [classCode],
+    },
+  );
+
+  const isPresident = useMemo(() => {
+    if (!userDoc?.selectedJobIds || !jobs) return false;
+    const selectedJobs = jobs.filter((job) =>
+      userDoc.selectedJobIds.includes(job.id),
+    );
+    return selectedJobs.some((job) => job.title === "대통령");
+  }, [userDoc?.selectedJobIds, jobs]);
+
   const canManage = isAuthAdmin || isPresident; // 관리자 또는 대통령 직업
 
   const [approvedLaws, setApprovedLaws] = useState([]);

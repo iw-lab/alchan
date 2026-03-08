@@ -1106,11 +1106,9 @@ const Court = () => {
             onStartTrial={handleStartTrial}
             onOpenJudgment={handleOpenJudgmentModal}
             onVote={handleVote}
-            isAdmin={
-              hasProsecutorPrivileges ||
-              hasJudgePrivileges ||
-              hasAdminPrivileges
-            }
+            isAdmin={isAdmin}
+            hasProsecutorPrivileges={hasProsecutorPrivileges}
+            hasJudgePrivileges={hasJudgePrivileges}
             currentUserId={currentUserId}
             users={users}
             formatDate={formatDate}
