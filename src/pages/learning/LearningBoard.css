@@ -61,27 +61,30 @@
 }
 
 .lb-tab {
-  padding: 0.5rem 1rem;
-  background: rgba(30, 30, 50, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
-  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  background: rgba(40, 40, 70, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #c7d2fe;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   transition: all 0.2s;
+  letter-spacing: 0.02em;
 }
 
 .lb-tab:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
-  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #e0e7ff;
+  transform: translateY(-1px);
 }
 
 .lb-tab.active {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: #6366f1;
-  color: #a5b4fc;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.3));
+  border-color: #818cf8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 
 .lb-tab-manage {

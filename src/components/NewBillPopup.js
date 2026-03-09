@@ -1,11 +1,12 @@
 // src/components/NewBillPopup.js
 // 새 법안 제안 시 투표 미참여 학생에게 팝업으로 알려주는 모달
+// 🔥 [최적화] onSnapshot → 5분 폴링으로 변경 (리스너 1개 절감)
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   collection,
   query,
   where,
-  onSnapshot,
+  getDocs,
   doc,
   getDoc,
 } from "firebase/firestore";
@@ -13,6 +14,8 @@ import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { X, ScrollText, Vote } from "lucide-react";
+
+const POLL_INTERVAL = 5 * 60 * 1000; // 5분
 
 export default function NewBillPopup() {
   const { userDoc } = useAuth();
@@ -22,39 +25,37 @@ export default function NewBillPopup() {
 
   const [pendingBill, setPendingBill] = useState(null);
   const [visible, setVisible] = useState(false);
-  const lastSeenBillIdsRef = useRef(new Set());
+  const knownBillIdsRef = useRef(new Set());
   const initialLoadRef = useRef(true);
 
-  useEffect(() => {
+  const checkForNewBills = useCallback(async () => {
     if (!classCode || !userId) return;
 
-    const lawsRef = collection(
-      db,
-      "classes",
-      classCode,
-      "nationalAssemblyLaws",
-    );
-    const q = query(lawsRef, where("status", "==", "pending"));
+    try {
+      const lawsRef = collection(
+        db,
+        "classes",
+        classCode,
+        "nationalAssemblyLaws",
+      );
+      const q = query(lawsRef, where("status", "==", "pending"));
+      const snapshot = await getDocs(q);
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // 초기 로드 시: 현재 존재하는 법안 ID를 기록만 해두고, 팝업은 표시하지 않음
+      // 초기 로드: 기존 법안 ID만 기록
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
-        const currentIds = new Set();
-        snapshot.docs.forEach((d) => currentIds.add(d.id));
-        lastSeenBillIdsRef.current = currentIds;
+        snapshot.docs.forEach((d) => knownBillIdsRef.current.add(d.id));
         return;
       }
 
-      // 새로 추가된 법안 찾기
+      // 새 법안 찾기
       const currentIds = new Set();
       snapshot.docs.forEach((d) => currentIds.add(d.id));
 
       let newBill = null;
       for (const docSnap of snapshot.docs) {
         const billId = docSnap.id;
-        if (!lastSeenBillIdsRef.current.has(billId)) {
-          // 새 법안 발견
+        if (!knownBillIdsRef.current.has(billId)) {
           const billData = docSnap.data();
 
           // localStorage로 이미 확인한 법안인지 체크
@@ -64,7 +65,7 @@ export default function NewBillPopup() {
           // 이미 투표했는지 확인
           if (billData.voters && billData.voters[userId]) continue;
 
-          // userVotes 컬렉션에서도 확인
+          // userVotes 확인
           try {
             const userVotesRef = doc(
               db,
@@ -81,20 +82,44 @@ export default function NewBillPopup() {
           }
 
           newBill = { id: billId, ...billData, _seenKey: seenKey };
-          break; // 가장 최근 새 법안 하나만
+          break;
         }
       }
 
-      lastSeenBillIdsRef.current = currentIds;
+      // 알려진 ID 목록 업데이트
+      knownBillIdsRef.current = currentIds;
 
       if (newBill) {
         setPendingBill(newBill);
         setTimeout(() => setVisible(true), 50);
       }
-    });
-
-    return () => unsubscribe();
+    } catch {
+      // 에러 무시
+    }
   }, [classCode, userId]);
+
+  useEffect(() => {
+    if (!classCode || !userId) return;
+
+    // 초기 체크
+    checkForNewBills();
+
+    // 5분마다 폴링
+    const interval = setInterval(checkForNewBills, POLL_INTERVAL);
+
+    // 탭 활성화 시 체크 (visibility API)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkForNewBills();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [classCode, userId, checkForNewBills]);
 
   const handleClose = useCallback(() => {
     if (pendingBill?._seenKey) {

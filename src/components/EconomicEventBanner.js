@@ -1,52 +1,37 @@
 // src/components/EconomicEventBanner.js
 // 활성 경제 이벤트를 모든 사용자에게 표시하는 배너 컴포넌트
+// 🔥 [최적화] onSnapshot 제거 → 공유 훅(useActiveEconomicEvent) 사용으로 리스너 1개 절감
 import React, { useState, useEffect } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { useActiveEconomicEvent } from "../hooks/useActiveEconomicEvent";
 import { X, Zap } from "lucide-react";
 
 export default function EconomicEventBanner() {
   const { userDoc } = useAuth();
   const classCode = userDoc?.classCode;
+  const activeEventData = useActiveEconomicEvent();
 
   const [activeEvent, setActiveEvent] = useState(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (!classCode) return;
+    if (!activeEventData || !classCode) {
+      setActiveEvent(null);
+      return;
+    }
 
-    const ref = doc(db, "activeEconomicEvent", classCode);
-    const unsubscribe = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
-        setActiveEvent(null);
-        return;
-      }
+    // localStorage로 닫기 상태 유지
+    const eventId = activeEventData.triggeredAt?.toMillis?.() || activeEventData.event?.id || "";
+    const dismissKey = `eveBanner_${classCode}_${eventId}`;
+    if (localStorage.getItem(dismissKey)) {
+      setDismissed(true);
+      setActiveEvent(activeEventData);
+      return;
+    }
 
-      const data = snap.data();
-      // 만료 확인
-      const now = new Date();
-      const expires = data.expiresAt?.toDate?.();
-      if (expires && expires < now) {
-        setActiveEvent(null);
-        return;
-      }
-
-      // localStorage로 닫기 상태 유지
-      const eventId = data.triggeredAt?.toMillis?.() || data.event?.id || "";
-      const dismissKey = `eveBanner_${classCode}_${eventId}`;
-      if (localStorage.getItem(dismissKey)) {
-        setDismissed(true);
-        setActiveEvent(data);
-        return;
-      }
-
-      setActiveEvent({ ...data, _dismissKey: dismissKey });
-      setDismissed(false); // 새 이벤트 발생 시 배너 다시 표시
-    });
-
-    return () => unsubscribe();
-  }, [classCode]);
+    setActiveEvent({ ...activeEventData, _dismissKey: dismissKey });
+    setDismissed(false); // 새 이벤트 발생 시 배너 다시 표시
+  }, [activeEventData, classCode]);
 
   if (!activeEvent || dismissed) return null;
 

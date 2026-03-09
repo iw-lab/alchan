@@ -1,10 +1,10 @@
 // src/components/EconomicEventPopup.js
 // 경제 이벤트 발생 시 학생에게 팝업으로 알려주는 모달
+// 🔥 [최적화] onSnapshot 제거 → 공유 훅(useActiveEconomicEvent) 사용으로 리스너 1개 절감
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { useActiveEconomicEvent } from "../hooks/useActiveEconomicEvent";
 import { X, TrendingUp, TrendingDown, Zap } from "lucide-react";
 
 // 이벤트 타입별 상세 설명
@@ -93,48 +93,33 @@ const EVENT_DETAILS = {
 export default function EconomicEventPopup() {
   const { userDoc } = useAuth();
   const classCode = userDoc?.classCode;
+  const activeEventData = useActiveEconomicEvent();
 
   const [activeEvent, setActiveEvent] = useState(null);
   const [visible, setVisible] = useState(false);
   const lastEventIdRef = useRef(null);
 
   useEffect(() => {
-    if (!classCode) return;
+    if (!activeEventData || !classCode) {
+      setActiveEvent(null);
+      return;
+    }
 
-    const ref = doc(db, "activeEconomicEvent", classCode);
-    const unsubscribe = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
-        setActiveEvent(null);
-        return;
-      }
+    // 이미 확인한 이벤트인지 확인 (localStorage)
+    const eventId = activeEventData.triggeredAt?.toMillis?.() || activeEventData.event?.id || "";
+    const seenKey = `evePopup_${classCode}_${eventId}`;
 
-      const data = snap.data();
+    if (localStorage.getItem(seenKey)) return;
 
-      // 만료 확인
-      const expires = data.expiresAt?.toDate?.();
-      if (expires && expires < new Date()) {
-        setActiveEvent(null);
-        return;
-      }
-
-      // 이미 확인한 이벤트인지 확인 (localStorage)
-      const eventId = data.triggeredAt?.toMillis?.() || data.event?.id || "";
-      const seenKey = `evePopup_${classCode}_${eventId}`;
-
-      if (localStorage.getItem(seenKey)) return;
-
-      // 새 이벤트
-      if (lastEventIdRef.current !== eventId) {
-        lastEventIdRef.current = eventId;
-        setActiveEvent({ ...data, _seenKey: seenKey });
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setVisible(true));
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [classCode]);
+    // 새 이벤트
+    if (lastEventIdRef.current !== eventId) {
+      lastEventIdRef.current = eventId;
+      setActiveEvent({ ...activeEventData, _seenKey: seenKey });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+    }
+  }, [activeEventData, classCode]);
 
   const handleClose = () => {
     if (activeEvent?._seenKey) {

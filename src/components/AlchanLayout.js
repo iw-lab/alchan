@@ -32,6 +32,7 @@ import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
+import { EconomicEventProvider } from "../hooks/useActiveEconomicEvent";
 const EconomicEventPopup = lazyWithRetry(() => import("./EconomicEventPopup"));
 const NewBillPopup = lazyWithRetry(() => import("./NewBillPopup"));
 const DailyRewardBanner = lazyWithRetry(() =>
@@ -297,6 +298,11 @@ export default function AlchanLayout() {
 
   // Jua 폰트는 index.html에서 preload로 로드됨 (중복 제거)
 
+  // 🔥 페이지 이동 시 스크롤 최상단으로 이동
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   // 전체 화면 페이지에서 자동으로 사이드바 접기
   useEffect(() => {
     const isFullscreenPage = FULLSCREEN_PAGES.some((page) =>
@@ -423,6 +429,7 @@ export default function AlchanLayout() {
   return (
     // 🔥 [최적화] ItemProvider를 여기에 배치 - 로그인 후에만 마운트되어 불필요한 Firestore 읽기 방지
     <ItemProvider>
+      <EconomicEventProvider>
       <div className="min-h-screen bg-[#0a0a12] text-gray-100 font-sans selection:bg-indigo-500/30 selection:text-indigo-200 flex flex-col md:flex-row">
         {/* PC 사이드바 */}
         <AlchanSidebar
@@ -888,6 +895,7 @@ export default function AlchanLayout() {
 
         {/* 전역 스타일은 index.css로 이동됨 */}
       </div>
+      </EconomicEventProvider>
     </ItemProvider>
   );
 }
