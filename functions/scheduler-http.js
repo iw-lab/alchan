@@ -1197,6 +1197,14 @@ async function payWeeklySalariesLogic() {
 
       if (studentsSnapshot.empty) continue;
 
+      // 특수 직책 추가 수당 (주급 외 별도 지급)
+      const specialPositionBonus = {
+        "대통령": 4000000,
+        "국무총리": 2000000,
+        "교육부장관": 1000000,
+        "환경부장관": 1000000,
+      };
+
       // 먼저 총 급여액 계산
       let classTotalSalary = 0;
       const salaryList = [];
@@ -1204,7 +1212,9 @@ async function payWeeklySalariesLogic() {
       studentsSnapshot.forEach((doc) => {
         const student = doc.data();
         const job = student.job || "무직";
-        const salary = salarySettings[job] || 0;
+        const baseSalary = salarySettings[job] || 0;
+        const bonus = specialPositionBonus[job] || 0;
+        const salary = baseSalary + bonus;
 
         if (salary > 0) {
           salaryList.push({ ref: doc.ref, salary });
