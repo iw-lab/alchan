@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   const CACHE_TTL_CLASSMATES = 24 * 60 * 60 * 1000; // 🔥 [최적화] 학급 구성원 캐시 24시간
   const CACHE_TTL_USER_DOC = 48 * 60 * 60 * 1000; // 🔥 [최적화] 48시간 (거래 시 강제 무효화됨)
   const COOLDOWN_LASTLOGIN = 168 * 60 * 60 * 1000; // 🔥 [최적화] 168시간=7일
-  const INTERVAL_LAST_ACTIVE = 4 * 60 * 60 * 1000; // 🔥 [최적화] 활성 상태 업데이트 4시간 간격
+  const INTERVAL_LAST_ACTIVE = 10 * 60 * 1000; // 🔥 활성 상태 업데이트 10분 간격 (주식 스케줄러 트리거용)
   const lastActiveUpdateRef = useRef(0); // 마지막 활성 상태 업데이트 시간
 
   // Firebase 초기화 확인 (한 번만 실행) - 타임아웃 추가
