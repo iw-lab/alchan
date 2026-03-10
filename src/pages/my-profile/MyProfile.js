@@ -105,10 +105,10 @@ export default function MyProfile() {
     setIsLoading(true);
     try {
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { nickname: trimmed, name: trimmed });
+      await updateDoc(userRef, { nickname: trimmed, name: trimmed, hasSetNickname: true });
       // 로컬 상태도 즉시 갱신
       if (setUserDoc) {
-        setUserDoc((prev) => prev ? { ...prev, nickname: trimmed, name: trimmed } : prev);
+        setUserDoc((prev) => prev ? { ...prev, nickname: trimmed, name: trimmed, hasSetNickname: true } : prev);
       }
       alert("닉네임이 변경되었습니다.");
       setShowNicknameModal(false);

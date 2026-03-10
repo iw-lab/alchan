@@ -42,6 +42,7 @@ const WelcomePopup = lazyWithRetry(() => import("./WelcomePopup"));
 const HelpButton = lazyWithRetry(() => import("./HelpButton"));
 const IOSInstallPrompt = lazyWithRetry(() => import("./IOSInstallPrompt"));
 const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
+const NicknameSetupPopup = lazyWithRetry(() => import("./NicknameSetupPopup"));
 import { db, doc, updateDoc, increment } from "../firebase";
 import globalCacheService from "../services/globalCacheService";
 import { logger } from "../utils/logger";
@@ -840,6 +841,11 @@ export default function AlchanLayout() {
 
         {/* 플로팅 도움말 버튼 */}
         <HelpButton />
+
+        {/* 🎓 첫 로그인 닉네임 설정 팝업 (학생 전용) */}
+        <Suspense fallback={null}>
+          <NicknameSetupPopup />
+        </Suspense>
 
         {/* 첫 접속 안내 팝업 */}
         <WelcomePopup />
