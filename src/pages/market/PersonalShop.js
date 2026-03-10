@@ -614,6 +614,11 @@ const PersonalShop = () => {
   const [loading, setLoading] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
+  // 판매/구매 내역
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesFilter, setSalesFilter] = useState("all"); // all, sold, bought
+
   // 필터/검색
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -708,11 +713,71 @@ const PersonalShop = () => {
     }
   }, []);
 
+  // 판매/구매 내역 로드 (복합 인덱스 불필요 - 단일 필드 쿼리 + 클라이언트 필터링)
+  const loadSalesHistory = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      setLoadingSales(true);
+      const activitiesRef = collection(db, "activities");
+
+      // 단일 필드 쿼리로 조회 후 클라이언트에서 type 필터링
+      const soldQuery = query(
+        activitiesRef,
+        where("sellerId", "==", currentUser.uid),
+      );
+      const boughtQuery = query(
+        activitiesRef,
+        where("buyerId", "==", currentUser.uid),
+      );
+
+      const [soldSnap, boughtSnap] = await Promise.all([
+        getDocs(soldQuery),
+        getDocs(boughtQuery),
+      ]);
+
+      const allHistory = [];
+
+      soldSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.type === "shop_purchase") {
+          allHistory.push({ id: d.id, ...data, role: "seller" });
+        }
+      });
+
+      boughtSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.type === "shop_purchase") {
+          allHistory.push({ id: d.id, ...data, role: "buyer" });
+        }
+      });
+
+      // 최신순 정렬
+      allHistory.sort((a, b) => {
+        const dateA = a.timestamp?.toDate?.() || new Date(0);
+        const dateB = b.timestamp?.toDate?.() || new Date(0);
+        return dateB - dateA;
+      });
+
+      setSalesHistory(allHistory);
+    } catch (error) {
+      logger.error("거래 내역 로드 오류:", error);
+    } finally {
+      setLoadingSales(false);
+    }
+  }, [currentUser]);
+
   // 초기 로드
   useEffect(() => {
     loadShops();
     loadMyShop();
   }, [loadShops, loadMyShop]);
+
+  // 판매 내역 탭 진입 시 로드
+  useEffect(() => {
+    if (activeTab === "sales") {
+      loadSalesHistory();
+    }
+  }, [activeTab, loadSalesHistory]);
 
   // 상점 선택 시 상품 로드
   useEffect(() => {
@@ -914,6 +979,27 @@ const PersonalShop = () => {
     setPurchaseShop(null);
     alert("구매가 완료되었습니다!");
   };
+
+  // 필터링된 거래 내역
+  const filteredSalesHistory = useMemo(() => {
+    if (salesFilter === "all") return salesHistory;
+    if (salesFilter === "sold") return salesHistory.filter((h) => h.role === "seller");
+    if (salesFilter === "bought") return salesHistory.filter((h) => h.role === "buyer");
+    return salesHistory;
+  }, [salesHistory, salesFilter]);
+
+  // 판매 통계
+  const salesStats = useMemo(() => {
+    const sold = salesHistory.filter((h) => h.role === "seller");
+    const bought = salesHistory.filter((h) => h.role === "buyer");
+    return {
+      totalSold: sold.length,
+      totalBought: bought.length,
+      totalRevenue: sold.reduce((sum, h) => sum + (h.totalAmount - h.taxAmount), 0),
+      totalSpent: bought.reduce((sum, h) => sum + h.totalAmount, 0),
+      totalTaxPaid: sold.reduce((sum, h) => sum + h.taxAmount, 0),
+    };
+  }, [salesHistory]);
 
   // 필터링된 상점 목록
   const filteredShops = useMemo(() => {
@@ -1162,10 +1248,96 @@ const PersonalShop = () => {
       case "sales":
         return (
           <div className="tab-content">
-            <div className="empty-state">
-              <span className="empty-icon">📊</span>
-              <p>판매 내역 기능 준비 중...</p>
+            {/* 통계 요약 */}
+            <div className="sales-stats">
+              <div className="stat-card sold">
+                <span className="stat-label">판매 수입</span>
+                <span className="stat-value">{formatKoreanCurrency(salesStats.totalRevenue)}</span>
+                <span className="stat-sub">{salesStats.totalSold}건 판매 / 세금 {formatKoreanCurrency(salesStats.totalTaxPaid)}</span>
+              </div>
+              <div className="stat-card bought">
+                <span className="stat-label">구매 지출</span>
+                <span className="stat-value">{formatKoreanCurrency(salesStats.totalSpent)}</span>
+                <span className="stat-sub">{salesStats.totalBought}건 구매</span>
+              </div>
             </div>
+
+            {/* 필터 */}
+            <div className="sales-filter">
+              {[
+                { id: "all", label: "전체" },
+                { id: "sold", label: "판매" },
+                { id: "bought", label: "구매" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setSalesFilter(f.id)}
+                  className={`filter-chip ${salesFilter === f.id ? "active" : ""}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+              <button
+                onClick={loadSalesHistory}
+                className="refresh-btn"
+                disabled={loadingSales}
+              >
+                {loadingSales ? "..." : "새로고침"}
+              </button>
+            </div>
+
+            {/* 내역 목록 */}
+            {loadingSales ? (
+              <div className="loading-state">거래 내역 불러오는 중...</div>
+            ) : filteredSalesHistory.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">📊</span>
+                <p>거래 내역이 없습니다</p>
+                <span className="empty-hint">상품을 사고팔면 여기에 기록됩니다</span>
+              </div>
+            ) : (
+              <div className="sales-list">
+                {filteredSalesHistory.map((record) => {
+                  const isSeller = record.role === "seller";
+                  const date = record.timestamp?.toDate?.();
+                  const dateStr = date
+                    ? `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
+                    : "";
+                  return (
+                    <div key={record.id} className={`sales-record ${isSeller ? "record-sold" : "record-bought"}`}>
+                      <div className="record-icon">
+                        {isSeller ? "💰" : "🛒"}
+                      </div>
+                      <div className="record-info">
+                        <div className="record-title">
+                          <span className={`record-badge ${isSeller ? "badge-sold" : "badge-bought"}`}>
+                            {isSeller ? "판매" : "구매"}
+                          </span>
+                          <span className="record-product">{record.productName}</span>
+                          {record.quantity > 1 && (
+                            <span className="record-qty">x{record.quantity}</span>
+                          )}
+                        </div>
+                        <div className="record-detail">
+                          {isSeller
+                            ? `구매자: ${record.buyerName}`
+                            : `판매자: ${record.sellerName} (${record.shopName})`}
+                        </div>
+                      </div>
+                      <div className="record-amount-area">
+                        <span className={`record-amount ${isSeller ? "amount-plus" : "amount-minus"}`}>
+                          {isSeller ? "+" : "-"}{formatKoreanCurrency(isSeller ? record.totalAmount - record.taxAmount : record.totalAmount)}
+                        </span>
+                        {isSeller && record.taxAmount > 0 && (
+                          <span className="record-tax">세금 -{formatKoreanCurrency(record.taxAmount)}</span>
+                        )}
+                        <span className="record-date">{dateStr}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
 

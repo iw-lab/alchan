@@ -97,11 +97,12 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-      # 경제 이벤트 (평일 KST 13:00~13:15)
+      # 경제 이벤트 (평일 KST, 매시간 호출 - 함수 내부에서 triggerHour 매칭 + 중복 방지)
       - name: Economic event
         if: |
           steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
-          steps.time.outputs.kst_hour == 13 && steps.time.outputs.minute < 15
+          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17 &&
+          steps.time.outputs.minute < 20
         run: |
           echo "Calling economicEventScheduler..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \

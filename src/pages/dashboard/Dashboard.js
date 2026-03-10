@@ -1504,6 +1504,15 @@ function Dashboard({ adminTabMode }) {
           rewardAmount,
         });
         if (result.data.success) {
+          // 관리자 자동승인인 경우 보상도 낙관적 업데이트
+          if (result.data.autoApproved) {
+            setUserDoc((prevDoc) => ({
+              ...prevDoc,
+              ...(cardType === "cash"
+                ? { cash: (prevDoc.cash || 0) + rewardAmount }
+                : { coupons: (prevDoc.coupons || 0) + rewardAmount }),
+            }));
+          }
           alert(result.data.message);
         } else {
           throw new Error(result.data.message || "알 수 없는 오류");

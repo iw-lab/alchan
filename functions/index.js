@@ -541,7 +541,59 @@ exports.submitTaskApproval = onCall(
         });
       }
 
-      // pendingApprovals 문서 생성
+      // 관리자는 자동 승인 (본인이 승인 권한을 가지므로)
+      const isAdminUser = userData.isAdmin || userData.isSuperAdmin || false;
+
+      if (isAdminUser) {
+        // 관리자: 즉시 보상 지급 + approved 상태로 저장
+        const userRef2 = db.collection("users").doc(uid);
+        const updateData = {};
+        if (cardType === "cash") {
+          updateData.cash = admin.firestore.FieldValue.increment(rewardAmount);
+        } else if (cardType === "coupon") {
+          updateData.coupons = admin.firestore.FieldValue.increment(rewardAmount);
+        }
+        await userRef2.update(updateData);
+
+        const approvalRef = db.collection("pendingApprovals").doc();
+        await approvalRef.set({
+          classCode,
+          studentId: uid,
+          studentName: userData.name || "알 수 없음",
+          taskId,
+          taskName,
+          isJobTask: !!isJobTask,
+          jobId: jobId || null,
+          cardType,
+          rewardAmount,
+          status: "approved",
+          requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          processedBy: uid,
+          autoApproved: true,
+        });
+
+        try {
+          await logActivity(
+            null,
+            uid,
+            LOG_TYPES.TASK_APPROVAL_REQUEST,
+            `'${taskName}' 관리자 자동 승인 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`,
+            { taskName, taskId, isJobTask, jobId, cardType, rewardAmount, autoApproved: true },
+          );
+        } catch (logError) {
+          logger.warn("[submitTaskApproval] 로그 기록 실패:", logError);
+        }
+
+        return {
+          success: true,
+          message: `'${taskName}' 완료! ${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`} 지급됨.`,
+          taskName,
+          autoApproved: true,
+        };
+      }
+
+      // 학생: pendingApprovals 문서 생성 (승인 대기)
       const approvalRef = db.collection("pendingApprovals").doc();
       await approvalRef.set({
         classCode,
