@@ -93,15 +93,17 @@ export const getActivityLogs = async (classCode, options = {}) => {
   const { userId, type, startDate, endDate, limitCount = 50, lastDoc = null } = options;
 
   try {
-    // 🔥 캐시 확인
-    const cacheKey = getCacheKey(classCode, 'activity_logs', options);
-    const cached = getFromCache(cacheKey);
-    if (cached) {
-      logger.log('[AdminDatabaseService] 캐시된 활동 로그 사용');
-      return cached;
+    // 🔥 캐시 확인 (페이지네이션 요청이 아닐 때만)
+    if (!lastDoc) {
+      const cacheKey = getCacheKey(classCode, 'activity_logs', { userId, type, startDate, endDate, limitCount });
+      const cached = getFromCache(cacheKey);
+      if (cached) {
+        logger.log('[AdminDatabaseService] 캐시된 활동 로그 사용');
+        return cached;
+      }
     }
 
-    logger.log('[AdminDatabaseService] 활동 로그 서버 사이드 필터링 조회:', { classCode, userId, type, limitCount });
+    logger.log('[AdminDatabaseService] 활동 로그 서버 사이드 필터링 조회:', { classCode, userId, type, limitCount, hasPagination: !!lastDoc });
 
     // 🔥 최적화: 서버 사이드 필터링으로 필요한 문서만 가져오기
     const constraints = [
@@ -132,6 +134,12 @@ export const getActivityLogs = async (classCode, options = {}) => {
 
     // 정렬 및 제한
     constraints.push(orderBy('timestamp', 'desc'));
+
+    // 🔥 페이지네이션: lastDoc(DocumentSnapshot)이 있으면 startAfter 적용
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+
     constraints.push(limit(limitCount + 1)); // hasMore 확인을 위해 +1
 
     const q = query(collection(db, 'activity_logs'), ...constraints);
@@ -156,18 +164,25 @@ export const getActivityLogs = async (classCode, options = {}) => {
     // hasMore 판단 및 결과 슬라이스
     const hasMore = logs.length > limitCount;
     const paginatedLogs = logs.slice(0, limitCount);
-    const newLastDoc = paginatedLogs.length > 0 ? paginatedLogs[paginatedLogs.length - 1].id : null;
+
+    // 🔥 lastDoc을 실제 Firestore DocumentSnapshot으로 반환 (페이지네이션용)
+    const lastSnapshot = hasMore || paginatedLogs.length > 0
+      ? snapshot.docs[Math.min(snapshot.docs.length - 1, limitCount - 1)] || null
+      : null;
 
     logger.log(`[AdminDatabaseService] 활동 로그 조회 완료: ${paginatedLogs.length}개 (서버 필터링)`);
 
     const result = {
       logs: paginatedLogs,
       hasMore,
-      lastDoc: newLastDoc
+      lastDoc: lastSnapshot
     };
 
-    // 🔥 캐시 저장
-    setCache(cacheKey, result);
+    // 🔥 캐시 저장 (첫 페이지만)
+    if (!lastDoc) {
+      const cacheKey = getCacheKey(classCode, 'activity_logs', { userId, type, startDate, endDate, limitCount });
+      setCache(cacheKey, result);
+    }
 
     return result;
 
