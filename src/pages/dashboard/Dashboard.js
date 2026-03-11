@@ -2227,7 +2227,9 @@ function Dashboard({ adminTabMode }) {
           handleEditTask={handleEditTask}
           handleDeleteTask={handleDeleteTask}
           taskFormJobId={currentJobIdForTask}
+          setTaskFormJobId={setCurrentJobIdForTask}
           taskFormIsJobTask={isJobTaskForForm}
+          setTaskFormIsJobTask={setIsJobTaskForForm}
           handleAddTaskClick={handleAddTaskClick}
         />
       )}

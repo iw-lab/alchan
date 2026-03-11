@@ -331,7 +331,9 @@ const AdminSettingsModal = ({
   handleEditTask,
   handleDeleteTask,
   taskFormJobId,
+  setTaskFormJobId,
   taskFormIsJobTask,
+  setTaskFormIsJobTask,
   handleAddTaskClick,
 
   // 학급 코드 관리 관련 props
@@ -1888,11 +1890,27 @@ const AdminSettingsModal = ({
                     <span style={{ fontSize: '24px' }}>{adminEditingTask ? "✏️" : "➕"}</span>
                     <div>
                       <h4 style={{ margin: 0, color: '#e8e8ff', fontSize: '18px' }}>{adminEditingTask ? "할일 수정" : "새 할일 추가"}</h4>
-                      <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9999bb' }}>
-                        {taskFormIsJobTask && jobs && taskFormJobId
-                          ? `직업: ${jobs.find((j) => j.id === taskFormJobId)?.title || "알 수 없는 직업"}`
-                          : "공통 할일"}
-                      </p>
+                      <div style={{ marginTop: '6px' }}>
+                        <select
+                          value={taskFormIsJobTask && taskFormJobId ? taskFormJobId : ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              setTaskFormIsJobTask(false);
+                              setTaskFormJobId(null);
+                            } else {
+                              setTaskFormIsJobTask(true);
+                              setTaskFormJobId(val);
+                            }
+                          }}
+                          style={{ ...selectStyle, borderRadius: '8px', padding: '6px 10px', fontSize: '13px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff' }}
+                        >
+                          <option value="">공통 할일</option>
+                          {Array.isArray(jobs) && jobs.map((job) => (
+                            <option key={job.id} value={job.id}>{job.title}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
