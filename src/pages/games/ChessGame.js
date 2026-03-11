@@ -372,65 +372,80 @@ const checkGameEndPure = (board, color, castling, enPassant) => {
   }
 };
 
-// ===== AI 엔진 =====
-const PIECE_VALUES = {
-  P: 100,
-  N: 320,
-  B: 330,
-  R: 500,
-  Q: 900,
-  K: 20000,
-};
+// ===== AI 엔진 (강화 v2.0) =====
+const PIECE_VALUES = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 };
 
-const PAWN_POSITION_BONUS = [
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [50, 50, 50, 50, 50, 50, 50, 50],
-  [10, 10, 20, 30, 30, 20, 10, 10],
-  [5, 5, 10, 25, 25, 10, 5, 5],
-  [0, 0, 0, 20, 20, 0, 0, 0],
-  [5, -5, -10, 0, 0, -10, -5, 5],
-  [5, 10, 10, -20, -20, 10, 10, 5],
-  [0, 0, 0, 0, 0, 0, 0, 0],
+// 모든 기물 위치 테이블 (백 기준, 흑은 뒤집어 사용)
+const PAWN_TABLE = [
+  [0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],
+  [5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],
+  [5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]
 ];
-
-const KNIGHT_POSITION_BONUS = [
-  [-50, -40, -30, -30, -30, -30, -40, -50],
-  [-40, -20, 0, 0, 0, 0, -20, -40],
-  [-30, 0, 10, 15, 15, 10, 0, -30],
-  [-30, 5, 15, 20, 20, 15, 5, -30],
-  [-30, 0, 15, 20, 20, 15, 0, -30],
-  [-30, 5, 10, 15, 15, 10, 5, -30],
-  [-40, -20, 0, 5, 5, 0, -20, -40],
-  [-50, -40, -30, -30, -30, -30, -40, -50],
+const KNIGHT_TABLE = [
+  [-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],
+  [-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],
+  [-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],
+  [-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]
 ];
+const BISHOP_TABLE = [
+  [-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],
+  [-10,0,10,10,10,10,0,-10],[-10,5,5,10,10,5,5,-10],
+  [-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],
+  [-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]
+];
+const ROOK_TABLE = [
+  [0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],
+  [-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],
+  [-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],
+  [-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]
+];
+const QUEEN_TABLE = [
+  [-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],
+  [-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],
+  [0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],
+  [-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]
+];
+const KING_MG_TABLE = [
+  [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],
+  [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],
+  [-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],
+  [20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]
+];
+const KING_EG_TABLE = [
+  [-50,-40,-30,-20,-20,-30,-40,-50],[-30,-20,-10,0,0,-10,-20,-30],
+  [-30,-10,20,30,30,20,-10,-30],[-30,-10,30,40,40,30,-10,-30],
+  [-30,-10,30,40,40,30,-10,-30],[-30,-10,20,30,30,20,-10,-30],
+  [-30,-30,0,0,0,0,-30,-30],[-50,-30,-30,-30,-30,-30,-30,-50]
+];
+const PST = { P: PAWN_TABLE, N: KNIGHT_TABLE, B: BISHOP_TABLE, R: ROOK_TABLE, Q: QUEEN_TABLE };
 
 const evaluateBoard = (board, color) => {
   let score = 0;
+  let totalMaterial = 0;
+
+  // 엔드게임 판별을 위한 전체 기물 가치 합산
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const p = board[r][c];
+      if (p && p[1] !== "K") totalMaterial += PIECE_VALUES[p[1]] || 0;
+    }
+  }
+  const isEndgame = totalMaterial < 2600;
 
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
       if (!piece) continue;
-
-      const pieceColor = piece[0];
-      const pieceType = piece[1];
-      const pieceValue = PIECE_VALUES[pieceType] || 0;
-
-      let positionBonus = 0;
-      if (pieceType === "P") {
-        const row = pieceColor === "w" ? r : 7 - r;
-        positionBonus = PAWN_POSITION_BONUS[row][c];
-      } else if (pieceType === "N") {
-        positionBonus = KNIGHT_POSITION_BONUS[r][c];
+      const pc = piece[0], pt = piece[1];
+      let value = PIECE_VALUES[pt] || 0;
+      // 위치 보너스 (모든 기물)
+      const row = pc === "w" ? r : 7 - r;
+      if (pt === "K") {
+        value += isEndgame ? KING_EG_TABLE[row][c] : KING_MG_TABLE[row][c];
+      } else if (PST[pt]) {
+        value += PST[pt][row][c];
       }
-
-      const totalValue = pieceValue + positionBonus;
-
-      if (pieceColor === color) {
-        score += totalValue;
-      } else {
-        score -= totalValue;
-      }
+      score += pc === color ? value : -value;
     }
   }
 
@@ -473,7 +488,28 @@ const simulateMove = (board, from, to, piece, enPassant) => {
   return newBoard;
 };
 
-// Minimax 알고리즘
+// Move ordering: 캡처/프로모션 우선으로 alpha-beta 효율 극대화
+const orderMoves = (board, moves) => {
+  return moves.map((move) => {
+    let priority = 0;
+    const captured = board[move.to[0]][move.to[1]];
+    if (captured) {
+      // MVV-LVA: 고가치 기물 캡처를 저가치 기물로 → 높은 우선순위
+      priority += 10000 + (PIECE_VALUES[captured[1]] || 0) * 10 - (PIECE_VALUES[move.piece[1]] || 0);
+    }
+    // 폰 프로모션
+    if (move.piece[1] === "P" && (move.to[0] === 0 || move.to[0] === 7)) {
+      priority += 9000;
+    }
+    // 중앙 통제
+    if (move.to[0] >= 2 && move.to[0] <= 5 && move.to[1] >= 2 && move.to[1] <= 5) {
+      priority += 50;
+    }
+    return { ...move, priority };
+  }).sort((a, b) => b.priority - a.priority);
+};
+
+// Minimax + Alpha-Beta (move ordering 적용)
 const minimax = (board, depth, isMaximizing, alpha, beta, color, castling, enPassant) => {
   if (depth === 0) {
     return evaluateBoard(board, color);
@@ -496,14 +532,18 @@ const minimax = (board, depth, isMaximizing, alpha, beta, color, castling, enPas
 
   if (allMoves.length === 0) {
     if (isInCheckPure(board, currentColor)) {
-      return isMaximizing ? -999999 : 999999;
+      // 체크메이트: 깊이가 얕을수록(빠른 메이트) 더 높은/낮은 점수
+      return isMaximizing ? -999999 + (10 - depth) : 999999 - (10 - depth);
     }
     return 0; // 스테일메이트
   }
 
+  // Move ordering으로 alpha-beta 컷오프 효율 향상
+  const ordered = orderMoves(board, allMoves);
+
   if (isMaximizing) {
     let maxEval = -Infinity;
-    for (const move of allMoves) {
+    for (const move of ordered) {
       const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
       const evaluation = minimax(newBoard, depth - 1, false, alpha, beta, color, castling, null);
       maxEval = Math.max(maxEval, evaluation);
@@ -513,7 +553,7 @@ const minimax = (board, depth, isMaximizing, alpha, beta, color, castling, enPas
     return maxEval;
   } else {
     let minEval = Infinity;
-    for (const move of allMoves) {
+    for (const move of ordered) {
       const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
       const evaluation = minimax(newBoard, depth - 1, true, alpha, beta, color, castling, null);
       minEval = Math.min(minEval, evaluation);
@@ -524,7 +564,7 @@ const minimax = (board, depth, isMaximizing, alpha, beta, color, castling, enPas
   }
 };
 
-// AI가 최적의 수 찾기
+// AI 최적의 수 찾기 (강화 v2.0)
 const findBestMove = (board, color, difficulty, castling, enPassant) => {
   const allMoves = [];
 
@@ -542,27 +582,30 @@ const findBestMove = (board, color, difficulty, castling, enPassant) => {
 
   if (allMoves.length === 0) return null;
 
-  // 초급: 랜덤 선택
-  if (difficulty === "beginner") {
-    // 캡처 가능한 수가 있으면 50% 확률로 선택 (완전 랜덤보다 자연스럽게)
-    const captures = allMoves.filter(m => board[m.to[0]][m.to[1]] !== null);
-    if (captures.length > 0 && Math.random() < 0.5) {
-      return captures[Math.floor(Math.random() * captures.length)];
-    }
-    return allMoves[Math.floor(Math.random() * allMoves.length)];
-  }
+  // 난이도별 탐색 깊이 (대폭 상향)
+  let depth;
+  if (difficulty === "beginner") depth = 2;      // 기존: 랜덤 → 이제 minimax depth 2
+  else if (difficulty === "intermediate") depth = 3; // 기존: 2 → 3
+  else depth = 4;                                    // 기존: 3 → 4
 
-  const depth = difficulty === "intermediate" ? 2 : 3;
+  // Root에서 move ordering 적용
+  const ordered = orderMoves(board, allMoves);
 
   let bestMove = null;
   let bestValue = -Infinity;
 
-  for (const move of allMoves) {
+  for (const move of ordered) {
     const newBoard = simulateMove(board, move.from, move.to, move.piece, enPassant);
     const moveValue = minimax(newBoard, depth - 1, false, -Infinity, Infinity, color, castling, null);
 
-    if (moveValue > bestValue) {
-      bestValue = moveValue;
+    // 초급: 평가에 노이즈 추가 (가끔 실수하지만 완전 랜덤은 아님)
+    let adjustedValue = moveValue;
+    if (difficulty === "beginner") {
+      adjustedValue += (Math.random() - 0.5) * 120;
+    }
+
+    if (adjustedValue > bestValue) {
+      bestValue = adjustedValue;
       bestMove = move;
     }
   }

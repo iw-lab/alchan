@@ -1,5 +1,6 @@
 // src/pages/learning/LearningBoard.js
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
@@ -161,6 +162,31 @@ const LearningBoard = () => {
   const selectedBoardPosts = rawPosts || [];
 
   const currentUserIsAdmin = useMemo(() => isAdmin && isAdmin(), [isAdmin]);
+
+  const [searchParams] = useSearchParams();
+
+  // Auto-select board: URL param > first visible board
+  useEffect(() => {
+    if (boards.length === 0) return;
+    const boardIdFromUrl = searchParams.get('board');
+    if (boardIdFromUrl) {
+      const board = boards.find(b => b.id === boardIdFromUrl);
+      if (board && board.id !== selectedBoard?.id) {
+        setSelectedBoard(board);
+        setSelectedPost(null);
+        setIsWriting(false);
+        setShowHiddenBoardsView(false);
+      }
+      return;
+    }
+    if (!selectedBoard && !showHiddenBoardsView) {
+      const visible = boards.filter(b => !b.isHidden);
+      if (visible.length > 0) {
+        setSelectedBoard(visible[0]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boards, searchParams]);
 
   // Loading / guard screens
   if (authLoading) return <div className="lb-msg">사용자 정보 로딩 중...</div>;

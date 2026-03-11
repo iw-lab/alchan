@@ -55,85 +55,81 @@ const getBoardValue = (board, row, col) => {
   return board[getIndex(row, col)];
 };
 
-// 패턴 평가: 새로운 통합 평가 함수
+// 강화된 패턴 평가 v2.0 - 갭 패턴 감지 + 포크(복합 위협) 추적
 const evaluatePattern = (board, row, col, color) => {
-  const directions = [
-    [1, 0],
-    [0, 1],
-    [1, 1],
-    [1, -1],
-  ];
+  const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
   let totalScore = 0;
+  let openThrees = 0, closedFours = 0, openFours = 0;
 
   for (const [dr, dc] of directions) {
+    // 앞 방향 연속
     let forward = 0;
+    for (let i = 1; i <= 4; i++) {
+      if (getBoardValue(board, row + i * dr, col + i * dc) === color) forward++;
+      else break;
+    }
+    // 뒤 방향 연속
     let backward = 0;
-
-    // 앞 방향으로 개수 세기
-    for (let i = 1; i < 5; i++) {
-      const r = row + i * dr;
-      const c = col + i * dc;
-      if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
-      if (board[getIndex(r, c)] !== color) break;
-      forward++;
+    for (let i = 1; i <= 4; i++) {
+      if (getBoardValue(board, row - i * dr, col - i * dc) === color) backward++;
+      else break;
     }
 
-    // 뒷 방향으로 개수 세기
-    for (let i = 1; i < 5; i++) {
-      const r = row - i * dr;
-      const c = col - i * dc;
-      if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
-      if (board[getIndex(r, c)] !== color) break;
-      backward++;
-    }
+    const consecutive = forward + backward + 1;
 
-    const total = forward + backward + 1; // 현재 돌 포함
-
-    // 양 끝 상태 확인
-    const forwardR = row + (forward + 1) * dr;
-    const forwardC = col + (forward + 1) * dc;
-    const backwardR = row - (backward + 1) * dr;
-    const backwardC = col - (backward + 1) * dc;
-
+    // 양 끝 상태
+    const fEnd = getBoardValue(board, row + (forward + 1) * dr, col + (forward + 1) * dc);
+    const bEnd = getBoardValue(board, row - (backward + 1) * dr, col - (backward + 1) * dc);
     let openEnds = 0;
-    // 앞쪽 끝이 열려있으면
-    if (
-      forwardR >= 0 &&
-      forwardR < BOARD_SIZE &&
-      forwardC >= 0 &&
-      forwardC < BOARD_SIZE
-    ) {
-      if (board[getIndex(forwardR, forwardC)] === null) openEnds++;
+    if (fEnd === null) openEnds++;
+    if (bEnd === null) openEnds++;
+
+    // 갭 패턴 감지: 빈칸 하나 너머 추가 돌 (예: OO_O, O_OO)
+    let fGap = 0, bGap = 0;
+    if (fEnd === null) {
+      for (let i = forward + 2; i <= 5; i++) {
+        if (getBoardValue(board, row + i * dr, col + i * dc) === color) fGap++;
+        else break;
+      }
     }
-    // 뒤쪽 끝이 열려있으면
-    if (
-      backwardR >= 0 &&
-      backwardR < BOARD_SIZE &&
-      backwardC >= 0 &&
-      backwardC < BOARD_SIZE
-    ) {
-      if (board[getIndex(backwardR, backwardC)] === null) openEnds++;
+    if (bEnd === null) {
+      for (let i = backward + 2; i <= 5; i++) {
+        if (getBoardValue(board, row - i * dr, col - i * dc) === color) bGap++;
+        else break;
+      }
     }
 
-    // 패턴에 따른 점수 부여
-    if (total >= 5) {
-      totalScore += 100000000; // 5목
-    } else if (total === 4) {
-      if (openEnds === 2)
-        totalScore += 500000; // 열린 4 (필승)
-      else if (openEnds === 1) totalScore += 50000; // 닫힌 4
-    } else if (total === 3) {
-      if (openEnds === 2)
-        totalScore += 10000; // 열린 3
-      else if (openEnds === 1) totalScore += 1000; // 닫힌 3
-    } else if (total === 2) {
-      if (openEnds === 2)
-        totalScore += 500; // 열린 2
-      else if (openEnds === 1) totalScore += 50; // 닫힌 2
-    } else if (total === 1) {
-      if (openEnds === 2) totalScore += 10;
+    // 5목
+    if (consecutive >= 5) { totalScore += 100000000; continue; }
+
+    // 갭으로 5목 가능 (OO_OO 등)
+    if (fGap > 0 && consecutive + fGap >= 5) { totalScore += 100000000; continue; }
+    if (bGap > 0 && consecutive + bGap >= 5) { totalScore += 100000000; continue; }
+
+    // 갭 4 (XX_X, X_XX) - 한 수로 4목 완성
+    if (fGap > 0 && consecutive + fGap === 4) totalScore += 80000;
+    if (bGap > 0 && consecutive + bGap === 4) totalScore += 80000;
+
+    // 연속 패턴 (점수 대폭 상향)
+    if (consecutive === 4) {
+      if (openEnds === 2) { totalScore += 1000000; openFours++; }
+      else if (openEnds === 1) { totalScore += 100000; closedFours++; }
+    } else if (consecutive === 3) {
+      if (openEnds === 2) { totalScore += 50000; openThrees++; }
+      else if (openEnds === 1) totalScore += 5000;
+    } else if (consecutive === 2) {
+      if (openEnds === 2) totalScore += 1000;
+      else if (openEnds === 1) totalScore += 100;
+    } else if (consecutive === 1) {
+      if (openEnds === 2) totalScore += 50;
     }
   }
+
+  // 포크(복합 위협) 보너스 - 동시에 두 개 이상의 위협
+  if (openFours >= 1) totalScore += 1000000;
+  if (openThrees >= 2) totalScore += 500000;   // 쌍삼 (거의 필승)
+  if (openThrees >= 1 && closedFours >= 1) totalScore += 400000; // 삼사
+  if (closedFours >= 2) totalScore += 300000;  // 쌍사
 
   return totalScore;
 };
@@ -230,255 +226,196 @@ const checkForWin = (board, row, col, player) => {
   return null; // 승리하지 않음
 };
 
-// 위치 평가: 새로운 패턴 기반 평가 (1차원적 사고)
-const evaluatePosition = (
-  board,
-  row,
-  col,
-  color,
-  opponentColor,
-  difficulty,
-) => {
-  // 해당 위치에 돌을 놓았다고 가정하고 평가
-  const tempBoard = [...board];
-  const idx = getIndex(row, col);
-
-  tempBoard[idx] = color;
-  const myScore = evaluatePattern(tempBoard, row, col, color);
-
-  // 상대방이 이 위치에 놓았을 때의 점수 (방어 가치)
-  tempBoard[idx] = opponentColor;
-  const opponentScore = evaluatePattern(tempBoard, row, col, opponentColor);
-
-  // 난이도별 가중치 조정
-  let attackWeight = 1.0;
-  let defenseWeight = 1.0;
-
-  if (difficulty === "초급") {
-    attackWeight = 0.8;
-    defenseWeight = 0.6; // 방어 약함
-  } else if (difficulty === "중급") {
-    attackWeight = 1.0;
-    defenseWeight = 0.9;
-  } else if (difficulty === "상급") {
-    attackWeight = 1.2;
-    defenseWeight = 1.1; // 방어도 중요하게
+// 후보수 생성 (기존 돌 주변 빈칸)
+const generateCandidateMoves = (board, range) => {
+  const moves = [];
+  const checked = new Set();
+  for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
+    if (!board[i]) continue;
+    const sr = Math.floor(i / BOARD_SIZE), sc = i % BOARD_SIZE;
+    for (let dr = -range; dr <= range; dr++) {
+      for (let dc = -range; dc <= range; dc++) {
+        const r = sr + dr, c = sc + dc;
+        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) continue;
+        const key = r * BOARD_SIZE + c;
+        if (!board[key] && !checked.has(key)) {
+          moves.push({ r, c });
+          checked.add(key);
+        }
+      }
+    }
   }
-
-  return myScore * attackWeight + opponentScore * defenseWeight;
+  return moves;
 };
 
 const findBestMove = (board, aiColor, difficulty) => {
-  // 돌이 놓인 위치 찾기
-  const placedStones = [];
-  for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
-    if (board[i]) {
-      placedStones.push({ r: Math.floor(i / BOARD_SIZE), c: i % BOARD_SIZE });
-    }
-  }
+  // 돌 수 세기
+  let stoneCount = 0;
+  for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) { if (board[i]) stoneCount++; }
 
-  // 첫 수라면 중앙 근처에 놓기
-  if (placedStones.length <= 1) {
+  // 첫 수: 중앙 근처
+  if (stoneCount <= 1) {
     const center = Math.floor(BOARD_SIZE / 2);
-    const centerMoves = [
-      { r: center, c: center },
-      { r: center, c: center + 1 },
-      { r: center + 1, c: center },
-      { r: center + 1, c: center + 1 },
-      { r: center - 1, c: center },
-      { r: center, c: center - 1 },
-      { r: center + 1, c: center - 1 },
-      { r: center - 1, c: center + 1 },
+    const opts = [
+      { r: center, c: center }, { r: center + 1, c: center },
+      { r: center, c: center + 1 }, { r: center + 1, c: center + 1 },
+      { r: center - 1, c: center }, { r: center, c: center - 1 },
     ];
-    for (const move of centerMoves) {
-      if (!board[getIndex(move.r, move.c)]) {
-        return move;
-      }
-    }
+    for (const m of opts) { if (!board[getIndex(m.r, m.c)]) return m; }
   }
 
-  const opponentColor = aiColor === "black" ? "white" : "black";
-
-  // 난이도에 따라 탐색 범위 조정
-  let searchRange = 2;
-  if (difficulty === "초급") searchRange = 1;
-  else if (difficulty === "중급") searchRange = 2;
-  else if (difficulty === "상급") searchRange = 3;
-
-  // 이미 놓인 돌 주변 범위 이내의 빈 자리만 탐색
-  const possibleMoves = [];
-  const checkedPositions = new Set();
-
-  for (const stone of placedStones) {
-    for (let dr = -searchRange; dr <= searchRange; dr++) {
-      for (let dc = -searchRange; dc <= searchRange; dc++) {
-        const r = stone.r + dr;
-        const c = stone.c + dc;
-        if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
-          const idx = getIndex(r, c);
-          const key = `${r},${c}`;
-          if (!board[idx] && !checkedPositions.has(key)) {
-            possibleMoves.push({ r, c });
-            checkedPositions.add(key);
-          }
-        }
-      }
-    }
-  }
+  const oppColor = aiColor === "black" ? "white" : "black";
+  const searchRange = difficulty === "초급" ? 2 : 3;
+  const possibleMoves = generateCandidateMoves(board, searchRange);
 
   if (possibleMoves.length === 0) {
-    // 만약 탐색된 수가 없다면, 그냥 비어있는 첫번째 칸에 둔다 (예외 처리)
-    const firstEmpty = board.findIndex((cell) => cell === null);
-    if (firstEmpty !== -1) {
-      return {
-        r: Math.floor(firstEmpty / BOARD_SIZE),
-        c: firstEmpty % BOARD_SIZE,
-      };
-    }
+    const e = board.findIndex((c) => c === null);
+    if (e !== -1) return { r: Math.floor(e / BOARD_SIZE), c: e % BOARD_SIZE };
     return null;
   }
 
-  // 1순위: 즉시 승리 수 찾기
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = aiColor;
-    if (checkForWin(testBoard, move.r, move.c, aiColor)) {
-      return move; // 즉시 승리
+  // === 1순위: 즉시 승리 ===
+  for (const m of possibleMoves) {
+    const tb = [...board]; tb[getIndex(m.r, m.c)] = aiColor;
+    if (checkForWin(tb, m.r, m.c, aiColor)) return m;
+  }
+
+  // === 2순위: 상대 승리 막기 ===
+  for (const m of possibleMoves) {
+    const tb = [...board]; tb[getIndex(m.r, m.c)] = oppColor;
+    if (checkForWin(tb, m.r, m.c, oppColor)) return m;
+  }
+
+  // === 모든 후보수 공격/방어 점수 계산 ===
+  const center = Math.floor(BOARD_SIZE / 2);
+  const scored = possibleMoves.map((m) => {
+    const idx = getIndex(m.r, m.c);
+    const tb = [...board];
+    tb[idx] = aiColor;
+    const attack = evaluatePattern(tb, m.r, m.c, aiColor);
+    tb[idx] = oppColor;
+    const defense = evaluatePattern(tb, m.r, m.c, oppColor);
+    const centerDist = Math.abs(m.r - center) + Math.abs(m.c - center);
+    const centerBonus = (BOARD_SIZE * 2 - centerDist) * 10;
+    return { ...m, attack, defense, centerBonus };
+  });
+
+  // === 3순위: 내 포크/열린 4 만들기 ===
+  const myBigAttacks = scored.filter((m) => m.attack >= 300000);
+  if (myBigAttacks.length > 0) {
+    myBigAttacks.sort((a, b) => b.attack - a.attack);
+    return { r: myBigAttacks[0].r, c: myBigAttacks[0].c };
+  }
+
+  // === 4순위: 상대 큰 위협 막기 (열린 4, 포크, 닫힌 4) ===
+  const oppBigThreats = scored.filter((m) => m.defense >= 100000);
+  if (oppBigThreats.length > 0) {
+    // 막으면서 동시에 공격하는 수 우선
+    oppBigThreats.sort((a, b) => (b.defense + b.attack * 0.3) - (a.defense + a.attack * 0.3));
+    return { r: oppBigThreats[0].r, c: oppBigThreats[0].c };
+  }
+
+  // === 5순위: 내 열린 3 만들기 ===
+  const myOpenThrees = scored.filter((m) => m.attack >= 50000);
+  if (myOpenThrees.length > 0 && (difficulty !== "초급" || Math.random() < 0.5)) {
+    myOpenThrees.sort((a, b) => b.attack - a.attack);
+    return { r: myOpenThrees[0].r, c: myOpenThrees[0].c };
+  }
+
+  // === 6순위: 상대 열린 3 막기 ===
+  const oppOpenThrees = scored.filter((m) => m.defense >= 50000);
+  if (oppOpenThrees.length > 0) {
+    const blockRate = difficulty === "상급" ? 1.0 : difficulty === "중급" ? 0.95 : 0.5;
+    if (Math.random() < blockRate) {
+      oppOpenThrees.sort((a, b) => (b.defense + b.attack * 0.3) - (a.defense + a.attack * 0.3));
+      return { r: oppOpenThrees[0].r, c: oppOpenThrees[0].c };
     }
   }
 
-  // 2순위: 상대방의 승리 막기 (방어)
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = opponentColor;
-    if (checkForWin(testBoard, move.r, move.c, opponentColor)) {
-      return move; // 필수 방어
-    }
-  }
-
-  // 3순위: 내 열린 4 찾기 (거의 필승)
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = aiColor;
-    const patternScore = evaluatePattern(testBoard, move.r, move.c, aiColor);
-    if (patternScore >= 500000) {
-      // 열린 4
-      logger.log("[AI] 내 열린 4 발견:", move);
-      return move;
-    }
-  }
-
-  // 4순위: 상대방 4 막기 (닫힌 4 포함)
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = opponentColor;
-    const patternScore = evaluatePattern(
-      testBoard,
-      move.r,
-      move.c,
-      opponentColor,
-    );
-    if (patternScore >= 50000) {
-      // 닫힌 4 이상
-      logger.log("[AI] 상대 4목 막기:", move, "score:", patternScore);
-      return move;
-    }
-  }
-
-  // 5순위: 내 열린 3 만들기
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = aiColor;
-    const patternScore = evaluatePattern(testBoard, move.r, move.c, aiColor);
-    if (patternScore >= 10000) {
-      // 열린 3
-      logger.log("[AI] 내 열린 3 발견:", move);
-      return move;
-    }
-  }
-
-  // 6순위: 상대 열린 3 막기 (매우 중요!)
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = opponentColor;
-    const patternScore = evaluatePattern(
-      testBoard,
-      move.r,
-      move.c,
-      opponentColor,
-    );
-    if (patternScore >= 10000) {
-      // 열린 3
-      logger.log("[AI] 상대 열린 3 막기:", move, "score:", patternScore);
-      if (difficulty === "상급") {
-        return move; // 상급은 반드시 막음
-      } else if (difficulty === "중급" && Math.random() > 0.1) {
-        return move; // 중급은 90% 확률로 막음
+  // === 7순위: 상대 닫힌 위협 막기 ===
+  if (difficulty !== "초급") {
+    const oppClosedThreats = scored.filter((m) => m.defense >= 5000);
+    if (oppClosedThreats.length > 0) {
+      const blockRate = difficulty === "상급" ? 0.95 : 0.7;
+      if (Math.random() < blockRate) {
+        oppClosedThreats.sort((a, b) => (b.defense + b.attack * 0.3) - (a.defense + a.attack * 0.3));
+        return { r: oppClosedThreats[0].r, c: oppClosedThreats[0].c };
       }
     }
   }
 
-  // 7순위: 상대 닫힌 3 막기
-  if (difficulty !== "초급") {
-    for (const move of possibleMoves) {
-      const testBoard = [...board];
-      testBoard[getIndex(move.r, move.c)] = opponentColor;
-      const patternScore = evaluatePattern(
-        testBoard,
-        move.r,
-        move.c,
-        opponentColor,
-      );
-      if (patternScore >= 1000) {
-        // 닫힌 3
-        logger.log("[AI] 상대 닫힌 3 막기:", move, "score:", patternScore);
-        if (difficulty === "상급" && Math.random() > 0.3) {
-          return move; // 상급은 70% 확률로 막음
-        } else if (difficulty === "중급" && Math.random() > 0.5) {
-          return move; // 중급은 50% 확률로 막음
+  // === 8순위: 최적 수 선택 (난이도별 lookahead) ===
+  if (difficulty === "상급") {
+    // 상급: 2단계 lookahead - 내 수 → 상대 최선응 → 내 후속
+    const candidates = scored
+      .map((m) => ({ ...m, combined: m.attack * 1.1 + m.defense * 1.05 + m.centerBonus }))
+      .sort((a, b) => b.combined - a.combined)
+      .slice(0, 12);
+
+    let best = candidates[0], bestNet = -Infinity;
+    for (const cand of candidates) {
+      const nb = [...board];
+      nb[getIndex(cand.r, cand.c)] = aiColor;
+      // 상대 최선응 시뮬레이션
+      const oppMoves = generateCandidateMoves(nb, 2);
+      let worstOppThreat = 0;
+      let bestOppMove = null;
+      for (const om of oppMoves) {
+        const tb2 = [...nb]; tb2[getIndex(om.r, om.c)] = oppColor;
+        const s = evaluatePattern(tb2, om.r, om.c, oppColor);
+        if (s > worstOppThreat) { worstOppThreat = s; bestOppMove = om; }
+      }
+      // 상대 최선응 후 내 후속 최고수
+      let ourBestFollow = 0;
+      if (bestOppMove) {
+        const nb2 = [...nb]; nb2[getIndex(bestOppMove.r, bestOppMove.c)] = oppColor;
+        const followMoves = generateCandidateMoves(nb2, 2);
+        for (const fm of followMoves) {
+          const tb3 = [...nb2]; tb3[getIndex(fm.r, fm.c)] = aiColor;
+          ourBestFollow = Math.max(ourBestFollow, evaluatePattern(tb3, fm.r, fm.c, aiColor));
         }
       }
+      const netScore = cand.attack * 1.1 + cand.defense * 0.5 - worstOppThreat * 0.8 + ourBestFollow * 0.3 + cand.centerBonus;
+      if (netScore > bestNet) { bestNet = netScore; best = cand; }
     }
+    return { r: best.r, c: best.c };
+
+  } else if (difficulty === "중급") {
+    // 중급: 1단계 lookahead - 내 수 → 상대 최선응
+    const candidates = scored
+      .map((m) => ({ ...m, combined: m.attack + m.defense * 0.95 + m.centerBonus }))
+      .sort((a, b) => b.combined - a.combined)
+      .slice(0, 8);
+
+    let best = candidates[0], bestNet = -Infinity;
+    for (const cand of candidates) {
+      const nb = [...board];
+      nb[getIndex(cand.r, cand.c)] = aiColor;
+      const oppMoves = generateCandidateMoves(nb, 2);
+      let worstOppThreat = 0;
+      for (const om of oppMoves) {
+        const tb2 = [...nb]; tb2[getIndex(om.r, om.c)] = oppColor;
+        worstOppThreat = Math.max(worstOppThreat, evaluatePattern(tb2, om.r, om.c, oppColor));
+      }
+      const netScore = cand.attack + cand.defense * 0.5 - worstOppThreat * 0.6 + cand.centerBonus;
+      if (netScore > bestNet) { bestNet = netScore; best = cand; }
+    }
+    // 5% 실수 확률
+    if (Math.random() < 0.05 && candidates.length > 1) best = candidates[1];
+    return { r: best.r, c: best.c };
+
+  } else {
+    // 초급: 휴리스틱 + 적당한 노이즈 (너무 멍청하지 않게)
+    const candidates = scored
+      .map((m) => ({
+        ...m,
+        combined: m.attack * 0.9 + m.defense * 0.7 + m.centerBonus + (Math.random() - 0.5) * 600,
+      }))
+      .sort((a, b) => b.combined - a.combined);
+    // 상위 3개 중 랜덤 선택
+    const pick = Math.floor(Math.random() * Math.min(3, candidates.length));
+    return { r: candidates[pick].r, c: candidates[pick].c };
   }
-
-  // 8순위: 가장 높은 점수의 수 선택
-  let bestMove = null;
-  let bestScore = -Infinity;
-
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[getIndex(move.r, move.c)] = aiColor;
-
-    let score = evaluatePosition(
-      testBoard,
-      move.r,
-      move.c,
-      aiColor,
-      opponentColor,
-      difficulty,
-    );
-
-    // 중앙 부근에 가중치 (초반에 유리)
-    const center = Math.floor(BOARD_SIZE / 2);
-    const centerDist = Math.abs(move.r - center) + Math.abs(move.c - center);
-    score += (BOARD_SIZE - centerDist) * 5;
-
-    // 난이도에 따른 랜덤성 추가 (초급은 더 많은 실수)
-    if (difficulty === "초급") {
-      score += (Math.random() - 0.5) * 3000; // 큰 랜덤성
-    } else if (difficulty === "중급") {
-      score += (Math.random() - 0.5) * 300; // 작은 랜덤성
-    }
-    // 상급은 랜덤성 없음
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = move;
-    }
-  }
-
-  logger.log("[AI] 최종 선택:", bestMove);
-  return bestMove;
 };
 // =======================
 

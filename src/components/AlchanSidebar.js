@@ -525,6 +525,7 @@ export default function AlchanSidebar({
 
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [learningBoards, setLearningBoards] = useState([]);
 
   useEffect(() => {
     let timeoutId;
@@ -618,6 +619,26 @@ export default function AlchanSidebar({
     };
   }, [isAdmin, userDoc?.selectedJobIds, userDoc?.classCode]);
 
+  // 학습 게시판 목록 로드 (사이드바에 동적 표시)
+  useEffect(() => {
+    const classCode = userDoc?.classCode;
+    if (!classCode) return void setLearningBoards([]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(fbCollection(firebaseDb, "classes", classCode, "learningBoards"));
+        if (cancelled) return;
+        setLearningBoards(
+          snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(b => !b.isHidden)
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        );
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [userDoc?.classCode]);
+
   const hasDelegatedTaskApproval =
     userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
 
@@ -626,6 +647,12 @@ export default function AlchanSidebar({
   else if (userDoc?.isAdmin) userRole = "교사";
 
   const userName = userDoc?.name || userDoc?.nickname || "사용자";
+
+  // 사이드바에서 활성 학습 게시판 ID 감지
+  const activeLearningBoardId = useMemo(() => {
+    if (location.pathname !== '/learning-board') return null;
+    return new URLSearchParams(location.search).get('board');
+  }, [location.pathname, location.search]);
 
   // 아이템 표시 여부 체크
   const shouldShowItem = useCallback(
@@ -681,6 +708,22 @@ export default function AlchanSidebar({
                           {child.label}
                         </span>
                       </div>
+                    );
+                  }
+                  // 학습 게시판: 동적 보드 목록으로 대체
+                  if (child.id === 'learningBoard' && learningBoards.length > 0) {
+                    return (
+                      <React.Fragment key={child.id}>
+                        {learningBoards.map(board => (
+                          <SubMenuItem
+                            key={`lb-${board.id}`}
+                            icon={child.icon}
+                            label={board.name}
+                            active={activeLearningBoardId === board.id}
+                            onClick={() => { navigate(`/learning-board?board=${board.id}`); if (isMobile) onClose?.(); }}
+                          />
+                        ))}
+                      </React.Fragment>
                     );
                   }
                   // 일반 메뉴 아이템
