@@ -199,7 +199,11 @@ exports.stockPriceScheduler = onRequest(
         `[stockPriceScheduler] 호출됨 - KST ${hour}시, 요일: ${day}, force: ${forceUpdate}`,
       );
 
-      if (!forceUpdate) {
+      // 🔥 미국주식 fetch 시간대 (KST 6~8시)에는 활성 사용자 체크 건너뜀
+      // 이유: 새벽이라 학생 접속이 없어 활성 사용자 체크에 막혀 미국주식이 영원히 업데이트 안 되는 버그
+      const isUSStockFetchTime = hour >= 6 && hour < 8;
+
+      if (!forceUpdate && !isUSStockFetchTime) {
         // 🔥 Settings 문서에서 마지막 활성 시간 확인 (1회 읽기로 최적화)
         const settingsDoc = await db.doc("Settings/activeStatus").get();
         const lastActiveTime = settingsDoc.exists
@@ -219,6 +223,8 @@ exports.stockPriceScheduler = onRequest(
           });
           return;
         }
+      } else if (isUSStockFetchTime) {
+        logger.info(`[stockPriceScheduler] 미국주식 fetch 시간대 (KST ${hour}시) - 활성 사용자 체크 건너뜀`);
       } else {
         logger.info(`[stockPriceScheduler] force=true - 모든 체크 건너뜀`);
       }
