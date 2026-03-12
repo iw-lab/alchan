@@ -9,6 +9,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -936,6 +938,36 @@ const PersonalShop = () => {
           }
         }
         transaction.update(productRef, updates);
+
+        // 구매자 인벤토리에 아이템 추가
+        const category = SHOP_CATEGORIES.find(c => c.value === purchaseShop.category);
+        const productType = PRODUCT_TYPES.find(t => t.value === purchaseProduct.type);
+        const inventoryItemId = `ps_${purchaseProduct.id}`;
+        const inventoryRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
+        const inventorySnap = await transaction.get(inventoryRef);
+
+        if (inventorySnap.exists()) {
+          transaction.update(inventoryRef, {
+            quantity: increment(quantity),
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          transaction.set(inventoryRef, {
+            itemId: inventoryItemId,
+            name: purchaseProduct.name,
+            icon: productType?.icon || category?.icon || "📦",
+            description: `${purchaseShop.shopName}에서 구매한 ${purchaseProduct.type === "service" ? "서비스" : "상품"}`,
+            type: purchaseProduct.type || "product",
+            quantity: quantity,
+            price: purchaseProduct.totalPrice,
+            source: "personalShop",
+            shopId: purchaseShop.id,
+            shopName: purchaseShop.shopName,
+            sellerId: purchaseShop.ownerId,
+            purchasedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        }
 
         // 거래 기록
         const activityRef = collection(db, "activities");
