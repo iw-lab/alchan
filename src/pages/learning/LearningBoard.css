@@ -276,6 +276,22 @@
   padding: 1.5rem;
 }
 
+.lb-detail-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 1rem;
+}
+
+.lb-detail-header-row .lb-detail-title {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
 .lb-detail-title {
   font-size: 1.3rem;
   font-weight: 700;
@@ -283,6 +299,45 @@
   margin: 0 0 1rem 0;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lb-edit-post-btn {
+  padding: 0.4rem 1rem;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.lb-edit-post-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.lb-edit-btns {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.lb-cancel-btn {
+  padding: 0.7rem 2rem;
+  background: rgba(100, 116, 139, 0.15);
+  border: 1px solid rgba(100, 116, 139, 0.4);
+  color: #94a3b8;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.lb-cancel-btn:hover {
+  background: rgba(100, 116, 139, 0.25);
 }
 
 .lb-detail-meta {

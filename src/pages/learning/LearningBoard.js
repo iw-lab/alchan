@@ -107,6 +107,8 @@ const LearningBoard = () => {
   const [showHiddenBoardsView, setShowHiddenBoardsView] = useState(false);
   const [editingBoardId, setEditingBoardId] = useState(null);
   const [editingBoardName, setEditingBoardName] = useState("");
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editPost, setEditPost] = useState({ title: "", content: "" });
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -240,6 +242,36 @@ const LearningBoard = () => {
     } catch (error) {
       logger.error("Error submitting post:", error);
       alert(`게시글 제출 오류: ${error.message}`);
+    }
+  };
+
+  // Post edit
+  const handleStartEditPost = () => {
+    setEditPost({ title: selectedPost.title, content: selectedPost.content });
+    setIsEditingPost(true);
+  };
+
+  const handlePostUpdate = async (e) => {
+    e.preventDefault();
+    if (!selectedBoard || !classCode || !selectedPost) return;
+    if (!editPost.title.trim() || !editPost.content.trim()) {
+      alert("제목과 내용을 모두 입력해주세요.");
+      return;
+    }
+    try {
+      const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
+      await updateDoc(postRef, {
+        title: editPost.title,
+        content: editPost.content,
+        updatedAt: serverTimestamp(),
+      });
+      setSelectedPost({ ...selectedPost, title: editPost.title, content: editPost.content });
+      setIsEditingPost(false);
+      refetchPosts();
+      alert("게시글이 수정되었습니다!");
+    } catch (error) {
+      logger.error("Error updating post:", error);
+      alert(`게시글 수정 오류: ${error.message}`);
     }
   };
 
@@ -479,9 +511,47 @@ const LearningBoard = () => {
         {/* Post Detail */}
         {selectedBoard && selectedPost && !isWriting && !showHiddenBoardsView && (
           <div className="lb-detail">
-            <button className="lb-back" onClick={() => setSelectedPost(null)}>← 목록으로</button>
+            <button className="lb-back" onClick={() => { setSelectedPost(null); setIsEditingPost(false); }}>← 목록으로</button>
+
+            {/* Edit Form */}
+            {isEditingPost ? (
+              <div className="lb-write">
+                <h2 className="lb-write-heading">게시글 수정</h2>
+                <form onSubmit={handlePostUpdate} className="lb-form">
+                  <div className="lb-field">
+                    <label>제목</label>
+                    <input
+                      type="text"
+                      value={editPost.title}
+                      onChange={(e) => setEditPost({ ...editPost, title: e.target.value })}
+                      placeholder="제목을 입력하세요"
+                      required
+                    />
+                  </div>
+                  <div className="lb-field">
+                    <label>내용</label>
+                    <textarea
+                      value={editPost.content}
+                      onChange={(e) => setEditPost({ ...editPost, content: e.target.value })}
+                      placeholder="내용을 입력하세요"
+                      required
+                      rows="10"
+                    />
+                  </div>
+                  <div className="lb-edit-btns">
+                    <button type="submit" className="lb-submit">수정 완료</button>
+                    <button type="button" className="lb-cancel-btn" onClick={() => setIsEditingPost(false)}>취소</button>
+                  </div>
+                </form>
+              </div>
+            ) : (
             <div className="lb-detail-card">
-              <h2 className="lb-detail-title">{selectedPost.title}</h2>
+              <div className="lb-detail-header-row">
+                <h2 className="lb-detail-title">{selectedPost.title}</h2>
+                {(selectedPost.authorId === currentUserId || currentUserIsAdmin) && (
+                  <button className="lb-edit-post-btn" onClick={handleStartEditPost}>수정하기</button>
+                )}
+              </div>
               <div className="lb-detail-meta">
                 <span>작성자: {selectedPost.author || "익명"}</span>
                 <span>{formatDate(selectedPost.timestamp)}</span>
@@ -558,6 +628,7 @@ const LearningBoard = () => {
                 )}
               </div>
             </div>
+            )}
           </div>
         )}
 
