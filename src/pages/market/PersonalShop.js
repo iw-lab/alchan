@@ -886,6 +886,12 @@ const PersonalShop = () => {
 
     try {
       await runTransaction(db, async (transaction) => {
+        // 🔹 모든 읽기를 먼저 수행 (Firestore 트랜잭션 규칙)
+        const inventoryItemId = `ps_${purchaseProduct.id}`;
+        const inventoryRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
+        const inventorySnap = await transaction.get(inventoryRef);
+
+        // 🔹 이후 쓰기 수행
         // 구매자 잔액 차감
         const buyerRef = doc(db, "users", currentUser.uid);
         transaction.update(buyerRef, {
@@ -942,9 +948,6 @@ const PersonalShop = () => {
         // 구매자 인벤토리에 아이템 추가
         const category = SHOP_CATEGORIES.find(c => c.value === purchaseShop.category);
         const productType = PRODUCT_TYPES.find(t => t.value === purchaseProduct.type);
-        const inventoryItemId = `ps_${purchaseProduct.id}`;
-        const inventoryRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
-        const inventorySnap = await transaction.get(inventoryRef);
 
         if (inventorySnap.exists()) {
           transaction.update(inventoryRef, {
