@@ -761,6 +761,33 @@ const PersonalShop = () => {
       });
 
       setSalesHistory(allHistory);
+
+      // 구매 기록 중 인벤토리에 누락된 아이템 자동 동기화
+      const buyerRecords = allHistory.filter((h) => h.role === "buyer");
+      for (const record of buyerRecords) {
+        if (!record.productId) continue;
+        const inventoryItemId = `ps_${record.productId}`;
+        const invRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
+        const invSnap = await getDoc(invRef);
+        if (!invSnap.exists()) {
+          await setDoc(invRef, {
+            itemId: inventoryItemId,
+            name: record.productName || "알 수 없는 아이템",
+            icon: record.productType === "service" ? "🛠️" : "📦",
+            description: `${record.shopName || "개인상점"}에서 구매한 ${record.productType === "service" ? "서비스" : "상품"}`,
+            type: record.productType || "product",
+            quantity: record.quantity || 1,
+            price: record.unitPrice || 0,
+            source: "personalShop",
+            shopId: record.shopId || "",
+            shopName: record.shopName || "",
+            sellerId: record.sellerId || "",
+            purchasedAt: record.timestamp || serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+          logger.info(`인벤토리 동기화: ${record.productName}`);
+        }
+      }
     } catch (error) {
       logger.error("거래 내역 로드 오류:", error);
     } finally {
