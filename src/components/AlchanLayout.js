@@ -239,6 +239,7 @@ const SuperAdminRoute = ({ children }) => {
 export default function AlchanLayout() {
   const location = useLocation();
   const { user, userDoc, loading, logout } = useAuth();
+  const isImmersiveMusicRoom = location.pathname.startsWith("/music-room/");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -440,20 +441,28 @@ export default function AlchanLayout() {
         />
 
         {/* 메인 콘텐츠 영역 - 스크롤 문제 수정 */}
-        <main className="flex-1 min-w-0 md:min-h-screen relative bg-[#0a0a12]">
+        <main
+          className={`flex-1 min-w-0 md:min-h-screen relative bg-[#0a0a12] ${
+            isImmersiveMusicRoom ? "overflow-hidden" : ""
+          }`}
+        >
           {/* 헤더 */}
-          <AlchanHeader
-            toggleSidebar={toggleSidebar}
-            isMobile={isMobile}
-            isSidebarCollapsed={isSidebarCollapsed}
-            onToggleSidebarCollapse={toggleSidebarCollapse}
-          />
+          {!isImmersiveMusicRoom && (
+            <AlchanHeader
+              toggleSidebar={toggleSidebar}
+              isMobile={isMobile}
+              isSidebarCollapsed={isSidebarCollapsed}
+              onToggleSidebarCollapse={toggleSidebarCollapse}
+            />
+          )}
 
           {/* 경제 이벤트 배너 */}
-          <EconomicEventBanner />
+          {!isImmersiveMusicRoom && <EconomicEventBanner />}
 
           {/* 콘텐츠 영역 - 🔥 Suspense로 lazy loading 지원 */}
-          <div className="w-full pb-20 md:pb-4">
+          <div
+            className={`w-full ${isImmersiveMusicRoom ? "pb-0" : "pb-20 md:pb-4"}`}
+          >
             <Suspense fallback={<AlchanLoading message="페이지 로딩 중..." />}>
               <Routes>
                 {/* 메인 페이지 */}
@@ -804,13 +813,15 @@ export default function AlchanLayout() {
           </div>
 
           {/* 푸터 - PC만 */}
+          {!isImmersiveMusicRoom && (
           <footer className="hidden md:block py-8 text-center text-sm text-gray-400 font-medium">
             © 2026 알찬 Corp. All rights reserved.
           </footer>
+          )}
         </main>
 
         {/* 모바일 하단 네비게이션 */}
-        <MobileNav />
+        {!isImmersiveMusicRoom && <MobileNav />}
 
         {/* PWA 설치 프롬프트 */}
         <PWAInstallPrompt />
@@ -840,7 +851,7 @@ export default function AlchanLayout() {
         )}
 
         {/* 플로팅 도움말 버튼 */}
-        <HelpButton />
+        {!isImmersiveMusicRoom && <HelpButton />}
 
         {/* 🎓 첫 로그인 닉네임 설정 팝업 (학생 전용) */}
         <Suspense fallback={null}>

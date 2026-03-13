@@ -1,16 +1,17 @@
 /* MusicRoom.css - Cyberpunk Edit */
 .music-room-container-grid {
     display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 20px;
-    padding: 20px;
-    max-width: 1920px;
-    margin: 0 auto;
-    height: calc(100vh - 100px);
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 12px;
+    padding: 10px 12px 14px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    min-height: calc(100vh - 32px);
     box-sizing: border-box;
     background-color: #0a0a12 !important;
-    /* Deep Dark Background */
     color: #e8e8ff;
+    align-items: stretch;
 }
 
 .main-content {
@@ -26,7 +27,8 @@
 .video-player-wrapper {
     position: relative;
     width: 100%;
-    padding-bottom: 56.25%;
+    flex: 1;
+    min-height: 72vh;
     background-color: #000;
     overflow: hidden;
     border-bottom: 1px solid rgba(0, 255, 242, 0.2);
@@ -81,7 +83,7 @@
 }
 
 .room-header {
-    padding: 1rem 1.5rem;
+    padding: 0.9rem 1.1rem;
     background: rgba(10, 10, 20, 0.95);
     border-top: 1px solid rgba(0, 255, 242, 0.1);
     display: flex;
@@ -91,7 +93,7 @@
 
 .room-header h2 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: #00fff2;
     text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
 }
@@ -161,7 +163,7 @@
     background: rgba(20, 20, 35, 0.8) !important;
     border-radius: 12px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-    padding: 1.5rem;
+    padding: 1rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
@@ -181,10 +183,10 @@
 
 .playlist-panel h3 {
     margin-top: 0;
-    margin-bottom: 1rem;
-    text-align: center;
+    margin-bottom: 0.9rem;
+    text-align: left;
     color: #d633ff;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -241,15 +243,15 @@
 }
 
 .playlist li {
-    padding: 0.8rem;
+    padding: 0.95rem 0.9rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.35rem;
     transition: all 0.2s;
     background: rgba(255, 255, 255, 0.02);
-    margin-bottom: 4px;
-    border-radius: 4px;
+    margin-bottom: 6px;
+    border-radius: 10px;
 }
 
 .playlist li:last-child {
@@ -261,8 +263,9 @@
 }
 
 .song-title {
-    font-weight: 500;
+    font-weight: 700;
     color: #e8e8ff;
+    line-height: 1.4;
 }
 
 .playlist li.playing {
@@ -277,9 +280,9 @@
 }
 
 .requester {
-    font-size: 0.8rem;
-    color: #777;
-    align-self: flex-end;
+    font-size: 0.82rem;
+    color: #8f9bb3;
+    align-self: flex-start;
 }
 
 .no-playlist-message {
@@ -316,7 +319,7 @@
 /* 반응형 디자인 - 태블릿 */
 @media (max-width: 1200px) {
     .music-room-container-grid {
-        grid-template-columns: 1fr 260px;
+        grid-template-columns: minmax(0, 1fr) 320px;
     }
 }
 
@@ -324,11 +327,33 @@
 @media (max-width: 768px) {
     .music-room-container-grid {
         grid-template-columns: 1fr;
-        height: auto;
+        min-height: auto;
+        padding: 8px;
+        gap: 10px;
     }
 
     .sidebar-content {
-        gap: 15px;
+        gap: 10px;
+    }
+
+    .video-player-wrapper {
+        min-height: 48vh;
+    }
+
+    .room-header {
+        padding: 0.85rem 0.9rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .room-controls {
+        width: 100%;
+    }
+
+    .control-btn,
+    .delete-room-btn {
+        flex: 1;
     }
 }
 

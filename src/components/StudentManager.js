@@ -78,7 +78,7 @@ const createStudentEmail = (studentId, classCode) => {
 };
 
 const StudentManager = () => {
-  const { userDoc, classmates } = useAuth();
+  const { userDoc, classmates, refreshAllUsers } = useAuth();
   const classCode = userDoc?.classCode;
 
   // 상태
@@ -113,7 +113,7 @@ const StudentManager = () => {
   const [copiedId, setCopiedId] = useState(null);
 
   // 학생 목록 로드 함수
-  const loadStudents = useCallback(async () => {
+  const loadStudents = useCallback(async (forceRefresh = false) => {
     if (!classCode) {
       setLoading(false);
       return;
@@ -121,9 +121,17 @@ const StudentManager = () => {
 
     setLoading(true);
     try {
+      let latestClassmates = classmates;
+
+      if (forceRefresh && typeof refreshAllUsers === "function") {
+        const refreshedMembers = await refreshAllUsers();
+        latestClassmates = Array.isArray(refreshedMembers)
+          ? refreshedMembers.filter((member) => member.id !== userDoc?.id)
+          : classmates;
+      }
       // AuthContext의 classmates 사용
-      if (classmates && classmates.length > 0) {
-        const studentList = classmates.filter(
+      if (latestClassmates && latestClassmates.length > 0) {
+        const studentList = latestClassmates.filter(
           (u) => !u.isTeacher && !u.isAdmin,
         );
         setStudents(studentList);
@@ -142,11 +150,11 @@ const StudentManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [classCode, classmates]);
+  }, [classCode, classmates, refreshAllUsers, userDoc?.id]);
 
   // 학생 목록 로드
   useEffect(() => {
-    loadStudents();
+    loadStudents(false);
   }, [loadStudents]);
 
   // 검색 필터링
@@ -196,7 +204,7 @@ const StudentManager = () => {
         setNewStudentPassword("");
         setParentalConsent(false);
         setShowAddModal(false);
-        loadStudents();
+        loadStudents(true);
       } else {
         const errMsg = data.failed[0]?.error || "알 수 없는 오류";
         alert(`학생 추가 실패: ${errMsg}`);
@@ -294,7 +302,7 @@ const StudentManager = () => {
 
     setBulkStep(3);
     setProcessing(false);
-    loadStudents();
+    loadStudents(true);
   };
 
   // 결과 CSV 다운로드
@@ -350,7 +358,7 @@ const StudentManager = () => {
       }
 
       alert("학생이 삭제되었습니다.");
-      loadStudents();
+      await loadStudents(true);
     } catch (error) {
       logger.error("Failed to delete student:", error);
       alert(`삭제 실패: ${error.message}`);
@@ -429,7 +437,7 @@ const StudentManager = () => {
     } else {
       alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
     }
-    loadStudents();
+    await loadStudents(true);
     setProcessing(false);
   };
 
@@ -1060,7 +1068,7 @@ const StudentManager = () => {
                   });
                   setShowEditModal(false);
                   setEditingStudent(null);
-                  loadStudents();
+                  loadStudents(true);
                 } catch (error) {
                   alert(`수정 실패: ${error.message}`);
                 } finally {

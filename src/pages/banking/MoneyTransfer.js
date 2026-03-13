@@ -16,6 +16,7 @@ function MoneyTransfer() {
     loading: authLoading,
     setUserDoc,
     setAllClassMembers,
+    refreshAllUsers,
   } = useAuth();
   const { currencyUnit } = useCurrency();
 
@@ -44,6 +45,36 @@ function MoneyTransfer() {
       return nameA.localeCompare(nameB, "ko");
     });
   }, [allClassMembers]);
+
+  const duplicateNameCounts = useMemo(
+    () =>
+      users.reduce((acc, member) => {
+        const key = member.name || member.nickname || "이름없음";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {}),
+    [users],
+  );
+
+  const getUserIdentityText = useCallback((member) => {
+    if (member.studentNumber) {
+      return `학번 ${member.studentNumber}`;
+    }
+
+    if (member.email) {
+      return member.email;
+    }
+
+    return `ID ${String(member.id || "").slice(0, 6)}`;
+  }, []);
+
+  useEffect(() => {
+    if (!adminClassCode || typeof refreshAllUsers !== "function") return;
+
+    refreshAllUsers().catch((refreshError) => {
+      logger.warn("[MoneyTransfer] 학생 목록 새로고침 실패:", refreshError);
+    });
+  }, [adminClassCode, refreshAllUsers]);
 
   // 액션 타입이 변경되면 선택 초기화
   useEffect(() => {
@@ -114,9 +145,30 @@ function MoneyTransfer() {
     setError("");
 
     try {
-      const targetUsersData = users.filter((user) =>
-        selectedUsers.includes(user.id),
+      const refreshedUsers =
+        typeof refreshAllUsers === "function"
+          ? await refreshAllUsers()
+          : allClassMembers;
+      const latestUsers = Array.isArray(refreshedUsers)
+        ? refreshedUsers
+        : allClassMembers;
+
+      if (latestUsers.length > 0) {
+        setAllClassMembers(latestUsers);
+      }
+
+      const latestUsersById = new Map(
+        latestUsers.map((member) => [member.id, member]),
       );
+      const targetUsersData = selectedUsers
+        .map((userId) => latestUsersById.get(userId))
+        .filter(Boolean);
+
+      if (targetUsersData.length !== selectedUsers.length) {
+        throw new Error(
+          "학생 목록이 변경되었습니다. 대상 학생을 다시 선택한 뒤 다시 시도해주세요.",
+        );
+      }
 
       // ✨ DB 작업 실행하고 서버로부터 실제 결과 받기
       const { count, totalProcessed, updatedUsers } = await adminCashAction({
@@ -395,7 +447,15 @@ function MoneyTransfer() {
                       />
                       <span className="checkmark"></span>
                       <div className="user-info">
-                        <span className="user-name">{user.name}</span>
+                        <span className="user-name">
+                          {user.name}
+                          {duplicateNameCounts[user.name] > 1
+                            ? ` (${getUserIdentityText(user)})`
+                            : ""}
+                        </span>
+                        <span className="user-balance">
+                          {getUserIdentityText(user)}
+                        </span>
                         <span className="user-balance">
                           잔액: {user.cash?.toLocaleString() || 0}
                           {currencyUnit}
