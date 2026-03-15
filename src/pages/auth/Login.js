@@ -13,7 +13,7 @@ import {
   db,
   httpsCallable,
 } from "../../firebase";
-import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { logger } from "../../utils/logger";
 import {
   User,
@@ -448,15 +448,17 @@ const Login = () => {
 
     // 학생 탭: 아이디 + 학급코드로 이메일 자동 생성
     if (activeTab === "student") {
-      if (!studentId.trim() || !classCode.trim()) {
-        setError("아이디와 학급코드를 모두 입력해주세요.");
+      if (!studentId.trim()) {
+        setError("아이디를 입력해주세요.");
         return;
       }
       if (!password) {
         setError("비밀번호를 입력해주세요.");
         return;
       }
-      loginEmail = `${studentId.trim().toLowerCase()}@${classCode.trim().toLowerCase()}.alchan`;
+      if (classCode.trim()) {
+        loginEmail = `${studentId.trim().toLowerCase()}@${classCode.trim().toLowerCase()}.alchan`;
+      }
     } else {
       if (!loginEmail || !password) {
         setError("이메일과 비밀번호를 모두 입력해주세요.");
@@ -469,6 +471,24 @@ const Login = () => {
       return;
     }
     setIsLoading(true);
+    // 학급코드 없이 입력된 경우 Cloud Function으로 학생 이메일 조회
+    if (activeTab === "student" && !classCode.trim()) {
+      try {
+        const { functions: firebaseFunctions } = await import("../../firebase");
+        const resolveFn = httpsCallable(firebaseFunctions, "resolveStudentEmail");
+        const result = await resolveFn({ studentId: studentId.trim() });
+        if (!result.data.email) {
+          setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
+          setIsLoading(false);
+          return;
+        }
+        loginEmail = result.data.email;
+      } catch (err) {
+        setError("학생 계정 조회 중 오류가 발생했습니다. 학급코드를 입력해주세요.");
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       let firebaseUser;
       try {
@@ -920,7 +940,7 @@ const Login = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-sm font-semibold text-slate-300">
-                      학급코드
+                      학급코드 <span className="text-slate-500 font-normal text-xs">(선택)</span>
                     </label>
                     <div className="relative">
                       <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -928,7 +948,7 @@ const Login = () => {
                         type="text"
                         value={classCode}
                         onChange={(e) => setClassCode(e.target.value)}
-                        placeholder="선생님이 알려준 코드"
+                        placeholder="선생님이 알려준 코드 (없으면 생략 가능)"
                         autoComplete="off"
                         className={darkInput}
                         style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}

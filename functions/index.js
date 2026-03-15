@@ -4592,3 +4592,39 @@ exports.resetPasswordHttp = onRequest(
     }
   },
 );
+
+// ========================================================
+// 🔍 학생 이메일 조회 (학급코드 없이 로그인 시)
+// 비인증 상태에서 studentId로 .alchan 이메일을 찾아 반환
+// ========================================================
+exports.resolveStudentEmail = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { studentId } = request.data;
+    if (!studentId || typeof studentId !== "string") {
+      throw new HttpsError("invalid-argument", "studentId가 필요합니다.");
+    }
+    const sid = studentId.trim().toLowerCase();
+    if (!sid || sid.length > 50) {
+      throw new HttpsError("invalid-argument", "유효하지 않은 studentId입니다.");
+    }
+    try {
+      const snapshot = await admin
+        .firestore()
+        .collection("users")
+        .where("email", ">=", `${sid}@`)
+        .where("email", "<=", `${sid}@\uf8ff`)
+        .get();
+      const studentDoc = snapshot.docs.find((d) =>
+        d.data().email?.endsWith(".alchan")
+      );
+      if (!studentDoc) {
+        return { email: null };
+      }
+      return { email: studentDoc.data().email };
+    } catch (error) {
+      logger.error("[resolveStudentEmail] 실패:", error);
+      throw new HttpsError("internal", "학생 계정 조회에 실패했습니다.");
+    }
+  },
+);
