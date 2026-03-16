@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Mail, Calendar, Lock, FileText, ChevronRight, AlertCircle, Printer } from 'lucide-react';
+import { Shield, Mail, Calendar, Lock, FileText, ChevronRight, AlertCircle, Printer, Server, Eye, Trash2, Globe } from 'lucide-react';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const PrivacyPolicy = () => {
@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">개인정보처리방침</h1>
-              <p className="text-gray-400 text-sm mt-1">최종 수정일: 2025년 2월 5일</p>
+              <p className="text-gray-400 text-sm mt-1">최종 수정일: 2026년 3월 16일 · 시행일: 2026년 3월 16일</p>
             </div>
           </div>
 
@@ -30,8 +30,9 @@ const PrivacyPolicy = () => {
             <div className="text-sm text-amber-200">
               <p className="font-semibold mb-1">법정대리인(부모님/보호자)께</p>
               <p className="text-amber-300/90">
-                본 서비스는 14세 미만 아동의 개인정보를 수집합니다.
-                법정대리인의 동의가 필요하며, 아동의 개인정보 열람, 정정, 삭제를 요청하실 수 있습니다.
+                본 서비스는 학교 교육 목적으로 14세 미만 아동의 개인정보를 최소한으로 수집합니다.
+                「개인정보 보호법」 제22조에 따라 법정대리인의 동의가 필요하며,
+                아동의 개인정보 열람·정정·삭제를 언제든 요청하실 수 있습니다.
               </p>
             </div>
           </div>
@@ -54,6 +55,7 @@ const PrivacyPolicy = () => {
 
         {/* 콘텐츠 */}
         <div className="space-y-8">
+
           {/* 1. 개요 */}
           <Section
             icon={<FileText className="w-6 h-6" />}
@@ -63,12 +65,19 @@ const PrivacyPolicy = () => {
                 <p className="text-gray-300 leading-relaxed mb-4">
                   알찬 경제교육(이하 "서비스")은 초등학교 학급 경제 시뮬레이션을 통해 학생들에게
                   경제 교육을 제공하는 교육용 웹 애플리케이션입니다.
+                  담임교사가 직접 개발·운영하며, 해당 학급 학생에게만 제한적으로 제공됩니다.
                 </p>
-                <p className="text-gray-300 leading-relaxed">
+                <p className="text-gray-300 leading-relaxed mb-4">
                   본 방침은 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고
-                  이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이
-                  개인정보 처리방침을 수립·공개합니다.
+                  이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 수립·공개합니다.
                 </p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <p className="text-blue-300 text-sm font-semibold mb-2">📌 최소 수집 원칙</p>
+                  <p className="text-blue-200/80 text-sm leading-relaxed">
+                    서비스는 교육 활동에 꼭 필요한 최소한의 정보만 수집합니다.
+                    학생의 실제 이름, 주소, 전화번호, 학교명 등 민감 정보는 수집하지 않습니다.
+                  </p>
+                </div>
               </>
             }
           />
@@ -87,13 +96,20 @@ const PrivacyPolicy = () => {
                   <ul className="space-y-2 ml-6">
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">필수 항목:</strong> 이메일 주소, 닉네임(이름), 비밀번호, 학급 코드</span>
+                      <span><strong className="text-white">필수 항목:</strong> 닉네임(학생이 직접 설정한 가명), 학급 코드</span>
                     </li>
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">자동 수집:</strong> 서비스 이용 기록, 로그인 시간, 활동 기록</span>
+                      <span><strong className="text-white">시스템 식별자:</strong> 로그인 ID(아이디@학급코드 형식의 내부 식별자 — 실제 개인 이메일 아님)</span>
+                    </li>
+                    <li className="text-gray-300 flex items-start gap-2">
+                      <span className="text-violet-400 mt-1">•</span>
+                      <span><strong className="text-white">서비스 이용 기록:</strong> 로그인 시간, 마지막 접속일, 가상 경제 활동 기록(가상 잔액·거래 내역·보유 주식·부동산·할일 수행 이력)</span>
                     </li>
                   </ul>
+                  <div className="mt-3 ml-6 text-xs text-gray-500 bg-[#0d0d1a] rounded-lg p-3">
+                    ※ 수집하지 않는 정보: 실명, 생년월일, 주소, 전화번호, 학교명, 학번
+                  </div>
                 </div>
 
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
@@ -116,16 +132,17 @@ const PrivacyPolicy = () => {
             }
           />
 
-          {/* 3. 개인정보의 수집 및 이용 목적 */}
+          {/* 3. 수집 목적 */}
           <Section
             icon={<FileText className="w-6 h-6" />}
             title="3. 개인정보의 수집 및 이용 목적"
             content={
               <ul className="space-y-3">
-                <ListItem>회원 가입 및 관리: 회원제 서비스 제공, 본인 확인, 학급 구성원 관리</ListItem>
-                <ListItem>교육 서비스 제공: 학급 경제 시뮬레이션, 학습 활동 기록 및 관리</ListItem>
-                <ListItem>서비스 개선: 통계 분석, 서비스 품질 향상</ListItem>
+                <ListItem>회원 가입 및 관리: 학급 구성원 확인, 학급별 서비스 분리 제공</ListItem>
+                <ListItem>교육 서비스 제공: 학급 경제 시뮬레이션 운영, 가상 화폐·직업·세금 등 경제 활동 기록 관리</ListItem>
+                <ListItem>서비스 안정성 유지: 비정상 접근 탐지, 오류 진단</ListItem>
                 <ListItem>고충 처리: 민원 접수 및 처리, 공지사항 전달</ListItem>
+                <ListItem className="text-red-300">위 목적 이외의 용도로는 절대 사용하지 않으며, 목적 변경 시 사전에 동의를 받습니다.</ListItem>
               </ul>
             }
           />
@@ -137,18 +154,21 @@ const PrivacyPolicy = () => {
             content={
               <>
                 <p className="text-gray-300 leading-relaxed mb-4">
-                  서비스는 개인정보 수집 및 이용 목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다.
+                  수집 목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다.
                 </p>
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
                   <ul className="space-y-3">
                     <ListItem>
-                      <strong className="text-white">회원 탈퇴 시:</strong> 즉시 파기
+                      <strong className="text-white">학년도 종료 시:</strong> 매 학년 말(2월) 담임교사가 학급 데이터 일괄 삭제 — 학생 계정 포함 즉시 파기
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">학기 종료 시:</strong> 선생님이 학급 삭제를 요청하는 경우 즉시 파기
+                      <strong className="text-white">회원 탈퇴(계정 삭제) 시:</strong> 즉시 파기
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">휴면 계정:</strong> 1년간 로그인 기록이 없는 경우 별도 분리 보관 후 파기 안내
+                      <strong className="text-white">휴면 계정:</strong> 1년 이상 로그인 기록 없는 경우 별도 고지 후 파기
+                    </ListItem>
+                    <ListItem>
+                      <strong className="text-white">법령 의무 보존:</strong> 관련 법령에서 보존 의무를 부과하는 경우 해당 기간 준수
                     </ListItem>
                   </ul>
                 </div>
@@ -156,7 +176,7 @@ const PrivacyPolicy = () => {
             }
           />
 
-          {/* 5. 14세 미만 아동의 개인정보 처리 */}
+          {/* 5. 14세 미만 아동 */}
           <Section
             icon={<Shield className="w-6 h-6" />}
             title="5. 14세 미만 아동의 개인정보 처리"
@@ -164,19 +184,153 @@ const PrivacyPolicy = () => {
             content={
               <>
                 <p className="text-gray-300 leading-relaxed mb-4">
-                  서비스는 원칙적으로 14세 미만 아동의 개인정보를 수집하지 않습니다.
-                  다만, 학교 교육 목적으로 선생님의 관리 하에 이용하는 경우 다음과 같이 처리합니다:
+                  서비스 이용자의 대부분이 14세 미만 아동입니다.
+                  「개인정보 보호법」 제22조에 따라 다음과 같이 처리합니다:
                 </p>
-                <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-5">
+                <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-5 space-y-3">
+                  <ListItem>
+                    <strong className="text-violet-200">법정대리인 동의 필수:</strong> 담임교사가 가정통신문을 통해 보호자 동의서를 수령한 후 서비스를 사용합니다.
+                  </ListItem>
+                  <ListItem>
+                    <strong className="text-violet-200">최소 정보 수집:</strong> 실명·생년월일·연락처 등 민감 정보는 수집하지 않으며, 닉네임 및 학급 코드만 사용합니다.
+                  </ListItem>
+                  <ListItem>
+                    <strong className="text-violet-200">접근 통제:</strong> 학생 데이터는 해당 학급 담임교사만 접근 가능하며, 타 학급·외부에 공개되지 않습니다.
+                  </ListItem>
+                  <ListItem>
+                    <strong className="text-violet-200">열람·정정·삭제·처리정지 권리:</strong> 법정대리인은 언제든지 개인정보 보호책임자에게 요청할 수 있으며, 지체 없이 조치합니다.
+                  </ListItem>
+                  <ListItem>
+                    <strong className="text-violet-200">제3자 제공 금지:</strong> 아동의 개인정보를 광고, 마케팅, 외부 서비스에 절대 제공하지 않습니다.
+                  </ListItem>
+                </div>
+              </>
+            }
+          />
+
+          {/* 6. 제3자 제공 */}
+          <Section
+            icon={<Globe className="w-6 h-6" />}
+            title="6. 개인정보의 제3자 제공"
+            content={
+              <>
+                <p className="text-gray-300 leading-relaxed mb-3">
+                  서비스는 원칙적으로 이용자의 개인정보를 외부에 제공하지 않습니다.
+                  다음의 경우에만 예외적으로 제공될 수 있습니다:
+                </p>
+                <ul className="space-y-2">
+                  <ListItem>이용자 또는 법정대리인이 명시적으로 동의한 경우</ListItem>
+                  <ListItem>법령에 의해 수사기관 등이 요구하는 경우</ListItem>
+                </ul>
+              </>
+            }
+          />
+
+          {/* 7. 처리 위탁 */}
+          <Section
+            icon={<Server className="w-6 h-6" />}
+            title="7. 개인정보 처리의 위탁 및 국외 이전"
+            content={
+              <>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  원활한 서비스 제공을 위해 아래와 같이 개인정보 처리 업무를 위탁합니다:
+                </p>
+                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800 mb-4">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-white font-semibold mb-1">Google Firebase (Google LLC)</p>
+                      <p className="text-gray-300 text-sm">위탁 업무: 클라우드 서버 운영, 데이터베이스(Firestore), 인증(Firebase Auth)</p>
+                      <p className="text-gray-300 text-sm">서버 위치: <span className="text-green-400 font-medium">대한민국 서울 리전 (asia-northeast3)</span> — 국내 서버에 저장됩니다.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+                  <p className="text-yellow-300 text-sm font-semibold mb-2">⚠ 국외 이전 안내</p>
+                  <p className="text-yellow-200/80 text-sm leading-relaxed">
+                    Google LLC 본사는 미국에 있으며, Google의 개인정보처리방침에 따라
+                    일부 기술적 처리(보안 모니터링 등)가 국외에서 이루어질 수 있습니다.
+                    Google의 개인정보처리방침: <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline text-yellow-300">policies.google.com/privacy</a>
+                  </p>
+                </div>
+              </>
+            }
+          />
+
+          {/* 8. 정보주체의 권리 */}
+          <Section
+            icon={<Eye className="w-6 h-6" />}
+            title="8. 정보주체의 권리·의무 및 행사 방법"
+            content={
+              <>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  이용자(및 법정대리인)는 언제든지 다음 권리를 행사할 수 있습니다:
+                </p>
+                <ul className="space-y-3 mb-4">
+                  <ListItem>개인정보 열람 요구</ListItem>
+                  <ListItem>개인정보 정정·삭제 요구</ListItem>
+                  <ListItem>개인정보 처리정지 요구</ListItem>
+                  <ListItem>회원 탈퇴 (계정 및 모든 데이터 즉시 삭제)</ListItem>
+                </ul>
+                <div className="bg-[#15151f] rounded-xl p-4 border border-gray-800">
+                  <p className="text-gray-300 text-sm">
+                    권리 행사 방법: 아래 개인정보 보호책임자 이메일로 요청 →
+                    <strong className="text-violet-300"> 10일 이내</strong> 처리 및 결과 통보
+                  </p>
+                </div>
+              </>
+            }
+          />
+
+          {/* 9. 안전성 확보 조치 */}
+          <Section
+            icon={<Lock className="w-6 h-6" />}
+            title="9. 개인정보의 안전성 확보 조치"
+            content={
+              <ul className="space-y-3">
+                <ListItem>
+                  <strong className="text-white">암호화:</strong> 비밀번호는 Firebase Auth에 의해 단방향 암호화(해시) 저장 — 관리자도 복호화 불가
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">전송 구간 암호화:</strong> 모든 통신은 HTTPS/TLS로 암호화 전송
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">접근 권한 최소화:</strong> 학생 데이터는 해당 학급 담임교사 계정만 관리자 권한 보유, 학생 간 타인 정보 열람 불가
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">Firebase Security Rules:</strong> Firestore 보안 규칙으로 미인증 접근 및 권한 외 접근 차단
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">세션 관리:</strong> 비활성 세션 자동 만료, 로그인 이상 징후 감지(Firebase 내장)
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">정기 점검:</strong> Firebase 보안 업데이트 및 정기적 보안 설정 점검
+                </ListItem>
+                <ListItem>
+                  <strong className="text-white">개인정보 유출 대응:</strong> 유출 사고 발생 시 72시간 이내 정보주체 및 관련 기관에 통지
+                </ListItem>
+              </ul>
+            }
+          />
+
+          {/* 10. 파기 절차 */}
+          <Section
+            icon={<Trash2 className="w-6 h-6" />}
+            title="10. 개인정보의 파기 절차 및 방법"
+            content={
+              <>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  보유 기간 종료 또는 처리 목적 달성 시 지체 없이 파기합니다.
+                </p>
+                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
                   <ul className="space-y-3">
                     <ListItem>
-                      법정대리인(부모님/보호자)의 동의를 받아야 하며, 선생님이 학급 단위로 동의를 관리합니다.
+                      <strong className="text-white">전자적 파일:</strong> Firestore 문서 및 Firebase Auth 계정 영구 삭제 — 복구 불가능한 방법으로 처리
                     </ListItem>
                     <ListItem>
-                      법정대리인은 아동의 개인정보 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다.
+                      <strong className="text-white">삭제 범위:</strong> 사용자 문서, 거래 내역, 인벤토리, 주식 포트폴리오 등 모든 연관 데이터 포함
                     </ListItem>
                     <ListItem>
-                      개인정보 보호책임자에게 연락하여 즉시 필요한 조치를 받으실 수 있습니다.
+                      <strong className="text-white">파기 확인:</strong> 파기 완료 시 담임교사가 확인 후 기록 보관
                     </ListItem>
                   </ul>
                 </div>
@@ -184,123 +338,58 @@ const PrivacyPolicy = () => {
             }
           />
 
-          {/* 6. 개인정보의 제3자 제공 */}
-          <Section
-            icon={<Lock className="w-6 h-6" />}
-            title="6. 개인정보의 제3자 제공"
-            content={
-              <p className="text-gray-300 leading-relaxed">
-                서비스는 원칙적으로 이용자의 개인정보를 외부에 제공하지 않습니다.
-                다만, 법령에 의한 경우나 이용자의 동의가 있는 경우는 예외로 합니다.
-              </p>
-            }
-          />
-
-          {/* 7. 개인정보 처리의 위탁 */}
-          <Section
-            icon={<FileText className="w-6 h-6" />}
-            title="7. 개인정보 처리의 위탁"
-            content={
-              <>
-                <p className="text-gray-300 leading-relaxed mb-4">
-                  서비스는 원활한 서비스 제공을 위해 다음과 같이 개인정보 처리업무를 위탁하고 있습니다:
-                </p>
-                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
-                  <div className="space-y-2">
-                    <p className="text-white font-semibold">수탁업체: Google Firebase (Google LLC)</p>
-                    <p className="text-gray-300">위탁 업무: 클라우드 서버 운영, 데이터베이스 관리, 인증 서비스</p>
-                  </div>
-                </div>
-              </>
-            }
-          />
-
-          {/* 8. 정보주체의 권리·의무 */}
-          <Section
-            icon={<Shield className="w-6 h-6" />}
-            title="8. 정보주체의 권리·의무 및 행사 방법"
-            content={
-              <>
-                <p className="text-gray-300 leading-relaxed mb-4">
-                  이용자는 언제든지 다음과 같은 권리를 행사할 수 있습니다:
-                </p>
-                <ul className="space-y-3">
-                  <ListItem>개인정보 열람 요구</ListItem>
-                  <ListItem>개인정보 정정·삭제 요구</ListItem>
-                  <ListItem>개인정보 처리정지 요구</ListItem>
-                  <ListItem>회원 탈퇴 (계정 삭제)</ListItem>
-                </ul>
-                <p className="text-gray-300 leading-relaxed mt-4">
-                  권리 행사는 서비스 내 "내 프로필" 메뉴에서 직접 하시거나,
-                  개인정보 보호책임자에게 연락하여 진행하실 수 있습니다.
-                </p>
-              </>
-            }
-          />
-
-          {/* 9. 개인정보의 안전성 확보 조치 */}
-          <Section
-            icon={<Lock className="w-6 h-6" />}
-            title="9. 개인정보의 안전성 확보 조치"
-            content={
-              <ul className="space-y-3">
-                <ListItem>개인정보 암호화: 비밀번호는 암호화되어 저장 및 관리</ListItem>
-                <ListItem>접근 통제: 개인정보에 대한 접근 권한 최소화</ListItem>
-                <ListItem>보안 프로그램: 방화벽 및 백신 프로그램 설치</ListItem>
-                <ListItem>보안 업데이트: 정기적인 보안 점검 및 업데이트</ListItem>
-              </ul>
-            }
-          />
-
-          {/* 10. 개인정보 보호책임자 */}
+          {/* 11. 보호책임자 */}
           <Section
             icon={<Mail className="w-6 h-6" />}
-            title="10. 개인정보 보호책임자"
+            title="11. 개인정보 보호책임자"
             content={
               <>
                 <p className="text-gray-300 leading-relaxed mb-4">
-                  개인정보 처리에 관한 업무를 총괄해서 책임지고,
-                  개인정보 처리와 관련한 정보주체의 불만 처리 및 피해구제를 위하여
-                  아래와 같이 개인정보 보호책임자를 지정하고 있습니다.
+                  개인정보 처리에 관한 업무를 총괄하고, 정보주체의 불만 처리 및 피해구제를 위해
+                  아래와 같이 개인정보 보호책임자를 지정합니다.
                 </p>
-                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
+                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800 mb-4">
                   <div className="space-y-2">
-                    <p className="text-white font-semibold">개인정보 보호책임자</p>
-                    <p className="text-gray-300">성명: 알찬 운영팀</p>
+                    <p className="text-white font-semibold text-lg">개인정보 보호책임자</p>
+                    <p className="text-gray-300">직책: 담임교사 (서비스 운영자)</p>
                     <p className="text-gray-300 flex items-center gap-2">
                       <Mail className="w-4 h-4 text-violet-400" />
-                      이메일: privacy@alchan-edu.kr (예시)
+                      이메일: <a href="mailto:215253422+iw-lab@users.noreply.github.com" className="text-violet-400 hover:text-violet-300 underline">215253422+iw-lab@users.noreply.github.com</a>
                     </p>
+                    <p className="text-gray-400 text-sm mt-2">※ 이메일 문의 시 10일 이내 회신합니다.</p>
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm mt-4 leading-relaxed">
-                  개인정보 침해에 대한 신고나 상담이 필요하신 경우에는
-                  개인정보침해신고센터(privacy.kisa.or.kr, 국번없이 118),
-                  대검찰청 사이버범죄수사단(www.spo.go.kr, 국번없이 1301),
-                  경찰청 사이버안전국(cyberbureau.police.go.kr, 국번없이 182)으로 문의하실 수 있습니다.
-                </p>
+                <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
+                  <p className="text-gray-300 text-sm mb-3 font-semibold text-white">개인정보 침해 신고·상담 기관</p>
+                  <ul className="space-y-2 text-sm text-gray-400">
+                    <li>• 개인정보침해신고센터: <span className="text-gray-300">privacy.kisa.or.kr / 국번없이 118</span></li>
+                    <li>• 개인정보 분쟁조정위원회: <span className="text-gray-300">www.kopico.go.kr / 1833-6972</span></li>
+                    <li>• 대검찰청 사이버범죄수사단: <span className="text-gray-300">국번없이 1301</span></li>
+                    <li>• 경찰청 사이버안전국: <span className="text-gray-300">cyberbureau.police.go.kr / 국번없이 182</span></li>
+                  </ul>
+                </div>
               </>
             }
           />
 
-          {/* 11. 개인정보처리방침 변경 */}
+          {/* 12. 변경 고지 */}
           <Section
             icon={<Calendar className="w-6 h-6" />}
-            title="11. 개인정보처리방침 변경"
+            title="12. 개인정보처리방침 변경"
             content={
               <p className="text-gray-300 leading-relaxed">
-                이 개인정보처리방침은 2025년 2월 5일부터 적용됩니다.
-                법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는
-                변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.
+                이 개인정보처리방침은 2026년 3월 16일부터 적용됩니다.
+                내용 변경 시 시행 <strong className="text-white">7일 전</strong>부터 서비스 공지사항을 통해 고지합니다.
+                중요한 변경(수집 항목 추가, 제3자 제공 등)은 <strong className="text-white">30일 전</strong>에 고지하고 별도 동의를 받습니다.
               </p>
             }
           />
         </div>
 
-        {/* 하단 여백 */}
+        {/* 하단 */}
         <div className="mt-12 pt-8 border-t border-gray-800">
           <p className="text-center text-gray-500 text-sm">
-            본 개인정보처리방침은 「개인정보 보호법」에 따라 작성되었습니다.
+            본 개인정보처리방침은 「개인정보 보호법」에 따라 작성되었습니다. · 시행일 2026년 3월 16일
           </p>
         </div>
       </div>

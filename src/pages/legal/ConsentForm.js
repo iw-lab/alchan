@@ -114,7 +114,7 @@ const ConsentForm = () => {
           <div className="text-right text-sm mb-6" style={{ color: '#a0a0c0' }}>
             <p><span className="text-yellow-400 no-print">○○</span><span className="print-only">○○</span>초등학교</p>
             <p>제 <span className="text-yellow-400 no-print">____</span><span className="print-only">____</span> 호</p>
-            <p>2025년 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>월 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>일</p>
+            <p>2026년 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>월 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>일</p>
           </div>
 
           {/* 인사말 */}
@@ -154,23 +154,26 @@ const ConsentForm = () => {
                 <tbody style={{ color: '#d0d0e8' }}>
                   <tr>
                     <td className="border border-white/20 px-4 py-2 font-medium">수집 항목</td>
-                    <td className="border border-white/20 px-4 py-2">닉네임(이름), 학급 코드</td>
+                    <td className="border border-white/20 px-4 py-2">
+                      닉네임(학생이 직접 설정한 가명), 학급 코드, 서비스 이용 기록(로그인 시간, 가상 경제 활동 내역)<br/>
+                      <span style={{fontSize:'0.75rem', color:'#a0a0c0'}}>※ 실명·생년월일·주소·전화번호 등 민감 정보는 수집하지 않습니다.</span>
+                    </td>
                   </tr>
                   <tr>
                     <td className="border border-white/20 px-4 py-2 font-medium">수집 목적</td>
-                    <td className="border border-white/20 px-4 py-2">학급 경제 교육 활동 (가상 화폐 관리, 직업 체험, 경제 활동 기록)</td>
+                    <td className="border border-white/20 px-4 py-2">학급 경제 교육 활동 (가상 화폐 관리, 직업 체험, 세금·저축·투자 등 경제 활동 기록)</td>
                   </tr>
                   <tr>
                     <td className="border border-white/20 px-4 py-2 font-medium">보유 기간</td>
-                    <td className="border border-white/20 px-4 py-2">해당 학년도 종료 시까지 (학년 말 일괄 삭제)</td>
+                    <td className="border border-white/20 px-4 py-2">해당 학년도 종료 시까지 (학년 말 일괄 삭제, 탈퇴 시 즉시 삭제)</td>
                   </tr>
                   <tr>
                     <td className="border border-white/20 px-4 py-2 font-medium">이용 범위</td>
-                    <td className="border border-white/20 px-4 py-2">해당 학급 내에서만 사용 (외부 제공 없음)</td>
+                    <td className="border border-white/20 px-4 py-2">해당 학급 내에서만 사용 (타 학급·외부 제공 없음, 광고·마케팅 활용 없음)</td>
                   </tr>
                   <tr>
                     <td className="border border-white/20 px-4 py-2 font-medium">처리 방법</td>
-                    <td className="border border-white/20 px-4 py-2">Firebase 클라우드 서버에 암호화 저장</td>
+                    <td className="border border-white/20 px-4 py-2">Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)</td>
                   </tr>
                 </tbody>
               </table>
@@ -196,6 +199,10 @@ const ConsentForm = () => {
               <li className="flex gap-2">
                 <span>•</span>
                 <span>동의를 거부하실 수 있으며, 이 경우 앱 활용 없이 대체 활동으로 진행됩니다.</span>
+              </li>
+              <li className="flex gap-2">
+                <span>•</span>
+                <span>개인정보 관련 문의: <strong className="text-violet-400">215253422+iw-lab@users.noreply.github.com</strong></span>
               </li>
               <li className="flex gap-2">
                 <span>•</span>
@@ -287,7 +294,7 @@ const ConsentForm = () => {
               </div>
 
               <div className="text-right mt-6">
-                <p>2025년 &nbsp;&nbsp;&nbsp;&nbsp;월 &nbsp;&nbsp;&nbsp;&nbsp;일</p>
+                <p>2026년 &nbsp;&nbsp;&nbsp;&nbsp;월 &nbsp;&nbsp;&nbsp;&nbsp;일</p>
               </div>
 
               <div className="text-center mt-4 font-semibold">
