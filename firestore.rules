@@ -262,7 +262,8 @@ service cloud.firestore {
     // ========================================================
     match /activity_logs/{logId} {
       allow read: if isSameClass(resource.data.classCode) || isAdmin();
-      allow create: if isSignedIn();
+      // 본인 classCode와 일치하는 로그만 생성 가능 (타 학급 로그 위조 방지)
+      allow create: if isSignedIn() && request.resource.data.classCode == getUserClassCode();
       allow update: if false;
       allow delete: if isAdmin();
     }
@@ -336,7 +337,8 @@ service cloud.firestore {
     // ========================================================
     match /auctions/{auctionId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      // 본인 학급 경매만 생성 가능 (타 학급 경매 생성 방지)
+      allow create: if isSignedIn() && request.resource.data.classCode == getUserClassCode();
       allow update: if isSignedIn() &&
                        (isSameClass(resource.data.classCode) || isAdmin());
       allow delete: if isOwner(resource.data.sellerId) || isAdmin();
@@ -752,7 +754,8 @@ service cloud.firestore {
     // ========================================================
     match /taxRecords/{recordId} {
       allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isSignedIn(); // 모든 로그인 사용자가 세금 기록 생성 가능
+      // 본인 userId와 일치하는 세금 기록만 생성 가능 (타인 세금 기록 위조 방지)
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
     }
@@ -944,7 +947,10 @@ service cloud.firestore {
     // ========================================================
     match /pendingApprovals/{approvalId} {
       allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
-      allow create: if isSignedIn();
+      // 본인 userId와 본인 classCode로만 생성 가능
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.classCode == getUserClassCode();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -954,7 +960,8 @@ service cloud.firestore {
     // ========================================================
     match /laws/{lawId} {
       allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
-      allow create: if isSignedIn();
+      // 본인 학급 법안만 생성 가능
+      allow create: if isSignedIn() && (request.resource.data.classCode == getUserClassCode() || isAdmin());
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -974,9 +981,11 @@ service cloud.firestore {
     // ========================================================
     match /marketOffers/{offerId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isAdmin();
+      // 본인 buyerId로만 오퍼 생성 가능
+      allow create: if isSignedIn() && request.resource.data.buyerId == request.auth.uid;
+      // 본인 오퍼이거나 판매자인 경우만 수정 가능
+      allow update: if isSignedIn() && (isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdmin());
+      allow delete: if isOwner(resource.data.buyerId) || isAdmin();
     }
 
     // ========================================================
@@ -998,9 +1007,26 @@ service cloud.firestore {
     // ========================================================
     match /groupPurchases/{purchaseId} {
       allow read: if isSignedIn() && isSameClass(resource.data.classCode);
-      allow create: if isSignedIn();
+      // 본인 initiatorId + 본인 classCode로만 생성
+      allow create: if isSignedIn() &&
+                       request.resource.data.initiatorId == request.auth.uid &&
+                       request.resource.data.classCode == getUserClassCode();
       allow update: if isSignedIn() && isSameClass(resource.data.classCode);
       allow delete: if isOwner(resource.data.initiatorId) || isAdmin();
+    }
+
+    // ========================================================
+    // 🔒 Rate Limit 컬렉션 (_rateLimits) - CF 내부 전용, 클라이언트 접근 차단
+    // ========================================================
+    match /_rateLimits/{docId} {
+      allow read, write: if false; // Cloud Functions Admin SDK만 접근
+    }
+
+    // ========================================================
+    // 🔒 스케줄러 락 (schedulerLocks) - CF 내부 전용
+    // ========================================================
+    match /schedulerLocks/{docId} {
+      allow read, write: if false; // Cloud Functions Admin SDK만 접근
     }
 
     // ========================================================

@@ -4273,6 +4273,26 @@ exports.repairStudentLogin = onCall(
       );
     }
 
+    // 브루트포스 방지: 동일 이메일 1분 내 5회 초과 시 차단
+    const rateLimitKey = `repairLimit_${email.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const rateLimitRef = db.collection("_rateLimits").doc(rateLimitKey);
+    const now = Date.now();
+    const windowMs = 60 * 1000; // 1분
+    const maxAttempts = 5;
+
+    const rlSnap = await rateLimitRef.get();
+    if (rlSnap.exists) {
+      const rlData = rlSnap.data();
+      const attempts = (rlData.attempts || []).filter((t) => now - t < windowMs);
+      if (attempts.length >= maxAttempts) {
+        logger.warn(`[repairStudentLogin] rate limit 초과: ${email}`);
+        throw new HttpsError("resource-exhausted", "잠시 후 다시 시도해주세요.");
+      }
+      await rateLimitRef.set({ attempts: [...attempts, now] });
+    } else {
+      await rateLimitRef.set({ attempts: [now] });
+    }
+
     // .alchan 도메인 학생 계정만 허용
     if (!email.endsWith(".alchan")) {
       throw new HttpsError(
