@@ -1169,31 +1169,26 @@ async function payWeeklySalariesLogic() {
     await db.collection("schedulerLocks").doc("weeklySalary").set({ lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
 
     // 모든 학급 코드 가져오기
-    const classCodesDoc = await db
-      .collection("settings")
-      .doc("classCodes")
-      .get();
+    const classCodesDoc = await db.collection("settings").doc("classCodes").get();
     if (!classCodesDoc.exists) {
       logger.warn("classCodes 문서가 없습니다.");
       return;
     }
 
     const classCodes = classCodesDoc.data().validCodes || [];
+    // batchPaySalaries와 동일한 급여 기준
+    const BASE_SALARY = 2000000;
+    const ADDITIONAL_SALARY = 500000;
     let totalPaidCount = 0;
     let totalAmount = 0;
 
     for (const classCode of classCodes) {
-      // 학급별 급여 설정 조회
-      const salaryDoc = await db
-        .collection("classSettings")
-        .doc(classCode)
-        .collection("settings")
-        .doc("salary")
-        .get();
-
-      if (!salaryDoc.exists) continue;
-
-      const salarySettings = salaryDoc.data();
+      // 급여 설정 조회 (세율) - settings/salarySettings_{classCode} 경로 사용
+      let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
+      if (!salarySettingsDoc.exists) {
+        salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
+      }
+      const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
 
       // 학급 관리자(선생님) 찾기
       const adminSnapshot = await db
@@ -1208,87 +1203,81 @@ async function payWeeklySalariesLogic() {
         adminDoc = adminSnapshot.docs[0];
       }
 
-      // 학급 학생들 조회
+      // 학급 학생들 조회 (관리자/슈퍼관리자/교사 제외)
       const studentsSnapshot = await db
         .collection("users")
         .where("classCode", "==", classCode)
-        .where("role", "==", "student")
         .get();
 
-      if (studentsSnapshot.empty) continue;
-
-      // 특수 직책 추가 수당 (주급 외 별도 지급)
-      const specialPositionBonus = {
-        "대통령": 4000000,
-        "국무총리": 2000000,
-        "교육부장관": 1000000,
-        "환경부장관": 1000000,
-      };
-
-      // 먼저 총 급여액 계산
-      let classTotalSalary = 0;
-      const salaryList = [];
-
-      studentsSnapshot.forEach((doc) => {
-        const student = doc.data();
-        const job = student.job || "무직";
-        const baseSalary = salarySettings[job] || 0;
-        const bonus = specialPositionBonus[job] || 0;
-        const salary = baseSalary + bonus;
-
-        if (salary > 0) {
-          salaryList.push({ ref: doc.ref, salary });
-          classTotalSalary += salary;
-        }
+      const students = studentsSnapshot.docs.filter((d) => {
+        const data = d.data();
+        return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
       });
 
-      if (salaryList.length === 0) continue;
+      if (students.length === 0) continue;
 
-      // 관리자 잔액 확인
+      // 급여 계산: 기본급 200만 + 추가 직업당 50만 (batchPaySalaries와 동일)
+      const batch = db.batch();
+      let classTotalNet = 0;
+      let classPaidCount = 0;
+
+      for (const studentDoc of students) {
+        const student = studentDoc.data();
+        const jobIds = student.selectedJobIds || [];
+        if (jobIds.length === 0) continue;
+
+        const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+        const tax = Math.floor(grossSalary * taxRate);
+        const netSalary = grossSalary - tax;
+
+        batch.update(studentDoc.ref, {
+          cash: admin.firestore.FieldValue.increment(netSalary),
+          lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
+          lastGrossSalary: grossSalary,
+          lastTaxAmount: tax,
+          lastNetSalary: netSalary,
+          totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        classTotalNet += netSalary;
+        classPaidCount++;
+      }
+
+      if (classPaidCount === 0) continue;
+
+      // 관리자 잔액 확인 및 차감
       if (adminDoc) {
-        const adminData = adminDoc.data();
-        const adminCash = adminData.cash || 0;
-
-        if (adminCash < classTotalSalary) {
+        const adminCash = adminDoc.data().cash || 0;
+        if (adminCash < classTotalNet) {
           logger.warn(
-            `[주급 지급] ${classCode}: 관리자 잔액 부족 (필요: ${classTotalSalary.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
+            `[주급 지급] ${classCode}: 관리자 잔액 부족 (필요: ${classTotalNet.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
           );
           continue;
         }
+        batch.update(adminDoc.ref, {
+          cash: admin.firestore.FieldValue.increment(-classTotalNet),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       } else {
-        logger.warn(
-          `[주급 지급] ${classCode}: 관리자 계정을 찾을 수 없음 - 급여 지급 건너뜀`,
-        );
+        logger.warn(`[주급 지급] ${classCode}: 관리자 계정을 찾을 수 없음 - 급여 지급 건너뜀`);
         continue;
       }
 
-      // 배치로 급여 지급 및 관리자 차감
-      const batch = db.batch();
-
-      // 학생들에게 급여 지급
-      salaryList.forEach(({ ref, salary }) => {
-        batch.update(ref, {
-          cash: admin.firestore.FieldValue.increment(salary),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      });
-
-      // 관리자 계정에서 총 급여액 차감
-      batch.update(adminDoc.ref, {
-        cash: admin.firestore.FieldValue.increment(-classTotalSalary),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // lastPaidDate 업데이트
+      const salarySettingsRef = db.collection("settings").doc(`salarySettings_${classCode}`);
+      batch.set(salarySettingsRef, { lastPaidDate: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
       await batch.commit();
-      totalPaidCount += salaryList.length;
-      totalAmount += classTotalSalary;
+      totalPaidCount += classPaidCount;
+      totalAmount += classTotalNet;
       logger.info(
-        `[주급 지급] ${classCode}: ${salaryList.length}명에게 총 ${classTotalSalary.toLocaleString()}원 지급 (관리자 계정에서 차감)`,
+        `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급 (관리자 계정에서 차감)`,
       );
     }
 
     logger.info(
-      `→ 주급 지급 완료: 총 ${totalPaidCount}명, ${totalAmount.toLocaleString()}원 (관리자 계정에서 지출)`,
+      `→ 주급 지급 완료: 총 ${totalPaidCount}명, ${totalAmount.toLocaleString()}원`,
     );
   } catch (error) {
     logger.error("→ 주급 지급 중 오류:", error);
