@@ -413,7 +413,12 @@ service cloud.firestore {
     // ========================================================
     match /omokGames/{gameId} {
       allow read, create: if isSignedIn();
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.players.keys() || isAdmin());
+      // 이미 플레이어이거나, 대기 중인 방에 입장하려는 경우(join), 또는 관리자
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.players.keys() ||
+        resource.data.gameStatus == "waiting" ||
+        isAdmin()
+      );
       allow delete: if isSignedIn() && (resource.data.host == request.auth.uid || isAdmin());
     }
 
