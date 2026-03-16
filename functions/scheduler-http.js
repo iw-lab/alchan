@@ -1169,14 +1169,26 @@ async function payWeeklySalariesLogic(forceRun = false) {
     // 지급 시작 - 락 설정
     await db.collection("schedulerLocks").doc("weeklySalary").set({ lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
 
-    // 모든 학급 코드 가져오기
-    const classCodesDoc = await db.collection("settings").doc("classCodes").get();
-    if (!classCodesDoc.exists) {
-      logger.warn("classCodes 문서가 없습니다.");
+    // 모든 학생 조회 → 고유 classCode 추출 (settings/classCodes에 의존하지 않음)
+    const allStudentsSnap = await db.collection("users")
+      .where("isAdmin", "==", false)
+      .get();
+
+    const classCodeSet = new Set();
+    allStudentsSnap.docs.forEach(d => {
+      const data = d.data();
+      if (data.classCode && !data.isSuperAdmin && !data.isTeacher) {
+        classCodeSet.add(data.classCode);
+      }
+    });
+    const classCodes = Array.from(classCodeSet);
+    logger.info(`[주급 진단] 학생 기반 classCodes: ${JSON.stringify(classCodes)}`);
+
+    if (classCodes.length === 0) {
+      logger.warn("[주급 진단] 학생이 없거나 classCode가 없음!");
       return;
     }
 
-    const classCodes = classCodesDoc.data().validCodes || [];
     // batchPaySalaries와 동일한 급여 기준
     const BASE_SALARY = 2000000;
     const ADDITIONAL_SALARY = 500000;
@@ -1204,16 +1216,15 @@ async function payWeeklySalariesLogic(forceRun = false) {
         adminDoc = adminSnapshot.docs[0];
       }
 
-      // 학급 학생들 조회 (관리자/슈퍼관리자/교사 제외)
-      const studentsSnapshot = await db
-        .collection("users")
-        .where("classCode", "==", classCode)
-        .get();
-
-      const students = studentsSnapshot.docs.filter((d) => {
+      // 이미 로드된 데이터에서 해당 학급 학생만 필터링
+      const studentDocs = allStudentsSnap.docs.filter((d) => {
         const data = d.data();
-        return !data.isAdmin && !data.isSuperAdmin && !data.isTeacher;
+        return data.classCode === classCode && !data.isSuperAdmin && !data.isTeacher;
       });
+
+      const studentsWithJobs = studentDocs.filter(d => (d.data().selectedJobIds || []).length > 0);
+      logger.info(`[주급 진단] ${classCode}: 학생 ${studentDocs.length}명, 직업있는학생 ${studentsWithJobs.length}명, 직업없는학생 ${studentDocs.length - studentsWithJobs.length}명`);
+      const students = studentDocs;
 
       if (students.length === 0) continue;
 
