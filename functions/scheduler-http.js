@@ -332,7 +332,8 @@ exports.weeklySalary = onRequest(
 
       logger.info(`[weeklySalary] 주급 지급 시작`);
 
-      await payWeeklySalariesLogic();
+      const forceRun = req.query.force === "true";
+      await payWeeklySalariesLogic(forceRun);
 
       res.json({ success: true, message: "주급 지급 완료" });
     } catch (error) {
@@ -1151,7 +1152,7 @@ async function resetDailyTasksLogic() {
   }
 }
 
-async function payWeeklySalariesLogic() {
+async function payWeeklySalariesLogic(forceRun = false) {
   logger.info(">>> [스케줄러] 주급 지급 시작");
   try {
     // 오늘 이미 지급했는지 확인 (중복 방지)
@@ -1160,7 +1161,7 @@ async function payWeeklySalariesLogic() {
     const todayStr = kstNow.toISOString().split("T")[0];
 
     const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
-    if (salaryLockDoc.exists && salaryLockDoc.data().lastPayDate === todayStr) {
+    if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().lastPayDate === todayStr) {
       logger.info(`[주급 지급] 오늘(${todayStr}) 이미 지급 완료 - 건너뜀`);
       return;
     }
