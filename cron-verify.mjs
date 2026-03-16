@@ -1,8 +1,11 @@
 import { chromium } from '@playwright/test';
 
-const EMAIL = '[REDACTED_EMAIL]';
-const PASSWORD = '[REDACTED_PASS]';
-const CRON_URL = 'https://economiceventscheduler-j7kazbsvxq-du.a.run.app?token=[REDACTED_TOKEN]';
+// 자격증명은 환경변수에서 읽기 (하드코딩 금지)
+// 사용법: CRON_EMAIL=... CRON_PASSWORD=... SCHEDULER_AUTH_TOKEN=... node cron-verify.mjs
+const EMAIL = process.env.CRON_EMAIL || '';
+const PASSWORD = process.env.CRON_PASSWORD || '';
+const SCHEDULER_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || '';
+const CRON_URL = `https://economiceventscheduler-j7kazbsvxq-du.a.run.app?token=${SCHEDULER_TOKEN}`;
 const CRON_TITLE = '알찬 경제이벤트 스케줄러';
 
 (async () => {
@@ -13,6 +16,7 @@ const CRON_TITLE = '알찬 경제이벤트 스케줄러';
     // 1. 로그인
     console.log('1. 로그인...');
     await page.goto('https://console.cron-job.org/login', { waitUntil: 'networkidle' });
+    if (!EMAIL || !PASSWORD) throw new Error('CRON_EMAIL / CRON_PASSWORD 환경변수가 필요합니다.');
     await page.fill('input[name="email"]', EMAIL);
     await page.fill('input[name="password"]', PASSWORD);
     await page.click('button[type="submit"]');
