@@ -473,20 +473,49 @@ const Login = () => {
     setIsLoading(true);
     // 학급코드 없이 입력된 경우 Cloud Function으로 학생 이메일 조회
     if (activeTab === "student" && !classCode.trim()) {
-      try {
-        const { functions: firebaseFunctions } = await import("../../firebase");
-        const resolveFn = httpsCallable(firebaseFunctions, "resolveStudentEmail");
-        const result = await resolveFn({ studentId: studentId.trim() });
-        if (!result.data.email) {
-          setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
-          setIsLoading(false);
-          return;
+      const cacheKey = `studentEmail_${studentId.trim().toLowerCase()}`;
+      const cachedEmail = localStorage.getItem(cacheKey);
+      if (cachedEmail) {
+        loginEmail = cachedEmail;
+      } else {
+        const resolveEmail = async () => {
+          const { functions: firebaseFunctions } = await import("../../firebase");
+          const resolveFn = httpsCallable(firebaseFunctions, "resolveStudentEmail");
+          const result = await resolveFn({ studentId: studentId.trim() });
+          return result.data.email;
+        };
+        try {
+          let resolved = await resolveEmail();
+          if (!resolved) {
+            // 한 번 재시도 (콜드스타트 후 warm 상태에서)
+            await new Promise((r) => setTimeout(r, 2000));
+            resolved = await resolveEmail();
+          }
+          if (!resolved) {
+            setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
+            setIsLoading(false);
+            return;
+          }
+          loginEmail = resolved;
+          localStorage.setItem(cacheKey, resolved);
+        } catch (err) {
+          // 콜드스타트로 실패 시 1회 자동 재시도
+          try {
+            await new Promise((r) => setTimeout(r, 2000));
+            const resolved = await resolveEmail();
+            if (!resolved) {
+              setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
+              setIsLoading(false);
+              return;
+            }
+            loginEmail = resolved;
+            localStorage.setItem(cacheKey, resolved);
+          } catch (retryErr) {
+            setError("학생 계정 조회 중 오류가 발생했습니다. 학급코드를 입력해주세요.");
+            setIsLoading(false);
+            return;
+          }
         }
-        loginEmail = result.data.email;
-      } catch (err) {
-        setError("학생 계정 조회 중 오류가 발생했습니다. 학급코드를 입력해주세요.");
-        setIsLoading(false);
-        return;
       }
     }
     try {
@@ -501,12 +530,22 @@ const Login = () => {
             loginError.code === "auth/invalid-credential")
         ) {
           logger.log("[Login] 학생 계정 자동 복구 시도 (Cloud Function):", loginEmail);
-          try {
-            // Cloud Function으로 계정 복구 (Auth 생성/비밀번호 리셋 + Firestore 문서 보장)
+          const doRepair = async () => {
             const { functions: firebaseFunctions } = await import("../../firebase");
             const repairFn = httpsCallable(firebaseFunctions, "repairStudentLogin");
-            const result = await repairFn({ email: loginEmail, password });
-            logger.log("[Login] 복구 결과:", result.data);
+            return repairFn({ email: loginEmail, password });
+          };
+          try {
+            let repairResult;
+            try {
+              repairResult = await doRepair();
+            } catch (firstErr) {
+              // 콜드스타트 실패 시 2초 후 재시도
+              logger.log("[Login] 복구 1차 실패, 재시도...");
+              await new Promise((r) => setTimeout(r, 2000));
+              repairResult = await doRepair();
+            }
+            logger.log("[Login] 복구 결과:", repairResult.data);
 
             // 복구 성공 후 다시 로그인 시도
             firebaseUser = await loginWithEmailPassword(loginEmail, password);
