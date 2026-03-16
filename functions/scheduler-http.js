@@ -1075,6 +1075,22 @@ async function processDailySavingsDeposits() {
 // [삭제됨] 시뮬레이션 로직 - 실제 주식만 사용
 // updateMarketConditionLogic, updateCentralStockMarketLogic, autoManageStocksLogic 등 제거됨
 
+// ────────────────────────────────────────────────────────
+// 공통 헬퍼: 학생 기반으로 모든 활성 classCode 추출
+// settings/classCodes에 의존하지 않으므로 신규 학급도 자동 포함
+// ────────────────────────────────────────────────────────
+async function getAllActiveClassCodes() {
+  const snap = await db.collection("users").where("isAdmin", "==", false).get();
+  const codeSet = new Set();
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.classCode && !data.isSuperAdmin && !data.isTeacher) {
+      codeSet.add(data.classCode);
+    }
+  });
+  return Array.from(codeSet);
+}
+
 // 하위 호환성을 위한 빈 함수 (manualUpdateStockMarket에서 호출)
 async function updateCentralStockMarketLogic() {
   logger.info(">>> [스케줄러] 시뮬레이션 로직 비활성화됨 - 실제 주식만 사용");
@@ -1118,18 +1134,8 @@ async function resetTasksForClass(classCode) {
 async function resetDailyTasksLogic() {
   logger.info(">>> [스케줄러] 일일 과제 리셋 시작");
   try {
-    const classCodesDoc = await db
-      .collection("settings")
-      .doc("classCodes")
-      .get();
-    if (!classCodesDoc.exists) {
-      logger.warn(
-        "'settings/classCodes' 문서가 없어 클래스 목록을 가져올 수 없습니다.",
-      );
-      return;
-    }
-    const classCodes = classCodesDoc.data().validCodes;
-    if (!classCodes || classCodes.length === 0) {
+    const classCodes = await getAllActiveClassCodes();
+    if (classCodes.length === 0) {
       logger.info("리셋할 클래스가 없습니다.");
       return;
     }
@@ -1169,25 +1175,15 @@ async function payWeeklySalariesLogic(forceRun = false) {
     // 지급 시작 - 락 설정
     await db.collection("schedulerLocks").doc("weeklySalary").set({ lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
 
-    // 모든 학생 조회 → 고유 classCode 추출 (settings/classCodes에 의존하지 않음)
-    const allStudentsSnap = await db.collection("users")
-      .where("isAdmin", "==", false)
-      .get();
-
-    const classCodeSet = new Set();
-    allStudentsSnap.docs.forEach(d => {
-      const data = d.data();
-      if (data.classCode && !data.isSuperAdmin && !data.isTeacher) {
-        classCodeSet.add(data.classCode);
-      }
-    });
-    const classCodes = Array.from(classCodeSet);
-    logger.info(`[주급 진단] 학생 기반 classCodes: ${JSON.stringify(classCodes)}`);
-
+    const classCodes = await getAllActiveClassCodes();
+    logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);
     if (classCodes.length === 0) {
-      logger.warn("[주급 진단] 학생이 없거나 classCode가 없음!");
+      logger.warn("[주급 지급] 활성 학급 없음");
       return;
     }
+
+    // 학생 데이터 사전 로드 (Firestore 쿼리 최소화)
+    const allStudentsSnap = await db.collection("users").where("isAdmin", "==", false).get();
 
     // batchPaySalaries와 동일한 급여 기준
     const BASE_SALARY = 2000000;
@@ -1217,14 +1213,10 @@ async function payWeeklySalariesLogic(forceRun = false) {
       }
 
       // 이미 로드된 데이터에서 해당 학급 학생만 필터링
-      const studentDocs = allStudentsSnap.docs.filter((d) => {
+      const students = allStudentsSnap.docs.filter((d) => {
         const data = d.data();
         return data.classCode === classCode && !data.isSuperAdmin && !data.isTeacher;
       });
-
-      const studentsWithJobs = studentDocs.filter(d => (d.data().selectedJobIds || []).length > 0);
-      logger.info(`[주급 진단] ${classCode}: 학생 ${studentDocs.length}명, 직업있는학생 ${studentsWithJobs.length}명, 직업없는학생 ${studentDocs.length - studentsWithJobs.length}명`);
-      const students = studentDocs;
 
       if (students.length === 0) continue;
 
@@ -1290,17 +1282,7 @@ async function payWeeklySalariesLogic(forceRun = false) {
 async function collectWeeklyRentLogic() {
   logger.info(">>> [스케줄러] 월세 징수 시작");
   try {
-    // 모든 학급 코드 가져오기
-    const classCodesDoc = await db
-      .collection("settings")
-      .doc("classCodes")
-      .get();
-    if (!classCodesDoc.exists) {
-      logger.warn("classCodes 문서가 없습니다.");
-      return;
-    }
-
-    const classCodes = classCodesDoc.data().validCodes || [];
+    const classCodes = await getAllActiveClassCodes();
     let totalCollected = 0;
     let totalTenantsCount = 0;
 
@@ -1419,16 +1401,7 @@ async function collectWeeklyRentLogic() {
 async function collectPropertyHoldingTaxesLogic() {
   logger.info(">>> [스케줄러] 부동산 보유세 징수 시작");
   try {
-    const classCodesDoc = await db
-      .collection("settings")
-      .doc("classCodes")
-      .get();
-    if (!classCodesDoc.exists) {
-      logger.warn("classCodes 문서가 없습니다.");
-      return;
-    }
-
-    const classCodes = classCodesDoc.data().validCodes || [];
+    const classCodes = await getAllActiveClassCodes();
     let totalCollected = 0;
     let totalUsersProcessed = 0;
 
