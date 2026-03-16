@@ -2006,8 +2006,14 @@ exports.purchaseStoreItem = onCall(
         // 모든 쓰기 작업 수행
         const isAdminBuyer = adminRef && adminRef.path === userRef.path;
 
-        // 관리자 cash 변동 계산: +구매금(매출) -재고보충비
-        const adminCashDelta = totalCost - (restocked ? restockCost : 0);
+        // 학생 구매 시 관리자에게 추가 세금 수익 (상점 판매세)
+        // 관리자 본인 구매 시에는 세금 없음
+        const shopSalesTax = !isAdminBuyer
+          ? Math.round(totalCost * itemStoreVATRate)
+          : 0;
+
+        // 관리자 cash 변동 계산: +구매금(매출) +판매세 -재고보충비
+        const adminCashDelta = totalCost + shopSalesTax - (restocked ? restockCost : 0);
 
         if (isAdminBuyer) {
           // 관리자 본인 구매: 구매비 차감 + 매출 입금 + 보충비 차감을 합산
@@ -2024,7 +2030,7 @@ exports.purchaseStoreItem = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
-          // 관리자에게: 구매 매출 입금 - 재고보충비 차감 (한번에 처리)
+          // 관리자에게: 구매 매출 + 판매세 입금 - 재고보충비 차감
           if (adminRef) {
             transaction.update(adminRef, {
               cash: admin.firestore.FieldValue.increment(adminCashDelta),
@@ -2100,6 +2106,7 @@ exports.purchaseStoreItem = onCall(
           quantity: quantity,
           totalCost: totalCost,
           vatAmount: vatAmount,
+          shopSalesTax: shopSalesTax,
           restocked: restocked,
           newStock: finalStock,
           newPrice: finalPrice,
@@ -2108,7 +2115,7 @@ exports.purchaseStoreItem = onCall(
       });
 
       logger.info(
-        `[purchaseStoreItem] ${uid}님이 ${result.itemName} ${result.quantity}개 구매 (${result.totalCost}원)${result.restocked ? ` [재고 자동 보충됨 - 관리자 비용: ${result.restockCost.toLocaleString()}원]` : ""}`,
+        `[purchaseStoreItem] ${uid}님이 ${result.itemName} ${result.quantity}개 구매 (${result.totalCost.toLocaleString()}원)${result.shopSalesTax > 0 ? ` [판매세 ${result.shopSalesTax.toLocaleString()}원 → 관리자]` : ""}${result.restocked ? ` [재고 자동 보충됨 - 관리자 비용: ${result.restockCost.toLocaleString()}원]` : ""}`,
       );
 
       return {
