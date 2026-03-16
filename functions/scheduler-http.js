@@ -1247,22 +1247,12 @@ async function payWeeklySalariesLogic(forceRun = false) {
 
       if (classPaidCount === 0) continue;
 
-      // 관리자 잔액 확인 및 차감
+      // 관리자 잔액 차감 (부족해도 마이너스로 허용)
       if (adminDoc) {
-        const adminCash = adminDoc.data().cash || 0;
-        if (adminCash < classTotalNet) {
-          logger.warn(
-            `[주급 지급] ${classCode}: 관리자 잔액 부족 (필요: ${classTotalNet.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
-          );
-          continue;
-        }
         batch.update(adminDoc.ref, {
           cash: admin.firestore.FieldValue.increment(-classTotalNet),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-      } else {
-        logger.warn(`[주급 지급] ${classCode}: 관리자 계정을 찾을 수 없음 - 급여 지급 건너뜀`);
-        continue;
       }
 
       // lastPaidDate 업데이트
@@ -1273,7 +1263,7 @@ async function payWeeklySalariesLogic(forceRun = false) {
       totalPaidCount += classPaidCount;
       totalAmount += classTotalNet;
       logger.info(
-        `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급 (관리자 계정에서 차감)`,
+        `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급`,
       );
     }
 

@@ -2287,7 +2287,7 @@ const AdminSettingsModal = ({
                     </p>
                     <p>마지막 주급 지급일: {formatLastSalaryDate()}</p>
                     <p className="auto-payment-info">
-                      ⏰ 자동 주급 지급: 매주 금요일 오전 8시 (서버 자동 실행)
+                      ⏰ 자동 주급 지급: 매주 월요일 오전 8시 (서버 자동 실행)
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
@@ -3131,7 +3131,7 @@ const AdminSettingsModal = ({
                   <div className="auto-payment-info">
                     <h5>자동 주급 지급 시스템</h5>
                     <p>
-                      🤖 매주 금요일 오전 8시에 서버에서 자동으로 주급이
+                      🤖 매주 월요일 오전 8시에 서버에서 자동으로 주급이
                       지급됩니다.
                     </p>
                     <p>📈 매주 주급 인상률만큼 급여가 자동으로 인상됩니다.</p>
