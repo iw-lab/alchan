@@ -242,6 +242,7 @@ const AdminItemPage = ({
   const [activeTab, setActiveTab] = useState("addItem");
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("마법");
+  const [successMsg, setSuccessMsg] = useState("");
   const [item, setItem] = useState({
     name: "",
     description: "",
@@ -325,6 +326,12 @@ const AdminItemPage = ({
     }
 
     if (success) {
+      const msg = isEditing
+        ? `✅ "${itemData.name}" 아이템이 수정됐습니다!`
+        : `✅ "${itemData.name}" 아이템이 추가됐습니다!`;
+      setSuccessMsg(msg);
+      setTimeout(() => setSuccessMsg(""), 4000);
+
       if (!isEditing) {
         setItem({
           name: "",
@@ -334,7 +341,7 @@ const AdminItemPage = ({
           initialStock: "",
           icon: "✨",
           available: true,
-          priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
+          priceIncreasePercentage: "10",
         });
         setActiveTab("addItem");
       }
@@ -392,6 +399,22 @@ const AdminItemPage = ({
         </div>
 
         <div style={{ padding: '30px', backgroundColor: 'rgba(20, 20, 35, 0.9)' }}>
+          {successMsg && (
+            <div style={{
+              margin: '0 0 20px 0',
+              padding: '14px 20px',
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.15))',
+              border: '1px solid rgba(34,197,94,0.5)',
+              borderRadius: '12px',
+              color: '#4ade80',
+              fontWeight: 600,
+              fontSize: '15px',
+              textAlign: 'center',
+              animation: 'fadeIn 0.3s ease',
+            }}>
+              {successMsg}
+            </div>
+          )}
           {(activeTab === "addItem" || activeTab === "editItem") && (
             <form onSubmit={handleSubmit}>
               <div style={styles.formSection}>

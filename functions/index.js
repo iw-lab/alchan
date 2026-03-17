@@ -2445,9 +2445,17 @@ exports.batchPaySalaries = onCall(
         `[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`,
       );
 
-      // 급여 계산: 기본급 200만 + 추가 직업당 50만
+      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
       const BASE_SALARY = 2000000;
       const ADDITIONAL_SALARY = 500000;
+      const PRESIDENT_BONUS = 2000000;
+      const PM_BONUS = 1000000;
+
+      // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
+      const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
+      const jobTitleMap = {};
+      jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
+
       const batch = db.batch();
       let totalStudentsPaid = 0;
       let totalGrossPaid = 0;
@@ -2464,14 +2472,21 @@ exports.batchPaySalaries = onCall(
 
         const grossSalary =
           BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-        const tax = Math.floor(grossSalary * taxRate);
-        const netSalary = grossSalary - tax;
+        let bonus = 0;
+        for (const jobId of jobIds) {
+          const title = jobTitleMap[jobId];
+          if (title === "대통령") bonus += PRESIDENT_BONUS;
+          else if (title === "국무총리") bonus += PM_BONUS;
+        }
+        const totalGross = grossSalary + bonus;
+        const tax = Math.floor(totalGross * taxRate);
+        const netSalary = totalGross - tax;
 
         const studentRef = db.collection("users").doc(student.id);
         batch.update(studentRef, {
           cash: admin.firestore.FieldValue.increment(netSalary),
           lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
-          lastGrossSalary: grossSalary,
+          lastGrossSalary: totalGross,
           lastTaxAmount: tax,
           lastNetSalary: netSalary,
           totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
@@ -2479,7 +2494,7 @@ exports.batchPaySalaries = onCall(
         });
 
         totalStudentsPaid++;
-        totalGrossPaid += grossSalary;
+        totalGrossPaid += totalGross;
         totalTaxDeducted += tax;
         totalNetPaid += netSalary;
       }
@@ -2551,6 +2566,13 @@ exports.reverseSalaryOnce = onCall(
 
       const BASE_SALARY = 2000000;
       const ADDITIONAL_SALARY = 500000;
+      const PRESIDENT_BONUS = 2000000;
+      const PM_BONUS = 1000000;
+
+      const jobsSnap2 = await db.collection("jobs").where("classCode", "==", classCode).get();
+      const jobTitleMap2 = {};
+      jobsSnap2.forEach((doc) => { jobTitleMap2[doc.id] = doc.data().title; });
+
       const batch = db.batch();
       let totalReversed = 0;
       let totalAmount = 0;
@@ -2561,8 +2583,15 @@ exports.reverseSalaryOnce = onCall(
 
         const grossSalary =
           BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-        const tax = Math.floor(grossSalary * taxRate);
-        const netSalary = grossSalary - tax;
+        let bonus = 0;
+        for (const jobId of jobIds) {
+          const title = jobTitleMap2[jobId];
+          if (title === "대통령") bonus += PRESIDENT_BONUS;
+          else if (title === "국무총리") bonus += PM_BONUS;
+        }
+        const totalGross = grossSalary + bonus;
+        const tax = Math.floor(totalGross * taxRate);
+        const netSalary = totalGross - tax;
 
         const studentRef = db.collection("users").doc(student.id);
         batch.update(studentRef, {

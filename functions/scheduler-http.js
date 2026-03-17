@@ -1188,6 +1188,8 @@ async function payWeeklySalariesLogic(forceRun = false) {
     // batchPaySalaries와 동일한 급여 기준
     const BASE_SALARY = 2000000;
     const ADDITIONAL_SALARY = 500000;
+    const PRESIDENT_BONUS = 2000000;  // 대통령 추가 주급
+    const PM_BONUS = 1000000;          // 국무총리 추가 주급
     let totalPaidCount = 0;
     let totalAmount = 0;
 
@@ -1198,6 +1200,11 @@ async function payWeeklySalariesLogic(forceRun = false) {
         salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
       }
       const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
+
+      // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
+      const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
+      const jobTitleMap = {};
+      jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
 
       // 학급 관리자(선생님) 찾기
       const adminSnapshot = await db
@@ -1220,7 +1227,7 @@ async function payWeeklySalariesLogic(forceRun = false) {
 
       if (students.length === 0) continue;
 
-      // 급여 계산: 기본급 200만 + 추가 직업당 50만 (batchPaySalaries와 동일)
+      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
       const batch = db.batch();
       let classTotalNet = 0;
       let classPaidCount = 0;
@@ -1231,13 +1238,20 @@ async function payWeeklySalariesLogic(forceRun = false) {
         if (jobIds.length === 0) continue;
 
         const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-        const tax = Math.floor(grossSalary * taxRate);
-        const netSalary = grossSalary - tax;
+        let bonus = 0;
+        for (const jobId of jobIds) {
+          const title = jobTitleMap[jobId];
+          if (title === "대통령") bonus += PRESIDENT_BONUS;
+          else if (title === "국무총리") bonus += PM_BONUS;
+        }
+        const totalGross = grossSalary + bonus;
+        const tax = Math.floor(totalGross * taxRate);
+        const netSalary = totalGross - tax;
 
         batch.update(studentDoc.ref, {
           cash: admin.firestore.FieldValue.increment(netSalary),
           lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
-          lastGrossSalary: grossSalary,
+          lastGrossSalary: totalGross,
           lastTaxAmount: tax,
           lastNetSalary: netSalary,
           totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
