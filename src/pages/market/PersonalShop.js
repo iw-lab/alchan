@@ -625,13 +625,16 @@ const PersonalShop = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 상점 목록 로드 (인덱스 없이 클라이언트 필터링)
+  // 상점 목록 로드 (같은 학급만)
   const loadShops = useCallback(async () => {
     try {
       setLoading(true);
       const shopsRef = collection(db, "personalShops");
-      // 🔥 [수정] 복합 인덱스 오류 방지 - 단일 필드 쿼리 후 클라이언트 필터링
-      const q = query(shopsRef, where("status", "==", "active"));
+      const userClassCode = userProfile?.classCode;
+      // 같은 학급 상점만 조회 (classCode 없는 기존 문서 제외)
+      const q = userClassCode
+        ? query(shopsRef, where("status", "==", "active"), where("classCode", "==", userClassCode))
+        : query(shopsRef, where("status", "==", "active"));
 
       const snapshot = await getDocs(q);
       const shopsData = snapshot.docs
@@ -831,6 +834,7 @@ const PersonalShop = () => {
         ...formData,
         ownerId: currentUser.uid,
         ownerName: userProfile?.name || "익명",
+        classCode: userProfile?.classCode || null,
         status: "active",
         totalSales: 0,
         totalTaxPaid: 0,
@@ -859,6 +863,7 @@ const PersonalShop = () => {
         ...productData,
         shopId: myShop.id,
         ownerId: currentUser.uid,
+        classCode: userProfile?.classCode || null,
         status: "available",
         soldCount: 0,
         createdAt: serverTimestamp(),
@@ -1016,6 +1021,7 @@ const PersonalShop = () => {
           unitPrice: purchaseProduct.totalPrice,
           totalAmount: totalAmount,
           taxAmount: taxAmount,
+          classCode: userProfile?.classCode || null,
           timestamp: serverTimestamp(),
         });
       });
