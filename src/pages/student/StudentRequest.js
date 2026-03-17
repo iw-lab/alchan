@@ -10,7 +10,7 @@ import {
   runTransaction,
   increment,
 } from "firebase/firestore";
-import { searchVideos } from "../../utils/youtube-api";
+import { searchVideos, parseVideoId } from "../../utils/youtube-api";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
 import "./StudentRequest.css";
@@ -30,6 +30,8 @@ const StudentRequest = () => {
   const [error, setError] = useState("");
   const [roomError, setRoomError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,11 +66,32 @@ const StudentRequest = () => {
       setVideos(results);
       setRequestSuccess(false);
     } catch (err) {
-      setError(err.message || "YouTube 영상을 검색하는 중 오류가 발생했습니다.");
+      if (err.message === 'QUOTA_EXCEEDED') {
+        setQuotaExceeded(true);
+        setError("오늘 검색 한도를 초과했습니다. 아래에서 YouTube URL로 직접 입력해주세요.");
+      } else {
+        setError(err.message || "YouTube 영상을 검색하는 중 오류가 발생했습니다.");
+      }
       logger.error(err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUrlSelect = () => {
+    const videoId = parseVideoId(urlInput.trim());
+    if (!videoId) {
+      setError("올바른 YouTube URL 또는 영상 ID를 입력해주세요.");
+      return;
+    }
+    setSelectedVideo({
+      id: { videoId },
+      snippet: {
+        title: urlInput.trim(),
+        thumbnails: { default: { url: `https://img.youtube.com/vi/${videoId}/default.jpg` } },
+      },
+    });
+    setError("");
   };
 
   const handleRequest = async () => {
@@ -145,6 +168,7 @@ const StudentRequest = () => {
     setSelectedVideo(null);
     setSearchTerm("");
     setVideos([]);
+    setUrlInput("");
   };
 
   if (roomError) {
@@ -223,6 +247,38 @@ const StudentRequest = () => {
 
           {error && (
             <p style={{ color: "#f87171", marginBottom: "1rem" }}>{error}</p>
+          )}
+
+          {quotaExceeded && (
+            <div style={{
+              background: "rgba(99,102,241,0.1)",
+              border: "1px solid rgba(99,102,241,0.4)",
+              borderRadius: "12px",
+              padding: "1rem",
+              marginBottom: "1rem",
+            }}>
+              <p style={{ color: "#a5b4fc", fontWeight: 600, marginBottom: "0.5rem" }}>
+                🔗 YouTube URL로 직접 입력
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  type="text"
+                  className="search-input"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="https://youtu.be/... 또는 영상 ID"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="search-btn"
+                  onClick={handleUrlSelect}
+                  disabled={!urlInput.trim()}
+                >
+                  선택
+                </button>
+              </div>
+            </div>
           )}
 
           {videos.length > 0 && (
