@@ -445,7 +445,8 @@ export const AuthProvider = ({ children }) => {
             // 핵심: 학급 구성원만 조회 (전체 사용자 대신)
             if (docData.classCode && docData.classCode !== "미지정") {
               // 🔥 [수정] forceRefresh=false로 변경하여 캐시 활용
-              await fetchClassmatesFromFirestore(
+              // 비동기로 실행 - 초기 인증을 블로킹하지 않음
+              fetchClassmatesFromFirestore(
                 docData.classCode,
                 firebaseAuthUser.uid,
                 false,
