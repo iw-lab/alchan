@@ -209,7 +209,7 @@ exports.stockPriceScheduler = onRequest(
         const lastActiveTime = settingsDoc.exists
           ? settingsDoc.data()?.lastActiveAt?.toDate()
           : null;
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const thirtyMinutesAgo = new Date(Date.now() - 70 * 60 * 1000); // 70분 (1시간 타이머에 여유)
 
         if (!lastActiveTime || lastActiveTime < thirtyMinutesAgo) {
           logger.info(

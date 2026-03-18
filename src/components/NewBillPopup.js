@@ -15,7 +15,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { X, ScrollText, Vote } from "lucide-react";
 
-const POLL_INTERVAL = 5 * 60 * 1000; // 5분
+const POLL_INTERVAL = 30 * 60 * 1000; // 30분
 
 export default function NewBillPopup() {
   const { userDoc } = useAuth();
