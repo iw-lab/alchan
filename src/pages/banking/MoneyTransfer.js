@@ -77,11 +77,11 @@ function MoneyTransfer() {
     });
   }, [adminClassCode, refreshAllUsers]);
 
-  // 액션 타입이 변경되면 선택 초기화
+  // 금액 타입(고정/퍼센트)이 변경될 때만 선택 초기화 (보내기↔가져오기 전환 시 유지)
   useEffect(() => {
     setSelectedUsers([]);
     setSelectAll(false);
-  }, [action, amountType]);
+  }, [amountType]);
 
   // 사용자 선택 핸들러
   const handleUserSelection = (userId) => {
