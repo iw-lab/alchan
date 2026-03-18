@@ -656,7 +656,7 @@ const PersonalShop = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userProfile]);
 
   // 내 상점 로드
   const loadMyShop = useCallback(async () => {
@@ -675,6 +675,17 @@ const PersonalShop = () => {
           id: snapshot.docs[0].id,
           ...snapshot.docs[0].data(),
         };
+
+        // classCode 누락된 상점 자동 패치 (둘러보기 필터에서 보이도록)
+        if (!shopData.classCode && userProfile?.classCode) {
+          await updateDoc(doc(db, "personalShops", shopData.id), {
+            classCode: userProfile.classCode,
+            updatedAt: serverTimestamp(),
+          });
+          shopData.classCode = userProfile.classCode;
+          logger.info("상점 classCode 자동 패치:", shopData.id);
+        }
+
         setMyShop(shopData);
 
         // 내 상품 로드 (복합 인덱스 불필요 - 클라이언트 정렬)
@@ -693,7 +704,7 @@ const PersonalShop = () => {
     } catch (error) {
       logger.error("내 상점 로드 오류:", error);
     }
-  }, [currentUser]);
+  }, [currentUser, userProfile]);
 
   // 상점의 상품 로드 (복합 인덱스 불필요 - 클라이언트 필터+정렬)
   const loadShopProducts = useCallback(async (shopId) => {
