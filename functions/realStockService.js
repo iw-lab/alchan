@@ -341,7 +341,7 @@ async function updateRealStockPrices() {
     const now = new Date();
     const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const kstHour = kstTime.getUTCHours();
-    // 미국주식은 아침 6~8시 KST에만 fetch (미국 장 마감 후 최종 데이터)
+    // 미국주식은 아침 6~8시 KST에만 fetch (미국 장 마감 후 최종 종가)
     const isUSStockFetchTime = kstHour >= 6 && kstHour < 8;
 
     // 심볼 수집

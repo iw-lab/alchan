@@ -299,17 +299,21 @@ const MyItems = () => {
     );
     handleCloseUseItemModal();
 
-    setRecentlyUsedItems((prev) => ({
-      ...prev,
-      [group.displayInfo.itemId]: {
-        usedTimestamp: Date.now(),
-        itemDetails: {
-          name: group.displayInfo.name,
-          icon: group.displayInfo.icon,
-          durationMs: group.displayInfo.durationMs || ITEM_DEFAULT_DURATION_MS,
+    setRecentlyUsedItems((prev) => {
+      const existing = prev[group.displayInfo.itemId];
+      return {
+        ...prev,
+        [group.displayInfo.itemId]: {
+          usedTimestamp: Date.now(),
+          usedQuantity: (existing?.usedQuantity || 0) + quantityToUse,
+          itemDetails: {
+            name: group.displayInfo.name,
+            icon: group.displayInfo.icon,
+            durationMs: group.displayInfo.durationMs || ITEM_DEFAULT_DURATION_MS,
+          },
         },
-      },
-    }));
+      };
+    });
 
     // 🔥 백그라운드에서 서버 호출 (useItem 내부에서 이미 낙관적 업데이트 수행)
     try {
@@ -349,7 +353,15 @@ const MyItems = () => {
       );
       setRecentlyUsedItems((prev) => {
         const updated = { ...prev };
-        delete updated[group.displayInfo.itemId];
+        const existing = updated[group.displayInfo.itemId];
+        if (existing) {
+          const newQty = (existing.usedQuantity || 0) - quantityToUse;
+          if (newQty <= 0) {
+            delete updated[group.displayInfo.itemId];
+          } else {
+            updated[group.displayInfo.itemId] = { ...existing, usedQuantity: newQty };
+          }
+        }
         return updated;
       });
     }
@@ -889,6 +901,11 @@ const MyItems = () => {
                             <div className="item-info">
                               <h3 className="item-name">
                                 {itemData.itemDetails.name}
+                                {itemData.usedQuantity > 1 && (
+                                  <span className="quantity-badge quantity-medium" style={{ marginLeft: "6px" }}>
+                                    ×{itemData.usedQuantity}
+                                  </span>
+                                )}
                               </h3>
                               <p className="timer-text">
                                 {formatTimeLeft(

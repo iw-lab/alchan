@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }) => {
   const currentClassCodeRef = useRef(null);
   const authListenerSetupRef = useRef(false);
   const visibilityChangeHandlerRef = useRef(null);
+  const activeTimerRef = useRef(null);
 
   // 최적화: 캐시 TTL 설정
 
@@ -489,6 +490,14 @@ export const AuthProvider = ({ children }) => {
               visibilityChangeHandlerRef.current,
             );
 
+            // 🔥 탭을 계속 열어둔 경우에도 주기적으로 activeStatus 갱신 (스케줄러 트리거용)
+            if (activeTimerRef.current) clearInterval(activeTimerRef.current);
+            activeTimerRef.current = setInterval(() => {
+              if (document.visibilityState === "visible" && firebaseAuthUser?.uid) {
+                updateLastActiveAt(firebaseAuthUser.uid);
+              }
+            }, 15 * 60 * 1000); // 15분마다
+
             firestoreUnsubscribeRef.current = () => {
               if (visibilityChangeHandlerRef.current) {
                 document.removeEventListener(
@@ -496,6 +505,10 @@ export const AuthProvider = ({ children }) => {
                   visibilityChangeHandlerRef.current,
                 );
                 visibilityChangeHandlerRef.current = null;
+              }
+              if (activeTimerRef.current) {
+                clearInterval(activeTimerRef.current);
+                activeTimerRef.current = null;
               }
             };
           }

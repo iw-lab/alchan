@@ -11,6 +11,7 @@ import { logger } from "../../utils/logger";
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
   const {
+    user,
     userDoc,
     allClassMembers,
     loading: authLoading,
@@ -172,11 +173,12 @@ function MoneyTransfer() {
 
       // ✨ DB 작업 실행하고 서버로부터 실제 결과 받기
       const { count, totalProcessed, updatedUsers } = await adminCashAction({
+        adminId: user?.uid || userDoc?.id,
         adminName,
         adminClassCode,
         targetUsers: targetUsersData,
         action,
-        takeMode: action === "take" ? takeMode : undefined, // 가져오기 모드 전달
+        takeMode: action === "take" ? takeMode : undefined,
         amountType,
         amount: inputValue,
         taxRate,

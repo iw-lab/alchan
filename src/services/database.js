@@ -117,6 +117,7 @@ const logActivity = async (userId, type, description, metadata = {}) => {
  * @param {number} params.taxRate - 세율
  */
 export const adminCashAction = async ({
+  adminId,
   adminName,
   adminClassCode,
   targetUsers,
@@ -157,6 +158,7 @@ export const adminCashAction = async ({
   for (const user of targetUsers) {
     try {
       await runTransaction(db, async (transaction) => {
+        // ===== 1단계: 모든 읽기 먼저 =====
         const userRef = doc(db, "users", user.id);
         const userDoc = await transaction.get(userRef);
 
@@ -164,6 +166,15 @@ export const adminCashAction = async ({
           throw new Error(`사용자 ${user.name}을 찾을 수 없습니다.`);
         }
 
+        // 관리자 문서도 미리 읽기 (toMe 모드)
+        let adminSnap = null;
+        let adminRef = null;
+        if (action === "take" && takeMode === "toMe" && adminId) {
+          adminRef = doc(db, "users", adminId);
+          adminSnap = await transaction.get(adminRef);
+        }
+
+        // ===== 2단계: 계산 =====
         const userData = userDoc.data();
         const currentCash = Number(userData.cash || 0);
         let baseAmount;
@@ -190,19 +201,25 @@ export const adminCashAction = async ({
         let newCash;
         if (action === "send") {
           newCash = currentCash + finalAmount;
-        } else { // take
-          // 잔액 확인
-          if (currentCash < baseAmount) {
-            throw new Error(`${user.name}님의 잔액이 부족합니다. (보유: ${currentCash.toLocaleString()}원, 필요: ${baseAmount.toLocaleString()}원)`);
-          }
+        } else { // take - 마이너스 허용
           newCash = currentCash - baseAmount;
         }
 
-        // 사용자 잔액 업데이트
+        // ===== 3단계: 모든 쓰기 =====
+        // 학생 잔액 업데이트
         transaction.update(userRef, {
           cash: newCash,
           updatedAt: serverTimestamp()
         });
+
+        // 가져오기(toMe) 모드: 관리자 잔액 업데이트
+        if (adminRef && adminSnap && adminSnap.exists()) {
+          const adminCurrentCash = Number(adminSnap.data().cash || 0);
+          transaction.update(adminRef, {
+            cash: adminCurrentCash + baseAmount,
+            updatedAt: serverTimestamp()
+          });
+        }
 
         // 로그 기록
         const logRef = doc(collection(db, "activity_logs"));
