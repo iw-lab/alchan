@@ -809,10 +809,13 @@ const PersonalShop = () => {
     }
   }, [currentUser]);
 
-  // 초기 로드
+  // 초기 로드 - loadMyShop 먼저 실행 (classCode 자동 패치 후 loadShops 실행)
   useEffect(() => {
-    loadShops();
-    loadMyShop();
+    const init = async () => {
+      await loadMyShop();
+      await loadShops();
+    };
+    init();
   }, [loadShops, loadMyShop]);
 
   // 판매 내역 탭 진입 시 로드

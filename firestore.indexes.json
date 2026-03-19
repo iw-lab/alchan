@@ -157,6 +157,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "personalShops",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "classCode",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
