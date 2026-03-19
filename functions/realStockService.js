@@ -347,6 +347,7 @@ async function updateRealStockPrices() {
     // 심볼 수집
     const stocksToUpdate = [];
     let usSkipped = 0;
+    let etfBondSkipped = 0;
     stocksSnapshot.docs.forEach(doc => {
       const data = doc.data();
       const symbol = data.realStockSymbol || REAL_STOCK_SYMBOLS[data.name];
@@ -356,6 +357,18 @@ async function updateRealStockPrices() {
         if (isUSD && !isUSStockFetchTime) {
           usSkipped++;
           return;
+        }
+        // ETF/채권은 장중 1시간에 1번만 업데이트
+        const pType = data.productType || 'stock';
+        if (pType === 'etf' || pType === 'bond') {
+          const lastUpd = data.lastUpdated?.toDate?.() || data.lastUpdated;
+          if (lastUpd) {
+            const msSinceUpdate = now.getTime() - new Date(lastUpd).getTime();
+            if (msSinceUpdate < 55 * 60 * 1000) { // 55분 이내면 건너뜀
+              etfBondSkipped++;
+              return;
+            }
+          }
         }
         stocksToUpdate.push({
           docRef: doc.ref,
@@ -374,6 +387,9 @@ async function updateRealStockPrices() {
 
     if (usSkipped > 0) {
       logger.info(`[RealStock] 미국주식 ${usSkipped}개 건너뜀 (KST ${kstHour}시 - 아침 6~8시에만 fetch)`);
+    }
+    if (etfBondSkipped > 0) {
+      logger.info(`[RealStock] ETF/채권 ${etfBondSkipped}개 건너뜀 (1시간 이내 업데이트됨)`);
     }
 
     if (stocksToUpdate.length === 0) {
