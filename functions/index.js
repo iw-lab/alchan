@@ -4494,11 +4494,12 @@ exports.repairStudentLogin = onCall(
 );
 
 // ========================================================
-// 🔧 로그인 시 UID↔Firestore 불일치 자동 마이그레이션
-// AuthContext에서 users/{uid} 문서가 없을 때 호출
+// 🔧 로그인 시 중복/고아 문서 자동 감지 및 마이그레이션
+// - 문서 없음: 이메일/아이디 prefix로 고아 문서 검색 후 마이그레이션
+// - 문서 있음: 같은 아이디의 다른 문서(더 높은 cash)가 있으면 병합
 // ========================================================
 exports.migrateUserDoc = onCall(
-  { region: "asia-northeast3" },
+  { region: "asia-northeast3", timeoutSeconds: 60 },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "인증이 필요합니다.");
@@ -4509,78 +4510,95 @@ exports.migrateUserDoc = onCall(
       throw new HttpsError("failed-precondition", "이메일 정보가 없습니다.");
     }
 
-    // 현재 UID로 문서가 이미 있으면 반환
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (userDoc.exists) {
-      return { status: "exists", data: userDoc.data() };
-    }
+    const studentId = email.split("@")[0].toLowerCase();
 
-    // 이메일로 고아 문서 검색
+    // 1. 현재 UID 문서 읽기
+    const currentDoc = await db.collection("users").doc(uid).get();
+    const currentData = currentDoc.exists ? currentDoc.data() : null;
+    const currentCash = currentData?.cash || 0;
+
+    // 2. 같은 studentId prefix로 모든 .alchan 문서 검색
     const snapshot = await db
       .collection("users")
-      .where("email", "==", email)
-      .limit(1)
+      .where("email", ">=", `${studentId}@`)
+      .where("email", "<=", `${studentId}@\uf8ff`)
       .get();
 
-    if (snapshot.empty) {
-      return { status: "not_found" };
-    }
-
-    const oldDoc = snapshot.docs[0];
-    const oldUid = oldDoc.id;
-    const oldData = oldDoc.data();
-
-    logger.info(
-      `[migrateUserDoc] UID 불일치 감지: ${oldUid} → ${uid} (${email})`
+    const candidates = snapshot.docs.filter(
+      (d) => d.data().email?.endsWith(".alchan") && d.id !== uid
     );
 
-    // 데이터를 새 UID 문서로 복사
-    await db
-      .collection("users")
-      .doc(uid)
-      .set({ ...oldData, email });
+    // 중복 없고 현재 문서 있으면 → 정상
+    if (candidates.length === 0 && currentDoc.exists) {
+      return { status: "ok" };
+    }
 
-    // 서브컬렉션 이동
-    const subcollections = [
-      "inventory",
-      "portfolio",
-      "transactions",
-      "completedTasks",
-      "financials",
-      "products",
-      "loans",
-      "settings",
-      "badges",
-      "properties",
-      "activityLogs",
-    ];
-    let movedSubs = 0;
-    for (const sub of subcollections) {
-      const subSnap = await db
-        .collection("users")
-        .doc(oldUid)
-        .collection(sub)
-        .get();
-      for (const subDoc of subSnap.docs) {
-        await db
-          .collection("users")
-          .doc(uid)
-          .collection(sub)
-          .doc(subDoc.id)
-          .set(subDoc.data());
-        await subDoc.ref.delete();
+    // 가장 높은 cash를 가진 문서 찾기 (현재 문서 포함)
+    let bestDoc = null;
+    let bestData = currentData;
+    let bestCash = currentCash;
+    let bestId = uid;
+
+    for (const doc of candidates) {
+      const data = doc.data();
+      if ((data.cash || 0) > bestCash) {
+        bestDoc = doc;
+        bestData = data;
+        bestCash = data.cash || 0;
+        bestId = doc.id;
       }
-      movedSubs += subSnap.size;
     }
 
-    // 기존 문서 삭제
-    await db.collection("users").doc(oldUid).delete();
+    // 현재 문서가 이미 best이고 중복 없으면 → 정상
+    if (bestId === uid && candidates.length === 0) {
+      return { status: "ok" };
+    }
 
     logger.info(
-      `[migrateUserDoc] 마이그레이션 완료: ${oldUid} → ${uid}, 서브컬렉션 ${movedSubs}개 이동`
+      `[migrateUserDoc] 중복 감지: ${studentId}, 현재=${uid}(${currentCash}), best=${bestId}(${bestCash}), 중복=${candidates.length}개`
     );
 
-    return { status: "migrated", data: oldData };
+    const subcollections = [
+      "inventory", "portfolio", "transactions", "completedTasks",
+      "financials", "products", "loans", "settings",
+      "badges", "properties", "activityLogs",
+    ];
+
+    // best 문서가 현재 UID가 아니면 → 데이터 마이그레이션
+    if (bestId !== uid && bestData) {
+      await db.collection("users").doc(uid).set({
+        ...bestData,
+        email, // 현재 Auth 이메일 유지
+      });
+
+      // best 문서의 서브컬렉션 이동
+      for (const sub of subcollections) {
+        const subSnap = await db
+          .collection("users").doc(bestId).collection(sub).get();
+        for (const subDoc of subSnap.docs) {
+          await db.collection("users").doc(uid)
+            .collection(sub).doc(subDoc.id).set(subDoc.data());
+          await subDoc.ref.delete();
+        }
+      }
+    }
+
+    // 모든 중복 문서 삭제 (현재 UID 제외)
+    for (const doc of candidates) {
+      // 서브컬렉션 삭제
+      for (const sub of subcollections) {
+        const subSnap = await db
+          .collection("users").doc(doc.id).collection(sub).get();
+        for (const subDoc of subSnap.docs) {
+          await subDoc.ref.delete();
+        }
+      }
+      await db.collection("users").doc(doc.id).delete();
+      logger.info(`[migrateUserDoc] 중복 문서 삭제: ${doc.id}`);
+    }
+
+    const finalData = bestId !== uid ? bestData : currentData;
+    return { status: "migrated", data: finalData };
   }
 );
 

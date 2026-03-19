@@ -469,6 +469,33 @@ export const AuthProvider = ({ children }) => {
           if (docData) {
             setUserDoc(docData);
 
+            // 🔧 .alchan 학생: 중복/고아 문서 자동 마이그레이션 (1회성 백그라운드)
+            if (firebaseAuthUser.email?.endsWith(".alchan")) {
+              const migKey = `migChecked_${firebaseAuthUser.uid}`;
+              if (!localStorage.getItem(migKey)) {
+                try {
+                  const migrateFn = httpsCallable(functions, "migrateUserDoc");
+                  migrateFn().then((result) => {
+                    localStorage.setItem(migKey, "1");
+                    if (result.data.status === "migrated" && result.data.data) {
+                      const fresh = {
+                        id: firebaseAuthUser.uid,
+                        uid: firebaseAuthUser.uid,
+                        ...result.data.data,
+                      };
+                      setUserDoc(fresh);
+                      setCachedUserDoc(firebaseAuthUser.uid, fresh);
+                      // 학급 구성원 재조회
+                      if (fresh.classCode && fresh.classCode !== "미지정") {
+                        fetchClassmatesFromFirestore(fresh.classCode, firebaseAuthUser.uid, true);
+                      }
+                      logger.log("[AuthContext] 중복 문서 마이그레이션 완료, UI 갱신");
+                    }
+                  }).catch(() => {});
+                } catch (_) {}
+              }
+            }
+
             // 핵심: 학급 구성원만 조회 (전체 사용자 대신)
             if (docData.classCode && docData.classCode !== "미지정") {
               // 🔥 [수정] forceRefresh=false로 변경하여 캐시 활용
