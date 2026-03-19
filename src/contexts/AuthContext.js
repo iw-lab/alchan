@@ -471,12 +471,15 @@ export const AuthProvider = ({ children }) => {
 
             // 🔧 .alchan 학생: 중복/고아 문서 자동 마이그레이션 (1회성 백그라운드)
             if (firebaseAuthUser.email?.endsWith(".alchan")) {
-              const migKey = `migChecked_${firebaseAuthUser.uid}`;
+              const migKey = `migV3_${firebaseAuthUser.uid}`;
               if (!localStorage.getItem(migKey)) {
                 try {
                   const migrateFn = httpsCallable(functions, "migrateUserDoc");
                   migrateFn().then((result) => {
-                    localStorage.setItem(migKey, "1");
+                    // ok일 때만 플래그 설정 (migrated면 다음에도 재검증)
+                    if (result.data.status === "ok") {
+                      localStorage.setItem(migKey, "1");
+                    }
                     if (result.data.status === "migrated" && result.data.data) {
                       const fresh = {
                         id: firebaseAuthUser.uid,
