@@ -4493,6 +4493,97 @@ exports.repairStudentLogin = onCall(
   },
 );
 
+// ========================================================
+// 🔧 로그인 시 UID↔Firestore 불일치 자동 마이그레이션
+// AuthContext에서 users/{uid} 문서가 없을 때 호출
+// ========================================================
+exports.migrateUserDoc = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "인증이 필요합니다.");
+    }
+    const uid = request.auth.uid;
+    const email = request.auth.token.email;
+    if (!email) {
+      throw new HttpsError("failed-precondition", "이메일 정보가 없습니다.");
+    }
+
+    // 현재 UID로 문서가 이미 있으면 반환
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (userDoc.exists) {
+      return { status: "exists", data: userDoc.data() };
+    }
+
+    // 이메일로 고아 문서 검색
+    const snapshot = await db
+      .collection("users")
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return { status: "not_found" };
+    }
+
+    const oldDoc = snapshot.docs[0];
+    const oldUid = oldDoc.id;
+    const oldData = oldDoc.data();
+
+    logger.info(
+      `[migrateUserDoc] UID 불일치 감지: ${oldUid} → ${uid} (${email})`
+    );
+
+    // 데이터를 새 UID 문서로 복사
+    await db
+      .collection("users")
+      .doc(uid)
+      .set({ ...oldData, email });
+
+    // 서브컬렉션 이동
+    const subcollections = [
+      "inventory",
+      "portfolio",
+      "transactions",
+      "completedTasks",
+      "financials",
+      "products",
+      "loans",
+      "settings",
+      "badges",
+      "properties",
+      "activityLogs",
+    ];
+    let movedSubs = 0;
+    for (const sub of subcollections) {
+      const subSnap = await db
+        .collection("users")
+        .doc(oldUid)
+        .collection(sub)
+        .get();
+      for (const subDoc of subSnap.docs) {
+        await db
+          .collection("users")
+          .doc(uid)
+          .collection(sub)
+          .doc(subDoc.id)
+          .set(subDoc.data());
+        await subDoc.ref.delete();
+      }
+      movedSubs += subSnap.size;
+    }
+
+    // 기존 문서 삭제
+    await db.collection("users").doc(oldUid).delete();
+
+    logger.info(
+      `[migrateUserDoc] 마이그레이션 완료: ${oldUid} → ${uid}, 서브컬렉션 ${movedSubs}개 이동`
+    );
+
+    return { status: "migrated", data: oldData };
+  }
+);
+
 // 임시: 학생 UID 불일치 진단 및 수복
 exports.fixDuplicateUser = onRequest(
   { region: "asia-northeast3", invoker: "public" },

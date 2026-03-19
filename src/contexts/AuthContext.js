@@ -30,6 +30,7 @@ import {
   serverTimestamp,
 } from "../firebase";
 import { doc, setDoc, Timestamp, getDoc } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 import { logger } from "../utils/logger";
 export const AuthContext = createContext(null);
@@ -408,34 +409,59 @@ export const AuthProvider = ({ children }) => {
                 };
                 setCachedUserDoc(firebaseAuthUser.uid, docData);
               } else {
-                // 정말로 문서가 없는 경우에만 기본 학생 문서 생성
-                const displayName =
-                  firebaseAuthUser.displayName ||
-                  firebaseAuthUser.email?.split("@")[0] ||
-                  `User_${firebaseAuthUser.uid.substring(0, 5)}`;
+                // UID↔Firestore 불일치 자동 마이그레이션 시도
+                // (Auth 계정 재생성으로 UID가 변경된 경우)
+                let migrated = false;
+                if (firebaseAuthUser.email) {
+                  try {
+                    logger.log("[AuthContext] UID 불일치 감지, 마이그레이션 시도:", firebaseAuthUser.email);
+                    const migrateFn = httpsCallable(functions, "migrateUserDoc");
+                    const result = await migrateFn();
+                    if (result.data.status === "migrated" || result.data.status === "exists") {
+                      docData = {
+                        id: firebaseAuthUser.uid,
+                        uid: firebaseAuthUser.uid,
+                        ...result.data.data,
+                      };
+                      setCachedUserDoc(firebaseAuthUser.uid, docData);
+                      migrated = true;
+                      logger.log("[AuthContext] UID 마이그레이션 성공:", result.data.status);
+                    }
+                  } catch (migrateErr) {
+                    logger.error("[AuthContext] 마이그레이션 실패:", migrateErr);
+                  }
+                }
 
-                const newUserData = {
-                  name: displayName,
-                  nickname: displayName,
-                  email: firebaseAuthUser.email || "",
-                  classCode: "미지정",
-                  isAdmin: false,
-                  isSuperAdmin: false,
-                  cash: 0,
-                  coupons: 0,
-                  selectedJobIds: [],
-                  myContribution: 0,
-                  createdAt: serverTimestamp(),
-                  lastLoginAt: serverTimestamp(),
-                };
+                if (!migrated) {
+                  // 정말로 문서가 없는 경우에만 기본 학생 문서 생성
+                  const displayName =
+                    firebaseAuthUser.displayName ||
+                    firebaseAuthUser.email?.split("@")[0] ||
+                    `User_${firebaseAuthUser.uid.substring(0, 5)}`;
 
-                await addUserDocument(firebaseAuthUser.uid, newUserData);
-                docData = {
-                  id: firebaseAuthUser.uid,
-                  uid: firebaseAuthUser.uid,
-                  ...newUserData,
-                };
-                setCachedUserDoc(firebaseAuthUser.uid, docData);
+                  const newUserData = {
+                    name: displayName,
+                    nickname: displayName,
+                    email: firebaseAuthUser.email || "",
+                    classCode: "미지정",
+                    isAdmin: false,
+                    isSuperAdmin: false,
+                    cash: 0,
+                    coupons: 0,
+                    selectedJobIds: [],
+                    myContribution: 0,
+                    createdAt: serverTimestamp(),
+                    lastLoginAt: serverTimestamp(),
+                  };
+
+                  await addUserDocument(firebaseAuthUser.uid, newUserData);
+                  docData = {
+                    id: firebaseAuthUser.uid,
+                    uid: firebaseAuthUser.uid,
+                    ...newUserData,
+                  };
+                  setCachedUserDoc(firebaseAuthUser.uid, docData);
+                }
               }
             }
           }
