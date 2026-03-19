@@ -4345,6 +4345,40 @@ exports.repairStudentLogin = onCall(
       );
     }
 
+    // 학급코드가 실제로 존재하는지 검증 (잘못된 학급코드로 신규 계정 생성 방지)
+    const emailParts = email.split("@");
+    const emailClassCode = emailParts[1]
+      ? emailParts[1].replace(".alchan", "").toUpperCase()
+      : "";
+    if (emailClassCode) {
+      const classDoc = await db
+        .collection("classes")
+        .doc(emailClassCode)
+        .get();
+      if (!classDoc.exists) {
+        // 학급코드가 존재하지 않으면, 올바른 이메일을 찾아서 반환
+        const sid = emailParts[0].toLowerCase();
+        const usersSnap = await db
+          .collection("users")
+          .where("email", ">=", `${sid}@`)
+          .where("email", "<=", `${sid}@\uf8ff`)
+          .get();
+        const correctDoc = usersSnap.docs.find((d) =>
+          d.data().email?.endsWith(".alchan")
+        );
+        if (correctDoc) {
+          throw new HttpsError(
+            "failed-precondition",
+            `학급코드가 올바르지 않습니다. 올바른 학급코드로 다시 시도해주세요.`
+          );
+        }
+        throw new HttpsError(
+          "not-found",
+          "존재하지 않는 학급코드입니다. 학급코드를 확인해주세요."
+        );
+      }
+    }
+
     try {
       let userRecord;
       let action;
@@ -4652,9 +4686,11 @@ exports.resetPasswordHttp = onRequest(
 // ========================================================
 // 🔍 학생 이메일 조회 (학급코드 없이 로그인 시)
 // 비인증 상태에서 studentId로 .alchan 이메일을 찾아 반환
+// 1단계: Firestore users 컬렉션 이메일 범위 검색
+// 2단계: 실패 시 모든 학급코드로 Firebase Auth 직접 조회 (폴백)
 // ========================================================
 exports.resolveStudentEmail = onCall(
-  { region: "asia-northeast3" },
+  { region: "asia-northeast3", timeoutSeconds: 30 },
   async (request) => {
     const { studentId } = request.data;
     if (!studentId || typeof studentId !== "string") {
@@ -4665,6 +4701,7 @@ exports.resolveStudentEmail = onCall(
       throw new HttpsError("invalid-argument", "유효하지 않은 studentId입니다.");
     }
     try {
+      // 1단계: Firestore users 컬렉션에서 이메일 검색
       const snapshot = await admin
         .firestore()
         .collection("users")
@@ -4674,10 +4711,24 @@ exports.resolveStudentEmail = onCall(
       const studentDoc = snapshot.docs.find((d) =>
         d.data().email?.endsWith(".alchan")
       );
-      if (!studentDoc) {
-        return { email: null };
+      if (studentDoc) {
+        return { email: studentDoc.data().email };
       }
-      return { email: studentDoc.data().email };
+
+      // 2단계: Firestore에서 못 찾으면 모든 학급코드로 Firebase Auth 직접 검색
+      const classesSnap = await admin.firestore().collection("classes").get();
+      for (const classDoc of classesSnap.docs) {
+        const code = classDoc.id.toLowerCase();
+        const candidateEmail = `${sid}@${code}.alchan`;
+        try {
+          await admin.auth().getUserByEmail(candidateEmail);
+          return { email: candidateEmail };
+        } catch (_) {
+          // 해당 학급코드에 없음, 다음 시도
+        }
+      }
+
+      return { email: null };
     } catch (error) {
       logger.error("[resolveStudentEmail] 실패:", error);
       throw new HttpsError("internal", "학생 계정 조회에 실패했습니다.");
