@@ -194,6 +194,32 @@ const LearningBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boards, searchParams]);
 
+  // Comments (hooks must be before early returns)
+  const loadComments = useCallback(async (boardId, postId) => {
+    if (!classCode || !boardId || !postId) return;
+    try {
+      const ref = collection(db, "classes", classCode, "learningBoards", boardId, "posts", postId, "comments");
+      const q = query(ref, orderBy("timestamp", "asc"), limit(200));
+      const snapshot = await getDocs(q);
+      setComments(snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate().toISOString() : new Date().toISOString(),
+      })));
+    } catch (error) {
+      logger.error("Error loading comments:", error);
+      setComments([]);
+    }
+  }, [classCode]);
+
+  useEffect(() => {
+    if (selectedBoard && selectedPost) {
+      loadComments(selectedBoard.id, selectedPost.id);
+    } else {
+      setComments([]);
+    }
+  }, [selectedBoard, selectedPost, loadComments]);
+
   // Loading / guard screens
   if (authLoading) return <div className="lb-msg">사용자 정보 로딩 중...</div>;
   if (!currentUser) return <div className="lb-msg">게시판을 이용하려면 로그인이 필요합니다.</div>;
@@ -278,32 +304,6 @@ const LearningBoard = () => {
       alert(`게시글 수정 오류: ${error.message}`);
     }
   };
-
-  // Comments
-  const loadComments = useCallback(async (boardId, postId) => {
-    if (!classCode || !boardId || !postId) return;
-    try {
-      const ref = collection(db, "classes", classCode, "learningBoards", boardId, "posts", postId, "comments");
-      const q = query(ref, orderBy("timestamp", "asc"), limit(200));
-      const snapshot = await getDocs(q);
-      setComments(snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate().toISOString() : new Date().toISOString(),
-      })));
-    } catch (error) {
-      logger.error("Error loading comments:", error);
-      setComments([]);
-    }
-  }, [classCode]);
-
-  useEffect(() => {
-    if (selectedBoard && selectedPost) {
-      loadComments(selectedBoard.id, selectedPost.id);
-    } else {
-      setComments([]);
-    }
-  }, [selectedBoard, selectedPost, loadComments]);
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
