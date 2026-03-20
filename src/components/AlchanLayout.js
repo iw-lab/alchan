@@ -267,13 +267,13 @@ export default function AlchanLayout() {
       !userDoc?.isSuperAdmin &&
       !userDoc?.isTeacher
     ) {
-      const streakInfo = getStreakInfo(userDoc.uid);
-      if (streakInfo.canClaim) {
-        const timer = setTimeout(() => {
-          setShowDailyRewardPopup(true);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
+      let cancelled = false;
+      getStreakInfo(userDoc.uid).then((streakInfo) => {
+        if (!cancelled && streakInfo.canClaim) {
+          setTimeout(() => setShowDailyRewardPopup(true), 500);
+        }
+      });
+      return () => { cancelled = true; };
     }
   }, [
     userDoc?.uid,

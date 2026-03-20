@@ -456,15 +456,17 @@
 }
 
 .lb-coupon-quick {
-  padding: 0.3rem 0.7rem;
+  padding: 0.4rem 1rem;
+  min-width: 44px;
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.3);
   color: #a78bfa;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .lb-coupon-quick:hover {
@@ -482,14 +484,16 @@
 }
 
 .lb-coupon-give {
-  padding: 0.3rem 0.7rem;
+  padding: 0.4rem 1rem;
+  min-width: 44px;
   background: #6366f1;
   border: none;
   color: white;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .lb-coupon-give:disabled {

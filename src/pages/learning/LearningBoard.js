@@ -112,6 +112,7 @@ const LearningBoard = () => {
   const [editPost, setEditPost] = useState({ title: "", content: "" });
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -243,6 +244,7 @@ const LearningBoard = () => {
   // Post submit
   const handlePostSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!selectedBoard || !classCode || !currentUserId) return;
     if (selectedBoard.isHidden && !currentUserIsAdmin) {
       alert("숨겨진 게시판에는 글을 작성할 수 없습니다.");
@@ -252,6 +254,7 @@ const LearningBoard = () => {
       alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
+    setIsSubmitting(true);
     try {
       const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
       await addDoc(ref, {
@@ -272,6 +275,29 @@ const LearningBoard = () => {
     } catch (error) {
       logger.error("Error submitting post:", error);
       alert(`게시글 제출 오류: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Post delete (학생 본인글 + 관리자)
+  const handleDeletePost = async () => {
+    if (!selectedBoard || !selectedPost || !classCode) return;
+    if (!window.confirm("게시글을 삭제하시겠습니까?")) return;
+    try {
+      // 댓글도 함께 삭제
+      const commentsRef = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments");
+      const commentsSnapshot = await getDocs(commentsRef);
+      const batch = writeBatch(db);
+      commentsSnapshot.docs.forEach((d) => batch.delete(d.ref));
+      batch.delete(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id));
+      await batch.commit();
+      setSelectedPost(null);
+      refetchPosts();
+      alert("게시글이 삭제되었습니다.");
+    } catch (error) {
+      logger.error("Error deleting post:", error);
+      alert("게시글 삭제 오류.");
     }
   };
 
@@ -626,7 +652,10 @@ const LearningBoard = () => {
               <div className="lb-detail-header-row">
                 <h2 className="lb-detail-title">{selectedPost.title}</h2>
                 {(selectedPost.authorId === currentUserId || currentUserIsAdmin) && (
-                  <button className="lb-edit-post-btn" onClick={handleStartEditPost}>수정하기</button>
+                  <div style={{display:'flex',gap:'6px'}}>
+                    <button className="lb-edit-post-btn" onClick={handleStartEditPost}>수정</button>
+                    <button className="lb-edit-post-btn" style={{background:'#ef4444'}} onClick={handleDeletePost}>삭제</button>
+                  </div>
                 )}
               </div>
               <div className="lb-detail-meta">
@@ -648,7 +677,7 @@ const LearningBoard = () => {
                     disabled={
                       selectedPost.likedBy?.includes(currentUserId) ||
                       selectedPost.dislikedBy?.includes(currentUserId) ||
-                      selectedPost.authorId === currentUserId
+                      (!currentUserIsAdmin && selectedPost.authorId === currentUserId)
                     }
                   >
                     👍 좋아요 {selectedPost.likes || 0}
@@ -659,7 +688,7 @@ const LearningBoard = () => {
                     disabled={
                       selectedPost.likedBy?.includes(currentUserId) ||
                       selectedPost.dislikedBy?.includes(currentUserId) ||
-                      selectedPost.authorId === currentUserId
+                      (!currentUserIsAdmin && selectedPost.authorId === currentUserId)
                     }
                   >
                     👎 싫어요 {selectedPost.dislikes || 0}
@@ -778,7 +807,7 @@ const LearningBoard = () => {
               {selectedBoard?.isAnonymous && (
                 <p style={{color:'#60a5fa',fontSize:'0.9em',margin:'0 0 8px'}}>🔒 이 게시판은 익명 게시판입니다. 작성자가 표시되지 않습니다.</p>
               )}
-              <button type="submit" className="lb-submit">게시하기</button>
+              <button type="submit" className="lb-submit" disabled={isSubmitting}>{isSubmitting ? "등록 중..." : "게시하기"}</button>
             </form>
           </div>
         )}

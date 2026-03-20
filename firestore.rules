@@ -100,6 +100,12 @@ service cloud.firestore {
       // ========================================================
       // 📦 인벤토리 서브컬렉션 (users/{userId}/inventory/{itemId})
       // ========================================================
+      // 📅 메타 서브컬렉션 (출석 스트릭 등)
+      match /meta/{metaId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
       match /inventory/{itemId} {
         // 읽기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
         allow read: if isOwner(userId) || isAdmin() || (isSignedIn() && isSameClass(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
@@ -611,7 +617,7 @@ service cloud.firestore {
           allow read: if isSameClass(classCode) || isAdmin();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if isSignedIn() && isSameClass(classCode);
-          allow delete: if isAdmin();
+          allow delete: if isOwner(resource.data.authorId) || isAdmin();
 
           // 댓글 서브컬렉션
           match /comments/{commentId} {

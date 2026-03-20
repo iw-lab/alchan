@@ -1,11 +1,15 @@
-// src/components/DailyReward.js - 일일 접속 보상 컴포넌트 (고급 버전)
+// src/components/DailyReward.js - 일일 접속 보상 컴포넌트 (Firestore 동기화)
 import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { logger } from "../utils/logger";
 
 /**
  * 일일 접속 스트릭 보상 시스템
  * 1일차: 1만원부터 시작
  * 10일차: 10만원
  * 10일 이후: 계속 10만원 유지 (스트릭이 깨지지 않으면)
+ * Firestore에 저장하여 기기간 동기화
  */
 
 const STREAK_REWARDS = [
@@ -25,24 +29,40 @@ const STREAK_REWARDS = [
 const STREAK_BONUS_AFTER_10 = 100000;
 
 /**
- * 스트릭 정보를 로컬 스토리지에서 가져오거나 업데이트합니다.
+ * Firestore에서 스트릭 정보를 가져옵니다.
+ * localStorage 폴백으로 마이그레이션 지원
  */
-export function getStreakInfo(userId) {
-  const key = `dailyStreak_${userId}`;
+export async function getStreakInfo(userId) {
   const today = new Date().toDateString();
 
   try {
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const data = JSON.parse(saved);
+    // Firestore에서 먼저 읽기
+    const streakRef = doc(db, "users", userId, "meta", "dailyStreak");
+    const streakDoc = await getDoc(streakRef);
+
+    let data = null;
+
+    if (streakDoc.exists()) {
+      data = streakDoc.data();
+    } else {
+      // localStorage 마이그레이션: 기존 데이터가 있으면 Firestore로 이동
+      const localKey = `dailyStreak_${userId}`;
+      const saved = localStorage.getItem(localKey);
+      if (saved) {
+        data = JSON.parse(saved);
+        // Firestore에 저장
+        await setDoc(streakRef, data);
+        localStorage.removeItem(localKey);
+      }
+    }
+
+    if (data) {
       const lastLogin = new Date(data.lastLogin).toDateString();
       const yesterday = new Date(Date.now() - 86400000).toDateString();
 
       if (lastLogin === today) {
-        // 오늘 이미 접속했음
         return { ...data, isNewDay: false, canClaim: false };
       } else if (lastLogin === yesterday) {
-        // 어제 접속해서 스트릭 유지
         return {
           streak: data.streak,
           lastLogin: data.lastLogin,
@@ -51,20 +71,19 @@ export function getStreakInfo(userId) {
           canClaim: true,
         };
       } else {
-        // 스트릭 끊김 - 리셋
         return {
           streak: 0,
           lastLogin: null,
           totalClaimed: data.totalClaimed || 0,
           isNewDay: true,
           canClaim: true,
-          streakBroken: true
+          streakBroken: true,
         };
       }
     }
-    // 첫 접속
     return { streak: 0, lastLogin: null, totalClaimed: 0, isNewDay: true, canClaim: true };
-  } catch {
+  } catch (error) {
+    logger.error("getStreakInfo error:", error);
     return { streak: 0, lastLogin: null, totalClaimed: 0, isNewDay: true, canClaim: true };
   }
 }
@@ -76,17 +95,14 @@ function getRewardForDay(day) {
   if (day <= 10) {
     return STREAK_REWARDS[day - 1]?.reward || 10000;
   }
-  // 10일 이후로는 계속 10만원
   return STREAK_BONUS_AFTER_10;
 }
 
 /**
- * 스트릭을 업데이트하고 보상을 반환합니다.
+ * 스트릭을 업데이트하고 보상을 반환합니다. (Firestore 저장)
  */
-export function claimDailyReward(userId) {
-  const key = `dailyStreak_${userId}`;
-  const today = new Date().toISOString();
-  const streakInfo = getStreakInfo(userId);
+export async function claimDailyReward(userId) {
+  const streakInfo = await getStreakInfo(userId);
 
   if (!streakInfo.canClaim) {
     return { success: false, message: "오늘 이미 보상을 받았습니다." };
@@ -98,15 +114,20 @@ export function claimDailyReward(userId) {
 
   const newData = {
     streak: newStreak,
-    lastLogin: today,
+    lastLogin: new Date().toISOString(),
     totalClaimed: (streakInfo.totalClaimed || 0) + reward,
   };
 
-  localStorage.setItem(key, JSON.stringify(newData));
+  try {
+    const streakRef = doc(db, "users", userId, "meta", "dailyStreak");
+    await setDoc(streakRef, newData);
+  } catch (error) {
+    logger.error("claimDailyReward save error:", error);
+  }
 
   return {
     success: true,
-    reward: reward,
+    reward,
     newStreak,
     icon,
     message: `${newStreak}일차 출석 보상: ${reward.toLocaleString()}원!`,
@@ -126,18 +147,18 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
 
   useEffect(() => {
     if (userId) {
-      const info = getStreakInfo(userId);
-      setStreakInfo(info);
-      setIsVisible(info.canClaim);
-      // PC에서 자동 팝업 표시
-      if (autoPopup && info.canClaim) {
-        setShowPopup(true);
-      }
+      getStreakInfo(userId).then((info) => {
+        setStreakInfo(info);
+        setIsVisible(info.canClaim);
+        if (autoPopup && info.canClaim) {
+          setShowPopup(true);
+        }
+      });
     }
   }, [userId, autoPopup]);
 
-  const handleClaim = () => {
-    const result = claimDailyReward(userId);
+  const handleClaim = async () => {
+    const result = await claimDailyReward(userId);
     setRewardResult(result);
     setClaimed(true);
 
@@ -145,7 +166,6 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
       onClaim(result.reward);
     }
 
-    // 5초 후 배너 숨기기
     setTimeout(() => {
       setIsVisible(false);
     }, 5000);
@@ -220,7 +240,6 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
     >
       {!claimed ? (
         <>
-          {/* 스트릭 끊김 알림 */}
           {streakInfo.streakBroken && (
             <div
               className="px-3 py-2 rounded-lg mb-3 text-sm"
@@ -267,7 +286,6 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
             </button>
           </div>
 
-          {/* 스트릭 진행도 */}
           <div className="mt-4">
             <div className="flex justify-between gap-1">
               {STREAK_REWARDS.map((day, idx) => (
@@ -331,8 +349,7 @@ export function StreakDisplay({ userId }) {
 
   useEffect(() => {
     if (userId) {
-      const info = getStreakInfo(userId);
-      setStreakInfo(info);
+      getStreakInfo(userId).then((info) => setStreakInfo(info));
     }
   }, [userId]);
 
