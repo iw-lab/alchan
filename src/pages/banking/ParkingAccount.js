@@ -1285,24 +1285,19 @@ const ParkingAccount = ({
     setParkingBalance((prev) => prev + amount);
 
     try {
-      // 먼저 사용자 현금 차감 (AuthContext의 deductCash 사용)
-      const cashDeducted = await deductCash(
-        amount,
-        `파킹통장 입금: ${formatCurrency(amount)}원`,
-      );
-      if (!cashDeducted) {
-        throw new Error("보유 현금 차감에 실패했습니다.");
-      }
-
+      // 🔥 사용자 현금 차감 + 파킹통장 증가를 하나의 트랜잭션으로 처리 (돈 증발 방지)
       await runTransaction(db, async (transaction) => {
-        const parkingRef = doc(
-          db,
-          "users",
-          userId,
-          "financials",
-          "parkingAccount",
-        );
+        const parkingRef = doc(db, "users", userId, "financials", "parkingAccount");
+        const userRef = doc(db, "users", userId);
+        const userSnapshot = await transaction.get(userRef);
         const parkingSnapshot = await transaction.get(parkingRef);
+
+        const currentUserCash = userSnapshot.data()?.cash ?? 0;
+        if (currentUserCash < amount) {
+          throw new Error("보유 현금이 부족합니다.");
+        }
+
+        transaction.update(userRef, { cash: increment(-amount), updatedAt: serverTimestamp() });
 
         if (parkingSnapshot.exists()) {
           transaction.update(parkingRef, { balance: increment(amount) });
@@ -1354,31 +1349,20 @@ const ParkingAccount = ({
     setParkingBalance((prev) => prev - amount);
 
     try {
+      // 🔥 파킹통장 차감 + 사용자 현금 증가를 하나의 트랜잭션으로 처리 (돈 증발 방지)
       await runTransaction(db, async (transaction) => {
-        const parkingRef = doc(
-          db,
-          "users",
-          userId,
-          "financials",
-          "parkingAccount",
-        );
+        const parkingRef = doc(db, "users", userId, "financials", "parkingAccount");
+        const userRef = doc(db, "users", userId);
         const parkingSnapshot = await transaction.get(parkingRef);
+        const userSnapshot = await transaction.get(userRef);
         const currentParkingBalance = parkingSnapshot.data()?.balance ?? 0;
 
         if (currentParkingBalance < amount)
           throw new Error("파킹통장 잔액이 부족합니다.");
 
         transaction.update(parkingRef, { balance: increment(-amount) });
+        transaction.update(userRef, { cash: increment(amount), updatedAt: serverTimestamp() });
       });
-
-      // 사용자 현금 추가 (AuthContext의 addCash 사용)
-      const cashAdded = await addCash(
-        amount,
-        `파킹통장 출금: ${formatCurrency(amount)}원`,
-      );
-      if (!cashAdded) {
-        throw new Error("보유 현금 추가에 실패했습니다.");
-      }
 
       displayMessage(
         `${formatCurrency(amount)}${currencyUnit} 출금 완료.`,
