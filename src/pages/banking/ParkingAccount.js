@@ -559,7 +559,7 @@ const ParkingAccountSection = ({
           +{formatCurrencyWithUnit(dailyInterest)}/일
         </div>
         <div className="text-sm mt-1.5 text-slate-400/90">
-          (일 1% 복리 기준)
+          (일 0.1% 복리 기준)
         </div>
       </div>
 
@@ -673,7 +673,7 @@ const ParkingAccount = ({
               ? differenceInDays(new Date(), lastInterestDate)
               : 1;
             if (daysToApply > 0) {
-              const dailyRate = parkingRateProduct.dailyRate || 0.0027; // 기본 1% 연이율을 일로 환산한 값과 유사하게
+              const dailyRate = parkingRateProduct.dailyRate || 0.1; // 기본 0.1% 일복리
               const { interest } = calculateCompoundInterest(
                 data.balance || 0,
                 dailyRate,
@@ -707,8 +707,8 @@ const ParkingAccount = ({
         const balance = finalParkingDoc.data().balance || 0;
         setParkingBalance(balance);
 
-        // 일일 이자 계산 (1% 기준)
-        const dailyRate = 1; // 1% 일일 이자율
+        // 일일 이자 계산 (0.1% 기준)
+        const dailyRate = 0.1; // 0.1% 일일 이자율
         const dailyInterest = calculateDailyInterest(balance, dailyRate);
         setParkingDailyInterest(dailyInterest);
       }

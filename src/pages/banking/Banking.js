@@ -374,7 +374,7 @@ const Banking = () => {
       name: `새 ${
         type === "deposits" ? "예금" : type === "installments" ? "적금" : "대출"
       } 상품`,
-      dailyRate: 0.01,
+      dailyRate: 0.1,
       termInDays: 365,
       minAmount: type === "loans" ? 0 : 100000,
       maxAmount: type === "loans" ? 1000000 : 0,
