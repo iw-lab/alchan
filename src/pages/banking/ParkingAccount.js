@@ -1451,6 +1451,61 @@ const ParkingAccount = ({
         {isAdmin && isAdmin() && (
           <>
             <button
+              onClick={async () => {
+                if (!window.confirm("파킹통장 입출금 기록을 검사하여 증발된 돈을 복구합니다. 진행하시겠습니까?")) return;
+                setIsProcessing(true);
+                displayMessage("복구 스캔 중...", "info");
+                try {
+                  const classCode = userDoc?.classCode;
+                  if (!classCode) throw new Error("학급코드 없음");
+                  const usersSnap = await getDocs(query(collection(db, "users"), where("classCode", "==", classCode)));
+                  let fixedCount = 0;
+                  let totalRecovered = 0;
+                  for (const uDoc of usersSnap.docs) {
+                    if (uDoc.data().isAdmin) continue;
+                    const uid = uDoc.id;
+                    // 트랜잭션 기록에서 파킹통장 관련 조회
+                    const txSnap = await getDocs(collection(db, "users", uid, "transactions"));
+                    let deposits = 0, withdraws = 0;
+                    txSnap.docs.forEach(d => {
+                      const desc = d.data().description || "";
+                      const amt = d.data().amount || 0;
+                      if (desc.includes("파킹통장 입금")) deposits += Math.abs(amt);
+                      if (desc.includes("파킹통장 출금")) withdraws += Math.abs(amt);
+                    });
+                    if (deposits === 0 && withdraws === 0) continue;
+                    // 현재 파킹 잔액
+                    const pDoc = await getDoc(doc(db, "users", uid, "financials", "parkingAccount"));
+                    const pBal = pDoc.exists() ? (pDoc.data().balance || 0) : 0;
+                    // 예상 파킹 잔액 (이자 제외)
+                    const expected = deposits - withdraws;
+                    // 차이 = 파킹에서 빠졌는데 cash에 안 들어간 금액
+                    // expected < pBal: 이자 때문에 정상 (파킹이 더 큼)
+                    // expected > pBal: 입금됐는데 파킹에 안 들어간 것 → cash 복구
+                    if (expected > pBal + 1000) { // 이자 오차 허용
+                      const lostAmount = expected - pBal;
+                      await updateDoc(doc(db, "users", uid), { cash: increment(lostAmount) });
+                      fixedCount++;
+                      totalRecovered += lostAmount;
+                      console.log(`[복구] ${uDoc.data().name}: +${lostAmount.toLocaleString()}원`);
+                    }
+                  }
+                  displayMessage(fixedCount > 0
+                    ? `복구 완료! ${fixedCount}명에게 총 ${totalRecovered.toLocaleString()}원 복구`
+                    : "증발된 돈이 감지되지 않았습니다.", fixedCount > 0 ? "success" : "info");
+                } catch (e) {
+                  displayMessage("복구 오류: " + e.message, "error");
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              className={mainTabClass(false)}
+              disabled={isProcessing}
+              style={{ fontSize: '0.8rem' }}
+            >
+              🔧 파킹 복구
+            </button>
+            <button
               onClick={() => onViewChange && onViewChange("admin")}
               className={mainTabClass(activeView === "admin")}
             >
