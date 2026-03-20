@@ -110,6 +110,8 @@ const LearningBoard = () => {
   const [editingBoardName, setEditingBoardName] = useState("");
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editPost, setEditPost] = useState({ title: "", content: "" });
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -274,6 +276,62 @@ const LearningBoard = () => {
     } catch (error) {
       logger.error("Error updating post:", error);
       alert(`게시글 수정 오류: ${error.message}`);
+    }
+  };
+
+  // Comments
+  const loadComments = useCallback(async (boardId, postId) => {
+    if (!classCode || !boardId || !postId) return;
+    try {
+      const ref = collection(db, "classes", classCode, "learningBoards", boardId, "posts", postId, "comments");
+      const q = query(ref, orderBy("timestamp", "asc"), limit(200));
+      const snapshot = await getDocs(q);
+      setComments(snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate().toISOString() : new Date().toISOString(),
+      })));
+    } catch (error) {
+      logger.error("Error loading comments:", error);
+      setComments([]);
+    }
+  }, [classCode]);
+
+  useEffect(() => {
+    if (selectedBoard && selectedPost) {
+      loadComments(selectedBoard.id, selectedPost.id);
+    } else {
+      setComments([]);
+    }
+  }, [selectedBoard, selectedPost, loadComments]);
+
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedBoard || !selectedPost || !classCode || !currentUserId || !newComment.trim()) return;
+    try {
+      const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments");
+      await addDoc(ref, {
+        content: newComment.trim(),
+        author: currentUser?.name || currentUser?.nickname || "익명",
+        authorId: currentUserId,
+        timestamp: serverTimestamp(),
+      });
+      setNewComment("");
+      loadComments(selectedBoard.id, selectedPost.id);
+    } catch (error) {
+      logger.error("Error adding comment:", error);
+      alert("댓글 작성 오류.");
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!selectedBoard || !selectedPost || !classCode) return;
+    if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
+    try {
+      await deleteDoc(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments", commentId));
+      loadComments(selectedBoard.id, selectedPost.id);
+    } catch (error) {
+      logger.error("Error deleting comment:", error);
     }
   };
 
@@ -649,6 +707,42 @@ const LearningBoard = () => {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Comments */}
+              <div className="lb-comments">
+                <h3 className="lb-comments-title">댓글 {comments.length > 0 && <span className="lb-comments-count">{comments.length}</span>}</h3>
+                <div className="lb-comments-list">
+                  {comments.length === 0 && <p className="lb-no-comments">아직 댓글이 없습니다.</p>}
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="lb-comment">
+                      <div className="lb-comment-header">
+                        <span className="lb-comment-author">
+                          {selectedBoard?.isAnonymous && !currentUserIsAdmin
+                            ? "익명"
+                            : selectedBoard?.isAnonymous && currentUserIsAdmin
+                              ? <span title={comment.author}>익명 <span style={{fontSize:'0.7em',opacity:0.5}}>👁</span></span>
+                              : (comment.author || "익명")}
+                        </span>
+                        <span className="lb-comment-date">{formatDate(comment.timestamp)}</span>
+                        {(comment.authorId === currentUserId || currentUserIsAdmin) && (
+                          <button className="lb-comment-delete" onClick={() => handleDeleteComment(comment.id)}>삭제</button>
+                        )}
+                      </div>
+                      <div className="lb-comment-content">{linkifyContent(comment.content)}</div>
+                    </div>
+                  ))}
+                </div>
+                <form onSubmit={handleCommentSubmit} className="lb-comment-form">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder={selectedBoard?.isAnonymous ? "익명으로 댓글 작성..." : "댓글을 입력하세요..."}
+                    required
+                  />
+                  <button type="submit" disabled={!newComment.trim()}>등록</button>
+                </form>
               </div>
             </div>
             )}
