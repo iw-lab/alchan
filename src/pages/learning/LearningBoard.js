@@ -146,17 +146,32 @@ const LearningBoard = () => {
     const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
     const q = query(ref, orderBy("timestamp", "desc"), limit(100));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      adminCouponGiven: typeof doc.data().adminCouponGiven === "boolean" ? doc.data().adminCouponGiven : false,
-      coupons: Number(doc.data().coupons) || 0,
-      likes: Number(doc.data().likes) || 0,
-      dislikes: Number(doc.data().dislikes) || 0,
-      likedBy: Array.isArray(doc.data().likedBy) ? doc.data().likedBy : [],
-      dislikedBy: Array.isArray(doc.data().dislikedBy) ? doc.data().dislikedBy : [],
-      timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate().toISOString() : new Date().toISOString(),
+    const posts = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      adminCouponGiven: typeof d.data().adminCouponGiven === "boolean" ? d.data().adminCouponGiven : false,
+      coupons: Number(d.data().coupons) || 0,
+      likes: Number(d.data().likes) || 0,
+      dislikes: Number(d.data().dislikes) || 0,
+      likedBy: Array.isArray(d.data().likedBy) ? d.data().likedBy : [],
+      dislikedBy: Array.isArray(d.data().dislikedBy) ? d.data().dislikedBy : [],
+      commentCount: d.data().commentCount,
+      timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate().toISOString() : new Date().toISOString(),
     }));
+    // commentCount가 없는 글은 실제 댓글 수 조회 후 Firestore에 저장 (1회성 보정)
+    const needsFix = posts.filter(p => typeof p.commentCount !== 'number');
+    if (needsFix.length > 0) {
+      await Promise.all(needsFix.map(async (post) => {
+        try {
+          const commentsRef = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", post.id, "comments");
+          const commentsSnap = await getDocs(commentsRef);
+          post.commentCount = commentsSnap.size;
+          // Firestore에 저장해서 다음부터는 조회 안 함
+          await updateDoc(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", post.id), { commentCount: commentsSnap.size });
+        } catch { post.commentCount = 0; }
+      }));
+    }
+    return posts;
   }, [selectedBoard, classCode]);
 
   const { data: rawPosts, loading: postsLoading, refetch: refetchPosts } = usePolling(postsQueryFn, {
