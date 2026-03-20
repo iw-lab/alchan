@@ -35,8 +35,21 @@ const STREAK_BONUS_AFTER_10 = 100000;
 export async function getStreakInfo(userId) {
   const today = new Date().toDateString();
 
+  const cacheKey = `streakCache_${userId}`;
+
   try {
-    // Firestore에서 먼저 읽기
+    // 1단계: localStorage 캐시 확인 (오늘 이미 보상받았으면 Firestore 안 읽음)
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const data = JSON.parse(cached);
+      const lastLogin = new Date(data.lastLogin).toDateString();
+      if (lastLogin === today) {
+        // 오늘 이미 처리됨 → Firestore 읽기 0회
+        return { ...data, isNewDay: false, canClaim: false };
+      }
+    }
+
+    // 2단계: 캐시 miss → Firestore에서 읽기 (하루 최대 1회)
     const streakRef = doc(db, "users", userId, "meta", "dailyStreak");
     const streakDoc = await getDoc(streakRef);
 
@@ -45,18 +58,20 @@ export async function getStreakInfo(userId) {
     if (streakDoc.exists()) {
       data = streakDoc.data();
     } else {
-      // localStorage 마이그레이션: 기존 데이터가 있으면 Firestore로 이동
-      const localKey = `dailyStreak_${userId}`;
-      const saved = localStorage.getItem(localKey);
+      // localStorage 마이그레이션 (구버전 호환)
+      const oldKey = `dailyStreak_${userId}`;
+      const saved = localStorage.getItem(oldKey);
       if (saved) {
         data = JSON.parse(saved);
-        // Firestore에 저장
         await setDoc(streakRef, data);
-        localStorage.removeItem(localKey);
+        localStorage.removeItem(oldKey);
       }
     }
 
     if (data) {
+      // 캐시 갱신
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+
       const lastLogin = new Date(data.lastLogin).toDateString();
       const yesterday = new Date(Date.now() - 86400000).toDateString();
 
@@ -121,6 +136,8 @@ export async function claimDailyReward(userId) {
   try {
     const streakRef = doc(db, "users", userId, "meta", "dailyStreak");
     await setDoc(streakRef, newData);
+    // localStorage 캐시도 갱신 → 이후 getStreakInfo에서 Firestore 안 읽음
+    localStorage.setItem(`streakCache_${userId}`, JSON.stringify(newData));
   } catch (error) {
     logger.error("claimDailyReward save error:", error);
   }

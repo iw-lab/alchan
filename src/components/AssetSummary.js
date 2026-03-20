@@ -26,7 +26,7 @@ export default function AssetSummary({
   const [totalAssets, setTotalAssets] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Firestore에서 데이터 로딩
+  // Firestore에서 데이터 로딩 (5분 TTL 캐시로 DB 사용량 최소화)
   useEffect(() => {
     if (!userId) {
       setParkingBalance(0);
@@ -37,6 +37,27 @@ export default function AssetSummary({
       setLoading(false);
       return;
     }
+
+    const CACHE_KEY = `assetCache_${userId}`;
+    const CACHE_TTL = 5 * 60 * 1000; // 5분
+
+    // 캐시 확인
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) {
+          // 캐시 유효 → Firestore 읽기 0회
+          setParkingBalance(data.parking || 0);
+          setLoans(data.loans || []);
+          setRealEstateAssets(data.realEstate || []);
+          setUserPortfolio(data.portfolio || { holdings: [] });
+          setAllStocks(data.stocks || []);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch { /* 캐시 오류 무시 */ }
 
     const loadData = async () => {
       try {
@@ -116,6 +137,14 @@ export default function AssetSummary({
         setRealEstateAssets(realEstate);
         setUserPortfolio(portfolio);
         setAllStocks(stocks);
+
+        // 캐시 저장 (5분 TTL)
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: { parking, loans: loanData, realEstate, portfolio, stocks },
+            ts: Date.now(),
+          }));
+        } catch { /* 저장 실패 무시 */ }
       } catch (error) {
         logger.error("AssetSummary 데이터 로딩 오류:", error);
       } finally {
