@@ -246,12 +246,22 @@
 .lb-col-author { width: 100px; }
 .lb-col-date { width: 160px; }
 .lb-col-likes { width: 80px; text-align: center; }
+.lb-col-comments { width: 70px; text-align: center; }
 
 .lb-cell-num { text-align: center; color: #64748b; font-size: 0.85rem; }
 .lb-cell-title { font-weight: 500; }
 .lb-cell-author { color: #94a3b8; font-size: 0.85rem; }
 .lb-cell-date { color: #64748b; font-size: 0.8rem; }
 .lb-cell-likes { text-align: center; }
+.lb-cell-comments { text-align: center; }
+
+.lb-comment-num {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
 
 .lb-post-title-text {
   color: #e2e8f0;

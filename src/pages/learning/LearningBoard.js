@@ -608,6 +608,7 @@ const LearningBoard = () => {
                       <th className="lb-col-author">작성자</th>
                       <th className="lb-col-date">날짜</th>
                       <th className="lb-col-likes">좋아요</th>
+                      <th className="lb-col-comments">댓글</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -633,6 +634,9 @@ const LearningBoard = () => {
                         <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
                         <td className="lb-cell-likes">
                           <span className="lb-like-num">👍 {post.likes || 0}</span>
+                        </td>
+                        <td className="lb-cell-comments">
+                          <span className="lb-comment-num">💬 {post.commentCount || 0}</span>
                         </td>
                       </tr>
                     ))}
