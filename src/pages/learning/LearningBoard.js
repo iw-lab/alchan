@@ -103,6 +103,7 @@ const LearningBoard = () => {
   const [newPost, setNewPost] = useState({ title: "", content: "" });
   const [customCouponAmount, setCustomCouponAmount] = useState(0);
   const [newBoardName, setNewBoardName] = useState("");
+  const [newBoardAnonymous, setNewBoardAnonymous] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showHiddenBoardsView, setShowHiddenBoardsView] = useState(false);
   const [editingBoardId, setEditingBoardId] = useState(null);
@@ -124,6 +125,7 @@ const LearningBoard = () => {
       id: doc.id,
       ...doc.data(),
       isHidden: typeof doc.data().isHidden === "boolean" ? doc.data().isHidden : false,
+      isAnonymous: typeof doc.data().isAnonymous === "boolean" ? doc.data().isAnonymous : false,
     }));
   }, [classCode]);
 
@@ -338,9 +340,10 @@ const LearningBoard = () => {
     if (!trimmedName) return alert("게시판 이름을 입력해주세요.");
     if (boards.some((b) => b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
     try {
-      await addDoc(boardsCollectionRef, { name: trimmedName, isHidden: false, createdAt: serverTimestamp(), classCode });
+      await addDoc(boardsCollectionRef, { name: trimmedName, isHidden: false, isAnonymous: newBoardAnonymous, createdAt: serverTimestamp(), classCode });
       refetchBoards();
       setNewBoardName("");
+      setNewBoardAnonymous(false);
     } catch (error) {
       logger.error("Error adding board:", error);
       alert("게시판 추가 오류.");
@@ -372,6 +375,16 @@ const LearningBoard = () => {
       refetchBoards();
       if (selectedBoard?.id === boardId) setSelectedBoard(null);
     } catch (error) { logger.error("Error hiding board:", error); }
+  };
+
+  const handleToggleAnonymous = async (boardId) => {
+    if (!currentUserIsAdmin || !classCode) return;
+    const board = boards.find((b) => b.id === boardId);
+    if (!board) return;
+    try {
+      await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isAnonymous: !board.isAnonymous, updatedAt: serverTimestamp() });
+      refetchBoards();
+    } catch (error) { logger.error("Error toggling anonymous:", error); }
   };
 
   const handleRestoreBoard = async (boardId) => {
@@ -425,7 +438,7 @@ const LearningBoard = () => {
             className={`lb-tab ${selectedBoard?.id === board.id && !showHiddenBoardsView ? "active" : ""}`}
             onClick={() => { handleBoardSelect(board.id, false); setShowHiddenBoardsView(false); }}
           >
-            {board.name}
+            {board.isAnonymous ? "🔒 " : ""}{board.name}
           </button>
         ))}
         {currentUserIsAdmin && (
@@ -494,7 +507,13 @@ const LearningBoard = () => {
                           <span className="lb-post-title-text">{post.title}</span>
                           {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
                         </td>
-                        <td className="lb-cell-author">{post.author || "익명"}</td>
+                        <td className="lb-cell-author">
+                          {selectedBoard?.isAnonymous && !currentUserIsAdmin
+                            ? "익명"
+                            : selectedBoard?.isAnonymous && currentUserIsAdmin
+                              ? <span title={post.author}>익명 <span style={{fontSize:'0.7em',opacity:0.5}}>👁</span></span>
+                              : (post.author || "익명")}
+                        </td>
                         <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
                         <td className="lb-cell-likes">
                           <span className="lb-like-num">👍 {post.likes || 0}</span>
@@ -553,7 +572,11 @@ const LearningBoard = () => {
                 )}
               </div>
               <div className="lb-detail-meta">
-                <span>작성자: {selectedPost.author || "익명"}</span>
+                <span>작성자: {selectedBoard?.isAnonymous && !currentUserIsAdmin
+                  ? "익명"
+                  : selectedBoard?.isAnonymous && currentUserIsAdmin
+                    ? `${selectedPost.author || "익명"} (익명게시판)`
+                    : (selectedPost.author || "익명")}</span>
                 <span>{formatDate(selectedPost.timestamp)}</span>
               </div>
               <div className="lb-detail-content" style={{ whiteSpace: 'pre-wrap' }}>{linkifyContent(selectedPost.content)}</div>
@@ -658,6 +681,9 @@ const LearningBoard = () => {
                   rows="10"
                 />
               </div>
+              {selectedBoard?.isAnonymous && (
+                <p style={{color:'#60a5fa',fontSize:'0.9em',margin:'0 0 8px'}}>🔒 이 게시판은 익명 게시판입니다. 작성자가 표시되지 않습니다.</p>
+              )}
               <button type="submit" className="lb-submit">게시하기</button>
             </form>
           </div>
@@ -699,9 +725,16 @@ const LearningBoard = () => {
               {boards.sort((a, b) => a.name.localeCompare(b.name)).map((board) => (
                 <div key={board.id} className={`lb-manage-item ${board.isHidden ? "hidden" : "visible"}`}>
                   <span className="lb-manage-name">
-                    {board.name} ({board.isHidden ? "숨김" : "공개"})
+                    {board.name} ({board.isHidden ? "숨김" : "공개"}{board.isAnonymous ? ", 익명" : ""})
                   </span>
                   <div className="lb-manage-btns">
+                    <button
+                      className={board.isAnonymous ? "lb-btn-restore" : "lb-btn-hide"}
+                      onClick={() => handleToggleAnonymous(board.id)}
+                      title={board.isAnonymous ? "익명 해제" : "익명 설정"}
+                    >
+                      {board.isAnonymous ? "익명 해제" : "익명"}
+                    </button>
                     {board.isHidden ? (
                       <button className="lb-btn-restore" onClick={() => handleRestoreBoard(board.id)}>공개로</button>
                     ) : (
@@ -732,6 +765,10 @@ const LearningBoard = () => {
                 placeholder="새 게시판 이름"
                 required
               />
+              <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'0.85em',cursor:'pointer'}}>
+                <input type="checkbox" checked={newBoardAnonymous} onChange={(e) => setNewBoardAnonymous(e.target.checked)} />
+                익명 게시판
+              </label>
               <button type="submit">추가</button>
             </form>
           </div>
