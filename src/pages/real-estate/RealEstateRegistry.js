@@ -1225,43 +1225,15 @@ const RealEstateRegistry = () => {
               }
 
               // ===== 2단계: 모든 쓰기 작업 수행 =====
-              // 돈이 부족한 경우: 있는 돈만 모두 지불하고 미납 처리
-              if (tenantData.cash < rentAmount) {
-                const amountPaid = tenantData.cash; // 실제 지불할 금액
+              // 강제 징수: 마이너스 허용 (잔액 부족해도 전액 징수)
+              const isNegative = tenantData.cash < rentAmount;
 
-                // 세입자 돈 0으로 업데이트
-                transaction.update(tenantDocRef, {
-                  cash: 0,
-                  updatedAt: now,
-                });
-
-                // 집주인에게 지불 (0원 이상일 때)
-                if (amountPaid > 0 && ownerSnap && ownerSnap.exists()) {
-                  transaction.update(ownerSnap.ref, {
-                    cash: increment(amountPaid),
-                    updatedAt: now,
-                  });
-                }
-
-                // 부동산 납부일 갱신
-                transaction.update(propDoc.ref, {
-                  lastRentPayment: now,
-                  updatedAt: now,
-                });
-
-                // 미납으로 결과 반환
-                return {
-                  status: "unpaid",
-                  name: tenantData.name || `ID: ${property.tenantId}`,
-                };
-              }
-
-              // 돈이 충분한 경우: 정상 납부
               transaction.update(tenantDocRef, {
                 cash: increment(-rentAmount),
                 updatedAt: now,
               });
 
+              // 집주인에게 전액 지급
               if (ownerSnap && ownerSnap.exists()) {
                 transaction.update(ownerSnap.ref, {
                   cash: increment(rentAmount),
@@ -1274,6 +1246,12 @@ const RealEstateRegistry = () => {
                 updatedAt: now,
               });
 
+              if (isNegative) {
+                return {
+                  status: "unpaid",
+                  name: tenantData.name || `ID: ${property.tenantId}`,
+                };
+              }
               return { status: "success" };
             });
 
