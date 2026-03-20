@@ -90,24 +90,26 @@ export default function EconomicEventBanner() {
 
   return (
     <div
-      className={`relative flex items-start gap-3 px-4 py-3 ${
+      className={`relative flex items-start gap-3 px-4 py-3 rounded-xl mx-1 mb-2 ${
         isPositive
-          ? "bg-gradient-to-r from-emerald-900/80 to-cyan-900/80 border-b border-emerald-500/30"
-          : "bg-gradient-to-r from-red-900/80 to-orange-900/80 border-b border-red-500/30"
+          ? "bg-gradient-to-r from-emerald-900/60 to-teal-900/40 border border-emerald-500/20"
+          : "bg-gradient-to-r from-red-900/60 to-rose-900/40 border border-red-500/20"
       }`}
+      style={{ backdropFilter: 'blur(8px)' }}
     >
       {/* 애니메이션 배경 */}
+      {/* 배경 장식 (미세) */}
       <div
-        className={`absolute inset-0 opacity-10 pointer-events-none ${isPositive ? "bg-emerald-400" : "bg-red-400"}`}
+        className="absolute inset-0 opacity-5 pointer-events-none rounded-xl"
         style={{
           backgroundImage:
-            "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.05) 10px, rgba(255,255,255,0.05) 20px)",
+            "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 50%)",
         }}
       />
 
       {/* 아이콘 */}
       <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-base ${isPositive ? "bg-emerald-500/20" : "bg-red-500/20"}`}
+        className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isPositive ? "bg-emerald-500/20 shadow-emerald-500/10 shadow-lg" : "bg-red-500/20 shadow-red-500/10 shadow-lg"}`}
       >
         {event.emoji || "⚡"}
       </div>

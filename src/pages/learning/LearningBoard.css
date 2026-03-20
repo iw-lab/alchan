@@ -1,4 +1,4 @@
-/* Learning Board - Standard Forum Style */
+/* Learning Board - Modern Glass Style */
 
 .lb {
   width: 100%;
@@ -16,96 +16,103 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+  margin-bottom: 1.5rem;
+  padding: 1.2rem 1.5rem;
+  background: linear-gradient(135deg, rgba(20, 20, 50, 0.6), rgba(30, 30, 60, 0.4));
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
 }
 
 .lb-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #e2e8f0;
   margin: 0;
-  background: linear-gradient(135deg, #e2e8f0, #a5b4fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .lb-class-code {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  font-weight: 400;
+  color: #818cf8;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.15rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .lb-admin-toggle {
-  padding: 0.5rem 1rem;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  padding: 0.5rem 1.2rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.3);
   color: #a78bfa;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.85rem;
-  transition: all 0.2s;
+  font-size: 0.82rem;
+  transition: all 0.25s;
 }
 
 .lb-admin-toggle:hover {
-  background: rgba(139, 92, 246, 0.25);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.25));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
 /* Board Tabs */
 .lb-tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 1.5rem;
+  padding: 0.4rem;
+  background: rgba(15, 15, 35, 0.5);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .lb-tab {
-  padding: 0.6rem 1.2rem;
-  background: rgba(40, 40, 70, 0.8);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  color: #c7d2fe;
+  padding: 0.55rem 1.3rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
   border-radius: 10px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  transition: all 0.2s;
-  letter-spacing: 0.02em;
+  transition: all 0.25s;
+  letter-spacing: 0.01em;
 }
 
 .lb-tab:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #e0e7ff;
-  transform: translateY(-1px);
+  background: rgba(99, 102, 241, 0.1);
+  color: #c7d2fe;
 }
 
 .lb-tab.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(139, 92, 246, 0.3));
-  border-color: #818cf8;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.35);
 }
 
 .lb-tab-manage {
   color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.3);
 }
 
 .lb-tab-manage:hover {
   background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.5);
   color: #fbbf24;
 }
 
 .lb-tab-manage.active {
-  background: rgba(251, 191, 36, 0.15);
-  border-color: #fbbf24;
-  color: #fbbf24;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(251, 191, 36, 0.3);
 }
 
 .lb-tab-hidden {
@@ -130,14 +137,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 1.2rem;
+  padding: 0.2rem 0;
 }
 
 .lb-board-name {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: #e2e8f0;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lb-board-name::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 1.2em;
+  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  border-radius: 2px;
 }
 
 .lb-write-btn,
@@ -255,7 +275,10 @@
 
 .lb-like-num {
   color: #94a3b8;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 /* Post Detail */
@@ -269,18 +292,22 @@
 }
 
 .lb-back {
-  background: none;
-  border: none;
-  color: #94a3b8;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
   cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
-  transition: color 0.2s;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+  margin-bottom: 1.2rem;
+  border-radius: 10px;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .lb-back:hover {
-  color: #e2e8f0;
+  background: rgba(99, 102, 241, 0.15);
+  color: #e0e7ff;
+  transform: translateX(-2px);
 }
 
 .lb-detail-card {
