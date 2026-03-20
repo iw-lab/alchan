@@ -850,10 +850,28 @@ const RealEstateRegistry = () => {
       await setDoc(settingsRefInstance, newSettingsData, { merge: true });
       // 로컬 상태도 즉시 업데이트
       setSettings(prev => ({ ...prev, ...newSettingsData, updatedAt: new Date() }));
-      // 설정 저장 후 자동으로 부동산 초기화
-      if (window.confirm("설정이 저장되었습니다. 부동산을 새 설정으로 초기화하시겠습니까?\n(기존 소유권/입주 정보가 초기화됩니다)")) {
-        await handleInitializeProperties(true);
+
+      // 기존 부동산에 가격/월세 즉시 반영 (소유권/입주 유지)
+      const newRent = Math.round(newBasePrice * newRentPercentage / 100);
+      if (properties.length > 0) {
+        const batch = writeBatch(db);
+        properties.forEach(p => {
+          const ref = doc(db, "classes", classCode, "realEstateProperties", p.id);
+          batch.update(ref, { price: newBasePrice, rent: newRent, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+        // 로컬 상태도 반영
+        setProperties(prev => prev.map(p => ({ ...p, price: newBasePrice, rent: newRent })));
       }
+
+      // 부동산 개수가 변경된 경우에만 초기화 제안
+      if (newTotal !== properties.length) {
+        if (window.confirm(`부동산 개수가 ${properties.length}→${newTotal}개로 변경되었습니다.\n부동산을 초기화하시겠습니까? (소유권/입주 초기화)`)) {
+          await handleInitializeProperties(true);
+        }
+      }
+
+      alert("설정이 저장되고 기존 부동산에 반영되었습니다.");
       setShowAdminPanel(false);
     } catch (error) {
       logger.error("설정 저장 오류:", error);
