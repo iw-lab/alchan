@@ -1352,6 +1352,13 @@ const RealEstateRegistry = () => {
                 }
             }
 
+            const shortPrice = (v) => {
+              if (!v) return '';
+              if (v >= 100000000) return `${(v / 100000000).toFixed(v % 100000000 === 0 ? 0 : 1)}억`;
+              if (v >= 10000) return `${Math.round(v / 10000)}만`;
+              return v.toLocaleString();
+            };
+
             return (
               <div
                 key={propertyId}
@@ -1359,7 +1366,23 @@ const RealEstateRegistry = () => {
                 onClick={() => property && setShowQuickAction(property)}
                 title={title}
               >
-                {propertyId}
+                <span className="layout-cell-num">#{propertyId}</span>
+                {property ? (
+                  <>
+                    <span className="layout-cell-owner">
+                      {property.owner === "government" ? "정부" : (property.ownerName || "소유주")}
+                    </span>
+                    <span className="layout-cell-price">{shortPrice(property.price)}</span>
+                    {property.tenantId && (
+                      <span className="layout-cell-tenant">🏠 {property.tenantName || "세입자"}</span>
+                    )}
+                    {property.forSale && (
+                      <span className="layout-cell-tenant" style={{color:'#f87171'}}>판매중</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="layout-cell-owner" style={{opacity:0.3}}>빈 땅</span>
+                )}
               </div>
             );
           })}
