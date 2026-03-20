@@ -90,7 +90,7 @@ const LearningBoard = () => {
   const {
     userDoc: currentUser,
     isAdmin,
-    addCouponsToUser,
+    addCouponsToUserById: addCouponsToUser,
     loading: authLoading,
   } = useAuth();
 
@@ -342,8 +342,12 @@ const LearningBoard = () => {
         authorId: currentUserId,
         timestamp: serverTimestamp(),
       });
+      // 댓글 수 증가
+      const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
+      await updateDoc(postRef, { commentCount: increment(1) });
       setNewComment("");
       loadComments(selectedBoard.id, selectedPost.id);
+      refetchPosts();
     } catch (error) {
       logger.error("Error adding comment:", error);
       alert("댓글 작성 오류.");
@@ -355,7 +359,11 @@ const LearningBoard = () => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
     try {
       await deleteDoc(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments", commentId));
+      // 댓글 수 감소
+      const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
+      await updateDoc(postRef, { commentCount: increment(-1) });
       loadComments(selectedBoard.id, selectedPost.id);
+      refetchPosts();
     } catch (error) {
       logger.error("Error deleting comment:", error);
     }
@@ -589,13 +597,14 @@ const LearningBoard = () => {
                         <td className="lb-cell-num">{selectedBoardPosts.length - idx}</td>
                         <td className="lb-cell-title">
                           <span className="lb-post-title-text">{post.title}</span>
+                          {(post.commentCount || 0) > 0 && <span className="lb-comment-badge" title="댓글">[{post.commentCount}]</span>}
                           {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
                         </td>
                         <td className="lb-cell-author">
                           {selectedBoard?.isAnonymous && !currentUserIsAdmin
                             ? "익명"
                             : selectedBoard?.isAnonymous && currentUserIsAdmin
-                              ? <span title={post.author}>익명 <span style={{fontSize:'0.7em',opacity:0.5}}>👁</span></span>
+                              ? <span>익명 <span style={{fontSize:'0.7em',opacity:0.6,color:'#fbbf24'}}>({post.author})</span></span>
                               : (post.author || "익명")}
                         </td>
                         <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
@@ -750,7 +759,7 @@ const LearningBoard = () => {
                           {selectedBoard?.isAnonymous && !currentUserIsAdmin
                             ? "익명"
                             : selectedBoard?.isAnonymous && currentUserIsAdmin
-                              ? <span title={comment.author}>익명 <span style={{fontSize:'0.7em',opacity:0.5}}>👁</span></span>
+                              ? <span>익명 <span style={{fontSize:'0.75em',opacity:0.6,color:'#fbbf24'}}>({comment.author})</span></span>
                               : (comment.author || "익명")}
                         </span>
                         <span className="lb-comment-date">{formatDate(comment.timestamp)}</span>

@@ -239,6 +239,13 @@
   font-size: 0.8rem;
 }
 
+.lb-comment-badge {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
 .lb-like-num {
   color: #94a3b8;
   font-size: 0.85rem;
