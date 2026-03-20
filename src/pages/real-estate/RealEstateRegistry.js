@@ -1217,10 +1217,11 @@ const RealEstateRegistry = () => {
               const tenantData = tenantSnap.data();
               const rentAmount = property.rent;
 
-              // 집주인 문서 미리 읽기 (쓰기 전에 모든 읽기 완료)
+              // 집주인 문서 미리 읽기 (정부 소유 → 관리자에게 지급)
               let ownerSnap = null;
-              if (property.owner !== "government" && property.owner !== property.tenantId) {
-                const ownerDocRef = doc(db, "users", property.owner);
+              const actualOwner = property.owner === "government" ? currentUser?.id : property.owner;
+              if (actualOwner && actualOwner !== property.tenantId) {
+                const ownerDocRef = doc(db, "users", actualOwner);
                 ownerSnap = await transaction.get(ownerDocRef);
               }
 

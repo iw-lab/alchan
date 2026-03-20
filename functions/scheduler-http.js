@@ -1318,6 +1318,14 @@ async function collectWeeklyRentLogic() {
       let classCollected = 0;
       let classTenantsCount = 0;
 
+      // 학급 관리자(선생님) 찾기 - 정부 소유 부동산 월세 수령용
+      const adminSnap = await db.collection("users")
+        .where("classCode", "==", classCode)
+        .where("isAdmin", "==", true)
+        .limit(1)
+        .get();
+      const adminUid = adminSnap.empty ? null : adminSnap.docs[0].id;
+
       for (const propertyDoc of propertiesSnapshot.docs) {
         const property = propertyDoc.data();
 
@@ -1346,15 +1354,17 @@ async function collectWeeklyRentLogic() {
             const tenantData = tenantDoc.data();
             const rentAmount = property.rent;
 
-            // 집주인 정보 조회
+            // 집주인 정보 조회 (정부 소유 → 관리자에게 지급)
             let ownerRef = null;
-            if (property.owner && property.owner !== "government") {
-              ownerRef = db.collection("users").doc(property.owner);
+            const actualOwner = property.owner === "government" ? adminUid : property.owner;
+            if (actualOwner && actualOwner !== property.tenantId) {
+              ownerRef = db.collection("users").doc(actualOwner);
               const ownerDoc = await transaction.get(ownerRef);
               if (!ownerDoc.exists) {
                 logger.warn(
-                  `[월세 징수] 집주인 ${property.owner} 문서가 없습니다.`,
+                  `[월세 징수] 집주인/관리자 ${actualOwner} 문서가 없습니다.`,
                 );
+                ownerRef = null;
               }
             }
 
@@ -1367,8 +1377,8 @@ async function collectWeeklyRentLogic() {
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            // 집주인에게 월세 지급 (본인 소유 아닌 경우)
-            if (ownerRef && property.owner !== property.tenantId) {
+            // 집주인/관리자에게 월세 지급
+            if (ownerRef) {
               transaction.update(ownerRef, {
                 cash: admin.firestore.FieldValue.increment(rentAmount),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
