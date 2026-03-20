@@ -62,6 +62,7 @@ const RealEstateRegistry = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showQuickAction, setShowQuickAction] = useState(null);
   const [adminInputs, setAdminInputs] = useState({ ...DEFAULT_SETTINGS });
+  const [excludedFromAssign, setExcludedFromAssign] = useState(new Set());
 
   // 🔥 [제거] body 스크롤 조작 완전 제거 - CSS로만 처리
   // 모달 오버레이에 overflow-y: auto 설정으로 모달 내부 스크롤 허용
@@ -272,13 +273,13 @@ const RealEstateRegistry = () => {
     }
   }, [classCode, allClassMembers]);
 
-  const handleInitializeProperties = async () => {
+  const handleInitializeProperties = async (skipConfirm = false) => {
     if (!classCode || !currentUser || !isAdmin()) {
       alert("초기화 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     if (
-      !window.confirm(
+      !skipConfirm && !window.confirm(
         `정말로 학급 [${classCode}]의 모든 부동산을 정부 소유 초기값으로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.`
       )
     )
@@ -849,9 +850,10 @@ const RealEstateRegistry = () => {
       await setDoc(settingsRefInstance, newSettingsData, { merge: true });
       // 로컬 상태도 즉시 업데이트
       setSettings(prev => ({ ...prev, ...newSettingsData, updatedAt: new Date() }));
-      alert(
-        "설정이 성공적으로 저장되었습니다. 변경된 총 부동산 개수 등은 '부동산 초기화'를 통해 반영해야 할 수 있습니다."
-      );
+      // 설정 저장 후 자동으로 부동산 초기화
+      if (window.confirm("설정이 저장되었습니다. 부동산을 새 설정으로 초기화하시겠습니까?\n(기존 소유권/입주 정보가 초기화됩니다)")) {
+        await handleInitializeProperties(true);
+      }
       setShowAdminPanel(false);
     } catch (error) {
       logger.error("설정 저장 오류:", error);
@@ -980,7 +982,7 @@ const RealEstateRegistry = () => {
 
     const tenantIds = new Set(properties.map((p) => p.tenantId).filter(Boolean));
     const nonTenantsList = allUsersData.filter(
-      (user) => !tenantIds.has(user.id) && !user.isAdmin
+      (user) => !tenantIds.has(user.id) && !user.isAdmin && !excludedFromAssign.has(user.id)
     );
 
     if (nonTenantsList.length === 0) {
@@ -1970,26 +1972,33 @@ const RealEstateRegistry = () => {
             </div>
             <div className="panel-content">
               <div className="form-group">
-                <label>활성화할 부동산 개수 (변경 후 '부동산 초기화' 필요)</label>
+                <label>활성화할 부동산 개수</label>
                 <input type="number" min="1" max="100" value={adminInputs.totalProperties} onChange={(e) => setAdminInputs(prev => ({ ...prev, totalProperties: e.target.value }))} />
               </div>
-              <div className="form-group">
-                <label>배치도 한 줄당 칸 수</label>
-                <select value={adminInputs.layoutColumns} onChange={(e) => setAdminInputs(prev => ({ ...prev, layoutColumns: e.target.value }))}>
-                  {[4, 5, 6, 7, 8, 10].map(n => <option key={n} value={n.toString()}>{n}칸</option>)}
-                </select>
+              <div style={{display:'flex',gap:'12px'}}>
+                <div className="form-group" style={{flex:1}}>
+                  <label>한 줄당 칸 수</label>
+                  <select value={adminInputs.layoutColumns} onChange={(e) => setAdminInputs(prev => ({ ...prev, layoutColumns: e.target.value }))}>
+                    {[3, 4, 5, 6, 7, 8, 10].map(n => <option key={n} value={n.toString()}>{n}칸</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{flex:1}}>
+                  <label>줄 수 (자동 계산: {Math.ceil(parseInt(adminInputs.totalProperties || 0) / parseInt(adminInputs.layoutColumns || 4))}줄)</label>
+                  <input type="text" disabled value={`${Math.ceil(parseInt(adminInputs.totalProperties || 0) / parseInt(adminInputs.layoutColumns || 4))}줄 × ${adminInputs.layoutColumns}칸`} style={{opacity:0.6}} />
+                </div>
               </div>
               <div className="form-group">
-                <label>기본 부동산 가격 (원) (변경 후 '부동산 초기화' 필요)</label>
+                <label>기본 부동산 가격 (원)</label>
                 <input type="number" min="1000000" step="1000000" value={adminInputs.basePrice} onChange={(e) => setAdminInputs(prev => ({ ...prev, basePrice: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label>월세 비율 (%) (변경 후 '부동산 초기화' 필요)</label>
+                <label>월세 비율 (%)</label>
                 <input type="number" min="0" max="20" step="0.1" value={adminInputs.rentPercentage} onChange={(e) => setAdminInputs(prev => ({ ...prev, rentPercentage: e.target.value }))} />
               </div>
+              <p style={{fontSize:'0.8rem',color:'#818cf8',margin:'0 0 8px'}}>💡 설정 저장 시 부동산 초기화 여부를 묻습니다.</p>
               <div className="non-tenant-list">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h4 style={{ margin: 0 }}>⚠️ 미입주 학생 ({nonTenants.length}명)</h4>
+                  <h4 style={{ margin: 0 }}>⚠️ 미입주 학생 ({nonTenants.length}명){excludedFromAssign.size > 0 && <span style={{color:'#f59e0b',fontSize:'0.85em'}}> / 제외 {excludedFromAssign.size}명</span>}</h4>
                   {nonTenants.length > 0 && (
                     <button
                       onClick={handleAdminAssignAllSeats}
@@ -2010,7 +2019,7 @@ const RealEstateRegistry = () => {
                       onMouseOver={(e) => !operationLoading && (e.target.style.backgroundColor = '#059669')}
                       onMouseOut={(e) => !operationLoading && (e.target.style.backgroundColor = '#10b981')}
                     >
-                      🏘️ 모두 자동 배정
+                      🏘️ {excludedFromAssign.size > 0 ? `선택된 ${nonTenants.length - excludedFromAssign.size}명 배정` : '모두 자동 배정'}
                     </button>
                   )}
                 </div>
@@ -2019,16 +2028,28 @@ const RealEstateRegistry = () => {
                     {nonTenants.map(user => (
                       <li key={user.id} style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
+                        gap: '10px',
                         padding: '8px 12px',
                         marginBottom: '6px',
-                        backgroundColor: 'rgba(30, 30, 50, 0.6)',
+                        backgroundColor: excludedFromAssign.has(user.id) ? 'rgba(30, 30, 50, 0.3)' : 'rgba(30, 30, 50, 0.6)',
                         borderRadius: '6px',
                         border: '1px solid rgba(0, 255, 242, 0.1)',
-                        color: '#e8e8ff'
+                        color: '#e8e8ff',
+                        opacity: excludedFromAssign.has(user.id) ? 0.5 : 1,
                       }}>
-                        <span style={{ fontWeight: '500', color: '#e8e8ff' }}>{user.name}</span>
+                        <input
+                          type="checkbox"
+                          checked={!excludedFromAssign.has(user.id)}
+                          onChange={() => setExcludedFromAssign(prev => {
+                            const next = new Set(prev);
+                            if (next.has(user.id)) next.delete(user.id);
+                            else next.add(user.id);
+                            return next;
+                          })}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
+                        />
+                        <span style={{ fontWeight: '500', color: '#e8e8ff', flex: 1 }}>{user.name}</span>
                         <button
                           onClick={() => handleAdminAssignSeat(user.id, user.name)}
                           disabled={operationLoading}
@@ -2047,7 +2068,7 @@ const RealEstateRegistry = () => {
                           onMouseOver={(e) => !operationLoading && (e.target.style.backgroundColor = '#2563eb')}
                           onMouseOut={(e) => !operationLoading && (e.target.style.backgroundColor = '#3b82f6')}
                         >
-                          🏠 자리 배정
+                          🏠 배정
                         </button>
                       </li>
                     ))}
