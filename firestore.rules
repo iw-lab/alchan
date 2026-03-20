@@ -612,6 +612,13 @@ service cloud.firestore {
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if isSignedIn() && isSameClass(classCode);
           allow delete: if isAdmin();
+
+          // 댓글 서브컬렉션
+          match /comments/{commentId} {
+            allow read: if isSameClass(classCode) || isAdmin();
+            allow create: if isSignedIn() && isSameClass(classCode);
+            allow delete: if isOwner(resource.data.authorId) || isAdmin();
+          }
         }
       }
 
