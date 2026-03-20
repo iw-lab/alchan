@@ -170,7 +170,7 @@ const LearningBoard = () => {
 
   const currentUserIsAdmin = useMemo(() => isAdmin && isAdmin(), [isAdmin]);
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Auto-select board: URL param > first visible board
   useEffect(() => {
@@ -220,6 +220,20 @@ const LearningBoard = () => {
       setComments([]);
     }
   }, [selectedBoard, selectedPost, loadComments]);
+
+  // URL 파라미터로 글 상세 ↔ 목록 전환 (브라우저 뒤로가기 지원)
+  useEffect(() => {
+    const postIdFromUrl = searchParams.get('post');
+    if (postIdFromUrl && selectedBoardPosts.length > 0 && !selectedPost) {
+      const post = selectedBoardPosts.find(p => p.id === postIdFromUrl);
+      if (post) setSelectedPost(post);
+    }
+    if (!postIdFromUrl && selectedPost) {
+      setSelectedPost(null);
+      setIsEditingPost(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Loading / guard screens
   if (authLoading) return <div className="lb-msg">사용자 정보 로딩 중...</div>;
@@ -293,6 +307,7 @@ const LearningBoard = () => {
       batch.delete(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id));
       await batch.commit();
       setSelectedPost(null);
+      setSearchParams(prev => { prev.delete('post'); return prev; });
       refetchPosts();
       alert("게시글이 삭제되었습니다.");
     } catch (error) {
@@ -345,6 +360,14 @@ const LearningBoard = () => {
       // 댓글 수 증가
       const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
       await updateDoc(postRef, { commentCount: increment(1) });
+      // 댓글 쿠폰 지급 (하루 3개 제한)
+      const today = new Date().toDateString();
+      const couponKey = `commentCoupon_${currentUserId}_${today}`;
+      const usedCount = parseInt(localStorage.getItem(couponKey) || "0");
+      if (usedCount < 3 && addCouponsToUser) {
+        addCouponsToUser(currentUserId, 1);
+        localStorage.setItem(couponKey, String(usedCount + 1));
+      }
       setNewComment("");
       loadComments(selectedBoard.id, selectedPost.id);
       refetchPosts();
@@ -592,7 +615,7 @@ const LearningBoard = () => {
                       <tr
                         key={post.id}
                         className="lb-row"
-                        onClick={() => setSelectedPost(post)}
+                        onClick={() => { setSelectedPost(post); setSearchParams(prev => { prev.set('post', post.id); return prev; }); }}
                       >
                         <td className="lb-cell-num">{selectedBoardPosts.length - idx}</td>
                         <td className="lb-cell-title">
@@ -623,7 +646,7 @@ const LearningBoard = () => {
         {/* Post Detail */}
         {selectedBoard && selectedPost && !isWriting && !showHiddenBoardsView && (
           <div className="lb-detail">
-            <button className="lb-back" onClick={() => { setSelectedPost(null); setIsEditingPost(false); }}>← 목록으로</button>
+            <button className="lb-back" onClick={() => { setSelectedPost(null); setIsEditingPost(false); setSearchParams(prev => { prev.delete('post'); return prev; }); }}>← 목록으로</button>
 
             {/* Edit Form */}
             {isEditingPost ? (
