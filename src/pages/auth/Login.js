@@ -977,24 +977,7 @@ const Login = () => {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-slate-300">
-                      학급코드 <span className="text-slate-500 font-normal text-xs">(선택)</span>
-                    </label>
-                    <div className="relative">
-                      <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={classCode}
-                        onChange={(e) => setClassCode(e.target.value)}
-                        placeholder="선생님이 알려준 코드 (없으면 생략 가능)"
-                        autoComplete="off"
-                        className={darkInput}
-                        style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
+                  {/* 학급코드 입력란 제거 - 서버에서 자동 매칭 */}
                 </>
               ) : (
                 /* 선생님: 이메일 */
