@@ -859,9 +859,9 @@ const ParkingAccount = ({
           throw new Error("보유 현금이 부족합니다.");
         }
 
-        // 대출: 선생님(은행) 현금 확인
+        // 대출: 선생님(은행) 현금 부족 시 경고만 (마이너스 허용)
         if (type === "loans" && teacherCashInDb < amount) {
-          throw new Error("은행(선생님)에 대출 가능한 자금이 부족합니다.");
+          logger.log(`[은행] 대출 - 선생님 잔액 부족하지만 진행 (필요: ${amount}, 보유: ${teacherCashInDb})`);
         }
 
         const isSavingsType = type === "savings";
@@ -1043,11 +1043,9 @@ const ParkingAccount = ({
           transaction.update(teacherRef, { cash: increment(total) });
           logger.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
         } else {
-          // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자)
+          // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자, 마이너스 허용)
           if (teacherCashInDb < total) {
-            throw new Error(
-              `은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(total)}${currencyUnit})`,
-            );
+            logger.log(`[은행] 만기 수령 - 선생님 잔액 부족하지만 진행 (필요: ${total}, 보유: ${teacherCashInDb})`);
           }
           transaction.update(userRef, { cash: increment(total) });
           transaction.update(teacherRef, { cash: increment(-total) });
@@ -1206,11 +1204,9 @@ const ParkingAccount = ({
           transaction.update(teacherRef, { cash: increment(balance) });
           logger.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
         } else {
-          // 예금/적금 중도 해지: 선생님 → 학생 (납입 원금만, 이자 없음)
+          // 예금/적금 중도 해지: 선생님 → 학생 (납입 원금만, 이자 없음, 마이너스 허용)
           if (teacherCashInDb < refundAmount) {
-            throw new Error(
-              `은행(선생님)에 지급할 자금이 부족합니다. (필요: ${formatCurrency(refundAmount)}${currencyUnit})`,
-            );
+            logger.log(`[은행] 중도 해지 - 선생님 잔액 부족하지만 진행 (필요: ${refundAmount}, 보유: ${teacherCashInDb})`);
           }
           transaction.update(userRef, { cash: increment(refundAmount) });
           transaction.update(teacherRef, { cash: increment(-refundAmount) });

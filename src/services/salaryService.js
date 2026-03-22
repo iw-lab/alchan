@@ -145,15 +145,9 @@ export const payWeeklySalaries = async (classCode) => {
   // 관리자가 지출하는 금액 = 순 지급액 (세금 제외한 금액)
   // 세금은 관리자(국고)에 이미 남아있으므로 순 지급액만 차감
   if (totalPaid > 0) {
-    // 관리자 잔액 부족 체크
+    // 관리자 잔액 부족 시 경고만 (마이너스 허용)
     if (adminCash < totalPaid) {
-      logger.log(`[${classCode}] 관리자 잔액 부족 (필요: ${totalPaid}, 보유: ${adminCash})`);
-      return {
-        success: false,
-        message: `관리자 잔액이 부족합니다. (필요: ${totalPaid.toLocaleString()}원, 보유: ${adminCash.toLocaleString()}원)`,
-        paidCount: 0,
-        totalPaid: 0
-      };
+      logger.log(`[${classCode}] 관리자 잔액 부족하지만 진행 (필요: ${totalPaid}, 보유: ${adminCash})`);
     }
 
     batch.update(adminRef, {
