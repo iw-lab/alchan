@@ -16,7 +16,7 @@ import {
   where,
   limit,
 } from "../../firebase";
-import { format, isToday, differenceInDays } from "date-fns";
+import { format, isToday, differenceInCalendarDays, startOfDay } from "date-fns";
 import {
   PiggyBank,
   Landmark,
@@ -159,9 +159,9 @@ const ICON_MAP = {
 };
 
 const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
-  const isMatured = product.maturityDate && new Date() >= product.maturityDate;
+  const isMatured = product.maturityDate && startOfDay(new Date()) >= startOfDay(new Date(product.maturityDate));
   const daysRemaining = product.maturityDate
-    ? Math.max(0, differenceInDays(product.maturityDate, new Date()))
+    ? Math.max(0, differenceInCalendarDays(new Date(product.maturityDate), new Date()))
     : 0;
   const isSavings = product.type === "savings";
 
@@ -670,7 +670,7 @@ const ParkingAccount = ({
 
           if (!lastInterestDate || !isToday(lastInterestDate)) {
             const daysToApply = lastInterestDate
-              ? differenceInDays(new Date(), lastInterestDate)
+              ? differenceInCalendarDays(new Date(), lastInterestDate)
               : 1;
             if (daysToApply > 0) {
               const dailyRate = parkingRateProduct.dailyRate || 0.1; // 기본 0.1% 일복리
