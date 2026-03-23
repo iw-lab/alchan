@@ -896,9 +896,27 @@ exports.donateCoupon = onCall(
     }
     const userRef = db.collection("users").doc(uid);
     const goalRef = db.collection("goals").doc(`${classCode}_goal`);
+    const mainSettingsRef = db.collection("settings").doc("mainSettings");
+
+    // 관리자(선생님) 계정 조회
+    let adminRef = null;
+    const adminSnap = await db
+      .collection("users")
+      .where("classCode", "==", classCode)
+      .where("isAdmin", "==", true)
+      .limit(1)
+      .get();
+    if (!adminSnap.empty) {
+      adminRef = adminSnap.docs[0].ref;
+    }
+
     try {
       await db.runTransaction(async (transaction) => {
-        const [userDoc, goalDoc] = await transaction.getAll(userRef, goalRef);
+        const refs = [userRef, goalRef, mainSettingsRef];
+        if (adminRef) refs.push(adminRef);
+        const docs = await transaction.getAll(...refs);
+        const [userDoc, goalDoc, settingsDoc] = docs;
+
         if (!userDoc.exists) {
           throw new Error("사용자 정보가 없습니다.");
         }
@@ -906,6 +924,11 @@ exports.donateCoupon = onCall(
         if (currentCoupons < amount) {
           throw new Error("보유한 쿠폰이 부족합니다.");
         }
+
+        // 쿠폰 가치 계산
+        const couponValue = settingsDoc.exists ? settingsDoc.data().couponValue : 1000;
+        const cashToAdmin = amount * couponValue;
+
         transaction.set(
           userRef,
           {
@@ -915,6 +938,15 @@ exports.donateCoupon = onCall(
           },
           { merge: true },
         );
+
+        // 응모한 쿠폰 가치만큼 관리자 계정에 현금 지급 (당첨금 재원)
+        if (adminRef) {
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(cashToAdmin),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          logger.info(`[donateCoupon] 관리자에게 ${cashToAdmin}원 지급 (쿠폰 ${amount}개 × ${couponValue}원)`);
+        }
         const newDonation = {
           id: db.collection("goals").doc().id,
           userId: uid,
