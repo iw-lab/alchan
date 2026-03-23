@@ -413,9 +413,14 @@ const AdminPanel = React.memo(
       setIsDeduplicating(true);
       try {
         const result = await onDeduplicateStocks();
-        alert(`중복 정리 완료!\n삭제: ${result.deleted}개 / 유지: ${result.kept}개`);
+        if (result.deleted === 0) {
+          alert(`중복된 주식이 없습니다. (총 ${result.kept}개 종목)`);
+        } else {
+          alert(`중복 정리 완료!\n삭제: ${result.deleted}개 / 유지: ${result.kept}개`);
+        }
       } catch (error) {
-        alert("중복 정리 실패: " + error.message);
+        console.error("중복 정리 에러 상세:", error);
+        alert("중복 정리 실패: " + (error.code || "") + " " + error.message);
       } finally {
         setIsDeduplicating(false);
       }
@@ -1737,6 +1742,8 @@ const StockExchange = () => {
       logger.log("[deduplicateStocks] 중복 주식 정리 시작");
 
       const allSnap = await getDocs(collection(db, "CentralStocks"));
+      logger.log(`[deduplicateStocks] 전체 문서 수: ${allSnap.size}`);
+
       const symbolMap = {};
 
       allSnap.forEach((docSnap) => {
@@ -1746,10 +1753,14 @@ const StockExchange = () => {
         symbolMap[key].push({ id: docSnap.id, data });
       });
 
-      const batch = writeBatch(db);
+      // 중복 현황 로그
+      const duplicates = Object.entries(symbolMap).filter(([, docs]) => docs.length > 1);
+      logger.log(`[deduplicateStocks] 중복 종목: ${duplicates.length}개`, duplicates.map(([k, d]) => `${k}(${d.length}개)`));
+
       let deleted = 0;
       let kept = 0;
 
+      // writeBatch 대신 개별 deleteDoc 사용 (권한 문제 방지)
       for (const [key, docs] of Object.entries(symbolMap)) {
         if (docs.length <= 1) {
           kept++;
@@ -1759,17 +1770,24 @@ const StockExchange = () => {
         docs.sort((a, b) => (b.data.holderCount || 0) - (a.data.holderCount || 0));
         kept++;
         for (let i = 1; i < docs.length; i++) {
-          batch.delete(doc(db, "CentralStocks", docs[i].id));
-          deleted++;
-          logger.log(`[deduplicateStocks] 중복 삭제: ${key} (docId: ${docs[i].id})`);
+          try {
+            await deleteDoc(doc(db, "CentralStocks", docs[i].id));
+            deleted++;
+            logger.log(`[deduplicateStocks] 삭제 성공: ${key} (docId: ${docs[i].id})`);
+          } catch (delErr) {
+            logger.error(`[deduplicateStocks] 삭제 실패: ${key} (docId: ${docs[i].id})`, delErr);
+          }
         }
       }
 
-      if (deleted > 0) {
-        await batch.commit();
-      }
-
       logger.log(`[deduplicateStocks] 정리 완료: 삭제 ${deleted}개, 유지 ${kept}개`);
+
+      // 스냅샷 업데이트
+      try {
+        await callables.updateStocksSnapshot({});
+      } catch (e) {
+        logger.log("[deduplicateStocks] 스냅샷 업데이트 스킵:", e.message);
+      }
 
       const batchKey = globalCache.generateKey("BATCH", { classCode, userId: user.uid });
       globalCache.invalidate(batchKey);
@@ -1781,7 +1799,7 @@ const StockExchange = () => {
       logger.error("[deduplicateStocks] 정리 실패:", error);
       throw error;
     }
-  }, [classCode, user, fetchAllData]);
+  }, [callables, classCode, user, fetchAllData]);
 
   // === stocks 데이터를 Map으로 변환하여 조회 성능 향상 ===
   const stocksMap = useMemo(() => {
