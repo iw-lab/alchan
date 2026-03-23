@@ -408,12 +408,12 @@ const AdminPanel = React.memo(
     };
 
     const handleDeduplicateStocks = async () => {
-      if (!window.confirm("중복된 주식을 정리하시겠습니까?\n(같은 심볼의 주식이 여러 개 있으면 하나만 남기고 삭제합니다)")) return;
+      if (!window.confirm("중복된 주식을 정리하시겠습니까?\n(같은 종목이 여러 개 있으면 하나만 남기고 삭제합니다)")) return;
       if (isDeduplicating) return;
       setIsDeduplicating(true);
       try {
         const result = await onDeduplicateStocks();
-        alert(`중복 정리 완료!\n삭제: ${result.deleted || 0}개\n유지: ${result.kept || 0}개`);
+        alert(`중복 정리 완료!\n삭제: ${result.deleted}개 / 유지: ${result.kept}개`);
       } catch (error) {
         alert("중복 정리 실패: " + error.message);
       } finally {
@@ -793,7 +793,6 @@ const StockExchange = () => {
         functions,
         "deleteSimulationStocks",
       ),
-      deduplicateStocks: httpsCallable(functions, "deduplicateStocksFunction"),
     }),
     [functions],
   );
@@ -1728,29 +1727,61 @@ const StockExchange = () => {
     }
   }, [callables, classCode, user, fetchAllData]);
 
-  // 🔥 중복 주식 정리 (관리자 전용)
-  const deduplicateStocks = useCallback(async () => {
+  // 🔥 중복 주식 정리 (관리자 전용 - Firestore 직접 접근)
+  const deduplicateStocksAction = useCallback(async () => {
     if (!classCode || !user) {
-      throw new Error("Firebase Functions가 초기화되지 않았습니다.");
+      throw new Error("로그인이 필요합니다.");
     }
 
     try {
       logger.log("[deduplicateStocks] 중복 주식 정리 시작");
-      const result = await callables.deduplicateStocks({});
 
-      logger.log("[deduplicateStocks] 정리 성공:", result.data);
+      const allSnap = await getDocs(collection(db, "CentralStocks"));
+      const symbolMap = {};
+
+      allSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const key = data.realStockSymbol || data.name;
+        if (!symbolMap[key]) symbolMap[key] = [];
+        symbolMap[key].push({ id: docSnap.id, data });
+      });
+
+      const batch = writeBatch(db);
+      let deleted = 0;
+      let kept = 0;
+
+      for (const [key, docs] of Object.entries(symbolMap)) {
+        if (docs.length <= 1) {
+          kept++;
+          continue;
+        }
+        // 보유자 많은 것 우선 보존
+        docs.sort((a, b) => (b.data.holderCount || 0) - (a.data.holderCount || 0));
+        kept++;
+        for (let i = 1; i < docs.length; i++) {
+          batch.delete(doc(db, "CentralStocks", docs[i].id));
+          deleted++;
+          logger.log(`[deduplicateStocks] 중복 삭제: ${key} (docId: ${docs[i].id})`);
+        }
+      }
+
+      if (deleted > 0) {
+        await batch.commit();
+      }
+
+      logger.log(`[deduplicateStocks] 정리 완료: 삭제 ${deleted}개, 유지 ${kept}개`);
 
       const batchKey = globalCache.generateKey("BATCH", { classCode, userId: user.uid });
       globalCache.invalidate(batchKey);
       invalidateCache(`STOCKS_${classCode}`);
       await fetchAllData(true);
 
-      return result.data;
+      return { deleted, kept };
     } catch (error) {
       logger.error("[deduplicateStocks] 정리 실패:", error);
       throw error;
     }
-  }, [callables, classCode, user, fetchAllData]);
+  }, [classCode, user, fetchAllData]);
 
   // === stocks 데이터를 Map으로 변환하여 조회 성능 향상 ===
   const stocksMap = useMemo(() => {
@@ -1876,7 +1907,7 @@ const StockExchange = () => {
         onUpdateRealStocks={updateRealStocks}
         onAddSingleRealStock={addSingleRealStock}
         onDeleteSimulationStocks={deleteSimulationStocks}
-        onDeduplicateStocks={deduplicateStocks}
+        onDeduplicateStocks={deduplicateStocksAction}
       />
     );
 

@@ -627,18 +627,20 @@ async function createRealStocks(stockConfigs) {
   return { created, skipped };
 }
 
-// 기본 실제 주식 설정 (샘플)
+// 기본 실제 주식 설정 (14개)
 const DEFAULT_REAL_STOCKS = [
-  // 한국 주식
+  // 한국 주식 (6개)
   { name: '삼성전자', sector: 'TECH', productType: 'stock' },
   { name: 'SK하이닉스', sector: 'TECH', productType: 'stock' },
   { name: 'NAVER', sector: 'TECH', productType: 'stock' },
   { name: '카카오', sector: 'TECH', productType: 'stock' },
   { name: '현대차', sector: 'INDUSTRIAL', productType: 'stock' },
   { name: 'KB금융', sector: 'FINANCE', productType: 'stock' },
-  // 미국 주식
+  // 미국 주식 (4개)
   { name: 'Apple', sector: 'TECH', productType: 'stock' },
   { name: 'Tesla', sector: 'INDUSTRIAL', productType: 'stock' },
+  { name: 'NVIDIA', sector: 'TECH', productType: 'stock' },
+  { name: 'Microsoft', sector: 'TECH', productType: 'stock' },
   // ETF
   { name: 'KODEX 200', sector: 'INDEX', productType: 'etf' },
   { name: 'SPY', sector: 'INDEX', productType: 'etf' },
