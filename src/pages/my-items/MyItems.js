@@ -901,7 +901,7 @@ const MyItems = () => {
                             <div className="item-info">
                               <h3 className="item-name">
                                 {itemData.itemDetails.name}
-                                {itemData.usedQuantity > 1 && (
+                                {itemData.usedQuantity >= 1 && (
                                   <span className="quantity-badge quantity-medium" style={{ marginLeft: "6px" }}>
                                     ×{itemData.usedQuantity}
                                   </span>

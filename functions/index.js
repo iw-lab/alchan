@@ -2167,12 +2167,13 @@ exports.purchaseStoreItem = onCall(
 
 exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid } = await checkAuthAndGetUserData(request);
-  const { itemId } = request.data;
+  const { itemId, quantityToUse = 1 } = request.data;
 
   if (!itemId) {
     throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
   }
 
+  const useQty = Math.max(1, Math.floor(quantityToUse));
   const userRef = db.collection("users").doc(uid);
   const userItemRef = userRef.collection("inventory").doc(itemId);
 
@@ -2187,21 +2188,21 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
       const itemData = userItemDoc.data();
       const currentQuantity = itemData.quantity || 0;
 
-      if (currentQuantity <= 0) {
-        throw new Error("아이템 수량이 부족합니다.");
+      if (currentQuantity < useQty) {
+        throw new Error(`아이템 수량이 부족합니다. (보유: ${currentQuantity}, 요청: ${useQty})`);
       }
 
-      // 아이템 효과 적용 (예: 현금 증가)
+      // 아이템 효과 적용 (예: 현금 증가) - 수량만큼 반복 적용
       if (itemData.effect && itemData.effect.type === "cash") {
-        const cashAmount = itemData.effect.value || 0;
+        const cashAmount = (itemData.effect.value || 0) * useQty;
         transaction.update(userRef, {
           cash: admin.firestore.FieldValue.increment(cashAmount),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
 
-      // 아이템 수량 감소
-      const newQuantity = currentQuantity - 1;
+      // 아이템 수량 감소 (요청한 수량만큼)
+      const newQuantity = currentQuantity - useQty;
       if (newQuantity > 0) {
         transaction.update(userItemRef, {
           quantity: newQuantity,
@@ -2217,7 +2218,7 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
       };
     });
 
-    logger.info(`[useUserItem] ${uid}님이 ${result.itemName} 사용`);
+    logger.info(`[useUserItem] ${uid}님이 ${result.itemName} ${useQty}개 사용`);
 
     return {
       success: true,
