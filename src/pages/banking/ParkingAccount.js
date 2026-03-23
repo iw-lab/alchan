@@ -460,9 +460,14 @@ const SubscriptionModal = ({
             {product.termInDays}일
           </div>
           {isSavings && (
-            <div className="text-[15px] text-violet-400 mt-2 font-semibold">
-              매일 자동으로 납입됩니다 (첫 납입은 즉시 처리)
-            </div>
+            <>
+              <div className="text-[15px] text-violet-400 mt-2 font-semibold">
+                매일 자동으로 납입됩니다 (첫 납입은 즉시 처리)
+              </div>
+              <div className="text-[13px] text-amber-400 mt-1">
+                ※ 일 납입금은 보유 현금 ÷ 기간일 이하만 가능
+              </div>
+            </>
           )}
         </div>
 
@@ -857,6 +862,16 @@ const ParkingAccount = ({
         // 예금/적금: 학생 현금 확인
         if (type !== "loans" && currentCashInDb < amount) {
           throw new Error("보유 현금이 부족합니다.");
+        }
+
+        // 적금: 일 납입금 ≤ 보유 현금 ÷ 기간일 (매일 납입 가능해야 함)
+        if (type === "savings") {
+          const maxDailyAmount = Math.floor(currentCashInDb / product.termInDays);
+          if (amount > maxDailyAmount) {
+            throw new Error(
+              `적금 일 납입금은 보유 현금 ÷ 기간(${product.termInDays}일) 이하만 가능합니다. (최대: ${formatCurrency(maxDailyAmount)}${currencyUnit})`
+            );
+          }
         }
 
         // 대출: 선생님(은행) 현금 부족 시 경고만 (마이너스 허용)
