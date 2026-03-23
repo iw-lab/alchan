@@ -320,12 +320,14 @@ const AdminPanel = React.memo(
     onUpdateRealStocks,
     onAddSingleRealStock,
     onDeleteSimulationStocks,
+    onDeduplicateStocks,
   }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isCreatingRealStocks, setIsCreatingRealStocks] = useState(false);
     const [isUpdatingRealStocks, setIsUpdatingRealStocks] = useState(false);
     const [isDeletingSimulation, setIsDeletingSimulation] = useState(false);
+    const [isDeduplicating, setIsDeduplicating] = useState(false);
     const [newStock, setNewStock] = useState({
       name: "",
       price: "",
@@ -402,6 +404,20 @@ const AdminPanel = React.memo(
         alert("삭제 실패: " + error.message);
       } finally {
         setIsDeletingSimulation(false);
+      }
+    };
+
+    const handleDeduplicateStocks = async () => {
+      if (!window.confirm("중복된 주식을 정리하시겠습니까?\n(같은 심볼의 주식이 여러 개 있으면 하나만 남기고 삭제합니다)")) return;
+      if (isDeduplicating) return;
+      setIsDeduplicating(true);
+      try {
+        const result = await onDeduplicateStocks();
+        alert(`중복 정리 완료!\n삭제: ${result.deleted || 0}개\n유지: ${result.kept || 0}개`);
+      } catch (error) {
+        alert("중복 정리 실패: " + error.message);
+      } finally {
+        setIsDeduplicating(false);
       }
     };
 
@@ -499,6 +515,18 @@ const AdminPanel = React.memo(
               </div>
               <RealStockAdder onAddStock={onAddSingleRealStock} />
               <div className="mt-2.5 pt-2.5 border-t border-white/10">
+                <button
+                  onClick={handleDeduplicateStocks}
+                  disabled={isDeduplicating}
+                  className="btn btn-warning w-full p-2.5 text-[0.85rem] mb-2"
+                >
+                  {isDeduplicating
+                    ? "⏳ 정리 중..."
+                    : "🔧 중복 주식 정리"}
+                </button>
+                <p className="text-xs text-gray-400 mt-1 mb-3 text-center">
+                  같은 종목이 여러 개 있으면 하나만 남기고 삭제합니다
+                </p>
                 <button
                   onClick={handleDeleteSimulationStocks}
                   disabled={isDeletingSimulation}
@@ -765,6 +793,7 @@ const StockExchange = () => {
         functions,
         "deleteSimulationStocks",
       ),
+      deduplicateStocks: httpsCallable(functions, "deduplicateStocksFunction"),
     }),
     [functions],
   );
@@ -1699,6 +1728,30 @@ const StockExchange = () => {
     }
   }, [callables, classCode, user, fetchAllData]);
 
+  // 🔥 중복 주식 정리 (관리자 전용)
+  const deduplicateStocks = useCallback(async () => {
+    if (!classCode || !user) {
+      throw new Error("Firebase Functions가 초기화되지 않았습니다.");
+    }
+
+    try {
+      logger.log("[deduplicateStocks] 중복 주식 정리 시작");
+      const result = await callables.deduplicateStocks({});
+
+      logger.log("[deduplicateStocks] 정리 성공:", result.data);
+
+      const batchKey = globalCache.generateKey("BATCH", { classCode, userId: user.uid });
+      globalCache.invalidate(batchKey);
+      invalidateCache(`STOCKS_${classCode}`);
+      await fetchAllData(true);
+
+      return result.data;
+    } catch (error) {
+      logger.error("[deduplicateStocks] 정리 실패:", error);
+      throw error;
+    }
+  }, [callables, classCode, user, fetchAllData]);
+
   // === stocks 데이터를 Map으로 변환하여 조회 성능 향상 ===
   const stocksMap = useMemo(() => {
     const map = new Map();
@@ -1823,6 +1876,7 @@ const StockExchange = () => {
         onUpdateRealStocks={updateRealStocks}
         onAddSingleRealStock={addSingleRealStock}
         onDeleteSimulationStocks={deleteSimulationStocks}
+        onDeduplicateStocks={deduplicateStocks}
       />
     );
 

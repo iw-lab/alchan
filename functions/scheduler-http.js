@@ -15,6 +15,7 @@ const {
   createRealStocks,
   addSingleRealStock,
   getAvailableSymbols,
+  deduplicateStocks,
   updateExchangeRate,
   getCurrentExchangeRate,
   DEFAULT_REAL_STOCKS,
@@ -554,6 +555,31 @@ exports.createRealStocksFunction = onCall(
     } catch (error) {
       logger.error("[createRealStocks] 오류:", error);
       throw new HttpsError("internal", error.message || "실제 주식 생성 실패");
+    }
+  },
+);
+
+// 🔥 중복 주식 정리 (관리자용 Cloud Function)
+exports.deduplicateStocksFunction = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    await checkAuthAndGetUserData(request, true);
+
+    logger.info("[deduplicateStocks] 중복 주식 정리 요청 - 관리자 호출");
+
+    try {
+      const result = await deduplicateStocks();
+      const snapshotResult = await updateCentralStocksSnapshot();
+
+      return {
+        success: true,
+        message: `중복 주식 ${result.deleted}개 삭제, ${result.kept}개 유지 (스냅샷 ${snapshotResult.count}개)`,
+        ...result,
+        snapshot: snapshotResult,
+      };
+    } catch (error) {
+      logger.error("[deduplicateStocks] 오류:", error);
+      throw new HttpsError("internal", error.message || "중복 주식 정리 실패");
     }
   },
 );
