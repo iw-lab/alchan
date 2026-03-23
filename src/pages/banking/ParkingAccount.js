@@ -158,12 +158,25 @@ const ICON_MAP = {
   loans: <HandCoins size={28} className="text-red-600" />,
 };
 
-const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
+// 대출 경과 이자 계산 (시작일 또는 마지막 상환일부터 현재까지)
+const calculateAccruedLoanInterest = (balance, dailyRate, startDate, lastRepaymentDate) => {
+  const baseDate = lastRepaymentDate
+    ? new Date(lastRepaymentDate?.toDate ? lastRepaymentDate.toDate() : lastRepaymentDate)
+    : new Date(startDate?.toDate ? startDate.toDate() : startDate);
+  const elapsedDays = Math.max(0, differenceInCalendarDays(new Date(), baseDate));
+  if (elapsedDays <= 0 || balance <= 0 || !dailyRate) return { interest: 0, total: balance, elapsedDays: 0 };
+  const total = balance * Math.pow(1 + dailyRate / 100, elapsedDays);
+  const interest = Math.round(total - balance);
+  return { interest, total: Math.round(total), elapsedDays };
+};
+
+const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) => {
   const isMatured = product.maturityDate && startOfDay(new Date()) >= startOfDay(new Date(product.maturityDate));
   const daysRemaining = product.maturityDate
     ? Math.max(0, differenceInCalendarDays(new Date(product.maturityDate), new Date()))
     : 0;
   const isSavings = product.type === "savings";
+  const isLoan = product.type === "loan";
 
   // 적금: dailyAmount 기반 계산 / 예금·대출: 기존 방식
   const dailyAmount = product.dailyAmount || 0;
@@ -181,17 +194,32 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
     total = result.total;
   }
 
+  // 대출: 경과 이자 계산
+  let accruedInterest = 0, accruedTotal = 0, elapsedDays = 0;
+  if (isLoan) {
+    const accrued = calculateAccruedLoanInterest(
+      product.balance, product.rate, product.startDate, product.lastRepaymentDate
+    );
+    accruedInterest = accrued.interest;
+    accruedTotal = accrued.total;
+    elapsedDays = accrued.elapsedDays;
+  }
+
   const dailyInterestAmount = calculateDailyInterest(
     isSavings ? totalDeposited : product.balance,
     product.rate,
   );
+
+  const repaymentTypeLabel = product.repaymentType === "installment" ? "분할 상환" : "일시 상환";
 
   return (
     <div
       className={`p-5 border-2 rounded-xl mb-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
         isMatured
           ? "border-emerald-500/50 bg-emerald-500/10"
-          : "border-white/10 bg-black/20"
+          : isLoan
+            ? "border-red-500/30 bg-red-500/5"
+            : "border-white/10 bg-black/20"
       }`}
     >
       <div className="flex justify-between items-start mb-3">
@@ -199,11 +227,18 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
           <div className="font-bold text-lg text-slate-200 mb-1">
             {product.name}
           </div>
-          {isMatured && (
-            <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[13px] font-semibold">
-              만기
-            </span>
-          )}
+          <div className="flex gap-2 mt-1">
+            {isMatured && (
+              <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[13px] font-semibold">
+                만기
+              </span>
+            )}
+            {isLoan && (
+              <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[13px] font-semibold border border-red-500/30">
+                {repaymentTypeLabel}
+              </span>
+            )}
+          </div>
         </div>
         <span className="text-xl font-bold text-cyber-cyan">
           {isSavings ? formatCurrencyWithUnit(totalDeposited) : formatCurrencyWithUnit(product.balance)}
@@ -215,7 +250,48 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
           <span className="font-medium">금리 (일):</span>
           <span className="font-bold text-cyber-cyan">{product.rate}%</span>
         </div>
-        {isSavings && dailyAmount > 0 ? (
+        {isLoan ? (
+          <>
+            <div className="flex justify-between">
+              <span className="font-medium">대출 원금:</span>
+              <span className="font-bold text-red-400">
+                {formatCurrencyWithUnit(product.originalBalance || product.balance)}
+              </span>
+            </div>
+            {product.repaymentType === "installment" && product.originalBalance && product.balance < product.originalBalance && (
+              <div className="flex justify-between">
+                <span className="font-medium">남은 원금:</span>
+                <span className="font-bold text-amber-400">
+                  {formatCurrencyWithUnit(product.balance)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="font-medium">경과일:</span>
+              <span className="font-bold text-slate-200">{elapsedDays}일</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">현재 누적 이자:</span>
+              <span className="font-bold text-red-400">
+                +{formatCurrencyWithUnit(accruedInterest)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">일일 이자:</span>
+              <span className="font-bold text-red-400">
+                +{formatCurrencyWithUnit(dailyInterestAmount)}/일
+              </span>
+            </div>
+            {product.totalInterestPaid > 0 && (
+              <div className="flex justify-between">
+                <span className="font-medium">기납부 이자:</span>
+                <span className="font-bold text-emerald-400">
+                  {formatCurrencyWithUnit(product.totalInterestPaid)}
+                </span>
+              </div>
+            )}
+          </>
+        ) : isSavings && dailyAmount > 0 ? (
           <>
             <div className="flex justify-between">
               <span className="font-medium">일 납입금:</span>
@@ -266,36 +342,85 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
 
       <div className="border-t border-dashed border-white/10 my-4"></div>
 
-      <div className="text-[15px] text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
-        {isSavings && dailyAmount > 0 && (
+      {isLoan ? (
+        <div className="text-[15px] text-slate-200 grid gap-2.5 bg-red-500/5 p-4 rounded-lg border border-red-500/20">
           <div className="flex justify-between">
-            <span className="font-semibold">총 납입 예정액:</span>
-            <span className="font-bold text-slate-200">
-              {formatCurrencyWithUnit(dailyAmount * product.termInDays)}
+            <span className="font-semibold">현재 상환 금액:</span>
+            <span className="font-bold text-red-400 text-[17px]">
+              {formatCurrencyWithUnit(accruedTotal)}
             </span>
           </div>
-        )}
-        <div className="flex justify-between">
-          <span className="font-semibold">만기 시 이자 (세전):</span>
-          <span className="font-bold text-emerald-400 text-[17px]">
-            +{formatCurrencyWithUnit(interest)}
-          </span>
+          <div className="text-[13px] text-slate-500">
+            (원금 {formatCurrency(product.balance)} + 이자 {formatCurrency(accruedInterest)})
+          </div>
+          <div className="flex justify-between">
+            <span className="font-semibold">만기 시 총 상환금:</span>
+            <span className="font-bold text-slate-200">
+              {formatCurrencyWithUnit(total)}
+            </span>
+          </div>
         </div>
-        <div className="flex justify-between text-[17px]">
-          <span className="font-bold">만기 시 총 수령액:</span>
-          <span className="font-bold text-cyber-cyan">
-            {formatCurrencyWithUnit(total)}
-          </span>
+      ) : (
+        <div className="text-[15px] text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
+          {isSavings && dailyAmount > 0 && (
+            <div className="flex justify-between">
+              <span className="font-semibold">총 납입 예정액:</span>
+              <span className="font-bold text-slate-200">
+                {formatCurrencyWithUnit(dailyAmount * product.termInDays)}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="font-semibold">만기 시 이자 (세전):</span>
+            <span className="font-bold text-emerald-400 text-[17px]">
+              +{formatCurrencyWithUnit(interest)}
+            </span>
+          </div>
+          <div className="flex justify-between text-[17px]">
+            <span className="font-bold">만기 시 총 수령액:</span>
+            <span className="font-bold text-cyber-cyan">
+              {formatCurrencyWithUnit(total)}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="mt-5 text-right">
-        {isMatured ? (
+      <div className="mt-5 text-right flex gap-2 justify-end">
+        {isLoan ? (
+          isMatured ? (
+            <button
+              onClick={onMaturity}
+              className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
+            >
+              만기 상환 ({formatCurrencyWithUnit(total)})
+            </button>
+          ) : product.repaymentType === "installment" ? (
+            <>
+              <button
+                onClick={() => onLoanRepay && onLoanRepay(product, "installment")}
+                className={cls.button(false, "primary") + " px-5 py-2.5 text-[15px]"}
+              >
+                분할 상환
+              </button>
+              <button
+                onClick={() => onLoanRepay && onLoanRepay(product, "lumpSum")}
+                className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
+              >
+                전액 상환 ({formatCurrencyWithUnit(accruedTotal)})
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => onLoanRepay && onLoanRepay(product, "lumpSum")}
+              className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
+            >
+              일시 상환 ({formatCurrencyWithUnit(accruedTotal)})
+            </button>
+          )
+        ) : isMatured ? (
           <button
             onClick={onMaturity}
-            className={
-              cls.button(false, "success") + " px-5 py-2.5 text-[15px]"
-            }
+            className={cls.button(false, "success") + " px-5 py-2.5 text-[15px]"}
           >
             만기 수령 ({formatCurrencyWithUnit(total)})
           </button>
@@ -304,7 +429,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity }) => {
             onClick={onCancel}
             className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
           >
-            {product.type === "loan" ? "대출 상환" : "중도 해지"}
+            중도 해지
           </button>
         )}
       </div>
@@ -354,6 +479,7 @@ const ProductSection = ({
   onSubscribe,
   onCancel,
   onMaturity,
+  onLoanRepay,
 }) => {
   const [activeTab, setActiveTab] = useState("subscribed");
   return (
@@ -385,6 +511,7 @@ const ProductSection = ({
                 product={p}
                 onCancel={() => onCancel(p)}
                 onMaturity={() => onMaturity(p)}
+                onLoanRepay={onLoanRepay}
               />
             ))
           ) : (
@@ -416,12 +543,14 @@ const SubscriptionModal = ({
   isProcessing,
 }) => {
   const [amount, setAmount] = useState("");
+  const [repaymentType, setRepaymentType] = useState("lumpSum");
 
   if (!isOpen || !product) return null;
 
   const numAmount = parseFloat(amount);
   const dailyRate = product.dailyRate;
   const isSavings = productType === "savings";
+  const isLoan = productType === "loans";
 
   // 적금: 일 납입금 기반 예상 이자 / 예금: 일시불 기반
   let projectedInterest = 0, projectedTotal = 0, projectedTotalDeposited = 0;
@@ -448,15 +577,15 @@ const SubscriptionModal = ({
         >
           <X size={24} />
         </button>
-        <h3 className={cls.modalTitle}>{product.name} 가입</h3>
+        <h3 className={cls.modalTitle}>{product.name} {isLoan ? "대출" : "가입"}</h3>
 
-        <div className="mb-5 p-4 bg-cyber-cyan/5 rounded-[10px] border border-cyber-cyan/20">
+        <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/5 border-red-500/20" : "bg-cyber-cyan/5 border-cyber-cyan/20"}`}>
           <div className="text-[15px] text-slate-400 mb-2">
-            <strong className="text-cyber-cyan">금리:</strong> 일{" "}
+            <strong className={isLoan ? "text-red-400" : "text-cyber-cyan"}>금리:</strong> 일{" "}
             {product.dailyRate}% (일복리)
           </div>
           <div className="text-[15px] text-slate-400">
-            <strong className="text-cyber-cyan">기간:</strong>{" "}
+            <strong className={isLoan ? "text-red-400" : "text-cyber-cyan"}>기간:</strong>{" "}
             {product.termInDays}일
           </div>
           {isSavings && (
@@ -471,48 +600,257 @@ const SubscriptionModal = ({
           )}
         </div>
 
+        {/* 대출 상환 방식 선택 */}
+        {isLoan && (
+          <div className="mb-5">
+            <p className="mb-3 text-base font-semibold text-slate-200">상환 방식을 선택하세요</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setRepaymentType("lumpSum")}
+                className={`p-4 rounded-xl border-2 transition-all text-left ${
+                  repaymentType === "lumpSum"
+                    ? "border-red-400 bg-red-500/10"
+                    : "border-white/10 bg-black/20"
+                }`}
+              >
+                <div className="font-bold text-[15px] text-slate-200 mb-1">일시 상환</div>
+                <div className="text-[13px] text-slate-400">만기 또는 중도에 원금+이자 전액 상환</div>
+              </button>
+              <button
+                onClick={() => setRepaymentType("installment")}
+                className={`p-4 rounded-xl border-2 transition-all text-left ${
+                  repaymentType === "installment"
+                    ? "border-red-400 bg-red-500/10"
+                    : "border-white/10 bg-black/20"
+                }`}
+              >
+                <div className="font-bold text-[15px] text-slate-200 mb-1">분할 상환</div>
+                <div className="text-[13px] text-slate-400">원하는 금액만큼 나눠서 상환 (이자 우선)</div>
+              </button>
+            </div>
+          </div>
+        )}
+
         <p className="mb-3 text-base font-semibold text-slate-200">
-          {isSavings ? "일 납입 금액을 입력해주세요" : "가입 금액을 입력해주세요"}
+          {isSavings ? "일 납입 금액을 입력해주세요" : isLoan ? "대출 금액을 입력해주세요" : "가입 금액을 입력해주세요"}
         </p>
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           className={cls.input}
-          placeholder={`${formatCurrencyWithUnit(product.minAmount || 0)} 이상`}
+          placeholder={isLoan
+            ? `최대 ${formatCurrencyWithUnit(product.maxAmount || 0)}`
+            : `${formatCurrencyWithUnit(product.minAmount || 0)} 이상`
+          }
           autoFocus
         />
 
         {numAmount > 0 && (
-          <div className="mb-5 p-4 bg-emerald-500/10 rounded-[10px] border border-emerald-500/30">
+          <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30"}`}>
             {isSavings && (
               <div className="text-[15px] text-slate-300 mb-1.5">
                 총 납입 예정액: <strong>{formatCurrencyWithUnit(projectedTotalDeposited)}</strong>
                 <span className="text-slate-500 text-sm"> ({formatCurrencyWithUnit(numAmount)} x {product.termInDays}일)</span>
               </div>
             )}
-            <div className="text-[15px] text-emerald-400 mb-1.5">
-              예상 만기 이자:{" "}
-              <strong>+{formatCurrencyWithUnit(projectedInterest)}</strong>
+            <div className={`text-[15px] mb-1.5 ${isLoan ? "text-red-400" : "text-emerald-400"}`}>
+              {isLoan ? "만기 시 총 이자:" : "예상 만기 이자:"}{" "}
+              <strong>{isLoan ? "" : "+"}{formatCurrencyWithUnit(projectedInterest)}</strong>
             </div>
-            <div className="text-base text-emerald-400 font-bold">
-              만기 시 총 수령액: {formatCurrencyWithUnit(projectedTotal)}
+            <div className={`text-base font-bold ${isLoan ? "text-red-400" : "text-emerald-400"}`}>
+              {isLoan ? "만기 시 총 상환금:" : "만기 시 총 수령액:"} {formatCurrencyWithUnit(projectedTotal)}
             </div>
           </div>
         )}
 
         <button
           onClick={() => {
-            onConfirm(amount);
+            onConfirm(amount, isLoan ? repaymentType : undefined);
             setAmount("");
+            setRepaymentType("lumpSum");
           }}
           disabled={isProcessing || !amount}
           className={
-            cls.button(isProcessing || !amount) + " w-full text-[17px] py-4"
+            cls.button(isProcessing || !amount, isLoan ? "danger" : "primary") + " w-full text-[17px] py-4"
           }
         >
-          {isProcessing ? "처리 중..." : "가입하기"}
+          {isProcessing ? "처리 중..." : isLoan ? "대출 실행" : "가입하기"}
         </button>
+      </div>
+    </div>
+  );
+};
+
+// 대출 분할 상환 모달
+const LoanRepaymentModal = ({
+  isOpen,
+  onClose,
+  product,
+  onConfirmLumpSum,
+  onConfirmInstallment,
+  isProcessing,
+  repayMode,
+}) => {
+  const [installmentAmount, setInstallmentAmount] = useState("");
+  const [splitMethod, setSplitMethod] = useState("interestFirst"); // "interestFirst" | "proportional"
+
+  if (!isOpen || !product) return null;
+
+  const { interest: accruedInterest, total: accruedTotal, elapsedDays } = calculateAccruedLoanInterest(
+    product.balance, product.rate, product.startDate, product.lastRepaymentDate
+  );
+
+  const numInstallment = parseFloat(installmentAmount);
+  let interestPortion = 0, principalPortion = 0;
+  if (!isNaN(numInstallment) && numInstallment > 0) {
+    if (splitMethod === "interestFirst") {
+      // 이자 우선: 이자 먼저 갚고 나머지로 원금
+      interestPortion = Math.min(numInstallment, accruedInterest);
+      principalPortion = Math.max(0, numInstallment - interestPortion);
+    } else {
+      // 원리금 균등: 원금과 이자를 비율로 분배
+      if (accruedTotal > 0) {
+        const interestRatio = accruedInterest / accruedTotal;
+        const principalRatio = product.balance / accruedTotal;
+        interestPortion = Math.round(numInstallment * interestRatio);
+        principalPortion = Math.round(numInstallment * principalRatio);
+        // 반올림 오차 보정
+        const diff = numInstallment - (interestPortion + principalPortion);
+        principalPortion += diff;
+      }
+    }
+    // 원금 초과 방지
+    if (principalPortion > product.balance) {
+      principalPortion = product.balance;
+      interestPortion = numInstallment - principalPortion;
+    }
+  }
+
+  const isLumpSum = repayMode === "lumpSum";
+
+  return (
+    <div className={cls.modalOverlay} onClick={onClose}>
+      <div className={cls.modalContent} onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className={cls.modalCloseBtn} aria-label="닫기">
+          <X size={24} />
+        </button>
+        <h3 className={cls.modalTitle}>
+          {isLumpSum ? "일시 상환" : "분할 상환"}
+        </h3>
+
+        <div className="mb-5 p-4 bg-red-500/5 rounded-[10px] border border-red-500/20">
+          <div className="text-[15px] text-slate-400 mb-2">
+            <strong className="text-slate-200">{product.name}</strong>
+          </div>
+          <div className="grid gap-2 text-[15px]">
+            <div className="flex justify-between">
+              <span className="text-slate-400">남은 원금:</span>
+              <span className="font-bold text-slate-200">{formatCurrencyWithUnit(product.balance)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">경과일:</span>
+              <span className="font-bold text-slate-200">{elapsedDays}일</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">누적 이자:</span>
+              <span className="font-bold text-red-400">+{formatCurrencyWithUnit(accruedInterest)}</span>
+            </div>
+            <div className="flex justify-between border-t border-white/10 pt-2 mt-1">
+              <span className="text-slate-200 font-semibold">총 상환 필요금:</span>
+              <span className="font-bold text-red-400 text-[17px]">{formatCurrencyWithUnit(accruedTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {isLumpSum ? (
+          <button
+            onClick={onConfirmLumpSum}
+            disabled={isProcessing}
+            className={cls.button(isProcessing, "danger") + " w-full text-[17px] py-4"}
+          >
+            {isProcessing ? "처리 중..." : `전액 상환 (${formatCurrencyWithUnit(accruedTotal)})`}
+          </button>
+        ) : (
+          <>
+            {/* 분할 상환 방식 선택 */}
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-semibold text-slate-400">상환 배분 방식</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setSplitMethod("interestFirst")}
+                  className={`p-3 rounded-lg border-2 transition-all text-left ${
+                    splitMethod === "interestFirst"
+                      ? "border-amber-400 bg-amber-500/10"
+                      : "border-white/10 bg-black/20"
+                  }`}
+                >
+                  <div className="font-bold text-[14px] text-slate-200">이자 우선</div>
+                  <div className="text-[12px] text-slate-400 mt-0.5">이자 먼저 갚고 나머지 원금</div>
+                </button>
+                <button
+                  onClick={() => setSplitMethod("proportional")}
+                  className={`p-3 rounded-lg border-2 transition-all text-left ${
+                    splitMethod === "proportional"
+                      ? "border-amber-400 bg-amber-500/10"
+                      : "border-white/10 bg-black/20"
+                  }`}
+                >
+                  <div className="font-bold text-[14px] text-slate-200">원리금 균등</div>
+                  <div className="text-[12px] text-slate-400 mt-0.5">원금·이자 비율로 분배</div>
+                </button>
+              </div>
+            </div>
+
+            <p className="mb-3 text-base font-semibold text-slate-200">상환할 금액을 입력하세요</p>
+            <input
+              type="number"
+              value={installmentAmount}
+              onChange={(e) => setInstallmentAmount(e.target.value)}
+              className={cls.input}
+              placeholder={`최소 1 이상 (총 ${formatCurrency(accruedTotal)})`}
+              autoFocus
+            />
+
+            {numInstallment > 0 && (
+              <div className="mb-5 p-4 bg-amber-500/10 rounded-[10px] border border-amber-500/30">
+                <div className="text-[15px] text-slate-300 mb-1.5">
+                  이자 상환: <strong className="text-red-400">{formatCurrencyWithUnit(interestPortion)}</strong>
+                  {splitMethod === "proportional" && accruedTotal > 0 && (
+                    <span className="text-slate-500 text-sm"> ({Math.round((accruedInterest / accruedTotal) * 100)}%)</span>
+                  )}
+                </div>
+                <div className="text-[15px] text-slate-300 mb-1.5">
+                  원금 상환: <strong className="text-emerald-400">{formatCurrencyWithUnit(principalPortion)}</strong>
+                  {splitMethod === "proportional" && accruedTotal > 0 && (
+                    <span className="text-slate-500 text-sm"> ({Math.round((product.balance / accruedTotal) * 100)}%)</span>
+                  )}
+                </div>
+                {principalPortion > 0 && (
+                  <div className="text-base text-slate-200 font-bold border-t border-white/10 pt-2 mt-2">
+                    상환 후 남은 원금: {formatCurrencyWithUnit(Math.max(0, product.balance - principalPortion))}
+                  </div>
+                )}
+                {numInstallment >= accruedTotal && (
+                  <div className="text-[13px] text-emerald-400 mt-2 font-semibold">
+                    * 전액 상환됩니다 (대출 완료)
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                onConfirmInstallment(installmentAmount, splitMethod);
+                setInstallmentAmount("");
+              }}
+              disabled={isProcessing || !installmentAmount || numInstallment <= 0}
+              className={cls.button(isProcessing || !installmentAmount || numInstallment <= 0, "danger") + " w-full text-[17px] py-4"}
+            >
+              {isProcessing ? "처리 중..." : "상환하기"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -643,6 +981,11 @@ const ParkingAccount = ({
     product: null,
     type: "",
   });
+  const [loanRepayModal, setLoanRepayModal] = useState({
+    isOpen: false,
+    product: null,
+    repayMode: "lumpSum",
+  });
   const [currentCash, setCurrentCash] = useState(userDoc?.cash || 0);
   const { currencyUnit } = useCurrency();
 
@@ -766,7 +1109,207 @@ const ParkingAccount = ({
   const handleCloseModal = () =>
     setModal({ isOpen: false, product: null, type: "" });
 
-  const handleSubscribe = async (subscribeAmount) => {
+  const handleOpenLoanRepayModal = (product, repayMode) => {
+    setLoanRepayModal({ isOpen: true, product, repayMode });
+  };
+  const handleCloseLoanRepayModal = () => {
+    setLoanRepayModal({ isOpen: false, product: null, repayMode: "lumpSum" });
+  };
+
+  // 대출 일시 상환 (전액: 원금 + 경과 이자)
+  const handleLoanLumpSumRepay = async () => {
+    const product = loanRepayModal.product;
+    if (!product || !userId) return;
+
+    const { id, name, balance, rate, teacherId } = product;
+    const { interest: accruedInterest, total: accruedTotal, elapsedDays } = calculateAccruedLoanInterest(
+      balance, rate, product.startDate, product.lastRepaymentDate
+    );
+
+    setIsProcessing(true);
+    handleCloseLoanRepayModal();
+
+    let teacherAccountId = teacherId;
+    if (!teacherAccountId) {
+      const teacherAccount = await getTeacherAccount(userDoc?.classCode);
+      if (!teacherAccount) {
+        displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
+        setIsProcessing(false);
+        return;
+      }
+      teacherAccountId = teacherAccount.id;
+    }
+
+    // 낙관적 업데이트
+    const originalLoans = [...userLoans];
+    const originalCash = currentCash;
+    setUserLoans((prev) => prev.filter((p) => p.id !== id));
+    setCurrentCash((prev) => prev - accruedTotal);
+
+    try {
+      const productRef = doc(db, "users", userId, "products", String(id));
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", userId);
+        const teacherRef = doc(db, "users", teacherAccountId);
+        const userSnapshot = await transaction.get(userRef);
+        const teacherSnapshot = await transaction.get(teacherRef);
+
+        if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+
+        const currentCashInDb = userSnapshot.data()?.cash ?? 0;
+        if (currentCashInDb < accruedTotal) {
+          throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(accruedTotal)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`);
+        }
+
+        transaction.update(userRef, { cash: increment(-accruedTotal) });
+        transaction.update(teacherRef, { cash: increment(accruedTotal) });
+        transaction.delete(productRef);
+      });
+
+      displayMessage(`대출 일시 상환 완료: ${formatCurrency(accruedTotal)}${currencyUnit} (원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(accruedInterest)})`, "success");
+
+      logActivity(db, {
+        classCode: userDoc?.classCode,
+        userId, userName: userDoc?.name || "사용자",
+        type: ACTIVITY_TYPES.LOAN_REPAY,
+        description: `대출 일시 상환: ${name} (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(accruedInterest)}, 경과: ${elapsedDays}일)`,
+        amount: -accruedTotal,
+        metadata: { productName: name, principal: balance, interest: accruedInterest, total: accruedTotal, elapsedDays, teacherId: teacherAccountId, repaymentType: "lumpSum" },
+      });
+
+      if (refreshUserDocument) refreshUserDocument();
+      await loadAllData();
+    } catch (error) {
+      logger.error("일시 상환 오류:", error);
+      displayMessage(`처리 오류: ${error.message}`, "error");
+      setUserLoans(originalLoans);
+      setCurrentCash(originalCash);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 대출 분할 상환 (부분 상환: 이자 우선 또는 원리금 균등)
+  const handleLoanInstallmentRepay = async (repayAmountStr, splitMethod = "interestFirst") => {
+    const product = loanRepayModal.product;
+    if (!product || !userId) return;
+
+    const repayAmount = Math.round(parseFloat(repayAmountStr));
+    if (isNaN(repayAmount) || repayAmount <= 0) {
+      return displayMessage("유효한 금액을 입력하세요.", "error");
+    }
+
+    const { id, name, balance, rate, teacherId } = product;
+    const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
+      balance, rate, product.startDate, product.lastRepaymentDate
+    );
+
+    if (repayAmount > accruedTotal) {
+      return displayMessage(`상환 금액이 총 상환금(${formatCurrency(accruedTotal)}${currencyUnit})을 초과합니다.`, "error");
+    }
+
+    let interestPortion, principalPortion;
+    if (splitMethod === "proportional" && accruedTotal > 0) {
+      // 원리금 균등: 비율로 분배
+      const interestRatio = accruedInterest / accruedTotal;
+      interestPortion = Math.round(repayAmount * interestRatio);
+      principalPortion = repayAmount - interestPortion;
+      // 원금 초과 방지
+      if (principalPortion > balance) {
+        principalPortion = balance;
+        interestPortion = repayAmount - principalPortion;
+      }
+    } else {
+      // 이자 우선: 이자 먼저 갚고 나머지 원금
+      interestPortion = Math.min(repayAmount, accruedInterest);
+      principalPortion = Math.max(0, repayAmount - interestPortion);
+    }
+
+    const newBalance = Math.max(0, balance - principalPortion);
+    const isFullyRepaid = newBalance <= 0 && repayAmount >= accruedTotal;
+
+    setIsProcessing(true);
+    handleCloseLoanRepayModal();
+
+    let teacherAccountId = teacherId;
+    if (!teacherAccountId) {
+      const teacherAccount = await getTeacherAccount(userDoc?.classCode);
+      if (!teacherAccount) {
+        displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
+        setIsProcessing(false);
+        return;
+      }
+      teacherAccountId = teacherAccount.id;
+    }
+
+    // 낙관적 업데이트
+    const originalLoans = [...userLoans];
+    const originalCash = currentCash;
+    if (isFullyRepaid) {
+      setUserLoans((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      setUserLoans((prev) => prev.map((p) => p.id === id ? { ...p, balance: newBalance } : p));
+    }
+    setCurrentCash((prev) => prev - repayAmount);
+
+    try {
+      const productRef = doc(db, "users", userId, "products", String(id));
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", userId);
+        const teacherRef = doc(db, "users", teacherAccountId);
+        const userSnapshot = await transaction.get(userRef);
+        const teacherSnapshot = await transaction.get(teacherRef);
+
+        if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+
+        const currentCashInDb = userSnapshot.data()?.cash ?? 0;
+        if (currentCashInDb < repayAmount) {
+          throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(repayAmount)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`);
+        }
+
+        transaction.update(userRef, { cash: increment(-repayAmount) });
+        transaction.update(teacherRef, { cash: increment(repayAmount) });
+
+        if (isFullyRepaid) {
+          transaction.delete(productRef);
+        } else {
+          transaction.update(productRef, {
+            balance: newBalance,
+            lastRepaymentDate: serverTimestamp(),
+            totalInterestPaid: increment(interestPortion),
+          });
+        }
+      });
+
+      const resultMsg = isFullyRepaid
+        ? `대출 완납! 총 ${formatCurrency(repayAmount)}${currencyUnit} 상환 (대출 종료)`
+        : `분할 상환 완료: ${formatCurrency(repayAmount)}${currencyUnit} (이자 ${formatCurrency(interestPortion)} + 원금 ${formatCurrency(principalPortion)}) / 남은 원금: ${formatCurrency(newBalance)}${currencyUnit}`;
+      displayMessage(resultMsg, "success");
+
+      logActivity(db, {
+        classCode: userDoc?.classCode,
+        userId, userName: userDoc?.name || "사용자",
+        type: ACTIVITY_TYPES.LOAN_REPAY,
+        description: `대출 분할 상환: ${name} (이자: ${formatCurrency(interestPortion)}, 원금: ${formatCurrency(principalPortion)}, 남은 원금: ${formatCurrency(newBalance)})`,
+        amount: -repayAmount,
+        metadata: { productName: name, interestPaid: interestPortion, principalPaid: principalPortion, remainingBalance: newBalance, isFullyRepaid, teacherId: teacherAccountId, repaymentType: "installment", splitMethod },
+      });
+
+      if (refreshUserDocument) refreshUserDocument();
+      await loadAllData();
+    } catch (error) {
+      logger.error("분할 상환 오류:", error);
+      displayMessage(`처리 오류: ${error.message}`, "error");
+      setUserLoans(originalLoans);
+      setCurrentCash(originalCash);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSubscribe = async (subscribeAmount, repaymentType) => {
     logger.log("--- handleSubscribe 시작 ---");
     const amount = parseFloat(subscribeAmount);
     const { product, type } = modal;
@@ -880,11 +1423,12 @@ const ParkingAccount = ({
         }
 
         const isSavingsType = type === "savings";
+        const isLoanType = type === "loans";
         const newProductData = {
           name: product.name,
           termInDays: product.termInDays,
           rate: product.dailyRate,
-          balance: isSavingsType ? amount : amount, // 적금: 첫 납입금 = 1일치
+          balance: amount,
           startDate: serverTimestamp(),
           maturityDate: maturityDate,
           type:
@@ -900,6 +1444,13 @@ const ParkingAccount = ({
             dailyAmount: amount,        // 일 납입금
             totalDeposited: amount,     // 누적 납입액 (첫 1일치)
             depositsCount: 1,           // 납입 횟수
+          }),
+          // 대출 전용 필드
+          ...(isLoanType && {
+            repaymentType: repaymentType || "lumpSum",  // 상환 방식
+            originalBalance: amount,                     // 최초 대출 원금
+            lastRepaymentDate: null,                     // 마지막 상환일
+            totalInterestPaid: 0,                        // 누적 이자 납부액
           }),
         };
 
@@ -920,8 +1471,9 @@ const ParkingAccount = ({
       });
 
       const actionText = type === "loans" ? "대출" : "가입";
+      const repayLabel = type === "loans" ? (repaymentType === "installment" ? " [분할 상환]" : " [일시 상환]") : "";
       displayMessage(
-        `${product.name} ${actionText}이 완료되었습니다. (선생님 계정과 연동)`,
+        `${product.name} ${actionText}이 완료되었습니다.${repayLabel} (선생님 계정과 연동)`,
         "success",
       );
 
@@ -1691,6 +2243,7 @@ const ParkingAccount = ({
             onSubscribe={(p) => handleOpenModal(p, "loans")}
             onCancel={handleCancelEarly}
             onMaturity={handleMaturity}
+            onLoanRepay={handleOpenLoanRepayModal}
             isAdmin={isAdmin()}
             onAdminDelete={handleAdminDeleteSubscribedProduct}
           />
@@ -1702,6 +2255,15 @@ const ParkingAccount = ({
         product={modal.product}
         productType={modal.type}
         onConfirm={handleSubscribe}
+        isProcessing={isProcessing}
+      />
+      <LoanRepaymentModal
+        isOpen={loanRepayModal.isOpen}
+        onClose={handleCloseLoanRepayModal}
+        product={loanRepayModal.product}
+        repayMode={loanRepayModal.repayMode}
+        onConfirmLumpSum={handleLoanLumpSumRepay}
+        onConfirmInstallment={handleLoanInstallmentRepay}
         isProcessing={isProcessing}
       />
     </div>
