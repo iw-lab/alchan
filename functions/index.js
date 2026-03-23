@@ -4876,3 +4876,71 @@ exports.resolveStudentEmail = onCall(
     }
   },
 );
+
+// 🔧 일회성 마이그레이션: 기존 쿠폰 응모분 관리자 계정에 현금 소급 지급
+exports.migrateDonationCashToAdmin = onRequest(
+  { region: "asia-northeast3" },
+  async (req, res) => {
+    const token = req.query.token || req.body.token;
+    if (token !== (process.env.SCHEDULER_AUTH_TOKEN || "")) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    try {
+      // 쿠폰 가치 조회
+      const settingsDoc = await db.collection("settings").doc("mainSettings").get();
+      const couponValue = settingsDoc.exists ? settingsDoc.data().couponValue : 1000;
+
+      // 모든 goals 문서 조회
+      const goalsSnap = await db.collection("goals").get();
+      const results = [];
+
+      for (const goalDoc of goalsSnap.docs) {
+        const data = goalDoc.data();
+        const classCode = data.classCode;
+        const totalDonated = data.progress || 0;
+
+        if (!classCode || totalDonated <= 0) continue;
+
+        // 해당 학급의 관리자 찾기
+        const adminSnap = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+
+        if (adminSnap.empty) {
+          results.push({ classCode, status: "관리자 없음", totalDonated });
+          continue;
+        }
+
+        const adminRef = adminSnap.docs[0].ref;
+        const cashToAdd = totalDonated * couponValue;
+
+        await adminRef.update({
+          cash: admin.firestore.FieldValue.increment(cashToAdd),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        results.push({
+          classCode,
+          status: "성공",
+          totalDonated,
+          cashAdded: cashToAdd,
+          adminName: adminSnap.docs[0].data().name,
+        });
+
+        logger.info(
+          `[migrateDonationCash] ${classCode}: 쿠폰 ${totalDonated}개 × ${couponValue}원 = ${cashToAdd}원 관리자에게 지급`,
+        );
+      }
+
+      res.json({ success: true, couponValue, results });
+    } catch (error) {
+      logger.error("[migrateDonationCash] 실패:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
