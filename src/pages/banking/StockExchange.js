@@ -178,6 +178,8 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
     { name: "NAVER", symbol: "035420.KS", type: "한국 주식" },
     { name: "카카오", symbol: "035720.KS", type: "한국 주식" },
     { name: "현대차", symbol: "005380.KS", type: "한국 주식" },
+    { name: "KT", symbol: "030200.KS", type: "한국 주식" },
+    { name: "한화에어로스페이스", symbol: "012450.KS", type: "한국 주식" },
     { name: "Apple", symbol: "AAPL", type: "미국 주식" },
     { name: "Microsoft", symbol: "MSFT", type: "미국 주식" },
     { name: "Google", symbol: "GOOGL", type: "미국 주식" },

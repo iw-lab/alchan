@@ -38,6 +38,8 @@ const REAL_STOCK_SYMBOLS = {
   '크래프톤': '259960.KS',
   '두산에너빌리티': '034020.KS',
   'HMM': '011200.KS',
+  'KT': '030200.KS',
+  '한화에어로스페이스': '012450.KS',
 
   // 미국 주식
   'Apple': 'AAPL',
@@ -627,26 +629,30 @@ async function createRealStocks(stockConfigs) {
   return { created, skipped };
 }
 
-// 기본 실제 주식 설정 (14개)
+// 기본 실제 주식 설정 (주식 14개 + ETF 2개 + 채권 2개)
 const DEFAULT_REAL_STOCKS = [
-  // 한국 주식 (6개)
+  // 한국 주식 (8개)
   { name: '삼성전자', sector: 'TECH', productType: 'stock' },
   { name: 'SK하이닉스', sector: 'TECH', productType: 'stock' },
   { name: 'NAVER', sector: 'TECH', productType: 'stock' },
   { name: '카카오', sector: 'TECH', productType: 'stock' },
   { name: '현대차', sector: 'INDUSTRIAL', productType: 'stock' },
   { name: 'KB금융', sector: 'FINANCE', productType: 'stock' },
-  // 미국 주식 (4개)
+  { name: 'KT', sector: 'TECH', productType: 'stock' },
+  { name: '한화에어로스페이스', sector: 'INDUSTRIAL', productType: 'stock' },
+  // 미국 주식 (6개)
   { name: 'Apple', sector: 'TECH', productType: 'stock' },
   { name: 'Tesla', sector: 'INDUSTRIAL', productType: 'stock' },
   { name: 'NVIDIA', sector: 'TECH', productType: 'stock' },
   { name: 'Microsoft', sector: 'TECH', productType: 'stock' },
+  { name: 'Amazon', sector: 'TECH', productType: 'stock' },
+  { name: 'Google', sector: 'TECH', productType: 'stock' },
   // ETF
   { name: 'KODEX 200', sector: 'INDEX', productType: 'etf' },
   { name: 'SPY', sector: 'INDEX', productType: 'etf' },
   // 채권 ETF
-  { name: 'TLT', sector: 'BOND', productType: 'bond' },      // 미국 장기 국채 (20년+)
-  { name: 'KOSEF 국고채10년', sector: 'BOND', productType: 'bond' },  // 한국 국고채 10년
+  { name: 'TLT', sector: 'BOND', productType: 'bond' },
+  { name: 'KOSEF 국고채10년', sector: 'BOND', productType: 'bond' },
 ];
 
 /**
