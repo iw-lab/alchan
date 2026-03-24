@@ -5,8 +5,6 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
-
 import { logger } from "../utils/logger";
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -45,22 +43,21 @@ if (process.env.NODE_ENV === "development") {
   }
 }
 
-// Firebase App Check 초기화
-if (typeof window !== 'undefined') {
-  if (process.env.NODE_ENV === 'development') {
-    window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  }
-
-  try {
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'),
-      isTokenAutoRefreshEnabled: true
-    });
-    logger.log("[firebase.js] App Check 초기화 완료");
-  } catch (e) {
-    console.warn('App Check initialization failed:', e);
-  }
-}
+// Firebase App Check - 실제 reCAPTCHA v3 사이트 키 발급 후 활성화
+// 1. https://www.google.com/recaptcha/admin 에서 v3 사이트 키 생성
+// 2. Firebase Console > App Check에서 해당 키 등록
+// 3. REACT_APP_RECAPTCHA_SITE_KEY 환경변수에 설정
+// 4. 아래 주석 해제
+// if (typeof window !== 'undefined' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+//   const { initializeAppCheck, ReCaptchaV3Provider } = require("firebase/app-check");
+//   if (process.env.NODE_ENV === 'development') window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+//   try {
+//     initializeAppCheck(app, {
+//       provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
+//       isTokenAutoRefreshEnabled: true
+//     });
+//   } catch (e) { console.warn('App Check init failed:', e); }
+// }
 
 const isInitialized = () => {
   const initialized = Boolean(app && db && auth);
