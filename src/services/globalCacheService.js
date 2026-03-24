@@ -222,6 +222,82 @@ class GlobalCacheService {
     }
   }
 
+  /**
+   * 증분 동기화: 캐시된 데이터가 있으면 lastSync 이후 업데이트된 항목만 가져와 병합
+   * @param {string} cacheKey - 캐시 키
+   * @param {Function} fetchFn - 전체 데이터 조회 함수
+   * @param {Function} incrementalFetchFn - timestamp 이후 업데이트된 데이터만 조회하는 함수
+   * @param {number} ttl - 캐시 TTL (ms)
+   */
+  async getWithIncrementalSync(cacheKey, fetchFn, incrementalFetchFn, ttl = 300000) {
+    const cached = this.get(cacheKey);
+
+    if (cached && cached._lastSync) {
+      const age = Date.now() - cached._lastSync;
+
+      // TTL 이내면 캐시 반환
+      if (age < ttl) return cached.data;
+
+      // 증분 조회 시도
+      try {
+        const updates = await incrementalFetchFn(new Date(cached._lastSync));
+        if (updates && updates.length > 0) {
+          // 업데이트를 기존 데이터에 병합
+          const merged = [...cached.data];
+          for (const update of updates) {
+            const idx = merged.findIndex(item => item.id === update.id);
+            if (idx >= 0) {
+              merged[idx] = update;
+            } else {
+              merged.push(update);
+            }
+          }
+          this.set(cacheKey, { data: merged, _lastSync: Date.now() }, ttl);
+          return merged;
+        }
+        // 업데이트 없음 - 캐시 연장
+        this.set(cacheKey, { ...cached, _lastSync: Date.now() }, ttl);
+        return cached.data;
+      } catch (e) {
+        // 증분 조회 실패 - 기존 캐시 반환
+        return cached.data;
+      }
+    }
+
+    // 캐시 없음 - 전체 조회
+    const data = await fetchFn();
+    this.set(cacheKey, { data, _lastSync: Date.now() }, ttl);
+    return data;
+  }
+
+  /**
+   * Stale-While-Revalidate: 캐시된 데이터를 즉시 반환하고, 백그라운드에서 갱신
+   * @param {string} key - 캐시 키
+   * @param {Function} fetchFn - 데이터 조회 함수
+   * @param {number} maxStaleMs - 최대 stale 허용 시간 (기본 5분)
+   */
+  async staleWhileRevalidate(key, fetchFn, maxStaleMs = 300000) {
+    const cached = this.get(key);
+
+    if (cached !== null) {
+      const age = Date.now() - (cached._timestamp || 0);
+      if (age > maxStaleMs / 2) {
+        // 백그라운드 갱신 (await 하지 않음)
+        fetchFn().then(freshData => {
+          if (freshData !== null && freshData !== undefined) {
+            this.set(key, { ...freshData, _timestamp: Date.now() }, maxStaleMs * 2);
+          }
+        }).catch(() => {});
+      }
+      return cached;
+    }
+
+    // 캐시 없음 - 반드시 fetch
+    const data = await fetchFn();
+    this.set(key, { ...data, _timestamp: Date.now() }, maxStaleMs * 2);
+    return data;
+  }
+
   // 🔥 [추가] localStorage 용량 초과 시 오래된 항목 삭제
   cleanupOldestLocalStorageItems(count = 10) {
     try {

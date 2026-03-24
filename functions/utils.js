@@ -9,6 +9,31 @@ if (admin.apps.length === 0) {
 }
 const db = admin.firestore();
 
+/**
+ * 서버사이드 입력 새니타이징 - HTML 태그 및 위험 패턴 제거
+ */
+const sanitizeInput = (input) => {
+  if (typeof input !== "string") return input;
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+    .replace(/data:\s*text\/html/gi, "")
+    .trim();
+};
+
+/**
+ * 객체 내 모든 문자열 필드를 새니타이징
+ */
+const sanitizeObject = (obj) => {
+  if (!obj || typeof obj !== "object") return obj;
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    result[key] = typeof value === "string" ? sanitizeInput(value) : value;
+  }
+  return result;
+};
+
 const LOG_TYPES = {
     CASH_INCOME: "현금 입금",
     CASH_EXPENSE: "현금 출금",
@@ -49,14 +74,19 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
       const userDoc = await db.collection("users").doc(userId).get();
       const userName = userDoc.exists ? userDoc.data().name : "알 수 없는 사용자";
       const classCode = userDoc.exists ? userDoc.data().classCode : "미지정";
+      // TTL: 90일 후 만료
+      const expireAt = new Date();
+      expireAt.setDate(expireAt.getDate() + 90);
+
       const logData = {
         userId,
         userName,
         classCode,
         type,
-        description,
+        description: sanitizeInput(description),
         metadata,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        expireAt: admin.firestore.Timestamp.fromDate(expireAt),
       };
       const logRef = db.collection("activity_logs").doc();
       if (transaction) {
@@ -70,6 +100,11 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
   };
   
   const checkAuthAndGetUserData = async (request, checkAdmin = false) => {
+    // App Check 토큰 검증 (소프트 적용 - 경고만, 차단 안함)
+    if (request.app === undefined && process.env.FUNCTIONS_EMULATOR !== 'true') {
+      logger.warn('App Check token missing for request from:', request.auth?.uid);
+    }
+
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "인증된 사용자만 함수를 호출할 수 있습니다.");
     }
@@ -94,6 +129,8 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
       LOG_TYPES,
       logActivity,
       checkAuthAndGetUserData,
+      sanitizeInput,
+      sanitizeObject,
       db,
       admin,
       logger

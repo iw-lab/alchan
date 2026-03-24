@@ -15,6 +15,8 @@ import {
 import { addDoc as originalFirebaseAddDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { logger } from '../../utils/logger';
+import { sanitizeInput } from '../../utils/validation';
+import { debouncedWrite } from '../../utils/writeOptimizer';
 import {
   logDbOperation,
   setCache,
@@ -26,11 +28,27 @@ import {
 // =================================================================
 // 활동 로그 & 거래 기록
 // =================================================================
+const NON_CRITICAL_LOG_TYPES = ['view', 'page_visit', 'search', 'filter'];
+
 export const addActivityLog = async (userId, type, description) => {
   if (!db || !userId) {
     logger.error("활동 로그 기록 실패: 필수 정보 부족(db, userId)", { userId, type, description });
     return;
   }
+
+  // 비중요 로그는 디바운싱 적용 (5초)
+  if (NON_CRITICAL_LOG_TYPES.includes(type)) {
+    return debouncedWrite(
+      `activity_${userId}_${type}`,
+      () => _writeActivityLog(userId, type, description),
+      5000
+    );
+  }
+  return _writeActivityLog(userId, type, description);
+};
+
+// 내부 쓰기 함수 (TTL expireAt 포함)
+async function _writeActivityLog(userId, type, description) {
   try {
     const userDoc = await getUserDocument(userId);
     if (!userDoc) {
@@ -40,19 +58,24 @@ export const addActivityLog = async (userId, type, description) => {
     if (!userDoc.classCode || userDoc.classCode === '미지정') {
       return;
     }
+    // TTL: 90일 후 만료
+    const expireAt = new Date();
+    expireAt.setDate(expireAt.getDate() + 90);
+
     const logsCollectionRef = collection(db, "activity_logs");
     await originalFirebaseAddDoc(logsCollectionRef, {
       type: type,
-      description: description,
+      description: sanitizeInput(description),
       userId: userId,
       userName: userDoc.name || userDoc.nickname || "N/A",
       classCode: userDoc.classCode,
       timestamp: serverTimestamp(),
+      expireAt: expireAt,
     });
   } catch (error) {
     logger.error("활동 로그 기록 중 오류 발생:", error);
   }
-};
+}
 
 export const addTransaction = async (userId, amount, description) => {
   if (!db || !userId) {
@@ -63,7 +86,7 @@ export const addTransaction = async (userId, amount, description) => {
     const txCollectionRef = collection(db, "users", userId, "transactions");
     await originalFirebaseAddDoc(txCollectionRef, {
       amount: amount,
-      description: description,
+      description: sanitizeInput(description),
       timestamp: serverTimestamp(),
     });
     return true;

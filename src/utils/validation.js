@@ -2,6 +2,42 @@
 import { getCurrencyUnit } from "./numberFormatter";
 
 /**
+ * HTML 태그 및 위험 패턴 제거
+ */
+export const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/<[^>]*>/g, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .replace(/data:\s*text\/html/gi, '')
+    .trim();
+};
+
+/**
+ * 닉네임 검증
+ */
+export const validateNickname = (nickname) => {
+  if (!nickname || typeof nickname !== 'string') return { valid: false, error: '닉네임을 입력해주세요.' };
+  const sanitized = sanitizeInput(nickname).trim();
+  if (sanitized.length < 1) return { valid: false, error: '닉네임을 입력해주세요.' };
+  if (sanitized.length > 20) return { valid: false, error: '닉네임은 20자 이하로 입력해주세요.' };
+  if (/[<>"'&\\\/]/.test(sanitized)) return { valid: false, error: '특수문자는 사용할 수 없습니다.' };
+  return { valid: true, value: sanitized };
+};
+
+/**
+ * 텍스트 콘텐츠 검증 (게시글, 댓글용)
+ */
+export const validateTextContent = (text, maxLength = 5000) => {
+  if (!text || typeof text !== 'string') return { valid: false, error: '내용을 입력해주세요.' };
+  const sanitized = sanitizeInput(text);
+  if (sanitized.length === 0) return { valid: false, error: '내용을 입력해주세요.' };
+  if (sanitized.length > maxLength) return { valid: false, error: `${maxLength}자 이하로 입력해주세요.` };
+  return { valid: true, value: sanitized };
+};
+
+/**
  * 금액 검증 및 정규화
  * @param {number|string} amount - 검증할 금액
  * @param {object} options - 검증 옵션

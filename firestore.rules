@@ -46,6 +46,15 @@ service cloud.firestore {
       return isSignedIn() && getUserClassCode() == classCode;
     }
 
+    // 문자열 길이 검증 헬퍼
+    function isValidString(value, maxLen) {
+      return value is string && value.size() <= maxLen;
+    }
+
+    function isValidNumber(value, min, max) {
+      return value is number && value >= min && value <= max;
+    }
+
     // 데이터 유효성 검증
     function isValidUserData() {
       return request.resource.data.keys().hasAll(['name', 'classCode', 'cash', 'coupons']) &&
@@ -60,17 +69,26 @@ service cloud.firestore {
       // 읽기: 본인, 같은 학급, 관리자, 또는 SuperAdmin (전체 목록 조회용)
       allow read: if isOwner(userId) || isSameClass(resource.data.classCode) || isAdmin() || isSuperAdmin();
 
-      // 생성: 본인만 (회원가입)
-      allow create: if isOwner(userId) && isValidUserData();
+      // 생성: 본인만 (회원가입) - admin 플래그 설정 방지
+      allow create: if isOwner(userId) && isValidUserData() &&
+                       !request.resource.data.get('isAdmin', false) &&
+                       !request.resource.data.get('isSuperAdmin', false) &&
+                       (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
+                       isValidString(request.resource.data.name, 50);
 
       // 수정: 본인, 같은 학급, 또는 관리자
       // - 본인: 중요 필드(isAdmin, isSuperAdmin, classCode) 제외 모든 필드 수정 가능
       // - 같은 학급: cash, updatedAt 필드만 수정 가능 (송금, 벌금 등)
       // - 관리자: 모든 필드 수정 가능
       allow update: if (isOwner(userId) &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role'])) ||
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role']) &&
+                        // 필드 유효성 검증
+                        (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
+                        (!('cash' in request.resource.data) || request.resource.data.cash is number) &&
+                        (!('coupons' in request.resource.data) || request.resource.data.coupons is number)) ||
                        (isSameClass(resource.data.classCode) &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt'])) ||
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt']) &&
+                        request.resource.data.cash is number) ||
                        isAdmin();
 
       // 삭제: 본인 또는 관리자
@@ -277,9 +295,12 @@ service cloud.firestore {
     // 📝 활동 로그 (activity_logs)
     // ========================================================
     match /activity_logs/{logId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
-      // 본인 classCode와 일치하는 로그만 생성 가능 (타 학급 로그 위조 방지)
-      allow create: if isSignedIn() && request.resource.data.classCode == getUserClassCode();
+      allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
+      // 본인 userId + 본인 classCode로만 생성 가능 (타 학급/타인 로그 위조 방지)
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.classCode == getUserClassCode() &&
+                       isValidString(request.resource.data.description, 500);
       allow update: if false;
       allow delete: if isAdmin();
     }

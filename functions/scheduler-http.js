@@ -1534,6 +1534,10 @@ async function collectPropertyHoldingTaxesLogic() {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
+          // TTL: 90일 후 만료
+          const logExpireAt = new Date();
+          logExpireAt.setDate(logExpireAt.getDate() + 90);
+
           const logRef = db.collection("activity_logs").doc();
           batch.set(logRef, {
             userId: userId,
@@ -1542,6 +1546,7 @@ async function collectPropertyHoldingTaxesLogic() {
             type: "taxPayment",
             description: `[자동] 소유 부동산 (총 가치 ${totalPropertyValue.toLocaleString()}원)에 대한 보유세 ${userTotalTax.toLocaleString()}원이 징수되었습니다.`,
             classCode: classCode,
+            expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
           });
 
           classTotalTax += userTotalTax;
@@ -1624,6 +1629,47 @@ async function aggregateActivityLogsLogic() {
   logger.info(">>> [스케줄러] 활동 로그 집계 시작");
   // 필요시 추후에 구현
 }
+
+// ===================================================================================
+// TTL 만료 문서 정리
+// ===================================================================================
+exports.cleanupExpiredDocuments = onRequest(
+  { region: "asia-northeast3", timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const now = admin.firestore.Timestamp.now();
+      const collections = [
+        { name: "activity_logs", field: "expireAt" },
+        { name: "pendingApprovals", field: "expireAt" },
+      ];
+
+      let totalDeleted = 0;
+      for (const col of collections) {
+        const snapshot = await db
+          .collection(col.name)
+          .where(col.field, "<=", now)
+          .limit(500)
+          .get();
+
+        if (!snapshot.empty) {
+          const batch = db.batch();
+          snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+          totalDeleted += snapshot.size;
+          logger.info(
+            `[TTL Cleanup] ${col.name}: ${snapshot.size}개 만료 문서 삭제`
+          );
+        }
+      }
+
+      logger.info(`[TTL Cleanup] 총 ${totalDeleted}개 만료 문서 삭제 완료`);
+      res.json({ success: true, deleted: totalDeleted });
+    } catch (error) {
+      logger.error("[TTL Cleanup] 오류:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
 
 // ===================================================================================
 // 외부에서 사용될 수 있도록 로직 함수들 export

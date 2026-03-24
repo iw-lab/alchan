@@ -24,6 +24,7 @@ import {
   updateUserDocument,
   deleteUserDocument,
   getClassmates, // 수정: 이제 실제 학급별 조회 함수
+  getGovernmentSettings,
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
   addTransaction,
@@ -508,6 +509,11 @@ export const AuthProvider = ({ children }) => {
                 firebaseAuthUser.uid,
                 false,
               );
+
+              // 🔥 [읽기 최적화] 로그인 후 자주 사용되는 데이터 프리페치 (캐시 워밍)
+              Promise.allSettled([
+                getGovernmentSettings(docData.classCode),
+              ]).catch(() => {});
             } else {
               setUsers([]);
               setAllClassMembers([]);

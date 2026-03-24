@@ -53,6 +53,9 @@ exports.addSingleRealStock = scheduler.addSingleRealStockFunction; // 개별 실
 exports.deleteSimulationStocks = scheduler.deleteSimulationStocksFunction; // 시뮬레이션 주식 삭제
 exports.manualUpdateStockMarket = scheduler.manualUpdateStockMarket; // 주식 시장 수동 업데이트
 
+// 🔥 TTL 만료 문서 정리
+exports.cleanupExpiredDocuments = scheduler.cleanupExpiredDocuments; // TTL 만료 문서 자동 삭제
+
 // 5분마다 주식 가격 업데이트
 // exports.updateCentralStockMarket = onSchedule({
 //   region: "asia-northeast3",
@@ -562,6 +565,10 @@ exports.submitTaskApproval = onCall(
         }
         await userRef2.update(updateData);
 
+        // TTL: 30일 후 만료
+        const approvalExpireAt1 = new Date();
+        approvalExpireAt1.setDate(approvalExpireAt1.getDate() + 30);
+
         const approvalRef = db.collection("pendingApprovals").doc();
         await approvalRef.set({
           classCode,
@@ -578,6 +585,7 @@ exports.submitTaskApproval = onCall(
           processedAt: admin.firestore.FieldValue.serverTimestamp(),
           processedBy: uid,
           autoApproved: true,
+          expireAt: admin.firestore.Timestamp.fromDate(approvalExpireAt1),
         });
 
         try {
@@ -601,6 +609,10 @@ exports.submitTaskApproval = onCall(
       }
 
       // 학생: pendingApprovals 문서 생성 (승인 대기)
+      // TTL: 30일 후 만료
+      const approvalExpireAt2 = new Date();
+      approvalExpireAt2.setDate(approvalExpireAt2.getDate() + 30);
+
       const approvalRef = db.collection("pendingApprovals").doc();
       await approvalRef.set({
         classCode,
@@ -616,6 +628,7 @@ exports.submitTaskApproval = onCall(
         requestedAt: admin.firestore.FieldValue.serverTimestamp(),
         processedAt: null,
         processedBy: null,
+        expireAt: admin.firestore.Timestamp.fromDate(approvalExpireAt2),
       });
 
       // 활동 로그

@@ -8,6 +8,7 @@ import {
   where,
   doc,
   getDoc,
+  getDocFromCache,
   writeBatch,
   runTransaction,
   collection,
@@ -88,6 +89,49 @@ export function setCachedFirestoreData(key, userId, data) {
   } catch (error) {
     logger.warn('[Cache] setCachedFirestoreData failed:', error);
   }
+}
+
+/**
+ * 여러 문서를 배치로 읽기 (캐시 우선 전략)
+ * Firestore SDK 로컬 캐시를 먼저 확인하고, 미스 시 서버에서 병렬 조회
+ * @param {Array<{collection: string, docId: string}>} docPaths
+ * @returns {Promise<Map<string, object>>}
+ */
+export async function batchGetDocs(docPaths) {
+  const results = new Map();
+  const cacheMisses = [];
+
+  // 캐시 우선 조회
+  for (const { collection: collName, docId } of docPaths) {
+    const ref = doc(db, collName, docId);
+    try {
+      const cached = await getDocFromCache(ref);
+      if (cached.exists()) {
+        results.set(`${collName}/${docId}`, { id: cached.id, ...cached.data() });
+        continue;
+      }
+    } catch (e) {
+      // 캐시 미스 - 서버에서 조회
+    }
+    cacheMisses.push({ collection: collName, docId, ref });
+  }
+
+  // 캐시 미스 항목을 서버에서 병렬 조회
+  if (cacheMisses.length > 0) {
+    const serverFetches = cacheMisses.map(async ({ collection: collName, docId, ref }) => {
+      try {
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          results.set(`${collName}/${docId}`, { id: snap.id, ...snap.data() });
+        }
+      } catch (e) {
+        logger.warn(`[batchGetDocs] ${collName}/${docId} 조회 실패:`, e);
+      }
+    });
+    await Promise.all(serverFetches);
+  }
+
+  return results;
 }
 
 // ============================================================

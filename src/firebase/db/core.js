@@ -13,9 +13,11 @@ import {
   where as originalFirebaseWhere,
   addDoc as originalFirebaseAddDoc,
   onSnapshot,
+  limit as firestoreLimit,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { logger } from '../../utils/logger';
+import { sanitizeInput } from '../../utils/validation';
 import {
   logDbOperation,
   setCache,
@@ -64,8 +66,12 @@ export const addData = (collectionName, data, tab = 'unknown') => {
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
   invalidateCachePattern(collectionName);
   logDbOperation('WRITE', collectionName, null, { tab, extra: 'addData' });
+  const sanitizedData = {};
+  for (const [key, value] of Object.entries(data)) {
+    sanitizedData[key] = typeof value === 'string' ? sanitizeInput(value) : value;
+  }
   const dataWithTimestamp = {
-    ...data,
+    ...sanitizedData,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -159,10 +165,54 @@ export const getClassmates = async (classCode, forceRefresh = false, tab = 'unkn
     return [];
   }
   const cacheKey = `classmates_${classCode}`;
+  const syncTimeKey = `classmates_sync_${classCode}`;
+
   if (!forceRefresh) {
     const cached = getCache(cacheKey, tab);
-    if (cached) return cached;
+    if (cached) {
+      // 증분 동기화: 캐시가 있으면 lastSync 이후 업데이트된 사용자만 조회
+      const lastSync = getCache(syncTimeKey);
+      if (lastSync) {
+        try {
+          const usersRef = collection(db, "users");
+          const incrementalQuery = originalFirebaseQuery(
+            usersRef,
+            originalFirebaseWhere("classCode", "==", classCode),
+            originalFirebaseWhere("updatedAt", ">", new Date(lastSync)),
+            firestoreLimit(50)
+          );
+          const incrementalSnap = await getDocs(incrementalQuery);
+
+          if (!incrementalSnap.empty) {
+            // 업데이트된 항목을 기존 캐시에 병합
+            const merged = [...cached];
+            incrementalSnap.docs.forEach(d => {
+              const updated = { id: d.id, uid: d.id, ...d.data() };
+              const idx = merged.findIndex(m => m.id === d.id);
+              if (idx >= 0) {
+                merged[idx] = updated;
+              } else {
+                merged.push(updated);
+              }
+            });
+            logDbOperation('READ', 'users', null, { tab, extra: `getClassmates 증분(${classCode}): ${incrementalSnap.size}건 업데이트` });
+            setCache(cacheKey, merged);
+            setCache(syncTimeKey, Date.now());
+            return merged;
+          }
+          // 업데이트 없음 - 기존 캐시 반환
+          setCache(syncTimeKey, Date.now());
+          return cached;
+        } catch (e) {
+          // 증분 조회 실패 시 기존 캐시 반환
+          return cached;
+        }
+      }
+      return cached;
+    }
   }
+
+  // 전체 조회
   try {
     const usersRef = collection(db, "users");
     const q = originalFirebaseQuery(usersRef, originalFirebaseWhere("classCode", "==", classCode));
@@ -174,6 +224,7 @@ export const getClassmates = async (classCode, forceRefresh = false, tab = 'unkn
     }));
     logDbOperation('READ', 'users', null, { tab, extra: `getClassmates(${classCode}): ${classMembers.length}명` });
     setCache(cacheKey, classMembers);
+    setCache(syncTimeKey, Date.now());
     return classMembers;
   } catch (error) {
     logger.error(`[firebase.js] 학급 구성원 조회 오류 (${classCode}):`, error);
