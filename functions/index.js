@@ -4660,7 +4660,7 @@ exports.fixDuplicateUser = onRequest(
   { region: "asia-northeast3", invoker: "public" },
   async (req, res) => {
     const token = req.query.token;
-    if (token !== "my-super-secret-token-2024-isw") {
+    if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }

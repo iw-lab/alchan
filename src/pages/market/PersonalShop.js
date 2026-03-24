@@ -937,9 +937,29 @@ const PersonalShop = () => {
         const inventoryRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
         const inventorySnap = await transaction.get(inventoryRef);
 
+        // 🔹 구매자 실제 잔액 확인 (동시 구매 방지)
+        const buyerRef = doc(db, "users", currentUser.uid);
+        const buyerSnap = await transaction.get(buyerRef);
+        if (!buyerSnap.exists() || (buyerSnap.data().cash || 0) < totalAmount) {
+          throw new Error("잔액이 부족합니다!");
+        }
+
+        // 🔹 상품 실제 재고 확인 (동시 구매 방지)
+        const productRef = doc(db, "shopProducts", purchaseProduct.id);
+        const productSnap = await transaction.get(productRef);
+        if (!productSnap.exists()) {
+          throw new Error("상품이 존재하지 않습니다!");
+        }
+        const currentProduct = productSnap.data();
+        if (currentProduct.type === "product" && (currentProduct.stock || 0) < quantity) {
+          throw new Error("재고가 부족합니다!");
+        }
+        if (currentProduct.status === "soldout" || currentProduct.status === "hidden") {
+          throw new Error("판매 중인 상품이 아닙니다!");
+        }
+
         // 🔹 이후 쓰기 수행
         // 구매자 잔액 차감
-        const buyerRef = doc(db, "users", currentUser.uid);
         transaction.update(buyerRef, {
           cash: increment(-totalAmount),
         });
@@ -980,12 +1000,11 @@ const PersonalShop = () => {
           totalTaxPaid: increment(taxAmount),
         });
 
-        // 상품 재고/판매량 업데이트
-        const productRef = doc(db, "shopProducts", purchaseProduct.id);
+        // 상품 재고/판매량 업데이트 (실제 DB 값 기반)
         const updates = { soldCount: increment(quantity) };
-        if (purchaseProduct.type === "product") {
+        if (currentProduct.type === "product") {
           updates.stock = increment(-quantity);
-          if (purchaseProduct.stock - quantity <= 0) {
+          if ((currentProduct.stock || 0) - quantity <= 0) {
             updates.status = "soldout";
           }
         }
