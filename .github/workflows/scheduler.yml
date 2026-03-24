@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (salary, rent, property-tax, all)'
+        description: '실행할 작업 (reset, salary, rent, property-tax, all)'
         required: false
         default: 'salary'
 
@@ -52,9 +52,12 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 자정 리셋 (매일 KST 0:00~0:05)
+      # 자정 리셋 (매일 KST 0:00~0:14 - GitHub Actions cron 지연 고려)
       - name: Midnight reset
-        if: steps.time.outputs.kst_hour == 0 && steps.time.outputs.minute < 5
+        if: |
+          (steps.time.outputs.kst_hour == 0 && steps.time.outputs.minute < 15) ||
+          (github.event_name == 'workflow_dispatch' &&
+          (github.event.inputs.task == 'reset' || github.event.inputs.task == 'all'))
         run: |
           echo "Calling midnightReset..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
