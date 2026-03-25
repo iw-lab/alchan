@@ -24,7 +24,7 @@ import {
   functions,
   httpsCallable,
 } from "../../firebase";
-import { limit, runTransaction } from "firebase/firestore";
+import { limit, orderBy, runTransaction } from "firebase/firestore";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import {
   logActivity,
@@ -463,10 +463,18 @@ export default function MyAssets() {
         collection(db, "activity_logs"),
         where("classCode", "==", currentUserClassCode),
         where("userId", "==", userId),
+        orderBy("timestamp", "desc"),
         limit(50),
       );
       const transactionsRef = query(
         collection(db, "users", userId, "transactions"),
+        orderBy("timestamp", "desc"),
+        limit(50),
+      );
+      const rootTransactionsRef = query(
+        collection(db, "transactions"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc"),
         limit(50),
       );
 
@@ -479,6 +487,7 @@ export default function MyAssets() {
         productsSnap,
         activityLogsSnap,
         transactionsSnap,
+        rootTransactionsSnap,
       ] = await Promise.all([
         getDocs(realEstateRef1),
         getDocs(realEstateRef2),
@@ -488,6 +497,7 @@ export default function MyAssets() {
         getDocs(productsRef),
         getDocs(activityLogsRef).catch(() => ({ docs: [] })),
         getDocs(transactionsRef).catch(() => ({ docs: [] })),
+        getDocs(rootTransactionsRef).catch(() => ({ docs: [] })),
       ]);
 
       // 부동산 처리
@@ -550,22 +560,30 @@ export default function MyAssets() {
         })
         .filter((tx) => tx.amount !== 0 || tx.couponAmount !== 0);
 
-      const transactionsData = (transactionsSnap.docs || [])
-        .map((doc) => {
-          const data = doc.data();
-          const desc = data.description || "거래 내역";
-          return {
-            id: doc.id,
-            amount: data.amount || 0,
-            description: !desc || desc === "undefined" ? "거래 내역" : desc,
-            timestamp: data.timestamp || data.createdAt,
-            type: data.type || "transaction",
-            source: "transactions",
-          };
-        })
-        .filter((tx) => tx.amount !== 0);
+      const parseTransactionDocs = (docs) =>
+        (docs || [])
+          .map((doc) => {
+            const data = doc.data();
+            const desc = data.description || "거래 내역";
+            return {
+              id: doc.id,
+              amount: data.amount || 0,
+              description: !desc || desc === "undefined" ? "거래 내역" : desc,
+              timestamp: data.timestamp || data.createdAt,
+              type: data.type || "transaction",
+              source: "transactions",
+            };
+          })
+          .filter((tx) => tx.amount !== 0);
 
-      const allTransactions = [...activityData, ...transactionsData];
+      const transactionsData = parseTransactionDocs(transactionsSnap.docs);
+      const rootTransactionsData = parseTransactionDocs(rootTransactionsSnap.docs);
+
+      // 중복 제거 (같은 ID의 문서)
+      const seenIds = new Set(transactionsData.map((tx) => tx.id));
+      const uniqueRootData = rootTransactionsData.filter((tx) => !seenIds.has(tx.id));
+
+      const allTransactions = [...activityData, ...transactionsData, ...uniqueRootData];
       allTransactions.sort((a, b) => {
         const dateA = a.timestamp?.toDate
           ? a.timestamp.toDate()
