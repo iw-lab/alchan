@@ -1224,14 +1224,16 @@ async function payWeeklySalariesLogic(forceRun = false) {
     const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const todayStr = kstNow.toISOString().split("T")[0];
 
+    // 주간 중복 방지 (같은 주에 여러 번 호출되어도 1회만 지급)
+    const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
     const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
-    if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().lastPayDate === todayStr) {
-      logger.info(`[주급 지급] 오늘(${todayStr}) 이미 지급 완료 - 건너뜀`);
+    if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().weekKey === weekKey) {
+      logger.info(`[주급 지급] 이번 주(${weekKey}) 이미 지급 완료 - 건너뜀`);
       return;
     }
 
     // 지급 시작 - 락 설정
-    await db.collection("schedulerLocks").doc("weeklySalary").set({ lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
+    await db.collection("schedulerLocks").doc("weeklySalary").set({ weekKey, lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
 
     const classCodes = await getAllActiveClassCodes();
     logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);

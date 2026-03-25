@@ -10,8 +10,8 @@ on:
     inputs:
       task:
         description: '실행할 작업 (reset, salary, rent, property-tax, all)'
-        required: false
-        default: 'salary'
+        required: true
+        default: 'reset'
 
 jobs:
   stock-price-update:
