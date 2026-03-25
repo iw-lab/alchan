@@ -21,11 +21,11 @@ jobs:
       - name: Calculate KST time
         id: time
         run: |
-          HOUR=$(date -u +%H)
-          MINUTE=$(date -u +%M)
+          HOUR=$(date -u +%-H)
+          MINUTE=$(date -u +%-M)
           DAY=$(date -u +%u) # 1=Monday, 7=Sunday
 
-          # KST 시간 계산 (UTC+9)
+          # KST 시간 계산 (UTC+9) - %-H로 zero-padding 제거 (08/09 octal 버그 방지)
           KST_HOUR=$(( (HOUR + 9) % 24 ))
           if [ $HOUR -ge 15 ]; then
             KST_DAY=$(( (DAY % 7) + 1 ))

@@ -868,12 +868,12 @@ async function runEconomicEventsForAllClasses() {
     const classCode = settingDoc.id;
     const triggerHour = settings.triggerHour ?? 13; // 기본 오후 1시
 
-    // 현재 시간이 트리거 시간 ±29분 이내인지 확인
+    // 현재 시간이 트리거 시간 ±59분 이내인지 확인 (GitHub Actions cron 지연 대응)
     const totalCurrentMin = currentHour * 60 + currentMinute;
     const totalTriggerMin = triggerHour * 60;
     const diff = Math.abs(totalCurrentMin - totalTriggerMin);
 
-    if (diff > 29) {
+    if (diff > 59) {
       logger.info(
         `[경제이벤트] ${classCode}: KST ${currentHour}:${String(currentMinute).padStart(2, "0")} ≠ 트리거 ${triggerHour}:00 - 건너뜀`,
       );
