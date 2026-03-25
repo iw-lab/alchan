@@ -297,10 +297,12 @@ service cloud.firestore {
     match /activity_logs/{logId} {
       allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
       // 본인 userId + 본인 classCode로만 생성 가능 (타 학급/타인 로그 위조 방지)
-      allow create: if isSignedIn() &&
+      // 관리자는 다른 사용자의 활동 로그도 생성 가능 (돈 회수, 벌금 등)
+      allow create: if isAdmin() ||
+                       (isSignedIn() &&
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.classCode == getUserClassCode() &&
-                       isValidString(request.resource.data.description, 500);
+                       isValidString(request.resource.data.description, 500));
       allow update: if false;
       allow delete: if isAdmin();
     }
