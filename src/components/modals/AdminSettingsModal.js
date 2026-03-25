@@ -914,7 +914,7 @@ const AdminSettingsModal = ({
   const handleReverseSalary = async () => {
     if (!window.confirm("주급 1회분을 모든 학생에게서 회수하시겠습니까?")) return;
     try {
-      const reverseFn = httpsCallable(firebaseFunctions, "reverseSalaryOnce");
+      const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
       const result = await reverseFn({});
       if (result.data.success) {
         alert(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만원 회수`);
