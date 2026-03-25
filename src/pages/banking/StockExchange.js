@@ -2089,13 +2089,17 @@ const StockExchange = () => {
 
           <div className="market-grid">
             {displayedStocks.map((stock) => {
-              const priceHistory = stock.priceHistory || [stock.price];
-              const priceChange =
-                priceHistory.length >= 2
-                  ? ((priceHistory.slice(-1)[0] - priceHistory.slice(-2)[0]) /
-                      priceHistory.slice(-2)[0]) *
-                    100
-                  : 0;
+              // 실시간 주식: 서버에서 계산한 전일 종가 대비 등락률 사용
+              // 시뮬레이션 주식: priceHistory 기반 계산
+              const priceChange = stock.isRealStock && stock.changePercent != null
+                ? stock.changePercent
+                : (() => {
+                    const priceHistory = stock.priceHistory || [stock.price];
+                    return priceHistory.length >= 2
+                      ? ((priceHistory.slice(-1)[0] - priceHistory.slice(-2)[0]) /
+                          priceHistory.slice(-2)[0]) * 100
+                      : 0;
+                  })();
               const isRealStock = stock.isRealStock === true;
               return (
                 <div
