@@ -496,6 +496,9 @@ async function updateCentralStocksSnapshot() {
       priceHistory: (data.priceHistory || []).slice(-20), // 최근 20개까지만
       realStockSymbol: data.realStockSymbol || null,
       realStockData: data.realStockData || null,
+      previousClose: data.previousClose || null,
+      changePercent: data.changePercent ?? null,
+      marketState: data.marketState || null,
       lastUpdated: data.lastUpdated || null,
     };
   });
