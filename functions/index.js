@@ -53,6 +53,11 @@ exports.addSingleRealStock = scheduler.addSingleRealStockFunction; // 개별 실
 exports.deleteSimulationStocks = scheduler.deleteSimulationStocksFunction; // 시뮬레이션 주식 삭제
 exports.manualUpdateStockMarket = scheduler.manualUpdateStockMarket; // 주식 시장 수동 업데이트
 
+// 🔥 주식 유틸리티 (관리자용)
+exports.deduplicateStocksFunction = scheduler.deduplicateStocksFunction; // 중복 주식 정리
+exports.getAvailableSymbolsFunction = scheduler.getAvailableSymbolsFunction; // 사용 가능한 심볼 목록
+exports.updateExchangeRateFunction = scheduler.updateExchangeRateFunction; // 환율 수동 업데이트
+
 // 🔥 TTL 만료 문서 정리
 exports.cleanupExpiredDocuments = scheduler.cleanupExpiredDocuments; // TTL 만료 문서 자동 삭제
 

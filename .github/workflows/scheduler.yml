@@ -52,10 +52,10 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 자정 리셋 (매일 KST 0:00~0:14 - GitHub Actions cron 지연 고려)
+      # 자정 리셋 (매일 KST 0시 - 함수 내부 중복 방지로 안전)
       - name: Midnight reset
         if: |
-          (steps.time.outputs.kst_hour == 0 && steps.time.outputs.minute < 15) ||
+          steps.time.outputs.kst_hour == 0 ||
           (github.event_name == 'workflow_dispatch' &&
           (github.event.inputs.task == 'reset' || github.event.inputs.task == 'all'))
         run: |
@@ -87,11 +87,13 @@ jobs:
           fi
           echo "✅ 주급 지급 완료"
 
-      # 부동산 보유세 징수 (금요일 KST 8:00~8:15)
+      # 부동산 보유세 징수 (금요일 KST 8~9시 - 함수 내부 주간 중복 방지)
       - name: Property holding tax
         if: |
-          steps.time.outputs.kst_day == 5 &&
-          steps.time.outputs.kst_hour == 8 && steps.time.outputs.minute < 15
+          (steps.time.outputs.kst_day == 5 &&
+          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 9) ||
+          (github.event_name == 'workflow_dispatch' &&
+          (github.event.inputs.task == 'property-tax' || github.event.inputs.task == 'all'))
         run: |
           echo "Calling weeklyPropertyTax..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \

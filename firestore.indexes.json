@@ -159,6 +159,20 @@
       ]
     },
     {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dailyAmount",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "personalShops",
       "queryScope": "COLLECTION",
       "fields": [

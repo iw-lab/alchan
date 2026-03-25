@@ -290,7 +290,17 @@ exports.midnightReset = onRequest(
         return;
       }
 
-      logger.info(`[midnightReset] 일일 과제 리셋 + 적금 자동 납입 시작`);
+      // 🔥 중복 실행 방지 (같은 날 여러 번 호출 시)
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const todayStr = kstNow.toISOString().split("T")[0];
+      const lastResetDoc = await db.collection("systemState").doc("lastMidnightReset").get();
+      if (lastResetDoc.exists && lastResetDoc.data().date === todayStr) {
+        res.json({ success: true, message: "이미 오늘 리셋 완료됨", skipped: true, date: todayStr });
+        return;
+      }
+
+      logger.info(`[midnightReset] 일일 과제 리셋 + 적금 자동 납입 시작 (${todayStr})`);
 
       await resetDailyTasksLogic();
 
@@ -304,9 +314,16 @@ exports.midnightReset = onRequest(
         savingsResult.error = savingsError.message;
       }
 
+      // 🔥 리셋 완료 기록 (중복 방지용)
+      await db.collection("systemState").doc("lastMidnightReset").set({
+        date: todayStr,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       res.json({
         success: true,
         message: "일일 과제 리셋 + 적금 자동 납입 완료",
+        date: todayStr,
         savings: savingsResult,
       });
     } catch (error) {
@@ -398,11 +415,26 @@ exports.weeklyPropertyTax = onRequest(
         return;
       }
 
-      logger.info(`[weeklyPropertyTax] 부동산 보유세 자동 징수 시작`);
+      // 🔥 주간 중복 실행 방지
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
+      if (lastTaxDoc.exists && lastTaxDoc.data().weekKey === weekKey) {
+        res.json({ success: true, message: "이번 주 이미 보유세 징수 완료", skipped: true, weekKey });
+        return;
+      }
+
+      logger.info(`[weeklyPropertyTax] 부동산 보유세 자동 징수 시작 (${weekKey})`);
 
       await collectPropertyHoldingTaxesLogic();
 
-      res.json({ success: true, message: "부동산 보유세 징수 완료" });
+      await db.collection("systemState").doc("lastPropertyTax").set({
+        weekKey,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.json({ success: true, message: "부동산 보유세 징수 완료", weekKey });
     } catch (error) {
       logger.error("[weeklyPropertyTax] 오류:", error);
       res.status(500).json({ success: false, error: error.message });
