@@ -175,30 +175,29 @@ export const processFineTransaction = async (userId, classCode, amount, reason) 
   try {
     await runTransaction(db, async (transaction) => {
       const userSnap = await transaction.get(userRef);
-      const treasurySnap = await transaction.get(treasuryRef);
       if (!userSnap.exists()) throw new Error("피신고자 정보 없음");
+
+      // 학생 현금 차감
       transaction.update(userRef, { cash: increment(-amount) });
-      if (treasurySnap.exists()) {
-        transaction.update(treasuryRef, {
-          totalAmount: increment(amount),
-          otherTaxRevenue: increment(amount),
-          lastUpdated: serverTimestamp()
-        });
-      } else {
-        transaction.set(treasuryRef, {
-          totalAmount: amount,
-          stockTaxRevenue: 0,
-          stockCommissionRevenue: 0,
-          realEstateTransactionTaxRevenue: 0,
-          realEstateAnnualTaxRevenue: 0,
-          incomeTaxRevenue: 0,
-          corporateTaxRevenue: 0,
-          otherTaxRevenue: amount,
-          classCode: classCode,
-          createdAt: serverTimestamp(),
-          lastUpdated: serverTimestamp()
+
+      // 관리자(국고) cash에 벌금 추가
+      const adminQuery = await getDocs(query(
+        collection(db, "users"),
+        where("classCode", "==", classCode),
+        where("isAdmin", "==", true)
+      ));
+      if (!adminQuery.empty) {
+        transaction.update(adminQuery.docs[0].ref, {
+          cash: increment(amount),
+          updatedAt: serverTimestamp()
         });
       }
+
+      // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
+      transaction.set(treasuryRef, {
+        otherTaxRevenue: increment(amount),
+        lastUpdated: serverTimestamp()
+      }, { merge: true });
     });
     invalidateCache(`user_${userId}`);
     Promise.all([
@@ -317,8 +316,8 @@ export const processGenericSaleTransaction = async (classCode, buyerId, sellerId
           : taxType === "auction" ? "auctionTaxRevenue"
           : taxType === "itemMarket" ? "itemMarketTaxRevenue"
           : "otherTaxRevenue";
+        // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
         transaction.set(treasuryStatsRef, {
-          totalAmount: increment(taxAmount),
           [revenueField]: increment(taxAmount),
           lastUpdated: serverTimestamp()
         }, { merge: true });

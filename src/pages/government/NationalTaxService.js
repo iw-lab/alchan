@@ -249,11 +249,10 @@ const NationalTaxService = ({ classCode }) => {
       const result = await collectPropertyHoldingTaxes(classCode);
       if (result.success) {
         alert(`보유세 징수 완료!\n징수 대상: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
-        // 국고 통계에도 기록
+        // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
         const treasuryRef = doc(db, "nationalTreasuries", classCode);
         await setDoc(treasuryRef, {
           propertyHoldingTaxRevenue: increment(result.totalCollected || 0),
-          totalAmount: increment(result.totalCollected || 0),
           lastUpdated: serverTimestamp(),
         }, { merge: true });
         refetchTreasury();

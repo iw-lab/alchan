@@ -170,11 +170,10 @@ export default function Auction() {
             });
           }
 
-          // 3. 국고 통계 업데이트
+          // 3. 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
           if (taxAmount > 0) {
             const treasuryRef = doc(db, "nationalTreasuries", classCode);
             transaction.set(treasuryRef, {
-              totalAmount: increment(taxAmount),
               auctionTaxRevenue: increment(taxAmount),
               lastUpdated: serverTimestamp(),
             }, { merge: true });

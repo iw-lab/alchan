@@ -1595,14 +1595,13 @@ async function collectPropertyHoldingTaxesLogic() {
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 국고 통계 업데이트
+        // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
         const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
         batch.set(
           treasuryRef,
           {
             propertyHoldingTaxRevenue:
               admin.firestore.FieldValue.increment(classTotalTax),
-            totalAmount: admin.firestore.FieldValue.increment(classTotalTax),
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           },
           { merge: true },

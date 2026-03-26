@@ -224,28 +224,12 @@ export const purchaseItemTransaction = async (userId, storeItemId, userClassCode
         });
       }
 
+      // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
       if (vatAmount > 0) {
-        if (treasurySnap.exists()) {
-          transaction.update(nationalTreasuryRef, {
-            totalAmount: increment(vatAmount),
-            vatRevenue: increment(vatAmount),
-            lastUpdated: serverTimestamp(),
-          });
-        } else {
-          transaction.set(nationalTreasuryRef, {
-            totalAmount: vatAmount,
-            vatRevenue: vatAmount,
-            stockTaxRevenue: 0,
-            realEstateTransactionTaxRevenue: 0,
-            auctionTaxRevenue: 0,
-            propertyHoldingTaxRevenue: 0,
-            itemMarketTaxRevenue: 0,
-            incomeTaxRevenue: 0,
-            corporateTaxRevenue: 0,
-            otherTaxRevenue: 0,
-            lastUpdated: serverTimestamp(),
-          });
-        }
+        transaction.set(nationalTreasuryRef, {
+          vatRevenue: increment(vatAmount),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
       }
     });
 

@@ -1196,10 +1196,10 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         .doc(uid)
         .collection("portfolio")
         .doc(stockId);
-      const refsToRead = [userRef, stockRef, portfolioRef, treasuryRef];
+      const refsToRead = [userRef, stockRef, portfolioRef];
       if (adminRef) refsToRead.push(adminRef);
       const results = await transaction.getAll(...refsToRead);
-      const [userDoc, stockDoc, portfolioDoc, treasuryDoc] = results;
+      const [userDoc, stockDoc, portfolioDoc] = results;
 
       if (!userDoc.exists) {
         throw new Error("사용자 정보를 찾을 수 없습니다.");
@@ -1275,35 +1275,15 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         recentBuyVolume: admin.firestore.FieldValue.increment(quantity),
       });
 
-      // 국고에 세금 및 수수료 추가
-      if (treasuryDoc.exists) {
-        transaction.update(treasuryRef, {
-          totalAmount: admin.firestore.FieldValue.increment(
-            commission + transactionTax,
-          ),
-          stockCommissionRevenue:
-            admin.firestore.FieldValue.increment(commission),
-          stockTaxRevenue: admin.firestore.FieldValue.increment(transactionTax),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } else {
-        // 국고가 없으면 생성
-        transaction.set(treasuryRef, {
-          totalAmount: commission + transactionTax,
-          stockCommissionRevenue: commission,
-          stockTaxRevenue: transactionTax,
-          realEstateTransactionTaxRevenue: 0,
-          realEstateAnnualTaxRevenue: 0,
-          incomeTaxRevenue: 0,
-          corporateTaxRevenue: 0,
-          otherTaxRevenue: 0,
-          classCode: classCode,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
+      // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
+      transaction.set(treasuryRef, {
+        stockCommissionRevenue:
+          admin.firestore.FieldValue.increment(commission),
+        stockTaxRevenue: admin.firestore.FieldValue.increment(transactionTax),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
-      // 관리자에게 수수료+거래세 입금
+      // 관리자에게 수수료+거래세 입금 (국고 = 관리자 cash)
       const taxRevenue = commission + transactionTax;
       if (adminRef && taxRevenue > 0) {
         const isAdminBuyer = adminRef.path === userRef.path;
@@ -1449,14 +1429,11 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
         }
       }
 
-      // 🔥 이제 stockId를 알았으니 주식 정보와 국고 정보를 읽음
+      // 🔥 이제 stockId를 알았으니 주식 정보를 읽음
       const stockRef = db
         .collection("CentralStocks")
         .doc(portfolioData.stockId);
-      const [stockDoc, treasuryDoc] = await transaction.getAll(
-        stockRef,
-        treasuryRef,
-      );
+      const [stockDoc] = await transaction.getAll(stockRef);
 
       if (!stockDoc.exists) {
         throw new Error("주식 정보를 찾을 수 없습니다.");
@@ -1516,35 +1493,15 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
         recentSellVolume: admin.firestore.FieldValue.increment(quantity),
       });
 
-      // 국고에 세금 및 수수료 추가
-      if (treasuryDoc.exists) {
-        transaction.update(treasuryRef, {
-          totalAmount: admin.firestore.FieldValue.increment(
-            commission + totalTax,
-          ),
-          stockCommissionRevenue:
-            admin.firestore.FieldValue.increment(commission),
-          stockTaxRevenue: admin.firestore.FieldValue.increment(totalTax),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      } else {
-        // 국고가 없으면 생성
-        transaction.set(treasuryRef, {
-          totalAmount: commission + totalTax,
-          stockCommissionRevenue: commission,
-          stockTaxRevenue: totalTax,
-          realEstateTransactionTaxRevenue: 0,
-          realEstateAnnualTaxRevenue: 0,
-          incomeTaxRevenue: 0,
-          corporateTaxRevenue: 0,
-          otherTaxRevenue: 0,
-          classCode: classCode,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
+      // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
+      transaction.set(treasuryRef, {
+        stockCommissionRevenue:
+          admin.firestore.FieldValue.increment(commission),
+        stockTaxRevenue: admin.firestore.FieldValue.increment(totalTax),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
 
-      // 관리자에게 수수료+세금 입금
+      // 관리자에게 수수료+세금 입금 (국고 = 관리자 cash)
       const sellTaxRevenue = commission + totalTax;
       if (sellAdminRef && sellTaxRevenue > 0) {
         const isAdminSeller = sellAdminRef.path === userRef.path;
@@ -1932,7 +1889,7 @@ exports.purchaseStoreItem = onCall(
       // 🔥 Transaction으로 변경하여 원자적 처리 및 재고 보충 정보 포함
       const result = await db.runTransaction(async (transaction) => {
         // 모든 읽기 작업을 먼저 수행
-        // [0]=user, [1]=item, [2]=userItem, [3]=admin(optional), last=treasury
+        // [0]=user, [1]=item, [2]=userItem, [3]=admin(optional)
         const readPromises = [
           transaction.get(userRef),
           transaction.get(itemRef),
@@ -1943,12 +1900,10 @@ exports.purchaseStoreItem = onCall(
         if (adminRef) {
           readPromises.push(transaction.get(adminRef));
         }
-        readPromises.push(transaction.get(treasuryRef));
 
         const results = await Promise.all(readPromises);
         const [userDoc, itemDoc, userItemDoc] = results;
         const adminDoc = adminRef ? results[3] : null;
-        const treasuryDoc = results[results.length - 1]; // 마지막이 항상 treasury
 
         if (!userDoc.exists) {
           throw new Error("사용자 정보를 찾을 수 없습니다.");
@@ -2135,26 +2090,15 @@ exports.purchaseStoreItem = onCall(
           transaction.set(userItemRef, newItemData);
         }
 
-        // 국고에 부가세(VAT) 기록 (기존 가격을 VAT 포함가로 간주)
+        // 국고 통계에 부가세(VAT) 기록 (totalAmount 제외 - 국고=관리자cash)
         const vatAmount = Math.round(
           (totalCost * itemStoreVATRate) / (1 + itemStoreVATRate),
         );
         if (vatAmount > 0) {
-          if (treasuryDoc.exists) {
-            transaction.update(treasuryRef, {
-              totalAmount: admin.firestore.FieldValue.increment(vatAmount),
-              vatRevenue: admin.firestore.FieldValue.increment(vatAmount),
-              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          } else {
-            transaction.set(treasuryRef, {
-              totalAmount: vatAmount,
-              vatRevenue: vatAmount,
-              classCode: classCode,
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          }
+          transaction.set(treasuryRef, {
+            vatRevenue: admin.firestore.FieldValue.increment(vatAmount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
         }
 
         // 트랜잭션 결과 반환
@@ -2777,7 +2721,7 @@ exports.buyMarketItem = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 관리자(교사)에게 세금 입금 및 국고 통계 업데이트
+        // 관리자(교사)에게 세금 입금 (국고 = 관리자 cash) + 통계 기록
         if (taxAmount > 0 && adminDocRef) {
           transaction.update(adminDocRef, {
             cash: admin.firestore.FieldValue.increment(taxAmount),
@@ -2790,7 +2734,6 @@ exports.buyMarketItem = onCall(
           transaction.set(
             treasuryRef,
             {
-              totalAmount: admin.firestore.FieldValue.increment(taxAmount),
               itemMarketTaxRevenue:
                 admin.firestore.FieldValue.increment(taxAmount),
               lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -3102,7 +3045,7 @@ exports.respondToOffer = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
-          // 관리자(교사)에게 세금 입금 및 국고 통계 업데이트
+          // 관리자(교사)에게 세금 입금 (국고 = 관리자 cash) + 통계 기록
           if (taxAmount > 0 && adminDocRef) {
             transaction.update(adminDocRef, {
               cash: admin.firestore.FieldValue.increment(taxAmount),
@@ -3115,7 +3058,6 @@ exports.respondToOffer = onCall(
             transaction.set(
               treasuryRef,
               {
-                totalAmount: admin.firestore.FieldValue.increment(taxAmount),
                 itemMarketTaxRevenue:
                   admin.firestore.FieldValue.increment(taxAmount),
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -3355,34 +3297,15 @@ exports.purchaseRealEstate = onCall(
             });
           }
 
-          // 국고 통계 업데이트
+          // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
           const treasuryRef = db
             .collection("nationalTreasuries")
             .doc(classCode);
-          const treasuryDoc = await transaction.get(treasuryRef);
-          if (treasuryDoc.exists) {
-            transaction.update(treasuryRef, {
-              totalAmount: admin.firestore.FieldValue.increment(taxAmount),
-              realEstateTransactionTaxRevenue:
-                admin.firestore.FieldValue.increment(taxAmount),
-              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          } else {
-            transaction.set(treasuryRef, {
-              totalAmount: taxAmount,
-              stockTaxRevenue: 0,
-              stockCommissionRevenue: 0,
-              realEstateTransactionTaxRevenue: taxAmount,
-              vatRevenue: 0,
-              auctionTaxRevenue: 0,
-              propertyHoldingTaxRevenue: 0,
-              itemMarketTaxRevenue: 0,
-              otherTaxRevenue: 0,
-              classCode: classCode,
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          }
+          transaction.set(treasuryRef, {
+            realEstateTransactionTaxRevenue:
+              admin.firestore.FieldValue.increment(taxAmount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
         }
 
         // 5. 부동산 소유자 변경 + 자동 입주 처리

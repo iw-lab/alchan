@@ -530,29 +530,17 @@ const PoliceStation = () => {
 
   const { data: treasuryBalance, loading: treasuryLoading } = usePolling(
     async () => {
-      if (!treasuryRef) return 0;
-      const docSnap = await getDoc(treasuryRef);
-      // NationalTaxService.js와 동일하게 totalAmount 필드 사용
-      const balance = docSnap.exists() ? docSnap.data().totalAmount || 0 : 0;
-      if (!docSnap.exists() && hasPoliceAdminRights) {
-        // NationalTaxService.js의 DEFAULT_TREASURY_DATA와 동일한 구조로 생성
-        setDoc(treasuryRef, {
-          totalAmount: 0,
-          stockTaxRevenue: 0,
-          stockCommissionRevenue: 0,
-          realEstateTransactionTaxRevenue: 0,
-          realEstateAnnualTaxRevenue: 0,
-          incomeTaxRevenue: 0,
-          corporateTaxRevenue: 0,
-          otherTaxRevenue: 0,
-          classCode: classCode,
-          createdAt: serverTimestamp(),
-          lastUpdated: serverTimestamp(),
-        }).catch((err) =>
-          logger.error("Error creating national treasury:", err),
-        );
+      if (!classCode) return 0;
+      // 국고 = 관리자 cash
+      const adminQuery = await getDocs(query(
+        collection(db, "users"),
+        where("classCode", "==", classCode),
+        where("isAdmin", "==", true)
+      ));
+      if (!adminQuery.empty) {
+        return adminQuery.docs[0].data().cash || 0;
       }
-      return balance;
+      return 0;
     },
     {
       interval: 15 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 15분 (국고 데이터는 자주 안 바뀜)

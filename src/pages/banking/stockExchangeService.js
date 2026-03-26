@@ -266,8 +266,8 @@ export const processTreasuryQueue = async () => {
 
   for (const { amount, type, classCode } of updates) {
     const treasuryRef = doc(db, "nationalTreasuries", classCode);
+    // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
     const updateData = {
-      totalAmount: increment(amount),
       lastUpdated: serverTimestamp(),
     };
     if (type === 'tax') {
@@ -275,7 +275,7 @@ export const processTreasuryQueue = async () => {
     } else if (type === 'commission') {
       updateData.stockCommissionRevenue = increment(amount);
     }
-    batch.update(treasuryRef, updateData, { merge: true });
+    batch.set(treasuryRef, updateData, { merge: true });
   }
 
   try {

@@ -248,16 +248,24 @@ async function executeRealEstatePriceChange(classCode, params) {
 async function executeTaxRefund(classCode, params) {
   const { refundRate = 0.3 } = params;
 
-  const treasuryDoc = await db
-    .collection("nationalTreasuries")
-    .doc(classCode)
+  // 국고 = 관리자 cash
+  const adminSnapshot = await db
+    .collection("users")
+    .where("classCode", "==", classCode)
+    .where("isAdmin", "==", true)
+    .limit(1)
     .get();
-  const treasuryAmount = treasuryDoc.exists
-    ? treasuryDoc.data().totalAmount || 0
-    : 0;
+
+  if (adminSnapshot.empty) {
+    logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
+    return { affectedCount: 0, refundedAmount: 0 };
+  }
+
+  const adminDoc = adminSnapshot.docs[0];
+  const treasuryAmount = adminDoc.data().cash || 0;
 
   if (treasuryAmount <= 0) {
-    logger.info(`[경제이벤트] ${classCode}: 국고가 비어있어 환급 불가`);
+    logger.info(`[경제이벤트] ${classCode}: 국고(관리자 현금)가 비어있어 환급 불가`);
     return { affectedCount: 0, refundedAmount: 0 };
   }
 
@@ -296,16 +304,14 @@ async function executeTaxRefund(classCode, params) {
     await batch.commit();
   }
 
+  // 관리자 cash에서 환급액 차감 (국고 = 관리자 cash)
   await db
-    .collection("nationalTreasuries")
-    .doc(classCode)
-    .set(
-      {
-        totalAmount: admin.firestore.FieldValue.increment(-totalRefund),
-        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    .collection("users")
+    .doc(adminDoc.id)
+    .update({
+      cash: admin.firestore.FieldValue.increment(-totalRefund),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
   logger.info(
     `[경제이벤트] ${classCode}: 세금 환급 - ${affectedCount}명 × ${refundPerStudent.toLocaleString()}원`,
@@ -374,6 +380,7 @@ async function executeTaxExtra(classCode, params) {
     await batch.commit();
   }
 
+  // 관리자 cash에 추가 (국고 = 관리자 cash)
   await db
     .collection("users")
     .doc(adminDoc.id)
@@ -382,12 +389,12 @@ async function executeTaxExtra(classCode, params) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+  // 통계만 기록 (totalAmount 제외 - 국고=관리자cash이므로)
   await db
     .collection("nationalTreasuries")
     .doc(classCode)
     .set(
       {
-        totalAmount: admin.firestore.FieldValue.increment(totalCollected),
         economicEventRevenue:
           admin.firestore.FieldValue.increment(totalCollected),
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -469,6 +476,21 @@ async function executeCashBonus(classCode, params) {
 async function executeCashPenalty(classCode, params) {
   const { penaltyRate = 0.05 } = params;
 
+  // 관리자 조회 (국고 = 관리자 cash)
+  const adminSnapshot = await db
+    .collection("users")
+    .where("classCode", "==", classCode)
+    .where("isAdmin", "==", true)
+    .limit(1)
+    .get();
+
+  if (adminSnapshot.empty) {
+    logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
+    return { affectedCount: 0, collectedAmount: 0 };
+  }
+
+  const adminDoc = adminSnapshot.docs[0];
+
   const studentsSnapshot = await db
     .collection("users")
     .where("classCode", "==", classCode)
@@ -507,13 +529,21 @@ async function executeCashPenalty(classCode, params) {
     await batch.commit();
   }
 
-  // 국고에 납입
+  // 관리자 cash에 납입 (국고 = 관리자 cash)
+  await db
+    .collection("users")
+    .doc(adminDoc.id)
+    .update({
+      cash: admin.firestore.FieldValue.increment(totalPenalty),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+  // 통계만 기록
   await db
     .collection("nationalTreasuries")
     .doc(classCode)
     .set(
       {
-        totalAmount: admin.firestore.FieldValue.increment(totalPenalty),
         economicEventRevenue:
           admin.firestore.FieldValue.increment(totalPenalty),
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -522,7 +552,7 @@ async function executeCashPenalty(classCode, params) {
     );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 현금 차감 - ${penaltyItems.length}명 총 ${totalPenalty.toLocaleString()}원 → 국고`,
+    `[경제이벤트] ${classCode}: 현금 차감 - ${penaltyItems.length}명 총 ${totalPenalty.toLocaleString()}원 → 관리자(국고)`,
   );
   return { affectedCount: penaltyItems.length, collectedAmount: totalPenalty };
 }

@@ -970,13 +970,12 @@ const PersonalShop = () => {
           cash: increment(sellerAmount),
         });
 
-        // 국세청 세금 기록 (부가세) - nationalTreasuries 컬렉션 사용
+        // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
         if (classCode) {
           const treasuryRef = doc(db, "nationalTreasuries", classCode);
           transaction.set(
             treasuryRef,
             {
-              totalAmount: increment(taxAmount),
               vatRevenue: increment(taxAmount),
               lastUpdated: serverTimestamp(),
             },

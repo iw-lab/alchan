@@ -48,8 +48,8 @@ export const addTaxToTreasury = async (classCode, taxType, amount, description) 
     const batch = writeBatch(db);
 
     // 🔥 [수정] update 대신 set with merge를 사용 (문서가 없을 때 자동 생성)
+    // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
     batch.set(treasuryRef, {
-      totalAmount: increment(amount),
       [`${taxType}Revenue`]: increment(amount),
       lastUpdated: serverTimestamp()
     }, { merge: true });
