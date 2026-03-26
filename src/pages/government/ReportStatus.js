@@ -1,5 +1,6 @@
 // src/ReportStatus.js
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 
 import { logger } from "../../utils/logger";
 const ReportStatus = ({
@@ -434,8 +435,8 @@ const ReportStatus = ({
         </>
       )}
 
-      {/* 벌금 처리 모달 - Portal 제거하고 직접 렌더링 */}
-      {ProcessReportModal && ProcessReportModal()}
+      {/* 벌금 처리 모달 - Portal로 body에 렌더링 (backdrop-filter가 fixed 위치를 깨뜨리므로) */}
+      {ProcessReportModal && ReactDOM.createPortal(ProcessReportModal(), document.body)}
     </div>
   );
 };
