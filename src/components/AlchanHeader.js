@@ -374,7 +374,7 @@ const AlchanHeader = memo(
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider leading-none">
-                  현금
+                  {userDoc?.isAdmin ? "현금(국고)" : "현금"}
                 </p>
                 <p className="text-sm font-bold text-white truncate">
                   {formatMoney(userDoc?.cash || 0)}
@@ -441,7 +441,7 @@ const AlchanHeader = memo(
               </div>
               <div>
                 <div className="text-[10px] font-semibold opacity-70 leading-tight">
-                  현금
+                  {userDoc?.isAdmin ? "현금(국고)" : "현금"}
                 </div>
                 <div className="text-[13px] font-bold whitespace-nowrap leading-tight">
                   {formatMoney(userDoc?.cash || 0)}
@@ -559,7 +559,7 @@ const AlchanHeader = memo(
                   {/* 모바일: 자산 정보 */}
                   <div className="md:hidden px-5 py-4 bg-[#141423]/50 border-b border-slate-700">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-slate-400">현금</span>
+                      <span className="text-sm text-slate-400">{userDoc?.isAdmin ? "현금(국고)" : "현금"}</span>
                       <span className="font-bold text-emerald-400">
                         {formatMoney(userDoc?.cash || 0)}
                       </span>

@@ -147,10 +147,9 @@ export const purchaseItemTransaction = async (userId, storeItemId, userClassCode
     const inventoryQuerySnapshot = await getDocs(inventoryQuery);
 
     await runTransaction(db, async (transaction) => {
-      const [storeItemSnap, userSnap, treasurySnap] = await Promise.all([
+      const [storeItemSnap, userSnap] = await Promise.all([
         transaction.get(storeItemRef),
         skipCashDeduction ? Promise.resolve(null) : transaction.get(userRef),
-        transaction.get(nationalTreasuryRef)
       ]);
 
       if (!storeItemSnap.exists()) {
