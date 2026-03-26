@@ -772,8 +772,34 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
       enabledEvents.find((e) => e.id === forceEventId) ||
       enabledEvents[Math.floor(Math.random() * enabledEvents.length)];
   } else {
-    selectedEvent =
-      enabledEvents[Math.floor(Math.random() * enabledEvents.length)];
+    // 최근 3일간 발생한 이벤트 ID를 제외하여 중복 방지
+    let recentEventIds = [];
+    try {
+      const recentLogs = await db
+        .collection("economicEventLogs")
+        .doc(classCode)
+        .collection("entries")
+        .orderBy("triggeredAt", "desc")
+        .limit(3)
+        .get();
+      recentEventIds = recentLogs.docs
+        .map((d) => d.data().event?.id)
+        .filter(Boolean);
+    } catch (err) {
+      logger.warn(`[경제이벤트] ${classCode}: 최근 이력 조회 실패 (무시)`, err.message);
+    }
+
+    const freshEvents = recentEventIds.length > 0
+      ? enabledEvents.filter((e) => !recentEventIds.includes(e.id))
+      : enabledEvents;
+
+    // 제외 후 남는 이벤트가 없으면 전체에서 선택
+    const pool = freshEvents.length > 0 ? freshEvents : enabledEvents;
+    selectedEvent = pool[Math.floor(Math.random() * pool.length)];
+
+    logger.info(
+      `[경제이벤트] ${classCode}: 최근 제외 ${recentEventIds.length}개(${recentEventIds.join(",")}), 후보 ${pool.length}개 중 선택`,
+    );
   }
 
   logger.info(
