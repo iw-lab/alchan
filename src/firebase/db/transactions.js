@@ -181,10 +181,10 @@ export const processFineTransaction = async (userId, classCode, amount, reason) 
       transaction.update(userRef, { cash: increment(-amount) });
 
       // 관리자(국고) cash에 벌금 추가
-      const adminQuery = await getDocs(query(
+      const adminQuery = await getDocs(originalFirebaseQuery(
         collection(db, "users"),
-        where("classCode", "==", classCode),
-        where("isAdmin", "==", true)
+        originalFirebaseWhere("classCode", "==", classCode),
+        originalFirebaseWhere("isAdmin", "==", true)
       ));
       if (!adminQuery.empty) {
         transaction.update(adminQuery.docs[0].ref, {
