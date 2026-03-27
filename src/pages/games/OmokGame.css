@@ -1,61 +1,34 @@
-/* src/OmokGame.css - 세련된 2D 디자인 적용 */
+/* src/OmokGame.css - 3D Premium Omok Board */
 
-/* 전역 스타일 및 애니메이션 */
 :root {
   --board-size: 15;
-  /* JS에서 BOARD_SIZE와 동기화 */
   --cell-size: min(40px, calc((100vw - 80px) / 15));
-  --board-padding: calc(var(--cell-size) / 2);
-  --stone-size: calc(var(--cell-size) * 0.85);
-  --line-thickness: 1.5px;
-  --board-bg: #dcb468;
-  --line-color: #5a3e1b;
-  --star-point-size: 9px;
+  --stone-size: calc(var(--cell-size) * 0.88);
+  --line-thickness: 1px;
+  --board-bg: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
+  --line-color: rgba(60, 30, 0, 0.65);
+  --star-point-size: 8px;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes placeStone {
-  from {
-    transform: translate(-50%, -50%) scale(0.5);
-    opacity: 0;
-  }
-
-  to {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
+@keyframes stoneDrop {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 @keyframes pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 게임 컨테이너 */
@@ -64,8 +37,7 @@
   flex-direction: column;
   align-items: center;
   padding: 2rem;
-  /* min-height: 100vh 제거 - AlchanLayout 내부 스크롤과 충돌 방지 */
-  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   color: #f0f0f0;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
@@ -82,12 +54,15 @@
   font-weight: 700;
   letter-spacing: 1px;
   margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #f0c27f, #fc5c7d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .game-info {
   display: flex;
   gap: 1.5rem;
-  color: #bdc3c7;
+  color: #8892b0;
 }
 
 /* 플레이어 상태 */
@@ -101,8 +76,8 @@
 }
 
 .player-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
@@ -110,17 +85,16 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  backdrop-filter: blur(10px);
 }
 
 .player-card.active {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #3498db;
-  box-shadow: 0 0 20px rgba(52, 152, 219, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(100, 180, 255, 0.5);
+  box-shadow: 0 0 24px rgba(100, 180, 255, 0.15);
 }
 
-.player-card .player-info {
-  flex-grow: 1;
-}
+.player-card .player-info { flex-grow: 1; }
 
 .player-name {
   font-size: 1.2rem;
@@ -128,18 +102,82 @@
 }
 
 .stone-indicator {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .stone-indicator.black {
-  background: radial-gradient(ellipse at 30% 30%, #555, #111);
+  background: radial-gradient(ellipse at 32% 32%, #666, #1a1a1a);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1);
 }
 
 .stone-indicator.white {
-  background: radial-gradient(ellipse at 70% 70%, #fff, #ccc);
+  background: radial-gradient(ellipse at 32% 32%, #fff, #d8d8d8);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.8);
+}
+
+/* ==================== 오목판 3D ==================== */
+.omok-board-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 1rem 0;
+  perspective: 800px;
+}
+
+.omok-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--board-size), var(--cell-size));
+  grid-template-rows: repeat(var(--board-size), var(--cell-size));
+  background: var(--board-bg);
+  padding: calc(var(--cell-size) / 2);
+  border-radius: 6px;
+  margin: 0 auto;
+  /* 3D 나무판 효과 */
+  box-shadow:
+    0 2px 0 #b8892a,
+    0 4px 0 #a67b24,
+    0 6px 0 #956e20,
+    0 8px 0 #84611c,
+    0 12px 30px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  /* 나무결 텍스처 */
+  background-image:
+    var(--board-bg),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 8px,
+      rgba(0, 0, 0, 0.015) 8px,
+      rgba(0, 0, 0, 0.015) 9px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 35px,
+      rgba(0, 0, 0, 0.02) 35px,
+      rgba(0, 0, 0, 0.02) 36px
+    );
+}
+
+/* 격자선 컨테이너 - 정확히 셀 영역 덮기 */
+.grid-lines-container {
+  position: absolute;
+  top: calc(var(--cell-size) / 2);
+  left: calc(var(--cell-size) / 2);
+  width: calc(var(--board-size) * var(--cell-size));
+  height: calc(var(--board-size) * var(--cell-size));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.grid-line {
+  position: absolute;
+  background-color: var(--line-color);
+  pointer-events: none;
 }
 
 .grid-line.horizontal {
@@ -156,44 +194,7 @@
   transform: translateX(-50%);
 }
 
-/* 오목판 배경 및 컨테이너 */
-.omok-board-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  max-width: 100%;
-  margin: 1rem 0;
-}
-
-.omok-board {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--board-size), var(--cell-size));
-  grid-template-rows: repeat(var(--board-size), var(--cell-size));
-  background: var(--board-bg);
-  padding: var(--board-padding);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.2);
-  margin: 0 auto;
-}
-
-.grid-lines-container {
-  position: absolute;
-  top: var(--board-padding);
-  left: var(--board-padding);
-  width: calc(var(--board-size) * var(--cell-size));
-  height: calc(var(--board-size) * var(--cell-size));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.grid-line {
-  position: absolute;
-  background-color: var(--line-color);
-  pointer-events: none;
-}
-
+/* 셀 */
 .omok-cell {
   position: relative;
   display: flex;
@@ -203,27 +204,28 @@
   z-index: 1;
 }
 
+/* 화점 (star point) */
 .star-point {
   position: absolute;
   width: var(--star-point-size);
   height: var(--star-point-size);
   border-radius: 50%;
-  background-color: var(--line-color);
+  background-color: rgba(60, 30, 0, 0.7);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* 바둑돌 */
+/* ==================== 3D 바둑돌 ==================== */
 .omok-stone {
   position: absolute;
   width: var(--stone-size);
   height: var(--stone-size);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-  animation: placeStone 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: stoneDrop 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
   z-index: 2;
   top: 50%;
   left: 50%;
@@ -231,24 +233,33 @@
 }
 
 .omok-stone.black {
-  background: radial-gradient(circle at 35% 35%, #4d4d4d, #000);
+  background: radial-gradient(ellipse at 35% 30%, #5a5a5a 0%, #2a2a2a 30%, #0a0a0a 70%, #000 100%);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.7),
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    inset 0 1px 4px rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .omok-stone.white {
-  background: radial-gradient(circle at 65% 65%, #ffffff, #e0e0e0);
-  border: 1px solid #b0b0b0;
+  background: radial-gradient(ellipse at 35% 30%, #ffffff 0%, #f5f5f5 30%, #e0e0e0 60%, #c8c8c8 100%);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 2px 6px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* 미리보기, 마지막 수, 클릭 가능 표시 */
+/* 클릭 가능 hover 효과 */
 .omok-cell.clickable::before {
   content: '';
   position: absolute;
-  width: var(--stone-size);
-  height: var(--stone-size);
+  width: calc(var(--stone-size) * 0.6);
+  height: calc(var(--stone-size) * 0.6);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(100, 180, 255, 0.25);
   transform: scale(0);
-  transition: transform 0.2s ease;
+  transition: transform 0.15s ease;
   z-index: 1;
 }
 
@@ -257,17 +268,19 @@
 }
 
 .omok-cell.preview .omok-stone {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
+/* 마지막 수 인디케이터 */
 .omok-cell .last-move-indicator {
   position: absolute;
-  width: 35%;
-  height: 35%;
+  width: 30%;
+  height: 30%;
   border-radius: 50%;
-  background: #e74c3c;
+  background: radial-gradient(circle, #ff4757, #c0392b);
   animation: pulse 1.5s infinite;
   z-index: 3;
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.6);
 }
 
 /* 게임 상태 및 컨트롤 */
@@ -282,7 +295,9 @@
 .winner-announcement {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #3498db;
+  background: linear-gradient(to right, #f0c27f, #fc5c7d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .game-controls {
@@ -291,7 +306,7 @@
   gap: 1rem;
 }
 
-/* 버튼 (로비와 공유 가능) */
+/* 버튼 */
 .omok-button {
   border: none;
   padding: 12px 28px;
@@ -300,34 +315,33 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .omok-button.primary {
-  background: #3498db;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .omok-button.primary:hover {
-  background: #2980b9;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
 .omok-button.secondary {
-  background: #7f8c8d;
+  background: rgba(255, 255, 255, 0.1);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .omok-button.secondary:hover {
-  background: #95a5a6;
+  background: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
 }
 
 /* 로비 스타일 */
 .game-page-container {
-  /* min-height: 100vh 제거 - AlchanLayout 내부 스크롤과 충돌 방지 */
-  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -346,13 +360,8 @@
   animation: fadeIn 0.5s ease-out;
 }
 
-.lobby-section {
-  margin-bottom: 2rem;
-}
-
-.lobby-section:last-child {
-  margin-bottom: 0;
-}
+.lobby-section { margin-bottom: 2rem; }
+.lobby-section:last-child { margin-bottom: 0; }
 
 .lobby-section h3 {
   color: white;
@@ -389,13 +398,23 @@
 
 .mode-options button.primary,
 .difficulty-options button.selected {
-  background: #3498db;
-  border-color: #3498db;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: transparent;
 }
 
 .lobby-actions {
   display: flex;
   justify-content: center;
+}
+
+/* 로딩 스피너 */
+.loading-overlay-transparent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #8892b0;
+  padding: 2rem;
 }
 
 /* 반응형 */
