@@ -256,6 +256,19 @@ function MoneyTransfer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUsers, amount, action, users, calculatePreviewAmount]); // amountType과 taxRate는 calculatePreviewAmount 내부에서 사용됨
 
+  // 관리자 또는 위임된 학생이 아닌 경우 접근 제한
+  const isAdminUser = userDoc?.isAdmin || userDoc?.isSuperAdmin;
+  const hasDelegatedMoneyPermission = userDoc?.delegatedPermissions?.moneyTransfer === true;
+  if (!isAdminUser && !hasDelegatedMoneyPermission) {
+    return (
+      <div className="money-transfer-container">
+        <div style={{padding:'40px',textAlign:'center',color:'#f87171'}}>
+          권한이 없습니다. 관리자 또는 위임된 학생만 사용할 수 있습니다.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="money-transfer-container">
       <div className="header">

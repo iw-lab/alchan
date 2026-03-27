@@ -295,14 +295,38 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "boardCategory",
   },
 
-  // 위임된 학생용 할일 승인 (관리자가 아닌 학생에게만 표시)
+  // 위임 기능 카테고리 (위임된 학생에게만 표시)
+  {
+    id: "delegationCategory",
+    label: "위임 기능",
+    icon: Shield,
+    isCategory: true,
+    category: "delegation",
+    delegatedOnly: "any",
+  },
   {
     id: "delegatedTaskApproval",
     label: "할일 승인",
     icon: CheckCircle,
     path: "/admin/approvals",
-    category: "community",
-    delegatedOnly: "taskApproval", // 특수 플래그: 위임된 학생/대통령만
+    parentId: "delegationCategory",
+    delegatedOnly: "taskApproval",
+  },
+  {
+    id: "delegatedMoneyTransfer",
+    label: "돈 보내기/가져오기",
+    icon: Banknote,
+    path: "/admin/money-transfer",
+    parentId: "delegationCategory",
+    delegatedOnly: "moneyTransfer",
+  },
+  {
+    id: "delegatedCouponTransfer",
+    label: "쿠폰 보내기/가져오기",
+    icon: Target,
+    path: "/admin/coupon-transfer",
+    parentId: "delegationCategory",
+    delegatedOnly: "couponTransfer",
   },
 
   // Admin Category - 관리자
@@ -405,6 +429,7 @@ const CATEGORY_LABELS = {
   economy: "경제",
   society: "사회",
   community: "커뮤니티",
+  delegation: "위임 기능",
   admin: "관리",
   superadmin: "앱 관리",
 };
@@ -641,6 +666,12 @@ export default function AlchanSidebar({
 
   const hasDelegatedTaskApproval =
     userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
+  const hasDelegatedMoneyTransfer =
+    userDoc?.delegatedPermissions?.moneyTransfer === true;
+  const hasDelegatedCouponTransfer =
+    userDoc?.delegatedPermissions?.couponTransfer === true;
+  const hasAnyDelegation =
+    hasDelegatedTaskApproval || hasDelegatedMoneyTransfer || hasDelegatedCouponTransfer;
 
   let userRole = "학생";
   if (userDoc?.isSuperAdmin) userRole = "앱 관리자";
@@ -662,11 +693,15 @@ export default function AlchanSidebar({
       // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생만 표시
       if (item.delegatedOnly) {
         if (isAdmin) return false; // 관리자는 관리자 카테고리에서 이미 보임
-        return hasDelegatedTaskApproval;
+        if (item.delegatedOnly === "any") return hasAnyDelegation;
+        if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval;
+        if (item.delegatedOnly === "moneyTransfer") return hasDelegatedMoneyTransfer;
+        if (item.delegatedOnly === "couponTransfer") return hasDelegatedCouponTransfer;
+        return false;
       }
       return true;
     },
-    [isAdmin, isSuperAdmin, hasDelegatedTaskApproval],
+    [isAdmin, isSuperAdmin, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer],
   );
 
   // 카테고리별 메뉴 렌더링
@@ -866,6 +901,7 @@ export default function AlchanSidebar({
           {renderMenuSection("economy")}
           {renderMenuSection("society")}
           {renderMenuSection("community")}
+          {renderMenuSection("delegation")}
           {renderMenuSection("admin")}
           {renderMenuSection("superadmin")}
         </nav>

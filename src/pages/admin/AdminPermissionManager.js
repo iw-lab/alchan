@@ -21,6 +21,16 @@ const PERMISSION_TYPES = [
     label: "할일 승인",
     description: "학생들의 보너스 할일 완료 요청을 승인/거절할 수 있습니다.",
   },
+  {
+    key: "moneyTransfer",
+    label: "돈 보내기/가져오기",
+    description: "학생들에게 돈을 보내거나 가져올 수 있습니다.",
+  },
+  {
+    key: "couponTransfer",
+    label: "쿠폰 보내기/가져오기",
+    description: "학생들에게 쿠폰을 보내거나 가져올 수 있습니다.",
+  },
 ];
 
 const AdminPermissionManager = () => {

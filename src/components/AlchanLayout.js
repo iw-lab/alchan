@@ -701,17 +701,17 @@ export default function AlchanLayout() {
                 <Route
                   path="/admin/coupon-transfer"
                   element={
-                    <AdminRoute>
+                    <ProtectedRoute>
                       <CouponTransfer />
-                    </AdminRoute>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="/admin/money-transfer"
                   element={
-                    <AdminRoute>
+                    <ProtectedRoute>
                       <MoneyTransfer />
-                    </AdminRoute>
+                    </ProtectedRoute>
                   }
                 />
                 <Route

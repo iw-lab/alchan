@@ -235,12 +235,13 @@ function CouponTransfer() {
     }
   };
 
-  // 관리자가 아닌 경우 접근 제한
-  if (!isAdmin) {
+  // 관리자 또는 위임된 학생이 아닌 경우 접근 제한
+  const hasDelegatedCouponPermission = userDoc?.delegatedPermissions?.couponTransfer === true;
+  if (!isAdmin && !hasDelegatedCouponPermission) {
     return (
       <div className="coupon-transfer-container">
         <div className="alert alert-error">
-          관리자만 이 기능을 사용할 수 있습니다.
+          권한이 없습니다. 관리자 또는 위임된 학생만 사용할 수 있습니다.
         </div>
       </div>
     );
