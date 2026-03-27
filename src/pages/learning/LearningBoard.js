@@ -334,6 +334,29 @@ const LearningBoard = () => {
     }
   };
 
+  // 목록에서 바로 삭제 (관리자 전용)
+  const handleDeletePostFromList = async (e, post) => {
+    e.stopPropagation();
+    if (!selectedBoard || !classCode) return;
+    if (!window.confirm(`"${post.title}" 게시글을 삭제하시겠습니까?`)) return;
+    try {
+      const commentsRef = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", post.id, "comments");
+      const commentsSnapshot = await getDocs(commentsRef);
+      const batch = writeBatch(db);
+      commentsSnapshot.docs.forEach((d) => batch.delete(d.ref));
+      batch.delete(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", post.id));
+      await batch.commit();
+      if (selectedPost?.id === post.id) {
+        setSelectedPost(null);
+        setSearchParams(prev => { prev.delete('post'); return prev; });
+      }
+      refetchPosts();
+    } catch (error) {
+      logger.error("Error deleting post from list:", error);
+      alert("게시글 삭제 오류.");
+    }
+  };
+
   // Post edit
   const handleStartEditPost = () => {
     setEditPost({ title: selectedPost.title, content: selectedPost.content });
@@ -627,6 +650,7 @@ const LearningBoard = () => {
                       <th className="lb-col-date">날짜</th>
                       <th className="lb-col-likes">좋아요</th>
                       <th className="lb-col-comments">댓글</th>
+                      {currentUserIsAdmin && <th className="lb-col-delete">삭제</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -661,6 +685,17 @@ const LearningBoard = () => {
                           <td className="lb-cell-comments">
                             <span className="lb-comment-num">💬 {post.commentCount || 0}</span>
                           </td>
+                          {currentUserIsAdmin && (
+                            <td className="lb-cell-delete">
+                              <button
+                                className="lb-delete-btn"
+                                onClick={(e) => handleDeletePostFromList(e, post)}
+                                title="게시글 삭제"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ));
                     })()}

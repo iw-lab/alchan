@@ -1098,3 +1098,30 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* 관리자 삭제 버튼 */
+.lb-col-delete {
+  width: 50px;
+  text-align: center;
+}
+
+.lb-cell-delete {
+  text-align: center;
+}
+
+.lb-delete-btn {
+  padding: 4px 8px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.lb-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.4);
+  color: #fff;
+}
