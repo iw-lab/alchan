@@ -102,6 +102,27 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
+      # 월세 징수 (금요일 KST 8시 30분 - 보유세와 같은 날)
+      - name: Weekly rent collection
+        if: |
+          (steps.time.outputs.kst_day == 5 &&
+          steps.time.outputs.kst_hour == 8 && steps.time.outputs.minute >= 15 && steps.time.outputs.minute <= 45) ||
+          (github.event_name == 'workflow_dispatch' &&
+          (github.event.inputs.task == 'rent' || github.event.inputs.task == 'all'))
+        run: |
+          echo "🏠 월세 징수 시작 (금요일 8:30 KST)"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://weeklyrent-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ 월세 징수 실패 (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+          echo "✅ 월세 징수 완료"
+
       # 경제 이벤트 (평일 KST 8~17시, 매 15분마다 호출 - 함수 내부에서 triggerHour ±29분 매칭 + 중복 방지)
       - name: Economic event
         if: |
