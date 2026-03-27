@@ -130,8 +130,10 @@
 .omok-board {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--board-size), var(--cell-size));
-  grid-template-rows: repeat(var(--board-size), var(--cell-size));
+  grid-template-columns: repeat(15, var(--cell-size));
+  grid-template-rows: repeat(15, var(--cell-size));
+  width: calc(15 * var(--cell-size));
+  height: calc(15 * var(--cell-size));
   border-radius: 6px;
   margin: 0 auto;
   /* 3D 나무판 효과 */
@@ -160,13 +162,13 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-/* 격자선 컨테이너 - 보드 전체 커버 */
+/* 격자선 컨테이너 - 보드와 동일 크기 */
 .grid-lines-container {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: calc(15 * var(--cell-size));
+  height: calc(15 * var(--cell-size));
   pointer-events: none;
   z-index: 0;
 }
@@ -179,14 +181,14 @@
 
 .grid-line.horizontal {
   left: calc(var(--cell-size) * 0.5);
-  right: calc(var(--cell-size) * 0.5);
+  width: calc(14 * var(--cell-size));
   height: var(--line-thickness);
   transform: translateY(-50%);
 }
 
 .grid-line.vertical {
   top: calc(var(--cell-size) * 0.5);
-  bottom: calc(var(--cell-size) * 0.5);
+  height: calc(14 * var(--cell-size));
   width: var(--line-thickness);
   transform: translateX(-50%);
 }
