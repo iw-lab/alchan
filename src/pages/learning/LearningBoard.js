@@ -113,6 +113,8 @@ const LearningBoard = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const POSTS_PER_PAGE = 10;
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -264,6 +266,7 @@ const LearningBoard = () => {
       setSelectedBoard(board);
       setSelectedPost(null);
       setIsWriting(false);
+      setCurrentPage(1);
       if (!fromHiddenView) setShowHiddenBoardsView(false);
     } else if (board && board.isHidden && !currentUserIsAdmin && !fromHiddenView) {
       alert("이 게시판은 현재 접근할 수 없습니다.");
@@ -627,36 +630,71 @@ const LearningBoard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedBoardPosts.map((post, idx) => (
-                      <tr
-                        key={post.id}
-                        className="lb-row"
-                        onClick={() => { setSelectedPost(post); setSearchParams(prev => { prev.set('post', post.id); return prev; }); }}
-                      >
-                        <td className="lb-cell-num">{selectedBoardPosts.length - idx}</td>
-                        <td className="lb-cell-title">
-                          <span className="lb-post-title-text">{post.title}</span>
-                          {(post.commentCount || 0) > 0 && <span className="lb-comment-badge" title="댓글">[{post.commentCount}]</span>}
-                          {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
-                        </td>
-                        <td className="lb-cell-author">
-                          {selectedBoard?.isAnonymous && !currentUserIsAdmin
-                            ? "익명"
-                            : selectedBoard?.isAnonymous && currentUserIsAdmin
-                              ? <span>익명 <span style={{fontSize:'0.7em',opacity:0.6,color:'#fbbf24'}}>({post.author})</span></span>
-                              : (post.author || "익명")}
-                        </td>
-                        <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
-                        <td className="lb-cell-likes">
-                          <span className="lb-like-num">👍 {post.likes || 0}</span>
-                        </td>
-                        <td className="lb-cell-comments">
-                          <span className="lb-comment-num">💬 {post.commentCount || 0}</span>
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const totalPages = Math.ceil(selectedBoardPosts.length / POSTS_PER_PAGE);
+                      const safePage = Math.min(currentPage, totalPages || 1);
+                      const startIdx = (safePage - 1) * POSTS_PER_PAGE;
+                      const pagePosts = selectedBoardPosts.slice(startIdx, startIdx + POSTS_PER_PAGE);
+                      return pagePosts.map((post, idx) => (
+                        <tr
+                          key={post.id}
+                          className="lb-row"
+                          onClick={() => { setSelectedPost(post); setSearchParams(prev => { prev.set('post', post.id); return prev; }); }}
+                        >
+                          <td className="lb-cell-num">{selectedBoardPosts.length - (startIdx + idx)}</td>
+                          <td className="lb-cell-title">
+                            <span className="lb-post-title-text">{post.title}</span>
+                            {(post.commentCount || 0) > 0 && <span className="lb-comment-badge" title="댓글">[{post.commentCount}]</span>}
+                            {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
+                          </td>
+                          <td className="lb-cell-author">
+                            {selectedBoard?.isAnonymous && !currentUserIsAdmin
+                              ? "익명"
+                              : selectedBoard?.isAnonymous && currentUserIsAdmin
+                                ? <span>익명 <span style={{fontSize:'0.7em',opacity:0.6,color:'#fbbf24'}}>({post.author})</span></span>
+                                : (post.author || "익명")}
+                          </td>
+                          <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
+                          <td className="lb-cell-likes">
+                            <span className="lb-like-num">👍 {post.likes || 0}</span>
+                          </td>
+                          <td className="lb-cell-comments">
+                            <span className="lb-comment-num">💬 {post.commentCount || 0}</span>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
+
+                {/* 페이지네이션 */}
+                {selectedBoardPosts.length > POSTS_PER_PAGE && (
+                  <div className="lb-pagination">
+                    <button
+                      className="lb-page-btn"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                    >
+                      ‹ 이전
+                    </button>
+                    {Array.from({ length: Math.ceil(selectedBoardPosts.length / POSTS_PER_PAGE) }, (_, i) => (
+                      <button
+                        key={i + 1}
+                        className={`lb-page-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                        onClick={() => setCurrentPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      className="lb-page-btn"
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(selectedBoardPosts.length / POSTS_PER_PAGE), p + 1))}
+                      disabled={currentPage >= Math.ceil(selectedBoardPosts.length / POSTS_PER_PAGE)}
+                    >
+                      다음 ›
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </>
