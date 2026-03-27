@@ -434,13 +434,16 @@ async function updateRealStockPrices() {
       batch.update(stock.docRef, {
         price: newPrice,
         priceHistory: newHistory,
+        previousClose: data.previousClose || 0,
+        changePercent: data.changePercent || 0,
+        marketState: data.marketState || 'CLOSED',
         realStockData: {
           lastPrice: data.price || 0,
           previousClose: data.previousClose || 0,
           change: data.change || 0,
           changePercent: data.changePercent || 0,
           currency: data.currency || 'KRW',
-          marketState: data.marketState || 'CLOSED', // 기본값은 CLOSED (장마감)
+          marketState: data.marketState || 'CLOSED',
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         },
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
@@ -608,6 +611,9 @@ async function createRealStocks(stockConfigs) {
       sellVolume: 0,
       recentBuyVolume: 0,
       recentSellVolume: 0,
+      previousClose: priceData.previousClose || 0,
+      changePercent: priceData.changePercent || 0,
+      marketState: priceData.marketState || 'CLOSED',
       realStockData: {
         lastPrice: priceData.price || 0,
         previousClose: priceData.previousClose || 0,
@@ -744,6 +750,9 @@ async function addSingleRealStock(config) {
       sellVolume: 0,
       recentBuyVolume: 0,
       recentSellVolume: 0,
+      previousClose: priceData.previousClose || 0,
+      changePercent: priceData.changePercent || 0,
+      marketState: priceData.marketState || 'CLOSED',
       realStockData: {
         lastPrice: priceData.price || 0,
         previousClose: priceData.previousClose || 0,
