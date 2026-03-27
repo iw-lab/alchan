@@ -2,9 +2,9 @@
 
 :root {
   --board-size: 15;
-  --cell-size: min(40px, calc((100vw - 80px) / 15));
+  --cell-size: min(48px, calc((100vw - 80px) / 15));
   --stone-size: calc(var(--cell-size) * 0.88);
-  --line-thickness: 1px;
+  --line-thickness: 1.2px;
   --board-bg: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
   --line-color: rgba(60, 30, 0, 0.65);
   --star-point-size: 8px;
