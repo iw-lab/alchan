@@ -181,15 +181,15 @@
 }
 
 .grid-line.horizontal {
-  left: calc(var(--cell-size) / 2);
-  width: calc((var(--board-size) - 1) * var(--cell-size));
+  left: 0;
+  width: 100%;
   height: var(--line-thickness);
   transform: translateY(-50%);
 }
 
 .grid-line.vertical {
-  top: calc(var(--cell-size) / 2);
-  height: calc((var(--board-size) - 1) * var(--cell-size));
+  top: 0;
+  height: 100%;
   width: var(--line-thickness);
   transform: translateX(-50%);
 }
