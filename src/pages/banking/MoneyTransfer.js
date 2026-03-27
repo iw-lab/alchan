@@ -33,8 +33,13 @@ function MoneyTransfer() {
   const [selectAll, setSelectAll] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 관리자 정보 추출
-  const adminName = userDoc?.name;
+  // 위임 학생인 경우 실제 관리자 정보 사용
+  const isDelegated = !userDoc?.isAdmin && !userDoc?.isSuperAdmin && userDoc?.delegatedPermissions?.moneyTransfer;
+  const classAdmin = isDelegated
+    ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
+    : null;
+  const effectiveAdminId = isDelegated ? classAdmin?.id : (user?.uid || userDoc?.id);
+  const adminName = isDelegated ? classAdmin?.name : userDoc?.name;
   const adminClassCode = userDoc?.classCode;
 
   // 전체 사용자 목록을 가나다순으로 정렬
@@ -173,7 +178,7 @@ function MoneyTransfer() {
 
       // ✨ DB 작업 실행하고 서버로부터 실제 결과 받기
       const { count, totalProcessed, updatedUsers } = await adminCashAction({
-        adminId: user?.uid || userDoc?.id,
+        adminId: effectiveAdminId,
         adminName,
         adminClassCode,
         targetUsers: targetUsersData,
@@ -196,22 +201,21 @@ function MoneyTransfer() {
           }),
         );
 
-        // 2. 관리자 본인의 잔액 업데이트
-        setUserDoc((currentAdminDoc) => {
-          const currentAdminCash = Number(currentAdminDoc.cash || 0);
-          let newAdminCash;
-          if (action === "send") {
-            // 보냈을 때는 처리된 총액만큼 차감 (세금 포함된 금액이 totalProcessed)
-            newAdminCash = currentAdminCash - totalProcessed;
-          } else if (action === "take" && takeMode === "toMe") {
-            // 나에게 가져올 때는 처리된 총액만큼 증가
-            newAdminCash = currentAdminCash + totalProcessed;
-          } else {
-            // 돈 없애기 모드는 관리자 잔액 변화 없음
-            newAdminCash = currentAdminCash;
-          }
-          return { ...currentAdminDoc, cash: newAdminCash };
-        });
+        // 2. 관리자 본인의 잔액 업데이트 (위임 학생이면 본인 잔액은 변경 없음)
+        if (!isDelegated) {
+          setUserDoc((currentAdminDoc) => {
+            const currentAdminCash = Number(currentAdminDoc.cash || 0);
+            let newAdminCash;
+            if (action === "send") {
+              newAdminCash = currentAdminCash - totalProcessed;
+            } else if (action === "take" && takeMode === "toMe") {
+              newAdminCash = currentAdminCash + totalProcessed;
+            } else {
+              newAdminCash = currentAdminCash;
+            }
+            return { ...currentAdminDoc, cash: newAdminCash };
+          });
+        }
       }
 
       // 성공 메시지 설정
@@ -273,12 +277,8 @@ function MoneyTransfer() {
     <div className="money-transfer-container">
       <div className="header">
         <div className="admin-info">
-          <span className="admin-label">관리자</span>
-          <span className="admin-name">{adminName || "로딩 중..."}</span>
-          <span className="admin-cash">
-            현금: {(userDoc?.cash || 0).toLocaleString()}
-            {currencyUnit}
-          </span>
+          <span className="admin-label">{isDelegated ? "위임 실행" : "관리자"}</span>
+          <span className="admin-name">{isDelegated ? `${userDoc?.name} (위임: ${adminName})` : (adminName || "로딩 중...")}</span>
         </div>
       </div>
 

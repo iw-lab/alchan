@@ -35,8 +35,12 @@ function CouponTransfer() {
   const [localUserDoc, setLocalUserDoc] = useState(null);
 
   const isAdmin = userDoc?.isAdmin || false;
-  const adminName = userDoc?.name;
-  const adminId = userDoc?.uid;
+  const isDelegated = !isAdmin && userDoc?.delegatedPermissions?.couponTransfer === true;
+  const classAdmin = isDelegated
+    ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
+    : null;
+  const adminName = isDelegated ? classAdmin?.name : userDoc?.name;
+  const adminId = isDelegated ? classAdmin?.id : userDoc?.uid;
   const adminClassCode = userDoc?.classCode;
 
   // 초기 데이터 설정 및 가나다순 정렬
@@ -262,9 +266,7 @@ function CouponTransfer() {
       <div className="header">
         <h3>쿠폰 대량 관리</h3>
         <div className="admin-info">
-          <span className="admin-label">{displayUserDoc?.name || "사용자"}</span>
-          <span className="admin-coupons">보유 쿠폰: {(displayUserDoc?.coupons || 0).toLocaleString()}개</span>
-          <span className="admin-cash" style={{marginLeft: '10px'}}>현금: {(displayUserDoc?.cash || 0).toLocaleString()}원</span>
+          <span className="admin-label">{isDelegated ? `${userDoc?.name} (위임: ${adminName})` : (displayUserDoc?.name || "사용자")}</span>
         </div>
       </div>
       
