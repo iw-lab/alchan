@@ -5,7 +5,7 @@
   --board-size: 15;
   /* JS에서 BOARD_SIZE와 동기화 */
   --cell-size: min(40px, calc((100vw - 80px) / 15));
-  --board-padding: 22px;
+  --board-padding: calc(var(--cell-size) / 2);
   --stone-size: calc(var(--cell-size) * 0.85);
   --line-thickness: 1.5px;
   --board-bg: #dcb468;
@@ -143,16 +143,17 @@
 }
 
 .grid-line.horizontal {
-  width: 100%;
+  left: calc(var(--cell-size) / 2);
+  width: calc((var(--board-size) - 1) * var(--cell-size));
   height: var(--line-thickness);
   transform: translateY(-50%);
 }
 
 .grid-line.vertical {
-  height: 100%;
+  top: calc(var(--cell-size) / 2);
+  height: calc((var(--board-size) - 1) * var(--cell-size));
   width: var(--line-thickness);
   transform: translateX(-50%);
-  /* Ensure star points are above grid lines */
 }
 
 /* 오목판 배경 및 컨테이너 */
@@ -401,7 +402,6 @@
 @media (max-width: 768px) {
   :root {
     --cell-size: min(34px, calc((100vw - 60px) / 15));
-    --board-padding: 16px;
   }
 
   .player-status {
@@ -413,7 +413,6 @@
 @media (max-width: 480px) {
   :root {
     --cell-size: min(28px, calc((100vw - 40px) / 15));
-    --board-padding: 10px;
     --star-point-size: 6px;
   }
 
