@@ -326,6 +326,14 @@ const MusicRoom = ({ user }) => {
           )}
         </div>
         <div className="room-header">
+          <button
+            onClick={() => navigate("/")}
+            className="control-btn"
+            title="알찬 홈으로"
+            style={{ fontSize: "1.1rem", padding: "0.4rem 0.8rem" }}
+          >
+            ← 홈
+          </button>
           <h2>{room.name}</h2>
           <div className="room-controls">
             <button
