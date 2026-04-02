@@ -161,20 +161,14 @@ exports.completeTask = onCall(
     }
     const userRef = db.collection("users").doc(uid);
 
-    // 🔥 보안 가드: requiresApproval 할일은 completeTask로 직접 완료 불가
+    // 🔥 보안 가드: requiresApproval 할일 또는 직업 할일은 completeTask로 직접 완료 불가
     try {
       if (isJobTask && jobId) {
-        const jobDoc = await db.collection("jobs").doc(jobId).get();
-        if (jobDoc.exists) {
-          const jobTasks = jobDoc.data().tasks || [];
-          const targetTask = jobTasks.find((t) => t.id === taskId);
-          if (targetTask && targetTask.requiresApproval) {
-            throw new HttpsError(
-              "permission-denied",
-              "이 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
-            );
-          }
-        }
+        // 직업 할일은 무조건 승인 필요
+        throw new HttpsError(
+          "permission-denied",
+          "직업 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
+        );
       } else {
         const commonTaskDoc = await db
           .collection("commonTasks")

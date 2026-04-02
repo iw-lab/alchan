@@ -60,8 +60,8 @@ const TaskItem = memo(function TaskItem({
       const reward = cardType === "cash" ? rewardData.cash : rewardData.coupon;
       const rewardText = cardType === "cash" ? `${reward.toLocaleString()}원` : `${reward}개`;
 
-      // 🔥 승인 필요 할일: onRequestApproval 호출 (보상 미지급)
-      if (task.requiresApproval && typeof onRequestApproval === "function") {
+      // 🔥 승인 필요 할일 또는 직업 할일: onRequestApproval 호출 (보상 미지급)
+      if ((task.requiresApproval || isJobTask) && typeof onRequestApproval === "function") {
         logger.log("[TaskItem] onRequestApproval 호출:", { taskId, jobId, isJobTask, cardType, reward });
         onRequestApproval(taskId || task.id, jobId, isJobTask, cardType, reward);
         setShowCardModal(false);
@@ -275,8 +275,8 @@ const TaskItem = memo(function TaskItem({
             </span>
           )}
           {/* 🔥 승인필요/랜덤보상 뱃지 */}
-          <span className="rounded-lg font-medium whitespace-nowrap" style={task.requiresApproval ? approvalBadgeStyle : couponStyle}>
-            {task.requiresApproval ? "⏳ 승인필요" : "🎁 랜덤보상"}
+          <span className="rounded-lg font-medium whitespace-nowrap" style={(task.requiresApproval || isJobTask) ? approvalBadgeStyle : couponStyle}>
+            {(task.requiresApproval || isJobTask) ? "⏳ 승인필요" : "🎁 랜덤보상"}
           </span>
 
           {isAdmin && (
