@@ -1198,6 +1198,37 @@ function Dashboard({ adminTabMode }) {
     }
   }, [generateId, userDoc]);
 
+  // 인라인 할일 수정
+  const handleInlineEditTask = useCallback(async (taskId, name, maxClicks, jobId) => {
+    if (!db || !userDoc?.classCode) return;
+    const taskData = { name, maxClicks, reward: 0, requiresApproval: true };
+    try {
+      if (jobId) {
+        const jobRef = doc(db, "jobs", jobId);
+        const jobSnap = await getDoc(jobRef);
+        if (!jobSnap.exists()) throw new Error("직업을 찾을 수 없습니다.");
+        const jobTasks = jobSnap.data().tasks || [];
+        const updatedTasks = jobTasks.map((t) =>
+          t.id === taskId ? { ...t, ...taskData } : t
+        );
+        await updateDoc(jobRef, { tasks: updatedTasks, updatedAt: serverTimestamp() });
+        setJobs((prev) => prev.map((j) =>
+          j.id === jobId ? { ...j, tasks: updatedTasks } : j
+        ));
+      } else {
+        const taskRef = doc(db, "commonTasks", taskId);
+        await updateDoc(taskRef, { ...taskData, updatedAt: serverTimestamp() });
+        setCommonTasks((prev) => prev.map((t) =>
+          t.id === taskId ? { ...t, ...taskData } : t
+        ));
+      }
+      dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
+    } catch (error) {
+      logger.error("인라인 할일 수정 오류:", error);
+      alert("할일 수정 중 오류: " + error.message);
+    }
+  }, [userDoc]);
+
   const handleDeleteTask = useCallback(
     async (taskIdToDelete, jobId = null) => {
       if (!db) {
@@ -2247,6 +2278,7 @@ function Dashboard({ adminTabMode }) {
           setTaskFormIsJobTask={setIsJobTaskForForm}
           handleAddTaskClick={handleAddTaskClick}
           handleInlineAddTask={handleInlineAddTask}
+          handleInlineEditTask={handleInlineEditTask}
         />
       )}
     </div>

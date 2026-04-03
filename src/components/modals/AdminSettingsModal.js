@@ -336,6 +336,7 @@ const AdminSettingsModal = ({
   setTaskFormIsJobTask,
   handleAddTaskClick,
   handleInlineAddTask,
+  handleInlineEditTask,
 
   // 학급 코드 관리 관련 props
   classCodes = [],
@@ -376,6 +377,11 @@ const AdminSettingsModal = ({
   const [inlineAddingFor, setInlineAddingFor] = useState(null);
   const [inlineTaskName, setInlineTaskName] = useState("");
   const [inlineTaskMaxClicks, setInlineTaskMaxClicks] = useState("5");
+
+  // 인라인 할일 수정 상태
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
+  const [inlineEditName, setInlineEditName] = useState("");
+  const [inlineEditMaxClicks, setInlineEditMaxClicks] = useState("5");
 
   // 통합 탭 서브탭 상태
   const [jobTaskSubTab, setJobTaskSubTab] = useState("job");
@@ -688,6 +694,20 @@ const AdminSettingsModal = ({
     setInlineTaskName("");
     setInlineTaskMaxClicks("5");
   }, [inlineTaskName, inlineTaskMaxClicks, handleInlineAddTask]);
+
+  // 인라인 할일 수정 저장
+  const handleInlineEditSave = useCallback(async (taskId, jobId) => {
+    const name = inlineEditName.trim();
+    const maxClicks = parseInt(inlineEditMaxClicks, 10);
+    if (!name) { alert("할일 이름을 입력하세요."); return; }
+    if (isNaN(maxClicks) || maxClicks <= 0) { alert("최대 횟수는 1 이상이어야 합니다."); return; }
+    if (handleInlineEditTask) {
+      await handleInlineEditTask(taskId, name, maxClicks, jobId || null);
+    }
+    setInlineEditingTaskId(null);
+    setInlineEditName("");
+    setInlineEditMaxClicks("5");
+  }, [inlineEditName, inlineEditMaxClicks, handleInlineEditTask]);
 
   // 학생 목록 로드 함수 (Class/students 구조와 users 구조 모두 지원)
   const loadStudents = useCallback(async () => {
@@ -2008,27 +2028,33 @@ const AdminSettingsModal = ({
                 {Array.isArray(commonTasks) && commonTasks.length > 0 ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '8px' }}>
                     {commonTasks.map((task) => (
-                      <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(15,15,28,0.6)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                          <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {task.name}
-                          </span>
-                          <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
-                          <button
-                            onClick={() => { handleTaskEdit(task); }}
-                            style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => { handleTaskDelete(task.id); }}
-                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
-                          >
-                            삭제
-                          </button>
-                        </div>
+                      <div key={task.id} style={{ padding: '10px 14px', background: 'rgba(15,15,28,0.6)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        {inlineEditingTaskId === task.id ? (
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input type="text" value={inlineEditName} onChange={(e) => setInlineEditName(e.target.value)} autoFocus
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, null); if (e.key === 'Escape') setInlineEditingTaskId(null); }}
+                              style={{ flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }} />
+                            <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, null); }}
+                              style={{ width: '50px', padding: '5px 4px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
+                            <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                            <button onClick={() => handleInlineEditSave(task.id, null)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
+                            <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                              <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                              <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
+                              <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
+                                style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
+                              <button onClick={() => { handleTaskDelete(task.id); }}
+                                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -2107,27 +2133,33 @@ const AdminSettingsModal = ({
                       {Array.isArray(job.tasks) && job.tasks.length > 0 ? (
                         <div style={{ padding: '6px 8px' }}>
                           {job.tasks.map((task, idx) => (
-                            <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {task.name}
-                                </span>
-                                <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
-                              </div>
-                              <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
-                                <button
-                                  onClick={() => { handleTaskEdit(task, job.id); }}
-                                  style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
-                                >
-                                  수정
-                                </button>
-                                <button
-                                  onClick={() => { handleTaskDelete(task.id, job.id); }}
-                                  style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}
-                                >
-                                  삭제
-                                </button>
-                              </div>
+                            <div key={task.id} style={{ padding: '6px 10px', borderRadius: '8px', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                              {inlineEditingTaskId === task.id ? (
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <input type="text" value={inlineEditName} onChange={(e) => setInlineEditName(e.target.value)} autoFocus
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, job.id); if (e.key === 'Escape') setInlineEditingTaskId(null); }}
+                                    style={{ flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }} />
+                                  <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, job.id); }}
+                                    style={{ width: '50px', padding: '5px 4px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
+                                  <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                                  <button onClick={() => handleInlineEditSave(task.id, job.id)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
+                                  <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                                    <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                                    <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
+                                    <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
+                                      style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
+                                    <button onClick={() => { handleTaskDelete(task.id, job.id); }}
+                                      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
