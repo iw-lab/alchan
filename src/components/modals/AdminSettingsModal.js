@@ -335,6 +335,7 @@ const AdminSettingsModal = ({
   taskFormIsJobTask,
   setTaskFormIsJobTask,
   handleAddTaskClick,
+  handleInlineAddTask,
 
   // 학급 코드 관리 관련 props
   classCodes = [],
@@ -370,6 +371,11 @@ const AdminSettingsModal = ({
   const [newProductRate, setNewProductRate] = useState("");
   const [financialSubTab, setFinancialSubTab] = useState("deposit");
   const [financialMessage, setFinancialMessage] = useState(null);
+
+  // 인라인 할일 추가 상태 (jobId or "common")
+  const [inlineAddingFor, setInlineAddingFor] = useState(null);
+  const [inlineTaskName, setInlineTaskName] = useState("");
+  const [inlineTaskMaxClicks, setInlineTaskMaxClicks] = useState("5");
 
   // 통합 탭 서브탭 상태
   const [jobTaskSubTab, setJobTaskSubTab] = useState("job");
@@ -659,26 +665,29 @@ const AdminSettingsModal = ({
     [handleDeleteTask],
   );
 
-  // 할일 추가 핸들러
+  // 할일 추가 핸들러 (관리자 설정 모달 폼 열기 — 수정 시 사용)
   const handleTaskAdd = useCallback(
     (jobId = null, isJobTask = false) => {
-      logger.log(
-        "[AdminSettingsModal] 할일 추가 클릭:",
-        jobId,
-        "isJobTask:",
-        isJobTask,
-      );
       if (handleAddTaskClick && typeof handleAddTaskClick === "function") {
         handleAddTaskClick(jobId, isJobTask);
-      } else {
-        logger.error(
-          "[AdminSettingsModal] handleAddTaskClick 함수가 정의되지 않았습니다.",
-        );
-        alert("할일 추가 기능을 사용할 수 없습니다.");
       }
     },
     [handleAddTaskClick],
   );
+
+  // 인라인 할일 추가 저장
+  const handleInlineTaskSave = useCallback(async (targetId) => {
+    const name = inlineTaskName.trim();
+    const maxClicks = parseInt(inlineTaskMaxClicks, 10);
+    if (!name) { alert("할일 이름을 입력하세요."); return; }
+    if (isNaN(maxClicks) || maxClicks <= 0) { alert("최대 횟수는 1 이상이어야 합니다."); return; }
+    if (handleInlineAddTask) {
+      await handleInlineAddTask(name, maxClicks, targetId === "common" ? null : targetId);
+    }
+    setInlineAddingFor(null);
+    setInlineTaskName("");
+    setInlineTaskMaxClicks("5");
+  }, [inlineTaskName, inlineTaskMaxClicks, handleInlineAddTask]);
 
   // 학생 목록 로드 함수 (Class/students 구조와 users 구조 모두 지원)
   const loadStudents = useCallback(async () => {
@@ -1965,12 +1974,37 @@ const AdminSettingsModal = ({
                     <span style={{ fontSize: '12px', color: '#9999bb', fontWeight: 400 }}>({Array.isArray(commonTasks) ? commonTasks.length : 0}개)</span>
                   </h4>
                   <button
-                    onClick={() => { handleTaskAdd(null, false); }}
+                    onClick={() => { setInlineAddingFor("common"); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }}
                     style={{ background: 'rgba(0,255,242,0.1)', border: '1px solid rgba(0,255,242,0.3)', color: '#00fff2', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
                   >
                     + 추가
                   </button>
                 </div>
+                {/* 공통 할일 인라인 추가 폼 */}
+                {inlineAddingFor === "common" && (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px', padding: '8px 12px', background: 'rgba(0,255,242,0.05)', borderRadius: '10px', border: '1px solid rgba(0,255,242,0.2)' }}>
+                    <input
+                      type="text"
+                      value={inlineTaskName}
+                      onChange={(e) => setInlineTaskName(e.target.value)}
+                      placeholder="할일 이름"
+                      autoFocus
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave("common"); if (e.key === 'Escape') { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); } }}
+                      style={{ flex: 1, padding: '6px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }}
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={inlineTaskMaxClicks}
+                      onChange={(e) => setInlineTaskMaxClicks(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave("common"); }}
+                      style={{ width: '50px', padding: '6px 6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }}
+                    />
+                    <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                    <button onClick={() => handleInlineTaskSave("common")} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
+                    <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+                  </div>
+                )}
                 {Array.isArray(commonTasks) && commonTasks.length > 0 ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '8px' }}>
                     {commonTasks.map((task) => (
@@ -2102,16 +2136,41 @@ const AdminSettingsModal = ({
                           할일 없음
                         </p>
                       )}
-                      {/* 직업 카드 내 할일 추가 버튼 */}
+                      {/* 직업 카드 내 인라인 할일 추가 */}
                       <div style={{ padding: '6px 8px', borderTop: '1px solid rgba(129,140,248,0.1)' }}>
-                        <button
-                          onClick={() => { handleTaskAdd(job.id, true); }}
-                          style={{ width: '100%', padding: '7px', background: 'rgba(129,140,248,0.08)', border: '1px dashed rgba(129,140,248,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '13px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
-                          onMouseEnter={(e) => { e.target.style.background = 'rgba(129,140,248,0.15)'; }}
-                          onMouseLeave={(e) => { e.target.style.background = 'rgba(129,140,248,0.08)'; }}
-                        >
-                          + 할일 추가
-                        </button>
+                        {inlineAddingFor === job.id ? (
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={inlineTaskName}
+                              onChange={(e) => setInlineTaskName(e.target.value)}
+                              placeholder="할일 이름"
+                              autoFocus
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave(job.id); if (e.key === 'Escape') { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); } }}
+                              style={{ flex: 1, padding: '6px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }}
+                            />
+                            <input
+                              type="number"
+                              min="1"
+                              value={inlineTaskMaxClicks}
+                              onChange={(e) => setInlineTaskMaxClicks(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave(job.id); }}
+                              style={{ width: '50px', padding: '6px 6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }}
+                            />
+                            <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                            <button onClick={() => handleInlineTaskSave(job.id)} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
+                            <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setInlineAddingFor(job.id); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }}
+                            style={{ width: '100%', padding: '7px', background: 'rgba(129,140,248,0.08)', border: '1px dashed rgba(129,140,248,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '13px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.target.style.background = 'rgba(129,140,248,0.15)'; }}
+                            onMouseLeave={(e) => { e.target.style.background = 'rgba(129,140,248,0.08)'; }}
+                          >
+                            + 할일 추가
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

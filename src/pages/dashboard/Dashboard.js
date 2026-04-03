@@ -1100,12 +1100,20 @@ function Dashboard({ adminTabMode }) {
             tasks: updatedTasks,
             updatedAt: serverTimestamp(),
           });
+          // 로컬 state 즉시 반영
+          setJobs((prev) => prev.map((j) =>
+            j.id === currentJobIdForTask ? { ...j, tasks: updatedTasks } : j
+          ));
         } else {
           const taskRef = doc(db, "commonTasks", taskId);
           await updateDoc(taskRef, {
             ...taskData,
             updatedAt: serverTimestamp(),
           });
+          // 로컬 state 즉시 반영
+          setCommonTasks((prev) => prev.map((t) =>
+            t.id === taskId ? { ...t, ...taskData } : t
+          ));
         }
         setShowAddTaskForm(false);
         setEditingTask(null);
@@ -1119,6 +1127,10 @@ function Dashboard({ adminTabMode }) {
             tasks: arrayUnion(newTaskDataWithId),
             updatedAt: serverTimestamp(),
           });
+          // 로컬 state 즉시 반영
+          setJobs((prev) => prev.map((j) =>
+            j.id === currentJobIdForTask ? { ...j, tasks: [...(j.tasks || []), newTaskDataWithId] } : j
+          ));
         } else {
           const newTaskRef = doc(db, "commonTasks", newTaskId);
           await setDoc(newTaskRef, {
@@ -1127,11 +1139,14 @@ function Dashboard({ adminTabMode }) {
             updatedAt: serverTimestamp(),
             classCode: userDoc.classCode,
           });
+          // 로컬 state 즉시 반영
+          setCommonTasks((prev) => [...prev, { ...newTaskDataWithId, classCode: userDoc.classCode }]);
         }
         setAdminNewTaskName("");
         setAdminNewTaskReward("0");
         setAdminNewTaskMaxClicks("5");
         setAdminNewTaskRequiresApproval(true);
+        setShowAddTaskForm(false);
         alert(`할일이 추가되었습니다.`);
       }
 
@@ -1158,6 +1173,40 @@ function Dashboard({ adminTabMode }) {
     generateId,
     userDoc,
   ]);
+
+  // 인라인 할일 추가 (카드 내에서 바로 추가)
+  const handleInlineAddTask = useCallback(async (name, maxClicks, jobId) => {
+    if (!db || !userDoc?.classCode) return;
+    const taskData = { name, reward: 0, maxClicks, clicks: 0, requiresApproval: true };
+    const newTaskId = generateId();
+    const newTaskDataWithId = { ...taskData, id: newTaskId };
+
+    try {
+      if (jobId) {
+        const jobRef = doc(db, "jobs", jobId);
+        await updateDoc(jobRef, {
+          tasks: arrayUnion(newTaskDataWithId),
+          updatedAt: serverTimestamp(),
+        });
+        setJobs((prev) => prev.map((j) =>
+          j.id === jobId ? { ...j, tasks: [...(j.tasks || []), newTaskDataWithId] } : j
+        ));
+      } else {
+        const newTaskRef = doc(db, "commonTasks", newTaskId);
+        await setDoc(newTaskRef, {
+          ...newTaskDataWithId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          classCode: userDoc.classCode,
+        });
+        setCommonTasks((prev) => [...prev, { ...newTaskDataWithId, classCode: userDoc.classCode }]);
+      }
+      dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
+    } catch (error) {
+      logger.error("인라인 할일 추가 오류:", error);
+      alert("할일 추가 중 오류: " + error.message);
+    }
+  }, [generateId, userDoc]);
 
   const handleDeleteTask = useCallback(
     async (taskIdToDelete, jobId = null) => {
@@ -2213,6 +2262,7 @@ function Dashboard({ adminTabMode }) {
           taskFormIsJobTask={isJobTaskForForm}
           setTaskFormIsJobTask={setIsJobTaskForForm}
           handleAddTaskClick={handleAddTaskClick}
+          handleInlineAddTask={handleInlineAddTask}
         />
       )}
     </div>
