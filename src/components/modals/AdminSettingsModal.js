@@ -1972,7 +1972,7 @@ const AdminSettingsModal = ({
                   </button>
                 </div>
                 {Array.isArray(commonTasks) && commonTasks.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '8px' }}>
                     {commonTasks.map((task) => (
                       <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(15,15,28,0.6)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
@@ -2047,7 +2047,7 @@ const AdminSettingsModal = ({
 
               {/* 직업별 카드 목록 */}
               {Array.isArray(jobs) && jobs.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
                   {jobs.map((job) => (
                     <div key={job.id} style={{ background: 'rgba(15,15,28,0.4)', borderRadius: '12px', border: '1px solid rgba(129,140,248,0.15)', overflow: 'hidden' }}>
                       {/* 직업 헤더 */}
