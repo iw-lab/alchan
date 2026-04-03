@@ -14,6 +14,7 @@ import {
   getDoc,
   setDoc,
   getDocs,
+  updateDoc,
   writeBatch,
   serverTimestamp,
   arrayUnion,
@@ -1095,61 +1096,42 @@ function Dashboard({ adminTabMode }) {
           }
           const updatedTasks = [...jobTasks];
           updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], ...taskData };
-
-          // 배치 매니저 사용
-          batchManager.addWrite({
-            type: "update",
-            ref: jobRef,
-            data: {
-              tasks: updatedTasks,
-              updatedAt: serverTimestamp(),
-            },
+          await updateDoc(jobRef, {
+            tasks: updatedTasks,
+            updatedAt: serverTimestamp(),
           });
         } else {
           const taskRef = doc(db, "commonTasks", taskId);
-          batchManager.addWrite({
-            type: "update",
-            ref: taskRef,
-            data: {
-              ...taskData,
-              updatedAt: serverTimestamp(),
-            },
+          await updateDoc(taskRef, {
+            ...taskData,
+            updatedAt: serverTimestamp(),
           });
         }
         setShowAddTaskForm(false);
         setEditingTask(null);
-        setShowAdminSettingsModal(false);
         alert(`할일이 수정되었습니다.`);
       } else {
         const newTaskId = generateId();
         const newTaskDataWithId = { ...taskData, id: newTaskId };
         if (isJobTaskForForm && currentJobIdForTask) {
           const jobRef = doc(db, "jobs", currentJobIdForTask);
-          batchManager.addWrite({
-            type: "update",
-            ref: jobRef,
-            data: {
-              tasks: arrayUnion(newTaskDataWithId),
-              updatedAt: serverTimestamp(),
-            },
+          await updateDoc(jobRef, {
+            tasks: arrayUnion(newTaskDataWithId),
+            updatedAt: serverTimestamp(),
           });
         } else {
           const newTaskRef = doc(db, "commonTasks", newTaskId);
-          batchManager.addWrite({
-            type: "set",
-            ref: newTaskRef,
-            data: {
-              ...newTaskDataWithId,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              classCode: userDoc.classCode,
-            },
+          await setDoc(newTaskRef, {
+            ...newTaskDataWithId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            classCode: userDoc.classCode,
           });
         }
         setAdminNewTaskName("");
         setAdminNewTaskReward("0");
         setAdminNewTaskMaxClicks("5");
-        setAdminNewTaskRequiresApproval(false);
+        setAdminNewTaskRequiresApproval(true);
         alert(`할일이 추가되었습니다.`);
       }
 
