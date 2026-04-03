@@ -1950,22 +1950,9 @@ const AdminSettingsModal = ({
                       />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <label
-                        style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={adminNewTaskRequiresApproval || false}
-                          onChange={(e) => setAdminNewTaskRequiresApproval(e.target.checked)}
-                          style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: '#f59e0b' }}
-                        />
-                        <span style={{ color: '#e8e8ff', fontSize: '14px' }}>승인 필요</span>
-                      </label>
-                      {adminNewTaskRequiresApproval && (
-                        <span style={{ fontSize: "11px", color: "#f59e0b", marginLeft: '8px' }}>
-                          관리자 승인 후 보상 지급
-                        </span>
-                      )}
+                      <span style={{ fontSize: "12px", color: "#f59e0b" }}>
+                        모든 할일은 관리자 승인 후 보상 지급
+                      </span>
                     </div>
                   </div>
 
@@ -2044,7 +2031,7 @@ const AdminSettingsModal = ({
                                 <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '10px' }}>🎁 랜덤보상</span>
                                   <span style={{ fontSize: '11px', color: '#9999bb' }}>횟수 {task.maxClicks || 5}회</span>
-                                  {task.requiresApproval && <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px' }}>승인필요</span>}
+                                  <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px' }}>승인필요</span>
                                 </div>
                               </div>
                             </div>
@@ -2096,7 +2083,7 @@ const AdminSettingsModal = ({
                                       </span>
                                       <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '2px 8px', borderRadius: '10px', flexShrink: 0 }}>🎁 랜덤</span>
                                       <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
-                                      {task.requiresApproval && <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px', flexShrink: 0 }}>승인</span>}
+                                      <span style={{ fontSize: '11px', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: '10px', flexShrink: 0 }}>승인</span>
                                     </div>
                                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                                       <button

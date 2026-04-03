@@ -161,33 +161,11 @@ exports.completeTask = onCall(
     }
     const userRef = db.collection("users").doc(uid);
 
-    // 🔥 보안 가드: requiresApproval 할일 또는 직업 할일은 completeTask로 직접 완료 불가
-    try {
-      if (isJobTask && jobId) {
-        // 직업 할일은 무조건 승인 필요
-        throw new HttpsError(
-          "permission-denied",
-          "직업 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
-        );
-      } else {
-        const commonTaskDoc = await db
-          .collection("commonTasks")
-          .doc(taskId)
-          .get();
-        if (commonTaskDoc.exists && commonTaskDoc.data().requiresApproval) {
-          throw new HttpsError(
-            "permission-denied",
-            "이 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
-          );
-        }
-      }
-    } catch (guardError) {
-      if (guardError instanceof HttpsError) throw guardError;
-      logger.warn(
-        "[completeTask] requiresApproval 가드 체크 중 오류:",
-        guardError,
-      );
-    }
+    // 🔥 보안 가드: 모든 할일은 관리자 승인 필수 - completeTask로 직접 완료 불가
+    throw new HttpsError(
+      "permission-denied",
+      "모든 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
+    );
 
     try {
       let taskReward = 0;
@@ -468,12 +446,6 @@ exports.submitTaskApproval = onCall(
           const task = jobTasks[taskIndex];
           taskName = task.name;
 
-          if (!task.requiresApproval) {
-            throw new Error(
-              "이 할일은 승인이 필요하지 않습니다. completeTask를 사용하세요.",
-            );
-          }
-
           // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
           const maxReward = cardType === "cash" ? 50000 : 20;
           if (
@@ -516,12 +488,6 @@ exports.submitTaskApproval = onCall(
 
           const taskData = commonTaskDoc.data();
           taskName = taskData.name;
-
-          if (!taskData.requiresApproval) {
-            throw new Error(
-              "이 할일은 승인이 필요하지 않습니다. completeTask를 사용하세요.",
-            );
-          }
 
           // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
           const maxRewardApproval = cardType === "cash" ? 50000 : 20;

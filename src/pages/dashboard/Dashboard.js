@@ -438,7 +438,7 @@ function Dashboard({ adminTabMode }) {
   const [adminNewTaskReward, setAdminNewTaskReward] = useState("0");
   const [adminNewTaskMaxClicks, setAdminNewTaskMaxClicks] = useState("5");
   const [adminNewTaskRequiresApproval, setAdminNewTaskRequiresApproval] =
-    useState(false);
+    useState(true);
 
   // 🔥 [최적화] httpsCallable 메모이제이션
   const completeTaskFunction = useMemo(
@@ -1033,7 +1033,7 @@ function Dashboard({ adminTabMode }) {
       setAdminNewTaskName(taskToEdit.name);
       setAdminNewTaskReward(String(taskToEdit.reward || 0));
       setAdminNewTaskMaxClicks(String(taskToEdit.maxClicks || 5));
-      setAdminNewTaskRequiresApproval(!!taskToEdit.requiresApproval);
+      setAdminNewTaskRequiresApproval(true);
       setIsJobTaskForForm(!!jobId);
       setCurrentJobIdForTask(jobId);
       setAdminSelectedMenu("taskManagement");
@@ -1073,7 +1073,7 @@ function Dashboard({ adminTabMode }) {
       reward,
       maxClicks,
       clicks: editingTask?.clicks || 0,
-      requiresApproval: adminNewTaskRequiresApproval,
+      requiresApproval: true,
     };
 
     try {
