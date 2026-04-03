@@ -910,35 +910,30 @@ function Dashboard({ adminTabMode }) {
     try {
       if (editingJob) {
         const jobRef = doc(db, "jobs", editingJob.id);
-        // 배치 매니저 사용
-        batchManager.addWrite({
-          type: "update",
-          ref: jobRef,
-          data: { title, updatedAt: serverTimestamp() },
-        });
-
-        alert(`직업이 수정되었습니다.`);
+        await updateDoc(jobRef, { title, updatedAt: serverTimestamp() });
+        // 로컬 state 즉시 반영
+        setJobs((prev) => prev.map((j) =>
+          j.id === editingJob.id ? { ...j, title } : j
+        ));
         setAdminNewJobTitle("");
         setEditingJob(null);
-        setShowAdminSettingsModal(false);
+        alert(`직업이 수정되었습니다.`);
       } else {
         const newJobId = generateId();
+        const newJobData = {
+          title,
+          active: true,
+          tasks: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          classCode: userDoc.classCode,
+        };
         const jobRef = doc(db, "jobs", newJobId);
-        batchManager.addWrite({
-          type: "set",
-          ref: jobRef,
-          data: {
-            title,
-            active: true,
-            tasks: [],
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            classCode: userDoc.classCode,
-          },
-        });
-
-        alert(`직업이 추가되었습니다.`);
+        await setDoc(jobRef, newJobData);
+        // 로컬 state 즉시 반영
+        setJobs((prev) => [...prev, { id: newJobId, ...newJobData, tasks: [] }]);
         setAdminNewJobTitle("");
+        alert(`직업이 추가되었습니다.`);
       }
 
       // 캐시 무효화
@@ -968,13 +963,9 @@ function Dashboard({ adminTabMode }) {
 
       setAppLoading(true);
       try {
-        // 배치 매니저 사용
         const jobRef = doc(db, "jobs", jobIdToDelete);
-        batchManager.addWrite({
-          type: "delete",
-          ref: jobRef,
-          data: null,
-        });
+        const { deleteDoc } = await import("firebase/firestore");
+        await deleteDoc(jobRef);
 
         if (user && userDoc?.selectedJobIds?.includes(jobIdToDelete)) {
           const updatedSelectedIds = userDoc.selectedJobIds.filter(
@@ -990,7 +981,6 @@ function Dashboard({ adminTabMode }) {
 
         // 로컬 state 즉시 업데이트
         setJobs((prev) => prev.filter((j) => j.id !== jobIdToDelete));
-        setShowAdminSettingsModal(false);
 
         // 캐시 무효화
         dataCache.invalidate(`jobs_${userDoc.classCode}`);
@@ -1229,32 +1219,26 @@ function Dashboard({ adminTabMode }) {
           }
           const tasks = jobSnap.data().tasks || [];
           const updatedTasks = tasks.filter((t) => t.id !== taskIdToDelete);
-
-          // 배치 매니저 사용
-          batchManager.addWrite({
-            type: "update",
-            ref: jobRef,
-            data: {
-              tasks: updatedTasks,
-              updatedAt: serverTimestamp(),
-            },
+          await updateDoc(jobRef, {
+            tasks: updatedTasks,
+            updatedAt: serverTimestamp(),
           });
+          // 로컬 state 즉시 반영
+          setJobs((prev) => prev.map((j) =>
+            j.id === jobId ? { ...j, tasks: updatedTasks } : j
+          ));
         } else {
           const taskRef = doc(db, "commonTasks", taskIdToDelete);
-          batchManager.addWrite({
-            type: "delete",
-            ref: taskRef,
-            data: null,
-          });
+          const { deleteDoc } = await import("firebase/firestore");
+          await deleteDoc(taskRef);
+          // 로컬 state 즉시 반영
+          setCommonTasks((prev) => prev.filter((t) => t.id !== taskIdToDelete));
         }
 
         if (editingTask?.id === taskIdToDelete) {
           setShowAddTaskForm(false);
           setEditingTask(null);
         }
-
-        setShowAdminSettingsModal(false);
-        alert("할일이 삭제되었습니다.");
 
         // 캐시 무효화
         if (jobId) {
