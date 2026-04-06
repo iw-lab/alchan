@@ -30,7 +30,7 @@ import {
   addTransaction,
   serverTimestamp,
 } from "../firebase";
-import { doc, setDoc, Timestamp, getDoc } from "firebase/firestore";
+import { doc, setDoc, Timestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 import { logger } from "../utils/logger";
@@ -73,6 +73,7 @@ export const AuthProvider = ({ children }) => {
   const initializationCompleteRef = useRef(false);
   const currentUserUidRef = useRef(null);
   const firestoreUnsubscribeRef = useRef(null);
+  const userDocSnapshotUnsubRef = useRef(null);
   const pendingClassmatesFetchRef = useRef(false);
   const userDocFetchTimeRef = useRef(new Map());
   const currentClassCodeRef = useRef(null);
@@ -560,7 +561,24 @@ export const AuthProvider = ({ children }) => {
               }
             }, 60 * 60 * 1000); // 60분마다
 
+            // Real-time listener for user document (cash, coupons, etc.)
+            if (userDocSnapshotUnsubRef.current) userDocSnapshotUnsubRef.current();
+            const userDocRef = doc(db, "users", firebaseAuthUser.uid);
+            userDocSnapshotUnsubRef.current = onSnapshot(userDocRef, (snap) => {
+              if (snap.exists()) {
+                const freshData = { id: snap.id, uid: snap.id, ...snap.data() };
+                setUserDoc(freshData);
+                setCachedUserDoc(firebaseAuthUser.uid, freshData);
+              }
+            }, (err) => {
+              logger.error("[AuthContext] onSnapshot error:", err);
+            });
+
             firestoreUnsubscribeRef.current = () => {
+              if (userDocSnapshotUnsubRef.current) {
+                userDocSnapshotUnsubRef.current();
+                userDocSnapshotUnsubRef.current = null;
+              }
               if (visibilityChangeHandlerRef.current) {
                 document.removeEventListener(
                   "visibilitychange",
@@ -590,6 +608,12 @@ export const AuthProvider = ({ children }) => {
         setClassmates([]);
         setAllClassMembers([]);
         localStorage.removeItem("currentUserAuthUID");
+
+        // Real-time listener cleanup
+        if (userDocSnapshotUnsubRef.current) {
+          userDocSnapshotUnsubRef.current();
+          userDocSnapshotUnsubRef.current = null;
+        }
 
         // 캐시 및 참조 초기화
         lastLoginUpdateRef.current.clear();
