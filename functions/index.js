@@ -3410,11 +3410,6 @@ exports.processSettlement = onCall(
           throw new Error("피해자 정보를 찾을 수 없습니다.");
 
         const senderData = senderDoc.data();
-        if ((senderData.cash || 0) < settlementAmount) {
-          throw new Error(
-            "가해자의 현금이 부족하여 합의금을 처리할 수 없습니다.",
-          );
-        }
 
         transaction.update(senderRef, {
           cash: admin.firestore.FieldValue.increment(-settlementAmount),
