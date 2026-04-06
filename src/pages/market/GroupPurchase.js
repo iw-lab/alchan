@@ -241,6 +241,30 @@ export default function GroupPurchase() {
               name: result.cData.itemName,
               icon: result.cData.itemIcon || "🎁",
             });
+
+            // Decrement store stock and handle restock + price increase
+            try {
+              const storeItemRef = doc(db, "storeItems", storeItemId);
+              await runTransaction(db, async (tx) => {
+                const snap = await tx.get(storeItemRef);
+                if (!snap.exists()) return;
+                const d = snap.data();
+                if (d.stock === undefined) return;
+                const newStock = Math.max(0, (d.stock || 0) - 1);
+                const upd = { updatedAt: serverTimestamp() };
+                if (newStock <= 0 && d.initialStock > 0) {
+                  const rate = d.priceIncreasePercentage ?? d.outOfStockPriceIncreaseRate ?? 10;
+                  upd.stock = d.initialStock || 10;
+                  upd.price = Math.round(d.price * (1 + rate / 100));
+                } else {
+                  upd.stock = newStock;
+                }
+                tx.update(storeItemRef, upd);
+              });
+            } catch (stockErr) {
+              logger.error("함께구매 재고 차감 실패:", stockErr);
+            }
+
             alert(
               `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
             );
