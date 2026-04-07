@@ -26,18 +26,18 @@ const JobList = memo(function JobList({
       key={job.id} // 상위에서 map을 사용하므로 여기서 key는 필수 X, 식별용으로 유지
       className="flex flex-col h-full rounded-lg overflow-hidden mb-4"
       style={{
-        backgroundColor: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+        backgroundColor: "#f1f5f9",
+        border: "1px solid #cbd5e1",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
       }}
     >
       {/* 직업 헤더 - 시인성 개선 */}
       <div
         className="job-header-container flex justify-between items-center"
         style={{
-          background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+          background: "linear-gradient(135deg, #dbeafe 0%, #c7d2fe 100%)",
           padding: isMobile ? "12px 14px" : "14px 16px",
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid #cbd5e1",
         }}
       >
         <div
