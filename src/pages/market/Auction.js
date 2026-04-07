@@ -802,9 +802,9 @@ export default function Auction() {
       )}
 
       <header className="auction-header">
-        <h1>경매장 (학급: {classCode || "정보 없음"})</h1>
+        <h1>경매장</h1>
         <div className="auction-balance">
-          <span>보유 금액: </span>
+          <span>보유 잔고: </span>
           <span className="balance-amount">{formatPrice(balance)}</span>
         </div>
       </header>

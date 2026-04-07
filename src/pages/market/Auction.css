@@ -1,9 +1,9 @@
-/* src/Auction.css - Cyberpunk Dark Theme */
+/* src/Auction.css - Light Theme */
 
 .auction-container {
     padding: 20px;
-    background-color: var(--cyber-bg-dark);
-    color: var(--cyber-text-primary);
+    background-color: #ffffff;
+    color: #1f2937;
     min-height: 100vh;
 }
 
@@ -13,27 +13,28 @@
     align-items: center;
     margin-bottom: 2rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid var(--cyber-border-dim);
+    border-bottom: 1px solid #e0e7ff;
 }
 
 .auction-header h1 {
     font-family: 'Orbitron', sans-serif;
-    color: #fff;
-    text-shadow: var(--cyber-glow-cyan);
+    color: #1f2937;
+    text-shadow: none;
     margin: 0;
 }
 
 .auction-balance {
     font-family: 'Rajdhani', sans-serif;
-    font-size: 1.2rem;
-    color: var(--cyber-text-secondary);
+    font-size: 1.4rem;
+    color: #374151;
+    font-weight: 600;
 }
 
 .balance-amount {
-    color: var(--cyber-neon-cyan);
+    color: #059669;
     font-weight: bold;
-    font-size: 1.4rem;
-    text-shadow: 0 0 10px var(--accent);
+    font-size: 1.8rem;
+    text-shadow: none;
     margin-left: 0.5rem;
 }
 
@@ -42,7 +43,7 @@
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
-    border-bottom: 1px solid var(--cyber-border-dim);
+    border-bottom: 1px solid #e0e7ff;
     padding-bottom: 5px;
     overflow-x: auto;
 }
@@ -50,7 +51,7 @@
 .tab {
     background: transparent;
     border: 1px solid transparent;
-    color: var(--cyber-text-secondary);
+    color: #6b7280;
     padding: 10px 20px;
     cursor: pointer;
     font-family: 'Rajdhani', sans-serif;
@@ -60,30 +61,30 @@
 }
 
 .tab:hover {
-    color: var(--cyber-text-primary);
-    background: rgba(255, 255, 255, 0.05);
+    color: #1f2937;
+    background: #f3f4f6;
 }
 
 .tab.active {
-    color: var(--cyber-neon-cyan);
-    border: 1px solid var(--cyber-border-dim);
-    border-bottom: 1px solid var(--cyber-bg-dark);
+    color: #3b82f6;
+    border: 1px solid #e0e7ff;
+    border-bottom: 1px solid #ffffff;
     /* Hide bottom border */
-    background: var(--cyber-bg-medium);
-    box-shadow: 0 -2px 10px var(--accent-light);
+    background: #ffffff;
+    box-shadow: 0 -2px 10px rgba(59, 130, 246, 0.1);
     margin-bottom: -1px;
     /* Overlap border */
 }
 
 .tab.register-tab {
     margin-left: auto;
-    color: var(--cyber-neon-green);
+    color: #059669;
 }
 
 .tab.register-tab.active {
-    color: var(--cyber-neon-green);
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 -2px 10px rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border-color: #e0e7ff;
+    box-shadow: 0 -2px 10px rgba(5, 150, 105, 0.1);
 }
 
 /* Content Area */
@@ -99,32 +100,32 @@
 
 .search-bar input {
     flex: 1;
-    background: var(--cyber-bg-medium);
-    border: 1px solid var(--cyber-border-dim);
-    color: var(--cyber-text-primary);
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
     padding: 12px;
     border-radius: 8px;
     font-family: 'Rajdhani', sans-serif;
 }
 
 .search-bar input:focus {
-    border-color: var(--cyber-neon-cyan);
-    box-shadow: 0 0 10px var(--border-accent);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     outline: none;
 }
 
 .search-reset-button {
-    background: var(--border-primary);
-    border: 1px solid var(--cyber-border-dim);
-    color: var(--cyber-text-secondary);
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #374151;
     padding: 0 20px;
     border-radius: 8px;
     cursor: pointer;
 }
 
 .search-reset-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    background: #e5e7eb;
+    color: #1f2937;
 }
 
 /* Auction Grid */
@@ -135,20 +136,21 @@
 }
 
 .auction-card {
-    background: var(--cyber-bg-card);
-    border: 1px solid var(--cyber-border-dim);
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    backdrop-filter: none;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .auction-card:hover {
     transform: translateY(-5px);
-    border-color: var(--cyber-neon-cyan);
-    box-shadow: var(--cyber-shadow-card-hover);
+    border-color: #3b82f6;
+    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
 }
 
 .auction-info {
@@ -165,30 +167,30 @@
 
 .card-header h3 {
     font-size: 1.2rem;
-    color: #fff;
+    color: #1f2937;
     margin: 0;
     display: flex;
     align-items: center;
 }
 
 .time-left-badge {
-    background: var(--accent-light);
-    color: var(--cyber-neon-cyan);
+    background: #eff6ff;
+    color: #3b82f6;
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 0.8rem;
-    border: 1px solid var(--border-accent);
+    border: 1px solid #dbeafe;
     white-space: nowrap;
 }
 
 .time-left-badge.error {
-    background: rgba(255, 51, 102, 0.1);
-    color: var(--cyber-neon-red);
-    border-color: rgba(255, 51, 102, 0.3);
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
 }
 
 .auction-description {
-    color: var(--cyber-text-secondary);
+    color: #6b7280;
     font-size: 0.9rem;
     margin-bottom: 15px;
     line-height: 1.5;
@@ -202,7 +204,7 @@
 }
 
 .auction-price-details {
-    background: rgba(0, 0, 0, 0.2);
+    background: #f8faff;
     padding: 10px;
     border-radius: 8px;
     margin-bottom: 10px;
@@ -213,7 +215,7 @@
     justify-content: space-between;
     margin: 5px 0;
     font-size: 0.9rem;
-    color: var(--cyber-text-secondary);
+    color: #374151;
 }
 
 .price {
@@ -222,37 +224,37 @@
 }
 
 .start-price {
-    color: #aaa;
+    color: #9ca3af;
 }
 
 .current-price {
-    color: var(--cyber-neon-yellow);
+    color: #f59e0b;
     font-weight: bold;
     font-size: 1.1rem;
 }
 
 .auction-meta {
     font-size: 0.8rem;
-    color: #666;
+    color: #6b7280;
     text-align: right;
     margin-top: 10px;
 }
 
 .bid-status-indicator.highest {
-    color: var(--cyber-neon-green);
+    color: #059669;
     font-weight: bold;
     text-align: center;
     margin-top: 10px;
     padding: 5px;
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(5, 150, 105, 0.1);
     border-radius: 4px;
 }
 
 /* Auction Actions */
 .auction-actions {
     padding: 15px 20px;
-    background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid var(--cyber-border-dim);
+    background: #f8faff;
+    border-top: 1px solid #e0e7ff;
 }
 
 .bid-input-group {
@@ -262,18 +264,18 @@
 
 .bid-input {
     flex: 1;
-    background: var(--cyber-bg-dark);
-    border: 1px solid var(--cyber-border-dim);
-    color: #fff;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
     padding: 8px;
     border-radius: 6px;
     font-family: 'Rajdhani', sans-serif;
 }
 
 .bid-button {
-    background: linear-gradient(135deg, var(--border-accent), var(--accent-light));
-    border: 1px solid var(--cyber-neon-cyan);
-    color: var(--cyber-neon-cyan);
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: 1px solid #3b82f6;
+    color: #ffffff;
     padding: 8px 15px;
     border-radius: 6px;
     cursor: pointer;
@@ -282,21 +284,21 @@
 }
 
 .bid-button:hover:not(:disabled) {
-    background: var(--cyber-neon-cyan);
-    color: #000;
-    box-shadow: 0 0 10px var(--cyber-neon-cyan);
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .bid-button:disabled {
-    border-color: #444;
-    color: #666;
+    border-color: #d1d5db;
+    color: #9ca3af;
     cursor: not-allowed;
-    background: transparent;
+    background: #f3f4f6;
 }
 
 .owner-notice {
     text-align: center;
-    color: var(--cyber-text-secondary);
+    color: #6b7280;
     font-style: italic;
 }
 
@@ -311,21 +313,21 @@
 }
 
 .notification-success {
-    background: rgba(16, 185, 129, 0.2);
-    color: var(--cyber-neon-green);
-    border: 1px solid var(--cyber-neon-green);
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
 }
 
 .notification-error {
-    background: rgba(255, 51, 102, 0.2);
-    color: var(--cyber-neon-red);
-    border: 1px solid var(--cyber-neon-red);
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
 }
 
 .notification-info {
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--cyber-neon-blue);
-    border: 1px solid var(--cyber-neon-blue);
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #dbeafe;
 }
 
 @keyframes slideDown {
@@ -344,20 +346,21 @@
 .empty-state {
     text-align: center;
     padding: 40px;
-    color: var(--cyber-text-secondary);
-    background: rgba(255, 255, 255, 0.02);
+    color: #6b7280;
+    background: #f9fafb;
     border-radius: 12px;
-    border: 1px dashed var(--cyber-border-dim);
+    border: 1px dashed #d1d5db;
 }
 
 /* Register Form */
 .register-form {
-    background: var(--cyber-bg-card);
+    background: #ffffff;
     padding: 30px;
     border-radius: 16px;
-    border: 1px solid var(--cyber-border-dim);
+    border: 1px solid #e5e7eb;
     max-width: 600px;
     margin: 0 auto;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .form-group {
@@ -366,7 +369,7 @@
 
 .form-group label {
     display: block;
-    color: var(--cyber-text-primary);
+    color: #1f2937;
     margin-bottom: 8px;
     font-weight: bold;
 }
@@ -375,9 +378,9 @@
 .form-group select,
 .form-group textarea {
     width: 100%;
-    background: var(--cyber-bg-medium);
-    border: 1px solid var(--cyber-border-dim);
-    color: #fff;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    color: #1f2937;
     padding: 12px;
     border-radius: 8px;
 }
