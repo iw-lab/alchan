@@ -1142,9 +1142,9 @@ html:not(.dark) [class*="panel"],
 html:not(.dark) [class*="modal-content"],
 html:not(.dark) [class*="section-card"] {
   background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1.5px solid #94a3b8 !important;
   border-radius: 16px !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(99,102,241,0.04) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 4px 16px rgba(99,102,241,0.05) !important;
 }
 
 /* 라이트모드 페이지 컨테이너 */
@@ -1155,8 +1155,15 @@ html:not(.dark) [class*="-container"]:not(aside):not(header) {
 
 /* 라이트모드 섹션 헤더 포인트 */
 html:not(.dark) .section-header {
-  border-bottom: 2px solid #e0e7ff !important;
+  border-bottom: 2px solid #a5b4fc !important;
   padding-bottom: 12px !important;
+}
+
+/* 라이트모드 탭 */
+html:not(.dark) [class*="tab"],
+html:not(.dark) [role="tab"] {
+  border-bottom: 2px solid #cbd5e1 !important;
+  padding-bottom: 8px !important;
 }
 
 html:not(.dark) .section-header-title,
@@ -1192,7 +1199,7 @@ html:not(.dark) input,
 html:not(.dark) textarea,
 html:not(.dark) select {
   background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1.5px solid #94a3b8 !important;
   border-radius: 10px !important;
   color: #1e293b !important;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;

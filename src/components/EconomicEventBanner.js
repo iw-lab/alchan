@@ -92,8 +92,8 @@ export default function EconomicEventBanner() {
     <div
       className={`relative flex items-start gap-3 px-4 py-3 rounded-xl mx-1 mb-2 ${
         isPositive
-          ? "bg-gradient-to-r from-emerald-900/60 to-teal-900/40 border border-emerald-500/20"
-          : "bg-gradient-to-r from-red-900/60 to-rose-900/40 border border-red-500/20"
+          ? "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 dark:from-emerald-900/60 dark:to-teal-900/40 dark:border-emerald-500/20"
+          : "bg-gradient-to-r from-red-50 to-rose-50 border border-red-300 dark:from-red-900/60 dark:to-rose-900/40 dark:border-red-500/20"
       }`}
       style={{ backdropFilter: 'blur(8px)' }}
     >
@@ -125,12 +125,12 @@ export default function EconomicEventBanner() {
           >
             경제 이벤트
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-slate-500 dark:text-gray-400">
             {dateStr} {timeStr}
           </span>
         </div>
-        <p className="text-sm font-bold text-white mt-0.5">{event.title}</p>
-        <p className="text-xs text-gray-300 mt-0.5">{event.description}</p>
+        <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{event.title}</p>
+        <p className="text-xs text-slate-600 dark:text-gray-300 mt-0.5">{event.description}</p>
         {getResultSummary() && (
           <p
             className={`text-xs mt-1 font-medium ${isPositive ? "text-emerald-300" : "text-red-300"}`}
@@ -148,7 +148,7 @@ export default function EconomicEventBanner() {
           }
           setDismissed(true);
         }}
-        className="relative z-10 flex-shrink-0 p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+        className="relative z-10 flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors"
         aria-label="배너 닫기"
       >
         <X className="w-5 h-5" />
