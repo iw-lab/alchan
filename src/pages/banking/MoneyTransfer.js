@@ -362,90 +362,48 @@ function MoneyTransfer() {
           </div>
         )}
 
-        <div className="amount-section">
-          <div className="amount-type-selector">
-            <label
-              className={`type-option ${amountType === "fixed" ? "active" : ""}`}
-            >
-              <input
-                type="radio"
-                name="amountType"
-                value="fixed"
-                checked={amountType === "fixed"}
-                onChange={(e) => setAmountType(e.target.value)}
-              />
-              <span className="radio-custom"></span> 고정 금액
-            </label>
-            <label
-              className={`type-option ${amountType === "percentage" ? "active" : ""}`}
-            >
-              <input
-                type="radio"
-                name="amountType"
-                value="percentage"
-                checked={amountType === "percentage"}
-                onChange={(e) => setAmountType(e.target.value)}
-              />
-              <span className="radio-custom"></span> 퍼센트 (%)
-            </label>
+        {/* 금액 + 세금 한 줄 배치 */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {/* 금액 설정 */}
+          <div style={{ flex: '1', minWidth: '200px', padding: '16px', background: 'var(--bg-card)', border: '1.5px solid var(--border-primary)', borderRadius: '14px' }}>
+            <div className="amount-type-selector" style={{ marginBottom: '10px' }}>
+              <label className={`type-option ${amountType === "fixed" ? "active" : ""}`}>
+                <input type="radio" name="amountType" value="fixed" checked={amountType === "fixed"} onChange={(e) => setAmountType(e.target.value)} />
+                <span className="radio-custom"></span> 고정 금액
+              </label>
+              <label className={`type-option ${amountType === "percentage" ? "active" : ""}`}>
+                <input type="radio" name="amountType" value="percentage" checked={amountType === "percentage"} onChange={(e) => setAmountType(e.target.value)} />
+                <span className="radio-custom"></span> 퍼센트 (%)
+              </label>
+            </div>
+            <div className="amount-input-group">
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={amountType === "fixed" ? "금액 입력" : "퍼센트 입력"} min="1" max={amountType === "percentage" ? "100" : undefined} required className="amount-input" />
+              <span className="amount-unit">{amountType === "fixed" ? currencyUnit : "%"}</span>
+            </div>
           </div>
-          <div className="amount-input-group">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={amountType === "fixed" ? "금액 입력" : "퍼센트 입력"}
-              min="1"
-              max={amountType === "percentage" ? "100" : undefined}
-              required
-              className="amount-input"
-            />
-            <span className="amount-unit">
-              {amountType === "fixed" ? currencyUnit : "%"}
-            </span>
-          </div>
+
+          {/* 세금 설정 (보내기일 때만) */}
+          {action === "send" && (
+            <div style={{ flex: '0 0 180px', padding: '16px', background: 'var(--bg-card)', border: '1.5px solid var(--border-primary)', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)' }}>💸 세금</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="number" id="taxRate" value={taxRate} onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))} min="0" max="100" className="tax-input" style={{ flex: 1 }} />
+                <span style={{ fontWeight: 600 }}>%</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {action === "send" && (
-          <div className="tax-section">
-            <div className="tax-header">
-              <h4>💸 세금 설정</h4>
-              <span className="tax-description">
-                보내는 금액에서 세금을 제외하고 지급됩니다.
-              </span>
-            </div>
-            <div className="tax-input-group">
-              <label htmlFor="taxRate">세금율:</label>
-              <input
-                type="number"
-                id="taxRate"
-                value={taxRate}
-                onChange={(e) =>
-                  setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))
-                }
-                min="0"
-                max="100"
-                className="tax-input"
-              />
-              <span className="tax-unit">%</span>
-            </div>
-            {amount && (
-              <div className="tax-preview">
-                {amountType === "fixed" ? (
-                  <>
-                    실제 지급액:{" "}
-                    {calculatePreviewAmount(0, amount, true).toLocaleString()}
-                    {currencyUnit}
-                    (세금{" "}
-                    {Math.floor(
-                      (Number(amount) * taxRate) / 100,
-                    ).toLocaleString()}
-                    {currencyUnit} 제외)
-                  </>
-                ) : (
-                  `각 학생 잔액의 ${amount}%에서 세금 ${taxRate}%가 추가로 차감됩니다.`
-                )}
-              </div>
+        {/* 세금 미리보기 */}
+        {action === "send" && amount && (
+          <div className="tax-preview" style={{ marginBottom: '16px', padding: '10px 14px', background: 'var(--accent-bg)', borderRadius: '10px', fontSize: '13px', border: '1px solid var(--border-accent)' }}>
+            {amountType === "fixed" ? (
+              <>
+                실제 지급액: {calculatePreviewAmount(0, amount, true).toLocaleString()}{currencyUnit}
+                (세금 {Math.floor((Number(amount) * taxRate) / 100).toLocaleString()}{currencyUnit} 제외)
+              </>
+            ) : (
+              `각 학생 잔액의 ${amount}%에서 세금 ${taxRate}%가 추가로 차감됩니다.`
             )}
           </div>
         )}

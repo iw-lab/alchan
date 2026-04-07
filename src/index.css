@@ -1095,11 +1095,21 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
 .store-item-card,
 [class*="card"],
 [class*="panel"],
-[class*="section-card"] {
+[class*="section-card"],
+[class*="section "],
+[class*="-section"],
+[class*="transfer-form"],
+[class*="tax-section"],
+[class*="amount-section"],
+[class*="take-mode"],
+[class*="action-selector"],
+.user-selection-section {
   background-color: var(--bg-card) !important;
   border: 1.5px solid var(--border-primary) !important;
   border-radius: 16px !important;
   box-shadow: var(--shadow-card) !important;
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 /* 입력필드 */
