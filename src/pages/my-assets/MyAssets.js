@@ -1317,21 +1317,20 @@ export default function MyAssets() {
     return (
       <div className="p-0 bg-transparent mb-6">
         {/* 보유 현금 - 메인 강조 카드 */}
-        <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
+        <div className="gradient-card-light bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
           <div className="mb-2.5">
-            <span className="text-base font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
+            <span className="text-base font-medium">
               💰 보유 현금
             </span>
           </div>
-          <div className="text-[42px] font-extrabold tracking-tight mb-4 text-right" style={{ color: '#ffffff' }}>
+          <div className="text-[42px] font-extrabold tracking-tight mb-4 text-right">
             {displayCash.toLocaleString()}{" "}
             <span className="text-[28px] font-semibold">원</span>
           </div>
           <div className="flex justify-end">
             <button
               onClick={() => setShowTransferModal(true)}
-              className="px-7 py-3.5 border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
-              style={{ backgroundColor: 'rgba(255,255,255,0.95)', color: '#667eea' }}
+              className="gradient-card-btn px-7 py-3.5 border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
               disabled={assetsLoading || authLoading}
             >
               💸 송금하기
@@ -1411,7 +1410,7 @@ export default function MyAssets() {
         {/* 총 순자산 + 파킹통장 + 보유 쿠폰 - 한 줄 배치 */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {/* 총 순자산 */}
-          <div className="bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-2xl p-4 shadow-[0_4px_15px_rgba(240,147,251,0.3)] border-none">
+          <div className="gradient-card-light bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-2xl p-4 shadow-[0_4px_15px_rgba(240,147,251,0.3)] border-none">
             <div className="mb-1">
               <span className="!text-white/90 text-xs font-medium">📊 총 순자산</span>
             </div>
@@ -1425,7 +1424,7 @@ export default function MyAssets() {
           </div>
 
           {/* 파킹통장 */}
-          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.2)] border-none">
+          <div className="gradient-card-light bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.2)] border-none">
             <div className="mb-1">
               <span className="!text-white/90 text-xs font-medium">🅿️ 파킹통장</span>
             </div>
@@ -1439,7 +1438,7 @@ export default function MyAssets() {
           </div>
 
           {/* 보유 쿠폰 */}
-          <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl p-4 shadow-[0_4px_15px_rgba(251,191,36,0.2)] border-none">
+          <div className="gradient-card-light bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl p-4 shadow-[0_4px_15px_rgba(251,191,36,0.2)] border-none">
             <div className="mb-1">
               <span className="!text-white/90 text-xs font-medium">🎟️ 보유 쿠폰</span>
             </div>

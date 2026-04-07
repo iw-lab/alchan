@@ -1085,6 +1085,16 @@ label, .form-label {
 
 /* 텍스트 색상 - 모든 텍스트 진하게 */
 body { color: var(--text-primary) !important; }
+
+/* 그라디언트 카드 위 텍스트는 흰색 강제 */
+.gradient-card-light,
+.gradient-card-light * {
+  color: #ffffff !important;
+}
+.gradient-card-light .gradient-card-btn {
+  color: #667eea !important;
+  background-color: rgba(255,255,255,0.95) !important;
+}
 p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
 
 /* 이름/잔액 등 핵심 정보 진하게 */
