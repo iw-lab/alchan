@@ -449,7 +449,8 @@ button[class*="tab"] {
 .gov-tab-button.active,
 .assembly-tab.active,
 button[class*="tab"].active {
-  color: var(--accent) !important;
+  color: #ffffff !important;
+  background: var(--accent) !important;
   font-weight: 700 !important;
 }
 
