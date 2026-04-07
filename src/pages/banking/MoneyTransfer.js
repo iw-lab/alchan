@@ -468,22 +468,6 @@ function MoneyTransfer() {
           )}
         </div>
 
-        <button
-          type="submit"
-          className={`submit-btn ${action}`}
-          disabled={authLoading || isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <span className="spinner"></span> 처리 중...
-            </>
-          ) : (
-            <>
-              <span className="icon">{action === "send" ? "📤" : "📥"}</span>{" "}
-              {action === "send" ? "보내기" : "가져오기"} 실행
-            </>
-          )}
-        </button>
       </form>
     </div>
   );

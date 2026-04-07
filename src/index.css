@@ -1125,9 +1125,8 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
   box-shadow: var(--shadow-card) !important;
 }
 
-/* 학생/유저 아이템 카드 */
+/* 학생/유저 아이템 카드 - 그라데이션 */
 .user-item,
-.user-label,
 [class*="user-item"],
 [class*="member-item"],
 [class*="student-item"],
@@ -1135,12 +1134,21 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
 [class*="job-item"],
 [class*="admin-job-item"],
 [class*="admin-task-item"] {
-  background-color: var(--bg-card) !important;
-  border: 1.5px solid var(--border-primary) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+  border: 1.5px solid #cbd5e1 !important;
   border-radius: 12px !important;
-  box-shadow: var(--shadow-sm) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
   padding: 10px 14px !important;
   margin-bottom: 8px !important;
+}
+
+.dark .user-item,
+.dark [class*="user-item"],
+.dark [class*="member-item"],
+.dark [class*="code-item"],
+.dark [class*="job-item"] {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  border-color: #475569 !important;
 }
 
 /* 사이드바 메뉴 아이템 테두리 */
