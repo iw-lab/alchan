@@ -22,7 +22,7 @@ const CircularProgress = ({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.1)"
+          stroke="rgba(0, 0, 0, 0.08)"
           strokeWidth={strokeWidth}
         />
         {/* 프로그레스 원 */}
@@ -82,14 +82,13 @@ export default function CouponGoal({
     <div
       className="class-coupon-goal p-6 rounded-2xl relative overflow-hidden"
       style={{
-        backgroundColor: "rgba(30, 41, 59, 0.6)",
+        backgroundColor: "#ffffff",
         boxShadow: goalAchieved
-          ? "0 4px 20px rgba(16, 185, 129, 0.25)"
-          : "0 4px 20px rgba(0, 255, 242, 0.15)",
+          ? "0 4px 20px rgba(16, 185, 129, 0.15)"
+          : "0 4px 20px rgba(0, 0, 0, 0.08)",
         border: goalAchieved
           ? "2px solid #10b981"
-          : "1px solid rgba(0, 255, 242, 0.2)",
-        backdropFilter: "blur(10px)",
+          : "1px solid #e2e8f0",
       }}
     >
       {/* 배경 장식 */}
@@ -109,8 +108,7 @@ export default function CouponGoal({
           <h3
             className="text-xl font-bold m-0"
             style={{
-              color: "var(--text-primary)",
-              textShadow: "0 0 5px rgba(0, 255, 242, 0.5)",
+              color: "#1e293b",
             }}
           >
             학급 쿠폰 목표
@@ -120,7 +118,7 @@ export default function CouponGoal({
         <div className="flex gap-2 items-center">
           {goalAchieved && (
             <span
-              className="text-slate-800 dark:text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
+              className="text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
               style={{
                 background: "linear-gradient(135deg, #10b981, #059669)",
                 boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
@@ -134,7 +132,7 @@ export default function CouponGoal({
             <button
               onClick={resetGoalButton}
               disabled={isResettingGoal}
-              className="text-slate-800 dark:text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold"
+              className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold"
               style={{
                 backgroundColor: isResettingGoal ? "#9ca3af" : "#ef4444",
                 cursor: isResettingGoal ? "not-allowed" : "pointer",
@@ -163,7 +161,7 @@ export default function CouponGoal({
             >
               {goalPercentage}%
             </div>
-            <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
+            <div className="text-xs font-medium" style={{ color: "#64748b" }}>
               달성률
             </div>
           </CircularProgress>
@@ -175,13 +173,13 @@ export default function CouponGoal({
               {(goalProgress || 0).toLocaleString()}
               <span
                 className="text-sm font-medium"
-                style={{ color: "#a0a0c0" }}
+                style={{ color: "#64748b" }}
               >
                 {" "}
                 / {validClassCouponGoal.toLocaleString()}
               </span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>
+            <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
               학급 전체 응모량
             </div>
           </div>
@@ -201,7 +199,7 @@ export default function CouponGoal({
             >
               {myContributionPercentage}%
             </div>
-            <div className="text-xs font-medium" style={{ color: "#a0a0c0" }}>
+            <div className="text-xs font-medium" style={{ color: "#64748b" }}>
               내 기여
             </div>
           </CircularProgress>
@@ -210,13 +208,13 @@ export default function CouponGoal({
               {(myContribution || 0).toLocaleString()}
               <span
                 className="text-xs font-medium"
-                style={{ color: "#a0a0c0" }}
+                style={{ color: "#64748b" }}
               >
                 {" "}
                 쿠폰
               </span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#6b7280" }}>
+            <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
               내가 응모한 쿠폰
             </div>
           </div>
@@ -227,30 +225,29 @@ export default function CouponGoal({
           className="rounded-2xl p-5 text-center min-w-[130px]"
           style={{
             background:
-              "linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%)",
-            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.1)",
-            border: "1px solid rgba(251, 191, 36, 0.3)",
+              "linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)",
+            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.08)",
+            border: "1px solid rgba(251, 191, 36, 0.4)",
           }}
         >
           <div className="text-3xl mb-2">🎫</div>
           <div
             className="text-3xl font-extrabold"
             style={{
-              color: "#fbbf24",
-              textShadow: "0 0 10px rgba(251, 191, 36, 0.3)",
+              color: "#d97706",
             }}
           >
             {(currentCoupons || 0).toLocaleString()}
           </div>
           <div
             className="text-xs font-semibold mt-1"
-            style={{ color: "#fcd34d" }}
+            style={{ color: "#b45309" }}
           >
             보유 쿠폰
           </div>
           <div
             className="text-xs mt-2 px-2 py-1 rounded-lg"
-            style={{ color: "#fcd34d", background: "rgba(0,0,0,0.3)" }}
+            style={{ color: "#92400e", background: "rgba(251,191,36,0.2)" }}
           >
             1쿠폰 ={" "}
             {typeof couponValue === "number"
@@ -272,7 +269,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💰</span>
-          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 응모</span>
+          <span className="text-white text-sm font-bold">쿠폰 응모</span>
         </button>
 
         <button
@@ -284,7 +281,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💵</span>
-          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 판매</span>
+          <span className="text-white text-sm font-bold">쿠폰 판매</span>
         </button>
 
         <button
@@ -296,19 +293,19 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">🎁</span>
-          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 선물</span>
+          <span className="text-white text-sm font-bold">쿠폰 선물</span>
         </button>
 
         <button
           onClick={() => setShowDonationHistoryModal(true)}
           className="rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
           style={{
-            background: "linear-gradient(135deg, #374151 0%, #1f2937 100%)",
-            border: "1px solid #4b5563",
+            background: "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)",
+            border: "1px solid #94a3b8",
           }}
         >
           <span className="text-2xl">📋</span>
-          <span className="text-sm font-bold" style={{ color: "#4b5563" }}>
+          <span className="text-sm font-bold" style={{ color: "#475569" }}>
             응모 내역
           </span>
         </button>
