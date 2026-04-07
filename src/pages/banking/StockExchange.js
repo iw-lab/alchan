@@ -251,7 +251,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
                 key={stock.symbol}
                 onClick={() => handleQuickAdd(stock)}
                 disabled={isAdding}
-                className={`px-2 py-1 text-xs text-white rounded cursor-pointer whitespace-nowrap ${
+                className={`px-2 py-1 text-xs text-slate-800 dark:text-white rounded cursor-pointer whitespace-nowrap ${
                   stock.type.includes("ETF")
                     ? "bg-blue-500/20 border border-blue-500/30"
                     : stock.type.includes("채권")
@@ -277,7 +277,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
               onChange={(e) =>
                 setFormData((p) => ({ ...p, name: e.target.value }))
               }
-              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-white"
+              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-slate-800 dark:text-white"
             />
             <input
               type="text"
@@ -286,7 +286,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
               onChange={(e) =>
                 setFormData((p) => ({ ...p, symbol: e.target.value }))
               }
-              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-white"
+              className="flex-1 min-w-[120px] p-2 rounded border border-white/20 bg-black/30 text-slate-800 dark:text-white"
             />
             <button
               onClick={handleCustomAdd}
@@ -296,7 +296,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
               {isAdding ? "추가 중..." : "추가"}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-slate-500 dark:text-gray-400 mt-2">
             💡 한국 주식: 종목코드.KS (예: 005930.KS) | 미국 주식: 티커 (예:
             AAPL, TSLA)
           </p>
@@ -531,7 +531,7 @@ const AdminPanel = React.memo(
                     ? "⏳ 정리 중..."
                     : "🔧 중복 주식 정리"}
                 </button>
-                <p className="text-xs text-gray-400 mt-1 mb-3 text-center">
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 mb-3 text-center">
                   같은 종목이 여러 개 있으면 하나만 남기고 삭제합니다
                 </p>
                 <button
@@ -543,7 +543,7 @@ const AdminPanel = React.memo(
                     ? "⏳ 삭제 중..."
                     : "🗑️ 시뮬레이션 주식 전체 삭제"}
                 </button>
-                <p className="text-xs text-gray-400 mt-1 text-center">
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 text-center">
                   ⚠️ 실제 주식(실시간)만 남기고 가상 주식을 모두 삭제합니다
                 </p>
               </div>
@@ -2113,7 +2113,7 @@ const StockExchange = () => {
                       </h3>
                       <div className="stock-badges">
                         {isRealStock && (
-                          <span className="stock-badge real bg-gradient-to-br from-emerald-500 to-emerald-600 text-white font-bold text-[0.7rem] px-1.5 py-0.5 rounded mr-1">
+                          <span className="stock-badge real bg-gradient-to-br from-emerald-500 to-emerald-600 text-slate-800 dark:text-white font-bold text-[0.7rem] px-1.5 py-0.5 rounded mr-1">
                             실시간
                           </span>
                         )}

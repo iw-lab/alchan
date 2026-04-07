@@ -54,12 +54,12 @@ export function SettingsPanel({ isOpen, onClose }) {
       <div className="bg-gray-800 rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-lg font-bold text-white">설정</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">설정</h2>
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-700 transition-colors"
           >
-            <X size={20} className="text-gray-400" />
+            <X size={20} className="text-slate-500 dark:text-gray-400" />
           </button>
         </div>
 
@@ -67,7 +67,7 @@ export function SettingsPanel({ isOpen, onClose }) {
         <div className="overflow-y-auto p-4 space-y-6">
           {/* 화면 설정 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-slate-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
               화면
             </h3>
 
@@ -81,8 +81,8 @@ export function SettingsPanel({ isOpen, onClose }) {
                     <Sun size={20} className="text-amber-500" />
                   )}
                   <div>
-                    <p className="font-medium text-white">다크 모드</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium text-slate-800 dark:text-white">다크 모드</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
                       어두운 화면으로 눈의 피로를 줄여요
                     </p>
                   </div>
@@ -106,8 +106,8 @@ export function SettingsPanel({ isOpen, onClose }) {
                 <div className="flex items-center gap-3 mb-3">
                   <Type size={20} className="text-blue-500" />
                   <div>
-                    <p className="font-medium text-white">글꼴 크기</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium text-slate-800 dark:text-white">글꼴 크기</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
                       읽기 편한 크기를 선택하세요
                     </p>
                   </div>
@@ -119,8 +119,8 @@ export function SettingsPanel({ isOpen, onClose }) {
                       onClick={() => setFontSize(key)}
                       className={`py-2 rounded-xl text-sm font-medium transition-all ${
                         fontSize === key
-                          ? "bg-indigo-500 text-white"
-                          : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                          ? "bg-indigo-500 text-slate-800 dark:text-white"
+                          : "bg-gray-600 text-slate-600 dark:text-gray-300 hover:bg-gray-500"
                       }`}
                     >
                       {label}
@@ -133,7 +133,7 @@ export function SettingsPanel({ isOpen, onClose }) {
 
           {/* 알림 설정 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-slate-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
               알림
             </h3>
 
@@ -143,8 +143,8 @@ export function SettingsPanel({ isOpen, onClose }) {
                 <div className="flex items-center gap-3">
                   <Bell size={20} className="text-green-500" />
                   <div>
-                    <p className="font-medium text-white">푸시 알림</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium text-slate-800 dark:text-white">푸시 알림</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
                       새 소식을 알려드려요
                     </p>
                   </div>
@@ -168,8 +168,8 @@ export function SettingsPanel({ isOpen, onClose }) {
                 <div className="flex items-center gap-3">
                   <Volume2 size={20} className="text-purple-500" />
                   <div>
-                    <p className="font-medium text-white">소리</p>
-                    <p className="text-sm text-gray-400">알림음과 효과음</p>
+                    <p className="font-medium text-slate-800 dark:text-white">소리</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">알림음과 효과음</p>
                   </div>
                 </div>
                 <button
@@ -190,7 +190,7 @@ export function SettingsPanel({ isOpen, onClose }) {
 
           {/* 기타 */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-slate-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
               기타
             </h3>
 
@@ -203,22 +203,22 @@ export function SettingsPanel({ isOpen, onClose }) {
                 <div className="flex items-center gap-3">
                   <HelpCircle size={20} className="text-amber-500" />
                   <div className="text-left">
-                    <p className="font-medium text-white">튜토리얼 다시 보기</p>
-                    <p className="text-sm text-gray-400">
+                    <p className="font-medium text-slate-800 dark:text-white">튜토리얼 다시 보기</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">
                       사용법을 다시 배워요
                     </p>
                   </div>
                 </div>
-                <ChevronRight size={20} className="text-gray-400" />
+                <ChevronRight size={20} className="text-slate-500 dark:text-gray-400" />
               </button>
 
               {/* 앱 정보 */}
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  <Smartphone size={20} className="text-gray-400" />
+                  <Smartphone size={20} className="text-slate-500 dark:text-gray-400" />
                   <div>
-                    <p className="font-medium text-white">앱 버전</p>
-                    <p className="text-sm text-gray-400">v1.0.0</p>
+                    <p className="font-medium text-slate-800 dark:text-white">앱 버전</p>
+                    <p className="text-sm text-slate-500 dark:text-gray-400">v1.0.0</p>
                   </div>
                 </div>
               </div>

@@ -261,10 +261,10 @@ const SettlementModal = ({
         </div>
 
         <div className="settlement-modal-content">
-          <p className="text-white mb-2">
+          <p className="text-slate-800 dark:text-white mb-2">
             <strong>고소인:</strong> {getUserNameById(recipientId)}
           </p>
-          <p className="text-white mb-4">
+          <p className="text-slate-800 dark:text-white mb-4">
             <strong>피고소인:</strong> {getUserNameById(senderId)}
           </p>
           <div className="form-group">
@@ -1141,7 +1141,7 @@ const PoliceStation = () => {
   if (auth.loading) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           사용자 인증 정보를 확인 중입니다...
         </div>
       </div>
@@ -1151,7 +1151,7 @@ const PoliceStation = () => {
   if (!currentUser) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           로그인이 필요합니다. 경찰서 기능을 사용하려면 다시 로그인해주세요.
         </div>
       </div>
@@ -1161,7 +1161,7 @@ const PoliceStation = () => {
   if (!classCode && !hasPoliceAdminRights) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           경찰서 기능을 사용하려면 학급 코드가 사용자 정보에 설정되어 있어야
           합니다. 프로필에서 학급 코드를 설정해주세요.
         </div>
@@ -1180,7 +1180,7 @@ const PoliceStation = () => {
   ) {
     return (
       <div className="police-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           데이터를 불러오는 중...
         </div>
       </div>

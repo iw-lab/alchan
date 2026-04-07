@@ -142,7 +142,7 @@ export default function AppUpdateChecker() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm">
+            <p className="text-slate-800 dark:text-white font-semibold text-sm">
               {update.type === "pwa" ? "새 버전 사용 가능" : "앱 업데이트 가능"}
             </p>
             <p className="text-slate-400 text-xs">{update.name}</p>
@@ -151,14 +151,14 @@ export default function AppUpdateChecker() {
           {update.type === "pwa" ? (
             <button
               onClick={handlePWAUpdate}
-              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white text-sm font-bold rounded-xl transition-colors"
             >
               새로고침
             </button>
           ) : update.downloadUrl ? (
             <a
               href={update.downloadUrl}
-              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white text-sm font-bold rounded-xl transition-colors"
             >
               업데이트
             </a>
@@ -167,7 +167,7 @@ export default function AppUpdateChecker() {
               href={`https://github.com/${GITHUB_REPO}/releases/latest`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+              className="flex-shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white text-sm font-bold rounded-xl transition-colors"
             >
               확인
             </a>

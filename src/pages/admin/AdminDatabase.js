@@ -513,7 +513,7 @@ const AdminDatabase = () => {
             </button>
             <button
               onClick={handleDebugFirestore}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+              className="px-4 py-2 bg-yellow-500 text-slate-800 dark:text-white rounded-md hover:bg-yellow-600"
             >
               디버그
             </button>

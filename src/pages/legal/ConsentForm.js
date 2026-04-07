@@ -49,7 +49,7 @@ const ConsentForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-slate-700 dark:text-gray-100">
       <style>{printStyles}</style>
 
       {/* 상단 툴바 (인쇄 시 안 보임) */}
@@ -57,7 +57,7 @@ const ConsentForm = () => {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-slate-500 dark:text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft size={18} />
             <span>뒤로가기</span>
@@ -65,14 +65,14 @@ const ConsentForm = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyText}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
             >
               <FileText size={16} />
               텍스트 복사
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
             >
               <Printer size={16} />
               인쇄 / PDF 저장

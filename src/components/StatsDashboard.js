@@ -46,7 +46,7 @@ function BarChart({ data, height = 120, className = "" }) {
               minHeight: item.value > 0 ? 4 : 0,
             }}
           />
-          <span className="text-[10px] text-gray-400 truncate w-full text-center">
+          <span className="text-[10px] text-slate-500 dark:text-gray-400 truncate w-full text-center">
             {item.label}
           </span>
         </div>
@@ -106,7 +106,7 @@ function DonutChart({ data, size = 100, strokeWidth = 12, className = "" }) {
 
       {/* 중앙 텍스트 */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-bold text-white">{total}</span>
+        <span className="text-lg font-bold text-slate-800 dark:text-white">{total}</span>
       </div>
     </div>
   );
@@ -128,7 +128,7 @@ function StatCard({
       ? "text-green-500"
       : trend === "down"
         ? "text-red-500"
-        : "text-gray-400";
+        : "text-slate-500 dark:text-gray-400";
 
   const colorClasses = {
     indigo: "from-indigo-500 to-violet-600",
@@ -144,7 +144,7 @@ function StatCard({
         <div
           className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center`}
         >
-          <Icon size={20} className="text-white" />
+          <Icon size={20} className="text-slate-800 dark:text-white" />
         </div>
         {change !== undefined && (
           <div className={`flex items-center gap-1 ${trendColor}`}>
@@ -153,8 +153,8 @@ function StatCard({
           </div>
         )}
       </div>
-      <h3 className="text-sm text-gray-400 mb-1">{title}</h3>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <h3 className="text-sm text-slate-500 dark:text-gray-400 mb-1">{title}</h3>
+      <p className="text-2xl font-bold text-slate-800 dark:text-white">{value}</p>
     </div>
   );
 }
@@ -237,7 +237,7 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
 
   if (!stats) {
     return (
-      <div className="text-center py-8 text-gray-400">
+      <div className="text-center py-8 text-slate-500 dark:text-gray-400">
         통계 데이터를 불러올 수 없습니다.
       </div>
     );
@@ -267,8 +267,8 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
             onClick={() => setPeriod(p.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               period === p.id
-                ? "bg-indigo-500 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                ? "bg-indigo-500 text-slate-800 dark:text-white"
+                : "bg-gray-700 text-slate-600 dark:text-gray-300 hover:bg-gray-600"
             }`}
           >
             {p.label}
@@ -317,7 +317,7 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
         {/* 주간 활동 */}
         <div className="bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white flex items-center gap-2">
+            <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
               <BarChart3 size={18} className="text-indigo-500" />
               주간 활동
             </h3>
@@ -328,7 +328,7 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
         {/* 자산 분포 */}
         <div className="bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white flex items-center gap-2">
+            <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
               <PieChart size={18} className="text-indigo-500" />
               자산 분포
             </h3>
@@ -342,8 +342,8 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-sm text-gray-300">{item.label}</span>
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm text-slate-600 dark:text-gray-300">{item.label}</span>
+                  <span className="text-sm font-medium text-slate-800 dark:text-white">
                     {item.value.toLocaleString()}원
                   </span>
                 </div>
@@ -356,7 +356,7 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
       {/* 성취 현황 */}
       <div className="bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-700">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-white flex items-center gap-2">
+          <h3 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
             <Trophy size={18} className="text-amber-500" />
             이번 주 성취
           </h3>
@@ -418,12 +418,12 @@ export function StatsDashboard({ userId, classCode, isAdmin = false }) {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-bold text-white">
+                    <span className="text-sm font-bold text-slate-800 dark:text-white">
                       {item.current}/{item.goal}
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400">{item.label}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400">{item.label}</p>
               </div>
             );
           })}

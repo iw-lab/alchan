@@ -509,13 +509,13 @@ const StudentManager = () => {
       <Card>
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 text-slate-500 dark:text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="이름, 번호, 이메일로 검색..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[rgba(20,20,40,0.6)] border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-[rgba(20,20,40,0.6)] border border-gray-700 rounded-xl text-slate-700 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
             />
           </div>
           <div className="flex gap-2">
@@ -793,7 +793,7 @@ const StudentManager = () => {
             </Alert>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
                   접두어
                 </label>
                 <input
@@ -808,7 +808,7 @@ const StudentManager = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
                     시작 번호
                   </label>
                   <input
@@ -822,7 +822,7 @@ const StudentManager = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
                     학생 수
                   </label>
                   <input
@@ -837,7 +837,7 @@ const StudentManager = () => {
                   />
                 </div>
               </div>
-              <div className="p-3 bg-gray-800 rounded-xl text-sm text-gray-400">
+              <div className="p-3 bg-gray-800 rounded-xl text-sm text-slate-500 dark:text-gray-400">
                 미리보기:{" "}
                 <span className="text-indigo-400 font-mono">
                   {bulkPrefix.trim().toLowerCase()}
@@ -1011,7 +1011,7 @@ const StudentManager = () => {
                               {copiedId === index ? (
                                 <Check size={16} className="text-emerald-500" />
                               ) : (
-                                <Copy size={16} className="text-gray-400" />
+                                <Copy size={16} className="text-slate-500 dark:text-gray-400" />
                               )}
                             </button>
                           </td>
@@ -1103,7 +1103,7 @@ const StudentManager = () => {
               }
             />
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
                 이메일 (읽기 전용)
               </label>
               <input

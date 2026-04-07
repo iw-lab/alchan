@@ -74,7 +74,7 @@ const cls = {
   card: "bg-[rgba(30,41,59,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
   cardHeader: "flex items-center gap-4 mb-6 pb-5 border-b-2 border-white/5",
   cardTitle:
-    "text-[26px] font-bold text-white tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
+    "text-[26px] font-bold text-slate-800 dark:text-white tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
   tabContainer: "flex border-b-2 border-white/10 mb-5 gap-2",
   tabButton: (isActive) =>
     `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
@@ -98,13 +98,13 @@ const cls = {
     }`,
   noProduct: "text-center text-slate-400 py-8 text-base italic",
   input:
-    "w-full py-3.5 px-4 bg-black/20 border-2 border-white/10 rounded-[10px] mb-4 text-base text-white transition-colors duration-200 focus:outline-none focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/10",
+    "w-full py-3.5 px-4 bg-black/20 border-2 border-white/10 rounded-[10px] mb-4 text-base text-slate-800 dark:text-white transition-colors duration-200 focus:outline-none focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/10",
   modalOverlay:
     "fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-[8px]",
   modalContent:
-    "bg-white dark:bg-slate-800 p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
+    "bg-white dark:bg-slate-800 p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-700 dark:text-slate-200",
   modalTitle:
-    "text-2xl font-bold mb-5 text-white drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
+    "text-2xl font-bold mb-5 text-slate-800 dark:text-white drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
   modalCloseBtn:
     "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-white",
 };
@@ -224,7 +224,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
     >
       <div className="flex justify-between items-start mb-3">
         <div>
-          <div className="font-bold text-lg text-slate-200 mb-1">
+          <div className="font-bold text-lg text-slate-700 dark:text-slate-200 mb-1">
             {product.name}
           </div>
           <div className="flex gap-2 mt-1">
@@ -268,7 +268,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
             )}
             <div className="flex justify-between">
               <span className="font-medium">경과일:</span>
-              <span className="font-bold text-slate-200">{elapsedDays}일</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{elapsedDays}일</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">현재 누적 이자:</span>
@@ -324,7 +324,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
           <>
             <div className="flex justify-between">
               <span className="font-medium">만기일:</span>
-              <span className="font-semibold text-slate-200">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {format(product.maturityDate, "yyyy-MM-dd")}
               </span>
             </div>
@@ -343,7 +343,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
       <div className="border-t border-dashed border-white/10 my-4"></div>
 
       {isLoan ? (
-        <div className="text-[15px] text-slate-200 grid gap-2.5 bg-red-500/5 p-4 rounded-lg border border-red-500/20">
+        <div className="text-[15px] text-slate-700 dark:text-slate-200 grid gap-2.5 bg-red-500/5 p-4 rounded-lg border border-red-500/20">
           <div className="flex justify-between">
             <span className="font-semibold">현재 상환 금액:</span>
             <span className="font-bold text-red-400 text-[17px]">
@@ -355,17 +355,17 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
           </div>
           <div className="flex justify-between">
             <span className="font-semibold">만기 시 총 상환금:</span>
-            <span className="font-bold text-slate-200">
+            <span className="font-bold text-slate-700 dark:text-slate-200">
               {formatCurrencyWithUnit(total)}
             </span>
           </div>
         </div>
       ) : (
-        <div className="text-[15px] text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
+        <div className="text-[15px] text-slate-700 dark:text-slate-200 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
           {isSavings && dailyAmount > 0 && (
             <div className="flex justify-between">
               <span className="font-semibold">총 납입 예정액:</span>
-              <span className="font-bold text-slate-200">
+              <span className="font-bold text-slate-700 dark:text-slate-200">
                 {formatCurrencyWithUnit(dailyAmount * product.termInDays)}
               </span>
             </div>
@@ -448,7 +448,7 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
   return (
     <div className="p-5 border-2 border-white/10 rounded-xl mb-3 flex justify-between items-center bg-black/20 shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200">
       <div>
-        <div className="font-bold text-lg text-slate-200 mb-2">
+        <div className="font-bold text-lg text-slate-700 dark:text-slate-200 mb-2">
           {product.name}
         </div>
         <div className="text-[15px] text-slate-400 mb-1.5">
@@ -603,7 +603,7 @@ const SubscriptionModal = ({
         {/* 대출 상환 방식 선택 */}
         {isLoan && (
           <div className="mb-5">
-            <p className="mb-3 text-base font-semibold text-slate-200">상환 방식을 선택하세요</p>
+            <p className="mb-3 text-base font-semibold text-slate-700 dark:text-slate-200">상환 방식을 선택하세요</p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setRepaymentType("lumpSum")}
@@ -613,7 +613,7 @@ const SubscriptionModal = ({
                     : "border-white/10 bg-black/20"
                 }`}
               >
-                <div className="font-bold text-[15px] text-slate-200 mb-1">일시 상환</div>
+                <div className="font-bold text-[15px] text-slate-700 dark:text-slate-200 mb-1">일시 상환</div>
                 <div className="text-[13px] text-slate-400">만기 또는 중도에 원금+이자 전액 상환</div>
               </button>
               <button
@@ -624,14 +624,14 @@ const SubscriptionModal = ({
                     : "border-white/10 bg-black/20"
                 }`}
               >
-                <div className="font-bold text-[15px] text-slate-200 mb-1">분할 상환</div>
+                <div className="font-bold text-[15px] text-slate-700 dark:text-slate-200 mb-1">분할 상환</div>
                 <div className="text-[13px] text-slate-400">원하는 금액만큼 나눠서 상환 (이자 우선)</div>
               </button>
             </div>
           </div>
         )}
 
-        <p className="mb-3 text-base font-semibold text-slate-200">
+        <p className="mb-3 text-base font-semibold text-slate-700 dark:text-slate-200">
           {isSavings ? "일 납입 금액을 입력해주세요" : isLoan ? "대출 금액을 입력해주세요" : "가입 금액을 입력해주세요"}
         </p>
         <input
@@ -649,7 +649,7 @@ const SubscriptionModal = ({
         {numAmount > 0 && (
           <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30"}`}>
             {isSavings && (
-              <div className="text-[15px] text-slate-300 mb-1.5">
+              <div className="text-[15px] text-slate-600 dark:text-slate-300 mb-1.5">
                 총 납입 예정액: <strong>{formatCurrencyWithUnit(projectedTotalDeposited)}</strong>
                 <span className="text-slate-500 text-sm"> ({formatCurrencyWithUnit(numAmount)} x {product.termInDays}일)</span>
               </div>
@@ -746,11 +746,11 @@ const LoanRepaymentModal = ({
           <div className="grid gap-2 text-[15px]">
             <div className="flex justify-between">
               <span className="text-slate-400">남은 원금:</span>
-              <span className="font-bold text-slate-200">{formatCurrencyWithUnit(product.balance)}</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrencyWithUnit(product.balance)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">경과일:</span>
-              <span className="font-bold text-slate-200">{elapsedDays}일</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{elapsedDays}일</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">누적 이자:</span>
@@ -785,7 +785,7 @@ const LoanRepaymentModal = ({
                       : "border-white/10 bg-black/20"
                   }`}
                 >
-                  <div className="font-bold text-[14px] text-slate-200">이자 우선</div>
+                  <div className="font-bold text-[14px] text-slate-700 dark:text-slate-200">이자 우선</div>
                   <div className="text-[12px] text-slate-400 mt-0.5">이자 먼저 갚고 나머지 원금</div>
                 </button>
                 <button
@@ -796,13 +796,13 @@ const LoanRepaymentModal = ({
                       : "border-white/10 bg-black/20"
                   }`}
                 >
-                  <div className="font-bold text-[14px] text-slate-200">원리금 균등</div>
+                  <div className="font-bold text-[14px] text-slate-700 dark:text-slate-200">원리금 균등</div>
                   <div className="text-[12px] text-slate-400 mt-0.5">원금·이자 비율로 분배</div>
                 </button>
               </div>
             </div>
 
-            <p className="mb-3 text-base font-semibold text-slate-200">상환할 금액을 입력하세요</p>
+            <p className="mb-3 text-base font-semibold text-slate-700 dark:text-slate-200">상환할 금액을 입력하세요</p>
             <input
               type="number"
               value={installmentAmount}
@@ -814,20 +814,20 @@ const LoanRepaymentModal = ({
 
             {numInstallment > 0 && (
               <div className="mb-5 p-4 bg-amber-500/10 rounded-[10px] border border-amber-500/30">
-                <div className="text-[15px] text-slate-300 mb-1.5">
+                <div className="text-[15px] text-slate-600 dark:text-slate-300 mb-1.5">
                   이자 상환: <strong className="text-red-400">{formatCurrencyWithUnit(interestPortion)}</strong>
                   {splitMethod === "proportional" && accruedTotal > 0 && (
                     <span className="text-slate-500 text-sm"> ({Math.round((accruedInterest / accruedTotal) * 100)}%)</span>
                   )}
                 </div>
-                <div className="text-[15px] text-slate-300 mb-1.5">
+                <div className="text-[15px] text-slate-600 dark:text-slate-300 mb-1.5">
                   원금 상환: <strong className="text-emerald-400">{formatCurrencyWithUnit(principalPortion)}</strong>
                   {splitMethod === "proportional" && accruedTotal > 0 && (
                     <span className="text-slate-500 text-sm"> ({Math.round((product.balance / accruedTotal) * 100)}%)</span>
                   )}
                 </div>
                 {principalPortion > 0 && (
-                  <div className="text-base text-slate-200 font-bold border-t border-white/10 pt-2 mt-2">
+                  <div className="text-base text-slate-700 dark:text-slate-200 font-bold border-t border-white/10 pt-2 mt-2">
                     상환 후 남은 원금: {formatCurrencyWithUnit(Math.max(0, product.balance - principalPortion))}
                   </div>
                 )}
@@ -867,7 +867,7 @@ const ParkingAccountSection = ({
   const [amount, setAmount] = useState("");
 
   return (
-    <div className="bg-gradient-to-br from-[rgba(6,78,117,0.85)] to-[rgba(20,40,60,0.9)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] rounded-2xl p-8 border border-[rgba(0,180,216,0.25)] backdrop-blur-[10px]">
+    <div className="bg-gradient-to-br from-[rgba(6,78,117,0.85)] to-[rgba(20,40,60,0.9)] text-slate-800 dark:text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] rounded-2xl p-8 border border-[rgba(0,180,216,0.25)] backdrop-blur-[10px]">
       <div className="flex items-center gap-4 mb-6 pb-5 border-b-2 border-[rgba(0,180,216,0.2)]">
         <Wallet size={32} className="text-cyan-300" />
         <h2 className="text-[26px] font-bold text-[#e0f7fa] tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]">
@@ -912,7 +912,7 @@ const ParkingAccountSection = ({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="금액 입력"
-          className="flex-1 py-3.5 px-4 bg-black/30 border border-[rgba(0,180,216,0.3)] rounded-[10px] text-[17px] text-white focus:outline-none focus:border-cyber-cyan"
+          className="flex-1 py-3.5 px-4 bg-black/30 border border-[rgba(0,180,216,0.3)] rounded-[10px] text-[17px] text-slate-800 dark:text-white focus:outline-none focus:border-cyber-cyan"
           disabled={isProcessing}
         />
         <button
@@ -2092,7 +2092,7 @@ const ParkingAccount = ({
       {/* 유저 상품 조회 화면 */}
       {activeView === "userProducts" && isAdmin && isAdmin() && (
         <div className="bg-[rgba(30,41,59,0.6)] rounded-2xl p-8 shadow-[0_6px_20px_rgba(0,0,0,0.3)] border border-white/5">
-          <h2 className="text-2xl font-bold mb-4 text-white">
+          <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-white">
             유저별 가입 상품 조회 및 관리
           </h2>
           <p className="text-sm text-slate-400 mb-5">
@@ -2150,25 +2150,25 @@ const ParkingAccount = ({
                         key={`${product.userId}-${product.id}-${index}`}
                         className="border-b border-white/5"
                       >
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {product.userName}
                         </td>
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {product.name}
                         </td>
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {typeLabel}
                         </td>
                         <td className="p-3 text-sm text-cyber-cyan">
                           {formatKoreanCurrency(product.balance || 0)}
                         </td>
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {product.rate}%
                         </td>
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {product.termInDays}일
                         </td>
-                        <td className="p-3 text-sm text-slate-200">
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-200">
                           {product.maturityDate
                             ? new Date(product.maturityDate).toLocaleDateString(
                                 "ko-KR",

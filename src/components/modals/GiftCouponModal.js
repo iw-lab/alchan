@@ -48,7 +48,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
         className="gift-coupon-modal bg-white dark:bg-slate-800 rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl border border-slate-600"
         onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫힘 방지
       >
-        <h3 className="mt-0 text-slate-100">쿠폰 선물하기</h3>
+        <h3 className="mt-0 text-slate-700 dark:text-slate-100">쿠폰 선물하기</h3>
         <div className="mb-4 text-slate-400">
           <p>
             현재 보유 쿠폰:{" "}
@@ -56,7 +56,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
           </p>
         </div>
         <div className="form-group mb-4">
-          <label className="block mb-2 font-medium text-slate-300">
+          <label className="block mb-2 font-medium text-slate-600 dark:text-slate-300">
             받는 사람
           </label>
           <select
@@ -67,7 +67,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 ? setGiftRecipient(e.target.value)
                 : logger.error("setGiftRecipient is not a function")
             }
-            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-100"
+            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-700 dark:text-slate-100"
           >
             <option value="">받는 분을 선택하세요</option>
             {validRecipients
@@ -80,7 +80,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
           </select>
         </div>
         <div className="form-group mb-6">
-          <label className="block mb-2 font-medium text-slate-300">
+          <label className="block mb-2 font-medium text-slate-600 dark:text-slate-300">
             선물할 쿠폰 수량
           </label>
           <input
@@ -93,14 +93,14 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 : logger.error("setGiftAmount is not a function")
             }
             placeholder="선물할 쿠폰 수량을 입력하세요"
-            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-100"
+            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-700 dark:text-slate-100"
             max={currentCoupons}
             min="1"
           />
         </div>
         <div className="modal-actions flex justify-end gap-2.5">
           <button
-            className="cancel-button px-4 py-2 bg-slate-600 text-slate-200 border-0 rounded-md cursor-pointer font-medium hover:bg-slate-500"
+            className="cancel-button px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md cursor-pointer font-medium hover:bg-slate-500"
             onClick={closeModal}
           >
             취소

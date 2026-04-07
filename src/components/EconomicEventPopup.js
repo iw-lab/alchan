@@ -216,18 +216,18 @@ export default function EconomicEventPopup() {
                 ) : (
                   <TrendingDown className="w-3.5 h-3.5 text-red-200" />
                 )}
-                <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-800 dark:text-white/70">
                   경제 이벤트
                 </span>
               </div>
 
               {/* 제목 */}
-              <h2 className="text-lg font-bold text-white leading-tight font-jua">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white leading-tight font-jua">
                 {event.title}
               </h2>
 
               {/* 날짜 */}
-              <p className="text-xs text-white/50 mt-0.5">
+              <p className="text-xs text-slate-800 dark:text-white/50 mt-0.5">
                 {dateStr} {timeStr} 발생
               </p>
             </div>
@@ -235,7 +235,7 @@ export default function EconomicEventPopup() {
             {/* 닫기 버튼 */}
             <button
               onClick={handleClose}
-              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/70 hover:text-white active:scale-90 transition-all"
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-slate-800 dark:text-white/70 hover:text-white active:scale-90 transition-all"
               style={{ background: "rgba(255,255,255,0.15)" }}
             >
               <X className="w-5 h-5" />
@@ -249,7 +249,7 @@ export default function EconomicEventPopup() {
           <div className="px-5 py-4 space-y-3">
             {/* 이벤트 설명 */}
             {event.description && (
-              <p className="text-sm text-white/80 leading-relaxed">
+              <p className="text-sm text-slate-800 dark:text-white/80 leading-relaxed">
                 {event.description}
               </p>
             )}
@@ -262,7 +262,7 @@ export default function EconomicEventPopup() {
               >
                 <div className="flex items-start gap-2">
                   <Zap className="w-4 h-4 mt-0.5 flex-shrink-0 text-yellow-300" />
-                  <p className="text-sm font-semibold text-white leading-relaxed">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white leading-relaxed">
                     {detail.impact}
                   </p>
                 </div>
@@ -271,7 +271,7 @@ export default function EconomicEventPopup() {
 
             {/* 팁 */}
             {detail.tip && (
-              <p className="text-xs text-white/60 pl-1">💡 {detail.tip}</p>
+              <p className="text-xs text-slate-800 dark:text-white/60 pl-1">💡 {detail.tip}</p>
             )}
           </div>
 
@@ -279,7 +279,7 @@ export default function EconomicEventPopup() {
           <div className="px-5 pb-5">
             <button
               onClick={handleClose}
-              className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-white font-jua"
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-slate-800 dark:text-white font-jua"
               style={{
                 background: "rgba(255,255,255,0.2)",
                 backdropFilter: "blur(8px)",

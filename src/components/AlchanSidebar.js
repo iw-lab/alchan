@@ -844,7 +844,7 @@ export default function AlchanSidebar({
 
         {/* 사용자 아바타 */}
         <div className="p-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
-          <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold">
+          <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-slate-800 dark:text-white font-bold">
             {userName.charAt(0)}
           </div>
         </div>
@@ -927,7 +927,7 @@ export default function AlchanSidebar({
             className="flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group"
             style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-slate-800 dark:text-white font-bold">
               {userName.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">

@@ -207,16 +207,16 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
             border: "2px solid rgba(255,255,255,0.3)",
           }}
         >
-          <button onClick={() => setShowPopup(false)} className="absolute top-3 right-3 text-white/60 hover:text-white text-2xl bg-transparent border-none cursor-pointer">✕</button>
+          <button onClick={() => setShowPopup(false)} className="absolute top-3 right-3 text-slate-800 dark:text-white/60 hover:text-white text-2xl bg-transparent border-none cursor-pointer">✕</button>
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">{isBigReward ? "🏆" : "🎁"}</div>
-            <div className="text-white text-2xl font-bold mb-2">{nextDay}일차 출석 보상</div>
+            <div className="text-slate-800 dark:text-white text-2xl font-bold mb-2">{nextDay}일차 출석 보상</div>
             {streakInfo.streakBroken && (
               <div className="px-4 py-2 rounded-xl mb-3 text-sm" style={{ background: "rgba(0,0,0,0.2)", color: "rgba(255,255,255,0.9)" }}>
                 😢 연속 출석이 끊어졌어요. 다시 1일차부터!
               </div>
             )}
-            <div className="text-4xl font-extrabold text-white mt-3">+{nextReward.toLocaleString()}원</div>
+            <div className="text-4xl font-extrabold text-slate-800 dark:text-white mt-3">+{nextReward.toLocaleString()}원</div>
           </div>
           <button
             onClick={() => { handleClaim(); setShowPopup(false); }}
@@ -276,7 +276,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
                   {isBigReward ? "🏆" : "🎁"}
                 </span>
                 <div>
-                  <div className="text-white text-lg font-bold">
+                  <div className="text-slate-800 dark:text-white text-lg font-bold">
                     {nextDay}일차 출석 보상
                   </div>
                   {nextDay >= 10 && (
@@ -338,7 +338,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
           <div className="text-5xl mb-3" style={{ animation: "bounce 0.5s ease" }}>
             {rewardResult?.icon || "🎉"}
           </div>
-          <div className="text-white text-3xl font-extrabold mb-2">
+          <div className="text-slate-800 dark:text-white text-3xl font-extrabold mb-2">
             +{rewardResult?.reward?.toLocaleString()}원
           </div>
           <div className="text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
@@ -346,7 +346,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
           </div>
           {rewardResult?.isMilestone && (
             <div
-              className="mt-2.5 px-4 py-2 rounded-2xl inline-block text-sm text-white"
+              className="mt-2.5 px-4 py-2 rounded-2xl inline-block text-sm text-slate-800 dark:text-white"
               style={{ background: "rgba(255,255,255,0.2)" }}
             >
               🏆 축하합니다! 마일스톤 달성!

@@ -184,7 +184,7 @@ export function TutorialGuide({ onComplete, onSkip }) {
       <div className="bg-gray-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
         {/* 헤더 */}
         <div
-          className={`bg-gradient-to-r ${step.color} p-6 text-white relative`}
+          className={`bg-gradient-to-r ${step.color} p-6 text-slate-800 dark:text-white relative`}
         >
           <button
             onClick={onSkip}
@@ -229,9 +229,9 @@ export function TutorialGuide({ onComplete, onSkip }) {
                 <div
                   className={`w-6 h-6 rounded-full bg-gradient-to-r ${step.color} flex items-center justify-center flex-shrink-0`}
                 >
-                  <span className="text-white text-xs font-bold">{i + 1}</span>
+                  <span className="text-slate-800 dark:text-white text-xs font-bold">{i + 1}</span>
                 </div>
-                <p className="text-sm text-gray-300">{tip}</p>
+                <p className="text-sm text-slate-600 dark:text-gray-300">{tip}</p>
               </div>
             ))}
           </div>
@@ -239,7 +239,7 @@ export function TutorialGuide({ onComplete, onSkip }) {
           {step.action && (
             <a
               href={step.action.path}
-              className={`block w-full py-3 bg-gradient-to-r ${step.color} text-white rounded-xl font-semibold text-center mb-4 hover:opacity-90 transition-opacity`}
+              className={`block w-full py-3 bg-gradient-to-r ${step.color} text-slate-800 dark:text-white rounded-xl font-semibold text-center mb-4 hover:opacity-90 transition-opacity`}
               onClick={(e) => {
                 e.preventDefault();
                 // 튜토리얼 중에는 이동하지 않고 다음 단계로
@@ -259,8 +259,8 @@ export function TutorialGuide({ onComplete, onSkip }) {
             disabled={isFirstStep}
             className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
               isFirstStep
-                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                ? "bg-gray-700 text-slate-500 dark:text-gray-400 cursor-not-allowed"
+                : "bg-gray-700 text-slate-600 dark:text-gray-300 hover:bg-gray-600"
             }`}
           >
             <ChevronLeft size={18} />
@@ -268,7 +268,7 @@ export function TutorialGuide({ onComplete, onSkip }) {
           </button>
           <button
             onClick={handleNext}
-            className={`flex-1 py-3 bg-gradient-to-r ${step.color} text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2`}
+            className={`flex-1 py-3 bg-gradient-to-r ${step.color} text-slate-800 dark:text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2`}
           >
             {isLastStep ? "시작하기" : "다음"}
             {!isLastStep && <ChevronRight size={18} />}
@@ -388,10 +388,10 @@ export function FeatureTooltip({
       {children}
       {show && (
         <div
-          className={`absolute ${positionClasses[position]} left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-100 dark:bg-gray-900 text-white rounded-xl shadow-xl z-50`}
+          className={`absolute ${positionClasses[position]} left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-100 dark:bg-gray-900 text-slate-800 dark:text-white rounded-xl shadow-xl z-50`}
         >
           <h4 className="font-semibold text-sm mb-1">{title}</h4>
-          <p className="text-xs text-gray-300">{description}</p>
+          <p className="text-xs text-slate-600 dark:text-gray-300">{description}</p>
           <div className="absolute w-2 h-2 bg-gray-100 dark:bg-gray-900 transform rotate-45 left-1/2 -translate-x-1/2 -top-1" />
         </div>
       )}

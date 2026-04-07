@@ -7,14 +7,14 @@ import { RefreshCw, X } from 'lucide-react';
 const UpdateNotification = memo(function UpdateNotification({ onUpdate, onDismiss }) {
   return (
     <div className="fixed top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up">
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-2xl p-4 text-white">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-2xl p-4 text-slate-800 dark:text-white">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <RefreshCw size={20} className="animate-spin-slow" />
           </div>
           <div className="flex-1">
             <h3 className="font-bold mb-1">새 버전이 있어요!</h3>
-            <p className="text-sm text-white/80 mb-3">
+            <p className="text-sm text-slate-800 dark:text-white/80 mb-3">
               더 나은 알찬을 위해 업데이트를 적용해주세요.
             </p>
             <div className="flex gap-2">
@@ -35,7 +35,7 @@ const UpdateNotification = memo(function UpdateNotification({ onUpdate, onDismis
           </div>
           <button
             onClick={onDismiss}
-            className="text-white/60 hover:text-white transition-colors"
+            className="text-slate-800 dark:text-white/60 hover:text-white transition-colors"
           >
             <X size={18} />
           </button>

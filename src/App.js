@@ -141,7 +141,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a12] to-[#1a1a2e] text-white p-5 text-center">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a12] to-[#1a1a2e] text-slate-800 dark:text-white p-5 text-center">
           <div className="text-5xl mb-4">😢</div>
           <h1 className="text-2xl mb-2">
             앱을 불러오는 중 문제가 발생했습니다

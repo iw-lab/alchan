@@ -236,7 +236,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-slate-800">
-          <h3 className="m-0 text-lg font-semibold text-slate-100">
+          <h3 className="m-0 text-lg font-semibold text-slate-700 dark:text-slate-100">
             우리 학급 응모 현황
             {userClassCode && (
               <span className="ml-2 text-sm bg-indigo-900/60 text-indigo-300 px-2 py-1 rounded-xl font-medium">
@@ -351,7 +351,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
               ) : (
                 <div style={tableStyles.emptyContainer}>
                   <div style={tableStyles.emptyIcon}>👥</div>
-                  <p className="m-0 mb-2 text-base font-medium text-slate-300">
+                  <p className="m-0 mb-2 text-base font-medium text-slate-600 dark:text-slate-300">
                     학급 학생 정보를 불러올 수 없거나 등록된 학생이 없습니다
                   </p>
                   <p className="m-0 text-sm text-slate-400">
@@ -366,7 +366,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
         <div className="px-5 py-4 border-t border-slate-600 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 bg-slate-600 text-slate-200 border-0 rounded-md cursor-pointer font-medium transition-all duration-200 hover:bg-slate-500"
+            className="px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md cursor-pointer font-medium transition-all duration-200 hover:bg-slate-500"
           >
             닫기
           </button>

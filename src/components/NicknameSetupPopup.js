@@ -83,12 +83,12 @@ export default function NicknameSetupPopup() {
         >
           <div className="text-4xl mb-3">👋</div>
           <h2
-            className="text-xl font-bold text-white m-0"
+            className="text-xl font-bold text-slate-800 dark:text-white m-0"
             style={{ fontFamily: "'Orbitron', 'Rajdhani', sans-serif" }}
           >
             환영합니다!
           </h2>
-          <p className="text-sm text-white/60 mt-2">
+          <p className="text-sm text-slate-800 dark:text-white/60 mt-2">
             수업에서 사용할 닉네임을 설정해주세요
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function NicknameSetupPopup() {
               placeholder="닉네임을 입력하세요"
               maxLength={10}
               autoFocus
-              className="w-full px-4 py-3 rounded-xl text-white text-base outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl text-slate-800 dark:text-white text-base outline-none transition-all"
               style={{
                 background: "rgba(255, 255, 255, 0.08)",
                 border: error
@@ -131,7 +131,7 @@ export default function NicknameSetupPopup() {
               }}
             />
             {nickname.length > 0 && (
-              <div className="text-right text-xs text-white/40 mt-1">
+              <div className="text-right text-xs text-slate-800 dark:text-white/40 mt-1">
                 {nickname.length}/10
               </div>
             )}
@@ -153,7 +153,7 @@ export default function NicknameSetupPopup() {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !nickname.trim()}
-            className="w-full py-3 rounded-xl text-white font-bold text-base cursor-pointer transition-all border-none"
+            className="w-full py-3 rounded-xl text-slate-800 dark:text-white font-bold text-base cursor-pointer transition-all border-none"
             style={{
               background:
                 isLoading || !nickname.trim()
@@ -169,7 +169,7 @@ export default function NicknameSetupPopup() {
             {isLoading ? "설정 중..." : "닉네임 설정하기"}
           </button>
 
-          <p className="text-center text-xs text-white/40 mt-3">
+          <p className="text-center text-xs text-slate-800 dark:text-white/40 mt-3">
             나중에 프로필에서 변경할 수 있어요
           </p>
         </div>

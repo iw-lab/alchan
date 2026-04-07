@@ -120,7 +120,7 @@ export default function CouponGoal({
         <div className="flex gap-2 items-center">
           {goalAchieved && (
             <span
-              className="text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
+              className="text-slate-800 dark:text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
               style={{
                 background: "linear-gradient(135deg, #10b981, #059669)",
                 boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
@@ -134,7 +134,7 @@ export default function CouponGoal({
             <button
               onClick={resetGoalButton}
               disabled={isResettingGoal}
-              className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold"
+              className="text-slate-800 dark:text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold"
               style={{
                 backgroundColor: isResettingGoal ? "#9ca3af" : "#ef4444",
                 cursor: isResettingGoal ? "not-allowed" : "pointer",
@@ -272,7 +272,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💰</span>
-          <span className="text-white text-sm font-bold">쿠폰 응모</span>
+          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 응모</span>
         </button>
 
         <button
@@ -284,7 +284,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">💵</span>
-          <span className="text-white text-sm font-bold">쿠폰 판매</span>
+          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 판매</span>
         </button>
 
         <button
@@ -296,7 +296,7 @@ export default function CouponGoal({
           }}
         >
           <span className="text-2xl">🎁</span>
-          <span className="text-white text-sm font-bold">쿠폰 선물</span>
+          <span className="text-slate-800 dark:text-white text-sm font-bold">쿠폰 선물</span>
         </button>
 
         <button

@@ -220,8 +220,8 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         <p className="text-sm text-red-200 mb-2">
           개인정보 파기 의무를 위해 학년 말에 사용하세요.
         </p>
-        <p className="text-sm text-gray-300 mb-2">삭제 대상:</p>
-        <ul className="text-sm text-gray-300 list-disc list-inside ml-2 space-y-1">
+        <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">삭제 대상:</p>
+        <ul className="text-sm text-slate-600 dark:text-gray-300 list-disc list-inside ml-2 space-y-1">
           <li>학생 계정 (role: 'student')</li>
           <li>활동 로그 (activity_logs)</li>
           <li>거래 내역 (transactions)</li>
@@ -237,14 +237,14 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       {!showConfirmation ? (
         <button
           onClick={() => setShowConfirmation(true)}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-slate-800 dark:text-white rounded-lg font-medium transition-colors"
         >
           학급 데이터 삭제 시작
         </button>
       ) : (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
               확인을 위해 "<strong className="text-red-400">삭제</strong>"를
               정확히 입력하세요:
             </label>
@@ -254,7 +254,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="삭제"
               disabled={isDeleting}
-              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
+              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-gray-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-red-500"
             />
           </div>
 
@@ -264,8 +264,8 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
               disabled={isDeleting || deleteConfirmText !== "삭제"}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 deleteConfirmText === "삭제" && !isDeleting
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-700 text-slate-800 dark:text-white"
+                  : "bg-gray-600 text-slate-500 dark:text-gray-400 cursor-not-allowed"
               }`}
             >
               {isDeleting ? "삭제 중..." : "최종 삭제 실행"}
@@ -276,7 +276,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
                 setDeleteConfirmText("");
               }}
               disabled={isDeleting}
-              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-slate-800 dark:text-white rounded-lg font-medium transition-colors"
             >
               취소
             </button>
@@ -2571,7 +2571,7 @@ const AdminSettingsModal = ({
                 {/* 메시지 */}
                 {financialMessage && (
                   <div
-                    className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-white`}
+                    className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-slate-800 dark:text-white`}
                     style={{
                       background:
                         financialMessage.type === "success"
@@ -2585,7 +2585,7 @@ const AdminSettingsModal = ({
 
                 {/* 상품 추가 폼 */}
                 <div className="add-product-form p-4 rounded-xl mb-4 bg-gray-700/50">
-                  <h4 className="mb-3 text-white">
+                  <h4 className="mb-3 text-slate-800 dark:text-white">
                     {financialSubTab === "deposit"
                       ? "예금"
                       : financialSubTab === "saving"
@@ -2595,7 +2595,7 @@ const AdminSettingsModal = ({
                   </h4>
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <label className="block mb-1 text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
                         상품명
                       </label>
                       <input
@@ -2608,7 +2608,7 @@ const AdminSettingsModal = ({
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
                         기간 (일)
                       </label>
                       <input
@@ -2622,7 +2622,7 @@ const AdminSettingsModal = ({
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
                         이율 (%)
                       </label>
                       <input
@@ -2648,7 +2648,7 @@ const AdminSettingsModal = ({
 
                 {/* 상품 목록 */}
                 <div className="product-list">
-                  <h4 className="mb-3 text-white">
+                  <h4 className="mb-3 text-slate-800 dark:text-white">
                     {financialSubTab === "deposit"
                       ? "예금"
                       : financialSubTab === "saving"
@@ -2732,7 +2732,7 @@ const AdminSettingsModal = ({
                 {/* 시장 상태 */}
                 <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
                   <div className="flex justify-between items-center mb-4">
-                    <p className="text-white">
+                    <p className="text-slate-800 dark:text-white">
                       현재 상태:{" "}
                       <span
                         className="font-bold px-3 py-1 rounded-2xl"
@@ -2785,7 +2785,7 @@ const AdminSettingsModal = ({
                     </button>
                   </div>
 
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-500 dark:text-gray-400">
                     버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시
                     변경됩니다.
                     <br />
@@ -2796,7 +2796,7 @@ const AdminSettingsModal = ({
 
                 {/* 메시지 */}
                 {marketMessage && (
-                  <div className="p-3 mb-4 rounded-lg bg-amber-600 text-white text-center">
+                  <div className="p-3 mb-4 rounded-lg bg-amber-600 text-slate-800 dark:text-white text-center">
                     {marketMessage}
                   </div>
                 )}
@@ -2804,13 +2804,13 @@ const AdminSettingsModal = ({
                 {/* 주식 초기화 */}
                 <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
                   <h4 className="mb-3 text-red-500">⚠️ 주식 정보 초기화</h4>
-                  <p className="text-xs text-gray-400 mb-3">
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-3">
                     주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이
                     기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
                   </p>
                   <button
                     onClick={handleInitializeStocks}
-                    className="w-full p-3 rounded-lg bg-orange-600 text-white border-0 cursor-pointer font-semibold"
+                    className="w-full p-3 rounded-lg bg-orange-600 text-slate-800 dark:text-white border-0 cursor-pointer font-semibold"
                   >
                     모든 주식 정보 초기화
                   </button>
@@ -2839,7 +2839,7 @@ const AdminSettingsModal = ({
                 {/* 메시지 */}
                 {parkingMessage && (
                   <div
-                    className="p-3 mb-4 rounded-lg text-white"
+                    className="p-3 mb-4 rounded-lg text-slate-800 dark:text-white"
                     style={{
                       background:
                         parkingMessage.type === "success"
@@ -2854,14 +2854,14 @@ const AdminSettingsModal = ({
                 {/* 현재 이자율 */}
                 <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
                   <div className="mb-4">
-                    <p className="text-gray-400 text-sm">현재 일일 이자율</p>
+                    <p className="text-slate-500 dark:text-gray-400 text-sm">현재 일일 이자율</p>
                     <p className="text-green-500 text-[32px] font-bold">
                       {parkingInterestRate}%
                     </p>
                   </div>
 
                   <div className="form-group">
-                    <label className="block mb-2 text-gray-400">
+                    <label className="block mb-2 text-slate-500 dark:text-gray-400">
                       새 일일 이자율 (%)
                     </label>
                     <input
@@ -2888,7 +2888,7 @@ const AdminSettingsModal = ({
                     </button>
                   </div>
 
-                  <p className="text-xs text-gray-400 mt-3">
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mt-3">
                     파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가
                     발생합니다.
                   </p>
@@ -3167,7 +3167,7 @@ const AdminSettingsModal = ({
               <h3 className="text-lg font-bold text-violet-300 mb-3">
                 개인정보 보호 문서
               </h3>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
                 학부모 동의서 양식과 개인정보처리방침을 확인하세요.
               </p>
               <div className="flex flex-wrap gap-3">
@@ -3175,7 +3175,7 @@ const AdminSettingsModal = ({
                   href="/consent-form"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors text-sm font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
                 >
                   📄 가정통신문 (동의서 양식)
                 </a>
@@ -3183,7 +3183,7 @@ const AdminSettingsModal = ({
                   href="/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
                 >
                   🔒 개인정보처리방침
                 </a>

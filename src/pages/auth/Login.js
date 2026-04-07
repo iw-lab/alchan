@@ -381,7 +381,7 @@ const DEFAULT_SALARIES = {
 
 // 다크 인풋 공통 스타일
 const darkInput =
-  "w-full bg-[#0d0d1a] border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm font-medium";
+  "w-full bg-[#0d0d1a] border border-slate-700 rounded-xl text-slate-800 dark:text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm font-medium";
 
 const Login = () => {
   useDocumentTitle("로그인 - 알찬 경제교육");
@@ -792,7 +792,7 @@ const Login = () => {
             <div className="absolute -inset-2 border-2 border-transparent border-t-indigo-500 rounded-[2rem] animate-spin [animation-duration:2s]" />
           </div>
 
-          <h1 className="text-5xl text-white font-normal tracking-tight font-jua mb-1">
+          <h1 className="text-5xl text-slate-800 dark:text-white font-normal tracking-tight font-jua mb-1">
             알찬
           </h1>
           <p className="text-sm text-slate-400 font-medium tracking-widest uppercase mb-8">
@@ -897,7 +897,7 @@ const Login = () => {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white font-jua">알찬</h1>
+          <h1 className="text-3xl font-bold text-slate-800 dark:text-white font-jua">알찬</h1>
           <p className="text-slate-400 text-sm mt-1">학급 경제 교육</p>
         </div>
 
@@ -923,7 +923,7 @@ const Login = () => {
                   onClick={() => handleTabChange(id)}
                   className={`flex-1 py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === id
-                      ? "text-white border-b-2 border-indigo-500 bg-indigo-500/5"
+                      ? "text-slate-800 dark:text-white border-b-2 border-indigo-500 bg-indigo-500/5"
                       : "text-slate-400 hover:text-slate-200 hover:bg-white/3"
                   }`}
                 >
@@ -960,7 +960,7 @@ const Login = () => {
               {activeTab === "student" ? (
                 <>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-slate-300">
+                    <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                       아이디
                     </label>
                     <div className="relative">
@@ -982,7 +982,7 @@ const Login = () => {
               ) : (
                 /* 선생님: 이메일 */
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-slate-300">
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                     이메일
                   </label>
                   <div className="relative">
@@ -1003,7 +1003,7 @@ const Login = () => {
 
               {/* 비밀번호 */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-300">
+                <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                   비밀번호
                 </label>
                 <div className="relative">
@@ -1040,7 +1040,7 @@ const Login = () => {
                   <div className="w-4 h-4 border border-slate-600 rounded peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-all flex items-center justify-center">
                     {saveId && (
                       <svg
-                        className="w-2.5 h-2.5 text-white"
+                        className="w-2.5 h-2.5 text-slate-800 dark:text-white"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1064,7 +1064,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800 dark:text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
               >
                 {isLoading ? (
                   <>
@@ -1117,7 +1117,7 @@ const Login = () => {
                   <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
-                  <h2 className="text-base font-bold text-white">
+                  <h2 className="text-base font-bold text-slate-800 dark:text-white">
                     선생님 계정 만들기
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -1128,7 +1128,7 @@ const Login = () => {
 
               {/* 이름 */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-300">
+                <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                   이름 <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
@@ -1148,7 +1148,7 @@ const Login = () => {
 
               {/* 이메일 */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-300">
+                <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                   이메일 <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
@@ -1169,7 +1169,7 @@ const Login = () => {
               {/* 비밀번호 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-slate-300">
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                     비밀번호 <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -1184,7 +1184,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-slate-300">
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                     비밀번호 확인 <span className="text-red-400">*</span>
                   </label>
                   <input
@@ -1203,7 +1203,7 @@ const Login = () => {
               {/* 학교/학급 */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-slate-300">
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                     학교명
                   </label>
                   <div className="relative">
@@ -1220,7 +1220,7 @@ const Login = () => {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-slate-300">
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300">
                     학급
                   </label>
                   <div className="relative">
@@ -1252,7 +1252,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800 dark:text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
               >
                 {isLoading ? (
                   <>

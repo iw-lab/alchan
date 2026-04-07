@@ -329,7 +329,7 @@ const AlchanHeader = memo(
                 onClick={toggleSidebar}
                 className="p-2.5 rounded-lg hover:bg-white/5 transition-colors"
               >
-                <LayoutDashboard size={22} className="text-white" />
+                <LayoutDashboard size={22} className="text-slate-800 dark:text-white" />
               </button>
               <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
                 오늘도 <span style={{ color: 'var(--accent)' }}>알찬</span> 하루!
@@ -345,7 +345,7 @@ const AlchanHeader = memo(
               >
                 <span className="text-sm">{levelInfo?.icon || "🌟"}</span>
                 <div className="flex flex-col leading-none">
-                  <span className="text-[9px] text-gray-400">LEVEL</span>
+                  <span className="text-[9px] text-slate-500 dark:text-gray-400">LEVEL</span>
                   <span
                     className="text-xs font-bold"
                     style={{ color: levelInfo?.color || "#a78bfa" }}
@@ -379,7 +379,7 @@ const AlchanHeader = memo(
                 <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider leading-none">
                   {userDoc?.isAdmin ? "현금(국고)" : "현금"}
                 </p>
-                <p className="text-sm font-bold text-white truncate">
+                <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                   {formatMoney(userDoc?.cash || 0)}
                 </p>
               </div>
@@ -396,14 +396,14 @@ const AlchanHeader = memo(
 
             {/* 쿠폰 */}
             <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-rose-900/10 rounded-xl border border-rose-500/20">
-              <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-rose-600 text-slate-800 dark:text-white flex items-center justify-center shadow-sm flex-shrink-0">
                 <Gift size={14} />
               </div>
               <div className="min-w-0">
                 <p className="text-[9px] text-rose-400 font-bold uppercase tracking-wider leading-none">
                   쿠폰
                 </p>
-                <p className="text-sm font-bold text-white truncate">
+                <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                   {userDoc?.coupons || 0}개
                 </p>
               </div>
@@ -464,7 +464,7 @@ const AlchanHeader = memo(
 
             {/* 쿠폰 위젯 */}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-900/10 rounded-lg text-rose-400">
-              <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-rose-600 text-slate-800 dark:text-white flex items-center justify-center">
                 <Gift size={14} />
               </div>
               <div>
@@ -583,7 +583,7 @@ const AlchanHeader = memo(
                         navigate("/my-profile");
                         setShowUserMenu(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-indigo-600/20 transition-colors bg-indigo-500/10 border border-indigo-500/30 mb-2"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-800 dark:text-white hover:bg-indigo-600/20 transition-colors bg-indigo-500/10 border border-indigo-500/30 mb-2"
                     >
                       <User size={18} className="text-indigo-400" />내 프로필
                       <span className="ml-auto text-xs text-indigo-400">
@@ -659,7 +659,7 @@ const AlchanHeader = memo(
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
                 새 닉네임
               </label>
               <input
@@ -681,7 +681,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>
@@ -703,7 +703,7 @@ const AlchanHeader = memo(
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
                 현재 비밀번호
               </label>
               <input
@@ -715,7 +715,7 @@ const AlchanHeader = memo(
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
                 새 비밀번호
               </label>
               <input
@@ -727,7 +727,7 @@ const AlchanHeader = memo(
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
                 비밀번호 확인
               </label>
               <input
@@ -751,7 +751,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>
@@ -775,11 +775,11 @@ const AlchanHeader = memo(
             {userDoc?.classCode && (
               <p className="text-sm text-slate-400 bg-white dark:bg-slate-800/50 p-3 rounded-xl">
                 현재 학급 코드:{" "}
-                <strong className="text-white">{userDoc.classCode}</strong>
+                <strong className="text-slate-800 dark:text-white">{userDoc.classCode}</strong>
               </p>
             )}
             <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">
                 새 학급 코드
               </label>
               <input
@@ -813,7 +813,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>

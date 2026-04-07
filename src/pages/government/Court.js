@@ -1171,7 +1171,7 @@ const Court = () => {
   if (auth.loading || usersLoading || jobsLoading) {
     return (
       <div className="court-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           사용자 정보를 불러오는 중...
         </div>
       </div>
@@ -1180,7 +1180,7 @@ const Court = () => {
   if (!currentUserDoc) {
     return (
       <div className="court-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           로그인 정보가 없습니다. 다시 로그인해주세요.
         </div>
       </div>
@@ -1189,7 +1189,7 @@ const Court = () => {
   if (!classCode) {
     return (
       <div className="court-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           법원 시스템을 이용하려면 학급 코드가 설정되어야 합니다.
         </div>
       </div>
@@ -1198,7 +1198,7 @@ const Court = () => {
   if (complaintsLoading) {
     return (
       <div className="court-container">
-        <div className="p-8 text-center text-gray-400">
+        <div className="p-8 text-center text-slate-500 dark:text-gray-400">
           데이터를 불러오는 중...
         </div>
       </div>

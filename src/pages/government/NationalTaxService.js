@@ -313,7 +313,7 @@ const NationalTaxService = ({ classCode }) => {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="relative overflow-hidden rounded-2xl p-8 text-white shadow-xl" style={{ background: 'linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(30, 30, 60, 0.9))', border: '1px solid rgba(0, 255, 242, 0.2)' }}>
+      <div className="relative overflow-hidden rounded-2xl p-8 text-slate-800 dark:text-white shadow-xl" style={{ background: 'linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(30, 30, 60, 0.9))', border: '1px solid rgba(0, 255, 242, 0.2)' }}>
         <div className="absolute inset-0 opacity-10" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(0, 136, 255, 0.4), transparent 60%)' }} />
         <div className="relative z-10">
           <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif', textShadow: '0 0 12px rgba(0, 255, 242, 0.3)' }}>
@@ -381,7 +381,7 @@ const NationalTaxService = ({ classCode }) => {
                 <p className="text-xs font-semibold mb-2 tracking-wide" style={{ color: card.accent, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
                   {card.icon} {card.label}
                 </p>
-                <p className="text-xl font-bold text-white" style={{ fontFamily: 'Rajdhani, sans-serif', textShadow: `0 0 8px ${card.bg}` }}>
+                <p className="text-xl font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Rajdhani, sans-serif', textShadow: `0 0 8px ${card.bg}` }}>
                   {formatKoreanCurrency(card.value)}
                 </p>
                 {card.sub && <p className="text-xs mt-1" style={{ color: 'rgba(148, 163, 184, 0.6)' }}>{card.sub}</p>}
@@ -403,7 +403,7 @@ const NationalTaxService = ({ classCode }) => {
               <button
                 onClick={handleCollectPropertyTax}
                 disabled={collectingTax}
-                className="px-5 py-2.5 rounded-lg font-bold text-sm text-white transition-all duration-300"
+                className="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-800 dark:text-white transition-all duration-300"
                 style={{
                   background: collectingTax ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
                   border: `1px solid ${collectingTax ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
@@ -424,8 +424,8 @@ const NationalTaxService = ({ classCode }) => {
               📅 최근 업데이트
             </h3>
             <div className="space-y-1.5 text-sm" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
-              <p>국고 마지막 업데이트: <span className="font-medium text-white">{formatDate(treasuryData.lastUpdated)}</span></p>
-              <p>세금 정책 마지막 업데이트: <span className="font-medium text-white">{formatDate(taxSettings.lastUpdated)}</span></p>
+              <p>국고 마지막 업데이트: <span className="font-medium text-slate-800 dark:text-white">{formatDate(treasuryData.lastUpdated)}</span></p>
+              <p>세금 정책 마지막 업데이트: <span className="font-medium text-slate-800 dark:text-white">{formatDate(taxSettings.lastUpdated)}</span></p>
             </div>
           </div>
         </div>
@@ -440,7 +440,7 @@ const NationalTaxService = ({ classCode }) => {
             </h3>
             <div className="text-right">
               <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.6)' }}>세수 총합</p>
-              <p className="text-xl font-bold text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{formatKoreanCurrency(totalTaxRevenue)}</p>
+              <p className="text-xl font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{formatKoreanCurrency(totalTaxRevenue)}</p>
             </div>
           </div>
 
@@ -469,7 +469,7 @@ const NationalTaxService = ({ classCode }) => {
                     />
                   </div>
                   <div className="w-36 text-right text-xs">
-                    <span className="font-bold text-white">{formatKoreanCurrency(item.amount)}</span>
+                    <span className="font-bold text-slate-800 dark:text-white">{formatKoreanCurrency(item.amount)}</span>
                     <span className="ml-1.5" style={{ color: 'rgba(148, 163, 184, 0.5)' }}>({percentage}%)</span>
                   </div>
                 </div>
@@ -503,7 +503,7 @@ const NationalTaxService = ({ classCode }) => {
                       name={field.name}
                       value={editableSettings[field.name] || DEFAULT_TAX_SETTINGS[field.name]}
                       onChange={handleIntervalChange}
-                      className="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200"
+                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 dark:text-white text-sm transition-all duration-200"
                       style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(100, 116, 139, 0.3)', outline: 'none' }}
                       onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
                       onBlur={(e) => e.target.style.borderColor = 'rgba(100, 116, 139, 0.3)'}
@@ -524,7 +524,7 @@ const NationalTaxService = ({ classCode }) => {
                       min={field.min}
                       max={field.max}
                       placeholder={`예: ${field.label.includes("부가") ? "0.1 (10%)" : "0.03 (3%)"}`}
-                      className="w-full px-4 py-2.5 rounded-lg text-white text-sm transition-all duration-200"
+                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 dark:text-white text-sm transition-all duration-200"
                       style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(100, 116, 139, 0.3)', outline: 'none' }}
                       onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
                       onBlur={(e) => e.target.style.borderColor = 'rgba(100, 116, 139, 0.3)'}
@@ -536,7 +536,7 @@ const NationalTaxService = ({ classCode }) => {
 
             <button
               onClick={saveTaxSettings}
-              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-white transition-all duration-300"
+              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-slate-800 dark:text-white transition-all duration-300"
               style={{
                 background: 'linear-gradient(135deg, rgba(0, 136, 255, 0.3), rgba(0, 255, 242, 0.2))',
                 border: '1px solid rgba(0, 255, 242, 0.35)',
@@ -590,7 +590,7 @@ const NationalTaxService = ({ classCode }) => {
                 <div key={cat.label} className="rounded-lg p-4 text-center" style={{ background: `${cat.color}08`, border: `1px solid ${cat.color}25` }}>
                   <p className="text-2xl font-bold" style={{ color: cat.color, fontFamily: 'Rajdhani, sans-serif' }}>{pct}%</p>
                   <p className="text-xs mt-1" style={{ color: 'rgba(148, 163, 184, 0.7)' }}>{cat.label}</p>
-                  <p className="text-xs font-semibold mt-0.5 text-white">{formatKoreanCurrency(cat.amount)}</p>
+                  <p className="text-xs font-semibold mt-0.5 text-slate-800 dark:text-white">{formatKoreanCurrency(cat.amount)}</p>
                 </div>
               );
             })}

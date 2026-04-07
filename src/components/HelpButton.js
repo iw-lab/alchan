@@ -19,7 +19,7 @@ export default function HelpButton() {
       {/* 플로팅 도움말 버튼 - 우측 하단 고정 */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
+        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-slate-800 dark:text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
         title="도움말"
       >
         <HelpCircle className="w-5 h-5" />
@@ -39,7 +39,7 @@ export default function HelpButton() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{helpData.icon}</span>
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
                   {helpData.title}
                 </h3>
               </div>

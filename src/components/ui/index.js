@@ -88,12 +88,12 @@ export const tokens = {
 const buttonVariants = {
   primary:
     "bg-indigo-500 hover:bg-indigo-600 text-white shadow-md hover:shadow-lg",
-  secondary: "bg-gray-700 hover:bg-gray-600 text-gray-200",
+  secondary: "bg-gray-700 hover:bg-gray-600 text-slate-700 dark:text-gray-200",
   outline: "border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-900/20",
   ghost: "text-gray-300 hover:bg-gray-800",
   danger: "bg-red-500 hover:bg-red-600 text-white shadow-md",
   success: "bg-emerald-500 hover:bg-emerald-600 text-white shadow-md",
-  warning: "bg-amber-500 hover:bg-amber-600 text-white shadow-md",
+  warning: "bg-amber-500 hover:bg-amber-600 text-slate-800 dark:text-white shadow-md",
 };
 
 const buttonSizes = {
@@ -371,7 +371,7 @@ export const Textarea = forwardRef(
     return (
       <div className={`space-y-1.5 ${containerClassName}`}>
         {label && (
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium text-slate-600 dark:text-slate-300">
             {label}
           </label>
         )}
@@ -386,7 +386,7 @@ export const Textarea = forwardRef(
               ? "border-red-500 focus:ring-red-500"
               : "border-gray-600 focus:border-indigo-500 focus:ring-indigo-500"
           }
-          text-white
+          text-slate-800 dark:text-white
           placeholder-gray-500
           focus:outline-none focus:ring-2 focus:ring-offset-0
           transition-colors duration-200
@@ -559,7 +559,7 @@ export const Alert = ({
         {title && (
           <h4 className={`font-semibold mb-1 ${styles.title}`}>{title}</h4>
         )}
-        <div className="text-sm text-slate-300">{children}</div>
+        <div className="text-sm text-slate-600 dark:text-slate-300">{children}</div>
       </div>
       {onClose && (
         <button onClick={onClose} className="self-start">
@@ -575,7 +575,7 @@ export const Alert = ({
 // ============================================
 const badgeVariants = {
   primary: "bg-indigo-900/50 text-indigo-300",
-  secondary: "bg-gray-700 text-gray-300",
+  secondary: "bg-gray-700 text-slate-600 dark:text-gray-300",
   success: "bg-emerald-900/50 text-emerald-300",
   warning: "bg-amber-900/50 text-amber-300",
   danger: "bg-red-900/50 text-red-300",
@@ -777,7 +777,7 @@ export const Avatar = ({ src, alt, name, size = "md", className = "" }) => {
       rounded-full
       flex items-center justify-center
       font-medium
-      ${src ? "" : "bg-gradient-to-br from-indigo-400 to-purple-500 text-white"}
+      ${src ? "" : "bg-gradient-to-br from-indigo-400 to-purple-500 text-slate-800 dark:text-white"}
       ${className}
     `}
     >
@@ -840,7 +840,7 @@ export const ToastProvider = ({ children }) => {
               ${toast.type === "error" ? "bg-red-500" : ""}
               ${toast.type === "warning" ? "bg-amber-500" : ""}
               ${toast.type === "info" ? "bg-indigo-500" : ""}
-              text-white
+              text-slate-800 dark:text-white
             `}
           >
             {toast.type === "success" && <CheckCircle2 size={18} />}
@@ -918,7 +918,7 @@ export const StatCard = ({
     </div>
     <div className="mt-4">
       <p className="text-sm text-slate-400">{label}</p>
-      <p className="text-2xl font-bold text-white mt-1">{value}</p>
+      <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{value}</p>
       {subValue && <p className="text-sm text-slate-500 mt-1">{subValue}</p>}
     </div>
   </Card>

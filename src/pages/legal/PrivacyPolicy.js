@@ -10,7 +10,7 @@ const PrivacyPolicy = () => {
   useDocumentTitle('개인정보처리방침');
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-gray-100 py-8 px-4 md:px-8">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-slate-700 dark:text-gray-100 py-8 px-4 md:px-8">
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
         <div className="mb-8">
@@ -19,8 +19,8 @@ const PrivacyPolicy = () => {
               <Shield className="w-7 h-7 text-violet-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">개인정보처리방침</h1>
-              <p className="text-gray-400 text-sm mt-1">최종 수정일: 2026년 3월 16일 · 시행일: 2026년 3월 16일</p>
+              <h1 className="text-3xl font-bold text-slate-800 dark:text-white">개인정보처리방침</h1>
+              <p className="text-slate-500 dark:text-gray-400 text-sm mt-1">최종 수정일: 2026년 3월 16일 · 시행일: 2026년 3월 16일</p>
             </div>
           </div>
 
@@ -89,22 +89,22 @@ const PrivacyPolicy = () => {
             content={
               <>
                 <div className="bg-[#15151f] rounded-xl p-5 mb-4 border border-gray-800">
-                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <h4 className="text-slate-800 dark:text-white font-semibold mb-3 flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-violet-400" />
                     학생 계정
                   </h4>
                   <ul className="space-y-2 ml-6">
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">필수 항목:</strong> 닉네임(학생이 직접 설정한 가명), 학급 코드</span>
+                      <span><strong className="text-slate-800 dark:text-white">필수 항목:</strong> 닉네임(학생이 직접 설정한 가명), 학급 코드</span>
                     </li>
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">시스템 식별자:</strong> 로그인 ID(아이디@학급코드 형식의 내부 식별자 — 실제 개인 이메일 아님)</span>
+                      <span><strong className="text-slate-800 dark:text-white">시스템 식별자:</strong> 로그인 ID(아이디@학급코드 형식의 내부 식별자 — 실제 개인 이메일 아님)</span>
                     </li>
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">서비스 이용 기록:</strong> 로그인 시간, 마지막 접속일, 가상 경제 활동 기록(가상 잔액·거래 내역·보유 주식·부동산·할일 수행 이력)</span>
+                      <span><strong className="text-slate-800 dark:text-white">서비스 이용 기록:</strong> 로그인 시간, 마지막 접속일, 가상 경제 활동 기록(가상 잔액·거래 내역·보유 주식·부동산·할일 수행 이력)</span>
                     </li>
                   </ul>
                   <div className="mt-3 ml-6 text-xs text-gray-500 bg-[#0d0d1a] rounded-lg p-3">
@@ -113,18 +113,18 @@ const PrivacyPolicy = () => {
                 </div>
 
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
-                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                  <h4 className="text-slate-800 dark:text-white font-semibold mb-3 flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-violet-400" />
                     선생님 계정
                   </h4>
                   <ul className="space-y-2 ml-6">
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">필수 항목:</strong> 이메일 주소, 이름, 비밀번호</span>
+                      <span><strong className="text-slate-800 dark:text-white">필수 항목:</strong> 이메일 주소, 이름, 비밀번호</span>
                     </li>
                     <li className="text-gray-300 flex items-start gap-2">
                       <span className="text-violet-400 mt-1">•</span>
-                      <span><strong className="text-white">선택 항목:</strong> 학교명, 학급명</span>
+                      <span><strong className="text-slate-800 dark:text-white">선택 항목:</strong> 학교명, 학급명</span>
                     </li>
                   </ul>
                 </div>
@@ -159,16 +159,16 @@ const PrivacyPolicy = () => {
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
                   <ul className="space-y-3">
                     <ListItem>
-                      <strong className="text-white">학년도 종료 시:</strong> 매 학년 말(2월) 담임교사가 학급 데이터 일괄 삭제 — 학생 계정 포함 즉시 파기
+                      <strong className="text-slate-800 dark:text-white">학년도 종료 시:</strong> 매 학년 말(2월) 담임교사가 학급 데이터 일괄 삭제 — 학생 계정 포함 즉시 파기
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">회원 탈퇴(계정 삭제) 시:</strong> 즉시 파기
+                      <strong className="text-slate-800 dark:text-white">회원 탈퇴(계정 삭제) 시:</strong> 즉시 파기
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">휴면 계정:</strong> 1년 이상 로그인 기록 없는 경우 별도 고지 후 파기
+                      <strong className="text-slate-800 dark:text-white">휴면 계정:</strong> 1년 이상 로그인 기록 없는 경우 별도 고지 후 파기
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">법령 의무 보존:</strong> 관련 법령에서 보존 의무를 부과하는 경우 해당 기간 준수
+                      <strong className="text-slate-800 dark:text-white">법령 의무 보존:</strong> 관련 법령에서 보존 의무를 부과하는 경우 해당 기간 준수
                     </ListItem>
                   </ul>
                 </div>
@@ -238,7 +238,7 @@ const PrivacyPolicy = () => {
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800 mb-4">
                   <div className="space-y-3">
                     <div>
-                      <p className="text-white font-semibold mb-1">Google Firebase (Google LLC)</p>
+                      <p className="text-slate-800 dark:text-white font-semibold mb-1">Google Firebase (Google LLC)</p>
                       <p className="text-gray-300 text-sm">위탁 업무: 클라우드 서버 운영, 데이터베이스(Firestore), 인증(Firebase Auth)</p>
                       <p className="text-gray-300 text-sm">서버 위치: <span className="text-green-400 font-medium">대한민국 서울 리전 (asia-northeast3)</span> — 국내 서버에 저장됩니다.</p>
                     </div>
@@ -288,25 +288,25 @@ const PrivacyPolicy = () => {
             content={
               <ul className="space-y-3">
                 <ListItem>
-                  <strong className="text-white">암호화:</strong> 비밀번호는 Firebase Auth에 의해 단방향 암호화(해시) 저장 — 관리자도 복호화 불가
+                  <strong className="text-slate-800 dark:text-white">암호화:</strong> 비밀번호는 Firebase Auth에 의해 단방향 암호화(해시) 저장 — 관리자도 복호화 불가
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">전송 구간 암호화:</strong> 모든 통신은 HTTPS/TLS로 암호화 전송
+                  <strong className="text-slate-800 dark:text-white">전송 구간 암호화:</strong> 모든 통신은 HTTPS/TLS로 암호화 전송
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">접근 권한 최소화:</strong> 학생 데이터는 해당 학급 담임교사 계정만 관리자 권한 보유, 학생 간 타인 정보 열람 불가
+                  <strong className="text-slate-800 dark:text-white">접근 권한 최소화:</strong> 학생 데이터는 해당 학급 담임교사 계정만 관리자 권한 보유, 학생 간 타인 정보 열람 불가
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">Firebase Security Rules:</strong> Firestore 보안 규칙으로 미인증 접근 및 권한 외 접근 차단
+                  <strong className="text-slate-800 dark:text-white">Firebase Security Rules:</strong> Firestore 보안 규칙으로 미인증 접근 및 권한 외 접근 차단
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">세션 관리:</strong> 비활성 세션 자동 만료, 로그인 이상 징후 감지(Firebase 내장)
+                  <strong className="text-slate-800 dark:text-white">세션 관리:</strong> 비활성 세션 자동 만료, 로그인 이상 징후 감지(Firebase 내장)
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">정기 점검:</strong> Firebase 보안 업데이트 및 정기적 보안 설정 점검
+                  <strong className="text-slate-800 dark:text-white">정기 점검:</strong> Firebase 보안 업데이트 및 정기적 보안 설정 점검
                 </ListItem>
                 <ListItem>
-                  <strong className="text-white">개인정보 유출 대응:</strong> 유출 사고 발생 시 72시간 이내 정보주체 및 관련 기관에 통지
+                  <strong className="text-slate-800 dark:text-white">개인정보 유출 대응:</strong> 유출 사고 발생 시 72시간 이내 정보주체 및 관련 기관에 통지
                 </ListItem>
               </ul>
             }
@@ -324,13 +324,13 @@ const PrivacyPolicy = () => {
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
                   <ul className="space-y-3">
                     <ListItem>
-                      <strong className="text-white">전자적 파일:</strong> Firestore 문서 및 Firebase Auth 계정 영구 삭제 — 복구 불가능한 방법으로 처리
+                      <strong className="text-slate-800 dark:text-white">전자적 파일:</strong> Firestore 문서 및 Firebase Auth 계정 영구 삭제 — 복구 불가능한 방법으로 처리
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">삭제 범위:</strong> 사용자 문서, 거래 내역, 인벤토리, 주식 포트폴리오 등 모든 연관 데이터 포함
+                      <strong className="text-slate-800 dark:text-white">삭제 범위:</strong> 사용자 문서, 거래 내역, 인벤토리, 주식 포트폴리오 등 모든 연관 데이터 포함
                     </ListItem>
                     <ListItem>
-                      <strong className="text-white">파기 확인:</strong> 파기 완료 시 담임교사가 확인 후 기록 보관
+                      <strong className="text-slate-800 dark:text-white">파기 확인:</strong> 파기 완료 시 담임교사가 확인 후 기록 보관
                     </ListItem>
                   </ul>
                 </div>
@@ -350,18 +350,18 @@ const PrivacyPolicy = () => {
                 </p>
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800 mb-4">
                   <div className="space-y-2">
-                    <p className="text-white font-semibold text-lg">개인정보 보호책임자</p>
+                    <p className="text-slate-800 dark:text-white font-semibold text-lg">개인정보 보호책임자</p>
                     <p className="text-gray-300">직책: 담임교사 (서비스 운영자)</p>
                     <p className="text-gray-300 flex items-center gap-2">
                       <Mail className="w-4 h-4 text-violet-400" />
                       이메일: <a href="mailto:215253422+iw-lab@users.noreply.github.com" className="text-violet-400 hover:text-violet-300 underline">215253422+iw-lab@users.noreply.github.com</a>
                     </p>
-                    <p className="text-gray-400 text-sm mt-2">※ 이메일 문의 시 10일 이내 회신합니다.</p>
+                    <p className="text-slate-500 dark:text-gray-400 text-sm mt-2">※ 이메일 문의 시 10일 이내 회신합니다.</p>
                   </div>
                 </div>
                 <div className="bg-[#15151f] rounded-xl p-5 border border-gray-800">
-                  <p className="text-gray-300 text-sm mb-3 font-semibold text-white">개인정보 침해 신고·상담 기관</p>
-                  <ul className="space-y-2 text-sm text-gray-400">
+                  <p className="text-gray-300 text-sm mb-3 font-semibold text-slate-800 dark:text-white">개인정보 침해 신고·상담 기관</p>
+                  <ul className="space-y-2 text-sm text-slate-500 dark:text-gray-400">
                     <li>• 개인정보침해신고센터: <span className="text-gray-300">privacy.kisa.or.kr / 국번없이 118</span></li>
                     <li>• 개인정보 분쟁조정위원회: <span className="text-gray-300">www.kopico.go.kr / 1833-6972</span></li>
                     <li>• 대검찰청 사이버범죄수사단: <span className="text-gray-300">국번없이 1301</span></li>
@@ -379,8 +379,8 @@ const PrivacyPolicy = () => {
             content={
               <p className="text-gray-300 leading-relaxed">
                 이 개인정보처리방침은 2026년 3월 16일부터 적용됩니다.
-                내용 변경 시 시행 <strong className="text-white">7일 전</strong>부터 서비스 공지사항을 통해 고지합니다.
-                중요한 변경(수집 항목 추가, 제3자 제공 등)은 <strong className="text-white">30일 전</strong>에 고지하고 별도 동의를 받습니다.
+                내용 변경 시 시행 <strong className="text-slate-800 dark:text-white">7일 전</strong>부터 서비스 공지사항을 통해 고지합니다.
+                중요한 변경(수집 항목 추가, 제3자 제공 등)은 <strong className="text-slate-800 dark:text-white">30일 전</strong>에 고지하고 별도 동의를 받습니다.
               </p>
             }
           />
@@ -405,7 +405,7 @@ const Section = ({ icon, title, content, highlighted = false }) => {
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${highlighted ? 'bg-violet-500/20' : 'bg-violet-500/10'}`}>
           <div className="text-violet-400">{icon}</div>
         </div>
-        <h2 className="text-xl font-bold text-white pt-2">{title}</h2>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white pt-2">{title}</h2>
       </div>
       <div className="ml-16">{content}</div>
     </div>

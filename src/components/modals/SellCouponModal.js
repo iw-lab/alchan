@@ -92,13 +92,13 @@ const SellCouponModal = memo(function SellCouponModal({
         className="bg-white dark:bg-slate-800 p-5 rounded-lg max-w-[500px] w-[90%] max-h-[90vh] overflow-y-auto shadow-md border border-slate-600"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold mb-4 text-slate-100">
+        <h3 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-100">
           쿠폰 판매하기
         </h3>
         <p className="mb-2.5 text-sm text-slate-400">
           쿠폰을 판매하고 현금으로 교환하세요.
         </p>
-        <div className="flex justify-between mb-4 p-2.5 bg-slate-800/60 rounded-md text-[15px] text-slate-300">
+        <div className="flex justify-between mb-4 p-2.5 bg-slate-800/60 rounded-md text-[15px] text-slate-600 dark:text-slate-300">
           <span>현재 보유 쿠폰:</span>
           <strong className="text-slate-100">
             {currentCoupons.toLocaleString()}
@@ -113,7 +113,7 @@ const SellCouponModal = memo(function SellCouponModal({
           <div className="mb-4">
             <label
               htmlFor="sellAmount"
-              className="block mb-1 font-medium text-slate-300"
+              className="block mb-1 font-medium text-slate-600 dark:text-slate-300"
             >
               판매할 쿠폰 수:
             </label>
@@ -124,7 +124,7 @@ const SellCouponModal = memo(function SellCouponModal({
               onChange={(e) => setSellAmount(e.target.value)}
               min="1"
               max={currentCoupons}
-              className="w-full px-3 py-2 border border-slate-600 rounded-md text-sm outline-none bg-slate-700/50 text-slate-100"
+              className="w-full px-3 py-2 border border-slate-600 rounded-md text-sm outline-none bg-slate-700/50 text-slate-700 dark:text-slate-100"
               disabled={isProcessing}
               required
             />
@@ -138,7 +138,7 @@ const SellCouponModal = memo(function SellCouponModal({
           )}
 
           <div className="mb-5 px-4 py-2.5 bg-indigo-900/30 rounded-md border-l-4 border-indigo-500">
-            <div className="flex justify-between text-base font-semibold text-slate-200">
+            <div className="flex justify-between text-base font-semibold text-slate-700 dark:text-slate-200">
               <span>예상 수령액:</span>
               <span className="text-indigo-400">
                 {calculateValue().toLocaleString()}원
@@ -150,7 +150,7 @@ const SellCouponModal = memo(function SellCouponModal({
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 bg-slate-600 text-slate-200 border-0 rounded-md text-sm cursor-pointer transition-colors duration-200 hover:bg-slate-500"
+              className="px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md text-sm cursor-pointer transition-colors duration-200 hover:bg-slate-500"
               disabled={isProcessing}
             >
               취소

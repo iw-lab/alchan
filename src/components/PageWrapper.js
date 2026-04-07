@@ -40,7 +40,7 @@ export const PageHeader = ({
       )}
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">
+          <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white tracking-tight">
             {title}
           </h2>
           {badge}
@@ -70,7 +70,7 @@ export const SectionTitle = ({
   className = "",
 }) => (
   <div className={`flex items-center justify-between px-1 mb-4 ${className}`}>
-    <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+    <h3 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
       {Icon && <Icon className="w-5 h-5 text-cyan-400" />}
       {children}
     </h3>
@@ -95,7 +95,7 @@ export const ErrorState = ({
     <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mb-4">
       <span className="text-3xl text-red-400">!</span>
     </div>
-    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+    <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">{title}</h3>
     {message && <p className="text-slate-400 mb-4 max-w-md">{message}</p>}
     {onRetry && (
       <button
@@ -119,7 +119,7 @@ export const EmptyState = ({ icon: Icon, title, description, action }) => (
       </div>
     )}
     {title && (
-      <h3 className="text-lg font-bold text-slate-300 mb-2">{title}</h3>
+      <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">{title}</h3>
     )}
     {description && (
       <p className="text-slate-400 font-medium mb-6 max-w-md">{description}</p>
@@ -188,7 +188,7 @@ export const StatCard = ({
     </div>
     <div className="mt-4">
       <p className="text-sm text-slate-400 font-medium">{label}</p>
-      <p className="text-2xl font-bold text-white mt-1 tracking-tight">
+      <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1 tracking-tight">
         {value}
       </p>
       {subValue && <p className="text-sm text-slate-500 mt-1">{subValue}</p>}
@@ -269,9 +269,9 @@ export const ActionButton = ({
   const variants = {
     primary:
       "bg-cyan-500 text-slate-900 hover:bg-cyan-400 ring-1 ring-cyan-400 shadow-cyan-500/30",
-    secondary: "bg-white dark:bg-slate-800 hover:bg-slate-700 text-slate-200",
+    secondary: "bg-white dark:bg-slate-800 hover:bg-slate-700 text-slate-700 dark:text-slate-200",
     outline:
-      "bg-transparent text-slate-300 ring-1 ring-slate-600 hover:bg-white dark:bg-slate-800 hover:ring-slate-500 shadow-sm",
+      "bg-transparent text-slate-600 dark:text-slate-300 ring-1 ring-slate-600 hover:bg-white dark:bg-slate-800 hover:ring-slate-500 shadow-sm",
     "outline-green":
       "bg-transparent text-emerald-400 ring-1 ring-emerald-600 hover:bg-emerald-900/30 hover:ring-emerald-500 shadow-sm",
     "outline-red":
@@ -316,7 +316,7 @@ export const InfoBadge = ({
   className = "",
 }) => {
   const variants = {
-    default: "bg-white dark:bg-slate-800 text-slate-300",
+    default: "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300",
     primary: "bg-indigo-900/50 text-indigo-300",
     success: "bg-emerald-900/50 text-emerald-300",
     warning: "bg-amber-900/50 text-amber-300",
@@ -418,7 +418,7 @@ export const TaskItem = ({
       >
         {/* 체크박스 영역 */}
       </div>
-      <span className="font-bold text-slate-300 text-base truncate group-hover:text-cyan-400 transition-colors">
+      <span className="font-bold text-slate-600 dark:text-slate-300 text-base truncate group-hover:text-cyan-400 transition-colors">
         {task.name}
       </span>
     </div>
@@ -474,7 +474,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
       <div
         className={`h-16 px-6 flex items-center justify-between bg-gradient-to-r ${gradient}`}
       >
-        <h4 className="text-white font-bold text-lg tracking-wide flex items-center gap-2">
+        <h4 className="text-slate-800 dark:text-white font-bold text-lg tracking-wide flex items-center gap-2">
           👑 {job.title}
         </h4>
         {(onEdit || onDelete) && (
@@ -482,7 +482,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 dark:text-white transition-colors"
               >
                 ✏️
               </button>
@@ -490,7 +490,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 dark:text-white transition-colors"
               >
                 🗑️
               </button>
@@ -555,7 +555,7 @@ export const MoneyDisplay = ({
           ? "text-red-400"
           : isPositive && showSign
             ? "text-emerald-400"
-            : "text-white"
+            : "text-slate-800 dark:text-white"
       } ${className}`}
     >
       {showSign && isPositive && "+"}

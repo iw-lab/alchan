@@ -381,7 +381,7 @@ export default function AlchanLayout() {
           <p className="text-gray-500 mb-2">
             앱 관리자의 승인을 기다리고 있습니다.
           </p>
-          <p className="text-gray-400 text-sm mb-6">
+          <p className="text-slate-500 dark:text-gray-400 text-sm mb-6">
             승인이 완료되면 모든 기능을 사용할 수 있습니다.
           </p>
           <div className="flex gap-3 justify-center">
@@ -814,7 +814,7 @@ export default function AlchanLayout() {
 
           {/* 푸터 - PC만 */}
           {!isImmersiveMusicRoom && (
-          <footer className="hidden md:block py-8 text-center text-sm text-gray-400 font-medium">
+          <footer className="hidden md:block py-8 text-center text-sm text-slate-500 dark:text-gray-400 font-medium">
             © 2026 알찬 Corp. All rights reserved.
           </footer>
           )}
@@ -894,7 +894,7 @@ export default function AlchanLayout() {
               <div className="text-right mb-2">
                 <button
                   onClick={() => setShowDailyRewardPopup(false)}
-                  className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-white flex items-center justify-center ml-auto bg-white/20"
+                  className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-slate-800 dark:text-white flex items-center justify-center ml-auto bg-white/20"
                 >
                   ✕
                 </button>
@@ -903,7 +903,7 @@ export default function AlchanLayout() {
                 userId={userDoc.uid}
                 onClaim={handleDailyRewardClaim}
               />
-              <div className="text-center mt-3 text-[13px] text-white/60">
+              <div className="text-center mt-3 text-[13px] text-slate-800 dark:text-white/60">
                 배경을 터치하면 닫힙니다
               </div>
             </div>

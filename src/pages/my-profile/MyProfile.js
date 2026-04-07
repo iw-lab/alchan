@@ -247,7 +247,7 @@ export default function MyProfile() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-400">로그인이 필요합니다.</p>
+        <p className="text-slate-500 dark:text-gray-400">로그인이 필요합니다.</p>
       </div>
     );
   }
@@ -566,7 +566,7 @@ export default function MyProfile() {
               <button
                 onClick={handleChangeNickname}
                 disabled={isLoading}
-                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 dark:text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
               >
                 {isLoading ? "변경 중..." : "변경"}
               </button>
@@ -626,7 +626,7 @@ export default function MyProfile() {
               <button
                 onClick={handleChangePassword}
                 disabled={isLoading}
-                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 dark:text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
               >
                 {isLoading ? "변경 중..." : "변경"}
               </button>
@@ -678,7 +678,7 @@ export default function MyProfile() {
               <button
                 onClick={handleChangeClassCode}
                 disabled={isLoading}
-                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+                className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 dark:text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
               >
                 {isLoading ? "변경 중..." : "변경"}
               </button>
@@ -737,7 +737,7 @@ export default function MyProfile() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={isLoading || deleteConfirmText !== "계정삭제"}
-                className={`flex-1 p-3 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed ${
+                className={`flex-1 p-3 border-none rounded-[10px] text-slate-800 dark:text-white text-sm font-semibold cursor-pointer disabled:cursor-not-allowed ${
                   deleteConfirmText === "계정삭제"
                     ? "bg-red-500 opacity-100"
                     : "bg-gray-700 opacity-50"

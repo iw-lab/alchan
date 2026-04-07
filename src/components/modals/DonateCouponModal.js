@@ -64,7 +64,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
       >
         {/* 헤더 */}
         <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-slate-800">
-          <h3 className="m-0 text-lg font-semibold text-slate-100">
+          <h3 className="m-0 text-lg font-semibold text-slate-700 dark:text-slate-100">
             쿠폰 응모하기
             {classCode && (
               <span className="ml-2 text-sm bg-indigo-900/60 text-indigo-300 px-2 py-1 rounded-xl font-medium">
@@ -96,7 +96,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
               응모할 쿠폰 수량
             </label>
             <input
@@ -106,20 +106,20 @@ const DonateCouponModal = memo(function DonateCouponModal({
               value={donateAmount}
               onChange={(e) => setDonateAmount(e.target.value)}
               disabled={isDonating}
-              className={`w-full p-3 border border-slate-600 rounded-md text-base text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
+              className={`w-full p-3 border border-slate-600 rounded-md text-base text-slate-700 dark:text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
               placeholder="응모할 쿠폰 수량을 입력하세요"
             />
           </div>
 
           <div className="mb-5">
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
               응모 메시지 (선택사항)
             </label>
             <textarea
               value={donateMessage}
               onChange={(e) => setDonateMessage(e.target.value)}
               disabled={isDonating}
-              className={`w-full p-3 border border-slate-600 rounded-md text-sm resize-y min-h-[80px] text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
+              className={`w-full p-3 border border-slate-600 rounded-md text-sm resize-y min-h-[80px] text-slate-700 dark:text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
               placeholder="응모와 함께 전할 메시지를 입력하세요"
             />
           </div>
@@ -144,7 +144,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
           <button
             onClick={handleClose}
             disabled={isDonating}
-            className={`px-4 py-2 bg-slate-600 text-slate-200 border-0 rounded-md font-medium ${isDonating ? "cursor-not-allowed opacity-60" : "cursor-pointer opacity-100 hover:bg-slate-500"}`}
+            className={`px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md font-medium ${isDonating ? "cursor-not-allowed opacity-60" : "cursor-pointer opacity-100 hover:bg-slate-500"}`}
           >
             취소
           </button>
@@ -167,7 +167,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
                   ? "#4b5563"
                   : "#4f46e5",
             }}
-            className={`px-4 py-2 text-white border-0 rounded-md font-medium ${
+            className={`px-4 py-2 text-slate-800 dark:text-white border-0 rounded-md font-medium ${
               isDonating ||
               !donateAmount ||
               isNaN(parseInt(donateAmount, 10)) ||

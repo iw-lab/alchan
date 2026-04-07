@@ -99,7 +99,7 @@ export default function PWAInstallPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="text-white/50 hover:text-white transition-colors"
+            className="text-slate-800 dark:text-white/50 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
@@ -112,7 +112,7 @@ export default function PWAInstallPrompt() {
               <span className="text-2xl">✨</span>
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-white mb-1">
+              <h3 className="font-bold text-slate-800 dark:text-white mb-1">
                 알찬 앱을 설치하세요!
               </h3>
               <p className="text-sm text-slate-400 leading-relaxed">
@@ -125,7 +125,7 @@ export default function PWAInstallPrompt() {
           {/* iOS 안내 */}
           {isIOS ? (
             <div className="mt-4 p-3 bg-gray-100 dark:bg-slate-900 rounded-xl border border-indigo-500/10">
-              <p className="text-sm text-slate-100 mb-2 font-medium">
+              <p className="text-sm text-slate-700 dark:text-slate-100 mb-2 font-medium">
                 iOS에서 설치하기:
               </p>
               <div className="space-y-2">
@@ -149,7 +149,7 @@ export default function PWAInstallPrompt() {
               </button>
               <button
                 onClick={handleInstall}
-                className="flex-1 px-4 py-2.5 text-white bg-gradient-to-r from-[#00fff2]/80 to-[#a855f7]/80 hover:from-[#00fff2] hover:to-[#a855f7] rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#00fff2]/10"
+                className="flex-1 px-4 py-2.5 text-slate-800 dark:text-white bg-gradient-to-r from-[#00fff2]/80 to-[#a855f7]/80 hover:from-[#00fff2] hover:to-[#a855f7] rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#00fff2]/10"
               >
                 <Download size={18} />
                 설치하기
@@ -160,7 +160,7 @@ export default function PWAInstallPrompt() {
 
         {/* 하단 정보 */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-slate-500 dark:text-gray-400 text-center">
             설치해도 저장공간을 거의 차지하지 않아요
           </p>
         </div>
