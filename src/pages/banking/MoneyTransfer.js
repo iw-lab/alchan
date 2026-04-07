@@ -303,6 +303,25 @@ function MoneyTransfer() {
           </button>
         </div>
 
+        {/* 상단 실행 버튼 */}
+        <button
+          type="submit"
+          className={`submit-btn ${action}`}
+          disabled={authLoading || isProcessing}
+          style={{ marginBottom: '16px' }}
+        >
+          {isProcessing ? (
+            <>
+              <span className="spinner"></span> 처리 중...
+            </>
+          ) : (
+            <>
+              <span className="icon">{action === "send" ? "📤" : "📥"}</span>{" "}
+              {action === "send" ? "보내기" : "가져오기"} 실행
+            </>
+          )}
+        </button>
+
         {action === "take" && (
           <div className="take-mode-section">
             <h4>가져오기 옵션</h4>
