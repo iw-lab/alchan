@@ -1076,45 +1076,17 @@ html:not(.dark) body * {
   color: #1e293b !important;
 }
 
-/* 색상 배경 버튼/배지 내부만 흰색 */
-html:not(.dark) [class*="bg-indigo-5"] *,
-html:not(.dark) [class*="bg-indigo-6"] *,
-html:not(.dark) [class*="bg-violet-5"] *,
-html:not(.dark) [class*="bg-violet-6"] *,
-html:not(.dark) [class*="bg-emerald-5"] *,
-html:not(.dark) [class*="bg-emerald-6"] *,
-html:not(.dark) [class*="bg-rose-5"] *,
-html:not(.dark) [class*="bg-rose-6"] *,
-html:not(.dark) [class*="bg-red-5"] *,
-html:not(.dark) [class*="bg-red-6"] *,
-html:not(.dark) [class*="bg-green-5"] *,
-html:not(.dark) [class*="bg-green-6"] *,
-html:not(.dark) [class*="bg-blue-5"] *,
-html:not(.dark) [class*="bg-blue-6"] *,
-html:not(.dark) [class*="bg-purple-5"] *,
-html:not(.dark) [class*="bg-purple-6"] *,
-html:not(.dark) [class*="bg-amber-5"] *,
-html:not(.dark) [class*="bg-amber-6"] *,
-html:not(.dark) [class*="bg-gradient-to"] *,
-html:not(.dark) [class*="bg-indigo-5"],
-html:not(.dark) [class*="bg-indigo-6"],
-html:not(.dark) [class*="bg-violet-5"],
-html:not(.dark) [class*="bg-violet-6"],
-html:not(.dark) [class*="bg-emerald-5"],
-html:not(.dark) [class*="bg-emerald-6"],
-html:not(.dark) [class*="bg-rose-5"],
-html:not(.dark) [class*="bg-rose-6"],
-html:not(.dark) [class*="bg-red-5"],
-html:not(.dark) [class*="bg-red-6"],
-html:not(.dark) [class*="bg-green-5"],
-html:not(.dark) [class*="bg-green-6"],
-html:not(.dark) [class*="bg-blue-5"],
-html:not(.dark) [class*="bg-blue-6"],
-html:not(.dark) [class*="bg-purple-5"],
-html:not(.dark) [class*="bg-purple-6"],
-html:not(.dark) [class*="bg-amber-5"],
-html:not(.dark) [class*="bg-amber-6"],
-html:not(.dark) [class*="bg-gradient-to"],
+/* 진한 배경 버튼 내부만 흰색 (50/100 같은 밝은 배경 제외) */
+html:not(.dark) .bg-indigo-500, html:not(.dark) .bg-indigo-600, html:not(.dark) .bg-indigo-700,
+html:not(.dark) .bg-violet-500, html:not(.dark) .bg-violet-600, html:not(.dark) .bg-violet-700,
+html:not(.dark) .bg-emerald-500, html:not(.dark) .bg-emerald-600, html:not(.dark) .bg-emerald-700,
+html:not(.dark) .bg-rose-500, html:not(.dark) .bg-rose-600,
+html:not(.dark) .bg-red-500, html:not(.dark) .bg-red-600,
+html:not(.dark) .bg-green-500, html:not(.dark) .bg-green-600,
+html:not(.dark) .bg-blue-500, html:not(.dark) .bg-blue-600, html:not(.dark) .bg-blue-700,
+html:not(.dark) .bg-purple-500, html:not(.dark) .bg-purple-600,
+html:not(.dark) .bg-amber-500, html:not(.dark) .bg-amber-600,
+html:not(.dark) [class*="bg-gradient-to-"],
 html:not(.dark) .buy-button,
 html:not(.dark) .admin-save-button,
 html:not(.dark) .admin-action-button,
@@ -1125,16 +1097,18 @@ html:not(.dark) .admin-settings-button {
   color: #ffffff !important;
 }
 
-/* SVG 아이콘도 진하게 */
-html:not(.dark) svg {
-  color: inherit !important;
-}
-
-html:not(.dark) [class*="bg-indigo-5"] svg,
-html:not(.dark) [class*="bg-violet-5"] svg,
-html:not(.dark) [class*="bg-emerald-5"] svg,
-html:not(.dark) [class*="bg-rose-5"] svg,
-html:not(.dark) [class*="bg-gradient-to"] svg {
+html:not(.dark) .bg-indigo-500 *, html:not(.dark) .bg-indigo-600 *, html:not(.dark) .bg-indigo-700 *,
+html:not(.dark) .bg-violet-500 *, html:not(.dark) .bg-violet-600 *,
+html:not(.dark) .bg-emerald-500 *, html:not(.dark) .bg-emerald-600 *,
+html:not(.dark) .bg-rose-500 *, html:not(.dark) .bg-rose-600 *,
+html:not(.dark) .bg-red-500 *, html:not(.dark) .bg-red-600 *,
+html:not(.dark) .bg-green-500 *, html:not(.dark) .bg-green-600 *,
+html:not(.dark) .bg-blue-500 *, html:not(.dark) .bg-blue-600 *,
+html:not(.dark) .bg-purple-500 *, html:not(.dark) .bg-purple-600 *,
+html:not(.dark) .bg-amber-500 *, html:not(.dark) .bg-amber-600 *,
+html:not(.dark) [class*="bg-gradient-to-"] *,
+html:not(.dark) .buy-button *, html:not(.dark) .admin-save-button *,
+html:not(.dark) .header-button *, html:not(.dark) .green-button * {
   color: #ffffff !important;
 }
 
