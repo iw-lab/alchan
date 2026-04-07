@@ -1072,8 +1072,70 @@ label, .form-label {
    LIGHT MODE: 모든 텍스트 강제 어둡게
    ============================================ */
 html:not(.dark) body,
-html:not(.dark) body *:not(button):not(a):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-amber"]):not([class*="bg-gradient"]) {
+html:not(.dark) body * {
   color: #1e293b !important;
+}
+
+/* 색상 배경 버튼/배지 내부만 흰색 */
+html:not(.dark) [class*="bg-indigo-5"] *,
+html:not(.dark) [class*="bg-indigo-6"] *,
+html:not(.dark) [class*="bg-violet-5"] *,
+html:not(.dark) [class*="bg-violet-6"] *,
+html:not(.dark) [class*="bg-emerald-5"] *,
+html:not(.dark) [class*="bg-emerald-6"] *,
+html:not(.dark) [class*="bg-rose-5"] *,
+html:not(.dark) [class*="bg-rose-6"] *,
+html:not(.dark) [class*="bg-red-5"] *,
+html:not(.dark) [class*="bg-red-6"] *,
+html:not(.dark) [class*="bg-green-5"] *,
+html:not(.dark) [class*="bg-green-6"] *,
+html:not(.dark) [class*="bg-blue-5"] *,
+html:not(.dark) [class*="bg-blue-6"] *,
+html:not(.dark) [class*="bg-purple-5"] *,
+html:not(.dark) [class*="bg-purple-6"] *,
+html:not(.dark) [class*="bg-amber-5"] *,
+html:not(.dark) [class*="bg-amber-6"] *,
+html:not(.dark) [class*="bg-gradient-to"] *,
+html:not(.dark) [class*="bg-indigo-5"],
+html:not(.dark) [class*="bg-indigo-6"],
+html:not(.dark) [class*="bg-violet-5"],
+html:not(.dark) [class*="bg-violet-6"],
+html:not(.dark) [class*="bg-emerald-5"],
+html:not(.dark) [class*="bg-emerald-6"],
+html:not(.dark) [class*="bg-rose-5"],
+html:not(.dark) [class*="bg-rose-6"],
+html:not(.dark) [class*="bg-red-5"],
+html:not(.dark) [class*="bg-red-6"],
+html:not(.dark) [class*="bg-green-5"],
+html:not(.dark) [class*="bg-green-6"],
+html:not(.dark) [class*="bg-blue-5"],
+html:not(.dark) [class*="bg-blue-6"],
+html:not(.dark) [class*="bg-purple-5"],
+html:not(.dark) [class*="bg-purple-6"],
+html:not(.dark) [class*="bg-amber-5"],
+html:not(.dark) [class*="bg-amber-6"],
+html:not(.dark) [class*="bg-gradient-to"],
+html:not(.dark) .buy-button,
+html:not(.dark) .admin-save-button,
+html:not(.dark) .admin-action-button,
+html:not(.dark) .header-button,
+html:not(.dark) .green-button,
+html:not(.dark) .add-job-task-button,
+html:not(.dark) .admin-settings-button {
+  color: #ffffff !important;
+}
+
+/* SVG 아이콘도 진하게 */
+html:not(.dark) svg {
+  color: inherit !important;
+}
+
+html:not(.dark) [class*="bg-indigo-5"] svg,
+html:not(.dark) [class*="bg-violet-5"] svg,
+html:not(.dark) [class*="bg-emerald-5"] svg,
+html:not(.dark) [class*="bg-rose-5"] svg,
+html:not(.dark) [class*="bg-gradient-to"] svg {
+  color: #ffffff !important;
 }
 
 /* 라이트모드 보조 텍스트 */
