@@ -1069,6 +1069,131 @@ label, .form-label {
 }
 
 /* ============================================
+   LIGHT MODE: 모든 텍스트 강제 어둡게
+   ============================================ */
+html:not(.dark) body,
+html:not(.dark) body *:not(button):not(a):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-amber"]):not([class*="bg-gradient"]) {
+  color: #1e293b !important;
+}
+
+/* 라이트모드 보조 텍스트 */
+html:not(.dark) .text-slate-400,
+html:not(.dark) .text-slate-500,
+html:not(.dark) .text-gray-400,
+html:not(.dark) .text-gray-500,
+html:not(.dark) [class*="description"],
+html:not(.dark) [class*="subtitle"],
+html:not(.dark) [class*="muted"],
+html:not(.dark) [class*="secondary"] {
+  color: #64748b !important;
+}
+
+/* 라이트모드 포인트 색상 */
+html:not(.dark) .text-indigo-400,
+html:not(.dark) [class*="accent"],
+html:not(.dark) [class*="price"],
+html:not(.dark) [class*="amount"] {
+  color: #4f46e5 !important;
+}
+
+/* 라이트모드에서 버튼 텍스트는 흰색 유지 */
+html:not(.dark) button[class*="bg-indigo"],
+html:not(.dark) button[class*="bg-violet"],
+html:not(.dark) button[class*="bg-emerald"],
+html:not(.dark) button[class*="bg-rose"],
+html:not(.dark) button[class*="bg-red"],
+html:not(.dark) button[class*="bg-green"],
+html:not(.dark) button[class*="bg-blue"],
+html:not(.dark) button[class*="bg-purple"],
+html:not(.dark) button[class*="bg-gradient"],
+html:not(.dark) .buy-button,
+html:not(.dark) .admin-action-button,
+html:not(.dark) .admin-save-button,
+html:not(.dark) .header-button,
+html:not(.dark) .green-button,
+html:not(.dark) .add-job-task-button,
+html:not(.dark) .admin-settings-button,
+html:not(.dark) [style*="background"][style*="indigo"],
+html:not(.dark) [style*="background"][style*="gradient"] {
+  color: white !important;
+}
+
+html:not(.dark) button[class*="bg-indigo"] *,
+html:not(.dark) button[class*="bg-violet"] *,
+html:not(.dark) button[class*="bg-emerald"] *,
+html:not(.dark) button[class*="bg-rose"] *,
+html:not(.dark) button[class*="bg-gradient"] *,
+html:not(.dark) .buy-button *,
+html:not(.dark) .admin-save-button *,
+html:not(.dark) .header-button *,
+html:not(.dark) .green-button * {
+  color: white !important;
+}
+
+/* 라이트모드 배경 강제 */
+html:not(.dark) body {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .section-container,
+html:not(.dark) [class*="card"],
+html:not(.dark) [class*="panel"],
+html:not(.dark) [class*="modal-content"],
+html:not(.dark) [class*="section-card"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+/* 라이트모드 사이드바 */
+html:not(.dark) aside {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) aside * {
+  color: #334155 !important;
+}
+
+html:not(.dark) aside [style*="color: var(--accent)"],
+html:not(.dark) aside .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+
+/* 라이트모드 헤더 */
+html:not(.dark) header {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 라이트모드 입력필드 */
+html:not(.dark) input,
+html:not(.dark) textarea,
+html:not(.dark) select {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+/* 라이트모드 테이블 */
+html:not(.dark) table,
+html:not(.dark) table th,
+html:not(.dark) table td {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html:not(.dark) table th {
+  background-color: #f1f5f9 !important;
+}
+
+/* 라이트모드 보더 */
+html:not(.dark) [style*="border"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* ============================================
    GLOBAL THEME FORCE OVERRIDE
    모든 페이지/컴포넌트에 테마 강제 적용
    인라인 스타일, Tailwind 클래스 등 모두 덮어씀
