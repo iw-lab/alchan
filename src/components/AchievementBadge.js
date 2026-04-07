@@ -91,7 +91,7 @@ export function AchievementSummary({ userStats, onClick }) {
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">🏆</span>
-          <span className="text-sm font-semibold" style={{ color: "#e8e8ff" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             업적
           </span>
         </div>
@@ -178,7 +178,7 @@ export function AchievementModal({ isOpen, onClose, userStats }) {
       >
         {/* 헤더 */}
         <div className="flex justify-between items-center mb-5">
-          <h2 className="m-0 text-xl font-bold flex items-center gap-2.5" style={{ color: "#e8e8ff" }}>
+          <h2 className="m-0 text-xl font-bold flex items-center gap-2.5" style={{ color: "var(--text-primary)" }}>
             <span className="text-3xl">🏆</span>
             업적 컬렉션
           </h2>

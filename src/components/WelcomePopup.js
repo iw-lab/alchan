@@ -198,7 +198,7 @@ export default function WelcomePopup() {
               padding: "12px 0",
               borderRadius: 12,
               background: "rgba(0,255,242,0.15)",
-              color: "#00fff2",
+              color: "var(--accent)",
               fontSize: 15,
               fontWeight: 700,
               border: "1px solid rgba(0,255,242,0.3)",

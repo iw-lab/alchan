@@ -47,7 +47,7 @@ const JobList = memo(function JobList({
             fontSize: isMobile ? "15px" : "18px",
             textShadow: "0 0 10px rgba(0, 255, 242, 0.3)",
             letterSpacing: "-0.01em",
-            color: "#e8e8ff", // 밝은 텍스트
+            color: "var(--text-primary)", // 밝은 텍스트
           }}
         >
           {job.title}
@@ -106,7 +106,7 @@ const JobList = memo(function JobList({
             className="text-center my-2.5"
             style={{
               fontSize: "13px",
-              color: "#9999bb",
+              color: "var(--text-secondary)",
             }}
           >
             등록된 할일이 없습니다.
@@ -127,7 +127,7 @@ const JobList = memo(function JobList({
                 padding: isMobile ? "6px" : "8px",
                 backgroundColor: "rgba(0, 255, 242, 0.1)",
                 border: "1px solid rgba(0, 255, 242, 0.3)",
-                color: "#00fff2",
+                color: "var(--accent)",
                 fontSize: isMobile ? "12px" : "13px",
                 fontWeight: "500",
               }

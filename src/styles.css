@@ -198,8 +198,8 @@ h2, h3 {
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1));
-  color: #a78bfa;
+  background: linear-gradient(135deg, var(--border-accent), var(--accent-bg));
+  color: var(--accent);
   padding: 0.6rem 1.2rem;
   border: 1px solid rgba(139, 92, 246, 0.5);
   border-radius: 8px;
@@ -207,13 +207,13 @@ h2, h3 {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px var(--bg-input);
   z-index: 10;
 }
 
 .admin-toggle-button:hover {
   background: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 15px var(--border-accent);
 }
 
 .admin-toggle-button:active {
@@ -260,9 +260,9 @@ h2, h3 {
   font-size: 0.9rem;
   line-height: 1.5;
   color: #e2e8f0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   background-clip: padding-box;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -272,9 +272,9 @@ h2, h3 {
 .admin-panel input[type="number"]:focus {
   color: #fff;
   background: rgba(0, 0, 0, 0.4);
-  border-color: #a78bfa;
+  border-color: var(--accent);
   outline: 0;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-light);
 }
 
 /* 아이콘 선택 드롭다운 - Cyberpunk Style */
@@ -285,9 +285,9 @@ h2, h3 {
   font-size: 1rem;
   line-height: 1.5;
   color: #e2e8f0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   background-clip: padding-box;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   transition: all 0.2s ease;
   box-sizing: border-box;
@@ -300,9 +300,9 @@ h2, h3 {
 }
 
 .admin-panel .icon-select:focus {
-  border-color: #a78bfa;
+  border-color: var(--accent);
   outline: 0;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-light);
 }
 
 /* 관리자 폼 버튼 그룹 */
@@ -317,12 +317,12 @@ h2, h3 {
 /* 관리자 액션(추가/수정) 버튼 - Cyberpunk Style */
 .admin-action-button {
   font-weight: 600;
-  color: #a78bfa;
+  color: var(--accent);
   text-align: center;
   vertical-align: middle;
   cursor: pointer;
   user-select: none;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1));
+  background: linear-gradient(135deg, var(--border-accent), var(--accent-bg));
   border: 1px solid rgba(139, 92, 246, 0.5);
   padding: 0.7rem 1.4rem;
   font-size: 0.9rem;
@@ -334,12 +334,12 @@ h2, h3 {
 .admin-action-button:hover {
   color: #c4b5fd;
   background: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 15px var(--border-accent);
 }
 
 .admin-action-button:focus {
   outline: 0;
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 0 2px var(--border-accent);
 }
 
 /* 관리자 취소 버튼 - Cyberpunk Style */
@@ -545,48 +545,48 @@ h2, h3 {
 
 /* Neon Glow Text Effect */
 .neon-text {
-  color: #00fff2;
+  color: var(--accent);
   text-shadow:
-    0 0 5px rgba(0, 255, 242, 0.5),
-    0 0 10px rgba(0, 255, 242, 0.3),
-    0 0 20px rgba(0, 255, 242, 0.2);
+    0 0 5px var(--accent),
+    0 0 10px var(--border-accent),
+    0 0 20px var(--border-accent);
 }
 
 .neon-text-purple {
-  color: #a78bfa;
+  color: var(--accent);
   text-shadow:
     0 0 5px rgba(139, 92, 246, 0.5),
-    0 0 10px rgba(139, 92, 246, 0.3),
-    0 0 20px rgba(139, 92, 246, 0.2);
+    0 0 10px var(--border-accent),
+    0 0 20px var(--accent-light);
 }
 
 /* Cyberpunk Card Glow */
 .cyber-card {
-  background: rgba(20, 20, 35, 0.8);
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
   border-radius: 12px;
   box-shadow:
-    0 4px 15px rgba(0, 0, 0, 0.3),
+    0 4px 15px var(--bg-input),
     inset 0 0 20px rgba(0, 255, 242, 0.02);
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
 }
 
 .cyber-card:hover {
-  border-color: rgba(0, 255, 242, 0.4);
+  border-color: var(--accent);
   box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.4),
-    0 0 20px rgba(0, 255, 242, 0.15),
+    0 0 20px var(--border-primary),
     inset 0 0 30px rgba(0, 255, 242, 0.03);
 }
 
 /* Pulse Animation for Active States */
 @keyframes cyber-pulse {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+    box-shadow: 0 0 5px var(--border-accent);
   }
   50% {
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+    box-shadow: 0 0 15px var(--accent);
   }
 }
 
@@ -616,7 +616,7 @@ h2, h3 {
 /* Gradient Border Effect */
 .gradient-border {
   position: relative;
-  background: rgba(20, 20, 35, 0.8);
+  background: var(--bg-card);
   border-radius: 12px;
 }
 
@@ -627,7 +627,7 @@ h2, h3 {
   left: -1px;
   right: -1px;
   bottom: -1px;
-  background: linear-gradient(135deg, #00fff2, #a78bfa, #00fff2);
+  background: linear-gradient(135deg, var(--accent), var(--accent), var(--accent));
   border-radius: 12px;
   z-index: -1;
   opacity: 0.3;

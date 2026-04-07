@@ -4,7 +4,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #0a0a12 !important;
+    background-color: var(--bg-primary) !important;
     /* Force Deep Dark Background */
     background-image:
         radial-gradient(circle at 50% 50%, rgba(0, 255, 242, 0.05) 0%, transparent 50%),
@@ -13,7 +13,7 @@
     background-size: 100% 100%, 40px 40px, 40px 40px !important;
     padding: 20px;
     font-family: 'Rajdhani', 'Segoe UI', sans-serif;
-    color: #e8e8ff;
+    color: var(--text-primary);
     min-height: calc(100vh - 80px);
     /* Fill available space */
 }
@@ -22,21 +22,21 @@
 .room-creation {
     width: 100%;
     max-width: 600px;
-    background: rgba(20, 20, 35, 0.8) !important;
+    background: var(--bg-card) !important;
     backdrop-filter: blur(12px);
     padding: 30px;
     border-radius: 16px;
-    box-shadow: 0 0 20px rgba(0, 255, 242, 0.2), inset 0 0 0 1px rgba(0, 255, 242, 0.3);
+    box-shadow: 0 0 20px var(--border-accent), inset 0 0 0 1px var(--border-accent);
     text-align: center;
-    color: #e8e8ff;
-    border: 1px solid rgba(0, 255, 242, 0.3);
+    color: var(--text-primary);
+    border: 1px solid var(--border-accent);
 }
 
 .room-creation h2 {
     font-size: 3em;
     margin-bottom: 20px;
-    color: #00fff2;
-    text-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--accent);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -51,7 +51,7 @@
 .time-control-selector h3,
 .available-rooms h3 {
     margin-bottom: 20px;
-    color: #00fff2;
+    color: var(--accent);
     font-size: 1.5em;
     text-transform: uppercase;
 }
@@ -66,9 +66,9 @@
 
 .time-options button {
     padding: 12px 20px;
-    border: 1px solid rgba(0, 255, 242, 0.3);
+    border: 1px solid var(--border-accent);
     border-radius: 8px;
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: var(--bg-input);
     color: #a0a0c0;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -78,10 +78,10 @@
 
 .time-options button.selected,
 .time-options button:hover {
-    background-color: rgba(0, 255, 242, 0.2);
-    color: #00fff2;
-    border-color: #00fff2;
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+    background-color: var(--border-accent);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--border-accent);
 }
 
 .room-actions {
@@ -95,15 +95,15 @@
     padding: 15px;
     font-size: 1.3em;
     font-weight: bold;
-    color: #0a0a12;
-    background: #00fff2;
+    color: var(--bg-primary);
+    background: var(--accent);
     border: none;
     border-radius: 8px;
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 1px;
     transition: all 0.3s ease;
-    box-shadow: 0 0 20px rgba(0, 255, 242, 0.4);
+    box-shadow: 0 0 20px var(--accent);
 }
 
 .create-room-btn:hover {
@@ -120,7 +120,7 @@
 .join-room input {
     flex-grow: 1;
     padding: 15px;
-    border: 1px solid rgba(0, 255, 242, 0.3);
+    border: 1px solid var(--border-accent);
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.5);
     color: #fff;
@@ -130,15 +130,15 @@
 
 .join-room input:focus {
     outline: none;
-    border-color: #00fff2;
-    box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--border-accent);
 }
 
 .join-room button {
     padding: 0 25px;
     background-color: transparent;
-    color: #00fff2;
-    border: 1px solid #00fff2;
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
@@ -146,8 +146,8 @@
 }
 
 .join-room button:hover {
-    background-color: rgba(0, 255, 242, 0.1);
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+    background-color: var(--accent-light);
+    box-shadow: 0 0 15px var(--border-accent);
 }
 
 .available-rooms {
@@ -168,11 +168,11 @@
 }
 
 .rooms-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
 }
 
 .rooms-list::-webkit-scrollbar-thumb {
-    background: #00fff2;
+    background: var(--accent);
     border-radius: 4px;
 }
 
@@ -183,12 +183,12 @@
     background: rgba(255, 255, 255, 0.05);
     padding: 15px 20px;
     border-radius: 12px;
-    border-left: 4px solid #00fff2;
+    border-left: 4px solid var(--accent);
     transition: all 0.2s ease;
 }
 
 .room-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--border-primary);
     transform: translateX(5px);
 }
 
@@ -224,16 +224,16 @@
 
 .join-btn {
     padding: 8px 16px;
-    background-color: rgba(0, 255, 242, 0.2);
-    color: #00fff2;
-    border: 1px solid #00fff2;
+    background-color: var(--border-accent);
+    color: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
 }
 
 .join-btn:hover {
-    background-color: #00fff2;
+    background-color: var(--accent);
     color: #000;
 }
 
@@ -259,7 +259,7 @@
     background: rgba(0, 0, 0, 0.4);
     padding: 20px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
 }
 
 .chess-rules ul {
@@ -281,9 +281,9 @@
     margin-bottom: 20px;
     color: white;
     padding: 15px;
-    background: rgba(20, 20, 35, 0.8);
+    background: var(--bg-card);
     border-radius: 12px;
-    border: 1px solid rgba(0, 255, 242, 0.2);
+    border: 1px solid var(--border-accent);
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
 }
 
@@ -298,9 +298,9 @@
 }
 
 .player.active {
-    background: rgba(0, 255, 242, 0.1);
-    border-color: #00fff2;
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+    background: var(--accent-light);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--border-accent);
     transform: scale(1.05);
 }
 
@@ -321,7 +321,7 @@
 .player-rank {
     font-weight: normal;
     font-size: 0.85em;
-    color: #00fff2;
+    color: var(--accent);
     margin-left: 5px;
 }
 
@@ -388,9 +388,9 @@
 
 .toggle-btn {
     padding: 8px 20px;
-    border: 1px solid rgba(0, 255, 242, 0.3);
+    border: 1px solid var(--border-accent);
     border-radius: 20px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     color: #a0a0c0;
     cursor: pointer;
     font-weight: 600;
@@ -399,16 +399,16 @@
 }
 
 .toggle-btn.active {
-    background: linear-gradient(135deg, #00fff2 0%, #00d4ff 100%);
-    color: #0a0a12;
-    border-color: #00fff2;
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.4);
+    background: linear-gradient(135deg, var(--accent) 0%, #00d4ff 100%);
+    color: var(--bg-primary);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent);
 }
 
 .toggle-btn:hover:not(.active) {
-    background: rgba(0, 255, 242, 0.1);
-    border-color: #00fff2;
-    color: #00fff2;
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 /* 3D 보드 컨테이너 */
@@ -417,8 +417,8 @@
     height: 500px;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 0 30px rgba(0, 255, 242, 0.2);
-    border: 2px solid rgba(0, 255, 242, 0.3);
+    box-shadow: 0 0 30px var(--border-accent);
+    border: 2px solid var(--border-accent);
     background: linear-gradient(135deg, #0a0a15 0%, #151525 100%);
 }
 
@@ -428,7 +428,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #00fff2;
+    color: var(--accent);
     font-size: 1.2em;
     background: #0a0a15;
 }
@@ -471,8 +471,8 @@
     grid-template-rows: repeat(8, 1fr);
     width: 100%;
     aspect-ratio: 1;
-    box-shadow: 0 0 30px rgba(0, 255, 242, 0.15);
-    border: 2px solid #00fff2;
+    box-shadow: 0 0 30px var(--border-primary);
+    border: 2px solid var(--accent);
     border-radius: 4px;
 }
 
@@ -496,8 +496,8 @@
 
 /* Deep Dark */
 .square.selected {
-    background-color: rgba(0, 255, 242, 0.3) !important;
-    box-shadow: inset 0 0 15px #00fff2;
+    background-color: var(--border-accent) !important;
+    box-shadow: inset 0 0 15px var(--accent);
 }
 
 .square.check {
@@ -513,7 +513,7 @@
 }
 
 .white-piece {
-    color: #e8e8ff;
+    color: var(--text-primary);
     text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
 }
 
@@ -527,16 +527,16 @@
     position: absolute;
     width: 20%;
     height: 20%;
-    background: #00fff2;
+    background: var(--accent);
     border-radius: 50%;
-    box-shadow: 0 0 10px #00fff2;
+    box-shadow: 0 0 10px var(--accent);
 }
 
 .move-dot {
     /* Deprecated but kept for compatibility */
     width: 20%;
     height: 20%;
-    background-color: #00fff2;
+    background-color: var(--accent);
     border-radius: 50%;
 }
 
@@ -558,14 +558,14 @@
 }
 
 .promotion-content {
-    background: #1a1a2e;
-    border: 1px solid #00fff2;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
     color: #fff;
-    box-shadow: 0 0 30px rgba(0, 255, 242, 0.3);
+    box-shadow: 0 0 30px var(--border-accent);
 }
 
 .promotion-pieces button:hover {
-    background: rgba(0, 255, 242, 0.1);
+    background: var(--accent-light);
     border-radius: 8px;
 }
 
@@ -596,16 +596,16 @@
     width: 100%;
     max-width: 600px;
     margin-top: 20px;
-    background: rgba(20, 20, 35, 0.8);
+    background: var(--bg-card);
     padding: 15px;
     border-radius: 12px;
-    border: 1px solid rgba(0, 255, 242, 0.1);
+    border: 1px solid var(--accent-light);
     color: #a0a0c0;
 }
 
 .move-history h4 {
-    color: #00fff2;
-    border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+    color: var(--accent);
+    border-bottom: 1px solid var(--border-accent);
     padding-bottom: 8px;
 }
 
@@ -614,7 +614,7 @@
 }
 
 .move {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     padding: 2px 6px;
     border-radius: 4px;
     margin: 2px;
@@ -625,9 +625,9 @@
 /* 피드백 메시지 */
 .feedback {
     background: rgba(20, 20, 35, 0.95);
-    border: 1px solid #00fff2;
-    color: #00fff2;
-    box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 20px var(--border-accent);
 }
 
 .feedback.error {
@@ -638,21 +638,21 @@
 
 /* 랭크 정보 표시 */
 .rank-info {
-    background: rgba(0, 255, 242, 0.1);
-    border: 1px solid rgba(0, 255, 242, 0.2);
+    background: var(--accent-light);
+    border: 1px solid var(--border-accent);
     color: #fff;
 }
 
 /* 사용자 랭크 정보 */
 .user-rank-info {
-    background: rgba(20, 20, 35, 0.8);
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: var(--bg-card);
+    border: 1px solid var(--border-accent);
     padding: 20px;
-    color: #e8e8ff;
+    color: var(--text-primary);
 }
 
 .user-rank-info p {
-    color: #e8e8ff;
+    color: var(--text-primary);
 }
 
 .user-rank-info strong {
@@ -666,35 +666,35 @@
 /* 게임 모드 및 AI 난이도 선택 (공통 스타일 재사용) */
 .mode-options button,
 .difficulty-options button {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     border: 1px solid #444;
     color: #aaa;
 }
 
 .mode-options button.selected,
 .difficulty-options button.selected {
-    background: rgba(0, 255, 242, 0.2);
-    border-color: #00fff2;
-    color: #00fff2;
-    box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+    background: var(--border-accent);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px var(--border-accent);
 }
 
 /* AI 사고 중 */
 .thinking-content {
-    background: #0a0a12;
-    border: 1px solid #00fff2;
-    box-shadow: 0 0 30px rgba(0, 255, 242, 0.4);
+    background: var(--bg-primary);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px var(--accent);
     color: #fff;
 }
 
 .spinner {
-    border-color: rgba(255, 255, 255, 0.1);
-    border-top-color: #00fff2;
+    border-color: var(--border-primary);
+    border-top-color: var(--accent);
 }
 
 /* 보상 카드 모달 */
 .reward-content {
-    background: #0a0a12;
+    background: var(--bg-primary);
     border: 1px solid #d633ff;
     box-shadow: 0 0 40px rgba(214, 51, 255, 0.3);
 }
@@ -704,11 +704,11 @@
 }
 
 .reward-content p {
-    color: #e8e8ff;
+    color: var(--text-primary);
 }
 
 .reward-card {
-    background: linear-gradient(135deg, rgba(20, 20, 35, 0.9) 0%, rgba(40, 40, 60, 0.9) 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(40, 40, 60, 0.9) 100%);
     border: 1px solid #d633ff;
     box-shadow: 0 0 15px rgba(214, 51, 255, 0.2);
 }
@@ -729,7 +729,7 @@
     }
 
     .square.selected {
-        background-color: rgba(0, 255, 242, 0.5) !important;
+        background-color: var(--accent) !important;
     }
 
     .game-info {
@@ -770,7 +770,7 @@
 
 .game-mode-selector h3 {
     margin-bottom: 10px;
-    color: #00fff2;
+    color: var(--accent);
 }
 
 /* AI 난이도 선택 */
@@ -780,7 +780,7 @@
 
 .ai-difficulty-selector h3 {
     margin-bottom: 10px;
-    color: #00fff2;
+    color: var(--accent);
 }
 
 /* AI 사고 중 표시 */

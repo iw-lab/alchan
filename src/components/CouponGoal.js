@@ -109,7 +109,7 @@ export default function CouponGoal({
           <h3
             className="text-xl font-bold m-0"
             style={{
-              color: "#e8e8ff",
+              color: "var(--text-primary)",
               textShadow: "0 0 5px rgba(0, 255, 242, 0.5)",
             }}
           >
@@ -170,7 +170,7 @@ export default function CouponGoal({
           <div className="mt-3">
             <div
               className="text-2xl font-extrabold"
-              style={{ color: "#e8e8ff" }}
+              style={{ color: "var(--text-primary)" }}
             >
               {(goalProgress || 0).toLocaleString()}
               <span
@@ -206,7 +206,7 @@ export default function CouponGoal({
             </div>
           </CircularProgress>
           <div className="mt-3">
-            <div className="text-lg font-bold" style={{ color: "#e8e8ff" }}>
+            <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
               {(myContribution || 0).toLocaleString()}
               <span
                 className="text-xs font-medium"

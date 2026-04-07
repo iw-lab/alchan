@@ -6,7 +6,7 @@
   border-radius: 8px;
   box-shadow: none;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
   margin-top: 20px;
@@ -16,14 +16,14 @@
 /* 탭 스타일 */
 .admin-tabs {
   display: flex;
-  background-color: rgba(20, 20, 35, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-primary);
   flex-shrink: 0;
   overflow-x: auto;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   scrollbar-width: thin;
-  scrollbar-color: #00fff2 rgba(0, 0, 0, 0.3);
+  scrollbar-color: var(--accent) var(--bg-input);
 }
 
 .admin-tabs::-webkit-scrollbar {
@@ -31,7 +31,7 @@
 }
 
 .admin-tabs::-webkit-scrollbar-thumb {
-  background: #00fff2;
+  background: var(--accent);
   border-radius: 3px;
 }
 
@@ -59,10 +59,10 @@
 }
 
 .admin-tabs button.active {
-  color: #00fff2;
-  border-bottom-color: #00fff2;
-  background-color: rgba(0, 255, 242, 0.1);
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.4);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background-color: var(--accent-light);
+  text-shadow: 0 0 10px var(--accent);
 }
 
 /* admin-content */
@@ -85,9 +85,9 @@
   color: #fff;
   font-weight: 600;
   font-size: 1.2rem;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.3);
+  border-bottom: 1px solid var(--border-accent);
   padding-bottom: 10px;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.2);
+  text-shadow: 0 0 5px var(--border-accent);
 }
 
 .items-list {
@@ -97,7 +97,7 @@
 }
 
 .admin-item-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   overflow: hidden;
   background-color: rgba(30, 30, 45, 0.6);
@@ -110,8 +110,8 @@
 
 .admin-item-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 255, 242, 0.2);
-  border-color: rgba(0, 255, 242, 0.5);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 10px var(--border-accent);
+  border-color: var(--accent);
 }
 
 .item-icon {
@@ -119,7 +119,7 @@
   align-items: center;
   justify-content: center;
   font-size: 2rem;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--bg-input);
   padding: 12px;
   min-width: 60px;
   color: #e2e8f0;
@@ -152,7 +152,7 @@
 }
 
 .item-meta span {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   color: #cbd5e1;
   padding: 3px 8px;
   border-radius: 4px;
@@ -166,7 +166,7 @@
   justify-content: center;
   padding: 12px 10px;
   gap: 6px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid var(--border-primary);
   background-color: rgba(0, 0, 0, 0.2);
 }
 
@@ -185,9 +185,9 @@
 }
 
 .edit-button:hover {
-  background-color: rgba(0, 255, 242, 0.1);
-  color: #00fff2;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.5);
+  background-color: var(--accent-light);
+  color: var(--accent);
+  text-shadow: 0 0 5px var(--accent);
 }
 
 .delete-button:hover {
@@ -202,7 +202,7 @@
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
 }
 
 .setting-group label {
@@ -225,31 +225,31 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   font-size: 1rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   color: #fff;
 }
 
 .input-with-button input[type="number"]:focus {
-  border-color: #00fff2;
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .input-with-button button {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
   color: #000;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .input-with-button button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 15px var(--accent);
 }
 
 .setting-description {
@@ -287,7 +287,7 @@
   border-radius: 6px;
   font-size: 0.95rem;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   color: #fff;
   transition: all 0.2s;
 }
@@ -296,9 +296,9 @@
 .form-group input[type="number"]:focus,
 .form-group textarea:focus,
 .form-group select:focus {
-  border-color: #00fff2;
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 10px var(--border-accent);
   background: rgba(0, 0, 0, 0.5);
 }
 
@@ -325,7 +325,7 @@
   background-color: rgba(30, 30, 45, 0.6);
   padding: 10px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -338,7 +338,7 @@
   align-items: center;
   justify-content: center;
   background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -346,18 +346,18 @@
 }
 
 .icon-selector button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: #00fff2;
+  background-color: var(--border-primary);
+  border-color: var(--accent);
   transform: scale(1.05);
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .icon-selector button.selected {
-  background-color: rgba(0, 255, 242, 0.2);
+  background-color: var(--border-accent);
   color: #fff;
-  border-color: #00fff2;
+  border-color: var(--accent);
   transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 15px var(--border-accent);
 }
 
 .form-group.checkbox {
@@ -366,7 +366,7 @@
   background-color: rgba(30, 30, 45, 0.6);
   padding: 12px 15px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
 }
 
 .form-group.checkbox label {
@@ -382,7 +382,7 @@
 .form-group.checkbox input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: #00fff2;
+  accent-color: var(--accent);
 }
 
 .form-actions {
@@ -391,7 +391,7 @@
   gap: 12px;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-primary);
 }
 
 .cancel-button,
@@ -411,20 +411,20 @@
 }
 
 .cancel-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   border-color: #fff;
 }
 
 .submit-button {
-  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
   color: #000;
   border: none;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .submit-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 20px var(--accent);
 }
 
 /* 새 아이템 추가 버튼 */
@@ -434,9 +434,9 @@
   padding: 15px;
   margin-bottom: 20px;
   background-color: rgba(30, 30, 45, 0.4);
-  border: 2px dashed rgba(0, 255, 242, 0.3);
+  border: 2px dashed var(--border-accent);
   border-radius: 8px;
-  color: #00fff2;
+  color: var(--accent);
   font-weight: 600;
   font-size: 1rem;
   text-align: center;
@@ -445,9 +445,9 @@
 }
 
 .add-item-btn:hover {
-  background-color: rgba(0, 255, 242, 0.1);
-  border-color: #00fff2;
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+  background-color: var(--accent-light);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--border-accent);
 }
 
 /* 반응형 조정 */
@@ -508,17 +508,17 @@
 
 .user-card-hover:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-  border-color: #00fff2;
+  box-shadow: 0 8px 25px var(--bg-input);
+  border-color: var(--accent);
 }
 
 .user-card-hover button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 12px rgba(0, 255, 242, 0.4);
+  box-shadow: 0 0 12px var(--accent);
 }
 
 .user-card-hover input:focus {
   outline: none;
-  border-color: #00fff2;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--border-accent);
 }

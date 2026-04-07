@@ -3,7 +3,7 @@
 
 .super-admin-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  background: linear-gradient(135deg, #0f0f1a 0%, var(--bg-card) 50%, #16213e 100%);
   color: #e0e0e0;
   padding: 20px;
 }
@@ -97,7 +97,7 @@
   gap: 8px;
   padding: 10px 20px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 12px;
   color: #e0e0e0;
   font-weight: 500;
@@ -475,7 +475,7 @@
 }
 
 .filter-select option {
-  background: #1a1a2e;
+  background: var(--bg-card);
   color: #e0e0e0;
 }
 
@@ -516,7 +516,7 @@
 }
 
 .teacher-card:hover {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-primary);
 }
 
 .teacher-card.pending {
@@ -755,7 +755,7 @@
 
 .metric-bar {
   height: 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -843,7 +843,7 @@
 }
 
 .error-log-item:hover {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-primary);
 }
 
 .error-log-item.critical {
@@ -923,7 +923,7 @@
 
 .error-stack {
   padding: 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   border-radius: 8px;
   font-family: monospace;
   font-size: 12px;

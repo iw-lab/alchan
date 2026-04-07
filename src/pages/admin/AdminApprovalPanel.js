@@ -175,11 +175,11 @@ const AdminApprovalPanel = () => {
       <div className="mb-6">
         <h1
           className="text-2xl md:text-3xl font-bold mb-2"
-          style={{ color: "#e8e8ff" }}
+          style={{ color: "var(--text-primary)" }}
         >
           할일 승인 관리
         </h1>
-        <p className="text-sm" style={{ color: "#9999bb" }}>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
           학생들의 보너스 할일 완료 요청을 승인하거나 거절합니다.
         </p>
       </div>
@@ -289,7 +289,7 @@ const AdminApprovalPanel = () => {
 
       {/* 카드 리스트 */}
       {loading ? (
-        <div className="text-center py-12" style={{ color: "#9999bb" }}>
+        <div className="text-center py-12" style={{ color: "var(--text-secondary)" }}>
           로딩 중...
         </div>
       ) : approvals.length === 0 ? (
@@ -298,7 +298,7 @@ const AdminApprovalPanel = () => {
           style={{
             backgroundColor: "rgba(20, 20, 35, 0.6)",
             border: "1px solid rgba(100, 116, 139, 0.15)",
-            color: "#9999bb",
+            color: "var(--text-secondary)",
           }}
         >
           {filter === "pending"
@@ -346,7 +346,7 @@ const AdminApprovalPanel = () => {
                   <div className="flex items-center gap-2 mb-1.5">
                     <span
                       className="font-bold text-sm"
-                      style={{ color: "#e8e8ff" }}
+                      style={{ color: "var(--text-primary)" }}
                     >
                       {approval.studentName}
                     </span>
@@ -385,7 +385,7 @@ const AdminApprovalPanel = () => {
                   </p>
                   <div
                     className="flex items-center gap-3 text-xs"
-                    style={{ color: "#9999bb" }}
+                    style={{ color: "var(--text-secondary)" }}
                   >
                     <span>
                       {approval.cardType === "cash"
@@ -434,7 +434,7 @@ const AdminApprovalPanel = () => {
                 {approval.status !== "pending" && approval.processedAt && (
                   <div
                     className="text-xs flex-shrink-0"
-                    style={{ color: "#9999bb" }}
+                    style={{ color: "var(--text-secondary)" }}
                   >
                     처리: {formatDate(approval.processedAt)}
                   </div>

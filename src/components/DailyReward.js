@@ -404,7 +404,7 @@ export function StreakRewardInfo() {
         border: "2px solid #8b5cf640",
       }}
     >
-      <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "#e8e8ff" }}>
+      <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
         🎁 일일 출석 보상 안내
       </h4>
       <div className="flex flex-col gap-1.5">
@@ -425,7 +425,7 @@ export function StreakRewardInfo() {
             </span>
             <span
               style={{
-                color: day.day === 10 ? "#f59e0b" : "#e8e8ff",
+                color: day.day === 10 ? "#f59e0b" : "var(--text-primary)",
                 fontWeight: day.day === 10 ? "700" : "500",
                 fontSize: day.day === 10 ? "15px" : "13px",
               }}

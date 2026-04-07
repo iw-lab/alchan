@@ -5,11 +5,11 @@
   --neon-blue: #00f3ff;
   --neon-purple: #bc13fe;
   --neon-pink: #ff0055;
-  --neon-green: #00ff88;
-  --dark-bg: #0a0a12;
+  --neon-green: var(--success);
+  --dark-bg: var(--bg-primary);
   --panel-bg: rgba(20, 20, 35, 0.7);
   --panel-bg-solid: #14142b;
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border: var(--border-primary);
   --text-main: #e2e8f0;
   --text-dim: #94a3b8;
 }
@@ -83,7 +83,7 @@
 }
 
 .tab-button:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   color: #fff;
 }
 
@@ -563,7 +563,7 @@
 }
 
 .edit-shop-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   border: 1px solid var(--glass-border);
   color: #fff;
   padding: 8px 16px;
@@ -712,7 +712,7 @@
 }
 
 .modal-container {
-  background: linear-gradient(145deg, #1a1a2e, #16162b);
+  background: linear-gradient(145deg, var(--bg-card), #16162b);
   border-radius: 20px;
   min-width: 400px;
   max-width: 500px;
@@ -916,7 +916,7 @@
 }
 
 .modal-button.cancel {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   color: var(--text-dim);
   border: 1px solid var(--glass-border);
 }

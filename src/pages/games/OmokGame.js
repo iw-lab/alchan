@@ -1689,7 +1689,7 @@ const OmokGame = () => {
                   게임방이 생성되었습니다!
                   <br />
                   <strong
-                    style={{ fontSize: 18, color: "#00fff2", cursor: "pointer", textDecoration: "underline", letterSpacing: 2 }}
+                    style={{ fontSize: 18, color: "var(--accent)", cursor: "pointer", textDecoration: "underline", letterSpacing: 2 }}
                     onClick={() => {
                       navigator.clipboard.writeText(createdGameId);
                       setFeedback({ message: "방 코드가 복사되었습니다! 친구에게 공유하세요.", type: "success" });
@@ -1876,7 +1876,7 @@ const OmokGame = () => {
             </p>
             <div
               style={{
-                fontSize: 28, fontWeight: "bold", color: "#00fff2",
+                fontSize: 28, fontWeight: "bold", color: "var(--accent)",
                 cursor: "pointer", letterSpacing: 4, padding: "12px 24px",
                 background: "rgba(0, 255, 242, 0.1)", borderRadius: 12,
                 border: "1px solid rgba(0, 255, 242, 0.3)",

@@ -3,10 +3,10 @@
     max-width: 800px;
     margin: 2rem auto;
     padding: 2rem;
-    background-color: rgba(20, 20, 35, 0.8);
+    background-color: var(--bg-card);
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px var(--bg-input);
     text-align: center;
     color: #e2e8f0;
 }
@@ -21,9 +21,9 @@
     width: 70%;
     padding: 0.8rem;
     font-size: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
     border-radius: 4px 0 0 4px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     color: #e2e8f0;
 }
 
@@ -31,7 +31,7 @@
     padding: 0.8rem 1.5rem;
     font-size: 1rem;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, var(--accent));
     color: white;
     cursor: pointer;
     border-radius: 0 4px 4px 0;
@@ -94,11 +94,11 @@
 .requester-name-input {
     padding: 0.8rem;
     font-size: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
     margin-bottom: 1rem;
     width: 50%;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     color: #e2e8f0;
 }
 
@@ -107,7 +107,7 @@
     font-size: 1rem;
     border: none;
     background: linear-gradient(135deg, #00ff9d, #00d4aa);
-    color: #0a0a12;
+    color: var(--bg-primary);
     font-weight: 600;
     cursor: pointer;
     border-radius: 8px;
@@ -135,7 +135,7 @@
     padding: 10px 20px;
     background: rgba(100, 116, 139, 0.3);
     color: #e2e8f0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
@@ -167,7 +167,7 @@
 }
 
 .create-room-section {
-    background: rgba(20, 20, 35, 0.8);
+    background: var(--bg-card);
     padding: 1.5rem;
     border-radius: 16px;
     margin-bottom: 1.5rem;
@@ -189,9 +189,9 @@
     min-width: 200px;
     padding: 0.7rem 1rem;
     font-size: 0.95rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
     border-radius: 10px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     color: #e2e8f0;
     transition: border-color 0.3s;
 }
@@ -210,7 +210,7 @@
     padding: 0.7rem 1.5rem;
     font-size: 0.95rem;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, var(--accent));
     color: white;
     cursor: pointer;
     border-radius: 10px;
@@ -225,7 +225,7 @@
 }
 
 .room-created-section {
-    background: rgba(20, 20, 35, 0.8);
+    background: var(--bg-card);
     padding: 2rem;
     border-radius: 16px;
     margin-bottom: 1.5rem;
@@ -270,7 +270,7 @@
     margin-top: 1rem;
     padding: 0.8rem 2rem;
     background: linear-gradient(135deg, #00ff9d, #00d4aa);
-    color: #0a0a12;
+    color: var(--bg-primary);
     text-decoration: none;
     border-radius: 10px;
     font-weight: 600;
@@ -283,7 +283,7 @@
 }
 
 .my-rooms-section {
-    background: rgba(20, 20, 35, 0.8);
+    background: var(--bg-card);
     padding: 1.5rem;
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -344,7 +344,7 @@
 .my-room-item small {
     color: #64748b;
     font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-input);
     padding: 0.3rem 0.6rem;
     border-radius: 6px;
     margin-left: 1rem;

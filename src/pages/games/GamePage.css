@@ -7,7 +7,7 @@
 
 .game-page-container {
   /* min-height: 100vh 제거 - AlchanLayout 내부 스크롤과 충돌 방지 */
-  background: #0a0a12;
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -30,8 +30,8 @@
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0 0 0.3rem 0;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
-  color: #00fff2;
+  text-shadow: 0 0 10px var(--accent);
+  color: var(--accent);
 }
 
 .omok-header p {
@@ -52,12 +52,12 @@
 
 /* 로비 스타일 */
 .omok-lobby {
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 1.25rem;
-  box-shadow: 0 8px 32px rgba(0, 255, 242, 0.1);
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  box-shadow: 0 8px 32px var(--accent-light);
+  border: 1px solid var(--border-accent);
   width: 100%;
   max-width: 600px;
   display: flex;
@@ -75,7 +75,7 @@
 .lobby-section h3 {
   margin-top: 0;
   margin-bottom: 1rem;
-  color: #e8e8ff;
+  color: var(--text-primary);
   text-align: center;
   font-size: 1rem;
 }
@@ -107,8 +107,8 @@
   flex: 1;
   padding: 12px 16px;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #e8e8ff;
+  background: var(--border-primary);
+  color: var(--text-primary);
   font-size: 1rem;
   outline: none;
 }
@@ -135,7 +135,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border: 1px solid rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--accent-light);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -144,8 +144,8 @@
 
 .game-room-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
-  border-color: rgba(0, 255, 242, 0.4);
+  box-shadow: 0 0 15px var(--border-accent);
+  border-color: var(--accent);
 }
 
 .room-header {
@@ -157,7 +157,7 @@
 
 .room-title {
   font-weight: 600;
-  color: #e8e8ff;
+  color: var(--text-primary);
   font-size: 1.1rem;
   display: flex;
   flex-direction: column;
@@ -172,7 +172,7 @@
 .room-id {
   font-size: 0.8rem;
   color: #a0a0c0;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -280,7 +280,7 @@
   max-width: 100%;
   margin: 0;
   padding: 2rem;
-  background: #0a0a12;
+  background: var(--bg-primary);
   /* min-height: 100vh 제거 - AlchanLayout 내부 스크롤과 충돌 방지 */
   color: white;
   display: flex;
@@ -305,7 +305,7 @@
 }
 
 .player-card {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 1.5rem;
@@ -342,7 +342,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px var(--bg-input);
 }
 
 .stone-indicator.black {
@@ -406,7 +406,7 @@
   justify-content: center;
   margin: 2rem 0;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   backdrop-filter: blur(10px);
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
@@ -566,7 +566,7 @@
   text-align: center;
   margin: 2rem 0;
   padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   width: 100%;
@@ -577,7 +577,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: #ffd700;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 2px 2px 4px var(--bg-input);
   line-height: 1.5;
 }
 
@@ -734,9 +734,9 @@ input:focus,
   gap: 0.75rem;
   margin: 1rem 0;
   padding: 0.75rem 1rem;
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   border-radius: 12px;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
   flex-wrap: wrap;
 }
 
@@ -744,7 +744,7 @@ input:focus,
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #e8e8ff;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
@@ -803,8 +803,8 @@ input:focus,
   font-weight: 700;
   font-size: 0.85rem;
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px var(--bg-input);
+  box-shadow: 0 2px 8px var(--bg-input);
 }
 
 .rank-icon {
@@ -826,7 +826,7 @@ input:focus,
 .rp-value {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #00fff2;
+  color: var(--accent);
 }
 
 /* 랭크 통계 */
@@ -859,7 +859,7 @@ input:focus,
 .progress-bar {
   width: 100%;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   border-radius: 2px;
   overflow: hidden;
   min-width: 100px;
@@ -887,7 +887,7 @@ input:focus,
 
 .host-name {
   font-weight: 600;
-  color: #e8e8ff;
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
@@ -901,7 +901,7 @@ input:focus,
 .game-mode-selector h3 {
   margin-top: 0;
   margin-bottom: 1rem;
-  color: #e8e8ff;
+  color: var(--text-primary);
   text-align: center;
   font-size: 1.1rem;
 }
@@ -917,7 +917,7 @@ input:focus,
   max-width: 160px;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--border-primary);
   background: rgba(0, 0, 0, 0.2);
   color: #a0a0c0;
   font-size: 0.95rem;
@@ -927,14 +927,14 @@ input:focus,
 }
 
 .mode-options button:hover {
-  border-color: rgba(0, 255, 242, 0.3);
-  color: #e8e8ff;
+  border-color: var(--border-accent);
+  color: var(--text-primary);
 }
 
 .mode-options button.primary {
-  border-color: #00fff2;
-  background: rgba(0, 255, 242, 0.1);
-  color: #00fff2;
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
 }
 
 /* AI 난이도 선택 */
@@ -947,7 +947,7 @@ input:focus,
 
 .ai-difficulty-selector h4 {
   margin: 0 0 1rem 0;
-  color: #e8e8ff;
+  color: var(--text-primary);
   text-align: center;
   font-size: 1rem;
 }
@@ -961,7 +961,7 @@ input:focus,
 .difficulty-options button {
   padding: 0.5rem 1rem;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--border-primary);
   background: rgba(0, 0, 0, 0.2);
   color: #a0a0c0;
   font-size: 0.85rem;
@@ -971,7 +971,7 @@ input:focus,
 }
 
 .difficulty-options button:hover {
-  border-color: rgba(0, 255, 242, 0.3);
+  border-color: var(--border-accent);
 }
 
 .difficulty-options button.selected {

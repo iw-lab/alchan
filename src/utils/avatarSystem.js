@@ -263,7 +263,7 @@ export const BORDERS = [
   { id: "silver", name: "실버", color: "#bdc3c7", width: 4, glow: true },
   { id: "bronze", name: "브론즈", color: "#cd7f32", width: 4, glow: true },
   { id: "rainbow", name: "무지개", gradient: ["#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#0000ff", "#8b00ff"], width: 4, animated: true },
-  { id: "neon_blue", name: "네온 블루", color: "#00fff2", width: 3, glow: true, glowColor: "#00fff2" },
+  { id: "neon_blue", name: "네온 블루", color: "var(--accent)", width: 3, glow: true, glowColor: "var(--accent)" },
   { id: "neon_pink", name: "네온 핑크", color: "#ff69b4", width: 3, glow: true, glowColor: "#ff69b4" },
   { id: "fire", name: "불꽃", gradient: ["#ff4500", "#ff6347", "#ffa500"], width: 4, animated: true },
   { id: "ice", name: "얼음", gradient: ["#00bfff", "#87ceeb", "#e0ffff"], width: 4, glow: true },

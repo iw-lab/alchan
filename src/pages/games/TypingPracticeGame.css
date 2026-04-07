@@ -4,7 +4,7 @@
 .typing-game-container {
   position: relative;
   min-height: calc(100vh - 80px);
-  background: #0a0a12;
+  background: var(--bg-primary);
   overflow-y: auto;
   padding: 20px;
   display: flex;
@@ -30,11 +30,11 @@
 
 /* 공통 ?�더 */
 .game-header {
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   border-radius: 15px;
-  box-shadow: 0 8px 32px rgba(0, 255, 242, 0.1);
+  box-shadow: 0 8px 32px var(--accent-light);
   margin-bottom: 20px;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
   backdrop-filter: blur(10px);
 }
 
@@ -47,10 +47,10 @@
 
 .game-header h2 {
   margin: 0 0 5px 0;
-  color: #00fff2;
+  color: var(--accent);
   font-size: 28px;
   font-weight: 700;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  text-shadow: 0 0 10px var(--border-accent);
 }
 
 .game-header .subtitle {
@@ -87,7 +87,7 @@
 
 /* ?일 ?보 */
 .daily-info {
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 20px;
   border-radius: 15px;
   margin-bottom: 20px;
@@ -146,7 +146,7 @@
 
 .reward-preview p {
   margin: 10px 0;
-  color: #e8e8ff;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 16px;
 }
@@ -183,9 +183,9 @@
   background: rgba(30, 30, 45, 0.8);
   border-radius: 20px;
   padding: 25px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px var(--bg-input);
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--accent-light);
 }
 
 .minigame-card {
@@ -194,8 +194,8 @@
 
 .difficulty-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 0 20px rgba(0, 255, 242, 0.2);
-  border-color: #00fff2;
+  box-shadow: 0 0 20px var(--border-accent);
+  border-color: var(--accent);
 }
 
 .card-header {
@@ -209,7 +209,7 @@
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: #e8e8ff;
+  color: var(--text-primary);
 }
 
 .difficulty-badge {
@@ -246,7 +246,7 @@
 }
 
 .stat-value {
-  color: #e8e8ff;
+  color: var(--text-primary);
   font-weight: 700;
 }
 
@@ -290,14 +290,14 @@
 }
 
 .info-chip {
-  background: rgba(20, 20, 35, 0.8);
-  color: #e8e8ff;
+  background: var(--bg-card);
+  color: var(--text-primary);
   padding: 8px 16px;
   border-radius: 20px;
   font-weight: 600;
   font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
 }
 
 .info-chip.timer {
@@ -355,22 +355,22 @@
 .sentence-display {
   text-align: center;
   margin-bottom: 30px;
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 40px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--accent-light);
 }
 
 .sentence-text {
   animation: slideDown 0.4s ease-out;
   font-size: 32px;
   font-weight: 700;
-  color: #e8e8ff;
+  color: var(--text-primary);
   margin-bottom: 15px;
   line-height: 1.5;
   word-break: keep-all;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 10px var(--border-primary);
 }
 
 @keyframes slideDown {
@@ -401,19 +401,19 @@
   max-width: 700px;
   padding: 18px 24px;
   font-size: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--border-primary);
   border-radius: 15px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   text-align: center;
   transition: all 0.3s;
   font-family: inherit;
-  color: #e8e8ff;
+  color: var(--text-primary);
 }
 
 .sentence-input:focus {
   outline: none;
-  border-color: #00fff2;
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--border-accent);
   transform: scale(1.02);
 }
 
@@ -441,7 +441,7 @@
   display: flex;
   justify-content: center;
   gap: 20px;
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 20px;
   border-radius: 15px;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
@@ -492,20 +492,20 @@
 }
 
 .completion-header {
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 35px;
   border-radius: 20px;
   margin-bottom: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   text-align: center;
-  border: 1px solid rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--accent-light);
 }
 
 .completion-header h2 {
   margin: 0 0 10px 0;
   font-size: 36px;
-  color: #00fff2;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  color: var(--accent);
+  text-shadow: 0 0 10px var(--border-accent);
 }
 
 .results {
@@ -513,7 +513,7 @@
 }
 
 .minigame-results {
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 30px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -533,7 +533,7 @@
   padding: 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
 }
 
 .result-label {
@@ -546,7 +546,7 @@
 .result-value {
   font-size: 24px;
   font-weight: 700;
-  color: #e8e8ff;
+  color: var(--text-primary);
 }
 
 .completion-actions {
@@ -658,19 +658,19 @@
 .card-selection-header {
   text-align: center;
   margin-bottom: 50px;
-  background: rgba(20, 20, 35, 0.6);
+  background: var(--bg-secondary);
   padding: 35px;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--accent-light);
 }
 
 .card-selection-header h2 {
   margin: 0 0 15px 0;
   font-size: 36px;
-  color: #00fff2;
+  color: var(--accent);
   font-weight: 700;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  text-shadow: 0 0 10px var(--border-accent);
 }
 
 .card-selection-header p {

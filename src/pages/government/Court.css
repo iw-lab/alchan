@@ -3,11 +3,11 @@
 /* --- 기본 변수 (Cyberpunk Palette) --- */
 :root {
   --court-primary-bg: var(--cyber-bg-dark);
-  /* #0a0a12 */
+  /* var(--bg-primary) */
   --court-secondary-bg: var(--cyber-bg-card);
-  /* rgba(20, 20, 35, 0.6) */
+  /* var(--bg-secondary) */
   --court-border-color: var(--cyber-border-dim);
-  /* rgba(0, 255, 242, 0.2) */
+  /* var(--border-accent) */
   --court-header-border: var(--cyber-neon-blue);
   /* #0088ff */
   --court-text-primary: var(--cyber-text-primary);
@@ -23,14 +23,14 @@
   --court-danger-color: var(--cyber-neon-red);
   /* #ff003c */
   --court-info-color: var(--cyber-neon-cyan);
-  /* #00fff2 */
+  /* var(--accent) */
   --court-trial-color: #d633ff;
   /* Neon Purple */
   --court-resolved-color: #ff9d00;
   /* Neon Orange */
   --court-settlement-color: #00ff9d;
   /* Neon Green */
-  --court-settlement-paid-bg: rgba(255, 255, 255, 0.1);
+  --court-settlement-paid-bg: var(--border-primary);
   --court-settlement-paid-text: #888;
   --court-shadow-sm: 0 0 10px rgba(0, 136, 255, 0.1);
   --court-shadow-md: var(--cyber-shadow-card);
@@ -85,7 +85,7 @@
 }
 
 .admin-tab-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   border-color: var(--court-accent-color);
   color: #fff;
 }
@@ -317,7 +317,7 @@
 }
 
 .vote-button:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   border-color: #fff;
   color: #fff;
 }
@@ -394,7 +394,7 @@
 }
 
 .edit-button {
-  background-color: rgba(0, 255, 242, 0.2);
+  background-color: var(--border-accent);
   color: var(--court-info-color) !important;
   border-color: var(--court-info-color) !important;
 }
@@ -445,7 +445,7 @@
 .form-select {
   width: 100%;
   padding: 12px 15px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   border: 1px solid var(--court-border-color);
   border-radius: var(--court-border-radius);
   font-size: 15px;
@@ -484,7 +484,7 @@
 }
 
 .form-select option {
-  background-color: #1a1a2e;
+  background-color: var(--bg-card);
   color: #fff;
 }
 
@@ -587,7 +587,7 @@
 .edit-modal-container,
 .modal-container,
 .settlement-modal-container {
-  background-color: #1a1a2e !important;
+  background-color: var(--bg-card) !important;
   padding: 30px !important;
   border-radius: var(--court-border-radius-lg) !important;
   width: 90% !important;
@@ -672,7 +672,7 @@
 .edit-modal-actions .cancel-button,
 .modal-button.cancel,
 .settlement-modal-actions .cancel-button {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   color: #ccc;
   border-color: var(--court-border-color);
 }
@@ -696,7 +696,7 @@
 }
 
 .result-card {
-  background-color: rgba(20, 20, 35, 0.6);
+  background-color: var(--bg-secondary);
   border: 1px solid var(--court-border-color);
   border-radius: var(--court-border-radius-lg);
   box-shadow: var(--court-shadow-sm);
@@ -708,7 +708,7 @@
 
 .result-header {
   padding: 15px 20px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   border-bottom: 1px solid var(--court-border-color);
   display: flex;
   justify-content: space-between;
@@ -762,7 +762,7 @@
 
 .result-actions {
   padding: 15px 20px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   border-top: 1px solid var(--court-border-color);
   display: flex;
   justify-content: flex-end;
@@ -789,14 +789,14 @@
 }
 
 .settlement-button.paid {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   color: #888;
   cursor: default;
   border: 1px solid var(--court-border-color);
 }
 
 .settlement-button.paid:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--border-primary);
   opacity: 0.7;
 }
 

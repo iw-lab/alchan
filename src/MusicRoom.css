@@ -9,19 +9,19 @@
     margin: 0;
     min-height: calc(100vh - 32px);
     box-sizing: border-box;
-    background-color: #0a0a12 !important;
-    color: #e8e8ff;
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary);
     align-items: stretch;
 }
 
 .main-content {
     display: flex;
     flex-direction: column;
-    background: rgba(20, 20, 35, 0.8) !important;
+    background: var(--bg-card) !important;
     border-radius: 12px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     overflow: hidden;
-    border: 1px solid rgba(0, 255, 242, 0.2);
+    border: 1px solid var(--border-accent);
 }
 
 .video-player-wrapper {
@@ -31,7 +31,7 @@
     min-height: 72vh;
     background-color: #000;
     overflow: hidden;
-    border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+    border-bottom: 1px solid var(--border-accent);
 }
 
 .youtube-player {
@@ -57,7 +57,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #1a1a2e 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, #0f0f1e 50%, var(--bg-card) 100%);
     color: #a0a0c0;
     font-size: 1.2rem;
     gap: 1rem;
@@ -85,7 +85,7 @@
 .room-header {
     padding: 0.9rem 1.1rem;
     background: rgba(10, 10, 20, 0.95);
-    border-top: 1px solid rgba(0, 255, 242, 0.1);
+    border-top: 1px solid var(--accent-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -94,8 +94,8 @@
 .room-header h2 {
     margin: 0;
     font-size: 1.25rem;
-    color: #00fff2;
-    text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--border-accent);
 }
 
 .room-controls {
@@ -115,14 +115,14 @@
 }
 
 .control-btn {
-    background: rgba(0, 255, 242, 0.1);
-    color: #00fff2;
-    border-color: #00fff2;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 .control-btn:hover {
-    background: rgba(0, 255, 242, 0.2);
-    box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+    background: var(--border-accent);
+    box-shadow: 0 0 15px var(--border-accent);
     transform: translateY(-2px);
 }
 
@@ -160,7 +160,7 @@
 }
 
 .playlist-panel {
-    background: rgba(20, 20, 35, 0.8) !important;
+    background: var(--bg-card) !important;
     border-radius: 12px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     padding: 1rem;
@@ -169,7 +169,7 @@
     flex-direction: column;
     min-height: 0;
     height: 100%;
-    border: 1px solid rgba(0, 255, 242, 0.2);
+    border: 1px solid var(--border-accent);
     backdrop-filter: blur(10px);
 }
 
@@ -177,7 +177,7 @@
     margin-top: 0;
     margin-bottom: 0.8rem;
     text-align: center;
-    color: #e8e8ff;
+    color: var(--text-primary);
     font-size: 1rem;
 }
 
@@ -221,8 +221,8 @@
     text-align: center;
     word-break: break-all;
     font-family: monospace;
-    color: #00fff2;
-    border: 1px solid rgba(0, 255, 242, 0.3);
+    color: var(--accent);
+    border: 1px solid var(--border-accent);
 }
 
 .playlist {
@@ -264,19 +264,19 @@
 
 .song-title {
     font-weight: 700;
-    color: #e8e8ff;
+    color: var(--text-primary);
     line-height: 1.4;
 }
 
 .playlist li.playing {
-    background: rgba(0, 255, 242, 0.1);
-    border-left: 3px solid #00fff2;
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
 }
 
 .playlist li.playing .song-title {
-    color: #00fff2;
+    color: var(--accent);
     font-weight: bold;
-    text-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+    text-shadow: 0 0 5px var(--border-accent);
 }
 
 .requester {

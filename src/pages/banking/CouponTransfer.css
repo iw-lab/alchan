@@ -5,9 +5,9 @@
   max-width: 1200px;
   margin: 20px auto;
   padding: 0;
-  background: #1a1a2e;
+  background: var(--bg-card);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px var(--bg-input);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -85,7 +85,7 @@
   justify-content: center;
   gap: 8px;
   padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   font-size: 1.05rem;
@@ -162,7 +162,7 @@
   display: flex;
   align-items: center;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 10px;
   overflow: hidden;
   transition: all 0.2s ease;
@@ -242,7 +242,7 @@
 }
 
 .coupon-transfer-container .user-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   border-radius: 3px;
 }
 
@@ -403,7 +403,7 @@
 
 .user-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-primary);
 }
 
 .user-card .user-name {
@@ -438,7 +438,7 @@
 
 .mode-button {
   padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   background: rgba(255, 255, 255, 0.03);
   color: #94a3b8;
   cursor: pointer;

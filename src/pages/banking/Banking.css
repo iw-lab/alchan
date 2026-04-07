@@ -19,7 +19,7 @@
   padding: 15px 25px;
   background: linear-gradient(135deg, rgba(20, 20, 35, 0.95), rgba(30, 30, 50, 0.95));
   border-radius: 24px 24px 0 0;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.1);
+  border-bottom: 1px solid var(--accent-light);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
@@ -37,7 +37,7 @@
   color: #fff;
   margin: 0;
   margin-left: 12px;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  text-shadow: 0 0 10px var(--border-accent);
 }
 
 .logo-circle {
@@ -74,17 +74,17 @@
 .admin-inactive {
   background: rgba(255, 255, 255, 0.05);
   color: #94a3b8;
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-primary);
 }
 
 .admin-inactive:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   color: #fff;
 }
 
 .content-container {
   padding: 25px;
-  background: rgba(20, 20, 35, 0.8);
+  background: var(--bg-card);
   border-radius: 0 0 24px 24px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-top: none;
@@ -126,7 +126,7 @@
 
 .tab-container {
   margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .tab-menu {
@@ -147,10 +147,10 @@
 }
 
 .parking-tab-active {
-  color: #00fff2;
-  border-bottom-color: #00fff2;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
   font-weight: bold;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+  text-shadow: 0 0 5px var(--border-accent);
 }
 
 .parking-tab-inactive {
@@ -166,7 +166,7 @@
 .content-box {
   padding: 20px;
   border-radius: 16px;
-  background-color: rgba(20, 20, 35, 0.6);
+  background-color: var(--bg-secondary);
   margin-top: 10px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -174,15 +174,15 @@
 .admin-section {
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .admin-section h3 {
-  color: #00fff2;
+  color: var(--accent);
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 12px;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.2);
+  text-shadow: 0 0 5px var(--border-accent);
 }
 
 .admin-header {
@@ -205,7 +205,7 @@
   font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-primary);
   text-transform: uppercase;
 }
 
@@ -221,7 +221,7 @@
   width: 95%;
   padding: 8px;
   background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   font-size: 14px;
   color: white;
@@ -303,13 +303,13 @@
 }
 
 .loading-spinner {
-  background-color: #1a1a2e;
+  background-color: var(--bg-card);
   padding: 20px 40px;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 500;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -349,7 +349,7 @@
   }
 
   .admin-table tr {
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-primary);
     margin-bottom: 15px;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;

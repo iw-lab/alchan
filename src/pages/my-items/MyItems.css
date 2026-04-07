@@ -6,7 +6,7 @@
   background: rgba(20, 20, 35, 0.95);
   border-radius: 16px;
   padding: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px var(--border-accent);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -18,8 +18,8 @@
 
 .store-item-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 255, 242, 0.3);
-  border-color: rgba(0, 255, 242, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px var(--border-accent);
+  border-color: var(--accent);
 }
 
 /* --- 컴팩트 내 아이템 카드 --- */
@@ -45,8 +45,8 @@
   color: #ffffff;
   margin: 0;
   padding: 6px 12px;
-  background: rgba(0, 255, 242, 0.1);
-  border: 1px solid rgba(0, 255, 242, 0.3);
+  background: var(--accent-light);
+  border: 1px solid var(--border-accent);
   border-radius: 8px;
   display: inline-block;
   max-width: 100%;
@@ -57,7 +57,7 @@
 
 .my-item-description-compact {
   font-size: 0.8rem;
-  color: #9999bb;
+  color: var(--text-secondary);
   margin: 0 0 8px 0;
   line-height: 1.4;
   display: -webkit-box;
@@ -97,10 +97,10 @@
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #00fff2;
+  color: var(--accent);
   margin-top: 32px;
   margin-bottom: 16px;
-  border-bottom: 2px solid rgba(0, 255, 242, 0.3);
+  border-bottom: 2px solid var(--border-accent);
   padding-bottom: 8px;
 }
 
@@ -119,27 +119,27 @@
 
 .item-icon {
   font-size: 2rem;
-  background-color: rgba(0, 255, 242, 0.1);
+  background-color: var(--accent-light);
   border-radius: 8px;
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
 }
 
 .quantity-badge {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: linear-gradient(135deg, #8b5cf6, #00fff2);
-  color: #0a0a12;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--bg-primary);
   border-radius: 50%;
   padding: 2px 6px;
   font-size: 0.75rem;
   font-weight: bold;
-  border: 2px solid rgba(0, 255, 242, 0.5);
+  border: 2px solid var(--accent);
   box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
 }
 
@@ -150,7 +150,7 @@
 }
 
 .item-description {
-  color: #9999bb;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 12px;
   flex-grow: 1;
@@ -241,7 +241,7 @@
 
 /* --- 사용 중인 아이템 스타일 (다크 테마) --- */
 .active-item-card {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(0, 255, 242, 0.1));
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), var(--accent-light));
   border: 1px solid rgba(139, 92, 246, 0.4);
 }
 
@@ -253,7 +253,7 @@
 .timer-bar {
   width: 100%;
   height: 8px;
-  background-color: rgba(0, 255, 242, 0.2);
+  background-color: var(--border-accent);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 4px;
@@ -261,15 +261,15 @@
 
 .timer-progress {
   height: 100%;
-  background: linear-gradient(90deg, #00fff2, #8b5cf6);
+  background: linear-gradient(90deg, var(--accent), var(--accent));
   border-radius: 4px;
   transition: width 1s linear;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 10px var(--accent);
 }
 
 .timer-text {
   font-size: 0.9rem;
-  color: #9999bb;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   text-align: left;
   /* 왼쪽 정렬로 변경 */
@@ -289,16 +289,16 @@
   font-weight: 500;
   padding: 4px 10px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(0, 255, 242, 0.2), rgba(139, 92, 246, 0.2));
-  color: #00fff2;
-  border: 1px solid rgba(0, 255, 242, 0.3);
+  background: linear-gradient(135deg, var(--border-accent), var(--accent-light));
+  color: var(--accent);
+  border: 1px solid var(--border-accent);
 }
 
 /* --- 로딩 및 메시지 스타일 (다크 테마) --- */
 .empty-message {
   text-align: center;
   padding: 40px;
-  color: #9999bb;
+  color: var(--text-secondary);
   font-size: 1rem;
 }
 
@@ -334,11 +334,11 @@
   background: rgba(20, 20, 35, 0.98);
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 242, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--border-primary);
   width: 90%;
   max-width: 450px;
   animation: slideUp 0.3s ease-out;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
 }
 
 @keyframes slideUp {
@@ -357,7 +357,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+  border-bottom: 1px solid var(--border-accent);
   padding-bottom: 12px;
   margin-bottom: 20px;
 }
@@ -374,14 +374,14 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #9999bb;
+  color: var(--text-secondary);
   padding: 0;
   line-height: 1;
   transition: color 0.2s ease;
 }
 
 .myitems-close-button:hover {
-  color: #00fff2;
+  color: var(--accent);
 }
 
 .myitems-modal-body {
@@ -397,7 +397,7 @@
   margin-bottom: 8px;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #9999bb;
+  color: var(--text-secondary);
 }
 
 .form-group input[type="text"],
@@ -406,20 +406,20 @@
   /* ✨새로운 스타일✨ select 추가 */
   width: 100%;
   padding: 10px;
-  border: 1px solid rgba(0, 255, 242, 0.3);
+  border: 1px solid var(--border-accent);
   border-radius: 6px;
   font-size: 1rem;
   box-sizing: border-box;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: #e8e8ff;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .form-group input:focus,
 .form-group .form-select:focus {
   /* ✨새로운 스타일✨ select 추가 */
   outline: none;
-  border-color: #00fff2;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .quantity-controls {
@@ -430,17 +430,17 @@
 .quantity-controls button {
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(0, 255, 242, 0.3);
-  background-color: rgba(0, 255, 242, 0.1);
+  border: 1px solid var(--border-accent);
+  background-color: var(--accent-light);
   font-size: 1.2rem;
   cursor: pointer;
-  color: #e8e8ff;
+  color: var(--text-primary);
   transition: all 0.2s ease;
 }
 
 .quantity-controls button:hover {
-  background-color: rgba(0, 255, 242, 0.2);
-  border-color: #00fff2;
+  background-color: var(--border-accent);
+  border-color: var(--accent);
 }
 
 .quantity-controls button:first-of-type {
@@ -461,16 +461,16 @@
 
 .quantity-controls input {
   text-align: center;
-  border-top: 1px solid rgba(0, 255, 242, 0.3);
-  border-bottom: 1px solid rgba(0, 255, 242, 0.3);
+  border-top: 1px solid var(--border-accent);
+  border-bottom: 1px solid var(--border-accent);
   border-left: none;
   border-right: none;
   border-radius: 0;
   width: 60px;
   height: 38px;
   box-sizing: border-box;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: #e8e8ff;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .myitems-modal-footer {
@@ -481,19 +481,19 @@
 
 .button-secondary {
   padding: 10px 16px;
-  border: 1px solid rgba(0, 255, 242, 0.3);
+  border: 1px solid var(--border-accent);
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  background-color: rgba(0, 0, 0, 0.3);
-  color: #e8e8ff;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .button-secondary:hover {
-  background-color: rgba(0, 255, 242, 0.1);
-  border-color: #00fff2;
+  background-color: var(--accent-light);
+  border-color: var(--accent);
 }
 
 .button-primary {
@@ -502,14 +502,14 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  background: linear-gradient(135deg, #00fff2, #8b5cf6);
-  color: #0a0a12;
+  background: linear-gradient(135deg, var(--accent), var(--accent));
+  color: var(--bg-primary);
   font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .button-primary:hover {
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 15px var(--accent);
   transform: translateY(-1px);
 }
 
@@ -517,11 +517,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background-color: rgba(0, 255, 242, 0.1);
+  background-color: var(--accent-light);
   padding: 12px;
   border-radius: 6px;
   margin-bottom: 20px;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
 }
 
 .item-icon-small {
@@ -530,23 +530,23 @@
 
 .total-price-preview {
   padding: 12px;
-  background: rgba(0, 255, 242, 0.1);
+  background: var(--accent-light);
   border-radius: 4px;
   margin-top: 8px;
   text-align: right;
   font-size: 1rem;
-  border: 1px solid rgba(0, 255, 242, 0.2);
-  color: #e8e8ff;
+  border: 1px solid var(--border-accent);
+  color: var(--text-primary);
 }
 
 .total-price-preview strong {
-  color: #00fff2;
+  color: var(--accent);
   font-size: 1.1rem;
 }
 
 .sell-button {
-  background: linear-gradient(135deg, #00ff88, #00cc70);
-  color: #0a0a12;
+  background: linear-gradient(135deg, var(--success), #00cc70);
+  color: var(--bg-primary);
 }
 
 .sell-button:hover {

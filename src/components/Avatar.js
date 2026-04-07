@@ -61,7 +61,7 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
 
   // 배경 스타일 생성
   const getBackgroundStyle = () => {
-    if (!background || background.id === "none") return "#1a1a2e";
+    if (!background || background.id === "none") return "var(--bg-card)";
     if (background.gradient) {
       return `url(#bg-gradient-${background.id})`;
     }

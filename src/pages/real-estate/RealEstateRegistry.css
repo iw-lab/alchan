@@ -36,7 +36,7 @@ body {
   font-weight: 700;
   margin: 0;
   color: #fff;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.5);
+  text-shadow: 0 0 10px var(--accent);
 }
 
 /* 통계 바 */
@@ -70,21 +70,21 @@ body {
 .stat-item:hover {
   transform: translateY(-5px);
   border-color: var(--cyber-border-bright);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 15px var(--border-accent);
 }
 
 .stat-icon {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: rgba(0, 255, 242, 0.1);
+  background: var(--accent-light);
   border: 1px solid var(--cyber-neon-cyan);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
   color: var(--cyber-neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .stat-value {
@@ -123,7 +123,7 @@ body {
   margin-bottom: 1rem;
   text-align: center;
   color: #fff;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.5);
+  text-shadow: 0 0 5px var(--accent);
 }
 
 .layout-grid {
@@ -187,7 +187,7 @@ body {
 
 .layout-cell:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 15px var(--border-accent);
   border-color: var(--cyber-neon-cyan);
   z-index: 10;
 }
@@ -220,10 +220,10 @@ body {
 }
 
 .layout-cell.occupied {
-  background-color: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
+  background-color: var(--accent-light);
+  color: var(--accent);
   border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 0 0 5px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 5px var(--accent-light);
 }
 
 .layout-cell.rented-by-me {
@@ -288,7 +288,7 @@ body {
 }
 
 .admin-btn.settings {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   color: #fff;
   border: 1px solid var(--cyber-border-dim);
 }
@@ -341,7 +341,7 @@ body {
 .property-card:hover {
   transform: translateY(-5px);
   border-color: var(--cyber-neon-cyan);
-  box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 20px var(--border-accent);
 }
 
 .property-header {
@@ -350,7 +350,7 @@ body {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--cyber-border-dim);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
 }
 
 .property-header h4 {
@@ -498,10 +498,10 @@ body {
 .admin-panel,
 .property-modal,
 .quick-action-modal {
-  background: #1a1a2e;
+  background: var(--bg-card);
   border: 1px solid var(--cyber-border-dim);
   border-radius: 16px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px var(--border-accent);
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
@@ -519,7 +519,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
 }
 
 .panel-header h3,
@@ -571,7 +571,7 @@ body {
 .form-group select {
   width: 100%;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   border: 1px solid var(--cyber-border-dim);
   border-radius: 8px;
   font-size: 1rem;
@@ -583,7 +583,7 @@ body {
 .form-group select:focus {
   outline: none;
   border-color: var(--cyber-neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 /* Quick Action Modal Details */
@@ -659,7 +659,7 @@ body {
   border-top: 1px solid var(--cyber-border-dim);
   display: flex;
   gap: 1rem;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--bg-input);
   border-radius: 0 0 16px 16px;
 }
 
@@ -679,14 +679,14 @@ body {
 }
 
 .btn-primary {
-  background: rgba(0, 255, 242, 0.2);
+  background: var(--border-accent);
   color: var(--cyber-neon-cyan);
-  border-color: rgba(0, 255, 242, 0.5);
+  border-color: var(--accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: rgba(0, 255, 242, 0.4);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.3);
+  background: var(--accent);
+  box-shadow: 0 0 15px var(--border-accent);
   transform: translateY(-2px);
 }
 

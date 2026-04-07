@@ -138,7 +138,7 @@ export default function AvatarEditor({ isOpen, onClose, userId, onSave }) {
         )}
         {/* 아이콘 (악세서리 등) - 색상, 그라디언트, path, icon이 모두 없는 경우 */}
         {!option.color && !option.gradient && !option.path && !option.icon && (
-          <div className="w-7 h-7 flex items-center justify-center text-xl" style={{ color: "#e8e8ff" }}>
+          <div className="w-7 h-7 flex items-center justify-center text-xl" style={{ color: "var(--text-primary)" }}>
             {option.id === "none" ? "❌" : "✓"}
           </div>
         )}
@@ -177,7 +177,7 @@ export default function AvatarEditor({ isOpen, onClose, userId, onSave }) {
       >
         {/* 헤더 */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="m-0 text-xl font-bold flex items-center gap-2.5" style={{ color: "#e8e8ff" }}>
+          <h2 className="m-0 text-xl font-bold flex items-center gap-2.5" style={{ color: "var(--text-primary)" }}>
             <span className="text-2xl">👤</span>
             아바타 꾸미기
           </h2>
@@ -330,7 +330,7 @@ export function AvatarProfileCard({ userId, userName, netAssets, onEditClick }) 
 
       {/* 정보 */}
       <div className="flex-1">
-        <div className="text-lg font-bold mb-2" style={{ color: "#e8e8ff" }}>
+        <div className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>
           {userName}
         </div>
         <div className="text-sm" style={{ color: "#9ca3af" }}>

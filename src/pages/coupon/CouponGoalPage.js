@@ -578,7 +578,7 @@ export default function CouponGoalPage() {
   }
 
   return (
-    <div className="w-full min-h-full" style={{ backgroundColor: "#0a0a12" }}>
+    <div className="w-full min-h-full" style={{ backgroundColor: "var(--bg-primary)" }}>
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
         <h2
           className="text-2xl font-bold text-emerald-400 border-b-2 border-emerald-900 pb-3 mb-6"
@@ -620,7 +620,7 @@ export default function CouponGoalPage() {
               <h4
                 style={{
                   fontSize: "14px",
-                  color: "#00fff2",
+                  color: "var(--accent)",
                   marginBottom: "10px",
                   fontWeight: "600",
                 }}

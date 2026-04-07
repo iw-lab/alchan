@@ -310,7 +310,7 @@ const MusicRoom = ({ user }) => {
                   <span
                     style={{
                       fontSize: "2rem",
-                      color: "#00fff2",
+                      color: "var(--accent)",
                       marginLeft: "4px",
                     }}
                   >

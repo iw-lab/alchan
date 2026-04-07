@@ -37,7 +37,7 @@
   flex-direction: column;
   align-items: center;
   padding: 2rem;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, #16213e 50%, #0f3460 100%);
   color: #f0f0f0;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
@@ -237,7 +237,7 @@
     0 3px 8px rgba(0, 0, 0, 0.7),
     0 1px 3px rgba(0, 0, 0, 0.5),
     inset 0 1px 4px rgba(255, 255, 255, 0.12),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+    inset 0 -2px 4px var(--bg-input);
 }
 
 .omok-stone.white {
@@ -328,7 +328,7 @@
 }
 
 .omok-button.secondary {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-primary);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
@@ -340,7 +340,7 @@
 
 /* 로비 스타일 */
 .game-page-container {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -351,9 +351,9 @@
 .omok-lobby {
   width: 100%;
   max-width: 600px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   border-radius: 20px;
   padding: 2.5rem;
   animation: fadeIn 0.5s ease-out;

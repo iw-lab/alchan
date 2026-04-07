@@ -49,7 +49,7 @@
 }
 
 .user-coupons {
-  background-color: #ffd166;
+  background-color: var(--warning);
   color: #203549;
   padding: 0.3rem 0.6rem;
   border-radius: 12px;

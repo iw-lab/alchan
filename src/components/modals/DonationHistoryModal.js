@@ -307,7 +307,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                             ? "rgba(99, 102, 241, 0.2)"
                             : index % 2 === 0
                               ? "#1e293b"
-                              : "#1a1a2e",
+                              : "var(--bg-card)",
                         }}
                         onMouseOver={(e) => {
                           if (!student.isCurrentUser) {
@@ -318,7 +318,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                         onMouseOut={(e) => {
                           if (!student.isCurrentUser) {
                             e.currentTarget.style.backgroundColor =
-                              index % 2 === 0 ? "#1e293b" : "#1a1a2e";
+                              index % 2 === 0 ? "#1e293b" : "var(--bg-card)";
                           }
                         }}
                       >

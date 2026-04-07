@@ -36,7 +36,7 @@ const TransferModal = memo(function TransferModal({
       <div
         className="rounded-xl p-8 max-w-[450px] w-full relative"
         style={{
-          backgroundColor: "#1a1a2e",
+          backgroundColor: "var(--bg-card)",
           border: "1px solid rgba(0, 255, 242, 0.25)",
           boxShadow:
             "0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 242, 0.1)",
@@ -46,7 +46,7 @@ const TransferModal = memo(function TransferModal({
         <button
           onClick={() => setShowTransferModal(false)}
           className="absolute top-4 right-4 bg-transparent border-0 text-2xl cursor-pointer p-0 w-8 h-8 flex items-center justify-center"
-          style={{ color: "#9999bb" }}
+          style={{ color: "var(--text-secondary)" }}
           aria-label="닫기"
         >
           ×
@@ -55,7 +55,7 @@ const TransferModal = memo(function TransferModal({
         <h2
           className="text-xl font-semibold mb-6"
           style={{
-            color: "#00fff2",
+            color: "var(--accent)",
             textShadow: "0 0 10px rgba(0, 255, 242, 0.4)",
           }}
         >
@@ -69,9 +69,9 @@ const TransferModal = memo(function TransferModal({
             border: "1px solid rgba(0, 255, 242, 0.15)",
           }}
         >
-          <p className="text-sm m-0" style={{ color: "#9999bb" }}>
+          <p className="text-sm m-0" style={{ color: "var(--text-secondary)" }}>
             현재 보유 현금:{" "}
-            <strong style={{ color: "#00fff2" }}>
+            <strong style={{ color: "var(--accent)" }}>
               {userCash.toLocaleString()}원
             </strong>
           </p>
@@ -81,7 +81,7 @@ const TransferModal = memo(function TransferModal({
           <div className="mb-5">
             <label
               className="block mb-2 text-sm font-medium"
-              style={{ color: "#e8e8ff" }}
+              style={{ color: "var(--text-primary)" }}
             >
               받는 사람
             </label>
@@ -90,9 +90,9 @@ const TransferModal = memo(function TransferModal({
               onChange={(e) => setTransferRecipient(e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
               style={{
-                backgroundColor: "#0f0f23",
+                backgroundColor: "var(--bg-input)",
                 border: "1px solid rgba(0, 255, 242, 0.2)",
-                color: "#e8e8ff",
+                color: "var(--text-primary)",
               }}
               required
             >
@@ -121,7 +121,7 @@ const TransferModal = memo(function TransferModal({
           <div className="mb-6">
             <label
               className="block mb-2 text-sm font-medium"
-              style={{ color: "#e8e8ff" }}
+              style={{ color: "var(--text-primary)" }}
             >
               송금 금액
             </label>
@@ -132,9 +132,9 @@ const TransferModal = memo(function TransferModal({
               placeholder="송금할 금액을 입력하세요"
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
               style={{
-                backgroundColor: "#0f0f23",
+                backgroundColor: "var(--bg-input)",
                 border: "1px solid rgba(0, 255, 242, 0.2)",
-                color: "#e8e8ff",
+                color: "var(--text-primary)",
               }}
               min="1"
               max={userCash}
@@ -157,7 +157,7 @@ const TransferModal = memo(function TransferModal({
               className="px-5 py-2.5 rounded-lg border-0 text-sm font-medium cursor-pointer mr-2.5"
               style={{
                 backgroundColor: "rgba(255, 255, 255, 0.08)",
-                color: "#9999bb",
+                color: "var(--text-secondary)",
               }}
             >
               취소
@@ -167,7 +167,7 @@ const TransferModal = memo(function TransferModal({
               className="px-5 py-2.5 rounded-lg border-0 text-sm font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 background: "linear-gradient(135deg, #00fff2, #8b5cf6)",
-                color: "#0a0a12",
+                color: "var(--bg-primary)",
                 fontWeight: 700,
               }}
               disabled={

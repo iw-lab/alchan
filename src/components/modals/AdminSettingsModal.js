@@ -1686,7 +1686,7 @@ const AdminSettingsModal = ({
   };
   const closeBtnStyle = {
     background: "rgba(75,85,99,0.4)",
-    color: "#e8e8ff",
+    color: "var(--text-primary)",
     padding: "10px 24px",
     borderRadius: "8px",
     fontWeight: 600,
@@ -1694,7 +1694,7 @@ const AdminSettingsModal = ({
     border: "1px solid rgba(0,255,242,0.3)",
     cursor: "pointer",
   };
-  const labelStyle = { color: "#e8e8ff", fontWeight: 600 };
+  const labelStyle = { color: "var(--text-primary)", fontWeight: 600 };
   const inputStyle = {
     background: "rgba(0,0,0,0.3)",
     border: "1px solid rgba(0,255,242,0.2)",
@@ -1706,7 +1706,7 @@ const AdminSettingsModal = ({
   };
   const actionBtnStyle = {
     background: "rgba(0,255,242,0.12)",
-    color: "#00fff2",
+    color: "var(--accent)",
     padding: "10px 20px",
     borderRadius: "8px",
     fontWeight: 600,
@@ -1716,7 +1716,7 @@ const AdminSettingsModal = ({
   };
   const cancelBtnStyle = {
     background: "rgba(75,85,99,0.3)",
-    color: "#9999bb",
+    color: "var(--text-secondary)",
     padding: "10px 20px",
     borderRadius: "8px",
     fontWeight: 500,
@@ -1728,7 +1728,7 @@ const AdminSettingsModal = ({
     background: "rgba(0,0,0,0.3)",
     border: "1px solid rgba(0,255,242,0.2)",
     borderRadius: "8px",
-    color: "#e8e8ff",
+    color: "var(--text-primary)",
     padding: "10px 12px",
     fontSize: "0.9rem",
     cursor: "pointer",
@@ -1738,7 +1738,7 @@ const AdminSettingsModal = ({
     <div
       className={`admin-settings-modal ${showAdminSettingsModal ? "show" : ""}`}
     >
-      <div className="admin-settings-content" style={{ color: "#e8e8ff" }}>
+      <div className="admin-settings-content" style={{ color: "var(--text-primary)" }}>
         <h2>
           관리자 설정{" "}
           {isSuperAdmin && (
@@ -1843,7 +1843,7 @@ const AdminSettingsModal = ({
               <p
                 style={{
                   fontSize: "13px",
-                  color: "#9999bb",
+                  color: "var(--text-secondary)",
                   marginBottom: "12px",
                 }}
               >
@@ -1863,7 +1863,7 @@ const AdminSettingsModal = ({
               <div
                 style={{
                   fontSize: "12px",
-                  color: "#9999bb",
+                  color: "var(--text-secondary)",
                   marginBottom: "8px",
                 }}
               >

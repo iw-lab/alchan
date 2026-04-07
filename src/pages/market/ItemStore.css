@@ -2,31 +2,31 @@
 
 /* CSS 변수 정의 - Cyberpunk Colors */
 :root {
-  --color-primary: #00fff2;
-  --color-primary-dark: #00b8b0;
+  --color-primary: var(--accent);
+  --color-primary-dark: var(--accent);
   --color-primary-darker: #008888;
-  --color-secondary: #8b5cf6;
+  --color-secondary: var(--accent);
   --color-secondary-dark: #7c3aed;
   --color-secondary-darker: #6d28d9;
-  --color-danger: #ff3366;
+  --color-danger: var(--danger);
   --color-danger-dark: #cc0044;
-  --color-success: #00ff88;
+  --color-success: var(--success);
   --color-success-dark: #00cc66;
-  --color-warning: #ffd166;
+  --color-warning: var(--warning);
   --color-warning-dark: #cc9900;
-  --color-info-bg: rgba(0, 255, 242, 0.1);
-  --color-gray-100: #0a0a12;
-  --color-gray-200: #12121f;
-  --color-gray-300: rgba(0, 255, 242, 0.15);
-  --color-gray-400: #9999bb;
-  --color-gray-500: #7777aa;
-  --color-gray-600: #6666888;
-  --color-gray-700: #9999bb;
+  --color-info-bg: var(--accent-light);
+  --color-gray-100: var(--bg-primary);
+  --color-gray-200: var(--bg-secondary);
+  --color-gray-300: var(--border-primary);
+  --color-gray-400: var(--text-secondary);
+  --color-gray-500: var(--text-muted);
+  --color-gray-600: var(--text-muted)8;
+  --color-gray-700: var(--text-secondary);
   --color-gray-800: #ccccee;
-  --color-gray-900: #e8e8ff;
-  --color-white: #e8e8ff;
-  --color-text: #e8e8ff;
-  --color-text-secondary: #9999bb;
+  --color-gray-900: var(--text-primary);
+  --color-white: var(--text-primary);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
   --border-radius-base: 8px;
   --border-radius-large: 12px;
   --padding-base: 1rem;
@@ -38,8 +38,8 @@
 body {
   margin: 0;
   font-family: "Rajdhani", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  background-color: #0a0a12 !important;
-  color: #e8e8ff !important;
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -48,7 +48,7 @@ body {
   padding: 12px 20px;
   max-width: 100%;
   margin: 0;
-  background-color: #0a0a12 !important;
+  background-color: var(--bg-primary) !important;
   box-sizing: border-box;
   position: relative;
   width: 100%;
@@ -86,12 +86,12 @@ body {
 
 /* --- 콘텐츠 카드 --- */
 .content-card-section {
-  background-color: rgba(20, 20, 35, 0.8) !important;
+  background-color: var(--bg-card) !important;
   border-radius: var(--border-radius-large);
   padding: 16px;
   margin-bottom: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  border: 1px solid var(--border-accent);
   overflow: hidden;
   backdrop-filter: blur(10px);
 }
@@ -115,19 +115,19 @@ body {
   border-radius: var(--border-radius-base);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 2.5px solid rgba(0, 255, 242, 0.5) !important;
+  border: 2.5px solid var(--accent) !important;
   display: flex;
   flex-direction: column;
   position: relative;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
-  background-color: rgba(20, 20, 35, 0.9) !important;
+  background-color: var(--bg-card) !important;
 }
 
 /* 아이템 카드 호버 효과 */
 .store-item-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 255, 242, 0.2) !important;
-  border-color: rgba(0, 255, 242, 0.4) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5), 0 0 15px var(--border-accent) !important;
+  border-color: var(--accent) !important;
 }
 
 .item-content {
@@ -155,13 +155,13 @@ body {
   font-size: 1.8rem;
   padding: 6px;
   border-radius: 6px;
-  background-color: rgba(0, 255, 242, 0.1) !important;
+  background-color: var(--accent-light) !important;
   display: inline-flex;
   justify-content: center;
   align-items: center;
   width: 48px;
   height: 48px;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.2) !important;
+  box-shadow: 0 0 10px var(--border-accent) !important;
 }
 
 /* 수정: 아이템 정보 컨테이너 - 아이콘 오른쪽에 수직 배치되는 이름과 재고 */
@@ -206,7 +206,7 @@ body {
 }
 
 .item-stock-low {
-  color: #ff3366;
+  color: var(--danger);
   font-weight: 700;
 }
 
@@ -225,21 +225,21 @@ body {
 /* Dark Mode Visible Badges */
 .stock-high {
   background: rgba(0, 255, 136, 0.2) !important;
-  color: #00ff88 !important;
+  color: var(--success) !important;
   border-color: rgba(0, 255, 136, 0.4);
   text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
 }
 
 .stock-medium {
   background: rgba(255, 209, 102, 0.2) !important;
-  color: #ffd166 !important;
+  color: var(--warning) !important;
   border-color: rgba(255, 209, 102, 0.4);
   text-shadow: 0 0 5px rgba(255, 209, 102, 0.5);
 }
 
 .stock-low {
   background: rgba(255, 51, 102, 0.2) !important;
-  color: #ff3366 !important;
+  color: var(--danger) !important;
   border-color: rgba(255, 51, 102, 0.4);
   text-shadow: 0 0 5px rgba(255, 51, 102, 0.5);
 }
@@ -275,7 +275,7 @@ body {
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--color-primary);
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  text-shadow: 0 0 10px var(--border-accent);
   margin-bottom: 10px;
   word-break: break-all;
 }
@@ -292,7 +292,7 @@ body {
   padding: 8px;
   border-radius: 4px;
   border: 1px solid var(--color-gray-500);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   color: #fff;
   text-align: center;
 }
@@ -519,7 +519,7 @@ body {
 }
 
 .delete-confirm-content {
-  background-color: #1a1a2e;
+  background-color: var(--bg-card);
   padding: 20px;
   border-radius: var(--border-radius-large);
   max-width: 400px;
@@ -527,7 +527,7 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   animation: modalFadeIn 0.3s forwards;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   color: #e2e8f0;
 }
 
@@ -855,10 +855,10 @@ body {
    ======================================== */
 .compact-card {
   padding: 0 !important;
-  background: rgba(20, 20, 35, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px var(--bg-input);
   transition: all 0.2s ease;
   overflow: hidden;
 }
@@ -866,7 +866,7 @@ body {
 .compact-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  border-color: rgba(0, 255, 242, 0.3);
+  border-color: var(--border-accent);
 }
 
 .compact-card .item-content {
@@ -889,7 +889,7 @@ body {
   color: #ffffff;
   margin: 0;
   padding: 8px 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, #6366f1 0%, var(--accent) 100%);
   border: none;
   border-radius: 8px;
   display: inline-block;
@@ -929,17 +929,17 @@ body {
 }
 
 .compact-card {
-  background: rgba(20, 20, 35, 0.6) !important;
+  background: var(--bg-secondary) !important;
   border: 1px solid rgba(255, 255, 255, 0.08);
   /* More subtle border */
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px var(--bg-input);
 }
 
 .compact-card .item-actions-primary {
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-primary);
   margin-top: 8px;
 }
 
@@ -954,13 +954,13 @@ body {
 .compact-card .quantity-input {
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   color: #fff;
   font-weight: 600;
 }
 
 .compact-card .buy-item-button {
-  background: linear-gradient(135deg, #00fff2 0%, #00a8ff 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
   color: #000;
   border: none;
   border-radius: 8px;
@@ -968,12 +968,12 @@ body {
   font-weight: 700;
   font-size: 0.875rem;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .compact-card .buy-item-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5);
+  box-shadow: 0 0 15px var(--accent);
 }
 
 .compact-card .buy-item-button:disabled {
@@ -986,7 +986,7 @@ body {
 .compact-card .item-actions-admin {
   padding-top: 10px;
   margin-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-primary);
   gap: 8px;
 }
 
@@ -1036,7 +1036,7 @@ body {
   padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
   color: #fff;
   text-align: center;
   font-size: 14px;

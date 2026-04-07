@@ -3,20 +3,20 @@
     max-width: 800px;
     margin: 2rem auto;
     padding: 2rem;
-    background-color: rgba(20, 20, 35, 0.8);
+    background-color: var(--bg-card);
     border-radius: 16px;
     border: 1px solid rgba(0, 255, 242, 0.12);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     text-align: center;
     box-sizing: border-box;
-    color: #e8e8ff;
+    color: var(--text-primary);
 }
 
 .student-request-container h2 {
-    color: #00fff2;
+    color: var(--accent);
     margin-bottom: 1.5rem;
     font-family: "Jua", sans-serif;
-    text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+    text-shadow: 0 0 10px var(--border-accent);
 }
 
 .student-request-container h4 {
@@ -50,10 +50,10 @@
     min-width: 0;
     padding: 0.8rem 1rem;
     font-size: 1rem;
-    border: 1px solid rgba(0, 255, 242, 0.15);
+    border: 1px solid var(--border-primary);
     border-radius: 12px 0 0 12px;
     background: rgba(10, 10, 18, 0.6);
-    color: #e8e8ff;
+    color: var(--text-primary);
     transition: border-color 0.2s;
 }
 
@@ -64,14 +64,14 @@
 }
 
 .search-input::placeholder {
-    color: #7777aa;
+    color: var(--text-muted);
 }
 
 .search-btn {
     padding: 0.8rem 1.5rem;
     font-size: 1rem;
     border: none;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, var(--accent));
     color: white;
     cursor: pointer;
     border-radius: 0 12px 12px 0;
@@ -93,7 +93,7 @@
     margin-top: 1.5rem;
     max-height: 350px;
     overflow-y: auto;
-    border: 1px solid rgba(0, 255, 242, 0.1);
+    border: 1px solid var(--accent-light);
     border-radius: 12px;
 }
 
@@ -111,7 +111,7 @@
     cursor: pointer;
     border-bottom: 1px solid rgba(0, 255, 242, 0.06);
     transition: all 0.2s;
-    color: #e8e8ff;
+    color: var(--text-primary);
 }
 
 .video-item:last-child {
@@ -138,7 +138,7 @@
 
 .video-item p {
     font-size: 0.9rem;
-    color: #e8e8ff;
+    color: var(--text-primary);
     margin: 0;
     line-height: 1.4;
 }
@@ -146,7 +146,7 @@
 .request-section {
     margin-top: 2rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(0, 255, 242, 0.1);
+    border-top: 1px solid var(--accent-light);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -161,13 +161,13 @@
 .requester-name-input {
     padding: 0.8rem 1rem;
     font-size: 1rem;
-    border: 1px solid rgba(0, 255, 242, 0.15);
+    border: 1px solid var(--border-primary);
     border-radius: 10px;
     width: 100%;
     max-width: 400px;
     box-sizing: border-box;
     background: rgba(10, 10, 18, 0.6);
-    color: #e8e8ff;
+    color: var(--text-primary);
     transition: border-color 0.2s;
 }
 
@@ -178,7 +178,7 @@
 }
 
 .requester-name-input::placeholder {
-    color: #7777aa;
+    color: var(--text-muted);
 }
 
 .request-btn {
@@ -186,7 +186,7 @@
     font-size: 1rem;
     border: none;
     background: linear-gradient(135deg, #00ff9d, #00d4aa);
-    color: #0a0a12;
+    color: var(--bg-primary);
     font-weight: 700;
     cursor: pointer;
     border-radius: 12px;
@@ -211,7 +211,7 @@
 }
 
 .success-section h3 {
-    color: #00fff2;
+    color: var(--accent);
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
 }
@@ -243,7 +243,7 @@
 }
 
 .continue-btn {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, var(--accent));
     color: white;
 }
 
@@ -274,14 +274,14 @@
 }
 
 .login-required p {
-    color: #9999bb;
+    color: var(--text-secondary);
     margin-bottom: 1.5rem;
     font-size: 1.1rem;
 }
 
 .login-btn {
     padding: 0.8rem 2rem;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, var(--accent));
     color: white;
     border: none;
     border-radius: 12px;

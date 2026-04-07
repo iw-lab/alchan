@@ -617,7 +617,7 @@ const ChessGame = () => {
   const { user, userDoc, isAdmin } = useAuth();
 
   const containerStyle = {
-    backgroundColor: "#0a0a12",
+    backgroundColor: "var(--bg-primary)",
     minHeight: "100%",
     width: "100%",
   };
@@ -1706,7 +1706,7 @@ const ChessGame = () => {
               </span>
             )
           ) : gameData.status === "waiting" ? (
-            <span>상대방을 기다리는 중... (코드: <strong style={{color:"#00fff2",cursor:"pointer",textDecoration:"underline"}} onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(gameId);setFeedback({message:"방 코드가 복사되었습니다!",type:"success"})}}>{gameId}</strong>)</span>
+            <span>상대방을 기다리는 중... (코드: <strong style={{color:"var(--accent)",cursor:"pointer",textDecoration:"underline"}} onClick={(e)=>{e.stopPropagation();navigator.clipboard.writeText(gameId);setFeedback({message:"방 코드가 복사되었습니다!",type:"success"})}}>{gameId}</strong>)</span>
           ) : (
             <span>{isMyTurn ? "당신의 차례" : "상대방 차례"}</span>
           )}

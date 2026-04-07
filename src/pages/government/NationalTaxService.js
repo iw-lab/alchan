@@ -360,7 +360,7 @@ const NationalTaxService = ({ classCode }) => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { icon: "💰", label: "총 국고", value: adminCash, sub: "= 학급 관리자 현금", accent: "#00fff2", bg: "rgba(0, 255, 242, 0.08)", border: "rgba(0, 255, 242, 0.25)" },
+              { icon: "💰", label: "총 국고", value: adminCash, sub: "= 학급 관리자 현금", accent: "var(--accent)", bg: "rgba(0, 255, 242, 0.08)", border: "rgba(0, 255, 242, 0.25)" },
               { icon: "📈", label: "주식 거래세 수입", value: treasuryData.stockTaxRevenue, accent: "#60a5fa", bg: "rgba(96, 165, 250, 0.08)", border: "rgba(96, 165, 250, 0.25)" },
               { icon: "📊", label: "주식 수수료 수입", value: treasuryData.stockCommissionRevenue, accent: "#818cf8", bg: "rgba(129, 140, 248, 0.08)", border: "rgba(129, 140, 248, 0.25)" },
               { icon: "🏠", label: "부동산 거래세", value: treasuryData.realEstateTransactionTaxRevenue, accent: "#fbbf24", bg: "rgba(251, 191, 36, 0.08)", border: "rgba(251, 191, 36, 0.25)" },

@@ -203,7 +203,7 @@ export const CardHeader = ({ children, className = "", ...props }) => (
 export const CardTitle = ({ children, className = "", ...props }) => (
   <h3
     className={`text-lg font-bold ${className}`}
-    style={{ color: "#00fff2" }}
+    style={{ color: "var(--accent)" }}
     {...props}
   >
     {children}
@@ -237,7 +237,7 @@ export const Input = forwardRef(
         {label && (
           <label
             className="block text-sm font-medium"
-            style={{ color: "#00fff2" }}
+            style={{ color: "var(--accent)" }}
           >
             {label}
           </label>
@@ -310,7 +310,7 @@ export const Select = forwardRef(
         {label && (
           <label
             className="block text-sm font-medium"
-            style={{ color: "#00fff2" }}
+            style={{ color: "var(--accent)" }}
           >
             {label}
           </label>
@@ -473,7 +473,7 @@ export const Modal = ({
             style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}
           >
             {title && (
-              <h2 className="text-lg font-bold" style={{ color: "#00fff2" }}>
+              <h2 className="text-lg font-bold" style={{ color: "var(--accent)" }}>
                 {title}
               </h2>
             )}
@@ -656,7 +656,7 @@ export const EmptyState = ({
         className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
         style={{ background: "rgba(0, 255, 242, 0.1)" }}
       >
-        <Icon className="w-8 h-8" style={{ color: "#00fff2" }} />
+        <Icon className="w-8 h-8" style={{ color: "var(--accent)" }} />
       </div>
     )}
     {title && (
@@ -943,7 +943,7 @@ export const PageHeader = ({
           className="p-2.5 rounded-xl"
           style={{ background: "rgba(0, 255, 242, 0.1)" }}
         >
-          <Icon className="w-6 h-6" style={{ color: "#00fff2" }} />
+          <Icon className="w-6 h-6" style={{ color: "var(--accent)" }} />
         </div>
       )}
       <div>
@@ -1020,7 +1020,7 @@ export const TableHead = ({ children, className = "" }) => (
     text-left text-xs font-semibold uppercase tracking-wider
     ${className}
   `}
-    style={{ color: "#00fff2" }}
+    style={{ color: "var(--accent)" }}
   >
     {children}
   </th>

@@ -120,7 +120,7 @@ export const LEVEL_THRESHOLDS = [
     minAssets: 1000000000000, // 1조
     title: "알찬 전설",
     icon: "🌌",
-    color: "#00fff2",
+    color: "var(--accent)",
     badge: "🌌",
     description: "1조 달성! 전설이 되다"
   },

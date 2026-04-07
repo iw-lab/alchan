@@ -129,12 +129,12 @@ const AdminPermissionManager = () => {
       <div className="mb-6">
         <h1
           className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2"
-          style={{ color: "#e8e8ff" }}
+          style={{ color: "var(--text-primary)" }}
         >
           <Shield size={28} />
           권한 위임 관리
         </h1>
-        <p className="text-sm" style={{ color: "#9999bb" }}>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
           학생에게 관리 기능을 위임합니다. 대통령 직업 학생은 자동으로 할일 승인
           권한을 가집니다.
         </p>
@@ -153,14 +153,14 @@ const AdminPermissionManager = () => {
           border: "1px solid rgba(100, 116, 139, 0.2)",
         }}
       >
-        <Search size={16} style={{ color: "#9999bb" }} />
+        <Search size={16} style={{ color: "var(--text-secondary)" }} />
         <input
           type="text"
           placeholder="학생 이름 또는 번호 검색..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="bg-transparent border-none outline-none text-sm flex-1"
-          style={{ color: "#e8e8ff" }}
+          style={{ color: "var(--text-primary)" }}
         />
       </div>
 
@@ -186,7 +186,7 @@ const AdminPermissionManager = () => {
               >
                 {perm.label}
               </span>
-              <span className="text-xs ml-2" style={{ color: "#9999bb" }}>
+              <span className="text-xs ml-2" style={{ color: "var(--text-secondary)" }}>
                 — {perm.description}
               </span>
             </div>
@@ -196,7 +196,7 @@ const AdminPermissionManager = () => {
 
       {/* 학생 리스트 */}
       {loading ? (
-        <div className="text-center py-12" style={{ color: "#9999bb" }}>
+        <div className="text-center py-12" style={{ color: "var(--text-secondary)" }}>
           학생 목록을 불러오는 중...
         </div>
       ) : filteredStudents.length === 0 ? (
@@ -205,7 +205,7 @@ const AdminPermissionManager = () => {
           style={{
             backgroundColor: "rgba(20, 20, 35, 0.6)",
             border: "1px solid rgba(100, 116, 139, 0.15)",
-            color: "#9999bb",
+            color: "var(--text-secondary)",
           }}
         >
           <Users size={32} className="mx-auto mb-2 opacity-50" />
@@ -236,7 +236,7 @@ const AdminPermissionManager = () => {
                     <div className="flex items-center gap-2">
                       <span
                         className="font-bold text-sm"
-                        style={{ color: "#e8e8ff" }}
+                        style={{ color: "var(--text-primary)" }}
                       >
                         {student.number ? `${student.number}번 ` : ""}
                         {student.name || "이름 없음"}
