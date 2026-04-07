@@ -59,7 +59,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
       onClick={handleClose}
     >
       <div
-        className="bg-slate-800 rounded-xl shadow-lg w-full max-w-[500px] overflow-hidden border border-slate-600"
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-lg w-full max-w-[500px] overflow-hidden border border-slate-600"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -106,7 +106,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
               value={donateAmount}
               onChange={(e) => setDonateAmount(e.target.value)}
               disabled={isDonating}
-              className={`w-full p-3 border border-slate-600 rounded-md text-base text-slate-100 ${isDonating ? "bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
+              className={`w-full p-3 border border-slate-600 rounded-md text-base text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
               placeholder="응모할 쿠폰 수량을 입력하세요"
             />
           </div>
@@ -119,7 +119,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
               value={donateMessage}
               onChange={(e) => setDonateMessage(e.target.value)}
               disabled={isDonating}
-              className={`w-full p-3 border border-slate-600 rounded-md text-sm resize-y min-h-[80px] text-slate-100 ${isDonating ? "bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
+              className={`w-full p-3 border border-slate-600 rounded-md text-sm resize-y min-h-[80px] text-slate-100 ${isDonating ? "bg-white dark:bg-slate-800 cursor-not-allowed" : "bg-slate-700/50 cursor-text"}`}
               placeholder="응모와 함께 전할 메시지를 입력하세요"
             />
           </div>

@@ -254,7 +254,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="삭제"
               disabled={isDeleting}
-              className="w-full px-4 py-2 bg-slate-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
+              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
             />
           </div>
 

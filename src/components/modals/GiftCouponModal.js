@@ -45,7 +45,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
       onClick={closeModal} // 배경 클릭 시 닫기
     >
       <div
-        className="gift-coupon-modal bg-slate-800 rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl border border-slate-600"
+        className="gift-coupon-modal bg-white dark:bg-slate-800 rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl border border-slate-600"
         onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫힘 방지
       >
         <h3 className="mt-0 text-slate-100">쿠폰 선물하기</h3>

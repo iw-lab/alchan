@@ -90,7 +90,7 @@ export default function PWAInstallPrompt() {
 
   return (
     <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up">
-      <div className="bg-slate-800 rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-[#1a1a3e] to-[#2a1a4e] px-4 py-3 flex items-center justify-between border-b border-indigo-500/10">
           <div className="flex items-center gap-2 text-indigo-400">
@@ -124,7 +124,7 @@ export default function PWAInstallPrompt() {
 
           {/* iOS 안내 */}
           {isIOS ? (
-            <div className="mt-4 p-3 bg-slate-900 rounded-xl border border-indigo-500/10">
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-slate-900 rounded-xl border border-indigo-500/10">
               <p className="text-sm text-slate-100 mb-2 font-medium">
                 iOS에서 설치하기:
               </p>
@@ -143,7 +143,7 @@ export default function PWAInstallPrompt() {
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleDismiss}
-                className="flex-1 px-4 py-2.5 text-slate-400 bg-slate-900 hover:bg-slate-800 rounded-xl font-medium transition-colors border border-indigo-500/10"
+                className="flex-1 px-4 py-2.5 text-slate-400 bg-gray-100 dark:bg-slate-900 hover:bg-white dark:bg-slate-800 rounded-xl font-medium transition-colors border border-indigo-500/10"
               >
                 나중에
               </button>

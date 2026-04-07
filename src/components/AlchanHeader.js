@@ -681,7 +681,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>
@@ -751,7 +751,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>
@@ -773,7 +773,7 @@ const AlchanHeader = memo(
         >
           <div className="space-y-4">
             {userDoc?.classCode && (
-              <p className="text-sm text-slate-400 bg-slate-800/50 p-3 rounded-xl">
+              <p className="text-sm text-slate-400 bg-white dark:bg-slate-800/50 p-3 rounded-xl">
                 현재 학급 코드:{" "}
                 <strong className="text-white">{userDoc.classCode}</strong>
               </p>
@@ -813,7 +813,7 @@ const AlchanHeader = memo(
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-white dark:bg-slate-800 transition-colors"
               >
                 취소
               </button>

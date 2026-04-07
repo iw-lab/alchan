@@ -10,7 +10,7 @@ const PrivacyPolicy = () => {
   useDocumentTitle('개인정보처리방침');
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-slate-900 text-gray-100 py-8 px-4 md:px-8">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-gray-100 py-8 px-4 md:px-8">
       <div className="max-w-4xl mx-auto">
         {/* 헤더 */}
         <div className="mb-8">

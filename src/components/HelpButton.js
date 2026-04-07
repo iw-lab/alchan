@@ -32,7 +32,7 @@ export default function HelpButton() {
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="bg-slate-800 border border-cyan-500/30 rounded-2xl w-full max-w-md shadow-[0_0_30px_rgba(0,255,242,0.1)] animate-fadeIn"
+            className="bg-white dark:bg-slate-800 border border-cyan-500/30 rounded-2xl w-full max-w-md shadow-[0_0_30px_rgba(0,255,242,0.1)] animate-fadeIn"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 헤더 */}
@@ -66,7 +66,7 @@ export default function HelpButton() {
                   {helpData.tips.map((tip, index) => (
                     <div
                       key={index}
-                      className="flex items-start gap-2.5 bg-slate-900/60 rounded-xl px-3.5 py-2.5 border border-cyan-900/20"
+                      className="flex items-start gap-2.5 bg-gray-100/60 dark:bg-slate-900/60 rounded-xl px-3.5 py-2.5 border border-cyan-900/20"
                     >
                       <span className="text-cyan-400 text-xs mt-0.5 font-bold shrink-0">
                         {index + 1}.

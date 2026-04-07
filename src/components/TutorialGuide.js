@@ -388,11 +388,11 @@ export function FeatureTooltip({
       {children}
       {show && (
         <div
-          className={`absolute ${positionClasses[position]} left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-900 text-white rounded-xl shadow-xl z-50`}
+          className={`absolute ${positionClasses[position]} left-1/2 -translate-x-1/2 w-48 p-3 bg-gray-100 dark:bg-gray-900 text-white rounded-xl shadow-xl z-50`}
         >
           <h4 className="font-semibold text-sm mb-1">{title}</h4>
           <p className="text-xs text-gray-300">{description}</p>
-          <div className="absolute w-2 h-2 bg-gray-900 transform rotate-45 left-1/2 -translate-x-1/2 -top-1" />
+          <div className="absolute w-2 h-2 bg-gray-100 dark:bg-gray-900 transform rotate-45 left-1/2 -translate-x-1/2 -top-1" />
         </div>
       )}
     </div>

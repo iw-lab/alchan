@@ -49,11 +49,11 @@ const ConsentForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-gray-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-gray-100">
       <style>{printStyles}</style>
 
       {/* 상단 툴바 (인쇄 시 안 보임) */}
-      <div className="no-print sticky top-0 z-50 bg-slate-800 border-b border-white/10 px-4 py-3">
+      <div className="no-print sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-white/10 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}

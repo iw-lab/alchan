@@ -259,8 +259,8 @@ function SelectMultipleJobsView({
   }, []);
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
-      <h4 className="text-xl font-semibold text-white text-center mb-2">
+    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 dark:border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
+      <h4 className="text-xl font-semibold text-slate-800 dark:text-white text-center mb-2">
         직업 선택 (다중 선택 가능)
       </h4>
       <p className="text-sm text-slate-400 text-center mb-4">
@@ -272,8 +272,8 @@ function SelectMultipleJobsView({
             key={job.id}
             className={`p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${
               tempSelection.includes(job.id)
-                ? "border-cyan-500 bg-cyan-900/30"
-                : "border-cyan-900/20 bg-slate-800/50 hover:border-cyan-500/50"
+                ? "border-indigo-400 dark:border-cyan-500 bg-cyan-900/30"
+                : "border-slate-200 dark:border-cyan-900/20 bg-white dark:bg-slate-800/50 hover:border-indigo-300 dark:border-indigo-400 dark:border-cyan-500/50"
             }`}
           >
             {editingJobId === job.id ? (
@@ -286,7 +286,7 @@ function SelectMultipleJobsView({
                     if (e.key === "Enter") handleSaveEdit();
                     if (e.key === "Escape") handleCancelEdit();
                   }}
-                  className="flex-1 px-2 py-1 bg-slate-900 border border-cyan-500 rounded text-white text-sm focus:outline-none"
+                  className="flex-1 px-2 py-1 bg-gray-100 dark:bg-slate-900 border border-indigo-400 dark:border-cyan-500 rounded text-slate-800 dark:text-white text-sm focus:outline-none"
                   autoFocus
                 />
                 <button
@@ -315,7 +315,7 @@ function SelectMultipleJobsView({
                   />
                   <span
                     className={`font-medium ${
-                      tempSelection.includes(job.id) ? "text-cyan-300" : "text-white"
+                      tempSelection.includes(job.id) ? "text-cyan-300" : "text-slate-800 dark:text-white"
                     }`}
                   >
                     {job.title}
@@ -356,7 +356,7 @@ function SelectMultipleJobsView({
 
       {/* 관리자용 직업 추가 */}
       {isAdmin && (
-        <div className="mt-4 border-t border-cyan-900/30 pt-4">
+        <div className="mt-4 border-t border-slate-200 dark:border-cyan-900/30 pt-4">
           {showAddForm ? (
             <div className="flex items-center gap-2">
               <input
@@ -365,7 +365,7 @@ function SelectMultipleJobsView({
                 onChange={(e) => setNewJobTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddNewJob()}
                 placeholder="새 직업 이름 입력"
-                className="flex-1 px-3 py-2 bg-slate-900 border border-cyan-900/30 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="flex-1 px-3 py-2 bg-gray-100 dark:bg-slate-900 border border-slate-200 dark:border-cyan-900/30 rounded-lg text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400 dark:border-cyan-500"
                 autoFocus
               />
               <ActionButton variant="primary" size="sm" onClick={handleAddNewJob}>
@@ -378,7 +378,7 @@ function SelectMultipleJobsView({
           ) : (
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full p-3 rounded-xl border-2 border-dashed border-cyan-900/40 text-cyan-400 hover:border-cyan-500 hover:bg-cyan-900/20 transition-all flex items-center justify-center gap-2"
+              className="w-full p-3 rounded-xl border-2 border-dashed border-cyan-900/40 text-cyan-400 hover:border-indigo-400 dark:border-cyan-500 hover:bg-cyan-900/20 transition-all flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
               직업 추가
@@ -1948,16 +1948,16 @@ function Dashboard({ adminTabMode }) {
     userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
   return (
-    <div className="min-h-full w-full bg-slate-900 px-2 pt-1 pb-0">
+    <div className="min-h-full w-full bg-gray-100 dark:bg-slate-900 px-2 pt-1 pb-0">
       {/* 페이지 헤더 - 컴팩트 버전 (관리자 탭 모드가 아닐 때만 표시) */}
       {!adminTabMode && (
-        <section className="bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
+        <section className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg border border-slate-200 dark:border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-cyan-900/30 rounded-md flex items-center justify-center text-cyan-400 shrink-0 border border-cyan-500/30">
+            <div className="w-7 h-7 bg-cyan-900/30 rounded-md flex items-center justify-center text-cyan-400 shrink-0 border border-indigo-400 dark:border-cyan-500/30">
               <ListTodo className="w-4 h-4" />
             </div>
             <div className="leading-tight">
-              <h2 className="text-sm md:text-base font-bold text-white">
+              <h2 className="text-sm md:text-base font-bold text-slate-800 dark:text-white">
                 오늘의 할일
               </h2>
               <p className="text-[11px] text-slate-400">
@@ -1972,7 +1972,7 @@ function Dashboard({ adminTabMode }) {
                 icon={Settings}
                 onClick={() => handleOpenAdminSettings("generalSettings")}
                 size="sm"
-                className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
+                className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-slate-800 dark:text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
               >
                 ⚙️ 관리자 기능
               </ActionButton>
@@ -2010,12 +2010,12 @@ function Dashboard({ adminTabMode }) {
       {viewMode === "list" && !showAdminSettingsModal && !adminTabMode && (
         <>
           {/* 나의 직업 할일 섹션 */}
-          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 overflow-hidden mb-6">
+          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 dark:border-cyan-900/30 overflow-hidden mb-6">
             {/* 나의 직업 할일 헤더 - 색상 배경 */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-white" />
-                <h3 className="text-base md:text-lg font-bold text-white">
+                <Briefcase className="w-5 h-5 text-slate-800 dark:text-white" />
+                <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">
                   나의 직업 할일
                 </h3>
               </div>
@@ -2024,7 +2024,7 @@ function Dashboard({ adminTabMode }) {
                 icon={Plus}
                 onClick={handleSelectJobClick}
                 size="sm"
-                className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
+                className="!bg-white/20 !text-slate-800 dark:text-white !border-white/30 hover:!bg-white/30"
               >
                 직업 추가/선택
               </ActionButton>
@@ -2098,12 +2098,12 @@ function Dashboard({ adminTabMode }) {
               </div>
 
               {/* 공통 할일 섹션 */}
-              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-900/30 bg-slate-800/50 backdrop-blur-sm">
+              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-900/30 bg-white dark:bg-slate-800/50 backdrop-blur-sm">
                 {/* 공통 할일 헤더 - 색상 배경 */}
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ListTodo className="w-5 h-5 text-white" />
-                    <h3 className="text-base md:text-lg font-bold text-white">
+                    <ListTodo className="w-5 h-5 text-slate-800 dark:text-white" />
+                    <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">
                       공통 할일
                     </h3>
                   </div>
@@ -2113,14 +2113,14 @@ function Dashboard({ adminTabMode }) {
                       icon={Plus}
                       onClick={() => handleAddTaskClick(null, false)}
                       size="sm"
-                      className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
+                      className="!bg-white/20 !text-slate-800 dark:text-white !border-white/30 hover:!bg-white/30"
                     >
                       공통 할일 추가
                     </ActionButton>
                   )}
                 </div>
 
-                <div className="p-4 md:p-6 bg-slate-900/50">
+                <div className="p-4 md:p-6 bg-white dark:bg-slate-900/50">
                   <CommonTaskList
                     tasks={commonTasksWithUserProgress}
                     isAdmin={isAdmin?.()}

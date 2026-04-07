@@ -678,7 +678,7 @@ export default function GroupPurchase() {
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-md bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-md bg-white dark:bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 모달 헤더 */}
@@ -703,7 +703,7 @@ export default function GroupPurchase() {
                 <select
                   value={newCampaign.selectedItemId}
                   onChange={(e) => handleSelectStoreItem(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none [&>option]:bg-slate-800 [&>option]:text-white"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-white/10 text-white text-sm focus:border-purple-500/50 focus:outline-none [&>option]:bg-white dark:bg-slate-800 [&>option]:text-white"
                 >
                   <option value="">-- 아이템을 선택하세요 --</option>
                   {(items || [])
@@ -788,7 +788,7 @@ export default function GroupPurchase() {
           onClick={() => setContributeModal(null)}
         >
           <div
-            className="w-full max-w-sm bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-sm bg-white dark:bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-b border-purple-500/20">

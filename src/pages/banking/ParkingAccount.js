@@ -102,7 +102,7 @@ const cls = {
   modalOverlay:
     "fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-[8px]",
   modalContent:
-    "bg-slate-800 p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
+    "bg-white dark:bg-slate-800 p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
   modalTitle:
     "text-2xl font-bold mb-5 text-white drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
   modalCloseBtn:

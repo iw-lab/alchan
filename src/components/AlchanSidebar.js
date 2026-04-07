@@ -857,7 +857,7 @@ export default function AlchanSidebar({
       {/* 모바일 오버레이 */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-white dark:bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
           onClick={onClose}
         />
       )}
