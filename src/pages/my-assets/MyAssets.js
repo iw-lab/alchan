@@ -1319,18 +1319,19 @@ export default function MyAssets() {
         {/* 보유 현금 - 메인 강조 카드 */}
         <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
           <div className="mb-2.5">
-            <span className="!text-white/90 text-base font-medium">
+            <span className="text-base font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
               💰 보유 현금
             </span>
           </div>
-          <div className="text-[42px] font-extrabold !text-white tracking-tight mb-4 text-right">
+          <div className="text-[42px] font-extrabold tracking-tight mb-4 text-right" style={{ color: '#ffffff' }}>
             {displayCash.toLocaleString()}{" "}
             <span className="text-[28px] font-semibold">원</span>
           </div>
           <div className="flex justify-end">
             <button
               onClick={() => setShowTransferModal(true)}
-              className="px-7 py-3.5 bg-white/95 !text-[#667eea] border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
+              className="px-7 py-3.5 border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
+              style={{ backgroundColor: 'rgba(255,255,255,0.95)', color: '#667eea' }}
               disabled={assetsLoading || authLoading}
             >
               💸 송금하기
