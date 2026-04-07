@@ -1319,13 +1319,13 @@ export default function MyAssets() {
         {/* 보유 현금 - 메인 강조 카드 */}
         <div className="gradient-card-light bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
           <div className="mb-2.5">
-            <span className="text-base font-medium">
+            <span className="text-lg font-bold">
               💰 보유 현금
             </span>
           </div>
-          <div className="text-[42px] font-extrabold tracking-tight mb-4 text-right">
+          <div className="text-[48px] font-extrabold tracking-tight mb-4 text-right">
             {displayCash.toLocaleString()}{" "}
-            <span className="text-[28px] font-semibold">원</span>
+            <span className="text-[32px] font-semibold">원</span>
           </div>
           <div className="flex justify-end">
             <button
@@ -1412,11 +1412,11 @@ export default function MyAssets() {
           {/* 총 순자산 */}
           <div className="gradient-card-light bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-2xl p-4 shadow-[0_4px_15px_rgba(240,147,251,0.3)] border-none">
             <div className="mb-1">
-              <span className="!text-white/90 text-xs font-medium">📊 총 순자산</span>
+              <span className="text-sm font-medium">📊 총 순자산</span>
             </div>
-            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right">
               {Number(totalNetAssets).toLocaleString()}
-              <span className="text-sm font-semibold"> 원</span>
+              <span className="text-base font-semibold"> 원</span>
             </div>
             <p className="mt-1 text-[10px] !text-white/70 leading-tight">
               현금+쿠폰+파킹+예적금+부동산-대출
@@ -1426,11 +1426,11 @@ export default function MyAssets() {
           {/* 파킹통장 */}
           <div className="gradient-card-light bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.2)] border-none">
             <div className="mb-1">
-              <span className="!text-white/90 text-xs font-medium">🅿️ 파킹통장</span>
+              <span className="text-sm font-medium">🅿️ 파킹통장</span>
             </div>
-            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right">
               {Number(parkingBalance).toLocaleString()}
-              <span className="text-sm font-semibold"> 원</span>
+              <span className="text-base font-semibold"> 원</span>
             </div>
             <p className="mt-1 text-[10px] !text-white/70 text-right">
               입출금 및 상품 가입
@@ -1440,11 +1440,11 @@ export default function MyAssets() {
           {/* 보유 쿠폰 */}
           <div className="gradient-card-light bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl p-4 shadow-[0_4px_15px_rgba(251,191,36,0.2)] border-none">
             <div className="mb-1">
-              <span className="!text-white/90 text-xs font-medium">🎟️ 보유 쿠폰</span>
+              <span className="text-sm font-medium">🎟️ 보유 쿠폰</span>
             </div>
-            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right">
               {displayCoupons.toLocaleString()}
-              <span className="text-sm font-semibold"> 개</span>
+              <span className="text-base font-semibold"> 개</span>
             </div>
             <p className="mt-1 text-[10px] !text-white/70 text-right">
               1쿠폰 = {Number(couponValue).toLocaleString()}원
