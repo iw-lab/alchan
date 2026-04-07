@@ -74,7 +74,7 @@
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
   --bg-card: #ffffff;
-  --bg-sidebar: #f8fafc;
+  --bg-sidebar: #f1f5f9;
   --bg-glass: rgba(255, 255, 255, 0.85);
   --bg-input: #f8fafc;
   --bg-hover: #f1f5f9;
@@ -89,7 +89,7 @@
   --accent: #6366f1;
   --accent-hover: #4f46e5;
   --accent-light: rgba(99, 102, 241, 0.1);
-  --accent-bg: rgba(99, 102, 241, 0.06);
+  --accent-bg: rgba(99, 102, 241, 0.1);
 
   /* Borders */
   --border-primary: #e2e8f0;

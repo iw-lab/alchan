@@ -438,8 +438,8 @@ const CATEGORY_LABELS = {
 // 메뉴 섹션 컴포넌트
 // ============================================
 const MenuSection = memo(({ title, children }) => (
-  <div className="mb-1">
-    <h3 className="px-4 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
+  <div className="mb-2">
+    <h3 className="px-4 py-1 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#6366f1' }}>
       {title}
     </h3>
     <ul className="space-y-0.5">{children}</ul>
@@ -844,7 +844,7 @@ export default function AlchanSidebar({
 
         {/* 사용자 아바타 */}
         <div className="p-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
-          <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-slate-800 dark:text-white font-bold">
+          <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
             {userName.charAt(0)}
           </div>
         </div>
@@ -857,7 +857,7 @@ export default function AlchanSidebar({
       {/* 모바일 오버레이 */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-white dark:bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
           onClick={onClose}
         />
       )}
@@ -876,13 +876,13 @@ export default function AlchanSidebar({
           lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
-          backgroundColor: 'var(--bg-sidebar)',
-          borderRight: '1px solid var(--border-primary)',
-          boxShadow: 'var(--shadow-md)',
+          background: 'linear-gradient(180deg, #eef2ff 0%, #f1f5f9 40%, #f8fafc 100%)',
+          borderRight: '1px solid #e2e8f0',
+          boxShadow: '2px 0 12px rgba(0, 0, 0, 0.04)',
         }}
       >
         {/* 로고 영역 */}
-        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-primary)' }}>
+        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', border: '1px solid #c7d2fe' }}>
           <div className="flex items-center gap-3.5 px-4 w-full relative z-10">
             <div className="p-1.5 rounded-xl" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}>
               <AppIcon style={{ width: "36px", height: "36px" }} />
@@ -927,14 +927,14 @@ export default function AlchanSidebar({
             className="flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group"
             style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-slate-800 dark:text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
               {userName.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+              <p className="text-sm font-bold truncate" style={{ color: '#1e293b' }}>
                 {userName}
               </p>
-              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{userRole}</p>
+              <p className="text-xs truncate" style={{ color: '#64748b' }}>{userRole}</p>
             </div>
             <LogOut className="w-4 h-4 group-hover:text-red-500 transition-colors" style={{ color: 'var(--text-muted)' }} />
           </div>
