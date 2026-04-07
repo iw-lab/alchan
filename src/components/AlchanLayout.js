@@ -142,11 +142,6 @@ const CouponGoalPage = lazyWithRetry(
 
 // 전체 화면이 필요한 페이지 경로 (자동으로 사이드바 접기)
 const FULLSCREEN_PAGES = [
-  "/learning-games/omok",
-  "/learning-games/science",
-  "/learning-games/typing",
-  "/court",
-  "/national-assembly",
   "/music-room",
 ];
 
