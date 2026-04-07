@@ -876,22 +876,22 @@ export default function AlchanSidebar({
           lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
-          background: 'linear-gradient(180deg, #eef2ff 0%, #f1f5f9 40%, #f8fafc 100%)',
-          borderRight: '1px solid #e2e8f0',
-          boxShadow: '2px 0 12px rgba(0, 0, 0, 0.04)',
+          background: 'linear-gradient(180deg, #e0e7ff 0%, #eef2ff 50%, #f5f3ff 100%)',
+          borderRight: '2px solid #c7d2fe',
+          boxShadow: '4px 0 20px rgba(99, 102, 241, 0.08)',
         }}
       >
         {/* 로고 영역 */}
-        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', border: '1px solid #c7d2fe' }}>
+        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
           <div className="flex items-center gap-3.5 px-4 w-full relative z-10">
-            <div className="p-1.5 rounded-xl" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}>
+            <div className="p-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none', border: 'none' }}>
               <AppIcon style={{ width: "36px", height: "36px" }} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[22px] font-black leading-tight font-jua" style={{ color: 'var(--accent)' }}>
+              <span className="text-[22px] font-black leading-tight font-jua" style={{ color: '#ffffff' }}>
                 알찬
               </span>
-              <span className="text-[11px] font-bold tracking-[0.2em] leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-[11px] font-bold tracking-[0.2em] leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 ALCHAN
               </span>
             </div>
@@ -921,11 +921,11 @@ export default function AlchanSidebar({
         </nav>
 
         {/* 하단 사용자 프로필 */}
-        <div className="p-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
+        <div className="p-4" style={{ borderTop: '2px solid #e0e7ff' }}>
           <div
             onClick={handleLogout}
             className="flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group"
-            style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}
+            style={{ background: 'linear-gradient(135deg, #f5f3ff, #eef2ff)', boxShadow: '0 2px 8px rgba(99, 102, 241, 0.08)', border: '1px solid #c7d2fe' }}
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
               {userName.charAt(0)}
