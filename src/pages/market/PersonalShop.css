@@ -1,17 +1,16 @@
-/* PersonalShop.css - Cyberpunk Theme (ItemMarket 스타일 일관성) */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;500;700&display=swap');
+/* PersonalShop.css - Modern Light Theme */
 
 :root {
-  --neon-blue: var(--accent);
-  --neon-purple: #bc13fe;
-  --neon-pink: #ff0055;
-  --neon-green: var(--success);
-  --dark-bg: var(--bg-primary);
-  --panel-bg: rgba(30, 41, 59, 0.7);
-  --panel-bg-solid: #14142b;
-  --glass-border: var(--border-primary);
-  --text-main: #e2e8f0;
-  --text-dim: #94a3b8;
+  --neon-blue: #6366f1;
+  --neon-purple: #7c3aed;
+  --neon-pink: #dc2626;
+  --neon-green: #059669;
+  --dark-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --panel-bg-solid: #ffffff;
+  --glass-border: #e0e7ff;
+  --text-main: #1e293b;
+  --text-dim: #64748b;
 }
 
 /* 메인 컨테이너 */
@@ -20,32 +19,31 @@
   margin: 0;
   padding: 20px;
   color: var(--text-main);
-  background-color: var(--dark-bg);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
   min-height: 100vh;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
 
 /* 헤더 */
 .market-header {
-  margin-bottom: 30px;
-  border-bottom: 2px solid var(--neon-blue);
+  margin-bottom: 24px;
+  border-bottom: 2px solid #c7d2fe;
   padding-bottom: 15px;
 }
 
 .market-header h1 {
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 700;
-  font-size: 2.2rem;
-  background: linear-gradient(to right, #fff, var(--neon-blue));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  font-weight: 800;
+  font-size: 2rem;
+  color: #4338ca;
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: #4338ca;
+  text-shadow: none;
   margin: 0 0 8px 0;
 }
 
 .header-subtitle {
-  color: var(--text-dim);
+  color: #64748b;
   font-size: 1rem;
   margin: 0;
 }
@@ -59,14 +57,13 @@
 }
 
 .tab-button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  color: var(--text-dim);
+  background: #f8faff;
+  border: 1px solid #e0e7ff;
+  color: #64748b;
   padding: 12px 20px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 10px 10px 0 0;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Rajdhani', sans-serif;
+  transition: all 0.2s ease;
   font-weight: 600;
   font-size: 1rem;
   display: flex;
@@ -75,16 +72,17 @@
 }
 
 .tab-button.active {
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
-  border-color: var(--neon-blue);
-  border-bottom-color: transparent;
-  color: var(--neon-blue);
-  text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+  background: #ffffff;
+  border-color: #c7d2fe;
+  border-bottom-color: #ffffff;
+  color: #4338ca;
+  text-shadow: none;
+  font-weight: 700;
 }
 
 .tab-button:hover:not(.active) {
-  background: var(--border-primary);
-  color: #fff;
+  background: #eef2ff;
+  color: #4338ca;
 }
 
 .tab-icon {
@@ -93,12 +91,12 @@
 
 /* 탭 콘텐츠 */
 .tab-content {
-  background: var(--panel-bg);
-  border-radius: 0 12px 12px 12px;
-  border: 1px solid var(--glass-border);
+  background: #ffffff;
+  border-radius: 0 16px 16px 16px;
+  border: 1px solid #c7d2fe;
   padding: 20px;
-  backdrop-filter: blur(10px);
   min-height: 400px;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.06);
 }
 
 /* 컨트롤 섹션 (검색 & 필터) */
@@ -116,27 +114,25 @@
 
 .search-input,
 .category-filter {
-  background-color: rgba(30, 41, 59, 0.6) !important;
-  color: #fff !important;
-  border: 1px solid var(--neon-blue) !important;
-  border-radius: 8px;
+  background-color: #f8faff !important;
+  color: #1e293b !important;
+  border: 1px solid #e0e7ff !important;
+  border-radius: 10px;
   padding: 12px 16px;
-  font-family: 'Rajdhani', sans-serif;
   font-size: 1rem;
-  backdrop-filter: blur(5px);
-  box-shadow: 0 0 5px rgba(99, 102, 241, 0.2);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   width: 100%;
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: #94a3b8;
 }
 
 .search-input:focus,
 .category-filter:focus {
-  background-color: rgba(40, 40, 60, 0.8) !important;
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+  background-color: #ffffff !important;
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   outline: none;
 }
 
@@ -154,14 +150,15 @@
 
 /* 상점 카드 */
 .shop-card {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(20, 20, 40, 0.9));
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
+  border-radius: 14px;
   padding: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
 }
 
 .shop-card::before {
@@ -171,15 +168,15 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
 .shop-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.2);
-  border-color: var(--neon-blue);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
+  border-color: #a5b4fc;
 }
 
 .shop-card:hover::before {
@@ -203,10 +200,9 @@
 }
 
 .shop-name {
-  font-family: 'Orbitron', sans-serif;
   font-size: 1.2rem;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
+  color: #1e293b;
   margin: 0 0 4px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -240,8 +236,8 @@
 }
 
 .shop-category {
-  background: rgba(139, 92, 246, 0.2);
-  color: var(--neon-purple);
+  background: #eef2ff;
+  color: #4338ca;
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -262,16 +258,17 @@
 
 /* 상품 카드 */
 .product-card {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(20, 20, 40, 0.9));
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
+  border-radius: 14px;
   padding: 16px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
 }
 
 .product-card:hover {
-  border-color: var(--neon-blue);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
 }
 
 .product-card-header {
@@ -297,10 +294,9 @@
 }
 
 .product-name {
-  font-family: 'Orbitron', sans-serif;
   font-size: 1rem;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
+  color: #1e293b;
   margin: 0;
 }
 
@@ -312,13 +308,13 @@
 }
 
 .product-type-badge.product {
-  background: rgba(99, 102, 241, 0.2);
-  color: #00aaff;
+  background: #eef2ff;
+  color: #4338ca;
 }
 
 .product-type-badge.service {
-  background: rgba(0, 255, 136, 0.2);
-  color: var(--neon-green);
+  background: #ecfdf5;
+  color: #059669;
 }
 
 .product-description {
@@ -381,9 +377,9 @@
 }
 
 .action-btn.buy {
-  background: linear-gradient(45deg, var(--neon-purple), #8a00d4);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   color: white;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
 }
 
 .action-btn.buy:hover:not(:disabled) {
@@ -459,20 +455,20 @@
 
 /* 뒤로가기 버튼 */
 .back-button {
-  background: transparent;
-  border: 1px solid var(--neon-blue);
-  color: var(--neon-blue);
+  background: #f8faff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
   margin-bottom: 20px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .back-button:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: #eef2ff;
+  border-color: #818cf8;
 }
 
 /* 상점 상세 헤더 */
@@ -480,11 +476,12 @@
   display: flex;
   gap: 20px;
   align-items: flex-start;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.1));
-  border: 1px solid var(--neon-purple);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
+  border: 1px solid #c7d2fe;
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 30px;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
 }
 
 .shop-detail-icon {
@@ -492,15 +489,16 @@
 }
 
 .shop-detail-info h2 {
-  font-family: 'Orbitron', sans-serif;
   font-size: 1.8rem;
-  color: #fff;
+  font-weight: 800;
+  color: #1e293b;
   margin: 0 0 8px 0;
 }
 
 .shop-detail-info .owner {
-  color: var(--neon-purple);
+  color: #7c3aed;
   font-size: 1rem;
+  font-weight: 600;
   margin: 0;
 }
 
