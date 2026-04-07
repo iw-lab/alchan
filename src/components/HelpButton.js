@@ -19,7 +19,7 @@ export default function HelpButton() {
       {/* 플로팅 도움말 버튼 - 우측 하단 고정 */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-slate-800 dark:text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
+        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
         title="도움말"
       >
         <HelpCircle className="w-5 h-5" />
@@ -32,20 +32,20 @@ export default function HelpButton() {
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="bg-white dark:bg-slate-800 border border-cyan-500/30 rounded-2xl w-full max-w-md shadow-[0_0_30px_rgba(0,255,242,0.1)] animate-fadeIn"
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl animate-fadeIn"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 헤더 */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/50">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{helpData.icon}</span>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h3 className="text-lg font-bold text-slate-800">
                   {helpData.title}
                 </h3>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/20 transition-colors"
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -53,25 +53,25 @@ export default function HelpButton() {
 
             {/* 설명 */}
             <div className="px-5 py-4">
-              <p className="text-slate-100 text-sm leading-relaxed mb-4">
+              <p className="text-slate-600 text-sm leading-relaxed mb-4">
                 {helpData.description}
               </p>
 
               {/* 팁 목록 */}
               {helpData.tips && helpData.tips.length > 0 && (
                 <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
                     사용 팁
                   </h4>
                   {helpData.tips.map((tip, index) => (
                     <div
                       key={index}
-                      className="flex items-start gap-2.5 bg-gray-100/60 dark:bg-slate-900/60 rounded-xl px-3.5 py-2.5 border border-cyan-900/20"
+                      className="flex items-start gap-2.5 bg-indigo-50 rounded-xl px-3.5 py-2.5 border border-indigo-100"
                     >
-                      <span className="text-cyan-400 text-xs mt-0.5 font-bold shrink-0">
+                      <span className="text-indigo-600 text-xs mt-0.5 font-bold shrink-0">
                         {index + 1}.
                       </span>
-                      <p className="text-slate-100 text-sm leading-relaxed">
+                      <p className="text-slate-700 text-sm leading-relaxed">
                         {tip}
                       </p>
                     </div>
@@ -84,7 +84,7 @@ export default function HelpButton() {
             <div className="px-5 pb-4">
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 text-sm font-bold border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold border border-indigo-600 hover:bg-indigo-700 transition-colors"
               >
                 확인
               </button>

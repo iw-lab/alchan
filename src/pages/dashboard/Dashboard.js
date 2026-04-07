@@ -1948,16 +1948,16 @@ function Dashboard({ adminTabMode }) {
     userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
   return (
-    <div className="min-h-full w-full bg-gray-100 dark:bg-slate-900 px-2 pt-1 pb-0">
+    <div className="min-h-full w-full bg-gray-100 px-2 pt-1 pb-0">
       {/* 페이지 헤더 - 컴팩트 버전 (관리자 탭 모드가 아닐 때만 표시) */}
       {!adminTabMode && (
-        <section className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg border border-slate-200 dark:border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
+        <section className="bg-white rounded-lg px-3 py-1.5 shadow-lg border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-cyan-900/30 rounded-md flex items-center justify-center text-cyan-400 shrink-0 border border-indigo-400 dark:border-cyan-500/30">
+            <div className="w-7 h-7 bg-indigo-100 rounded-md flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-200">
               <ListTodo className="w-4 h-4" />
             </div>
             <div className="leading-tight">
-              <h2 className="text-sm md:text-base font-bold text-slate-800 dark:text-white">
+              <h2 className="text-sm md:text-base font-bold text-slate-800">
                 오늘의 할일
               </h2>
               <p className="text-[11px] text-slate-400">
@@ -1972,7 +1972,7 @@ function Dashboard({ adminTabMode }) {
                 icon={Settings}
                 onClick={() => handleOpenAdminSettings("generalSettings")}
                 size="sm"
-                className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-slate-800 dark:text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
+                className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
               >
                 ⚙️ 관리자 기능
               </ActionButton>
@@ -2010,7 +2010,7 @@ function Dashboard({ adminTabMode }) {
       {viewMode === "list" && !showAdminSettingsModal && !adminTabMode && (
         <>
           {/* 나의 직업 할일 섹션 */}
-          <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 dark:border-cyan-900/30 overflow-hidden mb-6">
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mb-6">
             {/* 나의 직업 할일 헤더 - 색상 배경 */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2098,7 +2098,7 @@ function Dashboard({ adminTabMode }) {
               </div>
 
               {/* 공통 할일 섹션 */}
-              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-200 dark:border-emerald-900/30 bg-white dark:bg-slate-800/50 backdrop-blur-sm">
+              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-200 bg-white">
                 {/* 공통 할일 헤더 - 색상 배경 */}
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -2120,7 +2120,7 @@ function Dashboard({ adminTabMode }) {
                   )}
                 </div>
 
-                <div className="p-4 md:p-6 bg-white dark:bg-slate-900/50">
+                <div className="p-4 md:p-6 bg-white">
                   <CommonTaskList
                     tasks={commonTasksWithUserProgress}
                     isAdmin={isAdmin?.()}

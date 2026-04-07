@@ -26,28 +26,26 @@ const JobList = memo(function JobList({
       key={job.id} // 상위에서 map을 사용하므로 여기서 key는 필수 X, 식별용으로 유지
       className="flex flex-col h-full rounded-lg overflow-hidden mb-4"
       style={{
-        backgroundColor: "rgba(30, 41, 59, 0.6)",
-        border: "1px solid rgba(0, 255, 242, 0.2)",
-        boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-        backdropFilter: "blur(5px)",
+        backgroundColor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
       }}
     >
       {/* 직업 헤더 - 시인성 개선 */}
       <div
         className="job-header-container flex justify-between items-center"
         style={{
-          background: "linear-gradient(135deg, rgba(79, 70, 229, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%)",
+          background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
           padding: isMobile ? "12px 14px" : "14px 16px",
-          borderBottom: "1px solid rgba(0, 255, 242, 0.2)",
+          borderBottom: "1px solid #e2e8f0",
         }}
       >
         <div
           className="job-title-text font-bold"
           style={{
             fontSize: isMobile ? "15px" : "18px",
-            textShadow: "0 0 10px rgba(0, 255, 242, 0.3)",
             letterSpacing: "-0.01em",
-            color: "var(--text-primary)", // 밝은 텍스트
+            color: "#1e293b",
           }}
         >
           {job.title}
@@ -61,7 +59,7 @@ const JobList = memo(function JobList({
               style={{
                 background: "none",
                 border: "none",
-                color: "rgba(255, 255, 255, 0.7)",
+                color: "#64748b",
               }}
               aria-label={`${job.title} 직업 수정`}
             >
@@ -73,7 +71,7 @@ const JobList = memo(function JobList({
               style={{
                 background: "none",
                 border: "none",
-                color: "rgba(255, 255, 255, 0.7)",
+                color: "#64748b",
               }}
               aria-label={`${job.title} 직업 삭제`}
             >
@@ -116,7 +114,7 @@ const JobList = memo(function JobList({
 
       {/* 관리자 모드에서 할일 추가 버튼 (하단 고정 영역) */}
       {isAdmin && (
-        <div style={{ padding: isMobile ? "8px" : "10px", borderTop: "1px solid rgba(0, 255, 242, 0.1)" }}>
+        <div style={{ padding: isMobile ? "8px" : "10px", borderTop: "1px solid #e2e8f0" }}>
           <button
             onClick={onAddTask} // Dashboard에서 job.id 포함하여 생성된 핸들러 전달
             // --- 인라인 스타일 대신 전달받은 스타일 적용 ---
