@@ -45,11 +45,11 @@
 /* 헤더 */
 .omok-header {
   text-align: center;
-  margin-bottom: 1.5rem;
-  padding: 1.5rem 1rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 16px;
-  margin: 0 1rem 1.5rem;
+  margin-bottom: 0;
+  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  border-radius: 0;
+  margin: 0 0 1.5rem;
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
   animation: fadeIn 0.5s ease-out;
 }
@@ -372,11 +372,12 @@
 .game-page-container {
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 1rem 0;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   width: 100%;
+  min-height: 100%;
 }
 
 .omok-lobby {
@@ -385,43 +386,59 @@
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 0 1rem;
+  padding: 0 1.5rem 1.5rem;
   box-shadow: none;
   animation: fadeIn 0.5s ease-out;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .lobby-section {
-  margin-bottom: 1.5rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  margin-bottom: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  border: 1px solid #c7d2fe;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
-.lobby-section:last-child { margin-bottom: 0; }
+.lobby-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.15);
+}
 
 .lobby-section h3 {
-  color: #1e293b;
-  font-size: 1.2rem;
+  color: #4338ca;
+  font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 1rem;
   text-align: center;
 }
 
 .game-mode-selector {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+  border: 1px solid #c7d2fe;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+  grid-column: 1 / -1;
 }
 
 .ai-difficulty-selector {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #ffffff 0%, #fef3f2 100%);
+  border: 1px solid #fecaca;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.06);
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .omok-lobby {
+    grid-template-columns: 1fr;
+    padding: 0 1rem 1rem;
+  }
 }
 
 .game-mode-selector,
@@ -439,27 +456,31 @@
 .mode-options button,
 .difficulty-options button {
   flex: 1;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #e0e7ff;
+  background: linear-gradient(135deg, #f8faff, #eef2ff);
+  color: #4338ca;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .mode-options button:hover,
 .difficulty-options button:hover {
-  background: #eef2ff;
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
   border-color: #818cf8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
 }
 
 .mode-options button.primary,
 .difficulty-options button.selected {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border-color: transparent;
   color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .lobby-actions {
