@@ -1231,16 +1231,14 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6 {
   color: white !important;
 }
 
-/* 그라디언트 헤더 내부 모든 요소도 흰색 */
-[class*="from-indigo-"] *,
-[class*="from-emerald-5"] *,
-[class*="from-purple-"] *,
-[class*="from-teal-5"] *,
-.bg-indigo-500 *, .bg-indigo-600 *, .bg-indigo-700 *,
-.bg-emerald-500 *, .bg-emerald-600 *,
-.bg-violet-500 *, .bg-violet-600 *,
-.bg-blue-500 *, .bg-blue-600 *,
-.bg-purple-500 *, .bg-purple-600 * {
+/* 그라디언트 헤더 직접 자식만 흰색 (하위 섹션까지 번지지 않도록) */
+[class*="bg-gradient-to-"] > *,
+[class*="bg-gradient-to-"] > * > *,
+.bg-indigo-500 > *, .bg-indigo-600 > *, .bg-indigo-700 > *,
+.bg-emerald-500 > *, .bg-emerald-600 > *,
+.bg-violet-500 > *, .bg-violet-600 > *,
+.bg-blue-500 > *, .bg-blue-600 > *,
+.bg-purple-500 > *, .bg-purple-600 > * {
   color: white !important;
 }
 
