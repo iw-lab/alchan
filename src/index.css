@@ -1212,14 +1212,9 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6 {
   color: var(--text-secondary) !important;
 }
 
-/* 진한 배경 버튼 텍스트 흰색 유지 */
-.buy-button,
-.admin-action-button,
-.admin-save-button,
-.header-button,
-.green-button,
-.add-job-task-button,
-.admin-settings-button,
+/* 진한 배경 요소 텍스트 흰색 유지 */
+.buy-button, .admin-action-button, .admin-save-button,
+.header-button, .green-button, .add-job-task-button, .admin-settings-button,
 .bg-indigo-500, .bg-indigo-600, .bg-indigo-700,
 .bg-violet-500, .bg-violet-600,
 .bg-emerald-500, .bg-emerald-600,
@@ -1228,7 +1223,24 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6 {
 .bg-green-500, .bg-green-600,
 .bg-blue-500, .bg-blue-600, .bg-blue-700,
 .bg-purple-500, .bg-purple-600,
-.bg-amber-500, .bg-amber-600 {
+.bg-amber-500, .bg-amber-600,
+.from-indigo-600, .from-emerald-500, .from-purple-600,
+[class*="from-indigo-"], [class*="from-emerald-5"], [class*="from-purple-"],
+[class*="from-teal-5"], [class*="from-blue-5"], [class*="from-green-5"],
+[class*="from-rose-5"], [class*="from-red-5"] {
+  color: white !important;
+}
+
+/* 그라디언트 헤더 내부 모든 요소도 흰색 */
+[class*="from-indigo-"] *,
+[class*="from-emerald-5"] *,
+[class*="from-purple-"] *,
+[class*="from-teal-5"] *,
+.bg-indigo-500 *, .bg-indigo-600 *, .bg-indigo-700 *,
+.bg-emerald-500 *, .bg-emerald-600 *,
+.bg-violet-500 *, .bg-violet-600 *,
+.bg-blue-500 *, .bg-blue-600 *,
+.bg-purple-500 *, .bg-purple-600 * {
   color: white !important;
 }
 

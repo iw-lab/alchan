@@ -2014,8 +2014,8 @@ function Dashboard({ adminTabMode }) {
             {/* 나의 직업 할일 헤더 - 색상 배경 */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-slate-800 dark:text-white" />
-                <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">
+                <Briefcase className="w-5 h-5 text-white" />
+                <h3 className="text-base md:text-lg font-bold text-white">
                   나의 직업 할일
                 </h3>
               </div>
@@ -2024,7 +2024,7 @@ function Dashboard({ adminTabMode }) {
                 icon={Plus}
                 onClick={handleSelectJobClick}
                 size="sm"
-                className="!bg-white/20 !text-slate-800 dark:text-white !border-white/30 hover:!bg-white/30"
+                className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
               >
                 직업 추가/선택
               </ActionButton>
@@ -2102,8 +2102,8 @@ function Dashboard({ adminTabMode }) {
                 {/* 공통 할일 헤더 - 색상 배경 */}
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ListTodo className="w-5 h-5 text-slate-800 dark:text-white" />
-                    <h3 className="text-base md:text-lg font-bold text-slate-800 dark:text-white">
+                    <ListTodo className="w-5 h-5 text-white" />
+                    <h3 className="text-base md:text-lg font-bold text-white">
                       공통 할일
                     </h3>
                   </div>
@@ -2113,7 +2113,7 @@ function Dashboard({ adminTabMode }) {
                       icon={Plus}
                       onClick={() => handleAddTaskClick(null, false)}
                       size="sm"
-                      className="!bg-white/20 !text-slate-800 dark:text-white !border-white/30 hover:!bg-white/30"
+                      className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
                     >
                       공통 할일 추가
                     </ActionButton>
