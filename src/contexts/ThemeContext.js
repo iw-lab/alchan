@@ -16,7 +16,8 @@ export function ThemeProvider({ children }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('alchan-dark-mode');
     if (saved !== null) return JSON.parse(saved);
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // 기본값: 라이트모드 (시스템 설정 따르기 대신)
+    return false;
   });
 
   const [fontSize, setFontSize] = useState(() => {

@@ -1,15 +1,15 @@
-/* src/Dashboard.css - Cyberpunk Theme (Direct Colors) */
+/* src/Dashboard.css - Modern Theme */
 
 .dashboard-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #0a0a12 !important;
+  background-color: var(--bg-primary);
 }
 
 .dashboard-content-area {
-  padding: 20px;
-  background-color: transparent !important;
+  padding: 24px;
+  background-color: transparent;
   flex-grow: 1;
 }
 
@@ -19,51 +19,47 @@
   align-items: center;
   height: 100vh;
   font-size: 1.2rem;
-  color: #00fff2 !important;
-  text-shadow: 0 0 15px rgba(0, 255, 242, 0.5), 0 0 30px rgba(0, 255, 242, 0.2) !important;
+  color: var(--accent);
 }
 
-/* Cyberpunk Page Title and Header */
+/* Page Title and Header */
 .dashboard-page-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  background: rgba(20, 20, 35, 0.85) !important;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3) !important;
+  padding: 16px 24px;
+  background: var(--bg-glass);
+  border-bottom: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
   z-index: 10;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .page-title-text {
-  font-size: 24px;
-  font-weight: bold;
-  color: #e8e8ff !important;
-  font-family: "Orbitron", sans-serif;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 255, 242, 0.3) !important;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .welcome-message {
   font-size: 20px;
   font-weight: 600;
-  color: #00fff2 !important;
+  color: var(--accent);
 }
 
-/* Cyberpunk Section Styles */
+/* Section Styles */
 .section-container {
-  background: rgba(20, 20, 35, 0.85) !important;
-  padding: 20px;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 255, 242, 0.3) !important;
-  margin-bottom: 25px;
-  border: 1px solid rgba(0, 255, 242, 0.15) !important;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 24px;
+  border: 1px solid var(--border-primary);
+  transition: box-shadow var(--transition-normal);
 }
 
 .section-header {
@@ -71,29 +67,28 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .section-header-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #e8e8ff !important;
-  font-family: "Rajdhani", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .subsection-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 30px;
-  margin-bottom: 15px;
+  margin-top: 28px;
+  margin-bottom: 14px;
 }
 
 .subsection-header-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #9999bb !important;
+  color: var(--text-secondary);
 }
 
 /* Grid Layout for Tasks */
@@ -103,102 +98,106 @@
   gap: 20px;
 }
 
-/* Cyberpunk Button Styles */
+/* Button Styles */
 .admin-settings-button {
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #8b5cf6, #cc00cc) !important;
-  color: white !important;
-  border: 1px solid rgba(139, 92, 246, 0.5) !important;
-  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3) !important;
-  transition: all 0.25s ease;
-  font-family: "Rajdhani", sans-serif;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
 }
 
 .admin-settings-button:hover {
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5), 0 0 30px rgba(139, 92, 246, 0.2) !important;
-  transform: translateY(-2px);
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .go-back-button {
   padding: 8px 16px;
   font-size: 14px;
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #e8e8ff !important;
-  border: 1px solid rgba(0, 255, 242, 0.15) !important;
-  border-radius: 6px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .go-back-button:hover {
-  background: rgba(0, 255, 242, 0.1) !important;
-  border-color: #00fff2 !important;
+  background: var(--accent-light);
+  border-color: var(--border-accent);
+  color: var(--accent);
 }
 
 .header-button {
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #00ff88, #00cc70) !important;
-  color: #0a0a12 !important;
+  background: var(--success);
+  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .header-button:hover {
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2) !important;
-  transform: translateY(-2px);
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .green-button {
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #00ff88, #00cc70) !important;
-  color: #0a0a12 !important;
+  background: var(--success);
+  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .green-button:hover {
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2) !important;
-  transform: translateY(-2px);
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .add-job-task-button {
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 13px;
-  background: linear-gradient(135deg, #00fff2, #0088ff) !important;
-  color: #0a0a12 !important;
+  background: var(--accent);
+  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   font-weight: 600;
 }
 
 .add-job-task-button:hover {
-  box-shadow: 0 0 15px rgba(0, 255, 242, 0.5), 0 0 30px rgba(0, 255, 242, 0.2) !important;
-  transform: translateY(-2px);
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
-/* Mobile Responsive Styles */
+/* Mobile Responsive */
 @media (max-width: 768px) {
   .dashboard-content-area {
-    padding: 12px;
+    padding: 14px;
   }
 
   .section-container {
     padding: 16px;
-    border-radius: 12px;
+    border-radius: 14px;
     margin-bottom: 16px;
   }
 
@@ -209,21 +208,10 @@
     gap: 10px;
   }
 
-  .welcome-message {
-    font-size: 18px;
-  }
-
-  .page-title-text {
-    font-size: 20px;
-  }
-
-  .section-header-title {
-    font-size: 18px;
-  }
-
-  .subsection-header-title {
-    font-size: 16px;
-  }
+  .welcome-message { font-size: 18px; }
+  .page-title-text { font-size: 20px; }
+  .section-header-title { font-size: 18px; }
+  .subsection-header-title { font-size: 15px; }
 
   .job-tasks-grid {
     grid-template-columns: 1fr;
@@ -240,23 +228,11 @@
   }
 }
 
-/* 더 작은 모바일 화면 */
 @media (max-width: 480px) {
-  .dashboard-content-area {
-    padding: 8px;
-  }
-
-  .section-container {
-    padding: 12px;
-  }
-
-  .welcome-message {
-    font-size: 16px;
-  }
-
-  .page-title-text {
-    font-size: 18px;
-  }
+  .dashboard-content-area { padding: 10px; }
+  .section-container { padding: 14px; }
+  .welcome-message { font-size: 16px; }
+  .page-title-text { font-size: 18px; }
 
   .section-header {
     flex-direction: column;
@@ -271,23 +247,12 @@
   }
 }
 
-/* PC 화면 폰트 크기 증가 */
+/* PC */
 @media (min-width: 1024px) {
-  .page-title-text {
-    font-size: 28px;
-  }
-
-  .welcome-message {
-    font-size: 24px;
-  }
-
-  .section-header-title {
-    font-size: 26px;
-  }
-
-  .subsection-header-title {
-    font-size: 20px;
-  }
+  .page-title-text { font-size: 26px; }
+  .welcome-message { font-size: 22px; }
+  .section-header-title { font-size: 24px; }
+  .subsection-header-title { font-size: 18px; }
 
   .admin-settings-button,
   .header-button,
@@ -297,43 +262,23 @@
   }
 }
 
-/* 출석 보상 팝업 애니메이션 */
+/* Animations */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes bounce {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }

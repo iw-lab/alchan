@@ -38,18 +38,21 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
       <div
-        className="bg-[#1a1a2e] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-700"
+        className="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-5 border-b border-slate-700 bg-gradient-to-r from-[#141423] to-indigo-900/20 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">{title}</h3>
+        <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-primary)', background: 'var(--accent-bg)' }}>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}
           >
             <X size={18} />
           </button>
@@ -317,7 +320,7 @@ const AlchanHeader = memo(
     return (
       <>
         {/* 모바일 헤더 */}
-        <header className="md:hidden sticky top-0 z-30 bg-[#141423] border-b border-[#00fff2]/10">
+        <header className="md:hidden sticky top-0 z-30" style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-primary)' }}>
           {/* 상단 헤더 바 */}
           <div className="h-14 px-3 flex items-center justify-between">
             {/* 왼쪽: 메뉴 버튼 + 앱 이름 */}
@@ -328,8 +331,8 @@ const AlchanHeader = memo(
               >
                 <LayoutDashboard size={22} className="text-white" />
               </button>
-              <h2 className="text-sm font-bold text-white whitespace-nowrap">
-                오늘도 <span className="text-[#00fff2]">알찬</span> 하루!
+              <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                오늘도 <span style={{ color: 'var(--accent)' }}>알찬</span> 하루!
               </h2>
             </div>
 
@@ -409,12 +412,13 @@ const AlchanHeader = memo(
         </header>
 
         {/* PC 헤더 */}
-        <header className="hidden md:flex items-center justify-between bg-[#141423] border-b border-[#00fff2]/10 shadow-sm z-10 h-16 min-h-16 max-h-16 px-4">
+        <header className="hidden md:flex items-center justify-between shadow-sm z-10 h-16 min-h-16 max-h-16 px-4" style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-primary)' }}>
           <div className="flex items-center gap-3">
             {/* 사이드바 토글 버튼 */}
             <button
               onClick={onToggleSidebarCollapse}
-              className="p-2 rounded-lg border border-[#00fff2]/10 bg-white/5 text-white cursor-pointer flex items-center justify-center"
+              className="p-2 rounded-lg cursor-pointer flex items-center justify-center"
+              style={{ border: '1px solid var(--border-primary)', background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
             >
               {isSidebarCollapsed ? (
                 <ChevronRight size={16} />
@@ -423,8 +427,8 @@ const AlchanHeader = memo(
               )}
             </button>
             <div>
-              <div className="text-[15px] font-bold text-white whitespace-nowrap leading-tight">
-                오늘도 <span className="text-[#00fff2] font-jua">알찬</span>{" "}
+              <div className="text-[15px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
+                오늘도 <span className="font-jua" style={{ color: 'var(--accent)' }}>알찬</span>{" "}
                 하루! 👋
               </div>
               <div className="text-xs text-slate-400 whitespace-nowrap leading-tight">
@@ -491,7 +495,7 @@ const AlchanHeader = memo(
                 >
                   Lv.{levelInfo?.level || 1}
                 </div>
-                <div className="text-[11px] font-bold text-[#e8e8ff] whitespace-nowrap leading-tight">
+                <div className="text-[11px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
                   {levelInfo?.title || "새싹"}
                 </div>
               </div>
@@ -521,7 +525,7 @@ const AlchanHeader = memo(
                 className="flex items-center gap-2 pl-3 border-none bg-transparent cursor-pointer"
               >
                 <div className="text-right">
-                  <div className="text-[13px] font-bold text-white whitespace-nowrap leading-tight">
+                  <div className="text-[13px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
                     {displayName}
                   </div>
                   <div className="text-[11px] text-indigo-400 font-medium whitespace-nowrap leading-tight">
@@ -541,9 +545,9 @@ const AlchanHeader = memo(
 
               {/* 드롭다운 메뉴 */}
               {showUserMenu && (
-                <div className="absolute top-full right-0 mt-2 w-72 bg-[#1a1a2e] rounded-2xl shadow-2xl border border-slate-700 overflow-hidden z-50">
-                  <div className="px-5 py-4 bg-gradient-to-r from-[#141423] to-indigo-900/20 border-b border-slate-700">
-                    <p className="font-bold text-white">{displayName}</p>
+                <div className="absolute top-full right-0 mt-2 w-72 rounded-2xl shadow-2xl overflow-hidden z-50" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-primary)' }}>
+                  <div className="px-5 py-4" style={{ background: 'var(--accent-bg)', borderBottom: '1px solid var(--border-primary)' }}>
+                    <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{displayName}</p>
                     <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
                       {isCurrentUserAdmin && (
                         <span className="text-indigo-400 font-semibold">
@@ -557,7 +561,7 @@ const AlchanHeader = memo(
                   </div>
 
                   {/* 모바일: 자산 정보 */}
-                  <div className="md:hidden px-5 py-4 bg-[#141423]/50 border-b border-slate-700">
+                  <div className="md:hidden px-5 py-4" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)' }}>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-slate-400">{userDoc?.isAdmin ? "현금(국고)" : "현금"}</span>
                       <span className="font-bold text-emerald-400">
@@ -591,21 +595,21 @@ const AlchanHeader = memo(
 
                     <button
                       onClick={handleChangeNickname}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}
                     >
                       <User size={18} className="text-slate-400" />
                       닉네임 변경
                     </button>
                     <button
                       onClick={handleChangePassword}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}
                     >
                       <Key size={18} className="text-slate-400" />
                       비밀번호 변경
                     </button>
                     <button
                       onClick={handleEnterClassCode}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}
                     >
                       <Building2 size={18} className="text-slate-400" />
                       학급 코드 변경
@@ -615,7 +619,7 @@ const AlchanHeader = memo(
                         setShowSettings(true);
                         setShowUserMenu(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}
                     >
                       <Settings size={18} className="text-slate-400" />
                       설정
@@ -635,7 +639,7 @@ const AlchanHeader = memo(
 
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white hover:bg-white/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors" style={{ color: 'var(--text-primary)' }}
                     >
                       <LogOut size={18} className="text-slate-400" />
                       로그아웃
@@ -664,7 +668,8 @@ const AlchanHeader = memo(
                 onChange={(e) => setNewNickname(e.target.value)}
                 placeholder="2-12자"
                 maxLength={12}
-                className="w-full px-4 py-3 border-2 border-slate-700 bg-[#141423] text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
                 autoFocus
               />
             </div>
@@ -705,7 +710,8 @@ const AlchanHeader = memo(
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-700 bg-[#141423] text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
               />
             </div>
             <div>
@@ -716,7 +722,8 @@ const AlchanHeader = memo(
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-700 bg-[#141423] text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
               />
             </div>
             <div>
@@ -727,7 +734,8 @@ const AlchanHeader = memo(
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-slate-700 bg-[#141423] text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
               />
             </div>
             {passwordError && (
@@ -784,7 +792,8 @@ const AlchanHeader = memo(
                 }
                 placeholder="영문자와 숫자만"
                 maxLength={20}
-                className="w-full px-4 py-3 border-2 border-slate-700 bg-[#141423] text-white rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
                 autoFocus
               />
               <p className="text-xs text-slate-500 mt-2">

@@ -1,44 +1,40 @@
-/* src/styles.css - Cyberpunk Theme Component Styles */
+/* src/styles.css - Modern Theme Component Styles */
 /* NOTE: html/body base styles, box-sizing, and font are defined in index.css */
 
-/* Cyberpunk Page Container - 전체 화면 사용 */
+/* Page Container */
 .page-container {
   max-width: 100%;
   margin: 0;
   padding: 1.5rem;
-  background-color: rgba(20, 20, 35, 0.85) !important;
+  background-color: var(--bg-card);
   border-radius: 0;
-  box-shadow: none !important;
+  box-shadow: none;
   position: relative;
   width: 100%;
-  border: none !important;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
+  border: none;
+  border-bottom: 1px solid var(--border-primary);
 }
 
-/* Remove duplicate body definition */
-
-/* Cyberpunk Headings */
-h2,
-h3 {
-  color: #e8e8ff !important;
+h2, h3 {
+  color: var(--text-primary);
 }
 
 .section-title {
   font-size: 1.15rem;
   font-weight: 600;
-  color: #00fff2 !important;
+  color: var(--accent);
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(0, 255, 242, 0.15) !important;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .content-card-section {
-  background-color: rgba(20, 20, 35, 0.85) !important;
+  background-color: var(--bg-card);
   padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
   margin-bottom: 1.5rem;
-  border: 1px solid rgba(0, 255, 242, 0.1) !important;
+  border: 1px solid var(--border-primary);
 }
 
 /* NOTE: Tailwind utility classes are provided by @tailwind utilities in index.css.
@@ -68,24 +64,23 @@ h3 {
   }
 }
 
-/* --- 아이템 카드 (공통) - Cyberpunk Dark Theme --- */
+/* --- Item Card --- */
 .shop-item-card {
-  background: rgba(20, 20, 35, 0.8);
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  background: var(--bg-card);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
   transition: all 0.3s ease-out;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
   height: 100%;
-  backdrop-filter: blur(10px);
 }
 
 .shop-item-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(0, 255, 242, 0.3);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 255, 242, 0.1);
+  transform: translateY(-2px);
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .shop-item-card .p-4 {
@@ -100,14 +95,14 @@ h3 {
   margin-right: 1rem;
   font-size: 2.5rem;
   line-height: 1;
-  background: rgba(0, 255, 242, 0.1);
-  border: 1px solid rgba(0, 255, 242, 0.2);
+  background: var(--accent-bg);
+  border: 1px solid var(--border-primary);
   width: 50px;
   height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .item-info {
@@ -119,7 +114,7 @@ h3 {
 .item-name {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 0.25rem;
   line-height: 1.3;
   word-break: keep-all;
@@ -127,7 +122,7 @@ h3 {
 
 .item-description {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin-bottom: 0.75rem;
   line-height: 1.4;
   flex-grow: 1;
@@ -146,18 +141,17 @@ h3 {
   align-items: center;
   margin-top: auto;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-primary);
   padding-left: 1rem;
   padding-right: 1rem;
   padding-bottom: 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-secondary);
 }
 
 .item-price {
   font-size: 0.95rem;
   font-weight: bold;
-  color: #00fff2;
-  text-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+  color: var(--accent);
 }
 
 /* 구매 버튼 - Cyberpunk Style */
@@ -186,14 +180,14 @@ h3 {
   opacity: 0.7;
 }
 
-/* 판매 아이템 없음 메시지 - Cyberpunk Style */
+/* Empty state */
 .empty-message {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 1rem;
   text-align: center;
   padding: 2rem;
-  background: rgba(20, 20, 35, 0.6);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-primary);
   border-radius: 12px;
 }
 
@@ -226,26 +220,23 @@ h3 {
   transform: scale(0.98);
 }
 
-/* 관리자 패널 - Cyberpunk Dark Theme */
+/* Admin Panel */
 .admin-panel {
-  background: rgba(20, 20, 35, 0.9);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: 14px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(139, 92, 246, 0.1);
-  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-card);
 }
 
-/* 관리자 패널 내부 제목 */
 .admin-panel .section-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #a78bfa;
-  text-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+  color: var(--accent);
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 /* 관리자 폼 요소 */

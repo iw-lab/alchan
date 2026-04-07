@@ -104,11 +104,12 @@ const TaskItem = memo(function TaskItem({
   const isMobile = window.innerWidth <= 768;
 
   const taskItemStyle = {
-    backgroundColor: isCompleted ? "rgba(20, 20, 35, 0.4)" : "rgba(30, 30, 50, 0.6)",
-    border: `1px solid ${isCompleted ? "rgba(100, 116, 139, 0.1)" : "rgba(0, 255, 242, 0.15)"}`,
+    backgroundColor: isCompleted ? "var(--bg-secondary)" : "var(--bg-card)",
+    border: `1px solid ${isCompleted ? "var(--border-secondary)" : "var(--border-primary)"}`,
     opacity: isCompleted ? 0.6 : 1,
-    padding: isMobile ? "8px 10px" : "12px",
-    boxShadow: isCompleted ? "none" : "0 4px 12px rgba(0, 0, 0, 0.1)",
+    padding: isMobile ? "10px 12px" : "14px 16px",
+    boxShadow: isCompleted ? "none" : "var(--shadow-sm)",
+    borderRadius: "12px",
   };
 
   const taskInfoStyle = {
@@ -116,9 +117,10 @@ const TaskItem = memo(function TaskItem({
   };
 
   const taskNameStyle = {
-    color: isCompleted ? "#64748b" : "#e8e8ff",
-    fontSize: isMobile ? "12px" : "16px",
+    color: isCompleted ? "var(--text-muted)" : "var(--text-primary)",
+    fontSize: isMobile ? "13px" : "15px",
     lineHeight: "1.4",
+    fontWeight: 500,
   };
 
   const taskActionsStyle = {
@@ -126,9 +128,9 @@ const TaskItem = memo(function TaskItem({
   };
 
   const couponStyle = {
-    backgroundColor: isJobTask ? "rgba(79, 70, 229, 0.3)" : "rgba(16, 185, 129, 0.3)",
-    color: isJobTask ? "#818cf8" : "#34d399",
-    border: isJobTask ? "1px solid rgba(99, 102, 241, 0.5)" : "1px solid rgba(52, 211, 153, 0.5)",
+    backgroundColor: isJobTask ? "var(--accent-light)" : "var(--success-bg)",
+    color: isJobTask ? "var(--accent)" : "var(--success)",
+    border: isJobTask ? "1px solid var(--border-accent)" : "1px solid rgba(16, 185, 129, 0.3)",
     padding: isMobile ? "3px 6px" : "4px 10px",
     fontSize: isMobile ? "10px" : "13px",
   };
@@ -138,17 +140,17 @@ const TaskItem = memo(function TaskItem({
 
     const mobileModalContentStyle = {
       ...modalContentStyle,
-      padding: isMobile ? "20px" : "40px",
+      padding: isMobile ? "24px" : "40px",
     };
 
     const mobileModalTitleStyle = {
       ...modalTitleStyle,
-      fontSize: isMobile ? "20px" : "28px",
+      fontSize: isMobile ? "20px" : "26px",
     };
 
     const mobileModalSubtitleStyle = {
       ...modalSubtitleStyle,
-      fontSize: isMobile ? "13px" : "16px",
+      fontSize: isMobile ? "13px" : "15px",
     };
 
     const mobileCardsContainerStyle = {
@@ -164,28 +166,28 @@ const TaskItem = memo(function TaskItem({
 
     const mobileCardIconStyle = {
       ...cardIconStyle,
-      fontSize: isMobile ? "50px" : "80px",
+      fontSize: isMobile ? "50px" : "72px",
       marginBottom: isMobile ? "10px" : "20px",
     };
 
     const mobileCardTextStyle = {
       ...cardTextStyle,
-      fontSize: isMobile ? "18px" : "24px",
+      fontSize: isMobile ? "18px" : "22px",
     };
 
     const mobileRewardAmountStyle = {
       ...rewardAmountStyle,
-      fontSize: isMobile ? "24px" : "36px",
+      fontSize: isMobile ? "24px" : "32px",
     };
 
     const mobileRewardLabelStyle = {
       ...rewardLabelStyle,
-      fontSize: isMobile ? "14px" : "18px",
+      fontSize: isMobile ? "14px" : "16px",
     };
 
     return createPortal(
       <div className="fixed inset-0 flex items-center justify-center z-[10000]" style={modalOverlayStyle} onClick={() => setShowCardModal(false)}>
-        <div className="rounded-[20px] max-w-[600px]" style={{...mobileModalContentStyle, width: isMobile ? "95%" : "90%"}} onClick={(e) => e.stopPropagation()}>
+        <div className="rounded-2xl max-w-[600px]" style={{...mobileModalContentStyle, width: isMobile ? "95%" : "90%"}} onClick={(e) => e.stopPropagation()}>
           <h3 className="text-center font-bold" style={{...mobileModalTitleStyle, marginBottom: isMobile ? "8px" : "10px"}}>🎁 보상 선택</h3>
           <p className="text-center" style={{...mobileModalSubtitleStyle, marginBottom: isMobile ? "20px" : "30px"}}>두 개의 카드 중 하나를 선택하세요!</p>
 
@@ -247,7 +249,7 @@ const TaskItem = memo(function TaskItem({
   return (
     <>
       <div
-        className="flex flex-row items-center justify-between relative rounded-lg mb-2 transition-all"
+        className="flex flex-row items-center justify-between relative mb-2 transition-all"
         style={{
           ...taskItemStyle,
           cursor: isCompleted ? "default" : "pointer",
@@ -256,7 +258,7 @@ const TaskItem = memo(function TaskItem({
         onClick={isCompleted ? null : handleInternalClick}
       >
         <div className="flex items-center flex-grow min-w-0 overflow-hidden" style={taskInfoStyle}>
-          <span className="font-semibold overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0" style={taskNameStyle} title={task.name}>
+          <span className="font-medium overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0" style={taskNameStyle} title={task.name}>
             {task.name}
           </span>
         </div>
@@ -265,9 +267,9 @@ const TaskItem = memo(function TaskItem({
           {/* 진행 횟수 표시 */}
           {task.maxClicks > 0 && (
             <span className="rounded-lg font-medium whitespace-nowrap" style={{
-              backgroundColor: isCompleted ? "rgba(100, 116, 139, 0.2)" : "rgba(59, 130, 246, 0.2)",
-              color: isCompleted ? "#94a3b8" : "#60a5fa",
-              border: `1px solid ${isCompleted ? "rgba(100, 116, 139, 0.3)" : "rgba(59, 130, 246, 0.4)"}`,
+              backgroundColor: isCompleted ? "var(--bg-hover)" : "var(--accent-light)",
+              color: isCompleted ? "var(--text-muted)" : "var(--accent)",
+              border: `1px solid ${isCompleted ? "var(--border-secondary)" : "var(--border-accent)"}`,
               padding: isMobile ? "2px 6px" : "4px 8px",
               fontSize: isMobile ? "10px" : "12px",
             }}>
@@ -308,7 +310,7 @@ const TaskItem = memo(function TaskItem({
         </div>
 
         {showBubble && (
-          <div className="absolute left-1/2 -translate-x-1/2 rounded-md font-medium whitespace-nowrap z-10 pointer-events-none" style={bubbleStyle}>
+          <div className="absolute left-1/2 -translate-x-1/2 rounded-lg font-medium whitespace-nowrap z-10 pointer-events-none" style={bubbleStyle}>
             {bubbleText}
             <div className="absolute" style={bubbleTailStyle}></div>
           </div>
@@ -323,27 +325,29 @@ const TaskItem = memo(function TaskItem({
 export default TaskItem;
 
 const approvalBadgeStyle = {
-  backgroundColor: "rgba(245, 158, 11, 0.3)",
-  color: "#fbbf24",
-  border: "1px solid rgba(245, 158, 11, 0.5)",
+  backgroundColor: "var(--warning-bg)",
+  color: "var(--warning)",
+  border: "1px solid rgba(245, 158, 11, 0.3)",
   padding: "4px 10px",
-  fontSize: "13px",
+  fontSize: "12px",
+  borderRadius: "8px",
 };
 
 const adminButtonStyles = {
   background: "none",
   border: "none",
   fontSize: "16px",
-  color: "#94a3b8",
+  color: "var(--text-muted)",
 };
 
 const bubbleStyle = {
   bottom: "calc(100% + 8px)",
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-  color: "white",
-  padding: "5px 10px",
+  backgroundColor: "var(--bg-card)",
+  color: "var(--text-primary)",
+  padding: "6px 12px",
   fontSize: "12px",
-  boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+  boxShadow: "var(--shadow-lg)",
+  border: "1px solid var(--border-primary)",
 };
 
 const bubbleTailStyle = {
@@ -353,29 +357,28 @@ const bubbleTailStyle = {
   marginLeft: "-5px",
   borderWidth: "5px",
   borderStyle: "solid",
-  borderColor: "rgba(0, 0, 0, 0.75) transparent transparent transparent",
+  borderColor: "var(--bg-card) transparent transparent transparent",
 };
 
 // 카드 모달 스타일
 const modalOverlayStyle = {
-  backgroundColor: "rgba(0, 0, 0, 0.7)",
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
   animation: "fadeIn 0.3s ease",
 };
 
 const modalContentStyle = {
-  backgroundColor: "#1a1a2e",
-  border: "1px solid rgba(0, 255, 242, 0.3)",
-  boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
-  animation: "zoomIn 0.3s ease",
+  backgroundColor: "var(--bg-card)",
+  border: "1px solid var(--border-primary)",
+  boxShadow: "var(--shadow-lg)",
+  animation: "slideUp 0.3s ease",
 };
 
 const modalTitleStyle = {
-  color: "#ffffff",
-  textShadow: "0 0 10px rgba(0, 255, 242, 0.5)",
+  color: "var(--text-primary)",
 };
 
 const modalSubtitleStyle = {
-  color: "#a0a0c0",
+  color: "var(--text-secondary)",
 };
 
 const cardsContainerStyle = {
@@ -397,15 +400,15 @@ const cardInnerStyle = {
 };
 
 const cardFrontStyle = {
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-  border: "3px solid #fff",
+  background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+  boxShadow: "0 8px 24px rgba(99, 102, 241, 0.25)",
+  border: "none",
 };
 
 const cardBackStyle = {
-  backgroundColor: "#fff",
-  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.2)",
-  border: "3px solid #667eea",
+  backgroundColor: "var(--bg-card)",
+  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+  border: "2px solid #6366f1",
   transform: "rotateY(180deg)",
   opacity: 0,
   transition: "opacity 0.3s ease 0.4s",
@@ -416,7 +419,7 @@ const cardBackVisibleStyle = {
 };
 
 const cardIconStyle = {
-  fontSize: "80px",
+  fontSize: "72px",
   marginBottom: "20px",
 };
 
@@ -425,9 +428,9 @@ const cardTextStyle = {
 };
 
 const rewardAmountStyle = {
-  color: "#667eea",
+  color: "#6366f1",
 };
 
 const rewardLabelStyle = {
-  color: "#666",
+  color: "var(--text-secondary)",
 };

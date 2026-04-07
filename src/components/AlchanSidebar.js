@@ -439,7 +439,7 @@ const CATEGORY_LABELS = {
 // ============================================
 const MenuSection = memo(({ title, children }) => (
   <div className="mb-1">
-    <h3 className="px-4 text-[11px] font-bold text-[#7777aa] uppercase tracking-wider mb-1">
+    <h3 className="px-4 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>
       {title}
     </h3>
     <ul className="space-y-0.5">{children}</ul>
@@ -453,15 +453,21 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
   <li>
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group ${
-        active
-          ? "bg-indigo-500/20 text-indigo-400 font-bold shadow-sm border border-indigo-500/30"
-          : "text-[#9999bb] hover:bg-white/5 hover:text-[#e8e8ff]"
-      }`}
+      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-200 group`}
+      style={active ? {
+        background: 'var(--accent-light)',
+        color: 'var(--accent)',
+        fontWeight: 700,
+        border: '1px solid var(--border-accent)',
+      } : {
+        color: 'var(--text-secondary)',
+        border: '1px solid transparent',
+      }}
     >
       <div className="flex items-center gap-3">
         <Icon
-          className={`w-[18px] h-[18px] ${active ? "text-indigo-400" : "text-[#7777aa] group-hover:text-[#c8c8ff]"}`}
+          className="w-[18px] h-[18px]"
+          style={{ color: active ? 'var(--accent)' : 'var(--text-muted)' }}
         />
         <span className="text-sm">{label}</span>
       </div>
@@ -476,11 +482,13 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
 const SubMenuItem = memo(({ icon: Icon, label, active, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-      active
-        ? "text-indigo-400 bg-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)]"
-        : "text-[#9999bb] hover:text-[#e8e8ff] hover:bg-white/5"
-    }`}
+    className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+    style={active ? {
+      color: 'var(--accent)',
+      background: 'var(--accent-light)',
+    } : {
+      color: 'var(--text-secondary)',
+    }}
   >
     <Icon className="w-3.5 h-3.5" />
     {label}
@@ -503,18 +511,19 @@ const CategoryItem = ({
     <div className="mb-1">
       <button
         onClick={onToggle}
-        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-          hasActiveChild
-            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-            : "text-[#9999bb] hover:bg-white/5 hover:text-[#e8e8ff]"
-        }`}
+        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group"
+        style={hasActiveChild ? {
+          background: 'var(--accent-bg)',
+          color: 'var(--accent)',
+          border: '1px solid var(--border-accent)',
+        } : {
+          color: 'var(--text-secondary)',
+          border: '1px solid transparent',
+        }}
       >
         <Icon
-          className={`w-[18px] h-[18px] transition-colors flex-shrink-0 ${
-            hasActiveChild
-              ? "text-indigo-400"
-              : "text-[#7777aa] group-hover:text-[#c8c8ff]"
-          }`}
+          className="w-[18px] h-[18px] transition-colors flex-shrink-0"
+          style={{ color: hasActiveChild ? 'var(--accent)' : 'var(--text-muted)' }}
         />
         <span className="flex-1 text-left">{category.label}</span>
         <ChevronDown
@@ -528,7 +537,7 @@ const CategoryItem = ({
           isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="pl-4 mt-2 space-y-1 border-l-2 border-slate-700 ml-4">
+        <div className="pl-4 mt-2 space-y-1 ml-4" style={{ borderLeft: '2px solid var(--border-primary)' }}>
           {children}
         </div>
       </div>
@@ -794,10 +803,10 @@ export default function AlchanSidebar({
   // PC 접힌 상태
   if (isCollapsed && !isMobile) {
     return (
-      <aside className="hidden md:flex flex-col w-20 bg-[#141423] border-r border-[#00fff2]/10 h-screen sticky top-0 left-0 z-50 shadow-xl transition-all duration-300">
+      <aside className="hidden md:flex flex-col w-20 h-screen sticky top-0 left-0 z-50 transition-all duration-300" style={{ backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-primary)', boxShadow: 'var(--shadow-sm)' }}>
         {/* 로고 */}
-        <div className="h-16 min-h-16 flex items-center justify-center bg-[#0a0a12]/95 border-b border-[#00fff2]/10">
-          <div className="p-1.5 rounded-lg border border-[#00fff2]/20 shadow-[0_0_10px_rgba(0,255,242,0.08)]">
+        <div className="h-16 min-h-16 flex items-center justify-center" style={{ borderBottom: '1px solid var(--border-primary)' }}>
+          <div className="p-1.5 rounded-lg" style={{ border: '1px solid var(--border-primary)' }}>
             <AppIcon style={{ width: "32px", height: "32px" }} />
           </div>
         </div>
@@ -816,11 +825,16 @@ export default function AlchanSidebar({
                 key={item.id}
                 onClick={() => handleItemClick(item)}
                 title={item.label}
-                className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center transition-all duration-200 ${
-                  active
-                    ? "bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-lg shadow-indigo-500/40 border-none"
-                    : "bg-[#1a1a2e] border border-slate-700/50 text-slate-400 hover:bg-indigo-900/30 hover:text-indigo-400 hover:border-indigo-500/30"
-                }`}
+                className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center transition-all duration-200"
+                style={active ? {
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                } : {
+                  background: 'var(--bg-hover)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-primary)',
+                }}
               >
                 <Icon size={24} />
               </button>
@@ -829,7 +843,7 @@ export default function AlchanSidebar({
         </nav>
 
         {/* 사용자 아바타 */}
-        <div className="p-4 border-t border-slate-800 bg-[#0a0a12]/50">
+        <div className="p-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
           <div className="w-10 h-10 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold">
             {userName.charAt(0)}
           </div>
@@ -851,7 +865,7 @@ export default function AlchanSidebar({
       {/* 사이드바 */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-[#141423] border-r border-[#00fff2]/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out
           ${
             isMobile
               ? isOpen
@@ -861,33 +875,33 @@ export default function AlchanSidebar({
           }
           lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
+        style={{
+          backgroundColor: 'var(--bg-sidebar)',
+          borderRight: '1px solid var(--border-primary)',
+          boxShadow: 'var(--shadow-md)',
+        }}
       >
-        {/* 로고 영역 - 세련된 디자인 */}
-        <div className="h-[72px] min-h-[72px] m-3 flex items-center relative rounded-2xl bg-gradient-to-br from-[#0a0a12]/95 to-[#141423]/95 border border-[#00fff2]/20 shadow-[0_0_15px_rgba(0,255,242,0.1)]">
-          {/* 배경 장식 */}
-          <div className="absolute -top-5 -right-5 w-20 h-20 bg-white/10 rounded-full" />
-          <div className="absolute -bottom-7 -left-2 w-15 h-15 bg-white/[0.08] rounded-full" />
-
+        {/* 로고 영역 */}
+        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'var(--accent-bg)', border: '1px solid var(--border-primary)' }}>
           <div className="flex items-center gap-3.5 px-4 w-full relative z-10">
-            {/* 아이콘 박스 */}
-            <div className="p-1.5 bg-white/5 rounded-xl shadow-md border border-white/10">
+            <div className="p-1.5 rounded-xl" style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}>
               <AppIcon style={{ width: "36px", height: "36px" }} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[22px] font-black text-[#00fff2] leading-tight font-jua drop-shadow-[0_0_10px_rgba(0,255,242,0.5)]">
+              <span className="text-[22px] font-black leading-tight font-jua" style={{ color: 'var(--accent)' }}>
                 알찬
               </span>
-              <span className="text-[11px] font-bold text-[#e8e8ff]/70 tracking-[0.2em] leading-tight mt-0.5">
+              <span className="text-[11px] font-bold tracking-[0.2em] leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>
                 ALCHAN
               </span>
             </div>
           </div>
 
-          {/* 모바일 닫기 버튼 */}
           {isMobile && (
             <button
               onClick={onClose}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 border-0 text-white cursor-pointer"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full border-0 cursor-pointer"
+              style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
             >
               <X size={20} />
             </button>
@@ -907,21 +921,22 @@ export default function AlchanSidebar({
         </nav>
 
         {/* 하단 사용자 프로필 */}
-        <div className="p-4 border-t border-slate-800 bg-[#0a0a12]/50">
+        <div className="p-4" style={{ borderTop: '1px solid var(--border-primary)' }}>
           <div
             onClick={handleLogout}
-            className="flex items-center gap-3 p-3 rounded-xl bg-[#141423] shadow-sm border border-slate-700 hover:shadow-md hover:border-indigo-500/50 transition-all cursor-pointer group"
+            className="flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group"
+            style={{ background: 'var(--bg-card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-primary)' }}
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold">
               {userName.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-[#e8e8ff] truncate">
+              <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                 {userName}
               </p>
-              <p className="text-xs text-[#9999bb] truncate">{userRole}</p>
+              <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{userRole}</p>
             </div>
-            <LogOut className="w-4 h-4 text-[#9999bb] group-hover:text-red-500 transition-colors" />
+            <LogOut className="w-4 h-4 group-hover:text-red-500 transition-colors" style={{ color: 'var(--text-muted)' }} />
           </div>
         </div>
       </aside>
