@@ -888,12 +888,12 @@ body {
 .item-name-compact {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #4338ca;
   margin: 0;
   padding: 8px 12px;
-  background: linear-gradient(135deg, #6366f1 0%, var(--accent) 100%);
-  border: none;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
   display: inline-block;
   flex-shrink: 1;
   min-width: 0;
@@ -962,24 +962,25 @@ body {
 }
 
 .compact-card .buy-item-button {
-  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
-  color: #000;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px 16px;
   font-weight: 700;
   font-size: 0.875rem;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
   box-shadow: 0 0 10px var(--border-accent);
 }
 
 .compact-card .buy-item-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 15px var(--accent);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .compact-card .buy-item-button:disabled {
-  background: #334155;
+  background: #e2e8f0;
   color: #94a3b8;
   box-shadow: none;
   transform: none;

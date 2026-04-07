@@ -1,25 +1,25 @@
-/* src/MyItems.css - Cyberpunk Dark Theme */
+/* src/MyItems.css - Modern Light Theme */
 
-/* --- 기본 카드 스타일 (다크 테마) --- */
+/* --- 기본 카드 스타일 --- */
 .store-item-card,
 .shop-item-card {
-  background: rgba(30, 41, 59, 0.95);
-  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border-radius: 14px;
   padding: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px var(--border-accent);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
   display: flex;
   flex-direction: column;
   height: 100%;
   margin: 0;
-  border: 2.5px solid rgba(99, 102, 241, 0.6);
+  border: 1px solid #e0e7ff;
   transition: all 0.2s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .store-item-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 15px var(--border-accent);
-  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
+  border-color: #a5b4fc;
 }
 
 /* --- 컴팩트 내 아이템 카드 --- */
@@ -42,12 +42,12 @@
 .my-item-name-compact {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #4338ca;
   margin: 0;
   padding: 6px 12px;
-  background: var(--accent-light);
-  border: 1px solid var(--border-accent);
-  border-radius: 8px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
   display: inline-block;
   max-width: 100%;
   white-space: nowrap;
@@ -89,18 +89,18 @@
 
 .page-title {
   font-size: 1.75rem;
-  font-weight: bold;
-  color: #ffffff;
+  font-weight: 800;
+  color: #1e293b;
   margin-bottom: 24px;
 }
 
 .section-title {
   font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 700;
+  color: #4338ca;
   margin-top: 32px;
   margin-bottom: 16px;
-  border-bottom: 2px solid var(--border-accent);
+  border-bottom: 2px solid #c7d2fe;
   padding-bottom: 8px;
 }
 
@@ -133,20 +133,20 @@
   position: absolute;
   top: -8px;
   right: -8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent));
-  color: var(--bg-primary);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
   border-radius: 50%;
   padding: 2px 6px;
   font-size: 0.75rem;
   font-weight: bold;
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .item-name {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1.1rem;
-  color: #ffffff;
+  color: #1e293b;
 }
 
 .item-description {
@@ -239,10 +239,11 @@
 }
 
 
-/* --- 사용 중인 아이템 스타일 (다크 테마) --- */
+/* --- 사용 중인 아이템 스타일 --- */
 .active-item-card {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), var(--accent-light));
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
+  border: 1px solid #c7d2fe;
+  overflow: visible;
 }
 
 .timer-container {
@@ -331,14 +332,14 @@
 }
 
 .myitems-modal-container {
-  background: rgba(30, 41, 59, 0.98);
+  background: #ffffff;
   padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--border-primary);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   width: 90%;
   max-width: 450px;
   animation: slideUp 0.3s ease-out;
-  border: 1px solid var(--border-accent);
+  border: 1px solid #e0e7ff;
 }
 
 @keyframes slideUp {
