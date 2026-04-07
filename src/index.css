@@ -1279,7 +1279,93 @@ html:not(.dark) [class*="economic-event"] {
 html:not(.dark) footer,
 html:not(.dark) [class*="footer"] {
   background-color: #f1f5f9 !important;
-  border-top: 1px solid #cbd5e1 !important;
+  border-top: 1px solid #94a3b8 !important;
+  color: #64748b !important;
+}
+
+/* ============================================
+   라이트모드 - 남은 다크 배경 핵심 킬러
+   인라인 style의 dark rgba/gradient 모두 강제 덮어씀
+   ============================================ */
+
+/* 모든 인라인 dark background 강제 라이트 */
+html:not(.dark) [style*="background"][style*="rgba(30, 41, 59"],
+html:not(.dark) [style*="background"][style*="rgba(15, 23, 42"],
+html:not(.dark) [style*="background"][style*="rgba(20, 20"],
+html:not(.dark) [style*="background"][style*="rgba(10, 10"],
+html:not(.dark) [style*="background"][style*="rgba(0, 0, 0"],
+html:not(.dark) [style*="background-color"][style*="rgba(30"],
+html:not(.dark) [style*="background-color"][style*="rgba(15"],
+html:not(.dark) [style*="background-color"][style*="rgb(15"],
+html:not(.dark) [style*="background-color"][style*="rgb(30"],
+html:not(.dark) [style*="background"][style*="#0f172a"],
+html:not(.dark) [style*="background"][style*="#1e293b"],
+html:not(.dark) [style*="background"][style*="var(--bg-primary)"],
+html:not(.dark) [style*="background"][style*="var(--bg-card)"],
+html:not(.dark) [style*="background"][style*="var(--bg-secondary)"],
+html:not(.dark) [style*="background"][style*="var(--bg-sidebar)"],
+html:not(.dark) [style*="background"][style*="var(--bg-input)"] {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+/* 인라인 dark gradient 강제 라이트 */
+html:not(.dark) [style*="linear-gradient"][style*="rgba(30"],
+html:not(.dark) [style*="linear-gradient"][style*="rgba(15"],
+html:not(.dark) [style*="linear-gradient"][style*="rgba(20"],
+html:not(.dark) [style*="linear-gradient"][style*="#1e293b"],
+html:not(.dark) [style*="linear-gradient"][style*="#0f172a"],
+html:not(.dark) [style*="linear-gradient"][style*="var(--bg"] {
+  background: #f8fafc !important;
+}
+
+/* Tailwind dark 배경 클래스 강제 라이트 */
+html:not(.dark) .bg-slate-900,
+html:not(.dark) .bg-slate-800,
+html:not(.dark) .bg-slate-800\/50,
+html:not(.dark) .bg-gray-900,
+html:not(.dark) .bg-gray-800,
+html:not(.dark) [class*="bg-slate-9"],
+html:not(.dark) [class*="bg-slate-8"],
+html:not(.dark) [class*="bg-gray-9"],
+html:not(.dark) [class*="bg-gray-8"] {
+  background-color: #ffffff !important;
+}
+
+/* 대시보드 직업 할일/공통 할일 섹션 강제 라이트 */
+html:not(.dark) .dashboard-container > *,
+html:not(.dark) .dashboard-content-area > * {
+  background-color: transparent !important;
+}
+
+html:not(.dark) .dashboard-content-area .section-container {
+  background-color: #ffffff !important;
+}
+
+/* 그라디언트 배경 섹션 (나의 직업 할일, 공통 할일 등) */
+html:not(.dark) [style*="background"][style*="gradient"]:not(button):not([class*="bg-indigo"]):not([class*="bg-emerald"]):not([class*="bg-violet"]):not([class*="bg-rose"]) {
+  background: #f8fafc !important;
+  border: 1.5px solid #94a3b8 !important;
+  border-radius: 16px !important;
+}
+
+/* 스플래시/로딩 화면 라이트 */
+html:not(.dark) #splash-screen,
+html:not(.dark) .dashboard-loading {
+  background-color: #f1f5f9 !important;
+  color: #4f46e5 !important;
+}
+
+/* 모든 dark overlay 밝게 */
+html:not(.dark) [class*="bg-black"],
+html:not(.dark) [class*="bg-slate-900"],
+html:not(.dark) [class*="bg-gray-900"] {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+}
+
+/* 경제 이벤트 뒤 검정 배경 제거 - 가장 구체적 타겟 */
+html:not(.dark) [style*="backdrop-filter"] {
+  background-color: transparent !important;
 }
 
 /* ============================================
