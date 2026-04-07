@@ -1319,18 +1319,18 @@ export default function MyAssets() {
         {/* 보유 현금 - 메인 강조 카드 */}
         <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[30px] mb-5 shadow-[0_10px_30px_rgba(102,126,234,0.3)] border-none">
           <div className="mb-2.5">
-            <span className="text-white/90 text-base font-medium">
+            <span className="!text-white/90 text-base font-medium">
               💰 보유 현금
             </span>
           </div>
-          <div className="text-[42px] font-extrabold text-white tracking-tight mb-4 text-right">
+          <div className="text-[42px] font-extrabold !text-white tracking-tight mb-4 text-right">
             {displayCash.toLocaleString()}{" "}
             <span className="text-[28px] font-semibold">원</span>
           </div>
           <div className="flex justify-end">
             <button
               onClick={() => setShowTransferModal(true)}
-              className="px-7 py-3.5 bg-white/95 text-[#667eea] border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
+              className="px-7 py-3.5 bg-white/95 !text-[#667eea] border-none rounded-xl text-base font-bold cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)]"
               disabled={assetsLoading || authLoading}
             >
               💸 송금하기
@@ -1407,61 +1407,48 @@ export default function MyAssets() {
           )}
         </div>
 
-        {/* 총 순자산 - 두 번째 강조 카드 */}
-        <div className="bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-[20px] py-6 px-[30px] mb-5 shadow-[0_10px_30px_rgba(240,147,251,0.3)] border-none">
-          <div className="mb-2">
-            <span className="text-white/90 text-base font-medium">
-              📊 총 순자산
-            </span>
-          </div>
-          <div className="text-[38px] font-extrabold text-white tracking-tight text-right">
-            {Number(totalNetAssets).toLocaleString()}{" "}
-            <span className="text-2xl font-semibold">원</span>
-          </div>
-          <p className="mt-2 text-xs text-white/80">
-            현금 + 쿠폰가치 + 파킹통장 + 예금 + 적금 + 부동산 - 대출
-          </p>
-        </div>
-
-        {/* 파킹통장 */}
-        <div className="mb-5">
-          <h4 className="text-[15px] text-slate-700 font-bold mb-3">
-            🅿️ 파킹통장
-          </h4>
-          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(6,182,212,0.2)]">
-            <div className="flex justify-between items-center">
-              <span className="text-white/90 font-medium text-sm">잔액</span>
-              <span className="font-extrabold text-[26px] text-white tracking-tight text-right block">
-                {Number(parkingBalance).toLocaleString()}
-                <span className="text-lg font-semibold">원</span>
-              </span>
+        {/* 총 순자산 + 파킹통장 + 보유 쿠폰 - 한 줄 배치 */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {/* 총 순자산 */}
+          <div className="bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-2xl p-4 shadow-[0_4px_15px_rgba(240,147,251,0.3)] border-none">
+            <div className="mb-1">
+              <span className="!text-white/90 text-xs font-medium">📊 총 순자산</span>
             </div>
+            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+              {Number(totalNetAssets).toLocaleString()}
+              <span className="text-sm font-semibold"> 원</span>
+            </div>
+            <p className="mt-1 text-[10px] !text-white/70 leading-tight">
+              현금+쿠폰+파킹+예적금+부동산-대출
+            </p>
           </div>
-          <p className="mt-2.5 text-xs text-slate-500 text-center">
-            파킹통장 메뉴에서 입출금 및 상품 가입 가능
-          </p>
-        </div>
 
-        {/* 기타 자산 정보 - 깔끔한 카드 */}
-        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          {/* 파킹통장 */}
+          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.2)] border-none">
+            <div className="mb-1">
+              <span className="!text-white/90 text-xs font-medium">🅿️ 파킹통장</span>
+            </div>
+            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+              {Number(parkingBalance).toLocaleString()}
+              <span className="text-sm font-semibold"> 원</span>
+            </div>
+            <p className="mt-1 text-[10px] !text-white/70 text-right">
+              입출금 및 상품 가입
+            </p>
+          </div>
+
           {/* 보유 쿠폰 */}
-          <div className="mb-5">
-            <h4 className="text-[15px] text-gray-700 font-bold mb-3">
-              🎟️ 보유 쿠폰
-            </h4>
-            <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(251,191,36,0.2)]">
-              <div className="flex justify-between items-center">
-                <div className="w-full">
-                  <div className="text-[26px] font-extrabold text-white tracking-tight text-right">
-                    {displayCoupons.toLocaleString()}{" "}
-                    <span className="text-lg font-semibold">개</span>
-                  </div>
-                  <div className="text-xs text-white/85 font-medium mt-1 text-right">
-                    1쿠폰 = {Number(couponValue).toLocaleString()}원
-                  </div>
-                </div>
-              </div>
+          <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl p-4 shadow-[0_4px_15px_rgba(251,191,36,0.2)] border-none">
+            <div className="mb-1">
+              <span className="!text-white/90 text-xs font-medium">🎟️ 보유 쿠폰</span>
             </div>
+            <div className="text-xl md:text-2xl font-extrabold !text-white tracking-tight text-right">
+              {displayCoupons.toLocaleString()}
+              <span className="text-sm font-semibold"> 개</span>
+            </div>
+            <p className="mt-1 text-[10px] !text-white/70 text-right">
+              1쿠폰 = {Number(couponValue).toLocaleString()}원
+            </p>
           </div>
         </div>
       </div>
