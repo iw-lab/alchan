@@ -26,7 +26,7 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   },
   card: {
-    backgroundColor: 'rgba(20, 20, 35, 0.8)',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
     borderRadius: '16px',
     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
     border: '1px solid rgba(0, 255, 242, 0.2)',
@@ -69,7 +69,7 @@ const styles = {
   },
   activeTab: {
     color: '#00fff2',
-    backgroundColor: 'rgba(0, 255, 242, 0.05)',
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
     borderBottom: '3px solid #00fff2'
   },
   disabledTab: {
@@ -140,7 +140,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 255, 242, 0.1)',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
     borderRadius: '12px',
     marginBottom: '16px'
   },
@@ -398,7 +398,7 @@ const AdminItemPage = ({
           </button>
         </div>
 
-        <div style={{ padding: '30px', backgroundColor: 'rgba(20, 20, 35, 0.9)' }}>
+        <div style={{ padding: '30px', backgroundColor: 'rgba(30, 41, 59, 0.9)' }}>
           {successMsg && (
             <div style={{
               margin: '0 0 20px 0',
@@ -442,7 +442,7 @@ const AdminItemPage = ({
                     <div style={{
                       marginTop: '20px',
                       padding: '16px',
-                      backgroundColor: 'rgba(10, 10, 18, 0.8)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.8)',
                       borderRadius: '8px',
                       width: '100%',
                       boxSizing: 'border-box',
@@ -473,7 +473,7 @@ const AdminItemPage = ({
                             onClick={() => handleIconSelect(icon)}
                             style={styles.iconButton}
                             onMouseEnter={(e) => {
-                              e.target.style.backgroundColor = 'rgba(0, 255, 242, 0.15)';
+                              e.target.style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
                               e.target.style.transform = 'scale(1.1)';
                             }}
                             onMouseLeave={(e) => {

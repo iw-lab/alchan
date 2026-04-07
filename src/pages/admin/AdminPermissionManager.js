@@ -149,7 +149,7 @@ const AdminPermissionManager = () => {
       <div
         className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg"
         style={{
-          backgroundColor: "rgba(20, 20, 35, 0.6)",
+          backgroundColor: "rgba(30, 41, 59, 0.6)",
           border: "1px solid rgba(100, 116, 139, 0.2)",
         }}
       >
@@ -203,7 +203,7 @@ const AdminPermissionManager = () => {
         <div
           className="text-center py-12 rounded-xl"
           style={{
-            backgroundColor: "rgba(20, 20, 35, 0.6)",
+            backgroundColor: "rgba(30, 41, 59, 0.6)",
             border: "1px solid rgba(100, 116, 139, 0.15)",
             color: "var(--text-secondary)",
           }}
@@ -222,7 +222,7 @@ const AdminPermissionManager = () => {
                 key={student.id}
                 className="rounded-xl overflow-hidden"
                 style={{
-                  backgroundColor: "rgba(20, 20, 35, 0.6)",
+                  backgroundColor: "rgba(30, 41, 59, 0.6)",
                   border: `1px solid ${
                     hasDelegation
                       ? "rgba(99, 102, 241, 0.3)"

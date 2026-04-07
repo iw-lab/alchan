@@ -1288,7 +1288,7 @@ export default function MyAssets() {
 
   const renderTitle = () => (
     <div className="flex justify-between items-center mb-5">
-      <h2 className="text-2xl font-bold text-cyber-cyan border-b-2 border-cyber-cyan/20 pb-2.5 m-0 drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]">
+      <h2 className="text-2xl font-bold text-cyber-cyan border-b-2 border-cyber-cyan/20 pb-2.5 m-0 drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]">
         나의 자산 현황 💳
       </h2>
       <button
@@ -1340,7 +1340,7 @@ export default function MyAssets() {
 
         {/* 최근 입출금 내역 - 보유 현금 바로 밑에 배치 */}
         <div className="mb-5">
-          <h4 className="text-[15px] text-[#e8e8ff] font-bold mb-3">
+          <h4 className="text-[15px] text-slate-100 font-bold mb-3">
             💳 최근 입출금 내역
           </h4>
           {transactionHistory.length > 0 ? (
@@ -1374,7 +1374,7 @@ export default function MyAssets() {
                           : "bg-red-600/10 border border-red-600/30"
                       }`}
                     >
-                      <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis mr-2.5 font-medium text-[#e8e8ff]">
+                      <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis mr-2.5 font-medium text-slate-100">
                         {displayDate} • {txDescription}
                       </span>
                       <span
@@ -1425,7 +1425,7 @@ export default function MyAssets() {
 
         {/* 파킹통장 */}
         <div className="mb-5">
-          <h4 className="text-[15px] text-[#e8e8ff] font-bold mb-3">
+          <h4 className="text-[15px] text-slate-100 font-bold mb-3">
             🅿️ 파킹통장
           </h4>
           <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-[14px] p-5 border-none shadow-[0_4px_15px_rgba(6,182,212,0.2)]">
@@ -1443,7 +1443,7 @@ export default function MyAssets() {
         </div>
 
         {/* 기타 자산 정보 - 깔끔한 카드 */}
-        <div className="p-6 bg-[rgba(20,20,35,0.4)] rounded-2xl border border-cyber-cyan/10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
+        <div className="p-6 bg-[rgba(30,41,59,0.4)] rounded-2xl border border-cyber-cyan/10 shadow-[0_4px_12px_rgba(0,0,0,0.2)]">
           {/* 보유 쿠폰 */}
           <div className="mb-5">
             <h4 className="text-[15px] text-gray-700 font-bold mb-3">

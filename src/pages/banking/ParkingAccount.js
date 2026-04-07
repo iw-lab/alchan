@@ -71,10 +71,10 @@ const cls = {
         : "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
     }`,
   grid: "grid gap-7 w-full",
-  card: "bg-[rgba(20,20,35,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
+  card: "bg-[rgba(30,41,59,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
   cardHeader: "flex items-center gap-4 mb-6 pb-5 border-b-2 border-white/5",
   cardTitle:
-    "text-[26px] font-bold text-white tracking-tight drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]",
+    "text-[26px] font-bold text-white tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
   tabContainer: "flex border-b-2 border-white/10 mb-5 gap-2",
   tabButton: (isActive) =>
     `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
@@ -102,9 +102,9 @@ const cls = {
   modalOverlay:
     "fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-[8px]",
   modalContent:
-    "bg-[#1a1a2e] p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
+    "bg-slate-800 p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-200",
   modalTitle:
-    "text-2xl font-bold mb-5 text-white drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]",
+    "text-2xl font-bold mb-5 text-white drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
   modalCloseBtn:
     "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-white",
 };
@@ -870,7 +870,7 @@ const ParkingAccountSection = ({
     <div className="bg-gradient-to-br from-[rgba(6,78,117,0.85)] to-[rgba(20,40,60,0.9)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] rounded-2xl p-8 border border-[rgba(0,180,216,0.25)] backdrop-blur-[10px]">
       <div className="flex items-center gap-4 mb-6 pb-5 border-b-2 border-[rgba(0,180,216,0.2)]">
         <Wallet size={32} className="text-cyan-300" />
-        <h2 className="text-[26px] font-bold text-[#e0f7fa] tracking-tight drop-shadow-[0_0_10px_rgba(0,255,242,0.3)]">
+        <h2 className="text-[26px] font-bold text-[#e0f7fa] tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]">
           파킹통장
         </h2>
       </div>
@@ -2091,7 +2091,7 @@ const ParkingAccount = ({
 
       {/* 유저 상품 조회 화면 */}
       {activeView === "userProducts" && isAdmin && isAdmin() && (
-        <div className="bg-[rgba(20,20,35,0.6)] rounded-2xl p-8 shadow-[0_6px_20px_rgba(0,0,0,0.3)] border border-white/5">
+        <div className="bg-[rgba(30,41,59,0.6)] rounded-2xl p-8 shadow-[0_6px_20px_rgba(0,0,0,0.3)] border border-white/5">
           <h2 className="text-2xl font-bold mb-4 text-white">
             유저별 가입 상품 조회 및 관리
           </h2>

@@ -195,7 +195,7 @@ const AdminApprovalPanel = () => {
               backgroundColor:
                 filter === key
                   ? "rgba(99, 102, 241, 0.3)"
-                  : "rgba(30, 30, 50, 0.6)",
+                  : "rgba(30, 41, 59, 0.6)",
               border: `1px solid ${filter === key ? "rgba(99, 102, 241, 0.5)" : "rgba(100, 116, 139, 0.2)"}`,
               color: filter === key ? "#818cf8" : "#94a3b8",
               cursor: "pointer",
@@ -223,7 +223,7 @@ const AdminApprovalPanel = () => {
         <div
           className="flex items-center gap-3 mb-4 p-3 rounded-xl flex-wrap"
           style={{
-            backgroundColor: "rgba(20, 20, 35, 0.8)",
+            backgroundColor: "rgba(30, 41, 59, 0.8)",
             border: "1px solid rgba(99, 102, 241, 0.2)",
           }}
         >
@@ -296,7 +296,7 @@ const AdminApprovalPanel = () => {
         <div
           className="text-center py-12 rounded-xl"
           style={{
-            backgroundColor: "rgba(20, 20, 35, 0.6)",
+            backgroundColor: "rgba(30, 41, 59, 0.6)",
             border: "1px solid rgba(100, 116, 139, 0.15)",
             color: "var(--text-secondary)",
           }}
@@ -312,7 +312,7 @@ const AdminApprovalPanel = () => {
               key={approval.id}
               className="rounded-xl overflow-hidden"
               style={{
-                backgroundColor: "rgba(20, 20, 35, 0.6)",
+                backgroundColor: "rgba(30, 41, 59, 0.6)",
                 border: `1px solid ${
                   approval.status === "pending"
                     ? "rgba(245, 158, 11, 0.3)"

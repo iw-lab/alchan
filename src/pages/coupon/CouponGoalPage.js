@@ -612,7 +612,7 @@ export default function CouponGoalPage() {
               style={{
                 marginTop: "20px",
                 padding: "15px",
-                backgroundColor: "rgba(20, 20, 35, 0.85)",
+                backgroundColor: "rgba(30, 41, 59, 0.85)",
                 borderRadius: "8px",
                 border: "1px solid rgba(0, 255, 242, 0.15)",
               }}

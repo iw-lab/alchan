@@ -1878,7 +1878,7 @@ const OmokGame = () => {
               style={{
                 fontSize: 28, fontWeight: "bold", color: "var(--accent)",
                 cursor: "pointer", letterSpacing: 4, padding: "12px 24px",
-                background: "rgba(0, 255, 242, 0.1)", borderRadius: 12,
+                background: "rgba(99, 102, 241, 0.1)", borderRadius: 12,
                 border: "1px solid rgba(0, 255, 242, 0.3)",
               }}
               onClick={() => {

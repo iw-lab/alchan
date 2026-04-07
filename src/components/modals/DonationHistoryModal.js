@@ -232,10 +232,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
       onClick={handleClose}
     >
       <div
-        className="bg-[#1a1a2e] rounded-xl shadow-lg w-full max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col border border-slate-600"
+        className="bg-slate-800 rounded-xl shadow-lg w-full max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col border border-slate-600"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-[#151528]">
+        <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-slate-800">
           <h3 className="m-0 text-lg font-semibold text-slate-100">
             우리 학급 응모 현황
             {userClassCode && (

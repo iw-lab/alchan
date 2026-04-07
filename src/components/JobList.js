@@ -26,7 +26,7 @@ const JobList = memo(function JobList({
       key={job.id} // 상위에서 map을 사용하므로 여기서 key는 필수 X, 식별용으로 유지
       className="flex flex-col h-full rounded-lg overflow-hidden mb-4"
       style={{
-        backgroundColor: "rgba(20, 20, 35, 0.6)",
+        backgroundColor: "rgba(30, 41, 59, 0.6)",
         border: "1px solid rgba(0, 255, 242, 0.2)",
         boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
         backdropFilter: "blur(5px)",
@@ -125,7 +125,7 @@ const JobList = memo(function JobList({
               addJobTaskButtonStyle || {
                 /* 기본 스타일 (선택 사항) */
                 padding: isMobile ? "6px" : "8px",
-                backgroundColor: "rgba(0, 255, 242, 0.1)",
+                backgroundColor: "rgba(99, 102, 241, 0.1)",
                 border: "1px solid rgba(0, 255, 242, 0.3)",
                 color: "var(--accent)",
                 fontSize: isMobile ? "12px" : "13px",

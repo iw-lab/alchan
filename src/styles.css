@@ -567,7 +567,7 @@ h2, h3 {
   border-radius: 12px;
   box-shadow:
     0 4px 15px var(--bg-input),
-    inset 0 0 20px rgba(0, 255, 242, 0.02);
+    inset 0 0 20px rgba(99, 102, 241, 0.02);
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
 }
@@ -577,7 +577,7 @@ h2, h3 {
   box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.4),
     0 0 20px var(--border-primary),
-    inset 0 0 30px rgba(0, 255, 242, 0.03);
+    inset 0 0 30px rgba(99, 102, 241, 0.03);
 }
 
 /* Pulse Animation for Active States */

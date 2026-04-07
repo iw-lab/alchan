@@ -9,7 +9,7 @@ import { AlchanLoadingScreen } from "./ui/Skeleton";
 // 페이지 컨테이너
 // ============================================
 export const PageContainer = ({ children, className = "" }) => (
-  <div className={`min-h-full w-full bg-[#0a0a12] ${className}`}>
+  <div className={`min-h-full w-full bg-slate-900 ${className}`}>
     <div className="w-full max-w-none px-2 md:px-3 lg:px-4 py-1 md:py-2">
       {children}
     </div>
@@ -29,7 +29,7 @@ export const PageHeader = ({
   className = "",
 }) => (
   <section
-    className={`bg-[#14142380] backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
+    className={`bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
   >
     <div className="flex items-center gap-3">
       {backButton}
@@ -114,7 +114,7 @@ export const ErrorState = ({
 export const EmptyState = ({ icon: Icon, title, description, action }) => (
   <div className="flex flex-col items-center justify-center py-16 text-center">
     {Icon && (
-      <div className="w-16 h-16 rounded-full bg-[#14142380] shadow-lg flex items-center justify-center mb-4 border border-cyan-900/30">
+      <div className="w-16 h-16 rounded-full bg-slate-800/50 shadow-lg flex items-center justify-center mb-4 border border-cyan-900/30">
         <Icon className="w-8 h-8 text-slate-400" />
       </div>
     )}
@@ -162,7 +162,7 @@ export const StatCard = ({
   onClick,
 }) => (
   <div
-    className={`bg-[#14142380] backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/30 shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 ${
+    className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/30 shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 ${
       onClick ? "cursor-pointer" : ""
     }`}
     onClick={onClick}
@@ -222,7 +222,7 @@ export const AssetCard = ({ icon: Icon, label, value, color, iconColor }) => (
 // ============================================
 export const TabGroup = ({ tabs, activeTab, onChange, className = "" }) => (
   <div
-    className={`flex gap-1 p-1 bg-[#0a0a12] rounded-xl border border-cyan-900/30 ${className}`}
+    className={`flex gap-1 p-1 bg-slate-900 rounded-xl border border-cyan-900/30 ${className}`}
   >
     {tabs.map((tab) => (
       <button
@@ -383,7 +383,7 @@ export const ListItem = ({
     } ${
       active
         ? "bg-cyan-900/30 border border-cyan-500/50"
-        : "bg-[#14142380] border border-cyan-900/20 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
+        : "bg-slate-800/50 border border-cyan-900/20 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
     } ${className}`}
     onClick={onClick}
   >
@@ -410,7 +410,7 @@ export const TaskItem = ({
   onDelete,
   showActions = true,
 }) => (
-  <div className="group flex items-center justify-between p-3 rounded-xl bg-[#0a0a12] border border-cyan-900/30 hover:border-cyan-500/50 hover:bg-slate-900/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
+  <div className="group flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-cyan-900/30 hover:border-cyan-500/50 hover:bg-slate-900/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
     <div className="flex items-center gap-3 min-w-0">
       <div
         onClick={onComplete}
@@ -469,7 +469,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
   const gradient = job.color || gradients.indigo;
 
   return (
-    <div className="bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 border border-cyan-900/30 overflow-hidden flex flex-col">
+    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 border border-cyan-900/30 overflow-hidden flex flex-col">
       {/* 카드 헤더 */}
       <div
         className={`h-16 px-6 flex items-center justify-between bg-gradient-to-r ${gradient}`}
@@ -522,7 +522,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
 // ============================================
 export const ContentSection = ({ children, className = "" }) => (
   <div
-    className={`bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 ${className}`}
+    className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 ${className}`}
   >
     {children}
   </div>

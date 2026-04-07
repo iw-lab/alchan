@@ -5,7 +5,7 @@
 :root {
   --primary-color: var(--accent);
   /* Neon Cyan */
-  --primary-dark: #0088ff;
+  --primary-dark: var(--accent);
   /* Neon Blue */
   --secondary-color: #a0a0c0;
   /* Muted Lavender */
@@ -34,7 +34,7 @@
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
 
-  --box-shadow-sm: 0 0 10px rgba(0, 136, 255, 0.1);
+  --box-shadow-sm: 0 0 10px rgba(99, 102, 241, 0.1);
   --box-shadow-md: 0 0 20px rgba(0, 0, 0, 0.6);
   --box-shadow-lg: 0 0 30px var(--border-primary);
 }
@@ -96,7 +96,7 @@ body {
 
 .treasury-balance {
   font-weight: 500;
-  background-color: rgba(30, 30, 50, 0.8);
+  background-color: rgba(30, 41, 59, 0.8);
   padding: 5px 10px;
   border-radius: var(--border-radius-sm);
   color: var(--success-color);
@@ -119,7 +119,7 @@ body {
 }
 
 .admin-settings-button:hover {
-  background-color: rgba(0, 136, 255, 0.2);
+  background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--primary-color);
   color: #fff;
   box-shadow: 0 0 10px var(--primary-dark);
@@ -247,13 +247,13 @@ button {
 
 /* 개별 버튼 배경색 */
 .submit-button {
-  background-color: rgba(0, 136, 255, 0.2);
+  background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--primary-dark);
   color: var(--primary-dark);
 }
 
 .submit-button:hover {
-  background-color: rgba(0, 136, 255, 0.4);
+  background-color: rgba(99, 102, 241, 0.4);
 }
 
 .accept-button,
@@ -318,13 +318,13 @@ button {
 }
 
 .save-button {
-  background-color: rgba(0, 136, 255, 0.2);
+  background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--primary-dark);
   color: var(--primary-dark);
 }
 
 .save-button:hover {
-  background-color: rgba(0, 136, 255, 0.4);
+  background-color: rgba(99, 102, 241, 0.4);
 }
 
 .add-button,
@@ -436,7 +436,7 @@ button {
 }
 
 .report-item {
-  background-color: rgba(20, 20, 35, 0.4);
+  background-color: rgba(30, 41, 59, 0.4);
   border: 1px solid var(--medium-gray);
   border-left: 4px solid var(--secondary-color);
   border-radius: var(--border-radius-md);
@@ -447,7 +447,7 @@ button {
 
 .report-item.law-report {
   border-left-color: var(--primary-color);
-  background: linear-gradient(90deg, rgba(0, 255, 242, 0.05) 0%, rgba(20, 20, 35, 0.4) 100%);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, rgba(30, 41, 59, 0.4) 100%);
 }
 
 .report-header {
@@ -499,7 +499,7 @@ button {
 
 .admin-section,
 .settings-section {
-  background-color: rgba(20, 20, 35, 0.4);
+  background-color: rgba(30, 41, 59, 0.4);
   border-radius: var(--border-radius-md);
   padding: 25px;
   margin-bottom: 30px;
@@ -746,7 +746,7 @@ button {
 }
 
 .result-item {
-  background-color: rgba(20, 20, 35, 0.4);
+  background-color: rgba(30, 41, 59, 0.4);
   border: 1px solid var(--medium-gray);
   border-left: 4px solid var(--secondary-color);
   border-radius: var(--border-radius-md);
@@ -888,7 +888,7 @@ button {
 .process-modal-container {
   background-color: var(--bg-card) !important;
   border-radius: var(--border-radius-lg) !important;
-  box-shadow: 0 0 30px rgba(0, 136, 255, 0.2), 0 0 10px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.2), 0 0 10px rgba(0, 0, 0, 0.5) !important;
   border: 1px solid var(--primary-color) !important;
   width: 90% !important;
   max-width: 500px !important;
@@ -1022,14 +1022,14 @@ button {
 }
 
 .modal-button.process {
-  background-color: rgba(0, 136, 255, 0.2);
+  background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--primary-dark);
   color: var(--primary-dark);
   cursor: pointer;
 }
 
 .modal-button.process:hover {
-  background-color: rgba(0, 136, 255, 0.4);
+  background-color: rgba(99, 102, 241, 0.4);
   box-shadow: 0 0 10px var(--primary-dark);
 }
 
@@ -1053,7 +1053,7 @@ button {
   padding: 5px 10px;
   font-size: 0.8rem;
   border: 1px solid var(--primary-dark);
-  background-color: rgba(0, 136, 255, 0.1);
+  background-color: rgba(99, 102, 241, 0.1);
   color: var(--primary-dark);
   border-radius: 4px;
   cursor: pointer;
@@ -1061,7 +1061,7 @@ button {
 }
 
 .quick-reason-btn:hover {
-  background-color: rgba(0, 136, 255, 0.3);
+  background-color: rgba(99, 102, 241, 0.3);
   color: #fff;
   box-shadow: 0 0 5px var(--primary-dark);
 }

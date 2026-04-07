@@ -5,7 +5,7 @@
     padding: 2rem;
     background-color: var(--bg-card);
     border-radius: 16px;
-    border: 1px solid rgba(0, 255, 242, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.12);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     text-align: center;
     box-sizing: border-box;
@@ -52,7 +52,7 @@
     font-size: 1rem;
     border: 1px solid var(--border-primary);
     border-radius: 12px 0 0 12px;
-    background: rgba(10, 10, 18, 0.6);
+    background: rgba(15, 23, 42, 0.6);
     color: var(--text-primary);
     transition: border-color 0.2s;
 }
@@ -109,7 +109,7 @@
     align-items: center;
     padding: 0.75rem;
     cursor: pointer;
-    border-bottom: 1px solid rgba(0, 255, 242, 0.06);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.06);
     transition: all 0.2s;
     color: var(--text-primary);
 }
@@ -166,7 +166,7 @@
     width: 100%;
     max-width: 400px;
     box-sizing: border-box;
-    background: rgba(10, 10, 18, 0.6);
+    background: rgba(15, 23, 42, 0.6);
     color: var(--text-primary);
     transition: border-color 0.2s;
 }

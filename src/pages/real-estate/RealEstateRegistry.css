@@ -23,7 +23,7 @@ body {
 
 /* 헤더 */
 .exchange-header {
-  background: linear-gradient(180deg, rgba(20, 20, 35, 0.95), rgba(10, 10, 18, 0.95));
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
   color: #fff;
   padding: 2rem 1rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);

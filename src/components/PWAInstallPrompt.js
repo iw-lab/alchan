@@ -90,10 +90,10 @@ export default function PWAInstallPrompt() {
 
   return (
     <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up">
-      <div className="bg-[#141423] rounded-2xl shadow-2xl border border-[#00fff2]/20 overflow-hidden">
+      <div className="bg-slate-800 rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-[#1a1a3e] to-[#2a1a4e] px-4 py-3 flex items-center justify-between border-b border-[#00fff2]/10">
-          <div className="flex items-center gap-2 text-[#00fff2]">
+        <div className="bg-gradient-to-r from-[#1a1a3e] to-[#2a1a4e] px-4 py-3 flex items-center justify-between border-b border-indigo-500/10">
+          <div className="flex items-center gap-2 text-indigo-400">
             <Smartphone size={20} />
             <span className="font-semibold">앱 설치하기</span>
           </div>
@@ -108,14 +108,14 @@ export default function PWAInstallPrompt() {
         {/* 콘텐츠 */}
         <div className="p-4">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-gradient-to-tr from-[#00fff2]/20 to-[#a855f7]/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-[#00fff2]/30">
+            <div className="w-14 h-14 bg-gradient-to-tr from-[#00fff2]/20 to-[#a855f7]/20 rounded-2xl flex items-center justify-center flex-shrink-0 border border-indigo-500/30">
               <span className="text-2xl">✨</span>
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-white mb-1">
                 알찬 앱을 설치하세요!
               </h3>
-              <p className="text-sm text-[#9999bb] leading-relaxed">
+              <p className="text-sm text-slate-400 leading-relaxed">
                 홈 화면에 추가하면 더 빠르게 접속하고, 오프라인에서도 일부
                 기능을 사용할 수 있어요.
               </p>
@@ -124,17 +124,17 @@ export default function PWAInstallPrompt() {
 
           {/* iOS 안내 */}
           {isIOS ? (
-            <div className="mt-4 p-3 bg-[#0a0a12] rounded-xl border border-[#00fff2]/10">
-              <p className="text-sm text-[#e8e8ff] mb-2 font-medium">
+            <div className="mt-4 p-3 bg-slate-900 rounded-xl border border-indigo-500/10">
+              <p className="text-sm text-slate-100 mb-2 font-medium">
                 iOS에서 설치하기:
               </p>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-[#9999bb]">
-                  <Share size={16} className="text-[#00fff2]" />
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Share size={16} className="text-indigo-400" />
                   <span>1. 하단의 공유 버튼 탭</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-[#9999bb]">
-                  <Plus size={16} className="text-[#00fff2]" />
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Plus size={16} className="text-indigo-400" />
                   <span>2. "홈 화면에 추가" 선택</span>
                 </div>
               </div>
@@ -143,7 +143,7 @@ export default function PWAInstallPrompt() {
             <div className="mt-4 flex gap-2">
               <button
                 onClick={handleDismiss}
-                className="flex-1 px-4 py-2.5 text-[#9999bb] bg-[#0a0a12] hover:bg-[#1a1a2e] rounded-xl font-medium transition-colors border border-[#00fff2]/10"
+                className="flex-1 px-4 py-2.5 text-slate-400 bg-slate-900 hover:bg-slate-800 rounded-xl font-medium transition-colors border border-indigo-500/10"
               >
                 나중에
               </button>

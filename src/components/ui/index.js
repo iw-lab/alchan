@@ -178,7 +178,7 @@ export const Card = forwardRef(
         ${className}
       `}
         style={{
-          background: "rgba(20, 20, 35, 0.8)",
+          background: "rgba(30, 41, 59, 0.8)",
           border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
         {...props}
@@ -462,7 +462,7 @@ export const Modal = ({
         ${className}
       `}
         style={{
-          background: "rgba(20, 20, 35, 0.95)",
+          background: "rgba(30, 41, 59, 0.95)",
           border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
@@ -654,7 +654,7 @@ export const EmptyState = ({
     {Icon && (
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-        style={{ background: "rgba(0, 255, 242, 0.1)" }}
+        style={{ background: "rgba(99, 102, 241, 0.1)" }}
       >
         <Icon className="w-8 h-8" style={{ color: "var(--accent)" }} />
       </div>
@@ -941,7 +941,7 @@ export const PageHeader = ({
       {Icon && (
         <div
           className="p-2.5 rounded-xl"
-          style={{ background: "rgba(0, 255, 242, 0.1)" }}
+          style={{ background: "rgba(99, 102, 241, 0.1)" }}
         >
           <Icon className="w-6 h-6" style={{ color: "var(--accent)" }} />
         </div>
@@ -974,7 +974,7 @@ export const Table = ({ children, className = "" }) => (
   >
     <table
       className={`w-full ${className}`}
-      style={{ background: "rgba(20, 20, 35, 0.8)" }}
+      style={{ background: "rgba(30, 41, 59, 0.8)" }}
     >
       {children}
     </table>
@@ -1005,7 +1005,7 @@ export const TableRow = ({ children, className = "", onClick }) => (
     style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
     onClick={onClick}
     onMouseEnter={(e) =>
-      (e.currentTarget.style.background = "rgba(0, 255, 242, 0.05)")
+      (e.currentTarget.style.background = "rgba(99, 102, 241, 0.05)")
     }
     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
   >

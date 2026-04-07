@@ -4,7 +4,7 @@
   /* Cyberpunk Color Palette */
   --bg-dark: var(--bg-primary);
   --bg-card: var(--bg-secondary);
-  --bg-card-hover: rgba(30, 30, 50, 0.8);
+  --bg-card-hover: rgba(30, 41, 59, 0.8);
 
   --primary-cyan: var(--accent);
   --primary-cyan-dim: var(--border-accent);
@@ -585,7 +585,7 @@
 }
 
 .portfolio-card {
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(10, 10, 18, 0.9) 100%);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(15, 23, 42, 0.9) 100%);
   border-radius: var(--radius-xl);
   padding: var(--spacing-md);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
@@ -635,7 +635,7 @@
 
 .portfolio-card.loss {
   border-left-color: var(--primary-cyan);
-  background: linear-gradient(135deg, rgba(0, 255, 242, 0.05) 0%, rgba(10, 10, 20, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(10, 10, 20, 0.9) 100%);
 }
 
 .portfolio-card.loss::before {
@@ -936,7 +936,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(10, 10, 18, 0.95) !important;
+  background-color: rgba(15, 23, 42, 0.95) !important;
   backdrop-filter: blur(10px);
   z-index: 2000;
   display: flex;

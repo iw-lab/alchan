@@ -294,7 +294,7 @@ const MusicRoom = ({ user }) => {
                     left: "50%",
                     transform: "translate(-50%, -50%)",
                     zIndex: 10,
-                    background: "rgba(0, 255, 242, 0.2)",
+                    background: "rgba(99, 102, 241, 0.2)",
                     border: "2px solid #00fff2",
                     borderRadius: "50%",
                     width: "80px",

@@ -3,7 +3,7 @@
 /* --- 기본 카드 스타일 (다크 테마) --- */
 .store-item-card,
 .shop-item-card {
-  background: rgba(20, 20, 35, 0.95);
+  background: rgba(30, 41, 59, 0.95);
   border-radius: 16px;
   padding: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px var(--border-accent);
@@ -11,7 +11,7 @@
   flex-direction: column;
   height: 100%;
   margin: 0;
-  border: 2.5px solid rgba(0, 255, 242, 0.6);
+  border: 2.5px solid rgba(99, 102, 241, 0.6);
   transition: all 0.2s ease;
   overflow: hidden;
 }
@@ -331,7 +331,7 @@
 }
 
 .myitems-modal-container {
-  background: rgba(20, 20, 35, 0.98);
+  background: rgba(30, 41, 59, 0.98);
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--border-primary);

@@ -82,7 +82,7 @@ export default function CouponGoal({
     <div
       className="class-coupon-goal p-6 rounded-2xl relative overflow-hidden"
       style={{
-        backgroundColor: "rgba(20, 20, 35, 0.6)",
+        backgroundColor: "rgba(30, 41, 59, 0.6)",
         boxShadow: goalAchieved
           ? "0 4px 20px rgba(16, 185, 129, 0.25)"
           : "0 4px 20px rgba(0, 255, 242, 0.15)",

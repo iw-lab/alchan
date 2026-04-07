@@ -89,7 +89,7 @@ const SellCouponModal = memo(function SellCouponModal({
       onClick={handleCancel}
     >
       <div
-        className="bg-[#1a1a2e] p-5 rounded-lg max-w-[500px] w-[90%] max-h-[90vh] overflow-y-auto shadow-md border border-slate-600"
+        className="bg-slate-800 p-5 rounded-lg max-w-[500px] w-[90%] max-h-[90vh] overflow-y-auto shadow-md border border-slate-600"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-4 text-slate-100">

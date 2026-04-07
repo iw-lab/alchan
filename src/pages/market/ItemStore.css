@@ -654,7 +654,7 @@ body {
   top: 0;
   left: 0;
   transition: transform 0.4s ease, opacity 0.4s ease;
-  background-color: rgba(20, 20, 35, 0.95);
+  background-color: rgba(30, 41, 59, 0.95);
 }
 
 .admin-panel-container.admin-hidden {

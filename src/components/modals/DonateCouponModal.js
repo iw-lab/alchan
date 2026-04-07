@@ -59,11 +59,11 @@ const DonateCouponModal = memo(function DonateCouponModal({
       onClick={handleClose}
     >
       <div
-        className="bg-[#1a1a2e] rounded-xl shadow-lg w-full max-w-[500px] overflow-hidden border border-slate-600"
+        className="bg-slate-800 rounded-xl shadow-lg w-full max-w-[500px] overflow-hidden border border-slate-600"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-[#151528]">
+        <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-slate-800">
           <h3 className="m-0 text-lg font-semibold text-slate-100">
             쿠폰 응모하기
             {classCode && (

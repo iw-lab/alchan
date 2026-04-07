@@ -19,7 +19,7 @@
   padding-bottom: 15px;
   border-bottom: 2px solid var(--cyber-neon-blue);
   font-family: 'Orbitron', sans-serif;
-  text-shadow: 0 0 10px rgba(0, 136, 255, 0.4);
+  text-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
 }
 
 /* ========================================
@@ -30,7 +30,7 @@
   gap: 4px;
   margin-bottom: 0;
   padding: 4px;
-  background: rgba(10, 10, 18, 0.6);
+  background: rgba(15, 23, 42, 0.6);
   border-radius: 14px 14px 0 0;
   border: 1px solid var(--accent-light);
   border-bottom: none;
@@ -67,11 +67,11 @@
 
 .gov-tab-button.active {
   color: #fff;
-  background: linear-gradient(135deg, rgba(0, 136, 255, 0.2), var(--accent-light));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), var(--accent-light));
   border: 1px solid var(--border-accent);
   font-weight: 700;
   box-shadow:
-    0 0 15px rgba(0, 136, 255, 0.15),
+    0 0 15px rgba(99, 102, 241, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   text-shadow: 0 0 8px var(--accent);
 }
@@ -153,7 +153,7 @@
 
 .investment-link-button {
   padding: 10px 15px;
-  background: linear-gradient(135deg, rgba(0, 136, 255, 0.2), rgba(0, 136, 255, 0.1));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.1));
   color: var(--cyber-neon-blue);
   border: 1px solid var(--cyber-neon-blue);
   border-radius: 6px;
@@ -162,14 +162,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(0, 136, 255, 0.2);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
   font-family: 'Rajdhani', sans-serif;
 }
 
 .investment-link-button:hover {
-  background: rgba(0, 136, 255, 0.4);
+  background: rgba(99, 102, 241, 0.4);
   color: #fff;
-  box-shadow: 0 0 15px rgba(0, 136, 255, 0.4);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
   transform: translateY(-2px);
 }
 

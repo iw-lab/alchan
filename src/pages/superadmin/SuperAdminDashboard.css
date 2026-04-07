@@ -3,7 +3,7 @@
 
 .super-admin-dashboard {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f0f1a 0%, var(--bg-card) 50%, #16213e 100%);
+  background: linear-gradient(135deg, #0f0f1a 0%, var(--bg-card) 50%, var(--bg-card) 100%);
   color: #e0e0e0;
   padding: 20px;
 }

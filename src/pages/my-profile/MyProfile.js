@@ -436,7 +436,7 @@ export default function MyProfile() {
 
           <div className="flex flex-col gap-2">
             {/* 현재 학급 코드 표시 */}
-            <div className="p-4 bg-[#0f0f23] rounded-xl border border-gray-700 mb-2">
+            <div className="p-4 bg-slate-900 rounded-xl border border-gray-700 mb-2">
               <div className="flex justify-between items-center">
                 <span className="text-[#9ca3af] text-sm">현재 학급 코드</span>
                 <span className="text-cyber-text text-base font-semibold">
@@ -451,7 +451,7 @@ export default function MyProfile() {
                 setShowNicknameModal(true);
                 setError("");
               }}
-              className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+              className="flex items-center gap-3 p-4 bg-slate-900 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <User size={20} className="text-[#a78bfa]" />
               <span className="text-cyber-text text-sm flex-1 text-left">
@@ -466,7 +466,7 @@ export default function MyProfile() {
                 setShowPasswordModal(true);
                 setError("");
               }}
-              className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+              className="flex items-center gap-3 p-4 bg-slate-900 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <Key size={20} className="text-[#a78bfa]" />
               <span className="text-cyber-text text-sm flex-1 text-left">
@@ -481,7 +481,7 @@ export default function MyProfile() {
                 setShowClassCodeModal(true);
                 setError("");
               }}
-              className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+              className="flex items-center gap-3 p-4 bg-slate-900 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
             >
               <Building2 size={20} className="text-[#a78bfa]" />
               <span className="text-cyber-text text-sm flex-1 text-left">
@@ -493,7 +493,7 @@ export default function MyProfile() {
             {/* 로그아웃 */}
             <button
               onClick={logout}
-              className="flex items-center gap-3 p-4 bg-[#0f0f23] rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
+              className="flex items-center gap-3 p-4 bg-slate-900 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
             >
               <LogOut size={20} className="text-[#9ca3af]" />
               <span className="text-cyber-text text-sm flex-1 text-left">
@@ -550,7 +550,7 @@ export default function MyProfile() {
               onChange={(e) => setNewNickname(e.target.value)}
               placeholder="새 닉네임 (2~10자)"
               maxLength={10}
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
@@ -596,21 +596,21 @@ export default function MyProfile() {
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="현재 비밀번호"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
             />
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="새 비밀번호 (6자 이상)"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
             />
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="새 비밀번호 확인"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
@@ -662,7 +662,7 @@ export default function MyProfile() {
               value={newClassCode}
               onChange={(e) => setNewClassCode(e.target.value.toUpperCase())}
               placeholder="새 학급 코드"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 uppercase focus:border-[#a78bfa] focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 uppercase focus:border-[#a78bfa] focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">
@@ -714,14 +714,14 @@ export default function MyProfile() {
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="계정삭제"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-2.5 focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-2.5 focus:outline-none"
             />
             <input
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
               placeholder="비밀번호 확인"
-              className="w-full p-3.5 bg-[#0f0f23] border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-3 focus:outline-none"
+              className="w-full p-3.5 bg-slate-900 border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-3 focus:outline-none"
             />
             {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
             <div className="flex gap-2.5">

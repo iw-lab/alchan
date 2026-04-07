@@ -241,7 +241,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
         {showForm ? "접기" : "➕ 개별 주식/ETF 추가"}
       </button>
       {showForm && (
-        <div className="bg-[rgba(20,20,35,0.8)] p-3 rounded-lg border border-white/10">
+        <div className="bg-[rgba(30,41,59,0.8)] p-3 rounded-lg border border-white/10">
           <p className="text-[0.85rem] text-slate-400 mb-2.5">
             📌 빠른 추가 (클릭하면 바로 추가됩니다)
           </p>

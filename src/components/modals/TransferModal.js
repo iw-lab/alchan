@@ -65,7 +65,7 @@ const TransferModal = memo(function TransferModal({
         <div
           className="rounded-lg p-3 mb-5"
           style={{
-            backgroundColor: "rgba(0, 255, 242, 0.06)",
+            backgroundColor: "rgba(99, 102, 241, 0.06)",
             border: "1px solid rgba(0, 255, 242, 0.15)",
           }}
         >

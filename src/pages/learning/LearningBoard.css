@@ -752,7 +752,7 @@
   right: 0;
   width: 360px;
   height: 100vh;
-  background: rgba(10, 10, 18, 0.97);
+  background: rgba(15, 23, 42, 0.97);
   border-left: 1px solid var(--border-accent);
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
   padding: 2rem 1.5rem;

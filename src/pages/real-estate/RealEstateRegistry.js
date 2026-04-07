@@ -2052,7 +2052,7 @@ const RealEstateRegistry = () => {
                         gap: '10px',
                         padding: '8px 12px',
                         marginBottom: '6px',
-                        backgroundColor: excludedFromAssign.has(user.id) ? 'rgba(30, 30, 50, 0.3)' : 'rgba(30, 30, 50, 0.6)',
+                        backgroundColor: excludedFromAssign.has(user.id) ? 'rgba(30, 41, 59, 0.3)' : 'rgba(30, 41, 59, 0.6)',
                         borderRadius: '6px',
                         border: '1px solid rgba(0, 255, 242, 0.1)',
                         color: '#e8e8ff',

@@ -259,7 +259,7 @@ function SelectMultipleJobsView({
   }, []);
 
   return (
-    <div className="bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
+    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 max-w-3xl mx-auto my-8">
       <h4 className="text-xl font-semibold text-white text-center mb-2">
         직업 선택 (다중 선택 가능)
       </h4>
@@ -273,7 +273,7 @@ function SelectMultipleJobsView({
             className={`p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${
               tempSelection.includes(job.id)
                 ? "border-cyan-500 bg-cyan-900/30"
-                : "border-cyan-900/20 bg-[#14142380] hover:border-cyan-500/50"
+                : "border-cyan-900/20 bg-slate-800/50 hover:border-cyan-500/50"
             }`}
           >
             {editingJobId === job.id ? (
@@ -286,7 +286,7 @@ function SelectMultipleJobsView({
                     if (e.key === "Enter") handleSaveEdit();
                     if (e.key === "Escape") handleCancelEdit();
                   }}
-                  className="flex-1 px-2 py-1 bg-[#0a0a1a] border border-cyan-500 rounded text-white text-sm focus:outline-none"
+                  className="flex-1 px-2 py-1 bg-slate-900 border border-cyan-500 rounded text-white text-sm focus:outline-none"
                   autoFocus
                 />
                 <button
@@ -365,7 +365,7 @@ function SelectMultipleJobsView({
                 onChange={(e) => setNewJobTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddNewJob()}
                 placeholder="새 직업 이름 입력"
-                className="flex-1 px-3 py-2 bg-[#0a0a1a] border border-cyan-900/30 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="flex-1 px-3 py-2 bg-slate-900 border border-cyan-900/30 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                 autoFocus
               />
               <ActionButton variant="primary" size="sm" onClick={handleAddNewJob}>
@@ -1948,10 +1948,10 @@ function Dashboard({ adminTabMode }) {
     userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
   return (
-    <div className="min-h-full w-full bg-[#0a0a12] px-2 pt-1 pb-0">
+    <div className="min-h-full w-full bg-slate-900 px-2 pt-1 pb-0">
       {/* 페이지 헤더 - 컴팩트 버전 (관리자 탭 모드가 아닐 때만 표시) */}
       {!adminTabMode && (
-        <section className="bg-[#14142380] backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
+        <section className="bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-cyan-900/30 rounded-md flex items-center justify-center text-cyan-400 shrink-0 border border-cyan-500/30">
               <ListTodo className="w-4 h-4" />
@@ -2010,7 +2010,7 @@ function Dashboard({ adminTabMode }) {
       {viewMode === "list" && !showAdminSettingsModal && !adminTabMode && (
         <>
           {/* 나의 직업 할일 섹션 */}
-          <div className="bg-[#14142380] backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 overflow-hidden mb-6">
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 overflow-hidden mb-6">
             {/* 나의 직업 할일 헤더 - 색상 배경 */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2098,7 +2098,7 @@ function Dashboard({ adminTabMode }) {
               </div>
 
               {/* 공통 할일 섹션 */}
-              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-900/30 bg-[#14142380] backdrop-blur-sm">
+              <div className="mt-6 rounded-xl overflow-hidden border border-emerald-900/30 bg-slate-800/50 backdrop-blur-sm">
                 {/* 공통 할일 헤더 - 색상 배경 */}
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -2120,7 +2120,7 @@ function Dashboard({ adminTabMode }) {
                   )}
                 </div>
 
-                <div className="p-4 md:p-6 bg-[#0a0a12]/50">
+                <div className="p-4 md:p-6 bg-slate-900/50">
                   <CommonTaskList
                     tasks={commonTasksWithUserProgress}
                     isAdmin={isAdmin?.()}
