@@ -37,8 +37,8 @@
   flex-direction: column;
   align-items: center;
   padding: 2rem;
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card) 50%, #0f3460 100%);
-  color: #f0f0f0;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 50%, #dde6ff 100%);
+  color: #1e293b;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
 
@@ -62,7 +62,7 @@
 .game-info {
   display: flex;
   gap: 1.5rem;
-  color: #8892b0;
+  color: #64748b;
 }
 
 /* 플레이어 상태 */
@@ -76,8 +76,8 @@
 }
 
 .player-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
@@ -85,13 +85,13 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .player-card.active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(100, 180, 255, 0.5);
-  box-shadow: 0 0 24px rgba(100, 180, 255, 0.15);
+  background: #f0f4ff;
+  border-color: #818cf8;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
 }
 
 .player-card .player-info { flex-grow: 1; }
@@ -328,19 +328,19 @@
 }
 
 .omok-button.secondary {
-  background: var(--border-primary);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
 
 .omok-button.secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: #e2e8f0;
   transform: translateY(-2px);
 }
 
 /* 로비 스타일 */
 .game-page-container {
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card) 50%, #0f3460 100%);
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 50%, #dde6ff 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -351,11 +351,11 @@
 .omok-lobby {
   width: 100%;
   max-width: 600px;
-  background: var(--bg-input);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border-primary);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -363,7 +363,7 @@
 .lobby-section:last-child { margin-bottom: 0; }
 
 .lobby-section h3 {
-  color: white;
+  color: #1e293b;
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
@@ -387,18 +387,25 @@
   flex: 1;
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: white;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.mode-options button:hover,
+.difficulty-options button:hover {
+  background: #eef2ff;
+  border-color: #818cf8;
 }
 
 .mode-options button.primary,
 .difficulty-options button.selected {
   background: linear-gradient(135deg, #667eea, #764ba2);
   border-color: transparent;
+  color: white;
 }
 
 .lobby-actions {
@@ -412,7 +419,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: #8892b0;
+  color: #64748b;
   padding: 2rem;
 }
 
