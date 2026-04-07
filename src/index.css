@@ -1083,9 +1083,25 @@ label, .form-label {
    GLOBAL THEME OVERRIDE
    ============================================ */
 
-/* 텍스트 색상 */
+/* 텍스트 색상 - 모든 텍스트 진하게 */
 body { color: var(--text-primary) !important; }
 p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
+
+/* 이름/잔액 등 핵심 정보 진하게 */
+.user-name, .user-balance, .admin-name, .admin-label,
+[class*="user-name"], [class*="user-info"],
+[class*="member-name"], [class*="student-name"],
+[class*="balance"], [class*="cash"],
+.current-class-info, .current-class-info strong {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* 학번/이메일 등 보조 정보 */
+.user-balance, [class*="user-balance"] {
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+}
 
 /* 카드/섹션 테두리 + 그림자 */
 .section-container,
@@ -1096,20 +1112,51 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
 [class*="card"],
 [class*="panel"],
 [class*="section-card"],
-[class*="section "],
 [class*="-section"],
 [class*="transfer-form"],
-[class*="tax-section"],
-[class*="amount-section"],
-[class*="take-mode"],
 [class*="action-selector"],
-.user-selection-section {
+.user-selection-section,
+.header,
+[class*="-info"],
+[class*="-header"]:not(th) {
   background-color: var(--bg-card) !important;
   border: 1.5px solid var(--border-primary) !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   box-shadow: var(--shadow-card) !important;
-  padding: 16px;
-  margin-bottom: 12px;
+}
+
+/* 학생/유저 아이템 카드 */
+.user-item,
+.user-label,
+[class*="user-item"],
+[class*="member-item"],
+[class*="student-item"],
+[class*="code-item"],
+[class*="job-item"],
+[class*="admin-job-item"],
+[class*="admin-task-item"] {
+  background-color: var(--bg-card) !important;
+  border: 1.5px solid var(--border-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-sm) !important;
+  padding: 10px 14px !important;
+  margin-bottom: 8px !important;
+}
+
+/* 사이드바 메뉴 아이템 테두리 */
+aside li button,
+aside nav button {
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  margin-bottom: 2px !important;
+  transition: all 0.2s !important;
+}
+
+aside li button:hover,
+aside nav button:hover {
+  border-color: var(--border-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+  background-color: var(--bg-secondary) !important;
 }
 
 /* 입력필드 */
