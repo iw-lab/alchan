@@ -1130,29 +1130,49 @@ html:not(.dark) .green-button * {
   color: white !important;
 }
 
-/* 라이트모드 배경 강제 */
+/* 라이트모드 배경 */
 html:not(.dark) body {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
 }
 
+/* 라이트모드 카드 - 세련된 디자인 */
 html:not(.dark) .section-container,
 html:not(.dark) [class*="card"],
 html:not(.dark) [class*="panel"],
 html:not(.dark) [class*="modal-content"],
 html:not(.dark) [class*="section-card"] {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(99,102,241,0.04) !important;
+}
+
+/* 라이트모드 페이지 컨테이너 */
+html:not(.dark) .page-container,
+html:not(.dark) [class*="-container"]:not(aside):not(header) {
+  background-color: #f1f5f9 !important;
+}
+
+/* 라이트모드 섹션 헤더 포인트 */
+html:not(.dark) .section-header {
+  border-bottom: 2px solid #e0e7ff !important;
+  padding-bottom: 12px !important;
+}
+
+html:not(.dark) .section-header-title,
+html:not(.dark) .section-title {
+  color: #312e81 !important;
 }
 
 /* 라이트모드 사이드바 */
 html:not(.dark) aside {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+  border-right: 1px solid #cbd5e1 !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04) !important;
 }
 
 html:not(.dark) aside * {
-  color: #334155 !important;
+  color: #475569 !important;
 }
 
 html:not(.dark) aside [style*="color: var(--accent)"],
@@ -1163,34 +1183,96 @@ html:not(.dark) aside .text-indigo-400 {
 /* 라이트모드 헤더 */
 html:not(.dark) header {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
 }
 
 /* 라이트모드 입력필드 */
 html:not(.dark) input,
 html:not(.dark) textarea,
 html:not(.dark) select {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
   color: #1e293b !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) textarea:focus,
+html:not(.dark) select:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
 }
 
 /* 라이트모드 테이블 */
-html:not(.dark) table,
-html:not(.dark) table th,
-html:not(.dark) table td {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
+html:not(.dark) table {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
 }
 
 html:not(.dark) table th {
-  background-color: #f1f5f9 !important;
+  background-color: #eef2ff !important;
+  color: #312e81 !important;
+  border-bottom: 2px solid #c7d2fe !important;
+  font-weight: 700 !important;
 }
 
-/* 라이트모드 보더 */
-html:not(.dark) [style*="border"] {
+html:not(.dark) table td {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html:not(.dark) table tr:hover td {
+  background-color: #f8fafc !important;
+}
+
+/* 라이트모드 배지/태그 */
+html:not(.dark) [class*="badge"],
+html:not(.dark) [class*="tag"] {
+  border: 1px solid #c7d2fe !important;
+  background-color: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+/* 라이트모드 탭 버튼 */
+html:not(.dark) [class*="tab"].active,
+html:not(.dark) button[class*="tab"].active {
+  color: #4f46e5 !important;
+  border-bottom: 2px solid #4f46e5 !important;
+  background-color: #eef2ff !important;
+}
+
+/* 라이트모드 구분선 */
+html:not(.dark) hr,
+html:not(.dark) [class*="divider"],
+html:not(.dark) [class*="separator"] {
   border-color: #e2e8f0 !important;
+}
+
+/* 라이트모드 빈 상태 */
+html:not(.dark) [class*="empty"],
+html:not(.dark) [class*="no-items"],
+html:not(.dark) [class*="no-data"] {
+  background-color: #f8fafc !important;
+  border: 1px dashed #cbd5e1 !important;
+  color: #94a3b8 !important;
+}
+
+/* 라이트모드 경제이벤트 배너 */
+html:not(.dark) [class*="event-banner"],
+html:not(.dark) [class*="economic-event"] {
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff) !important;
+  border: 1px solid #c7d2fe !important;
+}
+
+/* 라이트모드 푸터 */
+html:not(.dark) footer,
+html:not(.dark) [class*="footer"] {
+  background-color: #f1f5f9 !important;
+  border-top: 1px solid #cbd5e1 !important;
 }
 
 /* ============================================
