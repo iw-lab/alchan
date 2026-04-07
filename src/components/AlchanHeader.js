@@ -426,14 +426,13 @@ const AlchanHeader = memo(
                 <ChevronLeft size={16} />
               )}
             </button>
-            <div>
-              <div className="text-[15px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
-                오늘도 <span className="font-jua" style={{ color: 'var(--accent)' }}>알찬</span>{" "}
-                하루! 👋
-              </div>
-              <div className="text-xs text-slate-400 whitespace-nowrap leading-tight">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[15px] font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                오늘도 <span className="font-jua" style={{ color: 'var(--accent)' }}>알찬</span> 하루! 👋
+              </span>
+              <span className="text-[13px] text-slate-400 whitespace-nowrap">
                 {displayName}님 환영합니다
-              </div>
+              </span>
             </div>
           </div>
 
