@@ -894,6 +894,45 @@ async function runEconomicEventsForAllClasses() {
     return { processed: 0, triggered: 0, results: [] };
   }
 
+  // 1단계: 모든 활성 학급 코드 수집 (users 컬렉션에서)
+  const usersSnapshot = await db.collection("users").get();
+  const allClassCodes = new Set();
+  usersSnapshot.docs.forEach((doc) => {
+    const classCode = doc.data().classCode;
+    if (classCode) allClassCodes.add(classCode);
+  });
+
+  if (allClassCodes.size === 0) {
+    logger.info("[경제이벤트] 활성 학급 없음");
+    return { processed: 0, triggered: 0, results: [] };
+  }
+
+  logger.info(`[경제이벤트] ${allClassCodes.size}개 학급 발견: ${[...allClassCodes].join(", ")}`);
+
+  // 2단계: 설정 없는 학급에 자동 생성
+  for (const classCode of allClassCodes) {
+    const settingRef = db.collection("economicEventSettings").doc(classCode);
+    const settingDoc = await settingRef.get();
+
+    if (!settingDoc.exists) {
+      // 8~15시 사이 랜덤 triggerHour 배정
+      const randomHour = 8 + Math.floor(Math.random() * 8);
+      await settingRef.set({
+        enabled: true,
+        triggerHour: randomHour,
+        events: DEFAULT_EVENT_TEMPLATES,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        autoCreated: true,
+      });
+      logger.info(`[경제이벤트] ${classCode}: 기본 설정 자동 생성 (triggerHour: ${randomHour}시)`);
+    } else if (!settingDoc.data().enabled) {
+      // 비활성화된 설정을 활성화
+      await settingRef.update({ enabled: true });
+      logger.info(`[경제이벤트] ${classCode}: 비활성화 → 자동 활성화`);
+    }
+  }
+
+  // 3단계: 활성화된 설정 전체 조회
   const settingsSnapshot = await db
     .collection("economicEventSettings")
     .where("enabled", "==", true)
