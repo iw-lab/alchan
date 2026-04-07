@@ -1067,3 +1067,166 @@ label, .form-label {
     -webkit-backdrop-filter: none !important;
   }
 }
+
+/* ============================================
+   GLOBAL THEME FORCE OVERRIDE
+   모든 페이지/컴포넌트에 테마 강제 적용
+   인라인 스타일, Tailwind 클래스 등 모두 덮어씀
+   ============================================ */
+
+/* 메인 배경 강제 */
+body,
+#root,
+.dashboard-container,
+.page-container,
+[class*="-container"] {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 모든 카드/섹션/패널 배경 강제 */
+.section-container,
+.content-card-section,
+.admin-panel,
+.shop-item-card,
+.store-item-card,
+[class*="card"],
+[class*="panel"],
+[class*="section-card"],
+[class*="modal-content"],
+[class*="settings-content"] {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 모든 입력 필드 */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-primary) !important;
+}
+
+/* 모든 모달 오버레이 */
+[class*="modal-overlay"],
+[class*="modal-backdrop"],
+.fixed.inset-0[class*="bg-"] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 모든 드롭다운/팝업 */
+[class*="dropdown"],
+[class*="popup"],
+[class*="menu"][class*="absolute"] {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-primary) !important;
+}
+
+/* 보더 색상 통일 */
+[style*="border"] {
+  border-color: var(--border-primary);
+}
+
+/* 모든 텍스트 색상 보장 */
+p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6 {
+  color: inherit;
+}
+
+/* 아이템 카드 내부 텍스트 가독성 */
+.shop-item-card *,
+.store-item-card *,
+[class*="item-card"] * {
+  color: var(--text-primary) !important;
+}
+
+.shop-item-card .item-description,
+.store-item-card .item-description,
+[class*="item-card"] [class*="description"] {
+  color: var(--text-secondary) !important;
+}
+
+/* 아이템 카드 버튼 (사용하기/선물하기) 텍스트는 흰색 유지 */
+.shop-item-card button,
+.store-item-card button,
+[class*="item-card"] button,
+button[class*="bg-indigo"],
+button[class*="bg-violet"],
+button[class*="bg-emerald"],
+button[class*="bg-rose"],
+button[class*="bg-amber"],
+button[class*="bg-blue"],
+button[class*="bg-green"],
+button[class*="bg-red"],
+button[class*="bg-purple"],
+.buy-button,
+.admin-action-button,
+.admin-save-button,
+.header-button,
+.green-button,
+.add-job-task-button,
+.admin-settings-button {
+  color: white !important;
+}
+
+/* 사이드바 하위 메뉴 텍스트 */
+aside * {
+  color: inherit;
+}
+
+/* 테이블 */
+table, table th, table td, table tr {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+table th {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* 그라디언트 배경이 있는 컨테이너 수정 */
+[style*="linear-gradient"][style*="rgba(20"],
+[style*="linear-gradient"][style*="#1a1a"],
+[style*="linear-gradient"][style*="#0a0a"],
+[style*="linear-gradient"][style*="#1414"],
+[style*="linear-gradient"][style*="#1212"] {
+  background: var(--bg-card) !important;
+}
+
+/* 네온/사이버 글로우 텍스트 섀도우 제거 */
+[style*="text-shadow"],
+.neon-text,
+.neon-text-purple {
+  text-shadow: none !important;
+}
+
+/* 네온 글로우 box-shadow 제거 */
+[style*="0 0 15px"],
+[style*="0 0 10px"],
+[style*="0 0 20px"],
+.cyber-pulse,
+.animate-neon-pulse {
+  animation: none !important;
+}
+
+/* 푸터 */
+footer, [class*="footer"] {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-primary) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* 빈 상태 메시지 */
+[class*="empty"],
+[class*="no-items"],
+[class*="no-data"] {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-muted) !important;
+}
+
+/* 라이트모드에서 그라디언트 카드 배경 처리 */
+:root:not(.dark) [style*="background"][style*="gradient"] {
+  opacity: 0.9;
+}
