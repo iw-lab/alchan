@@ -10,33 +10,33 @@
 body {
   font-family: 'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
-  color: var(--cyber-text-primary);
-  background-color: var(--cyber-bg-dark);
+  color: #1e293b;
+  background-color: #ffffff;
 }
 
 /* 메인 컨테이너 */
 .real-estate-exchange {
   position: relative;
   min-height: 100vh;
-  background-color: var(--cyber-bg-dark);
+  background-color: #ffffff;
 }
 
 /* 헤더 */
 .exchange-header {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
-  color: #fff;
+  background: linear-gradient(180deg, #f8faff, #eef2ff);
+  color: #1e293b;
   padding: 2rem 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
   text-align: center;
-  border-bottom: 1px solid var(--cyber-border-dim);
+  border-bottom: 1px solid #e0e7ff;
 }
 
 .exchange-header h1 {
   font-size: 2.5rem;
   font-weight: 700;
   margin: 0;
-  color: #fff;
-  text-shadow: 0 0 10px var(--accent);
+  color: #1e293b;
+  text-shadow: none;
 }
 
 /* 통계 바 */
@@ -55,11 +55,11 @@ body {
 }
 
 .stat-item {
-  background: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: var(--cyber-shadow-card);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -69,35 +69,35 @@ body {
 
 .stat-item:hover {
   transform: translateY(-5px);
-  border-color: var(--cyber-border-bright);
-  box-shadow: 0 0 15px var(--border-accent);
+  border-color: #a5b4fc;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
 }
 
 .stat-icon {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--accent-light);
-  border: 1px solid var(--cyber-neon-cyan);
+  background: #eef2ff;
+  border: 1px solid #6366f1;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  color: var(--cyber-neon-cyan);
-  box-shadow: 0 0 10px var(--border-accent);
+  color: #6366f1;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+  text-shadow: none;
   font-family: 'Orbitron', sans-serif;
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: var(--cyber-text-secondary);
+  color: #64748b;
 }
 
 /* 메인 컨텐츠 */
@@ -109,12 +109,12 @@ body {
 
 /* 부동산 배치도 */
 .property-layout {
-  background: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
   padding: 1rem 1.2rem;
   margin-bottom: 1.5rem;
-  box-shadow: var(--cyber-shadow-card);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
 }
 
 .property-layout h3 {
@@ -122,8 +122,8 @@ body {
   font-weight: 600;
   margin-bottom: 1rem;
   text-align: center;
-  color: #fff;
-  text-shadow: 0 0 5px var(--accent);
+  color: #1e293b;
+  text-shadow: none;
 }
 
 .layout-grid {
@@ -155,7 +155,7 @@ body {
 .layout-cell-tenant {
   font-size: 0.6rem;
   opacity: 0.8;
-  background: rgba(0,0,0,0.2);
+  background: rgba(99, 102, 241, 0.1);
   padding: 1px 5px;
   border-radius: 4px;
   max-width: 100%;
@@ -177,9 +177,9 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background-color: rgba(255, 255, 255, 0.02);
-  color: var(--cyber-text-secondary);
+  border: 1px solid #e0e7ff;
+  background-color: #ffffff;
+  color: #64748b;
   text-align: center;
   line-height: 1.3;
   overflow: hidden;
@@ -187,33 +187,33 @@ body {
 
 .layout-cell:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 15px var(--border-accent);
-  border-color: var(--cyber-neon-cyan);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+  border-color: #6366f1;
   z-index: 10;
 }
 
 .layout-cell.empty {
-  background-color: rgba(255, 255, 255, 0.03);
-  color: #666;
+  background-color: #f8faff;
+  color: #94a3b8;
 }
 
 .layout-cell.government {
   background-color: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: #059669;
   border-color: rgba(16, 185, 129, 0.4);
   box-shadow: 0 0 5px rgba(16, 185, 129, 0.2);
 }
 
 .layout-cell.owned {
   background-color: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  color: #b45309;
   border-color: rgba(245, 158, 11, 0.4);
   box-shadow: 0 0 5px rgba(245, 158, 11, 0.2);
 }
 
 .layout-cell.for-sale {
   background-color: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: #dc2626;
   border-color: rgba(239, 68, 68, 0.4);
   animation: pulse 1.5s infinite;
   box-shadow: 0 0 5px rgba(239, 68, 68, 0.2);
@@ -228,7 +228,7 @@ body {
 
 .layout-cell.rented-by-me {
   background-color: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  color: #2563eb;
   border: 2px dashed #60a5fa;
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
 }
@@ -257,7 +257,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: var(--cyber-text-secondary);
+  color: #64748b;
 }
 
 .legend-color {
@@ -288,26 +288,26 @@ body {
 }
 
 .admin-btn.settings {
-  background: var(--border-primary);
-  color: #fff;
-  border: 1px solid var(--cyber-border-dim);
+  background: #f8faff;
+  color: #1e293b;
+  border: 1px solid #e0e7ff;
 }
 
 .admin-btn.settings:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #fff;
+  background: #eef2ff;
+  border-color: #a5b4fc;
   transform: translateY(-2px);
 }
 
 .admin-btn.collect {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(236, 72, 153, 0.1) 100%);
-  color: #f472b6;
-  border: 1px solid rgba(236, 72, 153, 0.5);
+  background: #fdf2f8;
+  color: #db2777;
+  border: 1px solid #fbcfe8;
 }
 
 .admin-btn.collect:hover {
-  background: rgba(236, 72, 153, 0.3);
-  box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+  background: #fce7f3;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.15);
   transform: translateY(-2px);
 }
 
@@ -315,10 +315,10 @@ body {
 .properties-section h2 {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
   margin-bottom: 1.5rem;
   text-align: center;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  text-shadow: none;
 }
 
 .property-grid {
@@ -329,10 +329,10 @@ body {
 
 /* 부동산 카드 */
 .property-card {
-  background: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
-  box-shadow: var(--cyber-shadow-card);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
   cursor: pointer;
@@ -340,8 +340,8 @@ body {
 
 .property-card:hover {
   transform: translateY(-5px);
-  border-color: var(--cyber-neon-cyan);
-  box-shadow: 0 0 20px var(--border-accent);
+  border-color: #a5b4fc;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
 }
 
 .property-header {
@@ -349,14 +349,14 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--cyber-border-dim);
-  background: var(--bg-input);
+  border-bottom: 1px solid #e0e7ff;
+  background: #f8faff;
 }
 
 .property-header h4 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
 }
 
 .sale-badge,
@@ -370,13 +370,13 @@ body {
 
 .sale-badge {
   background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  color: #dc2626;
   border-color: rgba(239, 68, 68, 0.3);
 }
 
 .rent-badge {
   background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  color: #2563eb;
   border-color: rgba(59, 130, 246, 0.3);
 }
 
@@ -397,13 +397,13 @@ body {
 
 .info-row .label {
   font-size: 0.875rem;
-  color: var(--cyber-text-secondary);
+  color: #64748b;
 }
 
 .info-row .value {
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
   font-family: 'Rajdhani', sans-serif;
 }
 
@@ -428,7 +428,7 @@ body {
 
 .btn-purchase {
   background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: #059669;
   border: 1px solid rgba(16, 185, 129, 0.5);
 }
 
@@ -439,7 +439,7 @@ body {
 
 .btn-rent {
   background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  color: #2563eb;
   border: 1px solid rgba(59, 130, 246, 0.5);
 }
 
@@ -450,7 +450,7 @@ body {
 
 .btn-sell {
   background: rgba(249, 115, 22, 0.2);
-  color: #fb923c;
+  color: #c2410c;
   border: 1px solid rgba(249, 115, 22, 0.5);
 }
 
@@ -461,7 +461,7 @@ body {
 
 .btn-cancel {
   background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.5);
 }
 
@@ -471,9 +471,9 @@ body {
 }
 
 .btn-action:disabled {
-  background: rgba(255, 255, 255, 0.05);
-  color: #666;
-  border-color: #444;
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
   cursor: not-allowed;
 }
 
@@ -499,9 +499,9 @@ body {
 .property-modal,
 .quick-action-modal {
   background: var(--bg-card);
-  border: 1px solid var(--cyber-border-dim);
+  border: 1px solid #e0e7ff;
   border-radius: 16px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px var(--border-accent);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
@@ -515,7 +515,7 @@ body {
 .modal-header,
 .quick-modal-header {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--cyber-border-dim);
+  border-bottom: 1px solid #e0e7ff;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -527,7 +527,7 @@ body {
 .quick-modal-header h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
   margin: 0;
 }
 
@@ -536,13 +536,13 @@ body {
   background: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: var(--cyber-text-secondary);
+  color: #64748b;
   transition: color 0.2s ease;
 }
 
 .close-btn:hover {
-  color: #fff;
-  text-shadow: 0 0 5px #fff;
+  color: #1e293b;
+  text-shadow: none;
 }
 
 .panel-content,
@@ -551,7 +551,7 @@ body {
   padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
-  color: var(--cyber-text-primary);
+  color: #1e293b;
 }
 
 /* 관리자 패널 폼 그룹 */
@@ -563,7 +563,7 @@ body {
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--cyber-text-primary);
+  color: #1e293b;
   margin-bottom: 0.5rem;
 }
 
@@ -571,25 +571,25 @@ body {
 .form-group select {
   width: 100%;
   padding: 0.75rem;
-  background: var(--bg-input);
-  border: 1px solid var(--cyber-border-dim);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 8px;
   font-size: 1rem;
-  color: #fff;
+  color: #1e293b;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: var(--cyber-neon-cyan);
+  border-color: #6366f1;
   box-shadow: 0 0 10px var(--border-accent);
 }
 
 /* Quick Action Modal Details */
 .quick-property-info {
   margin-bottom: 2rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: #f8faff;
   padding: 1rem;
   border-radius: 8px;
 }
@@ -599,7 +599,7 @@ body {
   justify-content: space-between;
   margin-bottom: 0.8rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #e0e7ff;
 }
 
 .quick-info-row:last-child {
@@ -609,12 +609,12 @@ body {
 }
 
 .detail-label {
-  color: var(--cyber-text-secondary);
+  color: #64748b;
   font-size: 0.9rem;
 }
 
 .detail-value {
-  color: #fff;
+  color: #1e293b;
   font-weight: 600;
   font-family: 'Rajdhani', sans-serif;
   font-size: 1.1rem;
@@ -641,22 +641,22 @@ body {
 .non-tenant-list {
   margin-top: 1.5rem;
   padding: 1rem;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--cyber-border-dim);
+  background-color: #f8faff;
+  border: 1px solid #e0e7ff;
   border-radius: 8px;
 }
 
 .non-tenant-list h4 {
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
   margin-bottom: 1rem;
 }
 
 /* 패널 액션 버튼 */
 .panel-actions {
   padding: 1rem 1.5rem;
-  border-top: 1px solid var(--cyber-border-dim);
+  border-top: 1px solid #e0e7ff;
   display: flex;
   gap: 1rem;
   background-color: var(--bg-input);
@@ -680,7 +680,7 @@ body {
 
 .btn-primary {
   background: var(--border-accent);
-  color: var(--cyber-neon-cyan);
+  color: #6366f1;
   border-color: var(--accent);
 }
 
@@ -692,7 +692,7 @@ body {
 
 .btn-danger {
   background: rgba(255, 51, 102, 0.2);
-  color: var(--cyber-neon-red);
+  color: #dc2626;
   border-color: rgba(255, 51, 102, 0.5);
 }
 
@@ -704,9 +704,9 @@ body {
 
 .btn-primary:disabled,
 .btn-danger:disabled {
-  background: rgba(255, 255, 255, 0.05);
-  color: #666;
-  border-color: #444;
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
   cursor: not-allowed;
 }
 
@@ -725,16 +725,16 @@ body {
   z-index: 10000;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--cyber-neon-cyan);
+  color: #6366f1;
 }
 
 .loading-message {
   text-align: center;
   padding: 3rem;
-  color: var(--cyber-text-secondary);
+  color: #64748b;
   font-size: 1.125rem;
-  background: var(--cyber-bg-card);
-  border: 1px solid var(--cyber-border-dim);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
 }
 

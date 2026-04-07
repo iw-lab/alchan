@@ -19,9 +19,9 @@
     flex-direction: column;
     background: var(--bg-card) !important;
     border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
     overflow: hidden;
-    border: 1px solid var(--border-accent);
+    border: 1px solid #e0e7ff;
 }
 
 .video-player-wrapper {
@@ -57,8 +57,8 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, var(--bg-card) 0%, #0f0f1e 50%, var(--bg-card) 100%);
-    color: #a0a0c0;
+    background: linear-gradient(135deg, #f8faff 0%, #eef2ff 50%, #f8faff 100%);
+    color: #64748b;
     font-size: 1.2rem;
     gap: 1rem;
 }
@@ -76,7 +76,7 @@
 }
 
 .no-video-placeholder p {
-    color: #c0c0e0;
+    color: #475569;
     text-align: center;
     max-width: 400px;
     line-height: 1.6;
@@ -84,7 +84,7 @@
 
 .room-header {
     padding: 0.9rem 1.1rem;
-    background: rgba(10, 10, 20, 0.95);
+    background: #f8faff;
     border-top: 1px solid var(--accent-light);
     display: flex;
     justify-content: space-between;
@@ -95,7 +95,7 @@
     margin: 0;
     font-size: 1.25rem;
     color: var(--accent);
-    text-shadow: 0 0 10px var(--border-accent);
+    text-shadow: none;
 }
 
 .room-controls {
@@ -122,14 +122,14 @@
 
 .control-btn:hover {
     background: var(--border-accent);
-    box-shadow: 0 0 15px var(--border-accent);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
     transform: translateY(-2px);
 }
 
 .control-btn:disabled {
-    background: #333;
-    border-color: #555;
-    color: #777;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #94a3b8;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -143,7 +143,7 @@
 
 .delete-room-btn:hover {
     background: rgba(255, 0, 60, 0.2);
-    box-shadow: 0 0 15px rgba(255, 0, 60, 0.3);
+    box-shadow: 0 2px 8px rgba(255, 0, 60, 0.15);
     transform: translateY(-2px);
 }
 
@@ -162,15 +162,14 @@
 .playlist-panel {
     background: var(--bg-card) !important;
     border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
     padding: 1rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
     height: 100%;
-    border: 1px solid var(--border-accent);
-    backdrop-filter: blur(10px);
+    border: 1px solid #e0e7ff;
 }
 
 .share-info-panel h4 {
@@ -185,7 +184,7 @@
     margin-top: 0;
     margin-bottom: 0.9rem;
     text-align: left;
-    color: #d633ff;
+    color: #4f46e5;
     font-size: 1.15rem;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -209,12 +208,12 @@
     margin: 10px 0 0.3rem 0;
     font-weight: bold;
     font-size: 0.75rem;
-    color: #a0a0c0;
+    color: #64748b;
     text-align: center;
 }
 
 .room-link-box {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: #f8faff;
     padding: 0.6rem;
     border-radius: 6px;
     font-size: 0.7rem;
@@ -238,18 +237,18 @@
 }
 
 .playlist::-webkit-scrollbar-thumb {
-    background: #333;
+    background: #cbd5e1;
     border-radius: 3px;
 }
 
 .playlist li {
     padding: 0.95rem 0.9rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid #e0e7ff;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
     transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.02);
+    background: #fafbff;
     margin-bottom: 6px;
     border-radius: 10px;
 }
@@ -259,7 +258,7 @@
 }
 
 .playlist li:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: #eef2ff;
 }
 
 .song-title {
@@ -276,19 +275,19 @@
 .playlist li.playing .song-title {
     color: var(--accent);
     font-weight: bold;
-    text-shadow: 0 0 5px var(--border-accent);
+    text-shadow: none;
 }
 
 .requester {
     font-size: 0.82rem;
-    color: #8f9bb3;
+    color: #64748b;
     align-self: flex-start;
 }
 
 .no-playlist-message {
     text-align: center;
     padding: 3rem 1rem;
-    color: #a0a0c0;
+    color: #64748b;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
@@ -307,13 +306,13 @@
 .no-playlist-message p {
     margin: 0.25rem 0;
     font-size: 0.95rem;
-    color: #8888bb;
+    color: #64748b;
 }
 
 .no-playlist-message p:first-child {
     font-weight: 600;
     font-size: 1.1rem;
-    color: #c0c0e0;
+    color: #475569;
 }
 
 /* 반응형 디자인 - 태블릿 */

@@ -1,25 +1,24 @@
-/* src/Government.css - Cyberpunk Dark Theme - Refined UI */
+/* src/Government.css - Light Theme - Refined UI */
 
 .government-container {
   padding: 20px;
-  background-color: var(--cyber-bg-dark);
+  background-color: #ffffff;
   border-radius: 12px;
-  box-shadow: var(--cyber-shadow-card);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
   margin-bottom: 20px;
   min-height: auto;
   overflow: visible;
-  color: var(--cyber-text-primary);
+  color: #1e293b;
 }
 
 .government-header {
   font-size: 24px;
   font-weight: 700;
-  color: #fff;
+  color: #1e293b;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 2px solid var(--cyber-neon-blue);
+  border-bottom: 2px solid #6366f1;
   font-family: 'Orbitron', sans-serif;
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
 }
 
 /* ========================================
@@ -30,7 +29,7 @@
   gap: 4px;
   margin-bottom: 0;
   padding: 4px;
-  background: rgba(15, 23, 42, 0.6);
+  background: #f8faff;
   border-radius: 14px 14px 0 0;
   border: 1px solid var(--accent-light);
   border-bottom: none;
@@ -46,7 +45,7 @@
   background: transparent;
   font-size: 15px;
   font-weight: 600;
-  color: rgba(148, 163, 184, 0.8);
+  color: #64748b;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 10px;
   font-family: 'Rajdhani', sans-serif;
@@ -66,14 +65,14 @@
 }
 
 .gov-tab-button.active {
-  color: #fff;
+  color: #1e293b;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), var(--accent-light));
   border: 1px solid var(--border-accent);
   font-weight: 700;
   box-shadow:
-    0 0 15px rgba(99, 102, 241, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  text-shadow: 0 0 8px var(--accent);
+    0 2px 8px rgba(99, 102, 241, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  /* light theme - no neon text shadow */
 }
 
 .gov-tab-button.active::after {
@@ -88,8 +87,8 @@
 }
 
 .gov-tab-button:hover:not(.active):not(:disabled) {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.04);
+  color: #1e293b;
+  background: #eef2ff;
   border-color: rgba(100, 116, 139, 0.3);
 }
 
@@ -101,12 +100,12 @@
 /* 탭 콘텐츠 영역 스타일 */
 .government-tab-content {
   padding: 25px;
-  background-color: var(--cyber-bg-card);
-  border: 1px solid var(--accent-light);
+  background-color: #f8fafc;
+  border: 1px solid #e0e7ff;
   border-top: none;
   border-radius: 0 0 12px 12px;
   min-height: 300px;
-  box-shadow: var(--cyber-shadow-card);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
 }
 
 /* 각 탭 내용 컨테이너 스타일 */
@@ -123,7 +122,7 @@
 .send-receive-container h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: #1e293b;
   margin-bottom: 15px;
   font-family: 'Orbitron', sans-serif;
 }
@@ -132,7 +131,7 @@
 .tax-service-container p,
 .investment-container p,
 .send-receive-container p {
-  color: var(--cyber-text-secondary);
+  color: #64748b;
   line-height: 1.6;
 }
 
@@ -141,7 +140,7 @@
   margin-top: 20px;
   margin-bottom: 10px;
   font-size: 16px;
-  color: #fff;
+  color: #1e293b;
   font-weight: 600;
 }
 
@@ -154,8 +153,8 @@
 .investment-link-button {
   padding: 10px 15px;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.1));
-  color: var(--cyber-neon-blue);
-  border: 1px solid var(--cyber-neon-blue);
+  color: #4f46e5;
+  border: 1px solid #4f46e5;
   border-radius: 6px;
   text-decoration: none;
   font-size: 14px;
@@ -168,7 +167,7 @@
 
 .investment-link-button:hover {
   background: rgba(99, 102, 241, 0.4);
-  color: #fff;
+  color: #1e293b;
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
   transform: translateY(-2px);
 }
@@ -179,18 +178,18 @@
 .law-management-container h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
+  color: #1e293b;
   margin-bottom: 20px;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  /* light theme - no text shadow */
 }
 
 .empty-state {
-  color: var(--cyber-text-secondary) !important;
+  color: #64748b !important;
   text-align: center;
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8fafc;
   border-radius: 8px;
-  border: 1px dashed var(--cyber-border-dim);
+  border: 1px dashed #e0e7ff;
 }
 
 /* ========================================
@@ -201,7 +200,7 @@
   gap: 12px;
   justify-content: flex-end;
   margin-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid #e0e7ff;
   padding-top: 1rem;
 }
 
@@ -227,7 +226,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
+  background: linear-gradient(90deg, transparent, #e0e7ff, transparent);
   transition: left 0.5s;
 }
 
@@ -266,6 +265,6 @@
 /* 법안 타임스탬프 */
 .law-timestamp {
   font-size: 0.85rem;
-  color: var(--cyber-text-secondary) !important;
+  color: #64748b !important;
   margin-top: 10px;
 }

@@ -226,7 +226,7 @@ const Government = () => {
   return (
     <div className="government-container">
       <h1 className="government-header">
-        정부 ({classCode ? `학급: ${classCode}` : "학급 정보 없음"})
+        정부
       </h1>
 
       <div className="government-tabs">

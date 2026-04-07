@@ -5,10 +5,10 @@
     padding: 2rem;
     background-color: var(--bg-card);
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 6px var(--bg-input);
+    border: 1px solid #e0e7ff;
+    box-shadow: 0 4px 6px rgba(99, 102, 241, 0.06);
     text-align: center;
-    color: #e2e8f0;
+    color: #1e293b;
 }
 
 .search-form {
@@ -24,7 +24,7 @@
     border: 1px solid var(--border-primary);
     border-radius: 4px 0 0 4px;
     background: var(--bg-input);
-    color: #e2e8f0;
+    color: #1e293b;
 }
 
 .search-btn {
@@ -45,7 +45,7 @@
 .search-results {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid #e0e7ff;
     border-radius: 4px;
 }
 
@@ -54,9 +54,9 @@
     align-items: center;
     padding: 0.5rem;
     cursor: pointer;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid #e0e7ff;
     transition: background-color 0.2s;
-    color: #e2e8f0;
+    color: #1e293b;
 }
 
 .video-item:last-child {
@@ -68,8 +68,8 @@
 }
 
 .video-item.selected {
-    background-color: rgba(0, 255, 157, 0.1);
-    border-left: 3px solid #00ff9d;
+    background-color: rgba(99, 102, 241, 0.1);
+    border-left: 3px solid #6366f1;
 }
 
 .video-item img {
@@ -82,13 +82,13 @@
 .video-item p {
     text-align: left;
     font-size: 0.9rem;
-    color: #e2e8f0;
+    color: #1e293b;
 }
 
 .request-section {
     margin-top: 2rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid #e0e7ff;
 }
 
 .requester-name-input {
@@ -99,15 +99,15 @@
     margin-bottom: 1rem;
     width: 50%;
     background: var(--bg-input);
-    color: #e2e8f0;
+    color: #1e293b;
 }
 
 .request-btn {
     padding: 0.8rem 2rem;
     font-size: 1rem;
     border: none;
-    background: linear-gradient(135deg, #00ff9d, #00d4aa);
-    color: var(--bg-primary);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
     font-weight: 600;
     cursor: pointer;
     border-radius: 8px;
@@ -116,7 +116,7 @@
 
 .request-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 255, 157, 0.3);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .error-message {
@@ -125,7 +125,7 @@
 }
 
 .success-message {
-    color: #34d399;
+    color: #059669;
     margin-top: 1rem;
     font-weight: bold;
 }
@@ -133,8 +133,8 @@
 .back-button {
     margin-top: 20px;
     padding: 10px 20px;
-    background: rgba(100, 116, 139, 0.3);
-    color: #e2e8f0;
+    background: #f8faff;
+    color: #1e293b;
     border: 1px solid var(--border-primary);
     border-radius: 8px;
     cursor: pointer;
@@ -143,7 +143,7 @@
 }
 
 .back-button:hover {
-    background: rgba(100, 116, 139, 0.5);
+    background: #eef2ff;
 }
 
 /* 음악 신청방 메인 페이지 */
@@ -153,15 +153,15 @@
 }
 
 .music-request-container h2 {
-    color: #e2e8f0;
+    color: #1e293b;
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid #e0e7ff;
 }
 
 .music-request-container h3 {
-    color: #e2e8f0;
+    color: #1e293b;
     font-size: 1.1rem;
     margin-bottom: 1rem;
 }
@@ -171,7 +171,7 @@
     padding: 1.5rem;
     border-radius: 16px;
     margin-bottom: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid #e0e7ff;
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -179,7 +179,7 @@
 }
 
 .create-room-section h3 {
-    color: #a5b4fc;
+    color: #4f46e5;
     margin-bottom: 0;
     white-space: nowrap;
 }
@@ -192,14 +192,14 @@
     border: 1px solid var(--border-primary);
     border-radius: 10px;
     background: var(--bg-input);
-    color: #e2e8f0;
+    color: #1e293b;
     transition: border-color 0.3s;
 }
 
 .room-name-input:focus {
     outline: none;
     border-color: #6366f1;
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .room-name-input::placeholder {
@@ -234,11 +234,11 @@
 }
 
 .room-created-section h3 {
-    color: #34d399;
+    color: #059669;
 }
 
 .room-created-section p {
-    color: #94a3b8;
+    color: #64748b;
     margin: 1rem 0;
 }
 
@@ -255,7 +255,7 @@
 }
 
 .room-link {
-    color: #a5b4fc;
+    color: #4f46e5;
     font-weight: 600;
     word-break: break-all;
     background: rgba(99, 102, 241, 0.1);
@@ -269,8 +269,8 @@
     display: inline-block;
     margin-top: 1rem;
     padding: 0.8rem 2rem;
-    background: linear-gradient(135deg, #00ff9d, #00d4aa);
-    color: var(--bg-primary);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
     text-decoration: none;
     border-radius: 10px;
     font-weight: 600;
@@ -279,21 +279,21 @@
 
 .enter-room-link:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 255, 157, 0.3);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .my-rooms-section {
     background: var(--bg-card);
     padding: 1.5rem;
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid #e0e7ff;
 }
 
 .my-rooms-section h3 {
-    color: #a5b4fc;
+    color: #4f46e5;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid #e0e7ff;
     font-size: 1rem;
 }
 
@@ -308,9 +308,9 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: #f8faff;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid #e0e7ff;
     transition: all 0.2s ease;
     overflow: hidden;
 }
@@ -326,13 +326,13 @@
     align-items: center;
     padding: 1rem 1.25rem;
     text-decoration: none;
-    color: #e2e8f0;
+    color: #1e293b;
     transition: color 0.2s;
     flex: 1;
 }
 
 .my-room-item:hover a {
-    color: #a5b4fc;
+    color: #4f46e5;
 }
 
 .my-room-item span {
@@ -359,7 +359,7 @@
 
 .delete-room-btn-small {
     background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
+    color: #dc2626;
     border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 8px;
     padding: 0.6rem 0.8rem;

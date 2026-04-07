@@ -27,27 +27,27 @@
    ============================================ */
 @layer components {
   .cyber-section-card {
-    @apply bg-white dark:bg-slate-800 rounded-2xl p-6 mb-6 border border-slate-200 dark:border-slate-700 shadow-sm;
+    @apply bg-white rounded-2xl p-6 mb-6 border border-slate-200 shadow-sm;
   }
 
   .cyber-section-title {
-    @apply text-indigo-600 dark:text-indigo-400 text-lg font-bold mb-4 flex items-center gap-2;
+    @apply text-indigo-600 text-lg font-bold mb-4 flex items-center gap-2;
   }
 
   .cyber-modal-overlay {
-    @apply fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-[2000] p-5;
+    @apply fixed inset-0 bg-black/40 flex items-center justify-center z-[2000] p-5;
   }
 
   .cyber-modal-content {
-    @apply bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 dark:border-slate-700 shadow-xl;
+    @apply bg-white rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 shadow-xl;
   }
 
   .cyber-settings-btn {
-    @apply flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-500;
+    @apply flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer transition-all duration-200 hover:border-indigo-300;
   }
 
   .cyber-modal-input {
-    @apply w-full p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm mb-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none;
+    @apply w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm mb-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none;
   }
 
   .cyber-btn-primary {
@@ -55,11 +55,11 @@
   }
 
   .cyber-btn-cancel {
-    @apply flex-1 p-3 bg-slate-100 dark:bg-slate-700 border-none rounded-xl text-slate-700 dark:text-slate-200 text-sm cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors;
+    @apply flex-1 p-3 bg-slate-100 border-none rounded-xl text-slate-700 text-sm cursor-pointer hover:bg-slate-200 transition-colors;
   }
 
   .cyber-info-card {
-    @apply p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700;
+    @apply p-4 bg-slate-50 rounded-xl border border-slate-200;
   }
 }
 
@@ -123,46 +123,7 @@
   --transition-slow: 0.3s ease;
 }
 
-/* ============================================
-   CSS Variables - Dark Theme
-   ============================================ */
-.dark {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-card: #1e293b;
-  --bg-sidebar: #1e293b;
-  --bg-glass: rgba(15, 23, 42, 0.85);
-  --bg-input: #0f172a;
-  --bg-hover: #334155;
-
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-highlight: #818cf8;
-
-  --accent: #818cf8;
-  --accent-hover: #6366f1;
-  --accent-light: rgba(129, 140, 248, 0.15);
-  --accent-bg: rgba(129, 140, 248, 0.08);
-
-  --border-primary: #334155;
-  --border-secondary: #1e293b;
-  --border-accent: rgba(129, 140, 248, 0.3);
-
-  --success: #34d399;
-  --success-bg: rgba(52, 211, 153, 0.1);
-  --warning: #fbbf24;
-  --warning-bg: rgba(251, 191, 36, 0.1);
-  --danger: #f87171;
-  --danger-bg: rgba(248, 113, 113, 0.1);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
+/* Dark theme removed - light mode only */
 
 /* ============================================
    Global Font Size

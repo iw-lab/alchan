@@ -1,4 +1,4 @@
-/* AdminPanel.css - Cyberpunk Dark Theme */
+/* AdminPanel.css - Light Theme */
 
 /* AdminPanel이 페이지 내부에 직접 렌더링될 때의 스타일 */
 .admin-panel {
@@ -45,7 +45,7 @@
   border: none;
   border-bottom: 3px solid transparent;
   font-weight: 600;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.95rem;
@@ -53,16 +53,14 @@
 }
 
 .admin-tabs button:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.05);
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+  background-color: #f1f5f9;
 }
 
 .admin-tabs button.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
   background-color: var(--accent-light);
-  text-shadow: 0 0 10px var(--accent);
 }
 
 /* admin-content */
@@ -70,9 +68,9 @@
   padding: 20px;
   height: auto;
   overflow: visible;
-  background: rgba(10, 10, 15, 0.6);
+  background: #ffffff;
   border-radius: 0 0 8px 8px;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 /* 아이템 관리 섹션 및 기타 내부 스타일 */
@@ -82,12 +80,11 @@
 .edit-item-panel h3 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #fff;
+  color: #1e293b;
   font-weight: 600;
   font-size: 1.2rem;
-  border-bottom: 1px solid var(--border-accent);
+  border-bottom: 1px solid #e0e7ff;
   padding-bottom: 10px;
-  text-shadow: 0 0 5px var(--border-accent);
 }
 
 .items-list {
@@ -100,17 +97,16 @@
   border: 1px solid var(--border-primary);
   border-radius: 8px;
   overflow: hidden;
-  background-color: rgba(30, 30, 45, 0.6);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: row;
   transition: transform 0.2s, box-shadow 0.2s;
-  backdrop-filter: blur(5px);
 }
 
 .admin-item-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 10px var(--border-accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border-color: var(--accent);
 }
 
@@ -122,7 +118,7 @@
   background-color: var(--bg-input);
   padding: 12px;
   min-width: 60px;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .item-details {
@@ -133,7 +129,7 @@
 .item-details h4 {
   margin: 0 0 6px 0;
   font-size: 1.05rem;
-  color: #fff;
+  color: #1e293b;
   font-weight: 600;
 }
 
@@ -153,11 +149,11 @@
 
 .item-meta span {
   background-color: var(--border-primary);
-  color: #cbd5e1;
+  color: #475569;
   padding: 3px 8px;
   border-radius: 4px;
   white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .item-actions {
@@ -167,7 +163,7 @@
   padding: 12px 10px;
   gap: 6px;
   border-left: 1px solid var(--border-primary);
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: #f8fafc;
 }
 
 .edit-button,
@@ -187,18 +183,16 @@
 .edit-button:hover {
   background-color: var(--accent-light);
   color: var(--accent);
-  text-shadow: 0 0 5px var(--accent);
 }
 
 .delete-button:hover {
-  background-color: rgba(255, 56, 96, 0.1);
-  color: #ff3860;
-  text-shadow: 0 0 5px rgba(255, 56, 96, 0.5);
+  background-color: #fef2f2;
+  color: #dc2626;
 }
 
 /* 설정 패널 */
 .setting-group {
-  background-color: rgba(30, 30, 45, 0.6);
+  background-color: #f8fafc;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
@@ -208,7 +202,7 @@
 .setting-group label {
   display: block;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #334155;
   margin-bottom: 12px;
   font-size: 0.95rem;
 }
@@ -222,34 +216,34 @@
 .input-with-button input[type="number"] {
   flex-grow: 1;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 1rem;
-  background: var(--bg-input);
-  color: #fff;
+  background: #ffffff;
+  color: #1e293b;
 }
 
 .input-with-button input[type="number"]:focus {
   border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 10px var(--border-accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .input-with-button button {
   padding: 10px 20px;
-  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
-  color: #000;
+  background: #6366f1;
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 700;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .input-with-button button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 15px var(--accent);
+  background: #4f46e5;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .setting-description {
@@ -272,7 +266,7 @@
 .form-group label {
   display: block;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #334155;
   margin-bottom: 6px;
   font-size: 0.9rem;
 }
@@ -283,12 +277,12 @@
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 0.95rem;
   box-sizing: border-box;
-  background: var(--bg-input);
-  color: #fff;
+  background: #ffffff;
+  color: #1e293b;
   transition: all 0.2s;
 }
 
@@ -298,8 +292,8 @@
 .form-group select:focus {
   border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 10px var(--border-accent);
-  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: #ffffff;
 }
 
 .form-group textarea {
@@ -322,7 +316,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
   gap: 8px;
-  background-color: rgba(30, 30, 45, 0.6);
+  background-color: #f8fafc;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid var(--border-primary);
@@ -337,33 +331,32 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-primary);
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  color: #fff;
+  color: #1e293b;
 }
 
 .icon-selector button:hover {
-  background-color: var(--border-primary);
+  background-color: #f1f5f9;
   border-color: var(--accent);
   transform: scale(1.05);
-  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .icon-selector button.selected {
-  background-color: var(--border-accent);
-  color: #fff;
+  background-color: #eef2ff;
+  color: #4f46e5;
   border-color: var(--accent);
   transform: scale(1.05);
-  box-shadow: 0 0 15px var(--border-accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .form-group.checkbox {
   display: flex;
   align-items: center;
-  background-color: rgba(30, 30, 45, 0.6);
+  background-color: #f8fafc;
   padding: 12px 15px;
   border-radius: 6px;
   border: 1px solid var(--border-primary);
@@ -376,7 +369,7 @@
   cursor: pointer;
   margin-bottom: 0;
   font-weight: 500;
-  color: #e2e8f0;
+  color: #334155;
 }
 
 .form-group.checkbox input[type="checkbox"] {
@@ -405,26 +398,26 @@
 }
 
 .cancel-button {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #e2e8f0;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
 }
 
 .cancel-button:hover {
-  background-color: var(--border-primary);
-  border-color: #fff;
+  background-color: #e2e8f0;
+  border-color: #cbd5e1;
 }
 
 .submit-button {
-  background: linear-gradient(135deg, var(--accent) 0%, #00a8ff 100%);
-  color: #000;
+  background: #6366f1;
+  color: #ffffff;
   border: none;
-  box-shadow: 0 0 10px var(--border-accent);
 }
 
 .submit-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 20px var(--accent);
+  background: #4f46e5;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 /* 새 아이템 추가 버튼 */

@@ -301,13 +301,6 @@ const ItemStore = () => {
           {showAdminPanel && canOpenAdminPanel
             ? "관리자 페이지"
             : "아이템 상점"}
-          {currentUserClassCode && (
-            <span
-              style={{ fontSize: "0.7em", marginLeft: "10px", color: "#777" }}
-            >
-              (학급: {currentUserClassCode})
-            </span>
-          )}
         </h2>
         {isCurrentUserAdmin && (
           <button

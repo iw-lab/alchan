@@ -13,27 +13,17 @@ export const FONT_SIZES = {
 };
 
 export function ThemeProvider({ children }) {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('alchan-dark-mode');
-    if (saved !== null) return JSON.parse(saved);
-    // 기본값: 라이트모드 (시스템 설정 따르기 대신)
-    return false;
-  });
+  // 다크 모드 완전 비활성화 - 항상 라이트 모드
+  const [isDarkMode] = useState(false);
 
   const [fontSize, setFontSize] = useState(() => {
     return localStorage.getItem('alchan-font-size') || 'medium';
   });
 
-  // 다크 모드 적용
+  // 다크 모드 비활성화 - 항상 dark 클래스 제거
   useEffect(() => {
-    const root = document.documentElement;
-    if (isDarkMode) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('alchan-dark-mode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   // 폰트 크기 적용
   useEffect(() => {
@@ -42,23 +32,10 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('alchan-font-size', fontSize);
   }, [fontSize]);
 
-  // 시스템 테마 변경 감지
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      const savedPreference = localStorage.getItem('alchan-dark-mode');
-      if (savedPreference === null) {
-        setIsDarkMode(e.matches);
-      }
-    };
+  // 시스템 테마 변경 감지 비활성화 (다크 모드 제거됨)
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  const toggleDarkMode = useCallback(() => {
-    setIsDarkMode(prev => !prev);
-  }, []);
+  // 다크 모드 토글 비활성화 (no-op)
+  const toggleDarkMode = useCallback(() => {}, []);
 
   const changeFontSize = useCallback((size) => {
     if (FONT_SIZES[size]) {
@@ -69,7 +46,6 @@ export function ThemeProvider({ children }) {
   const value = useMemo(() => ({
     isDarkMode,
     toggleDarkMode,
-    setIsDarkMode,
     fontSize,
     setFontSize: changeFontSize,
     fontSizes: FONT_SIZES

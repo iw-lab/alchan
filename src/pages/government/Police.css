@@ -1,42 +1,29 @@
-/* src/Police.css - Cyberpunk Dark Theme */
+/* src/Police.css - Light Theme */
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap");
 
-/* --- 기본 설정 및 변수 (Cyberpunk Palette) --- */
+/* --- 기본 설정 및 변수 (Light Theme Palette) --- */
 :root {
   --primary-color: var(--accent);
-  /* Neon Cyan */
   --primary-dark: var(--accent);
-  /* Neon Blue */
-  --secondary-color: #a0a0c0;
-  /* Muted Lavender */
+  --secondary-color: #64748b;
   --light-gray: var(--bg-secondary);
-  /* Translucent Card Bg */
   --medium-gray: var(--border-accent);
-  /* Neon Border */
   --dark-gray: var(--text-primary);
-  /* Light Text */
-  --text-color: #ffffff;
-  /* White Text */
+  --text-color: #1e293b;
   --white-color: var(--bg-primary);
-  /* Dark Background */
-  --success-color: #00ff9d;
-  /* Neon Green */
-  --danger-color: #ff003c;
-  /* Neon Red */
-  --warning-color: #fcee0a;
-  /* Neon Yellow */
+  --success-color: #059669;
+  --danger-color: #dc2626;
+  --warning-color: #d97706;
   --info-color: var(--accent);
-  /* Neon Cyan */
-  --fine-color: #ff003c;
-  /* Neon Red */
+  --fine-color: #dc2626;
 
   --border-radius-sm: 4px;
   --border-radius-md: 8px;
   --border-radius-lg: 12px;
 
-  --box-shadow-sm: 0 0 10px rgba(99, 102, 241, 0.1);
-  --box-shadow-md: 0 0 20px rgba(0, 0, 0, 0.6);
-  --box-shadow-lg: 0 0 30px var(--border-primary);
+  --box-shadow-sm: 0 2px 8px rgba(99, 102, 241, 0.06);
+  --box-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --box-shadow-lg: 0 4px 16px rgba(99, 102, 241, 0.1);
 }
 
 body {
@@ -75,10 +62,9 @@ body {
 .police-header {
   font-size: 2.2rem;
   font-weight: 700;
-  color: #fff;
+  color: #1e293b;
   margin: 0;
   font-family: 'Orbitron', sans-serif;
-  text-shadow: 0 0 10px var(--primary-dark);
 }
 
 .header-info {
@@ -96,12 +82,12 @@ body {
 
 .treasury-balance {
   font-weight: 500;
-  background-color: rgba(30, 41, 59, 0.8);
+  background-color: #f8faff;
   padding: 5px 10px;
   border-radius: var(--border-radius-sm);
   color: var(--success-color);
   border: 1px solid var(--success-color);
-  box-shadow: 0 0 5px rgba(0, 255, 157, 0.3);
+  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.15);
 }
 
 /* 관리 설정 버튼 (헤더 오른쪽) */
@@ -121,17 +107,17 @@ body {
 .admin-settings-button:hover {
   background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--primary-color);
-  color: #fff;
-  box-shadow: 0 0 10px var(--primary-dark);
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
   transform: translateY(-1px);
 }
 
 .admin-settings-button.active {
-  background-color: var(--primary-dark);
+  background-color: #eef2ff;
   border-color: var(--primary-color);
-  color: #fff;
+  color: #1e293b;
   font-weight: 700;
-  box-shadow: 0 0 15px var(--primary-dark);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
 }
 
 /* --- 탭 버튼 영역 --- */
@@ -166,14 +152,14 @@ body {
   color: var(--primary-color) !important;
   border-bottom-color: var(--primary-color) !important;
   font-weight: 700;
-  text-shadow: 0 0 5px var(--primary-color);
+  /* light theme - no neon text shadow */
   background-color: var(--accent-light) !important;
 }
 
 .police-tab-button:hover:not(.active),
 .tab-button:hover:not(.active) {
-  color: #fff !important;
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #1e293b !important;
+  background-color: #f8fafc !important;
 }
 
 /* --- 탭 컨텐츠 영역 --- */
@@ -185,7 +171,7 @@ body {
   border: 1px solid var(--medium-gray);
   margin-top: -1px;
   overflow: visible;
-  backdrop-filter: blur(5px);
+  /* light theme - no backdrop filter needed */
 }
 
 .police-admin-content {
@@ -195,7 +181,7 @@ body {
   margin-bottom: 25px;
   border: 1px solid var(--medium-gray);
   overflow: visible;
-  backdrop-filter: blur(5px);
+  /* light theme - no backdrop filter needed */
 }
 
 /* --- 공통 버튼 스타일 --- */
@@ -222,7 +208,7 @@ button {
   font-weight: 500;
   border-radius: var(--border-radius-md);
   border: 1px solid transparent;
-  color: #fff;
+  color: #1e293b;
   box-shadow: var(--box-shadow-sm);
   text-transform: uppercase;
   font-family: 'Rajdhani', sans-serif;
@@ -241,7 +227,7 @@ button {
 .reason-add-button:hover,
 .reason-save-button:hover {
   opacity: 1;
-  box-shadow: 0 0 10px currentColor;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
 }
 
@@ -258,20 +244,20 @@ button {
 
 .accept-button,
 .reason-save-button {
-  background-color: rgba(0, 255, 157, 0.2);
+  background-color: rgba(5, 150, 105, 0.1);
   border-color: var(--success-color);
   color: var(--success-color);
 }
 
 .accept-button:hover,
 .reason-save-button:hover {
-  background-color: rgba(0, 255, 157, 0.4);
+  background-color: rgba(5, 150, 105, 0.2);
 }
 
 .fine-button,
 .danger-zone-button,
 .reason-delete-button {
-  background-color: rgba(255, 0, 60, 0.2);
+  background-color: rgba(220, 38, 38, 0.1);
   border-color: var(--fine-color);
   color: var(--fine-color);
 }
@@ -279,7 +265,7 @@ button {
 .fine-button:hover,
 .danger-zone-button:hover,
 .reason-delete-button:hover {
-  background-color: rgba(255, 0, 60, 0.4);
+  background-color: rgba(220, 38, 38, 0.2);
 }
 
 .settlement-button {
@@ -295,7 +281,7 @@ button {
 .dismiss-button,
 .delete-button,
 .deleteAllButton {
-  background-color: rgba(252, 238, 10, 0.2);
+  background-color: rgba(217, 119, 6, 0.1);
   border-color: var(--warning-color);
   color: var(--warning-color);
 }
@@ -303,7 +289,7 @@ button {
 .dismiss-button:hover,
 .delete-button:hover,
 .deleteAllButton:hover {
-  background-color: rgba(252, 238, 10, 0.4);
+  background-color: rgba(217, 119, 6, 0.2);
 }
 
 .edit-button {
@@ -313,8 +299,8 @@ button {
 }
 
 .edit-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background-color: #e2e8f0;
+  color: #1e293b;
 }
 
 .save-button {
@@ -357,7 +343,7 @@ button {
     margin-top: 0;
     margin-bottom: 20px;
     font-weight: 700;
-    color: #fff;
+    color: #1e293b;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--medium-gray);
   }
@@ -365,7 +351,7 @@ button {
 
 .admin-settings-h2 {
   font-size: 24px;
-  color: #fff;
+  color: #1e293b;
   border-bottom: 2px solid var(--medium-gray);
   padding-bottom: 12px;
   margin-bottom: 20px;
@@ -401,7 +387,7 @@ button {
   font-family: inherit;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   background-color: var(--bg-input);
-  color: #fff;
+  color: #1e293b;
 }
 
 .form-group select:focus,
@@ -409,7 +395,7 @@ button {
 .form-group textarea:focus {
   border-color: var(--primary-color);
   outline: 0;
-  box-shadow: 0 0 10px var(--border-accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
 .form-group textarea {
@@ -419,7 +405,7 @@ button {
 
 .form-select option {
   background-color: var(--bg-card);
-  color: #fff;
+  color: #1e293b;
 }
 
 .submit-report-form button,
@@ -436,18 +422,18 @@ button {
 }
 
 .report-item {
-  background-color: rgba(30, 41, 59, 0.4);
+  background-color: #f8faff;
   border: 1px solid var(--medium-gray);
   border-left: 4px solid var(--secondary-color);
   border-radius: var(--border-radius-md);
   padding: 20px;
   box-shadow: var(--box-shadow-sm);
-  backdrop-filter: blur(5px);
+  /* light theme - no backdrop filter needed */
 }
 
 .report-item.law-report {
   border-left-color: var(--primary-color);
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, rgba(30, 41, 59, 0.4) 100%);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, #f8faff 100%);
 }
 
 .report-header {
@@ -469,7 +455,7 @@ button {
 
 .report-content strong {
   font-weight: 500;
-  color: #fff;
+  color: #1e293b;
   margin-right: 8px;
 }
 
@@ -499,7 +485,7 @@ button {
 
 .admin-section,
 .settings-section {
-  background-color: rgba(30, 41, 59, 0.4);
+  background-color: #f8faff;
   border-radius: var(--border-radius-md);
   padding: 25px;
   margin-bottom: 30px;
@@ -513,7 +499,7 @@ button {
 
 .police-admin-settings-container h3,
 .admin-section-title {
-  color: #fff;
+  color: #1e293b;
   border-bottom-color: var(--medium-gray);
   font-size: 18px;
   margin-top: 0;
@@ -521,7 +507,7 @@ button {
 }
 
 .settings-section h4 {
-  color: #fff;
+  color: #1e293b;
   border-bottom-color: var(--medium-gray);
   font-size: 1.1rem;
   font-weight: 600;
@@ -551,7 +537,7 @@ button {
   align-items: center;
   padding: 10px;
   border: 1px solid var(--medium-gray);
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #f8fafc;
   border-radius: 6px;
   transition: background-color 0.2s ease;
   gap: 10px;
@@ -564,7 +550,7 @@ button {
 
 .reason-text {
   font-size: 0.95rem;
-  color: #fff;
+  color: #1e293b;
   flex-grow: 1;
   margin-right: 15px;
 }
@@ -575,7 +561,7 @@ button {
   border-radius: 4px;
   padding: 8px 10px;
   font-size: 14px;
-  color: #fff;
+  color: #1e293b;
   flex-grow: 1;
 }
 
@@ -593,7 +579,7 @@ button {
   border-radius: 4px;
   padding: 8px 10px;
   font-size: 14px;
-  color: #fff;
+  color: #1e293b;
 }
 
 .reason-actions {
@@ -604,7 +590,7 @@ button {
 
 .danger-zone {
   border-color: var(--danger-color);
-  background-color: rgba(255, 0, 60, 0.05);
+  background-color: rgba(220, 38, 38, 0.05);
 }
 
 .danger-zone-title {
@@ -640,7 +626,7 @@ button {
   text-align: right;
   font-size: 0.9rem;
   background-color: var(--bg-input);
-  color: #fff;
+  color: #1e293b;
 }
 
 .amount-input.small-input {
@@ -689,7 +675,7 @@ button {
   margin-top: 30px;
   font-style: italic;
   padding: 20px;
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: #f8fafc;
   border-radius: var(--border-radius-md);
   border: 1px dashed var(--medium-gray);
 }
@@ -729,7 +715,7 @@ button {
 
 .filter-button:hover {
   background-color: var(--border-primary);
-  color: #fff;
+  color: #1e293b;
 }
 
 .filter-button.active {
@@ -746,12 +732,12 @@ button {
 }
 
 .result-item {
-  background-color: rgba(30, 41, 59, 0.4);
+  background-color: #f8faff;
   border: 1px solid var(--medium-gray);
   border-left: 4px solid var(--secondary-color);
   border-radius: var(--border-radius-md);
   overflow: hidden;
-  backdrop-filter: blur(5px);
+  /* light theme - no backdrop filter needed */
 }
 
 .result-item.status-resolved_fine {
@@ -764,7 +750,7 @@ button {
 
 .result-item.status-dismissed {
   border-left-color: var(--warning-color);
-  background-color: rgba(252, 238, 10, 0.05);
+  background-color: rgba(217, 119, 6, 0.05);
 }
 
 .result-header {
@@ -792,7 +778,7 @@ button {
 }
 
 .result-item.status-resolved_fine .result-status {
-  background-color: rgba(255, 0, 60, 0.2);
+  background-color: rgba(220, 38, 38, 0.1);
   color: var(--fine-color);
 }
 
@@ -802,7 +788,7 @@ button {
 }
 
 .result-item.status-dismissed .result-status {
-  background-color: rgba(252, 238, 10, 0.15);
+  background-color: rgba(217, 119, 6, 0.1);
   color: var(--warning-color);
 }
 
@@ -821,7 +807,7 @@ button {
 }
 
 .result-content strong {
-  color: #fff;
+  color: #1e293b;
   font-weight: 500;
   margin-right: 6px;
 }
@@ -853,7 +839,7 @@ button {
   display: flex;
   gap: 8px;
   padding: 12px 20px;
-  background: rgba(0, 0, 0, 0.2);
+  background: #ffffff;
   border-top: 1px solid var(--medium-gray);
 }
 
@@ -888,7 +874,7 @@ button {
 .process-modal-container {
   background-color: var(--bg-card) !important;
   border-radius: var(--border-radius-lg) !important;
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.2), 0 0 10px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.2), 0 0 10px rgba(0, 0, 0, 0.1) !important;
   border: 1px solid var(--primary-color) !important;
   width: 90% !important;
   max-width: 500px !important;
@@ -899,7 +885,7 @@ button {
   max-height: 90vh !important;
   overflow-y: auto !important;
   position: relative !important;
-  color: #fff !important;
+  color: #1e293b !important;
 }
 
 @keyframes modalFadeIn {
@@ -922,7 +908,7 @@ button {
   align-items: center;
   padding: 20px 25px;
   border-bottom: 1px solid var(--medium-gray);
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: #ffffff;
 }
 
 .modal-header h2,
@@ -932,8 +918,8 @@ button {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 0 0 5px var(--primary-dark);
+  color: #1e293b;
+  /* light theme - no neon text shadow */
 }
 
 .close-button {
@@ -948,8 +934,8 @@ button {
 }
 
 .close-button:hover {
-  color: #fff;
-  text-shadow: 0 0 5px #fff;
+  color: #1e293b;
+  /* light theme - no neon text shadow */
 }
 
 .modal-content,
@@ -971,7 +957,7 @@ button {
 }
 
 .report-summary {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: #f8fafc !important;
   border: 1px solid var(--medium-gray) !important;
   border-radius: var(--border-radius-md) !important;
   padding: 15px !important;
@@ -998,7 +984,7 @@ button {
   gap: 10px;
   padding: 20px 25px;
   border-top: 1px solid var(--medium-gray);
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: #ffffff;
 }
 
 .modal-button {
@@ -1011,14 +997,14 @@ button {
 }
 
 .modal-button.cancel {
-  background-color: var(--border-primary);
-  border-color: var(--secondary-color);
-  color: #ccc;
+  background-color: #f1f5f9;
+  border-color: #e0e7ff;
+  color: #64748b;
 }
 
 .modal-button.cancel:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background-color: #e2e8f0;
+  color: #1e293b;
 }
 
 .modal-button.process {
@@ -1029,8 +1015,8 @@ button {
 }
 
 .modal-button.process:hover {
-  background-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 0 10px var(--primary-dark);
+  background-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
 }
 
 .quick-reasons-container {
@@ -1040,7 +1026,7 @@ button {
 .quick-reasons-label {
   font-weight: 500;
   margin-bottom: 10px;
-  color: #fff;
+  color: #1e293b;
 }
 
 .quick-reasons-buttons {
@@ -1062,8 +1048,8 @@ button {
 
 .quick-reason-btn:hover {
   background-color: rgba(99, 102, 241, 0.3);
-  color: #fff;
-  box-shadow: 0 0 5px var(--primary-dark);
+  color: #1e293b;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.1);
 }
 
 /* --- 반응형 디자인 --- */
@@ -1212,7 +1198,7 @@ button {
 
 .back-to-police-button {
   background-color: rgba(59, 89, 152, 0.3);
-  color: #fff;
+  color: #1e293b;
   border: 1px solid #3b5998;
   border-radius: 5px;
   padding: 10px 15px;

@@ -9,7 +9,7 @@ import { AlchanLoadingScreen } from "./ui/Skeleton";
 // 페이지 컨테이너
 // ============================================
 export const PageContainer = ({ children, className = "" }) => (
-  <div className={`min-h-full w-full bg-gray-100 dark:bg-slate-900 ${className}`}>
+  <div className={`min-h-full w-full bg-gray-100 ${className}`}>
     <div className="w-full max-w-none px-2 md:px-3 lg:px-4 py-1 md:py-2">
       {children}
     </div>
@@ -29,7 +29,7 @@ export const PageHeader = ({
   className = "",
 }) => (
   <section
-    className={`bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
+    className={`bg-white backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
   >
     <div className="flex items-center gap-3">
       {backButton}
@@ -40,7 +40,7 @@ export const PageHeader = ({
       )}
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white tracking-tight">
+          <h2 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">
             {title}
           </h2>
           {badge}
@@ -70,7 +70,7 @@ export const SectionTitle = ({
   className = "",
 }) => (
   <div className={`flex items-center justify-between px-1 mb-4 ${className}`}>
-    <h3 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+    <h3 className="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
       {Icon && <Icon className="w-5 h-5 text-cyan-400" />}
       {children}
     </h3>
@@ -95,7 +95,7 @@ export const ErrorState = ({
     <div className="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center mb-4">
       <span className="text-3xl text-red-400">!</span>
     </div>
-    <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">{title}</h3>
+    <h3 className="text-lg font-semibold text-slate-800 mb-2">{title}</h3>
     {message && <p className="text-slate-400 mb-4 max-w-md">{message}</p>}
     {onRetry && (
       <button
@@ -114,12 +114,12 @@ export const ErrorState = ({
 export const EmptyState = ({ icon: Icon, title, description, action }) => (
   <div className="flex flex-col items-center justify-center py-16 text-center">
     {Icon && (
-      <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800/50 shadow-lg flex items-center justify-center mb-4 border border-cyan-900/30">
+      <div className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center mb-4 border border-cyan-900/30">
         <Icon className="w-8 h-8 text-slate-400" />
       </div>
     )}
     {title && (
-      <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">{title}</h3>
+      <h3 className="text-lg font-bold text-slate-600 mb-2">{title}</h3>
     )}
     {description && (
       <p className="text-slate-400 font-medium mb-6 max-w-md">{description}</p>
@@ -162,7 +162,7 @@ export const StatCard = ({
   onClick,
 }) => (
   <div
-    className={`bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/30 shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 ${
+    className={`bg-white backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/30 shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 ${
       onClick ? "cursor-pointer" : ""
     }`}
     onClick={onClick}
@@ -188,7 +188,7 @@ export const StatCard = ({
     </div>
     <div className="mt-4">
       <p className="text-sm text-slate-400 font-medium">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1 tracking-tight">
+      <p className="text-2xl font-bold text-slate-800 mt-1 tracking-tight">
         {value}
       </p>
       {subValue && <p className="text-sm text-slate-500 mt-1">{subValue}</p>}
@@ -222,7 +222,7 @@ export const AssetCard = ({ icon: Icon, label, value, color, iconColor }) => (
 // ============================================
 export const TabGroup = ({ tabs, activeTab, onChange, className = "" }) => (
   <div
-    className={`flex gap-1 p-1 bg-gray-100 dark:bg-slate-900 rounded-xl border border-cyan-900/30 ${className}`}
+    className={`flex gap-1 p-1 bg-gray-100 rounded-xl border border-cyan-900/30 ${className}`}
   >
     {tabs.map((tab) => (
       <button
@@ -240,8 +240,8 @@ export const TabGroup = ({ tabs, activeTab, onChange, className = "" }) => (
           <span
             className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
               activeTab === tab.id
-                ? "bg-gray-100 dark:bg-slate-900 text-cyan-400"
-                : "bg-white dark:bg-slate-800 text-slate-400"
+                ? "bg-gray-100 text-cyan-400"
+                : "bg-white text-slate-400"
             }`}
           >
             {tab.count}
@@ -269,9 +269,9 @@ export const ActionButton = ({
   const variants = {
     primary:
       "bg-cyan-500 text-slate-900 hover:bg-cyan-400 ring-1 ring-cyan-400 shadow-cyan-500/30",
-    secondary: "bg-white dark:bg-slate-800 hover:bg-slate-700 text-slate-700 dark:text-slate-200",
+    secondary: "bg-white hover:bg-slate-100 text-slate-700",
     outline:
-      "bg-transparent text-slate-600 dark:text-slate-300 ring-1 ring-slate-600 hover:bg-white dark:bg-slate-800 hover:ring-slate-500 shadow-sm",
+      "bg-transparent text-slate-600 ring-1 ring-slate-600 hover:bg-white hover:ring-slate-500 shadow-sm",
     "outline-green":
       "bg-transparent text-emerald-400 ring-1 ring-emerald-600 hover:bg-emerald-900/30 hover:ring-emerald-500 shadow-sm",
     "outline-red":
@@ -280,7 +280,7 @@ export const ActionButton = ({
       "bg-transparent text-rose-400 ring-1 ring-rose-600 hover:bg-rose-900/30 hover:ring-rose-500 shadow-sm",
     success:
       "bg-transparent text-emerald-400 ring-1 ring-emerald-600 hover:bg-emerald-900/30 hover:ring-emerald-500 shadow-sm",
-    ghost: "text-slate-400 hover:bg-white dark:bg-slate-800 hover:text-white",
+    ghost: "text-slate-400 hover:bg-slate-100 hover:text-slate-700",
     indigo: "bg-purple-900/30 text-purple-300 hover:bg-purple-900/50",
   };
 
@@ -316,7 +316,7 @@ export const InfoBadge = ({
   className = "",
 }) => {
   const variants = {
-    default: "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+    default: "bg-white text-slate-600",
     primary: "bg-indigo-900/50 text-indigo-300",
     success: "bg-emerald-900/50 text-emerald-300",
     warning: "bg-amber-900/50 text-amber-300",
@@ -383,7 +383,7 @@ export const ListItem = ({
     } ${
       active
         ? "bg-cyan-900/30 border border-cyan-500/50"
-        : "bg-white dark:bg-slate-800/50 border border-cyan-900/20 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
+        : "bg-white border border-cyan-900/20 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
     } ${className}`}
     onClick={onClick}
   >
@@ -410,7 +410,7 @@ export const TaskItem = ({
   onDelete,
   showActions = true,
 }) => (
-  <div className="group flex items-center justify-between p-3 rounded-xl bg-gray-100 dark:bg-slate-900 border border-cyan-900/30 hover:border-cyan-500/50 hover:bg-white dark:bg-slate-900/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
+  <div className="group flex items-center justify-between p-3 rounded-xl bg-gray-100 border border-cyan-900/30 hover:border-cyan-500/50 hover:bg-white hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
     <div className="flex items-center gap-3 min-w-0">
       <div
         onClick={onComplete}
@@ -418,7 +418,7 @@ export const TaskItem = ({
       >
         {/* 체크박스 영역 */}
       </div>
-      <span className="font-bold text-slate-600 dark:text-slate-300 text-base truncate group-hover:text-cyan-400 transition-colors">
+      <span className="font-bold text-slate-600 text-base truncate group-hover:text-cyan-400 transition-colors">
         {task.name}
       </span>
     </div>
@@ -469,12 +469,12 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
   const gradient = job.color || gradients.indigo;
 
   return (
-    <div className="bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 border border-cyan-900/30 overflow-hidden flex flex-col">
+    <div className="bg-white backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 border border-cyan-900/30 overflow-hidden flex flex-col">
       {/* 카드 헤더 */}
       <div
         className={`h-16 px-6 flex items-center justify-between bg-gradient-to-r ${gradient}`}
       >
-        <h4 className="text-slate-800 dark:text-white font-bold text-lg tracking-wide flex items-center gap-2">
+        <h4 className="text-slate-800 font-bold text-lg tracking-wide flex items-center gap-2">
           👑 {job.title}
         </h4>
         {(onEdit || onDelete) && (
@@ -482,7 +482,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 dark:text-white transition-colors"
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 transition-colors"
               >
                 ✏️
               </button>
@@ -490,7 +490,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
             {onDelete && (
               <button
                 onClick={onDelete}
-                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 dark:text-white transition-colors"
+                className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-slate-800 transition-colors"
               >
                 🗑️
               </button>
@@ -507,7 +507,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
         <div className="px-6 pb-6 pt-2">
           <button
             onClick={onAddTask}
-            className="w-full py-3 rounded-xl bg-white dark:bg-slate-900/50 text-slate-400 text-sm font-bold border border-cyan-900/30 hover:bg-cyan-900/30 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-white text-slate-400 text-sm font-bold border border-cyan-900/30 hover:bg-cyan-900/30 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors flex items-center justify-center gap-2"
           >
             ➕ 이 직업에 할일 추가
           </button>
@@ -522,7 +522,7 @@ export const JobCard = ({ job, children, onEdit, onDelete, onAddTask }) => {
 // ============================================
 export const ContentSection = ({ children, className = "" }) => (
   <div
-    className={`bg-white dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 ${className}`}
+    className={`bg-white backdrop-blur-sm rounded-2xl shadow-lg border border-cyan-900/30 p-6 ${className}`}
   >
     {children}
   </div>
@@ -555,7 +555,7 @@ export const MoneyDisplay = ({
           ? "text-red-400"
           : isPositive && showSign
             ? "text-emerald-400"
-            : "text-slate-800 dark:text-white"
+            : "text-slate-800"
       } ${className}`}
     >
       {showSign && isPositive && "+"}
@@ -573,7 +573,7 @@ export const AddCard = ({ onClick, label = "새로 추가하기" }) => (
     onClick={onClick}
     className="group relative flex flex-col items-center justify-center h-full min-h-[260px] rounded-2xl border-2 border-dashed border-cyan-900/50 bg-slate-900/30 hover:bg-cyan-900/20 hover:border-cyan-500/50 transition-all"
   >
-    <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 shadow-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+    <div className="w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
       <span className="text-3xl text-slate-500 group-hover:text-cyan-400">
         ➕
       </span>

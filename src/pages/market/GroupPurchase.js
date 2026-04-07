@@ -86,6 +86,26 @@ export default function GroupPurchase() {
     const target = parseInt(newCampaign.targetPrice);
     if (!newCampaign.itemName.trim() || !target || target <= 0) return;
 
+    // 중복 캠페인 체크
+    if (newCampaign.selectedItemId) {
+      try {
+        const duplicateQuery = query(
+          collection(db, "groupPurchases"),
+          where("classCode", "==", classCode),
+          where("selectedItemId", "==", newCampaign.selectedItemId),
+          where("status", "==", "active")
+        );
+        const duplicateSnap = await getDocs(duplicateQuery);
+        if (!duplicateSnap.empty) {
+          alert("이미 진행 중인 함께구매가 있습니다.");
+          return;
+        }
+      } catch (err) {
+        logger.error("중복 캠페인 체크 실패:", err);
+        // 체크 실패해도 진행
+      }
+    }
+
     try {
       await addDoc(collection(db, "groupPurchases"), {
         classCode,
@@ -375,15 +395,15 @@ export default function GroupPurchase() {
             <Users className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white font-jua">함께구매</h1>
-            <p className="text-xs text-slate-500 dark:text-gray-400">
+            <h1 className="text-xl font-bold text-slate-800 font-jua">함께구매</h1>
+            <p className="text-xs text-slate-500">
               친구들과 모금하고, 최다 기여자가 아이템을 획득해요!
             </p>
           </div>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-slate-800 dark:text-white text-sm font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
         >
           <Plus className="w-4 h-4" />새 함께구매
         </button>
@@ -401,8 +421,8 @@ export default function GroupPurchase() {
             onClick={() => setFilter(key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               filter === key
-                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                : "bg-white/5 text-slate-500 dark:text-gray-400 border border-transparent hover:bg-white/10"
+                ? "bg-purple-500/20 text-purple-600 border border-purple-500/30"
+                : "bg-slate-100 text-slate-500 border border-transparent hover:bg-slate-200"
             }`}
           >
             <Icon className="w-3.5 h-3.5" />
@@ -415,7 +435,7 @@ export default function GroupPurchase() {
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-4 opacity-50">🤝</div>
-          <p className="text-slate-500 dark:text-gray-400 text-lg font-medium">
+          <p className="text-slate-500 text-lg font-medium">
             {filter === "active"
               ? "진행 중인 함께구매가 없습니다"
               : filter === "completed"
@@ -441,8 +461,8 @@ export default function GroupPurchase() {
                 key={campaign.id}
                 className={`rounded-2xl border transition-all ${
                   isCompleted
-                    ? "bg-gradient-to-r from-emerald-900/20 to-teal-900/20 border-emerald-500/20"
-                    : "bg-[rgba(30,41,59,0.6)] border-[rgba(0,255,242,0.1)] hover:border-purple-500/30"
+                    ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300"
+                    : "bg-white border-slate-200 hover:border-purple-500/30"
                 }`}
               >
                 {/* 메인 카드 */}
@@ -462,30 +482,30 @@ export default function GroupPurchase() {
                     {/* 내용 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-white truncate">
+                        <h3 className="text-base font-bold text-slate-800 truncate">
                           {campaign.itemName}
                         </h3>
                         {isCompleted && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold">
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 text-xs font-bold">
                             <Trophy className="w-3 h-3" />
                             달성
                           </span>
                         )}
                         {isCompleted && campaign.winnerName && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 text-xs font-bold">
                             🏆 {campaign.winnerName}
                           </span>
                         )}
                       </div>
 
                       {campaign.itemDescription && (
-                        <p className="text-xs text-slate-500 dark:text-gray-400 mb-2 line-clamp-1">
+                        <p className="text-xs text-slate-500 mb-2 line-clamp-1">
                           {campaign.itemDescription}
                         </p>
                       )}
 
                       {/* 진행 바 */}
-                      <div className="relative h-3 bg-white/5 rounded-full overflow-hidden mb-2">
+                      <div className="relative h-3 bg-slate-100 rounded-full overflow-hidden mb-2">
                         <div
                           className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
                             isCompleted
@@ -495,7 +515,7 @@ export default function GroupPurchase() {
                           style={{ width: `${progress}%` }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-slate-800 dark:text-white drop-shadow-md">
+                          <span className="text-[10px] font-bold text-slate-800">
                             {progress}%
                           </span>
                         </div>
@@ -503,7 +523,7 @@ export default function GroupPurchase() {
 
                       {/* 금액 정보 */}
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 dark:text-gray-400">
+                        <span className="text-slate-500">
                           {formatKoreanNumber(campaign.currentAmount)}
                           {currencyUnit} /{" "}
                           {formatKoreanNumber(campaign.targetPrice)}
@@ -516,7 +536,7 @@ export default function GroupPurchase() {
 
                       {/* 내 기여 */}
                       {myAmount > 0 && (
-                        <div className="mt-1.5 text-xs text-purple-300">
+                        <div className="mt-1.5 text-xs text-purple-600">
                           내 기여: {formatKoreanNumber(myAmount)}
                           {currencyUnit}
                         </div>
@@ -541,7 +561,7 @@ export default function GroupPurchase() {
                         onClick={() =>
                           setExpandedId(isExpanded ? null : campaign.id)
                         }
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-500 dark:text-gray-400 text-xs transition-all"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs transition-all"
                       >
                         {isExpanded ? (
                           <ChevronUp className="w-3.5 h-3.5" />
@@ -556,7 +576,7 @@ export default function GroupPurchase() {
 
                 {/* 상세 패널 */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
+                  <div className="px-4 pb-4 border-t border-slate-200 pt-3 space-y-3">
                     <div className="text-xs text-gray-500">
                       시작: {campaign.initiatorName} ·{" "}
                       {campaign.createdAt?.toDate
@@ -571,10 +591,10 @@ export default function GroupPurchase() {
                       <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
                         <span className="text-lg">🏆</span>
                         <div>
-                          <p className="text-sm font-bold text-amber-300">
+                          <p className="text-sm font-bold text-amber-600">
                             아이템 획득: {campaign.winnerName}
                           </p>
-                          <p className="text-xs text-amber-400/70">
+                          <p className="text-xs text-amber-600">
                             최다 기여자에게 아이템이 지급되었습니다
                           </p>
                         </div>
@@ -584,7 +604,7 @@ export default function GroupPurchase() {
                     {/* 참여자 목록 */}
                     {campaign.contributors?.length > 0 && (
                       <div>
-                        <p className="text-xs font-bold text-slate-600 dark:text-gray-300 mb-2">
+                        <p className="text-xs font-bold text-slate-600 mb-2">
                           참여자 ({campaign.contributors.length}명)
                         </p>
                         <div className="space-y-1.5">
@@ -607,10 +627,10 @@ export default function GroupPurchase() {
                               return (
                                 <div
                                   key={i}
-                                  className={`flex items-center justify-between rounded-lg px-3 py-2 ${isWinner ? "bg-amber-500/10 border border-amber-500/20" : "bg-white/5"}`}
+                                  className={`flex items-center justify-between rounded-lg px-3 py-2 ${isWinner ? "bg-amber-500/10 border border-amber-500/20" : "bg-slate-100"}`}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-slate-600 dark:text-gray-300">
+                                    <span className="text-xs font-bold text-slate-600">
                                       {i === 0
                                         ? "🥇"
                                         : i === 1
@@ -620,13 +640,13 @@ export default function GroupPurchase() {
                                             : `${i + 1}.`}
                                     </span>
                                     <span
-                                      className={`text-sm ${isWinner ? "text-amber-300 font-bold" : "text-slate-800 dark:text-white"}`}
+                                      className={`text-sm ${isWinner ? "text-amber-600 font-bold" : "text-slate-800"}`}
                                     >
                                       {c.userName}
                                     </span>
                                   </div>
                                   <span
-                                    className={`text-sm font-bold ${isWinner ? "text-amber-300" : "text-purple-300"}`}
+                                    className={`text-sm font-bold ${isWinner ? "text-amber-600" : "text-purple-600"}`}
                                   >
                                     {formatKoreanNumber(c.amount)}
                                     {currencyUnit}
@@ -641,8 +661,8 @@ export default function GroupPurchase() {
                     {/* 남은 금액 */}
                     {!isCompleted && remaining > 0 && (
                       <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                        <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                        <span className="text-xs text-amber-300">
+                        <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span className="text-xs text-amber-600">
                           목표까지{" "}
                           <strong>
                             {formatKoreanNumber(remaining)}
@@ -657,7 +677,7 @@ export default function GroupPurchase() {
                     {canDelete && (
                       <button
                         onClick={() => handleDelete(campaign)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-all"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 text-xs font-medium transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         삭제 (환불 처리)
@@ -678,17 +698,17 @@ export default function GroupPurchase() {
           onClick={() => setShowCreateModal(false)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-md bg-white border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 모달 헤더 */}
             <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-b border-purple-500/20">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white font-jua flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 font-jua flex items-center gap-2">
                 <Plus className="w-5 h-5 text-purple-400" />새 함께구매
               </h2>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-lg hover:bg-white/10 text-slate-500 dark:text-gray-400 hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -697,13 +717,13 @@ export default function GroupPurchase() {
             <div className="p-5 space-y-4">
               {/* 상점 아이템 선택 (필수) */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">
                   아이템 선택 *
                 </label>
                 <select
                   value={newCampaign.selectedItemId}
                   onChange={(e) => handleSelectStoreItem(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-white/10 text-slate-800 dark:text-white text-sm focus:border-purple-500/50 focus:outline-none [&>option]:bg-white dark:bg-slate-800 [&>option]:text-white"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:border-purple-500/50 focus:outline-none [&>option]:bg-white [&>option]:text-slate-800"
                 >
                   <option value="">-- 아이템을 선택하세요 --</option>
                   {(items || [])
@@ -723,15 +743,15 @@ export default function GroupPurchase() {
                 <div className="flex items-center gap-3 bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
                   <span className="text-2xl">{newCampaign.itemIcon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-800 dark:text-white">
+                    <p className="text-sm font-bold text-slate-800">
                       {newCampaign.itemName}
                     </p>
                     {newCampaign.itemDescription && (
-                      <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-slate-500 truncate">
                         {newCampaign.itemDescription}
                       </p>
                     )}
-                    <p className="text-xs text-purple-300 font-bold mt-0.5">
+                    <p className="text-xs text-purple-600 font-bold mt-0.5">
                       목표: {formatKoreanNumber(newCampaign.targetPrice)}
                       {currencyUnit}
                     </p>
@@ -741,7 +761,7 @@ export default function GroupPurchase() {
 
               {/* 목표 금액 (수정 가능) */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">
                   목표 금액 (수정 가능)
                 </label>
                 <div className="relative">
@@ -754,7 +774,7 @@ export default function GroupPurchase() {
                         targetPrice: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2.5 pr-14 rounded-xl bg-white/5 border border-white/10 text-slate-800 dark:text-white text-sm focus:border-purple-500/50 focus:outline-none"
+                    className="w-full px-3 py-2.5 pr-14 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:border-purple-500/50 focus:outline-none"
                     placeholder="0"
                     min="1"
                   />
@@ -772,7 +792,7 @@ export default function GroupPurchase() {
                   !newCampaign.targetPrice ||
                   parseInt(newCampaign.targetPrice) <= 0
                 }
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-slate-800 dark:text-white font-bold text-sm transition-all"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm transition-all"
               >
                 함께구매 시작하기
               </button>
@@ -788,11 +808,11 @@ export default function GroupPurchase() {
           onClick={() => setContributeModal(null)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-slate-800 border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-sm bg-white border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-b border-purple-500/20">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white font-jua flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 font-jua flex items-center gap-2">
                 <HandCoins className="w-5 h-5 text-purple-400" />
                 모금 참여
               </h2>
@@ -800,13 +820,13 @@ export default function GroupPurchase() {
 
             <div className="p-5 space-y-4">
               {/* 캠페인 정보 */}
-              <div className="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+              <div className="flex items-center gap-3 bg-slate-100 rounded-xl p-3">
                 <span className="text-2xl">{contributeModal.itemIcon}</span>
                 <div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  <p className="text-sm font-bold text-slate-800">
                     {contributeModal.itemName}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-gray-400">
+                  <p className="text-xs text-slate-500">
                     남은 금액:{" "}
                     {formatKoreanNumber(
                       contributeModal.targetPrice -
@@ -818,9 +838,9 @@ export default function GroupPurchase() {
               </div>
 
               {/* 내 잔액 */}
-              <div className="text-xs text-slate-500 dark:text-gray-400">
+              <div className="text-xs text-slate-500">
                 내 잔액:{" "}
-                <span className="text-slate-800 dark:text-white font-bold">
+                <span className="text-slate-800 font-bold">
                   {formatKoreanNumber(userDoc?.cash || 0)}
                   {currencyUnit}
                 </span>
@@ -832,7 +852,7 @@ export default function GroupPurchase() {
                   type="number"
                   value={contributeAmount}
                   onChange={(e) => setContributeAmount(e.target.value)}
-                  className="w-full px-3 py-3 pr-14 rounded-xl bg-white/5 border border-white/10 text-slate-800 dark:text-white text-lg font-bold focus:border-purple-500/50 focus:outline-none text-center"
+                  className="w-full px-3 py-3 pr-14 rounded-xl bg-white border border-slate-200 text-slate-800 text-lg font-bold focus:border-purple-500/50 focus:outline-none text-center"
                   placeholder="0"
                   min="1"
                   max={Math.min(
@@ -852,7 +872,7 @@ export default function GroupPurchase() {
                   <button
                     key={amt}
                     onClick={() => setContributeAmount(String(amt))}
-                    className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-purple-500/20 text-slate-600 dark:text-gray-300 text-xs font-medium transition-all"
+                    className="flex-1 py-1.5 rounded-lg bg-slate-100 hover:bg-purple-500/20 text-slate-600 text-xs font-medium transition-all"
                   >
                     {formatKoreanNumber(amt)}
                   </button>
@@ -868,7 +888,7 @@ export default function GroupPurchase() {
                   );
                   setContributeAmount(String(max));
                 }}
-                className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-600 dark:text-gray-300 text-xs font-medium transition-all"
+                className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium transition-all"
               >
                 남은 금액 전부 참여
               </button>
@@ -877,7 +897,7 @@ export default function GroupPurchase() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setContributeModal(null)}
-                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-500 dark:text-gray-400 font-bold text-sm transition-all"
+                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-sm transition-all"
                 >
                   취소
                 </button>
@@ -888,7 +908,7 @@ export default function GroupPurchase() {
                     parseInt(contributeAmount) <= 0 ||
                     parseInt(contributeAmount) > (userDoc?.cash || 0)
                   }
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-slate-800 dark:text-white font-bold text-sm transition-all"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm transition-all"
                 >
                   참여하기
                 </button>

@@ -864,7 +864,7 @@ const NationalAssembly = () => {
   return (
     <div className="national-assembly-container">
       <div className="assembly-header">
-        <h1 className="assembly-title">국회 의사당 (학급: {classCode})</h1>
+        <h1 className="assembly-title">국회 의사당</h1>
         <div className="assembly-tabs">
           <button
             className={`assembly-tab ${

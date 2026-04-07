@@ -578,7 +578,7 @@ const LearningBoard = () => {
     <div className="lb">
       {/* Header */}
       <div className="lb-header">
-        <h1 className="lb-title">학습 게시판 {classCode && <span className="lb-class-code">({classCode})</span>}</h1>
+        <h1 className="lb-title">학습 게시판</h1>
         {currentUserIsAdmin && (
           <button className="lb-admin-toggle" onClick={() => setShowAdminPanel((p) => !p)}>
             {showAdminPanel ? "관리자 닫기" : "관리자 열기"}

@@ -1,13 +1,13 @@
-/* Learning Board - Modern Glass Style */
+/* Learning Board - Modern Glass Style (Light Theme) */
 
 .lb {
   width: 100%;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .lb-msg {
   text-align: center;
-  color: #94a3b8;
+  color: #64748b;
   padding: 3rem;
 }
 
@@ -18,8 +18,8 @@
   justify-content: space-between;
   margin-bottom: 1.5rem;
   padding: 1.2rem 1.5rem;
-  background: linear-gradient(135deg, rgba(20, 20, 50, 0.6), rgba(30, 30, 60, 0.4));
-  border: 1px solid rgba(99, 102, 241, 0.12);
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
   border-radius: 16px;
   backdrop-filter: blur(8px);
 }
@@ -27,21 +27,11 @@
 .lb-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #1e293b;
   margin: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.lb-class-code {
-  color: #818cf8;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: rgba(99, 102, 241, 0.1);
-  padding: 0.15rem 0.6rem;
-  border-radius: 6px;
-  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .lb-admin-toggle {
@@ -69,16 +59,16 @@
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
   padding: 0.4rem;
-  background: rgba(15, 15, 35, 0.5);
+  background: #f8faff;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid #e0e7ff;
 }
 
 .lb-tab {
   padding: 0.55rem 1.3rem;
   background: transparent;
   border: 1px solid transparent;
-  color: #94a3b8;
+  color: #64748b;
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.88rem;
@@ -89,7 +79,7 @@
 
 .lb-tab:hover {
   background: rgba(99, 102, 241, 0.1);
-  color: #c7d2fe;
+  color: #4f46e5;
 }
 
 .lb-tab.active {
@@ -144,7 +134,7 @@
 .lb-board-name {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #1e293b;
   margin: 0;
   display: flex;
   align-items: center;
@@ -188,17 +178,17 @@
 }
 
 .lb-view-btn-sm {
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #4f46e5;
 }
 
 /* Post Table */
 .lb-table-wrap {
   overflow-x: auto;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 15, 35, 0.5);
+  border: 1px solid #e0e7ff;
+  background: #ffffff;
   backdrop-filter: blur(8px);
 }
 
@@ -209,13 +199,13 @@
 }
 
 .lb-table thead {
-  background: linear-gradient(180deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 45, 0.9));
+  background: linear-gradient(180deg, #f8faff, #eef2ff);
 }
 
 .lb-table th {
   padding: 0.85rem 1rem;
   text-align: left;
-  color: #818cf8;
+  color: #4f46e5;
   font-weight: 600;
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -224,7 +214,7 @@
 }
 
 .lb-table tbody tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   transition: all 0.2s;
 }
 
@@ -238,7 +228,7 @@
 
 .lb-table td {
   padding: 0.85rem 1rem;
-  color: #cbd5e1;
+  color: #334155;
 }
 
 .lb-col-num { width: 60px; text-align: center; }
@@ -250,13 +240,13 @@
 
 .lb-cell-num { text-align: center; color: #64748b; font-size: 0.85rem; }
 .lb-cell-title { font-weight: 500; }
-.lb-cell-author { color: #94a3b8; font-size: 0.85rem; }
+.lb-cell-author { color: #64748b; font-size: 0.85rem; }
 .lb-cell-date { color: #64748b; font-size: 0.8rem; }
 .lb-cell-likes { text-align: center; }
 .lb-cell-comments { text-align: center; }
 
 .lb-comment-num {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.82rem;
   display: inline-flex;
   align-items: center;
@@ -264,11 +254,11 @@
 }
 
 .lb-post-title-text {
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .lb-row:hover .lb-post-title-text {
-  color: #a5b4fc;
+  color: #4f46e5;
 }
 
 .lb-badge {
@@ -279,12 +269,12 @@
 .lb-comment-badge {
   margin-left: 0.4rem;
   font-size: 0.75rem;
-  color: #60a5fa;
+  color: #3b82f6;
   font-weight: 600;
 }
 
 .lb-like-num {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.82rem;
   display: inline-flex;
   align-items: center;
@@ -304,7 +294,7 @@
 .lb-back {
   background: rgba(99, 102, 241, 0.08);
   border: 1px solid rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
+  color: #4f46e5;
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0.45rem 1rem;
@@ -316,13 +306,13 @@
 
 .lb-back:hover {
   background: rgba(99, 102, 241, 0.15);
-  color: #e0e7ff;
+  color: #3730a3;
   transform: translateX(-2px);
 }
 
 .lb-detail-card {
-  background: linear-gradient(145deg, rgba(20, 20, 45, 0.7), rgba(15, 15, 35, 0.6));
-  border: 1px solid rgba(99, 102, 241, 0.12);
+  background: linear-gradient(145deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
   border-radius: 16px;
   padding: 1.8rem;
   backdrop-filter: blur(8px);
@@ -334,7 +324,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   margin-bottom: 1rem;
 }
 
@@ -347,17 +337,17 @@
 .lb-detail-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #1e293b;
   margin: 0 0 1rem 0;
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .lb-edit-post-btn {
   padding: 0.4rem 1rem;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #2563eb;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -378,9 +368,9 @@
 
 .lb-cancel-btn {
   padding: 0.7rem 2rem;
-  background: rgba(100, 116, 139, 0.15);
-  border: 1px solid rgba(100, 116, 139, 0.4);
-  color: #94a3b8;
+  background: rgba(100, 116, 139, 0.1);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  color: #64748b;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -395,25 +385,25 @@
 .lb-detail-meta {
   display: flex;
   gap: 1.5rem;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.85rem;
   margin-bottom: 1.5rem;
 }
 
 .lb-detail-content {
-  color: #cbd5e1;
+  color: #334155;
   line-height: 1.7;
   white-space: pre-wrap;
   min-height: 100px;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Like / Dislike Actions */
 .lb-detail-actions {
-  background: linear-gradient(135deg, rgba(15, 15, 35, 0.6), rgba(20, 20, 50, 0.4));
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
   border-radius: 14px;
   padding: 1.2rem;
 }
@@ -431,7 +421,7 @@
   border-radius: 20px;
   border: 1px solid var(--border-primary);
   background: transparent;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   font-size: 0.85rem;
   transition: all 0.2s;
@@ -485,12 +475,12 @@
 .lb-admin-coupon {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
 }
 
 .lb-admin-coupon h4 {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: #64748b;
   margin: 0 0 0.5rem 0;
   font-weight: 500;
 }
@@ -532,7 +522,7 @@
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.85rem;
 }
 
@@ -562,13 +552,13 @@
 .lb-write-heading {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #1e293b;
   margin: 0 0 1.5rem 0;
 }
 
 .lb-form {
-  background: rgba(20, 20, 40, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
   padding: 1.5rem;
 }
@@ -580,7 +570,7 @@
 .lb-field label {
   display: block;
   margin-bottom: 0.5rem;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -592,7 +582,7 @@
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
   border-radius: 8px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.95rem;
   transition: border-color 0.2s;
   box-sizing: border-box;
@@ -652,7 +642,7 @@
 
 .lb-hidden-manage h3 {
   font-size: 0.95rem;
-  color: #94a3b8;
+  color: #64748b;
   margin: 1.5rem 0 0.75rem 0;
 }
 
@@ -680,8 +670,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: rgba(20, 20, 40, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
   border-radius: 8px;
 }
 
@@ -752,13 +742,13 @@
   right: 0;
   width: 360px;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.97);
-  border-left: 1px solid var(--border-accent);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  border-left: 1px solid #e0e7ff;
+  box-shadow: -8px 0 24px rgba(99, 102, 241, 0.15);
   padding: 2rem 1.5rem;
   z-index: 1000;
   overflow-y: auto;
-  color: #e2e8f0;
+  color: #1e293b;
   animation: slideIn 0.3s ease;
 }
 
@@ -773,14 +763,14 @@
   left: 1rem;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 1.8rem;
   cursor: pointer;
   line-height: 1;
 }
 
 .lb-admin-close:hover {
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
 .lb-admin-panel h2 {
@@ -796,8 +786,8 @@
 
 .lb-admin-section h3 {
   font-size: 0.9rem;
-  color: #94a3b8;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #64748b;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   padding-bottom: 0.5rem;
   margin-bottom: 0.75rem;
 }
@@ -814,7 +804,7 @@
   background: var(--bg-input);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.85rem;
 }
 
@@ -837,7 +827,7 @@
 
 .lb-admin-board-list li {
   padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .lb-admin-board-list li.hidden span {
@@ -852,7 +842,7 @@
 }
 
 .lb-board-row span {
-  color: #cbd5e1;
+  color: #334155;
   font-size: 0.85rem;
 }
 
@@ -874,9 +864,9 @@
   flex: 1;
   padding: 0.4rem 0.6rem;
   background: var(--bg-input);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 4px;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.85rem;
 }
 
@@ -895,9 +885,9 @@
 
 .lb-stats-list li {
   padding: 0.4rem 0;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.85rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Responsive */
@@ -939,7 +929,7 @@
 
 .lb-comments-title {
   font-size: 1rem;
-  color: #e2e8f0;
+  color: #1e293b;
   margin: 0 0 12px;
   display: flex;
   align-items: center;
@@ -968,8 +958,8 @@
 }
 
 .lb-comment {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(25, 35, 55, 0.6));
-  border: 1px solid rgba(99, 102, 241, 0.08);
+  background: linear-gradient(135deg, #ffffff, #f8faff);
+  border: 1px solid #e0e7ff;
   border-radius: 12px;
   padding: 12px 16px;
 }
@@ -984,7 +974,7 @@
 .lb-comment-author {
   font-weight: 600;
   font-size: 0.85em;
-  color: #93c5fd;
+  color: #2563eb;
 }
 
 .lb-comment-date {
@@ -1009,7 +999,7 @@
 
 .lb-comment-content {
   font-size: 0.9em;
-  color: #cbd5e1;
+  color: #334155;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1023,16 +1013,16 @@
   flex: 1;
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  background: rgba(15, 23, 42, 0.8);
-  color: #e2e8f0;
+  border: 1px solid #e0e7ff;
+  background: #ffffff;
+  color: #1e293b;
   font-size: 0.9em;
   transition: border-color 0.2s;
 }
 
 .lb-comment-form input:focus {
   outline: none;
-  border-color: #818cf8;
+  border-color: #6366f1;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
 }
 
@@ -1072,19 +1062,19 @@
 
 .lb-page-btn {
   padding: 6px 12px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid #e0e7ff;
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.6);
-  color: #94a3b8;
+  background: #ffffff;
+  color: #64748b;
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .lb-page-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.2);
-  color: #e2e8f0;
-  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.4);
 }
 
 .lb-page-btn.active {

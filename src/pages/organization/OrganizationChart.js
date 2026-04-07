@@ -429,7 +429,7 @@ const OrganizationChart = ({ classCode }) => {
   return (
     <div className="org-chart-container">
       <div className="org-header">
-        <h1 className="org-title">정부 조직도 (학급: {classCode})</h1>
+        <h1 className="org-title">정부 조직도</h1>
         <div className="admin-controls">
           {canManage && (
             <div className="admin-indicator">

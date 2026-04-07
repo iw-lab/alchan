@@ -283,7 +283,7 @@ const NationalTaxService = ({ classCode }) => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-500 font-medium">국세청 데이터를 불러오는 중 (학급: {classCode})...</p>
+          <p className="text-slate-500 font-medium">국세청 데이터를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -313,18 +313,18 @@ const NationalTaxService = ({ classCode }) => {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="relative overflow-hidden rounded-2xl p-8 text-slate-800 dark:text-white shadow-xl" style={{ background: 'linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(30, 30, 60, 0.9))', border: '1px solid rgba(0, 255, 242, 0.2)' }}>
+      <div className="relative overflow-hidden rounded-2xl p-8 text-slate-800 shadow-xl" style={{ background: 'linear-gradient(135deg, rgba(240, 245, 255, 0.95), rgba(230, 240, 255, 0.9))', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
         <div className="absolute inset-0 opacity-10" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(0, 136, 255, 0.4), transparent 60%)' }} />
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif', textShadow: '0 0 12px rgba(0, 255, 242, 0.3)' }}>
+          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif', textShadow: '0 0 12px rgba(99, 102, 241, 0.3)' }}>
             {classCode} 학급 국세청
           </h1>
-          <p className="text-sm" style={{ color: 'rgba(148, 163, 184, 0.9)' }}>세금 정책 관리 및 국고 운영</p>
+          <p className="text-sm" style={{ color: 'rgba(71, 85, 105, 0.9)' }}>세금 정책 관리 및 국고 운영</p>
         </div>
       </div>
 
       {/* 탭 네비게이션 - 세련된 네온 스타일 */}
-      <div className="flex gap-2 p-1 rounded-xl" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(0, 255, 242, 0.08)' }}>
+      <div className="flex gap-2 p-1 rounded-xl" style={{ background: 'rgba(240, 245, 255, 0.6)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -332,17 +332,17 @@ const NationalTaxService = ({ classCode }) => {
             className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300"
             style={activeTab === tab.id
               ? {
-                  background: 'linear-gradient(135deg, rgba(0, 136, 255, 0.2), rgba(0, 255, 242, 0.1))',
-                  color: '#fff',
-                  border: '1px solid rgba(0, 255, 242, 0.3)',
-                  boxShadow: '0 0 15px rgba(0, 136, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
-                  textShadow: '0 0 8px rgba(0, 255, 242, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(59, 130, 246, 0.1))',
+                  color: 'rgb(30, 41, 59)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  boxShadow: '0 0 15px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+                  textShadow: '0 0 8px rgba(99, 102, 241, 0.2)',
                   fontFamily: 'Rajdhani, sans-serif',
                   letterSpacing: '0.5px',
                 }
               : {
                   background: 'transparent',
-                  color: 'rgba(148, 163, 184, 0.7)',
+                  color: 'rgba(71, 85, 105, 0.7)',
                   border: '1px solid transparent',
                   fontFamily: 'Rajdhani, sans-serif',
                   letterSpacing: '0.5px',
@@ -373,7 +373,7 @@ const NationalTaxService = ({ classCode }) => {
                 key={card.label}
                 className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]"
                 style={{
-                  background: `linear-gradient(135deg, ${card.bg}, rgba(15, 15, 25, 0.9))`,
+                  background: `linear-gradient(135deg, ${card.bg}, rgba(255, 255, 255, 0.9))`,
                   border: `1px solid ${card.border}`,
                   boxShadow: `0 0 12px ${card.bg}`,
                 }}
@@ -381,29 +381,29 @@ const NationalTaxService = ({ classCode }) => {
                 <p className="text-xs font-semibold mb-2 tracking-wide" style={{ color: card.accent, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
                   {card.icon} {card.label}
                 </p>
-                <p className="text-xl font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Rajdhani, sans-serif', textShadow: `0 0 8px ${card.bg}` }}>
+                <p className="text-xl font-bold text-slate-800" style={{ fontFamily: 'Rajdhani, sans-serif', textShadow: `0 0 8px ${card.bg}` }}>
                   {formatKoreanCurrency(card.value)}
                 </p>
-                {card.sub && <p className="text-xs mt-1" style={{ color: 'rgba(148, 163, 184, 0.6)' }}>{card.sub}</p>}
+                {card.sub && <p className="text-xs mt-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>{card.sub}</p>}
               </div>
             ))}
           </div>
 
           {/* 부동산 보유세 징수 버튼 */}
-          <div className="rounded-xl p-5" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 253, 244, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
                   🏘️ 부동산 보유세 징수
                 </h3>
-                <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.7)' }}>
+                <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
                   모든 부동산 소유자에게서 보유세({((taxSettings.propertyHoldingTaxRate || 0.002) * 100).toFixed(1)}%)를 징수합니다.
                 </p>
               </div>
               <button
                 onClick={handleCollectPropertyTax}
                 disabled={collectingTax}
-                className="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-800 dark:text-white transition-all duration-300"
+                className="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-800 transition-all duration-300"
                 style={{
                   background: collectingTax ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
                   border: `1px solid ${collectingTax ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
@@ -419,13 +419,13 @@ const NationalTaxService = ({ classCode }) => {
           </div>
 
           {/* 최근 업데이트 */}
-          <div className="rounded-xl p-5" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(0, 255, 242, 0.12)' }}>
-            <h3 className="text-sm font-bold mb-3" style={{ color: '#00fff2', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+            <h3 className="text-sm font-bold mb-3" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
               📅 최근 업데이트
             </h3>
-            <div className="space-y-1.5 text-sm" style={{ color: 'rgba(148, 163, 184, 0.8)' }}>
-              <p>국고 마지막 업데이트: <span className="font-medium text-slate-800 dark:text-white">{formatDate(treasuryData.lastUpdated)}</span></p>
-              <p>세금 정책 마지막 업데이트: <span className="font-medium text-slate-800 dark:text-white">{formatDate(taxSettings.lastUpdated)}</span></p>
+            <div className="space-y-1.5 text-sm" style={{ color: 'rgba(71, 85, 105, 0.8)' }}>
+              <p>국고 마지막 업데이트: <span className="font-medium text-slate-800">{formatDate(treasuryData.lastUpdated)}</span></p>
+              <p>세금 정책 마지막 업데이트: <span className="font-medium text-slate-800">{formatDate(taxSettings.lastUpdated)}</span></p>
             </div>
           </div>
         </div>
@@ -433,14 +433,14 @@ const NationalTaxService = ({ classCode }) => {
 
       {/* 세수 현황 탭 */}
       {activeTab === "revenue" && (
-        <div className="rounded-xl p-6" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(0, 255, 242, 0.12)' }}>
+        <div className="rounded-xl p-6" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold" style={{ color: '#00fff2', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+            <h3 className="text-lg font-bold" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
               💰 세수 현황 분석
             </h3>
             <div className="text-right">
-              <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.6)' }}>세수 총합</p>
-              <p className="text-xl font-bold text-slate-800 dark:text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{formatKoreanCurrency(totalTaxRevenue)}</p>
+              <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>세수 총합</p>
+              <p className="text-xl font-bold text-slate-800" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{formatKoreanCurrency(totalTaxRevenue)}</p>
             </div>
           </div>
 
@@ -458,7 +458,7 @@ const NationalTaxService = ({ classCode }) => {
               return (
                 <div key={item.label} className="flex items-center gap-3">
                   <div className="w-28 text-xs font-semibold" style={{ color: item.color, fontFamily: 'Rajdhani, sans-serif' }}>{item.label}</div>
-                  <div className="flex-1 h-5 rounded-md overflow-hidden" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="flex-1 h-5 rounded-md overflow-hidden" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(203, 213, 225, 0.4)' }}>
                     <div
                       className="h-full rounded-md transition-all duration-700"
                       style={{
@@ -469,8 +469,8 @@ const NationalTaxService = ({ classCode }) => {
                     />
                   </div>
                   <div className="w-36 text-right text-xs">
-                    <span className="font-bold text-slate-800 dark:text-white">{formatKoreanCurrency(item.amount)}</span>
-                    <span className="ml-1.5" style={{ color: 'rgba(148, 163, 184, 0.5)' }}>({percentage}%)</span>
+                    <span className="font-bold text-slate-800">{formatKoreanCurrency(item.amount)}</span>
+                    <span className="ml-1.5" style={{ color: 'rgba(71, 85, 105, 0.5)' }}>({percentage}%)</span>
                   </div>
                 </div>
               );
@@ -482,17 +482,17 @@ const NationalTaxService = ({ classCode }) => {
       {/* 세금 정책 탭 */}
       {activeTab === "policy" && (
         <div className="space-y-5">
-          <div className="rounded-xl p-6" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(0, 255, 242, 0.12)' }}>
-            <h3 className="text-lg font-bold mb-5" style={{ color: '#00fff2', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+          <div className="rounded-xl p-6" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+            <h3 className="text-lg font-bold mb-5" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
               📋 현행 세금 정책 ({classCode})
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {taxPolicyFields.map((field) => (
                 <div key={field.name}>
-                  <label className="block text-xs font-bold mb-2" style={{ color: 'rgba(148, 163, 184, 0.9)', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}>
+                  <label className="block text-xs font-bold mb-2" style={{ color: 'rgba(71, 85, 105, 0.9)', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}>
                     {field.label}
-                    <span className="ml-2" style={{ color: '#00fff2', fontWeight: 400 }}>
+                    <span className="ml-2" style={{ color: '#6366f1', fontWeight: 400 }}>
                       (현재: {field.type === "select"
                         ? taxSettings[field.name]
                         : `${((taxSettings[field.name] || 0) * 100).toFixed(field.name.includes("propertyHoldingTaxRate") ? 2 : 1)}%`})
@@ -503,8 +503,8 @@ const NationalTaxService = ({ classCode }) => {
                       name={field.name}
                       value={editableSettings[field.name] || DEFAULT_TAX_SETTINGS[field.name]}
                       onChange={handleIntervalChange}
-                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 dark:text-white text-sm transition-all duration-200"
-                      style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(100, 116, 139, 0.3)', outline: 'none' }}
+                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 text-sm transition-all duration-200"
+                      style={{ background: 'rgba(255, 255, 255, 0.9)', border: '1px solid rgba(203, 213, 225, 0.5)', outline: 'none' }}
                       onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
                       onBlur={(e) => e.target.style.borderColor = 'rgba(100, 116, 139, 0.3)'}
                     >
@@ -524,8 +524,8 @@ const NationalTaxService = ({ classCode }) => {
                       min={field.min}
                       max={field.max}
                       placeholder={`예: ${field.label.includes("부가") ? "0.1 (10%)" : "0.03 (3%)"}`}
-                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 dark:text-white text-sm transition-all duration-200"
-                      style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(100, 116, 139, 0.3)', outline: 'none' }}
+                      className="w-full px-4 py-2.5 rounded-lg text-slate-800 text-sm transition-all duration-200"
+                      style={{ background: 'rgba(255, 255, 255, 0.9)', border: '1px solid rgba(203, 213, 225, 0.5)', outline: 'none' }}
                       onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
                       onBlur={(e) => e.target.style.borderColor = 'rgba(100, 116, 139, 0.3)'}
                     />
@@ -536,7 +536,7 @@ const NationalTaxService = ({ classCode }) => {
 
             <button
               onClick={saveTaxSettings}
-              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-slate-800 dark:text-white transition-all duration-300"
+              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-slate-800 transition-all duration-300"
               style={{
                 background: 'linear-gradient(135deg, rgba(0, 136, 255, 0.3), rgba(0, 255, 242, 0.2))',
                 border: '1px solid rgba(0, 255, 242, 0.35)',
@@ -559,9 +559,9 @@ const NationalTaxService = ({ classCode }) => {
             </button>
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(96, 165, 250, 0.15)' }}>
+          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 249, 255, 0.6)', border: '1px solid rgba(96, 165, 250, 0.15)' }}>
             <h3 className="text-sm font-bold mb-2" style={{ color: '#60a5fa', fontFamily: 'Rajdhani, sans-serif' }}>💡 세금 정책 목표</h3>
-            <ul className="space-y-1 text-xs" style={{ color: 'rgba(148, 163, 184, 0.7)' }}>
+            <ul className="space-y-1 text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
               <li>• 공정한 시장 경제 질서 확립</li>
               <li>• 안정적인 학급 재정 및 공공 서비스 투자</li>
               <li>• 경제 활동 참여와 세금의 형평성 제고</li>
@@ -572,8 +572,8 @@ const NationalTaxService = ({ classCode }) => {
 
       {/* 분석 탭 */}
       {activeTab === "analytics" && (
-        <div className="rounded-xl p-6" style={{ background: 'rgba(30, 41, 59, 0.8)', border: '1px solid rgba(0, 255, 242, 0.12)' }}>
-          <h3 className="text-lg font-bold mb-5" style={{ color: '#00fff2', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+        <div className="rounded-xl p-6" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+          <h3 className="text-lg font-bold mb-5" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
             📈 세수 분석 ({classCode})
           </h3>
 
@@ -589,15 +589,15 @@ const NationalTaxService = ({ classCode }) => {
               return (
                 <div key={cat.label} className="rounded-lg p-4 text-center" style={{ background: `${cat.color}08`, border: `1px solid ${cat.color}25` }}>
                   <p className="text-2xl font-bold" style={{ color: cat.color, fontFamily: 'Rajdhani, sans-serif' }}>{pct}%</p>
-                  <p className="text-xs mt-1" style={{ color: 'rgba(148, 163, 184, 0.7)' }}>{cat.label}</p>
-                  <p className="text-xs font-semibold mt-0.5 text-slate-800 dark:text-white">{formatKoreanCurrency(cat.amount)}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>{cat.label}</p>
+                  <p className="text-xs font-semibold mt-0.5 text-slate-800">{formatKoreanCurrency(cat.amount)}</p>
                 </div>
               );
             })}
           </div>
 
-          <div className="rounded-lg p-6 text-center" style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(100, 116, 139, 0.15)' }}>
-            <p className="text-xs" style={{ color: 'rgba(148, 163, 184, 0.5)' }}>
+          <div className="rounded-lg p-6 text-center" style={{ background: 'rgba(240, 249, 255, 0.6)', border: '1px solid rgba(203, 213, 225, 0.3)' }}>
+            <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.5)' }}>
               추후 시간별 세수 변화 추이, 카테고리별 상세 분석이 추가될 예정입니다.
             </p>
           </div>

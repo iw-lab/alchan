@@ -22,7 +22,7 @@
 /* ===== 헤더 ===== */
 .trial-room-header {
   height: 60px;
-  background: linear-gradient(90deg, #2c3e50 0%, #34495e 100%);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
   padding: 0 20px;
   display: flex;
   justify-content: space-between;
@@ -33,7 +33,7 @@
 }
 
 .trial-room-header h2 {
-  color: #fff;
+  color: #1e293b;
   font-size: 1.4rem;
   font-weight: 600;
   display: flex;
@@ -43,7 +43,7 @@
 
 .close-room-btn {
   background: #dc3545;
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 8px 20px;
   border-radius: 20px;
@@ -69,14 +69,14 @@
 /* ===== 법정 뷰 - 아이소메트릭 스타일 ===== */
 .courtroom-view {
   flex: 1;
-  background: linear-gradient(135deg, #2a2a3e 0%, #1f1f2e 100%);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
   border-radius: 15px;
   padding: 20px;
   position: relative;
   overflow-y: auto; /* 내용이 많아지면 스크롤 가능하도록 설정 */
   display: flex;
   flex-direction: column;
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
   min-width: 0; /* flex 아이템이 축소될 수 있게 함 */
 }
 
@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   position: relative;
   background: var(--role-color);
   transition: all 0.3s;
@@ -175,12 +175,12 @@
 }
 
 .avatar-name {
-  color: #fff;
+  color: #1e293b;
   font-size: 0.8rem;
   font-weight: 600;
   text-align: center;
   margin-top: 5px;
-  background: rgba(0, 0, 0, 0.7);
+  background: #ffffff;
   padding: 2px 8px;
   border-radius: 10px;
   white-space: nowrap;
@@ -208,7 +208,7 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .speech-bubble.show {
@@ -222,7 +222,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: white;
+  border-top-color: #1e293b;
 }
 
 /* ===== 판사석 - 높은 위치 ===== */
@@ -231,7 +231,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
   border-radius: 10px;
   margin-bottom: 20px;
   position: relative;
@@ -269,21 +269,21 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8fafc;
   border-radius: 10px;
   padding: 10px;
-  border: 2px dashed var(--border-primary);
+  border: 2px dashed #e0e7ff;
   transition: all 0.3s;
 }
 
 .role-position:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #eef2ff;
+  border-color: #c7d2fe;
 }
 
 /* ===== 배심원석 - 하단 그리드 ===== */
 .jury-box {
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 5px 20px var(--bg-input);
@@ -311,7 +311,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8fafc;
   border-radius: 8px;
   padding: 5px;
 }
@@ -323,9 +323,9 @@
   align-items: center;
   gap: 8px;
   padding: 15px;
-  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border: 2px dashed #c7d2fe;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  background: #f8fafc;
   cursor: pointer;
   transition: all 0.3s;
 }
@@ -338,7 +338,7 @@
 
 .take-role-btn, .take-jury-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 8px 16px;
   border-radius: 20px;
@@ -378,31 +378,31 @@
 
 .trial-sidebar::-webkit-scrollbar-track,
 .courtroom-view::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f1f5f9;
   border-radius: 3px;
 }
 
 .trial-sidebar::-webkit-scrollbar-thumb,
 .courtroom-view::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: #c7d2fe;
   border-radius: 3px;
 }
 
 /* ===== 사이드바 섹션 공통 스타일 ===== */
 .sidebar-section {
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  background: linear-gradient(135deg, #f5f3ff, #eef2ff);
   padding: 15px;
   border-radius: 10px;
   box-shadow: 0 4px 15px var(--bg-input);
 }
 
 .sidebar-section h3 {
-  color: #fff;
+  color: #1e293b;
   margin: 0 0 10px 0;
   font-size: 1rem;
   font-weight: 600;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-primary);
+  border-bottom: 1px solid #e0e7ff;
 }
 
 /* ===== 참가자 정보 ===== */
@@ -413,7 +413,7 @@
 }
 
 .my-name {
-  color: #e2e8f0;
+  color: #334155;
   font-size: 0.95rem;
   margin-bottom: 8px;
 }
@@ -421,7 +421,7 @@
 .permission-badge {
   display: inline-block;
   background: #48bb78;
-  color: white;
+  color: #1e293b;
   padding: 4px 12px;
   border-radius: 15px;
   font-size: 0.8rem;
@@ -431,7 +431,7 @@
 .request-permission-btn {
   margin-top: 10px;
   background: #667eea;
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 6px 12px;
   border-radius: 15px;
@@ -489,7 +489,7 @@
 
 .chat-message {
   padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f1f5f9;
   border-radius: 8px;
   word-wrap: break-word;
 }
@@ -500,7 +500,7 @@
 }
 
 .message-text {
-  color: #e2e8f0;
+  color: #334155;
   font-size: 0.9rem;
 }
 
@@ -512,9 +512,9 @@
 
 .message-input {
   flex: 1;
-  background: var(--border-primary);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  background: #f8fafc;
+  border: 1px solid #e0e7ff;
+  color: #1e293b;
   padding: 8px 12px;
   border-radius: 20px;
   font-size: 0.9rem;
@@ -522,17 +522,17 @@
 
 .message-input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.15);
+  background: #ffffff;
   border-color: #667eea;
 }
 
 .message-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: #94a3b8;
 }
 
 .send-btn {
   background: #3b82f6;
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 8px 20px;
   border-radius: 20px;
@@ -556,7 +556,7 @@
 .evidence-item {
   padding: 8px;
   margin-bottom: 5px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f1f5f9;
   border-radius: 5px;
   display: flex;
   justify-content: space-between;
@@ -580,7 +580,7 @@
 
 .upload-btn {
   background: #10b981;
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 8px 16px;
   border-radius: 20px;
@@ -606,7 +606,7 @@
 .judge-action-btn {
   width: 100%;
   background: #7c3aed;
-  color: white;
+  color: #1e293b;
   border: none;
   padding: 10px;
   border-radius: 8px;
@@ -634,7 +634,7 @@
 .permission-approve-btn {
   padding: 2px 8px;
   background: #48bb78;
-  color: white;
+  color: #1e293b;
   border: none;
   border-radius: 3px;
   font-size: 0.8rem;
@@ -643,12 +643,13 @@
 
 /* ===== 투표 섹션 ===== */
 .voting-question {
-  color: #fef2f2;
+  color: #1e293b;
   font-size: 0.95rem;
   margin-bottom: 15px;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: #f8fafc;
   border-radius: 8px;
+  border: 1px solid #e0e7ff;
 }
 
 .voting-buttons {
@@ -669,7 +670,7 @@
 
 .vote-btn.guilty {
   background: #ef4444;
-  color: white;
+  color: #1e293b;
 }
 
 .vote-btn.guilty:hover {
@@ -679,7 +680,7 @@
 
 .vote-btn.not-guilty {
   background: #10b981;
-  color: white;
+  color: #1e293b;
 }
 
 .vote-btn.not-guilty:hover {
@@ -689,10 +690,10 @@
 
 /* ===== 투표 결과 ===== */
 .voting-results p {
-  color: #dbeafe;
+  color: #334155;
   margin: 5px 0;
   padding: 5px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-radius: 4px;
   font-size: 0.85rem;
 }
@@ -705,7 +706,7 @@
   align-items: center;
   height: 100vh;
   background: var(--bg-card);
-  color: white;
+  color: #1e293b;
   font-size: 1.2rem;
 }
 
@@ -776,8 +777,8 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.9);
-  color: white;
+  background: #ffffff;
+  color: #1e293b;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.75rem;
@@ -821,7 +822,7 @@
 
 .loading-shimmer {
   animation: shimmer 2s infinite;
-  background: linear-gradient(90deg, transparent 0%, var(--border-primary) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, #e0e7ff 50%, transparent 100%);
   background-size: 1000px 100%;
 }
 

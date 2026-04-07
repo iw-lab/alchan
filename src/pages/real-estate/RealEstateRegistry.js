@@ -1306,7 +1306,7 @@ const RealEstateRegistry = () => {
     const layoutProperties = properties.slice(0, settings.totalProperties);
     return (
       <div className="property-layout">
-        <h3>🏢 부동산 배치도 (학급: {classCode || "정보 없음"})</h3>
+        <h3>🏢 부동산 배치도</h3>
         <div
           className="layout-grid"
           style={{
@@ -1797,7 +1797,7 @@ const RealEstateRegistry = () => {
         {operationLoading && <div className="loading-overlay">처리 중...</div>}
         <div className="exchange-header">
           <div className="header-content">
-            <h1>🏢 부동산 거래소 (학급: {classCode || "정보 없음"})</h1>
+            <h1>🏢 부동산 거래소</h1>
           </div>
         </div>
         <div className="stats-container">
@@ -1987,7 +1987,7 @@ const RealEstateRegistry = () => {
             }}
           >
             <div className="panel-header">
-              <h3>⚙️ 관리자 설정 (학급: {classCode})</h3>
+              <h3>⚙️ 관리자 설정</h3>
               <button className="close-btn" onClick={() => setShowAdminPanel(false)}>✕</button>
             </div>
             <div className="panel-content">

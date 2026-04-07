@@ -231,15 +231,15 @@ export function BadgeIcon({
       >
         <Icon
           size={iconSizes[size]}
-          className={earned ? "text-slate-800 dark:text-white" : "text-gray-500"}
+          className={earned ? "text-slate-800" : "text-gray-500"}
         />
       </button>
 
       {/* 툴팁 */}
       {showInfo && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-800 rounded-xl shadow-xl border border-gray-700 z-50">
-          <h4 className="font-bold text-slate-800 dark:text-white text-sm">{badge.name}</h4>
-          <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">{badge.description}</p>
+          <h4 className="font-bold text-slate-800 text-sm">{badge.name}</h4>
+          <p className="text-xs text-slate-500 mt-1">{badge.description}</p>
           {!earned && (
             <p className="text-xs text-amber-400 mt-2 font-medium">
               아직 획득하지 못했어요
@@ -263,7 +263,7 @@ export function BadgeList({
 
   if (badges.length === 0) {
     return (
-      <div className={`text-center py-8 text-slate-500 dark:text-gray-400 ${className}`}>
+      <div className={`text-center py-8 text-slate-500 ${className}`}>
         아직 획득한 배지가 없어요. 활동을 통해 배지를 모아보세요!
       </div>
     );
@@ -280,7 +280,7 @@ export function BadgeList({
             size="md"
             earned={earnedBadges.includes(badge.id)}
           />
-          <span className="text-xs text-slate-500 dark:text-gray-400 text-center truncate w-full">
+          <span className="text-xs text-slate-500 text-center truncate w-full">
             {badge.name}
           </span>
         </div>
@@ -298,8 +298,8 @@ export function NewBadgeModal({ badges = [], onClose }) {
       <div className="bg-gray-800 rounded-3xl p-6 max-w-sm w-full animate-bounce-in">
         <div className="text-center">
           <div className="text-4xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">새 배지 획득!</h2>
-          <p className="text-slate-500 dark:text-gray-400 mb-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">새 배지 획득!</h2>
+          <p className="text-slate-500 mb-6">
             축하해요! 새로운 배지를 획득했어요!
           </p>
 
@@ -315,7 +315,7 @@ export function NewBadgeModal({ badges = [], onClose }) {
                     earned
                     showTooltip={false}
                   />
-                  <span className="text-sm font-medium text-slate-800 dark:text-white">
+                  <span className="text-sm font-medium text-slate-800">
                     {badge.name}
                   </span>
                 </div>

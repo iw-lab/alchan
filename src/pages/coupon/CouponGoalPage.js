@@ -583,7 +583,7 @@ export default function CouponGoalPage() {
         <h2
           className="text-2xl font-bold text-emerald-600 border-b-2 border-emerald-200 pb-3 mb-6"
         >
-          🎯 쿠폰 목표 (학급: {currentUserClassCode})
+          🎯 쿠폰 목표
         </h2>
 
         {currentUserClassCode && currentGoalId && (
