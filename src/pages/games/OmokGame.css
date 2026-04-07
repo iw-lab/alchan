@@ -45,18 +45,48 @@
 /* 헤더 */
 .omok-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 16px;
+  margin: 0 1rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
   animation: fadeIn 0.5s ease-out;
 }
 
+.omok-header p {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 0.9rem;
+}
+
 .omok-header h2 {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: 1px;
   margin-bottom: 0.5rem;
-  background: linear-gradient(to right, #f0c27f, #fc5c7d);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: white;
+  background: none;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: white;
+}
+
+.my-profile {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0.5rem;
+}
+
+.my-profile .player-info {
+  color: white !important;
+  font-size: 0.95rem;
+}
+
+.my-profile .player-info strong {
+  color: white !important;
 }
 
 .game-info {
@@ -340,34 +370,58 @@
 
 /* 로비 스타일 */
 .game-page-container {
-  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 50%, #dde6ff 100%);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 2rem;
+  align-items: flex-start;
+  padding: 1rem 0;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  width: 100%;
 }
 
 .omok-lobby {
   width: 100%;
-  max-width: 600px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 2.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0 1rem;
+  box-shadow: none;
   animation: fadeIn 0.5s ease-out;
 }
 
-.lobby-section { margin-bottom: 2rem; }
+.lobby-section {
+  margin-bottom: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
+}
 .lobby-section:last-child { margin-bottom: 0; }
 
 .lobby-section h3 {
   color: #1e293b;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
   margin-bottom: 1rem;
   text-align: center;
+}
+
+.game-mode-selector {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
+}
+
+.ai-difficulty-selector {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.06);
 }
 
 .game-mode-selector,
