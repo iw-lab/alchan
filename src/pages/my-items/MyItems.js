@@ -882,48 +882,47 @@ const MyItems = () => {
         {user && (
           <>
             {Object.keys(recentlyUsedItems).length > 0 && (
-              <div className="content-card-section">
+              <div>
                 <h3 className="section-title">사용 중인 아이템</h3>
-                <div className="items-grid">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
                   {Object.entries(recentlyUsedItems).map(
                     ([itemId, itemData]) => (
                       <div
                         key={itemId}
-                        className="store-item-card active-item-card"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: "linear-gradient(135deg, #f5f3ff, #eef2ff)",
+                          border: "1px solid #c7d2fe",
+                          borderRadius: "12px",
+                          padding: "12px 16px",
+                        }}
                       >
-                        <div className="item-content">
-                          <div className="my-item-header">
-                            <div className="item-icon-group">
-                              <div className="item-icon">
-                                {itemData.itemDetails.icon || "✨"}
-                              </div>
-                            </div>
-                            <div className="item-info">
-                              <h3 className="item-name">
-                                {itemData.itemDetails.name}
-                                {itemData.usedQuantity >= 1 && (
-                                  <span className="quantity-badge quantity-medium" style={{ marginLeft: "6px" }}>
-                                    ×{itemData.usedQuantity}
-                                  </span>
-                                )}
-                              </h3>
-                              <p className="timer-text">
-                                {formatTimeLeft(
-                                  itemData.usedTimestamp,
-                                  itemData.itemDetails.durationMs,
-                                )}
-                              </p>
-                            </div>
+                        <span style={{ fontSize: "1.5rem" }}>{itemData.itemDetails.icon || "✨"}</span>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>
+                            {itemData.itemDetails.name}
+                            {itemData.usedQuantity >= 1 && (
+                              <span style={{ marginLeft: "6px", fontSize: "0.8rem", color: "#6366f1" }}>
+                                ×{itemData.usedQuantity}
+                              </span>
+                            )}
                           </div>
-                          <div className="my-item-actions">
-                            <button
-                              className="stop-using-button"
-                              onClick={() => handleRemoveUsedItem(itemId)}
-                            >
-                              사용 중지
-                            </button>
+                          <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                            {formatTimeLeft(
+                              itemData.usedTimestamp,
+                              itemData.itemDetails.durationMs,
+                            )}
                           </div>
                         </div>
+                        <button
+                          className="stop-using-button"
+                          onClick={() => handleRemoveUsedItem(itemId)}
+                          style={{ marginLeft: "8px", padding: "6px 14px", fontSize: "0.8rem", borderRadius: "8px" }}
+                        >
+                          사용 중지
+                        </button>
                       </div>
                     ),
                   )}
