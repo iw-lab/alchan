@@ -65,27 +65,19 @@
   box-sizing: inherit;
 }
 
-/* Header */
+/* Header - 히어로 스타일 */
 .stock-header {
-  background: linear-gradient(135deg, #ffffff, #f8faff);
-  backdrop-filter: blur(12px);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
+  background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+  padding: 20px 28px;
   margin-bottom: var(--spacing-lg);
   position: relative;
   overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
 }
 
 .stock-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--primary-cyan), transparent);
-  opacity: 0.4;
+  display: none;
 }
 
 .stock-header-content {
@@ -98,32 +90,50 @@
   gap: var(--spacing-md);
 }
 
+.logo-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .stock-header h1 {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #ffffff !important;
   margin: 0;
   white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.market-status {
+  color: rgba(255,255,255,0.9) !important;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.market-status.open {
+  color: #86efac !important;
 }
 
 .stock-header-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 10px;
   margin-left: auto;
   flex-shrink: 0;
   flex-wrap: nowrap;
 }
 
 .user-info-display {
-  color: var(--primary-cyan);
-  font-weight: 600;
-  background: #eef2ff;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-lg);
+  color: #ffffff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  padding: 8px 16px;
+  border-radius: 12px;
   white-space: nowrap;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
 }
 
 /* Main Section */
@@ -278,13 +288,13 @@
 }
 
 .btn-primary {
-  background: #eef2ff;
-  border-color: var(--primary-cyan);
-  color: var(--primary-cyan);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-cyan);
+  background: rgba(255, 255, 255, 0.3);
   color: white;
 }
 
