@@ -565,12 +565,11 @@ label, .form-label {
 }
 
 /* Job header */
-.job-header-container, .job-header-container * {
-  color: var(--text-primary) !important;
+.job-header-container {
+  /* 배경색은 컴포넌트에서 직접 지정 */
 }
 
 .job-title-text {
-  color: var(--text-primary) !important;
   font-weight: 700 !important;
 }
 

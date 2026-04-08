@@ -58,7 +58,7 @@ export default function WelcomePopup() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.8)",
+        background: "rgba(0,0,0,0.35)",
         backdropFilter: "blur(6px)",
         display: "flex",
         alignItems: "center",
@@ -70,15 +70,15 @@ export default function WelcomePopup() {
     >
       <div
         style={{
-          background: "#0f1225",
-          border: "1px solid rgba(0,255,242,0.25)",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
           borderRadius: 16,
           width: "100%",
           maxWidth: 480,
           maxHeight: "85vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 0 40px rgba(0,255,242,0.1)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -87,7 +87,7 @@ export default function WelcomePopup() {
           style={{
             position: "relative",
             padding: "24px 24px 16px",
-            borderBottom: "1px solid rgba(100,116,139,0.3)",
+            borderBottom: "1px solid #e2e8f0",
             flexShrink: 0,
           }}
         >
@@ -100,12 +100,12 @@ export default function WelcomePopup() {
               width: 32,
               height: 32,
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.1)",
+              background: "#f1f5f9",
               border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#94a3b8",
+              color: "#64748b",
               cursor: "pointer",
             }}
           >
@@ -115,14 +115,14 @@ export default function WelcomePopup() {
             style={{
               fontSize: 20,
               fontWeight: 700,
-              color: "#ffffff",
+              color: "#0f172a",
               margin: 0,
               paddingRight: 32,
             }}
           >
             {WELCOME_GUIDE.title}
           </h2>
-          <p style={{ fontSize: 14, color: "#b0b8c8", marginTop: 6 }}>
+          <p style={{ fontSize: 14, color: "#64748b", marginTop: 6 }}>
             {WELCOME_GUIDE.subtitle}
           </p>
         </div>
@@ -145,10 +145,10 @@ export default function WelcomePopup() {
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 14,
-                background: "rgba(10,10,20,0.7)",
+                background: "#f8fafc",
                 borderRadius: 12,
                 padding: "14px 16px",
-                border: "1px solid rgba(0,255,242,0.12)",
+                border: "1px solid #e2e8f0",
               }}
             >
               <span style={{ fontSize: 24, flexShrink: 0, marginTop: 2 }}>
@@ -159,7 +159,7 @@ export default function WelcomePopup() {
                   style={{
                     fontSize: 15,
                     fontWeight: 700,
-                    color: "#ffffff",
+                    color: "#0f172a",
                     margin: "0 0 4px",
                   }}
                 >
@@ -168,7 +168,7 @@ export default function WelcomePopup() {
                 <p
                   style={{
                     fontSize: 13,
-                    color: "#d1d5db",
+                    color: "#475569",
                     lineHeight: 1.5,
                     margin: 0,
                   }}
@@ -184,7 +184,7 @@ export default function WelcomePopup() {
         <div
           style={{
             padding: "16px 24px",
-            borderTop: "1px solid rgba(100,116,139,0.3)",
+            borderTop: "1px solid #e2e8f0",
             display: "flex",
             flexDirection: "column",
             gap: 8,
@@ -197,11 +197,11 @@ export default function WelcomePopup() {
               width: "100%",
               padding: "12px 0",
               borderRadius: 12,
-              background: "rgba(0,255,242,0.15)",
-              color: "var(--accent)",
+              background: "#6366f1",
+              color: "#ffffff",
               fontSize: 15,
               fontWeight: 700,
-              border: "1px solid rgba(0,255,242,0.3)",
+              border: "none",
               cursor: "pointer",
             }}
           >
@@ -213,11 +213,11 @@ export default function WelcomePopup() {
               width: "100%",
               padding: "12px 0",
               borderRadius: 12,
-              background: "rgba(30,41,59,0.6)",
-              color: "#94a3b8",
+              background: "#f1f5f9",
+              color: "#64748b",
               fontSize: 14,
               fontWeight: 500,
-              border: "1px solid rgba(100,116,139,0.3)",
+              border: "1px solid #e2e8f0",
               cursor: "pointer",
             }}
           >

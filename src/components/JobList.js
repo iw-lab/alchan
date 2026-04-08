@@ -26,18 +26,19 @@ const JobList = memo(function JobList({
       key={job.id} // 상위에서 map을 사용하므로 여기서 key는 필수 X, 식별용으로 유지
       className="flex flex-col h-full rounded-lg overflow-hidden mb-4"
       style={{
-        backgroundColor: "#f1f5f9",
-        border: "1px solid #cbd5e1",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "#ffffff",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+        borderRadius: 12,
       }}
     >
-      {/* 직업 헤더 - 시인성 개선 */}
+      {/* 직업 헤더 - 세련된 스타일 */}
       <div
         className="job-header-container flex justify-between items-center"
         style={{
-          background: "linear-gradient(135deg, #dbeafe 0%, #c7d2fe 100%)",
-          padding: isMobile ? "12px 14px" : "14px 16px",
-          borderBottom: "1px solid #cbd5e1",
+          background: "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)",
+          padding: isMobile ? "12px 14px" : "14px 18px",
+          borderBottom: "none",
         }}
       >
         <div
@@ -45,7 +46,7 @@ const JobList = memo(function JobList({
           style={{
             fontSize: isMobile ? "15px" : "18px",
             letterSpacing: "-0.01em",
-            color: "#1e293b",
+            color: "#ffffff",
           }}
         >
           {job.title}
@@ -59,7 +60,7 @@ const JobList = memo(function JobList({
               style={{
                 background: "none",
                 border: "none",
-                color: "#64748b",
+                color: "rgba(255,255,255,0.8)",
               }}
               aria-label={`${job.title} 직업 수정`}
             >
@@ -71,7 +72,7 @@ const JobList = memo(function JobList({
               style={{
                 background: "none",
                 border: "none",
-                color: "#64748b",
+                color: "rgba(255,255,255,0.8)",
               }}
               aria-label={`${job.title} 직업 삭제`}
             >
