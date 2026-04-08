@@ -703,6 +703,8 @@ const ChessGame = () => {
     window.addEventListener("beforeunload", cleanup);
     return () => {
       window.removeEventListener("beforeunload", cleanup);
+      // 컴포넌트 언마운트 시(페이지 이동 등)에도 대기 방 삭제
+      cleanup();
     };
   }, []);
 
