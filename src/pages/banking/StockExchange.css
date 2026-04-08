@@ -136,14 +136,13 @@
   gap: var(--spacing-xl);
 }
 
-/* Asset Summary */
+/* Asset Summary - 외곽 카드 제거, 직접 배치 */
 .asset-summary {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
 }
 
 .asset-cards {
@@ -215,38 +214,34 @@
 }
 
 .asset-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: white;
   flex-shrink: 0;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
+  border: none;
 }
 
 .asset-card-icon.green {
-  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-  border: 1px solid #86efac;
+  background: rgba(16, 185, 129, 0.15);
   color: var(--success-green);
 }
 
 .asset-card-icon.blue {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  border: 1px solid #93c5fd;
+  background: rgba(99, 102, 241, 0.15);
   color: var(--primary-cyan);
 }
 
 .asset-card-icon.purple {
-  background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
-  border: 1px solid #c4b5fd;
+  background: rgba(124, 58, 237, 0.15);
   color: var(--accent-pink);
 }
 
 .asset-card-icon.red {
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  border: 1px solid #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
   color: var(--danger-red);
 }
 
@@ -469,29 +464,26 @@
 .stock-badge {
   font-size: 0.65rem;
   padding: 3px 8px;
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   font-weight: 600;
-  color: white;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
+  border: none;
 }
 
 .stock-badge.auto {
-  background: rgba(0, 255, 157, 0.2);
-  border: 1px solid rgba(0, 255, 157, 0.3);
+  background: rgba(16, 185, 129, 0.15);
   color: var(--success-green);
 }
 
 .stock-badge.manual {
-  background: rgba(255, 215, 0, 0.2);
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  background: rgba(217, 119, 6, 0.15);
   color: var(--warning-yellow);
 }
 
 .stock-badge.relist {
-  background: rgba(255, 0, 255, 0.2);
-  border: 1px solid rgba(255, 0, 255, 0.3);
+  background: rgba(124, 58, 237, 0.15);
   color: var(--accent-pink);
 }
 
