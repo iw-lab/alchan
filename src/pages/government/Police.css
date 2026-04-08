@@ -416,24 +416,41 @@ button {
 
 /* --- 신고 목록 카드 스타일 --- */
 .report-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .report-list { grid-template-columns: 1fr; }
 }
 
 .report-item {
-  background-color: #f8faff;
-  border: 1px solid var(--medium-gray);
-  border-left: 4px solid var(--secondary-color);
-  border-radius: var(--border-radius-md);
-  padding: 20px;
-  box-shadow: var(--box-shadow-sm);
-  /* light theme - no backdrop filter needed */
+  background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%);
+  border: 1px solid #dde4ff;
+  border-left: 4px solid #818cf8;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
+  transition: all 0.2s ease;
 }
+
+.report-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
+  border-color: #818cf8;
+}
+
+.report-item:nth-child(6n+1) { background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%); border-left-color: #818cf8; }
+.report-item:nth-child(6n+2) { background: linear-gradient(145deg, #fef3f2 0%, #fce7e6 100%); border-left-color: #f87171; }
+.report-item:nth-child(6n+3) { background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%); border-left-color: #34d399; }
+.report-item:nth-child(6n+4) { background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%); border-left-color: #fbbf24; }
+.report-item:nth-child(6n+5) { background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 100%); border-left-color: #c084fc; }
+.report-item:nth-child(6n+6) { background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%); border-left-color: #2dd4bf; }
 
 .report-item.law-report {
   border-left-color: var(--primary-color);
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.05) 0%, #f8faff 100%);
+  background: linear-gradient(145deg, #eef2ff 0%, #e0e7ff 100%);
 }
 
 .report-header {
