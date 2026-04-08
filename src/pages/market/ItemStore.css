@@ -866,9 +866,10 @@ body {
 }
 
 .compact-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
-  border-color: #a5b4fc;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
+  border-color: #818cf8;
+  border-left-width: 4px;
 }
 
 .compact-card .item-content {
@@ -931,9 +932,36 @@ body {
 }
 
 .compact-card {
-  background: #ffffff !important;
-  border: 1px solid #e0e7ff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+  background: linear-gradient(145deg, #f8faff 0%, #f0f4ff 100%) !important;
+  border: 1px solid #dde4ff;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
+  border-left: 4px solid #a5b4fc;
+}
+
+/* 카드별 색상 교대 - 시각적 구분 */
+.compact-card:nth-child(6n+1) {
+  background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%) !important;
+  border-left-color: #818cf8;
+}
+.compact-card:nth-child(6n+2) {
+  background: linear-gradient(145deg, #fef3f2 0%, #fce7e6 100%) !important;
+  border-left-color: #f87171;
+}
+.compact-card:nth-child(6n+3) {
+  background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  border-left-color: #34d399;
+}
+.compact-card:nth-child(6n+4) {
+  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%) !important;
+  border-left-color: #fbbf24;
+}
+.compact-card:nth-child(6n+5) {
+  background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 100%) !important;
+  border-left-color: #c084fc;
+}
+.compact-card:nth-child(6n+6) {
+  background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%) !important;
+  border-left-color: #2dd4bf;
 }
 
 .compact-card .item-actions-primary {
