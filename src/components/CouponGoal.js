@@ -1,11 +1,11 @@
 // src/CouponGoal.js
 import React from "react";
 
-// 원형 프로그레스 컴포넌트
+// 원형 프로그레스 컴포넌트 (축소 버전)
 const CircularProgress = ({
   percentage,
-  size = 140,
-  strokeWidth = 12,
+  size = 100,
+  strokeWidth = 8,
   color,
   children,
 }) => {
@@ -16,16 +16,14 @@ const CircularProgress = ({
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        {/* 배경 원 */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(0, 0, 0, 0.08)"
+          stroke="rgba(0, 0, 0, 0.06)"
           strokeWidth={strokeWidth}
         />
-        {/* 프로그레스 원 */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -36,16 +34,18 @@ const CircularProgress = ({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.5s ease" }}
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
         />
       </svg>
-      {/* 중앙 콘텐츠 */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
         {children}
       </div>
     </div>
   );
 };
+
+// 마일스톤 마커
+const milestones = [25, 50, 75];
 
 export default function CouponGoal({
   classCouponGoal,
@@ -77,6 +77,7 @@ export default function CouponGoal({
       : 0;
 
   const mainColor = goalAchieved ? "#10b981" : "#6366f1";
+  const remaining = Math.max(validClassCouponGoal - goalProgress, 0);
 
   return (
     <div
@@ -102,14 +103,12 @@ export default function CouponGoal({
       />
 
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-5">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2.5">
           <span className="text-3xl">🎯</span>
           <h3
             className="text-xl font-bold m-0"
-            style={{
-              color: "#1e293b",
-            }}
+            style={{ color: "#1e293b" }}
           >
             학급 쿠폰 목표
           </h3>
@@ -122,7 +121,7 @@ export default function CouponGoal({
               style={{
                 background: "linear-gradient(135deg, #10b981, #059669)",
                 boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
-                animation: "pulse 2s infinite",
+                animation: "couponPulse 2s infinite",
               }}
             >
               🎉 목표 달성!
@@ -145,110 +144,255 @@ export default function CouponGoal({
         </div>
       </div>
 
-      {/* 메인 프로그레스 영역 */}
-      <div className="flex items-center justify-center gap-7 py-5 flex-wrap">
-        {/* 학급 목표 원형 프로그레스 */}
-        <div className="text-center">
+      {/* === 메인 프로그레스 영역 === */}
+      <div
+        className="rounded-xl p-5 mb-5"
+        style={{
+          background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
+          border: "1px solid #e2e8f0",
+        }}
+      >
+        {/* 큰 숫자 표시 */}
+        <div className="flex items-baseline justify-center gap-1 mb-1">
+          <span
+            className="font-extrabold"
+            style={{ fontSize: 36, color: mainColor, lineHeight: 1 }}
+          >
+            {(goalProgress || 0).toLocaleString()}
+          </span>
+          <span style={{ fontSize: 20, color: "#94a3b8", fontWeight: 500 }}>
+            /
+          </span>
+          <span style={{ fontSize: 20, color: "#64748b", fontWeight: 600 }}>
+            {validClassCouponGoal.toLocaleString()}
+          </span>
+          <span style={{ fontSize: 14, color: "#94a3b8", marginLeft: 2 }}>
+            쿠폰
+          </span>
+        </div>
+
+        {/* 남은 수량 */}
+        <div className="text-center mb-4">
+          <span style={{ fontSize: 13, color: "#64748b" }}>
+            {goalAchieved
+              ? "목표를 달성했어요!"
+              : `목표까지 ${remaining.toLocaleString()}쿠폰 남음`}
+          </span>
+        </div>
+
+        {/* 수평 프로그레스 바 */}
+        <div style={{ position: "relative", marginBottom: 6 }}>
+          {/* 바 배경 */}
+          <div
+            style={{
+              width: "100%",
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: "#e2e8f0",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            {/* 전체 진행 바 */}
+            <div
+              style={{
+                height: "100%",
+                width: `${goalPercentage}%`,
+                background: goalAchieved
+                  ? "linear-gradient(90deg, #10b981 0%, #34d399 100%)"
+                  : "linear-gradient(90deg, #4338ca 0%, #6366f1 60%, #818cf8 100%)",
+                borderRadius: 14,
+                transition: "width 0.8s ease",
+                position: "relative",
+                minWidth: goalPercentage > 0 ? 8 : 0,
+              }}
+            >
+              {/* 내 기여분 표시 (바 안에 amber 영역) */}
+              {myContributionPercentage > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    height: "100%",
+                    width: `${Math.min((myContribution / Math.max(goalProgress, 1)) * 100, 100)}%`,
+                    background: "rgba(251, 191, 36, 0.5)",
+                    borderRadius: "0 14px 14px 0",
+                    borderLeft: myContributionPercentage < goalPercentage ? "2px solid rgba(255,255,255,0.5)" : "none",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* 마일스톤 점선 */}
+            {milestones.map((ms) => (
+              <div
+                key={ms}
+                style={{
+                  position: "absolute",
+                  left: `${ms}%`,
+                  top: 0,
+                  height: "100%",
+                  width: 2,
+                  background:
+                    goalPercentage >= ms
+                      ? "rgba(255,255,255,0.4)"
+                      : "rgba(148,163,184,0.3)",
+                  zIndex: 1,
+                }}
+              />
+            ))}
+
+            {/* 퍼센트 텍스트 (바 위) */}
+            {goalPercentage >= 15 && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${Math.min(goalPercentage, 97)}%`,
+                  top: "50%",
+                  transform: "translate(-100%, -50%)",
+                  color: "#ffffff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  paddingRight: 8,
+                  textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                  zIndex: 2,
+                }}
+              >
+                {goalPercentage}%
+              </div>
+            )}
+          </div>
+
+          {/* 바 오른쪽에 퍼센트 (작을 때) */}
+          {goalPercentage < 15 && (
+            <div
+              style={{
+                position: "absolute",
+                right: -4,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: mainColor,
+                fontSize: 14,
+                fontWeight: 700,
+              }}
+            >
+            </div>
+          )}
+        </div>
+
+        {/* 마일스톤 라벨 */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            paddingLeft: 4,
+            paddingRight: 4,
+          }}
+        >
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>0</span>
+          {milestones.map((ms) => (
+            <span
+              key={ms}
+              style={{
+                fontSize: 11,
+                color: goalPercentage >= ms ? mainColor : "#94a3b8",
+                fontWeight: goalPercentage >= ms ? 600 : 400,
+                position: "relative",
+                left: `${ms === 25 ? -2 : ms === 50 ? -8 : -14}%`,
+              }}
+            >
+              {ms}%
+            </span>
+          ))}
+          <span
+            style={{
+              fontSize: 11,
+              color: goalAchieved ? "#10b981" : "#94a3b8",
+              fontWeight: goalAchieved ? 700 : 400,
+            }}
+          >
+            100%
+          </span>
+        </div>
+      </div>
+
+      {/* === 통계 카드 3개 === */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {/* 달성률 */}
+        <div className="flex flex-col items-center">
           <CircularProgress
             percentage={goalPercentage}
-            size={150}
-            strokeWidth={14}
+            size={90}
+            strokeWidth={8}
             color={mainColor}
           >
             <div
-              className="text-3xl font-extrabold"
-              style={{ color: mainColor }}
+              className="font-extrabold"
+              style={{ fontSize: 20, color: mainColor }}
             >
               {goalPercentage}%
             </div>
-            <div className="text-xs font-medium" style={{ color: "#64748b" }}>
-              달성률
-            </div>
           </CircularProgress>
-          <div className="mt-3">
-            <div
-              className="text-2xl font-extrabold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {(goalProgress || 0).toLocaleString()}
-              <span
-                className="text-sm font-medium"
-                style={{ color: "#64748b" }}
-              >
-                {" "}
-                / {validClassCouponGoal.toLocaleString()}
-              </span>
-            </div>
-            <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-              학급 전체 응모량
-            </div>
+          <div
+            className="mt-1.5 font-semibold"
+            style={{ fontSize: 12, color: "#64748b" }}
+          >
+            달성률
           </div>
         </div>
 
-        {/* 내 기여도 원형 프로그레스 */}
-        <div className="text-center">
+        {/* 내 기여 */}
+        <div className="flex flex-col items-center">
           <CircularProgress
             percentage={myContributionPercentage}
-            size={120}
-            strokeWidth={10}
+            size={90}
+            strokeWidth={8}
             color="#f59e0b"
           >
             <div
-              className="text-2xl font-extrabold"
-              style={{ color: "#f59e0b" }}
+              className="font-extrabold"
+              style={{ fontSize: 18, color: "#f59e0b" }}
             >
-              {myContributionPercentage}%
-            </div>
-            <div className="text-xs font-medium" style={{ color: "#64748b" }}>
-              내 기여
-            </div>
-          </CircularProgress>
-          <div className="mt-3">
-            <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
               {(myContribution || 0).toLocaleString()}
-              <span
-                className="text-xs font-medium"
-                style={{ color: "#64748b" }}
-              >
-                {" "}
-                쿠폰
-              </span>
             </div>
-            <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-              내가 응모한 쿠폰
-            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8" }}>쿠폰</div>
+          </CircularProgress>
+          <div
+            className="mt-1.5 font-semibold"
+            style={{ fontSize: 12, color: "#64748b" }}
+          >
+            내 기여
           </div>
         </div>
 
-        {/* 내 보유량 카드 */}
-        <div
-          className="rounded-2xl p-5 text-center min-w-[130px]"
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)",
-            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.08)",
-            border: "1px solid rgba(251, 191, 36, 0.4)",
-          }}
-        >
-          <div className="text-3xl mb-2">🎫</div>
+        {/* 보유 쿠폰 */}
+        <div className="flex flex-col items-center">
           <div
-            className="text-3xl font-extrabold"
+            className="flex flex-col items-center justify-center rounded-full"
             style={{
-              color: "#d97706",
+              width: 90,
+              height: 90,
+              background:
+                "linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.12) 100%)",
+              border: "2px solid rgba(251, 191, 36, 0.35)",
             }}
           >
-            {(currentCoupons || 0).toLocaleString()}
+            <div className="text-xl mb-0.5">🎫</div>
+            <div
+              className="font-extrabold"
+              style={{ fontSize: 20, color: "#d97706" }}
+            >
+              {(currentCoupons || 0).toLocaleString()}
+            </div>
           </div>
           <div
-            className="text-xs font-semibold mt-1"
-            style={{ color: "#b45309" }}
+            className="mt-1.5 font-semibold"
+            style={{ fontSize: 12, color: "#64748b" }}
           >
             보유 쿠폰
           </div>
-          <div
-            className="text-xs mt-2 px-2 py-1 rounded-lg"
-            style={{ color: "#92400e", background: "rgba(251,191,36,0.2)" }}
-          >
+          <div style={{ fontSize: 10, color: "#94a3b8" }}>
             1쿠폰 ={" "}
             {typeof couponValue === "number"
               ? couponValue.toLocaleString()
@@ -259,7 +403,7 @@ export default function CouponGoal({
       </div>
 
       {/* 액션 버튼들 */}
-      <div className="grid grid-cols-4 gap-2 mt-5">
+      <div className="grid grid-cols-4 gap-2">
         <button
           onClick={() => setShowDonateModal(true)}
           className="border-none rounded-xl py-3.5 px-2 cursor-pointer flex flex-col justify-center items-center gap-1.5 transition-all"
@@ -311,19 +455,9 @@ export default function CouponGoal({
         </button>
       </div>
 
-      {/* 쿠폰 목표 글씨 크기 전체 확대 */}
-      <style>{`
-        .class-coupon-goal { font-size: 1.05rem; }
-        .class-coupon-goal h3 { font-size: 1.3rem !important; }
-        .class-coupon-goal .text-xs { font-size: 0.85rem !important; }
-        .class-coupon-goal .text-sm { font-size: 0.95rem !important; }
-        .class-coupon-goal .text-2xl { font-size: 1.6rem !important; }
-        .class-coupon-goal .text-3xl { font-size: 2rem !important; }
-      `}</style>
-
       {/* 애니메이션 스타일 */}
       <style>{`
-        @keyframes pulse {
+        @keyframes couponPulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
         }
