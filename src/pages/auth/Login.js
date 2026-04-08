@@ -381,7 +381,7 @@ const DEFAULT_SALARIES = {
 
 // 다크 인풋 공통 스타일
 const darkInput =
- "w-full bg-[#0d0d1a] border border-slate-700 rounded-xl text-slate-800 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all text-sm font-medium";
+ "w-full bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all text-sm font-medium";
 
 const Login = () => {
  useDocumentTitle("로그인 - 알찬 경제교육");
@@ -733,16 +733,16 @@ const Login = () => {
  className="fixed inset-0 flex flex-col items-center justify-center z-[9998]"
  style={{
  background:
- "linear-gradient(135deg, #070710 0%, #0d0d1a 50%, #111128 100%)",
+ "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%)",
  }}
  >
- {/* 배경 글로우 */}
+ {/* 배경 장식 */}
  <div className="absolute inset-0 overflow-hidden pointer-events-none">
  <div
- className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10"
+ className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-20"
  style={{
  background:
- "radial-gradient(circle, #6366f1 0%, transparent 70%)",
+ "radial-gradient(circle, #c7d2fe 0%, transparent 70%)",
  }}
  />
  </div>
@@ -753,7 +753,7 @@ const Login = () => {
  <div
  className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl border border-indigo-500/30"
  style={{
- background: "linear-gradient(135deg, #1e1e3a 0%, #14142a 100%)",
+ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
  }}
  >
  <svg
@@ -826,30 +826,21 @@ const Login = () => {
  className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
  style={{
  background:
- "linear-gradient(135deg, #070710 0%, #0d0d1a 50%, #111128 100%)",
+ "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%)",
  }}
  >
- {/* 배경 글로우 효과 */}
+ {/* 배경 장식 */}
  <div className="absolute inset-0 overflow-hidden pointer-events-none">
  <div
- className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-8"
+ className="absolute -top-32 -right-32 w-80 h-80 rounded-full opacity-20"
  style={{
- background: "radial-gradient(circle, #4f46e5 0%, transparent 70%)",
+ background: "radial-gradient(circle, #c7d2fe 0%, transparent 70%)",
  }}
  />
  <div
- className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full opacity-8"
+ className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full opacity-20"
  style={{
- background: "radial-gradient(circle, #6366f1 0%, transparent 70%)",
- }}
- />
- {/* 미묘한 그리드 패턴 */}
- <div
- className="absolute inset-0 opacity-[0.03]"
- style={{
- backgroundImage:
- "linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(90deg, #6366f1 1px, transparent 1px)",
- backgroundSize: "40px 40px",
+ background: "radial-gradient(circle, #ddd6fe 0%, transparent 70%)",
  }}
  />
  </div>
@@ -861,7 +852,7 @@ const Login = () => {
  <div
  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border border-indigo-500/30 shadow-lg shadow-indigo-500/10"
  style={{
- background: "linear-gradient(135deg, #1e1e3a 0%, #14142a 100%)",
+ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
  }}
  >
  <svg
@@ -903,16 +894,16 @@ const Login = () => {
 
  {/* 메인 카드 */}
  <div
- className="rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl"
+ className="rounded-2xl overflow-hidden border border-slate-200 shadow-xl"
  style={{
- background: "linear-gradient(180deg, #161628 0%, #111122 100%)",
+ background: "#ffffff",
  }}
  >
  {/* 탭 */}
  {activeTab !== "register" && (
  <div
- className="flex border-b border-slate-700/60"
- style={{ background: "#0d0d1a" }}
+ className="flex border-b border-slate-200"
+ style={{ background: "#f8fafc" }}
  >
  {[
  { id: "student", label: "학생", Icon: User },
@@ -923,8 +914,8 @@ const Login = () => {
  onClick={() => handleTabChange(id)}
  className={`flex-1 py-3.5 text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
  activeTab === id
- ? "text-slate-800 border-b-2 border-indigo-500 bg-indigo-500/5"
- : "text-slate-400 hover:text-slate-200 hover:bg-white/3"
+ ? "text-indigo-600 border-b-2 border-indigo-500 bg-indigo-50"
+ : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
  }`}
  >
  <Icon size={16} />
