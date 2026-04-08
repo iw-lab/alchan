@@ -1608,133 +1608,100 @@ const OmokGame = () => {
 
   if (!gameId || !game) {
     const myRankDetails = getOmokRankDetails(omokStats);
+    const winRate = omokStats.wins + omokStats.losses > 0
+      ? Math.round((omokStats.wins / (omokStats.wins + omokStats.losses)) * 100)
+      : 0;
     return (
       <div className="game-page-container">
-        <div className="omok-header">
-          <h2>글로벌 오목 게임</h2>
-          <p>
-            전 세계 모든 플레이어와 함께 두뇌 대결을 펼치고 쿠폰을 획득하세요!
-          </p>
-          <div className="my-profile">
-            <RankDisplay rankDetails={myRankDetails} showProgress={true} />
-            <div className="player-info">
-              <strong>{userDoc?.name || userDoc?.nickname || "익명"}</strong>
-              {userDoc?.classCode && ` (${userDoc.classCode})`}
-              {isAdmin() && <span className="admin-badge">[관리자]</span>}
+        {/* 히어로 헤더: 타이틀 + 랭크 통합 */}
+        <div className="omok-hero">
+          <div className="omok-hero-left">
+            <h2 className="omok-hero-title">🌍 글로벌 오목 게임</h2>
+            <p className="omok-hero-sub">두뇌 대결을 펼치고 쿠폰을 획득하세요!</p>
+          </div>
+          <div className="omok-hero-rank">
+            <div className="omok-rank-icon" style={{ backgroundColor: myRankDetails?.currentRank?.color || '#6366f1' }}>
+              {myRankDetails?.currentRank?.icon || '🏅'}
+            </div>
+            <div className="omok-rank-info">
+              <span className="omok-rank-title">{myRankDetails?.currentRank?.title || 'Unranked'}</span>
+              <span className="omok-rank-rp">{myRankDetails?.currentRP || 0} RP</span>
+              <span className="omok-rank-record">{omokStats.wins}승 {omokStats.losses}패 ({winRate}%)</span>
             </div>
           </div>
         </div>
 
-        <div className="omok-lobby">
-          <div className="game-mode-selector">
-            <h3>게임 모드 선택</h3>
-            <div className="mode-options">
-              <button
-                className={`omok-button ${gameMode === "player" ? "primary" : ""}`}
-                onClick={() => setGameMode("player")}
-              >
-                👥 플레이어 대전
-              </button>
-              <button
-                className={`omok-button ${gameMode === "ai" ? "primary" : ""}`}
-                onClick={() => setGameMode("ai")}
-              >
-                🤖 AI 대전 ({dailyPlayCount}/5)
-              </button>
-            </div>
-          </div>
-
-          {gameMode === "ai" && (
-            <div className="ai-difficulty-selector">
-              <h3>AI 난이도</h3>
-              <div className="difficulty-options">
+        <div className="omok-lobby-new">
+          {/* 설정 행: 게임모드 + 액션 */}
+          <div className="omok-settings-row">
+            {/* 게임 모드 */}
+            <div className="omok-setting-card">
+              <span className="omok-setting-label">게임 모드</span>
+              <div className="omok-setting-opts">
                 <button
-                  className={aiDifficulty === "하급" ? "selected" : ""}
-                  onClick={() => setAiDifficulty("하급")}
+                  className={`omok-opt-btn ${gameMode === "player" ? "active" : ""}`}
+                  onClick={() => setGameMode("player")}
                 >
-                  😊 하급
+                  👥 플레이어
                 </button>
                 <button
-                  className={aiDifficulty === "중급" ? "selected" : ""}
-                  onClick={() => setAiDifficulty("중급")}
+                  className={`omok-opt-btn ${gameMode === "ai" ? "active" : ""}`}
+                  onClick={() => setGameMode("ai")}
                 >
-                  🤔 중급
-                </button>
-                <button
-                  className={aiDifficulty === "상급" ? "selected" : ""}
-                  onClick={() => setAiDifficulty("상급")}
-                >
-                  🔥 상급
+                  🤖 AI ({dailyPlayCount}/5)
                 </button>
               </div>
             </div>
-          )}
 
-          <div className="lobby-section">
-            <h3>게임 참여하기</h3>
-            <div className="lobby-actions">
-              <button
-                onClick={createGame}
-                className="omok-button primary"
-                disabled={loading}
-              >
-                {loading
-                  ? "생성 중..."
-                  : gameMode === "ai"
-                    ? "AI 대전 시작"
-                    : "새 게임 만들기"}
-              </button>
-              {createdGameId && !error && gameMode === "player" && (
-                <div className="omok-success" style={{ textAlign: "center" }}>
-                  게임방이 생성되었습니다!
-                  <br />
-                  <strong
-                    style={{ fontSize: 18, color: "var(--accent)", cursor: "pointer", textDecoration: "underline", letterSpacing: 2 }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(createdGameId);
-                      setFeedback({ message: "방 코드가 복사되었습니다! 친구에게 공유하세요.", type: "success" });
-                    }}
-                    title="클릭하여 복사"
-                  >
-                    방 코드: {createdGameId.slice(-6)}
-                  </strong>
-                  <br />
-                  <span style={{ fontSize: 12, color: "#94a3b8" }}>코드를 클릭하면 복사됩니다</span>
-                  <br />
-                  다른 플레이어가 참가하기를 기다리고 있습니다.
+            {/* AI 난이도 (AI일 때만) */}
+            {gameMode === "ai" && (
+              <div className="omok-setting-card omok-ai-card">
+                <span className="omok-setting-label omok-ai-label">AI 난이도</span>
+                <div className="omok-setting-opts">
+                  {["하급", "중급", "상급"].map((d) => (
+                    <button
+                      key={d}
+                      className={`omok-opt-btn ${aiDifficulty === d ? "active" : ""}`}
+                      onClick={() => setAiDifficulty(d)}
+                    >
+                      {d === "하급" ? "😊" : d === "중급" ? "🤔" : "🔥"} {d}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          {gameMode === "player" && (
-            <div className="lobby-section" style={{ marginBottom: 12 }}>
-              <h3>🔗 코드로 참가</h3>
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          {/* 액션 행: 방 만들기 + 코드 참가 */}
+          <div className="omok-action-row">
+            <button
+              onClick={createGame}
+              className="omok-create-btn"
+              disabled={loading}
+            >
+              {loading
+                ? "생성 중..."
+                : gameMode === "ai"
+                  ? "🤖 AI 대전 시작"
+                  : "🎮 새 게임 만들기"}
+            </button>
+            {gameMode === "player" && (
+              <div className="omok-join-group">
                 <input
                   type="text"
                   value={joinRoomCode}
                   onChange={(e) => setJoinRoomCode(e.target.value)}
-                  placeholder="방 코드 입력"
-                  style={{
-                    flex: 1,
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(100,116,139,0.4)",
-                    background: "rgba(15,18,37,0.8)",
-                    color: "#fff",
-                    fontSize: 15,
-                    outline: "none",
-                  }}
+                  placeholder="방 코드"
+                  maxLength="6"
+                  className="omok-code-input"
                 />
                 <button
-                  className="omok-button primary"
+                  className="omok-join-btn"
                   disabled={loading || !joinRoomCode.trim()}
                   onClick={async () => {
                     const code = joinRoomCode.trim();
                     if (!code) return;
                     let matchId = null;
-                    // Firestore에서 대기 중인 방 검색 (로컬 캐시 대신 항상 최신 조회)
                     try {
                       const gamesRef = collection(db, "omokGames");
                       const q = query(gamesRef, where("gameStatus", "==", "waiting"));
@@ -1755,28 +1722,50 @@ const OmokGame = () => {
                       setError("해당 코드의 대기 중인 방을 찾을 수 없습니다.");
                     }
                   }}
-                  style={{ whiteSpace: "nowrap" }}
                 >
                   참가
                 </button>
               </div>
+            )}
+          </div>
+
+          {/* 방 생성 알림 */}
+          {createdGameId && !error && gameMode === "player" && (
+            <div className="omok-created-notice">
+              게임방 생성 완료!{" "}
+              <strong
+                style={{ color: "var(--accent)", cursor: "pointer", textDecoration: "underline", letterSpacing: 2 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(createdGameId);
+                  setFeedback({ message: "방 코드가 복사되었습니다!", type: "success" });
+                }}
+              >
+                코드: {createdGameId.slice(-6)}
+              </strong>
+              {" "}— 상대 대기 중
             </div>
           )}
 
+          {error && <div className="omok-error">{error}</div>}
+          {feedback.message && (
+            <div className={`feedback ${feedback.type}`}>{feedback.message}</div>
+          )}
+
+          {/* 대기방 목록 */}
           {gameMode === "player" && (
-            <div className="lobby-section">
-              <div className="section-header">
-                <h3>🌍 전체 공개방({availableGames.length})</h3>
+            <div className="omok-rooms-section">
+              <div className="omok-rooms-header">
+                <h3>🌍 공개방 ({availableGames.length})</h3>
                 <button
                   onClick={fetchAvailableGames}
-                  className="omok-button small"
+                  className="omok-refresh-btn"
                   disabled={loading}
                 >
-                  {loading ? "..." : "새로고침"}
+                  {loading ? "..." : "↻ 새로고침"}
                 </button>
               </div>
               {availableGames.length > 0 ? (
-                <div className="game-rooms">
+                <div className="omok-rooms-grid">
                   {availableGames.map((gameRoom) => {
                     const hostRankDetails = getOmokRankDetails({
                       wins: gameRoom.hostRank?.wins || 0,
@@ -1786,7 +1775,7 @@ const OmokGame = () => {
                     return (
                       <div
                         key={gameRoom.id}
-                        className="game-room-card"
+                        className="omok-room-card"
                         onClick={() => joinGame(gameRoom.id)}
                       >
                         {isAdmin() && (
@@ -1798,55 +1787,36 @@ const OmokGame = () => {
                             ✕
                           </button>
                         )}
-                        <div className="room-header">
-                          <div className="room-host">
-                            <RankDisplay
-                              rankDetails={hostRankDetails}
-                              size="small"
-                            />
-                            <span className="host-name">
-                              {gameRoom.hostName}님의 방
-                            </span>
-                            <span className="host-class">
-                              ({gameRoom.hostClass || "미설정"})
-                            </span>
+                        <div className="omok-room-top">
+                          <div className="omok-room-rank-dot" style={{ backgroundColor: hostRankDetails?.currentRank?.color || '#6366f1' }}>
+                            {hostRankDetails?.currentRank?.icon || '🏅'}
                           </div>
-                          <div className="room-id">
-                            #{gameRoom.id.slice(-6)}
+                          <div className="omok-room-host-info">
+                            <span className="omok-room-host-name">{gameRoom.hostName}</span>
+                            <span className="omok-room-host-class">{gameRoom.hostClass || "미설정"}</span>
                           </div>
+                          <span className="omok-room-code">#{gameRoom.id.slice(-6)}</span>
                         </div>
-                        <div className="room-info">
-                          <span className="player-count">
-                            👥{Object.keys(gameRoom.players).length}/2
+                        <div className="omok-room-bottom">
+                          <span>👥 {Object.keys(gameRoom.players).length}/2</span>
+                          <span className="omok-room-status">대기중</span>
+                          <span className="omok-room-time">
+                            {gameRoom.createdAt?.toDate
+                              ? gameRoom.createdAt.toDate().toLocaleTimeString("ko-KR", { hour: '2-digit', minute: '2-digit' })
+                              : "방금 전"}
                           </span>
-                          <span className="room-status global-status">
-                            대기중
-                          </span>
-                        </div>
-                        <div className="room-time">
-                          {gameRoom.createdAt?.toDate
-                            ? gameRoom.createdAt
-                                .toDate()
-                                .toLocaleTimeString("ko-KR")
-                            : "방금 전"}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="no-games">
+                <div className="omok-no-games">
                   {loading
                     ? "게임 목록을 불러오는 중..."
-                    : "현재 참가 가능한 게임이 없습니다. 새 게임을 만들어보세요!"}
+                    : "참가 가능한 게임이 없습니다. 새 게임을 만들어보세요!"}
                 </div>
               )}
-            </div>
-          )}
-          {error && <div className="omok-error">{error}</div>}
-          {feedback.message && (
-            <div className={`feedback ${feedback.type}`}>
-              {feedback.message}
             </div>
           )}
         </div>
