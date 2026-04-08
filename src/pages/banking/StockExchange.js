@@ -2127,11 +2127,11 @@ const StockExchange = () => {
                       </div>
                     </div>
                     <div className="stock-price-section">
-                      <div className="stock-price">
+                      <div className={`stock-price ${priceChange > 0 ? "price-up-text" : priceChange < 0 ? "price-down-text" : ""}`}>
                         {formatCurrency(stock.price)}
                       </div>
                       <div
-                        className={`stock-change ${priceChange > 0 ? "up" : "down"}`}
+                        className={`stock-change ${priceChange > 0 ? "up" : priceChange < 0 ? "down" : ""}`}
                       >
                         <span>{formatPercent(priceChange)}</span>
                       </div>

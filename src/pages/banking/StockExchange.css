@@ -434,11 +434,11 @@
 }
 
 .stock-card.price-up {
-  border-left-color: var(--success-green);
+  border-left-color: #dc2626;
 }
 
 .stock-card.price-down {
-  border-left-color: var(--danger-red);
+  border-left-color: #2563eb;
 }
 
 .stock-card-header {
@@ -509,11 +509,20 @@
 }
 
 .stock-change.up {
-  color: var(--success-green);
+  color: #dc2626;
 }
 
 .stock-change.down {
-  color: var(--danger-red);
+  color: #2563eb;
+}
+
+/* 가격도 등락 색상 적용 */
+.stock-price.price-up-text {
+  color: #dc2626;
+}
+
+.stock-price.price-down-text {
+  color: #2563eb;
 }
 
 .stock-actions {
