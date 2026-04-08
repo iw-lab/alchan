@@ -63,50 +63,50 @@ const getTeacherAccount = async (classCode) => {
 
 // --- Tailwind class helpers ---
 const cls = {
- container: "font-sans bg-transparent p-8 min-h-0",
+ container: "font-sans bg-transparent p-4 md:p-6 min-h-0",
  message: (type) =>
  `px-5 py-4 rounded-xl mb-7 text-center text-base font-medium shadow-sm ${
  type === "error"
- ? "text-red-400 bg-red-500/10 border border-red-500/30"
- : "text-emerald-400 bg-emerald-500/10 border border-emerald-500/30"
+ ? "text-red-600 bg-red-50 border border-red-200"
+ : "text-emerald-600 bg-emerald-50 border border-emerald-200"
  }`,
- grid: "grid gap-7 w-full",
- card: "bg-[rgba(30,41,59,0.6)] shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-2xl p-8 border border-white/5 backdrop-blur-[10px]",
- cardHeader: "flex items-center gap-4 mb-6 pb-5 border-b-2 border-white/5",
+ grid: "grid grid-cols-1 md:grid-cols-2 gap-5 w-full",
+ card: "bg-white shadow-[0_2px_12px_rgba(99,102,241,0.08)] rounded-2xl p-6 border border-[#e0e7ff]",
+ cardHeader: "flex items-center gap-4 mb-5 pb-4 border-b-2 border-slate-100",
  cardTitle:
- "text-[26px] font-bold text-slate-800 tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
- tabContainer: "flex border-b-2 border-white/10 mb-5 gap-2",
+ "text-xl font-bold text-slate-800 tracking-tight",
+ tabContainer: "flex border-b-2 border-slate-200 mb-5 gap-2",
  tabButton: (isActive) =>
  `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
  isActive
- ? "bg-indigo-500/20 font-bold text-cyber-cyan border-b-[3px] border-b-cyber-cyan drop-shadow-[0_0_5px_rgba(0,255,242,0.3)]"
- : "font-medium text-slate-400 border-b-[3px] border-b-transparent"
+ ? "bg-indigo-50 font-bold text-indigo-600 border-b-[3px] border-b-indigo-500"
+ : "font-medium text-slate-400 border-b-[3px] border-b-transparent hover:text-slate-600"
  }`,
  button: (disabled, variant = "primary") =>
- `text-white px-5 py-3 rounded-[10px] border border-white/10 text-[15px] font-semibold transition-all duration-200 ${
+ `text-white px-5 py-3 rounded-xl border-none text-[15px] font-semibold transition-all duration-200 ${
  disabled
  ? "cursor-not-allowed opacity-50"
- : "cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 hover:brightness-110"
+ : "cursor-pointer shadow-md hover:-translate-y-0.5 hover:shadow-lg"
  } ${
  variant === "primary"
- ? "bg-sky-700/80"
+ ? "bg-indigo-500 hover:bg-indigo-600"
  : variant === "danger"
- ? "bg-red-600/80"
+ ? "bg-red-500 hover:bg-red-600"
  : variant === "success"
- ? "bg-emerald-600/80"
- : "bg-gray-600"
+ ? "bg-emerald-500 hover:bg-emerald-600"
+ : "bg-slate-400 hover:bg-slate-500"
  }`,
  noProduct: "text-center text-slate-400 py-8 text-base italic",
  input:
- "w-full py-3.5 px-4 bg-black/20 border-2 border-white/10 rounded-[10px] mb-4 text-base text-slate-800 transition-colors duration-200 focus:outline-none focus:border-cyber-cyan focus:ring-2 focus:ring-cyber-cyan/10",
+ "w-full py-3.5 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl mb-4 text-base text-slate-800 transition-colors duration-200 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100",
  modalOverlay:
- "fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] backdrop-blur-[8px]",
+ "fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] backdrop-blur-[4px]",
  modalContent:
- "bg-white p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 text-slate-700",
+ "bg-white p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-2xl border border-slate-200 text-slate-700",
  modalTitle:
- "text-2xl font-bold mb-5 text-slate-800 drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]",
+ "text-xl font-bold mb-5 text-slate-800",
  modalCloseBtn:
- "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-white",
+ "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-slate-700",
 };
 
 // --- Helper Functions & Sub-Components ---
@@ -867,41 +867,41 @@ const ParkingAccountSection = ({
  const [amount, setAmount] = useState("");
 
  return (
- <div className="bg-gradient-to-br from-[rgba(6,78,117,0.85)] to-[rgba(20,40,60,0.9)] text-slate-800 shadow-[0_8px_24px_rgba(0,0,0,0.4)] rounded-2xl p-8 border border-[rgba(0,180,216,0.25)] backdrop-blur-[10px]">
- <div className="flex items-center gap-4 mb-6 pb-5 border-b-2 border-[rgba(0,180,216,0.2)]">
- <Wallet size={32} className="text-cyan-300" />
- <h2 className="text-[26px] font-bold text-[#e0f7fa] tracking-tight drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]">
+ <div className="bg-gradient-to-br from-indigo-50 to-blue-50 text-slate-800 shadow-[0_2px_12px_rgba(99,102,241,0.1)] rounded-2xl p-6 border border-indigo-200">
+ <div className="flex items-center gap-3 mb-5 pb-4 border-b-2 border-indigo-100">
+ <Wallet size={28} className="text-indigo-500" />
+ <h2 className="text-xl font-bold text-slate-800">
  파킹통장
  </h2>
  </div>
 
  {/* 보유현금 표시 */}
- <div className="bg-[rgba(0,180,216,0.15)] px-4 py-3 rounded-[10px] mb-4 backdrop-blur-[10px] flex justify-between items-center border border-[rgba(0,180,216,0.2)]">
- <span className="text-base font-medium text-slate-400">보유 현금</span>
- <span className="text-xl font-bold text-[#e0f7fa]">
+ <div className="bg-white/70 px-4 py-3 rounded-xl mb-4 flex justify-between items-center border border-indigo-100">
+ <span className="text-sm font-medium text-slate-500">보유 현금</span>
+ <span className="text-lg font-bold text-indigo-600">
  {formatCurrencyWithUnit(userCash || 0)}
  </span>
  </div>
 
- <div className="text-[42px] font-bold text-[#e0f7fa] mb-2">
+ <div className="text-[36px] font-bold text-slate-800 mb-1">
  {formatCurrencyWithUnit(balance)}
  </div>
 
- <p className="text-base text-[#e0f7fa]/80 mb-4 font-medium">
+ <p className="text-sm text-slate-500 mb-4 font-medium">
  매일 이자가 자동 지급되는 자유 입출금 통장
  </p>
 
- <div className="bg-[rgba(0,180,216,0.12)] p-4 rounded-[10px] mb-6 backdrop-blur-[10px] border border-[rgba(0,180,216,0.2)]">
- <div className="flex items-center gap-2 mb-2">
- <TrendingUp size={20} className="text-cyan-300" />
- <span className="text-[15px] font-semibold text-slate-400">
+ <div className="bg-white/70 p-4 rounded-xl mb-5 border border-indigo-100">
+ <div className="flex items-center gap-2 mb-1.5">
+ <TrendingUp size={18} className="text-emerald-500" />
+ <span className="text-sm font-semibold text-slate-500">
  일일 이자 수익
  </span>
  </div>
- <div className="text-[28px] font-bold text-cyan-300">
+ <div className="text-2xl font-bold text-emerald-500">
  +{formatCurrencyWithUnit(dailyInterest)}/일
  </div>
- <div className="text-sm mt-1.5 text-slate-400/90">
+ <div className="text-xs mt-1 text-slate-400">
  (일 0.1% 복리 기준)
  </div>
  </div>
@@ -912,7 +912,7 @@ const ParkingAccountSection = ({
  value={amount}
  onChange={(e) => setAmount(e.target.value)}
  placeholder="금액 입력"
- className="flex-1 py-3.5 px-4 bg-black/30 border border-[rgba(0,180,216,0.3)] rounded-[10px] text-[17px] text-slate-800 focus:outline-none focus:border-cyber-cyan"
+ className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
  disabled={isProcessing}
  />
  <button
@@ -922,7 +922,7 @@ const ParkingAccountSection = ({
  }}
  disabled={isProcessing}
  className={
- cls.button(isProcessing, "success") + " text-[17px] px-6 py-3.5"
+ cls.button(isProcessing, "success") + " text-base px-6 py-3"
  }
  >
  입금
@@ -935,7 +935,7 @@ const ParkingAccountSection = ({
  disabled={isProcessing}
  className={
  cls.button(isProcessing) +
- " !bg-slate-500/50 text-[17px] px-6 py-3.5"
+ " !bg-slate-400 text-base px-6 py-3"
  }
  >
  출금
@@ -1995,16 +1995,16 @@ const ParkingAccount = ({
  if (!user) return <div className={cls.container}>로그인이 필요합니다.</div>;
 
  const mainTabClass = (isActive) =>
- `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
+ `px-6 py-3 border-none cursor-pointer text-base rounded-t-lg transition-all duration-200 -mb-0.5 ${
  isActive
- ? "bg-cyber-cyan/10 font-bold text-cyber-cyan border-b-[3px] border-b-cyber-cyan"
- : "font-medium text-slate-400 border-b-[3px] border-b-transparent"
+ ? "bg-indigo-50 font-bold text-indigo-600 border-b-[3px] border-b-indigo-500"
+ : "font-medium text-slate-400 border-b-[3px] border-b-transparent hover:text-slate-600"
  }`;
 
  return (
  <div className={cls.container}>
  {/* 탭 메뉴 */}
- <div className="flex gap-2.5 mb-6 border-b-2 border-white/10 relative">
+ <div className="flex gap-2.5 mb-6 border-b-2 border-slate-200 relative">
  <button
  onClick={() => onViewChange && onViewChange("parking")}
  className={mainTabClass(activeView === "parking")}
@@ -2091,7 +2091,7 @@ const ParkingAccount = ({
 
  {/* 유저 상품 조회 화면 */}
  {activeView === "userProducts" && isAdmin && isAdmin() && (
- <div className="bg-[rgba(30,41,59,0.6)] rounded-2xl p-8 shadow-[0_6px_20px_rgba(0,0,0,0.3)] border border-white/5">
+ <div className="bg-white rounded-2xl p-6 shadow-[0_2px_12px_rgba(99,102,241,0.08)] border border-[#e0e7ff]">
  <h2 className="text-2xl font-bold mb-4 text-slate-800">
  유저별 가입 상품 조회 및 관리
  </h2>
