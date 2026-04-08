@@ -515,7 +515,7 @@ const Banking = () => {
  <div className="flex items-center gap-4 mb-4">
  <button
  onClick={() => setActiveView("parking")}
- className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyber-cyan/10 border border-cyber-cyan/40 text-cyber-cyan hover:bg-cyber-cyan/20 hover:text-white transition-all text-sm font-semibold shadow-[0_0_8px_rgba(0,243,255,0.15)]"
+ className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 border border-indigo-300 text-indigo-600 hover:bg-indigo-100 transition-all text-sm font-semibold shadow-sm"
  >
  <ChevronLeft size={16} />
  은행으로 돌아가기

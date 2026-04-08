@@ -218,8 +218,8 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  isMatured
  ? "border-emerald-500/50 bg-emerald-500/10"
  : isLoan
- ? "border-red-500/30 bg-red-500/5"
- : "border-white/10 bg-black/20"
+ ? "border-red-200 bg-red-50"
+ : "border-slate-200 bg-slate-50"
  }`}
  >
  <div className="flex justify-between items-start mb-3">
@@ -234,21 +234,21 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  </span>
  )}
  {isLoan && (
- <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[13px] font-semibold border border-red-500/30">
+ <span className="bg-red-50 text-red-400 px-3 py-1 rounded-full text-[13px] font-semibold border border-red-200">
  {repaymentTypeLabel}
  </span>
  )}
  </div>
  </div>
- <span className="text-xl font-bold text-cyber-cyan">
+ <span className="text-xl font-bold text-indigo-600">
  {isSavings ? formatCurrencyWithUnit(totalDeposited) : formatCurrencyWithUnit(product.balance)}
  </span>
  </div>
 
- <div className="text-[15px] text-slate-400 mt-4 grid gap-2.5 bg-black/20 p-4 rounded-lg">
+ <div className="text-[15px] text-slate-600 mt-4 grid gap-2.5 bg-slate-50 p-4 rounded-lg border border-slate-200">
  <div className="flex justify-between">
  <span className="font-medium">금리 (일):</span>
- <span className="font-bold text-cyber-cyan">{product.rate}%</span>
+ <span className="font-bold text-indigo-600">{product.rate}%</span>
  </div>
  {isLoan ? (
  <>
@@ -261,7 +261,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  {product.repaymentType === "installment" && product.originalBalance && product.balance < product.originalBalance && (
  <div className="flex justify-between">
  <span className="font-medium">남은 원금:</span>
- <span className="font-bold text-amber-400">
+ <span className="font-bold text-amber-600">
  {formatCurrencyWithUnit(product.balance)}
  </span>
  </div>
@@ -295,17 +295,17 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  <>
  <div className="flex justify-between">
  <span className="font-medium">일 납입금:</span>
- <span className="font-bold text-violet-400">
+ <span className="font-bold text-violet-600">
  {formatCurrencyWithUnit(dailyAmount)}/일
  </span>
  </div>
  <div className="flex justify-between">
  <span className="font-medium">납입 진행:</span>
- <span className="font-bold text-violet-400">
+ <span className="font-bold text-violet-600">
  {depositsCount}/{product.termInDays}일
  </span>
  </div>
- <div className="w-full bg-white/10 rounded-full h-2 mt-1">
+ <div className="w-full bg-slate-100 rounded-full h-2 mt-1">
  <div
  className="bg-violet-500 h-2 rounded-full transition-all"
  style={{ width: `${Math.min(100, (depositsCount / product.termInDays) * 100)}%` }}
@@ -331,7 +331,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  {!isMatured && (
  <div className="flex justify-between">
  <span className="font-medium">남은 기간:</span>
- <span className="font-semibold text-cyber-cyan">
+ <span className="font-semibold text-indigo-600">
  {daysRemaining}일
  </span>
  </div>
@@ -340,10 +340,10 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  )}
  </div>
 
- <div className="border-t border-dashed border-white/10 my-4"></div>
+ <div className="border-t border-dashed border-slate-200 my-4"></div>
 
  {isLoan ? (
- <div className="text-[15px] text-slate-700 grid gap-2.5 bg-red-500/5 p-4 rounded-lg border border-red-500/20">
+ <div className="text-[15px] text-slate-700 grid gap-2.5 bg-red-50 p-4 rounded-lg border border-red-200">
  <div className="flex justify-between">
  <span className="font-semibold">현재 상환 금액:</span>
  <span className="font-bold text-red-400 text-[17px]">
@@ -361,7 +361,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  </div>
  </div>
  ) : (
- <div className="text-[15px] text-slate-700 grid gap-2.5 bg-cyber-cyan/5 p-4 rounded-lg border border-cyber-cyan/10">
+ <div className="text-[15px] text-slate-700 grid gap-2.5 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
  {isSavings && dailyAmount > 0 && (
  <div className="flex justify-between">
  <span className="font-semibold">총 납입 예정액:</span>
@@ -378,7 +378,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  </div>
  <div className="flex justify-between text-[17px]">
  <span className="font-bold">만기 시 총 수령액:</span>
- <span className="font-bold text-cyber-cyan">
+ <span className="font-bold text-indigo-600">
  {formatCurrencyWithUnit(total)}
  </span>
  </div>
@@ -446,16 +446,16 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
  );
 
  return (
- <div className="p-5 border-2 border-white/10 rounded-xl mb-3 flex justify-between items-center bg-black/20 shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-200">
+ <div className="p-5 border-2 border-slate-200 rounded-xl mb-3 flex justify-between items-center bg-slate-50 shadow-sm hover:shadow-md transition-all duration-200">
  <div>
  <div className="font-bold text-lg text-slate-700 mb-2">
  {product.name}
  </div>
- <div className="text-[15px] text-slate-400 mb-1.5">
- <strong className="text-cyber-cyan">일 {product.dailyRate}%</strong>{" "}
+ <div className="text-[15px] text-slate-600 mb-1.5">
+ <strong className="text-indigo-600">일 {product.dailyRate}%</strong>{" "}
  (기간: {product.termInDays}일)
  </div>
- <div className="text-sm text-emerald-400 font-semibold">
+ <div className="text-sm text-emerald-600 font-semibold">
  <TrendingUp size={14} className="inline mr-1" />
  10만{getCurrencyUnit()} 가입 시 예상 이자: +
  {formatCurrencyWithUnit(projectedInterest)}
@@ -579,21 +579,21 @@ const SubscriptionModal = ({
  </button>
  <h3 className={cls.modalTitle}>{product.name} {isLoan ? "대출" : "가입"}</h3>
 
- <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/5 border-red-500/20" : "bg-cyber-cyan/5 border-cyber-cyan/20"}`}>
- <div className="text-[15px] text-slate-400 mb-2">
- <strong className={isLoan ? "text-red-400" : "text-cyber-cyan"}>금리:</strong> 일{" "}
+ <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-50 border-red-200" : "bg-indigo-50 border-indigo-200"}`}>
+ <div className="text-[15px] text-slate-600 mb-2">
+ <strong className={isLoan ? "text-red-600" : "text-indigo-600"}>금리:</strong> 일{" "}
  {product.dailyRate}% (일복리)
  </div>
- <div className="text-[15px] text-slate-400">
- <strong className={isLoan ? "text-red-400" : "text-cyber-cyan"}>기간:</strong>{" "}
+ <div className="text-[15px] text-slate-600">
+ <strong className={isLoan ? "text-red-600" : "text-indigo-600"}>기간:</strong>{" "}
  {product.termInDays}일
  </div>
  {isSavings && (
  <>
- <div className="text-[15px] text-violet-400 mt-2 font-semibold">
+ <div className="text-[15px] text-violet-600 mt-2 font-semibold">
  매일 자동으로 납입됩니다 (첫 납입은 즉시 처리)
  </div>
- <div className="text-[13px] text-amber-400 mt-1">
+ <div className="text-[13px] text-amber-600 mt-1">
  ※ 일 납입금은 보유 현금 ÷ 기간일 이하만 가능
  </div>
  </>
@@ -610,7 +610,7 @@ const SubscriptionModal = ({
  className={`p-4 rounded-xl border-2 transition-all text-left ${
  repaymentType === "lumpSum"
  ? "border-red-400 bg-red-500/10"
- : "border-white/10 bg-black/20"
+ : "border-slate-200 bg-slate-50"
  }`}
  >
  <div className="font-bold text-[15px] text-slate-700 mb-1">일시 상환</div>
@@ -621,7 +621,7 @@ const SubscriptionModal = ({
  className={`p-4 rounded-xl border-2 transition-all text-left ${
  repaymentType === "installment"
  ? "border-red-400 bg-red-500/10"
- : "border-white/10 bg-black/20"
+ : "border-slate-200 bg-slate-50"
  }`}
  >
  <div className="font-bold text-[15px] text-slate-700 mb-1">분할 상환</div>
@@ -647,7 +647,7 @@ const SubscriptionModal = ({
  />
 
  {numAmount > 0 && (
- <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30"}`}>
+ <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-500/10 border-red-200" : "bg-emerald-500/10 border-emerald-500/30"}`}>
  {isSavings && (
  <div className="text-[15px] text-slate-600 mb-1.5">
  총 납입 예정액: <strong>{formatCurrencyWithUnit(projectedTotalDeposited)}</strong>
@@ -739,7 +739,7 @@ const LoanRepaymentModal = ({
  {isLumpSum ? "일시 상환" : "분할 상환"}
  </h3>
 
- <div className="mb-5 p-4 bg-red-500/5 rounded-[10px] border border-red-500/20">
+ <div className="mb-5 p-4 bg-red-50 rounded-[10px] border border-red-200">
  <div className="text-[15px] text-slate-400 mb-2">
  <strong className="text-slate-200">{product.name}</strong>
  </div>
@@ -756,7 +756,7 @@ const LoanRepaymentModal = ({
  <span className="text-slate-400">누적 이자:</span>
  <span className="font-bold text-red-400">+{formatCurrencyWithUnit(accruedInterest)}</span>
  </div>
- <div className="flex justify-between border-t border-white/10 pt-2 mt-1">
+ <div className="flex justify-between border-t border-slate-200 pt-2 mt-1">
  <span className="text-slate-200 font-semibold">총 상환 필요금:</span>
  <span className="font-bold text-red-400 text-[17px]">{formatCurrencyWithUnit(accruedTotal)}</span>
  </div>
@@ -782,7 +782,7 @@ const LoanRepaymentModal = ({
  className={`p-3 rounded-lg border-2 transition-all text-left ${
  splitMethod === "interestFirst"
  ? "border-amber-400 bg-amber-500/10"
- : "border-white/10 bg-black/20"
+ : "border-slate-200 bg-slate-50"
  }`}
  >
  <div className="font-bold text-[14px] text-slate-700">이자 우선</div>
@@ -793,7 +793,7 @@ const LoanRepaymentModal = ({
  className={`p-3 rounded-lg border-2 transition-all text-left ${
  splitMethod === "proportional"
  ? "border-amber-400 bg-amber-500/10"
- : "border-white/10 bg-black/20"
+ : "border-slate-200 bg-slate-50"
  }`}
  >
  <div className="font-bold text-[14px] text-slate-700">원리금 균등</div>
@@ -827,7 +827,7 @@ const LoanRepaymentModal = ({
  )}
  </div>
  {principalPortion > 0 && (
- <div className="text-base text-slate-700 font-bold border-t border-white/10 pt-2 mt-2">
+ <div className="text-base text-slate-700 font-bold border-t border-slate-200 pt-2 mt-2">
  상환 후 남은 원금: {formatCurrencyWithUnit(Math.max(0, product.balance - principalPortion))}
  </div>
  )}
@@ -863,6 +863,7 @@ const ParkingAccountSection = ({
  onWithdraw,
  isProcessing,
  userCash,
+ parkingRate = 0.1,
 }) => {
  const [amount, setAmount] = useState("");
 
@@ -902,7 +903,7 @@ const ParkingAccountSection = ({
  +{formatCurrencyWithUnit(dailyInterest)}/일
  </div>
  <div className="text-xs mt-1 text-slate-400">
- (일 0.1% 복리 기준)
+ (일 {parkingRate}% 복리 기준)
  </div>
  </div>
 
@@ -973,6 +974,7 @@ const ParkingAccount = ({
  const [messageType, setMessageType] = useState("");
  const [parkingBalance, setParkingBalance] = useState(0);
  const [parkingDailyInterest, setParkingDailyInterest] = useState(0);
+ const [parkingRate, setParkingRate] = useState(0.1);
  const [userDeposits, setUserDeposits] = useState([]);
  const [userSavings, setUserSavings] = useState([]);
  const [userLoans, setUserLoans] = useState([]);
@@ -1055,9 +1057,10 @@ const ParkingAccount = ({
  const balance = finalParkingDoc.data().balance || 0;
  setParkingBalance(balance);
 
- // 일일 이자 계산 (0.1% 기준)
- const dailyRate = 0.1; // 0.1% 일일 이자율
- const dailyInterest = calculateDailyInterest(balance, dailyRate);
+ // 일일 이자 계산 (상품 설정 이자율 기준)
+ const actualDailyRate = parkingRateProduct?.dailyRate || 0.1;
+ setParkingRate(actualDailyRate);
+ const dailyInterest = calculateDailyInterest(balance, actualDailyRate);
  setParkingDailyInterest(dailyInterest);
  }
 
@@ -2108,7 +2111,7 @@ const ParkingAccount = ({
  <div className="overflow-x-auto">
  <table className="w-full border-collapse">
  <thead>
- <tr className="bg-white/5 border-b-2 border-white/10">
+ <tr className="bg-white/5 border-b-2 border-slate-200">
  <th className="p-3 text-left text-sm font-semibold text-slate-400">
  사용자
  </th>
@@ -2148,7 +2151,7 @@ const ParkingAccount = ({
  return (
  <tr
  key={`${product.userId}-${product.id}-${index}`}
- className="border-b border-white/5"
+ className="border-b border-slate-100"
  >
  <td className="p-3 text-sm text-slate-700">
  {product.userName}
@@ -2159,7 +2162,7 @@ const ParkingAccount = ({
  <td className="p-3 text-sm text-slate-700">
  {typeLabel}
  </td>
- <td className="p-3 text-sm text-cyber-cyan">
+ <td className="p-3 text-sm text-indigo-600">
  {formatKoreanCurrency(product.balance || 0)}
  </td>
  <td className="p-3 text-sm text-slate-700">
@@ -2212,6 +2215,7 @@ const ParkingAccount = ({
  onWithdraw={handleParkingWithdraw}
  isProcessing={isProcessing}
  userCash={currentCash}
+ parkingRate={parkingRate}
  />
  <ProductSection
  title="예금"
