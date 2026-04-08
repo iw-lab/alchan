@@ -1503,59 +1503,80 @@ const ChessGame = () => {
 
     return (
       <div className="chess-container">
-        <div className="room-creation">
-          <h2>♚ 체스 게임 ♔</h2>
-          <p>전략적 사고력을 기르는 최고의 두뇌 게임!</p>
-
-          <div className="user-rank-info">
-            <p>
-              내 등급: <strong>{userRank}</strong> ({userDoc?.chessRating || 0}
-              점)
-            </p>
-            {nextRank && (
-              <p className="next-rank-guide">
-                다음 등급 ({nextRank})까지{" "}
-                <strong>{pointsForNextRank}점</strong> 남았습니다.
-              </p>
-            )}
-          </div>
-
-          <div className="game-mode-selector">
-            <h3>게임 모드 선택</h3>
-            <div className="mode-options">
-              <button
-                className={gameMode === "player" ? "selected" : ""}
-                onClick={() => setGameMode("player")}
-              >
-                👥 플레이어 대전
-              </button>
-              <button
-                className={gameMode === "ai" ? "selected" : ""}
-                onClick={() => setGameMode("ai")}
-              >
-                🤖 AI 대전 ({dailyPlayCount}/3)
-              </button>
+        <div className="chess-lobby">
+          {/* 히어로 헤더: 타이틀 + 등급 */}
+          <div className="lobby-hero">
+            <div className="lobby-hero-left">
+              <h2 className="lobby-title">♚ 체스 게임 ♔</h2>
+              <p className="lobby-subtitle">전략적 사고력을 기르는 최고의 두뇌 게임!</p>
+            </div>
+            <div className="lobby-rank-badge">
+              <span className="rank-label">내 등급</span>
+              <span className="rank-value">{userRank}</span>
+              <span className="rank-points">{userDoc?.chessRating || 0}점</span>
+              {nextRank && (
+                <span className="rank-next">
+                  {nextRank}까지 {pointsForNextRank}점
+                </span>
+              )}
             </div>
           </div>
 
-          {gameMode === "ai" && (
-            <div className="ai-difficulty-selector">
-              <h3>AI 난이도</h3>
-              <div className="difficulty-options">
+          {/* 설정 영역: 게임모드 + 시간제한 한 줄 */}
+          <div className="lobby-settings-row">
+            <div className="lobby-setting-card">
+              <span className="setting-label">게임 모드</span>
+              <div className="setting-options">
                 <button
-                  className={aiDifficulty === "beginner" ? "selected" : ""}
+                  className={`setting-btn ${gameMode === "player" ? "active" : ""}`}
+                  onClick={() => setGameMode("player")}
+                >
+                  👥 플레이어
+                </button>
+                <button
+                  className={`setting-btn ${gameMode === "ai" ? "active" : ""}`}
+                  onClick={() => setGameMode("ai")}
+                >
+                  🤖 AI ({dailyPlayCount}/3)
+                </button>
+              </div>
+            </div>
+
+            <div className="lobby-setting-card">
+              <span className="setting-label">시간 제한</span>
+              <div className="setting-options">
+                {[180, 300, 600, 900].map((time) => (
+                  <button
+                    key={time}
+                    className={`setting-btn time-btn ${timeControl === time ? "active" : ""}`}
+                    onClick={() => setTimeControl(time)}
+                  >
+                    {time / 60}분
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* AI 난이도 (AI 모드일 때만) */}
+          {gameMode === "ai" && (
+            <div className="lobby-ai-difficulty">
+              <span className="setting-label">AI 난이도</span>
+              <div className="setting-options">
+                <button
+                  className={`setting-btn ${aiDifficulty === "beginner" ? "active" : ""}`}
                   onClick={() => setAiDifficulty("beginner")}
                 >
                   😊 초급
                 </button>
                 <button
-                  className={aiDifficulty === "intermediate" ? "selected" : ""}
+                  className={`setting-btn ${aiDifficulty === "intermediate" ? "active" : ""}`}
                   onClick={() => setAiDifficulty("intermediate")}
                 >
                   🤔 중급
                 </button>
                 <button
-                  className={aiDifficulty === "advanced" ? "selected" : ""}
+                  className={`setting-btn ${aiDifficulty === "advanced" ? "active" : ""}`}
                   onClick={() => setAiDifficulty("advanced")}
                 >
                   🔥 고급
@@ -1570,43 +1591,35 @@ const ChessGame = () => {
             </div>
           )}
 
-          <div className="time-control-selector">
-            <h3>시간 제한 선택</h3>
-            <div className="time-options">
-              {[180, 300, 600, 900].map((time) => (
-                <button
-                  key={time}
-                  className={timeControl === time ? "selected" : ""}
-                  onClick={() => setTimeControl(time)}
-                >
-                  {time / 60}분
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="room-actions">
-            <button onClick={handleCreateRoom} className="create-room-btn">
-              {gameMode === "ai" ? "🤖 AI 대전 시작" : "새로운 방 만들기"}
+          {/* 액션 영역: 방 만들기 + 코드 참가 한 줄 */}
+          <div className="lobby-action-row">
+            <button onClick={handleCreateRoom} className="lobby-create-btn">
+              {gameMode === "ai" ? "🤖 AI 대전 시작" : "🎮 새로운 방 만들기"}
             </button>
-
             {gameMode === "player" && (
-              <div className="join-room">
+              <div className="lobby-join-group">
                 <input
                   type="text"
                   value={newRoomId}
                   onChange={(e) => setNewRoomId(e.target.value)}
-                  placeholder="방 코드 입력"
+                  placeholder="방 코드"
                   maxLength="6"
+                  className="lobby-code-input"
                 />
-                <button onClick={() => handleJoinRoom()}>코드로 참가</button>
+                <button
+                  onClick={() => handleJoinRoom()}
+                  className="lobby-join-btn"
+                >
+                  참가
+                </button>
               </div>
             )}
           </div>
 
+          {/* 대기방 목록 */}
           {availableRooms.length > 0 && (
-            <div className="available-rooms">
-              <h3>📋 대기 중인 방 목록</h3>
+            <div className="lobby-rooms">
+              <h3 className="lobby-rooms-title">📋 대기 중인 방 목록</h3>
               <div className="rooms-list">
                 {availableRooms.map((room) => (
                   <div key={room.id} className="room-item">
@@ -1643,20 +1656,11 @@ const ChessGame = () => {
             </div>
           )}
 
-          <div className="chess-rules">
-            <h3>체스 기본 규칙</h3>
-            <ul>
-              <li>백(White)이 먼저 시작합니다.</li>
-              <li>상대방의 킹을 체크메이트하면 승리합니다.</li>
-              <li>
-                플레이어 대전: 승리 시 <strong>점수(+15)</strong>와 쿠폰 3개,
-                패배 시 <strong>점수(-10)</strong>
-              </li>
-              <li>
-                AI 대전: 승리 시 <strong>카드 보상</strong> 선택 (현금 또는
-                쿠폰), 하루 3회 제한
-              </li>
-            </ul>
+          {/* 규칙 요약 (접힌 상태) */}
+          <div className="lobby-rules-summary">
+            <span>💡 플레이어 승리: +15점 & 쿠폰 3개</span>
+            <span>•</span>
+            <span>AI 승리: 카드 보상 (하루 3회)</span>
           </div>
         </div>
       </div>

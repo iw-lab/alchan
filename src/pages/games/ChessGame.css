@@ -11,259 +11,298 @@
     width: 100%;
 }
 
-/* 방 생성 화면 */
-.room-creation {
+/* ===== 체스 로비 ===== */
+.chess-lobby {
     width: 100%;
-    max-width: 100%;
-    padding: 0 1.5rem 1.5rem;
-    text-align: center;
-    color: #1e293b;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 히어로 헤더 */
+.lobby-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #8b5cf6 100%);
+    border-radius: 16px;
+    padding: 20px 24px;
+    color: white;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+}
+
+.lobby-hero-left { flex: 1; }
+
+.lobby-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.lobby-subtitle {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin: 4px 0 0;
+}
+
+.lobby-rank-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 14px;
+    padding: 12px 18px;
+    min-width: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rank-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.rank-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.rank-points {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.rank-next {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    margin-top: 2px;
+}
+
+/* 설정 한 줄: 게임모드 + 시간제한 */
+.lobby-settings-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.room-creation h2 {
-    font-size: 2.2rem;
-    margin-bottom: 0.5rem;
-    color: white;
-    text-shadow: none;
-    font-weight: 800;
-    letter-spacing: 1px;
-    grid-column: 1 / -1;
-}
-
-.room-creation p {
-    margin-bottom: 0;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 1rem;
-    grid-column: 1 / -1;
-}
-
-/* 공통 섹션 카드 스타일 */
-.game-mode-selector,
-.ai-difficulty-selector,
-.time-control-selector,
-.room-actions,
-.available-rooms,
-.chess-rules {
-    background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-    border: 1px solid #c7d2fe;
-    border-radius: 16px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
-    transition: transform 0.2s, box-shadow 0.2s;
-    margin-bottom: 0;
-}
-
-.game-mode-selector:hover,
-.ai-difficulty-selector:hover,
-.time-control-selector:hover,
-.room-actions:hover,
-.available-rooms:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(99, 102, 241, 0.15);
-}
-
-.game-mode-selector {
-    grid-column: 1 / -1;
-}
-
-.ai-difficulty-selector {
-    grid-column: 1 / -1;
-    background: linear-gradient(135deg, #ffffff 0%, #fef3f2 100%);
-    border-color: #fecaca;
-}
-
-.time-control-selector {
-    grid-column: 1 / -1;
-}
-
-.room-actions {
-    grid-column: 1 / -1;
-}
-
-.available-rooms {
-    grid-column: 1 / -1;
-    margin-top: 0;
-}
-
-.time-control-selector h3,
-.available-rooms h3 {
-    margin-bottom: 1rem;
-    color: #4338ca;
-    font-size: 1.1rem;
-    font-weight: 700;
-    text-transform: none;
-}
-
-.game-mode-selector h3 {
-    margin-bottom: 0.75rem;
-    color: #4338ca;
-    font-weight: 700;
-}
-
-.ai-difficulty-selector h3 {
-    margin-bottom: 0.75rem;
-    color: #dc2626;
-    font-weight: 700;
-}
-
-.time-options {
-    display: flex;
-    justify-content: center;
     gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 0;
 }
 
-.time-options button {
-    padding: 12px 24px;
-    border: 2px solid #e0e7ff;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f8faff, #eef2ff);
+.lobby-setting-card {
+    background: white;
+    border: 1px solid #e0e7ff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+}
+
+.setting-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4338ca;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.setting-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.setting-btn {
+    padding: 8px 14px;
+    border: 1.5px solid #e0e7ff;
+    border-radius: 10px;
+    background: #f8faff;
     color: #4338ca;
     cursor: pointer;
     font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
-.time-options button.selected,
-.time-options button:hover {
+.setting-btn:hover {
+    border-color: #818cf8;
+    background: #eef2ff;
+}
+
+.setting-btn.active {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     border-color: transparent;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
-.room-actions {
+.setting-btn.time-btn {
+    padding: 8px 12px;
+    min-width: 48px;
+    text-align: center;
+}
+
+/* AI 난이도 */
+.lobby-ai-difficulty {
+    background: white;
+    border: 1px solid #fecaca;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.06);
+}
+
+.lobby-ai-difficulty .setting-label {
+    color: #dc2626;
+}
+
+/* 액션 영역: 방 만들기 + 코드 참가 한 줄 */
+.lobby-action-row {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 0;
+    gap: 10px;
+    align-items: stretch;
 }
 
-.create-room-btn {
-    padding: 16px;
-    font-size: 1.2em;
+.lobby-create-btn {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 1rem;
     font-weight: 700;
     color: white;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     border: none;
     border-radius: 12px;
     cursor: pointer;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    white-space: nowrap;
 }
 
-.create-room-btn:hover {
+.lobby-create-btn:hover {
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
     box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
     transform: translateY(-2px);
 }
 
-.join-room {
+.lobby-join-group {
     display: flex;
-    gap: 12px;
-}
-
-.join-room input {
-    flex-grow: 1;
-    padding: 14px;
-    border: 2px solid #e0e7ff;
+    gap: 0;
+    border: 1.5px solid #e0e7ff;
     border-radius: 12px;
-    background: #f8faff;
+    overflow: hidden;
+    background: white;
+}
+
+.lobby-code-input {
+    width: 100px;
+    padding: 0 12px;
+    border: none;
+    background: transparent;
     color: #1e293b;
-    font-size: 1rem;
-}
-
-.join-room input:focus {
+    font-size: 0.95rem;
+    font-family: monospace;
     outline: none;
-    border-color: #818cf8;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.join-room button {
-    padding: 0 24px;
+.lobby-code-input::placeholder {
+    color: #94a3b8;
+}
+
+.lobby-join-btn {
+    padding: 0 16px;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     border: none;
-    border-radius: 12px;
     cursor: pointer;
     font-weight: 700;
-    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    white-space: nowrap;
 }
 
-.join-room button:hover {
+.lobby-join-btn:hover {
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* 대기방 목록 */
+.lobby-rooms {
+    background: white;
+    border: 1px solid #e0e7ff;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+}
+
+.lobby-rooms-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #4338ca;
+    margin: 0 0 10px;
 }
 
 .rooms-list {
-    max-height: 300px;
+    max-height: 250px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .room-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #f8faff, #eef2ff);
-    padding: 14px 18px;
-    border-radius: 12px;
-    border-left: 4px solid #6366f1;
-    transition: all 0.2s ease;
+    background: #f8faff;
+    padding: 12px 14px;
+    border-radius: 10px;
     border: 1px solid #e0e7ff;
     border-left: 4px solid #6366f1;
+    transition: all 0.15s ease;
 }
 
 .room-item:hover {
     background: #eef2ff;
-    transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    transform: translateX(3px);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.1);
 }
 
 .room-info { text-align: left; }
-.room-info span { display: block; font-size: 0.95em; margin: 3px 0; }
+.room-info span { display: block; font-size: 0.9em; margin: 2px 0; }
 .room-host { font-weight: 700; color: #1e293b; }
-.room-code { color: #64748b; font-family: monospace; }
-.room-rank-limit { color: #7c3aed; font-size: 0.85em; }
+.room-code { color: #64748b; font-family: monospace; font-size: 0.85em !important; }
 
-.room-item-buttons { display: flex; gap: 8px; }
+.room-item-buttons { display: flex; gap: 6px; }
 
 .join-btn {
-    padding: 8px 16px;
+    padding: 7px 14px;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
-    transition: all 0.2s;
+    font-size: 0.85rem;
+    transition: all 0.15s;
 }
 
 .join-btn:hover {
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.3);
     transform: translateY(-1px);
 }
 
 .delete-btn {
-    padding: 8px 16px;
-    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    padding: 7px 14px;
+    background: #fef2f2;
     color: #dc2626;
     border: 1px solid #fecaca;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    font-size: 0.85rem;
 }
 
 .delete-btn:hover {
@@ -271,53 +310,34 @@
     color: white;
 }
 
-.chess-rules {
-    grid-column: 1 / -1;
-    text-align: left;
-    background: linear-gradient(135deg, #f8faff, #f0f4ff);
+/* 규칙 요약 한 줄 */
+.lobby-rules-summary {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 10px;
 }
 
-.chess-rules ul {
-    list-style-position: inside;
-    color: #475569;
-}
-
-.chess-rules li { margin-bottom: 8px; }
-
-/* 유저 랭크 정보 */
-.user-rank-info {
-    background: linear-gradient(135deg, #ffffff, #f8faff);
-    border: 1px solid #c7d2fe;
-    padding: 20px;
-    border-radius: 16px;
-    color: #1e293b;
-    grid-column: 1 / -1;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
-}
-
-.user-rank-info p { color: #475569; }
-.user-rank-info strong { color: #7c3aed; }
-.next-rank-guide { color: #64748b; }
-
-/* 게임 모드/난이도 버튼 */
-.mode-options button,
-.difficulty-options button {
-    background: linear-gradient(135deg, #f8faff, #eef2ff);
-    border: 2px solid #e0e7ff;
-    color: #4338ca;
-    font-weight: 600;
-    border-radius: 12px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.mode-options button.selected,
-.difficulty-options button.selected {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    border-color: transparent;
-    color: white;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+/* 반응형 */
+@media (max-width: 600px) {
+    .lobby-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+        padding: 16px;
+    }
+    .lobby-rank-badge { flex-direction: row; gap: 8px; min-width: auto; }
+    .rank-value { font-size: 1.2rem; }
+    .lobby-settings-row { grid-template-columns: 1fr; }
+    .lobby-action-row { flex-direction: column; }
+    .lobby-join-group { width: 100%; }
+    .lobby-code-input { flex: 1; }
+    .lobby-rules-summary { flex-direction: column; align-items: center; gap: 2px; }
+    .lobby-rules-summary span:nth-child(2) { display: none; }
 }
 
 /* 게임 화면 */
