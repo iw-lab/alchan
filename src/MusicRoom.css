@@ -57,7 +57,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #f8faff 0%, #eef2ff 50%, #f8faff 100%);
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 30%, #ede9fe 60%, #fae8ff 100%);
     color: #64748b;
     font-size: 1.2rem;
     gap: 1rem;
@@ -65,9 +65,10 @@
 
 .no-video-placeholder::before {
     content: '🎵';
-    font-size: 3rem;
-    opacity: 0.6;
+    font-size: 4rem;
+    opacity: 0.7;
     animation: pulse-music 2s ease-in-out infinite;
+    filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.2));
 }
 
 @keyframes pulse-music {
@@ -83,9 +84,9 @@
 }
 
 .room-header {
-    padding: 0.9rem 1.1rem;
-    background: #f8faff;
-    border-top: 1px solid var(--accent-light);
+    padding: 0.9rem 1.2rem;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+    border-top: 2px solid #c7d2fe;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -185,9 +186,11 @@
     margin-bottom: 0.9rem;
     text-align: left;
     color: #4f46e5;
-    font-size: 1.15rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding-bottom: 0.6rem;
+    border-bottom: 2px solid #e0e7ff;
 }
 
 .qr-code-container-room {
@@ -243,22 +246,30 @@
 
 .playlist li {
     padding: 0.95rem 0.9rem;
-    border-bottom: 1px solid #e0e7ff;
+    border-bottom: none;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
     transition: all 0.2s;
-    background: #fafbff;
+    background: linear-gradient(145deg, #f0f4ff, #e8eeff);
     margin-bottom: 6px;
     border-radius: 10px;
+    border: 1px solid #dde4ff;
+    border-left: 3px solid #a5b4fc;
 }
+
+.playlist li:nth-child(4n+1) { border-left-color: #818cf8; }
+.playlist li:nth-child(4n+2) { border-left-color: #f87171; background: linear-gradient(145deg, #fef3f2, #fce7e6); border-color: #fecaca; }
+.playlist li:nth-child(4n+3) { border-left-color: #34d399; background: linear-gradient(145deg, #ecfdf5, #d1fae5); border-color: #a7f3d0; }
+.playlist li:nth-child(4n+4) { border-left-color: #fbbf24; background: linear-gradient(145deg, #fffbeb, #fef3c7); border-color: #fde68a; }
 
 .playlist li:last-child {
     border-bottom: none;
 }
 
 .playlist li:hover {
-    background: #eef2ff;
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
 }
 
 .song-title {
