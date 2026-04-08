@@ -11,6 +11,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -86,23 +87,29 @@ export default function GroupPurchase() {
     const target = parseInt(newCampaign.targetPrice);
     if (!newCampaign.itemName.trim() || !target || target <= 0) return;
 
-    // 중복 캠페인 체크
+    // 재고 기반 중복 캠페인 체크: 진행 중 캠페인 수 >= 재고이면 생성 불가
     if (newCampaign.selectedItemId) {
       try {
+        // 해당 아이템의 현재 재고 확인
+        const storeItemRef = doc(db, "storeItems", newCampaign.selectedItemId);
+        const storeItemSnap = await getDoc(storeItemRef);
+        const itemStock = storeItemSnap.exists() ? (storeItemSnap.data().stock ?? Infinity) : Infinity;
+
+        // 모든 학급에서 해당 아이템의 진행 중 캠페인 수 확인
         const duplicateQuery = query(
           collection(db, "groupPurchases"),
-          where("classCode", "==", classCode),
           where("selectedItemId", "==", newCampaign.selectedItemId),
           where("status", "==", "active")
         );
         const duplicateSnap = await getDocs(duplicateQuery);
-        if (!duplicateSnap.empty) {
-          alert("이미 진행 중인 함께구매가 있습니다.");
+        const activeCampaignCount = duplicateSnap.size;
+
+        if (activeCampaignCount >= itemStock) {
+          alert(`재고(${itemStock}개)만큼 이미 함께구매가 진행 중입니다. 새로 만들 수 없습니다.`);
           return;
         }
       } catch (err) {
         logger.error("중복 캠페인 체크 실패:", err);
-        // 체크 실패해도 진행
       }
     }
 
@@ -387,7 +394,7 @@ export default function GroupPurchase() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="w-full px-4 md:px-6 lg:px-8 py-6 space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
