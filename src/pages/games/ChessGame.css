@@ -2,7 +2,7 @@
 .chess-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
     padding: 0;
     font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
@@ -14,12 +14,12 @@
 /* ===== 체스 로비 ===== */
 .chess-lobby {
     width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 0 1rem 1.5rem;
+    max-width: 100%;
+    margin: 0;
+    padding: 0 0 1rem;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 /* 히어로 헤더 */
@@ -27,9 +27,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #8b5cf6 100%);
-    border-radius: 16px;
-    padding: 20px 24px;
+    background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
+    border-radius: 0;
+    padding: 22px 28px;
     color: white;
     box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
 }
@@ -89,7 +89,8 @@
 .lobby-settings-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
+    padding: 0 16px;
 }
 
 .lobby-setting-card {
@@ -165,6 +166,7 @@
     display: flex;
     gap: 10px;
     align-items: stretch;
+    padding: 0 16px;
 }
 
 .lobby-create-btn {
@@ -235,6 +237,7 @@
     border-radius: 14px;
     padding: 16px;
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+    margin: 0 16px;
 }
 
 .lobby-rooms-title {
@@ -317,9 +320,10 @@
     gap: 8px;
     font-size: 0.8rem;
     color: #64748b;
-    padding: 8px;
+    padding: 8px 16px;
     background: rgba(255, 255, 255, 0.6);
     border-radius: 10px;
+    margin: 0 16px;
 }
 
 /* 반응형 */
