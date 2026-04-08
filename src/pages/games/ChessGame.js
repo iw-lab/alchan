@@ -1621,7 +1621,7 @@ const ChessGame = () => {
             )}
 
             <button onClick={handleCreateRoom} className="lobby-create-btn">
-              {gameMode === "ai" ? "🤖 AI 시작" : "🎮 방 만들기"}
+              {gameMode === "ai" ? "🤖 AI 대전 시작" : "🎮 새로운 방 만들기"}
             </button>
 
             {gameMode === "player" && (
@@ -1630,7 +1630,7 @@ const ChessGame = () => {
                   type="text"
                   value={newRoomId}
                   onChange={(e) => setNewRoomId(e.target.value)}
-                  placeholder="방 코드"
+                  placeholder="방 코드 입력"
                   maxLength="6"
                   className="lobby-code-input"
                 />
