@@ -88,94 +88,79 @@
     margin-top: 2px;
 }
 
-/* 설정 한 줄: 게임모드 + 시간제한 */
-.lobby-settings-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+/* 전체 컨트롤 한 줄 */
+.lobby-controls-row {
+    display: flex;
+    align-items: stretch;
     gap: 10px;
     padding: 0 16px;
+    flex-wrap: wrap;
 }
 
-.lobby-setting-card {
+.lobby-ctrl-group {
     background: white;
     border: 1px solid #e0e7ff;
-    border-radius: 14px;
-    padding: 14px 16px;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
-.setting-label {
-    display: block;
-    font-size: 0.75rem;
+.lobby-ctrl-ai {
+    border-color: #fecaca;
+}
+
+.ctrl-label {
+    font-size: 0.7rem;
     font-weight: 700;
     color: #4338ca;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
 }
 
-.setting-options {
+.ctrl-label-ai { color: #dc2626; }
+
+.ctrl-options {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 4px;
 }
 
-.setting-btn {
-    padding: 8px 14px;
+.ctrl-btn {
+    padding: 6px 12px;
     border: 1.5px solid #e0e7ff;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #f8faff;
     color: #4338ca;
     cursor: pointer;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     transition: all 0.15s ease;
     white-space: nowrap;
 }
 
-.setting-btn:hover {
+.ctrl-btn:hover {
     border-color: #818cf8;
     background: #eef2ff;
 }
 
-.setting-btn.active {
+.ctrl-btn.active {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     border-color: transparent;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
 }
 
-.setting-btn.time-btn {
-    padding: 8px 12px;
-    min-width: 48px;
+.ctrl-btn.ctrl-time {
+    padding: 6px 10px;
+    min-width: 40px;
     text-align: center;
 }
 
-/* AI 난이도 */
-.lobby-ai-difficulty {
-    background: white;
-    border: 1px solid #fecaca;
-    border-radius: 14px;
-    padding: 14px 16px;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.06);
-}
-
-.lobby-ai-difficulty .setting-label {
-    color: #dc2626;
-}
-
-/* 액션 영역: 방 만들기 + 코드 참가 한 줄 */
-.lobby-action-row {
-    display: flex;
-    gap: 10px;
-    align-items: stretch;
-    padding: 0 16px;
-}
-
 .lobby-create-btn {
-    flex: 1;
-    padding: 14px 20px;
-    font-size: 1rem;
+    padding: 10px 20px;
+    font-size: 0.9rem;
     font-weight: 700;
     color: white;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -183,13 +168,14 @@
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
     white-space: nowrap;
+    align-self: center;
 }
 
 .lobby-create-btn:hover {
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
     transform: translateY(-2px);
 }
 
@@ -197,18 +183,19 @@
     display: flex;
     gap: 0;
     border: 1.5px solid #e0e7ff;
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
     background: white;
+    align-self: center;
 }
 
 .lobby-code-input {
-    width: 100px;
-    padding: 0 12px;
+    width: 80px;
+    padding: 0 10px;
     border: none;
     background: transparent;
     color: #1e293b;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-family: monospace;
     outline: none;
 }
@@ -218,13 +205,13 @@
 }
 
 .lobby-join-btn {
-    padding: 0 16px;
+    padding: 8px 14px;
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
     border: none;
     cursor: pointer;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     transition: all 0.2s;
     white-space: nowrap;
 }
@@ -325,18 +312,6 @@
     color: white;
 }
 
-/* 규칙 요약 한 줄 */
-.lobby-rules-summary {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: #64748b;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: 10px;
-    margin: 0 16px;
-}
 
 /* 반응형 */
 @media (max-width: 600px) {
@@ -348,12 +323,10 @@
     }
     .lobby-rank-badge { flex-direction: row; gap: 8px; min-width: auto; }
     .rank-value { font-size: 1.2rem; }
-    .lobby-settings-row { grid-template-columns: 1fr; }
-    .lobby-action-row { flex-direction: column; }
+    .lobby-controls-row { flex-direction: column; }
     .lobby-join-group { width: 100%; }
     .lobby-code-input { flex: 1; }
-    .lobby-rules-summary { flex-direction: column; align-items: center; gap: 2px; }
-    .lobby-rules-summary span:nth-child(2) { display: none; }
+    .lobby-create-btn { width: 100%; }
 }
 
 /* 게임 화면 */

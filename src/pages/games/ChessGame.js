@@ -13,6 +13,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  updateDoc,
   runTransaction,
   increment,
   serverTimestamp,
@@ -821,11 +822,14 @@ const ChessGame = () => {
     }
   }, [gameId]);
 
+  // PvP 보상 처리 중복 방지 ref
+  const pvpRewardProcessedRef = useRef(new Set());
+
   // 실시간 게임 데이터 리스너 (상대방 입장/수 두기 즉시 반영)
   useEffect(() => {
     if (!gameId) return;
     const gameRef = doc(db, "chessGames", gameId);
-    const unsubscribe = onSnapshot(gameRef, (docSnap) => {
+    const unsubscribe = onSnapshot(gameRef, async (docSnap) => {
       if (docSnap.exists()) {
         const rawData = docSnap.data();
         const deserializedData = {
@@ -837,6 +841,38 @@ const ChessGame = () => {
         if (rawData.whiteTime !== undefined) setWhiteTime(rawData.whiteTime);
         if (rawData.blackTime !== undefined) setBlackTime(rawData.blackTime);
         if (rawData.moveHistory) setMoveHistory(rawData.moveHistory);
+
+        // PvP 게임 종료 시 레이팅 + 쿠폰 지급 (한 번만 처리)
+        if (
+          rawData.status === "finished" &&
+          !rawData.aiMode &&
+          rawData.ratingChange &&
+          user &&
+          !pvpRewardProcessedRef.current.has(gameId)
+        ) {
+          pvpRewardProcessedRef.current.add(gameId);
+          const myColorInGame = rawData.players.white === user.uid ? "w" : "b";
+          const myKey = myColorInGame === "w" ? "white" : "black";
+          const ratingDelta = rawData.ratingChange[myKey];
+          const isWinner = rawData.winner === myColorInGame;
+
+          try {
+            const userRef = doc(db, "users", user.uid);
+            const updates = {};
+            if (ratingDelta) {
+              updates.chessRating = increment(ratingDelta);
+            }
+            if (isWinner) {
+              updates.coupons = increment(3);
+            }
+            if (Object.keys(updates).length > 0) {
+              await updateDoc(userRef, updates);
+              logger.log(`[Chess PvP] 보상 지급: rating ${ratingDelta}, coupon ${isWinner ? 3 : 0}`);
+            }
+          } catch (err) {
+            logger.error("[Chess PvP] 보상 지급 실패:", err);
+          }
+        }
       } else {
         setFeedback({ message: "게임을 찾을 수 없습니다.", type: "error" });
         setGameId(null);
@@ -847,7 +883,7 @@ const ChessGame = () => {
       logger.error("게임 데이터 리스너 오류:", err);
     });
     return () => unsubscribe();
-  }, [gameId]);
+  }, [gameId, user]);
 
   const refetch = fetchGameData;
 
@@ -1506,11 +1542,13 @@ const ChessGame = () => {
     return (
       <div className="chess-container">
         <div className="chess-lobby">
-          {/* 히어로 헤더: 타이틀 + 등급 */}
+          {/* 히어로 헤더: 타이틀 + 보상정보 + 등급 */}
           <div className="lobby-hero">
             <div className="lobby-hero-left">
               <h2 className="lobby-title">♚ 체스 게임 ♔</h2>
-              <p className="lobby-subtitle">전략적 사고력을 기르는 최고의 두뇌 게임!</p>
+              <p className="lobby-subtitle">
+                💡 플레이어 승리: +15점 & 쿠폰 3개 · AI 승리: 카드 보상 (하루 3회)
+              </p>
             </div>
             <div className="lobby-rank-badge">
               <span className="rank-label">내 등급</span>
@@ -1524,19 +1562,25 @@ const ChessGame = () => {
             </div>
           </div>
 
-          {/* 설정 영역: 게임모드 + 시간제한 한 줄 */}
-          <div className="lobby-settings-row">
-            <div className="lobby-setting-card">
-              <span className="setting-label">게임 모드</span>
-              <div className="setting-options">
+          {feedback.message && (
+            <div className={`feedback ${feedback.type}`} style={{ margin: "0 16px" }}>
+              {feedback.message}
+            </div>
+          )}
+
+          {/* 전체 컨트롤: 게임모드 + 시간제한 + 방만들기 + 코드참가 한 줄 */}
+          <div className="lobby-controls-row">
+            <div className="lobby-ctrl-group">
+              <span className="ctrl-label">모드</span>
+              <div className="ctrl-options">
                 <button
-                  className={`setting-btn ${gameMode === "player" ? "active" : ""}`}
+                  className={`ctrl-btn ${gameMode === "player" ? "active" : ""}`}
                   onClick={() => setGameMode("player")}
                 >
                   👥 플레이어
                 </button>
                 <button
-                  className={`setting-btn ${gameMode === "ai" ? "active" : ""}`}
+                  className={`ctrl-btn ${gameMode === "ai" ? "active" : ""}`}
                   onClick={() => setGameMode("ai")}
                 >
                   🤖 AI ({dailyPlayCount}/3)
@@ -1544,13 +1588,13 @@ const ChessGame = () => {
               </div>
             </div>
 
-            <div className="lobby-setting-card">
-              <span className="setting-label">시간 제한</span>
-              <div className="setting-options">
+            <div className="lobby-ctrl-group">
+              <span className="ctrl-label">시간</span>
+              <div className="ctrl-options">
                 {[180, 300, 600, 900].map((time) => (
                   <button
                     key={time}
-                    className={`setting-btn time-btn ${timeControl === time ? "active" : ""}`}
+                    className={`ctrl-btn ctrl-time ${timeControl === time ? "active" : ""}`}
                     onClick={() => setTimeControl(time)}
                   >
                     {time / 60}분
@@ -1558,46 +1602,28 @@ const ChessGame = () => {
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* AI 난이도 (AI 모드일 때만) */}
-          {gameMode === "ai" && (
-            <div className="lobby-ai-difficulty">
-              <span className="setting-label">AI 난이도</span>
-              <div className="setting-options">
-                <button
-                  className={`setting-btn ${aiDifficulty === "beginner" ? "active" : ""}`}
-                  onClick={() => setAiDifficulty("beginner")}
-                >
-                  😊 초급
-                </button>
-                <button
-                  className={`setting-btn ${aiDifficulty === "intermediate" ? "active" : ""}`}
-                  onClick={() => setAiDifficulty("intermediate")}
-                >
-                  🤔 중급
-                </button>
-                <button
-                  className={`setting-btn ${aiDifficulty === "advanced" ? "active" : ""}`}
-                  onClick={() => setAiDifficulty("advanced")}
-                >
-                  🔥 고급
-                </button>
+            {gameMode === "ai" && (
+              <div className="lobby-ctrl-group lobby-ctrl-ai">
+                <span className="ctrl-label ctrl-label-ai">난이도</span>
+                <div className="ctrl-options">
+                  {[["beginner","😊 초급"],["intermediate","🤔 중급"],["advanced","🔥 고급"]].map(([k,v]) => (
+                    <button
+                      key={k}
+                      className={`ctrl-btn ${aiDifficulty === k ? "active" : ""}`}
+                      onClick={() => setAiDifficulty(k)}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {feedback.message && (
-            <div className={`feedback ${feedback.type}`}>
-              {feedback.message}
-            </div>
-          )}
-
-          {/* 액션 영역: 방 만들기 + 코드 참가 한 줄 */}
-          <div className="lobby-action-row">
             <button onClick={handleCreateRoom} className="lobby-create-btn">
-              {gameMode === "ai" ? "🤖 AI 대전 시작" : "🎮 새로운 방 만들기"}
+              {gameMode === "ai" ? "🤖 AI 시작" : "🎮 방 만들기"}
             </button>
+
             {gameMode === "player" && (
               <div className="lobby-join-group">
                 <input
@@ -1658,12 +1684,6 @@ const ChessGame = () => {
             </div>
           )}
 
-          {/* 규칙 요약 (접힌 상태) */}
-          <div className="lobby-rules-summary">
-            <span>💡 플레이어 승리: +15점 & 쿠폰 3개</span>
-            <span>•</span>
-            <span>AI 승리: 카드 보상 (하루 3회)</span>
-          </div>
         </div>
       </div>
     );
