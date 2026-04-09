@@ -1023,7 +1023,7 @@ const ParkingAccount = ({
  ? differenceInCalendarDays(new Date(), lastInterestDate)
  : 1;
  if (daysToApply > 0) {
- const dailyRate = parkingRateProduct.dailyRate || 0.1; // 기본 0.1% 일복리
+ const dailyRate = 0.1; // 파킹통장 일일 이자율 0.1% 고정
  const { interest } = calculateCompoundInterest(
  data.balance || 0,
  dailyRate,
@@ -1058,7 +1058,7 @@ const ParkingAccount = ({
  setParkingBalance(balance);
 
  // 일일 이자 계산 (상품 설정 이자율 기준)
- const actualDailyRate = parkingRateProduct?.dailyRate || 0.1;
+ const actualDailyRate = 0.1; // 파킹통장 일일 이자율 0.1% 고정
  setParkingRate(actualDailyRate);
  const dailyInterest = calculateDailyInterest(balance, actualDailyRate);
  setParkingDailyInterest(dailyInterest);
