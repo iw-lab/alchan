@@ -480,11 +480,11 @@ const ProductSection = ({
  onCancel,
  onMaturity,
  onLoanRepay,
- className = "",
+ sectionStyle = {},
 }) => {
  const [activeTab, setActiveTab] = useState("subscribed");
  return (
- <div className={`${cls.card} ${className}`}>
+ <div className={cls.card} style={sectionStyle}>
  <div className={cls.cardHeader}>
  {icon}
  <h2 className={cls.cardTitle}>{title}</h2>
@@ -2221,7 +2221,7 @@ const ParkingAccount = ({
  <ProductSection
  title="예금"
  icon={ICON_MAP.deposits}
- className="!bg-gradient-to-br !from-emerald-50 !to-teal-50 !border-emerald-200 !shadow-[0_4px_16px_rgba(16,185,129,0.1)]"
+ sectionStyle={{ background: 'linear-gradient(to bottom right, #d1fae5, #ccfbf1)', border: '1px solid #6ee7b7', boxShadow: '0 4px 16px rgba(16,185,129,0.12)' }}
  subscribedProducts={userDeposits}
  availableProducts={depositProducts}
  onSubscribe={(p) => handleOpenModal(p, "deposits")}
@@ -2233,7 +2233,7 @@ const ParkingAccount = ({
  <ProductSection
  title="적금"
  icon={ICON_MAP.savings}
- className="!bg-gradient-to-br !from-violet-50 !to-purple-50 !border-violet-200 !shadow-[0_4px_16px_rgba(139,92,246,0.1)]"
+ sectionStyle={{ background: 'linear-gradient(to bottom right, #ede9fe, #f3e8ff)', border: '1px solid #c4b5fd', boxShadow: '0 4px 16px rgba(139,92,246,0.12)' }}
  subscribedProducts={userSavings}
  availableProducts={installmentProducts}
  onSubscribe={(p) => handleOpenModal(p, "savings")}
@@ -2245,7 +2245,7 @@ const ParkingAccount = ({
  <ProductSection
  title="대출"
  icon={ICON_MAP.loans}
- className="!bg-gradient-to-br !from-red-50 !to-rose-50 !border-red-200 !shadow-[0_4px_16px_rgba(239,68,68,0.1)]"
+ sectionStyle={{ background: 'linear-gradient(to bottom right, #fee2e2, #ffe4e6)', border: '1px solid #fca5a5', boxShadow: '0 4px 16px rgba(239,68,68,0.12)' }}
  subscribedProducts={userLoans}
  availableProducts={loanProducts}
  onSubscribe={(p) => handleOpenModal(p, "loans")}

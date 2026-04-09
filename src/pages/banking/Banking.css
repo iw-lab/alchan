@@ -320,6 +320,13 @@
   border-color: transparent;
 }
 
+/* 통합금융관리 헤더 커스텀 */
+.banking-header-custom {
+  background: linear-gradient(135deg, #c7d2fe, #dbeafe, #ddd6fe) !important;
+  border: 1.5px solid #a5b4fc !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.18) !important;
+}
+
 @media (max-width: 768px) {
   .banking-container {
     padding: 10px;

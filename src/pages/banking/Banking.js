@@ -476,7 +476,7 @@ const Banking = () => {
  title="통합 금융 관리"
  subtitle="예금, 적금, 대출 상품을 관리하세요"
  icon={Landmark}
- className="!bg-gradient-to-r !from-indigo-100 !via-blue-50 !to-violet-100 !border-indigo-300 !shadow-[0_4px_20px_rgba(99,102,241,0.15)]"
+ className="banking-header-custom"
  />
 
  {/* 메시지 표시 */}
