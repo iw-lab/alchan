@@ -24,9 +24,22 @@ serviceWorkerRegistration.register({
     logger.log('[App] Service Worker 등록 완료 - 오프라인 캐싱 활성화');
   },
   onUpdate: (registration) => {
-    logger.log('[App] 새 버전 사용 가능 - 새로고침 권장');
+    logger.log('[App] 새 버전 감지 - 자동 업데이트 적용');
     if (registration.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // 새 서비스 워커가 활성화되면 자동 리로드
+      registration.waiting.addEventListener('statechange', (e) => {
+        if (e.target.state === 'activated') {
+          window.location.reload();
+        }
+      });
     }
   },
 });
+
+// 다른 탭에서 서비스 워커가 업데이트되면 이 탭도 자동 리로드
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}
