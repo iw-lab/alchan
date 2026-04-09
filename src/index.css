@@ -1273,3 +1273,20 @@ footer, [class*="footer"] {
 :root:not(.dark) [style*="background"][style*="gradient"] {
   opacity: 0.9;
 }
+
+/* ============================================
+   파킹통장 텍스트 강제 가시성 (최하단 = 최우선)
+   ============================================ */
+[data-parking] {
+  color: #1e293b !important;
+  background: linear-gradient(to bottom right, #eef2ff, #eff6ff) !important;
+}
+[data-parking] .parking-title { color: #1e293b !important; }
+[data-parking] .parking-icon { color: #6366f1 !important; }
+[data-parking] .parking-balance { color: #1e293b !important; }
+[data-parking] .parking-label { color: #64748b !important; }
+[data-parking] .parking-accent { color: #4f46e5 !important; }
+[data-parking] .parking-desc { color: #64748b !important; }
+[data-parking] .parking-interest { color: #059669 !important; }
+[data-parking] .parking-interest-icon { color: #059669 !important; }
+[data-parking] .parking-muted { color: #94a3b8 !important; }
