@@ -868,41 +868,41 @@ const ParkingAccountSection = ({
  const [amount, setAmount] = useState("");
 
  return (
- <div className="bg-gradient-to-br from-indigo-50 to-blue-50 text-slate-800 shadow-[0_2px_12px_rgba(99,102,241,0.1)] rounded-2xl p-6 border border-indigo-200">
+ <div className="bg-gradient-to-br from-indigo-50 to-blue-50 shadow-[0_2px_12px_rgba(99,102,241,0.1)] rounded-2xl p-6 border border-indigo-200" style={{ color: '#1e293b' }}>
  <div className="flex items-center gap-3 mb-5 pb-4 border-b-2 border-indigo-100">
- <Wallet size={28} className="text-indigo-500" />
- <h2 className="text-xl font-bold text-slate-800">
+ <Wallet size={28} style={{ color: '#6366f1' }} />
+ <h2 className="text-xl font-bold" style={{ color: '#1e293b' }}>
  파킹통장
  </h2>
  </div>
 
  {/* 보유현금 표시 */}
  <div className="bg-white/70 px-4 py-3 rounded-xl mb-4 flex justify-between items-center border border-indigo-100">
- <span className="text-sm font-medium text-slate-500">보유 현금</span>
- <span className="text-lg font-bold text-indigo-600">
+ <span className="text-sm font-medium" style={{ color: '#64748b' }}>보유 현금</span>
+ <span className="text-lg font-bold" style={{ color: '#4f46e5' }}>
  {formatCurrencyWithUnit(userCash || 0)}
  </span>
  </div>
 
- <div className="text-[36px] font-bold text-slate-800 mb-1">
+ <div className="text-[36px] font-bold mb-1" style={{ color: '#1e293b' }}>
  {formatCurrencyWithUnit(balance)}
  </div>
 
- <p className="text-sm text-slate-500 mb-4 font-medium">
+ <p className="text-sm mb-4 font-medium" style={{ color: '#64748b' }}>
  매일 이자가 자동 지급되는 자유 입출금 통장
  </p>
 
  <div className="bg-white/70 p-4 rounded-xl mb-5 border border-indigo-100">
  <div className="flex items-center gap-2 mb-1.5">
- <TrendingUp size={18} className="text-emerald-500" />
- <span className="text-sm font-semibold text-slate-500">
+ <TrendingUp size={18} style={{ color: '#059669' }} />
+ <span className="text-sm font-semibold" style={{ color: '#64748b' }}>
  일일 이자 수익
  </span>
  </div>
- <div className="text-2xl font-bold text-emerald-500">
+ <div className="text-2xl font-bold" style={{ color: '#059669' }}>
  +{formatCurrencyWithUnit(dailyInterest)}/일
  </div>
- <div className="text-xs mt-1 text-slate-400">
+ <div className="text-xs mt-1" style={{ color: '#94a3b8' }}>
  (일 {parkingRate}% 복리 기준)
  </div>
  </div>
