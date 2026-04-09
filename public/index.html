@@ -210,30 +210,18 @@
   </head>
   <body>
     <script>
-      // 배포 시 자동 캐시 초기화 (버전이 바뀌면 서비스 워커 + 캐시 전부 삭제 후 리로드)
+      // 서비스 워커 완전 제거 + 캐시 정리 (1회성, 리로드 없음)
       (function(){
-        var BUILD_VERSION = '__BUILD_20260409_5__';
-        var key = 'alchan_build_v';
         try {
-          var prev = localStorage.getItem(key);
-          if (prev !== BUILD_VERSION) {
-            localStorage.setItem(key, BUILD_VERSION);
-            if (prev) {
-              // 이전 버전 존재 = 업데이트 상황 → 캐시 전부 삭제
-              if ('caches' in window) {
-                caches.keys().then(function(names) {
-                  names.forEach(function(n) { caches.delete(n); });
-                });
-              }
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(regs) {
-                  regs.forEach(function(r) { r.unregister(); });
-                  window.location.reload();
-                });
-              } else {
-                window.location.reload();
-              }
-            }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(r) { r.unregister(); });
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(n) { caches.delete(n); });
+            });
           }
         } catch(e) {}
       })();
