@@ -1,7 +1,8 @@
 /* eslint-disable */
 /**
  * 경제 이벤트 시스템 - 랜덤 경제 이벤트 실행 로직
- * 평일 오후 1시(기본값) 에 랜덤으로 경제 이벤트가 발생합니다.
+ * 평일 설정 시간(기본값 오후 1시)에 랜덤으로 경제 이벤트가 발생합니다.
+ * 배포 시 SCHEDULER_AUTH_TOKEN 환경변수 필수 (deploy.yml에서 자동 주입)
  */
 
 const { db, admin, logger } = require("./utils");
