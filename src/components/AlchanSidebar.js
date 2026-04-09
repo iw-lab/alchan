@@ -439,7 +439,7 @@ const CATEGORY_LABELS = {
 // ============================================
 const MenuSection = memo(({ title, children }) => (
   <div className="mb-2">
-    <h3 className="px-4 py-1 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#6366f1' }}>
+    <h3 className="px-4 py-1 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#4338ca' }}>
       {title}
     </h3>
     <ul className="space-y-0.5">{children}</ul>
@@ -876,13 +876,13 @@ export default function AlchanSidebar({
           lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
-          background: 'linear-gradient(180deg, #e0e7ff 0%, #eef2ff 50%, #f5f3ff 100%)',
-          borderRight: '2px solid #c7d2fe',
-          boxShadow: '4px 0 20px rgba(99, 102, 241, 0.08)',
+          background: 'linear-gradient(180deg, #c7d2fe 0%, #ddd6fe 30%, #e0e7ff 60%, #eef2ff 100%)',
+          borderRight: '2px solid #a5b4fc',
+          boxShadow: '4px 0 24px rgba(99, 102, 241, 0.12)',
         }}
       >
         {/* 로고 영역 */}
-        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+        <div className="h-[72px] min-h-[72px] mx-3 mt-3 mb-1 flex items-center relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #4338ca, #7c3aed)', border: 'none', boxShadow: '0 4px 16px rgba(67, 56, 202, 0.35)' }}>
           <div className="flex items-center gap-3.5 px-4 w-full relative z-10">
             <div className="p-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none', border: 'none' }}>
               <AppIcon style={{ width: "36px", height: "36px" }} />
@@ -921,11 +921,11 @@ export default function AlchanSidebar({
         </nav>
 
         {/* 하단 사용자 프로필 */}
-        <div className="p-4" style={{ borderTop: '2px solid #e0e7ff' }}>
+        <div className="p-4" style={{ borderTop: '2px solid #a5b4fc' }}>
           <div
             onClick={handleLogout}
             className="flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group"
-            style={{ background: 'linear-gradient(135deg, #f5f3ff, #eef2ff)', boxShadow: '0 2px 8px rgba(99, 102, 241, 0.08)', border: '1px solid #c7d2fe' }}
+            style={{ background: 'linear-gradient(135deg, #e0e7ff, #ddd6fe)', boxShadow: '0 2px 8px rgba(99, 102, 241, 0.12)', border: '1px solid #a5b4fc' }}
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
               {userName.charAt(0)}

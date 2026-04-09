@@ -480,10 +480,11 @@ const ProductSection = ({
  onCancel,
  onMaturity,
  onLoanRepay,
+ className = "",
 }) => {
  const [activeTab, setActiveTab] = useState("subscribed");
  return (
- <div className={cls.card}>
+ <div className={`${cls.card} ${className}`}>
  <div className={cls.cardHeader}>
  {icon}
  <h2 className={cls.cardTitle}>{title}</h2>
@@ -868,7 +869,7 @@ const ParkingAccountSection = ({
  const [amount, setAmount] = useState("");
 
  return (
- <div data-parking="true" className="parking-wrap bg-gradient-to-br from-indigo-50 to-blue-50 shadow-[0_2px_12px_rgba(99,102,241,0.1)] rounded-2xl p-6 border border-indigo-200">
+ <div data-parking="true" className="parking-wrap bg-gradient-to-br from-indigo-100 to-blue-100 shadow-[0_4px_16px_rgba(99,102,241,0.15)] rounded-2xl p-6 border border-indigo-300">
  <div className="flex items-center gap-3 mb-5 pb-4 border-b-2 border-indigo-100">
  <Wallet size={28} className="parking-icon" />
  <h2 className="text-xl font-bold parking-title">
@@ -2220,6 +2221,7 @@ const ParkingAccount = ({
  <ProductSection
  title="예금"
  icon={ICON_MAP.deposits}
+ className="!bg-gradient-to-br !from-emerald-50 !to-teal-50 !border-emerald-200 !shadow-[0_4px_16px_rgba(16,185,129,0.1)]"
  subscribedProducts={userDeposits}
  availableProducts={depositProducts}
  onSubscribe={(p) => handleOpenModal(p, "deposits")}
@@ -2231,6 +2233,7 @@ const ParkingAccount = ({
  <ProductSection
  title="적금"
  icon={ICON_MAP.savings}
+ className="!bg-gradient-to-br !from-violet-50 !to-purple-50 !border-violet-200 !shadow-[0_4px_16px_rgba(139,92,246,0.1)]"
  subscribedProducts={userSavings}
  availableProducts={installmentProducts}
  onSubscribe={(p) => handleOpenModal(p, "savings")}
@@ -2242,6 +2245,7 @@ const ParkingAccount = ({
  <ProductSection
  title="대출"
  icon={ICON_MAP.loans}
+ className="!bg-gradient-to-br !from-red-50 !to-rose-50 !border-red-200 !shadow-[0_4px_16px_rgba(239,68,68,0.1)]"
  subscribedProducts={userLoans}
  availableProducts={loanProducts}
  onSubscribe={(p) => handleOpenModal(p, "loans")}
