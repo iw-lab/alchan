@@ -40,6 +40,7 @@ jobs:
 
       # 주식 가격 업데이트 (평일 6~25시 KST)
       - name: Update stock prices
+        continue-on-error: true
         if: |
           steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
           (steps.time.outputs.kst_hour >= 6 || steps.time.outputs.kst_hour < 1)
@@ -54,6 +55,7 @@ jobs:
 
       # 자정 리셋 (매일 KST 0시 - 함수 내부 중복 방지로 안전)
       - name: Midnight reset
+        continue-on-error: true
         if: |
           steps.time.outputs.kst_hour == 0 ||
           (github.event_name == 'workflow_dispatch' &&
@@ -67,7 +69,9 @@ jobs:
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
       # 주급 지급 (월요일 KST 8~9시 - 함수 내부에서 중복 방지)
+      # continue-on-error: 실패해도 이후 재산세/월세/경제이벤트는 정상 실행
       - name: Weekly salary payment
+        continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 1 &&
           steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 9) ||
@@ -82,13 +86,14 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
           if [ "$HTTP_STATUS" != "200" ]; then
-            echo "❌ 주급 지급 실패 (HTTP $HTTP_STATUS)"
-            exit 1
+            echo "⚠️ 주급 지급 응답 비정상 (HTTP $HTTP_STATUS) - 다음 스텝 계속 진행"
+          else
+            echo "✅ 주급 지급 완료"
           fi
-          echo "✅ 주급 지급 완료"
 
       # 부동산 보유세 징수 (금요일 KST 8~9시 - 함수 내부 주간 중복 방지)
       - name: Property holding tax
+        continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 5 &&
           steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 9) ||
@@ -104,6 +109,7 @@ jobs:
 
       # 월세 징수 (금요일 KST 8시 30분 - 보유세와 같은 날)
       - name: Weekly rent collection
+        continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 5 &&
           steps.time.outputs.kst_hour == 8 && steps.time.outputs.minute >= 15 && steps.time.outputs.minute <= 45) ||
@@ -118,13 +124,14 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
           if [ "$HTTP_STATUS" != "200" ]; then
-            echo "❌ 월세 징수 실패 (HTTP $HTTP_STATUS)"
-            exit 1
+            echo "⚠️ 월세 징수 응답 비정상 (HTTP $HTTP_STATUS) - 다음 스텝 계속 진행"
+          else
+            echo "✅ 월세 징수 완료"
           fi
-          echo "✅ 월세 징수 완료"
 
       # 경제 이벤트 (평일 KST 8~17시, 매 15분마다 호출 - 함수 내부에서 triggerHour ±29분 매칭 + 중복 방지)
       - name: Economic event
+        continue-on-error: true
         if: |
           steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
           steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17

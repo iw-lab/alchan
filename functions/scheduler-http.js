@@ -351,12 +351,16 @@ exports.weeklySalary = onRequest(
       logger.info(`[weeklySalary] 주급 지급 시작`);
 
       const forceRun = req.query.force === "true";
-      await payWeeklySalariesLogic(forceRun);
+      const result = await payWeeklySalariesLogic(forceRun);
 
-      res.json({ success: true, message: "주급 지급 완료" });
+      res.json({ success: true, message: "주급 지급 완료", ...result });
     } catch (error) {
-      logger.error("[weeklySalary] 오류:", error);
-      res.status(500).json({ success: false, error: error.message });
+      logger.error("[weeklySalary] 오류:", error, error?.stack);
+      res.status(500).json({
+        success: false,
+        error: error?.message || String(error),
+        stack: error?.stack,
+      });
     }
   },
 );
@@ -1229,7 +1233,7 @@ async function payWeeklySalariesLogic(forceRun = false) {
     const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
     if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().weekKey === weekKey) {
       logger.info(`[주급 지급] 이번 주(${weekKey}) 이미 지급 완료 - 건너뜀`);
-      return;
+      return { skipped: true, weekKey };
     }
 
     // 지급 시작 - 락 설정
@@ -1239,7 +1243,7 @@ async function payWeeklySalariesLogic(forceRun = false) {
     logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);
     if (classCodes.length === 0) {
       logger.warn("[주급 지급] 활성 학급 없음");
-      return;
+      return { skipped: true, reason: "no-active-classes", weekKey };
     }
 
     // 학생 데이터 사전 로드 (Firestore 쿼리 최소화)
@@ -1252,103 +1256,121 @@ async function payWeeklySalariesLogic(forceRun = false) {
     const PM_BONUS = 1000000;          // 국무총리 추가 주급
     let totalPaidCount = 0;
     let totalAmount = 0;
+    const classErrors = [];
 
     for (const classCode of classCodes) {
-      // 급여 설정 조회 (세율) - settings/salarySettings_{classCode} 경로 사용
-      let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
-      if (!salarySettingsDoc.exists) {
-        salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
-      }
-      const taxRate = salarySettingsDoc.exists ? (salarySettingsDoc.data().taxRate || 0.1) : 0.1;
-
-      // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
-      const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
-      const jobTitleMap = {};
-      jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
-
-      // 학급 관리자(선생님) 찾기
-      const adminSnapshot = await db
-        .collection("users")
-        .where("classCode", "==", classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
-
-      let adminDoc = null;
-      if (!adminSnapshot.empty) {
-        adminDoc = adminSnapshot.docs[0];
-      }
-
-      // 이미 로드된 데이터에서 해당 학급 학생만 필터링
-      const students = allStudentsSnap.docs.filter((d) => {
-        const data = d.data();
-        return data.classCode === classCode && !data.isSuperAdmin && !data.isTeacher;
-      });
-
-      if (students.length === 0) continue;
-
-      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
-      const batch = db.batch();
-      let classTotalNet = 0;
-      let classPaidCount = 0;
-
-      for (const studentDoc of students) {
-        const student = studentDoc.data();
-        const jobIds = student.selectedJobIds || [];
-        if (jobIds.length === 0) continue;
-
-        const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-        let bonus = 0;
-        for (const jobId of jobIds) {
-          const title = jobTitleMap[jobId];
-          if (title === "대통령") bonus += PRESIDENT_BONUS;
-          else if (title === "국무총리") bonus += PM_BONUS;
+      try {
+        // 급여 설정 조회 (세율) - settings/salarySettings_{classCode} 경로 사용
+        let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
+        if (!salarySettingsDoc.exists) {
+          salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
         }
-        const totalGross = grossSalary + bonus;
-        const tax = Math.floor(totalGross * taxRate);
-        const netSalary = totalGross - tax;
+        const rawTaxRate = salarySettingsDoc.exists ? salarySettingsDoc.data().taxRate : 0.1;
+        const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
 
-        batch.update(studentDoc.ref, {
-          cash: admin.firestore.FieldValue.increment(netSalary),
-          lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
-          lastGrossSalary: totalGross,
-          lastTaxAmount: tax,
-          lastNetSalary: netSalary,
-          totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
+        const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
+        const jobTitleMap = {};
+        jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
+
+        // 학급 관리자(선생님) 찾기
+        const adminSnapshot = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+
+        let adminDoc = null;
+        if (!adminSnapshot.empty) {
+          adminDoc = adminSnapshot.docs[0];
+        }
+
+        // 이미 로드된 데이터에서 해당 학급 학생만 필터링
+        const students = allStudentsSnap.docs.filter((d) => {
+          const data = d.data();
+          return data.classCode === classCode && !data.isSuperAdmin && !data.isTeacher;
         });
 
-        classTotalNet += netSalary;
-        classPaidCount++;
+        if (students.length === 0) continue;
+
+        // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
+        const batch = db.batch();
+        let classTotalNet = 0;
+        let classPaidCount = 0;
+
+        for (const studentDoc of students) {
+          const student = studentDoc.data();
+          // selectedJobIds가 배열이 아닐 수 있음 (오래된 데이터 방어)
+          const rawJobIds = student.selectedJobIds;
+          const jobIds = Array.isArray(rawJobIds)
+            ? rawJobIds
+            : (rawJobIds && typeof rawJobIds === "object" ? Object.keys(rawJobIds) : []);
+          if (jobIds.length === 0) continue;
+
+          const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+          let bonus = 0;
+          for (const jobId of jobIds) {
+            const title = jobTitleMap[jobId];
+            if (title === "대통령") bonus += PRESIDENT_BONUS;
+            else if (title === "국무총리") bonus += PM_BONUS;
+          }
+          const totalGross = grossSalary + bonus;
+          const tax = Math.floor(totalGross * taxRate);
+          const netSalary = totalGross - tax;
+
+          batch.update(studentDoc.ref, {
+            cash: admin.firestore.FieldValue.increment(netSalary),
+            lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
+            lastGrossSalary: totalGross,
+            lastTaxAmount: tax,
+            lastNetSalary: netSalary,
+            totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          classTotalNet += netSalary;
+          classPaidCount++;
+        }
+
+        if (classPaidCount === 0) continue;
+
+        // 관리자 잔액 차감 (부족해도 마이너스로 허용)
+        if (adminDoc) {
+          batch.update(adminDoc.ref, {
+            cash: admin.firestore.FieldValue.increment(-classTotalNet),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // lastPaidDate 업데이트
+        const salarySettingsRef = db.collection("settings").doc(`salarySettings_${classCode}`);
+        batch.set(salarySettingsRef, { lastPaidDate: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
+        await batch.commit();
+        totalPaidCount += classPaidCount;
+        totalAmount += classTotalNet;
+        logger.info(
+          `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급`,
+        );
+      } catch (classError) {
+        // 한 학급 실패가 다른 학급 지급을 막지 않도록
+        logger.error(`[주급 지급] ${classCode} 실패:`, classError, classError?.stack);
+        classErrors.push({ classCode, error: classError?.message || String(classError) });
       }
-
-      if (classPaidCount === 0) continue;
-
-      // 관리자 잔액 차감 (부족해도 마이너스로 허용)
-      if (adminDoc) {
-        batch.update(adminDoc.ref, {
-          cash: admin.firestore.FieldValue.increment(-classTotalNet),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-
-      // lastPaidDate 업데이트
-      const salarySettingsRef = db.collection("settings").doc(`salarySettings_${classCode}`);
-      batch.set(salarySettingsRef, { lastPaidDate: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-
-      await batch.commit();
-      totalPaidCount += classPaidCount;
-      totalAmount += classTotalNet;
-      logger.info(
-        `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급`,
-      );
     }
 
     logger.info(
-      `→ 주급 지급 완료: 총 ${totalPaidCount}명, ${totalAmount.toLocaleString()}원`,
+      `→ 주급 지급 완료: 총 ${totalPaidCount}명, ${totalAmount.toLocaleString()}원 (실패 학급: ${classErrors.length})`,
     );
+    return {
+      totalPaidCount,
+      totalAmount,
+      weekKey,
+      classErrors: classErrors.length > 0 ? classErrors : undefined,
+    };
   } catch (error) {
-    logger.error("→ 주급 지급 중 오류:", error);
+    logger.error("→ 주급 지급 중 오류:", error, error?.stack);
     throw error;
   }
 }

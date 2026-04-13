@@ -471,6 +471,45 @@ function Dashboard({ adminTabMode }) {
  }
  }, [adminTabMode, isAdmin]);
 
+ // 🔥 일일 할일 카운터 클라이언트 lazy 리셋
+ // 배경: 서버 스케줄러(midnightReset)가 외부 크론 기반이라 누락될 수 있음.
+ // 그 경우 승인되지 않은 할일도 다음날 다시 누를 수 없게 되므로,
+ // 학생이 대시보드를 열 때 KST 기준 날짜가 바뀌었으면 카운터만 자동 리셋한다.
+ // pendingApprovals 문서는 건드리지 않으므로 추후 승인 시 보상은 정상 지급된다.
+ const dailyResetCheckedRef = useRef(null);
+ useEffect(() => {
+ if (!userDoc?.id) return;
+
+ const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+ const todayStr = nowKst.toISOString().split("T")[0];
+
+ if (userDoc.tasksResetDate === todayStr) return;
+
+ const guardKey = `${userDoc.id}_${todayStr}`;
+ if (dailyResetCheckedRef.current === guardKey) return;
+ dailyResetCheckedRef.current = guardKey;
+
+ const userRef = doc(db, "users", userDoc.id);
+ updateDoc(userRef, {
+ completedTasks: {},
+ completedJobTasks: {},
+ tasksResetDate: todayStr,
+ })
+ .then(() => {
+ setUserDoc((prev) => ({
+ ...prev,
+ completedTasks: {},
+ completedJobTasks: {},
+ tasksResetDate: todayStr,
+ }));
+ logger.log("[Dashboard] 일일 할일 카운터 자동 리셋 완료:", todayStr);
+ })
+ .catch((err) => {
+ logger.error("[Dashboard] 일일 할일 자동 리셋 실패:", err);
+ dailyResetCheckedRef.current = null;
+ });
+ }, [userDoc?.id, userDoc?.tasksResetDate, setUserDoc]);
+
  // Memoized values
  const currentGoalId = useMemo(() => {
  return userDoc?.classCode && isAdmin?.()
