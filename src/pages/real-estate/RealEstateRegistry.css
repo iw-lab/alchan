@@ -21,28 +21,26 @@ body {
   background-color: #ffffff;
 }
 
-/* 헤더 */
+/* 헤더 - 컴팩트 */
 .exchange-header {
-  background: linear-gradient(180deg, #f8faff, #eef2ff);
-  color: #1e293b;
-  padding: 2rem 1rem;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.1);
-  text-align: center;
-  border-bottom: 1px solid #e0e7ff;
+  padding: 8px 4px 12px;
+  text-align: left;
+  background: none;
+  box-shadow: none;
+  border-bottom: none;
 }
 
 .exchange-header h1 {
-  font-size: 2.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   margin: 0;
   color: #1e293b;
-  text-shadow: none;
 }
 
 /* 통계 바 */
 .stats-container {
   max-width: 100%;
-  margin: -1.5rem 0 2rem;
+  margin: 0 0 1.5rem;
   padding: 0 1rem;
   position: relative;
   z-index: 2;
@@ -755,7 +753,7 @@ body {
   }
 
   .exchange-header h1 {
-    font-size: 2rem;
+    font-size: 1.125rem;
   }
 
   .stat-value {

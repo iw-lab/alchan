@@ -12,19 +12,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--border-accent);
+  margin-bottom: 16px;
+  padding: 8px 4px 12px;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .org-title {
-  font-size: 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
   color: var(--accent);
   margin: 0;
-  font-family: "Jua", sans-serif;
-  text-shadow: 0 0 10px var(--border-accent);
 }
 
 .admin-controls {

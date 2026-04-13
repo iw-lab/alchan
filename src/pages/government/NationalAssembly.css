@@ -8,17 +8,15 @@
 }
 
 .assembly-header {
-  margin-bottom: 30px;
-  border-bottom: 1px solid #e0e7ff;
-  padding-bottom: 20px;
+  margin-bottom: 16px;
+  padding: 8px 4px 12px;
 }
 
 .assembly-title {
-  font-size: 2.2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
   color: #1e293b;
-  margin-bottom: 20px;
-  font-family: 'Orbitron', sans-serif;
-  /* light theme - no text shadow */
+  margin: 0 0 12px 0;
 }
 
 .assembly-tabs {

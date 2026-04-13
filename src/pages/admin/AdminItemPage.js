@@ -35,19 +35,15 @@ const styles = {
     overflow: 'hidden'
   },
   header: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    padding: '30px',
-    marginBottom: '0'
+    padding: '12px 20px 8px',
+    marginBottom: '0',
+    borderBottom: '1px solid #e5e7eb'
   },
   title: {
-    fontSize: '28px',
+    fontSize: '18px',
     fontWeight: 'bold',
-    marginBottom: '8px'
-  },
-  subtitle: {
-    opacity: '0.9',
-    fontSize: '14px'
+    color: '#1e293b',
+    margin: 0
   },
   tabs: {
     display: 'flex',
@@ -372,7 +368,6 @@ const AdminItemPage = ({
       <div style={styles.card}>
         <div style={styles.header}>
           <h2 style={styles.title}>🏪 상점 관리 시스템</h2>
-          <p style={styles.subtitle}>아이템을 추가하고 관리하세요</p>
         </div>
 
         <div style={styles.tabs}>

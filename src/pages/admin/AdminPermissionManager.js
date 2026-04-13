@@ -125,24 +125,20 @@ const AdminPermissionManager = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      {/* 헤더 */}
-      <div className="mb-6">
+      {/* 헤더 - 컴팩트 */}
+      <div className="mb-4 px-1">
         <h1
-          className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2"
+          className="text-lg font-bold flex items-center gap-2"
           style={{ color: "var(--text-primary)" }}
         >
-          <Shield size={28} />
+          <Shield size={18} />
           권한 위임 관리
+          {delegatedCount > 0 && (
+            <span className="text-xs font-medium" style={{ color: "#818cf8" }}>
+              · 위임 {delegatedCount}명
+            </span>
+          )}
         </h1>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          학생에게 관리 기능을 위임합니다. 대통령 직업 학생은 자동으로 할일 승인
-          권한을 가집니다.
-        </p>
-        {delegatedCount > 0 && (
-          <p className="text-xs mt-1" style={{ color: "#818cf8" }}>
-            현재 {delegatedCount}명의 학생에게 권한이 위임되어 있습니다.
-          </p>
-        )}
       </div>
 
       {/* 검색 */}

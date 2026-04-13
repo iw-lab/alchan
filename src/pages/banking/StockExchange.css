@@ -65,15 +65,12 @@
   box-sizing: inherit;
 }
 
-/* Header - 히어로 스타일 */
+/* Header - 컴팩트 */
 .stock-header {
-  background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
-  padding: 20px 28px;
-  margin-bottom: var(--spacing-lg);
+  padding: 8px 4px 12px;
+  margin-bottom: var(--spacing-md);
   position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+  border-bottom: 1px solid #e0e7ff;
 }
 
 .stock-header::after {
@@ -97,18 +94,23 @@
 }
 
 .stock-header h1 {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 800;
-  color: #ffffff !important;
+  color: #1e293b !important;
   margin: 0;
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.stock-header .logo-title svg {
+  color: #6366f1 !important;
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .market-status {
-  color: rgba(255,255,255,0.9) !important;
+  color: #64748b !important;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .market-status.open {
@@ -125,15 +127,14 @@
 }
 
 .user-info-display {
-  color: #ffffff;
+  color: #1e293b;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-  padding: 8px 16px;
-  border-radius: 12px;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 10px;
   white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: none;
+  border: 1px solid #e0e7ff;
+  font-size: 0.85rem;
 }
 
 /* Main Section */

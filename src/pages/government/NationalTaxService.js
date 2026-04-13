@@ -311,16 +311,12 @@ const NationalTaxService = ({ classCode }) => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="relative overflow-hidden rounded-2xl p-8 text-slate-800 shadow-xl" style={{ background: 'linear-gradient(135deg, rgba(240, 245, 255, 0.95), rgba(230, 240, 255, 0.9))', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-        <div className="absolute inset-0 opacity-10" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(0, 136, 255, 0.4), transparent 60%)' }} />
-        <div className="relative z-10">
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif', textShadow: '0 0 12px rgba(99, 102, 241, 0.3)' }}>
-            {classCode} 학급 국세청
-          </h1>
-          <p className="text-sm" style={{ color: 'rgba(71, 85, 105, 0.9)' }}>세금 정책 관리 및 국고 운영</p>
-        </div>
+    <div className="space-y-4">
+      {/* 헤더 - 컴팩트 */}
+      <div className="flex items-center justify-between px-1">
+        <h1 className="text-lg font-bold text-slate-800">
+          🏛️ {classCode} 학급 국세청
+        </h1>
       </div>
 
       {/* 탭 네비게이션 - 세련된 네온 스타일 */}
@@ -418,16 +414,10 @@ const NationalTaxService = ({ classCode }) => {
             </div>
           </div>
 
-          {/* 최근 업데이트 */}
-          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 249, 255, 0.8)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-            <h3 className="text-sm font-bold mb-3" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
-              📅 최근 업데이트
-            </h3>
-            <div className="space-y-1.5 text-sm" style={{ color: 'rgba(71, 85, 105, 0.8)' }}>
-              <p>국고 마지막 업데이트: <span className="font-medium text-slate-800">{formatDate(treasuryData.lastUpdated)}</span></p>
-              <p>세금 정책 마지막 업데이트: <span className="font-medium text-slate-800">{formatDate(taxSettings.lastUpdated)}</span></p>
-            </div>
-          </div>
+          {/* 최근 업데이트 - 인라인 */}
+          <p className="text-xs px-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>
+            최근 업데이트: {formatDate(treasuryData.lastUpdated)} · 정책: {formatDate(taxSettings.lastUpdated)}
+          </p>
         </div>
       )}
 
@@ -559,14 +549,6 @@ const NationalTaxService = ({ classCode }) => {
             </button>
           </div>
 
-          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 249, 255, 0.6)', border: '1px solid rgba(96, 165, 250, 0.15)' }}>
-            <h3 className="text-sm font-bold mb-2" style={{ color: '#60a5fa', fontFamily: 'Rajdhani, sans-serif' }}>💡 세금 정책 목표</h3>
-            <ul className="space-y-1 text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
-              <li>• 공정한 시장 경제 질서 확립</li>
-              <li>• 안정적인 학급 재정 및 공공 서비스 투자</li>
-              <li>• 경제 활동 참여와 세금의 형평성 제고</li>
-            </ul>
-          </div>
         </div>
       )}
 
@@ -596,11 +578,6 @@ const NationalTaxService = ({ classCode }) => {
             })}
           </div>
 
-          <div className="rounded-lg p-6 text-center" style={{ background: 'rgba(240, 249, 255, 0.6)', border: '1px solid rgba(203, 213, 225, 0.3)' }}>
-            <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.5)' }}>
-              추후 시간별 세수 변화 추이, 카테고리별 상세 분석이 추가될 예정입니다.
-            </p>
-          </div>
         </div>
       )}
     </div>

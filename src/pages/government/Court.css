@@ -36,24 +36,22 @@
   color: var(--court-text-primary);
 }
 
-/* --- 헤더 영역 (제목 + 관리자 버튼) --- */
+/* --- 헤더 영역 - 컴팩트 --- */
 .court-header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--court-header-border);
+  margin-bottom: 16px;
+  padding: 8px 4px 12px;
 }
 
 .court-header {
-  font-size: 24px;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;
   padding: 0;
   border: none;
-  font-family: 'Orbitron', sans-serif;
 }
 
 /* --- 관리자 설정 탭 버튼 스타일 --- */
@@ -831,8 +829,8 @@
   }
 
   .court-header {
-    font-size: 20px;
-    margin-bottom: 10px;
+    font-size: 1rem;
+    margin-bottom: 8px;
   }
 
   .admin-tab-button {

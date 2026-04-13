@@ -171,18 +171,13 @@ const AdminApprovalPanel = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <h1
-          className="text-2xl md:text-3xl font-bold mb-2"
-          style={{ color: "var(--text-primary)" }}
-        >
-          할일 승인 관리
-        </h1>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          학생들의 보너스 할일 완료 요청을 승인하거나 거절합니다.
-        </p>
-      </div>
+      {/* 헤더 - 컴팩트 */}
+      <h1
+        className="text-lg font-bold mb-4 px-1"
+        style={{ color: "var(--text-primary)" }}
+      >
+        할일 승인 관리
+      </h1>
 
       {/* 필터 버튼 */}
       <div className="flex gap-2 mb-6 flex-wrap">

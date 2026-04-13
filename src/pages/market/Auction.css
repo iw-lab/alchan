@@ -11,15 +11,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e0e7ff;
+    margin-bottom: 16px;
+    padding: 8px 4px 12px;
 }
 
 .auction-header h1 {
-    font-family: 'Orbitron', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 700;
     color: #1f2937;
-    text-shadow: none;
     margin: 0;
 }
 

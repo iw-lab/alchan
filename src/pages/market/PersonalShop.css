@@ -24,28 +24,21 @@
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
 
-/* 헤더 */
+/* 헤더 - 컴팩트 */
 .market-header {
-  margin-bottom: 24px;
-  border-bottom: 2px solid #c7d2fe;
-  padding-bottom: 15px;
+  margin-bottom: 16px;
+  padding: 8px 4px 12px;
 }
 
 .market-header h1 {
-  font-weight: 800;
-  font-size: 2rem;
-  color: #4338ca;
-  background: none;
-  -webkit-background-clip: unset;
-  -webkit-text-fill-color: #4338ca;
-  text-shadow: none;
-  margin: 0 0 8px 0;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #1e293b;
+  margin: 0;
 }
 
 .header-subtitle {
-  color: #64748b;
-  font-size: 1rem;
-  margin: 0;
+  display: none;
 }
 
 /* 탭 버튼 */
@@ -1293,7 +1286,7 @@
   }
 
   .market-header h1 {
-    font-size: 1.6rem;
+    font-size: 1rem;
   }
 
   .market-tabs {

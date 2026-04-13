@@ -47,24 +47,22 @@ body {
   font-family: 'Rajdhani', sans-serif;
 }
 
-/* --- 헤더 영역 --- */
+/* --- 헤더 영역 - 컴팩트 --- */
 .police-header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 15px;
-  padding-bottom: 20px;
-  margin-bottom: 25px;
-  border-bottom: 1px solid var(--primary-color);
+  gap: 12px;
+  padding: 8px 4px 12px;
+  margin-bottom: 16px;
 }
 
 .police-header {
-  font-size: 2.2rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;
-  font-family: 'Orbitron', sans-serif;
 }
 
 .header-info {
@@ -1268,7 +1266,7 @@ button {
 
 @media (max-width: 480px) {
   .police-header {
-    font-size: 1.8rem;
+    font-size: 1rem;
   }
 
   .police-tab-button {

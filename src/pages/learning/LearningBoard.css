@@ -11,21 +11,17 @@
   padding: 3rem;
 }
 
-/* Header */
+/* Header - 컴팩트 */
 .lb-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
-  padding: 1.2rem 1.5rem;
-  background: linear-gradient(135deg, #ffffff, #f8faff);
-  border: 1px solid #e0e7ff;
-  border-radius: 16px;
-  backdrop-filter: blur(8px);
+  margin-bottom: 1rem;
+  padding: 8px 4px 12px;
 }
 
 .lb-title {
-  font-size: 1.3rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #1e293b;
   margin: 0;

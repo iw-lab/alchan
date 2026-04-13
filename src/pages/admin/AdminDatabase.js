@@ -448,10 +448,7 @@ const AdminDatabase = () => {
 
  return (
  <div className="admin-database p-6">
- <div className="mb-6">
- <h2 className="text-2xl font-bold text-gray-800 mb-2">학급 데이터베이스</h2>
- <p className="text-gray-600">학급 학생들의 모든 활동 내역을 확인할 수 있습니다.</p>
- </div>
+ <h2 className="text-lg font-bold text-gray-800 mb-4 px-1">학급 데이터베이스</h2>
 
  {/* 필터 및 컨트롤 */}
  <div className="bg-white p-4 rounded-lg shadow-sm mb-6">

@@ -256,7 +256,7 @@ export default function MyProfile() {
  <div className="w-full min-h-full bg-cyber-dark">
  <div className="w-full max-w-4xl mx-auto px-4 md:px-6 py-6">
  {/* 페이지 제목 */}
- <h1 className="text-[28px] font-extrabold bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] bg-clip-text text-transparent mb-6">
+ <h1 className="text-lg font-bold text-slate-800 mb-4 px-1">
  내 프로필
  </h1>
 
