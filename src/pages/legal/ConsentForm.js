@@ -49,15 +49,15 @@ const ConsentForm = () => {
  };
 
  return (
- <div className="min-h-screen bg-gray-100 text-slate-700">
+ <div className="min-h-screen text-slate-700">
  <style>{printStyles}</style>
 
  {/* 상단 툴바 (인쇄 시 안 보임) */}
- <div className="no-print sticky top-0 z-50 bg-white border-b border-white/10 px-4 py-3">
+ <div className="no-print sticky top-0 z-50 glass-card-strong border-b border-white/60 px-4 py-3 rounded-none">
  <div className="max-w-4xl mx-auto flex items-center justify-between">
  <button
  onClick={() => navigate(-1)}
- className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors"
+ className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 transition-colors"
  >
  <ArrowLeft size={18} />
  <span>뒤로가기</span>
@@ -65,14 +65,14 @@ const ConsentForm = () => {
  <div className="flex items-center gap-3">
  <button
  onClick={handleCopyText}
- className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 rounded-lg transition-colors text-sm font-medium"
+ className="btn-glass px-4 py-2 text-sm"
  >
  <FileText size={16} />
  텍스트 복사
  </button>
  <button
  onClick={handlePrint}
- className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-slate-800 rounded-lg transition-colors text-sm font-medium"
+ className="btn-gradient px-4 py-2 text-sm"
  >
  <Printer size={16} />
  인쇄 / PDF 저장
@@ -83,15 +83,15 @@ const ConsentForm = () => {
 
  {/* 안내 배너 (인쇄 시 안 보임) */}
  <div className="no-print max-w-4xl mx-auto px-4 pt-6 pb-4">
- <div className="bg-violet-900/30 border border-violet-700/50 rounded-xl p-4">
- <h2 className="text-lg font-bold text-violet-300 mb-2 flex items-center gap-2">
+ <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+ <h2 className="text-lg font-bold text-violet-700 mb-2 flex items-center gap-2">
  <Download size={20} />
  가정통신문 다운로드 안내
  </h2>
- <ul className="text-sm text-violet-200/80 space-y-1">
+ <ul className="text-sm text-violet-800 space-y-1">
  <li>1. <strong>"인쇄 / PDF 저장"</strong> 버튼 클릭 → 프린터를 "PDF로 저장"으로 선택하면 PDF 파일로 저장됩니다.</li>
  <li>2. <strong>"텍스트 복사"</strong> 버튼 클릭 → 한글(HWP), Word에 붙여넣기 후 자유롭게 수정하세요.</li>
- <li>3. 학교명, 학년, 반, 선생님 성함 등 <strong className="text-yellow-300">노란색 부분</strong>을 수정해서 사용하세요.</li>
+ <li>3. 학교명, 학년, 반, 선생님 성함 등 <strong className="text-yellow-600">노란색 부분</strong>을 수정해서 사용하세요.</li>
  </ul>
  </div>
  </div>
@@ -100,30 +100,30 @@ const ConsentForm = () => {
  <div ref={printRef} className="print-area max-w-4xl mx-auto px-4 pb-12">
 
  {/* === 가정통신문 본문 === */}
- <div className="consent-page bg-[#16162a] rounded-xl p-8 md:p-12 border border-white/10 mb-8" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
+ <div className="consent-page glass-card-strong rounded-3xl p-8 md:p-12 mb-8" style={{ fontFamily: "'Noto Sans KR', sans-serif" }}>
 
  {/* 문서 제목 */}
  <div className="text-center mb-8">
- <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#e8e8ff' }}>
+ <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#1e1b4b' }}>
  가 정 통 신 문
  </h1>
  <div className="w-24 h-1 bg-violet-500 mx-auto rounded-full" />
  </div>
 
  {/* 학교 정보 */}
- <div className="text-right text-sm mb-6" style={{ color: '#a0a0c0' }}>
- <p><span className="text-yellow-400 no-print">○○</span><span className="print-only">○○</span>초등학교</p>
- <p>제 <span className="text-yellow-400 no-print">____</span><span className="print-only">____</span> 호</p>
- <p>2026년 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>월 <span className="text-yellow-400 no-print">__</span><span className="print-only">__</span>일</p>
+ <div className="text-right text-sm mb-6" style={{ color: '#64748b' }}>
+ <p><span className="text-yellow-600 no-print">○○</span><span className="print-only">○○</span>초등학교</p>
+ <p>제 <span className="text-yellow-600 no-print">____</span><span className="print-only">____</span> 호</p>
+ <p>2026년 <span className="text-yellow-600 no-print">__</span><span className="print-only">__</span>월 <span className="text-yellow-600 no-print">__</span><span className="print-only">__</span>일</p>
  </div>
 
  {/* 인사말 */}
- <div className="mb-6 leading-relaxed" style={{ color: '#d0d0e8' }}>
+ <div className="mb-6 leading-relaxed" style={{ color: '#334155' }}>
  <p className="mb-4">
  학부모님께 안녕하세요.
  </p>
  <p className="mb-4">
- 우리 <span className="text-yellow-400 no-print font-semibold">[○학년 ○반]</span><span className="print-only font-semibold">[○학년 ○반]</span>에서는 학급 경제 교육의 일환으로
+ 우리 <span className="text-yellow-600 no-print font-semibold">[○학년 ○반]</span><span className="print-only font-semibold">[○학년 ○반]</span>에서는 학급 경제 교육의 일환으로
  <strong> '알찬'</strong> 학급 경제 시뮬레이션 앱을 활용하고자 합니다.
  </p>
  <p className="mb-4">
@@ -142,38 +142,38 @@ const ConsentForm = () => {
 
  {/* 수집 항목 테이블 */}
  <div className="mb-6">
- <h3 className="text-lg font-bold mb-3" style={{ color: '#e8e8ff' }}>1. 개인정보 수집·이용 내역</h3>
+ <h3 className="text-lg font-bold mb-3" style={{ color: '#1e1b4b' }}>1. 개인정보 수집·이용 내역</h3>
  <div className="overflow-x-auto">
  <table className="w-full text-sm border-collapse" style={{ borderColor: '#ffffff30' }}>
  <thead>
  <tr className="bg-violet-900/30">
- <th className="border border-white/20 px-4 py-2 text-left font-semibold" style={{ color: '#c8c8ff' }}>항목</th>
- <th className="border border-white/20 px-4 py-2 text-left font-semibold" style={{ color: '#c8c8ff' }}>내용</th>
+ <th className="border border-slate-200 px-4 py-2 text-left font-semibold" style={{ color: '#4338ca' }}>항목</th>
+ <th className="border border-slate-200 px-4 py-2 text-left font-semibold" style={{ color: '#4338ca' }}>내용</th>
  </tr>
  </thead>
- <tbody style={{ color: '#d0d0e8' }}>
+ <tbody style={{ color: '#334155' }}>
  <tr>
- <td className="border border-white/20 px-4 py-2 font-medium">수집 항목</td>
- <td className="border border-white/20 px-4 py-2">
+ <td className="border border-slate-200 px-4 py-2 font-medium">수집 항목</td>
+ <td className="border border-slate-200 px-4 py-2">
  닉네임(학생이 직접 설정한 가명), 학급 코드, 서비스 이용 기록(로그인 시간, 가상 경제 활동 내역)<br/>
  <span style={{fontSize:'0.75rem', color:'#a0a0c0'}}>※ 실명·생년월일·주소·전화번호 등 민감 정보는 수집하지 않습니다.</span>
  </td>
  </tr>
  <tr>
- <td className="border border-white/20 px-4 py-2 font-medium">수집 목적</td>
- <td className="border border-white/20 px-4 py-2">학급 경제 교육 활동 (가상 화폐 관리, 직업 체험, 세금·저축·투자 등 경제 활동 기록)</td>
+ <td className="border border-slate-200 px-4 py-2 font-medium">수집 목적</td>
+ <td className="border border-slate-200 px-4 py-2">학급 경제 교육 활동 (가상 화폐 관리, 직업 체험, 세금·저축·투자 등 경제 활동 기록)</td>
  </tr>
  <tr>
- <td className="border border-white/20 px-4 py-2 font-medium">보유 기간</td>
- <td className="border border-white/20 px-4 py-2">해당 학년도 종료 시까지 (학년 말 일괄 삭제, 탈퇴 시 즉시 삭제)</td>
+ <td className="border border-slate-200 px-4 py-2 font-medium">보유 기간</td>
+ <td className="border border-slate-200 px-4 py-2">해당 학년도 종료 시까지 (학년 말 일괄 삭제, 탈퇴 시 즉시 삭제)</td>
  </tr>
  <tr>
- <td className="border border-white/20 px-4 py-2 font-medium">이용 범위</td>
- <td className="border border-white/20 px-4 py-2">해당 학급 내에서만 사용 (타 학급·외부 제공 없음, 광고·마케팅 활용 없음)</td>
+ <td className="border border-slate-200 px-4 py-2 font-medium">이용 범위</td>
+ <td className="border border-slate-200 px-4 py-2">해당 학급 내에서만 사용 (타 학급·외부 제공 없음, 광고·마케팅 활용 없음)</td>
  </tr>
  <tr>
- <td className="border border-white/20 px-4 py-2 font-medium">처리 방법</td>
- <td className="border border-white/20 px-4 py-2">Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)</td>
+ <td className="border border-slate-200 px-4 py-2 font-medium">처리 방법</td>
+ <td className="border border-slate-200 px-4 py-2">Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)</td>
  </tr>
  </tbody>
  </table>
@@ -182,8 +182,8 @@ const ConsentForm = () => {
 
  {/* 안내 사항 */}
  <div className="mb-6">
- <h3 className="text-lg font-bold mb-3" style={{ color: '#e8e8ff' }}>2. 안내 사항</h3>
- <ul className="space-y-2 text-sm" style={{ color: '#d0d0e8' }}>
+ <h3 className="text-lg font-bold mb-3" style={{ color: '#1e1b4b' }}>2. 안내 사항</h3>
+ <ul className="space-y-2 text-sm" style={{ color: '#334155' }}>
  <li className="flex gap-2">
  <span>•</span>
  <span>수집된 개인정보는 교육 목적 외에 절대 사용되지 않습니다.</span>
@@ -213,10 +213,10 @@ const ConsentForm = () => {
 
  {/* 담임교사 정보 */}
  <div className="mb-8">
- <h3 className="text-lg font-bold mb-3" style={{ color: '#e8e8ff' }}>3. 문의처</h3>
- <div className="text-sm" style={{ color: '#d0d0e8' }}>
- <p><span className="text-yellow-400 no-print">○○</span><span className="print-only">○○</span>초등학교 <span className="text-yellow-400 no-print">○</span><span className="print-only">○</span>학년 <span className="text-yellow-400 no-print">○</span><span className="print-only">○</span>반 담임교사 <span className="text-yellow-400 no-print font-semibold">[성명]</span><span className="print-only font-semibold">[성명]</span></p>
- <p>연락처: <span className="text-yellow-400 no-print">[전화번호 또는 이메일]</span><span className="print-only">[전화번호 또는 이메일]</span></p>
+ <h3 className="text-lg font-bold mb-3" style={{ color: '#1e1b4b' }}>3. 문의처</h3>
+ <div className="text-sm" style={{ color: '#334155' }}>
+ <p><span className="text-yellow-600 no-print">○○</span><span className="print-only">○○</span>초등학교 <span className="text-yellow-600 no-print">○</span><span className="print-only">○</span>학년 <span className="text-yellow-600 no-print">○</span><span className="print-only">○</span>반 담임교사 <span className="text-yellow-600 no-print font-semibold">[성명]</span><span className="print-only font-semibold">[성명]</span></p>
+ <p>연락처: <span className="text-yellow-600 no-print">[전화번호 또는 이메일]</span><span className="print-only">[전화번호 또는 이메일]</span></p>
  </div>
  </div>
 
@@ -230,11 +230,11 @@ const ConsentForm = () => {
 
  {/* === 회신서 (동의서) === */}
  <div className="p-6 rounded-xl" style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
- <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#e8e8ff' }}>
+ <h2 className="text-xl font-bold text-center mb-6" style={{ color: '#1e1b4b' }}>
  개인정보 수집·이용 동의서 (회신)
  </h2>
 
- <div className="text-sm mb-6" style={{ color: '#d0d0e8' }}>
+ <div className="text-sm mb-6" style={{ color: '#334155' }}>
  <p className="mb-3">
  본인은 위 가정통신문의 내용을 충분히 이해하였으며,
  자녀의 개인정보 수집·이용에 대해 아래와 같이 의사를 표시합니다.
@@ -245,9 +245,9 @@ const ConsentForm = () => {
  <div className="space-y-4 mb-8">
  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
  <div className="w-5 h-5 mt-0.5 border-2 border-gray-400 rounded flex-shrink-0" />
- <div className="text-sm" style={{ color: '#d0d0e8' }}>
+ <div className="text-sm" style={{ color: '#334155' }}>
  <strong>동의합니다.</strong>
- <p className="text-xs mt-1" style={{ color: '#a0a0c0' }}>
+ <p className="text-xs mt-1" style={{ color: '#64748b' }}>
  '알찬' 앱 사용을 위한 개인정보(닉네임, 학급코드) 수집·이용에 동의합니다.
  </p>
  </div>
@@ -255,9 +255,9 @@ const ConsentForm = () => {
 
  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
  <div className="w-5 h-5 mt-0.5 border-2 border-gray-400 rounded flex-shrink-0" />
- <div className="text-sm" style={{ color: '#d0d0e8' }}>
+ <div className="text-sm" style={{ color: '#334155' }}>
  <strong>동의하지 않습니다.</strong>
- <p className="text-xs mt-1" style={{ color: '#a0a0c0' }}>
+ <p className="text-xs mt-1" style={{ color: '#64748b' }}>
  대체 활동으로 참여하겠습니다.
  </p>
  </div>
@@ -265,7 +265,7 @@ const ConsentForm = () => {
  </div>
 
  {/* 서명란 */}
- <div className="space-y-4 text-sm" style={{ color: '#d0d0e8' }}>
+ <div className="space-y-4 text-sm" style={{ color: '#334155' }}>
  <div className="grid grid-cols-2 gap-4">
  <div>
  <span className="font-medium">학생 이름: </span>
@@ -298,7 +298,7 @@ const ConsentForm = () => {
  </div>
 
  <div className="text-center mt-4 font-semibold">
- <p><span className="text-yellow-400 no-print">○○</span><span className="print-only">○○</span>초등학교장 귀하</p>
+ <p><span className="text-yellow-600 no-print">○○</span><span className="print-only">○○</span>초등학교장 귀하</p>
  </div>
  </div>
  </div>

@@ -894,10 +894,7 @@ const Login = () => {
 
  {/* 메인 카드 */}
  <div
- className="rounded-2xl overflow-hidden border border-slate-200 shadow-xl"
- style={{
- background: "#ffffff",
- }}
+ className="glass-card-strong rounded-3xl overflow-hidden"
  >
  {/* 탭 */}
  {activeTab !== "register" && (
@@ -1055,7 +1052,7 @@ const Login = () => {
  <button
  type="submit"
  disabled={isLoading}
- className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+ className="btn-gradient w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed font-bold rounded-xl"
  >
  {isLoading ? (
  <>
@@ -1243,7 +1240,7 @@ const Login = () => {
  <button
  type="submit"
  disabled={isLoading}
- className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-800 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+ className="btn-gradient w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed font-bold rounded-xl"
  >
  {isLoading ? (
  <>
