@@ -318,6 +318,14 @@ exports.midnightReset = onRequest(
         savingsResult.error = savingsError.message;
       }
 
+      // 🔥 유령 오목 방 정리
+      let omokCleanup = null;
+      try {
+        omokCleanup = await cleanupStaleOmokGamesLogic();
+      } catch (e) {
+        logger.error("[midnightReset] 오목 방 정리 오류:", e);
+      }
+
       // 🔥 리셋 완료 기록 (중복 방지용)
       await db.collection("systemState").doc("lastMidnightReset").set({
         date: todayStr,
@@ -329,6 +337,7 @@ exports.midnightReset = onRequest(
         message: "일일 과제 리셋 + 적금 자동 납입 완료",
         date: todayStr,
         savings: savingsResult,
+        omokCleanup,
       });
     } catch (error) {
       logger.error("[midnightReset] 오류:", error);
@@ -446,6 +455,74 @@ exports.weeklyPropertyTax = onRequest(
     } catch (error) {
       logger.error("[weeklyPropertyTax] 오류:", error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
+// ===================================================================================
+// 🧹 유령 오목 방 정리 — heartbeat 기반 stale 감지
+// waiting 상태 + lastHeartbeat 90초 이상 (or createdAt 3분 이상) 오래된 방 삭제
+// ===================================================================================
+async function cleanupStaleOmokGamesLogic() {
+  const now = Date.now();
+  const HEARTBEAT_STALE_MS = 90 * 1000;
+  const LEGACY_STALE_MS = 3 * 60 * 1000;
+
+  const snap = await db
+    .collection("omokGames")
+    .where("gameStatus", "==", "waiting")
+    .get();
+
+  let deleted = 0;
+  let kept = 0;
+  const batch = db.batch();
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const hb = data.lastHeartbeat?.toMillis?.();
+    const created = data.createdAt?.toMillis?.();
+    let stale = false;
+    if (hb) {
+      stale = now - hb > HEARTBEAT_STALE_MS;
+    } else if (created) {
+      stale = now - created > LEGACY_STALE_MS;
+    } else {
+      stale = true;
+    }
+    if (stale) {
+      batch.delete(doc.ref);
+      deleted++;
+    } else {
+      kept++;
+    }
+  }
+  if (deleted > 0) {
+    await batch.commit();
+  }
+  logger.info(`[cleanupStaleOmokGames] deleted=${deleted} kept=${kept}`);
+  return { deleted, kept };
+}
+
+exports.cleanupStaleOmokGames = onRequest(
+  {
+    region: "asia-northeast3",
+    timeoutSeconds: 120,
+    invoker: "public",
+  },
+  async (req, res) => {
+    try {
+      const token = req.query.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const result = await cleanupStaleOmokGamesLogic();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      logger.error("[cleanupStaleOmokGames] 오류:", error, error?.stack);
+      res.status(500).json({
+        success: false,
+        error: error?.message || String(error),
+      });
     }
   },
 );

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (reset, salary, rent, property-tax, all, reverse-salary-dry, reverse-salary-commit)'
+        description: '실행할 작업 (reset, salary, rent, property-tax, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok)'
         required: true
         default: 'reset'
       weekKey:
@@ -144,6 +144,21 @@ jobs:
           echo "🧮 주급 회수 DRY RUN (weekKey=$WK)"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=true")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🧹 유령 오목 방 정리
+      - name: Cleanup stale omok games
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'cleanup-omok'
+        run: |
+          echo "🧹 유령 오목 방 정리 시작"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://cleanupstaleomokgames-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"

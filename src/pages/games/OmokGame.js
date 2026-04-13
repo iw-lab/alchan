@@ -649,6 +649,29 @@ const OmokGame = () => {
     };
   }, []);
 
+  // 🔥 호스트 heartbeat: 대기 중일 때 30초마다 lastHeartbeat 갱신
+  // stale 감지 + 유령 방 자동 정리를 위한 프레즌스 시스템
+  useEffect(() => {
+    if (!gameId || !user || !game) return;
+    if (game.gameStatus !== "waiting") return;
+    if (game.host !== user.uid) return;
+    if (game.aiMode) return;
+
+    const tick = async () => {
+      try {
+        await updateDoc(doc(db, "omokGames", gameId), {
+          lastHeartbeat: serverTimestamp(),
+        });
+      } catch (err) {
+        logger.warn("[omok heartbeat] 갱신 실패:", err?.message);
+      }
+    };
+    // 즉시 1회 + 30초 주기
+    tick();
+    const interval = setInterval(tick, 30000);
+    return () => clearInterval(interval);
+  }, [gameId, user, game]);
+
   const createEmptyBoard = () => new Array(BOARD_SIZE * BOARD_SIZE).fill(null);
 
   const fetchAvailableGames = useCallback(async () => {
@@ -662,10 +685,19 @@ const OmokGame = () => {
       );
 
       const querySnapshot = await getDocs(q);
-      const games = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const nowMs = Date.now();
+      const STALE_MS = 90 * 1000; // 90초 이상 heartbeat 없음 = 유령 방
+      const games = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((g) => {
+          // heartbeat 기반 (신규 방): lastHeartbeat 90초 이내면 표시
+          const hb = g.lastHeartbeat?.toDate?.()?.getTime?.();
+          if (hb) return nowMs - hb < STALE_MS;
+          // 구 방(heartbeat 필드 없음): createdAt 기반으로 3분 이내만 표시
+          const created = g.createdAt?.toDate?.()?.getTime?.();
+          if (created) return nowMs - created < 3 * 60 * 1000;
+          return false; // 둘 다 없으면 숨김
+        });
       setAvailableGames(games);
     } catch (err) {
       logger.error("게임 목록 불러오기 오류:", err);
@@ -813,6 +845,7 @@ const OmokGame = () => {
         currentPlayer: user.uid,
         winner: null,
         createdAt: serverTimestamp(),
+        lastHeartbeat: serverTimestamp(), // 호스트 대기 중 heartbeat 기반 stale 감지
         host: user.uid,
         hostName: myName,
         hostClass: myClass,

@@ -32,6 +32,7 @@ exports.weeklyRent = scheduler.weeklyRent; // 월세 징수용 엔드포인트
 exports.exchangeRateScheduler = scheduler.exchangeRateScheduler; // 환율 자동 업데이트 (하루 1회)
 exports.weeklyPropertyTax = scheduler.weeklyPropertyTax; // 부동산 보유세 자동 징수 (매주 금요일 8시)
 exports.reverseLastWeeklySalary = scheduler.reverseLastWeeklySalary; // 🚨 일회성 회수 endpoint (2026-04-13 중복지급 롤백)
+exports.cleanupStaleOmokGames = scheduler.cleanupStaleOmokGames; // 🧹 유령 오목 방 정리 (heartbeat 기반)
 
 // 🔥 경제 이벤트 시스템
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
