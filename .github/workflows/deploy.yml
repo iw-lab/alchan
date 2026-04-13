@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # HEAD~1 diff 용 (얕은 clone이면 HEAD~1 없음)
 
       - name: Check if build folder exists
         run: |
@@ -35,15 +37,23 @@ jobs:
 
       - name: Deploy Functions (if changed)
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q '^functions/'; then
-            echo "Functions 변경 감지 - 배포 시작"
+          # HEAD~1..HEAD 변경 파일 목록 (fetch-depth: 2 덕분에 가능)
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          echo "=== Changed files ==="
+          echo "$CHANGED"
+          echo "====================="
+          if echo "$CHANGED" | grep -q '^functions/'; then
+            echo "✅ Functions 변경 감지 - 배포 시작"
             # GitHub Secrets에서 환경변수 주입 (새 컴퓨터 배포 시 .env 누락 방지)
             echo "SCHEDULER_AUTH_TOKEN=${{ secrets.SCHEDULER_AUTH_TOKEN }}" > functions/.env
+            echo "=== functions/.env (masked) ==="
+            sed 's/=.*/=***/' functions/.env
+            echo "==============================="
             cd functions && npm ci && cd ..
             firebase deploy --only functions --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
             rm -f functions/.env
           else
-            echo "Functions 변경 없음 - 건너뜀"
+            echo "⏭️  Functions 변경 없음 - 건너뜀"
           fi
 
       # GitHub Release 생성 (AppUpdateChecker가 감지)

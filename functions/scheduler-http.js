@@ -23,12 +23,16 @@ const {
   getCentralStocksSnapshot,
 } = require("./realStockService");
 
-// 보안: 인증 토큰 체크 (cron-job.org에서 호출 가능)
-// Secret Manager 또는 환경변수에서 읽기
+// 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
+// Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 if (!AUTH_TOKEN) {
   logger.warn(
-    "SCHEDULER_AUTH_TOKEN 환경변수가 설정되지 않았습니다. 스케줄러 엔드포인트가 비활성화됩니다.",
+    "SCHEDULER_AUTH_TOKEN 환경변수가 설정되지 않았습니다. 스케줄러 엔드포인트가 비활성화됩니다. deploy.yml의 functions/.env 주입을 확인하세요.",
+  );
+} else {
+  logger.info(
+    `[scheduler-http] AUTH_TOKEN 로드 완료 (길이: ${AUTH_TOKEN.length})`,
   );
 }
 
