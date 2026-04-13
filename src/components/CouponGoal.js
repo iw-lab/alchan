@@ -81,15 +81,12 @@ export default function CouponGoal({
 
   return (
     <div
-      className="class-coupon-goal p-6 rounded-2xl relative overflow-hidden"
+      className="class-coupon-goal glass-card-strong p-6 rounded-3xl relative overflow-hidden"
       style={{
-        backgroundColor: "#ffffff",
         boxShadow: goalAchieved
-          ? "0 4px 20px rgba(16, 185, 129, 0.15)"
-          : "0 4px 20px rgba(0, 0, 0, 0.08)",
-        border: goalAchieved
-          ? "2px solid #10b981"
-          : "1px solid #e2e8f0",
+          ? "0 1px 0 rgba(255,255,255,0.9) inset, 0 12px 40px -10px rgba(16, 185, 129, 0.25)"
+          : undefined,
+        border: goalAchieved ? "2px solid #10b981" : undefined,
       }}
     >
       {/* 배경 장식 */}
@@ -146,10 +143,12 @@ export default function CouponGoal({
 
       {/* === 메인 프로그레스 영역 === */}
       <div
-        className="rounded-xl p-5 mb-5"
+        className="rounded-2xl p-5 mb-5"
         style={{
-          background: "linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%)",
-          border: "1px solid #e2e8f0",
+          background: "linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(238,242,255,0.55) 100%)",
+          backdropFilter: "blur(14px) saturate(160%)",
+          WebkitBackdropFilter: "blur(14px) saturate(160%)",
+          border: "1px solid rgba(199,210,254,0.5)",
         }}
       >
         {/* 큰 숫자 표시 */}

@@ -578,11 +578,9 @@ export default function CouponGoalPage() {
   }
 
   return (
-    <div className="w-full min-h-full" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div className="w-full min-h-full">
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
-        <h2
-          className="text-2xl font-bold text-emerald-600 border-b-2 border-emerald-200 pb-3 mb-6"
-        >
+        <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-3 mb-6">
           🎯 쿠폰 목표
         </h2>
 
@@ -607,15 +605,7 @@ export default function CouponGoalPage() {
               isResettingGoal={isResettingGoal}
             />
 
-            <div
-              style={{
-                marginTop: "20px",
-                padding: "15px",
-                backgroundColor: "#f8fafc",
-                borderRadius: "8px",
-                border: "1px solid #e2e8f0",
-              }}
-            >
+            <div className="glass-card rounded-2xl mt-5 p-4">
               <h4
                 style={{
                   fontSize: "14px",

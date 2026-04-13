@@ -3,7 +3,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
+    background: transparent; /* body gradient mesh 드러남 */
     padding: 0;
     font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
     color: #1e293b;
@@ -100,11 +100,15 @@
 }
 
 .lobby-ctrl-group {
-    background: white;
-    border: 1px solid #e0e7ff;
-    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 18px;
     padding: 10px 14px;
-    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.06);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.85) inset,
+      0 8px 24px -8px rgba(79, 70, 229, 0.12);
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -161,23 +165,29 @@
 }
 
 .lobby-create-btn {
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: white;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: linear-gradient(135deg, #4338ca 0%, #7c3aed 50%, #a21caf 100%);
     border: none;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 4px 14px rgba(67, 56, 202, 0.35);
     white-space: nowrap;
     align-self: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.3px;
 }
 
 .lobby-create-btn:hover {
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    background: linear-gradient(135deg, #312e81 0%, #6b21a8 50%, #86198f 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      0 6px 22px rgba(67, 56, 202, 0.5);
     transform: translateY(-2px);
 }
 
