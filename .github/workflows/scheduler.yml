@@ -42,10 +42,11 @@ jobs:
           echo "minute=$MINUTE" >> $GITHUB_OUTPUT
           echo "KST Time: ${KST_HOUR}:${MINUTE} (Day: ${KST_DAY})"
 
-      # 주식 가격 업데이트 (평일 6~25시 KST)
+      # 주식 가격 업데이트 (평일 6~25시 KST) - 자동 스케줄일 때만
       - name: Update stock prices
         continue-on-error: true
         if: |
+          github.event_name == 'schedule' &&
           steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
           (steps.time.outputs.kst_hour >= 6 || steps.time.outputs.kst_hour < 1)
         run: |
@@ -181,9 +182,11 @@ jobs:
           echo "Response: $BODY"
 
       # 경제 이벤트 (평일 KST 8~17시, 매 15분마다 호출 - 함수 내부에서 triggerHour ±29분 매칭 + 중복 방지)
+      # workflow_dispatch로 수동 태스크(cleanup-omok, reverse-salary 등) 돌릴 때는 실행 안 함 → 의도치 않은 이벤트 생성 방지
       - name: Economic event
         continue-on-error: true
         if: |
+          github.event_name == 'schedule' &&
           steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
           steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17
         run: |
