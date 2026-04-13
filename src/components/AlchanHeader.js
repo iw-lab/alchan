@@ -320,7 +320,7 @@ const AlchanHeader = memo(
     return (
       <>
         {/* 모바일 헤더 */}
-        <header className="md:hidden sticky top-0 z-30" style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-primary)' }}>
+        <header className="md:hidden sticky top-0 z-30" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(199,210,254,0.5)' }}>
           {/* 상단 헤더 바 */}
           <div className="h-14 px-3 flex items-center justify-between">
             {/* 왼쪽: 메뉴 버튼 + 앱 이름 */}
@@ -412,7 +412,7 @@ const AlchanHeader = memo(
         </header>
 
         {/* PC 헤더 */}
-        <header className="hidden md:flex items-center justify-between shadow-sm z-10 h-16 min-h-16 max-h-16 px-4" style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-primary)' }}>
+        <header className="hidden md:flex items-center justify-between z-10 h-16 min-h-16 max-h-16 px-4 sticky top-0" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(199,210,254,0.5)' }}>
           <div className="flex items-center gap-3">
             {/* 사이드바 토글 버튼 */}
             <button

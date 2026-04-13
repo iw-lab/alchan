@@ -803,7 +803,7 @@ export default function AlchanSidebar({
   // PC 접힌 상태
   if (isCollapsed && !isMobile) {
     return (
-      <aside className="hidden md:flex flex-col w-20 h-screen sticky top-0 left-0 z-50 transition-all duration-300" style={{ backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-primary)', boxShadow: 'var(--shadow-sm)' }}>
+      <aside className="hidden md:flex flex-col w-20 h-screen sticky top-0 left-0 z-50 transition-all duration-300" style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderRight: '1px solid rgba(199,210,254,0.5)', boxShadow: '0 8px 32px -8px rgba(79, 70, 229, 0.08)' }}>
         {/* 로고 */}
         <div className="h-16 min-h-16 flex items-center justify-center" style={{ borderBottom: '1px solid var(--border-primary)' }}>
           <div className="p-1.5 rounded-lg" style={{ border: '1px solid var(--border-primary)' }}>
@@ -876,7 +876,9 @@ export default function AlchanSidebar({
           lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
-          background: 'linear-gradient(180deg, #c7d2fe 0%, #ddd6fe 30%, #e0e7ff 60%, #eef2ff 100%)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(238,242,255,0.75) 50%, rgba(245,243,255,0.75) 100%)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           borderRight: '2px solid #a5b4fc',
           boxShadow: '4px 0 24px rgba(99, 102, 241, 0.12)',
         }}
