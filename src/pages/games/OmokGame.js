@@ -1652,14 +1652,53 @@ const OmokGame = () => {
             <h2 className="omok-hero-title">🌍 글로벌 오목 게임</h2>
             <p className="omok-hero-sub">두뇌 대결을 펼치고 쿠폰을 획득하세요!</p>
           </div>
-          <div className="omok-hero-rank">
+          <div
+            className="omok-hero-rank"
+            style={{
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(14px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(160%)',
+              border: '1px solid rgba(255, 255, 255, 0.28)',
+              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+            }}
+          >
             <div className="omok-rank-icon" style={{ backgroundColor: myRankDetails?.currentRank?.color || '#6366f1' }}>
               {myRankDetails?.currentRank?.icon || '🏅'}
             </div>
             <div className="omok-rank-info">
-              <span className="omok-rank-title">{myRankDetails?.currentRank?.title || 'Unranked'}</span>
-              <span className="omok-rank-rp">{myRankDetails?.currentRP || 0} RP</span>
-              <span className="omok-rank-record">{omokStats.wins}승 {omokStats.losses}패 ({winRate}%)</span>
+              <span
+                className="omok-rank-title"
+                style={{
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.4px',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)',
+                }}
+              >
+                {myRankDetails?.currentRank?.title || 'Unranked'}
+              </span>
+              <span
+                className="omok-rank-rp"
+                style={{
+                  color: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                }}
+              >
+                {myRankDetails?.currentRP || 0} RP
+              </span>
+              <span
+                className="omok-rank-record"
+                style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: '0.72rem',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                }}
+              >
+                {omokStats.wins}승 {omokStats.losses}패 ({winRate}%)
+              </span>
             </div>
           </div>
         </div>
