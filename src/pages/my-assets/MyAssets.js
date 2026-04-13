@@ -1288,16 +1288,14 @@ export default function MyAssets() {
 
   const renderTitle = () => (
     <div className="flex justify-between items-center mb-5">
-      <h2 className="text-2xl font-bold text-cyber-cyan border-b-2 border-cyber-cyan/20 pb-2.5 m-0 drop-shadow-[0_0_10px_rgba(99,102,241,0.3)]">
+      <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-2.5 m-0">
         나의 자산 현황 💳
       </h2>
       <button
         onClick={handleForceRefresh}
         disabled={assetsLoading}
-        className={`px-4 py-2 bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30 rounded-lg text-sm font-semibold transition-all duration-200 ${
-          assetsLoading
-            ? "cursor-not-allowed opacity-60"
-            : "cursor-pointer hover:bg-cyber-cyan/20"
+        className={`btn-glass px-4 py-2 text-sm ${
+          assetsLoading ? "cursor-not-allowed opacity-60" : "cursor-pointer"
         }`}
       >
         🔄 새로고침

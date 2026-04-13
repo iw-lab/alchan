@@ -259,7 +259,7 @@ function SelectMultipleJobsView({
  }, []);
 
  return (
- <div className="bg-white backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200 p-6 max-w-3xl mx-auto my-8">
+ <div className="glass-card rounded-2xl p-6 max-w-3xl mx-auto my-8">
  <h4 className="text-xl font-semibold text-slate-800 text-center mb-2">
  직업 선택 (다중 선택 가능)
  </h4>
@@ -1987,10 +1987,10 @@ function Dashboard({ adminTabMode }) {
  userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
  return (
- <div className="min-h-full w-full bg-gray-100 px-2 pt-1 pb-0">
+ <div className="min-h-full w-full px-2 pt-1 pb-0">
  {/* 페이지 헤더 - 컴팩트 버전 (관리자 탭 모드가 아닐 때만 표시) */}
  {!adminTabMode && (
- <section className="bg-white rounded-lg px-3 py-1.5 shadow-lg border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
+ <section className="glass-card rounded-2xl px-3 py-1.5 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
  <div className="flex items-center gap-2">
  <div className="w-7 h-7 bg-indigo-100 rounded-md flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-200">
  <ListTodo className="w-4 h-4" />
@@ -2049,7 +2049,7 @@ function Dashboard({ adminTabMode }) {
  {viewMode === "list" && !showAdminSettingsModal && !adminTabMode && (
  <>
  {/* 나의 직업 할일 섹션 */}
- <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mb-6">
+ <div className="glass-card rounded-2xl overflow-hidden mb-6">
  {/* 나의 직업 할일 헤더 - 색상 배경 */}
  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
  <div className="flex items-center gap-2">
