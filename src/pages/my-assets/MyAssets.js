@@ -1478,7 +1478,7 @@ export default function MyAssets() {
   }
 
   return (
-    <div className="w-full min-h-full bg-cyber-dark">
+    <div className="w-full min-h-full">
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
         {renderTitle()}
 

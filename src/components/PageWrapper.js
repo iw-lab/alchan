@@ -149,7 +149,7 @@ export const CardGrid = ({ children, cols = 3, className = "" }) => {
 };
 
 // ============================================
-// 통계 카드 - 새로운 디자인
+// 통계 카드 - 유리모피즘 디자인
 // ============================================
 export const StatCard = ({
   icon: Icon,
@@ -157,19 +157,19 @@ export const StatCard = ({
   value,
   subValue,
   trend,
-  iconBg = "bg-cyan-900/30",
-  iconColor = "text-cyan-400",
+  iconBg = "bg-indigo-100",
+  iconColor = "text-indigo-600",
   onClick,
 }) => (
   <div
-    className={`bg-white backdrop-blur-sm rounded-2xl p-6 border border-cyan-900/30 shadow-lg hover:shadow-xl hover:shadow-cyan-500/10 transition-all duration-300 ${
+    className={`glass-card rounded-2xl p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 ${
       onClick ? "cursor-pointer" : ""
     }`}
     onClick={onClick}
   >
     <div className="flex items-start justify-between">
       <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${iconBg}`}
+        className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg}`}
       >
         <Icon className={`w-6 h-6 ${iconColor}`} />
       </div>
@@ -177,8 +177,8 @@ export const StatCard = ({
         <span
           className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
             trend.type === "up"
-              ? "bg-emerald-900/30 text-emerald-400"
-              : "bg-red-900/30 text-red-400"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-red-100 text-red-700"
           }`}
         >
           {trend.type === "up" ? "+" : "-"}
@@ -187,8 +187,8 @@ export const StatCard = ({
       )}
     </div>
     <div className="mt-4">
-      <p className="text-sm text-slate-400 font-medium">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1 tracking-tight">
+      <p className="text-sm text-slate-500 font-medium">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 mt-1 tracking-tight">
         {value}
       </p>
       {subValue && <p className="text-sm text-slate-500 mt-1">{subValue}</p>}
@@ -222,33 +222,43 @@ export const AssetCard = ({ icon: Icon, label, value, color, iconColor }) => (
 // ============================================
 export const TabGroup = ({ tabs, activeTab, onChange, className = "" }) => (
   <div
-    className={`flex gap-1 p-1 bg-gray-100 rounded-xl border border-cyan-900/30 ${className}`}
+    className={`flex gap-1 p-1 glass-card rounded-2xl ${className}`}
   >
-    {tabs.map((tab) => (
-      <button
-        key={tab.id}
-        onClick={() => onChange(tab.id)}
-        className={`flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${
-          activeTab === tab.id
-            ? "bg-cyan-500 text-slate-900 shadow-lg shadow-cyan-500/30"
-            : "text-slate-400 hover:text-white hover:bg-white/5"
-        }`}
-      >
-        {tab.icon && <tab.icon className="w-4 h-4 mr-2 inline-block" />}
-        {tab.label}
-        {tab.count !== undefined && (
-          <span
-            className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
-              activeTab === tab.id
-                ? "bg-gray-100 text-cyan-400"
-                : "bg-white text-slate-400"
-            }`}
-          >
-            {tab.count}
-          </span>
-        )}
-      </button>
-    ))}
+    {tabs.map((tab) => {
+      const isActive = activeTab === tab.id;
+      return (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`flex-1 px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200`}
+          style={
+            isActive
+              ? {
+                  background:
+                    "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)",
+                  color: "#ffffff",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px rgba(99,102,241,0.3)",
+                }
+              : { color: "#475569" }
+          }
+        >
+          {tab.icon && <tab.icon className="w-4 h-4 mr-2 inline-block" />}
+          {tab.label}
+          {tab.count !== undefined && (
+            <span
+              className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
+                isActive
+                  ? "bg-white/25 text-white"
+                  : "bg-slate-200 text-slate-600"
+              }`}
+            >
+              {tab.count}
+            </span>
+          )}
+        </button>
+      );
+    })}
   </div>
 );
 
@@ -268,20 +278,20 @@ export const ActionButton = ({
 }) => {
   const variants = {
     primary:
-      "bg-cyan-500 text-slate-900 hover:bg-cyan-400 ring-1 ring-cyan-400 shadow-cyan-500/30",
-    secondary: "bg-white hover:bg-slate-100 text-slate-700",
+      "btn-gradient text-white",
+    secondary: "btn-glass",
     outline:
-      "bg-transparent text-slate-600 ring-1 ring-slate-600 hover:bg-white hover:ring-slate-500 shadow-sm",
+      "bg-white/60 text-slate-700 ring-1 ring-slate-300 hover:bg-white hover:ring-indigo-400",
     "outline-green":
-      "bg-transparent text-emerald-400 ring-1 ring-emerald-600 hover:bg-emerald-900/30 hover:ring-emerald-500 shadow-sm",
+      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-100 hover:ring-emerald-500",
     "outline-red":
-      "bg-transparent text-rose-400 ring-1 ring-rose-600 hover:bg-rose-900/30 hover:ring-rose-500 shadow-sm",
+      "bg-rose-50 text-rose-700 ring-1 ring-rose-300 hover:bg-rose-100 hover:ring-rose-500",
     danger:
-      "bg-transparent text-rose-400 ring-1 ring-rose-600 hover:bg-rose-900/30 hover:ring-rose-500 shadow-sm",
+      "bg-rose-500 text-white hover:bg-rose-600 shadow-md shadow-rose-500/30",
     success:
-      "bg-transparent text-emerald-400 ring-1 ring-emerald-600 hover:bg-emerald-900/30 hover:ring-emerald-500 shadow-sm",
-    ghost: "text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-    indigo: "bg-purple-900/30 text-purple-300 hover:bg-purple-900/50",
+      "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/30",
+    ghost: "text-slate-600 hover:bg-white/60 hover:text-indigo-700",
+    indigo: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
   };
 
   const sizes = {
