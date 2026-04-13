@@ -450,6 +450,174 @@ exports.weeklyPropertyTax = onRequest(
   },
 );
 
+// ===================================================================================
+// 🚨 일회성 회수 endpoint - 2026-04-13 테스트 중복 지급 롤백용
+// weekKey + confirm=YES + dryRun 파라미터 필수
+// lastNetSalary 필드 기반으로 학생 cash/totalSalaryReceived 차감, 관리자 cash 환원
+// schedulerLocks/lastSalaryReversal_{weekKey} 로 중복 실행 방지
+// ===================================================================================
+exports.reverseLastWeeklySalary = onRequest(
+  {
+    region: "asia-northeast3",
+    timeoutSeconds: 540,
+    invoker: "public",
+  },
+  async (req, res) => {
+    try {
+      const token = req.query.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+
+      const weekKey = req.query.weekKey;
+      const confirm = req.query.confirm;
+      const dryRun = req.query.dryRun !== "false"; // 기본 true - 안전
+
+      if (!weekKey) {
+        res.status(400).json({ success: false, error: "weekKey 파라미터 필수" });
+        return;
+      }
+
+      if (!dryRun && confirm !== "YES") {
+        res.status(400).json({
+          success: false,
+          error: "실제 실행하려면 confirm=YES 파라미터가 필요합니다 (dryRun=false일 때)",
+        });
+        return;
+      }
+
+      // 중복 실행 방지
+      const reversalLockRef = db.collection("schedulerLocks").doc(`lastSalaryReversal_${weekKey}`);
+      if (!dryRun) {
+        const existing = await reversalLockRef.get();
+        if (existing.exists) {
+          res.status(409).json({
+            success: false,
+            error: `이미 ${weekKey} 주급 회수가 실행되었습니다`,
+            executedAt: existing.data().timestamp,
+          });
+          return;
+        }
+      }
+
+      logger.info(`[reverseSalary] 시작 (weekKey=${weekKey}, dryRun=${dryRun})`);
+
+      // KST 기준 '오늘' 범위 (lastSalaryDate가 오늘인 학생만 대상)
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const todayKst = new Date(Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate(),
+      ));
+      const todayStartUtc = new Date(todayKst.getTime() - 9 * 60 * 60 * 1000);
+      const tomorrowStartUtc = new Date(todayStartUtc.getTime() + 24 * 60 * 60 * 1000);
+
+      const classCodes = await getAllActiveClassCodes();
+      const reversalPlan = [];
+      let totalReversedCount = 0;
+      let totalReversedAmount = 0;
+
+      for (const classCode of classCodes) {
+        // 학급 학생 조회
+        const studentsSnap = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", false)
+          .get();
+
+        // 학급 관리자
+        const adminSnap = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+        const adminDoc = adminSnap.empty ? null : adminSnap.docs[0];
+
+        let classSum = 0;
+        const classTargets = [];
+
+        for (const studentDoc of studentsSnap.docs) {
+          const data = studentDoc.data();
+          const lastNet = data.lastNetSalary || 0;
+          const lastDate = data.lastSalaryDate;
+          if (!lastDate || lastNet <= 0) continue;
+
+          // lastSalaryDate가 오늘 범위인 학생만
+          const lastDateMs = lastDate.toDate ? lastDate.toDate().getTime() : new Date(lastDate).getTime();
+          if (lastDateMs < todayStartUtc.getTime() || lastDateMs >= tomorrowStartUtc.getTime()) continue;
+
+          classTargets.push({
+            userId: studentDoc.id,
+            name: data.name || data.nickname || "?",
+            lastNetSalary: lastNet,
+          });
+          classSum += lastNet;
+        }
+
+        if (classTargets.length === 0) continue;
+
+        reversalPlan.push({
+          classCode,
+          studentCount: classTargets.length,
+          classSum,
+          adminFound: !!adminDoc,
+        });
+
+        if (!dryRun) {
+          const batch = db.batch();
+          for (const target of classTargets) {
+            const ref = db.collection("users").doc(target.userId);
+            batch.update(ref, {
+              cash: admin.firestore.FieldValue.increment(-target.lastNetSalary),
+              totalSalaryReceived: admin.firestore.FieldValue.increment(-target.lastNetSalary),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          if (adminDoc) {
+            batch.update(adminDoc.ref, {
+              cash: admin.firestore.FieldValue.increment(classSum),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          await batch.commit();
+          logger.info(`[reverseSalary] ${classCode}: ${classTargets.length}명 ${classSum.toLocaleString()}원 회수`);
+        }
+
+        totalReversedCount += classTargets.length;
+        totalReversedAmount += classSum;
+      }
+
+      if (!dryRun) {
+        await reversalLockRef.set({
+          weekKey,
+          totalReversedCount,
+          totalReversedAmount,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      res.json({
+        success: true,
+        dryRun,
+        weekKey,
+        totalReversedCount,
+        totalReversedAmount,
+        plan: reversalPlan,
+      });
+    } catch (error) {
+      logger.error("[reverseSalary] 오류:", error, error?.stack);
+      res.status(500).json({
+        success: false,
+        error: error?.message || String(error),
+        stack: error?.stack,
+      });
+    }
+  },
+);
+
 // Deprecated: cleanupOldNews 함수 제거
 // 이유: simpleScheduler의 cleanupExpiredCentralNews와 중복
 // 또한 simpleScheduler가 15분마다 자동으로 만료된 뉴스를 정리함

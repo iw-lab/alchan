@@ -9,9 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (reset, salary, rent, property-tax, all)'
+        description: '실행할 작업 (reset, salary, rent, property-tax, all, reverse-salary-dry, reverse-salary-commit)'
         required: true
         default: 'reset'
+      weekKey:
+        description: '회수 대상 weekKey (reverse-salary-* 에서만 사용, 예: 2026-W15)'
+        required: false
+        default: '2026-W15'
 
 jobs:
   stock-price-update:
@@ -128,6 +132,38 @@ jobs:
           else
             echo "✅ 월세 징수 완료"
           fi
+
+      # 🚨 주급 회수 - dry run (계산만, 쓰기 없음)
+      - name: Reverse salary (dry run)
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'reverse-salary-dry'
+        run: |
+          WK="${{ github.event.inputs.weekKey }}"
+          echo "🧮 주급 회수 DRY RUN (weekKey=$WK)"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=true")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🚨 주급 회수 - 실제 실행 (쓰기)
+      - name: Reverse salary (commit)
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'reverse-salary-commit'
+        run: |
+          WK="${{ github.event.inputs.weekKey }}"
+          echo "💀 주급 회수 COMMIT (weekKey=$WK)"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
 
       # 경제 이벤트 (평일 KST 8~17시, 매 15분마다 호출 - 함수 내부에서 triggerHour ±29분 매칭 + 중복 방지)
       - name: Economic event
