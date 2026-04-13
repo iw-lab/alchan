@@ -172,10 +172,7 @@ const AdminApprovalPanel = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
       {/* 헤더 - 컴팩트 */}
-      <h1
-        className="text-lg font-bold mb-4 px-1"
-        style={{ color: "var(--text-primary)" }}
-      >
+      <h1 className="text-lg font-bold mb-4 px-1 text-slate-800">
         할일 승인 관리
       </h1>
 
@@ -189,10 +186,11 @@ const AdminApprovalPanel = () => {
             style={{
               backgroundColor:
                 filter === key
-                  ? "rgba(99, 102, 241, 0.3)"
-                  : "rgba(30, 41, 59, 0.6)",
-              border: `1px solid ${filter === key ? "rgba(99, 102, 241, 0.5)" : "rgba(100, 116, 139, 0.2)"}`,
-              color: filter === key ? "#818cf8" : "#94a3b8",
+                  ? "rgba(99, 102, 241, 0.15)"
+                  : "#ffffff",
+              border: `1px solid ${filter === key ? "rgba(99, 102, 241, 0.4)" : "#e2e8f0"}`,
+              color: filter === key ? "#4f46e5" : "#64748b",
+              boxShadow: filter === key ? "none" : "0 1px 2px rgba(15, 23, 42, 0.04)",
               cursor: "pointer",
             }}
           >
@@ -202,8 +200,8 @@ const AdminApprovalPanel = () => {
               <span
                 className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
                 style={{
-                  backgroundColor: "rgba(245, 158, 11, 0.3)",
-                  color: "#fbbf24",
+                  backgroundColor: "rgba(245, 158, 11, 0.18)",
+                  color: "#b45309",
                 }}
               >
                 {pendingCount}
@@ -218,14 +216,15 @@ const AdminApprovalPanel = () => {
         <div
           className="flex items-center gap-3 mb-4 p-3 rounded-xl flex-wrap"
           style={{
-            backgroundColor: "rgba(30, 41, 59, 0.8)",
-            border: "1px solid rgba(99, 102, 241, 0.2)",
+            backgroundColor: "#ffffff",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
           }}
         >
           <button
             onClick={toggleSelectAll}
             className="flex items-center gap-1.5 text-sm font-medium cursor-pointer"
-            style={{ color: allPendingSelected ? "#818cf8" : "#94a3b8" }}
+            style={{ color: allPendingSelected ? "#4f46e5" : "#64748b" }}
           >
             {allPendingSelected ? <CheckSquare size={18} /> : <Square size={18} />}
             전체 선택 ({selectedIds.size}/{pendingCount})
@@ -238,10 +237,10 @@ const AdminApprovalPanel = () => {
             style={{
               backgroundColor:
                 selectedIds.size > 0
-                  ? "rgba(34, 197, 94, 0.25)"
-                  : "rgba(34, 197, 94, 0.08)",
-              border: `1px solid ${selectedIds.size > 0 ? "rgba(34, 197, 94, 0.5)" : "rgba(34, 197, 94, 0.15)"}`,
-              color: selectedIds.size > 0 ? "#4ade80" : "#4ade8066",
+                  ? "rgba(34, 197, 94, 0.12)"
+                  : "rgba(34, 197, 94, 0.04)",
+              border: `1px solid ${selectedIds.size > 0 ? "rgba(34, 197, 94, 0.45)" : "rgba(34, 197, 94, 0.15)"}`,
+              color: selectedIds.size > 0 ? "#15803d" : "#86efac",
               opacity: bulkProcessing ? 0.5 : 1,
             }}
           >
@@ -255,10 +254,10 @@ const AdminApprovalPanel = () => {
             style={{
               backgroundColor:
                 selectedIds.size > 0
-                  ? "rgba(239, 68, 68, 0.25)"
-                  : "rgba(239, 68, 68, 0.08)",
-              border: `1px solid ${selectedIds.size > 0 ? "rgba(239, 68, 68, 0.5)" : "rgba(239, 68, 68, 0.15)"}`,
-              color: selectedIds.size > 0 ? "#f87171" : "#f8717166",
+                  ? "rgba(239, 68, 68, 0.12)"
+                  : "rgba(239, 68, 68, 0.04)",
+              border: `1px solid ${selectedIds.size > 0 ? "rgba(239, 68, 68, 0.45)" : "rgba(239, 68, 68, 0.15)"}`,
+              color: selectedIds.size > 0 ? "#b91c1c" : "#fca5a5",
               opacity: bulkProcessing ? 0.5 : 1,
             }}
           >
@@ -273,9 +272,9 @@ const AdminApprovalPanel = () => {
         <div
           className="mb-4 p-3 rounded-xl text-center text-sm"
           style={{
-            backgroundColor: "rgba(99, 102, 241, 0.15)",
-            border: "1px solid rgba(99, 102, 241, 0.3)",
-            color: "#818cf8",
+            backgroundColor: "rgba(99, 102, 241, 0.08)",
+            border: "1px solid rgba(99, 102, 241, 0.25)",
+            color: "#4f46e5",
           }}
         >
           일괄 처리 중... 잠시만 기다려주세요.
@@ -284,16 +283,16 @@ const AdminApprovalPanel = () => {
 
       {/* 카드 리스트 */}
       {loading ? (
-        <div className="text-center py-12" style={{ color: "var(--text-secondary)" }}>
+        <div className="text-center py-12 text-slate-500">
           로딩 중...
         </div>
       ) : approvals.length === 0 ? (
         <div
-          className="text-center py-12 rounded-xl"
+          className="text-center py-12 rounded-xl text-slate-500"
           style={{
-            backgroundColor: "rgba(30, 41, 59, 0.6)",
-            border: "1px solid rgba(100, 116, 139, 0.15)",
-            color: "var(--text-secondary)",
+            backgroundColor: "#ffffff",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
           }}
         >
           {filter === "pending"
@@ -307,14 +306,15 @@ const AdminApprovalPanel = () => {
               key={approval.id}
               className="rounded-xl overflow-hidden"
               style={{
-                backgroundColor: "rgba(30, 41, 59, 0.6)",
+                backgroundColor: "#ffffff",
                 border: `1px solid ${
                   approval.status === "pending"
-                    ? "rgba(245, 158, 11, 0.3)"
+                    ? "rgba(245, 158, 11, 0.35)"
                     : approval.status === "approved"
-                      ? "rgba(34, 197, 94, 0.2)"
-                      : "rgba(239, 68, 68, 0.2)"
+                      ? "rgba(34, 197, 94, 0.25)"
+                      : "rgba(239, 68, 68, 0.25)"
                 }`,
+                boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05)",
               }}
             >
               <div className="p-4 flex flex-col md:flex-row md:items-center gap-3">
@@ -325,8 +325,8 @@ const AdminApprovalPanel = () => {
                     className="flex-shrink-0 cursor-pointer"
                     style={{
                       color: selectedIds.has(approval.id)
-                        ? "#818cf8"
-                        : "#64748b",
+                        ? "#4f46e5"
+                        : "#94a3b8",
                     }}
                   >
                     {selectedIds.has(approval.id) ? (
@@ -339,10 +339,7 @@ const AdminApprovalPanel = () => {
                 {/* 정보 영역 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span
-                      className="font-bold text-sm"
-                      style={{ color: "var(--text-primary)" }}
-                    >
+                    <span className="font-bold text-sm text-slate-800">
                       {approval.studentName}
                     </span>
                     <span
@@ -350,16 +347,16 @@ const AdminApprovalPanel = () => {
                       style={{
                         backgroundColor:
                           approval.status === "pending"
-                            ? "rgba(245, 158, 11, 0.2)"
+                            ? "rgba(245, 158, 11, 0.15)"
                             : approval.status === "approved"
-                              ? "rgba(34, 197, 94, 0.2)"
-                              : "rgba(239, 68, 68, 0.2)",
+                              ? "rgba(34, 197, 94, 0.15)"
+                              : "rgba(239, 68, 68, 0.15)",
                         color:
                           approval.status === "pending"
-                            ? "#fbbf24"
+                            ? "#b45309"
                             : approval.status === "approved"
-                              ? "#4ade80"
-                              : "#f87171",
+                              ? "#15803d"
+                              : "#b91c1c",
                       }}
                     >
                       {approval.status === "pending"
@@ -369,19 +366,13 @@ const AdminApprovalPanel = () => {
                           : "거절됨"}
                     </span>
                   </div>
-                  <p
-                    className="text-sm mb-1 truncate"
-                    style={{ color: "#c0c0e0" }}
-                  >
+                  <p className="text-sm mb-1 truncate text-slate-600">
                     {approval.isJobTask && approval.jobTitle
                       ? `[${approval.jobTitle}] `
                       : ""}
                     {approval.taskName}
                   </p>
-                  <div
-                    className="flex items-center gap-3 text-xs"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
                     <span>
                       {approval.cardType === "cash"
                         ? `💰 ${approval.rewardAmount?.toLocaleString()}원`
@@ -399,9 +390,9 @@ const AdminApprovalPanel = () => {
                       disabled={processingId === approval.id}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                       style={{
-                        backgroundColor: "rgba(34, 197, 94, 0.2)",
-                        border: "1px solid rgba(34, 197, 94, 0.4)",
-                        color: "#4ade80",
+                        backgroundColor: "rgba(34, 197, 94, 0.12)",
+                        border: "1px solid rgba(34, 197, 94, 0.45)",
+                        color: "#15803d",
                         opacity: processingId === approval.id ? 0.5 : 1,
                       }}
                     >
@@ -413,9 +404,9 @@ const AdminApprovalPanel = () => {
                       disabled={processingId === approval.id}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                       style={{
-                        backgroundColor: "rgba(239, 68, 68, 0.2)",
-                        border: "1px solid rgba(239, 68, 68, 0.4)",
-                        color: "#f87171",
+                        backgroundColor: "rgba(239, 68, 68, 0.12)",
+                        border: "1px solid rgba(239, 68, 68, 0.45)",
+                        color: "#b91c1c",
                         opacity: processingId === approval.id ? 0.5 : 1,
                       }}
                     >
@@ -427,10 +418,7 @@ const AdminApprovalPanel = () => {
 
                 {/* 처리 완료 정보 */}
                 {approval.status !== "pending" && approval.processedAt && (
-                  <div
-                    className="text-xs flex-shrink-0"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
+                  <div className="text-xs flex-shrink-0 text-slate-500">
                     처리: {formatDate(approval.processedAt)}
                   </div>
                 )}
