@@ -1653,50 +1653,48 @@ const OmokGame = () => {
             <p className="omok-hero-sub">두뇌 대결을 펼치고 쿠폰을 획득하세요!</p>
           </div>
           <div
-            className="omok-hero-rank"
             style={{
-              background: 'rgba(15, 23, 42, 0.55)',
-              backdropFilter: 'blur(14px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(14px) saturate(160%)',
-              border: '1px solid rgba(255, 255, 255, 0.28)',
-              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: '#0f172a',
+              borderRadius: 14,
+              padding: '10px 18px',
+              border: '2px solid rgba(255, 255, 255, 0.35)',
+              boxShadow: '0 6px 18px rgba(0, 0, 0, 0.35)',
             }}
           >
-            <div className="omok-rank-icon" style={{ backgroundColor: myRankDetails?.currentRank?.color || '#6366f1' }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                backgroundColor: myRankDetails?.currentRank?.color || '#6366f1',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.35)',
+                flexShrink: 0,
+              }}
+            >
               {myRankDetails?.currentRank?.icon || '🏅'}
             </div>
-            <div className="omok-rank-info">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.2 }}>
               <span
-                className="omok-rank-title"
                 style={{
                   color: '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  letterSpacing: '0.4px',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)',
+                  fontWeight: 900,
+                  fontSize: '1rem',
+                  letterSpacing: '0.5px',
                 }}
               >
                 {myRankDetails?.currentRank?.title || 'Unranked'}
               </span>
-              <span
-                className="omok-rank-rp"
-                style={{
-                  color: '#ffffff',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                }}
-              >
-                {myRankDetails?.currentRP || 0} RP
+              <span style={{ color: '#ffffff', fontSize: '0.8rem', fontWeight: 700 }}>
+                {(myRankDetails?.currentRP || 0).toLocaleString()} RP
               </span>
-              <span
-                className="omok-rank-record"
-                style={{
-                  color: 'rgba(255,255,255,0.85)',
-                  fontSize: '0.72rem',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                }}
-              >
+              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.72rem' }}>
                 {omokStats.wins}승 {omokStats.losses}패 ({winRate}%)
               </span>
             </div>

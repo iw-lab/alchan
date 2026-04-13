@@ -210,15 +210,31 @@
   </head>
   <body>
     <script>
-      // 서비스 워커 완전 제거 + 캐시 정리 (1회성, 리로드 없음)
+      // 서비스 워커 완전 제거 + 캐시 정리 + 필요 시 1회 강제 리로드
+      // 기존 SW가 오래된 index.html/JS/CSS 를 서빙해 디자인 수정이 반영 안 되던 문제 해결
       (function(){
         try {
+          var alreadyForced = sessionStorage.getItem('__alchan_sw_cleaned_v4');
+          var hadRegistration = false;
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(regs) {
-              regs.forEach(function(r) { r.unregister(); });
-            });
-          }
-          if ('caches' in window) {
+              if (regs.length > 0) hadRegistration = true;
+              var promises = regs.map(function(r) { return r.unregister(); });
+              return Promise.all(promises);
+            }).then(function(){
+              if ('caches' in window) {
+                return caches.keys().then(function(names) {
+                  return Promise.all(names.map(function(n){ return caches.delete(n); }));
+                });
+              }
+            }).then(function(){
+              if (hadRegistration && !alreadyForced) {
+                sessionStorage.setItem('__alchan_sw_cleaned_v4', '1');
+                // 현재 페이지 강제 리프레시: SW가 캐시한 HTML/JS 무시
+                window.location.reload();
+              }
+            }).catch(function(){});
+          } else if ('caches' in window) {
             caches.keys().then(function(names) {
               names.forEach(function(n) { caches.delete(n); });
             });
