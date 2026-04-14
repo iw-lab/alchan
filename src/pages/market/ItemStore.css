@@ -102,11 +102,11 @@ body {
   overflow: hidden;
 }
 
-/* --- 아이템 그리드: 적응형 2~3열, 각 카드는 내부 한 줄 --- */
+/* --- 아이템 그리드: 적응형 2~4열, 각 카드는 내부 한 줄 --- */
 .items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 8px;
 }
 
 /* --- 아이템 카드 --- */
