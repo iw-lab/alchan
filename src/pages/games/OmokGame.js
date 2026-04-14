@@ -518,13 +518,28 @@ const RankDisplay = ({
     <div className={sizeClass}>
       <div
         className="rank-badge"
-        style={{ backgroundColor: currentRank.color }}
+        style={{
+          backgroundColor: currentRank.color,
+          color: "#0f172a",
+          textShadow: "0 1px 0 rgba(255,255,255,0.5)",
+          border: "1px solid rgba(0,0,0,0.18)",
+        }}
       >
         <span className="rank-icon">{currentRank.icon}</span>
-        <span className="rank-title">{currentRank.title}</span>
+        <span
+          className="rank-title"
+          style={{ color: "#0f172a", fontWeight: 800 }}
+        >
+          {currentRank.title}
+        </span>
       </div>
       <div className="rp-info">
-        <span className="rp-value">{currentRP} RP</span>
+        <span
+          className="rp-value"
+          style={{ color: "#4338ca", fontWeight: 700 }}
+        >
+          {currentRP} RP
+        </span>
         {showProgress && (
           <div className="rank-stats">
             <span className="win-loss">
@@ -1621,7 +1636,13 @@ const OmokGame = () => {
           >
             {isStarPoint && <div className="star-point"></div>}
             {cellValue && (
-              <div className={`omok-stone ${cellValue}`}>
+              <div
+                className={`omok-stone ${cellValue}`}
+                style={{
+                  width: "var(--stone-size)",
+                  height: "var(--stone-size)",
+                }}
+              >
                 {isLastMove && <div className="last-move-indicator"></div>}
               </div>
             )}
@@ -2016,14 +2037,24 @@ const OmokGame = () => {
       )}
 
       <div className="omok-header">
-        <h2>{game.aiMode ? "🤖 AI 대전" : "🌍 글로벌 오목 게임"}</h2>
-        <div className="game-info">
-          <span className="game-id">ID: {gameId.slice(-6)}</span>
-          <span className="game-rules">규칙: 렌주룰</span>
+        <h2 style={{ color: "#ffffff" }}>
+          {game.aiMode ? "🤖 AI 대전" : "🌍 글로벌 오목 게임"}
+        </h2>
+        <div className="game-info" style={{ color: "#ffffff" }}>
+          <span className="game-id" style={{ color: "#ffffff" }}>
+            ID: {gameId.slice(-6)}
+          </span>
+          <span className="game-rules" style={{ color: "#ffffff" }}>
+            규칙: 렌주룰
+          </span>
           {game.aiMode ? (
-            <span className="global-match">난이도: {game.aiDifficulty}</span>
+            <span className="global-match" style={{ color: "#ffffff" }}>
+              난이도: {game.aiDifficulty}
+            </span>
           ) : (
-            <span className="global-match">전세계 매칭</span>
+            <span className="global-match" style={{ color: "#ffffff" }}>
+              전세계 매칭
+            </span>
           )}
         </div>
       </div>
@@ -2031,33 +2062,53 @@ const OmokGame = () => {
       <div className="player-status">
         <div
           className={`player-card ${myColor} ${isMyTurn && !game.winner ? "active" : ""}`}
+          style={{ color: "#1e293b", background: "#ffffff" }}
         >
-          <div className="player-info">
+          <div className="player-info" style={{ color: "#1e293b" }}>
             <RankDisplay rankDetails={myRankDetails} size="small" />
-            <span className="player-name">
+            <span
+              className="player-name"
+              style={{ color: "#1e293b", fontWeight: 700 }}
+            >
               {game.playerNames?.[user.uid] || "나"}
             </span>
             <div className={`stone-indicator ${myColor}`}></div>
           </div>
           {isMyTurn && isThinking && !game.winner && (
-            <div className="opponent-thinking">당신 차례</div>
+            <div
+              className="opponent-thinking"
+              style={{ color: "#6366f1", fontWeight: 600 }}
+            >
+              당신 차례
+            </div>
           )}
         </div>
 
         <div
           className={`player-card ${opponentColor || ""} ${!isMyTurn && !game.winner && opponentId ? "active" : ""}`}
+          style={{ color: "#1e293b", background: "#ffffff" }}
         >
-          <div className="player-info">
+          <div className="player-info" style={{ color: "#1e293b" }}>
             {opponentRankDetails && (
               <RankDisplay rankDetails={opponentRankDetails} size="small" />
             )}
-            <span className="player-name">{opponentName}</span>
+            <span
+              className="player-name"
+              style={{ color: "#1e293b", fontWeight: 700 }}
+            >
+              {opponentName}
+            </span>
             {opponentColor && (
               <div className={`stone-indicator ${opponentColor}`}></div>
             )}
           </div>
           {((!isMyTurn && opponentId) || isAiThinking) && !game.winner && (
-            <div className="opponent-thinking">생각 중...</div>
+            <div
+              className="opponent-thinking"
+              style={{ color: "#6366f1", fontWeight: 600 }}
+            >
+              생각 중...
+            </div>
           )}
         </div>
       </div>

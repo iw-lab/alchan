@@ -412,18 +412,9 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* 바둑판 */
-.omok-board {
+/* 바둑판 (legacy - OmokGame.css에서 재정의됨) */
+.omok-board-legacy-unused {
   display: grid;
-  --cell-size: 30px;
-  /* [추가] 셀 크기 변수화 */
-  grid-template-columns: repeat(19, var(--cell-size));
-  grid-template-rows: repeat(19, var(--cell-size));
-  background: linear-gradient(135deg, #deb887, #cd853f);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.1);
-  position: relative;
 }
 
 .omok-cell {
@@ -653,9 +644,7 @@
     max-width: 300px;
   }
 
-  .omok-board {
-    --cell-size: 24px;
-    /* [수정] 모바일 셀 크기 조정 */
+  .omok-board-legacy-unused-tablet {
     padding: 15px;
   }
 
@@ -675,9 +664,7 @@
 }
 
 @media (max-width: 480px) {
-  .omok-board {
-    --cell-size: 4.5vw;
-    /* [수정] 더 작은 화면에서 유연하게 크기 조정 */
+  .omok-board-legacy-unused-mobile {
     padding: 10px;
   }
 
