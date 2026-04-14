@@ -9,6 +9,7 @@ import "../admin/AdminPanel.css";
 import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 import { logger } from "../../utils/logger";
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
 
 const StockBadge = ({ stock, autoRestock }) => {
   if (stock === undefined || stock === null) return null;
@@ -463,7 +464,7 @@ const ItemStore = () => {
                             }`}
                           >
                             <span className="item-price">
-                              {item.price?.toLocaleString() || 0} 원
+                              {formatKoreanCurrency(item.price || 0)}
                             </span>
                             <div className="quantity-and-buy-container">
                               <input
