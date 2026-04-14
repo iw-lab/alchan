@@ -254,7 +254,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="삭제"
               disabled={isDeleting}
-              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-gray-600 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-red-500"
+              className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:border-red-500"
             />
           </div>
 
@@ -264,8 +264,8 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
               disabled={isDeleting || deleteConfirmText !== "삭제"}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 deleteConfirmText === "삭제" && !isDeleting
-                  ? "bg-red-600 hover:bg-red-700 text-slate-800 dark:text-white"
-                  : "bg-gray-600 text-slate-500 dark:text-gray-400 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
               }`}
             >
               {isDeleting ? "삭제 중..." : "최종 삭제 실행"}
@@ -276,7 +276,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
                 setDeleteConfirmText("");
               }}
               disabled={isDeleting}
-              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-slate-800 dark:text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors"
             >
               취소
             </button>
@@ -2348,114 +2348,127 @@ const AdminSettingsModal = ({
                     </button>
                   </div>
                   {studentsLoading ? (
-                    <p>학생 정보 로딩 중...</p>
+                    <p className="text-slate-500 py-6 text-center">학생 정보 로딩 중...</p>
                   ) : students.length > 0 ? (
-                    <div className="members-table-container">
-                      <table className="members-table">
-                        <thead>
-                          <tr>
-                            <th>
-                              <input
-                                type="checkbox"
-                                checked={selectAllStudents}
-                                onChange={handleToggleSelectAll}
-                                disabled={students.length === 0}
-                              />
-                            </th>
-                            <th>학생 이름</th>
-                            <th>이메일</th>
-                            <th>학급</th>
-                            <th>현재 직업</th>
-                            <th>예상 총급여</th>
-                            <th>세금 공제</th>
-                            <th>실급여</th>
-                            <th>보유 현금</th>
-                            <th>최근 주급일</th>
-                            <th>관리</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {students.map((student) => {
-                            const salaryCalc = calculateSalary(
-                              student.selectedJobIds,
-                              true,
-                            );
-                            return (
-                              <tr
-                                key={student.id}
-                                className={
-                                  selectedStudentIds.includes(student.id)
-                                    ? "selected-student-row"
-                                    : ""
-                                }
-                              >
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedStudentIds.includes(
-                                      student.id,
-                                    )}
-                                    onChange={() =>
-                                      handleToggleStudentSelection(student.id)
-                                    }
-                                  />
-                                </td>
-                                <td>
-                                  {student.nickname ||
-                                    student.name ||
-                                    "이름 없음"}
-                                </td>
-                                <td>{student.email || "-"}</td>
-                                <td>{student.classCode || "미지정"}</td>
-                                <td>
-                                  {Array.isArray(student.selectedJobIds) &&
-                                  student.selectedJobIds.length > 0 ? (
-                                    student.selectedJobIds
-                                      .map((jobId) => {
-                                        const job = Array.isArray(jobs)
-                                          ? jobs.find((j) => j.id === jobId)
-                                          : null;
-                                        return job ? job.title : null;
-                                      })
-                                      .filter(Boolean)
-                                      .join(", ")
-                                  ) : (
-                                    <span className="no-jobs">직업 없음</span>
-                                  )}
-                                </td>
-                                <td className="salary-column">
-                                  {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}
-                                </td>
-                                <td className="tax-column">
-                                  {`${(salaryCalc.tax / 10000).toFixed(0)}만원`}
-                                </td>
-                                <td className="net-salary-column">
-                                  {`${(salaryCalc.net / 10000).toFixed(0)}만원`}
-                                </td>
-                                <td className="cash-column">
-                                  {(student.cash || 0).toLocaleString()}원
-                                </td>
-                                <td>
+                    <>
+                      {/* 전체 선택 */}
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <input
+                          type="checkbox"
+                          id="select-all-students"
+                          checked={selectAllStudents}
+                          onChange={handleToggleSelectAll}
+                          disabled={students.length === 0}
+                          className="w-4 h-4 accent-indigo-600"
+                        />
+                        <label htmlFor="select-all-students" className="text-xs font-medium text-slate-600 cursor-pointer">
+                          전체 선택 ({selectedStudentIds.length}/{students.length})
+                        </label>
+                      </div>
+
+                      {/* 학생 카드 그리드 */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {students.map((student) => {
+                          const salaryCalc = calculateSalary(
+                            student.selectedJobIds,
+                            true,
+                          );
+                          const isSelected = selectedStudentIds.includes(student.id);
+                          const jobTitles = Array.isArray(student.selectedJobIds) && student.selectedJobIds.length > 0
+                            ? student.selectedJobIds
+                                .map((jobId) => {
+                                  const job = Array.isArray(jobs) ? jobs.find((j) => j.id === jobId) : null;
+                                  return job ? job.title : null;
+                                })
+                                .filter(Boolean)
+                            : [];
+                          return (
+                            <div
+                              key={student.id}
+                              className={`rounded-xl bg-white p-3 transition-all ${
+                                isSelected
+                                  ? "border-2 border-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.1)]"
+                                  : "border border-slate-200 shadow-sm hover:border-indigo-200"
+                              }`}
+                            >
+                              {/* 헤더: 체크박스 + 이름 + 직업설정 */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleStudentSelection(student.id)}
+                                  className="w-4 h-4 accent-indigo-600 flex-shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-bold text-slate-800 text-sm truncate">
+                                    {student.nickname || student.name || "이름 없음"}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {student.email || "-"} · {student.classCode || "미지정"}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleEditStudentJobs(student)}
+                                  className="text-xs font-medium px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors flex-shrink-0"
+                                >
+                                  직업 설정
+                                </button>
+                              </div>
+
+                              {/* 직업 태그 */}
+                              <div className="mb-2 flex flex-wrap gap-1">
+                                {jobTitles.length > 0 ? (
+                                  jobTitles.map((t, i) => (
+                                    <span
+                                      key={i}
+                                      className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                                    >
+                                      {t}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[11px] text-slate-400">직업 없음</span>
+                                )}
+                              </div>
+
+                              {/* 급여/현금 그리드 */}
+                              <div className="grid grid-cols-3 gap-1.5 mb-2">
+                                <div className="rounded-lg bg-slate-50 border border-slate-200 px-2 py-1.5 text-center">
+                                  <div className="text-[10px] text-slate-500">총급여</div>
+                                  <div className="text-xs font-bold text-slate-700">
+                                    {(salaryCalc.gross / 10000).toFixed(0)}만
+                                  </div>
+                                </div>
+                                <div className="rounded-lg bg-rose-50 border border-rose-200 px-2 py-1.5 text-center">
+                                  <div className="text-[10px] text-rose-500">세금</div>
+                                  <div className="text-xs font-bold text-rose-700">
+                                    -{(salaryCalc.tax / 10000).toFixed(0)}만
+                                  </div>
+                                </div>
+                                <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-1.5 text-center">
+                                  <div className="text-[10px] text-emerald-500">실급여</div>
+                                  <div className="text-xs font-bold text-emerald-700">
+                                    {(salaryCalc.net / 10000).toFixed(0)}만
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 보유 현금 + 최근 주급일 */}
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                                <span>
+                                  보유 <span className="font-semibold text-slate-700">{(student.cash || 0).toLocaleString()}원</span>
+                                </span>
+                                <span>
                                   {student.lastSalaryDate
                                     ? student.lastSalaryDate.toLocaleDateString()
-                                    : "없음"}
-                                </td>
-                                <td>
-                                  <button
-                                    className="edit-button"
-                                    onClick={() =>
-                                      handleEditStudentJobs(student)
-                                    }
-                                  >
-                                    직업 설정
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                    : "지급 없음"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   ) : (
                     <p className="no-items-message">
                       {!isSuperAdmin && !userClassCode
@@ -2518,13 +2531,13 @@ const AdminSettingsModal = ({
                       border:
                         financialSubTab === "deposit"
                           ? "2px solid #4f46e5"
-                          : "1px solid #374151",
+                          : "1px solid #e2e8f0",
                       background:
                         financialSubTab === "deposit"
                           ? "#4f46e5"
                           : "transparent",
                       color:
-                        financialSubTab === "deposit" ? "white" : "#9ca3af",
+                        financialSubTab === "deposit" ? "white" : "#64748b",
                     }}
                   >
                     예금 상품
@@ -2536,12 +2549,12 @@ const AdminSettingsModal = ({
                       border:
                         financialSubTab === "saving"
                           ? "2px solid #4f46e5"
-                          : "1px solid #374151",
+                          : "1px solid #e2e8f0",
                       background:
                         financialSubTab === "saving"
                           ? "#4f46e5"
                           : "transparent",
-                      color: financialSubTab === "saving" ? "white" : "#9ca3af",
+                      color: financialSubTab === "saving" ? "white" : "#64748b",
                     }}
                   >
                     적금 상품
@@ -2553,10 +2566,10 @@ const AdminSettingsModal = ({
                       border:
                         financialSubTab === "loan"
                           ? "2px solid #4f46e5"
-                          : "1px solid #374151",
+                          : "1px solid #e2e8f0",
                       background:
                         financialSubTab === "loan" ? "#4f46e5" : "transparent",
-                      color: financialSubTab === "loan" ? "white" : "#9ca3af",
+                      color: financialSubTab === "loan" ? "white" : "#64748b",
                     }}
                   >
                     대출 상품
@@ -2579,8 +2592,8 @@ const AdminSettingsModal = ({
                 )}
 
                 {/* 상품 추가 폼 */}
-                <div className="add-product-form p-4 rounded-xl mb-4 bg-gray-700/50">
-                  <h4 className="mb-3 text-slate-800 dark:text-white">
+                <div className="add-product-form p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
+                  <h4 className="mb-3 text-slate-800 font-bold">
                     {financialSubTab === "deposit"
                       ? "예금"
                       : financialSubTab === "saving"
@@ -2725,7 +2738,7 @@ const AdminSettingsModal = ({
                 </p>
 
                 {/* 시장 상태 */}
-                <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-slate-800 dark:text-white">
                       현재 상태:{" "}
@@ -2847,7 +2860,7 @@ const AdminSettingsModal = ({
                 )}
 
                 {/* 현재 이자율 */}
-                <div className="p-4 rounded-xl mb-4 bg-gray-700/50">
+                <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
                   <div className="mb-4">
                     <p className="text-slate-500 dark:text-gray-400 text-sm">현재 일일 이자율</p>
                     <p className="text-green-500 text-[32px] font-bold">
