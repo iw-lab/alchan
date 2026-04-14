@@ -1340,6 +1340,24 @@ const ParkingAccount = ({
  );
  }
 
+ // 🔥 대출 한도: 보유 현금의 10배까지만 가능
+ if (type === "loans") {
+ const availableCash = Number(currentCash) || 0;
+ if (availableCash <= 0) {
+ return displayMessage(
+ "대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.",
+ "error",
+ );
+ }
+ const maxLoan = availableCash * 10;
+ if (amount > maxLoan) {
+ return displayMessage(
+ `대출 한도 초과: 보유 현금(${formatCurrency(availableCash)}${currencyUnit})의 10배(${formatCurrency(maxLoan)}${currencyUnit})까지만 가능합니다.`,
+ "error",
+ );
+ }
+ }
+
  setIsProcessing(true);
  handleCloseModal(); // UX 개선을 위해 모달 즉시 닫기
 
@@ -1417,6 +1435,19 @@ const ParkingAccount = ({
  if (amount > maxDailyAmount) {
  throw new Error(
  `적금 일 납입금은 보유 현금 ÷ 기간(${product.termInDays}일) 이하만 가능합니다. (최대: ${formatCurrency(maxDailyAmount)}${currencyUnit})`
+ );
+ }
+ }
+
+ // 🔥 대출 한도: 학생 보유 현금의 10배까지만 (DB 기준 재확인)
+ if (type === "loans") {
+ if (currentCashInDb <= 0) {
+ throw new Error("대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.");
+ }
+ const maxLoan = currentCashInDb * 10;
+ if (amount > maxLoan) {
+ throw new Error(
+ `대출 한도 초과: 보유 현금(${formatCurrency(currentCashInDb)}${currencyUnit})의 10배(${formatCurrency(maxLoan)}${currencyUnit})까지만 가능합니다.`
  );
  }
  }
