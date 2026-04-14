@@ -102,17 +102,18 @@ body {
   overflow: hidden;
 }
 
-/* --- 아이템 그리드 --- */
+/* --- 아이템 그리드 → 세로 리스트 (한 줄에 모든 정보) --- */
 .items-grid {
-  display: grid;
-  /* PC에서 최대 3개씩 표시, 최소 너비 보장 */
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 @media (min-width: 1100px) {
   .items-grid {
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 }
 
@@ -221,12 +222,13 @@ body {
   align-items: center;
   padding: 0;
   border-radius: 0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   white-space: nowrap;
   border: none;
   line-height: 1;
   background: none !important;
+  flex: 0 0 auto;
 }
 
 /* 재고 뱃지 - 플랫 텍스트 */
@@ -864,19 +866,37 @@ body {
   padding: 0 !important;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 10px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
   overflow: hidden;
 }
 
 .compact-card:hover {
   border-color: #c7d2fe;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+  background: #f8faff;
 }
 
+/* item-content를 flex row로 → 모든 자식이 한 줄 */
 .compact-card .item-content {
-  padding: 14px 16px;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-direction: row !important;
+}
+
+/* 래퍼들 언래핑: 자식들이 .item-content의 flex child로 직접 올라옴 */
+.compact-card .item-header-compact,
+.compact-card .item-actions-primary,
+.compact-card .item-actions-admin,
+.compact-card .quantity-and-buy-container {
+  display: contents !important;
+}
+
+/* 상세 설명은 숨김 (가로 한 줄 유지) */
+.compact-card .item-description-compact {
+  display: none !important;
 }
 
 .item-header-compact {
@@ -895,7 +915,7 @@ body {
 }
 
 .item-name-compact {
-  font-size: 0.95rem !important;
+  font-size: 0.9rem !important;
   font-weight: 700 !important;
   color: #1e293b !important;
   margin: 0 !important;
@@ -904,8 +924,8 @@ body {
   border: none !important;
   border-radius: 0 !important;
   display: block !important;
-  flex-shrink: 1 !important;
-  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: 100px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -953,44 +973,41 @@ body {
 }
 
 .compact-card .item-price {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #1e293b;
-  text-shadow: none;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  text-shadow: none !important;
   margin: 0 !important;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.compact-card .quantity-and-buy-container {
-  display: flex;
-  gap: 6px;
-  width: auto !important;
-  flex: 0 0 auto;
+  padding: 0 !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  min-width: 80px !important;
+  text-align: right !important;
 }
 
 .compact-card .quantity-input {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #1e293b;
-  font-weight: 600;
-  width: 56px !important;
-  padding: 6px 8px !important;
+  border-radius: 6px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  width: 48px !important;
+  padding: 4px 6px !important;
+  flex: 0 0 auto !important;
 }
 
 .compact-card .buy-item-button {
-  background: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  transition: background 0.15s ease;
-  box-shadow: none;
-  flex: 0 0 auto;
-  white-space: nowrap;
+  background: #6366f1 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 5px 10px !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  transition: background 0.15s ease !important;
+  box-shadow: none !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
 }
 
 .compact-card .buy-item-button:hover:not(:disabled) {
@@ -1007,20 +1024,22 @@ body {
 }
 
 .compact-card .item-actions-admin {
-  padding-top: 8px;
-  margin-top: 8px;
-  border-top: 1px solid #f1f5f9;
-  gap: 6px;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  border-top: none !important;
+  gap: 4px !important;
 }
 
 .compact-card .edit-item-button,
 .compact-card .delete-item-button {
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-weight: 500;
-  font-size: 0.75rem;
-  border: none;
-  transition: background 0.15s ease;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  font-weight: 500 !important;
+  font-size: 0.7rem !important;
+  border: 1px solid #e2e8f0 !important;
+  transition: background 0.15s ease !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
 }
 
 .compact-card .edit-item-button {
