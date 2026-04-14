@@ -26,8 +26,8 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
-import "./OmokGame.css";
 import "./GamePage.css";
+import "./OmokGame.css";
 
 import { logger } from "../../utils/logger";
 // [랭크 시스템] 랭크 포인트(RP) 기준 정의

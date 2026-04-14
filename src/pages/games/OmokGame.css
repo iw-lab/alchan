@@ -2,7 +2,8 @@
 
 :root {
   --board-size: 15;
-  --cell-size: 56px;
+  /* 컨테이너 너비에 맞춰 자동 확장 (사이드바 고려하여 vw 기반) */
+  --cell-size: clamp(36px, 4.8vw, 80px);
   --stone-size: calc(var(--cell-size) * 0.85);
   --line-thickness: 1.5px;
   --board-bg: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
@@ -10,18 +11,14 @@
   --star-point-size: 10px;
 }
 
-/* 데스크탑 - 컨테이너에 맞춰 더 크게 */
-@media (min-width: 1280px) {
-  :root { --cell-size: 64px; }
-}
 @media (max-width: 1100px) {
-  :root { --cell-size: 48px; }
+  :root { --cell-size: clamp(34px, 5vw, 54px); }
 }
 @media (max-width: 768px) {
-  :root { --cell-size: 38px; }
+  :root { --cell-size: clamp(28px, 5.2vw, 42px); }
 }
 @media (max-width: 480px) {
-  :root { --cell-size: 28px; }
+  :root { --cell-size: clamp(22px, 6vw, 32px); }
 }
 
 @keyframes fadeIn {
@@ -880,4 +877,32 @@
   .player-card {
     padding: 1rem;
   }
+}
+
+/* ===== 게임 화면 플레이어 카드 가독성 fix (흰 배경 위 흰 글씨 방지) ===== */
+.omok-container .player-card {
+  background: #ffffff;
+  color: #1e293b;
+}
+.omok-container .player-card .player-name {
+  color: #1e293b;
+  font-weight: 700;
+}
+.omok-container .player-card .opponent-thinking {
+  color: #6366f1;
+  font-weight: 600;
+}
+.omok-container .player-card .rank-badge {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), 0 0 1px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.omok-container .player-card .rank-title {
+  color: inherit;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.omok-container .player-card .rp-value {
+  color: #4338ca;
+  font-weight: 700;
 }
