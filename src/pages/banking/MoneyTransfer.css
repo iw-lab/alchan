@@ -12,9 +12,9 @@
 }
 
 .money-transfer-container .header {
-  background: #f8faff;
-  padding: 20px 28px;
-  border-bottom: 1px solid #e0e7ff;
+  padding: 8px 4px 12px;
+  margin: 0 24px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .money-transfer-container .admin-info {
@@ -366,22 +366,21 @@
   border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
-/* 대상 선택 */
+/* 대상 선택 - 컴팩트 */
 .money-transfer-container .user-selection-section {
-  background: #f8faff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  border: 1px solid #e0e7ff;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 16px;
+  border: none;
 }
 
 .money-transfer-container .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e0e7ff;
+  margin-bottom: 10px;
+  padding: 0 4px 8px;
 }
 
 .money-transfer-container .section-header h3 {
@@ -434,24 +433,27 @@
 }
 
 .money-transfer-container .user-item {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  border: 1.5px solid #cbd5e1;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  background: #ffffff;
+  border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border: 1px solid #e2e8f0;
 }
 
 .money-transfer-container .user-item:hover {
+  border-color: #c7d2fe;
+  background: #f8faff;
+}
+
+.money-transfer-container .user-item:has(input:checked) {
   border-color: #6366f1;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.12);
-  transform: translateY(-1px);
+  background: #eef2ff;
 }
 
 .money-transfer-container .user-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   cursor: pointer;
 }
 

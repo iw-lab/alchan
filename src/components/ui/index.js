@@ -87,13 +87,13 @@ export const tokens = {
 // ============================================
 const buttonVariants = {
   primary:
-    "bg-indigo-500 hover:bg-indigo-600 text-white shadow-md hover:shadow-lg",
-  secondary: "bg-gray-700 hover:bg-gray-600 text-slate-700 dark:text-gray-200",
-  outline: "border-2 border-indigo-500 text-indigo-400 hover:bg-indigo-900/20",
-  ghost: "text-gray-300 hover:bg-gray-800",
-  danger: "bg-red-500 hover:bg-red-600 text-white shadow-md",
-  success: "bg-emerald-500 hover:bg-emerald-600 text-white shadow-md",
-  warning: "bg-amber-500 hover:bg-amber-600 text-slate-800 dark:text-white shadow-md",
+    "bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm hover:shadow",
+  secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200",
+  outline: "border border-indigo-300 text-indigo-600 hover:bg-indigo-50 bg-white",
+  ghost: "text-slate-600 hover:bg-slate-100",
+  danger: "bg-red-500 hover:bg-red-600 text-white shadow-sm",
+  success: "bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm",
+  warning: "bg-amber-500 hover:bg-amber-600 text-white shadow-sm",
 };
 
 const buttonSizes = {
@@ -172,15 +172,13 @@ export const Card = forwardRef(
         ref={ref}
         className={`
         rounded-2xl
+        bg-white
+        border border-slate-200
         shadow-sm
         ${hover ? "hover:shadow-md transition-all duration-200" : ""}
         ${paddingClasses[padding]}
         ${className}
       `}
-        style={{
-          background: "rgba(30, 41, 59, 0.8)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-        }}
         {...props}
       >
         {children}
@@ -202,8 +200,7 @@ export const CardHeader = ({ children, className = "", ...props }) => (
 
 export const CardTitle = ({ children, className = "", ...props }) => (
   <h3
-    className={`text-lg font-bold ${className}`}
-    style={{ color: "var(--accent)" }}
+    className={`text-lg font-bold text-slate-800 ${className}`}
     {...props}
   >
     {children}
@@ -211,7 +208,7 @@ export const CardTitle = ({ children, className = "", ...props }) => (
 );
 
 export const CardContent = ({ children, className = "", ...props }) => (
-  <div className={className} style={{ color: "#e2e8f0" }} {...props}>
+  <div className={`text-slate-700 ${className}`} {...props}>
     {children}
   </div>
 );
@@ -235,19 +232,13 @@ export const Input = forwardRef(
     return (
       <div className={`space-y-1.5 ${containerClassName}`}>
         {label && (
-          <label
-            className="block text-sm font-medium"
-            style={{ color: "var(--accent)" }}
-          >
+          <label className="block text-sm font-medium text-slate-700">
             {label}
           </label>
         )}
         <div className="relative">
           {Icon && (
-            <div
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: "#94a3b8" }}
-            >
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
               <Icon size={18} />
             </div>
           )}
@@ -256,17 +247,15 @@ export const Input = forwardRef(
             className={`
             w-full px-4 py-2.5
             ${Icon ? "pl-10" : ""}
+            bg-white text-slate-800
             rounded-xl
-            focus:outline-none focus:ring-2 focus:ring-offset-0
+            focus:outline-none focus:ring-2 focus:ring-indigo-200
             transition-colors duration-200
+            placeholder:text-slate-400
             ${className}
           `}
             style={{
-              background: "rgba(0, 0, 0, 0.3)",
-              border: error
-                ? "2px solid #ef4444"
-                : "2px solid rgba(255, 255, 255, 0.1)",
-              color: "#e2e8f0",
+              border: error ? "1px solid #ef4444" : "1px solid #e2e8f0",
             }}
             {...props}
           />
@@ -278,9 +267,7 @@ export const Input = forwardRef(
           </p>
         )}
         {helper && !error && (
-          <p className="text-sm" style={{ color: "#94a3b8" }}>
-            {helper}
-          </p>
+          <p className="text-sm text-slate-500">{helper}</p>
         )}
       </div>
     );
@@ -308,10 +295,7 @@ export const Select = forwardRef(
     return (
       <div className={`space-y-1.5 ${containerClassName}`}>
         {label && (
-          <label
-            className="block text-sm font-medium"
-            style={{ color: "var(--accent)" }}
-          >
+          <label className="block text-sm font-medium text-slate-700">
             {label}
           </label>
         )}
@@ -320,18 +304,15 @@ export const Select = forwardRef(
             ref={ref}
             className={`
             w-full px-4 py-2.5 pr-10
+            bg-white text-slate-800
             rounded-xl
-            focus:outline-none focus:ring-2 focus:ring-offset-0
+            focus:outline-none focus:ring-2 focus:ring-indigo-200
             transition-colors duration-200
             appearance-none cursor-pointer
             ${className}
           `}
             style={{
-              background: "rgba(0, 0, 0, 0.3)",
-              border: error
-                ? "2px solid #ef4444"
-                : "2px solid rgba(255, 255, 255, 0.1)",
-              color: "#e2e8f0",
+              border: error ? "1px solid #ef4444" : "1px solid #e2e8f0",
             }}
             {...props}
           >
@@ -342,10 +323,7 @@ export const Select = forwardRef(
               </option>
             ))}
           </select>
-          <ChevronDown
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
-            style={{ color: "#94a3b8" }}
-          />
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none text-slate-400" />
         </div>
         {error && (
           <p className="text-sm text-red-500 flex items-center gap-1">
@@ -379,15 +357,15 @@ export const Textarea = forwardRef(
           ref={ref}
           className={`
           w-full px-4 py-3
-          bg-gray-800
+          bg-white
           border rounded-xl
           ${
             error
-              ? "border-red-500 focus:ring-red-500"
-              : "border-gray-600 focus:border-indigo-500 focus:ring-indigo-500"
+              ? "border-red-500 focus:ring-red-200"
+              : "border-slate-200 focus:border-indigo-400 focus:ring-indigo-200"
           }
-          text-slate-800 dark:text-white
-          placeholder-gray-500
+          text-slate-800
+          placeholder:text-slate-400
           focus:outline-none focus:ring-2 focus:ring-offset-0
           transition-colors duration-200
           resize-none
@@ -456,32 +434,23 @@ export const Modal = ({
       <div
         className={`
         relative w-full ${sizeClasses[size]}
+        bg-white border border-slate-200
         rounded-2xl shadow-xl
         max-h-[90vh] overflow-hidden
         animate-fade-in
         ${className}
       `}
-        style={{
-          background: "rgba(30, 41, 59, 0.95)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-        }}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div
-            className="flex items-center justify-between p-4 sm:p-6"
-            style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}
-          >
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200">
             {title && (
-              <h2 className="text-lg font-bold" style={{ color: "var(--accent)" }}>
-                {title}
-              </h2>
+              <h2 className="text-lg font-bold text-slate-800">{title}</h2>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-xl transition-colors"
-                style={{ color: "#94a3b8" }}
+                className="p-2 rounded-xl transition-colors text-slate-500 hover:bg-slate-100"
               >
                 <X size={20} />
               </button>
@@ -490,19 +459,13 @@ export const Modal = ({
         )}
 
         {/* Content */}
-        <div
-          className="p-4 sm:p-6 overflow-y-auto max-h-[60vh]"
-          style={{ color: "#e2e8f0" }}
-        >
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh] text-slate-700">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div
-            className="flex items-center justify-end gap-3 p-4 sm:p-6"
-            style={{ borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}
-          >
+          <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-slate-200 bg-slate-50">
             {footer}
           </div>
         )}
@@ -516,24 +479,24 @@ export const Modal = ({
 // ============================================
 const alertVariants = {
   info: {
-    container: "bg-blue-900/20 border-blue-800",
-    icon: <Info className="w-5 h-5 text-blue-400" />,
-    title: "text-blue-300",
+    container: "bg-blue-50 border-blue-200",
+    icon: <Info className="w-5 h-5 text-blue-500" />,
+    title: "text-blue-700",
   },
   success: {
-    container: "bg-emerald-900/20 border-emerald-800",
-    icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
-    title: "text-emerald-300",
+    container: "bg-emerald-50 border-emerald-200",
+    icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+    title: "text-emerald-700",
   },
   warning: {
-    container: "bg-amber-900/20 border-amber-800",
-    icon: <AlertTriangle className="w-5 h-5 text-amber-400" />,
-    title: "text-amber-300",
+    container: "bg-amber-50 border-amber-200",
+    icon: <AlertTriangle className="w-5 h-5 text-amber-500" />,
+    title: "text-amber-700",
   },
   danger: {
-    container: "bg-red-900/20 border-red-800",
-    icon: <AlertCircle className="w-5 h-5 text-red-400" />,
-    title: "text-red-300",
+    container: "bg-red-50 border-red-200",
+    icon: <AlertCircle className="w-5 h-5 text-red-500" />,
+    title: "text-red-700",
   },
 };
 
@@ -559,11 +522,11 @@ export const Alert = ({
         {title && (
           <h4 className={`font-semibold mb-1 ${styles.title}`}>{title}</h4>
         )}
-        <div className="text-sm text-slate-600 dark:text-slate-300">{children}</div>
+        <div className="text-sm text-slate-700">{children}</div>
       </div>
       {onClose && (
         <button onClick={onClose} className="self-start">
-          <X size={18} className="text-slate-400 hover:text-slate-200" />
+          <X size={18} className="text-slate-400 hover:text-slate-600" />
         </button>
       )}
     </div>
@@ -574,12 +537,12 @@ export const Alert = ({
 // 뱃지 컴포넌트
 // ============================================
 const badgeVariants = {
-  primary: "bg-indigo-900/50 text-indigo-300",
-  secondary: "bg-gray-700 text-slate-600 dark:text-gray-300",
-  success: "bg-emerald-900/50 text-emerald-300",
-  warning: "bg-amber-900/50 text-amber-300",
-  danger: "bg-red-900/50 text-red-300",
-  info: "bg-blue-900/50 text-blue-300",
+  primary: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+  secondary: "bg-slate-100 text-slate-700 border border-slate-200",
+  success: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  warning: "bg-amber-50 text-amber-700 border border-amber-200",
+  danger: "bg-red-50 text-red-700 border border-red-200",
+  info: "bg-blue-50 text-blue-700 border border-blue-200",
 };
 
 export const Badge = ({
@@ -630,10 +593,10 @@ export const Spinner = ({ size = "md", className = "" }) => {
 // 로딩 오버레이
 // ============================================
 export const LoadingOverlay = ({ message = "로딩 중..." }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
     <div className="flex flex-col items-center gap-4">
       <Spinner size="xl" />
-      <p className="text-gray-300 font-medium">{message}</p>
+      <p className="text-slate-600 font-medium">{message}</p>
     </div>
   </div>
 );
@@ -660,14 +623,10 @@ export const EmptyState = ({
       </div>
     )}
     {title && (
-      <h3 className="text-lg font-semibold mb-2" style={{ color: "#ffffff" }}>
-        {title}
-      </h3>
+      <h3 className="text-lg font-semibold mb-2 text-slate-800">{title}</h3>
     )}
     {description && (
-      <p className="mb-6 max-w-sm" style={{ color: "#94a3b8" }}>
-        {description}
-      </p>
+      <p className="mb-6 max-w-sm text-slate-500">{description}</p>
     )}
     {action}
   </div>
@@ -710,9 +669,9 @@ export const TabsList = ({ children, className = "" }) => (
     className={`
     flex gap-1 p-1
     rounded-xl
+    bg-slate-100 border border-slate-200
     ${className}
   `}
-    style={{ background: "rgba(0, 0, 0, 0.3)" }}
   >
     {children}
   </div>
@@ -733,11 +692,10 @@ export const TabsTrigger = ({ children, value, className = "" }) => {
         ${className}
       `}
       style={{
-        background: isActive
-          ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-          : "transparent",
-        color: isActive ? "#ffffff" : "#94a3b8",
-        boxShadow: isActive ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none",
+        background: isActive ? "#ffffff" : "transparent",
+        color: isActive ? "#4f46e5" : "#64748b",
+        boxShadow: isActive ? "0 1px 3px rgba(15, 23, 42, 0.08)" : "none",
+        border: isActive ? "1px solid #e0e7ff" : "1px solid transparent",
       }}
     >
       {children}
@@ -798,7 +756,7 @@ export const Avatar = ({ src, alt, name, size = "md", className = "" }) => {
 // 구분선 컴포넌트
 // ============================================
 export const Divider = ({ className = "" }) => (
-  <hr className={`border-gray-700 ${className}`} />
+  <hr className={`border-slate-200 ${className}`} />
 );
 
 // ============================================
@@ -840,7 +798,7 @@ export const ToastProvider = ({ children }) => {
               ${toast.type === "error" ? "bg-red-500" : ""}
               ${toast.type === "warning" ? "bg-amber-500" : ""}
               ${toast.type === "info" ? "bg-indigo-500" : ""}
-              text-slate-800 dark:text-white
+              text-white
             `}
           >
             {toast.type === "success" && <CheckCircle2 size={18} />}
@@ -900,8 +858,8 @@ export const StatCard = ({
   subValue,
   trend,
   trendValue,
-  iconBgColor = "bg-indigo-900/50",
-  iconColor = "text-indigo-500",
+  iconBgColor = "bg-indigo-50",
+  iconColor = "text-indigo-600",
   className = "",
 }) => (
   <Card className={`${className}`}>
@@ -917,8 +875,8 @@ export const StatCard = ({
       )}
     </div>
     <div className="mt-4">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{value}</p>
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
       {subValue && <p className="text-sm text-slate-500 mt-1">{subValue}</p>}
     </div>
   </Card>
@@ -935,28 +893,18 @@ export const PageHeader = ({
   className = "",
 }) => (
   <div
-    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 ${className}`}
+    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1 ${className}`}
   >
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       {Icon && (
-        <div
-          className="p-2.5 rounded-xl"
-          style={{ background: "rgba(99, 102, 241, 0.1)" }}
-        >
-          <Icon className="w-6 h-6" style={{ color: "var(--accent)" }} />
-        </div>
+        <Icon className="w-5 h-5 text-indigo-500 flex-shrink-0" />
       )}
-      <div>
-        <h1
-          className="text-xl sm:text-2xl font-bold"
-          style={{ color: "#ffffff" }}
-        >
+      <div className="min-w-0">
+        <h1 className="text-lg font-bold text-slate-800 truncate">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sm mt-0.5" style={{ color: "#94a3b8" }}>
-            {subtitle}
-          </p>
+          <p className="text-xs mt-0.5 text-slate-500 truncate">{subtitle}</p>
         )}
       </div>
     </div>
@@ -968,30 +916,19 @@ export const PageHeader = ({
 // 테이블 컴포넌트
 // ============================================
 export const Table = ({ children, className = "" }) => (
-  <div
-    className="overflow-x-auto rounded-xl"
-    style={{ border: "1px solid rgba(255, 255, 255, 0.1)" }}
-  >
-    <table
-      className={`w-full ${className}`}
-      style={{ background: "rgba(30, 41, 59, 0.8)" }}
-    >
+  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table className={`w-full ${className}`}>
       {children}
     </table>
   </div>
 );
 
 export const TableHeader = ({ children, className = "" }) => (
-  <thead className={className} style={{ background: "rgba(0, 0, 0, 0.3)" }}>
-    {children}
-  </thead>
+  <thead className={`bg-slate-50 ${className}`}>{children}</thead>
 );
 
 export const TableBody = ({ children, className = "" }) => (
-  <tbody
-    className={className}
-    style={{ borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}
-  >
+  <tbody className={`border-t border-slate-200 ${className}`}>
     {children}
   </tbody>
 );
@@ -999,15 +936,11 @@ export const TableBody = ({ children, className = "" }) => (
 export const TableRow = ({ children, className = "", onClick }) => (
   <tr
     className={`
-      ${onClick ? "cursor-pointer" : ""}
+      border-b border-slate-100 last:border-b-0
+      ${onClick ? "cursor-pointer hover:bg-slate-50" : ""}
       ${className}
     `}
-    style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
     onClick={onClick}
-    onMouseEnter={(e) =>
-      (e.currentTarget.style.background = "rgba(99, 102, 241, 0.05)")
-    }
-    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
   >
     {children}
   </tr>
@@ -1018,23 +951,16 @@ export const TableHead = ({ children, className = "" }) => (
     className={`
     px-4 py-3
     text-left text-xs font-semibold uppercase tracking-wider
+    text-slate-500
     ${className}
   `}
-    style={{ color: "var(--accent)" }}
   >
     {children}
   </th>
 );
 
 export const TableCell = ({ children, className = "" }) => (
-  <td
-    className={`
-    px-4 py-3
-    text-sm
-    ${className}
-  `}
-    style={{ color: "#e2e8f0" }}
-  >
+  <td className={`px-4 py-3 text-sm text-slate-700 ${className}`}>
     {children}
   </td>
 );
