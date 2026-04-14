@@ -2,12 +2,26 @@
 
 :root {
   --board-size: 15;
-  --cell-size: min(48px, calc((100vw - 80px) / 15));
-  --stone-size: calc(var(--cell-size) * 0.88);
-  --line-thickness: 1.2px;
+  --cell-size: 56px;
+  --stone-size: calc(var(--cell-size) * 0.85);
+  --line-thickness: 1.5px;
   --board-bg: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
-  --line-color: rgba(60, 30, 0, 0.65);
-  --star-point-size: 8px;
+  --line-color: rgba(60, 30, 0, 0.75);
+  --star-point-size: 10px;
+}
+
+/* 데스크탑 - 컨테이너에 맞춰 더 크게 */
+@media (min-width: 1280px) {
+  :root { --cell-size: 64px; }
+}
+@media (max-width: 1100px) {
+  :root { --cell-size: 48px; }
+}
+@media (max-width: 768px) {
+  :root { --cell-size: 38px; }
+}
+@media (max-width: 480px) {
+  :root { --cell-size: 28px; }
 }
 
 @keyframes fadeIn {
@@ -855,10 +869,6 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-  :root {
-    --cell-size: min(34px, calc((100vw - 60px) / 15));
-  }
-
   .player-status {
     flex-direction: column;
     gap: 1rem;
@@ -867,7 +877,6 @@
 
 @media (max-width: 480px) {
   :root {
-    --cell-size: min(28px, calc((100vw - 40px) / 15));
     --star-point-size: 6px;
   }
 
