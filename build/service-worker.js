@@ -1,14 +1,12 @@
 // public/service-worker.js
 // [비용 최적화] Service Worker - 정적 자산 캐싱으로 서버 요청 감소
 
-const CACHE_NAME = 'alchan-cache-v1';
-const STATIC_CACHE_NAME = 'alchan-static-v1';
-const RUNTIME_CACHE_NAME = 'alchan-runtime-v1';
+const CACHE_NAME = 'alchan-cache-v2';
+const STATIC_CACHE_NAME = 'alchan-static-v2';
+const RUNTIME_CACHE_NAME = 'alchan-runtime-v2';
 
-// 캐시할 정적 파일들
+// 캐시할 정적 파일들 (index.html 제외 - 항상 최신 가져와야 함)
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.ico',
 ];
@@ -50,12 +48,11 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 활성화 이벤트 - 오래된 캐시 정리
+// 활성화 이벤트 - 오래된 캐시 전부 삭제 (v1 포함)
 self.addEventListener('activate', (event) => {
   console.log('[ServiceWorker] Activate');
   event.waitUntil(
     Promise.all([
-      // 오래된 캐시 삭제
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames
@@ -70,7 +67,6 @@ self.addEventListener('activate', (event) => {
             })
         );
       }),
-      // 즉시 활성화
       self.clients.claim(),
     ])
   );
@@ -82,6 +78,13 @@ self.addEventListener('fetch', (event) => {
 
   // POST 요청 및 크롬 확장 프로그램은 건너뛰기
   if (event.request.method !== 'GET' || url.protocol === 'chrome-extension:') {
+    return;
+  }
+
+  // SPA navigate 요청 (HTML)은 항상 네트워크 우선 - 최신 번들 참조 유지
+  if (event.request.mode === 'navigate' ||
+      (event.request.headers.get('accept') || '').includes('text/html')) {
+    event.respondWith(networkFirst(event.request));
     return;
   }
 
