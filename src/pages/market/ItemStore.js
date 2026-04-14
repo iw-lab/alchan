@@ -1,5 +1,7 @@
 // src/ItemStore.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { collection, getDocs, query, limit } from "firebase/firestore";
+import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext"; // ItemContext가 classCode를 사용하도록 수정되어야 함
 import "./ItemStore.css";
@@ -65,9 +67,44 @@ const ItemStore = () => {
   );
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseQuantities, setPurchaseQuantities] = useState({});
+  const [loanBalance, setLoanBalance] = useState(0);
 
   const isCurrentUserAdmin = isAdmin();
   const currentUserClassCode = userDoc?.classCode; // 현재 사용자의 classCode
+
+  // 사용자의 미상환 대출 합계 로드
+  const loadLoanBalance = useCallback(async () => {
+    if (!user?.uid) {
+      setLoanBalance(0);
+      return;
+    }
+    try {
+      const productsRef = query(
+        collection(db, "users", user.uid, "products"),
+        limit(50),
+      );
+      const snap = await getDocs(productsRef);
+      let total = 0;
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.type === "loan") {
+          total += Number(data.remainingPrincipal) || Number(data.balance) || 0;
+        }
+      });
+      setLoanBalance(total);
+    } catch (error) {
+      logger.error("[ItemStore] 대출 잔액 로드 실패:", error);
+      setLoanBalance(0);
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    loadLoanBalance();
+  }, [loadLoanBalance]);
+
+  // 사용 가능 현금 = 보유 현금 - 미상환 대출금
+  const rawCash = userDoc?.cash !== undefined ? userDoc.cash : user?.cash;
+  const spendableCash = Math.max(0, (Number(rawCash) || 0) - loanBalance);
 
   useEffect(() => {
     if (items && Array.isArray(items)) {
@@ -163,14 +200,21 @@ const ItemStore = () => {
       return showNotification("error", "로그인 또는 학급 정보 필요");
 
     const quantity = purchaseQuantities[item.id] || 1;
-    const currentUserCash =
-      userDoc?.cash !== undefined ? userDoc.cash : user?.cash;
-    if (currentUserCash === undefined)
+    if (rawCash === undefined)
       return showNotification("error", "잔액 정보 오류");
 
     const totalPrice = item.price * quantity;
-    if (currentUserCash < totalPrice)
+
+    // 대출금은 상점에서 사용 불가 — 미상환 대출 제외한 사용 가능 금액으로 체크
+    if (spendableCash < totalPrice) {
+      if (loanBalance > 0 && rawCash >= totalPrice) {
+        return showNotification(
+          "error",
+          `대출금은 상점에서 사용할 수 없습니다. 미상환 ${loanBalance.toLocaleString()}원을 먼저 상환해주세요.`,
+        );
+      }
       return showNotification("error", "잔액 부족");
+    }
 
     if (!purchaseItem) return showNotification("error", "구매 기능 오류");
 
@@ -279,12 +323,12 @@ const ItemStore = () => {
 
   const getButtonText = (item) => {
     if (item.stock <= 0 && !(item.initialStock > 0)) return "품절";
-    const currentUserCash =
-      userDoc?.cash !== undefined ? userDoc.cash : user?.cash;
     const quantity = purchaseQuantities[item.id] || 1;
     const totalPrice = item.price * quantity;
-    if (user && currentUserCash !== undefined && currentUserCash < totalPrice)
+    if (user && rawCash !== undefined && spendableCash < totalPrice) {
+      if (loanBalance > 0 && rawCash >= totalPrice) return "대출금 제외";
       return "잔액 부족";
+    }
     return "구매하기";
   };
 
@@ -441,9 +485,7 @@ const ItemStore = () => {
                                 disabled={
                                   !user ||
                                   (item.stock <= 0 && !(item.initialStock > 0)) ||
-                                  (userDoc?.cash !== undefined
-                                    ? userDoc.cash
-                                    : user?.cash) <
+                                  spendableCash <
                                     item.price *
                                       (purchaseQuantities[item.id] || 1)
                                 }
