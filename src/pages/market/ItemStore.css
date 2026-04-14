@@ -102,10 +102,10 @@ body {
   overflow: hidden;
 }
 
-/* --- 아이템 그리드: 적응형 1~3열, 각 카드는 내부 한 줄 --- */
+/* --- 아이템 그리드: 적응형 (min(100%, 420px)로 좁을 땐 1열) --- */
 .items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: 10px;
 }
 
@@ -872,11 +872,13 @@ body {
 
 /* item-content를 flex row로 → 모든 자식이 한 줄 */
 .compact-card .item-content {
-  padding: 8px 12px !important;
+  padding: 10px 14px !important;
   display: flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 10px !important;
   flex-direction: row !important;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 래퍼들 언래핑: 자식들이 .item-content의 flex child로 직접 올라옴 */
