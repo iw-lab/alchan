@@ -2007,29 +2007,111 @@ const OmokGame = () => {
       {showWinAnimation && <div className="win-animation">승리!</div>}
 
       {showRewardSelection && (
-        <div className="reward-modal">
-          <div className="reward-content">
-            <h3>🎉 승리 보상!</h3>
-            <p>하나의 카드를 선택하세요</p>
-            <div className="reward-cards">
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 20,
+              padding: "28px 32px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              maxWidth: 520,
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 8px",
+                fontSize: "1.5rem",
+                fontWeight: 800,
+                color: "#0f172a",
+              }}
+            >
+              🎉 승리 보상!
+            </h3>
+            <p
+              style={{
+                margin: "0 0 20px",
+                color: "#64748b",
+                fontSize: "0.95rem",
+              }}
+            >
+              하나의 카드를 선택하세요
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 14,
+                justifyContent: "center",
+              }}
+            >
               {rewardCards.map((card, index) => (
-                <div
+                <button
                   key={index}
-                  className="reward-card"
                   onClick={() => handleRewardSelection(card)}
+                  style={{
+                    flex: 1,
+                    background:
+                      card.type === "cash"
+                        ? "linear-gradient(135deg, #10b981, #059669)"
+                        : "linear-gradient(135deg, #f59e0b, #d97706)",
+                    border: "none",
+                    borderRadius: 16,
+                    padding: "20px 16px",
+                    cursor: "pointer",
+                    color: "#ffffff",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 14px 28px rgba(0,0,0,0.25)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 20px rgba(0,0,0,0.15)";
+                  }}
                 >
-                  <div className="card-icon">
+                  <div style={{ fontSize: "2.4rem", marginBottom: 6 }}>
                     {card.type === "cash" ? "💵" : "🎫"}
                   </div>
-                  <div className="card-title">
+                  <div
+                    style={{
+                      fontSize: "0.95rem",
+                      fontWeight: 700,
+                      opacity: 0.9,
+                      marginBottom: 4,
+                    }}
+                  >
                     {card.type === "cash" ? "현금" : "쿠폰"}
                   </div>
-                  <div className="card-amount">
+                  <div
+                    style={{
+                      fontSize: "1.2rem",
+                      fontWeight: 800,
+                      letterSpacing: "0.3px",
+                    }}
+                  >
                     {card.type === "cash"
                       ? `${card.amount.toLocaleString()}원`
                       : `${card.amount}개`}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -2154,7 +2236,148 @@ const OmokGame = () => {
         </div>
       </div>
 
-      <div className="omok-board-container">{renderBoard()}</div>
+      <div
+        className="omok-board-container"
+        style={{ position: "relative" }}
+      >
+        {renderBoard()}
+        {game.winner && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(15, 23, 42, 0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              borderRadius: 12,
+              zIndex: 10,
+              animation: "fadeIn 0.35s ease-out",
+            }}
+          >
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 20,
+                padding: "24px 32px",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+                textAlign: "center",
+                maxWidth: 420,
+                width: "86%",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "2.4rem",
+                  marginBottom: 4,
+                }}
+              >
+                {game.winner === user.uid ? "🏆" : "😢"}
+              </div>
+              <div
+                style={{
+                  fontSize: "1.4rem",
+                  fontWeight: 800,
+                  color: "#0f172a",
+                  marginBottom: 6,
+                }}
+              >
+                {game.winner === "AI"
+                  ? "AI의 승리!"
+                  : (game.playerNames?.[game.winner] || "승자") + " 님의 승리!"}
+              </div>
+              {gameResult && (
+                <div
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 700,
+                    color:
+                      gameResult.rpChange > 0 ? "#059669" : "#dc2626",
+                    marginBottom: 14,
+                  }}
+                >
+                  {gameResult.rpChange > 0 ? "+" : ""}
+                  {gameResult.rpChange} RP
+                </div>
+              )}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  justifyContent: "center",
+                  marginTop: 6,
+                }}
+              >
+                {(game.aiMode || !iRequestedRematch) && (
+                  <button
+                    onClick={
+                      game.aiMode
+                        ? () => window.location.reload()
+                        : handleRematchRequest
+                    }
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "10px 22px",
+                      fontSize: "0.95rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+                    }}
+                  >
+                    🔄 한 번 더
+                  </button>
+                )}
+                <button
+                  onClick={leaveGame}
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#475569",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 10,
+                    padding: "10px 22px",
+                    fontSize: "0.95rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  🏠 로비로
+                </button>
+              </div>
+              {!game.aiMode && iRequestedRematch && !opponentRequestedRematch && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontSize: "0.85rem",
+                    color: "#64748b",
+                  }}
+                >
+                  재대결 요청 중... 상대 대기
+                </div>
+              )}
+              {!game.aiMode &&
+                opponentRequestedRematch &&
+                !iRequestedRematch && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      fontSize: "0.85rem",
+                      color: "#4338ca",
+                      fontWeight: 700,
+                    }}
+                  >
+                    상대가 재대결을 원합니다!
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="omok-status">
         {game.winner ? (
@@ -2200,27 +2423,13 @@ const OmokGame = () => {
         <div className={`feedback ${feedback.type}`}>{feedback.message}</div>
       )}
 
-      <div className="game-controls">
-        {game.gameStatus === "finished" ? (
-          <>
-            {!game.aiMode && !iRequestedRematch && (
-              <button
-                onClick={handleRematchRequest}
-                className="omok-button primary"
-              >
-                다시 하기
-              </button>
-            )}
-            <button onClick={leaveGame} className="omok-button secondary">
-              로비로 돌아가기
-            </button>
-          </>
-        ) : (
+      {game.gameStatus !== "finished" && (
+        <div className="game-controls">
           <button onClick={leaveGame} className="omok-button secondary">
             기권하고 나가기
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {!game.aiMode && game.gameStatus === "finished" && (
         <div
