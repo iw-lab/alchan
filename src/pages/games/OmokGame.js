@@ -1558,7 +1558,11 @@ const OmokGame = () => {
     const cells = [];
     const starPointCoords = [3, 7, 11];
 
-    // 가로선 그리기 (각 셀의 중심을 지나도록)
+    // 절대 위치 기반: 격자선·화점·돌·클릭 영역 모두 동일한 좌표계 사용
+    // 좌표 = i * cell-size (인덱스 0~14 → 0%~100% of (14*cell))
+    // 좌표는 inset padding 안쪽에서 계산됨 (board는 padding: cell/2)
+
+    // 가로선 (15개)
     const horizontalLines = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
       horizontalLines.push(
@@ -1566,13 +1570,15 @@ const OmokGame = () => {
           key={`h-line-${i}`}
           className="grid-line horizontal"
           style={{
-            top: `calc((${i} + 0.5) * var(--cell-size))`,
+            top: `calc(${i} * var(--cell-size))`,
+            left: 0,
+            right: 0,
           }}
         />,
       );
     }
 
-    // 세로선 그리기 (각 셀의 중심을 지나도록)
+    // 세로선 (15개)
     const verticalLines = [];
     for (let j = 0; j < BOARD_SIZE; j++) {
       verticalLines.push(
@@ -1580,12 +1586,16 @@ const OmokGame = () => {
           key={`v-line-${j}`}
           className="grid-line vertical"
           style={{
-            left: `calc((${j} + 0.5) * var(--cell-size))`,
+            left: `calc(${j} * var(--cell-size))`,
+            top: 0,
+            bottom: 0,
           }}
         />,
       );
     }
 
+    // 화점 + 돌 + 클릭 영역
+    const intersections = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
       for (let j = 0; j < BOARD_SIZE; j++) {
         const cellValue = getBoardValue(game.board, i, j);
@@ -1595,14 +1605,18 @@ const OmokGame = () => {
         const isStarPoint =
           starPointCoords.includes(i) && starPointCoords.includes(j);
 
-        cells.push(
+        intersections.push(
           <div
             key={`${i}-${j}`}
             className={`omok-cell ${game.currentPlayer === user.uid && !cellValue ? "clickable" : ""} ${isSelected ? "preview" : ""}`}
             onClick={() => handleCellClick(i, j)}
             style={{
-              gridRow: i + 1,
-              gridColumn: j + 1,
+              position: "absolute",
+              top: `calc(${i} * var(--cell-size))`,
+              left: `calc(${j} * var(--cell-size))`,
+              width: "var(--cell-size)",
+              height: "var(--cell-size)",
+              transform: "translate(-50%, -50%)",
             }}
           >
             {isStarPoint && <div className="star-point"></div>}
@@ -1615,13 +1629,14 @@ const OmokGame = () => {
         );
       }
     }
+
     return (
       <div className="omok-board" style={{ "--board-size": BOARD_SIZE }}>
-        <div className="grid-lines-container">
+        <div className="omok-board-inner">
           {horizontalLines}
           {verticalLines}
+          {intersections}
         </div>
-        {cells}
       </div>
     );
   };

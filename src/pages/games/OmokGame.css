@@ -104,9 +104,20 @@
 }
 
 .game-info {
-  display: flex;
-  gap: 1.5rem;
-  color: #64748b;
+  display: inline-flex;
+  gap: 1.25rem;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.game-info span {
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 
 /* 플레이어 상태 */
@@ -173,48 +184,29 @@
 
 .omok-board {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(15, var(--cell-size));
-  grid-template-rows: repeat(15, var(--cell-size));
-  width: calc(15 * var(--cell-size));
-  height: calc(15 * var(--cell-size));
-  border-radius: 6px;
+  /* 외부 = 격자 폭(14*cell) + 양쪽 padding(cell) */
+  width: calc(14 * var(--cell-size) + var(--cell-size) * 2);
+  height: calc(14 * var(--cell-size) + var(--cell-size) * 2);
+  padding: var(--cell-size);
+  box-sizing: border-box;
+  border-radius: 8px;
   margin: 0 auto;
   /* 3D 나무판 효과 */
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 8px,
-      rgba(0, 0, 0, 0.012) 8px,
-      rgba(0, 0, 0, 0.012) 9px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 35px,
-      rgba(0, 0, 0, 0.015) 35px,
-      rgba(0, 0, 0, 0.015) 36px
-    ),
-    linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
+  background: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
   box-shadow:
     0 2px 0 #b8892a,
     0 4px 0 #a67b24,
     0 6px 0 #956e20,
     0 8px 0 #84611c,
-    0 12px 30px rgba(0, 0, 0, 0.6),
+    0 12px 30px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-/* 격자선 컨테이너 - 보드와 동일 크기 */
-.grid-lines-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc(15 * var(--cell-size));
-  height: calc(15 * var(--cell-size));
-  pointer-events: none;
-  z-index: 0;
+/* 보드 안쪽 격자 영역 (14*cell × 14*cell) — 모든 좌표의 기준 */
+.omok-board-inner {
+  position: relative;
+  width: calc(14 * var(--cell-size));
+  height: calc(14 * var(--cell-size));
 }
 
 .grid-line {
@@ -224,27 +216,23 @@
 }
 
 .grid-line.horizontal {
-  left: calc(var(--cell-size) * 0.5);
-  width: calc(14 * var(--cell-size));
   height: var(--line-thickness);
   transform: translateY(-50%);
 }
 
 .grid-line.vertical {
-  top: calc(var(--cell-size) * 0.5);
-  height: calc(14 * var(--cell-size));
   width: var(--line-thickness);
   transform: translateX(-50%);
 }
 
-/* 셀 */
+/* 교차점 클릭 영역 — 절대 위치, transform으로 정확히 교차점에 중심 정렬 */
 .omok-cell {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1;
+  box-sizing: border-box;
 }
 
 /* 화점 (star point) */
