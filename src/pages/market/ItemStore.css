@@ -861,23 +861,21 @@ body {
    ======================================== */
 .compact-card {
   padding: 0 !important;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px var(--bg-input);
-  transition: all 0.2s ease;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   overflow: hidden;
 }
 
 .compact-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
-  border-color: #818cf8;
-  border-left-width: 4px;
+  border-color: #c7d2fe;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
 }
 
 .compact-card .item-content {
-  padding: 16px;
+  padding: 14px 16px;
 }
 
 .item-header-compact {
@@ -885,28 +883,28 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   gap: 10px;
   flex-wrap: nowrap;
 }
 
 .item-name-compact {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #4338ca;
+  color: #1e293b;
   margin: 0;
-  padding: 8px 12px;
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-  border: 1px solid #c7d2fe;
-  border-radius: 10px;
-  display: inline-block;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  display: block;
   flex-shrink: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.1);
+  box-shadow: none;
 }
 
 .item-stock-compact {
@@ -935,121 +933,91 @@ body {
   overflow: hidden;
 }
 
-.compact-card {
-  background: linear-gradient(145deg, #f8faff 0%, #f0f4ff 100%) !important;
-  border: 1px solid #dde4ff;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
-  border-left: 4px solid #a5b4fc;
-}
-
-/* 카드별 색상 교대 - 시각적 구분 */
-.compact-card:nth-child(6n+1) {
-  background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%) !important;
-  border-left-color: #818cf8;
-}
-.compact-card:nth-child(6n+2) {
-  background: linear-gradient(145deg, #fef3f2 0%, #fce7e6 100%) !important;
-  border-left-color: #f87171;
-}
-.compact-card:nth-child(6n+3) {
-  background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%) !important;
-  border-left-color: #34d399;
-}
-.compact-card:nth-child(6n+4) {
-  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%) !important;
-  border-left-color: #fbbf24;
-}
-.compact-card:nth-child(6n+5) {
-  background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 100%) !important;
-  border-left-color: #c084fc;
-}
-.compact-card:nth-child(6n+6) {
-  background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%) !important;
-  border-left-color: #2dd4bf;
-}
+/* 깔끔한 흰 카드 - 색상 교대 제거 */
 
 .compact-card .item-actions-primary {
-  padding-top: 12px;
-  border-top: 1px solid var(--border-primary);
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
   margin-top: 8px;
 }
 
 .compact-card .item-price {
   font-size: 1rem;
   font-weight: 700;
-  color: #4f46e5;
+  color: #1e293b;
   text-shadow: none;
 }
 
 .compact-card .quantity-input {
   border-radius: 8px;
-  border: 1px solid #e0e7ff;
-  background: #f8faff;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
   color: #1e293b;
   font-weight: 600;
 }
 
 .compact-card .buy-item-button {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  background: #6366f1;
   color: white;
   border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-weight: 700;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: background 0.15s ease;
+  box-shadow: none;
 }
 
 .compact-card .buy-item-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: #4f46e5;
+  transform: none;
+  box-shadow: none;
 }
 
 .compact-card .buy-item-button:disabled {
-  background: #e2e8f0;
+  background: #f1f5f9;
   color: #94a3b8;
   box-shadow: none;
   transform: none;
 }
 
 .compact-card .item-actions-admin {
-  padding-top: 10px;
-  margin-top: 10px;
-  border-top: 1px solid var(--border-primary);
-  gap: 8px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  gap: 6px;
 }
 
 .compact-card .edit-item-button,
 .compact-card .delete-item-button {
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: 600;
-  font-size: 0.8rem;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-weight: 500;
+  font-size: 0.75rem;
   border: none;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease;
 }
 
 .compact-card .edit-item-button {
-  background: #ecfdf5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
 }
 
 .compact-card .edit-item-button:hover {
-  background: #d1fae5;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+  background: #f1f5f9;
+  box-shadow: none;
 }
 
 .compact-card .delete-item-button {
-  background: #fef2f2;
+  background: transparent;
   color: #dc2626;
   border: 1px solid #fecaca;
 }
 
 .compact-card .delete-item-button:hover {
-  background: #fee2e2;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+  background: #fef2f2;
+  box-shadow: none;
 }
 
 /* ItemStore.css에 추가할 스타일 */
