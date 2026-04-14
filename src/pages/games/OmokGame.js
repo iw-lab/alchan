@@ -2043,28 +2043,43 @@ const OmokGame = () => {
         <div
           className="game-info"
           style={{
-            background: "rgba(15, 23, 42, 0.38)",
-            border: "1px solid rgba(255,255,255,0.22)",
+            background: "#0f172a",
+            border: "1px solid rgba(255,255,255,0.35)",
             color: "#ffffff",
+            opacity: 1,
+            textShadow: "0 1px 2px rgba(0,0,0,0.6)",
           }}
         >
           <span
             className="game-id"
-            style={{ color: "#ffffff", opacity: 0.85 }}
+            style={{
+              color: "#ffffff",
+              opacity: 1,
+              fontWeight: 700,
+            }}
           >
             #{gameId.slice(-6)}
           </span>
-          <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
-          <span className="game-rules" style={{ color: "#ffffff" }}>
+          <span style={{ color: "#64748b", opacity: 1 }}>·</span>
+          <span
+            className="game-rules"
+            style={{ color: "#ffffff", opacity: 1, fontWeight: 700 }}
+          >
             렌주룰
           </span>
-          <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
+          <span style={{ color: "#64748b", opacity: 1 }}>·</span>
           {game.aiMode ? (
-            <span className="global-match" style={{ color: "#ffffff" }}>
+            <span
+              className="global-match"
+              style={{ color: "#fbbf24", opacity: 1, fontWeight: 700 }}
+            >
               난이도 {game.aiDifficulty}
             </span>
           ) : (
-            <span className="global-match" style={{ color: "#ffffff" }}>
+            <span
+              className="global-match"
+              style={{ color: "#fbbf24", opacity: 1, fontWeight: 700 }}
+            >
               전세계 매칭
             </span>
           )}

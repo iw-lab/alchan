@@ -41,13 +41,8 @@
   color: #a0a0c0;
 }
 
-.game-info {
+.game-info-legacy-unused {
   display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-top: 1rem;
-  font-size: 0.9rem;
-  opacity: 0.8;
 }
 
 /* 로비 스타일 */
@@ -652,9 +647,8 @@
     font-size: 2rem;
   }
 
-  .game-info {
+  .game-info-legacy-unused-tablet {
     flex-direction: column;
-    gap: 0.5rem;
   }
 
   .omok-lobby {
