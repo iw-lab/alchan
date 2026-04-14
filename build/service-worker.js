@@ -1,9 +1,9 @@
 // public/service-worker.js
 // [비용 최적화] Service Worker - 정적 자산 캐싱으로 서버 요청 감소
 
-const CACHE_NAME = 'alchan-cache-v3';
-const STATIC_CACHE_NAME = 'alchan-static-v3';
-const RUNTIME_CACHE_NAME = 'alchan-runtime-v3';
+const CACHE_NAME = 'alchan-cache-v4';
+const STATIC_CACHE_NAME = 'alchan-static-v4';
+const RUNTIME_CACHE_NAME = 'alchan-runtime-v4';
 
 // 캐시할 정적 파일들 (index.html 제외 - 항상 최신 가져와야 함)
 const STATIC_ASSETS = [

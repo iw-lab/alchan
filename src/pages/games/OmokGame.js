@@ -2036,52 +2036,66 @@ const OmokGame = () => {
         </div>
       )}
 
-      <div className="omok-header">
-        <h2 style={{ color: "#ffffff" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 900,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "10px 18px",
+          background:
+            "linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%)",
+          borderRadius: 14,
+          boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25)",
+        }}
+      >
+        <h2
+          style={{
+            color: "#ffffff",
+            margin: 0,
+            fontSize: "1.15rem",
+            fontWeight: 700,
+            letterSpacing: "0.3px",
+            whiteSpace: "nowrap",
+          }}
+        >
           {game.aiMode ? "🤖 AI 대전" : "🌍 글로벌 오목"}
         </h2>
         <div
-          className="game-info"
           style={{
-            background: "#0f172a",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "6px 14px",
+            backgroundColor: "#0b1221",
             border: "1px solid rgba(255,255,255,0.35)",
-            color: "#ffffff",
-            opacity: 1,
-            textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+            borderRadius: 999,
+            fontSize: "0.78rem",
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
           }}
         >
           <span
-            className="game-id"
             style={{
               color: "#ffffff",
-              opacity: 1,
-              fontWeight: 700,
+              fontFamily: "monospace",
+              letterSpacing: "0.5px",
             }}
           >
             #{gameId.slice(-6)}
           </span>
-          <span style={{ color: "#64748b", opacity: 1 }}>·</span>
-          <span
-            className="game-rules"
-            style={{ color: "#ffffff", opacity: 1, fontWeight: 700 }}
-          >
-            렌주룰
-          </span>
-          <span style={{ color: "#64748b", opacity: 1 }}>·</span>
+          <span style={{ color: "#475569" }}>·</span>
+          <span style={{ color: "#ffffff" }}>렌주룰</span>
+          <span style={{ color: "#475569" }}>·</span>
           {game.aiMode ? (
-            <span
-              className="global-match"
-              style={{ color: "#fbbf24", opacity: 1, fontWeight: 700 }}
-            >
+            <span style={{ color: "#fbbf24" }}>
               난이도 {game.aiDifficulty}
             </span>
           ) : (
-            <span
-              className="global-match"
-              style={{ color: "#fbbf24", opacity: 1, fontWeight: 700 }}
-            >
-              전세계 매칭
-            </span>
+            <span style={{ color: "#fbbf24" }}>전세계 매칭</span>
           )}
         </div>
       </div>
