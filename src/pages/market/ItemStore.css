@@ -970,17 +970,17 @@ body {
 }
 
 .compact-card .item-price {
-  font-size: 1rem !important;
+  font-size: 0.95rem !important;
   font-weight: 800 !important;
   color: #1e293b !important;
   text-shadow: none !important;
   margin: 0 !important;
   padding: 0 !important;
   white-space: nowrap !important;
-  flex: 1 1 auto !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  flex: 1 1 0 !important;
+  min-width: 50px !important;
+  overflow: visible !important;
+  display: block !important;
 }
 
 .compact-card .quantity-and-buy-container {

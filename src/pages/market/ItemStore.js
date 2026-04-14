@@ -462,11 +462,44 @@ const ItemStore = () => {
                             className={`item-actions-primary ${
                               isMobile ? "flex-col" : ""
                             }`}
+                            style={{
+                              display: "flex",
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: "10px",
+                              marginTop: "auto",
+                              paddingTop: "4px",
+                              borderTop: "none",
+                            }}
                           >
-                            <span className="item-price">
-                              {formatKoreanCurrency(item.price || 0)}
+                            <span
+                              className="item-price"
+                              style={{
+                                flex: "1 1 auto",
+                                fontSize: "0.95rem",
+                                fontWeight: 800,
+                                color: "#1e293b",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                minWidth: 0,
+                                display: "block",
+                                margin: 0,
+                                padding: 0,
+                              }}
+                            >
+                              {formatKoreanCurrency(Number(item.price) || 0)}
                             </span>
-                            <div className="quantity-and-buy-container">
+                            <div
+                              className="quantity-and-buy-container"
+                              style={{
+                                display: "flex",
+                                gap: "6px",
+                                flex: "0 0 auto",
+                                alignItems: "center",
+                                width: "auto",
+                              }}
+                            >
                               <input
                                 type="number"
                                 min="1"
