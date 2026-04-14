@@ -2038,18 +2038,30 @@ const OmokGame = () => {
 
       <div className="omok-header">
         <h2 style={{ color: "#ffffff" }}>
-          {game.aiMode ? "🤖 AI 대전" : "🌍 글로벌 오목 게임"}
+          {game.aiMode ? "🤖 AI 대전" : "🌍 글로벌 오목"}
         </h2>
-        <div className="game-info" style={{ color: "#ffffff" }}>
-          <span className="game-id" style={{ color: "#ffffff" }}>
-            ID: {gameId.slice(-6)}
+        <div
+          className="game-info"
+          style={{
+            background: "rgba(15, 23, 42, 0.38)",
+            border: "1px solid rgba(255,255,255,0.22)",
+            color: "#ffffff",
+          }}
+        >
+          <span
+            className="game-id"
+            style={{ color: "#ffffff", opacity: 0.85 }}
+          >
+            #{gameId.slice(-6)}
           </span>
+          <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
           <span className="game-rules" style={{ color: "#ffffff" }}>
-            규칙: 렌주룰
+            렌주룰
           </span>
+          <span style={{ color: "rgba(255,255,255,0.35)" }}>·</span>
           {game.aiMode ? (
             <span className="global-match" style={{ color: "#ffffff" }}>
-              난이도: {game.aiDifficulty}
+              난이도 {game.aiDifficulty}
             </span>
           ) : (
             <span className="global-match" style={{ color: "#ffffff" }}>
