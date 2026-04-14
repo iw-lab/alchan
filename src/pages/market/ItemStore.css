@@ -102,11 +102,11 @@ body {
   overflow: hidden;
 }
 
-/* --- 아이템 그리드: 적응형 (min(100%, 420px)로 좁을 땐 1열) --- */
-.items-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
-  gap: 10px;
+/* --- 아이템 그리드: 적응형 (min(100%, 440px)로 좁을 땐 1열) --- */
+.shop-content .items-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)) !important;
+  gap: 10px !important;
 }
 
 /* --- 아이템 카드 --- */

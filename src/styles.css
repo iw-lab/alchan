@@ -40,28 +40,11 @@ h2, h3 {
 /* NOTE: Tailwind utility classes are provided by @tailwind utilities in index.css.
    Do NOT redefine them here. Only custom component classes should be defined below. */
 
-/* --- 아이템 그리드 --- */
+/* --- 아이템 그리드: 적응형 (min(100%, 440px)) --- */
 .items-grid {
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  /* 기본 1열 */
-  gap: 1rem;
-  /* 아이템 간격 */
-}
-
-/* 작은 화면 이상(sm breakpoint: 640px)에서 2열 */
-@media (min-width: 640px) {
-  .items-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* PC 화면 이상(lg breakpoint: 1024px)에서 3열 */
-@media (min-width: 1024px) {
-  .items-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
-  }
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  gap: 10px;
 }
 
 /* --- Item Card --- */
