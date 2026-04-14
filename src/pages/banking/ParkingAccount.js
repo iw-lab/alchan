@@ -1723,6 +1723,22 @@ const ParkingAccount = ({
  // 적금: totalDeposited 사용 (실제 납입한 금액만 반환)
  const refundAmount = (type === "savings" && product.totalDeposited) ? product.totalDeposited : balance;
 
+ // 🔥 대출 일시 상환: 경과 이자까지 합산 (원금 + 누적 이자)
+ let loanAccruedInterest = 0;
+ let loanTotalRepay = balance;
+ let loanElapsedDays = 0;
+ if (isLoan) {
+ const accrued = calculateAccruedLoanInterest(
+ product.balance,
+ product.rate,
+ product.startDate,
+ product.lastRepaymentDate,
+ );
+ loanAccruedInterest = accrued.interest;
+ loanTotalRepay = accrued.total;
+ loanElapsedDays = accrued.elapsedDays;
+ }
+
  if (!userId) {
  displayMessage("사용자 정보가 없습니다. 다시 로그인해주세요.", "error");
  logger.error("handleCancelEarly: userId가 없습니다.");
@@ -1730,7 +1746,7 @@ const ParkingAccount = ({
  }
 
  const confirmMessage = isLoan
- ? `대출금 ${formatCurrency(balance)}${currencyUnit}을 상환하시겠습니까?`
+ ? `대출 일시 상환\n\n원금: ${formatCurrency(balance)}${currencyUnit}\n경과 이자: ${formatCurrency(loanAccruedInterest)}${currencyUnit} (${loanElapsedDays}일)\n총 상환액: ${formatCurrency(loanTotalRepay)}${currencyUnit}\n\n상환하시겠습니까?`
  : `'${name}'을(를) 중도 해지하시겠습니까? (이자 없이 납입 원금 ${formatCurrency(refundAmount)}${currencyUnit}만 반환됩니다)`;
 
  if (!window.confirm(confirmMessage)) {
@@ -1763,7 +1779,7 @@ const ParkingAccount = ({
  };
  const originalCash = currentCash;
 
- const cashChangeAmount = isLoan ? -balance : refundAmount;
+ const cashChangeAmount = isLoan ? -loanTotalRepay : refundAmount;
  setCurrentCash((prev) => prev + cashChangeAmount);
 
  if (type === "deposit") {
@@ -1798,13 +1814,15 @@ const ParkingAccount = ({
  );
 
  if (isLoan) {
- // 대출 중도 상환: 학생 → 선생님 (원금만)
- if (currentCashInDb < balance) {
- throw new Error("대출금을 상환하기에 현금이 부족합니다.");
+ // 대출 일시 상환: 학생 → 선생님 (원금 + 경과 이자)
+ if (currentCashInDb < loanTotalRepay) {
+ throw new Error(
+ `대출금을 상환하기에 현금이 부족합니다. (필요: ${formatCurrency(loanTotalRepay)}${currencyUnit} = 원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)})`
+ );
  }
- transaction.update(userRef, { cash: increment(-balance) });
- transaction.update(teacherRef, { cash: increment(balance) });
- logger.log(`대출 중도 상환: 학생 -${balance}, 선생님 +${balance}`);
+ transaction.update(userRef, { cash: increment(-loanTotalRepay) });
+ transaction.update(teacherRef, { cash: increment(loanTotalRepay) });
+ logger.log(`대출 일시 상환: 학생 -${loanTotalRepay} (원금 ${balance} + 이자 ${loanAccruedInterest}, ${loanElapsedDays}일 경과)`);
  } else {
  // 예금/적금 중도 해지: 선생님 → 학생 (납입 원금만, 이자 없음, 마이너스 허용)
  if (teacherCashInDb < refundAmount) {
@@ -1823,7 +1841,7 @@ const ParkingAccount = ({
  logger.log("트랜잭션 성공");
 
  const successMsg = isLoan
- ? `대출 상환 완료: ${formatCurrency(balance)}${currencyUnit} (선생님 계정으로 이체)`
+ ? `대출 상환 완료: 원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)} = 총 ${formatCurrency(loanTotalRepay)}${currencyUnit} (${loanElapsedDays}일 경과)`
  : `중도 해지 완료: 원금 ${formatCurrency(balance)}${currencyUnit} 반환 (선생님 계정에서 지급)`;
  displayMessage(successMsg, "success");
 
@@ -1837,13 +1855,18 @@ const ParkingAccount = ({
  userName: userDoc?.name || "사용자",
  type: activityType,
  description: isLoan
- ? `대출 중도 상환: ${name} (${formatCurrency(balance)}원) - 선생님 계정으로`
+ ? `대출 일시 상환: ${name} (원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)} = ${formatCurrency(loanTotalRepay)}원, ${loanElapsedDays}일 경과)`
  : `중도 해지: ${name} (원금 ${formatCurrency(balance)}원) - 선생님 계정에서`,
  amount: cashChangeAmount,
  metadata: {
  productName: name,
  productType: type,
  principal: balance,
+ ...(isLoan && {
+ accruedInterest: loanAccruedInterest,
+ totalRepaid: loanTotalRepay,
+ elapsedDays: loanElapsedDays,
+ }),
  isEarlyCancellation: true,
  teacherId: teacherAccountId,
  },
