@@ -1672,63 +1672,63 @@ const AdminSettingsModal = ({
     );
   }
 
-  // 버튼 인라인 스타일 (CSS 클래스 로딩 문제 방지)
+  // 버튼 인라인 스타일 (라이트 테마)
   const saveBtnStyle = {
-    background: "linear-gradient(135deg, #00fff2, #00a8ff)",
-    color: "#000",
+    background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+    color: "#ffffff",
     padding: "10px 24px",
     borderRadius: "8px",
     fontWeight: 700,
     fontSize: "0.95rem",
     border: "none",
     cursor: "pointer",
-    boxShadow: "0 0 10px rgba(0,255,242,0.3)",
+    boxShadow: "0 2px 8px rgba(99, 102, 241, 0.25)",
   };
   const closeBtnStyle = {
-    background: "rgba(75,85,99,0.4)",
-    color: "var(--text-primary)",
+    background: "#f1f5f9",
+    color: "#475569",
     padding: "10px 24px",
     borderRadius: "8px",
     fontWeight: 600,
     fontSize: "0.95rem",
-    border: "1px solid rgba(0,255,242,0.3)",
+    border: "1px solid #e2e8f0",
     cursor: "pointer",
   };
-  const labelStyle = { color: "var(--text-primary)", fontWeight: 600 };
+  const labelStyle = { color: "#334155", fontWeight: 600 };
   const inputStyle = {
-    background: "rgba(0,0,0,0.3)",
-    border: "1px solid rgba(0,255,242,0.2)",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
     borderRadius: "8px",
-    color: "#fff",
+    color: "#0f172a",
     padding: "10px 12px",
     width: "100%",
     fontSize: "0.95rem",
   };
   const actionBtnStyle = {
-    background: "rgba(0,255,242,0.12)",
-    color: "var(--accent)",
+    background: "rgba(99, 102, 241, 0.1)",
+    color: "#4f46e5",
     padding: "10px 20px",
     borderRadius: "8px",
     fontWeight: 600,
     fontSize: "0.9rem",
-    border: "1px solid rgba(0,255,242,0.3)",
+    border: "1px solid rgba(99, 102, 241, 0.3)",
     cursor: "pointer",
   };
   const cancelBtnStyle = {
-    background: "rgba(75,85,99,0.3)",
-    color: "var(--text-secondary)",
+    background: "#f1f5f9",
+    color: "#64748b",
     padding: "10px 20px",
     borderRadius: "8px",
     fontWeight: 500,
     fontSize: "0.9rem",
-    border: "1px solid rgba(75,85,99,0.5)",
+    border: "1px solid #e2e8f0",
     cursor: "pointer",
   };
   const selectStyle = {
-    background: "rgba(0,0,0,0.3)",
-    border: "1px solid rgba(0,255,242,0.2)",
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
     borderRadius: "8px",
-    color: "var(--text-primary)",
+    color: "#0f172a",
     padding: "10px 12px",
     fontSize: "0.9rem",
     cursor: "pointer",
@@ -1754,12 +1754,7 @@ const AdminSettingsModal = ({
             - 최고관리자(isSuperAdmin): 모든 탭 접근 가능
             - 관리자(isAdmin): 시스템 관리 제외 모든 탭 접근 가능
             ======================================== */}
-        <div
-          className="admin-menu-tabs flex flex-wrap gap-2.5 p-4 rounded-2xl border border-gray-700"
-          style={{
-            background: "linear-gradient(135deg, #16213e 0%, #1a1a2e 100%)",
-          }}
-        >
+        <div className="admin-menu-tabs flex flex-wrap gap-2.5 p-3 rounded-2xl">
           <button
             className={`px-4 py-2.5 rounded-2xl text-[13px] whitespace-nowrap ${adminSelectedMenu === "generalSettings" ? "active" : ""}`}
             onClick={() => setAdminSelectedMenu("generalSettings")}
@@ -1894,8 +1889,8 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "jobAndTask" && (
           <div className="task-management-tab">
             {!isSuperAdmin && userClassCode && (
-              <div style={{ marginBottom: '16px', padding: '10px 16px', background: 'rgba(0,255,242,0.08)', borderRadius: '10px', border: '1px solid rgba(0,255,242,0.15)' }}>
-                <span style={{ color: '#00fff2', fontWeight: 600, fontSize: '14px' }}>🏫 현재 관리 학급: <strong>{userClassCode}</strong></span>
+              <div style={{ marginBottom: '16px', padding: '10px 16px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                <span style={{ color: '#4f46e5', fontWeight: 600, fontSize: '14px' }}>🏫 현재 관리 학급: <strong>{userClassCode}</strong></span>
               </div>
             )}
 
@@ -1907,11 +1902,11 @@ const AdminSettingsModal = ({
 
               {/* 할일 추가/수정 폼 */}
               {showAddTaskForm && (
-                <div style={{ background: 'rgba(15,15,28,0.8)', borderRadius: '14px', padding: '24px', border: '1px solid rgba(0,255,242,0.2)', marginBottom: '20px' }}>
+                <div style={{ background: '#ffffff', borderRadius: '14px', padding: '24px', border: '1px solid rgba(99, 102, 241, 0.25)', marginBottom: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                     <span style={{ fontSize: '24px' }}>{adminEditingTask ? "✏️" : "➕"}</span>
                     <div>
-                      <h4 style={{ margin: 0, color: '#e8e8ff', fontSize: '18px' }}>{adminEditingTask ? "할일 수정" : "새 할일 추가"}</h4>
+                      <h4 style={{ margin: 0, color: '#0f172a', fontSize: '18px' }}>{adminEditingTask ? "할일 수정" : "새 할일 추가"}</h4>
                       <div style={{ marginTop: '6px' }}>
                         <select
                           value={taskFormIsJobTask && taskFormJobId ? taskFormJobId : ""}
@@ -1925,7 +1920,7 @@ const AdminSettingsModal = ({
                               setTaskFormJobId(val);
                             }
                           }}
-                          style={{ ...selectStyle, borderRadius: '8px', padding: '6px 10px', fontSize: '13px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff' }}
+                          style={{ ...selectStyle, borderRadius: '8px', padding: '6px 10px', fontSize: '13px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a' }}
                         >
                           <option value="">공통 할일</option>
                           {Array.isArray(jobs) && jobs.map((job) => (
@@ -1944,7 +1939,7 @@ const AdminSettingsModal = ({
                         value={adminNewTaskName}
                         onChange={(e) => setAdminNewTaskName(e.target.value)}
                         placeholder="할일 이름 입력"
-                        style={{ ...inputStyle, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff', borderRadius: '10px', padding: '12px 14px' }}
+                        style={{ ...inputStyle, background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a', borderRadius: '10px', padding: '12px 14px' }}
                       />
                     </div>
                     <div>
@@ -1955,7 +1950,7 @@ const AdminSettingsModal = ({
                         value={adminNewTaskMaxClicks}
                         onChange={(e) => setAdminNewTaskMaxClicks(e.target.value)}
                         placeholder="5"
-                        style={{ ...inputStyle, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: '#e8e8ff', borderRadius: '10px', padding: '12px 14px' }}
+                        style={{ ...inputStyle, background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a', borderRadius: '10px', padding: '12px 14px' }}
                       />
                     </div>
                   </div>
@@ -1988,21 +1983,21 @@ const AdminSettingsModal = ({
               {/* 공통 할일 섹션 */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <h4 style={{ color: '#00fff2', fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '4px', height: '16px', background: '#00fff2', borderRadius: '2px', display: 'inline-block' }}></span>
+                  <h4 style={{ color: '#4f46e5', fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '4px', height: '16px', background: '#4f46e5', borderRadius: '2px', display: 'inline-block' }}></span>
                     공통 할일
-                    <span style={{ fontSize: '12px', color: '#9999bb', fontWeight: 400 }}>({Array.isArray(commonTasks) ? commonTasks.length : 0}개)</span>
+                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>({Array.isArray(commonTasks) ? commonTasks.length : 0}개)</span>
                   </h4>
                   <button
                     onClick={() => { setInlineAddingFor("common"); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }}
-                    style={{ background: 'rgba(0,255,242,0.1)', border: '1px solid rgba(0,255,242,0.3)', color: '#00fff2', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
+                    style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '8px', padding: '6px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}
                   >
                     + 추가
                   </button>
                 </div>
                 {/* 공통 할일 인라인 추가 폼 */}
                 {inlineAddingFor === "common" && (
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px', padding: '8px 12px', background: 'rgba(0,255,242,0.05)', borderRadius: '10px', border: '1px solid rgba(0,255,242,0.2)' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px', padding: '8px 12px', background: 'rgba(99, 102, 241, 0.06)', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
                     <input
                       type="text"
                       value={inlineTaskName}
@@ -2010,7 +2005,7 @@ const AdminSettingsModal = ({
                       placeholder="할일 이름"
                       autoFocus
                       onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave("common"); if (e.key === 'Escape') { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); } }}
-                      style={{ flex: 1, padding: '6px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }}
+                      style={{ flex: 1, padding: '6px 10px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', outline: 'none' }}
                     />
                     <input
                       type="number"
@@ -2018,40 +2013,40 @@ const AdminSettingsModal = ({
                       value={inlineTaskMaxClicks}
                       onChange={(e) => setInlineTaskMaxClicks(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave("common"); }}
-                      style={{ width: '50px', padding: '6px 6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }}
+                      style={{ width: '50px', padding: '6px 6px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }}
                     />
-                    <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
                     <button onClick={() => handleInlineTaskSave("common")} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
-                    <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+                    <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
                   </div>
                 )}
                 {Array.isArray(commonTasks) && commonTasks.length > 0 ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '8px' }}>
                     {commonTasks.map((task) => (
-                      <div key={task.id} style={{ padding: '10px 14px', background: 'rgba(15,15,28,0.6)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div key={task.id} style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                         {inlineEditingTaskId === task.id ? (
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <input type="text" value={inlineEditName} onChange={(e) => setInlineEditName(e.target.value)} autoFocus
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, null); if (e.key === 'Escape') setInlineEditingTaskId(null); }}
-                              style={{ flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }} />
+                              style={{ flex: 1, padding: '5px 8px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', outline: 'none' }} />
                             <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, null); }}
-                              style={{ width: '50px', padding: '5px 4px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,255,242,0.3)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
-                            <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                              style={{ width: '50px', padding: '5px 4px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
                             <button onClick={() => handleInlineEditSave(task.id, null)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
-                            <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                            <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                              <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
-                              <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                              <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                              <span style={{ fontSize: '11px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
                             </div>
                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                               <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
-                                style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
+                                style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
                               <button onClick={() => { handleTaskDelete(task.id); }}
-                                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
+                                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
                             </div>
                           </div>
                         )}
@@ -2059,7 +2054,7 @@ const AdminSettingsModal = ({
                     ))}
                   </div>
                 ) : (
-                  <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px', background: 'rgba(15,15,28,0.4)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                  <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
                     공통 할일이 없습니다.
                   </p>
                 )}
@@ -2067,10 +2062,10 @@ const AdminSettingsModal = ({
 
               {/* 직업 추가 */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h4 style={{ color: '#818cf8', fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h4 style={{ color: '#4f46e5', fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ width: '4px', height: '16px', background: '#818cf8', borderRadius: '2px', display: 'inline-block' }}></span>
                   직업별 할일
-                  <span style={{ fontSize: '12px', color: '#9999bb', fontWeight: 400 }}>({Array.isArray(jobs) ? jobs.length : 0}개 직업)</span>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>({Array.isArray(jobs) ? jobs.length : 0}개 직업)</span>
                 </h4>
               </div>
 
@@ -2081,7 +2076,7 @@ const AdminSettingsModal = ({
                   value={adminNewJobTitle}
                   onChange={(e) => setAdminNewJobTitle(e.target.value)}
                   placeholder={adminEditingJob ? "직업명 수정" : "새 직업명 입력"}
-                  style={{ ...inputStyle, flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.3)', color: '#e8e8ff', borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
+                  style={{ ...inputStyle, flex: 1, background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#0f172a', borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
                 />
                 <button
                   onClick={() => {
@@ -2109,21 +2104,21 @@ const AdminSettingsModal = ({
               {Array.isArray(jobs) && jobs.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
                   {jobs.map((job) => (
-                    <div key={job.id} style={{ background: 'rgba(15,15,28,0.4)', borderRadius: '12px', border: '1px solid rgba(129,140,248,0.15)', overflow: 'hidden' }}>
+                    <div key={job.id} style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.2)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)', overflow: 'hidden' }}>
                       {/* 직업 헤더 */}
-                      <div style={{ padding: '10px 16px', background: 'rgba(129,140,248,0.08)', borderBottom: '1px solid rgba(129,140,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#c4b5fd', fontWeight: 700, fontSize: '14px' }}>💼 {job.title}</span>
+                      <div style={{ padding: '10px 16px', background: 'rgba(99, 102, 241, 0.06)', borderBottom: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#4f46e5', fontWeight: 700, fontSize: '14px' }}>💼 {job.title}</span>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', color: '#9999bb' }}>할일 {Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>할일 {Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
                           <button
                             onClick={() => { handleJobEdit(job); }}
-                            style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             이름수정
                           </button>
                           <button
                             onClick={() => { handleJobDelete(job.id); }}
-                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             삭제
                           </button>
@@ -2133,30 +2128,30 @@ const AdminSettingsModal = ({
                       {Array.isArray(job.tasks) && job.tasks.length > 0 ? (
                         <div style={{ padding: '6px 8px' }}>
                           {job.tasks.map((task, idx) => (
-                            <div key={task.id} style={{ padding: '6px 10px', borderRadius: '8px', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                            <div key={task.id} style={{ padding: '6px 10px', borderRadius: '8px', background: idx % 2 === 0 ? 'transparent' : '#f8fafc' }}>
                               {inlineEditingTaskId === task.id ? (
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                   <input type="text" value={inlineEditName} onChange={(e) => setInlineEditName(e.target.value)} autoFocus
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, job.id); if (e.key === 'Escape') setInlineEditingTaskId(null); }}
-                                    style={{ flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }} />
+                                    style={{ flex: 1, padding: '5px 8px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', outline: 'none' }} />
                                   <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, job.id); }}
-                                    style={{ width: '50px', padding: '5px 4px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
-                                  <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                                    style={{ width: '50px', padding: '5px 4px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
+                                  <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
                                   <button onClick={() => handleInlineEditSave(task.id, job.id)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
-                                  <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                                  <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                    <span style={{ color: '#e8e8ff', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
-                                    <span style={{ fontSize: '11px', color: '#9999bb', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                                    <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                                    <span style={{ fontSize: '11px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
                                   </div>
                                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                                     <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
-                                      style={{ background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: '#818cf8', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
+                                      style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>수정</button>
                                     <button onClick={() => { handleTaskDelete(task.id, job.id); }}
-                                      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
+                                      style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '8px', padding: '5px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>삭제</button>
                                   </div>
                                 </div>
                               )}
@@ -2169,7 +2164,7 @@ const AdminSettingsModal = ({
                         </p>
                       )}
                       {/* 직업 카드 내 인라인 할일 추가 */}
-                      <div style={{ padding: '6px 8px', borderTop: '1px solid rgba(129,140,248,0.1)' }}>
+                      <div style={{ padding: '6px 8px', borderTop: '1px solid rgba(99, 102, 241, 0.15)' }}>
                         {inlineAddingFor === job.id ? (
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <input
@@ -2179,7 +2174,7 @@ const AdminSettingsModal = ({
                               placeholder="할일 이름"
                               autoFocus
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave(job.id); if (e.key === 'Escape') { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); } }}
-                              style={{ flex: 1, padding: '6px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', outline: 'none' }}
+                              style={{ flex: 1, padding: '6px 10px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', outline: 'none' }}
                             />
                             <input
                               type="number"
@@ -2187,18 +2182,18 @@ const AdminSettingsModal = ({
                               value={inlineTaskMaxClicks}
                               onChange={(e) => setInlineTaskMaxClicks(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave(job.id); }}
-                              style={{ width: '50px', padding: '6px 6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(129,140,248,0.4)', borderRadius: '6px', color: '#e8e8ff', fontSize: '13px', textAlign: 'center', outline: 'none' }}
+                              style={{ width: '50px', padding: '6px 6px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }}
                             />
-                            <span style={{ fontSize: '11px', color: '#9999bb' }}>회</span>
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
                             <button onClick={() => handleInlineTaskSave(job.id)} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
-                            <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
+                            <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
                           </div>
                         ) : (
                           <button
                             onClick={() => { setInlineAddingFor(job.id); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }}
-                            style={{ width: '100%', padding: '7px', background: 'rgba(129,140,248,0.08)', border: '1px dashed rgba(129,140,248,0.3)', borderRadius: '8px', color: '#818cf8', fontSize: '13px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
-                            onMouseEnter={(e) => { e.target.style.background = 'rgba(129,140,248,0.15)'; }}
-                            onMouseLeave={(e) => { e.target.style.background = 'rgba(129,140,248,0.08)'; }}
+                            style={{ width: '100%', padding: '7px', background: 'rgba(99, 102, 241, 0.06)', border: '1px dashed rgba(99, 102, 241, 0.35)', borderRadius: '8px', color: '#4f46e5', fontSize: '13px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.target.style.background = 'rgba(99, 102, 241, 0.12)'; }}
+                            onMouseLeave={(e) => { e.target.style.background = 'rgba(99, 102, 241, 0.06)'; }}
                           >
                             + 할일 추가
                           </button>
@@ -2208,7 +2203,7 @@ const AdminSettingsModal = ({
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px', background: 'rgba(15,15,28,0.4)', borderRadius: '10px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
                   등록된 직업이 없습니다. 위에서 직업을 추가하세요.
                 </p>
               )}
@@ -2218,21 +2213,21 @@ const AdminSettingsModal = ({
 
         {/* ===== 학생/구성원 통합 탭 ===== */}
         {adminSelectedMenu === "studentAndMember" && (
-          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+          <div className="flex gap-2 mb-4 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "student" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "student" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setStudentMemberSubTab("student")}
             >
               학생/급여 관리
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "salary" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "salary" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setStudentMemberSubTab("salary")}
             >
               급여 설정
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "member" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${studentMemberSubTab === "member" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setStudentMemberSubTab("member")}
             >
               구성원 관리
@@ -2307,7 +2302,7 @@ const AdminSettingsModal = ({
                         borderRadius: '10px',
                         border: '1px solid rgba(99,102,241,0.4)',
                         background: 'rgba(99,102,241,0.15)',
-                        color: '#818cf8',
+                        color: '#4f46e5',
                         fontSize: '14px',
                         fontWeight: 700,
                         cursor: (isPayingSalary || selectedStudentIds.length === 0) ? 'not-allowed' : 'pointer',
@@ -2475,21 +2470,21 @@ const AdminSettingsModal = ({
 
         {/* ===== 금융/시장 통합 탭 ===== */}
         {adminSelectedMenu === "financeAndMarket" && (
-          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+          <div className="flex gap-2 mb-4 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "financial" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "financial" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setFinanceMarketSubTab("financial")}
             >
               금융 상품
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "parking" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "parking" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setFinanceMarketSubTab("parking")}
             >
               파킹 통장
             </button>
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "market" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${financeMarketSubTab === "market" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setFinanceMarketSubTab("market")}
             >
               시장 제어
@@ -3130,16 +3125,16 @@ const AdminSettingsModal = ({
 
         {/* ===== 시스템 통합 탭 ===== */}
         {adminSelectedMenu === "system" && (
-          <div className="flex gap-2 mb-4 p-3 rounded-xl bg-[#16213e]/50 border border-gray-700/50">
+          <div className="flex gap-2 mb-4 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
             <button
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setSystemSubTab("database")}
             >
               데이터베이스
             </button>
             {isSuperAdmin && (
               <button
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "system" ? "bg-[rgba(99,102,241,0.15)] text-indigo-400 border border-[rgba(0,255,242,0.35)] shadow-[0_0_10px_rgba(99,102,241,0.2)]" : "text-slate-400 border border-transparent hover:text-indigo-400 hover:bg-[rgba(99,102,241,0.06)]"}`}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "system" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
                 onClick={() => setSystemSubTab("system")}
               >
                 시스템 관리
