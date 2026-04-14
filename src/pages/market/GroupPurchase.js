@@ -84,33 +84,45 @@ export default function GroupPurchase() {
 
   // 캠페인 생성
   const handleCreate = async () => {
-    const target = parseInt(newCampaign.targetPrice);
-    if (!newCampaign.itemName.trim() || !target || target <= 0) return;
+    if (!newCampaign.selectedItemId) {
+      alert("아이템을 먼저 선택해주세요.");
+      return;
+    }
 
-    // 재고 기반 중복 캠페인 체크: 진행 중 캠페인 수 >= 재고이면 생성 불가
-    if (newCampaign.selectedItemId) {
-      try {
-        // 해당 아이템의 현재 재고 확인
-        const storeItemRef = doc(db, "storeItems", newCampaign.selectedItemId);
-        const storeItemSnap = await getDoc(storeItemRef);
-        const itemStock = storeItemSnap.exists() ? (storeItemSnap.data().stock ?? Infinity) : Infinity;
-
-        // 모든 학급에서 해당 아이템의 진행 중 캠페인 수 확인
-        const duplicateQuery = query(
-          collection(db, "groupPurchases"),
-          where("selectedItemId", "==", newCampaign.selectedItemId),
-          where("status", "==", "active")
-        );
-        const duplicateSnap = await getDocs(duplicateQuery);
-        const activeCampaignCount = duplicateSnap.size;
-
-        if (activeCampaignCount >= itemStock) {
-          alert(`재고(${itemStock}개)만큼 이미 함께구매가 진행 중입니다. 새로 만들 수 없습니다.`);
-          return;
-        }
-      } catch (err) {
-        logger.error("중복 캠페인 체크 실패:", err);
+    // 🔥 상점 아이템의 현재 가격 강제 사용 + 같은 아이템에 대해 1건만 허용
+    let currentShopPrice = 0;
+    try {
+      const storeItemRef = doc(db, "storeItems", newCampaign.selectedItemId);
+      const storeItemSnap = await getDoc(storeItemRef);
+      if (!storeItemSnap.exists()) {
+        alert("상점에서 아이템을 찾을 수 없습니다.");
+        return;
       }
+      const storeData = storeItemSnap.data();
+      currentShopPrice = Number(storeData.price) || 0;
+      if (currentShopPrice <= 0) {
+        alert("유효한 가격이 없는 아이템입니다.");
+        return;
+      }
+
+      // 해당 아이템에 대해 이미 진행 중인 캠페인이 있으면 차단 (학급 내)
+      const dupQuery = query(
+        collection(db, "groupPurchases"),
+        where("selectedItemId", "==", newCampaign.selectedItemId),
+        where("classCode", "==", classCode),
+        where("status", "==", "active"),
+      );
+      const dupSnap = await getDocs(dupQuery);
+      if (!dupSnap.empty) {
+        alert(
+          "이미 같은 아이템의 함께구매가 진행 중입니다. 완료되거나 취소된 후에 새로 만들 수 있습니다.\n(한 번에 한 건만 허용됨)",
+        );
+        return;
+      }
+    } catch (err) {
+      logger.error("캠페인 사전 체크 실패:", err);
+      alert("캠페인 생성 전 확인에 실패했습니다.");
+      return;
     }
 
     try {
@@ -120,7 +132,8 @@ export default function GroupPurchase() {
         itemIcon: newCampaign.itemIcon || "🎁",
         itemDescription: newCampaign.itemDescription.trim(),
         selectedItemId: newCampaign.selectedItemId || null,
-        targetPrice: target,
+        // 🔥 목표 가격은 상점 현재 가격으로 강제 고정 (사용자 입력 무시)
+        targetPrice: currentShopPrice,
         currentAmount: 0,
         initiatorId: user.uid,
         initiatorName: userDoc?.name || "알 수 없음",
@@ -766,29 +779,20 @@ export default function GroupPurchase() {
                 </div>
               )}
 
-              {/* 목표 금액 (수정 가능) */}
+              {/* 목표 금액 (상점 가격으로 자동 고정) */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">
-                  목표 금액 (수정 가능)
+                  목표 금액 (상점 현재 가격 자동 적용)
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={newCampaign.targetPrice}
-                    onChange={(e) =>
-                      setNewCampaign((p) => ({
-                        ...p,
-                        targetPrice: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-2.5 pr-14 rounded-xl bg-white border border-slate-200 text-slate-800 text-sm focus:border-purple-500/50 focus:outline-none"
-                    placeholder="0"
-                    min="1"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                    {currencyUnit}
-                  </span>
+                <div className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm font-bold">
+                  {newCampaign.selectedItemId
+                    ? `${formatKoreanNumber(newCampaign.targetPrice)}${currencyUnit}`
+                    : "아이템을 먼저 선택하세요"}
                 </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  💡 품절 시 자동 가격 상승이 함께구매에도 적용됩니다.
+                  한 아이템은 한 번에 한 건만 진행 가능합니다.
+                </p>
               </div>
 
               {/* 생성 버튼 */}
