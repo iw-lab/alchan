@@ -102,11 +102,11 @@ body {
   overflow: hidden;
 }
 
-/* --- 아이템 그리드: MyItems 스타일 적응형 --- */
+/* --- 아이템 그리드: 한 줄 배치 가능한 너비 보장 --- */
 .shop-content .items-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) !important;
-  gap: 16px !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)) !important;
+  gap: 14px !important;
 }
 
 /* --- 아이템 카드 --- */

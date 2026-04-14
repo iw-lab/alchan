@@ -211,7 +211,7 @@ const ItemStore = () => {
       if (loanBalance > 0 && rawCash >= totalPrice) {
         return showNotification(
           "error",
-          `대출금은 상점에서 사용할 수 없습니다. 미상환 ${loanBalance.toLocaleString()}원을 먼저 상환해주세요.`,
+          `대출금은 상점에서 사용할 수 없습니다. 미상환 ${formatKoreanCurrency(loanBalance)}을 먼저 상환해주세요.`,
         );
       }
       return showNotification("error", "잔액 부족");

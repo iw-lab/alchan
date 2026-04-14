@@ -1320,16 +1320,10 @@ export default function MyAssets() {
             <span className="text-lg font-bold gradient-text">💰 보유 현금</span>
           </div>
           <div
-            className="text-[48px] font-extrabold tracking-tight mb-4 text-right"
+            className="text-[40px] font-extrabold tracking-tight mb-4 text-right"
             style={{ color: displayCash < 0 ? "#dc2626" : "#0f172a" }}
           >
-            {displayCash.toLocaleString()}{" "}
-            <span
-              className="text-[32px] font-semibold"
-              style={{ color: displayCash < 0 ? "#dc2626" : "#334155" }}
-            >
-              원
-            </span>
+            {formatKoreanCurrency(displayCash)}
           </div>
           <div className="flex justify-end">
             <button
@@ -1387,7 +1381,7 @@ export default function MyAssets() {
                         }`}
                       >
                         {txAmount > 0 ? "+" : ""}
-                        {txAmount.toLocaleString()}원
+                        {formatKoreanCurrency(txAmount)}
                       </span>
                     </div>
                   );
@@ -1419,11 +1413,10 @@ export default function MyAssets() {
               <span className="text-sm font-semibold text-pink-600">📊 총 순자산</span>
             </div>
             <div
-              className="text-2xl md:text-3xl font-extrabold tracking-tight text-right"
+              className="text-xl md:text-2xl font-extrabold tracking-tight text-right"
               style={{ color: Number(totalNetAssets) < 0 ? "#dc2626" : "#0f172a" }}
             >
-              {Number(totalNetAssets).toLocaleString()}
-              <span className="text-base font-semibold text-slate-600"> 원</span>
+              {formatKoreanCurrency(Number(totalNetAssets))}
             </div>
             <p className="mt-1 text-[10px] text-slate-500 leading-tight">
               현금+쿠폰+파킹+예적금+부동산-대출
@@ -1435,9 +1428,8 @@ export default function MyAssets() {
             <div className="mb-1">
               <span className="text-sm font-semibold text-cyan-600">🅿️ 파킹통장</span>
             </div>
-            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right text-slate-900">
-              {Number(parkingBalance).toLocaleString()}
-              <span className="text-base font-semibold text-slate-600"> 원</span>
+            <div className="text-xl md:text-2xl font-extrabold tracking-tight text-right text-slate-900">
+              {formatKoreanCurrency(Number(parkingBalance))}
             </div>
             <p className="mt-1 text-[10px] text-slate-500 text-right">
               입출금 및 상품 가입
