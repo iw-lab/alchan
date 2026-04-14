@@ -253,7 +253,7 @@ export default function MyProfile() {
  }
 
  return (
- <div className="w-full min-h-full bg-cyber-dark">
+ <div className="w-full min-h-full">
  <div className="w-full max-w-4xl mx-auto px-4 md:px-6 py-6">
  {/* 페이지 제목 */}
  <h1 className="text-lg font-bold text-slate-800 mb-4 px-1">
@@ -261,7 +261,7 @@ export default function MyProfile() {
  </h1>
 
  {/* 프로필 카드 */}
- <div className="bg-gradient-to-br from-cyber-light to-[#16213e] rounded-3xl p-8 mb-6 border-2 border-gray-700 shadow-[0_10px_40px_rgba(0,0,0,0.4)]">
+ <div className="bg-white rounded-3xl p-8 mb-6 border border-slate-200 shadow-sm">
  <div className="flex flex-col items-center gap-6">
  {/* 아바타 */}
  <div className="relative">
@@ -277,7 +277,7 @@ export default function MyProfile() {
 
  {/* 사용자 정보 */}
  <div className="text-center">
- <h2 className="text-2xl font-bold text-cyber-text mb-2">
+ <h2 className="text-2xl font-bold text-slate-800 mb-2">
  {userName}
  </h2>
 
@@ -329,21 +329,21 @@ export default function MyProfile() {
  </div>
 
  {/* 레벨 진행도 카드 */}
- <div className="bg-gradient-to-br from-[#1e1e3f] to-[#16213e] rounded-[20px] p-6 mb-6 border-2 border-gray-700">
- <h3 className="text-[#a78bfa] text-lg font-bold mb-4 flex items-center gap-2">
+ <div className="bg-white rounded-2xl p-6 mb-6 border border-slate-200 shadow-sm">
+ <h3 className="text-indigo-600 text-lg font-bold mb-4 flex items-center gap-2">
  <span>📊</span> 레벨 진행도
  </h3>
 
  <div className="mb-4">
  <div className="flex justify-between mb-2">
- <span className="text-[#9ca3af] text-sm">
+ <span className="text-slate-500 text-sm">
  {levelInfo.icon} Lv.{levelInfo.level} {levelInfo.title}
  </span>
- <span className="text-cyber-text text-sm font-semibold">
+ <span className="text-slate-800 text-sm font-semibold">
  {levelInfo.progress.toFixed(1)}%
  </span>
  </div>
- <div className="h-3 bg-gray-700 rounded-md overflow-hidden">
+ <div className="h-3 bg-slate-100 rounded-md overflow-hidden">
  <div
  className="h-full rounded-md transition-all duration-500"
  style={{
@@ -367,8 +367,8 @@ export default function MyProfile() {
  </div>
 
  {/* 업적 카드 */}
- <div className="bg-gradient-to-br from-[#1e1e3f] to-[#16213e] rounded-[20px] p-6 mb-6 border-2 border-gray-700">
- <h3 className="text-[#a78bfa] text-lg font-bold mb-4 flex items-center gap-2">
+ <div className="bg-white rounded-2xl p-6 mb-6 border border-slate-200 shadow-sm">
+ <h3 className="text-indigo-600 text-lg font-bold mb-4 flex items-center gap-2">
  <span>🏆</span> 획득한 업적 ({achievements.length}개)
  </h3>
 
@@ -429,17 +429,17 @@ export default function MyProfile() {
  <StreakRewardInfo />
 
  {/* 계정 설정 섹션 */}
- <div className="bg-gradient-to-br from-[#1e1e3f] to-[#16213e] rounded-[20px] p-6 mb-6 border-2 border-gray-700">
- <h3 className="text-[#a78bfa] text-lg font-bold mb-4 flex items-center gap-2">
+ <div className="bg-white rounded-2xl p-6 mb-6 border border-slate-200 shadow-sm">
+ <h3 className="text-indigo-600 text-lg font-bold mb-4 flex items-center gap-2">
  <Settings size={20} /> 계정 설정
  </h3>
 
  <div className="flex flex-col gap-2">
  {/* 현재 학급 코드 표시 */}
- <div className="p-4 bg-gray-100 rounded-xl border border-gray-700 mb-2">
+ <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-2">
  <div className="flex justify-between items-center">
- <span className="text-[#9ca3af] text-sm">현재 학급 코드</span>
- <span className="text-cyber-text text-base font-semibold">
+ <span className="text-slate-500 text-sm">현재 학급 코드</span>
+ <span className="text-slate-800 text-base font-semibold">
  {userDoc?.classCode || "없음"}
  </span>
  </div>
@@ -454,7 +454,7 @@ export default function MyProfile() {
  className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <User size={20} className="text-[#a78bfa]" />
- <span className="text-cyber-text text-sm flex-1 text-left">
+ <span className="text-slate-800 text-sm flex-1 text-left">
  닉네임 변경
  </span>
  <ChevronRight size={18} className="text-gray-500" />
@@ -469,7 +469,7 @@ export default function MyProfile() {
  className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <Key size={20} className="text-[#a78bfa]" />
- <span className="text-cyber-text text-sm flex-1 text-left">
+ <span className="text-slate-800 text-sm flex-1 text-left">
  비밀번호 변경
  </span>
  <ChevronRight size={18} className="text-gray-500" />
@@ -484,7 +484,7 @@ export default function MyProfile() {
  className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <Building2 size={20} className="text-[#a78bfa]" />
- <span className="text-cyber-text text-sm flex-1 text-left">
+ <span className="text-slate-800 text-sm flex-1 text-left">
  학급 코드 변경
  </span>
  <ChevronRight size={18} className="text-gray-500" />
@@ -495,8 +495,8 @@ export default function MyProfile() {
  onClick={logout}
  className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
  >
- <LogOut size={20} className="text-[#9ca3af]" />
- <span className="text-cyber-text text-sm flex-1 text-left">
+ <LogOut size={20} className="text-slate-500" />
+ <span className="text-slate-800 text-sm flex-1 text-left">
  로그아웃
  </span>
  <ChevronRight size={18} className="text-gray-500" />
@@ -538,10 +538,10 @@ export default function MyProfile() {
  }}
  >
  <div
- className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
+ className="bg-white rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 shadow-xl"
  onClick={(e) => e.stopPropagation()}
  >
- <h3 className="text-cyber-text text-lg font-bold mb-5">
+ <h3 className="text-slate-800 text-lg font-bold mb-5">
  닉네임 변경
  </h3>
  <input
@@ -550,7 +550,7 @@ export default function MyProfile() {
  onChange={(e) => setNewNickname(e.target.value)}
  placeholder="새 닉네임 (2~10자)"
  maxLength={10}
- className="w-full p-3.5 bg-gray-100 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
+ className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-3 focus:border-indigo-400 focus:outline-none"
  />
  {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
  <div className="flex gap-2.5">
@@ -559,14 +559,14 @@ export default function MyProfile() {
  setShowNicknameModal(false);
  resetModals();
  }}
- className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
+ className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-[10px] text-slate-700 text-sm cursor-pointer hover:bg-slate-200"
  >
  취소
  </button>
  <button
  onClick={handleChangeNickname}
  disabled={isLoading}
- className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+ className="flex-1 p-3 bg-indigo-500 hover:bg-indigo-600 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
  >
  {isLoading ? "변경 중..." : "변경"}
  </button>
@@ -585,10 +585,10 @@ export default function MyProfile() {
  }}
  >
  <div
- className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
+ className="bg-white rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 shadow-xl"
  onClick={(e) => e.stopPropagation()}
  >
- <h3 className="text-cyber-text text-lg font-bold mb-5">
+ <h3 className="text-slate-800 text-lg font-bold mb-5">
  비밀번호 변경
  </h3>
  <input
@@ -596,21 +596,21 @@ export default function MyProfile() {
  value={currentPassword}
  onChange={(e) => setCurrentPassword(e.target.value)}
  placeholder="현재 비밀번호"
- className="w-full p-3.5 bg-gray-100 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
+ className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-2.5 focus:border-indigo-400 focus:outline-none"
  />
  <input
  type="password"
  value={newPassword}
  onChange={(e) => setNewPassword(e.target.value)}
  placeholder="새 비밀번호 (6자 이상)"
- className="w-full p-3.5 bg-gray-100 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-2.5 focus:border-[#a78bfa] focus:outline-none"
+ className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-2.5 focus:border-indigo-400 focus:outline-none"
  />
  <input
  type="password"
  value={confirmPassword}
  onChange={(e) => setConfirmPassword(e.target.value)}
  placeholder="새 비밀번호 확인"
- className="w-full p-3.5 bg-gray-100 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 focus:border-[#a78bfa] focus:outline-none"
+ className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-3 focus:border-indigo-400 focus:outline-none"
  />
  {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
  <div className="flex gap-2.5">
@@ -619,14 +619,14 @@ export default function MyProfile() {
  setShowPasswordModal(false);
  resetModals();
  }}
- className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
+ className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-[10px] text-slate-700 text-sm cursor-pointer hover:bg-slate-200"
  >
  취소
  </button>
  <button
  onClick={handleChangePassword}
  disabled={isLoading}
- className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+ className="flex-1 p-3 bg-indigo-500 hover:bg-indigo-600 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
  >
  {isLoading ? "변경 중..." : "변경"}
  </button>
@@ -645,15 +645,15 @@ export default function MyProfile() {
  }}
  >
  <div
- className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-gray-700"
+ className="bg-white rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 shadow-xl"
  onClick={(e) => e.stopPropagation()}
  >
- <h3 className="text-cyber-text text-lg font-bold mb-5">
+ <h3 className="text-slate-800 text-lg font-bold mb-5">
  학급 코드 변경
  </h3>
- <p className="text-[#9ca3af] text-[13px] mb-4">
+ <p className="text-slate-500 text-[13px] mb-4">
  현재 학급:{" "}
- <span className="text-[#a78bfa] font-semibold">
+ <span className="text-indigo-600 font-semibold">
  {userDoc?.classCode || "없음"}
  </span>
  </p>
@@ -662,7 +662,7 @@ export default function MyProfile() {
  value={newClassCode}
  onChange={(e) => setNewClassCode(e.target.value.toUpperCase())}
  placeholder="새 학급 코드"
- className="w-full p-3.5 bg-gray-100 border-2 border-gray-700 rounded-xl text-cyber-text text-sm mb-3 uppercase focus:border-[#a78bfa] focus:outline-none"
+ className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-3 uppercase focus:border-indigo-400 focus:outline-none"
  />
  {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
  <div className="flex gap-2.5">
@@ -671,14 +671,14 @@ export default function MyProfile() {
  setShowClassCodeModal(false);
  resetModals();
  }}
- className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
+ className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-[10px] text-slate-700 text-sm cursor-pointer hover:bg-slate-200"
  >
  취소
  </button>
  <button
  onClick={handleChangeClassCode}
  disabled={isLoading}
- className="flex-1 p-3 bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-none rounded-[10px] text-slate-800 text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(139,92,246,0.4)]"
+ className="flex-1 p-3 bg-indigo-500 hover:bg-indigo-600 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
  >
  {isLoading ? "변경 중..." : "변경"}
  </button>
@@ -697,13 +697,13 @@ export default function MyProfile() {
  }}
  >
  <div
- className="bg-gradient-to-br from-cyber-light to-[#0f0f23] rounded-[20px] p-6 max-w-[400px] w-full border-2 border-red-500"
+ className="bg-white rounded-2xl p-6 max-w-[400px] w-full border-2 border-red-300 shadow-xl"
  onClick={(e) => e.stopPropagation()}
  >
  <h3 className="text-red-500 text-lg font-bold mb-4">
  ⚠️ 계정 삭제
  </h3>
- <p className="text-[#9ca3af] text-[13px] mb-4 leading-relaxed">
+ <p className="text-slate-500 text-[13px] mb-4 leading-relaxed">
  계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수
  없습니다. 정말 삭제하시려면 아래에{" "}
  <span className="text-red-500 font-semibold">'계정삭제'</span>를
@@ -714,14 +714,14 @@ export default function MyProfile() {
  value={deleteConfirmText}
  onChange={(e) => setDeleteConfirmText(e.target.value)}
  placeholder="계정삭제"
- className="w-full p-3.5 bg-gray-100 border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-2.5 focus:outline-none"
+ className="w-full p-3.5 bg-white border-2 border-red-300 rounded-xl text-slate-800 text-sm mb-2.5 focus:outline-none"
  />
  <input
  type="password"
  value={deletePassword}
  onChange={(e) => setDeletePassword(e.target.value)}
  placeholder="비밀번호 확인"
- className="w-full p-3.5 bg-gray-100 border-2 border-red-500 rounded-xl text-cyber-text text-sm mb-3 focus:outline-none"
+ className="w-full p-3.5 bg-white border-2 border-red-300 rounded-xl text-slate-800 text-sm mb-3 focus:outline-none"
  />
  {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
  <div className="flex gap-2.5">
@@ -730,7 +730,7 @@ export default function MyProfile() {
  setShowDeleteModal(false);
  resetModals();
  }}
- className="flex-1 p-3 bg-gray-700 border-none rounded-[10px] text-cyber-text text-sm cursor-pointer hover:bg-gray-600"
+ className="flex-1 p-3 bg-slate-100 border border-slate-200 rounded-[10px] text-slate-700 text-sm cursor-pointer hover:bg-slate-200"
  >
  취소
  </button>

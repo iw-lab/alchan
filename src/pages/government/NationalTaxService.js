@@ -526,23 +526,19 @@ const NationalTaxService = ({ classCode }) => {
 
             <button
               onClick={saveTaxSettings}
-              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-slate-800 transition-all duration-300"
+              className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-white transition-colors duration-200"
               style={{
-                background: 'linear-gradient(135deg, rgba(0, 136, 255, 0.3), rgba(0, 255, 242, 0.2))',
-                border: '1px solid rgba(0, 255, 242, 0.35)',
+                background: '#6366f1',
+                color: '#ffffff',
+                border: 'none',
                 fontFamily: 'Rajdhani, sans-serif',
                 letterSpacing: '1px',
-                boxShadow: '0 0 12px rgba(0, 136, 255, 0.15)',
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, rgba(0, 136, 255, 0.5), rgba(0, 255, 242, 0.35))';
-                e.target.style.boxShadow = '0 0 20px rgba(0, 255, 242, 0.25)';
-                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.background = '#4f46e5';
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = 'linear-gradient(135deg, rgba(0, 136, 255, 0.3), rgba(0, 255, 242, 0.2))';
-                e.target.style.boxShadow = '0 0 12px rgba(0, 136, 255, 0.15)';
-                e.target.style.transform = 'translateY(0)';
+                e.target.style.background = '#6366f1';
               }}
             >
               세금 정책 저장

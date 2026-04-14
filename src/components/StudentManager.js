@@ -623,7 +623,7 @@ const StudentManager = () => {
                           setEditingStudent(student);
                           setShowEditModal(true);
                         }}
-                        className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                       >
                         <Edit2 size={16} className="text-gray-500" />
                       </button>
@@ -803,7 +803,7 @@ const StudentManager = () => {
                     setBulkPrefix(e.target.value.replace(/\s/g, ""))
                   }
                   placeholder="alchan"
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -818,7 +818,7 @@ const StudentManager = () => {
                       setBulkStartNum(parseInt(e.target.value) || 0)
                     }
                     min="0"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                   />
                 </div>
                 <div>
@@ -833,11 +833,11 @@ const StudentManager = () => {
                     }
                     min="1"
                     max="100"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                   />
                 </div>
               </div>
-              <div className="p-3 bg-gray-800 rounded-xl text-sm text-slate-500 dark:text-gray-400">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600">
                 미리보기:{" "}
                 <span className="text-indigo-400 font-mono">
                   {bulkPrefix.trim().toLowerCase()}
@@ -902,7 +902,7 @@ const StudentManager = () => {
 
             <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-700">
               <table className="w-full text-sm">
-                <thead className="bg-gray-800 sticky top-0">
+                <thead className="bg-slate-50 sticky top-0">
                   <tr>
                     <th className="px-4 py-2 text-left">번호</th>
                     <th className="px-4 py-2 text-left">아이디</th>
@@ -978,7 +978,7 @@ const StudentManager = () => {
                 </h4>
                 <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-700">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-800 sticky top-0">
+                    <thead className="bg-slate-50 sticky top-0">
                       <tr>
                         <th className="px-4 py-2 text-left">아이디</th>
                         <th className="px-4 py-2 text-left">이메일</th>
@@ -1006,7 +1006,7 @@ const StudentManager = () => {
                                   index,
                                 )
                               }
-                              className="p-1 hover:bg-gray-700 rounded"
+                              className="p-1 hover:bg-slate-100 rounded"
                             >
                               {copiedId === index ? (
                                 <Check size={16} className="text-emerald-500" />
@@ -1110,7 +1110,7 @@ const StudentManager = () => {
                 type="text"
                 value={editingStudent.email}
                 disabled
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-gray-500"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
               />
             </div>
           </div>

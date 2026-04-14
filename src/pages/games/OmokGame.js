@@ -1919,7 +1919,7 @@ const OmokGame = () => {
                 fontSize: 28, fontWeight: "bold", color: "var(--accent)",
                 cursor: "pointer", letterSpacing: 4, padding: "12px 24px",
                 background: "rgba(99, 102, 241, 0.1)", borderRadius: 12,
-                border: "1px solid rgba(0, 255, 242, 0.3)",
+                border: "1px solid rgba(99, 102, 241, 0.3)",
               }}
               onClick={() => {
                 navigator.clipboard.writeText(gameId);

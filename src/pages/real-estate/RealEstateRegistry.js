@@ -1972,10 +1972,10 @@ const RealEstateRegistry = () => {
             className="admin-panel"
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: '#1a1a2e',
+              backgroundColor: '#ffffff',
               borderRadius: '16px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              border: '1px solid rgba(0, 255, 242, 0.15)',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.15)',
+              border: '1px solid #e2e8f0',
               width: '100%',
               maxWidth: '600px',
               maxHeight: '90vh',
@@ -1983,7 +1983,7 @@ const RealEstateRegistry = () => {
               flexDirection: 'column',
               position: 'relative',
               zIndex: 1000000,
-              color: '#e8e8ff'
+              color: '#0f172a'
             }}
           >
             <div className="panel-header">
@@ -2052,10 +2052,10 @@ const RealEstateRegistry = () => {
                         gap: '10px',
                         padding: '8px 12px',
                         marginBottom: '6px',
-                        backgroundColor: excludedFromAssign.has(user.id) ? 'rgba(30, 41, 59, 0.3)' : 'rgba(30, 41, 59, 0.6)',
+                        backgroundColor: excludedFromAssign.has(user.id) ? '#f1f5f9' : '#f8fafc',
                         borderRadius: '6px',
-                        border: '1px solid rgba(0, 255, 242, 0.1)',
-                        color: '#e8e8ff',
+                        border: '1px solid #e2e8f0',
+                        color: '#0f172a',
                         opacity: excludedFromAssign.has(user.id) ? 0.5 : 1,
                       }}>
                         <input
@@ -2069,7 +2069,7 @@ const RealEstateRegistry = () => {
                           })}
                           style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
                         />
-                        <span style={{ fontWeight: '500', color: '#e8e8ff', flex: 1 }}>{user.name}</span>
+                        <span style={{ fontWeight: '500', color: '#0f172a', flex: 1 }}>{user.name}</span>
                         <button
                           onClick={() => handleAdminAssignSeat(user.id, user.name)}
                           disabled={operationLoading}

@@ -36,10 +36,9 @@ const TransferModal = memo(function TransferModal({
       <div
         className="rounded-xl p-8 max-w-[450px] w-full relative"
         style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid rgba(0, 255, 242, 0.25)",
-          boxShadow:
-            "0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 242, 0.1)",
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 10px 40px rgba(15, 23, 42, 0.15)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -52,13 +51,7 @@ const TransferModal = memo(function TransferModal({
           ×
         </button>
 
-        <h2
-          className="text-xl font-semibold mb-6"
-          style={{
-            color: "var(--accent)",
-            textShadow: "0 0 10px rgba(0, 255, 242, 0.4)",
-          }}
-        >
+        <h2 className="text-xl font-semibold mb-6 text-slate-800">
           💸 송금하기
         </h2>
 
@@ -66,7 +59,7 @@ const TransferModal = memo(function TransferModal({
           className="rounded-lg p-3 mb-5"
           style={{
             backgroundColor: "rgba(99, 102, 241, 0.06)",
-            border: "1px solid rgba(0, 255, 242, 0.15)",
+            border: "1px solid rgba(99, 102, 241, 0.2)",
           }}
         >
           <p className="text-sm m-0" style={{ color: "var(--text-secondary)" }}>
@@ -91,7 +84,7 @@ const TransferModal = memo(function TransferModal({
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
               style={{
                 backgroundColor: "var(--bg-input)",
-                border: "1px solid rgba(0, 255, 242, 0.2)",
+                border: "1px solid #e2e8f0",
                 color: "var(--text-primary)",
               }}
               required
@@ -133,7 +126,7 @@ const TransferModal = memo(function TransferModal({
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
               style={{
                 backgroundColor: "var(--bg-input)",
-                border: "1px solid rgba(0, 255, 242, 0.2)",
+                border: "1px solid #e2e8f0",
                 color: "var(--text-primary)",
               }}
               min="1"
@@ -149,15 +142,16 @@ const TransferModal = memo(function TransferModal({
 
           <div
             className="flex justify-end pt-4"
-            style={{ borderTop: "1px solid rgba(0, 255, 242, 0.1)" }}
+            style={{ borderTop: "1px solid #e2e8f0" }}
           >
             <button
               type="button"
               onClick={() => setShowTransferModal(false)}
               className="px-5 py-2.5 rounded-lg border-0 text-sm font-medium cursor-pointer mr-2.5"
               style={{
-                backgroundColor: "rgba(255, 255, 255, 0.08)",
-                color: "var(--text-secondary)",
+                backgroundColor: "#f1f5f9",
+                color: "#475569",
+                border: "1px solid #e2e8f0",
               }}
             >
               취소
@@ -166,8 +160,8 @@ const TransferModal = memo(function TransferModal({
               type="submit"
               className="px-5 py-2.5 rounded-lg border-0 text-sm font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               style={{
-                background: "linear-gradient(135deg, #00fff2, #8b5cf6)",
-                color: "var(--bg-primary)",
+                background: "#6366f1",
+                color: "#ffffff",
                 fontWeight: 700,
               }}
               disabled={

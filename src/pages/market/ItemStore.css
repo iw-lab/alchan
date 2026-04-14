@@ -219,34 +219,35 @@ body {
 .stock-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 0;
+  border-radius: 0;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: none;
   line-height: 1;
+  background: none !important;
 }
 
-/* 재고 뱃지 */
+/* 재고 뱃지 - 플랫 텍스트 */
 .stock-high {
-  background: #ecfdf5 !important;
+  background: none !important;
   color: #059669 !important;
-  border-color: #a7f3d0;
+  border-color: transparent !important;
   text-shadow: none;
 }
 
 .stock-medium {
-  background: #fffbeb !important;
+  background: none !important;
   color: #d97706 !important;
-  border-color: #fde68a;
+  border-color: transparent !important;
   text-shadow: none;
 }
 
 .stock-low {
-  background: #fef2f2 !important;
+  background: none !important;
   color: #dc2626 !important;
-  border-color: #fecaca;
+  border-color: transparent !important;
   text-shadow: none;
 }
 
@@ -881,9 +882,9 @@ body {
 .item-header-compact {
   display: flex !important;
   flex-direction: row !important;
-  align-items: center !important;
+  align-items: baseline !important;
   justify-content: space-between !important;
-  margin-bottom: 10px !important;
+  margin-bottom: 4px !important;
   padding: 0 !important;
   gap: 10px !important;
   flex-wrap: nowrap !important;
@@ -941,9 +942,9 @@ body {
 /* 깔끔한 흰 카드 - 색상 교대 제거 */
 
 .compact-card .item-actions-primary {
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
-  margin-top: 8px;
+  padding-top: 0 !important;
+  border-top: none !important;
+  margin-top: 0 !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;

@@ -125,8 +125,8 @@ const JobList = memo(function JobList({
                 /* 기본 스타일 (선택 사항) */
                 padding: isMobile ? "6px" : "8px",
                 backgroundColor: "rgba(99, 102, 241, 0.1)",
-                border: "1px solid rgba(0, 255, 242, 0.3)",
-                color: "var(--accent)",
+                border: "1px solid rgba(99, 102, 241, 0.3)",
+                color: "#4f46e5",
                 fontSize: isMobile ? "12px" : "13px",
                 fontWeight: "500",
               }

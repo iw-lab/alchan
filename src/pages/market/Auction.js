@@ -1107,14 +1107,14 @@ export default function Auction() {
           max-width: none;
           margin: 0;
           padding: 15px;
-          color: #e2e8f0;
+          color: #1e293b;
           background-color: transparent;
         }
         .loading-container, .login-required-container {
           text-align: center;
           padding: 40px 20px;
           font-size: 1.1em;
-          color: #94a3b8;
+          color: #64748b;
         }
         .auction-header {
           display: flex;
@@ -1122,27 +1122,27 @@ export default function Auction() {
           align-items: center;
           margin-bottom: 20px;
           padding-bottom: 15px;
-          border-bottom: 1px solid rgba(0, 255, 242, 0.2);
+          border-bottom: 1px solid rgba(99, 102, 241, 0.2);
         }
         .auction-header h1 {
           font-size: 1.8em;
           font-weight: 600;
-          color: #00fff2;
-          text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+          color: #4f46e5;
+          text-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
           margin: 0;
         }
         .auction-balance {
-          background: rgba(0, 255, 242, 0.1);
-          border: 1px solid rgba(0, 255, 242, 0.3);
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.3);
           padding: 8px 15px;
           border-radius: 15px;
           font-size: 0.95em;
-          color: #e2e8f0;
+          color: #1e293b;
         }
         .auction-balance .balance-amount {
           font-weight: 600;
-          color: #00fff2;
-          text-shadow: 0 0 5px rgba(0, 255, 242, 0.5);
+          color: #4f46e5;
+          text-shadow: 0 0 5px rgba(99, 102, 241, 0.4);
           margin-left: 5px;
         }
 
@@ -1151,7 +1151,7 @@ export default function Auction() {
           display: flex;
           flex-wrap: wrap;
           margin-bottom: 25px;
-          border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 2px solid #e2e8f0;
           gap: 8px;
         }
         .tab {
@@ -1162,21 +1162,21 @@ export default function Auction() {
           cursor: pointer;
           font-size: 1em;
           font-weight: 500;
-          color: #94a3b8;
+          color: #64748b;
           transition: all 0.2s ease;
           white-space: nowrap;
           position: relative;
           top: 2px;
         }
         .tab:hover {
-          color: #e2e8f0;
-          background: rgba(255, 255, 255, 0.05);
+          color: #1e293b;
+          background: #f8fafc;
         }
         .tab.active {
-          color: #00fff2;
+          color: #4f46e5;
           font-weight: 600;
-          border-bottom-color: #00fff2;
-          text-shadow: 0 0 5px rgba(0, 255, 242, 0.3);
+          border-bottom-color: #4f46e5;
+          text-shadow: 0 0 5px rgba(99, 102, 241, 0.3);
         }
 
         /* --- Search Bar - Dark Theme --- */
@@ -1184,23 +1184,23 @@ export default function Auction() {
         .search-bar input[type="text"] {
           flex-grow: 1;
           padding: 10px 15px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           border-radius: 6px;
           font-size: 1em;
           background: rgba(20, 20, 35, 0.8);
-          color: #e2e8f0;
+          color: #1e293b;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
         .search-bar input[type="text"]:focus {
-          border-color: #00fff2;
-          box-shadow: 0 0 0 2px rgba(0, 255, 242, 0.2);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
           outline: none;
         }
         .search-reset-button {
           padding: 10px 18px;
           background: rgba(100, 116, 139, 0.3);
           border: 1px solid rgba(100, 116, 139, 0.5);
-          color: #e2e8f0;
+          color: #1e293b;
           border-radius: 6px;
           cursor: pointer;
           font-size: 0.9em;
@@ -1215,7 +1215,7 @@ export default function Auction() {
         .auctions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .auction-card {
           background: rgba(20, 20, 35, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
           overflow: hidden;
@@ -1226,8 +1226,8 @@ export default function Auction() {
         }
         .auction-card:hover {
           transform: translateY(-4px);
-          border-color: rgba(0, 255, 242, 0.3);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 255, 242, 0.1);
+          border-color: rgba(99, 102, 241, 0.3);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.08);
         }
         .auction-info { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -1244,9 +1244,9 @@ export default function Auction() {
           align-items: center;
         }
         .time-left-badge {
-          background: rgba(0, 255, 242, 0.1);
-          border: 1px solid rgba(0, 255, 242, 0.3);
-          color: #00fff2;
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          color: #4f46e5;
           padding: 3px 8px;
           border-radius: 10px;
           font-size: 0.8em;
@@ -1254,13 +1254,13 @@ export default function Auction() {
           white-space: nowrap;
           flex-shrink: 0;
         }
-        .auction-description { color: #94a3b8; font-size: 0.9em; line-height: 1.5; margin-bottom: 12px; }
+        .auction-description { color: #64748b; font-size: 0.9em; line-height: 1.5; margin-bottom: 12px; }
         .auction-price-details {
           display: flex;
           justify-content: space-between;
           font-size: 0.9em;
           margin-bottom: 8px;
-          color: #94a3b8;
+          color: #64748b;
           background: rgba(0, 0, 0, 0.2);
           padding: 10px;
           border-radius: 8px;
@@ -1281,28 +1281,28 @@ export default function Auction() {
         .auction-actions {
           padding: 12px 15px;
           background: rgba(0, 0, 0, 0.3);
-          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          border-top: 1px solid #f8fafc;
         }
         .owner-notice {
           text-align: center;
           font-size: 0.9em;
-          color: #00fff2;
+          color: #4f46e5;
           font-weight: 500;
         }
         .bid-input-group { display: flex; gap: 8px; }
         .bid-input {
           flex-grow: 1;
           padding: 8px 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           background: rgba(0, 0, 0, 0.3);
-          color: #e2e8f0;
+          color: #1e293b;
           border-radius: 6px;
           font-size: 0.9em;
         }
         .bid-input:focus {
           outline: none;
-          border-color: #00fff2;
-          box-shadow: 0 0 0 2px rgba(0, 255, 242, 0.2);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
         .bid-button {
           padding: 8px 15px;
@@ -1330,16 +1330,16 @@ export default function Auction() {
         /* --- List View Styles - Dark Theme --- */
         .my-auctions-content h2, .my-bids-content h2, .completed-auctions-content h2 {
           font-size: 1.5em;
-          color: #00fff2;
+          color: #4f46e5;
           margin-bottom: 20px;
           padding-bottom: 10px;
-          border-bottom: 1px solid rgba(0, 255, 242, 0.2);
-          text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+          border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+          text-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
         }
         .list-view { display: flex; flex-direction: column; gap: 15px; }
         .list-item {
           background: rgba(20, 20, 35, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
           display: flex;
@@ -1349,7 +1349,7 @@ export default function Auction() {
           border-left: 4px solid transparent;
         }
         .list-item:hover {
-          border-color: rgba(0, 255, 242, 0.3);
+          border-color: rgba(99, 102, 241, 0.3);
           box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
         .list-item .item-info { flex-grow: 1; padding-right: 15px; }
@@ -1361,9 +1361,9 @@ export default function Auction() {
           display: flex;
           align-items: center;
         }
-        .list-item .item-description { font-size: 0.9em; color: #94a3b8; margin-bottom: 8px; }
+        .list-item .item-description { font-size: 0.9em; color: #64748b; margin-bottom: 8px; }
         .list-item .price-details, .list-item .meta-details { font-size: 0.85em; color: #64748b; margin-bottom: 5px; }
-        .list-item .bid-info .price { color: #00fff2; font-weight: 600; }
+        .list-item .bid-info .price { color: #4f46e5; font-weight: 600; }
         .list-item .status-indicator { font-size: 0.9em; font-weight: 500; margin-top: 8px; }
         .list-item .status-indicator .won, .list-item .status-indicator .highest { color: #34d399; font-weight: 600; }
         .list-item .status-indicator .outbid { color: #fbbf24; font-weight: 600; }
@@ -1449,15 +1449,15 @@ export default function Auction() {
         /* --- Auction Form Styles - Dark Theme --- */
         .register-auction-content h2 {
           font-size: 1.5em;
-          color: #00fff2;
+          color: #4f46e5;
           margin-bottom: 20px;
           padding-bottom: 10px;
-          border-bottom: 1px solid rgba(0, 255, 242, 0.2);
-          text-shadow: 0 0 10px rgba(0, 255, 242, 0.3);
+          border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+          text-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
         }
         .auction-form {
           background: rgba(20, 20, 35, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           padding: 25px;
           border-radius: 12px;
           box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -1470,25 +1470,25 @@ export default function Auction() {
           display: block;
           margin-bottom: 8px;
           font-weight: 500;
-          color: #e2e8f0;
+          color: #1e293b;
         }
         .form-control {
           width: 100%;
           padding: 10px 14px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border: 1px solid #e2e8f0;
           background: rgba(0, 0, 0, 0.3);
-          color: #e2e8f0;
+          color: #1e293b;
           border-radius: 6px;
           font-size: 1em;
         }
         .form-control:focus {
           outline: none;
-          border-color: #00fff2;
-          box-shadow: 0 0 0 2px rgba(0, 255, 242, 0.2);
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
         .form-control[readOnly] {
           background: rgba(75, 85, 99, 0.3);
-          color: #94a3b8;
+          color: #64748b;
         }
         .form-actions { display: flex; gap: 15px; margin-top: 30px; }
         .register-button {
@@ -1543,9 +1543,9 @@ export default function Auction() {
         .no-results-message {
           text-align: center;
           padding: 30px 20px;
-          color: #94a3b8;
+          color: #64748b;
           background: rgba(20, 20, 35, 0.6);
-          border: 1px dashed rgba(255, 255, 255, 0.1);
+          border: 1px dashed #e2e8f0;
           border-radius: 12px;
         }
 

@@ -26,10 +26,10 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   },
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: '#ffffff',
     borderRadius: '16px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
-    border: '1px solid rgba(0, 255, 242, 0.2)',
+    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+    border: '1px solid #e2e8f0',
     padding: '0',
     marginBottom: '20px',
     overflow: 'hidden'
@@ -47,42 +47,42 @@ const styles = {
   },
   tabs: {
     display: 'flex',
-    borderBottom: '2px solid rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(15, 15, 28, 0.9)',
+    borderBottom: '1px solid #e2e8f0',
+    backgroundColor: '#f8fafc',
     marginTop: '0'
   },
   tab: {
     flex: 1,
-    padding: '16px',
+    padding: '14px',
     backgroundColor: 'transparent',
     border: 'none',
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '600',
-    color: '#9999bb',
+    color: '#64748b',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    borderBottom: '3px solid transparent'
+    transition: 'all 0.2s ease',
+    borderBottom: '2px solid transparent'
   },
   activeTab: {
-    color: '#00fff2',
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-    borderBottom: '3px solid #00fff2'
+    color: '#4f46e5',
+    backgroundColor: '#ffffff',
+    borderBottom: '2px solid #6366f1'
   },
   disabledTab: {
     opacity: '0.5',
     cursor: 'not-allowed'
   },
   formSection: {
-    backgroundColor: 'rgba(15, 15, 28, 0.6)',
+    backgroundColor: '#ffffff',
     padding: '20px',
     borderRadius: '12px',
     marginBottom: '20px',
-    border: '1px solid rgba(255, 255, 255, 0.08)'
+    border: '1px solid #e2e8f0'
   },
   formTitle: {
-    fontSize: '20px',
+    fontSize: '16px',
     fontWeight: '700',
-    color: '#e8e8ff',
+    color: '#1e293b',
     marginBottom: '20px'
   },
   inputGroup: {
@@ -90,141 +90,143 @@ const styles = {
   },
   label: {
     display: 'block',
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
-    color: '#ccccee',
-    marginBottom: '8px'
+    color: '#475569',
+    marginBottom: '6px'
   },
   input: {
     width: '100%',
-    padding: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
+    padding: '10px 12px',
+    border: '1px solid #e2e8f0',
     borderRadius: '8px',
     fontSize: '14px',
-    transition: 'border-color 0.3s ease',
+    transition: 'border-color 0.15s ease',
     boxSizing: 'border-box',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    color: '#e8e8ff'
+    backgroundColor: '#ffffff',
+    color: '#0f172a'
   },
   textarea: {
     width: '100%',
-    padding: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
+    padding: '10px 12px',
+    border: '1px solid #e2e8f0',
     borderRadius: '8px',
     fontSize: '14px',
     minHeight: '100px',
     resize: 'vertical',
     boxSizing: 'border-box',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    color: '#e8e8ff'
+    backgroundColor: '#ffffff',
+    color: '#0f172a'
   },
   gridTwo: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '20px'
+    gap: '16px'
   },
   iconSelector: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    padding: '20px',
+    backgroundColor: '#f8fafc',
+    padding: '16px',
     borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.1)'
+    border: '1px solid #e2e8f0'
   },
   selectedIcon: {
-    fontSize: '48px',
-    width: '80px',
-    height: '80px',
+    fontSize: '36px',
+    width: '64px',
+    height: '64px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: '#eef2ff',
+    border: '1px solid #c7d2fe',
     borderRadius: '12px',
-    marginBottom: '16px'
+    marginBottom: '12px'
   },
   button: {
-    padding: '12px 24px',
+    padding: '10px 20px',
     borderRadius: '8px',
     border: 'none',
     fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.3s ease'
+    transition: 'all 0.15s ease'
   },
   primaryButton: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: '#6366f1',
     color: 'white'
   },
   secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: '#9999bb',
-    border: '1px solid rgba(255, 255, 255, 0.2)'
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #e2e8f0'
   },
   iconGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(12, 1fr)',
-    gap: '8px',
-    marginTop: '16px'
+    gap: '6px',
+    marginTop: '12px'
   },
   iconButton: {
-    fontSize: '28px',
-    padding: '8px',
-    border: '2px solid transparent',
+    fontSize: '24px',
+    padding: '6px',
+    border: '1px solid #e2e8f0',
     borderRadius: '8px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
     cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.15s ease'
   },
   categoryButtons: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '8px',
-    marginBottom: '16px'
+    gap: '6px',
+    marginBottom: '12px'
   },
   categoryButton: {
-    padding: '8px 16px',
+    padding: '6px 12px',
     borderRadius: '8px',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    color: '#ccccee',
-    fontSize: '13px',
+    border: '1px solid #e2e8f0',
+    backgroundColor: '#ffffff',
+    color: '#64748b',
+    fontSize: '12px',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.15s ease'
   },
   activeCategoryButton: {
-    backgroundColor: '#667eea',
-    color: 'white',
-    borderColor: '#667eea'
+    backgroundColor: '#eef2ff',
+    color: '#4f46e5',
+    borderColor: '#c7d2fe'
   },
   priceIncreaseSection: {
-    backgroundColor: 'rgba(255, 209, 102, 0.1)',
-    border: '1px solid rgba(255, 209, 102, 0.3)',
-    padding: '20px',
+    backgroundColor: '#fffbeb',
+    border: '1px solid #fde68a',
+    padding: '16px',
     borderRadius: '12px',
     marginBottom: '20px'
   },
   helpText: {
-    fontSize: '13px',
-    color: '#9999bb',
-    marginTop: '8px',
+    fontSize: '12px',
+    color: '#64748b',
+    marginTop: '6px',
     lineHeight: '1.5'
   },
   checkboxWrapper: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px'
+    gap: '10px'
   },
   checkbox: {
-    width: '20px',
-    height: '20px',
-    cursor: 'pointer'
+    width: '18px',
+    height: '18px',
+    cursor: 'pointer',
+    accentColor: '#6366f1'
   },
   buttonGroup: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: '30px',
-    paddingTop: '20px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+    marginTop: '24px',
+    paddingTop: '16px',
+    borderTop: '1px solid #e2e8f0'
   }
 };
 
