@@ -4,16 +4,29 @@
 
 import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 
-// 🔥 ChunkLoadError 방지 - lazy import 실패 시 1회 재시도 후 리로드
+// 🔥 ChunkLoadError 방지 - lazy import 실패 시 캐시/SW 삭제 후 1회 리로드
 function lazyWithRetry(importFn) {
   return lazy(() =>
-    importFn().catch(() => {
+    importFn().catch(async () => {
       const reloaded = sessionStorage.getItem("chunk_reload");
       if (reloaded) {
         sessionStorage.removeItem("chunk_reload");
         return importFn();
       }
       sessionStorage.setItem("chunk_reload", "1");
+      // 🔥 캐시·SW를 모두 삭제해야 새 번들이 잡힘 (v1 SW가 옛 index.html 잡고 있을 때)
+      try {
+        if ("caches" in window) {
+          const names = await caches.keys();
+          await Promise.all(names.map((n) => caches.delete(n)));
+        }
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+      } catch (e) {
+        // 무시 - 그래도 리로드 시도
+      }
       window.location.reload();
       return new Promise(() => {});
     }),
