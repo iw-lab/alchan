@@ -959,23 +959,42 @@ async function runEconomicEventsForAllClasses() {
   const results = [];
   let triggered = 0;
 
+  // 오늘 KST 날짜 문자열 (idempotent 체크용)
+  const todayStr = kstTime.toISOString().split("T")[0];
+
   for (const settingDoc of settingsSnapshot.docs) {
     const settings = settingDoc.data();
     const classCode = settingDoc.id;
     const triggerHour = settings.triggerHour ?? 13; // 기본 오후 1시
 
-    // 현재 시간이 트리거 시간 ±59분 이내인지 확인 (GitHub Actions cron 지연 대응)
-    const totalCurrentMin = currentHour * 60 + currentMinute;
-    const totalTriggerMin = triggerHour * 60;
-    const diff = Math.abs(totalCurrentMin - totalTriggerMin);
+    // 영업시간 종료 (기본 18시) - 이 시간 이후에는 '오늘 건' 발생 중단
+    const BUSINESS_END_HOUR = 18;
 
-    if (diff > 59) {
+    // 이미 오늘 발생했으면 skip (triggerClassEconomicEvent 내부에도 있지만 조기 종료로 비용 절감)
+    if (settings.lastEventDate === todayStr) {
       logger.info(
-        `[경제이벤트] ${classCode}: KST ${currentHour}:${String(currentMinute).padStart(2, "0")} ≠ 트리거 ${triggerHour}:00 - 건너뜀`,
+        `[경제이벤트] ${classCode}: 오늘(${todayStr}) 이미 발생 - skip`,
       );
       continue;
     }
 
+    // 아직 triggerHour 이전이면 대기 (너무 이른 시간에 발생하지 않도록)
+    if (currentHour < triggerHour) {
+      logger.info(
+        `[경제이벤트] ${classCode}: KST ${currentHour}:${String(currentMinute).padStart(2, "0")} < 트리거 ${triggerHour}:00 - 대기`,
+      );
+      continue;
+    }
+
+    // 영업시간 종료 후면 skip (다음 평일로 넘김)
+    if (currentHour >= BUSINESS_END_HOUR) {
+      logger.info(
+        `[경제이벤트] ${classCode}: KST ${currentHour}시 ≥ ${BUSINESS_END_HOUR}시 - 오늘 기회 종료`,
+      );
+      continue;
+    }
+
+    // triggerHour 이후이고 오늘 아직 미발생 → 즉시 발생 (GH Actions drop에 내성)
     try {
       const result = await triggerClassEconomicEvent(classCode);
       if (result) {

@@ -540,9 +540,26 @@ exports.weeklyRent = onRequest(
 
       logger.info(`[weeklyRent] 월세 징수 시작`);
 
+      // 🔥 주간 중복 실행 방지 (widened schedule window 대응)
+      const forceRun = req.query.force === "true";
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      const lockRef = db.collection("systemState").doc("lastWeeklyRent");
+      const lockDoc = await lockRef.get();
+      if (!forceRun && lockDoc.exists && lockDoc.data().weekKey === weekKey) {
+        res.json({ success: true, message: "이번 주 이미 월세 징수 완료", skipped: true, weekKey });
+        return;
+      }
+
       await collectWeeklyRentLogic();
 
-      res.json({ success: true, message: "월세 징수 완료" });
+      await lockRef.set({
+        weekKey,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.json({ success: true, message: "월세 징수 완료", weekKey });
     } catch (error) {
       logger.error("[weeklyRent] 오류:", error);
       res.status(500).json({ success: false, error: error.message });

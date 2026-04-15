@@ -2,8 +2,11 @@ name: Scheduled Tasks
 
 on:
   schedule:
-    # 15분마다 실행 (주식 가격 + 자정 리셋 + 경제 이벤트 + 주급/보유세 시간 체크)
-    - cron: '*/15 * * * *'
+    # 다중 cron 전략 — GitHub Actions schedule drop(평균 20-40%) 내성 확보
+    # 10분 간격 2개 offset으로 실질 5분 해상도 달성. 하나가 drop 되어도 다른 하나 커버.
+    # 모든 다운스트림 함수는 내부 lock/idempotent 체크 보유 (weekKey, lastEventDate 등)
+    - cron: '*/10 * * * *'    # 0, 10, 20, 30, 40, 50 min
+    - cron: '5-59/10 * * * *' # 5, 15, 25, 35, 45, 55 min (offset)
 
   # 수동 실행 (긴급 상황용)
   workflow_dispatch:
@@ -73,13 +76,13 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-      # 주급 지급 (월요일 KST 8~9시 - 함수 내부에서 중복 방지)
+      # 주급 지급 (월요일 KST 8~17시 - 함수 내부 weekKey 락으로 멱등, drop 내성 확대)
       # continue-on-error: 실패해도 이후 재산세/월세/경제이벤트는 정상 실행
       - name: Weekly salary payment
         continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 1 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 9) ||
+          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
           (github.event_name == 'workflow_dispatch' &&
           (github.event.inputs.task == 'salary' || github.event.inputs.task == 'all'))
         run: |
@@ -96,12 +99,12 @@ jobs:
             echo "✅ 주급 지급 완료"
           fi
 
-      # 부동산 보유세 징수 (금요일 KST 8~9시 - 함수 내부 주간 중복 방지)
+      # 부동산 보유세 징수 (금요일 KST 8~17시 - 함수 내부 주간 lock, drop 내성 확대)
       - name: Property holding tax
         continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 5 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 9) ||
+          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
           (github.event_name == 'workflow_dispatch' &&
           (github.event.inputs.task == 'property-tax' || github.event.inputs.task == 'all'))
         run: |
@@ -112,12 +115,12 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-      # 월세 징수 (금요일 KST 8시 30분 - 보유세와 같은 날)
+      # 월세 징수 (금요일 KST 8~17시 - 보유세와 같은 날, 함수 내부 주간 lock, drop 내성 확대)
       - name: Weekly rent collection
         continue-on-error: true
         if: |
           (steps.time.outputs.kst_day == 5 &&
-          steps.time.outputs.kst_hour == 8 && steps.time.outputs.minute >= 15 && steps.time.outputs.minute <= 45) ||
+          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
           (github.event_name == 'workflow_dispatch' &&
           (github.event.inputs.task == 'rent' || github.event.inputs.task == 'all'))
         run: |
