@@ -31,12 +31,18 @@
   padding: 16px;
 }
 
-.my-item-header-compact {
+/* specificity 강화: index.css 글로벌 [class*="-header"] 무력화 */
+.compact-myitem-card .my-item-header-compact {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
   gap: 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
 }
 
 .my-item-name-compact {
