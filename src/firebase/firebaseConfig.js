@@ -5,6 +5,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { logger } from "../utils/logger";
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -43,21 +44,24 @@ if (process.env.NODE_ENV === "development") {
   }
 }
 
-// Firebase App Check - 실제 reCAPTCHA v3 사이트 키 발급 후 활성화
-// 1. https://www.google.com/recaptcha/admin 에서 v3 사이트 키 생성
-// 2. Firebase Console > App Check에서 해당 키 등록
-// 3. REACT_APP_RECAPTCHA_SITE_KEY 환경변수에 설정
-// 4. 아래 주석 해제
-// if (typeof window !== 'undefined' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
-//   const { initializeAppCheck, ReCaptchaV3Provider } = require("firebase/app-check");
-//   if (process.env.NODE_ENV === 'development') window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-//   try {
-//     initializeAppCheck(app, {
-//       provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
-//       isTokenAutoRefreshEnabled: true
-//     });
-//   } catch (e) { console.warn('App Check init failed:', e); }
-// }
+// Firebase App Check - reCAPTCHA v3 기반
+// 초기엔 Firebase Console > App Check에서 Enforcement(적용)를 꺼두고 모니터링 모드로 운영
+// 정상 트래픽 확인 후 단계적으로 Firestore/Functions별 Enforcement 활성화
+if (typeof window !== 'undefined' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-restricted-globals
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(process.env.REACT_APP_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+    logger.log("[firebase.js] App Check (reCAPTCHA v3) 초기화 완료");
+  } catch (e) {
+    logger.warn("[firebase.js] App Check 초기화 실패:", e);
+  }
+}
 
 const isInitialized = () => {
   const initialized = Boolean(app && db && auth);
