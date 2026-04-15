@@ -99,6 +99,11 @@ const AlchanHeader = memo(
     const [classCodeError, setClassCodeError] = useState("");
     const [classCodeSuccess, setClassCodeSuccess] = useState(false);
 
+    // 계정 삭제
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleteError, setDeleteError] = useState("");
+
     const isCurrentUserAdmin =
       userDoc?.isAdmin || userDoc?.role === "admin" || userDoc?.isSuperAdmin;
     const displayName =
@@ -297,23 +302,38 @@ const AlchanHeader = memo(
       setIsLoading(false);
     };
 
-    // 계정 삭제
-    const handleDeleteAccount = async () => {
+    // 계정 삭제 - 모달 열기
+    const handleDeleteAccount = () => {
       setShowUserMenu(false);
-      const confirmation = window.prompt(
-        "정말로 계정을 삭제하시려면 '계정삭제'라고 입력해주세요.",
-      );
-      if (confirmation === "계정삭제") {
-        const password = window.prompt("현재 비밀번호를 입력해주세요.");
-        if (password) {
-          try {
-            await loginWithEmailPassword(user.email, password, true);
-            await deleteCurrentUserAccount();
-            alert("계정이 삭제되었습니다.");
-          } catch (error) {
-            alert(`삭제 오류: ${error.message}`);
-          }
-        }
+      setDeleteConfirmText("");
+      setDeletePassword("");
+      setDeleteError("");
+      setActiveModal("deleteAccount");
+    };
+
+    // 계정 삭제 확정 - 모달에서 확인 버튼 클릭 시
+    const confirmDeleteAccount = async () => {
+      setDeleteError("");
+      if (deleteConfirmText !== "계정삭제") {
+        setDeleteError("확인 문구가 일치하지 않습니다. '계정삭제'를 정확히 입력해주세요.");
+        return;
+      }
+      if (!deletePassword) {
+        setDeleteError("비밀번호를 입력해주세요.");
+        return;
+      }
+      setIsLoading(true);
+      try {
+        await loginWithEmailPassword(user.email, deletePassword, true);
+        await deleteCurrentUserAccount();
+        setActiveModal(null);
+        setDeleteConfirmText("");
+        setDeletePassword("");
+        alert("계정이 삭제되었습니다.");
+      } catch (error) {
+        setDeleteError(`삭제 오류: ${error.message}`);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -822,6 +842,82 @@ const AlchanHeader = memo(
                 className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-500/30 hover:from-indigo-700 hover:to-violet-700 transition-all disabled:opacity-50"
               >
                 {isLoading ? "저장 중..." : "저장"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* 계정 삭제 모달 */}
+        <Modal
+          isOpen={activeModal === "deleteAccount"}
+          onClose={() => {
+            setActiveModal(null);
+            setDeleteConfirmText("");
+            setDeletePassword("");
+            setDeleteError("");
+          }}
+          title="계정 삭제"
+        >
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.08)', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.25)' }}>
+              ⚠️ 계정을 삭제하면 모든 데이터가 영구적으로 제거되며 복구할 수 없습니다.
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                확인 문구
+              </label>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                삭제를 진행하려면 <span className="font-bold" style={{ color: 'var(--text-primary)' }}>'계정삭제'</span>를 그대로 입력해주세요.
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="계정삭제"
+                autoComplete="off"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                현재 비밀번호
+              </label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="비밀번호"
+                autoComplete="current-password"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
+              />
+            </div>
+            {deleteError && (
+              <div className="text-xs" style={{ color: '#dc2626' }}>
+                {deleteError}
+              </div>
+            )}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  setActiveModal(null);
+                  setDeleteConfirmText("");
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                disabled={isLoading}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmDeleteAccount}
+                disabled={isLoading}
+                className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-rose-500/30 hover:from-rose-700 hover:to-red-700 transition-all disabled:opacity-50"
+              >
+                {isLoading ? "삭제 중..." : "계정 삭제"}
               </button>
             </div>
           </div>
