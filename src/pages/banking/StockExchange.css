@@ -597,6 +597,9 @@
   transition: all var(--transition-fast);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 56px;
 }
 
 .trade-button.buy {
