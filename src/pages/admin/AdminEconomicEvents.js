@@ -274,7 +274,7 @@ export default function AdminEconomicEvents() {
  } finally {
  setLoading(false);
  }
- }, [classCode]);
+ }, [classCode, functions]);
 
  // 히스토리 로드
  const loadHistory = useCallback(async () => {

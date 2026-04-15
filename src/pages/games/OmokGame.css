@@ -3,7 +3,7 @@
 :root {
   --board-size: 15;
   /* 뷰포트 가로/세로에 모두 맞춰서 한 화면에 전체 판이 보이도록 */
-  --cell-size: clamp(20px, min(3.4vw, calc((100vh - 360px) / 17)), 48px);
+  --cell-size: clamp(20px, min(3.4vw, 3.5vh), 48px);
   --stone-size: calc(var(--cell-size) * 0.88);
   --line-thickness: 1.5px;
   --board-bg: linear-gradient(145deg, #e8c56d 0%, #d4a843 40%, #c49a38 100%);
@@ -12,10 +12,10 @@
 }
 
 @media (max-width: 768px) {
-  :root { --cell-size: clamp(20px, min(4.6vw, calc((100vh - 300px) / 17)), 36px); }
+  :root { --cell-size: clamp(20px, min(4.6vw, 4vh), 36px); }
 }
 @media (max-width: 480px) {
-  :root { --cell-size: clamp(18px, min(5.2vw, calc((100vh - 280px) / 17)), 30px); --star-point-size: 5px; }
+  :root { --cell-size: clamp(18px, min(5.2vw, 4.5vh), 30px); --star-point-size: 5px; }
 }
 
 @keyframes fadeIn {

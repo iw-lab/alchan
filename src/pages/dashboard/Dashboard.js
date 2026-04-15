@@ -1195,7 +1195,6 @@ function Dashboard({ adminTabMode }) {
  adminNewTaskName,
  adminNewTaskReward,
  adminNewTaskMaxClicks,
- adminNewTaskRequiresApproval,
  editingTask,
  isJobTaskForForm,
  currentJobIdForTask,

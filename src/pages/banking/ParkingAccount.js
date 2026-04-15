@@ -1094,7 +1094,7 @@ const ParkingAccount = ({
  } finally {
  setIsProcessing(false);
  }
- }, [userId, depositProducts]);
+ }, [userId, depositProducts, currencyUnit]);
 
  useEffect(() => {
  if (!loading && userId) loadAllData();

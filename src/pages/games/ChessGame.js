@@ -764,6 +764,8 @@ const ChessGame = () => {
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
+    // gameData 전체를 deps에 넣으면 렌더마다 effect가 재실행되어 타이머가 재시작됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameData?.status, gameData?.turn, isMyTurn, gameId, handleTimeout]);
 
   const fetchAvailableRooms = useCallback(async () => {
@@ -1261,7 +1263,7 @@ const ChessGame = () => {
     setShowCreateRoom(true);
     setSelectedPiece(null);
     setPossibleMoves([]);
-  }, [gameData, gameId, user, myColor]);
+  }, [gameData, gameId, myColor]);
 
   const executeMove = useCallback(
     async (fromRow, fromCol, toRow, toCol, piece, promotionPiece = null) => {

@@ -1378,8 +1378,8 @@ const StockExchange = () => {
       } finally {
         setIsTrading(false);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       stocks,
       user,
@@ -1391,7 +1391,7 @@ const StockExchange = () => {
       functions,
       optimisticUpdate,
     ],
-  ); // fetchAllData, invalidateCache, refreshUserDocument는 외부 스코프 함수로 제외
+  ); // fetchAllData, invalidateCache, refreshUserDocument, callables.buyStock는 외부 스코프 함수로 제외
 
   const sellStock = useCallback(
     async (holdingId, quantityString) => {
