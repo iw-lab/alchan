@@ -458,11 +458,32 @@
   border-left-color: #2563eb;
 }
 
-.stock-card-header {
+/* specificity 강화: index.css 글로벌 와일드카드 무력화 */
+.stock-card .stock-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--spacing-sm);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.stock-card .stock-info,
+.stock-card .stock-price-section {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.stock-card .stock-actions {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
 .stock-info h3 {
