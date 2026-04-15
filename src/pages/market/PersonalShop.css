@@ -188,6 +188,21 @@
   display: flex;
   gap: 15px;
   align-items: flex-start;
+  /* index.css [class*="-header"] 글로벌 카드 스타일 무력화 */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* index.css [class*="-info"] 글로벌 카드 스타일 무력화 */
+.shop-card .shop-info {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
 }
 
 .shop-icon {
