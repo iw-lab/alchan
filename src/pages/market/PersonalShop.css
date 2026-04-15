@@ -141,29 +141,29 @@
   gap: 20px;
 }
 
-/* 상점 카드 */
+/* 상점 카드 — index.css [class*="card"] !important 무력화용 !important 사용 */
 .shop-card {
-  background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%);
-  border: 1px solid #dde4ff;
-  border-left: 4px solid #818cf8;
-  border-radius: 14px;
-  padding: 18px 18px 16px;
+  background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%) !important;
+  border: 1px solid #dde4ff !important;
+  border-left: 4px solid #818cf8 !important;
+  border-radius: 16px !important;
+  padding: 24px 22px 20px !important;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.08) !important;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.shop-card:nth-child(6n+1) { background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%); border-left-color: #818cf8; }
-.shop-card:nth-child(6n+2) { background: linear-gradient(145deg, #fef3f2 0%, #fce7e6 100%); border-left-color: #f87171; }
-.shop-card:nth-child(6n+3) { background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%); border-left-color: #34d399; }
-.shop-card:nth-child(6n+4) { background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%); border-left-color: #fbbf24; }
-.shop-card:nth-child(6n+5) { background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 100%); border-left-color: #c084fc; }
-.shop-card:nth-child(6n+6) { background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%); border-left-color: #2dd4bf; }
+.shop-card:nth-child(6n+1) { background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%) !important; border-left-color: #818cf8 !important; }
+.shop-card:nth-child(6n+2) { background: linear-gradient(145deg, #fef3f2 0%, #fce7e6 100%) !important; border-left-color: #f87171 !important; }
+.shop-card:nth-child(6n+3) { background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%) !important; border-left-color: #34d399 !important; }
+.shop-card:nth-child(6n+4) { background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%) !important; border-left-color: #fbbf24 !important; }
+.shop-card:nth-child(6n+5) { background: linear-gradient(145deg, #fdf4ff 0%, #fae8ff 100%) !important; border-left-color: #c084fc !important; }
+.shop-card:nth-child(6n+6) { background: linear-gradient(145deg, #f0fdfa 0%, #ccfbf1 100%) !important; border-left-color: #2dd4bf !important; }
 
 .shop-card::before {
   content: '';
@@ -187,12 +187,13 @@
   opacity: 1;
 }
 
-.shop-card-header {
+/* specificity 강화: index.css [class*="-header"]:not(th) (0,1,1)를 이기려면 (0,2,0)+ 필요 */
+.shop-card .shop-card-header {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
   min-width: 0;
-  /* index.css [class*="-header"] 글로벌 카드 스타일 무력화 */
+  margin-bottom: 4px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -200,7 +201,7 @@
   padding: 0 !important;
 }
 
-/* index.css [class*="-info"] 글로벌 카드 스타일 무력화 */
+/* index.css [class*="-info"] (0,1,0) 무력화 */
 .shop-card .shop-info {
   flex: 1;
   min-width: 0;
@@ -252,8 +253,8 @@
 .shop-description {
   color: var(--text-dim);
   font-size: 0.85rem;
-  margin: 10px 0 0 0;
-  line-height: 1.45;
+  margin: 14px 0 0 0;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -261,14 +262,19 @@
   word-break: break-word;
 }
 
-.shop-card-footer {
+/* specificity 강화: index.css [class*="card"] !important 무력화 */
+.shop-card .shop-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 16px 0 0 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.25) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .shop-category {
