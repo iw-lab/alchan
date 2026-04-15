@@ -49,3 +49,9 @@ REMAINING_OPTIMIZATION.md
 # Windows null file
 nul
 cron-*.png
+
+# Security audit local reports (auto-generated)
+security-report.md
+DEBUG_SCAN.md
+VERIFY_REPORT.md
+DEBUG_LOG.md
