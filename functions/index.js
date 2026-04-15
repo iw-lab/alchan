@@ -25,7 +25,8 @@ const { initialStocks } = require("./initialStocks");
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
 // 🔥 핵심 스케줄러만 유지 (16개 → 5개)
-exports.stockPriceScheduler = scheduler.stockPriceScheduler; // 주식 가격 업데이트 스케줄러 (15분마다)
+exports.stockPriceScheduler = scheduler.stockPriceScheduler; // 주식 가격 업데이트 스케줄러 (HTTP, GHA/수동 호출용 백업)
+exports.stockPriceSchedulerV2 = scheduler.stockPriceSchedulerV2; // 주식 가격 업데이트 스케줄러 (Cloud Scheduler v2, 5분마다 자동)
 exports.midnightReset = scheduler.midnightReset; // 자정 리셋용 엔드포인트
 exports.weeklySalary = scheduler.weeklySalary; // 주급 지급용 엔드포인트
 exports.weeklyRent = scheduler.weeklyRent; // 월세 징수용 엔드포인트

@@ -9,6 +9,7 @@ const {
   onCall,
   HttpsError,
 } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { checkAuthAndGetUserData, db, admin, logger } = require("./utils");
 const {
   updateRealStockPrices,
@@ -275,6 +276,104 @@ exports.stockPriceScheduler = onRequest(
     } catch (error) {
       logger.error("[stockPriceScheduler] 전체 오류:", error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
+// 🔥 [Cloud Scheduler v2] GHA schedule drop 영구 해결용
+// 기존 stockPriceScheduler(HTTP)는 백업/수동 트리거용으로 유지.
+// 동일 로직을 onSchedule로 5분마다 자동 실행. 시장 시간 외엔 즉시 return하므로 비용 영향 거의 없음.
+// 함수 내부 멱등성(updateExchangeRate, updateRealStockPrices의 캐시/lock)으로 GHA와 동시 실행해도 안전.
+exports.stockPriceSchedulerV2 = onSchedule(
+  {
+    region: "asia-northeast3",
+    schedule: "*/5 * * * *",
+    timeZone: "Asia/Seoul",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    try {
+      const vacationMode = await isVacationMode();
+      if (vacationMode) {
+        logger.info("[stockPriceSchedulerV2] 방학 모드 - skip");
+        return;
+      }
+
+      const now = new Date();
+      const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const hour = kstTime.getUTCHours();
+      const day = kstTime.getUTCDay();
+
+      const isWeekday = day >= 1 && day <= 5;
+      const isExtendedHours = hour >= 6 || hour < 1;
+
+      if (!isWeekday || !isExtendedHours) {
+        // 시장 시간 아님 - Firestore 읽기 없이 즉시 종료
+        return;
+      }
+
+      logger.info(
+        `[stockPriceSchedulerV2] 호출됨 - KST ${hour}시, 요일: ${day}`,
+      );
+
+      const isUSStockFetchTime = hour >= 6 && hour < 8;
+      if (!isUSStockFetchTime) {
+        const settingsDoc = await db.doc("Settings/activeStatus").get();
+        const lastActiveTime = settingsDoc.exists
+          ? settingsDoc.data()?.lastActiveAt?.toDate()
+          : null;
+        const thirtyMinutesAgo = new Date(Date.now() - 70 * 60 * 1000);
+        if (!lastActiveTime || lastActiveTime < thirtyMinutesAgo) {
+          logger.info(
+            "[stockPriceSchedulerV2] 활성 사용자 없음 - 작업 건너뜀",
+          );
+          return;
+        }
+      }
+
+      logger.info("[stockPriceSchedulerV2] 실제 주식 가격 업데이트 시작");
+      const results = {};
+
+      try {
+        const exchangeResult = await updateExchangeRate();
+        results.exchangeRate = `${exchangeResult.rate}원 (updated: ${exchangeResult.updated})`;
+        logger.info(
+          `[stockPriceSchedulerV2] 환율 갱신: ${exchangeResult.rate}원`,
+        );
+      } catch (error) {
+        logger.warn(
+          "[stockPriceSchedulerV2] 환율 갱신 실패:",
+          error.message,
+        );
+        results.exchangeRate = `error: ${error.message}`;
+      }
+
+      try {
+        const realStockResult = await updateRealStockPrices();
+        results.updateRealStocks = `success (updated: ${realStockResult.updated}, failed: ${realStockResult.failed})`;
+        logger.info(
+          "[stockPriceSchedulerV2] 실제 주식 업데이트 완료:",
+          realStockResult,
+        );
+
+        const snapshotResult = await updateCentralStocksSnapshot();
+        results.updateStocksSnapshot = `success (count: ${snapshotResult.count})`;
+        logger.info(
+          "[stockPriceSchedulerV2] 중앙 스톡 스냅샷 갱신 완료:",
+          snapshotResult,
+        );
+      } catch (error) {
+        logger.error(
+          "[stockPriceSchedulerV2] 가격/스냅샷 업데이트 오류:",
+          error,
+        );
+        results.updateRealStocks = `error: ${error.message}`;
+      }
+
+      logger.info("[stockPriceSchedulerV2] 작업 완료:", results);
+    } catch (error) {
+      logger.error("[stockPriceSchedulerV2] 전체 오류:", error);
     }
   },
 );
