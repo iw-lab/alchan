@@ -1168,13 +1168,18 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
   font-weight: 500 !important;
 }
 
-/* 카드/섹션 테두리 + 그림자 */
+/* 카드/섹션 테두리 + 그림자
+ * ⚠️ 주의: 와일드카드(*-card, *-info, *-header)는 카드 내부 sub-element까지
+ * 매칭하여 '중첩 카드' 시각 버그를 만들 수 있음. 아래 :not() 필터로 sub-element
+ * 패턴(card-header, card-footer, card-body, card-title, card-icon, card-info,
+ * card-content, card-image, card-actions)과 card 내부에 위치한 -info/-header를
+ * 제외한다. */
 .section-container,
 .content-card-section,
 .admin-panel,
 .shop-item-card,
 .store-item-card,
-[class*="card"],
+[class*="card"]:not([class*="card-header"]):not([class*="card-footer"]):not([class*="card-body"]):not([class*="card-title"]):not([class*="card-content"]):not([class*="card-icon"]):not([class*="card-image"]):not([class*="card-actions"]):not([class*="card-info"]):not([class*="card-description"]):not([class*="card-badge"]):not([class*="card-label"]),
 [class*="panel"],
 [class*="section-card"],
 [class*="-section"],
@@ -1182,8 +1187,8 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6, a { color: inherit; }
 [class*="action-selector"],
 .user-selection-section,
 .header,
-[class*="-info"],
-[class*="-header"]:not(th) {
+[class*="-info"]:not([class*="card"] *):not([class*="card-info"]):not([class*="-card-"] *),
+[class*="-header"]:not(th):not([class*="card-header"]):not([class*="card"] *):not([class*="-card-"] *) {
   background-color: var(--bg-card) !important;
   border: 1.5px solid var(--border-primary) !important;
   border-radius: 14px !important;
