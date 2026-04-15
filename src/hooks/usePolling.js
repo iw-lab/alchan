@@ -100,20 +100,46 @@ export const usePolling = (queryFn, options = {}) => {
       return;
     }
 
-    // 🔥 [최적화] 초기 로드를 큐에 추가하여 순차 실행
-    globalInitialLoadQueue.push(fetchData);
-    processInitialLoadQueue();
-
-    // Polling 시작 (interval이 null이면 수동 모드)
-    if (interval && interval > 0) {
+    // 🔥 [최적화] visibility-aware 폴링: 탭이 백그라운드면 폴링 정지하여 read 비용 절감
+    const startPolling = () => {
+      if (intervalRef.current || !interval || interval <= 0) return;
       intervalRef.current = setInterval(fetchData, interval);
+    };
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
+    // 🔥 [최적화] 초기 로드: visible일 때만 큐에 추가하여 순차 실행
+    const isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    if (isVisible) {
+      globalInitialLoadQueue.push(fetchData);
+      processInitialLoadQueue();
+      startPolling();
+    }
+
+    // visibility 변화 감지: 탭 활성화 시 즉시 fetch + 폴링 재개, 비활성화 시 정지
+    const handleVisibilityChange = () => {
+      if (!mountedRef.current) return;
+      if (document.visibilityState === 'visible') {
+        fetchData();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
     return () => {
       mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      stopPolling();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -191,31 +217,54 @@ export const useMultiPolling = (queries, options = {}) => {
   useEffect(() => {
     mountedRef.current = true;
 
-    // 기존 interval 정리
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
 
-    // enabled가 false이거나 쿼리가 없거나 수동 모드면 폴링 중지
     if (!enabled || queries.length === 0 || interval === POLLING_INTERVALS.MANUAL) {
       setLoading(false);
       return;
     }
 
-    // 즉시 한 번 실행
-    fetchAllData();
-
-    // Polling 시작 (interval이 null이면 수동 모드)
-    if (interval && interval > 0) {
+    // 🔥 [최적화] visibility-aware 폴링: 탭이 백그라운드면 폴링 정지
+    const startPolling = () => {
+      if (intervalRef.current || !interval || interval <= 0) return;
       intervalRef.current = setInterval(fetchAllData, interval);
+    };
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+
+    // 초기 1회 fetch는 visible일 때만
+    const isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    if (isVisible) {
+      fetchAllData();
+      startPolling();
+    }
+
+    const handleVisibilityChange = () => {
+      if (!mountedRef.current) return;
+      if (document.visibilityState === 'visible') {
+        fetchAllData();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
     return () => {
       mountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      stopPolling();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
