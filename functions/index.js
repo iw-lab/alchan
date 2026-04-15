@@ -32,6 +32,7 @@ exports.weeklyRent = scheduler.weeklyRent; // 월세 징수용 엔드포인트
 exports.exchangeRateScheduler = scheduler.exchangeRateScheduler; // 환율 자동 업데이트 (하루 1회)
 exports.weeklyPropertyTax = scheduler.weeklyPropertyTax; // 부동산 보유세 자동 징수 (매주 금요일 8시)
 exports.reverseLastWeeklySalary = scheduler.reverseLastWeeklySalary; // 🚨 일회성 회수 endpoint (2026-04-13 중복지급 롤백)
+exports.backfillSalaryLogs = scheduler.backfillSalaryLogs; // 🔁 과거 주급 기록 소급 백필 endpoint
 exports.cleanupStaleOmokGames = scheduler.cleanupStaleOmokGames; // 🧹 유령 오목 방 정리 (heartbeat 기반)
 
 // 🔥 경제 이벤트 시스템
@@ -2427,6 +2428,14 @@ exports.batchPaySalaries = onCall(
       let totalNetPaid = 0;
       const skippedStudents = [];
 
+      // weekKey 계산 (KST 기준) — 내 재산 거래내역 표시용
+      const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const weekKey = `${nowKst.getFullYear()}-W${Math.ceil(((nowKst - new Date(nowKst.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      // 거래내역 로그 TTL: 90일
+      const logExpireAt = new Date();
+      logExpireAt.setDate(logExpireAt.getDate() + 90);
+      const logExpireTs = admin.firestore.Timestamp.fromDate(logExpireAt);
+
       for (const student of targetStudents) {
         const jobIds = student.selectedJobIds || [];
         if (jobIds.length === 0) {
@@ -2455,6 +2464,36 @@ exports.batchPaySalaries = onCall(
           lastNetSalary: netSalary,
           totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 내 재산 거래내역 기록 (activity_logs — classCode+userId로 조회됨)
+        const studentName = student.name || student.nickname || "학생";
+        const salaryLogRef = db.collection("activity_logs").doc();
+        batch.set(salaryLogRef, {
+          userId: student.id,
+          userName: studentName,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          type: "salaryPayment",
+          amount: netSalary,
+          description: `[주급] ${weekKey} 실수령 ${netSalary.toLocaleString()}원 (세전 ${totalGross.toLocaleString()}원 / 세금 ${tax.toLocaleString()}원)`,
+          classCode: classCode,
+          weekKey,
+          grossSalary: totalGross,
+          taxAmount: tax,
+          netSalary,
+          expireAt: logExpireTs,
+        });
+
+        // users/{uid}/transactions 서브컬렉션
+        const txRef = db.collection("users").doc(student.id).collection("transactions").doc();
+        batch.set(txRef, {
+          amount: netSalary,
+          description: `[주급] ${weekKey} 실수령 ${netSalary.toLocaleString()}원`,
+          type: "salaryPayment",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          weekKey,
+          grossSalary: totalGross,
+          taxAmount: tax,
         });
 
         totalStudentsPaid++;

@@ -364,11 +364,156 @@ exports.weeklySalary = onRequest(
       logger.info(`[weeklySalary] 주급 지급 시작`);
 
       const forceRun = req.query.force === "true";
-      const result = await payWeeklySalariesLogic(forceRun);
+      const weekKeyOverride = req.query.weekKey || null; // 예: "2026-W15" (미지급 주 재지급용)
+      const result = await payWeeklySalariesLogic(forceRun, weekKeyOverride);
 
       res.json({ success: true, message: "주급 지급 완료", ...result });
     } catch (error) {
       logger.error("[weeklySalary] 오류:", error, error?.stack);
+      res.status(500).json({
+        success: false,
+        error: error?.message || String(error),
+        stack: error?.stack,
+      });
+    }
+  },
+);
+
+// ===================================================================================
+// 🔁 주급 기록 소급 백필 endpoint - 과거 totalSalaryReceived를 내 재산 거래내역에 1건으로 요약 기록
+// 파라미터: token, confirm=YES (필수), dryRun (기본 true)
+// 각 학생당 activity_logs/salary_backfill_{userId} 문서로 멱등 처리
+// ===================================================================================
+exports.backfillSalaryLogs = onRequest(
+  {
+    region: "asia-northeast3",
+    timeoutSeconds: 540,
+    invoker: "public",
+  },
+  async (req, res) => {
+    try {
+      const token = req.query.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const confirm = req.query.confirm;
+      const dryRun = req.query.dryRun !== "false"; // 기본 true
+
+      if (!dryRun && confirm !== "YES") {
+        res.status(400).json({
+          success: false,
+          error: "실제 실행하려면 confirm=YES가 필요합니다 (dryRun=false일 때)",
+        });
+        return;
+      }
+
+      logger.info(`[backfillSalaryLogs] 시작 (dryRun=${dryRun})`);
+
+      // 전체 학생(비관리자) 조회
+      const studentsSnap = await db
+        .collection("users")
+        .where("isAdmin", "==", false)
+        .get();
+
+      // 백필 로그 TTL: 1년
+      const expireAt = new Date();
+      expireAt.setDate(expireAt.getDate() + 365);
+      const expireTs = admin.firestore.Timestamp.fromDate(expireAt);
+
+      let processed = 0;
+      let skippedNoSalary = 0;
+      let skippedNoClass = 0;
+      let totalBackfilledAmount = 0;
+      const perClassSummary = {};
+
+      // Firestore batch 한도(500) 고려해 청크 단위 커밋
+      const CHUNK = 100; // 학생당 2 ops(log + tx) → 200 ops/chunk
+      let batch = db.batch();
+      let pendingOps = 0;
+
+      for (const studentDoc of studentsSnap.docs) {
+        const data = studentDoc.data();
+        if (data.isSuperAdmin || data.isTeacher) continue;
+
+        const total = Number(data.totalSalaryReceived) || 0;
+        if (total <= 0) {
+          skippedNoSalary++;
+          continue;
+        }
+        const classCode = data.classCode;
+        if (!classCode) {
+          skippedNoClass++;
+          continue;
+        }
+
+        const studentName = data.name || data.nickname || "학생";
+        const summary = `[주급 누적 소급] 과거 주급 합계 ${total.toLocaleString()}원 (개별 내역 없음)`;
+
+        if (!dryRun) {
+          // 멱등성: 고정 문서 ID 사용
+          const logRef = db.collection("activity_logs").doc(`salary_backfill_${studentDoc.id}`);
+          batch.set(logRef, {
+            userId: studentDoc.id,
+            userName: studentName,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            type: "salaryPaymentBackfill",
+            amount: total,
+            description: summary,
+            classCode,
+            totalSalaryReceived: total,
+            expireAt: expireTs,
+            backfill: true,
+          });
+
+          const txRef = db.collection("users")
+            .doc(studentDoc.id)
+            .collection("transactions")
+            .doc(`salary_backfill_${studentDoc.id}`);
+          batch.set(txRef, {
+            amount: total,
+            description: summary,
+            type: "salaryPaymentBackfill",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            backfill: true,
+          });
+
+          pendingOps += 2;
+          if (pendingOps >= CHUNK * 2) {
+            await batch.commit();
+            batch = db.batch();
+            pendingOps = 0;
+          }
+        }
+
+        processed++;
+        totalBackfilledAmount += total;
+        if (!perClassSummary[classCode]) {
+          perClassSummary[classCode] = { count: 0, total: 0 };
+        }
+        perClassSummary[classCode].count++;
+        perClassSummary[classCode].total += total;
+      }
+
+      if (!dryRun && pendingOps > 0) {
+        await batch.commit();
+      }
+
+      logger.info(
+        `[backfillSalaryLogs] 완료: ${processed}명, 총 ${totalBackfilledAmount.toLocaleString()}원 (dryRun=${dryRun})`,
+      );
+
+      res.json({
+        success: true,
+        dryRun,
+        processed,
+        skippedNoSalary,
+        skippedNoClass,
+        totalBackfilledAmount,
+        perClassSummary,
+      });
+    } catch (error) {
+      logger.error("[backfillSalaryLogs] 오류:", error, error?.stack);
       res.status(500).json({
         success: false,
         error: error?.message || String(error),
@@ -1469,7 +1614,7 @@ async function resetDailyTasksLogic() {
   }
 }
 
-async function payWeeklySalariesLogic(forceRun = false) {
+async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) {
   logger.info(">>> [스케줄러] 주급 지급 시작");
   try {
     // 오늘 이미 지급했는지 확인 (중복 방지)
@@ -1478,7 +1623,12 @@ async function payWeeklySalariesLogic(forceRun = false) {
     const todayStr = kstNow.toISOString().split("T")[0];
 
     // 주간 중복 방지 (같은 주에 여러 번 호출되어도 1회만 지급)
-    const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+    // weekKeyOverride: 특정 주 재지급용 (예: "2026-W15")
+    const computedWeekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+    const weekKey = weekKeyOverride || computedWeekKey;
+    if (weekKeyOverride) {
+      logger.info(`[주급 지급] weekKey 오버라이드 사용: ${weekKey} (계산값: ${computedWeekKey})`);
+    }
     const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
     if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().weekKey === weekKey) {
       logger.info(`[주급 지급] 이번 주(${weekKey}) 이미 지급 완료 - 건너뜀`);
@@ -1548,6 +1698,11 @@ async function payWeeklySalariesLogic(forceRun = false) {
         let classTotalNet = 0;
         let classPaidCount = 0;
 
+        // 거래내역 로그 TTL: 90일 후 만료 (재산세 로그와 동일 정책)
+        const logExpireAt = new Date();
+        logExpireAt.setDate(logExpireAt.getDate() + 90);
+        const logExpireTs = admin.firestore.Timestamp.fromDate(logExpireAt);
+
         for (const studentDoc of students) {
           const student = studentDoc.data();
           // selectedJobIds가 배열이 아닐 수 있음 (오래된 데이터 방어)
@@ -1576,6 +1731,36 @@ async function payWeeklySalariesLogic(forceRun = false) {
             lastNetSalary: netSalary,
             totalSalaryReceived: admin.firestore.FieldValue.increment(netSalary),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 내 재산 거래내역용 로그 (activity_logs — MyAssets.js가 classCode+userId로 조회)
+          const studentName = student.name || student.nickname || "학생";
+          const salaryLogRef = db.collection("activity_logs").doc();
+          batch.set(salaryLogRef, {
+            userId: studentDoc.id,
+            userName: studentName,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            type: "salaryPayment",
+            amount: netSalary,
+            description: `[주급] ${weekKey} 실수령 ${netSalary.toLocaleString()}원 (세전 ${totalGross.toLocaleString()}원 / 세금 ${tax.toLocaleString()}원)`,
+            classCode: classCode,
+            weekKey,
+            grossSalary: totalGross,
+            taxAmount: tax,
+            netSalary,
+            expireAt: logExpireTs,
+          });
+
+          // 사용자 서브컬렉션 거래내역 (transactions — MyAssets.js 두 번째 소스)
+          const txRef = db.collection("users").doc(studentDoc.id).collection("transactions").doc();
+          batch.set(txRef, {
+            amount: netSalary,
+            description: `[주급] ${weekKey} 실수령 ${netSalary.toLocaleString()}원`,
+            type: "salaryPayment",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            weekKey,
+            grossSalary: totalGross,
+            taxAmount: tax,
           });
 
           classTotalNet += netSalary;

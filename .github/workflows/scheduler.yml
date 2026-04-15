@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (reset, salary, rent, property-tax, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok)'
+        description: '실행할 작업 (reset, salary, salary-force, rent, property-tax, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit)'
         required: true
         default: 'reset'
       weekKey:
-        description: '회수 대상 weekKey (reverse-salary-* 에서만 사용, 예: 2026-W15)'
+        description: 'weekKey (reverse-salary-* / salary-force 에서 사용, 예: 2026-W15)'
         required: false
         default: '2026-W15'
 
@@ -133,6 +133,52 @@ jobs:
           else
             echo "✅ 월세 징수 완료"
           fi
+
+      # 💰 주급 강제 재지급 (weekKey override + force=true) - 미지급 주 복구용
+      - name: Weekly salary force re-pay
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'salary-force'
+        run: |
+          WK="${{ github.event.inputs.weekKey }}"
+          echo "💰 주급 강제 재지급 (weekKey=$WK, force=true)"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://weeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&force=true&weekKey=$WK")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🔁 주급 기록 소급 백필 - dry run
+      - name: Backfill salary logs (dry run)
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'backfill-salary-dry'
+        run: |
+          echo "🔁 주급 기록 소급 백필 DRY RUN"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://backfillsalarylogs-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&dryRun=true")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🔁 주급 기록 소급 백필 - 실제 실행
+      - name: Backfill salary logs (commit)
+        continue-on-error: true
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.task == 'backfill-salary-commit'
+        run: |
+          echo "🔁 주급 기록 소급 백필 COMMIT"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://backfillsalarylogs-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
 
       # 🚨 주급 회수 - dry run (계산만, 쓰기 없음)
       - name: Reverse salary (dry run)
