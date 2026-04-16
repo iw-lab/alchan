@@ -48,6 +48,9 @@ import EconomicEventBanner from "./EconomicEventBanner";
 import { EconomicEventProvider } from "../hooks/useActiveEconomicEvent";
 const EconomicEventPopup = lazyWithRetry(() => import("./EconomicEventPopup"));
 const NewBillPopup = lazyWithRetry(() => import("./NewBillPopup"));
+const VoteReminderBanner = lazyWithRetry(() =>
+  import("./VoteReminderBanner"),
+);
 const DailyRewardBanner = lazyWithRetry(() =>
   import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
@@ -466,6 +469,13 @@ export default function AlchanLayout() {
 
           {/* 경제 이벤트 배너 */}
           {!isImmersiveMusicRoom && <EconomicEventBanner />}
+
+          {/* 📢 투표 미참여 법안 전역 배너 */}
+          {!isImmersiveMusicRoom && (
+            <Suspense fallback={null}>
+              <VoteReminderBanner />
+            </Suspense>
+          )}
 
           {/* 콘텐츠 영역 - 🔥 Suspense로 lazy loading 지원 */}
           <div

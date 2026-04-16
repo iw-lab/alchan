@@ -46,13 +46,16 @@ const OrganizationChart = ({ classCode }) => {
 
   const isPresident = useMemo(() => {
     if (!userDoc?.selectedJobIds || !jobs) return false;
-    const selectedJobs = jobs.filter((job) =>
-      userDoc.selectedJobIds.includes(job.id),
-    );
+    const selectedIds = Array.isArray(userDoc.selectedJobIds)
+      ? userDoc.selectedJobIds
+      : Object.keys(userDoc.selectedJobIds || {});
+    const selectedJobs = jobs.filter((job) => selectedIds.includes(job.id));
     return selectedJobs.some((job) => job.title === "대통령");
   }, [userDoc?.selectedJobIds, jobs]);
 
-  const canManage = isAuthAdmin || isPresident; // 관리자 또는 대통령 직업
+  const isAdminUser =
+    typeof isAuthAdmin === "function" ? isAuthAdmin() : !!isAuthAdmin;
+  const canManage = isAdminUser || isPresident; // 관리자 또는 대통령 직업
 
   const [approvedLaws, setApprovedLaws] = useState([]);
   const [vetoPendingLaws, setVetoPendingLaws] = useState([]);
@@ -166,7 +169,7 @@ const OrganizationChart = ({ classCode }) => {
   // 정부 이송 법안 승인
   const approveGovLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("관리자 모드에서만 승인할 수 있습니다.");
+      alert("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
       return;
     }
     if (!window.confirm("이 법안을 최종 승인하시겠습니까?")) return;
@@ -194,7 +197,7 @@ const OrganizationChart = ({ classCode }) => {
   // 정부 이송 법안 거부권
   const vetoGovLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("관리자 모드에서만 거부권을 행사할 수 있습니다.");
+      alert("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
       return;
     }
     const reason = prompt("거부권 행사 사유를 입력해주세요.");
@@ -264,7 +267,7 @@ const OrganizationChart = ({ classCode }) => {
   // 법안 승인 처리 (Firestore)
   const approveLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("관리자 모드에서만 승인할 수 있습니다.");
+      alert("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
       return;
     }
     const lawDocRef = doc(db, "laws", law.id);
@@ -286,7 +289,7 @@ const OrganizationChart = ({ classCode }) => {
   // 거부권 행사 모달 열기
   const openVetoModal = (law) => {
     if (!canManage) {
-      alert("관리자 모드에서만 거부권을 행사할 수 있습니다.");
+      alert("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
       return;
     }
     setSelectedLaw(law);
@@ -433,11 +436,11 @@ const OrganizationChart = ({ classCode }) => {
         <div className="admin-controls">
           {canManage && (
             <div className="admin-indicator">
-              {isAuthAdmin ? "관리자" : "대통령"} 권한 활성화
+              {isAdminUser ? "관리자" : "대통령"} 권한 활성화
             </div>
           )}
 
-          {isAuthAdmin && (
+          {isAdminUser && (
             <button
               className="settings-button"
               onClick={() => {
