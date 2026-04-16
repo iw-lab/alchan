@@ -1,13 +1,12 @@
-name: Scheduled Tasks
+name: Scheduled Tasks (Manual Only)
+
+# 🔥 모든 자동 스케줄은 Firebase Cloud Scheduler V2로 이전 완료
+# - stockPriceSchedulerV2: 5분마다 주식 가격
+# - weeklyEconomySchedulerV2: 월·금 주급/월세/재산세
+# - hourlySchedulerV2: 매시간 자정리셋/경제이벤트/환율
+# GHA는 수동 dispatch 전용으로만 유지 (강제 재지급, 회수, 백필 등)
 
 on:
-  schedule:
-    # 다중 cron 전략 — GitHub Actions schedule drop(평균 20-40%) 내성 확보
-    # 10분 간격 2개 offset으로 실질 5분 해상도 달성. 하나가 drop 되어도 다른 하나 커버.
-    # 모든 다운스트림 함수는 내부 lock/idempotent 체크 보유 (weekKey, lastEventDate 등)
-    - cron: '*/10 * * * *'    # 0, 10, 20, 30, 40, 50 min
-    - cron: '5-59/10 * * * *' # 5, 15, 25, 35, 45, 55 min (offset)
-
   # 수동 실행 (긴급 상황용)
   workflow_dispatch:
     inputs:
@@ -21,7 +20,7 @@ on:
         default: '2026-W15'
 
 jobs:
-  stock-price-update:
+  manual-tasks:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,7 +31,7 @@ jobs:
           MINUTE=$(date -u +%-M)
           DAY=$(date -u +%u) # 1=Monday, 7=Sunday
 
-          # KST 시간 계산 (UTC+9) - %-H로 zero-padding 제거 (08/09 octal 버그 방지)
+          # KST 시간 계산 (UTC+9)
           KST_HOUR=$(( (HOUR + 9) % 24 ))
           if [ $HOUR -ge 15 ]; then
             KST_DAY=$(( (DAY % 7) + 1 ))
@@ -45,15 +44,11 @@ jobs:
           echo "minute=$MINUTE" >> $GITHUB_OUTPUT
           echo "KST Time: ${KST_HOUR}:${MINUTE} (Day: ${KST_DAY})"
 
-      # 주식 가격 업데이트 (평일 6~25시 KST) - 자동 스케줄 + 수동 dispatch (task=stock or all)
+      # 주식 가격 업데이트 (수동)
       - name: Update stock prices
         continue-on-error: true
         if: |
-          (github.event_name == 'schedule' &&
-          steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
-          (steps.time.outputs.kst_hour >= 6 || steps.time.outputs.kst_hour < 1)) ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'stock' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'stock' || github.event.inputs.task == 'all'
         run: |
           echo "Calling stockPriceScheduler..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -63,13 +58,11 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 자정 리셋 (매일 KST 0시 - 함수 내부 중복 방지로 안전)
+      # 자정 리셋 (수동)
       - name: Midnight reset
         continue-on-error: true
         if: |
-          steps.time.outputs.kst_hour == 0 ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'reset' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'reset' || github.event.inputs.task == 'all'
         run: |
           echo "Calling midnightReset..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -78,37 +71,25 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-      # 주급 지급 (월요일 KST 8~17시 - 함수 내부 weekKey 락으로 멱등, drop 내성 확대)
-      # continue-on-error: 실패해도 이후 재산세/월세/경제이벤트는 정상 실행
+      # 주급 지급 (수동)
       - name: Weekly salary payment
         continue-on-error: true
         if: |
-          (steps.time.outputs.kst_day == 1 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'salary' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'salary' || github.event.inputs.task == 'all'
         run: |
-          echo "💰 주급 지급 시작 (월요일 8:30 KST)"
+          echo "💰 주급 지급 시작"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://weeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "⚠️ 주급 지급 응답 비정상 (HTTP $HTTP_STATUS) - 다음 스텝 계속 진행"
-          else
-            echo "✅ 주급 지급 완료"
-          fi
 
-      # 부동산 보유세 징수 (금요일 KST 8~17시 - 함수 내부 주간 lock, drop 내성 확대)
+      # 부동산 보유세 징수 (수동)
       - name: Property holding tax
         continue-on-error: true
         if: |
-          (steps.time.outputs.kst_day == 5 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'property-tax' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'property-tax' || github.event.inputs.task == 'all'
         run: |
           echo "Calling weeklyPropertyTax..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -117,34 +98,24 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')"
 
-      # 월세 징수 (금요일 KST 8~17시 - 보유세와 같은 날, 함수 내부 주간 lock, drop 내성 확대)
+      # 월세 징수 (수동)
       - name: Weekly rent collection
         continue-on-error: true
         if: |
-          (steps.time.outputs.kst_day == 5 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'rent' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'rent' || github.event.inputs.task == 'all'
         run: |
-          echo "🏠 월세 징수 시작 (금요일 8:30 KST)"
+          echo "🏠 월세 징수 시작"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://weeklyrent-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "⚠️ 월세 징수 응답 비정상 (HTTP $HTTP_STATUS) - 다음 스텝 계속 진행"
-          else
-            echo "✅ 월세 징수 완료"
-          fi
 
-      # 💰 주급 강제 재지급 (weekKey override + force=true) - 미지급 주 복구용
+      # 💰 주급 강제 재지급 (weekKey override + force=true)
       - name: Weekly salary force re-pay
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'salary-force'
+        if: github.event.inputs.task == 'salary-force'
         run: |
           WK="${{ github.event.inputs.weekKey }}"
           echo "💰 주급 강제 재지급 (weekKey=$WK, force=true)"
@@ -158,9 +129,7 @@ jobs:
       # 🔁 주급 기록 소급 백필 - dry run
       - name: Backfill salary logs (dry run)
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'backfill-salary-dry'
+        if: github.event.inputs.task == 'backfill-salary-dry'
         run: |
           echo "🔁 주급 기록 소급 백필 DRY RUN"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -173,9 +142,7 @@ jobs:
       # 🔁 주급 기록 소급 백필 - 실제 실행
       - name: Backfill salary logs (commit)
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'backfill-salary-commit'
+        if: github.event.inputs.task == 'backfill-salary-commit'
         run: |
           echo "🔁 주급 기록 소급 백필 COMMIT"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -185,12 +152,10 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 🚨 주급 회수 - dry run (계산만, 쓰기 없음)
+      # 🚨 주급 회수 - dry run
       - name: Reverse salary (dry run)
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'reverse-salary-dry'
+        if: github.event.inputs.task == 'reverse-salary-dry'
         run: |
           WK="${{ github.event.inputs.weekKey }}"
           echo "🧮 주급 회수 DRY RUN (weekKey=$WK)"
@@ -204,9 +169,7 @@ jobs:
       # 🧹 유령 오목 방 정리
       - name: Cleanup stale omok games
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'cleanup-omok'
+        if: github.event.inputs.task == 'cleanup-omok'
         run: |
           echo "🧹 유령 오목 방 정리 시작"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
@@ -216,12 +179,10 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 🚨 주급 회수 - 실제 실행 (쓰기)
+      # 🚨 주급 회수 - 실제 실행
       - name: Reverse salary (commit)
         continue-on-error: true
-        if: |
-          github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.task == 'reverse-salary-commit'
+        if: github.event.inputs.task == 'reverse-salary-commit'
         run: |
           WK="${{ github.event.inputs.weekKey }}"
           echo "💀 주급 회수 COMMIT (weekKey=$WK)"
@@ -232,16 +193,11 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 경제 이벤트 (평일 KST 8~17시, 함수 내부 triggerHour 이후 + 오늘 미발생 조건 멱등)
-      # workflow_dispatch: task='economic-event' 또는 'all' 일 때 수동 실행 가능
+      # 경제 이벤트 (수동)
       - name: Economic event
         continue-on-error: true
         if: |
-          (github.event_name == 'schedule' &&
-          steps.time.outputs.kst_day >= 1 && steps.time.outputs.kst_day <= 5 &&
-          steps.time.outputs.kst_hour >= 8 && steps.time.outputs.kst_hour <= 17) ||
-          (github.event_name == 'workflow_dispatch' &&
-          (github.event.inputs.task == 'economic-event' || github.event.inputs.task == 'all'))
+          github.event.inputs.task == 'economic-event' || github.event.inputs.task == 'all'
         run: |
           echo "Calling economicEventScheduler..."
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \

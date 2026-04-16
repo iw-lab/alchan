@@ -2316,6 +2316,167 @@ exports.cleanupExpiredDocuments = onRequest(
 );
 
 // ===================================================================================
+// 🔥 [Cloud Scheduler v2] 주간 경제 스케줄러 — 주급(월), 월세+재산세(금)
+// 1개 Cloud Scheduler job으로 주급/월세/재산세 3가지 처리
+// ===================================================================================
+exports.weeklyEconomySchedulerV2 = onSchedule(
+  {
+    region: "asia-northeast3",
+    schedule: "0 0 * * 1,5", // UTC 월·금 00:00 = KST 09:00
+    timeZone: "UTC",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    try {
+      const vacationMode = await isVacationMode();
+      if (vacationMode) {
+        logger.info("[weeklyEconomyV2] 방학 모드 - skip");
+        return;
+      }
+
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = kstNow.getUTCDay(); // 0=Sun, 1=Mon, 5=Fri
+
+      if (day === 1) {
+        // 월요일: 주급 지급
+        logger.info("[weeklyEconomyV2] 월요일 — 주급 지급 시작");
+        const result = await payWeeklySalariesLogic();
+        logger.info("[weeklyEconomyV2] 주급 지급 완료:", result);
+      } else if (day === 5) {
+        // 금요일: 재산세 + 월세
+        logger.info("[weeklyEconomyV2] 금요일 — 재산세 + 월세 징수 시작");
+
+        // 재산세
+        const taxWeekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+        const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
+        if (!lastTaxDoc.exists || lastTaxDoc.data().weekKey !== taxWeekKey) {
+          await collectPropertyHoldingTaxesLogic();
+          await db.collection("systemState").doc("lastPropertyTax").set({
+            weekKey: taxWeekKey,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          logger.info("[weeklyEconomyV2] 재산세 징수 완료:", taxWeekKey);
+        } else {
+          logger.info("[weeklyEconomyV2] 재산세 이번 주 이미 완료 — skip");
+        }
+
+        // 월세
+        const rentWeekKey = taxWeekKey;
+        const lastRentDoc = await db.collection("systemState").doc("lastWeeklyRent").get();
+        if (!lastRentDoc.exists || lastRentDoc.data().weekKey !== rentWeekKey) {
+          await collectWeeklyRentLogic();
+          await db.collection("systemState").doc("lastWeeklyRent").set({
+            weekKey: rentWeekKey,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          logger.info("[weeklyEconomyV2] 월세 징수 완료:", rentWeekKey);
+        } else {
+          logger.info("[weeklyEconomyV2] 월세 이번 주 이미 완료 — skip");
+        }
+      } else {
+        logger.info(`[weeklyEconomyV2] 오늘(${day})은 대상 요일 아님 — skip`);
+      }
+    } catch (error) {
+      logger.error("[weeklyEconomyV2] 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
+// 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋(0시), 경제이벤트(8~17시), 환율(7시)
+// 1개 Cloud Scheduler job으로 자정리셋/경제이벤트/환율/적금납입/오목정리 통합 처리
+// ===================================================================================
+exports.hourlySchedulerV2 = onSchedule(
+  {
+    region: "asia-northeast3",
+    schedule: "0 * * * *", // 매시 정각
+    timeZone: "Asia/Seoul",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    try {
+      const vacationMode = await isVacationMode();
+      if (vacationMode) {
+        logger.info("[hourlyV2] 방학 모드 - skip");
+        return;
+      }
+
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const hour = kstNow.getUTCHours();
+      const day = kstNow.getUTCDay(); // 0=Sun, 1=Mon ... 5=Fri, 6=Sat
+      const isWeekday = day >= 1 && day <= 5;
+
+      logger.info(`[hourlyV2] KST ${hour}시, 요일=${day}`);
+
+      // 🕛 자정 (KST 0시): 일일 과제 리셋 + 적금 자동 납입
+      if (hour === 0) {
+        const todayStr = kstNow.toISOString().split("T")[0];
+        const lastResetDoc = await db.collection("systemState").doc("lastMidnightReset").get();
+        if (!lastResetDoc.exists || lastResetDoc.data().date !== todayStr) {
+          logger.info("[hourlyV2] 자정 리셋 시작");
+          await resetDailyTasksLogic();
+
+          try {
+            const savingsResult = await processDailySavingsDeposits();
+            logger.info("[hourlyV2] 적금 자동 납입 완료:", savingsResult);
+          } catch (e) {
+            logger.error("[hourlyV2] 적금 자동 납입 오류:", e);
+          }
+
+          try {
+            await cleanupStaleOmokGamesLogic();
+          } catch (e) {
+            logger.error("[hourlyV2] 오목 정리 오류:", e);
+          }
+
+          await db.collection("systemState").doc("lastMidnightReset").set({
+            date: todayStr,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          logger.info("[hourlyV2] 자정 리셋 완료:", todayStr);
+        } else {
+          logger.info("[hourlyV2] 오늘 자정 리셋 이미 완료 — skip");
+        }
+      }
+
+      // 🌅 오전 7시: 환율 업데이트
+      if (hour === 7 && isWeekday) {
+        logger.info("[hourlyV2] 환율 업데이트 시작");
+        try {
+          const result = await updateExchangeRate();
+          logger.info("[hourlyV2] 환율 업데이트 완료:", result.rate);
+        } catch (e) {
+          logger.error("[hourlyV2] 환율 업데이트 오류:", e);
+        }
+      }
+
+      // 📊 평일 8~17시: 경제 이벤트
+      if (isWeekday && hour >= 8 && hour <= 17) {
+        logger.info("[hourlyV2] 경제 이벤트 스케줄러 실행");
+        try {
+          const result = await runEconomicEventsForAllClasses();
+          logger.info("[hourlyV2] 경제 이벤트 완료:", result);
+        } catch (e) {
+          logger.error("[hourlyV2] 경제 이벤트 오류:", e);
+        }
+      }
+
+      // 시간대 밖이면 로그만
+      if (hour !== 0 && hour !== 7 && !(isWeekday && hour >= 8 && hour <= 17)) {
+        // no-op: 빠른 종료 (Firestore 읽기 0)
+        return;
+      }
+    } catch (error) {
+      logger.error("[hourlyV2] 전체 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
 // 외부에서 사용될 수 있도록 로직 함수들 export
 // ===================================================================================
 module.exports.updateCentralStockMarketLogic = updateCentralStockMarketLogic; // 하위 호환성용 빈 함수
