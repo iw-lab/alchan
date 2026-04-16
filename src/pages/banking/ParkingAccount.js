@@ -31,6 +31,10 @@ import {
 } from "../../utils/numberFormatter";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import {
+ isNetAssetsNegative,
+ NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 
 import { logger } from "../../utils/logger";
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
@@ -1342,6 +1346,9 @@ const ParkingAccount = ({
 
  // 🔥 대출 한도: 보유 현금의 10배까지만 가능
  if (type === "loans") {
+ if (await isNetAssetsNegative(userDoc)) {
+ return displayMessage(NEGATIVE_ASSETS_MESSAGE, "error");
+ }
  const availableCash = Number(currentCash) || 0;
  if (availableCash <= 0) {
  return displayMessage(

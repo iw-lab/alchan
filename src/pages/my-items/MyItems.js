@@ -7,6 +7,10 @@ import LoginWarning from "../../components/LoginWarning";
 import { useNavigate } from "react-router-dom";
 
 import { logger } from "../../utils/logger";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 // Firebase
 import {
   db,
@@ -191,13 +195,17 @@ const MyItems = () => {
     price: 0,
   });
 
-  const handleOpenUseItemModal = (group) => {
+  const handleOpenUseItemModal = async (group) => {
     if (!user) {
       showNotification("error", "로그인이 필요합니다.");
       return;
     }
     if (!group || group.totalQuantity <= 0) {
       showNotification("error", "사용할 수 있는 아이템이 아닙니다.");
+      return;
+    }
+    if (await isNetAssetsNegative(userDoc)) {
+      showNotification("error", NEGATIVE_ASSETS_MESSAGE);
       return;
     }
     setUseItemModal({ isOpen: true, item: group, quantity: 1 });

@@ -29,6 +29,10 @@ import { globalCache } from "../../services/globalCacheService";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 
 import { logger } from "../../utils/logger";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 // 서비스 레이어 import
 import {
   batchDataLoader,
@@ -1258,6 +1262,10 @@ const StockExchange = () => {
       const stock = stocks.find((s) => s.id === stockId);
       if (!user || !stock || !stock.isListed)
         return alert("매수할 수 없는 상태입니다.");
+
+      if (await isNetAssetsNegative(userDoc)) {
+        return alert(NEGATIVE_ASSETS_MESSAGE);
+      }
 
       const cost = stock.price * quantity;
       const commission = Math.round(cost * COMMISSION_RATE);

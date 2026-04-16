@@ -10,6 +10,10 @@ import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 import { logger } from "../../utils/logger";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 
 const StockBadge = ({ stock, autoRestock }) => {
   if (stock === undefined || stock === null) return null;
@@ -203,6 +207,10 @@ const ItemStore = () => {
     const quantity = purchaseQuantities[item.id] || 1;
     if (rawCash === undefined)
       return showNotification("error", "잔액 정보 오류");
+
+    if (await isNetAssetsNegative(userDoc)) {
+      return showNotification("error", NEGATIVE_ASSETS_MESSAGE);
+    }
 
     const totalPrice = item.price * quantity;
 
