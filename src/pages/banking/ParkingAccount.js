@@ -486,30 +486,31 @@ const ProductSection = ({
  onLoanRepay,
  sectionStyle = {},
 }) => {
- const [activeTab, setActiveTab] = useState("subscribed");
  return (
  <div className={cls.card} style={sectionStyle}>
  <div className={cls.cardHeader}>
  {icon}
  <h2 className={cls.cardTitle}>{title}</h2>
  </div>
- <div className={cls.tabContainer}>
- <button
- onClick={() => setActiveTab("subscribed")}
- className={cls.tabButton(activeTab === "subscribed")}
- >
- 가입한 상품
- </button>
- <button
- onClick={() => setActiveTab("available")}
- className={cls.tabButton(activeTab === "available")}
- >
- 가입 가능한 상품
- </button>
- </div>
  <div>
- {activeTab === "subscribed" &&
- (subscribedProducts.length > 0 ? (
+ <h3 className="text-base font-bold text-slate-700 mb-3 pb-2 border-b border-slate-200">
+ 가입 가능한 상품
+ </h3>
+ {availableProducts.length > 0 ? (
+ availableProducts.map((p) => (
+ <AvailableProductItem
+ key={p.id}
+ product={p}
+ onSubscribe={() => onSubscribe(p)}
+ />
+ ))
+ ) : (
+ <p className={cls.noProduct}>가입 가능한 상품이 없습니다.</p>
+ )}
+ <h3 className="text-base font-bold text-slate-700 mt-6 mb-3 pb-2 border-b border-slate-200">
+ 가입한 상품
+ </h3>
+ {subscribedProducts.length > 0 ? (
  subscribedProducts.map((p) => (
  <SubscribedProductItem
  key={p.id}
@@ -521,19 +522,7 @@ const ProductSection = ({
  ))
  ) : (
  <p className={cls.noProduct}>가입한 상품이 없습니다.</p>
- ))}
- {activeTab === "available" &&
- (availableProducts.length > 0 ? (
- availableProducts.map((p) => (
- <AvailableProductItem
- key={p.id}
- product={p}
- onSubscribe={() => onSubscribe(p)}
- />
- ))
- ) : (
- <p className={cls.noProduct}>가입 가능한 상품이 없습니다.</p>
- ))}
+ )}
  </div>
  </div>
  );
