@@ -1,9 +1,23 @@
 // src/pages/games/Chess3DBoard.js
 // 3D 체스 보드 컴포넌트 (Three.js + React Three Fiber)
 
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
+
+// 기물 시각 메시의 레이캐스트를 끄기 위한 래퍼. 베이스 hitbox만 클릭을 받도록.
+const NoRaycast = ({ children }) => {
+  const ref = useRef();
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    ref.current.traverse(obj => {
+      if (obj.isMesh || obj.isLineSegments) {
+        obj.raycast = () => null;
+      }
+    });
+  });
+  return <group ref={ref}>{children}</group>;
+};
 
 // 공통 재질 설정 - 매트한 상아 vs 에스프레소 월넛
 const getMaterial = (color, isSelected, isCheck) => {
@@ -437,16 +451,26 @@ const ChessPiece = ({ piece, position, isSelected, isCheck, onClick }) => {
     <group
       ref={groupRef}
       position={[position[0], 0, position[2]]}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'auto'; }}
     >
-      {pieceType === 'K' && <King color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
-      {pieceType === 'Q' && <Queen color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
-      {pieceType === 'R' && <Rook color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
-      {pieceType === 'B' && <Bishop color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
-      {pieceType === 'N' && <Knight color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
-      {pieceType === 'P' && <Pawn color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+      {/* 시각 메시들 - 레이캐스트 끔 (tall 기물이 허공 클릭을 가로채는 문제 방지) */}
+      <NoRaycast>
+        {pieceType === 'K' && <King color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+        {pieceType === 'Q' && <Queen color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+        {pieceType === 'R' && <Rook color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+        {pieceType === 'B' && <Bishop color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+        {pieceType === 'N' && <Knight color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+        {pieceType === 'P' && <Pawn color={pieceColor} isSelected={isSelected} isCheck={isCheck} />}
+      </NoRaycast>
+      {/* 투명 클릭 hitbox - 베이스 높이에만 배치해서 한 칸 범위만 받음 */}
+      <mesh
+        position={[0, 0.12, 0]}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'auto'; }}
+      >
+        <cylinderGeometry args={[0.42, 0.46, 0.24, 24]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
     </group>
   );
 };
