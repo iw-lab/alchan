@@ -5,32 +5,32 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
-// 공통 재질 설정 - 대비를 극대화해 어두운 배경에서도 잘 보이게
+// 공통 재질 설정 - 대리석/상아 질감의 고급스러운 톤
 const getMaterial = (color, isSelected, isCheck) => {
   if (color === 'w') {
-    // 흰 말: 순백색 + 은은한 크림빛 glow
+    // 흰 말: 따뜻한 상아색 + 부드러운 크림 glow
     return {
-      color: '#ffffff',
-      metalness: 0.2,
-      roughness: 0.35,
-      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#fffaf0',
-      emissiveIntensity: isSelected ? 0.7 : isCheck ? 0.9 : 0.35
+      color: '#f5ecd8',
+      metalness: 0.15,
+      roughness: 0.45,
+      emissive: isSelected ? '#d4a574' : isCheck ? '#c44d3e' : '#f4e6c8',
+      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.22
     };
   } else {
-    // 검은 말: 진한 청흑색 + 푸른 glow로 어두운 배경에서 실루엣 부각
+    // 검은 말: 흑단(에보니) 차콜 + 미세한 호박빛 glow
     return {
-      color: '#2a3042',
-      metalness: 0.6,
-      roughness: 0.3,
-      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#4a6fb5',
-      emissiveIntensity: isSelected ? 0.7 : isCheck ? 0.9 : 0.55
+      color: '#3a2f2a',
+      metalness: 0.35,
+      roughness: 0.4,
+      emissive: isSelected ? '#d4a574' : isCheck ? '#c44d3e' : '#8a6a42',
+      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.38
     };
   }
 };
 
-// 테두리 라인 색상 - 선명한 외곽선으로 실루엣 강조
-const getEdgeColor = (color) => color === 'w' ? '#5a4a2a' : '#a8c8ff';
-const getEdgeOpacity = (color) => color === 'w' ? 0.6 : 0.9;
+// 테두리 라인 색상 - 은은한 골드톤 외곽선
+const getEdgeColor = (color) => color === 'w' ? '#8b6f3a' : '#c9a876';
+const getEdgeOpacity = (color) => color === 'w' ? 0.4 : 0.55;
 
 // 실루엣 라인 컴포넌트 - 세련된 외곽선
 const OutlineEdge = ({ geometry, position, rotation, color, opacity = 0.5 }) => (
@@ -232,7 +232,7 @@ const Bishop = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const slitColor = color === 'w' ? '#8b6f3a' : '#ffffff';
+  const slitColor = color === 'w' ? '#7a5a2a' : '#d4b890';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -289,7 +289,7 @@ const Knight = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const eyeColor = color === 'w' ? '#1a1a1a' : '#ffffff';
+  const eyeColor = color === 'w' ? '#2a1f15' : '#e8d4b0';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -711,7 +711,7 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       width: '100%',
       height: '100%',
       minHeight: '500px',
-      background: 'radial-gradient(ellipse at center, #1a2035 0%, #050810 70%, #000000 100%)'
+      background: 'radial-gradient(ellipse 70% 60% at 50% 45%, #4a3828 0%, #2d2018 35%, #1a1410 70%, #0f0b08 100%)'
     }}>
       <Canvas
         shadows
@@ -721,14 +721,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       >
         <CameraController myColor={myColor} />
 
-        {/* 환경 조명 */}
-        <ambientLight intensity={0.55} color="#d8e4ff" />
+        {/* 환경 조명 - 따뜻한 앰버톤 */}
+        <ambientLight intensity={0.5} color="#f4e3c4" />
 
-        {/* 메인 키 라이트 - 따뜻한 흰빛 */}
+        {/* 메인 키 라이트 - 황금빛 스포트라이트 */}
         <directionalLight
           position={[8, 15, 8]}
-          intensity={1.8}
-          color="#fff5e0"
+          intensity={1.9}
+          color="#fff1d6"
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
@@ -740,22 +740,21 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           shadow-bias={-0.0001}
         />
 
-        {/* 필 라이트 - 반대편 부드러운 푸른빛 */}
-        <directionalLight position={[-8, 10, -5]} intensity={0.9} color="#a0c8ff" />
+        {/* 필 라이트 - 반대편 차가운 회색 (과하지 않은 대비) */}
+        <directionalLight position={[-8, 10, -5]} intensity={0.7} color="#c8d4e0" />
 
-        {/* 림 라이트 1 - 뒤쪽 청색 (검은 말 실루엣 강조) */}
-        <pointLight position={[0, 4, -8]} intensity={1.8} color="#4a8fff" distance={22} decay={1.5} />
+        {/* 림 라이트 - 뒤쪽 따뜻한 호박빛 (검은 말 실루엣 강조) */}
+        <pointLight position={[0, 5, -9]} intensity={1.6} color="#d4935a" distance={22} decay={1.6} />
 
-        {/* 림 라이트 2 - 옆쪽 보라빛 */}
-        <pointLight position={[10, 5, 0]} intensity={1.2} color="#b580ff" distance={20} decay={1.5} />
+        {/* 사이드 림 - 부드러운 앰버 (양쪽) */}
+        <pointLight position={[10, 5, 3]} intensity={0.9} color="#e8b478" distance={20} decay={1.8} />
+        <pointLight position={[-10, 5, 3]} intensity={0.9} color="#b8a890" distance={20} decay={1.8} />
 
-        {/* 림 라이트 3 - 반대쪽 청록빛 */}
-        <pointLight position={[-10, 5, 0]} intensity={1.2} color="#40e0ff" distance={20} decay={1.5} />
+        {/* 위에서 비추는 메인 스포트 하이라이트 */}
+        <pointLight position={[0, 11, 2]} intensity={1.1} color="#fff5dc" distance={20} decay={2} />
 
-        {/* 위에서 비추는 하이라이트 */}
-        <pointLight position={[0, 12, 0]} intensity={1.0} color="#ffffff" distance={25} decay={2} />
-
-        <hemisphereLight args={['#e0ecff', '#1a1f3a', 0.6]} />
+        {/* 반구 조명 - 위 크림, 아래 다크브라운 */}
+        <hemisphereLight args={['#f5e6c8', '#2a1f15', 0.55]} />
 
         {/* 체스판 */}
         <ChessBoard3D
@@ -767,14 +766,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           isInCheck={isInCheck}
         />
 
-        {/* 배경 바닥 - 거의 검은색에 가까운 어두운 블루 */}
+        {/* 배경 바닥 - 짙은 코냑 브라운 대리석 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
           <planeGeometry args={[80, 80]} />
-          <meshStandardMaterial color="#05070f" roughness={0.9} metalness={0.1} />
+          <meshStandardMaterial color="#1f1610" roughness={0.85} metalness={0.15} />
         </mesh>
 
-        {/* 안개 - 더 멀리 */}
-        <fog attach="fog" args={['#05070f', 25, 55]} />
+        {/* 안개 - 따뜻한 다크 브라운으로 자연스럽게 페이드 */}
+        <fog attach="fog" args={['#1a1410', 22, 50]} />
       </Canvas>
     </div>
   );
