@@ -5,32 +5,32 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
-// 공통 재질 설정 - 순백 상아 vs 에스프레소 월넛 (대비 강화)
+// 공통 재질 설정 - 매트한 상아 vs 에스프레소 월넛
 const getMaterial = (color, isSelected, isCheck) => {
   if (color === 'w') {
-    // 흰 말: 거의 순백(연한 웜 캐스트) - 크림 배경에서 확실히 튀게
+    // 흰 말: 매트 상아 - roughness 올려 자체 그림자로 형태 구분
     return {
-      color: '#fefcf4',
-      metalness: 0.1,
-      roughness: 0.38,
+      color: '#f5e8c8',
+      metalness: 0.05,
+      roughness: 0.65,
       emissive: isSelected ? '#c98a4a' : isCheck ? '#c44d3e' : '#000000',
       emissiveIntensity: isSelected ? 0.5 : isCheck ? 0.7 : 0
     };
   } else {
-    // 검은 말: 에스프레소 월넛 - 한층 더 진하게, 하지만 순흑단은 아님
+    // 검은 말: 에스프레소 월넛
     return {
       color: '#3d2514',
       metalness: 0.22,
-      roughness: 0.4,
+      roughness: 0.45,
       emissive: isSelected ? '#ffb870' : isCheck ? '#ff7a5a' : '#1a0d04',
       emissiveIntensity: isSelected ? 0.55 : isCheck ? 0.75 : 0.12
     };
   }
 };
 
-// 외곽선 - 은은하게
-const getEdgeColor = (color) => color === 'w' ? '#8b6a2e' : '#1a0d04';
-const getEdgeOpacity = (color) => color === 'w' ? 0.35 : 0.55;
+// 외곽선 - 흰 말은 진한 갈색 선명하게(디테일 구분), 검은 말은 은은하게
+const getEdgeColor = (color) => color === 'w' ? '#5a3820' : '#1a0d04';
+const getEdgeOpacity = (color) => color === 'w' ? 0.85 : 0.55;
 
 // 실루엣 라인 컴포넌트 - 세련된 외곽선
 const OutlineEdge = ({ geometry, position, rotation, color, opacity = 0.5 }) => (
@@ -721,13 +721,13 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       >
         <CameraController myColor={myColor} />
 
-        {/* 환경 조명 - 밝게 올려서 섀도우 영역도 디테일 보이게 */}
-        <ambientLight intensity={0.95} color="#fbf2de" />
+        {/* 환경 조명 - 기본만, 입체감 살리기 위해 낮춤 */}
+        <ambientLight intensity={0.5} color="#fbf2de" />
 
-        {/* 메인 키 라이트 - 따뜻한 태양광 */}
+        {/* 메인 키 라이트 - 강한 방향광으로 자체 그림자 생성 */}
         <directionalLight
           position={[8, 15, 8]}
-          intensity={1.3}
+          intensity={1.7}
           color="#fff5e0"
           castShadow
           shadow-mapSize-width={2048}
@@ -740,20 +740,17 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           shadow-bias={-0.0001}
         />
 
-        {/* 필 라이트 - 반대편 부드러운 크림 (검은 말 그림자 영역 밝히기) */}
-        <directionalLight position={[-8, 10, -5]} intensity={1.1} color="#f4e8d0" />
+        {/* 필 라이트 - 검은 말 영역 최소 밝히기, 약하게 */}
+        <directionalLight position={[-8, 10, -5]} intensity={0.55} color="#f0e4cc" />
 
-        {/* 정면 필 라이트 - 카메라 쪽에서 비춰 검은 말 얼굴/왕관 디테일 부각 */}
-        <directionalLight position={[0, 6, 12]} intensity={0.9} color="#fff2de" />
-
-        {/* 바운스 라이트 - 바닥에서 올라오는 반사광 (기물 하단 밝히기) */}
-        <pointLight position={[0, 1, 0]} intensity={0.7} color="#e8d5b0" distance={14} decay={2} />
+        {/* 정면 필 라이트 - 약하게 */}
+        <directionalLight position={[0, 5, 12]} intensity={0.4} color="#fff2de" />
 
         {/* 소프트 탑 라이트 */}
-        <pointLight position={[0, 12, 2]} intensity={0.6} color="#fff8e8" distance={22} decay={2} />
+        <pointLight position={[0, 12, 2]} intensity={0.4} color="#fff8e8" distance={22} decay={2} />
 
         {/* 반구 조명 - 위 화이트 크림, 아래 웜 베이지 */}
-        <hemisphereLight args={['#fff6e2', '#b09880', 1.0]} />
+        <hemisphereLight args={['#fff6e2', '#a08870', 0.6]} />
 
         {/* 체스판 */}
         <ChessBoard3D
