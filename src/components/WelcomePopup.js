@@ -26,14 +26,56 @@ function shouldShowPopup() {
   }
 }
 
+// 다른 고z-index 모달(출석보상·경제이벤트·법안·닉네임 설정 등) 여부 감지
+function hasOtherFullscreenModal() {
+  try {
+    const all = document.querySelectorAll('[style*="position: fixed"], .fixed');
+    for (const el of all) {
+      if (el.dataset?.welcomePopup === "true") continue;
+      const cs = window.getComputedStyle(el);
+      if (cs.position !== "fixed") continue;
+      if (cs.display === "none" || cs.visibility === "hidden") continue;
+      const bg = cs.backgroundColor || "";
+      const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      if (!m) continue;
+      const alpha = m[4] !== undefined ? parseFloat(m[4]) : 1;
+      if (alpha < 0.3) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width >= window.innerWidth * 0.9 && rect.height >= window.innerHeight * 0.9) {
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
 export default function WelcomePopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (shouldShowPopup()) {
-      const timer = setTimeout(() => setIsVisible(true), 800);
-      return () => clearTimeout(timer);
-    }
+    if (!shouldShowPopup()) return;
+    let cancelled = false;
+    let intervalId = null;
+    const initialTimer = setTimeout(() => {
+      if (cancelled) return;
+      if (!hasOtherFullscreenModal()) {
+        setIsVisible(true);
+        return;
+      }
+      // 다른 모달이 열려 있으면 닫힐 때까지 대기
+      intervalId = setInterval(() => {
+        if (cancelled) return;
+        if (!hasOtherFullscreenModal()) {
+          clearInterval(intervalId);
+          setIsVisible(true);
+        }
+      }, 500);
+    }, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(initialTimer);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   if (!isVisible) return null;
@@ -55,6 +97,7 @@ export default function WelcomePopup() {
 
   return (
     <div
+      data-welcome-popup="true"
       style={{
         position: "fixed",
         inset: 0,
