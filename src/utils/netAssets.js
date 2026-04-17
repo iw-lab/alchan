@@ -120,7 +120,8 @@ function computeNetAssets({
     return sum;
   }, 0);
   const loanBalance = loans.reduce(
-    (sum, l) => sum + (l.remainingPrincipal || 0),
+    (sum, l) =>
+      sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
     0,
   );
   return (

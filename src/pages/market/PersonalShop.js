@@ -25,6 +25,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 
 // 부가세율 (10%)
 const VAT_RATE = 0.1;
@@ -901,6 +905,19 @@ const PersonalShop = () => {
   const handlePurchase = async (quantity) => {
     if (!currentUser || !purchaseProduct || !purchaseShop) {
       throw new Error("구매 정보가 올바르지 않습니다.");
+    }
+
+    // 순자산(자산-대출미상환금) 마이너스면 구매 금지
+    if (
+      await isNetAssetsNegative({
+        id: currentUser.uid,
+        cash: userProfile?.cash,
+        coupons: userProfile?.coupons,
+        name: userProfile?.name,
+        classCode: userProfile?.classCode,
+      })
+    ) {
+      throw new Error(NEGATIVE_ASSETS_MESSAGE);
     }
 
     const totalAmount = purchaseProduct.totalPrice * quantity;

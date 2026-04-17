@@ -29,6 +29,10 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import "./Auction.css";
 
 import { logger } from "../../utils/logger";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 export default function Auction() {
   // --- Context Data ---
   const authContext = useAuth();
@@ -439,6 +443,11 @@ export default function Auction() {
     }
     if (auctionFromState.seller === currentUserId) {
       showNotification("자신의 경매에는 입찰할 수 없습니다.", "error");
+      return;
+    }
+    // 순자산(자산-대출미상환금) 마이너스면 입찰 금지
+    if (await isNetAssetsNegative(userDoc)) {
+      showNotification(NEGATIVE_ASSETS_MESSAGE, "error");
       return;
     }
     if (

@@ -33,6 +33,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatKoreanNumber } from "../../utils/numberFormatter";
+import {
+  isNetAssetsNegative,
+  NEGATIVE_ASSETS_MESSAGE,
+} from "../../utils/netAssets";
 import { logger } from "../../utils/logger";
 
 export default function GroupPurchase() {
@@ -171,6 +175,12 @@ export default function GroupPurchase() {
 
     if ((userDoc?.cash || 0) < actualAmount) {
       alert("잔액이 부족합니다.");
+      return;
+    }
+
+    // 순자산(자산-대출미상환금) 마이너스면 참여 금지
+    if (await isNetAssetsNegative(userDoc)) {
+      alert(NEGATIVE_ASSETS_MESSAGE);
       return;
     }
 
