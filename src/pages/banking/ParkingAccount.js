@@ -450,24 +450,23 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
  );
 
  return (
- <div className="p-5 border-2 border-slate-200 rounded-xl mb-3 flex justify-between items-center bg-slate-50 shadow-sm hover:shadow-md transition-all duration-200">
- <div>
- <div className="font-bold text-lg text-slate-700 mb-2">
+ <div className="px-3 py-2.5 border border-slate-200 rounded-lg mb-2 flex justify-between items-center bg-slate-50 hover:bg-white hover:shadow-sm transition-all duration-200 gap-3">
+ <div className="min-w-0 flex-1">
+ <div className="font-bold text-sm text-slate-700 leading-tight">
  {product.name}
  </div>
- <div className="text-[15px] text-slate-600 mb-1.5">
+ <div className="text-xs text-slate-600 mt-0.5">
  <strong className="text-indigo-600">일 {product.dailyRate}%</strong>{" "}
- (기간: {product.termInDays}일)
+ · {product.termInDays}일
  </div>
- <div className="text-sm text-emerald-600 font-semibold">
- <TrendingUp size={14} className="inline mr-1" />
- 10만{getCurrencyUnit()} 가입 시 예상 이자: +
- {formatCurrencyWithUnit(projectedInterest)}
+ <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+ <TrendingUp size={11} className="inline mr-0.5" />
+ 10만 가입 시 +{formatCurrencyWithUnit(projectedInterest)}
  </div>
  </div>
  <button
  onClick={onSubscribe}
- className={cls.button(false) + " px-6 py-3 text-base"}
+ className={cls.button(false) + " px-4 py-2 text-sm flex-shrink-0"}
  >
  가입
  </button>
@@ -487,13 +486,29 @@ const ProductSection = ({
  sectionStyle = {},
 }) => {
  return (
- <div className={cls.card} style={sectionStyle}>
+ <div
+ className={cls.card}
+ style={{
+ ...sectionStyle,
+ display: "flex",
+ flexDirection: "column",
+ maxHeight: "calc(100vh - 320px)",
+ minHeight: 360,
+ }}
+ >
  <div className={cls.cardHeader}>
  {icon}
  <h2 className={cls.cardTitle}>{title}</h2>
  </div>
- <div>
- <h3 className="text-base font-bold text-slate-700 mb-3 pb-2 border-b border-slate-200">
+ <div
+ style={{
+ flex: 1,
+ minHeight: 0,
+ overflowY: "auto",
+ paddingRight: 4,
+ }}
+ >
+ <h3 className="text-sm font-bold text-slate-700 mb-2 pb-1.5 border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur-sm z-[1]">
  가입 가능한 상품
  </h3>
  {availableProducts.length > 0 ? (
@@ -507,7 +522,7 @@ const ProductSection = ({
  ) : (
  <p className={cls.noProduct}>가입 가능한 상품이 없습니다.</p>
  )}
- <h3 className="text-base font-bold text-slate-700 mt-6 mb-3 pb-2 border-b border-slate-200">
+ <h3 className="text-sm font-bold text-slate-700 mt-4 mb-2 pb-1.5 border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur-sm z-[1]">
  가입한 상품
  </h3>
  {subscribedProducts.length > 0 ? (
