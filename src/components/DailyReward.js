@@ -197,7 +197,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
   // 팝업 모드 (PC 자동 팝업)
   if (showPopup && !claimed) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/30" onClick={() => setShowPopup(false)}>
         <div className="rounded-3xl p-8 max-w-md w-[90%] relative animate-slide-up" onClick={(e) => e.stopPropagation()}
           style={{
             background: isBigReward

@@ -902,7 +902,7 @@ export default function AlchanLayout() {
         {/* 🎁 출석 보상 팝업 모달 */}
         {showDailyRewardPopup && userDoc?.uid && (
           <div
-            className="fixed inset-0 flex items-center justify-center p-5 bg-black/70 backdrop-blur-sm z-[9999] animate-fadeIn"
+            className="fixed inset-0 flex items-center justify-center p-5 bg-slate-900/30 z-[9999] animate-fadeIn"
             onClick={() => setShowDailyRewardPopup(false)}
           >
             <div
