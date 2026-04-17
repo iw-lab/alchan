@@ -4,7 +4,30 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useActiveEconomicEvent } from "../hooks/useActiveEconomicEvent";
-import { X, Zap } from "lucide-react";
+import {
+  X,
+  Zap,
+  Gift,
+  Home,
+  PiggyBank,
+  Scale,
+  ShoppingCart,
+  TrendingUp,
+  Store,
+  Ticket,
+} from "lucide-react";
+
+const EVENT_ICONS = {
+  REAL_ESTATE_PRICE_CHANGE: Home,
+  TAX_REFUND: PiggyBank,
+  TAX_EXTRA: Scale,
+  CASH_BONUS: Gift,
+  CASH_PENALTY: Scale,
+  STORE_PRICE_CHANGE: ShoppingCart,
+  STOCK_TAX_CHANGE: TrendingUp,
+  MARKET_FEE_CHANGE: Store,
+  LOTTERY: Ticket,
+};
 
 export default function EconomicEventBanner() {
   const { userDoc } = useAuth();
@@ -60,7 +83,7 @@ export default function EconomicEventBanner() {
     }
     if (type === "LOTTERY") {
       if (result.winnerNames?.length > 0) {
-        return `🎉 당첨자: ${result.winnerNames.join(", ")} (${result.prizeAmount?.toLocaleString() || 0}원)`;
+        return `당첨자: ${result.winnerNames.join(", ")} (${result.prizeAmount?.toLocaleString() || 0}원)`;
       }
       return "추첨 완료";
     }
@@ -109,19 +132,19 @@ export default function EconomicEventBanner() {
 
       {/* 아이콘 */}
       <div
-        className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isPositive ? "bg-emerald-500/20 shadow-emerald-500/10 shadow-lg" : "bg-red-500/20 shadow-red-500/10 shadow-lg"}`}
+        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isPositive ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-red-500/20 text-red-700 dark:text-red-300"}`}
       >
-        {event.emoji || "⚡"}
+        {(() => {
+          const IconComp = EVENT_ICONS[event.type] || Zap;
+          return <IconComp className="w-5 h-5" strokeWidth={2.2} />;
+        })()}
       </div>
 
       {/* 내용 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <Zap
-            className={`w-3.5 h-3.5 ${isPositive ? "text-emerald-400" : "text-red-400"}`}
-          />
           <span
-            className={`text-xs font-bold uppercase tracking-wide ${isPositive ? "text-emerald-400" : "text-red-400"}`}
+            className={`text-xs font-bold uppercase tracking-wide ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
           >
             경제 이벤트
           </span>

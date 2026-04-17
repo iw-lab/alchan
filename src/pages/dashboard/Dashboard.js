@@ -2012,7 +2012,7 @@ function Dashboard({ adminTabMode }) {
  size="sm"
  className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
  >
- ⚙️ 관리자 기능
+ 관리자 기능
  </ActionButton>
  <ActionButton
  variant="success"

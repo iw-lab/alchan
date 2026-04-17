@@ -1,6 +1,7 @@
 // src/TaskItem.js
 import React, { useState, useEffect, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { Clock } from "lucide-react";
 import { generateJobTaskReward } from "../utils/jobTaskRewards";
 
 import { logger } from "../utils/logger";
@@ -277,8 +278,12 @@ const TaskItem = memo(function TaskItem({
             </span>
           )}
           {/* 🔥 모든 할일 승인필요 뱃지 */}
-          <span className="rounded-lg font-medium whitespace-nowrap" style={approvalBadgeStyle}>
-            ⏳ 승인필요
+          <span
+            className="rounded-lg font-medium whitespace-nowrap inline-flex items-center gap-1"
+            style={approvalBadgeStyle}
+          >
+            <Clock size={12} strokeWidth={2.3} />
+            승인필요
           </span>
 
           {isAdmin && (
