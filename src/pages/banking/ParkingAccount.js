@@ -1335,6 +1335,16 @@ const ParkingAccount = ({
 
  // 🔥 대출 한도: 보유 현금의 10배까지만 가능
  if (type === "loans") {
+ // 🔥 기존 미상환 대출이 있으면 추가 대출 불가
+ const hasActiveLoan = (userLoans || []).some(
+ (l) => !l.isOptimistic && Number(l.balance) > 0,
+ );
+ if (hasActiveLoan) {
+ return displayMessage(
+ "이미 미상환 대출이 있습니다. 기존 대출을 먼저 갚아주세요.",
+ "error",
+ );
+ }
  if (await isNetAssetsNegative(userDoc)) {
  return displayMessage(NEGATIVE_ASSETS_MESSAGE, "error");
  }
@@ -2298,7 +2308,18 @@ const ParkingAccount = ({
  sectionStyle={{ background: 'linear-gradient(to bottom right, #fee2e2, #ffe4e6)', border: '1px solid #fca5a5', boxShadow: '0 4px 16px rgba(239,68,68,0.12)' }}
  subscribedProducts={userLoans}
  availableProducts={loanProducts}
- onSubscribe={(p) => handleOpenModal(p, "loans")}
+ onSubscribe={(p) => {
+ const hasActiveLoan = (userLoans || []).some(
+ (l) => !l.isOptimistic && Number(l.balance) > 0,
+ );
+ if (hasActiveLoan) {
+ return displayMessage(
+ "이미 미상환 대출이 있습니다. 기존 대출을 먼저 갚아주세요.",
+ "error",
+ );
+ }
+ handleOpenModal(p, "loans");
+ }}
  onCancel={handleCancelEarly}
  onMaturity={handleMaturity}
  onLoanRepay={handleOpenLoanRepayModal}
