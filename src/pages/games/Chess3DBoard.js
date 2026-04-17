@@ -5,32 +5,32 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
-// 공통 재질 설정 - 상아/월넛 원목 질감
+// 공통 재질 설정 - 순백 상아 vs 에스프레소 월넛 (대비 강화)
 const getMaterial = (color, isSelected, isCheck) => {
   if (color === 'w') {
-    // 흰 말: 상아색 - 밝은 배경에서도 또렷하게
+    // 흰 말: 거의 순백(연한 웜 캐스트) - 크림 배경에서 확실히 튀게
     return {
-      color: '#fbf5e6',
-      metalness: 0.12,
-      roughness: 0.42,
+      color: '#fefcf4',
+      metalness: 0.1,
+      roughness: 0.38,
       emissive: isSelected ? '#c98a4a' : isCheck ? '#c44d3e' : '#000000',
       emissiveIntensity: isSelected ? 0.5 : isCheck ? 0.7 : 0
     };
   } else {
-    // 검은 말: 다크 월넛 브라운 - 실루엣은 검지만 디테일은 살아있게
+    // 검은 말: 에스프레소 월넛 - 한층 더 진하게, 하지만 순흑단은 아님
     return {
-      color: '#5a3e24',
-      metalness: 0.2,
-      roughness: 0.38,
-      emissive: isSelected ? '#ffb870' : isCheck ? '#ff7a5a' : '#2a1808',
-      emissiveIntensity: isSelected ? 0.55 : isCheck ? 0.75 : 0.22
+      color: '#3d2514',
+      metalness: 0.22,
+      roughness: 0.4,
+      emissive: isSelected ? '#ffb870' : isCheck ? '#ff7a5a' : '#1a0d04',
+      emissiveIntensity: isSelected ? 0.55 : isCheck ? 0.75 : 0.12
     };
   }
 };
 
 // 외곽선 - 은은하게
-const getEdgeColor = (color) => color === 'w' ? '#7a5a2a' : '#2a1a0a';
-const getEdgeOpacity = (color) => color === 'w' ? 0.35 : 0.45;
+const getEdgeColor = (color) => color === 'w' ? '#8b6a2e' : '#1a0d04';
+const getEdgeOpacity = (color) => color === 'w' ? 0.35 : 0.55;
 
 // 실루엣 라인 컴포넌트 - 세련된 외곽선
 const OutlineEdge = ({ geometry, position, rotation, color, opacity = 0.5 }) => (
@@ -455,7 +455,7 @@ const ChessPiece = ({ piece, position, isSelected, isCheck, onClick }) => {
 const BoardSquare = ({ position, isLight, isSelected, isPossibleMove, onClick }) => {
   const [hovered, setHovered] = useState(false);
 
-  const baseColor = isLight ? '#F0D9B5' : '#B58863';
+  const baseColor = isLight ? '#ead9b8' : '#9a6b3f';
   let finalColor = baseColor;
 
   if (isSelected) {
