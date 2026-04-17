@@ -35,6 +35,7 @@ import {
 } from "../../utils/firestoreHelpers";
 
 import { logger } from "../../utils/logger";
+import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 export default function CouponGoalPage() {
   const {
     user,
@@ -461,6 +462,89 @@ export default function CouponGoalPage() {
     }
   };
 
+  const [isSettingNewGoal, setIsSettingNewGoal] = useState(false);
+  const setNewGoal = async () => {
+    if (
+      !userDoc?.isAdmin &&
+      !userDoc?.isSuperAdmin &&
+      !userDoc?.isTeacher
+    ) {
+      alert("교사/관리자만 새 목표를 설정할 수 있습니다.");
+      return;
+    }
+    if (!currentUserClassCode || !currentGoalId) {
+      alert("학급 코드나 목표 정보가 없어 설정할 수 없습니다.");
+      return;
+    }
+    const input = window.prompt(
+      "새 쿠폰 목표 수량을 입력하세요 (기존 기여·진행률은 0으로 초기화됩니다)",
+      String(Math.max(classCouponGoal * 2, 100)),
+    );
+    if (input === null) return;
+    const newTarget = parseInt(input, 10);
+    if (!Number.isFinite(newTarget) || newTarget <= 0) {
+      alert("1 이상의 숫자를 입력해주세요.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `새 목표를 ${newTarget.toLocaleString()}쿠폰으로 설정하고 기존 진행률/기여 기록을 초기화합니다. 진행할까요?`,
+      )
+    ) {
+      return;
+    }
+
+    setIsSettingNewGoal(true);
+    try {
+      const batch = writeBatch(db);
+      const goalRef = doc(db, "goals", currentGoalId);
+
+      const usersQuery = query(
+        collection(db, "users"),
+        where("classCode", "==", currentUserClassCode),
+      );
+      const usersSnapshot = await getDocs(usersQuery);
+      usersSnapshot.forEach((userDocument) => {
+        const userRef = doc(db, "users", userDocument.id);
+        batch.update(userRef, {
+          myContribution: 0,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      batch.update(goalRef, {
+        targetAmount: newTarget,
+        progress: 0,
+        donations: [],
+        donationCount: 0,
+        updatedAt: serverTimestamp(),
+        resetAt: serverTimestamp(),
+        resetBy: userId,
+      });
+
+      await batch.commit();
+
+      localStorage.removeItem(
+        `goalDonationHistory_${currentUserClassCode}_goal`,
+      );
+      localStorage.removeItem(
+        `firestore_cache_goal_${currentGoalId}_${userId}`,
+      );
+
+      setClassCouponGoal(newTarget);
+      setMyContribution(0);
+      setGoalProgress(0);
+      setGoalDonations([]);
+      setGoalAchieved(false);
+
+      alert(`새 목표(${newTarget.toLocaleString()}쿠폰)가 설정되었습니다.`);
+    } catch (error) {
+      alert(`새 목표 설정 오류: ${error.message}`);
+    } finally {
+      setIsSettingNewGoal(false);
+    }
+  };
+
   const handleSellCoupon = async () => {
     const amount = parseInt(sellAmount, 10);
     if (isNaN(amount) || amount <= 0) {
@@ -580,8 +664,9 @@ export default function CouponGoalPage() {
   return (
     <div className="w-full min-h-full">
       <div className="w-full px-4 md:px-6 lg:px-8 py-6">
-        <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-3 mb-6">
-          🎯 쿠폰 목표
+        <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-3 mb-6 flex items-center gap-2">
+          <Target size={26} className="text-indigo-600" />
+          쿠폰 목표
         </h2>
 
         {currentUserClassCode && currentGoalId && (
@@ -603,6 +688,15 @@ export default function CouponGoalPage() {
                   : null
               }
               isResettingGoal={isResettingGoal}
+              setNewGoalButton={
+                goalAchieved &&
+                (userDoc?.isAdmin ||
+                  userDoc?.isSuperAdmin ||
+                  userDoc?.isTeacher)
+                  ? setNewGoal
+                  : null
+              }
+              isSettingNewGoal={isSettingNewGoal}
             />
 
             <div className="glass-card rounded-2xl mt-5 p-4">
@@ -612,9 +706,13 @@ export default function CouponGoalPage() {
                   color: "#475569",
                   marginBottom: "10px",
                   fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                🔧 데이터 관리 도구
+                <Wrench size={15} />
+                데이터 관리 도구
               </h4>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 <button
@@ -629,9 +727,13 @@ export default function CouponGoalPage() {
                     fontSize: "12px",
                     cursor: "pointer",
                     fontWeight: "500",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  📊 목표 데이터 새로고침
+                  <RefreshCw size={13} />
+                  목표 데이터 새로고침
                 </button>
                 <button
                   onClick={showDebugInfo}
@@ -644,9 +746,13 @@ export default function CouponGoalPage() {
                     fontSize: "12px",
                     cursor: "pointer",
                     fontWeight: "500",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  🔍 디버그 정보 확인
+                  <Search size={13} />
+                  디버그 정보 확인
                 </button>
                 <button
                   onClick={() => {
@@ -665,9 +771,13 @@ export default function CouponGoalPage() {
                     fontSize: "12px",
                     cursor: "pointer",
                     fontWeight: "500",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
-                  🗑️ 캐시 삭제 후 새로고침
+                  <Trash2 size={13} />
+                  캐시 삭제 후 새로고침
                 </button>
               </div>
               <p

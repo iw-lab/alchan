@@ -1,5 +1,15 @@
 // src/CouponGoal.js
 import React from "react";
+import {
+  Target,
+  Trophy,
+  Coins,
+  Banknote,
+  Gift,
+  ClipboardList,
+  Ticket,
+  Sparkles,
+} from "lucide-react";
 
 // 원형 프로그레스 컴포넌트 (축소 버전)
 const CircularProgress = ({
@@ -60,6 +70,8 @@ export default function CouponGoal({
   goalAchieved,
   resetGoalButton,
   isResettingGoal,
+  setNewGoalButton,
+  isSettingNewGoal,
 }) {
   const validClassCouponGoal =
     typeof classCouponGoal === "number" && classCouponGoal > 0
@@ -100,9 +112,21 @@ export default function CouponGoal({
       />
 
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2.5">
-          <span className="text-3xl">🎯</span>
+          <div
+            className="flex items-center justify-center rounded-xl"
+            style={{
+              width: 40,
+              height: 40,
+              background: goalAchieved
+                ? "linear-gradient(135deg, #d1fae5, #a7f3d0)"
+                : "linear-gradient(135deg, #e0e7ff, #c7d2fe)",
+              color: goalAchieved ? "#059669" : "#4f46e5",
+            }}
+          >
+            <Target size={22} strokeWidth={2.2} />
+          </div>
           <h3
             className="text-xl font-bold m-0"
             style={{ color: "#1e293b" }}
@@ -111,18 +135,39 @@ export default function CouponGoal({
           </h3>
         </div>
 
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           {goalAchieved && (
             <span
-              className="text-white px-3.5 py-1.5 rounded-2xl text-sm font-bold"
+              className="text-white px-3 py-1.5 rounded-2xl text-sm font-bold inline-flex items-center gap-1.5"
               style={{
                 background: "linear-gradient(135deg, #10b981, #059669)",
                 boxShadow: "0 2px 8px rgba(16, 185, 129, 0.4)",
                 animation: "couponPulse 2s infinite",
               }}
             >
-              🎉 목표 달성!
+              <Trophy size={14} strokeWidth={2.4} />
+              목표 달성
             </span>
+          )}
+          {setNewGoalButton && (
+            <button
+              onClick={setNewGoalButton}
+              disabled={isSettingNewGoal}
+              className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5"
+              style={{
+                background: isSettingNewGoal
+                  ? "#9ca3af"
+                  : "linear-gradient(135deg, #6366f1, #4f46e5)",
+                boxShadow: isSettingNewGoal
+                  ? "none"
+                  : "0 2px 8px rgba(99,102,241,0.35)",
+                cursor: isSettingNewGoal ? "not-allowed" : "pointer",
+                opacity: isSettingNewGoal ? 0.7 : 1,
+              }}
+            >
+              <Sparkles size={13} strokeWidth={2.2} />
+              {isSettingNewGoal ? "설정 중..." : "새 목표 설정"}
+            </button>
           )}
           {resetGoalButton && (
             <button
@@ -377,7 +422,7 @@ export default function CouponGoal({
               border: "2px solid rgba(251, 191, 36, 0.35)",
             }}
           >
-            <div className="text-xl mb-0.5">🎫</div>
+            <Ticket size={20} className="mb-0.5" style={{ color: "#d97706" }} strokeWidth={2.2} />
             <div
               className="font-extrabold"
               style={{ fontSize: 20, color: "#d97706" }}
@@ -411,7 +456,7 @@ export default function CouponGoal({
             boxShadow: "0 4px 12px rgba(99, 102, 241, 0.35)",
           }}
         >
-          <span className="text-2xl">💰</span>
+          <Coins size={24} className="text-white" strokeWidth={2.2} />
           <span className="text-white text-sm font-bold">쿠폰 응모</span>
         </button>
 
@@ -423,7 +468,7 @@ export default function CouponGoal({
             boxShadow: "0 4px 12px rgba(239, 68, 68, 0.35)",
           }}
         >
-          <span className="text-2xl">💵</span>
+          <Banknote size={24} className="text-white" strokeWidth={2.2} />
           <span className="text-white text-sm font-bold">쿠폰 판매</span>
         </button>
 
@@ -435,7 +480,7 @@ export default function CouponGoal({
             boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
           }}
         >
-          <span className="text-2xl">🎁</span>
+          <Gift size={24} className="text-white" strokeWidth={2.2} />
           <span className="text-white text-sm font-bold">쿠폰 선물</span>
         </button>
 
@@ -447,7 +492,7 @@ export default function CouponGoal({
             border: "1px solid #94a3b8",
           }}
         >
-          <span className="text-2xl">📋</span>
+          <ClipboardList size={24} style={{ color: "#475569" }} strokeWidth={2.2} />
           <span className="text-sm font-bold" style={{ color: "#475569" }}>
             응모 내역
           </span>

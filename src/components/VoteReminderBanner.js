@@ -12,6 +12,7 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Megaphone } from "lucide-react";
 
 const POLL_INTERVAL = 15 * 60 * 1000; // 15분
 
@@ -122,7 +123,21 @@ export default function VoteReminderBanner() {
         e.currentTarget.style.background = "#fffbeb";
       }}
     >
-      <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>📢</span>
+      <div
+        style={{
+          flexShrink: 0,
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          background: "linear-gradient(135deg, #fde68a, #fbbf24)",
+          color: "#b45309",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Megaphone size={20} strokeWidth={2.2} />
+      </div>
       <div
         style={{
           display: "flex",
