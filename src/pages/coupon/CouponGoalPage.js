@@ -45,7 +45,18 @@ export default function CouponGoalPage() {
     allClassMembers,
     loading: authLoading,
     optimisticUpdate,
+    isAdmin: isAdminFn,
+    isSuperAdmin: isSuperAdminFn,
   } = useAuth();
+
+  const canManageGoal =
+    !!(
+      userDoc?.isAdmin ||
+      userDoc?.isSuperAdmin ||
+      userDoc?.isTeacher ||
+      isAdminFn?.() ||
+      isSuperAdminFn?.()
+    );
 
   const userId = user?.uid;
   const currentUserClassCode = userDoc?.classCode;
@@ -395,8 +406,8 @@ export default function CouponGoalPage() {
   };
 
   const resetCouponGoal = async () => {
-    if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin) {
-      alert("관리자만 초기화 가능합니다.");
+    if (!canManageGoal) {
+      alert("교사/관리자만 초기화 가능합니다.");
       return;
     }
     if (!currentUserClassCode || !currentGoalId) {
@@ -464,11 +475,7 @@ export default function CouponGoalPage() {
 
   const [isSettingNewGoal, setIsSettingNewGoal] = useState(false);
   const setNewGoal = async () => {
-    if (
-      !userDoc?.isAdmin &&
-      !userDoc?.isSuperAdmin &&
-      !userDoc?.isTeacher
-    ) {
+    if (!canManageGoal) {
       alert("교사/관리자만 새 목표를 설정할 수 있습니다.");
       return;
     }
@@ -682,19 +689,10 @@ export default function CouponGoalPage() {
               setShowDonationHistoryModal={setShowDonationHistoryModal}
               setShowGiftCouponModal={setShowGiftCouponModal}
               goalAchieved={goalAchieved}
-              resetGoalButton={
-                userDoc?.isAdmin || userDoc?.isSuperAdmin
-                  ? resetCouponGoal
-                  : null
-              }
+              resetGoalButton={canManageGoal ? resetCouponGoal : null}
               isResettingGoal={isResettingGoal}
               setNewGoalButton={
-                goalAchieved &&
-                (userDoc?.isAdmin ||
-                  userDoc?.isSuperAdmin ||
-                  userDoc?.isTeacher)
-                  ? setNewGoal
-                  : null
+                canManageGoal && goalAchieved ? setNewGoal : null
               }
               isSettingNewGoal={isSettingNewGoal}
             />
