@@ -1548,13 +1548,12 @@ export default function Auction() {
           100% { opacity: 0; transform: translate(-50%, -5px); }
         }
 
-        /* --- No results - Dark Theme --- */
         .no-results-message {
           text-align: center;
           padding: 30px 20px;
           color: #64748b;
-          background: rgba(20, 20, 35, 0.6);
-          border: 1px dashed #e2e8f0;
+          background: #f9fafb;
+          border: 1px dashed #d1d5db;
           border-radius: 12px;
         }
 

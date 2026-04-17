@@ -1273,6 +1273,25 @@ const OmokGame = () => {
     }
   };
 
+  const handleAiRematch = async () => {
+    if (!game?.aiMode) return;
+    if (dailyPlayCount >= 5) {
+      setError("하루에 5번만 AI 대전을 할 수 있습니다.");
+      return;
+    }
+    setGameResult(null);
+    setShowWinAnimation(false);
+    setLastMove(null);
+    setSelectedCell(null);
+    setIsThinking(false);
+    setError("");
+    if (game.aiDifficulty) setAiDifficulty(game.aiDifficulty);
+    setGameMode("ai");
+    setGame(null);
+    setGameId(null);
+    await createGame();
+  };
+
   const resetGameForRematch = useCallback(async () => {
     if (!game || !game.winner || !gameId) return;
 
@@ -2313,9 +2332,7 @@ const OmokGame = () => {
                 {(game.aiMode || !iRequestedRematch) && (
                   <button
                     onClick={
-                      game.aiMode
-                        ? () => window.location.reload()
-                        : handleRematchRequest
+                      game.aiMode ? handleAiRematch : handleRematchRequest
                     }
                     style={{
                       background:
