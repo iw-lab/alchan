@@ -21,7 +21,7 @@ const getMaterial = (color, isSelected, isCheck) => {
     return {
       color: '#3d2514',
       metalness: 0.22,
-      roughness: 0.45,
+      roughness: 0.4,
       emissive: isSelected ? '#ffb870' : isCheck ? '#ff7a5a' : '#1a0d04',
       emissiveIntensity: isSelected ? 0.55 : isCheck ? 0.75 : 0.12
     };
@@ -721,13 +721,13 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       >
         <CameraController myColor={myColor} />
 
-        {/* 환경 조명 - 기본만, 입체감 살리기 위해 낮춤 */}
-        <ambientLight intensity={0.5} color="#fbf2de" />
+        {/* 환경 조명 - 검은 말 디테일 복원을 위해 다시 밝게 */}
+        <ambientLight intensity={0.95} color="#fbf2de" />
 
-        {/* 메인 키 라이트 - 강한 방향광으로 자체 그림자 생성 */}
+        {/* 메인 키 라이트 - 따뜻한 태양광 */}
         <directionalLight
           position={[8, 15, 8]}
-          intensity={1.7}
+          intensity={1.3}
           color="#fff5e0"
           castShadow
           shadow-mapSize-width={2048}
@@ -740,17 +740,20 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           shadow-bias={-0.0001}
         />
 
-        {/* 필 라이트 - 검은 말 영역 최소 밝히기, 약하게 */}
-        <directionalLight position={[-8, 10, -5]} intensity={0.55} color="#f0e4cc" />
+        {/* 필 라이트 - 반대편 부드러운 크림 (검은 말 그림자 영역 밝히기) */}
+        <directionalLight position={[-8, 10, -5]} intensity={1.1} color="#f4e8d0" />
 
-        {/* 정면 필 라이트 - 약하게 */}
-        <directionalLight position={[0, 5, 12]} intensity={0.4} color="#fff2de" />
+        {/* 정면 필 라이트 - 카메라 쪽에서 비춰 검은 말 얼굴/왕관 디테일 부각 */}
+        <directionalLight position={[0, 6, 12]} intensity={0.9} color="#fff2de" />
+
+        {/* 바운스 라이트 - 바닥에서 올라오는 반사광 (기물 하단 밝히기) */}
+        <pointLight position={[0, 1, 0]} intensity={0.7} color="#e8d5b0" distance={14} decay={2} />
 
         {/* 소프트 탑 라이트 */}
-        <pointLight position={[0, 12, 2]} intensity={0.4} color="#fff8e8" distance={22} decay={2} />
+        <pointLight position={[0, 12, 2]} intensity={0.6} color="#fff8e8" distance={22} decay={2} />
 
         {/* 반구 조명 - 위 화이트 크림, 아래 웜 베이지 */}
-        <hemisphereLight args={['#fff6e2', '#a08870', 0.6]} />
+        <hemisphereLight args={['#fff6e2', '#b09880', 1.0]} />
 
         {/* 체스판 */}
         <ChessBoard3D
