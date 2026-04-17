@@ -51,6 +51,9 @@ const NewBillPopup = lazyWithRetry(() => import("./NewBillPopup"));
 const VoteReminderBanner = lazyWithRetry(() =>
   import("./VoteReminderBanner"),
 );
+const FinancialRestrictionBanner = lazyWithRetry(() =>
+  import("./FinancialRestrictionBanner"),
+);
 const DailyRewardBanner = lazyWithRetry(() =>
   import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
@@ -474,6 +477,13 @@ export default function AlchanLayout() {
           {!isImmersiveMusicRoom && (
             <Suspense fallback={null}>
               <VoteReminderBanner />
+            </Suspense>
+          )}
+
+          {/* 💸 재정 제한 상태 안내 (순자산 마이너스 / 미상환 대출) */}
+          {!isImmersiveMusicRoom && (
+            <Suspense fallback={null}>
+              <FinancialRestrictionBanner />
             </Suspense>
           )}
 
