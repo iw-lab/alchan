@@ -1057,7 +1057,8 @@ const ChessGame = () => {
     const gameRef = doc(db, "chessGames", newGameId);
 
     const isAiMode = gameMode === "ai";
-    const playerColor = Math.random() > 0.5 ? "w" : "b";
+    // AI 대전에서는 사용자를 항상 white(아래쪽)로 고정 → 항상 사용자가 선공
+    const playerColor = isAiMode ? "w" : (Math.random() > 0.5 ? "w" : "b");
     const aiColor = playerColor === "w" ? "b" : "w";
 
     const initialGameData = {
