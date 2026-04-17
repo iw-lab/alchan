@@ -468,6 +468,10 @@
     overflow: hidden;
 }
 
+/* myColor === 'b' 일 때 보드 뒤집어 자기 말을 아래쪽에 배치 */
+.chess-board.flipped { transform: rotate(180deg); }
+.chess-board.flipped .piece { transform: rotate(180deg); }
+
 .square {
     display: flex;
     justify-content: center;

@@ -513,8 +513,8 @@ const MoveIndicator = ({ position, hasEnemy }) => {
 
 // 메인 3D 체스판
 const ChessBoard3D = ({ board, selectedPiece, possibleMoves, onSquareClick, myColor, isInCheck }) => {
-  const rotation = myColor === 'b' ? Math.PI : 0;
-
+  // 보드 자체는 고정 - 내 말 아래쪽 배치는 CameraController의 theta 회전으로 처리
+  // (보드와 카메라 둘 다 회전시키면 상쇄되어 myColor=b 플레이어가 자기 말을 위에서 보게 됨)
   const checkPosition = useMemo(() => {
     if (!board) return null;
     for (let r = 0; r < 8; r++) {
@@ -532,7 +532,7 @@ const ChessBoard3D = ({ board, selectedPiece, possibleMoves, onSquareClick, myCo
   }, [board, isInCheck]);
 
   return (
-    <group rotation={[0, rotation, 0]}>
+    <group>
       {/* 보드 베이스 (나무 프레임) */}
       <mesh position={[0, -0.1, 0]} receiveShadow castShadow>
         <boxGeometry args={[9.2, 0.2, 9.2]} />
