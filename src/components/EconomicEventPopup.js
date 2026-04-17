@@ -160,9 +160,8 @@ export default function EconomicEventPopup() {
       className="fixed inset-0 flex items-center justify-center p-4"
       style={{
         zIndex: 99999,
-        background: visible ? "rgba(0,0,0,0.8)" : "rgba(0,0,0,0)",
-        backdropFilter: visible ? "blur(6px)" : "none",
-        transition: "background 0.3s ease, backdrop-filter 0.3s ease",
+        background: visible ? "rgba(15,23,42,0.35)" : "rgba(15,23,42,0)",
+        transition: "background 0.3s ease",
         pointerEvents: visible ? "auto" : "none",
       }}
       onClick={(e) => {
