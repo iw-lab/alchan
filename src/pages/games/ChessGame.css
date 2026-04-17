@@ -421,18 +421,18 @@
     border-color: #818cf8;
 }
 
-/* 3D 보드 컨테이너 - 웜 다크 (코냑/마호가니 톤) */
+/* 3D 보드 컨테이너 - 밝은 크림/샌드 톤 */
 .chess-board-3d {
     width: 100%;
     height: 500px;
     border-radius: 16px;
     overflow: hidden;
     box-shadow:
-        0 12px 48px rgba(0, 0, 0, 0.55),
-        0 2px 12px rgba(180, 130, 70, 0.15),
-        inset 0 0 0 1px rgba(201, 168, 118, 0.22);
-    border: 2px solid #3a2a1c;
-    background: #1a1410;
+        0 10px 36px rgba(120, 90, 50, 0.25),
+        0 2px 10px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(255, 248, 230, 0.4);
+    border: 2px solid #b89e7a;
+    background: #e8d9bd;
 }
 
 .chess-board-3d > div {
@@ -446,9 +446,9 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #d4a574;
+    color: #8c6b3e;
     font-size: 1.2em;
-    background: radial-gradient(ellipse at center, #3a2a1c 0%, #1a1410 100%);
+    background: radial-gradient(ellipse at center, #f2e6d0 0%, #b89e7a 100%);
 }
 
 @media (min-width: 768px) { .chess-board-3d { height: 70vh; min-height: 500px; } }

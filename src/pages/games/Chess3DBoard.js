@@ -5,32 +5,32 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
-// 공통 재질 설정 - 대리석/상아 질감의 고급스러운 톤
+// 공통 재질 설정 - 상아/흑단 질감 (밝은 배경에선 emissive 최소화)
 const getMaterial = (color, isSelected, isCheck) => {
   if (color === 'w') {
-    // 흰 말: 따뜻한 상아색 + 부드러운 크림 glow
+    // 흰 말: 순백에 가까운 상아 - 밝은 배경에서도 또렷하게
     return {
-      color: '#f5ecd8',
+      color: '#fbf5e6',
       metalness: 0.15,
-      roughness: 0.45,
-      emissive: isSelected ? '#d4a574' : isCheck ? '#c44d3e' : '#f4e6c8',
-      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.22
+      roughness: 0.4,
+      emissive: isSelected ? '#c98a4a' : isCheck ? '#c44d3e' : '#000000',
+      emissiveIntensity: isSelected ? 0.5 : isCheck ? 0.7 : 0
     };
   } else {
-    // 검은 말: 흑단(에보니) 차콜 + 미세한 호박빛 glow
+    // 검은 말: 진한 흑단 - 밝은 배경에 강한 대비
     return {
-      color: '#3a2f2a',
-      metalness: 0.35,
-      roughness: 0.4,
-      emissive: isSelected ? '#d4a574' : isCheck ? '#c44d3e' : '#8a6a42',
-      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.38
+      color: '#2a1f18',
+      metalness: 0.3,
+      roughness: 0.45,
+      emissive: isSelected ? '#c98a4a' : isCheck ? '#c44d3e' : '#000000',
+      emissiveIntensity: isSelected ? 0.5 : isCheck ? 0.7 : 0
     };
   }
 };
 
-// 테두리 라인 색상 - 은은한 골드톤 외곽선
-const getEdgeColor = (color) => color === 'w' ? '#8b6f3a' : '#c9a876';
-const getEdgeOpacity = (color) => color === 'w' ? 0.4 : 0.55;
+// 외곽선 - 은은하게
+const getEdgeColor = (color) => color === 'w' ? '#6b4a1f' : '#1a1008';
+const getEdgeOpacity = (color) => color === 'w' ? 0.35 : 0.5;
 
 // 실루엣 라인 컴포넌트 - 세련된 외곽선
 const OutlineEdge = ({ geometry, position, rotation, color, opacity = 0.5 }) => (
@@ -232,7 +232,7 @@ const Bishop = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const slitColor = color === 'w' ? '#7a5a2a' : '#d4b890';
+  const slitColor = color === 'w' ? '#6b4a1f' : '#d4b890';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -289,7 +289,7 @@ const Knight = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const eyeColor = color === 'w' ? '#2a1f15' : '#e8d4b0';
+  const eyeColor = color === 'w' ? '#1a1008' : '#e8d4b0';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -711,7 +711,7 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       width: '100%',
       height: '100%',
       minHeight: '500px',
-      background: 'radial-gradient(ellipse 70% 60% at 50% 45%, #4a3828 0%, #2d2018 35%, #1a1410 70%, #0f0b08 100%)'
+      background: 'radial-gradient(ellipse 75% 65% at 50% 40%, #f2e6d0 0%, #d9c7a8 35%, #b89e7a 70%, #8c7352 100%)'
     }}>
       <Canvas
         shadows
@@ -721,14 +721,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       >
         <CameraController myColor={myColor} />
 
-        {/* 환경 조명 - 따뜻한 앰버톤 */}
-        <ambientLight intensity={0.5} color="#f4e3c4" />
+        {/* 환경 조명 - 부드러운 크림 */}
+        <ambientLight intensity={0.75} color="#fbf2de" />
 
-        {/* 메인 키 라이트 - 황금빛 스포트라이트 */}
+        {/* 메인 키 라이트 - 따뜻한 태양광 */}
         <directionalLight
           position={[8, 15, 8]}
-          intensity={1.9}
-          color="#fff1d6"
+          intensity={1.5}
+          color="#fff5e0"
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
@@ -740,21 +740,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           shadow-bias={-0.0001}
         />
 
-        {/* 필 라이트 - 반대편 차가운 회색 (과하지 않은 대비) */}
-        <directionalLight position={[-8, 10, -5]} intensity={0.7} color="#c8d4e0" />
+        {/* 필 라이트 - 반대편 부드러운 크림 */}
+        <directionalLight position={[-8, 10, -5]} intensity={0.8} color="#f0e6d0" />
 
-        {/* 림 라이트 - 뒤쪽 따뜻한 호박빛 (검은 말 실루엣 강조) */}
-        <pointLight position={[0, 5, -9]} intensity={1.6} color="#d4935a" distance={22} decay={1.6} />
+        {/* 소프트 탑 라이트 */}
+        <pointLight position={[0, 12, 2]} intensity={0.6} color="#fff8e8" distance={22} decay={2} />
 
-        {/* 사이드 림 - 부드러운 앰버 (양쪽) */}
-        <pointLight position={[10, 5, 3]} intensity={0.9} color="#e8b478" distance={20} decay={1.8} />
-        <pointLight position={[-10, 5, 3]} intensity={0.9} color="#b8a890" distance={20} decay={1.8} />
-
-        {/* 위에서 비추는 메인 스포트 하이라이트 */}
-        <pointLight position={[0, 11, 2]} intensity={1.1} color="#fff5dc" distance={20} decay={2} />
-
-        {/* 반구 조명 - 위 크림, 아래 다크브라운 */}
-        <hemisphereLight args={['#f5e6c8', '#2a1f15', 0.55]} />
+        {/* 반구 조명 - 위 화이트 크림, 아래 웜 베이지 */}
+        <hemisphereLight args={['#fff6e2', '#a89670', 0.85]} />
 
         {/* 체스판 */}
         <ChessBoard3D
@@ -766,14 +759,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           isInCheck={isInCheck}
         />
 
-        {/* 배경 바닥 - 짙은 코냑 브라운 대리석 */}
+        {/* 배경 바닥 - 크림 샌드스톤 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
           <planeGeometry args={[80, 80]} />
-          <meshStandardMaterial color="#1f1610" roughness={0.85} metalness={0.15} />
+          <meshStandardMaterial color="#c9b28a" roughness={0.9} metalness={0.05} />
         </mesh>
 
-        {/* 안개 - 따뜻한 다크 브라운으로 자연스럽게 페이드 */}
-        <fog attach="fog" args={['#1a1410', 22, 50]} />
+        {/* 안개 - 따뜻한 크림 베이지로 자연스럽게 페이드 */}
+        <fog attach="fog" args={['#d9c7a8', 22, 55]} />
       </Canvas>
     </div>
   );
