@@ -5,31 +5,32 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CylinderGeometry, BoxGeometry, SphereGeometry, ConeGeometry, PlaneGeometry, MathUtils } from 'three';
 
-// 공통 재질 설정
+// 공통 재질 설정 - 대비를 극대화해 어두운 배경에서도 잘 보이게
 const getMaterial = (color, isSelected, isCheck) => {
   if (color === 'w') {
+    // 흰 말: 순백색 + 은은한 크림빛 glow
     return {
-      color: '#faf8f0',
-      metalness: 0.05,
-      roughness: 0.3,
-      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#f5f5ee',
-      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.15
+      color: '#ffffff',
+      metalness: 0.2,
+      roughness: 0.35,
+      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#fffaf0',
+      emissiveIntensity: isSelected ? 0.7 : isCheck ? 0.9 : 0.35
     };
   } else {
-    // 검은 말: 더 밝은 회색톤 + 강한 emissive로 잘 보이게
+    // 검은 말: 진한 청흑색 + 푸른 glow로 어두운 배경에서 실루엣 부각
     return {
-      color: '#4a4a4a',
-      metalness: 0.4,
-      roughness: 0.25,
-      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#777777',
-      emissiveIntensity: isSelected ? 0.6 : isCheck ? 0.8 : 0.45
+      color: '#2a3042',
+      metalness: 0.6,
+      roughness: 0.3,
+      emissive: isSelected ? '#00ffcc' : isCheck ? '#ff3366' : '#4a6fb5',
+      emissiveIntensity: isSelected ? 0.7 : isCheck ? 0.9 : 0.55
     };
   }
 };
 
-// 테두리 라인 색상 - 검은 말은 밝게, 흰 말은 어둡게
-const getEdgeColor = (color) => color === 'w' ? '#999999' : '#dddddd';
-const getEdgeOpacity = (color) => color === 'w' ? 0.4 : 0.7;
+// 테두리 라인 색상 - 선명한 외곽선으로 실루엣 강조
+const getEdgeColor = (color) => color === 'w' ? '#5a4a2a' : '#a8c8ff';
+const getEdgeOpacity = (color) => color === 'w' ? 0.6 : 0.9;
 
 // 실루엣 라인 컴포넌트 - 세련된 외곽선
 const OutlineEdge = ({ geometry, position, rotation, color, opacity = 0.5 }) => (
@@ -231,7 +232,7 @@ const Bishop = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const slitColor = color === 'w' ? '#888888' : '#cccccc';
+  const slitColor = color === 'w' ? '#8b6f3a' : '#ffffff';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -288,7 +289,7 @@ const Knight = ({ color, isSelected, isCheck }) => {
   const mat = getMaterial(color, isSelected, isCheck);
   const edgeCol = getEdgeColor(color);
   const edgeOp = getEdgeOpacity(color);
-  const eyeColor = color === 'w' ? '#333333' : '#eeeeee';
+  const eyeColor = color === 'w' ? '#1a1a1a' : '#ffffff';
 
   return (
     <group scale={[0.9, 0.9, 0.9]}>
@@ -706,7 +707,12 @@ const CameraController = ({ myColor }) => {
 // 메인 Canvas 래퍼
 const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myColor, isInCheck }) => {
   return (
-    <div style={{ width: '100%', height: '600px', background: '#1a1a2e' }}>
+    <div style={{
+      width: '100%',
+      height: '100%',
+      minHeight: '500px',
+      background: 'radial-gradient(ellipse at center, #1a2035 0%, #050810 70%, #000000 100%)'
+    }}>
       <Canvas
         shadows
         dpr={[1, 2]}
@@ -715,13 +721,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
       >
         <CameraController myColor={myColor} />
 
-        {/* 환경 조명 - 밝게 */}
-        <ambientLight intensity={0.8} />
+        {/* 환경 조명 */}
+        <ambientLight intensity={0.55} color="#d8e4ff" />
 
-        {/* 메인 조명 */}
+        {/* 메인 키 라이트 - 따뜻한 흰빛 */}
         <directionalLight
           position={[8, 15, 8]}
-          intensity={1.5}
+          intensity={1.8}
+          color="#fff5e0"
           castShadow
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
@@ -733,10 +740,22 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           shadow-bias={-0.0001}
         />
 
-        {/* 보조 조명들 */}
-        <directionalLight position={[-5, 10, -5]} intensity={0.7} />
-        <pointLight position={[0, 8, 0]} intensity={0.7} color="#ffffff" />
-        <hemisphereLight args={['#ffffff', '#8b7355', 0.7]} />
+        {/* 필 라이트 - 반대편 부드러운 푸른빛 */}
+        <directionalLight position={[-8, 10, -5]} intensity={0.9} color="#a0c8ff" />
+
+        {/* 림 라이트 1 - 뒤쪽 청색 (검은 말 실루엣 강조) */}
+        <pointLight position={[0, 4, -8]} intensity={1.8} color="#4a8fff" distance={22} decay={1.5} />
+
+        {/* 림 라이트 2 - 옆쪽 보라빛 */}
+        <pointLight position={[10, 5, 0]} intensity={1.2} color="#b580ff" distance={20} decay={1.5} />
+
+        {/* 림 라이트 3 - 반대쪽 청록빛 */}
+        <pointLight position={[-10, 5, 0]} intensity={1.2} color="#40e0ff" distance={20} decay={1.5} />
+
+        {/* 위에서 비추는 하이라이트 */}
+        <pointLight position={[0, 12, 0]} intensity={1.0} color="#ffffff" distance={25} decay={2} />
+
+        <hemisphereLight args={['#e0ecff', '#1a1f3a', 0.6]} />
 
         {/* 체스판 */}
         <ChessBoard3D
@@ -748,14 +767,14 @@ const Chess3DCanvas = ({ board, selectedPiece, possibleMoves, onSquareClick, myC
           isInCheck={isInCheck}
         />
 
-        {/* 배경 바닥 */}
+        {/* 배경 바닥 - 거의 검은색에 가까운 어두운 블루 */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
-          <planeGeometry args={[60, 60]} />
-          <meshStandardMaterial color="#1a1a28" />
+          <planeGeometry args={[80, 80]} />
+          <meshStandardMaterial color="#05070f" roughness={0.9} metalness={0.1} />
         </mesh>
 
-        {/* 안개 */}
-        <fog attach="fog" args={['#1a1a28', 20, 45]} />
+        {/* 안개 - 더 멀리 */}
+        <fog attach="fog" args={['#05070f', 25, 55]} />
       </Canvas>
     </div>
   );
