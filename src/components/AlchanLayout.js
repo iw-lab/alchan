@@ -454,9 +454,9 @@ export default function AlchanLayout() {
           isCollapsed={isSidebarCollapsed}
         />
 
-        {/* 메인 콘텐츠 영역 - 스크롤 문제 수정 */}
+        {/* 메인 콘텐츠 영역 - 스크롤 문제 수정 + sticky footer 패턴 */}
         <main
-          className={`flex-1 min-w-0 md:min-h-screen relative ${
+          className={`flex-1 min-w-0 md:min-h-screen relative flex flex-col ${
             isImmersiveMusicRoom ? "overflow-hidden" : ""
           }`}
         >
@@ -488,8 +488,9 @@ export default function AlchanLayout() {
           )}
 
           {/* 콘텐츠 영역 - 🔥 Suspense로 lazy loading 지원 */}
+          {/* flex-1: main이 flex-col일 때 남은 수직 공간을 차지 → 푸터가 바닥에 고정 */}
           <div
-            className={`w-full ${isImmersiveMusicRoom ? "pb-0" : "pb-20 md:pb-4"}`}
+            className={`w-full flex-1 ${isImmersiveMusicRoom ? "pb-0" : "pb-20 md:pb-4"}`}
           >
             <Suspense fallback={<AlchanLoading message="페이지 로딩 중..." />}>
               <Routes>
