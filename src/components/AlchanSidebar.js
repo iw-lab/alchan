@@ -871,9 +871,9 @@ export default function AlchanSidebar({
               ? isOpen
                 ? "translate-x-0"
                 : "-translate-x-full"
-              : "relative translate-x-0"
+              : "sticky top-0 h-screen translate-x-0"
           }
-          lg:relative lg:translate-x-0 lg:w-72 flex flex-col shrink-0
+          lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
           background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(238,242,255,0.75) 50%, rgba(245,243,255,0.75) 100%)',
