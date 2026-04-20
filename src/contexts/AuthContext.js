@@ -119,6 +119,14 @@ export const AuthProvider = ({ children }) => {
     checkFirebaseInit();
   }, []);
 
+  // Firebase 초기화 완료 시 index.html splash 제거
+  // (Login.js/AlchanLayout의 자체 로딩 UI가 이어받아 깜빡임 없이 전환)
+  useEffect(() => {
+    if (firebaseReady && typeof window !== "undefined" && window.__hideSplash) {
+      window.__hideSplash();
+    }
+  }, [firebaseReady]);
+
   // 대폭 간소화된 학급 구성원만 계산하는 함수
   const calculateClassMembers = useCallback((classMembers, currentUserId) => {
     if (!classMembers || classMembers.length === 0) {

@@ -288,17 +288,22 @@
     <div id="modal-root"></div>
 
     <script>
-      // 스플래시 스크린 숨기기만 (자동 새로고침 제거)
+      // 스플래시 숨김: React가 Firebase 초기화 완료 후 window.__hideSplash() 호출
+      // window.load 기반 자동 숨김 제거 — 초기화 전에 splash가 사라지는 깜빡임 방지
+      window.__hideSplash = function() {
+        if (window.__splashHidden) return;
+        window.__splashHidden = true;
+        var splash = document.getElementById('splash-screen');
+        if (splash && splash.classList) {
+          splash.classList.add('hidden');
+          setTimeout(function() {
+            if (splash && splash.parentNode) splash.remove();
+          }, 300);
+        }
+      };
+      // 안전장치: React가 8초 안에 안 뜨면(치명적 오류) 강제로 splash 숨김
       window.addEventListener('load', function() {
-        setTimeout(function() {
-          var splash = document.getElementById('splash-screen');
-          if (splash && splash.classList) {
-            splash.classList.add('hidden');
-            setTimeout(function() {
-              if (splash && splash.parentNode) splash.remove();
-            }, 300);
-          }
-        }, 500);
+        setTimeout(function() { window.__hideSplash(); }, 8000);
       });
 
       // 전역 오류 처리

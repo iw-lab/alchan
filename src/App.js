@@ -8,7 +8,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 // 🔥 [최적화] ItemProvider는 AlchanLayout으로 이동 (로그인 후에만 마운트)
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { SkeletonPage } from "./components/ui/Skeleton";
 
 // 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
 const queryClient = new QueryClient({
@@ -197,7 +196,9 @@ function App() {
             <CurrencyProvider>
               {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
               <Router>
-                <Suspense fallback={<SkeletonPage />}>
+                {/* fallback=null: index.html splash(z-index:9999)가 덮고 있어 깜빡임 방지
+                    splash는 AuthContext에서 firebaseReady 후 window.__hideSplash()로 제거 */}
+                <Suspense fallback={null}>
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />

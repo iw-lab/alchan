@@ -55,3 +55,9 @@ security-report.md
 DEBUG_SCAN.md
 VERIFY_REPORT.md
 DEBUG_LOG.md
+
+# Playwright temporary profiles (진단용)
+.playwright-profile/
+.playwright-profile-chrome/
+check-scheduler.mjs
+check-*.png
