@@ -89,12 +89,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://firestore.googleapis.com" />
 
-    <!-- Jua Font for Korean - preload for splash screen -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Jua&display=block" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=block"></noscript>
+    <!-- Jua Font for Korean - swap로 변경: 스플래시 텍스트 즉시 표시 (폴백 폰트로) -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Jua&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap"></noscript>
 
-    <!-- Pretendard + Noto Sans KR - 모던 UI 폰트 -->
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    <!-- Pretendard + Noto Sans KR - 비차단 로드 (preload+onload)로 변경하여 첫 페인트 지연 제거 -->
+    <link rel="preload" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" /></noscript>
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap"></noscript>
 
@@ -152,17 +153,13 @@
       #splash-screen .spinner {
         display: none;
       }
-      /* Jua 폰트 로딩 전까지 텍스트 숨김 - 글씨체 바뀜 방지 */
-      @font-face {
-        font-family: 'Jua';
-        font-display: block;
-      }
+      /* Jua 폰트 로딩 전에도 시스템 폰트로 즉시 노출 (글씨체는 로드 후 스왑) */
       #splash-screen .title {
-        font-family: 'Jua', sans-serif;
+        font-family: 'Jua', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
         font-size: 42px;
         color: #312e81;
         letter-spacing: -0.5px;
-        font-weight: 400;
+        font-weight: 700;
       }
       #splash-screen .subtitle {
         margin-top: 8px;
@@ -170,6 +167,7 @@
         color: #6366f1;
         font-weight: 800;
         letter-spacing: 3px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       }
       #splash-screen .loading-dots {
         display: flex;
@@ -191,6 +189,7 @@
         font-size: 15px;
         color: #475569;
         font-weight: 600;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       }
       #splash-screen .version {
         position: absolute;
@@ -198,6 +197,7 @@
         font-size: 13px;
         color: #94a3b8;
         font-weight: 500;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       }
       @keyframes spin {
         to { transform: rotate(360deg); }
