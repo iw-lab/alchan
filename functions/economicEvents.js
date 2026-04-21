@@ -560,12 +560,16 @@ async function executeCashPenalty(classCode, params) {
 
 /**
  * 상점 물가 변경 이벤트 - 관리자 상점 아이템 가격 일괄 변경
- * 제외 품목: "자유 시간" 계열 (교육적 가치가 높아 변동 제외)
+ * 제외 조건:
+ *   1. excludeFromEconomicEvent === true (관리자가 명시적으로 체크한 아이템)
+ *   2. 이름에 "자유 시간" / "자유시간" 포함 (교사가 플래그 설정 전이라도 보호)
  */
 const STORE_PRICE_EVENT_EXCLUDED_KEYWORDS = ["자유 시간", "자유시간"];
 
 function isStorePriceEventExcluded(itemData) {
-  const name = (itemData?.name || "").toString();
+  if (!itemData) return false;
+  if (itemData.excludeFromEconomicEvent === true) return true;
+  const name = (itemData.name || "").toString();
   return STORE_PRICE_EVENT_EXCLUDED_KEYWORDS.some((kw) => name.includes(kw));
 }
 

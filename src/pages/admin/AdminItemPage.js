@@ -250,14 +250,16 @@ const AdminItemPage = ({
     icon: "✨",
     available: true,
     priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
+    excludeFromEconomicEvent: false, // 경제이벤트 가격 변동 제외 여부
   });
 
   useEffect(() => {
     if (editingItemFromStore) {
-      setItem({ 
+      setItem({
         ...editingItemFromStore,
         // [수정] 필드명을 priceIncreasePercentage로 변경하고, 없는 경우 기본값 설정
-        priceIncreasePercentage: editingItemFromStore.priceIncreasePercentage || "10"
+        priceIncreasePercentage: editingItemFromStore.priceIncreasePercentage || "10",
+        excludeFromEconomicEvent: editingItemFromStore.excludeFromEconomicEvent === true,
       });
       setActiveTab("editItem");
     } else {
@@ -270,6 +272,7 @@ const AdminItemPage = ({
         icon: "✨",
         available: true,
         priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
+        excludeFromEconomicEvent: false,
       });
     }
   }, [editingItemFromStore]);
@@ -313,6 +316,7 @@ const AdminItemPage = ({
         : parseInt(item.stock, 10),
       // [수정] 저장하는 데이터의 필드명도 priceIncreasePercentage로 변경하고, 숫자로 변환
       priceIncreasePercentage: parseFloat(item.priceIncreasePercentage) || 0,
+      excludeFromEconomicEvent: item.excludeFromEconomicEvent === true,
       classCode,
     };
 
@@ -340,6 +344,7 @@ const AdminItemPage = ({
           icon: "✨",
           available: true,
           priceIncreasePercentage: "10",
+          excludeFromEconomicEvent: false,
         });
         setActiveTab("addItem");
       }
@@ -361,6 +366,7 @@ const AdminItemPage = ({
         icon: "✨",
         available: true,
         priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
+        excludeFromEconomicEvent: false,
       });
     }
   };
@@ -572,6 +578,34 @@ const AdminItemPage = ({
                   <p style={styles.helpText}>
                     💡 재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
                     예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
+                  </p>
+                </div>
+
+                {/* 경제이벤트 가격 변동 제외 */}
+                <div style={styles.priceIncreaseSection}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      cursor: "pointer",
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      color: "#e8e8ff",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      name="excludeFromEconomicEvent"
+                      checked={!!item.excludeFromEconomicEvent}
+                      onChange={handleChange}
+                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    />
+                    💎 경제이벤트 가격 변동 제외
+                  </label>
+                  <p style={styles.helpText}>
+                    체크하면 "물가 폭등/안정" 같은 경제이벤트로 이 아이템의 가격이 바뀌지 않습니다.<br />
+                    예: 자유시간처럼 가치가 변하지 않아야 하는 아이템에 사용.
                   </p>
                 </div>
 
