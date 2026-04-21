@@ -576,36 +576,33 @@ const LearningBoard = () => {
 
   return (
     <div className="lb">
-      {/* Header */}
-      <div className="lb-header">
-        <h1 className="lb-title">학습 게시판</h1>
+      {/* Board Tabs + 관리자 토글 (기존의 중복 헤더 카드 제거, 탭 행에 통합) */}
+      <div className="lb-tabs-row">
+        <div className="lb-tabs">
+          {visibleBoards.map((board) => (
+            <button
+              key={board.id}
+              className={`lb-tab ${selectedBoard?.id === board.id && !showHiddenBoardsView ? "active" : ""}`}
+              onClick={() => { handleBoardSelect(board.id, false); setShowHiddenBoardsView(false); }}
+            >
+              {board.isAnonymous ? "🔒 " : ""}{board.name}
+            </button>
+          ))}
+          {currentUserIsAdmin && (
+            <button
+              className={`lb-tab lb-tab-manage ${showHiddenBoardsView ? "active" : ""}`}
+              onClick={() => {
+                setShowHiddenBoardsView((p) => !p);
+                if (!showHiddenBoardsView) { setSelectedBoard(null); setSelectedPost(null); setIsWriting(false); }
+              }}
+            >
+              숨김 관리 ({hiddenBoards.length})
+            </button>
+          )}
+        </div>
         {currentUserIsAdmin && (
           <button className="lb-admin-toggle" onClick={() => setShowAdminPanel((p) => !p)}>
             {showAdminPanel ? "관리자 닫기" : "관리자 열기"}
-          </button>
-        )}
-      </div>
-
-      {/* Board Tabs */}
-      <div className="lb-tabs">
-        {visibleBoards.map((board) => (
-          <button
-            key={board.id}
-            className={`lb-tab ${selectedBoard?.id === board.id && !showHiddenBoardsView ? "active" : ""}`}
-            onClick={() => { handleBoardSelect(board.id, false); setShowHiddenBoardsView(false); }}
-          >
-            {board.isAnonymous ? "🔒 " : ""}{board.name}
-          </button>
-        ))}
-        {currentUserIsAdmin && (
-          <button
-            className={`lb-tab lb-tab-manage ${showHiddenBoardsView ? "active" : ""}`}
-            onClick={() => {
-              setShowHiddenBoardsView((p) => !p);
-              if (!showHiddenBoardsView) { setSelectedBoard(null); setSelectedPost(null); setIsWriting(false); }
-            }}
-          >
-            숨김 관리 ({hiddenBoards.length})
           </button>
         )}
       </div>

@@ -869,11 +869,11 @@ export default function AlchanSidebar({
           ${
             isMobile
               ? isOpen
-                ? "translate-x-0"
-                : "-translate-x-full"
-              : "sticky top-0 h-screen translate-x-0"
+                ? "translate-x-0 h-screen overflow-y-auto"
+                : "-translate-x-full h-screen overflow-y-auto"
+              : "sticky top-0 min-h-screen translate-x-0"
           }
-          lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:w-72 flex flex-col shrink-0
+          lg:sticky lg:top-0 lg:min-h-screen lg:translate-x-0 lg:w-72 flex flex-col shrink-0
         `}
         style={{
           background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(238,242,255,0.75) 50%, rgba(245,243,255,0.75) 100%)',
@@ -910,8 +910,8 @@ export default function AlchanSidebar({
           )}
         </div>
 
-        {/* 네비게이션 메뉴 */}
-        <nav className="flex-1 overflow-y-auto py-3 px-4 space-y-1 scrollbar-hide">
+        {/* 네비게이션 메뉴 - PC는 자연 높이(스크롤 없음), 모바일만 overflow (aside에 적용됨) */}
+        <nav className="flex-1 py-3 px-4 space-y-1">
           {renderMenuSection("main")}
           {renderMenuSection("play")}
           {renderMenuSection("economy")}
