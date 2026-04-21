@@ -362,11 +362,11 @@ function MoneyTransfer() {
           </div>
         )}
 
-        {/* 금액 + 세금 한 줄 배치 */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch', flexWrap: 'wrap', marginBottom: '16px' }}>
+        {/* 금액 + 세금 한 줄 배치 — 외곽 카드 제거(카드 안에 카드 방지), 간격으로만 구분 */}
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px' }}>
           {/* 금액 설정 */}
-          <div style={{ flex: '1', minWidth: '200px', padding: '16px', background: 'var(--bg-card)', border: '1.5px solid var(--border-primary)', borderRadius: '14px' }}>
-            <div className="amount-type-selector" style={{ marginBottom: '10px' }}>
+          <div style={{ flex: '1 1 260px', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="amount-type-selector" style={{ margin: 0, justifyContent: 'flex-start' }}>
               <label className={`type-option ${amountType === "fixed" ? "active" : ""}`}>
                 <input type="radio" name="amountType" value="fixed" checked={amountType === "fixed"} onChange={(e) => setAmountType(e.target.value)} />
                 <span className="radio-custom"></span> 고정 금액
@@ -384,11 +384,11 @@ function MoneyTransfer() {
 
           {/* 세금 설정 (보내기일 때만) */}
           {action === "send" && (
-            <div style={{ flex: '0 0 180px', padding: '16px', background: 'var(--bg-card)', border: '1.5px solid var(--border-primary)', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-secondary)' }}>💸 세금</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input type="number" id="taxRate" value={taxRate} onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))} min="0" max="100" className="tax-input" style={{ flex: 1 }} />
-                <span style={{ fontWeight: 600 }}>%</span>
+            <div style={{ flex: '0 0 160px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label htmlFor="taxRate" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>💸 세금</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ffffff', border: '1px solid #e0e7ff', borderRadius: '10px', padding: '0 12px', height: '44px' }}>
+                <input type="number" id="taxRate" value={taxRate} onChange={(e) => setTaxRate(Math.max(0, Math.min(100, Number(e.target.value))))} min="0" max="100" className="tax-input" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '15px', fontWeight: 600 }} />
+                <span style={{ fontWeight: 600, color: '#64748b' }}>%</span>
               </div>
             </div>
           )}
