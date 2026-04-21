@@ -560,7 +560,15 @@ async function executeCashPenalty(classCode, params) {
 
 /**
  * 상점 물가 변경 이벤트 - 관리자 상점 아이템 가격 일괄 변경
+ * 제외 품목: "자유 시간" 계열 (교육적 가치가 높아 변동 제외)
  */
+const STORE_PRICE_EVENT_EXCLUDED_KEYWORDS = ["자유 시간", "자유시간"];
+
+function isStorePriceEventExcluded(itemData) {
+  const name = (itemData?.name || "").toString();
+  return STORE_PRICE_EVENT_EXCLUDED_KEYWORDS.some((kw) => name.includes(kw));
+}
+
 async function executeStorePriceChange(classCode, params) {
   const { multiplier = 1 } = params; // 2 = 2배, 0.5 = 절반
 
@@ -575,13 +583,19 @@ async function executeStorePriceChange(classCode, params) {
   }
 
   let affectedCount = 0;
+  let excludedCount = 0;
   const docs = itemsSnapshot.docs;
   const batchSize = 400;
 
   for (let i = 0; i < docs.length; i += batchSize) {
     const batch = db.batch();
     docs.slice(i, i + batchSize).forEach((doc) => {
-      const currentPrice = doc.data().price || 0;
+      const data = doc.data();
+      if (isStorePriceEventExcluded(data)) {
+        excludedCount++;
+        return;
+      }
+      const currentPrice = data.price || 0;
       if (currentPrice > 0) {
         batch.update(doc.ref, {
           price: Math.max(100, Math.round(currentPrice * multiplier)),
@@ -594,9 +608,9 @@ async function executeStorePriceChange(classCode, params) {
   }
 
   logger.info(
-    `[경제이벤트] ${classCode}: 상점 물가 ${multiplier}배 변경 - ${affectedCount}개 아이템`,
+    `[경제이벤트] ${classCode}: 상점 물가 ${multiplier}배 변경 - ${affectedCount}개 아이템 적용, ${excludedCount}개 제외(자유 시간 등)`,
   );
-  return { affectedCount, multiplier };
+  return { affectedCount, excludedCount, multiplier };
 }
 
 /**
