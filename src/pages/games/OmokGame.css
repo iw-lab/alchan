@@ -182,7 +182,8 @@
   align-items: center;
   width: 100%;
   margin: 0;
-  perspective: 800px;
+  /* perspective 제거: 3D 변환 미사용이며, fixed 자손의 containing block이 되어
+     승리 오버레이가 보드 크기에 갇혀 찌그러지는 현상 유발 */
 }
 
 .omok-board {

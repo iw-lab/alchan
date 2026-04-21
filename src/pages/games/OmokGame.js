@@ -2260,33 +2260,37 @@ const OmokGame = () => {
         style={{ position: "relative" }}
       >
         {renderBoard()}
-        {game.winner && (
+      </div>
+
+      {game.winner && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(15, 23, 42, 0.55)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            zIndex: 9998,
+            animation: "fadeIn 0.35s ease-out",
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
           <div
             style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(15, 23, 42, 0.55)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
-              borderRadius: 12,
-              zIndex: 10,
-              animation: "fadeIn 0.35s ease-out",
+              background: "#ffffff",
+              borderRadius: 20,
+              padding: "24px 32px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+              textAlign: "center",
+              maxWidth: 420,
+              width: "100%",
+              boxSizing: "border-box",
             }}
           >
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 20,
-                padding: "24px 32px",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-                textAlign: "center",
-                maxWidth: 420,
-                width: "86%",
-              }}
-            >
               <div
                 style={{
                   fontSize: "2.4rem",
@@ -2391,10 +2395,9 @@ const OmokGame = () => {
                     상대가 재대결을 원합니다!
                   </div>
                 )}
-            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="omok-status">
         {game.winner ? (

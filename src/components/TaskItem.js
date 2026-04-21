@@ -100,9 +100,21 @@ const TaskItem = memo(function TaskItem({
   const isCompleted =
     task && task.maxClicks > 0 && task.clicks >= task.maxClicks;
 
-  if (!task) return null;
+  // 창 크기 변경/회전에 반응하는 isMobile (memo 때문에 그냥 window.innerWidth 읽으면 stale 값 유지됨)
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false,
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
 
-  const isMobile = window.innerWidth <= 768;
+  if (!task) return null;
 
   const taskItemStyle = {
     backgroundColor: isCompleted ? "var(--bg-secondary)" : "var(--bg-card)",
@@ -187,8 +199,8 @@ const TaskItem = memo(function TaskItem({
     };
 
     return createPortal(
-      <div className="fixed inset-0 flex items-center justify-center z-[10000]" style={modalOverlayStyle} onClick={() => setShowCardModal(false)}>
-        <div className="rounded-2xl max-w-[600px]" style={{...mobileModalContentStyle, width: isMobile ? "95%" : "90%"}} onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 flex items-center justify-center z-[10000]" style={{...modalOverlayStyle, padding: 12, boxSizing: "border-box"}} onClick={() => setShowCardModal(false)}>
+        <div className="rounded-2xl" style={{...mobileModalContentStyle, width: "100%", maxWidth: isMobile ? 420 : 600, boxSizing: "border-box"}} onClick={(e) => e.stopPropagation()}>
           <h3 className="text-center font-bold" style={{...mobileModalTitleStyle, marginBottom: isMobile ? "8px" : "10px"}}>🎁 보상 선택</h3>
           <p className="text-center" style={{...mobileModalSubtitleStyle, marginBottom: isMobile ? "20px" : "30px"}}>두 개의 카드 중 하나를 선택하세요!</p>
 

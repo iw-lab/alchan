@@ -567,10 +567,10 @@
 .spinner { border-color: #e0e7ff; border-top-color: #6366f1; }
 
 /* 보상 카드 모달 */
-.reward-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 100; animation: fadeIn 0.3s ease; }
+.reward-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; animation: fadeIn 0.3s ease; padding: 16px; box-sizing: border-box; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.reward-content { background: white; border: 2px solid #7c3aed; box-shadow: 0 8px 40px rgba(124, 58, 237, 0.2); border-radius: 20px; padding: 32px; }
+.reward-content { background: white; border: 2px solid #7c3aed; box-shadow: 0 8px 40px rgba(124, 58, 237, 0.2); border-radius: 20px; padding: 32px; width: 100%; max-width: 480px; box-sizing: border-box; }
 .reward-content h3 { color: #7c3aed; }
 .reward-content p { color: #475569; }
 
