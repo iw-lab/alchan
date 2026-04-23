@@ -1,5 +1,16 @@
 // src/AdminItemPage.js
 import React, { useState, useEffect } from "react";
+import {
+  Store,
+  Plus,
+  Pencil,
+  Sparkles,
+  Lightbulb,
+  Gem,
+  Check,
+  X as XIcon,
+  Circle,
+} from "lucide-react";
 
 // 50개 이상의 아이콘 컬렉션
 const iconCollection = {
@@ -20,70 +31,97 @@ const iconCollection = {
 
 const styles = {
   container: {
-    padding: '20px',
+    padding: '24px',
     maxWidth: '1000px',
     margin: '0 auto',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
-    border: '1px solid #e2e8f0',
+    borderRadius: '20px',
+    boxShadow: '0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)',
+    border: '1px solid #eef2f7',
     padding: '0',
-    marginBottom: '20px',
+    marginBottom: '24px',
     overflow: 'hidden'
   },
   header: {
-    padding: '12px 20px 8px',
+    padding: '20px 24px',
     marginBottom: '0',
-    borderBottom: '1px solid #e5e7eb'
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+    borderBottom: '1px solid #eef2f7',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  headerIcon: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
   },
   title: {
     fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#1e293b',
-    margin: 0
+    fontWeight: 700,
+    color: '#0f172a',
+    margin: 0,
+    letterSpacing: '-0.01em'
+  },
+  subtitle: {
+    fontSize: '13px',
+    color: '#64748b',
+    margin: '2px 0 0 0'
   },
   tabs: {
     display: 'flex',
-    borderBottom: '1px solid #e2e8f0',
-    backgroundColor: '#f8fafc',
-    marginTop: '0'
+    borderBottom: '1px solid #eef2f7',
+    backgroundColor: '#ffffff',
+    marginTop: '0',
+    padding: '0 8px'
   },
   tab: {
     flex: 1,
-    padding: '14px',
+    padding: '14px 16px',
     backgroundColor: 'transparent',
     border: 'none',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: 600,
     color: '#64748b',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    borderBottom: '2px solid transparent'
+    borderBottom: '2px solid transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
   },
   activeTab: {
-    color: '#4f46e5',
-    backgroundColor: '#ffffff',
+    color: '#6366f1',
+    backgroundColor: 'transparent',
     borderBottom: '2px solid #6366f1'
   },
   disabledTab: {
-    opacity: '0.5',
+    opacity: '0.4',
     cursor: 'not-allowed'
   },
   formSection: {
     backgroundColor: '#ffffff',
-    padding: '20px',
-    borderRadius: '12px',
+    padding: '24px',
+    borderRadius: '16px',
     marginBottom: '20px',
-    border: '1px solid #e2e8f0'
+    border: '1px solid #eef2f7'
   },
   formTitle: {
     fontSize: '16px',
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: '20px'
+    fontWeight: 700,
+    color: '#0f172a',
+    marginBottom: '20px',
+    letterSpacing: '-0.01em'
   },
   inputGroup: {
     marginBottom: '20px'
@@ -91,32 +129,36 @@ const styles = {
   label: {
     display: 'block',
     fontSize: '13px',
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: '6px'
+    fontWeight: 600,
+    color: '#334155',
+    marginBottom: '8px'
   },
   input: {
     width: '100%',
-    padding: '10px 12px',
+    padding: '11px 14px',
     border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '14px',
-    transition: 'border-color 0.15s ease',
+    transition: 'all 0.15s ease',
     boxSizing: 'border-box',
     backgroundColor: '#ffffff',
-    color: '#0f172a'
+    color: '#0f172a',
+    outline: 'none'
   },
   textarea: {
     width: '100%',
-    padding: '10px 12px',
+    padding: '12px 14px',
     border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '14px',
-    minHeight: '100px',
+    minHeight: '110px',
     resize: 'vertical',
     boxSizing: 'border-box',
     backgroundColor: '#ffffff',
-    color: '#0f172a'
+    color: '#0f172a',
+    outline: 'none',
+    fontFamily: 'inherit',
+    lineHeight: 1.6
   },
   gridTwo: {
     display: 'grid',
@@ -124,10 +166,11 @@ const styles = {
     gap: '16px'
   },
   iconSelector: {
-    backgroundColor: '#f8fafc',
-    padding: '16px',
-    borderRadius: '12px',
-    border: '1px solid #e2e8f0'
+    backgroundColor: '#fafbff',
+    padding: '20px',
+    borderRadius: '14px',
+    border: '1px solid #eef2ff',
+    marginBottom: '24px'
   },
   selectedIcon: {
     fontSize: '36px',
@@ -136,26 +179,31 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#eef2ff',
-    border: '1px solid #c7d2fe',
-    borderRadius: '12px',
-    marginBottom: '12px'
+    backgroundColor: '#ffffff',
+    border: '1px solid #e0e7ff',
+    borderRadius: '14px',
+    boxShadow: '0 2px 6px rgba(99, 102, 241, 0.08)'
   },
   button: {
-    padding: '10px 20px',
-    borderRadius: '8px',
+    padding: '10px 18px',
+    borderRadius: '10px',
     border: 'none',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: 600,
     cursor: 'pointer',
-    transition: 'all 0.15s ease'
+    transition: 'all 0.15s ease',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
   },
   primaryButton: {
-    background: '#6366f1',
-    color: 'white'
+    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    color: 'white',
+    boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
   },
   secondaryButton: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
     color: '#475569',
     border: '1px solid #e2e8f0'
   },
@@ -167,12 +215,15 @@ const styles = {
   },
   iconButton: {
     fontSize: '24px',
-    padding: '6px',
+    padding: '8px',
     border: '1px solid #e2e8f0',
-    borderRadius: '8px',
+    borderRadius: '10px',
     backgroundColor: '#ffffff',
     cursor: 'pointer',
-    transition: 'all 0.15s ease'
+    transition: 'all 0.15s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   categoryButtons: {
     display: 'flex',
@@ -187,7 +238,7 @@ const styles = {
     backgroundColor: '#ffffff',
     color: '#64748b',
     fontSize: '12px',
-    fontWeight: '500',
+    fontWeight: 500,
     cursor: 'pointer',
     transition: 'all 0.15s ease'
   },
@@ -199,15 +250,22 @@ const styles = {
   priceIncreaseSection: {
     backgroundColor: '#fffbeb',
     border: '1px solid #fde68a',
-    padding: '16px',
-    borderRadius: '12px',
+    padding: '18px',
+    borderRadius: '14px',
+    marginBottom: '20px'
+  },
+  infoSection: {
+    backgroundColor: '#f0f9ff',
+    border: '1px solid #bae6fd',
+    padding: '18px',
+    borderRadius: '14px',
     marginBottom: '20px'
   },
   helpText: {
     fontSize: '12px',
     color: '#64748b',
-    marginTop: '6px',
-    lineHeight: '1.5'
+    marginTop: '8px',
+    lineHeight: 1.6
   },
   checkboxWrapper: {
     display: 'flex',
@@ -225,8 +283,8 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: '24px',
-    paddingTop: '16px',
-    borderTop: '1px solid #e2e8f0'
+    paddingTop: '20px',
+    borderTop: '1px solid #eef2f7'
   }
 };
 
@@ -375,7 +433,13 @@ const AdminItemPage = ({
     <div style={styles.container}>
       <div style={styles.card}>
         <div style={styles.header}>
-          <h2 style={styles.title}>🏪 상점 관리 시스템</h2>
+          <div style={styles.headerIcon}>
+            <Store size={22} strokeWidth={2.2} />
+          </div>
+          <div>
+            <h2 style={styles.title}>상점 관리 시스템</h2>
+            <p style={styles.subtitle}>아이템을 추가하거나 수정할 수 있어요</p>
+          </div>
         </div>
 
         <div style={styles.tabs}>
@@ -386,7 +450,8 @@ const AdminItemPage = ({
             }}
             onClick={() => handleTabClick("addItem")}
           >
-            ➕ 아이템 추가
+            <Plus size={16} strokeWidth={2.5} />
+            아이템 추가
           </button>
           <button
             style={{
@@ -397,22 +462,24 @@ const AdminItemPage = ({
             disabled={!editingItemFromStore}
             onClick={() => setActiveTab("editItem")}
           >
-            ✏️ 아이템 수정
+            <Pencil size={15} strokeWidth={2.2} />
+            아이템 수정
           </button>
         </div>
 
-        <div style={{ padding: '30px', backgroundColor: 'rgba(30, 41, 59, 0.9)' }}>
+        <div style={{ padding: '28px', backgroundColor: '#fafbfc' }}>
           {successMsg && (
             <div style={{
               margin: '0 0 20px 0',
               padding: '14px 20px',
-              background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.15))',
-              border: '1px solid rgba(34,197,94,0.5)',
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              border: '1px solid #86efac',
               borderRadius: '12px',
-              color: '#4ade80',
+              color: '#047857',
               fontWeight: 600,
               fontSize: '15px',
               textAlign: 'center',
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)',
               animation: 'fadeIn 0.3s ease',
             }}>
               {successMsg}
@@ -437,6 +504,7 @@ const AdminItemPage = ({
                       onClick={() => setShowIconPicker(!showIconPicker)}
                       style={{ ...styles.button, ...styles.primaryButton }}
                     >
+                      <Sparkles size={15} strokeWidth={2.2} />
                       아이콘 선택
                     </button>
                   </div>
@@ -445,13 +513,14 @@ const AdminItemPage = ({
                     <div style={{
                       marginTop: '20px',
                       padding: '16px',
-                      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                      borderRadius: '8px',
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
                       width: '100%',
                       boxSizing: 'border-box',
                       maxHeight: '400px',
                       overflowY: 'auto',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
                     }}>
                       <div style={styles.categoryButtons}>
                         {Object.keys(iconCollection).map((category) => (
@@ -476,12 +545,14 @@ const AdminItemPage = ({
                             onClick={() => handleIconSelect(icon)}
                             style={styles.iconButton}
                             onMouseEnter={(e) => {
-                              e.target.style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
-                              e.target.style.transform = 'scale(1.1)';
+                              e.currentTarget.style.backgroundColor = '#eef2ff';
+                              e.currentTarget.style.borderColor = '#c7d2fe';
+                              e.currentTarget.style.transform = 'scale(1.08)';
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                              e.target.style.transform = 'scale(1)';
+                              e.currentTarget.style.backgroundColor = '#ffffff';
+                              e.currentTarget.style.borderColor = '#e2e8f0';
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
                             {icon}
@@ -563,9 +634,9 @@ const AdminItemPage = ({
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <input
-                      name="priceIncreasePercentage" // [수정] input의 name을 변경
+                      name="priceIncreasePercentage"
                       type="number"
-                      value={item.priceIncreasePercentage} // [수정] value를 변경
+                      value={item.priceIncreasePercentage}
                       onChange={handleChange}
                       placeholder="10"
                       min="0"
@@ -573,16 +644,19 @@ const AdminItemPage = ({
                       step="0.5"
                       style={{ ...styles.input, width: '120px' }}
                     />
-                    <span style={{ fontSize: '16px', color: '#374151' }}>%</span>
+                    <span style={{ fontSize: '16px', color: '#374151', fontWeight: 600 }}>%</span>
                   </div>
-                  <p style={styles.helpText}>
-                    💡 재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
-                    예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
+                  <p style={{ ...styles.helpText, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <Lightbulb size={14} strokeWidth={2} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                    <span>
+                      재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
+                      예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
+                    </span>
                   </p>
                 </div>
 
                 {/* 경제이벤트 가격 변동 제외 */}
-                <div style={styles.priceIncreaseSection}>
+                <div style={styles.infoSection}>
                   <label
                     style={{
                       display: "flex",
@@ -591,7 +665,7 @@ const AdminItemPage = ({
                       cursor: "pointer",
                       fontSize: "15px",
                       fontWeight: 600,
-                      color: "#e8e8ff",
+                      color: "#0f172a",
                     }}
                   >
                     <input
@@ -599,9 +673,10 @@ const AdminItemPage = ({
                       name="excludeFromEconomicEvent"
                       checked={!!item.excludeFromEconomicEvent}
                       onChange={handleChange}
-                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                      style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: '#6366f1' }}
                     />
-                    💎 경제이벤트 가격 변동 제외
+                    <Gem size={16} strokeWidth={2} style={{ color: '#0284c7' }} />
+                    경제이벤트 가격 변동 제외
                   </label>
                   <p style={styles.helpText}>
                     체크하면 "물가 폭등/안정" 같은 경제이벤트로 이 아이템의 가격이 바뀌지 않습니다.<br />
@@ -624,7 +699,7 @@ const AdminItemPage = ({
 
               {/* 하단 버튼 영역 */}
               <div style={styles.buttonGroup}>
-                <div style={styles.checkboxWrapper}>
+                <label style={{ ...styles.checkboxWrapper, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     name="available"
@@ -632,10 +707,26 @@ const AdminItemPage = ({
                     onChange={handleChange}
                     style={styles.checkbox}
                   />
-                  <label style={{ fontSize: '16px', fontWeight: '500', color: '#e8e8ff' }}>
-                    {item.available ? "🟢 판매중" : "🔴 판매중지"}
-                  </label>
-                </div>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: item.available ? '#059669' : '#dc2626',
+                    padding: '6px 12px',
+                    borderRadius: '999px',
+                    backgroundColor: item.available ? '#ecfdf5' : '#fef2f2',
+                    border: `1px solid ${item.available ? '#a7f3d0' : '#fecaca'}`
+                  }}>
+                    <Circle
+                      size={8}
+                      fill={item.available ? '#10b981' : '#ef4444'}
+                      strokeWidth={0}
+                    />
+                    {item.available ? "판매중" : "판매중지"}
+                  </span>
+                </label>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
                   {activeTab === "editItem" && (
@@ -644,6 +735,7 @@ const AdminItemPage = ({
                       onClick={() => handleTabClick("addItem")}
                       style={{ ...styles.button, ...styles.secondaryButton }}
                     >
+                      <XIcon size={15} strokeWidth={2.2} />
                       취소
                     </button>
                   )}
@@ -651,7 +743,17 @@ const AdminItemPage = ({
                     type="submit"
                     style={{ ...styles.button, ...styles.primaryButton }}
                   >
-                    {activeTab === "editItem" ? "✅ 수정 완료" : "➕ 아이템 추가"}
+                    {activeTab === "editItem" ? (
+                      <>
+                        <Check size={16} strokeWidth={2.5} />
+                        수정 완료
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={16} strokeWidth={2.5} />
+                        아이템 추가
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
