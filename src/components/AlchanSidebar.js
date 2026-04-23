@@ -10,6 +10,7 @@ import {
   query as fbQuery,
   where as fbWhere,
   getDocs,
+  getCountFromServer,
 } from "firebase/firestore";
 import {
   X,
@@ -479,7 +480,7 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
 // ============================================
 // 서브메뉴 아이템 컴포넌트
 // ============================================
-const SubMenuItem = memo(({ icon: Icon, label, active, onClick }) => (
+const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0 }) => (
   <button
     onClick={onClick}
     className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
@@ -491,7 +492,16 @@ const SubMenuItem = memo(({ icon: Icon, label, active, onClick }) => (
     }}
   >
     <Icon className="w-3.5 h-3.5" />
-    {label}
+    <span className="flex-1 text-left">{label}</span>
+    {badgeCount > 0 && (
+      <span
+        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full"
+        style={{ background: '#ef4444', color: '#fff', lineHeight: 1 }}
+        aria-label={`${badgeCount}건의 새로운 알림`}
+      >
+        {badgeCount > 99 ? '99+' : badgeCount}
+      </span>
+    )}
   </button>
 ));
 
@@ -653,6 +663,80 @@ export default function AlchanSidebar({
     };
   }, [isAdmin, userDoc?.selectedJobIds, userDoc?.classCode]);
 
+  // 정부 이송 법안 개수 (대통령 학생에게 사이드바 배지 + 세션 1회 알림)
+  const [pendingGovLawCount, setPendingGovLawCount] = useState(0);
+  useEffect(() => {
+    if (!isPresident || !userDoc?.classCode) {
+      setPendingGovLawCount(0);
+      return;
+    }
+    const classCode = userDoc.classCode;
+    let cancelled = false;
+
+    const fetchCount = async () => {
+      try {
+        const q = fbQuery(
+          fbCollection(firebaseDb, "classes", classCode, "nationalAssemblyLaws"),
+          fbWhere("status", "==", "pending_government_approval"),
+        );
+        const snap = await getCountFromServer(q);
+        if (cancelled) return;
+        const count = snap.data().count || 0;
+        setPendingGovLawCount(count);
+
+        // 세션 1회 알림: 대기 법안이 있고 이번 세션에서 아직 안 알렸을 때
+        if (count > 0 && typeof window !== "undefined") {
+          const key = `govLawAlertShown:${classCode}`;
+          if (!sessionStorage.getItem(key)) {
+            sessionStorage.setItem(key, "1");
+            window.alert(
+              `🏛️ 정부로 이송된 법안이 ${count}건 있습니다.\n` +
+              `대통령실 > 법안 관리에서 승인 또는 거부권을 행사할 수 있습니다.`
+            );
+          }
+        }
+      } catch (err) {
+        /* ignore */
+      }
+    };
+
+    fetchCount();
+    // 탭이 보일 때만 15분 간격으로 폴링 (비용 절감)
+    let intervalId = null;
+    const start = () => {
+      if (intervalId) return;
+      intervalId = setInterval(fetchCount, 15 * 60 * 1000);
+    };
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchCount();
+        start();
+      } else {
+        stop();
+      }
+    };
+    if (typeof document === "undefined" || document.visibilityState === "visible") {
+      start();
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+
+    return () => {
+      cancelled = true;
+      stop();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+    };
+  }, [isPresident, userDoc?.classCode]);
+
   // 학습 게시판 목록 로드 (사이드바에 동적 표시)
   useEffect(() => {
     const classCode = userDoc?.classCode;
@@ -778,6 +862,11 @@ export default function AlchanSidebar({
                       label={child.label}
                       active={isActive(child.path)}
                       onClick={() => handleItemClick(child)}
+                      badgeCount={
+                        child.id === "organizationChart" && isPresident
+                          ? pendingGovLawCount
+                          : 0
+                      }
                     />
                   );
                 })}
