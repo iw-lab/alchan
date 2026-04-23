@@ -4,30 +4,12 @@ import {
   Store,
   Plus,
   Pencil,
-  Sparkles,
   Lightbulb,
   Gem,
   Check,
   X as XIcon,
   Circle,
 } from "lucide-react";
-
-// 50개 이상의 아이콘 컬렉션
-const iconCollection = {
-  "음식": ["🍕", "🍔", "🍟", "🌭", "🥐", "🥖", "🧀", "🍖", "🍗", "🥓", "🍳", "🥞"],
-  "음료": ["☕", "🍵", "🧃", "🥤", "🧋", "🍺", "🍷", "🥛", "🍹", "🍸", "🍾", "🧉"],
-  "과일": ["🍎", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭"],
-  "채소": ["🥦", "🥬", "🥒", "🌽", "🥕", "🫑", "🌶️", "🥔", "🍠", "🧄", "🧅", "🍄"],
-  "디저트": ["🍰", "🎂", "🧁", "🥧", "🍮", "🍭", "🍬", "🍫", "🍩", "🍪", "🍦", "🧊"],
-  "무기": ["⚔️", "🗡️", "🏹", "🛡️", "🪓", "🔫", "💣", "🧨", "🪃", "🥊", "🎯", "🏏"],
-  "마법": ["✨", "💫", "⭐", "🌟", "💥", "⚡", "🔥", "❄️", "💧", "🌊", "🌪️", "☄️"],
-  "보물": ["💎", "💍", "👑", "🏆", "🎁", "💰", "💵", "🪙", "🔮", "📿", "🗝️", "🎖️"],
-  "도구": ["🔨", "🪛", "🔧", "🪚", "⛏️", "🪝", "🧲", "🔩", "⚙️", "🗜️", "⚖️", "🔦"],
-  "의료": ["💊", "💉", "🩹", "🩺", "🧪", "🧫", "🩸", "🦠", "🧬", "🔬", "⚗️", "🌡️"],
-  "자연": ["🌸", "🌺", "🌻", "🌹", "🌷", "🌱", "🌿", "🍀", "🎋", "🎍", "🌾", "🌴"],
-  "특별": ["🎪", "🎨", "🎭", "🎪", "🎯", "🎲", "🎰", "🧩", "🪄", "🔔", "📯", "🥁"],
-  "신규": ["🆕", "✅", "❌", "❓", "❗", "💯", "🔶", "🔷", "🔸", "🔹", "♠️", "♣️"]
-};
 
 const styles = {
   container: {
@@ -77,37 +59,15 @@ const styles = {
     color: '#64748b',
     margin: '2px 0 0 0'
   },
-  tabs: {
-    display: 'flex',
-    borderBottom: '1px solid #eef2f7',
-    backgroundColor: '#ffffff',
-    marginTop: '0',
-    padding: '0 8px'
-  },
-  tab: {
-    flex: 1,
-    padding: '14px 16px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '14px',
-    fontWeight: 600,
-    color: '#64748b',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    borderBottom: '2px solid transparent',
-    display: 'flex',
+  modeBadge: {
+    marginLeft: 'auto',
+    display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px'
-  },
-  activeTab: {
-    color: '#6366f1',
-    backgroundColor: 'transparent',
-    borderBottom: '2px solid #6366f1'
-  },
-  disabledTab: {
-    opacity: '0.4',
-    cursor: 'not-allowed'
+    gap: '6px',
+    padding: '6px 12px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 600
   },
   formSection: {
     backgroundColor: '#ffffff',
@@ -165,25 +125,6 @@ const styles = {
     gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '16px'
   },
-  iconSelector: {
-    backgroundColor: '#fafbff',
-    padding: '20px',
-    borderRadius: '14px',
-    border: '1px solid #eef2ff',
-    marginBottom: '24px'
-  },
-  selectedIcon: {
-    fontSize: '36px',
-    width: '64px',
-    height: '64px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    border: '1px solid #e0e7ff',
-    borderRadius: '14px',
-    boxShadow: '0 2px 6px rgba(99, 102, 241, 0.08)'
-  },
   button: {
     padding: '10px 18px',
     borderRadius: '10px',
@@ -206,46 +147,6 @@ const styles = {
     backgroundColor: '#ffffff',
     color: '#475569',
     border: '1px solid #e2e8f0'
-  },
-  iconGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(12, 1fr)',
-    gap: '6px',
-    marginTop: '12px'
-  },
-  iconButton: {
-    fontSize: '24px',
-    padding: '8px',
-    border: '1px solid #e2e8f0',
-    borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  categoryButtons: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-    marginBottom: '12px'
-  },
-  categoryButton: {
-    padding: '6px 12px',
-    borderRadius: '8px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: '#ffffff',
-    color: '#64748b',
-    fontSize: '12px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'all 0.15s ease'
-  },
-  activeCategoryButton: {
-    backgroundColor: '#eef2ff',
-    color: '#4f46e5',
-    borderColor: '#c7d2fe'
   },
   priceIncreaseSection: {
     backgroundColor: '#fffbeb',
@@ -288,6 +189,17 @@ const styles = {
   }
 };
 
+const EMPTY_ITEM = {
+  name: "",
+  description: "",
+  price: "",
+  stock: "",
+  initialStock: "",
+  available: true,
+  priceIncreasePercentage: "10",
+  excludeFromEconomicEvent: false,
+};
+
 const AdminItemPage = ({
   classCode,
   editingItemFromStore,
@@ -295,43 +207,20 @@ const AdminItemPage = ({
   onUpdateItem,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState("addItem");
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("마법");
+  const isEditing = !!(editingItemFromStore && editingItemFromStore.id);
   const [successMsg, setSuccessMsg] = useState("");
-  const [item, setItem] = useState({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    initialStock: "",
-    icon: "✨",
-    available: true,
-    priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
-    excludeFromEconomicEvent: false, // 경제이벤트 가격 변동 제외 여부
-  });
+  const [item, setItem] = useState(EMPTY_ITEM);
 
   useEffect(() => {
     if (editingItemFromStore) {
       setItem({
+        ...EMPTY_ITEM,
         ...editingItemFromStore,
-        // [수정] 필드명을 priceIncreasePercentage로 변경하고, 없는 경우 기본값 설정
         priceIncreasePercentage: editingItemFromStore.priceIncreasePercentage || "10",
         excludeFromEconomicEvent: editingItemFromStore.excludeFromEconomicEvent === true,
       });
-      setActiveTab("editItem");
     } else {
-      setItem({
-        name: "",
-        description: "",
-        price: "",
-        stock: "",
-        initialStock: "",
-        icon: "✨",
-        available: true,
-        priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
-        excludeFromEconomicEvent: false,
-      });
+      setItem(EMPTY_ITEM);
     }
   }, [editingItemFromStore]);
 
@@ -343,14 +232,8 @@ const AdminItemPage = ({
     }));
   };
 
-  const handleIconSelect = (icon) => {
-    setItem(prev => ({ ...prev, icon }));
-    setShowIconPicker(false);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const isEditing = !!(item && item.id);
 
     if (
       !item.name ||
@@ -372,61 +255,31 @@ const AdminItemPage = ({
       initialStock: item.initialStock
         ? parseInt(item.initialStock, 10)
         : parseInt(item.stock, 10),
-      // [수정] 저장하는 데이터의 필드명도 priceIncreasePercentage로 변경하고, 숫자로 변환
       priceIncreasePercentage: parseFloat(item.priceIncreasePercentage) || 0,
       excludeFromEconomicEvent: item.excludeFromEconomicEvent === true,
       classCode,
     };
 
-    let success = false;
-    if (isEditing) {
-      success = await onUpdateItem(itemData);
-    } else {
-      success = await onAddItem(itemData);
-    }
+    const success = isEditing
+      ? await onUpdateItem(itemData)
+      : await onAddItem(itemData);
 
     if (success) {
       const msg = isEditing
-        ? `✅ "${itemData.name}" 아이템이 수정됐습니다!`
-        : `✅ "${itemData.name}" 아이템이 추가됐습니다!`;
+        ? `"${itemData.name}" 아이템이 수정됐습니다!`
+        : `"${itemData.name}" 아이템이 추가됐습니다!`;
       setSuccessMsg(msg);
       setTimeout(() => setSuccessMsg(""), 4000);
 
       if (!isEditing) {
-        setItem({
-          name: "",
-          description: "",
-          price: "",
-          stock: "",
-          initialStock: "",
-          icon: "✨",
-          available: true,
-          priceIncreasePercentage: "10",
-          excludeFromEconomicEvent: false,
-        });
-        setActiveTab("addItem");
+        setItem(EMPTY_ITEM);
       }
     }
   };
 
-  const handleTabClick = (tabName) => {
-    setActiveTab(tabName);
-    if (editingItemFromStore) {
-      onClose();
-    }
-    if (tabName === 'addItem') {
-      setItem({
-        name: "",
-        description: "",
-        price: "",
-        stock: "",
-        initialStock: "",
-        icon: "✨",
-        available: true,
-        priceIncreasePercentage: "10", // [수정] 필드명을 priceIncreasePercentage로 변경
-        excludeFromEconomicEvent: false,
-      });
-    }
+  const handleCancel = () => {
+    if (onClose) onClose();
+    setItem(EMPTY_ITEM);
   };
 
   return (
@@ -438,33 +291,32 @@ const AdminItemPage = ({
           </div>
           <div>
             <h2 style={styles.title}>상점 관리 시스템</h2>
-            <p style={styles.subtitle}>아이템을 추가하거나 수정할 수 있어요</p>
+            <p style={styles.subtitle}>
+              {isEditing
+                ? "선택한 아이템의 정보를 수정해보세요"
+                : "새로운 아이템을 상점에 추가해보세요"}
+            </p>
           </div>
-        </div>
-
-        <div style={styles.tabs}>
-          <button
+          <span
             style={{
-              ...styles.tab,
-              ...(activeTab === "addItem" ? styles.activeTab : {})
+              ...styles.modeBadge,
+              backgroundColor: isEditing ? '#fef3c7' : '#eef2ff',
+              color: isEditing ? '#b45309' : '#4f46e5',
+              border: `1px solid ${isEditing ? '#fde68a' : '#c7d2fe'}`,
             }}
-            onClick={() => handleTabClick("addItem")}
           >
-            <Plus size={16} strokeWidth={2.5} />
-            아이템 추가
-          </button>
-          <button
-            style={{
-              ...styles.tab,
-              ...(activeTab === "editItem" ? styles.activeTab : {}),
-              ...((!editingItemFromStore) ? styles.disabledTab : {})
-            }}
-            disabled={!editingItemFromStore}
-            onClick={() => setActiveTab("editItem")}
-          >
-            <Pencil size={15} strokeWidth={2.2} />
-            아이템 수정
-          </button>
+            {isEditing ? (
+              <>
+                <Pencil size={12} strokeWidth={2.4} />
+                수정 모드
+              </>
+            ) : (
+              <>
+                <Plus size={12} strokeWidth={2.8} />
+                추가 모드
+              </>
+            )}
+          </span>
         </div>
 
         <div style={{ padding: '28px', backgroundColor: '#fafbfc' }}>
@@ -480,285 +332,217 @@ const AdminItemPage = ({
               fontSize: '15px',
               textAlign: 'center',
               boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)',
-              animation: 'fadeIn 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
             }}>
+              <Check size={16} strokeWidth={2.5} />
               {successMsg}
             </div>
           )}
-          {(activeTab === "addItem" || activeTab === "editItem") && (
-            <form onSubmit={handleSubmit}>
-              <div style={styles.formSection}>
-                <h3 style={styles.formTitle}>
-                  {activeTab === "editItem" ? "아이템 정보 수정" : "새 아이템 만들기"}
-                </h3>
 
-                {/* 아이콘 선택 */}
-                <div style={styles.iconSelector}>
-                  <label style={styles.label}>아이템 아이콘</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={styles.selectedIcon}>
-                      {item.icon}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowIconPicker(!showIconPicker)}
-                      style={{ ...styles.button, ...styles.primaryButton }}
-                    >
-                      <Sparkles size={15} strokeWidth={2.2} />
-                      아이콘 선택
-                    </button>
-                  </div>
+          <form onSubmit={handleSubmit}>
+            <div style={styles.formSection}>
+              <h3 style={styles.formTitle}>
+                {isEditing ? "아이템 정보 수정" : "새 아이템 만들기"}
+              </h3>
 
-                  {showIconPicker && (
-                    <div style={{
-                      marginTop: '20px',
-                      padding: '16px',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '12px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      maxHeight: '400px',
-                      overflowY: 'auto',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
-                    }}>
-                      <div style={styles.categoryButtons}>
-                        {Object.keys(iconCollection).map((category) => (
-                          <button
-                            key={category}
-                            type="button"
-                            onClick={() => setSelectedCategory(category)}
-                            style={{
-                              ...styles.categoryButton,
-                              ...(selectedCategory === category ? styles.activeCategoryButton : {})
-                            }}
-                          >
-                            {category}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={styles.iconGrid}>
-                        {iconCollection[selectedCategory].map((icon) => (
-                          <button
-                            key={icon}
-                            type="button"
-                            onClick={() => handleIconSelect(icon)}
-                            style={styles.iconButton}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#eef2ff';
-                              e.currentTarget.style.borderColor = '#c7d2fe';
-                              e.currentTarget.style.transform = 'scale(1.08)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#ffffff';
-                              e.currentTarget.style.borderColor = '#e2e8f0';
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          >
-                            {icon}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 기본 정보 */}
-                <div style={styles.gridTwo}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      상품명 <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <input
-                      name="name"
-                      value={item.name}
-                      onChange={handleChange}
-                      placeholder="예: 마법의 물약"
-                      required
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      기본 가격 (원) <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <input
-                      name="price"
-                      type="number"
-                      value={item.price}
-                      onChange={handleChange}
-                      placeholder="예: 1000"
-                      required
-                      min="0"
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      현재 재고 <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <input
-                      name="stock"
-                      type="number"
-                      value={item.stock}
-                      onChange={handleChange}
-                      placeholder="예: 10"
-                      required
-                      min="0"
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      초기 재고 (자동 보충 기준)
-                    </label>
-                    <input
-                      name="initialStock"
-                      type="number"
-                      value={item.initialStock}
-                      onChange={handleChange}
-                      placeholder="미입력시 현재 재고와 동일"
-                      min="0"
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-
-                {/* 가격 상승률 */}
-                <div style={styles.priceIncreaseSection}>
-                  <label style={styles.label}>
-                    자동 재고 보충 시 가격 상승률 (%)
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input
-                      name="priceIncreasePercentage"
-                      type="number"
-                      value={item.priceIncreasePercentage}
-                      onChange={handleChange}
-                      placeholder="10"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      style={{ ...styles.input, width: '120px' }}
-                    />
-                    <span style={{ fontSize: '16px', color: '#374151', fontWeight: 600 }}>%</span>
-                  </div>
-                  <p style={{ ...styles.helpText, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                    <Lightbulb size={14} strokeWidth={2} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-                    <span>
-                      재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
-                      예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
-                    </span>
-                  </p>
-                </div>
-
-                {/* 경제이벤트 가격 변동 제외 */}
-                <div style={styles.infoSection}>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      cursor: "pointer",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      color: "#0f172a",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      name="excludeFromEconomicEvent"
-                      checked={!!item.excludeFromEconomicEvent}
-                      onChange={handleChange}
-                      style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: '#6366f1' }}
-                    />
-                    <Gem size={16} strokeWidth={2} style={{ color: '#0284c7' }} />
-                    경제이벤트 가격 변동 제외
-                  </label>
-                  <p style={styles.helpText}>
-                    체크하면 "물가 폭등/안정" 같은 경제이벤트로 이 아이템의 가격이 바뀌지 않습니다.<br />
-                    예: 자유시간처럼 가치가 변하지 않아야 하는 아이템에 사용.
-                  </p>
-                </div>
-
-                {/* 상품 설명 */}
+              {/* 기본 정보 */}
+              <div style={styles.gridTwo}>
                 <div style={styles.inputGroup}>
-                  <label style={styles.label}>상품 설명</label>
-                  <textarea
-                    name="description"
-                    value={item.description}
+                  <label style={styles.label}>
+                    상품명 <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="name"
+                    value={item.name}
                     onChange={handleChange}
-                    placeholder="아이템에 대한 자세한 설명을 입력해주세요."
-                    style={styles.textarea}
+                    placeholder="예: 마법의 물약"
+                    required
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>
+                    기본 가격 (원) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="price"
+                    type="number"
+                    value={item.price}
+                    onChange={handleChange}
+                    placeholder="예: 1000"
+                    required
+                    min="0"
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>
+                    현재 재고 <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="stock"
+                    type="number"
+                    value={item.stock}
+                    onChange={handleChange}
+                    placeholder="예: 10"
+                    required
+                    min="0"
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>
+                    초기 재고 (자동 보충 기준)
+                  </label>
+                  <input
+                    name="initialStock"
+                    type="number"
+                    value={item.initialStock}
+                    onChange={handleChange}
+                    placeholder="미입력시 현재 재고와 동일"
+                    min="0"
+                    style={styles.input}
                   />
                 </div>
               </div>
 
-              {/* 하단 버튼 영역 */}
-              <div style={styles.buttonGroup}>
-                <label style={{ ...styles.checkboxWrapper, cursor: 'pointer' }}>
+              {/* 가격 상승률 */}
+              <div style={styles.priceIncreaseSection}>
+                <label style={styles.label}>
+                  자동 재고 보충 시 가격 상승률 (%)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    name="priceIncreasePercentage"
+                    type="number"
+                    value={item.priceIncreasePercentage}
+                    onChange={handleChange}
+                    placeholder="10"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    style={{ ...styles.input, width: '120px' }}
+                  />
+                  <span style={{ fontSize: '16px', color: '#374151', fontWeight: 600 }}>%</span>
+                </div>
+                <p style={{ ...styles.helpText, display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                  <Lightbulb size={14} strokeWidth={2} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                  <span>
+                    재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
+                    예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
+                  </span>
+                </p>
+              </div>
+
+              {/* 경제이벤트 가격 변동 제외 */}
+              <div style={styles.infoSection}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    cursor: "pointer",
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: "#0f172a",
+                  }}
+                >
                   <input
                     type="checkbox"
-                    name="available"
-                    checked={item.available}
+                    name="excludeFromEconomicEvent"
+                    checked={!!item.excludeFromEconomicEvent}
                     onChange={handleChange}
-                    style={styles.checkbox}
+                    style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: '#6366f1' }}
                   />
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: item.available ? '#059669' : '#dc2626',
-                    padding: '6px 12px',
-                    borderRadius: '999px',
-                    backgroundColor: item.available ? '#ecfdf5' : '#fef2f2',
-                    border: `1px solid ${item.available ? '#a7f3d0' : '#fecaca'}`
-                  }}>
-                    <Circle
-                      size={8}
-                      fill={item.available ? '#10b981' : '#ef4444'}
-                      strokeWidth={0}
-                    />
-                    {item.available ? "판매중" : "판매중지"}
-                  </span>
+                  <Gem size={16} strokeWidth={2} style={{ color: '#0284c7' }} />
+                  경제이벤트 가격 변동 제외
                 </label>
-
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {activeTab === "editItem" && (
-                    <button
-                      type="button"
-                      onClick={() => handleTabClick("addItem")}
-                      style={{ ...styles.button, ...styles.secondaryButton }}
-                    >
-                      <XIcon size={15} strokeWidth={2.2} />
-                      취소
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    style={{ ...styles.button, ...styles.primaryButton }}
-                  >
-                    {activeTab === "editItem" ? (
-                      <>
-                        <Check size={16} strokeWidth={2.5} />
-                        수정 완료
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={16} strokeWidth={2.5} />
-                        아이템 추가
-                      </>
-                    )}
-                  </button>
-                </div>
+                <p style={styles.helpText}>
+                  체크하면 "물가 폭등/안정" 같은 경제이벤트로 이 아이템의 가격이 바뀌지 않습니다.<br />
+                  예: 자유시간처럼 가치가 변하지 않아야 하는 아이템에 사용.
+                </p>
               </div>
-            </form>
-          )}
+
+              {/* 상품 설명 */}
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>상품 설명</label>
+                <textarea
+                  name="description"
+                  value={item.description}
+                  onChange={handleChange}
+                  placeholder="아이템에 대한 자세한 설명을 입력해주세요."
+                  style={styles.textarea}
+                />
+              </div>
+            </div>
+
+            {/* 하단 버튼 영역 */}
+            <div style={styles.buttonGroup}>
+              <label style={{ ...styles.checkboxWrapper, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  name="available"
+                  checked={item.available}
+                  onChange={handleChange}
+                  style={styles.checkbox}
+                />
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: item.available ? '#059669' : '#dc2626',
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  backgroundColor: item.available ? '#ecfdf5' : '#fef2f2',
+                  border: `1px solid ${item.available ? '#a7f3d0' : '#fecaca'}`
+                }}>
+                  <Circle
+                    size={8}
+                    fill={item.available ? '#10b981' : '#ef4444'}
+                    strokeWidth={0}
+                  />
+                  {item.available ? "판매중" : "판매중지"}
+                </span>
+              </label>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    style={{ ...styles.button, ...styles.secondaryButton }}
+                  >
+                    <XIcon size={15} strokeWidth={2.2} />
+                    취소
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  style={{ ...styles.button, ...styles.primaryButton }}
+                >
+                  {isEditing ? (
+                    <>
+                      <Check size={16} strokeWidth={2.5} />
+                      수정 완료
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} strokeWidth={2.5} />
+                      아이템 추가
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
     </div>
