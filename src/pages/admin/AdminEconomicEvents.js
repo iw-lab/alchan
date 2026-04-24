@@ -78,7 +78,7 @@ const DEFAULT_EVENTS = [
  id: "tax_extra",
  type: "TAX_EXTRA",
  title: "긴급 세금 추징!",
- description: "정부가 국가 재정을 위해 추가 세금을 부과합니다! (현금의 3%)",
+ description: "정부가 국가 재정을 위해 추가 세금을 부과합니다! (순자산의 3%)",
  params: { taxRate: 0.03 },
  emoji: "💸😱",
  enabled: true,

@@ -42,7 +42,7 @@ const DEFAULT_EVENT_TEMPLATES = [
     id: "tax_extra",
     type: "TAX_EXTRA",
     title: "긴급 세금 추징!",
-    description: "정부가 국가 재정을 위해 추가 세금을 부과합니다! (현금의 3%)",
+    description: "정부가 국가 재정을 위해 추가 세금을 부과합니다! (순자산의 3%)",
     params: { taxRate: 0.03 },
     emoji: "💸😱",
     enabled: true,
@@ -325,7 +325,9 @@ async function executeTaxRefund(classCode, params) {
 }
 
 /**
- * 추가 세금 부과 이벤트 - 학생 현금의 일정 비율 징수
+ * 추가 세금 부과 이벤트 - 학생 "순자산"의 일정 비율 징수
+ * 순자산 = 현금 + 쿠폰가치 + 파킹잔액 + 주식평가액 + 부동산가치 - 대출잔액
+ * 현금 부족 시 가진 현금까지만 징수하고 나머지는 미납 처리 (월세 징수 패턴)
  */
 async function executeTaxExtra(classCode, params) {
   const { taxRate = 0.03 } = params;
@@ -352,45 +354,167 @@ async function executeTaxExtra(classCode, params) {
 
   if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
 
-  let totalCollected = 0;
-  const taxItems = [];
+  // === 학급 공통 데이터 1회 로드 (쿠폰가치, 주식시세, 부동산 전체) ===
+  const [mainSettingsSnap, stockListSnap, realEstateSnap] = await Promise.all([
+    db.doc("settings/mainSettings").get().catch(() => null),
+    db.doc(`classes/${classCode}/stocks/stockList`).get().catch(() => null),
+    db
+      .collection(`classes/${classCode}/realEstateProperties`)
+      .get()
+      .catch(() => ({ docs: [] })),
+  ]);
 
-  studentsSnapshot.docs.forEach((d) => {
-    if (d.data().isSuperAdmin) return;
-    const cash = d.data().cash || 0;
-    if (cash > 0) {
-      const taxAmount = Math.floor(cash * taxRate);
-      if (taxAmount > 0) {
-        taxItems.push({ ref: d.ref, taxAmount });
-        totalCollected += taxAmount;
-      }
-    }
+  const couponValue =
+    (mainSettingsSnap && mainSettingsSnap.exists &&
+      Number(mainSettingsSnap.data().couponValue)) || 1000;
+  const stocks =
+    stockListSnap && stockListSnap.exists && Array.isArray(stockListSnap.data().stocks)
+      ? stockListSnap.data().stocks
+      : [];
+
+  // 부동산을 owner (userId) 기준으로 합산
+  const realEstateByOwner = new Map();
+  realEstateSnap.docs.forEach((d) => {
+    const data = d.data();
+    const owner = data.owner;
+    if (!owner) return;
+    const price = Number(data.price) || Number(data.value) || 0;
+    if (price <= 0) return;
+    realEstateByOwner.set(owner, (realEstateByOwner.get(owner) || 0) + price);
   });
 
+  // === 학생별 순자산 계산 (병렬) ===
+  const logExpireAt = admin.firestore.Timestamp.fromDate(
+    new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+  );
+
+  const perStudent = await Promise.all(
+    studentsSnapshot.docs.map(async (sDoc) => {
+      const sData = sDoc.data();
+      if (sData.isSuperAdmin) return null;
+
+      const cash = Number(sData.cash) || 0;
+      const coupons = Number(sData.coupons) || 0;
+      const studentId = sDoc.id;
+
+      const [parkingSnap, loansSnap, portfolioSnap] = await Promise.all([
+        db
+          .doc(`users/${studentId}/financials/parkingAccount`)
+          .get()
+          .catch(() => null),
+        db
+          .doc(`users/${studentId}/financials/loans`)
+          .get()
+          .catch(() => null),
+        db
+          .collection(`users/${studentId}/portfolio`)
+          .get()
+          .catch(() => ({ docs: [] })),
+      ]);
+
+      const parking =
+        parkingSnap && parkingSnap.exists
+          ? Number(parkingSnap.data().balance) || 0
+          : 0;
+
+      const activeLoans =
+        loansSnap && loansSnap.exists && Array.isArray(loansSnap.data().activeLoans)
+          ? loansSnap.data().activeLoans
+          : [];
+      const loanBalance = activeLoans.reduce(
+        (sum, l) =>
+          sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
+        0,
+      );
+
+      const stockValue = portfolioSnap.docs.reduce((sum, d) => {
+        const h = d.data();
+        const qty = Number(h.quantity) || 0;
+        if (qty <= 0) return sum;
+        const stockId = parseInt(d.id, 10) || d.id;
+        const info = stocks.find((s) => s.id === stockId);
+        if (info && info.isListed) {
+          return sum + (Number(info.price) || 0) * qty;
+        }
+        return sum;
+      }, 0);
+
+      const realEstateValue = realEstateByOwner.get(studentId) || 0;
+      const couponTotal = coupons * couponValue;
+
+      const netWorth =
+        cash + couponTotal + parking + stockValue + realEstateValue - loanBalance;
+
+      if (netWorth <= 0) return null;
+
+      const assessedTax = Math.floor(netWorth * taxRate);
+      if (assessedTax <= 0) return null;
+
+      const actualDeduct = Math.max(0, Math.min(cash, assessedTax));
+      const unpaid = assessedTax - actualDeduct;
+
+      return {
+        ref: sDoc.ref,
+        studentId,
+        studentName: sData.name || sData.nickname || "학생",
+        cash,
+        netWorth,
+        assessedTax,
+        actualDeduct,
+        unpaid,
+      };
+    }),
+  );
+
+  const taxItems = perStudent.filter(Boolean);
   if (taxItems.length === 0) return { affectedCount: 0, collectedAmount: 0 };
 
-  const batchSize = 400;
+  // === 학생 cash 차감 + activity_logs 기록 (배치) ===
+  let totalCollected = 0;
+  const batchSize = 200; // activity_logs 1건 추가되어 문서당 2쓰기 → 한 배치 500 제한 여유
   for (let i = 0; i < taxItems.length; i += batchSize) {
     const batch = db.batch();
-    taxItems.slice(i, i + batchSize).forEach(({ ref, taxAmount }) => {
-      batch.update(ref, {
-        cash: admin.firestore.FieldValue.increment(-taxAmount),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    taxItems.slice(i, i + batchSize).forEach((item) => {
+      if (item.actualDeduct > 0) {
+        batch.update(item.ref, {
+          cash: admin.firestore.FieldValue.increment(-item.actualDeduct),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      // 학생에게 activity_logs 기록 (내 자산에서 확인)
+      const logRef = db.collection("activity_logs").doc();
+      const baseDesc =
+        `[경제이벤트] 순자산 ${item.netWorth.toLocaleString()}원 기준 ` +
+        `세금 ${(taxRate * 100).toFixed(1)}% = ${item.assessedTax.toLocaleString()}원 부과. ` +
+        `납부 ${item.actualDeduct.toLocaleString()}원` +
+        (item.unpaid > 0 ? ` (미납 ${item.unpaid.toLocaleString()}원)` : "");
+      batch.set(logRef, {
+        userId: item.studentId,
+        userName: item.studentName,
+        classCode,
+        type: "세금 납부 (경제이벤트)",
+        amount: -item.actualDeduct,
+        description: baseDesc,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        expireAt: logExpireAt,
       });
+      totalCollected += item.actualDeduct;
     });
     await batch.commit();
   }
 
   // 관리자 cash에 추가 (국고 = 관리자 cash)
-  await db
-    .collection("users")
-    .doc(adminDoc.id)
-    .update({
-      cash: admin.firestore.FieldValue.increment(totalCollected),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+  if (totalCollected > 0) {
+    await db
+      .collection("users")
+      .doc(adminDoc.id)
+      .update({
+        cash: admin.firestore.FieldValue.increment(totalCollected),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+  }
 
-  // 통계만 기록 (totalAmount 제외 - 국고=관리자cash이므로)
+  // 통계 기록
   await db
     .collection("nationalTreasuries")
     .doc(classCode)
@@ -404,7 +528,9 @@ async function executeTaxExtra(classCode, params) {
     );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 세금 추징 - ${taxItems.length}명 총 ${totalCollected.toLocaleString()}원`,
+    `[경제이벤트] ${classCode}: 순자산세 추징 - ${taxItems.length}명 부과 ${taxItems
+      .reduce((s, t) => s + t.assessedTax, 0)
+      .toLocaleString()}원 / 실징수 ${totalCollected.toLocaleString()}원`,
   );
   return { affectedCount: taxItems.length, collectedAmount: totalCollected };
 }

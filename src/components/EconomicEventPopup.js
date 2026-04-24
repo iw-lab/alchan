@@ -33,7 +33,7 @@ const EVENT_DETAILS = {
   }),
   TAX_EXTRA: (params, result) => ({
     isPositive: false,
-    impact: `모든 시민에게 추가 세금이 부과되었습니다. (현금의 ${((params?.taxRate || 0) * 100).toFixed(0)}%)`,
+    impact: `모든 시민에게 추가 세금이 부과되었습니다. (순자산의 ${((params?.taxRate || 0) * 100).toFixed(0)}%)`,
     tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}원이 국고로 이전되었습니다.`,
   }),
   CASH_BONUS: (params, result) => ({
