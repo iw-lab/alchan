@@ -445,12 +445,15 @@ async function executeTaxExtra(classCode, params) {
       const netWorth =
         cash + couponTotal + parking + stockValue + realEstateValue - loanBalance;
 
-      if (netWorth <= 0) return null;
+      // 순자산 ≤ 0 이거나 낼 현금 자체가 없는 학생은 그냥 안 걷고 스킵 (로그도 X)
+      if (netWorth <= 0 || cash <= 0) return null;
 
       const assessedTax = Math.floor(netWorth * taxRate);
       if (assessedTax <= 0) return null;
 
       const actualDeduct = Math.max(0, Math.min(cash, assessedTax));
+      if (actualDeduct <= 0) return null;
+
       const unpaid = assessedTax - actualDeduct;
 
       return {
