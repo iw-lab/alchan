@@ -96,6 +96,15 @@ export default function MyAssets() {
   const [classCouponGoal, setClassCouponGoal] = useState(1000);
   const [couponValue, setCouponValue] = useState(1000);
 
+  // '내 자산' 페이지 방문 = 사이드바 거래 알림 배지 해제 신호
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      localStorage.setItem(`lastAssetViewAt:${userId}`, String(Date.now()));
+      window.dispatchEvent(new Event("assets:viewed"));
+    } catch { /* ignore */ }
+  }, [userId]);
+
   // 🔥 [버그 수정] Firestore에서 쿠폰 가치 설정 로드
   useEffect(() => {
     const loadCouponValueFromSettings = async () => {

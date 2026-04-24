@@ -19,6 +19,7 @@ import {
   where,
   runTransaction,
   increment,
+  addActivityLog,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
 import { globalCache } from "../../services/globalCacheService";
@@ -1247,13 +1248,30 @@ const RealEstateRegistry = () => {
                 updatedAt: now,
               });
 
+              const tenantNameLocal = tenantData.name || `ID: ${property.tenantId}`;
+              const ownerNameLocal = ownerSnap?.exists() ? (ownerSnap.data().name || "집주인") : null;
+
               if (isNegative) {
                 return {
                   status: "unpaid",
-                  name: tenantData.name || `ID: ${property.tenantId}`,
+                  name: tenantNameLocal,
+                  tenantId: property.tenantId,
+                  ownerId: ownerSnap?.exists() ? ownerSnap.id : null,
+                  ownerName: ownerNameLocal,
+                  rentAmount,
+                  propertyLabel: property.name || `부동산 #${property.id}`,
+                  paidAmount: tenantData.cash > 0 ? tenantData.cash : 0,
                 };
               }
-              return { status: "success" };
+              return {
+                status: "success",
+                name: tenantNameLocal,
+                tenantId: property.tenantId,
+                ownerId: ownerSnap?.exists() ? ownerSnap.id : null,
+                ownerName: ownerNameLocal,
+                rentAmount,
+                propertyLabel: property.name || `부동산 #${property.id}`,
+              };
             });
 
             // 트랜잭션 결과에 따라 카운터 및 미납자 명단 처리
@@ -1264,6 +1282,22 @@ const RealEstateRegistry = () => {
               // 계약 해지는 실패로 카운트하지 않음 (자동 처리)
             } else {
               successCount++;
+            }
+
+            // 활동 로그 기록 (학생들이 '내 자산'에서 확인할 수 있도록)
+            if (result.status === "success" || result.status === "unpaid") {
+              const tenantDesc = result.status === "unpaid"
+                ? `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}원이 징수되었습니다. (잔액 부족으로 미납 처리)`
+                : `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}원이 징수되었습니다.`;
+              addActivityLog(result.tenantId, "월세 납부", tenantDesc).catch(
+                (err) => logger.error("월세 납부 로그 기록 실패:", err)
+              );
+              if (result.ownerId && result.ownerId !== result.tenantId) {
+                const ownerDesc = `${result.propertyLabel} 세입자 ${result.name}님으로부터 월세 ${result.rentAmount.toLocaleString()}원을 받았습니다.`;
+                addActivityLog(result.ownerId, "월세 수입", ownerDesc).catch(
+                  (err) => logger.error("월세 수입 로그 기록 실패:", err)
+                );
+              }
             }
           } catch (transactionError) {
             logger.error(

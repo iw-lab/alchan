@@ -11,6 +11,9 @@ import {
   where as fbWhere,
   getDocs,
   getCountFromServer,
+  orderBy as fbOrderBy,
+  limit as fbLimit,
+  Timestamp as fbTimestamp,
 } from "firebase/firestore";
 import {
   X,
@@ -450,7 +453,7 @@ const MenuSection = memo(({ title, children }) => (
 // ============================================
 // 메뉴 아이템 컴포넌트
 // ============================================
-const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
+const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick, badgeCount = 0 }) => (
   <li>
     <button
       onClick={onClick}
@@ -472,7 +475,18 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick }) => (
         />
         <span className="text-sm">{label}</span>
       </div>
-      {hasSubmenu && <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+      <div className="flex items-center gap-2">
+        {badgeCount > 0 && (
+          <span
+            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full"
+            style={{ background: '#ef4444', color: '#fff', lineHeight: 1 }}
+            aria-label={`${badgeCount}건의 새로운 알림`}
+          >
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
+        {hasSubmenu && <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+      </div>
     </button>
   </li>
 ));
@@ -737,6 +751,137 @@ export default function AlchanSidebar({
     };
   }, [isPresident, userDoc?.classCode]);
 
+  // 학생용 거래 알림 (세금/월세/월급/송금 등 — '내 자산'에서 확인 전까지 배지 + 세션 1회 요약)
+  const [unreadTxCount, setUnreadTxCount] = useState(0);
+  useEffect(() => {
+    // 관리자는 제외. 학생만.
+    if (isAdmin || !userDoc?.id || !userDoc?.classCode) {
+      setUnreadTxCount(0);
+      return;
+    }
+    const userId = userDoc.id;
+    const classCode = userDoc.classCode;
+    // 돈 이동을 나타내는 타입만 (조회·필터·페이지뷰 등 비재무성 로그 제외)
+    const MONEY_TYPES = new Set([
+      "월세 납부",
+      "월세 수입",
+      "세금 납부 (보유세)",
+      "세금 납부 (주식)",
+      "벌금 납부",
+      "송금",
+      "송금 수신",
+      "현금 입금",
+      "현금 출금",
+      "구매",
+      "판매",
+      "salaryPayment",
+    ]);
+    let cancelled = false;
+
+    const fetchUnread = async () => {
+      try {
+        const lastKey = `lastAssetViewAt:${userId}`;
+        const lastViewedMs = parseInt(
+          (typeof window !== "undefined" && localStorage.getItem(lastKey)) || "0",
+          10,
+        );
+        // 최초 접속자는 지금 기준으로 초기화 (과거 모든 로그가 '새 것'처럼 뜨는 걸 방지)
+        if (!lastViewedMs) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(lastKey, String(Date.now()));
+          }
+          setUnreadTxCount(0);
+          return;
+        }
+
+        const sinceTs = fbTimestamp.fromMillis(lastViewedMs);
+        const q = fbQuery(
+          fbCollection(firebaseDb, "activity_logs"),
+          fbWhere("classCode", "==", classCode),
+          fbWhere("userId", "==", userId),
+          fbWhere("timestamp", ">", sinceTs),
+          fbOrderBy("timestamp", "desc"),
+          fbLimit(30),
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const logs = snap.docs
+          .map((d) => d.data())
+          .filter((data) => MONEY_TYPES.has(data.type));
+        setUnreadTxCount(logs.length);
+
+        // 세션 1회 항목별 요약 알림
+        if (logs.length > 0 && typeof window !== "undefined") {
+          const alertKey = `txAlertShown:${userId}`;
+          if (!sessionStorage.getItem(alertKey)) {
+            sessionStorage.setItem(alertKey, "1");
+            const lines = logs.slice(0, 8).map((data) => {
+              const amt = typeof data.amount === "number" ? data.amount : null;
+              const sign = amt == null ? "" : amt > 0 ? "+" : "";
+              const amtText = amt == null ? "" : ` ${sign}${amt.toLocaleString()}원`;
+              const typeLabel = data.type === "salaryPayment" ? "주급" : data.type;
+              return `• [${typeLabel}]${amtText} — ${data.description || ""}`;
+            });
+            const more = logs.length > 8 ? `\n\n외 ${logs.length - 8}건` : "";
+            window.alert(
+              `💰 확인하지 않은 거래 내역 ${logs.length}건이 있어요.\n\n` +
+                lines.join("\n") +
+                more +
+                `\n\n'알찬 나의 자산'에서 전체 내역을 확인할 수 있어요.`
+            );
+          }
+        }
+      } catch (err) {
+        /* ignore — 인덱스 미생성 등 */
+      }
+    };
+
+    fetchUnread();
+    // 15분 폴링 + visibility-aware + 'assets:viewed' 커스텀 이벤트로 즉시 반영
+    let intervalId = null;
+    const start = () => {
+      if (intervalId) return;
+      intervalId = setInterval(fetchUnread, 15 * 60 * 1000);
+    };
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchUnread();
+        start();
+      } else {
+        stop();
+      }
+    };
+    const handleAssetsViewed = () => {
+      setUnreadTxCount(0);
+    };
+    if (typeof document === "undefined" || document.visibilityState === "visible") {
+      start();
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("assets:viewed", handleAssetsViewed);
+    }
+
+    return () => {
+      cancelled = true;
+      stop();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("assets:viewed", handleAssetsViewed);
+      }
+    };
+  }, [isAdmin, userDoc?.id, userDoc?.classCode]);
+
   // 학습 게시판 목록 로드 (사이드바에 동적 표시)
   useEffect(() => {
     const classCode = userDoc?.classCode;
@@ -880,6 +1025,7 @@ export default function AlchanSidebar({
                 label={item.label}
                 active={isActive(item.path)}
                 onClick={() => handleItemClick(item)}
+                badgeCount={item.id === "myAssets" ? unreadTxCount : 0}
               />
             );
           }
