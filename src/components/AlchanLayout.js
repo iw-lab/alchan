@@ -41,6 +41,7 @@ import MobileNav from "./MobileNav";
 import PWAInstallPrompt from "./PWAInstallPrompt";
 import UpdateNotification from "./UpdateNotification";
 import { useServiceWorker } from "../hooks/useServiceWorker";
+import { useAutoLoanRepay } from "../hooks/useAutoLoanRepay";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
@@ -252,8 +253,11 @@ const SuperAdminRoute = ({ children }) => {
 // 메인 레이아웃 컴포넌트
 export default function AlchanLayout() {
   const location = useLocation();
-  const { user, userDoc, loading, logout } = useAuth();
+  const { user, userDoc, loading, logout, refreshUserDocument } = useAuth();
   const isImmersiveMusicRoom = location.pathname.startsWith("/music-room/");
+
+  // 만기 도달 대출 자동 강제 상환 (학생 전용 — 어떤 페이지든 진입/복귀 시 처리)
+  useAutoLoanRepay(userDoc, refreshUserDocument);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

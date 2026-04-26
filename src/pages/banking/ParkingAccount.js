@@ -1116,6 +1116,8 @@ const ParkingAccount = ({
  }
  }, [userDoc?.cash]);
 
+ // 만기 도달 대출 자동 강제 상환은 AlchanLayout의 useAutoLoanRepay hook에서 글로벌 처리
+
  const handleOpenModal = (product, type) =>
  setModal({ isOpen: true, product, type });
  const handleCloseModal = () =>
@@ -1581,9 +1583,10 @@ const ParkingAccount = ({
  }
  };
 
- // 만기 수령
- const handleMaturity = async (product) => {
- logger.log("--- handleMaturity 시작 ---");
+ // 만기 수령 / 강제 상환 (force=true면 confirm 스킵, 자동 트리거 용도)
+ const handleMaturity = async (product, options = {}) => {
+ const { force = false } = options;
+ logger.log(`--- handleMaturity 시작 ${force ? "(강제 상환)" : ""} ---`);
  logger.log("처리할 상품:", product);
 
  const { id, name, type, balance, termInDays, rate, teacherId } = product;
@@ -1610,6 +1613,8 @@ const ParkingAccount = ({
 
  logger.log(`계산 결과: ${isSavings ? '적금' : '예금'} 원금=${isSavings ? product.totalDeposited : balance}, 이자=${interest}, 총액=${total}`);
 
+ // 강제 상환(force)은 만기 도달 시 자동 트리거 — 학생 동의 없이 즉시 차감
+ if (!force) {
  const confirmMsg = isLoan
  ? `대출 만기 상환: 원금 ${formatCurrency(balance)}${currencyUnit} + 이자 ${formatCurrency(interest)}${currencyUnit} = ${formatCurrency(total)}${currencyUnit}을 상환하시겠습니까?`
  : `만기 수령: 원금 ${formatCurrency(balance)}${currencyUnit} + 이자 ${formatCurrency(interest)}${currencyUnit} = ${formatCurrency(total)}${currencyUnit}을 수령하시겠습니까?`;
@@ -1617,6 +1622,7 @@ const ParkingAccount = ({
  if (!window.confirm(confirmMsg)) {
  logger.log("사용자가 만기 처리를 취소했습니다.");
  return;
+ }
  }
 
  setIsProcessing(true);
@@ -1656,11 +1662,9 @@ const ParkingAccount = ({
  const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
 
  if (isLoan) {
- // 대출 만기 상환: 학생 → 선생님 (원금+이자)
+ // 대출 만기 상환: 학생 → 선생님 (원금+이자, 잔액 부족 시 마이너스 허용)
  if (currentCashInDb < total) {
- throw new Error(
- `상환금이 부족합니다. (필요: ${formatCurrency(total)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`,
- );
+ logger.log(`[은행] 대출 만기 상환 - 학생 잔액 부족, 마이너스 차감 진행 (필요: ${total}, 보유: ${currentCashInDb}, 차감 후: ${currentCashInDb - total})`);
  }
  transaction.update(userRef, { cash: increment(-total) });
  transaction.update(teacherRef, { cash: increment(total) });
@@ -1682,8 +1686,9 @@ const ParkingAccount = ({
 
  logger.log("트랜잭션 성공");
 
+ const finalCash = (currentCash || 0) - total;
  const successMsg = isLoan
- ? `대출 상환 완료: ${formatCurrency(total)}${currencyUnit} (선생님 계정으로 이체)`
+ ? `${force ? "⚠️ 만기일 도래 - 자동 강제 상환: " : "대출 상환 완료: "}${formatCurrency(total)}${currencyUnit} (선생님 계정으로 이체)${finalCash < 0 ? ` · 잔액 ${formatCurrency(finalCash)}${currencyUnit} (마이너스)` : ""}`
  : `만기 수령 완료: ${formatCurrency(total)}${currencyUnit} (선생님 계정에서 지급)`;
  displayMessage(successMsg, "success");
 
