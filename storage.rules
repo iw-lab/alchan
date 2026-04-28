@@ -18,13 +18,17 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.classCode == classCode;
     }
 
-    // 학습 게시판 첨부파일: 담임(isAdmin) 업로드/삭제, 같은 학급은 다운로드
+    // 학습 게시판 첨부파일: 담임(isAdmin/role=admin/isSuperAdmin) 업로드/삭제, 같은 학급은 다운로드
     match /learning-board/{classCode}/{boardId}/{postId}/{allPaths=**} {
       allow write: if request.auth != null
-        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true
+        && (
+          firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true
+          || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin'
+          || firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('isSuperAdmin', false) == true
+        )
         && (request.resource == null || (
             request.resource.size < 20 * 1024 * 1024
-            && request.resource.contentType.matches('image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*|application/vnd.ms-excel|application/vnd.ms-powerpoint|application/zip|application/x-hwp|application/haansofthwp|text/plain')
+            && request.resource.contentType.matches('image/.*|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.*|application/vnd.ms-excel|application/vnd.ms-powerpoint|application/zip|application/x-hwp|application/haansofthwp|text/plain|application/octet-stream')
           ));
       allow read: if request.auth != null
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.classCode == classCode;
