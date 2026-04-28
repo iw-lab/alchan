@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebase";
+import { db, storage } from "../../firebase";
 import {
   collection,
   doc,
@@ -24,6 +24,23 @@ import {
   setDoc,
   runTransaction,
 } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+
+// 첨부파일 정책
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20MB
+const ALLOWED_ATTACHMENT_EXTS = [
+  "jpg","jpeg","png","gif","webp","bmp",
+  "pdf","hwp","hwpx",
+  "doc","docx","xls","xlsx","ppt","pptx",
+  "txt","zip"
+];
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+};
+const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
 
@@ -114,6 +131,11 @@ const LearningBoard = () => {
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  // 첨부파일: 작성/수정 시 추가될 파일 목록(File 객체) + 수정 시 기존 첨부 목록
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [editPendingFiles, setEditPendingFiles] = useState([]);
+  const [editAttachments, setEditAttachments] = useState([]);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const POSTS_PER_PAGE = 10;
 
   const boardsCollectionRef = useMemo(() => {
@@ -158,6 +180,7 @@ const LearningBoard = () => {
       likedBy: Array.isArray(d.data().likedBy) ? d.data().likedBy : [],
       dislikedBy: Array.isArray(d.data().dislikedBy) ? d.data().dislikedBy : [],
       commentCount: d.data().commentCount,
+      attachments: Array.isArray(d.data().attachments) ? d.data().attachments : [],
       timestamp: d.data().timestamp?.toDate ? d.data().timestamp.toDate().toISOString() : new Date().toISOString(),
     }));
     // commentCount가 없는 글은 실제 댓글 수 조회 후 Firestore에 저장 (1회성 보정)
@@ -273,6 +296,88 @@ const LearningBoard = () => {
     }
   };
 
+  // 첨부파일 검증
+  const validateFiles = (files) => {
+    for (const f of files) {
+      const ext = getFileExt(f.name);
+      if (!ALLOWED_ATTACHMENT_EXTS.includes(ext)) {
+        alert(`허용되지 않는 파일 형식입니다: ${f.name}\n(허용: ${ALLOWED_ATTACHMENT_EXTS.join(", ")})`);
+        return false;
+      }
+      if (f.size > MAX_ATTACHMENT_SIZE) {
+        alert(`파일 크기는 20MB 이하여야 합니다: ${f.name}`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 작성 폼 파일 선택
+  const handlePendingFilesChange = (e, isEdit = false) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    if (!validateFiles(files)) {
+      e.target.value = "";
+      return;
+    }
+    if (isEdit) {
+      setEditPendingFiles((prev) => [...prev, ...files]);
+    } else {
+      setPendingFiles((prev) => [...prev, ...files]);
+    }
+    e.target.value = "";
+  };
+
+  const removePendingFile = (idx, isEdit = false) => {
+    if (isEdit) {
+      setEditPendingFiles((prev) => prev.filter((_, i) => i !== idx));
+    } else {
+      setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
+    }
+  };
+
+  const removeExistingAttachment = (idx) => {
+    setEditAttachments((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // 첨부파일 업로드 → attachment 객체 배열 반환
+  const uploadAttachments = async (files, boardId, postId) => {
+    if (!files || files.length === 0) return [];
+    const results = [];
+    for (const file of files) {
+      const safeName = file.name.replace(/[^\w\-.가-힣]/g, "_");
+      const path = `learning-board/${classCode}/${boardId}/${postId}/${Date.now()}_${safeName}`;
+      const sref = storageRef(storage, path);
+      const snap = await uploadBytes(sref, file);
+      const url = await getDownloadURL(snap.ref);
+      results.push({
+        name: file.name,
+        size: file.size,
+        type: file.type || "",
+        url,
+        path,
+        uploadedAt: new Date().toISOString(),
+      });
+    }
+    return results;
+  };
+
+  // Storage 첨부 삭제 (실패해도 계속 진행)
+  const deleteAttachmentsFromStorage = async (attachments) => {
+    if (!Array.isArray(attachments)) return;
+    await Promise.all(
+      attachments
+        .filter((a) => a && a.path)
+        .map(async (a) => {
+          try {
+            await deleteObject(storageRef(storage, a.path));
+          } catch (err) {
+            logger.error("Error deleting attachment:", a.path, err);
+          }
+        })
+    );
+  };
+
   // Post submit
   const handlePostSubmit = async (e) => {
     e.preventDefault();
@@ -286,10 +391,15 @@ const LearningBoard = () => {
       alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
+    if (pendingFiles.length > 0 && !currentUserIsAdmin) {
+      alert("첨부파일은 담임 선생님만 추가할 수 있습니다.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
-      await addDoc(ref, {
+      // 1) 게시글 먼저 생성 (postId 확보)
+      const docRef = await addDoc(ref, {
         title: newPost.title,
         content: newPost.content,
         author: currentUser?.name || currentUser?.nickname || "익명",
@@ -298,10 +408,25 @@ const LearningBoard = () => {
         coupons: 0,
         timestamp: serverTimestamp(),
         adminCouponGiven: false,
+        attachments: [],
         classCode,
       });
+      // 2) 첨부 업로드 (담임만)
+      if (pendingFiles.length > 0) {
+        try {
+          setIsUploadingAttachment(true);
+          const uploaded = await uploadAttachments(pendingFiles, selectedBoard.id, docRef.id);
+          await updateDoc(docRef, { attachments: uploaded });
+        } catch (uploadErr) {
+          logger.error("Error uploading attachments:", uploadErr);
+          alert(`첨부파일 업로드 오류: ${uploadErr.message}\n(게시글은 등록되었습니다)`);
+        } finally {
+          setIsUploadingAttachment(false);
+        }
+      }
       refetchPosts();
       setNewPost({ title: "", content: "" });
+      setPendingFiles([]);
       setIsWriting(false);
       alert("게시글이 등록되었습니다!");
     } catch (error) {
@@ -317,6 +442,10 @@ const LearningBoard = () => {
     if (!selectedBoard || !selectedPost || !classCode) return;
     if (!window.confirm("게시글을 삭제하시겠습니까?")) return;
     try {
+      // 첨부파일 Storage 삭제 (담임이 올린 파일이라 담임만 실제 권한 있음)
+      if (currentUserIsAdmin) {
+        await deleteAttachmentsFromStorage(selectedPost.attachments);
+      }
       // 댓글도 함께 삭제
       const commentsRef = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments");
       const commentsSnapshot = await getDocs(commentsRef);
@@ -340,6 +469,8 @@ const LearningBoard = () => {
     if (!selectedBoard || !classCode) return;
     if (!window.confirm(`"${post.title}" 게시글을 삭제하시겠습니까?`)) return;
     try {
+      // 첨부파일 Storage 삭제
+      await deleteAttachmentsFromStorage(post.attachments);
       const commentsRef = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", post.id, "comments");
       const commentsSnapshot = await getDocs(commentsRef);
       const batch = writeBatch(db);
@@ -360,6 +491,8 @@ const LearningBoard = () => {
   // Post edit
   const handleStartEditPost = () => {
     setEditPost({ title: selectedPost.title, content: selectedPost.content });
+    setEditAttachments(Array.isArray(selectedPost.attachments) ? [...selectedPost.attachments] : []);
+    setEditPendingFiles([]);
     setIsEditingPost(true);
   };
 
@@ -370,15 +503,47 @@ const LearningBoard = () => {
       alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
+    if ((editPendingFiles.length > 0 || (selectedPost.attachments?.length || 0) !== editAttachments.length) && !currentUserIsAdmin) {
+      alert("첨부파일은 담임 선생님만 변경할 수 있습니다.");
+      return;
+    }
     try {
       const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
-      await updateDoc(postRef, {
+      const updates = {
         title: editPost.title,
         content: editPost.content,
         updatedAt: serverTimestamp(),
-      });
-      setSelectedPost({ ...selectedPost, title: editPost.title, content: editPost.content });
+      };
+
+      // 첨부파일 동기화 (담임만)
+      let nextAttachments = selectedPost.attachments || [];
+      if (currentUserIsAdmin) {
+        // 1) 제거된 기존 첨부 → Storage에서 삭제
+        const original = Array.isArray(selectedPost.attachments) ? selectedPost.attachments : [];
+        const keptPaths = new Set(editAttachments.map((a) => a.path));
+        const removed = original.filter((a) => a.path && !keptPaths.has(a.path));
+        if (removed.length > 0) {
+          await deleteAttachmentsFromStorage(removed);
+        }
+        // 2) 새로 추가된 파일 업로드
+        let uploaded = [];
+        if (editPendingFiles.length > 0) {
+          setIsUploadingAttachment(true);
+          try {
+            uploaded = await uploadAttachments(editPendingFiles, selectedBoard.id, selectedPost.id);
+          } finally {
+            setIsUploadingAttachment(false);
+          }
+        }
+        nextAttachments = [...editAttachments, ...uploaded];
+        updates.attachments = nextAttachments;
+      }
+
+      await updateDoc(postRef, updates);
+      setSelectedPost({ ...selectedPost, title: editPost.title, content: editPost.content, attachments: nextAttachments });
       setIsEditingPost(false);
+      setEditPendingFiles([]);
+      setEditAttachments([]);
       refetchPosts();
       alert("게시글이 수정되었습니다!");
     } catch (error) {
@@ -559,6 +724,10 @@ const LearningBoard = () => {
       const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
       const postsRef = collection(boardRef, "posts");
       const postsSnapshot = await getDocs(postsRef);
+      // 모든 게시글의 첨부파일 Storage 삭제 (담임 권한)
+      await Promise.all(
+        postsSnapshot.docs.map((d) => deleteAttachmentsFromStorage(d.data()?.attachments))
+      );
       const batch = writeBatch(db);
       postsSnapshot.docs.forEach((d) => batch.delete(d.ref));
       batch.delete(boardRef);
@@ -666,6 +835,9 @@ const LearningBoard = () => {
                           <td className="lb-cell-title">
                             <span className="lb-post-title-text">{post.title}</span>
                             {(post.commentCount || 0) > 0 && <span className="lb-comment-badge" title="댓글">[{post.commentCount}]</span>}
+                            {Array.isArray(post.attachments) && post.attachments.length > 0 && (
+                              <span className="lb-badge" title={`첨부 ${post.attachments.length}개`}>📎</span>
+                            )}
                             {post.adminCouponGiven && <span className="lb-badge" title="관리자 확인">✨</span>}
                           </td>
                           <td className="lb-cell-author">
@@ -762,9 +934,46 @@ const LearningBoard = () => {
                       rows="10"
                     />
                   </div>
+                  {currentUserIsAdmin && (
+                    <div className="lb-field">
+                      <label>첨부파일 <span style={{fontSize:'0.75em',color:'#64748b'}}>(담임 전용 · 20MB 이하)</span></label>
+                      {editAttachments.length > 0 && (
+                        <ul className="lb-attach-list">
+                          {editAttachments.map((a, i) => (
+                            <li key={`exist-${i}`} className="lb-attach-item">
+                              <span className="lb-attach-icon">📎</span>
+                              <span className="lb-attach-name" title={a.name}>{a.name}</span>
+                              <span className="lb-attach-size">{formatFileSize(a.size)}</span>
+                              <button type="button" className="lb-attach-remove" onClick={() => removeExistingAttachment(i)}>제거</button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {editPendingFiles.length > 0 && (
+                        <ul className="lb-attach-list">
+                          {editPendingFiles.map((f, i) => (
+                            <li key={`pend-${i}`} className="lb-attach-item lb-attach-new">
+                              <span className="lb-attach-icon">＋</span>
+                              <span className="lb-attach-name" title={f.name}>{f.name}</span>
+                              <span className="lb-attach-size">{formatFileSize(f.size)}</span>
+                              <button type="button" className="lb-attach-remove" onClick={() => removePendingFile(i, true)}>제거</button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => handlePendingFilesChange(e, true)}
+                        className="lb-file-input"
+                      />
+                    </div>
+                  )}
                   <div className="lb-edit-btns">
-                    <button type="submit" className="lb-submit">수정 완료</button>
-                    <button type="button" className="lb-cancel-btn" onClick={() => setIsEditingPost(false)}>취소</button>
+                    <button type="submit" className="lb-submit" disabled={isUploadingAttachment}>
+                      {isUploadingAttachment ? "업로드 중..." : "수정 완료"}
+                    </button>
+                    <button type="button" className="lb-cancel-btn" onClick={() => { setIsEditingPost(false); setEditPendingFiles([]); setEditAttachments([]); }}>취소</button>
                   </div>
                 </form>
               </div>
@@ -788,6 +997,31 @@ const LearningBoard = () => {
                 <span>{formatDate(selectedPost.timestamp)}</span>
               </div>
               <div className="lb-detail-content" style={{ whiteSpace: 'pre-wrap' }}>{linkifyContent(selectedPost.content)}</div>
+
+              {/* 첨부파일 (담임만 업로드, 같은 학급은 다운로드) */}
+              {Array.isArray(selectedPost.attachments) && selectedPost.attachments.length > 0 && (
+                <div className="lb-attach-section">
+                  <h4 className="lb-attach-heading">📎 첨부파일 ({selectedPost.attachments.length})</h4>
+                  <ul className="lb-attach-list">
+                    {selectedPost.attachments.map((a, i) => (
+                      <li key={i} className="lb-attach-item lb-attach-download">
+                        <span className="lb-attach-icon">📎</span>
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="lb-attach-name lb-attach-link"
+                          title={a.name}
+                          download={a.name}
+                        >
+                          {a.name}
+                        </a>
+                        <span className="lb-attach-size">{formatFileSize(a.size)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Like / Dislike */}
               <div className="lb-detail-actions">
@@ -902,7 +1136,7 @@ const LearningBoard = () => {
         {/* Write Form */}
         {isWriting && selectedBoard && (!selectedBoard.isHidden || currentUserIsAdmin) && !showHiddenBoardsView && (
           <div className="lb-write">
-            <button className="lb-back" onClick={() => setIsWriting(false)}>← 목록으로</button>
+            <button className="lb-back" onClick={() => { setIsWriting(false); setPendingFiles([]); }}>← 목록으로</button>
             <h2 className="lb-write-heading">{selectedBoard.name}에 글쓰기</h2>
             <form onSubmit={handlePostSubmit} className="lb-form">
               <div className="lb-field">
@@ -925,10 +1159,35 @@ const LearningBoard = () => {
                   rows="10"
                 />
               </div>
+              {currentUserIsAdmin && (
+                <div className="lb-field">
+                  <label>첨부파일 <span style={{fontSize:'0.75em',color:'#64748b'}}>(담임 전용 · 20MB 이하)</span></label>
+                  {pendingFiles.length > 0 && (
+                    <ul className="lb-attach-list">
+                      {pendingFiles.map((f, i) => (
+                        <li key={i} className="lb-attach-item lb-attach-new">
+                          <span className="lb-attach-icon">＋</span>
+                          <span className="lb-attach-name" title={f.name}>{f.name}</span>
+                          <span className="lb-attach-size">{formatFileSize(f.size)}</span>
+                          <button type="button" className="lb-attach-remove" onClick={() => removePendingFile(i, false)}>제거</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => handlePendingFilesChange(e, false)}
+                    className="lb-file-input"
+                  />
+                </div>
+              )}
               {selectedBoard?.isAnonymous && (
                 <p style={{color:'#60a5fa',fontSize:'0.9em',margin:'0 0 8px'}}>🔒 이 게시판은 익명 게시판입니다. 작성자가 표시되지 않습니다.</p>
               )}
-              <button type="submit" className="lb-submit" disabled={isSubmitting}>{isSubmitting ? "등록 중..." : "게시하기"}</button>
+              <button type="submit" className="lb-submit" disabled={isSubmitting || isUploadingAttachment}>
+                {isSubmitting ? (isUploadingAttachment ? "파일 업로드 중..." : "등록 중...") : "게시하기"}
+              </button>
             </form>
           </div>
         )}
