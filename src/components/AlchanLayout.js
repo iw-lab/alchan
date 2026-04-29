@@ -42,6 +42,8 @@ import PWAInstallPrompt from "./PWAInstallPrompt";
 import UpdateNotification from "./UpdateNotification";
 import { useServiceWorker } from "../hooks/useServiceWorker";
 import { useAutoLoanRepay } from "../hooks/useAutoLoanRepay";
+import { useAutoSavingsDeposit } from "../hooks/useAutoSavingsDeposit";
+import { useAutoDepositMature } from "../hooks/useAutoDepositMature";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
@@ -258,6 +260,10 @@ export default function AlchanLayout() {
 
   // 만기 도달 대출 자동 강제 상환 (학생 전용 — 어떤 페이지든 진입/복귀 시 처리)
   useAutoLoanRepay(userDoc, refreshUserDocument);
+  // 적금 일일 자동 납입 (학생 전용 — 가입 후 매일 dailyAmount 학생→선생님 이체)
+  useAutoSavingsDeposit(userDoc, refreshUserDocument);
+  // 만기 도달 예금/적금 자동 지급 (학생 전용 — 선생님→학생 원금+이자 이체 후 상품 삭제)
+  useAutoDepositMature(userDoc, refreshUserDocument);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

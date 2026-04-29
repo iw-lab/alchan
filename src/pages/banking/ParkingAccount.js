@@ -1652,11 +1652,14 @@ const ParkingAccount = ({
 
  const userSnapshot = await transaction.get(userRef);
  const teacherSnapshot = await transaction.get(teacherRef);
+ const productSnapshot = await transaction.get(productRef);
 
  if (!userSnapshot.exists())
  throw new Error("사용자 정보를 찾을 수 없습니다.");
  if (!teacherSnapshot.exists())
  throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+ if (!productSnapshot.exists())
+ throw new Error("상품 정보를 찾을 수 없습니다.");
 
  const currentCashInDb = userSnapshot.data()?.cash ?? 0;
  const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
@@ -1671,12 +1674,25 @@ const ParkingAccount = ({
  logger.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
  } else {
  // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자, 마이너스 허용)
- if (teacherCashInDb < total) {
+ // 적금 미납 회차가 있으면 일괄 차감 (학생이 termInDays 전체 납입한 것으로 정산)
+ let arrearsAmount = 0;
+ if (isSavings) {
+ const pdata = productSnapshot.data();
+ const curDeposits = Number(pdata.depositsCount || 0);
+ const missing = Math.max(0, termInDays - curDeposits);
+ arrearsAmount = missing * Number(pdata.dailyAmount || product.dailyAmount || 0);
+ if (arrearsAmount > 0) {
+ logger.log(`[은행] 적금 만기 - 미납 ${missing}회차 일괄 차감: ${arrearsAmount}`);
+ }
+ }
+ const studentDelta = total - arrearsAmount;
+ const teacherDelta = -total + arrearsAmount;
+ if (teacherCashInDb + arrearsAmount < total) {
  logger.log(`[은행] 만기 수령 - 선생님 잔액 부족하지만 진행 (필요: ${total}, 보유: ${teacherCashInDb})`);
  }
- transaction.update(userRef, { cash: increment(total) });
- transaction.update(teacherRef, { cash: increment(-total) });
- logger.log(`만기 수령: 학생 +${total}, 선생님 -${total}`);
+ transaction.update(userRef, { cash: increment(studentDelta) });
+ transaction.update(teacherRef, { cash: increment(teacherDelta) });
+ logger.log(`만기 수령: 학생 +${studentDelta} (만기 +${total}, 미납 -${arrearsAmount}), 선생님 ${teacherDelta}`);
  }
 
  transaction.delete(productRef);
