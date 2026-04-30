@@ -299,10 +299,10 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "boardCategory",
   },
 
-  // 위임 기능 카테고리 (위임된 학생에게만 표시)
+  // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
   {
     id: "delegationCategory",
-    label: "위임 기능",
+    label: "특별 권한",
     icon: Shield,
     isCategory: true,
     category: "delegation",
@@ -929,18 +929,19 @@ export default function AlchanSidebar({
     (item) => {
       if (item.adminOnly && !isAdmin) return false;
       if (item.superAdminOnly && !isSuperAdmin) return false;
-      // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생만 표시
+      // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생 또는 대통령 직업 학생에게 표시
+      // 대통령은 직업 자체로 할일 승인 권한을 가짐 (별도 위임 불필요)
       if (item.delegatedOnly) {
         if (isAdmin) return false; // 관리자는 관리자 카테고리에서 이미 보임
-        if (item.delegatedOnly === "any") return hasAnyDelegation;
-        if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval;
+        if (item.delegatedOnly === "any") return hasAnyDelegation || isPresident;
+        if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval || isPresident;
         if (item.delegatedOnly === "moneyTransfer") return hasDelegatedMoneyTransfer;
         if (item.delegatedOnly === "couponTransfer") return hasDelegatedCouponTransfer;
         return false;
       }
       return true;
     },
-    [isAdmin, isSuperAdmin, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer],
+    [isAdmin, isSuperAdmin, isPresident, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer],
   );
 
   // 카테고리별 메뉴 렌더링
