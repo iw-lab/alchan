@@ -71,6 +71,8 @@ const OrganizationChart = ({ classCode }) => {
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingLaws, setLoadingLaws] = useState(true);
+  // fetch 에러 표시 (학생/대통령 권한 디버그용)
+  const [fetchError, setFetchError] = useState(null);
 
   // Firestore에서 관리자 설정 로드 및 초기화
   const fetchSettings = useCallback(async () => {
@@ -89,8 +91,9 @@ const OrganizationChart = ({ classCode }) => {
             DEFAULT_ADMIN_SETTINGS.vetoOverrideRequired,
           adminPassword: "", // 비밀번호는 직접 입력받도록 비워둠
         });
-      } else {
-        // 해당 classCode에 대한 설정이 없으면 기본값으로 생성
+      } else if (isAuthAdmin && (typeof isAuthAdmin === "function" ? isAuthAdmin() : isAuthAdmin)) {
+        // 관리자만 governmentSettings 문서 신규 생성 (rules: write if isAdmin)
+        // 학생/대통령은 default 값으로 페이지를 보여주고 진입은 막지 않음
         await setDoc(settingsDocRef, {
           ...DEFAULT_ADMIN_SETTINGS,
           lastUpdated: serverTimestamp(),
@@ -101,13 +104,16 @@ const OrganizationChart = ({ classCode }) => {
           adminPassword: "",
         });
         logger.log(`[${classCode}] 정부 기본 설정 생성 완료`);
+      } else {
+        // 비관리자: 문서가 없어도 default로 진행
+        setAdminSettings(DEFAULT_ADMIN_SETTINGS);
       }
     } catch (error) {
       logger.error("정부 설정 로드 오류:", error);
     } finally {
       setLoadingSettings(false);
     }
-  }, [classCode]);
+  }, [classCode, isAuthAdmin]);
 
   // 🔥 [비용 최적화] 5분 → 1시간 (정부 설정은 거의 안 바뀜)
   usePolling(fetchSettings, { interval: 60 * 60 * 1000, enabled: !!classCode });
@@ -131,10 +137,12 @@ const OrganizationChart = ({ classCode }) => {
       );
       const vetoPending = allLaws.filter((law) => law.status === "vetoed"); // 대통령 거부, 재의결 대기
 
+      setFetchError(null);
       setApprovedLaws(approved);
       setVetoPendingLaws(vetoPending);
     } catch (error) {
       logger.error("법안 데이터 로드 오류:", error);
+      setFetchError(`법안 로드 실패 (${error.code || "unknown"}): ${error.message}`);
     } finally {
       setLoadingLaws(false);
     }
@@ -161,6 +169,7 @@ const OrganizationChart = ({ classCode }) => {
       setPendingGovLaws(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (error) {
       logger.error("정부 이송 법안 로드 오류:", error);
+      setFetchError(`정부 이송 법안 로드 실패 (${error.code || "unknown"}): ${error.message}`);
     }
   }, [classCode]);
 
@@ -421,7 +430,9 @@ const OrganizationChart = ({ classCode }) => {
     );
   }
 
-  if (loadingSettings || loadingLaws) {
+  // 학생/대통령은 governmentSettings 쓰기 권한이 없어 loadingSettings가 늦거나 실패할 수 있음
+  // → loadingLaws만 게이트로 사용. settings는 default로 진행
+  if (loadingLaws) {
     return (
       <div className="org-chart-container">
         <p>정부 조직도 정보를 불러오는 중입니다...</p>
@@ -457,12 +468,34 @@ const OrganizationChart = ({ classCode }) => {
         </div>
       </div>
 
+      {fetchError && (
+        <div
+          style={{
+            background: "#fee",
+            border: "1px solid #f99",
+            padding: "12px 16px",
+            borderRadius: 8,
+            marginBottom: 16,
+            color: "#933",
+            fontSize: 14,
+          }}
+        >
+          ⚠️ 데이터 로드 오류: {fetchError}
+          <br />
+          <small>이 메시지를 선생님께 그대로 보여주세요.</small>
+        </div>
+      )}
+
       <div className="president-section">
         <div className="president-office">
           <h2>대통령실</h2>
-          {canManage && (
+          {canManage ? (
             <div className="admin-indicator">
               {isPresident ? "대통령 권한" : "관리자 권한"}
+            </div>
+          ) : (
+            <div className="admin-indicator" style={{ opacity: 0.6 }}>
+              권한 확인 중...
             </div>
           )}
         </div>
