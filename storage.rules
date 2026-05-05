@@ -1,4 +1,5 @@
 rules_version = '2';
+// 정식 권한 정책 — 2026-05-05 prod 재적용 (디버그 모드 폐기)
 
 service firebase.storage {
   match /b/{bucket}/o {

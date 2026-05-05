@@ -7,6 +7,7 @@ on:
     paths:
       - 'build/**'  # build 폴더가 변경될 때만 호스팅 배포
       - 'functions/**'  # functions 변경 시 함수 배포
+      - 'storage.rules'  # storage 권한 정책 변경 시 배포
 
   # 수동 실행 옵션
   workflow_dispatch:
@@ -54,6 +55,16 @@ jobs:
             rm -f functions/.env
           else
             echo "⏭️  Functions 변경 없음 - 건너뜀"
+          fi
+
+      - name: Deploy Storage Rules (if changed)
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          if echo "$CHANGED" | grep -q '^storage.rules$'; then
+            echo "✅ Storage rules 변경 감지 - 배포 시작"
+            firebase deploy --only storage --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+          else
+            echo "⏭️  Storage rules 변경 없음 - 건너뜀"
           fi
 
       # GitHub Release 생성 (AppUpdateChecker가 감지)
