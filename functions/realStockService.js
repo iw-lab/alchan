@@ -415,19 +415,44 @@ async function updateRealStockPrices() {
         continue;
       }
 
-      // USD 가격은 KRW로 변환
-      let newPrice = data.price;
-      if (stock.isUSD) {
-        newPrice = Math.round(data.price * USD_TO_KRW);
+      // 실물 가격 (KRW 환산) — 학생 화면 비교 표시 및 mean reversion 기준점
+      const realPriceKRW = stock.isUSD
+        ? Math.round(data.price * USD_TO_KRW)
+        : Math.round(data.price);
+
+      // 직전 실물 가격 (KRW) — 변동률 계산용
+      const prevRealStored = stock.realStockData?.lastPriceKRW
+        || (stock.realStockData?.lastPrice
+              ? (stock.isUSD
+                   ? Math.round(stock.realStockData.lastPrice * USD_TO_KRW)
+                   : Math.round(stock.realStockData.lastPrice))
+              : null)
+        || realPriceKRW;
+
+      // ── 변동성 ×10 + Mean Reversion (실물쪽으로 매일 5% 끌림) ──
+      // 설계 의도: 학생 흥미를 위한 큰 변동폭(±10%)을 주되,
+      //   누적 발산을 막기 위해 매일 실물 쪽으로 부분 수렴시켜 아비트라지를 차단.
+      const VOL_MULT = 10;
+      const REVERSION_RATE = 0.05;
+      const TICK_LIMIT = 0.5; // 1tick 최대 ±50% 안전망
+
+      let newPrice;
+      if (!stock.currentPrice || stock.currentPrice < 100) {
+        newPrice = realPriceKRW; // 최초 시드
       } else {
-        newPrice = Math.round(data.price);
+        const realChangePct = prevRealStored > 0
+          ? (realPriceKRW - prevRealStored) / prevRealStored
+          : 0;
+        const amplified = Math.max(-TICK_LIMIT, Math.min(TICK_LIMIT, realChangePct * VOL_MULT));
+        const reversion = REVERSION_RATE * (realPriceKRW - stock.currentPrice) / stock.currentPrice;
+        newPrice = Math.max(100, Math.round(stock.currentPrice * (1 + amplified + reversion)));
       }
 
       // 가격 이력 업데이트 (최대 20개)
       const newHistory = [...stock.priceHistory.slice(-19), newPrice];
 
-      // 변동률 계산
-      const changePercent = stock.currentPrice > 0
+      // 우리 앱 기준 변동률 (학생 화면용)
+      const ourChangePercent = stock.currentPrice > 0
         ? ((newPrice - stock.currentPrice) / stock.currentPrice) * 100
         : 0;
 
@@ -435,13 +460,15 @@ async function updateRealStockPrices() {
         price: newPrice,
         priceHistory: newHistory,
         previousClose: data.previousClose || 0,
-        changePercent: data.changePercent || 0,
+        changePercent: ourChangePercent, // 우리반 가격 기준
         marketState: data.marketState || 'CLOSED',
+        volatilityMultiplier: VOL_MULT,
         realStockData: {
           lastPrice: data.price || 0,
+          lastPriceKRW: realPriceKRW, // 학생 화면 비교 표시용
           previousClose: data.previousClose || 0,
           change: data.change || 0,
-          changePercent: data.changePercent || 0,
+          changePercent: data.changePercent || 0, // 실물 기준 변동률
           currency: data.currency || 'KRW',
           marketState: data.marketState || 'CLOSED',
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
@@ -449,7 +476,7 @@ async function updateRealStockPrices() {
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (${changePercent.toFixed(2)}%)`);
+      logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (우리반 ${ourChangePercent.toFixed(2)}%, 실물 ${realPriceKRW}원, 실물변동 ${(data.changePercent || 0).toFixed(2)}%)`);
       updated++;
     }
 
