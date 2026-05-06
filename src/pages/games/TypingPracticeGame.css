@@ -664,17 +664,17 @@
 
 .card-selection-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
   background: var(--bg-secondary);
-  padding: 35px;
-  border-radius: 20px;
+  padding: 22px 20px;
+  border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--accent-light);
 }
 
 .card-selection-header h2 {
-  margin: 0 0 15px 0;
-  font-size: 36px;
+  margin: 0 0 8px 0;
+  font-size: 24px;
   color: var(--accent);
   font-weight: 700;
   text-shadow: 0 0 10px var(--border-accent);
@@ -682,7 +682,7 @@
 
 .card-selection-header p {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   color: #a0a0c0;
   font-weight: 500;
 }
@@ -690,13 +690,15 @@
 .reward-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 40px;
+  gap: 28px;
   perspective: 1000px;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .reward-card {
   position: relative;
-  height: 400px;
+  height: 320px;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
@@ -740,19 +742,19 @@
 .card-front {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 40px;
+  padding: 24px;
 }
 
 .card-back {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
   transform: rotateY(180deg);
-  padding: 40px;
+  padding: 24px;
 }
 
 .card-icon {
-  font-size: 80px;
-  margin-bottom: 20px;
+  font-size: 60px;
+  margin-bottom: 14px;
   animation: float 3s ease-in-out infinite;
 }
 
@@ -769,14 +771,17 @@
 }
 
 .card-title {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .card-hint {
-  font-size: 16px;
+  font-size: 14px;
   opacity: 0.9;
+  text-align: center;
+  word-break: keep-all;
+  line-height: 1.4;
   font-weight: 500;
 }
 
@@ -785,8 +790,8 @@
 }
 
 .reward-icon {
-  font-size: 100px;
-  margin-bottom: 20px;
+  font-size: 72px;
+  margin-bottom: 14px;
   animation: zoomIn 0.5s ease-out;
 }
 
@@ -801,10 +806,11 @@
 }
 
 .reward-amount {
-  font-size: 48px;
+  font-size: 34px;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   animation: slideUp 0.5s ease-out 0.2s both;
+  word-break: keep-all;
 }
 
 @keyframes slideUp {
@@ -820,7 +826,7 @@
 }
 
 .reward-label {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   opacity: 0.95;
   animation: slideUp 0.5s ease-out 0.4s both;
@@ -866,26 +872,26 @@
 }
 
 .minigame-reward .reward-header h2 {
-  margin: 0 0 10px 0;
-  font-size: 42px;
+  margin: 0 0 8px 0;
+  font-size: 28px;
   color: #2d3748;
 }
 
 .reward-content {
   background: rgba(255, 255, 255, 0.95);
-  padding: 50px;
+  padding: 32px 28px;
   border-radius: 20px;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .reward-display {
-  margin-bottom: 25px;
+  margin-bottom: 18px;
 }
 
 .reward-icon-large {
-  font-size: 100px;
-  margin-bottom: 20px;
+  font-size: 72px;
+  margin-bottom: 14px;
   animation: celebrate 1s ease-in-out;
 }
 
@@ -906,18 +912,19 @@
 }
 
 .reward-text {
-  font-size: 48px;
+  font-size: 36px;
   font-weight: 700;
   color: #2d3748;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  word-break: keep-all;
 }
 
 .reward-type {
-  font-size: 20px;
+  font-size: 16px;
   color: #718096;
   font-weight: 600;
 }
@@ -1021,19 +1028,44 @@
 
   .reward-cards {
     grid-template-columns: 1fr;
-    gap: 30px;
+    gap: 18px;
+    max-width: 360px;
   }
 
   .reward-card {
-    height: 350px;
+    height: 240px;
+  }
+
+  .card-front,
+  .card-back {
+    padding: 18px;
   }
 
   .card-icon {
-    font-size: 60px;
+    font-size: 48px;
+    margin-bottom: 10px;
   }
 
   .card-title {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .card-hint {
+    font-size: 13px;
+  }
+
+  .reward-icon {
+    font-size: 56px;
+    margin-bottom: 10px;
+  }
+
+  .reward-amount {
     font-size: 28px;
+  }
+
+  .reward-label {
+    font-size: 14px;
   }
 
   .result-grid {
@@ -1075,15 +1107,50 @@
   }
 
   .reward-amount {
-    font-size: 36px;
+    font-size: 24px;
+  }
+
+  .card-selection-header {
+    padding: 16px 14px;
+    margin-bottom: 20px;
   }
 
   .card-selection-header h2 {
-    font-size: 28px;
+    font-size: 20px;
+  }
+
+  .card-selection-header p {
+    font-size: 13px;
+  }
+
+  .reward-card {
+    height: 210px;
+  }
+
+  .card-front,
+  .card-back {
+    padding: 14px;
+  }
+
+  .card-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+  }
+
+  .card-title {
+    font-size: 18px;
+  }
+
+  .card-hint {
+    font-size: 12px;
+  }
+
+  .reward-icon {
+    font-size: 48px;
   }
 
   .reward-text {
-    font-size: 36px;
+    font-size: 28px;
   }
 }
 
