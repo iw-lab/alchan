@@ -143,6 +143,11 @@ const TypingPracticeGame = ({ onClose }) => {
       return;
     }
 
+    // 정답이 한 개도 없으면 보상 미지급 (UI 우회 방지)
+    if (correctCount === 0) {
+      return;
+    }
+
     // 랜덤 보상 생성 (난이도별 차등 + 정답 개수 비례)
     const rewards = generateRandomReward(difficulty, correctCount);
     setRewardData(rewards);
@@ -371,15 +376,20 @@ const TypingPracticeGame = ({ onClose }) => {
         </div>
 
         <div className="completion-actions">
-          {canGetReward ? (
-            <button className="reward-proceed-btn" onClick={handleProceedToCardSelection}>
-              🎁 보상 받기
-            </button>
-          ) : (
+          {!canGetReward ? (
             <div className="no-reward-message">
               <p>오늘은 더 이상 보상을 받을 수 없습니다</p>
               <p className="sub">내일 다시 도전해보세요!</p>
             </div>
+          ) : correctCount === 0 ? (
+            <div className="no-reward-message">
+              <p>한 문제 이상 정답을 맞춰야 보상을 받을 수 있어요!</p>
+              <p className="sub">다시 도전해보세요 💪</p>
+            </div>
+          ) : (
+            <button className="reward-proceed-btn" onClick={handleProceedToCardSelection}>
+              🎁 보상 받기
+            </button>
           )}
           <div className="action-buttons">
             <button className="menu-btn" onClick={() => setGameState("menu")}>
