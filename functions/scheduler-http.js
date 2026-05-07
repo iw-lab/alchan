@@ -24,6 +24,8 @@ const {
   getCentralStocksSnapshot,
 } = require("./realStockService");
 
+const { payMonthlyDividends } = require("./dividendService");
+
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
@@ -2472,6 +2474,56 @@ exports.hourlySchedulerV2 = onSchedule(
       }
     } catch (error) {
       logger.error("[hourlyV2] 전체 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
+// 💎 [Cloud Scheduler v2] 매월 첫 금요일 KST 09:00 — 주식 배당 지급
+// cron "0 9 1-7 * 5" = 매월 1~7일 중 금요일 (= 첫 금요일) 09:00
+// ===================================================================================
+exports.dividendSchedulerV2 = onSchedule(
+  {
+    region: "asia-northeast3",
+    schedule: "0 9 1-7 * 5",
+    timeZone: "Asia/Seoul",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    try {
+      const vacationMode = await isVacationMode();
+      if (vacationMode) {
+        logger.info("[dividendV2] 방학 모드 - skip");
+        return;
+      }
+      logger.info("[dividendV2] 월간 배당 지급 시작");
+      const result = await payMonthlyDividends();
+      logger.info("[dividendV2] 완료:", result);
+    } catch (error) {
+      logger.error("[dividendV2] 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
+// 💎 배당 수동 실행 endpoint (테스트/긴급 지급용, AUTH_TOKEN 보호)
+// ===================================================================================
+exports.payDividendsManual = onRequest(
+  { region: "asia-northeast3", cors: true },
+  async (req, res) => {
+    const token = req.headers["x-scheduler-auth"] || req.query.auth;
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      logger.info("[payDividendsManual] 수동 배당 지급 시작");
+      const result = await payMonthlyDividends();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      logger.error("[payDividendsManual] 오류:", error);
+      res.status(500).json({ error: error.message });
     }
   },
 );

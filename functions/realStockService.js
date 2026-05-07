@@ -91,6 +91,33 @@ const REAL_STOCK_SYMBOLS = {
   'USO': 'USO',           // 원유
 };
 
+// 종목별 연간 배당률(%) 매핑 — 2026 기준 실측 근사값
+// Yahoo Finance 무료 API는 dividendYield를 단일 호출로 안 줘서 하드코딩 사용
+// 관리자가 CentralStocks 문서에서 dividendYieldAnnual 직접 수정 가능 (override)
+const STOCK_DIVIDEND_YIELDS_BY_SYMBOL = {
+  // 한국 대형주
+  '005930.KS': 2.5, '005935.KS': 3.0, '000660.KS': 1.5, '373220.KS': 0.0,
+  '207940.KS': 0.0, '005380.KS': 5.0, '000270.KS': 5.5, '035420.KS': 0.5,
+  '035720.KS': 0.0, '051910.KS': 1.5, '005490.KS': 4.0, '006400.KS': 1.0,
+  '068270.KS': 0.0, '012330.KS': 4.5, '105560.KS': 6.0, '055550.KS': 5.0,
+  '086790.KS': 6.5, '096770.KS': 3.5, '034730.KS': 4.0, '066570.KS': 1.0,
+  '323410.KS': 1.5, '259960.KS': 0.0, '034020.KS': 0.5, '011200.KS': 8.0,
+  '030200.KS': 6.0, '012450.KS': 1.5,
+  // 미국 대형주
+  'AAPL': 0.5, 'MSFT': 0.7, 'GOOGL': 0.0, 'AMZN': 0.0, 'TSLA': 0.0,
+  'NVDA': 0.05, 'META': 0.4, 'NFLX': 0.0,
+  // 한국 ETF
+  '069500.KS': 1.8, '229200.KS': 0.5, '122630.KS': 0.5, '114800.KS': 0.5,
+  '102110.KS': 1.8, '360750.KS': 1.0, '133690.KS': 0.5,
+  '148070.KS': 3.0, '308620.KS': 3.5,
+  // 미국 ETF
+  'SPY': 1.3, 'QQQ': 0.6, 'DIA': 1.7, 'IWM': 1.3, 'VTI': 1.4,
+  // 채권 ETF (이자수익을 배당으로 처리)
+  'TLT': 4.0, 'IEF': 3.5, 'SHY': 3.0, 'LQD': 4.5, 'HYG': 7.0, 'BND': 3.5,
+  // 원자재 ETF (배당 없음)
+  'GLD': 0.0, 'SLV': 0.0, 'USO': 0.0,
+};
+
 // 기본 환율 (실시간 환율로 업데이트됨, Firestore에서 로드 후 덮어씌워짐)
 let USD_TO_KRW = 1477;
 
@@ -379,7 +406,8 @@ async function updateRealStockPrices() {
           symbol: symbol,
           currentPrice: data.price,
           priceHistory: data.priceHistory || [],
-          isUSD: isUSD
+          isUSD: isUSD,
+          dividendYieldAnnual: data.dividendYieldAnnual,
         });
       } else {
         logger.warn(`[RealStock] ${data.name} - 심볼을 찾을 수 없음`);
@@ -456,7 +484,7 @@ async function updateRealStockPrices() {
         ? ((newPrice - stock.currentPrice) / stock.currentPrice) * 100
         : 0;
 
-      batch.update(stock.docRef, {
+      const updatePayload = {
         price: newPrice,
         priceHistory: newHistory,
         previousClose: data.previousClose || 0,
@@ -474,7 +502,17 @@ async function updateRealStockPrices() {
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         },
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
-      });
+      };
+
+      // 배당률(dividendYieldAnnual)은 미설정 종목에만 매핑값 자동 부여 (admin 수동 변경 보존)
+      if (stock.dividendYieldAnnual === undefined || stock.dividendYieldAnnual === null) {
+        const yieldFromMap = STOCK_DIVIDEND_YIELDS_BY_SYMBOL[stock.symbol];
+        if (yieldFromMap !== undefined) {
+          updatePayload.dividendYieldAnnual = yieldFromMap;
+        }
+      }
+
+      batch.update(stock.docRef, updatePayload);
 
       logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (우리반 ${ourChangePercent.toFixed(2)}%, 실물 ${realPriceKRW}원, 실물변동 ${(data.changePercent || 0).toFixed(2)}%)`);
       updated++;

@@ -2171,6 +2171,14 @@ const StockExchange = () => {
                           </div>
                         );
                       })()}
+                      {(stock.dividendYieldAnnual || 0) > 0 && (
+                        <div className="text-[0.7rem] text-emerald-600 mt-0.5 font-semibold leading-tight">
+                          💎 배당 {Number(stock.dividendYieldAnnual).toFixed(1)}%/년
+                          <span className="ml-1 text-[0.6rem] text-gray-400 font-normal">
+                            (월{(Number(stock.dividendYieldAnnual) / 12).toFixed(2)}%)
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="stock-actions">
