@@ -457,11 +457,13 @@ async function updateRealStockPrices() {
               : null)
         || realPriceKRW;
 
-      // ── 변동성 ×10 + Mean Reversion (실물쪽으로 매일 5% 끌림) ──
-      // 설계 의도: 학생 흥미를 위한 큰 변동폭(±10%)을 주되,
-      //   누적 발산을 막기 위해 매일 실물 쪽으로 부분 수렴시켜 아비트라지를 차단.
+      // ── 변동성 ×10 + Mean Reversion (약한 끌림) ──
+      // 설계 의도: 학생 흥미를 위한 큰 변동폭(일중 ±20%)을 주되,
+      //   누적 발산을 막기 위해 실물 쪽으로 약하게 수렴시켜 아비트라지를 차단.
+      // REVERSION은 5분 tick마다 적용되므로, 일 78 ticks × 0.005 ≈ 일 약 30% 수렴력
+      //   (이전 0.05/tick은 너무 강해 변동성이 묶였음 — 시뮬레이션 결과 기반 1/10 조정)
       const VOL_MULT = 10;
-      const REVERSION_RATE = 0.05;
+      const REVERSION_RATE = 0.005;
       const TICK_LIMIT = 0.5; // 1tick 최대 ±50% 안전망
 
       let newPrice;

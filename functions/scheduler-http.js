@@ -2387,6 +2387,58 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
 );
 
 // ===================================================================================
+// 🔄 일회성 마이그레이션: 기존 학급의 CASH_PENALTY description을 정확한 텍스트로 갱신
+// 정책 변경(현금 5% → 순자산 5%)에 맞춰 학생 안내문 동기화
+// systemState 플래그로 1회만 실행
+// ===================================================================================
+async function migrateCashPenaltyDescriptionsOnce() {
+  const flagRef = db.collection("systemState").doc("cashPenaltyDescMigrated_v2");
+  const flagSnap = await flagRef.get();
+  if (flagSnap.exists) return; // 이미 완료
+
+  const NEW_TEXT = "경제 위기 — 순자산의 5%만큼 현금이 차감됩니다 (현금 잔고 한도 내)";
+  // 옛 텍스트 패턴: "현금이 N% 삭감", "현금의 N%" 등 폭넓게 매칭
+  const OLD_PATTERN = /현금이?\s*\d+\s*%\s*(가\s*)?삭감|모든\s*시민의\s*현금/;
+
+  const settingsSnap = await db.collection("economicEventSettings").get();
+  let classesUpdated = 0;
+  let eventsUpdated = 0;
+
+  for (const docSnap of settingsSnap.docs) {
+    const data = docSnap.data();
+    const events = Array.isArray(data.events) ? data.events : [];
+    if (events.length === 0) continue;
+
+    let changed = false;
+    const newEvents = events.map((e) => {
+      if (e.type === "CASH_PENALTY") {
+        const desc = e.description || "";
+        if (desc !== NEW_TEXT && OLD_PATTERN.test(desc)) {
+          changed = true;
+          eventsUpdated++;
+          return { ...e, description: NEW_TEXT };
+        }
+      }
+      return e;
+    });
+
+    if (changed) {
+      await docSnap.ref.update({ events: newEvents });
+      classesUpdated++;
+    }
+  }
+
+  await flagRef.set({
+    migratedAt: admin.firestore.FieldValue.serverTimestamp(),
+    classesUpdated,
+    eventsUpdated,
+  });
+  logger.info(
+    `[Migration] CASH_PENALTY description 마이그레이션 완료: ${classesUpdated}개 학급 / ${eventsUpdated}개 이벤트`,
+  );
+}
+
+// ===================================================================================
 // 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋(0시), 경제이벤트(8~17시), 환율(7시)
 // 1개 Cloud Scheduler job으로 자정리셋/경제이벤트/환율/적금납입/오목정리 통합 처리
 // ===================================================================================
@@ -2404,6 +2456,14 @@ exports.hourlySchedulerV2 = onSchedule(
       if (vacationMode) {
         logger.info("[hourlyV2] 방학 모드 - skip");
         return;
+      }
+
+      // 🔄 일회성 마이그레이션: CASH_PENALTY description 갱신
+      // (방학 모드 체크 후 실행 — 시스템 플래그로 1회만)
+      try {
+        await migrateCashPenaltyDescriptionsOnce();
+      } catch (e) {
+        logger.warn("[hourlyV2] CASH_PENALTY 마이그레이션 오류 (skip):", e.message);
       }
 
       const now = new Date();
