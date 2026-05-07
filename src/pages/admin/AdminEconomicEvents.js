@@ -96,7 +96,7 @@ const DEFAULT_EVENTS = [
  id: "cash_penalty",
  type: "CASH_PENALTY",
  title: "경제 위기 긴급 부담금!",
- description: "경제 위기로 인해 모든 시민의 현금이 5% 삭감됩니다!",
+ description: "경제 위기 — 순자산의 5%만큼 현금이 차감됩니다 (현금 잔고 한도 내)",
  params: { penaltyRate: 0.05 },
  emoji: "📉💔",
  enabled: true,

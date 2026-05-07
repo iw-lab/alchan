@@ -61,7 +61,7 @@ const DEFAULT_EVENT_TEMPLATES = [
     id: "cash_penalty",
     type: "CASH_PENALTY",
     title: "경제 위기 긴급 부담금!",
-    description: "경제 위기로 인해 모든 시민의 현금이 5% 삭감됩니다!",
+    description: "경제 위기 — 순자산의 5%만큼 현금이 차감됩니다 (현금 잔고 한도 내)",
     params: { penaltyRate: 0.05 },
     emoji: "📉💔",
     enabled: true,
@@ -601,7 +601,65 @@ async function executeCashBonus(classCode, params) {
 }
 
 /**
- * 현금 차감 이벤트 - 학생 현금의 일정 비율 차감 → 국고 납입
+ * 한 학생의 순자산 계산 — netAssets.js의 computeNetAssets와 동일 공식
+ * 순자산 = cash + coupons*1000 + parking + stockValue + realEstateValue - loanBalance
+ */
+async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPON_VALUE = 1000) {
+  const userId = userDoc.id;
+  const userData = userDoc.data();
+  const userName = userData.name || "";
+  const cash = Number(userData.cash) || 0;
+  const coupons = Number(userData.coupons) || 0;
+
+  // 예치금 (parkingAccount)
+  let parking = 0;
+  try {
+    const snap = await db.collection("users").doc(userId)
+      .collection("financials").doc("parkingAccount").get();
+    if (snap.exists) parking = Number(snap.data().balance) || 0;
+  } catch (_) {}
+
+  // 대출 잔액 (loans.activeLoans[])
+  let loanBalance = 0;
+  try {
+    const snap = await db.collection("users").doc(userId)
+      .collection("financials").doc("loans").get();
+    if (snap.exists) {
+      const activeLoans = Array.isArray(snap.data().activeLoans) ? snap.data().activeLoans : [];
+      loanBalance = activeLoans.reduce(
+        (sum, l) => sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
+        0
+      );
+    }
+  } catch (_) {}
+
+  // 주식 보유가치
+  let stockValue = 0;
+  try {
+    const snap = await db.collection("users").doc(userId).collection("portfolio").get();
+    snap.docs.forEach((d) => {
+      const h = d.data();
+      const qty = Number(h.quantity) || 0;
+      if (qty <= 0) return;
+      // stockId는 holding 필드 우선, 없으면 doc.id (string/int 둘 다 시도)
+      const sid = h.stockId != null ? h.stockId : d.id;
+      const info = stocksMap.get(String(sid)) || stocksMap.get(sid);
+      if (info && info.isListed) {
+        stockValue += (Number(info.price) || 0) * qty;
+      }
+    });
+  } catch (_) {}
+
+  // 부동산 가치 (학급 단위 캐시에서 owner별 조회)
+  const myRealEstate = realEstateByOwner.get(userName) || [];
+  const realEstateValue = myRealEstate.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+
+  return cash + coupons * COUPON_VALUE + parking + stockValue + realEstateValue - loanBalance;
+}
+
+/**
+ * 현금 차감 이벤트 - 순자산 ×N% 계산 → cash에서 차감 (cash 부족 시 cap) → 국고 납입
+ * 정책 (1번): 순자산 기준 공평 과세, 단 cash 잔고 한도 내에서만 실제 차감
  */
 async function executeCashPenalty(classCode, params) {
   const { penaltyRate = 0.05 } = params;
@@ -621,6 +679,32 @@ async function executeCashPenalty(classCode, params) {
 
   const adminDoc = adminSnapshot.docs[0];
 
+  // 순자산 계산용 캐시: CentralStocks 한 번 + 학급 부동산 한 번
+  const stocksMap = new Map();
+  try {
+    const stocksSnap = await db.collection("CentralStocks").get();
+    stocksSnap.docs.forEach((d) => stocksMap.set(d.id, { id: d.id, ...d.data() }));
+  } catch (e) {
+    logger.warn("[CashPenalty] CentralStocks 조회 실패:", e.message);
+  }
+
+  const realEstateByOwner = new Map();
+  try {
+    const reSnap = await db
+      .collection("classes").doc(classCode)
+      .collection("realEstateProperties")
+      .get();
+    reSnap.docs.forEach((d) => {
+      const data = d.data();
+      const owner = data.owner;
+      if (!owner) return;
+      if (!realEstateByOwner.has(owner)) realEstateByOwner.set(owner, []);
+      realEstateByOwner.get(owner).push(data);
+    });
+  } catch (e) {
+    logger.warn("[CashPenalty] 부동산 조회 실패:", e.message);
+  }
+
   const studentsSnapshot = await db
     .collection("users")
     .where("classCode", "==", classCode)
@@ -632,17 +716,24 @@ async function executeCashPenalty(classCode, params) {
   let totalPenalty = 0;
   const penaltyItems = [];
 
-  studentsSnapshot.docs.forEach((d) => {
-    if (d.data().isSuperAdmin) return;
-    const cash = d.data().cash || 0;
-    if (cash > 0) {
-      const penalty = Math.floor(cash * penaltyRate);
-      if (penalty > 0) {
-        penaltyItems.push({ ref: d.ref, penalty });
-        totalPenalty += penalty;
-      }
+  // 순차 처리 (학생당 ~3 read, 학급 100명 = 300 read 정도)
+  for (const d of studentsSnapshot.docs) {
+    const data = d.data();
+    if (data.isSuperAdmin) continue;
+    const cash = Number(data.cash) || 0;
+    if (cash <= 0) continue;
+
+    const netAssets = await calcNetAssetsForUser(d, stocksMap, realEstateByOwner);
+    if (netAssets <= 0) continue; // 순자산 음수/0인 학생 보호
+
+    // 순자산 ×N% → cash 잔고로 cap
+    const target = Math.floor(netAssets * penaltyRate);
+    const penalty = Math.min(target, cash);
+    if (penalty > 0) {
+      penaltyItems.push({ ref: d.ref, penalty, netAssets, target });
+      totalPenalty += penalty;
     }
-  });
+  }
 
   if (penaltyItems.length === 0)
     return { affectedCount: 0, collectedAmount: 0 };

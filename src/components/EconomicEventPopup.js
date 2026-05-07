@@ -43,7 +43,7 @@ const EVENT_DETAILS = {
   }),
   CASH_PENALTY: (params, result) => ({
     isPositive: false,
-    impact: `경제 위기로 모든 시민의 현금 ${((params?.penaltyRate || 0) * 100).toFixed(0)}%가 삭감되었습니다.`,
+    impact: `경제 위기 — 순자산의 ${((params?.penaltyRate || 0) * 100).toFixed(0)}%만큼 현금이 차감되었습니다 (현금 잔고 한도 내).`,
     tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}원이 국고로 이전되었습니다.`,
   }),
   STORE_PRICE_CHANGE: (params, result) => {
