@@ -169,4 +169,4 @@ export async function isNetAssetsNegative(user, couponValue = 1000) {
 }
 
 export const NEGATIVE_ASSETS_MESSAGE =
-  "순자산이 마이너스입니다. 대출 상환 등으로 자산을 회복한 후 이용해주세요.";
+  "순자산이 마이너스입니다. 대출 상환·자산 매도·과제 보상 등으로 자산을 회복한 후 이용해주세요.";
