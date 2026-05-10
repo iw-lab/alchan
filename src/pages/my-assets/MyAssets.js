@@ -1517,9 +1517,10 @@ export default function MyAssets() {
                 metadata: { rewardType: "daily_streak" },
               });
 
-              // 로컬 상태 업데이트
+              // 로컬 상태 업데이트 — optimisticUpdate는 델타(증감분)만 받음
+              // 예전 버그: 절대값(현재 cash + reward)을 전달해 화면에 두 배 가산되던 문제
               if (optimisticUpdate) {
-                optimisticUpdate({ cash: (userDoc?.cash || 0) + reward });
+                optimisticUpdate({ cash: reward });
               }
 
               logger.log(`Daily reward claimed and added: ${reward}`);
