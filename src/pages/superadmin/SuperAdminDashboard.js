@@ -110,6 +110,11 @@ export default function SuperAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // 학급 상세 모달
+  const [classDetail, setClassDetail] = useState(null); // { classCode, teacherName }
+  const [classStudents, setClassStudents] = useState([]);
+  const [classDetailLoading, setClassDetailLoading] = useState(false);
+
   // 실시간 에러 모니터링
   const errorListenerRef = useRef(null);
   const metricsIntervalRef = useRef(null);
@@ -544,6 +549,39 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  // 학급 상세 모달 열기 — 학생 목록 + 자산 통계 fetch
+  const openClassDetail = async (classCode, teacherName) => {
+    if (!classCode || classCode === "미지정") {
+      alert("학급 코드가 없습니다. 먼저 '학급 코드 발급' 버튼으로 코드를 부여해주세요.");
+      return;
+    }
+    setClassDetail({ classCode, teacherName });
+    setClassStudents([]);
+    setClassDetailLoading(true);
+    try {
+      const snap = await getDocs(
+        query(collection(db, "users"), where("classCode", "==", classCode)),
+      );
+      const students = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter(
+          (u) => !u.isAdmin && !u.isSuperAdmin && !u.isTeacher,
+        )
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setClassStudents(students);
+    } catch (error) {
+      logger.error("학급 상세 로드 오류:", error);
+      alert("학급 정보를 불러오지 못했습니다.");
+    } finally {
+      setClassDetailLoading(false);
+    }
+  };
+
+  const closeClassDetail = () => {
+    setClassDetail(null);
+    setClassStudents([]);
+  };
+
   // 학급 코드 발급 (이미 승인된 선생님 중 classCode가 "미지정"인 경우)
   const handleAssignClassCode = async (teacherId, teacherName) => {
     if (
@@ -855,7 +893,10 @@ export default function SuperAdminDashboard() {
           <button
             key={tab.id}
             className={`sad-tab ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearchTerm(""); // 탭 전환 시 검색어 초기화 — 오염 방지
+            }}
           >
             <tab.icon size={18} />
             <span>{tab.label}</span>
@@ -1135,10 +1176,9 @@ export default function SuperAdminDashboard() {
                           ) : (
                             <button
                               className="view-btn"
-                              onClick={() => {
-                                setSearchTerm(teacher.classCode || "");
-                                setActiveTab("classes");
-                              }}
+                              onClick={() =>
+                                openClassDetail(teacher.classCode, teacher.name)
+                              }
                             >
                               <Eye size={18} />
                               학급 보기
@@ -1185,7 +1225,22 @@ export default function SuperAdminDashboard() {
                 ) : (
                   <div className="class-grid">
                     {filteredClasses.map((cls) => (
-                      <div key={cls.id} className="class-card">
+                      <div
+                        key={cls.id}
+                        className="class-card"
+                        onClick={() =>
+                          openClassDetail(cls.classCode, cls.adminName)
+                        }
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            openClassDetail(cls.classCode, cls.adminName);
+                          }
+                        }}
+                        style={{ cursor: "pointer" }}
+                        title="클릭하면 학급 상세를 볼 수 있습니다"
+                      >
                         <div className="class-header">
                           <School size={24} />
                           <h4>{cls.classCode}</h4>
@@ -1833,6 +1888,125 @@ export default function SuperAdminDashboard() {
           </>
         )}
       </main>
+
+      {/* 학급 상세 모달 */}
+      {classDetail && (
+        <div
+          className="class-detail-overlay"
+          onClick={closeClassDetail}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="class-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="class-detail-header">
+              <div>
+                <div className="class-detail-code">
+                  <School size={20} />
+                  <span>{classDetail.classCode}</span>
+                </div>
+                <div className="class-detail-teacher">
+                  {classDetail.teacherName} 선생님 학급
+                </div>
+              </div>
+              <button
+                className="class-detail-close"
+                onClick={closeClassDetail}
+                aria-label="닫기"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            {classDetailLoading ? (
+              <div className="class-detail-loading">
+                <RefreshCw className="spinning" size={32} />
+                <p>학급 정보 로딩 중...</p>
+              </div>
+            ) : (
+              <>
+                <div className="class-detail-stats">
+                  <div className="class-stat">
+                    <span className="label">학생 수</span>
+                    <span className="value">{classStudents.length}명</span>
+                  </div>
+                  <div className="class-stat">
+                    <span className="label">총 현금</span>
+                    <span className="value">
+                      {classStudents
+                        .reduce((s, u) => s + (Number(u.cash) || 0), 0)
+                        .toLocaleString()}
+                      원
+                    </span>
+                  </div>
+                  <div className="class-stat">
+                    <span className="label">총 쿠폰</span>
+                    <span className="value">
+                      {classStudents.reduce(
+                        (s, u) => s + (Number(u.coupons) || 0),
+                        0,
+                      )}
+                      개
+                    </span>
+                  </div>
+                  <div className="class-stat">
+                    <span className="label">평균 현금</span>
+                    <span className="value">
+                      {classStudents.length > 0
+                        ? Math.floor(
+                            classStudents.reduce(
+                              (s, u) => s + (Number(u.cash) || 0),
+                              0,
+                            ) / classStudents.length,
+                          ).toLocaleString()
+                        : 0}
+                      원
+                    </span>
+                  </div>
+                </div>
+
+                <div className="class-detail-students">
+                  <h4>학생 목록</h4>
+                  {classStudents.length === 0 ? (
+                    <p className="empty-students">
+                      이 학급에 등록된 학생이 없습니다.
+                    </p>
+                  ) : (
+                    <table className="students-table">
+                      <thead>
+                        <tr>
+                          <th>이름</th>
+                          <th>아이디</th>
+                          <th style={{ textAlign: "right" }}>현금</th>
+                          <th style={{ textAlign: "right" }}>쿠폰</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {classStudents.map((s) => (
+                          <tr key={s.id}>
+                            <td>{s.name || s.nickname || "-"}</td>
+                            <td className="email-cell">
+                              {(s.email || "").split("@")[0] || "-"}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {(Number(s.cash) || 0).toLocaleString()}원
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {Number(s.coupons) || 0}개
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
