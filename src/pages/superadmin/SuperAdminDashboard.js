@@ -12,6 +12,7 @@ import {
   collection,
   getDocs,
   doc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -444,30 +445,77 @@ export default function SuperAdminDashboard() {
     setRefreshing(false);
   };
 
-  // 선생님 승인
+  // 선생님 승인 (학급 코드 없으면 자동 생성 + classes 문서 생성)
   const handleApproveTeacher = async (teacherId) => {
     if (!window.confirm("이 선생님을 승인하시겠습니까?")) return;
 
     try {
+      const teacher = pendingTeachers.find((t) => t.id === teacherId);
       const userRef = doc(db, "users", teacherId);
-      await updateDoc(userRef, {
+
+      const updates = {
         isApproved: true,
         approvedAt: serverTimestamp(),
         approvedBy: userDoc?.id || user?.uid,
-      });
+      };
+
+      // 학급 코드가 없거나 "미지정"이면 새 코드 생성 + classes 문서 생성
+      const needsClassCode =
+        !teacher?.classCode || teacher.classCode === "미지정";
+      let newClassCode = null;
+      if (needsClassCode) {
+        // 중복 안 되는 코드 발급 (5회 시도)
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        for (let attempt = 0; attempt < 5; attempt++) {
+          let code = "";
+          for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          const classSnap = await getDoc(doc(db, "classes", code));
+          if (!classSnap.exists()) {
+            newClassCode = code;
+            break;
+          }
+        }
+        if (!newClassCode) {
+          alert("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
+          return;
+        }
+        updates.classCode = newClassCode;
+        // classes 문서 생성
+        await setDoc(doc(db, "classes", newClassCode), {
+          code: newClassCode,
+          teacherId,
+          teacherName: teacher?.name || "",
+          schoolName: teacher?.schoolName || "",
+          className: teacher?.className || "",
+          createdAt: serverTimestamp(),
+          studentCount: 0,
+          settings: { initialCash: 100000, initialCoupons: 10 },
+        });
+      }
+
+      await updateDoc(userRef, updates);
 
       // 로컬 상태 업데이트
-      const teacher = pendingTeachers.find((t) => t.id === teacherId);
       if (teacher) {
         setPendingTeachers((prev) => prev.filter((t) => t.id !== teacherId));
         setApprovedTeachers((prev) => [
           ...prev,
-          { ...teacher, isApproved: true },
+          {
+            ...teacher,
+            isApproved: true,
+            classCode: newClassCode || teacher.classCode,
+          },
         ]);
       }
 
       await loadStats();
-      alert("선생님이 승인되었습니다.");
+      alert(
+        newClassCode
+          ? `선생님이 승인되었습니다.\n학급 코드: ${newClassCode}`
+          : "선생님이 승인되었습니다.",
+      );
     } catch (error) {
       logger.error("승인 오류:", error);
       alert("승인 처리 중 오류가 발생했습니다.");
@@ -493,6 +541,73 @@ export default function SuperAdminDashboard() {
     } catch (error) {
       logger.error("거절 오류:", error);
       alert("거절 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 학급 코드 발급 (이미 승인된 선생님 중 classCode가 "미지정"인 경우)
+  const handleAssignClassCode = async (teacherId, teacherName) => {
+    if (
+      !window.confirm(
+        `'${teacherName}' 선생님에게 새 학급 코드를 발급하시겠습니까?`,
+      )
+    )
+      return;
+
+    try {
+      const teacher = approvedTeachers.find((t) => t.id === teacherId);
+      if (!teacher) {
+        alert("선생님 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      // 중복 없는 코드 발급 (5회 시도)
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let newClassCode = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let code = "";
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const classSnap = await getDoc(doc(db, "classes", code));
+        if (!classSnap.exists()) {
+          newClassCode = code;
+          break;
+        }
+      }
+      if (!newClassCode) {
+        alert("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
+
+      // classes 문서 생성
+      await setDoc(doc(db, "classes", newClassCode), {
+        code: newClassCode,
+        teacherId,
+        teacherName: teacher.name || "",
+        schoolName: teacher.schoolName || "",
+        className: teacher.className || "",
+        createdAt: serverTimestamp(),
+        studentCount: 0,
+        settings: { initialCash: 100000, initialCoupons: 10 },
+      });
+
+      // user 문서 classCode 업데이트
+      await updateDoc(doc(db, "users", teacherId), {
+        classCode: newClassCode,
+        updatedAt: serverTimestamp(),
+      });
+
+      // 로컬 상태 갱신
+      setApprovedTeachers((prev) =>
+        prev.map((t) =>
+          t.id === teacherId ? { ...t, classCode: newClassCode } : t,
+        ),
+      );
+
+      alert(`학급 코드가 발급되었습니다.\n학급 코드: ${newClassCode}`);
+    } catch (error) {
+      logger.error("학급 코드 발급 오류:", error);
+      alert("학급 코드 발급 중 오류가 발생했습니다.");
     }
   };
 
@@ -1007,16 +1122,28 @@ export default function SuperAdminDashboard() {
                           </span>
                         </div>
                         <div className="teacher-actions">
-                          <button
-                            className="view-btn"
-                            onClick={() => {
-                              setSearchTerm(teacher.classCode || "");
-                              setActiveTab("classes");
-                            }}
-                          >
-                            <Eye size={18} />
-                            학급 보기
-                          </button>
+                          {(!teacher.classCode || teacher.classCode === "미지정") ? (
+                            <button
+                              className="approve-btn"
+                              onClick={() =>
+                                handleAssignClassCode(teacher.id, teacher.name)
+                              }
+                            >
+                              <UserCheck size={18} />
+                              학급 코드 발급
+                            </button>
+                          ) : (
+                            <button
+                              className="view-btn"
+                              onClick={() => {
+                                setSearchTerm(teacher.classCode || "");
+                                setActiveTab("classes");
+                              }}
+                            >
+                              <Eye size={18} />
+                              학급 보기
+                            </button>
+                          )}
                           <button
                             className="revoke-btn"
                             onClick={() =>
