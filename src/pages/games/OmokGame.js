@@ -588,10 +588,13 @@ const OmokGame = () => {
   const [gameMode, setGameMode] = useState("player"); // 'player' or 'ai'
   const [aiDifficulty, setAiDifficulty] = useState("중급"); // '하급', '중급', '상급'
   const [dailyPlayCount, setDailyPlayCount] = useState(0);
-  const [omokStats, setOmokStats] = useState(userDoc?.omok);
+  // 신규 사용자는 user 문서에 omok 필드 없을 수 있음 — 안전 기본값
+  const DEFAULT_OMOK_STATS = { wins: 0, losses: 0, totalRP: BASE_RP };
+  const [omokStats, setOmokStats] = useState(userDoc?.omok || DEFAULT_OMOK_STATS);
 
   useEffect(() => {
-    setOmokStats(userDoc?.omok);
+    setOmokStats(userDoc?.omok || DEFAULT_OMOK_STATS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDoc?.omok]);
 
   // 로컬 상태를 이용한 낙관적 전적 업데이트
@@ -1695,9 +1698,12 @@ const OmokGame = () => {
   }, [user]);
 
   if (!gameId || !game) {
-    const myRankDetails = getOmokRankDetails(omokStats);
-    const winRate = omokStats.wins + omokStats.losses > 0
-      ? Math.round((omokStats.wins / (omokStats.wins + omokStats.losses)) * 100)
+    const safeStats = omokStats || DEFAULT_OMOK_STATS;
+    const myRankDetails = getOmokRankDetails(safeStats);
+    const wins = safeStats.wins || 0;
+    const losses = safeStats.losses || 0;
+    const winRate = wins + losses > 0
+      ? Math.round((wins / (wins + losses)) * 100)
       : 0;
     return (
       <div className="game-page-container">
