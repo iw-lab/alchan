@@ -13,6 +13,7 @@ import {
   getDocs,
   doc,
   setDoc,
+  addDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -24,6 +25,12 @@ import {
   limit,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import {
+  DEFAULT_JOBS,
+  DEFAULT_STORE_ITEMS,
+  DEFAULT_BANKING,
+  DEFAULT_SALARIES,
+} from "../auth/Login";
 import {
   Shield,
   Users,
@@ -498,6 +505,8 @@ export default function SuperAdminDashboard() {
           studentCount: 0,
           settings: { initialCash: 100000, initialCoupons: 10 },
         });
+        // 직업·상점·은행·급여 부가 데이터 초기화
+        await initClassroomDefaults(newClassCode);
       }
 
       await updateDoc(userRef, updates);
@@ -547,6 +556,113 @@ export default function SuperAdminDashboard() {
       logger.error("거절 오류:", error);
       alert("거절 처리 중 오류가 발생했습니다.");
     }
+  };
+
+  // 학급 부가 데이터 초기화 — 직업·상점·은행·급여 (idempotent: 이미 있으면 skip)
+  // Login.js의 정상 가입 흐름과 동일한 7가지 항목 보장
+  const initClassroomDefaults = async (classCode) => {
+    if (!classCode) return { created: false };
+    let createdAny = false;
+
+    // 1) jobs — 이 학급 직업이 한 개라도 있으면 skip
+    const jobsSnap = await getDocs(
+      query(collection(db, "jobs"), where("classCode", "==", classCode)),
+    );
+    if (jobsSnap.empty) {
+      for (const jobTpl of DEFAULT_JOBS) {
+        const tasks = jobTpl.tasks.map((t, i) => ({
+          ...t,
+          id: `task_${Date.now()}_${i}`,
+        }));
+        await addDoc(collection(db, "jobs"), {
+          title: jobTpl.title,
+          active: true,
+          tasks,
+          classCode,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      createdAny = true;
+    }
+
+    // 2) storeItems — 이 학급 상점 아이템이 한 개라도 있으면 skip
+    const itemsSnap = await getDocs(
+      query(collection(db, "storeItems"), where("classCode", "==", classCode)),
+    );
+    if (itemsSnap.empty) {
+      for (const item of DEFAULT_STORE_ITEMS) {
+        await addDoc(collection(db, "storeItems"), {
+          ...item,
+          initialStock: item.stock,
+          available: true,
+          type: "item",
+          classCode,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+      createdAny = true;
+    }
+
+    // 3) bankingSettings — 문서 없으면 생성
+    const bankRef = doc(db, "bankingSettings", classCode);
+    const bankSnap = await getDoc(bankRef);
+    if (!bankSnap.exists()) {
+      await setDoc(bankRef, {
+        ...DEFAULT_BANKING,
+        classCode,
+        updatedAt: serverTimestamp(),
+      });
+      createdAny = true;
+    }
+
+    // 4) classSettings + salary — 없으면 생성
+    const csRef = doc(db, "classSettings", classCode);
+    const csSnap = await getDoc(csRef);
+    if (!csSnap.exists()) {
+      await setDoc(
+        csRef,
+        { classCode, createdAt: serverTimestamp() },
+        { merge: true },
+      );
+      createdAny = true;
+    }
+    const salaryRef = doc(db, "classSettings", classCode, "settings", "salary");
+    const salarySnap = await getDoc(salaryRef);
+    if (!salarySnap.exists()) {
+      await setDoc(salaryRef, {
+        salaries: DEFAULT_SALARIES,
+        payDay: "friday",
+        autoPay: true,
+        classCode,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      createdAny = true;
+    }
+
+    // 5) settings/classCodes에 코드 추가 (중복 방지)
+    try {
+      const ccRef = doc(db, "settings", "classCodes");
+      const ccSnap = await getDoc(ccRef);
+      const codes = ccSnap.exists() ? ccSnap.data().codes || [] : [];
+      if (!codes.includes(classCode)) {
+        await setDoc(
+          ccRef,
+          {
+            codes: [...codes, classCode],
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+        createdAny = true;
+      }
+    } catch (e) {
+      logger.warn("[initClassroom] classCodes 추가 실패 (skip):", e.message);
+    }
+
+    return { created: createdAny };
   };
 
   // 학급 상세 모달 열기 — 학생 목록 + 자산 통계 fetch
@@ -628,6 +744,9 @@ export default function SuperAdminDashboard() {
         studentCount: 0,
         settings: { initialCash: 100000, initialCoupons: 10 },
       });
+
+      // 직업·상점·은행·급여 부가 데이터 초기화
+      await initClassroomDefaults(newClassCode);
 
       // user 문서 classCode 업데이트
       await updateDoc(doc(db, "users", teacherId), {
@@ -1911,13 +2030,42 @@ export default function SuperAdminDashboard() {
                   {classDetail.teacherName} 선생님 학급
                 </div>
               </div>
-              <button
-                className="class-detail-close"
-                onClick={closeClassDetail}
-                aria-label="닫기"
-              >
-                <XCircle size={24} />
-              </button>
+              <div className="class-detail-actions">
+                <button
+                  className="class-detail-init"
+                  onClick={async () => {
+                    if (
+                      !window.confirm(
+                        "직업·상점·은행·급여 등 누락된 초기 데이터를 만들어줍니다.\n이미 있는 항목은 건너뜁니다. 진행하시겠습니까?",
+                      )
+                    )
+                      return;
+                    try {
+                      const result = await initClassroomDefaults(
+                        classDetail.classCode,
+                      );
+                      alert(
+                        result.created
+                          ? "학급 초기 데이터를 보충했습니다."
+                          : "이미 모든 항목이 설정되어 있습니다.",
+                      );
+                    } catch (e) {
+                      logger.error("학급 초기화 오류:", e);
+                      alert("학급 초기화 중 오류가 발생했습니다.");
+                    }
+                  }}
+                  title="누락된 직업/상점/은행/급여 초기 데이터를 생성"
+                >
+                  학급 초기화
+                </button>
+                <button
+                  className="class-detail-close"
+                  onClick={closeClassDetail}
+                  aria-label="닫기"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
             </div>
 
             {classDetailLoading ? (

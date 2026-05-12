@@ -57,7 +57,7 @@ const generateClassCode = () => {
 };
 
 // 새 학급 기본 직업 목록 (초등학교 교실 경제)
-const DEFAULT_JOBS = [
+export const DEFAULT_JOBS = [
  {
  title: "경찰청장",
  tasks: [
@@ -220,7 +220,7 @@ const DEFAULT_JOBS = [
 ];
 
 // 새 학급 기본 상점 아이템
-const DEFAULT_STORE_ITEMS = [
+export const DEFAULT_STORE_ITEMS = [
  {
  name: "자유 시간 10분",
  price: 2000,
@@ -294,7 +294,7 @@ const DEFAULT_STORE_ITEMS = [
 ];
 
 // 새 학급 기본 은행 설정
-const DEFAULT_BANKING = {
+export const DEFAULT_BANKING = {
  deposits: [
  {
  id: 1,
@@ -367,7 +367,7 @@ const DEFAULT_BANKING = {
 };
 
 // 새 학급 기본 급여 설정
-const DEFAULT_SALARIES = {
+export const DEFAULT_SALARIES = {
  경찰청장: 4500,
  "환경 미화원": 4000,
  "글씨 감사인": 4000,
