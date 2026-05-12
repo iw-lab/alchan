@@ -69,10 +69,20 @@ service cloud.firestore {
       // 읽기: 본인, 같은 학급, 관리자, 또는 SuperAdmin (전체 목록 조회용)
       allow read: if isOwner(userId) || isSameClass(resource.data.classCode) || isAdmin() || isSuperAdmin();
 
-      // 생성: 본인만 (회원가입) - admin 플래그 설정 방지
+      // 생성: 본인만 (회원가입)
+      // - isSuperAdmin은 절대 자체 설정 불가
+      // - isAdmin/isTeacher로 가입할 경우 반드시 isApproved:false 강제 (셀프 승인 차단)
+      //   슈퍼관리자가 별도로 isApproved:true로 승격해야 활성화됨
       allow create: if isOwner(userId) && isValidUserData() &&
-                       !request.resource.data.get('isAdmin', false) &&
                        !request.resource.data.get('isSuperAdmin', false) &&
+                       (
+                         (
+                           !request.resource.data.get('isAdmin', false) &&
+                           !request.resource.data.get('isTeacher', false)
+                         )
+                         ||
+                         request.resource.data.isApproved == false
+                       ) &&
                        (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
                        isValidString(request.resource.data.name, 50);
 
