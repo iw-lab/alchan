@@ -648,9 +648,16 @@ const Login = () => {
  const existingCodes = classCodesDoc.exists()
  ? classCodesDoc.data().codes || []
  : [];
+ const existingValidCodes = classCodesDoc.exists()
+ ? classCodesDoc.data().validCodes || []
+ : [];
  await setDoc(
  classCodesRef,
- { codes: [...existingCodes, classCode], updatedAt: serverTimestamp() },
+ {
+ codes: existingCodes.includes(classCode) ? existingCodes : [...existingCodes, classCode],
+ validCodes: existingValidCodes.includes(classCode) ? existingValidCodes : [...existingValidCodes, classCode],
+ updatedAt: serverTimestamp(),
+ },
  { merge: true },
  );
 

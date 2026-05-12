@@ -259,10 +259,15 @@ export const verifyClassCode = async (classCodeToVerify, maxRetries = 2) => {
       const docSnap = await Promise.race([getDocPromise, timeoutPromise]);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const validCodesArray = data.validCodes;
-        if (Array.isArray(validCodesArray)) {
-          setCache(cacheKey, validCodesArray);
-          return validCodesArray.includes(trimmedCode);
+        // validCodes 우선, 없으면 codes (Login.js 가입 시 사용하는 필드) 합집합 검사
+        const merged = [
+          ...(Array.isArray(data.validCodes) ? data.validCodes : []),
+          ...(Array.isArray(data.codes) ? data.codes : []),
+        ];
+        if (merged.length > 0) {
+          const unique = Array.from(new Set(merged));
+          setCache(cacheKey, unique);
+          return unique.includes(trimmedCode);
         }
         return false;
       } else {

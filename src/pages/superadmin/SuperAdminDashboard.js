@@ -642,16 +642,20 @@ export default function SuperAdminDashboard() {
       createdAny = true;
     }
 
-    // 5) settings/classCodes에 코드 추가 (중복 방지)
+    // 5) settings/classCodes에 코드 추가 — codes/validCodes 둘 다 동기화 (verifyClassCode 호환)
     try {
       const ccRef = doc(db, "settings", "classCodes");
       const ccSnap = await getDoc(ccRef);
-      const codes = ccSnap.exists() ? ccSnap.data().codes || [] : [];
-      if (!codes.includes(classCode)) {
+      const codesArr = ccSnap.exists() ? ccSnap.data().codes || [] : [];
+      const validArr = ccSnap.exists() ? ccSnap.data().validCodes || [] : [];
+      const needsCodes = !codesArr.includes(classCode);
+      const needsValid = !validArr.includes(classCode);
+      if (needsCodes || needsValid) {
         await setDoc(
           ccRef,
           {
-            codes: [...codes, classCode],
+            codes: needsCodes ? [...codesArr, classCode] : codesArr,
+            validCodes: needsValid ? [...validArr, classCode] : validArr,
             updatedAt: serverTimestamp(),
           },
           { merge: true },
