@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers)'
         required: true
         default: 'reset'
       weekKey:
@@ -188,6 +188,24 @@ jobs:
           echo "💀 주급 회수 COMMIT (weekKey=$WK)"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🔄 잘못 가입된 선생님 계정 복구 (수동, 1회성)
+      - name: Recover teacher accounts
+        continue-on-error: true
+        if: github.event.inputs.task == 'recover-teachers'
+        run: |
+          echo "🔄 선생님 계정 복구 시작"
+          FORCE_QUERY=""
+          if [ "${{ github.event.inputs.weekKey }}" = "force" ]; then
+            FORCE_QUERY="&force=1"
+            echo "↻ force=1: 플래그 리셋 후 재실행"
+          fi
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://asia-northeast3-inconomysu-class.cloudfunctions.net/recoverTeachersManual?auth=${{ secrets.SCHEDULER_AUTH_TOKEN }}${FORCE_QUERY}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"

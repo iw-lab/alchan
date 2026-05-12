@@ -2521,20 +2521,8 @@ exports.hourlySchedulerV2 = onSchedule(
         return;
       }
 
-      // 🔄 일회성 마이그레이션: CASH_PENALTY description 갱신
-      // (방학 모드 체크 후 실행 — 시스템 플래그로 1회만)
-      try {
-        await migrateCashPenaltyDescriptionsOnce();
-      } catch (e) {
-        logger.warn("[hourlyV2] CASH_PENALTY 마이그레이션 오류 (skip):", e.message);
-      }
-
-      // 🔄 일회성 마이그레이션: 잘못 학생 문서로 생성된 선생님 복구
-      try {
-        await recoverTeacherAccountsOnce();
-      } catch (e) {
-        logger.warn("[hourlyV2] 선생님 계정 복구 오류 (skip):", e.message);
-      }
+      // 🔄 일회성 마이그레이션은 hourly 호출 제거 (매시간 read 비용 절감)
+      //   필요 시 scheduler.yml workflow_dispatch로 수동 실행 (recover-teachers 등)
 
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
