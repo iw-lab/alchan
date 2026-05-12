@@ -106,7 +106,16 @@ const TypingPracticeGame = ({ onClose }) => {
     if (!sentences[currentIndex]) return;
 
     const currentSentence = sentences[currentIndex].text;
-    const isCorrect = userInput.trim() === currentSentence;
+    const trimmedInput = userInput.trim();
+
+    // 빈 입력 거부 — Enter 스팸으로 문제를 건너뛰지 못하게 차단
+    if (trimmedInput === "") return;
+
+    // 너무 짧은 입력도 거부 — 현재 문장의 30% 이상 입력해야 채점 (최소 1글자)
+    const minLength = Math.max(1, Math.ceil(currentSentence.length * 0.3));
+    if (trimmedInput.length < minLength) return;
+
+    const isCorrect = trimmedInput === currentSentence;
 
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
@@ -322,7 +331,24 @@ const TypingPracticeGame = ({ onClose }) => {
             placeholder="문장을 입력하고 Enter를 누르세요"
             className="sentence-input"
           />
-          <button className="submit-btn" onClick={checkAnswer}>확인</button>
+          {(() => {
+            const minLen = Math.max(1, Math.ceil(currentSentence.length * 0.3));
+            const canSubmit = userInput.trim().length >= minLen;
+            return (
+              <button
+                className="submit-btn"
+                onClick={checkAnswer}
+                disabled={!canSubmit}
+                title={canSubmit ? "" : `최소 ${minLen}글자 이상 입력하세요`}
+                style={{
+                  opacity: canSubmit ? 1 : 0.4,
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                }}
+              >
+                확인
+              </button>
+            );
+          })()}
         </div>
 
         <div className="score-display minigame-score">
