@@ -2399,43 +2399,70 @@ async function recoverTeacherAccountsOnce() {
 
   let recovered = 0;
   let skipped = 0;
-  const classesSnap = await db.collection("classes").get();
+  const candidatesByUid = new Map(); // userId → { classCode, source }
 
+  // ── 방법 1: classes.teacherId로 식별 (정상 가입 케이스)
+  const classesSnap = await db.collection("classes").get();
   for (const classDoc of classesSnap.docs) {
     const classData = classDoc.data();
     const teacherId = classData.teacherId;
-    const classCode = classData.code || classDoc.id;
     if (!teacherId) continue;
+    candidatesByUid.set(teacherId, {
+      classCode: classData.code || classDoc.id,
+      source: "classes",
+    });
+  }
 
-    const userSnap = await db.collection("users").doc(teacherId).get();
+  // ── 방법 2: 이메일이 .alchan 아닌데 isTeacher/isAdmin 둘 다 false인 user
+  //   (가입 시 룰 차단 → AuthContext 백업 학생 문서 케이스)
+  //   학생은 모두 "{id}@{classCode}.alchan" 형식 (Login.js 학생 가입 로직)
+  const usersSnap = await db.collection("users").get();
+  for (const userDoc of usersSnap.docs) {
+    const data = userDoc.data();
+    if (data.isSuperAdmin === true) continue;
+    if (data.isTeacher === true || data.isAdmin === true) continue;
+    const email = (data.email || "").trim().toLowerCase();
+    if (!email || email.endsWith(".alchan")) continue;
+    // 이미 classes 기반으로 잡혔으면 그대로 (classCode 우선)
+    if (!candidatesByUid.has(userDoc.id)) {
+      candidatesByUid.set(userDoc.id, {
+        classCode: data.classCode && data.classCode !== "미지정" ? data.classCode : null,
+        source: "email",
+      });
+    }
+  }
+
+  // ── 복구 실행
+  for (const [uid, info] of candidatesByUid.entries()) {
+    const userSnap = await db.collection("users").doc(uid).get();
     if (!userSnap.exists) {
       skipped++;
       continue;
     }
-
     const userData = userSnap.data();
-    // 이미 선생님이면 skip
     if (userData.isTeacher === true || userData.isAdmin === true) {
       skipped++;
       continue;
     }
-    // 슈퍼관리자는 건드리지 않음
     if (userData.isSuperAdmin === true) {
       skipped++;
       continue;
     }
 
-    // 복구 — 승인 대기 상태로 (슈퍼관리자가 대시보드에서 승인 처리)
-    await userSnap.ref.update({
+    const updates = {
       isAdmin: true,
       isTeacher: true,
       isApproved: false,
-      classCode,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+    if (info.classCode) {
+      updates.classCode = info.classCode;
+    }
+
+    await userSnap.ref.update(updates);
     recovered++;
     logger.info(
-      `[Migration] 선생님 계정 복구: ${userData.name || teacherId} → class ${classCode}`,
+      `[Migration] 선생님 복구: ${userData.name || uid} (${userData.email}) source=${info.source}`,
     );
   }
 
