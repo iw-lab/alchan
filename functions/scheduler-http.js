@@ -2387,6 +2387,69 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
 );
 
 // ===================================================================================
+// 🔄 일회성 마이그레이션: 잘못 학생 문서로 생성된 선생님 복구
+// 원인: firestore.rules가 가입 시 isAdmin:true를 차단 → AuthContext가 학생 문서로 대체
+// 해결: classes/{*}.teacherId 로 식별 → 해당 user에 isAdmin/isTeacher:true, isApproved:false 설정
+// systemState 플래그로 1회만 실행
+// ===================================================================================
+async function recoverTeacherAccountsOnce() {
+  const flagRef = db.collection("systemState").doc("teacherRecovered_v1");
+  const flagSnap = await flagRef.get();
+  if (flagSnap.exists) return;
+
+  let recovered = 0;
+  let skipped = 0;
+  const classesSnap = await db.collection("classes").get();
+
+  for (const classDoc of classesSnap.docs) {
+    const classData = classDoc.data();
+    const teacherId = classData.teacherId;
+    const classCode = classData.code || classDoc.id;
+    if (!teacherId) continue;
+
+    const userSnap = await db.collection("users").doc(teacherId).get();
+    if (!userSnap.exists) {
+      skipped++;
+      continue;
+    }
+
+    const userData = userSnap.data();
+    // 이미 선생님이면 skip
+    if (userData.isTeacher === true || userData.isAdmin === true) {
+      skipped++;
+      continue;
+    }
+    // 슈퍼관리자는 건드리지 않음
+    if (userData.isSuperAdmin === true) {
+      skipped++;
+      continue;
+    }
+
+    // 복구 — 승인 대기 상태로 (슈퍼관리자가 대시보드에서 승인 처리)
+    await userSnap.ref.update({
+      isAdmin: true,
+      isTeacher: true,
+      isApproved: false,
+      classCode,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    recovered++;
+    logger.info(
+      `[Migration] 선생님 계정 복구: ${userData.name || teacherId} → class ${classCode}`,
+    );
+  }
+
+  await flagRef.set({
+    migratedAt: admin.firestore.FieldValue.serverTimestamp(),
+    recovered,
+    skipped,
+  });
+  logger.info(
+    `[Migration] 선생님 계정 복구 완료: ${recovered}명 복구, ${skipped}명 skip`,
+  );
+}
+
+// ===================================================================================
 // 🔄 일회성 마이그레이션: 기존 학급의 CASH_PENALTY description을 정확한 텍스트로 갱신
 // 정책 변경(현금 5% → 순자산 5%)에 맞춰 학생 안내문 동기화
 // systemState 플래그로 1회만 실행
@@ -2464,6 +2527,13 @@ exports.hourlySchedulerV2 = onSchedule(
         await migrateCashPenaltyDescriptionsOnce();
       } catch (e) {
         logger.warn("[hourlyV2] CASH_PENALTY 마이그레이션 오류 (skip):", e.message);
+      }
+
+      // 🔄 일회성 마이그레이션: 잘못 학생 문서로 생성된 선생님 복구
+      try {
+        await recoverTeacherAccountsOnce();
+      } catch (e) {
+        logger.warn("[hourlyV2] 선생님 계정 복구 오류 (skip):", e.message);
       }
 
       const now = new Date();
@@ -2562,6 +2632,33 @@ exports.dividendSchedulerV2 = onSchedule(
       logger.info("[dividendV2] 완료:", result);
     } catch (error) {
       logger.error("[dividendV2] 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
+// 🔄 잘못 학생 문서로 생성된 선생님 수동 복구 endpoint (AUTH_TOKEN 보호)
+// hourly 자동 실행과 동일 로직, 즉시 호출용
+// ===================================================================================
+exports.recoverTeachersManual = onRequest(
+  { region: "asia-northeast3", cors: true },
+  async (req, res) => {
+    const token = req.headers["x-scheduler-auth"] || req.query.auth;
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      // 플래그 리셋도 허용 (force=1)
+      if (req.query.force === "1") {
+        await db.collection("systemState").doc("teacherRecovered_v1").delete();
+      }
+      await recoverTeacherAccountsOnce();
+      const flagSnap = await db.collection("systemState").doc("teacherRecovered_v1").get();
+      res.json({ success: true, ...(flagSnap.exists ? flagSnap.data() : {}) });
+    } catch (error) {
+      logger.error("[recoverTeachersManual] 오류:", error);
+      res.status(500).json({ error: error.message });
     }
   },
 );
