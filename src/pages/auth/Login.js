@@ -661,14 +661,30 @@ const Login = () => {
  { merge: true },
  );
 
+ // addDoc 안전 래퍼 — Firestore offline persistence retry로 같은 ID 재사용 시
+ // "Document already exists" 에러가 발생할 수 있음. 그 경우 무시하고 계속 진행
+ const safeAddDoc = async (ref, data) => {
+ try {
+ await addDoc(ref, data);
+ } catch (e) {
+ const msg = String(e?.message || "");
+ if (msg.includes("already exists") || e?.code === "already-exists") {
+ logger.warn("[teacher signup] addDoc 충돌 — 이미 존재, skip");
+ return;
+ }
+ throw e;
+ }
+ };
+
  // 기본 직업 자동 생성
  const jobsRef = collection(db, "jobs");
- for (const jobTemplate of DEFAULT_JOBS) {
- const tasks = jobTemplate.tasks.map((t, i) => ({
+ for (let i = 0; i < DEFAULT_JOBS.length; i++) {
+ const jobTemplate = DEFAULT_JOBS[i];
+ const tasks = jobTemplate.tasks.map((t, idx) => ({
  ...t,
- id: `task_${Date.now()}_${i}`,
+ id: `task_${Date.now()}_${i}_${idx}`,
  }));
- await addDoc(jobsRef, {
+ await safeAddDoc(jobsRef, {
  title: jobTemplate.title,
  active: true,
  tasks,
@@ -681,7 +697,7 @@ const Login = () => {
  // 기본 상점 아이템 자동 생성
  const storeItemsRef = collection(db, "storeItems");
  for (const item of DEFAULT_STORE_ITEMS) {
- await addDoc(storeItemsRef, {
+ await safeAddDoc(storeItemsRef, {
  ...item,
  initialStock: item.stock,
  available: true,
