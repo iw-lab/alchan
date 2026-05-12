@@ -25,6 +25,12 @@ const {
 } = require("./realStockService");
 
 const { payMonthlyDividends } = require("./dividendService");
+const {
+  DEFAULT_JOBS,
+  DEFAULT_STORE_ITEMS,
+  DEFAULT_BANKING,
+  DEFAULT_SALARIES,
+} = require("./classroomDefaults");
 
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
@@ -2647,6 +2653,153 @@ exports.dividendSchedulerV2 = onSchedule(
       logger.info("[dividendV2] 완료:", result);
     } catch (error) {
       logger.error("[dividendV2] 오류:", error);
+    }
+  },
+);
+
+// ===================================================================================
+// 🏫 학급 부가 데이터(직업/상점/은행/급여) 백필 — idempotent
+// classes 문서만 있고 나머지 6가지가 빠진 '반쪽 학급' 보충용
+// ===================================================================================
+async function initClassroomDefaultsServerSide(classCode) {
+  if (!classCode) return { created: false, error: "classCode missing" };
+
+  let createdAny = false;
+  const created = { jobs: 0, storeItems: 0, banking: false, classSettings: false, salary: false, classCodes: false };
+
+  // 1) jobs
+  const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).limit(1).get();
+  if (jobsSnap.empty) {
+    const batch = db.batch();
+    for (const jobTpl of DEFAULT_JOBS) {
+      const tasks = jobTpl.tasks.map((t, i) => ({ ...t, id: `task_${Date.now()}_${i}` }));
+      const ref = db.collection("jobs").doc();
+      batch.set(ref, {
+        title: jobTpl.title,
+        active: true,
+        tasks,
+        classCode,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      created.jobs++;
+    }
+    await batch.commit();
+    createdAny = true;
+  }
+
+  // 2) storeItems
+  const itemsSnap = await db.collection("storeItems").where("classCode", "==", classCode).limit(1).get();
+  if (itemsSnap.empty) {
+    const batch = db.batch();
+    for (const item of DEFAULT_STORE_ITEMS) {
+      const ref = db.collection("storeItems").doc();
+      batch.set(ref, {
+        ...item,
+        initialStock: item.stock,
+        available: true,
+        type: "item",
+        classCode,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      created.storeItems++;
+    }
+    await batch.commit();
+    createdAny = true;
+  }
+
+  // 3) bankingSettings
+  const bankRef = db.collection("bankingSettings").doc(classCode);
+  const bankSnap = await bankRef.get();
+  if (!bankSnap.exists) {
+    await bankRef.set({
+      ...DEFAULT_BANKING,
+      classCode,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    created.banking = true;
+    createdAny = true;
+  }
+
+  // 4) classSettings + salary
+  const csRef = db.collection("classSettings").doc(classCode);
+  const csSnap = await csRef.get();
+  if (!csSnap.exists) {
+    await csRef.set(
+      { classCode, createdAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    created.classSettings = true;
+    createdAny = true;
+  }
+  const salaryRef = db.collection("classSettings").doc(classCode).collection("settings").doc("salary");
+  const salarySnap = await salaryRef.get();
+  if (!salarySnap.exists) {
+    await salaryRef.set({
+      salaries: DEFAULT_SALARIES,
+      payDay: "friday",
+      autoPay: true,
+      classCode,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    created.salary = true;
+    createdAny = true;
+  }
+
+  // 5) settings/classCodes에 codes + validCodes 동시 추가
+  try {
+    const ccRef = db.collection("settings").doc("classCodes");
+    const ccSnap = await ccRef.get();
+    const codesArr = ccSnap.exists ? ccSnap.data().codes || [] : [];
+    const validArr = ccSnap.exists ? ccSnap.data().validCodes || [] : [];
+    const needsCodes = !codesArr.includes(classCode);
+    const needsValid = !validArr.includes(classCode);
+    if (needsCodes || needsValid) {
+      await ccRef.set(
+        {
+          codes: needsCodes ? [...codesArr, classCode] : codesArr,
+          validCodes: needsValid ? [...validArr, classCode] : validArr,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      created.classCodes = true;
+      createdAny = true;
+    }
+  } catch (e) {
+    logger.warn("[initClassroom] classCodes 추가 실패 (skip):", e.message);
+  }
+
+  return { created: createdAny, detail: created };
+}
+
+// ===================================================================================
+// 🏫 학급 초기화 수동 실행 endpoint (AUTH_TOKEN 보호)
+// 사용: ?classCode=XXXXXX
+// ===================================================================================
+exports.initializeClassroomManual = onRequest(
+  { region: "asia-northeast3", cors: true },
+  async (req, res) => {
+    const token = req.headers["x-scheduler-auth"] || req.query.auth;
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const classCode = (req.query.classCode || "").toString().trim();
+    if (!classCode) {
+      res.status(400).json({ error: "classCode query parameter required" });
+      return;
+    }
+    try {
+      logger.info(`[initializeClassroomManual] ${classCode} 초기화 시작`);
+      const result = await initClassroomDefaultsServerSide(classCode);
+      logger.info(`[initializeClassroomManual] ${classCode} 완료:`, result);
+      res.json({ success: true, classCode, ...result });
+    } catch (error) {
+      logger.error("[initializeClassroomManual] 오류:", error);
+      res.status(500).json({ error: error.message });
     }
   },
 );

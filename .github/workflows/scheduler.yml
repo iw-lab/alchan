@@ -11,11 +11,11 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom)'
         required: true
         default: 'reset'
       weekKey:
-        description: 'weekKey (reverse-salary-* / salary-force 에서 사용, 예: 2026-W15)'
+        description: 'weekKey (reverse-salary-* / salary-force 에서 사용, 예: 2026-W15) / init-classroom의 classCode 입력에도 사용 (예: 6ZVKV3)'
         required: false
         default: '2026-W15'
 
@@ -188,6 +188,20 @@ jobs:
           echo "💀 주급 회수 COMMIT (weekKey=$WK)"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🏫 학급 부가 데이터 백필 (직업/상점/은행/급여) — weekKey에 classCode 입력
+      - name: Initialize classroom defaults
+        continue-on-error: true
+        if: github.event.inputs.task == 'init-classroom'
+        run: |
+          CC="${{ github.event.inputs.weekKey }}"
+          echo "🏫 학급 초기화 시작 — classCode=$CC"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://asia-northeast3-inconomysu-class.cloudfunctions.net/initializeClassroomManual?auth=${{ secrets.SCHEDULER_AUTH_TOKEN }}&classCode=$CC")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"
