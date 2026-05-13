@@ -2658,6 +2658,55 @@ exports.dividendSchedulerV2 = onSchedule(
 );
 
 // ===================================================================================
+// 🎵 기존 musicRooms 학급 격리 백필 — classCode 누락된 방에 teacherId 기준 학급 부여
+// 마이그 후엔 학급 격리 룰이 정상 작동
+// ===================================================================================
+async function backfillMusicRoomsClassCode() {
+  let updated = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  const roomsSnap = await db.collection("musicRooms").get();
+  for (const roomDoc of roomsSnap.docs) {
+    const data = roomDoc.data();
+    if (data.classCode) { skipped++; continue; }
+    const teacherId = data.teacherId;
+    if (!teacherId) { failed++; continue; }
+    try {
+      const teacherSnap = await db.collection("users").doc(teacherId).get();
+      if (!teacherSnap.exists) { failed++; continue; }
+      const cc = teacherSnap.data().classCode;
+      if (!cc || cc === "미지정") { failed++; continue; }
+      await roomDoc.ref.update({ classCode: cc, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      updated++;
+    } catch (e) {
+      logger.warn(`[musicRooms backfill] ${roomDoc.id} 실패:`, e.message);
+      failed++;
+    }
+  }
+  logger.info(`[musicRooms backfill] 완료 — updated:${updated}, skipped:${skipped}, failed:${failed}`);
+  return { updated, skipped, failed };
+}
+
+exports.backfillMusicRoomsManual = onRequest(
+  { region: "asia-northeast3", cors: true },
+  async (req, res) => {
+    const token = req.headers["x-scheduler-auth"] || req.query.auth;
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      const result = await backfillMusicRoomsClassCode();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      logger.error("[backfillMusicRoomsManual] 오류:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// ===================================================================================
 // 🏫 학급 부가 데이터(직업/상점/은행/급여) 백필 — idempotent
 // classes 문서만 있고 나머지 6가지가 빠진 '반쪽 학급' 보충용
 // ===================================================================================

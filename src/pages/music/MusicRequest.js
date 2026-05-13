@@ -22,9 +22,10 @@ const MusicRequest = ({ user }) => {
   const [createdRoom, setCreatedRoom] = useState(null); // 새로 생성된 방 정보
   const [error, setError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [classCode, setClassCode] = useState(null); // 본인 학급 코드
   const navigate = useNavigate();
 
-  // 관리자 권한 확인 - 슈퍼 관리자도 포함
+  // 관리자 권한 + 학급 코드 확인
   const { data: isAdminData, loading: adminLoading } = usePolling(
     async () => {
       if (!user) return false;
@@ -32,30 +33,33 @@ const MusicRequest = ({ user }) => {
       if (!userDoc.exists()) return false;
 
       const userData = userDoc.data();
-      // role이 'admin'이거나 isAdmin, isSuperAdmin 필드가 true인 경우
       const isAdminUser =
         userData.role === "admin" ||
         userData.isAdmin === true ||
         userData.isSuperAdmin === true;
       setIsAdmin(isAdminUser);
+      setClassCode(userData.classCode || null);
       return isAdminUser;
     },
-    { interval: 30 * 60 * 1000, enabled: !!user, deps: [user] }, // 🔥 [비용 최적화] 5분 → 30분 (관리자 여부는 거의 안 바뀜)
+    { interval: 30 * 60 * 1000, enabled: !!user, deps: [user] },
   );
 
-  // 관리자/슈퍼관리자: 모든 방 목록, 학생: 모든 방 목록을 폴링으로 가져옵니다.
+  // 본인 학급의 방 목록만 폴링으로 가져옵니다 (학급 격리)
   const {
     data: myRooms,
     loading,
     refetch,
   } = usePolling(
     async () => {
-      if (!user) return [];
-      // 모든 사용자가 모든 방을 볼 수 있음
-      const snap = await getDocs(collection(db, "musicRooms"));
+      if (!user || !classCode) return [];
+      const q = query(
+        collection(db, "musicRooms"),
+        where("classCode", "==", classCode),
+      );
+      const snap = await getDocs(q);
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
-    { interval: 10 * 60 * 1000, enabled: !!user, deps: [user] }, // 🔥 [비용 최적화] 5분 → 10분
+    { interval: 10 * 60 * 1000, enabled: !!user && !!classCode, deps: [user, classCode] },
   );
 
   // 방이 삭제되었을 경우를 대비하여, 현재 보고 있는 createdRoom이 실제로 존재하는지 확인합니다.
@@ -80,11 +84,16 @@ const MusicRequest = ({ user }) => {
       setError("방 이름을 입력해주세요.");
       return;
     }
+    if (!classCode) {
+      setError("학급 정보가 확인되지 않습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
     setError("");
     try {
       const q = query(
         collection(db, "musicRooms"),
         where("name", "==", roomName.trim()),
+        where("classCode", "==", classCode),
         where("teacherId", "==", user.uid),
       );
       const querySnapshot = await getDocs(q);
@@ -96,6 +105,7 @@ const MusicRequest = ({ user }) => {
       const docRef = await addDoc(collection(db, "musicRooms"), {
         name: roomName,
         teacherId: user.uid,
+        classCode, // 학급 격리용
         pricePerSong: pricePerSong || 0,
         createdAt: new Date(),
       });

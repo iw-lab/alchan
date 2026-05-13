@@ -876,11 +876,18 @@ service cloud.firestore {
     // 🎵 음악 신청방 (musicRooms)
     // ========================================================
     match /musicRooms/{roomId} {
-      // 읽기: 로그인한 모든 사용자 (학생들이 방 목록을 볼 수 있어야 함)
-      allow read: if isSignedIn();
+      // 읽기: 같은 학급 또는 관리자 (학급 격리)
+      //   기존 데이터(classCode 없음)도 허용해 하위 호환 유지 — 마이그레이션 후 좁힐 수 있음
+      allow read: if isSignedIn() && (
+        resource.data.get('classCode', null) == null ||
+        isSameClass(resource.data.classCode) ||
+        isAdmin()
+      );
 
-      // 생성: 관리자만 (선생님만 방 생성 가능)
-      allow create: if isAdmin() && isOwner(request.resource.data.teacherId);
+      // 생성: 관리자(선생님) + 본인 teacherId + classCode 본인 학급 강제
+      allow create: if isAdmin() &&
+                       isOwner(request.resource.data.teacherId) &&
+                       isSameClass(request.resource.data.classCode);
 
       // 수정: 방 생성자 또는 관리자
       allow update: if isOwner(resource.data.teacherId) || isAdmin();

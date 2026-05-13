@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom, backfill-musicrooms)'
         required: true
         default: 'reset'
       weekKey:
@@ -188,6 +188,19 @@ jobs:
           echo "💀 주급 회수 COMMIT (weekKey=$WK)"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🎵 musicRooms classCode 백필 — 기존 방에 teacherId 기준 학급 코드 부여
+      - name: Backfill musicRooms classCode
+        continue-on-error: true
+        if: github.event.inputs.task == 'backfill-musicrooms'
+        run: |
+          echo "🎵 musicRooms 학급 격리 백필 시작"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://asia-northeast3-inconomysu-class.cloudfunctions.net/backfillMusicRoomsManual?auth=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"
