@@ -813,10 +813,17 @@ const StudentManager = () => {
                   </label>
                   <input
                     type="number"
-                    value={bulkStartNum}
-                    onChange={(e) =>
-                      setBulkStartNum(parseInt(e.target.value) || 0)
-                    }
+                    value={bulkStartNum === 0 ? "" : bulkStartNum}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") {
+                        setBulkStartNum(0);
+                      } else {
+                        setBulkStartNum(parseInt(v) || 0);
+                      }
+                    }}
+                    placeholder="예: 1"
                     min="0"
                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                   />
@@ -827,10 +834,17 @@ const StudentManager = () => {
                   </label>
                   <input
                     type="number"
-                    value={bulkCount}
-                    onChange={(e) =>
-                      setBulkCount(Math.min(100, parseInt(e.target.value) || 0))
-                    }
+                    value={bulkCount === 0 ? "" : bulkCount}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") {
+                        setBulkCount(0);
+                      } else {
+                        setBulkCount(Math.min(100, parseInt(v) || 0));
+                      }
+                    }}
+                    placeholder="예: 20"
                     min="1"
                     max="100"
                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl font-mono text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"

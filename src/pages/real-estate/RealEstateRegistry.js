@@ -322,6 +322,29 @@ const RealEstateRegistry = () => {
         });
       }
       await batch.commit();
+
+      // 🔥 로컬 상태 즉시 반영 — 새로고침 없이 화면 갱신
+      const initialProperties = [];
+      for (let i = 1; i <= currentSettings.totalProperties; i++) {
+        const idStr = i.toString();
+        initialProperties.push({
+          firestoreDocId: idStr,
+          id: idStr,
+          price: basePrice,
+          owner: "government",
+          ownerName: "정부",
+          rent: rent,
+          tenant: null,
+          tenantId: null,
+          tenantName: null,
+          forSale: false,
+          salePrice: 0,
+          lastRentPayment: null,
+          classCode: classCode,
+        });
+      }
+      setProperties(initialProperties);
+
       alert("부동산이 성공적으로 초기화되었습니다.");
       setShowAdminPanel(false);
     } catch (error) {
