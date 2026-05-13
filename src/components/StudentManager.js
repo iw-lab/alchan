@@ -695,14 +695,14 @@ const StudentManager = () => {
           </Alert>
 
           {/* 법정대리인 동의 체크박스 */}
-          <div className="p-4 bg-amber-900/20 border-2 border-amber-800 rounded-xl space-y-3">
+          <div className="p-4 bg-amber-50 border-2 border-amber-400 rounded-xl space-y-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-100 mb-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
                   개인정보 수집 법정대리인 동의
                 </p>
-                <p className="text-xs text-amber-300 mb-2">
+                <p className="text-xs text-amber-800 mb-2">
                   14세 미만 학생의 개인정보 수집을 위해서는 학부모(법정대리인)의
                   동의가 필요합니다.
                 </p>
@@ -711,19 +711,19 @@ const StudentManager = () => {
                     type="checkbox"
                     checked={parentalConsent}
                     onChange={(e) => setParentalConsent(e.target.checked)}
-                    className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
+                    className="mt-0.5 w-5 h-5 rounded border-2 border-amber-600 text-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
                   />
-                  <span className="text-sm text-amber-100 group-hover:text-amber-700">
+                  <span className="text-sm text-amber-900 group-hover:text-amber-950">
                     학부모(법정대리인)의 개인정보 수집·이용 동의를
                     확인하였습니다
                   </span>
                 </label>
-                <p className="text-xs text-amber-400 mt-2 ml-7">
+                <p className="text-xs text-amber-700 mt-2 ml-7">
                   가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{" "}
                   <a
                     href="/privacy"
                     target="_blank"
-                    className="underline hover:text-amber-800"
+                    className="underline hover:text-amber-950"
                   >
                     개인정보처리방침 보기
                   </a>
@@ -863,14 +863,14 @@ const StudentManager = () => {
             </Alert>
 
             {/* 법정대리인 동의 체크박스 */}
-            <div className="p-4 bg-amber-900/20 border-2 border-amber-800 rounded-xl space-y-3">
+            <div className="p-4 bg-amber-50 border-2 border-amber-400 rounded-xl space-y-3">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-amber-100 mb-1">
+                  <p className="text-sm font-semibold text-amber-900 mb-1">
                     개인정보 수집 법정대리인 동의
                   </p>
-                  <p className="text-xs text-amber-300 mb-2">
+                  <p className="text-xs text-amber-800 mb-2">
                     14세 미만 학생의 개인정보 수집을 위해서는
                     학부모(법정대리인)의 동의가 필요합니다.
                   </p>
@@ -879,19 +879,19 @@ const StudentManager = () => {
                       type="checkbox"
                       checked={bulkParentalConsent}
                       onChange={(e) => setBulkParentalConsent(e.target.checked)}
-                      className="mt-0.5 w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
+                      className="mt-0.5 w-5 h-5 rounded border-2 border-amber-600 text-amber-700 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 cursor-pointer"
                     />
-                    <span className="text-sm text-amber-100 group-hover:text-amber-700">
+                    <span className="text-sm text-amber-900 group-hover:text-amber-950">
                       학부모(법정대리인)의 개인정보 수집·이용 동의를
                       확인하였습니다
                     </span>
                   </label>
-                  <p className="text-xs text-amber-400 mt-2 ml-7">
+                  <p className="text-xs text-amber-700 mt-2 ml-7">
                     가정통신문 등을 통해 사전에 학부모 동의를 받아주세요.{" "}
                     <a
                       href="/privacy"
                       target="_blank"
-                      className="underline hover:text-amber-800"
+                      className="underline hover:text-amber-950"
                     >
                       개인정보처리방침 보기
                     </a>
