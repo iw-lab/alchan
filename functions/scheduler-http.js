@@ -2675,6 +2675,61 @@ exports.dividendSchedulerV2 = onSchedule(
 );
 
 // ===================================================================================
+// 💰 모든 학급의 'store_price_down' 이벤트를 25% 인하(multiplier: 0.75)로 마이그
+// ===================================================================================
+async function migrateStorePriceDown() {
+  let updated = 0, skipped = 0;
+  const settingsSnap = await db.collection("economicEventSettings").get();
+  for (const docSnap of settingsSnap.docs) {
+    const data = docSnap.data();
+    const events = Array.isArray(data.events) ? data.events : [];
+    if (events.length === 0) { skipped++; continue; }
+    let changed = false;
+    const newEvents = events.map((e) => {
+      if (e.id === "store_price_down" || (e.type === "STORE_PRICE_CHANGE" && (e.params?.multiplier || 0) < 1)) {
+        const newMult = 0.75;
+        if (e.params?.multiplier !== newMult) {
+          changed = true;
+          return {
+            ...e,
+            title: "물가 안정!",
+            description: "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 25% 인하되었습니다!",
+            params: { ...(e.params || {}), multiplier: newMult },
+          };
+        }
+      }
+      return e;
+    });
+    if (changed) {
+      await docSnap.ref.update({ events: newEvents });
+      updated++;
+    } else {
+      skipped++;
+    }
+  }
+  logger.info(`[migrateStorePriceDown] 완료 — updated:${updated}, skipped:${skipped}`);
+  return { updated, skipped };
+}
+
+exports.migrateStorePriceDownManual = onRequest(
+  { region: "asia-northeast3", cors: true },
+  async (req, res) => {
+    const token = req.headers["x-scheduler-auth"] || req.query.auth;
+    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    try {
+      const result = await migrateStorePriceDown();
+      res.json({ success: true, ...result });
+    } catch (error) {
+      logger.error("[migrateStorePriceDownManual] 오류:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// ===================================================================================
 // 🎵 기존 musicRooms 학급 격리 백필 — classCode 누락된 방에 teacherId 기준 학급 부여
 // 마이그 후엔 학급 격리 룰이 정상 작동
 // ===================================================================================

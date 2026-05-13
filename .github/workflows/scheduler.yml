@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom, backfill-musicrooms)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom, backfill-musicrooms, migrate-store-price-down)'
         required: true
         default: 'reset'
       weekKey:
@@ -188,6 +188,19 @@ jobs:
           echo "💀 주급 회수 COMMIT (weekKey=$WK)"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&weekKey=$WK&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 💰 물가 안정 25% 일괄 변경 — 모든 학급의 store_price_down 이벤트 multiplier=0.75
+      - name: Migrate store-price-down to 25%
+        continue-on-error: true
+        if: github.event.inputs.task == 'migrate-store-price-down'
+        run: |
+          echo "💰 물가 안정 이벤트 25% 인하로 일괄 변경 시작"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://asia-northeast3-inconomysu-class.cloudfunctions.net/migrateStorePriceDownManual?auth=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"

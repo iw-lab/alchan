@@ -114,10 +114,10 @@ const DEFAULT_EVENTS = [
  {
  id: "store_price_down",
  type: "STORE_PRICE_CHANGE",
- title: "물가 대폭 안정!",
+ title: "물가 안정!",
  description:
- "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 절반으로 내렸습니다!",
- params: { multiplier: 0.5 },
+ "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 25% 인하되었습니다!",
+ params: { multiplier: 0.75 },
  emoji: "🛒📉",
  enabled: true,
  },
