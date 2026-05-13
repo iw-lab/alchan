@@ -2054,14 +2054,19 @@ const RealEstateRegistry = () => {
               </div>
               <div style={{display:'flex',gap:'12px'}}>
                 <div className="form-group" style={{flex:1}}>
-                  <label>한 줄당 칸 수</label>
+                  <label>가로 한 줄에 표시할 부동산 개수</label>
                   <select value={adminInputs.layoutColumns} onChange={(e) => setAdminInputs(prev => ({ ...prev, layoutColumns: e.target.value }))}>
-                    {[3, 4, 5, 6, 7, 8, 10].map(n => <option key={n} value={n.toString()}>{n}칸</option>)}
+                    {[3, 4, 5, 6, 7, 8, 10].map(n => <option key={n} value={n.toString()}>가로 {n}개씩</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{flex:1}}>
-                  <label>줄 수 (자동 계산: {Math.ceil(parseInt(adminInputs.totalProperties || 0) / parseInt(adminInputs.layoutColumns || 4))}줄)</label>
-                  <input type="text" disabled value={`${Math.ceil(parseInt(adminInputs.totalProperties || 0) / parseInt(adminInputs.layoutColumns || 4))}줄 × ${adminInputs.layoutColumns}칸`} style={{opacity:0.6}} />
+                  <label>배치 결과 (자동)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={`총 ${adminInputs.totalProperties || 0}개 = 가로 ${adminInputs.layoutColumns}개 × 세로 ${Math.ceil(parseInt(adminInputs.totalProperties || 0) / parseInt(adminInputs.layoutColumns || 4))}줄`}
+                    style={{opacity:0.85, fontWeight: 600, color: '#4f46e5'}}
+                  />
                 </div>
               </div>
               <div className="form-group">
@@ -2072,7 +2077,7 @@ const RealEstateRegistry = () => {
                 <label>월세 비율 (%)</label>
                 <input type="number" min="0" max="20" step="0.1" value={adminInputs.rentPercentage} onChange={(e) => setAdminInputs(prev => ({ ...prev, rentPercentage: e.target.value }))} />
               </div>
-              <p style={{fontSize:'0.8rem',color:'#818cf8',margin:'0 0 8px'}}>💡 설정 저장 시 부동산 초기화 여부를 묻습니다.</p>
+              <p style={{fontSize:'0.8rem',color:'#818cf8',margin:'0 0 8px'}}>💡 설정 저장 시 부동산 개수가 변경되면 자동으로 초기화 여부를 묻습니다. 가격/월세 변경은 기존 부동산에 즉시 반영됩니다.</p>
               <div className="non-tenant-list">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ margin: 0 }}>⚠️ 미입주 학생 ({nonTenants.length}명){excludedFromAssign.size > 0 && <span style={{color:'#f59e0b',fontSize:'0.85em'}}> / 제외 {excludedFromAssign.size}명</span>}</h4>
@@ -2157,7 +2162,6 @@ const RealEstateRegistry = () => {
             </div>
             <div className="panel-actions">
               <button className="btn-primary" onClick={handleSaveSettings} disabled={operationLoading}>💾 설정 저장</button>
-              <button className="btn-danger" onClick={handleInitializeProperties} disabled={operationLoading}>🔄 부동산 초기화</button>
             </div>
           </div>
         </div>
