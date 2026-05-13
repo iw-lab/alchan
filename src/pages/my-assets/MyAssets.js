@@ -1230,6 +1230,20 @@ export default function MyAssets() {
           `${userName}님으로부터 입금`,
         );
         if (addSuccess) {
+          // 🔥 친구로부터 받은 송금 시간 기록 — 받는 사람의 24시간 대출 상환 쿨다운용
+          try {
+            await setDoc(
+              doc(db, "users", recipientUser.id),
+              { lastIncomingTransferAt: serverTimestamp() },
+              { merge: true },
+            );
+          } catch (e) {
+            logger.warn(
+              "[transfer] lastIncomingTransferAt 기록 실패 (무시):",
+              e.message,
+            );
+          }
+
           // 🔥 활동 로그 기록 (송금 발송)
           logActivity(db, {
             classCode: currentUserClassCode,

@@ -97,7 +97,7 @@ service cloud.firestore {
                         (!('cash' in request.resource.data) || request.resource.data.cash is number) &&
                         (!('coupons' in request.resource.data) || request.resource.data.coupons is number)) ||
                        (isSameClass(resource.data.classCode) &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt']) &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt', 'lastIncomingTransferAt']) &&
                         request.resource.data.cash is number) ||
                        isAdmin();
 

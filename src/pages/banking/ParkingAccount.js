@@ -1214,6 +1214,24 @@ const ParkingAccount = ({
  return displayMessage("유효한 금액을 입력하세요.", "error");
  }
 
+ // 🔥 친구 송금 받은 직후 24시간은 대출 상환 차단 (돌려막기 방지)
+ const lastIncoming =
+   userDoc?.lastIncomingTransferAt?.toDate?.() ||
+   userDoc?.lastIncomingTransferAt;
+ if (lastIncoming) {
+   const elapsedMs = Date.now() - new Date(lastIncoming).getTime();
+   const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+   if (elapsedMs >= 0 && elapsedMs < COOLDOWN_MS) {
+     const remainingH = Math.ceil(
+       (COOLDOWN_MS - elapsedMs) / (60 * 60 * 1000),
+     );
+     return displayMessage(
+       `친구로부터 송금받은 후 24시간이 지나야 대출 상환이 가능합니다. (남은 시간: ${remainingH}시간)`,
+       "error",
+     );
+   }
+ }
+
  const { id, name, balance, rate, teacherId } = product;
  const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
  balance, rate, product.startDate, product.lastRepaymentDate
@@ -1780,6 +1798,27 @@ const ParkingAccount = ({
 
  const { id, name, type, balance } = product;
  const isLoan = type === "loan";
+
+ // 🔥 대출 상환 시 친구 송금 받은 직후 24시간 차단 (돌려막기 방지)
+ if (isLoan) {
+   const lastIncoming =
+     userDoc?.lastIncomingTransferAt?.toDate?.() ||
+     userDoc?.lastIncomingTransferAt;
+   if (lastIncoming) {
+     const elapsedMs = Date.now() - new Date(lastIncoming).getTime();
+     const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+     if (elapsedMs >= 0 && elapsedMs < COOLDOWN_MS) {
+       const remainingH = Math.ceil(
+         (COOLDOWN_MS - elapsedMs) / (60 * 60 * 1000),
+       );
+       displayMessage(
+         `친구로부터 송금받은 후 24시간이 지나야 대출 상환이 가능합니다. (남은 시간: ${remainingH}시간)`,
+         "error",
+       );
+       return;
+     }
+   }
+ }
  // 적금: totalDeposited 사용 (실제 납입한 금액만 반환)
  const refundAmount = (type === "savings" && product.totalDeposited) ? product.totalDeposited : balance;
 
