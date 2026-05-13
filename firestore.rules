@@ -573,6 +573,12 @@ service cloud.firestore {
     // ========================================================
     // ⚙️ 전역 설정 (settings)
     // ========================================================
+    // 거절된 선생님 이메일 목록 — 슈퍼관리자만 write (학급 관리자 차단)
+    match /Settings/rejectedTeachers {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
     match /Settings/{documentId} {
       allow read: if isSignedIn();
       // activeStatus는 로그인한 모든 사용자가 업데이트 가능 (주식 스케줄러 트리거용)

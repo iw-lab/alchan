@@ -224,22 +224,32 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // 승인 대기 선생님 로드
+  // 승인 대기 선생님 로드 (거절된 이메일/uid는 영구 제외)
   const loadPendingTeachers = async () => {
     try {
-      // 🔥 모든 users를 가져와서 클라이언트에서 필터링
-      // Firestore OR 쿼리가 없으므로 isTeacher || isAdmin 조건을 클라이언트에서 처리
+      // 거절 목록 먼저 가져옴
+      const rejSnap = await getDoc(doc(db, "Settings", "rejectedTeachers"));
+      const rejectedEmails = new Set(
+        (rejSnap.exists() ? rejSnap.data().emails || [] : []).map((e) =>
+          (e || "").toLowerCase(),
+        ),
+      );
+      const rejectedUids = new Set(
+        rejSnap.exists() ? rejSnap.data().uids || [] : [],
+      );
+
       const usersRef = collection(db, "users");
       const snapshot = await getDocs(usersRef);
 
       const pending = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((user) => {
-          // isSuperAdmin은 앱 관리자이므로 제외
           if (user.isSuperAdmin) return false;
-          // isTeacher 또는 isAdmin이 true인 경우 선생님으로 간주
+          // 거절된 이메일/uid 영구 제외
+          if (rejectedUids.has(user.id)) return false;
+          const emailLower = (user.email || "").toLowerCase();
+          if (emailLower && rejectedEmails.has(emailLower)) return false;
           const isTeacher = user.isTeacher === true || user.isAdmin === true;
-          // 승인 대기: isApproved가 명시적으로 false인 경우
           return isTeacher && user.isApproved === false;
         })
         .sort((a, b) => {
@@ -536,22 +546,47 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // 선생님 거절/삭제
+  // 선생님 거절/삭제 — 영구 차단 (이메일 거절 목록에 기록)
   const handleRejectTeacher = async (teacherId, teacherName) => {
     if (
       !window.confirm(
-        `'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
+        `'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.\n해당 이메일은 영구적으로 차단됩니다.`,
       )
     )
       return;
 
     try {
+      // 1) 거절 대상 정보 수집 (user 문서 삭제 전)
+      const teacher = pendingTeachers.find((t) => t.id === teacherId);
+      const email = (teacher?.email || "").trim().toLowerCase();
+
+      // 2) Settings/rejectedTeachers 거절 목록에 이메일+uid 추가
+      //    이후 recoverTeacherAccountsOnce 등 마이그 로직이 이 목록 검사 후 skip
+      if (email || teacherId) {
+        const rejRef = doc(db, "Settings", "rejectedTeachers");
+        const rejSnap = await getDoc(rejRef);
+        const prevEmails = rejSnap.exists() ? rejSnap.data().emails || [] : [];
+        const prevUids = rejSnap.exists() ? rejSnap.data().uids || [] : [];
+        const newEmails = email && !prevEmails.includes(email) ? [...prevEmails, email] : prevEmails;
+        const newUids = teacherId && !prevUids.includes(teacherId) ? [...prevUids, teacherId] : prevUids;
+        await setDoc(
+          rejRef,
+          {
+            emails: newEmails,
+            uids: newUids,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+
+      // 3) user 문서 삭제
       const userRef = doc(db, "users", teacherId);
       await deleteDoc(userRef);
 
       setPendingTeachers((prev) => prev.filter((t) => t.id !== teacherId));
       await loadStats();
-      alert("선생님 가입이 거절되었습니다.");
+      alert("선생님 가입이 거절되었습니다.\n해당 이메일은 영구 차단되었습니다.");
     } catch (error) {
       logger.error("거절 오류:", error);
       alert("거절 처리 중 오류가 발생했습니다.");

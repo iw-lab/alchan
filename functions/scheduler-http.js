@@ -2403,6 +2403,17 @@ async function recoverTeacherAccountsOnce() {
   const flagSnap = await flagRef.get();
   if (flagSnap.exists) return;
 
+  // 거절 목록 로드 — 영구 차단된 이메일/uid는 복구 대상에서 제외
+  const rejSnap = await db.collection("Settings").doc("rejectedTeachers").get();
+  const rejectedEmails = new Set(
+    (rejSnap.exists ? rejSnap.data().emails || [] : []).map((e) =>
+      (e || "").toLowerCase(),
+    ),
+  );
+  const rejectedUids = new Set(
+    rejSnap.exists ? rejSnap.data().uids || [] : [],
+  );
+
   let recovered = 0;
   let skipped = 0;
   const candidatesByUid = new Map(); // userId → { classCode, source }
@@ -2440,6 +2451,9 @@ async function recoverTeacherAccountsOnce() {
 
   // ── 복구 실행
   for (const [uid, info] of candidatesByUid.entries()) {
+    // 거절 목록(uid 기준) 제외
+    if (rejectedUids.has(uid)) { skipped++; continue; }
+
     const userSnap = await db.collection("users").doc(uid).get();
     if (!userSnap.exists) {
       skipped++;
@@ -2454,6 +2468,9 @@ async function recoverTeacherAccountsOnce() {
       skipped++;
       continue;
     }
+    // 거절 목록(이메일 기준) 제외
+    const emailLower = (userData.email || "").toLowerCase();
+    if (emailLower && rejectedEmails.has(emailLower)) { skipped++; continue; }
 
     const updates = {
       isAdmin: true,
