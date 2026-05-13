@@ -1283,7 +1283,11 @@ const ParkingAccount = ({
  throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(repayAmount)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`);
  }
 
- transaction.update(userRef, { cash: increment(-repayAmount) });
+ transaction.update(userRef, {
+ cash: increment(-repayAmount),
+ // 완납 시점에만 쿨다운 기록 (분할 중간 상환은 미적용)
+ ...(isFullyRepaid ? { lastLoanRepaidAt: serverTimestamp() } : {}),
+ });
  transaction.update(teacherRef, { cash: increment(repayAmount) });
 
  if (isFullyRepaid) {
@@ -1361,6 +1365,20 @@ const ParkingAccount = ({
  "이미 미상환 대출이 있습니다. 기존 대출을 먼저 갚아주세요.",
  "error",
  );
+ }
+ // 🔥 대출 상환 후 24시간 쿨다운 — 친구 송금으로 돌려막기 차단
+ const lastRepaid =
+ userDoc?.lastLoanRepaidAt?.toDate?.() || userDoc?.lastLoanRepaidAt;
+ if (lastRepaid) {
+ const elapsedMs = Date.now() - new Date(lastRepaid).getTime();
+ const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+ if (elapsedMs >= 0 && elapsedMs < COOLDOWN_MS) {
+ const remainingH = Math.ceil((COOLDOWN_MS - elapsedMs) / (60 * 60 * 1000));
+ return displayMessage(
+ `대출 상환 후 24시간이 지나야 새 대출이 가능합니다. (남은 시간: ${remainingH}시간)`,
+ "error",
+ );
+ }
  }
  if (await isNetAssetsNegative(userDoc)) {
  return displayMessage(NEGATIVE_ASSETS_MESSAGE, "error");
@@ -1862,7 +1880,10 @@ const ParkingAccount = ({
  `대출금을 상환하기에 현금이 부족합니다. (필요: ${formatCurrency(loanTotalRepay)}${currencyUnit} = 원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)})`
  );
  }
- transaction.update(userRef, { cash: increment(-loanTotalRepay) });
+ transaction.update(userRef, {
+ cash: increment(-loanTotalRepay),
+ lastLoanRepaidAt: serverTimestamp(), // 돌려막기 차단 쿨다운 기록
+ });
  transaction.update(teacherRef, { cash: increment(loanTotalRepay) });
  logger.log(`대출 일시 상환: 학생 -${loanTotalRepay} (원금 ${balance} + 이자 ${loanAccruedInterest}, ${loanElapsedDays}일 경과)`);
  } else {
