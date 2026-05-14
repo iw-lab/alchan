@@ -462,14 +462,22 @@ async function updateRealStockPrices() {
       // 사유: 변동성 증폭이 학생 학습에 부정적 효과 — 실제 시장과 다른 흐름 혼란.
       const newPrice = Math.max(100, realPriceKRW);
 
+      // 전일 종가 KRW 환산 (변동률 계산용 — 클라이언트가 (price-prev)/prev*100 으로 직접 계산)
+      const previousCloseKRW = data.previousClose
+        ? (stock.isUSD
+            ? Math.round(data.previousClose * USD_TO_KRW)
+            : Math.round(data.previousClose))
+        : 0;
+
       // 가격 이력 업데이트 (최대 20개)
       const newHistory = [...stock.priceHistory.slice(-19), newPrice];
 
       const updatePayload = {
         price: newPrice,
         priceHistory: newHistory,
-        previousClose: data.previousClose || 0,
-        // 변동률은 실물 변동률 그대로 사용
+        // 전일 종가: KRW 환산값 저장 (price와 같은 단위로 통일 — 변동률 정확 계산)
+        previousClose: previousCloseKRW,
+        // 변동률은 실물 변동률 그대로 사용 (전일 종가 대비)
         changePercent: data.changePercent || 0,
         marketState: data.marketState || 'CLOSED',
         volatilityMultiplier: 1,
@@ -639,6 +647,12 @@ async function createRealStocks(stockConfigs) {
 
     const docRef = db.collection("CentralStocks").doc();
 
+    const previousCloseKRW = priceData.previousClose
+      ? (isUSD
+          ? Math.round(priceData.previousClose * USD_TO_KRW)
+          : Math.round(priceData.previousClose))
+      : 0;
+
     batch.set(docRef, {
       name: config.name,
       price: price,
@@ -658,7 +672,7 @@ async function createRealStocks(stockConfigs) {
       sellVolume: 0,
       recentBuyVolume: 0,
       recentSellVolume: 0,
-      previousClose: priceData.previousClose || 0,
+      previousClose: previousCloseKRW, // KRW 환산 (price와 같은 단위)
       changePercent: priceData.changePercent || 0,
       marketState: priceData.marketState || 'CLOSED',
       realStockData: {
@@ -777,6 +791,12 @@ async function addSingleRealStock(config) {
       productType = 'etf'; // 채권 ETF도 ETF 타입으로
     }
 
+    const previousCloseKRW = priceData.previousClose
+      ? (isUSD
+          ? Math.round(priceData.previousClose * USD_TO_KRW)
+          : Math.round(priceData.previousClose))
+      : 0;
+
     const docRef = db.collection("CentralStocks").doc();
     const stockData = {
       name: config.name,
@@ -797,7 +817,7 @@ async function addSingleRealStock(config) {
       sellVolume: 0,
       recentBuyVolume: 0,
       recentSellVolume: 0,
-      previousClose: priceData.previousClose || 0,
+      previousClose: previousCloseKRW, // KRW 환산 (price와 같은 단위)
       changePercent: priceData.changePercent || 0,
       marketState: priceData.marketState || 'CLOSED',
       realStockData: {

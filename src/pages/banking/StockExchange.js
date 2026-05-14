@@ -2097,17 +2097,24 @@ const StockExchange = () => {
 
           <div className="market-grid">
             {displayedStocks.map((stock) => {
-              // 실시간 주식: 서버에서 계산한 전일 종가 대비 등락률 사용
-              // 시뮬레이션 주식: priceHistory 기반 계산
-              const priceChange = stock.isRealStock && stock.changePercent != null
-                ? stock.changePercent
-                : (() => {
-                    const priceHistory = stock.priceHistory || [stock.price];
-                    return priceHistory.length >= 2
-                      ? ((priceHistory.slice(-1)[0] - priceHistory.slice(-2)[0]) /
-                          priceHistory.slice(-2)[0]) * 100
-                      : 0;
-                  })();
+              // 전일 종가 기준 등락률 계산 (실제 주식 앱처럼)
+              // 우선순위: previousClose(KRW, price와 단위 통일) → 서버 저장 changePercent → priceHistory
+              // 단위 불일치 방어: prev가 price의 1/10 미만 또는 10배 초과면 stale USD 값으로 간주, 무시
+              const priceChange = (() => {
+                const prev = Number(stock.previousClose) || 0;
+                if (prev > 0 && stock.price > 0) {
+                  const sane = prev >= stock.price / 10 && prev <= stock.price * 10;
+                  if (sane) return ((stock.price - prev) / prev) * 100;
+                }
+                if (stock.isRealStock && stock.changePercent != null) {
+                  return Number(stock.changePercent) || 0;
+                }
+                const priceHistory = stock.priceHistory || [stock.price];
+                return priceHistory.length >= 2
+                  ? ((priceHistory.slice(-1)[0] - priceHistory.slice(-2)[0]) /
+                      priceHistory.slice(-2)[0]) * 100
+                  : 0;
+              })();
               const isRealStock = stock.isRealStock === true;
               return (
                 <div
