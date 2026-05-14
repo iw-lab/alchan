@@ -984,9 +984,11 @@ const ChessGame = () => {
 
         const updateData = {};
         if (selectedCard.type === "cash") {
-          updateData.balance = increment(selectedCard.amount);
+          // 🔥 fix: users 문서의 현금 필드는 `cash` (이전 `balance`는 학생에게 실제 지급되지 않던 버그)
+          updateData.cash = increment(selectedCard.amount);
         } else if (selectedCard.type === "coupon") {
-          updateData.couponBalance = increment(selectedCard.amount);
+          // 🔥 fix: 쿠폰 필드도 `coupons`로 통일 (이전 `couponBalance`는 표시 안 됨)
+          updateData.coupons = increment(selectedCard.amount);
         }
         transaction.update(userRef, updateData);
       });

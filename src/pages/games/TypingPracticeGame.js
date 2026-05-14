@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore";
 import { db } from "../../firebase";
 import { difficultyConfig, getRandomSentences, generateRandomReward } from "../../data/typingWords";
 import "./TypingPracticeGame.css";
@@ -184,14 +184,25 @@ const TypingPracticeGame = ({ onClose }) => {
           typingGameLastPlayDate: serverTimestamp()
         };
 
+        // ⚠️ 절대값(userDoc.cash + reward) 덮어쓰기 금지 — onSnapshot 지연/오프라인 캐시로
+        // userDoc.cash가 stale일 때 다른 트랜잭션(친구 송금·자동 적금 납입 등)을 무효화해
+        // 학생 자산이 비현실적으로 부풀려지는 race condition이 발생함. increment 사용 필수.
         if (cardType === "cash") {
-          updates.cash = (userDoc?.cash || 0) + rewardAmount;
+          updates.cash = increment(rewardAmount);
         } else {
-          updates.coupons = (userDoc?.coupons || 0) + rewardAmount;
+          updates.coupons = increment(rewardAmount);
         }
 
         await updateDoc(userRef, updates);
-        await updateUser(updates);
+        // 로컬 상태에는 델타 형태로 전달 (updateUser는 increment FieldValue를 처리할 수 없음)
+        if (typeof updateUser === "function") {
+          await updateUser({
+            typingGameDailyCount: dailyPlayCount + 1,
+            ...(cardType === "cash"
+              ? { cash: (userDoc?.cash || 0) + rewardAmount }
+              : { coupons: (userDoc?.coupons || 0) + rewardAmount }),
+          });
+        }
 
         setDailyPlayCount(prev => prev + 1);
 
