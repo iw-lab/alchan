@@ -2148,29 +2148,7 @@ const StockExchange = () => {
                           {getMarketStateLabel(stock) || "장마감"}
                         </div>
                       )}
-                      {isRealStock && stock.realStockData?.lastPriceKRW > 0 && (() => {
-                        const real = stock.realStockData.lastPriceKRW;
-                        const gap = ((stock.price - real) / real) * 100;
-                        const sign = gap >= 0 ? "+" : "";
-                        const gapColor = Math.abs(gap) < 5
-                          ? "text-gray-400"
-                          : gap > 0
-                            ? "text-rose-500"
-                            : "text-blue-500";
-                        return (
-                          <div className="text-[0.7rem] text-gray-400 mt-0.5 leading-tight">
-                            <div>실물 {formatCurrency(real)}</div>
-                            <div className={gapColor}>
-                              우리반 {sign}{gap.toFixed(0)}%
-                              {stock.volatilityMultiplier > 1 && (
-                                <span className="ml-1 text-[0.6rem] text-purple-500 font-bold">
-                                  ×{stock.volatilityMultiplier}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      {/* 실물가 그대로 미러링 — gap/×N 배지 제거 (가격=실물가) */}
                       {(stock.dividendYieldAnnual || 0) > 0 && (
                         <div className="text-[0.7rem] text-emerald-600 mt-0.5 font-semibold leading-tight">
                           💎 배당 {Number(stock.dividendYieldAnnual).toFixed(1)}%/년

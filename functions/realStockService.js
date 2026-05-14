@@ -457,42 +457,22 @@ async function updateRealStockPrices() {
               : null)
         || realPriceKRW;
 
-      // ── 변동성 ×10 + Mean Reversion (약한 끌림) ──
-      // 설계 의도: 학생 흥미를 위한 큰 변동폭(일중 ±20%)을 주되,
-      //   누적 발산을 막기 위해 실물 쪽으로 약하게 수렴시켜 아비트라지를 차단.
-      // REVERSION은 5분 tick마다 적용되므로, 일 78 ticks × 0.005 ≈ 일 약 30% 수렴력
-      //   (이전 0.05/tick은 너무 강해 변동성이 묶였음 — 시뮬레이션 결과 기반 1/10 조정)
-      const VOL_MULT = 10;
-      const REVERSION_RATE = 0.005;
-      const TICK_LIMIT = 0.5; // 1tick 최대 ±50% 안전망
-
-      let newPrice;
-      if (!stock.currentPrice || stock.currentPrice < 100) {
-        newPrice = realPriceKRW; // 최초 시드
-      } else {
-        const realChangePct = prevRealStored > 0
-          ? (realPriceKRW - prevRealStored) / prevRealStored
-          : 0;
-        const amplified = Math.max(-TICK_LIMIT, Math.min(TICK_LIMIT, realChangePct * VOL_MULT));
-        const reversion = REVERSION_RATE * (realPriceKRW - stock.currentPrice) / stock.currentPrice;
-        newPrice = Math.max(100, Math.round(stock.currentPrice * (1 + amplified + reversion)));
-      }
+      // ── 실물가 그대로 미러링 ──
+      // ×10 변동성/Mean Reversion 폐기. 실물가(KRW 환산)를 가격으로 그대로 사용.
+      // 사유: 변동성 증폭이 학생 학습에 부정적 효과 — 실제 시장과 다른 흐름 혼란.
+      const newPrice = Math.max(100, realPriceKRW);
 
       // 가격 이력 업데이트 (최대 20개)
       const newHistory = [...stock.priceHistory.slice(-19), newPrice];
-
-      // 우리 앱 기준 변동률 (학생 화면용)
-      const ourChangePercent = stock.currentPrice > 0
-        ? ((newPrice - stock.currentPrice) / stock.currentPrice) * 100
-        : 0;
 
       const updatePayload = {
         price: newPrice,
         priceHistory: newHistory,
         previousClose: data.previousClose || 0,
-        changePercent: ourChangePercent, // 우리반 가격 기준
+        // 변동률은 실물 변동률 그대로 사용
+        changePercent: data.changePercent || 0,
         marketState: data.marketState || 'CLOSED',
-        volatilityMultiplier: VOL_MULT,
+        volatilityMultiplier: 1,
         realStockData: {
           lastPrice: data.price || 0,
           lastPriceKRW: realPriceKRW, // 학생 화면 비교 표시용
@@ -516,7 +496,7 @@ async function updateRealStockPrices() {
 
       batch.update(stock.docRef, updatePayload);
 
-      logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (우리반 ${ourChangePercent.toFixed(2)}%, 실물 ${realPriceKRW}원, 실물변동 ${(data.changePercent || 0).toFixed(2)}%)`);
+      logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (실물가 ${realPriceKRW}원, 변동 ${(data.changePercent || 0).toFixed(2)}%)`);
       updated++;
     }
 
