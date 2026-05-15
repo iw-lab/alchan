@@ -549,7 +549,8 @@ const AdminSettingsModal = ({
         updatedAt: serverTimestamp(),
       };
 
-      await firebaseUpdateDoc(classSettingsRef, newSettings);
+      // setDoc + merge:true 로 문서가 없을 때도 자동 생성 (updateDoc은 문서 부재 시 실패)
+      await firebaseSetDoc(classSettingsRef, newSettings, { merge: true });
       setSalarySettings({
         taxRate: newSettings.taxRate,
         salaryIncreaseRate: newSettings.salaryIncreaseRate,
@@ -3004,134 +3005,164 @@ const AdminSettingsModal = ({
         {/* 급여 설정 서브탭 */}
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "salary" && (
-            <div className="salary-settings-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100">
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm text-slate-600">현재 관리 학급:</span>
+                  <span className="text-sm font-bold text-indigo-700 tracking-wide">{userClassCode}</span>
                 </div>
               )}
-              {/* 급여 설정 섹션 */}
-              <div className="salary-settings section-card">
-                <h3>급여 설정</h3>
-                <p className="admin-section-desc">
-                  세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 금요일
-                  오전 8시에 실행됩니다.
-                </p>
 
-                <div className="salary-settings-form">
-                  <div className="form-group">
-                    <label>세율 (%):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={tempTaxRate}
-                      onChange={(e) => setTempTaxRate(e.target.value)}
-                      style={inputStyle}
-                      placeholder="예: 10 (10%)"
-                    />
-                    <small className="form-help">
-                      학생들의 주급에서 공제될 세율을 설정합니다.
-                    </small>
+              {/* 설정 입력 카드 */}
+              <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 bg-gradient-to-r from-indigo-50/60 to-white border-b border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 text-sm">💰</span>
+                    급여 설정
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1.5 ml-9">
+                    세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 <strong className="text-indigo-600">금요일 오전 8시</strong>에 실행됩니다.
+                  </p>
+                </div>
+
+                <div className="px-6 py-5 space-y-5">
+                  <div>
+                    <label className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-700">세율</span>
+                      <span className="text-[11px] text-slate-400">단위 %</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={tempTaxRate}
+                        onChange={(e) => setTempTaxRate(e.target.value)}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition text-slate-800 text-sm"
+                        placeholder="예: 10"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">학생 주급에서 공제되는 세율</p>
                   </div>
 
-                  <div className="form-group">
-                    <label>주급 인상률 (%):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={tempSalaryIncreaseRate}
-                      onChange={(e) =>
-                        setTempSalaryIncreaseRate(e.target.value)
-                      }
-                      style={inputStyle}
-                      placeholder="예: 3 (3%)"
-                    />
-                    <small className="form-help">
-                      매주 자동으로 적용될 주급 인상률을 설정합니다.
-                    </small>
+                  <div>
+                    <label className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-700">주급 인상률</span>
+                      <span className="text-[11px] text-slate-400">단위 %</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={tempSalaryIncreaseRate}
+                        onChange={(e) => setTempSalaryIncreaseRate(e.target.value)}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition text-slate-800 text-sm"
+                        placeholder="예: 3"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">매주 자동 적용될 인상률</p>
                   </div>
 
                   <button
                     onClick={handleSaveSalarySettings}
-                    style={saveBtnStyle}
                     disabled={salarySettingsLoading}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed text-white font-semibold text-sm shadow-sm hover:shadow transition-all"
                   >
-                    {salarySettingsLoading ? "저장 중..." : "급여 설정 저장"}
+                    {salarySettingsLoading ? "저장 중..." : "💾 급여 설정 저장"}
                   </button>
                 </div>
+              </div>
 
-                <div className="current-salary-settings">
-                  <h4>현재 급여 설정</h4>
-                  <div className="settings-display">
-                    <p>
-                      현재 세율:{" "}
-                      <strong>
-                        {(salarySettings.taxRate * 100).toFixed(1)}%
-                      </strong>
-                    </p>
-                    <p>
-                      현재 주급 인상률:{" "}
-                      <strong>
-                        {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
-                      </strong>
-                    </p>
-                    <p>
-                      마지막 자동 지급일:{" "}
-                      <strong>{formatLastSalaryDate()}</strong>
+              {/* 현재 설정 요약 */}
+              <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-600 text-xs">📊</span>
+                    현재 급여 설정
+                  </h4>
+                </div>
+                <div className="grid grid-cols-3 divide-x divide-slate-100">
+                  <div className="px-4 py-4 text-center">
+                    <p className="text-[11px] text-slate-500 mb-1">세율</p>
+                    <p className="text-lg font-bold text-slate-800 tabular-nums">
+                      {(salarySettings.taxRate * 100).toFixed(1)}
+                      <span className="text-sm text-slate-500 ml-0.5">%</span>
                     </p>
                   </div>
-
-                  <div className="salary-calculation-example">
-                    <h5>주급 계산 예시</h5>
-                    <p>
-                      • 직업 1개: 총 200만원 → 세금{" "}
-                      {((2000000 * salarySettings.taxRate) / 10000).toFixed(0)}
-                      만원 공제 → 실급여{" "}
-                      {(
-                        (2000000 * (1 - salarySettings.taxRate)) /
-                        10000
-                      ).toFixed(0)}
-                      만원
-                    </p>
-                    <p>
-                      • 직업 2개: 총 250만원 → 세금{" "}
-                      {((2500000 * salarySettings.taxRate) / 10000).toFixed(0)}
-                      만원 공제 → 실급여{" "}
-                      {(
-                        (2500000 * (1 - salarySettings.taxRate)) /
-                        10000
-                      ).toFixed(0)}
-                      만원
-                    </p>
-                    <p>
-                      • 직업 3개: 총 300만원 → 세금{" "}
-                      {((3000000 * salarySettings.taxRate) / 10000).toFixed(0)}
-                      만원 공제 → 실급여{" "}
-                      {(
-                        (3000000 * (1 - salarySettings.taxRate)) /
-                        10000
-                      ).toFixed(0)}
-                      만원
+                  <div className="px-4 py-4 text-center">
+                    <p className="text-[11px] text-slate-500 mb-1">주급 인상률</p>
+                    <p className="text-lg font-bold text-emerald-600 tabular-nums">
+                      {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}
+                      <span className="text-sm text-slate-500 ml-0.5">%</span>
                     </p>
                   </div>
-
-                  <div className="auto-payment-info">
-                    <h5>자동 주급 지급 시스템</h5>
-                    <p>
-                      🤖 매주 월요일 오전 8시에 서버에서 자동으로 주급이
-                      지급됩니다.
+                  <div className="px-4 py-4 text-center">
+                    <p className="text-[11px] text-slate-500 mb-1">마지막 자동 지급</p>
+                    <p className="text-xs font-semibold text-slate-700 mt-1.5 break-keep">
+                      {formatLastSalaryDate()}
                     </p>
-                    <p>📈 매주 주급 인상률만큼 급여가 자동으로 인상됩니다.</p>
-                    <p>💰 세금이 자동으로 공제되어 실급여가 지급됩니다.</p>
-                    <p>⚙️ 관리자가 로그인하지 않아도 자동으로 실행됩니다.</p>
                   </div>
                 </div>
+              </div>
+
+              {/* 계산 예시 */}
+              <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-600 text-xs">🧮</span>
+                    주급 계산 예시
+                  </h4>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {[1, 2, 3].map((n) => {
+                    const gross = 2000000 + (n - 1) * 500000;
+                    const tax = gross * salarySettings.taxRate;
+                    const net = gross - tax;
+                    return (
+                      <div key={n} className="px-6 py-3 flex items-center gap-3 text-sm flex-wrap">
+                        <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">{n}</span>
+                        <span className="text-slate-500 text-xs shrink-0">직업 {n}개</span>
+                        <span className="text-slate-700 tabular-nums">{(gross / 10000).toFixed(0)}만</span>
+                        <span className="text-slate-300">→</span>
+                        <span className="text-rose-500 text-xs tabular-nums">세금 {(tax / 10000).toFixed(0)}만</span>
+                        <span className="text-slate-300">→</span>
+                        <span className="font-bold text-emerald-600 tabular-nums">{(net / 10000).toFixed(0)}만</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 자동 지급 안내 */}
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-purple-50 border border-indigo-100 px-6 py-5">
+                <h4 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                  <span>⚡</span>
+                  자동 주급 지급 시스템
+                </h4>
+                <ul className="space-y-2 text-xs text-slate-700">
+                  <li className="flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">🤖</span>
+                    <span>매주 <strong className="text-indigo-700">금요일 오전 8시</strong>에 서버에서 자동으로 주급이 지급됩니다</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">📈</span>
+                    <span>매주 주급 인상률만큼 급여가 자동으로 인상됩니다</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">💰</span>
+                    <span>세금이 자동으로 공제되어 실급여가 지급됩니다</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">⚙️</span>
+                    <span>관리자가 로그인하지 않아도 자동으로 실행됩니다</span>
+                  </li>
+                </ul>
               </div>
             </div>
           )}
