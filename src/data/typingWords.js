@@ -433,8 +433,10 @@ export const difficultyConfig = {
 };
 
 // 가중치 기반 랜덤 보상 생성 (난이도별 차등 + 정답 개수 비례)
+// 🔥 정책: 보상 최대치는 모든 난이도 공통 (현금 100,000원 / 쿠폰 20개)
+//   난이도가 올라갈수록 큰 값의 가중치만 증가 (확률 상승, 상한선 유지)
 export const generateRandomReward = (difficulty = "normal", correctCount = 0) => {
-  // 난이도별 현금 보상 가중치
+  // 난이도별 현금 보상 가중치 (max 100,000원 공통, 확률만 차등)
   const cashRewardsByDifficulty = {
     easy: [
       { amount: 100000, weight: 0.01 },  // 매우 낮은 확률
@@ -445,7 +447,7 @@ export const generateRandomReward = (difficulty = "normal", correctCount = 0) =>
       { amount: 3000, weight: 8 },
       { amount: 1000, weight: 20 },
       { amount: 500, weight: 35 },
-      { amount: 100, weight: 50 }  // 가장 높은 확률
+      { amount: 100, weight: 50 }
     ],
     normal: [
       { amount: 100000, weight: 0.1 },
@@ -456,10 +458,10 @@ export const generateRandomReward = (difficulty = "normal", correctCount = 0) =>
       { amount: 3000, weight: 12 },
       { amount: 1000, weight: 20 },
       { amount: 500, weight: 25 },
-      { amount: 100, weight: 30.4 }
+      { amount: 100, weight: 30 }
     ],
     hard: [
-      { amount: 100000, weight: 5 },  // 높은 확률
+      { amount: 100000, weight: 5 },
       { amount: 50000, weight: 10 },
       { amount: 30000, weight: 15 },
       { amount: 10000, weight: 20 },
@@ -467,93 +469,87 @@ export const generateRandomReward = (difficulty = "normal", correctCount = 0) =>
       { amount: 3000, weight: 15 },
       { amount: 1000, weight: 10 },
       { amount: 500, weight: 4 },
-      { amount: 100, weight: 1 }  // 낮은 확률
+      { amount: 100, weight: 1 }
     ],
     expert: [
-      { amount: 200000, weight: 3 },   // expert 전용 최고액
+      // 100,000원이 나올 확률을 hard 대비 2~3배 (5 → 15)
       { amount: 100000, weight: 15 },
-      { amount: 50000, weight: 25 },
+      { amount: 50000, weight: 22 },
       { amount: 30000, weight: 22 },
       { amount: 10000, weight: 18 },
-      { amount: 5000, weight: 10 },
-      { amount: 3000, weight: 5 },
-      { amount: 1000, weight: 2 }
+      { amount: 5000, weight: 12 },
+      { amount: 3000, weight: 7 },
+      { amount: 1000, weight: 3 },
+      { amount: 500, weight: 1 },
+      { amount: 100, weight: 0 }
     ],
     master: [
-      { amount: 500000, weight: 2 },   // master 전용 최고액
-      { amount: 300000, weight: 8 },
-      { amount: 200000, weight: 18 },
+      // 최고액 확률을 hard 대비 6배 (5 → 30) — 도전 보상
       { amount: 100000, weight: 30 },
-      { amount: 50000, weight: 22 },
-      { amount: 30000, weight: 12 },
-      { amount: 10000, weight: 6 },
-      { amount: 5000, weight: 2 }
+      { amount: 50000, weight: 28 },
+      { amount: 30000, weight: 20 },
+      { amount: 10000, weight: 12 },
+      { amount: 5000, weight: 6 },
+      { amount: 3000, weight: 3 },
+      { amount: 1000, weight: 1 },
+      { amount: 500, weight: 0 },
+      { amount: 100, weight: 0 }
     ]
   };
 
-  // 난이도별 쿠폰 보상 가중치 (1개 ~ 50개)
+  // 난이도별 쿠폰 보상 가중치 (max 20개 공통, 확률만 차등)
   const couponRewardsByDifficulty = {
     easy: [
-      { amount: 50, weight: 0.01 },  // 매우 낮은 확률
-      { amount: 40, weight: 0.05 },
-      { amount: 30, weight: 0.1 },
-      { amount: 25, weight: 0.2 },
-      { amount: 20, weight: 0.5 },
-      { amount: 15, weight: 1 },
-      { amount: 10, weight: 3 },
-      { amount: 8, weight: 8 },
-      { amount: 5, weight: 15 },
+      { amount: 20, weight: 0.1 },  // 매우 낮은 확률
+      { amount: 15, weight: 0.5 },
+      { amount: 10, weight: 2 },
+      { amount: 8, weight: 5 },
+      { amount: 5, weight: 12 },
       { amount: 3, weight: 25 },
       { amount: 2, weight: 30 },
-      { amount: 1, weight: 40 }  // 가장 높은 확률
+      { amount: 1, weight: 40 }
     ],
     normal: [
-      { amount: 50, weight: 0.1 },
-      { amount: 40, weight: 0.5 },
-      { amount: 30, weight: 1 },
-      { amount: 25, weight: 2 },
-      { amount: 20, weight: 4 },
-      { amount: 15, weight: 6 },
-      { amount: 10, weight: 10 },
-      { amount: 8, weight: 15 },
+      { amount: 20, weight: 1 },
+      { amount: 15, weight: 3 },
+      { amount: 10, weight: 8 },
+      { amount: 8, weight: 14 },
       { amount: 5, weight: 20 },
       { amount: 3, weight: 25 },
-      { amount: 2, weight: 30 },
-      { amount: 1, weight: 35 }
+      { amount: 2, weight: 28 },
+      { amount: 1, weight: 30 }
     ],
     hard: [
-      { amount: 50, weight: 20 },  // 높은 확률
-      { amount: 40, weight: 15 },
-      { amount: 30, weight: 15 },
-      { amount: 25, weight: 12 },
-      { amount: 20, weight: 12 },
-      { amount: 15, weight: 10 },
-      { amount: 10, weight: 8 },
-      { amount: 8, weight: 5 },
-      { amount: 5, weight: 4 },
-      { amount: 3, weight: 3 },
-      { amount: 2, weight: 2 },
-      { amount: 1, weight: 1 }  // 낮은 확률
+      { amount: 20, weight: 8 },
+      { amount: 15, weight: 14 },
+      { amount: 10, weight: 18 },
+      { amount: 8, weight: 17 },
+      { amount: 5, weight: 15 },
+      { amount: 3, weight: 12 },
+      { amount: 2, weight: 9 },
+      { amount: 1, weight: 7 }
     ],
     expert: [
-      { amount: 80, weight: 10 },
-      { amount: 60, weight: 18 },
-      { amount: 50, weight: 22 },
-      { amount: 40, weight: 20 },
-      { amount: 30, weight: 15 },
-      { amount: 20, weight: 8 },
-      { amount: 10, weight: 5 },
-      { amount: 5, weight: 2 }
+      // 20개가 나올 확률 hard의 ~2.5배
+      { amount: 20, weight: 20 },
+      { amount: 15, weight: 25 },
+      { amount: 10, weight: 22 },
+      { amount: 8, weight: 15 },
+      { amount: 5, weight: 10 },
+      { amount: 3, weight: 5 },
+      { amount: 2, weight: 2 },
+      { amount: 1, weight: 1 }
     ],
     master: [
-      { amount: 150, weight: 8 },
-      { amount: 100, weight: 18 },
-      { amount: 80, weight: 22 },
-      { amount: 60, weight: 22 },
-      { amount: 50, weight: 15 },
-      { amount: 30, weight: 10 },
-      { amount: 20, weight: 4 },
-      { amount: 10, weight: 1 }
+      // 20개가 나올 확률 hard의 ~4배 — 도전 보상
+      { amount: 20, weight: 32 },
+      { amount: 15, weight: 28 },
+      { amount: 10, weight: 20 },
+      { amount: 8, weight: 12 },
+      { amount: 5, weight: 5 },
+      { amount: 3, weight: 2 },
+      { amount: 2, weight: 1 },
+      { amount: 1, weight: 0 }
     ]
   };
 

@@ -277,7 +277,7 @@ const TypingPracticeGame = ({ onClose }) => {
               <p>🎁 카드를 선택하여 랜덤 보상을 받으세요!</p>
               <div className="reward-range">
                 <span>💰 100원 ~ 100,000원</span>
-                <span>🎫 1개 ~ 50개</span>
+                <span>🎫 1개 ~ 20개</span>
               </div>
             </div>
           )}
@@ -518,7 +518,7 @@ const TypingPracticeGame = ({ onClose }) => {
               <div className="card-front">
                 <div className="card-icon">🎫</div>
                 <div className="card-title">쿠폰</div>
-                <div className="card-hint">1개 ~ 50개</div>
+                <div className="card-hint">1개 ~ 20개</div>
               </div>
               <div className="card-back">
                 <div className="reward-reveal">
