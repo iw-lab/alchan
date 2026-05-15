@@ -1865,116 +1865,128 @@ const AdminSettingsModal = ({
 
         {/* 일반 설정 탭 */}
         {adminSelectedMenu === "generalSettings" && (
-          <div className="general-settings-tab">
+          <div className="space-y-5">
             {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">
-                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                </p>
+              <div
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+              >
+                <span className="text-base">🏫</span>
+                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
               </div>
             )}
+
             {/* 목표 설정 섹션 */}
-            <div className="admin-goal-settings section-card">
-              <h3>목표 및 쿠폰 가치 설정</h3>
-              <div className="form-group">
-                <label style={labelStyle}>클래스 목표 쿠폰 수:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={newGoalAmount || ""}
-                  onChange={(e) =>
-                    setNewGoalAmount && setNewGoalAmount(e.target.value)
-                  }
-                  style={inputStyle}
-                />
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#fef3c7", color: "#92400e" }}>🎯</span>
+                  목표 및 쿠폰 가치 설정
+                </h3>
+                <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                  학급 전체 목표 쿠폰 수와 쿠폰 1개의 화폐 가치를 설정합니다.
+                </p>
               </div>
-              <div className="form-group">
-                <label style={labelStyle}>쿠폰 가치 ({currencyUnit}):</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={adminCouponValue || ""}
-                  onChange={(e) =>
-                    setAdminCouponValue && setAdminCouponValue(e.target.value)
-                  }
-                  style={inputStyle}
-                />
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <label className="block mb-2 text-sm font-semibold" style={{ color: "#334155" }}>클래스 목표 쿠폰 수</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newGoalAmount || ""}
+                    onChange={(e) => setNewGoalAmount && setNewGoalAmount(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl outline-none transition text-sm"
+                    style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2 text-sm font-semibold" style={{ color: "#334155" }}>쿠폰 가치 ({currencyUnit})</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={adminCouponValue || ""}
+                    onChange={(e) => setAdminCouponValue && setAdminCouponValue(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl outline-none transition text-sm"
+                    style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
+                  />
+                </div>
+                <button
+                  onClick={handleSaveAdminSettings}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold transition"
+                  style={{ background: "#4f46e5", color: "#ffffff" }}
+                >
+                  💾 저장
+                </button>
               </div>
-              <button onClick={handleSaveAdminSettings} style={saveBtnStyle}>
-                저장
-              </button>
             </div>
 
             {/* 화폐 단위 설정 섹션 */}
-            <div
-              className="admin-goal-settings section-card"
-              style={{ marginTop: "16px" }}
-            >
-              <h3>화폐 단위 설정</h3>
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "var(--text-secondary)",
-                  marginBottom: "12px",
-                }}
-              >
-                앱에서 사용하는 화폐 단위를 변경합니다. (기본: 알찬)
-              </p>
-              <div className="form-group">
-                <label style={labelStyle}>화폐 단위:</label>
-                <input
-                  type="text"
-                  maxLength={10}
-                  value={tempCurrencyUnit}
-                  onChange={(e) => setTempCurrencyUnit(e.target.value)}
-                  placeholder="예: 알찬, 원, 골드"
-                  style={inputStyle}
-                />
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#dcfce7", color: "#15803d" }}>💱</span>
+                  화폐 단위 설정
+                </h3>
+                <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                  앱에서 사용하는 화폐 단위를 변경합니다. (기본: 알찬)
+                </p>
               </div>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "var(--text-secondary)",
-                  marginBottom: "8px",
-                }}
-              >
-                미리보기: 1000{tempCurrencyUnit}, 1억 2000만 {tempCurrencyUnit}
+              <div className="px-6 py-5 space-y-3">
+                <div>
+                  <label className="block mb-2 text-sm font-semibold" style={{ color: "#334155" }}>화폐 단위</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={tempCurrencyUnit}
+                    onChange={(e) => setTempCurrencyUnit(e.target.value)}
+                    placeholder="예: 알찬, 원, 골드"
+                    className="w-full px-4 py-2.5 rounded-xl outline-none transition text-sm"
+                    style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
+                  />
+                </div>
+                <div className="px-3 py-2 rounded-lg text-xs" style={{ background: "#f1f5f9", color: "#475569" }}>
+                  미리보기: <span className="font-bold" style={{ color: "#0f172a" }}>1000{tempCurrencyUnit}</span>, <span className="font-bold" style={{ color: "#0f172a" }}>1억 2000만 {tempCurrencyUnit}</span>
+                </div>
+                <button
+                  onClick={handleSaveCurrencyUnit}
+                  disabled={currencyUnitSaving || !tempCurrencyUnit.trim()}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "#15803d", color: "#ffffff" }}
+                >
+                  {currencyUnitSaving ? "저장 중..." : "💾 화폐 단위 저장"}
+                </button>
               </div>
-              <button
-                onClick={handleSaveCurrencyUnit}
-                style={
-                  currencyUnitSaving || !tempCurrencyUnit.trim()
-                    ? {
-                        ...saveBtnStyle,
-                        background: "rgba(75,85,99,0.5)",
-                        color: "#6b7280",
-                        boxShadow: "none",
-                        cursor: "not-allowed",
-                      }
-                    : saveBtnStyle
-                }
-                disabled={currencyUnitSaving || !tempCurrencyUnit.trim()}
-              >
-                {currencyUnitSaving ? "저장 중..." : "화폐 단위 저장"}
-              </button>
             </div>
           </div>
         )}
 
         {/* ===== 직업/할일 통합 관리 ===== */}
         {adminSelectedMenu === "jobAndTask" && (
-          <div className="task-management-tab">
+          <div className="space-y-5">
             {!isSuperAdmin && userClassCode && (
-              <div style={{ marginBottom: '16px', padding: '10px 16px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                <span style={{ color: '#4f46e5', fontWeight: 600, fontSize: '14px' }}>🏫 현재 관리 학급: <strong>{userClassCode}</strong></span>
+              <div
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+              >
+                <span className="text-base">🏫</span>
+                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
               </div>
             )}
 
-            <div className="admin-tasks-settings section-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <h3 style={{ margin: 0 }}>직업 & 할일 관리</h3>
-                <span style={{ fontSize: '12px', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 10px', borderRadius: '20px', border: '1px solid rgba(245,158,11,0.2)' }}>모든 할일 관리자 승인 필수</span>
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div className="px-6 py-4 border-b flex items-center justify-between gap-2 flex-wrap" style={{ borderColor: "#f1f5f9" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>💼</span>
+                  직업 & 할일 관리
+                </h3>
+                <span className="text-[11px] px-3 py-1 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                  ⚠️ 모든 할일 관리자 승인 필수
+                </span>
               </div>
+
+              <div className="px-6 py-5">
 
               {/* 할일 추가/수정 폼 */}
               {showAddTaskForm && (
@@ -2279,10 +2291,12 @@ const AdminSettingsModal = ({
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
-                  등록된 직업이 없습니다. 위에서 직업을 추가하세요.
-                </p>
+                <div className="flex flex-col items-center justify-center py-10 gap-2 rounded-xl" style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+                  <span className="text-3xl">💼</span>
+                  <p className="text-sm" style={{ color: "#64748b" }}>등록된 직업이 없습니다. 위에서 직업을 추가하세요.</p>
+                </div>
               )}
+              </div>
             </div>
           </div>
         )}
@@ -2314,115 +2328,114 @@ const AdminSettingsModal = ({
         {/* 학생 관리 서브탭 */}
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "student" && (
-            <div className="student-management-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
-              {/* 학생직업 관리 섹션 */}
-              <div className="student-jobs-settings section-card">
-                <h3>학생직업 관리</h3>
-                {error && <p className="error-message">{error}</p>}
-                <p className="admin-section-desc">
-                  학생들에게 직업을 배정하거나 관리합니다. 주급은 직업 수에 따라
-                  차등 지급됩니다.
-                </p>
 
-                <div className="salary-management">
-                  <div className="salary-info">
-                    <h4>주급 지급 관리</h4>
-                    <p>기본 주급: 200만원, 추가 직업당: 50만원</p>
-                    <p>세율: {(salarySettings.taxRate * 100).toFixed(1)}%</p>
-                    <p>
-                      주급 인상률:{" "}
-                      {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
-                      (매주)
-                    </p>
-                    <p>마지막 주급 지급일: {formatLastSalaryDate()}</p>
-                    <p className="auto-payment-info">
-                      ⏰ 자동 주급 지급: 매주 월요일 오전 8시 (서버 자동 실행)
+              {/* 헤더 */}
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>🎓</span>
+                    학생직업 관리
+                  </h3>
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    학생들에게 직업을 배정하거나 관리합니다. 주급은 직업 수에 따라 차등 지급됩니다.
+                  </p>
+                </div>
+                {error && (
+                  <div className="mx-6 mt-4 px-4 py-2.5 rounded-lg text-sm" style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>{error}</div>
+                )}
+              </div>
+
+              {/* 주급 지급 관리 카드 */}
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-xs" style={{ background: "#fef3c7", color: "#92400e" }}>💼</span>
+                    주급 지급 관리
+                  </h4>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: "#f1f5f9" }}>
+                  <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
+                    <p className="text-[11px]" style={{ color: "#64748b" }}>기본 주급</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>200만원</p>
+                  </div>
+                  <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
+                    <p className="text-[11px]" style={{ color: "#64748b" }}>추가 직업당</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>+50만원</p>
+                  </div>
+                  <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
+                    <p className="text-[11px]" style={{ color: "#64748b" }}>세율 / 인상률</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>
+                      {(salarySettings.taxRate * 100).toFixed(1)}% / {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={handlePaySalariesToAll}
-                      disabled={isPayingSalary || studentsLoading}
-                      style={{
-                        padding: '12px 20px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(16,185,129,0.4)',
-                        background: 'rgba(16,185,129,0.15)',
-                        color: '#10b981',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        cursor: isPayingSalary ? 'not-allowed' : 'pointer',
-                        opacity: isPayingSalary ? 0.6 : 1,
-                      }}
-                    >
-                      {isPayingSalary
-                        ? "지급 중..."
-                        : "💰 전체 학생 주급 지급"}
-                    </button>
-                    <button
-                      onClick={handlePaySalariesToSelected}
-                      disabled={
-                        isPayingSalary ||
-                        studentsLoading ||
-                        selectedStudentIds.length === 0
-                      }
-                      style={{
-                        padding: '12px 20px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(99,102,241,0.4)',
-                        background: 'rgba(99,102,241,0.15)',
-                        color: '#4f46e5',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        cursor: (isPayingSalary || selectedStudentIds.length === 0) ? 'not-allowed' : 'pointer',
-                        opacity: (isPayingSalary || selectedStudentIds.length === 0) ? 0.5 : 1,
-                      }}
-                    >
-                      {isPayingSalary
-                        ? "지급 중..."
-                        : `💰 선택 학생(${selectedStudentIds.length}) 주급 지급`}
-                    </button>
-                    <button
-                      onClick={handleReverseSalary}
-                      style={{
-                        padding: '12px 20px',
-                        borderRadius: '10px',
-                        border: '1px solid rgba(239,68,68,0.4)',
-                        background: 'rgba(239,68,68,0.15)',
-                        color: '#ef4444',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      🔄 주급 1회분 회수
-                    </button>
+                  <div className="px-4 py-3 text-center">
+                    <p className="text-[11px]" style={{ color: "#64748b" }}>마지막 지급</p>
+                    <p className="text-xs font-semibold mt-1.5 break-keep" style={{ color: "#334155" }}>{formatLastSalaryDate()}</p>
                   </div>
                 </div>
+                <div className="px-6 py-3 border-t" style={{ background: "#fafbfc", borderColor: "#f1f5f9" }}>
+                  <p className="text-[11px] flex items-center gap-1" style={{ color: "#475569" }}>
+                    <span>⏰</span>
+                    자동 주급 지급: 매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong> (서버 자동 실행)
+                  </p>
+                </div>
+                <div className="px-6 py-4 border-t flex flex-wrap gap-2" style={{ borderColor: "#f1f5f9" }}>
+                  <button
+                    onClick={handlePaySalariesToAll}
+                    disabled={isPayingSalary || studentsLoading}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: "#10b981", color: "#ffffff" }}
+                  >
+                    {isPayingSalary ? "지급 중..." : "💰 전체 학생 주급 지급"}
+                  </button>
+                  <button
+                    onClick={handlePaySalariesToSelected}
+                    disabled={isPayingSalary || studentsLoading || selectedStudentIds.length === 0}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: "#4f46e5", color: "#ffffff" }}
+                  >
+                    {isPayingSalary ? "지급 중..." : `💰 선택 학생(${selectedStudentIds.length}) 주급 지급`}
+                  </button>
+                  <button
+                    onClick={handleReverseSalary}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition"
+                    style={{ background: "#ffffff", color: "#dc2626", border: "1px solid #fca5a5" }}
+                  >
+                    🔄 주급 1회분 회수
+                  </button>
+                </div>
+              </div>
 
-                <div className="student-jobs-container">
-                  <div className="student-list-header">
-                    <h4>
-                      학생 목록{" "}
-                      {!isSuperAdmin &&
-                        userClassCode &&
-                        `(${userClassCode} 학급)`}
-                    </h4>
-                    <button
-                      onClick={loadStudents}
-                      style={actionBtnStyle}
-                      disabled={studentsLoading}
-                    >
-                      {studentsLoading ? "로딩 중..." : "학생 목록 새로고침"}
-                    </button>
-                  </div>
+              {/* 학생 목록 카드 */}
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b flex items-center justify-between gap-2" style={{ borderColor: "#f1f5f9" }}>
+                  <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-xs" style={{ background: "#dbeafe", color: "#1e40af" }}>👥</span>
+                    학생 목록{!isSuperAdmin && userClassCode && ` (${userClassCode} 학급)`}
+                    {students.length > 0 && <span className="text-xs font-normal" style={{ color: "#64748b" }}>· {students.length}명</span>}
+                  </h4>
+                  <button
+                    onClick={loadStudents}
+                    disabled={studentsLoading}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                    style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }}
+                  >
+                    <span>🔄</span>
+                    {studentsLoading ? "로딩 중..." : "새로고침"}
+                  </button>
+                </div>
+                <div className="p-4">
                   {studentsLoading ? (
                     <p className="text-slate-500 py-6 text-center">학생 정보 로딩 중...</p>
                   ) : students.length > 0 ? (
@@ -2546,11 +2559,14 @@ const AdminSettingsModal = ({
                       </div>
                     </>
                   ) : (
-                    <p className="no-items-message">
-                      {!isSuperAdmin && !userClassCode
-                        ? "학급 코드가 설정되지 않았습니다."
-                        : "학생 정보가 없습니다."}
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                      <span className="text-3xl">🎓</span>
+                      <p className="text-sm" style={{ color: "#64748b" }}>
+                        {!isSuperAdmin && !userClassCode
+                          ? "학급 코드가 설정되지 않았습니다."
+                          : "학생 정보가 없습니다."}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -2584,19 +2600,28 @@ const AdminSettingsModal = ({
         {/* 금융 상품 서브탭 */}
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "financial" && (
-            <div className="financial-products-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
-              <div className="financial-products-settings section-card">
-                <h3>금융 상품 관리</h3>
-                <p className="admin-section-desc">
-                  예금, 적금, 대출 상품을 추가하거나 삭제합니다.
-                </p>
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>💵</span>
+                    금융 상품 관리
+                  </h3>
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    예금, 적금, 대출 상품을 추가하거나 삭제합니다.
+                  </p>
+                </div>
+                <div className="px-6 py-5">
 
                 {/* 금융 상품 서브 탭 */}
                 <div className="financial-sub-tabs flex gap-2 mb-4">
@@ -2731,14 +2756,10 @@ const AdminSettingsModal = ({
                 </div>
 
                 {/* 상품 목록 */}
-                <div className="product-list">
-                  <h4 className="mb-3 text-slate-800 dark:text-white">
-                    {financialSubTab === "deposit"
-                      ? "예금"
-                      : financialSubTab === "saving"
-                        ? "적금"
-                        : "대출"}{" "}
-                    상품 목록
+                <div>
+                  <h4 className="mb-3 text-sm font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-xs" style={{ background: "#dbeafe", color: "#1e40af" }}>📦</span>
+                    {financialSubTab === "deposit" ? "예금" : financialSubTab === "saving" ? "적금" : "대출"} 상품 목록
                   </h4>
                   {(() => {
                     const products =
@@ -2747,50 +2768,59 @@ const AdminSettingsModal = ({
                         : financialSubTab === "saving"
                           ? savingProducts
                           : loanProducts;
+                    const productColor =
+                      financialSubTab === "deposit"
+                        ? { bg: "#dbeafe", color: "#1e40af", icon: "🏦" }
+                        : financialSubTab === "saving"
+                          ? { bg: "#dcfce7", color: "#15803d", icon: "💰" }
+                          : { bg: "#fee2e2", color: "#991b1b", icon: "💳" };
                     if (products.length === 0) {
                       return (
-                        <p className="no-items-message">
-                          등록된 상품이 없습니다.
-                        </p>
+                        <div className="flex flex-col items-center justify-center py-10 gap-2 rounded-xl" style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+                          <span className="text-3xl">{productColor.icon}</span>
+                          <p className="text-sm" style={{ color: "#64748b" }}>등록된 상품이 없습니다.</p>
+                        </div>
                       );
                     }
                     return (
-                      <div className="members-table-container">
-                        <table className="members-table">
-                          <thead>
-                            <tr>
-                              <th>상품명</th>
-                              <th>기간 (일)</th>
-                              <th>이율 (%)</th>
-                              <th>관리</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {products.map((product) => (
-                              <tr key={product.id}>
-                                <td>{product.name}</td>
-                                <td>{product.period}일</td>
-                                <td>{product.rate}%</td>
-                                <td>
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteProduct(
-                                        product.id,
-                                        financialSubTab,
-                                      )
-                                    }
-                                    className="delete-button"
-                                  >
-                                    삭제
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {products.map((product) => (
+                          <div
+                            key={product.id}
+                            className="rounded-xl border shadow-sm overflow-hidden"
+                            style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
+                          >
+                            <div className="px-4 py-3 border-b flex items-center justify-between gap-2" style={{ borderColor: "#f1f5f9" }}>
+                              <div className="min-w-0 flex-1 flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm shrink-0" style={{ background: productColor.bg, color: productColor.color }}>{productColor.icon}</span>
+                                <p className="text-sm font-bold truncate" style={{ color: "#0f172a" }}>{product.name}</p>
+                              </div>
+                            </div>
+                            <div className="px-4 py-3 grid grid-cols-2 gap-2">
+                              <div className="text-center rounded-lg py-2" style={{ background: "#f8fafc" }}>
+                                <p className="text-[10px]" style={{ color: "#64748b" }}>기간</p>
+                                <p className="text-sm font-bold tabular-nums" style={{ color: "#0f172a" }}>{product.period}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>일</span></p>
+                              </div>
+                              <div className="text-center rounded-lg py-2" style={{ background: "#fef3c7" }}>
+                                <p className="text-[10px]" style={{ color: "#92400e" }}>이율</p>
+                                <p className="text-sm font-bold tabular-nums" style={{ color: "#92400e" }}>{product.rate}<span className="text-xs ml-0.5">%</span></p>
+                              </div>
+                            </div>
+                            <div className="px-4 py-2.5 border-t" style={{ background: "#fafbfc", borderColor: "#f1f5f9" }}>
+                              <button
+                                onClick={() => handleDeleteProduct(product.id, financialSubTab)}
+                                className="w-full px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     );
                   })()}
+                </div>
                 </div>
               </div>
             </div>
@@ -2799,19 +2829,28 @@ const AdminSettingsModal = ({
         {/* 시장 제어 서브탭 */}
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "market" && (
-            <div className="market-control-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
-              <div className="market-control-settings section-card">
-                <h3>주식 시장 제어</h3>
-                <p className="admin-section-desc">
-                  주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
-                </p>
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#fee2e2", color: "#dc2626" }}>📈</span>
+                    주식 시장 제어
+                  </h3>
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
+                  </p>
+                </div>
+                <div className="px-6 py-5">
 
                 {/* 시장 상태 */}
                 <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
@@ -2899,6 +2938,7 @@ const AdminSettingsModal = ({
                     모든 주식 정보 초기화
                   </button>
                 </div>
+                </div>
               </div>
             </div>
           )}
@@ -2906,19 +2946,28 @@ const AdminSettingsModal = ({
         {/* 파킹 통장 서브탭 */}
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "parking" && (
-            <div className="parking-account-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
-              <div className="parking-account-settings section-card">
-                <h3>파킹 통장 이자율 관리</h3>
-                <p className="admin-section-desc">
-                  파킹 통장의 일일 이자율을 설정합니다.
-                </p>
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#dcfce7", color: "#15803d" }}>🏦</span>
+                    파킹 통장 이자율 관리
+                  </h3>
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    파킹 통장의 일일 이자율을 설정합니다.
+                  </p>
+                </div>
+                <div className="px-6 py-5">
 
                 {/* 메시지 */}
                 {parkingMessage && (
@@ -2976,6 +3025,7 @@ const AdminSettingsModal = ({
                     파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가
                     발생합니다.
                   </p>
+                </div>
                 </div>
               </div>
             </div>
@@ -3330,32 +3380,39 @@ const AdminSettingsModal = ({
 
         {/* 데이터베이스 서브탭 */}
         {adminSelectedMenu === "system" && systemSubTab === "database" && (
-          <div className="database-management-tab">
+          <div className="space-y-5">
             {!isSuperAdmin && userClassCode && (
-              <div className="class-info-header">
-                <p className="current-class-info">
-                  🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                </p>
+              <div
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+              >
+                <span className="text-base">🏫</span>
+                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
               </div>
             )}
-            <div className="database-management-container section-card min-h-[500px] max-h-[70vh] overflow-auto">
+            <div className="rounded-2xl border shadow-sm overflow-hidden min-h-[500px] max-h-[70vh] overflow-auto" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
               <AdminDatabase />
             </div>
 
             {/* 개인정보 관련 문서 */}
-            <div className="section-card mt-6 p-6 rounded-2xl bg-violet-500/5 border border-violet-500/30">
-              <h3 className="text-lg font-bold text-violet-300 mb-3">
-                개인정보 보호 문서
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
-                학부모 동의서 양식과 개인정보처리방침을 확인하세요.
-              </p>
-              <div className="flex flex-wrap gap-3">
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#ede9fe", color: "#7c3aed" }}>🔐</span>
+                  개인정보 보호 문서
+                </h3>
+                <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                  학부모 동의서 양식과 개인정보처리방침을 확인하세요.
+                </p>
+              </div>
+              <div className="px-6 py-5 flex flex-wrap gap-3">
                 <a
                   href="/consent-form"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+                  style={{ background: "#7c3aed", color: "#ffffff" }}
                 >
                   📄 가정통신문 (동의서 양식)
                 </a>
@@ -3363,7 +3420,8 @@ const AdminSettingsModal = ({
                   href="/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-slate-800 dark:text-white rounded-lg transition-colors text-sm font-medium"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+                  style={{ background: "#4f46e5", color: "#ffffff" }}
                 >
                   🔒 개인정보처리방침
                 </a>
@@ -3381,60 +3439,76 @@ const AdminSettingsModal = ({
 
         {/* 시스템 관리 서브탭 */}
         {adminSelectedMenu === "system" && systemSubTab === "system" && (
-          <div className="system-management-tab">
+          <div className="space-y-5">
             {isSuperAdmin && (
-              <div className="class-info-header">
-                <p className="current-class-info">
-                  🌐 시스템 전체 관리 (최고 관리자)
-                </p>
+              <div
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                style={{ background: "#fdf2f8", borderColor: "#fbcfe8" }}
+              >
+                <span className="text-base">🌐</span>
+                <span className="text-sm font-medium" style={{ color: "#831843" }}>시스템 전체 관리</span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#fce7f3", color: "#9d174d" }}>최고 관리자</span>
               </div>
             )}
+
             {/* 학급 코드 관리 섹션 */}
             {isSuperAdmin && (
-              <div className="admin-class-codes-container section-card">
-                <h3>학급 코드 관리</h3>
-                {error && <p className="error-message">{error}</p>}
-                <div className="add-class-code-form">
-                  <input
-                    type="text"
-                    value={newClassCode}
-                    onChange={(e) => setNewClassCode(e.target.value)}
-                    placeholder="새 학급 코드 입력"
-                    disabled={classCodeOperationLoading}
-                    style={inputStyle}
-                  />
-                  <button
-                    onClick={handleAddClassCode}
-                    disabled={classCodeOperationLoading || !newClassCode.trim()}
-                    style={actionBtnStyle}
-                  >
-                    {classCodeOperationLoading ? "추가 중..." : "코드 추가"}
-                  </button>
+              <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>🏷️</span>
+                    학급 코드 관리
+                    <span className="text-[11px] font-normal" style={{ color: "#64748b" }}>· {Array.isArray(classCodes) ? classCodes.length : 0}개</span>
+                  </h3>
                 </div>
-                <div className="class-codes-list">
-                  <h4>
-                    등록된 학급 코드 목록 (
-                    {Array.isArray(classCodes) ? classCodes.length : 0}개)
-                  </h4>
+                {error && (
+                  <div className="mx-6 mt-4 px-4 py-2.5 rounded-lg text-sm" style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>{error}</div>
+                )}
+                <div className="px-6 py-5 space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newClassCode}
+                      onChange={(e) => setNewClassCode(e.target.value)}
+                      placeholder="새 학급 코드 입력"
+                      disabled={classCodeOperationLoading}
+                      className="flex-1 px-4 py-2.5 rounded-xl outline-none transition text-sm"
+                      style={{ border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a" }}
+                    />
+                    <button
+                      onClick={handleAddClassCode}
+                      disabled={classCodeOperationLoading || !newClassCode.trim()}
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      style={{ background: "#4f46e5", color: "#ffffff" }}
+                    >
+                      {classCodeOperationLoading ? "추가 중..." : "+ 코드 추가"}
+                    </button>
+                  </div>
                   {Array.isArray(classCodes) && classCodes.length > 0 ? (
-                    <ul className="codes-list">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {classCodes.map((code) => (
-                        <li key={code} className="code-item">
-                          <span className="code-text">{code}</span>
+                        <div
+                          key={code}
+                          className="flex items-center justify-between px-3 py-2.5 rounded-xl border"
+                          style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
+                        >
+                          <span className="text-sm font-mono font-bold" style={{ color: "#0f172a" }}>{code}</span>
                           <button
                             onClick={() => handleRemoveClassCode(code)}
-                            className="remove-code-button"
                             disabled={classCodeOperationLoading}
+                            className="text-xs font-semibold px-2 py-1 rounded-md transition disabled:opacity-50"
+                            style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
                           >
                             삭제
                           </button>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
-                    <p className="no-codes-message">
-                      등록된 학급 코드가 없습니다.
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-8 gap-2 rounded-xl" style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+                      <span className="text-3xl">🏷️</span>
+                      <p className="text-sm" style={{ color: "#64748b" }}>등록된 학급 코드가 없습니다.</p>
+                    </div>
                   )}
                 </div>
               </div>
