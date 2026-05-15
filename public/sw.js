@@ -1,6 +1,6 @@
 // 알찬 PWA 서비스 워커 - 네트워크 우선 (항상 최신 버전)
-// 🔥 버전 업데이트: 흰화면 문제 해결
-const CACHE_VERSION = 'v1.3.0';
+// 🔥 버전 업데이트: clients.claim InvalidStateError 무해 처리 + 캐시 갱신
+const CACHE_VERSION = 'v1.3.1';
 const CACHE_NAME = `alchan-${CACHE_VERSION}`;
 const STATIC_CACHE = `alchan-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `alchan-dynamic-${CACHE_VERSION}`;
@@ -61,7 +61,12 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => {
       console.log('[SW] clients.claim() 호출');
-      return self.clients.claim();
+      // 🔥 clients.claim()이 worker가 active 상태가 아닐 때(중복 탭/redundant SW)
+      // InvalidStateError를 throw해 콘솔을 더럽힘. 기능엔 영향 없으므로 silent 처리.
+      // (다음 페이지 로드 시 자동으로 새 SW가 클라이언트를 제어함)
+      return self.clients.claim().catch((err) => {
+        console.warn('[SW] clients.claim 실패 (무해, 다음 로드 시 자동 적용):', err?.message || err);
+      });
     })
   );
 });
