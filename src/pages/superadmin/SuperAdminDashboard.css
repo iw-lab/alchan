@@ -27,11 +27,11 @@
 .access-denied h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a;
 }
 
 .access-denied p {
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .access-denied button {
@@ -75,7 +75,7 @@
 .sad-header-left h1 {
   font-size: 18px;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a;
   margin: 0;
 }
 
@@ -88,17 +88,17 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #f1f5f9;
   border: 1px solid var(--border-primary);
   border-radius: 12px;
-  color: #e0e0e0;
+  color: #334155;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .refresh-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: #e2e8f0;
 }
 
 .refresh-btn.spinning svg,
@@ -116,11 +116,11 @@
   display: flex;
   gap: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 16px;
   margin-bottom: 20px;
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .sad-tab {
@@ -131,7 +131,7 @@
   background: transparent;
   border: none;
   border-radius: 12px;
-  color: #9ca3af;
+  color: #64748b;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -139,8 +139,8 @@
 }
 
 .sad-tab:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e0e0e0;
+  background: #f8fafc;
+  color: #334155;
 }
 
 .sad-tab.active {
@@ -162,11 +162,11 @@
 
 /* 메인 콘텐츠 */
 .sad-content {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 20px;
   padding: 24px;
   min-height: 500px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 /* 로딩 상태 */
@@ -177,7 +177,7 @@
   justify-content: center;
   min-height: 400px;
   gap: 16px;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 /* 빈 상태 */
@@ -199,11 +199,11 @@
 .empty-state h3 {
   font-size: 20px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: #334155;
 }
 
 .empty-state p {
-  color: #9ca3af;
+  color: #64748b;
 }
 
 /* 개요 탭 */
@@ -432,9 +432,9 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #cbd5e1;
 }
 
 .search-box svg {
@@ -444,7 +444,7 @@
 .search-box input {
   background: transparent;
   border: none;
-  color: #e0e0e0;
+  color: #334155;
   outline: none;
   width: 200px;
 }
@@ -462,17 +462,17 @@
 
 .filter-select {
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
   border-radius: 12px;
-  color: #e0e0e0;
+  color: #334155;
   outline: none;
   cursor: pointer;
 }
 
 .filter-select option {
   background: var(--bg-card);
-  color: #e0e0e0;
+  color: #334155;
 }
 
 .test-error-btn {
@@ -505,9 +505,9 @@
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
   transition: all 0.2s;
 }
 
@@ -543,13 +543,13 @@
 .teacher-info h4 {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: #0f172a;
   margin: 0 0 4px 0;
 }
 
 .teacher-info p {
   font-size: 14px;
-  color: #9ca3af;
+  color: #64748b;
   margin: 0 0 8px 0;
 }
 
@@ -558,7 +558,7 @@
   font-size: 12px;
   color: #6b7280;
   padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-radius: 6px;
 }
 
@@ -624,10 +624,10 @@
 }
 
 .class-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
   transition: all 0.2s;
 }
 
@@ -642,7 +642,7 @@
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .class-header svg {
@@ -652,7 +652,7 @@
 .class-header h4 {
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: #0f172a;
   margin: 0;
 }
 
@@ -670,13 +670,13 @@
 
 .detail-row .label {
   font-size: 13px;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .detail-row .value {
   font-size: 14px;
   font-weight: 500;
-  color: #e0e0e0;
+  color: #334155;
 }
 
 .detail-row .value.email {
@@ -723,10 +723,10 @@
 }
 
 .metric-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 14px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .metric-header {
@@ -734,14 +734,14 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  color: #9ca3af;
+  color: #64748b;
   font-size: 14px;
 }
 
 .metric-value {
   font-size: 32px;
   font-weight: 700;
-  color: #fff;
+  color: #0f172a;
   margin-bottom: 12px;
 }
 
@@ -772,16 +772,16 @@
 }
 
 .monitoring-info {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
 }
 
 .monitoring-info h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: #334155;
   margin: 0 0 16px 0;
 }
 
@@ -796,13 +796,13 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 10px;
 }
 
 .status-item span {
   flex: 1;
-  color: #e0e0e0;
+  color: #334155;
 }
 
 .status-item.ok svg:first-child {
@@ -831,9 +831,9 @@
 }
 
 .error-log-item {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid #e2e8f0;
   overflow: hidden;
   transition: all 0.2s;
 }
@@ -856,8 +856,8 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #fafbfc;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .severity-badge {
@@ -878,10 +878,10 @@
 
 .error-type {
   padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   border-radius: 6px;
   font-size: 12px;
-  color: #9ca3af;
+  color: #64748b;
 }
 
 .error-timestamp {
@@ -912,7 +912,7 @@
 
 .error-log-body .error-message {
   font-size: 14px;
-  color: #e0e0e0;
+  color: #334155;
   margin: 0 0 12px 0;
   white-space: normal;
 }
@@ -923,7 +923,7 @@
   border-radius: 8px;
   font-family: monospace;
   font-size: 12px;
-  color: #9ca3af;
+  color: #64748b;
   overflow-x: auto;
   margin: 0 0 12px 0;
 }
@@ -1103,7 +1103,7 @@
 .class-detail-close {
   background: transparent;
   border: none;
-  color: #9ca3af;
+  color: #64748b;
   cursor: pointer;
   padding: 4px;
   border-radius: 8px;
@@ -1161,7 +1161,7 @@
 
 .empty-students {
   text-align: center;
-  color: #9ca3af;
+  color: #64748b;
   padding: 30px 0;
 }
 
