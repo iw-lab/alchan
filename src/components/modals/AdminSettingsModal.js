@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocFromServer } from "firebase/firestore";
 import {
   db,
   functions,
@@ -485,30 +485,23 @@ const AdminSettingsModal = ({
 
       if (settingsSnap.exists()) {
         const data = settingsSnap.data();
-        const settings = {
-          taxRate: data.taxRate || 0.1,
-          salaryIncreaseRate: data.salaryIncreaseRate || 0.03,
-        };
+        // ⚠️ || 0.1 fallback 제거 — 사용자가 명시적으로 0%로 저장한 경우도 보존
+        // taxRate가 undefined/null인 경우만 기본값 사용 (Number()는 null→0 변환 방지 위해 ??)
+        const taxRate = data.taxRate ?? 0.1;
+        const salaryIncreaseRate = data.salaryIncreaseRate ?? 0.03;
+        const settings = { taxRate, salaryIncreaseRate };
         setSalarySettings(settings);
-        setTempTaxRate(String((settings.taxRate * 100).toFixed(1)));
-        setTempSalaryIncreaseRate(
-          String((settings.salaryIncreaseRate * 100).toFixed(1)),
-        );
+        setTempTaxRate(String((taxRate * 100).toFixed(1)));
+        setTempSalaryIncreaseRate(String((salaryIncreaseRate * 100).toFixed(1)));
 
         if (data.lastPaidDate) {
           setLastSalaryPaidDate(data.lastPaidDate.toDate());
         }
-      } else {
-        // 기본 설정으로 초기화
-        await firebaseSetDoc(classSettingsRef, {
-          taxRate: 0.1,
-          salaryIncreaseRate: 0.03,
-          lastPaidDate: null,
-          classCode: userClassCode || null,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
       }
+      // ⚠️ 문서가 없어도 자동으로 setDoc(기본값) 하지 않음
+      // 사유: 다른 탭/race로 잘못 호출되면 사용자가 저장한 값이 0.1로 덮어써질 수 있음.
+      // 문서가 없으면 state는 초기값(taxRate:0.1) 그대로 두고, 사용자가 명시적으로
+      // 저장 버튼을 눌렀을 때만 DB에 기록한다.
     } catch (error) {
       logger.error("급여 설정 로드 오류:", error);
     }
@@ -554,6 +547,29 @@ const AdminSettingsModal = ({
 
       // setDoc + merge:true 로 문서가 없을 때도 자동 생성 (updateDoc은 문서 부재 시 실패)
       await firebaseSetDoc(classSettingsRef, newSettings, { merge: true });
+
+      // ⚠️ Firestore offline persistence는 setDoc을 local cache에만 즉시 반영하고
+      // 서버 commit은 background로 진행. rules 위반 등으로 서버 reject되면 silent fail.
+      // → 서버에서 직접 read-back 하여 실제 저장 여부 검증.
+      let serverVerified = false;
+      try {
+        const verifySnap = await getDocFromServer(classSettingsRef);
+        if (verifySnap.exists()) {
+          const v = verifySnap.data();
+          const dt = Math.abs((v.taxRate ?? -1) - newSettings.taxRate);
+          const ds = Math.abs((v.salaryIncreaseRate ?? -1) - newSettings.salaryIncreaseRate);
+          serverVerified = dt < 0.0001 && ds < 0.0001;
+        }
+      } catch (verifyErr) {
+        logger.warn("급여 설정 서버 검증 read 실패:", verifyErr);
+      }
+
+      if (!serverVerified) {
+        alert(
+          "급여 설정이 서버에 반영되지 않았습니다. 네트워크/권한을 확인하고 다시 시도해주세요.",
+        );
+        return;
+      }
 
       // 1) 표시용 state 갱신
       setSalarySettings({
