@@ -947,7 +947,7 @@
   }
 
   .jury-seats {
-    grid-template-columns: repeat(3, 1fr); /* 3열 고정으로 변경 */
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 3열 고정으로 변경 */
     gap: 5px;
   }
 

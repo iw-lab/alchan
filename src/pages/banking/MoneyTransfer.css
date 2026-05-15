@@ -411,7 +411,7 @@
 /* 사용자 목록 - PC에서 5열 그리드 */
 .money-transfer-container .user-list {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   max-height: 600px;
   overflow-y: auto;
@@ -627,13 +627,13 @@
 /* 반응형 */
 @media (max-width: 1280px) {
   .money-transfer-container .user-list {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 1024px) {
   .money-transfer-container .user-list {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

@@ -640,7 +640,7 @@
 
 .my-shop-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   padding-top: 20px;
   border-top: 1px solid var(--glass-border);
@@ -883,7 +883,7 @@
 /* 타입 선택기 */
 .type-selector {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1107,7 +1107,7 @@
 /* ==================== 판매 내역 ==================== */
 .sales-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }

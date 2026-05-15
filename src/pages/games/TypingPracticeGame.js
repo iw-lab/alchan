@@ -167,7 +167,20 @@ const TypingPracticeGame = ({ onClose }) => {
 
   // 카드 선택
   const handleCardSelect = async (cardType) => {
-    if (isFlipping || selectedCard) return;
+    // 🔥 안정성 강화 — 다중 가드:
+    //  1) 이미 뒤집는 중/선택됨 → return
+    //  2) loading 중 → return (네트워크 지연)
+    //  3) rewardData 미준비 → return (state 동기화 race 방지)
+    //  4) user.uid 없음 → return (인증 미완료)
+    if (isFlipping || selectedCard || loading) return;
+    if (!rewardData || typeof rewardData.cash !== "number" || typeof rewardData.coupon !== "number") {
+      logger.warn("[Typing] rewardData 미준비 - 클릭 무시", rewardData);
+      return;
+    }
+    if (!user?.uid) {
+      logger.warn("[Typing] user.uid 없음 - 클릭 무시");
+      return;
+    }
 
     setSelectedCard(cardType);
     setIsFlipping(true);
@@ -178,6 +191,9 @@ const TypingPracticeGame = ({ onClose }) => {
       try {
         const userRef = doc(db, "users", user.uid);
         const rewardAmount = cardType === "cash" ? rewardData.cash : rewardData.coupon;
+        if (!Number.isFinite(rewardAmount) || rewardAmount <= 0) {
+          throw new Error(`잘못된 보상 금액: ${rewardAmount}`);
+        }
 
         const updates = {
           typingGameDailyCount: dailyPlayCount + 1,
@@ -444,6 +460,27 @@ const TypingPracticeGame = ({ onClose }) => {
 
   // 카드 선택 화면
   const renderCardSelection = () => {
+    // 🔥 rewardData 미준비 시 로딩 표시 (이전엔 undefined가 렌더되어 화면 깨짐)
+    if (!rewardData || typeof rewardData.cash !== "number" || typeof rewardData.coupon !== "number") {
+      return (
+        <div className="card-selection-screen">
+          <div className="card-selection-header">
+            <h2>🎁 보상 카드 준비 중...</h2>
+            <p>잠시만 기다려주세요</p>
+          </div>
+          <div className="processing-overlay" style={{ position: "relative", padding: "40px 0" }}>
+            <div className="loading-spinner" />
+          </div>
+        </div>
+      );
+    }
+
+    // 안전한 표시값 (locale 변환 실패 시 원시값 사용)
+    const cashDisplay = (() => {
+      try { return rewardData.cash.toLocaleString(); } catch { return String(rewardData.cash); }
+    })();
+    const couponDisplay = String(rewardData.coupon);
+
     return (
       <div className="card-selection-screen">
         <div className="card-selection-header">
@@ -466,7 +503,7 @@ const TypingPracticeGame = ({ onClose }) => {
               <div className="card-back">
                 <div className="reward-reveal">
                   <div className="reward-icon">💰</div>
-                  <div className="reward-amount">{rewardData?.cash?.toLocaleString()}원</div>
+                  <div className="reward-amount">{cashDisplay}원</div>
                   <div className="reward-label">현금 획득!</div>
                 </div>
               </div>
@@ -486,7 +523,7 @@ const TypingPracticeGame = ({ onClose }) => {
               <div className="card-back">
                 <div className="reward-reveal">
                   <div className="reward-icon">🎫</div>
-                  <div className="reward-amount">{rewardData?.coupon}개</div>
+                  <div className="reward-amount">{couponDisplay}개</div>
                   <div className="reward-label">쿠폰 획득!</div>
                 </div>
               </div>

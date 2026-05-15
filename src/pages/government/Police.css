@@ -475,12 +475,12 @@ button {
 /* --- 신고 목록 카드 스타일 --- */
 .report-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
 @media (max-width: 1100px) {
-  .report-list { grid-template-columns: repeat(2, 1fr); }
+  .report-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .report-list { grid-template-columns: 1fr; }
@@ -805,12 +805,12 @@ button {
 
 .results-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
 @media (max-width: 1100px) {
-  .results-list { grid-template-columns: repeat(2, 1fr); }
+  .results-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .results-list { grid-template-columns: 1fr; }

@@ -407,19 +407,21 @@
 }
 
 /* Market Grid & Stock Card */
+/* 🔥 fix: repeat(4, 1fr) → minmax(0, 1fr) + auto-fill
+   1fr 단독은 자식의 min-content 너비 보장 → 긴 주식명/가격 텍스트 들어가면
+   그리드가 부모 너비를 넘어 오른쪽 카드가 잘림. 새로고침 시 폰트/이미지 로딩
+   타이밍이 달라져 가끔만 재현됨. auto-fill + minmax(220px, 1fr)로 변경하면
+   부모 너비에 맞춰 자동으로 column 수 결정 + min 220px 보장 → 잘림 0. */
 .market-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--spacing-md);
+  width: 100%;
 }
 
-@media (max-width: 1200px) {
-  .market-grid { grid-template-columns: repeat(3, 1fr); }
-}
-@media (max-width: 900px) {
-  .market-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 600px) {
+/* 미디어 쿼리는 minmax가 자동 처리하므로 더 이상 필요 없지만,
+   초소형 화면(<360px)만 1열 강제로 안전망 유지 */
+@media (max-width: 360px) {
   .market-grid { grid-template-columns: 1fr; }
 }
 
@@ -434,6 +436,9 @@
   flex-direction: column;
   gap: var(--spacing-sm);
   border-left: 4px solid var(--text-secondary);
+  /* 🔥 grid item이 부모를 넘지 않도록 강제 (overflow 방지) */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .stock-card:nth-child(8n+1) { background: linear-gradient(145deg, #f0f4ff 0%, #e8eeff 100%); }
@@ -491,7 +496,15 @@
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
+  /* 긴 주식명도 카드 내부에서 잘림 처리 (overflow 방지) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
+
+/* stock-info 자체도 min-width: 0으로 flex/grid overflow 방지 */
+.stock-card .stock-info { min-width: 0; flex: 1 1 auto; }
 
 .stock-badges {
   display: flex;
