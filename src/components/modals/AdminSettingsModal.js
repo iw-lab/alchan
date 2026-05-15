@@ -3331,27 +3331,30 @@ const AdminSettingsModal = ({
               </div>
 
               {/* 자동 지급 안내 */}
-              <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-purple-50 border border-indigo-100 px-6 py-5">
-                <h4 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+              <div
+                className="rounded-2xl px-6 py-5 border"
+                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+              >
+                <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "#1e1b4b" }}>
                   <span>⚡</span>
                   자동 주급 지급 시스템
                 </h4>
-                <ul className="space-y-2 text-xs text-slate-700">
+                <ul className="space-y-2 text-xs" style={{ color: "#334155" }}>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">🤖</span>
-                    <span>매주 <strong className="text-indigo-700">금요일 오전 8시</strong>에 서버에서 자동으로 주급이 지급됩니다</span>
+                    <span style={{ color: "#334155" }}>매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong>에 서버에서 자동으로 주급이 지급됩니다</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">📈</span>
-                    <span>매주 주급 인상률만큼 급여가 자동으로 인상됩니다</span>
+                    <span style={{ color: "#334155" }}>매주 주급 인상률만큼 급여가 자동으로 인상됩니다</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">💰</span>
-                    <span>세금이 자동으로 공제되어 실급여가 지급됩니다</span>
+                    <span style={{ color: "#334155" }}>세금이 자동으로 공제되어 실급여가 지급됩니다</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">⚙️</span>
-                    <span>관리자가 로그인하지 않아도 자동으로 실행됩니다</span>
+                    <span style={{ color: "#334155" }}>관리자가 로그인하지 않아도 자동으로 실행됩니다</span>
                   </li>
                 </ul>
               </div>
