@@ -35,6 +35,8 @@ import {
   useBatchPaySalaries,
   useAdminDataPreloader,
 } from "../../hooks/useOptimizedAdminData";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../services/optimizedFirebaseService";
 
 // 시스템 모니터링 컴포넌트
 import SystemMonitoring from "../../pages/admin/SystemMonitoring";
@@ -462,6 +464,7 @@ const AdminSettingsModal = ({
   }, [tempCurrencyUnit, setCurrencyUnitLocal]);
 
   // 최적화된 데이터 훅들
+  const queryClient = useQueryClient();
   const studentsQuery = useOptimizedStudents();
   const salarySettingsQuery = useOptimizedSalarySettings();
   const systemManagementQuery = useOptimizedSystemManagement();
@@ -551,10 +554,30 @@ const AdminSettingsModal = ({
 
       // setDoc + merge:true 로 문서가 없을 때도 자동 생성 (updateDoc은 문서 부재 시 실패)
       await firebaseSetDoc(classSettingsRef, newSettings, { merge: true });
+
+      // 1) 표시용 state 갱신
       setSalarySettings({
         taxRate: newSettings.taxRate,
         salaryIncreaseRate: newSettings.salaryIncreaseRate,
       });
+
+      // 2) 입력 박스도 정규화된 값(소수점 한 자리)으로 동기화
+      setTempTaxRate(String((newSettings.taxRate * 100).toFixed(1)));
+      setTempSalaryIncreaseRate(
+        String((newSettings.salaryIncreaseRate * 100).toFixed(1)),
+      );
+
+      // 3) react-query 캐시 무효화 — 다른 화면(주급 지급 등)이 stale 옛 값 사용 방지
+      try {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.salarySettings(userClassCode),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.adminSettings(userClassCode, "salarySettings"),
+        });
+      } catch (qErr) {
+        logger.warn("queryClient invalidate 실패(무시):", qErr);
+      }
 
       alert("급여 설정이 저장되었습니다.");
     } catch (error) {
@@ -564,7 +587,7 @@ const AdminSettingsModal = ({
       setSalarySettingsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
+  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
   // 월급 계산 함수 (세금 공제 포함, 대통령/국무총리 보너스 반영)
   const calculateSalary = useCallback(
@@ -3007,22 +3030,31 @@ const AdminSettingsModal = ({
           studentMemberSubTab === "salary" && (
             <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100">
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
                   <span className="text-base">🏫</span>
-                  <span className="text-sm text-slate-600">현재 관리 학급:</span>
-                  <span className="text-sm font-bold text-indigo-700 tracking-wide">{userClassCode}</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
 
               {/* 설정 입력 카드 */}
-              <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-indigo-50/60 to-white border-b border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 text-sm">💰</span>
+              <div
+                className="rounded-2xl border shadow-sm overflow-hidden"
+                style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
+              >
+                <div
+                  className="px-6 py-4 border-b"
+                  style={{ background: "#ffffff", borderColor: "#f1f5f9" }}
+                >
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>💰</span>
                     급여 설정
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1.5 ml-9">
-                    세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 <strong className="text-indigo-600">금요일 오전 8시</strong>에 실행됩니다.
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong>에 실행됩니다.
                   </p>
                 </div>
 
