@@ -62,7 +62,7 @@
 
 /* [추가] 로비 섹션 스타일 */
 .lobby-section {
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff;
   padding: 1rem;
   border-radius: 12px;
 }
@@ -874,7 +874,7 @@ input:focus,
 
 /* 게임 모드 선택 */
 .game-mode-selector {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   padding: 1.5rem;
   border-radius: 16px;
 }
@@ -920,7 +920,7 @@ input:focus,
 
 /* AI 난이도 선택 */
 .ai-difficulty-selector {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f8fafc;
   padding: 1.5rem;
   border-radius: 16px;
   margin-top: 1rem;

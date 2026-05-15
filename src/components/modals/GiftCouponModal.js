@@ -45,18 +45,18 @@ const GiftCouponModal = memo(function GiftCouponModal({
       onClick={closeModal} // 배경 클릭 시 닫기
     >
       <div
-        className="gift-coupon-modal bg-white dark:bg-slate-800 rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl border border-slate-600"
+        className="gift-coupon-modal bg-white rounded-xl p-6 w-[90%] max-w-[400px] shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫힘 방지
       >
-        <h3 className="mt-0 text-slate-700 dark:text-slate-100">쿠폰 선물하기</h3>
-        <div className="mb-4 text-slate-400">
+        <h3 className="mt-0 text-slate-800 font-semibold">쿠폰 선물하기</h3>
+        <div className="mb-4 text-slate-600">
           <p>
             현재 보유 쿠폰:{" "}
-            <strong className="text-slate-200">{currentCoupons}개</strong>
+            <strong className="text-slate-900">{currentCoupons}개</strong>
           </p>
         </div>
         <div className="form-group mb-4">
-          <label className="block mb-2 font-medium text-slate-600 dark:text-slate-300">
+          <label className="block mb-2 font-medium text-slate-700">
             받는 사람
           </label>
           <select
@@ -67,7 +67,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 ? setGiftRecipient(e.target.value)
                 : logger.error("setGiftRecipient is not a function")
             }
-            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-700 dark:text-slate-100"
+            className="w-full p-2.5 border border-slate-300 rounded-md text-sm bg-white text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition"
           >
             <option value="">받는 분을 선택하세요</option>
             {validRecipients
@@ -80,7 +80,7 @@ const GiftCouponModal = memo(function GiftCouponModal({
           </select>
         </div>
         <div className="form-group mb-6">
-          <label className="block mb-2 font-medium text-slate-600 dark:text-slate-300">
+          <label className="block mb-2 font-medium text-slate-700">
             선물할 쿠폰 수량
           </label>
           <input
@@ -93,14 +93,14 @@ const GiftCouponModal = memo(function GiftCouponModal({
                 : logger.error("setGiftAmount is not a function")
             }
             placeholder="선물할 쿠폰 수량을 입력하세요"
-            className="w-full p-2.5 border border-slate-600 rounded-md text-sm bg-slate-700/50 text-slate-700 dark:text-slate-100"
+            className="w-full p-2.5 border border-slate-300 rounded-md text-sm bg-white text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition"
             max={currentCoupons}
             min="1"
           />
         </div>
         <div className="modal-actions flex justify-end gap-2.5">
           <button
-            className="cancel-button px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md cursor-pointer font-medium hover:bg-slate-500"
+            className="cancel-button px-4 py-2 bg-slate-200 text-slate-700 border-0 rounded-md cursor-pointer font-medium hover:bg-slate-300"
             onClick={closeModal}
           >
             취소

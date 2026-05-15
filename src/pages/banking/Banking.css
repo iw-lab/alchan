@@ -323,7 +323,7 @@
 
 .disabled-button {
   background-color: #4b5563;
-  color: #9ca3af;
+  color: #64748b;
   cursor: not-allowed;
   border-color: transparent;
 }

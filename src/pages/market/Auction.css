@@ -50,7 +50,7 @@
 .tab {
     background: transparent;
     border: 1px solid transparent;
-    color: #6b7280;
+    color: #64748b;
     padding: 10px 20px;
     cursor: pointer;
     font-family: 'Rajdhani', sans-serif;
@@ -211,7 +211,7 @@
 }
 
 .auction-description {
-    color: #6b7280;
+    color: #64748b;
     font-size: 0.9rem;
     margin-bottom: 15px;
     line-height: 1.5;
@@ -245,7 +245,7 @@
 }
 
 .start-price {
-    color: #9ca3af;
+    color: #64748b;
 }
 
 .current-price {
@@ -256,7 +256,7 @@
 
 .auction-meta {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: #64748b;
     text-align: right;
     margin-top: 10px;
 }
@@ -311,15 +311,15 @@
 }
 
 .bid-button:disabled {
-    border-color: #d1d5db;
-    color: #9ca3af;
+    border-color: #475569;
+    color: #64748b;
     cursor: not-allowed;
     background: #f3f4f6;
 }
 
 .owner-notice {
     text-align: center;
-    color: #6b7280;
+    color: #64748b;
     font-style: italic;
 }
 
@@ -367,7 +367,7 @@
 .empty-state {
     text-align: center;
     padding: 40px;
-    color: #6b7280;
+    color: #64748b;
     background: #f9fafb;
     border-radius: 12px;
     border: 1px dashed #d1d5db;
