@@ -385,11 +385,33 @@ const AdminSettingsModal = ({
   const [inlineEditName, setInlineEditName] = useState("");
   const [inlineEditMaxClicks, setInlineEditMaxClicks] = useState("5");
 
-  // 통합 탭 서브탭 상태
-  const [jobTaskSubTab, setJobTaskSubTab] = useState("job");
-  const [studentMemberSubTab, setStudentMemberSubTab] = useState("student");
-  const [financeMarketSubTab, setFinanceMarketSubTab] = useState("financial");
-  const [systemSubTab, setSystemSubTab] = useState("database");
+  // 통합 탭 서브탭 상태 (sessionStorage로 새로고침 복원)
+  const [jobTaskSubTab, setJobTaskSubTab] = useState(() => {
+    try { return sessionStorage.getItem("alchan_adminModal_subtab_job") || "job"; } catch { return "job"; }
+  });
+  const [studentMemberSubTab, setStudentMemberSubTab] = useState(() => {
+    try { return sessionStorage.getItem("alchan_adminModal_subtab_student") || "student"; } catch { return "student"; }
+  });
+  const [financeMarketSubTab, setFinanceMarketSubTab] = useState(() => {
+    try { return sessionStorage.getItem("alchan_adminModal_subtab_finance") || "financial"; } catch { return "financial"; }
+  });
+  const [systemSubTab, setSystemSubTab] = useState(() => {
+    try { return sessionStorage.getItem("alchan_adminModal_subtab_system") || "database"; } catch { return "database"; }
+  });
+
+  // 서브탭 변경 시 sessionStorage 동기화
+  useEffect(() => {
+    try { sessionStorage.setItem("alchan_adminModal_subtab_job", jobTaskSubTab); } catch { /* ignore */ }
+  }, [jobTaskSubTab]);
+  useEffect(() => {
+    try { sessionStorage.setItem("alchan_adminModal_subtab_student", studentMemberSubTab); } catch { /* ignore */ }
+  }, [studentMemberSubTab]);
+  useEffect(() => {
+    try { sessionStorage.setItem("alchan_adminModal_subtab_finance", financeMarketSubTab); } catch { /* ignore */ }
+  }, [financeMarketSubTab]);
+  useEffect(() => {
+    try { sessionStorage.setItem("alchan_adminModal_subtab_system", systemSubTab); } catch { /* ignore */ }
+  }, [systemSubTab]);
 
   // ========================================
   // 시장 제어 상태
@@ -1658,6 +1680,20 @@ const AdminSettingsModal = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab]);
+
+  // 🔥 fix: 급여 설정 서브탭 진입 시 DB에서 실제 값 로드
+  // (이전엔 loadSalarySettings가 deps에만 있고 호출이 안 되어, 화면이 항상 초기값
+  //  "10%, 3%"만 보여주는 버그였음. DB에 저장된 새 값이 화면에 반영되지 않음.)
+  useEffect(() => {
+    if (
+      showAdminSettingsModal &&
+      adminSelectedMenu === "studentAndMember" &&
+      studentMemberSubTab === "salary"
+    ) {
+      loadSalarySettings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab, userClassCode]);
 
   // 시장 서브탭 선택 시 시장 상태 로드
   useEffect(() => {

@@ -423,8 +423,28 @@ function Dashboard({ adminTabMode }) {
  // State management
  const [appLoading, setAppLoading] = useState(true);
  const [viewMode, setViewMode] = useState("list");
- const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(false);
- const [adminSelectedMenu, setAdminSelectedMenu] = useState("generalSettings");
+ // 🔥 새로고침해도 관리자 모달이 열린 상태 유지 (sessionStorage)
+ const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(() => {
+   try { return sessionStorage.getItem("alchan_adminModal_open") === "1"; }
+   catch { return false; }
+ });
+ const [adminSelectedMenu, setAdminSelectedMenu] = useState(() => {
+   try { return sessionStorage.getItem("alchan_adminModal_menu") || "generalSettings"; }
+   catch { return "generalSettings"; }
+ });
+
+ // 모달 상태 변경 시 sessionStorage 동기화 — 새로고침해도 같은 위치 복원
+ useEffect(() => {
+   try {
+     if (showAdminSettingsModal) {
+       sessionStorage.setItem("alchan_adminModal_open", "1");
+       sessionStorage.setItem("alchan_adminModal_menu", adminSelectedMenu);
+     } else {
+       sessionStorage.removeItem("alchan_adminModal_open");
+       sessionStorage.removeItem("alchan_adminModal_menu");
+     }
+   } catch { /* ignore */ }
+ }, [showAdminSettingsModal, adminSelectedMenu]);
 
  const [jobs, setJobs] = useState([]);
  const [commonTasks, setCommonTasks] = useState([]);
