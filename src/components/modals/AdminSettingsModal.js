@@ -2984,95 +2984,152 @@ const AdminSettingsModal = ({
         {/* 구성원 관리 서브탭 */}
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "member" && (
-            <div className="member-management-tab">
+            <div className="space-y-5">
               {!isSuperAdmin && userClassCode && (
-                <div className="class-info-header">
-                  <p className="current-class-info">
-                    🏫 현재 관리 학급: <strong>{userClassCode}</strong>
-                  </p>
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
+                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+                >
+                  <span className="text-base">🏫</span>
+                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
                 </div>
               )}
-              <div className="admin-class-members-container section-card">
-                <h3>학급 구성원 관리</h3>
-                {error && <p className="error-message">{error}</p>}
-                <p className="admin-section-desc">
-                  학급 구성원의 정보를 확인하고 관리합니다.
-                  {isSuperAdmin &&
-                    " 최고 관리자는 모든 학급의 구성원을 확인할 수 있습니다."}
-                </p>
 
-                {membersLoading ? (
-                  <p>구성원 정보 로딩 중...</p>
-                ) : classMembers.length > 0 ? (
-                  <div className="user-cards-container">
-                    {classMembers.map((member) => (
-                      <div key={member.id} className="user-card">
-                        <div className="user-card-header">
-                          <span className="user-card-name">{member.name}</span>
+              {/* 헤더 + 통계 */}
+              <div
+                className="rounded-2xl border shadow-sm overflow-hidden"
+                style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
+              >
+                <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                  <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>👥</span>
+                    학급 구성원 관리
+                  </h3>
+                  <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                    학급 구성원의 정보를 확인하고 관리합니다.
+                    {isSuperAdmin && " 최고 관리자는 모든 학급의 구성원을 확인할 수 있습니다."}
+                  </p>
+                </div>
+                {error && (
+                  <div className="mx-6 mt-4 px-4 py-2.5 rounded-lg text-sm" style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>
+                    {error}
+                  </div>
+                )}
+                {/* 통계 */}
+                {!membersLoading && classMembers.length > 0 && (
+                  <div className="grid grid-cols-3 divide-x" style={{ borderColor: "#f1f5f9" }}>
+                    {(() => {
+                      const total = classMembers.length;
+                      const students = classMembers.filter(m => !m.isAdmin && !m.isSuperAdmin).length;
+                      const admins = classMembers.filter(m => m.isAdmin && !m.isSuperAdmin).length;
+                      return (
+                        <>
+                          <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
+                            <p className="text-[11px]" style={{ color: "#64748b" }}>전체</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0f172a" }}>{total}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                          </div>
+                          <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
+                            <p className="text-[11px]" style={{ color: "#64748b" }}>학생</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0284c7" }}>{students}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                          </div>
+                          <div className="px-4 py-3 text-center">
+                            <p className="text-[11px]" style={{ color: "#64748b" }}>관리자</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#d97706" }}>{admins}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* 구성원 카드 그리드 */}
+              {membersLoading ? (
+                <div className="flex items-center justify-center py-12 rounded-2xl" style={{ background: "#ffffff", border: "1px solid #e2e8f0" }}>
+                  <p className="text-sm" style={{ color: "#64748b" }}>구성원 정보 로딩 중...</p>
+                </div>
+              ) : classMembers.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {classMembers.map((member) => {
+                    const role = member.isSuperAdmin ? "super" : member.isAdmin ? "admin" : "student";
+                    const roleConfig = {
+                      super:   { label: "최고 관리자", bg: "#fce7f3", color: "#9d174d", icon: "👑" },
+                      admin:   { label: "관리자",     bg: "#fef3c7", color: "#92400e", icon: "🛡️" },
+                      student: { label: "학생",       bg: "#dbeafe", color: "#1e40af", icon: "🎓" },
+                    }[role];
+                    return (
+                      <div
+                        key={member.id}
+                        className="rounded-2xl border shadow-sm overflow-hidden flex flex-col"
+                        style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
+                      >
+                        <div className="px-4 py-3 border-b flex items-start justify-between gap-2" style={{ borderColor: "#f1f5f9" }}>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold truncate" style={{ color: "#0f172a" }}>{member.name || "(이름없음)"}</p>
+                            <p className="text-[11px] mt-0.5 truncate" style={{ color: "#64748b" }}>{member.email}</p>
+                          </div>
                           <span
-                            className={`user-card-role role-${member.isSuperAdmin ? "super" : member.isAdmin ? "admin" : "student"}`}
+                            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap"
+                            style={{ background: roleConfig.bg, color: roleConfig.color }}
                           >
-                            {member.isSuperAdmin
-                              ? "최고 관리자"
-                              : member.isAdmin
-                                ? "관리자"
-                                : "학생"}
+                            <span>{roleConfig.icon}</span>
+                            {roleConfig.label}
                           </span>
                         </div>
-                        <div className="user-card-body">
-                          <p>
-                            <strong>이메일:</strong> {member.email}
-                          </p>
-                          <p>
-                            <strong>학급 코드:</strong> {member.classCode}
-                          </p>
+                        <div className="px-4 py-2.5 flex items-center gap-2 text-xs" style={{ color: "#64748b" }}>
+                          <span className="font-semibold" style={{ color: "#475569" }}>학급</span>
+                          <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold" style={{ background: "#f1f5f9", color: "#1e293b" }}>{member.classCode || "—"}</span>
                         </div>
                         {isSuperAdmin && (
-                          <div className="user-card-actions">
+                          <div className="px-4 py-3 border-t flex flex-wrap gap-2 mt-auto" style={{ borderColor: "#f1f5f9", background: "#fafbfc" }}>
                             {!member.isSuperAdmin && (
                               <button
-                                onClick={() =>
-                                  toggleAdminStatus(member.id, member.isAdmin)
-                                }
-                                className={`admin-action-button ${
-                                  member.isAdmin
-                                    ? "remove-admin-button"
-                                    : "add-admin-button"
-                                }`}
+                                onClick={() => toggleAdminStatus(member.id, member.isAdmin)}
                                 disabled={membersLoading}
+                                className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                style={member.isAdmin
+                                  ? { background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }
+                                  : { background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
                               >
                                 {member.isAdmin ? "관리자 해제" : "관리자 지정"}
                               </button>
                             )}
                             <button
                               onClick={() => handleResetPassword(member.id)}
-                              className="admin-action-button reset-password-button"
                               disabled={membersLoading}
+                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                              style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }}
                             >
                               비밀번호 초기화
                             </button>
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="no-members-message">
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-2" style={{ background: "#ffffff", border: "1px solid #e2e8f0" }}>
+                  <span className="text-3xl">👥</span>
+                  <p className="text-sm" style={{ color: "#64748b" }}>
                     {!isSuperAdmin && !userClassCode
                       ? "학급 코드가 설정되지 않았습니다."
                       : "등록된 학급 구성원이 없습니다."}
                   </p>
-                )}
-
-                <div className="refresh-members-section">
-                  <button
-                    onClick={loadClassMembers}
-                    style={actionBtnStyle}
-                    disabled={membersLoading}
-                  >
-                    {membersLoading ? "로딩 중..." : "구성원 목록 새로고침"}
-                  </button>
                 </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={loadClassMembers}
+                  disabled={membersLoading}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                  style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }}
+                >
+                  <span>🔄</span>
+                  {membersLoading ? "로딩 중..." : "구성원 목록 새로고침"}
+                </button>
               </div>
             </div>
           )}
