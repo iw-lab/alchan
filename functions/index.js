@@ -1940,14 +1940,19 @@ exports.purchaseStoreItem = onCall(
         let finalPrice = currentPrice;
         let restockCost = 0;
 
+        // 🔥 재고 보충 비용 = 도매 매입가 (정가의 30%)
+        //   이전엔 100%였으나 관리자 적자가 누적되던 문제로 정책 변경.
+        //   실제 정부 운영처럼 정가-도매 차익(70%)이 관리자 마진으로 확보됨.
+        const WHOLESALE_COST_RATIO = 0.3;
+
         // 선충전 시 관리자 비용 계산
         if (preRestocked) {
           const initialStock = itemData.initialStock || 10;
-          restockCost = itemData.price * initialStock;
+          restockCost = Math.round(itemData.price * initialStock * WHOLESALE_COST_RATIO);
           if (adminDoc && adminDoc.exists) {
             const adminData = adminDoc.data();
             logger.info(
-              `[purchaseStoreItem] 선충전 관리자 비용: ${restockCost.toLocaleString()}원 (보유: ${(adminData.cash || 0).toLocaleString()}원)`,
+              `[purchaseStoreItem] 선충전 관리자 비용: ${restockCost.toLocaleString()}원 (도매가 30%, 보유: ${(adminData.cash || 0).toLocaleString()}원)`,
             );
           } else {
             restockCost = 0;
@@ -1964,8 +1969,8 @@ exports.purchaseStoreItem = onCall(
             itemData.price * (1 + priceIncreasePercentage / 100),
           );
 
-          // 재고 보충 비용 계산 (현재 가격 * 보충 수량)
-          restockCost = itemData.price * initialStock;
+          // 재고 보충 비용 = 정가 * 보충 수량 * 30% (도매가)
+          restockCost = Math.round(itemData.price * initialStock * WHOLESALE_COST_RATIO);
 
           // 관리자 잔액 확인 (부족해도 마이너스로 충전 진행)
           if (adminDoc && adminDoc.exists) {

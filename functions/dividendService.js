@@ -181,9 +181,13 @@ async function payMonthlyDividends() {
       }
     }
 
-    // 5) 학급별 국고에 세금 일괄 입금
+    // 5) 학급별 국고에 세금 통계 기록 + 관리자 cash 입금
+    // ⚠️ 이전 버그: nationalTreasuries 통계만 기록하고 관리자 cash엔 안 들어가
+    //  관리자 적자가 누적되던 문제. 이제 통계 + 관리자 cash 둘 다 갱신.
     for (const [classCode, taxSum] of treasuryTaxByClass.entries()) {
-      await commitIfNeeded(1);
+      await commitIfNeeded(2);
+
+      // (a) 국고 통계 기록
       const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
       batch.set(
         treasuryRef,
@@ -194,6 +198,29 @@ async function payMonthlyDividends() {
         { merge: true }
       );
       opsInBatch++;
+
+      // (b) 관리자(선생님) cash로 세금 실제 입금
+      try {
+        const adminSnap = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+        if (!adminSnap.empty) {
+          const adminRef = adminSnap.docs[0].ref;
+          batch.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(taxSum),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          opsInBatch++;
+          logger.info(`[Dividend] 관리자 cash +${taxSum} (배당세) — class ${classCode}`);
+        } else {
+          logger.warn(`[Dividend] class ${classCode} 관리자 없음 - 세금 cash 입금 스킵`);
+        }
+      } catch (adminErr) {
+        logger.error(`[Dividend] class ${classCode} 관리자 cash 갱신 실패:`, adminErr.message);
+      }
     }
 
     // 6) 마지막 batch commit

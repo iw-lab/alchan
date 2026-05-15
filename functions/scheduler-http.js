@@ -2063,8 +2063,11 @@ async function collectWeeklyRentLogic() {
 }
 
 async function collectPropertyHoldingTaxesLogic() {
-  logger.info(">>> [스케줄러] 재산세 징수 시작 (전체 자산 1%)");
-  const TAX_RATE = 0.01; // 1% 재산세
+  // 🔥 정책 변경 (2026-05):
+  //   기존: 전체 자산 1%/주 (학생 부담 과중)
+  //   변경: 부동산만 0.2%/주 (관리자 마이너스 보충 + 사용자 부담 최소화)
+  logger.info(">>> [스케줄러] 부동산 보유세 징수 시작 (부동산 0.2%)");
+  const TAX_RATE = 0.002; // 0.2% 부동산 보유세
 
   try {
     const classCodes = await getAllActiveClassCodes();
@@ -2072,7 +2075,7 @@ async function collectPropertyHoldingTaxesLogic() {
     let totalUsersProcessed = 0;
 
     for (const classCode of classCodes) {
-      logger.info(`[재산세] ${classCode} 클래스 처리 시작`);
+      logger.info(`[부동산세] ${classCode} 클래스 처리 시작`);
 
       // 관리자(선생님) 찾기
       const adminSnapshot = await db
@@ -2083,26 +2086,11 @@ async function collectPropertyHoldingTaxesLogic() {
         .get();
 
       if (adminSnapshot.empty) {
-        logger.warn(`[재산세] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
+        logger.warn(`[부동산세] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
         continue;
       }
 
       const adminDoc = adminSnapshot.docs[0];
-
-      // 주식 목록 (현재가 조회용) - 학급당 1회만 조회
-      let stockMap = {};
-      try {
-        const stockListDoc = await db
-          .collection("classes").doc(classCode)
-          .collection("stocks").doc("stockList")
-          .get();
-        if (stockListDoc.exists) {
-          const stocks = stockListDoc.data().stocks || [];
-          stocks.forEach((s) => { stockMap[s.id] = s.price || 0; });
-        }
-      } catch (err) {
-        logger.warn(`[재산세] ${classCode}: 주식 목록 조회 실패`, err.message);
-      }
 
       // 학급 학생 조회 (관리자 제외)
       const usersSnapshot = await db
@@ -2113,59 +2101,43 @@ async function collectPropertyHoldingTaxesLogic() {
 
       if (usersSnapshot.empty) continue;
 
-      // 모든 학생의 자산을 병렬 조회
+      // 부동산만 병렬 조회 (다른 자산은 과세 대상 아님)
       const userAssetResults = await Promise.all(
         usersSnapshot.docs.map(async (userDoc) => {
           const userId = userDoc.id;
           const userData = userDoc.data();
           const userName = userData.name || userData.nickname || "알 수 없음";
 
-          // 병렬로 모든 자산 조회
-          const [parkingSnap, productsSnap, portfolioSnap, propertiesSnap] = await Promise.all([
-            db.collection("users").doc(userId).collection("financials").doc("parkingAccount").get().catch(() => null),
-            db.collection("users").doc(userId).collection("products").get().catch(() => ({ docs: [] })),
-            db.collection("users").doc(userId).collection("portfolio").get().catch(() => ({ docs: [] })),
-            db.collection("classes").doc(classCode).collection("realEstateProperties").where("ownerId", "==", userId).get().catch(() => ({ docs: [] })),
+          // ownerId 또는 owner(=userName) 기준 둘 다 조회 (스키마 호환)
+          const [byIdSnap, byNameSnap] = await Promise.all([
+            db
+              .collection("classes")
+              .doc(classCode)
+              .collection("realEstateProperties")
+              .where("ownerId", "==", userId)
+              .get()
+              .catch(() => ({ docs: [] })),
+            userName
+              ? db
+                  .collection("classes")
+                  .doc(classCode)
+                  .collection("realEstateProperties")
+                  .where("owner", "==", userName)
+                  .get()
+                  .catch(() => ({ docs: [] }))
+              : Promise.resolve({ docs: [] }),
           ]);
 
-          // 1. 현금
-          const cash = userData.cash || 0;
-
-          // 2. 파킹통장
-          const parkingBalance = (parkingSnap && parkingSnap.exists) ? (parkingSnap.data().balance || 0) : 0;
-
-          // 3. 예금/적금 잔액 (대출은 차감)
-          let depositSavingsTotal = 0;
-          let loanTotal = 0;
-          productsSnap.docs.forEach((d) => {
-            const data = d.data();
-            if (data.type === "loan") {
-              loanTotal += data.balance || 0;
-            } else {
-              depositSavingsTotal += data.balance || 0;
-            }
-          });
-
-          // 4. 주식 평가액
-          let stockValue = 0;
-          portfolioSnap.docs.forEach((d) => {
-            const data = d.data();
-            const qty = data.quantity || 0;
-            const stockId = parseInt(d.id) || d.id;
-            const price = stockMap[stockId] || 0;
-            if (qty > 0) stockValue += price * qty;
-          });
-
-          // 5. 부동산 가치
+          const seen = new Set();
           let realEstateValue = 0;
-          propertiesSnap.docs.forEach((d) => {
-            realEstateValue += d.data().price || d.data().value || 0;
+          [...byIdSnap.docs, ...byNameSnap.docs].forEach((d) => {
+            if (seen.has(d.id)) return;
+            seen.add(d.id);
+            const data = d.data();
+            realEstateValue += Number(data.price) || Number(data.value) || 0;
           });
 
-          // 총 자산 = 현금 + 파킹 + 예금/적금 + 주식 + 부동산 - 대출
-          const totalAssets = cash + parkingBalance + depositSavingsTotal + stockValue + realEstateValue - loanTotal;
-
-          return { userDoc, userId, userName, totalAssets, cash, parkingBalance, depositSavingsTotal, stockValue, realEstateValue, loanTotal };
+          return { userDoc, userId, userName, realEstateValue };
         }),
       );
 
@@ -2174,12 +2146,12 @@ async function collectPropertyHoldingTaxesLogic() {
       let classUsersProcessed = 0;
 
       for (const result of userAssetResults) {
-        const { userDoc, userId, userName, totalAssets } = result;
+        const { userId, userName, realEstateValue } = result;
 
-        // 자산이 0 이하면 과세 안 함
-        if (totalAssets <= 0) continue;
+        // 부동산 없으면 과세 안 함
+        if (realEstateValue <= 0) continue;
 
-        const tax = Math.round(totalAssets * TAX_RATE);
+        const tax = Math.round(realEstateValue * TAX_RATE);
         if (tax <= 0) continue;
 
         const userRef = db.collection("users").doc(userId);
@@ -2198,7 +2170,7 @@ async function collectPropertyHoldingTaxesLogic() {
           userName: userName,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           type: "taxPayment",
-          description: `[자동] 재산세 ${tax.toLocaleString()}원 징수 (총 자산 ${totalAssets.toLocaleString()}원의 1%)`,
+          description: `[자동] 부동산 보유세 ${tax.toLocaleString()}원 (부동산 가치 ${realEstateValue.toLocaleString()}원의 0.2%)`,
           classCode: classCode,
           expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
         });
@@ -2231,15 +2203,15 @@ async function collectPropertyHoldingTaxesLogic() {
       totalCollected += classTotalTax;
       totalUsersProcessed += classUsersProcessed;
       logger.info(
-        `[재산세] ${classCode} 완료: ${classUsersProcessed}명, 총 ${classTotalTax.toLocaleString()}원`,
+        `[부동산세] ${classCode} 완료: ${classUsersProcessed}명, 총 ${classTotalTax.toLocaleString()}원`,
       );
     }
 
     logger.info(
-      `→ 재산세 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`,
+      `→ 부동산 보유세 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`,
     );
   } catch (error) {
-    logger.error("→ 재산세 징수 중 오류:", error);
+    logger.error("→ 부동산 보유세 징수 중 오류:", error);
     throw error;
   }
 }
