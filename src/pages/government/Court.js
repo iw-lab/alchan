@@ -21,6 +21,7 @@ import {
  runTransaction,
  increment,
  serverTimestamp,
+ Timestamp,
  addDoc,
  updateDoc,
  deleteDoc,
@@ -1028,6 +1029,34 @@ const Court = () => {
  settlementPaid: true,
  settlementAmount: numericAmount,
  settlementDate: serverTimestamp(),
+ });
+
+ // 🔥 학생 거래 내역 로그 (합의금 양쪽 모두 기록)
+ const logExpireAt = new Date();
+ logExpireAt.setDate(logExpireAt.getDate() + 90);
+ const senderLogRef = doc(collection(db, "activity_logs"));
+ transaction.set(senderLogRef, {
+ userId: senderId,
+ userName: senderName,
+ type: "legal_settlement",
+ description: `${recipientName}님에게 합의금 ${numericAmount.toLocaleString()}원 지급`,
+ amount: -numericAmount,
+ classCode: classCode || null,
+ timestamp: serverTimestamp(),
+ createdAt: serverTimestamp(),
+ expireAt: Timestamp.fromDate(logExpireAt),
+ });
+ const recipientLogRef = doc(collection(db, "activity_logs"));
+ transaction.set(recipientLogRef, {
+ userId: recipientId,
+ userName: recipientName,
+ type: "legal_settlement",
+ description: `${senderName}님으로부터 합의금 ${numericAmount.toLocaleString()}원 수령`,
+ amount: numericAmount,
+ classCode: classCode || null,
+ timestamp: serverTimestamp(),
+ createdAt: serverTimestamp(),
+ expireAt: Timestamp.fromDate(logExpireAt),
  });
  });
 

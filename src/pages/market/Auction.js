@@ -224,6 +224,34 @@ export default function Auction() {
             relatedDocId: auction.id,
           });
 
+          // 🔥 학생 거래 내역 (activity_logs 루트 컬렉션) — 양쪽 모두 기록
+          const _logExp = new Date();
+          _logExp.setDate(_logExp.getDate() + 90);
+          const sellerGlobalLog = doc(collection(db, "activity_logs"));
+          transaction.set(sellerGlobalLog, {
+            userId: auctionData.seller,
+            userName: auctionData.sellerName || "판매자",
+            type: "auction_sold",
+            description: `경매 판매: ${auctionData.name} (+${sellerProceeds.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원)`,
+            amount: sellerProceeds,
+            classCode: auctionData.classCode || classCode || null,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(_logExp),
+          });
+          const winnerGlobalLog = doc(collection(db, "activity_logs"));
+          transaction.set(winnerGlobalLog, {
+            userId: auctionData.highestBidder,
+            userName: auctionData.highestBidderName || "낙찰자",
+            type: "auction_won",
+            description: `경매 낙찰: ${auctionData.name} (낙찰가 ${auctionData.currentBid.toLocaleString()}원 — 입찰 시 이미 차감됨)`,
+            amount: 0,
+            classCode: auctionData.classCode || classCode || null,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(_logExp),
+          });
+
         } else {
           // --- 유찰된 경매 (낙찰자 없음) ---
           // 1. 판매자에게 아이템 반환 (개선된 로직)
@@ -517,6 +545,37 @@ export default function Auction() {
           highestBidderName: currentUserName,
           updatedAt: serverTimestamp(),
         });
+
+        // 🔥 학생 거래 내역 로그 (입찰 — cash 차감)
+        const _logExp = new Date();
+        _logExp.setDate(_logExp.getDate() + 90);
+        const bidderLog = doc(collection(db, "activity_logs"));
+        transaction.set(bidderLog, {
+          userId: currentUserId,
+          userName: currentUserName || "입찰자",
+          type: "auction_bid",
+          description: `경매 입찰: ${currentAuctionData.name || "아이템"} (-${amount.toLocaleString()}원)`,
+          amount: -amount,
+          classCode: classCode || null,
+          timestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          expireAt: Timestamp.fromDate(_logExp),
+        });
+        // 이전 최고가 입찰자 환원 로그
+        if (currentAuctionData.highestBidder && currentAuctionData.currentBid > 0) {
+          const refundLog = doc(collection(db, "activity_logs"));
+          transaction.set(refundLog, {
+            userId: currentAuctionData.highestBidder,
+            userName: currentAuctionData.highestBidderName || "이전 입찰자",
+            type: "auction_bid_refund",
+            description: `경매 입찰 환불: ${currentAuctionData.name || "아이템"} (+${currentAuctionData.currentBid.toLocaleString()}원, 더 높은 입찰자 등장)`,
+            amount: currentAuctionData.currentBid,
+            classCode: classCode || null,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(_logExp),
+          });
+        }
       });
 
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();

@@ -7,6 +7,7 @@ import {
   collection,
   addDoc,
   serverTimestamp,
+  Timestamp,
   runTransaction,
   increment,
 } from "firebase/firestore";
@@ -216,6 +217,39 @@ const StudentRequest = () => {
 
           transaction.update(studentRef, { cash: increment(-pricePerSong) });
           transaction.update(teacherRef, { cash: increment(pricePerSong) });
+
+          // 🔥 학생 거래 내역 로그 (음악 요청 결제)
+          const sd = studentSnap.data();
+          const studentClassCode = sd.classCode || null;
+          const studentName = sd.name || sd.nickname || name || "익명";
+          const logExpireAt = new Date();
+          logExpireAt.setDate(logExpireAt.getDate() + 90);
+
+          const songTitle = selectedVideo?.snippet?.title || "음악";
+          const studentLogRef = doc(collection(db, "activity_logs"));
+          transaction.set(studentLogRef, {
+            userId: user.uid,
+            userName: studentName,
+            type: "musicRequest",
+            description: `음악 신청: "${songTitle}" (-${pricePerSong.toLocaleString()}원)`,
+            amount: -pricePerSong,
+            classCode: studentClassCode,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(logExpireAt),
+          });
+          const teacherLogRef = doc(collection(db, "activity_logs"));
+          transaction.set(teacherLogRef, {
+            userId: teacherId,
+            userName: "선생님",
+            type: "musicRequest",
+            description: `${studentName}님의 음악 신청 수익 (+${pricePerSong.toLocaleString()}원)`,
+            amount: pricePerSong,
+            classCode: studentClassCode,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(logExpireAt),
+          });
         });
       }
 

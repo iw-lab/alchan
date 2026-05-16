@@ -8,6 +8,7 @@ import {
   db,
   functions,
   serverTimestamp,
+  Timestamp,
   collection,
   doc,
   getDoc,
@@ -795,6 +796,36 @@ const RealEstateRegistry = () => {
           updatedAt: serverTimestamp(),
         });
 
+        // 🔥 학생 거래 내역 로그 (입주 첫 월세 지급)
+        const logExpireAt = new Date();
+        logExpireAt.setDate(logExpireAt.getDate() + 90);
+        const tenantLogRef = doc(collection(db, "activity_logs"));
+        transaction.set(tenantLogRef, {
+          userId: currentUser.id,
+          userName: currentUser.name || "익명",
+          type: "realEstateRent",
+          description: `${propertyData.address || "부동산"} 입주 (월세 -${propertyData.rent.toLocaleString()}원)`,
+          amount: -propertyData.rent,
+          classCode: currentUser.classCode || null,
+          timestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          expireAt: Timestamp.fromDate(logExpireAt),
+        });
+        if (propertyData.owner !== "government" && propertyData.owner !== currentUser.id) {
+          const ownerLogRef = doc(collection(db, "activity_logs"));
+          transaction.set(ownerLogRef, {
+            userId: propertyData.owner,
+            userName: propertyData.ownerName || "건물주",
+            type: "realEstateRent",
+            description: `${currentUser.name}님 입주 - 월세 수익 (+${propertyData.rent.toLocaleString()}원)`,
+            amount: propertyData.rent,
+            classCode: currentUser.classCode || null,
+            timestamp: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            expireAt: Timestamp.fromDate(logExpireAt),
+          });
+        }
+
         transactionResult = { type: 'moveIn', rent: propertyData.rent };
       });
 
@@ -1270,6 +1301,40 @@ const RealEstateRegistry = () => {
                 lastRentPayment: now,
                 updatedAt: now,
               });
+
+              // 🔥 학생 거래 내역 로그 (정기 월세 징수)
+              const _logExpireAt = new Date();
+              _logExpireAt.setDate(_logExpireAt.getDate() + 90);
+              const tenantLog = doc(collection(db, "activity_logs"));
+              const _tenantNameLog = tenantData.name || tenantData.nickname || "임차인";
+              const _tenantClass = tenantData.classCode || classCode || null;
+              const _addr = property.address || "부동산";
+              transaction.set(tenantLog, {
+                userId: property.tenantId,
+                userName: _tenantNameLog,
+                type: "realEstateRent",
+                description: `${_addr} 월세 ${isNegative ? "강제 " : ""}납부 (-${rentAmount.toLocaleString()}원)`,
+                amount: -rentAmount,
+                classCode: _tenantClass,
+                timestamp: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                expireAt: Timestamp.fromDate(_logExpireAt),
+              });
+              if (ownerSnap && ownerSnap.exists()) {
+                const _ownerData = ownerSnap.data();
+                const ownerLog = doc(collection(db, "activity_logs"));
+                transaction.set(ownerLog, {
+                  userId: ownerSnap.id,
+                  userName: _ownerData.name || _ownerData.nickname || "건물주",
+                  type: "realEstateRent",
+                  description: `${_addr} 월세 수익 (+${rentAmount.toLocaleString()}원, ${_tenantNameLog})`,
+                  amount: rentAmount,
+                  classCode: _ownerData.classCode || _tenantClass,
+                  timestamp: serverTimestamp(),
+                  createdAt: serverTimestamp(),
+                  expireAt: Timestamp.fromDate(_logExpireAt),
+                });
+              }
 
               const tenantNameLocal = tenantData.name || `ID: ${property.tenantId}`;
               const ownerNameLocal = ownerSnap?.exists() ? (ownerSnap.data().name || "집주인") : null;

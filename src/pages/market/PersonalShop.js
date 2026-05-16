@@ -19,6 +19,7 @@ import {
   runTransaction,
   increment,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -1053,14 +1054,63 @@ const PersonalShop = () => {
           });
         }
 
-        // 거래 기록
+        // 🔥 학생 거래 내역에 표시되도록 activity_logs에 구매자/판매자 양쪽 기록
+        const buyerName = userProfile?.name || "익명";
+        const sellerName = purchaseShop.ownerName || "익명";
+        const logExpireAt = new Date();
+        logExpireAt.setDate(logExpireAt.getDate() + 90);
+
+        // 구매자 로그 (지출)
+        const buyerLogRef = doc(collection(db, "activity_logs"));
+        transaction.set(buyerLogRef, {
+          userId: currentUser.uid,
+          userName: buyerName,
+          type: "shop_purchase",
+          description: `${purchaseShop.shopName}에서 ${purchaseProduct.name} ${quantity}개 구매 (-${totalAmount.toLocaleString()}원, VAT ${taxAmount.toLocaleString()}원 포함)`,
+          amount: -totalAmount,
+          classCode: classCode || null,
+          timestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          expireAt: Timestamp.fromDate(logExpireAt),
+          metadata: {
+            shopId: purchaseShop.id,
+            productId: purchaseProduct.id,
+            sellerId: purchaseShop.ownerId,
+            quantity,
+            taxAmount,
+          },
+        });
+
+        // 판매자 로그 (수입, 세후)
+        const sellerLogRef = doc(collection(db, "activity_logs"));
+        transaction.set(sellerLogRef, {
+          userId: purchaseShop.ownerId,
+          userName: sellerName,
+          type: "shop_sale",
+          description: `${buyerName}에게 ${purchaseProduct.name} ${quantity}개 판매 (+${sellerAmount.toLocaleString()}원, 세후)`,
+          amount: sellerAmount,
+          classCode: classCode || null,
+          timestamp: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          expireAt: Timestamp.fromDate(logExpireAt),
+          metadata: {
+            shopId: purchaseShop.id,
+            productId: purchaseProduct.id,
+            buyerId: currentUser.uid,
+            quantity,
+            taxAmount,
+            grossAmount: totalAmount,
+          },
+        });
+
+        // 기존 activities 컬렉션도 호환 위해 유지
         const activityRef = collection(db, "activities");
         transaction.set(doc(activityRef), {
           type: "shop_purchase",
           buyerId: currentUser.uid,
-          buyerName: userProfile?.name || "익명",
+          buyerName,
           sellerId: purchaseShop.ownerId,
-          sellerName: purchaseShop.ownerName,
+          sellerName,
           shopId: purchaseShop.id,
           shopName: purchaseShop.shopName,
           productId: purchaseProduct.id,
