@@ -2062,17 +2062,101 @@ async function collectWeeklyRentLogic() {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// 🤖 거시지표 수집 (학급별 평균자산·지니계수·통화량)
+//   매주 금요일 부동산세 징수 직전에 실행되어 동적 세율 결정에 사용됨.
+//   classMacroStats/{classCode} 문서에 저장 → 학급 거시경제 대시보드 데이터 소스.
+// ──────────────────────────────────────────────────────────────────
+async function computeUserNetAssets(classCode, userId, userData, stockMap) {
+  const [parkingSnap, productsSnap, portfolioSnap, byIdSnap, byNameSnap] = await Promise.all([
+    db.collection("users").doc(userId).collection("financials").doc("parkingAccount").get().catch(() => null),
+    db.collection("users").doc(userId).collection("products").get().catch(() => ({ docs: [] })),
+    db.collection("users").doc(userId).collection("portfolio").get().catch(() => ({ docs: [] })),
+    db.collection("classes").doc(classCode).collection("realEstateProperties").where("ownerId", "==", userId).get().catch(() => ({ docs: [] })),
+    userData.name
+      ? db.collection("classes").doc(classCode).collection("realEstateProperties").where("owner", "==", userData.name).get().catch(() => ({ docs: [] }))
+      : Promise.resolve({ docs: [] }),
+  ]);
+
+  const cash = Number(userData.cash) || 0;
+  const parkingBalance = (parkingSnap && parkingSnap.exists) ? (Number(parkingSnap.data().balance) || 0) : 0;
+
+  let depositSavingsTotal = 0;
+  let loanTotal = 0;
+  productsSnap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.type === "loan") loanTotal += Number(data.balance) || 0;
+    else depositSavingsTotal += Number(data.balance) || 0;
+  });
+
+  let stockValue = 0;
+  portfolioSnap.docs.forEach((d) => {
+    const data = d.data();
+    const qty = Number(data.quantity) || 0;
+    const price = Number(stockMap[d.id] ?? stockMap[parseInt(d.id)]) || 0;
+    if (qty > 0) stockValue += price * qty;
+  });
+
+  const seen = new Set();
+  let realEstateValue = 0;
+  [...byIdSnap.docs, ...byNameSnap.docs].forEach((d) => {
+    if (seen.has(d.id)) return;
+    seen.add(d.id);
+    const data = d.data();
+    realEstateValue += Number(data.price) || Number(data.value) || 0;
+  });
+
+  const totalAssets = cash + parkingBalance + depositSavingsTotal + stockValue + realEstateValue;
+  const netAssets = totalAssets - loanTotal;
+  return { cash, parkingBalance, depositSavingsTotal, stockValue, realEstateValue, loanTotal, totalAssets, netAssets };
+}
+
+function computeGiniCoefficient(values) {
+  // 지니계수 — 0(완전 평등) ~ 1(완전 불평등)
+  if (!Array.isArray(values) || values.length === 0) return 0;
+  const sorted = [...values].map((v) => Math.max(0, Number(v) || 0)).sort((a, b) => a - b);
+  const n = sorted.length;
+  const sum = sorted.reduce((s, v) => s + v, 0);
+  if (sum === 0) return 0;
+  let cum = 0;
+  for (let i = 0; i < n; i++) cum += (i + 1) * sorted[i];
+  return Math.max(0, Math.min(1, (2 * cum) / (n * sum) - (n + 1) / n));
+}
+
+// 학급 평균 순자산 → 부동산세 기본세율
+function lookupClassBaseRate(avgNetAssets) {
+  if (avgNetAssets <= 500000) return 0.001;       // 0.1% (경기 침체)
+  if (avgNetAssets <= 2000000) return 0.002;      // 0.2% (평시)
+  if (avgNetAssets <= 5000000) return 0.003;      // 0.3% (호황)
+  return 0.005;                                   // 0.5% (과열)
+}
+
+// 개인 순자산 → 누진 배율
+function lookupProgressiveMultiplier(netAssets) {
+  if (netAssets <= 500000) return 0;              // 면세
+  if (netAssets <= 1000000) return 0.5;
+  if (netAssets <= 3000000) return 1;
+  if (netAssets <= 5000000) return 2;
+  return 3.5;
+}
+
 async function collectPropertyHoldingTaxesLogic() {
   // 🔥 정책 변경 (2026-05):
-  //   기존: 전체 자산 1%/주 (학생 부담 과중)
-  //   변경: 부동산만 0.2%/주 (관리자 마이너스 보충 + 사용자 부담 최소화)
-  logger.info(">>> [스케줄러] 부동산 보유세 징수 시작 (부동산 0.2%)");
-  const TAX_RATE = 0.002; // 0.2% 부동산 보유세
+  //   기존: 전체 자산 1%/주 → 부동산만 0.2%/주
+  //   변경: 부동산만 부과 + 학급 평균 자산 기반 동적 기본세율 + 개인 순자산 누진 배율
+  //         최종세율 = classBaseRate × individualMultiplier
+  //         (예: 학급 평균 200만 → base 0.2%, 개인 400만 → ×2 → 0.4%)
+  logger.info(">>> [스케줄러] 부동산 보유세 징수 시작 (동적 + 누진)");
 
   try {
     const classCodes = await getAllActiveClassCodes();
     let totalCollected = 0;
     let totalUsersProcessed = 0;
+
+    // 주차 키 (학생 팝업 식별용)
+    const now = new Date();
+    const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
 
     for (const classCode of classCodes) {
       logger.info(`[부동산세] ${classCode} 클래스 처리 시작`);
@@ -2084,98 +2168,142 @@ async function collectPropertyHoldingTaxesLogic() {
         .where("isAdmin", "==", true)
         .limit(1)
         .get();
-
       if (adminSnapshot.empty) {
         logger.warn(`[부동산세] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
         continue;
       }
-
       const adminDoc = adminSnapshot.docs[0];
 
-      // 학급 학생 조회 (관리자 제외)
+      // 주식 현재가 (학급당 1회 조회 — 거시지표·자산 계산 공유)
+      const stockMap = {};
+      try {
+        const stockListDoc = await db
+          .collection("classes").doc(classCode)
+          .collection("stocks").doc("stockList").get();
+        if (stockListDoc.exists) {
+          (stockListDoc.data().stocks || []).forEach((s) => { stockMap[s.id] = Number(s.price) || 0; });
+        }
+      } catch (err) {
+        logger.warn(`[부동산세] ${classCode}: 주식 목록 조회 실패`, err.message);
+      }
+
+      // 학급 학생 조회 (관리자 제외 + isSuperAdmin/isTeacher도 제외)
       const usersSnapshot = await db
         .collection("users")
         .where("classCode", "==", classCode)
         .where("isAdmin", "==", false)
         .get();
-
       if (usersSnapshot.empty) continue;
 
-      // 부동산만 병렬 조회 (다른 자산은 과세 대상 아님)
+      // 전체 자산 계산 — 거시지표 + 누진세율 결정에 필요
       const userAssetResults = await Promise.all(
         usersSnapshot.docs.map(async (userDoc) => {
           const userId = userDoc.id;
           const userData = userDoc.data();
+          if (userData.isSuperAdmin || userData.isTeacher) return null;
           const userName = userData.name || userData.nickname || "알 수 없음";
-
-          // ownerId 또는 owner(=userName) 기준 둘 다 조회 (스키마 호환)
-          const [byIdSnap, byNameSnap] = await Promise.all([
-            db
-              .collection("classes")
-              .doc(classCode)
-              .collection("realEstateProperties")
-              .where("ownerId", "==", userId)
-              .get()
-              .catch(() => ({ docs: [] })),
-            userName
-              ? db
-                  .collection("classes")
-                  .doc(classCode)
-                  .collection("realEstateProperties")
-                  .where("owner", "==", userName)
-                  .get()
-                  .catch(() => ({ docs: [] }))
-              : Promise.resolve({ docs: [] }),
-          ]);
-
-          const seen = new Set();
-          let realEstateValue = 0;
-          [...byIdSnap.docs, ...byNameSnap.docs].forEach((d) => {
-            if (seen.has(d.id)) return;
-            seen.add(d.id);
-            const data = d.data();
-            realEstateValue += Number(data.price) || Number(data.value) || 0;
-          });
-
-          return { userDoc, userId, userName, realEstateValue };
+          const assets = await computeUserNetAssets(classCode, userId, userData, stockMap);
+          return { userDoc, userId, userName, ...assets };
         }),
       );
+      const validResults = userAssetResults.filter(Boolean);
+      if (validResults.length === 0) continue;
 
+      // ─── 거시지표 계산 ───
+      const netAssetsList = validResults.map((r) => r.netAssets);
+      const totalCashSum = validResults.reduce((s, r) => s + r.cash, 0);
+      const totalNetSum = validResults.reduce((s, r) => s + r.netAssets, 0);
+      const avgNet = Math.round(totalNetSum / validResults.length);
+      const gini = computeGiniCoefficient(netAssetsList);
+      const classBaseRate = lookupClassBaseRate(avgNet);
+
+      logger.info(
+        `[거시지표] ${classCode}: 학생 ${validResults.length}명, ` +
+        `평균 순자산 ${avgNet.toLocaleString()}원, 지니 ${gini.toFixed(3)}, ` +
+        `기본세율 ${(classBaseRate * 100).toFixed(2)}%`,
+      );
+
+      // classMacroStats 저장 (학급 거시경제 대시보드 데이터 소스)
+      const macroRef = db.collection("classMacroStats").doc(classCode);
       const batch = db.batch();
+      batch.set(macroRef, {
+        weekKey,
+        studentCount: validResults.length,
+        avgNetAssets: avgNet,
+        totalNetAssets: totalNetSum,
+        totalCash: totalCashSum,
+        giniCoefficient: Number(gini.toFixed(4)),
+        classBaseRate,
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
       let classTotalTax = 0;
       let classUsersProcessed = 0;
+      let classTaxedStudents = 0;
 
-      for (const result of userAssetResults) {
-        const { userId, userName, realEstateValue } = result;
+      for (const result of validResults) {
+        const { userId, userName, netAssets, realEstateValue } = result;
 
-        // 부동산 없으면 과세 안 함
-        if (realEstateValue <= 0) continue;
+        // 누진 배율 & 최종 세율
+        const multiplier = lookupProgressiveMultiplier(netAssets);
+        const finalRate = classBaseRate * multiplier;
+        const tax = realEstateValue > 0 && finalRate > 0
+          ? Math.round(realEstateValue * finalRate)
+          : 0;
 
-        const tax = Math.round(realEstateValue * TAX_RATE);
-        if (tax <= 0) continue;
+        // 학생 팝업 데이터 — 부동산세 정보 항상 저장 (면세든 과세든 알려줘야 함)
+        const summaryItem = {
+          type: "propertyHoldingTax",
+          label: "부동산 보유세",
+          amount: tax,
+          rate: Number(finalRate.toFixed(5)),
+          classBaseRate: Number(classBaseRate.toFixed(5)),
+          multiplier,
+          basis: realEstateValue,
+          basisLabel: "부동산 가치",
+          note: realEstateValue <= 0
+            ? "보유 부동산 없음 → 과세 0원"
+            : (multiplier === 0 ? "순자산 50만원 이하 → 면세" : null),
+        };
 
         const userRef = db.collection("users").doc(userId);
-        batch.update(userRef, {
-          cash: admin.firestore.FieldValue.increment(-tax),
+        const userUpdate = {
+          pendingTaxSummary: {
+            weekKey,
+            items: [summaryItem],
+            total: tax,
+            avgClassNet: avgNet,
+            classBaseRate: Number(classBaseRate.toFixed(5)),
+            personalMultiplier: multiplier,
+            personalNetAssets: netAssets,
+            generatedAt: admin.firestore.Timestamp.now(),
+          },
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        };
+        if (tax > 0) {
+          userUpdate.cash = admin.firestore.FieldValue.increment(-tax);
+        }
+        batch.update(userRef, userUpdate);
 
-        // TTL: 90일 후 만료
-        const logExpireAt = new Date();
-        logExpireAt.setDate(logExpireAt.getDate() + 90);
-
-        const logRef = db.collection("activity_logs").doc();
-        batch.set(logRef, {
-          userId: userId,
-          userName: userName,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          type: "taxPayment",
-          description: `[자동] 부동산 보유세 ${tax.toLocaleString()}원 (부동산 가치 ${realEstateValue.toLocaleString()}원의 0.2%)`,
-          classCode: classCode,
-          expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
-        });
-
-        classTotalTax += tax;
+        if (tax > 0) {
+          const logExpireAt = new Date();
+          logExpireAt.setDate(logExpireAt.getDate() + 90);
+          const logRef = db.collection("activity_logs").doc();
+          batch.set(logRef, {
+            userId,
+            userName,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            type: "taxPayment",
+            description:
+              `[자동] 부동산 보유세 ${tax.toLocaleString()}원 ` +
+              `(기본 ${(classBaseRate * 100).toFixed(2)}% × 배율 ${multiplier}× = ${(finalRate * 100).toFixed(2)}%, ` +
+              `부동산 ${realEstateValue.toLocaleString()}원)`,
+            classCode,
+            expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
+          });
+          classTotalTax += tax;
+          classTaxedStudents++;
+        }
         classUsersProcessed++;
       }
 
@@ -2185,14 +2313,12 @@ async function collectPropertyHoldingTaxesLogic() {
           cash: admin.firestore.FieldValue.increment(classTotalTax),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-
-        // 국고 통계 기록
+        // 국고 통계
         const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
         batch.set(
           treasuryRef,
           {
-            propertyHoldingTaxRevenue:
-              admin.firestore.FieldValue.increment(classTotalTax),
+            propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(classTotalTax),
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           },
           { merge: true },
@@ -2203,7 +2329,7 @@ async function collectPropertyHoldingTaxesLogic() {
       totalCollected += classTotalTax;
       totalUsersProcessed += classUsersProcessed;
       logger.info(
-        `[부동산세] ${classCode} 완료: ${classUsersProcessed}명, 총 ${classTotalTax.toLocaleString()}원`,
+        `[부동산세] ${classCode} 완료: ${classUsersProcessed}명 처리, 과세 ${classTaxedStudents}명, 총 ${classTotalTax.toLocaleString()}원`,
       );
     }
 

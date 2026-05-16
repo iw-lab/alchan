@@ -65,6 +65,7 @@ const HelpButton = lazyWithRetry(() => import("./HelpButton"));
 const IOSInstallPrompt = lazyWithRetry(() => import("./IOSInstallPrompt"));
 const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
 const NicknameSetupPopup = lazyWithRetry(() => import("./NicknameSetupPopup"));
+const WeeklyTaxSummaryPopup = lazyWithRetry(() => import("./WeeklyTaxSummaryPopup"));
 import { db, doc, updateDoc, increment } from "../firebase";
 import globalCacheService from "../services/globalCacheService";
 import { logger } from "../utils/logger";
@@ -919,6 +920,17 @@ export default function AlchanLayout() {
         <Suspense fallback={null}>
           <AppUpdateChecker />
         </Suspense>
+
+        {/* 📊 주간 세금 안내 팝업 (학생 전용, pendingTaxSummary가 있을 때만) */}
+        {userDoc?.uid &&
+          !userDoc?.isAdmin &&
+          !userDoc?.isSuperAdmin &&
+          !userDoc?.isTeacher &&
+          userDoc?.pendingTaxSummary && (
+            <Suspense fallback={null}>
+              <WeeklyTaxSummaryPopup userDoc={userDoc} userId={userDoc.uid} />
+            </Suspense>
+          )}
 
         {/* 🎁 출석 보상 팝업 모달 */}
         {showDailyRewardPopup && userDoc?.uid && (
