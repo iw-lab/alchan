@@ -306,13 +306,22 @@ service cloud.firestore {
     // ========================================================
     match /activity_logs/{logId} {
       allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
-      // 본인 userId + 본인 classCode로만 생성 가능 (타 학급/타인 로그 위조 방지)
-      // 관리자는 다른 사용자의 활동 로그도 생성 가능 (돈 회수, 벌금 등)
+      // 🔥 완화 (2026-05): 거래 양쪽 모두 같은 트랜잭션에서 로그 생성 필요
+      //   기존: 본인 로그만 → 송금/경매/상점 상대방 로그가 생성 안 되어 트랜잭션 실패
+      //   변경: 같은 학급이면 누구 userId의 로그도 생성 가능. 단 metadata 검증으로 악용 차단:
+      //         · classCode = 본인 학급 (타 학급 로그 위조 차단)
+      //         · userId is string (필수)
+      //         · description ≤ 500자 (스팸 차단)
+      //         · amount는 number이고 ±1억 이하 (비현실적 금액 차단)
       allow create: if isAdmin() ||
                        (isSignedIn() &&
-                       request.resource.data.userId == request.auth.uid &&
                        request.resource.data.classCode == getUserClassCode() &&
-                       isValidString(request.resource.data.description, 500));
+                       request.resource.data.userId is string &&
+                       isValidString(request.resource.data.description, 500) &&
+                       (!('amount' in request.resource.data) ||
+                        (request.resource.data.amount is number &&
+                         request.resource.data.amount >= -100000000 &&
+                         request.resource.data.amount <= 100000000)));
       allow update: if false;
       allow delete: if isAdmin();
     }
