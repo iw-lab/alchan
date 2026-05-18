@@ -122,9 +122,74 @@ exports.seedAvatarShop = onCall(
 );
 
 /**
+ * 학급 관리자가 아바타 아이템 가격을 수정 (학급별 override)
+ *
+ * governments/{classCode}.avatarShopPriceOverrides = { itemId: number }
+ *
+ * - 관리자만 호출 가능
+ * - 본인 학급 override만 수정
+ * - price = null 또는 미전송 시 override 제거 (기본 가격으로 복귀)
+ */
+exports.updateAvatarShopPrice = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { isAdmin, isSuperAdmin, classCode } = await checkAuthAndGetUserData(request);
+    if (!isAdmin && !isSuperAdmin) {
+      throw new HttpsError("permission-denied", "관리자만 가격을 수정할 수 있습니다.");
+    }
+    const { itemId, price } = request.data || {};
+    if (!itemId || typeof itemId !== "string") {
+      throw new HttpsError("invalid-argument", "itemId가 필요합니다.");
+    }
+    if (price !== null && price !== undefined) {
+      if (typeof price !== "number" || price < 0 || price > 100000000) {
+        throw new HttpsError("invalid-argument", "가격은 0~1억 사이의 숫자여야 합니다.");
+      }
+    }
+    const govRef = db.doc(`governments/${classCode}`);
+    const fieldPath = `avatarShopPriceOverrides.${itemId}`;
+    if (price === null || price === undefined) {
+      // override 제거 → 기본 가격으로 복귀
+      await govRef.set(
+        { avatarShopPriceOverrides: { [itemId]: admin.firestore.FieldValue.delete() } },
+        { merge: true },
+      );
+      logger.info(`[updateAvatarShopPrice] ${classCode} ${itemId} override 제거 (기본가)`);
+      return { success: true, removed: true };
+    } else {
+      await govRef.set(
+        { [fieldPath]: Math.round(price) },
+        { merge: true },
+      );
+      logger.info(`[updateAvatarShopPrice] ${classCode} ${itemId} → ${price}원`);
+      return { success: true, price: Math.round(price) };
+    }
+  },
+);
+
+/**
+ * 학급별 override 가격을 적용한 효과 가격 계산
+ */
+async function getEffectivePrice(classCode, itemId, basePrice) {
+  try {
+    const govDoc = await db.doc(`governments/${classCode}`).get();
+    if (govDoc.exists) {
+      const override = govDoc.data()?.avatarShopPriceOverrides?.[itemId];
+      if (typeof override === "number" && override >= 0) {
+        return override;
+      }
+    }
+  } catch (e) {
+    logger.warn(`[getEffectivePrice] ${classCode} ${itemId} 조회 실패:`, e.message);
+  }
+  return basePrice;
+}
+
+/**
  * 아바타 상점 아이템 구매 (서버사이드)
  *
  * - avatarShopItems/{itemId}에서 price·active 검증
+ * - governments/{classCode}.avatarShopPriceOverrides 학급별 가격 override 적용
  * - 학생 cash 차감, ownedAvatarItems[itemId] 추가
  * - 관리자에게 매출 입금 (VAT 정책 적용)
  * - activity_logs 기록
@@ -197,10 +262,13 @@ exports.purchaseAvatarItem = onCall(
           throw new HttpsError("already-exists", "이미 보유 중인 아바타 아이템입니다.");
         }
 
-        const price = Number(itemData.price) || 0;
-        if (price <= 0) {
+        // 학급별 override 가격 적용 (없으면 기본 가격)
+        const basePrice = Number(itemData.price) || 0;
+        const price = await getEffectivePrice(classCode, itemId, basePrice);
+        if (price < 0) {
           throw new HttpsError("failed-precondition", "유효하지 않은 가격입니다.");
         }
+        // 무료 아이템(price=0) 허용 - 베이스 default 등
 
         const cash = Number(userData.cash) || 0;
         if (cash < price) {

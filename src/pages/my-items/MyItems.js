@@ -300,48 +300,29 @@ const MyItems = () => {
       return;
     }
 
-    // 🔥 낙관적 업데이트: 즉시 성공 표시 + 모달 닫기 + 사용 중 아이템 등록
-    showNotification(
-      "success",
-      `${group.displayInfo.name} ${quantityToUse}개를 사용했습니다.`,
-    );
+    // 모달은 즉시 닫고, 서버 결과를 기다린 뒤 알림
     handleCloseUseItemModal();
 
-    setRecentlyUsedItems((prev) => {
-      const existing = prev[group.displayInfo.itemId];
-      return {
-        ...prev,
-        [group.displayInfo.itemId]: {
-          usedTimestamp: Date.now(),
-          usedQuantity: (existing?.usedQuantity || 0) + quantityToUse,
-          itemDetails: {
-            name: group.displayInfo.name,
-            icon: group.displayInfo.icon,
-            durationMs: group.displayInfo.durationMs || ITEM_DEFAULT_DURATION_MS,
-          },
-        },
-      };
-    });
-
-    // 🔥 백그라운드에서 서버 호출 (useItem 내부에서 이미 낙관적 업데이트 수행)
     try {
       let remainingToUse = quantityToUse;
 
+      // 수량 적은 doc부터 소진 (sourceDocs는 cloud function이 만든 inventory doc 배열)
       const sortedDocs = [...group.sourceDocs].sort(
-        (a, b) => a.quantity - b.quantity,
+        (a, b) => (a.quantity || 0) - (b.quantity || 0),
       );
 
-      for (const doc of sortedDocs) {
+      for (const sd of sortedDocs) {
         if (remainingToUse <= 0) break;
+        const amountToUse = Math.min(sd.quantity || 0, remainingToUse);
+        if (amountToUse <= 0) continue;
 
-        const amountToUse = Math.min(doc.quantity, remainingToUse);
-
+        // useItem은 cloud function (useUserItem) 호출 + 낙관적 차감 처리
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const result = await useItem(doc.id, amountToUse);
+        const result = await useItem(sd.id, amountToUse);
 
-        if (!result.success) {
+        if (!result?.success) {
           throw new Error(
-            result.message || `아이템 사용에 실패했습니다 (${doc.id})`,
+            result?.message || `아이템 사용에 실패했습니다 (${sd.id})`,
           );
         }
 
@@ -350,28 +331,38 @@ const MyItems = () => {
 
       if (remainingToUse > 0) {
         throw new Error(
-          `요청한 수량을 모두 사용할 수 없습니다. (부족한 수량: ${remainingToUse})`,
+          `요청한 수량을 모두 사용할 수 없습니다 (남은 수량: ${remainingToUse})`,
         );
       }
+
+      // ✅ 서버 성공 확인 후 알림 + 사용중 표시 (낙관적 표시는 ItemContext가 이미 처리)
+      showNotification(
+        "success",
+        `${group.displayInfo.name} ${quantityToUse}개를 사용했습니다.`,
+      );
+
+      setRecentlyUsedItems((prev) => {
+        const existing = prev[group.displayInfo.itemId];
+        return {
+          ...prev,
+          [group.displayInfo.itemId]: {
+            usedTimestamp: Date.now(),
+            usedQuantity: (existing?.usedQuantity || 0) + quantityToUse,
+            itemDetails: {
+              name: group.displayInfo.name,
+              icon: group.displayInfo.icon,
+              durationMs:
+                group.displayInfo.durationMs || ITEM_DEFAULT_DURATION_MS,
+            },
+          },
+        };
+      });
     } catch (error) {
-      // 🔥 서버 실패 시: 에러 알림 표시 + 사용 중 아이템 제거 (ItemContext에서 이미 롤백 처리)
+      // 서버 실패 → ItemContext가 이미 롤백 처리. 사용자에게 명확한 에러 알림.
       showNotification(
         "error",
-        `아이템 사용 중 오류가 발생했습니다: ${error.message}`,
+        `아이템 사용 실패: ${error.message || "알 수 없는 오류"}`,
       );
-      setRecentlyUsedItems((prev) => {
-        const updated = { ...prev };
-        const existing = updated[group.displayInfo.itemId];
-        if (existing) {
-          const newQty = (existing.usedQuantity || 0) - quantityToUse;
-          if (newQty <= 0) {
-            delete updated[group.displayInfo.itemId];
-          } else {
-            updated[group.displayInfo.itemId] = { ...existing, usedQuantity: newQty };
-          }
-        }
-        return updated;
-      });
     }
   };
 

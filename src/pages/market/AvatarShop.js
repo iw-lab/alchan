@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
   doc,
+  getDoc,
   collection,
   getDocs,
   query,
@@ -13,7 +14,7 @@ import {
   functions,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
-import { Sparkles, Crown, Shirt, Image as ImageIcon, Wand2, Check, Lock, ShoppingBag, Smile } from "lucide-react";
+import { Sparkles, Crown, Shirt, Image as ImageIcon, Wand2, Check, Lock, ShoppingBag, Smile, Edit3, RotateCcw } from "lucide-react";
 import { formatKoreanNumber } from "../../utils/numberFormatter";
 import { isNetAssetsNegative, NEGATIVE_ASSETS_MESSAGE } from "../../utils/netAssets";
 import Avatar from "../../components/Avatar";
@@ -43,11 +44,18 @@ const TAB_OPTIONS = [
 export default function AvatarShop() {
   const { user, userDoc, optimisticUpdate } = useAuth() || {};
   const [items, setItems] = useState([]);
+  const [priceOverrides, setPriceOverrides] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [rarityFilter, setRarityFilter] = useState("all");
   const [purchasing, setPurchasing] = useState(null); // itemId
   const [previewItem, setPreviewItem] = useState(null);
+  const [editingPrice, setEditingPrice] = useState(null); // { itemId, currentPrice }
+  const [newPriceInput, setNewPriceInput] = useState("");
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  const isClassAdmin = !!(userDoc?.isAdmin || userDoc?.isSuperAdmin);
+  const classCode = userDoc?.classCode;
 
   const fetchItems = useCallback(async () => {
     try {
@@ -66,9 +74,83 @@ export default function AvatarShop() {
     }
   }, []);
 
+  // 학급별 가격 override 로드 (governments/{classCode}.avatarShopPriceOverrides)
+  const fetchPriceOverrides = useCallback(async () => {
+    if (!classCode) return;
+    try {
+      const govSnap = await getDoc(doc(db, "governments", classCode));
+      if (govSnap.exists()) {
+        setPriceOverrides(govSnap.data()?.avatarShopPriceOverrides || {});
+      }
+    } catch (err) {
+      logger.warn("[AvatarShop] 가격 override 로드 실패:", err);
+    }
+  }, [classCode]);
+
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+    fetchPriceOverrides();
+  }, [fetchItems, fetchPriceOverrides]);
+
+  // 표시 가격 계산 (override > base)
+  const getDisplayPrice = useCallback(
+    (item) => {
+      const o = priceOverrides?.[item.id];
+      return typeof o === "number" && o >= 0 ? o : item.price;
+    },
+    [priceOverrides],
+  );
+
+  // 가격 수정 (관리자만)
+  const openPriceEditor = (item) => {
+    if (!isClassAdmin) return;
+    const cur = getDisplayPrice(item);
+    setEditingPrice({ itemId: item.id, baseName: item.name, basePrice: item.price, isOverridden: priceOverrides[item.id] != null });
+    setNewPriceInput(String(cur));
+  };
+
+  const savePriceEdit = async () => {
+    if (!editingPrice) return;
+    const priceNum = parseInt(newPriceInput, 10);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
+      alert("0 이상의 숫자를 입력하세요.");
+      return;
+    }
+    setSavingPrice(true);
+    try {
+      const fn = httpsCallable(functions, "updateAvatarShopPrice");
+      await fn({ itemId: editingPrice.itemId, price: priceNum });
+      setPriceOverrides((prev) => ({ ...prev, [editingPrice.itemId]: priceNum }));
+      setEditingPrice(null);
+      setNewPriceInput("");
+    } catch (err) {
+      logger.error("가격 수정 실패:", err);
+      alert(err?.message || "가격 수정 실패");
+    } finally {
+      setSavingPrice(false);
+    }
+  };
+
+  const resetPriceToBase = async () => {
+    if (!editingPrice) return;
+    setSavingPrice(true);
+    try {
+      const fn = httpsCallable(functions, "updateAvatarShopPrice");
+      await fn({ itemId: editingPrice.itemId, price: null });
+      setPriceOverrides((prev) => {
+        const next = { ...prev };
+        delete next[editingPrice.itemId];
+        return next;
+      });
+      setEditingPrice(null);
+      setNewPriceInput("");
+    } catch (err) {
+      logger.error("가격 초기화 실패:", err);
+      alert(err?.message || "가격 초기화 실패");
+    } finally {
+      setSavingPrice(false);
+    }
+  };
 
   // 현재 장착 상태 + 프리뷰 (장착 + 미리보기 합쳐서)
   const equippedOverlays = useMemo(() => {
@@ -126,24 +208,24 @@ export default function AvatarShop() {
       alert("이미 보유 중인 아이템입니다.");
       return;
     }
-    // 무료 아이템(주로 base_default)은 별도 결제 없이 즉시 지급
-    const isFree = (item.price || 0) === 0;
+    // 학급별 override 가격 적용 (서버와 동일)
+    const effectivePrice = getDisplayPrice(item);
+    const isFree = (effectivePrice || 0) === 0;
     if (!isFree) {
-      if ((userDoc?.cash || 0) < item.price) {
-        alert(`잔액 부족. 필요: ${item.price.toLocaleString()}원`);
+      if ((userDoc?.cash || 0) < effectivePrice) {
+        alert(`잔액 부족. 필요: ${effectivePrice.toLocaleString()}원`);
         return;
       }
       if (await isNetAssetsNegative(userDoc)) {
         alert(NEGATIVE_ASSETS_MESSAGE);
         return;
       }
-      if (!window.confirm(`${item.name} (${item.price.toLocaleString()}원) 구매하시겠습니까?`)) return;
+      if (!window.confirm(`${item.name} (${effectivePrice.toLocaleString()}원) 구매하시겠습니까?`)) return;
     }
 
     setPurchasing(item.id);
 
-    // 낙관적 차감 (유료만)
-    if (!isFree && optimisticUpdate) optimisticUpdate({ cash: -item.price });
+    if (!isFree && optimisticUpdate) optimisticUpdate({ cash: -effectivePrice });
 
     try {
       const fn = httpsCallable(functions, "purchaseAvatarItem");
@@ -151,7 +233,7 @@ export default function AvatarShop() {
       if (!isFree) alert(`🎉 ${item.name} 구매 완료!`);
     } catch (err) {
       logger.error("아바타 아이템 구매 실패:", err);
-      if (!isFree && optimisticUpdate) optimisticUpdate({ cash: item.price });
+      if (!isFree && optimisticUpdate) optimisticUpdate({ cash: effectivePrice });
       alert(err?.message || "구매 실패");
     } finally {
       setPurchasing(null);
@@ -323,8 +405,10 @@ export default function AvatarShop() {
             const equipped = userDoc?.equippedAvatarItems?.[item.slot] === item.id;
             const rar = getRarity(item.rarity);
             const slotInfo = getSlot(item.slot);
-            const canBuy = (userDoc?.cash || 0) >= item.price;
+            const displayPrice = getDisplayPrice(item);
+            const canBuy = (userDoc?.cash || 0) >= displayPrice;
             const isPreviewActive = previewItem?.id === item.id;
+            const hasOverride = priceOverrides[item.id] != null;
             return (
               <div
                 key={item.id}
@@ -398,8 +482,30 @@ export default function AvatarShop() {
                   {item.description && (
                     <p className="text-[11px] text-slate-500 line-clamp-2">{item.description}</p>
                   )}
-                  <div className="text-sm font-bold mt-auto" style={{ color: rar.color }}>
-                    💰 {formatKoreanNumber(item.price)}원
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="text-sm font-bold flex items-center gap-1" style={{ color: rar.color }}>
+                      💰 {formatKoreanNumber(displayPrice)}원
+                      {hasOverride && (
+                        <span
+                          className="text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300"
+                          title={`기본가: ${formatKoreanNumber(item.price)}원`}
+                        >
+                          학급
+                        </span>
+                      )}
+                    </div>
+                    {isClassAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPriceEditor(item);
+                        }}
+                        className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-purple-600"
+                        title="가격 수정 (관리자)"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                   {/* 액션 버튼 */}
                   {owned ? (
@@ -444,6 +550,87 @@ export default function AvatarShop() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 관리자 가격 수정 모달 */}
+      {editingPrice && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => !savingPrice && setEditingPrice(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 bg-gradient-to-r from-purple-100 to-pink-100 border-b border-purple-200">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-purple-600" />
+                가격 수정 (학급 전용)
+              </h2>
+              <p className="text-xs text-slate-600 mt-1">{editingPrice.baseName}</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3 text-xs">
+                <div className="flex justify-between mb-1">
+                  <span className="text-slate-500">기본 가격</span>
+                  <span className="font-bold text-slate-800">
+                    {Number(editingPrice.basePrice || 0).toLocaleString()}원
+                  </span>
+                </div>
+                {editingPrice.isOverridden && (
+                  <div className="flex justify-between text-amber-700">
+                    <span>현재 학급 가격</span>
+                    <span className="font-bold">
+                      {Number(priceOverrides[editingPrice.itemId] || 0).toLocaleString()}원
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                  새 가격 (학급 적용)
+                </label>
+                <input
+                  type="number"
+                  value={newPriceInput}
+                  onChange={(e) => setNewPriceInput(e.target.value)}
+                  min="0"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 text-lg font-bold focus:border-purple-500 focus:outline-none"
+                  placeholder="0"
+                />
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  💡 이 학급의 학생들에게만 적용됩니다. 다른 학급에는 영향 없음.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {editingPrice.isOverridden && (
+                  <button
+                    onClick={resetPriceToBase}
+                    disabled={savingPrice}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold disabled:opacity-50"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    기본가로
+                  </button>
+                )}
+                <button
+                  onClick={() => setEditingPrice(null)}
+                  disabled={savingPrice}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold disabled:opacity-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={savePriceEdit}
+                  disabled={savingPrice}
+                  className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold disabled:opacity-50"
+                >
+                  {savingPrice ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
