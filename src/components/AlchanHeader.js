@@ -533,6 +533,9 @@ const AlchanHeader = memo(
               )}
             </div>
 
+            {/* 전신 아바타 위젯 (헤더 우측 끝, button 밖 별도 영역) */}
+            <AvatarHeaderWidget />
+
             {/* 사용자 메뉴 */}
             <div className="relative" ref={userMenuRef}>
               <button
@@ -557,11 +560,6 @@ const AlchanHeader = memo(
                   <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
                 </div>
               </button>
-
-              {/* 전신 아바타 위젯 (헤더 우측 끝) */}
-              <div onClick={(e) => e.stopPropagation()} className="ml-2">
-                <AvatarHeaderWidget />
-              </div>
 
               {/* 드롭다운 메뉴 */}
               {showUserMenu && (

@@ -800,8 +800,29 @@ const BASE_ITEMS = [
   },
 ];
 
+// 옛 BASE_ITEMS deprecated IDs - Firestore에서 active=false로 표시 (시드 시 비활성화)
+const DEPRECATED_BASE_IDS = [
+  "base_default", "base_blushing_shy", "base_dark_neat", "base_fair_bob_f",
+  "base_fair_short_m", "base_freckle_red", "base_pale_pink_cheek",
+  "base_robot_circuit", "base_sleepy_calm", "base_smug_cool", "base_starry_eyes",
+  "base_strong_brave", "base_sunshine_gold", "base_tan_curly", "base_wise_purple",
+  "editor_bald",
+];
+
+const DEPRECATED_ITEMS = DEPRECATED_BASE_IDS.map((id) => ({
+  id,
+  slot: "base",
+  name: "(deprecated)",
+  description: "no longer in use",
+  rarity: "common",
+  price: 0,
+  active: false,
+  prompt: "deprecated",
+}));
+
 const ALL_AVATAR_ITEMS = [
   ...BASE_ITEMS,
+  ...DEPRECATED_ITEMS,
   ...HAIR_ITEMS,
   ...HAT_ITEMS,
   ...GLASSES_ITEMS,
@@ -811,9 +832,9 @@ const ALL_AVATAR_ITEMS = [
   ...PRESET_ITEMS,
 ].map((item, idx) => ({
   ...item,
-  active: true,
+  active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: `/avatar-shop/${item.id}.png`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
