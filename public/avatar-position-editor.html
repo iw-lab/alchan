@@ -170,12 +170,7 @@
 // =====================================================================
 // 데이터
 // =====================================================================
-const BASES = [
-  "base_default","base_blushing_shy","base_dark_neat","base_fair_bob_f",
-  "base_fair_short_m","base_freckle_red","base_pale_pink_cheek",
-  "base_robot_circuit","base_sleepy_calm","base_smug_cool","base_starry_eyes",
-  "base_strong_brave","base_sunshine_gold","base_tan_curly","base_wise_purple",
-];
+const BASES = ["base_male","base_female"];
 
 const SLOTS = {
   base:       BASES,
@@ -193,11 +188,17 @@ const SLOT_ZINDEX = {
   background: 0, base: 10, outfit: 20, hair: 30,
   glasses: 40, hat: 50, effect: 60, preset: 99,
 };
+// 실제 앱과 동일하게 multiply 블렌드 (헤어 안쪽 흰색 자동 투명)
+const SLOT_BLEND_MODE = {
+  hair: "multiply", hat: "multiply", glasses: "multiply",
+  outfit: "multiply", effect: "multiply",
+  base: "normal", background: "normal", preset: "normal",
+};
 
 // =====================================================================
 // 상태
 // =====================================================================
-let currentBase = "base_default";
+let currentBase = "base_male";
 let currentSlot = "hair";
 let currentItem = SLOTS.hair[0];
 // itemOverrides[itemId] = { x, y, w, h }
@@ -289,7 +290,7 @@ function renderBigPreview() {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
     img.src = `/avatar-shop/${currentItem}.png`;
-    img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;`;
+    img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
     // 선택 박스 + 핸들
@@ -373,7 +374,7 @@ function renderGallery() {
       const a = getAnchor(itemId);
       const it = document.createElement("img");
       it.src = `/avatar-shop/${itemId}.png`;
-      it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;`;
+      it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
     card.appendChild(mini);

@@ -24,10 +24,16 @@ import { fileURLToPath } from "url";
 import { execSync, spawn } from "child_process";
 import crypto from "crypto";
 
-import { ALL_AVATAR_ITEMS } from "../src/data/avatarShopCatalog.js";
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 동적 import로 ES/CJS 양쪽 호환
+const catalogPath = path.resolve(__dirname, "../src/data/avatarShopCatalog.js");
+const catalogMod = await import(`file://${catalogPath}`);
+const ALL_AVATAR_ITEMS = catalogMod.ALL_AVATAR_ITEMS || catalogMod.default?.ALL_AVATAR_ITEMS;
+if (!Array.isArray(ALL_AVATAR_ITEMS)) {
+  throw new Error("ALL_AVATAR_ITEMS not found in catalog");
+}
 
 const OUTPUT_DIR = path.resolve(__dirname, "../public/avatar-shop");
 const LOCK_FILE = path.resolve(process.env.HOME, ".claude/state/codex-batch.lock");
