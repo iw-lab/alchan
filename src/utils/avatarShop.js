@@ -98,22 +98,21 @@ export function getActivePreset(userDoc) {
  * 슬롯별 기본 위치 (PNG 오버레이 좌표) - SVG viewBox(100x100 기준)
  * scale: SVG viewBox 단위
  */
-// 베이스 PNG (1024×1024) 기준 좌표 시스템 (0-100 백분율)
-// scripts/normalize-hair-position.mjs로 헤어/모자/안경/의상 PNG 콘텐츠 위치가
-// 표준 좌표로 정규화 되었으므로, 모든 슬롯이 전체 frame fit으로 충분.
-//   hair    표준위치 (50%, 40%) 높이 62%
-//   hat     표준위치 (50%, 22%) 높이 32%
-//   glasses 표준위치 (50%, 44%) 높이 16%
-//   outfit  표준위치 (50%, 78%) 높이 42%
+// 전신 베이스 (1024×1024) 좌표:
+//   정수리 5%, 눈 22%, 입 28%, 어깨 42%, 허리 60%, 무릎 80%, 발 95%
+// 슬롯 PNG들은 흉상 기준으로 normalize됐으므로 전신 베이스에 합성 시 위치 조정 필요.
+// (PNG 콘텐츠가 PNG 캔버스 내 표준 위치에 있고, SLOT_ANCHORS로 베이스 캔버스에 매핑)
 export const SLOT_ANCHORS = {
-  base:       { x: 50, y: 50, w: 100, h: 100 },
-  hair:       { x: 50, y: 50, w: 100, h: 100 },
-  hat:        { x: 50, y: 50, w: 100, h: 100 },
-  glasses:    { x: 50, y: 50, w: 100, h: 100 },
-  outfit:     { x: 50, y: 50, w: 100, h: 100 },
-  background: { x: 50, y: 50, w: 100, h: 100 },
-  effect:     { x: 50, y: 50, w: 100, h: 100 },
-  preset:     { x: 50, y: 50, w: 100, h: 100 },
+  base:       { x: 50, y: 50,  w: 100, h: 100 },
+  // PNG 콘텐츠 (cy=30% 기준 head 영역) → 베이스 머리(22%)에 정렬
+  hair:       { x: 50, y: 18,  w: 60,  h: 50 },
+  hat:        { x: 50, y: 8,   w: 50,  h: 30 },
+  glasses:    { x: 50, y: 22,  w: 40,  h: 12 },
+  // PNG 콘텐츠 (cy=78% outfit) → 베이스 몸통(55%)에 정렬
+  outfit:     { x: 50, y: 55,  w: 70,  h: 50 },
+  background: { x: 50, y: 50,  w: 100, h: 100 },
+  effect:     { x: 50, y: 50,  w: 100, h: 100 },
+  preset:     { x: 50, y: 50,  w: 100, h: 100 },
 };
 
 // PNG 자체에서 흰 픽셀을 alpha 0으로 처리하면 normal blend로 충분.

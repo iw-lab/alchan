@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import Avatar from "./Avatar";
+import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { buildAvatarOverlays } from "../utils/avatarShop";
 import { getLevelInfo } from "../utils/levelSystem";
 import {
@@ -556,6 +557,11 @@ const AlchanHeader = memo(
                   <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
                 </div>
               </button>
+
+              {/* 전신 아바타 위젯 (헤더 우측 끝) */}
+              <div onClick={(e) => e.stopPropagation()} className="ml-2">
+                <AvatarHeaderWidget />
+              </div>
 
               {/* 드롭다운 메뉴 */}
               {showUserMenu && (
