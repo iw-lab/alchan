@@ -172,7 +172,7 @@
 // =====================================================================
 // editor_bald: 편집기 전용 대머리 베이스 (헤어 위치 잡기 쉽게)
 // base_male/base_female: 실제 학생이 사용하는 베이스
-const BASES = ["editor_bald","base_male","base_female"];
+const BASES = ["base_male","base_female"];
 
 const SLOTS = {
   base:       ["base_male","base_female"], // 학생용 베이스 2종 (editor_bald 제외)
@@ -200,7 +200,7 @@ const SLOT_BLEND_MODE = {
 // =====================================================================
 // 상태
 // =====================================================================
-let currentBase = "editor_bald";
+let currentBase = "base_male";
 let currentSlot = "hair";
 let currentItem = SLOTS.hair[0];
 // itemOverrides[itemId] = { x, y, w, h }
