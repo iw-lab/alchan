@@ -236,11 +236,13 @@ exports.purchaseAvatarItem = onCall(
       logger.warn("[purchaseAvatarItem] VAT 조회 실패, 기본 10%:", e.message);
     }
 
+    const govRef = db.doc(`governments/${classCode}`);
+
     try {
       const result = await db.runTransaction(async (transaction) => {
-        const reads = [transaction.get(userRef), transaction.get(itemRef)];
+        const reads = [transaction.get(userRef), transaction.get(itemRef), transaction.get(govRef)];
         if (adminRef) reads.push(transaction.get(adminRef));
-        const [userSnap, itemSnap, adminSnap] = await Promise.all(reads);
+        const [userSnap, itemSnap, govSnapInTx, adminSnap] = await Promise.all(reads);
 
         if (!userSnap.exists) {
           throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
@@ -262,9 +264,13 @@ exports.purchaseAvatarItem = onCall(
           throw new HttpsError("already-exists", "이미 보유 중인 아바타 아이템입니다.");
         }
 
-        // 학급별 override 가격 적용 (없으면 기본 가격)
+        // 학급별 override 가격 적용 (transaction.get으로 정확히 읽음)
         const basePrice = Number(itemData.price) || 0;
-        const price = await getEffectivePrice(classCode, itemId, basePrice);
+        const govData = govSnapInTx?.exists ? govSnapInTx.data() : {};
+        const currentOverride = govData?.avatarShopPriceOverrides?.[itemId];
+        const price = (typeof currentOverride === "number" && currentOverride >= 0)
+          ? currentOverride
+          : basePrice;
         if (price < 0) {
           throw new HttpsError("failed-precondition", "유효하지 않은 가격입니다.");
         }
@@ -338,11 +344,26 @@ exports.purchaseAvatarItem = onCall(
           );
         }
 
+        // 🔥 학급별 자동 가격 인상 (구매 1회당 1.1배)
+        // 무료(price=0) 아이템은 인상 안 함
+        // 최대 1억원 cap
+        let nextPrice = null;
+        if (price > 0) {
+          nextPrice = Math.min(100000000, Math.round(price * 1.1));
+          const fieldPath = `avatarShopPriceOverrides.${itemId}`;
+          transaction.set(
+            govRef,
+            { [fieldPath]: nextPrice },
+            { merge: true },
+          );
+        }
+
         return {
           itemId,
           itemName: itemData.name,
           slot: itemData.slot,
           price,
+          nextPrice,
           vatAmount,
           adminCashDelta,
         };

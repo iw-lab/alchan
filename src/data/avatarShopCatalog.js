@@ -50,7 +50,7 @@ const HAIR_ITEMS = [
     name: "무지개 곱슬",
     description: "기분 좋아지는 무지개 곱슬머리",
     rarity: "epic",
-    price: 120000,
+    price: 1200000,
     prompt: `${ITEM_ONLY_STYLE} A curly afro-style wig, vibrant rainbow colored hair (red, orange, yellow, green, blue, purple stripes), playful and bouncy, viewed from the front as if floating in air.`,
   },
   {
@@ -59,7 +59,7 @@ const HAIR_ITEMS = [
     name: "은빛 장발",
     description: "달빛처럼 빛나는 은발",
     rarity: "rare",
-    price: 45000,
+    price: 450000,
     prompt: `${ITEM_ONLY_STYLE} A long straight silver hairstyle wig, shimmering metallic silver color, parted in the middle, shoulder length, simple cartoon outline.`,
   },
   {
@@ -68,7 +68,7 @@ const HAIR_ITEMS = [
     name: "핑크 트윈테일",
     description: "발랄한 핑크 트윈테일",
     rarity: "rare",
-    price: 30000,
+    price: 300000,
     prompt: `${ITEM_ONLY_STYLE} A pink twin-tail hairstyle wig with two pigtails tied with ribbons, bubblegum pink color, fluffy and cute.`,
   },
   {
@@ -77,7 +77,7 @@ const HAIR_ITEMS = [
     name: "황금 땋은머리",
     description: "공주님 같은 황금색 땋은머리",
     rarity: "epic",
-    price: 90000,
+    price: 900000,
     prompt: `${ITEM_ONLY_STYLE} A long golden braided hairstyle wig, one thick braid coming down from middle parting, princess style, warm honey blonde color.`,
   },
   {
@@ -86,7 +86,7 @@ const HAIR_ITEMS = [
     name: "불꽃 머리",
     description: "활활 타오르는 불꽃 머리",
     rarity: "legendary",
-    price: 400000,
+    price: 4000000,
     prompt: `${ITEM_ONLY_STYLE} A spiky hairstyle wig that looks like animated fire, gradient from red to orange to yellow with flame-shaped tips, dynamic flowing flames, cartoon style.`,
   },
   {
@@ -95,7 +95,7 @@ const HAIR_ITEMS = [
     name: "은하수 머리",
     description: "별이 박힌 우주빛 머리",
     rarity: "legendary",
-    price: 500000,
+    price: 5000000,
     prompt: `${ITEM_ONLY_STYLE} A flowing wavy long hairstyle wig with dark purple and deep blue galaxy colors, tiny white star sparkles scattered through the hair, cosmic theme.`,
   },
   {
@@ -104,7 +104,7 @@ const HAIR_ITEMS = [
     name: "단정 단발",
     description: "단정한 갈색 단발",
     rarity: "common",
-    price: 5000,
+    price: 50000,
     prompt: `${ITEM_ONLY_STYLE} A short brown bob haircut wig, neat and tidy, chin-length, warm chestnut brown color, simple shape.`,
   },
   {
@@ -113,7 +113,7 @@ const HAIR_ITEMS = [
     name: "민트 단발",
     description: "상쾌한 민트색 머리",
     rarity: "rare",
-    price: 25000,
+    price: 250000,
     prompt: `${ITEM_ONLY_STYLE} A short mint green colored bob wig, fresh pastel mint color, slightly fluffy, cute style.`,
   },
   // ===== 추가 헤어 6종 (포니테일·똥머리·남자스타일) =====
@@ -123,7 +123,7 @@ const HAIR_ITEMS = [
     name: "포니테일",
     description: "발랄한 갈색 포니테일",
     rarity: "rare",
-    price: 35000,
+    price: 350000,
     prompt: `${ITEM_ONLY_STYLE} A brown ponytail hairstyle wig viewed from the front, hair pulled back tightly and tied at the back of the head with a small black rubber band, a long ponytail tail visible on one side, warm chestnut brown color, neat tidy front bangs, cute girl style.`,
   },
   {
@@ -132,7 +132,7 @@ const HAIR_ITEMS = [
     name: "똥머리",
     description: "정수리 위에 묶은 똥머리",
     rarity: "rare",
-    price: 30000,
+    price: 300000,
     prompt: `${ITEM_ONLY_STYLE} A black hair bun (top knot) hairstyle wig, hair pulled up and tied into a round bun on TOP of the head, small wispy bangs in front, casual messy style, dark black color, cute and playful look.`,
   },
   {
@@ -141,7 +141,7 @@ const HAIR_ITEMS = [
     name: "남자 언더컷",
     description: "스타일리쉬한 남자 언더컷",
     rarity: "rare",
-    price: 28000,
+    price: 280000,
     prompt: `${ITEM_ONLY_STYLE} A male undercut hairstyle wig, longer hair on top swept to one side, very short shaved sides, modern stylish look, dark brown to black color, sharp edges, boyish charm.`,
   },
   {
@@ -150,7 +150,7 @@ const HAIR_ITEMS = [
     name: "남자 헝클어진머리",
     description: "자연스럽게 헝클어진 남자머리",
     rarity: "common",
-    price: 8000,
+    price: 80000,
     prompt: `${ITEM_ONLY_STYLE} A messy spiky male hairstyle wig, naturally tousled and slightly unkempt, medium-short length, dark chocolate brown color, casual relaxed look, boy style, simple cartoon shape.`,
   },
   {
@@ -159,7 +159,7 @@ const HAIR_ITEMS = [
     name: "남자 올백머리",
     description: "단정한 올백 스타일",
     rarity: "rare",
-    price: 32000,
+    price: 320000,
     prompt: `${ITEM_ONLY_STYLE} A slick-back hairstyle wig for a boy, hair combed straight back from the forehead, neat tidy appearance, glossy black color, mature dignified look, professional style.`,
   },
   {
@@ -168,7 +168,7 @@ const HAIR_ITEMS = [
     name: "긴 웨이브",
     description: "우아한 갈색 긴 웨이브",
     rarity: "epic",
-    price: 100000,
+    price: 1000000,
     prompt: `${ITEM_ONLY_STYLE} A long wavy brown hairstyle wig, soft cascading waves flowing down past the shoulders, warm chocolate brown color, gentle parted bangs in middle, elegant feminine style, voluminous and shiny.`,
   },
 ];
@@ -183,7 +183,7 @@ const HAT_ITEMS = [
     name: "황금 왕관",
     description: "왕족의 황금 왕관",
     rarity: "legendary",
-    price: 800000,
+    price: 8000000,
     prompt: `${ITEM_ONLY_STYLE} A royal golden crown with red ruby, blue sapphire and green emerald gemstones embedded in front, ornate medieval design, shimmering gold.`,
   },
   {
@@ -192,7 +192,7 @@ const HAT_ITEMS = [
     name: "마법사 모자",
     description: "별이 박힌 마법사 모자",
     rarity: "epic",
-    price: 130000,
+    price: 1300000,
     prompt: `${ITEM_ONLY_STYLE} A purple witch hat, tall pointed cone shape, wide curved brim, decorated with small yellow stars and a crescent moon buckle.`,
   },
   {
@@ -201,7 +201,7 @@ const HAT_ITEMS = [
     name: "빨간 야구모자",
     description: "스포츠 감성 빨간 야구모자",
     rarity: "common",
-    price: 7000,
+    price: 70000,
     prompt: `${ITEM_ONLY_STYLE} A red baseball cap with a small white star logo on front, classic curved brim, casual sporty look.`,
   },
   {
@@ -210,7 +210,7 @@ const HAT_ITEMS = [
     name: "노란 비니",
     description: "겨울 감성 노란 비니",
     rarity: "common",
-    price: 6000,
+    price: 60000,
     prompt: `${ITEM_ONLY_STYLE} A yellow knitted beanie hat with a small pom-pom on top, cozy winter style, visible knit texture.`,
   },
   {
@@ -219,7 +219,7 @@ const HAT_ITEMS = [
     name: "셰프 모자",
     description: "요리 마스터의 셰프 모자",
     rarity: "rare",
-    price: 35000,
+    price: 350000,
     prompt: `${ITEM_ONLY_STYLE} A classic white chef toque hat, tall puffy pleated top, simple band, professional cook style.`,
   },
   {
@@ -228,7 +228,7 @@ const HAT_ITEMS = [
     name: "졸업 모자",
     description: "졸업식의 검은 학사모",
     rarity: "rare",
-    price: 40000,
+    price: 400000,
     prompt: `${ITEM_ONLY_STYLE} A black graduation mortarboard cap with a gold tassel hanging from the side, academic style, square top.`,
   },
   {
@@ -237,7 +237,7 @@ const HAT_ITEMS = [
     name: "악마 뿔",
     description: "장난스러운 빨간 악마 뿔",
     rarity: "epic",
-    price: 100000,
+    price: 1000000,
     prompt: `${ITEM_ONLY_STYLE} A pair of red devil horns headband, small curved horns, cartoonish, no head visible, just the horn accessory floating in space.`,
   },
   {
@@ -246,7 +246,7 @@ const HAT_ITEMS = [
     name: "천사 후광",
     description: "신성한 황금 후광",
     rarity: "legendary",
-    price: 350000,
+    price: 3500000,
     prompt: `${ITEM_ONLY_STYLE} A glowing golden angel halo ring, floating circle of golden light with soft yellow glow rays around it, no character, just the halo.`,
   },
 ];
@@ -261,7 +261,7 @@ const GLASSES_ITEMS = [
     name: "동그란 안경",
     description: "지적인 검은 둥근 안경",
     rarity: "common",
-    price: 4000,
+    price: 40000,
     prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses, simple circular lenses, intellectual look, thin black frame.`,
   },
   {
@@ -270,7 +270,7 @@ const GLASSES_ITEMS = [
     name: "에이비에이터",
     description: "쿨한 비행사 선글라스",
     rarity: "rare",
-    price: 30000,
+    price: 300000,
     prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses, teardrop-shaped lenses, dark gradient lenses, gold metal frame, classic pilot style.`,
   },
   {
@@ -279,7 +279,7 @@ const GLASSES_ITEMS = [
     name: "별모양 안경",
     description: "톡톡 튀는 별 모양 안경",
     rarity: "epic",
-    price: 90000,
+    price: 900000,
     prompt: `${ITEM_ONLY_STYLE} A pair of star-shaped sunglasses, five-pointed star outline lenses, hot pink frame, playful idol style.`,
   },
   {
@@ -288,7 +288,7 @@ const GLASSES_ITEMS = [
     name: "하트 선글라스",
     description: "사랑스러운 하트 선글라스",
     rarity: "rare",
-    price: 25000,
+    price: 250000,
     prompt: `${ITEM_ONLY_STYLE} A pair of heart-shaped sunglasses, pink heart-outline lenses, transparent pink tint, cute style.`,
   },
   {
@@ -297,7 +297,7 @@ const GLASSES_ITEMS = [
     name: "해적 안대",
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
-    price: 110000,
+    price: 1100000,
     prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch with a small white skull drawing in the center, leather texture, single eye coverage with string strap.`,
   },
   {
@@ -306,7 +306,7 @@ const GLASSES_ITEMS = [
     name: "마스크",
     description: "보건의 흰 마스크",
     rarity: "common",
-    price: 3000,
+    price: 30000,
     prompt: `${ITEM_ONLY_STYLE} A white medical face mask with ear loops, simple folded design, hospital style, hanging in mid-air.`,
   },
   {
@@ -315,7 +315,7 @@ const GLASSES_ITEMS = [
     name: "3D 안경",
     description: "복고 감성 3D 안경",
     rarity: "rare",
-    price: 28000,
+    price: 280000,
     prompt: `${ITEM_ONLY_STYLE} A pair of retro 3D movie glasses, one red lens and one blue/cyan lens, simple cardboard frame, vintage cinema style.`,
   },
   {
@@ -324,7 +324,7 @@ const GLASSES_ITEMS = [
     name: "외알 안경",
     description: "신사의 외알 안경",
     rarity: "epic",
-    price: 95000,
+    price: 950000,
     prompt: `${ITEM_ONLY_STYLE} A single golden monocle eyeglass with a long curled chain dangling from it, classic Victorian gentleman style, ornate frame.`,
   },
 ];
@@ -339,7 +339,7 @@ const OUTFIT_ITEMS = [
     name: "푸른 한복",
     description: "단아한 푸른 한복",
     rarity: "epic",
-    price: 150000,
+    price: 1500000,
     prompt: `${ITEM_ONLY_STYLE} A traditional Korean hanbok top (jeogori), deep cobalt blue color with white collar and ribbon (otgoreum), shoulders to chest area, no person inside, flat lay style.`,
   },
   {
@@ -348,7 +348,7 @@ const OUTFIT_ITEMS = [
     name: "우주복",
     description: "꿈을 향한 우주복",
     rarity: "legendary",
-    price: 450000,
+    price: 4500000,
     prompt: `${ITEM_ONLY_STYLE} A white astronaut spacesuit upper portion, helmet with reflective visor and gold trim, chest control panel with patches, NASA-style mission badge, no person inside.`,
   },
   {
@@ -357,7 +357,7 @@ const OUTFIT_ITEMS = [
     name: "셰프복",
     description: "요리사의 흰 셰프복",
     rarity: "rare",
-    price: 40000,
+    price: 400000,
     prompt: `${ITEM_ONLY_STYLE} A white chef jacket, double-breasted with two rows of buttons, neckerchief tied at the collar, professional kitchen wear, no person, just the jacket.`,
   },
   {
@@ -366,7 +366,7 @@ const OUTFIT_ITEMS = [
     name: "교복",
     description: "단정한 교복",
     rarity: "common",
-    price: 8000,
+    price: 80000,
     prompt: `${ITEM_ONLY_STYLE} A Korean school uniform top, navy blazer with red striped tie and white shirt collar, simple emblem on chest pocket, no person inside.`,
   },
   {
@@ -375,7 +375,7 @@ const OUTFIT_ITEMS = [
     name: "아이돌 무대의상",
     description: "반짝이는 아이돌 무대의상",
     rarity: "legendary",
-    price: 600000,
+    price: 6000000,
     prompt: `${ITEM_ONLY_STYLE} A sparkly silver K-pop idol stage outfit jacket, glittery sequins, decorative tassels and chains, dazzling colorful gems on the chest, no person.`,
   },
   {
@@ -384,7 +384,7 @@ const OUTFIT_ITEMS = [
     name: "경찰복",
     description: "정의의 경찰복",
     rarity: "rare",
-    price: 50000,
+    price: 500000,
     prompt: `${ITEM_ONLY_STYLE} A police officer uniform top, navy blue blazer with badge on chest, shoulder epaulets, gold buttons, professional look, no person inside.`,
   },
   {
@@ -393,7 +393,7 @@ const OUTFIT_ITEMS = [
     name: "의사 가운",
     description: "흰 의사 가운",
     rarity: "rare",
-    price: 45000,
+    price: 450000,
     prompt: `${ITEM_ONLY_STYLE} A white doctor lab coat with a stethoscope around the collar, name tag on chest pocket, professional medical wear, no person.`,
   },
   {
@@ -402,7 +402,7 @@ const OUTFIT_ITEMS = [
     name: "마법사 로브",
     description: "신비로운 마법사 로브",
     rarity: "epic",
-    price: 170000,
+    price: 1700000,
     prompt: `${ITEM_ONLY_STYLE} A purple wizard robe with golden star patterns and moons embroidered, wide flowing sleeves, mystical magical aesthetic, no person inside.`,
   },
 ];
@@ -417,7 +417,7 @@ const BG_ITEMS = [
     name: "우주 정거장",
     description: "별이 빛나는 우주 배경",
     rarity: "epic",
-    price: 100000,
+    price: 1000000,
     prompt: `${SCENE_STYLE} A vibrant outer space scene, deep navy and purple cosmos with bright twinkling stars, a colorful nebula in the distance, a small planet, no characters or text.`,
   },
   {
@@ -426,7 +426,7 @@ const BG_ITEMS = [
     name: "바닷속 산호초",
     description: "다채로운 바다 산호초",
     rarity: "rare",
-    price: 30000,
+    price: 300000,
     prompt: `${SCENE_STYLE} An underwater coral reef scene, vibrant pink and orange corals, small colorful fish swimming, light beams from above, blue gradient water, no characters or text.`,
   },
   {
@@ -435,7 +435,7 @@ const BG_ITEMS = [
     name: "도서관",
     description: "지식의 마법 도서관",
     rarity: "rare",
-    price: 25000,
+    price: 250000,
     prompt: `${SCENE_STYLE} A cozy magical library interior, tall wooden bookshelves filled with colorful books, warm golden lamplight, floating glowing magical orbs, no characters or readable text on books.`,
   },
   {
@@ -444,7 +444,7 @@ const BG_ITEMS = [
     name: "노을 해변",
     description: "황금빛 노을 해변",
     rarity: "common",
-    price: 8000,
+    price: 80000,
     prompt: `${SCENE_STYLE} A sunset beach scene, warm orange and pink sky, golden sun setting on the horizon, calm sea reflecting colors, sandy beach in foreground, palm tree silhouette, no characters.`,
   },
   {
@@ -453,7 +453,7 @@ const BG_ITEMS = [
     name: "마법의 성",
     description: "동화 속 마법의 성",
     rarity: "legendary",
-    price: 380000,
+    price: 3800000,
     prompt: `${SCENE_STYLE} A fairy tale magical castle on a hill, blue and purple turrets with golden flags, glowing windows, rainbow in the sky, lush green grounds, fantasy vibe, no characters or text.`,
   },
   {
@@ -462,7 +462,7 @@ const BG_ITEMS = [
     name: "신비의 숲",
     description: "반짝이는 신비의 숲",
     rarity: "common",
-    price: 9000,
+    price: 90000,
     prompt: `${SCENE_STYLE} An enchanted forest, tall green trees with glowing yellow firefly sparkles, soft sunlight beams through leaves, mushrooms on the ground, mystical atmosphere, no characters.`,
   },
   {
@@ -471,7 +471,7 @@ const BG_ITEMS = [
     name: "네온 도시",
     description: "사이버펑크 네온 도시",
     rarity: "epic",
-    price: 140000,
+    price: 1400000,
     prompt: `${SCENE_STYLE} A cyberpunk neon city skyline at night, tall buildings with bright pink and cyan neon signs, rainy reflective streets, futuristic vibe, no readable text on signs (just neon shapes), no characters.`,
   },
   {
@@ -480,7 +480,7 @@ const BG_ITEMS = [
     name: "오로라",
     description: "북극의 환상적인 오로라",
     rarity: "legendary",
-    price: 320000,
+    price: 3200000,
     prompt: `${SCENE_STYLE} A polar aurora borealis scene, green and pink northern lights waving across a starry sky, snowy mountain silhouettes below, magical winter atmosphere, no characters.`,
   },
 ];
@@ -495,7 +495,7 @@ const EFFECT_ITEMS = [
     name: "반짝임",
     description: "주변을 빛나게 하는 반짝임",
     rarity: "common",
-    price: 5000,
+    price: 50000,
     prompt: `${EFFECT_STYLE} Small white and gold sparkles, plus-shaped twinkles scattered around the frame, semi-transparent overlay.`,
   },
   {
@@ -504,7 +504,7 @@ const EFFECT_ITEMS = [
     name: "하트 폭발",
     description: "사랑스러운 하트 폭발",
     rarity: "rare",
-    price: 22000,
+    price: 220000,
     prompt: `${EFFECT_STYLE} Pink and red heart shapes floating up and around in various sizes, valentine vibe, semi-transparent.`,
   },
   {
@@ -513,7 +513,7 @@ const EFFECT_ITEMS = [
     name: "번개",
     description: "강력한 번개 이펙트",
     rarity: "epic",
-    price: 100000,
+    price: 1000000,
     prompt: `${EFFECT_STYLE} Bright yellow lightning bolts and electric arcs zigzagging from frame edges, electric blue glow, dynamic energy.`,
   },
   {
@@ -522,7 +522,7 @@ const EFFECT_ITEMS = [
     name: "불꽃 오라",
     description: "활활 타오르는 불꽃 오라",
     rarity: "legendary",
-    price: 280000,
+    price: 2800000,
     prompt: `${EFFECT_STYLE} Flame aura silhouette around an empty center, red orange yellow gradient flames licking upward from the bottom and sides, dynamic fire energy.`,
   },
   {
@@ -531,7 +531,7 @@ const EFFECT_ITEMS = [
     name: "벚꽃잎",
     description: "흩날리는 벚꽃잎",
     rarity: "rare",
-    price: 18000,
+    price: 180000,
     prompt: `${EFFECT_STYLE} Pink cherry blossom petals (sakura) falling and floating, semi-transparent, gentle spring atmosphere.`,
   },
   {
@@ -540,7 +540,7 @@ const EFFECT_ITEMS = [
     name: "눈송이",
     description: "은은한 눈송이",
     rarity: "common",
-    price: 4000,
+    price: 40000,
     prompt: `${EFFECT_STYLE} White snowflakes of various sizes drifting down, six-point crystalline shapes, semi-transparent winter feel.`,
   },
   {
@@ -549,7 +549,7 @@ const EFFECT_ITEMS = [
     name: "무지개 링",
     description: "주변에 도는 무지개 링",
     rarity: "epic",
-    price: 130000,
+    price: 1300000,
     prompt: `${EFFECT_STYLE} Rainbow colored ring/halo encircling the center, gradient red orange yellow green blue purple, magical glow.`,
   },
   {
@@ -558,7 +558,7 @@ const EFFECT_ITEMS = [
     name: "나비 떼",
     description: "아름다운 나비 떼",
     rarity: "rare",
-    price: 25000,
+    price: 250000,
     prompt: `${EFFECT_STYLE} Several colorful butterflies (blue, purple, yellow) floating around the frame, peaceful magical mood.`,
   },
 ];
@@ -573,7 +573,7 @@ const PRESET_ITEMS = [
     name: "해적 선장",
     description: "바다를 누비는 해적 선장",
     rarity: "epic",
-    price: 200000,
+    price: 2000000,
     prompt: `${PRESET_STYLE} A cute chibi pirate captain character, head and shoulders bust, wearing a tricorne pirate hat with skull emblem, black eyepatch, red sailor coat with gold buttons, scarf around neck, smiling confidently. Solid teal background.`,
   },
   {
@@ -582,7 +582,7 @@ const PRESET_ITEMS = [
     name: "동화 공주",
     description: "동화 속 우아한 공주",
     rarity: "legendary",
-    price: 500000,
+    price: 5000000,
     prompt: `${PRESET_STYLE} A cute chibi princess character, head and shoulders bust, long golden braided hair, small tiara with pink jewel, pink frilly dress with white lace collar, gentle smile, sparkling eyes. Solid pastel pink background.`,
   },
   {
@@ -591,7 +591,7 @@ const PRESET_ITEMS = [
     name: "닌자",
     description: "그림자 속의 닌자",
     rarity: "epic",
-    price: 220000,
+    price: 2200000,
     prompt: `${PRESET_STYLE} A cute chibi ninja character, head and shoulders bust, black ninja headband (hachimaki), black mask covering nose and mouth (only eyes visible), determined fierce eyes, black ninja outfit. Solid dark navy background.`,
   },
   {
@@ -600,7 +600,7 @@ const PRESET_ITEMS = [
     name: "우주비행사",
     description: "별을 향한 우주비행사",
     rarity: "legendary",
-    price: 480000,
+    price: 4800000,
     prompt: `${PRESET_STYLE} A cute chibi astronaut character, head and shoulders bust, white spacesuit, helmet visor reflecting stars and a nebula, friendly smile visible through the clear visor, NASA-style patch on chest. Solid deep blue background.`,
   },
   {
@@ -609,7 +609,7 @@ const PRESET_ITEMS = [
     name: "꼬마 마법사",
     description: "별을 다루는 꼬마 마법사",
     rarity: "epic",
-    price: 180000,
+    price: 1800000,
     prompt: `${PRESET_STYLE} A cute chibi child wizard character, head and shoulders bust, purple pointed wizard hat with golden stars, round magic spectacles, dark blue robe with star pattern, mischievous smile. Solid purple background.`,
   },
   {
@@ -618,7 +618,7 @@ const PRESET_ITEMS = [
     name: "꼬마 셰프",
     description: "맛있는 음식을 만드는 셰프",
     rarity: "rare",
-    price: 50000,
+    price: 500000,
     prompt: `${PRESET_STYLE} A cute chibi child chef character, head and shoulders bust, tall white chef toque hat, white double-breasted chef jacket, red neckerchief, holding a wooden spoon up beside head, cheerful smile. Solid pale yellow background.`,
   },
   {
@@ -627,7 +627,7 @@ const PRESET_ITEMS = [
     name: "꼬마 의사",
     description: "환자를 돌보는 친절한 의사",
     rarity: "rare",
-    price: 50000,
+    price: 500000,
     prompt: `${PRESET_STYLE} A cute chibi child doctor character, head and shoulders bust, white doctor lab coat, stethoscope around the neck, kind smile, neat hair. Solid pale mint green background.`,
   },
   {
@@ -636,7 +636,7 @@ const PRESET_ITEMS = [
     name: "K-팝 아이돌",
     description: "무대를 사로잡는 아이돌",
     rarity: "legendary",
-    price: 550000,
+    price: 5500000,
     prompt: `${PRESET_STYLE} A cute chibi K-pop idol character, head and shoulders bust, stylish pink hair with bangs, sparkly silver stage outfit with chains and gems, wireless headset microphone, vibrant cheerful expression. Solid hot pink background.`,
   },
   {
@@ -645,7 +645,7 @@ const PRESET_ITEMS = [
     name: "꼬마 로봇",
     description: "삐삐 신호를 보내는 로봇",
     rarity: "rare",
-    price: 60000,
+    price: 600000,
     prompt: `${PRESET_STYLE} A cute chibi robot character, head and shoulders bust, square metal robot head with antenna, glowing blue circular eyes, simple smile on display screen mouth, gray-blue metal body. Solid light gray background.`,
   },
   {
@@ -654,7 +654,7 @@ const PRESET_ITEMS = [
     name: "귀여운 뱀파이어",
     description: "사랑스러운 어린 뱀파이어",
     rarity: "epic",
-    price: 160000,
+    price: 1600000,
     prompt: `${PRESET_STYLE} A cute chibi child vampire character, head and shoulders bust, black hair with a single white streak, small fangs in friendly smile, black cape with red lining around shoulders, golden bat-shape pendant. Solid dark red background.`,
   },
   {
@@ -663,7 +663,7 @@ const PRESET_ITEMS = [
     name: "꼬마 천사",
     description: "흰 날개를 가진 어린 천사",
     rarity: "legendary",
-    price: 380000,
+    price: 3800000,
     prompt: `${PRESET_STYLE} A cute chibi child angel character, head and shoulders bust, soft blond curly hair, glowing golden halo above head, small white feathered wings peeking from behind shoulders, white robe, gentle smile. Solid sky blue background.`,
   },
   {
@@ -672,7 +672,7 @@ const PRESET_ITEMS = [
     name: "꼬마 악마",
     description: "장난기 가득한 어린 악마",
     rarity: "epic",
-    price: 170000,
+    price: 1700000,
     prompt: `${PRESET_STYLE} A cute chibi child devil character (cartoon, not scary), head and shoulders bust, red curved horns, dark red hair, mischievous grin, small bat wings behind shoulders, black outfit. Solid dark crimson background.`,
   },
   {
@@ -681,7 +681,7 @@ const PRESET_ITEMS = [
     name: "꼬마 인어",
     description: "바닷속에서 노래하는 인어",
     rarity: "epic",
-    price: 180000,
+    price: 1800000,
     prompt: `${PRESET_STYLE} A cute chibi mermaid character, head and shoulders bust, long flowing teal-green wavy hair, pink seashells in hair, shell necklace, slight hint of teal fish-tail scales on shoulders, friendly smile. Solid ocean teal background.`,
   },
   {
@@ -690,7 +690,7 @@ const PRESET_ITEMS = [
     name: "용 조련사",
     description: "어깨에 작은 용을 데리고 다니는 조련사",
     rarity: "legendary",
-    price: 600000,
+    price: 6000000,
     prompt: `${PRESET_STYLE} A cute chibi dragon tamer character, head and shoulders bust, brown adventurer outfit with leather strap, a tiny baby red dragon perched on the shoulder breathing a small flame, brave smile. Solid sunset orange background.`,
   },
   {
@@ -699,7 +699,7 @@ const PRESET_ITEMS = [
     name: "기본 학생",
     description: "친근한 일반 학생",
     rarity: "common",
-    price: 10000,
+    price: 100000,
     prompt: `${PRESET_STYLE} A cute chibi elementary school student character, head and shoulders bust, neat short black hair, navy school uniform top with red striped tie, friendly bright smile. Solid pale blue background.`,
   },
 ];
