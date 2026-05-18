@@ -125,12 +125,12 @@
   </div>
   <div class="anchorRow">
     <label>W</label>
-    <input type="range" id="rangeW" min="5" max="200" value="100" step="0.5" />
+    <input type="range" id="rangeW" min="5" max="400" value="100" step="0.5" />
     <input type="number" id="numW" value="100" step="0.5" />
   </div>
   <div class="anchorRow">
     <label>H</label>
-    <input type="range" id="rangeH" min="5" max="200" value="100" step="0.5" />
+    <input type="range" id="rangeH" min="5" max="400" value="100" step="0.5" />
     <input type="number" id="numH" value="100" step="0.5" />
   </div>
 
@@ -190,10 +190,10 @@ const SLOT_ZINDEX = {
   background: 0, base: 10, outfit: 20, hair: 30,
   glasses: 40, hat: 50, effect: 60, preset: 99,
 };
-// 실제 앱과 동일하게 multiply 블렌드 (헤어 안쪽 흰색 자동 투명)
+// 실제 앱과 동일하게 normal blend (PNG의 흰 픽셀이 alpha=0이라 자동 투명)
 const SLOT_BLEND_MODE = {
-  hair: "multiply", hat: "multiply", glasses: "multiply",
-  outfit: "multiply", effect: "multiply",
+  hair: "normal", hat: "normal", glasses: "normal",
+  outfit: "normal", effect: "normal",
   base: "normal", background: "normal", preset: "normal",
 };
 
