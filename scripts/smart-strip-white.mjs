@@ -38,23 +38,31 @@ function isWhite(r, g, b) {
 }
 
 async function processFile(filePath) {
-  const img = sharp(filePath).removeAlpha();
+  // 이미 alpha 처리된 PNG에 다시 처리하면 alpha 0 영역의 RGB가 망가질 수 있음.
+  // ensureAlpha + 원본 alpha 유지로 안전 처리.
+  const img = sharp(filePath).ensureAlpha();
   const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
   const N = width * height;
-
-  // RGBA 출력 버퍼
-  const out = Buffer.alloc(N * 4);
-  for (let i = 0; i < N; i++) {
-    out[i * 4] = data[i * channels];
-    out[i * 4 + 1] = data[i * channels + 1];
-    out[i * 4 + 2] = data[i * channels + 2];
-    out[i * 4 + 3] = 255;
+  if (channels !== 4) {
+    throw new Error(`expected 4 channels (RGBA), got ${channels}`);
   }
 
-  // 흰 픽셀 마크
+  // RGBA 출력 버퍼 (원본 alpha 유지)
+  const out = Buffer.alloc(N * 4);
+  for (let i = 0; i < N; i++) {
+    out[i * 4] = data[i * 4];
+    out[i * 4 + 1] = data[i * 4 + 1];
+    out[i * 4 + 2] = data[i * 4 + 2];
+    // 이미 alpha=0인 픽셀은 그대로 0 (이미 처리됨)
+    out[i * 4 + 3] = data[i * 4 + 3];
+  }
+
+  // 흰 픽셀 마크 (alpha=0인 픽셀은 이미 투명이라 제외)
   const isWhiteArr = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
+    const a = out[i * 4 + 3];
+    if (a === 0) continue; // 이미 투명한 픽셀
     const r = out[i * 4];
     const g = out[i * 4 + 1];
     const b = out[i * 4 + 2];
