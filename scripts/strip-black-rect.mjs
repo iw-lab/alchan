@@ -21,7 +21,7 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 
 const BLACK_THRESHOLD = 60;
 const SIZE_THRESHOLD = 200;
-const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_"];
+const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_", "editor_"];
 
 function isBlack(r, g, b) {
   return r < BLACK_THRESHOLD && g < BLACK_THRESHOLD && b < BLACK_THRESHOLD;
