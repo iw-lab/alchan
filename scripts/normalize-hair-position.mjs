@@ -48,14 +48,11 @@ const CANVAS_SIZE = 1024;
 //   머리 영역(정수리~귀 끝): y = 15%~45%, 폭 ≈ 50%
 // 헤어는 이 머리 영역만 덮어야 하고, 얼굴(y=44%~58%)을 침범하지 않아야 함.
 const SLOT_LAYOUT = {
-  // 헤어: 정수리~이마 위까지, 폭은 머리 양옆 살짝 넘어가게
   hair:    { cx: 0.5, cy: 0.30, contentHeightRatio: 0.40, prefix: "hair_" },
-  // 모자: 정수리에 얹힘
   hat:     { cx: 0.5, cy: 0.18, contentHeightRatio: 0.25, prefix: "hat_" },
-  // 안경: 눈 위치
   glasses: { cx: 0.5, cy: 0.44, contentHeightRatio: 0.14, prefix: "glasses_" },
-  // 의상: 어깨~상체
   outfit:  { cx: 0.5, cy: 0.82, contentHeightRatio: 0.36, prefix: "outfit_" },
+  luxury:  { cx: 0.5, cy: 0.82, contentHeightRatio: 0.36, prefix: "luxury_" },
 };
 
 // 비-흰색 픽셀 판정

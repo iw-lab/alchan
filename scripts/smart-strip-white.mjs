@@ -25,7 +25,7 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 const WHITE_THRESHOLD = 240;
 const SIZE_THRESHOLD = 3000; // 이보다 큰 흰 그룹은 배경/빈공간으로 간주
 
-const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_"];
+const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_"];
 
 const args = process.argv.slice(2).reduce((acc, arg) => {
   const [k, v] = arg.split("=");
