@@ -116,15 +116,14 @@ export const SLOT_ANCHORS = {
   preset:     { x: 50, y: 50, w: 100, h: 100 },
 };
 
-// 헤어/모자/안경/의상은 PNG 안쪽 빈공간(이마, 손잡이 안 등)이 흰색으로 남아있을 수 있어
-// multiply 블렌드로 흰색을 자동 투명화. effect는 광채 효과라 multiply가 자연스러움.
-// base/background/preset은 전체 frame이라 normal.
+// PNG 자체에서 흰 픽셀을 alpha 0으로 처리하면 normal blend로 충분.
+// (multiply는 머리카락 색상까지 반투명하게 만들어 어색했음)
 export const SLOT_BLEND_MODES = {
-  hair: "multiply",
-  hat: "multiply",
-  glasses: "multiply",
-  outfit: "multiply",
-  effect: "multiply",
+  hair: "normal",
+  hat: "normal",
+  glasses: "normal",
+  outfit: "normal",
+  effect: "normal",
   base: "normal",
   background: "normal",
   preset: "normal",
@@ -137,15 +136,15 @@ export const SLOT_BLEND_MODES = {
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
 export const ITEM_ANCHORS = {
-  // ===== 헤어 (사용자 fine-tune) =====
-  hair_fire:         { x: 51.75, y: 14.05, w: 103, h: 126.5 },
-  hair_braid_blonde: { x: 49,    y: 69.05, w: 200, h: 123 },
-  hair_galaxy:       { x: 49.8,  y: 66.75, w: 200, h: 149 },
-  hair_mint:         { x: 49,    y: 38,    w: 200, h: 116 },
-  hair_pink_twin:    { x: 49.5,  y: 43.3,  w: 200, h: 104.5 },
-  hair_rainbow_curl: { x: 49.8,  y: 40.5,  w: 99,  h: 104.5 },
-  hair_short_brown:  { x: 49.5,  y: 40,    w: 100, h: 100 },
-  hair_silver_long:  { x: 49.5,  y: 56.75, w: 200, h: 134.5 },
+  // ===== 헤어 (사용자 fine-tune v2) =====
+  hair_fire:         { x: 50.55, y: 25.5,  w: 132.5, h: 126.5 },
+  hair_braid_blonde: { x: 49.5,  y: 88.5,  w: 200,   h: 200 },
+  hair_galaxy:       { x: 49.3,  y: 85.75, w: 200,   h: 200 },
+  hair_mint:         { x: 49.25, y: 43.5,  w: 200,   h: 116 },
+  hair_pink_twin:    { x: 49.5,  y: 45.55, w: 200,   h: 113 },
+  hair_rainbow_curl: { x: 49.8,  y: 49.75, w: 148,   h: 120 },
+  hair_short_brown:  { x: 49.5,  y: 43.25, w: 100,   h: 100 },
+  hair_silver_long:  { x: 49.5,  y: 74.5,  w: 200,   h: 175 },
 };
 
 /**
