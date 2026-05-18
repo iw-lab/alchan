@@ -14,6 +14,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Gift,
   Settings,
   LayoutDashboard,
@@ -550,15 +551,11 @@ const AlchanHeader = memo(
                     {userRole}
                   </div>
                 </div>
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate("/my-profile");
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
-                </div>
+                {/* 흉상 Avatar 제거 - AvatarHeaderWidget로 대체 */}
+                <ChevronDown
+                  size={16}
+                  className="text-slate-400"
+                />
               </button>
 
               {/* 드롭다운 메뉴 */}

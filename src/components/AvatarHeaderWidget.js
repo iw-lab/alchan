@@ -49,11 +49,15 @@ export default function AvatarHeaderWidget() {
       {/* 아바타 본체 - 클릭 시 아바타 상점 */}
       <div
         onClick={() => navigate("/avatar-shop")}
-        className="w-16 h-16 rounded-2xl overflow-hidden cursor-pointer transition-transform hover:scale-105 shadow-md border-2 border-purple-300"
-        style={{ background: "linear-gradient(135deg, #ede9fe 0%, #fce7f3 100%)" }}
+        className="w-22 h-22 rounded-2xl overflow-hidden cursor-pointer transition-transform hover:scale-105 shadow-md border-2 border-purple-300"
+        style={{
+          background: "linear-gradient(135deg, #ede9fe 0%, #fce7f3 100%)",
+          width: 88,
+          height: 88,
+        }}
         title="내 아바타 - 클릭하여 꾸미기"
       >
-        <Avatar shopOverlays={overlays} size={64} showBorder={false} />
+        <Avatar shopOverlays={overlays} size={88} showBorder={false} />
       </div>
       {/* X 토글 버튼 (hover 시) */}
       <button
