@@ -398,13 +398,9 @@ export function StreakDisplay({ userId }) {
 export function StreakRewardInfo() {
   return (
     <div
-      className="rounded-2xl p-4"
-      style={{
-        background: "linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)",
-        border: "2px solid #8b5cf640",
-      }}
+      className="rounded-2xl p-4 bg-white border border-slate-200 shadow-sm mb-6"
     >
-      <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: "var(--text-primary)" }}>
+      <h4 className="text-sm font-bold mb-3 flex items-center gap-2 text-slate-800">
         🎁 일일 출석 보상 안내
       </h4>
       <div className="flex flex-col gap-1.5">
@@ -413,19 +409,19 @@ export function StreakRewardInfo() {
             key={day.day}
             className="flex justify-between items-center px-2.5 py-1.5 rounded-lg"
             style={{
-              background: day.day === 10 ? "#f59e0b15" : "transparent",
-              border: day.day === 10 ? "1px solid #f59e0b30" : "none",
+              background: day.day === 10 ? "#fef3c7" : "transparent",
+              border: day.day === 10 ? "1px solid #fcd34d" : "none",
             }}
           >
             <span
               className="text-sm"
-              style={{ color: day.day === 10 ? "#f59e0b" : "#9ca3af" }}
+              style={{ color: day.day === 10 ? "#b45309" : "#64748b" }}
             >
               {day.icon} {day.label}
             </span>
             <span
               style={{
-                color: day.day === 10 ? "#f59e0b" : "var(--text-primary)",
+                color: day.day === 10 ? "#b45309" : "#0f172a",
                 fontWeight: day.day === 10 ? "700" : "500",
                 fontSize: day.day === 10 ? "15px" : "13px",
               }}
@@ -437,11 +433,11 @@ export function StreakRewardInfo() {
         <div
           className="mt-2 p-2.5 rounded-xl text-center"
           style={{
-            background: "#f59e0b15",
-            border: "1px solid #f59e0b30",
+            background: "#fef3c7",
+            border: "1px solid #fcd34d",
           }}
         >
-          <span className="text-sm font-semibold" style={{ color: "#f59e0b" }}>
+          <span className="text-sm font-semibold" style={{ color: "#b45309" }}>
             🏆 10일 이후: 매일 100,000원!
           </span>
         </div>
