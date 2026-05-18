@@ -578,9 +578,23 @@
 
 .stock-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
   border-top: 1px solid var(--border-color);
   padding-top: var(--spacing-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.stock-actions .quantity-input {
+  width: 100%;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.stock-actions .trade-button {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .quantity-input {
