@@ -81,6 +81,11 @@ exports.migrateStorePriceDownManual = scheduler.migrateStorePriceDownManual; // 
 const groupPurchaseService = require("./groupPurchaseService");
 exports.completeGroupPurchase = groupPurchaseService.completeGroupPurchase;
 
+// 🎭 아바타 상점 구매 + 시드 (서버사이드)
+const avatarShopService = require("./avatarShopService");
+exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
+exports.seedAvatarShop = avatarShopService.seedAvatarShop;
+
 // 5분마다 주식 가격 업데이트
 // exports.updateCentralStockMarket = onSchedule({
 //   region: "asia-northeast3",

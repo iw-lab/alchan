@@ -15,6 +15,7 @@ import {
   BORDERS,
   DEFAULT_AVATAR,
 } from "../utils/avatarSystem";
+import { SLOT_ANCHORS } from "../utils/avatarShop";
 
 /**
  * 색상을 약간 어둡게 만드는 함수
@@ -38,9 +39,37 @@ function darkenColor(hex, percent = 15) {
 /**
  * 아바타 컴포넌트 - SVG 기반 렌더링 (개선 버전)
  * 상반신까지 보이도록 viewBox 확장
+ *
+ * @param {object} config - 기본 아바타 설정 (avatarSystem.js)
+ * @param {number} size - 픽셀 크기
+ * @param {boolean} showBorder - 테두리 표시 여부
+ * @param {function} onClick - 클릭 핸들러
+ * @param {object} shopOverlays - { bgUrl?, slots: { hair, hat, glasses, outfit, effect }, presetUrl? }
+ *                                각 slot 값은 { url, anchorOverride?, scale? }
  */
-export default function Avatar({ config = {}, size = 100, showBorder = true, onClick }) {
+export default function Avatar({ config = {}, size = 100, showBorder = true, onClick, shopOverlays }) {
   const avatarConfig = { ...DEFAULT_AVATAR, ...config };
+
+  // 프리셋 활성화 시 SVG 아바타 전체 교체
+  const presetUrl = shopOverlays?.presetUrl;
+  if (presetUrl) {
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          width: size,
+          height: size,
+          cursor: onClick ? "pointer" : "default",
+          backgroundImage: `url("${presetUrl}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          borderRadius: showBorder ? size * 0.12 : 0,
+          overflow: "hidden",
+        }}
+      />
+    );
+  }
 
   // 설정값 찾기
   const skinTone = SKIN_TONES.find(s => s.id === avatarConfig.skinTone) || SKIN_TONES[1];
@@ -502,6 +531,53 @@ export default function Avatar({ config = {}, size = 100, showBorder = true, onC
           )}
         </g>
       )}
+
+      {/* ======= 상점 PNG 오버레이 ======= */}
+      {shopOverlays && (() => {
+        // 배경 PNG (가장 뒤)
+        const bgUrl = shopOverlays.bgUrl;
+        const slots = shopOverlays.slots || {};
+        // z-order: background → outfit → hair → glasses → hat → effect
+        const renderOrder = ["outfit", "hair", "glasses", "hat", "effect"];
+
+        const renderImage = (slotKey, override) => {
+          const slot = override?.url ? override : null;
+          if (!slot) return null;
+          const anchor = SLOT_ANCHORS[slotKey] || { x: 50, y: 50, w: 100, h: 100 };
+          const scale = slot.scale || 1;
+          const ax = (slot.anchorOverride?.x ?? anchor.x);
+          const ay = (slot.anchorOverride?.y ?? anchor.y);
+          const w = anchor.w * scale;
+          const h = anchor.h * scale;
+          return (
+            <image
+              key={`overlay-${slotKey}`}
+              href={slot.url}
+              x={ax - w / 2}
+              y={ay - h / 2}
+              width={w}
+              height={h}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          );
+        };
+
+        return (
+          <>
+            {bgUrl && (
+              <image
+                href={bgUrl}
+                x="-15"
+                y={viewBoxY}
+                width="130"
+                height={viewBoxHeight}
+                preserveAspectRatio="xMidYMid slice"
+              />
+            )}
+            {renderOrder.map((k) => renderImage(k, slots[k]))}
+          </>
+        );
+      })()}
 
       {/* ======= 테두리 ======= */}
       {borderStyle && showBorder && (

@@ -81,6 +81,7 @@ const MyItems = lazyWithRetry(() => import("../pages/my-items/MyItems"));
 const PersonalShop = lazyWithRetry(
   () => import("../pages/market/PersonalShop"),
 );
+const AvatarShop = lazyWithRetry(() => import("../pages/market/AvatarShop"));
 const GroupPurchase = lazyWithRetry(
   () => import("../pages/market/GroupPurchase"),
 );
@@ -122,6 +123,9 @@ const StudentManager = lazyWithRetry(() => import("./StudentManager"));
 // 🔥 앱 관리자(SuperAdmin) 전용 대시보드
 const SuperAdminDashboard = lazyWithRetry(
   () => import("../pages/superadmin/SuperAdminDashboard"),
+);
+const AvatarShopSeed = lazyWithRetry(
+  () => import("../pages/superadmin/AvatarShopSeed"),
 );
 
 // 🔥 덜 자주 사용하는 페이지 - 동적 로딩
@@ -606,6 +610,14 @@ export default function AlchanLayout() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/avatar-shop"
+                  element={
+                    <ProtectedRoute>
+                      <AvatarShop />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* 금융 */}
                 <Route
@@ -809,6 +821,14 @@ export default function AlchanLayout() {
                   element={
                     <SuperAdminRoute>
                       <SuperAdminDashboard />
+                    </SuperAdminRoute>
+                  }
+                />
+                <Route
+                  path="/super-admin/avatar-seed"
+                  element={
+                    <SuperAdminRoute>
+                      <AvatarShopSeed />
                     </SuperAdminRoute>
                   }
                 />

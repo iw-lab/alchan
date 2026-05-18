@@ -288,6 +288,14 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🎭 아바타 상점 아이템 (avatarShopItems) - 전 학급 공용
+    // ========================================================
+    match /avatarShopItems/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // ========================================================
     // 🛒 마켓 아이템 (marketItems)
     // ========================================================
     match /marketItems/{listingId} {

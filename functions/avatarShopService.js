@@ -1,0 +1,226 @@
+/* eslint-disable */
+/* eslint-disable max-len */
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData } = require("./utils");
+
+/**
+ * 아바타 상점 시드 (슈퍼관리자 전용)
+ *
+ * - 클라이언트가 아이템 메타데이터 배열을 보냄
+ * - 각 doc을 avatarShopItems/{id}에 set(merge:true)
+ */
+exports.seedAvatarShop = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { isSuperAdmin } = await checkAuthAndGetUserData(request);
+    if (!isSuperAdmin) {
+      throw new HttpsError("permission-denied", "슈퍼관리자만 시드할 수 있습니다.");
+    }
+    const { items } = request.data || {};
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new HttpsError("invalid-argument", "items 배열이 비어있습니다.");
+    }
+    if (items.length > 200) {
+      throw new HttpsError("invalid-argument", "한 번에 최대 200개까지 시드할 수 있습니다.");
+    }
+
+    const batch = db.batch();
+    let written = 0;
+    for (const item of items) {
+      if (!item.id || !item.slot || !item.name || typeof item.price !== "number") continue;
+      const ref = db.collection("avatarShopItems").doc(item.id);
+      batch.set(
+        ref,
+        {
+          id: item.id,
+          slot: item.slot,
+          name: item.name,
+          description: item.description || "",
+          imageUrl: item.imageUrl || "",
+          rarity: item.rarity || "common",
+          price: item.price,
+          active: item.active !== false,
+          sortOrder: item.sortOrder || 0,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      written++;
+    }
+    await batch.commit();
+    logger.info(`[seedAvatarShop] ${written}개 시드 완료`);
+    return { success: true, written };
+  },
+);
+
+/**
+ * 아바타 상점 아이템 구매 (서버사이드)
+ *
+ * - avatarShopItems/{itemId}에서 price·active 검증
+ * - 학생 cash 차감, ownedAvatarItems[itemId] 추가
+ * - 관리자에게 매출 입금 (VAT 정책 적용)
+ * - activity_logs 기록
+ * - 멱등성: 이미 보유 시 fail-fast
+ */
+exports.purchaseAvatarItem = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request);
+    const { itemId } = request.data || {};
+
+    if (!itemId || typeof itemId !== "string") {
+      throw new HttpsError("invalid-argument", "itemId가 필요합니다.");
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const itemRef = db.collection("avatarShopItems").doc(itemId);
+
+    // 관리자 찾기
+    let adminRef = null;
+    try {
+      const adminSnap = await db
+        .collection("users")
+        .where("classCode", "==", classCode)
+        .where("isAdmin", "==", true)
+        .limit(1)
+        .get();
+      if (!adminSnap.empty) {
+        adminRef = adminSnap.docs[0].ref;
+      }
+    } catch (e) {
+      logger.warn("[purchaseAvatarItem] 관리자 조회 실패:", e.message);
+    }
+
+    // VAT 세율
+    let vatRate = 0.1;
+    try {
+      const govDoc = await db.doc(`governments/${classCode}`).get();
+      if (govDoc.exists) {
+        const rate = govDoc.data()?.taxSettings?.itemStoreVATRate;
+        if (rate !== undefined) vatRate = rate;
+      }
+    } catch (e) {
+      logger.warn("[purchaseAvatarItem] VAT 조회 실패, 기본 10%:", e.message);
+    }
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const reads = [transaction.get(userRef), transaction.get(itemRef)];
+        if (adminRef) reads.push(transaction.get(adminRef));
+        const [userSnap, itemSnap, adminSnap] = await Promise.all(reads);
+
+        if (!userSnap.exists) {
+          throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
+        }
+        if (!itemSnap.exists) {
+          throw new HttpsError("not-found", "아바타 아이템을 찾을 수 없습니다.");
+        }
+
+        const userData = userSnap.data();
+        const itemData = itemSnap.data();
+
+        if (itemData.active === false) {
+          throw new HttpsError("failed-precondition", "현재 판매 중지된 아이템입니다.");
+        }
+
+        // 이미 보유 시 차단
+        const owned = userData.ownedAvatarItems || {};
+        if (owned[itemId]) {
+          throw new HttpsError("already-exists", "이미 보유 중인 아바타 아이템입니다.");
+        }
+
+        const price = Number(itemData.price) || 0;
+        if (price <= 0) {
+          throw new HttpsError("failed-precondition", "유효하지 않은 가격입니다.");
+        }
+
+        const cash = Number(userData.cash) || 0;
+        if (cash < price) {
+          throw new HttpsError(
+            "failed-precondition",
+            `현금이 부족합니다. 필요 ${price.toLocaleString()}원 / 보유 ${cash.toLocaleString()}원`,
+          );
+        }
+
+        // 학생 cash 차감 + ownedAvatarItems 추가
+        const ownedKey = `ownedAvatarItems.${itemId}`;
+        transaction.update(userRef, {
+          cash: admin.firestore.FieldValue.increment(-price),
+          [ownedKey]: {
+            slot: itemData.slot,
+            name: itemData.name,
+            rarity: itemData.rarity,
+            imageUrl: itemData.imageUrl,
+            purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+            price,
+          },
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 관리자에게 매출 입금
+        const adminBuyer = adminRef && adminRef.path === userRef.path;
+        let adminCashDelta = 0;
+        if (adminRef && adminSnap && adminSnap.exists && !adminBuyer) {
+          adminCashDelta = price;
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(adminCashDelta),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // VAT 기록
+        const vatAmount = Math.round((price * vatRate) / (1 + vatRate));
+        if (vatAmount > 0) {
+          const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+          transaction.set(
+            treasuryRef,
+            {
+              vatRevenue: admin.firestore.FieldValue.increment(vatAmount),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+
+        // activity_logs - 구매자
+        await logActivity(
+          transaction,
+          uid,
+          LOG_TYPES.ITEM_PURCHASE,
+          `아바타 아이템 구매: ${itemData.name} (-${price.toLocaleString()}원)`,
+          { avatarItemId: itemId, slot: itemData.slot, rarity: itemData.rarity, price },
+        );
+
+        // activity_logs - 관리자 (매출)
+        if (adminRef && adminCashDelta > 0) {
+          await logActivity(
+            transaction,
+            adminRef.id,
+            LOG_TYPES.CASH_INCOME,
+            `아바타 상점 매출: ${itemData.name} +${adminCashDelta.toLocaleString()}원`,
+            { avatarItemId: itemId, slot: itemData.slot, price, buyerId: uid },
+          );
+        }
+
+        return {
+          itemId,
+          itemName: itemData.name,
+          slot: itemData.slot,
+          price,
+          vatAmount,
+          adminCashDelta,
+        };
+      });
+
+      logger.info(
+        `[purchaseAvatarItem] ${uid}님 ${result.itemName} 구매 (${result.price.toLocaleString()}원)`,
+      );
+      return { success: true, ...result };
+    } catch (error) {
+      logger.error(`[purchaseAvatarItem] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("internal", error.message || "구매 처리 실패");
+    }
+  },
+);

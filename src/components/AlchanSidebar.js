@@ -45,6 +45,7 @@ import {
   LayoutDashboard,
   CheckCircle,
   Zap,
+  Sparkles,
 } from "lucide-react";
 
 // ============================================
@@ -192,6 +193,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "함께구매",
     icon: Users,
     path: "/group-purchase",
+    parentId: "itemsCategory",
+  },
+  {
+    id: "avatarShop",
+    label: "아바타 상점",
+    icon: Sparkles,
+    path: "/avatar-shop",
     parentId: "itemsCategory",
   },
 
