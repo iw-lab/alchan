@@ -1,5 +1,6 @@
 // src/pages/my-profile/MyProfile.js - 내 프로필 페이지
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { verifyClassCode, db } from "../../firebase";
 import { doc, updateDoc, deleteDoc } from "firebase/firestore";
