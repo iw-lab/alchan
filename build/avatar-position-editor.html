@@ -18,15 +18,36 @@
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   }
   /* ===== 좌측: 미리보기 ===== */
-  #previewArea {
+  #previewWrap {
     position: relative;
+    width: 600px; height: 600px;
+    background: #fafafa;
+    border-radius: 12px;
+    margin: 10px auto;
+    overflow: visible; /* 위/아래로 튀어나오는 PNG 표시 */
+  }
+  #previewArea {
+    position: absolute;
+    /* 600 - 400 = 200 / 2 = 100px 여백 */
+    top: 100px; left: 100px;
     width: 400px; height: 400px;
     background: linear-gradient(135deg, #fde2f3 0%, #ddd6fe 100%);
-    border: 2px dashed #cbd5e1; border-radius: 12px;
-    margin: 10px auto;
-    overflow: hidden;
+    border: 2px dashed #a855f7; border-radius: 12px;
+    /* overflow visible로 두면 캔버스 밖으로 솟는 PNG 보임 */
+    overflow: visible;
+  }
+  #previewArea::before {
+    content: '실제 아바타 표시 영역 (캔버스)';
+    position: absolute;
+    top: -22px; left: 0;
+    font-size: 10px; color: #a855f7; font-weight: bold;
   }
   #previewArea img { position: absolute; pointer-events: none; user-select: none; }
+  /* 캔버스 영역 외부는 살짝 흐리게 (실제로는 잘릴 영역임) */
+  #cropMask {
+    position: absolute; pointer-events: none;
+    border: 1px solid #ef4444; opacity: 0.3;
+  }
   /* 선택된 오버레이 위에 핸들 */
   .handle {
     position: absolute; width: 12px; height: 12px;
@@ -127,12 +148,14 @@
 
 <div class="panel">
   <h2>미리보기</h2>
-  <div id="previewArea"></div>
+  <div id="previewWrap">
+    <div id="previewArea"></div>
+  </div>
   <div class="help" style="margin-top:8px;">
-    • 보라색 점선 박스 = 선택된 아이템<br>
-    • 박스 안 드래그 = 위치 이동<br>
-    • 오른쪽 아래 점 = 크기 조정<br>
-    • 다른 슬롯도 동시 합성되어 보임 (헤어+모자+안경+의상 등 같이 확인)
+    • <span style="color:#a855f7;font-weight:bold;">보라 점선 박스</span> = 실제 아바타 캔버스 (밖은 잘림)<br>
+    • <span style="color:#a855f7;">보라 점선 박스 내부</span>의 박스 = 선택된 아이템<br>
+    • 박스 안 드래그 = 위치 이동, 오른쪽 아래 점 = 크기 조정<br>
+    • 캔버스 밖으로 솟아도 보이지만 실제 사용 시 잘림에 주의
   </div>
 </div>
 
@@ -148,23 +171,38 @@ const BASES = [
 ];
 
 const SLOTS = {
+  base:    BASES, // 베이스 자체도 위치/크기 조정 가능 (얼굴 크기/위치)
   hair:    ["hair_braid_blonde","hair_fire","hair_galaxy","hair_mint","hair_pink_twin","hair_rainbow_curl","hair_short_brown","hair_silver_long"],
   hat:     ["hat_angel_halo","hat_baseball_red","hat_beanie_yellow","hat_chef","hat_crown_gold","hat_devil_horns","hat_graduation","hat_witch"],
   glasses: ["glasses_3d","glasses_aviator","glasses_eyepatch","glasses_heart_pink","glasses_mask_medic","glasses_monocle","glasses_round_black","glasses_star"],
   outfit:  ["outfit_astronaut","outfit_chef","outfit_doctor","outfit_hanbok_blue","outfit_kpop_idol","outfit_police","outfit_robe_wizard","outfit_school"],
   effect:  ["effect_butterflies","effect_fire_aura","effect_hearts","effect_lightning","effect_petals","effect_rainbow_ring","effect_snow","effect_sparkle"],
+  background: ["bg_aurora","bg_castle","bg_forest","bg_library","bg_neon_city","bg_ocean","bg_space","bg_sunset_beach"],
+  preset:  ["preset_angel","preset_astronaut","preset_chef","preset_devil","preset_doctor","preset_dragon_tamer","preset_idol","preset_mermaid","preset_ninja","preset_pirate_capt","preset_princess","preset_robot","preset_student_default","preset_vampire","preset_wizard"],
 };
 
 // 슬롯별 기본 anchor (정규화된 PNG 기준)
 const DEFAULT_ANCHORS = {
-  hair:    { x: 50, y: 50, w: 100, h: 100 },
-  hat:     { x: 50, y: 50, w: 100, h: 100 },
-  glasses: { x: 50, y: 50, w: 100, h: 100 },
-  outfit:  { x: 50, y: 50, w: 100, h: 100 },
-  effect:  { x: 50, y: 50, w: 100, h: 100 },
+  base:       { x: 50, y: 50, w: 100, h: 100 },
+  hair:       { x: 50, y: 50, w: 100, h: 100 },
+  hat:        { x: 50, y: 50, w: 100, h: 100 },
+  glasses:    { x: 50, y: 50, w: 100, h: 100 },
+  outfit:     { x: 50, y: 50, w: 100, h: 100 },
+  effect:     { x: 50, y: 50, w: 100, h: 100 },
+  background: { x: 50, y: 50, w: 100, h: 100 },
+  preset:     { x: 50, y: 50, w: 100, h: 100 },
 };
 
-const SLOT_ZINDEX = { outfit: 20, hair: 30, glasses: 40, hat: 50, effect: 60 };
+const SLOT_ZINDEX = {
+  background: 0,
+  base: 10,
+  outfit: 20,
+  hair: 30,
+  glasses: 40,
+  hat: 50,
+  effect: 60,
+  preset: 99,
+};
 
 // =====================================================================
 // 상태
@@ -247,6 +285,9 @@ function itemSlot(itemId) {
   if (itemId.startsWith("glasses_")) return "glasses";
   if (itemId.startsWith("outfit_")) return "outfit";
   if (itemId.startsWith("effect_")) return "effect";
+  if (itemId.startsWith("bg_")) return "background";
+  if (itemId.startsWith("preset_")) return "preset";
+  if (itemId.startsWith("base_")) return "base";
   return null;
 }
 
