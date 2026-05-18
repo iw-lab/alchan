@@ -34,17 +34,17 @@ async function processFile(filePath) {
   const N = width * height;
   const out = Buffer.from(data);
 
-  // Step 0: 안티-앨리어싱 거친 외곽선 정리
-  // alpha 1-200 사이의 어두운 픽셀 (RGB < 100)은 외곽 노이즈로 간주 → alpha 0
+  // Step 0: 외곽 노이즈/안티-앨리어싱 정리 (공격적)
+  // alpha < 255인 모든 픽셀 + RGB < 150 (어두운 톤) → alpha 0
+  // 즉 부분 투명 + 어두운 외곽 가장자리 깨끗 제거
   let antiAliasCleared = 0;
   for (let i = 0; i < N; i++) {
     const a = out[i * 4 + 3];
-    if (a >= 1 && a < 200) {
+    if (a > 0 && a < 255) {
       const r = out[i * 4];
       const g = out[i * 4 + 1];
       const b = out[i * 4 + 2];
-      // 어두운 안티-앨리어싱 픽셀
-      if (r < 100 && g < 100 && b < 100) {
+      if (r < 150 && g < 150 && b < 150) {
         out[i * 4] = 255;
         out[i * 4 + 1] = 255;
         out[i * 4 + 2] = 255;
@@ -110,14 +110,14 @@ async function processFile(filePath) {
     }
   }
 
-  if (cleared === 0) return { cleared: 0 };
+  const totalChanged = cleared + antiAliasCleared;
+  if (totalChanged === 0) return { cleared: 0, antiAliasCleared: 0 };
 
-  // PNG 저장 (premultiplied 알파 회피 - effort 6, palette false)
   await sharp(out, { raw: { width, height, channels: 4 } })
     .png({ compressionLevel: 9, palette: false, force: true })
     .toFile(filePath + ".tmp");
   fs.renameSync(filePath + ".tmp", filePath);
-  return { cleared };
+  return { cleared, antiAliasCleared };
 }
 
 async function main() {
@@ -127,8 +127,8 @@ async function main() {
     if (!matched) continue;
     try {
       const result = await processFile(path.join(DIR, file));
-      if (result.cleared > 0) {
-        console.log(`✅ ${file} (검은 사각형 제거: ${result.cleared}px)`);
+      if (result.cleared > 0 || result.antiAliasCleared > 0) {
+        console.log(`✅ ${file} (검정 ${result.cleared}px + 안티앨리어스 ${result.antiAliasCleared}px)`);
       }
     } catch (err) {
       console.error(`❌ ${file}: ${err.message}`);
