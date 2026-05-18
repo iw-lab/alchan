@@ -13,7 +13,7 @@ import {
   functions,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
-import { Sparkles, Crown, Shirt, Image as ImageIcon, Wand2, Check, Lock, ShoppingBag } from "lucide-react";
+import { Sparkles, Crown, Shirt, Image as ImageIcon, Wand2, Check, Lock, ShoppingBag, Smile } from "lucide-react";
 import { formatKoreanNumber } from "../../utils/numberFormatter";
 import { isNetAssetsNegative, NEGATIVE_ASSETS_MESSAGE } from "../../utils/netAssets";
 import Avatar from "../../components/Avatar";
@@ -23,12 +23,13 @@ import {
   getRarity,
   getSlot,
   isOwned,
+  buildAvatarOverlays,
 } from "../../utils/avatarShop";
-import { getAvatarConfig } from "../../utils/avatarSystem";
 import { logger } from "../../utils/logger";
 
 const TAB_OPTIONS = [
   { id: "all", name: "전체", icon: Sparkles },
+  { id: "base", name: "기본 얼굴", icon: Smile },
   { id: "preset", name: "프리셋", icon: Crown },
   { id: "hair", name: "헤어", icon: Wand2 },
   { id: "hat", name: "모자/관", icon: Crown },
@@ -76,6 +77,7 @@ export default function AvatarShop() {
     const slots = {};
     let bgUrl = null;
     let presetUrl = null;
+    let baseUrl = null;
 
     Object.entries(eq).forEach(([slot, itemId]) => {
       if (!itemId) return;
@@ -85,6 +87,8 @@ export default function AvatarShop() {
         bgUrl = item.imageUrl;
       } else if (slot === "preset") {
         presetUrl = item.imageUrl;
+      } else if (slot === "base") {
+        baseUrl = item.imageUrl;
       } else {
         slots[slot] = { url: item.imageUrl };
       }
@@ -94,10 +98,11 @@ export default function AvatarShop() {
     if (previewItem && previewItem.imageUrl) {
       if (previewItem.slot === "background") bgUrl = previewItem.imageUrl;
       else if (previewItem.slot === "preset") presetUrl = previewItem.imageUrl;
+      else if (previewItem.slot === "base") baseUrl = previewItem.imageUrl;
       else slots[previewItem.slot] = { url: previewItem.imageUrl };
     }
 
-    return { bgUrl, slots, presetUrl };
+    return { baseUrl, bgUrl, slots, presetUrl };
   }, [userDoc, previewItem]);
 
   // 필터링된 아이템
@@ -121,30 +126,32 @@ export default function AvatarShop() {
       alert("이미 보유 중인 아이템입니다.");
       return;
     }
-    if ((userDoc?.cash || 0) < item.price) {
-      alert(`잔액 부족. 필요: ${item.price.toLocaleString()}원`);
-      return;
+    // 무료 아이템(주로 base_default)은 별도 결제 없이 즉시 지급
+    const isFree = (item.price || 0) === 0;
+    if (!isFree) {
+      if ((userDoc?.cash || 0) < item.price) {
+        alert(`잔액 부족. 필요: ${item.price.toLocaleString()}원`);
+        return;
+      }
+      if (await isNetAssetsNegative(userDoc)) {
+        alert(NEGATIVE_ASSETS_MESSAGE);
+        return;
+      }
+      if (!window.confirm(`${item.name} (${item.price.toLocaleString()}원) 구매하시겠습니까?`)) return;
     }
-    if (await isNetAssetsNegative(userDoc)) {
-      alert(NEGATIVE_ASSETS_MESSAGE);
-      return;
-    }
-    if (!window.confirm(`${item.name} (${item.price.toLocaleString()}원) 구매하시겠습니까?`)) return;
 
     setPurchasing(item.id);
 
-    // 낙관적 차감
-    if (optimisticUpdate) optimisticUpdate({ cash: -item.price });
+    // 낙관적 차감 (유료만)
+    if (!isFree && optimisticUpdate) optimisticUpdate({ cash: -item.price });
 
     try {
       const fn = httpsCallable(functions, "purchaseAvatarItem");
       await fn({ itemId: item.id });
-      // 실시간 listener가 ownedAvatarItems 반영
-      alert(`🎉 ${item.name} 구매 완료!`);
+      if (!isFree) alert(`🎉 ${item.name} 구매 완료!`);
     } catch (err) {
       logger.error("아바타 아이템 구매 실패:", err);
-      // 롤백
-      if (optimisticUpdate) optimisticUpdate({ cash: item.price });
+      if (!isFree && optimisticUpdate) optimisticUpdate({ cash: item.price });
       alert(err?.message || "구매 실패");
     } finally {
       setPurchasing(null);
@@ -187,8 +194,6 @@ export default function AvatarShop() {
     );
   }
 
-  const baseConfig = userDoc?.id ? getAvatarConfig(userDoc.id) : {};
-
   return (
     <div className="w-full px-4 md:px-6 lg:px-8 py-6 space-y-6">
       {/* 헤더 */}
@@ -211,7 +216,6 @@ export default function AvatarShop() {
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-5">
         <div className="flex-shrink-0">
           <Avatar
-            config={baseConfig}
             size={180}
             shopOverlays={equippedOverlays}
           />

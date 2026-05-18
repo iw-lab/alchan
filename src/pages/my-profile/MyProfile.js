@@ -11,8 +11,7 @@ import {
  deleteUser,
 } from "firebase/auth";
 import Avatar from "../../components/Avatar";
-import AvatarEditor from "../../components/AvatarEditor";
-import { getAvatarConfig } from "../../utils/avatarSystem";
+import { buildAvatarOverlays } from "../../utils/avatarShop";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "../../utils/levelSystem";
 import {
  getUserAchievements,
@@ -36,9 +35,9 @@ export default function MyProfile() {
  const userName =
  userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
- const [showAvatarEditor, setShowAvatarEditor] = useState(false);
- const [avatarConfig, setAvatarConfig] = useState(null);
  const [achievements, setAchievements] = useState([]);
+ const navigate = useNavigate();
+ const avatarOverlays = buildAvatarOverlays(userDoc);
 
  // 계정 설정 모달 상태
  const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -69,14 +68,9 @@ export default function MyProfile() {
 
  useEffect(() => {
  if (userId) {
- setAvatarConfig(getAvatarConfig(userId));
  setAchievements(getUserAchievements(userId));
  }
  }, [userId]);
-
- const handleAvatarSave = (newConfig) => {
- setAvatarConfig(newConfig);
- };
 
  // 모달 초기화
  const resetModals = () => {
@@ -264,16 +258,13 @@ export default function MyProfile() {
  {/* 프로필 카드 */}
  <div className="bg-white rounded-3xl p-8 mb-6 border border-slate-200 shadow-sm">
  <div className="flex flex-col items-center gap-6">
- {/* 아바타 */}
- <div className="relative">
- <Avatar config={avatarConfig} size={180} />
- <button
- onClick={() => setShowAvatarEditor(true)}
- className="absolute bottom-[5px] right-[5px] w-11 h-11 rounded-full bg-gradient-to-br from-[#a78bfa] to-[#8b5cf6] border-[3px] border-cyber-light text-lg cursor-pointer flex items-center justify-center shadow-[0_4px_15px_rgba(167,139,250,0.4)]"
- title="아바타 수정"
+ {/* 아바타 - 클릭 시 아바타 상점으로 이동 */}
+ <div
+   className="cursor-pointer hover:opacity-90 transition-opacity"
+   onClick={() => navigate("/avatar-shop")}
+   title="아바타 상점에서 꾸미기"
  >
- ✏️
- </button>
+   <Avatar shopOverlays={avatarOverlays} size={180} />
  </div>
 
  {/* 사용자 정보 */}
@@ -520,14 +511,6 @@ export default function MyProfile() {
  </div>
  </div>
  </div>
-
- {/* 아바타 에디터 모달 */}
- <AvatarEditor
- isOpen={showAvatarEditor}
- onClose={() => setShowAvatarEditor(false)}
- userId={userId}
- onSave={handleAvatarSave}
- />
 
  {/* 닉네임 변경 모달 */}
  {showNicknameModal && (

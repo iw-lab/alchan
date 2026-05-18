@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import Avatar from "./Avatar";
-import { getAvatarConfig } from "../utils/avatarSystem";
+import { buildAvatarOverlays } from "../utils/avatarShop";
 import { getLevelInfo } from "../utils/levelSystem";
 import {
   getUserAchievements,
@@ -113,22 +113,17 @@ const AlchanHeader = memo(
     if (userDoc?.isSuperAdmin) userRole = "앱 관리자";
     else if (userDoc?.isAdmin) userRole = "교사";
 
-    // 아바타, 레벨, 업적 정보
-    const [avatarConfig, setAvatarConfig] = useState(null);
+    // 아바타 overlays (userDoc 기반 - 베이스 PNG + 슬롯)
+    const avatarOverlays = useMemo(() => buildAvatarOverlays(userDoc), [userDoc]);
 
-    // 아바타 설정 로드 및 변경 이벤트 구독
+    // (레거시) 아바타 변경 이벤트 핸들러 - 기존 SVG 시스템 대체로 useEffect 유지하되 본문 비움
     useEffect(() => {
-      if (user?.uid) {
-        setAvatarConfig(getAvatarConfig(user.uid));
+      if (false && user?.uid) {
+        // no-op
       }
 
-      // 아바타 변경 이벤트 구독
-      const handleAvatarChange = (e) => {
-        if (e.detail.userId === user?.uid) {
-          setAvatarConfig(e.detail.config);
-        }
-      };
-
+      // 아바타 변경 이벤트 구독 (레거시 - 더 이상 사용 X)
+      const handleAvatarChange = () => {};
       window.addEventListener("avatarChanged", handleAvatarChange);
       return () =>
         window.removeEventListener("avatarChanged", handleAvatarChange);
@@ -383,7 +378,7 @@ const AlchanHeader = memo(
                 onClick={() => navigate("/my-profile")}
                 className="cursor-pointer"
               >
-                <Avatar config={avatarConfig} size={40} showBorder={true} />
+                <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
               </div>
             </div>
           </div>
@@ -558,7 +553,7 @@ const AlchanHeader = memo(
                   }}
                   className="cursor-pointer"
                 >
-                  <Avatar config={avatarConfig} size={40} showBorder={true} />
+                  <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
                 </div>
               </button>
 

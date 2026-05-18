@@ -6,6 +6,7 @@
  * - 기본 SVG 아바타 위에 PNG 오버레이로 합성
  */
 export const AVATAR_SHOP_SLOTS = {
+  base: { name: "기본 얼굴", icon: "🙂", zIndex: 10 },
   hair: { name: "헤어", icon: "💇", zIndex: 30 },
   hat: { name: "모자/관", icon: "👒", zIndex: 50 },
   glasses: { name: "안경/마스크", icon: "🕶️", zIndex: 40 },
@@ -97,12 +98,41 @@ export function getActivePreset(userDoc) {
  * 슬롯별 기본 위치 (PNG 오버레이 좌표) - SVG viewBox(100x100 기준)
  * scale: SVG viewBox 단위
  */
+// 베이스 PNG (1024×1024) 기준 좌표 시스템 (0-100 백분율)
+// 베이스 인물: 눈 ~42%, 코 ~50%, 입 ~55%, 머리 위 ~25%, 어깨 ~85%
 export const SLOT_ANCHORS = {
-  hair: { x: 50, y: 25, w: 100, h: 60 },        // 머리 위에서 얼굴 윗부분까지
-  hat: { x: 50, y: 5, w: 90, h: 45 },           // 머리 최상단
-  glasses: { x: 50, y: 47, w: 80, h: 20 },      // 눈 부분
-  outfit: { x: 50, y: 105, w: 100, h: 40 },     // 목 아래
-  background: { x: 50, y: 50, w: 130, h: 150 }, // 전체
-  effect: { x: 50, y: 50, w: 130, h: 150 },     // 오버레이 전체
-  preset: { x: 50, y: 50, w: 130, h: 150 },     // 전체 교체
+  base: { x: 50, y: 50, w: 100, h: 100 },     // 전체
+  hair: { x: 50, y: 28, w: 75, h: 42 },       // 머리 위 + 양옆
+  hat: { x: 50, y: 18, w: 65, h: 32 },        // 머리 최상단
+  glasses: { x: 50, y: 42, w: 55, h: 18 },    // 눈 부분
+  outfit: { x: 50, y: 85, w: 80, h: 30 },     // 어깨~상체
+  background: { x: 50, y: 50, w: 100, h: 100 }, // 전체
+  effect: { x: 50, y: 50, w: 100, h: 100 },   // 전체 오버레이
+  preset: { x: 50, y: 50, w: 100, h: 100 },   // 전체 교체
 };
+
+/**
+ * userDoc에서 Avatar 컴포넌트가 쓸 overlays 객체 생성
+ * @param {object} userDoc - users/{uid} 문서 데이터
+ * @returns {object} { baseUrl, bgUrl, slots, presetUrl }
+ */
+export function buildAvatarOverlays(userDoc) {
+  const owned = userDoc?.ownedAvatarItems || {};
+  const eq = userDoc?.equippedAvatarItems || {};
+  const slots = {};
+  let baseUrl = null;
+  let bgUrl = null;
+  let presetUrl = null;
+
+  Object.entries(eq).forEach(([slot, itemId]) => {
+    if (!itemId) return;
+    const item = owned[itemId];
+    if (!item?.imageUrl) return;
+    if (slot === "background") bgUrl = item.imageUrl;
+    else if (slot === "preset") presetUrl = item.imageUrl;
+    else if (slot === "base") baseUrl = item.imageUrl;
+    else slots[slot] = { url: item.imageUrl };
+  });
+
+  return { baseUrl, bgUrl, slots, presetUrl };
+}
