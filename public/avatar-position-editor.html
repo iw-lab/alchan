@@ -172,11 +172,11 @@
 // =====================================================================
 // editor_bald: 편집기 전용 대머리 베이스 (헤어 위치 잡기 쉽게)
 // base_male/base_female: 실제 학생이 사용하는 베이스
-const BASES = ["base_male","base_female"];
+const BASES = ["editor_bald","base_male","base_female"];
 
 const SLOTS = {
   base:       ["base_male","base_female"], // 학생용 베이스 2종 (editor_bald 제외)
-  hair:       ["hair_braid_blonde","hair_fire","hair_galaxy","hair_mint","hair_pink_twin","hair_rainbow_curl","hair_short_brown","hair_silver_long"],
+  hair:       ["hair_braid_blonde","hair_fire","hair_galaxy","hair_mint","hair_pink_twin","hair_rainbow_curl","hair_short_brown","hair_silver_long","hair_ponytail_brown","hair_bun_black","hair_undercut_male","hair_messy_male","hair_slick_back_male","hair_long_wavy_brown"],
   hat:        ["hat_angel_halo","hat_baseball_red","hat_beanie_yellow","hat_chef","hat_crown_gold","hat_devil_horns","hat_graduation","hat_witch"],
   glasses:    ["glasses_3d","glasses_aviator","glasses_eyepatch","glasses_heart_pink","glasses_mask_medic","glasses_monocle","glasses_round_black","glasses_star"],
   outfit:     ["outfit_astronaut","outfit_chef","outfit_doctor","outfit_hanbok_blue","outfit_kpop_idol","outfit_police","outfit_robe_wizard","outfit_school"],
@@ -200,7 +200,7 @@ const SLOT_BLEND_MODE = {
 // =====================================================================
 // 상태
 // =====================================================================
-let currentBase = "base_male";
+let currentBase = "editor_bald";
 let currentSlot = "hair";
 let currentItem = SLOTS.hair[0];
 // itemOverrides[itemId] = { x, y, w, h }
