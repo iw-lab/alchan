@@ -34,6 +34,26 @@ async function processFile(filePath) {
   const N = width * height;
   const out = Buffer.from(data);
 
+  // Step 0: 안티-앨리어싱 거친 외곽선 정리
+  // alpha 1-200 사이의 어두운 픽셀 (RGB < 100)은 외곽 노이즈로 간주 → alpha 0
+  let antiAliasCleared = 0;
+  for (let i = 0; i < N; i++) {
+    const a = out[i * 4 + 3];
+    if (a >= 1 && a < 200) {
+      const r = out[i * 4];
+      const g = out[i * 4 + 1];
+      const b = out[i * 4 + 2];
+      // 어두운 안티-앨리어싱 픽셀
+      if (r < 100 && g < 100 && b < 100) {
+        out[i * 4] = 255;
+        out[i * 4 + 1] = 255;
+        out[i * 4 + 2] = 255;
+        out[i * 4 + 3] = 0;
+        antiAliasCleared++;
+      }
+    }
+  }
+
   // 검정 + opaque 픽셀 마크
   const isBlackArr = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
