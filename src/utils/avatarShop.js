@@ -99,29 +99,30 @@ export function getActivePreset(userDoc) {
  * scale: SVG viewBox 단위
  */
 // 베이스 PNG (1024×1024) 기준 좌표 시스템 (0-100 백분율)
-// 베이스 대머리 인물: 정수리 ~22%, 눈 ~44%, 입 ~56%, 어깨 ~85%
-// 헤어/모자는 정수리를 중심으로 머리 전체 영역 덮음.
-// 헤어 PNG는 빈 padding을 포함하므로 베이스보다 더 크게 합성하는 게 정상.
+// scripts/normalize-hair-position.mjs로 헤어/모자/안경/의상 PNG 콘텐츠 위치가
+// 표준 좌표로 정규화 되었으므로, 모든 슬롯이 전체 frame fit으로 충분.
+//   hair    표준위치 (50%, 40%) 높이 62%
+//   hat     표준위치 (50%, 22%) 높이 32%
+//   glasses 표준위치 (50%, 44%) 높이 16%
+//   outfit  표준위치 (50%, 78%) 높이 42%
 export const SLOT_ANCHORS = {
-  base: { x: 50, y: 50, w: 100, h: 100 },     // 전체
-  hair: { x: 50, y: 32, w: 110, h: 85 },      // 머리 영역 완전 덮도록 크게 (PNG padding 포함)
-  hat: { x: 50, y: 18, w: 90, h: 45 },        // 정수리 최상단 + 살짝 옆까지
-  glasses: { x: 50, y: 44, w: 62, h: 20 },    // 눈 부분
-  outfit: { x: 50, y: 88, w: 100, h: 32 },    // 어깨~상체
-  background: { x: 50, y: 50, w: 100, h: 100 }, // 전체
-  effect: { x: 50, y: 50, w: 100, h: 100 },   // 전체 오버레이
-  preset: { x: 50, y: 50, w: 100, h: 100 },   // 전체 교체
+  base:       { x: 50, y: 50, w: 100, h: 100 },
+  hair:       { x: 50, y: 50, w: 100, h: 100 },
+  hat:        { x: 50, y: 50, w: 100, h: 100 },
+  glasses:    { x: 50, y: 50, w: 100, h: 100 },
+  outfit:     { x: 50, y: 50, w: 100, h: 100 },
+  background: { x: 50, y: 50, w: 100, h: 100 },
+  effect:     { x: 50, y: 50, w: 100, h: 100 },
+  preset:     { x: 50, y: 50, w: 100, h: 100 },
 };
 
-// 슬롯별 합성 mix-blend-mode (흰 배경 자동 제거용)
-// multiply: 흰 영역 → 투명 효과 (어두운 색은 어두워질 수 있음)
-// normal: 알파 채널 그대로 (배경/프리셋 등)
+// PNG가 이제 투명 배경이므로 normal blend로 충분 (multiply 더 이상 불필요)
 export const SLOT_BLEND_MODES = {
-  hair: "multiply",
-  hat: "multiply",
-  glasses: "multiply",
-  outfit: "multiply",
-  effect: "multiply",
+  hair: "normal",
+  hat: "normal",
+  glasses: "normal",
+  outfit: "normal",
+  effect: "normal",
   base: "normal",
   background: "normal",
   preset: "normal",

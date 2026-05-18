@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>알찬 아바타 위치 편집기</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    font-family: -apple-system, "Noto Sans KR", sans-serif;
+    background: #f1f5f9; color: #0f172a;
+    display: grid; grid-template-columns: 420px 1fr; gap: 20px;
+  }
+  h1 { margin: 0 0 10px; font-size: 18px; }
+  h2 { margin: 16px 0 8px; font-size: 14px; color: #475569; }
+  .panel {
+    background: white; border-radius: 12px; padding: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+  /* ===== 좌측: 미리보기 ===== */
+  #previewArea {
+    position: relative;
+    width: 400px; height: 400px;
+    background: linear-gradient(135deg, #fde2f3 0%, #ddd6fe 100%);
+    border: 2px dashed #cbd5e1; border-radius: 12px;
+    margin: 10px auto;
+    overflow: hidden;
+  }
+  #previewArea img { position: absolute; pointer-events: none; user-select: none; }
+  /* 선택된 오버레이 위에 핸들 */
+  .handle {
+    position: absolute; width: 12px; height: 12px;
+    background: #a855f7; border: 2px solid white;
+    border-radius: 50%; cursor: nwse-resize;
+    z-index: 100;
+  }
+  .selectionBox {
+    position: absolute; border: 2px dashed #a855f7;
+    pointer-events: auto; cursor: move; z-index: 99;
+  }
+  /* ===== 우측: 컨트롤 ===== */
+  select, input[type="number"] {
+    padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+    font-size: 13px; background: white;
+  }
+  select { min-width: 180px; }
+  input[type="number"] { width: 80px; }
+  input[type="range"] { width: 100%; }
+  button {
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid #cbd5e1; background: white;
+    font-size: 13px;
+  }
+  button.primary { background: #a855f7; color: white; border-color: #a855f7; }
+  button.danger { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  .row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+  }
+  .row label { font-size: 12px; color: #64748b; min-width: 50px; }
+  .anchorRow { display: grid; grid-template-columns: 30px 1fr 60px; gap: 8px; align-items: center; }
+  .anchorRow label { font-weight: bold; color: #475569; }
+  .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #ede9fe; color: #6d28d9; }
+  pre { background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 11px; max-height: 300px; overflow: auto; }
+  .help { font-size: 11px; color: #64748b; line-height: 1.5; }
+  .slotTabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .slotTab {
+    padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+    background: white; cursor: pointer; font-size: 12px;
+  }
+  .slotTab.active { background: #a855f7; color: white; border-color: #a855f7; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>🎨 아바타 위치 편집기</h1>
+  <div class="help">
+    1. 베이스 캐릭터 선택 → 슬롯 탭 선택 → 아이템 선택<br>
+    2. 미리보기에서 <b>드래그</b>로 위치, <b>오른쪽 아래 핸들</b>로 크기 조정<br>
+    3. 또는 우측 슬라이더/입력으로 정밀 조정<br>
+    4. 각 아이템 fine-tune 후 <b>JSON 다운로드</b>해서 Claude에게 전달
+  </div>
+
+  <h2>베이스 캐릭터</h2>
+  <select id="baseSelect"></select>
+
+  <h2>슬롯 / 아이템</h2>
+  <div id="slotTabs" class="slotTabs"></div>
+  <select id="itemSelect" style="width:100%; margin-top:6px;"></select>
+
+  <h2>위치 / 크기 (캔버스 % 단위)</h2>
+  <div class="anchorRow">
+    <label>X</label>
+    <input type="range" id="rangeX" min="-50" max="150" value="50" step="0.5" />
+    <input type="number" id="numX" value="50" step="0.5" />
+  </div>
+  <div class="anchorRow">
+    <label>Y</label>
+    <input type="range" id="rangeY" min="-50" max="150" value="50" step="0.5" />
+    <input type="number" id="numY" value="50" step="0.5" />
+  </div>
+  <div class="anchorRow">
+    <label>W</label>
+    <input type="range" id="rangeW" min="5" max="200" value="100" step="0.5" />
+    <input type="number" id="numW" value="100" step="0.5" />
+  </div>
+  <div class="anchorRow">
+    <label>H</label>
+    <input type="range" id="rangeH" min="5" max="200" value="100" step="0.5" />
+    <input type="number" id="numH" value="100" step="0.5" />
+  </div>
+
+  <h2>액션</h2>
+  <div class="row">
+    <button onclick="resetCurrent()">현재 아이템 초기화</button>
+    <button onclick="copyToAllInSlot()" title="현재 값을 같은 슬롯 모든 아이템에 복사">슬롯 전체에 복사</button>
+  </div>
+  <div class="row">
+    <button class="primary" onclick="exportJson()">📥 JSON 다운로드</button>
+    <button onclick="loadFromFile()">📂 JSON 불러오기</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" />
+  </div>
+
+  <h2>JSON 미리보기</h2>
+  <pre id="jsonPreview">{}</pre>
+</div>
+
+<div class="panel">
+  <h2>미리보기</h2>
+  <div id="previewArea"></div>
+  <div class="help" style="margin-top:8px;">
+    • 보라색 점선 박스 = 선택된 아이템<br>
+    • 박스 안 드래그 = 위치 이동<br>
+    • 오른쪽 아래 점 = 크기 조정<br>
+    • 다른 슬롯도 동시 합성되어 보임 (헤어+모자+안경+의상 등 같이 확인)
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// 데이터 정의
+// =====================================================================
+const BASES = [
+  "base_default","base_blushing_shy","base_dark_neat","base_fair_bob_f",
+  "base_fair_short_m","base_freckle_red","base_pale_pink_cheek",
+  "base_robot_circuit","base_sleepy_calm","base_smug_cool","base_starry_eyes",
+  "base_strong_brave","base_sunshine_gold","base_tan_curly","base_wise_purple",
+];
+
+const SLOTS = {
+  hair:    ["hair_braid_blonde","hair_fire","hair_galaxy","hair_mint","hair_pink_twin","hair_rainbow_curl","hair_short_brown","hair_silver_long"],
+  hat:     ["hat_angel_halo","hat_baseball_red","hat_beanie_yellow","hat_chef","hat_crown_gold","hat_devil_horns","hat_graduation","hat_witch"],
+  glasses: ["glasses_3d","glasses_aviator","glasses_eyepatch","glasses_heart_pink","glasses_mask_medic","glasses_monocle","glasses_round_black","glasses_star"],
+  outfit:  ["outfit_astronaut","outfit_chef","outfit_doctor","outfit_hanbok_blue","outfit_kpop_idol","outfit_police","outfit_robe_wizard","outfit_school"],
+  effect:  ["effect_butterflies","effect_fire_aura","effect_hearts","effect_lightning","effect_petals","effect_rainbow_ring","effect_snow","effect_sparkle"],
+};
+
+// 슬롯별 기본 anchor (정규화된 PNG 기준)
+const DEFAULT_ANCHORS = {
+  hair:    { x: 50, y: 50, w: 100, h: 100 },
+  hat:     { x: 50, y: 50, w: 100, h: 100 },
+  glasses: { x: 50, y: 50, w: 100, h: 100 },
+  outfit:  { x: 50, y: 50, w: 100, h: 100 },
+  effect:  { x: 50, y: 50, w: 100, h: 100 },
+};
+
+const SLOT_ZINDEX = { outfit: 20, hair: 30, glasses: 40, hat: 50, effect: 60 };
+
+// =====================================================================
+// 상태
+// =====================================================================
+let currentBase = "base_default";
+let currentSlot = "hair";
+let currentItem = "hair_fire";
+// itemOverrides[itemId] = { x, y, w, h }
+let itemOverrides = JSON.parse(localStorage.getItem("avatarAnchors") || "{}");
+
+// =====================================================================
+// 초기화
+// =====================================================================
+const baseSelect = document.getElementById("baseSelect");
+BASES.forEach(b => {
+  const opt = document.createElement("option");
+  opt.value = b; opt.textContent = b;
+  baseSelect.appendChild(opt);
+});
+baseSelect.value = currentBase;
+baseSelect.onchange = (e) => { currentBase = e.target.value; render(); };
+
+const slotTabsEl = document.getElementById("slotTabs");
+Object.keys(SLOTS).forEach(slot => {
+  const t = document.createElement("div");
+  t.className = "slotTab" + (slot === currentSlot ? " active" : "");
+  t.textContent = slot;
+  t.onclick = () => {
+    currentSlot = slot;
+    currentItem = SLOTS[slot][0];
+    [...slotTabsEl.children].forEach((c, i) => c.classList.toggle("active", Object.keys(SLOTS)[i] === slot));
+    refreshItemSelect();
+    render();
+  };
+  slotTabsEl.appendChild(t);
+});
+
+const itemSelect = document.getElementById("itemSelect");
+function refreshItemSelect() {
+  itemSelect.innerHTML = "";
+  SLOTS[currentSlot].forEach(it => {
+    const opt = document.createElement("option");
+    opt.value = it; opt.textContent = it;
+    itemSelect.appendChild(opt);
+  });
+  itemSelect.value = currentItem;
+}
+itemSelect.onchange = (e) => { currentItem = e.target.value; render(); };
+refreshItemSelect();
+
+// 슬라이더/숫자 연동
+const inputs = ["X","Y","W","H"];
+inputs.forEach(k => {
+  const r = document.getElementById("range" + k);
+  const n = document.getElementById("num" + k);
+  r.oninput = () => { n.value = r.value; updateAnchor(); };
+  n.oninput = () => { r.value = n.value; updateAnchor(); };
+});
+
+function updateAnchor() {
+  const a = getAnchor(currentItem);
+  a.x = parseFloat(document.getElementById("numX").value);
+  a.y = parseFloat(document.getElementById("numY").value);
+  a.w = parseFloat(document.getElementById("numW").value);
+  a.h = parseFloat(document.getElementById("numH").value);
+  itemOverrides[currentItem] = a;
+  localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  render();
+}
+
+function getAnchor(itemId) {
+  if (itemOverrides[itemId]) return { ...itemOverrides[itemId] };
+  const slot = itemSlot(itemId);
+  return { ...DEFAULT_ANCHORS[slot] };
+}
+
+function itemSlot(itemId) {
+  if (itemId.startsWith("hair_")) return "hair";
+  if (itemId.startsWith("hat_")) return "hat";
+  if (itemId.startsWith("glasses_")) return "glasses";
+  if (itemId.startsWith("outfit_")) return "outfit";
+  if (itemId.startsWith("effect_")) return "effect";
+  return null;
+}
+
+// =====================================================================
+// 렌더링
+// =====================================================================
+const preview = document.getElementById("previewArea");
+const PSIZE = 400; // px
+
+function render() {
+  preview.innerHTML = "";
+
+  // 베이스
+  const baseImg = document.createElement("img");
+  baseImg.src = `/avatar-shop/${currentBase}.png`;
+  baseImg.style.left = "0";
+  baseImg.style.top = "0";
+  baseImg.style.width = PSIZE + "px";
+  baseImg.style.height = PSIZE + "px";
+  baseImg.style.zIndex = "10";
+  preview.appendChild(baseImg);
+
+  // 모든 슬롯의 현재 선택 아이템 함께 표시 (currentItem 강조)
+  Object.keys(SLOTS).forEach(slot => {
+    let items;
+    if (slot === currentSlot) items = [currentItem];
+    else items = []; // 다른 슬롯은 일단 표시 안 함 (혼란 방지)
+    items.forEach(itemId => {
+      const a = getAnchor(itemId);
+      const img = document.createElement("img");
+      img.src = `/avatar-shop/${itemId}.png`;
+      img.style.left = ((a.x - a.w / 2) / 100 * PSIZE) + "px";
+      img.style.top = ((a.y - a.h / 2) / 100 * PSIZE) + "px";
+      img.style.width = (a.w / 100 * PSIZE) + "px";
+      img.style.height = (a.h / 100 * PSIZE) + "px";
+      img.style.zIndex = String(SLOT_ZINDEX[slot] || 30);
+      img.style.objectFit = "contain";
+      preview.appendChild(img);
+
+      // 선택 박스 (현재 편집중인 아이템에만)
+      if (itemId === currentItem) {
+        const box = document.createElement("div");
+        box.className = "selectionBox";
+        box.style.left = img.style.left;
+        box.style.top = img.style.top;
+        box.style.width = img.style.width;
+        box.style.height = img.style.height;
+        preview.appendChild(box);
+
+        // 드래그 이동
+        let startX, startY, startAX, startAY;
+        box.onmousedown = (e) => {
+          e.preventDefault();
+          startX = e.clientX; startY = e.clientY;
+          startAX = a.x; startAY = a.y;
+          const move = (ev) => {
+            const dx = (ev.clientX - startX) / PSIZE * 100;
+            const dy = (ev.clientY - startY) / PSIZE * 100;
+            const newA = { ...a, x: startAX + dx, y: startAY + dy };
+            itemOverrides[itemId] = newA;
+            localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+            syncInputs(newA);
+            render();
+          };
+          const up = () => {
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", up);
+          };
+          document.addEventListener("mousemove", move);
+          document.addEventListener("mouseup", up);
+        };
+
+        // 리사이즈 핸들 (우하단)
+        const handle = document.createElement("div");
+        handle.className = "handle";
+        handle.style.left = (parseFloat(img.style.left) + parseFloat(img.style.width) - 6) + "px";
+        handle.style.top = (parseFloat(img.style.top) + parseFloat(img.style.height) - 6) + "px";
+        preview.appendChild(handle);
+
+        let rsX, rsY, rsW, rsH;
+        handle.onmousedown = (e) => {
+          e.preventDefault(); e.stopPropagation();
+          rsX = e.clientX; rsY = e.clientY;
+          rsW = a.w; rsH = a.h;
+          const move = (ev) => {
+            const dw = (ev.clientX - rsX) / PSIZE * 100 * 2;
+            const dh = (ev.clientY - rsY) / PSIZE * 100 * 2;
+            const newA = { ...a, w: Math.max(5, rsW + dw), h: Math.max(5, rsH + dh) };
+            itemOverrides[itemId] = newA;
+            localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+            syncInputs(newA);
+            render();
+          };
+          const up = () => {
+            document.removeEventListener("mousemove", move);
+            document.removeEventListener("mouseup", up);
+          };
+          document.addEventListener("mousemove", move);
+          document.addEventListener("mouseup", up);
+        };
+      }
+    });
+  });
+
+  // 입력 동기화
+  const a = getAnchor(currentItem);
+  syncInputs(a);
+  updateJsonPreview();
+}
+
+function syncInputs(a) {
+  document.getElementById("rangeX").value = a.x;
+  document.getElementById("numX").value = a.x.toFixed(1);
+  document.getElementById("rangeY").value = a.y;
+  document.getElementById("numY").value = a.y.toFixed(1);
+  document.getElementById("rangeW").value = a.w;
+  document.getElementById("numW").value = a.w.toFixed(1);
+  document.getElementById("rangeH").value = a.h;
+  document.getElementById("numH").value = a.h.toFixed(1);
+}
+
+function updateJsonPreview() {
+  document.getElementById("jsonPreview").textContent =
+    JSON.stringify(itemOverrides, null, 2);
+}
+
+function resetCurrent() {
+  delete itemOverrides[currentItem];
+  localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  render();
+}
+
+function copyToAllInSlot() {
+  const a = getAnchor(currentItem);
+  SLOTS[currentSlot].forEach(it => {
+    itemOverrides[it] = { ...a };
+  });
+  localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  render();
+  alert(`${currentSlot} 슬롯 ${SLOTS[currentSlot].length}개에 동일 값 적용됨`);
+}
+
+function exportJson() {
+  const blob = new Blob([JSON.stringify(itemOverrides, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "avatar-anchors.json";
+  a.click();
+}
+
+function loadFromFile() {
+  const inp = document.getElementById("fileInput");
+  inp.click();
+  inp.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        itemOverrides = JSON.parse(ev.target.result);
+        localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+        render();
+        alert("불러옴!");
+      } catch (err) {
+        alert("JSON 파싱 실패: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+}
+
+render();
+</script>
+
+</body>
+</html>
