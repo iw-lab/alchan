@@ -18,7 +18,10 @@ import {
   orderBy,
   serverTimestamp,
   runTransaction,
+  Timestamp,
+  functions,
 } from "../../firebase";
+import { httpsCallable } from "firebase/functions";
 import { addItemToInventory } from "../../firebase/firebaseDb";
 import {
   Users,
@@ -190,6 +193,7 @@ export default function GroupPurchase() {
       optimisticUpdate({ cash: -finalAmount });
     }
 
+    let transactionCommitted = false;
     try {
       const campaignRef = doc(db, "groupPurchases", campaign.id);
       const userRef = doc(db, "users", user.uid);
@@ -210,9 +214,9 @@ export default function GroupPurchase() {
         }
 
         const currentRemaining = cData.targetPrice - cData.currentAmount;
-        const finalAmount = Math.min(actualAmount, currentRemaining);
+        const txFinalAmount = Math.min(actualAmount, currentRemaining);
 
-        if (uData.cash < finalAmount) {
+        if (uData.cash < txFinalAmount) {
           throw new Error("잔액이 부족합니다.");
         }
 
@@ -221,7 +225,7 @@ export default function GroupPurchase() {
           (c) => c.userId === user.uid,
         );
         if (existingIdx >= 0) {
-          newContributors[existingIdx].amount += finalAmount;
+          newContributors[existingIdx].amount += txFinalAmount;
           newContributors[existingIdx].lastContributedAt = new Date();
           // firstContributedAt은 유지 (없으면 기존 contributedAt 사용)
           if (!newContributors[existingIdx].firstContributedAt) {
@@ -233,14 +237,14 @@ export default function GroupPurchase() {
           newContributors.push({
             userId: user.uid,
             userName: userDoc?.name || "알 수 없음",
-            amount: finalAmount,
+            amount: txFinalAmount,
             contributedAt: now,
             firstContributedAt: now,
             lastContributedAt: now,
           });
         }
 
-        const newTotal = cData.currentAmount + finalAmount;
+        const newTotal = cData.currentAmount + txFinalAmount;
         const isCompleted = newTotal >= cData.targetPrice;
 
         // 최다 기여자 계산 (동률 시 먼저 참여한 사람 우선)
@@ -269,65 +273,76 @@ export default function GroupPurchase() {
         });
 
         transaction.update(userRef, {
-          cash: uData.cash - finalAmount,
+          cash: uData.cash - txFinalAmount,
+        });
+
+        // 기여자 본인 활동 로그 (cash 차감 흔적)
+        const logRef = doc(collection(db, "activity_logs"));
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(logRef, {
+          userId: user.uid,
+          userName: userDoc?.name || "알 수 없음",
+          classCode,
+          type: "현금 출금",
+          description: `함께구매 참여: ${cData.itemName} (-${txFinalAmount.toLocaleString()}원)`,
+          amount: -txFinalAmount,
+          metadata: {
+            campaignId: campaign.id,
+            itemName: cData.itemName,
+            isCompleted,
+          },
+          timestamp: serverTimestamp(),
+          expireAt: Timestamp.fromDate(expireAt),
         });
 
         // 트랜잭션 밖에서 아이템 지급을 위한 데이터 반환
-        return { isCompleted, winnerId, winnerName, cData };
+        return { isCompleted, winnerId, winnerName, cData, txFinalAmount };
       });
 
-      // 목표 달성 시 최다 기여자에게 아이템 지급
-      if (result?.isCompleted && result.winnerId) {
-        // selectedItemId가 없으면 (기존 캠페인) 아이템 이름으로 매칭
-        let storeItemId = result.cData?.selectedItemId;
-        if (!storeItemId && result.cData?.itemName && items?.length > 0) {
-          const matched = items.find((i) => i.name === result.cData.itemName);
-          if (matched) storeItemId = matched.id;
-        }
+      // 트랜잭션 커밋 성공 - 이후 에러는 cash 롤백 대상이 아님
+      transactionCommitted = true;
 
-        if (storeItemId) {
-          try {
-            await addItemToInventory(result.winnerId, storeItemId, 1, {
-              name: result.cData.itemName,
-              icon: result.cData.itemIcon || "🎁",
-            });
-
-            // Decrement store stock and handle restock + price increase
-            try {
-              const storeItemRef = doc(db, "storeItems", storeItemId);
-              await runTransaction(db, async (tx) => {
-                const snap = await tx.get(storeItemRef);
-                if (!snap.exists()) return;
-                const d = snap.data();
-                if (d.stock === undefined) return;
-                const newStock = Math.max(0, (d.stock || 0) - 1);
-                const upd = { updatedAt: serverTimestamp() };
-                if (newStock <= 0 && d.initialStock > 0) {
-                  const rate = d.priceIncreasePercentage ?? d.outOfStockPriceIncreaseRate ?? 10;
-                  upd.stock = d.initialStock || 10;
-                  upd.price = Math.round(d.price * (1 + rate / 100));
-                } else {
-                  upd.stock = newStock;
-                }
-                tx.update(storeItemRef, upd);
-              });
-            } catch (stockErr) {
-              logger.error("함께구매 재고 차감 실패:", stockErr);
-            }
-
+      // 목표 달성 시: 서버사이드 Cloud Function으로 위임
+      //   - 아이템 지급 (서버 권한)
+      //   - storeItems 재고/가격 갱신 (admin SDK)
+      //   - 관리자 cash 입금 + 재고보충비 차감
+      //   - VAT 기록, activity_logs (winner + admin)
+      if (result?.isCompleted) {
+        try {
+          const completeFn = httpsCallable(functions, "completeGroupPurchase");
+          const cfResult = await completeFn({ campaignId: campaign.id });
+          if (cfResult?.data?.alreadyAwarded) {
+            // 이미 처리됨 - 알림 생략
+          } else {
             alert(
               `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
             );
-          } catch (itemErr) {
-            logger.error("아이템 지급 실패:", itemErr);
+          }
+        } catch (cfErr) {
+          logger.error("함께구매 완료 처리(CF) 실패:", cfErr);
+          // 폴백: 인벤토리만이라도 클라이언트에서 시도 (재고/가격 갱신은 포기)
+          try {
+            let fallbackItemId = result.cData?.selectedItemId;
+            if (!fallbackItemId && result.cData?.itemName && items?.length > 0) {
+              const matched = items.find((i) => i.name === result.cData.itemName);
+              if (matched) fallbackItemId = matched.id;
+            }
+            if (fallbackItemId && result.winnerId) {
+              await addItemToInventory(result.winnerId, fallbackItemId, 1, {
+                name: result.cData.itemName,
+                icon: result.cData.itemIcon || "🎁",
+              });
+            }
+            alert(
+              `🎉 목표 달성! ${result.winnerName}님이 아이템을 받았습니다.\n(서버 처리 일부 실패 - 관리자에게 문의)`,
+            );
+          } catch (fallbackErr) {
+            logger.error("폴백 인벤토리 지급 실패:", fallbackErr);
             alert(
               "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
             );
           }
-        } else {
-          alert(
-            `🎉 목표 달성! 최다 기여자: ${result.winnerName}님\n(상점에서 아이템을 찾을 수 없어 수동 지급이 필요합니다)`,
-          );
         }
       }
 
@@ -335,8 +350,8 @@ export default function GroupPurchase() {
       setContributeAmount("");
       fetchCampaigns();
     } catch (err) {
-      // 에러 시 낙관적 업데이트 롤백
-      if (optimisticUpdate) {
+      // 트랜잭션 커밋 전 실패만 롤백 (커밋 후 후처리 오류는 cash 무관)
+      if (!transactionCommitted && optimisticUpdate) {
         optimisticUpdate({ cash: finalAmount });
       }
       logger.error("모금 참여 실패:", err);

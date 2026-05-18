@@ -77,6 +77,10 @@ exports.initializeClassroomManual = scheduler.initializeClassroomManual; // 학�
 exports.backfillMusicRoomsManual = scheduler.backfillMusicRoomsManual; // musicRooms classCode 백필
 exports.migrateStorePriceDownManual = scheduler.migrateStorePriceDownManual; // 물가 안정 25%로 일괄
 
+// 🛒 함께구매 완료 처리 (서버사이드)
+const groupPurchaseService = require("./groupPurchaseService");
+exports.completeGroupPurchase = groupPurchaseService.completeGroupPurchase;
+
 // 5분마다 주식 가격 업데이트
 // exports.updateCentralStockMarket = onSchedule({
 //   region: "asia-northeast3",
