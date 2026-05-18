@@ -136,15 +136,15 @@ export const SLOT_BLEND_MODES = {
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
 export const ITEM_ANCHORS = {
-  // ===== 헤어 (사용자 fine-tune v3) =====
-  hair_fire:         { x: 50.5,  y: 25.5,   w: 167.5, h: 126.5 },
-  hair_braid_blonde: { x: 49.55, y: 109.3,  w: 300.5, h: 260.5 },
-  hair_galaxy:       { x: 49.3,  y: 85.75,  w: 200,   h: 200 },
-  hair_mint:         { x: 49.3,  y: 43.5,   w: 200,   h: 104 },
-  hair_pink_twin:    { x: 49.5,  y: 52.25,  w: 216.5, h: 126 },
-  hair_rainbow_curl: { x: 49.8,  y: 60.3,   w: 148,   h: 166.5 },
-  hair_short_brown:  { x: 49.5,  y: 43.25,  w: 100,   h: 100 },
-  hair_silver_long:  { x: 49.5,  y: 74.5,   w: 200,   h: 175 },
+  // ===== 헤어 (사용자 fine-tune v4) =====
+  hair_fire:         { x: 51.3,  y: 50.75,  w: 234.5, h: 206 },
+  hair_braid_blonde: { x: 50.05, y: 153.55, w: 446.5, h: 372.5 },
+  hair_galaxy:       { x: 48.5,  y: 121.25, w: 368.5, h: 294.5 },
+  hair_mint:         { x: 49.75, y: 67.75,  w: 299,   h: 172.5 },
+  hair_pink_twin:    { x: 50.25, y: 88,     w: 329,   h: 209.5 },
+  hair_rainbow_curl: { x: 49.55, y: 85.75,  w: 239,   h: 212.5 },
+  hair_short_brown:  { x: 48.8,  y: 65,     w: 220.5, h: 158.5 },
+  hair_silver_long:  { x: 49.25, y: 99.75,  w: 260,   h: 244 },
 };
 
 /**
