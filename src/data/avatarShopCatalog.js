@@ -50,7 +50,7 @@ const HAIR_ITEMS = [
     description: "기분 좋아지는 무지개 곱슬머리",
     rarity: "epic",
     price: 1200000,
-    prompt: `${ITEM_ONLY_STYLE} A curly afro-style wig, vibrant rainbow colored hair (red, orange, yellow, green, blue, purple stripes), playful and bouncy, viewed from the front as if floating in air.`,
+    prompt: `${ITEM_ONLY_STYLE} A HUGE round curly afro hairstyle wig, FULL VIVID RAINBOW SPECTRUM with clearly distinct color stripes/sections (RED at top, ORANGE, YELLOW, GREEN, BLUE, PURPLE at bottom - all 6 rainbow colors MUST be clearly visible and distinct), big bouncy poofy round shape like a rainbow puff ball, NOT pink, NOT just one color, MUST be multi-color rainbow.`,
   },
   {
     id: "hair_silver_long",
@@ -95,7 +95,7 @@ const HAIR_ITEMS = [
     description: "별이 박힌 우주빛 머리",
     rarity: "legendary",
     price: 5000000,
-    prompt: `${ITEM_ONLY_STYLE} A flowing wavy long hairstyle wig with dark purple and deep blue galaxy colors, tiny white star sparkles scattered through the hair, cosmic theme.`,
+    prompt: `${ITEM_ONLY_STYLE} A long wavy hairstyle wig viewed from front, deep navy and dark purple cosmic colors with subtle nebula gradient, tiny white star/sparkle highlights scattered, shoulder-length straight-down wavy strands, CLEAN smooth outlines, simple cartoon shape (NOT messy, NOT rough edges).`,
   },
   {
     id: "hair_short_brown",
@@ -132,7 +132,7 @@ const HAIR_ITEMS = [
     description: "정수리 위에 묶은 똥머리",
     rarity: "rare",
     price: 300000,
-    prompt: `${ITEM_ONLY_STYLE} A black hair bun (top knot) hairstyle wig, hair pulled up and tied into a round bun on TOP of the head, small wispy bangs in front, casual messy style, dark black color, cute and playful look.`,
+    prompt: `${ITEM_ONLY_STYLE} A black hair top-knot bun hairstyle wig viewed from FRONT, dark black hair gathered up tightly into a round ball-shaped bun ON TOP of where the head would be, small straight bangs across the forehead area, hair tied with a small black band, simple flat cartoon shape, CLEAN outlines (NOT messy edges), centered in frame.`,
   },
   {
     id: "hair_undercut_male",
@@ -150,7 +150,7 @@ const HAIR_ITEMS = [
     description: "자연스럽게 헝클어진 남자머리",
     rarity: "common",
     price: 80000,
-    prompt: `${ITEM_ONLY_STYLE} A messy spiky male hairstyle wig, naturally tousled and slightly unkempt, medium-short length, dark chocolate brown color, casual relaxed look, boy style, simple cartoon shape.`,
+    prompt: `${ITEM_ONLY_STYLE} A SHORT messy boy hairstyle wig viewed from front (NO FACE, NO BODY visible - only the hair top), spiky tousled short hair sitting on top of head area only, medium-short length covering just the upper head area, dark chocolate brown color with lighter highlights, simple flat cartoon shape with CLEAN outlines, hair contained in the upper portion of frame.`,
   },
   {
     id: "hair_slick_back_male",
