@@ -85,6 +85,7 @@ exports.completeGroupPurchase = groupPurchaseService.completeGroupPurchase;
 const avatarShopService = require("./avatarShopService");
 exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
 exports.seedAvatarShop = avatarShopService.seedAvatarShop;
+exports.seedAvatarShopHttp = avatarShopService.seedAvatarShopHttp;
 
 // 5분마다 주식 가격 업데이트
 // exports.updateCentralStockMarket = onSchedule({

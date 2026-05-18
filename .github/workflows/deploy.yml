@@ -78,6 +78,43 @@ jobs:
             echo "⏭️  Firestore rules 변경 없음 - 건너뜀"
           fi
 
+      - name: Seed Avatar Shop (if catalog changed)
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          if echo "$CHANGED" | grep -qE '^(src/data/avatarShopCatalog\.js|functions/avatarShopService\.js)$'; then
+            echo "✅ 아바타 카탈로그 변경 감지 - 자동 시드 시작"
+            # functions 배포가 propagate 될 시간 대기
+            sleep 30
+            # ES module 카탈로그 → JSON으로 변환
+            node --input-type=module -e "
+              import('./src/data/avatarShopCatalog.js').then(m => {
+                process.stdout.write(JSON.stringify(m.ALL_AVATAR_ITEMS));
+              });
+            " > /tmp/avatar-items.json
+            COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/avatar-items.json','utf8')).length)")
+            echo "카탈로그 항목: $COUNT개"
+            # 100개씩 batch 호출 (Cloud Function 200개 제한)
+            node -e "
+              const items = JSON.parse(require('fs').readFileSync('/tmp/avatar-items.json','utf8'));
+              const url = 'https://asia-northeast3-inconomysu-class.cloudfunctions.net/seedAvatarShopHttp?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}';
+              (async () => {
+                let total = 0;
+                for (let i = 0; i < items.length; i += 100) {
+                  const batch = items.slice(i, i + 100);
+                  const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({items: batch}) });
+                  const data = await res.json();
+                  if (!data.success) { console.error('Seed failed:', data); process.exit(1); }
+                  total += data.written || 0;
+                  console.log('Batch', i/100+1, ':', data.written, '개');
+                }
+                console.log('✅ 총', total, '개 시드 완료');
+              })();
+            "
+            rm -f /tmp/avatar-items.json
+          else
+            echo "⏭️  아바타 카탈로그 변경 없음 - 시드 건너뜀"
+          fi
+
       # GitHub Release 생성 (AppUpdateChecker가 감지)
       - name: Set version
         id: version

@@ -1,7 +1,74 @@
 /* eslint-disable */
 /* eslint-disable max-len */
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData } = require("./utils");
+
+const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
+
+/**
+ * 아바타 상점 일괄 시드 HTTP 엔드포인트 (SCHEDULER_AUTH_TOKEN 인증)
+ *
+ * POST /seedAvatarShopHttp?token=<TOKEN>
+ * body: { items: [...] }
+ *
+ * 또는 GET으로 호출 시 내장된 카탈로그를 자체적으로 시드 (편의성)
+ * GET /seedAvatarShopHttp?token=<TOKEN>&useEmbedded=1
+ *
+ * 보안: SCHEDULER_AUTH_TOKEN으로만 호출 가능. 슈퍼관리자 인증 우회 (시드 일회성 작업용).
+ */
+exports.seedAvatarShopHttp = onRequest(
+  { region: "asia-northeast3", invoker: "public", timeoutSeconds: 120 },
+  async (req, res) => {
+    try {
+      const token = req.query.token || req.body?.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+
+      const items = req.body?.items;
+      if (!Array.isArray(items) || items.length === 0) {
+        res.status(400).json({ success: false, error: "items 배열 필요 (POST body)" });
+        return;
+      }
+      if (items.length > 200) {
+        res.status(400).json({ success: false, error: "한 번에 최대 200개" });
+        return;
+      }
+
+      const batch = db.batch();
+      let written = 0;
+      for (const item of items) {
+        if (!item.id || !item.slot || !item.name || typeof item.price !== "number") continue;
+        const ref = db.collection("avatarShopItems").doc(item.id);
+        batch.set(
+          ref,
+          {
+            id: item.id,
+            slot: item.slot,
+            name: item.name,
+            description: item.description || "",
+            imageUrl: item.imageUrl || "",
+            rarity: item.rarity || "common",
+            price: item.price,
+            active: item.active !== false,
+            sortOrder: item.sortOrder || 0,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        written++;
+      }
+      await batch.commit();
+      logger.info(`[seedAvatarShopHttp] ${written}개 시드 완료`);
+      res.json({ success: true, written });
+    } catch (error) {
+      logger.error("[seedAvatarShopHttp] 오류:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
 
 /**
  * 아바타 상점 시드 (슈퍼관리자 전용)
