@@ -1,6 +1,6 @@
 // src/components/Avatar.js - PNG 베이스 + 슬롯 오버레이 합성
 import React from "react";
-import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS } from "../utils/avatarShop";
+import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avatarShop";
 
 // 폴백 베이스 이미지 (베이스 미선택 시)
 const DEFAULT_BASE_URL = "/avatar-shop/base_default.png";
@@ -60,6 +60,8 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
     const top = cy - h / 2;
     const zIndex = AVATAR_SHOP_SLOTS[slotKey]?.zIndex ?? 10;
 
+    const blendMode = SLOT_BLEND_MODES[slotKey] || "normal";
+
     return (
       <img
         key={slotKey}
@@ -74,6 +76,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           objectFit: "contain",
           pointerEvents: "none",
           zIndex,
+          mixBlendMode: blendMode, // 흰 배경 자동 제거 (multiply)
         }}
       />
     );

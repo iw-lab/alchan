@@ -102,13 +102,27 @@ export function getActivePreset(userDoc) {
 // 베이스 인물: 눈 ~42%, 코 ~50%, 입 ~55%, 머리 위 ~25%, 어깨 ~85%
 export const SLOT_ANCHORS = {
   base: { x: 50, y: 50, w: 100, h: 100 },     // 전체
-  hair: { x: 50, y: 28, w: 75, h: 42 },       // 머리 위 + 양옆
-  hat: { x: 50, y: 18, w: 65, h: 32 },        // 머리 최상단
-  glasses: { x: 50, y: 42, w: 55, h: 18 },    // 눈 부분
-  outfit: { x: 50, y: 85, w: 80, h: 30 },     // 어깨~상체
+  hair: { x: 50, y: 32, w: 95, h: 60 },       // 머리 전체 (이마~귀 옆)
+  hat: { x: 50, y: 18, w: 85, h: 40 },        // 머리 최상단
+  glasses: { x: 50, y: 43, w: 65, h: 22 },    // 눈 부분
+  outfit: { x: 50, y: 85, w: 95, h: 35 },     // 어깨~상체
   background: { x: 50, y: 50, w: 100, h: 100 }, // 전체
   effect: { x: 50, y: 50, w: 100, h: 100 },   // 전체 오버레이
   preset: { x: 50, y: 50, w: 100, h: 100 },   // 전체 교체
+};
+
+// 슬롯별 합성 mix-blend-mode (흰 배경 자동 제거용)
+// multiply: 흰 영역 → 투명 효과 (어두운 색은 어두워질 수 있음)
+// normal: 알파 채널 그대로 (배경/프리셋 등)
+export const SLOT_BLEND_MODES = {
+  hair: "multiply",
+  hat: "multiply",
+  glasses: "multiply",
+  outfit: "multiply",
+  effect: "multiply",
+  base: "normal",
+  background: "normal",
+  preset: "normal",
 };
 
 /**

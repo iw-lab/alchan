@@ -214,11 +214,16 @@ export default function AvatarShop() {
 
       {/* 미리보기 + 장착 슬롯 */}
       <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-5">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
           <Avatar
-            size={180}
+            size={200}
             shopOverlays={equippedOverlays}
           />
+          {previewItem && (
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-purple-600 text-white text-[11px] font-bold shadow-lg whitespace-nowrap z-50 animate-pulse">
+              👁️ 미리보기: {previewItem.name}
+            </div>
+          )}
         </div>
         <div className="flex-1 w-full">
           <h3 className="text-sm font-bold text-slate-700 mb-3">착용 중</h3>
@@ -319,17 +324,29 @@ export default function AvatarShop() {
             const rar = getRarity(item.rarity);
             const slotInfo = getSlot(item.slot);
             const canBuy = (userDoc?.cash || 0) >= item.price;
+            const isPreviewActive = previewItem?.id === item.id;
             return (
               <div
                 key={item.id}
-                className="bg-white rounded-2xl border-2 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col"
+                className="bg-white rounded-2xl border-2 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col cursor-pointer"
                 style={{
-                  borderColor: equipped ? "#22c55e" : owned ? `${rar.color}80` : `${rar.color}40`,
-                  boxShadow: equipped ? "0 0 0 2px #22c55e40" : undefined,
+                  borderColor: isPreviewActive
+                    ? "#a855f7"
+                    : equipped
+                      ? "#22c55e"
+                      : owned
+                        ? `${rar.color}80`
+                        : `${rar.color}40`,
+                  boxShadow: isPreviewActive
+                    ? "0 0 0 3px #a855f740"
+                    : equipped
+                      ? "0 0 0 2px #22c55e40"
+                      : undefined,
                   minWidth: 0,
                 }}
                 onMouseEnter={() => setPreviewItem(item)}
                 onMouseLeave={() => setPreviewItem(null)}
+                onClick={() => setPreviewItem(isPreviewActive ? null : item)}
               >
                 {/* 이미지 */}
                 <div
