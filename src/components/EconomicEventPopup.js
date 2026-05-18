@@ -152,8 +152,12 @@ export default function EconomicEventPopup() {
     day: "numeric",
   });
 
-  const positiveGrad = "from-emerald-600/90 via-emerald-700/95 to-teal-800/95";
-  const negativeGrad = "from-red-600/90 via-red-700/95 to-rose-800/95";
+  // 라이트 톤: 흰 배경 + 헤더만 컬러풀
+  const positiveAccent = "#10b981"; // emerald-500
+  const negativeAccent = "#ef4444"; // red-500
+  const accent = isPositive ? positiveAccent : negativeAccent;
+  const accentSoftBg = isPositive ? "#ecfdf5" : "#fef2f2";
+  const accentBorder = isPositive ? "#a7f3d0" : "#fecaca";
 
   const popup = (
     <div
@@ -180,97 +184,78 @@ export default function EconomicEventPopup() {
             "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease",
         }}
       >
-        {/* 카드 */}
+        {/* 카드 - 라이트 톤 */}
         <div
-          className={`relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br ${isPositive ? positiveGrad : negativeGrad}`}
+          className="relative rounded-2xl overflow-hidden bg-white"
           style={{
-            boxShadow: isPositive
-              ? "0 0 60px rgba(16,185,129,0.3), 0 25px 50px rgba(0,0,0,0.5)"
-              : "0 0 60px rgba(239,68,68,0.3), 0 25px 50px rgba(0,0,0,0.5)",
+            boxShadow: `0 0 0 1px ${accentBorder}, 0 20px 40px rgba(15,23,42,0.15)`,
           }}
         >
-          {/* 상단 글로우 라인 */}
-          <div
-            className={`h-1 ${isPositive ? "bg-gradient-to-r from-emerald-300 via-cyan-300 to-emerald-300" : "bg-gradient-to-r from-red-300 via-orange-300 to-red-300"}`}
-          />
+          {/* 상단 강조 라인 */}
+          <div className="h-1" style={{ background: accent }} />
 
           {/* 헤더 */}
           <div className="px-5 pt-5 pb-3 flex items-start gap-3">
             {/* 이모지 아이콘 */}
             <div
               className="flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                backdropFilter: "blur(8px)",
-              }}
+              style={{ background: accentSoftBg, border: `1px solid ${accentBorder}` }}
             >
               {event.emoji || "⚡"}
             </div>
 
             <div className="flex-1 min-w-0">
-              {/* 태그 */}
               <div className="flex items-center gap-1.5 mb-1">
                 {isPositive ? (
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-200" />
+                  <TrendingUp className="w-3.5 h-3.5" style={{ color: accent }} />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 text-red-200" />
+                  <TrendingDown className="w-3.5 h-3.5" style={{ color: accent }} />
                 )}
-                <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
                   경제 이벤트
                 </span>
               </div>
 
-              {/* 제목 */}
-              <h2 className="text-lg font-bold text-white leading-tight font-jua">
+              <h2 className="text-lg font-bold text-slate-800 leading-tight font-jua">
                 {event.title}
               </h2>
 
-              {/* 날짜 */}
-              <p className="text-xs text-white/50 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 {dateStr} {timeStr} 발생
               </p>
             </div>
 
-            {/* 닫기 버튼 */}
             <button
               onClick={handleClose}
-              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/70 hover:text-white active:scale-90 transition-all"
-              style={{ background: "rgba(255,255,255,0.15)" }}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-90 transition-all"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* 구분선 */}
-          <div className="mx-5 h-px bg-white/15" />
+          <div className="mx-5 h-px bg-slate-200" />
 
           {/* 본문 */}
           <div className="px-5 py-4 space-y-3">
-            {/* 이벤트 설명 */}
             {event.description && (
-              <p className="text-sm text-white/80 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed">
                 {event.description}
               </p>
             )}
 
-            {/* 영향 */}
             {detail.impact && (
-              <div
-                className="rounded-xl p-3"
-                style={{ background: "rgba(255,255,255,0.1)" }}
-              >
+              <div className="rounded-xl p-3" style={{ background: accentSoftBg, border: `1px solid ${accentBorder}` }}>
                 <div className="flex items-start gap-2">
-                  <Zap className="w-4 h-4 mt-0.5 flex-shrink-0 text-yellow-300" />
-                  <p className="text-sm font-semibold text-white leading-relaxed">
+                  <Zap className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: accent }} />
+                  <p className="text-sm font-semibold leading-relaxed" style={{ color: isPositive ? "#065f46" : "#991b1b" }}>
                     {detail.impact}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* 팁 */}
             {detail.tip && (
-              <p className="text-xs text-white/60 pl-1">💡 {detail.tip}</p>
+              <p className="text-xs text-slate-500 pl-1">💡 {detail.tip}</p>
             )}
           </div>
 
@@ -279,10 +264,7 @@ export default function EconomicEventPopup() {
             <button
               onClick={handleClose}
               className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-white font-jua"
-              style={{
-                background: "rgba(255,255,255,0.2)",
-                backdropFilter: "blur(8px)",
-              }}
+              style={{ background: accent }}
             >
               확인했어요 ✓
             </button>
