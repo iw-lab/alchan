@@ -108,8 +108,8 @@ export const SLOT_ANCHORS = {
   hair:       { x: 50, y: 18,  w: 60,  h: 50 },
   hat:        { x: 50, y: 8,   w: 50,  h: 30 },
   glasses:    { x: 50, y: 22,  w: 40,  h: 12 },
-  // PNG 콘텐츠 (cy=78% outfit) → 베이스 몸통(55%)에 정렬
-  outfit:     { x: 50, y: 55,  w: 70,  h: 50 },
+  // 전신 의상 PNG (콘텐츠 cy=50, h=90%) → 베이스 풀바디 전체에 매칭
+  outfit:     { x: 50, y: 50,  w: 100, h: 100 },
   background: { x: 50, y: 50,  w: 100, h: 100 },
   effect:     { x: 50, y: 50,  w: 100, h: 100 },
   preset:     { x: 50, y: 50,  w: 100, h: 100 },

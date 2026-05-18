@@ -339,7 +339,7 @@ const OUTFIT_ITEMS = [
     description: "단아한 푸른 한복",
     rarity: "epic",
     price: 1500000,
-    prompt: `${ITEM_ONLY_STYLE} A traditional Korean hanbok top (jeogori), deep cobalt blue color with white collar and ribbon (otgoreum), shoulders to chest area, no person inside, flat lay style.`,
+    prompt: `${ITEM_ONLY_STYLE} A traditional Korean hanbok top (jeogori), deep cobalt blue color with white collar and ribbon (otgoreum), shoulders to chest area, no person inside, flat lay style. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_astronaut",
@@ -348,7 +348,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${ITEM_ONLY_STYLE} A white astronaut spacesuit upper portion, helmet with reflective visor and gold trim, chest control panel with patches, NASA-style mission badge, no person inside.`,
+    prompt: `${ITEM_ONLY_STYLE} A white astronaut spacesuit upper portion, helmet with reflective visor and gold trim, chest control panel with patches, NASA-style mission badge, no person inside. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_chef",
@@ -357,7 +357,7 @@ const OUTFIT_ITEMS = [
     description: "요리사의 흰 셰프복",
     rarity: "rare",
     price: 400000,
-    prompt: `${ITEM_ONLY_STYLE} A white chef jacket, double-breasted with two rows of buttons, neckerchief tied at the collar, professional kitchen wear, no person, just the jacket.`,
+    prompt: `${ITEM_ONLY_STYLE} A white chef jacket, double-breasted with two rows of buttons, neckerchief tied at the collar, professional kitchen wear, no person, just the jacket. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_school",
@@ -366,7 +366,7 @@ const OUTFIT_ITEMS = [
     description: "단정한 교복",
     rarity: "common",
     price: 80000,
-    prompt: `${ITEM_ONLY_STYLE} A Korean school uniform top, navy blazer with red striped tie and white shirt collar, simple emblem on chest pocket, no person inside.`,
+    prompt: `${ITEM_ONLY_STYLE} A Korean school uniform top, navy blazer with red striped tie and white shirt collar, simple emblem on chest pocket, no person inside. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_kpop_idol",
@@ -375,7 +375,7 @@ const OUTFIT_ITEMS = [
     description: "반짝이는 아이돌 무대의상",
     rarity: "legendary",
     price: 6000000,
-    prompt: `${ITEM_ONLY_STYLE} A sparkly silver K-pop idol stage outfit jacket, glittery sequins, decorative tassels and chains, dazzling colorful gems on the chest, no person.`,
+    prompt: `${ITEM_ONLY_STYLE} A sparkly silver K-pop idol stage outfit jacket, glittery sequins, decorative tassels and chains, dazzling colorful gems on the chest, no person. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_police",
@@ -384,7 +384,7 @@ const OUTFIT_ITEMS = [
     description: "정의의 경찰복",
     rarity: "rare",
     price: 500000,
-    prompt: `${ITEM_ONLY_STYLE} A police officer uniform top, navy blue blazer with badge on chest, shoulder epaulets, gold buttons, professional look, no person inside.`,
+    prompt: `${ITEM_ONLY_STYLE} A police officer uniform top, navy blue blazer with badge on chest, shoulder epaulets, gold buttons, professional look, no person inside. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_doctor",
@@ -393,7 +393,7 @@ const OUTFIT_ITEMS = [
     description: "흰 의사 가운",
     rarity: "rare",
     price: 450000,
-    prompt: `${ITEM_ONLY_STYLE} A white doctor lab coat with a stethoscope around the collar, name tag on chest pocket, professional medical wear, no person.`,
+    prompt: `${ITEM_ONLY_STYLE} A white doctor lab coat with a stethoscope around the collar, name tag on chest pocket, professional medical wear, no person. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "outfit_robe_wizard",
@@ -402,7 +402,7 @@ const OUTFIT_ITEMS = [
     description: "신비로운 마법사 로브",
     rarity: "epic",
     price: 1700000,
-    prompt: `${ITEM_ONLY_STYLE} A purple wizard robe with golden star patterns and moons embroidered, wide flowing sleeves, mystical magical aesthetic, no person inside.`,
+    prompt: `${ITEM_ONLY_STYLE} A purple wizard robe with golden star patterns and moons embroidered, wide flowing sleeves, mystical magical aesthetic, no person inside. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   // ===== 명품 초고가 의상 8종 (저작권 회피 - 가공의 럭셔리 디자인) =====
   {
@@ -412,7 +412,7 @@ const OUTFIT_ITEMS = [
     description: "황금 자수 + 다이아 시계 + 명품 목걸이가 어우러진 최고급 정장",
     rarity: "legendary",
     price: 15000000,
-    prompt: `${ITEM_ONLY_STYLE} An ultra luxury formal suit jacket with ornate golden embroidery on the lapels, a sparkling diamond-encrusted wristwatch peeking from one sleeve, a thick golden chain necklace visible above the collar, deep navy fabric with gold pinstripes, premium designer aesthetic, NO brand logos, NO recognizable celebrity, generic ultra-luxury cartoon style, opulent and ornate.`,
+    prompt: `${ITEM_ONLY_STYLE} An ultra luxury formal suit jacket with ornate golden embroidery on the lapels, a sparkling diamond-encrusted wristwatch peeking from one sleeve, a thick golden chain necklace visible above the collar, deep navy fabric with gold pinstripes, premium designer aesthetic, NO brand logos, NO recognizable celebrity, generic ultra-luxury cartoon style, opulent and ornate. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_dress_diamond",
@@ -421,7 +421,7 @@ const OUTFIT_ITEMS = [
     description: "다이아몬드가 박힌 빛나는 최고급 드레스",
     rarity: "legendary",
     price: 25000000,
-    prompt: `${ITEM_ONLY_STYLE} An ultra luxurious diamond-encrusted evening dress upper portion, sparkling silver fabric covered in tiny diamond gemstones, plunging V-neckline with elaborate diamond necklace, off-shoulder design with delicate gold trim, glamorous red-carpet style, NO brand logos, generic ultra-luxury cartoon look, dazzling and opulent.`,
+    prompt: `${ITEM_ONLY_STYLE} An ultra luxurious diamond-encrusted evening dress upper portion, sparkling silver fabric covered in tiny diamond gemstones, plunging V-neckline with elaborate diamond necklace, off-shoulder design with delicate gold trim, glamorous red-carpet style, NO brand logos, generic ultra-luxury cartoon look, dazzling and opulent. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_royal_robe",
@@ -430,7 +430,7 @@ const OUTFIT_ITEMS = [
     description: "황실의 최고급 황금 자수 망토",
     rarity: "legendary",
     price: 30000000,
-    prompt: `${ITEM_ONLY_STYLE} An imperial royal robe with rich red velvet fabric, white ermine fur trim around the neckline and shoulders, elaborate gold embroidery patterns, crown jewels brooch on the chest, regal majestic appearance, NOT any specific country's royal family design, generic fantasy royalty.`,
+    prompt: `${ITEM_ONLY_STYLE} An imperial royal robe with rich red velvet fabric, white ermine fur trim around the neckline and shoulders, elaborate gold embroidery patterns, crown jewels brooch on the chest, regal majestic appearance, NOT any specific country's royal family design, generic fantasy royalty. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_designer_coat",
@@ -439,7 +439,7 @@ const OUTFIT_ITEMS = [
     description: "감각적인 패션의 정점 - 명품 디자이너 코트",
     rarity: "legendary",
     price: 12000000,
-    prompt: `${ITEM_ONLY_STYLE} A high-fashion designer trench coat in cream tan color, oversized lapels, leather belt with gold buckle (NO logo), gold buttons, an expensive looking leather handbag visible on one shoulder strap (NO brand logo, generic luxury bag design), runway fashion week aesthetic, NO brand markings.`,
+    prompt: `${ITEM_ONLY_STYLE} A high-fashion designer trench coat in cream tan color, oversized lapels, leather belt with gold buckle (NO logo), gold buttons, an expensive looking leather handbag visible on one shoulder strap (NO brand logo, generic luxury bag design), runway fashion week aesthetic, NO brand markings. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_hanbok_gold",
@@ -448,7 +448,7 @@ const OUTFIT_ITEMS = [
     description: "황금 자수가 화려한 명품 전통 한복",
     rarity: "legendary",
     price: 18000000,
-    prompt: `${ITEM_ONLY_STYLE} A luxury traditional Korean hanbok top (jeogori), deep royal purple silk with intricate gold thread embroidery of phoenix and clouds, white collar with gold trim, elaborate otgoreum ribbon with jade pendant, ornate jeweled hair pin visible, high-end ceremonial hanbok, dignified and opulent.`,
+    prompt: `${ITEM_ONLY_STYLE} A luxury traditional Korean hanbok top (jeogori), deep royal purple silk with intricate gold thread embroidery of phoenix and clouds, white collar with gold trim, elaborate otgoreum ribbon with jade pendant, ornate jeweled hair pin visible, high-end ceremonial hanbok, dignified and opulent. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_athletic_set",
@@ -457,7 +457,7 @@ const OUTFIT_ITEMS = [
     description: "디자이너 컬렉션의 최고급 트레이닝복",
     rarity: "epic",
     price: 8000000,
-    prompt: `${ITEM_ONLY_STYLE} A high-end designer athletic tracksuit top, sleek black with gold metallic stripes down the sleeves, premium technical fabric texture, expensive looking gold zipper, a thick golden chain visible at the neckline, NO brand logos, generic ultra-premium streetwear style, hip-hop luxury aesthetic.`,
+    prompt: `${ITEM_ONLY_STYLE} A high-end designer athletic tracksuit top, sleek black with gold metallic stripes down the sleeves, premium technical fabric texture, expensive looking gold zipper, a thick golden chain visible at the neckline, NO brand logos, generic ultra-premium streetwear style, hip-hop luxury aesthetic. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_fur_coat",
@@ -466,7 +466,7 @@ const OUTFIT_ITEMS = [
     description: "부드러운 모피로 만든 최고급 겨울 코트",
     rarity: "legendary",
     price: 22000000,
-    prompt: `${ITEM_ONLY_STYLE} A luxurious faux fur coat in soft white cream color, plush thick fur texture, large fur collar wrapping around the neck, an elegant pearl necklace draped over the collar, sleek tailored silhouette, winter glamour, NO brand logos, ultra-rich aesthetic.`,
+    prompt: `${ITEM_ONLY_STYLE} A luxurious faux fur coat in soft white cream color, plush thick fur texture, large fur collar wrapping around the neck, an elegant pearl necklace draped over the collar, sleek tailored silhouette, winter glamour, NO brand logos, ultra-rich aesthetic. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
   {
     id: "luxury_kpop_stage",
@@ -475,7 +475,7 @@ const OUTFIT_ITEMS = [
     description: "스타가 입을 법한 화려한 무대의상",
     rarity: "legendary",
     price: 20000000,
-    prompt: `${ITEM_ONLY_STYLE} A dazzling K-pop idol stage outfit jacket fully covered in iridescent rhinestones and silver sequins, elaborate gold chain decorations, decorative epaulets on the shoulders with tassels, plunging V-neck with multiple layered chain necklaces, NO brand logos, NO recognizable celebrity face, generic ultra-glamorous stage costume.`,
+    prompt: `${ITEM_ONLY_STYLE} A dazzling K-pop idol stage outfit jacket fully covered in iridescent rhinestones and silver sequins, elaborate gold chain decorations, decorative epaulets on the shoulders with tassels, plunging V-neck with multiple layered chain necklaces, NO brand logos, NO recognizable celebrity face, generic ultra-glamorous stage costume. FULL BODY OUTFIT SET - vertical composition: top/jacket at vertical 8-45%, pants/skirt at 45-75%, shoes at 80-95%. Arrange standing upright as if on invisible mannequin (NO person, NO body visible, just clothing items).`,
   },
 ];
 

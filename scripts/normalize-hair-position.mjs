@@ -51,8 +51,9 @@ const SLOT_LAYOUT = {
   hair:    { cx: 0.5, cy: 0.30, contentHeightRatio: 0.40, prefix: "hair_" },
   hat:     { cx: 0.5, cy: 0.18, contentHeightRatio: 0.25, prefix: "hat_" },
   glasses: { cx: 0.5, cy: 0.44, contentHeightRatio: 0.14, prefix: "glasses_" },
-  outfit:  { cx: 0.5, cy: 0.82, contentHeightRatio: 0.36, prefix: "outfit_" },
-  luxury:  { cx: 0.5, cy: 0.82, contentHeightRatio: 0.36, prefix: "luxury_" },
+  // 전신 의상: PNG 전체에 거의 다 차도록 (상의 top~신발 bottom)
+  outfit:  { cx: 0.5, cy: 0.50, contentHeightRatio: 0.90, prefix: "outfit_" },
+  luxury:  { cx: 0.5, cy: 0.50, contentHeightRatio: 0.90, prefix: "luxury_" },
 };
 
 // 비-흰색 픽셀 판정
