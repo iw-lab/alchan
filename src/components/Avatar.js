@@ -2,8 +2,8 @@
 import React from "react";
 import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avatarShop";
 
-// 폴백 베이스 이미지 (베이스 미선택 시)
-const DEFAULT_BASE_URL = "/avatar-shop/base_default.png";
+// 폴백 베이스 이미지 (베이스 미선택 시) - 남자 기본
+const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
 
 /**
  * Avatar 컴포넌트 - PNG 베이스 + 슬롯 합성
@@ -50,7 +50,9 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
   // 슬롯 PNG 위치 계산 (백분율 → 픽셀)
   const renderSlotImage = (slotKey, slotData) => {
     if (!slotData?.url) return null;
-    const anchor = SLOT_ANCHORS[slotKey] || { x: 50, y: 50, w: 100, h: 100 };
+    const defaultAnchor = SLOT_ANCHORS[slotKey] || { x: 50, y: 50, w: 100, h: 100 };
+    // slotData.anchor가 있으면 그것을 우선 사용 (ITEM_ANCHORS에서 온 fine-tune)
+    const anchor = slotData.anchor || defaultAnchor;
     const scale = slotData.scale || 1;
     const cx = slotData.anchorOverride?.x ?? anchor.x;
     const cy = slotData.anchorOverride?.y ?? anchor.y;

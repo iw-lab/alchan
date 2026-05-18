@@ -116,16 +116,36 @@ export const SLOT_ANCHORS = {
   preset:     { x: 50, y: 50, w: 100, h: 100 },
 };
 
-// PNG가 이제 투명 배경이므로 normal blend로 충분 (multiply 더 이상 불필요)
+// 헤어/모자/안경/의상은 PNG 안쪽 빈공간(이마, 손잡이 안 등)이 흰색으로 남아있을 수 있어
+// multiply 블렌드로 흰색을 자동 투명화. effect는 광채 효과라 multiply가 자연스러움.
+// base/background/preset은 전체 frame이라 normal.
 export const SLOT_BLEND_MODES = {
-  hair: "normal",
-  hat: "normal",
-  glasses: "normal",
-  outfit: "normal",
-  effect: "normal",
+  hair: "multiply",
+  hat: "multiply",
+  glasses: "multiply",
+  outfit: "multiply",
+  effect: "multiply",
   base: "normal",
   background: "normal",
   preset: "normal",
+};
+
+/**
+ * 아이템별 anchor override (위치/크기 fine-tune)
+ * key: itemId, value: { x, y, w, h } (캔버스 % 단위)
+ * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
+ * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
+ */
+export const ITEM_ANCHORS = {
+  // ===== 헤어 (사용자 fine-tune) =====
+  hair_fire:         { x: 51.75, y: 14.05, w: 103, h: 126.5 },
+  hair_braid_blonde: { x: 49,    y: 69.05, w: 200, h: 123 },
+  hair_galaxy:       { x: 49.8,  y: 66.75, w: 200, h: 149 },
+  hair_mint:         { x: 49,    y: 38,    w: 200, h: 116 },
+  hair_pink_twin:    { x: 49.5,  y: 43.3,  w: 200, h: 104.5 },
+  hair_rainbow_curl: { x: 49.8,  y: 40.5,  w: 99,  h: 104.5 },
+  hair_short_brown:  { x: 49.5,  y: 40,    w: 100, h: 100 },
+  hair_silver_long:  { x: 49.5,  y: 56.75, w: 200, h: 134.5 },
 };
 
 /**
@@ -148,7 +168,12 @@ export function buildAvatarOverlays(userDoc) {
     if (slot === "background") bgUrl = item.imageUrl;
     else if (slot === "preset") presetUrl = item.imageUrl;
     else if (slot === "base") baseUrl = item.imageUrl;
-    else slots[slot] = { url: item.imageUrl };
+    else {
+      const anchor = ITEM_ANCHORS[itemId];
+      slots[slot] = anchor
+        ? { url: item.imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
+        : { url: item.imageUrl };
+    }
   });
 
   return { baseUrl, bgUrl, slots, presetUrl };

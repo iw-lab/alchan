@@ -30,8 +30,15 @@ const EFFECT_STYLE = `${STYLE_BASE} Magical particle effect, glowing sparkles, s
 
 const PRESET_STYLE = `${STYLE_BASE} Cute chibi character, head-and-shoulders bust portrait, large expressive eyes, simple round face, big head ratio. Front view, looking forward with friendly expression. Child-friendly cartoon style, isolated on plain pastel solid background.`;
 
-// 베이스 캐릭터 (기본 얼굴) - 완전 대머리. 머리는 별도 슬롯에서 합성됨.
-const BASE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi base character, head-and-shoulders bust portrait, LARGE expressive eyes, simple round face shape. CRITICAL: COMPLETELY BALD smooth scalp showing the skin tone, ABSOLUTELY NO HAIR, NO HAIRLINE drawn, NO eyebrows hidden by hair, the top of the head must be visible SKIN with no hair at all (like a bald cartoon character or chibi character before adding hair). The scalp area should be the SAME skin tone as the face. Plain neutral gray crew-neck t-shirt covering only the shoulders. Friendly slight smile, neutral front view looking forward. Centered in frame. Isolated on plain SOFT PASTEL solid background (single color, no patterns). Character must be CENTERED with EYES at vertical 42-46%, mouth around 56%, TOP OF SKULL at vertical 18-22%, shoulders at 82-90%. Keep head proportion EXACTLY 60-65% of frame width. No accessories. No glasses. No earrings. No hair of any color.`;
+// 베이스 캐릭터 (기본 얼굴) - 단정한 짧은 머리.
+// 헤어 아이템 구매 시 헤어 PNG가 위에 덮어쓰므로 베이스 머리는 가려짐.
+// 헤어 아이템 없을 때도 어색하지 않게 단정한 머리 형태 유지.
+const BASE_STYLE_MALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi BOY base character, head-and-shoulders bust portrait, LARGE expressive eyes, simple round face shape. VERY SHORT clean neat black/dark-brown crew-cut hair (or buzz cut), tidy boyish hairstyle. The hair forms a simple low-profile crown shape, NOT bushy or wide. Plain neutral gray crew-neck t-shirt covering only the shoulders. Friendly slight smile, neutral front view looking forward. Centered in frame. Isolated on plain SOFT PASTEL solid background (single color, no patterns). Character CENTERED: EYES at vertical 42-46%, mouth around 56%, TOP OF HEAD at vertical 16-20%, shoulders at 82-90%. Head proportion EXACTLY 60-65% of frame width. No accessories. No glasses. No earrings.`;
+
+const BASE_STYLE_FEMALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi GIRL base character, head-and-shoulders bust portrait, LARGE expressive eyes with long eyelashes, simple round face shape. Short tidy SHOULDER-LENGTH BOB hairstyle, neat and clean, hair color matching the skin/character. Plain neutral gray crew-neck t-shirt covering only the shoulders. Friendly soft smile, neutral front view looking forward. Centered in frame. Isolated on plain SOFT PASTEL solid background (single color, no patterns). Character CENTERED: EYES at vertical 42-46%, mouth around 56%, TOP OF HEAD at vertical 16-20%, shoulders at 82-90%. Head proportion EXACTLY 60-65% of frame width. No accessories. No glasses. No earrings.`;
+
+// 기본 BASE_STYLE = male (backward compat)
+const BASE_STYLE = BASE_STYLE_MALE;
 
 // ============================================================================
 // 헤어 (8종)
@@ -647,139 +654,22 @@ const PRESET_ITEMS = [
 // ============================================================================
 const BASE_ITEMS = [
   {
-    id: "base_default",
+    id: "base_male",
     slot: "base",
-    name: "기본 얼굴",
-    description: "동그란 눈의 평범한 얼굴 (기본)",
+    name: "남자 (단정한 짧은 머리)",
+    description: "단정한 짧은 머리의 남자 얼굴",
     rarity: "common",
     price: 0,
-    prompt: `${BASE_STYLE} Skin tone: light beige. Eyes: medium round brown eyes. Expression: friendly neutral smile. Background color: soft pale blue (#dbeafe).`,
+    prompt: \`${BASE_STYLE_MALE} Skin tone: light beige. Eyes: medium round dark brown eyes. Expression: friendly slight smile. Background color: soft pale blue (#dbeafe).\`,
   },
   {
-    id: "base_fair_short_m",
+    id: "base_female",
     slot: "base",
-    name: "단정한 소년",
-    description: "밝은 피부의 단정한 소년",
+    name: "여자 (단정한 단발)",
+    description: "단정한 단발의 여자 얼굴",
     rarity: "common",
-    price: 3000,
-    prompt: `${BASE_STYLE} Skin tone: fair (#FFE4C4). Eyes: small black eyes. Expression: confident slight smile. Boyish features. Background color: soft pale yellow (#fef9c3).`,
-  },
-  {
-    id: "base_fair_bob_f",
-    slot: "base",
-    name: "단정한 소녀",
-    description: "밝은 피부 단발의 소녀",
-    rarity: "common",
-    price: 3000,
-    prompt: `${BASE_STYLE} Skin tone: fair (#FFE4C4). Eyes: large round dark brown eyes with long lashes. Expression: gentle smile. Girlish features. Background color: soft pale pink (#fce7f3).`,
-  },
-  {
-    id: "base_freckle_red",
-    slot: "base",
-    name: "주근깨 빨간머리",
-    description: "주근깨가 매력적인 빨간머리",
-    rarity: "common",
-    price: 5000,
-    prompt: `${BASE_STYLE} Skin tone: very fair with visible cute freckles across cheeks and nose. Eyes: green round eyes. Expression: cheerful big smile showing teeth. Background color: soft peach (#ffedd5).`,
-  },
-  {
-    id: "base_tan_curly",
-    slot: "base",
-    name: "활기찬 곱슬머리",
-    description: "그을린 피부의 짧은 곱슬",
-    rarity: "common",
-    price: 5000,
-    prompt: `${BASE_STYLE} Skin tone: tan (#D2A679). Eyes: large amber-brown eyes. Expression: bright happy smile. Background color: soft pale green (#dcfce7).`,
-  },
-  {
-    id: "base_dark_neat",
-    slot: "base",
-    name: "단정한 갈색 피부",
-    description: "어두운 피부 단정한 얼굴",
-    rarity: "common",
-    price: 5000,
-    prompt: `${BASE_STYLE} Skin tone: dark brown (#8B7355). Eyes: medium round dark brown eyes. Expression: kind warm smile. Background color: soft pale lavender (#ede9fe).`,
-  },
-  {
-    id: "base_pale_pink_cheek",
-    slot: "base",
-    name: "분홍빛 볼",
-    description: "창백한 피부에 발그레한 볼",
-    rarity: "common",
-    price: 5000,
-    prompt: `${BASE_STYLE} Skin tone: very pale ivory with very visible pink rosy cheeks. Eyes: large round light blue eyes. Expression: shy slight smile. Background color: soft mint (#d1fae5).`,
-  },
-  {
-    id: "base_strong_brave",
-    slot: "base",
-    name: "씩씩한 표정",
-    description: "강인하고 씩씩한 표정",
-    rarity: "rare",
-    price: 18000,
-    prompt: `${BASE_STYLE} Skin tone: medium beige. Eyes: medium sharp determined eyes (slight angle, like an action hero). Expression: confident grin showing teeth, brave look. Background color: soft pale cyan (#cffafe).`,
-  },
-  {
-    id: "base_sleepy_calm",
-    slot: "base",
-    name: "졸린 듯 평온",
-    description: "졸린 듯 평온한 표정",
-    rarity: "rare",
-    price: 18000,
-    prompt: `${BASE_STYLE} Skin tone: light olive. Eyes: half-closed sleepy relaxed eyes (like just woken up). Expression: peaceful tiny smile, neutral mouth. Background color: soft lavender (#e9d5ff).`,
-  },
-  {
-    id: "base_smug_cool",
-    slot: "base",
-    name: "도도한 표정",
-    description: "도도하고 쿨한 표정",
-    rarity: "rare",
-    price: 20000,
-    prompt: `${BASE_STYLE} Skin tone: fair. Eyes: narrow confident purple eyes (cool aloof look). Expression: smug slight smirk on one side of mouth, raised eyebrow. Background color: soft pale indigo (#c7d2fe).`,
-  },
-  {
-    id: "base_blushing_shy",
-    slot: "base",
-    name: "수줍은 미소",
-    description: "수줍게 미소짓는 얼굴",
-    rarity: "rare",
-    price: 18000,
-    prompt: `${BASE_STYLE} Skin tone: fair with strong rosy blush on cheeks. Eyes: large round hazel eyes looking slightly down (shy). Expression: small embarrassed smile, blushing cheeks. Background color: soft rose (#fbcfe8).`,
-  },
-  {
-    id: "base_starry_eyes",
-    slot: "base",
-    name: "별빛 눈동자",
-    description: "별이 빛나는 큰 눈동자",
-    rarity: "epic",
-    price: 80000,
-    prompt: `${BASE_STYLE} Skin tone: fair. Eyes: VERY large round eyes filled with sparkling glittering star highlights (multiple white star shapes in the iris), magical big anime-style sparkle. Expression: dazzled wide smile. Background color: soft cosmic purple (#ddd6fe).`,
-  },
-  {
-    id: "base_robot_circuit",
-    slot: "base",
-    name: "사이버 얼굴",
-    description: "회로 무늬가 새겨진 미래 얼굴",
-    rarity: "epic",
-    price: 90000,
-    prompt: `${BASE_STYLE} Skin tone: pale silver with subtle CIRCUIT BOARD line patterns drawn on cheeks and forehead (cyan glowing). Eyes: glowing cyan circular digital eyes (LED look). Expression: neutral curious look. Background color: deep tech blue (#bfdbfe).`,
-  },
-  {
-    id: "base_sunshine_gold",
-    slot: "base",
-    name: "햇살 미소",
-    description: "햇살 같은 미소의 금발",
-    rarity: "rare",
-    price: 22000,
-    prompt: `${BASE_STYLE} Skin tone: light warm beige. Eyes: large warm orange-amber eyes. Expression: HUGE genuine grin showing white teeth, happy energy. Background color: soft warm yellow (#fef3c7).`,
-  },
-  {
-    id: "base_wise_purple",
-    slot: "base",
-    name: "차분한 보랏빛",
-    description: "차분하고 지적인 보라색 머리",
-    rarity: "epic",
-    price: 85000,
-    prompt: `${BASE_STYLE} Skin tone: pale ivory. Eyes: gentle wise indigo eyes (kind, thoughtful). Expression: serene small smile, mature calm look. Background color: soft sage (#bbf7d0).`,
+    price: 0,
+    prompt: \`${BASE_STYLE_FEMALE} Skin tone: light beige. Eyes: large round dark brown eyes with long lashes. Expression: gentle soft smile. Background color: soft pale pink (#fce7f3).\`,
   },
 ];
 
