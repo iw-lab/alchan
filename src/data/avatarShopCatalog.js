@@ -132,7 +132,7 @@ const HAIR_ITEMS = [
     description: "정수리 위에 묶은 똥머리",
     rarity: "rare",
     price: 300000,
-    prompt: `${ITEM_ONLY_STYLE} A black hair top-knot bun hairstyle wig viewed from FRONT, dark black hair gathered up tightly into a round ball-shaped bun ON TOP of where the head would be, small straight bangs across the forehead area, hair tied with a small black band, simple flat cartoon shape, CLEAN outlines (NOT messy edges), centered in frame.`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE black hair top-knot bun hairstyle wig viewed from FRONT, dark glossy black hair shaped like a complete head-covering wig: thick smooth crown of hair covering the entire top of the head, side hair flowing down past the ears on both sides, a BIG round ball-shaped bun rising prominently ABOVE the top of the head (clearly visible silhouette), full straight bangs covering the forehead area, baby hairs framing the face, hair tied with a small black band at the base of the bun. The wig MUST fill 70% of the frame vertically (from very top of bun to below ear level). Solid jet-black color with subtle dark blue highlights for volume. Simple flat cartoon shape, CLEAN smooth outlines, centered, NOT tiny, NOT just a bun alone — full hairstyle wig.`,
   },
   {
     id: "hair_undercut_male",

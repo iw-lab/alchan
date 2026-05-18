@@ -23,11 +23,25 @@ const BLACK_THRESHOLD = 60;
 const SIZE_THRESHOLD = 200;
 const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_", "editor_"];
 
+// 검정/짙은 색상 콘텐츠를 일부러 그린 아이템 — connected-component 제거 skip,
+// Step 0 안티앨리어싱 정리만 적용 (외곽 정리는 유지하되 본체 보호)
+const BLACK_CONTENT_ALLOWLIST = new Set([
+  "hair_bun_black.png",
+  "hair_messy_male.png",
+  "hair_undercut_male.png",
+  "hair_slick_back_male.png",
+  "hair_ponytail_brown.png",
+  "hair_long_wavy_brown.png",
+  "hair_short_brown.png",
+]);
+
 function isBlack(r, g, b) {
   return r < BLACK_THRESHOLD && g < BLACK_THRESHOLD && b < BLACK_THRESHOLD;
 }
 
 async function processFile(filePath) {
+  const fileName = path.basename(filePath);
+  const skipBlackComponent = BLACK_CONTENT_ALLOWLIST.has(fileName);
   const img = sharp(filePath).ensureAlpha();
   const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
   const { width, height } = info;
@@ -52,6 +66,16 @@ async function processFile(filePath) {
         antiAliasCleared++;
       }
     }
+  }
+
+  // 검정 콘텐츠 의도 아이템은 connected-component 단계 skip
+  if (skipBlackComponent) {
+    if (antiAliasCleared === 0) return { cleared: 0, antiAliasCleared: 0 };
+    await sharp(out, { raw: { width, height, channels: 4 } })
+      .png({ compressionLevel: 9, palette: false, force: true })
+      .toFile(filePath + ".tmp");
+    fs.renameSync(filePath + ".tmp", filePath);
+    return { cleared: 0, antiAliasCleared };
   }
 
   // 검정 + opaque 픽셀 마크
