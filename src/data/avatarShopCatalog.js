@@ -660,7 +660,7 @@ const BASE_ITEMS = [
     description: "단정한 짧은 머리의 남자 얼굴",
     rarity: "common",
     price: 0,
-    prompt: \`${BASE_STYLE_MALE} Skin tone: light beige. Eyes: medium round dark brown eyes. Expression: friendly slight smile. Background color: soft pale blue (#dbeafe).\`,
+    prompt: `${BASE_STYLE_MALE} Skin tone: light beige. Eyes: medium round dark brown eyes. Expression: friendly slight smile. Background color: soft pale blue (#dbeafe).`,
   },
   {
     id: "base_female",
@@ -669,7 +669,7 @@ const BASE_ITEMS = [
     description: "단정한 단발의 여자 얼굴",
     rarity: "common",
     price: 0,
-    prompt: \`${BASE_STYLE_FEMALE} Skin tone: light beige. Eyes: large round dark brown eyes with long lashes. Expression: gentle soft smile. Background color: soft pale pink (#fce7f3).\`,
+    prompt: `${BASE_STYLE_FEMALE} Skin tone: light beige. Eyes: large round dark brown eyes with long lashes. Expression: gentle soft smile. Background color: soft pale pink (#fce7f3).`,
   },
 ];
 
