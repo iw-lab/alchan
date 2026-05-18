@@ -19,8 +19,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIR = path.resolve(__dirname, "../public/avatar-shop");
 
-const BLACK_THRESHOLD = 30;
-const SIZE_THRESHOLD = 5000;
+const BLACK_THRESHOLD = 60;
+const SIZE_THRESHOLD = 200;
 const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_"];
 
 function isBlack(r, g, b) {
