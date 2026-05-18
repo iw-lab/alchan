@@ -2,6 +2,7 @@
 // 알찬 UI 사이드바 컴포넌트 - 새로운 슬레이트 기반 디자인
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { db as firebaseDb } from "../firebase";
@@ -1154,6 +1155,9 @@ export default function AlchanSidebar({
             </button>
           )}
         </div>
+
+        {/* 아바타 위젯 (사이드바 로고 바로 아래) */}
+        <AvatarHeaderWidget size={150} />
 
         {/* 네비게이션 메뉴 - PC는 자연 높이(스크롤 없음), 모바일만 overflow (aside에 적용됨) */}
         <nav className="flex-1 py-3 px-4 space-y-1">
