@@ -90,7 +90,7 @@ const HAIR_ITEMS = [
     description: "공주님 같은 황금색 땋은머리",
     rarity: "epic",
     price: 900000,
-    prompt: `${ITEM_ONLY_STYLE} A long golden braided hairstyle wig, one thick braid coming down from middle parting, princess style, warm honey blonde color.`,
+    prompt: `${ITEM_ONLY_STYLE} A golden princess braided hairstyle wig viewed FROM FRONT: smooth golden honey blonde hair covering the top of the head with simple center parting, hair sweeping down past the ears, gathered into ONE single SLENDER braid (1 single braid, NOT thick, NOT body-width, the braid should be only about 15-20% as wide as a typical torso) hanging down in front of the chest, the braid ends with a small ribbon or bow at the tail. Hair is shoulder-length around the head with the braid extending down to mid-torso. Warm honey blonde color, FULLY OPAQUE solid color (NOT translucent). Simple flat cartoon shape with CLEAN 2-3px black outlines, centered.`,
   },
   {
     id: "hair_fire",

@@ -132,17 +132,22 @@ export const SLOT_BLEND_MODES = {
  * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
-// v6 — 베이스 패딩(top 100px + 88% scale) 변환 자동 적용
-// 변환식: new_x = 50+(x-50)*0.88, new_y = 9.77+y*0.88, new_w = w*0.88, new_h = h*0.88
+// v7 — 사용자 fine-tune (avatar-anchors v6.json 적용)
 export const ITEM_ANCHORS = {
-  hair_fire:         { x: 50.44, y: 18.83, w: 54.56,  h: 266.64 },
-  hair_braid_blonde: { x: 50,    y: 56.63, w: 88,     h: 327.8 },
-  hair_galaxy:       { x: 49.6,  y: 49.85, w: 254.32, h: 84.92 },
-  hair_mint:         { x: 50.26, y: 33.31, w: 263.12, h: 57.64 },
-  hair_pink_twin:    { x: 50.04, y: 34.85, w: 289.52, h: 58.08 },
-  hair_rainbow_curl: { x: 49.78, y: 37.31, w: 210.32, h: 66 },
-  hair_short_brown:  { x: 49.78, y: 32.21, w: 194.04, h: 58.96 },
-  hair_silver_long:  { x: 49.6,  y: 45.89, w: 228.8,  h: 70.84 },
+  hair_fire:           { x: 50.75, y: 13.05, w: 62,    h: 303 },
+  hair_braid_blonde:   { x: 50,    y: 54.5,  w: 100,   h: 84.5 },
+  hair_galaxy:         { x: 49.5,  y: 45.5,  w: 197,   h: 66.5 },
+  hair_mint:           { x: 50.3,  y: 28.25, w: 299,   h: 65.5 },
+  hair_pink_twin:      { x: 49.55, y: 33.25, w: 329,   h: 66 },
+  hair_rainbow_curl:   { x: 50.3,  y: 12.6,  w: 145.5, h: 72.5 },
+  hair_short_brown:    { x: 49.55, y: 29.55, w: 220.5, h: 53.5 },
+  hair_silver_long:    { x: 49.5,  y: 42.5,  w: 260,   h: 64 },
+  hair_ponytail_brown: { x: 53.25, y: 60.3,  w: 228,   h: 135 },
+  hair_bun_black:      { x: 49.8,  y: 19,    w: 201.5, h: 46.5 },
+  hair_undercut_male:  { x: 50.8,  y: 27.1,  w: 92,    h: 44.5 },
+  hair_messy_male:     { x: 50,    y: 24.55, w: 100,   h: 47 },
+  hair_slick_back_male:{ x: 50.3,  y: 39.5,  w: 76,    h: 144 },
+  hair_long_wavy_brown:{ x: 50,    y: 78,    w: 232,   h: 160 },
 };
 
 /**
