@@ -278,7 +278,10 @@ const HAT_ITEMS = [
 
 // ============================================================================
 // 안경/마스크 (8종)
+// CRITICAL: 정면 평면 뷰 + 또렷한 검정 외곽선 강제 (사용자 명시).
+// 안경 알이 비틀어지거나 3D 사선 뷰로 그려지는 문제 회피.
 // ============================================================================
+const GLASSES_RULE = "STRICT FRONT VIEW (perfectly symmetric, NOT 3D perspective, NOT tilted, NOT rotated, NOT angled, NOT side view): both lenses are visible as flat 2D shapes facing the viewer straight on. Both lenses are EQUAL SIZE and on the SAME horizontal line. The bridge connects them at the center. Thick clean SOLID BLACK outline (2-3px) around every part of the frame and lenses. Flat sticker style.";
 const GLASSES_ITEMS = [
   {
     id: "glasses_round_black",
@@ -287,7 +290,7 @@ const GLASSES_ITEMS = [
     description: "지적인 검은 둥근 안경",
     rarity: "common",
     price: 40000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses, simple circular lenses, intellectual look, thin black frame.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses with two perfect circular lenses (both lenses perfectly round and same size). ${GLASSES_RULE} Intellectual look, thin black frame, clear/transparent lenses.`,
   },
   {
     id: "glasses_aviator",
@@ -296,7 +299,7 @@ const GLASSES_ITEMS = [
     description: "쿨한 비행사 선글라스",
     rarity: "rare",
     price: 300000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses, teardrop-shaped lenses, dark gradient lenses, gold metal frame, classic pilot style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses with two teardrop-shaped lenses (both lenses same shape and size). ${GLASSES_RULE} Dark gradient lenses, gold metal frame, classic pilot style.`,
   },
   {
     id: "glasses_star",
@@ -305,7 +308,7 @@ const GLASSES_ITEMS = [
     description: "톡톡 튀는 별 모양 안경",
     rarity: "epic",
     price: 900000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of star-shaped sunglasses, five-pointed star outline lenses, hot pink frame, playful idol style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of star-shaped sunglasses with two five-pointed star lenses (both stars same size and orientation). ${GLASSES_RULE} Hot pink frame, playful idol style.`,
   },
   {
     id: "glasses_heart_pink",
@@ -314,7 +317,7 @@ const GLASSES_ITEMS = [
     description: "사랑스러운 하트 선글라스",
     rarity: "rare",
     price: 250000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of heart-shaped sunglasses, pink heart-outline lenses, transparent pink tint, cute style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of heart-shaped sunglasses with two heart-shaped lenses (both hearts same size and upright orientation). ${GLASSES_RULE} Pink frame, transparent pink tint lenses, cute style.`,
   },
   {
     id: "glasses_eyepatch",
@@ -323,7 +326,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch with a small white skull drawing in the center, leather texture, single eye coverage with string strap.`,
+    prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): one black oval-shaped patch with a small white skull drawing in the center, leather texture, with a thin string strap extending horizontally from both sides (the string goes around the head). Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -332,7 +335,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask with ear loops, simple folded design, hospital style, hanging in mid-air.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): rectangular pleated mask with two thin ear loops extending from the left and right sides. Thick clean SOLID BLACK outline (2-3px) around the mask and loops. Flat sticker style, symmetric.`,
   },
   {
     id: "glasses_3d",
@@ -341,7 +344,7 @@ const GLASSES_ITEMS = [
     description: "복고 감성 3D 안경",
     rarity: "rare",
     price: 280000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of retro 3D movie glasses, one red lens and one blue/cyan lens, simple cardboard frame, vintage cinema style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of retro 3D movie glasses with two rectangular lenses (left lens red, right lens cyan-blue, both lenses same size). ${GLASSES_RULE} Simple cardboard frame, vintage cinema style.`,
   },
   {
     id: "glasses_monocle",
@@ -350,7 +353,7 @@ const GLASSES_ITEMS = [
     description: "신사의 외알 안경",
     rarity: "epic",
     price: 950000,
-    prompt: `${ITEM_ONLY_STYLE} A single golden monocle eyeglass with a long curled chain dangling from it, classic Victorian gentleman style, ornate frame.`,
+    prompt: `${ITEM_ONLY_STYLE} A single golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): one perfect circular lens with an ornate gold frame, a thin gold chain curling down from the right side of the frame. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
   },
 ];
 

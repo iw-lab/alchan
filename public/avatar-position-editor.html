@@ -146,7 +146,10 @@
     <input type="file" id="fileInput" accept=".json" style="display:none" />
   </div>
 
-  <h2>JSON 미리보기</h2>
+  <h2>JSON 미리보기 <span id="autoSaveStatus" style="font-size:11px;font-weight:normal;color:#94a3b8;margin-left:6px;transition:opacity 0.3s;">자동 저장 대기</span></h2>
+  <div style="font-size:11px;color:#64748b;margin-bottom:4px;">
+    수정 시 브라우저에 자동 저장됩니다. 다음 방문 시 그대로 복원돼요. JSON 파일 다운로드는 코드 적용 시에만 필요.
+  </div>
   <pre id="jsonPreview">{}</pre>
 </div>
 
@@ -260,6 +263,21 @@ function getAnchor(itemId) {
 
 function saveLocal() {
   localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  // 마지막 저장 시각 표시 (자동저장 안내)
+  const el = document.getElementById("autoSaveStatus");
+  if (el) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    el.textContent = `✓ 자동 저장됨 ${hh}:${mm}:${ss}`;
+    el.style.color = "#10b981";
+    el.style.opacity = "1";
+    clearTimeout(window.__saveFadeTimer);
+    window.__saveFadeTimer = setTimeout(() => {
+      el.style.opacity = "0.55";
+    }, 2000);
+  }
 }
 
 // =====================================================================
@@ -284,7 +302,7 @@ function renderBigPreview() {
   bigPreview.innerHTML = "";
   // 베이스
   const baseImg = document.createElement("img");
-  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519t`;
+  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519u`;
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;`;
   bigPreview.appendChild(baseImg);
 
@@ -292,7 +310,7 @@ function renderBigPreview() {
   if (currentSlot !== "base") {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
-    img.src = `/avatar-shop/${currentItem}.png?v=20260519t`;
+    img.src = `/avatar-shop/${currentItem}.png?v=20260519u`;
     img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
@@ -359,24 +377,24 @@ function renderGallery() {
     // mini: 베이스 (base 슬롯이면 그 자체)
     if (currentSlot === "base") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519t`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519u`;
       m.style.cssText = `inset:0;width:100%;height:100%;`;
       mini.appendChild(m);
     } else if (currentSlot === "preset" || currentSlot === "background") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519t`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519u`;
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
       // 베이스 + 해당 아이템 합성
       const baseImg = document.createElement("img");
-      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519t`;
+      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519u`;
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;`;
       mini.appendChild(baseImg);
 
       const a = getAnchor(itemId);
       const it = document.createElement("img");
-      it.src = `/avatar-shop/${itemId}.png?v=20260519t`;
+      it.src = `/avatar-shop/${itemId}.png?v=20260519u`;
       it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
