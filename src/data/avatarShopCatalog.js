@@ -32,9 +32,9 @@ const PRESET_STYLE = `${STYLE_BASE} Cute chibi character, head-and-shoulders bus
 
 // 베이스 캐릭터 (전신 chibi) - 머리부터 발끝까지 풀바디.
 // 헤어/모자는 머리에 합성, 의상은 상체~허벅지, 신발은 발에 합성.
-// CRITICAL: 평범한 작은 만화 눈 + 검정 솔리드 외곽선 (사용자 명시).
-// "백내장 큰눈" / "분홍 점선 외곽선" 회피.
-const EYE_RULE = "Normal-sized simple cartoon eyes: small to medium round shape, CLEAR black pupil (round small dot) in the center, white sclera, single short black eyelid line ABOVE each eye. NOT giant chibi sparkle eyes, NOT mostly-white empty eyes, NOT pink eyes, NOT cataract-looking eyes.";
+// CRITICAL: 평범한 만화 눈 + 검정 솔리드 외곽선 (사용자 명시).
+// 백내장/흐릿/거의-흰자 회피, 동공이 분명히 보이게.
+const EYE_RULE = "Eyes: round shape with VERY DARK SOLID BLACK filled-in pupils that take up 60-70% of the eye area (large prominent black circles, NOT tiny dots, NOT just outline rings, the pupils MUST be solid black-filled). White sclera (visible white around the black pupil). Thick black eyelid line above each eye. The black pupils must be the most visible feature of the face. NOT cataract-looking, NOT blurry, NOT mostly-white, NOT pink, NOT all-white-with-tiny-dot.";
 const OUTLINE_RULE = "SOLID CONTINUOUS BLACK outline lines (2-3px thick, pure black #000000), NOT dotted, NOT dashed, NOT pink, NOT colored, NOT broken. Clean confident line art.";
 
 // Body 규칙 (사용자 명시 v2): head 비율 약 25% (chibi 너무 크지 않게), 풀바디, 단정한 의상

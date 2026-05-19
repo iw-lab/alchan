@@ -132,22 +132,22 @@ export const SLOT_BLEND_MODES = {
  * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
-// v7 — 사용자 fine-tune (avatar-anchors v6.json 적용)
+// v8 — 사용자 fine-tune (avatar-anchors v8.json 적용)
 export const ITEM_ANCHORS = {
-  hair_fire:           { x: 50.75, y: 13.05, w: 62,    h: 303 },
-  hair_braid_blonde:   { x: 50,    y: 54.5,  w: 100,   h: 84.5 },
-  hair_galaxy:         { x: 49.5,  y: 45.5,  w: 197,   h: 66.5 },
-  hair_mint:           { x: 50.3,  y: 28.25, w: 299,   h: 65.5 },
-  hair_pink_twin:      { x: 49.55, y: 33.25, w: 329,   h: 66 },
-  hair_rainbow_curl:   { x: 50.3,  y: 12.6,  w: 145.5, h: 72.5 },
-  hair_short_brown:    { x: 49.55, y: 29.55, w: 220.5, h: 53.5 },
-  hair_silver_long:    { x: 49.5,  y: 42.5,  w: 260,   h: 64 },
-  hair_ponytail_brown: { x: 53.25, y: 60.3,  w: 228,   h: 135 },
-  hair_bun_black:      { x: 49.8,  y: 19,    w: 201.5, h: 46.5 },
+  hair_fire:           { x: 50.55, y: 13.75, w: 62,    h: 32 },
+  hair_braid_blonde:   { x: 49.8,  y: 30.8,  w: 45,    h: 44.5 },
+  hair_galaxy:         { x: 49.8,  y: 27.3,  w: 197,   h: 33.5 },
+  hair_mint:           { x: 49.55, y: 22.3,  w: 299,   h: 35 },
+  hair_pink_twin:      { x: 49.5,  y: 24.55, w: 329,   h: 37 },
+  hair_rainbow_curl:   { x: 50,    y: 12.35, w: 145.5, h: 36.5 },
+  hair_short_brown:    { x: 49.3,  y: 21.1,  w: 220.5, h: 33 },
+  hair_silver_long:    { x: 49.75, y: 26.75, w: 260,   h: 33.5 },
+  hair_ponytail_brown: { x: 52.25, y: 37.75, w: 228,   h: 84 },
+  hair_bun_black:      { x: 49.8,  y: 14.5,  w: 201.5, h: 29.5 },
   hair_undercut_male:  { x: 50.8,  y: 27.1,  w: 92,    h: 44.5 },
-  hair_messy_male:     { x: 50,    y: 24.55, w: 100,   h: 47 },
-  hair_slick_back_male:{ x: 50.3,  y: 39.5,  w: 76,    h: 144 },
-  hair_long_wavy_brown:{ x: 50,    y: 78,    w: 232,   h: 160 },
+  hair_messy_male:     { x: 50.25, y: 25.3,  w: 100,   h: 47 },
+  hair_slick_back_male:{ x: 50.05, y: 27.25, w: 76,    h: 43.5 },
+  hair_long_wavy_brown:{ x: 49.25, y: 45.55, w: 232,   h: 85 },
 };
 
 /**
