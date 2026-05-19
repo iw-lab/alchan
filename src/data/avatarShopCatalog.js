@@ -59,7 +59,7 @@ const HAIR_ITEMS = [
     description: "달빛처럼 빛나는 은발",
     rarity: "rare",
     price: 450000,
-    prompt: `${ITEM_ONLY_STYLE} A long straight silver hairstyle wig, shimmering metallic silver color, parted in the middle, shoulder length, simple cartoon outline.`,
+    prompt: `${ITEM_ONLY_STYLE} A long straight silver hairstyle wig viewed FROM FRONT (complete head-covering wig piece): smooth shiny silver hair covering the entire top of the head with center parting, hair flowing straight down past the shoulders to mid-chest length on both sides framing where the face would be, full smooth bangs across the forehead, no curls just straight silky hair, polished metallic silver-white color with subtle pale blue highlights. The wig fills 75% of the frame vertically (from top of head to mid-chest). FULLY OPAQUE solid color (NOT translucent, NOT see-through, NOT shimmering glitter). Simple flat cartoon shape with CLEAN smooth outlines (2-3px thick black line), centered, NO sparkles, NO glow effects.`,
   },
   {
     id: "hair_pink_twin",

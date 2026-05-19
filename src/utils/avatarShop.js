@@ -98,21 +98,19 @@ export function getActivePreset(userDoc) {
  * 슬롯별 기본 위치 (PNG 오버레이 좌표) - SVG viewBox(100x100 기준)
  * scale: SVG viewBox 단위
  */
-// 전신 베이스 (1024×1024) 좌표:
-//   정수리 5%, 눈 22%, 입 28%, 어깨 42%, 허리 60%, 무릎 80%, 발 95%
-// 슬롯 PNG들은 흉상 기준으로 normalize됐으므로 전신 베이스에 합성 시 위치 조정 필요.
-// (PNG 콘텐츠가 PNG 캔버스 내 표준 위치에 있고, SLOT_ANCHORS로 베이스 캔버스에 매핑)
+// 전신 베이스 (1024×1024) 좌표 v2 — 위쪽 100px 패딩 + 콘텐츠 88% 축소 후:
+//   정수리 ~14%, 눈 ~30%, 입 ~35%, 어깨 ~47%, 허리 ~62%, 무릎 ~80%, 발 ~95%
+// hair/hat 슬롯도 동일 비율로 축소 + y +9.77 보정해야 베이스 머리에 정렬.
 export const SLOT_ANCHORS = {
-  base:       { x: 50, y: 50,  w: 100, h: 100 },
-  // PNG 콘텐츠 (cy=30% 기준 head 영역) → 베이스 머리(22%)에 정렬
-  hair:       { x: 50, y: 18,  w: 60,  h: 50 },
-  hat:        { x: 50, y: 8,   w: 50,  h: 30 },
-  glasses:    { x: 50, y: 22,  w: 40,  h: 12 },
-  // 전신 의상 PNG (콘텐츠 cy=50, h=90%) → 베이스 풀바디 전체에 매칭
-  outfit:     { x: 50, y: 50,  w: 100, h: 100 },
-  background: { x: 50, y: 50,  w: 100, h: 100 },
-  effect:     { x: 50, y: 50,  w: 100, h: 100 },
-  preset:     { x: 50, y: 50,  w: 100, h: 100 },
+  base:       { x: 50, y: 53.77, w: 88,   h: 88 },
+  // hair PNG content (cy=30% 기준) → 새 베이스 머리(~30%)에 정렬
+  hair:       { x: 50, y: 25.61, w: 52.8, h: 44 },
+  hat:        { x: 50, y: 16.81, w: 44,   h: 26.4 },
+  glasses:    { x: 50, y: 29.13, w: 35.2, h: 10.56 },
+  outfit:     { x: 50, y: 53.77, w: 88,   h: 88 },
+  background: { x: 50, y: 50,    w: 100,  h: 100 },
+  effect:     { x: 50, y: 53.77, w: 88,   h: 88 },
+  preset:     { x: 50, y: 53.77, w: 88,   h: 88 },
 };
 
 // PNG 자체에서 흰 픽셀을 alpha 0으로 처리하면 normal blend로 충분.
@@ -134,16 +132,17 @@ export const SLOT_BLEND_MODES = {
  * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
+// v6 — 베이스 패딩(top 100px + 88% scale) 변환 자동 적용
+// 변환식: new_x = 50+(x-50)*0.88, new_y = 9.77+y*0.88, new_w = w*0.88, new_h = h*0.88
 export const ITEM_ANCHORS = {
-  // ===== 헤어 (사용자 fine-tune v5 - 전신 base) =====
-  hair_fire:         { x: 50.5,  y: 10.3,  w: 62,    h: 303 },
-  hair_braid_blonde: { x: 50,    y: 53.25, w: 100,   h: 372.5 },
-  hair_galaxy:       { x: 49.55, y: 45.55, w: 289,   h: 96.5 },
-  hair_mint:         { x: 50.3,  y: 26.75, w: 299,   h: 65.5 },
-  hair_pink_twin:    { x: 50.05, y: 28.5,  w: 329,   h: 66 },
-  hair_rainbow_curl: { x: 49.75, y: 31.3,  w: 239,   h: 75 },
-  hair_short_brown:  { x: 49.75, y: 25.5,  w: 220.5, h: 67 },
-  hair_silver_long:  { x: 49.55, y: 41.05, w: 260,   h: 80.5 },
+  hair_fire:         { x: 50.44, y: 18.83, w: 54.56,  h: 266.64 },
+  hair_braid_blonde: { x: 50,    y: 56.63, w: 88,     h: 327.8 },
+  hair_galaxy:       { x: 49.6,  y: 49.85, w: 254.32, h: 84.92 },
+  hair_mint:         { x: 50.26, y: 33.31, w: 263.12, h: 57.64 },
+  hair_pink_twin:    { x: 50.04, y: 34.85, w: 289.52, h: 58.08 },
+  hair_rainbow_curl: { x: 49.78, y: 37.31, w: 210.32, h: 66 },
+  hair_short_brown:  { x: 49.78, y: 32.21, w: 194.04, h: 58.96 },
+  hair_silver_long:  { x: 49.6,  y: 45.89, w: 228.8,  h: 70.84 },
 };
 
 /**
