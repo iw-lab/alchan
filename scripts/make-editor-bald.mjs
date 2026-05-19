@@ -42,8 +42,9 @@ for (let i = 0; i < N; i++) {
 }
 
 // 2단계: 머리 영역(y<headEndY+여유)의 boundary 픽셀(살색이지만 이웃 alpha=0)에 검정 외곽선 그리기
-// 두께 2px (한 번 그리고 dilation 한 번 더)
-const outlineRange = Math.floor(info.height * 0.38); // 약간 더 넓게
+// 캔버스 가장자리 패딩 영역은 SKIP (검정 박스 회피)
+const outlineRange = Math.floor(info.height * 0.38);
+const CANVAS_MARGIN = 70; // 패딩 영역 안 건드림 (pad-base-avatars의 top=100, side=62)
 const outlineMask = new Uint8Array(N);
 for (let i = 0; i < N; i++) {
   const a = out[i * 4 + 3];
@@ -51,6 +52,7 @@ for (let i = 0; i < N; i++) {
   const y = Math.floor(i / W);
   if (y >= outlineRange) continue;
   const x = i % W;
+  if (x < CANVAS_MARGIN || x > W - CANVAS_MARGIN || y < CANVAS_MARGIN) continue;
   const neighborsToCheck = [];
   if (x > 0) neighborsToCheck.push(i - 1);
   if (x < W - 1) neighborsToCheck.push(i + 1);
