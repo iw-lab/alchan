@@ -15,7 +15,10 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 
 const DARK_RGB_MAX = 50;     // 매우 검정 (동공)
 const PUPIL_SIZE_MAX = 500;   // 동공으로 간주할 component 최대 크기
-const FILES = ["editor_bald.png", "base_male.png", "base_female.png"];
+const FILES = ["base_male.png", "base_female.png"]; // editor_bald 별도 처리
+const FACE_Y_MIN = 0.16;  // 얼굴 시작 (캔버스 비율)
+const FACE_Y_MAX = 0.32;  // 얼굴 끝
+const DILATION_PASSES = 2; // 동공 2px dilate
 
 async function processFile(file) {
   const filePath = path.join(DIR, file);
@@ -24,11 +27,16 @@ async function processFile(file) {
   const W = info.width, H = info.height, N = W * H;
   const out = Buffer.from(data);
 
-  // 검정 픽셀 마스크
+  const faceYMin = Math.floor(H * FACE_Y_MIN);
+  const faceYMax = Math.floor(H * FACE_Y_MAX);
+
+  // 검정 픽셀 마스크 — 얼굴 영역(y FACE_Y_MIN ~ FACE_Y_MAX) 한정
   const darkMask = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     const a = out[i * 4 + 3];
     if (a < 200) continue;
+    const y = Math.floor(i / W);
+    if (y < faceYMin || y >= faceYMax) continue;
     const r = out[i * 4], g = out[i * 4 + 1], b = out[i * 4 + 2];
     if (Math.max(r, g, b) < DARK_RGB_MAX) darkMask[i] = 1;
   }
@@ -62,32 +70,36 @@ async function processFile(file) {
     groupSizes.push(size);
   }
 
-  // 작은 component (동공) 픽셀만 1px dilate → 동공 두꺼워짐
-  const pupilMask = new Uint8Array(N);
+  // 작은 component (동공/눈썹) 픽셀만 dilate
+  let pupilMask = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     const g = groupId[i];
     if (g && groupSizes[g] <= PUPIL_SIZE_MAX) pupilMask[i] = 1;
   }
   let strengthened = 0;
-  for (let i = 0; i < N; i++) {
-    if (!pupilMask[i]) continue;
-    const x = i % W, y = Math.floor(i / W);
-    const ns = [];
-    if (x > 0) ns.push(i - 1);
-    if (x < W - 1) ns.push(i + 1);
-    if (y > 0) ns.push(i - W);
-    if (y < H - 1) ns.push(i + W);
-    for (const ni of ns) {
-      if (pupilMask[ni]) continue;
-      const a = out[ni * 4 + 3];
-      if (a < 50) continue;
-      // 흰자/살색 이웃을 검정으로 (동공 확장)
-      out[ni * 4] = 0;
-      out[ni * 4 + 1] = 0;
-      out[ni * 4 + 2] = 0;
-      out[ni * 4 + 3] = 255;
-      strengthened++;
+  for (let pass = 0; pass < DILATION_PASSES; pass++) {
+    const next = new Uint8Array(pupilMask);
+    for (let i = 0; i < N; i++) {
+      if (!pupilMask[i]) continue;
+      const x = i % W, y = Math.floor(i / W);
+      const ns = [];
+      if (x > 0) ns.push(i - 1);
+      if (x < W - 1) ns.push(i + 1);
+      if (y > 0) ns.push(i - W);
+      if (y < H - 1) ns.push(i + W);
+      for (const ni of ns) {
+        if (next[ni]) continue;
+        const a = out[ni * 4 + 3];
+        if (a < 50) continue;
+        out[ni * 4] = 0;
+        out[ni * 4 + 1] = 0;
+        out[ni * 4 + 2] = 0;
+        out[ni * 4 + 3] = 255;
+        next[ni] = 1;
+        strengthened++;
+      }
     }
+    pupilMask = next;
   }
   await sharp(out, { raw: { width: W, height: H, channels: 4 } })
     .png({ compressionLevel: 9 })
