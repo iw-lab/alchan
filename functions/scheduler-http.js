@@ -819,6 +819,7 @@ exports.reverseLastWeeklySalary = onRequest(
       const weekKey = req.query.weekKey;
       const confirm = req.query.confirm;
       const dryRun = req.query.dryRun !== "false"; // 기본 true - 안전
+      const targetDateStr = req.query.targetDate; // KST yyyy-MM-dd, 기본 오늘
 
       if (!weekKey) {
         res.status(400).json({ success: false, error: "weekKey 파라미터 필수" });
@@ -847,18 +848,42 @@ exports.reverseLastWeeklySalary = onRequest(
         }
       }
 
-      logger.info(`[reverseSalary] 시작 (weekKey=${weekKey}, dryRun=${dryRun})`);
+      logger.info(`[reverseSalary] 시작 (weekKey=${weekKey}, dryRun=${dryRun}, targetDate=${targetDateStr || "today"})`);
 
-      // KST 기준 '오늘' 범위 (lastSalaryDate가 오늘인 학생만 대상)
+      // KST 기준 대상 날짜 범위 (lastSalaryDate가 해당 날짜인 학생만 대상)
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const todayKst = new Date(Date.UTC(
-        kstNow.getUTCFullYear(),
-        kstNow.getUTCMonth(),
-        kstNow.getUTCDate(),
-      ));
+      let todayKst;
+      if (targetDateStr) {
+        const [y, m, d] = targetDateStr.split("-").map(Number);
+        todayKst = new Date(Date.UTC(y, m - 1, d));
+      } else {
+        todayKst = new Date(Date.UTC(
+          kstNow.getUTCFullYear(),
+          kstNow.getUTCMonth(),
+          kstNow.getUTCDate(),
+        ));
+      }
       const todayStartUtc = new Date(todayKst.getTime() - 9 * 60 * 60 * 1000);
       const tomorrowStartUtc = new Date(todayStartUtc.getTime() + 24 * 60 * 60 * 1000);
+
+      // 진단: 해당 날짜 KST 범위의 activity_logs에서 salaryPayment 카운트
+      const diagLogsSnap = await db.collection("activity_logs")
+        .where("type", "==", "salaryPayment")
+        .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(todayStartUtc))
+        .where("timestamp", "<", admin.firestore.Timestamp.fromDate(tomorrowStartUtc))
+        .get();
+      const logCountByUser = {};
+      const logsByClass = {};
+      diagLogsSnap.forEach((doc) => {
+        const d = doc.data();
+        logCountByUser[d.userId] = (logCountByUser[d.userId] || 0) + 1;
+        logsByClass[d.classCode] = (logsByClass[d.classCode] || 0) + 1;
+      });
+      const duplicateUsers = Object.entries(logCountByUser)
+        .filter(([, count]) => count >= 2)
+        .map(([uid, count]) => ({ uid, count }));
+      logger.info(`[reverseSalary] 진단: ${todayKst.toISOString().split("T")[0]} salaryPayment 로그 ${diagLogsSnap.size}건, 학생당 2회 이상=${duplicateUsers.length}명`);
 
       const classCodes = await getAllActiveClassCodes();
       const reversalPlan = [];
@@ -949,6 +974,13 @@ exports.reverseLastWeeklySalary = onRequest(
         success: true,
         dryRun,
         weekKey,
+        targetDate: todayKst.toISOString().split("T")[0],
+        diagnosis: {
+          salaryLogsOnDate: diagLogsSnap.size,
+          logsByClass,
+          duplicateUserCount: duplicateUsers.length,
+          duplicateUsersSample: duplicateUsers.slice(0, 10),
+        },
         totalReversedCount,
         totalReversedAmount,
         plan: reversalPlan,

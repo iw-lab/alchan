@@ -1,0 +1,47 @@
+name: Reverse Weekly Salary (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      targetDate:
+        description: "회수할 KST 날짜 (yyyy-MM-dd, 예: 2026-05-18)"
+        required: true
+        default: "2026-05-18"
+      weekKey:
+        description: "주차 식별자 (예: 2026-W20)"
+        required: true
+        default: "2026-W20"
+      dryRun:
+        description: "true = 진단만, false = 실제 회수"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  reverse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call reverseLastWeeklySalary
+        env:
+          TOKEN: ${{ secrets.SCHEDULER_AUTH_TOKEN }}
+        run: |
+          BASE_URL="https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app"
+          if [ "${{ inputs.dryRun }}" = "true" ]; then
+            echo "=== DRY RUN: 진단 모드 ==="
+            curl -s -G "$BASE_URL" \
+              --data-urlencode "token=$TOKEN" \
+              --data-urlencode "weekKey=${{ inputs.weekKey }}" \
+              --data-urlencode "targetDate=${{ inputs.targetDate }}" \
+              --data-urlencode "dryRun=true" | python3 -m json.tool
+          else
+            echo "=== 실제 회수 실행 ==="
+            curl -s -G "$BASE_URL" \
+              --data-urlencode "token=$TOKEN" \
+              --data-urlencode "weekKey=${{ inputs.weekKey }}" \
+              --data-urlencode "targetDate=${{ inputs.targetDate }}" \
+              --data-urlencode "dryRun=false" \
+              --data-urlencode "confirm=YES" | python3 -m json.tool
+          fi
