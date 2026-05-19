@@ -22,7 +22,11 @@
 
 const STYLE_BASE = `Cute flat illustration sticker, simple cartoon shapes, thick clean outlines (2-3px), bright vibrant colors with high saturation, child-friendly (for Korean elementary 5-6th graders), isolated on PURE WHITE background (#ffffff), centered, no shadows on background, 1024x1024 square, single object, no text, no Korean letters, no English letters, no logos.`;
 
-const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of frame, NO person, NO mannequin, NO head, NO body part, just the standalone clothing/accessory item.`;
+// HAIR/ITEM CRITICAL: 모든 hair PNG는 반드시 FULLY OPAQUE solid color여야 함.
+// 사용자가 반복적으로 "투명/흐림" 불만 → 강제 명시.
+const OPACITY_RULE = "CRITICAL OPACITY: the entire hair body must be FULLY OPAQUE 100% solid filled color (NO translucent areas, NO transparency, NO see-through, NO gradient fade, NO white-washed lightness). Bold saturated solid color throughout. The hair color must be VIBRANT and CLEARLY VISIBLE, not pale washed-out or faded. Thick black 2-3px outline around the entire hair silhouette.";
+
+const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of frame, NO person, NO mannequin, NO head, NO body part, just the standalone clothing/accessory item. ${OPACITY_RULE}`;
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
 
@@ -132,11 +136,20 @@ const HAIR_ITEMS = [
   {
     id: "hair_ponytail_brown",
     slot: "hair",
-    name: "포니테일",
-    description: "발랄한 갈색 포니테일",
+    name: "포니테일 (앞머리)",
+    description: "앞머리 있는 갈색 포니테일",
     rarity: "rare",
     price: 350000,
-    prompt: `${ITEM_ONLY_STYLE} A brown ponytail hairstyle wig viewed from the front, hair pulled back tightly and tied at the back of the head with a small black rubber band, a long ponytail tail visible on one side, warm chestnut brown color, neat tidy front bangs, cute girl style.`,
+    prompt: `${ITEM_ONLY_STYLE} A brown ponytail hairstyle wig viewed FROM FRONT: smooth solid chestnut brown hair tightly pulled back from the forehead and gathered at the back-top of the head with a small black rubber band, a long thick ponytail tail visible behind/beside the head extending downward, neat straight front bangs covering the forehead, the side hair smoothly swept back. The hair completely covers the entire top of the head (full helmet-shape silhouette, NOT just lines). FULLY OPAQUE solid warm chestnut brown color (NOT pale, NOT translucent). Thick clean 2-3px black outlines.`,
+  },
+  {
+    id: "hair_ponytail_no_bangs_brown",
+    slot: "hair",
+    name: "포니테일 (앞머리 없음)",
+    description: "이마 시원하게 앞머리 없는 포니테일",
+    rarity: "rare",
+    price: 350000,
+    prompt: `${ITEM_ONLY_STYLE} A brown high ponytail hairstyle wig viewed FROM FRONT, NO bangs (forehead must be COMPLETELY EXPOSED, no hair on the forehead at all): solid chestnut brown hair pulled back tightly and smoothly from the hairline to the back-top of the head, gathered with a small black rubber band, a long thick ponytail tail visible behind/beside the head. The hair covers the top and sides of the head but the entire forehead area is COMPLETELY clear of hair. FULLY OPAQUE solid warm chestnut brown color. Thick clean 2-3px black outlines.`,
   },
   {
     id: "hair_bun_black",
