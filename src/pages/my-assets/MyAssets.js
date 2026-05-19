@@ -563,6 +563,7 @@ export default function MyAssets() {
             description: desc === "undefined" ? "거래 내역" : desc,
             timestamp: data.timestamp,
             type: data.type,
+            weekKey: data.weekKey,
             couponAmount: data.couponAmount || 0,
             source: "activity_logs",
           };
@@ -580,6 +581,7 @@ export default function MyAssets() {
               description: !desc || desc === "undefined" ? "거래 내역" : desc,
               timestamp: data.timestamp || data.createdAt,
               type: data.type || "transaction",
+              weekKey: data.weekKey,
               source: "transactions",
             };
           })
@@ -592,7 +594,24 @@ export default function MyAssets() {
       const seenIds = new Set(transactionsData.map((tx) => tx.id));
       const uniqueRootData = rootTransactionsData.filter((tx) => !seenIds.has(tx.id));
 
-      const allTransactions = [...activityData, ...transactionsData, ...uniqueRootData];
+      // 🔥 activity_logs와 transactions 서브컬렉션 사이 cross-dedupe
+      // payWeeklySalariesLogic 등 일부 함수가 두 컬렉션에 같은 거래를 각각 저장 →
+      // UI에서 1건이 2건으로 보이는 버그 방지. type+weekKey 기준 매칭.
+      const activityDedupeKey = new Set(
+        activityData
+          .filter((tx) => tx.weekKey && tx.type)
+          .map((tx) => `${tx.type}_${tx.weekKey}`),
+      );
+      const dedupedTransactionsData = transactionsData.filter((tx) => {
+        if (!tx.weekKey || !tx.type) return true;
+        return !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
+      });
+      const dedupedUniqueRootData = uniqueRootData.filter((tx) => {
+        if (!tx.weekKey || !tx.type) return true;
+        return !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
+      });
+
+      const allTransactions = [...activityData, ...dedupedTransactionsData, ...dedupedUniqueRootData];
       allTransactions.sort((a, b) => {
         const dateA = a.timestamp?.toDate
           ? a.timestamp.toDate()
