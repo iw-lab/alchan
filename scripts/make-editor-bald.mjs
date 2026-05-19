@@ -21,26 +21,72 @@ const HAIR_MAX_RGB = 130; // RGB max < 130 = 검정/짙은 갈색 머리
 
 const { data, info } = await sharp(SRC).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 const N = info.width * info.height;
+const W = info.width;
 const out = Buffer.from(data);
 
-// 머리 영역 = canvas 위쪽 0~35% (옆머리까지 포함)
 const headEndY = Math.floor(info.height * 0.35);
 
+// 1단계: 머리 영역(y<35%) 의 모든 검정/짙은 머리카락을 살색으로 (외곽선 포함)
 let changedHair = 0;
 for (let i = 0; i < N; i++) {
   const a = out[i * 4 + 3];
   if (a < 50) continue;
-  const y = Math.floor(i / info.width);
+  const y = Math.floor(i / W);
   if (y >= headEndY) continue;
   const r = out[i * 4], g = out[i * 4 + 1], b = out[i * 4 + 2];
-  const maxRGB = Math.max(r, g, b);
-  if (maxRGB >= HAIR_MAX_RGB) continue;
-  // 검은 머리카락 → 살색으로 변환 (alpha는 유지)
+  if (Math.max(r, g, b) >= HAIR_MAX_RGB) continue;
   out[i * 4] = SKIN_R;
   out[i * 4 + 1] = SKIN_G;
   out[i * 4 + 2] = SKIN_B;
   changedHair++;
 }
+
+// 2단계: 머리 영역(y<headEndY+여유)의 boundary 픽셀(살색이지만 이웃 alpha=0)에 검정 외곽선 그리기
+// 두께 2px (한 번 그리고 dilation 한 번 더)
+const outlineRange = Math.floor(info.height * 0.38); // 약간 더 넓게
+const outlineMask = new Uint8Array(N);
+for (let i = 0; i < N; i++) {
+  const a = out[i * 4 + 3];
+  if (a < 200) continue;
+  const y = Math.floor(i / W);
+  if (y >= outlineRange) continue;
+  const x = i % W;
+  const neighborsToCheck = [];
+  if (x > 0) neighborsToCheck.push(i - 1);
+  if (x < W - 1) neighborsToCheck.push(i + 1);
+  if (y > 0) neighborsToCheck.push(i - W);
+  if (y < info.height - 1) neighborsToCheck.push(i + W);
+  for (const ni of neighborsToCheck) {
+    if (out[ni * 4 + 3] < 50) {
+      outlineMask[i] = 1;
+      break;
+    }
+  }
+}
+// dilation 1번: outlineMask의 이웃도 outline에 포함 (2px 두께)
+const outlineMaskDilated = new Uint8Array(outlineMask);
+for (let i = 0; i < N; i++) {
+  if (!outlineMask[i]) continue;
+  const x = i % W;
+  const y = Math.floor(i / W);
+  if (x > 0) outlineMaskDilated[i - 1] = 1;
+  if (x < W - 1) outlineMaskDilated[i + 1] = 1;
+  if (y > 0) outlineMaskDilated[i - W] = 1;
+  if (y < info.height - 1) outlineMaskDilated[i + W] = 1;
+}
+
+let outlinePixels = 0;
+for (let i = 0; i < N; i++) {
+  if (!outlineMaskDilated[i]) continue;
+  const y = Math.floor(i / W);
+  if (y >= outlineRange) continue;
+  out[i * 4] = 0;
+  out[i * 4 + 1] = 0;
+  out[i * 4 + 2] = 0;
+  out[i * 4 + 3] = 255;
+  outlinePixels++;
+}
+console.log(`  머리 ${changedHair}px 살색 변환, 외곽선 ${outlinePixels}px 검정 재그림`);
 
 await sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
   .png({ compressionLevel: 9 })
