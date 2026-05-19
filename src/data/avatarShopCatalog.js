@@ -32,9 +32,16 @@ const PRESET_STYLE = `${STYLE_BASE} Cute chibi character, head-and-shoulders bus
 
 // 베이스 캐릭터 (전신 chibi) - 머리부터 발끝까지 풀바디.
 // 헤어/모자는 머리에 합성, 의상은 상체~허벅지, 신발은 발에 합성.
-const BASE_STYLE_MALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi BOY base character, FULL BODY standing pose front view, big chibi head proportion (head about 35% of body height), tiny cute body. LARGE expressive eyes, simple round face. VERY SHORT clean neat dark hair (buzz cut or crew cut), low-profile hairstyle. Plain neutral gray crew-neck t-shirt, simple navy shorts or pants, plain white sneakers. Arms hanging naturally at sides. Friendly slight smile, neutral front view looking forward. Standing straight on invisible ground. Isolated on plain SOFT PASTEL solid background (single color). Character CENTERED with proportions: TOP OF HEAD at vertical 5%, EYES at 22%, mouth at 28%, NECK at 38%, SHOULDERS at 42%, WAIST at 60%, KNEES at 80%, FEET at 95%. Full body visible, NO cropping at feet. No accessories. No glasses.`;
+// CRITICAL: 평범한 작은 만화 눈 + 검정 솔리드 외곽선 (사용자 명시).
+// "백내장 큰눈" / "분홍 점선 외곽선" 회피.
+const EYE_RULE = "Normal-sized simple cartoon eyes: small to medium round shape, CLEAR black pupil (round small dot) in the center, white sclera, single short black eyelid line ABOVE each eye. NOT giant chibi sparkle eyes, NOT mostly-white empty eyes, NOT pink eyes, NOT cataract-looking eyes.";
+const OUTLINE_RULE = "SOLID CONTINUOUS BLACK outline lines (2-3px thick, pure black #000000), NOT dotted, NOT dashed, NOT pink, NOT colored, NOT broken. Clean confident line art.";
 
-const BASE_STYLE_FEMALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi GIRL base character, FULL BODY standing pose front view, big chibi head proportion (head about 35% of body height), tiny cute body. LARGE expressive eyes with long lashes, simple round face. Short tidy SHOULDER-LENGTH BOB hairstyle, neat. Plain neutral gray crew-neck t-shirt, simple skirt or pants (knee-length), plain white sneakers. Arms hanging naturally at sides. Friendly soft smile, front view looking forward. Standing straight on invisible ground. Isolated on plain SOFT PASTEL solid background. Character CENTERED: TOP OF HEAD at 5%, EYES at 22%, mouth at 28%, NECK at 38%, SHOULDERS at 42%, WAIST at 60%, KNEES at 80%, FEET at 95%. Full body visible, NO cropping at feet. No accessories. No glasses.`;
+const BASE_STYLE_MALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi BOY base character, FULL BODY standing pose front view, big chibi head proportion (head about 35% of body height), tiny cute body. ${EYE_RULE} ${OUTLINE_RULE} VERY SHORT clean neat dark hair (buzz cut or crew cut), low-profile hairstyle. Plain neutral gray crew-neck t-shirt, simple navy shorts or pants, plain white sneakers. Arms hanging naturally at sides. Friendly slight smile (small simple curved line mouth). Standing straight on invisible ground. Isolated on plain SOFT PASTEL solid background (single color). Character CENTERED with proportions: TOP OF HEAD at vertical 5%, EYES at 22%, mouth at 28%, NECK at 38%, SHOULDERS at 42%, WAIST at 60%, KNEES at 80%, FEET at 95%. Full body visible, NO cropping at feet. No accessories. No glasses.`;
+
+const BASE_STYLE_FEMALE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi GIRL base character, FULL BODY standing pose front view, big chibi head proportion (head about 35% of body height), tiny cute body. ${EYE_RULE} ${OUTLINE_RULE} Short tidy SHOULDER-LENGTH BOB hairstyle, neat. Plain neutral gray crew-neck t-shirt, simple skirt or pants (knee-length), plain white sneakers. Arms hanging naturally at sides. Friendly soft smile (small simple curved line mouth). Standing straight on invisible ground. Isolated on plain SOFT PASTEL solid background. Character CENTERED: TOP OF HEAD at 5%, EYES at 22%, mouth at 28%, NECK at 38%, SHOULDERS at 42%, WAIST at 60%, KNEES at 80%, FEET at 95%. Full body visible, NO cropping at feet. No accessories. No glasses.`;
+
+const BASE_STYLE_BALD = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Cute chibi BALD base character (NO HAIR AT ALL, completely smooth shaved head, gender-neutral), FULL BODY standing pose front view, big chibi head proportion (head about 35% of body height), tiny cute body. ${EYE_RULE} ${OUTLINE_RULE} Smooth bald scalp (light beige skin tone, no stubble, no shadow). Plain neutral gray crew-neck t-shirt, simple navy shorts, plain white sneakers. Arms hanging naturally at sides. Friendly slight smile. Standing straight. Isolated on plain SOFT PASTEL solid background. Character CENTERED: TOP OF HEAD at 5%, EYES at 22%, mouth at 28%, NECK at 38%, SHOULDERS at 42%, WAIST at 60%, KNEES at 80%, FEET at 95%. Full body visible, NO cropping at feet.`;
 
 // 기본 BASE_STYLE = male (backward compat)
 const BASE_STYLE = BASE_STYLE_MALE;
@@ -787,7 +794,7 @@ const BASE_ITEMS = [
     description: "단정한 짧은 머리의 남자 얼굴",
     rarity: "common",
     price: 0,
-    prompt: `${BASE_STYLE_MALE} Skin tone: light beige. Eyes: medium round dark brown eyes. Expression: friendly slight smile. Background color: soft pale blue (#dbeafe).`,
+    prompt: `${BASE_STYLE_MALE} Skin tone: light beige. Background color: soft pale blue (#dbeafe).`,
   },
   {
     id: "base_female",
@@ -796,7 +803,17 @@ const BASE_ITEMS = [
     description: "단정한 단발의 여자 얼굴",
     rarity: "common",
     price: 0,
-    prompt: `${BASE_STYLE_FEMALE} Skin tone: light beige. Eyes: large round dark brown eyes with long lashes. Expression: gentle soft smile. Background color: soft pale pink (#fce7f3).`,
+    prompt: `${BASE_STYLE_FEMALE} Skin tone: light beige. Background color: soft pale pink (#fce7f3).`,
+  },
+  {
+    id: "editor_bald",
+    slot: "base",
+    name: "편집기 대머리 베이스",
+    description: "편집기 전용 대머리 (위치 조정용)",
+    rarity: "common",
+    price: 0,
+    active: false,
+    prompt: `${BASE_STYLE_BALD} Skin tone: light beige. Background color: soft pale blue (#dbeafe).`,
   },
 ];
 
