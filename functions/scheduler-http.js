@@ -868,22 +868,25 @@ exports.reverseLastWeeklySalary = onRequest(
       const tomorrowStartUtc = new Date(todayStartUtc.getTime() + 24 * 60 * 60 * 1000);
 
       // 진단: 해당 날짜 KST 범위의 activity_logs에서 salaryPayment 카운트
+      // 단일 timestamp 범위 쿼리 (자동 인덱스) → 코드에서 type 필터
       const diagLogsSnap = await db.collection("activity_logs")
-        .where("type", "==", "salaryPayment")
         .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(todayStartUtc))
         .where("timestamp", "<", admin.firestore.Timestamp.fromDate(tomorrowStartUtc))
         .get();
       const logCountByUser = {};
       const logsByClass = {};
+      let salaryLogCount = 0;
       diagLogsSnap.forEach((doc) => {
         const d = doc.data();
+        if (d.type !== "salaryPayment") return;
+        salaryLogCount++;
         logCountByUser[d.userId] = (logCountByUser[d.userId] || 0) + 1;
         logsByClass[d.classCode] = (logsByClass[d.classCode] || 0) + 1;
       });
       const duplicateUsers = Object.entries(logCountByUser)
         .filter(([, count]) => count >= 2)
         .map(([uid, count]) => ({ uid, count }));
-      logger.info(`[reverseSalary] 진단: ${todayKst.toISOString().split("T")[0]} salaryPayment 로그 ${diagLogsSnap.size}건, 학생당 2회 이상=${duplicateUsers.length}명`);
+      logger.info(`[reverseSalary] 진단: ${todayKst.toISOString().split("T")[0]} 전체 activity_logs ${diagLogsSnap.size}건 중 salaryPayment ${salaryLogCount}건, 학생당 2회 이상=${duplicateUsers.length}명`);
 
       const classCodes = await getAllActiveClassCodes();
       const reversalPlan = [];
@@ -976,7 +979,8 @@ exports.reverseLastWeeklySalary = onRequest(
         weekKey,
         targetDate: todayKst.toISOString().split("T")[0],
         diagnosis: {
-          salaryLogsOnDate: diagLogsSnap.size,
+          totalActivityLogsOnDate: diagLogsSnap.size,
+          salaryLogsOnDate: salaryLogCount,
           logsByClass,
           duplicateUserCount: duplicateUsers.length,
           duplicateUsersSample: duplicateUsers.slice(0, 10),
