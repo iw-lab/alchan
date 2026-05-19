@@ -25,6 +25,7 @@ import {
   getSlot,
   isOwned,
   buildAvatarOverlays,
+  ITEM_ANCHORS,
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";
 
@@ -161,6 +162,14 @@ export default function AvatarShop() {
     let presetUrl = null;
     let baseUrl = null;
 
+    // ITEM_ANCHORS를 적용해서 사이드바 AvatarHeaderWidget과 동일하게 합성
+    const applyAnchor = (slot, itemId, imageUrl) => {
+      const anchor = ITEM_ANCHORS[itemId];
+      return anchor
+        ? { url: imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
+        : { url: imageUrl };
+    };
+
     Object.entries(eq).forEach(([slot, itemId]) => {
       if (!itemId) return;
       const item = owned[itemId];
@@ -172,7 +181,7 @@ export default function AvatarShop() {
       } else if (slot === "base") {
         baseUrl = item.imageUrl;
       } else {
-        slots[slot] = { url: item.imageUrl };
+        slots[slot] = applyAnchor(slot, itemId, item.imageUrl);
       }
     });
 
@@ -181,7 +190,7 @@ export default function AvatarShop() {
       if (previewItem.slot === "background") bgUrl = previewItem.imageUrl;
       else if (previewItem.slot === "preset") presetUrl = previewItem.imageUrl;
       else if (previewItem.slot === "base") baseUrl = previewItem.imageUrl;
-      else slots[previewItem.slot] = { url: previewItem.imageUrl };
+      else slots[previewItem.slot] = applyAnchor(previewItem.slot, previewItem.id, previewItem.imageUrl);
     }
 
     return { baseUrl, bgUrl, slots, presetUrl };
