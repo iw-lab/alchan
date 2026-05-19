@@ -302,7 +302,7 @@ function renderBigPreview() {
   bigPreview.innerHTML = "";
   // 베이스
   const baseImg = document.createElement("img");
-  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519v`;
+  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519w`;
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;`;
   bigPreview.appendChild(baseImg);
 
@@ -310,7 +310,7 @@ function renderBigPreview() {
   if (currentSlot !== "base") {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
-    img.src = `/avatar-shop/${currentItem}.png?v=20260519v`;
+    img.src = `/avatar-shop/${currentItem}.png?v=20260519w`;
     img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
@@ -377,24 +377,24 @@ function renderGallery() {
     // mini: 베이스 (base 슬롯이면 그 자체)
     if (currentSlot === "base") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519v`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519w`;
       m.style.cssText = `inset:0;width:100%;height:100%;`;
       mini.appendChild(m);
     } else if (currentSlot === "preset" || currentSlot === "background") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519v`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519w`;
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
       // 베이스 + 해당 아이템 합성
       const baseImg = document.createElement("img");
-      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519v`;
+      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519w`;
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;`;
       mini.appendChild(baseImg);
 
       const a = getAnchor(itemId);
       const it = document.createElement("img");
-      it.src = `/avatar-shop/${itemId}.png?v=20260519v`;
+      it.src = `/avatar-shop/${itemId}.png?v=20260519w`;
       it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
