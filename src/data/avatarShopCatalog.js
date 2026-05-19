@@ -141,7 +141,7 @@ const HAIR_ITEMS = [
     description: "스타일리쉬한 남자 언더컷",
     rarity: "rare",
     price: 280000,
-    prompt: `${ITEM_ONLY_STYLE} A male undercut hairstyle wig, longer hair on top swept to one side, very short shaved sides, modern stylish look, dark brown to black color, sharp edges, boyish charm.`,
+    prompt: `${ITEM_ONLY_STYLE} A male undercut hairstyle wig viewed FROM FRONT, the wig is a complete head-covering hair piece: a FULL VOLUMINOUS TOP of medium-length hair (about 6-8cm long) covering the entire crown of the head and swept stylishly to one side (LEFT side parting), the top hair forms a smooth wave shape across the head, with very short neatly trimmed (shaved-look) sides covering the area where the ears would be in a thinner darker layer, dark chocolate brown color with subtle highlights. The TOP HAIR must be the main visible feature, NOT just side strips. The wig fills 60% of the frame vertically (top of head down to ear level). Simple flat cartoon shape with CLEAN smooth outlines, centered in frame.`,
   },
   {
     id: "hair_messy_male",
