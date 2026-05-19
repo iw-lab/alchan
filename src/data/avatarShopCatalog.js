@@ -291,7 +291,7 @@ const GLASSES_ITEMS = [
     description: "지적인 검은 둥근 안경",
     rarity: "common",
     price: 40000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses with two perfect circular lenses (both lenses perfectly round and same size). ${GLASSES_RULE} Intellectual look, thin black frame, clear/transparent lenses.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses with two perfect circular lenses (both lenses perfectly round and same size, large prominent circles filling 60% of canvas width). ${GLASSES_RULE} VERY THICK 6-8px solid pure black opaque rim clearly visible (NOT thin, NOT faint, NOT light gray). Lenses filled with light blue-tinted glass color (not fully transparent so the rims are clearly distinguishable from background). Intellectual nerdy look.`,
   },
   {
     id: "glasses_aviator",
@@ -300,7 +300,7 @@ const GLASSES_ITEMS = [
     description: "쿨한 비행사 선글라스",
     rarity: "rare",
     price: 300000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses with two teardrop-shaped lenses (both lenses same shape and size). ${GLASSES_RULE} Dark gradient lenses, gold metal frame, classic pilot style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses with two teardrop-shaped lenses (both lenses same shape and size, large filling 60% canvas width). ${GLASSES_RULE} CRITICAL: lenses are FULLY OPAQUE solid dark color filling the entire lens area (deep slate-gray to near-black, NOT transparent, NOT empty, NOT see-through — the dark lens fill must be completely visible and solid). Thick gold metal frame outline around each lens. Classic pilot style.`,
   },
   {
     id: "glasses_star",
@@ -327,7 +327,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE black oval-shaped patch with a small white skull drawing in the center, leather texture. NO string, NO strap, NO rope — ONLY the oval patch shape itself. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 50% of canvas width): ONE solid OPAQUE pure black oval-shaped patch (FULLY filled solid black color, NOT transparent, NOT outline-only) with a clearly visible LARGE bright white skull-and-crossbones drawing in the center (skull occupying 40% of the patch area, bold white lines easy to see against black). NO string, NO strap, NO rope, NO band — ONLY the oval patch shape. Thick clean SOLID BLACK outline (3-4px). Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -336,7 +336,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): only the rectangular pleated mask body with rounded corners. NO ear loops, NO straps, NO strings, NO bands — ONLY the mask body shape itself. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 60% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid and visible). Light gray subtle horizontal pleat lines for texture. NO ear loops, NO straps, NO strings, NO bands — ONLY the mask body shape. Thick clean SOLID BLACK outline (3-4px) around the mask edge. Flat sticker style.`,
   },
   {
     id: "glasses_3d",
@@ -354,7 +354,7 @@ const GLASSES_ITEMS = [
     description: "신사의 외알 안경",
     rarity: "epic",
     price: 950000,
-    prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit one eye (NOT giant mirror, NOT picture frame size) with a thin ornate gold frame. NO chain, NO string, NO temple arm — ONLY the small eye-sized monocle lens. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit a single human eye (lens diameter takes only 25-30% of canvas width, small object centered in frame, NOT a giant decorative mirror, NOT a picture frame, NOT a hand mirror, NOT a portal — just a tiny eye-sized monocle). Simple thin gold metal circular rim around a light blue-tinted glass lens. NO chain, NO string, NO temple arm, NO ornate decorative scrollwork, NO baroque frame, NO handle. Thick clean SOLID BLACK outline (2-3px) on the gold rim. Flat sticker style.`,
   },
 ];
 
