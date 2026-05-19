@@ -150,7 +150,7 @@ const HAIR_ITEMS = [
     description: "자연스럽게 헝클어진 남자머리",
     rarity: "common",
     price: 80000,
-    prompt: `${ITEM_ONLY_STYLE} A SHORT messy boy hairstyle wig viewed from front (NO FACE, NO BODY visible - only the hair top), spiky tousled short hair sitting on top of head area only, medium-short length covering just the upper head area, dark chocolate brown color with lighter highlights, simple flat cartoon shape with CLEAN outlines, hair contained in the upper portion of frame.`,
+    prompt: `${ITEM_ONLY_STYLE} A messy boy hairstyle wig viewed FROM FRONT (complete head-covering wig shape): smooth rounded helmet-shape of dark brown hair covering the entire top of the head and forehead, the surface of the hair has gentle natural waves and slightly tousled texture (NOT spiky, NOT extreme messy, NOT lightning bolt shape, NOT jagged peaks), short choppy ends visible at the hair edges around the ears, length covering down to just above the ears, dark chocolate brown color with subtle lighter highlights. The wig fills 45% of the frame vertically (top of head to ear level). FULLY OPAQUE solid color, NOT translucent. Simple flat cartoon shape with CLEAN 2-3px black outlines, centered, rounded silhouette.`,
   },
   {
     id: "hair_slick_back_male",
