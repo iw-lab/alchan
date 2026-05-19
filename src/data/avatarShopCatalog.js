@@ -281,7 +281,8 @@ const HAT_ITEMS = [
 // CRITICAL: 정면 평면 뷰 + 또렷한 검정 외곽선 강제 (사용자 명시).
 // 안경 알이 비틀어지거나 3D 사선 뷰로 그려지는 문제 회피.
 // ============================================================================
-const GLASSES_RULE = "STRICT FRONT VIEW (perfectly symmetric, NOT 3D perspective, NOT tilted, NOT rotated, NOT angled, NOT side view): both lenses are visible as flat 2D shapes facing the viewer straight on. Both lenses are EQUAL SIZE and on the SAME horizontal line. The bridge connects them at the center. Thick clean SOLID BLACK outline (2-3px) around every part of the frame and lenses. Flat sticker style.";
+// 사용자 명시: 안경다리(temple arms) X, 끈/체인/귀고리 X. 정면 렌즈 + 작은 브릿지만.
+const GLASSES_RULE = "STRICT FRONT VIEW only the front part visible (perfectly symmetric, NOT 3D perspective, NOT tilted, NOT rotated): both lenses as flat 2D shapes facing the viewer straight on, EQUAL SIZE, SAME horizontal line, connected by a small bridge at the center. NO temple arms, NO side arms extending to the ears, NO ear hooks, NO straps, NO strings, NO chains, NO ribbons — JUST the frontal lens portion with the central bridge. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.";
 const GLASSES_ITEMS = [
   {
     id: "glasses_round_black",
@@ -326,7 +327,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): one black oval-shaped patch with a small white skull drawing in the center, leather texture, with a thin string strap extending horizontally from both sides (the string goes around the head). Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE black oval-shaped patch with a small white skull drawing in the center, leather texture. NO string, NO strap, NO rope — ONLY the oval patch shape itself. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -335,7 +336,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): rectangular pleated mask with two thin ear loops extending from the left and right sides. Thick clean SOLID BLACK outline (2-3px) around the mask and loops. Flat sticker style, symmetric.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): only the rectangular pleated mask body with rounded corners. NO ear loops, NO straps, NO strings, NO bands — ONLY the mask body shape itself. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
   },
   {
     id: "glasses_3d",
@@ -353,7 +354,7 @@ const GLASSES_ITEMS = [
     description: "신사의 외알 안경",
     rarity: "epic",
     price: 950000,
-    prompt: `${ITEM_ONLY_STYLE} A single golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): one perfect circular lens with an ornate gold frame, a thin gold chain curling down from the right side of the frame. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit one eye (NOT giant mirror, NOT picture frame size) with a thin ornate gold frame. NO chain, NO string, NO temple arm — ONLY the small eye-sized monocle lens. Thick clean SOLID BLACK outline (2-3px). Flat sticker style.`,
   },
 ];
 
