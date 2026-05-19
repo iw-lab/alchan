@@ -48,13 +48,13 @@
   /* 배경 흰색 — 분홍 그라데이션이 외곽선 안티앨리어싱과 섞여 점선처럼 보이던 문제 해결 */
   #bigPreview {
     position: relative;
-    width: 400px; height: 400px;
+    width: 600px; height: 600px;
     background: #ffffff;
     border: 2px solid #a855f7; border-radius: 12px;
     margin: 0 auto;
     overflow: hidden;
   }
-  #bigPreview img { position: absolute; pointer-events: none; user-select: none; image-rendering: -webkit-optimize-contrast; }
+  #bigPreview img { position: absolute; pointer-events: none; user-select: none; }
   .selectionBox {
     position: absolute; border: 2px dashed #ef4444;
     pointer-events: auto; cursor: move; z-index: 99;
@@ -155,7 +155,7 @@
     <div>
       <h2>큰 미리보기 (선택된 아이템 조정)</h2>
       <div id="bigPreview"></div>
-      <div class="help" style="margin-top:8px;width:400px;">
+      <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
         캔버스 밖은 실제 사용 시 잘립니다.
       </div>
@@ -267,7 +267,7 @@ function saveLocal() {
 // =====================================================================
 const bigPreview = document.getElementById("bigPreview");
 const gallery = document.getElementById("gallery");
-const PSIZE = 400; // px (큰 미리보기)
+const PSIZE = 600; // px (큰 미리보기)
 const MSIZE = 130; // px (갤러리 mini, 실제는 CSS가 결정)
 
 function render() {
@@ -284,7 +284,7 @@ function renderBigPreview() {
   bigPreview.innerHTML = "";
   // 베이스
   const baseImg = document.createElement("img");
-  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519x`;
+  baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519y`;
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;`;
   bigPreview.appendChild(baseImg);
 
@@ -292,7 +292,7 @@ function renderBigPreview() {
   if (currentSlot !== "base") {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
-    img.src = `/avatar-shop/${currentItem}.png?v=20260519x`;
+    img.src = `/avatar-shop/${currentItem}.png?v=20260519y`;
     img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
@@ -359,24 +359,24 @@ function renderGallery() {
     // mini: 베이스 (base 슬롯이면 그 자체)
     if (currentSlot === "base") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519x`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519y`;
       m.style.cssText = `inset:0;width:100%;height:100%;`;
       mini.appendChild(m);
     } else if (currentSlot === "preset" || currentSlot === "background") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?v=20260519x`;
+      m.src = `/avatar-shop/${itemId}.png?v=20260519y`;
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
       // 베이스 + 해당 아이템 합성
       const baseImg = document.createElement("img");
-      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519x`;
+      baseImg.src = `/avatar-shop/${currentBase}.png?v=20260519y`;
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;`;
       mini.appendChild(baseImg);
 
       const a = getAnchor(itemId);
       const it = document.createElement("img");
-      it.src = `/avatar-shop/${itemId}.png?v=20260519x`;
+      it.src = `/avatar-shop/${itemId}.png?v=20260519y`;
       it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
