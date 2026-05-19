@@ -14,9 +14,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIR = path.resolve(__dirname, "../public/avatar-shop");
 
-const HEAD_REGION_RATIO = 0.35; // y < 35% = 머리 영역
+const HEAD_REGION_RATIO = 1.0;  // 전신 (긴 머리는 몸까지 덮으므로 몸 윤곽도 약화)
 const DARK_RGB_THRESHOLD = 200; // RGB max < 200 → 짙은 픽셀 (검정/짙은 회색/짙은 갈색 다 포함)
-const WEAKENED_ALPHA = 100;      // 39% 보임 (머리카락 사이로 거의 안 비치되 인식 가능)
+const WEAKENED_ALPHA = 60;       // 24% 보임 (거의 안 보이지만 hair 미장착 인식 가능)
 
 const FILES = ["editor_bald.png", "base_male.png", "base_female.png"];
 
