@@ -23,6 +23,7 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 
 // 처리할 hair 목록 (사용자가 비침 지적한 PNG들)
 const TARGETS = [
+  "hair_braid_blonde.png",
   "hair_slick_back_male.png",
   "hair_long_wavy_brown.png",
   "hair_ponytail_brown.png",
@@ -96,26 +97,61 @@ async function processFile(file) {
     }
   }
 
-  // 3단계: 내부 hole = alpha0 && !isExternal → 머리카락 평균 색으로 채움
-  let filled = 0;
+  // 3단계: 내부 hole component별 크기 계산 → 작은 hole만 채움 (얼굴 영역 보존)
+  // 너무 큰 hole (>= 10000px = 캔버스 1%)은 얼굴 영역으로 보고 skip
+  const HOLE_SIZE_MAX = 10000;
+  const holeGroup = new Int32Array(N);
+  const holeSizes = [0];
+  let nextGroup = 0;
   for (let i = 0; i < N; i++) {
-    if (alpha0[i] && !isExternal[i]) {
-      out[i * 4] = hairR;
-      out[i * 4 + 1] = hairG;
-      out[i * 4 + 2] = hairB;
-      out[i * 4 + 3] = 255;
-      filled++;
+    if (!alpha0[i] || isExternal[i] || holeGroup[i]) continue;
+    nextGroup++;
+    let size = 0;
+    const stack = [i];
+    holeGroup[i] = nextGroup;
+    while (stack.length) {
+      const idx = stack.pop();
+      size++;
+      const x = idx % W, y = Math.floor(idx / W);
+      const neighbors = [];
+      if (x > 0) neighbors.push(idx - 1);
+      if (x < W - 1) neighbors.push(idx + 1);
+      if (y > 0) neighbors.push(idx - W);
+      if (y < H - 1) neighbors.push(idx + W);
+      for (const ni of neighbors) {
+        if (alpha0[ni] && !isExternal[ni] && !holeGroup[ni]) {
+          holeGroup[ni] = nextGroup;
+          stack.push(ni);
+        }
+      }
     }
+    holeSizes.push(size);
+  }
+
+  let filled = 0;
+  let skippedLarge = 0;
+  for (let i = 0; i < N; i++) {
+    const g = holeGroup[i];
+    if (!g) continue;
+    if (holeSizes[g] >= HOLE_SIZE_MAX) {
+      skippedLarge++;
+      continue; // 얼굴 영역 등 큰 hole 보존
+    }
+    out[i * 4] = hairR;
+    out[i * 4 + 1] = hairG;
+    out[i * 4 + 2] = hairB;
+    out[i * 4 + 3] = 255;
+    filled++;
   }
   if (filled === 0) {
-    console.log(`✓ ${file} 내부 hole 없음`);
+    console.log(`✓ ${file} 내부 hole 없음 (skipped large: ${skippedLarge}px)`);
     return;
   }
   await sharp(out, { raw: { width: W, height: H, channels: 4 } })
     .png({ compressionLevel: 9 })
     .toFile(filePath + ".tmp");
   fs.renameSync(filePath + ".tmp", filePath);
-  console.log(`✅ ${file} 내부 hole ${filled}px 채움 (색 ${hairR},${hairG},${hairB})`);
+  console.log(`✅ ${file} 내부 hole ${filled}px 채움 (큰 hole ${skippedLarge}px 보존, 색 ${hairR},${hairG},${hairB})`);
 }
 
 for (const f of TARGETS) await processFile(f);
