@@ -265,7 +265,7 @@ const HAT_ITEMS = [
     description: "장난스러운 빨간 악마 뿔",
     rarity: "epic",
     price: 1000000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of red devil horns headband, small curved horns, cartoonish, no head visible, just the horn accessory floating in space.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of bright red devil horns headband viewed STRAIGHT FROM THE FRONT (perfectly symmetric, NOT tilted, NOT 3D perspective): two small curved devil horns on top of a thin headband arch. Solid OPAQUE bright red fill (NO dotted texture, NO speckled pattern, NO stippled shading, NO sketchy fill — completely smooth solid red surface). VERY THICK 5-6px solid pure black continuous outline around the entire silhouette (NO dotted line, NO dashed line, NO broken line, NO gaps — ONE continuous smooth solid black border). NO head visible, just the headband accessory floating in empty space. ${HAT_RULE}`,
   },
   {
     id: "hat_angel_halo",
