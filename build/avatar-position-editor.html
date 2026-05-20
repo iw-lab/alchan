@@ -287,6 +287,8 @@ const bigPreview = document.getElementById("bigPreview");
 const gallery = document.getElementById("gallery");
 const PSIZE = 600; // px (큰 미리보기)
 const MSIZE = 130; // px (갤러리 mini, 실제는 CSS가 결정)
+// 페이지 로드 1회만 nonce 계산 — 슬라이더/렌더링마다 매번 새 URL 만들면 PNG 재fetch 깜빡 흰화면 발생
+const PAGE_NONCE = Date.now();
 
 function render() {
   renderBigPreview();
@@ -302,7 +304,7 @@ function renderBigPreview() {
   bigPreview.innerHTML = "";
   // 베이스
   const baseImg = document.createElement("img");
-  baseImg.src = `/avatar-shop/${currentBase}.png?t=${Date.now()}`;
+  baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;`;
   bigPreview.appendChild(baseImg);
 
@@ -310,7 +312,7 @@ function renderBigPreview() {
   if (currentSlot !== "base") {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
-    img.src = `/avatar-shop/${currentItem}.png?t=${Date.now()}`;
+    img.src = `/avatar-shop/${currentItem}.png?t=${PAGE_NONCE}`;
     img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
@@ -377,24 +379,24 @@ function renderGallery() {
     // mini: 베이스 (base 슬롯이면 그 자체)
     if (currentSlot === "base") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?t=${Date.now()}`;
+      m.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
       m.style.cssText = `inset:0;width:100%;height:100%;`;
       mini.appendChild(m);
     } else if (currentSlot === "preset" || currentSlot === "background") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?t=${Date.now()}`;
+      m.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
       // 베이스 + 해당 아이템 합성
       const baseImg = document.createElement("img");
-      baseImg.src = `/avatar-shop/${currentBase}.png?t=${Date.now()}`;
+      baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;`;
       mini.appendChild(baseImg);
 
       const a = getAnchor(itemId);
       const it = document.createElement("img");
-      it.src = `/avatar-shop/${itemId}.png?t=${Date.now()}`;
+      it.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
       it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] || 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
