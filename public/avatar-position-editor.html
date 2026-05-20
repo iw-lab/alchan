@@ -204,7 +204,7 @@ const SLOT_BLEND_MODE = {
 // =====================================================================
 // 상태
 // =====================================================================
-let currentBase = "editor_bald";
+let currentBase = "base_male";
 let currentSlot = "hair";
 let currentItem = SLOTS.hair[0];
 // itemOverrides[itemId] = { x, y, w, h }
@@ -231,7 +231,8 @@ Object.keys(SLOTS).forEach(slot => {
     currentSlot = slot;
     currentItem = SLOTS[slot][0];
     // 머리 슬롯일 때만 대머리 베이스, 그 외에는 머리 있는 base_male
-    currentBase = (slot === "hair") ? "editor_bald" : "base_male";
+    // 모든 슬롯에서 base_male 사용 (사용자 명시: hair 슬롯도 다른 슬롯과 동일한 베이스)
+    currentBase = "base_male";
     baseSelect.value = currentBase;
     [...slotTabsEl.children].forEach((c, i) => c.classList.toggle("active", Object.keys(SLOTS)[i] === slot));
     render();
