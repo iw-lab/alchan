@@ -200,7 +200,9 @@ const HAIR_ITEMS = [
 
 // ============================================================================
 // 모자/관 (8종)
+// CRITICAL: 정면 평면 뷰 강제 (사용자 명시 — 사선/측면 X).
 // ============================================================================
+const HAT_RULE = "STRICT FRONT VIEW (perfectly symmetric front-facing flat 2D illustration, NOT 3/4 view, NOT side angle, NOT tilted, NOT 3D perspective, NOT top-down view): the hat shown straight from the front so both sides are equally visible. Thick clean SOLID BLACK outline (3-4px). Flat sticker style with vibrant solid colors.";
 const HAT_ITEMS = [
   {
     id: "hat_crown_gold",
@@ -227,7 +229,7 @@ const HAT_ITEMS = [
     description: "스포츠 감성 빨간 야구모자",
     rarity: "common",
     price: 70000,
-    prompt: `${ITEM_ONLY_STYLE} A red baseball cap with a small white star logo on front, classic curved brim, casual sporty look.`,
+    prompt: `${ITEM_ONLY_STYLE} A red baseball cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT 3/4 angle, NOT side view): the rounded cap dome on top and the curved brim extending forward and clearly visible at the bottom (brim shown as a horizontal symmetric curved shape below the dome). Solid OPAQUE bright red color filling the entire cap. NO logo, NO star, NO letter, NO text, NO emblem on the front — completely plain solid red. ${HAT_RULE}`,
   },
   {
     id: "hat_beanie_yellow",
@@ -245,7 +247,7 @@ const HAT_ITEMS = [
     description: "요리 마스터의 셰프 모자",
     rarity: "rare",
     price: 350000,
-    prompt: `${ITEM_ONLY_STYLE} A classic white chef toque hat, tall puffy pleated top, simple band, professional cook style.`,
+    prompt: `${ITEM_ONLY_STYLE} A classic white chef toque hat viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT angled, NOT 3/4 view): tall puffy mushroom-shaped pleated top with vertical fluffy folds and a simple white band at the base. Solid OPAQUE pure white fill (with light gray pleat shading lines). NO visor, NO black band, NO brim — chef toque only. ${HAT_RULE}`,
   },
   {
     id: "hat_graduation",
@@ -254,7 +256,7 @@ const HAT_ITEMS = [
     description: "졸업식의 검은 학사모",
     rarity: "rare",
     price: 400000,
-    prompt: `${ITEM_ONLY_STYLE} A black graduation mortarboard cap with a gold tassel hanging from the side, academic style, square top.`,
+    prompt: `${ITEM_ONLY_STYLE} A black graduation mortarboard cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT top-down view, NOT 3/4 angle): the square flat top board shown as a horizontal flat rectangle at the top, the round cap base below it, a single gold tassel hanging straight down from the right edge of the square top. Solid OPAQUE pure black fill. ${HAT_RULE}`,
   },
   {
     id: "hat_devil_horns",
@@ -272,7 +274,7 @@ const HAT_ITEMS = [
     description: "신성한 황금 후광",
     rarity: "legendary",
     price: 3500000,
-    prompt: `${ITEM_ONLY_STYLE} A glowing golden angel halo ring, floating circle of golden light with soft yellow glow rays around it, no character, just the halo.`,
+    prompt: `${ITEM_ONLY_STYLE} A glowing golden angel halo ring viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT 3D perspective, NOT tilted oval): a LARGE bold thick golden ring shape (filling 70% of canvas width, donut/ring outline shape with thick 30-40px golden band) with bright shimmering yellow-gold gradient color and visible radiant light rays/sparkles emanating outward from the ring. Solid OPAQUE saturated gold color, very clearly visible (NOT thin, NOT faint). NO character, NO head, just the halo with bright glow. Thick clean SOLID BLACK outline (3-4px) on the gold ring. Flat sticker style.`,
   },
 ];
 
