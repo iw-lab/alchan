@@ -293,7 +293,7 @@ const GLASSES_ITEMS = [
     description: "지적인 검은 둥근 안경",
     rarity: "common",
     price: 40000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses with two perfect circular lenses (both lenses perfectly round and same size, large prominent circles filling 60% of canvas width). ${GLASSES_RULE} VERY THICK 6-8px solid pure black opaque rim clearly visible (NOT thin, NOT faint, NOT light gray). Lenses filled with light blue-tinted glass color (not fully transparent so the rims are clearly distinguishable from background). Intellectual nerdy look.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of round black-rimmed eyeglasses with two perfect circular lenses (both lenses perfectly round and same size, large prominent circles filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: VERY THICK 12-15px solid pure black #000000 OPAQUE rim around each lens (must be clearly visible as bold dark border, NOT thin, NOT light gray, NOT faint). Lenses are COMPLETELY EMPTY transparent see-through (NO fill, NO blue tint, NO color inside — just empty hole showing through to background). Small black bridge connecting two lenses. Intellectual nerdy look.`,
   },
   {
     id: "glasses_aviator",
@@ -329,7 +329,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 50% of canvas width): ONE solid OPAQUE pure black oval-shaped patch (FULLY filled solid black color, NOT transparent, NOT outline-only) with a clearly visible LARGE bright white skull-and-crossbones drawing in the center (skull occupying 40% of the patch area, bold white lines easy to see against black). NO string, NO strap, NO rope, NO band — ONLY the oval patch shape. Thick clean SOLID BLACK outline (3-4px). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 70% of canvas width). CRITICAL: the entire oval patch is COMPLETELY FILLED with pure JET BLACK color #000000 throughout (FULLY OPAQUE solid black interior, NOT white interior, NOT empty, NOT outline-only — must be CLEARLY VISIBLE as a solid black silhouette against any background). A clearly visible LARGE bright WHITE skull-and-crossbones drawing in the center of the black patch (skull occupying 45% of the patch area, bold white outlined skull with crossed bones, easy to see against the solid black background). NO string, NO strap, NO rope, NO band — ONLY the oval patch shape. VERY THICK 6-8px solid black outline around the oval edge. Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -338,7 +338,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 60% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid and visible). Light gray subtle horizontal pleat lines for texture. NO ear loops, NO straps, NO strings, NO bands — ONLY the mask body shape. Thick clean SOLID BLACK outline (3-4px) around the mask edge. Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). NO ear loops, NO straps, NO strings, NO bands — ONLY the mask body shape. VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
   },
   {
     id: "glasses_3d",

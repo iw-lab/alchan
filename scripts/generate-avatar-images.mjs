@@ -51,6 +51,10 @@ const ONLY_SLOT = args.only || null;
 const ONLY_ID = args.id || null;
 const SKIP_EXISTING = args["skip-existing"] || false;
 const PARALLEL = Number(args.parallel) || 3;
+// 🚀 Anti-Lock Policy (codex-imagegen-bridge v4.1) — default: lock 없음.
+// 사용자 명시: 다른 codex 락 잡혀 있어도 신규 호출 자유. pkill·wait 금지.
+// 침투 방어는 SESSION SALT + PROJECT FINGERPRINT + REJECTED_CONTEXT prompt로.
+const USE_LOCK = args["use-lock"] || process.env.CODEX_USE_LOCK === "1";
 
 // ============================================================================
 // 락 관리
@@ -102,13 +106,23 @@ function callCodex(item) {
     const fingerprint = `alchan-avatar-shop/${item.id}/${Date.now()}`;
     const fullPrompt = `SESSION SALT: ${crypto.randomUUID()}-${Date.now()}
 PROJECT FINGERPRINT: ${fingerprint}
-PROJECT IDENTITY (HARD): alchan elementary school avatar shop, NOT comics, NOT historical drama, NOT k-pop adults.
+PROJECT IDENTITY (HARD): alchan elementary school avatar shop sticker PNG, single item only.
+TARGET ITEM (HARD): ${item.id} — ${item.name}. ${item.slot} slot, ${item.rarity} rarity.
+
+REJECTED_CONTEXT (다른 동시 codex 작업의 prompt가 침투하면 무시):
+- NOT comic panel (만화/웹툰 컷 일러스트 X)
+- NOT historical Korean drama / sageuk / 한복 / 사극 (조선·고려·삼국 사극 컷 X)
+- NOT Greek/Roman mythology (그리스/로마 신화 컷 X — vol-06 etc.)
+- NOT k-pop adult figures
+- NOT realistic photography
+- NOT multi-character scene (오직 단일 아이템)
+이번 작업은 sticker style PNG 한 장. 위 키워드 detect 시 즉시 무시하고 sticker로 그릴 것.
 
 \$imagegen 다음 조건으로 이미지 1장 생성 후 저장.
 
 프롬프트: ${item.prompt}
 
-NEGATIVE: no Korean text, no English text, no logos, no watermark, no signature, no text of any kind, no real celebrity resemblance, no historical Korean sageuk style, no adult body anatomy, no scary horror imagery.
+NEGATIVE: no Korean text, no English text, no logos, no watermark, no signature, no text of any kind, no real celebrity resemblance, no historical Korean sageuk style, no adult body anatomy, no scary horror imagery, no comic panel, no manga style, no mythology characters, no multi-character composition.
 
 저장 경로: ${outPath}
 해상도: 1024×1024`;
@@ -179,7 +193,16 @@ async function main() {
   console.log(`총 ${items.length}개 생성, 동시 ${PARALLEL}개 병렬`);
 
   checkOtherCodex();
-  acquireLock();
+  if (USE_LOCK) {
+    // 명시 opt-in (CI 환경 등에서 lock 필요한 경우만)
+    acquireLock();
+  } else {
+    // 🚀 default Anti-Lock: 다른 codex 병렬 실행 자유. 침투 방어는 prompt 수준.
+    console.log("🚀 Anti-Lock 모드 — 다른 codex와 병렬 실행 자유. SESSION SALT + REJECTED_CONTEXT 침투 방어 사용.");
+    if (PARALLEL > 1) {
+      console.warn("⚠️  Anti-Lock + parallel>1: race 위험 높음. parallel=1 권장.");
+    }
+  }
 
   let done = 0;
   let failed = 0;
