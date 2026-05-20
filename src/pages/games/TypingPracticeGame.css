@@ -699,11 +699,12 @@
 .reward-card {
   position: relative;
   height: 320px;
+  min-height: 320px;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
 
-.reward-card:hover:not(.disabled) {
+.reward-card:hover:not(.disabled):not(.flipped) {
   transform: scale(1.05);
 }
 
@@ -731,12 +732,15 @@
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   border-radius: 25px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .card-front {
@@ -787,6 +791,9 @@
 
 .reward-reveal {
   text-align: center;
+  width: 100%;
+  padding: 0 8px;
+  box-sizing: border-box;
 }
 
 .reward-icon {
@@ -806,11 +813,14 @@
 }
 
 .reward-amount {
-  font-size: 34px;
+  font-size: clamp(22px, 5.5vw, 34px);
   font-weight: 700;
   margin-bottom: 8px;
   animation: slideUp 0.5s ease-out 0.2s both;
   word-break: keep-all;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 @keyframes slideUp {
@@ -1034,6 +1044,7 @@
 
   .reward-card {
     height: 240px;
+    min-height: 240px;
   }
 
   .card-front,
@@ -1061,7 +1072,7 @@
   }
 
   .reward-amount {
-    font-size: 28px;
+    font-size: clamp(20px, 6vw, 28px);
   }
 
   .reward-label {
@@ -1125,6 +1136,7 @@
 
   .reward-card {
     height: 210px;
+    min-height: 210px;
   }
 
   .card-front,
@@ -1147,6 +1159,10 @@
 
   .reward-icon {
     font-size: 48px;
+  }
+
+  .reward-amount {
+    font-size: clamp(18px, 6.5vw, 24px);
   }
 
   .reward-text {
