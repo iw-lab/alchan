@@ -68,21 +68,41 @@ for (let i = 0; i < N; i++) {
   groupSizes.push(size);
 }
 
-// 3. 큰 component(머리카락)만 살색으로 치환. 작은 component(눈·입) 보존.
+// 3. 큰 component(머리카락)의 내부만 살색. 외곽 boundary 픽셀은 검정 유지 (외곽선 보존).
+//    작은 component(눈·입) 전체 보존.
+const isHair = new Uint8Array(N);
+for (let i = 0; i < N; i++) {
+  const g = groupId[i];
+  if (g && groupSizes[g] >= MIN_HAIR_COMPONENT) isHair[i] = 1;
+}
+
 let changedHair = 0;
 let preservedFeatures = 0;
+let preservedOutline = 0;
 for (let i = 0; i < N; i++) {
   const g = groupId[i];
   if (!g) continue;
-  if (groupSizes[g] >= MIN_HAIR_COMPONENT) {
-    out[i * 4] = SKIN_R;
-    out[i * 4 + 1] = SKIN_G;
-    out[i * 4 + 2] = SKIN_B;
-    out[i * 4 + 3] = 255;
-    changedHair++;
-  } else {
+  if (groupSizes[g] < MIN_HAIR_COMPONENT) {
     preservedFeatures++;
+    continue;
   }
+  // hair component 안 픽셀: 이웃에 비-hair (component 밖 = 외곽 boundary) 있으면 검정 유지
+  const x = i % W, y = Math.floor(i / W);
+  let isBoundary = false;
+  if (x > 0 && !isHair[i - 1]) isBoundary = true;
+  else if (x < W - 1 && !isHair[i + 1]) isBoundary = true;
+  else if (y > 0 && !isHair[i - W]) isBoundary = true;
+  else if (y < H - 1 && !isHair[i + W]) isBoundary = true;
+  if (isBoundary) {
+    preservedOutline++;
+    continue; // 검정 유지 — base_male의 머리카락 외곽선
+  }
+  // 내부 픽셀만 살색 fill
+  out[i * 4] = SKIN_R;
+  out[i * 4 + 1] = SKIN_G;
+  out[i * 4 + 2] = SKIN_B;
+  out[i * 4 + 3] = 255;
+  changedHair++;
 }
 
 await sharp(out, { raw: { width: W, height: H, channels: 4 } })
