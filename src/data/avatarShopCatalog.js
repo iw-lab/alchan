@@ -247,7 +247,7 @@ const HAT_ITEMS = [
     description: "요리 마스터의 셰프 모자",
     rarity: "rare",
     price: 350000,
-    prompt: `${ITEM_ONLY_STYLE} A classic white chef toque hat viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT angled, NOT 3/4 view): tall puffy mushroom-shaped pleated top with vertical fluffy folds and a simple white band at the base. Solid OPAQUE pure white fill (with light gray pleat shading lines). NO visor, NO black band, NO brim — chef toque only. ${HAT_RULE}`,
+    prompt: `${ITEM_ONLY_STYLE} A classic white chef toque hat viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT angled, NOT 3/4 view): tall puffy mushroom-shaped pleated top with vertical fluffy folds and a WIDE TALL solid white band at the bottom (the white band is 30% of the total hat height — wide enough to fully cover the wearer's hairline and forehead, NOT a thin strip). Solid OPAQUE pure white fill throughout (with light gray pleat shading lines for the puffy top). NO visor, NO black band, NO dark band, NO headband, NO brim. VERY THICK 5-6px solid pure black outline around the entire hat silhouette (NOT gray, NOT faint, NOT dotted — completely solid dark black border). ${HAT_RULE}`,
   },
   {
     id: "hat_graduation",
@@ -256,7 +256,7 @@ const HAT_ITEMS = [
     description: "졸업식의 검은 학사모",
     rarity: "rare",
     price: 400000,
-    prompt: `${ITEM_ONLY_STYLE} A DARK BLACK graduation mortarboard cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT top-down view, NOT 3/4 angle): CRITICAL — the entire cap is FILLED with pure DARK BLACK color #000000 (NOT white, NOT light gray, NOT empty outline — completely solid opaque black fill throughout the whole cap body). The square flat top board shown as a horizontal flat rectangle at the top filled solid black, the round cap base below it also filled solid black, a single bright gold tassel hanging straight down from the right edge of the square top. The black cap body must be CLEARLY VISIBLE AS SOLID BLACK against any background. ${HAT_RULE}`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE DARK BLACK graduation mortarboard cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT top-down view, NOT 3/4 angle, cap fills 75% of canvas width). CRITICAL: the entire cap is FILLED with pure DARK BLACK color #000000 (NOT white, NOT light gray, NOT empty outline — completely solid opaque jet-black fill throughout the whole cap body, must be CLEARLY VISIBLE AS SOLID BLACK silhouette). Structure: (1) wide flat square mortarboard top shown as a horizontal flat black rectangle, (2) round black cap base below it that wraps the head with a visible thick black band, (3) one bright gold tassel hanging straight down from the right edge of the square top. VERY THICK 5-6px outline. ${HAT_RULE}`,
   },
   {
     id: "hat_devil_horns",
@@ -274,7 +274,7 @@ const HAT_ITEMS = [
     description: "신성한 황금 후광",
     rarity: "legendary",
     price: 3500000,
-    prompt: `${ITEM_ONLY_STYLE} A glowing golden angel halo ring viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT 3D perspective, NOT tilted oval): a LARGE bold thick golden ring shape (filling 70% of canvas width, donut/ring outline shape with thick 30-40px golden band) with bright shimmering yellow-gold gradient color and visible radiant light rays/sparkles emanating outward from the ring. Solid OPAQUE saturated gold color, very clearly visible (NOT thin, NOT faint). NO character, NO head, just the halo with bright glow. Thick clean SOLID BLACK outline (3-4px) on the gold ring. Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A wearable angel headpiece viewed STRAIGHT FROM THE FRONT (symmetric front view): a glowing golden halo ring at the top center (thick 30-40px golden donut shape with bright yellow-gold gradient and visible radiant light rays) AND a pair of small fluffy WHITE feathered angel wings (one on each side of the halo, like a headband attachment) — both elements combined fill 80% of canvas width. The wings have soft fluffy feather texture in pure white with thin gray feather lines. Solid OPAQUE colors throughout (saturated gold halo, pure white wings). NO character, NO head, NO body — just the headpiece itself. VERY THICK 5-6px solid black outline around the halo ring AND around each wing silhouette (NOT faint, NOT dotted). Flat sticker style.`,
   },
 ];
 
