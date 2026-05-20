@@ -256,7 +256,7 @@ const HAT_ITEMS = [
     description: "졸업식의 검은 학사모",
     rarity: "rare",
     price: 400000,
-    prompt: `${ITEM_ONLY_STYLE} A black graduation mortarboard cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT top-down view, NOT 3/4 angle): the square flat top board shown as a horizontal flat rectangle at the top, the round cap base below it, a single gold tassel hanging straight down from the right edge of the square top. Solid OPAQUE pure black fill. ${HAT_RULE}`,
+    prompt: `${ITEM_ONLY_STYLE} A DARK BLACK graduation mortarboard cap viewed STRAIGHT FROM THE FRONT (symmetric front view, NOT top-down view, NOT 3/4 angle): CRITICAL — the entire cap is FILLED with pure DARK BLACK color #000000 (NOT white, NOT light gray, NOT empty outline — completely solid opaque black fill throughout the whole cap body). The square flat top board shown as a horizontal flat rectangle at the top filled solid black, the round cap base below it also filled solid black, a single bright gold tassel hanging straight down from the right edge of the square top. The black cap body must be CLEARLY VISIBLE AS SOLID BLACK against any background. ${HAT_RULE}`,
   },
   {
     id: "hat_devil_horns",
