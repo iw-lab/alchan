@@ -265,18 +265,31 @@ function getAnchor(itemId) {
 }
 
 function saveLocal() {
-  localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  try {
+    localStorage.setItem("avatarAnchors", JSON.stringify(itemOverrides));
+  } catch (e) {
+    console.error("[saveLocal] localStorage 저장 실패:", e);
+  }
   const el = document.getElementById("autoSaveStatus");
   if (el) {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    el.textContent = `✓ 자동 저장됨 ${hh}:${mm}:${ss}`;
-    el.style.color = "#10b981";
+    el.textContent = `💾 저장됨 ${hh}:${mm}:${ss}`;
+    el.style.color = "#059669";
+    el.style.fontWeight = "bold";
     el.style.opacity = "1";
+    el.style.background = "#d1fae5";
+    el.style.padding = "2px 8px";
+    el.style.borderRadius = "4px";
     clearTimeout(window.__saveFadeTimer);
-    window.__saveFadeTimer = setTimeout(() => { el.style.opacity = "0.55"; }, 2000);
+    window.__saveFadeTimer = setTimeout(() => {
+      el.style.opacity = "0.95";
+      el.style.background = "transparent";
+      el.style.color = "#10b981";
+      el.style.fontWeight = "normal";
+    }, 1500);
   }
 }
 

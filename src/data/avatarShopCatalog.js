@@ -211,7 +211,7 @@ const HAT_ITEMS = [
     description: "왕족의 황금 왕관",
     rarity: "legendary",
     price: 8000000,
-    prompt: `${ITEM_ONLY_STYLE} A royal golden crown with red ruby, blue sapphire and green emerald gemstones embedded in front, ornate medieval design, shimmering gold.`,
+    prompt: `${ITEM_ONLY_STYLE} A royal golden crown viewed STRAIGHT FROM THE FRONT (completely flat 2D sticker view, perfectly symmetric left-right, NO 3D rendering, NO perspective tilt, NO side curvature visible — only the frontal silhouette of the crown). Wide gold base band at the bottom with multiple tall pointed spikes/peaks on top, three large gemstones embedded in the center band (red ruby in middle, blue sapphire on left, green emerald on right). Solid OPAQUE bright gold fill throughout. VERY THICK 5-6px solid pure black outline around the entire crown silhouette and around each gemstone. ${HAT_RULE}`,
   },
   {
     id: "hat_witch",
@@ -238,7 +238,7 @@ const HAT_ITEMS = [
     description: "겨울 감성 노란 비니",
     rarity: "common",
     price: 60000,
-    prompt: `${ITEM_ONLY_STYLE} A yellow knitted beanie hat with a small pom-pom on top, cozy winter style, visible knit texture.`,
+    prompt: `${ITEM_ONLY_STYLE} A yellow knitted beanie hat viewed STRAIGHT FROM THE FRONT (completely flat 2D sticker view, perfectly symmetric, NO 3D rendering, NO side curvature visible, NO depth shading on sides — only the frontal silhouette of the beanie). Round dome shape with a small pom-pom on top center, wide rolled cuff at the bottom edge. Solid OPAQUE bright yellow fill throughout, visible chunky knit texture lines as light gray vertical/braid pattern. VERY THICK 5-6px solid pure black outline around the entire silhouette. ${HAT_RULE}`,
   },
   {
     id: "hat_chef",
