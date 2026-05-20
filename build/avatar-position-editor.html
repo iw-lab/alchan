@@ -231,8 +231,8 @@ Object.keys(SLOTS).forEach(slot => {
     currentSlot = slot;
     currentItem = SLOTS[slot][0];
     // 머리 슬롯일 때만 대머리 베이스, 그 외에는 머리 있는 base_male
-    // 모든 슬롯에서 base_male 사용 (사용자 명시: hair 슬롯도 다른 슬롯과 동일한 베이스)
-    currentBase = "base_male";
+    // hair 슬롯은 editor_bald (대머리) — 헤어 아이템 위치 잡기 쉽게. 다른 슬롯은 base_male.
+    currentBase = (slot === "hair") ? "editor_bald" : "base_male";
     baseSelect.value = currentBase;
     [...slotTabsEl.children].forEach((c, i) => c.classList.toggle("active", Object.keys(SLOTS)[i] === slot));
     render();
