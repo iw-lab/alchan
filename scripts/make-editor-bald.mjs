@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /* eslint-disable */
 /**
- * base_male.png를 복사해서 머리 영역의 검정 머리카락을 살색으로 칠해 대머리 만들기.
- * codex가 "BALD" 프롬프트를 흉상/벗은 캐릭터로 해석하는 문제 회피.
+ * base_male.png를 복사해서 머리카락 영역만 살색으로 치환 → editor_bald.png 생성.
+ *
+ * v2 (2026-05-20): connected component 사이즈 기반 — 큰 component(머리카락 ~10k px)만 살색,
+ * 작은 component(눈동공·입·눈썹 100~600px)은 보존 → 얼굴 디테일 손상 없음.
  */
 import sharp from "sharp";
 import fs from "fs";
@@ -16,81 +18,75 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 const SRC = path.join(DIR, "base_male.png");
 const DST = path.join(DIR, "editor_bald.png");
 
-const SKIN_R = 247, SKIN_G = 213, SKIN_B = 184; // 살색 (light beige)
-const HAIR_MAX_RGB = 130; // RGB max < 130 = 검정/짙은 갈색 머리
+const SKIN_R = 247, SKIN_G = 213, SKIN_B = 184;
+const HAIR_MAX_RGB = 130; // 검정/짙은 갈색 머리 detect
+const MIN_HAIR_COMPONENT = 2000; // 2000px 이상 = 머리카락. 그 이하 = 눈/입/눈썹
 
 const { data, info } = await sharp(SRC).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-const N = info.width * info.height;
-const W = info.width;
+const W = info.width, H = info.height, N = W * H;
 const out = Buffer.from(data);
 
-const headEndY = Math.floor(info.height * 0.35);
+const headEndY = Math.floor(H * 0.42); // 좀 넉넉하게 — 큰 머리카락이 42%까지 내려올 수 있음
 
-// 1단계: 머리 영역(y<35%) 의 모든 검정/짙은 머리카락을 살색으로 (외곽선 포함)
-let changedHair = 0;
+// 1. 머리 영역의 검정 픽셀 마스크
+const darkMask = new Uint8Array(N);
 for (let i = 0; i < N; i++) {
   const a = out[i * 4 + 3];
   if (a < 50) continue;
   const y = Math.floor(i / W);
   if (y >= headEndY) continue;
   const r = out[i * 4], g = out[i * 4 + 1], b = out[i * 4 + 2];
-  if (Math.max(r, g, b) >= HAIR_MAX_RGB) continue;
-  out[i * 4] = SKIN_R;
-  out[i * 4 + 1] = SKIN_G;
-  out[i * 4 + 2] = SKIN_B;
-  changedHair++;
+  if (Math.max(r, g, b) < HAIR_MAX_RGB) darkMask[i] = 1;
 }
 
-// 2단계: 머리 영역(y<headEndY+여유)의 boundary 픽셀(살색이지만 이웃 alpha=0)에 검정 외곽선 그리기
-// 캔버스 가장자리 패딩 영역은 SKIP (검정 박스 회피)
-const outlineRange = Math.floor(info.height * 0.38);
-const CANVAS_MARGIN = 70; // 패딩 영역 안 건드림 (pad-base-avatars의 top=100, side=62)
-const outlineMask = new Uint8Array(N);
+// 2. connected component (4-neighbor BFS)
+const groupId = new Int32Array(N);
+const groupSizes = [0];
+let nextGroup = 0;
 for (let i = 0; i < N; i++) {
-  const a = out[i * 4 + 3];
-  if (a < 200) continue;
-  const y = Math.floor(i / W);
-  if (y >= outlineRange) continue;
-  const x = i % W;
-  if (x < CANVAS_MARGIN || x > W - CANVAS_MARGIN || y < CANVAS_MARGIN) continue;
-  const neighborsToCheck = [];
-  if (x > 0) neighborsToCheck.push(i - 1);
-  if (x < W - 1) neighborsToCheck.push(i + 1);
-  if (y > 0) neighborsToCheck.push(i - W);
-  if (y < info.height - 1) neighborsToCheck.push(i + W);
-  for (const ni of neighborsToCheck) {
-    if (out[ni * 4 + 3] < 50) {
-      outlineMask[i] = 1;
-      break;
+  if (!darkMask[i] || groupId[i]) continue;
+  nextGroup++;
+  let size = 0;
+  const stack = [i];
+  groupId[i] = nextGroup;
+  while (stack.length) {
+    const idx = stack.pop();
+    size++;
+    const x = idx % W, y = Math.floor(idx / W);
+    const ns = [];
+    if (x > 0) ns.push(idx - 1);
+    if (x < W - 1) ns.push(idx + 1);
+    if (y > 0) ns.push(idx - W);
+    if (y < H - 1) ns.push(idx + W);
+    for (const ni of ns) {
+      if (darkMask[ni] && !groupId[ni]) {
+        groupId[ni] = nextGroup;
+        stack.push(ni);
+      }
     }
   }
-}
-// dilation 1번: outlineMask의 이웃도 outline에 포함 (2px 두께)
-const outlineMaskDilated = new Uint8Array(outlineMask);
-for (let i = 0; i < N; i++) {
-  if (!outlineMask[i]) continue;
-  const x = i % W;
-  const y = Math.floor(i / W);
-  if (x > 0) outlineMaskDilated[i - 1] = 1;
-  if (x < W - 1) outlineMaskDilated[i + 1] = 1;
-  if (y > 0) outlineMaskDilated[i - W] = 1;
-  if (y < info.height - 1) outlineMaskDilated[i + W] = 1;
+  groupSizes.push(size);
 }
 
-let outlinePixels = 0;
+// 3. 큰 component(머리카락)만 살색으로 치환. 작은 component(눈·입) 보존.
+let changedHair = 0;
+let preservedFeatures = 0;
 for (let i = 0; i < N; i++) {
-  if (!outlineMaskDilated[i]) continue;
-  const y = Math.floor(i / W);
-  if (y >= outlineRange) continue;
-  out[i * 4] = 0;
-  out[i * 4 + 1] = 0;
-  out[i * 4 + 2] = 0;
-  out[i * 4 + 3] = 255;
-  outlinePixels++;
+  const g = groupId[i];
+  if (!g) continue;
+  if (groupSizes[g] >= MIN_HAIR_COMPONENT) {
+    out[i * 4] = SKIN_R;
+    out[i * 4 + 1] = SKIN_G;
+    out[i * 4 + 2] = SKIN_B;
+    out[i * 4 + 3] = 255;
+    changedHair++;
+  } else {
+    preservedFeatures++;
+  }
 }
-console.log(`  머리 ${changedHair}px 살색 변환, 외곽선 ${outlinePixels}px 검정 재그림`);
 
-await sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
+await sharp(out, { raw: { width: W, height: H, channels: 4 } })
   .png({ compressionLevel: 9 })
   .toFile(DST);
-console.log(`✅ editor_bald.png 생성 (base_male 복사 + 머리 ${changedHair}px 살색 변환)`);
+console.log(`✅ editor_bald.png — 머리카락 ${changedHair}px 살색 치환, 얼굴 디테일 ${preservedFeatures}px 보존 (눈/입/눈썹)`);
+console.log(`   component ${nextGroup}개 분석, 큰 컴포넌트(≥${MIN_HAIR_COMPONENT}px) = 머리카락`);
