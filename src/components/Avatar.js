@@ -75,10 +75,12 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           top: `${top}%`,
           width: `${w}%`,
           height: `${h}%`,
+          maxWidth: "none",
+          maxHeight: "none",
           objectFit: "contain",
           pointerEvents: "none",
           zIndex,
-          mixBlendMode: blendMode, // 흰 배경 자동 제거 (multiply)
+          mixBlendMode: blendMode,
         }}
       />
     );
