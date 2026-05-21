@@ -67,7 +67,7 @@ const HAIR_ITEMS = [
     description: "기분 좋아지는 무지개 곱슬머리",
     rarity: "epic",
     price: 1200000,
-    prompt: `${ITEM_ONLY_STYLE} A HUGE round curly afro hairstyle wig, FULL VIVID RAINBOW SPECTRUM with clearly distinct color stripes/sections (RED at top, ORANGE, YELLOW, GREEN, BLUE, PURPLE at bottom - all 6 rainbow colors MUST be clearly visible and distinct), big bouncy poofy round shape like a rainbow puff ball, NOT pink, NOT just one color, MUST be multi-color rainbow.`,
+    prompt: `${ITEM_ONLY_STYLE} A natural curly wavy hairstyle wig that fits on top of a human head — head-shaped silhouette with crown, fringe/bangs, and side strands like a real haircut. Multi-color RAINBOW streaks/highlights throughout the curls (red, orange, yellow, green, blue, purple strands woven naturally into the curly hair). Soft fluffy curls with visible strand texture. NOT a balloon, NOT a poof ball, NOT a sphere, NOT a hat — MUST look like wearable hair sitting naturally on a person's scalp, with a fringe over the forehead and side hair near the ears.`,
   },
   {
     id: "hair_silver_long",
