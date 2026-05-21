@@ -132,8 +132,8 @@ export const SLOT_BLEND_MODES = {
  * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
-// v10 — 사용자 fine-tune (avatar-anchors v21.json, 2026-05-21 15:46)
-// effect 슬롯 6종 신규 추가
+// v11 — 사용자 fine-tune (avatar-anchors v22.json, 2026-05-21 16:05)
+// hair_rainbow_curl 추가 미세 조정 (PNG 재생성 후)
 export const ITEM_ANCHORS = {
   // hair
   hair_fire:                    { x: 50,    y: 14.3,  w: 62,    h: 37 },
@@ -141,7 +141,7 @@ export const ITEM_ANCHORS = {
   hair_galaxy:                  { x: 49.8,  y: 28.55, w: 197,   h: 42.5 },
   hair_mint:                    { x: 50.2,  y: 21.4,  w: 299,   h: 36 },
   hair_pink_twin:               { x: 49.83, y: 25.5,  w: 329,   h: 44 },
-  hair_rainbow_curl:            { x: 50.5,  y: 16.1,  w: 145.5, h: 36.5 },
+  hair_rainbow_curl:            { x: 49.6,  y: 20.2,  w: 145.5, h: 32 },
   hair_short_brown:             { x: 50.1,  y: 21.8,  w: 220.5, h: 38 },
   hair_silver_long:             { x: 49.83, y: 27.97, w: 260,   h: 37 },
   hair_ponytail_brown:          { x: 51.5,  y: 18.9,  w: 228,   h: 39 },
