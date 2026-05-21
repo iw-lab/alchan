@@ -149,7 +149,7 @@ export const ITEM_ANCHORS = {
   hair_bun_black:               { x: 49.97, y: 15.1,  w: 201.5, h: 33 },
   hair_undercut_male:           { x: 49.75, y: 18.4,  w: 92,    h: 29.5 },
   hair_messy_male:              { x: 49.5,  y: 16.3,  w: 100,   h: 32.5 },
-  hair_slick_back_male:         { x: 49.8,  y: 18.1,  w: 76,    h: 28.5 },
+  hair_slick_back_male:         { x: 49.8,  y: 18.4,  w: 76,    h: 28.5 },
   hair_long_wavy_brown:         { x: 49.75, y: 33.08, w: 232,   h: 45.5 },
   // hat
   hat_angel_halo:               { x: 49.63, y: 9.57,  w: 58,    h: 20.5 },
