@@ -303,8 +303,8 @@ export default function AvatarShop() {
         </div>
       </div>
 
-      {/* 미리보기 + 장착 슬롯 */}
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-5">
+      {/* 미리보기 + 장착 슬롯 (sticky — 스크롤해도 항상 보임) */}
+      <div className="sticky top-2 z-30 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-5 shadow-md">
         <div className="flex-shrink-0 relative">
           <Avatar
             size={200}
@@ -437,8 +437,6 @@ export default function AvatarShop() {
                       : undefined,
                   minWidth: 0,
                 }}
-                onMouseEnter={() => setPreviewItem(item)}
-                onMouseLeave={() => setPreviewItem(null)}
                 onClick={() => setPreviewItem(isPreviewActive ? null : item)}
               >
                 {/* 이미지 */}
@@ -520,14 +518,14 @@ export default function AvatarShop() {
                   {owned ? (
                     equipped ? (
                       <button
-                        onClick={() => handleUnequip(item.slot)}
+                        onClick={(e) => { e.stopPropagation(); handleUnequip(item.slot); }}
                         className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
                       >
                         해제하기
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleEquip(item)}
+                        onClick={(e) => { e.stopPropagation(); handleEquip(item); }}
                         className="w-full py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold"
                       >
                         착용하기
@@ -535,7 +533,7 @@ export default function AvatarShop() {
                     )
                   ) : (
                     <button
-                      onClick={() => handlePurchase(item)}
+                      onClick={(e) => { e.stopPropagation(); handlePurchase(item); }}
                       disabled={!canBuy || purchasing === item.id}
                       className="w-full py-2 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                       style={{
