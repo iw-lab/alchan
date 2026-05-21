@@ -5,6 +5,13 @@ import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avat
 // 폴백 베이스 이미지 (베이스 미선택 시) - 남자 기본
 const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
 
+// PNG cache-buster — firestore에 저장된 옛 imageUrl(query string 없음)도 강제 갱신
+const ASSET_VERSION = "20260521h";
+const withCacheBust = (url) => {
+  if (!url) return url;
+  return url.includes("?") ? url : `${url}?v=${ASSET_VERSION}`;
+};
+
 /**
  * Avatar 컴포넌트 - PNG 베이스 + 슬롯 합성
  *
@@ -16,9 +23,9 @@ const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
  *                                각 slot 값은 { url, anchorOverride?, scale? }
  */
 export default function Avatar({ size = 100, showBorder = true, onClick, shopOverlays }) {
-  const baseUrl = shopOverlays?.baseUrl || DEFAULT_BASE_URL;
-  const bgUrl = shopOverlays?.bgUrl;
-  const presetUrl = shopOverlays?.presetUrl;
+  const baseUrl = withCacheBust(shopOverlays?.baseUrl || DEFAULT_BASE_URL);
+  const bgUrl = withCacheBust(shopOverlays?.bgUrl);
+  const presetUrl = withCacheBust(shopOverlays?.presetUrl);
   const slots = shopOverlays?.slots || {};
 
   // 컨테이너 스타일
@@ -67,7 +74,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
     return (
       <img
         key={slotKey}
-        src={slotData.url}
+        src={withCacheBust(slotData.url)}
         alt={slotKey}
         style={{
           position: "absolute",

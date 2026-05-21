@@ -876,7 +876,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260521h`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
