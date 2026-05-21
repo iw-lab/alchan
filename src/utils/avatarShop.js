@@ -132,8 +132,8 @@ export const SLOT_BLEND_MODES = {
  * 편집기(avatar-position-editor.html)에서 사용자가 fine-tune 후 다운로드한 JSON.
  * 미지정 아이템은 SLOT_ANCHORS의 기본값 사용.
  */
-// v9 — 사용자 직접 fine-tune (avatar-anchors v19.json, 2026-05-21 10:33)
-// hair_rainbow_curl만 사용자 요청으로 추가 축소 (145.5/36.5 → 85/22)
+// v10 — 사용자 fine-tune (avatar-anchors v21.json, 2026-05-21 15:46)
+// effect 슬롯 6종 신규 추가
 export const ITEM_ANCHORS = {
   // hair
   hair_fire:                    { x: 50,    y: 14.3,  w: 62,    h: 37 },
@@ -141,20 +141,20 @@ export const ITEM_ANCHORS = {
   hair_galaxy:                  { x: 49.8,  y: 28.55, w: 197,   h: 42.5 },
   hair_mint:                    { x: 50.2,  y: 21.4,  w: 299,   h: 36 },
   hair_pink_twin:               { x: 49.83, y: 25.5,  w: 329,   h: 44 },
-  hair_rainbow_curl:            { x: 50.5,  y: 14.5,  w: 85,    h: 22 },
-  hair_short_brown:             { x: 49.8,  y: 20.6,  w: 220.5, h: 36.5 },
+  hair_rainbow_curl:            { x: 50.5,  y: 16.1,  w: 145.5, h: 36.5 },
+  hair_short_brown:             { x: 50.1,  y: 21.8,  w: 220.5, h: 38 },
   hair_silver_long:             { x: 49.83, y: 27.97, w: 260,   h: 37 },
-  hair_ponytail_brown:          { x: 51.5,  y: 18.4,  w: 228,   h: 39 },
-  hair_ponytail_no_bangs_brown: { x: 51.5,  y: 18.4,  w: 228,   h: 39 },
-  hair_bun_black:               { x: 49.97, y: 15.1,  w: 201.5, h: 33 },
+  hair_ponytail_brown:          { x: 51.5,  y: 18.9,  w: 228,   h: 39 },
+  hair_ponytail_no_bangs_brown: { x: 51.5,  y: 18.9,  w: 228,   h: 39 },
+  hair_bun_black:               { x: 50.1,  y: 16.4,  w: 201.5, h: 32.5 },
   hair_undercut_male:           { x: 49.75, y: 18.4,  w: 92,    h: 29.5 },
-  hair_messy_male:              { x: 49.5,  y: 16.3,  w: 100,   h: 32.5 },
-  hair_slick_back_male:         { x: 49.8,  y: 18.4,  w: 76,    h: 28.5 },
+  hair_messy_male:              { x: 49.5,  y: 18.13, w: 100,   h: 31 },
+  hair_slick_back_male:         { x: 49.6,  y: 20.3,  w: 76,    h: 27.5 },
   hair_long_wavy_brown:         { x: 49.75, y: 33.08, w: 232,   h: 45.5 },
   // hat
   hat_angel_halo:               { x: 49.63, y: 9.57,  w: 58,    h: 20.5 },
-  hat_baseball_red:             { x: 50,    y: 15.8,  w: 77,    h: 25 },
-  hat_devil_horns:              { x: 49.8,  y: 19.7,  w: 100,   h: 33 },
+  hat_baseball_red:             { x: 50,    y: 15.8,  w: 77,    h: 25.5 },
+  hat_devil_horns:              { x: 49.8,  y: 19.7,  w: 100,   h: 25 },
   hat_graduation:               { x: 50,    y: 16,    w: 100,   h: 32.5 },
   hat_witch:                    { x: 49.67, y: 11.67, w: 100,   h: 27.5 },
   hat_crown_gold:               { x: 49.83, y: 13.33, w: 100,   h: 25.5 },
@@ -174,6 +174,13 @@ export const ITEM_ANCHORS = {
   outfit_chef:                  { x: 50.03, y: 63,    w: 100,   h: 64.5 },
   outfit_doctor:                { x: 50,    y: 63.67, w: 100,   h: 64.5 },
   outfit_hanbok_blue:           { x: 49.97, y: 61.17, w: 100,   h: 60 },
+  // effect
+  effect_butterflies:           { x: 76.17, y: 25,    w: 100,   h: 31.5 },
+  effect_hearts:                { x: 50.2,  y: 68.67, w: 100,   h: 70.5 },
+  effect_lightning:             { x: 78,    y: 22.17, w: 100,   h: 26.5 },
+  effect_petals:                { x: 50.67, y: 54.5,  w: 100,   h: 45.5 },
+  effect_rainbow_ring:          { x: 50,    y: 50,    w: 154,   h: 218.5 },
+  effect_sparkle:               { x: 71.17, y: 53.3,  w: 481.5, h: 211.5 },
 };
 
 /**
