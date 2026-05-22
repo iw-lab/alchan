@@ -779,7 +779,8 @@ const StockChartModal = ({ stock, onClose, formatCurrency }) => {
     ? priceHistory.map((p) => Number(p) || 0)
     : [Number(stock.price) || 0];
 
-  const W = 700, H = 280, PAD = 40;
+  // 큰 가격(8자리 이상)도 Y축 라벨 잘리지 않게 PAD 확보
+  const W = 700, H = 280, PAD = 80;
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
