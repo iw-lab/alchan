@@ -958,6 +958,14 @@ const StockExchange = () => {
   const [stocks, setStocks] = useState([]);
   // 📊 차트 모달 — 현재 차트 보기 중인 stock 객체 (null이면 닫힘)
   const [chartStock, setChartStock] = useState(null);
+  // 💎 진짜 총 순자산 계산용 — 부동산/예금/적금/대출/파킹 fetch
+  const [netAssetExtras, setNetAssetExtras] = useState({
+    parkingBalance: 0,
+    depositsTotal: 0,
+    savingsTotal: 0,
+    realEstateValue: 0,
+    loanTotal: 0,
+  });
   const [portfolio, setPortfolio] = useState([]);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [buyQuantities, setBuyQuantities] = useState({});
@@ -1966,6 +1974,62 @@ const StockExchange = () => {
     return map;
   }, [stocks]);
 
+  // 💎 학생의 부동산·예금·적금·대출·파킹 fetch — 진짜 총 순자산 계산용
+  useEffect(() => {
+    if (!user?.uid || !classCode) return;
+    let cancelled = false;
+    const fetchExtras = async () => {
+      try {
+        const [parkingDoc, productsSnap, realEstateSnap] = await Promise.all([
+          getDoc(doc(db, "users", user.uid, "financials", "parkingAccount"))
+            .catch(() => ({ exists: () => false })),
+          getDocs(collection(db, "users", user.uid, "products"))
+            .catch(() => ({ forEach: () => {} })),
+          userDoc?.name
+            ? getDocs(
+                query(
+                  collection(db, "classes", classCode, "realEstateProperties"),
+                  where("owner", "==", userDoc.name),
+                ),
+              ).catch(() => ({ docs: [] }))
+            : Promise.resolve({ docs: [] }),
+        ]);
+        if (cancelled) return;
+        const parkingBalance = parkingDoc.exists?.()
+          ? Number(parkingDoc.data()?.balance) || 0
+          : 0;
+        let depositsTotal = 0,
+          savingsTotal = 0,
+          loanTotal = 0;
+        productsSnap.forEach((d) => {
+          const data = d.data();
+          const balance = Number(data.balance) || 0;
+          if (data.type === "deposit") depositsTotal += balance;
+          else if (data.type === "savings") savingsTotal += balance;
+          else if (data.type === "loan")
+            loanTotal += Number(data.remainingPrincipal) || balance;
+        });
+        const realEstateValue = (realEstateSnap.docs || []).reduce(
+          (sum, d) => sum + (Number(d.data().price) || 0),
+          0,
+        );
+        setNetAssetExtras({
+          parkingBalance,
+          depositsTotal,
+          savingsTotal,
+          realEstateValue,
+          loanTotal,
+        });
+      } catch (err) {
+        logger.error("[StockExchange] netAssetExtras fetch 실패:", err);
+      }
+    };
+    fetchExtras();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, classCode, userDoc?.name]);
+
   // === 계산된 값들 ===
   const portfolioStats = useMemo(() => {
     let totalValue = 0,
@@ -1984,6 +2048,21 @@ const StockExchange = () => {
       totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
     return { totalValue, totalInvested, totalProfit, profitPercent };
   }, [portfolio, stocksMap]);
+
+  // 💎 진짜 총 순자산 = 현금 + 파킹 + 예금 + 적금 + 부동산 + 주식 - 대출
+  // (쿠폰 가치 제외 — 학급별 설정 fetch 부담)
+  const totalNetAssets = useMemo(() => {
+    const cash = Number(userDoc?.cash) || 0;
+    return (
+      cash +
+      netAssetExtras.parkingBalance +
+      netAssetExtras.depositsTotal +
+      netAssetExtras.savingsTotal +
+      netAssetExtras.realEstateValue +
+      portfolioStats.totalValue -
+      netAssetExtras.loanTotal
+    );
+  }, [userDoc?.cash, netAssetExtras, portfolioStats.totalValue]);
 
   const categoryCounts = useMemo(() => {
     const counts = { stocks: 0, etfs: 0, bonds: 0 };
@@ -2142,6 +2221,9 @@ const StockExchange = () => {
                   <p className="value">
                     {formatCurrency(portfolioStats.totalValue)}
                   </p>
+                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    보유 주식·ETF·국채 현재가
+                  </p>
                 </div>
                 <div className="asset-card-icon blue">📊</div>
               </div>
@@ -2149,9 +2231,12 @@ const StockExchange = () => {
             <div className="asset-card">
               <div className="asset-card-content">
                 <div className="asset-card-info">
-                  <h3>총 자산</h3>
+                  <h3>총 순자산</h3>
                   <p className="value">
-                    {formatCurrency(userDoc.cash + portfolioStats.totalValue)}
+                    {formatCurrency(totalNetAssets)}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    현금+파킹+예금+적금+부동산+주식−대출
                   </p>
                 </div>
                 <div className="asset-card-icon purple">💎</div>
@@ -2165,6 +2250,9 @@ const StockExchange = () => {
                     className={`value ${portfolioStats.totalProfit >= 0 ? "profit-positive" : "profit-negative"}`}
                   >
                     {formatCurrency(portfolioStats.totalProfit)}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    투자 평가액 − 매수 원가
                   </p>
                 </div>
                 <div
@@ -2186,6 +2274,9 @@ const StockExchange = () => {
                     className={`value ${portfolioStats.profitPercent >= 0 ? "profit-positive" : "profit-negative"}`}
                   >
                     {formatPercent(portfolioStats.profitPercent)}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    평가손익 ÷ 매수 원가
                   </p>
                 </div>
                 <div
