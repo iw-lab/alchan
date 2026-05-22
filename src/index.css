@@ -1233,8 +1233,13 @@ aside nav button {
 aside li button:hover,
 aside nav button:hover {
   border-color: var(--border-primary) !important;
-  box-shadow: var(--shadow-sm) !important;
   background-color: var(--bg-secondary) !important;
+  /* box-shadow 제거 — 사이드바 폭 초과 시각 효과 차단 */
+}
+
+/* 🚨 사이드바 hover/active 시각 효과가 사이드바 폭을 넘지 않게 차단 */
+aside {
+  overflow-x: hidden !important;
 }
 
 /* 입력필드 */
