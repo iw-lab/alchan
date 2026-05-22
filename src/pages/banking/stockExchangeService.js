@@ -212,9 +212,9 @@ export const getMarketStateLabel = (stock) => {
   if (!state) return null;
   switch (state) {
     case 'REGULAR': return '장중';
-    case 'PRE': return '장전';
-    case 'POST': return '장후';
-    default: return '장마감';
+    case 'PRE': return '장전 (거래 가능)';
+    case 'POST': return '장후 (거래 가능)';
+    default: return '장마감 (거래 가능)';
   }
 };
 
