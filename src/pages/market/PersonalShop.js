@@ -411,6 +411,8 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
   }, [product, quantity]);
 
   const handleConfirm = async () => {
+    // 🚨 중복 결제 방지 — 이미 처리 중이면 무시
+    if (loading) return;
     setLoading(true);
     try {
       await onConfirm(quantity);

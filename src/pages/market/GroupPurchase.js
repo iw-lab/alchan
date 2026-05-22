@@ -53,6 +53,8 @@ export default function GroupPurchase() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [contributeModal, setContributeModal] = useState(null);
   const [contributeAmount, setContributeAmount] = useState("");
+  // 🚨 중복 결제 방지 lock
+  const [isContributing, setIsContributing] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [filter, setFilter] = useState("active"); // active, completed, all
 
@@ -169,20 +171,32 @@ export default function GroupPurchase() {
 
   // 기여(모금 참여)
   const handleContribute = async () => {
+    // 🚨 중복 결제 방지 — 이미 처리 중이면 무시
+    if (isContributing) {
+      logger.warn?.("[GroupPurchase] handleContribute 중복 호출 차단");
+      return;
+    }
+    setIsContributing(true);
+
     const amount = parseInt(contributeAmount);
-    if (!amount || amount <= 0 || !contributeModal) return;
+    if (!amount || amount <= 0 || !contributeModal) {
+      setIsContributing(false);
+      return;
+    }
 
     const campaign = contributeModal;
     const remaining = campaign.targetPrice - campaign.currentAmount;
     const actualAmount = Math.min(amount, remaining);
 
     if ((userDoc?.cash || 0) < actualAmount) {
+      setIsContributing(false);
       alert("잔액이 부족합니다.");
       return;
     }
 
     // 순자산(자산-대출미상환금) 마이너스면 참여 금지
     if (await isNetAssetsNegative(userDoc)) {
+      setIsContributing(false);
       alert(NEGATIVE_ASSETS_MESSAGE);
       return;
     }
@@ -356,6 +370,8 @@ export default function GroupPurchase() {
       }
       logger.error("모금 참여 실패:", err);
       alert(err.message || "참여에 실패했습니다.");
+    } finally {
+      setIsContributing(false);
     }
   };
 
@@ -940,13 +956,14 @@ export default function GroupPurchase() {
                 <button
                   onClick={handleContribute}
                   disabled={
+                    isContributing ||
                     !contributeAmount ||
                     parseInt(contributeAmount) <= 0 ||
                     parseInt(contributeAmount) > (userDoc?.cash || 0)
                   }
                   className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm transition-all"
                 >
-                  참여하기
+                  {isContributing ? "처리 중..." : "참여하기"}
                 </button>
               </div>
             </div>

@@ -1346,6 +1346,11 @@ const ParkingAccount = ({
  };
 
  const handleSubscribe = async (subscribeAmount, repaymentType) => {
+ // 🚨 중복 결제 방지 — 이미 처리 중이면 무시
+ if (isProcessing) {
+ logger.warn("[ParkingAccount] handleSubscribe 중복 호출 차단");
+ return;
+ }
  logger.log("--- handleSubscribe 시작 ---");
  const amount = parseFloat(subscribeAmount);
  const { product, type } = modal;
