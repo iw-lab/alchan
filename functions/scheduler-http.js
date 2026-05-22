@@ -2047,10 +2047,23 @@ async function collectWeeklyRentLogic() {
             // 강제 징수: 돈이 부족해도 마이너스로 차감
             const newTenantCash = tenantData.cash - rentAmount;
 
-            // 세입자 돈 차감 (마이너스 허용)
+            // 세입자 돈 차감 (increment로 안전한 차감 — 절대값 덮어쓰기 금지)
             transaction.update(tenantRef, {
-              cash: newTenantCash,
+              cash: admin.firestore.FieldValue.increment(-rentAmount),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            // 세입자 거래 로그
+            const rentTxRef = tenantRef.collection("transactions").doc();
+            transaction.set(rentTxRef, {
+              type: "rentPayment",
+              amount: -rentAmount,
+              description: `[월세 자동 납부] ${property.name || `매물 #${property.id}`} 월세 ${rentAmount.toLocaleString()}원 (집주인: ${property.ownerName || "정부"})`,
+              propertyId: property.id,
+              propertyName: property.name,
+              ownerName: property.ownerName || "정부",
+              rentAmount,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
             });
 
             // 집주인/관리자에게 월세 지급
@@ -2058,6 +2071,19 @@ async function collectWeeklyRentLogic() {
               transaction.update(ownerRef, {
                 cash: admin.firestore.FieldValue.increment(rentAmount),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+
+              // 집주인 거래 로그
+              const ownerRentTxRef = ownerRef.collection("transactions").doc();
+              transaction.set(ownerRentTxRef, {
+                type: "rentIncome",
+                amount: rentAmount,
+                description: `[월세 수령] ${property.name || `매물 #${property.id}`} 월세 ${rentAmount.toLocaleString()}원 (세입자: ${property.tenantName})`,
+                propertyId: property.id,
+                propertyName: property.name,
+                tenantName: property.tenantName,
+                rentAmount,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
               });
             }
 

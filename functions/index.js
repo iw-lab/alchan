@@ -1226,6 +1226,21 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      // 거래 로그
+      const stockBuyTxRef = userRef.collection("transactions").doc();
+      transaction.set(stockBuyTxRef, {
+        type: "stockBuy",
+        amount: -totalCost,
+        description: `[주식 매수] ${stockData.name} ${quantity}주 × ${stockPrice.toLocaleString()}원 (수수료 ${commission.toLocaleString()}, 거래세 ${transactionTax.toLocaleString()})`,
+        stockId,
+        stockName: stockData.name,
+        quantity,
+        price: stockPrice,
+        commission,
+        transactionTax,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       // 포트폴리오에 주식 추가 또는 업데이트
       if (portfolioDoc.exists) {
         const portfolioData = portfolioDoc.data();
@@ -1461,6 +1476,23 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
       transaction.update(userRef, {
         cash: admin.firestore.FieldValue.increment(netRevenue),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 거래 로그
+      const stockSellTxRef = userRef.collection("transactions").doc();
+      transaction.set(stockSellTxRef, {
+        type: "stockSell",
+        amount: netRevenue,
+        description: `[주식 매도] ${stockData.name} ${quantity}주 × ${stockPrice.toLocaleString()}원 (수수료 ${commission.toLocaleString()}, 세금 ${totalTax.toLocaleString()}, 손익 ${profit.toLocaleString()})`,
+        stockId,
+        stockName: stockData.name,
+        quantity,
+        price: stockPrice,
+        commission,
+        profitTax,
+        transactionTax,
+        profit,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       // 포트폴리오 업데이트 또는 삭제
@@ -2032,6 +2064,19 @@ exports.purchaseStoreItem = onCall(
           transaction.update(userRef, {
             cash: admin.firestore.FieldValue.increment(-totalCost),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 거래 로그
+          const storeBuyTxRef = userRef.collection("transactions").doc();
+          transaction.set(storeBuyTxRef, {
+            type: "storePurchase",
+            amount: -totalCost,
+            description: `[관리자 상점] ${itemData.name} ${quantity}개 (단가 ${(totalCost / quantity).toLocaleString()}원)`,
+            itemId,
+            itemName: itemData.name,
+            quantity,
+            unitPrice: itemData.price,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
 
           // 관리자에게: 구매 매출 + 판매세 입금 - 재고보충비 차감
@@ -2744,11 +2789,40 @@ exports.buyMarketItem = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // 구매자 거래 로그
+        const marketBuyTxRef = buyerRef.collection("transactions").doc();
+        transaction.set(marketBuyTxRef, {
+          type: "marketBuy",
+          amount: -totalPrice,
+          description: `[개인 거래 매수] ${listingData.itemName || listingData.name || "아이템"} ${listingData.quantity}개 × ${listingData.price.toLocaleString()}원 (판매자: ${listingData.sellerName || listingData.sellerId})`,
+          listingId,
+          itemName: listingData.itemName || listingData.name,
+          quantity: listingData.quantity,
+          unitPrice: listingData.price,
+          sellerId: listingData.sellerId,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         // 판매자에게 세금 차감 금액 지급
         const sellerRef = db.collection("users").doc(listingData.sellerId);
         transaction.update(sellerRef, {
           cash: admin.firestore.FieldValue.increment(sellerProceeds),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 판매자 거래 로그
+        const marketSellTxRef = sellerRef.collection("transactions").doc();
+        transaction.set(marketSellTxRef, {
+          type: "marketSell",
+          amount: sellerProceeds,
+          description: `[개인 거래 매도] ${listingData.itemName || listingData.name || "아이템"} ${listingData.quantity}개 × ${listingData.price.toLocaleString()}원 (세금 ${taxAmount.toLocaleString()}원 차감 후 ${sellerProceeds.toLocaleString()}원 입금, 구매자: ${buyerData.name || uid})`,
+          listingId,
+          itemName: listingData.itemName || listingData.name,
+          quantity: listingData.quantity,
+          unitPrice: listingData.price,
+          taxAmount,
+          buyerId: uid,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         // 관리자(교사)에게 세금 입금 (국고 = 관리자 cash) + 통계 기록
@@ -3069,10 +3143,39 @@ exports.respondToOffer = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
+          // 구매자 거래 로그
+          const offerBuyTxRef = buyerRef.collection("transactions").doc();
+          transaction.set(offerBuyTxRef, {
+            type: "marketOfferBuy",
+            amount: -totalPrice,
+            description: `[제안 수락 매수] ${offerData.itemName} ${offerData.quantity}개 × ${offerData.offerPrice.toLocaleString()}원 (판매자: ${offerData.sellerName || offerData.sellerId})`,
+            offerId,
+            itemName: offerData.itemName,
+            quantity: offerData.quantity,
+            unitPrice: offerData.offerPrice,
+            sellerId: offerData.sellerId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
           // 판매자에게 세금 차감 금액 지급
           transaction.update(sellerRef, {
             cash: admin.firestore.FieldValue.increment(sellerProceeds),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 판매자 거래 로그
+          const offerSellTxRef = sellerRef.collection("transactions").doc();
+          transaction.set(offerSellTxRef, {
+            type: "marketOfferSell",
+            amount: sellerProceeds,
+            description: `[제안 수락 매도] ${offerData.itemName} ${offerData.quantity}개 × ${offerData.offerPrice.toLocaleString()}원 (세금 ${taxAmount.toLocaleString()}원 차감, 구매자: ${offerData.buyerName || offerData.buyerId})`,
+            offerId,
+            itemName: offerData.itemName,
+            quantity: offerData.quantity,
+            unitPrice: offerData.offerPrice,
+            taxAmount,
+            buyerId: offerData.buyerId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
 
           // 관리자(교사)에게 세금 입금 (국고 = 관리자 cash) + 통계 기록
@@ -3300,6 +3403,19 @@ exports.purchaseRealEstate = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // 구매자 거래 로그
+        const realEstateBuyTxRef = userRef.collection("transactions").doc();
+        transaction.set(realEstateBuyTxRef, {
+          type: "realEstatePurchase",
+          amount: -purchasePrice,
+          description: `[부동산 구매] ${propertyData.name || `매물 #${propertyId}`} ${purchasePrice.toLocaleString()}원 (거래세 ${taxAmount.toLocaleString()}원 별도)`,
+          propertyId,
+          propertyName: propertyData.name,
+          purchasePrice,
+          taxAmount,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         // 4-4. 이전 소유자에게 판매 대금 지급 (정부 소유가 아닌 경우)
         if (propertyData.owner !== "government" && propertyData.owner) {
           const sellerRef = db.collection("users").doc(propertyData.owner);
@@ -3307,6 +3423,21 @@ exports.purchaseRealEstate = onCall(
           transaction.update(sellerRef, {
             cash: admin.firestore.FieldValue.increment(sellerProceeds),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          // 판매자 거래 로그
+          const realEstateSellTxRef = sellerRef.collection("transactions").doc();
+          transaction.set(realEstateSellTxRef, {
+            type: "realEstateSell",
+            amount: sellerProceeds,
+            description: `[부동산 매도] ${propertyData.name || `매물 #${propertyId}`} ${purchasePrice.toLocaleString()}원에 판매 (세금 ${taxAmount.toLocaleString()}원 차감 후 ${sellerProceeds.toLocaleString()}원 입금, 구매자: ${userData.name})`,
+            propertyId,
+            propertyName: propertyData.name,
+            purchasePrice,
+            taxAmount,
+            sellerProceeds,
+            buyerId: uid,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
         }
 
