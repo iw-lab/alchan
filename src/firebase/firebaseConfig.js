@@ -1,7 +1,7 @@
 // src/firebase/firebaseConfig.js - Firebase 초기화 및 서비스 인스턴스
 
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
@@ -20,12 +20,14 @@ const firebaseConfig = {
 logger.log("[firebase.js] Firebase 앱 초기화 시작...");
 const app = initializeApp(firebaseConfig);
 
+// 🚨 firestore SDK 11.10.0의 watch_change race(ID:ca9) 회피 — memoryLocalCache 사용.
+// IndexedDB persistentLocalCache + multi-tab manager는 페이지 전환 + WebChannel
+// 재연결 시 target ID 음수 unexpected state 발생 빈도 높음. 알찬은 실시간 자산
+// 데이터 위주라 오프라인 cache 의존도 낮음 → memory cache로 안정성 우선.
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
+  localCache: memoryLocalCache(),
 });
-logger.log("[firebase.js] Firestore 초기화 완료 (오프라인 퍼시스턴스 활성화)");
+logger.log("[firebase.js] Firestore 초기화 완료 (memory cache)");
 
 const auth = getAuth(app);
 const storage = getStorage(app);
