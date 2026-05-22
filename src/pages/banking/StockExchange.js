@@ -809,36 +809,59 @@ const StockChartModal = ({ stock, onClose, formatCurrency }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+        style={{ background: "#ffffff" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 flex items-center justify-between">
+        {/* 진한 그라데이션 헤더 + 흰 텍스트 — 전역 CSS override 안전 */}
+        <div
+          className="px-5 py-4 flex items-center justify-between"
+          style={{
+            background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-bold text-slate-800">📊 {stock.name} 가격 차트</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: 0 }}>
+              📊 {stock.name} 가격 차트
+            </h2>
+            <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 4, margin: "4px 0 0 0" }}>
               현재가 {formatCurrency(stock.price)} · 변동 {totalChange.toFixed(2)}% ({points.length}개 데이터)
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none px-2">×</button>
+          <button
+            onClick={onClose}
+            style={{
+              color: "#ffffff",
+              fontSize: 28,
+              lineHeight: 1,
+              padding: "0 8px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-4" style={{ background: "#ffffff" }}>
           {points.length < 2 ? (
-            <div className="py-12 text-center text-slate-500 text-sm">
+            <div style={{ padding: "48px 0", textAlign: "center", color: "#475569", fontSize: 14 }}>
               아직 가격 이력이 충분히 없습니다.<br />
-              <span className="text-xs text-slate-400">시장 갱신 후 다시 확인해 주세요.</span>
+              <span style={{ fontSize: 12, color: "#94a3b8" }}>시장 갱신 후 다시 확인해 주세요.</span>
             </div>
           ) : (
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 320 }}>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 320, background: "#ffffff" }}>
               {/* 격자 */}
               {gridLines.map((g, i) => (
                 <g key={i}>
-                  <line x1={PAD} y1={g.y} x2={W - PAD} y2={g.y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
-                  <text x={PAD - 6} y={g.y + 3} fontSize="10" fill="#94a3b8" textAnchor="end">
+                  <line x1={PAD} y1={g.y} x2={W - PAD} y2={g.y} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 3" />
+                  <text x={PAD - 6} y={g.y + 3} fontSize="11" fill="#475569" textAnchor="end" fontWeight="500">
                     {formatCurrency(Math.round(g.label))}
                   </text>
                 </g>
@@ -848,20 +871,20 @@ const StockChartModal = ({ stock, onClose, formatCurrency }) => {
               {/* 라인 */}
               <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
               {/* 마지막 점 */}
-              <circle cx={xFor(points.length - 1)} cy={yFor(last)} r="4" fill={lineColor} stroke="white" strokeWidth="2" />
+              <circle cx={xFor(points.length - 1)} cy={yFor(last)} r="5" fill={lineColor} stroke="white" strokeWidth="2.5" />
               {/* 마지막 가격 라벨 */}
               <rect
-                x={xFor(points.length - 1) - 50}
-                y={yFor(last) - 24}
-                width="48"
-                height="18"
+                x={xFor(points.length - 1) - 55}
+                y={yFor(last) - 26}
+                width="52"
+                height="20"
                 rx="4"
                 fill={lineColor}
               />
               <text
-                x={xFor(points.length - 1) - 26}
-                y={yFor(last) - 11}
-                fontSize="10"
+                x={xFor(points.length - 1) - 29}
+                y={yFor(last) - 12}
+                fontSize="11"
                 fill="white"
                 textAnchor="middle"
                 fontWeight="bold"
@@ -871,18 +894,18 @@ const StockChartModal = ({ stock, onClose, formatCurrency }) => {
             </svg>
           )}
 
-          <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
-            <div className="bg-slate-50 rounded-lg p-2 text-center">
-              <div className="text-slate-500">최고</div>
-              <div className="font-bold text-emerald-600 mt-0.5">{formatCurrency(max)}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 16 }}>
+            <div style={{ background: "#f1f5f9", borderRadius: 8, padding: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>최고</div>
+              <div style={{ fontSize: 14, color: "#059669", fontWeight: 700, marginTop: 4 }}>{formatCurrency(max)}</div>
             </div>
-            <div className="bg-slate-50 rounded-lg p-2 text-center">
-              <div className="text-slate-500">최저</div>
-              <div className="font-bold text-red-600 mt-0.5">{formatCurrency(min)}</div>
+            <div style={{ background: "#f1f5f9", borderRadius: 8, padding: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>최저</div>
+              <div style={{ fontSize: 14, color: "#dc2626", fontWeight: 700, marginTop: 4 }}>{formatCurrency(min)}</div>
             </div>
-            <div className="bg-slate-50 rounded-lg p-2 text-center">
-              <div className="text-slate-500">평균</div>
-              <div className="font-bold text-slate-700 mt-0.5">
+            <div style={{ background: "#f1f5f9", borderRadius: 8, padding: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>평균</div>
+              <div style={{ fontSize: 14, color: "#0f172a", fontWeight: 700, marginTop: 4 }}>
                 {formatCurrency(Math.round(points.reduce((a, b) => a + b, 0) / points.length))}
               </div>
             </div>
