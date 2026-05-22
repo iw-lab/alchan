@@ -299,6 +299,20 @@ exports.purchaseAvatarItem = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // 거래 로그 (아바타 상점 구매)
+        const avatarShopTxRef = userRef.collection("transactions").doc();
+        transaction.set(avatarShopTxRef, {
+          type: "avatarShopPurchase",
+          amount: -price,
+          description: `[아바타 상점] ${itemData.name} 구매 (${price.toLocaleString()}원)`,
+          itemId,
+          itemName: itemData.name,
+          slot: itemData.slot,
+          rarity: itemData.rarity,
+          price,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         // 관리자에게 매출 입금
         const adminBuyer = adminRef && adminRef.path === userRef.path;
         let adminCashDelta = 0;

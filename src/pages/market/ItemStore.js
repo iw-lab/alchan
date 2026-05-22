@@ -72,6 +72,8 @@ const ItemStore = () => {
   );
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseQuantities, setPurchaseQuantities] = useState({});
+  // 🔥 중복 결제 방지 — 진행 중인 아이템 id 추적
+  const [purchasingIds, setPurchasingIds] = useState(new Set());
   const [loanBalance, setLoanBalance] = useState(0);
 
   const isCurrentUserAdmin = isAdmin();
@@ -199,16 +201,35 @@ const ItemStore = () => {
   };
 
   const handlePurchase = async (item) => {
+    // 🚨 중복 결제 방지 — 같은 아이템 이미 처리 중이면 무시
+    if (purchasingIds.has(item.id)) {
+      logger.warn("[ItemStore] 중복 클릭 차단:", item.id);
+      return;
+    }
+    setPurchasingIds((prev) => new Set([...prev, item.id]));
+
     const canAutoRestock = item.initialStock > 0;
-    if (!item || (item.stock <= 0 && !canAutoRestock)) return showNotification("error", "재고 없음");
-    if (!user || !currentUserClassCode)
+    if (!item || (item.stock <= 0 && !canAutoRestock)) {
+      setPurchasingIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
+      return showNotification("error", "재고 없음");
+    }
+    if (!user || !currentUserClassCode) {
+      setPurchasingIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
       return showNotification("error", "로그인 또는 학급 정보 필요");
+    }
+
+    const releaseLock = () => {
+      setPurchasingIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
+    };
 
     const quantity = purchaseQuantities[item.id] || 1;
-    if (rawCash === undefined)
+    if (rawCash === undefined) {
+      releaseLock();
       return showNotification("error", "잔액 정보 오류");
+    }
 
     if (await isNetAssetsNegative(userDoc)) {
+      releaseLock();
       return showNotification("error", NEGATIVE_ASSETS_MESSAGE);
     }
 
@@ -216,6 +237,7 @@ const ItemStore = () => {
 
     // 대출금은 상점에서 사용 불가 — 미상환 대출 제외한 사용 가능 금액으로 체크
     if (spendableCash < totalPrice) {
+      releaseLock();
       if (loanBalance > 0 && rawCash >= totalPrice) {
         return showNotification(
           "error",
@@ -225,7 +247,10 @@ const ItemStore = () => {
       return showNotification("error", "잔액 부족");
     }
 
-    if (!purchaseItem) return showNotification("error", "구매 기능 오류");
+    if (!purchaseItem) {
+      releaseLock();
+      return showNotification("error", "구매 기능 오류");
+    }
 
     // 🔥 낙관적 업데이트: 즉시 성공 표시 + 재고 로컬 차감
     showNotification("success", `${item.name} ${quantity}개 구매 완료!`);
@@ -270,6 +295,8 @@ const ItemStore = () => {
         "error",
         error.message || "구매 중 문제가 발생했습니다.",
       );
+    } finally {
+      releaseLock();
     }
   };
 
@@ -526,13 +553,14 @@ const ItemStore = () => {
                                 }`}
                                 disabled={
                                   !user ||
+                                  purchasingIds.has(item.id) ||
                                   (item.stock <= 0 && !(item.initialStock > 0)) ||
                                   spendableCash <
                                     item.price *
                                       (purchaseQuantities[item.id] || 1)
                                 }
                               >
-                                {getButtonText(item)}
+                                {purchasingIds.has(item.id) ? "처리 중..." : getButtonText(item)}
                               </button>
                             </div>
                           </div>
