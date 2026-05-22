@@ -1345,8 +1345,13 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
 });
 
 exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
-  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
   const { holdingId, quantity, idempotencyKey } = request.data;
+
+  // 🧪 테스트 계정(alchan21) 매도 제한 우회용 플래그
+  const isTestAccount =
+    userData?.name === "alchan21" ||
+    /^alchan21(@|$)/i.test(userData?.email || "");
 
   if (!holdingId || !quantity || quantity <= 0) {
     throw new HttpsError(
@@ -1425,8 +1430,8 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
         );
       }
 
-      // 매수 후 1시간 이내 매도 제한 확인
-      if (portfolioData.lastBuyTime) {
+      // 매수 후 1시간 이내 매도 제한 확인 (테스트 계정 alchan21은 우회)
+      if (portfolioData.lastBuyTime && !isTestAccount) {
         const lastBuyTime = portfolioData.lastBuyTime.toDate
           ? portfolioData.lastBuyTime.toDate()
           : new Date(portfolioData.lastBuyTime);
