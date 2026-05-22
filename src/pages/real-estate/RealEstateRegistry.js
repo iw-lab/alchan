@@ -408,7 +408,7 @@ const RealEstateRegistry = () => {
 
     try {
       const purchaseRealEstateFunction = httpsCallable(functions, 'purchaseRealEstate');
-      const result = await purchaseRealEstateFunction({ propertyId });
+      const result = await purchaseRealEstateFunction({ propertyId, idempotencyKey: crypto.randomUUID() });
 
       logger.log('[RealEstate] 구매 성공:', result.data);
 

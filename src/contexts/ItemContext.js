@@ -350,6 +350,7 @@ export const ItemProvider = ({ children }) => {
         const result = await firebaseFunctions.purchaseStoreItem({
           itemId,
           quantity,
+          idempotencyKey: crypto.randomUUID(),
         });
         if (result.data.success) {
           // 🎯 서버 응답에서 재고 보충 정보를 받아서 즉시 로컬 상태 업데이트
@@ -664,7 +665,7 @@ export const ItemProvider = ({ children }) => {
       setMarketListings((prev) => prev.filter((item) => item.id !== listingId));
 
       try {
-        const result = await firebaseFunctions.buyMarketItem({ listingId });
+        const result = await firebaseFunctions.buyMarketItem({ listingId, idempotencyKey: crypto.randomUUID() });
         if (result.data.success) {
           logger.log("[ItemContext] 구매 성공, 서버 데이터로 동기화");
 
@@ -779,7 +780,7 @@ export const ItemProvider = ({ children }) => {
     async ({ offerId, response }) => {
       if (!userId) return { success: false, message: "로그인 필요" };
       try {
-        await firebaseFunctions.respondToOffer({ offerId, response });
+        await firebaseFunctions.respondToOffer({ offerId, response, idempotencyKey: crypto.randomUUID() });
         refreshData();
         return { success: true };
       } catch (error) {

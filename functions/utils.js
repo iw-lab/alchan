@@ -125,12 +125,50 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     return {uid, classCode: userData.classCode, isAdmin, isSuperAdmin, userData};
   };
 
+  /**
+   * 서버측 Idempotency Key 보장
+   *
+   * 사용 패턴: runTransaction의 *첫 번째 get* 직후 호출.
+   *   await db.runTransaction(async (transaction) => {
+   *     await assertIdempotent(transaction, idempotencyKey);
+   *     // ... 나머지 거래 로직
+   *   });
+   *
+   * - idempotencyKey가 없거나 빈 문자열이면 무시 (옛 클라이언트 호환)
+   * - idempotencyKeys/{key} 문서가 이미 있으면 already-exists 에러 → 클라이언트는 무시
+   * - 없으면 새로 등록 (24시간 TTL — Firestore TTL policy로 자동 청소)
+   *
+   * Firestore runTransaction은 ACID라 동일 key로 동시 호출되어도 한 트랜잭션만 통과.
+   */
+  const assertIdempotent = async (transaction, idempotencyKey, ttlHours = 24) => {
+    if (!idempotencyKey || typeof idempotencyKey !== "string") return;
+    if (idempotencyKey.length > 128) {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 너무 깁니다.");
+    }
+    const keyRef = db.collection("idempotencyKeys").doc(idempotencyKey);
+    const keySnap = await transaction.get(keyRef);
+    if (keySnap.exists) {
+      throw new HttpsError(
+        "already-exists",
+        "이미 처리된 요청입니다. (중복 결제 차단)"
+      );
+    }
+    const expireAt = admin.firestore.Timestamp.fromMillis(
+      Date.now() + ttlHours * 60 * 60 * 1000,
+    );
+    transaction.set(keyRef, {
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expireAt,
+    });
+  };
+
   module.exports = {
       LOG_TYPES,
       logActivity,
       checkAuthAndGetUserData,
       sanitizeInput,
       sanitizeObject,
+      assertIdempotent,
       db,
       admin,
       logger

@@ -238,7 +238,7 @@ export default function AvatarShop() {
 
     try {
       const fn = httpsCallable(functions, "purchaseAvatarItem");
-      await fn({ itemId: item.id });
+      await fn({ itemId: item.id, idempotencyKey: crypto.randomUUID() });
       if (!isFree) alert(`🎉 ${item.name} 구매 완료!`);
     } catch (err) {
       logger.error("아바타 아이템 구매 실패:", err);

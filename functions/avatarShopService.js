@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* eslint-disable max-len */
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, assertIdempotent } = require("./utils");
 
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 
@@ -199,7 +199,7 @@ exports.purchaseAvatarItem = onCall(
   { region: "asia-northeast3" },
   async (request) => {
     const { uid, classCode } = await checkAuthAndGetUserData(request);
-    const { itemId } = request.data || {};
+    const { itemId, idempotencyKey } = request.data || {};
 
     if (!itemId || typeof itemId !== "string") {
       throw new HttpsError("invalid-argument", "itemId가 필요합니다.");
@@ -240,6 +240,9 @@ exports.purchaseAvatarItem = onCall(
 
     try {
       const result = await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+        await assertIdempotent(transaction, idempotencyKey);
+
         const reads = [transaction.get(userRef), transaction.get(itemRef), transaction.get(govRef)];
         if (adminRef) reads.push(transaction.get(adminRef));
         const [userSnap, itemSnap, govSnapInTx, adminSnap] = await Promise.all(reads);

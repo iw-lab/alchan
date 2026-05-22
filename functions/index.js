@@ -8,6 +8,7 @@ const {
   LOG_TYPES,
   logActivity,
   checkAuthAndGetUserData,
+  assertIdempotent,
   db,
   admin,
   logger,
@@ -1132,7 +1133,7 @@ const { getStockTaxMultiplier } = require("./economicEvents");
 
 exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode } = await checkAuthAndGetUserData(request);
-  const { stockId, quantity } = request.data;
+  const { stockId, quantity, idempotencyKey } = request.data;
 
   if (!stockId || !quantity || quantity <= 0) {
     throw new HttpsError(
@@ -1177,6 +1178,9 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
+      // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+      await assertIdempotent(transaction, idempotencyKey);
+
       // 🔥 모든 읽기 작업을 먼저 수행
       const portfolioRef = db
         .collection("users")
@@ -1338,7 +1342,7 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
 exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode } = await checkAuthAndGetUserData(request);
-  const { holdingId, quantity } = request.data;
+  const { holdingId, quantity, idempotencyKey } = request.data;
 
   if (!holdingId || !quantity || quantity <= 0) {
     throw new HttpsError(
@@ -1387,6 +1391,9 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
+      // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+      await assertIdempotent(transaction, idempotencyKey);
+
       // 🔥 먼저 portfolioData에서 stockId를 가져오기 위해 포트폴리오를 읽어야 함
       const [userDoc, portfolioDoc] = await transaction.getAll(
         userRef,
@@ -1854,7 +1861,7 @@ exports.purchaseStoreItem = onCall(
   { region: "asia-northeast3" },
   async (request) => {
     const { uid, classCode } = await checkAuthAndGetUserData(request);
-    const { itemId, quantity = 1 } = request.data;
+    const { itemId, quantity = 1, idempotencyKey } = request.data;
 
     if (!itemId || quantity <= 0) {
       throw new HttpsError(
@@ -1907,6 +1914,9 @@ exports.purchaseStoreItem = onCall(
     try {
       // 🔥 Transaction으로 변경하여 원자적 처리 및 재고 보충 정보 포함
       const result = await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+        await assertIdempotent(transaction, idempotencyKey);
+
         // 모든 읽기 작업을 먼저 수행
         // [0]=user, [1]=item, [2]=userItem, [3]=admin(optional)
         const readPromises = [
@@ -2716,7 +2726,7 @@ exports.buyMarketItem = onCall(
   },
   async (request) => {
     const { uid, userData } = await checkAuthAndGetUserData(request);
-    const { listingId } = request.data;
+    const { listingId, idempotencyKey } = request.data;
 
     if (!listingId) {
       throw new HttpsError(
@@ -2749,6 +2759,9 @@ exports.buyMarketItem = onCall(
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+        await assertIdempotent(transaction, idempotencyKey);
+
         const listingDoc = await transaction.get(listingRef);
 
         if (!listingDoc.exists) {
@@ -3054,7 +3067,7 @@ exports.respondToOffer = onCall(
   },
   async (request) => {
     const { uid, userData } = await checkAuthAndGetUserData(request);
-    const { offerId, response } = request.data;
+    const { offerId, response, idempotencyKey } = request.data;
 
     if (!offerId || !response || !["accept", "reject"].includes(response)) {
       throw new HttpsError(
@@ -3086,6 +3099,9 @@ exports.respondToOffer = onCall(
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+        await assertIdempotent(transaction, idempotencyKey);
+
         const offerDoc = await transaction.get(offerRef);
 
         if (!offerDoc.exists) {
@@ -3286,7 +3302,7 @@ exports.purchaseRealEstate = onCall(
     try {
       const { uid, classCode, userData } =
         await checkAuthAndGetUserData(request);
-      const { propertyId } = request.data;
+      const { propertyId, idempotencyKey } = request.data;
 
       if (!propertyId) {
         throw new HttpsError("invalid-argument", "부동산 ID가 필요합니다.");
@@ -3298,6 +3314,9 @@ exports.purchaseRealEstate = onCall(
 
       // 트랜잭션으로 처리
       const result = await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
+        await assertIdempotent(transaction, idempotencyKey);
+
         // 1. 부동산 정보 조회
         const propertyRef = db
           .collection("classes")

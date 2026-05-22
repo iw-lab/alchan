@@ -1289,7 +1289,7 @@ const StockExchange = () => {
       try {
         // Cloud Function 호출
         const buyStockFunction = callables.buyStock;
-        const result = await buyStockFunction({ stockId, quantity });
+        const result = await buyStockFunction({ stockId, quantity, idempotencyKey: crypto.randomUUID() });
 
         logger.log("[buyStock] 매수 성공:", result.data);
 
@@ -1453,7 +1453,7 @@ const StockExchange = () => {
 
       try {
         const sellStockFunction = callables.sellStock;
-        const result = await sellStockFunction({ holdingId, quantity });
+        const result = await sellStockFunction({ holdingId, quantity, idempotencyKey: crypto.randomUUID() });
 
         logger.log("[sellStock] 매도 성공:", result.data);
 
