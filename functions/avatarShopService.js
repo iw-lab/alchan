@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* eslint-disable max-len */
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, assertIdempotent } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, checkIdempotent, markIdempotent } = require("./utils");
 
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 
@@ -240,8 +240,8 @@ exports.purchaseAvatarItem = onCall(
 
     try {
       const result = await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-        await assertIdempotent(transaction, idempotencyKey);
+        // 🚨 서버측 idempotency check (read만)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
         const reads = [transaction.get(userRef), transaction.get(itemRef), transaction.get(govRef)];
         if (adminRef) reads.push(transaction.get(adminRef));
@@ -374,6 +374,9 @@ exports.purchaseAvatarItem = onCall(
             { merge: true },
           );
         }
+
+        // ✅ idempotency mark (모든 write 끝난 후)
+        markIdempotent(transaction, idemKeyRef);
 
         return {
           itemId,

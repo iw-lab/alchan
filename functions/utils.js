@@ -126,22 +126,25 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
   };
 
   /**
-   * 서버측 Idempotency Key 보장
+   * 서버측 Idempotency Key — Firestore 트랜잭션 read-before-write 룰 준수
    *
-   * 사용 패턴: runTransaction의 *첫 번째 get* 직후 호출.
+   * 두 단계로 분리: check(read) + mark(write).
+   *
+   * 사용 패턴:
    *   await db.runTransaction(async (transaction) => {
-   *     await assertIdempotent(transaction, idempotencyKey);
-   *     // ... 나머지 거래 로직
+   *     const keyRef = await checkIdempotent(transaction, idempotencyKey);
+   *     // ... 다른 모든 transaction.get 호출
+   *     // ... 모든 transaction.set/update
+   *     markIdempotent(transaction, keyRef);  // 마지막에 호출
    *   });
    *
-   * - idempotencyKey가 없거나 빈 문자열이면 무시 (옛 클라이언트 호환)
-   * - idempotencyKeys/{key} 문서가 이미 있으면 already-exists 에러 → 클라이언트는 무시
-   * - 없으면 새로 등록 (24시간 TTL — Firestore TTL policy로 자동 청소)
-   *
-   * Firestore runTransaction은 ACID라 동일 key로 동시 호출되어도 한 트랜잭션만 통과.
+   * - idempotencyKey 없으면 keyRef = null, mark도 no-op (옛 클라이언트 호환)
+   * - 이미 있으면 already-exists throw (트랜잭션 abort)
+   * - mark는 24h TTL로 등록 (Firestore TTL policy로 자동 청소)
+   * - Firestore runTransaction ACID라 동일 key 동시 호출도 1번만 통과
    */
-  const assertIdempotent = async (transaction, idempotencyKey, ttlHours = 24) => {
-    if (!idempotencyKey || typeof idempotencyKey !== "string") return;
+  const checkIdempotent = async (transaction, idempotencyKey) => {
+    if (!idempotencyKey || typeof idempotencyKey !== "string") return null;
     if (idempotencyKey.length > 128) {
       throw new HttpsError("invalid-argument", "idempotencyKey가 너무 깁니다.");
     }
@@ -153,6 +156,11 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
         "이미 처리된 요청입니다. (중복 결제 차단)"
       );
     }
+    return keyRef;
+  };
+
+  const markIdempotent = (transaction, keyRef, ttlHours = 24) => {
+    if (!keyRef) return;
     const expireAt = admin.firestore.Timestamp.fromMillis(
       Date.now() + ttlHours * 60 * 60 * 1000,
     );
@@ -162,6 +170,13 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     });
   };
 
+  // 옛 호출 호환 — 위치는 호출자가 모든 read 끝낸 후로 옮겨야
+  const assertIdempotent = async (transaction, idempotencyKey, ttlHours = 24) => {
+    const keyRef = await checkIdempotent(transaction, idempotencyKey);
+    markIdempotent(transaction, keyRef, ttlHours);
+    return keyRef;
+  };
+
   module.exports = {
       LOG_TYPES,
       logActivity,
@@ -169,6 +184,8 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
       sanitizeInput,
       sanitizeObject,
       assertIdempotent,
+      checkIdempotent,
+      markIdempotent,
       db,
       admin,
       logger

@@ -8,7 +8,8 @@ const {
   LOG_TYPES,
   logActivity,
   checkAuthAndGetUserData,
-  assertIdempotent,
+  checkIdempotent,
+  markIdempotent,
   db,
   admin,
   logger,
@@ -1178,8 +1179,8 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
-      // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-      await assertIdempotent(transaction, idempotencyKey);
+      // 🚨 서버측 idempotency check (read만)
+      const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
       // 🔥 모든 읽기 작업을 먼저 수행
       const portfolioRef = db
@@ -1310,6 +1311,9 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
       // 🔥 [추가] 거래 후 잔액 계산 및 반환
       const newBalance = currentCash - totalCost;
 
+      // ✅ idempotency mark (모든 write 끝난 후)
+      markIdempotent(transaction, idemKeyRef);
+
       return {
         stockName: stockData.name,
         quantity: quantity,
@@ -1391,8 +1395,8 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
-      // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-      await assertIdempotent(transaction, idempotencyKey);
+      // 🚨 서버측 idempotency check (read만)
+      const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
       // 🔥 먼저 portfolioData에서 stockId를 가져오기 위해 포트폴리오를 읽어야 함
       const [userDoc, portfolioDoc] = await transaction.getAll(
@@ -1549,6 +1553,9 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
       const currentCash = userData.cash || 0;
       const newBalance = currentCash + netRevenue;
 
+      // ✅ idempotency mark (모든 write 끝난 후)
+      markIdempotent(transaction, idemKeyRef);
+
       return {
         stockName: stockData.name,
         quantity: quantity,
@@ -1560,10 +1567,6 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
         newBalance: newBalance, // 거래 후 새 잔액
       };
     });
-
-    logger.info(
-      `[sellStock] ${uid}님이 ${result.stockName} ${result.quantity}주 매도 (순수익 ${result.netRevenue}원)`,
-    );
 
     return {
       success: true,
@@ -1914,8 +1917,8 @@ exports.purchaseStoreItem = onCall(
     try {
       // 🔥 Transaction으로 변경하여 원자적 처리 및 재고 보충 정보 포함
       const result = await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-        await assertIdempotent(transaction, idempotencyKey);
+        // 🚨 서버측 idempotency check (read만)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
         // 모든 읽기 작업을 먼저 수행
         // [0]=user, [1]=item, [2]=userItem, [3]=admin(optional)
@@ -2147,6 +2150,9 @@ exports.purchaseStoreItem = onCall(
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           }, { merge: true });
         }
+
+        // ✅ idempotency mark (모든 write 끝난 후)
+        markIdempotent(transaction, idemKeyRef);
 
         // 트랜잭션 결과 반환
         return {
@@ -2759,8 +2765,8 @@ exports.buyMarketItem = onCall(
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-        await assertIdempotent(transaction, idempotencyKey);
+        // 🚨 서버측 idempotency check (read만)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
         const listingDoc = await transaction.get(listingRef);
 
@@ -2897,6 +2903,9 @@ exports.buyMarketItem = onCall(
           buyerName: userData.name,
           soldAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // ✅ idempotency mark (모든 write 끝난 후)
+        markIdempotent(transaction, idemKeyRef);
       });
 
       return { success: true, message: "아이템을 성공적으로 구매했습니다." };
@@ -3099,8 +3108,8 @@ exports.respondToOffer = onCall(
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-        await assertIdempotent(transaction, idempotencyKey);
+        // 🚨 서버측 idempotency check (read만)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
         const offerDoc = await transaction.get(offerRef);
 
@@ -3260,6 +3269,9 @@ exports.respondToOffer = onCall(
             respondedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
 
+          // ✅ idempotency mark (수락 경로)
+          markIdempotent(transaction, idemKeyRef);
+
           return {
             success: true,
             message: "제안을 수락하여 거래가 완료되었습니다.",
@@ -3270,6 +3282,9 @@ exports.respondToOffer = onCall(
             status: "rejected",
             respondedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
+
+          // ✅ idempotency mark (거절 경로)
+          markIdempotent(transaction, idemKeyRef);
 
           return { success: true, message: "제안을 거절했습니다." };
         }
@@ -3314,8 +3329,8 @@ exports.purchaseRealEstate = onCall(
 
       // 트랜잭션으로 처리
       const result = await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency — 동일 key의 거래는 한 번만 처리
-        await assertIdempotent(transaction, idempotencyKey);
+        // 🚨 서버측 idempotency check (read만)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
         // 1. 부동산 정보 조회
         const propertyRef = db
@@ -3521,6 +3536,9 @@ exports.purchaseRealEstate = onCall(
             previousTenantPropertyId,
           },
         );
+
+        // ✅ idempotency mark (모든 write 끝난 후)
+        markIdempotent(transaction, idemKeyRef);
 
         return {
           success: true,
