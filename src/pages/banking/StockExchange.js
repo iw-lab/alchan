@@ -771,6 +771,128 @@ const AdminPanel = React.memo(
   },
 );
 
+// === 가격 차트 모달 (SVG 직접 그리기) ===
+const StockChartModal = ({ stock, onClose, formatCurrency }) => {
+  if (!stock) return null;
+  const priceHistory = Array.isArray(stock.priceHistory) ? stock.priceHistory : [];
+  const points = priceHistory.length >= 2
+    ? priceHistory.map((p) => Number(p) || 0)
+    : [Number(stock.price) || 0];
+
+  const W = 700, H = 280, PAD = 40;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const stepX = points.length > 1 ? (W - PAD * 2) / (points.length - 1) : 0;
+  const yFor = (v) => H - PAD - ((v - min) / range) * (H - PAD * 2);
+  const xFor = (i) => PAD + i * stepX;
+
+  const pathD = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(1)} ${yFor(p).toFixed(1)}`)
+    .join(" ");
+
+  // 그라데이션 fill area
+  const areaD = `${pathD} L ${xFor(points.length - 1).toFixed(1)} ${H - PAD} L ${xFor(0).toFixed(1)} ${H - PAD} Z`;
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  const totalChange = first > 0 ? ((last - first) / first) * 100 : 0;
+  const isUp = totalChange >= 0;
+  const lineColor = isUp ? "#10b981" : "#ef4444";
+  const fillColor = isUp ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)";
+
+  // Y축 격자 (5개)
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((t) => ({
+    y: PAD + t * (H - PAD * 2),
+    label: max - t * range,
+  }));
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">📊 {stock.name} 가격 차트</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              현재가 {formatCurrency(stock.price)} · 변동 {totalChange.toFixed(2)}% ({points.length}개 데이터)
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-2xl leading-none px-2">×</button>
+        </div>
+
+        <div className="p-4">
+          {points.length < 2 ? (
+            <div className="py-12 text-center text-slate-500 text-sm">
+              아직 가격 이력이 충분히 없습니다.<br />
+              <span className="text-xs text-slate-400">시장 갱신 후 다시 확인해 주세요.</span>
+            </div>
+          ) : (
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 320 }}>
+              {/* 격자 */}
+              {gridLines.map((g, i) => (
+                <g key={i}>
+                  <line x1={PAD} y1={g.y} x2={W - PAD} y2={g.y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
+                  <text x={PAD - 6} y={g.y + 3} fontSize="10" fill="#94a3b8" textAnchor="end">
+                    {formatCurrency(Math.round(g.label))}
+                  </text>
+                </g>
+              ))}
+              {/* 영역 */}
+              <path d={areaD} fill={fillColor} />
+              {/* 라인 */}
+              <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              {/* 마지막 점 */}
+              <circle cx={xFor(points.length - 1)} cy={yFor(last)} r="4" fill={lineColor} stroke="white" strokeWidth="2" />
+              {/* 마지막 가격 라벨 */}
+              <rect
+                x={xFor(points.length - 1) - 50}
+                y={yFor(last) - 24}
+                width="48"
+                height="18"
+                rx="4"
+                fill={lineColor}
+              />
+              <text
+                x={xFor(points.length - 1) - 26}
+                y={yFor(last) - 11}
+                fontSize="10"
+                fill="white"
+                textAnchor="middle"
+                fontWeight="bold"
+              >
+                {formatCurrency(last)}
+              </text>
+            </svg>
+          )}
+
+          <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
+            <div className="bg-slate-50 rounded-lg p-2 text-center">
+              <div className="text-slate-500">최고</div>
+              <div className="font-bold text-emerald-600 mt-0.5">{formatCurrency(max)}</div>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-2 text-center">
+              <div className="text-slate-500">최저</div>
+              <div className="font-bold text-red-600 mt-0.5">{formatCurrency(min)}</div>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-2 text-center">
+              <div className="text-slate-500">평균</div>
+              <div className="font-bold text-slate-700 mt-0.5">
+                {formatCurrency(Math.round(points.reduce((a, b) => a + b, 0) / points.length))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // === 메인 컴포넌트 ===
 const StockExchange = () => {
   const {
@@ -810,6 +932,8 @@ const StockExchange = () => {
 
   const [classCode, setClassCode] = useState(null);
   const [stocks, setStocks] = useState([]);
+  // 📊 차트 모달 — 현재 차트 보기 중인 stock 객체 (null이면 닫힘)
+  const [chartStock, setChartStock] = useState(null);
   const [portfolio, setPortfolio] = useState([]);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [buyQuantities, setBuyQuantities] = useState({});
@@ -2181,6 +2305,18 @@ const StockExchange = () => {
                       className="quantity-input"
                     />
                     <button
+                      onClick={() => setChartStock(stock)}
+                      className="trade-button"
+                      style={{
+                        background: "#e0e7ff",
+                        color: "#4338ca",
+                        border: "1px solid #c7d2fe",
+                      }}
+                      title="가격 차트 보기"
+                    >
+                      📊 차트
+                    </button>
+                    <button
                       onClick={() =>
                         buyStock(stock.id, buyQuantities[stock.id])
                       }
@@ -2399,6 +2535,13 @@ const StockExchange = () => {
           </div>
         </section>
       </main>
+
+      {/* 📊 가격 차트 모달 */}
+      <StockChartModal
+        stock={chartStock}
+        onClose={() => setChartStock(null)}
+        formatCurrency={formatCurrency}
+      />
     </div>
   );
 };
