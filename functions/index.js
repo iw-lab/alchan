@@ -1349,21 +1349,17 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { holdingId, quantity, idempotencyKey } = request.data;
 
   // 🧪 테스트 계정(alchan21) 매도 제한 우회용 플래그
-  // — 학생 doc의 가능한 식별 필드 모두 매칭 (name/nickname/email/studentId/studentNumber)
-  const TEST_ID = "alchan21";
-  const fieldsToCheck = [
-    userData?.name,
-    userData?.nickname,
-    userData?.studentId,
-    String(userData?.studentNumber || ""),
-    userData?.email,
-  ];
-  const isTestAccount = fieldsToCheck.some((f) => {
-    if (!f) return false;
-    const s = String(f).toLowerCase();
-    return s === TEST_ID || s.startsWith(`${TEST_ID}@`);
-  });
-  logger.info(`[sellStock] uid=${uid} isTestAccount=${isTestAccount} name=${userData?.name} email=${userData?.email}`);
+  // — userData 어딘가에 'alchan21' 들어있으면 우회 (광범위 매칭으로 학생 doc 필드 변형 대응)
+  const isTestAccount = (() => {
+    try {
+      return JSON.stringify(userData || {})
+        .toLowerCase()
+        .includes("alchan21");
+    } catch {
+      return false;
+    }
+  })();
+  logger.info(`[sellStock] uid=${uid} isTestAccount=${isTestAccount}`);
 
   if (!holdingId || !quantity || quantity <= 0) {
     throw new HttpsError(

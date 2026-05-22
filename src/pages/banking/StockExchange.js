@@ -1048,6 +1048,17 @@ const StockExchange = () => {
     }
   }, [userDoc]);
 
+  // 🧪 테스트 계정(alchan21) 매도 락 우회 — 클라이언트도 동일 광범위 매칭
+  const isTestAccount = useMemo(() => {
+    try {
+      return JSON.stringify(userDoc || {})
+        .toLowerCase()
+        .includes("alchan21");
+    } catch {
+      return false;
+    }
+  }, [userDoc]);
+
   // 🔥 매도 제한 타이머: 1초마다 업데이트 (portfolio를 ref로 참조)
   const portfolioRef = useRef(portfolio);
 
@@ -2526,7 +2537,8 @@ const StockExchange = () => {
                 const profit = currentValue - investedValue;
                 const profitPercent =
                   investedValue > 0 ? (profit / investedValue) * 100 : 0;
-                const isLocked = !!lockTimers[holding.id];
+                // 🧪 테스트 계정은 매도 락 우회
+                const isLocked = !isTestAccount && !!lockTimers[holding.id];
                 const canSell = !isLocked;
 
                 return (
@@ -2541,8 +2553,21 @@ const StockExchange = () => {
                           {holding.stockName}
                         </h3>
                         {isLocked && (
-                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold inline-flex items-center gap-1">
-                            <Lock size={12} />
+                          <span
+                            style={{
+                              fontSize: 12,
+                              padding: "2px 8px",
+                              background: "#fef3c7",
+                              color: "#78350f",
+                              borderRadius: 4,
+                              fontWeight: 700,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              border: "1px solid #f59e0b",
+                            }}
+                          >
+                            <Lock size={12} color="#78350f" />
                             매도 불가
                           </span>
                         )}
@@ -2579,12 +2604,32 @@ const StockExchange = () => {
                       </div>
                     </div>
                     {isLocked && (
-                      <div className="px-3 py-2.5 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex flex-col gap-1 mt-2 border border-amber-400">
-                        <div className="flex items-center gap-2 text-[0.9rem] text-amber-800 font-bold">
-                          <Lock size={16} />
+                      <div
+                        style={{
+                          padding: "10px 14px",
+                          background: "#fef3c7",
+                          borderRadius: 8,
+                          marginTop: 8,
+                          border: "1px solid #f59e0b",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#78350f", fontWeight: 700 }}>
+                          <Lock size={16} color="#78350f" />
                           <span>매도 제한 시간</span>
                         </div>
-                        <div className="text-[1.1rem] text-amber-900 font-bold text-center mt-1 font-mono">
+                        <div
+                          style={{
+                            fontSize: 18,
+                            color: "#78350f",
+                            fontWeight: 800,
+                            textAlign: "center",
+                            marginTop: 4,
+                            fontFamily: "ui-monospace, monospace",
+                          }}
+                        >
                           ⏱️ {formatTime(lockTimers[holding.id])} 남음
                         </div>
                       </div>
@@ -2605,7 +2650,7 @@ const StockExchange = () => {
                             }
                             placeholder="매도 수량"
                             className="trade-input"
-                            disabled={!!lockTimers[holding.id] || !marketOpen}
+                            disabled={isLocked || !marketOpen}
                           />
                           <button
                             onClick={() =>
@@ -2614,7 +2659,7 @@ const StockExchange = () => {
                             disabled={
                               !sellQuantities[holding.id] ||
                               isTrading ||
-                              !!lockTimers[holding.id] ||
+                              isLocked ||
                               !marketOpen
                             }
                             className="action-btn sell-btn"
