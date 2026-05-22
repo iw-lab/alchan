@@ -1,6 +1,6 @@
 // src/pages/market/GroupPurchase.js
 // 함께구매 - 학급 친구들과 함께 모금하여 아이템을 구매하는 기능
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -20,6 +20,7 @@ import {
   runTransaction,
   Timestamp,
   functions,
+  increment,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
 import { addItemToInventory } from "../../firebase/firebaseDb";
@@ -90,6 +91,23 @@ export default function GroupPurchase() {
   useEffect(() => {
     fetchCampaigns();
   }, [fetchCampaigns]);
+
+  // 🔥 캠페인의 targetPrice를 상점 현재가로 실시간 동기화
+  // 상점 가격 인상/인하 시 함께구매도 자동으로 따라감
+  const enrichedCampaigns = useMemo(() => {
+    if (!items || items.length === 0) return campaigns;
+    return campaigns.map((c) => {
+      if (!c.selectedItemId) return c;
+      const storeItem = items.find((i) => i.id === c.selectedItemId);
+      const currentShopPrice = Number(storeItem?.price) || 0;
+      if (currentShopPrice <= 0) return c;
+      // 상점 가격이 저장된 targetPrice와 다르면 override
+      if (currentShopPrice !== Number(c.targetPrice)) {
+        return { ...c, targetPrice: currentShopPrice, _priceOverride: true };
+      }
+      return c;
+    });
+  }, [campaigns, items]);
 
   // 캠페인 생성
   const handleCreate = async () => {
@@ -216,6 +234,14 @@ export default function GroupPurchase() {
         const campaignSnap = await transaction.get(campaignRef);
         const userSnap = await transaction.get(userRef);
 
+        // 🔥 상점 현재가 실시간 동기화 — targetPrice를 storeItems의 최신 가격으로
+        let storeItemSnap = null;
+        const campaignData = campaignSnap.data();
+        if (campaignData?.selectedItemId) {
+          const storeItemRef = doc(db, "storeItems", campaignData.selectedItemId);
+          storeItemSnap = await transaction.get(storeItemRef);
+        }
+
         if (!campaignSnap.exists() || !userSnap.exists()) {
           throw new Error("문서를 찾을 수 없습니다.");
         }
@@ -227,8 +253,18 @@ export default function GroupPurchase() {
           throw new Error("이미 완료된 캠페인입니다.");
         }
 
-        const currentRemaining = cData.targetPrice - cData.currentAmount;
+        // 상점 현재가로 targetPrice override (가격 변동 반영)
+        const currentShopPrice = Number(storeItemSnap?.data()?.price) || 0;
+        const effectiveTargetPrice =
+          currentShopPrice > 0 ? currentShopPrice : Number(cData.targetPrice);
+
+        const currentRemaining = effectiveTargetPrice - cData.currentAmount;
         const txFinalAmount = Math.min(actualAmount, currentRemaining);
+
+        // 캠페인 doc의 targetPrice도 동기화 (다음 조회 시 일관성)
+        if (currentShopPrice > 0 && currentShopPrice !== Number(cData.targetPrice)) {
+          cData.targetPrice = effectiveTargetPrice;
+        }
 
         if (uData.cash < txFinalAmount) {
           throw new Error("잔액이 부족합니다.");
@@ -284,10 +320,13 @@ export default function GroupPurchase() {
           completedAt: isCompleted ? new Date() : null,
           winnerId,
           winnerName,
+          // 캠페인 doc의 targetPrice를 상점 현재가로 동기화 (다음 조회 일관성)
+          targetPrice: effectiveTargetPrice,
         });
 
+        // 절대값 덮어쓰기 금지 — increment 사용으로 race condition 방지
         transaction.update(userRef, {
-          cash: uData.cash - txFinalAmount,
+          cash: increment(-txFinalAmount),
         });
 
         // 기여자 본인 활동 로그 (cash 차감 흔적)
@@ -408,7 +447,7 @@ export default function GroupPurchase() {
   };
 
   // 필터된 캠페인
-  const filtered = campaigns.filter((c) => {
+  const filtered = enrichedCampaigns.filter((c) => {
     if (filter === "active") return c.status === "active";
     if (filter === "completed") return c.status === "completed";
     return true;
