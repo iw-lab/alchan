@@ -111,7 +111,8 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           }}
         />
       )}
-      {/* 베이스 PNG */}
+      {/* 베이스 PNG — outfit 착용 시 머리만 표시 (NECK 27% 이하 잘림),
+          outfit이 몸 전체를 자연스럽게 덮음. */}
       <img
         src={baseUrl}
         alt="base"
@@ -123,6 +124,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           objectFit: "cover",
           zIndex: 10,
           pointerEvents: "none",
+          clipPath: slots.outfit?.url ? "inset(0 0 73% 0)" : "none",
         }}
       />
       {/* 의상/헤어/안경/모자 (z-index 순서대로 자동 정렬) */}
