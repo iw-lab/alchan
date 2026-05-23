@@ -316,10 +316,11 @@ function render() {
 
 function renderBigPreview() {
   bigPreview.innerHTML = "";
-  // 베이스
+  // 베이스 — outfit 탭에서는 머리만(NECK 27% 이하 잘림) → outfit이 몸 담당
   const baseImg = document.createElement("img");
   baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-  baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;`;
+  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 73% 0);" : "";
+  baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
 
   // 현재 슬롯의 선택된 아이템만 (다른 슬롯 숨김)
@@ -402,10 +403,11 @@ function renderGallery() {
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
-      // 베이스 + 해당 아이템 합성
+      // 베이스 + 해당 아이템 합성 — outfit 탭에서는 base 머리만
       const baseImg = document.createElement("img");
       baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-      baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;`;
+      const baseClip2 = (currentSlot === "outfit") ? "clip-path:inset(0 0 73% 0);" : "";
+      baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;${baseClip2}`;
       mini.appendChild(baseImg);
 
       const a = getAnchor(itemId);
