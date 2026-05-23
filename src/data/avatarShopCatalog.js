@@ -33,31 +33,29 @@ const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of fram
 // 결과: base의 머리(헤어/얼굴)는 그대로 보이고, outfit 캐릭터의 몸이 base 몸을 자연스럽게 덮음.
 const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing this outfit, FULL BODY front view. CRITICAL: match base character body proportions EXACTLY.
 
-📐 BODY ANATOMY (must match base character):
-- Top of head at vertical 5% (will be erased — see below)
-- Chin at vertical 25%, NECK at 27%
-- Shoulders at vertical 30%, horizontal 33-67% (shoulder width 34% of canvas)
+📐 BODY ANATOMY (must match base character EXACTLY — same scale, same proportions):
+- SHOULDERS at vertical 30-33% (horizontal 33-67%, shoulder width 34% of canvas)
 - Arms hanging STRAIGHT DOWN at sides, hands at vertical ~58%
 - Waist at vertical 55%
 - Knees at vertical 78%
-- Feet at vertical 95%
+- Feet at vertical 95% (LARGE shoes that fill the bottom of canvas)
+- The character body must FILL THE CANVAS from vertical 30% to 95% — NOT shrunk smaller, NOT shifted down
 - Standing straight, symmetric, facing camera
 
-⚠️ HEAD/FACE AREA — MUST BE PURE WHITE (#ffffff):
-- The ENTIRE area from vertical 0% to vertical 32% (just below chin) must be COMPLETELY WHITE BACKGROUND
-- NO head visible, NO face, NO eyes, NO mouth, NO hair, NO helmet, NO hat, NO crown — that whole top section is empty white
-- This is intentional: base character's head/face will be composited on top after rendering
+⚠️ HEAD AREA — MUST BE EMPTY WHITE (#ffffff):
+- ONLY the area from vertical 0% to vertical 30% must be PURE WHITE background
+- NO head, NO face, NO hair, NO helmet, NO hat in that top 30% — empty white space
+- Base character's head will be composited on top
 
-🧣 COLLAR / NECKLINE (must be present):
-- A visible collar, neckline, scarf, or shirt collar starts at vertical 32-38%
-- It should look like clothing wrapping around an invisible neck (chin sits at 30% in the base character)
-- The collar/neckline is SMALL (not covering the chin/face), it ONLY covers the neck region
+🧣 COLLAR (visible at vertical 30-37%):
+- A small collar/neckline/scarf at the very TOP of the outfit (right at vertical 30-33%)
+- It does NOT cover the chin/face area above 30%
+- Just below the head area, where shoulders meet neck
 
-👕 OUTFIT RENDERING:
-- The outfit is fully visible from vertical 32% (collar) down to 95% (footwear)
-- Skin tone (light peach) visible at neck (~27-30%), hands (~57-60%), and ankles if pants are short
-- Arms straight down at sides — sleeves match arm direction
-- Legs straight parallel — pants match leg direction
+👕 OUTFIT — FULL BODY FROM SHOULDERS (30%) TO FEET (95%):
+- Body must occupy vertical 30% to 95% — same scale as base character
+- Skin tone visible at hands (~57-60%) and ankles if pants short
+- Arms straight down, legs straight parallel
 - Korean cartoon flat illustration, thick 2-3px black outlines, vibrant solid colors`;
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
@@ -908,7 +906,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523c`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523d`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
