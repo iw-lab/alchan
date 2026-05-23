@@ -28,16 +28,33 @@ const OPACITY_RULE = "CRITICAL OPACITY: the entire hair body must be FULLY OPAQU
 
 const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of frame, NO person, NO mannequin, NO head, NO body part, just the standalone clothing/accessory item. ${OPACITY_RULE}`;
 
-// 의상(outfit/luxury) 전용 — ghost mannequin 스타일로 캐릭터 없이 옷만 풀세트.
-// 학생 base 캐릭터(머리·얼굴·손) 위에 자연스럽게 덮이도록 옷+바지+신발 vertical 정렬.
-const OUTFIT_STYLE = `${STYLE_BASE} GHOST MANNEQUIN clothing display — complete outfit set arranged vertically as if worn by an INVISIBLE WEARER:
-- Upper garment (top/jacket/shirt/blouse/robe) at vertical 12-50% of canvas
-- Lower garment (pants/skirt/trousers) at vertical 50-82% of canvas
-- Footwear (shoes/boots) at vertical 82-95% of canvas
+// 의상(outfit/luxury) — base 캐릭터와 동일 비율의 풀바디 chibi 학생이 이 옷을 입은 모습.
+// 머리/얼굴 영역(vertical 0-27%)은 반드시 PURE WHITE → 후처리 script에서 강제 알파.
+// 결과: base의 머리(헤어/얼굴)는 그대로 보이고, outfit 캐릭터의 몸이 base 몸을 자연스럽게 덮음.
+const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing this outfit, FULL BODY front view. CRITICAL: match base character body proportions EXACTLY.
 
-🚫 ABSOLUTELY FORBIDDEN: NO head, NO face, NO eyes, NO mouth, NO ears, NO hair, NO hands, NO fingers, NO arms visible, NO legs visible, NO skin tone areas, NO body silhouette inside. The wearer is completely INVISIBLE — only render the clothing fabric.
+📐 BODY ANATOMY (must match base character):
+- Top of head at vertical 5% (will be erased — see below)
+- Chin at vertical 25%, NECK at 27%
+- Shoulders at vertical 30%, horizontal 33-67% (shoulder width 34% of canvas)
+- Arms hanging STRAIGHT DOWN at sides, hands at vertical ~58%
+- Waist at vertical 55%
+- Knees at vertical 78%
+- Feet at vertical 95%
+- Standing straight, symmetric, facing camera
 
-✅ The clothing must be naturally shaped (flowing silhouette, realistic drape) but with completely HOLLOW INTERIOR — like Korean online shopping mall product photos where the garment appears to be worn but no body is visible. Sleeves end in empty cuffs, neckline has empty hole, pants legs are hollow tubes. Vertical centered composition.`;
+⚠️ HEAD/FACE AREA — MUST BE PURE WHITE (#ffffff):
+- The ENTIRE area from vertical 0% to vertical 27% (chin line) must be COMPLETELY WHITE BACKGROUND
+- NO head visible, NO face, NO eyes, NO mouth, NO hair — that whole top section is empty white
+- The neck (vertical 25-30%) emerges from the white area — neck skin in light peach tone is visible just above the collar
+- This is intentional: base character's head will be composited on top after rendering
+
+👕 OUTFIT RENDERING:
+- The outfit is fully visible from vertical 27% (collar) down to 95% (footwear)
+- Skin tone (light peach) visible at neck (~27-30%), hands (~57-60%), and ankles if pants are short
+- Arms straight down at sides — sleeves match arm direction
+- Legs straight parallel — pants match leg direction
+- Korean cartoon flat illustration, thick 2-3px black outlines, vibrant solid colors`;
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
 
@@ -887,7 +904,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523a`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523b`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
