@@ -44,13 +44,17 @@ const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing th
 - Standing straight, symmetric, facing camera
 
 ⚠️ HEAD/FACE AREA — MUST BE PURE WHITE (#ffffff):
-- The ENTIRE area from vertical 0% to vertical 27% (chin line) must be COMPLETELY WHITE BACKGROUND
-- NO head visible, NO face, NO eyes, NO mouth, NO hair — that whole top section is empty white
-- The neck (vertical 25-30%) emerges from the white area — neck skin in light peach tone is visible just above the collar
-- This is intentional: base character's head will be composited on top after rendering
+- The ENTIRE area from vertical 0% to vertical 32% (just below chin) must be COMPLETELY WHITE BACKGROUND
+- NO head visible, NO face, NO eyes, NO mouth, NO hair, NO helmet, NO hat, NO crown — that whole top section is empty white
+- This is intentional: base character's head/face will be composited on top after rendering
+
+🧣 COLLAR / NECKLINE (must be present):
+- A visible collar, neckline, scarf, or shirt collar starts at vertical 32-38%
+- It should look like clothing wrapping around an invisible neck (chin sits at 30% in the base character)
+- The collar/neckline is SMALL (not covering the chin/face), it ONLY covers the neck region
 
 👕 OUTFIT RENDERING:
-- The outfit is fully visible from vertical 27% (collar) down to 95% (footwear)
+- The outfit is fully visible from vertical 32% (collar) down to 95% (footwear)
 - Skin tone (light peach) visible at neck (~27-30%), hands (~57-60%), and ankles if pants are short
 - Arms straight down at sides — sleeves match arm direction
 - Legs straight parallel — pants match leg direction
@@ -408,7 +412,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit upper portion, helmet with reflective visor and gold trim, chest control panel with patches, NASA-style mission badge, no person inside.`,
+    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit — NO HELMET (head area must remain pure white), just the suit body with chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
   },
   {
     id: "outfit_chef",
@@ -417,7 +421,7 @@ const OUTFIT_ITEMS = [
     description: "요리사의 흰 셰프복",
     rarity: "rare",
     price: 400000,
-    prompt: `${OUTFIT_STYLE} A white chef jacket, double-breasted with two rows of buttons, neckerchief tied at the collar, professional kitchen wear, no person, just the jacket.`,
+    prompt: `${OUTFIT_STYLE} A white chef jacket, double-breasted with two rows of buttons, a SMALL red neckerchief tied snugly around the collar (small triangle knot, NOT large or flowing, NOT covering the chin), professional kitchen wear, white chef pants, white kitchen shoes.`,
   },
   {
     id: "outfit_school",
@@ -904,7 +908,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523b`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260523c`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
