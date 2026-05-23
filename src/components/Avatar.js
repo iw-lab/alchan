@@ -124,7 +124,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           objectFit: "cover",
           zIndex: 10,
           pointerEvents: "none",
-          clipPath: slots.outfit?.url ? "inset(0 0 64% 0)" : "none",
+          clipPath: slots.outfit?.url ? "inset(0 0 70% 0)" : "none",
         }}
       />
       {/* 의상/헤어/안경/모자 (z-index 순서대로 자동 정렬) */}
