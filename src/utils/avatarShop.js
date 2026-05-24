@@ -107,7 +107,7 @@ export const SLOT_ANCHORS = {
   hair:       { x: 50, y: 25.61, w: 52.8, h: 44 },
   hat:        { x: 50, y: 16.81, w: 44,   h: 26.4 },
   glasses:    { x: 50, y: 29.13, w: 35.2, h: 10.56 },
-  outfit:     { x: 50, y: 53.77, w: 88,   h: 88 },
+  outfit:     { x: 50, y: 50,    w: 100,  h: 100 },
   background: { x: 50, y: 50,    w: 100,  h: 100 },
   effect:     { x: 50, y: 53.77, w: 88,   h: 88 },
   preset:     { x: 50, y: 53.77, w: 88,   h: 88 },
@@ -169,11 +169,11 @@ export const ITEM_ANCHORS = {
   glasses_heart_pink:           { x: 50,    y: 26.73, w: 100,   h: 18 },
   glasses_mask_medic:           { x: 49.83, y: 31.8,  w: 13.5,  h: 16.5 },
   glasses_star:                 { x: 50,    y: 26.8,  w: 17,    h: 175 },
-  // outfit
-  outfit_astronaut:             { x: 49.63, y: 53.5,  w: 100,   h: 92.5 },
-  outfit_chef:                  { x: 50.03, y: 63,    w: 100,   h: 64.5 },
-  outfit_doctor:                { x: 50,    y: 63.67, w: 100,   h: 64.5 },
-  outfit_hanbok_blue:           { x: 49.97, y: 61.17, w: 100,   h: 60 },
+  // outfit — base와 동일 좌표(100% 풀 element), PNG 자체에 비율 맞춰 그림
+  outfit_astronaut:             { x: 50,    y: 50,    w: 100,   h: 100 },
+  outfit_chef:                  { x: 50,    y: 50,    w: 100,   h: 100 },
+  outfit_doctor:                { x: 50,    y: 50,    w: 100,   h: 100 },
+  outfit_hanbok_blue:           { x: 50,    y: 50,    w: 100,   h: 100 },
   // effect
   effect_butterflies:           { x: 76.17, y: 25,    w: 100,   h: 31.5 },
   effect_hearts:                { x: 50.2,  y: 68.67, w: 100,   h: 70.5 },
