@@ -43,14 +43,15 @@ const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing th
 - Standing straight, symmetric, facing camera
 
 ⚠️ HEAD AREA — MUST BE EMPTY WHITE (#ffffff):
-- ONLY the area from vertical 0% to vertical 30% must be PURE WHITE background
-- NO head, NO face, NO hair, NO helmet, NO hat in that top 30% — empty white space
+- ONLY the area from vertical 0% to vertical 25% must be PURE WHITE background (head/face area)
+- NO head, NO face, NO hair, NO helmet, NO hat in that top 25% — empty white space
 - Base character's head will be composited on top
 
-🧣 COLLAR (visible at vertical 30-37%):
-- A small collar/neckline/scarf at the very TOP of the outfit (right at vertical 30-33%)
-- It does NOT cover the chin/face area above 30%
-- Just below the head area, where shoulders meet neck
+🧣 NECK + COLLAR — MUST be drawn (vertical 25-33%):
+- This is CRITICAL: the outfit MUST have a visible NECK area (vertical 25-30%, horizontal 45-55%, skin tone or matching outfit fabric) connecting up to where the chin will be at 25%
+- Then a COLLAR/NECKLINE wrapping that neck at vertical 28-33% (covers shoulders horizontal 33-67%)
+- NO empty white gap between the head area (0-25%) and the outfit body — the neck/collar MUST fill 25-33% so the head appears to sit on the outfit naturally
+- For high-collar outfits (turtleneck/spacesuit) the collar wraps the neck fully; for v-neck/shirt outfits the skin-tone neck is visible above the collar
 
 👕 OUTFIT — FULL BODY FROM SHOULDERS (30%) TO FEET (95%):
 - Body must occupy vertical 30% to 95% — same scale as base character
