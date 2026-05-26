@@ -32,6 +32,12 @@ const WHITE_CONTENT_PROTECT = new Set([
   "glasses_aviator.png", // 안쪽 흰 outline 외곽
   "glasses_round_black.png", // 렌즈 안쪽 흰 영역
   "glasses_eyepatch.png",
+  "outfit_astronaut.png", // 흰 우주복 본체
+  "outfit_chef.png", // 흰 셰프복
+  "outfit_doctor.png", // 흰 의사 가운
+  "luxury_dress_diamond.png", // 흰/은 다이아 드레스
+  "luxury_fur_coat.png", // 흰 fur coat
+  "luxury_athletic_set.png", // 흰 옷 가능성
 ]);
 
 function isWhite(r, g, b) {
