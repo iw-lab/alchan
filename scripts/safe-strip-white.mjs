@@ -24,6 +24,11 @@ const DIR = path.resolve(__dirname, "../public/avatar-shop");
 const WHITE_THRESHOLD = 240;
 const SIZE_THRESHOLD = 3000;
 const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "luxury_"];
+// 흰색이 본체인 자산 — strip 대상에서 제외 (본체까지 alpha 처리되어 사라짐)
+const WHITE_CONTENT_PROTECT = new Set([
+  "hat_chef.png",
+  "hat_beanie_yellow.png", // 흰 줄무늬 패턴이 본체 일부
+]);
 
 function isWhite(r, g, b) {
   return r >= WHITE_THRESHOLD && g >= WHITE_THRESHOLD && b >= WHITE_THRESHOLD;
@@ -115,6 +120,10 @@ async function main() {
   for (const file of files) {
     const matched = TARGET_PREFIXES.some((p) => file.startsWith(p));
     if (!matched) continue;
+    if (WHITE_CONTENT_PROTECT.has(file)) {
+      console.log(`⏭  ${file} skip (흰 본체 보호)`);
+      continue;
+    }
     try {
       const result = await processFile(path.join(DIR, file));
       done++;

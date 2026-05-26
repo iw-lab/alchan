@@ -33,6 +33,7 @@ const BLACK_CONTENT_ALLOWLIST = new Set([
   "hair_ponytail_brown.png",
   "hair_long_wavy_brown.png",
   "hair_short_brown.png",
+  "hat_graduation.png",
 ]);
 
 function isBlack(r, g, b) {
