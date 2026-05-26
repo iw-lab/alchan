@@ -48,11 +48,13 @@ const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing th
 - NO head, NO face, NO hair, NO helmet, NO hat in that top 25% — empty white space
 - Base character's head will be composited on top
 
-🧣 NECK + COLLAR — MUST be drawn (vertical 25-33%):
-- This is CRITICAL: the outfit MUST have a visible NECK area (vertical 25-30%, horizontal 45-55%, skin tone or matching outfit fabric) connecting up to where the chin will be at 25%
-- Then a COLLAR/NECKLINE wrapping that neck at vertical 28-33% (covers shoulders horizontal 33-67%)
-- NO empty white gap between the head area (0-25%) and the outfit body — the neck/collar MUST fill 25-33% so the head appears to sit on the outfit naturally
-- For high-collar outfits (turtleneck/spacesuit) the collar wraps the neck fully; for v-neck/shirt outfits the skin-tone neck is visible above the collar
+🧣 NECK + COLLAR — MUST be drawn THIN (vertical 25-30% only):
+- This is CRITICAL: the outfit MUST have a visible NARROW NECK (vertical 25-28%, horizontal 47-53% — thin neck width about 6% of canvas, skin tone or matching outfit fabric) connecting up to where the chin will be at 25%
+- Then a SMALL THIN COLLAR/NECKLINE at vertical 28-30% only (covers just the base of the neck where it meets the shoulders — NOT a thick high collar, NOT a wide turtleneck)
+- TOTAL neck+collar zone is just vertical 25-30% (5% canvas height MAX) — keep it SLIM and DELICATE
+- NO empty white gap between the head area (0-25%) and the outfit body — the neck/collar MUST fill 25-30% so the head sits on the outfit naturally
+- Even for spacesuit/turtleneck outfits: keep the collar THIN (vertical 28-30% only), do NOT make a thick chunky neck ring
+- For v-neck/shirt outfits the skin-tone neck is visible above the collar
 
 👕 OUTFIT — COMPACT BODY FROM SHOULDERS (30%) TO FEET (62%):
 - Body must occupy ONLY vertical 30% to 62% — short compact half-height body (about half of normal student height)
