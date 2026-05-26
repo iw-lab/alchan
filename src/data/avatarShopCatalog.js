@@ -33,13 +33,14 @@ const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of fram
 // 결과: base의 머리(헤어/얼굴)는 그대로 보이고, outfit 캐릭터의 몸이 base 몸을 자연스럽게 덮음.
 const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing this outfit, FULL BODY front view. CRITICAL: match base character body proportions EXACTLY.
 
-📐 BODY ANATOMY (must match base character EXACTLY — same scale, same proportions):
+📐 BODY ANATOMY — COMPACT HALF-HEIGHT (about half the typical body length):
 - SHOULDERS at vertical 30-33% (horizontal 33-67%, shoulder width 34% of canvas)
-- Arms hanging STRAIGHT DOWN at sides, hands at vertical ~58%
-- Waist at vertical 55%
-- Knees at vertical 78%
-- Feet at vertical 95% (LARGE shoes that fill the bottom of canvas)
-- The character body must FILL THE CANVAS from vertical 30% to 95% — NOT shrunk smaller, NOT shifted down
+- Arms hanging STRAIGHT DOWN at sides, hands at vertical ~45%
+- Waist at vertical 43%
+- Knees at vertical 54%
+- Feet at vertical 62% (shoes sit there; everything below 62% is empty white space)
+- The character body occupies vertical 25% to 62% ONLY — short compact chibi-stub body, NOT a full-height standing figure
+- Everything from vertical 62% down to 100% MUST be PURE WHITE empty space (no shoes, no shadow, no character)
 - Standing straight, symmetric, facing camera
 
 ⚠️ HEAD AREA — MUST BE EMPTY WHITE (#ffffff):
@@ -53,10 +54,10 @@ const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing th
 - NO empty white gap between the head area (0-25%) and the outfit body — the neck/collar MUST fill 25-33% so the head appears to sit on the outfit naturally
 - For high-collar outfits (turtleneck/spacesuit) the collar wraps the neck fully; for v-neck/shirt outfits the skin-tone neck is visible above the collar
 
-👕 OUTFIT — FULL BODY FROM SHOULDERS (30%) TO FEET (95%):
-- Body must occupy vertical 30% to 95% — same scale as base character
-- Skin tone visible at hands (~57-60%) and ankles if pants short
-- Arms straight down, legs straight parallel
+👕 OUTFIT — COMPACT BODY FROM SHOULDERS (30%) TO FEET (62%):
+- Body must occupy ONLY vertical 30% to 62% — short compact half-height body (about half of normal student height)
+- Skin tone visible at hands (~45%) and ankles if pants short
+- Arms straight down, legs short and stubby, parallel
 - Korean cartoon flat illustration, thick 2-3px black outlines, vibrant solid colors`;
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
