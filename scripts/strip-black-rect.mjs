@@ -34,6 +34,9 @@ const BLACK_CONTENT_ALLOWLIST = new Set([
   "hair_long_wavy_brown.png",
   "hair_short_brown.png",
   "hat_graduation.png",
+  "glasses_eyepatch.png", // 검정 oval 본체
+  "glasses_round_black.png", // 검정 외곽선
+  "glasses_mask_medic.png", // 검정 외곽선
 ]);
 
 function isBlack(r, g, b) {

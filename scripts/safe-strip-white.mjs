@@ -28,6 +28,10 @@ const TARGET_PREFIXES = ["hair_", "hat_", "glasses_", "outfit_", "effect_", "lux
 const WHITE_CONTENT_PROTECT = new Set([
   "hat_chef.png",
   "hat_beanie_yellow.png", // 흰 줄무늬 패턴이 본체 일부
+  "glasses_mask_medic.png", // 흰 마스크 본체
+  "glasses_aviator.png", // 안쪽 흰 outline 외곽
+  "glasses_round_black.png", // 렌즈 안쪽 흰 영역
+  "glasses_eyepatch.png",
 ]);
 
 function isWhite(r, g, b) {
