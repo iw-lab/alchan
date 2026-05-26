@@ -390,7 +390,11 @@ function renderGallery() {
   items.forEach(itemId => {
     const card = document.createElement("div");
     card.className = "galleryItem" + (itemId === currentItem ? " active" : "");
-    card.onclick = () => { currentItem = itemId; render(); };
+    card.onclick = () => {
+      currentItem = itemId;
+      if (currentSlot === "base") { currentBase = itemId; baseSelect.value = currentBase; }
+      render();
+    };
 
     const mini = document.createElement("div");
     mini.className = "mini";
