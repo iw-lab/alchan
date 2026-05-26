@@ -410,7 +410,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit — NO HELMET (head area must remain pure white), just the suit body with chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
+    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit — NO HELMET (head area must remain pure white). The suit MUST have a clearly visible round white NECK COLLAR / neck ring at the top (just below the chin area, snug around the neck) so it visually connects to the character's neck (NOT floating below the neck — the collar wraps the neck like a turtleneck base). Chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
   },
   {
     id: "outfit_chef",
