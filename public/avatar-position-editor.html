@@ -157,10 +157,25 @@
   <div style="display:flex;gap:20px;align-items:flex-start;">
     <div>
       <h2>큰 미리보기 (선택된 아이템 조정)</h2>
-      <div id="bigPreview"></div>
+      <div style="position:relative;width:600px;height:600px;">
+        <div id="bigPreview"></div>
+        <canvas id="annotateCanvas" width="600" height="600"
+                style="position:absolute;inset:0;width:600px;height:600px;cursor:crosshair;pointer-events:none;"></canvas>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:600px;">
+        <label style="font-size:13px;">
+          <input type="checkbox" id="annotateToggle"> ✏️ 그리기 모드
+        </label>
+        <span style="font-size:13px;">색</span>
+        <input type="color" id="annotateColor" value="#ff0000" style="width:30px;height:24px;">
+        <span style="font-size:13px;">굵기</span>
+        <input type="range" id="annotateWidth" min="2" max="20" value="6" style="width:80px;">
+        <button id="annotateClear" type="button">지우기</button>
+        <button id="annotateDownload" type="button" class="primary">📸 합성 PNG 다운로드</button>
+      </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
-        캔버스 밖은 실제 사용 시 잘립니다.
+        그리기 모드 ON 시 마우스로 직접 화살표·메모 그리기 가능. 📸 다운로드로 합성 PNG 받아 첨부.
       </div>
     </div>
     <div style="flex:1;min-width:0;">
@@ -491,6 +506,73 @@ function loadFromFile() {
 }
 
 render();
+
+// ============== Annotation Canvas ==============
+const annCanvas = document.getElementById("annotateCanvas");
+const annCtx = annCanvas.getContext("2d");
+const annToggle = document.getElementById("annotateToggle");
+const annColor = document.getElementById("annotateColor");
+const annWidth = document.getElementById("annotateWidth");
+const annClear = document.getElementById("annotateClear");
+const annDownload = document.getElementById("annotateDownload");
+
+annToggle.onchange = () => {
+  annCanvas.style.pointerEvents = annToggle.checked ? "auto" : "none";
+};
+annClear.onclick = () => annCtx.clearRect(0, 0, 600, 600);
+
+let drawing = false, lastX = 0, lastY = 0;
+annCanvas.addEventListener("mousedown", (e) => {
+  const r = annCanvas.getBoundingClientRect();
+  drawing = true;
+  lastX = e.clientX - r.left;
+  lastY = e.clientY - r.top;
+});
+annCanvas.addEventListener("mousemove", (e) => {
+  if (!drawing) return;
+  const r = annCanvas.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  annCtx.beginPath();
+  annCtx.moveTo(lastX, lastY);
+  annCtx.lineTo(x, y);
+  annCtx.strokeStyle = annColor.value;
+  annCtx.lineWidth = Number(annWidth.value);
+  annCtx.lineCap = "round";
+  annCtx.lineJoin = "round";
+  annCtx.stroke();
+  lastX = x; lastY = y;
+});
+window.addEventListener("mouseup", () => { drawing = false; });
+
+annDownload.onclick = async () => {
+  const exp = document.createElement("canvas");
+  exp.width = 600; exp.height = 600;
+  const ex = exp.getContext("2d");
+  ex.fillStyle = "#ffffff";
+  ex.fillRect(0, 0, 600, 600);
+  const imgs = Array.from(bigPreview.querySelectorAll("img"));
+  for (const im of imgs) {
+    if (!im.complete || !im.naturalWidth) {
+      await new Promise((r) => { im.onload = r; im.onerror = r; });
+    }
+    const z = Number(im.style.zIndex) || 0;
+    im._zIndex = z;
+  }
+  imgs.sort((a, b) => (a._zIndex || 0) - (b._zIndex || 0));
+  for (const im of imgs) {
+    const left = parseFloat(im.style.left) || 0;
+    const top = parseFloat(im.style.top) || 0;
+    const w = parseFloat(im.style.width) || 600;
+    const h = parseFloat(im.style.height) || 600;
+    try { ex.drawImage(im, left, top, w, h); } catch (e) {}
+  }
+  ex.drawImage(annCanvas, 0, 0);
+  const a = document.createElement("a");
+  a.href = exp.toDataURL("image/png");
+  const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.download = `editor-capture-${currentSlot}-${currentItem || "base"}-${ts}.png`;
+  a.click();
+};
 </script>
 
 </body>
