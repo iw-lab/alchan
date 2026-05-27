@@ -173,6 +173,19 @@
         <button id="annotateClear" type="button">지우기</button>
         <button id="annotateDownload" type="button" class="primary">📸 합성 PNG 다운로드</button>
       </div>
+      <div style="margin-top:8px;width:600px;padding:8px;background:#f3f4f6;border-radius:8px;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;">
+          <label><input type="checkbox" id="multiSlotMode" checked> 🧩 다중 슬롯 합성 (모든 슬롯의 선택 자산 동시 표시)</label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13px;">
+          <span style="white-space:nowrap;">outfit 슬롯에서 base 보이는 영역:</span>
+          <input type="range" id="baseClipSlider" min="0" max="80" value="33" style="flex:1;">
+          <span id="baseClipValue" style="min-width:40px;">33%</span>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:#666;">
+          위 N% 보임 = clip-path:inset(0 0 (100-N)% 0). 0=전부, 33=얼굴+목까지, 50=상반신.
+        </div>
+      </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
         그리기 모드 ON 시 마우스로 직접 화살표·메모 그리기 가능. 📸 다운로드로 합성 PNG 받아 첨부.
@@ -333,14 +346,35 @@ function render() {
   updateJsonPreview();
 }
 
+// 슬롯별 사용자 선택 자산 (다중 슬롯 합성용)
+const selectedPerSlot = {};
+let multiSlotMode = true;
+let baseClipPct = 33; // base 위에서 보일 %
+
 function renderBigPreview() {
   bigPreview.innerHTML = "";
-  // 베이스 — outfit 탭에서는 머리만(NECK 27% 이하 잘림) → outfit이 몸 담당
+  // 베이스 — outfit 탭(또는 outfit이 다중 슬롯에서 선택됨)에서 base clip 적용
   const baseImg = document.createElement("img");
   baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 67% 0);" : "";
+  const outfitSelected = multiSlotMode ? !!selectedPerSlot.outfit : (currentSlot === "outfit");
+  const insetBot = 100 - baseClipPct;
+  const baseClip = outfitSelected ? `clip-path:inset(0 0 ${insetBot}% 0);` : "";
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
+
+  // 다중 슬롯 합성 모드: 각 슬롯의 선택 자산 모두 추가 (currentItem 제외 — 아래에서 별도 처리)
+  if (multiSlotMode) {
+    const slotOrder = ["background", "preset", "outfit", "hair", "glasses", "hat", "effect"];
+    for (const slot of slotOrder) {
+      const itemId = selectedPerSlot[slot];
+      if (!itemId || itemId === currentItem) continue;
+      const a = getAnchor(itemId);
+      const img = document.createElement("img");
+      img.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
+      img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[slot] ?? 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[slot] || 'normal'};`;
+      bigPreview.appendChild(img);
+    }
+  }
 
   // 현재 슬롯의 선택된 아이템만 (다른 슬롯 숨김)
   if (currentSlot !== "base") {
@@ -408,6 +442,7 @@ function renderGallery() {
     card.onclick = () => {
       currentItem = itemId;
       if (currentSlot === "base") { currentBase = itemId; baseSelect.value = currentBase; }
+      else { selectedPerSlot[currentSlot] = itemId; }
       render();
     };
 
@@ -502,6 +537,38 @@ function loadFromFile() {
       }
     };
     reader.readAsText(file);
+  };
+}
+
+// 슬롯 변경 시 현재 currentItem을 selectedPerSlot에 자동 등록
+const _origSelectSlot = baseSelect; // (no-op marker)
+const origSlotClick = document.querySelectorAll(".slotTab");
+origSlotClick.forEach((t) => {
+  t.addEventListener("click", () => {
+    if (currentSlot !== "base" && currentItem) selectedPerSlot[currentSlot] = currentItem;
+    // 다음 슬롯의 저장된 선택 자산 복원 (있으면)
+    setTimeout(() => {
+      const saved = selectedPerSlot[currentSlot];
+      if (saved && SLOTS[currentSlot].includes(saved)) {
+        currentItem = saved;
+        render();
+      }
+    }, 0);
+  });
+});
+
+// 다중 슬롯 토글
+const multiSlotChk = document.getElementById("multiSlotMode");
+if (multiSlotChk) multiSlotChk.onchange = () => { multiSlotMode = multiSlotChk.checked; render(); };
+
+// base clip 슬라이더
+const clipSlider = document.getElementById("baseClipSlider");
+const clipValue = document.getElementById("baseClipValue");
+if (clipSlider) {
+  clipSlider.oninput = () => {
+    baseClipPct = Number(clipSlider.value);
+    clipValue.textContent = baseClipPct + "%";
+    renderBigPreview();
   };
 }
 
