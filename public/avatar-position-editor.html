@@ -176,11 +176,17 @@
       <div style="margin-top:8px;width:600px;padding:8px;background:#fef3c7;border-radius:8px;font-size:13px;">
         <b>🧽 영역 삭제 도구</b> (현재 자산의 영역을 알파 처리):
         <div style="margin-top:4px;">
-          ① 그리기 모드 ON + 빨강으로 외곽선 또는 영역 칠하기 → ② 아래 버튼<br>
+          <label><input type="checkbox" id="clickFillMode"> 🎯 클릭 영역 선택 모드 (셔츠/바지 등 같은 색 영역 한 번에 mask)</label><br>
+          <span style="font-size:11px;color:#92400e;">색 허용오차:</span>
+          <input type="range" id="clickFillTol" min="5" max="80" value="25" style="width:120px;">
+          <span id="clickFillTolValue">25</span>
+        </div>
+        <div style="margin-top:4px;">
+          또는 그리기 모드 ON + 빨강으로 외곽선/영역 칠하기:<br>
           <label style="margin-right:8px;"><input type="checkbox" id="eraseFillInside" checked> 외곽선 안쪽도 함께 삭제 (closed-path fill)</label>
           <button id="eraseDownload" type="button" style="margin-top:4px;background:#dc2626;color:white;border-color:#dc2626;">🧽 그린 영역을 알파 처리한 PNG 다운로드</button>
         </div>
-        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용. 굵기 슬라이더 max=100, 큰 영역엔 굵게 칠하기.</div>
+        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용.</div>
       </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
@@ -525,9 +531,15 @@ const annWidth = document.getElementById("annotateWidth");
 const annClear = document.getElementById("annotateClear");
 const annDownload = document.getElementById("annotateDownload");
 
-annToggle.onchange = () => {
-  annCanvas.style.pointerEvents = annToggle.checked ? "auto" : "none";
+const updateCanvasPointer = () => {
+  const need = annToggle.checked || document.getElementById("clickFillMode")?.checked;
+  annCanvas.style.pointerEvents = need ? "auto" : "none";
 };
+annToggle.onchange = updateCanvasPointer;
+setTimeout(() => {
+  const cf = document.getElementById("clickFillMode");
+  if (cf) cf.onchange = updateCanvasPointer;
+}, 0);
 annClear.onclick = () => annCtx.clearRect(0, 0, 600, 600);
 
 let drawing = false, lastX = 0, lastY = 0;
@@ -552,6 +564,75 @@ annCanvas.addEventListener("mousemove", (e) => {
   lastX = x; lastY = y;
 });
 window.addEventListener("mouseup", () => { drawing = false; });
+
+// 🎯 클릭 영역 선택 모드: 클릭한 픽셀의 같은 색 연결 영역을 mask로 표시
+const clickFillChk = document.getElementById("clickFillMode");
+const clickFillTolEl = document.getElementById("clickFillTol");
+const clickFillTolVal = document.getElementById("clickFillTolValue");
+if (clickFillTolEl) clickFillTolEl.oninput = () => { clickFillTolVal.textContent = clickFillTolEl.value; };
+let assetCache = null; // { id, W, H, data }
+async function loadAssetPixels(id) {
+  if (assetCache && assetCache.id === id) return assetCache;
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.src = `/avatar-shop/${id}.png?t=${PAGE_NONCE}`;
+  await new Promise((r) => { img.onload = r; img.onerror = r; });
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const cx = c.getContext("2d");
+  cx.drawImage(img, 0, 0);
+  const { data } = cx.getImageData(0, 0, c.width, c.height);
+  assetCache = { id, W: c.width, H: c.height, data };
+  return assetCache;
+}
+annCanvas.addEventListener("mousedown", async (e) => {
+  if (!clickFillChk?.checked) return;
+  const rect = annCanvas.getBoundingClientRect();
+  const ax = e.clientX - rect.left, ay = e.clientY - rect.top; // 600 좌표
+  const targetId = (currentSlot === "base") ? currentBase : currentItem;
+  if (!targetId) return;
+  // 600 좌표 → asset 좌표 변환
+  let x0 = 0, y0 = 0, dw = 600, dh = 600;
+  if (currentSlot !== "base") {
+    const a = getAnchor(targetId);
+    dw = a.w / 100 * 600; dh = a.h / 100 * 600;
+    x0 = (a.x - a.w/2) / 100 * 600;
+    y0 = (a.y - a.h/2) / 100 * 600;
+  }
+  const { W, H, data } = await loadAssetPixels(targetId);
+  const px = Math.round((ax - x0) / dw * W);
+  const py = Math.round((ay - y0) / dh * H);
+  if (px < 0 || px >= W || py < 0 || py >= H) return;
+  const seedI = (py * W + px) * 4;
+  if (data[seedI + 3] < 50) return; // 투명 픽셀 무시
+  const sr = data[seedI], sg = data[seedI+1], sb = data[seedI+2];
+  const tol = Number(clickFillTolEl?.value) || 25;
+  // BFS flood fill: 비슷한 색 + alpha>50 픽셀 연결
+  const visited = new Uint8Array(W * H);
+  const stack = [py * W + px];
+  visited[py * W + px] = 1;
+  const points = [];
+  while (stack.length) {
+    const idx = stack.pop();
+    const x = idx % W, y = (idx - x) / W;
+    const i = idx * 4;
+    if (data[i + 3] < 50) continue;
+    const dr = data[i] - sr, dg = data[i+1] - sg, db = data[i+2] - sb;
+    if (Math.abs(dr) > tol || Math.abs(dg) > tol || Math.abs(db) > tol) continue;
+    points.push([x, y]);
+    if (x > 0 && !visited[idx-1]) { visited[idx-1]=1; stack.push(idx-1); }
+    if (x < W-1 && !visited[idx+1]) { visited[idx+1]=1; stack.push(idx+1); }
+    if (y > 0 && !visited[idx-W]) { visited[idx-W]=1; stack.push(idx-W); }
+    if (y < H-1 && !visited[idx+W]) { visited[idx+W]=1; stack.push(idx+W); }
+  }
+  // points를 annotateCanvas에 빨간 mask로 그림
+  annCtx.fillStyle = annColor.value;
+  for (const [x, y] of points) {
+    const px2 = x0 + (x / W) * dw;
+    const py2 = y0 + (y / H) * dh;
+    annCtx.fillRect(px2, py2, Math.max(1, dw / W + 0.5), Math.max(1, dh / H + 0.5));
+  }
+  console.log(`flood fill: ${points.length}px at (${px}, ${py}), color (${sr},${sg},${sb}), tol=${tol}`);
+});
 
 // 영역 삭제 도구: 빨간 펜으로 칠한 영역을 현재 자산 PNG에서 alpha 처리
 const eraseDownload = document.getElementById("eraseDownload");
