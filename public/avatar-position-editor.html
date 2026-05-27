@@ -169,17 +169,18 @@
         <span style="font-size:13px;">색</span>
         <input type="color" id="annotateColor" value="#ff0000" style="width:30px;height:24px;">
         <span style="font-size:13px;">굵기</span>
-        <input type="range" id="annotateWidth" min="2" max="20" value="6" style="width:80px;">
+        <input type="range" id="annotateWidth" min="2" max="100" value="6" style="width:120px;">
         <button id="annotateClear" type="button">지우기</button>
         <button id="annotateDownload" type="button" class="primary">📸 합성 PNG 다운로드</button>
       </div>
       <div style="margin-top:8px;width:600px;padding:8px;background:#fef3c7;border-radius:8px;font-size:13px;">
         <b>🧽 영역 삭제 도구</b> (현재 자산의 영역을 알파 처리):
         <div style="margin-top:4px;">
-          ① 그리기 모드 ON + 빨강으로 지울 영역 칠하기 → ② 아래 버튼<br>
+          ① 그리기 모드 ON + 빨강으로 외곽선 또는 영역 칠하기 → ② 아래 버튼<br>
+          <label style="margin-right:8px;"><input type="checkbox" id="eraseFillInside" checked> 외곽선 안쪽도 함께 삭제 (closed-path fill)</label>
           <button id="eraseDownload" type="button" style="margin-top:4px;background:#dc2626;color:white;border-color:#dc2626;">🧽 그린 영역을 알파 처리한 PNG 다운로드</button>
         </div>
-        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용.</div>
+        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용. 굵기 슬라이더 max=100, 큰 영역엔 굵게 칠하기.</div>
       </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
@@ -571,8 +572,42 @@ if (eraseDownload) eraseDownload.onclick = async () => {
   const cx = cv.getContext("2d");
   cx.drawImage(img, 0, 0);
   const imgData = cx.getImageData(0, 0, W, H);
-  // 3. annotateCanvas의 빨간 픽셀 mask (600x600)
+  // 3. annotateCanvas의 빨간 픽셀 mask (600x600) + 옵션 flood fill 안쪽
   const annData = annCtx.getImageData(0, 0, 600, 600).data;
+  // mask[i] = 1 means "erase" (red pen drawn or inside closed loop)
+  const mask = new Uint8Array(600 * 600);
+  for (let i = 0; i < 600 * 600; i++) {
+    if (annData[i * 4 + 3] > 30) mask[i] = 1;
+  }
+  const fillInside = document.getElementById("eraseFillInside")?.checked;
+  if (fillInside) {
+    // BFS from canvas edges through non-mask pixels = "outside"
+    const outside = new Uint8Array(600 * 600);
+    const stack = [];
+    for (let x = 0; x < 600; x++) {
+      if (!mask[x]) { outside[x] = 1; stack.push(x); }
+      const bottom = (599 * 600) + x;
+      if (!mask[bottom]) { outside[bottom] = 1; stack.push(bottom); }
+    }
+    for (let y = 0; y < 600; y++) {
+      const left = y * 600;
+      if (!mask[left]) { outside[left] = 1; stack.push(left); }
+      const right = y * 600 + 599;
+      if (!mask[right]) { outside[right] = 1; stack.push(right); }
+    }
+    while (stack.length) {
+      const idx = stack.pop();
+      const x = idx % 600, y = (idx - x) / 600;
+      if (x > 0) { const n = idx - 1; if (!mask[n] && !outside[n]) { outside[n] = 1; stack.push(n); } }
+      if (x < 599) { const n = idx + 1; if (!mask[n] && !outside[n]) { outside[n] = 1; stack.push(n); } }
+      if (y > 0) { const n = idx - 600; if (!mask[n] && !outside[n]) { outside[n] = 1; stack.push(n); } }
+      if (y < 599) { const n = idx + 600; if (!mask[n] && !outside[n]) { outside[n] = 1; stack.push(n); } }
+    }
+    // 외부 아닌 + mask 아닌 = 내부 (closed loop 안쪽) → mask에 추가
+    for (let i = 0; i < 600 * 600; i++) {
+      if (!outside[i]) mask[i] = 1;
+    }
+  }
   // 좌표 변환: ann(600) → png(W,H)
   // 큰 미리보기 PSIZE=600에 자산이 anchor 위치/크기로 그려짐. base 슬롯은 anchor = full canvas. outfit 등은 anchor 기반.
   // 단순화: base이면 자산 전체 = 600x600 매핑. 다른 슬롯은 anchor box 안에 자산 그려짐.
@@ -590,9 +625,9 @@ if (eraseDownload) eraseDownload.onclick = async () => {
       const ay = y0 + (py / H) * dh;
       const aix = Math.floor(ax), aiy = Math.floor(ay);
       if (aix < 0 || aix >= 600 || aiy < 0 || aiy >= 600) continue;
-      const ai = (aiy * 600 + aix) * 4;
-      if (annData[ai + 3] > 30) {
-        // 빨간 펜 영역 — alpha 0
+      const aIdx = aiy * 600 + aix;
+      if (mask[aIdx]) {
+        // mask 영역 — alpha 0
         imgData.data[(py * W + px) * 4 + 3] = 0;
         painted++;
       }
