@@ -727,8 +727,9 @@ if (eraseDownload) eraseDownload.onclick = async () => {
 // 🎭 outfit용 base 다운로드 — 빨강 영역 alpha 처리한 base PNG
 const outfitBaseDownload = document.getElementById("outfitBaseDownload");
 if (outfitBaseDownload) outfitBaseDownload.onclick = async () => {
-  if (currentSlot !== "base") { alert("base 슬롯에서만 가능합니다 (현재 base 자산이 대상)."); return; }
+  // 항상 현재 base 캐릭터 (base_male/base_female)를 대상으로
   const targetId = currentBase;
+  if (!targetId) { alert("base 캐릭터가 없습니다."); return; }
   const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
   const img = new Image(); img.crossOrigin = "anonymous";
   img.src = url;
