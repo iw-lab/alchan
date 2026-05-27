@@ -208,6 +208,10 @@ const BASES = ["editor_bald","base_male","base_female"];
 
 const SLOTS = {
   base:       ["base_male","base_female"], // 학생용 베이스 2종 (editor_bald 제외)
+  face:       ["face_default"],
+  eyes:       ["eyes_default"],
+  nose:       ["nose_default"],
+  mouth:      ["mouth_default"],
   hair:       ["hair_braid_blonde","hair_fire","hair_galaxy","hair_mint","hair_pink_twin","hair_rainbow_curl","hair_short_brown","hair_silver_long","hair_ponytail_brown","hair_ponytail_no_bangs_brown","hair_bun_black","hair_undercut_male","hair_messy_male","hair_slick_back_male","hair_long_wavy_brown"],
   hat:        ["hat_angel_halo","hat_baseball_red","hat_beanie_yellow","hat_chef","hat_crown_gold","hat_devil_horns","hat_graduation","hat_witch"],
   glasses:    ["glasses_3d","glasses_aviator","glasses_eyepatch","glasses_heart_pink","glasses_mask_medic","glasses_monocle","glasses_round_black","glasses_star"],
@@ -219,7 +223,9 @@ const SLOTS = {
 
 const DEFAULT_ANCHOR = { x: 50, y: 50, w: 100, h: 100 };
 const SLOT_ZINDEX = {
-  background: 0, base: 10, outfit: 20, hair: 30,
+  background: 0, base: 10,
+  face: 11, eyes: 12, nose: 13, mouth: 14,
+  outfit: 20, hair: 30,
   glasses: 40, hat: 50, effect: 60, preset: 99,
 };
 // 실제 앱과 동일하게 normal blend (PNG의 흰 픽셀이 alpha=0이라 자동 투명)
@@ -227,6 +233,7 @@ const SLOT_BLEND_MODE = {
   hair: "normal", hat: "normal", glasses: "normal",
   outfit: "normal", effect: "normal",
   base: "normal", background: "normal", preset: "normal",
+  face: "normal", eyes: "normal", nose: "normal", mouth: "normal",
 };
 
 // =====================================================================
@@ -364,7 +371,7 @@ function renderBigPreview() {
 
   // 다중 슬롯 합성 모드: 각 슬롯의 선택 자산 모두 추가 (currentItem 제외 — 아래에서 별도 처리)
   if (multiSlotMode) {
-    const slotOrder = ["background", "preset", "outfit", "hair", "glasses", "hat", "effect"];
+    const slotOrder = ["background", "preset", "face", "eyes", "nose", "mouth", "outfit", "hair", "glasses", "hat", "effect"];
     for (const slot of slotOrder) {
       const itemId = selectedPerSlot[slot];
       if (!itemId || itemId === currentItem) continue;
