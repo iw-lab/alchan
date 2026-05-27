@@ -5100,3 +5100,63 @@ exports.migrateDonationCashToAdmin = onRequest(
     }
   },
 );
+
+/**
+ * 관리자 본인 transactions 감사 — 큰 차감 거래·type별 누적
+ * 클라이언트에서 호출 (관리자 권한 필수). cash 음수 원인 추적용.
+ */
+exports.auditAdminCash = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, isAdmin, isSuperAdmin } =
+      await checkAuthAndGetUserData(request, false);
+    if (!isAdmin && !isSuperAdmin) {
+      throw new HttpsError("permission-denied", "관리자만 호출 가능합니다.");
+    }
+    const adminDoc = await db.collection("users").doc(uid).get();
+    const currentCash = adminDoc.data()?.cash ?? null;
+
+    const snap = await db
+      .collection("users").doc(uid).collection("transactions")
+      .orderBy("timestamp", "desc").limit(5000).get();
+
+    const byType = {};
+    let totalIn = 0, totalOut = 0, count = 0;
+    const negatives = [];
+    snap.forEach((d) => {
+      const t = d.data();
+      const amount = Number(t.amount) || 0;
+      const type = String(t.type || "unknown");
+      count++;
+      if (amount >= 0) totalIn += amount; else totalOut += amount;
+      if (!byType[type]) byType[type] = { count: 0, sum: 0 };
+      byType[type].count++;
+      byType[type].sum += amount;
+      if (amount < 0) {
+        negatives.push({
+          id: d.id,
+          amount,
+          type,
+          description: String(t.description || ""),
+          ts: t.timestamp?.toDate?.()?.toISOString?.() || null,
+        });
+      }
+    });
+    negatives.sort((a, b) => a.amount - b.amount);
+    const topNegatives = negatives.slice(0, 30);
+    const sumByType = Object.entries(byType)
+      .map(([type, v]) => ({ type, count: v.count, sum: v.sum }))
+      .sort((a, b) => a.sum - b.sum);
+    return {
+      currentCash,
+      transactionCount: count,
+      totalIn,
+      totalOut,
+      net: totalIn + totalOut,
+      missingNetVsCash: currentCash != null
+        ? currentCash - (totalIn + totalOut) : null,
+      sumByType,
+      topNegatives,
+    };
+  },
+);

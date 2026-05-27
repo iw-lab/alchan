@@ -118,6 +118,9 @@ const FirestoreDoctor = lazyWithRetry(
 const RecoverDonations = lazyWithRetry(
   () => import("../pages/admin/RecoverDonations"),
 );
+const AuditAdminCash = lazyWithRetry(
+  () => import("../pages/admin/AuditAdminCash"),
+);
 const StudentManager = lazyWithRetry(() => import("./StudentManager"));
 
 // 🔥 앱 관리자(SuperAdmin) 전용 대시보드
@@ -855,6 +858,14 @@ export default function AlchanLayout() {
                   element={
                     <ProtectedRoute>
                       <RecoverDonations />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit-admin-cash"
+                  element={
+                    <ProtectedRoute>
+                      <AuditAdminCash />
                     </ProtectedRoute>
                   }
                 />
