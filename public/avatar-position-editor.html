@@ -160,7 +160,7 @@
       <div style="position:relative;width:600px;height:600px;">
         <div id="bigPreview"></div>
         <canvas id="annotateCanvas" width="600" height="600"
-                style="position:absolute;inset:0;width:600px;height:600px;cursor:crosshair;pointer-events:none;"></canvas>
+                style="position:absolute;inset:0;width:600px;height:600px;cursor:crosshair;pointer-events:none;z-index:9999;"></canvas>
       </div>
       <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;width:600px;">
         <label style="font-size:13px;">
@@ -338,7 +338,7 @@ function renderBigPreview() {
   // 베이스 — outfit 탭에서는 머리만(NECK 27% 이하 잘림) → outfit이 몸 담당
   const baseImg = document.createElement("img");
   baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 65% 0);" : "";
+  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 67% 0);" : "";
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
 
