@@ -33,33 +33,30 @@ const ITEM_ONLY_STYLE = `${STYLE_BASE} The item floating alone in middle of fram
 // 결과: base의 머리(헤어/얼굴)는 그대로 보이고, outfit 캐릭터의 몸이 base 몸을 자연스럽게 덮음.
 const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing this outfit, FULL BODY front view. CRITICAL: match base character body proportions EXACTLY.
 
-📐 BODY ANATOMY — COMPACT HALF-HEIGHT (about half the typical body length):
+📐 BODY ANATOMY — FULL HEIGHT (matches base character exactly):
 - SHOULDERS at vertical 30-33% (horizontal 33-67%, shoulder width 34% of canvas)
-- Arms hanging STRAIGHT DOWN at sides, hands at vertical ~45%
-- Waist at vertical 43%
-- Knees at vertical 54%
-- Feet at vertical 62% (shoes sit there; everything below 62% is empty white space)
-- The character body occupies vertical 25% to 62% ONLY — short compact chibi-stub body, NOT a full-height standing figure
-- Everything from vertical 62% down to 100% MUST be PURE WHITE empty space (no shoes, no shadow, no character)
+- Arms hanging STRAIGHT DOWN at sides, hands at vertical ~58%
+- Waist at vertical 55%
+- Knees at vertical 78%
+- Feet at vertical 95% (LARGE shoes that fill the bottom of canvas)
+- Character body FILLS the canvas from vertical 30% to 95% — same scale as base character
 - Standing straight, symmetric, facing camera
 
-⚠️ HEAD AREA — MUST BE EMPTY WHITE (#ffffff):
-- ONLY the area from vertical 0% to vertical 25% must be PURE WHITE background (head/face area)
-- NO head, NO face, NO hair, NO helmet, NO hat in that top 25% — empty white space
-- Base character's head will be composited on top
+⚠️ HEAD + NECK AREA — MUST BE EMPTY WHITE (#ffffff) (vertical 0-30%):
+- The entire area from vertical 0% to vertical 30% must be PURE WHITE background
+- NO head, NO face, NO hair, NO helmet, NO hat, NO skin-tone neck, NO collar in that top 30% — empty white space
+- Base character's head AND neck (now extended) will be composited on top; the outfit body starts at vertical 30% (shoulders)
+- Post-processing will alpha out the 0-30% region — anything drawn there will disappear, so do NOT waste detail there
 
-🧣 NECK + COLLAR — MUST be drawn VERY THIN (vertical 25-28% only):
-- This is CRITICAL: the outfit MUST have a visible NARROW NECK (vertical 25-27.5%, horizontal 48-52% — thin neck width about 4% of canvas, skin tone or matching outfit fabric) connecting up to where the chin will be at 25%
-- Then a SMALL THIN COLLAR LINE at vertical 27.5-28% only (just a slim collar edge at the top of the shoulders — NOT a thick high collar, NOT a wide turtleneck, NOT a neck ring)
-- TOTAL neck+collar zone is just vertical 25-28% (3% canvas height MAX) — keep it MINIMAL and DELICATE
-- NO empty white gap between the head area (0-25%) and the outfit body — the neck/collar MUST fill 25-28% so the head sits on the outfit naturally
-- Even for spacesuit/turtleneck outfits: NO thick collar, NO neck ring. Just a slim collar line at 27.5-28%.
-- For v-neck/shirt outfits the skin-tone neck is visible above the collar
+👔 COLLAR / NECKLINE (at vertical 30-33% — top edge of body):
+- The outfit body's TOP EDGE at vertical 30% IS the collar/neckline — drawn naturally as part of the shoulders
+- Draw collar shape (V-neck, crew neck, lapels, suit lapels, robe collar, etc) starting AT vertical 30%, NOT above
+- Do NOT draw a separate neck piece above 30%; the base character provides the neck
 
-👕 OUTFIT — COMPACT BODY FROM SHOULDERS (30%) TO FEET (62%):
-- Body must occupy ONLY vertical 30% to 62% — short compact half-height body (about half of normal student height)
-- Skin tone visible at hands (~45%) and ankles if pants short
-- Arms straight down, legs short and stubby, parallel
+👕 OUTFIT — FULL BODY FROM SHOULDERS (30%) TO FEET (95%):
+- Body must occupy vertical 30% to 95% — same full-height scale as base character
+- Skin tone visible at hands (~58%) and ankles if pants short
+- Arms straight down, legs straight parallel
 - Korean cartoon flat illustration, thick 2-3px black outlines, vibrant solid colors`;
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
