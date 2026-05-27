@@ -127,11 +127,6 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           clipPath: slots.outfit?.url ? "inset(0 0 67% 0)" : "none",
         }}
       />
-      {/* 얼굴 부위 (base 위 덮어쓰기, z 11~14) */}
-      {renderSlotImage("face", slots.face)}
-      {renderSlotImage("eyes", slots.eyes)}
-      {renderSlotImage("nose", slots.nose)}
-      {renderSlotImage("mouth", slots.mouth)}
       {/* 의상/헤어/안경/모자 (z-index 순서대로 자동 정렬) */}
       {renderSlotImage("outfit", slots.outfit)}
       {renderSlotImage("hair", slots.hair)}

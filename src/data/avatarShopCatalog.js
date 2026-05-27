@@ -88,30 +88,6 @@ const BASE_STYLE_BALD = `${STYLE_BASE.replace("isolated on PURE WHITE background
 const BASE_STYLE = BASE_STYLE_MALE;
 
 // ============================================================================
-// 부위 자산 (face / eyes / nose / mouth) — base 얼굴 위에 덮어씌우는 layer
-// ============================================================================
-const FACE_STYLE = `${STYLE_BASE} ONE isolated cartoon HEAD shape (oval/round head outline filled with skin tone color, light beige #fbe1c6), Korean elementary student style. NO eyes, NO nose, NO mouth, NO hair, NO ears detail, NO neck, NO body. The head occupies VERTICAL 5% to 25% of the 1024px canvas, HORIZONTAL 38% to 62%. Thick black 2-3px outline around the head shape. Everything outside the head must be PURE WHITE (#ffffff) — solid color, NO shading, NO patterns.`;
-
-const EYES_STYLE = `${STYLE_BASE} ONE pair of cartoon EYES (left and right eye) for a chibi Korean elementary student face — LARGE ROUND eyes with SOLID BLACK-FILLED pupils (60-70% of eye area) and white sclera, thick black eyelid line above each eye. The two eyes positioned at VERTICAL 14% to 18% of the 1024px canvas, HORIZONTAL 42% to 58% (gap between eyes ~3-4% of canvas width). NO face outline, NO nose, NO mouth, NO eyebrows, NO hair. Everything outside the eyes must be PURE WHITE (#ffffff).`;
-
-const NOSE_STYLE = `${STYLE_BASE} ONE tiny cartoon NOSE for a chibi Korean elementary student face — a small simple curved line or tiny U-shape, black outline only (NO fill color). Positioned at VERTICAL 17% to 20% of the 1024px canvas, HORIZONTAL 48% to 52% (very small, ~3-4% canvas width). NO eyes, NO mouth, NO face outline, NO other features. Everything outside the nose must be PURE WHITE (#ffffff).`;
-
-const MOUTH_STYLE = `${STYLE_BASE} ONE cartoon MOUTH for a chibi Korean elementary student face — a small simple curved line for a FRIENDLY SMILE (single black line, curving upward at corners, ~5% canvas width). Positioned at VERTICAL 20% to 23% of the 1024px canvas, HORIZONTAL 46% to 54%. NO eyes, NO nose, NO face outline, NO teeth, NO tongue. Everything outside the mouth must be PURE WHITE (#ffffff).`;
-
-const FACE_ITEMS = [
-  { id: "face_default", slot: "face", name: "기본 얼굴형", description: "둥근 기본 얼굴 윤곽", rarity: "common", price: 0, prompt: FACE_STYLE },
-];
-const EYES_ITEMS = [
-  { id: "eyes_default", slot: "eyes", name: "기본 눈", description: "큰 검정 눈동자 + 흰자위", rarity: "common", price: 0, prompt: EYES_STYLE },
-];
-const NOSE_ITEMS = [
-  { id: "nose_default", slot: "nose", name: "기본 코", description: "작은 곡선 코", rarity: "common", price: 0, prompt: NOSE_STYLE },
-];
-const MOUTH_ITEMS = [
-  { id: "mouth_default", slot: "mouth", name: "기본 미소", description: "친근한 미소", rarity: "common", price: 0, prompt: MOUTH_STYLE },
-];
-
-// ============================================================================
 // 헤어 (8종)
 // ============================================================================
 const HAIR_ITEMS = [
@@ -920,10 +896,6 @@ const DEPRECATED_ITEMS = DEPRECATED_BASE_IDS.map((id) => ({
 const ALL_AVATAR_ITEMS = [
   ...BASE_ITEMS,
   ...DEPRECATED_ITEMS,
-  ...FACE_ITEMS,
-  ...EYES_ITEMS,
-  ...NOSE_ITEMS,
-  ...MOUTH_ITEMS,
   ...HAIR_ITEMS,
   ...HAT_ITEMS,
   ...GLASSES_ITEMS,
@@ -942,10 +914,6 @@ const ALL_AVATAR_ITEMS = [
 export {
   ALL_AVATAR_ITEMS,
   BASE_ITEMS,
-  FACE_ITEMS,
-  EYES_ITEMS,
-  NOSE_ITEMS,
-  MOUTH_ITEMS,
   HAIR_ITEMS,
   HAT_ITEMS,
   GLASSES_ITEMS,

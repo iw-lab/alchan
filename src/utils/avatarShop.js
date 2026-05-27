@@ -7,10 +7,6 @@
  */
 export const AVATAR_SHOP_SLOTS = {
   base: { name: "기본 얼굴", icon: "🙂", zIndex: 10 },
-  face: { name: "얼굴형", icon: "👤", zIndex: 11 },
-  eyes: { name: "눈", icon: "👀", zIndex: 12 },
-  nose: { name: "코", icon: "👃", zIndex: 13 },
-  mouth: { name: "입", icon: "👄", zIndex: 14 },
   hair: { name: "헤어", icon: "💇", zIndex: 30 },
   hat: { name: "모자/관", icon: "👒", zIndex: 50 },
   glasses: { name: "안경/마스크", icon: "🕶️", zIndex: 40 },
@@ -107,10 +103,6 @@ export function getActivePreset(userDoc) {
 // hair/hat 슬롯도 동일 비율로 축소 + y +9.77 보정해야 베이스 머리에 정렬.
 export const SLOT_ANCHORS = {
   base:       { x: 50, y: 53.77, w: 88,   h: 88 },
-  face:       { x: 50, y: 50,    w: 100,  h: 100 },
-  eyes:       { x: 50, y: 50,    w: 100,  h: 100 },
-  nose:       { x: 50, y: 50,    w: 100,  h: 100 },
-  mouth:      { x: 50, y: 50,    w: 100,  h: 100 },
   // hair PNG content (cy=30% 기준) → 새 베이스 머리(~30%)에 정렬
   hair:       { x: 50, y: 25.61, w: 52.8, h: 44 },
   hat:        { x: 50, y: 16.81, w: 44,   h: 26.4 },
@@ -132,10 +124,6 @@ export const SLOT_BLEND_MODES = {
   base: "normal",
   background: "normal",
   preset: "normal",
-  face: "normal",
-  eyes: "normal",
-  nose: "normal",
-  mouth: "normal",
 };
 
 /**
