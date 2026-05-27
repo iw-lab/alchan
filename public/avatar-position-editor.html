@@ -267,10 +267,18 @@ Object.keys(SLOTS).forEach(slot => {
   t.className = "slotTab" + (slot === currentSlot ? " active" : "");
   t.textContent = slot;
   t.onclick = () => {
+    // 이전 슬롯의 currentItem을 selectedPerSlot에 저장 (다중 합성용)
+    if (currentSlot !== "base" && currentItem && SLOTS[currentSlot]?.includes(currentItem)) {
+      selectedPerSlot[currentSlot] = currentItem;
+    }
     currentSlot = slot;
-    currentItem = SLOTS[slot][0];
+    // 새 슬롯에서 이전에 선택한 게 있으면 복원, 없으면 첫 자산
+    currentItem = selectedPerSlot[slot] || SLOTS[slot][0];
+    // base 외 슬롯은 자동으로 selectedPerSlot에 등록 (다중 합성에 자동 포함)
+    if (slot !== "base" && !(slot in selectedPerSlot)) {
+      selectedPerSlot[slot] = currentItem;
+    }
     // 머리 슬롯일 때만 대머리 베이스, 그 외에는 머리 있는 base_male
-    // hair 슬롯은 editor_bald (대머리) — 헤어 아이템 위치 잡기 쉽게. 다른 슬롯은 base_male.
     currentBase = (slot === "hair") ? "editor_bald" : "base_male";
     baseSelect.value = currentBase;
     [...slotTabsEl.children].forEach((c, i) => c.classList.toggle("active", Object.keys(SLOTS)[i] === slot));
@@ -442,6 +450,18 @@ function renderBigPreview() {
 
 function renderGallery() {
   gallery.innerHTML = "";
+  // base 외 슬롯: 해제 카드 + 갤러리
+  if (currentSlot !== "base") {
+    const clearCard = document.createElement("div");
+    clearCard.className = "galleryItem" + (!selectedPerSlot[currentSlot] ? " active" : "");
+    clearCard.style.cssText = "display:flex;align-items:center;justify-content:center;background:#fee2e2;border-color:#ef4444;";
+    clearCard.innerHTML = '<div style="text-align:center;font-size:14px;color:#991b1b;font-weight:bold;">❌<br>이 슬롯<br>없음</div>';
+    clearCard.onclick = () => {
+      selectedPerSlot[currentSlot] = null;
+      render();
+    };
+    gallery.appendChild(clearCard);
+  }
   const items = SLOTS[currentSlot];
   items.forEach(itemId => {
     const card = document.createElement("div");
@@ -546,23 +566,6 @@ function loadFromFile() {
     reader.readAsText(file);
   };
 }
-
-// 슬롯 변경 시 현재 currentItem을 selectedPerSlot에 자동 등록
-const _origSelectSlot = baseSelect; // (no-op marker)
-const origSlotClick = document.querySelectorAll(".slotTab");
-origSlotClick.forEach((t) => {
-  t.addEventListener("click", () => {
-    if (currentSlot !== "base" && currentItem) selectedPerSlot[currentSlot] = currentItem;
-    // 다음 슬롯의 저장된 선택 자산 복원 (있으면)
-    setTimeout(() => {
-      const saved = selectedPerSlot[currentSlot];
-      if (saved && SLOTS[currentSlot].includes(saved)) {
-        currentItem = saved;
-        render();
-      }
-    }, 0);
-  });
-});
 
 // 다중 슬롯 토글
 const multiSlotChk = document.getElementById("multiSlotMode");
