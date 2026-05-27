@@ -429,7 +429,7 @@ function renderGallery() {
       // 베이스 + 해당 아이템 합성 — outfit 탭에서는 base 머리만
       const baseImg = document.createElement("img");
       baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-      const baseClip2 = (currentSlot === "outfit") ? "clip-path:inset(0 0 65% 0);" : "";
+      const baseClip2 = (currentSlot === "outfit") ? "clip-path:inset(0 0 67% 0);" : "";
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;${baseClip2}`;
       mini.appendChild(baseImg);
 
