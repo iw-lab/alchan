@@ -173,6 +173,14 @@
         <button id="annotateClear" type="button">지우기</button>
         <button id="annotateDownload" type="button" class="primary">📸 합성 PNG 다운로드</button>
       </div>
+      <div style="margin-top:8px;width:600px;padding:8px;background:#fef3c7;border-radius:8px;font-size:13px;">
+        <b>🧽 영역 삭제 도구</b> (현재 자산의 영역을 알파 처리):
+        <div style="margin-top:4px;">
+          ① 그리기 모드 ON + 빨강으로 지울 영역 칠하기 → ② 아래 버튼<br>
+          <button id="eraseDownload" type="button" style="margin-top:4px;background:#dc2626;color:white;border-color:#dc2626;">🧽 그린 영역을 알파 처리한 PNG 다운로드</button>
+        </div>
+        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용.</div>
+      </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
         그리기 모드 ON 시 마우스로 직접 화살표·메모 그리기 가능. 📸 다운로드로 합성 PNG 받아 첨부.
@@ -543,6 +551,60 @@ annCanvas.addEventListener("mousemove", (e) => {
   lastX = x; lastY = y;
 });
 window.addEventListener("mouseup", () => { drawing = false; });
+
+// 영역 삭제 도구: 빨간 펜으로 칠한 영역을 현재 자산 PNG에서 alpha 처리
+const eraseDownload = document.getElementById("eraseDownload");
+if (eraseDownload) eraseDownload.onclick = async () => {
+  // 현재 표시 중인 자산 결정: base 슬롯이면 currentBase, 다른 슬롯이면 currentItem
+  const targetId = (currentSlot === "base") ? currentBase : currentItem;
+  if (!targetId) { alert("대상 자산이 없습니다."); return; }
+  const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
+  // 1. 현재 자산 PNG 로드 → ImageBitmap
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = url;
+  await new Promise((r, e) => { img.onload = r; img.onerror = e; });
+  const W = img.naturalWidth, H = img.naturalHeight;
+  // 2. PNG 캔버스에 그리기
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d");
+  cx.drawImage(img, 0, 0);
+  const imgData = cx.getImageData(0, 0, W, H);
+  // 3. annotateCanvas의 빨간 픽셀 mask (600x600)
+  const annData = annCtx.getImageData(0, 0, 600, 600).data;
+  // 좌표 변환: ann(600) → png(W,H)
+  // 큰 미리보기 PSIZE=600에 자산이 anchor 위치/크기로 그려짐. base 슬롯은 anchor = full canvas. outfit 등은 anchor 기반.
+  // 단순화: base이면 자산 전체 = 600x600 매핑. 다른 슬롯은 anchor box 안에 자산 그려짐.
+  let x0 = 0, y0 = 0, dw = 600, dh = 600;
+  if (currentSlot !== "base") {
+    const a = getAnchor(targetId);
+    dw = a.w / 100 * 600; dh = a.h / 100 * 600;
+    x0 = (a.x - a.w/2) / 100 * 600;
+    y0 = (a.y - a.h/2) / 100 * 600;
+  }
+  let painted = 0;
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const ax = x0 + (px / W) * dw;
+      const ay = y0 + (py / H) * dh;
+      const aix = Math.floor(ax), aiy = Math.floor(ay);
+      if (aix < 0 || aix >= 600 || aiy < 0 || aiy >= 600) continue;
+      const ai = (aiy * 600 + aix) * 4;
+      if (annData[ai + 3] > 30) {
+        // 빨간 펜 영역 — alpha 0
+        imgData.data[(py * W + px) * 4 + 3] = 0;
+        painted++;
+      }
+    }
+  }
+  cx.putImageData(imgData, 0, 0);
+  const a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = `${targetId}-erased.png`;
+  a.click();
+  alert(`${painted}px 알파 처리. 다운로드 PNG를 public/avatar-shop/${targetId}.png 에 덮어쓰세요.`);
+};
 
 annDownload.onclick = async () => {
   const exp = document.createElement("canvas");
