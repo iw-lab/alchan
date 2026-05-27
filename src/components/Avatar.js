@@ -23,10 +23,16 @@ const withCacheBust = (url) => {
  *                                각 slot 값은 { url, anchorOverride?, scale? }
  */
 export default function Avatar({ size = 100, showBorder = true, onClick, shopOverlays }) {
-  const baseUrl = withCacheBust(shopOverlays?.baseUrl || DEFAULT_BASE_URL);
+  const rawBaseUrl = shopOverlays?.baseUrl || DEFAULT_BASE_URL;
+  const slots = shopOverlays?.slots || {};
+  // outfit 입을 때 자동으로 _outfit.png 변종 시도 (없으면 onError로 원본 fallback)
+  const outfitBaseUrl = slots.outfit?.url
+    ? rawBaseUrl.replace(/\.png(\?.*)?$/, "_outfit.png$1")
+    : null;
+  const baseUrl = withCacheBust(outfitBaseUrl || rawBaseUrl);
+  const fallbackBaseUrl = withCacheBust(rawBaseUrl);
   const bgUrl = withCacheBust(shopOverlays?.bgUrl);
   const presetUrl = withCacheBust(shopOverlays?.presetUrl);
-  const slots = shopOverlays?.slots || {};
 
   // 컨테이너 스타일
   const containerStyle = {
@@ -116,6 +122,12 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
       <img
         src={baseUrl}
         alt="base"
+        onError={(e) => {
+          // _outfit.png 변종 없으면 원본 base로 fallback
+          if (e.currentTarget.src !== fallbackBaseUrl) {
+            e.currentTarget.src = fallbackBaseUrl;
+          }
+        }}
         style={{
           position: "absolute",
           inset: 0,
@@ -124,7 +136,8 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           objectFit: "cover",
           zIndex: 10,
           pointerEvents: "none",
-          clipPath: slots.outfit?.url ? "inset(0 0 67% 0)" : "none",
+          // _outfit 변종 사용 시 clip-path 불필요 (이미 alpha 처리됨)
+          clipPath: (slots.outfit?.url && !outfitBaseUrl) ? "inset(0 0 67% 0)" : "none",
         }}
       />
       {/* 의상/헤어/안경/모자 (z-index 순서대로 자동 정렬) */}

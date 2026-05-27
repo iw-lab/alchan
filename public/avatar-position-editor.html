@@ -185,6 +185,7 @@
           또는 그리기 모드 ON + 빨강으로 외곽선/영역 칠하기:<br>
           <label style="margin-right:8px;"><input type="checkbox" id="eraseFillInside" checked> 외곽선 안쪽도 함께 삭제 (closed-path fill)</label>
           <button id="eraseDownload" type="button" style="margin-top:4px;background:#dc2626;color:white;border-color:#dc2626;">🧽 그린 영역을 알파 처리한 PNG 다운로드</button>
+          <button id="outfitBaseDownload" type="button" style="margin-top:4px;background:#7c3aed;color:white;border-color:#7c3aed;">🎭 outfit용 base 다운로드 (빨강=alpha, 나머지=보임)</button>
         </div>
         <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용.</div>
       </div>
@@ -720,6 +721,43 @@ if (eraseDownload) eraseDownload.onclick = async () => {
   a.download = `${targetId}-erased.png`;
   a.click();
   alert(`${painted}px 알파 처리. 다운로드 PNG를 public/avatar-shop/${targetId}.png 에 덮어쓰세요.`);
+};
+
+// 🎭 outfit용 base 다운로드 — 빨강 영역 alpha 처리한 base PNG
+const outfitBaseDownload = document.getElementById("outfitBaseDownload");
+if (outfitBaseDownload) outfitBaseDownload.onclick = async () => {
+  if (currentSlot !== "base") { alert("base 슬롯에서만 가능합니다 (현재 base 자산이 대상)."); return; }
+  const targetId = currentBase;
+  const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.src = url;
+  await new Promise((r, e) => { img.onload = r; img.onerror = e; });
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d");
+  cx.drawImage(img, 0, 0);
+  const imgData = cx.getImageData(0, 0, W, H);
+  const annData = annCtx.getImageData(0, 0, 600, 600).data;
+  // base 슬롯: 자산 전체 = 600x600 매핑
+  let painted = 0;
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const ax = Math.floor((px / W) * 600);
+      const ay = Math.floor((py / H) * 600);
+      const ai = (ay * 600 + ax) * 4;
+      if (annData[ai + 3] > 30) {
+        imgData.data[(py * W + px) * 4 + 3] = 0;
+        painted++;
+      }
+    }
+  }
+  cx.putImageData(imgData, 0, 0);
+  const a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = `${targetId}_outfit.png`;
+  a.click();
+  alert(`${painted}px 알파 처리. 다운로드 PNG를 public/avatar-shop/${targetId}_outfit.png 에 저장하세요. outfit 입었을 때 자동 사용됩니다.`);
 };
 
 annDownload.onclick = async () => {
