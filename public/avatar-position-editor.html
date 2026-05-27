@@ -354,8 +354,8 @@ function renderBigPreview() {
   // 베이스 — outfit 탭에서는 머리만(NECK 27% 이하 잘림) → outfit이 몸 담당
   const baseImg = document.createElement("img");
   baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-  // _outfit.png 변종이 있을 때만 자동으로 alpha 처리됨. 편집기에선 안 자르고 전체 표시 — outfit이 위에서 덮음.
-  const baseClip = "";
+  // outfit 슬롯: base 위 38% (머리+목+어깨 시작)만 표시
+  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 62% 0);" : "";
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
 
@@ -446,7 +446,7 @@ function renderGallery() {
       // 베이스 + 해당 아이템 합성 — outfit 탭에서는 base 머리만
       const baseImg = document.createElement("img");
       baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-      const baseClip2 = "";
+      const baseClip2 = (currentSlot === "outfit") ? "clip-path:inset(0 0 62% 0);" : "";
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;${baseClip2}`;
       mini.appendChild(baseImg);
 
