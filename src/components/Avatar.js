@@ -136,8 +136,9 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           objectFit: "cover",
           zIndex: 10,
           pointerEvents: "none",
-          // _outfit 변종 사용 시 clip-path 불필요 (이미 alpha 처리됨)
-          clipPath: (slots.outfit?.url && !outfitBaseUrl) ? "inset(0 0 67% 0)" : "none",
+          // _outfit 변종이 있어 자동 alpha 처리될 예정 → clipPath 불필요.
+          // _outfit 없을 때(legacy)는 outfit이 위에서 base 몸을 덮음 → 전체 표시.
+          clipPath: "none",
         }}
       />
       {/* 의상/헤어/안경/모자 (z-index 순서대로 자동 정렬) */}
