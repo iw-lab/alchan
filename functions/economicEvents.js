@@ -445,16 +445,15 @@ async function executeTaxExtra(classCode, params) {
       const netWorth =
         cash + couponTotal + parking + stockValue + realEstateValue - loanBalance;
 
-      // 순자산 ≤ 0 이거나 낼 현금 자체가 없는 학생은 그냥 안 걷고 스킵 (로그도 X)
-      if (netWorth <= 0 || cash <= 0) return null;
+      // 순자산 ≤ 0인 학생만 스킵. 순자산이 플러스면 현금 부족해도(마이너스 가더라도) 징수.
+      if (netWorth <= 0) return null;
 
       const assessedTax = Math.floor(netWorth * taxRate);
       if (assessedTax <= 0) return null;
 
-      const actualDeduct = Math.max(0, Math.min(cash, assessedTax));
-      if (actualDeduct <= 0) return null;
-
-      const unpaid = assessedTax - actualDeduct;
+      // 순자산 기준 전액 징수 — 현금 잔고와 무관 (마이너스 허용)
+      const actualDeduct = assessedTax;
+      const unpaid = 0;
 
       return {
         ref: sDoc.ref,
