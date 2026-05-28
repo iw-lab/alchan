@@ -520,7 +520,7 @@ const OUTFIT_ITEMS = [
     description: "디자이너 컬렉션의 최고급 트레이닝복",
     rarity: "epic",
     price: 8000000,
-    prompt: `${OUTFIT_STYLE} A high-end designer athletic tracksuit top, sleek black with gold metallic stripes down the sleeves, premium technical fabric texture, expensive looking gold zipper, a thick golden chain visible at the neckline, NO brand logos, generic ultra-premium streetwear style, hip-hop luxury aesthetic.`,
+    prompt: `${OUTFIT_STYLE} A high-end designer FULL TRACKSUIT (matching jacket + matching pants + premium sneakers — ALL THREE PIECES VISIBLE), sleek black with gold metallic stripes down the sleeves AND down the pant legs, premium technical fabric texture, expensive looking gold zipper, a thick golden chain visible at the neckline, premium black-and-gold athletic sneakers at the feet. CRITICAL: STRONG BLACK OUTLINE (3px solid black border around every piece — jacket, pants, sneakers), high contrast colors, NO faded or sketchy lines, fully opaque solid fill colors. NO brand logos, generic ultra-premium streetwear style, hip-hop luxury aesthetic.`,
   },
   {
     id: "luxury_fur_coat",

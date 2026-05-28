@@ -351,11 +351,15 @@ function render() {
 
 function renderBigPreview() {
   bigPreview.innerHTML = "";
-  // 베이스 — outfit 탭에서는 머리만(NECK 27% 이하 잘림) → outfit이 몸 담당
+  // 베이스 — outfit 슬롯이면 _outfit.png 변종 사용 (없으면 onError → 원본 fallback)
   const baseImg = document.createElement("img");
-  baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-  // outfit 슬롯: base 위 38% (머리+목+어깨 시작)만 표시
-  const baseClip = (currentSlot === "outfit") ? "clip-path:inset(0 0 62% 0);" : "";
+  const useOutfitVariant = (currentSlot === "outfit");
+  baseImg.src = `/avatar-shop/${currentBase}${useOutfitVariant ? "_outfit" : ""}.png?t=${PAGE_NONCE}`;
+  baseImg.onerror = () => {
+    if (useOutfitVariant) baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
+  };
+  // _outfit.png 사용 시 이미 alpha 처리되어 있어 clipPath 불필요
+  const baseClip = "";
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
 
@@ -443,10 +447,12 @@ function renderGallery() {
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
-      // 베이스 + 해당 아이템 합성 — outfit 탭에서는 base 머리만
+      // 베이스 + 해당 아이템 합성 — outfit 탭이면 _outfit.png 변종 사용
       const baseImg = document.createElement("img");
-      baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
-      const baseClip2 = (currentSlot === "outfit") ? "clip-path:inset(0 0 62% 0);" : "";
+      const useV = (currentSlot === "outfit");
+      baseImg.src = `/avatar-shop/${currentBase}${useV ? "_outfit" : ""}.png?t=${PAGE_NONCE}`;
+      baseImg.onerror = () => { if (useV) baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`; };
+      const baseClip2 = "";
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;${baseClip2}`;
       mini.appendChild(baseImg);
 
@@ -727,8 +733,9 @@ if (eraseDownload) eraseDownload.onclick = async () => {
 // 🎭 outfit용 base 다운로드 — 빨강 영역 alpha 처리한 base PNG
 const outfitBaseDownload = document.getElementById("outfitBaseDownload");
 if (outfitBaseDownload) outfitBaseDownload.onclick = async () => {
-  if (currentSlot !== "base") { alert("base 슬롯에서만 가능합니다 (현재 base 자산이 대상)."); return; }
+  // 항상 현재 base 캐릭터 (base_male/base_female)를 대상으로
   const targetId = currentBase;
+  if (!targetId) { alert("base 캐릭터가 없습니다."); return; }
   const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
   const img = new Image(); img.crossOrigin = "anonymous";
   img.src = url;
