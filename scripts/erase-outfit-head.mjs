@@ -15,7 +15,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIR = path.resolve(__dirname, "../public/avatar-shop");
-const ERASE_RATIO = 0.22;
+const ERASE_RATIO = 0.32;
 
 const args = process.argv.slice(2).reduce((acc, a) => {
   const [k, v] = a.split("=");
