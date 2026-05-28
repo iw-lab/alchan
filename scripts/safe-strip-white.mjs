@@ -38,6 +38,7 @@ const WHITE_CONTENT_PROTECT = new Set([
   "luxury_dress_diamond.png", // 흰/은 다이아 드레스
   "luxury_fur_coat.png", // 흰 fur coat
   "luxury_athletic_set.png", // 흰 옷 가능성
+  "luxury_kpop_stage.png", // 흰 + 보석 stage 의상
 ]);
 
 function isWhite(r, g, b) {
