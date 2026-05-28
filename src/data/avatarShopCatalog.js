@@ -420,7 +420,7 @@ const OUTFIT_ITEMS = [
     description: "요리사의 흰 셰프복",
     rarity: "rare",
     price: 400000,
-    prompt: `${OUTFIT_STYLE} A white chef jacket, double-breasted with two rows of buttons, a SMALL red neckerchief tied snugly around the collar (small triangle knot, NOT large or flowing, NOT covering the chin), professional kitchen wear, white chef pants, white kitchen shoes.`,
+    prompt: `${OUTFIT_STYLE} A white chef uniform — FULL OUTFIT: white double-breasted chef jacket (two rows of black buttons, visible shoulders + lapels at vertical 30-33%, sleeves down to wrists), white chef pants (full-length from waist to ankles), white kitchen shoes. SMALL red neckerchief at collar (small knot, NOT covering chin). CRITICAL: STRONG SOLID BLACK 3px outline around every piece (jacket, pants, shoes, neckerchief) — NO faded/sketchy lines, NO missing outlines. Visible shoulders, full body head-to-toe.`,
   },
   {
     id: "outfit_school",
@@ -438,7 +438,7 @@ const OUTFIT_ITEMS = [
     description: "반짝이는 아이돌 무대의상",
     rarity: "legendary",
     price: 6000000,
-    prompt: `${OUTFIT_STYLE} A sparkly silver K-pop idol stage outfit jacket, glittery sequins, decorative tassels and chains, dazzling colorful gems on the chest, no person.`,
+    prompt: `${OUTFIT_STYLE} A FULL K-pop idol stage outfit: sparkly silver jacket with shoulders + lapels at vertical 30-33% (glittery sequins, decorative tassels and chains, dazzling colorful gems on the chest), matching silver glittery pants (full-length to ankles), silver platform sneakers at the feet. CRITICAL: visible shoulders + full-length pants + shoes all drawn, NOT cropped at waist. STRONG solid black 3px outline around every piece, NO faded/sketchy lines.`,
   },
   {
     id: "outfit_police",
@@ -484,7 +484,7 @@ const OUTFIT_ITEMS = [
     description: "다이아몬드가 박힌 빛나는 최고급 드레스",
     rarity: "legendary",
     price: 25000000,
-    prompt: `${OUTFIT_STYLE} An ultra luxurious diamond-encrusted evening dress upper portion, sparkling silver fabric covered in tiny diamond gemstones, plunging V-neckline with elaborate diamond necklace, off-shoulder design with delicate gold trim, glamorous red-carpet style, NO brand logos, generic ultra-luxury cartoon look, dazzling and opulent.`,
+    prompt: `${OUTFIT_STYLE} A FULL-LENGTH floor-length evening dress (NOT cropped, NOT just upper bodice — extends from shoulders at vertical 30% all the way down to feet at vertical 95%), sparkling silver fabric covered in tiny diamond gemstones, modest crew-neck or boat-neckline (NOT plunging V, NOT off-shoulder, NOT bare skin at chest — covered fabric with diamond necklace ON TOP of the fabric), visible shoulders + arms + bodice + flowing skirt down to feet, matching diamond-encrusted high heels at bottom. CRITICAL: visible shoulders (NOT pure white, NOT skin neckline), NO bare-shoulder/off-shoulder design (that creates skin neckline that clashes with base). STRONG solid black 3px outline around every contour, NO faded/sketchy lines.`,
   },
   {
     id: "luxury_royal_robe",
