@@ -134,8 +134,8 @@ export const SLOT_BLEND_MODES = {
  */
 // v11 — 사용자 fine-tune (avatar-anchors v22.json, 2026-05-21 16:05)
 // hair_rainbow_curl 추가 미세 조정 (PNG 재생성 후)
-// 🔧 아바타 위치 편집기(avatar-position-editor)에서 튜닝한 값 적용 — avatar-anchors (31).json (2026-05-29)
-//   outfit_chef/doctor, luxury_dress_diamond/designer_coat 는 PNG 수정 대상이라 기본 좌표 유지.
+// 🔧 아바타 위치 편집기에서 튜닝한 값 적용 — avatar-anchors (33).json (2026-05-29)
+//   astronaut/chef/doctor/dress_diamond 는 풀바디 PNG라 기본 좌표(50,50,100,100) 사용.
 export const ITEM_ANCHORS = {
   // hair
   hair_braid_blonde:             { x: 49.63, y: 34.5, w: 327, h: 49.5 },
@@ -172,22 +172,22 @@ export const ITEM_ANCHORS = {
   glasses_round_black:           { x: 49.5, y: 26.8, w: 100, h: 16.5 },
   glasses_star:                  { x: 49.83, y: 26.97, w: 17, h: 175 },
   // outfit
-  luxury_athletic_set:           { x: 49.67, y: 54.83, w: 100, h: 100 },
-  luxury_designer_coat:          { x: 50, y: 50, w: 100, h: 100 },
+  luxury_athletic_set:           { x: 49.5, y: 54.83, w: 100, h: 100 },
+  luxury_designer_coat:          { x: 49.67, y: 55, w: 100, h: 100 },
   luxury_dress_diamond:          { x: 50, y: 50, w: 100, h: 100 },
-  luxury_fur_coat:               { x: 49.83, y: 54.5, w: 100, h: 100 },
+  luxury_fur_coat:               { x: 49.83, y: 53.83, w: 100, h: 100 },
   luxury_hanbok_gold:            { x: 49.67, y: 54.17, w: 100, h: 100 },
-  luxury_kpop_stage:             { x: 49.5, y: 55, w: 100, h: 100 },
-  luxury_royal_robe:             { x: 49.5, y: 54.83, w: 100, h: 100 },
-  luxury_suit_gold:              { x: 49.47, y: 52.47, w: 100, h: 87 },
-  outfit_astronaut:              { x: 49.5, y: 54.5, w: 100, h: 100 },
+  luxury_kpop_stage:             { x: 49.67, y: 54.33, w: 100, h: 100 },
+  luxury_royal_robe:             { x: 49.5, y: 54.17, w: 100, h: 100 },
+  luxury_suit_gold:              { x: 50.03, y: 51.03, w: 100, h: 85 },
+  outfit_astronaut:              { x: 50, y: 50, w: 100, h: 100 },
   outfit_chef:                   { x: 50, y: 50, w: 100, h: 100 },
   outfit_doctor:                 { x: 50, y: 50, w: 100, h: 100 },
-  outfit_hanbok_blue:            { x: 49.5, y: 54, w: 100, h: 100 },
-  outfit_kpop_idol:              { x: 48.83, y: 54, w: 100, h: 100 },
-  outfit_police:                 { x: 49.67, y: 55.5, w: 100, h: 100 },
-  outfit_robe_wizard:            { x: 49.5, y: 54.67, w: 100, h: 100 },
-  outfit_school:                 { x: 49.67, y: 54.5, w: 100, h: 100 },
+  outfit_hanbok_blue:            { x: 49.33, y: 52.83, w: 100, h: 100 },
+  outfit_kpop_idol:              { x: 48.67, y: 54.33, w: 100, h: 100 },
+  outfit_police:                 { x: 49.67, y: 54.83, w: 100, h: 100 },
+  outfit_robe_wizard:            { x: 49.5, y: 54, w: 100, h: 100 },
+  outfit_school:                 { x: 49.5, y: 54.5, w: 100, h: 100 },
   // effect
   effect_butterflies:            { x: 51.23, y: 52, w: 536, h: 210.5 },
   effect_hearts:                 { x: 50.2, y: 68.67, w: 100, h: 70.5 },
