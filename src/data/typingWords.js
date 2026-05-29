@@ -652,3 +652,80 @@ export const getRandomSentences = (difficulty) => {
 
   return shuffled.slice(0, count);
 };
+
+// =================================================================
+// 🎮 게임 모드 (떨어지는 단어 "워드 레인")
+// =================================================================
+
+// 떨어지는 단어 풀 — 짧은 단어(2~6글자)일수록 위쪽, 길수록 아래 티어.
+// 레벨이 오를수록 긴 단어가 섞여 난이도 자연 상승.
+export const fallingWordPool = {
+  // tier 1: 2~3글자 (초반)
+  short: [
+    "학교", "친구", "공부", "운동", "음악", "그림", "책상", "연필", "지우개", "가방",
+    "교실", "급식", "체육", "미술", "수학", "국어", "과학", "사회", "영어", "독서",
+    "저축", "예금", "이자", "투자", "주식", "통장", "용돈", "지폐", "동전", "월급",
+    "시장", "가게", "물건", "가격", "할인", "영수증", "거래", "교환", "선물", "쿠폰",
+    "사과", "바나나", "포도", "딸기", "수박", "토끼", "강아지", "고양이", "나비", "참새",
+    "구름", "바람", "햇빛", "무지개", "바다", "산", "강", "나무", "꽃", "별",
+  ],
+  // tier 2: 4~6글자 (중반)
+  medium: [
+    "대한민국", "지구촌", "도서관", "운동장", "교과서", "준비물", "시간표", "발표회",
+    "용돈기입장", "경제활동", "저축습관", "현명한소비", "신용점수", "가계부", "예산세우기",
+    "재활용", "환경보호", "에너지절약", "물절약", "나눔실천", "봉사활동", "협동심", "배려심",
+    "건강한몸", "규칙생활", "아침운동", "골고루먹기", "푹자기", "손씻기", "이닦기",
+    "꿈을향해", "끝까지", "한걸음씩", "포기하지마", "할수있어", "최선을다해",
+  ],
+  // tier 3: 7글자+ (후반·고득점)
+  long: [
+    "오늘도행복하게", "꾸준한노력의힘", "정직이최고의자산", "함께성장하는우리",
+    "작은실천큰변화", "현명한경제생활", "미래를위한저축", "도전하는용기",
+    "감사하는마음으로", "서로존중하는교실", "건강한소비습관", "꿈은이루어진다",
+  ],
+};
+
+// 게임 모드 설정 — 레벨 곡선
+export const arcadeConfig = {
+  lives: 3,                 // 생명 개수
+  startFallDuration: 9000,  // 레벨1 단어가 위→아래 떨어지는 시간(ms) — 클수록 느림
+  minFallDuration: 2800,    // 최고 속도 하한
+  fallSpeedupPerLevel: 600, // 레벨당 떨어지는 시간 감소(ms)
+  startSpawnInterval: 2200, // 레벨1 단어 생성 간격(ms)
+  minSpawnInterval: 900,    // 생성 간격 하한
+  spawnSpeedupPerLevel: 130,// 레벨당 생성 간격 감소(ms)
+  wordsPerLevel: 8,         // 이 개수만큼 처리하면 레벨업
+  maxConcurrent: 6,         // 동시에 화면에 떠있는 최대 단어 수
+};
+
+// 현재 레벨에 맞는 단어 1개 뽑기 (레벨↑ → 긴 단어 확률↑)
+export const pickFallingWord = (level = 1) => {
+  const r = Math.random();
+  let pool;
+  if (level <= 2) {
+    pool = r < 0.85 ? fallingWordPool.short : fallingWordPool.medium;
+  } else if (level <= 4) {
+    pool = r < 0.5 ? fallingWordPool.short : (r < 0.9 ? fallingWordPool.medium : fallingWordPool.long);
+  } else {
+    pool = r < 0.3 ? fallingWordPool.short : (r < 0.75 ? fallingWordPool.medium : fallingWordPool.long);
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+// 단어 처리 점수: 글자 길이 × 10 × 콤보배율(최대 5배)
+export const arcadeWordScore = (word, combo) => {
+  const comboMult = Math.min(1 + combo * 0.1, 5); // 콤보 1당 +10%, 상한 5배
+  return Math.round(word.length * 10 * comboMult);
+};
+
+// 게임 모드 점수 → 기존 카드 보상 파라미터(difficulty, correctCount)로 매핑.
+// 🔒 금융 안전: 새 faucet을 만들지 않고 기존 generateRandomReward 가중치를 그대로 재사용.
+//   하루 5회 카드뽑기 카운터도 연습모드와 공유(총 일일 지급량 불변).
+export const getArcadeRewardParams = (score = 0) => {
+  if (score >= 1200) return { difficulty: "master", correctCount: 4 };
+  if (score >= 700)  return { difficulty: "expert", correctCount: 5 };
+  if (score >= 400)  return { difficulty: "hard",   correctCount: 6 };
+  if (score >= 180)  return { difficulty: "normal", correctCount: 7 };
+  if (score >= 60)   return { difficulty: "easy",   correctCount: 8 };
+  return { difficulty: "easy", correctCount: 2 }; // 저득점: 낮은 보상만
+};

@@ -5,7 +5,9 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { doc, getDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore";
 import { db } from "../../firebase";
-import { difficultyConfig, getRandomSentences, generateRandomReward } from "../../data/typingWords";
+import { difficultyConfig, getRandomSentences, generateRandomReward, getArcadeRewardParams } from "../../data/typingWords";
+import FallingWordsGame from "./FallingWordsGame";
+import TypingRanking from "./TypingRanking";
 import "./TypingPracticeGame.css";
 import { logger } from '../../utils/logger';
 
@@ -27,10 +29,15 @@ const TypingPracticeGame = ({ onClose }) => {
   const [gameStartTime, setGameStartTime] = useState(null);
   const [dailyPlayCount, setDailyPlayCount] = useState(0);
 
+  // 🎮 게임 모드(떨어지는 단어) 결과
+  const [arcadeResult, setArcadeResult] = useState(null);
+
   // 카드 선택 관련
   const [rewardData, setRewardData] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isFlipping, setIsFlipping] = useState(false);
+  // 보상 카드 선택 후 "메뉴로" 대신 돌아갈 화면 (연습=completed, 게임=arcadeOver)
+  const [rewardReturn, setRewardReturn] = useState("completed");
 
   // Refs
   const inputRef = useRef(null);
@@ -63,7 +70,7 @@ const TypingPracticeGame = ({ onClose }) => {
     }
   }, [user]);
 
-  // 게임 시작
+  // 게임 시작 (연습 모드)
   const startGame = useCallback((diff) => {
     setDifficulty(diff);
     const randomSentences = getRandomSentences(diff);
@@ -73,9 +80,16 @@ const TypingPracticeGame = ({ onClose }) => {
     setCorrectCount(0);
     setWrongCount(0);
     setTotalTyped(0);
-    setTimeLeft(30);
+    // 🐛 fix: 난이도별 제한시간을 실제로 반영 (이전엔 30초 하드코딩 → 전문가/마스터가 설정대로 작동 안 함)
+    setTimeLeft(difficultyConfig[diff]?.timeLimit || 30);
     setGameStartTime(Date.now());
     setGameState("playing");
+  }, []);
+
+  // 게임 모드 시작 (떨어지는 단어)
+  const startArcade = useCallback(() => {
+    setArcadeResult(null);
+    setGameState("arcade");
   }, []);
 
   // 타이머
@@ -111,8 +125,8 @@ const TypingPracticeGame = ({ onClose }) => {
     // 빈 입력 거부 — Enter 스팸으로 문제를 건너뛰지 못하게 차단
     if (trimmedInput === "") return;
 
-    // 너무 짧은 입력도 거부 — 현재 문장의 30% 이상 입력해야 채점 (최소 1글자)
-    const minLength = Math.max(1, Math.ceil(currentSentence.length * 0.3));
+    // 너무 짧은 입력 거부 — 현재 문장의 60% 이상 입력해야 채점 (난이도 상향, 최소 1글자)
+    const minLength = Math.max(1, Math.ceil(currentSentence.length * 0.6));
     if (trimmedInput.length < minLength) return;
 
     const isCorrect = trimmedInput === currentSentence;
@@ -145,25 +159,75 @@ const TypingPracticeGame = ({ onClose }) => {
     }
   };
 
-  // 카드 선택으로 이동
-  const handleProceedToCardSelection = () => {
+  // 카드 선택으로 이동 (연습/게임 모드 공용)
+  // 🔒 금융 안전: 새 faucet 없이 기존 가중치 재사용, 하루 5회 카드뽑기 카운터는 두 모드가 공유.
+  const proceedToCardSelection = useCallback((diff, correct, returnState) => {
     if (dailyPlayCount >= 5) {
       setGameState("menu");
       return;
     }
-
-    // 정답이 한 개도 없으면 보상 미지급 (UI 우회 방지)
-    if (correctCount === 0) {
+    // 보상 자격 없으면 미지급 (UI 우회 방지)
+    if (!correct || correct <= 0) {
       return;
     }
-
-    // 랜덤 보상 생성 (난이도별 차등 + 정답 개수 비례)
-    const rewards = generateRandomReward(difficulty, correctCount);
+    const rewards = generateRandomReward(diff, correct);
     setRewardData(rewards);
     setSelectedCard(null);
     setIsFlipping(false);
+    setRewardReturn(returnState || "completed");
     setGameState("cardSelection");
+  }, [dailyPlayCount]);
+
+  // 연습 모드 → 보상
+  const handleProceedToCardSelection = () => {
+    proceedToCardSelection(difficulty, correctCount, "completed");
   };
+
+  // 게임 모드 → 보상 (점수 기반 파라미터로 매핑)
+  const handleArcadeReward = () => {
+    const { difficulty: diff, correctCount: correct } = getArcadeRewardParams(
+      arcadeResult?.score || 0
+    );
+    proceedToCardSelection(diff, correct, "arcadeOver");
+  };
+
+  // 🏆 게임 점수 → 일일 최고점 저장 (랭킹용, 현금 미연동)
+  const submitArcadeScore = useCallback(async (score) => {
+    if (!user?.uid || !Number.isFinite(score) || score <= 0) return;
+    try {
+      const today = new Date().toDateString();
+      const prevDay = userDoc?.typingArcadeBestDay;
+      const prevBest = prevDay === today ? (userDoc?.typingArcadeBestScore || 0) : 0;
+      if (score <= prevBest) return; // 갱신 아님
+
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        typingArcadeBestScore: score,
+        typingArcadeBestDay: today,
+        typingArcadeUpdatedAt: serverTimestamp(),
+        // 학급 증분 동기화(getClassmates)가 점수 변화를 감지하도록 updatedAt 갱신
+        updatedAt: serverTimestamp(),
+      });
+      if (typeof updateUser === "function") {
+        await updateUser({ typingArcadeBestScore: score, typingArcadeBestDay: today });
+      }
+    } catch (e) {
+      logger.error("[Typing] 게임 점수 저장 오류:", e);
+    }
+  }, [user, userDoc, updateUser]);
+
+  // 게임 모드 종료 (생명 0 또는 그만하기) → 점수 기록 + 결과 화면
+  const handleArcadeEnd = useCallback((result) => {
+    setArcadeResult(result);
+    submitArcadeScore(result?.score || 0);
+    setGameState("arcadeOver");
+  }, [submitArcadeScore]);
+
+  // 게임 모드 도중 그만하기 → 점수는 기록하되 메뉴로
+  const handleArcadeQuit = useCallback((result) => {
+    if (result) submitArcadeScore(result?.score || 0);
+    setGameState("menu");
+  }, [submitArcadeScore]);
 
   // 카드 선택
   const handleCardSelect = async (cardType) => {
@@ -247,18 +311,61 @@ const TypingPracticeGame = ({ onClose }) => {
     }
   }, [gameState, currentIndex]);
 
-  // 메뉴 화면
+  // 모드 선택 허브
   const renderMenu = () => {
+    return (
+      <div className="typing-game-menu minigame">
+        <div className="game-header minigame-header">
+          <div>
+            <h2>⌨️ 한글 타자연습</h2>
+            <p className="subtitle">연습으로 실력을 키우고, 게임으로 경쟁하세요!</p>
+          </div>
+          {onClose && <button className="back-button" onClick={onClose}>← 뒤로가기</button>}
+        </div>
+
+        <div className="mode-select">
+          <button className="mode-card practice" onClick={() => setGameState("practice")}>
+            <div className="mode-emoji">📝</div>
+            <div className="mode-title">연습 모드</div>
+            <div className="mode-desc">난이도를 골라 문장을 정확히 입력해요. 보상 카드 획득!</div>
+          </button>
+
+          <button className="mode-card arcade" onClick={startArcade}>
+            <div className="mode-emoji">🌧️</div>
+            <div className="mode-title">게임 모드<span className="mode-badge">NEW</span></div>
+            <div className="mode-desc">떨어지는 단어를 빠르게 입력! 콤보·생명·레벨업으로 고득점 도전</div>
+          </button>
+
+          <button className="mode-card ranking" onClick={() => setGameState("ranking")}>
+            <div className="mode-emoji">🏆</div>
+            <div className="mode-title">오늘의 학급 랭킹</div>
+            <div className="mode-desc">우리 반 친구들의 오늘 최고 점수를 확인해요</div>
+          </button>
+        </div>
+
+        <div className="daily-info minigame-info compact">
+          <div className="info-badge">
+            <span className="badge-label">오늘의 보상</span>
+            <span className="badge-value">{dailyPlayCount}/5</span>
+          </div>
+          <p className="reward-note">연습·게임 모드에서 하루 5번까지 카드 보상을 받을 수 있어요 🎁</p>
+        </div>
+      </div>
+    );
+  };
+
+  // 연습 모드 — 난이도 선택
+  const renderPractice = () => {
     const canPlayForReward = dailyPlayCount < 5;
 
     return (
       <div className="typing-game-menu minigame">
         <div className="game-header minigame-header">
           <div>
-            <h2>⌨️ 한글 타자연습</h2>
+            <h2>📝 연습 모드</h2>
             <p className="subtitle">빠르고 정확하게 입력하세요!</p>
           </div>
-          {onClose && <button className="back-button" onClick={onClose}>← 뒤로가기</button>}
+          <button className="back-button" onClick={() => setGameState("menu")}>← 모드선택</button>
         </div>
 
         <div className="daily-info minigame-info">
@@ -316,6 +423,77 @@ const TypingPracticeGame = ({ onClose }) => {
     );
   };
 
+  // 게임 모드 결과 화면
+  const renderArcadeOver = () => {
+    const r = arcadeResult || {};
+    const today = new Date().toDateString();
+    const todayBest =
+      userDoc?.typingArcadeBestDay === today ? (userDoc?.typingArcadeBestScore || 0) : 0;
+    const isNewBest = (r.score || 0) >= todayBest && (r.score || 0) > 0;
+    const canGetReward = dailyPlayCount < 5 && (r.score || 0) > 0;
+
+    return (
+      <div className="typing-game-completed minigame-completed">
+        <div className="completion-header minigame-header">
+          <h2>🎮 게임 종료!</h2>
+          {isNewBest && <p className="new-best">🎉 오늘 최고 기록 갱신!</p>}
+        </div>
+
+        <div className="results minigame-results">
+          <div className="result-grid">
+            <div className="result-item highlight">
+              <span className="result-label">점수</span>
+              <span className="result-value">{(r.score || 0).toLocaleString()}</span>
+            </div>
+            <div className="result-item">
+              <span className="result-label">처리한 단어</span>
+              <span className="result-value">{r.wordsCleared || 0}개</span>
+            </div>
+            <div className="result-item">
+              <span className="result-label">최대 콤보</span>
+              <span className="result-value">{r.maxCombo || 0}</span>
+            </div>
+            <div className="result-item">
+              <span className="result-label">도달 레벨</span>
+              <span className="result-value">LV.{r.level || 1}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="completion-actions">
+          {canGetReward ? (
+            <button className="reward-proceed-btn" onClick={handleArcadeReward}>
+              🎁 보상 받기
+            </button>
+          ) : (
+            <div className="no-reward-message">
+              {dailyPlayCount >= 5 ? (
+                <>
+                  <p>오늘 보상은 모두 받았어요</p>
+                  <p className="sub">점수 기록은 랭킹에 계속 반영됩니다!</p>
+                </>
+              ) : (
+                <p>단어를 한 개 이상 맞춰야 보상을 받을 수 있어요!</p>
+              )}
+            </div>
+          )}
+          <div className="action-buttons">
+            <button className="menu-btn" onClick={() => setGameState("ranking")}>
+              🏆 랭킹 보기
+            </button>
+            <button className="retry-btn" onClick={startArcade}>
+              다시 도전
+            </button>
+            <button className="menu-btn" onClick={() => setGameState("menu")}>
+              모드선택
+            </button>
+            {onClose && <button className="exit-btn menu-btn" onClick={onClose}>나가기</button>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // 게임 화면
   const renderGame = () => {
     if (!sentences[currentIndex]) {
@@ -359,7 +537,7 @@ const TypingPracticeGame = ({ onClose }) => {
             className="sentence-input"
           />
           {(() => {
-            const minLen = Math.max(1, Math.ceil(currentSentence.length * 0.3));
+            const minLen = Math.max(1, Math.ceil(currentSentence.length * 0.6));
             const canSubmit = userInput.trim().length >= minLen;
             return (
               <button
@@ -396,7 +574,9 @@ const TypingPracticeGame = ({ onClose }) => {
   const renderCompleted = () => {
     const totalQuestions = sentences.length;
     const accuracy = totalQuestions > 0 ? ((correctCount / totalQuestions) * 100).toFixed(1) : 0;
-    const timeSpent = 30 - timeLeft;
+    // 🐛 fix: 난이도별 제한시간 기준으로 소요시간·타수 계산 (이전엔 30초 고정 → 전문가/마스터 오계산)
+    const totalTime = difficultyConfig[difficulty]?.timeLimit || 30;
+    const timeSpent = totalTime - timeLeft;
     const wpm = timeSpent > 0 ? Math.floor((totalTyped / 5) / (timeSpent / 60)) : 0;
     const canGetReward = dailyPlayCount < 5;
 
@@ -486,7 +666,7 @@ const TypingPracticeGame = ({ onClose }) => {
         <div className="card-selection-header">
           <h2>🎁 보상 카드를 선택하세요!</h2>
           <p>하나의 카드를 선택하면 랜덤 보상이 공개됩니다</p>
-          {onClose && <button className="back-button" onClick={() => setGameState("completed")}>← 결과로</button>}
+          {onClose && <button className="back-button" onClick={() => setGameState(rewardReturn)}>← 결과로</button>}
         </div>
 
         <div className="reward-cards">
@@ -575,7 +755,12 @@ const TypingPracticeGame = ({ onClose }) => {
             메뉴로 돌아가기
           </button>
           {dailyPlayCount < 5 && (
-            <button className="retry-btn" onClick={() => startGame(difficulty)}>
+            <button
+              className="retry-btn"
+              onClick={() =>
+                rewardReturn === "arcadeOver" ? startArcade() : startGame(difficulty)
+              }
+            >
               다시 도전
             </button>
           )}
@@ -618,10 +803,22 @@ const TypingPracticeGame = ({ onClose }) => {
   return (
     <div className="typing-game-container minigame-container">
       {gameState === "menu" && renderMenu()}
+      {gameState === "practice" && renderPractice()}
       {gameState === "playing" && renderGame()}
       {gameState === "completed" && renderCompleted()}
       {gameState === "cardSelection" && renderCardSelection()}
       {gameState === "reward" && renderReward()}
+      {gameState === "arcade" && (
+        <FallingWordsGame
+          hasBg
+          onGameOver={handleArcadeEnd}
+          onQuit={handleArcadeQuit}
+        />
+      )}
+      {gameState === "arcadeOver" && renderArcadeOver()}
+      {gameState === "ranking" && (
+        <TypingRanking onBack={() => setGameState("menu")} />
+      )}
     </div>
   );
 };
