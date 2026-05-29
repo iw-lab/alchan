@@ -44,6 +44,18 @@ const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
 
+// 학생 복붙 차단 props — 담임(admin)에겐 적용하지 않음 (호출부에서 분기)
+const blockPasteProps = {
+  onPaste: (e) => { e.preventDefault(); alert("게시판에서는 붙여넣기가 제한됩니다. 직접 입력해주세요."); },
+  onDrop: (e) => e.preventDefault(),
+};
+const blockCopyProps = {
+  onCopy: (e) => { e.preventDefault(); },
+  onCut: (e) => { e.preventDefault(); },
+  onContextMenu: (e) => { e.preventDefault(); },
+  style: { userSelect: "none", WebkitUserSelect: "none", MozUserSelect: "none", msUserSelect: "none" },
+};
+
 // URL을 클릭 가능한 링크로 변환
 const linkifyContent = (text) => {
   if (!text) return null;
@@ -922,6 +934,7 @@ const LearningBoard = () => {
                       onChange={(e) => setEditPost({ ...editPost, title: e.target.value })}
                       placeholder="제목을 입력하세요"
                       required
+                      {...(!currentUserIsAdmin ? blockPasteProps : {})}
                     />
                   </div>
                   <div className="lb-field">
@@ -932,6 +945,7 @@ const LearningBoard = () => {
                       placeholder="내용을 입력하세요"
                       required
                       rows="10"
+                      {...(!currentUserIsAdmin ? blockPasteProps : {})}
                     />
                   </div>
                   {currentUserIsAdmin && (
@@ -996,7 +1010,18 @@ const LearningBoard = () => {
                     : (selectedPost.author || "익명")}</span>
                 <span>{formatDate(selectedPost.timestamp)}</span>
               </div>
-              <div className="lb-detail-content" style={{ whiteSpace: 'pre-wrap' }}>{linkifyContent(selectedPost.content)}</div>
+              <div
+                className="lb-detail-content"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  ...(!currentUserIsAdmin ? blockCopyProps.style : {}),
+                }}
+                {...(!currentUserIsAdmin ? {
+                  onCopy: blockCopyProps.onCopy,
+                  onCut: blockCopyProps.onCut,
+                  onContextMenu: blockCopyProps.onContextMenu,
+                } : {})}
+              >{linkifyContent(selectedPost.content)}</div>
 
               {/* 첨부파일 (담임만 업로드, 같은 학급은 다운로드) */}
               {Array.isArray(selectedPost.attachments) && selectedPost.attachments.length > 0 && (
@@ -1113,7 +1138,15 @@ const LearningBoard = () => {
                           <button className="lb-comment-delete" onClick={() => handleDeleteComment(comment.id)}>삭제</button>
                         )}
                       </div>
-                      <div className="lb-comment-content">{linkifyContent(comment.content)}</div>
+                      <div
+                        className="lb-comment-content"
+                        style={!currentUserIsAdmin ? blockCopyProps.style : undefined}
+                        {...(!currentUserIsAdmin ? {
+                          onCopy: blockCopyProps.onCopy,
+                          onCut: blockCopyProps.onCut,
+                          onContextMenu: blockCopyProps.onContextMenu,
+                        } : {})}
+                      >{linkifyContent(comment.content)}</div>
                     </div>
                   ))}
                 </div>
@@ -1124,6 +1157,7 @@ const LearningBoard = () => {
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder={selectedBoard?.isAnonymous ? "익명으로 댓글 작성..." : "댓글을 입력하세요..."}
                     required
+                    {...(!currentUserIsAdmin ? blockPasteProps : {})}
                   />
                   <button type="submit" disabled={!newComment.trim()}>등록</button>
                 </form>
@@ -1147,6 +1181,7 @@ const LearningBoard = () => {
                   onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                   placeholder="제목을 입력하세요"
                   required
+                  {...(!currentUserIsAdmin ? blockPasteProps : {})}
                 />
               </div>
               <div className="lb-field">
@@ -1157,6 +1192,7 @@ const LearningBoard = () => {
                   placeholder="내용을 입력하세요"
                   required
                   rows="10"
+                  {...(!currentUserIsAdmin ? blockPasteProps : {})}
                 />
               </div>
               {currentUserIsAdmin && (
