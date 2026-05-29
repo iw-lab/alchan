@@ -2032,6 +2032,13 @@ async function collectWeeklyRentLogic() {
           continue;
         }
 
+        // 🏠 자가 거주(소유주 == 거주자) 월세 면제 — 자기 집에 자기가 사는 학생은 월세 안 냄
+        //    (정부 소유 owner="government"는 tenantId와 같을 수 없어 임대로 정상 징수됨)
+        if (property.owner && property.owner === property.tenantId) {
+          logger.info(`[월세 징수] 자가 거주 면제: 부동산 #${property.id} (${property.ownerName || ''})`);
+          continue;
+        }
+
         classTenantsCount++;
 
         try {
