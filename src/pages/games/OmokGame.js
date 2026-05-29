@@ -669,11 +669,19 @@ const OmokGame = () => {
 
   // 🔥 호스트 heartbeat: 대기 중일 때 30초마다 lastHeartbeat 갱신
   // stale 감지 + 유령 방 자동 정리를 위한 프레즌스 시스템
+  //
+  // ⚠️ 의존성은 반드시 "원시값"(gameStatus/host/aiMode)만 사용한다.
+  //    이전에는 deps 에 game 객체 전체가 들어 있어서:
+  //      tick() → lastHeartbeat 쓰기 → onSnapshot setGame(새 객체)
+  //      → game 참조 변경 → effect 재실행 → 즉시 tick() 재호출 → …
+  //    무한 쓰기 루프가 발생했고, 이 쓰기 폭풍이 친구의 joinGame 트랜잭션과
+  //    충돌(contention)을 일으켜 "방에 못 들어가는" 증상의 근본 원인이었다.
+  //    lastHeartbeat 가 바뀌어도 아래 원시 deps 는 그대로이므로 루프가 끊긴다.
   useEffect(() => {
-    if (!gameId || !user || !game) return;
-    if (game.gameStatus !== "waiting") return;
-    if (game.host !== user.uid) return;
-    if (game.aiMode) return;
+    if (!gameId || !user) return;
+    if (game?.gameStatus !== "waiting") return;
+    if (game?.host !== user.uid) return;
+    if (game?.aiMode) return;
 
     const tick = async () => {
       try {
@@ -688,7 +696,8 @@ const OmokGame = () => {
     tick();
     const interval = setInterval(tick, 30000);
     return () => clearInterval(interval);
-  }, [gameId, user, game]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, user, game?.gameStatus, game?.host, game?.aiMode]);
 
   const createEmptyBoard = () => new Array(BOARD_SIZE * BOARD_SIZE).fill(null);
 
@@ -705,15 +714,18 @@ const OmokGame = () => {
       const querySnapshot = await getDocs(q);
       const nowMs = Date.now();
       const STALE_MS = 90 * 1000; // 90초 이상 heartbeat 없음 = 유령 방
+      const CREATED_GRACE_MS = 3 * 60 * 1000; // 갓 만든 방 노출 유예 3분
       const games = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((g) => {
-          // heartbeat 기반 (신규 방): lastHeartbeat 90초 이내면 표시
           const hb = g.lastHeartbeat?.toDate?.()?.getTime?.();
-          if (hb) return nowMs - hb < STALE_MS;
-          // 구 방(heartbeat 필드 없음): createdAt 기반으로 3분 이내만 표시
           const created = g.createdAt?.toDate?.()?.getTime?.();
-          if (created) return nowMs - created < 3 * 60 * 1000;
+          // heartbeat 가 90초 이내로 신선하거나(호스트 대기 중),
+          // 방 생성 3분 이내(호스트가 코드 공유하느라 잠깐 백그라운드여도 노출).
+          // 둘 중 하나라도 최근이면 표시 → "갓 만든 방이 목록에서 사라져 못 들어감" 방지.
+          const hbFresh = hb ? nowMs - hb < STALE_MS : false;
+          const createdRecent = created ? nowMs - created < CREATED_GRACE_MS : false;
+          if (hb || created) return hbFresh || createdRecent;
           return false; // 둘 다 없으면 숨김
         });
       setAvailableGames(games);
