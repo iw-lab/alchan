@@ -22,7 +22,7 @@ const withCacheBust = (url) => {
  * @param {object} shopOverlays - { baseUrl?, bgUrl?, slots: {hair, hat, glasses, outfit, effect}, presetUrl? }
  *                                각 slot 값은 { url, anchorOverride?, scale? }
  */
-export default function Avatar({ size = 100, showBorder = true, onClick, shopOverlays }) {
+export default function Avatar({ size = 100, showBorder = true, onClick, shopOverlays, defaultBackground = false }) {
   const rawBaseUrl = shopOverlays?.baseUrl || DEFAULT_BASE_URL;
   const slots = shopOverlays?.slots || {};
   // outfit 입을 때 자동으로 _outfit.png 변종 시도 (없으면 onError로 원본 fallback)
@@ -34,6 +34,12 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
   const bgUrl = withCacheBust(shopOverlays?.bgUrl);
   const presetUrl = withCacheBust(shopOverlays?.presetUrl);
 
+  // 배경 아이템·프리셋이 없을 때 보여줄 기본(단색이 아닌) 그라데이션 배경.
+  // defaultBackground=true 인 경우에만 적용 (사이드바 위젯 등). 상점 미리보기엔 영향 없음.
+  const useDefaultBg = defaultBackground && !bgUrl && !presetUrl;
+  const DEFAULT_BG =
+    "radial-gradient(circle at 50% 28%, #eef2ff 0%, #e0e7ff 55%, #c7d2fe 100%)";
+
   // 컨테이너 스타일
   const containerStyle = {
     width: size,
@@ -42,7 +48,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
     cursor: onClick ? "pointer" : "default",
     borderRadius: showBorder ? size * 0.1 : 0,
     overflow: "hidden",
-    backgroundColor: "#f1f5f9",
+    background: useDefaultBg ? DEFAULT_BG : "#f1f5f9",
   };
 
   // 프리셋 활성화 시 다른 모든 레이어 무시 (단일 PNG 표시)

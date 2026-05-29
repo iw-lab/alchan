@@ -54,7 +54,7 @@ export default function AvatarHeaderWidget({ size = 140 }) {
         title="내 아바타 - 클릭하여 꾸미기"
         style={{ minHeight: size }}
       >
-        <Avatar shopOverlays={overlays} size={size} showBorder={false} />
+        <Avatar shopOverlays={overlays} size={size} showBorder={false} defaultBackground />
       </div>
       <button
         onClick={() => setHidden(true)}
