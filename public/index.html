@@ -2,6 +2,33 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
+    <!-- 🔄 1회성 서비스워커 리셋 — 옛/멈춘 SW로 인한 stale 캐시 자동 해소.
+         새 배포가 안 뜨는 사용자를 1회 클린 리로드시킨 뒤 새 SW가 정상 동작.
+         (DevTools·강력새로고침 불필요. RESET_KEY 날짜를 올리면 다시 1회 실행) -->
+    <script>
+      (function () {
+        var RESET_KEY = "alchan_sw_reset_20260529";
+        try {
+          if (!("serviceWorker" in navigator)) return;
+          if (localStorage.getItem(RESET_KEY)) return;             // 이미 리셋함
+          if (sessionStorage.getItem("alchan_sw_resetting")) return; // 루프 방지
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            if (!regs || regs.length === 0) { localStorage.setItem(RESET_KEY, "1"); return; }
+            sessionStorage.setItem("alchan_sw_resetting", "1");
+            Promise.all(regs.map(function (r) { return r.unregister().catch(function () {}); }))
+              .then(function () {
+                if (window.caches && caches.keys) {
+                  return caches.keys().then(function (ks) {
+                    return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+                  });
+                }
+              })
+              .then(function () { localStorage.setItem(RESET_KEY, "1"); location.reload(); })
+              .catch(function () { localStorage.setItem(RESET_KEY, "1"); });
+          }).catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
