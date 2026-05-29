@@ -1,5 +1,5 @@
 // src/pages/learning/LearningBoard.js
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
@@ -160,55 +160,68 @@ const LearningBoard = () => {
       ? `alchan_lb_draft_${classCode}_${selectedBoard.id}_${currentUserId}`
       : null;
   const [draftSavedAt, setDraftSavedAt] = useState(null);
-  const restoredKeyRef = useRef(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const clearDraft = useCallback(() => {
     if (draftKey) {
       try { localStorage.removeItem(draftKey); } catch (_) { /* noop */ }
     }
     setDraftSavedAt(null);
+    setDraftRestored(false);
   }, [draftKey]);
 
-  // 글쓰기 화면이 닫히면 복구 플래그 초기화 (다시 열면 재복구 가능)
-  useEffect(() => {
-    if (!isWriting) restoredKeyRef.current = null;
-  }, [isWriting]);
+  // 현재 작성 내용을 즉시 저장 (디바운스/탭 닫힘 공용)
+  const saveDraftNow = useCallback(() => {
+    if (!draftKey) return;
+    const title = newPost.title || "";
+    const content = newPost.content || "";
+    if (!title.trim() && !content.trim()) return; // 빈 내용은 저장 안 함
+    try {
+      const savedAt = Date.now();
+      localStorage.setItem(draftKey, JSON.stringify({ title, content, savedAt }));
+      setDraftSavedAt(savedAt);
+    } catch (_) { /* 용량 초과 등 무시 */ }
+  }, [draftKey, newPost]);
 
   // 글쓰기 화면 진입 시 임시저장 복구 (작성 중인 내용이 없을 때만)
   useEffect(() => {
     if (!isWriting || !draftKey) return;
-    if (restoredKeyRef.current === draftKey) return; // 이번 세션에서 이미 처리됨
-    restoredKeyRef.current = draftKey;
     try {
       const raw = localStorage.getItem(draftKey);
       if (!raw) return;
       const d = JSON.parse(raw);
       if (d && (d.title || d.content)) {
-        setNewPost((prev) =>
-          prev.title || prev.content
-            ? prev // 이미 입력 중인 내용이 있으면 덮어쓰지 않음
-            : { title: d.title || "", content: d.content || "" }
-        );
+        // 이미 입력 중인 내용이 있으면 덮어쓰지 않음
+        if (!newPost.title && !newPost.content) {
+          setNewPost({ title: d.title || "", content: d.content || "" });
+          setDraftRestored(true);
+        }
         setDraftSavedAt(d.savedAt || null);
       }
     } catch (_) { /* noop */ }
+    // 진입(isWriting/draftKey 변경) 시 1회만 — newPost는 의도적으로 deps 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWriting, draftKey]);
 
-  // 작성 내용 변경 시 디바운스 자동 저장
+  // 작성 내용 변경 시 디바운스 자동 저장 (0.5초)
   useEffect(() => {
     if (!isWriting || !draftKey) return;
-    const title = newPost.title || "";
-    const content = newPost.content || "";
-    if (!title.trim() && !content.trim()) return; // 빈 내용은 저장 안 함
-    const t = setTimeout(() => {
-      try {
-        const savedAt = Date.now();
-        localStorage.setItem(draftKey, JSON.stringify({ title, content, savedAt }));
-        setDraftSavedAt(savedAt);
-      } catch (_) { /* 용량 초과 등 무시 */ }
-    }, 600);
+    if (!newPost.title?.trim() && !newPost.content?.trim()) return;
+    const t = setTimeout(saveDraftNow, 500);
     return () => clearTimeout(t);
-  }, [newPost, isWriting, draftKey]);
+  }, [newPost, isWriting, draftKey, saveDraftNow]);
+
+  // 탭 닫힘/숨김(앱 백그라운드·새로고침) 시 즉시 저장 — 디바운스 누락 방지
+  useEffect(() => {
+    if (!isWriting) return;
+    const handler = () => saveDraftNow();
+    window.addEventListener("pagehide", handler);
+    document.addEventListener("visibilitychange", handler);
+    return () => {
+      window.removeEventListener("pagehide", handler);
+      document.removeEventListener("visibilitychange", handler);
+    };
+  }, [isWriting, saveDraftNow]);
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -1235,9 +1248,11 @@ const LearningBoard = () => {
             <h2 className="lb-write-heading">{selectedBoard.name}에 글쓰기</h2>
             <div className="lb-draft-bar">
               <span className="lb-draft-status">
-                💾 {draftSavedAt
-                  ? `임시저장됨 · ${new Date(draftSavedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
-                  : "작성 중인 내용은 자동 저장돼요"}
+                {draftRestored
+                  ? "📂 임시저장된 글을 불러왔어요"
+                  : draftSavedAt
+                    ? `💾 임시저장됨 · ${new Date(draftSavedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
+                    : "💾 작성 중인 내용은 자동 저장돼요"}
               </span>
               {(newPost.title || newPost.content) && (
                 <button
