@@ -411,7 +411,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit — NO HELMET, NO neck ring, OPEN NECK. The suit collar starts at vertical 30% (shoulder/chest base) leaving the head AND neck area (0-30%) PURE WHITE empty so the base character's bare neck shows naturally (do NOT cover the neck with any collar/ring). Chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
+    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit. 🚫 ABSOLUTELY NO HELMET, NO neck ring, NO turtleneck, NO grey collar, NO closed collar around the neck. The suit top is an OPEN ROUND/SCOOP NECKLINE at the FRONT only — the opening dips low to vertical ~36% at center front so the base character's bare NECK and throat stay fully visible. NOTHING crosses the front or back of the neck. Head + neck area (vertical 0-34%) must be PURE WHITE empty. Chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
   },
   {
     id: "outfit_chef",
@@ -456,7 +456,7 @@ const OUTFIT_ITEMS = [
     description: "흰 의사 가운",
     rarity: "rare",
     price: 450000,
-    prompt: `${OUTFIT_STYLE} A white doctor lab coat with a stethoscope around the collar, name tag on chest pocket, professional medical wear, no person.`,
+    prompt: `${OUTFIT_STYLE} A NAVY professional suit jacket (dark navy blue) with OPEN PEAKED LAPELS forming a deep V-neck that dips to vertical ~38% at center front, a white dress shirt visible inside the V, two gold buttons, a small gold shield emblem on the left chest, navy trousers full-length, black dress shoes. 🚫 The lapel/collar is FRONT-ONLY — NO fabric behind or wrapping around the neck, NO high closed collar, NO back collar. The base character's neck and the back of the neck stay fully open/visible. Head + neck area (vertical 0-34%) must be PURE WHITE empty.`,
   },
   {
     id: "outfit_robe_wizard",
