@@ -111,6 +111,7 @@ export {
   getCachedDocument,
   // Cloud Functions
   processSettlement,
+  collectWeeklyTaxes,
   // 학급 데이터 복사
   copyDefaultDataToNewClass,
   // Firestore primitives

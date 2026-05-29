@@ -98,5 +98,18 @@ export const processSettlement = async (settlementData) => {
   }
 };
 
+// 주간 세금(순자산세 + 부동산 보유세) 수동 징수 — 금요일 자동 징수와 동일 로직(클라우드)
+export const collectWeeklyTaxes = async () => {
+  if (!functions) throw new Error("Firebase Functions가 초기화되지 않았습니다.");
+  const fn = httpsCallable(functions, 'collectWeeklyTaxesManual');
+  try {
+    const result = await fn({});
+    return result.data;
+  } catch (error) {
+    logger.error("[firebase.js] collectWeeklyTaxesManual 호출 오류:", error);
+    throw new Error(error.message || "세금 징수에 실패했습니다.");
+  }
+};
+
 // Firestore 초기화 여부 확인
 export const isFirestoreInitialized = () => Boolean(db);

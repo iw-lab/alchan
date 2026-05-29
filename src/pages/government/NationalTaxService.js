@@ -242,27 +242,28 @@ const NationalTaxService = ({ classCode }) => {
 
   const handleCollectPropertyTax = async () => {
     if (!classCode) return;
-    if (!window.confirm("부동산 보유세를 징수하시겠습니까? 모든 부동산 소유자에게서 보유세가 차감됩니다.")) return;
+    if (!window.confirm(
+      "이번 주 세금을 지금 징수하시겠습니까?\n" +
+      "· 순자산세: 순자산이 있는 모든 학생\n" +
+      "· 부동산 보유세: 부동산 소유 학생\n" +
+      "(금요일 자동 징수와 동일하게 계산되어 국고로 들어갑니다)"
+    )) return;
 
     setCollectingTax(true);
     try {
-      const { collectPropertyHoldingTaxes } = await import("../../firebase/db/transactions");
-      const result = await collectPropertyHoldingTaxes(classCode);
+      // 금요일 자동 징수와 100% 동일한 클라우드 로직 호출 (순자산세 + 보유세)
+      // 국고 통계는 클라우드 함수가 직접 갱신하므로 여기서 별도 증가 처리 안 함(중복 방지)
+      const { collectWeeklyTaxes } = await import("../../firebase");
+      const result = await collectWeeklyTaxes();
       if (result.success) {
-        alert(`보유세 징수 완료!\n징수 대상: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
-        // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-        const treasuryRef = doc(db, "nationalTreasuries", classCode);
-        await setDoc(treasuryRef, {
-          propertyHoldingTaxRevenue: increment(result.totalCollected || 0),
-          lastUpdated: serverTimestamp(),
-        }, { merge: true });
+        alert(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
         refetchTreasury();
       } else {
-        alert("보유세 징수에 실패했습니다.");
+        alert("세금 징수에 실패했습니다.");
       }
     } catch (error) {
-      logger.error("보유세 징수 실패:", error);
-      alert("보유세 징수 중 오류가 발생했습니다: " + error.message);
+      logger.error("세금 징수 실패:", error);
+      alert("세금 징수 중 오류가 발생했습니다: " + error.message);
     } finally {
       setCollectingTax(false);
     }
@@ -387,15 +388,15 @@ const NationalTaxService = ({ classCode }) => {
             ))}
           </div>
 
-          {/* 부동산 보유세 징수 버튼 */}
+          {/* 주간 세금(순자산세 + 부동산 보유세) 수동 징수 버튼 */}
           <div className="rounded-xl p-5" style={{ background: 'rgba(240, 253, 244, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
-                  🏘️ 부동산 보유세 징수
+                  🏦 이번 주 세금 징수
                 </h3>
                 <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
-                  모든 부동산 소유자에게서 보유세({((taxSettings.propertyHoldingTaxRate || 0.002) * 100).toFixed(1)}%)를 징수합니다.
+                  순자산세(순자산 있는 모든 학생) + 부동산 보유세를 금요일 자동 징수와 동일하게 걷습니다.
                 </p>
               </div>
               <button
@@ -411,7 +412,7 @@ const NationalTaxService = ({ classCode }) => {
                   letterSpacing: '1px',
                 }}
               >
-                {collectingTax ? "징수 중..." : "보유세 징수"}
+                {collectingTax ? "징수 중..." : "세금 징수"}
               </button>
             </div>
           </div>

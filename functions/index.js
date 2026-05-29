@@ -44,6 +44,7 @@ exports.cleanupStaleOmokGames = scheduler.cleanupStaleOmokGames; // 🧹 유령 
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
 exports.triggerEconomicEventManual = scheduler.triggerEconomicEventManual; // 수동 경제 이벤트 실행
 exports.saveEconomicEventSettings = scheduler.saveEconomicEventSettings; // 경제 이벤트 설정 저장
+exports.collectWeeklyTaxesManual = scheduler.collectWeeklyTaxesManual; // 주간 세금(순자산세+보유세) 수동 징수
 
 // 🔥 방학 모드 관리 (슈퍼관리자 전용)
 exports.toggleVacationMode = scheduler.toggleVacationMode; // 방학 모드 토글

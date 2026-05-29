@@ -1083,6 +1083,28 @@ exports.triggerEconomicEventManual = onCall(
   },
 );
 
+// 🔥 주간 세금(순자산세 + 부동산 보유세) 수동 징수 (관리자용 onCall)
+//   자동 금요일 징수와 100% 동일 로직(collectPropertyHoldingTaxesLogic)을 본인 학급에만 실행.
+exports.collectWeeklyTaxesManual = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request, true);
+    logger.info(`[수동세금] 관리자 ${uid}, 학급 ${classCode} 주간 세금 징수`);
+    try {
+      const result = await collectPropertyHoldingTaxesLogic(classCode);
+      return {
+        success: true,
+        totalCollected: result?.totalCollected || 0,
+        userCount: result?.totalUsersProcessed || 0,
+      };
+    } catch (error) {
+      if (error instanceof HttpsError) throw error;
+      logger.error("[수동세금] 오류:", error);
+      throw new HttpsError("internal", error.message || "세금 징수 실패");
+    }
+  },
+);
+
 // 🔥 경제 이벤트 설정 저장 (관리자용 onCall)
 exports.saveEconomicEventSettings = onCall(
   { region: "asia-northeast3" },
@@ -2202,16 +2224,20 @@ function lookupProgressiveMultiplier(netAssets) {
   return 3.5;
 }
 
-async function collectPropertyHoldingTaxesLogic() {
-  // 🔥 정책 변경 (2026-05):
-  //   기존: 전체 자산 1%/주 → 부동산만 0.2%/주
-  //   변경: 부동산만 부과 + 학급 평균 자산 기반 동적 기본세율 + 개인 순자산 누진 배율
-  //         최종세율 = classBaseRate × individualMultiplier
-  //         (예: 학급 평균 200만 → base 0.2%, 개인 400만 → ×2 → 0.4%)
-  logger.info(">>> [스케줄러] 부동산 보유세 징수 시작 (동적 + 누진)");
+async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
+  // 🔥 정책 (2026-05):
+  //   주간 세금 = 순자산세(모든 학생, 순자산 기준) + 부동산 보유세(부동산 가치 기준, 누진)
+  //   targetClassCode 지정 시 해당 학급만 처리(수동 징수), 없으면 전체 학급(자동 스케줄)
+  logger.info(
+    targetClassCode
+      ? `>>> [수동] 주간 세금 징수 시작 (${targetClassCode})`
+      : ">>> [스케줄러] 주간 세금 징수 시작 (순자산세 + 부동산 보유세)",
+  );
 
   try {
-    const classCodes = await getAllActiveClassCodes();
+    const classCodes = targetClassCode
+      ? [targetClassCode]
+      : await getAllActiveClassCodes();
     let totalCollected = 0;
     let totalUsersProcessed = 0;
 
@@ -2457,8 +2483,9 @@ async function collectPropertyHoldingTaxesLogic() {
     logger.info(
       `→ 주간 세금(순자산세 + 부동산 보유세) 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`,
     );
+    return { totalCollected, totalUsersProcessed };
   } catch (error) {
-    logger.error("→ 부동산 보유세 징수 중 오류:", error);
+    logger.error("→ 주간 세금 징수 중 오류:", error);
     throw error;
   }
 }

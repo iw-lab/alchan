@@ -74,6 +74,7 @@ export {
   goOnline,
   getCachedDocument,
   processSettlement,
+  collectWeeklyTaxes,
   isFirestoreInitialized,
 } from './utils';
 
