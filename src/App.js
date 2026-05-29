@@ -125,8 +125,22 @@ class ErrorBoundary extends Component {
         await Promise.all(names.map((name) => caches.delete(name)));
       }
 
-      // 로컬스토리지 삭제
-      localStorage.clear();
+      // 로컬스토리지 삭제 — 단, 게시판 임시저장(작성 중 글)은 보존
+      try {
+        const preserved = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("alchan_lb_draft_")) {
+            preserved.push([k, localStorage.getItem(k)]);
+          }
+        }
+        localStorage.clear();
+        preserved.forEach(([k, v]) => {
+          if (v != null) localStorage.setItem(k, v);
+        });
+      } catch (_) {
+        localStorage.clear();
+      }
       sessionStorage.clear();
 
       // 새로고침

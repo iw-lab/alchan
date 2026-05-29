@@ -203,22 +203,24 @@ const LearningBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWriting, draftKey]);
 
-  // 작성 내용 변경 시 디바운스 자동 저장 (0.5초)
+  // 작성 내용 변경 시 디바운스 자동 저장 (0.3초 — 갑작스런 리로드 대비 짧게)
   useEffect(() => {
     if (!isWriting || !draftKey) return;
     if (!newPost.title?.trim() && !newPost.content?.trim()) return;
-    const t = setTimeout(saveDraftNow, 500);
+    const t = setTimeout(saveDraftNow, 300);
     return () => clearTimeout(t);
   }, [newPost, isWriting, draftKey, saveDraftNow]);
 
-  // 탭 닫힘/숨김(앱 백그라운드·새로고침) 시 즉시 저장 — 디바운스 누락 방지
+  // 탭 닫힘/숨김/언로드(앱 백그라운드·자동 새로고침·크래시) 시 즉시 저장 — 디바운스 누락 방지
   useEffect(() => {
     if (!isWriting) return;
     const handler = () => saveDraftNow();
     window.addEventListener("pagehide", handler);
+    window.addEventListener("beforeunload", handler);
     document.addEventListener("visibilitychange", handler);
     return () => {
       window.removeEventListener("pagehide", handler);
+      window.removeEventListener("beforeunload", handler);
       document.removeEventListener("visibilitychange", handler);
     };
   }, [isWriting, saveDraftNow]);
