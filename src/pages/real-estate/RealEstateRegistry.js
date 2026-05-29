@@ -1165,14 +1165,20 @@ const RealEstateRegistry = () => {
       alert("선택한 부동산 또는 학생 정보를 찾을 수 없습니다.");
       return;
     }
+    // 임차인이 있고 그 임차인이 받는 학생과 다르면 → 받는 학생은 '집주인'만 되고 임차인 유지(세입자 그대로).
+    // 빈 부동산이거나 임차인이 곧 받는 학생이면 → 받는 학생이 소유+거주(자동 입주).
+    const hasOtherTenant = targetProperty.tenantId && targetProperty.tenantId !== targetUser.id;
     if (!window.confirm(
       `'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}${targetProperty.name ? ` (${targetProperty.name})` : ""}을(를) ` +
-      `무료로 분배(소유권 이전)하시겠습니까?\n\n학생은 비용 없이 소유자가 되며 자동으로 입주합니다.`
+      `무료로 분배(소유권 이전)하시겠습니까?\n\n` +
+      (hasOtherTenant
+        ? `현재 임차인(${targetProperty.tenantName || "세입자"})은 그대로 거주하며, ${targetUser.name} 학생이 집주인이 되어 월세를 받습니다.`
+        : `학생은 비용 없이 소유자가 되며 자동으로 입주합니다.`)
     )) return;
 
     setOperationLoading(true);
     const previousProperties = [...properties];
-    // 낙관적 업데이트
+    // 낙관적 업데이트 (임차인 유지 여부 반영)
     setProperties((prev) =>
       prev.map((p) =>
         p.id === targetProperty.id
@@ -1181,11 +1187,11 @@ const RealEstateRegistry = () => {
               owner: targetUser.id,
               ownerId: targetUser.id,
               ownerName: targetUser.name,
-              tenant: targetUser.name,
-              tenantId: targetUser.id,
-              tenantName: targetUser.name,
               forSale: false,
               salePrice: null,
+              ...(hasOtherTenant
+                ? {} // 임차인 유지
+                : { tenant: targetUser.name, tenantId: targetUser.id, tenantName: targetUser.name }),
             }
           : p
       )
@@ -1201,22 +1207,26 @@ const RealEstateRegistry = () => {
         if (!isGovOwned) {
           throw new Error("이미 학생이 소유한 부동산은 분배할 수 없습니다.");
         }
-        if (data.tenantId) {
-          throw new Error("세입자가 있는 부동산은 분배할 수 없습니다. 먼저 비운 뒤 분배하세요.");
-        }
-        transaction.update(propertyRef, {
+        // 정부 소유면 임차인 유무와 관계없이 분배 가능
+        const keepTenant = data.tenantId && data.tenantId !== targetUser.id;
+        const update = {
           owner: targetUser.id,
           ownerId: targetUser.id, // 순자산 계산(ownerId 쿼리) 매칭용
           ownerName: targetUser.name,
           forSale: false,
           salePrice: null,
-          tenant: targetUser.name,
-          tenantId: targetUser.id,
-          tenantName: targetUser.name,
           acquiredFree: true,
-          lastRentPayment: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+        if (!keepTenant) {
+          // 빈 집이거나 받는 학생이 곧 임차인 → 소유+거주(자동 입주)
+          update.tenant = targetUser.name;
+          update.tenantId = targetUser.id;
+          update.tenantName = targetUser.name;
+          update.lastRentPayment = serverTimestamp();
+        }
+        // keepTenant인 경우 tenant/tenantId/tenantName/lastRentPayment는 그대로 둠
+        transaction.update(propertyRef, update);
       });
 
       try {
@@ -2326,11 +2336,12 @@ const RealEstateRegistry = () => {
               <div className="give-property-section" style={{ marginTop: '20px', padding: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
                 <h4 style={{ margin: '0 0 12px', color: '#15803d' }}>🎁 부동산 무료 분배</h4>
                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 12px' }}>
-                  정부 소유의 빈 부동산을 학생에게 무료로 소유권 이전합니다. (학생은 비용 없이 소유·입주)
+                  정부 소유 부동산을 학생에게 무료로 소유권 이전합니다. 임차인이 있으면 받는 학생이 집주인이 되어 월세를 받고, 빈 집이면 받는 학생이 입주합니다.
                 </p>
                 {(() => {
+                  // 정부 소유면 임차인 유무와 무관하게 분배 가능
                   const distributable = properties.filter(
-                    (p) => (!p.owner || p.owner === 'government') && !p.tenantId
+                    (p) => !p.owner || p.owner === 'government'
                   );
                   const students = allUsersData.filter((u) => !u.isAdmin);
                   return (
@@ -2341,7 +2352,7 @@ const RealEstateRegistry = () => {
                           <option value="">— 부동산 선택 ({distributable.length}개 분배 가능) —</option>
                           {distributable.map((p) => (
                             <option key={p.id} value={p.id}>
-                              #{p.id}{p.name ? ` ${p.name}` : ''} · {((p.price || 0) / 10000).toLocaleString()}만원
+                              #{p.id}{p.name ? ` ${p.name}` : ''} · {((p.price || 0) / 10000).toLocaleString()}만원{p.tenantId ? ` · 임차중(${p.tenantName || '세입자'})` : ' · 빈집'}
                             </option>
                           ))}
                         </select>
