@@ -2299,41 +2299,79 @@ async function collectPropertyHoldingTaxesLogic() {
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
+      // 순자산세 설정 (taxSettings/{classCode} 로 조정 가능, 기본 0.5%/주)
+      //   netAssetTaxRate: 순자산 세율, netAssetTaxExemption: 면세 기준(순자산 이 값 초과면 과세)
+      let netAssetTaxRate = 0.005;
+      let netAssetExemption = 0; // 순자산 0원 초과 = 모두 과세
+      try {
+        const taxDoc = await db.collection("taxSettings").doc(classCode).get();
+        if (taxDoc.exists) {
+          const t = taxDoc.data() || {};
+          if (Number.isFinite(t.netAssetTaxRate)) netAssetTaxRate = t.netAssetTaxRate;
+          if (Number.isFinite(t.netAssetTaxExemption)) netAssetExemption = t.netAssetTaxExemption;
+        }
+      } catch (err) {
+        logger.warn(`[순자산세] ${classCode}: taxSettings 조회 실패 - 기본값 사용`, err.message);
+      }
+
       let classTotalTax = 0;
+      let classNetAssetTax = 0;
+      let classPropertyTax = 0;
       let classUsersProcessed = 0;
       let classTaxedStudents = 0;
 
       for (const result of validResults) {
         const { userId, userName, netAssets, realEstateValue } = result;
 
-        // 누진 배율 & 최종 세율
+        // ── 1) 순자산세 — 순자산 기준, 모든 학생 대상 (현금이 아닌 순자산!) ──
+        const netAssetTax = netAssets > netAssetExemption
+          ? Math.round(netAssets * netAssetTaxRate)
+          : 0;
+
+        // ── 2) 부동산 보유세 — 부동산 가치 기준, 학급평균·개인순자산 누진 ──
         const multiplier = lookupProgressiveMultiplier(netAssets);
         const finalRate = classBaseRate * multiplier;
-        const tax = realEstateValue > 0 && finalRate > 0
+        const propertyTax = realEstateValue > 0 && finalRate > 0
           ? Math.round(realEstateValue * finalRate)
           : 0;
 
-        // 학생 팝업 데이터 — 부동산세 정보 항상 저장 (면세든 과세든 알려줘야 함)
-        const summaryItem = {
-          type: "propertyHoldingTax",
-          label: "부동산 보유세",
-          amount: tax,
-          rate: Number(finalRate.toFixed(5)),
-          classBaseRate: Number(classBaseRate.toFixed(5)),
-          multiplier,
-          basis: realEstateValue,
-          basisLabel: "부동산 가치",
-          note: realEstateValue <= 0
-            ? "보유 부동산 없음 → 과세 0원"
-            : (multiplier === 0 ? "순자산 50만원 이하 → 면세" : null),
-        };
+        const totalTax = netAssetTax + propertyTax;
+
+        // 학생 팝업 데이터 — 두 세금 항목 모두 저장 (면세든 과세든 알려줌)
+        const items = [
+          {
+            type: "netAssetTax",
+            label: "순자산세",
+            amount: netAssetTax,
+            rate: Number(netAssetTaxRate.toFixed(5)),
+            basis: netAssets,
+            basisLabel: "순자산",
+            // 순자산세 항목은 note를 항상 채워 부동산식 계산식이 안 뜨게 함
+            note: netAssets > netAssetExemption
+              ? `순자산의 ${(netAssetTaxRate * 100).toFixed(2)}% (현금·예금·주식·부동산 합계 − 대출)`
+              : "순자산 없음 → 과세 0원",
+          },
+          {
+            type: "propertyHoldingTax",
+            label: "부동산 보유세",
+            amount: propertyTax,
+            rate: Number(finalRate.toFixed(5)),
+            classBaseRate: Number(classBaseRate.toFixed(5)),
+            multiplier,
+            basis: realEstateValue,
+            basisLabel: "부동산 가치",
+            note: realEstateValue <= 0
+              ? "보유 부동산 없음 → 과세 0원"
+              : (multiplier === 0 ? "순자산 50만원 이하 → 면세" : null),
+          },
+        ];
 
         const userRef = db.collection("users").doc(userId);
         const userUpdate = {
           pendingTaxSummary: {
             weekKey,
-            items: [summaryItem],
-            total: tax,
+            items,
+            total: totalTax,
             avgClassNet: avgNet,
             classBaseRate: Number(classBaseRate.toFixed(5)),
             personalMultiplier: multiplier,
@@ -2342,45 +2380,65 @@ async function collectPropertyHoldingTaxesLogic() {
           },
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
-        if (tax > 0) {
-          userUpdate.cash = admin.firestore.FieldValue.increment(-tax);
+        // ⚠️ 순자산 기준 전액 징수 — 현금이 부족해도 increment로 차감(마이너스 허용)
+        if (totalTax > 0) {
+          userUpdate.cash = admin.firestore.FieldValue.increment(-totalTax);
         }
         batch.update(userRef, userUpdate);
 
-        if (tax > 0) {
-          const logExpireAt = new Date();
-          logExpireAt.setDate(logExpireAt.getDate() + 90);
-          const logRef = db.collection("activity_logs").doc();
-          batch.set(logRef, {
+        // 감사 로그 — 세금 항목별로 분리 기록 (audit trail)
+        const logExpireAt = new Date();
+        logExpireAt.setDate(logExpireAt.getDate() + 90);
+        if (netAssetTax > 0) {
+          batch.set(db.collection("activity_logs").doc(), {
             userId,
             userName,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             type: "taxPayment",
             description:
-              `[자동] 부동산 보유세 ${tax.toLocaleString()}원 ` +
+              `[자동] 순자산세 ${netAssetTax.toLocaleString()}원 ` +
+              `(순자산 ${netAssets.toLocaleString()}원 × ${(netAssetTaxRate * 100).toFixed(2)}%)`,
+            classCode,
+            expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
+          });
+        }
+        if (propertyTax > 0) {
+          batch.set(db.collection("activity_logs").doc(), {
+            userId,
+            userName,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            type: "taxPayment",
+            description:
+              `[자동] 부동산 보유세 ${propertyTax.toLocaleString()}원 ` +
               `(기본 ${(classBaseRate * 100).toFixed(2)}% × 배율 ${multiplier}× = ${(finalRate * 100).toFixed(2)}%, ` +
               `부동산 ${realEstateValue.toLocaleString()}원)`,
             classCode,
             expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
           });
-          classTotalTax += tax;
+        }
+
+        if (totalTax > 0) {
+          classTotalTax += totalTax;
+          classNetAssetTax += netAssetTax;
+          classPropertyTax += propertyTax;
           classTaxedStudents++;
         }
         classUsersProcessed++;
       }
 
       if (classTotalTax > 0) {
-        // 관리자에게 세금 수입 입금
+        // 관리자에게 세금 수입 입금 (순자산세 + 부동산세 합계)
         batch.update(adminDoc.ref, {
           cash: admin.firestore.FieldValue.increment(classTotalTax),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // 국고 통계
+        // 국고 통계 — 세목별로 분리 집계
         const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
         batch.set(
           treasuryRef,
           {
-            propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(classTotalTax),
+            netAssetTaxRevenue: admin.firestore.FieldValue.increment(classNetAssetTax),
+            propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(classPropertyTax),
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
           },
           { merge: true },
@@ -2391,12 +2449,13 @@ async function collectPropertyHoldingTaxesLogic() {
       totalCollected += classTotalTax;
       totalUsersProcessed += classUsersProcessed;
       logger.info(
-        `[부동산세] ${classCode} 완료: ${classUsersProcessed}명 처리, 과세 ${classTaxedStudents}명, 총 ${classTotalTax.toLocaleString()}원`,
+        `[주간세금] ${classCode} 완료: ${classUsersProcessed}명 처리, 과세 ${classTaxedStudents}명, ` +
+        `총 ${classTotalTax.toLocaleString()}원 (순자산세 ${classNetAssetTax.toLocaleString()} + 부동산세 ${classPropertyTax.toLocaleString()})`,
       );
     }
 
     logger.info(
-      `→ 부동산 보유세 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`,
+      `→ 주간 세금(순자산세 + 부동산 보유세) 징수 완료: 총 ${totalUsersProcessed}명, ${totalCollected.toLocaleString()}원`,
     );
   } catch (error) {
     logger.error("→ 부동산 보유세 징수 중 오류:", error);

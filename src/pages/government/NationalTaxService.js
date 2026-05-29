@@ -39,6 +39,7 @@ const DEFAULT_TREASURY_DATA = {
   vatRevenue: 0,
   auctionTaxRevenue: 0,
   propertyHoldingTaxRevenue: 0,
+  netAssetTaxRevenue: 0,
   itemMarketTaxRevenue: 0,
   incomeTaxRevenue: 0,
   corporateTaxRevenue: 0,
@@ -363,6 +364,7 @@ const NationalTaxService = ({ classCode }) => {
               { icon: "🛒", label: "부가세 수입", value: treasuryData.vatRevenue, accent: "#f472b6", bg: "rgba(244, 114, 182, 0.08)", border: "rgba(244, 114, 182, 0.25)" },
               { icon: "🔨", label: "경매장 거래세", value: treasuryData.auctionTaxRevenue, accent: "#22d3ee", bg: "rgba(34, 211, 238, 0.08)", border: "rgba(34, 211, 238, 0.25)" },
               { icon: "🏘️", label: "부동산 보유세", value: treasuryData.propertyHoldingTaxRevenue, accent: "#a3e635", bg: "rgba(163, 230, 53, 0.08)", border: "rgba(163, 230, 53, 0.25)" },
+              { icon: "🏦", label: "순자산세", value: treasuryData.netAssetTaxRevenue, accent: "#34d399", bg: "rgba(52, 211, 153, 0.08)", border: "rgba(52, 211, 153, 0.25)" },
               { icon: "🏪", label: "아이템 시장세", value: treasuryData.itemMarketTaxRevenue, accent: "#fb923c", bg: "rgba(251, 146, 60, 0.08)", border: "rgba(251, 146, 60, 0.25)" },
             ].map((card) => (
               <div
@@ -442,6 +444,7 @@ const NationalTaxService = ({ classCode }) => {
               { label: "부가세", amount: treasuryData.vatRevenue, color: "#f472b6" },
               { label: "경매장 거래세", amount: treasuryData.auctionTaxRevenue, color: "#22d3ee" },
               { label: "부동산 보유세", amount: treasuryData.propertyHoldingTaxRevenue, color: "#a3e635" },
+              { label: "순자산세", amount: treasuryData.netAssetTaxRevenue, color: "#34d399" },
               { label: "아이템 시장세", amount: treasuryData.itemMarketTaxRevenue, color: "#fb923c" },
             ].map((item) => {
               const percentage = totalTaxRevenue > 0 ? ((item.amount / totalTaxRevenue) * 100).toFixed(1) : "0.0";
