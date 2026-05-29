@@ -20,6 +20,9 @@ const TypingRanking = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
+  // 본인 오늘 기록(서버 값) — 교사/관리자라 랭킹 목록엔 안 보여도 저장 여부를 검증할 수 있게 항상 표시
+  const [myBest, setMyBest] = useState(null);
+  const [iAmExcluded, setIAmExcluded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -28,11 +31,20 @@ const TypingRanking = ({ onBack }) => {
       const classCode = userDoc?.classCode;
       if (!classCode || classCode === "미지정") {
         setRows([]);
+        setMyBest(null);
         setLoading(false);
         return;
       }
       const members = await getClassmates(classCode, true, "typingRanking");
       const today = new Date().toDateString();
+
+      // 본인 기록(서버 라운드트립 결과)에서 직접 추출 → 그만하기 기록 저장 검증
+      const me = members.find((m) => (m.uid || m.id) === user?.uid);
+      const myTodayScore =
+        me && me.typingArcadeBestDay === today ? me.typingArcadeBestScore || 0 : 0;
+      setMyBest(myTodayScore > 0 ? myTodayScore : null);
+      setIAmExcluded(!!(me && (me.isTeacher || me.isAdmin)));
+
       const ranked = members
         .filter(
           (m) =>
@@ -54,7 +66,7 @@ const TypingRanking = ({ onBack }) => {
     } finally {
       setLoading(false);
     }
-  }, [userDoc]);
+  }, [userDoc, user]);
 
   useEffect(() => {
     load();
@@ -92,12 +104,20 @@ const TypingRanking = ({ onBack }) => {
         </div>
       </div>
 
-      {myRank >= 0 && (
+      {myRank >= 0 ? (
         <div className="my-rank-banner">
           <span>내 등수</span>
           <strong>{myRank + 1}위</strong>
           <span>{rows[myRank].score.toLocaleString()}점</span>
         </div>
+      ) : (
+        myBest != null && (
+          <div className="my-rank-banner">
+            <span>내 오늘 최고점</span>
+            <strong>{myBest.toLocaleString()}점</strong>
+            <span>{iAmExcluded ? "교사·관리자는 경쟁 제외" : "기록 저장됨 ✓"}</span>
+          </div>
+        )
       )}
 
       {loading ? (
