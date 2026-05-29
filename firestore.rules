@@ -342,6 +342,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 🏛️ 정부 문서 (governments) — 아바타 상점 학급별 가격 override 등.
+    //   클라이언트는 읽기만(같은 학급), 쓰기는 Cloud Function(admin) 전용.
+    match /governments/{classCode} {
+      allow read: if isSameClass(classCode);
+      allow write: if isAdmin();
+    }
+
     // ========================================================
     // 🏦 국고 (nationalTreasuries)
     // ========================================================

@@ -1,6 +1,6 @@
 // 알찬 PWA 서비스 워커 - 네트워크 우선 (항상 최신 버전)
 // 🔥 버전 업데이트: clients.claim InvalidStateError 무해 처리 + 캐시 갱신
-const CACHE_VERSION = 'v1.3.1';
+const CACHE_VERSION = 'v1.3.2';
 const CACHE_NAME = `alchan-${CACHE_VERSION}`;
 const STATIC_CACHE = `alchan-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `alchan-dynamic-${CACHE_VERSION}`;

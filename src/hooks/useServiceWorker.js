@@ -49,6 +49,17 @@ export function useServiceWorker() {
       setRegistration(reg);
       logger.log('[PWA] 서비스 워커 등록 성공:', reg.scope);
 
+      // 🔄 새 서비스 워커가 제어권을 가져오면(업데이트 활성화) 1회 자동 새로고침.
+      //   → 새 버전이 사용자 조작 없이 즉시 적용됨(캐시 stale 방지). 첫 설치(controller 없음)는 제외.
+      if (navigator.serviceWorker.controller && !window.__alchanSwReloaded) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (window.__alchanSwReloaded) return;
+          window.__alchanSwReloaded = true;
+          logger.log('[PWA] 새 서비스 워커 활성화 — 자동 새로고침');
+          window.location.reload();
+        });
+      }
+
       // 업데이트 확인
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
@@ -70,7 +81,10 @@ export function useServiceWorker() {
 
       // 🔥 [최적화] 주기적 업데이트 확인 (1시간마다) - cleanup 가능하도록 ID 저장
       const intervalId = setInterval(() => {
-        reg.update();
+        // reg.update()는 SW가 redundant/invalid 상태일 때 InvalidStateError를 reject함 → 무해하므로 흡수
+        Promise.resolve(reg.update()).catch((e) => {
+          logger.warn('[PWA] SW update 건너뜀(무해):', e?.message || e);
+        });
       }, 60 * 60 * 1000);
       setUpdateIntervalId(intervalId);
 
