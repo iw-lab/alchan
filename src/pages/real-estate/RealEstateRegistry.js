@@ -65,6 +65,9 @@ const RealEstateRegistry = () => {
   const [showQuickAction, setShowQuickAction] = useState(null);
   const [adminInputs, setAdminInputs] = useState({ ...DEFAULT_SETTINGS });
   const [excludedFromAssign, setExcludedFromAssign] = useState(new Set());
+  // 🎁 무료 분배 선택 상태
+  const [giveUserId, setGiveUserId] = useState("");
+  const [givePropertyId, setGivePropertyId] = useState("");
 
   // 🔥 [제거] body 스크롤 조작 완전 제거 - CSS로만 처리
   // 모달 오버레이에 overflow-y: auto 설정으로 모달 내부 스크롤 허용
@@ -1141,6 +1144,101 @@ const RealEstateRegistry = () => {
     } catch (error) {
       logger.error("[RealEstate] 자동 배정 전체 오류:", error);
       alert(`자동 배정 중 오류 발생: ${error.message}`);
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
+  // 🎁 [관리자] 부동산 무료 분배 — 정부 소유 빈 부동산의 소유권을 학생에게 무상 이전
+  const handleAdminGiveProperty = async () => {
+    if (!classCode || !currentUser || !isAdmin()) {
+      alert("권한이 없거나 학급 정보가 없습니다.");
+      return;
+    }
+    if (!giveUserId || !givePropertyId) {
+      alert("분배할 부동산과 받을 학생을 모두 선택하세요.");
+      return;
+    }
+    const targetProperty = properties.find((p) => p.id === givePropertyId);
+    const targetUser = allUsersData.find((u) => u.id === giveUserId);
+    if (!targetProperty || !targetUser) {
+      alert("선택한 부동산 또는 학생 정보를 찾을 수 없습니다.");
+      return;
+    }
+    if (!window.confirm(
+      `'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}${targetProperty.name ? ` (${targetProperty.name})` : ""}을(를) ` +
+      `무료로 분배(소유권 이전)하시겠습니까?\n\n학생은 비용 없이 소유자가 되며 자동으로 입주합니다.`
+    )) return;
+
+    setOperationLoading(true);
+    const previousProperties = [...properties];
+    // 낙관적 업데이트
+    setProperties((prev) =>
+      prev.map((p) =>
+        p.id === targetProperty.id
+          ? {
+              ...p,
+              owner: targetUser.id,
+              ownerId: targetUser.id,
+              ownerName: targetUser.name,
+              tenant: targetUser.name,
+              tenantId: targetUser.id,
+              tenantName: targetUser.name,
+              forSale: false,
+              salePrice: null,
+            }
+          : p
+      )
+    );
+
+    try {
+      const propertyRef = doc(db, "classes", classCode, "realEstateProperties", targetProperty.id);
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(propertyRef);
+        if (!snap.exists()) throw new Error("부동산 정보를 찾을 수 없습니다.");
+        const data = snap.data();
+        const isGovOwned = !data.owner || data.owner === "government";
+        if (!isGovOwned) {
+          throw new Error("이미 학생이 소유한 부동산은 분배할 수 없습니다.");
+        }
+        if (data.tenantId) {
+          throw new Error("세입자가 있는 부동산은 분배할 수 없습니다. 먼저 비운 뒤 분배하세요.");
+        }
+        transaction.update(propertyRef, {
+          owner: targetUser.id,
+          ownerId: targetUser.id, // 순자산 계산(ownerId 쿼리) 매칭용
+          ownerName: targetUser.name,
+          forSale: false,
+          salePrice: null,
+          tenant: targetUser.name,
+          tenantId: targetUser.id,
+          tenantName: targetUser.name,
+          acquiredFree: true,
+          lastRentPayment: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      try {
+        await addActivityLog(
+          targetUser.id,
+          "부동산 무료 분배",
+          `관리자가 부동산 #${targetProperty.id}${targetProperty.name ? ` (${targetProperty.name})` : ""}을(를) 무료로 분배했습니다.`
+        );
+      } catch (logErr) {
+        logger.warn("[RealEstate] 무료 분배 로그 기록 실패:", logErr.message);
+      }
+
+      logger.log(`[RealEstate] 무료 분배 완료: ${targetUser.name} <- 부동산 #${targetProperty.id}`);
+      alert(`'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}를 무료로 분배했습니다.`);
+      setGiveUserId("");
+      setGivePropertyId("");
+      await refreshProperties();
+      globalCache.invalidate(`user_${targetUser.id}`);
+    } catch (error) {
+      logger.error("[RealEstate] 무료 분배 오류:", error);
+      setProperties(previousProperties);
+      alert(`무료 분배 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
     }
@@ -2223,6 +2321,60 @@ const RealEstateRegistry = () => {
                 ) : (
                   <p style={{ color: '#059669', fontWeight: '600', textAlign: 'center', padding: '20px' }}>✅ 모든 학생이 입주했습니다!</p>
                 )}
+              </div>
+              {/* 🎁 부동산 무료 분배 */}
+              <div className="give-property-section" style={{ marginTop: '20px', padding: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px' }}>
+                <h4 style={{ margin: '0 0 12px', color: '#15803d' }}>🎁 부동산 무료 분배</h4>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 12px' }}>
+                  정부 소유의 빈 부동산을 학생에게 무료로 소유권 이전합니다. (학생은 비용 없이 소유·입주)
+                </p>
+                {(() => {
+                  const distributable = properties.filter(
+                    (p) => (!p.owner || p.owner === 'government') && !p.tenantId
+                  );
+                  const students = allUsersData.filter((u) => !u.isAdmin);
+                  return (
+                    <>
+                      <div className="form-group">
+                        <label>분배할 부동산</label>
+                        <select value={givePropertyId} onChange={(e) => setGivePropertyId(e.target.value)}>
+                          <option value="">— 부동산 선택 ({distributable.length}개 분배 가능) —</option>
+                          {distributable.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              #{p.id}{p.name ? ` ${p.name}` : ''} · {((p.price || 0) / 10000).toLocaleString()}만원
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>받을 학생</label>
+                        <select value={giveUserId} onChange={(e) => setGiveUserId(e.target.value)}>
+                          <option value="">— 학생 선택 —</option>
+                          {students.map((u) => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={handleAdminGiveProperty}
+                        disabled={operationLoading || !givePropertyId || !giveUserId}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          backgroundColor: (operationLoading || !givePropertyId || !giveUserId) ? '#cbd5e1' : '#16a34a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '14px',
+                          cursor: (operationLoading || !givePropertyId || !giveUserId) ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        🎁 무료로 분배하기
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
             <div className="panel-actions">
