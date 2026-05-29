@@ -1,5 +1,5 @@
 // src/pages/learning/LearningBoard.js
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
@@ -149,6 +149,66 @@ const LearningBoard = () => {
   const [editAttachments, setEditAttachments] = useState([]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const POSTS_PER_PAGE = 10;
+
+  // =========================================================
+  // 💾 글쓰기 임시 자동저장 (localStorage)
+  //  - 작성 중 내용을 0.6초 디바운스로 자동 저장 → 앱 종료/새로고침/크래시 후 복구
+  //  - 게시판·사용자별 키. 등록 성공 시 삭제. (첨부파일은 저장 대상 아님)
+  // =========================================================
+  const draftKey =
+    classCode && selectedBoard && currentUserId
+      ? `alchan_lb_draft_${classCode}_${selectedBoard.id}_${currentUserId}`
+      : null;
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const restoredKeyRef = useRef(null);
+
+  const clearDraft = useCallback(() => {
+    if (draftKey) {
+      try { localStorage.removeItem(draftKey); } catch (_) { /* noop */ }
+    }
+    setDraftSavedAt(null);
+  }, [draftKey]);
+
+  // 글쓰기 화면이 닫히면 복구 플래그 초기화 (다시 열면 재복구 가능)
+  useEffect(() => {
+    if (!isWriting) restoredKeyRef.current = null;
+  }, [isWriting]);
+
+  // 글쓰기 화면 진입 시 임시저장 복구 (작성 중인 내용이 없을 때만)
+  useEffect(() => {
+    if (!isWriting || !draftKey) return;
+    if (restoredKeyRef.current === draftKey) return; // 이번 세션에서 이미 처리됨
+    restoredKeyRef.current = draftKey;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d && (d.title || d.content)) {
+        setNewPost((prev) =>
+          prev.title || prev.content
+            ? prev // 이미 입력 중인 내용이 있으면 덮어쓰지 않음
+            : { title: d.title || "", content: d.content || "" }
+        );
+        setDraftSavedAt(d.savedAt || null);
+      }
+    } catch (_) { /* noop */ }
+  }, [isWriting, draftKey]);
+
+  // 작성 내용 변경 시 디바운스 자동 저장
+  useEffect(() => {
+    if (!isWriting || !draftKey) return;
+    const title = newPost.title || "";
+    const content = newPost.content || "";
+    if (!title.trim() && !content.trim()) return; // 빈 내용은 저장 안 함
+    const t = setTimeout(() => {
+      try {
+        const savedAt = Date.now();
+        localStorage.setItem(draftKey, JSON.stringify({ title, content, savedAt }));
+        setDraftSavedAt(savedAt);
+      } catch (_) { /* 용량 초과 등 무시 */ }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [newPost, isWriting, draftKey]);
 
   const boardsCollectionRef = useMemo(() => {
     if (classCode) return collection(db, "classes", classCode, "learningBoards");
@@ -439,6 +499,7 @@ const LearningBoard = () => {
       refetchPosts();
       setNewPost({ title: "", content: "" });
       setPendingFiles([]);
+      clearDraft(); // 등록 완료 → 임시저장 삭제
       setIsWriting(false);
       alert("게시글이 등록되었습니다!");
     } catch (error) {
@@ -1172,6 +1233,27 @@ const LearningBoard = () => {
           <div className="lb-write">
             <button className="lb-back" onClick={() => { setIsWriting(false); setPendingFiles([]); }}>← 목록으로</button>
             <h2 className="lb-write-heading">{selectedBoard.name}에 글쓰기</h2>
+            <div className="lb-draft-bar">
+              <span className="lb-draft-status">
+                💾 {draftSavedAt
+                  ? `임시저장됨 · ${new Date(draftSavedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
+                  : "작성 중인 내용은 자동 저장돼요"}
+              </span>
+              {(newPost.title || newPost.content) && (
+                <button
+                  type="button"
+                  className="lb-draft-clear"
+                  onClick={() => {
+                    if (window.confirm("작성 중인 내용을 지우고 새로 쓸까요?")) {
+                      setNewPost({ title: "", content: "" });
+                      clearDraft();
+                    }
+                  }}
+                >
+                  새로 쓰기
+                </button>
+              )}
+            </div>
             <form onSubmit={handlePostSubmit} className="lb-form">
               <div className="lb-field">
                 <label>제목</label>

@@ -562,8 +562,39 @@
   font-size: 1.1rem;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1rem 0;
 }
+
+/* 💾 임시 자동저장 바 */
+.lb-draft-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 0 0 1rem 0;
+}
+.lb-draft-status {
+  font-size: 0.85rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+.lb-draft-clear {
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #93c5fd;
+  color: #2563eb;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.lb-draft-clear:hover { background: #dbeafe; }
 
 .lb-form {
   background: #ffffff;
