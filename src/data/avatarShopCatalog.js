@@ -411,7 +411,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit top with ROUNDED SLOPING SHOULDERS that curve smoothly downward from the neck like natural shoulders (NOT a flat horizontal block, NOT a straight cut-off top edge). The suit has a soft white rounded collar/neckline at the FRONT, clearly DRAWN, gently framing the base of the neck (NOT an empty hole, NOT a flat fill, NOT a deep bare scoop). The topmost edge of the whole suit — the rounded collar — sits at vertical ~35%, and NOTHING is drawn above vertical 33% (the head area stays empty white). Chest control panel with colorful buttons, mission patches on the shoulders, NASA-style badge, blue and red accent stripes on the arms and legs, white gloves at the hands, white boots at the feet. 🚫 NO bulky helmet, NO rigid metal neck ring, NO tall turtleneck, NO straight horizontal line cutting across the shoulders or neck, NO collar wrapping behind the neck — keep the back of the neck open for the head. Head + neck area (vertical 0-33%) must be PURE WHITE empty.`,
+    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit top. CRITICAL: the suit's shoulders and upper chest FILL the entire area right up to the base of the neck — the white spacesuit fabric covers both shoulders fully and reaches up to a small rounded collar that hugs the base of the neck at vertical ~29-30% (exactly at the base character's shoulder line, same as a school blazer's shoulders). There must be NO empty gap between the neck and the suit — the upper chest and shoulders are COMPLETELY filled with the white suit, the suit does NOT start low at the mid-chest. Rounded sloping shoulders (NOT a flat horizontal block). The control panel sits on the mid-chest, mission patches on the shoulders, NASA-style badge, blue and red accent stripes on the arms and legs, white gloves at the hands, white boots at the feet. 🚫 NO bulky helmet, NO rigid metal neck ring, NO tall turtleneck rising above vertical 28%, NO collar wrapping behind the neck — only the small front collar at the neck base. Head + neck area (vertical 0-28%) must be PURE WHITE empty.`,
   },
   {
     id: "outfit_chef",
@@ -907,7 +907,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260531a`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260531b`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)

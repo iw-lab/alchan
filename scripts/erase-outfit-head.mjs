@@ -33,7 +33,8 @@ async function eraseHead(filePath) {
   const { width, height, channels } = info;
   if (channels !== 4) throw new Error("channels != 4");
 
-  const eraseUntilY = Math.round(height * ERASE_RATIO);
+  const ratio = args.ratio !== undefined ? parseFloat(args.ratio) : ERASE_RATIO;
+  const eraseUntilY = Math.round(height * ratio);
   const out = Buffer.from(data);
   let cleared = 0;
   for (let y = 0; y < eraseUntilY; y++) {
