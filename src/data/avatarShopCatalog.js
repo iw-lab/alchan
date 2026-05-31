@@ -411,7 +411,7 @@ const OUTFIT_ITEMS = [
     description: "꿈을 향한 우주복",
     rarity: "legendary",
     price: 4500000,
-    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit. 🚫 ABSOLUTELY NO HELMET, NO neck ring, NO turtleneck, NO grey collar, NO closed collar around the neck. The suit top is an OPEN ROUND/SCOOP NECKLINE at the FRONT only — the opening dips low to vertical ~36% at center front so the base character's bare NECK and throat stay fully visible. NOTHING crosses the front or back of the neck. Head + neck area (vertical 0-34%) must be PURE WHITE empty. Chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
+    prompt: `${OUTFIT_STYLE} A white astronaut spacesuit. 🚫 ABSOLUTELY NO HELMET, NO neck ring, NO turtleneck, NO grey collar, NO closed collar around the neck, NO raised ring or tube around the neck opening. The spacesuit shoulders and neckline lie FLAT and LOW at vertical ~33% (shoulder line). The suit top is an OPEN ROUND/SCOOP NECKLINE at the FRONT only — the opening dips low to vertical ~36% at center front so the base character's bare NECK and throat stay fully visible. NOTHING crosses or wraps the front, sides, or back of the neck above vertical 33%. Head + neck area (vertical 0-34%) must be PURE WHITE empty. Chest control panel with colorful buttons, mission patches on shoulders, NASA-style badge, white gloves at hands, white boots at feet.`,
   },
   {
     id: "outfit_chef",
@@ -429,7 +429,7 @@ const OUTFIT_ITEMS = [
     description: "단정한 교복",
     rarity: "common",
     price: 80000,
-    prompt: `${OUTFIT_STYLE} A Korean school uniform top, navy blazer with red striped tie and white shirt collar, simple emblem on chest pocket, no person inside.`,
+    prompt: `${OUTFIT_STYLE} A Korean school uniform: navy blazer with two buttons, a red diagonally-striped necktie, simple gold shield emblem on the left chest pocket, navy trousers full-length, black loafer shoes. 🚫 COLLAR RULE (like a doctor's open suit): the white shirt collar and blazer lapels are FRONT-ONLY and sit LOW at the chest — they begin at vertical ~33% (shoulder line) and do NOT rise up or stand around the neck. NO stand-up collar, NO back collar, NO white collar wrapping behind or beside the neck, NO collar peaks pointing up past vertical 31%. The necktie hangs straight DOWN starting from vertical ~34% (below the open neckline), NOT up at the throat. The base character's neck stays fully open and visible. Head + neck area (vertical 0-34%) must be PURE WHITE empty. no person inside.`,
   },
   {
     id: "outfit_kpop_idol",
@@ -456,7 +456,7 @@ const OUTFIT_ITEMS = [
     description: "흰 의사 가운",
     rarity: "rare",
     price: 450000,
-    prompt: `${OUTFIT_STYLE} A NAVY professional suit jacket (dark navy blue) with OPEN PEAKED LAPELS forming a deep V-neck that dips to vertical ~38% at center front, a white dress shirt visible inside the V, two gold buttons, a small gold shield emblem on the left chest, navy trousers full-length, black dress shoes. 🚫 The lapel/collar is FRONT-ONLY — NO fabric behind or wrapping around the neck, NO high closed collar, NO back collar. The base character's neck and the back of the neck stay fully open/visible. Head + neck area (vertical 0-34%) must be PURE WHITE empty.`,
+    prompt: `${OUTFIT_STYLE} A NAVY professional suit jacket (dark navy blue) with WIDE SQUARED SHOULDERS spanning the FULL shoulder width from horizontal 33% to 67% (exactly as wide as the base character's shoulders, fully covering both shoulders with NO gap, NO bare skin or undershirt showing at the shoulder edges), OPEN PEAKED LAPELS forming a V-neck that dips to vertical ~36% at center front, a white dress shirt FILLING the V-neck opening (no gap), two gold buttons, a small gold shield emblem on the left chest, navy trousers full-length, black dress shoes. 🚫 The lapel/collar is FRONT-ONLY and sits LOW — the lapels and white shirt begin at vertical ~33% (shoulder line), NO collar points or peaks rising up past vertical 31%, NO fabric behind or beside or wrapping around the neck, NO high closed collar, NO stand-up collar, NO back collar. The base character's neck and the back/sides of the neck stay fully open/visible. Head + neck area (vertical 0-34%) must be PURE WHITE empty.`,
   },
   {
     id: "outfit_robe_wizard",

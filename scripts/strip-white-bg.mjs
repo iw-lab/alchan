@@ -25,6 +25,11 @@ const args = process.argv.slice(2);
 const skipPatterns = args
   .filter((a) => a.startsWith("--skip="))
   .map((a) => a.replace("--skip=", ""));
+// --only=id1,id2 : 지정한 파일만 처리 (base 등 보호 파일 안전)
+const onlyPatterns = args
+  .filter((a) => a.startsWith("--only="))
+  .flatMap((a) => a.replace("--only=", "").split(","))
+  .filter(Boolean);
 
 // 흰색 판정 (각 RGB 채널이 threshold 이상)
 const WHITE_THRESHOLD = 240;
@@ -101,6 +106,15 @@ async function main() {
   let done = 0;
   let skipped = 0;
   for (const file of files) {
+    // only 패턴 (지정 시 그 외 전부 건너뜀)
+    if (onlyPatterns.length > 0) {
+      const base = file.replace(/\.png$/, "");
+      const match = onlyPatterns.some((p) => base === p || file === p);
+      if (!match) {
+        skipped++;
+        continue;
+      }
+    }
     // skip 패턴 검사
     const skip = skipPatterns.some((p) => file.startsWith(p));
     if (skip) {
