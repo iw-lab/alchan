@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'build/**'  # build 폴더가 변경될 때만 호스팅 배포
+      - 'firebase.json'  # 캐시/헤더 등 호스팅 설정 변경 시 배포
       - 'functions/**'  # functions 변경 시 함수 배포
       - 'storage.rules'  # storage 권한 정책 변경 시 배포
       - 'firestore.rules'  # firestore 권한 정책 변경 시 배포
