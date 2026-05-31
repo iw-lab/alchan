@@ -123,6 +123,24 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
           }}
         />
       )}
+      {/* outfit 착용 시: 옷이 안 덮는 목·어깨 갭(특히 칼라가 넓게 열린 옷)으로
+          배경이 비치지 않도록 전신 base를 한 겹 깔아 캐릭터 몸으로 갭을 메움.
+          위에 머리 base(z=10)와 outfit(z=20)이 덮으므로 갭만 채워진다. */}
+      {slots.outfit?.url && outfitBaseUrl && (
+        <img
+          src={fallbackBaseUrl}
+          alt="base-fill"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            zIndex: 5,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {/* 베이스 PNG — outfit 착용 시 머리만 표시 (NECK 27% 이하 잘림),
           outfit이 몸 전체를 자연스럽게 덮음. */}
       <img
