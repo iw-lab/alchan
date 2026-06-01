@@ -166,7 +166,7 @@ export const ITEM_ANCHORS = {
   glasses_aviator:               { x: 49.63, y: 27.13, w: 100, h: 16.5 },
   glasses_eyepatch:              { x: 53.4, y: 26, w: 50.5, h: 11 },
   glasses_heart_pink:            { x: 49.67, y: 26.73, w: 100, h: 18 },
-  glasses_mask_medic:            { x: 49.67, y: 31.13, w: 36, h: 15.5 },
+  glasses_mask_medic:            { x: 49.67, y: 31.8, w: 36, h: 16.5 },
   glasses_monocle:               { x: 53.63, y: 29.33, w: 100, h: 49.5 },
   glasses_round_black:           { x: 49.5, y: 26.8, w: 100, h: 16.5 },
   glasses_star:                  { x: 49.8, y: 27, w: 19, h: 180 },
@@ -188,13 +188,13 @@ export const ITEM_ANCHORS = {
   outfit_robe_wizard:            { x: 49.5, y: 54, w: 100, h: 100 },
   outfit_school:                 { x: 49.5, y: 52.5, w: 100, h: 100 },
   // effect — 가운데 빈 테두리 디자인: W가 100 크게 넘으면 입자가 화면 밖으로 밀려 안 보임
-  effect_butterflies:            { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 536 → 빈화면)
+  effect_butterflies:            { x: 51.23, y: 52, w: 536, h: 210.5 },
   effect_hearts:                 { x: 50.03, y: 51.03, w: 100, h: 144.5 },
-  effect_lightning:              { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 309 → 빈화면)
+  effect_lightning:              { x: 50.03, y: 50.4, w: 309.5, h: 105.5 },
   effect_petals:                 { x: 50.53, y: 50.67, w: 100, h: 122.5 },
   effect_rainbow_ring:           { x: 50, y: 50, w: 154, h: 102.5 },
   effect_snow:                   { x: 49.6, y: 49.7, w: 146.5, h: 99.5 },
-  effect_sparkle:                { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 481/x71 → 빈화면)
+  effect_sparkle:                { x: 49, y: 50.13, w: 481.5, h: 98.5 },
 };
 
 /**
