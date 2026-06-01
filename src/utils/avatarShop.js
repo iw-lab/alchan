@@ -164,9 +164,9 @@ export const ITEM_ANCHORS = {
   // glasses
   glasses_3d:                    { x: 49.88, y: 26.83, w: 30, h: 20 },
   glasses_aviator:               { x: 49.63, y: 27.13, w: 100, h: 16.5 },
-  glasses_eyepatch:              { x: 53.2, y: 26.17, w: 26, h: 12.5 },
+  glasses_eyepatch:              { x: 53.4, y: 26, w: 50.5, h: 11 },
   glasses_heart_pink:            { x: 49.67, y: 26.73, w: 100, h: 18 },
-  glasses_mask_medic:            { x: 49.5, y: 30.3, w: 36, h: 15.5 },
+  glasses_mask_medic:            { x: 49.67, y: 31.13, w: 36, h: 15.5 },
   glasses_monocle:               { x: 53.63, y: 29.33, w: 100, h: 49.5 },
   glasses_round_black:           { x: 49.5, y: 26.8, w: 100, h: 16.5 },
   glasses_star:                  { x: 49.8, y: 27, w: 19, h: 180 },
