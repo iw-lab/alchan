@@ -635,9 +635,14 @@ export const generateRandomReward = (difficulty = "normal", correctCount = 0) =>
     return adjustedItems[adjustedItems.length - 1].amount;
   };
 
+  // 🎫 쿠폰 지급량 1/3로 축소 (상금 쿠폰이 과다 지급되던 문제) — 최소 1개 보장
+  const COUPON_REDUCTION = 1 / 3;
+  const rawCoupon = weightedRandom(filteredCouponRewards);
+  const coupon = Math.max(1, Math.round(rawCoupon * COUPON_REDUCTION));
+
   return {
     cash: weightedRandom(filteredCashRewards),
-    coupon: weightedRandom(filteredCouponRewards)
+    coupon
   };
 };
 
