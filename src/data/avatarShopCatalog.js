@@ -360,7 +360,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 70% of canvas width). CRITICAL: the entire oval patch is COMPLETELY FILLED with pure JET BLACK color #000000 throughout (FULLY OPAQUE solid black interior, NOT white interior, NOT empty, NOT outline-only — must be CLEARLY VISIBLE as a solid black silhouette against any background). A clearly visible LARGE bright WHITE skull-and-crossbones drawing in the center of the black patch (skull occupying 45% of the patch area, bold white outlined skull with crossed bones, easy to see against the solid black background). WITH ONE single LONG thin black diagonal strap line crossing the ENTIRE frame corner-to-corner — starting at the very TOP-LEFT corner and running straight down to the very BOTTOM-RIGHT corner, extending ALL THE WAY out to both canvas edges (one long diagonal band passing behind the patch). ONLY this single diagonal line. NO horizontal strap, NO left or right side straps, NO buckles, NO X-cross, NO second strap. VERY THICK 6-8px solid black outline around the oval edge. Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 70% of canvas width). CRITICAL: the entire oval patch is COMPLETELY FILLED with pure JET BLACK color #000000 throughout (FULLY OPAQUE solid black interior, NOT white interior, NOT empty, NOT outline-only — must be CLEARLY VISIBLE as a solid black silhouette against any background). A clearly visible LARGE bright WHITE skull-and-crossbones drawing in the center of the black patch (skull occupying 45% of the patch area, bold white outlined skull with crossed bones, easy to see against the solid black background). WITH ONE single thin black diagonal strap that is ASYMMETRIC: on the UPPER-LEFT side it is LONG, extending all the way out to the very TOP-LEFT corner of the frame (reaching far up). On the LOWER-RIGHT side it is SHORT, ending soon just past the patch edge (stays close to the patch, does NOT reach the bottom-right corner). ONLY this single diagonal line. NO horizontal strap, NO X-cross, NO buckles, NO second strap. VERY THICK 6-8px solid black outline around the oval edge. Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -369,7 +369,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic ear straps, one on each side (left and right), each drawn as a simple OPEN HOOK / half-loop line (shaped like the letter C) — do NOT draw a fully closed loop and do NOT fill the gap, so there is NO enclosed white circle/hole between the strap and the mask (the opening reads as see-through background). VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic ear straps, one on each side. Each strap starts at the mask's upper-side edge and curves UPWARD and OUTWARD as a long open ear-hook line (a wide C opening toward the mask), reaching UP to ear level so it visually connects the mask to where the ears would be. Open hook only — do NOT fill the gap and NO enclosed white circle/hole (the opening reads as see-through background). VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
   },
   {
     id: "glasses_3d",
@@ -907,7 +907,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601c`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601d`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
