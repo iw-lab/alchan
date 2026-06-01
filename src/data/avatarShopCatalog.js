@@ -369,7 +369,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic ear straps, one on each side. Each strap is a LARGE, LONG ear-hook: it attaches to the mask's side edge and extends well OUTWARD and gently up to reach EAR LEVEL (big enough that it would hook over an ear). Make the hooks BIG and reaching toward the ears, but keep them out to the SIDES at ear height — do NOT cross up over the eyes, nose, or forehead. Open hook only — do NOT fill the gap and NO enclosed white circle/hole (the opening reads as see-through background). VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic ear straps, one on each side. Each strap extends FAR OUT HORIZONTALLY to the LEFT and to the RIGHT — long sideways straps that stretch well beyond the mask's sides, reaching outward and slightly DOWN to about JUST BELOW EAR level. Make them LONG and WIDE horizontally (mostly sideways, like big loops going out to the ears). Keep them roughly horizontal/sideways at mask height — do NOT curve them up over the eyes, nose, or forehead. Open hook only — do NOT fill the gap and NO enclosed white circle/hole (the opening reads as see-through background). VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
   },
   {
     id: "glasses_3d",
@@ -907,7 +907,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601f`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601g`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
