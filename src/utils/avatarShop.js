@@ -187,14 +187,14 @@ export const ITEM_ANCHORS = {
   outfit_police:                 { x: 49.67, y: 54.83, w: 100, h: 100 },
   outfit_robe_wizard:            { x: 49.5, y: 54, w: 100, h: 100 },
   outfit_school:                 { x: 49.5, y: 52.5, w: 100, h: 100 },
-  // effect
-  effect_butterflies:            { x: 51.23, y: 52, w: 536, h: 210.5 },
-  effect_hearts:                 { x: 50.2, y: 68.67, w: 100, h: 70.5 },
-  effect_lightning:              { x: 78, y: 22.2, w: 309.5, h: 29 },
-  effect_petals:                 { x: 50.67, y: 54.5, w: 100, h: 45.5 },
-  effect_rainbow_ring:           { x: 50, y: 50, w: 154, h: 218.5 },
-  effect_snow:                   { x: 50.3, y: 63.37, w: 146.5, h: 70.5 },
-  effect_sparkle:                { x: 71.17, y: 53.3, w: 481.5, h: 211.5 },
+  // effect — 가운데 빈 테두리 디자인: W가 100 크게 넘으면 입자가 화면 밖으로 밀려 안 보임
+  effect_butterflies:            { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 536 → 빈화면)
+  effect_hearts:                 { x: 50.03, y: 51.03, w: 100, h: 144.5 },
+  effect_lightning:              { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 309 → 빈화면)
+  effect_petals:                 { x: 50.53, y: 50.67, w: 100, h: 122.5 },
+  effect_rainbow_ring:           { x: 50, y: 50, w: 154, h: 102.5 },
+  effect_snow:                   { x: 49.6, y: 49.7, w: 146.5, h: 99.5 },
+  effect_sparkle:                { x: 50, y: 50, w: 100, h: 100 },     // reset (저장값 481/x71 → 빈화면)
 };
 
 /**
