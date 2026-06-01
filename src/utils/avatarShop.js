@@ -178,7 +178,7 @@ export const ITEM_ANCHORS = {
   luxury_hanbok_gold:            { x: 49.67, y: 54.17, w: 100, h: 100 },
   luxury_kpop_stage:             { x: 49.67, y: 54.33, w: 100, h: 100 },
   luxury_royal_robe:             { x: 49.5, y: 54.17, w: 100, h: 100 },
-  luxury_suit_gold:              { x: 49.5, y: 51.2, w: 218.5, h: 80.5 },
+  luxury_suit_gold:              { x: 49.5, y: 52.53, w: 90.5, h: 87.5 },
   outfit_astronaut:              { x: 49.33, y: 54.67, w: 100, h: 100 },
   outfit_chef:                   { x: 49.5, y: 53.83, w: 100, h: 100 },
   outfit_doctor:                 { x: 49.67, y: 54, w: 100, h: 100 },
