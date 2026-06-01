@@ -61,7 +61,7 @@ const OUTFIT_STYLE = `${STYLE_BASE} A chibi Korean elementary student wearing th
 
 const SCENE_STYLE = `${STYLE_BASE.replace("isolated on PURE WHITE background (#ffffff), centered, no shadows on background, ", "")} Square 1:1 scene, full bleed background, vibrant atmospheric colors.`;
 
-const EFFECT_STYLE = `${STYLE_BASE} Magical particle effect, glowing sparkles, semi-transparent, centered, NO subject, NO character, just the visual effect / aura / pattern.`;
+const EFFECT_STYLE = `${STYLE_BASE} Magical particle effect, glowing sparkles, semi-transparent, NO subject, NO character, just the visual effect / aura / pattern. CRITICAL LAYOUT: arrange the effect ONLY around the FRAME EDGES and PERIMETER (top, bottom, left, right borders), leaving the WHOLE CENTER of the canvas EMPTY and transparent — the central 55% vertical column (where a standing character would be) must be CLEAR with NO effect elements covering it, like a decorative border or aura ring framing an empty middle.`;
 
 const PRESET_STYLE = `${STYLE_BASE} Cute chibi character, head-and-shoulders bust portrait, large expressive eyes, simple round face, big head ratio. Front view, looking forward with friendly expression. Child-friendly cartoon style, isolated on plain pastel solid background.`;
 
@@ -631,7 +631,7 @@ const EFFECT_ITEMS = [
     description: "주변을 빛나게 하는 반짝임",
     rarity: "common",
     price: 50000,
-    prompt: `${EFFECT_STYLE} Small white and gold sparkles, plus-shaped twinkles scattered around the frame, semi-transparent overlay.`,
+    prompt: `${EFFECT_STYLE} Small white and gold sparkles, plus-shaped twinkles clustered along the four frame edges and corners only, semi-transparent overlay, empty clear center.`,
   },
   {
     id: "effect_hearts",
@@ -640,7 +640,7 @@ const EFFECT_ITEMS = [
     description: "사랑스러운 하트 폭발",
     rarity: "rare",
     price: 220000,
-    prompt: `${EFFECT_STYLE} Pink and red heart shapes floating up and around in various sizes, valentine vibe, semi-transparent.`,
+    prompt: `${EFFECT_STYLE} Pink and red heart shapes floating up along the left and right side borders and bottom edge in various sizes, valentine vibe, semi-transparent, empty clear center.`,
   },
   {
     id: "effect_lightning",
@@ -649,7 +649,7 @@ const EFFECT_ITEMS = [
     description: "강력한 번개 이펙트",
     rarity: "epic",
     price: 1000000,
-    prompt: `${EFFECT_STYLE} Bright yellow lightning bolts and electric arcs zigzagging from frame edges, electric blue glow, dynamic energy.`,
+    prompt: `${EFFECT_STYLE} Bright yellow lightning bolts and electric arcs zigzagging inward from the frame edges and corners only, electric blue glow, dynamic energy, empty clear center.`,
   },
   {
     id: "effect_fire_aura",
@@ -667,7 +667,7 @@ const EFFECT_ITEMS = [
     description: "흩날리는 벚꽃잎",
     rarity: "rare",
     price: 180000,
-    prompt: `${EFFECT_STYLE} Pink cherry blossom petals (sakura) falling and floating, semi-transparent, gentle spring atmosphere.`,
+    prompt: `${EFFECT_STYLE} Pink cherry blossom petals (sakura) falling and floating along the side borders and top/bottom edges, semi-transparent, gentle spring atmosphere, empty clear center.`,
   },
   {
     id: "effect_snow",
@@ -676,7 +676,7 @@ const EFFECT_ITEMS = [
     description: "은은한 눈송이",
     rarity: "common",
     price: 40000,
-    prompt: `${EFFECT_STYLE} White snowflakes of various sizes drifting down, six-point crystalline shapes, semi-transparent winter feel.`,
+    prompt: `${EFFECT_STYLE} White snowflakes of various sizes drifting down along the left/right side borders and bottom edge, six-point crystalline shapes, semi-transparent winter feel, empty clear center.`,
   },
   {
     id: "effect_rainbow_ring",
@@ -685,7 +685,7 @@ const EFFECT_ITEMS = [
     description: "주변에 도는 무지개 링",
     rarity: "epic",
     price: 1300000,
-    prompt: `${EFFECT_STYLE} Rainbow colored ring/halo encircling the center, gradient red orange yellow green blue purple, magical glow.`,
+    prompt: `${EFFECT_STYLE} A thin rainbow colored ring/halo band encircling near the frame edges, gradient red orange yellow green blue purple, magical glow, large empty clear transparent center inside the ring.`,
   },
   {
     id: "effect_butterflies",
@@ -694,7 +694,7 @@ const EFFECT_ITEMS = [
     description: "아름다운 나비 떼",
     rarity: "rare",
     price: 250000,
-    prompt: `${EFFECT_STYLE} Several colorful butterflies (blue, purple, yellow) floating around the frame, peaceful magical mood.`,
+    prompt: `${EFFECT_STYLE} Several colorful butterflies (blue, purple, yellow) floating along the frame edges, corners and side borders only, peaceful magical mood, empty clear center.`,
   },
 ];
 
@@ -907,7 +907,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601h`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601i`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)

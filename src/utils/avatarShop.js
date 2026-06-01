@@ -12,7 +12,7 @@ export const AVATAR_SHOP_SLOTS = {
   glasses: { name: "안경/마스크", icon: "🕶️", zIndex: 40 },
   outfit: { name: "의상", icon: "👔", zIndex: 20 },
   background: { name: "배경", icon: "🌄", zIndex: 0 },
-  effect: { name: "이펙트", icon: "✨", zIndex: 60 },
+  effect: { name: "이펙트", icon: "✨", zIndex: 1 }, // 배경(0) 앞, 캐릭터(base-fill 5/base 10) 뒤 — 캐릭터를 가리지 않음
   preset: { name: "프리셋 캐릭터", icon: "🎭", zIndex: 99 }, // 통째로 교체
 };
 
