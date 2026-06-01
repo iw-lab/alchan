@@ -360,7 +360,7 @@ const GLASSES_ITEMS = [
     description: "용감한 해적의 검은 안대",
     rarity: "epic",
     price: 1100000,
-    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 70% of canvas width). CRITICAL: the entire oval patch is COMPLETELY FILLED with pure JET BLACK color #000000 throughout (FULLY OPAQUE solid black interior, NOT white interior, NOT empty, NOT outline-only — must be CLEARLY VISIBLE as a solid black silhouette against any background). A clearly visible LARGE bright WHITE skull-and-crossbones drawing in the center of the black patch (skull occupying 45% of the patch area, bold white outlined skull with crossed bones, easy to see against the solid black background). WITH a thin black elastic STRAP running DIAGONALLY across the whole frame from the upper-left corner down to the lower-right corner (as if worn wrapped around a head) — the diagonal strap is clearly visible and connected to both sides of the oval patch. VERY THICK 6-8px solid black outline around the oval edge. Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A LARGE black pirate eyepatch viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, oval covers 70% of canvas width). CRITICAL: the entire oval patch is COMPLETELY FILLED with pure JET BLACK color #000000 throughout (FULLY OPAQUE solid black interior, NOT white interior, NOT empty, NOT outline-only — must be CLEARLY VISIBLE as a solid black silhouette against any background). A clearly visible LARGE bright WHITE skull-and-crossbones drawing in the center of the black patch (skull occupying 45% of the patch area, bold white outlined skull with crossed bones, easy to see against the solid black background). WITH ONE single LONG thin black diagonal strap line crossing the ENTIRE frame corner-to-corner — starting at the very TOP-LEFT corner and running straight down to the very BOTTOM-RIGHT corner, extending ALL THE WAY out to both canvas edges (one long diagonal band passing behind the patch). ONLY this single diagonal line. NO horizontal strap, NO left or right side straps, NO buckles, NO X-cross, NO second strap. VERY THICK 6-8px solid black outline around the oval edge. Flat sticker style.`,
   },
   {
     id: "glasses_mask_medic",
@@ -369,7 +369,7 @@ const GLASSES_ITEMS = [
     description: "보건의 흰 마스크",
     rarity: "common",
     price: 30000,
-    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic EAR-LOOP strings, one curving outward on each side (left and right) — the ear loops that hook over the ears must be clearly visible on BOTH sides of the mask. VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A white medical face mask viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted, mask body fills 70% of canvas width): a rectangular pleated mask body with rounded corners. CRITICAL: the mask body is FULLY OPAQUE solid pure white #FFFFFF color (NOT transparent, NOT see-through, NOT empty outline — the white fill must be completely solid). MEDIUM-DARK gray pleat lines (RGB 80,80,80 — clearly visible horizontal pleat shading, NOT light gray, NOT faint). WITH two thin elastic ear straps, one on each side (left and right), each drawn as a simple OPEN HOOK / half-loop line (shaped like the letter C) — do NOT draw a fully closed loop and do NOT fill the gap, so there is NO enclosed white circle/hole between the strap and the mask (the opening reads as see-through background). VERY THICK 6-8px solid pure black #000000 outline around the entire mask edge (must be CLEARLY VISIBLE bold dark border). Flat sticker style.`,
   },
   {
     id: "glasses_3d",
@@ -387,7 +387,7 @@ const GLASSES_ITEMS = [
     description: "신사의 외알 안경",
     rarity: "epic",
     price: 950000,
-    prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit a single human eye (lens diameter takes only 25-30% of canvas width, small object centered in frame, NOT a giant decorative mirror, NOT a picture frame, NOT a hand mirror, NOT a portal — just a tiny eye-sized monocle). A thick gold metal circular RIM around a light blue-tinted glass lens, WITH a small gold NOSE-BRIDGE / nose pad on the inner edge (the part that rests on the nose) and a thin gold chain hanging down from one side. NO temple arms, NO baroque scrollwork, NO handle, NOT a pair of glasses (only one lens). Thick clean SOLID BLACK outline (2-3px) on the gold rim. Flat sticker style.`,
+    prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit a single human eye (lens diameter takes only 25-30% of canvas width, small object centered in frame, NOT a giant decorative mirror, NOT a picture frame, NOT a hand mirror, NOT a portal — just a tiny eye-sized monocle). A thick gold metal circular RIM (open ring) with the CENTER COMPLETELY EMPTY — NO lens fill, NO blue tint, NO glass color, pure empty transparent center inside the ring (the eye shows through, only the gold ring outline is drawn). WITH a small gold NOSE-BRIDGE / nose pad on the inner edge (the part that rests on the nose) and a thin gold chain hanging down from one side. NO temple arms, NO baroque scrollwork, NO handle, NOT a pair of glasses (only one lens). Thick clean SOLID BLACK outline (2-3px) on the gold rim. Flat sticker style.`,
   },
 ];
 
@@ -907,7 +907,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601a`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601b`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
