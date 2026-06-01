@@ -188,7 +188,7 @@ export const ITEM_ANCHORS = {
   outfit_robe_wizard:            { x: 49.5, y: 54, w: 100, h: 100 },
   outfit_school:                 { x: 49.5, y: 52.5, w: 100, h: 100 },
   // effect — 가운데 빈 테두리 디자인: W가 100 크게 넘으면 입자가 화면 밖으로 밀려 안 보임
-  effect_butterflies:            { x: 51.23, y: 52, w: 536, h: 210.5 },
+  effect_butterflies:            { x: 50.37, y: 49.33, w: 536, h: 98.5 },
   effect_hearts:                 { x: 50.03, y: 51.03, w: 100, h: 144.5 },
   effect_lightning:              { x: 50.03, y: 50.4, w: 309.5, h: 105.5 },
   effect_petals:                 { x: 50.53, y: 50.67, w: 100, h: 122.5 },
