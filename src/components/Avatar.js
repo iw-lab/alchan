@@ -6,7 +6,7 @@ import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avat
 const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
 
 // PNG cache-buster — firestore에 저장된 옛 imageUrl(query string 없음)도 강제 갱신
-const ASSET_VERSION = "20260531b";
+const ASSET_VERSION = "20260601a";
 const withCacheBust = (url) => {
   if (!url) return url;
   return url.includes("?") ? url : `${url}?v=${ASSET_VERSION}`;
@@ -138,6 +138,8 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
             objectFit: "cover",
             zIndex: 5,
             pointerEvents: "none",
+            // 갭은 목·어깨(상체)에만 생기므로 하단(다리·발)은 잘라 base 발이 옷 밖으로 삐져나오지 않게.
+            clipPath: "inset(0 0 45% 0)",
           }}
         />
       )}
