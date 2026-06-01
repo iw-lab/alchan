@@ -170,6 +170,10 @@ export const ITEM_ANCHORS = {
   glasses_monocle:               { x: 53.63, y: 29.33, w: 100, h: 49.5 },
   glasses_round_black:           { x: 49.5, y: 26.8, w: 100, h: 16.5 },
   glasses_star:                  { x: 49.8, y: 27, w: 19, h: 180 },
+  glasses_rect_black:            { x: 49.5, y: 26.8, w: 100, h: 16.5 },
+  glasses_rect_tort:             { x: 49.5, y: 26.8, w: 100, h: 16.5 },
+  glasses_square_sun:            { x: 49.5, y: 26.8, w: 100, h: 16.5 },
+  glasses_cat_eye:               { x: 49.5, y: 26.8, w: 100, h: 16.5 },
   // outfit
   luxury_athletic_set:           { x: 49.5, y: 54.83, w: 100, h: 100 },
   luxury_designer_coat:          { x: 49.67, y: 55, w: 100, h: 100 },

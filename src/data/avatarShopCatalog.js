@@ -333,7 +333,7 @@ const GLASSES_ITEMS = [
     description: "쿨한 비행사 선글라스",
     rarity: "rare",
     price: 300000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses with two teardrop-shaped lenses (both lenses same shape and size, large filling 60% canvas width). ${GLASSES_RULE} CRITICAL: lenses are FULLY OPAQUE solid dark color filling the entire lens area (deep slate-gray to near-black, NOT transparent, NOT empty, NOT see-through — the dark lens fill must be completely visible and solid). Thick gold metal frame outline around each lens. Classic pilot style.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of aviator sunglasses with two teardrop-shaped lenses (both lenses same shape and size, large filling 60% canvas width). ${GLASSES_RULE} CRITICAL: lenses are FULLY OPAQUE solid dark color filling the entire lens area (deep slate-gray to near-black gradient, NOT transparent, NOT empty, NOT see-through, NOT white — the dark lens fill MUST be completely visible and solid, like real dark sunglasses). VERY THICK 8-10px OPAQUE metallic GOLD frame outline around each lens AND a SOLID BLACK thin outline on top of the gold (so the frame is clearly visible against any background, NOT a faint thin line, NOT white). Solid gold bridge. Classic pilot style.`,
   },
   {
     id: "glasses_star",
@@ -388,6 +388,42 @@ const GLASSES_ITEMS = [
     rarity: "epic",
     price: 950000,
     prompt: `${ITEM_ONLY_STYLE} A single small golden monocle eyeglass viewed STRAIGHT FROM THE FRONT (flat 2D, not tilted): ONE small circular lens sized to fit a single human eye (lens diameter takes only 25-30% of canvas width, small object centered in frame, NOT a giant decorative mirror, NOT a picture frame, NOT a hand mirror, NOT a portal — just a tiny eye-sized monocle). A thick gold metal circular RIM (open ring) with the CENTER COMPLETELY EMPTY — NO lens fill, NO blue tint, NO glass color, pure empty transparent center inside the ring (the eye shows through, only the gold ring outline is drawn). WITH a small gold NOSE-BRIDGE / nose pad on the inner edge (the part that rests on the nose) and a thin gold chain hanging down from one side. NO temple arms, NO baroque scrollwork, NO handle, NOT a pair of glasses (only one lens). Thick clean SOLID BLACK outline (2-3px) on the gold rim. Flat sticker style.`,
+  },
+  {
+    id: "glasses_rect_black",
+    slot: "glasses",
+    name: "사각 안경",
+    description: "기본 검은 뿔테 사각 안경",
+    rarity: "common",
+    price: 35000,
+    prompt: `${ITEM_ONLY_STYLE} A pair of basic rectangular eyeglasses with two rounded-rectangle lenses (both lenses same size and shape, horizontal rectangles with slightly rounded corners, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: VERY THICK 12-15px solid pure black #000000 OPAQUE rim around each lens (bold dark border, NOT thin, NOT light gray, NOT faint). Lenses are COMPLETELY EMPTY transparent see-through (NO fill, NO tint, NO color inside — just empty hole showing through to background). Thick black bridge connecting the two lenses. Classic everyday rectangular frame, clean simple look.`,
+  },
+  {
+    id: "glasses_rect_tort",
+    slot: "glasses",
+    name: "호피 뿔테 안경",
+    description: "복고풍 호피 무늬 뿔테 안경",
+    rarity: "common",
+    price: 60000,
+    prompt: `${ITEM_ONLY_STYLE} A pair of rectangular tortoiseshell eyeglasses with two rounded-rectangle lenses (both lenses same size, horizontal rectangles, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: VERY THICK 12-15px OPAQUE tortoiseshell-pattern rim (mottled dark brown and warm amber blotches, clearly visible, NOT thin, NOT faint) with a thin SOLID BLACK outline on the rim edge. Lenses are COMPLETELY EMPTY transparent see-through (NO fill, NO tint). Thick bridge connecting the two lenses. Retro hipster style.`,
+  },
+  {
+    id: "glasses_square_sun",
+    slot: "glasses",
+    name: "사각 선글라스",
+    description: "시크한 검정 사각 선글라스",
+    rarity: "rare",
+    price: 200000,
+    prompt: `${ITEM_ONLY_STYLE} A pair of square sunglasses with two square lenses with slightly rounded corners (both lenses same size, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: lenses are FULLY OPAQUE solid near-black dark color filling the entire lens area (NOT transparent, NOT empty, NOT white, NOT see-through — the dark lens fill MUST be completely solid like real dark sunglasses). VERY THICK 12-15px solid pure black #000000 OPAQUE frame around each lens and a solid black bridge. Cool stylish look.`,
+  },
+  {
+    id: "glasses_cat_eye",
+    slot: "glasses",
+    name: "캣아이 안경",
+    description: "세련된 캣아이 안경",
+    rarity: "rare",
+    price: 230000,
+    prompt: `${ITEM_ONLY_STYLE} A pair of cat-eye eyeglasses with two lenses that sweep UPWARD into pointed corners at the OUTER TOP edges (both lenses same size and mirror-symmetric, classic 1950s cat-eye silhouette, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: VERY THICK 12-15px solid pure black #000000 OPAQUE rim around each lens (bold dark border with the upswept pointed outer corners clearly visible). Lenses are COMPLETELY EMPTY transparent see-through (NO fill, NO tint). Thick black bridge connecting the two lenses. Retro chic feminine style.`,
   },
 ];
 
@@ -907,7 +943,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601i`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601j`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
