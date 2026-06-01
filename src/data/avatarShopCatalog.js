@@ -410,11 +410,11 @@ const GLASSES_ITEMS = [
   {
     id: "glasses_square_sun",
     slot: "glasses",
-    name: "사각 선글라스",
-    description: "시크한 검정 사각 선글라스",
+    name: "각진 안경",
+    description: "각진 검은 뿔테 안경",
     rarity: "rare",
     price: 200000,
-    prompt: `${ITEM_ONLY_STYLE} A pair of square sunglasses with two square lenses with slightly rounded corners (both lenses same size, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: lenses are FULLY OPAQUE solid near-black dark color filling the entire lens area (NOT transparent, NOT empty, NOT white, NOT see-through — the dark lens fill MUST be completely solid like real dark sunglasses). VERY THICK 12-15px solid pure black #000000 OPAQUE frame around each lens and a solid black bridge. Cool stylish look.`,
+    prompt: `${ITEM_ONLY_STYLE} A pair of angular square eyeglasses with two square lenses with slightly rounded corners (both lenses same size, filling 70% of canvas width). ${GLASSES_RULE} CRITICAL: VERY THICK 12-15px solid pure black #000000 OPAQUE frame around each lens (bold dark border). Lenses are COMPLETELY EMPTY transparent see-through (NO fill, NO dark tint, NO color, NO white — just empty hole showing through to background). The central bridge connecting the two lenses is a bit WIDER and longer than usual (a noticeably wider solid black nose bridge with a small gap between the two lenses). Clean stylish look.`,
   },
   {
     id: "glasses_cat_eye",
@@ -943,7 +943,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601k`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601l`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)
