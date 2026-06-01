@@ -161,6 +161,11 @@ export const ITEM_ANCHORS = {
   hat_devil_horns:               { x: 49.8, y: 19.7, w: 100, h: 28 },
   hat_graduation:                { x: 50, y: 16, w: 100, h: 32.5 },
   hat_witch:                     { x: 49.87, y: 10.03, w: 100, h: 36 },
+  hat_ribbon_bow:                { x: 50, y: 13, w: 90, h: 28 },
+  hat_sun_hat:                   { x: 50, y: 14, w: 100, h: 32 },
+  hat_beret:                     { x: 50, y: 11, w: 72, h: 28 },
+  hat_flower_crown:              { x: 50, y: 13, w: 100, h: 26 },
+  hat_tiara:                     { x: 50, y: 14.5, w: 82, h: 22 },
   // glasses
   glasses_3d:                    { x: 49.88, y: 26.83, w: 30, h: 20 },
   glasses_aviator:               { x: 49.63, y: 27.13, w: 100, h: 16.5 },
