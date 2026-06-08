@@ -6,7 +6,7 @@ import { db } from "../../firebase";
 import "./Court.css";
 import SubmitComplaint from "./SubmitComplaint";
 import ComplaintStatus from "./ComplaintStatus";
-import TrialRoom from "./TrialRoom";
+import TrialRoom, { cleanupStaleTrialRooms } from "./TrialRoom";
 import { usePolling } from "../../hooks/usePolling";
 import {
  PageContainer,
@@ -566,6 +566,20 @@ const Court = () => {
  { interval: 10 * 60 * 1000, enabled: !!classCode, deps: [classCode] }, // 🔥 [비용 최적화] 5분 → 10분
  );
 
+ // 진입 시 진행되지 않는(완료/유휴) 재판방 자동 정리 → DB 사용량 절감
+ useEffect(() => {
+ if (!classCode) return;
+ cleanupStaleTrialRooms(classCode)
+ .then((n) => {
+ if (n > 0) {
+ logger.log(`정리된 재판방: ${n}개`);
+ refetchTrialRooms();
+ }
+ })
+ .catch(() => {});
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [classCode]);
+
  // Jobs polling - for prosecutor check
  const jobsQuery = useMemo(() => {
  if (!classCode) return null;
@@ -842,6 +856,7 @@ const Court = () => {
  juryIds: [],
  status: "active",
  createdAt: serverTimestamp(),
+ lastActivity: serverTimestamp(),
  participants: [currentUserId],
  };
 

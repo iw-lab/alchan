@@ -1,6 +1,6 @@
 import { processFineTransaction, transferCash } from "../../firebase";
 // src/TrialRoom.js
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   doc,
   updateDoc,
@@ -16,81 +16,83 @@ import {
   writeBatch,
   getDocs,
   getDoc,
-  setDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
-import { usePolling, POLLING_INTERVALS } from "../../hooks/usePolling";
 import "./TrialRoom.css";
 
 import { logger } from "../../utils/logger";
-// 개선된 아바타 컴포넌트
-const Avatar = ({ role, name, isActive, userId, onAvatarClick, showSpeechBubble, canGrantPermission }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isWalking, setIsWalking] = useState(false);
-  
-  const avatarStyles = {
-    judge: { bg: "#6f42c1", icon: "⚖️", title: "판사" },
-    prosecutor: { bg: "#dc3545", icon: "📋", title: "검사" },
-    lawyer: { bg: "#0d6efd", icon: "💼", title: "변호사" },
-    complainant: { bg: "#198754", icon: "📝", title: "원고" },
-    defendant: { bg: "#fd7e14", icon: "🛡️", title: "피고" },
-    jury: { bg: "#0dcaf0", icon: "👥", title: "배심원" },
-    spectator: { bg: "#6c757d", icon: "👀", title: "방청객" },
-  };
+import CourtroomScene from "./CourtroomScene";
 
-  const style = avatarStyles[role] || avatarStyles.spectator;
-
-  // 랜덤 움직임 효과 (선택적)
-  useEffect(() => {
-    if (isActive) {
-      const interval = setInterval(() => {
-        setIsWalking(true);
-        setPosition({
-          x: Math.random() * 10 - 5,
-          y: Math.random() * 10 - 5
-        });
-        setTimeout(() => setIsWalking(false), 500);
-      }, 5000);
-      
-      return () => clearInterval(interval);
+// 재판방 + 서브컬렉션(messages, evidence) 깊은 삭제 — DB 사용량 절감.
+// 판결 결과는 trialResults 에 영구 보존되므로 방 자체는 삭제해도 안전.
+export async function deleteTrialRoomDeep(classCode, roomId) {
+  if (!classCode || !roomId) return;
+  for (const sub of ["messages", "evidence"]) {
+    try {
+      const snap = await getDocs(
+        collection(db, "classes", classCode, "trialRooms", roomId, sub),
+      );
+      let batch = writeBatch(db);
+      let n = 0;
+      for (const d of snap.docs) {
+        batch.delete(d.ref);
+        if (++n % 450 === 0) {
+          await batch.commit();
+          batch = writeBatch(db);
+        }
+      }
+      if (n % 450 !== 0 || n === 0) await batch.commit();
+    } catch (e) {
+      logger.error(`cleanup ${sub} failed:`, e);
     }
-  }, [isActive]);
+  }
+  try {
+    await deleteDoc(doc(db, "classes", classCode, "trialRooms", roomId));
+  } catch (e) {
+    logger.error("delete trialRoom failed:", e);
+  }
+}
 
-  const handleClick = () => {
-    if (onAvatarClick) {
-      onAvatarClick(userId);
+// 진행되지 않는(완료/유휴/빈) 재판방 일괄 정리.
+// - status === "completed" 인 방
+// - 참여자 0명(이용 안 하는 빈 방)이 emptyMs 이상 방치된 경우
+// - 활동(participants 有)이 있어도 staleMs 이상 유휴인 경우
+// lastActivity 가 없으면 createdAt 으로 fallback (둘 다 없는 빈 방은 즉시 정리).
+export async function cleanupStaleTrialRooms(
+  classCode,
+  staleMs = 6 * 60 * 60 * 1000,
+  emptyMs = 10 * 60 * 1000,
+) {
+  if (!classCode) return 0;
+  try {
+    const snap = await getDocs(collection(db, "classes", classCode, "trialRooms"));
+    const now = Date.now();
+    const targets = snap.docs.filter((d) => {
+      const r = d.data();
+      if (r.status === "completed") return true;
+      const last = r.lastActivity?.toMillis
+        ? r.lastActivity.toMillis()
+        : r.createdAt?.toMillis
+          ? r.createdAt.toMillis()
+          : 0;
+      const count = Array.isArray(r.participants) ? r.participants.length : 0;
+      // 빈 방(참여자 0명): 짧은 유휴 시간 후 삭제. 타임스탬프 없으면 즉시 삭제.
+      if (count === 0) return !last || now - last > emptyMs;
+      // 활동 중인 방: 긴 유휴 시간 경과 시에만 삭제.
+      if (last && now - last > staleMs) return true;
+      return false;
+    });
+    for (const d of targets) {
+      await deleteTrialRoomDeep(classCode, d.id);
     }
-  };
-
-  return (
-    <div 
-      className={`avatar ${isActive ? 'active' : ''} ${isWalking ? 'walking' : ''}`}
-      onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      data-role={role}
-      style={{
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        cursor: canGrantPermission ? 'pointer' : 'default'
-      }}
-    >
-      {/* 말풍선 - 호버 또는 특정 상태에서 표시 */}
-      {(isHovered || showSpeechBubble) && (
-        <div className={`speech-bubble ${showSpeechBubble ? 'show' : ''}`}>
-          {showSpeechBubble ? "⚠️ 침묵 중" : canGrantPermission && userId ? "클릭하여 침묵 패널티 관리" : name}
-        </div>
-      )}
-      
-      <div className="avatar-circle" style={{ backgroundColor: style.bg }}>
-        <span className="avatar-icon">{style.icon}</span>
-      </div>
-      <div className="avatar-name">{name || "빈 자리"}</div>
-      <div className="avatar-role">{style.title}</div>
-    </div>
-  );
-};
+    return targets.length;
+  } catch (e) {
+    logger.error("cleanupStaleTrialRooms failed:", e);
+    return 0;
+  }
+}
 
 const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   const [roomData, setRoomData] = useState(null);
@@ -115,55 +117,47 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     scrollToBottom();
   }, [messages]);
 
-  // 재판방 데이터 폴링(onSnapshot → polling)으로 읽기 비용 절감
-  const fetchRoomSnapshot = useCallback(async () => {
-    if (!roomId || !classCode) return null;
-    const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
-    const docSnap = await getDoc(roomRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
-  }, [roomId, classCode]);
-
-  const { data: polledRoom, loading: roomPolling } = usePolling(fetchRoomSnapshot, {
-    interval: 10 * 60 * 1000, // 🔥 [최적화] 10분 주기 폴링 (Firestore 읽기 최소화)
-    enabled: !!roomId && !!classCode,
-    deps: [roomId, classCode],
-  });
-
+  // 재판방 문서 실시간 구독 — 방이 열린 동안에만 onSnapshot, 닫으면 unsubscribe.
+  // 활성 재판(역할 변경·투표·침묵)엔 폴링보다 onSnapshot이 더 저렴(변경분만 read)하고 즉각적.
   useEffect(() => {
-    if (roomPolling) return;
-    if (!polledRoom) {
-      setRoomData(null);
-      setVotingData(null);
-      setLoading(false);
-      return;
-    }
-    setRoomData(polledRoom);
+    if (!roomId || !classCode) return undefined;
+    const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
+    const unsub = onSnapshot(
+      roomRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setRoomData(null);
+          setVotingData(null);
+          setLoading(false);
+          return;
+        }
+        const data = { id: snap.id, ...snap.data() };
+        setRoomData(data);
 
-    const voting = polledRoom.voting || null;
-    setVotingData(voting);
-    if (!voting || !voting.isActive) {
-      setMyVote(null);
-    }
+        const voting = data.voting || null;
+        setVotingData(voting);
+        if (!voting || !voting.isActive) setMyVote(null);
 
-    let currentRole = "spectator";
-    if (polledRoom.judgeId === currentUser.id) {
-      currentRole = "judge";
-    } else if (polledRoom.complainantId === currentUser.id) {
-      currentRole = "complainant";
-    } else if (polledRoom.defendantId === currentUser.id) {
-      currentRole = "defendant";
-    } else if (polledRoom.prosecutorId === currentUser.id) {
-      currentRole = "prosecutor";
-    } else if (polledRoom.lawyerId === currentUser.id) {
-      currentRole = "lawyer";
-    } else if (polledRoom.juryIds?.includes(currentUser.id)) {
-      currentRole = "jury";
-    }
-    setUserRole(currentRole);
+        let currentRole = "spectator";
+        if (data.judgeId === currentUser.id) currentRole = "judge";
+        else if (data.complainantId === currentUser.id) currentRole = "complainant";
+        else if (data.defendantId === currentUser.id) currentRole = "defendant";
+        else if (data.prosecutorId === currentUser.id) currentRole = "prosecutor";
+        else if (data.lawyerId === currentUser.id) currentRole = "lawyer";
+        else if (data.witnessId === currentUser.id) currentRole = "witness";
+        else if (data.juryIds?.includes(currentUser.id)) currentRole = "jury";
+        setUserRole(currentRole);
 
-    setIsSilenced(Boolean(polledRoom.silencedUsers?.includes(currentUser.id)));
-    setLoading(false);
-  }, [polledRoom, roomPolling, currentUser.id]);
+        setIsSilenced(Boolean(data.silencedUsers?.includes(currentUser.id)));
+        setLoading(false);
+      },
+      (err) => {
+        logger.error("room snapshot error:", err);
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, [roomId, classCode, currentUser.id]);
 
   useEffect(() => {
     if (!roomId || !classCode) return;
@@ -174,42 +168,31 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, classCode]);
 
-  // 채팅/증거는 폴링으로 조회 (읽기 비용 절감)
-  const fetchMessages = useCallback(async () => {
-    if (!roomId || !classCode) return [];
+  // 채팅 메시지 실시간 구독 — 새 메시지 1건당 1 read (폴링보다 저렴 + 실시간 말풍선).
+  useEffect(() => {
+    if (!roomId || !classCode) return undefined;
     const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
     const messagesQuery = query(messagesRef, orderBy("timestamp", "asc"), limit(100));
-    const snapshot = await getDocs(messagesQuery);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const unsub = onSnapshot(
+      messagesQuery,
+      (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => logger.error("messages snapshot error:", err),
+    );
+    return () => unsub();
   }, [roomId, classCode]);
 
-  const fetchEvidence = useCallback(async () => {
-    if (!roomId || !classCode) return [];
+  // 증거 자료 실시간 구독
+  useEffect(() => {
+    if (!roomId || !classCode) return undefined;
     const evidenceRef = collection(db, "classes", classCode, "trialRooms", roomId, "evidence");
     const evidenceQuery = query(evidenceRef, orderBy("uploadedAt", "desc"), limit(50));
-    const snapshot = await getDocs(evidenceQuery);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const unsub = onSnapshot(
+      evidenceQuery,
+      (snap) => setEvidence(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => logger.error("evidence snapshot error:", err),
+    );
+    return () => unsub();
   }, [roomId, classCode]);
-
-  const { data: polledMessages } = usePolling(fetchMessages, {
-    interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분
-    enabled: !!roomId && !!classCode,
-    deps: [roomId, classCode],
-  });
-
-  const { data: polledEvidence } = usePolling(fetchEvidence, {
-    interval: POLLING_INTERVALS.NORMAL, // 5분 주기
-    enabled: !!roomId && !!classCode,
-    deps: [roomId, classCode],
-  });
-
-  useEffect(() => {
-    if (polledMessages) setMessages(polledMessages);
-  }, [polledMessages]);
-
-  useEffect(() => {
-    if (polledEvidence) setEvidence(polledEvidence);
-  }, [polledEvidence]);
 
   const handleJoinRoom = async () => {
     try {
@@ -272,51 +255,100 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     }
   };
 
-  const handleTakeRole = async (role) => {
-    if (!roomData) return;
-    
+  // 판사가 검사/변호사/증인을 직접 지명
+  const ROLE_FIELDS = {
+    prosecutor: ["prosecutorId", "prosecutorName", "검사"],
+    lawyer: ["lawyerId", "lawyerName", "변호사"],
+    witness: ["witnessId", "witnessName", "증인"],
+  };
+
+  const handleAssignRole = async (role, userId) => {
+    if (userRole !== "judge") return;
+    const fields = ROLE_FIELDS[role];
+    if (!fields) return;
+    const [idField, nameField, roleTitle] = fields;
     const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
-    let updateData = {};
-    let roleTitle = "";
-    
-    switch (role) {
-      case "prosecutor":
-        if (roomData.prosecutorId) return alert("이미 검사가 있습니다.");
-        updateData.prosecutorId = currentUser.id;
-        updateData.prosecutorName = currentUser.name || currentUser.displayName;
-        roleTitle = "검사";
-        break;
-      case "lawyer":
-        if (roomData.lawyerId) return alert("이미 변호사가 있습니다.");
-        updateData.lawyerId = currentUser.id;
-        updateData.lawyerName = currentUser.name || currentUser.displayName;
-        roleTitle = "변호사";
-        break;
-      case "jury":
-        if (roomData.juryIds?.includes(currentUser.id)) return alert("이미 배심원입니다.");
-        if ((roomData.juryIds?.length || 0) >= 6) return alert("배심원 정원이 찼습니다.");
-        updateData.juryIds = arrayUnion(currentUser.id);
-        roleTitle = "배심원";
-        break;
-      default:
-        return;
-    }
-    
+
     try {
-      await updateDoc(roomRef, {
-        ...updateData,
-        lastActivity: serverTimestamp(),
-      });
-      
+      const target = users.find((u) => u.id === userId);
+      const updateData = { lastActivity: serverTimestamp() };
+      if (userId) {
+        updateData[idField] = userId;
+        updateData[nameField] = target?.name || target?.displayName || "";
+        updateData.participants = arrayUnion(userId);
+      } else {
+        // 해제
+        updateData[idField] = null;
+        updateData[nameField] = null;
+      }
+      await updateDoc(roomRef, updateData);
+
       const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
       await addDoc(messagesRef, {
         type: "system",
-        text: `${currentUser.name || currentUser.displayName}님이 ${roleTitle} 역할을 맡았습니다.`,
+        text: userId
+          ? `판사가 ${target?.name || target?.displayName || "참가자"}님을 ${roleTitle}(으)로 지명했습니다.`
+          : `판사가 ${roleTitle} 지명을 해제했습니다.`,
         timestamp: serverTimestamp(),
       });
     } catch (error) {
-      logger.error("Error taking role:", error);
-      alert("역할 배정 중 오류가 발생했습니다.");
+      logger.error("Error assigning role:", error);
+      alert("역할 지명 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 나머지 인원을 배심원으로 자동 배정
+  const JURY_SEATS = 15;
+  const handleAutoFillJury = async () => {
+    if (userRole !== "judge") return;
+    const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
+
+    const assigned = new Set(
+      [
+        roomData.judgeId,
+        roomData.prosecutorId,
+        roomData.lawyerId,
+        roomData.complainantId,
+        roomData.defendantId,
+        roomData.witnessId,
+      ].filter(Boolean),
+    );
+
+    // 학생만 대상 (교사/관리자 제외), 이미 배정된 사람 제외.
+    // 접속 중(participants)인 사람을 우선 배치.
+    const participantsSet = new Set(roomData.participants || []);
+    const candidates = (users || [])
+      .filter((u) => u.id && !assigned.has(u.id))
+      .filter((u) => !["teacher", "admin", "superadmin"].includes(u.role))
+      .sort((a, b) => {
+        const ap = participantsSet.has(a.id) ? 0 : 1;
+        const bp = participantsSet.has(b.id) ? 0 : 1;
+        return ap - bp;
+      })
+      .slice(0, JURY_SEATS)
+      .map((u) => u.id);
+
+    if (candidates.length === 0) {
+      alert("배심원으로 배정할 남은 인원이 없습니다.");
+      return;
+    }
+
+    try {
+      await updateDoc(roomRef, {
+        juryIds: candidates,
+        participants: arrayUnion(...candidates),
+        lastActivity: serverTimestamp(),
+      });
+
+      const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
+      await addDoc(messagesRef, {
+        type: "system",
+        text: `판사가 ${candidates.length}명을 배심원으로 배정했습니다.`,
+        timestamp: serverTimestamp(),
+      });
+    } catch (error) {
+      logger.error("Error auto-filling jury:", error);
+      alert("배심원 자동 배정 중 오류가 발생했습니다.");
     }
   };
 
@@ -606,25 +638,28 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
       logger.log("Trial result saved.");
 
-      // 4. Update trial room status
-      logger.log("Updating trial room status...");
-      const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
-      await updateDoc(roomRef, {
-        status: "completed",
-        verdict: verdict,
-        verdictDate: serverTimestamp(),
-      });
-      logger.log("Trial room status updated.");
+      // 4. 연결된 고소 사건을 '해결됨'으로 갱신 (방을 지워도 사건 상태 일관)
+      if (roomData.caseId) {
+        try {
+          await updateDoc(
+            doc(db, "classes", classCode, "courtComplaints", roomData.caseId),
+            {
+              status: "resolved",
+              verdict: verdict,
+              verdictReason: reason,
+              verdictDate: serverTimestamp(),
+              trialRoomId: null,
+            },
+          );
+        } catch (e) {
+          logger.error("complaint resolve update failed:", e);
+        }
+      }
 
-      // 5. Post system message
-      logger.log("Posting system message...");
-      const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
-      await addDoc(messagesRef, {
-        type: "system",
-        text: `⚖️ 판결이 내려졌습니다: ${verdict}\n사유: ${reason}`,
-        timestamp: serverTimestamp(),
-      });
-      logger.log("System message posted.");
+      // 5. 재판이 끝났으므로 방+서브컬렉션 즉시 정리 (결과는 trialResults에 보존)
+      logger.log("Cleaning up finished trial room...");
+      await deleteTrialRoomDeep(classCode, roomId);
+      logger.log("Trial room deleted.");
 
       alert("판결이 완료되었습니다. 재판 결과 탭에서 확인할 수 있습니다.");
 
@@ -654,7 +689,18 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   }[role] || "#6c757d");
 
   if (loading) return <div className="trial-room-loading">재판방 로딩 중...</div>;
-  if (!roomData) return <div className="trial-room-error">재판방을 찾을 수 없습니다.</div>;
+  if (!roomData)
+    return (
+      <div className="trial-room-error">
+        <p>⚖️ 재판이 종료되었습니다.</p>
+        <p style={{ fontSize: "0.9rem", color: "#888", marginTop: 6 }}>
+          판결 결과는 ‘재판 결과’ 탭에서 확인할 수 있어요.
+        </p>
+        <button onClick={onClose} className="close-room-btn" style={{ marginTop: 14 }}>
+          나가기
+        </button>
+      </div>
+    );
 
   return (
     <div className="trial-room-container">
@@ -665,103 +711,14 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       
       <div className="trial-room-layout">
         <div className="courtroom-view">
-          <div className="judge-bench">
-            <Avatar 
-              role="judge" 
-              name={roomData.judgeName} 
-              isActive={roomData.participants?.includes(roomData.judgeId)}
-              userId={roomData.judgeId}
-              onAvatarClick={handleAvatarClick}
-              canGrantPermission={userRole === "judge"}
-            />
-          </div>
-          
-          <div className="court-floor">
-            <div className="left-side">
-              <div className="role-position">
-                {roomData.prosecutorId ? (
-                  <Avatar
-                    role="prosecutor"
-                    name={roomData.prosecutorName}
-                    isActive={roomData.participants?.includes(roomData.prosecutorId)}
-                    userId={roomData.prosecutorId}
-                    onAvatarClick={handleAvatarClick}
-                    canGrantPermission={userRole === "judge"}
-                    showSpeechBubble={roomData.silencedUsers?.includes(roomData.prosecutorId)}
-                  />
-                ) : (
-                  <div className="empty-role">
-                    <button onClick={() => handleTakeRole("prosecutor")} className="take-role-btn" disabled={userRole !== "spectator"}>검사 되기</button>
-                  </div>
-                )}
-              </div>
-              <div className="role-position">
-                <Avatar
-                  role="complainant"
-                  name={getUserName(roomData.complainantId)}
-                  isActive={roomData.participants?.includes(roomData.complainantId)}
-                  userId={roomData.complainantId}
-                  onAvatarClick={handleAvatarClick}
-                  canGrantPermission={userRole === "judge"}
-                  showSpeechBubble={roomData.silencedUsers?.includes(roomData.complainantId)}
-                />
-              </div>
-            </div>
-
-            <div className="right-side">
-              <div className="role-position">
-                {roomData.lawyerId ? (
-                  <Avatar
-                    role="lawyer"
-                    name={roomData.lawyerName}
-                    isActive={roomData.participants?.includes(roomData.lawyerId)}
-                    userId={roomData.lawyerId}
-                    onAvatarClick={handleAvatarClick}
-                    canGrantPermission={userRole === "judge"}
-                    showSpeechBubble={roomData.silencedUsers?.includes(roomData.lawyerId)}
-                  />
-                ) : (
-                  <div className="empty-role">
-                    <button onClick={() => handleTakeRole("lawyer")} className="take-role-btn" disabled={userRole !== "spectator"}>변호사 되기</button>
-                  </div>
-                )}
-              </div>
-              <div className="role-position">
-                <Avatar
-                  role="defendant"
-                  name={getUserName(roomData.defendantId)}
-                  isActive={roomData.participants?.includes(roomData.defendantId)}
-                  userId={roomData.defendantId}
-                  onAvatarClick={handleAvatarClick}
-                  canGrantPermission={userRole === "judge"}
-                  showSpeechBubble={roomData.silencedUsers?.includes(roomData.defendantId)}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="jury-box">
-            <div className="jury-label">배심원단</div>
-            <div className="jury-seats">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="jury-position">
-                  {roomData.juryIds?.[index] ? (
-                    <Avatar
-                      role="jury"
-                      name={getUserName(roomData.juryIds[index])}
-                      isActive={roomData.participants?.includes(roomData.juryIds[index])}
-                      userId={roomData.juryIds[index]}
-                      onAvatarClick={handleAvatarClick}
-                      canGrantPermission={userRole === "judge"}
-                      showSpeechBubble={roomData.silencedUsers?.includes(roomData.juryIds[index])}
-                    />
-                  ) : (
-                    <button onClick={() => handleTakeRole("jury")} className="take-jury-btn" disabled={userRole !== "spectator"}>배심원 되기</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <CourtroomScene
+            roomData={roomData}
+            users={users}
+            currentUser={currentUser}
+            userRole={userRole}
+            messages={messages}
+            onSeatClick={handleAvatarClick}
+          />
         </div>
         
         <div className="trial-sidebar">
@@ -778,7 +735,73 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
               </div>
             )}
           </div>
-          
+
+          {userRole === "judge" && roomData.status !== "completed" && (
+            <div className="trial-assign-panel">
+              <h3>⚖️ 재판 구성</h3>
+              <p className="assign-hint">판사가 검사·변호사·증인을 지명하고, 나머지를 배심원으로 배정합니다.</p>
+
+              <label className="assign-row">
+                <span>📋 검사</span>
+                <select
+                  value={roomData.prosecutorId || ""}
+                  onChange={(e) => handleAssignRole("prosecutor", e.target.value)}
+                >
+                  <option value="">— 지명 안 함 —</option>
+                  {(users || [])
+                    .filter((u) => u.job === "검사")
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label className="assign-row">
+                <span>💼 변호사</span>
+                <select
+                  value={roomData.lawyerId || ""}
+                  onChange={(e) => handleAssignRole("lawyer", e.target.value)}
+                >
+                  <option value="">— 지명 안 함 —</option>
+                  {(users || [])
+                    .filter((u) => u.job === "변호사")
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <label className="assign-row">
+                <span>🙋 증인</span>
+                <select
+                  value={roomData.witnessId || ""}
+                  onChange={(e) => handleAssignRole("witness", e.target.value)}
+                >
+                  <option value="">— 지명 안 함 —</option>
+                  {(users || [])
+                    .filter(
+                      (u) =>
+                        !["teacher", "admin", "superadmin"].includes(u.role) &&
+                        u.id !== roomData.judgeId,
+                    )
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.displayName}
+                      </option>
+                    ))}
+                </select>
+              </label>
+
+              <button className="assign-jury-btn" onClick={handleAutoFillJury}>
+                👥 나머지 모두 배심원으로
+              </button>
+            </div>
+          )}
+
           <div className="chat-section">
             <h3>재판 진행</h3>
             <div className="messages-container">
