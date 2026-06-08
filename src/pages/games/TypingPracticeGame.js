@@ -8,6 +8,7 @@ import { db } from "../../firebase";
 import { difficultyConfig, getRandomSentences, generateRandomReward, getArcadeRewardParams } from "../../data/typingWords";
 import FallingWordsGame from "./FallingWordsGame";
 import TypingRanking from "./TypingRanking";
+import TranscriptionMode from "./TranscriptionMode";
 import "./TypingPracticeGame.css";
 import { logger } from '../../utils/logger';
 
@@ -130,16 +131,18 @@ const TypingPracticeGame = ({ onClose }) => {
     if (trimmedInput.length < minLength) return;
 
     const isCorrect = trimmedInput === currentSentence;
-
-    if (isCorrect) {
-      setCorrectCount(prev => prev + 1);
-    } else {
-      setWrongCount(prev => prev + 1);
-    }
-
     setTotalTyped(prev => prev + userInput.length);
 
-    // 다음 문장으로
+    if (!isCorrect) {
+      // 오답: 다음으로 넘기지 않음 — 아무거나 쳐서 문장을 건너뛰는 것 차단.
+      // 정확히 일치해야만 다음 문장으로 진행(✗ 카운트만 올라감).
+      setWrongCount(prev => prev + 1);
+      setUserInput("");
+      return;
+    }
+
+    // 정답일 때만 다음 문장으로
+    setCorrectCount(prev => prev + 1);
     if (currentIndex + 1 < sentences.length) {
       setCurrentIndex(prev => prev + 1);
       setUserInput("");
@@ -336,6 +339,12 @@ const TypingPracticeGame = ({ onClose }) => {
             <div className="mode-desc">떨어지는 단어를 빠르게 입력! 콤보·생명·레벨업으로 고득점 도전</div>
           </button>
 
+          <button className="mode-card transcribe" onClick={() => setGameState("transcribe")}>
+            <div className="mode-emoji">✍️</div>
+            <div className="mode-title">필사 연습<span className="mode-badge">NEW</span></div>
+            <div className="mode-desc">속담·시·명언 등 좋은 글을 그대로 따라 써요. 정확도·타수 기록!</div>
+          </button>
+
           <button className="mode-card ranking" onClick={() => setGameState("ranking")}>
             <div className="mode-emoji">🏆</div>
             <div className="mode-title">오늘의 학급 랭킹</div>
@@ -430,7 +439,9 @@ const TypingPracticeGame = ({ onClose }) => {
     const todayBest =
       userDoc?.typingArcadeBestDay === today ? (userDoc?.typingArcadeBestScore || 0) : 0;
     const isNewBest = (r.score || 0) >= todayBest && (r.score || 0) > 0;
-    const canGetReward = dailyPlayCount < 5 && (r.score || 0) > 0;
+    // 보상 자격 = 일일 한도 미달 + 의미 있는 점수(저득점은 getArcadeRewardParams가 correctCount 0 반환)
+    const canGetReward =
+      dailyPlayCount < 5 && getArcadeRewardParams(r.score || 0).correctCount > 0;
 
     return (
       <div className="typing-game-completed minigame-completed">
@@ -473,7 +484,7 @@ const TypingPracticeGame = ({ onClose }) => {
                   <p className="sub">점수 기록은 랭킹에 계속 반영됩니다!</p>
                 </>
               ) : (
-                <p>단어를 한 개 이상 맞춰야 보상을 받을 수 있어요!</p>
+                <p>조금 더 높은 점수를 내야 보상을 받을 수 있어요!</p>
               )}
             </div>
           )}
@@ -818,6 +829,9 @@ const TypingPracticeGame = ({ onClose }) => {
       {gameState === "arcadeOver" && renderArcadeOver()}
       {gameState === "ranking" && (
         <TypingRanking onBack={() => setGameState("menu")} />
+      )}
+      {gameState === "transcribe" && (
+        <TranscriptionMode onBack={() => setGameState("menu")} />
       )}
     </div>
   );

@@ -732,5 +732,5 @@ export const getArcadeRewardParams = (score = 0) => {
   if (score >= 400)  return { difficulty: "hard",   correctCount: 6 };
   if (score >= 180)  return { difficulty: "normal", correctCount: 7 };
   if (score >= 60)   return { difficulty: "easy",   correctCount: 8 };
-  return { difficulty: "easy", correctCount: 2 }; // 저득점: 낮은 보상만
+  return { difficulty: "easy", correctCount: 0 }; // 저득점(단어 2~3개 미만, 의미 없는 수준): 보상 없음
 };
