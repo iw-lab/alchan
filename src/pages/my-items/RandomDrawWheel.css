@@ -1,0 +1,80 @@
+.rdw-wrap {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin: 0 auto;
+}
+
+.rdw-pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  line-height: 1;
+  color: #ef4444;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+  z-index: 5;
+}
+
+.rdw-wheel {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  position: relative;
+  border: 6px solid #ffffff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+  overflow: hidden;
+}
+
+/* 각 라벨: 휠 중심(bottom)을 기준으로 회전해 방사형 배치 */
+.rdw-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 50%;
+  transform-origin: bottom center;
+  pointer-events: none;
+}
+
+.rdw-label-inner {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  transform-origin: center;
+}
+
+.rdw-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.rdw-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1f2937;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.rdw-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 4;
+}

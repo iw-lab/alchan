@@ -2151,6 +2151,17 @@ exports.purchaseStoreItem = onCall(
           if (itemData.description)
             newItemData.description = itemData.description;
           if (itemData.effect) newItemData.effect = itemData.effect;
+          if (itemData.type) newItemData.type = itemData.type;
+          if (itemData.icon) newItemData.icon = itemData.icon;
+          // 🎰 랜덤뽑기 메타 복사 (사용 시점에 storeItem 삭제돼도 동작 + MyItems 타입 분기)
+          if (itemData.type === "randomDraw") {
+            newItemData.drawSource = itemData.drawSource || "food";
+            newItemData.loseEnabled = itemData.loseEnabled === true;
+            newItemData.losePercent = Number(itemData.losePercent) || 0;
+            newItemData.drawCandidates = Array.isArray(itemData.drawCandidates)
+              ? itemData.drawCandidates
+              : [];
+          }
 
           transaction.set(userItemRef, newItemData);
         }
@@ -2268,6 +2279,211 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
       "aborted",
       error.message || "아이템 사용에 실패했습니다.",
     );
+  }
+});
+
+// 🎰 랜덤뽑기 사용: 서버에서 추첨 결정 → (아이템뽑기면) 재고 차감 → 당첨 지급 → audit 로그.
+//    storeItems 쓰기는 admin만 가능(rules)하므로 추첨/재고차감/지급을 서버에서 원자 처리한다.
+exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { itemId } = request.data;
+  if (!itemId) {
+    throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
+  }
+
+  const userRef = db.collection("users").doc(uid);
+  const drawItemRef = userRef.collection("inventory").doc(itemId);
+
+  try {
+    // --- 1) 보유 확인 + 뽑기 메타 로드 (inventory 우선, 없으면 storeItem 보강) ---
+    const drawSnap = await drawItemRef.get();
+    if (!drawSnap.exists) throw new Error("뽑기 아이템을 찾을 수 없습니다.");
+    const drawData = drawSnap.data();
+    if ((drawData.quantity || 0) < 1) throw new Error("뽑기 아이템 수량이 부족합니다.");
+
+    let meta = {
+      drawSource: drawData.drawSource,
+      loseEnabled: drawData.loseEnabled === true,
+      losePercent: Number(drawData.losePercent) || 0,
+      drawCandidates: Array.isArray(drawData.drawCandidates) ? drawData.drawCandidates : [],
+    };
+    if (meta.drawSource !== "food" && meta.drawSource !== "item") {
+      const storeSnap = await db.collection("storeItems").doc(itemId).get();
+      if (storeSnap.exists) {
+        const s = storeSnap.data();
+        meta = {
+          drawSource: s.drawSource,
+          loseEnabled: s.loseEnabled === true,
+          losePercent: Number(s.losePercent) || 0,
+          drawCandidates: Array.isArray(s.drawCandidates) ? s.drawCandidates : [],
+        };
+      }
+    }
+    if (meta.drawSource !== "food" && meta.drawSource !== "item") {
+      throw new Error("랜덤뽑기 아이템이 아닙니다.");
+    }
+
+    // --- 2) 후보 풀 구성 ---
+    let pool = []; // [{ name, icon, storeItemId? }]
+    if (meta.drawSource === "food") {
+      pool = meta.drawCandidates
+        .filter((c) => c && c.name)
+        .map((c) => ({ name: String(c.name), icon: c.icon || "🍬" }));
+    } else {
+      const snap = await db
+        .collection("storeItems")
+        .where("classCode", "==", classCode)
+        .where("available", "==", true)
+        .get();
+      pool = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((it) => it.type !== "randomDraw" && (it.stock === undefined || it.stock > 0))
+        .map((it) => ({ name: it.name || "아이템", icon: it.icon || "🎁", storeItemId: it.id }));
+    }
+    if (pool.length === 0) {
+      throw new Error(
+        meta.drawSource === "food"
+          ? "뽑을 수 있는 간식이 없습니다."
+          : "뽑을 수 있는 아이템이 없습니다. (판매 중·재고 있는 아이템이 없어요)",
+      );
+    }
+
+    // --- 3) 돌림판 세그먼트 + 서버 추첨 ---
+    const losePercent = meta.loseEnabled
+      ? Math.min(100, Math.max(0, meta.losePercent))
+      : 0;
+    const segments = pool.map((p) => ({ name: p.name, icon: p.icon }));
+    const loseIndex = meta.loseEnabled ? segments.push({ name: "꽝", icon: "💢" }) - 1 : -1;
+
+    let outcome, prize, winningIndex;
+    if (meta.loseEnabled && Math.random() * 100 < losePercent) {
+      outcome = "lose";
+      prize = null;
+      winningIndex = loseIndex;
+    } else {
+      const pick = Math.floor(Math.random() * pool.length);
+      outcome = "win";
+      prize = pool[pick];
+      winningIndex = pick;
+    }
+
+    // --- 4) 트랜잭션: read 먼저 → write (차감/재고/지급/로그) ---
+    const finalState = await db.runTransaction(async (transaction) => {
+      // READS
+      const curDraw = await transaction.get(drawItemRef);
+      if (!curDraw.exists || (curDraw.data().quantity || 0) < 1) {
+        throw new Error("뽑기 아이템 수량이 부족합니다.");
+      }
+
+      let fOutcome = outcome;
+      let fPrize = prize;
+      let fWinningIndex = winningIndex;
+      let prizeStoreRef = null;
+      let decStock = false;
+
+      if (fOutcome === "win" && meta.drawSource === "item" && fPrize?.storeItemId) {
+        prizeStoreRef = db.collection("storeItems").doc(fPrize.storeItemId);
+        const ps = await transaction.get(prizeStoreRef);
+        const data = ps.exists ? ps.data() : null;
+        const inStock = data && (data.stock === undefined || data.stock > 0);
+        if (!inStock) {
+          if (meta.loseEnabled) {
+            fOutcome = "lose";
+            fPrize = null;
+            fWinningIndex = loseIndex;
+          } else {
+            throw new Error("방금 그 아이템이 품절됐어요. 다시 돌려주세요.");
+          }
+        } else if (data.stock !== undefined) {
+          decStock = true;
+        }
+      }
+
+      // 당첨 지급 대상 doc 결정 + 존재 확인 (read)
+      let prizeRef = null;
+      let prizeExists = false;
+      let prizeDocData = null;
+      if (fOutcome === "win" && fPrize) {
+        let prizeDocId;
+        if (meta.drawSource === "item" && fPrize.storeItemId) {
+          prizeDocId = fPrize.storeItemId;
+          prizeDocData = { itemId: prizeDocId, name: fPrize.name, icon: fPrize.icon || "🎁", type: "item" };
+        } else {
+          const slug = encodeURIComponent(String(fPrize.name)).replace(/%/g, "").slice(0, 60);
+          prizeDocId = `randfood_${slug || "snack"}`;
+          prizeDocData = { itemId: prizeDocId, name: fPrize.name, icon: fPrize.icon || "🍬", type: "food" };
+        }
+        prizeRef = userRef.collection("inventory").doc(prizeDocId);
+        const pc = await transaction.get(prizeRef);
+        prizeExists = pc.exists;
+      }
+
+      // WRITES
+      if (decStock && prizeStoreRef) {
+        transaction.update(prizeStoreRef, {
+          stock: admin.firestore.FieldValue.increment(-1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      const newQty = (curDraw.data().quantity || 0) - 1;
+      if (newQty > 0) {
+        transaction.update(drawItemRef, {
+          quantity: newQty,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        transaction.delete(drawItemRef);
+      }
+
+      if (fOutcome === "win" && prizeRef) {
+        if (prizeExists) {
+          transaction.update(prizeRef, {
+            quantity: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(prizeRef, {
+            ...prizeDocData,
+            quantity: 1,
+            acquiredAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+      // audit 로그
+      const txRef = userRef.collection("transactions").doc();
+      transaction.set(txRef, {
+        type: "randomDraw",
+        amount: 0,
+        description:
+          fOutcome === "win"
+            ? `랜덤뽑기 "${drawData.name || "뽑기"}" → ${fPrize.name} 당첨`
+            : `랜덤뽑기 "${drawData.name || "뽑기"}" → 꽝`,
+        itemId,
+        outcome: fOutcome,
+        prizeName: fOutcome === "win" ? fPrize.name : null,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { fOutcome, fPrize, fWinningIndex };
+    });
+
+    logger.info(
+      `[drawRandomItem] ${uid} 뽑기 "${drawData.name}" → ${finalState.fOutcome}${finalState.fPrize ? ` (${finalState.fPrize.name})` : ""}`,
+    );
+
+    return {
+      success: true,
+      outcome: finalState.fOutcome,
+      prize: finalState.fPrize ? { name: finalState.fPrize.name, icon: finalState.fPrize.icon } : null,
+      segments,
+      winningIndex: finalState.fWinningIndex,
+    };
+  } catch (error) {
+    logger.error(`[drawRandomItem] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "랜덤뽑기에 실패했습니다.");
   }
 });
 

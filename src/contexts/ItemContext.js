@@ -121,6 +121,7 @@ export const ItemProvider = ({ children }) => {
       deleteStoreItem: httpsCallable(functions, "deleteStoreItem"),
       purchaseStoreItem: httpsCallable(functions, "purchaseStoreItem"),
       useUserItem: httpsCallable(functions, "useUserItem"),
+      drawRandomItem: httpsCallable(functions, "drawRandomItem"),
       updateUserItemQuantity: httpsCallable(
         functions,
         "updateUserItemQuantity",
@@ -529,6 +530,26 @@ export const ItemProvider = ({ children }) => {
     ],
   );
 
+  // 🎰 랜덤뽑기 사용: 서버에서 추첨/지급. 결과(돌림판 표시용 segments·winningIndex·prize) 반환.
+  const drawRandomItem = useCallback(
+    async (inventoryItemId) => {
+      if (!userId) return { success: false, message: "로그인 필요" };
+      try {
+        const res = await firebaseFunctions.drawRandomItem({
+          itemId: inventoryItemId,
+        });
+        const data = res?.data || {};
+        refreshData();
+        return { success: true, ...data };
+      } catch (error) {
+        logger.error("[ItemContext] 랜덤뽑기 에러:", error);
+        refreshData();
+        return { success: false, message: error.message };
+      }
+    },
+    [userId, firebaseFunctions, refreshData],
+  );
+
   const listItemForSale = useCallback(
     async ({ itemId, quantity, price }) => {
       if (!userId) return { success: false, message: "로그인 필요" };
@@ -890,6 +911,7 @@ export const ItemProvider = ({ children }) => {
       deleteItem,
       purchaseItem,
       useItem,
+      drawRandomItem,
       updateUserItemQuantity,
       listItemForSale,
       buyMarketItem,
@@ -913,6 +935,7 @@ export const ItemProvider = ({ children }) => {
       deleteItem,
       purchaseItem,
       useItem,
+      drawRandomItem,
       updateUserItemQuantity,
       listItemForSale,
       buyMarketItem,

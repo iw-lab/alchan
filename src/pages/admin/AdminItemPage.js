@@ -198,6 +198,11 @@ const EMPTY_ITEM = {
   available: true,
   priceIncreasePercentage: "10",
   excludeFromEconomicEvent: false,
+  // 🎰 랜덤뽑기 (UI 상태)
+  itemKind: "normal", // normal | drawFood | drawItem
+  loseEnabled: false,
+  losePercent: "30",
+  drawCandidates: [], // [{ name, icon }]
 };
 
 const AdminItemPage = ({
@@ -213,11 +218,25 @@ const AdminItemPage = ({
 
   useEffect(() => {
     if (editingItemFromStore) {
+      const isDraw = editingItemFromStore.type === "randomDraw";
       setItem({
         ...EMPTY_ITEM,
         ...editingItemFromStore,
         priceIncreasePercentage: editingItemFromStore.priceIncreasePercentage || "10",
         excludeFromEconomicEvent: editingItemFromStore.excludeFromEconomicEvent === true,
+        itemKind: isDraw
+          ? editingItemFromStore.drawSource === "item"
+            ? "drawItem"
+            : "drawFood"
+          : "normal",
+        loseEnabled: editingItemFromStore.loseEnabled === true,
+        losePercent:
+          editingItemFromStore.losePercent != null
+            ? String(editingItemFromStore.losePercent)
+            : "30",
+        drawCandidates: Array.isArray(editingItemFromStore.drawCandidates)
+          ? editingItemFromStore.drawCandidates
+          : [],
       });
     } else {
       setItem(EMPTY_ITEM);
@@ -231,6 +250,25 @@ const AdminItemPage = ({
       [name]: type === "checkbox" ? checked : value,
     }));
   };
+
+  // 🎰 랜덤뽑기 종류·후보 핸들러
+  const setKind = (kind) => setItem((prev) => ({ ...prev, itemKind: kind }));
+  const addCandidate = () =>
+    setItem((prev) => ({
+      ...prev,
+      drawCandidates: [...(prev.drawCandidates || []), { name: "", icon: "🍬" }],
+    }));
+  const updateCandidate = (i, field, value) =>
+    setItem((prev) => {
+      const arr = [...(prev.drawCandidates || [])];
+      arr[i] = { ...arr[i], [field]: value };
+      return { ...prev, drawCandidates: arr };
+    });
+  const removeCandidate = (i) =>
+    setItem((prev) => ({
+      ...prev,
+      drawCandidates: (prev.drawCandidates || []).filter((_, idx) => idx !== i),
+    }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -248,8 +286,46 @@ const AdminItemPage = ({
       return;
     }
 
+    // 🎰 랜덤뽑기 검증·직렬화
+    const kind = item.itemKind || "normal";
+    const isDraw = kind === "drawFood" || kind === "drawItem";
+    let drawFields = {};
+    if (isDraw) {
+      const loseEnabled = item.loseEnabled === true;
+      const losePercent = loseEnabled ? parseInt(item.losePercent, 10) : 0;
+      if (
+        loseEnabled &&
+        (isNaN(losePercent) || losePercent < 0 || losePercent > 100)
+      ) {
+        alert("꽝 확률은 0~100 사이 숫자로 입력해주세요.");
+        return;
+      }
+      let candidates = [];
+      if (kind === "drawFood") {
+        candidates = (item.drawCandidates || [])
+          .map((c) => ({
+            name: (c.name || "").trim(),
+            icon: (c.icon || "").trim() || "🍬",
+          }))
+          .filter((c) => c.name);
+        if (candidates.length < 1) {
+          alert("간식 후보를 1개 이상 추가해주세요.");
+          return;
+        }
+      }
+      drawFields = {
+        type: "randomDraw",
+        drawSource: kind === "drawFood" ? "food" : "item",
+        loseEnabled,
+        losePercent,
+        drawCandidates: candidates,
+      };
+    }
+
+    // UI 전용 필드 제거 후 직렬화
+    const { itemKind, loseEnabled, losePercent, drawCandidates, ...rest } = item;
     const itemData = {
-      ...item,
+      ...rest,
       price: parseInt(item.price, 10),
       stock: parseInt(item.stock, 10),
       initialStock: item.initialStock
@@ -258,6 +334,8 @@ const AdminItemPage = ({
       priceIncreasePercentage: parseFloat(item.priceIncreasePercentage) || 0,
       excludeFromEconomicEvent: item.excludeFromEconomicEvent === true,
       classCode,
+      type: isDraw ? "randomDraw" : "product",
+      ...drawFields,
     };
 
     const success = isEditing
@@ -479,6 +557,151 @@ const AdminItemPage = ({
                   placeholder="아이템에 대한 자세한 설명을 입력해주세요."
                   style={styles.textarea}
                 />
+              </div>
+
+              {/* 🎰 랜덤뽑기 설정 */}
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "16px",
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "12px",
+                }}
+              >
+                <label style={styles.label}>아이템 종류</label>
+                <div style={{ display: "flex", gap: "8px", marginTop: "8px", flexWrap: "wrap" }}>
+                  {[
+                    { k: "normal", t: "🛍️ 일반 아이템" },
+                    { k: "drawFood", t: "🎰 랜덤뽑기 - 간식" },
+                    { k: "drawItem", t: "🎁 랜덤뽑기 - 아이템" },
+                  ].map(({ k, t }) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setKind(k)}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: "999px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        border: `1.5px solid ${item.itemKind === k ? "#6366f1" : "#d1d5db"}`,
+                        background: item.itemKind === k ? "#eef2ff" : "#fff",
+                        color: item.itemKind === k ? "#4338ca" : "#6b7280",
+                      }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                {(item.itemKind === "drawFood" || item.itemKind === "drawItem") && (
+                  <div style={{ marginTop: "16px" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.loseEnabled}
+                        onChange={(e) =>
+                          setItem((prev) => ({ ...prev, loseEnabled: e.target.checked }))
+                        }
+                        style={{ width: "18px", height: "18px", accentColor: "#6366f1" }}
+                      />
+                      💢 꽝 포함 (체크 해제 시 항상 당첨)
+                    </label>
+                    {item.loseEnabled && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
+                        <span style={{ fontSize: "14px", color: "#374151" }}>꽝 확률</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.losePercent}
+                          onChange={(e) =>
+                            setItem((prev) => ({ ...prev, losePercent: e.target.value }))
+                          }
+                          style={{ ...styles.input, width: "100px" }}
+                        />
+                        <span style={{ fontSize: "14px", color: "#374151" }}>
+                          % (나머지는 후보들이 균등 당첨)
+                        </span>
+                      </div>
+                    )}
+
+                    {item.itemKind === "drawFood" ? (
+                      <div style={{ marginTop: "16px" }}>
+                        <label style={styles.label}>
+                          간식 후보 (당첨되면 이 중 하나로 변경)
+                        </label>
+                        {(item.drawCandidates || []).map((c, i) => (
+                          <div
+                            key={i}
+                            style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}
+                          >
+                            <input
+                              value={c.icon}
+                              onChange={(e) => updateCandidate(i, "icon", e.target.value)}
+                              placeholder="🍬"
+                              style={{ ...styles.input, width: "60px", textAlign: "center" }}
+                            />
+                            <input
+                              value={c.name}
+                              onChange={(e) => updateCandidate(i, "name", e.target.value)}
+                              placeholder="예: 초코파이"
+                              style={{ ...styles.input, flex: 1 }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeCandidate(i)}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                border: "1px solid #fecaca",
+                                background: "#fef2f2",
+                                color: "#dc2626",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                              }}
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={addCandidate}
+                          style={{
+                            marginTop: "10px",
+                            padding: "8px 14px",
+                            borderRadius: "8px",
+                            border: "1px dashed #a5b4fc",
+                            background: "#eef2ff",
+                            color: "#4338ca",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          + 간식 후보 추가
+                        </button>
+                      </div>
+                    ) : (
+                      <p style={{ ...styles.helpText, marginTop: "16px" }}>
+                        🎁 등록된 모든 아이템(판매중·재고 있음) 중 하나가 무작위로
+                        당첨됩니다. 당첨 시 해당 아이템 재고가 1 차감됩니다.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

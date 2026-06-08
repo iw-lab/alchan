@@ -1,7 +1,8 @@
 // src/pages/my-items/MyItems.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
+import RandomDrawWheel from "./RandomDrawWheel";
 import "./MyItems.css";
 import LoginWarning from "../../components/LoginWarning";
 import { useNavigate } from "react-router-dom";
@@ -59,12 +60,14 @@ const MyItems = () => {
   const {
     userItems,
     useItem,
+    drawRandomItem,
     listItemForSale,
     refreshData,
     updateLocalUserItems,
   } = useItems() || {
     userItems: [],
     useItem: null,
+    drawRandomItem: null,
     listItemForSale: null,
     refreshData: null,
     updateLocalUserItems: null,
@@ -208,7 +211,85 @@ const MyItems = () => {
       showNotification("error", NEGATIVE_ASSETS_MESSAGE);
       return;
     }
+    // 🎰 랜덤뽑기 아이템은 사용 모달 대신 돌림판으로
+    if (group.displayInfo.type === "randomDraw") {
+      openWheelAndSpin(group);
+      return;
+    }
     setUseItemModal({ isOpen: true, item: group, quantity: 1 });
+  };
+
+  // 🎰 랜덤뽑기 돌림판 상태/핸들러
+  const [wheelModal, setWheelModal] = useState({
+    isOpen: false,
+    group: null,
+    spinning: false,
+    segments: [],
+    winningIndex: 0,
+    result: null,
+    error: null,
+  });
+  const spinLockRef = useRef(false);
+
+  const openWheelAndSpin = async (group) => {
+    if (spinLockRef.current) return;
+    if (!drawRandomItem) {
+      showNotification("error", "뽑기 기능을 사용할 수 없습니다.");
+      return;
+    }
+    spinLockRef.current = true;
+    setWheelModal({
+      isOpen: true,
+      group,
+      spinning: true,
+      segments: [],
+      winningIndex: 0,
+      result: null,
+      error: null,
+    });
+    try {
+      const res = await drawRandomItem(group.displayInfo.itemId);
+      if (!res?.success) {
+        throw new Error(res?.message || "뽑기에 실패했습니다.");
+      }
+      setWheelModal((prev) => ({
+        ...prev,
+        spinning: true,
+        segments: res.segments || [],
+        winningIndex: res.winningIndex ?? 0,
+        result: res,
+      }));
+    } catch (e) {
+      setWheelModal((prev) => ({ ...prev, spinning: false, error: e.message }));
+      showNotification("error", `뽑기 실패: ${e.message}`);
+      spinLockRef.current = false;
+    }
+  };
+
+  const handleWheelDone = () => {
+    const res = wheelModal.result;
+    setWheelModal((prev) => ({ ...prev, spinning: false }));
+    spinLockRef.current = false;
+    if (res?.outcome === "win") {
+      showNotification("success", `🎉 ${res.prize?.name} 당첨!`);
+    } else if (res?.outcome === "lose") {
+      showNotification("info", "아쉽게도 꽝이에요 😢");
+    }
+    if (refreshData) refreshData();
+  };
+
+  const closeWheelModal = () => {
+    if (wheelModal.spinning) return; // 회전 중에는 닫기 방지
+    spinLockRef.current = false;
+    setWheelModal({
+      isOpen: false,
+      group: null,
+      spinning: false,
+      segments: [],
+      winningIndex: 0,
+      result: null,
+      error: null,
+    });
   };
 
   const handleCloseUseItemModal = () => {
@@ -988,6 +1069,108 @@ const MyItems = () => {
           </>
         )}
       </div>
+
+      {wheelModal.isOpen && (
+        <div
+          className="myitems-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeWheelModal();
+          }}
+        >
+          <div
+            className="myitems-modal-container"
+            style={{ maxWidth: "360px" }}
+          >
+            <div className="myitems-modal-header">
+              <h3>🎰 {wheelModal.group?.displayInfo?.name || "랜덤뽑기"}</h3>
+              {!wheelModal.spinning && (
+                <button
+                  onClick={closeWheelModal}
+                  className="myitems-close-button"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div
+              className="myitems-modal-body"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "16px",
+                padding: "20px",
+              }}
+            >
+              {wheelModal.error ? (
+                <p style={{ color: "#dc2626", fontWeight: 600 }}>
+                  {wheelModal.error}
+                </p>
+              ) : wheelModal.segments.length === 0 ? (
+                <p style={{ fontSize: "16px", fontWeight: 700, color: "#6366f1" }}>
+                  🎲 뽑는 중...
+                </p>
+              ) : (
+                <>
+                  <RandomDrawWheel
+                    segments={wheelModal.segments}
+                    winningIndex={wheelModal.winningIndex}
+                    onDone={handleWheelDone}
+                  />
+                  {!wheelModal.spinning && wheelModal.result && (
+                    <div style={{ textAlign: "center" }}>
+                      {wheelModal.result.outcome === "win" ? (
+                        <>
+                          <div style={{ fontSize: "40px" }}>
+                            {wheelModal.result.prize?.icon}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "20px",
+                              fontWeight: 800,
+                              color: "#059669",
+                              marginTop: "4px",
+                            }}
+                          >
+                            🎉 {wheelModal.result.prize?.name} 당첨!
+                          </div>
+                        </>
+                      ) : (
+                        <div
+                          style={{
+                            fontSize: "20px",
+                            fontWeight: 800,
+                            color: "#6b7280",
+                            marginTop: "4px",
+                          }}
+                        >
+                          😢 꽝! 다음 기회에...
+                        </div>
+                      )}
+                      <button
+                        onClick={closeWheelModal}
+                        style={{
+                          marginTop: "16px",
+                          padding: "10px 28px",
+                          borderRadius: "10px",
+                          border: "none",
+                          background: "#6366f1",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: "15px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        확인
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {useItemModal.isOpen && useItemModal.item && (
         <div
