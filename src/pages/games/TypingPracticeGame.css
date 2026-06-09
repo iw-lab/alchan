@@ -1249,6 +1249,7 @@
 .mode-card.practice { background: linear-gradient(135deg, #4299e1, #667eea); }
 .mode-card.arcade   { background: linear-gradient(135deg, #f093fb, #f5576c); }
 .mode-card.ranking  { background: linear-gradient(135deg, #f6ad55, #ed8936); }
+.mode-card.transcribe { background: linear-gradient(135deg, #7c5cd6, #20c997); }
 .mode-emoji { font-size: 38px; line-height: 1; }
 .mode-title {
   font-size: 19px;

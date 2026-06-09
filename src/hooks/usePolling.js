@@ -52,6 +52,7 @@ export const usePolling = (queryFn, options = {}) => {
   const intervalRef = useRef(null);
   const mountedRef = useRef(true);
   const queryFnRef = useRef(queryFn);
+  const lastFetchRef = useRef(0); // 🔥 마지막 조회 시각 (탭 복귀 재fetch throttle용)
 
   useEffect(() => {
     queryFnRef.current = queryFn;
@@ -65,6 +66,7 @@ export const usePolling = (queryFn, options = {}) => {
 
     try {
       setError(null);
+      lastFetchRef.current = Date.now();
       const result = await queryFnRef.current();
 
       if (mountedRef.current) {
@@ -121,10 +123,15 @@ export const usePolling = (queryFn, options = {}) => {
     }
 
     // visibility 변화 감지: 탭 활성화 시 즉시 fetch + 폴링 재개, 비활성화 시 정지
+    // 🔥 [최적화] 단, 최근 60초 내 이미 조회했으면 복귀 즉시 fetch 생략 — 잦은 탭 전환
+    // 시 중복 read 방지. 폴링 주기(10~60분)보다 훨씬 신선하므로 데이터 staleness 없음.
+    const VISIBILITY_REFETCH_THROTTLE = 60 * 1000;
     const handleVisibilityChange = () => {
       if (!mountedRef.current) return;
       if (document.visibilityState === 'visible') {
-        fetchData();
+        if (Date.now() - lastFetchRef.current > VISIBILITY_REFETCH_THROTTLE) {
+          fetchData();
+        }
         startPolling();
       } else {
         stopPolling();

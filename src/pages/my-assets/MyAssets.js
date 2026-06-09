@@ -395,7 +395,7 @@ export default function MyAssets() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentGoalId, currentUserClassCode, userId, createDefaultGoalForClass]);
 
-  const loadMyAssetsData = useCallback(async () => {
+  const loadMyAssetsData = useCallback(async (force = false) => {
     if (!userId || !db) {
       setAssetsLoading(false);
       return;
@@ -424,6 +424,16 @@ export default function MyAssets() {
       setAssetsLoading(false); // 캐시로 즉시 로딩 해제
     } else {
       setAssetsLoading(true);
+    }
+
+    // 🔥 [최적화] 강제 새로고침이 아니고, 최근(90초 이내) 조회한 캐시가 있으면
+    // 9개 네트워크 쿼리를 생략 — 페이지 급속 재진입 시 중복 read 방지.
+    // 거래 후 자산 목록은 원래 마운트/수동 새로고침에서만 갱신되며(헤더 현금은
+    // AuthContext 실시간 리스너가 즉시 반영), 수동 새로고침 버튼은 force=true로 우회한다.
+    const ASSETS_REFETCH_THROTTLE = 90 * 1000; // 90초
+    if (!force && getCachedFirestoreData("myAssets", userId, ASSETS_REFETCH_THROTTLE)) {
+      loadingRef.current = false;
+      return;
     }
 
     try {
@@ -1318,14 +1328,15 @@ export default function MyAssets() {
   };
 
   const handleForceRefresh = () => {
-    // 캐시 삭제
-    const cacheKey = `myAssets_${userId}`;
-    localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
+    // 캐시 삭제 (setCachedFirestoreData가 쓰는 실제 키 = firestore_cache_myAssets_{userId})
+    localStorage.removeItem(`firestore_cache_myAssets_${userId}`);
+    // 과거 잘못된 키도 함께 정리 (하위호환)
+    localStorage.removeItem(`firestore_cache_myAssets_${userId}_${userId}`);
 
     logger.log("[MyAssets] 🔄 캐시 삭제 및 강제 새로고침");
 
-    // 데이터 다시 로드
-    loadMyAssetsData();
+    // 데이터 다시 로드 (force=true로 재요청 throttle 우회)
+    loadMyAssetsData(true);
   };
 
   const renderTitle = () => (

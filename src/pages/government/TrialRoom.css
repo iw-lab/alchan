@@ -974,3 +974,69 @@
     font-size: 0.8rem;
   }
 }
+
+/* ===== 판사 재판 구성 패널 ===== */
+.trial-assign-panel {
+  background: #fff;
+  border: 1px solid #e9e3f7;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(111, 66, 193, 0.08);
+}
+.trial-assign-panel h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #6f42c1;
+}
+.trial-assign-panel .assign-hint {
+  font-size: 0.78rem;
+  color: #8a7fa6;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+.assign-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.assign-row > span {
+  flex: 0 0 64px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a3b6b;
+}
+.assign-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #d8cfee;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: #faf8ff;
+  color: #2d2440;
+}
+.assign-jury-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0dcaf0, #0aa5c4);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.assign-jury-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 202, 240, 0.4);
+}
+
+/* 새 법정 씬을 위한 컨테이너 보정 */
+.courtroom-view {
+  align-items: center;
+  justify-content: flex-start;
+}

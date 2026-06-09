@@ -408,6 +408,10 @@ async function updateRealStockPrices() {
           priceHistory: data.priceHistory || [],
           isUSD: isUSD,
           dividendYieldAnnual: data.dividendYieldAnnual,
+          // 🔥 diff-before-write용: 기존 저장값 (변경 없으면 write 생략)
+          prevPreviousClose: data.previousClose,
+          prevChangePercent: data.changePercent,
+          prevMarketState: data.marketState,
         });
       } else {
         logger.warn(`[RealStock] ${data.name} - 심볼을 찾을 수 없음`);
@@ -468,6 +472,23 @@ async function updateRealStockPrices() {
             ? Math.round(data.previousClose * USD_TO_KRW)
             : Math.round(data.previousClose))
         : 0;
+
+      // 🔥 [최적화] diff-before-write: 학생에게 보이는 필드(가격·전일종가·변동률·장상태)가
+      // 모두 기존과 동일하면 write 생략 — 5분마다 같은 값을 다시 쓰던 낭비 제거.
+      // 단, 배당률 백필이 필요한 종목은 예외로 그대로 write. (값이 같으면 화면 동일 = 기능 변화 없음)
+      const needsDividendBackfill =
+        (stock.dividendYieldAnnual === undefined || stock.dividendYieldAnnual === null) &&
+        STOCK_DIVIDEND_YIELDS_BY_SYMBOL[stock.symbol] !== undefined;
+      const nothingChanged =
+        !needsDividendBackfill &&
+        newPrice === stock.currentPrice &&
+        previousCloseKRW === (stock.prevPreviousClose || 0) &&
+        (data.changePercent || 0) === (stock.prevChangePercent || 0) &&
+        (data.marketState || 'CLOSED') === (stock.prevMarketState || 'CLOSED');
+      if (nothingChanged) {
+        skipped++;
+        continue;
+      }
 
       // 가격 이력 업데이트 (최대 20개)
       const newHistory = [...stock.priceHistory.slice(-19), newPrice];

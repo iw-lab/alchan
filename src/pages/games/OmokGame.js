@@ -21,6 +21,7 @@ import {
   onSnapshot,
   orderBy,
   increment,
+  limit,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -709,6 +710,7 @@ const OmokGame = () => {
         gamesRef,
         where("gameStatus", "==", "waiting"),
         orderBy("createdAt", "desc"),
+        limit(20),
       );
 
       const querySnapshot = await getDocs(q);
@@ -734,11 +736,11 @@ const OmokGame = () => {
     }
   }, [user]);
 
-  // 로비 게임 목록: 초기 로드 + 10초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
+  // 로비 게임 목록: 초기 로드 + 30초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
     if (!user || gameId) return;
     fetchAvailableGames();
-    const interval = setInterval(fetchAvailableGames, 10000);
+    const interval = setInterval(fetchAvailableGames, 30000);
     return () => clearInterval(interval);
   }, [user, gameId, fetchAvailableGames]);
 

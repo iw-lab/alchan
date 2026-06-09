@@ -23,6 +23,7 @@ import {
   getDocs,
   deleteDoc,
   onSnapshot,
+  limit,
 } from "../../firebase";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 import "./ChessGame.css";
@@ -775,6 +776,7 @@ const ChessGame = () => {
       const q = query(
         collection(db, "chessGames"),
         where("status", "==", "waiting"),
+        limit(20),
       );
       const querySnapshot = await getDocs(q);
       const rooms = [];
@@ -790,11 +792,11 @@ const ChessGame = () => {
     }
   }, [user]);
 
-  // 로비 대기방 목록: 초기 로드 + 10초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
+  // 로비 대기방 목록: 초기 로드 + 30초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
     if (!showCreateRoom || !user) return;
     fetchAvailableRooms();
-    const interval = setInterval(fetchAvailableRooms, 10000);
+    const interval = setInterval(fetchAvailableRooms, 30000);
     return () => clearInterval(interval);
   }, [showCreateRoom, user, fetchAvailableRooms]);
 
