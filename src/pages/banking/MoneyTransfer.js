@@ -1,6 +1,6 @@
 // src/MoneyTransfer.js - 서버 응답 기반 상태 업데이트 수정 버전
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { adminCashAction } from "../../services/database";
@@ -74,8 +74,17 @@ function MoneyTransfer() {
     return `ID ${String(member.id || "").slice(0, 6)}`;
   }, []);
 
+  // 🔥 [버그픽스] 학생 목록 새로고침은 학급당 1회만.
+  // refreshAllUsers(=refreshClassmates)는 force=true로 전교생을 캐시 무시하고 읽는데,
+  // 그 identity가 매 fetch마다 바뀌어(AuthContext의 fetchClassmatesFromFirestore가
+  // 자신이 set하는 users/classmates/allClassMembers를 deps로 가짐) effect가 무한 재실행 →
+  // 송금 페이지를 켜둔 탭이 전교생 읽기를 끝없이 반복(밤중 읽기 폭주의 정체)했다.
+  // ref 가드로 같은 학급은 1회만 새로고침하여 루프를 차단한다.
+  const lastRefreshedClassCodeRef = useRef(null);
   useEffect(() => {
     if (!adminClassCode || typeof refreshAllUsers !== "function") return;
+    if (lastRefreshedClassCodeRef.current === adminClassCode) return;
+    lastRefreshedClassCodeRef.current = adminClassCode;
 
     refreshAllUsers().catch((refreshError) => {
       logger.warn("[MoneyTransfer] 학생 목록 새로고침 실패:", refreshError);
