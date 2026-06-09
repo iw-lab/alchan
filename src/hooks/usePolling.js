@@ -1,6 +1,7 @@
 // src/hooks/usePolling.js - onSnapshot 대체용 Polling Hook (최적화 버전)
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logger } from '../utils/logger';
+import { subscribeIdle, getIsIdle } from '../utils/idleManager';
 
 // 🔥 [최적화] 페이지별 폴링 간격 상수 - Firestore 읽기 최소화
 export const POLLING_INTERVALS = {
@@ -105,7 +106,11 @@ export const usePolling = (queryFn, options = {}) => {
     // 🔥 [최적화] visibility-aware 폴링: 탭이 백그라운드면 폴링 정지하여 read 비용 절감
     const startPolling = () => {
       if (intervalRef.current || !interval || interval <= 0) return;
-      intervalRef.current = setInterval(fetchData, interval);
+      // 🔥 [최적화] 탭 숨김/무조작(idle) 상태에선 tick을 건너뛴다(방치 탭 읽기 차단).
+      intervalRef.current = setInterval(() => {
+        if (document.visibilityState !== 'visible' || getIsIdle()) return;
+        fetchData();
+      }, interval);
     };
     const stopPolling = () => {
       if (intervalRef.current) {
@@ -142,9 +147,24 @@ export const usePolling = (queryFn, options = {}) => {
       document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
+    // 🔥 [최적화] 무조작(idle) 시 폴링 정지, 활동 복귀 시 즉시 1회 fetch + 재개.
+    const unsubIdle = subscribeIdle({
+      onIdle: stopPolling,
+      onActive: () => {
+        if (!mountedRef.current) return;
+        if (document.visibilityState === 'visible') {
+          if (Date.now() - lastFetchRef.current > VISIBILITY_REFETCH_THROTTLE) {
+            fetchData();
+          }
+          startPolling();
+        }
+      },
+    });
+
     return () => {
       mountedRef.current = false;
       stopPolling();
+      if (unsubIdle) unsubIdle();
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
@@ -237,7 +257,11 @@ export const useMultiPolling = (queries, options = {}) => {
     // 🔥 [최적화] visibility-aware 폴링: 탭이 백그라운드면 폴링 정지
     const startPolling = () => {
       if (intervalRef.current || !interval || interval <= 0) return;
-      intervalRef.current = setInterval(fetchAllData, interval);
+      // 🔥 [최적화] 탭 숨김/무조작(idle) 상태에선 tick을 건너뛴다.
+      intervalRef.current = setInterval(() => {
+        if (document.visibilityState !== 'visible' || getIsIdle()) return;
+        fetchAllData();
+      }, interval);
     };
     const stopPolling = () => {
       if (intervalRef.current) {
@@ -267,9 +291,22 @@ export const useMultiPolling = (queries, options = {}) => {
       document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
+    // 🔥 [최적화] 무조작(idle) 시 폴링 정지, 활동 복귀 시 즉시 fetch + 재개.
+    const unsubIdle = subscribeIdle({
+      onIdle: stopPolling,
+      onActive: () => {
+        if (!mountedRef.current) return;
+        if (document.visibilityState === 'visible') {
+          fetchAllData();
+          startPolling();
+        }
+      },
+    });
+
     return () => {
       mountedRef.current = false;
       stopPolling();
+      if (unsubIdle) unsubIdle();
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }

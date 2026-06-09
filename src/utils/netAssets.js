@@ -92,7 +92,22 @@ async function loadAssetDataFromDb(userId, userName, classCode) {
   const [parking, loans, realEstate, portfolio, stocks] =
     await Promise.all(promises);
 
-  return { parking, loans, realEstate, portfolio, stocks };
+  const data = { parking, loans, realEstate, portfolio, stocks };
+
+  // 🔥 [비용 최적화] AssetSummary와 공유하는 5분 캐시에 직접 기록.
+  // 기존엔 readAssetCache로 "읽기만" 하고 쓰지 않아, 자산 페이지(AssetSummary)가 아닌
+  // 화면에서는 캐시가 영원히 비어 매 호출(특히 FinancialRestrictionBanner 60초 폴링)마다
+  // 풀로드(5문서)가 발생했다. 이제 어디서 호출하든 5분간 캐시 재사용 → 읽기 급감.
+  try {
+    localStorage.setItem(
+      `assetCache_${userId}`,
+      JSON.stringify({ data, ts: Date.now() }),
+    );
+  } catch {
+    /* 저장 실패 무시 */
+  }
+
+  return data;
 }
 
 function computeNetAssets({
@@ -134,12 +149,21 @@ function computeNetAssets({
   );
 }
 
+function sumLoanBalance(loans) {
+  return (Array.isArray(loans) ? loans : []).reduce(
+    (sum, l) => sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
+    0,
+  );
+}
+
 /**
- * 사용자의 순자산을 계산한다. 캐시 우선, 없으면 Firestore 로드.
- * @returns {Promise<number>} 순자산 (음수 가능)
+ * 순자산 + 대출 합계를 한 번의 (캐시 우선) 로드로 함께 반환한다.
+ * FinancialRestrictionBanner가 net과 loan을 둘 다 필요로 하므로, loans 문서를
+ * 별도로 또 읽지 않도록 동일 데이터에서 함께 계산한다.
+ * @returns {Promise<{net:number, loanTotal:number}>}
  */
-export async function getNetAssets(user, couponValue = 1000) {
-  if (!user || !user.id) return 0;
+export async function getNetAssetsDetail(user, couponValue = 1000) {
+  if (!user || !user.id) return { net: 0, loanTotal: 0 };
   const cash = Number(user.cash) || 0;
   const coupons = Number(user.coupons) || 0;
 
@@ -152,7 +176,17 @@ export async function getNetAssets(user, couponValue = 1000) {
       data = null;
     }
   }
-  return computeNetAssets({ cash, coupons, couponValue, data });
+  const net = computeNetAssets({ cash, coupons, couponValue, data });
+  const loanTotal = sumLoanBalance(data?.loans);
+  return { net, loanTotal };
+}
+
+/**
+ * 사용자의 순자산을 계산한다. 캐시 우선, 없으면 Firestore 로드.
+ * @returns {Promise<number>} 순자산 (음수 가능)
+ */
+export async function getNetAssets(user, couponValue = 1000) {
+  return (await getNetAssetsDetail(user, couponValue)).net;
 }
 
 /**

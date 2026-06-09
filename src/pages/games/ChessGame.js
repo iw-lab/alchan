@@ -26,6 +26,7 @@ import {
   limit,
 } from "../../firebase";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
+import { getIsIdle } from "../../utils/idleManager";
 import "./ChessGame.css";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { logger } from "../../utils/logger";
@@ -796,7 +797,11 @@ const ChessGame = () => {
   useEffect(() => {
     if (!showCreateRoom || !user) return;
     fetchAvailableRooms();
-    const interval = setInterval(fetchAvailableRooms, 30000);
+    // 🔥 [최적화] 탭 숨김/무조작(idle) 시 로비 갱신 건너뜀(방치 탭 읽기 차단)
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible" || getIsIdle()) return;
+      fetchAvailableRooms();
+    }, 30000);
     return () => clearInterval(interval);
   }, [showCreateRoom, user, fetchAvailableRooms]);
 

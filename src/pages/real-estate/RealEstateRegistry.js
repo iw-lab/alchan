@@ -26,6 +26,7 @@ import { httpsCallable } from "firebase/functions";
 import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
+import { getIsIdle } from "../../utils/idleManager";
 // orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
   orderBy as firebaseOrderBy,
@@ -270,7 +271,11 @@ const RealEstateRegistry = () => {
       }
     };
     fetchOffers();
-    const interval = setInterval(fetchOffers, 2 * 60 * 1000);
+    // 🔥 [최적화] 탭 숨김/무조작(idle) 시 폴링 건너뜀(이전엔 가드 없이 백그라운드에서도 계속 조회)
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible" || getIsIdle()) return;
+      fetchOffers();
+    }, 2 * 60 * 1000);
     return () => { mounted = false; clearInterval(interval); };
   }, [classCode, reloadKey]);
 

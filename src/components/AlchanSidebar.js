@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getIsIdle } from "../utils/idleManager";
 import { db as firebaseDb } from "../firebase";
 import {
   collection as fbCollection,
@@ -728,7 +729,9 @@ export default function AlchanSidebar({
     let intervalId = null;
     const start = () => {
       if (intervalId) return;
-      intervalId = setInterval(fetchCount, 15 * 60 * 1000);
+      intervalId = setInterval(() => {
+        if (!getIsIdle()) fetchCount();
+      }, 15 * 60 * 1000);
     };
     const stop = () => {
       if (intervalId) {
@@ -851,7 +854,9 @@ export default function AlchanSidebar({
     let intervalId = null;
     const start = () => {
       if (intervalId) return;
-      intervalId = setInterval(fetchUnread, 15 * 60 * 1000);
+      intervalId = setInterval(() => {
+        if (!getIsIdle()) fetchUnread();
+      }, 15 * 60 * 1000);
     };
     const stop = () => {
       if (intervalId) {

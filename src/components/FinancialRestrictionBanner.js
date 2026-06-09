@@ -4,11 +4,13 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { getNetAssets } from "../utils/netAssets";
-import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { getNetAssetsDetail } from "../utils/netAssets";
+import { getIsIdle } from "../utils/idleManager";
 
-const POLL_MS = 60 * 1000;
+// 🔥 [비용 최적화] 60초 → 5분. 제한 상태(순자산 마이너스/미상환 대출)는 천천히 변하고,
+// 현금·쿠폰 변경은 아래 useEffect deps로 즉시 재평가되므로 5분 폴링으로 충분하다.
+// 또한 탭 숨김/무조작 시엔 폴링을 건너뛴다(방치된 탭의 야간 읽기 차단).
+const POLL_MS = 5 * 60 * 1000;
 
 export default function FinancialRestrictionBanner() {
   const { userDoc } = useAuth();
@@ -23,27 +25,16 @@ export default function FinancialRestrictionBanner() {
 
     const load = async () => {
       try {
-        const [net, loanSnap] = await Promise.all([
-          getNetAssets({
-            id: userDoc.id,
-            cash: userDoc.cash,
-            coupons: userDoc.coupons,
-            name: userDoc.name,
-            classCode: userDoc.classCode,
-          }),
-          getDoc(doc(db, "users", userDoc.id, "financials", "loans")),
-        ]);
+        // getNetAssetsDetail이 net·loan을 동일 (캐시 우선) 로드에서 함께 계산 →
+        // loans 문서를 따로 또 읽지 않는다.
+        const { net, loanTotal } = await getNetAssetsDetail({
+          id: userDoc.id,
+          cash: userDoc.cash,
+          coupons: userDoc.coupons,
+          name: userDoc.name,
+          classCode: userDoc.classCode,
+        });
         if (cancelled) return;
-        const loans = loanSnap.exists()
-          ? Array.isArray(loanSnap.data().activeLoans)
-            ? loanSnap.data().activeLoans
-            : []
-          : [];
-        const loanTotal = loans.reduce(
-          (sum, l) =>
-            sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
-          0,
-        );
         setStatus({ net, loan: loanTotal, ready: true });
       } catch {
         if (!cancelled) setStatus((s) => ({ ...s, ready: true }));
@@ -51,7 +42,11 @@ export default function FinancialRestrictionBanner() {
     };
 
     load();
-    const timer = setInterval(load, POLL_MS);
+    // 탭이 보이고 사용자가 활동 중일 때만 폴링(방치 탭은 건너뜀)
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible" || getIsIdle()) return;
+      load();
+    }, POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);

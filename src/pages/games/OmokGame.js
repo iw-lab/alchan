@@ -26,6 +26,7 @@ import {
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
+import { getIsIdle } from "../../utils/idleManager";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 import "./GamePage.css";
 import "./OmokGame.css";
@@ -740,7 +741,11 @@ const OmokGame = () => {
   useEffect(() => {
     if (!user || gameId) return;
     fetchAvailableGames();
-    const interval = setInterval(fetchAvailableGames, 30000);
+    // 🔥 [최적화] 탭 숨김/무조작(idle) 시 로비 갱신 건너뜀(방치 탭 읽기 차단)
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible" || getIsIdle()) return;
+      fetchAvailableGames();
+    }, 30000);
     return () => clearInterval(interval);
   }, [user, gameId, fetchAvailableGames]);
 
