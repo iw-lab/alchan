@@ -760,3 +760,43 @@ body {
     font-size: 1.75rem;
   }
 }
+
+/* 🏠 부동산 가격 제시(흥정) */
+.re-offers-section .re-offer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.re-offer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+.re-offer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.re-offer-info b {
+  font-size: 14px;
+  color: #f1f5f9;
+}
+.re-offer-info span {
+  font-size: 13px;
+  color: #94a3b8;
+}
+.re-offer-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.quick-action-btn.btn-offer {
+  background: #f59e0b;
+  color: #fff;
+}

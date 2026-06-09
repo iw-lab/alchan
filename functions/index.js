@@ -3795,6 +3795,278 @@ exports.purchaseRealEstate = onCall(
   },
 );
 
+// 🏠 부동산 가격 제시(흥정): 구매 희망자가 개인 소유 부동산에 가격을 제안. 돈은 수락 시에만 이동.
+exports.makeRealEstateOffer = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+  const { propertyId, offerPrice } = request.data;
+  if (!propertyId || !offerPrice || offerPrice <= 0) {
+    throw new HttpsError("invalid-argument", "유효한 부동산과 제안 가격이 필요합니다.");
+  }
+  const offerPriceInt = Math.floor(offerPrice);
+  const pid = String(propertyId);
+  const propertyRef = db.collection("classes").doc(classCode).collection("realEstateProperties").doc(pid);
+  try {
+    const propDoc = await propertyRef.get();
+    if (!propDoc.exists) throw new Error("부동산 정보를 찾을 수 없습니다.");
+    const prop = propDoc.data();
+    if (!prop.owner || prop.owner === "government") {
+      throw new Error("정부 소유 부동산은 바로 구매할 수 있어요. 가격 제시는 개인 소유 부동산만 가능합니다.");
+    }
+    if (prop.owner === uid) throw new Error("내 부동산에는 제안할 수 없습니다.");
+
+    const buyerDoc = await db.collection("users").doc(uid).get();
+    const buyerCash = buyerDoc.exists ? (buyerDoc.data().cash || 0) : 0;
+    if (buyerCash < offerPriceInt) {
+      throw new Error(`현금이 부족합니다. (제안가: ${offerPriceInt.toLocaleString()}원, 보유: ${buyerCash.toLocaleString()}원)`);
+    }
+
+    const offersCol = db.collection("classes").doc(classCode).collection("realEstateOffers");
+    const dup = await offersCol
+      .where("propertyId", "==", pid).where("buyerId", "==", uid).where("status", "==", "pending").limit(1).get();
+    if (!dup.empty) {
+      await dup.docs[0].ref.update({
+        offerPrice: offerPriceInt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return { success: true, message: "제안 가격을 갱신했습니다.", offerId: dup.docs[0].id };
+    }
+    const ref = await offersCol.add({
+      propertyId: pid, classCode, buyerId: uid, buyerName: userData.name || "익명",
+      ownerId: prop.owner, ownerName: prop.ownerName || "소유주",
+      propertyName: prop.name || `매물 #${pid}`,
+      originalPrice: prop.salePrice || prop.price || 0,
+      offerPrice: offerPriceInt, status: "pending",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { success: true, message: "가격 제안이 전송되었습니다.", offerId: ref.id };
+  } catch (error) {
+    logger.error(`[makeRealEstateOffer] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "가격 제안에 실패했습니다.");
+  }
+});
+
+// 🏠 부동산 제안 응답: 소유자가 수락(소유권 이전 트랜잭션) 또는 거절.
+exports.respondToRealEstateOffer = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { offerId, response, idempotencyKey } = request.data;
+  if (!offerId || !["accept", "reject"].includes(response)) {
+    throw new HttpsError("invalid-argument", "유효한 제안 ID와 응답(accept/reject)이 필요합니다.");
+  }
+  const offerRef = db.collection("classes").doc(classCode).collection("realEstateOffers").doc(offerId);
+
+  try {
+    if (response === "reject") {
+      await db.runTransaction(async (tx) => {
+        const od = await tx.get(offerRef);
+        if (!od.exists) throw new Error("제안 정보를 찾을 수 없습니다.");
+        const o = od.data();
+        if (o.ownerId !== uid) throw new Error("내 부동산에 온 제안만 응답할 수 있습니다.");
+        if (o.status !== "pending") throw new Error("이미 처리된 제안입니다.");
+        tx.update(offerRef, { status: "rejected", respondedAt: admin.firestore.FieldValue.serverTimestamp() });
+      });
+      return { success: true, message: "제안을 거절했습니다." };
+    }
+
+    // accept: 소유권 이전 (purchaseRealEstate 트랜잭션 패턴 복제)
+    const adminQuery = await db.collection("users")
+      .where("classCode", "==", classCode).where("isAdmin", "==", true).limit(1).get();
+    const adminRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
+
+    const result = await db.runTransaction(async (transaction) => {
+      const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
+
+      // ── READS ──
+      const offerDoc = await transaction.get(offerRef);
+      if (!offerDoc.exists) throw new Error("제안 정보를 찾을 수 없습니다.");
+      const offer = offerDoc.data();
+      if (offer.ownerId !== uid) throw new Error("내 부동산에 온 제안만 수락할 수 있습니다.");
+      if (offer.status !== "pending") throw new Error("이미 처리된 제안입니다.");
+
+      const propertyRef = db.collection("classes").doc(classCode).collection("realEstateProperties").doc(offer.propertyId);
+      const buyerRef = db.collection("users").doc(offer.buyerId);
+      const sellerRef = db.collection("users").doc(uid);
+      const settingsRef = db.collection("classes").doc(classCode).collection("realEstateSettings").doc("settingsDoc");
+      const govSettingsRef = db.collection("governmentSettings").doc(classCode);
+
+      const [propDoc, buyerDoc, settingsDoc, govDoc] = await Promise.all([
+        transaction.get(propertyRef),
+        transaction.get(buyerRef),
+        transaction.get(settingsRef),
+        transaction.get(govSettingsRef),
+      ]);
+      if (!propDoc.exists) throw new Error("부동산 정보를 찾을 수 없습니다.");
+      const prop = propDoc.data();
+      if (prop.owner !== uid) throw new Error("이미 소유권이 변경된 부동산입니다.");
+      if (!buyerDoc.exists) throw new Error("구매자 정보를 찾을 수 없습니다.");
+
+      const price = Math.floor(offer.offerPrice);
+      const buyerCash = buyerDoc.data().cash || 0;
+      if (buyerCash < price) {
+        throw new Error(`구매자의 현금이 부족합니다. (필요: ${price.toLocaleString()}원, 보유: ${buyerCash.toLocaleString()}원)`);
+      }
+
+      const rentPct = (settingsDoc.exists ? settingsDoc.data().rentPercentage : 1) || 1;
+      const rent = prop.rent || Math.round((prop.price || price) * (rentPct / 100));
+      const taxRate = (govDoc.exists ? govDoc.data()?.taxSettings?.realEstateTransactionTaxRate : 0.03) || 0.03;
+      const taxAmount = Math.round(price * taxRate);
+      const sellerProceeds = price - taxAmount;
+
+      const allProps = await transaction.get(
+        db.collection("classes").doc(classCode).collection("realEstateProperties"),
+      );
+      const otherOffers = await transaction.get(
+        db.collection("classes").doc(classCode).collection("realEstateOffers")
+          .where("propertyId", "==", offer.propertyId).where("status", "==", "pending"),
+      );
+
+      // ── WRITES ──
+      let vacatedFrom = null;
+      allProps.forEach((d) => {
+        if (d.id !== offer.propertyId && d.data().tenantId === offer.buyerId) {
+          vacatedFrom = d.id;
+          transaction.update(d.ref, {
+            tenant: null, tenantId: null, tenantName: null, lastRentPayment: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      });
+
+      transaction.update(buyerRef, {
+        cash: admin.firestore.FieldValue.increment(-price),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.set(buyerRef.collection("transactions").doc(), {
+        type: "realEstatePurchase", amount: -price,
+        description: `[부동산 흥정 구매] ${offer.propertyName} ${price.toLocaleString()}원 (거래세 ${taxAmount.toLocaleString()}원 별도)`,
+        propertyId: offer.propertyId, purchasePrice: price, taxAmount,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(sellerRef, {
+        cash: admin.firestore.FieldValue.increment(sellerProceeds),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.set(sellerRef.collection("transactions").doc(), {
+        type: "realEstateSell", amount: sellerProceeds,
+        description: `[부동산 흥정 매도] ${offer.propertyName} ${price.toLocaleString()}원에 판매 (세금 ${taxAmount.toLocaleString()}원 차감 후 ${sellerProceeds.toLocaleString()}원 입금, 구매자: ${offer.buyerName})`,
+        propertyId: offer.propertyId, purchasePrice: price, taxAmount, sellerProceeds, buyerId: offer.buyerId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      if (taxAmount > 0) {
+        if (adminRef) {
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(taxAmount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        transaction.set(db.collection("nationalTreasuries").doc(classCode), {
+          realEstateTransactionTaxRevenue: admin.firestore.FieldValue.increment(taxAmount),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+
+      transaction.update(propertyRef, {
+        owner: offer.buyerId, ownerName: offer.buyerName, forSale: false,
+        salePrice: admin.firestore.FieldValue.delete(), rent,
+        tenant: offer.buyerName, tenantId: offer.buyerId, tenantName: offer.buyerName,
+        lastRentPayment: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      transaction.update(offerRef, { status: "accepted", respondedAt: admin.firestore.FieldValue.serverTimestamp() });
+      otherOffers.forEach((d) => {
+        if (d.id !== offerId) {
+          transaction.update(d.ref, { status: "rejected", respondedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+      });
+
+      logActivity(transaction, offer.buyerId, "부동산 구매",
+        `부동산 #${offer.propertyId}를 흥정으로 ${price.toLocaleString()}원에 구매하고 입주했습니다.`,
+        { propertyId: offer.propertyId, purchasePrice: price, taxAmount, previousOwner: uid });
+
+      markIdempotent(transaction, idemKeyRef);
+      return { propertyId: offer.propertyId, price, taxAmount, vacatedFrom };
+    });
+    return { success: true, message: "제안을 수락했습니다. 소유권이 이전되었습니다.", ...result };
+  } catch (error) {
+    logger.error(`[respondToRealEstateOffer] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "제안 응답에 실패했습니다.");
+  }
+});
+
+// 🏠 부동산 제안 취소: 제안자 본인만.
+exports.cancelRealEstateOffer = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { offerId } = request.data;
+  if (!offerId) throw new HttpsError("invalid-argument", "제안 ID가 필요합니다.");
+  const offerRef = db.collection("classes").doc(classCode).collection("realEstateOffers").doc(offerId);
+  try {
+    await db.runTransaction(async (tx) => {
+      const od = await tx.get(offerRef);
+      if (!od.exists) throw new Error("제안 정보를 찾을 수 없습니다.");
+      const o = od.data();
+      if (o.buyerId !== uid) throw new Error("내가 보낸 제안만 취소할 수 있습니다.");
+      if (o.status !== "pending") throw new Error("이미 처리된 제안입니다.");
+      tx.update(offerRef, { status: "cancelled", respondedAt: admin.firestore.FieldValue.serverTimestamp() });
+    });
+    return { success: true, message: "제안을 취소했습니다." };
+  } catch (error) {
+    logger.error(`[cancelRealEstateOffer] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "제안 취소에 실패했습니다.");
+  }
+});
+
+// 🏠 부동산 판매 등록(소유자가 호가 지정) — realEstateProperties는 rules상 admin만 쓰기 가능하므로 CF로 처리.
+exports.setRealEstateForSale = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { propertyId, salePrice } = request.data;
+  if (!propertyId || !salePrice || salePrice <= 0) {
+    throw new HttpsError("invalid-argument", "유효한 부동산과 판매 가격이 필요합니다.");
+  }
+  const ref = db.collection("classes").doc(classCode).collection("realEstateProperties").doc(String(propertyId));
+  try {
+    await db.runTransaction(async (tx) => {
+      const d = await tx.get(ref);
+      if (!d.exists) throw new Error("부동산 정보를 찾을 수 없습니다.");
+      if (d.data().owner !== uid) throw new Error("내 소유 부동산만 판매 등록할 수 있습니다.");
+      tx.update(ref, {
+        forSale: true,
+        salePrice: Math.floor(salePrice),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    return { success: true, message: "판매 등록되었습니다." };
+  } catch (error) {
+    logger.error(`[setRealEstateForSale] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "판매 등록에 실패했습니다.");
+  }
+});
+
+// 🏠 부동산 판매 취소(소유자)
+exports.cancelRealEstateForSale = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request);
+  const { propertyId } = request.data;
+  if (!propertyId) throw new HttpsError("invalid-argument", "부동산 ID가 필요합니다.");
+  const ref = db.collection("classes").doc(classCode).collection("realEstateProperties").doc(String(propertyId));
+  try {
+    await db.runTransaction(async (tx) => {
+      const d = await tx.get(ref);
+      if (!d.exists) throw new Error("부동산 정보를 찾을 수 없습니다.");
+      if (d.data().owner !== uid) throw new Error("내 소유 부동산만 판매 취소할 수 있습니다.");
+      tx.update(ref, {
+        forSale: false,
+        salePrice: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+    return { success: true, message: "판매가 취소되었습니다." };
+  } catch (error) {
+    logger.error(`[cancelRealEstateForSale] Error for user ${uid}:`, error);
+    throw new HttpsError("aborted", error.message || "판매 취소에 실패했습니다.");
+  }
+});
+
 exports.processSettlement = onCall(
   { region: "asia-northeast3" },
   async (request) => {

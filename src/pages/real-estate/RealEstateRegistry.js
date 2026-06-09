@@ -69,6 +69,15 @@ const RealEstateRegistry = () => {
   const [giveUserId, setGiveUserId] = useState("");
   const [givePropertyId, setGivePropertyId] = useState("");
 
+  // 🏠 부동산 가격 제시(흥정)
+  const [offers, setOffers] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const reloadAll = () => setReloadKey((k) => k + 1);
+  // 가격 입력 모달: { mode: "sell" | "offer", propertyId, value }
+  const [priceModal, setPriceModal] = useState(null);
+  // 받은/보낸 제안 패널 표시
+  const [showOffersPanel, setShowOffersPanel] = useState(false);
+
   // 🔥 [제거] body 스크롤 조작 완전 제거 - CSS로만 처리
   // 모달 오버레이에 overflow-y: auto 설정으로 모달 내부 스크롤 허용
   // body는 전혀 건드리지 않아서 레이아웃 깨짐 방지
@@ -243,7 +252,27 @@ const RealEstateRegistry = () => {
       mounted = false;
       clearInterval(interval);
     };
-  }, [classCode]);
+  }, [classCode, reloadKey]);
+
+  // 🏠 부동산 가격 제시(흥정) 목록 폴링 (2분) + 액션 후 즉시 갱신(reloadKey)
+  useEffect(() => {
+    if (!classCode) { setOffers([]); return; }
+    let mounted = true;
+    const offersRef = collection(db, "classes", classCode, "realEstateOffers");
+    const fetchOffers = async () => {
+      if (!mounted) return;
+      try {
+        const snap = await getDocs(offersRef);
+        if (!mounted) return;
+        setOffers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        logger.error("[RealEstate] Error fetching offers:", e);
+      }
+    };
+    fetchOffers();
+    const interval = setInterval(fetchOffers, 2 * 60 * 1000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [classCode, reloadKey]);
 
   // 🔥 [최적화] 학급 사용자 목록 - AuthContext에서 제공하는 allClassMembers 사용 (중복 조회 제거)
   useEffect(() => {
@@ -439,67 +468,95 @@ const RealEstateRegistry = () => {
     }
   };
 
-  const handleSetForSale = async (propertyId) => {
+  // 🏠 판매하기: 가격 입력 모달 열기 (실제 등록은 submitPriceModal → CF)
+  const handleSetForSale = (propertyId) => {
     const property = properties.find((p) => p.id === propertyId);
-    if (
-      !property ||
-      !currentUser ||
-      property.owner !== currentUser.id ||
-      !classCode
-    ) {
+    if (!property || !currentUser || property.owner !== currentUser.id || !classCode) {
       alert("소유한 부동산만 판매할 수 있거나 정보가 부족합니다.");
       return;
     }
-    const salePriceInput = prompt("판매 가격을 입력하세요 (숫자만):");
-    if (!salePriceInput) return;
-    const salePrice = parseInt(salePriceInput);
-    if (isNaN(salePrice) || salePrice <= 0) {
-      alert("유효한 판매 가격을 입력하세요.");
+    setShowQuickAction(null);
+    setPriceModal({
+      mode: "sell",
+      propertyId,
+      propertyName: property.name || `매물 #${propertyId}`,
+      value: String(property.salePrice || property.price || ""),
+    });
+  };
+
+  // 🏠 가격 제시하기: 흥정 가격 입력 모달 열기
+  const handleOpenOffer = (propertyId) => {
+    const property = properties.find((p) => p.id === propertyId);
+    if (!property || !currentUser) return;
+    if (property.owner === currentUser.id) {
+      alert("내 부동산에는 제안할 수 없습니다.");
       return;
     }
+    setShowQuickAction(null);
+    setPriceModal({
+      mode: "offer",
+      propertyId,
+      propertyName: property.name || `매물 #${propertyId}`,
+      value: String(property.salePrice || property.price || ""),
+    });
+  };
 
-    // 🔥 낙관적 업데이트: 판매 상태 즉시 변경
-    const previousPropertyState = { ...property };
-    setProperties(prevProperties =>
-      prevProperties.map(p =>
-        p.id === propertyId
-          ? { ...p, forSale: true, salePrice: salePrice }
-          : p
-      )
-    );
-
+  // 🏠 가격 입력 모달 확정 (판매 등록 또는 가격 제시)
+  const submitPriceModal = async () => {
+    if (!priceModal) return;
+    const price = parseInt(priceModal.value, 10);
+    if (isNaN(price) || price <= 0) {
+      alert("유효한 가격을 입력하세요.");
+      return;
+    }
     setOperationLoading(true);
-    const propertyRef = doc(
-      db,
-      "classes",
-      classCode,
-      "realEstateProperties",
-      propertyId
-    );
     try {
-      await updateDoc(propertyRef, {
-        forSale: true,
-        salePrice: salePrice,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 🔥 서버 데이터와 동기화
-      await refreshProperties();
-
-      setShowQuickAction(null);
-      setSelectedProperty(null);
-      alert("판매 설정이 완료되었습니다.");
+      if (priceModal.mode === "sell") {
+        const fn = httpsCallable(functions, "setRealEstateForSale");
+        await fn({ propertyId: priceModal.propertyId, salePrice: price });
+        alert("판매 등록되었습니다.");
+      } else {
+        const fn = httpsCallable(functions, "makeRealEstateOffer");
+        const res = await fn({ propertyId: priceModal.propertyId, offerPrice: price });
+        alert(res?.data?.message || "가격 제안이 전송되었습니다.");
+      }
+      setPriceModal(null);
+      reloadAll();
     } catch (error) {
-      logger.error("판매 설정 오류:", error);
+      logger.error("[RealEstate] 가격 처리 오류:", error);
+      alert(error.message || "처리 중 오류가 발생했습니다.");
+    } finally {
+      setOperationLoading(false);
+    }
+  };
 
-      // 실패 시 롤백
-      setProperties(prevProperties =>
-        prevProperties.map(p =>
-          p.id === propertyId ? previousPropertyState : p
-        )
-      );
+  // 🏠 받은 제안 수락/거절
+  const handleRespondOffer = async (offerId, response) => {
+    setOperationLoading(true);
+    try {
+      const fn = httpsCallable(functions, "respondToRealEstateOffer");
+      const res = await fn({ offerId, response, idempotencyKey: crypto.randomUUID() });
+      alert(res?.data?.message || (response === "accept" ? "수락했습니다." : "거절했습니다."));
+      reloadAll();
+    } catch (error) {
+      logger.error("[RealEstate] 제안 응답 오류:", error);
+      alert(error.message || "제안 응답에 실패했습니다.");
+    } finally {
+      setOperationLoading(false);
+    }
+  };
 
-      alert("판매 설정 중 오류 발생: " + error.message);
+  // 🏠 보낸 제안 취소
+  const handleCancelOffer = async (offerId) => {
+    setOperationLoading(true);
+    try {
+      const fn = httpsCallable(functions, "cancelRealEstateOffer");
+      await fn({ offerId });
+      alert("제안을 취소했습니다.");
+      reloadAll();
+    } catch (error) {
+      logger.error("[RealEstate] 제안 취소 오류:", error);
+      alert(error.message || "제안 취소에 실패했습니다.");
     } finally {
       setOperationLoading(false);
     }
@@ -617,52 +674,17 @@ const RealEstateRegistry = () => {
 
   const handleCancelSale = async (propertyId) => {
     if (!classCode) return;
-
-    // 🔥 낙관적 업데이트: 판매 취소 즉시 반영
-    const property = properties.find(p => p.id === propertyId);
-    const previousPropertyState = property ? { ...property } : null;
-    setProperties(prevProperties =>
-      prevProperties.map(p =>
-        p.id === propertyId
-          ? { ...p, forSale: false, salePrice: null }
-          : p
-      )
-    );
-
     setOperationLoading(true);
-    const propertyRef = doc(
-      db,
-      "classes",
-      classCode,
-      "realEstateProperties",
-      propertyId
-    );
     try {
-      await updateDoc(propertyRef, {
-        forSale: false,
-        salePrice: 0,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 🔥 서버 데이터와 동기화
-      await refreshProperties();
-
+      const fn = httpsCallable(functions, "cancelRealEstateForSale");
+      await fn({ propertyId });
       setShowQuickAction(null);
       setSelectedProperty(null);
       alert("판매가 취소되었습니다.");
+      reloadAll();
     } catch (error) {
       logger.error("판매 취소 오류:", error);
-
-      // 실패 시 롤백
-      if (previousPropertyState) {
-        setProperties(prevProperties =>
-          prevProperties.map(p =>
-            p.id === propertyId ? previousPropertyState : p
-          )
-        );
-      }
-
-      alert("판매 취소 중 오류 발생: " + error.message);
+      alert("판매 취소 중 오류 발생: " + (error.message || ""));
     } finally {
       setOperationLoading(false);
     }
@@ -1649,6 +1671,9 @@ const RealEstateRegistry = () => {
       (p) => p.tenantId === currentUser.id && p.id !== property.id
     );
     const isGovProperty = property.owner === 'government';
+    const myPendingOffer = offers.find(
+      (o) => o.propertyId === property.id && o.buyerId === currentUser.id && o.status === "pending"
+    );
 
 
     const ownerData = allUsersData?.find((u) => u.id === property.owner);
@@ -1761,9 +1786,20 @@ const RealEstateRegistry = () => {
                         (property.forSale ? property.salePrice : property.price)
                     }
                   >
-                    구매하기
+                    구매하기{property.forSale ? ` (${(property.salePrice / 10000).toFixed(0)}만원)` : ""}
                   </button>
                 )}
+              {!isGovProperty && !isOwner && (
+                <button
+                  className="quick-action-btn btn-offer"
+                  onClick={() => handleOpenOffer(property.id)}
+                  disabled={operationLoading}
+                >
+                  💬 {myPendingOffer
+                    ? `제시 수정 (${(myPendingOffer.offerPrice / 10000).toFixed(0)}만원)`
+                    : "가격 제시"}
+                </button>
+              )}
               {tenancyButton}
               {isOwner && !property.forSale && (
                 <button
@@ -2095,13 +2131,128 @@ const RealEstateRegistry = () => {
               </button>
             </div>
           )}
+          {(() => {
+            const received = offers.filter(
+              (o) => o.ownerId === currentUser?.id && o.status === "pending"
+            );
+            const sent = offers.filter(
+              (o) => o.buyerId === currentUser?.id && o.status === "pending"
+            );
+            if (received.length === 0 && sent.length === 0) return null;
+            const won = (v) => `${(Number(v) / 10000).toFixed(0)}만원`;
+            return (
+              <div className="properties-section re-offers-section">
+                {received.length > 0 && (
+                  <>
+                    <h2>📥 받은 가격 제안 ({received.length})</h2>
+                    <div className="re-offer-list">
+                      {received.map((o) => (
+                        <div key={o.id} className="re-offer-card">
+                          <div className="re-offer-info">
+                            <b>#{o.propertyId} {o.propertyName}</b>
+                            <span>{o.buyerName}님이 {won(o.offerPrice)} 제시</span>
+                          </div>
+                          <div className="re-offer-actions">
+                            <button
+                              className="quick-action-btn btn-purchase"
+                              disabled={operationLoading}
+                              onClick={() => handleRespondOffer(o.id, "accept")}
+                            >
+                              수락
+                            </button>
+                            <button
+                              className="quick-action-btn btn-cancel"
+                              disabled={operationLoading}
+                              onClick={() => handleRespondOffer(o.id, "reject")}
+                            >
+                              거절
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {sent.length > 0 && (
+                  <>
+                    <h2>📤 보낸 가격 제안 ({sent.length})</h2>
+                    <div className="re-offer-list">
+                      {sent.map((o) => (
+                        <div key={o.id} className="re-offer-card">
+                          <div className="re-offer-info">
+                            <b>#{o.propertyId} {o.propertyName}</b>
+                            <span>{won(o.offerPrice)} 제시 · 대기중</span>
+                          </div>
+                          <div className="re-offer-actions">
+                            <button
+                              className="quick-action-btn btn-cancel"
+                              disabled={operationLoading}
+                              onClick={() => handleCancelOffer(o.id)}
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="properties-section">
             <h2>📊 부동산 목록</h2>
             {renderPropertyGrid()}
           </div>
         </div>
-        
+
         {renderQuickActionModal()}
+        {priceModal && (
+          <div className="modal-overlay" onClick={() => setPriceModal(null)}>
+            <div className="quick-action-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="quick-modal-header">
+                <h3>
+                  {priceModal.mode === "sell" ? "💰 판매 가격 설정" : "💬 가격 제시"} #{priceModal.propertyId}
+                </h3>
+                <button className="close-btn" onClick={() => setPriceModal(null)}>✕</button>
+              </div>
+              <div className="quick-modal-content">
+                <p style={{ marginBottom: 8 }}>{priceModal.propertyName}</p>
+                <input
+                  type="number"
+                  min="1"
+                  autoFocus
+                  value={priceModal.value}
+                  onChange={(e) => setPriceModal((m) => ({ ...m, value: e.target.value }))}
+                  placeholder="가격(원)을 입력하세요"
+                  style={{ width: "100%", padding: "10px", fontSize: 16, borderRadius: 8, border: "1px solid #d1d5db", boxSizing: "border-box" }}
+                />
+                {priceModal.value && !isNaN(parseInt(priceModal.value, 10)) && (
+                  <p style={{ marginTop: 6, color: "#6b7280", fontSize: 13 }}>
+                    = {(parseInt(priceModal.value, 10) / 10000).toFixed(0)}만원
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <button
+                    className="quick-action-btn btn-purchase"
+                    disabled={operationLoading}
+                    onClick={submitPriceModal}
+                    style={{ flex: 1 }}
+                  >
+                    {priceModal.mode === "sell" ? "판매 등록" : "제안 보내기"}
+                  </button>
+                  <button
+                    className="quick-action-btn btn-cancel"
+                    onClick={() => setPriceModal(null)}
+                    style={{ flex: 1 }}
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {selectedProperty && (
           <div
             className="modal-overlay"

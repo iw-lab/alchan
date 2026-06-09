@@ -711,6 +711,12 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
+      // 부동산 가격 제시(흥정) 서브컬렉션 — 쓰기는 Cloud Function(admin SDK)만
+      match /realEstateOffers/{offerId} {
+        allow read: if isSameClass(classCode) || isAdmin();
+        allow write: if false;
+      }
+
       // 🎯 경매 서브컬렉션 (classes/{classCode}/auctions/{auctionId})
       match /auctions/{auctionId} {
         allow read: if isSameClass(classCode) || isAdmin();
