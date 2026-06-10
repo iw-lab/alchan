@@ -793,7 +793,9 @@ export default function Auction() {
 
       showNotification(`'${auction.name}' 경매가 관리자에 의해 취소되었습니다.`, "success");
       if (itemsContext.refreshData) itemsContext.refreshData();
-      if (authContext.fetchAllUsers) authContext.fetchAllUsers(true);
+      // 🔥 [버그픽스] fetchAllUsers(true)는 (classCode=true)로 해석돼 학급 명단을 비워버림.
+      // 현재 학급 기준 강제 새로고침은 refreshAllUsers()를 써야 한다.
+      if (authContext.refreshAllUsers) authContext.refreshAllUsers();
 
     } catch (error) {
       logger.error("[Admin Cancel] 관리자 경매 취소 오류:", error);

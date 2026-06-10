@@ -91,6 +91,18 @@ export const AuthProvider = ({ children }) => {
   const INTERVAL_LAST_ACTIVE = 55 * 60 * 1000; // 🔥 활성 상태 업데이트 55분 간격 (주식 스케줄러 트리거용)
   const lastActiveUpdateRef = useRef(0); // 마지막 활성 상태 업데이트 시간
 
+  // 🔥 [버그픽스] 자기참조 deps 루프 차단용 미러 ref.
+  // fetchClassmatesFromFirestore가 자신이 setState하는 users/classmates/allClassMembers를
+  // useCallback deps에 가지면 identity가 매 호출마다 churn → 이를 deps로 둔 effect(MoneyTransfer 등)가
+  // 무한 재실행되며 전교생을 반복 force-read한다. 읽기는 이 ref로 하고 deps에서 상태를 제거한다.
+  const usersRef = useRef([]);
+  const classmatesRef = useRef([]);
+  const allClassMembersRef = useRef([]);
+  // 다른 경로(로그인/로그아웃/onSnapshot)의 setState도 ref에 반영 (한 틱 지연 동기화)
+  useEffect(() => { usersRef.current = users; }, [users]);
+  useEffect(() => { classmatesRef.current = classmates; }, [classmates]);
+  useEffect(() => { allClassMembersRef.current = allClassMembers; }, [allClassMembers]);
+
   // Firebase 초기화 확인 (한 번만 실행) - 타임아웃 추가
   useEffect(() => {
     if (initializationCompleteRef.current) return;
@@ -171,32 +183,41 @@ export const AuthProvider = ({ children }) => {
         setUsers([]);
         setAllClassMembers([]);
         setClassmates([]);
+        usersRef.current = [];
+        allClassMembersRef.current = [];
+        classmatesRef.current = [];
         return [];
       }
 
       // 중복 요청 방지 (단, 강제 새로고침일 때는 허용)
       if (pendingClassmatesFetchRef.current && !forceRefresh) {
-        return users;
+        return usersRef.current;
       }
 
       const now = Date.now();
 
       // 캐시 확인 - 강제 새로고침이 아니고, 같은 학급이고, 캐시가 유효한 경우만 캐시 사용
+      // (읽기는 미러 ref로 — deps churn 방지)
       if (
         !forceRefresh &&
-        users.length > 0 &&
+        usersRef.current.length > 0 &&
         currentClassCodeRef.current === classCode &&
         now - classmatesFetchTimeRef.current < CACHE_TTL_CLASSMATES
       ) {
         // 캐시 사용 시에도 계산된 데이터가 없으면 다시 계산
-        if (classmates.length === 0 && allClassMembers.length === 0) {
+        if (
+          classmatesRef.current.length === 0 &&
+          allClassMembersRef.current.length === 0
+        ) {
           const { allMembers, classmates: newClassmates } =
-            calculateClassMembers(users, currentUserId);
+            calculateClassMembers(usersRef.current, currentUserId);
           setAllClassMembers(allMembers);
           setClassmates(newClassmates);
+          allClassMembersRef.current = allMembers;
+          classmatesRef.current = newClassmates;
         }
 
-        return users;
+        return usersRef.current;
       }
 
       pendingClassmatesFetchRef.current = true;
@@ -209,13 +230,17 @@ export const AuthProvider = ({ children }) => {
           setUsers([]);
           setAllClassMembers([]);
           setClassmates([]);
+          usersRef.current = [];
+          allClassMembersRef.current = [];
+          classmatesRef.current = [];
           currentClassCodeRef.current = classCode; // 빈 결과도 캐시
           classmatesFetchTimeRef.current = now;
           return [];
         }
 
-        // 상태 업데이트
+        // 상태 업데이트 (+ ref 동기 갱신: 같은 틱 stale 방지)
         setUsers(classMembers);
+        usersRef.current = classMembers;
         currentClassCodeRef.current = classCode;
         classmatesFetchTimeRef.current = now;
 
@@ -224,25 +249,25 @@ export const AuthProvider = ({ children }) => {
           calculateClassMembers(classMembers, currentUserId);
         setAllClassMembers(allMembers);
         setClassmates(calculatedClassmates);
+        allClassMembersRef.current = allMembers;
+        classmatesRef.current = calculatedClassmates;
 
         return classMembers;
       } catch (error) {
         setUsers([]);
         setAllClassMembers([]);
         setClassmates([]);
+        usersRef.current = [];
+        allClassMembersRef.current = [];
+        classmatesRef.current = [];
         return [];
       } finally {
         pendingClassmatesFetchRef.current = false;
       }
     },
-    [
-      firebaseReady,
-      calculateClassMembers,
-      users,
-      classmates,
-      allClassMembers,
-      CACHE_TTL_CLASSMATES,
-    ],
+    // 🔥 [버그픽스] users/classmates/allClassMembers 제거 — 본문이 set하는 상태라 deps에 두면
+    // identity churn → 무한 재fetch. 읽기는 미러 ref로 대체했으므로 deps에서 안전하게 뺀다.
+    [firebaseReady, calculateClassMembers, CACHE_TTL_CLASSMATES],
   );
 
   // 🔥 [최적화] 활성 사용자 추적 - 최소화된 버전
@@ -1045,7 +1070,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     return fetchClassmatesFromFirestore(currentClassCode, currentUserId, true);
-  }, [fetchClassmatesFromFirestore, userDoc]);
+    // 🔥 userDoc 전체 대신 사용하는 primitive 필드만 deps에 둬 identity 안정화
+  }, [fetchClassmatesFromFirestore, userDoc?.classCode, userDoc?.id, userDoc?.uid]);
 
   // 최적화: 특정 사용자 문서만 새로고침
   const refreshUserDocument = useCallback(
