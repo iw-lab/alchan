@@ -594,6 +594,37 @@ export const AuthProvider = ({ children }) => {
               }
             }, 60 * 60 * 1000); // 60분마다
 
+            // 🔥 [비용 최적화] 토큰 커스텀 클레임을 userDoc과 동기화 (rules의 get() 읽기 과금 제거용)
+            // 불일치(첫 로그인·학급 이동·권한 변경)일 때만 서버 호출 — 실패해도 rules의 get() fallback으로 기능 동일
+            let claimsSyncInFlight = false;
+            const syncClaimsIfNeeded = async (docData) => {
+              if (claimsSyncInFlight || !docData) return;
+              try {
+                const tokenResult = await firebaseAuthUser.getIdTokenResult();
+                const claims = tokenResult.claims || {};
+                const docClassCode =
+                  typeof docData.classCode === "string" ? docData.classCode : null;
+                if (
+                  (claims.classCode ?? null) === docClassCode &&
+                  (claims.isAdmin === true) === (docData.isAdmin === true) &&
+                  (claims.isSuperAdmin === true) === (docData.isSuperAdmin === true)
+                ) {
+                  return;
+                }
+                claimsSyncInFlight = true;
+                await httpsCallable(functions, "syncUserClaims")();
+                await firebaseAuthUser.getIdToken(true); // 새 클레임 즉시 반영
+                logger.log("[AuthContext] 커스텀 클레임 동기화 완료");
+              } catch (e) {
+                logger.warn(
+                  "[AuthContext] 클레임 동기화 실패(rules fallback으로 동작):",
+                  e?.message,
+                );
+              } finally {
+                claimsSyncInFlight = false;
+              }
+            };
+
             // Real-time listener for user document (cash, coupons, etc.)
             if (userDocSnapshotUnsubRef.current) userDocSnapshotUnsubRef.current();
             const userDocRef = doc(db, "users", firebaseAuthUser.uid);
@@ -602,6 +633,7 @@ export const AuthProvider = ({ children }) => {
                 const freshData = { id: snap.id, uid: snap.id, ...snap.data() };
                 setUserDoc(freshData);
                 setCachedUserDoc(firebaseAuthUser.uid, freshData);
+                syncClaimsIfNeeded(freshData);
               }
             }, (err) => {
               logger.error("[AuthContext] onSnapshot error:", err);

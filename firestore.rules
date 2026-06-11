@@ -46,6 +46,32 @@ service cloud.firestore {
       return isSignedIn() && getUserClassCode() == classCode;
     }
 
+    // ========================================================
+    // 🔥 읽기 전용 Fast 헬퍼 — Auth 커스텀 클레임 우선 단락평가로
+    //    요청당 get(users/본인) 읽기 과금을 제거. 클레임 부재·불일치 시
+    //    기존 문서 조회로 fallback하므로 동작 동일(fail-closed).
+    //    클레임은 토큰 갱신(≤1h)까지 stale할 수 있으므로 "읽기" 규칙에만 쓰고,
+    //    쓰기/생성/수정/삭제 규칙은 반드시 문서 기반 헬퍼(isSameClass/isAdmin/isSuperAdmin)를 유지한다.
+    // ========================================================
+    function isSameClassFast(classCode) {
+      return isSignedIn() &&
+             (('classCode' in request.auth.token && request.auth.token.classCode == classCode) ||
+              getUserClassCode() == classCode);
+    }
+
+    function isAdminFast() {
+      return isSignedIn() &&
+             (('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
+              ('isSuperAdmin' in request.auth.token && request.auth.token.isSuperAdmin == true) ||
+              isAdmin());
+    }
+
+    function isSuperAdminFast() {
+      return isSignedIn() &&
+             (('isSuperAdmin' in request.auth.token && request.auth.token.isSuperAdmin == true) ||
+              isSuperAdmin());
+    }
+
     // 문자열 길이 검증 헬퍼
     function isValidString(value, maxLen) {
       return value is string && value.size() <= maxLen;
@@ -67,7 +93,7 @@ service cloud.firestore {
     // ========================================================
     match /users/{userId} {
       // 읽기: 본인, 같은 학급, 관리자, 또는 SuperAdmin (전체 목록 조회용)
-      allow read: if isOwner(userId) || isSameClass(resource.data.classCode) || isAdmin() || isSuperAdmin();
+      allow read: if isOwner(userId) || isSameClassFast(resource.data.classCode) || isAdminFast() || isSuperAdminFast();
 
       // 생성: 본인만 (회원가입)
       // - isSuperAdmin은 절대 자체 설정 불가
@@ -108,7 +134,7 @@ service cloud.firestore {
       // 💰 거래 기록 서브컬렉션 (users/{userId}/transactions/{transactionId})
       // ========================================================
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         // 생성: 본인 또는 같은 학급 사용자 (송금 시 상대방 거래 기록 생성 가능)
         allow create: if isOwner(userId) ||
                          (isSignedIn() &&
@@ -121,7 +147,7 @@ service cloud.firestore {
       // 📈 주식 포트폴리오 서브컬렉션 (users/{userId}/portfolio/{stockId})
       // ========================================================
       match /portfolio/{stockId} {
-        allow read: if isOwner(userId) || isSameClass(get(/databases/$(database)/documents/users/$(userId)).data.classCode) || isAdmin();
+        allow read: if isOwner(userId) || isSameClassFast(get(/databases/$(database)/documents/users/$(userId)).data.classCode) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -130,13 +156,13 @@ service cloud.firestore {
       // ========================================================
       // 📅 메타 서브컬렉션 (출석 스트릭 등)
       match /meta/{metaId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
       match /inventory/{itemId} {
         // 읽기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
-        allow read: if isOwner(userId) || isAdmin() || (isSignedIn() && isSameClass(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
+        allow read: if isOwner(userId) || isAdminFast() || (isSignedIn() && isSameClassFast(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
         // 쓰기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
         allow write: if isOwner(userId) || isAdmin() || (isSignedIn() && isSameClass(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
       }
@@ -145,7 +171,7 @@ service cloud.firestore {
       // 🎯 완료된 과제 서브컬렉션 (users/{userId}/completedTasks/{taskId})
       // ========================================================
       match /completedTasks/{taskId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -153,7 +179,7 @@ service cloud.firestore {
       // 💰 금융 정보 서브컬렉션 (users/{userId}/financials/{document})
       // ========================================================
       match /financials/{document} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -161,7 +187,7 @@ service cloud.firestore {
       // 📦 가입 상품 서브컬렉션 (users/{userId}/products/{productId})
       // ========================================================
       match /products/{productId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -169,7 +195,7 @@ service cloud.firestore {
       // 💸 대출 서브컬렉션 (users/{userId}/loans/{loanId})
       // ========================================================
       match /loans/{loanId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -178,7 +204,7 @@ service cloud.firestore {
       // 튜토리얼 상태, 테마 등 사용자 개인 설정
       // ========================================================
       match /settings/{settingId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -186,7 +212,7 @@ service cloud.firestore {
       // 🏅 배지 서브컬렉션 (users/{userId}/badges/{document})
       // ========================================================
       match /badges/{document} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -194,7 +220,7 @@ service cloud.firestore {
       // 🏠 부동산 서브컬렉션 (users/{userId}/properties/{propertyId})
       // ========================================================
       match /properties/{propertyId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
@@ -203,7 +229,7 @@ service cloud.firestore {
       // 경매 낙찰/유찰 등 활동 기록
       // ========================================================
       match /activityLogs/{logId} {
-        allow read: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdminFast();
         allow create: if isSignedIn();
         allow update, delete: if isAdmin();
       }
@@ -213,11 +239,11 @@ service cloud.firestore {
     // 📈 주식 포트폴리오 (ClassStock/{classCode}/portfolio/{userId})
     // ========================================================
     match /ClassStock/{classCode}/portfolio/{userId} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isOwner(userId) || isAdmin();
 
       match /holdings/{holdingId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
     }
@@ -226,18 +252,18 @@ service cloud.firestore {
     // 👨‍🎓 학생 데이터 (ClassStock/{classCode}/students/{userId})
     // ========================================================
     match /ClassStock/{classCode}/students/{userId} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isOwner(userId) || isAdmin();
 
       // 부동산 서브컬렉션
       match /realestates/{estateId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
 
       // 파킹통장 서브컬렉션
       match /parkingAccounts/{accountId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isOwner(userId) || isAdmin();
       }
     }
@@ -246,7 +272,7 @@ service cloud.firestore {
     // 💹 주식 정보 (ClassStock/{classCode}/stocks/{stockId})
     // ========================================================
     match /ClassStock/{classCode}/stocks/{stockId} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -254,7 +280,7 @@ service cloud.firestore {
     // 📰 뉴스 (ClassStock/{classCode}/news/{newsId})
     // ========================================================
     match /ClassStock/{classCode}/news/{newsId} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -300,7 +326,7 @@ service cloud.firestore {
     // ========================================================
     match /marketItems/{listingId} {
       // 읽기: 같은 학급만 (판매자 정보 타 학급 노출 방지)
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isSignedIn() && isOwner(request.resource.data.sellerId);
       allow update: if isSignedIn() &&
                        (isOwner(resource.data.sellerId) ||
@@ -313,7 +339,7 @@ service cloud.firestore {
     // 📝 활동 로그 (activity_logs)
     // ========================================================
     match /activity_logs/{logId} {
-      allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
+      allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
       // 🔥 완화 (2026-05): 거래 양쪽 모두 같은 트랜잭션에서 로그 생성 필요
       //   기존: 본인 로그만 → 송금/경매/상점 상대방 로그가 생성 안 되어 트랜잭션 실패
       //   변경: 같은 학급이면 누구 userId의 로그도 생성 가능. 단 metadata 검증으로 악용 차단:
@@ -338,14 +364,14 @@ service cloud.firestore {
     // 🏛️ 정부 설정 (governmentSettings)
     // ========================================================
     match /governmentSettings/{classCode} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
     // 🏛️ 정부 문서 (governments) — 아바타 상점 학급별 가격 override 등.
     //   클라이언트는 읽기만(같은 학급), 쓰기는 Cloud Function(admin) 전용.
     match /governments/{classCode} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -353,7 +379,7 @@ service cloud.firestore {
     // 🏦 국고 (nationalTreasuries)
     // ========================================================
     match /nationalTreasuries/{classCode} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -361,7 +387,7 @@ service cloud.firestore {
     // 🏦 은행 상품 설정 (bankingSettings)
     // ========================================================
     match /bankingSettings/{classCode} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -369,7 +395,7 @@ service cloud.firestore {
     // 🎁 기부 기록 (donations)
     // ========================================================
     match /donations/{donationId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isSignedIn() && isOwner(request.resource.data.donorId);
       allow update: if false;
       allow delete: if isAdmin();
@@ -379,7 +405,7 @@ service cloud.firestore {
     // ⚖️ 정산 기록 (settlements)
     // ========================================================
     match /settlements/{settlementId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isAdmin();
       allow update: if false;
       allow delete: if isAdmin();
@@ -399,7 +425,7 @@ service cloud.firestore {
     // ⚖️ 재판 (trials)
     // ========================================================
     match /trials/{trialId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isSignedIn();
       allow update: if isAdmin(); // 재판 진행은 관리자만
       allow delete: if isAdmin();
@@ -418,7 +444,7 @@ service cloud.firestore {
     }
 
     match /auctions/{auctionId}/bids/{bidId} {
-      allow read: if isSameClass(get(/databases/$(database)/documents/auctions/$(auctionId)).data.classCode);
+      allow read: if isSameClassFast(get(/databases/$(database)/documents/auctions/$(auctionId)).data.classCode);
       allow create: if isSignedIn() && isOwner(request.resource.data.userId);
       allow update: if false;
       allow delete: if isAdmin();
@@ -436,7 +462,7 @@ service cloud.firestore {
     // 🎵 음악 요청 (musicRequests)
     // ========================================================
     match /musicRequests/{requestId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isSignedIn();
       allow update: if isOwner(resource.data.requesterId) || isAdmin();
       allow delete: if isOwner(resource.data.requesterId) || isAdmin();
@@ -514,7 +540,7 @@ service cloud.firestore {
     // ========================================================
     match /errorLogs/{logId} {
       // 읽기: SuperAdmin만
-      allow read: if isSuperAdmin();
+      allow read: if isSuperAdminFast();
       // 쓰기: 모든 로그인 사용자 (에러 발생 시 자동 기록) 또는 SuperAdmin
       allow create: if isSignedIn();
       allow update: if isSuperAdmin();
@@ -525,7 +551,7 @@ service cloud.firestore {
     // 🚨 경찰서 (policeReports)
     // ========================================================
     match /policeReports/{reportId} {
-      allow read: if isSameClass(resource.data.classCode) || isAdmin();
+      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
       allow create: if isSignedIn();
       allow update: if isSameClass(resource.data.classCode) || isAdmin();
       allow delete: if isAdmin();
@@ -535,14 +561,14 @@ service cloud.firestore {
     // 🏛️ 국회 (legislations)
     // ========================================================
     match /legislations/{legislationId} {
-      allow read: if isSameClass(resource.data.classCode);
+      allow read: if isSameClassFast(resource.data.classCode);
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /legislations/{legislationId}/votes/{voteId} {
-      allow read: if isSameClass(get(/databases/$(database)/documents/legislations/$(legislationId)).data.classCode);
+      allow read: if isSameClassFast(get(/databases/$(database)/documents/legislations/$(legislationId)).data.classCode);
       allow create: if isSignedIn();
       allow update: if false;
       allow delete: if isAdmin();
@@ -552,7 +578,7 @@ service cloud.firestore {
     // 🎫 주차권 (parkingTickets)
     // ========================================================
     match /parkingTickets/{ticketId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow read: if isOwner(resource.data.userId) || isAdminFast();
       allow create: if isSignedIn();
       allow update: if isOwner(resource.data.userId) || isAdmin();
       allow delete: if isAdmin();
@@ -562,7 +588,7 @@ service cloud.firestore {
     // 📋 조직도 (organizationChart)
     // ========================================================
     match /organizationChart/{classCode} {
-      allow read: if isSameClass(classCode);
+      allow read: if isSameClassFast(classCode);
       allow write: if isAdmin();
     }
 
@@ -648,14 +674,14 @@ service cloud.firestore {
     // ========================================================
     match /Class/{classCode} {
       // 읽기: 같은 학급 또는 관리자 (타 학급 학생 명단 노출 방지)
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       // 쓰기: 관리자 또는 SuperAdmin
       allow write: if isAdmin() || isSuperAdmin();
 
       // 학생 서브컬렉션
       match /students/{studentId} {
         // 읽기: 같은 학급 또는 관리자
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         // 쓰기: 관리자 또는 SuperAdmin
         allow write: if isAdmin() || isSuperAdmin();
       }
@@ -665,26 +691,26 @@ service cloud.firestore {
     // 🏫 학급 데이터 (classes - 소문자)
     // ========================================================
     match /classes/{classCode} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isAdmin();
 
       // 📚 학습 게시판 서브컬렉션 (classes/{classCode}/learningBoards/{boardId})
       match /learningBoards/{boardId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isAdmin();
         allow update: if isAdmin();
         allow delete: if isAdmin();
 
         // 게시글 서브컬렉션 (classes/{classCode}/learningBoards/{boardId}/posts/{postId})
         match /posts/{postId} {
-          allow read: if isSameClass(classCode) || isAdmin();
+          allow read: if isSameClassFast(classCode) || isAdminFast();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if isSignedIn() && isSameClass(classCode);
           allow delete: if isOwner(resource.data.authorId) || isAdmin();
 
           // 댓글 서브컬렉션
           match /comments/{commentId} {
-            allow read: if isSameClass(classCode) || isAdmin();
+            allow read: if isSameClassFast(classCode) || isAdminFast();
             allow create: if isSignedIn() && isSameClass(classCode);
             allow delete: if isOwner(resource.data.authorId) || isAdmin();
           }
@@ -693,7 +719,7 @@ service cloud.firestore {
 
       // 🎵 음악 요청 서브컬렉션 (classes/{classCode}/musicRequests/{requestId})
       match /musicRequests/{requestId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if isSignedIn() && isSameClass(classCode);
         allow delete: if isOwner(resource.data.requesterId) || isAdmin();
@@ -701,32 +727,32 @@ service cloud.firestore {
 
       // 부동산 서브컬렉션
       match /realEstateProperties/{propertyId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
 
       // 부동산 설정 서브컬렉션
       match /realEstateSettings/{settingsDoc} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
 
       // 부동산 가격 제시(흥정) 서브컬렉션 — 쓰기는 Cloud Function(admin SDK)만
       match /realEstateOffers/{offerId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if false;
       }
 
       // 🎯 경매 서브컬렉션 (classes/{classCode}/auctions/{auctionId})
       match /auctions/{auctionId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if isSignedIn() && isSameClass(classCode);
         allow delete: if isAdmin();
 
         // 입찰 서브컬렉션
         match /bids/{bidId} {
-          allow read: if isSameClass(classCode) || isAdmin();
+          allow read: if isSameClassFast(classCode) || isAdminFast();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if false;
           allow delete: if isAdmin();
@@ -735,7 +761,7 @@ service cloud.firestore {
 
       // 🏛️ 국회 법안 서브컬렉션 (classes/{classCode}/nationalAssemblyLaws/{lawId})
       match /nationalAssemblyLaws/{lawId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && (isSameClass(classCode) || isAdmin());
         allow update: if isSignedIn() && (isSameClass(classCode) || isAdmin());
         allow delete: if isAdmin();
@@ -743,13 +769,13 @@ service cloud.firestore {
 
       // 🏛️ 국회 설정 서브컬렉션 (classes/{classCode}/nationalAssemblySettings/{document})
       match /nationalAssemblySettings/{document} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
 
       // 🗳️ 사용자 투표 기록 서브컬렉션 (classes/{classCode}/userVotes/{userId})
       match /userVotes/{userId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && (isOwner(userId) || isAdmin());
         allow update: if isSignedIn() && (isOwner(userId) || isAdmin());
         allow delete: if isAdmin();
@@ -757,13 +783,13 @@ service cloud.firestore {
 
       // 🏦 국고 서브컬렉션 (classes/{classCode}/treasury/{document})
       match /treasury/{document} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
 
       // 💰 국고 거래 내역 서브컬렉션 (classes/{classCode}/treasuryTransactions/{transactionId})
       match /treasuryTransactions/{transactionId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isAdmin();
         allow update: if false; // 거래 내역은 수정 불가
         allow delete: if isAdmin();
@@ -771,7 +797,7 @@ service cloud.firestore {
 
       // 🚨 경찰서 신고 서브컬렉션 (classes/{classCode}/policeReports/{reportId})
       match /policeReports/{reportId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if isSignedIn() && isSameClass(classCode);
         allow delete: if isAdmin();
@@ -779,13 +805,13 @@ service cloud.firestore {
 
       // 🚨 경찰서 신고 사유 서브컬렉션 (classes/{classCode}/policeReportReasons/{document})
       match /policeReportReasons/{document} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
 
       // ⚖️ 법원 고소장 서브컬렉션 (classes/{classCode}/courtComplaints/{complaintId})
       match /courtComplaints/{complaintId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if isSignedIn() && isSameClass(classCode);
         allow delete: if isAdmin();
@@ -793,14 +819,14 @@ service cloud.firestore {
 
       // ⚖️ 재판방 서브컬렉션 (classes/{classCode}/trialRooms/{roomId})
       match /trialRooms/{roomId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if isSignedIn() && isSameClass(classCode);
         allow delete: if isAdmin();
 
         // 재판방 메시지 서브컬렉션
         match /messages/{messageId} {
-          allow read: if isSameClass(classCode) || isAdmin();
+          allow read: if isSameClassFast(classCode) || isAdminFast();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if false;
           allow delete: if isAdmin();
@@ -808,7 +834,7 @@ service cloud.firestore {
 
         // 재판방 증거 자료 서브컬렉션
         match /evidence/{evidenceId} {
-          allow read: if isSameClass(classCode) || isAdmin();
+          allow read: if isSameClassFast(classCode) || isAdminFast();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if false; // 증거는 수정 불가
           allow delete: if isAdmin();
@@ -816,7 +842,7 @@ service cloud.firestore {
 
         // 재판방 투표 서브컬렉션
         match /voting/{votingId} {
-          allow read: if isSameClass(classCode) || isAdmin();
+          allow read: if isSameClassFast(classCode) || isAdminFast();
           allow create: if isSignedIn() && isSameClass(classCode);
           allow update: if isSignedIn() && isSameClass(classCode);
           allow delete: if isAdmin();
@@ -825,7 +851,7 @@ service cloud.firestore {
 
       // ⚖️ 재판 결과 서브컬렉션 (classes/{classCode}/trialResults/{resultId})
       match /trialResults/{resultId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isOwner(request.resource.data.judgeId);
         allow update: if isAdmin();
         allow delete: if isAdmin();
@@ -833,7 +859,7 @@ service cloud.firestore {
 
       // 🔥 활동 로그 서브컬렉션 (classes/{classCode}/activityLogs/{logId})
       match /activityLogs/{logId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
         allow update: if false;
         allow delete: if isAdmin();
@@ -841,7 +867,7 @@ service cloud.firestore {
 
       // 📊 마켓 요약 서브컬렉션 (classes/{classCode}/marketSummary/{document})
       match /marketSummary/{document} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
     }
@@ -850,7 +876,7 @@ service cloud.firestore {
     // 💳 국세청 (taxRecords)
     // ========================================================
     match /taxRecords/{recordId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow read: if isOwner(resource.data.userId) || isAdminFast();
       // 본인 userId와 일치하는 세금 기록만 생성 가능 (타인 세금 기록 위조 방지)
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if false;
@@ -862,7 +888,7 @@ service cloud.firestore {
     // ========================================================
     match /treasury/{classCode} {
       // 읽기: 같은 학급 또는 관리자
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
 
       // 생성: 관리자 또는 같은 학급 사용자 (초기 생성 시)
       allow create: if isAdmin() || isSameClass(classCode);
@@ -879,7 +905,7 @@ service cloud.firestore {
     // ========================================================
     match /nationalTreasuries/{classCode} {
       // 읽기: 같은 학급 또는 관리자
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
 
       // 생성: 관리자 또는 같은 학급 사용자 (초기 생성 시)
       allow create: if isAdmin() || isSameClass(classCode);
@@ -896,7 +922,7 @@ service cloud.firestore {
     // ========================================================
     match /transactions/{transactionId} {
       // 읽기: 본인 거래 또는 관리자
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminFast());
 
       // 생성: 로그인한 사용자 (자신의 거래만)
       allow create: if isSignedIn();
@@ -916,8 +942,8 @@ service cloud.firestore {
       //   기존 데이터(classCode 없음)도 허용해 하위 호환 유지 — 마이그레이션 후 좁힐 수 있음
       allow read: if isSignedIn() && (
         resource.data.get('classCode', null) == null ||
-        isSameClass(resource.data.classCode) ||
-        isAdmin()
+        isSameClassFast(resource.data.classCode) ||
+        isAdminFast()
       );
 
       // 생성: 관리자(선생님) + 본인 teacherId + classCode 본인 학급 강제
@@ -954,8 +980,8 @@ service cloud.firestore {
       // 읽기: 같은 학급만. classCode 없는 기존 문서는 하위 호환 허용
       allow read: if isSignedIn() && (
         resource.data.get("classCode", null) == null ||
-        isSameClass(resource.data.classCode) ||
-        isAdmin()
+        isSameClassFast(resource.data.classCode) ||
+        isAdminFast()
       );
 
       // 생성: 본인 상점만
@@ -976,8 +1002,8 @@ service cloud.firestore {
       // 읽기: 같은 학급만. classCode 없는 기존 문서는 하위 호환 허용
       allow read: if isSignedIn() && (
         resource.data.get("classCode", null) == null ||
-        isSameClass(resource.data.classCode) ||
-        isAdmin()
+        isSameClassFast(resource.data.classCode) ||
+        isAdminFast()
       );
 
       // 생성: 상점 소유자
@@ -1000,7 +1026,7 @@ service cloud.firestore {
     // ========================================================
     match /activities/{activityId} {
       // 읽기: 거래 당사자(구매자/판매자) 본인 또는 관리자만 (이름 등 개인정보 보호)
-      allow read: if isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdmin();
+      allow read: if isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdminFast();
 
       // 생성: 로그인한 사용자
       allow create: if isSignedIn();
@@ -1034,7 +1060,7 @@ service cloud.firestore {
     // 클라우드 함수가 쓰기, 같은 학급 사용자가 읽기 (팝업 표시용)
     // ========================================================
     match /activeEconomicEvent/{classCode} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isAdmin();
     }
 
@@ -1042,7 +1068,7 @@ service cloud.firestore {
     // ⚡ 경제 이벤트 설정 (economicEventSettings)
     // ========================================================
     match /economicEventSettings/{classCode} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isAdmin();
     }
 
@@ -1050,11 +1076,11 @@ service cloud.firestore {
     // 📋 경제 이벤트 로그 (economicEventLogs)
     // ========================================================
     match /economicEventLogs/{classCode} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isAdmin();
 
       match /entries/{entryId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
     }
@@ -1063,7 +1089,7 @@ service cloud.firestore {
     // ✅ 보너스 할일 승인 요청 (pendingApprovals)
     // ========================================================
     match /pendingApprovals/{approvalId} {
-      allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
+      allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
       // 본인 userId와 본인 classCode로만 생성 가능
       allow create: if isSignedIn() &&
                        request.resource.data.userId == request.auth.uid &&
@@ -1076,7 +1102,7 @@ service cloud.firestore {
     // 📜 법안 (laws) - 국회/조직도에서 사용
     // ========================================================
     match /laws/{lawId} {
-      allow read: if isSignedIn() && (isSameClass(resource.data.classCode) || isAdmin());
+      allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
       // 본인 학급 법안만 생성 가능
       allow create: if isSignedIn() && (request.resource.data.classCode == getUserClassCode() || isAdmin());
       allow update: if isAdmin();
@@ -1109,12 +1135,12 @@ service cloud.firestore {
     // ⚙️ 학급 설정 (classSettings) - CF가 읽기/쓰기
     // ========================================================
     match /classSettings/{classCode} {
-      allow read: if isSameClass(classCode) || isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       allow write: if isAdmin();
 
       // 급여 등 세부 설정 서브컬렉션 (classSettings/{classCode}/settings/{settingId})
       match /settings/{settingId} {
-        allow read: if isSameClass(classCode) || isAdmin();
+        allow read: if isSameClassFast(classCode) || isAdminFast();
         allow write: if isAdmin();
       }
     }
@@ -1123,7 +1149,7 @@ service cloud.firestore {
     // 🤝 함께구매 (groupPurchases)
     // ========================================================
     match /groupPurchases/{purchaseId} {
-      allow read: if isSignedIn() && isSameClass(resource.data.classCode);
+      allow read: if isSignedIn() && isSameClassFast(resource.data.classCode);
       // 본인 initiatorId + 본인 classCode로만 생성
       allow create: if isSignedIn() &&
                        request.resource.data.initiatorId == request.auth.uid &&

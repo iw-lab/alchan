@@ -5649,3 +5649,37 @@ exports.auditAdminCash = onCall(
     };
   },
 );
+
+// ============================================================
+// 🔥 [비용 최적화] Auth 커스텀 클레임 동기화
+// firestore.rules의 isSameClass/isAdmin이 요청마다 get(users/self)로
+// 읽기 1회씩 과금되는 것을 토큰 클레임 단락평가로 제거하기 위한 함수.
+// 서버가 호출자 "본인" users 문서를 읽어 미러링하며 클라이언트 입력은 받지 않음.
+// rules는 클레임 우선 + 기존 get() fallback이라 클레임이 없거나 stale이어도 동작 동일.
+// ============================================================
+exports.syncUserClaims = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+    }
+    const uid = request.auth.uid;
+    const userSnap = await db.doc(`users/${uid}`).get();
+    if (!userSnap.exists) {
+      return { synced: false, reason: "no-user-doc" };
+    }
+    const data = userSnap.data();
+    const claims = {
+      isAdmin: data.isAdmin === true,
+      isSuperAdmin: data.isSuperAdmin === true,
+    };
+    // classCode가 문자열이 아니면 클레임에서 생략 → rules의 'classCode' in token 가드가 false가 되어
+    // 기존 문서 조회 fallback으로만 동작 (null 클레임 비교 edge 차단)
+    if (typeof data.classCode === "string") {
+      claims.classCode = data.classCode;
+    }
+    await admin.auth().setCustomUserClaims(uid, claims);
+    logger.info(`[syncUserClaims] ${uid} 클레임 갱신`, claims);
+    return { synced: true, claims };
+  },
+);
