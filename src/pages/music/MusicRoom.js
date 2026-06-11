@@ -9,6 +9,7 @@ import {
   orderBy,
   deleteDoc,
   getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 import YouTube from "react-youtube";
 import { usePolling } from "../../hooks/usePolling";
@@ -112,24 +113,31 @@ const MusicRoom = ({ user }) => {
     { interval: 10 * 60 * 1000, enabled: !!user, deps: [user, roomId] },
   );
 
-  const { refetch: refetchPlaylist } = usePolling(
-    async () => {
-      if (!room) return [];
+  // 🔥 [비용 최적화] 30초 전체 재조회 폴링 → 실시간 리스너 (곡 추가/삭제 변경분만 읽기 과금)
+  const roomReady = !!room;
+  useEffect(() => {
+    if (!roomReady) return;
 
-      const q = query(
-        collection(db, "musicRooms", roomId, "playlist"),
-        orderBy("requestedAt", "asc"),
-      );
-      const querySnapshot = await getDocs(q);
-      const newPlaylist = querySnapshot.docs.map((playlistDoc) => ({
-        id: playlistDoc.id,
-        ...playlistDoc.data(),
-      }));
-      setPlaylist(newPlaylist);
-      return newPlaylist;
-    },
-    { interval: 30 * 1000, enabled: !!room, deps: [room, roomId] },
-  );
+    const q = query(
+      collection(db, "musicRooms", roomId, "playlist"),
+      orderBy("requestedAt", "asc"),
+    );
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        setPlaylist(
+          querySnapshot.docs.map((playlistDoc) => ({
+            id: playlistDoc.id,
+            ...playlistDoc.data(),
+          })),
+        );
+      },
+      (error) => {
+        logger.error("[MusicRoom] playlist listener error:", error);
+      },
+    );
+    return unsubscribe;
+  }, [roomReady, roomId]);
 
   useEffect(() => {
     if (!user) {
@@ -204,7 +212,6 @@ const MusicRoom = ({ user }) => {
     await deleteDoc(doc(db, "musicRooms", roomId, "playlist", playedSongId));
     setNeedsPlay(false);
     setPlayerError("");
-    refetchPlaylist();
   };
 
   const deleteRoom = async () => {

@@ -32,7 +32,11 @@ import {
  setDoc,
  where,
  getDocs,
+ onSnapshot,
 } from "firebase/firestore";
+
+// 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
+const noopRefetch = () => {};
 
 // --- Helper Components ---
 const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
@@ -513,14 +517,16 @@ const Court = () => {
  }
  }, [auth.loading, auth.allClassMembers]);
 
- // usePolling for complaints
- const {
- data: complaints = [],
- loading: complaintsLoading,
- refetch: refetchComplaints,
- } = usePolling(
- async () => {
- if (!classCode) return [];
+ // 🔥 [비용 최적화] 10분 폴링(폴마다 limit(100) 전체 재과금) → 체류 중 실시간 리스너 (변경분만 과금)
+ const [complaints, setComplaints] = useState([]);
+ const [complaintsLoading, setComplaintsLoading] = useState(true);
+ const refetchComplaints = noopRefetch;
+ useEffect(() => {
+ if (!classCode) {
+ setComplaints([]);
+ setComplaintsLoading(false);
+ return;
+ }
  const complaintsRef = collection(
  db,
  "classes",
@@ -532,8 +538,11 @@ const Court = () => {
  orderBy("submissionDate", "desc"),
  limit(100),
  );
- const querySnapshot = await getDocs(q);
- return querySnapshot.docs.map((doc) => ({
+ const unsubscribe = onSnapshot(
+ q,
+ (querySnapshot) => {
+ setComplaints(
+ querySnapshot.docs.map((doc) => ({
  id: doc.id,
  ...doc.data(),
  submissionDate: doc.data().submissionDate?.toDate
@@ -542,29 +551,48 @@ const Court = () => {
  indictmentDate: doc.data().indictmentDate?.toDate
  ? doc.data().indictmentDate.toDate().toISOString()
  : null,
- }));
- },
- { interval: 10 * 60 * 1000, enabled: !!classCode, deps: [classCode] }, // 🔥 [비용 최적화] 5분 → 10분
+ })),
  );
+ setComplaintsLoading(false);
+ },
+ (error) => {
+ logger.error("[Court] complaints listener error:", error);
+ setComplaintsLoading(false);
+ },
+ );
+ return unsubscribe;
+ }, [classCode]);
 
- // usePolling for trial rooms
- const {
- data: trialRooms = [],
- loading: trialRoomsLoading,
- refetch: refetchTrialRooms,
- } = usePolling(
- async () => {
- if (!classCode) return [];
+ // 🔥 [비용 최적화] 10분 폴링(폴마다 limit(50) 전체 재과금) → 체류 중 실시간 리스너 (변경분만 과금)
+ const [trialRooms, setTrialRooms] = useState([]);
+ const [trialRoomsLoading, setTrialRoomsLoading] = useState(true);
+ const refetchTrialRooms = noopRefetch;
+ useEffect(() => {
+ if (!classCode) {
+ setTrialRooms([]);
+ setTrialRoomsLoading(false);
+ return;
+ }
  const trialRoomsRef = collection(db, "classes", classCode, "trialRooms");
  const q = query(trialRoomsRef, limit(50));
- const querySnapshot = await getDocs(q);
- return querySnapshot.docs.map((doc) => ({
+ const unsubscribe = onSnapshot(
+ q,
+ (querySnapshot) => {
+ setTrialRooms(
+ querySnapshot.docs.map((doc) => ({
  id: doc.id,
  ...doc.data(),
- }));
- },
- { interval: 10 * 60 * 1000, enabled: !!classCode, deps: [classCode] }, // 🔥 [비용 최적화] 5분 → 10분
+ })),
  );
+ setTrialRoomsLoading(false);
+ },
+ (error) => {
+ logger.error("[Court] trialRooms listener error:", error);
+ setTrialRoomsLoading(false);
+ },
+ );
+ return unsubscribe;
+ }, [classCode]);
 
  // 진입 시 진행되지 않는(완료/유휴) 재판방 자동 정리 → DB 사용량 절감
  useEffect(() => {

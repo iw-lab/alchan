@@ -326,7 +326,14 @@ exports.stockPriceSchedulerV2 = onSchedule(
       );
 
       const isUSStockFetchTime = hour >= 6 && hour < 8;
-      if (!isUSStockFetchTime) {
+      if (isUSStockFetchTime) {
+        // 🔥 새벽 무인 시간대(활성 사용자 체크 생략)의 풀갱신을 5분마다 24회 → 6:00/6:30/7:00/7:30 4회로 제한
+        // 미국장 종가 반영 목적이라 4회면 충분. 시간 계산만으로 게이트하므로 Firestore 읽기 0
+        const minute = kstTime.getUTCMinutes();
+        if (minute % 30 >= 5) {
+          return;
+        }
+      } else {
         const settingsDoc = await db.doc("Settings/activeStatus").get();
         const lastActiveTime = settingsDoc.exists
           ? settingsDoc.data()?.lastActiveAt?.toDate()
