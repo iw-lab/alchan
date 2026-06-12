@@ -130,7 +130,13 @@ class ErrorBoundary extends Component {
         const preserved = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
-          if (k && k.startsWith("alchan_lb_draft_")) {
+          // 게시판 작성 중 글 + 사용 중인 아이템 5분 타이머 상태는 보존
+          // (ChunkLoadError 복구 reload가 방금 사용한 아이템의 '사용 중' 표시를 지우면 안 됨)
+          if (
+            k &&
+            (k.startsWith("alchan_lb_draft_") ||
+              k.startsWith("recentlyUsedItems_"))
+          ) {
             preserved.push([k, localStorage.getItem(k)]);
           }
         }

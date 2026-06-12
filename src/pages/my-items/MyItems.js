@@ -155,10 +155,14 @@ const MyItems = () => {
     }
   }, [recentlyUsedItems, user?.uid]);
 
+  // 남은 시간 카운트다운을 매초 강제 리렌더 (아래 setRecentlyUsedItems는 만료 전까지
+  // 동일 참조를 반환해 리렌더를 일으키지 않으므로, formatTimeLeft가 갱신되지 않는 문제 방지)
+  const [, setNowTick] = useState(0);
   const hasRecentlyUsedItems = Object.keys(recentlyUsedItems).length > 0;
   useEffect(() => {
     if (!hasRecentlyUsedItems) return;
     const timer = setInterval(() => {
+      setNowTick((t) => (t + 1) % 1000000);
       setRecentlyUsedItems((prevItems) => {
         let itemsChanged = false;
         const updatedItems = { ...prevItems };
