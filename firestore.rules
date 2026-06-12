@@ -346,7 +346,10 @@ service cloud.firestore {
       //         · classCode = 본인 학급 (타 학급 로그 위조 차단)
       //         · userId is string (필수)
       //         · description ≤ 500자 (스팸 차단)
-      //         · amount는 number이고 ±1억 이하 (비현실적 금액 차단)
+      //         · amount는 number이고 ±100억 이하 (비현실적 금액 차단)
+      //           (2026-06-12: ±1억 → ±100억 상향. 학급경제 인플레이션으로 함께구매 잔여액이
+      //            1억을 초과하면 기여 트랜잭션 전체가 거부되는 실사고 발생 — 자유시간 가격은
+      //            완료마다 2배 인상되어 다음 캠페인은 3.2억)
       allow create: if isAdmin() ||
                        (isSignedIn() &&
                        request.resource.data.classCode == getUserClassCode() &&
@@ -354,8 +357,8 @@ service cloud.firestore {
                        isValidString(request.resource.data.description, 500) &&
                        (!('amount' in request.resource.data) ||
                         (request.resource.data.amount is number &&
-                         request.resource.data.amount >= -100000000 &&
-                         request.resource.data.amount <= 100000000)));
+                         request.resource.data.amount >= -10000000000 &&
+                         request.resource.data.amount <= 10000000000)));
       allow update: if false;
       allow delete: if isAdmin();
     }
