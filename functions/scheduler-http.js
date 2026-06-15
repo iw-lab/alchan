@@ -1841,7 +1841,6 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     const BASE_SALARY = 2000000;
     const ADDITIONAL_SALARY = 500000;
     const PRESIDENT_BONUS = 2000000;  // 대통령 추가 주급
-    const PM_BONUS = 1000000;          // 국무총리 추가 주급
     let totalPaidCount = 0;
     let totalAmount = 0;
     const classErrors = [];
@@ -1856,7 +1855,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         const rawTaxRate = salarySettingsDoc.exists ? salarySettingsDoc.data().taxRate : 0.1;
         const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
 
-        // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
+        // 직업 정보 로드 (대통령 보너스 적용용)
         const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
         const jobTitleMap = {};
         jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
@@ -1882,7 +1881,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
         if (students.length === 0) continue;
 
-        // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
+        // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령 보너스
         const batch = db.batch();
         let classTotalNet = 0;
         let classPaidCount = 0;
@@ -1906,7 +1905,6 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           for (const jobId of jobIds) {
             const title = jobTitleMap[jobId];
             if (title === "대통령") bonus += PRESIDENT_BONUS;
-            else if (title === "국무총리") bonus += PM_BONUS;
           }
           const totalGross = grossSalary + bonus;
           const tax = Math.floor(totalGross * taxRate);

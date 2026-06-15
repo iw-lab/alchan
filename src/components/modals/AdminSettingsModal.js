@@ -627,7 +627,7 @@ const AdminSettingsModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
-  // 월급 계산 함수 (세금 공제 포함, 대통령/국무총리 보너스 반영)
+  // 월급 계산 함수 (세금 공제 포함, 대통령 보너스 반영)
   const calculateSalary = useCallback(
     (selectedJobIds, includesTax = false) => {
       if (!Array.isArray(selectedJobIds) || selectedJobIds.length === 0) {
@@ -637,7 +637,6 @@ const AdminSettingsModal = ({
       const baseSalary = 2000000;
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;
-      const PM_BONUS = 1000000;
 
       const grossSalary =
         baseSalary + Math.max(0, selectedJobIds.length - 1) * additionalSalary;
@@ -647,7 +646,6 @@ const AdminSettingsModal = ({
         for (const jobId of selectedJobIds) {
           const job = jobs.find((j) => j.id === jobId);
           if (job?.title === "대통령") bonus += PRESIDENT_BONUS;
-          else if (job?.title === "국무총리") bonus += PM_BONUS;
         }
       }
       const totalGross = grossSalary + bonus;

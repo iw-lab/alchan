@@ -2731,13 +2731,12 @@ exports.batchPaySalaries = onCall(
         `[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`,
       );
 
-      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령/국무총리 보너스
+      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령 보너스
       const BASE_SALARY = 2000000;
       const ADDITIONAL_SALARY = 500000;
       const PRESIDENT_BONUS = 2000000;
-      const PM_BONUS = 1000000;
 
-      // 직업 정보 로드 (대통령/국무총리 보너스 적용용)
+      // 직업 정보 로드 (대통령 보너스 적용용)
       const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
       const jobTitleMap = {};
       jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
@@ -2770,7 +2769,6 @@ exports.batchPaySalaries = onCall(
         for (const jobId of jobIds) {
           const title = jobTitleMap[jobId];
           if (title === "대통령") bonus += PRESIDENT_BONUS;
-          else if (title === "국무총리") bonus += PM_BONUS;
         }
         const totalGross = grossSalary + bonus;
         const tax = Math.floor(totalGross * taxRate);
@@ -2891,7 +2889,6 @@ exports.reverseSalaryOnce = onCall(
       const BASE_SALARY = 2000000;
       const ADDITIONAL_SALARY = 500000;
       const PRESIDENT_BONUS = 2000000;
-      const PM_BONUS = 1000000;
 
       const jobsSnap2 = await db.collection("jobs").where("classCode", "==", classCode).get();
       const jobTitleMap2 = {};
@@ -2911,7 +2908,6 @@ exports.reverseSalaryOnce = onCall(
         for (const jobId of jobIds) {
           const title = jobTitleMap2[jobId];
           if (title === "대통령") bonus += PRESIDENT_BONUS;
-          else if (title === "국무총리") bonus += PM_BONUS;
         }
         const totalGross = grossSalary + bonus;
         const tax = Math.floor(totalGross * taxRate);
