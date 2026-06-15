@@ -2385,7 +2385,7 @@ const AdminSettingsModal = ({
                 <div className="px-6 py-3 border-t" style={{ background: "#fafbfc", borderColor: "#f1f5f9" }}>
                   <p className="text-[11px] flex items-center gap-1" style={{ color: "#475569" }}>
                     <span>⏰</span>
-                    자동 주급 지급: 매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong> (서버 자동 실행)
+                    자동 주급 지급: 매주 <strong style={{ color: "#4338ca" }}>월요일 오전 9시</strong> (서버 자동 실행)
                   </p>
                 </div>
                 <div className="px-6 py-4 border-t flex flex-wrap gap-2" style={{ borderColor: "#f1f5f9" }}>
@@ -3211,7 +3211,7 @@ const AdminSettingsModal = ({
                     급여 설정
                   </h3>
                   <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
-                    세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong>에 실행됩니다.
+                    세율과 주급 인상률을 설정합니다. 자동 주급 지급은 매주 <strong style={{ color: "#4338ca" }}>월요일 오전 9시</strong>에 실행됩니다.
                   </p>
                 </div>
 
@@ -3340,7 +3340,7 @@ const AdminSettingsModal = ({
                 <ul className="space-y-2 text-xs" style={{ color: "#334155" }}>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">🤖</span>
-                    <span style={{ color: "#334155" }}>매주 <strong style={{ color: "#4338ca" }}>금요일 오전 8시</strong>에 서버에서 자동으로 주급이 지급됩니다</span>
+                    <span style={{ color: "#334155" }}>매주 <strong style={{ color: "#4338ca" }}>월요일 오전 9시</strong>에 서버에서 자동으로 주급이 지급됩니다</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="shrink-0 mt-0.5">📈</span>
