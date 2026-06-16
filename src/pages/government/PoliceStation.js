@@ -520,7 +520,18 @@ const PoliceStation = () => {
  return selectedJobs.some((job) => job.title === "경찰청장");
  }, [currentUser?.selectedJobIds, jobs]);
 
+ // 경찰 직업("경찰") 보유 여부 — 신고 제출 권한용
+ const isPolice = useMemo(() => {
+ if (!currentUser?.selectedJobIds || !jobs) return false;
+ const selectedJobs = jobs.filter((job) =>
+ currentUser.selectedJobIds.includes(job.id),
+ );
+ return selectedJobs.some((job) => job.title === "경찰");
+ }, [currentUser?.selectedJobIds, jobs]);
+
  const hasPoliceAdminRights = isSystemAdmin || isPoliceChief;
+ // 신고 제출 권한: '경찰' 직업 학생 또는 관리자(교사)
+ const canSubmitReport = isPolice || isSystemAdmin;
 
  // Treasury balance polling
  const treasuryRef = useMemo(() => {
@@ -686,6 +697,10 @@ const PoliceStation = () => {
  const handleAddReport = async (newReportData) => {
  if (!currentUserId || !classCode) {
  alert("로그인이 필요하거나 학급 정보가 없습니다.");
+ return;
+ }
+ if (!canSubmitReport) {
+ alert("경찰서 신고는 '경찰' 직업을 가진 학생만 할 수 있습니다.");
  return;
  }
  if (!newReportData.reportedUserId || !newReportData.reason) {
@@ -1222,6 +1237,7 @@ const PoliceStation = () => {
  reportReasons={reportReasons}
  users={users.filter((u) => u.id !== currentUserId)}
  currentUser={currentUser}
+ canReport={canSubmitReport}
  />
  );
  case "status":

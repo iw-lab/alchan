@@ -6,6 +6,7 @@ const SubmitReport = ({
   reportReasons,
   users,
   currentUser,
+  canReport = true,
 }) => {
   const [reportData, setReportData] = useState({
     reportedUserId: "",
@@ -56,6 +57,24 @@ const SubmitReport = ({
   if (!currentUser) {
     return (
       <p className="login-required-message">신고하려면 로그인이 필요합니다.</p>
+    );
+  }
+
+  // 🚔 경찰 직업이 아니면 신고 폼 대신 안내문 표시
+  if (!canReport) {
+    return (
+      <div className="submit-report-container">
+        <h2 className="section-title">신고 제출</h2>
+        <div className="reason-description-box" style={{ textAlign: "center", lineHeight: 1.7 }}>
+          <p style={{ fontSize: "1.05rem", fontWeight: 600 }}>
+            🚔 경찰서 신고는 <strong>‘경찰’ 직업</strong>을 가진 학생만 할 수 있습니다.
+          </p>
+          <p style={{ color: "#475569" }}>
+            신고하고 싶은 사건이 있다면 우리 반 <strong>경찰</strong>에게 알려서
+            대신 신고해 달라고 요청하세요.
+          </p>
+        </div>
+      </div>
     );
   }
 
