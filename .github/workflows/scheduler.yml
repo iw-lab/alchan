@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, recover-teachers, init-classroom, backfill-musicrooms, migrate-store-price-down)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, backfill-draw-dry, backfill-draw-commit, recover-teachers, init-classroom, backfill-musicrooms, migrate-store-price-down)'
         required: true
         default: 'reset'
       weekKey:
@@ -147,6 +147,32 @@ jobs:
           echo "🔁 주급 기록 소급 백필 COMMIT"
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             "https://backfillsalarylogs-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&dryRun=false&confirm=YES")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🎰 깨진 랜덤뽑기 인벤토리 보정 - DRY RUN (스캔만, 변경 없음)
+      - name: Backfill draw items (dry run)
+        continue-on-error: true
+        if: github.event.inputs.task == 'backfill-draw-dry'
+        run: |
+          echo "🎰 랜덤뽑기 인벤토리 보정 DRY RUN"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://backfilldrawitems-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&dryRun=true")
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Response: $BODY"
+
+      # 🎰 깨진 랜덤뽑기 인벤토리 보정 - 실제 실행
+      - name: Backfill draw items (commit)
+        continue-on-error: true
+        if: github.event.inputs.task == 'backfill-draw-commit'
+        run: |
+          echo "🎰 랜덤뽑기 인벤토리 보정 COMMIT"
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://backfilldrawitems-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}&dryRun=false&confirm=YES")
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
           BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
           echo "HTTP Status: $HTTP_STATUS"

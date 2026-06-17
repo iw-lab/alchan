@@ -637,6 +637,153 @@ exports.backfillSalaryLogs = onRequest(
   },
 );
 
+// 🎰 깨진 랜덤뽑기 인벤토리 보정 (선물·개인상점 거래로 doc id 랜덤화 + 메타 누락된 것 복구)
+// 파라미터: token, dryRun(기본 true), confirm=YES (dryRun=false일 때 필수)
+// 동작: 각 유저 inventory의 type==randomDraw doc을 itemId별로 묶어
+//   ① doc id=itemId 정본으로 통합(수량 합산) ② storeItems에서 메타(drawCandidates 등) 복원
+//   ③ doc id≠itemId인 중복 doc 삭제. 멱등(여러 번 실행해도 안전).
+exports.backfillDrawItems = onRequest(
+  {
+    region: "asia-northeast3",
+    timeoutSeconds: 540,
+    invoker: "public",
+  },
+  async (req, res) => {
+    try {
+      const token = req.query.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+      const confirm = req.query.confirm;
+      const dryRun = req.query.dryRun !== "false"; // 기본 true
+      if (!dryRun && confirm !== "YES") {
+        res.status(400).json({
+          success: false,
+          error: "실제 실행하려면 confirm=YES가 필요합니다 (dryRun=false일 때)",
+        });
+        return;
+      }
+
+      logger.info(`[backfillDrawItems] 시작 (dryRun=${dryRun})`);
+
+      const usersSnap = await db.collection("users").get();
+      const storeCache = {}; // itemId -> storeItem data | null
+      const hasCands = (m) =>
+        m && Array.isArray(m.drawCandidates) && m.drawCandidates.length > 0;
+
+      let scannedUsers = 0;
+      let drawDocs = 0;
+      let fixedGroups = 0;
+      let deletedDupDocs = 0;
+      let unresolvable = 0;
+      const samples = [];
+
+      for (const userDoc of usersSnap.docs) {
+        const uid = userDoc.id;
+        const invSnap = await userDoc.ref
+          .collection("inventory")
+          .where("type", "==", "randomDraw")
+          .get();
+        if (invSnap.empty) continue;
+        scannedUsers++;
+        drawDocs += invSnap.size;
+
+        // itemId별 그룹핑
+        const groups = {};
+        invSnap.forEach((d) => {
+          const data = d.data();
+          const itemId = data.itemId || d.id;
+          (groups[itemId] = groups[itemId] || []).push({ id: d.id, ref: d.ref, data });
+        });
+
+        for (const itemId in groups) {
+          const docs = groups[itemId];
+          // 정상: doc 1개 + doc id==itemId + drawSource 유효 + drawCandidates 있음
+          const healthy =
+            docs.length === 1 &&
+            docs[0].id === itemId &&
+            (docs[0].data.drawSource === "food" || docs[0].data.drawSource === "item") &&
+            hasCands(docs[0].data);
+          if (healthy) continue;
+
+          // 메타 소스: storeItems 우선, 없으면 보유 doc 중 후보 가진 것
+          if (storeCache[itemId] === undefined) {
+            const ss = await db.collection("storeItems").doc(itemId).get();
+            storeCache[itemId] = ss.exists ? ss.data() : null;
+          }
+          let metaSrc = storeCache[itemId];
+          if (!hasCands(metaSrc)) {
+            const withMeta = docs.find((x) => hasCands(x.data));
+            if (withMeta) metaSrc = withMeta.data;
+          }
+          if (!hasCands(metaSrc)) {
+            unresolvable++;
+            if (samples.length < 20)
+              samples.push({ uid, itemId, reason: "메타 복원 불가(상점·보유doc 모두 후보 없음)" });
+            continue;
+          }
+
+          const totalQty = docs.reduce((s, x) => s + (x.data.quantity || 0), 0);
+          const sample = docs[0].data;
+          const dupIds = docs.filter((x) => x.id !== itemId);
+          fixedGroups++;
+          if (samples.length < 20)
+            samples.push({ uid, itemId, docIds: docs.map((x) => x.id), totalQty });
+
+          if (!dryRun) {
+            const batch = db.batch();
+            const canonRef = userDoc.ref.collection("inventory").doc(itemId);
+            batch.set(
+              canonRef,
+              {
+                itemId,
+                name: metaSrc.name || sample.name || "아이템",
+                icon: metaSrc.icon || sample.icon || "🎁",
+                description: metaSrc.description || sample.description || "",
+                type: "randomDraw",
+                quantity: totalQty,
+                drawSource: metaSrc.drawSource === "item" ? "item" : "food",
+                loseEnabled: metaSrc.loseEnabled === true,
+                losePercent: Number(metaSrc.losePercent) || 0,
+                drawCandidates: metaSrc.drawCandidates,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                backfilledAt: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+            dupIds.forEach((x) => batch.delete(x.ref));
+            await batch.commit();
+          }
+          deletedDupDocs += dupIds.length;
+        }
+      }
+
+      logger.info(
+        `[backfillDrawItems] 완료 (dryRun=${dryRun}): 수정그룹 ${fixedGroups}, 중복doc삭제 ${deletedDupDocs}, 복원불가 ${unresolvable}`,
+      );
+
+      res.json({
+        success: true,
+        dryRun,
+        scannedUsers,
+        drawDocs,
+        fixedGroups,
+        deletedDupDocs,
+        unresolvable,
+        samples,
+      });
+    } catch (error) {
+      logger.error("[backfillDrawItems] 오류:", error, error?.stack);
+      res.status(500).json({
+        success: false,
+        error: error?.message || String(error),
+        stack: error?.stack,
+      });
+    }
+  },
+);
+
 // 월세 징수용 GET 엔드포인트 (매주 금요일 14:40에 실행)
 exports.weeklyRent = onRequest(
   {
