@@ -2323,28 +2323,29 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       throw new Error("랜덤뽑기 아이템이 아닙니다.");
     }
 
-    // --- 2) 후보 풀 구성 ---
-    let pool = []; // [{ name, icon, storeItemId? }]
-    if (meta.drawSource === "food") {
-      pool = meta.drawCandidates
-        .filter((c) => c && c.name)
-        .map((c) => ({ name: String(c.name), icon: c.icon || "🍬" }));
-    } else {
-      const snap = await db
-        .collection("storeItems")
-        .where("classCode", "==", classCode)
-        .where("available", "==", true)
-        .get();
-      pool = snap.docs
+    // --- 2) 후보 풀 구성 (간식·아이템 통일: 관리자가 고른 상점 아이템 중 판매중·재고 있는 것) ---
+    const selectedIds = meta.drawCandidates
+      .filter((c) => c && c.storeItemId)
+      .map((c) => c.storeItemId);
+    let pool = []; // [{ name, icon, storeItemId }]
+    if (selectedIds.length > 0) {
+      const storeDocs = await Promise.all(
+        selectedIds.map((id) => db.collection("storeItems").doc(id).get()),
+      );
+      pool = storeDocs
+        .filter((d) => d.exists)
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((it) => it.type !== "randomDraw" && (it.stock === undefined || it.stock > 0))
+        .filter(
+          (it) =>
+            it.type !== "randomDraw" &&
+            it.available !== false &&
+            (it.stock === undefined || it.stock > 0),
+        )
         .map((it) => ({ name: it.name || "아이템", icon: it.icon || "🎁", storeItemId: it.id }));
     }
     if (pool.length === 0) {
       throw new Error(
-        meta.drawSource === "food"
-          ? "뽑을 수 있는 간식이 없습니다."
-          : "뽑을 수 있는 아이템이 없습니다. (판매 중·재고 있는 아이템이 없어요)",
+        "뽑을 수 있는 아이템이 없어요. (후보가 없거나 모두 품절·판매중지 상태예요)",
       );
     }
 
@@ -2381,7 +2382,7 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       let prizeStoreRef = null;
       let decStock = false;
 
-      if (fOutcome === "win" && meta.drawSource === "item" && fPrize?.storeItemId) {
+      if (fOutcome === "win" && fPrize?.storeItemId) {
         prizeStoreRef = db.collection("storeItems").doc(fPrize.storeItemId);
         const ps = await transaction.get(prizeStoreRef);
         const data = ps.exists ? ps.data() : null;
@@ -2403,16 +2404,9 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       let prizeRef = null;
       let prizeExists = false;
       let prizeDocData = null;
-      if (fOutcome === "win" && fPrize) {
-        let prizeDocId;
-        if (meta.drawSource === "item" && fPrize.storeItemId) {
-          prizeDocId = fPrize.storeItemId;
-          prizeDocData = { itemId: prizeDocId, name: fPrize.name, icon: fPrize.icon || "🎁", type: "item" };
-        } else {
-          const slug = encodeURIComponent(String(fPrize.name)).replace(/%/g, "").slice(0, 60);
-          prizeDocId = `randfood_${slug || "snack"}`;
-          prizeDocData = { itemId: prizeDocId, name: fPrize.name, icon: fPrize.icon || "🍬", type: "food" };
-        }
+      if (fOutcome === "win" && fPrize?.storeItemId) {
+        const prizeDocId = fPrize.storeItemId;
+        prizeDocData = { itemId: prizeDocId, name: fPrize.name, icon: fPrize.icon || "🎁", type: "item" };
         prizeRef = userRef.collection("inventory").doc(prizeDocId);
         const pc = await transaction.get(prizeRef);
         prizeExists = pc.exists;

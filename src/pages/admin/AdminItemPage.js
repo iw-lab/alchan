@@ -10,6 +10,7 @@ import {
   X as XIcon,
   Circle,
 } from "lucide-react";
+import { useItems } from "../../contexts/ItemContext";
 
 const styles = {
   container: {
@@ -202,7 +203,7 @@ const EMPTY_ITEM = {
   itemKind: "normal", // normal | drawFood | drawItem
   loseEnabled: false,
   losePercent: "30",
-  drawCandidates: [], // [{ name, icon }]
+  drawCandidates: [], // [{ storeItemId, name, icon }]
 };
 
 const AdminItemPage = ({
@@ -215,6 +216,12 @@ const AdminItemPage = ({
   const isEditing = !!(editingItemFromStore && editingItemFromStore.id);
   const [successMsg, setSuccessMsg] = useState("");
   const [item, setItem] = useState(EMPTY_ITEM);
+
+  // 🎰 랜덤뽑기 후보로 고를 수 있는 상점 아이템(랜덤뽑기 자신·다른 뽑기 제외)
+  const { items: storeItems } = useItems();
+  const candidatePool = (storeItems || []).filter(
+    (it) => it.type !== "randomDraw" && it.id !== editingItemFromStore?.id,
+  );
 
   useEffect(() => {
     if (editingItemFromStore) {
@@ -253,22 +260,25 @@ const AdminItemPage = ({
 
   // 🎰 랜덤뽑기 종류·후보 핸들러
   const setKind = (kind) => setItem((prev) => ({ ...prev, itemKind: kind }));
-  const addCandidate = () =>
-    setItem((prev) => ({
-      ...prev,
-      drawCandidates: [...(prev.drawCandidates || []), { name: "", icon: "🍬" }],
-    }));
-  const updateCandidate = (i, field, value) =>
+  // 상점 아이템을 후보로 토글(선택/해제)
+  const toggleCandidate = (storeItem) =>
     setItem((prev) => {
-      const arr = [...(prev.drawCandidates || [])];
-      arr[i] = { ...arr[i], [field]: value };
-      return { ...prev, drawCandidates: arr };
+      const list = prev.drawCandidates || [];
+      const exists = list.some((c) => c.storeItemId === storeItem.id);
+      return {
+        ...prev,
+        drawCandidates: exists
+          ? list.filter((c) => c.storeItemId !== storeItem.id)
+          : [
+              ...list,
+              {
+                storeItemId: storeItem.id,
+                name: storeItem.name || "아이템",
+                icon: storeItem.icon || "🎁",
+              },
+            ],
+      };
     });
-  const removeCandidate = (i) =>
-    setItem((prev) => ({
-      ...prev,
-      drawCandidates: (prev.drawCandidates || []).filter((_, idx) => idx !== i),
-    }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -300,18 +310,17 @@ const AdminItemPage = ({
         alert("꽝 확률은 0~100 사이 숫자로 입력해주세요.");
         return;
       }
-      let candidates = [];
-      if (kind === "drawFood") {
-        candidates = (item.drawCandidates || [])
-          .map((c) => ({
-            name: (c.name || "").trim(),
-            icon: (c.icon || "").trim() || "🍬",
-          }))
-          .filter((c) => c.name);
-        if (candidates.length < 1) {
-          alert("간식 후보를 1개 이상 추가해주세요.");
-          return;
-        }
+      // 간식·아이템 모두 상점 아이템에서 고른 후보(storeItemId)로 통일
+      const candidates = (item.drawCandidates || [])
+        .filter((c) => c && c.storeItemId)
+        .map((c) => ({
+          storeItemId: c.storeItemId,
+          name: (c.name || "아이템").trim(),
+          icon: (c.icon || "").trim() || "🎁",
+        }));
+      if (candidates.length < 1) {
+        alert("후보 아이템을 상점에서 1개 이상 선택해주세요.");
+        return;
       }
       drawFields = {
         type: "randomDraw",
@@ -638,68 +647,74 @@ const AdminItemPage = ({
                       </div>
                     )}
 
-                    {item.itemKind === "drawFood" ? (
-                      <div style={{ marginTop: "16px" }}>
-                        <label style={styles.label}>
-                          간식 후보 (당첨되면 이 중 하나로 변경)
-                        </label>
-                        {(item.drawCandidates || []).map((c, i) => (
-                          <div
-                            key={i}
-                            style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}
-                          >
-                            <input
-                              value={c.icon}
-                              onChange={(e) => updateCandidate(i, "icon", e.target.value)}
-                              placeholder="🍬"
-                              style={{ ...styles.input, width: "60px", textAlign: "center" }}
-                            />
-                            <input
-                              value={c.name}
-                              onChange={(e) => updateCandidate(i, "name", e.target.value)}
-                              placeholder="예: 초코파이"
-                              style={{ ...styles.input, flex: 1 }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeCandidate(i)}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: "8px",
-                                border: "1px solid #fecaca",
-                                background: "#fef2f2",
-                                color: "#dc2626",
-                                cursor: "pointer",
-                                fontWeight: 600,
-                              }}
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={addCandidate}
+                    <div style={{ marginTop: "16px" }}>
+                      <label style={styles.label}>
+                        {item.itemKind === "drawFood" ? "간식 후보" : "아이템 후보"}{" "}
+                        (상점 아이템에서 선택 · 당첨되면 이 중 하나가 실제 지급)
+                      </label>
+                      {candidatePool.length === 0 ? (
+                        <p style={{ ...styles.helpText, marginTop: "8px" }}>
+                          먼저 상점에 일반 아이템을 등록해야 후보로 선택할 수 있어요.
+                        </p>
+                      ) : (
+                        <div
                           style={{
-                            marginTop: "10px",
-                            padding: "8px 14px",
-                            borderRadius: "8px",
-                            border: "1px dashed #a5b4fc",
-                            background: "#eef2ff",
-                            color: "#4338ca",
-                            cursor: "pointer",
-                            fontWeight: 600,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                            marginTop: "8px",
+                            maxHeight: "260px",
+                            overflowY: "auto",
                           }}
                         >
-                          + 간식 후보 추가
-                        </button>
-                      </div>
-                    ) : (
-                      <p style={{ ...styles.helpText, marginTop: "16px" }}>
-                        🎁 등록된 모든 아이템(판매중·재고 있음) 중 하나가 무작위로
-                        당첨됩니다. 당첨 시 해당 아이템 재고가 1 차감됩니다.
+                          {candidatePool.map((it) => {
+                            const checked = (item.drawCandidates || []).some(
+                              (c) => c.storeItemId === it.id,
+                            );
+                            return (
+                              <label
+                                key={it.id}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "10px",
+                                  padding: "10px 12px",
+                                  border: `1.5px solid ${checked ? "#6366f1" : "#e5e7eb"}`,
+                                  borderRadius: "10px",
+                                  background: checked ? "#eef2ff" : "#fff",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleCandidate(it)}
+                                  style={{ width: "18px", height: "18px", accentColor: "#6366f1" }}
+                                />
+                                <span style={{ fontSize: "18px" }}>{it.icon || "🎁"}</span>
+                                <span
+                                  style={{
+                                    flex: 1,
+                                    fontSize: "14px",
+                                    fontWeight: 600,
+                                    color: "#0f172a",
+                                  }}
+                                >
+                                  {it.name}
+                                </span>
+                                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                  재고 {it.stock ?? "∞"}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p style={{ ...styles.helpText, marginTop: "10px" }}>
+                        선택 {(item.drawCandidates || []).length}개 · 당첨 시 해당
+                        아이템이 실제 지급되고 재고가 1 차감됩니다.
                       </p>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
