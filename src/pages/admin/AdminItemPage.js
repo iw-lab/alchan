@@ -751,48 +751,53 @@ const AdminItemPage = ({
                                     재고 {it.stock ?? "∞"}
                                   </span>
                                 </div>
-                                {checked && (
-                                  <div
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    flexShrink: 0,
+                                    opacity: checked ? 1 : 0.5,
+                                  }}
+                                >
+                                  <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                    비중
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={cand ? cand.weight ?? 1 : ""}
+                                    placeholder="1"
+                                    onChange={(e) => {
+                                      // 미선택 후보의 비중을 건드리면 자동으로 후보에 포함
+                                      if (!checked) toggleCandidate(it);
+                                      updateWeight(it.id, e.target.value);
+                                    }}
+                                    style={{ ...styles.input, width: "64px", padding: "6px 8px" }}
+                                  />
+                                  <span
                                     style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "6px",
-                                      flexShrink: 0,
+                                      fontSize: "12px",
+                                      fontWeight: 700,
+                                      color: checked ? "#4338ca" : "#94a3b8",
+                                      minWidth: "52px",
+                                      textAlign: "right",
                                     }}
                                   >
-                                    <span style={{ fontSize: "12px", color: "#64748b" }}>
-                                      비중
-                                    </span>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      step="1"
-                                      value={cand.weight ?? 1}
-                                      onChange={(e) => updateWeight(it.id, e.target.value)}
-                                      style={{ ...styles.input, width: "64px", padding: "6px 8px" }}
-                                    />
-                                    <span
-                                      style={{
-                                        fontSize: "12px",
-                                        fontWeight: 700,
-                                        color: "#4338ca",
-                                        minWidth: "52px",
-                                        textAlign: "right",
-                                      }}
-                                    >
-                                      ≈ {pct.toFixed(1)}%
-                                    </span>
-                                  </div>
-                                )}
+                                    {checked ? `≈ ${pct.toFixed(1)}%` : "—"}
+                                  </span>
+                                </div>
                               </div>
                             );
                           })}
                         </div>
                       )}
                       <p style={{ ...styles.helpText, marginTop: "10px" }}>
-                        선택 {(item.drawCandidates || []).length}개 · 비중이 클수록
-                        자주 당첨돼요(옆 % = 실제 당첨 확률). 당첨 시 해당 아이템이
-                        실제 지급되고 재고가 1 차감됩니다.
+                        선택 {(item.drawCandidates || []).length}개 · 체크하거나 비중을
+                        입력하면 후보에 포함돼요. 비중이 클수록 자주 당첨(옆 % = 실제
+                        당첨 확률). 당첨 시 해당 아이템이 실제 지급되고 재고가 1
+                        차감됩니다.
                       </p>
                     </div>
                   </div>
