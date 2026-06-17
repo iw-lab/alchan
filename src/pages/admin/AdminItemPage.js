@@ -323,9 +323,9 @@ const AdminItemPage = ({
       const losePercent = loseEnabled ? parseInt(item.losePercent, 10) : 0;
       if (
         loseEnabled &&
-        (isNaN(losePercent) || losePercent < 0 || losePercent > 100)
+        (isNaN(losePercent) || losePercent < 0 || losePercent > 50)
       ) {
-        alert("꽝 확률은 0~100 사이 숫자로 입력해주세요.");
+        alert("꽝 확률은 0~50% 사이로 입력해주세요. (사행성 방지 상한 50%)");
         return;
       }
       // 간식·아이템 모두 상점 아이템에서 고른 후보(storeItemId)로 통일
@@ -656,7 +656,7 @@ const AdminItemPage = ({
                         <input
                           type="number"
                           min="0"
-                          max="100"
+                          max="50"
                           value={item.losePercent}
                           onChange={(e) =>
                             setItem((prev) => ({ ...prev, losePercent: e.target.value }))
@@ -664,7 +664,7 @@ const AdminItemPage = ({
                           style={{ ...styles.input, width: "100px" }}
                         />
                         <span style={{ fontSize: "14px", color: "#374151" }}>
-                          % (나머지는 후보 비중대로 당첨)
+                          % (최대 50% · 나머지는 후보 비중대로 당첨)
                         </span>
                       </div>
                     )}

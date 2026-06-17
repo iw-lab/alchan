@@ -1137,6 +1137,46 @@ const MyItems = () => {
                     winningIndex={wheelModal.winningIndex}
                     onDone={handleWheelDone}
                   />
+                  {/* 📊 당첨 확률 공개 (서버가 내려준 portion = 실제 확률) */}
+                  <div
+                    style={{
+                      width: "100%",
+                      background: "#f8fafc",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        color: "#475569",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      📊 당첨 확률
+                    </div>
+                    {wheelModal.segments.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "12px",
+                          color: s.name === "꽝" ? "#94a3b8" : "#334155",
+                          padding: "2px 0",
+                        }}
+                      >
+                        <span>
+                          {s.icon} {s.name}
+                        </span>
+                        <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                          {(((s.portion ?? 0) * 100)).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                   {!wheelModal.spinning && wheelModal.result && (
                     <div style={{ textAlign: "center" }}>
                       {wheelModal.result.outcome === "win" ? (

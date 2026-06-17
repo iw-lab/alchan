@@ -2317,6 +2317,7 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
     throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
   }
 
+  const DAILY_SPIN_LIMIT = 3; // 학생당 하루 추첨(사용) 횟수 제한 — 구입 경로 무관
   const userRef = db.collection("users").doc(uid);
   const drawItemRef = userRef.collection("inventory").doc(itemId);
 
@@ -2389,11 +2390,21 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
     }
 
     // --- 3) 돌림판 세그먼트 + 서버 추첨 ---
+    // 꽝 확률 상한 50% (사행성 방지) — 기존 데이터도 서버에서 클램프
     const losePercent = meta.loseEnabled
-      ? Math.min(100, Math.max(0, meta.losePercent))
+      ? Math.min(50, Math.max(0, meta.losePercent))
       : 0;
-    const segments = pool.map((p) => ({ name: p.name, icon: p.icon }));
-    const loseIndex = meta.loseEnabled ? segments.push({ name: "꽝", icon: "💢" }) - 1 : -1;
+    // portion = 실제 당첨 확률(0~1). 학생에게 확률 공개용 (돌림판 칸 크기는 균등 유지)
+    const sumW = pool.reduce((s, p) => s + (p.weight > 0 ? p.weight : 1), 0) || 1;
+    const winFrac = 1 - losePercent / 100;
+    const segments = pool.map((p) => ({
+      name: p.name,
+      icon: p.icon,
+      portion: winFrac * ((p.weight > 0 ? p.weight : 1) / sumW),
+    }));
+    const loseIndex = meta.loseEnabled
+      ? segments.push({ name: "꽝", icon: "💢", portion: losePercent / 100 }) - 1
+      : -1;
 
     let outcome, prize, winningIndex;
     if (meta.loseEnabled && Math.random() * 100 < losePercent) {
@@ -2423,6 +2434,23 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       const curDraw = await transaction.get(drawItemRef);
       if (!curDraw.exists || (curDraw.data().quantity || 0) < 1) {
         throw new Error("뽑기 아이템 수량이 부족합니다.");
+      }
+
+      // 🎰 하루 추첨 횟수 제한 (학생당 하루 3회 — 선물·개인상점으로 받아도 적용)
+      const curUser = await transaction.get(userRef);
+      const uData = curUser.exists ? curUser.data() : {};
+      const isAdminUser =
+        uData.isAdmin === true || uData.isSuperAdmin === true || uData.isTeacher === true;
+      const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const spinDayKey = `${nowKst.getUTCFullYear()}-${String(
+        nowKst.getUTCMonth() + 1,
+      ).padStart(2, "0")}-${String(nowKst.getUTCDate()).padStart(2, "0")}`;
+      const prevSpins =
+        uData.dailySpinDate === spinDayKey ? uData.dailySpinCount || 0 : 0;
+      if (!isAdminUser && prevSpins + 1 > DAILY_SPIN_LIMIT) {
+        throw new Error(
+          `랜덤뽑기는 하루 ${DAILY_SPIN_LIMIT}번까지만 돌릴 수 있어요. (오늘 ${prevSpins}번 사용)`,
+        );
       }
 
       let fOutcome = outcome;
@@ -2477,6 +2505,15 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
         });
       } else {
         transaction.delete(drawItemRef);
+      }
+
+      // 하루 추첨 카운트 갱신 (학생만, 날짜 바뀌면 자동 리셋)
+      if (!isAdminUser) {
+        transaction.update(userRef, {
+          dailySpinDate: spinDayKey,
+          dailySpinCount: prevSpins + 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
 
       if (fOutcome === "win" && prizeRef) {
