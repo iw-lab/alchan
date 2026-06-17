@@ -2071,6 +2071,27 @@ exports.purchaseStoreItem = onCall(
         // 모든 쓰기 작업 수행
         const isAdminBuyer = adminRef && adminRef.path === userRef.path;
 
+        // 🎰 랜덤뽑기 하루 구입 제한 (학생당 하루 3개까지, 관리자 제외)
+        let drawDayKey = null;
+        let drawNewCount = 0;
+        if (itemData.type === "randomDraw" && !isAdminBuyer) {
+          const DAILY_DRAW_LIMIT = 3;
+          const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+          drawDayKey = `${nowKst.getUTCFullYear()}-${String(
+            nowKst.getUTCMonth() + 1,
+          ).padStart(2, "0")}-${String(nowKst.getUTCDate()).padStart(2, "0")}`;
+          const prevCount =
+            userData.dailyDrawDate === drawDayKey
+              ? userData.dailyDrawCount || 0
+              : 0;
+          drawNewCount = prevCount + quantity;
+          if (drawNewCount > DAILY_DRAW_LIMIT) {
+            throw new Error(
+              `랜덤뽑기는 하루 ${DAILY_DRAW_LIMIT}개까지만 구입할 수 있어요. (오늘 ${prevCount}개 구입)`,
+            );
+          }
+        }
+
         // 학생 구매 시 관리자에게 추가 세금 수익 (상점 판매세)
         // 관리자 본인 구매 시에는 세금 없음
         const shopSalesTax = !isAdminBuyer
@@ -2093,6 +2114,10 @@ exports.purchaseStoreItem = onCall(
           transaction.update(userRef, {
             cash: admin.firestore.FieldValue.increment(-totalCost),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            // 🎰 랜덤뽑기면 하루 구입 카운트 갱신(날짜 바뀌면 자동 리셋)
+            ...(drawDayKey
+              ? { dailyDrawDate: drawDayKey, dailyDrawCount: drawNewCount }
+              : {}),
           });
 
           // 거래 로그
