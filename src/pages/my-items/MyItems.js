@@ -749,8 +749,13 @@ const MyItems = () => {
           logger.log("[MyItems] 받는 사람 아이템 생성 (새 아이템):", {
             수량: processedAmount,
           });
-          const newRecipientItemRef = firebaseDoc(recipientInventoryRef);
-          transaction.set(newRecipientItemRef, {
+          // 🔑 doc id = itemId (구매 경로와 통일). drawRandomItem/useUserItem이
+          //    inventory.doc(itemId)로 찾으므로 랜덤 id면 추첨/사용이 깨진다.
+          const newRecipientItemRef = firebaseDoc(
+            recipientInventoryRef,
+            group.displayInfo.itemId,
+          );
+          const giftedItem = {
             itemId: group.displayInfo.itemId,
             name: group.displayInfo.name,
             icon: group.displayInfo.icon,
@@ -759,7 +764,18 @@ const MyItems = () => {
             quantity: processedAmount,
             receivedAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-          });
+          };
+          // 🎰 랜덤뽑기 메타 복사 (누락 시 추첨이 "뽑을 아이템 없음"으로 실패)
+          if (group.displayInfo.type === "randomDraw") {
+            const meta = actualSourceDocs[0] || group.displayInfo || {};
+            giftedItem.drawSource = meta.drawSource || "food";
+            giftedItem.loseEnabled = meta.loseEnabled === true;
+            giftedItem.losePercent = Number(meta.losePercent) || 0;
+            giftedItem.drawCandidates = Array.isArray(meta.drawCandidates)
+              ? meta.drawCandidates
+              : [];
+          }
+          transaction.set(newRecipientItemRef, giftedItem);
         }
       });
 
