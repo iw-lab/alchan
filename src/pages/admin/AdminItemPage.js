@@ -222,6 +222,15 @@ const AdminItemPage = ({
   const candidatePool = (storeItems || []).filter(
     (it) => it.type !== "randomDraw" && it.id !== editingItemFromStore?.id,
   );
+  // 후보별 실제 당첨 확률 계산: 비중 합 + 꽝 제외 지분
+  const drawWeightSum =
+    (item.drawCandidates || []).reduce((s, c) => {
+      const w = Number(c.weight);
+      return s + (Number.isFinite(w) && w > 0 ? w : 1);
+    }, 0) || 1;
+  const drawWinShare = item.loseEnabled
+    ? Math.max(0, 100 - (parseInt(item.losePercent, 10) || 0))
+    : 100;
 
   useEffect(() => {
     if (editingItemFromStore) {
@@ -275,10 +284,19 @@ const AdminItemPage = ({
                 storeItemId: storeItem.id,
                 name: storeItem.name || "아이템",
                 icon: storeItem.icon || "🎁",
+                weight: 1, // 당첨 비중(가중치). 클수록 자주 당첨
               },
             ],
       };
     });
+  // 후보별 당첨 비중(가중치) 수정
+  const updateWeight = (storeItemId, value) =>
+    setItem((prev) => ({
+      ...prev,
+      drawCandidates: (prev.drawCandidates || []).map((c) =>
+        c.storeItemId === storeItemId ? { ...c, weight: value } : c,
+      ),
+    }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -313,11 +331,15 @@ const AdminItemPage = ({
       // 간식·아이템 모두 상점 아이템에서 고른 후보(storeItemId)로 통일
       const candidates = (item.drawCandidates || [])
         .filter((c) => c && c.storeItemId)
-        .map((c) => ({
-          storeItemId: c.storeItemId,
-          name: (c.name || "아이템").trim(),
-          icon: (c.icon || "").trim() || "🎁",
-        }));
+        .map((c) => {
+          const w = Number(c.weight);
+          return {
+            storeItemId: c.storeItemId,
+            name: (c.name || "아이템").trim(),
+            icon: (c.icon || "").trim() || "🎁",
+            weight: Number.isFinite(w) && w > 0 ? w : 1,
+          };
+        });
       if (candidates.length < 1) {
         alert("후보 아이템을 상점에서 1개 이상 선택해주세요.");
         return;
@@ -642,7 +664,7 @@ const AdminItemPage = ({
                           style={{ ...styles.input, width: "100px" }}
                         />
                         <span style={{ fontSize: "14px", color: "#374151" }}>
-                          % (나머지는 후보들이 균등 당첨)
+                          % (나머지는 후보 비중대로 당첨)
                         </span>
                       </div>
                     )}
@@ -668,11 +690,15 @@ const AdminItemPage = ({
                           }}
                         >
                           {candidatePool.map((it) => {
-                            const checked = (item.drawCandidates || []).some(
+                            const cand = (item.drawCandidates || []).find(
                               (c) => c.storeItemId === it.id,
                             );
+                            const checked = !!cand;
+                            const w =
+                              cand && Number(cand.weight) > 0 ? Number(cand.weight) : 1;
+                            const pct = checked ? (drawWinShare * w) / drawWeightSum : 0;
                             return (
-                              <label
+                              <div
                                 key={it.id}
                                 style={{
                                   display: "flex",
@@ -682,37 +708,91 @@ const AdminItemPage = ({
                                   border: `1.5px solid ${checked ? "#6366f1" : "#e5e7eb"}`,
                                   borderRadius: "10px",
                                   background: checked ? "#eef2ff" : "#fff",
-                                  cursor: "pointer",
                                 }}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => toggleCandidate(it)}
-                                  style={{ width: "18px", height: "18px", accentColor: "#6366f1" }}
-                                />
-                                <span style={{ fontSize: "18px" }}>{it.icon || "🎁"}</span>
-                                <span
+                                <div
+                                  onClick={() => toggleCandidate(it)}
                                   style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "10px",
                                     flex: 1,
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                    color: "#0f172a",
+                                    minWidth: 0,
+                                    cursor: "pointer",
                                   }}
                                 >
-                                  {it.name}
-                                </span>
-                                <span style={{ fontSize: "12px", color: "#64748b" }}>
-                                  재고 {it.stock ?? "∞"}
-                                </span>
-                              </label>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    readOnly
+                                    tabIndex={-1}
+                                    style={{
+                                      width: "18px",
+                                      height: "18px",
+                                      accentColor: "#6366f1",
+                                      pointerEvents: "none",
+                                    }}
+                                  />
+                                  <span style={{ fontSize: "18px" }}>{it.icon || "🎁"}</span>
+                                  <span
+                                    style={{
+                                      flex: 1,
+                                      fontSize: "14px",
+                                      fontWeight: 600,
+                                      color: "#0f172a",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {it.name}
+                                  </span>
+                                  <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                    재고 {it.stock ?? "∞"}
+                                  </span>
+                                </div>
+                                {checked && (
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "6px",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                      비중
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      value={cand.weight ?? 1}
+                                      onChange={(e) => updateWeight(it.id, e.target.value)}
+                                      style={{ ...styles.input, width: "64px", padding: "6px 8px" }}
+                                    />
+                                    <span
+                                      style={{
+                                        fontSize: "12px",
+                                        fontWeight: 700,
+                                        color: "#4338ca",
+                                        minWidth: "52px",
+                                        textAlign: "right",
+                                      }}
+                                    >
+                                      ≈ {pct.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
                       )}
                       <p style={{ ...styles.helpText, marginTop: "10px" }}>
-                        선택 {(item.drawCandidates || []).length}개 · 당첨 시 해당
-                        아이템이 실제 지급되고 재고가 1 차감됩니다.
+                        선택 {(item.drawCandidates || []).length}개 · 비중이 클수록
+                        자주 당첨돼요(옆 % = 실제 당첨 확률). 당첨 시 해당 아이템이
+                        실제 지급되고 재고가 1 차감됩니다.
                       </p>
                     </div>
                   </div>

@@ -2327,7 +2327,15 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
     const selectedIds = meta.drawCandidates
       .filter((c) => c && c.storeItemId)
       .map((c) => c.storeItemId);
-    let pool = []; // [{ name, icon, storeItemId }]
+    // storeItemId → 당첨 비중(가중치) 맵
+    const weightMap = {};
+    meta.drawCandidates.forEach((c) => {
+      if (c && c.storeItemId) {
+        const w = Number(c.weight);
+        weightMap[c.storeItemId] = Number.isFinite(w) && w > 0 ? w : 1;
+      }
+    });
+    let pool = []; // [{ name, icon, storeItemId, weight }]
     if (selectedIds.length > 0) {
       const storeDocs = await Promise.all(
         selectedIds.map((id) => db.collection("storeItems").doc(id).get()),
@@ -2341,7 +2349,12 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
             it.available !== false &&
             (it.stock === undefined || it.stock > 0),
         )
-        .map((it) => ({ name: it.name || "아이템", icon: it.icon || "🎁", storeItemId: it.id }));
+        .map((it) => ({
+          name: it.name || "아이템",
+          icon: it.icon || "🎁",
+          storeItemId: it.id,
+          weight: weightMap[it.id] || 1,
+        }));
     }
     if (pool.length === 0) {
       throw new Error(
@@ -2362,7 +2375,17 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       prize = null;
       winningIndex = loseIndex;
     } else {
-      const pick = Math.floor(Math.random() * pool.length);
+      // 비중(weight) 비례 추첨
+      const totalW = pool.reduce((s, p) => s + (p.weight > 0 ? p.weight : 1), 0);
+      let r = Math.random() * totalW;
+      let pick = pool.length - 1;
+      for (let i = 0; i < pool.length; i++) {
+        r -= pool[i].weight > 0 ? pool[i].weight : 1;
+        if (r < 0) {
+          pick = i;
+          break;
+        }
+      }
       outcome = "win";
       prize = pool[pick];
       winningIndex = pick;
