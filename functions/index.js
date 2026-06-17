@@ -2560,7 +2560,7 @@ exports.listUserItemForSale = onCall(
 
         // 새로운 마켓 리스팅 생성
         const newListingRef = marketListingsRef.doc();
-        transaction.set(newListingRef, {
+        const listingPayload = {
           sellerId: uid,
           sellerName: userData.name,
           classCode: classCode,
@@ -2573,7 +2573,17 @@ exports.listUserItemForSale = onCall(
           price: price,
           status: "active",
           listedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        };
+        // 🎰 랜덤뽑기 메타를 리스팅에 보존(구매/흥정/취소 시 인벤토리로 복원)
+        if (itemData.type === "randomDraw") {
+          listingPayload.drawSource = itemData.drawSource || "food";
+          listingPayload.loseEnabled = itemData.loseEnabled === true;
+          listingPayload.losePercent = Number(itemData.losePercent) || 0;
+          listingPayload.drawCandidates = Array.isArray(itemData.drawCandidates)
+            ? itemData.drawCandidates
+            : [];
+        }
+        transaction.set(newListingRef, listingPayload);
       });
 
       return { success: true, message: "아이템을 시장에 등록했습니다." };
@@ -3127,8 +3137,9 @@ exports.buyMarketItem = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
         } else {
-          const newItemRef = buyerInventoryRef.doc();
-          transaction.set(newItemRef, {
+          // doc id = itemId (drawRandomItem/useUserItem이 inventory.doc(itemId) 조회)
+          const newItemRef = buyerInventoryRef.doc(listingData.itemId);
+          const boughtItem = {
             itemId: listingData.itemId,
             name: listingData.name,
             icon: listingData.icon || "🔮",
@@ -3137,7 +3148,16 @@ exports.buyMarketItem = onCall(
             quantity: listingData.quantity,
             purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+          };
+          if (listingData.type === "randomDraw") {
+            boughtItem.drawSource = listingData.drawSource || "food";
+            boughtItem.loseEnabled = listingData.loseEnabled === true;
+            boughtItem.losePercent = Number(listingData.losePercent) || 0;
+            boughtItem.drawCandidates = Array.isArray(listingData.drawCandidates)
+              ? listingData.drawCandidates
+              : [];
+          }
+          transaction.set(newItemRef, boughtItem);
         }
 
         // 마켓 리스팅 상태 업데이트
@@ -3217,8 +3237,8 @@ exports.cancelMarketSale = onCall(
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
         } else {
-          const newItemRef = sellerInventoryRef.doc();
-          transaction.set(newItemRef, {
+          const newItemRef = sellerInventoryRef.doc(listingData.itemId);
+          const restoredItem = {
             itemId: listingData.itemId,
             name: listingData.name,
             icon: listingData.icon || "🔮",
@@ -3227,7 +3247,16 @@ exports.cancelMarketSale = onCall(
             quantity: listingData.quantity,
             restoredAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+          };
+          if (listingData.type === "randomDraw") {
+            restoredItem.drawSource = listingData.drawSource || "food";
+            restoredItem.loseEnabled = listingData.loseEnabled === true;
+            restoredItem.losePercent = Number(listingData.losePercent) || 0;
+            restoredItem.drawCandidates = Array.isArray(listingData.drawCandidates)
+              ? listingData.drawCandidates
+              : [];
+          }
+          transaction.set(newItemRef, restoredItem);
         }
 
         // 마켓 리스팅 삭제
@@ -3486,17 +3515,27 @@ exports.respondToOffer = onCall(
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           } else {
-            const newItemRef = buyerInventoryRef.doc();
-            transaction.set(newItemRef, {
+            const ld = listingDoc.data();
+            const newItemRef = buyerInventoryRef.doc(offerData.itemId);
+            const boughtItem = {
               itemId: offerData.itemId,
               name: offerData.itemName,
-              icon: listingDoc.data().icon || "🔮",
-              description: listingDoc.data().description || "",
-              type: listingDoc.data().type || "general",
+              icon: ld.icon || "🔮",
+              description: ld.description || "",
+              type: ld.type || "general",
               quantity: offerData.quantity,
               purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
+            };
+            if (ld.type === "randomDraw") {
+              boughtItem.drawSource = ld.drawSource || "food";
+              boughtItem.loseEnabled = ld.loseEnabled === true;
+              boughtItem.losePercent = Number(ld.losePercent) || 0;
+              boughtItem.drawCandidates = Array.isArray(ld.drawCandidates)
+                ? ld.drawCandidates
+                : [];
+            }
+            transaction.set(newItemRef, boughtItem);
           }
 
           // 마켓 리스팅 상태 업데이트
