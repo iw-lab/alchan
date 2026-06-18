@@ -2371,10 +2371,10 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
         .filter((d) => d.exists)
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter(
-          (it) =>
-            it.type !== "randomDraw" &&
-            it.available !== false &&
-            (it.stock === undefined || it.stock > 0),
+          // 🎰 [뽑기 재고 분리] 뽑기 풀은 상점 재고와 무관하게 후보를 항상 포함한다.
+          // (재고로 거르면 당첨돼 재고 0이 된 항목이 돌림판에서 사라짐 — 뽑기는 구매와 달리
+          //  자동 보충 트리거가 없어 0에 멈춤). available!==false(관리자 판매중지)만 존중.
+          (it) => it.type !== "randomDraw" && it.available !== false,
         )
         .map((it) => ({
           name: it.name || "아이템",
@@ -2385,7 +2385,7 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
     }
     if (pool.length === 0) {
       throw new Error(
-        "뽑을 수 있는 아이템이 없어요. (후보가 없거나 모두 품절·판매중지 상태예요)",
+        "뽑을 수 있는 아이템이 없어요. (후보가 없거나 모두 판매중지 상태예요)",
       );
     }
 
@@ -2453,29 +2453,12 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
         );
       }
 
-      let fOutcome = outcome;
-      let fPrize = prize;
-      let fWinningIndex = winningIndex;
-      let prizeStoreRef = null;
-      let decStock = false;
-
-      if (fOutcome === "win" && fPrize?.storeItemId) {
-        prizeStoreRef = db.collection("storeItems").doc(fPrize.storeItemId);
-        const ps = await transaction.get(prizeStoreRef);
-        const data = ps.exists ? ps.data() : null;
-        const inStock = data && (data.stock === undefined || data.stock > 0);
-        if (!inStock) {
-          if (meta.loseEnabled) {
-            fOutcome = "lose";
-            fPrize = null;
-            fWinningIndex = loseIndex;
-          } else {
-            throw new Error("방금 그 아이템이 품절됐어요. 다시 돌려주세요.");
-          }
-        } else if (data.stock !== undefined) {
-          decStock = true;
-        }
-      }
+      // 🎰 [뽑기 재고 분리] 품절 전환을 제거해 추첨 결과를 그대로 사용(재할당 없음)
+      const fOutcome = outcome;
+      const fPrize = prize;
+      const fWinningIndex = winningIndex;
+      // 🎰 [뽑기 재고 분리] 뽑기 당첨은 상점 재고를 차감하지 않고 항상 지급한다.
+      // 재고 read·품절 전환·재고 write 없음 → 재고 0이어도 돌림판에서 사라지지 않는다.
 
       // 당첨 지급 대상 doc 결정 + 존재 확인 (read)
       let prizeRef = null;
@@ -2489,14 +2472,7 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
         prizeExists = pc.exists;
       }
 
-      // WRITES
-      if (decStock && prizeStoreRef) {
-        transaction.update(prizeStoreRef, {
-          stock: admin.firestore.FieldValue.increment(-1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-
+      // WRITES (뽑기는 상점 재고를 건드리지 않음)
       const newQty = (curDraw.data().quantity || 0) - 1;
       if (newQty > 0) {
         transaction.update(drawItemRef, {
