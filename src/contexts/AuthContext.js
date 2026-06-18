@@ -98,10 +98,16 @@ export const AuthProvider = ({ children }) => {
   const usersRef = useRef([]);
   const classmatesRef = useRef([]);
   const allClassMembersRef = useRef([]);
+  // 🔥 [읽기폭주 fix] userDoc 미러 ref. refreshUserDocument가 userDoc 전체를 deps로 가지면
+  // 매 cash 변동(onSnapshot)마다 함수 identity가 churn → 이를 deps로 둔 effect(자동 만기/대출/적금
+  // 훅, Dashboard 등)가 cash 변동마다 재실행되며 products 서브컬렉션을 반복 read한다.
+  // 읽기는 이 ref로 하고 refreshUserDocument deps에서 userDoc을 제거해 함수를 안정화한다.
+  const userDocRef = useRef(null);
   // 다른 경로(로그인/로그아웃/onSnapshot)의 setState도 ref에 반영 (한 틱 지연 동기화)
   useEffect(() => { usersRef.current = users; }, [users]);
   useEffect(() => { classmatesRef.current = classmates; }, [classmates]);
   useEffect(() => { allClassMembersRef.current = allClassMembers; }, [allClassMembers]);
+  useEffect(() => { userDocRef.current = userDoc; }, [userDoc]);
 
   // Firebase 초기화 확인 (한 번만 실행) - 타임아웃 추가
   useEffect(() => {
@@ -1108,7 +1114,10 @@ export const AuthProvider = ({ children }) => {
   // 최적화: 특정 사용자 문서만 새로고침
   const refreshUserDocument = useCallback(
     async (userId) => {
-      const targetUserId = userId || userDoc?.id || userDoc?.uid;
+      // 🔥 [읽기폭주 fix] 현재 userId는 userDocRef로 읽어 deps에서 userDoc 제거 → 함수 identity 안정화.
+      // userId는 세션 중 불변이라 ref의 한 틱 지연은 비교에 영향 없음.
+      const currentId = userDocRef.current?.id || userDocRef.current?.uid;
+      const targetUserId = userId || currentId;
       if (!targetUserId) return null;
 
       logger.log(
@@ -1120,7 +1129,7 @@ export const AuthProvider = ({ children }) => {
       const freshDoc = await getUserDocument(targetUserId, true);
 
       // 현재 로그인한 사용자의 문서라면 즉시 상태 업데이트
-      if (freshDoc && targetUserId === (userDoc?.id || userDoc?.uid)) {
+      if (freshDoc && targetUserId === (userDocRef.current?.id || userDocRef.current?.uid)) {
         logger.log("[AuthContext] userDoc 즉시 업데이트:", freshDoc.cash);
         setUserDoc(freshDoc);
         // AuthContext 레벨의 캐시도 업데이트
@@ -1129,7 +1138,7 @@ export const AuthProvider = ({ children }) => {
 
       return freshDoc;
     },
-    [userDoc, setCachedUserDoc],
+    [setCachedUserDoc],
   );
 
   // 🔥 낙관적 업데이트 함수 (Cloud Function 호출 시 즉시 UI 업데이트)
