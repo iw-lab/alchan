@@ -430,7 +430,10 @@ export default function MyAssets() {
     // 9개 네트워크 쿼리를 생략 — 페이지 급속 재진입 시 중복 read 방지.
     // 거래 후 자산 목록은 원래 마운트/수동 새로고침에서만 갱신되며(헤더 현금은
     // AuthContext 실시간 리스너가 즉시 반영), 수동 새로고침 버튼은 force=true로 우회한다.
-    const ASSETS_REFETCH_THROTTLE = 90 * 1000; // 90초
+    // 🔥 [읽기최적화] 90초 → 5분. 1시간 표시 캐시가 즉시 그려지고(헤더 현금은
+    //   AuthContext 실시간 리스너로 항상 최신), 자산(부동산·예적금·대출)은 자주 안 바뀌며
+    //   수동 새로고침 버튼이 force=true로 우회하므로 재방문 9쿼리(150+ read)만 안전하게 절감.
+    const ASSETS_REFETCH_THROTTLE = 5 * 60 * 1000; // 5분
     if (!force && getCachedFirestoreData("myAssets", userId, ASSETS_REFETCH_THROTTLE)) {
       loadingRef.current = false;
       return;

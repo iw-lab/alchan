@@ -91,7 +91,10 @@ export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
  if (cancelled || matured.length === 0) return;
 
  // 선생님 계정 조회 (대출에 teacherId가 저장돼 있으면 우선 사용)
- const fallbackTeacherId = await findTeacherAccountId(userDoc.classCode);
+ // 🔥 [읽기최적화] 만기 대출에 teacherId가 하나라도 없을 때만 users 컬렉션 조회(동작 변화 0).
+ const fallbackTeacherId = matured.some((l) => !l.teacherId)
+ ? await findTeacherAccountId(userDoc.classCode)
+ : null;
 
  for (const loan of matured) {
  if (cancelled) break;

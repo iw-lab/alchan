@@ -35,7 +35,9 @@ const TypingRanking = ({ onBack }) => {
         setLoading(false);
         return;
       }
-      const members = await getClassmates(classCode, true, "typingRanking");
+      // 🔥 [읽기최적화] forceRefresh=true 제거 → 증분 동기화(updatedAt>lastSync, 변경분만 read).
+      //   캐시 우회 전체 25명 재읽기 방지. 새 점수는 증분 쿼리가 그대로 가져옴.
+      const members = await getClassmates(classCode, false, "typingRanking");
       const today = new Date().toDateString();
 
       // 본인 기록(서버 라운드트립 결과)에서 직접 추출 → 그만하기 기록 저장 검증
@@ -66,7 +68,9 @@ const TypingRanking = ({ onBack }) => {
     } finally {
       setLoading(false);
     }
-  }, [userDoc, user]);
+    // 🔥 [읽기최적화] deps를 primitive로 — userDoc 객체는 cash 변동(onSnapshot)마다
+    //   identity가 바뀌어 load 재생성→effect 재실행→전체 재읽기를 유발했음. 실제 사용값만 의존.
+  }, [userDoc?.classCode, user?.uid]);
 
   useEffect(() => {
     load();

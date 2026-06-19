@@ -107,7 +107,11 @@ export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
 
         if (cancelled || matured.length === 0) return;
 
-        const fallbackTeacherId = await findTeacherAccountId(userDoc.classCode);
+        // 🔥 [읽기최적화] 만기 상품에 teacherId가 하나라도 없을 때만 users 컬렉션 조회.
+        //   신규 상품은 생성 시 teacherId를 저장하므로 대부분 이 쿼리를 건너뜀(동작 변화 0).
+        const fallbackTeacherId = matured.some((p) => !p.teacherId)
+          ? await findTeacherAccountId(userDoc.classCode)
+          : null;
 
         for (const product of matured) {
           if (cancelled) break;
