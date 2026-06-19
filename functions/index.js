@@ -2169,6 +2169,28 @@ exports.purchaseStoreItem = onCall(
           }
         }
 
+        // 🛒 일반 아이템 하루 구매 제한 (아이템마다 하루 5개까지, 뽑기·관리자 제외)
+        //    user 문서의 자기-날짜 맵 dailyItemBuy[itemId]={date,count} — 전역 리셋 불필요,
+        //    인벤토리 삭제와 무관하게 유지(구매 후 사용해 doc 지워도 카운트 보존).
+        let itemBuyDayKey = null;
+        let itemBuyNewCount = 0;
+        if (itemData.type !== "randomDraw" && !isAdminBuyer) {
+          const DAILY_ITEM_BUY_LIMIT = 5;
+          const nowKstB = new Date(Date.now() + 9 * 60 * 60 * 1000);
+          itemBuyDayKey = `${nowKstB.getUTCFullYear()}-${String(
+            nowKstB.getUTCMonth() + 1,
+          ).padStart(2, "0")}-${String(nowKstB.getUTCDate()).padStart(2, "0")}`;
+          const buyEntry = userData.dailyItemBuy?.[itemId];
+          const prevBuy =
+            buyEntry?.date === itemBuyDayKey ? buyEntry.count || 0 : 0;
+          itemBuyNewCount = prevBuy + quantity;
+          if (itemBuyNewCount > DAILY_ITEM_BUY_LIMIT) {
+            throw new Error(
+              `이 아이템은 하루 ${DAILY_ITEM_BUY_LIMIT}개까지만 살 수 있어요. (오늘 ${prevBuy}개 구입)`,
+            );
+          }
+        }
+
         // 학생 구매 시 관리자에게 추가 세금 수익 (상점 판매세)
         // 관리자 본인 구매 시에는 세금 없음
         const shopSalesTax = !isAdminBuyer
@@ -2194,6 +2216,15 @@ exports.purchaseStoreItem = onCall(
             // 🎰 랜덤뽑기면 하루 구입 카운트 갱신(날짜 바뀌면 자동 리셋)
             ...(drawDayKey
               ? { dailyDrawDate: drawDayKey, dailyDrawCount: drawNewCount }
+              : {}),
+            // 🛒 일반 아이템 itemId별 하루 구매 카운트 갱신
+            ...(itemBuyDayKey
+              ? {
+                  [`dailyItemBuy.${itemId}`]: {
+                    date: itemBuyDayKey,
+                    count: itemBuyNewCount,
+                  },
+                }
               : {}),
           });
 
@@ -2549,7 +2580,11 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
-      const userItemDoc = await transaction.get(userItemRef);
+      // 모든 읽기 먼저 (write 전)
+      const [userItemDoc, userDoc] = await Promise.all([
+        transaction.get(userItemRef),
+        transaction.get(userRef),
+      ]);
 
       if (!userItemDoc.exists) {
         throw new Error("아이템을 찾을 수 없습니다.");
@@ -2562,14 +2597,49 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
         throw new Error(`아이템 수량이 부족합니다. (보유: ${currentQuantity}, 요청: ${useQty})`);
       }
 
-      // 아이템 효과 적용 (예: 현금 증가) - 수량만큼 반복 적용
-      if (itemData.effect && itemData.effect.type === "cash") {
-        const cashAmount = (itemData.effect.value || 0) * useQty;
-        transaction.update(userRef, {
-          cash: admin.firestore.FieldValue.increment(cashAmount),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+      // 🪄 일반 아이템 하루 사용 제한 (아이템마다 하루 5개까지, 관리자·교사 제외)
+      //    user 문서의 자기-날짜 맵 dailyItemUse[itemId]={date,count}
+      const userData = userDoc.exists ? userDoc.data() : {};
+      const isUseExempt =
+        userData.isAdmin === true ||
+        userData.isSuperAdmin === true ||
+        userData.isTeacher === true;
+      let useDayKey = null;
+      let useNewCount = 0;
+      if (!isUseExempt) {
+        const DAILY_ITEM_USE_LIMIT = 5;
+        const nowKstU = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        useDayKey = `${nowKstU.getUTCFullYear()}-${String(
+          nowKstU.getUTCMonth() + 1,
+        ).padStart(2, "0")}-${String(nowKstU.getUTCDate()).padStart(2, "0")}`;
+        const useEntry = userData.dailyItemUse?.[itemId];
+        const prevUse = useEntry?.date === useDayKey ? useEntry.count || 0 : 0;
+        useNewCount = prevUse + useQty;
+        if (useNewCount > DAILY_ITEM_USE_LIMIT) {
+          throw new Error(
+            `이 아이템은 하루 ${DAILY_ITEM_USE_LIMIT}개까지만 사용할 수 있어요. (오늘 ${prevUse}개 사용)`,
+          );
+        }
       }
+
+      // 유저 문서 갱신: 현금 효과(있으면) + itemId별 하루 사용 카운트
+      const cashAmount =
+        itemData.effect && itemData.effect.type === "cash"
+          ? (itemData.effect.value || 0) * useQty
+          : 0;
+      const userUpdate = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (cashAmount !== 0) {
+        userUpdate.cash = admin.firestore.FieldValue.increment(cashAmount);
+      }
+      if (useDayKey) {
+        userUpdate[`dailyItemUse.${itemId}`] = {
+          date: useDayKey,
+          count: useNewCount,
+        };
+      }
+      transaction.update(userRef, userUpdate);
 
       // 아이템 수량 감소 (요청한 수량만큼)
       const newQuantity = currentQuantity - useQty;
