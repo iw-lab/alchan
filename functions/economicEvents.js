@@ -1255,4 +1255,7 @@ module.exports = {
   triggerClassEconomicEvent,
   runEconomicEventsForAllClasses,
   executeEvent,
+  // 가치 고정 아이템(자유시간 등) 판별 — 물가 이벤트·국고 되팔기에서 공통 제외
+  isStorePriceEventExcluded,
+  STORE_PRICE_EVENT_EXCLUDED_KEYWORDS,
 };

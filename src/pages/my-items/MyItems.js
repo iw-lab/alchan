@@ -214,10 +214,17 @@ const MyItems = () => {
   const [isSellingToTreasury, setIsSellingToTreasury] = useState(false);
 
   // 현재 상점가 기준 되팔기 단가(70%) 계산 — 상점에 판매중인 아이템만 되팔기 가능
+  // 가치 고정 아이템(자유시간 등)은 제외 (서버 isStorePriceEventExcluded와 동일 판별)
+  const isValueFixedItem = (store) => {
+    if (!store) return false;
+    if (store.excludeFromEconomicEvent === true) return true;
+    const name = (store.name || "").toString();
+    return name.includes("자유시간") || name.includes("자유 시간");
+  };
   const getTreasuryBuyback = (group) => {
     const itemId = group?.displayInfo?.itemId;
     const store = storeItems?.find((it) => it.id === itemId);
-    if (!store || store.available === false) {
+    if (!store || store.available === false || isValueFixedItem(store)) {
       return { eligible: false, unitPrice: 0 };
     }
     const price = Number(store.price);

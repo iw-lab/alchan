@@ -1206,7 +1206,10 @@ const COMMISSION_RATE = 0.003; // 수수료율 0.3%
 const TAX_RATE = 0.22; // 양도소득세율 22%
 const BOND_TAX_RATE = 0.154; // 채권세율 15.4%
 const TRANSACTION_TAX_RATE = 0.01; // 거래세율 1%
-const { getStockTaxMultiplier } = require("./economicEvents");
+const {
+  getStockTaxMultiplier,
+  isStorePriceEventExcluded,
+} = require("./economicEvents");
 
 exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode } = await checkAuthAndGetUserData(request);
@@ -2343,7 +2346,8 @@ exports.sellItemToTreasury = onCall(
     const userItemRef = userRef.collection("inventory").doc(itemId);
     const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
-    // 국고 지출처(관리자) 찾기
+    // 국고 지출처(관리자/교사) 찾기 — isAdmin 우선, 없으면 레거시 isTeacher 폴백.
+    // (isTeacher만 설정된 교사 계정 학급에서 되팔기가 막히던 문제 방지. resetCouponGoal 선례)
     let adminRef = null;
     const adminSnapshot = await db
       .collection("users")
@@ -2353,6 +2357,16 @@ exports.sellItemToTreasury = onCall(
       .get();
     if (!adminSnapshot.empty) {
       adminRef = adminSnapshot.docs[0].ref;
+    } else {
+      const teacherSnapshot = await db
+        .collection("users")
+        .where("classCode", "==", classCode)
+        .where("isTeacher", "==", true)
+        .limit(1)
+        .get();
+      if (!teacherSnapshot.empty) {
+        adminRef = teacherSnapshot.docs[0].ref;
+      }
     }
 
     try {
@@ -2392,6 +2406,13 @@ exports.sellItemToTreasury = onCall(
         const storeData = itemDoc.data();
         if (storeData.available === false) {
           throw new Error("판매중지된 아이템이라 국고에 되팔 수 없어요.");
+        }
+        // 🚫 가치 고정 아이템(자유시간 등)은 되팔기 불가
+        //    (물가 이벤트 제외와 동일 판별: excludeFromEconomicEvent 플래그 또는 "자유시간" 이름)
+        if (isStorePriceEventExcluded(storeData)) {
+          throw new Error(
+            `'${storeData.name || "이 아이템"}'은(는) 국고에 되팔 수 없는 아이템이에요.`,
+          );
         }
         const storePrice = Number(storeData.price);
         if (!Number.isFinite(storePrice) || storePrice <= 0) {
