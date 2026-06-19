@@ -2343,7 +2343,7 @@ exports.sellItemToTreasury = onCall(
 
     const userRef = db.collection("users").doc(uid);
     const itemRef = db.collection("storeItems").doc(itemId);
-    const userItemRef = userRef.collection("inventory").doc(itemId);
+    let userItemRef = userRef.collection("inventory").doc(itemId);
     const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
     // 국고 지출처(관리자/교사) 찾기 — isAdmin 우선, 없으면 레거시 isTeacher 폴백.
@@ -2374,15 +2374,27 @@ exports.sellItemToTreasury = onCall(
         // 🚨 서버측 idempotency check (read만, 첫 줄)
         const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
-        // 모든 읽기 먼저
-        const readPromises = [
-          transaction.get(userItemRef),
+        // 모든 읽기 먼저 (write 전)
+        const [itemDoc, adminDoc] = await Promise.all([
           transaction.get(itemRef),
-        ];
-        if (adminRef) readPromises.push(transaction.get(adminRef));
-        const reads = await Promise.all(readPromises);
-        const [userItemDoc, itemDoc] = reads;
-        const adminDoc = adminRef ? reads[2] : null;
+          adminRef ? transaction.get(adminRef) : Promise.resolve(null),
+        ]);
+        let userItemDoc = await transaction.get(userItemRef);
+        // 🔁 인벤토리 doc id가 itemId와 다른 레거시(정규화 이전) 아이템 폴백:
+        //    doc(itemId)로 못 찾으면 itemId 필드로 조회해 실제 보유 문서를 찾는다.
+        //    (구매·선물·뽑기당첨·함께구매는 doc id=itemId지만, 정규화 전 아이템은
+        //     랜덤 doc id일 수 있어 학생만 "보유 안 함"으로 되팔기 실패하던 케이스)
+        if (!userItemDoc.exists) {
+          const invQuery = userRef
+            .collection("inventory")
+            .where("itemId", "==", itemId)
+            .limit(1);
+          const invQSnap = await transaction.get(invQuery);
+          if (!invQSnap.empty) {
+            userItemDoc = invQSnap.docs[0];
+            userItemRef = invQSnap.docs[0].ref;
+          }
+        }
 
         // 보유 수량 검증
         if (!userItemDoc.exists) {
@@ -2434,6 +2446,9 @@ exports.sellItemToTreasury = onCall(
         );
         const totalGain = unitPrice * quantity;
         const itemName = storeData.name || invData.name || "아이템";
+        // 판매자 == 국고 보유자(관리자/교사 본인)면 순변동 0 — 같은 문서에 +/- 이중
+        // increment가 last-write-wins로 깨지지 않게 cash 변동 자체를 생략한다.
+        const isSelfTreasury = adminRef.path === userRef.path;
 
         // --- 쓰기 ---
         // 1) 학생 인벤토리 차감 (0이면 문서 삭제)
@@ -2447,18 +2462,29 @@ exports.sellItemToTreasury = onCall(
           });
         }
 
-        // 2) 학생 cash 증액 (increment 필수)
-        transaction.update(userRef, {
-          cash: admin.firestore.FieldValue.increment(totalGain),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        // 2) 학생 cash 증액 + 4) 국고 차감 — 자기판매(seller==국고)면 순변동 0이라 생략
+        if (!isSelfTreasury) {
+          // 학생 cash 증액 (increment 필수)
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(totalGain),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          // 국고(=관리자 cash) 차감 (위에서 존재 보장됨)
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(-totalGain),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
 
-        // 3) 거래 로그(audit)
+        // 3) 거래 로그(audit) — 자기판매면 순변동 0 기록
+        const loggedAmount = isSelfTreasury ? 0 : totalGain;
         const txRef = userRef.collection("transactions").doc();
         transaction.set(txRef, {
           type: "treasurySellback",
-          amount: totalGain,
-          description: `[국고 되팔기] ${itemName} ${quantity}개 (단가 ${unitPrice.toLocaleString()}원)`,
+          amount: loggedAmount,
+          description: isSelfTreasury
+            ? `[국고 되팔기] ${itemName} ${quantity}개 (본인 국고, 현금 변동 없음)`
+            : `[국고 되팔기] ${itemName} ${quantity}개 (단가 ${unitPrice.toLocaleString()}원)`,
           itemId,
           itemName,
           quantity,
@@ -2466,26 +2492,28 @@ exports.sellItemToTreasury = onCall(
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // 4) 국고(=관리자 cash) 차감 (위에서 존재 보장됨)
-        transaction.update(adminRef, {
-          cash: admin.firestore.FieldValue.increment(-totalGain),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
         // 5) 국고 통계 기록 (totalAmount 제외 - 국고=관리자cash 규약)
-        transaction.set(
-          treasuryRef,
-          {
-            buybackPayout: admin.firestore.FieldValue.increment(totalGain),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
+        if (!isSelfTreasury) {
+          transaction.set(
+            treasuryRef,
+            {
+              buybackPayout: admin.firestore.FieldValue.increment(totalGain),
+              lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
 
         // ✅ idempotency mark (모든 write 끝난 후)
         markIdempotent(transaction, idemKeyRef);
 
-        return { itemName, quantity, unitPrice, totalGain, newInvQty };
+        return {
+          itemName,
+          quantity,
+          unitPrice,
+          totalGain: loggedAmount,
+          newInvQty,
+        };
       });
 
       logger.info(
