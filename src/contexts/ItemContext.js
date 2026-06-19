@@ -127,6 +127,7 @@ export const ItemProvider = ({ children }) => {
         "updateUserItemQuantity",
       ),
       listUserItemForSale: httpsCallable(functions, "listUserItemForSale"),
+      sellItemToTreasury: httpsCallable(functions, "sellItemToTreasury"),
       buyMarketItem: httpsCallable(functions, "buyMarketItem"),
       cancelMarketSale: httpsCallable(functions, "cancelMarketSale"),
       makeOffer: httpsCallable(functions, "makeOffer"),
@@ -897,6 +898,97 @@ export const ItemProvider = ({ children }) => {
     [userId, firebaseFunctions, refreshData],
   );
 
+  // 💰 국고에 되팔기: 현재 상점가 × 70% (서버가 시세·금액 결정). 낙관적 cash 증액 + 인벤토리 차감.
+  const sellItemToTreasury = useCallback(
+    async (itemId, quantity = 1) => {
+      if (!userId) return { success: false, message: "로그인 필요" };
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return { success: false, message: "수량이 올바르지 않습니다." };
+      }
+
+      const itemInStore = items.find((it) => it.id === itemId);
+      const itemName =
+        itemInStore?.name ||
+        userItems.find((u) => u.itemId === itemId || u.id === itemId)?.name ||
+        "아이템";
+      // 낙관적 표시용 추정 단가(서버가 최종 결정)
+      const estUnit = itemInStore?.price
+        ? Math.max(1, Math.round(itemInStore.price * 0.7))
+        : 0;
+      const estGain = estUnit * quantity;
+
+      // 낙관적 업데이트: cash 증액 + 인벤토리 수량 차감 (실패 시 롤백)
+      const originalUserItems = [...userItems];
+      if (optimisticUpdate && estGain > 0) {
+        optimisticUpdate({ cash: estGain });
+      }
+      setUserItems((prev) =>
+        prev
+          .map((item) => {
+            if (item.itemId === itemId || item.id === itemId) {
+              const newQuantity = (item.quantity || 0) - quantity;
+              if (newQuantity <= 0) return null;
+              return { ...item, quantity: newQuantity };
+            }
+            return item;
+          })
+          .filter(Boolean),
+      );
+
+      try {
+        const res = await firebaseFunctions.sellItemToTreasury({
+          itemId,
+          quantity,
+          idempotencyKey: crypto.randomUUID(),
+        });
+        const data = res.data || {};
+        // 서버 확정 금액과 낙관적 추정의 차이를 보정
+        if (optimisticUpdate) {
+          const diff = (data.totalGain || 0) - (estGain > 0 ? estGain : 0);
+          if (diff !== 0) optimisticUpdate({ cash: diff });
+        }
+
+        logActivity(db, {
+          classCode: currentUserClassCode,
+          userId,
+          userName: userDoc?.name || "사용자",
+          type: ACTIVITY_TYPES.ITEM_SELL,
+          description: `${data.itemName || itemName} ${quantity}개 국고 되팔기 (${(data.totalGain || 0).toLocaleString()}원)`,
+          amount: data.totalGain || 0,
+          metadata: {
+            itemId,
+            itemName: data.itemName || itemName,
+            quantity,
+            unitPrice: data.unitPrice,
+            totalGain: data.totalGain,
+          },
+        });
+
+        refreshData();
+        return { success: true, ...data };
+      } catch (error) {
+        // 롤백
+        logger.error("[ItemContext] 국고 되팔기 실패, 롤백:", error);
+        if (optimisticUpdate && estGain > 0) {
+          optimisticUpdate({ cash: -estGain });
+        }
+        setUserItems(originalUserItems);
+        refreshData();
+        return { success: false, message: error.message };
+      }
+    },
+    [
+      userId,
+      items,
+      userItems,
+      firebaseFunctions,
+      optimisticUpdate,
+      refreshData,
+      currentUserClassCode,
+      userDoc,
+    ],
+  );
+
   // Final context value
   const contextValue = useMemo(
     () => ({
@@ -914,6 +1006,7 @@ export const ItemProvider = ({ children }) => {
       drawRandomItem,
       updateUserItemQuantity,
       listItemForSale,
+      sellItemToTreasury,
       buyMarketItem,
       cancelSale,
       makeOffer,
@@ -938,6 +1031,7 @@ export const ItemProvider = ({ children }) => {
       drawRandomItem,
       updateUserItemQuantity,
       listItemForSale,
+      sellItemToTreasury,
       buyMarketItem,
       cancelSale,
       makeOffer,

@@ -105,7 +105,7 @@ export const addItemToInventory = async (userId, storeItemId, quantity, itemDeta
     await updateDoc(inventoryItemRef, { quantity: increment(quantity), updatedAt: serverTimestamp() });
   } else {
     const newItemRef = doc(inventoryColRef);
-    await setDoc(newItemRef, {
+    const newItemData = {
       itemId: storeItemId,
       quantity: quantity,
       name: itemName,
@@ -113,7 +113,17 @@ export const addItemToInventory = async (userId, storeItemId, quantity, itemDeta
       type: itemDetails.type || "item",
       purchasedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    };
+    // 🎰 랜덤뽑기면 추첨 메타도 보존 (MyItems 돌림판 분기 + drawRandomItem 추첨용)
+    if (itemDetails.type === "randomDraw") {
+      newItemData.drawSource = itemDetails.drawSource || "food";
+      newItemData.loseEnabled = itemDetails.loseEnabled === true;
+      newItemData.losePercent = Number(itemDetails.losePercent) || 0;
+      newItemData.drawCandidates = Array.isArray(itemDetails.drawCandidates)
+        ? itemDetails.drawCandidates
+        : [];
+    }
+    await setDoc(newItemRef, newItemData);
   }
   await addActivityLog(userId, "아이템 획득", `${itemName} ${quantity}개를 획득했습니다.`);
   return true;

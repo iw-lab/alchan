@@ -113,6 +113,11 @@ exports.completeGroupPurchase = onCall(
           }
         }
 
+        // 3.5) 당첨자(winner) 유저 문서 읽기 — 🎰 randomDraw 하루 "구매" 카운트 반영용
+        //   (모든 read는 write 이전에 수행해야 함)
+        const winnerUserRef = db.collection("users").doc(winnerId);
+        const winnerUserSnap = await transaction.get(winnerUserRef);
+
         // 4) 재고/가격 계산
         let finalStock = null;
         let finalPrice = itemData?.price ?? null;
@@ -142,6 +147,22 @@ exports.completeGroupPurchase = onCall(
           }
         }
 
+        // 🎰 randomDraw 메타 (storeItem 기준). 일반 구매(purchaseStoreItem)와 동일하게
+        //    inventory에 type + 추첨 메타를 복사해야 MyItems가 돌림판으로 분기하고
+        //    drawRandomItem이 inventory 메타로 추첨할 수 있음. (없으면 그냥 "사용중 5분" 일반템 취급)
+        const isRandomDraw = itemData?.type === "randomDraw";
+        const buildDrawMeta = () => {
+          if (!isRandomDraw) return {};
+          return {
+            drawSource: itemData.drawSource || "food",
+            loseEnabled: itemData.loseEnabled === true,
+            losePercent: Number(itemData.losePercent) || 0,
+            drawCandidates: Array.isArray(itemData.drawCandidates)
+              ? itemData.drawCandidates
+              : [],
+          };
+        };
+
         // 5) 인벤토리에 아이템 추가
         if (storeItemId) {
           const inventoryRef = db
@@ -153,6 +174,10 @@ exports.completeGroupPurchase = onCall(
           if (invSnap.exists) {
             transaction.update(inventoryRef, {
               quantity: admin.firestore.FieldValue.increment(1),
+              // 과거 버그(type:"item") 또는 메타 누락분 보정: randomDraw면 타입·메타 갱신
+              ...(isRandomDraw
+                ? { type: "randomDraw", ...buildDrawMeta() }
+                : {}),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           } else {
@@ -161,8 +186,37 @@ exports.completeGroupPurchase = onCall(
               name: itemName,
               icon: itemIcon,
               quantity: 1,
-              type: "item",
+              // 하드코딩 "item" 금지 — storeItem 실제 타입 사용 (randomDraw 보존)
+              type: itemData?.type || "item",
+              ...buildDrawMeta(),
               purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
+
+        // 5.5) 🎰 randomDraw면 당첨자 하루 "구매" 카운트에 +1 (함께구매로 구매 제한 우회 방지)
+        //   - 학생만 반영(관리자 제외). 날짜(KST) 바뀌면 자동 리셋.
+        //   - 카운트만 올리고 한도 초과로 throw하지 않음(이미 완료된 캠페인 깨지면 안 됨).
+        //   - 실제 "돌리기(쓰기)" 카운트(dailySpinCount)는 drawRandomItem 사용 시점에 자동 증가.
+        if (isRandomDraw) {
+          const winnerData = winnerUserSnap.exists ? winnerUserSnap.data() : {};
+          const isWinnerAdmin =
+            winnerData.isAdmin === true ||
+            winnerData.isSuperAdmin === true ||
+            winnerData.isTeacher === true;
+          if (!isWinnerAdmin) {
+            const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+            const drawDayKey = `${nowKst.getUTCFullYear()}-${String(
+              nowKst.getUTCMonth() + 1,
+            ).padStart(2, "0")}-${String(nowKst.getUTCDate()).padStart(2, "0")}`;
+            const prevCount =
+              winnerData.dailyDrawDate === drawDayKey
+                ? winnerData.dailyDrawCount || 0
+                : 0;
+            transaction.update(winnerUserRef, {
+              dailyDrawDate: drawDayKey,
+              dailyDrawCount: prevCount + 1,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
           }

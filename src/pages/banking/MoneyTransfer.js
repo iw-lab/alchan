@@ -27,6 +27,8 @@ function MoneyTransfer() {
   const [amountType, setAmountType] = useState("fixed");
   const [action, setAction] = useState("send");
   const [takeMode, setTakeMode] = useState("toMe"); // "toMe" 또는 "remove"
+  // 기본 세금 10% (보내기 시 학생은 90% 수령). 마이너스 학생 보충 시 부족분만큼만
+  // 보내면 10%가 빠져 1/10이 마이너스로 남으니, 그때는 세금 칸을 0으로 두고 보낼 것.
   const [taxRate, setTaxRate] = useState(10);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");

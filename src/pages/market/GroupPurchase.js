@@ -382,10 +382,30 @@ export default function GroupPurchase() {
               if (matched) fallbackItemId = matched.id;
             }
             if (fallbackItemId && result.winnerId) {
-              await addItemToInventory(result.winnerId, fallbackItemId, 1, {
+              // 🎰 randomDraw면 type+추첨 메타까지 넘겨 실제 돌림판으로 보이게 (없으면 일반템 5분 취급)
+              const storeMeta =
+                items?.find((i) => i.id === fallbackItemId) || {};
+              const fallbackDetails = {
                 name: result.cData.itemName,
                 icon: result.cData.itemIcon || "🎁",
-              });
+                type: storeMeta.type || "item",
+              };
+              if (storeMeta.type === "randomDraw") {
+                fallbackDetails.drawSource = storeMeta.drawSource || "food";
+                fallbackDetails.loseEnabled = storeMeta.loseEnabled === true;
+                fallbackDetails.losePercent = Number(storeMeta.losePercent) || 0;
+                fallbackDetails.drawCandidates = Array.isArray(
+                  storeMeta.drawCandidates,
+                )
+                  ? storeMeta.drawCandidates
+                  : [];
+              }
+              await addItemToInventory(
+                result.winnerId,
+                fallbackItemId,
+                1,
+                fallbackDetails,
+              );
             }
             alert(
               `🎉 목표 달성! ${result.winnerName}님이 아이템을 받았습니다.\n(서버 처리 일부 실패 - 관리자에게 문의)`,

@@ -58,17 +58,21 @@ const QuantityBadge = ({ quantity }) => {
 const MyItems = () => {
   const { user, userDoc, users, classmates } = useAuth() || {};
   const {
+    items: storeItems,
     userItems,
     useItem,
     drawRandomItem,
     listItemForSale,
+    sellItemToTreasury,
     refreshData,
     updateLocalUserItems,
   } = useItems() || {
+    items: [],
     userItems: [],
     useItem: null,
     drawRandomItem: null,
     listItemForSale: null,
+    sellItemToTreasury: null,
     refreshData: null,
     updateLocalUserItems: null,
   };
@@ -201,6 +205,90 @@ const MyItems = () => {
     quantity: 1,
     price: 0,
   });
+  // 💰 국고 되팔기 모달
+  const [sellToTreasuryModal, setSellToTreasuryModal] = useState({
+    isOpen: false,
+    group: null,
+    quantity: 1,
+  });
+  const [isSellingToTreasury, setIsSellingToTreasury] = useState(false);
+
+  // 현재 상점가 기준 되팔기 단가(70%) 계산 — 상점에 판매중인 아이템만 되팔기 가능
+  const getTreasuryBuyback = (group) => {
+    const itemId = group?.displayInfo?.itemId;
+    const store = storeItems?.find((it) => it.id === itemId);
+    if (!store || store.available === false) {
+      return { eligible: false, unitPrice: 0 };
+    }
+    const price = Number(store.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      return { eligible: false, unitPrice: 0 };
+    }
+    return { eligible: true, unitPrice: Math.max(1, Math.round(price * 0.7)) };
+  };
+
+  const handleOpenSellToTreasuryModal = (group) => {
+    if (!user) {
+      showNotification("error", "로그인이 필요합니다.");
+      return;
+    }
+    if (!sellItemToTreasury) {
+      showNotification("error", "되팔기 기능을 사용할 수 없습니다.");
+      return;
+    }
+    if (!group || group.totalQuantity <= 0) {
+      showNotification("error", "되팔 아이템이 없습니다.");
+      return;
+    }
+    const { eligible } = getTreasuryBuyback(group);
+    if (!eligible) {
+      showNotification(
+        "error",
+        "상점에서 판매중인 아이템만 국고에 되팔 수 있어요.",
+      );
+      return;
+    }
+    setSellToTreasuryModal({ isOpen: true, group, quantity: 1 });
+  };
+
+  const handleCloseSellToTreasuryModal = () => {
+    if (isSellingToTreasury) return;
+    setSellToTreasuryModal({ isOpen: false, group: null, quantity: 1 });
+  };
+
+  const handleSellToTreasuryQuantityChange = (value) => {
+    const maxQty = sellToTreasuryModal.group?.totalQuantity || 1;
+    const newQty = Math.max(1, Math.min(maxQty, parseInt(value, 10) || 1));
+    setSellToTreasuryModal((prev) => ({ ...prev, quantity: newQty }));
+  };
+
+  const handleConfirmSellToTreasury = async () => {
+    if (isSellingToTreasury) return; // 클라이언트 lock
+    const group = sellToTreasuryModal.group;
+    const quantity = sellToTreasuryModal.quantity;
+    if (!group || !sellItemToTreasury) return;
+    const itemId = group.displayInfo.itemId;
+
+    setIsSellingToTreasury(true);
+    try {
+      const res = await sellItemToTreasury(itemId, quantity);
+      if (res?.success) {
+        showNotification(
+          "success",
+          res.message ||
+            `${group.displayInfo.name} ${quantity}개를 국고에 되팔았어요.`,
+        );
+        setSellToTreasuryModal({ isOpen: false, group: null, quantity: 1 });
+      } else {
+        showNotification("error", res?.message || "되팔기에 실패했습니다.");
+      }
+    } catch (error) {
+      logger.error("[MyItems] 국고 되팔기 실패:", error);
+      showNotification("error", `되팔기 중 오류: ${error.message}`);
+    } finally {
+      setIsSellingToTreasury(false);
+    }
+  };
 
   const handleOpenUseItemModal = async (group) => {
     if (!user) {
@@ -1075,6 +1163,18 @@ const MyItems = () => {
                           >
                             {isSyncing ? "동기화 중" : "선물하기"}
                           </button>
+                          {getTreasuryBuyback(group).eligible && (
+                            <button
+                              className="sell-treasury-button"
+                              onClick={() => {
+                                handleOpenSellToTreasuryModal(group);
+                              }}
+                              disabled={isSyncing}
+                              title="현재 상점가의 70%로 국고에 되팔기"
+                            >
+                              국고에 팔기
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1504,6 +1604,101 @@ const MyItems = () => {
                 disabled={isSyncing}
               >
                 {isSyncing ? "동기화 중..." : "판매 등록"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💰 국고에 되팔기 모달 */}
+      {sellToTreasuryModal.isOpen && sellToTreasuryModal.group && (
+        <div
+          className="myitems-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseSellToTreasuryModal();
+          }}
+        >
+          <div className="myitems-modal-container">
+            <div className="myitems-modal-header">
+              <h3>
+                '{sellToTreasuryModal.group.displayInfo.name}' 국고에 되팔기
+              </h3>
+              <button
+                onClick={handleCloseSellToTreasuryModal}
+                className="myitems-close-button"
+                disabled={isSellingToTreasury}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="myitems-modal-body">
+              <div className="item-preview-simple">
+                <span className="item-icon-small">
+                  {sellToTreasuryModal.group.displayInfo.icon}
+                </span>
+                <span>
+                  {sellToTreasuryModal.group.displayInfo.name} (보유:{" "}
+                  {sellToTreasuryModal.group.totalQuantity}개)
+                </span>
+              </div>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "#64748b",
+                  margin: "8px 0",
+                }}
+              >
+                현재 상점가의 <strong>70%</strong> 가격으로 국고에 되팝니다.
+                (단가{" "}
+                <strong>
+                  {getTreasuryBuyback(
+                    sellToTreasuryModal.group,
+                  ).unitPrice.toLocaleString()}
+                  원
+                </strong>
+                )
+              </p>
+              <div className="form-group">
+                <label htmlFor="sellToTreasuryQuantity">
+                  되팔 수량 (최대: {sellToTreasuryModal.group.totalQuantity}개):
+                </label>
+                <input
+                  type="number"
+                  id="sellToTreasuryQuantity"
+                  value={sellToTreasuryModal.quantity}
+                  onChange={(e) =>
+                    handleSellToTreasuryQuantityChange(e.target.value)
+                  }
+                  min="1"
+                  max={sellToTreasuryModal.group.totalQuantity}
+                  disabled={isSellingToTreasury}
+                />
+              </div>
+              <div className="sell-total-preview">
+                예상 수령액:{" "}
+                <strong>
+                  {(
+                    getTreasuryBuyback(sellToTreasuryModal.group).unitPrice *
+                    sellToTreasuryModal.quantity
+                  ).toLocaleString()}
+                  원
+                </strong>
+              </div>
+            </div>
+            <div className="myitems-modal-footer">
+              <button
+                onClick={handleCloseSellToTreasuryModal}
+                className="button-secondary"
+                disabled={isSellingToTreasury}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmSellToTreasury}
+                className="button-primary sell-button"
+                disabled={isSellingToTreasury}
+              >
+                {isSellingToTreasury ? "되파는 중..." : "국고에 팔기"}
               </button>
             </div>
           </div>

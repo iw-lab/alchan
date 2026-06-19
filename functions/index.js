@@ -1019,6 +1019,80 @@ exports.donateCoupon = onCall(
   },
 );
 
+// 🎯 학급 쿠폰 목표 초기화 (교사/관리자) — 서버에서 권한 검증 후 admin SDK로 일괄 리셋.
+//    기존엔 클라이언트 writeBatch였는데 firestore.rules의 isAdmin()을 요구해
+//    isTeacher-only/legacy 교사 계정(isAdmin 미설정)에서 권한 오류로 초기화가 막혔다.
+//    기부/판매/선물과 동일하게 CF로 통일하여 권한 일관성 확보.
+exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode, isAdmin, isSuperAdmin, userData } =
+    await checkAuthAndGetUserData(request);
+  const isTeacher = userData?.isTeacher === true;
+  if (!isAdmin && !isSuperAdmin && !isTeacher) {
+    throw new HttpsError(
+      "permission-denied",
+      "교사/관리자만 쿠폰 목표를 초기화할 수 있습니다.",
+    );
+  }
+  if (!classCode) {
+    throw new HttpsError(
+      "failed-precondition",
+      "학급 코드가 없어 초기화할 수 없습니다.",
+    );
+  }
+
+  const goalRef = db.collection("goals").doc(`${classCode}_goal`);
+
+  try {
+    // 1) 같은 학급 학생들의 myContribution 0으로 리셋 (500 write 한도 대비 청크 분할)
+    const usersSnap = await db
+      .collection("users")
+      .where("classCode", "==", classCode)
+      .get();
+    const userDocs = usersSnap.docs;
+    let resetUserCount = 0;
+    const CHUNK = 450;
+    for (let i = 0; i < userDocs.length; i += CHUNK) {
+      const batch = db.batch();
+      userDocs.slice(i, i + CHUNK).forEach((d) => {
+        if ((d.data().myContribution || 0) !== 0) {
+          batch.update(d.ref, {
+            myContribution: 0,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          resetUserCount++;
+        }
+      });
+      await batch.commit();
+    }
+
+    // 2) goal 문서 리셋 (없으면 생성). targetAmount/title 등은 merge로 보존.
+    await goalRef.set(
+      {
+        progress: 0,
+        currentAmount: 0,
+        donations: [],
+        donationCount: 0,
+        classCode,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resetAt: admin.firestore.FieldValue.serverTimestamp(),
+        resetBy: uid,
+      },
+      { merge: true },
+    );
+
+    logger.info(
+      `[resetCouponGoal] ${classCode} 초기화 by ${uid} (학생 ${resetUserCount}명 myContribution=0)`,
+    );
+    return { success: true, resetUserCount };
+  } catch (error) {
+    logger.error(`[resetCouponGoal] Error for class ${classCode}:`, error);
+    throw new HttpsError(
+      "aborted",
+      error.message || "쿠폰 목표 초기화에 실패했습니다.",
+    );
+  }
+});
+
 exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid } = await checkAuthAndGetUserData(request);
   const { amount } = request.data;
@@ -2234,6 +2308,179 @@ exports.purchaseStoreItem = onCall(
       throw new HttpsError(
         "aborted",
         error.message || "아이템 구매에 실패했습니다.",
+      );
+    }
+  },
+);
+
+// 💰 학생이 보유 아이템을 국고(=관리자 cash)에 되팔기.
+//    되팔기 단가 = 현재 상점가 × 70% (30% 할인). 시세는 서버가 storeItems에서
+//    직접 읽어 결정(클라 가격 신뢰 안 함 — 치팅 방지).
+//    - 자격: 상점에 현재 판매중인 아이템만(storeItems 존재 + available!==false).
+//      삭제·판매중지된 아이템(선물·뽑기로 받은 것 포함)은 되팔기 불가 → 국고 고갈 통제.
+//    - 무한증식 불가: VAT 포함 구매가(110%)보다 항상 싸게(70%) 팔리므로 차익거래 구조상 X.
+//    - 안전망: 클라 lock + 서버 idempotency + increment + 거래로그(audit) + 국고 통계.
+//    - 상점 재고(stock)는 건드리지 않음(국고 연동 = 현금만; 자동보충 가격로직과 분리).
+const TREASURY_BUYBACK_RATIO = 0.7;
+exports.sellItemToTreasury = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request);
+    const { itemId, quantity = 1, idempotencyKey } = request.data;
+
+    if (!itemId || typeof itemId !== "string") {
+      throw new HttpsError("invalid-argument", "유효한 아이템 ID가 필요합니다.");
+    }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+      throw new HttpsError(
+        "invalid-argument",
+        "수량은 1~100 사이의 정수여야 합니다.",
+      );
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const itemRef = db.collection("storeItems").doc(itemId);
+    const userItemRef = userRef.collection("inventory").doc(itemId);
+    const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+
+    // 국고 지출처(관리자) 찾기
+    let adminRef = null;
+    const adminSnapshot = await db
+      .collection("users")
+      .where("classCode", "==", classCode)
+      .where("isAdmin", "==", true)
+      .limit(1)
+      .get();
+    if (!adminSnapshot.empty) {
+      adminRef = adminSnapshot.docs[0].ref;
+    }
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        // 🚨 서버측 idempotency check (read만, 첫 줄)
+        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
+
+        // 모든 읽기 먼저
+        const readPromises = [
+          transaction.get(userItemRef),
+          transaction.get(itemRef),
+        ];
+        if (adminRef) readPromises.push(transaction.get(adminRef));
+        const reads = await Promise.all(readPromises);
+        const [userItemDoc, itemDoc] = reads;
+        const adminDoc = adminRef ? reads[2] : null;
+
+        // 보유 수량 검증
+        if (!userItemDoc.exists) {
+          throw new Error("되팔 아이템을 보유하고 있지 않습니다.");
+        }
+        const invData = userItemDoc.data();
+        const rawQty = Number(invData.quantity);
+        const currentQty = Number.isFinite(rawQty) && rawQty > 0 ? rawQty : 0;
+        if (currentQty < quantity) {
+          throw new Error(
+            `아이템 수량이 부족합니다. (보유: ${currentQty}개, 요청: ${quantity}개)`,
+          );
+        }
+
+        // 상점 판매중 여부 검증 (자격: storeItems 존재 + available!==false)
+        if (!itemDoc.exists) {
+          throw new Error(
+            "국고에서 더이상 취급하지 않는 아이템이라 되팔 수 없어요.",
+          );
+        }
+        const storeData = itemDoc.data();
+        if (storeData.available === false) {
+          throw new Error("판매중지된 아이템이라 국고에 되팔 수 없어요.");
+        }
+        const storePrice = Number(storeData.price);
+        if (!Number.isFinite(storePrice) || storePrice <= 0) {
+          throw new Error("상점 가격 정보가 올바르지 않아 되팔 수 없어요.");
+        }
+
+        // 🚨 국고(관리자) 없으면 지급 불가 — 되팔기는 돈을 '생성'하므로
+        //    지출처 없이 학생 cash만 늘리면 통화량 무단 증가(구매와 반대).
+        if (!adminRef || !adminDoc || !adminDoc.exists) {
+          throw new Error(
+            "국고(관리자)를 찾을 수 없어 지금은 되팔 수 없어요. 선생님께 문의하세요.",
+          );
+        }
+
+        // 되팔기 단가 = 현재 상점가 × 70% (최소 1원)
+        const unitPrice = Math.max(
+          1,
+          Math.round(storePrice * TREASURY_BUYBACK_RATIO),
+        );
+        const totalGain = unitPrice * quantity;
+        const itemName = storeData.name || invData.name || "아이템";
+
+        // --- 쓰기 ---
+        // 1) 학생 인벤토리 차감 (0이면 문서 삭제)
+        const newInvQty = currentQty - quantity;
+        if (newInvQty <= 0) {
+          transaction.delete(userItemRef);
+        } else {
+          transaction.update(userItemRef, {
+            quantity: admin.firestore.FieldValue.increment(-quantity),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 2) 학생 cash 증액 (increment 필수)
+        transaction.update(userRef, {
+          cash: admin.firestore.FieldValue.increment(totalGain),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 3) 거래 로그(audit)
+        const txRef = userRef.collection("transactions").doc();
+        transaction.set(txRef, {
+          type: "treasurySellback",
+          amount: totalGain,
+          description: `[국고 되팔기] ${itemName} ${quantity}개 (단가 ${unitPrice.toLocaleString()}원)`,
+          itemId,
+          itemName,
+          quantity,
+          unitPrice,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 4) 국고(=관리자 cash) 차감 (위에서 존재 보장됨)
+        transaction.update(adminRef, {
+          cash: admin.firestore.FieldValue.increment(-totalGain),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 5) 국고 통계 기록 (totalAmount 제외 - 국고=관리자cash 규약)
+        transaction.set(
+          treasuryRef,
+          {
+            buybackPayout: admin.firestore.FieldValue.increment(totalGain),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        // ✅ idempotency mark (모든 write 끝난 후)
+        markIdempotent(transaction, idemKeyRef);
+
+        return { itemName, quantity, unitPrice, totalGain, newInvQty };
+      });
+
+      logger.info(
+        `[sellItemToTreasury] ${uid}님이 ${result.itemName} ${result.quantity}개를 국고에 되팔기 (+${result.totalGain.toLocaleString()}원, 단가 ${result.unitPrice.toLocaleString()}원)`,
+      );
+
+      return {
+        success: true,
+        message: `${result.itemName} ${result.quantity}개를 국고에 ${result.totalGain.toLocaleString()}원에 되팔았어요.`,
+        ...result,
+      };
+    } catch (error) {
+      logger.error(`[sellItemToTreasury] Error for user ${uid}:`, error);
+      throw new HttpsError(
+        "aborted",
+        error.message || "국고 되팔기에 실패했습니다.",
       );
     }
   },
@@ -4220,6 +4467,13 @@ exports.processSettlement = onCall(
         throw new HttpsError("invalid-argument", "합의금은 0보다 커야 합니다.");
       }
 
+      if (senderId === recipientId) {
+        throw new HttpsError(
+          "invalid-argument",
+          "송금자와 수금자가 동일하여 합의금을 처리할 수 없습니다.",
+        );
+      }
+
       const reportRef = db
         .collection("classes")
         .doc(classCode)
@@ -4241,7 +4495,23 @@ exports.processSettlement = onCall(
         if (!recipientDoc.exists)
           throw new Error("피해자 정보를 찾을 수 없습니다.");
 
+        // 멱등성: 이미 합의 처리된 신고는 재처리(중복 지급) 차단
+        const reportData = reportDoc.data();
+        if (
+          reportData.settlementPaid === true ||
+          reportData.status === "settled" ||
+          reportData.status === "resolved_settlement"
+        ) {
+          throw new HttpsError(
+            "failed-precondition",
+            "이미 합의금 지급이 완료된 사건입니다.",
+          );
+        }
+
         const senderData = senderDoc.data();
+        const recipientData = recipientDoc.data();
+        const processorName =
+          userData.name || userData.displayName || "경찰서";
 
         transaction.update(senderRef, {
           cash: admin.firestore.FieldValue.increment(-settlementAmount),
@@ -4250,20 +4520,27 @@ exports.processSettlement = onCall(
           cash: admin.firestore.FieldValue.increment(settlementAmount),
         });
         transaction.update(reportRef, {
-          status: "settled",
+          status: "resolved_settlement",
           settlementAmount: settlementAmount,
+          amount: settlementAmount,
+          settlementPaid: true,
+          resolution: request.data.reason || "상호 합의에 따른 합의금 지급",
+          resolutionDate: admin.firestore.FieldValue.serverTimestamp(),
+          processedById: uid,
+          processedByName: processorName,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        const recipientData = recipientDoc.data();
-        logActivity(
+        // ⚠️ logActivity는 내부에서 await 후 transaction.set을 수행하므로
+        //    반드시 await 해야 커밋 전에 거래내역이 기록된다(누락 방지).
+        await logActivity(
           transaction,
           senderId,
           LOG_TYPES.CASH_EXPENSE,
           `경찰서 합의금으로 ${recipientData.name}에게 ${settlementAmount}원 지급`,
           { reportId, victimName: recipientData.name },
         );
-        logActivity(
+        await logActivity(
           transaction,
           recipientId,
           LOG_TYPES.CASH_INCOME,

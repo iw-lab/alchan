@@ -424,33 +424,11 @@ export default function CouponGoalPage() {
 
     setIsResettingGoal(true);
     try {
-      const batch = writeBatch(db);
-      const goalRef = doc(db, "goals", currentGoalId);
-
-      const usersQuery = query(
-        collection(db, "users"),
-        where("classCode", "==", currentUserClassCode),
-      );
-      const usersSnapshot = await getDocs(usersQuery);
-
-      usersSnapshot.forEach((userDocument) => {
-        const userRef = doc(db, "users", userDocument.id);
-        batch.update(userRef, {
-          myContribution: 0,
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      batch.update(goalRef, {
-        progress: 0,
-        donations: [],
-        donationCount: 0,
-        updatedAt: serverTimestamp(),
-        resetAt: serverTimestamp(),
-        resetBy: userId,
-      });
-
-      await batch.commit();
+      // 🎯 서버(CF)에서 권한 검증 + admin SDK로 일괄 리셋.
+      //    클라 writeBatch는 firestore.rules의 isAdmin()을 요구해 isTeacher-only
+      //    교사 계정에서 권한 오류로 막혔으므로 CF 호출로 통일.
+      const resetFn = httpsCallable(functions, "resetCouponGoal");
+      await resetFn({});
 
       localStorage.removeItem(
         `goalDonationHistory_${currentUserClassCode}_goal`,

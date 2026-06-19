@@ -1008,8 +1008,8 @@ export default function MyAssets() {
 
   // 🔥 [핵심 수정] 'resetCouponGoal' 함수에 async 키워드 추가
   const resetCouponGoal = async () => {
-    if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin) {
-      alert("관리자만 초기화 가능합니다.");
+    if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin && !userDoc?.isTeacher) {
+      alert("교사/관리자만 초기화 가능합니다.");
       return;
     }
     if (!currentUserClassCode || !currentGoalId) {
@@ -1025,35 +1025,11 @@ export default function MyAssets() {
 
     setIsResettingGoal(true);
     try {
-      const batch = writeBatch(db);
-      const goalRef = doc(db, "goals", currentGoalId);
-
-      // 🔥 [최적화] 사용자 조회에 limit 추가
-      const usersQuery = query(
-        collection(db, "users"),
-        where("classCode", "==", currentUserClassCode),
-        limit(100),
-      );
-      const usersSnapshot = await getDocs(usersQuery);
-
-      usersSnapshot.forEach((userDocument) => {
-        const userRef = doc(db, "users", userDocument.id);
-        batch.update(userRef, {
-          myContribution: 0,
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      batch.update(goalRef, {
-        progress: 0,
-        donations: [],
-        donationCount: 0,
-        updatedAt: serverTimestamp(),
-        resetAt: serverTimestamp(),
-        resetBy: userId,
-      });
-
-      await batch.commit();
+      // 🎯 서버(CF)에서 권한 검증 + admin SDK로 일괄 리셋.
+      //    클라 writeBatch는 firestore.rules의 isAdmin()을 요구해 isTeacher-only
+      //    교사 계정에서 권한 오류로 막혔으므로 CF 호출로 통일.
+      const resetFn = httpsCallable(functions, "resetCouponGoal");
+      await resetFn({});
 
       // 🔥 [최적화 23] 초기화 후 관련 캐시 모두 삭제
       localStorage.removeItem(

@@ -214,6 +214,30 @@
   cursor: not-allowed;
 }
 
+.sell-treasury-button {
+  background-color: #0ea5e9;
+  color: white !important;
+}
+
+.sell-treasury-button:hover {
+  background-color: #0284c7;
+}
+
+.sell-treasury-button:disabled {
+  background-color: #7dd3fc;
+  cursor: not-allowed;
+}
+
+.sell-total-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #0c4a6e;
+}
+
 .sell-to-market-button {
   background-color: #10b981;
   color: white !important;
