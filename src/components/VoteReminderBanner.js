@@ -17,20 +17,31 @@ import { Megaphone } from "lucide-react";
 const POLL_INTERVAL = 15 * 60 * 1000; // 15분
 
 export default function VoteReminderBanner() {
-  const { userDoc, isAdmin } = useAuth();
+  const { userDoc } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const classCode = userDoc?.classCode;
   const userId = userDoc?.id || userDoc?.uid;
+  // 🔥 [읽기최적화] isAdmin() 함수 대신 boolean 파생값 사용. isAdmin 함수는 useAuth에서
+  //   deps [userDoc]라 cash 변동(onSnapshot)마다 identity가 바뀌어 아래 effect를 재실행→
+  //   매번 checkUnvoted(getDocs+getDoc) 재호출하던 bug-class. boolean은 값이 같으면 effect 미실행.
+  const isAdminBool = !!(
+    userDoc &&
+    (userDoc.isAdmin === true ||
+      userDoc.role === "admin" ||
+      userDoc.isSuperAdmin === true)
+  );
 
   const [unvotedCount, setUnvotedCount] = useState(0);
   const mountedRef = useRef(true);
+  const lastCheckRef = useRef(0); // 🔥 [읽기최적화] 탭 전환 재폴링 쿨다운용
 
   const checkUnvoted = useCallback(async () => {
     if (!classCode || !userId) {
       setUnvotedCount(0);
       return;
     }
+    lastCheckRef.current = Date.now();
     try {
       const lawsRef = collection(
         db,
@@ -74,7 +85,7 @@ export default function VoteReminderBanner() {
 
   useEffect(() => {
     mountedRef.current = true;
-    if (!classCode || !userId || (isAdmin && isAdmin())) {
+    if (!classCode || !userId || isAdminBool) {
       setUnvotedCount(0);
       return () => {
         mountedRef.current = false;
@@ -85,7 +96,13 @@ export default function VoteReminderBanner() {
     const interval = setInterval(checkUnvoted, POLL_INTERVAL);
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") checkUnvoted();
+      // 🔥 [읽기최적화] 탭 활성화 재폴링은 마지막 조회 5분 경과 후에만(점심 잦은 탭전환 증폭 차단)
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastCheckRef.current > 5 * 60 * 1000
+      ) {
+        checkUnvoted();
+      }
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -94,12 +111,12 @@ export default function VoteReminderBanner() {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [classCode, userId, isAdmin, checkUnvoted]);
+  }, [classCode, userId, isAdminBool, checkUnvoted]);
 
   // 국회 페이지에서는 이미 페이지 내부에 동일한 배너가 있으므로 숨김
   if (location.pathname === "/national-assembly") return null;
   if (!unvotedCount) return null;
-  if (isAdmin && isAdmin()) return null;
+  if (isAdminBool) return null;
 
   return (
     <div

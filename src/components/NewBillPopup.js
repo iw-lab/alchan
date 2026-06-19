@@ -27,9 +27,11 @@ export default function NewBillPopup() {
   const [visible, setVisible] = useState(false);
   const knownBillIdsRef = useRef(new Set());
   const initialLoadRef = useRef(true);
+  const lastCheckRef = useRef(0); // 🔥 [읽기최적화] 탭 전환 재폴링 쿨다운용
 
   const checkForNewBills = useCallback(async () => {
     if (!classCode || !userId) return;
+    lastCheckRef.current = Date.now();
 
     try {
       const lawsRef = collection(
@@ -109,7 +111,11 @@ export default function NewBillPopup() {
 
     // 탭 활성화 시 체크 (visibility API)
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
+      // 🔥 [읽기최적화] 탭 활성화 재폴링은 마지막 조회 5분 경과 후에만(점심 잦은 탭전환 증폭 차단)
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastCheckRef.current > 5 * 60 * 1000
+      ) {
         checkForNewBills();
       }
     };

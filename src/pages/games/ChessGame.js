@@ -793,15 +793,15 @@ const ChessGame = () => {
     }
   }, [user]);
 
-  // 로비 대기방 목록: 초기 로드 + 30초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
+  // 로비 대기방 목록: 초기 로드 + 60초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
     if (!showCreateRoom || !user) return;
     fetchAvailableRooms();
-    // 🔥 [최적화] 탭 숨김/무조작(idle) 시 로비 갱신 건너뜀(방치 탭 읽기 차단)
+    // 🔥 [읽기최적화] 30→60초. 탭 숨김/무조작(idle) 시 갱신 건너뜀(방치 탭 읽기 차단)
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible" || getIsIdle()) return;
       fetchAvailableRooms();
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [showCreateRoom, user, fetchAvailableRooms]);
 

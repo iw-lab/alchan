@@ -694,9 +694,10 @@ const OmokGame = () => {
         logger.warn("[omok heartbeat] 갱신 실패:", err?.message);
       }
     };
-    // 즉시 1회 + 30초 주기
+    // 🔥 [읽기최적화] 즉시 1회 + 60초 주기(30→60초). 호스트 heartbeat write가
+    //   양 플레이어 onSnapshot read를 유발하므로 절반으로 감소. STALE_MS도 120초로 함께 상향.
     tick();
-    const interval = setInterval(tick, 30000);
+    const interval = setInterval(tick, 60000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, user, game?.gameStatus, game?.host, game?.aiMode]);
@@ -716,7 +717,7 @@ const OmokGame = () => {
 
       const querySnapshot = await getDocs(q);
       const nowMs = Date.now();
-      const STALE_MS = 90 * 1000; // 90초 이상 heartbeat 없음 = 유령 방
+      const STALE_MS = 120 * 1000; // heartbeat 60초 주기 + 60초 버퍼 = 120초(유령 방 판정)
       const CREATED_GRACE_MS = 3 * 60 * 1000; // 갓 만든 방 노출 유예 3분
       const games = querySnapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -737,15 +738,15 @@ const OmokGame = () => {
     }
   }, [user]);
 
-  // 로비 게임 목록: 초기 로드 + 30초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
+  // 로비 게임 목록: 초기 로드 + 60초 자동갱신 (onSnapshot 대신 폴링으로 DB 비용 절감)
   useEffect(() => {
     if (!user || gameId) return;
     fetchAvailableGames();
-    // 🔥 [최적화] 탭 숨김/무조작(idle) 시 로비 갱신 건너뜀(방치 탭 읽기 차단)
+    // 🔥 [읽기최적화] 30→60초. 탭 숨김/무조작(idle) 시 갱신 건너뜀(방치 탭 읽기 차단)
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible" || getIsIdle()) return;
       fetchAvailableGames();
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [user, gameId, fetchAvailableGames]);
 
