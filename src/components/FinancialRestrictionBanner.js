@@ -53,6 +53,7 @@ export default function FinancialRestrictionBanner() {
     };
   }, [
     userDoc?.id,
+    userDoc?.name,
     userDoc?.cash,
     userDoc?.coupons,
     userDoc?.classCode,

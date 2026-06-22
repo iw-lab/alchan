@@ -4,11 +4,11 @@ import {
  db,
  doc,
  getDoc,
- setDoc,
  serverTimestamp,
  updateDoc,
  increment,
  runTransaction,
+ onSnapshot,
  collection,
  getDocs,
  deleteDoc,
@@ -1022,56 +1022,38 @@ const ParkingAccount = ({
  depositProducts.length > 0 ? depositProducts[0] : null;
 
  if (parkingRateProduct) {
- const parkingDoc = await getDoc(parkingRef);
- if (parkingDoc.exists()) {
- const data = parkingDoc.data();
- const lastInterestDate = data.lastInterestDate?.toDate();
-
- if (!lastInterestDate || !isToday(lastInterestDate)) {
+ // 🔧 이자 적립을 runTransaction으로 원자화 — lastInterestDate 가드를 트랜잭션 내부에서
+ // 재확인해 getDoc 캐시/중복 호출로 같은 날 이자가 2회 적립되던 race를 차단.
+ try {
+ await runTransaction(db, async (transaction) => {
+ const snap = await transaction.get(parkingRef);
+ if (!snap.exists()) {
+ transaction.set(parkingRef, { balance: 0, lastInterestDate: serverTimestamp() });
+ return;
+ }
+ const data = snap.data();
+ const lastInterestDate = data.lastInterestDate?.toDate?.();
+ if (lastInterestDate && isToday(lastInterestDate)) return; // 오늘 이미 지급됨
  const daysToApply = lastInterestDate
  ? differenceInCalendarDays(new Date(), lastInterestDate)
  : 1;
- if (daysToApply > 0) {
- const dailyRate = 0.1; // 파킹통장 일일 이자율 0.1% 고정
- const { interest } = calculateCompoundInterest(
- data.balance || 0,
- dailyRate,
- daysToApply,
- );
-
+ if (daysToApply <= 0) return;
+ const { interest } = calculateCompoundInterest(data.balance || 0, 0.1, daysToApply);
  if (interest > 0) {
- await updateDoc(parkingRef, {
+ transaction.update(parkingRef, {
  balance: increment(interest),
  lastInterestDate: serverTimestamp(),
  });
- displayMessage(
- `파킹통장 이자 ${formatCurrency(interest)}${currencyUnit}이 지급되었습니다.`,
- "success",
- );
- }
- }
- }
  } else {
- // 파킹통장이 없으면 생성
- await setDoc(parkingRef, {
- balance: 0,
- lastInterestDate: serverTimestamp(),
+ transaction.update(parkingRef, { lastInterestDate: serverTimestamp() });
+ }
  });
+ } catch (e) {
+ logger.error("[ParkingAccount] 이자 적립 트랜잭션 오류:", e);
  }
  }
 
- // 최종 잔액 조회
- const finalParkingDoc = await getDoc(parkingRef);
- if (finalParkingDoc.exists()) {
- const balance = finalParkingDoc.data().balance || 0;
- setParkingBalance(balance);
-
- // 일일 이자 계산 (상품 설정 이자율 기준)
- const actualDailyRate = 0.1; // 파킹통장 일일 이자율 0.1% 고정
- setParkingRate(actualDailyRate);
- const dailyInterest = calculateDailyInterest(balance, actualDailyRate);
- setParkingDailyInterest(dailyInterest);
- }
+ // 파킹 잔액·이자 표시는 아래 onSnapshot 실시간 리스너가 담당(getDoc 캐시 stale 제거)
 
  // 가입 상품 조회
  const productsRef = collection(db, "users", userId, "products");
@@ -1102,11 +1084,31 @@ const ParkingAccount = ({
  } finally {
  setIsProcessing(false);
  }
- }, [userId, depositProducts, currencyUnit]);
+ }, [userId, depositProducts]);
 
  useEffect(() => {
  if (!loading && userId) loadAllData();
  }, [userId, loading, loadAllData]);
+
+ // 🔧 파킹 잔액 실시간 리스너 — getDoc 일회성 조회의 캐시 stale("돈복사"처럼 보이던 표시 버그)를
+ // 근본 차단. 단일 문서 구독이라 입금·출금·이자로 그 문서가 바뀔 때만 1회 읽기(읽기 폭증 없음).
+ // readloop 방지: deps는 userId만, cleanup에서 반드시 unsubscribe.
+ useEffect(() => {
+ if (!userId) return;
+ const parkingRef = doc(db, "users", userId, "financials", "parkingAccount");
+ const unsub = onSnapshot(
+ parkingRef,
+ (snap) => {
+ const balance = snap.exists() ? snap.data().balance || 0 : 0;
+ setParkingBalance(balance);
+ const dailyRate = 0.1; // 파킹통장 일일 이자율 0.1% 고정
+ setParkingRate(dailyRate);
+ setParkingDailyInterest(calculateDailyInterest(balance, dailyRate));
+ },
+ (err) => logger.error("[ParkingAccount] 파킹 잔액 리스너 오류:", err),
+ );
+ return () => unsub();
+ }, [userId]);
 
  // userDoc의 cash가 변경될 때마다 currentCash 업데이트
  useEffect(() => {
@@ -2053,7 +2055,7 @@ const ParkingAccount = ({
  metadata: { parkingBalance: parkingBalance + amount },
  });
 
- await loadAllData(); // Reconcile parkingBalance and other products
+ // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
  } catch (error) {
  displayMessage(`처리 오류: ${error.message}`, "error");
  // Rollback UI on error
@@ -2108,7 +2110,7 @@ const ParkingAccount = ({
  metadata: { parkingBalance: parkingBalance - amount },
  });
 
- await loadAllData(); // Reconcile parkingBalance and other products
+ // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
  } catch (error) {
  displayMessage(`처리 오류: ${error.message}`, "error");
  // Rollback UI on error
@@ -2180,6 +2182,14 @@ const ParkingAccount = ({
  <>
  <button
  onClick={async () => {
+ // 🔒 [봉인 2026-06-22] 4-family 검증 결과 이 복구 로직은 (1) 멱등성 키가 없어 클릭마다 cash를
+ // 재증액하고 (2) 입출금 로그는 activity_logs에 쓰는데 여기선 users/{uid}/transactions를 읽어
+ // 컬렉션이 불일치한다 → 무한 돈복사 위험. 안전하게 재작성 전까지 비활성화한다.
+ const RECOVERY_ENABLED = false; // 안전 재작성(멱등성 키 + activity_logs 기준 일치) 전까지 비활성
+ if (!RECOVERY_ENABLED) {
+ displayMessage("⚠️ 파킹 복구 기능은 안전성 문제(비멱등 머니프린터)로 비활성화되었습니다.", "error");
+ return;
+ }
  if (!window.confirm("파킹통장 입출금 기록을 검사하여 증발된 돈을 복구합니다. 진행하시겠습니까?")) return;
  setIsProcessing(true);
  displayMessage("복구 스캔 중...", "info");
@@ -2231,7 +2241,7 @@ const ParkingAccount = ({
  disabled={isProcessing}
  style={{ fontSize: '0.8rem' }}
  >
- 🔧 파킹 복구
+ 🔒 파킹 복구 (비활성)
  </button>
  <button
  onClick={() => onViewChange && onViewChange("admin")}
