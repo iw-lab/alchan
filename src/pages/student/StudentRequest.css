@@ -218,6 +218,59 @@
     color: var(--text-muted);
 }
 
+/* 검색 탭: URL 신청 유도 힌트 (평상시 상시 노출) */
+.search-url-hint {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.85rem;
+    color: #475569;
+    background: rgba(99, 102, 241, 0.06);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    padding: 0.6rem 0.8rem;
+    text-align: center;
+}
+
+.search-url-hint-btn {
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.search-url-hint-btn:hover {
+    background: #4f46e5;
+}
+
+/* URL 탭: 검색 한도 소진 안내 배너 (학급 공유) */
+.quota-exhausted-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.quota-exhausted-title {
+    font-weight: 800;
+    color: #c2410c;
+    font-size: 0.98rem;
+}
+
+.quota-exhausted-desc {
+    color: #7c2d12;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
 .request-btn {
     padding: 0.8rem 2rem;
     font-size: 1rem;

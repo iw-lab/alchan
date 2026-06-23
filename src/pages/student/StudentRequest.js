@@ -11,7 +11,7 @@ import {
   runTransaction,
   increment,
 } from "firebase/firestore";
-import { searchVideos, parseVideoId } from "../../utils/youtube-api";
+import { searchVideos, parseVideoId, getQuotaExhausted } from "../../utils/youtube-api";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
 import "./StudentRequest.css";
@@ -71,6 +71,18 @@ const StudentRequest = () => {
   useEffect(() => {
     if (quotaExceeded) setActiveTab("url");
   }, [quotaExceeded]);
+
+  // 진입 시 학급 공유 quota 상태 확인 — 다른 학생이 이미 한도를 맞췄으면
+  // 헛검색 없이 바로 URL 신청으로 유도(읽기 1회, 검색 100units 낭비 방지).
+  useEffect(() => {
+    let cancelled = false;
+    getQuotaExhausted().then((exhausted) => {
+      if (!cancelled && exhausted) setQuotaExceeded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // URL 입력 시 자동 미리보기 (디바운스 500ms)
   useEffect(() => {
@@ -424,6 +436,20 @@ const StudentRequest = () => {
                 </form>
               )}
 
+              {!quotaExceeded && (
+                <div className="search-url-hint">
+                  곡이 안 보이거나 검색이 막히면{" "}
+                  <button
+                    type="button"
+                    className="search-url-hint-btn"
+                    onClick={() => { setActiveTab("url"); setError(""); }}
+                  >
+                    🔗 URL로 입력
+                  </button>{" "}
+                  탭으로 신청할 수 있어요.
+                </div>
+              )}
+
               {videos.length > 0 && (
                 <div className="search-results">
                   <ul className="video-list">
@@ -452,6 +478,18 @@ const StudentRequest = () => {
           {/* URL 직접 입력 탭 */}
           {activeTab === "url" && (
             <div style={{ marginBottom: "1rem" }}>
+              {/* 검색 한도 소진 안내 — 학급 전체에 적용(오늘 검색 불가, URL로 신청) */}
+              {quotaExceeded && (
+                <div className="quota-exhausted-banner">
+                  <span className="quota-exhausted-title">
+                    ⛔ 오늘은 제목 검색 한도가 모두 소진됐어요
+                  </span>
+                  <span className="quota-exhausted-desc">
+                    유튜브 검색이 내일(오후 4시경 리셋)까지 막혔어요. 그래도 괜찮아요 —
+                    아래 안내대로 <strong>유튜브 링크를 복사해서 붙여넣으면</strong> 바로 신청할 수 있어요!
+                  </span>
+                </div>
+              )}
               {/* 3단계 가이드 */}
               <div style={{
                 background: "rgba(99,102,241,0.08)",
@@ -460,7 +498,7 @@ const StudentRequest = () => {
                 padding: "1rem",
                 marginBottom: "1rem",
               }}>
-                <p style={{ color: "#a5b4fc", fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.95rem" }}>
+                <p style={{ color: "#4f46e5", fontWeight: 700, marginBottom: "0.7rem", fontSize: "0.95rem" }}>
                   📋 유튜브 링크 붙여넣기 방법
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
@@ -474,7 +512,7 @@ const StudentRequest = () => {
                         minWidth: "24px",
                         height: "24px",
                         borderRadius: "50%",
-                        background: "rgba(99,102,241,0.4)",
+                        background: "#6366f1",
                         color: "#fff",
                         fontSize: "0.8rem",
                         fontWeight: 700,
@@ -482,7 +520,7 @@ const StudentRequest = () => {
                         alignItems: "center",
                         justifyContent: "center",
                       }}>{step}</span>
-                      <span style={{ color: "#d1d5db", fontSize: "0.88rem", lineHeight: 1.4 }}>{text}</span>
+                      <span style={{ color: "#374151", fontSize: "0.88rem", lineHeight: 1.4 }}>{text}</span>
                     </div>
                   ))}
                 </div>
@@ -515,7 +553,7 @@ const StudentRequest = () => {
 
               {/* 로딩 */}
               {urlLoading && (
-                <div style={{ color: "#9ca3af", fontSize: "0.9rem", textAlign: "center", padding: "1rem" }}>
+                <div style={{ color: "#6b7280", fontSize: "0.9rem", textAlign: "center", padding: "1rem" }}>
                   영상 정보 불러오는 중...
                 </div>
               )}
@@ -545,7 +583,7 @@ const StudentRequest = () => {
                       marginBottom: "0.3rem",
                     }}>✅ 영상 확인됨</p>
                     <p style={{
-                      color: "#f3f4f6",
+                      color: "#111827",
                       fontSize: "0.9rem",
                       fontWeight: 600,
                       overflow: "hidden",

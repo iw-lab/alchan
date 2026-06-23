@@ -977,6 +977,17 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🔎 YouTube 검색 공유 캐시 (youtubeSearchCache)
+    //    학급 전체가 검색 결과를 공유해 YouTube Data API quota(검색 100units/회)를 절약.
+    //    민감정보 없음(공개 영상 메타데이터) → 로그인 사용자면 읽기/기록 허용.
+    // ========================================================
+    match /youtubeSearchCache/{queryId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ========================================================
     // 🏪 개인 상점 (personalShops)
     // ========================================================
     match /personalShops/{shopId} {
