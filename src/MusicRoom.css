@@ -22,6 +22,9 @@
     box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
     overflow: hidden;
     border: 1px solid #e0e7ff;
+    /* 🔧 재생목록이 길어져도 그리드 stretch로 카드(=영상)가 함께 늘어나지 않도록
+       자연 높이 유지. 영상은 video-player-wrapper의 min-height(72vh)로 고정된다. */
+    align-self: start;
 }
 
 .video-player-wrapper {
@@ -31,7 +34,8 @@
     min-height: 72vh;
     background-color: #000;
     overflow: hidden;
-    border-bottom: 1px solid var(--border-accent);
+    /* 🔧 상단(부모 카드 클립)뿐 아니라 하단 모서리도 동일하게 둥글게 */
+    border-radius: 12px;
 }
 
 .youtube-player {
@@ -154,6 +158,10 @@
     flex-direction: column;
     gap: 20px;
     min-height: 0;
+    /* 🔧 영상은 자연 높이로 고정(align-self:start)되므로 사이드바도 stretch 해제하고
+       뷰포트로 높이를 제한 → 재생목록이 길어지면 패널 안에서만 스크롤(페이지·영상 안 늘어남) */
+    align-self: start;
+    max-height: calc(100vh - 28px);
 }
 
 .share-info-panel {
@@ -344,6 +352,8 @@
 
     .sidebar-content {
         gap: 10px;
+        /* 모바일 단일 컬럼에선 영상 아래로 자연 흐름(페이지 스크롤) — 뷰포트 캡 해제 */
+        max-height: none;
     }
 
     .video-player-wrapper {
