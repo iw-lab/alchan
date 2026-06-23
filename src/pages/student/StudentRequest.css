@@ -181,6 +181,43 @@
     color: var(--text-muted);
 }
 
+/* 사연(선택) 입력 — 재생목록에 표시 */
+.request-story-input {
+    padding: 0.8rem 1rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+    background: #ffffff;
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+    resize: vertical;
+    min-height: 2.6rem;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+.request-story-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.request-story-input::placeholder {
+    color: var(--text-muted);
+}
+
+.request-story-count {
+    width: 100%;
+    max-width: 400px;
+    margin-top: -0.6rem;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
 .request-btn {
     padding: 0.8rem 2rem;
     font-size: 1rem;

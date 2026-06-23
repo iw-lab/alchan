@@ -40,6 +40,7 @@ const StudentRequest = () => {
 
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [requesterName, setRequesterName] = useState("");
+  const [story, setStory] = useState(""); // 선택: 사연/메시지 (재생목록에 표시)
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState("");
   const [roomError, setRoomError] = useState("");
@@ -253,12 +254,14 @@ const StudentRequest = () => {
         });
       }
 
+      const trimmedStory = story.trim().slice(0, 200); // 과도한 길이 방지
       await addDoc(collection(db, "musicRooms", roomId, "playlist"), {
         videoId: selectedVideo.id.videoId,
         title: selectedVideo.snippet.title,
         requesterName: name,
         requestedAt: serverTimestamp(),
         ...(user ? { requesterId: user.uid } : {}),
+        ...(trimmedStory ? { story: trimmedStory } : {}),
         paidAmount: pricePerSong || 0,
       });
 
@@ -282,6 +285,7 @@ const StudentRequest = () => {
     setVideos([]);
     setUrlInput("");
     setUrlPreview(null);
+    setStory("");
     setError("");
   };
 
@@ -586,6 +590,15 @@ const StudentRequest = () => {
                   placeholder="신청자 이름을 입력하세요"
                 />
               )}
+              <textarea
+                className="request-story-input"
+                value={story}
+                onChange={(e) => setStory(e.target.value)}
+                placeholder="사연·하고 싶은 말을 적어주세요 (선택, 재생목록에 표시돼요)"
+                maxLength={200}
+                rows={2}
+              />
+              <div className="request-story-count">{story.length}/200</div>
               <button
                 onClick={handleRequest}
                 className="request-btn"

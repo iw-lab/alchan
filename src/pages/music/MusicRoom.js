@@ -367,6 +367,9 @@ const MusicRoom = ({ user }) => {
                     {index + 1}. {song.title}
                   </span>
                   <span className="requester">신청: {song.requesterName}</span>
+                  {song.story && (
+                    <span className="song-story">💬 {song.story}</span>
+                  )}
                 </li>
               ))}
             </ul>
