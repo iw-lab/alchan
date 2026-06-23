@@ -34,6 +34,7 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import {
  isNetAssetsNegative,
  NEGATIVE_ASSETS_MESSAGE,
+ invalidateAssetCaches,
 } from "../../utils/netAssets";
 
 import { logger } from "../../utils/logger";
@@ -2056,6 +2057,9 @@ const ParkingAccount = ({
  });
 
  // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
+ // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영
+ // (cash만 실시간이고 parking은 5분 캐시라 입금 직후 순자산이 잠깐 하락하던 버그 수정)
+ invalidateAssetCaches(userId);
  } catch (error) {
  displayMessage(`처리 오류: ${error.message}`, "error");
  // Rollback UI on error
@@ -2111,6 +2115,9 @@ const ParkingAccount = ({
  });
 
  // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
+ // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영
+ // (cash만 실시간이고 parking은 5분 캐시라 입금 직후 순자산이 잠깐 하락하던 버그 수정)
+ invalidateAssetCaches(userId);
  } catch (error) {
  displayMessage(`처리 오류: ${error.message}`, "error");
  // Rollback UI on error

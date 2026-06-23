@@ -26,6 +26,25 @@ function readAssetCache(userId) {
   }
 }
 
+/**
+ * 파킹통장 등 자산 변동 직후, 순자산을 5분 TTL 캐시로 표시하는 화면들이 옛 값을 계속
+ * 보여주지 않도록 관련 localStorage 캐시를 모두 무효화한다. 다음 진입/폴링 시 fresh 로드.
+ * - assetCache_{uid}: netAssets/FinancialRestrictionBanner 공유 캐시
+ * - firestore_cache_myAssets_{uid}: MyAssets "총 순자산" 캐시(+ 레거시 더블 suffix)
+ * 입금은 cash↔parking 상쇄라 실제 순자산은 불변인데, cash만 실시간이고 parking이 캐시라
+ * 입금 직후 순자산이 입금액만큼 잠깐 낮게 보이던 버그를 차단한다.
+ */
+export function invalidateAssetCaches(userId) {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(`assetCache_${userId}`);
+    localStorage.removeItem(`firestore_cache_myAssets_${userId}`);
+    localStorage.removeItem(`firestore_cache_myAssets_${userId}_${userId}`);
+  } catch {
+    /* localStorage 접근 실패 무시 */
+  }
+}
+
 async function loadAssetDataFromDb(userId, userName, classCode) {
   const promises = [];
 
