@@ -44,9 +44,9 @@ const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
 
-// 학생 복붙 차단 props — 담임(admin)에겐 적용하지 않음 (호출부에서 분기)
+// 붙여넣기는 교사 요청으로 다시 허용(Ctrl+V 정상 작동). 파일 드롭만 차단 유지.
+// (복사·잘라내기·우클릭 선택 차단은 아래 blockCopyProps에서 별도 유지)
 const blockPasteProps = {
-  onPaste: (e) => { e.preventDefault(); alert("게시판에서는 붙여넣기가 제한됩니다. 직접 입력해주세요."); },
   onDrop: (e) => e.preventDefault(),
 };
 const blockCopyProps = {
