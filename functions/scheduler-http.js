@@ -2,6 +2,9 @@
 /**
  * GitHub Actions에서 HTTP로 호출 가능한 스케줄러 엔드포인트입니다.
  * 기존 onSchedule 함수의 로직을 HTTP 호출 가능하게 변환
+ *
+ * 재배포 트리거(2026-06-25): 순자산 계산 통일(쿠폰/대출/부동산/주식) 함수 배포.
+ * hosting release 400 버그로 직전 배포가 functions 단계에 도달하지 못해 재배포함.
  */
 
 const {

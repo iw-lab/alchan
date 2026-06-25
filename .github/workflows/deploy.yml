@@ -36,7 +36,22 @@ jobs:
       - name: Deploy Hosting to Firebase
         run: |
           npm install -g firebase-tools
-          firebase deploy --only hosting --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+          # firebase-tools hosting release API가 간헐적으로 방금 finalize한 버전을
+          # "current active version"으로 오인해 HTTP 400을 반환하는 버그가 있다. 이 경우
+          # 콘텐츠(버전)는 이미 live에 반영된 상태이므로 무해 처리하고 다음 단계(functions 등)로
+          # 진행한다. 그 외의 실패는 그대로 중단.
+          set +e
+          OUT=$(firebase deploy --only hosting --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive 2>&1)
+          CODE=$?
+          echo "$OUT"
+          set -e
+          if [ $CODE -ne 0 ]; then
+            if echo "$OUT" | grep -q "is the current active version"; then
+              echo "⚠️ hosting: 이미 동일 버전이 active(콘텐츠 반영됨) — 무해 처리하고 계속"
+            else
+              echo "❌ hosting 배포 실패"; exit 1
+            fi
+          fi
 
       - name: Deploy Functions (if changed)
         run: |
