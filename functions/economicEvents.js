@@ -357,7 +357,10 @@ async function executeTaxExtra(classCode, params) {
   // === 학급 공통 데이터 1회 로드 (쿠폰가치, 주식시세, 부동산 전체) ===
   const [mainSettingsSnap, stockListSnap, realEstateSnap] = await Promise.all([
     db.doc("settings/mainSettings").get().catch(() => null),
-    db.doc(`classes/${classCode}/stocks/stockList`).get().catch(() => null),
+    // 주식 시세: 정식 소스 CentralStocks의 전역 스냅샷(realStockService 갱신).
+    // 과거 classes/{classCode}/stocks/stockList 는 write가 없는 죽은 경로라 항상 비어
+    // 주식이 과세 순자산에서 누락되던 버그를 차단한다.
+    db.doc("Settings/centralStocksCache").get().catch(() => null),
     db
       .collection(`classes/${classCode}/realEstateProperties`)
       .get()
@@ -397,15 +400,18 @@ async function executeTaxExtra(classCode, params) {
       const coupons = Number(sData.coupons) || 0;
       const studentId = sDoc.id;
 
-      const [parkingSnap, loansSnap, portfolioSnap] = await Promise.all([
+      const [parkingSnap, productsSnap, portfolioSnap] = await Promise.all([
         db
           .doc(`users/${studentId}/financials/parkingAccount`)
           .get()
           .catch(() => null),
+        // 예금/적금/대출 정식 소스 = users/{uid}/products (type=deposit|savings|loan).
+        // 과거 financials/loans 는 write 없는 죽은 경로라 대출이 0으로 잡혀 과세 순자산이
+        // 과대(부채 미차감) 계산되던 버그를 차단한다.
         db
-          .doc(`users/${studentId}/financials/loans`)
+          .collection(`users/${studentId}/products`)
           .get()
-          .catch(() => null),
+          .catch(() => ({ docs: [] })),
         db
           .collection(`users/${studentId}/portfolio`)
           .get()
@@ -417,22 +423,24 @@ async function executeTaxExtra(classCode, params) {
           ? Number(parkingSnap.data().balance) || 0
           : 0;
 
-      const activeLoans =
-        loansSnap && loansSnap.exists && Array.isArray(loansSnap.data().activeLoans)
-          ? loansSnap.data().activeLoans
-          : [];
-      const loanBalance = activeLoans.reduce(
-        (sum, l) =>
-          sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
-        0,
-      );
+      let loanBalance = 0;
+      let depositSavingsTotal = 0;
+      productsSnap.docs.forEach((d) => {
+        const p = d.data();
+        if (p.type === "loan") {
+          loanBalance += Number(p.remainingPrincipal) || Number(p.balance) || 0;
+        } else if (p.type === "deposit" || p.type === "savings") {
+          depositSavingsTotal += Number(p.balance) || 0;
+        }
+      });
 
       const stockValue = portfolioSnap.docs.reduce((sum, d) => {
         const h = d.data();
         const qty = Number(h.quantity) || 0;
         if (qty <= 0) return sum;
-        const stockId = parseInt(d.id, 10) || d.id;
-        const info = stocks.find((s) => s.id === stockId);
+        // 문자열 기준 매칭으로 통일(holding 필드 우선, docId 폴백).
+        const sid = h.stockId != null ? h.stockId : d.id;
+        const info = stocks.find((s) => String(s.id) === String(sid));
         if (info && info.isListed) {
           return sum + (Number(info.price) || 0) * qty;
         }
@@ -443,7 +451,7 @@ async function executeTaxExtra(classCode, params) {
       const couponTotal = coupons * couponValue;
 
       const netWorth =
-        cash + couponTotal + parking + stockValue + realEstateValue - loanBalance;
+        cash + couponTotal + parking + depositSavingsTotal + stockValue + realEstateValue - loanBalance;
 
       // 순자산 ≤ 0인 학생만 스킵. 순자산이 플러스면 현금 부족해도(마이너스 가더라도) 징수.
       if (netWorth <= 0) return null;
@@ -606,7 +614,6 @@ async function executeCashBonus(classCode, params) {
 async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPON_VALUE = 1000) {
   const userId = userDoc.id;
   const userData = userDoc.data();
-  const userName = userData.name || "";
   const cash = Number(userData.cash) || 0;
   const coupons = Number(userData.coupons) || 0;
 
@@ -618,18 +625,21 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
     if (snap.exists) parking = Number(snap.data().balance) || 0;
   } catch (_) {}
 
-  // 대출 잔액 (loans.activeLoans[])
+  // 예금/적금/대출 (users/{uid}/products, type=deposit|savings|loan) — 정식 소스.
+  // 과거 financials/loans(activeLoans) 는 write 없는 죽은 경로라 대출이 0으로 잡혀
+  // 과세 순자산이 과대(부채 미차감) 계산되던 버그를 차단한다.
   let loanBalance = 0;
+  let depositSavingsTotal = 0;
   try {
-    const snap = await db.collection("users").doc(userId)
-      .collection("financials").doc("loans").get();
-    if (snap.exists) {
-      const activeLoans = Array.isArray(snap.data().activeLoans) ? snap.data().activeLoans : [];
-      loanBalance = activeLoans.reduce(
-        (sum, l) => sum + (Number(l.remainingPrincipal) || Number(l.balance) || 0),
-        0
-      );
-    }
+    const snap = await db.collection("users").doc(userId).collection("products").get();
+    snap.docs.forEach((d) => {
+      const p = d.data();
+      if (p.type === "loan") {
+        loanBalance += Number(p.remainingPrincipal) || Number(p.balance) || 0;
+      } else if (p.type === "deposit" || p.type === "savings") {
+        depositSavingsTotal += Number(p.balance) || 0;
+      }
+    });
   } catch (_) {}
 
   // 주식 보유가치
@@ -649,11 +659,12 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
     });
   } catch (_) {}
 
-  // 부동산 가치 (학급 단위 캐시에서 owner별 조회)
-  const myRealEstate = realEstateByOwner.get(userName) || [];
-  const realEstateValue = myRealEstate.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+  // 부동산 가치 (학급 단위 캐시에서 owner별 조회). owner 필드 = 소유자 UID 이므로
+  // userId 로 조회한다(과거 userName 조회는 항상 빈 결과라 부동산이 누락됐다).
+  const myRealEstate = realEstateByOwner.get(userId) || [];
+  const realEstateValue = myRealEstate.reduce((sum, p) => sum + (Number(p.price) || Number(p.value) || 0), 0);
 
-  return cash + coupons * COUPON_VALUE + parking + stockValue + realEstateValue - loanBalance;
+  return cash + coupons * COUPON_VALUE + parking + depositSavingsTotal + stockValue + realEstateValue - loanBalance;
 }
 
 /**

@@ -67,6 +67,7 @@ export default function MyAssets() {
   const [savings, setSavings] = useState([]); // 적금 상품 목록
   const [loans, setLoans] = useState([]);
   const [realEstateAssets, setRealEstateAssets] = useState([]);
+  const [stockValue, setStockValue] = useState(0); // 보유 주식 평가액
   const [totalNetAssets, setTotalNetAssets] = useState(0);
   const [goalDonations, setGoalDonations] = useState([]);
   const [transactionHistory, setTransactionHistory] = useState([]);
@@ -420,6 +421,7 @@ export default function MyAssets() {
       setSavings(cachedAssets.savings || []);
       setLoans(cachedAssets.loans || []);
       setRealEstateAssets(cachedAssets.realEstateAssets || []);
+      setStockValue(cachedAssets.stockValue || 0);
       setTransactionHistory(cachedAssets.transactionHistory || []);
       setAssetsLoading(false); // 캐시로 즉시 로딩 해제
     } else {
@@ -481,6 +483,10 @@ export default function MyAssets() {
         collection(db, "users", userId, "products"),
         limit(50),
       );
+      // 주식: 보유 포트폴리오 + 전역 시세 미러(Settings/centralStocksCache). 과거 MyAssets는
+      // 주식을 아예 로드하지 않아 "총 순자산"에서 주식 평가액이 누락됐다.
+      const portfolioRef = collection(db, "users", userId, "portfolio");
+      const stockCacheRef = doc(db, "Settings", "centralStocksCache");
       const activityLogsRef = query(
         collection(db, "activity_logs"),
         where("classCode", "==", currentUserClassCode),
@@ -507,6 +513,8 @@ export default function MyAssets() {
         parkingSnap1,
         parkingSnap2,
         productsSnap,
+        portfolioSnap,
+        stockCacheSnap,
         activityLogsSnap,
         transactionsSnap,
         rootTransactionsSnap,
@@ -517,22 +525,38 @@ export default function MyAssets() {
         getDoc(parkingRef1),
         getDocs(parkingRef2),
         getDocs(productsRef),
+        getDocs(portfolioRef).catch(() => ({ docs: [] })),
+        getDoc(stockCacheRef).catch(() => null),
         getDocs(activityLogsRef).catch(() => ({ docs: [] })),
         getDocs(transactionsRef).catch(() => ({ docs: [] })),
         getDocs(rootTransactionsRef).catch(() => ({ docs: [] })),
       ]);
 
-      // 부동산 처리
+      // 부동산 처리 — 3개 소스를 합치되 문서 id로 중복 제거(같은 부동산이 여러 컬렉션에
+      // 존재할 때 2~3배 중복 합산되던 문제 차단).
       const allRealEstateAssets = [];
-      snap1.forEach((doc) =>
-        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
-      );
-      snap2.forEach((doc) =>
-        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
-      );
-      snap3.forEach((doc) =>
-        allRealEstateAssets.push({ id: doc.id, ...doc.data() }),
-      );
+      const seenRealEstate = new Set();
+      [...snap1.docs, ...snap2.docs, ...snap3.docs].forEach((doc) => {
+        if (seenRealEstate.has(doc.id)) return;
+        seenRealEstate.add(doc.id);
+        allRealEstateAssets.push({ id: doc.id, ...doc.data() });
+      });
+
+      // 주식 평가액 = Σ(보유수량 × 현재가), 상장 종목만(미러는 isListed==true만 담음)
+      const stockList = stockCacheSnap && stockCacheSnap.exists()
+        ? (stockCacheSnap.data().stocks || [])
+        : [];
+      let computedStockValue = 0;
+      portfolioSnap.docs.forEach((d) => {
+        const h = d.data();
+        const qty = Number(h.quantity) || 0;
+        if (qty <= 0) return;
+        const sid = h.stockId != null ? h.stockId : d.id;
+        const info = stockList.find((s) => String(s.id) === String(sid));
+        if (info && info.isListed) {
+          computedStockValue += (Number(info.price) || 0) * qty;
+        }
+      });
 
       // 파킹통장 처리
       let totalParkingBalance = 0;
@@ -564,6 +588,7 @@ export default function MyAssets() {
       setSavings(savingsData);
       setLoans(loansData);
       setRealEstateAssets(allRealEstateAssets);
+      setStockValue(computedStockValue);
 
       // 거래 내역 처리
       const activityData = (activityLogsSnap.docs || [])
@@ -644,6 +669,7 @@ export default function MyAssets() {
         savings: savingsData,
         loans: loansData,
         realEstateAssets: allRealEstateAssets,
+        stockValue: computedStockValue,
         transactionHistory: recentTransactions.map((tx) => ({
           ...tx,
           timestamp: tx.timestamp?.toDate
@@ -673,6 +699,7 @@ export default function MyAssets() {
       setParkingBalance(0);
       setLoans([]);
       setRealEstateAssets([]);
+      setStockValue(0);
       setTotalNetAssets(0);
       setMyContribution(0);
       setClassCouponGoal(1000);
@@ -691,7 +718,7 @@ export default function MyAssets() {
     const couponMonetaryValue =
       (Number(userDoc?.coupons) || 0) * Number(couponValue);
     const realEstateValue = realEstateAssets.reduce(
-      (sum, asset) => sum + (Number(asset.price) || 0),
+      (sum, asset) => sum + (Number(asset.price) || Number(asset.value) || 0),
       0,
     );
     // 예금 총액 (balance 기준)
@@ -716,6 +743,7 @@ export default function MyAssets() {
       Number(parkingBalance) +
       depositsTotal +
       savingsTotal +
+      Number(stockValue) +
       realEstateValue -
       loanTotal;
 
@@ -727,6 +755,7 @@ export default function MyAssets() {
     parkingBalance,
     deposits,
     savings,
+    stockValue,
     realEstateAssets,
     loans,
   ]);

@@ -54,22 +54,35 @@ async function loadAssetDataFromDb(userId, userName, classCode) {
       .catch(() => 0),
   );
 
+  // 예금/적금/대출은 모두 users/{uid}/products 컬렉션(type=deposit|savings|loan)이 정식
+  // 소스다(ParkingAccount가 생성/상환, 자동상환 훅도 이 경로 사용). 과거 financials/loans
+  // 문서는 write가 사라진 죽은 경로라 항상 비어, 대출이 0으로 잡혀 순자산이 과대(부채 미차감)
+  // 표시되던 버그를 차단한다. 한 번의 읽기로 세 종류를 함께 분류한다.
   promises.push(
-    getDoc(doc(db, "users", userId, "financials", "loans"))
+    getDocs(collection(db, "users", userId, "products"))
       .then((snap) => {
-        if (!snap.exists()) return [];
-        const d = snap.data();
-        return Array.isArray(d.activeLoans) ? d.activeLoans : [];
+        const deposits = [];
+        const savings = [];
+        const loans = [];
+        snap.docs.forEach((d) => {
+          const p = d.data();
+          if (p.type === "deposit") deposits.push(p);
+          else if (p.type === "savings") savings.push(p);
+          else if (p.type === "loan") loans.push(p);
+        });
+        return { deposits, savings, loans };
       })
-      .catch(() => []),
+      .catch(() => ({ deposits: [], savings: [], loans: [] })),
   );
 
-  if (classCode && userName) {
+  // 부동산: realEstateProperties.owner 필드는 소유자 UID(=userId)로 저장된다(서버 거래/등록
+  // 로직 기준). 과거 owner==userName(이름) 쿼리는 항상 빈 결과라 부동산이 순자산에서 누락됐다.
+  if (classCode && userId) {
     promises.push(
       getDocs(
         query(
           collection(db, "classes", classCode, "realEstateProperties"),
-          where("owner", "==", userName),
+          where("owner", "==", userId),
         ),
       )
         .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
@@ -94,24 +107,32 @@ async function loadAssetDataFromDb(userId, userName, classCode) {
       .catch(() => ({ holdings: [] })),
   );
 
-  if (classCode) {
-    promises.push(
-      getDoc(doc(db, "classes", classCode, "stocks", "stockList"))
-        .then((snap) => {
-          if (!snap.exists()) return [];
-          const d = snap.data();
-          return Array.isArray(d.stocks) ? d.stocks : [];
-        })
-        .catch(() => []),
-    );
-  } else {
-    promises.push(Promise.resolve([]));
-  }
+  // 주식 시세: 전역 미러 문서 1개만 읽음(읽기 비용 최소).
+  // 정식 소스는 CentralStocks 컬렉션이고 Settings/centralStocksCache는 realStockService가
+  // 갱신하는 살아있는 스냅샷이다. 과거 classes/{classCode}/stocks/stockList 경로는 write가
+  // 사라진 죽은 경로라 항상 비어, 주식이 순자산에서 통째로 누락되던 버그를 차단한다.
+  promises.push(
+    getDoc(doc(db, "Settings", "centralStocksCache"))
+      .then((snap) => {
+        if (!snap.exists()) return [];
+        const d = snap.data();
+        return Array.isArray(d.stocks) ? d.stocks : [];
+      })
+      .catch(() => []),
+  );
 
-  const [parking, loans, realEstate, portfolio, stocks] =
+  const [parking, products, realEstate, portfolio, stocks] =
     await Promise.all(promises);
 
-  const data = { parking, loans, realEstate, portfolio, stocks };
+  const data = {
+    parking,
+    deposits: products.deposits,
+    savings: products.savings,
+    loans: products.loans,
+    realEstate,
+    portfolio,
+    stocks,
+  };
 
   // 🔥 [비용 최적화] AssetSummary와 공유하는 5분 캐시에 직접 기록.
   // 기존엔 readAssetCache로 "읽기만" 하고 쓰지 않아, 자산 페이지(AssetSummary)가 아닌
@@ -136,20 +157,27 @@ function computeNetAssets({
   data,
 }) {
   const parking = data?.parking || 0;
+  const deposits = Array.isArray(data?.deposits) ? data.deposits : [];
+  const savings = Array.isArray(data?.savings) ? data.savings : [];
   const loans = Array.isArray(data?.loans) ? data.loans : [];
   const realEstate = Array.isArray(data?.realEstate) ? data.realEstate : [];
   const portfolio = data?.portfolio || { holdings: [] };
   const stocks = Array.isArray(data?.stocks) ? data.stocks : [];
 
   const couponValueTotal = coupons * couponValue;
+  const depositSavingsTotal = [...deposits, ...savings].reduce(
+    (sum, p) => sum + (Number(p.balance) || 0),
+    0,
+  );
   const realEstateValue = realEstate.reduce(
-    (sum, a) => sum + (a.price || 0),
+    (sum, a) => sum + (Number(a.price) || Number(a.value) || 0),
     0,
   );
   const stockValue = (portfolio.holdings || []).reduce((sum, h) => {
-    const info = stocks.find((s) => s.id === h.stockId);
+    // 주식 매칭은 문자열 기준으로 통일(portfolio docId가 숫자형이어도 타입 미스매치 방지).
+    const info = stocks.find((s) => String(s.id) === String(h.stockId));
     if (info && info.isListed && h.quantity > 0) {
-      return sum + info.price * h.quantity;
+      return sum + (Number(info.price) || 0) * h.quantity;
     }
     return sum;
   }, 0);
@@ -162,6 +190,7 @@ function computeNetAssets({
     (Number(cash) || 0) +
     couponValueTotal +
     parking +
+    depositSavingsTotal +
     stockValue +
     realEstateValue -
     loanBalance

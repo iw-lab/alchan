@@ -2310,48 +2310,61 @@ async function collectWeeklyRentLogic() {
 //   매주 금요일 부동산세 징수 직전에 실행되어 동적 세율 결정에 사용됨.
 //   classMacroStats/{classCode} 문서에 저장 → 학급 거시경제 대시보드 데이터 소스.
 // ──────────────────────────────────────────────────────────────────
-async function computeUserNetAssets(classCode, userId, userData, stockMap) {
-  const [parkingSnap, productsSnap, portfolioSnap, byIdSnap, byNameSnap] = await Promise.all([
+async function computeUserNetAssets(classCode, userId, userData, stockMap, couponValue = 1000) {
+  // 부동산 owner/ownerId 필드는 모두 소유자 UID로 저장된다(서버 거래/등록 로직 기준).
+  // 과거 owner==userData.name(이름) 쿼리는 항상 빈 결과라 부동산이 과세 순자산에서
+  // 누락됐다. ownerId·owner 둘 다 UID로 조회하고 seen Set으로 중복을 제거한다.
+  const [parkingSnap, productsSnap, portfolioSnap, byIdSnap, byOwnerSnap] = await Promise.all([
     db.collection("users").doc(userId).collection("financials").doc("parkingAccount").get().catch(() => null),
     db.collection("users").doc(userId).collection("products").get().catch(() => ({ docs: [] })),
     db.collection("users").doc(userId).collection("portfolio").get().catch(() => ({ docs: [] })),
     db.collection("classes").doc(classCode).collection("realEstateProperties").where("ownerId", "==", userId).get().catch(() => ({ docs: [] })),
-    userData.name
-      ? db.collection("classes").doc(classCode).collection("realEstateProperties").where("owner", "==", userData.name).get().catch(() => ({ docs: [] }))
-      : Promise.resolve({ docs: [] }),
+    db.collection("classes").doc(classCode).collection("realEstateProperties").where("owner", "==", userId).get().catch(() => ({ docs: [] })),
   ]);
 
   const cash = Number(userData.cash) || 0;
+  const coupons = Number(userData.coupons) || 0;
+  const couponTotal = coupons * (Number(couponValue) || 0);
   const parkingBalance = (parkingSnap && parkingSnap.exists) ? (Number(parkingSnap.data().balance) || 0) : 0;
 
   let depositSavingsTotal = 0;
   let loanTotal = 0;
   productsSnap.docs.forEach((d) => {
     const data = d.data();
-    if (data.type === "loan") loanTotal += Number(data.balance) || 0;
-    else depositSavingsTotal += Number(data.balance) || 0;
+    // 대출은 remainingPrincipal 우선(없으면 balance), 예적금만 명시적으로 합산.
+    // 미래에 다른 type(보너스/이벤트 등)이 추가돼도 순자산에 섞이지 않도록 한다.
+    if (data.type === "loan") {
+      loanTotal += Number(data.remainingPrincipal) || Number(data.balance) || 0;
+    } else if (data.type === "deposit" || data.type === "savings") {
+      depositSavingsTotal += Number(data.balance) || 0;
+    }
   });
 
   let stockValue = 0;
   portfolioSnap.docs.forEach((d) => {
     const data = d.data();
     const qty = Number(data.quantity) || 0;
-    const price = Number(stockMap[d.id] ?? stockMap[parseInt(d.id)]) || 0;
-    if (qty > 0) stockValue += price * qty;
+    if (qty <= 0) return;
+    // holding.stockId 우선, 없으면 docId. stockMap 키는 미러의 s.id(문자열·상장종목만).
+    const sid = data.stockId != null ? data.stockId : d.id;
+    const price = Number(stockMap[sid] ?? stockMap[String(sid)]) || 0;
+    stockValue += price * qty;
   });
 
   const seen = new Set();
   let realEstateValue = 0;
-  [...byIdSnap.docs, ...byNameSnap.docs].forEach((d) => {
+  [...byIdSnap.docs, ...byOwnerSnap.docs].forEach((d) => {
     if (seen.has(d.id)) return;
     seen.add(d.id);
     const data = d.data();
     realEstateValue += Number(data.price) || Number(data.value) || 0;
   });
 
-  const totalAssets = cash + parkingBalance + depositSavingsTotal + stockValue + realEstateValue;
+  // 쿠폰 가치도 순자산에 포함(다른 모든 계산식과 동일). 과거 누락으로 쿠폰 많은 학생이
+  // 과소 과세되던 버그를 차단한다.
+  const totalAssets = cash + couponTotal + parkingBalance + depositSavingsTotal + stockValue + realEstateValue;
   const netAssets = totalAssets - loanTotal;
-  return { cash, parkingBalance, depositSavingsTotal, stockValue, realEstateValue, loanTotal, totalAssets, netAssets };
+  return { cash, couponTotal, parkingBalance, depositSavingsTotal, stockValue, realEstateValue, loanTotal, totalAssets, netAssets };
 }
 
 function computeGiniCoefficient(values) {
@@ -2424,14 +2437,29 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
       // 주식 현재가 (학급당 1회 조회 — 거시지표·자산 계산 공유)
       const stockMap = {};
       try {
+        // 주식 시세: 정식 소스 CentralStocks의 전역 스냅샷(realStockService 갱신).
+        // 과거 classes/{classCode}/stocks/stockList 는 write가 없는 죽은 경로라 항상 비어
+        // 주식이 순자산세·부동산세 과세 순자산에서 누락되던 버그를 차단한다.
         const stockListDoc = await db
-          .collection("classes").doc(classCode)
-          .collection("stocks").doc("stockList").get();
+          .collection("Settings").doc("centralStocksCache").get();
         if (stockListDoc.exists) {
-          (stockListDoc.data().stocks || []).forEach((s) => { stockMap[s.id] = Number(s.price) || 0; });
+          // 미러는 realStockService가 isListed==true만 담지만, 미러 로직 변경에 대비해
+          // 상장 종목만 가격을 등록한다(상장폐지 주식이 순자산에 산입되지 않도록).
+          (stockListDoc.data().stocks || []).forEach((s) => { if (s.isListed !== false) stockMap[s.id] = Number(s.price) || 0; });
         }
       } catch (err) {
         logger.warn(`[부동산세] ${classCode}: 주식 목록 조회 실패`, err.message);
+      }
+
+      // 쿠폰 가치(순자산 계산에 필요) — settings/mainSettings 에서 1회 조회
+      let couponValue = 1000;
+      try {
+        const msSnap = await db.doc("settings/mainSettings").get();
+        if (msSnap.exists && Number(msSnap.data().couponValue)) {
+          couponValue = Number(msSnap.data().couponValue);
+        }
+      } catch (err) {
+        logger.warn(`[부동산세] ${classCode}: 쿠폰가치 조회 실패 - 기본값 1000`, err.message);
       }
 
       // 학급 학생 조회 (관리자 제외 + isSuperAdmin/isTeacher도 제외)
@@ -2449,7 +2477,7 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
           const userData = userDoc.data();
           if (userData.isSuperAdmin || userData.isTeacher) return null;
           const userName = userData.name || userData.nickname || "알 수 없음";
-          const assets = await computeUserNetAssets(classCode, userId, userData, stockMap);
+          const assets = await computeUserNetAssets(classCode, userId, userData, stockMap, couponValue);
           return { userDoc, userId, userName, ...assets };
         }),
       );

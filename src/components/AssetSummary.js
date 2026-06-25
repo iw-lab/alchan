@@ -19,6 +19,8 @@ export default function AssetSummary({
   } = user || {};
 
   const [parkingBalance, setParkingBalance] = useState(0);
+  const [deposits, setDeposits] = useState([]);
+  const [savings, setSavings] = useState([]);
   const [loans, setLoans] = useState([]);
   const [realEstateAssets, setRealEstateAssets] = useState([]);
   const [userPortfolio, setUserPortfolio] = useState({ holdings: [] });
@@ -30,6 +32,8 @@ export default function AssetSummary({
   useEffect(() => {
     if (!userId) {
       setParkingBalance(0);
+      setDeposits([]);
+      setSavings([]);
       setLoans([]);
       setRealEstateAssets([]);
       setUserPortfolio({ holdings: [] });
@@ -49,6 +53,8 @@ export default function AssetSummary({
         if (Date.now() - ts < CACHE_TTL) {
           // 캐시 유효 → Firestore 읽기 0회
           setParkingBalance(data.parking || 0);
+          setDeposits(data.deposits || []);
+          setSavings(data.savings || []);
           setLoans(data.loans || []);
           setRealEstateAssets(data.realEstate || []);
           setUserPortfolio(data.portfolio || { holdings: [] });
@@ -70,25 +76,33 @@ export default function AssetSummary({
             .catch(() => 0)
         );
 
-        // 2. 대출 - financials 컬렉션에서 loans 문서
+        // 2. 예금/적금/대출 - users/{uid}/products 가 정식 소스(type=deposit|savings|loan).
+        //    과거 financials/loans 문서는 write가 없는 죽은 경로라 대출이 0으로 잡혀
+        //    순자산이 과대(부채 미차감) 표시되던 버그를 차단한다. 한 번 읽어 세 종류 분류.
         promises.push(
-          getDoc(doc(db, "users", userId, "financials", "loans"))
+          getDocs(collection(db, "users", userId, "products"))
             .then((snap) => {
-              if (snap.exists()) {
-                const data = snap.data();
-                return Array.isArray(data.activeLoans) ? data.activeLoans : [];
-              }
-              return [];
+              const dep = [];
+              const sav = [];
+              const lns = [];
+              snap.docs.forEach((d) => {
+                const p = d.data();
+                if (p.type === "deposit") dep.push(p);
+                else if (p.type === "savings") sav.push(p);
+                else if (p.type === "loan") lns.push(p);
+              });
+              return { deposits: dep, savings: sav, loans: lns };
             })
-            .catch(() => [])
+            .catch(() => ({ deposits: [], savings: [], loans: [] }))
         );
 
-        // 3. 부동산 (classCode 필요)
+        // 3. 부동산 (classCode 필요) — owner 필드는 소유자 UID(=userId)로 저장된다.
+        //    과거 owner==userName(이름) 쿼리는 항상 빈 결과라 부동산이 누락됐다.
         if (classCode) {
           promises.push(
             getDocs(query(
               collection(db, "classes", classCode, "realEstateProperties"),
-              where("owner", "==", userName)
+              where("owner", "==", userId)
             ))
               .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
               .catch(() => [])
@@ -114,26 +128,27 @@ export default function AssetSummary({
         );
 
         // 5. 전체 주식 목록 (현재가 확인용)
-        if (classCode) {
-          promises.push(
-            getDoc(doc(db, "classes", classCode, "stocks", "stockList"))
-              .then((snap) => {
-                if (snap.exists()) {
-                  const data = snap.data();
-                  return Array.isArray(data.stocks) ? data.stocks : [];
-                }
-                return [];
-              })
-              .catch(() => [])
-          );
-        } else {
-          promises.push(Promise.resolve([]));
-        }
+        //    정식 소스 = CentralStocks. Settings/centralStocksCache는 realStockService가
+        //    갱신하는 전역 스냅샷(단일 문서, 읽기 1회). 과거 stockList 경로는 write가 없는
+        //    죽은 경로라 항상 비어 주식 평가가 0이 되던 버그를 차단한다.
+        promises.push(
+          getDoc(doc(db, "Settings", "centralStocksCache"))
+            .then((snap) => {
+              if (snap.exists()) {
+                const data = snap.data();
+                return Array.isArray(data.stocks) ? data.stocks : [];
+              }
+              return [];
+            })
+            .catch(() => [])
+        );
 
-        const [parking, loanData, realEstate, portfolio, stocks] = await Promise.all(promises);
+        const [parking, products, realEstate, portfolio, stocks] = await Promise.all(promises);
 
         setParkingBalance(parking);
-        setLoans(loanData);
+        setDeposits(products.deposits);
+        setSavings(products.savings);
+        setLoans(products.loans);
         setRealEstateAssets(realEstate);
         setUserPortfolio(portfolio);
         setAllStocks(stocks);
@@ -141,7 +156,15 @@ export default function AssetSummary({
         // 캐시 저장 (5분 TTL)
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify({
-            data: { parking, loans: loanData, realEstate, portfolio, stocks },
+            data: {
+              parking,
+              deposits: products.deposits,
+              savings: products.savings,
+              loans: products.loans,
+              realEstate,
+              portfolio,
+              stocks,
+            },
             ts: Date.now(),
           }));
         } catch { /* 저장 실패 무시 */ }
@@ -159,30 +182,39 @@ export default function AssetSummary({
   const calculateTotalStockValue = () => {
     if (!allStocks.length || !userPortfolio.holdings.length) return 0;
     return userPortfolio.holdings.reduce((sum, holding) => {
-      const stockInfo = allStocks.find((stock) => stock.id === holding.stockId);
+      // 문자열 기준 매칭으로 통일(portfolio docId 숫자형 타입 미스매치 방지).
+      const stockInfo = allStocks.find((stock) => String(stock.id) === String(holding.stockId));
       if (stockInfo && stockInfo.isListed && holding.quantity > 0) {
-        return sum + stockInfo.price * holding.quantity;
+        return sum + (Number(stockInfo.price) || 0) * holding.quantity;
       }
       return sum;
     }, 0);
   };
 
+  // 예금+적금 합계(balance 기준)
+  const depositSavingsTotal = [...deposits, ...savings].reduce(
+    (sum, p) => sum + (Number(p.balance) || 0),
+    0,
+  );
+
   // 총 자산 계산
   useEffect(() => {
     const couponValueTotal = coupons * couponValue;
-    const realEstateValue = realEstateAssets.reduce((sum, asset) => sum + (asset.price || 0), 0);
+    const realEstateValue = realEstateAssets.reduce((sum, asset) => sum + (Number(asset.price) || Number(asset.value) || 0), 0);
     const totalStockValueCalculated = calculateTotalStockValue();
-    const totalLoanBalance = loans.reduce((sum, loan) => sum + (loan.remainingPrincipal || 0), 0);
+    const depSavTotal = [...deposits, ...savings].reduce((sum, p) => sum + (Number(p.balance) || 0), 0);
+    const totalLoanBalance = loans.reduce((sum, loan) => sum + (Number(loan.remainingPrincipal) || Number(loan.balance) || 0), 0);
     const calculatedTotalAssets =
-      currentCash + couponValueTotal + parkingBalance + totalStockValueCalculated + realEstateValue - totalLoanBalance;
+      currentCash + couponValueTotal + parkingBalance + depSavTotal + totalStockValueCalculated + realEstateValue - totalLoanBalance;
     setTotalAssets(calculatedTotalAssets);
-  }, [currentCash, coupons, couponValue, parkingBalance, realEstateAssets, userPortfolio, allStocks, loans]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCash, coupons, couponValue, parkingBalance, deposits, savings, realEstateAssets, userPortfolio, allStocks, loans]);
 
   // 계산된 값들
-  const totalLoanBalance = loans.reduce((sum, loan) => sum + (loan.remainingPrincipal || 0), 0);
-  const totalRealEstateValue = realEstateAssets.reduce((sum, asset) => sum + (asset.price || 0), 0);
+  const totalLoanBalance = loans.reduce((sum, loan) => sum + (Number(loan.remainingPrincipal) || Number(loan.balance) || 0), 0);
+  const totalRealEstateValue = realEstateAssets.reduce((sum, asset) => sum + (Number(asset.price) || Number(asset.value) || 0), 0);
   const totalStockValue = calculateTotalStockValue();
-  const grossAssets = currentCash + coupons * couponValue + parkingBalance + totalStockValue + totalRealEstateValue;
+  const grossAssets = currentCash + coupons * couponValue + parkingBalance + depositSavingsTotal + totalStockValue + totalRealEstateValue;
 
   const styles = {
     sectionContainer: { marginBottom: "12px" },
@@ -286,9 +318,9 @@ export default function AssetSummary({
               {userPortfolio.holdings.length > 0 ? (
                 <ul style={{ ...styles.detailList, marginTop: "5px" }}>
                   {userPortfolio.holdings.slice(0, 2).map((holding) => {
-                    const stockInfo = allStocks.find((stock) => stock.id === holding.stockId);
+                    const stockInfo = allStocks.find((stock) => String(stock.id) === String(holding.stockId));
                     const stockName = stockInfo ? stockInfo.name : `ID: ${holding.stockId}`;
-                    const holdingValue = stockInfo && stockInfo.isListed ? stockInfo.price * holding.quantity : 0;
+                    const holdingValue = stockInfo && stockInfo.isListed ? (Number(stockInfo.price) || 0) * holding.quantity : 0;
                     if (holding.quantity > 0) {
                       return (
                         <li key={holding.stockId} style={styles.detailListItem}>
@@ -325,7 +357,7 @@ export default function AssetSummary({
                 <ul style={styles.detailList}>
                   {realEstateAssets.map((asset) => (
                     <li key={asset.id} style={styles.detailListItem}>
-                      - #{asset.id}: {formatKoreanCurrency(asset.price || 0)}
+                      - #{asset.id}: {formatKoreanCurrency(Number(asset.price) || Number(asset.value) || 0)}
                       {asset.forSale && <span style={{ color: "#ca8a04", fontWeight: "500" }}>(판매중)</span>}
                       {asset.tenant && <span style={{ color: "#059669" }}>(세입자: {asset.tenant})</span>}
                     </li>
@@ -352,7 +384,7 @@ export default function AssetSummary({
                 <ul style={styles.detailList}>
                   {loans.map((loan) => (
                     <li key={loan.id} style={styles.detailListItem}>
-                      - {loan.name}: {formatKoreanCurrency(loan.remainingPrincipal || 0)} ({loan.rate}%)
+                      - {loan.name}: {formatKoreanCurrency(Number(loan.remainingPrincipal) || Number(loan.balance) || 0)} ({loan.rate}%)
                     </li>
                   ))}
                 </ul>
