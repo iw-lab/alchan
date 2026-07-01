@@ -638,12 +638,20 @@ const AdminSettingsModal = ({
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;
 
+      // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
+      // handleSaveStudentJobs와 동일한 조건(Array.isArray만 체크)으로 통일 — 미리보기와 저장값 불일치 방지
+      const validJobIds = Array.isArray(jobs)
+        ? selectedJobIds.filter((jobId) => jobs.some((j) => j.id === jobId))
+        : selectedJobIds;
+
       const grossSalary =
-        baseSalary + Math.max(0, selectedJobIds.length - 1) * additionalSalary;
+        validJobIds.length === 0
+          ? 0
+          : baseSalary + Math.max(0, validJobIds.length - 1) * additionalSalary;
 
       let bonus = 0;
       if (Array.isArray(jobs)) {
-        for (const jobId of selectedJobIds) {
+        for (const jobId of validJobIds) {
           const job = jobs.find((j) => j.id === jobId);
           if (job?.title === "대통령") bonus += PRESIDENT_BONUS;
         }
@@ -1132,16 +1140,21 @@ const AdminSettingsModal = ({
     setAppLoading(true);
 
     try {
+      // 삭제된 직업의 유령 id는 저장 시 함께 정리 (재기록 방지)
+      const cleanedJobIds = Array.isArray(jobs)
+        ? tempSelectedJobIds.filter((id) => jobs.some((j) => j.id === id))
+        : tempSelectedJobIds;
+
       const userRef = firebaseDoc(db, "users", selectedStudent.id);
       await firebaseUpdateDoc(userRef, {
-        selectedJobIds: tempSelectedJobIds,
+        selectedJobIds: cleanedJobIds,
         updatedAt: serverTimestamp(),
       });
 
       setStudents((prevStudents) =>
         prevStudents.map((student) =>
           student.id === selectedStudent.id
-            ? { ...student, selectedJobIds: tempSelectedJobIds }
+            ? { ...student, selectedJobIds: cleanedJobIds }
             : student,
         ),
       );

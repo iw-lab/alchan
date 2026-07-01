@@ -2048,11 +2048,24 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           const jobIds = Array.isArray(rawJobIds)
             ? rawJobIds
             : (rawJobIds && typeof rawJobIds === "object" ? Object.keys(rawJobIds) : []);
-          if (jobIds.length === 0) continue;
+          // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
+          const validJobIds = jobIds.filter((id) => jobTitleMap[id]);
+          if (validJobIds.length === 0) {
+            // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
+            // (지급 안 한) 이번 회차를 잘못 회수하게 되므로 초기화
+            if (student.lastNetSalary) {
+              batch.update(studentDoc.ref, {
+                lastNetSalary: 0,
+                lastGrossSalary: 0,
+                lastTaxAmount: 0,
+              });
+            }
+            continue;
+          }
 
-          const grossSalary = BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+          const grossSalary = BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
           let bonus = 0;
-          for (const jobId of jobIds) {
+          for (const jobId of validJobIds) {
             const title = jobTitleMap[jobId];
             if (title === "대통령") bonus += PRESIDENT_BONUS;
           }

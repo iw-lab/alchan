@@ -1023,8 +1023,38 @@ function Dashboard({ adminTabMode }) {
  setAppLoading(true);
  try {
  const jobRef = doc(db, "jobs", jobIdToDelete);
- const { deleteDoc } = await import("firebase/firestore");
- await deleteDoc(jobRef);
+
+ // 직업 삭제 + 같은 학급 학생들의 selectedJobIds 정리를 하나의 batch로 원자 처리.
+ // (본인 계정만 정리하면 다른 학생 배열엔 죽은 id가 남아 급여 계산이 부풀려짐)
+ const cleanupBatch = writeBatch(db);
+ cleanupBatch.delete(jobRef);
+
+ let cleanupCount = 0;
+ if (userDoc?.classCode) {
+ const classUsersQuery = query(
+ firestoreCollection(db, "users"),
+ where("classCode", "==", userDoc.classCode),
+ );
+ const classUsersSnap = await getDocs(classUsersQuery);
+ classUsersSnap.docs.forEach((d) => {
+ if (d.id === user?.uid) return; // 본인은 아래 updateUser로 별도 처리(로컬 state 동기화 포함)
+ const ids = d.data().selectedJobIds || [];
+ if (ids.includes(jobIdToDelete)) {
+ cleanupBatch.update(d.ref, {
+ selectedJobIds: ids.filter((id) => id !== jobIdToDelete),
+ updatedAt: serverTimestamp(),
+ });
+ cleanupCount++;
+ }
+ });
+ }
+
+ await cleanupBatch.commit();
+ if (cleanupCount > 0) {
+ logger.info(
+ `[handleDeleteJob] 직업 삭제 시 ${cleanupCount}명의 학생 selectedJobIds에서 정리`,
+ );
+ }
 
  if (user && userDoc?.selectedJobIds?.includes(jobIdToDelete)) {
  const updatedSelectedIds = userDoc.selectedJobIds.filter(

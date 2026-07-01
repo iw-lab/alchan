@@ -3190,15 +3190,26 @@ exports.batchPaySalaries = onCall(
 
       for (const student of targetStudents) {
         const jobIds = student.selectedJobIds || [];
-        if (jobIds.length === 0) {
+        // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
+        const validJobIds = jobIds.filter((id) => jobTitleMap[id]);
+        if (validJobIds.length === 0) {
           skippedStudents.push(student.name || student.nickname || student.id);
+          // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
+          // (지급 안 한) 이번 회차를 잘못 회수하게 되므로 초기화
+          if (student.lastNetSalary) {
+            batch.update(db.collection("users").doc(student.id), {
+              lastNetSalary: 0,
+              lastGrossSalary: 0,
+              lastTaxAmount: 0,
+            });
+          }
           continue;
         }
 
         const grossSalary =
-          BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
+          BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
         let bonus = 0;
-        for (const jobId of jobIds) {
+        for (const jobId of validJobIds) {
           const title = jobTitleMap[jobId];
           if (title === "대통령") bonus += PRESIDENT_BONUS;
         }
@@ -3291,21 +3302,6 @@ exports.reverseSalaryOnce = onCall(
       await checkAuthAndGetUserData(request, true);
 
     try {
-      // 급여 설정 가져오기 (세율)
-      let salarySettingsDoc = await db
-        .collection("settings")
-        .doc(`salarySettings_${classCode}`)
-        .get();
-      if (!salarySettingsDoc.exists) {
-        salarySettingsDoc = await db
-          .collection("settings")
-          .doc("salarySettings")
-          .get();
-      }
-      const taxRate = salarySettingsDoc.exists
-        ? salarySettingsDoc.data().taxRate || 0.1
-        : 0.1;
-
       // 해당 클래스 학생 조회
       const studentsSnapshot = await db
         .collection("users")
@@ -3318,37 +3314,24 @@ exports.reverseSalaryOnce = onCall(
         })
         .map((d) => ({ id: d.id, ...d.data() }));
 
-      const BASE_SALARY = 2000000;
-      const ADDITIONAL_SALARY = 500000;
-      const PRESIDENT_BONUS = 2000000;
-
-      const jobsSnap2 = await db.collection("jobs").where("classCode", "==", classCode).get();
-      const jobTitleMap2 = {};
-      jobsSnap2.forEach((doc) => { jobTitleMap2[doc.id] = doc.data().title; });
-
       const batch = db.batch();
       let totalReversed = 0;
       let totalAmount = 0;
 
       for (const student of targetStudents) {
-        const jobIds = student.selectedJobIds || [];
-        if (jobIds.length === 0) continue;
-
-        const grossSalary =
-          BASE_SALARY + Math.max(0, jobIds.length - 1) * ADDITIONAL_SALARY;
-        let bonus = 0;
-        for (const jobId of jobIds) {
-          const title = jobTitleMap2[jobId];
-          if (title === "대통령") bonus += PRESIDENT_BONUS;
-        }
-        const totalGross = grossSalary + bonus;
-        const tax = Math.floor(totalGross * taxRate);
-        const netSalary = totalGross - tax;
+        // 재계산이 아니라 직전 지급 시 실제로 기록된 금액(lastNetSalary)을 그대로 회수.
+        // (직업 개수로 재계산하면, 지급 이후 직업 구성이 바뀌었을 때 회수액이 실제 지급액과 어긋남)
+        const netSalary = student.lastNetSalary;
+        if (typeof netSalary !== "number" || netSalary <= 0) continue;
 
         const studentRef = db.collection("users").doc(student.id);
         batch.update(studentRef, {
           cash: admin.firestore.FieldValue.increment(-netSalary),
           totalSalaryReceived: admin.firestore.FieldValue.increment(-netSalary),
+          // 회수 완료 표시 — 관리자가 실수로 다시 눌러도 이중 차감되지 않도록 초기화
+          lastNetSalary: 0,
+          lastGrossSalary: 0,
+          lastTaxAmount: 0,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
