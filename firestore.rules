@@ -314,6 +314,16 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🏪 카탈로그 버전 (catalogMeta) — 상점 변경 실시간 전파용.
+    //    학생은 같은 학급 문서 1개만 onSnapshot으로 읽음.
+    //    쓰기는 Cloud Function(Admin SDK, rules 우회) 전용.
+    // ========================================================
+    match /catalogMeta/{classCode} {
+      allow read: if isSameClassFast(classCode);
+      allow write: if false;
+    }
+
+    // ========================================================
     // 🎭 아바타 상점 아이템 (avatarShopItems) - 전 학급 공용
     // ========================================================
     match /avatarShopItems/{itemId} {

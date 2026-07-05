@@ -5,7 +5,9 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 import { functions, httpsCallable, db } from "../firebase";
 import { usePolling, POLLING_INTERVALS } from "../hooks/usePolling";
@@ -197,6 +199,53 @@ export const ItemProvider = ({ children }) => {
     enabled: !authLoading && !!userId && !!currentUserClassCode,
     deps: [authLoading, userId, currentUserClassCode],
   });
+
+  // 🔥 [읽기 절감 2단계] 카탈로그 버전 구독 — 관리자의 상품 추가/수정/삭제·재입고 가격인상 시
+  // 서버가 catalogMeta/{classCode}.version을 갱신한다. 이 1문서 리스너로 버전 변경을 감지해
+  // 세션 캐시를 버리고 즉시 재조회 → 다른 학생 기기에도 수초 내 반영(TTL 27분 대기 제거).
+  // fetchData는 ref로 참조 — 리스너가 콜백 재생성에 재구독되지 않게(읽기폭주 예방 규약).
+  const fetchDataRef = useRef(fetchData);
+  useEffect(() => {
+    fetchDataRef.current = fetchData;
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (!userId || !currentUserClassCode) return undefined;
+    const verKey = `catalogVer:${currentUserClassCode}`;
+    const ssGet = () => {
+      try {
+        return sessionStorage.getItem(verKey);
+      } catch (e) {
+        return null;
+      }
+    };
+    const ssSet = (v) => {
+      try {
+        sessionStorage.setItem(verKey, v);
+      } catch (e) {
+        /* storage 접근 불가 환경 — 클로저 메모리(lastSeen)로 계속 동작 */
+      }
+    };
+    // 마지막 관측 버전. 클로저 메모리가 1차(스토리지 막혀도 동작),
+    // sessionStorage는 새로고침 생존용 2차. 문서 미존재는 "0"으로 정규화해
+    // 최초 bump(문서 생성)도 변경으로 감지한다.
+    let lastSeen = ssGet();
+    const unsubscribe = onSnapshot(
+      doc(db, "catalogMeta", currentUserClassCode),
+      (snap) => {
+        const version = String(snap.data()?.version?.toMillis?.() ?? 0);
+        const prev = lastSeen;
+        lastSeen = version;
+        ssSet(version);
+        // 이 탭 최초 관측(prev 없음)은 기록만 — 데이터는 마운트 fetch가 책임진다.
+        if (prev == null || prev === version) return;
+        invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
+        fetchDataRef.current({ force: true });
+      },
+      (err) => logger.warn("[ItemContext] 카탈로그 버전 구독 오류:", err),
+    );
+    return unsubscribe;
+  }, [userId, currentUserClassCode]);
 
   // Public refresh function
   // 🔥 [읽기 절감 2단계] 쓰기 후 갱신 경로 — 반드시 캐시 우회(force)

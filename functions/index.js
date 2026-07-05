@@ -1777,6 +1777,21 @@ exports.getItemContextData = onCall(
   },
 );
 
+// 🔥 [읽기 절감 2단계] 카탈로그 버전 문서(catalogMeta/{classCode}) 갱신.
+// 학생 클라이언트가 이 문서 1개를 onSnapshot 구독 → 버전 변경 시 세션 캐시를 버리고
+// 즉시 재조회한다(관리자 가격/상품 변경의 실시간 전파). 실패는 비치명(TTL 27분으로 수렴).
+const bumpCatalogVersion = async (classCode) => {
+  if (!classCode) return;
+  try {
+    await db.collection("catalogMeta").doc(classCode).set(
+      { version: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+  } catch (e) {
+    logger.warn(`[bumpCatalogVersion] ${classCode} 갱신 실패(비치명):`, e);
+  }
+};
+
 exports.updateStoreItem = onCall(
   { region: "asia-northeast3" },
   async (request) => {
@@ -1810,6 +1825,7 @@ exports.updateStoreItem = onCall(
       };
 
       await itemRef.update(updates);
+      await bumpCatalogVersion(itemDoc.data().classCode);
 
       logger.info(
         `[updateStoreItem] ${uid}님이 아이템 ${itemId} 수정: ${JSON.stringify(updatesToApply)}`,
@@ -1891,6 +1907,7 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
       };
 
       const docRef = await db.collection("storeItems").add(itemData);
+      await bumpCatalogVersion(newItemData.classCode || userData.classCode);
 
       logger.info(
         `[addStoreItem] ${uid}님이 새 아이템 추가: ${newItemData.name} (ID: ${docRef.id})`,
@@ -1934,6 +1951,7 @@ exports.deleteStoreItem = onCall(
 
       const itemData = itemDoc.data();
       await itemRef.delete();
+      await bumpCatalogVersion(itemData.classCode);
 
       logger.info(
         `[deleteStoreItem] ${uid}님이 아이템 삭제: ${itemData.name} (ID: ${itemId})`,
@@ -2327,6 +2345,12 @@ exports.purchaseStoreItem = onCall(
           restockCost: restockCost,
         };
       });
+
+      // 재입고 = 카탈로그 가격 인상(+10%) → 전 학생 캐시 무효화 신호.
+      // 일반 구매(재고 감소만)는 bump하지 않음 — 캐시 절감 효과 보존.
+      if (result.restocked) {
+        await bumpCatalogVersion(classCode);
+      }
 
       logger.info(
         `[purchaseStoreItem] ${uid}님이 ${result.itemName} ${result.quantity}개 구매 (${result.totalCost.toLocaleString()}원)${result.shopSalesTax > 0 ? ` [판매세 ${result.shopSalesTax.toLocaleString()}원 → 관리자]` : ""}${result.restocked ? ` [재고 자동 보충됨 - 관리자 비용: ${result.restockCost.toLocaleString()}원]` : ""}`,
