@@ -6,6 +6,7 @@ import NationalTaxService from "./NationalTaxService";
 // 투자하기, 보내기/가져오기 탭 제거됨 - 국고는 관리자 현금으로 통합
 import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
+import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 import { db } from "../../firebase";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { logger } from '../../utils/logger';
@@ -55,6 +56,8 @@ const LawManagement = ({ classCode }) => {
       interval: 30 * 60 * 1000,
       enabled: !!classCode,
       deps: [classCode],
+      // 🔥 [읽기 절감 1단계] 정부·국회·조직도·경찰서·법원이 같은 jobs 쿼리 공유 → 세션 캐시
+      cacheKey: classCode ? `jobs:${classCode}` : null,
     }
   );
 
@@ -98,7 +101,14 @@ const LawManagement = ({ classCode }) => {
   };
 
   // 🔥 [비용 최적화] 5분 → 15분 (법안 데이터는 자주 안 바뀜)
-  const { loading, refetch } = usePolling(fetchLaws, { interval: 15 * 60 * 1000, enabled: !!classCode });
+  const { loading, refetch: refetchRaw } = usePolling(fetchLaws, { interval: 15 * 60 * 1000, enabled: !!classCode });
+
+  // 🔥 [읽기 절감 1단계] 법안 승인/거부 후 국회(naLaws:)·경찰서(naLawsApproved:) 세션 캐시도
+  // 함께 무효화 — 다른 페이지가 stale 법안으로 벌금 산정하지 않도록(교차검증 C2 반영)
+  const refetch = useCallback(() => {
+    invalidateFetchCache("naLaws");
+    return refetchRaw();
+  }, [refetchRaw]);
 
   // 법안 승인 핸들러
   const handleApprove = async (lawId) => {

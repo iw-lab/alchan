@@ -445,6 +445,8 @@ const PoliceStation = () => {
  interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (사용자 목록은 거의 안 바뀜)
  enabled: !!usersQuery && !auth.loading,
  deps: [classCode, auth.loading, usersQuery],
+ // 🔥 [읽기 절감 1단계] 학급생 목록(~25문서) 재방문 중복 읽기 차단
+ cacheKey: classCode ? `classUsers:${classCode}` : null,
  },
  );
 
@@ -508,6 +510,8 @@ const PoliceStation = () => {
  interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
  enabled: !!classCode,
  deps: [classCode],
+ // 🔥 [읽기 절감 1단계] 정부 계열 5개 페이지가 같은 jobs 쿼리 공유 → 세션 캐시
+ cacheKey: classCode ? `jobs:${classCode}` : null,
  },
  );
 
@@ -557,6 +561,9 @@ const PoliceStation = () => {
  interval: 15 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 15분 (국고 데이터는 자주 안 바뀜)
  enabled: !!classCode && !auth.loading,
  deps: [classCode, auth.loading, hasPoliceAdminRights],
+ // 🔥 [읽기 절감 1단계] 금액 표시라 보수적 TTL 5분 — 재방문 중복만 차단
+ cacheKey: classCode ? `treasuryAdminCash:${classCode}` : null,
+ cacheTTL: 5 * 60 * 1000,
  },
  );
 
@@ -590,6 +597,8 @@ const PoliceStation = () => {
  interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (법안은 자주 안 바뀜)
  enabled: !!classCode,
  deps: [classCode],
+ // 🔥 [읽기 절감 1단계] 최종승인 법안(저변경) 재방문 중복 읽기 차단
+ cacheKey: classCode ? `naLawsApproved:${classCode}` : null,
  },
  );
 
@@ -599,7 +608,7 @@ const PoliceStation = () => {
  return doc(db, "classes", classCode, "policeReportReasons", "custom");
  }, [classCode]);
 
- const { data: customReportReasons, loading: reasonsLoading } = usePolling(
+ const { data: customReportReasons, loading: reasonsLoading, refetch: refetchReasons } = usePolling(
  async () => {
  if (!customReasonsDocRef)
  return [...defaultReasons.filter((r) => !r.isLaw)];
@@ -625,6 +634,8 @@ const PoliceStation = () => {
  interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (신고 사유는 거의 안 바뀜)
  enabled: !!classCode,
  deps: [classCode, hasPoliceAdminRights],
+ // 🔥 [읽기 절감 1단계] 신고 사유(저변경) 재방문 중복 읽기 차단
+ cacheKey: classCode ? `policeReasons:${classCode}` : null,
  },
  );
 
@@ -682,6 +693,9 @@ const PoliceStation = () => {
  interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (신고 목록)
  enabled: !!classCode,
  deps: [classCode],
+ // 🔥 [읽기 절감 1단계] 활동성 데이터라 TTL 3분 — 자기 제출은 refetchReports(force)로 즉시
+ cacheKey: classCode ? `policeReports:${classCode}` : null,
+ cacheTTL: 3 * 60 * 1000,
  },
  );
 
@@ -1003,6 +1017,8 @@ const PoliceStation = () => {
  const batch = writeBatch(db);
  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
  await batch.commit();
+ // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시 stale 방지
+ await refetchReports();
  alert("모든 신고 기록 삭제 완료.");
  } catch (error) {
  logger.error("Error deleting all reports:", error);
@@ -1025,6 +1041,8 @@ const PoliceStation = () => {
  idToDelete,
  );
  await deleteDoc(reportRef);
+ // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시 stale 방지
+ await refetchReports();
  alert("신고 기록 삭제 완료.");
  } catch (error) {
  logger.error("Error deleting report:", error);
@@ -1070,6 +1088,8 @@ const PoliceStation = () => {
  updatedAt: serverTimestamp(),
  classCode: classCode,
  });
+ // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시가 구버전 사유를 재서빙하지 않도록
+ await refetchReasons();
  alert("사용자 정의 신고 사유 업데이트 완료.");
  } catch (error) {
  logger.error("Error updating reasons:", error);

@@ -628,6 +628,8 @@ const Court = () => {
  interval: 30 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 30분 (직업 목록은 거의 안 바뀜)
  enabled: !!classCode,
  deps: [classCode],
+ // 🔥 [읽기 절감 1단계] 정부 계열 5개 페이지가 같은 jobs 쿼리 공유 → 세션 캐시
+ cacheKey: classCode ? `jobs:${classCode}` : null,
  },
  );
 

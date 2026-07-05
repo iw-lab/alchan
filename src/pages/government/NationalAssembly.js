@@ -4,6 +4,7 @@ import "./NationalAssembly.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
 import { usePolling } from "../../hooks/usePolling";
+import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 import { AlchanLoading } from "../../components/AlchanLayout";
 
 import { logger } from "../../utils/logger";
@@ -46,6 +47,8 @@ const NationalAssembly = () => {
       interval: 30 * 60 * 1000,
       enabled: !!currentUser?.classCode,
       deps: [currentUser?.classCode],
+      // 🔥 [읽기 절감 1단계] 정부 계열 5개 페이지가 같은 jobs 쿼리 공유 → 세션 캐시
+      cacheKey: currentUser?.classCode ? `jobs:${currentUser.classCode}` : null,
     }
   );
 
@@ -105,6 +108,8 @@ const NationalAssembly = () => {
       interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (설정은 거의 안 바뀜)
       enabled: !!classCode,
       deps: [classCode],
+      // 🔥 [읽기 절감 1단계] 재방문 시 중복 읽기 차단
+      cacheKey: classCode ? `naSettings:admin:${classCode}` : null,
       defaultValue: { totalStudents: 25 },
       onError: (error) => {
         logger.error("Error fetching admin settings:", error);
@@ -149,6 +154,8 @@ const NationalAssembly = () => {
       interval: 60 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 1시간 (설정은 거의 안 바뀜)
       enabled: !!classCode && !adminSettingsLoading,
       deps: [classCode, adminSettings?.totalStudents, adminSettingsLoading],
+      // 🔥 [읽기 절감 1단계] 재방문 시 중복 읽기 차단
+      cacheKey: classCode ? `naSettings:gov:${classCode}` : null,
       defaultValue: {
         vetoOverrideRequired: Math.ceil(
           ((adminSettings?.totalStudents) || 25) * (2 / 3)
@@ -161,7 +168,7 @@ const NationalAssembly = () => {
   );
 
   // 법안 데이터 로드
-  const { data: laws, loading: lawsLoading, refetch: refetchLaws } = usePolling(
+  const { data: laws, loading: lawsLoading, refetch: refetchLawsRaw } = usePolling(
     async () => {
       if (!classCode) return [];
 
@@ -195,12 +202,23 @@ const NationalAssembly = () => {
       interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (법안은 투표 시 수동 갱신됨)
       enabled: !!classCode,
       deps: [classCode],
+      // 🔥 [읽기 절감 1단계] 재방문 중복 읽기 차단. 투표 진행 중 득표 반영 지연을
+      // 3분으로 제한(짧은 TTL) — 자기 투표는 refetchLaws(force)로 즉시 반영.
+      cacheKey: classCode ? `naLaws:${classCode}` : null,
+      cacheTTL: 3 * 60 * 1000,
       defaultValue: [],
       onError: (error) => {
         logger.error("Error fetching laws:", error);
       }
     }
   );
+
+  // 🔥 [읽기 절감 1단계] 법안 쓰기 후 갱신 시 경찰서의 승인법안 캐시(naLawsApproved:)도
+  // 함께 무효화 — 폐지/승인된 법이 벌금 산정에 stale하게 남지 않도록(교차검증 C2 반영)
+  const refetchLaws = useCallback(() => {
+    invalidateFetchCache("naLawsApproved");
+    return refetchLawsRaw();
+  }, [refetchLawsRaw]);
 
   // 사용자 투표 이력 로드
   const { data: userVotes, loading: userVotesLoading } = usePolling(
@@ -484,7 +502,9 @@ const NationalAssembly = () => {
       });
 
       // 트랜잭션 성공 시 낙관적 업데이트 상태 정리 (서버 데이터로 대체됨)
-      // usePolling이 자동으로 최신 데이터를 가져올 것이므로 여기서는 별도 처리 불필요
+      // 🔥 [읽기 절감 1단계] 투표로 법안 상태가 바뀔 수 있으므로(가결·재의결 등)
+      // 세션 캐시를 무효화 — 다음 마운트/tick이 서버에서 재조회(추가 읽기 0)
+      invalidateFetchCache("naLaws");
     } catch (error) {
       logger.error("Error voting on law:", error);
 
@@ -540,6 +560,8 @@ const NationalAssembly = () => {
           finalStatus: null,
           finalApprovalDate: null,
         });
+        // 🔥 [읽기 절감 1단계] finalStatus 변경 → 관련 세션 캐시 무효화
+        invalidateFetchCache("naLaws");
         alert("법안 투표가 초기화되었습니다.");
       } catch (error) {
         logger.error("Error resetting votes:", error);
@@ -624,6 +646,8 @@ const NationalAssembly = () => {
         { merge: true }
       );
       setLocalAdminSettings(null);
+      // 🔥 [읽기 절감 1단계] 설정 쓰기 → 세션 캐시 무효화(재방문 시 구설정 재서빙 방지)
+      invalidateFetchCache(`naSettings:admin:${classCode}`);
       alert("관리자 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("Error saving admin settings:", error);
@@ -655,6 +679,8 @@ const NationalAssembly = () => {
         { merge: true }
       );
       setLocalGovSettings(null);
+      // 🔥 [읽기 절감 1단계] 설정 쓰기 → 세션 캐시 무효화
+      invalidateFetchCache(`naSettings:gov:${classCode}`);
       alert("재의결 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("Error saving government settings:", error);

@@ -34,6 +34,7 @@ import { doc, setDoc, Timestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 import { logger } from "../utils/logger";
+import { invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
 export const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -803,6 +804,9 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
+      // 🔥 [읽기 절감 1단계] 세션 쿼리 캐시 전체 비움 — 다음 로그인 사용자에게
+      // 이전 세션 데이터가 재서빙되지 않도록(학급 격리 안전핀)
+      invalidateFetchCache('');
       await fbSignOut(auth);
     } catch (error) {
       logger.warn("[AuthContext] logout failed:", error);

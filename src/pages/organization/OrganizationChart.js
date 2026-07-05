@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
+import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 
 import { logger } from "../../utils/logger";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
@@ -41,6 +42,8 @@ const OrganizationChart = ({ classCode }) => {
       interval: 30 * 60 * 1000,
       enabled: !!classCode,
       deps: [classCode],
+      // 🔥 [읽기 절감 1단계] 정부 계열 5개 페이지가 같은 jobs 쿼리 공유 → 세션 캐시
+      cacheKey: classCode ? `jobs:${classCode}` : null,
     },
   );
 
@@ -195,6 +198,8 @@ const OrganizationChart = ({ classCode }) => {
         finalStatus: "final_approved",
         finalApprovalDate: serverTimestamp(),
       });
+      // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 국회(naLaws)·경찰서(naLawsApproved) 세션 캐시 무효화
+      invalidateFetchCache("naLaws");
       await fetchGovLaws();
       alert(`"${law.title}" 법안이 최종 승인되었습니다.`);
     } catch (error) {
@@ -233,6 +238,8 @@ const OrganizationChart = ({ classCode }) => {
         disapprovals: 0,
         voters: {},
       });
+      // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 관련 세션 캐시 무효화
+      invalidateFetchCache("naLaws");
       await fetchGovLaws();
       alert(`"${law.title}" 법안에 거부권이 행사되었습니다.`);
     } catch (error) {

@@ -247,6 +247,10 @@ const LearningBoard = () => {
     interval: 30 * 60 * 1000,
     enabled: !!classCode,
     deps: [classCode],
+    // 🔥 [읽기 절감 1단계] 게시판 목록 재방문 중복 차단. 교사가 수업 중 새 게시판을
+    // 만들면 학생이 바로 봐야 하므로 TTL 5분으로 제한.
+    cacheKey: classCode ? `learningBoards:${classCode}` : null,
+    cacheTTL: 5 * 60 * 1000,
   });
 
   // usePolling의 data 초기값이 null이므로 항상 배열로 보장
@@ -290,6 +294,10 @@ const LearningBoard = () => {
     interval: 10 * 60 * 1000,
     enabled: !!selectedBoard && !!classCode,
     deps: [selectedBoard?.id, classCode],
+    // 🔥 [읽기 절감 1단계] 게시판 왕복 시 중복 차단. 급우 새 글 가시성 위해 TTL 2분.
+    // 자기 글/댓글/좋아요는 refetchPosts(force)로 즉시 반영.
+    cacheKey: selectedBoard && classCode ? `learningPosts:${classCode}:${selectedBoard.id}` : null,
+    cacheTTL: 2 * 60 * 1000,
   });
 
   // usePolling의 data 초기값이 null이므로 항상 배열로 보장

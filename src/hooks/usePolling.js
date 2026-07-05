@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logger } from '../utils/logger';
 import { subscribeIdle, getIsIdle } from '../utils/idleManager';
+import { cachedFetch } from '../utils/fetchCache';
 
 // 🔥 [최적화] 페이지별 폴링 간격 상수 - Firestore 읽기 최소화
 export const POLLING_INTERVALS = {
@@ -37,14 +38,21 @@ const processInitialLoadQueue = async () => {
  * @param {number} options.interval - Polling 간격 (ms, 기본 5분)
  * @param {boolean} options.enabled - Polling 활성화 여부
  * @param {Array} options.deps - 의존성 배열
+ * @param {string} [options.cacheKey] - 🔥 [읽기 절감 1단계] 세션 캐시 키. 지정 시 TTL 내
+ *   재마운트/탭복귀는 Firestore 읽기 없이 캐시로 응답. 키에 classCode/userId 등
+ *   격리 경계를 반드시 포함할 것. 미지정 시 기존 동작 100% 동일.
+ * @param {number} [options.cacheTTL] - 캐시 신선 기간(ms). 기본 = interval×0.9(폴링 tick은
+ *   항상 MISS → 갱신 주기 유지, staleness 상한은 기존 폴링 이하). 주기보다 길게 주지 말 것(자동 캡).
  *
- * @returns {Object} { data, loading, error, refetch }
+ * @returns {Object} { data, loading, error, refetch }  // refetch()는 항상 캐시 우회(force)
  */
 export const usePolling = (queryFn, options = {}) => {
   const {
     interval = POLLING_INTERVALS.NORMAL, // 🔥 [최적화] 기본값 15분
     enabled = true,
-    deps = []
+    deps = [],
+    cacheKey = null,
+    cacheTTL = null
   } = options;
 
   const [data, setData] = useState(null);
@@ -54,21 +62,38 @@ export const usePolling = (queryFn, options = {}) => {
   const mountedRef = useRef(true);
   const queryFnRef = useRef(queryFn);
   const lastFetchRef = useRef(0); // 🔥 마지막 조회 시각 (탭 복귀 재fetch throttle용)
+  // 🔥 캐시 옵션은 ref로만 소비 — effect deps 구조를 바꾸지 않아 재실행 루프 표면 0.
+  const cacheKeyRef = useRef(cacheKey);
+  const cacheTTLRef = useRef(cacheTTL);
 
   useEffect(() => {
     queryFnRef.current = queryFn;
   }, [queryFn]);
+  useEffect(() => {
+    cacheKeyRef.current = cacheKey;
+    // TTL 기본값 = 폴링 주기의 90% — tick 시점(나이≈interval)엔 반드시 MISS가 나서
+    // 마운트 중인 페이지의 실효 갱신 주기가 늘어지지 않게 한다. 주기보다 긴 TTL은 캡.
+    const base = typeof interval === 'number' && interval > 0 ? Math.floor(interval * 0.9) : 0;
+    const ttl = typeof cacheTTL === 'number' && cacheTTL > 0 ? Math.min(cacheTTL, base || cacheTTL) : base;
+    cacheTTLRef.current = ttl;
+  }, [cacheKey, cacheTTL, interval]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (opts = {}) => {
     if (!enabled) {
       setLoading(false);
       return;
     }
+    // 이벤트 핸들러가 fetchData를 직접 넘겨도(onClick 등) event 객체가 force로 오인되지 않게 방어
+    const force = opts && opts.force === true;
 
     try {
       setError(null);
       lastFetchRef.current = Date.now();
-      const result = await queryFnRef.current();
+      const key = cacheKeyRef.current;
+      const ttl = cacheTTLRef.current;
+      const result = (key && ttl > 0)
+        ? await cachedFetch(key, ttl, () => queryFnRef.current(), { force })
+        : await queryFnRef.current();
 
       if (mountedRef.current) {
         setData(result);
@@ -85,7 +110,8 @@ export const usePolling = (queryFn, options = {}) => {
 
   const refetch = useCallback(() => {
     setLoading(true);
-    return fetchData();
+    // 🔥 수동 새로고침·쓰기 후 경로는 반드시 캐시 우회(SC2) — 신선도 UX 불변
+    return fetchData({ force: true });
   }, [fetchData]);
 
   useEffect(() => {

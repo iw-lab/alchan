@@ -59,7 +59,14 @@ const MusicRequest = ({ user }) => {
       const snap = await getDocs(q);
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
-    { interval: 10 * 60 * 1000, enabled: !!user && !!classCode, deps: [user, classCode] },
+    {
+      interval: 10 * 60 * 1000,
+      enabled: !!user && !!classCode,
+      deps: [user, classCode],
+      // 🔥 [읽기 절감 1단계] 방 목록 재방문 중복 차단. 새 방 개설 가시성 위해 TTL 2분.
+      cacheKey: classCode ? `musicRooms:${classCode}` : null,
+      cacheTTL: 2 * 60 * 1000,
+    },
   );
 
   // 방이 삭제되었을 경우를 대비하여, 현재 보고 있는 createdRoom이 실제로 존재하는지 확인합니다.
