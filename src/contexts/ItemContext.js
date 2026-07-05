@@ -9,6 +9,7 @@ import React, {
 import { useAuth } from "./AuthContext";
 import { functions, httpsCallable, db } from "../firebase";
 import { usePolling, POLLING_INTERVALS } from "../hooks/usePolling";
+import { cachedFetch, invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
 import { logActivity, ACTIVITY_TYPES } from "../utils/firestoreHelpers";
 
 import { logger } from "../utils/logger";
@@ -139,32 +140,48 @@ export const ItemProvider = ({ children }) => {
   );
 
   // Central data fetching function
-  const fetchData = useCallback(async () => {
+  // 🔥 [읽기 절감 2단계] getItemContextData CF는 호출 1회당 서버에서 상점·인벤토리·마켓
+  // 40~100문서를 읽는다(서버 읽기도 동일 과금). 데이터 획득부만 세션 캐시로 감싸
+  // TTL(27분=폴링 30분×0.9) 내 재마운트/페이지 이동은 CF 호출 0회로 만든다.
+  // setState(부수효과)는 캐시 히트 시에도 그대로 실행 — 화면 고착 없음.
+  // 쓰기 후 refreshData()는 force로 항상 우회(신선도 UX 불변).
+  const fetchData = useCallback(async (opts = {}) => {
     if (!userId || !currentUserClassCode) {
       setDataLoading(false);
       return;
     }
+    const force = opts && opts.force === true;
 
     setDataLoading(true);
     try {
-      const result = await getItemContextData();
-      if (result.data.success) {
-        const {
-          storeItems,
-          userItems: groupedUserItems,
-          marketListings,
-          marketOffers,
-        } = result.data.data;
-        setItems(storeItems || []);
-        setUserItems(groupedUserItems || []);
-        setMarketListings(marketListings || []);
-        setMarketOffers(marketOffers || []);
-        setError(null);
-      } else {
-        throw new Error(
-          result.data.message || "데이터를 불러오는데 실패했습니다.",
-        );
-      }
+      const payload = await cachedFetch(
+        `itemCtx:${currentUserClassCode}:${userId}`,
+        27 * 60 * 1000,
+        async () => {
+          const result = await getItemContextData();
+          if (!result.data.success) {
+            // 실패 응답은 throw → 캐시에 기록되지 않음(다음 요청 재시도)
+            throw new Error(
+              result.data.message || "데이터를 불러오는데 실패했습니다.",
+            );
+          }
+          return result.data.data;
+        },
+        // persist: CF 응답은 순수 JSON → sessionStorage 지속 안전. 새로고침 콜드 로드도 절감.
+        { force, persist: true },
+      );
+
+      const {
+        storeItems,
+        userItems: groupedUserItems,
+        marketListings,
+        marketOffers,
+      } = payload;
+      setItems(storeItems || []);
+      setUserItems(groupedUserItems || []);
+      setMarketListings(marketListings || []);
+      setMarketOffers(marketOffers || []);
+      setError(null);
     } catch (err) {
       logger.error("[ItemContext] 데이터 로드 오류:", err);
       setError(err);
@@ -182,8 +199,9 @@ export const ItemProvider = ({ children }) => {
   });
 
   // Public refresh function
+  // 🔥 [읽기 절감 2단계] 쓰기 후 갱신 경로 — 반드시 캐시 우회(force)
   const refreshData = useCallback(() => {
-    return fetchData();
+    return fetchData({ force: true });
   }, [fetchData]);
 
   // 🔥 로컬 상태 즉시 업데이트 함수 (Firestore 읽기 없이)
@@ -194,7 +212,12 @@ export const ItemProvider = ({ children }) => {
       "개",
     );
     setUserItems(newUserItems);
-  }, []);
+    // 🔥 [읽기 절감 2단계] 로컬 직접 갱신 경로(선물·사용 등)는 세션 캐시를 무효화해
+    // 이전 스냅샷이 되살아나지 않게 한다(추가 읽기 0 — 다음 fetch만 신선본).
+    if (userId && currentUserClassCode) {
+      invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
+    }
+  }, [userId, currentUserClassCode]);
 
   // All context functions now use firebaseFunctions and refreshData
   const addItem = useCallback(
@@ -410,6 +433,11 @@ export const ItemProvider = ({ children }) => {
               return item;
             }),
           );
+
+          // 🔥 [읽기 절감 2단계] 구매 성공은 로컬 상태로 즉시 반영하되, 세션 캐시는
+          // 무효화(구매 전 스냅샷이 탭복귀/재마운트에서 되살아나는 것 방지 — codex CRITICAL).
+          // refreshData(CF 재호출) 대신 invalidate만 → 추가 읽기 0, 다음 fetch가 신선본.
+          invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
 
           return { success: true, restocked, newStock, newPrice };
         } else {

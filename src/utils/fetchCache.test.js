@@ -78,6 +78,29 @@ describe('fetchCache', () => {
     expect(fn2).toHaveBeenCalledTimes(1);
   });
 
+  it('persist: 메모리 miss여도 sessionStorage에 fresh 항목이 있으면 fetch 0회(새로고침 시나리오)', async () => {
+    // 새로고침 직후 상태 재현: 메모리 캐시엔 없고 sessionStorage에만 존재
+    sessionStorage.setItem('fc:pers:c1', JSON.stringify({ data: { v: 9 }, ts: Date.now() }));
+    const fn = vi.fn(async () => ({ v: 'should-not-run' }));
+    const a = await cachedFetch('pers:c1', 60_000, fn, { persist: true });
+    expect(fn).toHaveBeenCalledTimes(0);
+    expect(a.v).toBe(9);
+  });
+
+  it('persist: 저장 시 sessionStorage에 기록되고 invalidate로 함께 제거', async () => {
+    const fn = vi.fn(async () => ({ v: 1 }));
+    await cachedFetch('pers:c2', 60_000, fn, { persist: true });
+    expect(sessionStorage.getItem('fc:pers:c2')).not.toBeNull();
+    invalidateCache('pers:c2');
+    expect(sessionStorage.getItem('fc:pers:c2')).toBeNull();
+  });
+
+  it('persist 미지정 키는 sessionStorage를 건드리지 않음', async () => {
+    const fn = vi.fn(async () => ({ v: 1 }));
+    await cachedFetch('mem:only', 60_000, fn);
+    expect(sessionStorage.getItem('fc:mem:only')).toBeNull();
+  });
+
   it('에러 시 캐시 미기록 → 다음 요청은 재시도', async () => {
     const fn = vi.fn()
       .mockRejectedValueOnce(new Error('boom'))

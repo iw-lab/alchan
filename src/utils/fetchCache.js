@@ -22,6 +22,26 @@ if (typeof window !== 'undefined') {
   window.__fetchCacheStats = stats;
 }
 
+// sessionStorage 네임스페이스 — invalidate 시 우리 키만 스캔하기 위함
+const SS_PREFIX = 'fc:';
+
+const ssRead = (key) => {
+  try {
+    const raw = sessionStorage.getItem(SS_PREFIX + key);
+    if (!raw) return null;
+    return JSON.parse(raw); // { data, ts }
+  } catch {
+    return null;
+  }
+};
+const ssWrite = (key, entry) => {
+  try {
+    sessionStorage.setItem(SS_PREFIX + key, JSON.stringify(entry));
+  } catch {
+    /* 쿼터 초과·직렬화 실패는 무시 — 메모리 캐시만으로 동작 */
+  }
+};
+
 /**
  * TTL 캐시를 앞단에 둔 fetch.
  * @param {string} key - 캐시 키. 반드시 classCode/userId 등 격리 경계를 포함할 것.
@@ -29,13 +49,25 @@ if (typeof window !== 'undefined') {
  * @param {Function} fn - 실제 조회 함수(async).
  * @param {Object} [opts]
  * @param {boolean} [opts.force=false] - true면 캐시 무시하고 조회 후 캐시 갱신(refetch/쓰기 후 경로).
+ * @param {boolean} [opts.persist=false] - true면 sessionStorage에도 저장 — 새로고침(콜드 로드)
+ *   후에도 TTL 내면 재사용. ⚠️ 순수 JSON 데이터에만 사용(Firestore Timestamp 등
+ *   비직렬화 객체가 섞인 결과엔 금지 — CF httpsCallable 응답처럼 이미 JSON인 것만).
  */
-export const cachedFetch = async (key, ttlMs, fn, { force = false } = {}) => {
+export const cachedFetch = async (key, ttlMs, fn, { force = false, persist = false } = {}) => {
   if (!force && ttlMs > 0) {
     const hit = cache.get(key);
     if (hit && Date.now() - hit.ts < ttlMs) {
       stats.hits += 1;
       return hit.data;
+    }
+    // 메모리 miss여도 새로고침 직후라면 sessionStorage에 살아있을 수 있음(persist 키만)
+    if (persist) {
+      const ss = ssRead(key);
+      if (ss && Date.now() - ss.ts < ttlMs) {
+        cache.set(key, ss); // 메모리로 승격
+        stats.hits += 1;
+        return ss.data;
+      }
     }
     // 같은 키가 이미 조회 중이면 그 결과를 공유(중복 읽기 차단)
     const pending = inflight.get(key);
@@ -54,7 +86,9 @@ export const cachedFetch = async (key, ttlMs, fn, { force = false } = {}) => {
       const data = await fn();
       // 내가 여전히 이 키의 현재 요청일 때만 캐시 기록(뒤에 force가 나갔으면 스킵)
       if (inflight.get(key) === promise) {
-        cache.set(key, { data, ts: Date.now() });
+        const entry = { data, ts: Date.now() };
+        cache.set(key, entry);
+        if (persist) ssWrite(key, entry);
       }
       return data;
     } finally {
@@ -76,6 +110,20 @@ export const invalidateCache = (prefix = '') => {
       cache.delete(k);
       n += 1;
     }
+  }
+  // sessionStorage(persist 키)도 동일 prefix로 정리
+  try {
+    const toRemove = [];
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith(SS_PREFIX) && k.slice(SS_PREFIX.length).startsWith(prefix)) {
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach((k) => sessionStorage.removeItem(k));
+    n += toRemove.length;
+  } catch {
+    /* sessionStorage 접근 불가 환경 무시 */
   }
   if (n > 0) logger.debug(`[fetchCache] invalidate '${prefix}' → ${n}건`);
   return n;
