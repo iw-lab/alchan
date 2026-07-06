@@ -14,6 +14,7 @@ import { usePolling } from "../../hooks/usePolling";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,

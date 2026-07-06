@@ -106,7 +106,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       logger.log(`[ClassDataDeletion] ${userClassCode} 학급 데이터 삭제 시작`);
 
       // 1. 학생 계정 조회 (role === 'student' AND classCode === userClassCode)
-      const usersRef = firestoreCollection(db, "users");
+      const usersRef = firebaseCollection(db, "users");
       const studentsQuery = firebaseQuery(
         usersRef,
         firebaseWhere("classCode", "==", userClassCode),
@@ -119,7 +119,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       );
 
       // 2. 활동 로그 조회
-      const activityLogsRef = firestoreCollection(db, "activity_logs");
+      const activityLogsRef = firebaseCollection(db, "activity_logs");
       const activityLogsQuery = firebaseQuery(
         activityLogsRef,
         firebaseWhere("classCode", "==", userClassCode),
@@ -142,7 +142,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         }
 
         for (const batch of batches) {
-          const transactionsRef = firestoreCollection(db, "transactions");
+          const transactionsRef = firebaseCollection(db, "transactions");
           const transactionsQuery = firebaseQuery(
             transactionsRef,
             firebaseWhere("userId", "in", batch),

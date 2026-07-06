@@ -1035,8 +1035,11 @@ service cloud.firestore {
 
       // 수정: 상품 소유자/관리자는 전체 수정, 구매자는 재고/판매 관련 필드만
       // status는 'soldout'으로만 변경 가능 (재고 0 시 자동 마킹) — 사보타주 방지
+      // 🔒 [보안] 구매자 분기에 같은-학급 조건 추가: 개인상점은 학급 내 거래이므로
+      //    정당 구매자는 항상 같은 학급. 타 학급 사용자의 재고/구매자목록 무단 조작 차단.
       allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
                        (isSignedIn() &&
+                        isSameClassFast(resource.data.classCode) &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'soldCount', 'buyers', 'status', 'updatedAt']) &&
                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
                          request.resource.data.status == 'soldout'));

@@ -904,7 +904,8 @@ exports.donateCoupon = onCall(
         "사용자에게 학급 코드가 할당되지 않았습니다. 프로필을 확인하거나 관리자에게 문의해주세요.",
       );
     }
-    if (!amount || amount <= 0) {
+    // 🔒 [보안] 정수 검증(소수점 쿠폰 방지)
+    if (!Number.isInteger(amount) || amount <= 0) {
       throw new HttpsError(
         "invalid-argument",
         "유효한 쿠폰 수량을 입력해야 합니다.",
@@ -1096,10 +1097,11 @@ exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) 
 exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid } = await checkAuthAndGetUserData(request);
   const { amount } = request.data;
-  if (!amount || amount <= 0) {
+  // 🔒 [보안] 정수 검증(소수점 쿠폰 생성/현금화 방지)
+  if (!Number.isInteger(amount) || amount <= 0) {
     throw new HttpsError(
       "invalid-argument",
-      "유효한 쿠폰 수량을 입력해야 합니다.",
+      "유효한 쿠폰 수량(양의 정수)을 입력해야 합니다.",
     );
   }
   const userRef = db.collection("users").doc(uid);
@@ -1142,10 +1144,11 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
 exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, userData } = await checkAuthAndGetUserData(request);
   const { recipientId, amount, message } = request.data;
-  if (!recipientId || !amount || amount <= 0) {
+  // 🔒 [보안] 정수 검증: 소수점 amount 허용 시 쿠폰/현금이 소수로 생성·증발할 수 있음.
+  if (!recipientId || !Number.isInteger(amount) || amount <= 0) {
     throw new HttpsError(
       "invalid-argument",
-      "받는 사람과 쿠폰 수량을 정확히 입력해야 합니다.",
+      "받는 사람과 쿠폰 수량(양의 정수)을 정확히 입력해야 합니다.",
     );
   }
   if (uid === recipientId) {
@@ -1900,14 +1903,21 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
           .send("Invalid item data. 'name' and 'price' are required.");
       }
 
+      // 🔒 [보안] 가격 무결성 + 학급 고정: classCode를 클라 지정값이 아니라
+      // 요청 관리자 본인 학급으로 강제(타 학급 경제 오염 방지). price 음수 차단.
+      if (typeof newItemData.price !== "number" || !Number.isFinite(newItemData.price) || newItemData.price < 0) {
+        return res.status(400).send("Invalid item data. 'price' must be a non-negative number.");
+      }
+
       const itemData = {
         ...newItemData,
+        classCode: userData.classCode,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       const docRef = await db.collection("storeItems").add(itemData);
-      await bumpCatalogVersion(newItemData.classCode || userData.classCode);
+      await bumpCatalogVersion(userData.classCode);
 
       logger.info(
         `[addStoreItem] ${uid}님이 새 아이템 추가: ${newItemData.name} (ID: ${docRef.id})`,
@@ -2058,6 +2068,19 @@ exports.purchaseStoreItem = onCall(
 
         const userData = userDoc.data();
         const itemData = itemDoc.data();
+
+        // 🔒 [보안] 학급 격리: 전역 storeItems 컬렉션이라 타 학급 아이템 ID로도
+        // 문서를 읽을 수 있다. 호출자 학급과 아이템 학급이 다르면 차단
+        // (멀티테넌시 격리 붕괴·타 학급 고가 아이템 악용 방지).
+        if (itemData.classCode && itemData.classCode !== classCode) {
+          throw new Error("다른 학급의 아이템은 구매할 수 없습니다.");
+        }
+
+        // 🔒 [보안] 가격 무결성: price가 음수/비유한이면 totalCost가 음수가 되어
+        // 잔액 검사를 무력화하고 구매가 곧 현금 생성이 된다(오염 데이터 방어).
+        if (typeof itemData.price !== "number" || !Number.isFinite(itemData.price) || itemData.price < 0) {
+          throw new Error("아이템 가격이 올바르지 않습니다.");
+        }
 
         // 품절(stock=0)인데 자동충전 설정이 있으면 먼저 충전
         let preRestocked = false;
@@ -2471,6 +2494,11 @@ exports.sellItemToTreasury = onCall(
           );
         }
         const storeData = itemDoc.data();
+        // 🔒 [보안] 학급 격리: 전역 storeItems라 타 학급 고가 아이템 ID로 되팔면
+        // 그 학급 가격의 70%를 본인 학급 국고에서 현금화할 수 있다(멀티테넌시 붕괴).
+        if (storeData.classCode && storeData.classCode !== classCode) {
+          throw new Error("다른 학급의 아이템은 국고에 되팔 수 없어요.");
+        }
         if (storeData.available === false) {
           throw new Error("판매중지된 아이템이라 국고에 되팔 수 없어요.");
         }
@@ -2519,6 +2547,14 @@ exports.sellItemToTreasury = onCall(
 
         // 2) 학생 cash 증액 + 4) 국고 차감 — 자기판매(seller==국고)면 순변동 0이라 생략
         if (!isSelfTreasury) {
+          // 🔒 [보안] 국고 하한: 지급 전 국고 잔액이 지급액 이상인지 검사.
+          // 없으면 반복 되팔기로 국고(관리자 cash)가 무한 음수로 내려간다.
+          const adminCash = Number(adminDoc.data()?.cash) || 0;
+          if (adminCash < totalGain) {
+            throw new Error(
+              "국고 잔액이 부족해 지금은 되팔 수 없어요. 선생님께 문의하세요.",
+            );
+          }
           // 학생 cash 증액 (increment 필수)
           transaction.update(userRef, {
             cash: admin.firestore.FieldValue.increment(totalGain),
@@ -2598,7 +2634,14 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
     throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
   }
 
-  const useQty = Math.max(1, Math.floor(quantityToUse));
+  // 🔒 [보안] NaN 방어: quantityToUse가 문자열/객체면 Math.max(1, Math.floor(NaN))=NaN이라
+  // (Math.max는 NaN을 1로 보정하지 못함) 이후 cash effect가 increment(NaN)으로 커밋돼
+  // 사용자 cash가 영구 NaN 오염된다. 정수 검증으로 원천 차단.
+  const qty = Number(quantityToUse);
+  if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
+    throw new HttpsError("invalid-argument", "사용 수량은 1~100 사이의 정수여야 합니다.");
+  }
+  const useQty = qty;
   const userRef = db.collection("users").doc(uid);
   const userItemRef = userRef.collection("inventory").doc(itemId);
 
@@ -2764,7 +2807,12 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
           // 🎰 [뽑기 재고 분리] 뽑기 풀은 상점 재고와 무관하게 후보를 항상 포함한다.
           // (재고로 거르면 당첨돼 재고 0이 된 항목이 돌림판에서 사라짐 — 뽑기는 구매와 달리
           //  자동 보충 트리거가 없어 0에 멈춤). available!==false(관리자 판매중지)만 존중.
-          (it) => it.type !== "randomDraw" && it.available !== false,
+          // 🔒 [보안] 학급 격리: 전역 storeItems라 후보에 타 학급 고가 아이템 ID를
+          //  심으면 그 자산을 뽑아 획득할 수 있다 — 호출자 학급 아이템만 후보 인정.
+          (it) =>
+            it.type !== "randomDraw" &&
+            it.available !== false &&
+            (!it.classCode || it.classCode === classCode),
         )
         .map((it) => ({
           name: it.name || "아이템",
@@ -5915,7 +5963,7 @@ exports.resetPasswordHttp = onRequest(
   { region: "asia-northeast3" },
   async (req, res) => {
     const token = req.query.token || req.body.token;
-    if (token !== (process.env.SCHEDULER_AUTH_TOKEN || "")) {
+    if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
@@ -6021,7 +6069,7 @@ exports.migrateDonationCashToAdmin = onRequest(
   { region: "asia-northeast3" },
   async (req, res) => {
     const token = req.query.token || req.body.token;
-    if (token !== (process.env.SCHEDULER_AUTH_TOKEN || "")) {
+    if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
