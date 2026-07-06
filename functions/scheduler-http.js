@@ -1991,6 +1991,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     const BASE_SALARY = 2000000;
     const ADDITIONAL_SALARY = 500000;
     const PRESIDENT_BONUS = 2000000;  // 대통령 추가 주급
+    const DEFAULT_MAX_JOBS = 5;       // 학생당 급여 계산 직업 상한 기본값(관리자 조절 가능)
     let totalPaidCount = 0;
     let totalAmount = 0;
     const classErrors = [];
@@ -2004,6 +2005,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         }
         const rawTaxRate = salarySettingsDoc.exists ? salarySettingsDoc.data().taxRate : 0.1;
         const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
+        // 직업 개수 상한(관리자 설정) — 급여 계산에 반영할 최대 직업 수. 미설정 시 기본 5.
+        const rawMaxJobs = salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined;
+        const maxJobsPerStudent = Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? rawMaxJobs : DEFAULT_MAX_JOBS;
 
         // 직업 정보 로드 (대통령 보너스 적용용)
         const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
@@ -2049,7 +2053,10 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
             ? rawJobIds
             : (rawJobIds && typeof rawJobIds === "object" ? Object.keys(rawJobIds) : []);
           // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
-          const validJobIds = jobIds.filter((id) => jobTitleMap[id]);
+          const allValidJobIds = jobIds.filter((id) => jobTitleMap[id]);
+          // 🔒 직업 개수 상한: 급여는 최대 maxJobsPerStudent개까지만 계산(farming 방지 이중장치).
+          //    클라 UI 우회로 selectedJobIds가 상한을 넘겨도 지급은 상한 내로 묶인다.
+          const validJobIds = allValidJobIds.slice(0, maxJobsPerStudent);
           if (validJobIds.length === 0) {
             // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
             // (지급 안 한) 이번 회차를 잘못 회수하게 되므로 초기화

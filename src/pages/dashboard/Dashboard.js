@@ -190,6 +190,12 @@ const saveSharedData = async (data, classCode) => {
  }
 };
 
+// 🔒 지정 전용 역할: 학생이 자가신청할 수 없고 선생님만 배정하는 직업 제목.
+// 직업 문서의 appointedOnly 플래그가 우선이며, 이 목록은 플래그 없는 기존 문서용 fallback.
+const RESTRICTED_JOB_TITLES = ["대통령", "국무총리"];
+const isAppointedOnlyJob = (job) =>
+ !!job && (job.appointedOnly === true || RESTRICTED_JOB_TITLES.includes(job.title));
+
 function SelectMultipleJobsView({
  availableJobs,
  currentSelectedJobIds = [],
@@ -199,6 +205,7 @@ function SelectMultipleJobsView({
  onAddJob,
  onDeleteJob,
  onEditJob,
+ maxJobs = 5,
 }) {
  const [tempSelection, setTempSelection] = useState(
  Array.isArray(currentSelectedJobIds) ? [...currentSelectedJobIds] : [],
@@ -207,6 +214,7 @@ function SelectMultipleJobsView({
  const [showAddForm, setShowAddForm] = useState(false);
  const [editingJobId, setEditingJobId] = useState(null);
  const [editingJobTitle, setEditingJobTitle] = useState("");
+ const [editingJobAppointedOnly, setEditingJobAppointedOnly] = useState(false);
 
  const activeJobs = useMemo(() => {
  return Array.isArray(availableJobs)
@@ -214,13 +222,26 @@ function SelectMultipleJobsView({
  : [];
  }, [availableJobs]);
 
- const handleCheckboxChange = useCallback((jobId) => {
- setTempSelection((prev) =>
- prev.includes(jobId)
- ? prev.filter((id) => id !== jobId)
- : [...prev, jobId],
+ const handleCheckboxChange = useCallback(
+ (jobId) => {
+ // 순수 업데이터 유지(StrictMode 이중호출·부작용 방지) — UI는 disabled로 막고,
+ // 여기 가드는 프로그래매틱 우회 대비 방어(조용히 무시).
+ setTempSelection((prev) => {
+ // 이미 선택 → 해제(항상 허용)
+ if (prev.includes(jobId)) {
+ return prev.filter((id) => id !== jobId);
+ }
+ // 추가 시 학생(비관리자)만 상한·역할 제한 적용. 선생님은 자유.
+ if (!isAdmin) {
+ const job = activeJobs.find((j) => j.id === jobId);
+ if (isAppointedOnlyJob(job)) return prev; // 지정 전용 역할
+ if (prev.length >= maxJobs) return prev; // 개수 상한
+ }
+ return [...prev, jobId];
+ });
+ },
+ [isAdmin, activeJobs, maxJobs],
  );
- }, []);
 
  const handleAddNewJob = useCallback(() => {
  const title = newJobTitle.trim();
@@ -238,6 +259,7 @@ function SelectMultipleJobsView({
  const handleStartEdit = useCallback((job) => {
  setEditingJobId(job.id);
  setEditingJobTitle(job.title);
+ setEditingJobAppointedOnly(isAppointedOnlyJob(job));
  }, []);
 
  const handleSaveEdit = useCallback(() => {
@@ -247,11 +269,12 @@ function SelectMultipleJobsView({
  return;
  }
  if (onEditJob) {
- onEditJob(editingJobId, title);
+ onEditJob(editingJobId, title, editingJobAppointedOnly);
  }
  setEditingJobId(null);
  setEditingJobTitle("");
- }, [editingJobId, editingJobTitle, onEditJob]);
+ setEditingJobAppointedOnly(false);
+ }, [editingJobId, editingJobTitle, editingJobAppointedOnly, onEditJob]);
 
  const handleCancelEdit = useCallback(() => {
  setEditingJobId(null);
@@ -263,9 +286,15 @@ function SelectMultipleJobsView({
  <h4 className="text-xl font-semibold text-slate-800 text-center mb-2">
  직업 선택 (다중 선택 가능)
  </h4>
- <p className="text-sm text-slate-400 text-center mb-4">
+ <p className="text-sm text-slate-400 text-center mb-1">
  '나의 할일'에 표시할 직업을 선택하세요.
  </p>
+ {!isAdmin && (
+ <p className="text-xs text-center mb-4 text-indigo-500 font-medium">
+ 직업 {tempSelection.length} / {maxJobs}개 선택 (최대 {maxJobs}개)
+ </p>
+ )}
+ {isAdmin && <div className="mb-4" />}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
  {activeJobs.map((job) => (
  <div
@@ -277,7 +306,8 @@ function SelectMultipleJobsView({
  }`}
  >
  {editingJobId === job.id ? (
- <div className="flex items-center gap-2 flex-1">
+ <div className="flex flex-col gap-2 flex-1">
+ <div className="flex items-center gap-2">
  <input
  type="text"
  value={editingJobTitle}
@@ -304,23 +334,52 @@ function SelectMultipleJobsView({
  <X className="w-4 h-4" />
  </button>
  </div>
- ) : (
- <>
- <label className="flex items-center gap-3 flex-1 cursor-pointer">
+ <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
  <input
  type="checkbox"
- checked={tempSelection.includes(job.id)}
+ checked={editingJobAppointedOnly}
+ onChange={(e) => setEditingJobAppointedOnly(e.target.checked)}
+ className="w-3.5 h-3.5 accent-amber-500"
+ />
+ 선생님 지정 전용 (학생 자가신청 불가)
+ </label>
+ </div>
+ ) : (
+ <>
+ {(() => {
+ const checked = tempSelection.includes(job.id);
+ const restricted = !isAdmin && isAppointedOnlyJob(job);
+ const capReached =
+ !isAdmin && !checked && tempSelection.length >= maxJobs;
+ const disabled = restricted || capReached;
+ return (
+ <label
+ className={`flex items-center gap-3 flex-1 ${
+ disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+ }`}
+ >
+ <input
+ type="checkbox"
+ checked={checked}
+ disabled={disabled}
  onChange={() => handleCheckboxChange(job.id)}
- className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer accent-cyan-400"
+ className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer accent-cyan-400"
  />
  <span
  className={`font-medium ${
- tempSelection.includes(job.id) ? "text-cyan-300" : "text-slate-800"
+ checked ? "text-cyan-300" : "text-slate-800"
  }`}
  >
  {job.title}
+ {restricted && (
+ <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 align-middle">
+ 선생님 지정
+ </span>
+ )}
  </span>
  </label>
+ );
+ })()}
  {isAdmin && (
  <div className="flex items-center gap-1 shrink-0">
  <button
@@ -448,6 +507,8 @@ function Dashboard({ adminTabMode }) {
 
  const [jobs, setJobs] = useState([]);
  const [commonTasks, setCommonTasks] = useState([]);
+ // 직업 개수 상한(관리자 설정, 기본 5) — 학생 직업 선택 UI 제한 기준
+ const [maxJobsPerStudent, setMaxJobsPerStudent] = useState(5);
 
  const [editingJob, setEditingJob] = useState(null);
  const [adminNewJobTitle, setAdminNewJobTitle] = useState("");
@@ -490,6 +551,27 @@ function Dashboard({ adminTabMode }) {
  setShowAdminSettingsModal(true);
  }
  }, [adminTabMode, isAdmin]);
+
+ // 직업 개수 상한 로드 — 급여 설정(settings/salarySettings_{classCode})의 maxJobsPerStudent.
+ // 학생 직업 선택 UI 제한 기준. 문서/필드 없으면 기본 5 유지.
+ useEffect(() => {
+ const classCode = userDoc?.classCode;
+ if (!db || !classCode) return;
+ let cancelled = false;
+ (async () => {
+ try {
+ const snap = await getDoc(doc(db, "settings", `salarySettings_${classCode}`));
+ if (cancelled) return;
+ const raw = snap.exists() ? snap.data().maxJobsPerStudent : undefined;
+ if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
+ } catch (e) {
+ logger.warn("[Dashboard] 직업 개수 상한 로드 실패(기본 5 사용):", e);
+ }
+ })();
+ return () => {
+ cancelled = true;
+ };
+ }, [userDoc?.classCode]);
 
  // 🔥 일일 할일 카운터 클라이언트 lazy 리셋
  // 배경: 서버 스케줄러(midnightReset)가 외부 크론 기반이라 누락될 수 있음.
@@ -982,6 +1064,8 @@ function Dashboard({ adminTabMode }) {
  const newJobData = {
  title,
  active: true,
+ // 대통령·국무총리는 생성 시 기본으로 선생님 지정 전용
+ appointedOnly: RESTRICTED_JOB_TITLES.includes(title),
  tasks: [],
  createdAt: serverTimestamp(),
  updatedAt: serverTimestamp(),
@@ -1387,9 +1471,20 @@ function Dashboard({ adminTabMode }) {
  return;
  }
 
- const idsToSave = Array.isArray(newlySelectedJobIds)
+ let idsToSave = Array.isArray(newlySelectedJobIds)
  ? newlySelectedJobIds
  : [];
+ // 🔒 방어: 학생(비관리자)은 지정 전용 직업 제거 + 개수 상한으로 잘라 저장
+ // (UI 가드 우회 대비). 선생님은 그대로.
+ if (!isAdmin?.()) {
+ idsToSave = idsToSave.filter((id) => {
+ const job = jobs.find((j) => j.id === id);
+ return !isAppointedOnlyJob(job);
+ });
+ if (idsToSave.length > maxJobsPerStudent) {
+ idsToSave = idsToSave.slice(0, maxJobsPerStudent);
+ }
+ }
  setAppLoading(true);
 
  try {
@@ -1409,7 +1504,7 @@ function Dashboard({ adminTabMode }) {
  }
  },
  // eslint-disable-next-line react-hooks/exhaustive-deps
- [user, updateUser],
+ [user, updateUser, isAdmin, jobs, maxJobsPerStudent],
  );
 
  const handleCancelForm = useCallback(() => {
@@ -2265,6 +2360,7 @@ function Dashboard({ adminTabMode }) {
  onConfirmSelection={handleConfirmJobSelection}
  onCancel={handleCancelForm}
  isAdmin={isAdmin?.()}
+ maxJobs={maxJobsPerStudent}
  onAddJob={async (title) => {
  if (!db || !userDoc?.classCode) {
  alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
@@ -2276,6 +2372,8 @@ function Dashboard({ adminTabMode }) {
  const newJobData = {
  title,
  active: true,
+ // 대통령·국무총리는 생성 시 기본으로 선생님 지정 전용
+ appointedOnly: RESTRICTED_JOB_TITLES.includes(title),
  tasks: [],
  createdAt: serverTimestamp(),
  updatedAt: serverTimestamp(),
@@ -2295,7 +2393,7 @@ function Dashboard({ adminTabMode }) {
  }
  }}
  onDeleteJob={(jobId) => handleDeleteJob(jobId)}
- onEditJob={async (jobId, newTitle) => {
+ onEditJob={async (jobId, newTitle, appointedOnly) => {
  if (!db || !userDoc?.classCode) {
  alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
@@ -2305,10 +2403,18 @@ function Dashboard({ adminTabMode }) {
  batchManager.addWrite({
  type: "update",
  ref: jobRef,
- data: { title: newTitle, updatedAt: serverTimestamp() },
+ data: {
+ title: newTitle,
+ appointedOnly: appointedOnly === true,
+ updatedAt: serverTimestamp(),
+ },
  });
  setJobs((prev) =>
- prev.map((j) => (j.id === jobId ? { ...j, title: newTitle } : j))
+ prev.map((j) =>
+ j.id === jobId
+ ? { ...j, title: newTitle, appointedOnly: appointedOnly === true }
+ : j
+ )
  );
  dataCache.invalidate(`jobs_${userDoc.classCode}`);
  } catch (error) {

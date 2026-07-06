@@ -3204,6 +3204,12 @@ exports.batchPaySalaries = onCall(
       const taxRate = salarySettingsDoc.exists
         ? salarySettingsDoc.data().taxRate || 0.1
         : 0.1;
+      // 직업 개수 상한(관리자 설정) — 미설정 시 기본 5. scheduler-http.js와 동일 규약.
+      const rawMaxJobs = salarySettingsDoc.exists
+        ? salarySettingsDoc.data().maxJobsPerStudent
+        : undefined;
+      const maxJobsPerStudent =
+        Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? rawMaxJobs : 5;
 
       // 지급할 학생 목록 결정
       let targetStudents = [];
@@ -3263,7 +3269,9 @@ exports.batchPaySalaries = onCall(
       for (const student of targetStudents) {
         const jobIds = student.selectedJobIds || [];
         // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
-        const validJobIds = jobIds.filter((id) => jobTitleMap[id]);
+        const allValidJobIds = jobIds.filter((id) => jobTitleMap[id]);
+        // 🔒 직업 개수 상한: 급여는 최대 maxJobsPerStudent개까지만 계산(farming 방지 이중장치)
+        const validJobIds = allValidJobIds.slice(0, maxJobsPerStudent);
         if (validJobIds.length === 0) {
           skippedStudents.push(student.name || student.nickname || student.id);
           // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가

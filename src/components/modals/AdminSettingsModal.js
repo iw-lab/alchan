@@ -436,9 +436,11 @@ const AdminSettingsModal = ({
   const [salarySettings, setSalarySettings] = useState({
     taxRate: 0.1, // 10% 세율
     salaryIncreaseRate: 0.03, // 3% 주급 인상률
+    maxJobsPerStudent: 5, // 학생당 직업 개수 상한(급여 계산·신청 제한 기준)
   });
   const [tempTaxRate, setTempTaxRate] = useState("10");
   const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("3");
+  const [tempMaxJobsPerStudent, setTempMaxJobsPerStudent] = useState("5");
   const [salarySettingsLoading, setSalarySettingsLoading] = useState(false);
 
   // 화폐 단위 설정
@@ -511,10 +513,15 @@ const AdminSettingsModal = ({
         // taxRate가 undefined/null인 경우만 기본값 사용 (Number()는 null→0 변환 방지 위해 ??)
         const taxRate = data.taxRate ?? 0.1;
         const salaryIncreaseRate = data.salaryIncreaseRate ?? 0.03;
-        const settings = { taxRate, salaryIncreaseRate };
+        // 직업 개수 상한(미설정 시 기본 5). 정수·1이상만 유효.
+        const rawMax = data.maxJobsPerStudent;
+        const maxJobsPerStudent =
+          Number.isInteger(rawMax) && rawMax >= 1 ? rawMax : 5;
+        const settings = { taxRate, salaryIncreaseRate, maxJobsPerStudent };
         setSalarySettings(settings);
         setTempTaxRate(String((taxRate * 100).toFixed(1)));
         setTempSalaryIncreaseRate(String((salaryIncreaseRate * 100).toFixed(1)));
+        setTempMaxJobsPerStudent(String(maxJobsPerStudent));
 
         if (data.lastPaidDate) {
           setLastSalaryPaidDate(data.lastPaidDate.toDate());
@@ -554,6 +561,12 @@ const AdminSettingsModal = ({
       return;
     }
 
+    const maxJobsNum = parseInt(tempMaxJobsPerStudent, 10);
+    if (!Number.isInteger(maxJobsNum) || maxJobsNum < 1 || maxJobsNum > 20) {
+      alert("직업 개수 상한은 1~20 사이의 정수여야 합니다.");
+      return;
+    }
+
     setSalarySettingsLoading(true);
 
     try {
@@ -563,6 +576,7 @@ const AdminSettingsModal = ({
       const newSettings = {
         taxRate: taxRateNum / 100,
         salaryIncreaseRate: increaseRateNum / 100,
+        maxJobsPerStudent: maxJobsNum,
         classCode: userClassCode || null,
         updatedAt: serverTimestamp(),
       };
@@ -580,7 +594,8 @@ const AdminSettingsModal = ({
           const v = verifySnap.data();
           const dt = Math.abs((v.taxRate ?? -1) - newSettings.taxRate);
           const ds = Math.abs((v.salaryIncreaseRate ?? -1) - newSettings.salaryIncreaseRate);
-          serverVerified = dt < 0.0001 && ds < 0.0001;
+          const dm = (v.maxJobsPerStudent ?? -1) === newSettings.maxJobsPerStudent;
+          serverVerified = dt < 0.0001 && ds < 0.0001 && dm;
         }
       } catch (verifyErr) {
         logger.warn("급여 설정 서버 검증 read 실패:", verifyErr);
@@ -597,6 +612,7 @@ const AdminSettingsModal = ({
       setSalarySettings({
         taxRate: newSettings.taxRate,
         salaryIncreaseRate: newSettings.salaryIncreaseRate,
+        maxJobsPerStudent: newSettings.maxJobsPerStudent,
       });
 
       // 2) 입력 박스도 정규화된 값(소수점 한 자리)으로 동기화
@@ -604,6 +620,7 @@ const AdminSettingsModal = ({
       setTempSalaryIncreaseRate(
         String((newSettings.salaryIncreaseRate * 100).toFixed(1)),
       );
+      setTempMaxJobsPerStudent(String(newSettings.maxJobsPerStudent));
 
       // 3) react-query 캐시 무효화 — 다른 화면(주급 지급 등)이 stale 옛 값 사용 방지
       try {
@@ -625,7 +642,7 @@ const AdminSettingsModal = ({
       setSalarySettingsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
+  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, tempMaxJobsPerStudent, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
   // 월급 계산 함수 (세금 공제 포함, 대통령 보너스 반영)
   const calculateSalary = useCallback(
@@ -640,9 +657,15 @@ const AdminSettingsModal = ({
 
       // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
       // handleSaveStudentJobs와 동일한 조건(Array.isArray만 체크)으로 통일 — 미리보기와 저장값 불일치 방지
-      const validJobIds = Array.isArray(jobs)
+      const allValidJobIds = Array.isArray(jobs)
         ? selectedJobIds.filter((jobId) => jobs.some((j) => j.id === jobId))
         : selectedJobIds;
+      // 🔒 직업 개수 상한: 서버 급여 계산(scheduler/batchPay)과 동일하게 상한 내로 캡 (미리보기 일치)
+      const maxJobs =
+        Number.isInteger(salarySettings.maxJobsPerStudent) && salarySettings.maxJobsPerStudent >= 1
+          ? salarySettings.maxJobsPerStudent
+          : 5;
+      const validJobIds = allValidJobIds.slice(0, maxJobs);
 
       const grossSalary =
         validJobIds.length === 0
@@ -667,7 +690,7 @@ const AdminSettingsModal = ({
 
       return { gross: totalGross, tax, net: netSalary };
     },
-    [salarySettings.taxRate, jobs],
+    [salarySettings.taxRate, salarySettings.maxJobsPerStudent, jobs],
   );
 
   // 직업 편집 핸들러
@@ -1144,6 +1167,20 @@ const AdminSettingsModal = ({
       const cleanedJobIds = Array.isArray(jobs)
         ? tempSelectedJobIds.filter((id) => jobs.some((j) => j.id === id))
         : tempSelectedJobIds;
+
+      // 🔒 직업 개수 상한: 선생님 배정도 상한 적용(사용자 결정). 초과 시 저장 차단.
+      //    더 배정하려면 급여 설정에서 '직업 개수 상한'을 올리면 된다.
+      const maxJobs =
+        Number.isInteger(salarySettings.maxJobsPerStudent) && salarySettings.maxJobsPerStudent >= 1
+          ? salarySettings.maxJobsPerStudent
+          : 5;
+      if (cleanedJobIds.length > maxJobs) {
+        setAppLoading(false);
+        alert(
+          `직업은 최대 ${maxJobs}개까지 배정할 수 있어요. 더 배정하려면 급여 설정에서 '직업 개수 상한'을 올려주세요.`,
+        );
+        return;
+      }
 
       const userRef = firebaseDoc(db, "users", selectedStudent.id);
       await firebaseUpdateDoc(userRef, {
@@ -3269,6 +3306,27 @@ const AdminSettingsModal = ({
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5 ml-1">매주 자동 적용될 인상률</p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-700">직업 개수 상한</span>
+                      <span className="text-[11px] text-slate-400">개</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        step="1"
+                        value={tempMaxJobsPerStudent}
+                        onChange={(e) => setTempMaxJobsPerStudent(e.target.value)}
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition text-slate-800 text-sm"
+                        placeholder="예: 5"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">개</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">학생 1명이 가질 수 있는 최대 직업 수(급여 계산·신청·배정 모두 적용)</p>
                   </div>
 
                   <button
