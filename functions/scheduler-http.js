@@ -2007,7 +2007,10 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
         // 직업 개수 상한(관리자 설정) — 급여 계산에 반영할 최대 직업 수. 미설정 시 기본 5.
         const rawMaxJobs = salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined;
-        const maxJobsPerStudent = Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? rawMaxJobs : DEFAULT_MAX_JOBS;
+        // 하한1·상한20 클램프(설정 문서가 API/콘솔로 변조돼도 급여 캡 무력화 방지)
+        const maxJobsPerStudent = Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1
+          ? Math.min(20, rawMaxJobs)
+          : DEFAULT_MAX_JOBS;
 
         // 직업 정보 로드 (대통령 보너스 적용용)
         const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
@@ -2071,8 +2074,11 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           }
 
           const grossSalary = BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
+          // 대통령 보너스는 캡 slice 이전 전체 직업(allValidJobIds) 기준 — 대통령은
+          // 선생님만 배정(appointedOnly)하므로 farming 무관하고, 배열 순서로 보너스가
+          // 유실되는 것을 방지(cap 초과 기존 데이터에서 대통령 id가 뒤에 있어도 지급).
           let bonus = 0;
-          for (const jobId of validJobIds) {
+          for (const jobId of allValidJobIds) {
             const title = jobTitleMap[jobId];
             if (title === "대통령") bonus += PRESIDENT_BONUS;
           }

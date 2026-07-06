@@ -279,6 +279,7 @@ function SelectMultipleJobsView({
  const handleCancelEdit = useCallback(() => {
  setEditingJobId(null);
  setEditingJobTitle("");
+ setEditingJobAppointedOnly(false);
  }, []);
 
  return (

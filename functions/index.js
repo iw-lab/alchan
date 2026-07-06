@@ -3208,8 +3208,9 @@ exports.batchPaySalaries = onCall(
       const rawMaxJobs = salarySettingsDoc.exists
         ? salarySettingsDoc.data().maxJobsPerStudent
         : undefined;
+      // 하한1·상한20 클램프(설정 변조 대비 급여 캡 방어). scheduler-http.js와 동일.
       const maxJobsPerStudent =
-        Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? rawMaxJobs : 5;
+        Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? Math.min(20, rawMaxJobs) : 5;
 
       // 지급할 학생 목록 결정
       let targetStudents = [];
@@ -3288,8 +3289,10 @@ exports.batchPaySalaries = onCall(
 
         const grossSalary =
           BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
+        // 대통령 보너스는 캡 slice 이전 전체(allValidJobIds) 기준 — 순서로 보너스 유실 방지
+        // (대통령은 선생님만 배정하므로 farming 무관). scheduler-http.js와 동일 규약.
         let bonus = 0;
-        for (const jobId of validJobIds) {
+        for (const jobId of allValidJobIds) {
           const title = jobTitleMap[jobId];
           if (title === "대통령") bonus += PRESIDENT_BONUS;
         }

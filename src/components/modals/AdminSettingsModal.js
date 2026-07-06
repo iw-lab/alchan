@@ -672,9 +672,11 @@ const AdminSettingsModal = ({
           ? 0
           : baseSalary + Math.max(0, validJobIds.length - 1) * additionalSalary;
 
+      // 대통령 보너스는 캡 slice 이전 전체(allValidJobIds) 기준 — 서버 급여 계산과 동일 규약
+      // (순서로 보너스 유실 방지, 대통령은 선생님 배정 전용이라 farming 무관)
       let bonus = 0;
       if (Array.isArray(jobs)) {
-        for (const jobId of validJobIds) {
+        for (const jobId of allValidJobIds) {
           const job = jobs.find((j) => j.id === jobId);
           if (job?.title === "대통령") bonus += PRESIDENT_BONUS;
         }
