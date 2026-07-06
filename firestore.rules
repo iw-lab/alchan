@@ -1039,7 +1039,8 @@ service cloud.firestore {
       //    정당 구매자는 항상 같은 학급. 타 학급 사용자의 재고/구매자목록 무단 조작 차단.
       allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
                        (isSignedIn() &&
-                        isSameClassFast(resource.data.classCode) &&
+                        (resource.data.get('classCode', null) == null ||
+                         isSameClassFast(resource.data.classCode)) &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'soldCount', 'buyers', 'status', 'updatedAt']) &&
                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
                          request.resource.data.status == 'soldout'));
