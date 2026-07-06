@@ -230,21 +230,63 @@ export const ItemProvider = ({ children }) => {
     // sessionStorage는 새로고침 생존용 2차. 문서 미존재는 "0"으로 정규화해
     // 최초 bump(문서 생성)도 변경으로 감지한다.
     let lastSeen = ssGet();
-    const unsubscribe = onSnapshot(
-      doc(db, "catalogMeta", currentUserClassCode),
-      (snap) => {
-        const version = String(snap.data()?.version?.toMillis?.() ?? 0);
-        const prev = lastSeen;
-        lastSeen = version;
-        ssSet(version);
-        // 이 탭 최초 관측(prev 없음)은 기록만 — 데이터는 마운트 fetch가 책임진다.
-        if (prev == null || prev === version) return;
-        invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
-        fetchDataRef.current({ force: true });
-      },
-      (err) => logger.warn("[ItemContext] 카탈로그 버전 구독 오류:", err),
-    );
-    return unsubscribe;
+    let lastForcedAt = 0;
+    let trailingTimer = null;
+    let retryTimer = null;
+    let retryCount = 0;
+    let unsubscribe = null;
+    let disposed = false;
+
+    const forceRefetch = () => {
+      lastForcedAt = Date.now();
+      invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
+      fetchDataRef.current({ force: true });
+    };
+    // 관리자가 아이템을 연달아 수정하면 bump도 연발 → 탭당 재조회를 60초에 1회로
+    // 병합(leading 즉시 + trailing 1회). CF 1회 = 서버 40~100문서 읽기라, 스로틀
+    // 없이는 수정 세션 한 번에 전 학생 × 수정 횟수만큼 읽기가 증폭된다(2026-07-06 실측).
+    const onVersionChange = () => {
+      const since = Date.now() - lastForcedAt;
+      if (since >= 60000) {
+        forceRefetch();
+      } else if (!trailingTimer) {
+        trailingTimer = setTimeout(() => {
+          trailingTimer = null;
+          forceRefetch();
+        }, 60000 - since);
+      }
+    };
+    const subscribe = () => {
+      unsubscribe = onSnapshot(
+        doc(db, "catalogMeta", currentUserClassCode),
+        (snap) => {
+          retryCount = 0;
+          const version = String(snap.data()?.version?.toMillis?.() ?? 0);
+          const prev = lastSeen;
+          lastSeen = version;
+          ssSet(version);
+          // 이 탭 최초 관측(prev 없음)은 기록만 — 데이터는 마운트 fetch가 책임진다.
+          if (prev == null || prev === version) return;
+          onVersionChange();
+        },
+        (err) => {
+          // 거부된 리스너는 SDK가 재시도하지 않고 영구히 죽는다. rules 배포 직후
+          // 전파 지연으로 permission-denied가 나던 실측(2026-07-06, 거부 24건) 대응:
+          // 백오프 재구독 30s→60s→120s, 3회 실패 시 포기(27분 TTL 폴백은 여전히 동작).
+          logger.warn("[ItemContext] 카탈로그 버전 구독 오류:", err);
+          if (disposed || retryCount >= 3) return;
+          retryCount += 1;
+          retryTimer = setTimeout(subscribe, 30000 * 2 ** (retryCount - 1));
+        },
+      );
+    };
+    subscribe();
+    return () => {
+      disposed = true;
+      if (unsubscribe) unsubscribe();
+      if (trailingTimer) clearTimeout(trailingTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [userId, currentUserClassCode]);
 
   // Public refresh function
