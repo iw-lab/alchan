@@ -256,6 +256,17 @@ const LearningBoard = () => {
   // usePolling의 data 초기값이 null이므로 항상 배열로 보장
   const boards = rawBoards || [];
 
+  // 게시판 목록(추가/이름변경/숨김/복구/삭제) 변경 시 사이드바를 즉시 갱신.
+  // 사이드바(AlchanSidebar)는 자체적으로 1회만 로드하므로 이 이벤트로 재조회를 트리거한다.
+  const notifyBoardsChanged = useCallback(() => {
+    refetchBoards();
+    try {
+      window.dispatchEvent(new Event("learningBoards:changed"));
+    } catch (_) {
+      /* noop */
+    }
+  }, [refetchBoards]);
+
   const postsQueryFn = useCallback(async () => {
     if (!selectedBoard || !classCode) return [];
     const ref = collection(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts");
@@ -758,7 +769,7 @@ const LearningBoard = () => {
     if (boards.some((b) => b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
     try {
       await addDoc(boardsCollectionRef, { name: trimmedName, isHidden: false, isAnonymous: newBoardAnonymous, createdAt: serverTimestamp(), classCode });
-      refetchBoards();
+      notifyBoardsChanged();
       setNewBoardName("");
       setNewBoardAnonymous(false);
     } catch (error) {
@@ -778,7 +789,7 @@ const LearningBoard = () => {
     if (boards.some((b) => b.id !== editingBoardId && b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", editingBoardId), { name: trimmedName, updatedAt: serverTimestamp() });
-      refetchBoards();
+      notifyBoardsChanged();
       handleCancelEditBoard();
     } catch (error) {
       logger.error("Error updating board name:", error);
@@ -789,7 +800,7 @@ const LearningBoard = () => {
     if (!currentUserIsAdmin || !classCode) return;
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isHidden: true, updatedAt: serverTimestamp() });
-      refetchBoards();
+      notifyBoardsChanged();
       if (selectedBoard?.id === boardId) setSelectedBoard(null);
     } catch (error) { logger.error("Error hiding board:", error); }
   };
@@ -800,7 +811,7 @@ const LearningBoard = () => {
     if (!board) return;
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isAnonymous: !board.isAnonymous, updatedAt: serverTimestamp() });
-      refetchBoards();
+      notifyBoardsChanged();
     } catch (error) { logger.error("Error toggling anonymous:", error); }
   };
 
@@ -808,7 +819,7 @@ const LearningBoard = () => {
     if (!currentUserIsAdmin || !classCode) return;
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isHidden: false, updatedAt: serverTimestamp() });
-      refetchBoards();
+      notifyBoardsChanged();
     } catch (error) { logger.error("Error restoring board:", error); }
   };
 
@@ -828,7 +839,7 @@ const LearningBoard = () => {
       postsSnapshot.docs.forEach((d) => batch.delete(d.ref));
       batch.delete(boardRef);
       await batch.commit();
-      refetchBoards();
+      notifyBoardsChanged();
       if (selectedBoard?.id === boardId) setSelectedBoard(null);
     } catch (error) {
       logger.error("Error deleting board:", error);

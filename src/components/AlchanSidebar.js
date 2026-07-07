@@ -48,6 +48,8 @@ import {
   CheckCircle,
   Zap,
   Sparkles,
+  Globe,
+  Palette,
 } from "lucide-react";
 
 // ============================================
@@ -307,6 +309,24 @@ export const ALCHAN_MENU_ITEMS = [
     icon: Music,
     path: "/learning-board/music-request",
     parentId: "boardCategory",
+  },
+
+  // Learning Sites Category - 학습 사이트 (외부 링크 · Firestore 읽기 0)
+  // 👉 새 학습 사이트 추가는 아래 배열에 { id, label, icon, externalUrl, parentId:"learningSitesCategory" } 한 줄만 추가.
+  //    externalUrl 항목은 클릭 시 새 탭으로 열림(내부 라우팅과 분리).
+  {
+    id: "learningSitesCategory",
+    label: "학습 사이트",
+    icon: Globe,
+    isCategory: true,
+    category: "community",
+  },
+  {
+    id: "siteArtOn",
+    label: "미술아트온",
+    icon: Palette,
+    externalUrl: "https://arton.simssijjang.workers.dev/coloring",
+    parentId: "learningSitesCategory",
   },
 
   // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
@@ -636,6 +656,12 @@ export default function AlchanSidebar({
 
   const handleItemClick = useCallback(
     (item) => {
+      // 외부 학습 사이트: 새 탭으로 이동(내부 라우팅과 분리, opener 격리)
+      if (item.externalUrl) {
+        window.open(item.externalUrl, "_blank", "noopener,noreferrer");
+        if (isMobile) onClose?.();
+        return;
+      }
       if (item.path) {
         navigate(item.path);
         if (isMobile) onClose?.();
@@ -898,11 +924,13 @@ export default function AlchanSidebar({
   }, [isAdmin, userDoc?.id, userDoc?.classCode]);
 
   // 학습 게시판 목록 로드 (사이드바에 동적 표시)
+  // 🔧 게시판 이름 변경/추가/숨김 시 사이드바가 stale 상태로 남던 버그 수정:
+  //    LearningBoard에서 게시판 변경 후 'learningBoards:changed' 이벤트를 쏘면 즉시 재조회.
   useEffect(() => {
     const classCode = userDoc?.classCode;
     if (!classCode) return void setLearningBoards([]);
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       try {
         const snap = await getDocs(fbCollection(firebaseDb, "classes", classCode, "learningBoards"));
         if (cancelled) return;
@@ -913,8 +941,14 @@ export default function AlchanSidebar({
             .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         );
       } catch { /* ignore */ }
-    })();
-    return () => { cancelled = true; };
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener("learningBoards:changed", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("learningBoards:changed", handler);
+    };
   }, [userDoc?.classCode]);
 
   const hasDelegatedTaskApproval =
