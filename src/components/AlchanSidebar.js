@@ -9,6 +9,8 @@ import { getIsIdle } from "../utils/idleManager";
 import { db as firebaseDb } from "../firebase";
 import {
   collection as fbCollection,
+  doc as fbDoc,
+  getDoc as fbGetDoc,
   query as fbQuery,
   where as fbWhere,
   getDocs,
@@ -50,6 +52,7 @@ import {
   Sparkles,
   Globe,
   Palette,
+  MessageSquare,
 } from "lucide-react";
 
 // ============================================
@@ -301,6 +304,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "학습 게시판",
     icon: BookOpen,
     path: "/learning-board",
+    parentId: "boardCategory",
+  },
+  {
+    id: "personalBoard",
+    label: "담벼락",
+    icon: MessageSquare,
+    path: "/personal-board",
     parentId: "boardCategory",
   },
   {
@@ -614,6 +624,7 @@ export default function AlchanSidebar({
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [learningBoards, setLearningBoards] = useState([]);
+  const [lockedItemIds, setLockedItemIds] = useState([]); // 교사가 학생에게 잠근 메뉴 id
 
   useEffect(() => {
     let timeoutId;
@@ -951,6 +962,29 @@ export default function AlchanSidebar({
     };
   }, [userDoc?.classCode]);
 
+  // 🔒 메뉴 잠금 목록 로드 (settings/menuLocks_{classCode})
+  // 교사가 관리자설정에서 저장하면 'menuLocks:changed' 이벤트로 즉시 반영, 타 기기는 다음 로드 시 반영.
+  useEffect(() => {
+    const classCode = userDoc?.classCode;
+    if (!classCode) return void setLockedItemIds([]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const snap = await fbGetDoc(fbDoc(firebaseDb, "settings", `menuLocks_${classCode}`));
+        if (cancelled) return;
+        const arr = snap.exists() ? snap.data().lockedItemIds : [];
+        setLockedItemIds(Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : []);
+      } catch { /* ignore */ }
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener("menuLocks:changed", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("menuLocks:changed", handler);
+    };
+  }, [userDoc?.classCode]);
+
   const hasDelegatedTaskApproval =
     userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
   const hasDelegatedMoneyTransfer =
@@ -977,6 +1011,8 @@ export default function AlchanSidebar({
     (item) => {
       if (item.adminOnly && !isAdmin) return false;
       if (item.superAdminOnly && !isSuperAdmin) return false;
+      // 🔒 교사가 잠근 메뉴는 학생에게만 숨김(교사 본인은 계속 보임)
+      if (!isAdmin && lockedItemIds.includes(item.id)) return false;
       // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생 또는 대통령 직업 학생에게 표시
       // 대통령은 직업 자체로 할일 승인 권한을 가짐 (별도 위임 불필요)
       if (item.delegatedOnly) {
@@ -989,7 +1025,7 @@ export default function AlchanSidebar({
       }
       return true;
     },
-    [isAdmin, isSuperAdmin, isPresident, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer],
+    [isAdmin, isSuperAdmin, isPresident, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer, lockedItemIds],
   );
 
   // 카테고리별 메뉴 렌더링
@@ -1103,6 +1139,7 @@ export default function AlchanSidebar({
           ).map((item) => {
             if (item.adminOnly && !isAdmin) return null;
             if (item.superAdminOnly && !isSuperAdmin) return null;
+            if (!isAdmin && lockedItemIds.includes(item.id)) return null;
             const Icon = item.icon;
             const active = isActive(item.path);
             return (

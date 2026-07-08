@@ -45,7 +45,31 @@ import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 import AdminDatabase from "../../pages/admin/AdminDatabase";
 
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { ALCHAN_MENU_ITEMS } from "../AlchanSidebar";
 import { logger } from "../../utils/logger";
+
+// 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
+// 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
+// 이미 역할로 통제되므로 잠금 대상이 아니다. 학생에게 보이는 leaf 항목만 대상.
+const CATEGORY_LABEL_MAP = {
+  main: "메인",
+  play: "게임",
+  economy: "경제",
+  society: "사회",
+  community: "커뮤니티",
+};
+const catOfMenuItem = (it) =>
+  it.category ||
+  ALCHAN_MENU_ITEMS.find((p) => p.id === it.parentId)?.category ||
+  "기타";
+const LOCKABLE_MENU_ITEMS = ALCHAN_MENU_ITEMS.filter(
+  (it) =>
+    !it.isCategory &&
+    !it.adminOnly &&
+    !it.superAdminOnly &&
+    !it.delegatedOnly &&
+    (it.path || it.externalUrl),
+);
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
   {
@@ -443,6 +467,10 @@ const AdminSettingsModal = ({
   const [tempMaxJobsPerStudent, setTempMaxJobsPerStudent] = useState("5");
   const [salarySettingsLoading, setSalarySettingsLoading] = useState(false);
 
+  // 🔒 메뉴 잠금 (학생에게 숨길 메뉴 항목 id 목록)
+  const [lockedItemIds, setLockedItemIds] = useState([]);
+  const [menuLocksSaving, setMenuLocksSaving] = useState(false);
+
   // 화폐 단위 설정
   const { currencyUnit, setCurrencyUnitLocal } = useCurrency();
   const [tempCurrencyUnit, setTempCurrencyUnit] = useState(currencyUnit);
@@ -486,6 +514,66 @@ const AdminSettingsModal = ({
       setCurrencyUnitSaving(false);
     }
   }, [tempCurrencyUnit, setCurrencyUnitLocal]);
+
+  // 🔒 메뉴 잠금 로드 (settings/menuLocks_{classCode})
+  const loadMenuLocks = useCallback(async () => {
+    if (!db || !userClassCode) return;
+    try {
+      const ref = firebaseDoc(db, "settings", `menuLocks_${userClassCode}`);
+      const snap = await firebaseGetSingleDoc(ref);
+      if (snap.exists()) {
+        const arr = snap.data().lockedItemIds;
+        setLockedItemIds(Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : []);
+      } else {
+        setLockedItemIds([]);
+      }
+    } catch (error) {
+      logger.error("메뉴 잠금 로드 오류:", error);
+    }
+  }, [userClassCode]);
+
+  // 🔒 메뉴 잠금 저장
+  const handleSaveMenuLocks = useCallback(async () => {
+    if (!db) {
+      alert("데이터베이스 연결 오류.");
+      return;
+    }
+    if (!userClassCode) {
+      alert("학급 코드가 확인되지 않습니다.");
+      return;
+    }
+    setMenuLocksSaving(true);
+    try {
+      // 유효한 leaf 항목 id만 저장(과거 항목·오염 방지)
+      const validIds = new Set(LOCKABLE_MENU_ITEMS.map((it) => it.id));
+      const cleaned = lockedItemIds.filter((id) => validIds.has(id));
+      const ref = firebaseDoc(db, "settings", `menuLocks_${userClassCode}`);
+      await firebaseSetDoc(
+        ref,
+        { lockedItemIds: cleaned, classCode: userClassCode, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+      setLockedItemIds(cleaned);
+      // 사이드바가 즉시 반영하도록 브로드캐스트(같은 탭). 다른 기기 학생은 다음 로드 시 반영.
+      try {
+        window.dispatchEvent(new CustomEvent("menuLocks:changed"));
+      } catch (_) {
+        /* noop */
+      }
+      alert("메뉴 잠금 설정이 저장되었습니다.");
+    } catch (error) {
+      logger.error("메뉴 잠금 저장 오류:", error);
+      alert("메뉴 잠금 저장 중 오류가 발생했습니다: " + error.message);
+    } finally {
+      setMenuLocksSaving(false);
+    }
+  }, [userClassCode, lockedItemIds]);
+
+  const toggleLockItem = useCallback((itemId) => {
+    setLockedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
+    );
+  }, []);
 
   // 최적화된 데이터 훅들
   const queryClient = useQueryClient();
@@ -1745,6 +1833,14 @@ const AdminSettingsModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab, userClassCode]);
 
+  // 일반설정 탭 진입 시 메뉴 잠금 목록 로드
+  useEffect(() => {
+    if (showAdminSettingsModal && adminSelectedMenu === "generalSettings") {
+      loadMenuLocks();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdminSettingsModal, adminSelectedMenu, userClassCode]);
+
   // 시장 서브탭 선택 시 시장 상태 로드
   useEffect(() => {
     if (
@@ -2005,6 +2101,66 @@ const AdminSettingsModal = ({
                   style={{ background: "#15803d", color: "#ffffff" }}
                 >
                   {currencyUnitSaving ? "저장 중..." : "💾 화폐 단위 저장"}
+                </button>
+              </div>
+            </div>
+
+            {/* 메뉴(기능) 잠금 섹션 */}
+            <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#fee2e2", color: "#b91c1c" }}>🔒</span>
+                  메뉴 잠금 (학생 화면에서 숨기기)
+                </h3>
+                <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                  체크한 메뉴는 <b>학생에게만</b> 숨겨집니다. 선생님 화면에는 계속 보여요. 아직 안 쓰는 기능을 잠가두면 학생 화면이 깔끔해집니다.
+                </p>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                {Object.entries(
+                  LOCKABLE_MENU_ITEMS.reduce((acc, it) => {
+                    const cat = catOfMenuItem(it);
+                    (acc[cat] = acc[cat] || []).push(it);
+                    return acc;
+                  }, {}),
+                ).map(([cat, items]) => (
+                  <div key={cat}>
+                    <div className="text-xs font-bold mb-2" style={{ color: "#6366f1" }}>
+                      {CATEGORY_LABEL_MAP[cat] || cat}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {items.map((it) => {
+                        const locked = lockedItemIds.includes(it.id);
+                        return (
+                          <label
+                            key={it.id}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm"
+                            style={{
+                              background: locked ? "#fef2f2" : "#f8fafc",
+                              border: `1px solid ${locked ? "#fecaca" : "#e2e8f0"}`,
+                              color: locked ? "#b91c1c" : "#334155",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={locked}
+                              onChange={() => toggleLockItem(it.id)}
+                              style={{ width: 16, height: 16, cursor: "pointer" }}
+                            />
+                            <span className="truncate">{locked ? "🔒 " : ""}{it.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={handleSaveMenuLocks}
+                  disabled={menuLocksSaving || !userClassCode}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "#b91c1c", color: "#ffffff" }}
+                >
+                  {menuLocksSaving ? "저장 중..." : "🔒 메뉴 잠금 저장"}
                 </button>
               </div>
             </div>

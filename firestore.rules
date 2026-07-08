@@ -730,6 +730,48 @@ service cloud.firestore {
         }
       }
 
+      // 🧱 담벼락 (개인 게시판) — classes/{classCode}/personalBoards/{ownerId}
+      // 문서 ID = 소유 학생 uid. visibility: 'private'(주인+교사만) | 'class'(같은 반 전체 열람·댓글)
+      // 주의: *Fast 헬퍼는 read 전용. 학급공개 판의 글/댓글 읽기·쓰기는 부모 판 문서의
+      // visibility를 get()으로 확인(비공개 판은 문서 부재→get 오류→자동 거부, 주인/교사는 그 전에 단락).
+      match /personalBoards/{ownerId} {
+        allow read: if isOwner(ownerId) || isAdminFast() ||
+                       (isSameClassFast(classCode) && resource.data.get('visibility', 'private') == 'class');
+        // 생성: 주인 학생 본인(비공개로만) 또는 교사. 학생이 스스로 학급공개로 만들지 못하게 강제.
+        allow create: if (isOwner(ownerId) && request.resource.data.get('visibility', 'private') == 'private') || isAdmin();
+        // 공개범위 변경 등 수정·삭제: 교사만
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+
+        // 글: 주인 학생이 자기 담벼락에 작성(교사도 가능)
+        // 쓰기 시 authorId는 본인 uid로 강제, isTeacher는 실제 교사만 true 가능(사칭 차단), 길이 상한.
+        match /posts/{postId} {
+          allow read: if isOwner(ownerId) || isAdminFast() ||
+                         (isSameClassFast(classCode) &&
+                          get(/databases/$(database)/documents/classes/$(classCode)/personalBoards/$(ownerId)).data.get('visibility', 'private') == 'class');
+          allow create: if (isOwner(ownerId) || isAdmin()) &&
+                           request.resource.data.authorId == request.auth.uid &&
+                           (request.resource.data.get('isTeacher', false) == false || isAdmin()) &&
+                           isValidString(request.resource.data.content, 2000);
+          allow update: if isOwner(resource.data.authorId) || isAdmin();
+          allow delete: if isOwner(resource.data.authorId) || isAdmin();
+
+          // 댓글: 교사 + 판 주인 학생 + (학급공개면 같은 반 전체)
+          match /comments/{commentId} {
+            allow read: if isOwner(ownerId) || isAdminFast() ||
+                           (isSameClassFast(classCode) &&
+                            get(/databases/$(database)/documents/classes/$(classCode)/personalBoards/$(ownerId)).data.get('visibility', 'private') == 'class');
+            allow create: if (isAdmin() || isOwner(ownerId) ||
+                             (isSameClass(classCode) &&
+                              get(/databases/$(database)/documents/classes/$(classCode)/personalBoards/$(ownerId)).data.get('visibility', 'private') == 'class')) &&
+                             request.resource.data.authorId == request.auth.uid &&
+                             (request.resource.data.get('isTeacher', false) == false || isAdmin()) &&
+                             isValidString(request.resource.data.content, 1000);
+            allow delete: if isOwner(resource.data.authorId) || isAdmin();
+          }
+        }
+      }
+
       // 🎵 음악 요청 서브컬렉션 (classes/{classCode}/musicRequests/{requestId})
       match /musicRequests/{requestId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();

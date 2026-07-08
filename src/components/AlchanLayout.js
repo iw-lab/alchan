@@ -135,6 +135,9 @@ const AvatarShopSeed = lazyWithRetry(
 const LearningBoard = lazyWithRetry(
   () => import("../pages/learning/LearningBoard"),
 );
+const PersonalBoard = lazyWithRetry(
+  () => import("../pages/personal-board/PersonalBoard"),
+);
 const MusicRequest = lazyWithRetry(() => import("../pages/music/MusicRequest"));
 const MusicRoom = lazyWithRetry(() => import("../pages/music/MusicRoom"));
 const StudentRequest = lazyWithRetry(
@@ -704,6 +707,14 @@ export default function AlchanLayout() {
                   element={
                     <ProtectedRoute>
                       <LearningBoard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/personal-board"
+                  element={
+                    <ProtectedRoute>
+                      <PersonalBoard />
                     </ProtectedRoute>
                   }
                 />
