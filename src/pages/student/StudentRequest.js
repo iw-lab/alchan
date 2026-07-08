@@ -40,6 +40,7 @@ const StudentRequest = () => {
 
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [requesterName, setRequesterName] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false); // 익명 신청 여부(재생목록에 '익명'으로 표시)
   const [story, setStory] = useState(""); // 선택: 사연/메시지 (재생목록에 표시)
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState("");
@@ -197,7 +198,8 @@ const StudentRequest = () => {
     }
 
     const name = requesterName.trim();
-    if (!name) {
+    // 익명 신청이면 이름 없이도 신청 가능(재생목록엔 '익명'으로 표시)
+    if (!isAnonymous && !name) {
       alert("신청자 이름을 입력해주세요.");
       return;
     }
@@ -267,12 +269,15 @@ const StudentRequest = () => {
       }
 
       const trimmedStory = story.trim().slice(0, 200); // 과도한 길이 방지
+      // 익명 신청: 재생목록엔 '익명'으로 표시하고 requesterId도 남기지 않음.
+      // (유료 신청의 결제/거래로그는 자금 추적을 위해 위 트랜잭션에서 실명 유지 — 화면 표시만 익명)
       await addDoc(collection(db, "musicRooms", roomId, "playlist"), {
         videoId: selectedVideo.id.videoId,
         title: selectedVideo.snippet.title,
-        requesterName: name,
+        requesterName: isAnonymous ? "익명" : name,
         requestedAt: serverTimestamp(),
-        ...(user ? { requesterId: user.uid } : {}),
+        ...(user && !isAnonymous ? { requesterId: user.uid } : {}),
+        ...(isAnonymous ? { isAnonymous: true } : {}),
         ...(trimmedStory ? { story: trimmedStory } : {}),
         paidAmount: pricePerSong || 0,
       });
@@ -298,6 +303,7 @@ const StudentRequest = () => {
     setUrlInput("");
     setUrlPreview(null);
     setStory("");
+    setIsAnonymous(false);
     setError("");
   };
 
@@ -637,6 +643,26 @@ const StudentRequest = () => {
                 rows={2}
               />
               <div className="request-story-count">{story.length}/200</div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  margin: "0.5rem 0 0.75rem",
+                  fontSize: "0.9rem",
+                  color: "#4f46e5",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                🙈 익명으로 신청하기 (재생목록에 이름 대신 '익명'으로 표시돼요)
+              </label>
               <button
                 onClick={handleRequest}
                 className="request-btn"
