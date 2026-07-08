@@ -235,12 +235,16 @@ const LearningBoard = () => {
     const ref = collection(db, "classes", classCode, "learningBoards");
     const q = query(ref, orderBy("name"), limit(100));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      isHidden: typeof doc.data().isHidden === "boolean" ? doc.data().isHidden : false,
-      isAnonymous: typeof doc.data().isAnonymous === "boolean" ? doc.data().isAnonymous : false,
-    }));
+    // 생성순(오래된→최신) 정렬 — 새로 만든 게시판이 아래(뒤)로 추가되도록. createdAt 없는
+    // 구 게시판은 맨 앞. (Firestore orderBy(createdAt)는 필드 없는 문서를 누락시키므로 클라 정렬)
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        isHidden: typeof doc.data().isHidden === "boolean" ? doc.data().isHidden : false,
+        isAnonymous: typeof doc.data().isAnonymous === "boolean" ? doc.data().isAnonymous : false,
+      }))
+      .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
   }, [classCode]);
 
   const { data: rawBoards, loading: boardsLoading, refetch: refetchBoards } = usePolling(boardsQueryFn, {
@@ -274,6 +278,7 @@ const LearningBoard = () => {
     const snapshot = await getDocs(q);
     const posts = snapshot.docs.map((d) => ({
       id: d.id,
+      _boardId: selectedBoard.id, // 어느 게시판 글인지 태그(전환 중 stale 렌더 방어)
       ...d.data(),
       adminCouponGiven: typeof d.data().adminCouponGiven === "boolean" ? d.data().adminCouponGiven : false,
       coupons: Number(d.data().coupons) || 0,
@@ -311,8 +316,14 @@ const LearningBoard = () => {
     cacheTTL: 2 * 60 * 1000,
   });
 
-  // usePolling의 data 초기값이 null이므로 항상 배열로 보장
-  const selectedBoardPosts = rawPosts || [];
+  // 🐛 게시판 전환 중 usePolling이 이전 게시판의 글(data)을 잠깐 유지 → 다른 게시판 글이
+  //    보이고 그걸 클릭하면 엉뚱한 글이 열리던 버그. 현재 선택 게시판과 태그가 일치하는
+  //    글만 노출하고, 불일치(전환 중)면 로딩으로 취급.
+  const rawPostsArr = rawPosts || [];
+  const postsBelongToBoard =
+    rawPostsArr.length === 0 || rawPostsArr[0]._boardId === selectedBoard?.id;
+  const selectedBoardPosts = postsBelongToBoard ? rawPostsArr : [];
+  const postsLoadingEffective = postsLoading || !postsBelongToBoard;
 
   const currentUserIsAdmin = useMemo(() => isAdmin && isAdmin(), [isAdmin]);
 
@@ -340,6 +351,22 @@ const LearningBoard = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boards, searchParams]);
+
+  // 게시판 이름/속성 변경 후 selectedBoard 스냅샷 동기화 — 제목·'○○에 글쓰기' 헤더가
+  // 옛 이름으로 남던 문제(수정 시 이상해 보이는 원인) 수정. 같은 id일 때 필드만 갱신.
+  useEffect(() => {
+    if (!selectedBoard) return;
+    const fresh = boards.find((b) => b.id === selectedBoard.id);
+    if (
+      fresh &&
+      (fresh.name !== selectedBoard.name ||
+        fresh.isHidden !== selectedBoard.isHidden ||
+        fresh.isAnonymous !== selectedBoard.isAnonymous)
+    ) {
+      setSelectedBoard(fresh);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boards]);
 
   // Comments (hooks must be before early returns)
   const loadComments = useCallback(async (boardId, postId) => {
@@ -908,7 +935,7 @@ const LearningBoard = () => {
               </button>
             </div>
 
-            {postsLoading ? (
+            {postsLoadingEffective ? (
               <div className="lb-empty">로딩 중...</div>
             ) : selectedBoardPosts.length === 0 ? (
               <div className="lb-empty">아직 작성된 글이 없습니다.</div>

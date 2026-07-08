@@ -299,13 +299,7 @@ export const ALCHAN_MENU_ITEMS = [
     isCategory: true,
     category: "community",
   },
-  {
-    id: "learningBoard",
-    label: "학습 게시판",
-    icon: BookOpen,
-    path: "/learning-board",
-    parentId: "boardCategory",
-  },
+  // 담벼락·음악 신청을 맨 위에, 선생님이 만든 학습 게시판들은 그 아래(생성순)로 렌더.
   {
     id: "personalBoard",
     label: "담벼락",
@@ -318,6 +312,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "음악 신청",
     icon: Music,
     path: "/learning-board/music-request",
+    parentId: "boardCategory",
+  },
+  {
+    id: "learningBoard",
+    label: "학습 게시판",
+    icon: BookOpen,
+    path: "/learning-board",
     parentId: "boardCategory",
   },
 
@@ -949,7 +950,8 @@ export default function AlchanSidebar({
           snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .filter(b => !b.isHidden)
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            // 생성순(오래된→최신) — 새 게시판이 아래로. createdAt 없는 구 게시판은 앞.
+            .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
         );
       } catch { /* ignore */ }
     };
