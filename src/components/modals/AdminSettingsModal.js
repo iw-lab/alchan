@@ -335,6 +335,8 @@ const AdminSettingsModal = ({
   setAdminNewJobTitle,
   adminEditingJob,
   setAdminEditingJob,
+  adminEditingJobAppointedOnly,
+  setAdminEditingJobAppointedOnly,
   handleSaveJob,
   handleDeleteJob,
   handleEditJob,
@@ -2363,34 +2365,50 @@ const AdminSettingsModal = ({
                 </h4>
               </div>
 
-              {/* 직업 추가 인라인 폼 */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <input
-                  type="text"
-                  value={adminNewJobTitle}
-                  onChange={(e) => setAdminNewJobTitle(e.target.value)}
-                  placeholder={adminEditingJob ? "직업명 수정" : "새 직업명 입력"}
-                  style={{ ...inputStyle, flex: 1, background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#0f172a', borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
-                />
-                <button
-                  onClick={() => {
-                    if (handleSaveJob && typeof handleSaveJob === "function") {
-                      handleSaveJob();
-                    } else {
-                      alert("직업 저장 기능을 사용할 수 없습니다.");
-                    }
-                  }}
-                  style={{ ...saveBtnStyle, borderRadius: '10px', padding: '10px 18px', fontSize: '14px', whiteSpace: 'nowrap' }}
-                >
-                  {adminEditingJob ? "직업 수정" : "+ 직업 추가"}
-                </button>
-                {adminEditingJob && (
+              {/* 직업 추가/수정 인라인 폼 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={adminNewJobTitle}
+                    onChange={(e) => setAdminNewJobTitle(e.target.value)}
+                    placeholder={adminEditingJob ? "직업명 수정" : "새 직업명 입력"}
+                    style={{ ...inputStyle, flex: 1, background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#0f172a', borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
+                  />
                   <button
-                    onClick={() => { setAdminEditingJob(null); setAdminNewJobTitle(""); }}
-                    style={{ ...cancelBtnStyle, borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
+                    onClick={() => {
+                      if (handleSaveJob && typeof handleSaveJob === "function") {
+                        handleSaveJob();
+                      } else {
+                        alert("직업 저장 기능을 사용할 수 없습니다.");
+                      }
+                    }}
+                    style={{ ...saveBtnStyle, borderRadius: '10px', padding: '10px 18px', fontSize: '14px', whiteSpace: 'nowrap' }}
                   >
-                    취소
+                    {adminEditingJob ? "직업 수정" : "+ 직업 추가"}
                   </button>
+                  {adminEditingJob && (
+                    <button
+                      onClick={() => { setAdminEditingJob(null); setAdminNewJobTitle(""); setAdminEditingJobAppointedOnly?.(false); }}
+                      style={{ ...cancelBtnStyle, borderRadius: '10px', padding: '10px 14px', fontSize: '14px' }}
+                    >
+                      취소
+                    </button>
+                  )}
+                </div>
+                {/* 지정 전용 토글 — 직업 수정 중일 때만 노출 */}
+                {adminEditingJob && (
+                  <label
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '13px', color: '#d97706', cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={adminEditingJobAppointedOnly === true}
+                      onChange={(e) => setAdminEditingJobAppointedOnly?.(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#f59e0b' }}
+                    />
+                    🔒 선생님 지정 전용 (학생이 스스로 신청할 수 없고 선생님만 배정)
+                  </label>
                 )}
               </div>
 

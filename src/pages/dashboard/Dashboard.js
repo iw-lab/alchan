@@ -513,6 +513,9 @@ function Dashboard({ adminTabMode }) {
 
  const [editingJob, setEditingJob] = useState(null);
  const [adminNewJobTitle, setAdminNewJobTitle] = useState("");
+ // 관리자 설정 모달의 직업 '이름수정'에서 편집 중인 직업의 지정 전용(선생님만 배정) 토글 상태
+ const [adminEditingJobAppointedOnly, setAdminEditingJobAppointedOnly] =
+ useState(false);
  const [editingTask, setEditingTask] = useState(null);
  const [currentJobIdForTask, setCurrentJobIdForTask] = useState(null);
  const [isJobTaskForForm, setIsJobTaskForForm] = useState(false);
@@ -1052,13 +1055,19 @@ function Dashboard({ adminTabMode }) {
  try {
  if (editingJob) {
  const jobRef = doc(db, "jobs", editingJob.id);
- await updateDoc(jobRef, { title, updatedAt: serverTimestamp() });
+ const appointedOnly = adminEditingJobAppointedOnly === true;
+ await updateDoc(jobRef, {
+ title,
+ appointedOnly,
+ updatedAt: serverTimestamp(),
+ });
  // 로컬 state 즉시 반영
  setJobs((prev) => prev.map((j) =>
- j.id === editingJob.id ? { ...j, title } : j
+ j.id === editingJob.id ? { ...j, title, appointedOnly } : j
  ));
  setAdminNewJobTitle("");
  setEditingJob(null);
+ setAdminEditingJobAppointedOnly(false);
  alert(`직업이 수정되었습니다.`);
  } else {
  const newJobId = generateId();
@@ -1088,7 +1097,7 @@ function Dashboard({ adminTabMode }) {
  } finally {
  setAppLoading(false);
  }
- }, [adminNewJobTitle, editingJob, generateId, userDoc]);
+ }, [adminNewJobTitle, adminEditingJobAppointedOnly, editingJob, generateId, userDoc]);
 
  const handleDeleteJob = useCallback(
  async (jobIdToDelete) => {
@@ -1172,6 +1181,7 @@ function Dashboard({ adminTabMode }) {
  if (jobToEdit) {
  setEditingJob(jobToEdit);
  setAdminNewJobTitle(jobToEdit.title);
+ setAdminEditingJobAppointedOnly(isAppointedOnlyJob(jobToEdit));
  setAdminSelectedMenu("jobSettings");
  setShowAdminSettingsModal(true);
  } else {
@@ -2448,6 +2458,8 @@ function Dashboard({ adminTabMode }) {
  setAdminNewJobTitle={setAdminNewJobTitle}
  adminEditingJob={editingJob}
  setAdminEditingJob={setEditingJob}
+ adminEditingJobAppointedOnly={adminEditingJobAppointedOnly}
+ setAdminEditingJobAppointedOnly={setAdminEditingJobAppointedOnly}
  handleSaveJob={handleSaveJob}
  handleDeleteJob={handleDeleteJob}
  handleEditJob={handleEditJob}
