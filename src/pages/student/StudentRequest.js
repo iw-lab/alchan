@@ -41,6 +41,7 @@ const StudentRequest = () => {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [requesterName, setRequesterName] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false); // 익명 신청 여부(재생목록에 '익명'으로 표시)
+  const [isPriority, setIsPriority] = useState(false); // 우선 신청권: 기본가의 150% 지불, 대기열 맨 앞
   const [story, setStory] = useState(""); // 선택: 사연/메시지 (재생목록에 표시)
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +49,10 @@ const StudentRequest = () => {
   const [requestSuccess, setRequestSuccess] = useState(false);
 
   const navigate = useNavigate();
+
+  // 우선 신청권 가격 = 기본가 + 50% (정수 보장 위해 올림)
+  const priorityPrice = Math.ceil(pricePerSong * 1.5);
+  const requestCost = isPriority ? priorityPrice : pricePerSong;
 
   useEffect(() => {
     const fetchRoomInfo = async () => {
@@ -209,29 +214,68 @@ const StudentRequest = () => {
       return;
     }
 
+    // fail-closed: 유료 방인데 수취인(선생님) 정보가 없으면 무료로 통과시키지 않고 차단
+    if (pricePerSong > 0 && !teacherId) {
+      alert("방 정보에 오류가 있습니다. 선생님께 문의해주세요.");
+      return;
+    }
+
     setIsRequesting(true);
     try {
-      if (pricePerSong > 0 && user && teacherId) {
+      // 결제 게이팅 단일화 — 트랜잭션 실행·isPriority 기록·paidAmount가 전부 이 조건 하나를 참조
+      const isPaidRequest = pricePerSong > 0 && !!user && !!teacherId;
+
+      const trimmedStory = story.trim().slice(0, 200); // 과도한 길이 방지
+      // 익명 신청: 재생목록엔 '익명'으로 표시하고 requesterId도 남기지 않음.
+      // (유료 신청의 결제/거래로그는 자금 추적을 위해 트랜잭션에서 실명 유지 — 화면 표시만 익명)
+      const playlistEntry = {
+        videoId: selectedVideo.id.videoId,
+        title: selectedVideo.snippet.title,
+        requesterName: isAnonymous ? "익명" : name,
+        requestedAt: serverTimestamp(),
+        ...(user && !isAnonymous ? { requesterId: user.uid } : {}),
+        ...(isAnonymous ? { isAnonymous: true } : {}),
+        ...(trimmedStory ? { story: trimmedStory } : {}),
+        // 우선 신청권: 결제가 실제 실행된 경우에만 표시(무료 방/비결제 우회 방지)
+        ...(isPriority && isPaidRequest ? { isPriority: true } : {}),
+        paidAmount: isPaidRequest ? requestCost : 0,
+      };
+
+      if (isPaidRequest) {
         const currentCash = userDoc?.cash || 0;
-        if (currentCash < pricePerSong) {
+        if (currentCash < requestCost) {
           alert(
-            `잔액이 부족합니다. 필요: ${pricePerSong.toLocaleString()}, 보유: ${currentCash.toLocaleString()}`
+            `잔액이 부족합니다. 필요: ${requestCost.toLocaleString()}, 보유: ${currentCash.toLocaleString()}`
           );
           setIsRequesting(false);
           return;
         }
 
         await runTransaction(db, async (transaction) => {
+          const roomRef = doc(db, "musicRooms", roomId);
           const studentRef = doc(db, "users", user.uid);
           const teacherRef = doc(db, "users", teacherId);
-          const studentSnap = await transaction.get(studentRef);
+          const [roomSnap, studentSnap] = await Promise.all([
+            transaction.get(roomRef),
+            transaction.get(studentRef),
+          ]);
+
+          // 방 정보 재검증 — 화면 로드 후 가격·수취인이 바뀐 stale 결제 차단
+          if (!roomSnap.exists()) throw new Error("방이 삭제되었습니다.");
+          const freshRoom = roomSnap.data();
+          if (
+            (freshRoom.pricePerSong || 0) !== pricePerSong ||
+            freshRoom.teacherId !== teacherId
+          ) {
+            throw new Error("ROOM_CHANGED");
+          }
 
           if (!studentSnap.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
           const cash = studentSnap.data().cash || 0;
-          if (cash < pricePerSong) throw new Error("잔액이 부족합니다.");
+          if (cash < requestCost) throw new Error("잔액이 부족합니다.");
 
-          transaction.update(studentRef, { cash: increment(-pricePerSong) });
-          transaction.update(teacherRef, { cash: increment(pricePerSong) });
+          transaction.update(studentRef, { cash: increment(-requestCost) });
+          transaction.update(teacherRef, { cash: increment(requestCost) });
 
           // 🔥 학생 거래 내역 로그 (음악 요청 결제)
           const sd = studentSnap.data();
@@ -241,13 +285,14 @@ const StudentRequest = () => {
           logExpireAt.setDate(logExpireAt.getDate() + 90);
 
           const songTitle = selectedVideo?.snippet?.title || "음악";
+          const requestLabel = isPriority ? "음악 우선 신청" : "음악 신청";
           const studentLogRef = doc(collection(db, "activity_logs"));
           transaction.set(studentLogRef, {
             userId: user.uid,
             userName: studentName,
             type: "musicRequest",
-            description: `음악 신청: "${songTitle}" (-${pricePerSong.toLocaleString()}원)`,
-            amount: -pricePerSong,
+            description: `${requestLabel}: "${songTitle}" (-${requestCost.toLocaleString()}원)`,
+            amount: -requestCost,
             classCode: studentClassCode,
             timestamp: serverTimestamp(),
             createdAt: serverTimestamp(),
@@ -258,34 +303,33 @@ const StudentRequest = () => {
             userId: teacherId,
             userName: "선생님",
             type: "musicRequest",
-            description: `${studentName}님의 음악 신청 수익 (+${pricePerSong.toLocaleString()}원)`,
-            amount: pricePerSong,
+            description: `${studentName}님의 ${requestLabel} 수익 (+${requestCost.toLocaleString()}원)`,
+            amount: requestCost,
             classCode: studentClassCode,
             timestamp: serverTimestamp(),
             createdAt: serverTimestamp(),
             expireAt: Timestamp.fromDate(logExpireAt),
           });
-        });
-      }
 
-      const trimmedStory = story.trim().slice(0, 200); // 과도한 길이 방지
-      // 익명 신청: 재생목록엔 '익명'으로 표시하고 requesterId도 남기지 않음.
-      // (유료 신청의 결제/거래로그는 자금 추적을 위해 위 트랜잭션에서 실명 유지 — 화면 표시만 익명)
-      await addDoc(collection(db, "musicRooms", roomId, "playlist"), {
-        videoId: selectedVideo.id.videoId,
-        title: selectedVideo.snippet.title,
-        requesterName: isAnonymous ? "익명" : name,
-        requestedAt: serverTimestamp(),
-        ...(user && !isAnonymous ? { requesterId: user.uid } : {}),
-        ...(isAnonymous ? { isAnonymous: true } : {}),
-        ...(trimmedStory ? { story: trimmedStory } : {}),
-        paidAmount: pricePerSong || 0,
-      });
+          // 결제와 곡 등록을 같은 트랜잭션으로 묶어
+          // "돈만 차감되고 곡은 미등록"되는 부분 실패를 차단
+          const songRef = doc(collection(db, "musicRooms", roomId, "playlist"));
+          transaction.set(songRef, playlistEntry);
+        });
+      } else {
+        await addDoc(collection(db, "musicRooms", roomId, "playlist"), playlistEntry);
+      }
 
       setRequestSuccess(true);
     } catch (err) {
       if (err.message === "잔액이 부족합니다.") {
         alert("잔액이 부족합니다.");
+      } else if (err.message === "ROOM_CHANGED") {
+        alert(
+          "방의 가격 정보가 변경되었습니다. 화면을 새로고침한 뒤 다시 신청해주세요."
+        );
+      } else if (err.message === "방이 삭제되었습니다.") {
+        alert("방이 삭제되어 신청할 수 없습니다.");
       } else {
         setError("음악을 신청하는 중 오류가 발생했습니다.");
         logger.error(err);
@@ -304,6 +348,7 @@ const StudentRequest = () => {
     setUrlPreview(null);
     setStory("");
     setIsAnonymous(false);
+    setIsPriority(false);
     setError("");
   };
 
@@ -335,7 +380,8 @@ const StudentRequest = () => {
 
       {pricePerSong > 0 && (
         <div className="price-info">
-          1곡당 {pricePerSong.toLocaleString()} 알찬
+          1곡당 {pricePerSong.toLocaleString()} 알찬 · ⚡ 우선 신청{" "}
+          {priorityPrice.toLocaleString()} 알찬
           {user && userDoc && (
             <span> (보유: {(userDoc.cash || 0).toLocaleString()})</span>
           )}
@@ -348,7 +394,8 @@ const StudentRequest = () => {
           <p>음악 신청이 완료되었습니다!</p>
           {pricePerSong > 0 && (
             <p style={{ color: "#a5b4fc", fontSize: "0.9rem" }}>
-              {pricePerSong.toLocaleString()} 알찬이 차감되었습니다.
+              {requestCost.toLocaleString()} 알찬이 차감되었습니다.
+              {isPriority && " (⚡ 우선 신청 — 대기열 맨 앞에 배치돼요)"}
             </p>
           )}
           <div className="success-actions">
@@ -663,6 +710,30 @@ const StudentRequest = () => {
                 />
                 🙈 익명으로 신청하기 (재생목록에 이름 대신 '익명'으로 표시돼요)
               </label>
+              {pricePerSong > 0 && user && teacherId && (
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    margin: "0 0 0.75rem",
+                    fontSize: "0.9rem",
+                    color: "#d97706",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isPriority}
+                    disabled={isRequesting}
+                    onChange={(e) => setIsPriority(e.target.checked)}
+                    style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                  />
+                  ⚡ 우선 신청권 ({priorityPrice.toLocaleString()} 알찬) —
+                  지금 나오는 곡이 끝나면 대기 중인 곡보다 먼저 재생돼요
+                </label>
+              )}
               <button
                 onClick={handleRequest}
                 className="request-btn"
@@ -671,7 +742,7 @@ const StudentRequest = () => {
                 {isRequesting
                   ? "신청 중..."
                   : pricePerSong > 0
-                    ? `${pricePerSong.toLocaleString()} 알찬으로 신청하기`
+                    ? `${requestCost.toLocaleString()} 알찬으로 ${isPriority ? "⚡ 우선 " : ""}신청하기`
                     : "이 곡으로 신청하기"}
               </button>
             </div>

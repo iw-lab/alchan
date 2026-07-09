@@ -125,12 +125,29 @@ const MusicRoom = ({ user }) => {
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
-        setPlaylist(
-          querySnapshot.docs.map((playlistDoc) => ({
-            id: playlistDoc.id,
-            ...playlistDoc.data(),
-          })),
-        );
+        const songs = querySnapshot.docs.map((playlistDoc) => ({
+          id: playlistDoc.id,
+          ...playlistDoc.data(),
+        }));
+        // ⚡ 우선 신청곡을 앞으로 (같은 등급끼리는 신청 시각순 — 쿼리 orderBy 순서 유지)
+        const sorted = [
+          ...songs.filter((s) => s.isPriority),
+          ...songs.filter((s) => !s.isPriority),
+        ];
+        // 현재 재생 중인 곡(기존 1번)은 우선곡이 들어와도 끊지 않고 맨 앞 고정.
+        // 재생 완료로 삭제되면 다음 스냅샷에서 자연히 우선곡이 1번이 된다.
+        setPlaylist((prev) => {
+          const next = [...sorted];
+          const playingId = prev[0]?.id;
+          if (playingId) {
+            const idx = next.findIndex((s) => s.id === playingId);
+            if (idx > 0) {
+              const [playing] = next.splice(idx, 1);
+              next.unshift(playing);
+            }
+          }
+          return next;
+        });
       },
       (error) => {
         logger.error("[MusicRoom] playlist listener error:", error);
@@ -365,6 +382,22 @@ const MusicRoom = ({ user }) => {
                 <li key={song.id} className={index === 0 ? "playing" : ""}>
                   <span className="song-title">
                     {index + 1}. {song.title}
+                    {song.isPriority && (
+                      <span
+                        style={{
+                          marginLeft: "6px",
+                          padding: "1px 7px",
+                          borderRadius: "6px",
+                          background: "rgba(245,158,11,0.2)",
+                          color: "#fbbf24",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        ⚡ 우선
+                      </span>
+                    )}
                   </span>
                   <span className="requester">신청: {song.requesterName}</span>
                   {song.story && (
