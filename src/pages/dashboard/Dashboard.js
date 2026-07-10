@@ -222,6 +222,24 @@ function SelectMultipleJobsView({
  : [];
  }, [availableJobs]);
 
+ // 🔧 존재하는(활성+비활성) 직업 id 집합. 삭제된 유령 id를 개수 상한 카운트에서 제외하기 위함.
+ // 유령이 selectedJobIds에 남으면 화면엔 안 뜨는데 카운트만 잠식해 "5개 한도인데 4개만 선택" 버그가 났다.
+ // 비파괴적: tempSelection에서 유령을 지우지 않고(스테일 캐시로 유효 선택이 파괴되는 것 방지) 카운트에서만 뺀다.
+ // 유령은 저장 시(jobs 로드 확인 후) 정리되고, 서버 급여도 유령을 무시한다.
+ const existingJobIdSet = useMemo(
+ () => new Set((Array.isArray(availableJobs) ? availableJobs : []).map((j) => j.id)),
+ [availableJobs],
+ );
+ // 개수 상한에 세는 "유효 선택 수" = tempSelection 중 실제 존재하는 직업만.
+ // (availableJobs 미로드 시엔 전부 유효로 간주해 과도 차단·표시왜곡 방지)
+ const countTowardCap = useCallback(
+ (ids) =>
+ existingJobIdSet.size === 0
+ ? ids.length
+ : ids.filter((id) => existingJobIdSet.has(id)).length,
+ [existingJobIdSet],
+ );
+
  const handleCheckboxChange = useCallback(
  (jobId) => {
  // 순수 업데이터 유지(StrictMode 이중호출·부작용 방지) — UI는 disabled로 막고,
@@ -235,12 +253,12 @@ function SelectMultipleJobsView({
  if (!isAdmin) {
  const job = activeJobs.find((j) => j.id === jobId);
  if (isAppointedOnlyJob(job)) return prev; // 지정 전용 역할
- if (prev.length >= maxJobs) return prev; // 개수 상한
+ if (countTowardCap(prev) >= maxJobs) return prev; // 개수 상한(유령 제외)
  }
  return [...prev, jobId];
  });
  },
- [isAdmin, activeJobs, maxJobs],
+ [isAdmin, activeJobs, maxJobs, countTowardCap],
  );
 
  const handleAddNewJob = useCallback(() => {
@@ -282,6 +300,9 @@ function SelectMultipleJobsView({
  setEditingJobAppointedOnly(false);
  }, []);
 
+ // 화면 표시·상한 판정용 유효 선택 수(유령 제외)
+ const selectedValidCount = countTowardCap(tempSelection);
+
  return (
  <div className="glass-card rounded-2xl p-6 max-w-3xl mx-auto my-8">
  <h4 className="text-xl font-semibold text-slate-800 text-center mb-2">
@@ -292,7 +313,7 @@ function SelectMultipleJobsView({
  </p>
  {!isAdmin && (
  <p className="text-xs text-center mb-4 text-indigo-500 font-medium">
- 직업 {tempSelection.length} / {maxJobs}개 선택 (최대 {maxJobs}개)
+ 직업 {selectedValidCount} / {maxJobs}개 선택 (최대 {maxJobs}개)
  </p>
  )}
  {isAdmin && <div className="mb-4" />}
@@ -351,7 +372,7 @@ function SelectMultipleJobsView({
  const checked = tempSelection.includes(job.id);
  const restricted = !isAdmin && isAppointedOnlyJob(job);
  const capReached =
- !isAdmin && !checked && tempSelection.length >= maxJobs;
+ !isAdmin && !checked && selectedValidCount >= maxJobs;
  const disabled = restricted || capReached;
  return (
  <label
@@ -679,10 +700,14 @@ function Dashboard({ adminTabMode }) {
  const pollData = async () => {
  try {
  // Jobs 조회 (인덱스 없이 작동하도록 orderBy 제거)
+ // ⚠️ limit은 학급 직업 수보다 충분히 커야 함. 초과분이 truncate되면 로컬 jobs에서 누락돼
+ //    "존재하는데 유령으로 오판"→저장 시 삭제→조용한 급여 삭감(직업선택 정리 로직 전제 위반).
+ //    삭제는 hard delete라 누적 안 되고 실제 운영 직업만 남으므로 300이면 충분한 헤드룸.
+ //    읽기량은 실제 문서 수만큼만 발생(limit은 상한일 뿐)이라 정상 학급 비용 불변.
  const jobsQuery = query(
  firestoreCollection(db, "jobs"),
  where("classCode", "==", classCode),
- limit(50),
+ limit(300),
  );
 
  const jobsSnap = await getDocs(jobsQuery);
@@ -1485,12 +1510,19 @@ function Dashboard({ adminTabMode }) {
  let idsToSave = Array.isArray(newlySelectedJobIds)
  ? newlySelectedJobIds
  : [];
- // 🔒 방어: 학생(비관리자)은 지정 전용 직업 제거 + 개수 상한으로 잘라 저장
+ // 🔒 방어: 학생(비관리자)은 유령(삭제된) 직업 + 지정 전용 직업 제거 + 개수 상한으로 잘라 저장
  // (UI 가드 우회 대비). 선생님은 그대로.
+ // ⚠️ job이 undefined(삭제됨)면 isAppointedOnlyJob은 false라 예전 로직은 유령을 오히려 보존했음 → 존재 검사 추가.
  if (!isAdmin?.()) {
+ // ⚠️ 레이스 가드: 저장 순간 jobs가 미로드(빈 배열)면 모든 id의 job이 undefined가 되어
+ // 유효 선택까지 전부 유령 취급 → 선택 통째 삭제. jobs 미로드 시엔 저장을 막고 재시도 유도.
+ if (!Array.isArray(jobs) || jobs.length === 0) {
+ alert("직업 목록을 불러오는 중이에요. 잠시 후 다시 시도해주세요.");
+ return;
+ }
  idsToSave = idsToSave.filter((id) => {
  const job = jobs.find((j) => j.id === id);
- return !isAppointedOnlyJob(job);
+ return job && !isAppointedOnlyJob(job);
  });
  if (idsToSave.length > maxJobsPerStudent) {
  idsToSave = idsToSave.slice(0, maxJobsPerStudent);
