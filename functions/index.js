@@ -2741,6 +2741,268 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
   }
 });
 
+// 🎁 아이템 선물: 클라이언트가 남의 인벤토리에 직접 쓰던 방식을 서버 원자 처리로 이관.
+//    2026-07-10 사건: 무기록 클라 선물로 아이템이 추적 불가하게 이동(피해 학생은 "사라졌다"고 인지).
+//    - 같은 학급끼리만, 본인→본인 금지, 서버 idempotency + 클라 lock
+//    - 양측 activity_logs + users/{uid}/transactions audit 의무 (financial-saas 4단계 안전망)
+//    - 받은 문서에 receivedFrom/설명("OO님에게 선물받음") 명시 → "사지도 않은 게 생겼다" 혼란 차단
+//    - 수신 doc id = itemId 규약 유지 + itemId 필드 폴백 조회로 레거시 랜덤 id 문서 덮어쓰기 방지
+exports.giftItem = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+  const { recipientUid, itemId, quantity = 1, idempotencyKey } = request.data;
+
+  if (!recipientUid || typeof recipientUid !== "string") {
+    throw new HttpsError("invalid-argument", "받는 사람 정보가 필요합니다.");
+  }
+  if (recipientUid === uid) {
+    throw new HttpsError("invalid-argument", "자기 자신에게는 선물할 수 없습니다.");
+  }
+  if (!itemId || typeof itemId !== "string") {
+    throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
+  }
+  // 형식 가드: Firestore 문서 id로 쓰이므로 길이·경로문자 제한 (정보노출·경로에러 방지)
+  if (
+    recipientUid.length > 128 || itemId.length > 128 ||
+    recipientUid.includes("/") || itemId.includes("/")
+  ) {
+    throw new HttpsError("invalid-argument", "잘못된 요청 형식입니다.");
+  }
+  // 🔒 idempotencyKey 필수 — 생략 호출로 중복차단(dedupe)을 우회하지 못하게 한다
+  if (!idempotencyKey || typeof idempotencyKey !== "string") {
+    throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+  }
+  const qty = Number(quantity);
+  if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
+    throw new HttpsError("invalid-argument", "선물 수량은 1~100 사이의 정수여야 합니다.");
+  }
+
+  const senderRef = db.collection("users").doc(uid);
+  const recipientRef = db.collection("users").doc(recipientUid);
+
+  try {
+    const result = await db.runTransaction(async (transaction) => {
+      // 🚨 idempotency check (read, 첫 줄)
+      const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
+
+      // --- 읽기 전부 먼저 ---
+      const recipientSnap = await transaction.get(recipientRef);
+      if (!recipientSnap.exists) {
+        throw new Error("받는 사람을 찾을 수 없습니다.");
+      }
+      const recipientData = recipientSnap.data();
+      if (!classCode || recipientData.classCode !== classCode) {
+        throw new Error("같은 학급 친구에게만 선물할 수 있습니다.");
+      }
+
+      // 보내는 사람 보유 문서: doc(itemId) 우선 + itemId 필드 폴백(레거시 랜덤 id)
+      const senderInvRef = senderRef.collection("inventory");
+      const senderDocs = [];
+      const primarySnap = await transaction.get(senderInvRef.doc(itemId));
+      if (primarySnap.exists) {
+        senderDocs.push(primarySnap);
+      }
+      const fallbackQSnap = await transaction.get(
+        senderInvRef.where("itemId", "==", itemId).limit(50),
+      );
+      fallbackQSnap.docs.forEach((d) => {
+        if (!senderDocs.some((s) => s.id === d.id)) senderDocs.push(d);
+      });
+      const totalOwned = senderDocs.reduce(
+        (s, d) => s + (Number(d.data().quantity) || 0),
+        0,
+      );
+      if (senderDocs.length === 0 || totalOwned < 1) {
+        throw new Error("보유 중인 아이템을 찾을 수 없습니다.");
+      }
+      if (totalOwned < qty) {
+        throw new Error(
+          `아이템 수량이 부족합니다. (보유: ${totalOwned}, 요청: ${qty})`,
+        );
+      }
+      const itemData = senderDocs[0].data();
+      const itemKey = itemData.itemId || senderDocs[0].id;
+
+      // 🔒 카탈로그 대조: 인벤토리 문서는 본인이 클라에서 위조 가능하므로(rules상 owner write 허용),
+      //    선물 지급 메타(name/icon/type/뽑기메타)는 정식 카탈로그(storeItems 또는 shopProducts)에서만 가져온다.
+      //    카탈로그에 없는 itemKey는 선물 불가(fail-closed) — 위조 아이템을 "선물"로 세탁하는 경로 차단.
+      let canonical = null;
+      const storeItemSnap = await transaction.get(
+        db.collection("storeItems").doc(itemKey),
+      );
+      if (storeItemSnap.exists) {
+        const s = storeItemSnap.data();
+        // 학급 격리: 타 학급 상점 아이템 키로는 선물 불가
+        if (s.classCode && s.classCode !== classCode) {
+          throw new Error("우리 학급 아이템만 선물할 수 있어요.");
+        }
+        canonical = s;
+      } else if (itemKey.startsWith("ps_")) {
+        const productSnap = await transaction.get(
+          db.collection("shopProducts").doc(itemKey.slice(3)),
+        );
+        if (productSnap.exists) {
+          const p = productSnap.data();
+          if (p.classCode && p.classCode !== classCode) {
+            throw new Error("우리 학급 아이템만 선물할 수 있어요.");
+          }
+          canonical = p;
+        }
+      }
+      if (!canonical) {
+        throw new Error("상점에 등록된 아이템만 선물할 수 있어요.");
+      }
+
+      // 받는 사람 기존 문서: doc(itemKey) 우선 + itemId 필드 폴백 → set 덮어쓰기 방지
+      const recipientInvRef = recipientRef.collection("inventory");
+      let recipientItemSnap = await transaction.get(recipientInvRef.doc(itemKey));
+      if (!recipientItemSnap.exists) {
+        const rq = await transaction.get(
+          recipientInvRef.where("itemId", "==", itemKey).limit(1),
+        );
+        if (!rq.empty) recipientItemSnap = rq.docs[0];
+      }
+
+      // --- 쓰기 ---
+      // 1) 보내는 사람 차감 (수량 적은 문서부터, 0이면 삭제)
+      let remaining = qty;
+      const sorted = [...senderDocs].sort(
+        (a, b) => (Number(a.data().quantity) || 0) - (Number(b.data().quantity) || 0),
+      );
+      for (const snap of sorted) {
+        if (remaining <= 0) break;
+        // 음수 수량 오염 문서 방어: deduct가 음수가 되어 remaining이 늘어나는 것 차단
+        const cur = Math.max(0, Number(snap.data().quantity) || 0);
+        const deduct = Math.min(cur, remaining);
+        if (deduct <= 0) continue;
+        if (cur - deduct <= 0) {
+          transaction.delete(snap.ref);
+        } else {
+          transaction.update(snap.ref, {
+            quantity: admin.firestore.FieldValue.increment(-deduct),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        remaining -= deduct;
+      }
+      // 불변식: 차감 총량 == qty. 미달이면 지급 전에 전체 트랜잭션 중단(아이템 생성 방지)
+      if (remaining > 0) {
+        throw new Error("아이템 차감에 실패했습니다. 다시 시도해주세요.");
+      }
+
+      // 2) 받는 사람 지급 (기존 문서면 increment, 없으면 생성)
+      const senderName = userData?.name || "익명";
+      const recipientName = recipientData.name || "익명";
+      if (recipientItemSnap.exists) {
+        transaction.update(recipientItemSnap.ref, {
+          quantity: admin.firestore.FieldValue.increment(qty),
+          // 기존 문서(구매분 등)의 출처 필드는 보존하고, 최근 선물 출처만 별도 기록
+          lastGiftFrom: uid,
+          lastGiftFromName: senderName,
+          lastGiftAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        // 메타는 카탈로그(canonical)에서만 — 보낸 사람 인벤토리 문서의 name/type은 신뢰하지 않는다
+        const giftedItem = {
+          itemId: itemKey,
+          name: canonical.name || "알 수 없는 아이템",
+          icon: canonical.icon || "🎁",
+          description: `${senderName}님에게 선물받음`,
+          type: canonical.type || "general",
+          quantity: qty,
+          receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+          receivedFrom: uid,
+          receivedFromName: senderName,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        // 🎰 랜덤뽑기 메타 복사 (누락 시 추첨이 "뽑을 아이템 없음"으로 실패) — 카탈로그 기준
+        if (canonical.type === "randomDraw") {
+          giftedItem.drawSource = canonical.drawSource || "food";
+          giftedItem.loseEnabled = canonical.loseEnabled === true;
+          giftedItem.losePercent = Number(canonical.losePercent) || 0;
+          giftedItem.drawCandidates = Array.isArray(canonical.drawCandidates)
+            ? canonical.drawCandidates
+            : [];
+        }
+        transaction.set(recipientInvRef.doc(itemKey), giftedItem);
+      }
+
+      // 3) audit — users/{uid}/transactions 양측
+      const itemName = canonical.name || itemData.name || "아이템";
+      transaction.set(senderRef.collection("transactions").doc(), {
+        type: "giftSent",
+        amount: 0,
+        description: `[선물] ${recipientName}님에게 ${itemName} ${qty}개 선물`,
+        itemId: itemKey,
+        itemName,
+        quantity: qty,
+        recipientUid,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.set(recipientRef.collection("transactions").doc(), {
+        type: "giftReceived",
+        amount: 0,
+        description: `[선물] ${senderName}님에게 ${itemName} ${qty}개 선물받음`,
+        itemId: itemKey,
+        itemName,
+        quantity: qty,
+        senderUid: uid,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // 4) activity_logs 양측 (학생 거래내역 화면 노출용, 90일 TTL)
+      const logExpireAt = admin.firestore.Timestamp.fromMillis(
+        Date.now() + 90 * 24 * 60 * 60 * 1000,
+      );
+      const commonLog = {
+        classCode,
+        expireAt: logExpireAt,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: { itemId: itemKey, itemName, quantity: qty },
+      };
+      transaction.set(db.collection("activity_logs").doc(), {
+        ...commonLog,
+        userId: uid,
+        userName: senderName,
+        type: "gift_sent",
+        description: `${recipientName}님에게 ${itemName} ${qty}개 선물`,
+        amount: 0,
+        metadata: { ...commonLog.metadata, recipientUid },
+      });
+      transaction.set(db.collection("activity_logs").doc(), {
+        ...commonLog,
+        userId: recipientUid,
+        userName: recipientName,
+        type: "gift_received",
+        description: `${senderName}님에게 ${itemName} ${qty}개 선물받음`,
+        amount: 0,
+        metadata: { ...commonLog.metadata, senderUid: uid },
+      });
+
+      // ✅ idempotency mark (모든 write 끝난 후)
+      markIdempotent(transaction, idemKeyRef);
+
+      return { itemName, quantity: qty, recipientName };
+    });
+
+    logger.info(
+      `[giftItem] ${uid} → ${recipientUid}: ${result.itemName} ${result.quantity}개 선물`,
+    );
+    return {
+      success: true,
+      message: `${result.recipientName}님에게 ${result.itemName} ${result.quantity}개를 선물했습니다.`,
+      ...result,
+    };
+  } catch (error) {
+    logger.error(`[giftItem] Error for user ${uid}:`, error);
+    if (error instanceof HttpsError) {
+      throw error; // already-exists(중복요청) 등 원 코드 보존 — 클라 분기 가능
+    }
+    throw new HttpsError("aborted", error.message || "선물하기에 실패했습니다.");
+  }
+});
+
 // 🎰 랜덤뽑기 사용: 서버에서 추첨 결정 → (아이템뽑기면) 재고 차감 → 당첨 지급 → audit 로그.
 //    storeItems 쓰기는 admin만 가능(rules)하므로 추첨/재고차감/지급을 서버에서 원자 처리한다.
 exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) => {

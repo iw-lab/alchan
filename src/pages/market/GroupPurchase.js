@@ -375,7 +375,16 @@ export default function GroupPurchase() {
         } catch (cfErr) {
           logger.error("함께구매 완료 처리(CF) 실패:", cfErr);
           // 폴백: 인벤토리만이라도 클라이언트에서 시도 (재고/가격 갱신은 포기)
+          // ⚠️ rules상 타인 인벤토리 클라 write는 차단(2026-07-10) — 본인이 winner이거나
+          //    관리자일 때만 폴백 가능. 그 외엔 아래 catch의 "관리자 문의" 안내로 넘어간다.
           try {
+            const canWriteWinnerInventory =
+              result.winnerId === user?.uid || isAdmin;
+            if (!canWriteWinnerInventory) {
+              throw new Error(
+                "폴백 불가: 타인 인벤토리 쓰기 권한 없음 (서버 재처리 필요)",
+              );
+            }
             let fallbackItemId = result.cData?.selectedItemId;
             if (!fallbackItemId && result.cData?.itemName && items?.length > 0) {
               const matched = items.find((i) => i.name === result.cData.itemName);

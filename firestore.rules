@@ -163,8 +163,9 @@ service cloud.firestore {
       match /inventory/{itemId} {
         // 읽기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
         allow read: if isOwner(userId) || isAdminFast() || (isSignedIn() && isSameClassFast(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
-        // 쓰기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
-        allow write: if isOwner(userId) || isAdmin() || (isSignedIn() && isSameClass(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
+        // 쓰기: 본인, 관리자만. 선물은 giftItem CF(Admin SDK)가 서버에서 원자 처리.
+        // ⚠️ 2026-07-10 사건: 같은 학급 전체 write 허용이 "무기록 아이템 이동/증발"의 통로였음 — 재개방 금지.
+        allow write: if isOwner(userId) || isAdmin();
       }
 
       // ========================================================
