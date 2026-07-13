@@ -52,6 +52,8 @@ import {
   Sparkles,
   Globe,
   Palette,
+  Send,
+  Calculator,
   MessageSquare,
 } from "lucide-react";
 
@@ -337,6 +339,20 @@ export const ALCHAN_MENU_ITEMS = [
     label: "미술아트온",
     icon: Palette,
     externalUrl: "https://arton.simssijjang.workers.dev/coloring",
+    parentId: "learningSitesCategory",
+  },
+  {
+    id: "siteNarae",
+    label: "나래(종이비행기)",
+    icon: Send,
+    externalUrl: "https://narae-2lg.pages.dev/",
+    parentId: "learningSitesCategory",
+  },
+  {
+    id: "siteSeulgisem",
+    label: "슬기셈(수학)",
+    icon: Calculator,
+    externalUrl: "https://word-e329c.web.app",
     parentId: "learningSitesCategory",
   },
 
