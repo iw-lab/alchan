@@ -329,18 +329,34 @@ const LearningBoard = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // URL의 board/post 파라미터 조작 헬퍼 (게시판 선택의 단일 진실원 = URL)
+  const setBoardParam = useCallback((boardId, { replace = false } = {}) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (boardId) next.set('board', boardId);
+      else next.delete('board');
+      next.delete('post'); // 게시판이 바뀌면 열려 있던 글 파라미터는 무효
+      return next;
+    }, { replace });
+  }, [setSearchParams]);
+
   // Auto-select board: URL param > first visible board
   useEffect(() => {
     if (boards.length === 0) return;
     const boardIdFromUrl = searchParams.get('board');
     if (boardIdFromUrl) {
       const board = boards.find(b => b.id === boardIdFromUrl);
-      if (board && board.id !== selectedBoard?.id) {
-        setSelectedBoard(board);
-        setSelectedPost(null);
-        setIsWriting(false);
-        setShowHiddenBoardsView(false);
+      if (board) {
+        if (board.id !== selectedBoard?.id) {
+          setSelectedBoard(board);
+          setSelectedPost(null);
+          setIsWriting(false);
+          setShowHiddenBoardsView(false);
+        }
+        return;
       }
+      // 존재하지 않는(삭제된) 게시판 id → 파라미터를 지우고 기본 선택으로 폴백
+      setBoardParam(null, { replace: true });
       return;
     }
     if (!selectedBoard && !showHiddenBoardsView) {
@@ -424,6 +440,11 @@ const LearningBoard = () => {
       setIsWriting(false);
       setCurrentPage(1);
       if (!fromHiddenView) setShowHiddenBoardsView(false);
+      // 🐛 탭으로 게시판을 바꿀 때 URL의 board 파라미터도 함께 갱신해야 한다.
+      //    (사이드바로 들어와 남아 있던 옛 board 값을 그대로 두면, 다음에 글을 클릭해
+      //     post 파라미터를 붙이는 순간 자동선택 effect가 깨어나 이전 게시판으로 되돌린다
+      //     = "글을 눌렀는데 옆 게시판으로 튀는" 버그.)
+      setBoardParam(boardId);
     } else if (board && board.isHidden && !currentUserIsAdmin && !fromHiddenView) {
       alert("이 게시판은 현재 접근할 수 없습니다.");
     }
@@ -588,7 +609,7 @@ const LearningBoard = () => {
       batch.delete(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id));
       await batch.commit();
       setSelectedPost(null);
-      setSearchParams(prev => { prev.delete('post'); return prev; });
+      setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('post'); return next; });
       refetchPosts();
       alert("게시글이 삭제되었습니다.");
     } catch (error) {
@@ -613,7 +634,7 @@ const LearningBoard = () => {
       await batch.commit();
       if (selectedPost?.id === post.id) {
         setSelectedPost(null);
-        setSearchParams(prev => { prev.delete('post'); return prev; });
+        setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('post'); return next; });
       }
       refetchPosts();
     } catch (error) {
@@ -828,7 +849,7 @@ const LearningBoard = () => {
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", boardId), { isHidden: true, updatedAt: serverTimestamp() });
       notifyBoardsChanged();
-      if (selectedBoard?.id === boardId) setSelectedBoard(null);
+      if (selectedBoard?.id === boardId) { setSelectedBoard(null); setBoardParam(null); }
     } catch (error) { logger.error("Error hiding board:", error); }
   };
 
@@ -867,7 +888,7 @@ const LearningBoard = () => {
       batch.delete(boardRef);
       await batch.commit();
       notifyBoardsChanged();
-      if (selectedBoard?.id === boardId) setSelectedBoard(null);
+      if (selectedBoard?.id === boardId) { setSelectedBoard(null); setBoardParam(null); }
     } catch (error) {
       logger.error("Error deleting board:", error);
       alert("삭제 오류.");
@@ -895,8 +916,14 @@ const LearningBoard = () => {
             <button
               className={`lb-tab lb-tab-manage ${showHiddenBoardsView ? "active" : ""}`}
               onClick={() => {
-                setShowHiddenBoardsView((p) => !p);
-                if (!showHiddenBoardsView) { setSelectedBoard(null); setSelectedPost(null); setIsWriting(false); }
+                const opening = !showHiddenBoardsView;
+                setShowHiddenBoardsView(opening);
+                if (opening) {
+                  setSelectedBoard(null);
+                  setSelectedPost(null);
+                  setIsWriting(false);
+                  setBoardParam(null); // URL에 board가 남아 있으면 곧바로 다시 선택돼 버린다
+                }
               }}
             >
               숨김 관리 ({hiddenBoards.length})
@@ -963,7 +990,7 @@ const LearningBoard = () => {
                         <tr
                           key={post.id}
                           className="lb-row"
-                          onClick={() => { setSelectedPost(post); setSearchParams(prev => { prev.set('post', post.id); return prev; }); }}
+                          onClick={() => { setSelectedPost(post); setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('post', post.id); return next; }); }}
                         >
                           <td className="lb-cell-num">{selectedBoardPosts.length - (startIdx + idx)}</td>
                           <td className="lb-cell-title">
@@ -1041,7 +1068,7 @@ const LearningBoard = () => {
         {/* Post Detail */}
         {selectedBoard && selectedPost && !isWriting && !showHiddenBoardsView && (
           <div className="lb-detail">
-            <button className="lb-back" onClick={() => { setSelectedPost(null); setIsEditingPost(false); setSearchParams(prev => { prev.delete('post'); return prev; }); }}>← 목록으로</button>
+            <button className="lb-back" onClick={() => { setSelectedPost(null); setIsEditingPost(false); setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('post'); return next; }); }}>← 목록으로</button>
 
             {/* Edit Form */}
             {isEditingPost ? (
