@@ -355,6 +355,13 @@ export const ALCHAN_MENU_ITEMS = [
     externalUrl: "https://word-e329c.web.app",
     parentId: "learningSitesCategory",
   },
+  {
+    id: "siteEchoTale",
+    label: "에코테일(영어)",
+    icon: BookOpen,
+    externalUrl: "https://echotale.simssijjang-d79.workers.dev/",
+    parentId: "learningSitesCategory",
+  },
 
   // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
   {
