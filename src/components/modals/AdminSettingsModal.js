@@ -1168,7 +1168,10 @@ const AdminSettingsModal = ({
       }
 
       const list = moved
-        .map((m) => `· ${m.name}: ${(m.jobTitles || []).join(", ")}`)
+        .map(
+          (m) =>
+            `· ${m.classCode ? `[${m.classCode}] ` : ""}${m.name}: ${(m.jobTitles || []).join(", ")}`,
+        )
         .join("\n");
       if (
         !window.confirm(

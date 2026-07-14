@@ -6602,19 +6602,43 @@ exports.saveSelectedJobs = onCall(
 exports.migrateAppointedJobs = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { classCode } = await checkAuthAndGetUserData(request, true);
+    const { classCode, isSuperAdmin } = await checkAuthAndGetUserData(
+      request,
+      true,
+    );
     const dryRun = request.data?.dryRun === true;
 
-    const jobsSnap = await db
-      .collection("jobs")
-      .where("classCode", "==", classCode)
-      .get();
+    // 이관 범위:
+    //  - 교사(학급 관리자): 본인 학급만. 남의 학급 지정은 거부.
+    //  - 슈퍼관리자: 학급을 지정하면 그 학급, 지정하지 않으면 전 학급.
+    //    (학급마다 교사가 각자 버튼을 눌러야 하는 문제 해소 — 2026-07-14)
+    const requestedClassCode =
+      typeof request.data?.classCode === "string"
+        ? request.data.classCode.trim()
+        : "";
+    let targetClassCode = null; // null = 전 학급(슈퍼관리자 전용)
+    if (isSuperAdmin) {
+      targetClassCode = requestedClassCode || null;
+    } else {
+      if (requestedClassCode && requestedClassCode !== classCode) {
+        throw new HttpsError(
+          "permission-denied",
+          "다른 학급은 이관할 수 없습니다.",
+        );
+      }
+      if (!classCode) {
+        throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+      }
+      targetClassCode = classCode;
+    }
+
+    const scoped = (ref) =>
+      targetClassCode ? ref.where("classCode", "==", targetClassCode) : ref;
+
+    const jobsSnap = await scoped(db.collection("jobs")).get();
     const jobMap = buildJobMap(jobsSnap);
 
-    const usersSnap = await db
-      .collection("users")
-      .where("classCode", "==", classCode)
-      .get();
+    const usersSnap = await scoped(db.collection("users")).get();
 
     // Firestore batch는 500건 상한 — 학급이 커도 안전하도록 500건씩 나눠 커밋.
     const BATCH_LIMIT = 500;
@@ -6639,6 +6663,7 @@ exports.migrateAppointedJobs = onCall(
       moved.push({
         userId: doc.id,
         name: data.name || data.nickname || doc.id,
+        classCode: data.classCode || "",
         jobTitles: appointedFromSelected.map(
           (id) => jobMap.get(id)?.title || id,
         ),
