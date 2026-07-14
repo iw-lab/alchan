@@ -10,6 +10,9 @@ const {
   checkAuthAndGetUserData,
   checkIdempotent,
   markIdempotent,
+  hasAdminPower,
+  hasTeacherPower,
+  findApprovedAdminSnap,
   db,
   admin,
   logger,
@@ -23,6 +26,13 @@ const {
   resetTasksForClass,
 } = require("./scheduler-http");
 const { initialStocks } = require("./initialStocks");
+const {
+  isAppointedJob,
+  toJobIdArray,
+  buildJobMap,
+  resolveStudentJobs,
+  hasJobTitle,
+} = require("./jobUtils");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -547,8 +557,8 @@ exports.submitTaskApproval = onCall(
         });
       }
 
-      // 관리자는 자동 승인 (본인이 승인 권한을 가지므로)
-      const isAdminUser = userData.isAdmin || userData.isSuperAdmin || false;
+      // 관리자는 자동 승인 (본인이 승인 권한을 가지므로) — 승인된 관리자만(미승인 교사 차단)
+      const isAdminUser = hasAdminPower(userData);
 
       if (isAdminUser) {
         // 관리자: 즉시 보상 지급 + approved 상태로 저장
@@ -676,17 +686,18 @@ exports.processTaskApproval = onCall(
       userData?.isSuperAdmin ||
       userData?.delegatedPermissions?.taskApproval === true;
 
-    // 대통령 직업 체크 (selectedJobIds 기반)
+    // 대통령 직업 체크 — 지정 전용 직업은 appointedJobIds(교사 write 전용)에서만 인정.
+    // 학생이 selectedJobIds에 대통령 id를 직접 써넣어도 권한이 생기지 않는다(jobUtils 규약).
     let isPresident = false;
-    if (!hasTaskApprovalPermission && userData?.selectedJobIds?.length > 0) {
+    const hasAnyJob =
+      toJobIdArray(userData?.selectedJobIds).length > 0 ||
+      toJobIdArray(userData?.appointedJobIds).length > 0;
+    if (!hasTaskApprovalPermission && hasAnyJob) {
       const jobsSnapshot = await db
         .collection("jobs")
         .where("classCode", "==", adminClassCode)
         .get();
-      const userJobIds = userData.selectedJobIds;
-      isPresident = jobsSnapshot.docs.some(
-        (doc) => userJobIds.includes(doc.id) && doc.data().title === "대통령",
-      );
+      isPresident = hasJobTitle(userData, buildJobMap(jobsSnapshot), "대통령");
     }
 
     if (!hasTaskApprovalPermission && !isPresident) {
@@ -917,12 +928,7 @@ exports.donateCoupon = onCall(
 
     // 관리자(선생님) 계정 조회
     let adminRef = null;
-    const adminSnap = await db
-      .collection("users")
-      .where("classCode", "==", classCode)
-      .where("isAdmin", "==", true)
-      .limit(1)
-      .get();
+    const adminSnap = await findApprovedAdminSnap(classCode);
     if (!adminSnap.empty) {
       adminRef = adminSnap.docs[0].ref;
     }
@@ -1027,7 +1033,7 @@ exports.donateCoupon = onCall(
 exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode, isAdmin, isSuperAdmin, userData } =
     await checkAuthAndGetUserData(request);
-  const isTeacher = userData?.isTeacher === true;
+  const isTeacher = hasTeacherPower(userData);
   if (!isAdmin && !isSuperAdmin && !isTeacher) {
     throw new HttpsError(
       "permission-denied",
@@ -1246,12 +1252,7 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   // 관리자 조회 (세금 수입용)
   let adminRef = null;
-  const adminSnap = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const adminSnap = await findApprovedAdminSnap(classCode);
   if (!adminSnap.empty) {
     adminRef = adminSnap.docs[0].ref;
   }
@@ -1475,12 +1476,7 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
 
   // 관리자 조회 (세금 수입용)
   let sellAdminRef = null;
-  const sellAdminSnap = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const sellAdminSnap = await findApprovedAdminSnap(classCode);
   if (!sellAdminSnap.empty) {
     sellAdminRef = sellAdminSnap.docs[0].ref;
   }
@@ -1884,8 +1880,7 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
       }
 
       const userData = userDoc.data();
-      const userIsAdmin =
-        userData.isAdmin === true || userData.isSuperAdmin === true;
+      const userIsAdmin = hasAdminPower(userData);
 
       if (!userIsAdmin) {
         return res.status(403).send("Permission denied. Admin role required.");
@@ -2024,12 +2019,7 @@ exports.purchaseStoreItem = onCall(
 
     // 재고 보충 비용을 관리자에게 청구하기 위해 관리자 찾기
     let adminRef = null;
-    const adminSnapshot = await db
-      .collection("users")
-      .where("classCode", "==", classCode)
-      .where("isAdmin", "==", true)
-      .limit(1)
-      .get();
+    const adminSnapshot = await findApprovedAdminSnap(classCode);
 
     if (!adminSnapshot.empty) {
       adminRef = adminSnapshot.docs[0].ref;
@@ -2427,12 +2417,7 @@ exports.sellItemToTreasury = onCall(
     // 국고 지출처(관리자/교사) 찾기 — isAdmin 우선, 없으면 레거시 isTeacher 폴백.
     // (isTeacher만 설정된 교사 계정 학급에서 되팔기가 막히던 문제 방지. resetCouponGoal 선례)
     let adminRef = null;
-    const adminSnapshot = await db
-      .collection("users")
-      .where("classCode", "==", classCode)
-      .where("isAdmin", "==", true)
-      .limit(1)
-      .get();
+    const adminSnapshot = await findApprovedAdminSnap(classCode);
     if (!adminSnapshot.empty) {
       adminRef = adminSnapshot.docs[0].ref;
     } else {
@@ -2667,10 +2652,7 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
       // 🪄 일반 아이템 하루 사용 제한 (아이템마다 하루 5개까지, 관리자·교사 제외)
       //    user 문서의 자기-날짜 맵 dailyItemUse[itemId]={date,count}
       const userData = userDoc.exists ? userDoc.data() : {};
-      const isUseExempt =
-        userData.isAdmin === true ||
-        userData.isSuperAdmin === true ||
-        userData.isTeacher === true;
+      const isUseExempt = hasTeacherPower(userData);
       let useDayKey = null;
       let useNewCount = 0;
       if (!isUseExempt) {
@@ -3139,8 +3121,7 @@ exports.drawRandomItem = onCall({ region: "asia-northeast3" }, async (request) =
       // 🎰 하루 추첨 횟수 제한 (학생당 하루 3회 — 선물·개인상점으로 받아도 적용)
       const curUser = await transaction.get(userRef);
       const uData = curUser.exists ? curUser.data() : {};
-      const isAdminUser =
-        uData.isAdmin === true || uData.isSuperAdmin === true || uData.isTeacher === true;
+      const isAdminUser = hasTeacherPower(uData);
       const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
       const spinDayKey = `${nowKst.getUTCFullYear()}-${String(
         nowKst.getUTCMonth() + 1,
@@ -3511,8 +3492,7 @@ exports.batchPaySalaries = onCall(
 
       // 직업 정보 로드 (대통령 보너스 적용용)
       const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
-      const jobTitleMap = {};
-      jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
+      const jobMap = buildJobMap(jobsSnap);
 
       const batch = db.batch();
       let totalStudentsPaid = 0;
@@ -3530,11 +3510,13 @@ exports.batchPaySalaries = onCall(
       const logExpireTs = admin.firestore.Timestamp.fromDate(logExpireAt);
 
       for (const student of targetStudents) {
-        const jobIds = student.selectedJobIds || [];
-        // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
-        const allValidJobIds = jobIds.filter((id) => jobTitleMap[id]);
-        // 🔒 직업 개수 상한: 급여는 최대 maxJobsPerStudent개까지만 계산(farming 방지 이중장치)
-        const validJobIds = allValidJobIds.slice(0, maxJobsPerStudent);
+        // 🔒 저장값을 신뢰하지 않고 재검증: 유령 id 제외 + 중복 제거 + 지정 전용 직업은
+        //    appointedJobIds(교사 write 전용)에서만 인정. 상세 규약은 functions/jobUtils.js.
+        const { appointed, all: validJobIds } = resolveStudentJobs(
+          student,
+          jobMap,
+          maxJobsPerStudent,
+        );
         if (validJobIds.length === 0) {
           skippedStudents.push(student.name || student.nickname || student.id);
           // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
@@ -3551,12 +3533,12 @@ exports.batchPaySalaries = onCall(
 
         const grossSalary =
           BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
-        // 대통령 보너스는 캡 slice 이전 전체(allValidJobIds) 기준 — 순서로 보너스 유실 방지
-        // (대통령은 선생님만 배정하므로 farming 무관). scheduler-http.js와 동일 규약.
+        // 대통령 보너스는 '교사가 지정한' 직업(appointed)에서만, 중복 제거된 id 기준으로 지급.
+        // 학생이 selectedJobIds에 대통령 id를 넣거나 같은 id를 여러 번 넣어도 가산되지 않는다.
+        // scheduler-http.js와 동일 규약.
         let bonus = 0;
-        for (const jobId of allValidJobIds) {
-          const title = jobTitleMap[jobId];
-          if (title === "대통령") bonus += PRESIDENT_BONUS;
+        for (const jobId of appointed) {
+          if (jobMap.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
         }
         const totalGross = grossSalary + bonus;
         const tax = Math.floor(totalGross * taxRate);
@@ -3743,12 +3725,7 @@ exports.buyMarketItem = onCall(
       const itemMarketTaxRate =
         taxSettings?.itemMarketTransactionTaxRate || 0.03;
 
-      const adminQuery = await db
-        .collection("users")
-        .where("classCode", "==", userData.classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminQuery = await findApprovedAdminSnap(userData.classCode);
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
@@ -4105,12 +4082,7 @@ exports.respondToOffer = onCall(
       const itemMarketTaxRate =
         taxSettings?.itemMarketTransactionTaxRate || 0.03;
 
-      const adminQuery = await db
-        .collection("users")
-        .where("classCode", "==", userData.classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminQuery = await findApprovedAdminSnap(userData.classCode);
       const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
       await db.runTransaction(async (transaction) => {
@@ -4494,12 +4466,7 @@ exports.purchaseRealEstate = onCall(
         // 4-5. 관리자(국고)에 세금 입금
         if (taxAmount > 0) {
           // 관리자 현금에 세금 추가
-          const usersSnapshot = await db
-            .collection("users")
-            .where("classCode", "==", classCode)
-            .where("isAdmin", "==", true)
-            .limit(1)
-            .get();
+          const usersSnapshot = await findApprovedAdminSnap(classCode);
           if (!usersSnapshot.empty) {
             const adminRef = usersSnapshot.docs[0].ref;
             transaction.update(adminRef, {
@@ -4653,8 +4620,7 @@ exports.respondToRealEstateOffer = onCall({ region: "asia-northeast3" }, async (
     }
 
     // accept: 소유권 이전 (purchaseRealEstate 트랜잭션 패턴 복제)
-    const adminQuery = await db.collection("users")
-      .where("classCode", "==", classCode).where("isAdmin", "==", true).limit(1).get();
+    const adminQuery = await findApprovedAdminSnap(classCode);
     const adminRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
 
     const result = await db.runTransaction(async (transaction) => {
@@ -4870,31 +4836,31 @@ exports.processSettlement = onCall(
         );
       }
 
-      // 관리자 또는 경찰청장만 합의금 처리 가능
-      const isAdmin = userData.isAdmin || userData.isSuperAdmin;
+      // 관리자 또는 경찰청장만 합의금 처리 가능 (승인된 관리자만)
+      const isAdmin = hasAdminPower(userData);
 
       // jobName 또는 jobTitle 필드를 확인
       // 또는 selectedJobIds에서 경찰청장 직업이 있는지 확인
+      // ⚠️ 레거시 userData.jobName / userData.jobTitle 은 더 이상 신뢰하지 않는다 (2026-07-14).
+      //    앱 어디에서도 쓰지 않는 죽은 필드인데 rules에서는 학생이 자유롭게 write 할 수 있어,
+      //    updateDoc({jobName:"경찰청장"}) 한 줄로 합의금 처리 권한을 자가 획득할 수 있었다.
+      //    권한은 오직 jobs 컬렉션과 대조한 유효 직업(선택 + 교사 지정)으로만 판정한다.
       let isPoliceChief = false;
-      if (userData.jobName === "경찰청장" || userData.jobTitle === "경찰청장") {
-        isPoliceChief = true;
-      } else if (
-        userData.selectedJobIds &&
-        Array.isArray(userData.selectedJobIds)
+      if (
+        toJobIdArray(userData.selectedJobIds).length > 0 ||
+        toJobIdArray(userData.appointedJobIds).length > 0
       ) {
-        // selectedJobIds에서 경찰청장 직업 확인
+        // 유효 직업(선택 + 교사 지정) 재계산 후 경찰청장 여부 확인 (jobUtils 규약).
+        // 유령·중복 id와 selectedJobIds에 섞인 지정 전용 직업은 여기서 전부 걸러진다.
         const jobsSnapshot = await db
           .collection("jobs")
           .where("classCode", "==", classCode)
-          .where(
-            admin.firestore.FieldPath.documentId(),
-            "in",
-            userData.selectedJobIds.slice(0, 10),
-          )
           .get();
 
-        isPoliceChief = jobsSnapshot.docs.some(
-          (doc) => doc.data().title === "경찰청장",
+        isPoliceChief = hasJobTitle(
+          userData,
+          buildJobMap(jobsSnapshot),
+          "경찰청장",
         );
       }
 
@@ -6364,12 +6330,7 @@ exports.migrateDonationCashToAdmin = onRequest(
         if (!classCode || totalDonated <= 0) continue;
 
         // 해당 학급의 관리자 찾기
-        const adminSnap = await db
-          .collection("users")
-          .where("classCode", "==", classCode)
-          .where("isAdmin", "==", true)
-          .limit(1)
-          .get();
+        const adminSnap = await findApprovedAdminSnap(classCode);
 
         if (adminSnap.empty) {
           results.push({ classCode, status: "관리자 없음", totalDonated });
@@ -6487,6 +6448,8 @@ exports.syncUserClaims = onCall(
     const claims = {
       isAdmin: data.isAdmin === true,
       isSuperAdmin: data.isSuperAdmin === true,
+      // rules의 isAdminFast()가 승인 여부까지 클레임으로 판정한다(미승인 교사 차단).
+      isApproved: data.isApproved === true,
     };
     // classCode가 문자열이 아니면 클레임에서 생략 → rules의 'classCode' in token 가드가 false가 되어
     // 기존 문서 조회 fallback으로만 동작 (null 클레임 비교 edge 차단)
@@ -6496,5 +6459,216 @@ exports.syncUserClaims = onCall(
     await admin.auth().setCustomUserClaims(uid, claims);
     logger.info(`[syncUserClaims] ${uid} 클레임 갱신`, claims);
     return { synced: true, claims };
+  },
+);
+
+// ===================================================================================
+// 💼 직업 선택 저장 (학생) + 지정 직업 마이그레이션 (관리자)
+// ===================================================================================
+// 2026-07-13 FULL 교차검증에서 확인된 결함 대응:
+//   학생이 users 문서를 직접 write 할 수 있어 selectedJobIds에 대통령(지정 전용) 직업 id를
+//   넣으면 주급 보너스·할일 승인 권한을 자가 획득할 수 있었다. 이제 학생의 직업 선택 저장은
+//   이 callable이 유일한 경로이며(firestore.rules에서 학생의 직접 write 차단), 지정 전용
+//   직업은 교사만 쓸 수 있는 appointedJobIds에만 들어간다.
+
+exports.saveSelectedJobs = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin, isSuperAdmin, userData } =
+      await checkAuthAndGetUserData(request, false);
+    // 선생님(관리자)은 자기 대시보드에서 지정 전용 직업도 자유롭게 고를 수 있었다(기존 동작).
+    // 이미 모든 권한을 가진 계정이라 자가임명 위협모델과 무관 — 학생 규칙만 강제한다.
+    const isTeacher = isAdmin || isSuperAdmin;
+
+    const rawJobIds = request.data?.jobIds;
+    if (!Array.isArray(rawJobIds)) {
+      throw new HttpsError("invalid-argument", "직업 목록이 올바르지 않습니다.");
+    }
+    if (rawJobIds.length > 50) {
+      throw new HttpsError("invalid-argument", "직업을 너무 많이 선택했습니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+    }
+
+    // 상한 로드 (급여 계산과 동일 규약: 미설정 5, 1~20 클램프)
+    let salarySettingsDoc = await db
+      .collection("settings")
+      .doc(`salarySettings_${classCode}`)
+      .get();
+    if (!salarySettingsDoc.exists) {
+      salarySettingsDoc = await db
+        .collection("settings")
+        .doc("salarySettings")
+        .get();
+    }
+    const rawMaxJobs = salarySettingsDoc.exists
+      ? salarySettingsDoc.data().maxJobsPerStudent
+      : undefined;
+    const maxJobsPerStudent =
+      Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1
+        ? Math.min(20, rawMaxJobs)
+        : 5;
+
+    // 같은 학급 직업만 유효
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("classCode", "==", classCode)
+      .get();
+    const jobMap = buildJobMap(jobsSnap);
+
+    const requested = [...new Set(toJobIdArray(rawJobIds))];
+    // 존재하는 직업만 (삭제된 유령 id는 조용히 탈락)
+    const existing = requested.filter((id) => jobMap.has(id));
+    const appointedRequested = existing.filter((id) =>
+      isAppointedJob(jobMap.get(id)),
+    );
+    const validSelected = existing.filter(
+      (id) => !isAppointedJob(jobMap.get(id)),
+    );
+
+    // 선생님(관리자): 지정 전용 직업도 자유롭게 고를 수 있고 상한도 없다(기존 동작 보존).
+    //   지정/일반을 각 필드로 분리해 저장 — AdminSettingsModal의 교사 배정과 동일 규약.
+    if (isTeacher) {
+      await db.collection("users").doc(uid).update({
+        selectedJobIds: validSelected,
+        appointedJobIds: appointedRequested,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      logger.info(
+        `[saveSelectedJobs] (교사) uid=${uid} 선택 ${validSelected.length}개 · 지정 ${appointedRequested.length}개`,
+      );
+      return {
+        success: true,
+        selectedJobIds: validSelected,
+        appointedJobIds: appointedRequested,
+        droppedCount: requested.length - existing.length,
+      };
+    }
+
+    // 학생: 지정 전용 직업을 요청에 섞어 보낸 경우는 UI 우회 시도 — 거부하고 기록
+    if (appointedRequested.length > 0) {
+      logger.warn(
+        `[saveSelectedJobs] 지정 전용 직업 선택 시도 차단: uid=${uid}, jobIds=${JSON.stringify(
+          appointedRequested,
+        )}`,
+      );
+      throw new HttpsError(
+        "permission-denied",
+        "선생님이 지정하는 직업은 직접 선택할 수 없어요.",
+      );
+    }
+
+    // 개수 상한은 '지정 + 선택 합계'에 적용한다(급여 계산 resolveStudentJobs와 동일 규약).
+    // 교사가 지정한 직업이 슬롯을 먼저 차지하므로, 학생이 고를 수 있는 몫은 그만큼 줄어든다.
+    const appointedCount = toJobIdArray(userData?.appointedJobIds).filter(
+      (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+    ).length;
+    const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
+    if (validSelected.length > allowedSelected) {
+      throw new HttpsError(
+        "invalid-argument",
+        appointedCount > 0
+          ? `직업은 최대 ${maxJobsPerStudent}개까지 가질 수 있어요. 선생님이 지정한 직업 ${appointedCount}개를 빼면 ${allowedSelected}개까지 고를 수 있어요.`
+          : `직업은 최대 ${maxJobsPerStudent}개까지 선택할 수 있어요.`,
+      );
+    }
+
+    // appointedJobIds는 교사 전용이라 건드리지 않는다 (부분 갱신).
+    await db.collection("users").doc(uid).update({
+      selectedJobIds: validSelected,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(
+      `[saveSelectedJobs] uid=${uid} 저장 ${validSelected.length}개 (요청 ${requested.length}개)`,
+    );
+
+    // appointedJobIds는 교사 전용이라 건드리지 않는다. 클라 표시용으로 현재값만 돌려준다.
+    return {
+      success: true,
+      selectedJobIds: validSelected,
+      appointedJobIds: toJobIdArray(userData?.appointedJobIds),
+      droppedCount: requested.length - validSelected.length,
+    };
+  },
+);
+
+/**
+ * 기존 데이터 이관(관리자 전용, 1회성):
+ *   selectedJobIds에 들어있는 지정 전용 직업(대통령 등)을 appointedJobIds로 옮긴다.
+ *   이관 전에는 신 급여 로직이 대통령 보너스를 지급하지 않으므로, functions 배포 직후 실행할 것.
+ */
+exports.migrateAppointedJobs = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { classCode } = await checkAuthAndGetUserData(request, true);
+    const dryRun = request.data?.dryRun === true;
+
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("classCode", "==", classCode)
+      .get();
+    const jobMap = buildJobMap(jobsSnap);
+
+    const usersSnap = await db
+      .collection("users")
+      .where("classCode", "==", classCode)
+      .get();
+
+    // Firestore batch는 500건 상한 — 학급이 커도 안전하도록 500건씩 나눠 커밋.
+    const BATCH_LIMIT = 500;
+    const batches = [db.batch()];
+    let opsInBatch = 0;
+    const currentBatch = () => batches[batches.length - 1];
+    const moved = [];
+
+    usersSnap.forEach((doc) => {
+      const data = doc.data();
+      const selected = toJobIdArray(data.selectedJobIds);
+
+      const appointedFromSelected = [
+        ...new Set(
+          selected.filter(
+            (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+          ),
+        ),
+      ];
+      if (appointedFromSelected.length === 0) return;
+
+      moved.push({
+        userId: doc.id,
+        name: data.name || data.nickname || doc.id,
+        jobTitles: appointedFromSelected.map(
+          (id) => jobMap.get(id)?.title || id,
+        ),
+      });
+
+      if (!dryRun) {
+        if (opsInBatch >= BATCH_LIMIT) {
+          batches.push(db.batch());
+          opsInBatch = 0;
+        }
+        // ⚠️ 절대값 덮어쓰기 대신 arrayRemove/arrayUnion — 이관 도중 학생이 saveSelectedJobs로
+        //    직업을 바꿔도 stale 스냅샷이 그 변경을 덮어써 유실시키지 않는다(lost update 방지).
+        currentBatch().update(doc.ref, {
+          selectedJobIds:
+            admin.firestore.FieldValue.arrayRemove(...appointedFromSelected),
+          appointedJobIds:
+            admin.firestore.FieldValue.arrayUnion(...appointedFromSelected),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        opsInBatch += 1;
+      }
+    });
+
+    if (!dryRun && moved.length > 0) {
+      for (const b of batches) await b.commit();
+    }
+
+    logger.info(
+      `[migrateAppointedJobs] classCode=${classCode} dryRun=${dryRun} 이관 대상 ${moved.length}명`,
+    );
+    return { success: true, dryRun, movedCount: moved.length, moved };
   },
 );

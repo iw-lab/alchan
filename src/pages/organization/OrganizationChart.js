@@ -19,6 +19,7 @@ import { usePolling } from "../../hooks/usePolling";
 import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 
 import { logger } from "../../utils/logger";
+import { hasJobTitle } from "../../utils/jobPermissions";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -47,14 +48,11 @@ const OrganizationChart = ({ classCode }) => {
     },
   );
 
-  const isPresident = useMemo(() => {
-    if (!userDoc?.selectedJobIds || !jobs) return false;
-    const selectedIds = Array.isArray(userDoc.selectedJobIds)
-      ? userDoc.selectedJobIds
-      : Object.keys(userDoc.selectedJobIds || {});
-    const selectedJobs = jobs.filter((job) => selectedIds.includes(job.id));
-    return selectedJobs.some((job) => job.title === "대통령");
-  }, [userDoc?.selectedJobIds, jobs]);
+  // 대통령은 교사 지정 직업(appointedJobIds). 화면 표시용 — 권한은 서버가 재검증.
+  const isPresident = useMemo(
+    () => hasJobTitle(userDoc, jobs, "대통령"),
+    [userDoc, jobs],
+  );
 
   const isAdminUser =
     typeof isAuthAdmin === "function" ? isAuthAdmin() : !!isAuthAdmin;

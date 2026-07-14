@@ -5,7 +5,7 @@
  * 배포 시 SCHEDULER_AUTH_TOKEN 환경변수 필수 (deploy.yml에서 자동 주입)
  */
 
-const { db, admin, logger } = require("./utils");
+const { db, admin, logger, findApprovedAdminSnap } = require("./utils");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -250,12 +250,7 @@ async function executeTaxRefund(classCode, params) {
   const { refundRate = 0.3 } = params;
 
   // 국고 = 관리자 cash
-  const adminSnapshot = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const adminSnapshot = await findApprovedAdminSnap(classCode);
 
   if (adminSnapshot.empty) {
     logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
@@ -332,12 +327,7 @@ async function executeTaxRefund(classCode, params) {
 async function executeTaxExtra(classCode, params) {
   const { taxRate = 0.03 } = params;
 
-  const adminSnapshot = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const adminSnapshot = await findApprovedAdminSnap(classCode);
 
   if (adminSnapshot.empty) {
     logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
@@ -551,12 +541,7 @@ async function executeTaxExtra(classCode, params) {
 async function executeCashBonus(classCode, params) {
   const { amount = 50000 } = params;
 
-  const adminSnapshot = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const adminSnapshot = await findApprovedAdminSnap(classCode);
 
   if (adminSnapshot.empty) {
     logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);
@@ -675,12 +660,7 @@ async function executeCashPenalty(classCode, params) {
   const { penaltyRate = 0.05 } = params;
 
   // 관리자 조회 (국고 = 관리자 cash)
-  const adminSnapshot = await db
-    .collection("users")
-    .where("classCode", "==", classCode)
-    .where("isAdmin", "==", true)
-    .limit(1)
-    .get();
+  const adminSnapshot = await findApprovedAdminSnap(classCode);
 
   if (adminSnapshot.empty) {
     logger.warn(`[경제이벤트] ${classCode}: 관리자 계정 없음 - 건너뜀`);

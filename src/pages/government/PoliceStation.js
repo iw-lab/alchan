@@ -31,6 +31,7 @@ import {
  limit,
 } from "firebase/firestore";
 
+import { hasJobTitle } from "../../utils/jobPermissions";
 // --- Helper Components ---
 
 // EditComplaintModal: 고소장 수정 모달
@@ -516,22 +517,16 @@ const PoliceStation = () => {
  );
 
  // Check if user is police chief
- const isPoliceChief = useMemo(() => {
- if (!currentUser?.selectedJobIds || !jobs) return false;
- const selectedJobs = jobs.filter((job) =>
- currentUser.selectedJobIds.includes(job.id),
+ const isPoliceChief = useMemo(
+ () => hasJobTitle(currentUser, jobs, "경찰청장"),
+ [currentUser, jobs],
  );
- return selectedJobs.some((job) => job.title === "경찰청장");
- }, [currentUser?.selectedJobIds, jobs]);
 
  // 경찰 직업("경찰") 보유 여부 — 신고 제출 권한용
- const isPolice = useMemo(() => {
- if (!currentUser?.selectedJobIds || !jobs) return false;
- const selectedJobs = jobs.filter((job) =>
- currentUser.selectedJobIds.includes(job.id),
+ const isPolice = useMemo(
+ () => hasJobTitle(currentUser, jobs, "경찰"),
+ [currentUser, jobs],
  );
- return selectedJobs.some((job) => job.title === "경찰");
- }, [currentUser?.selectedJobIds, jobs]);
 
  const hasPoliceAdminRights = isSystemAdmin || isPoliceChief;
  // 신고 제출 권한: '경찰' 직업 학생 또는 관리자(교사)

@@ -24,6 +24,12 @@ import {
  limit,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import {
+ APPOINTED_FALLBACK_TITLES,
+ isAppointedOnlyJob,
+ toJobIdArray,
+ getEffectiveJobIds,
+} from "../../utils/jobPermissions";
 import JobList from "../../components/JobList";
 import CommonTaskList from "../../components/CommonTaskList";
 import AdminSettingsModal from "../../components/modals/AdminSettingsModal";
@@ -192,9 +198,8 @@ const saveSharedData = async (data, classCode) => {
 
 // 🔒 지정 전용 역할: 학생이 자가신청할 수 없고 선생님만 배정하는 직업 제목.
 // 직업 문서의 appointedOnly 플래그가 우선이며, 이 목록은 플래그 없는 기존 문서용 fallback.
-const RESTRICTED_JOB_TITLES = ["대통령", "국무총리"];
-const isAppointedOnlyJob = (job) =>
- !!job && (job.appointedOnly === true || RESTRICTED_JOB_TITLES.includes(job.title));
+// 판정 로직은 src/utils/jobPermissions.js(서버 functions/jobUtils.js와 동일 규약)로 통일.
+const RESTRICTED_JOB_TITLES = APPOINTED_FALLBACK_TITLES;
 
 function SelectMultipleJobsView({
  availableJobs,
@@ -556,6 +561,11 @@ function Dashboard({ adminTabMode }) {
  () => httpsCallable(functions, "manualResetClassTasks"),
  [],
  );
+ // 학생의 직업 선택 저장은 서버가 유일한 경로 (rules에서 selectedJobIds 직접 write 차단).
+ const saveSelectedJobsFn = useMemo(
+ () => httpsCallable(functions, "saveSelectedJobs"),
+ [],
+ );
 
  const [isHandlingTask, setIsHandlingTask] = useState(false);
 
@@ -644,11 +654,22 @@ function Dashboard({ adminTabMode }) {
  : null;
  }, [userDoc?.classCode, isAdmin]);
 
- const currentSelectedJobIdsFromUserDoc = useMemo(() => {
- return userDoc && Array.isArray(userDoc.selectedJobIds)
- ? userDoc.selectedJobIds
- : [];
- }, [userDoc]);
+ // 화면 표시(내 직업·할일)용 = 교사가 지정한 직업 + 내가 고른 직업.
+ const effectiveJobIds = useMemo(() => getEffectiveJobIds(userDoc), [userDoc]);
+
+ // 직업 선택 모달의 체크 초기값 = '내가 고른' 직업만.
+ // 교사 지정 직업(appointedJobIds)은 학생이 저장 요청에 담을 수 없다(서버가 거부).
+ const currentSelectedJobIdsFromUserDoc = useMemo(
+ () => toJobIdArray(userDoc?.selectedJobIds),
+ [userDoc],
+ );
+
+ // 학생이 고를 수 있는 슬롯 = 상한 − 교사가 지정한 직업 수 (서버 saveSelectedJobs와 동일 규약).
+ // 교사 지정 직업도 상한을 함께 쓰기 때문에(기존 경제 유지), 지정 직업이 있으면 선택 몫이 줄어든다.
+ const selectableJobSlots = useMemo(() => {
+ const appointedCount = toJobIdArray(userDoc?.appointedJobIds).length;
+ return Math.max(0, maxJobsPerStudent - appointedCount);
+ }, [userDoc, maxJobsPerStudent]);
 
  const jobsToShow = useMemo(() => {
  const completedJobTasks = userDoc?.completedJobTasks || {};
@@ -656,9 +677,7 @@ function Dashboard({ adminTabMode }) {
  return Array.isArray(jobs)
  ? jobs
  .filter(
- (job) =>
- currentSelectedJobIdsFromUserDoc.includes(job.id) &&
- job.active !== false,
+ (job) => effectiveJobIds.includes(job.id) && job.active !== false,
  )
  .map((job) => ({
  ...job,
@@ -668,7 +687,7 @@ function Dashboard({ adminTabMode }) {
  })),
  }))
  : [];
- }, [jobs, currentSelectedJobIdsFromUserDoc, userDoc]);
+ }, [jobs, effectiveJobIds, userDoc]);
 
  const commonTasksWithUserProgress = useMemo(() => {
  if (!commonTasks || !userDoc) {
@@ -1157,12 +1176,23 @@ function Dashboard({ adminTabMode }) {
  const classUsersSnap = await getDocs(classUsersQuery);
  classUsersSnap.docs.forEach((d) => {
  if (d.id === user?.uid) return; // 본인은 아래 updateUser로 별도 처리(로컬 state 동기화 포함)
- const ids = d.data().selectedJobIds || [];
- if (ids.includes(jobIdToDelete)) {
- cleanupBatch.update(d.ref, {
- selectedJobIds: ids.filter((id) => id !== jobIdToDelete),
- updatedAt: serverTimestamp(),
- });
+ const data = d.data();
+ const ids = toJobIdArray(data.selectedJobIds);
+ const appointedIds = toJobIdArray(data.appointedJobIds);
+ // 지정 전용 직업이 삭제되면 appointedJobIds에서도 지운다(교사 지정 경로도 유령 청소).
+ const hitSelected = ids.includes(jobIdToDelete);
+ const hitAppointed = appointedIds.includes(jobIdToDelete);
+ if (hitSelected || hitAppointed) {
+ const patch = { updatedAt: serverTimestamp() };
+ if (hitSelected) {
+ patch.selectedJobIds = ids.filter((id) => id !== jobIdToDelete);
+ }
+ if (hitAppointed) {
+ patch.appointedJobIds = appointedIds.filter(
+ (id) => id !== jobIdToDelete,
+ );
+ }
+ cleanupBatch.update(d.ref, patch);
  cleanupCount++;
  }
  });
@@ -1175,11 +1205,20 @@ function Dashboard({ adminTabMode }) {
  );
  }
 
- if (user && userDoc?.selectedJobIds?.includes(jobIdToDelete)) {
- const updatedSelectedIds = userDoc.selectedJobIds.filter(
+ // 본인(교사) 계정도 두 필드 모두 청소. 교사는 관리자라 rules상 직접 write가 허용된다.
+ if (user) {
+ const ownSelected = toJobIdArray(userDoc?.selectedJobIds);
+ const ownAppointed = toJobIdArray(userDoc?.appointedJobIds);
+ const patch = {};
+ if (ownSelected.includes(jobIdToDelete)) {
+ patch.selectedJobIds = ownSelected.filter((id) => id !== jobIdToDelete);
+ }
+ if (ownAppointed.includes(jobIdToDelete)) {
+ patch.appointedJobIds = ownAppointed.filter(
  (id) => id !== jobIdToDelete,
  );
- await updateUser({ selectedJobIds: updatedSelectedIds });
+ }
+ if (Object.keys(patch).length > 0) await updateUser(patch);
  }
 
  if (editingJob?.id === jobIdToDelete) {
@@ -1507,47 +1546,32 @@ function Dashboard({ adminTabMode }) {
  return;
  }
 
- let idsToSave = Array.isArray(newlySelectedJobIds)
+ const idsToSave = Array.isArray(newlySelectedJobIds)
  ? newlySelectedJobIds
  : [];
- // 🔒 방어: 학생(비관리자)은 유령(삭제된) 직업 + 지정 전용 직업 제거 + 개수 상한으로 잘라 저장
- // (UI 가드 우회 대비). 선생님은 그대로.
- // ⚠️ job이 undefined(삭제됨)면 isAppointedOnlyJob은 false라 예전 로직은 유령을 오히려 보존했음 → 존재 검사 추가.
- if (!isAdmin?.()) {
- // ⚠️ 레이스 가드: 저장 순간 jobs가 미로드(빈 배열)면 모든 id의 job이 undefined가 되어
- // 유효 선택까지 전부 유령 취급 → 선택 통째 삭제. jobs 미로드 시엔 저장을 막고 재시도 유도.
- if (!Array.isArray(jobs) || jobs.length === 0) {
- alert("직업 목록을 불러오는 중이에요. 잠시 후 다시 시도해주세요.");
- return;
- }
- idsToSave = idsToSave.filter((id) => {
- const job = jobs.find((j) => j.id === id);
- return job && !isAppointedOnlyJob(job);
- });
- if (idsToSave.length > maxJobsPerStudent) {
- idsToSave = idsToSave.slice(0, maxJobsPerStudent);
- }
- }
  setAppLoading(true);
 
  try {
- const success = await updateUser({ selectedJobIds: idsToSave });
- if (success) {
- setUserDoc((prev) => ({ ...prev, selectedJobIds: idsToSave })); // Optimistic update
+ // 저장·검증은 전부 서버(saveSelectedJobs)가 한다: 존재 확인·학급 대조·지정 전용 배제·
+ // 중복 제거·개수 상한. 클라이언트 캐시(jobs)가 stale이어도 유효 직업이 유실되지 않고,
+ // UI를 우회해도 상한·지정 전용 직업을 뚫을 수 없다 (2026-07-13 FULL 교차검증 대응).
+ const res = await saveSelectedJobsFn({ jobIds: idsToSave });
+ const saved = res?.data?.selectedJobIds;
+ if (Array.isArray(saved)) {
+ setUserDoc((prev) => ({ ...prev, selectedJobIds: saved }));
+ }
  setViewMode("list");
  alert("선택한 직업이 저장되었습니다.");
- } else {
- alert("선택한 직업 저장 중 오류 발생.");
- }
  } catch (error) {
  logger.error("handleConfirmJobSelection 오류:", error);
- alert("선택 직업 저장 중 예상치 못한 오류 발생.");
+ // 서버가 돌려준 사유(상한 초과·지정 전용 선택 등)를 그대로 보여준다.
+ alert(error?.message || "선택 직업 저장 중 예상치 못한 오류 발생.");
  } finally {
  setAppLoading(false);
  }
  },
  // eslint-disable-next-line react-hooks/exhaustive-deps
- [user, updateUser, isAdmin, jobs, maxJobsPerStudent],
+ [user, saveSelectedJobsFn],
  );
 
  const handleCancelForm = useCallback(() => {
@@ -2403,7 +2427,7 @@ function Dashboard({ adminTabMode }) {
  onConfirmSelection={handleConfirmJobSelection}
  onCancel={handleCancelForm}
  isAdmin={isAdmin?.()}
- maxJobs={maxJobsPerStudent}
+ maxJobs={selectableJobSlots}
  onAddJob={async (title) => {
  if (!db || !userDoc?.classCode) {
  alert("데이터베이스 연결 오류 또는 학급 코드 없음.");

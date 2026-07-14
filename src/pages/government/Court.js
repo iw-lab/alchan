@@ -35,6 +35,7 @@ import {
  onSnapshot,
 } from "firebase/firestore";
 
+import { hasJobTitle } from "../../utils/jobPermissions";
 // 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
 const noopRefetch = () => {};
 
@@ -634,22 +635,16 @@ const Court = () => {
  );
 
  // Check if user is prosecutor
- const isProsecutor = useMemo(() => {
- if (!currentUserDoc?.selectedJobIds || !jobs) return false;
- const selectedJobs = jobs.filter((job) =>
- currentUserDoc.selectedJobIds.includes(job.id),
+ const isProsecutor = useMemo(
+ () => hasJobTitle(currentUserDoc, jobs, "검찰총장"),
+ [currentUserDoc, jobs],
  );
- return selectedJobs.some((job) => job.title === "검찰총장");
- }, [currentUserDoc?.selectedJobIds, jobs]);
 
  // Check if user is judge
- const isJudge = useMemo(() => {
- if (!currentUserDoc?.selectedJobIds || !jobs) return false;
- const selectedJobs = jobs.filter((job) =>
- currentUserDoc.selectedJobIds.includes(job.id),
+ const isJudge = useMemo(
+ () => hasJobTitle(currentUserDoc, jobs, "판사"),
+ [currentUserDoc, jobs],
  );
- return selectedJobs.some((job) => job.title === "판사");
- }, [currentUserDoc?.selectedJobIds, jobs]);
 
  const hasProsecutorPrivileges = isAdmin || isProsecutor;
  const hasJudgePrivileges = isAdmin || isJudge;

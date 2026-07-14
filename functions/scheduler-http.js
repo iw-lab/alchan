@@ -13,7 +13,7 @@ const {
   HttpsError,
 } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { checkAuthAndGetUserData, db, admin, logger } = require("./utils");
+const { checkAuthAndGetUserData, findApprovedAdminSnap, db, admin, logger } = require("./utils");
 const {
   updateRealStockPrices,
   createRealStocks,
@@ -28,6 +28,7 @@ const {
 } = require("./realStockService");
 
 const { payMonthlyDividends } = require("./dividendService");
+const { buildJobMap, resolveStudentJobs } = require("./jobUtils");
 const {
   DEFAULT_JOBS,
   DEFAULT_STORE_ITEMS,
@@ -1059,12 +1060,7 @@ exports.reverseLastWeeklySalary = onRequest(
           .get();
 
         // 학급 관리자
-        const adminSnap = await db
-          .collection("users")
-          .where("classCode", "==", classCode)
-          .where("isAdmin", "==", true)
-          .limit(1)
-          .get();
+        const adminSnap = await findApprovedAdminSnap(classCode);
         const adminDoc = adminSnap.empty ? null : adminSnap.docs[0];
 
         let classSum = 0;
@@ -2014,16 +2010,10 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
         // 직업 정보 로드 (대통령 보너스 적용용)
         const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
-        const jobTitleMap = {};
-        jobsSnap.forEach((doc) => { jobTitleMap[doc.id] = doc.data().title; });
+        const jobMap = buildJobMap(jobsSnap);
 
         // 학급 관리자(선생님) 찾기
-        const adminSnapshot = await db
-          .collection("users")
-          .where("classCode", "==", classCode)
-          .where("isAdmin", "==", true)
-          .limit(1)
-          .get();
+        const adminSnapshot = await findApprovedAdminSnap(classCode);
 
         let adminDoc = null;
         if (!adminSnapshot.empty) {
@@ -2050,16 +2040,14 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
         for (const studentDoc of students) {
           const student = studentDoc.data();
-          // selectedJobIds가 배열이 아닐 수 있음 (오래된 데이터 방어)
-          const rawJobIds = student.selectedJobIds;
-          const jobIds = Array.isArray(rawJobIds)
-            ? rawJobIds
-            : (rawJobIds && typeof rawJobIds === "object" ? Object.keys(rawJobIds) : []);
-          // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
-          const allValidJobIds = jobIds.filter((id) => jobTitleMap[id]);
-          // 🔒 직업 개수 상한: 급여는 최대 maxJobsPerStudent개까지만 계산(farming 방지 이중장치).
-          //    클라 UI 우회로 selectedJobIds가 상한을 넘겨도 지급은 상한 내로 묶인다.
-          const validJobIds = allValidJobIds.slice(0, maxJobsPerStudent);
+          // 🔒 저장값을 신뢰하지 않고 재검증: 유령 id 제외 + 중복 제거 + 상한 적용 +
+          //    지정 전용 직업은 appointedJobIds(교사 write 전용)에서만 인정.
+          //    타입 오염(배열 아님)도 여기서 정규화. 상세 규약은 functions/jobUtils.js.
+          const { appointed, all: validJobIds } = resolveStudentJobs(
+            student,
+            jobMap,
+            maxJobsPerStudent,
+          );
           if (validJobIds.length === 0) {
             // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
             // (지급 안 한) 이번 회차를 잘못 회수하게 되므로 초기화
@@ -2074,13 +2062,12 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           }
 
           const grossSalary = BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
-          // 대통령 보너스는 캡 slice 이전 전체 직업(allValidJobIds) 기준 — 대통령은
-          // 선생님만 배정(appointedOnly)하므로 farming 무관하고, 배열 순서로 보너스가
-          // 유실되는 것을 방지(cap 초과 기존 데이터에서 대통령 id가 뒤에 있어도 지급).
+          // 대통령 보너스는 '교사가 지정한' 직업(appointed)에서만, 중복 제거된 id 기준으로 지급.
+          // 학생이 selectedJobIds에 대통령 id를 넣거나 같은 id를 여러 번 넣어도 가산되지 않는다.
+          // functions/index.js batchPaySalaries와 동일 규약.
           let bonus = 0;
-          for (const jobId of allValidJobIds) {
-            const title = jobTitleMap[jobId];
-            if (title === "대통령") bonus += PRESIDENT_BONUS;
+          for (const jobId of appointed) {
+            if (jobMap.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
           }
           const totalGross = grossSalary + bonus;
           const tax = Math.floor(totalGross * taxRate);
@@ -2198,11 +2185,7 @@ async function collectWeeklyRentLogic() {
       let classTenantsCount = 0;
 
       // 학급 관리자(선생님) 찾기 - 정부 소유 부동산 월세 수령용
-      const adminSnap = await db.collection("users")
-        .where("classCode", "==", classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminSnap = await findApprovedAdminSnap(classCode);
       const adminUid = adminSnap.empty ? null : adminSnap.docs[0].id;
 
       for (const propertyDoc of propertiesSnapshot.docs) {
@@ -2451,12 +2434,7 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
       logger.info(`[부동산세] ${classCode} 클래스 처리 시작`);
 
       // 관리자(선생님) 찾기
-      const adminSnapshot = await db
-        .collection("users")
-        .where("classCode", "==", classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminSnapshot = await findApprovedAdminSnap(classCode);
       if (adminSnapshot.empty) {
         logger.warn(`[부동산세] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
         continue;

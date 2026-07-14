@@ -614,7 +614,10 @@ export const AuthProvider = ({ children }) => {
                 if (
                   (claims.classCode ?? null) === docClassCode &&
                   (claims.isAdmin === true) === (docData.isAdmin === true) &&
-                  (claims.isSuperAdmin === true) === (docData.isSuperAdmin === true)
+                  (claims.isSuperAdmin === true) === (docData.isSuperAdmin === true) &&
+                  // 승인 여부도 비교해야 한다: rules의 isAdminFast()가 isApproved 클레임으로 판정하므로,
+                  // 승인이 취소돼도 이 비교에서 빠지면 stale 클레임으로 읽기 권한이 남는다(2026-07-14).
+                  (claims.isApproved === true) === (docData.isApproved === true)
                 ) {
                   return;
                 }

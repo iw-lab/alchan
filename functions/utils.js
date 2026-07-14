@@ -117,8 +117,12 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
       throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
     }
     const userData = userDoc.data();
-    const isAdmin = userData.isAdmin || false;
-    const isSuperAdmin = userData.isSuperAdmin || false;
+    // 🔒 관리자 권한은 '승인된' 교사에게만 (2026-07-14 Gemini 교차검증).
+    //    교사 가입은 공개돼 있고 가입자가 isAdmin:true를 스스로 넣을 수 있는데(승인 대기 상태),
+    //    승인 여부를 서버가 검사하지 않아 미승인 계정이 classCode만 바꾸면 남의 학급 관리자가 됐다.
+    //    슈퍼관리자는 예외(운영 계정은 isApproved 필드 자체가 없다).
+    const isSuperAdmin = userData.isSuperAdmin === true;
+    const isAdmin = hasAdminPower(userData);
     if (checkAdmin && !isAdmin && !isSuperAdmin) {
       throw new HttpsError("permission-denied", "관리자 권한이 필요합니다.");
     }
@@ -177,10 +181,48 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     return keyRef;
   };
 
+  // 권한 판정은 순수 함수로 분리(단위 테스트 대상) — functions/authUtils.js
+  const { hasAdminPower, hasTeacherPower } = require("./authUtils");
+
+  /**
+   * 학급의 '승인된' 관리자(=국고 계정) 조회.
+   *
+   * 🔒 2026-07-14 codex 교차검증: 기존 코드는 `.where("isAdmin","==",true).limit(1)`로 뽑았는데,
+   *    교사 공개가입(isAdmin:true·isApproved:false) 후 classCode를 남의 학급으로 바꾸면
+   *    그 미승인 계정이 limit(1)에 걸려 국고가 될 수 있었다 — 세금·월세·판매대금이 공격자에게 흐른다.
+   *    쿼리에 isApproved 조건을 더하면 복합 인덱스가 필요해지고(런타임 실패 위험) 슈퍼관리자
+   *    (isApproved 필드 없음)도 탈락하므로, 후보를 넉넉히 받아 코드에서 hasAdminPower로 거른다.
+   *
+   * 반환값은 QuerySnapshot에서 실제로 쓰이는 표면(empty·docs·size)만 흉내낸 shim.
+   */
+  const findApprovedAdminSnap = async (classCode) => {
+    // limit는 넉넉히 — 미승인 관리자 후보(자가가입 교사)가 앞자리를 채워 승인 관리자를 밀어내면
+    // 국고 조회가 비어 세금·월세·판매대금 처리가 통째로 skip된다(DoS). 학급당 교사는 1~2명이라
+    // 50이면 충분하고, 후보가 밀려날 만큼 쌓이면 아래 경고 로그로 탐지한다.
+    const snap = await db
+      .collection("users")
+      .where("classCode", "==", classCode)
+      .where("isAdmin", "==", true)
+      .limit(50)
+      .get();
+    const docs = snap.docs.filter((d) => hasAdminPower(d.data()));
+    const rejected = snap.size - docs.length;
+    if (rejected > 0) {
+      // 정상 학급에서는 0이어야 한다. 0이 아니면 미승인 관리자 계정이 이 학급에 들어와 있다는 뜻.
+      logger.warn(
+        `[findApprovedAdminSnap] classCode=${classCode}: 미승인 관리자 후보 ${rejected}명 제외됨 (승인 ${docs.length}명)`,
+      );
+    }
+    return { empty: docs.length === 0, docs, size: docs.length };
+  };
+
   module.exports = {
       LOG_TYPES,
       logActivity,
       checkAuthAndGetUserData,
+      hasAdminPower,
+      hasTeacherPower,
+      findApprovedAdminSnap,
       sanitizeInput,
       sanitizeObject,
       assertIdempotent,

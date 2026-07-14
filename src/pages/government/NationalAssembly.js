@@ -28,6 +28,7 @@ import {
   runTransaction, // ❗ runTransaction 함수 추가
 } from "firebase/firestore";
 
+import { hasJobTitle } from "../../utils/jobPermissions";
 const NationalAssembly = () => {
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
@@ -54,9 +55,7 @@ const NationalAssembly = () => {
 
   const canProposeLaw = useCallback(() => {
     if (isAdmin()) return true;
-    if (!currentUser?.selectedJobIds || !jobs || jobs.length === 0) return false;
-    const selectedJobs = jobs.filter(job => currentUser.selectedJobIds.includes(job.id));
-    return selectedJobs.some(job => job.title === '국회의원');
+    return hasJobTitle(currentUser, jobs, '국회의원');
   }, [isAdmin, currentUser, jobs]);
 
   const classCode = currentUser?.classCode;

@@ -56,6 +56,7 @@ import {
   Calculator,
   MessageSquare,
 } from "lucide-react";
+import { getEffectiveJobIds } from "../utils/jobPermissions";
 
 // ============================================
 // 앱 아이콘 컴포넌트 (export하여 다른 곳에서도 사용)
@@ -719,10 +720,15 @@ export default function AlchanSidebar({
   const isAdmin = userDoc?.isAdmin || userDoc?.isSuperAdmin;
   const isSuperAdmin = userDoc?.isSuperAdmin;
 
-  // 대통령 직업 체크 (학생만)
+  // 대통령 직업 체크 (학생만) — 대통령은 교사 지정 직업(appointedJobIds)에서만 인정.
+  // 화면 표시용이며 실제 권한은 서버(functions)가 재검증한다.
   const [isPresident, setIsPresident] = useState(false);
+  const effectiveJobIds = useMemo(
+    () => getEffectiveJobIds(userDoc),
+    [userDoc],
+  );
   useEffect(() => {
-    if (isAdmin || !userDoc?.selectedJobIds?.length || !userDoc?.classCode)
+    if (isAdmin || effectiveJobIds.length === 0 || !userDoc?.classCode)
       return void setIsPresident(false);
     let cancelled = false;
     (async () => {
@@ -734,9 +740,7 @@ export default function AlchanSidebar({
         const snap = await getDocs(q);
         if (cancelled) return;
         const found = snap.docs.some(
-          (d) =>
-            userDoc.selectedJobIds.includes(d.id) &&
-            d.data().title === "대통령",
+          (d) => effectiveJobIds.includes(d.id) && d.data().title === "대통령",
         );
         setIsPresident(found);
       } catch {
@@ -746,7 +750,7 @@ export default function AlchanSidebar({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, userDoc?.selectedJobIds, userDoc?.classCode]);
+  }, [isAdmin, effectiveJobIds, userDoc?.classCode]);
 
   // 정부 이송 법안 개수 (대통령 학생에게 사이드바 배지 + 세션 1회 알림)
   const [pendingGovLawCount, setPendingGovLawCount] = useState(0);

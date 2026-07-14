@@ -14,7 +14,7 @@
  * - Firestore batch 한도(500) 자동 분할
  */
 
-const { db, admin, logger } = require("./utils");
+const { db, admin, logger, findApprovedAdminSnap } = require("./utils");
 
 const DIVIDEND_TAX_RATE = 0.154; // 배당소득세 15.4%
 const BATCH_OP_LIMIT = 450;       // 안전 마진 (500 한도의 90%)
@@ -201,12 +201,7 @@ async function payMonthlyDividends() {
 
       // (b) 관리자(선생님) cash로 세금 실제 입금
       try {
-        const adminSnap = await db
-          .collection("users")
-          .where("classCode", "==", classCode)
-          .where("isAdmin", "==", true)
-          .limit(1)
-          .get();
+        const adminSnap = await findApprovedAdminSnap(classCode);
         if (!adminSnap.empty) {
           const adminRef = adminSnap.docs[0].ref;
           batch.update(adminRef, {

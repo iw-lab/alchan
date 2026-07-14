@@ -47,6 +47,11 @@ import AdminDatabase from "../../pages/admin/AdminDatabase";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { ALCHAN_MENU_ITEMS } from "../AlchanSidebar";
 import { logger } from "../../utils/logger";
+import {
+  isAppointedOnlyJob,
+  toJobIdArray,
+  getEffectiveJobIds,
+} from "../../utils/jobPermissions";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
 // 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
@@ -745,31 +750,40 @@ const AdminSettingsModal = ({
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;
 
-      // 삭제된 직업의 유령 id는 급여 계산에서 제외 (실제 존재하는 직업만 카운트)
-      // handleSaveStudentJobs와 동일한 조건(Array.isArray만 체크)으로 통일 — 미리보기와 저장값 불일치 방지
-      const allValidJobIds = Array.isArray(jobs)
-        ? selectedJobIds.filter((jobId) => jobs.some((j) => j.id === jobId))
-        : selectedJobIds;
+      // 서버 급여 계산(functions/jobUtils.js resolveStudentJobs)과 동일 규약으로 미리보기를 맞춘다:
+      //   유령 id 제외 → 중복 제거 → 지정 전용/일반 분리 → 상한은 일반 직업에만 적용
+      //   → 대통령 보너스는 '지정된' 대통령 직업당 1회.
+      const jobById = new Map((jobs || []).map((j) => [j.id, j]));
+      const uniqueIds = [...new Set(toJobIdArray(selectedJobIds))].filter((id) =>
+        Array.isArray(jobs) ? jobById.has(id) : true,
+      );
+      const appointedIds = uniqueIds.filter((id) =>
+        isAppointedOnlyJob(jobById.get(id)),
+      );
+      const normalIds = uniqueIds.filter(
+        (id) => !isAppointedOnlyJob(jobById.get(id)),
+      );
       // 🔒 직업 개수 상한: 서버 급여 계산(scheduler/batchPay)과 동일하게 상한 내로 캡 (미리보기 일치)
       const maxJobs =
         Number.isInteger(salarySettings.maxJobsPerStudent) && salarySettings.maxJobsPerStudent >= 1
           ? salarySettings.maxJobsPerStudent
           : 5;
-      const validJobIds = allValidJobIds.slice(0, maxJobs);
+      // 상한은 지정 + 선택 합계 기준 (서버 resolveStudentJobs와 동일 규약)
+      const remainingSlots = Math.max(0, maxJobs - appointedIds.length);
+      const validJobIds = [
+        ...appointedIds,
+        ...normalIds.slice(0, remainingSlots),
+      ];
 
       const grossSalary =
         validJobIds.length === 0
           ? 0
           : baseSalary + Math.max(0, validJobIds.length - 1) * additionalSalary;
 
-      // 대통령 보너스는 캡 slice 이전 전체(allValidJobIds) 기준 — 서버 급여 계산과 동일 규약
-      // (순서로 보너스 유실 방지, 대통령은 선생님 배정 전용이라 farming 무관)
+      // 대통령 보너스는 교사가 지정한 대통령 직업에서만, 중복 제거 후 1회 (서버와 동일 규약)
       let bonus = 0;
-      if (Array.isArray(jobs)) {
-        for (const jobId of allValidJobIds) {
-          const job = jobs.find((j) => j.id === jobId);
-          if (job?.title === "대통령") bonus += PRESIDENT_BONUS;
-        }
+      for (const jobId of appointedIds) {
+        if (jobById.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
       }
       const totalGross = grossSalary + bonus;
 
@@ -935,6 +949,7 @@ const AdminSettingsModal = ({
               email: userData.email || "",
               classCode: userClassCode,
               selectedJobIds: userData.selectedJobIds || [],
+              appointedJobIds: userData.appointedJobIds || [],
               cash: userData.money || userData.cash || 0, // money 필드도 확인
               lastSalaryDate: userData.lastSalaryDate
                 ? userData.lastSalaryDate.toDate()
@@ -976,6 +991,7 @@ const AdminSettingsModal = ({
               email: userData.email || "",
               classCode: userData.classCode || "미지정",
               selectedJobIds: userData.selectedJobIds || [],
+              appointedJobIds: userData.appointedJobIds || [],
               cash: userData.cash || 0,
               lastSalaryDate: userData.lastSalaryDate
                 ? userData.lastSalaryDate.toDate()
@@ -1137,6 +1153,41 @@ const AdminSettingsModal = ({
     }
   };
 
+  // 지정 직업 이관 (1회성) — 기존 selectedJobIds에 있던 지정 전용 직업(대통령 등)을
+  // 교사 전용 필드 appointedJobIds로 옮긴다. 이관 전까지는 급여 보너스·권한이 인정되지 않으므로
+  // 업데이트 직후 한 번 실행해야 한다. dryRun으로 먼저 대상을 눈으로 확인한 뒤 적용한다.
+  const handleMigrateAppointedJobs = async () => {
+    try {
+      const migrateFn = httpsCallable(functions, "migrateAppointedJobs");
+      const preview = await migrateFn({ dryRun: true });
+      const moved = preview.data?.moved || [];
+
+      if (moved.length === 0) {
+        alert("이관할 지정 직업이 없습니다. (이미 이관되었거나 대상 없음)");
+        return;
+      }
+
+      const list = moved
+        .map((m) => `· ${m.name}: ${(m.jobTitles || []).join(", ")}`)
+        .join("\n");
+      if (
+        !window.confirm(
+          `아래 학생의 지정 직업을 '선생님 지정' 필드로 옮깁니다.\n` +
+            `선생님이 배정한 게 맞는지 확인해주세요 (학생이 몰래 넣은 직업이면 여기서 취소하고 먼저 회수하세요).\n\n` +
+            `${list}\n\n적용할까요?`,
+        )
+      ) {
+        return;
+      }
+
+      const result = await migrateFn({ dryRun: false });
+      alert(`이관 완료: ${result.data?.movedCount ?? 0}명`);
+      loadStudents();
+    } catch (error) {
+      alert("지정 직업 이관 오류: " + error.message);
+    }
+  };
+
   // 학급 구성원 로드
   const loadClassMembers = useCallback(async () => {
     if (!db) {
@@ -1205,9 +1256,9 @@ const AdminSettingsModal = ({
   // 학생 직업 편집 모달 열기
   const handleEditStudentJobs = (student) => {
     setSelectedStudent(student);
-    setTempSelectedJobIds(
-      Array.isArray(student.selectedJobIds) ? [...student.selectedJobIds] : [],
-    );
+    // 교사 화면에서는 지정 직업(appointedJobIds)도 함께 체크 상태로 보여준다.
+    // 저장 시 handleSaveStudentJobs가 지정/일반을 다시 분리해 각 필드에 기록한다.
+    setTempSelectedJobIds(getEffectiveJobIds(student));
     setShowEditStudentJobsModal(true);
   };
 
@@ -1255,12 +1306,26 @@ const AdminSettingsModal = ({
     setAppLoading(true);
 
     try {
-      // 삭제된 직업의 유령 id는 저장 시 함께 정리 (재기록 방지)
+      // 삭제된 직업의 유령 id는 저장 시 함께 정리 (재기록 방지) + 중복 제거
       const cleanedJobIds = Array.isArray(jobs)
-        ? tempSelectedJobIds.filter((id) => jobs.some((j) => j.id === id))
-        : tempSelectedJobIds;
+        ? [...new Set(toJobIdArray(tempSelectedJobIds))].filter((id) =>
+            jobs.some((j) => j.id === id),
+          )
+        : [...new Set(toJobIdArray(tempSelectedJobIds))];
+
+      // 🔒 지정 전용 직업(대통령 등)은 학생이 스스로 가질 수 없으므로 별도 필드에 기록한다.
+      //    appointedJobIds = 교사만 write 가능(firestore.rules) → 자가임명 차단의 핵심.
+      //    나머지 일반 직업은 selectedJobIds에 그대로 둔다.
+      const jobById = new Map((jobs || []).map((j) => [j.id, j]));
+      const appointedJobIds = cleanedJobIds.filter((id) =>
+        isAppointedOnlyJob(jobById.get(id)),
+      );
+      const selectedJobIds = cleanedJobIds.filter(
+        (id) => !isAppointedOnlyJob(jobById.get(id)),
+      );
 
       // 🔒 직업 개수 상한: 선생님 배정도 상한 적용(사용자 결정). 초과 시 저장 차단.
+      //    상한은 '지정 + 선택 합계'에 적용한다(서버 resolveStudentJobs와 동일 규약).
       //    더 배정하려면 급여 설정에서 '직업 개수 상한'을 올리면 된다.
       const maxJobs =
         Number.isInteger(salarySettings.maxJobsPerStudent) && salarySettings.maxJobsPerStudent >= 1
@@ -1276,14 +1341,15 @@ const AdminSettingsModal = ({
 
       const userRef = firebaseDoc(db, "users", selectedStudent.id);
       await firebaseUpdateDoc(userRef, {
-        selectedJobIds: cleanedJobIds,
+        selectedJobIds,
+        appointedJobIds,
         updatedAt: serverTimestamp(),
       });
 
       setStudents((prevStudents) =>
         prevStudents.map((student) =>
           student.id === selectedStudent.id
-            ? { ...student, selectedJobIds: cleanedJobIds }
+            ? { ...student, selectedJobIds, appointedJobIds }
             : student,
         ),
       );
@@ -1367,12 +1433,21 @@ const AdminSettingsModal = ({
 
         try {
           const userRef = firebaseDoc(db, "users", userId);
-          await firebaseUpdateDoc(userRef, { isAdmin: !currentStatus });
+          // ⚠️ isApproved도 함께 세팅해야 한다 (2026-07-14 승인 게이트 도입):
+          //    관리자 권한은 isAdmin && isApproved 둘 다 true여야 인정된다(firestore.rules isAdmin(),
+          //    functions/authUtils.js hasAdminPower). isAdmin만 켜면 권한이 하나도 안 생기는
+          //    '반쪽 관리자'가 된다. 권한 제거 시엔 승인도 함께 내린다.
+          const nextIsAdmin = !currentStatus;
+          await firebaseUpdateDoc(userRef, {
+            isAdmin: nextIsAdmin,
+            isApproved: nextIsAdmin,
+            updatedAt: serverTimestamp(),
+          });
 
           setClassMembers((prevMembers) =>
             prevMembers.map((member) =>
               member.id === userId
-                ? { ...member, isAdmin: !currentStatus }
+                ? { ...member, isAdmin: nextIsAdmin, isApproved: nextIsAdmin }
                 : member,
             ),
           );
@@ -2638,6 +2713,14 @@ const AdminSettingsModal = ({
                   >
                     🔄 주급 1회분 회수
                   </button>
+                  <button
+                    onClick={handleMigrateAppointedJobs}
+                    title="대통령 등 '선생님 지정' 직업을 교사 전용 필드로 옮깁니다. 업데이트 후 한 번만 실행하면 됩니다."
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition"
+                    style={{ background: "#ffffff", color: "#0f766e", border: "1px solid #5eead4" }}
+                  >
+                    🛡️ 지정 직업 이관 (1회)
+                  </button>
                 </div>
               </div>
 
@@ -2682,13 +2765,12 @@ const AdminSettingsModal = ({
                       {/* 학생 카드 그리드 */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {students.map((student) => {
-                          const salaryCalc = calculateSalary(
-                            student.selectedJobIds,
-                            true,
-                          );
+                          // 교사 지정 직업(대통령 등)도 포함해 계산·표시 (jobPermissions 규약)
+                          const studentJobIds = getEffectiveJobIds(student);
+                          const salaryCalc = calculateSalary(studentJobIds, true);
                           const isSelected = selectedStudentIds.includes(student.id);
-                          const jobTitles = Array.isArray(student.selectedJobIds) && student.selectedJobIds.length > 0
-                            ? student.selectedJobIds
+                          const jobTitles = studentJobIds.length > 0
+                            ? studentJobIds
                                 .map((jobId) => {
                                   const job = Array.isArray(jobs) ? jobs.find((j) => j.id === jobId) : null;
                                   return job ? job.title : null;

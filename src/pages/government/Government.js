@@ -21,6 +21,7 @@ import {
   // orderBy, // orderBy는 잠시 사용하지 않습니다.
 } from "firebase/firestore";
 
+import { hasJobTitle } from "../../utils/jobPermissions";
 // 날짜 포맷팅 헬퍼 함수
 const formatDate = (dateString) => {
     if (!dateString) return "정보 없음";
@@ -64,9 +65,9 @@ const LawManagement = ({ classCode }) => {
   // 대통령 또는 관리자 권한 확인 함수
   const canManageLaws = useCallback(() => {
     if (isAdmin()) return true;
-    if (!userDoc?.selectedJobIds || !jobs || jobs.length === 0) return false;
-    const selectedJobs = jobs.filter(job => userDoc.selectedJobIds.includes(job.id));
-    return selectedJobs.some(job => job.title === '대통령');
+    // 대통령은 교사가 지정하는 직업(appointedJobIds) — 학생이 스스로 넣을 수 없다.
+    // 화면 표시용 판정이며, 실제 권한은 서버(functions)가 다시 검증한다.
+    return hasJobTitle(userDoc, jobs, '대통령');
   }, [isAdmin, userDoc, jobs]);
 
   // 법안 데이터 가져오기 함수

@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* eslint-disable max-len */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, findApprovedAdminSnap, hasTeacherPower } = require("./utils");
 
 // 정상 상점과 동일한 정책
 const WHOLESALE_COST_RATIO = 0.3; // 재고 보충 도매가 = 정가의 30%
@@ -35,12 +35,7 @@ exports.completeGroupPurchase = onCall(
     // 관리자 찾기
     let adminRef = null;
     try {
-      const adminSnapshot = await db
-        .collection("users")
-        .where("classCode", "==", callerClassCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminSnapshot = await findApprovedAdminSnap(callerClassCode);
       if (!adminSnapshot.empty) {
         adminRef = adminSnapshot.docs[0].ref;
       }
@@ -201,10 +196,8 @@ exports.completeGroupPurchase = onCall(
         //   - 실제 "돌리기(쓰기)" 카운트(dailySpinCount)는 drawRandomItem 사용 시점에 자동 증가.
         if (isRandomDraw) {
           const winnerData = winnerUserSnap.exists ? winnerUserSnap.data() : {};
-          const isWinnerAdmin =
-            winnerData.isAdmin === true ||
-            winnerData.isSuperAdmin === true ||
-            winnerData.isTeacher === true;
+          // 한도 면제는 '승인된' 교사/관리자만 (미승인 자가가입 교사 차단 — drawRandomItem과 동일 정책)
+          const isWinnerAdmin = hasTeacherPower(winnerData);
           if (!isWinnerAdmin) {
             const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
             const drawDayKey = `${nowKst.getUTCFullYear()}-${String(

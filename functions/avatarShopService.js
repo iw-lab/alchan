@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* eslint-disable max-len */
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, checkIdempotent, markIdempotent } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, checkIdempotent, markIdempotent, findApprovedAdminSnap } = require("./utils");
 
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 
@@ -211,12 +211,7 @@ exports.purchaseAvatarItem = onCall(
     // 관리자 찾기
     let adminRef = null;
     try {
-      const adminSnap = await db
-        .collection("users")
-        .where("classCode", "==", classCode)
-        .where("isAdmin", "==", true)
-        .limit(1)
-        .get();
+      const adminSnap = await findApprovedAdminSnap(classCode);
       if (!adminSnap.empty) {
         adminRef = adminSnap.docs[0].ref;
       }
