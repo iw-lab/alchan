@@ -4880,36 +4880,19 @@ exports.processSettlement = onCall(
         throw new HttpsError("invalid-argument", "합의금은 0보다 커야 합니다.");
       }
 
-      if (senderId === recipientId) {
-        throw new HttpsError(
-          "invalid-argument",
-          "송금자와 수금자가 동일하여 합의금을 처리할 수 없습니다.",
-        );
-      }
-
       const reportRef = db
         .collection("classes")
         .doc(classCode)
         .collection("policeReports")
         .doc(reportId);
-      const senderRef = db.collection("users").doc(senderId);
-      const recipientRef = db.collection("users").doc(recipientId);
 
       await db.runTransaction(async (transaction) => {
-        const [reportDoc, senderDoc, recipientDoc] = await transaction.getAll(
-          reportRef,
-          senderRef,
-          recipientRef,
-        );
-
+        // 1) 먼저 신고 문서를 읽어 실제 당사자를 파생한다. (users 읽기는 그 다음)
+        const reportDoc = await transaction.get(reportRef);
         if (!reportDoc.exists) throw new Error("신고 정보를 찾을 수 없습니다.");
-        if (!senderDoc.exists)
-          throw new Error("가해자 정보를 찾을 수 없습니다.");
-        if (!recipientDoc.exists)
-          throw new Error("피해자 정보를 찾을 수 없습니다.");
+        const reportData = reportDoc.data();
 
         // 멱등성: 이미 합의 처리된 신고는 재처리(중복 지급) 차단
-        const reportData = reportDoc.data();
         if (
           reportData.settlementPaid === true ||
           reportData.status === "settled" ||
@@ -4921,8 +4904,81 @@ exports.processSettlement = onCall(
           );
         }
 
+        // 접수 전/이미 종결된 신고는 합의 불가 — 정상 처리 대기 상태(제출·접수)에서만.
+        // (반려·벌금 처리 완료된 건이나, 접수 절차를 건너뛴 신고를 바로 지급하는 것을 막는다.
+        //  UI도 submitted/accepted 신고에만 합의 버튼을 노출한다.)
+        if (
+          reportData.status !== "submitted" &&
+          reportData.status !== "accepted"
+        ) {
+          throw new HttpsError(
+            "failed-precondition",
+            "접수 대기 또는 접수된 신고만 합의 처리할 수 있습니다.",
+          );
+        }
+
+        // 🔒 2026-07-15 codex 교차검증: 실제 송·수금 당사자는 클라이언트 파라미터가 아니라
+        //    신고 문서에서 파생한다(위변조 방지). 가해자(지급자)는 오직 신고의 피고에서 파생하고
+        //    클라이언트 senderId는 신뢰하지 않는다 — defendantId를 비운 위조 신고 + 임의 senderId
+        //    조합으로 남의 현금을 빼가는 경로 차단.
+        const effectiveSenderId =
+          reportData.defendantId || reportData.reportedUserId || null;
+        if (!effectiveSenderId) {
+          throw new HttpsError(
+            "failed-precondition",
+            "이 신고에 가해자(피고소인) 정보가 없어 합의금을 처리할 수 없습니다.",
+          );
+        }
+
+        // 수령자(피해자)도 신고 문서의 victimId로 고정. 피해자가 없는 구(舊) 신고만
+        // 담당자가 수령인을 직접 고르는데, 이 자유 선택은 경찰청장(학생) 위조 위험이 있으므로
+        // 교사(관리자)만 허용한다.
+        if (!reportData.victimId && !isAdmin) {
+          throw new HttpsError(
+            "permission-denied",
+            "피해자가 지정되지 않은 신고는 담임 선생님만 합의금을 처리할 수 있습니다.",
+          );
+        }
+        const effectiveRecipientId = reportData.victimId || recipientId;
+
+        if (!effectiveRecipientId) {
+          throw new HttpsError(
+            "failed-precondition",
+            "합의금 받을 피해자를 지정해주세요.",
+          );
+        }
+        if (effectiveSenderId === effectiveRecipientId) {
+          throw new HttpsError(
+            "invalid-argument",
+            "가해자와 피해자가 같아 합의금을 처리할 수 없습니다.",
+          );
+        }
+
+        const senderRef = db.collection("users").doc(effectiveSenderId);
+        const recipientRef = db.collection("users").doc(effectiveRecipientId);
+        const [senderDoc, recipientDoc] = await transaction.getAll(
+          senderRef,
+          recipientRef,
+        );
+        if (!senderDoc.exists)
+          throw new Error("가해자 정보를 찾을 수 없습니다.");
+        if (!recipientDoc.exists)
+          throw new Error("피해자 정보를 찾을 수 없습니다.");
+
         const senderData = senderDoc.data();
         const recipientData = recipientDoc.data();
+
+        // 교차 학급 지급 차단 — 당사자 모두 이 학급 소속이어야 한다.
+        if (
+          senderData.classCode !== classCode ||
+          recipientData.classCode !== classCode
+        ) {
+          throw new HttpsError(
+            "failed-precondition",
+            "합의 당사자가 이 학급 소속이 아닙니다.",
+          );
+        }
+
         const processorName =
           userData.name || userData.displayName || "경찰서";
 
@@ -4937,6 +4993,7 @@ exports.processSettlement = onCall(
           settlementAmount: settlementAmount,
           amount: settlementAmount,
           settlementPaid: true,
+          victimId: effectiveRecipientId,
           resolution: request.data.reason || "상호 합의에 따른 합의금 지급",
           resolutionDate: admin.firestore.FieldValue.serverTimestamp(),
           processedById: uid,
@@ -4948,14 +5005,14 @@ exports.processSettlement = onCall(
         //    반드시 await 해야 커밋 전에 거래내역이 기록된다(누락 방지).
         await logActivity(
           transaction,
-          senderId,
+          effectiveSenderId,
           LOG_TYPES.CASH_EXPENSE,
           `경찰서 합의금으로 ${recipientData.name}에게 ${settlementAmount}원 지급`,
           { reportId, victimName: recipientData.name },
         );
         await logActivity(
           transaction,
-          recipientId,
+          effectiveRecipientId,
           LOG_TYPES.CASH_INCOME,
           `경찰서 합의금으로 ${senderData.name}에게서 ${settlementAmount}원 수령`,
           { reportId, offenderName: senderData.name },

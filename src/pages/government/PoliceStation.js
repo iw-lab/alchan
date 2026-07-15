@@ -183,8 +183,11 @@ const SettlementModal = ({
  const [senderId, setSenderId] = useState(
  safeComplaint.defendantId || safeComplaint.reportedUserId || "",
  );
+ // 합의금 수령인 = 피해자. 신고 시 지정한 victimId를 기본값으로.
+ // 피해자를 지정하지 않은(구) 신고는 비워둬서, 담당자가 의식적으로 고르게 한다
+ // (예전처럼 신고한 경찰 학생에게 자동으로 흘러가는 것을 방지).
  const [recipientId, setRecipientId] = useState(
- safeComplaint.complainantId || safeComplaint.reporterId || "",
+ safeComplaint.victimId || "",
  );
  const auth = useAuth();
  const currentAdminId = auth.userDoc?.id;
@@ -263,14 +266,15 @@ const SettlementModal = ({
 
  <div className="settlement-modal-content">
  <p className="text-slate-800 mb-2">
- <strong>고소인:</strong> {getUserNameById(recipientId)}
+ <strong>피해자(합의금 받는 사람):</strong>{" "}
+ {recipientId ? getUserNameById(recipientId) : "미지정 — 아래에서 선택"}
  </p>
  <p className="text-slate-800 mb-4">
- <strong>피고소인:</strong> {getUserNameById(senderId)}
+ <strong>가해자(합의금 내는 사람):</strong> {getUserNameById(senderId)}
  </p>
  <div className="form-group">
  <label htmlFor="settlementSender" className="form-label">
- 송금자:
+ 송금자(가해자):
  </label>
  <select
  id="settlementSender"
@@ -288,13 +292,14 @@ const SettlementModal = ({
  </div>
  <div className="form-group">
  <label htmlFor="settlementRecipient" className="form-label">
- 수금자:
+ 수금자(피해자):
  </label>
  <select
  id="settlementRecipient"
  className="form-select"
  value={recipientId}
  onChange={(e) => setRecipientId(e.target.value)}
+ disabled={!!safeComplaint.victimId}
  >
  <option value="">-- 선택 --</option>
  {availableRecipients.map((user) => (
@@ -303,6 +308,15 @@ const SettlementModal = ({
  </option>
  ))}
  </select>
+ {safeComplaint.victimId ? (
+ <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: 4 }}>
+ 신고 시 지정된 피해자에게 지급됩니다(변경 불가). 서버도 이 피해자로 고정합니다.
+ </p>
+ ) : (
+ <p style={{ fontSize: "0.8rem", color: "#b45309", marginTop: 4 }}>
+ 이 신고엔 피해자가 지정되지 않았습니다. 수령인을 직접 선택하세요(담임 선생님만 처리 가능).
+ </p>
+ )}
  </div>
  <div className="form-group">
  <label htmlFor="settlementAmount" className="form-label">
@@ -739,6 +753,8 @@ const PoliceStation = () => {
  processedByName: null,
  settlementPaid: false,
  defendantId: newReportData.reportedUserId,
+ // 피해자(합의금 수령 대상). 지정 안 하면 null — 합의 모달에서 담당자가 직접 선택.
+ victimId: newReportData.victimId || null,
  };
  try {
  await addDoc(reportsRef, newReport);
@@ -1112,6 +1128,8 @@ const PoliceStation = () => {
  reportToProcess.complainantId || reportToProcess.reporterId,
  defendantId:
  reportToProcess.defendantId || reportToProcess.reportedUserId,
+ // 피해자(합의금 수령 기본값). 구 신고엔 없을 수 있어 그대로 전달(모달에서 폴백).
+ victimId: reportToProcess.victimId || null,
  };
 
  if (!mappedReport.complainantId || !mappedReport.defendantId) {

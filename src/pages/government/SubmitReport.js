@@ -10,6 +10,7 @@ const SubmitReport = ({
 }) => {
   const [reportData, setReportData] = useState({
     reportedUserId: "",
+    victimId: "",
     reason: "",
     details: "",
   });
@@ -20,7 +21,15 @@ const SubmitReport = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setReportData({ ...reportData, [name]: value });
+    setReportData((prev) => {
+      const next = { ...prev, [name]: value };
+      // 신고 대상(가해자)을 이미 고른 피해자와 같은 사람으로 바꾸면 피해자 선택을 비운다.
+      // (드롭다운에선 사라지지만 state엔 남아 제출 시 알림으로 막히던 UX 어색함 제거)
+      if (name === "reportedUserId" && next.victimId === value) {
+        next.victimId = "";
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -29,10 +38,15 @@ const SubmitReport = ({
       alert("신고 대상과 사유를 모두 선택해주세요.");
       return;
     }
+    if (reportData.victimId && reportData.victimId === reportData.reportedUserId) {
+      alert("피해자와 신고 대상(가해자)은 같을 수 없습니다.");
+      return;
+    }
     onSubmitReport(reportData);
     // 폼 초기화
     setReportData({
       reportedUserId: "",
+      victimId: "",
       reason: "",
       details: "",
     });
@@ -98,6 +112,28 @@ const SubmitReport = ({
                 {user.name}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="victimId">
+            피해자 <span style={{ color: "#64748b", fontWeight: 400 }}>(합의금을 받을 사람 · 선택)</span>
+          </label>
+          <select
+            id="victimId"
+            name="victimId"
+            value={reportData.victimId}
+            onChange={handleChange}
+            className="form-select"
+          >
+            <option value="">피해자 없음 / 나중에 지정</option>
+            {users
+              .filter((user) => user.id !== reportData.reportedUserId)
+              .map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
           </select>
         </div>
 

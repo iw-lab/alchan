@@ -83,6 +83,34 @@ service cloud.firestore {
               isSuperAdmin());
     }
 
+    // 🚨 경찰서 신고의 '당사자 신원' 필드는 생성 후 불변.
+    //    합의금이 이 필드(피해자=victimId, 가해자=defendantId)를 기준으로 서버에서 지급되므로,
+    //    같은 반 학생이 지급 직전에 update로 피해자를 바꿔치기해 합의금을 가로채는 것을 막는다.
+    //    (접수·벌금 처리는 status·amount 등만 바꾸므로 이 동결에 영향받지 않는다.
+    //     합의금 지급 CF는 Admin SDK라 규칙을 우회해 필요한 필드를 갱신할 수 있다.)
+    function policeReportIdentityFrozen() {
+      return request.resource.data.get('reporterId', '') == resource.data.get('reporterId', '') &&
+             request.resource.data.get('complainantId', '') == resource.data.get('complainantId', '') &&
+             request.resource.data.get('defendantId', '') == resource.data.get('defendantId', '') &&
+             request.resource.data.get('reportedUserId', '') == resource.data.get('reportedUserId', '') &&
+             request.resource.data.get('victimId', '') == resource.data.get('victimId', '');
+    }
+
+    // 🚨 신고 '생성' 시 신원 검증 — update 동결만으로는 부족하다. 검증 없는 create를 열어두면
+    //    학생이 victimId=자기, defendantId=타겟(또는 빈값)인 위조 신고를 새로 만들어 합의금을
+    //    자기에게 유도할 수 있다(codex 2026-07-15). 그래서 생성 자체를 다음으로 제약한다:
+    //     · 신고자는 반드시 본인(reporterId==uid), 고소인도 본인
+    //     · 합의금 수령 대상(victimId)에 자기 자신을 지정 금지 — 자기지급 원천 차단
+    //     · 가해자(defendantId)는 존재하는 문자열이고 본인이 아님(→ 서버 senderId 파생이 항상 유효)
+    function policeReportCreateValid() {
+      return request.resource.data.get('reporterId', '') == request.auth.uid &&
+             request.resource.data.get('complainantId', request.auth.uid) == request.auth.uid &&
+             request.resource.data.get('defendantId', '') is string &&
+             request.resource.data.get('defendantId', '') != '' &&
+             request.resource.data.get('defendantId', '') != request.auth.uid &&
+             request.resource.data.get('victimId', '') != request.auth.uid;
+    }
+
     // 문자열 길이 검증 헬퍼
     function isValidString(value, maxLen) {
       return value is string && value.size() <= maxLen;
@@ -601,8 +629,10 @@ service cloud.firestore {
     // ========================================================
     match /policeReports/{reportId} {
       allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
-      allow create: if isSignedIn();
-      allow update: if isSameClass(resource.data.classCode) || isAdmin();
+      allow create: if isAdmin() ||
+                       (isSameClass(request.resource.data.classCode) && policeReportCreateValid());
+      allow update: if isAdmin() ||
+                       (isSameClass(resource.data.classCode) && policeReportIdentityFrozen());
       allow delete: if isAdmin();
     }
 
@@ -889,8 +919,10 @@ service cloud.firestore {
       // 🚨 경찰서 신고 서브컬렉션 (classes/{classCode}/policeReports/{reportId})
       match /policeReports/{reportId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow create: if isSignedIn() && isSameClass(classCode);
-        allow update: if isSignedIn() && isSameClass(classCode);
+        allow create: if isAdmin() ||
+                         (isSignedIn() && isSameClass(classCode) && policeReportCreateValid());
+        allow update: if isAdmin() ||
+                         (isSignedIn() && isSameClass(classCode) && policeReportIdentityFrozen());
         allow delete: if isAdmin();
       }
 
