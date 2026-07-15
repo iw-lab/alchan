@@ -6,6 +6,7 @@ import React, {
  useMemo,
  useRef,
 } from "react";
+import { useLocation } from "react-router-dom";
 import "./Dashboard.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, copyDefaultDataToNewClass } from "../../firebase";
@@ -586,6 +587,22 @@ function Dashboard({ adminTabMode }) {
  setShowAdminSettingsModal(true);
  }
  }, [adminTabMode, isAdmin]);
+
+ // 🐛 관리자 설정 화면에서 '알찬 오늘의 할일' 등을 눌러도 안 넘어가던 버그 수정.
+ //   /admin/app-settings 와 /dashboard/tasks 는 같은 Dashboard 컴포넌트를 렌더하므로
+ //   라우트만 바뀌면 재마운트되지 않아 showAdminSettingsModal 상태가 그대로 남는다.
+ //   실제 경로 변경을 감지해, 관리자 라우트(adminTabMode)가 아닌 곳으로 이동하면 모달을 닫는다.
+ //   (마운트 시점엔 닫지 않으므로, 할일 화면에서 버튼으로 연 모달의 새로고침 유지는 그대로.)
+ const location = useLocation();
+ const prevPathRef = useRef(location.pathname);
+ useEffect(() => {
+ if (prevPathRef.current !== location.pathname) {
+ if (!adminTabMode) {
+ setShowAdminSettingsModal(false);
+ }
+ prevPathRef.current = location.pathname;
+ }
+ }, [location.pathname, adminTabMode]);
 
  // 직업 개수 상한 로드 — 급여 설정(settings/salarySettings_{classCode})의 maxJobsPerStudent.
  // 학생 직업 선택 UI 제한 기준. 문서/필드 없으면 기본 5 유지.
