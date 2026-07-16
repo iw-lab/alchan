@@ -564,6 +564,111 @@ exports.claimDailyReward = onCall(
   },
 );
 
+// 🎮 게임 보상 지급 (서버 권위 — 학습게임 타자/체스/오목/필사)
+//   기존: 각 게임이 클라에서 cash/coupons를 직접 increment하고, 일일 횟수도 클라가 관리
+//         (체스·오목은 localStorage, 타자·필사는 users 문서 클라 write) → 학생이 금액·횟수를
+//         조작해 무제한 보상 가능.
+//   변경: 서버가 gameType별 '일일 횟수 상한'과 '금액 상한'을 강제한다. 일일 카운터는 서버
+//         users.gameRewardDaily[gameType]에 두어(KST 날짜 기준) 클라가 못 지운다.
+//   ⚠️ 한계: 서버는 학생이 실제로 게임을 이겼는지 검증할 수 없다(클라 주장). 그래서 무한증식만
+//         차단(일일 상한 + 금액 상한). 금액은 클라 제안값을 상한 내에서 수용하되 audit 로그로 기록.
+//   ⚠️ 병행 배포: rules 미변경(P2 배치6에서 gameRewardDaily·cash 직접 write 잠금).
+// 게임별 보상 상한 (모듈 상수 — 매 호출 재생성 방지).
+//   ⚠️ 클라 보상표의 최대치와 반드시 동기화: typing=typingWords.js(10만/20),
+//      chess=ChessGame.generateRewardCards(5만/20), omok=OmokGame.generateRewardCards(최대 8999/3).
+//      어느 한쪽만 바뀌면 정상 보상이 거부되거나(상한↓) 새 취약점이 생기므로(상한↑) 함께 수정할 것.
+//   transcription: 예정 — 아직 클라 미배선(필사 쿠폰은 별도 배치에서 CF로 이관 예정).
+const GAME_REWARD_CONFIG = {
+  // typing 쿠폰 실제 최대 = round(20 * COUPON_REDUCTION(1/3)) = 7 (typingWords.js:639).
+  //   보상표 원값 20이 아니라 감산 후 값이라 상한을 7로 둬야 조작 요청(8~20)을 막는다.
+  typing: { maxCash: 100000, maxCoupon: 7, dailyLimit: 5 },
+  chess: { maxCash: 50000, maxCoupon: 20, dailyLimit: 3 },
+  omok: { maxCash: 9000, maxCoupon: 3, dailyLimit: 5 },
+  transcription: { maxCash: 0, maxCoupon: 1, dailyLimit: 10 },
+};
+
+exports.grantGameReward = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid } = await checkAuthAndGetUserData(request);
+    const {
+      gameType,
+      rewardType,
+      amount,
+      idempotencyKey = null,
+    } = request.data || {};
+
+    const cfg = GAME_REWARD_CONFIG[gameType];
+    if (!cfg) {
+      throw new HttpsError("invalid-argument", "알 수 없는 게임입니다.");
+    }
+    if (rewardType !== "cash" && rewardType !== "coupon") {
+      throw new HttpsError("invalid-argument", "보상 종류가 올바르지 않습니다.");
+    }
+    const max = rewardType === "cash" ? cfg.maxCash : cfg.maxCoupon;
+    // 금액 검증: 양의 정수, 상한 이하 (max=0이면 그 보상종류 자체가 불가)
+    if (!Number.isInteger(amount) || amount <= 0 || amount > max) {
+      throw new HttpsError(
+        "invalid-argument",
+        `유효하지 않은 보상 금액입니다. (${gameType} ${rewardType} 최대 ${max})`,
+      );
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    let result;
+    await db.runTransaction(async (transaction) => {
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
+
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) {
+        throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
+      }
+      const data = userDoc.data();
+
+      // KST 오늘 (트랜잭션 콜백 안에서 계산 — 재시도 시 최신 반영)
+      const today = new Date(Date.now() + 9 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
+      // 서버 일일 카운터 — 오늘 아니면 0부터
+      const daily = data.gameRewardDaily || {};
+      const g = daily[gameType] || {};
+      const count = g.date === today ? Number(g.count) || 0 : 0;
+      if (count >= cfg.dailyLimit) {
+        throw new HttpsError(
+          "resource-exhausted",
+          "오늘 이 게임의 보상 한도를 모두 받았습니다.",
+        );
+      }
+
+      const field = rewardType === "cash" ? "cash" : "coupons";
+      transaction.update(userRef, {
+        [field]: admin.firestore.FieldValue.increment(amount),
+        [`gameRewardDaily.${gameType}`]: { date: today, count: count + 1 },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await logActivity(
+        transaction,
+        uid,
+        rewardType === "cash" ? LOG_TYPES.CASH_INCOME : LOG_TYPES.COUPON_EARN,
+        `${gameType} 게임 보상`,
+        { amount, gameType, rewardType, source: "gameReward" },
+      );
+
+      markIdempotent(transaction, keyRef);
+      result = {
+        success: true,
+        amount,
+        rewardType,
+        remaining: cfg.dailyLimit - count - 1,
+      };
+    });
+
+    return result;
+  },
+);
+
 // 🔥 할일 승인 요청 (학생이 보너스 할일 완료 시 호출)
 exports.submitTaskApproval = onCall(
   { region: "asia-northeast3" },

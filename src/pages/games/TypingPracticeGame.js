@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { doc, getDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore";
-import { db } from "../../firebase";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../../firebase";
 import { difficultyConfig, getRandomSentences, generateRandomReward, getArcadeRewardParams } from "../../data/typingWords";
 import FallingWordsGame from "./FallingWordsGame";
 import TypingRanking from "./TypingRanking";
@@ -256,35 +257,30 @@ const TypingPracticeGame = ({ onClose }) => {
     setTimeout(async () => {
       setLoading(true);
       try {
-        const userRef = doc(db, "users", user.uid);
         const rewardAmount = cardType === "cash" ? rewardData.cash : rewardData.coupon;
         if (!Number.isFinite(rewardAmount) || rewardAmount <= 0) {
           throw new Error(`잘못된 보상 금액: ${rewardAmount}`);
         }
 
-        const updates = {
-          typingGameDailyCount: dailyPlayCount + 1,
-          typingGameLastPlayDate: serverTimestamp()
-        };
+        // 💰 서버 CF가 일일 한도·금액 상한을 검증하고 지급 (클라 직접 increment 제거).
+        //    일일 카운트도 서버 users.gameRewardDaily.typing이 진실원.
+        const grant = httpsCallable(functions, "grantGameReward");
+        await grant({
+          gameType: "typing",
+          rewardType: cardType,
+          amount: rewardAmount,
+          idempotencyKey:
+            (typeof crypto !== "undefined" && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : `typing_${user.uid}_${dailyPlayCount}`,
+        });
 
-        // ⚠️ 절대값(userDoc.cash + reward) 덮어쓰기 금지 — onSnapshot 지연/오프라인 캐시로
-        // userDoc.cash가 stale일 때 다른 트랜잭션(친구 송금·자동 적금 납입 등)을 무효화해
-        // 학생 자산이 비현실적으로 부풀려지는 race condition이 발생함. increment 사용 필수.
-        if (cardType === "cash") {
-          updates.cash = increment(rewardAmount);
-        } else {
-          updates.coupons = increment(rewardAmount);
-        }
-
-        await updateDoc(userRef, updates);
-        // 로컬 상태에는 델타 형태로 전달 (updateUser는 increment FieldValue를 처리할 수 없음)
+        // ⚠️ cash/coupons는 grantGameReward CF가 서버에서 atomic increment로 지급한다.
+        //    여기서 절대값(userDoc.cash + reward)을 다시 쓰면 CF의 increment를 덮어써
+        //    동시 거래(송금·적금·관리자 조정)를 무효화하는 race condition이 재발한다(회귀 금지).
+        //    일일 플레이 카운트만 갱신하고, 잔액은 서버 반영(onSnapshot)을 기다린다.
         if (typeof updateUser === "function") {
-          await updateUser({
-            typingGameDailyCount: dailyPlayCount + 1,
-            ...(cardType === "cash"
-              ? { cash: (userDoc?.cash || 0) + rewardAmount }
-              : { coupons: (userDoc?.coupons || 0) + rewardAmount }),
-          });
+          await updateUser({ typingGameDailyCount: dailyPlayCount + 1 });
         }
 
         setDailyPlayCount(prev => prev + 1);
@@ -296,7 +292,10 @@ const TypingPracticeGame = ({ onClose }) => {
         }, 1000);
       } catch (error) {
         logger.error("보상 처리 오류:", error);
-        setError("보상 처리 중 오류가 발생했습니다.");
+        const msg = error?.code === "functions/resource-exhausted"
+          ? "오늘 이 게임의 보상 한도를 모두 받았어요."
+          : "보상 처리 중 오류가 발생했습니다.";
+        setError(msg);
         setLoading(false);
       }
     }, 800);

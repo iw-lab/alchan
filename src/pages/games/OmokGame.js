@@ -23,7 +23,8 @@ import {
   increment,
   limit,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, functions } from "../../firebase";
+import { httpsCallable } from "firebase/functions";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePolling } from "../../hooks/usePolling";
 import { getIsIdle } from "../../utils/idleManager";
@@ -572,7 +573,7 @@ const RankDisplay = ({
 };
 
 const OmokGame = () => {
-  const { user, userDoc, addCouponsToUserById, isAdmin, addCash } = useAuth();
+  const { user, userDoc, addCouponsToUserById, isAdmin } = useAuth();
   const [gameId, setGameId] = useState(null);
   const [game, setGame] = useState(null);
   const [error, setError] = useState("");
@@ -1541,41 +1542,39 @@ const OmokGame = () => {
 
     logger.log("[Reward] 보상 선택:", selectedCard);
 
-    // 낙관적 업데이트: 즉시 UI에 반영
     const today = new Date().toDateString();
     const storageKey = `omokPlayCount_${user.uid}_${today}`;
     const newCount = dailyPlayCount + 1;
-
-    localStorage.setItem(storageKey, newCount.toString());
-    setDailyPlayCount(newCount);
     setShowRewardSelection(false);
 
-    setFeedback({
-      message:
-        selectedCard.type === "cash"
-          ? `현금 ${selectedCard.amount.toLocaleString()}원을 획득했습니다!`
-          : `쿠폰 ${selectedCard.amount}개를 획득했습니다!`,
-      type: "success",
-    });
-
     try {
-      // 낙관적 업데이트: 헤더에 즉시 반영
-      if (selectedCard.type === "cash") {
-        // optimisticUpdate({ cash: selectedCard.amount });
-        logger.log("[Reward] 현금 낙관적 업데이트:", selectedCard.amount);
-      } else if (selectedCard.type === "coupon") {
-        // optimisticUpdate({ coupons: selectedCard.amount });
-        logger.log("[Reward] 쿠폰 낙관적 업데이트:", selectedCard.amount);
+      // 💰 서버 CF가 일일 한도(5회)·금액 상한을 검증하고 지급 (클라 직접 addCash/increment 제거).
+      //    일일 카운트 진실원은 서버 users.gameRewardDaily.omok (localStorage는 UI용).
+      //    ⚠️ 성공 메시지·카운트 증가는 서버 지급이 성공한 뒤에만 — 실패(한도초과 등) 시 잘못된
+      //       "획득" 메시지를 먼저 보여주지 않는다.
+      if (selectedCard.type === "cash" || selectedCard.type === "coupon") {
+        const grant = httpsCallable(functions, "grantGameReward");
+        await grant({
+          gameType: "omok",
+          rewardType: selectedCard.type,
+          amount: selectedCard.amount,
+          idempotencyKey:
+            (typeof crypto !== "undefined" && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : `omok_${user.uid}_${Date.now()}`,
+        });
       }
 
-      // Firestore 업데이트
-      if (selectedCard.type === "cash") {
-        logger.log("[Reward] 현금 지급:", selectedCard.amount);
-        await addCash(selectedCard.amount, "AI 오목 승리 보상");
-      } else if (selectedCard.type === "coupon") {
-        logger.log("[Reward] 쿠폰 지급:", selectedCard.amount);
-        await addCouponsToUserById(user.uid, selectedCard.amount);
-      }
+      // 서버 지급 성공 후 UI 반영
+      localStorage.setItem(storageKey, newCount.toString());
+      setDailyPlayCount(newCount);
+      setFeedback({
+        message:
+          selectedCard.type === "cash"
+            ? `현금 ${selectedCard.amount.toLocaleString()}원을 획득했습니다!`
+            : `쿠폰 ${selectedCard.amount}개를 획득했습니다!`,
+        type: "success",
+      });
 
       // 🔥 활동 로그 기록 (AI 오목 승리 보상)
       logActivity(db, {
@@ -1600,14 +1599,12 @@ const OmokGame = () => {
     } catch (error) {
       logger.error("[Reward] Error applying reward:", error);
       setFeedback({
-        message: "보상 지급에 실패했습니다. 다시 시도해주세요.",
+        message:
+          error?.code === "functions/resource-exhausted"
+            ? "오늘 이 게임의 보상 한도를 모두 받았어요."
+            : "보상 지급에 실패했습니다. 다시 시도해주세요.",
         type: "error",
       });
-
-      // 에러 발생 시 롤백 (플레이 카운트만)
-      const rollbackCount = dailyPlayCount;
-      localStorage.setItem(storageKey, rollbackCount.toString());
-      setDailyPlayCount(rollbackCount);
     }
   };
 

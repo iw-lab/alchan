@@ -24,7 +24,9 @@ import {
   deleteDoc,
   onSnapshot,
   limit,
+  functions,
 } from "../../firebase";
+import { httpsCallable } from "firebase/functions";
 import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
 import { getIsIdle } from "../../utils/idleManager";
 import "./ChessGame.css";
@@ -652,6 +654,9 @@ const ChessGame = () => {
 
   // 보상 관련 state
   const [showRewardSelection, setShowRewardSelection] = useState(false);
+  // 보상 카드 이중제출 가드 — 모달이 CF await 후에만 닫히므로, 빠른 연속 클릭이 서로 다른
+  // idempotencyKey로 다회 지급되는 것을 막는다.
+  const rewardProcessingRef = useRef(false);
   const [rewardCards, setRewardCards] = useState([]);
 
   // 일일 플레이 횟수
@@ -979,25 +984,24 @@ const ChessGame = () => {
   // 보상 선택 처리
   const handleRewardSelection = async (selectedCard) => {
     if (!user || !gameId) return;
+    if (rewardProcessingRef.current) return; // 이중제출 차단
+    rewardProcessingRef.current = true;
 
     try {
-      const userRef = doc(db, "users", user.uid);
       const today = new Date().toDateString();
       const storageKey = `chessPlayCount_${user.uid}_${today}`;
 
-      await runTransaction(db, async (transaction) => {
-        const userDocSnap = await transaction.get(userRef);
-        if (!userDocSnap.exists()) return;
-
-        const updateData = {};
-        if (selectedCard.type === "cash") {
-          // 🔥 fix: users 문서의 현금 필드는 `cash` (이전 `balance`는 학생에게 실제 지급되지 않던 버그)
-          updateData.cash = increment(selectedCard.amount);
-        } else if (selectedCard.type === "coupon") {
-          // 🔥 fix: 쿠폰 필드도 `coupons`로 통일 (이전 `couponBalance`는 표시 안 됨)
-          updateData.coupons = increment(selectedCard.amount);
-        }
-        transaction.update(userRef, updateData);
+      // 💰 서버 CF가 일일 한도(3회)·금액 상한을 검증하고 지급 (클라 직접 increment 제거).
+      //    일일 카운트 진실원은 서버 users.gameRewardDaily.chess (localStorage는 UI용).
+      const grant = httpsCallable(functions, "grantGameReward");
+      await grant({
+        gameType: "chess",
+        rewardType: selectedCard.type, // "cash" | "coupon"
+        amount: selectedCard.amount,
+        idempotencyKey:
+          (typeof crypto !== "undefined" && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `chess_${user.uid}_${Date.now()}`,
       });
 
       const newCount = dailyPlayCount + 1;
@@ -1035,7 +1039,15 @@ const ChessGame = () => {
       }, 2000);
     } catch (error) {
       logger.error("Error applying reward:", error);
-      setFeedback({ message: "보상 지급에 실패했습니다.", type: "error" });
+      setFeedback({
+        message:
+          error?.code === "functions/resource-exhausted"
+            ? "오늘 이 게임의 보상 한도를 모두 받았어요."
+            : "보상 지급에 실패했습니다.",
+        type: "error",
+      });
+    } finally {
+      rewardProcessingRef.current = false;
     }
   };
 
