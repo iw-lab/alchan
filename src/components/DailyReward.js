@@ -1,7 +1,8 @@
 // src/components/DailyReward.js - 일일 접속 보상 컴포넌트 (Firestore 동기화)
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
+import { db, functions } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { logger } from "../utils/logger";
 
 /**
@@ -114,42 +115,41 @@ function getRewardForDay(day) {
 }
 
 /**
- * 스트릭을 업데이트하고 보상을 반환합니다. (Firestore 저장)
+ * 스트릭 보상 수령 — 서버(claimDailyReward CF)가 streak·날짜·보상액을 판정하고
+ * cash 지급과 streak 갱신을 한 트랜잭션으로 처리한다.
+ *
+ * 🔒 2026-07 P2 보안: 기존에는 클라가 streak/보상을 계산하고 별도로 cash를 직접
+ *    increment 했다(비원자적 + canClaim 클라판정 → 무한 반복 가능). 이제 지급 권위는
+ *    전적으로 서버에 있고, 클라는 결과로 UI/캐시만 갱신한다. cash write는 하지 않는다.
  */
 export async function claimDailyReward(userId) {
-  const streakInfo = await getStreakInfo(userId);
-
-  if (!streakInfo.canClaim) {
-    return { success: false, message: "오늘 이미 보상을 받았습니다." };
-  }
-
-  const newStreak = streakInfo.streak + 1;
-  const reward = getRewardForDay(newStreak);
-  const icon = newStreak >= 10 ? "🏆" : newStreak >= 7 ? "🎉" : "🎁";
-
-  const newData = {
-    streak: newStreak,
-    lastLogin: new Date().toISOString(),
-    totalClaimed: (streakInfo.totalClaimed || 0) + reward,
-  };
-
   try {
-    const streakRef = doc(db, "users", userId, "meta", "dailyStreak");
-    await setDoc(streakRef, newData);
-    // localStorage 캐시도 갱신 → 이후 getStreakInfo에서 Firestore 안 읽음
-    localStorage.setItem(`streakCache_${userId}`, JSON.stringify(newData));
-  } catch (error) {
-    logger.error("claimDailyReward save error:", error);
-  }
+    // KST 오늘 날짜로 idempotencyKey 구성 → 같은 날 이중클릭 이중지급 차단
+    const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+    const call = httpsCallable(functions, "claimDailyReward");
+    const res = await call({ idempotencyKey: `daily_${userId}_${todayKst}` });
+    const data = res.data || {};
 
-  return {
-    success: true,
-    reward,
-    newStreak,
-    icon,
-    message: `${newStreak}일차 출석 보상: ${reward.toLocaleString()}원!`,
-    isMilestone: newStreak === 10 || newStreak % 30 === 0,
-  };
+    if (data.success) {
+      // localStorage 캐시 갱신 → 이후 getStreakInfo가 Firestore 안 읽음(오늘 받음 표시)
+      const newData = {
+        streak: data.newStreak,
+        lastLogin: new Date().toISOString(),
+        totalClaimed: data.totalClaimed || 0,
+      };
+      localStorage.setItem(`streakCache_${userId}`, JSON.stringify(newData));
+    }
+    return data;
+  } catch (error) {
+    // 이미 받은 경우(서버 재판정) — 정상 흐름으로 처리
+    if (error?.code === "functions/already-exists") {
+      return { success: false, message: "오늘 이미 보상을 받았습니다." };
+    }
+    logger.error("claimDailyReward error:", error);
+    return { success: false, message: "보상 지급에 실패했습니다. 다시 시도해주세요." };
+  }
 }
 
 /**
@@ -158,6 +158,7 @@ export async function claimDailyReward(userId) {
 export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
   const [streakInfo, setStreakInfo] = useState(null);
   const [claimed, setClaimed] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [rewardResult, setRewardResult] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
@@ -175,17 +176,26 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
   }, [userId, autoPopup]);
 
   const handleClaim = async () => {
-    const result = await claimDailyReward(userId);
-    setRewardResult(result);
-    setClaimed(true);
-
-    if (result.success && onClaim) {
-      onClaim(result.reward);
+    // 중복 클릭 가드 — 서버가 idempotency로 이중지급은 막지만, 실패 응답이 성공 UI로
+    // 새는 것을 막기 위해 진행 중/완료 상태에서는 재호출하지 않는다.
+    if (claiming || claimed) return;
+    setClaiming(true);
+    try {
+      const result = await claimDailyReward(userId);
+      if (result.success) {
+        setRewardResult(result);
+        setClaimed(true);
+        if (onClaim) onClaim(result.reward);
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 5000);
+      } else {
+        // 실패(이미 받음 등) — 성공 화면으로 전환하지 않고 배너만 닫는다.
+        setIsVisible(false);
+      }
+    } finally {
+      setClaiming(false);
     }
-
-    setTimeout(() => {
-      setIsVisible(false);
-    }, 5000);
   };
 
   if (!isVisible || !streakInfo) return null;

@@ -439,6 +439,131 @@ exports.completeTask = onCall(
   },
 );
 
+// 🎁 일일 출석 보상 지급 (서버 권위)
+//   기존: 클라(DailyReward.js)가 streak/날짜/보상액을 판정하고 별도로 cash를 직접 increment.
+//         ① streak 저장과 cash 지급이 분리된 2 write라 비원자적 ② canClaim이 전부 클라 판정이라
+//         onClaim 콜백만 반복 호출하면 무한 보상 가능(rules가 본인 cash·meta write 허용).
+//   변경: 서버가 KST 날짜로 '오늘 이미 받음'을 판정하고, streak 갱신 + cash 지급을 한 트랜잭션으로.
+//         보상표·날짜는 서버 권위(클라가 금액을 넘기지 않음). idempotencyKey로 이중클릭 차단.
+//   ⚠️ 병행 배포: 이 단계에서 rules는 바꾸지 않는다(구버전 클라 호환). 방어(rules 잠금)는 P2 배치6.
+exports.claimDailyReward = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid } = await checkAuthAndGetUserData(request);
+    const { idempotencyKey = null } = request.data || {};
+
+    // 보상표 — 클라 DailyReward.js의 STREAK_REWARDS와 동일 규칙 (서버가 권위)
+    const STREAK_REWARDS = [
+      10000, 15000, 20000, 30000, 40000, 50000, 60000, 70000, 85000, 100000,
+    ];
+    const REWARD_AFTER_10 = 100000; // 10일 이후 유지
+    const rewardForDay = (day) =>
+      day <= 10 ? STREAK_REWARDS[day - 1] : REWARD_AFTER_10;
+
+    // KST(UTC+9) 날짜 문자열 — 서버는 UTC라 +9h 보정 후 YYYY-MM-DD (기존 economicEvents 패턴)
+    //   깨진 ms(NaN)면 null 반환 — meta/dailyStreak.lastLogin은 본인 write 허용이라
+    //   학생이 이상한 값으로 덮으면 new Date(garbage).getTime()=NaN→toISOString() RangeError로
+    //   CF 전체가 실패(본인 보상 DoS)한다. null이면 streak 리셋으로 안전 처리.
+    const kstDateStr = (ms) =>
+      Number.isFinite(ms)
+        ? new Date(ms + 9 * 60 * 60 * 1000).toISOString().split("T")[0]
+        : null;
+
+    const userRef = db.collection("users").doc(uid);
+    const streakRef = userRef.collection("meta").doc("dailyStreak");
+
+    let result;
+    await db.runTransaction(async (transaction) => {
+      // 🚨 idempotency check (read, 첫 줄)
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
+
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) {
+        throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
+      }
+      const streakDoc = await transaction.get(streakRef);
+      const streakData = streakDoc.exists ? streakDoc.data() : {};
+
+      // 🔒 시간 계산은 트랜잭션 콜백 '안'에서 — 콜백은 충돌 시 재시도되는데 now를 밖에서
+      //    한 번 고정하면 자정 경계에서 재시도 시 stale한 today로 판정해 이중지급/streak 역행이
+      //    발생한다(23:59 요청이 재시도돼도 today=어제로 남아 '오늘 받음' 거부를 통과). 콜백 내부
+      //    재계산으로 재시도 때 최신 시각을 반영한다.
+      const now = Date.now();
+      const today = kstDateStr(now);
+      const yesterday = kstDateStr(now - 86400000);
+
+      // 마지막 수령일을 KST 기준으로 판정 (lastLogin은 ISO 문자열 저장)
+      const lastLoginKst = streakData.lastLogin
+        ? kstDateStr(new Date(streakData.lastLogin).getTime())
+        : null;
+
+      // 오늘 이미 받았으면 거부 (서버 판정 — 클라 우회 차단)
+      if (lastLoginKst === today) {
+        throw new HttpsError(
+          "already-exists",
+          "오늘 이미 출석 보상을 받았습니다.",
+        );
+      }
+
+      // streak/totalClaimed는 오염된 문서 방어를 위해 유한 숫자로 정규화
+      const prevStreak = Number.isFinite(Number(streakData.streak))
+        ? Number(streakData.streak)
+        : 0;
+      const prevTotal = Number.isFinite(Number(streakData.totalClaimed))
+        ? Number(streakData.totalClaimed)
+        : 0;
+
+      const continued = lastLoginKst === yesterday;
+      const newStreak = continued ? prevStreak + 1 : 1;
+      const reward = rewardForDay(newStreak);
+      const newTotal = prevTotal + reward;
+      const streakBroken = lastLoginKst !== null && !continued;
+
+      // cash 지급 + streak 갱신 (한 트랜잭션 — 원자적). merge로 미래 필드 유실 방지.
+      transaction.update(userRef, {
+        cash: admin.firestore.FieldValue.increment(reward),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.set(
+        streakRef,
+        {
+          streak: newStreak,
+          lastLogin: new Date(now).toISOString(),
+          totalClaimed: newTotal,
+        },
+        { merge: true },
+      );
+
+      // audit 로그 — 트랜잭션 내 logActivity는 내부에 await get()이 있어 반드시 await해야
+      // transaction.set(logRef)가 이 트랜잭션 커밋에 포함된다(await 누락 시 로그 유실 레이스).
+      await logActivity(
+        transaction,
+        uid,
+        LOG_TYPES.CASH_INCOME,
+        `${newStreak}일차 출석 보상`,
+        { amount: reward, streak: newStreak, source: "dailyReward" },
+      );
+
+      // ✅ idempotency mark (모든 write 후)
+      markIdempotent(transaction, keyRef);
+
+      const icon = newStreak >= 10 ? "🏆" : newStreak >= 7 ? "🎉" : "🎁";
+      result = {
+        success: true,
+        reward,
+        newStreak,
+        totalClaimed: newTotal,
+        icon,
+        streakBroken,
+        isMilestone: newStreak === 10 || newStreak % 30 === 0,
+        message: `${newStreak}일차 출석 보상: ${reward.toLocaleString()}원!`,
+      };
+    });
+
+    return result;
+  },
+);
+
 // 🔥 할일 승인 요청 (학생이 보너스 할일 완료 시 호출)
 exports.submitTaskApproval = onCall(
   { region: "asia-northeast3" },

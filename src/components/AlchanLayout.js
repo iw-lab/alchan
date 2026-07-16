@@ -66,7 +66,6 @@ const IOSInstallPrompt = lazyWithRetry(() => import("./IOSInstallPrompt"));
 const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
 const NicknameSetupPopup = lazyWithRetry(() => import("./NicknameSetupPopup"));
 const WeeklyTaxSummaryPopup = lazyWithRetry(() => import("./WeeklyTaxSummaryPopup"));
-import { db, doc, updateDoc, increment } from "../firebase";
 import globalCacheService from "../services/globalCacheService";
 import { logger } from "../utils/logger";
 
@@ -318,17 +317,13 @@ export default function AlchanLayout() {
   ]);
 
   // 🎁 출석 보상 수령 처리
+  //   💰 실제 cash 지급은 claimDailyReward CF가 처리함(DailyReward.js). 여기서는 캐시 무효화·팝업 닫기만.
+  //      중복 지급 방지를 위해 클라는 cash를 쓰지 않는다.
   const handleDailyRewardClaim = useCallback(
-    async (rewardAmount) => {
+    (rewardAmount) => {
       if (!userDoc?.uid || !rewardAmount) return;
-      try {
-        const userRef = doc(db, "users", userDoc.uid);
-        await updateDoc(userRef, { cash: increment(rewardAmount) });
-        globalCacheService.invalidate(`user_${userDoc.uid}`);
-        setTimeout(() => setShowDailyRewardPopup(false), 3000);
-      } catch (error) {
-        logger.error("출석 보상 지급 실패:", error);
-      }
+      globalCacheService.invalidate(`user_${userDoc.uid}`);
+      setTimeout(() => setShowDailyRewardPopup(false), 3000);
     },
     [userDoc?.uid],
   );

@@ -1545,41 +1545,14 @@ export default function MyAssets() {
         {/* 일일 출석 보상 배너 */}
         <DailyRewardBanner
           userId={userId}
-          onClaim={async (reward) => {
-            try {
-              // 실제 현금 지급
-              const userRef = doc(db, "users", userId);
-              await setDoc(
-                userRef,
-                {
-                  cash: increment(reward),
-                  updatedAt: serverTimestamp(),
-                },
-                { merge: true },
-              );
-
-              // 활동 로그 기록
-              await logActivity(db, {
-                userId,
-                userName,
-                classCode: currentUserClassCode,
-                type: "일일 출석 보상",
-                description: `일일 출석 보상으로 ${reward.toLocaleString()}원 획득`,
-                amount: reward,
-                metadata: { rewardType: "daily_streak" },
-              });
-
-              // 로컬 상태 업데이트 — optimisticUpdate는 델타(증감분)만 받음
-              // 예전 버그: 절대값(현재 cash + reward)을 전달해 화면에 두 배 가산되던 문제
-              if (optimisticUpdate) {
-                optimisticUpdate({ cash: reward });
-              }
-
-              logger.log(`Daily reward claimed and added: ${reward}`);
-            } catch (error) {
-              logger.error("일일 보상 지급 오류:", error);
-              alert("보상 지급 중 오류가 발생했습니다. 다시 시도해주세요.");
+          onClaim={(reward) => {
+            // 💰 실제 cash 지급·streak 갱신·audit 로그는 claimDailyReward CF가 한 트랜잭션으로 처리함.
+            //    여기서는 화면 즉시 반영(델타)만 — 중복 지급 방지를 위해 클라는 cash를 쓰지 않는다.
+            //    optimisticUpdate는 델타(증감분)만 받음(절대값 전달 시 두 배 가산 버그).
+            if (optimisticUpdate) {
+              optimisticUpdate({ cash: reward });
             }
+            logger.log(`Daily reward claimed (server): ${reward}`);
           }}
         />
 
