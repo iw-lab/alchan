@@ -1,4 +1,4 @@
-import { processFineTransaction, transferCash } from "../../firebase";
+import { transferCash, functions, httpsCallable } from "../../firebase";
 // src/TrialRoom.js
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -609,7 +609,16 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       if (paymentType && paymentAmount > 0) {
         if (paymentType === 'fine') {
           logger.log(`Processing fine of ${paymentAmount} from ${roomData.defendantId}`);
-          await processFineTransaction(roomData.defendantId, classCode, paymentAmount, `재판 판결 벌금: ${reason}`);
+          // 🔒 서버(CF)에서 권한(판사/관리자)·같은학급 검증 후 원자적 처리
+          const processFineFn = httpsCallable(functions, "processFine");
+          await processFineFn({
+            defendantId: roomData.defendantId,
+            amount: paymentAmount,
+            reason: `재판 판결 벌금: ${reason}`,
+            context: "trial",
+            // 안정 멱등키(재판방 1건=벌금 1회): 판결 저장 실패 후 재시도해도 이중부과 방지
+            idempotencyKey: `trial_fine_${roomId}`,
+          });
           logger.log("Fine processed successfully.");
         } else if (paymentType === 'settlement') {
           logger.log(`Processing settlement of ${paymentAmount} from ${roomData.defendantId} to ${roomData.complainantId}`);

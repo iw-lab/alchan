@@ -94,8 +94,6 @@ export const ItemProvider = ({ children }) => {
     userDoc,
     isAdmin: isAuthAdmin,
     loading: authLoading,
-    deductCash,
-    addCash,
     optimisticUpdate,
   } = useAuth() || {};
   const userId = user?.uid;
@@ -757,16 +755,10 @@ export const ItemProvider = ({ children }) => {
 
       const itemPrice = itemToBuy.price || itemToBuy.totalPrice || 0;
 
-      // 🔥 1. 현금 낙관적 차감
-      const deductResult = await deductCash(
-        itemPrice,
-        `${itemToBuy.itemName} 구매`,
-      );
-      if (!deductResult) {
-        return { success: false, message: "현금 차감에 실패했습니다." };
-      }
+      // 🔒 현금 차감은 buyMarketItem CF가 원자적으로 처리한다(구매자 차감·판매자 지급·세금).
+      //    구 코드의 클라 deductCash는 CF 차감과 겹쳐 이중차감이 되므로 제거(2026-07-16).
 
-      // 🔥 2. 낙관적 업데이트: 내 아이템에 추가
+      // 🔥 낙관적 업데이트: 내 아이템에 추가
       const newUserItem = {
         id: `temp-${Date.now()}-${Math.random()}`, // 임시 ID
         itemId: itemToBuy.itemId || itemToBuy.id,
@@ -832,17 +824,15 @@ export const ItemProvider = ({ children }) => {
           refreshData();
           return { success: true };
         } else {
-          // 🔥 실패: 모든 변경사항 롤백
+          // 🔥 실패: 아이템/마켓 낙관 업데이트 롤백 (cash는 CF가 커밋 안 했으므로 롤백 불필요)
           logger.warn("[ItemContext] 구매 실패, 롤백 수행");
-          await addCash(itemPrice, `${itemToBuy.itemName} 구매 실패 (롤백)`);
           setUserItems(originalUserItems);
           setMarketListings(originalMarketListings);
           throw new Error(result.data.message || "구매에 실패했습니다.");
         }
       } catch (error) {
-        // 🔥 에러: 모든 변경사항 롤백
+        // 🔥 에러: 아이템/마켓 낙관 업데이트 롤백 (cash는 CF 트랜잭션이 실패했으므로 원복 불필요)
         logger.error("[ItemContext] 구매 에러, 롤백 수행:", error);
-        await addCash(itemPrice, `${itemToBuy.itemName} 구매 실패 (롤백)`);
         setUserItems(originalUserItems);
         setMarketListings(originalMarketListings);
 
@@ -862,8 +852,6 @@ export const ItemProvider = ({ children }) => {
       refreshData,
       marketListings,
       userItems,
-      deductCash,
-      addCash,
       currentUserClassCode,
       userDoc,
     ],

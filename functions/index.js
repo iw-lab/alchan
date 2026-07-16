@@ -13,6 +13,7 @@ const {
   hasAdminPower,
   hasTeacherPower,
   findApprovedAdminSnap,
+  sanitizeInput,
   db,
   admin,
   logger,
@@ -1557,6 +1558,156 @@ exports.transferCash = onCall(
       logger.error(`[transferCash] Error for user ${uid}:`, error);
       if (error instanceof HttpsError) throw error;
       throw new HttpsError("aborted", error.message || "송금에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
+// 🔥 벌금 부과 (2026-07-16 CF 이관 — 재판정/경찰서의 클라 processFineTransaction 대체)
+//   - 권한: 관리자/교사, 또는 context별 역할(trial→'판사', police→'경찰청장'). 같은 학급만.
+//     (현재 UI 게이트를 서버에서 강제 — 아무나 남의 cash를 차감하지 못하게)
+//   - 피고 cash 차감 + 국고(승인 관리자 cash) 적립 + 통계 + 로그, 단일 트랜잭션·멱등.
+//   - 국고 관리자 선정 = findApprovedAdminSnap(미승인 교사 탈취 방지) — 구 .where(isAdmin==true) 취약점 개선.
+//   - 현행 동작 보존: 잔액 하한 없음(벌금은 마이너스 허용), 거래세 없음, 피고 transactions 기록.
+// ===================================================================================
+exports.processFine = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const {
+      defendantId,
+      amount,
+      reason = "",
+      context,
+      idempotencyKey,
+    } = request.data;
+
+    if (
+      !defendantId ||
+      typeof defendantId !== "string" ||
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "피고와 벌금액(1 이상의 정수)을 정확히 입력해야 합니다.",
+      );
+    }
+    if (context !== "trial" && context !== "police") {
+      throw new HttpsError("invalid-argument", "유효하지 않은 벌금 맥락입니다.");
+    }
+    if (defendantId === uid) {
+      throw new HttpsError(
+        "invalid-argument",
+        "자기 자신에게는 벌금을 부과할 수 없습니다.",
+      );
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    // 사유 위생·길이 제한(신뢰 경계 밖 입력 — 판사/경찰의 prompt 문자열)
+    const safeReason = sanitizeInput(String(reason || "").slice(0, 200)) ||
+      "벌금 납부";
+
+    // 🔒 권한 검증: 관리자/교사(레거시 isTeacher 포함) OR context별 역할(재판=판사, 경찰=경찰청장)
+    let authorized = hasTeacherPower(userData);
+    if (!authorized) {
+      const jobsSnap = await db
+        .collection("jobs")
+        .where("classCode", "==", classCode)
+        .get();
+      const jobMap = buildJobMap(jobsSnap);
+      const requiredTitle = context === "trial" ? "판사" : "경찰청장";
+      authorized = hasJobTitle(userData, jobMap, requiredTitle);
+    }
+    if (!authorized) {
+      throw new HttpsError(
+        "permission-denied",
+        "벌금을 부과할 권한이 없습니다.",
+      );
+    }
+
+    const defendantRef = db.collection("users").doc(defendantId);
+    const treasuryRef = db
+      .collection("nationalTreasuries")
+      .doc(classCode);
+    // 국고 관리자(=세금 수입 계좌)는 트랜잭션 외부에서 사전 조회(blind increment라 read 불필요)
+    const adminSnap = await findApprovedAdminSnap(classCode);
+    const adminRef = adminSnap.empty ? null : adminSnap.docs[0].ref;
+    // 🔒 fail-closed: 국고(승인 관리자)가 없으면 피고 현금이 갈 곳이 없어 소각된다 → 부과 자체를 막는다.
+    if (!adminRef) {
+      throw new HttpsError(
+        "failed-precondition",
+        "승인된 관리자(국고)가 없어 벌금을 부과할 수 없습니다.",
+      );
+    }
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const defendantDoc = await transaction.get(defendantRef);
+        if (!defendantDoc.exists) {
+          throw new Error("피고 정보를 찾을 수 없습니다.");
+        }
+        const dData = defendantDoc.data();
+        if (dData.classCode !== classCode) {
+          throw new Error("같은 학급의 사용자에게만 벌금을 부과할 수 있습니다.");
+        }
+
+        // 피고 cash 차감 (하한 없음 — 구 processFineTransaction 동작 보존)
+        transaction.update(defendantRef, {
+          cash: admin.firestore.FieldValue.increment(-amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // 피고 거래내역(users/{uid}/transactions)
+        const dTxRef = defendantRef.collection("transactions").doc();
+        transaction.set(dTxRef, {
+          amount: -amount,
+          description: safeReason,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // 국고(승인 관리자 cash) 적립.
+        // ⚠️ 피고가 국고 관리자 본인이면 같은 문서 2회 update로 트랜잭션이 깨진다 → 적립 skip
+        //    (관리자를 벌금하면 이미 위에서 차감됐고, 다시 +amount는 상쇄일 뿐).
+        if (adminRef.id !== defendantId) {
+          transaction.update(adminRef, {
+            cash: admin.firestore.FieldValue.increment(amount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        // 통계(국고=관리자 cash이므로 통계만)
+        transaction.set(
+          treasuryRef,
+          {
+            otherTaxRevenue: admin.firestore.FieldValue.increment(amount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        markIdempotent(transaction, keyRef);
+
+        await logActivity(
+          transaction,
+          defendantId,
+          "벌금 납부",
+          safeReason,
+          { amount, context, issuedBy: uid, issuedByName: userData.name },
+        );
+      });
+      return { success: true, message: "벌금이 부과되었습니다." };
+    } catch (error) {
+      logger.error(
+        `[processFine] Error by ${uid} on ${defendantId}:`,
+        error,
+      );
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError(
+        "aborted",
+        error.message || "벌금 부과에 실패했습니다.",
+      );
     }
   },
 );

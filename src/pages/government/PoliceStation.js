@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, processSettlement, processFineTransaction } from "../../firebase";
+import { db, processSettlement, functions, httpsCallable } from "../../firebase";
 
 import "./Police.css";
 import SubmitReport from "./SubmitReport";
@@ -864,12 +864,16 @@ const PoliceStation = () => {
  try {
  const reasonForLog = `경찰서 신고 (사건번호: ${id.slice(-6)})에 대한 벌금 ${numericProcessingAmount.toLocaleString()}원 납부`;
 
- await processFineTransaction(
- reportedUserId,
- classCode,
- numericProcessingAmount,
- reasonForLog,
- );
+ // 🔒 서버(CF)에서 권한(경찰청장/관리자)·같은학급 검증 후 원자적 처리
+ const processFineFn = httpsCallable(functions, "processFine");
+ await processFineFn({
+ defendantId: reportedUserId,
+ amount: numericProcessingAmount,
+ reason: reasonForLog,
+ context: "police",
+ // 안정 멱등키(신고 1건=벌금 1회): 상태전이 실패 후 재시도해도 이중부과 방지
+ idempotencyKey: `police_fine_${id}`,
+ });
 
  await updateDoc(reportRef, {
  status: "resolved_fine",
