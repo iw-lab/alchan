@@ -13,6 +13,7 @@ const TransferModal = memo(function TransferModal({
   handleTransfer,
   userId,
   userCash = 0,
+  isSubmitting = false,
 }) {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -165,13 +166,14 @@ const TransferModal = memo(function TransferModal({
                 fontWeight: 700,
               }}
               disabled={
+                isSubmitting ||
                 !transferRecipient ||
                 !transferAmount ||
                 parseInt(transferAmount) > userCash ||
                 validRecipients.length === 0
               }
             >
-              송금
+              {isSubmitting ? "송금 중..." : "송금"}
             </button>
           </div>
         </form>

@@ -70,3 +70,20 @@ useAutoSavingsDeposit(122-123) · useAutoLoanRepay(136-137) · useAutoDepositMat
 - ⚠️ 검증 한계(위 원칙 2) — 상한값은 착수 시 현재 클라 보상 분포 기준으로 결정
 
 **배치 1은 rules를 바꾸지 않으므로 되돌리기 안전**(CF 추가 + 클라 호출 교체뿐, 기존 rules가 계속 허용). 문제 시 클라만 롤백.
+
+---
+## 배치2 착수 기록 (2026-07-16, Opus 세션)
+
+**학생 송금 실경로 확정**: MyAssets.js `handleTransferMoney` = `deductCash(-amount)` → `addCashToUserById(recipient,+amount)` 2단계 **비원자** write + 클라 롤백. 각 write는 `updateUserCashInFirestore`(runTransaction+increment)라 개별 원자적이나, 두 write가 함께 원자적이지 않음. `addCashToUserById`는 클라 SDK로 **임의 userId cash에 increment** → money-glitch 벡터. 무세금, `lastIncomingTransferAt` 기록.
+
+**조치**: `transferCash` onCall CF 신규(index.js, giftCoupon 뒤). senderId=auth.uid 강제·같은학급·서버잔액검증·단일 tx 양방향 increment·멱등·양쪽 로그·lastIncomingTransferAt. MyAssets는 httpsCallable("transferCash") 단일호출로 교체(구 2단계/롤백/클라로그/setDoc 제거, deductCash·addCashToUserById destructure 제거). → FULL 3계열 검증 중.
+
+**남은 거래형 클라 cash write 지도(다음 배치 대상)**:
+- `ItemContext.js`(7건) — 상점 구매/인벤토리/시장. 가장 큼. 배치3 후보.
+- `TrialRoom.js`(2건) — 재판 합의금 transferCash + 벌금. 
+- `PoliceStation.js`(1건) — 경찰 벌금(합의금 victimId 로직 이미 CF? 재확인 필요).
+- `ParkingAccount.js`(2건) — 파킹통장 입출금. 배치4(은행) 후보.
+- `MoneyTransfer.js` — 교사 지급/회수 `adminCashAction`(services/database.js). 교사 권한이나 클라 write라 배치5(관리자) 후보.
+- 게임 PvP 잔여(OmokGame 등) = 배치1-c.
+
+**rules 잠금(방어 발동)은 위 전부 이관 후 배치6**.

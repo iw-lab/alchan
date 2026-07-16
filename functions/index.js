@@ -1438,6 +1438,130 @@ exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
 });
 
 // ===================================================================================
+// 🔥 학생 간 현금 송금 (2026-07-16 CF 이관 — 기존 MyAssets 클라 2단계 write 대체)
+//   - senderId = auth.uid 강제 → 이 CF 경로로는 남의 돈 송금 불가.
+//     ⚠️ 단, firestore.rules의 same-class cash 직접-write 허용 분기는 배치6에서 잠근다.
+//     그전까지는 devtools/SDK로 규칙을 직접 타는 우회(money glitch)가 여전히 가능하다
+//     (재판 합의·경찰 벌금 등 다른 클라 크로스유저 cash write가 아직 그 규칙에 의존).
+//   - 단일 트랜잭션 양방향 increment → 원자성(부분 실패로 인한 증발/이중지급 없음)
+//   - 같은 학급 수신자만·서버 잔액검증·자기송금/비정수/범위 검증·멱등
+//   - 현행 동작 보존: 거래세 없음, lastIncomingTransferAt 기록(대출 상환 쿨다운용),
+//     양쪽 users/{uid}/transactions 거래내역 기록(학생 거래내역 UI 소스)
+// ===================================================================================
+exports.transferCash = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, userData } = await checkAuthAndGetUserData(request);
+    const { recipientId, amount, message = "", idempotencyKey } = request.data;
+
+    // 🔒 정수·범위·타입 검증 (소수점/음수/과대값/비문자 recipientId 차단)
+    if (
+      !recipientId ||
+      typeof recipientId !== "string" ||
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "받는 사람과 송금액(1 이상의 정수)을 정확히 입력해야 합니다.",
+      );
+    }
+    if (uid === recipientId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "자기 자신에게는 송금할 수 없습니다.",
+      );
+    }
+
+    const senderRef = db.collection("users").doc(uid);
+    const recipientRef = db.collection("users").doc(recipientId);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 모든 읽기 먼저: 멱등키 → 양쪽 문서
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const [senderDoc, recipientDoc] = await transaction.getAll(
+          senderRef,
+          recipientRef,
+        );
+        if (!senderDoc.exists) throw new Error("보내는 사람의 정보가 없습니다.");
+        if (!recipientDoc.exists) throw new Error("받는 사람의 정보가 없습니다.");
+
+        const senderData = senderDoc.data();
+        const recipientData = recipientDoc.data();
+
+        // 2) 같은 학급만 (학급 밖으로 돈이 새는 것 차단).
+        //    학급 대조는 트랜잭션 내부에서 읽은 senderData.classCode 사용(TOCTOU 방지 —
+        //    트랜잭션 밖에서 먼저 읽은 값 대신 tx 스냅샷 기준으로 일관성 보장).
+        const senderClassCode = senderData.classCode;
+        if (
+          !senderClassCode ||
+          !recipientData.classCode ||
+          recipientData.classCode !== senderClassCode
+        ) {
+          throw new Error("같은 학급의 사용자에게만 송금할 수 있습니다.");
+        }
+
+        // 3) 서버 잔액검증
+        const senderCash = Number(senderData.cash) || 0;
+        if (senderCash < amount) throw new Error("보유 현금이 부족합니다.");
+
+        // 4) 쓰기: 양방향 increment (원자적)
+        transaction.update(senderRef, {
+          cash: admin.firestore.FieldValue.increment(-amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(recipientRef, {
+          cash: admin.firestore.FieldValue.increment(amount),
+          lastIncomingTransferAt:
+            admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 4-1) 거래내역(users/{uid}/transactions) — 학생 거래내역 UI가 읽는 소스.
+        //      구 클라 경로(addTransaction)가 양쪽에 남기던 기록을 원자적으로 보존.
+        const senderTxRef = senderRef.collection("transactions").doc();
+        transaction.set(senderTxRef, {
+          amount: -amount,
+          description: `${recipientData.name}님에게 송금`,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        const recipientTxRef = recipientRef.collection("transactions").doc();
+        transaction.set(recipientTxRef, {
+          amount: amount,
+          description: `${userData.name}님으로부터 입금`,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        markIdempotent(transaction, keyRef);
+
+        // 5) 양쪽 활동 로그 (await 필수 — 내부 non-tx get 후 transaction.set)
+        await logActivity(
+          transaction,
+          uid,
+          LOG_TYPES.CASH_TRANSFER_SEND,
+          `${recipientData.name}님에게 ${amount.toLocaleString()}원을 송금했습니다.${message ? ` 메시지: "${message}"` : ""}`,
+          { recipientId, recipientName: recipientData.name, amount, message },
+        );
+        await logActivity(
+          transaction,
+          recipientId,
+          LOG_TYPES.CASH_TRANSFER_RECEIVE,
+          `${userData.name}님으로부터 ${amount.toLocaleString()}원을 송금 받았습니다.${message ? ` 메시지: "${message}"` : ""}`,
+          { senderId: uid, senderName: userData.name, amount, message },
+        );
+      });
+      return { success: true, message: "송금이 완료되었습니다." };
+    } catch (error) {
+      logger.error(`[transferCash] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "송금에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 

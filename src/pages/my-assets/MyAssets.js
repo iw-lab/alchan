@@ -48,8 +48,6 @@ export default function MyAssets() {
     allClassMembers, // 🔥 [추가] '나'를 포함한 학급 전체 구성원 목록 (기부 내역 모달용)
     loading: authLoading,
     updateUser: updateUserInAuth,
-    addCashToUserById,
-    deductCash,
     optimisticUpdate,
   } = useAuth();
 
@@ -145,6 +143,10 @@ export default function MyAssets() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferRecipient, setTransferRecipient] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
+  // 🔒 송금 중복 제출 차단(클라 lock): 매 호출마다 새 idempotencyKey라 서버 멱등만으론
+  //    "빠른 두 번 클릭 = 서로 다른 정당한 송금 2건"을 못 막는다 → UI에서 재진입 차단.
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const transferSubmittingRef = useRef(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false); // 거래 내역 펼치기/접기 상태
 
   // URL 파라미터로 송금 모달 자동 열기
@@ -1214,16 +1216,13 @@ export default function MyAssets() {
   };
 
   const handleTransferMoney = async () => {
+    // 🔒 재진입 차단(클라 lock) — 빠른 더블클릭/재시도로 인한 이중 송금 방지
+    if (transferSubmittingRef.current) return;
+    transferSubmittingRef.current = true;
+    setTransferSubmitting(true);
     setAssetsLoading(true);
     try {
-      if (
-        !userDoc ||
-        !userId ||
-        !db ||
-        !users ||
-        !deductCash ||
-        !addCashToUserById
-      ) {
+      if (!userDoc || !userId || !functions || !users) {
         alert("필수 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
         return;
       }
@@ -1252,86 +1251,38 @@ export default function MyAssets() {
         return;
       }
 
-      const recipientName =
-        recipientUser.name || recipientUser.nickname || "사용자";
-
-      // 사용자의 요청에 따라 확인 창을 제거합니다.
-      const deductSuccess = await deductCash(
+      // 🔒 서버(CF)에서 원자적 송금 처리: senderId=auth.uid 강제, 양방향 increment,
+      //    잔액검증·같은학급·멱등·lastIncomingTransferAt·활동로그 모두 서버가 담당.
+      //    (구 클라 2단계 write는 money glitch·부분실패 증발 위험 → 제거)
+      const transferFn = httpsCallable(functions, "transferCash");
+      const result = await transferFn({
+        recipientId: recipientUser.id,
         amount,
-        `${recipientName}님에게 송금`,
-      );
-      if (deductSuccess) {
-        const addSuccess = await addCashToUserById(
-          recipientUser.id,
-          amount,
-          `${userName}님으로부터 입금`,
-        );
-        if (addSuccess) {
-          // 🔥 친구로부터 받은 송금 시간 기록 — 받는 사람의 24시간 대출 상환 쿨다운용
-          try {
-            await setDoc(
-              doc(db, "users", recipientUser.id),
-              { lastIncomingTransferAt: serverTimestamp() },
-              { merge: true },
-            );
-          } catch (e) {
-            logger.warn(
-              "[transfer] lastIncomingTransferAt 기록 실패 (무시):",
-              e.message,
-            );
-          }
+        message: "",
+        idempotencyKey: crypto.randomUUID(),
+      });
 
-          // 🔥 활동 로그 기록 (송금 발송)
-          logActivity(db, {
-            classCode: currentUserClassCode,
-            userId: userId,
-            userName: userName,
-            type: ACTIVITY_TYPES.TRANSFER_SEND,
-            description: `${recipientName}님에게 ${amount.toLocaleString()}원 송금`,
-            amount: -amount,
-            metadata: {
-              recipientId: recipientUser.id,
-              recipientName: recipientName,
-            },
-          });
-
-          // 🔥 활동 로그 기록 (송금 수신) - 받는 사람도 기록
-          logActivity(db, {
-            classCode: currentUserClassCode,
-            userId: recipientUser.id,
-            userName: recipientName,
-            type: ACTIVITY_TYPES.TRANSFER_RECEIVE,
-            description: `${userName}님으로부터 ${amount.toLocaleString()}원 입금`,
-            amount: amount,
-            metadata: {
-              senderId: userId,
-              senderName: userName,
-            },
-          });
-
-          alert("송금이 완료되었습니다.");
-          setShowTransferModal(false);
-          setTransferRecipient("");
-          setTransferAmount("");
-        } else {
-          alert(
-            "받는 사람에게 현금을 전달하는 데 실패했습니다. 송금이 취소됩니다.",
-          );
-          // 송금 실패 시 차감했던 금액을 다시 복원합니다.
-          await addCashToUserById(userId, amount, "송금 실패로 인한 복원");
-        }
+      if (result?.data?.success) {
+        // 잔액은 Firestore 리스너가 갱신 (수동 cash write 금지 — CF increment 덮어쓰기 방지)
+        alert("송금이 완료되었습니다.");
+        setShowTransferModal(false);
+        setTransferRecipient("");
+        setTransferAmount("");
       } else {
-        alert("계좌에서 현금을 인출하는 데 실패했습니다.");
+        alert("송금에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } catch (error) {
-      logger.error("!!! 송금 처리 중 예기치 않은 오류 발생 !!!", error);
-      alert(`송금 중 오류가 발생했습니다: ${error.message}`);
-      // 실패 시 롤백
-      if (optimisticUpdate) {
-        optimisticUpdate({ cash: parseInt(transferAmount, 10) || 0 });
+      logger.error("!!! 송금 처리 중 오류 발생 !!!", error);
+      // Firebase Functions 클라 SDK는 code를 `functions/<code>` 형태로 준다.
+      if (error?.code === "functions/already-exists") {
+        alert("이미 처리된 송금입니다.");
+      } else {
+        alert(`송금 중 오류가 발생했습니다: ${error?.message || "알 수 없는 오류"}`);
       }
     } finally {
       setAssetsLoading(false);
+      setTransferSubmitting(false);
+      transferSubmittingRef.current = false;
     }
   };
 
@@ -1569,6 +1520,7 @@ export default function MyAssets() {
             handleTransfer={handleTransferMoney}
             userId={userId}
             userCash={Number(userDoc?.cash) || 0}
+            isSubmitting={transferSubmitting}
           />
         )}
       </div>
