@@ -1320,12 +1320,20 @@ service cloud.firestore {
     // ========================================================
     match /groupPurchases/{purchaseId} {
       allow read: if isSignedIn() && isSameClassFast(resource.data.classCode);
-      // 본인 initiatorId + 본인 classCode로만 생성
+      // 🔒 생성: 본인 initiator·본인 학급 + 진행 필드를 비워야 함. contributors/currentAmount를 위조해
+      //    deleteGroupPurchase 환불(무담보 민팅)·completeGroupPurchase 무료지급하던 벡터 차단 —
+      //    이 값들은 joinGroupPurchase CF(실제 cash 차감)를 통해서만 채워질 수 있게 강제.
       allow create: if isSignedIn() &&
                        request.resource.data.initiatorId == request.auth.uid &&
-                       request.resource.data.classCode == getUserClassCode();
-      allow update: if isSignedIn() && isSameClass(resource.data.classCode);
-      allow delete: if isOwner(resource.data.initiatorId) || isAdmin();
+                       request.resource.data.classCode == getUserClassCode() &&
+                       request.resource.data.currentAmount == 0 &&
+                       request.resource.data.contributors.size() == 0 &&
+                       request.resource.data.status == 'active' &&
+                       request.resource.data.winnerId == null;
+      // 🔒 갱신·삭제: CF(Admin SDK) 전용. 참여(joinGroupPurchase)·완료(completeGroupPurchase)·
+      //    삭제/환불(deleteGroupPurchase)이 모두 CF로 이관됨 → 클라 직접 write 금지(위조 봉인).
+      allow update: if false;
+      allow delete: if false;
     }
 
     // ========================================================

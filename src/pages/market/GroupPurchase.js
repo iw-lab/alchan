@@ -9,18 +9,13 @@ import {
   doc,
   collection,
   addDoc,
-  updateDoc,
-  deleteDoc,
   getDoc,
   getDocs,
   query,
   where,
   orderBy,
   serverTimestamp,
-  runTransaction,
-  Timestamp,
   functions,
-  increment,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
 import { addItemToInventory } from "../../firebase/firebaseDb";
@@ -56,6 +51,7 @@ export default function GroupPurchase() {
   const [contributeAmount, setContributeAmount] = useState("");
   // 🚨 중복 결제 방지 lock
   const [isContributing, setIsContributing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [filter, setFilter] = useState("active"); // active, completed, all
 
@@ -227,131 +223,15 @@ export default function GroupPurchase() {
 
     let transactionCommitted = false;
     try {
-      const campaignRef = doc(db, "groupPurchases", campaign.id);
-      const userRef = doc(db, "users", user.uid);
-
-      const result = await runTransaction(db, async (transaction) => {
-        const campaignSnap = await transaction.get(campaignRef);
-        const userSnap = await transaction.get(userRef);
-
-        // 🔥 상점 현재가 실시간 동기화 — targetPrice를 storeItems의 최신 가격으로
-        let storeItemSnap = null;
-        const campaignData = campaignSnap.data();
-        if (campaignData?.selectedItemId) {
-          const storeItemRef = doc(db, "storeItems", campaignData.selectedItemId);
-          storeItemSnap = await transaction.get(storeItemRef);
-        }
-
-        if (!campaignSnap.exists() || !userSnap.exists()) {
-          throw new Error("문서를 찾을 수 없습니다.");
-        }
-
-        const cData = campaignSnap.data();
-        const uData = userSnap.data();
-
-        if (cData.status !== "active") {
-          throw new Error("이미 완료된 캠페인입니다.");
-        }
-
-        // 상점 현재가로 targetPrice override (가격 변동 반영)
-        const currentShopPrice = Number(storeItemSnap?.data()?.price) || 0;
-        const effectiveTargetPrice =
-          currentShopPrice > 0 ? currentShopPrice : Number(cData.targetPrice);
-
-        const currentRemaining = effectiveTargetPrice - cData.currentAmount;
-        const txFinalAmount = Math.min(actualAmount, currentRemaining);
-
-        // 캠페인 doc의 targetPrice도 동기화 (다음 조회 시 일관성)
-        if (currentShopPrice > 0 && currentShopPrice !== Number(cData.targetPrice)) {
-          cData.targetPrice = effectiveTargetPrice;
-        }
-
-        if (uData.cash < txFinalAmount) {
-          throw new Error("잔액이 부족합니다.");
-        }
-
-        const newContributors = [...(cData.contributors || [])];
-        const existingIdx = newContributors.findIndex(
-          (c) => c.userId === user.uid,
-        );
-        if (existingIdx >= 0) {
-          newContributors[existingIdx].amount += txFinalAmount;
-          newContributors[existingIdx].lastContributedAt = new Date();
-          // firstContributedAt은 유지 (없으면 기존 contributedAt 사용)
-          if (!newContributors[existingIdx].firstContributedAt) {
-            newContributors[existingIdx].firstContributedAt =
-              newContributors[existingIdx].contributedAt || new Date();
-          }
-        } else {
-          const now = new Date();
-          newContributors.push({
-            userId: user.uid,
-            userName: userDoc?.name || "알 수 없음",
-            amount: txFinalAmount,
-            contributedAt: now,
-            firstContributedAt: now,
-            lastContributedAt: now,
-          });
-        }
-
-        const newTotal = cData.currentAmount + txFinalAmount;
-        const isCompleted = newTotal >= cData.targetPrice;
-
-        // 최다 기여자 계산 (동률 시 먼저 참여한 사람 우선)
-        let winnerId = null;
-        let winnerName = null;
-        if (isCompleted) {
-          const getTime = (c) => {
-            const t = c.firstContributedAt || c.contributedAt;
-            return t?.toMillis?.() || t?.getTime?.() || 0;
-          };
-          const topContributor = [...newContributors].sort((a, b) => {
-            if (b.amount !== a.amount) return b.amount - a.amount;
-            return getTime(a) - getTime(b); // 먼저 참여한 사람 우선
-          })[0];
-          winnerId = topContributor?.userId || null;
-          winnerName = topContributor?.userName || null;
-        }
-
-        transaction.update(campaignRef, {
-          currentAmount: newTotal,
-          contributors: newContributors,
-          status: isCompleted ? "completed" : "active",
-          completedAt: isCompleted ? new Date() : null,
-          winnerId,
-          winnerName,
-          // 캠페인 doc의 targetPrice를 상점 현재가로 동기화 (다음 조회 일관성)
-          targetPrice: effectiveTargetPrice,
-        });
-
-        // 절대값 덮어쓰기 금지 — increment 사용으로 race condition 방지
-        transaction.update(userRef, {
-          cash: increment(-txFinalAmount),
-        });
-
-        // 기여자 본인 활동 로그 (cash 차감 흔적)
-        const logRef = doc(collection(db, "activity_logs"));
-        const expireAt = new Date();
-        expireAt.setDate(expireAt.getDate() + 90);
-        transaction.set(logRef, {
-          userId: user.uid,
-          userName: userDoc?.name || "알 수 없음",
-          classCode,
-          type: "현금 출금",
-          description: `함께구매 참여: ${cData.itemName} (-${txFinalAmount.toLocaleString()}원)`,
-          amount: -txFinalAmount,
-          metadata: {
-            campaignId: campaign.id,
-            itemName: cData.itemName,
-            isCompleted,
-          },
-          timestamp: serverTimestamp(),
-          expireAt: Timestamp.fromDate(expireAt),
-        });
-
-        // 트랜잭션 밖에서 아이템 지급을 위한 데이터 반환
-        return { isCompleted, winnerId, winnerName, cData, txFinalAmount };
+      // 구매자 cash 차감 + 캠페인 기여자/진행도 갱신을 서버(joinGroupPurchase CF)에서 원자 처리.
+      //   (구 클라 runTransaction의 cash 직접 write 제거 → batch6-e)
+      const joinFn = httpsCallable(functions, "joinGroupPurchase");
+      const joinResp = await joinFn({
+        campaignId: campaign.id,
+        amount: actualAmount,
+        idempotencyKey: crypto.randomUUID(),
       });
+      const result = joinResp?.data || {};
 
       // 트랜잭션 커밋 성공 - 이후 에러는 cash 롤백 대상이 아님
       transactionCommitted = true;
@@ -369,7 +249,7 @@ export default function GroupPurchase() {
             // 이미 처리됨 - 알림 생략
           } else {
             alert(
-              `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${result.cData.itemName}'을(를) 획득했습니다!`,
+              `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${campaign.itemName}'을(를) 획득했습니다!`,
             );
           }
         } catch (cfErr) {
@@ -385,9 +265,9 @@ export default function GroupPurchase() {
                 "폴백 불가: 타인 인벤토리 쓰기 권한 없음 (서버 재처리 필요)",
               );
             }
-            let fallbackItemId = result.cData?.selectedItemId;
-            if (!fallbackItemId && result.cData?.itemName && items?.length > 0) {
-              const matched = items.find((i) => i.name === result.cData.itemName);
+            let fallbackItemId = campaign?.selectedItemId;
+            if (!fallbackItemId && campaign?.itemName && items?.length > 0) {
+              const matched = items.find((i) => i.name === campaign.itemName);
               if (matched) fallbackItemId = matched.id;
             }
             if (fallbackItemId && result.winnerId) {
@@ -395,8 +275,8 @@ export default function GroupPurchase() {
               const storeMeta =
                 items?.find((i) => i.id === fallbackItemId) || {};
               const fallbackDetails = {
-                name: result.cData.itemName,
-                icon: result.cData.itemIcon || "🎁",
+                name: campaign.itemName,
+                icon: campaign.itemIcon || "🎁",
                 type: storeMeta.type || "item",
               };
               if (storeMeta.type === "randomDraw") {
@@ -447,31 +327,24 @@ export default function GroupPurchase() {
   const handleDelete = async (campaign) => {
     if (
       !window.confirm(
-        "정말 삭제하시겠습니까? 모금된 금액은 참여자에게 환불됩니다.",
+        "정말 삭제하시겠습니까? 진행 중인 모금은 참여자에게 환불되며, 이미 지급 완료된 캠페인은 환불되지 않습니다.",
       )
     )
       return;
+    if (isDeleting) return; // 더블클릭 재진입 차단
+    setIsDeleting(true);
 
     try {
-      // 환불 처리
-      if (campaign.contributors?.length > 0 && campaign.currentAmount > 0) {
-        for (const contributor of campaign.contributors) {
-          const userRef = doc(db, "users", contributor.userId);
-          await runTransaction(db, async (transaction) => {
-            const snap = await transaction.get(userRef);
-            if (snap.exists()) {
-              transaction.update(userRef, {
-                cash: (snap.data().cash || 0) + contributor.amount,
-              });
-            }
-          });
-        }
-      }
-      await deleteDoc(doc(db, "groupPurchases", campaign.id));
+      // 환불(미지급 캠페인만) + 삭제를 서버(deleteGroupPurchase CF)에서 원자 처리.
+      //   (구 클라 절대값 cash 덮어쓰기 레이스 + 완료 캠페인 환불 민팅 버그 제거 → batch6-e)
+      const deleteFn = httpsCallable(functions, "deleteGroupPurchase");
+      await deleteFn({ campaignId: campaign.id });
       fetchCampaigns();
     } catch (err) {
       logger.error("함께구매 삭제 실패:", err);
-      alert("삭제에 실패했습니다.");
+      alert(err.message || "삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 

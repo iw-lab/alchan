@@ -1,7 +1,7 @@
 /* eslint-disable */
 /* eslint-disable max-len */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, findApprovedAdminSnap, hasTeacherPower } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, findApprovedAdminSnap, hasTeacherPower, checkIdempotent, markIdempotent } = require("./utils");
 
 // 정상 상점과 동일한 정책
 const WHOLESALE_COST_RATIO = 0.3; // 재고 보충 도매가 = 정가의 30%
@@ -325,6 +325,272 @@ exports.completeGroupPurchase = onCall(
       logger.error(`[completeGroupPurchase] Error for campaign ${campaignId}:`, error);
       if (error instanceof HttpsError) throw error;
       throw new HttpsError("internal", error.message || "함께구매 완료 처리 실패");
+    }
+  },
+);
+
+// 함께구매 참여(모금 기여) — 구매자 cash 차감 + 캠페인 기여자/진행도 갱신을 CF로 이관.
+//   (구 클라 runTransaction의 cash 직접 write 제거. 목표 달성 시 status=completed까지 세팅해
+//    별도 completeGroupPurchase CF가 아이템 지급·관리자 입금 처리.)
+exports.joinGroupPurchase = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { campaignId, amount, idempotencyKey } = request.data || {};
+
+    if (!campaignId || typeof campaignId !== "string" || campaignId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 캠페인 정보가 필요합니다.");
+    }
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    // strict 정수(codex): 실수/문자열/불리언 강제변환 거부.
+    if (typeof amount !== "number" || !Number.isInteger(amount) ||
+        amount <= 0 || amount > 10000000000) {
+      throw new HttpsError("invalid-argument", "유효한 참여 금액이 필요합니다.");
+    }
+    const reqAmount = amount;
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const campaignRef = db.collection("groupPurchases").doc(campaignId);
+    const userRef = db.collection("users").doc(uid);
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        // 0) 멱등키(read 먼저)
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+
+        // 1) 읽기: 캠페인, 사용자, (선택아이템 있으면) 상점 현재가
+        const campaignSnap = await transaction.get(campaignRef);
+        if (!campaignSnap.exists) throw new Error("캠페인을 찾을 수 없습니다.");
+        const cData = campaignSnap.data();
+        // 반경계: 같은 학급 캠페인만
+        if (cData.classCode !== classCode) {
+          throw new HttpsError("permission-denied", "다른 학급의 캠페인입니다.");
+        }
+        if (cData.status !== "active") {
+          throw new Error("이미 완료된 캠페인입니다.");
+        }
+
+        let storeItemSnap = null;
+        if (cData.selectedItemId && typeof cData.selectedItemId === "string" &&
+            !cData.selectedItemId.includes("/")) {
+          storeItemSnap = await transaction.get(
+            db.collection("storeItems").doc(cData.selectedItemId),
+          );
+        }
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        const uData = userSnap.data();
+
+        // 2) 상점 현재가로 목표가 동기화(가격 변동 반영), 남은 모금액 한도로 참여액 클램프
+        const currentShopPrice = Number(storeItemSnap && storeItemSnap.exists
+          ? storeItemSnap.data().price : 0) || 0;
+        const effectiveTargetPrice = currentShopPrice > 0
+          ? currentShopPrice : (Number(cData.targetPrice) || 0);
+        const currentAmount = Number(cData.currentAmount) || 0;
+        const currentRemaining = effectiveTargetPrice - currentAmount;
+        // 참여액 = 남은 모금액 한도로 클램프(음수 방지). ⚠️ 이미 목표 도달/초과(관리자 가격 인하 등)면
+        //   txFinalAmount=0 → 새 차감 없이 완료만 처리(구 클라는 음수 txFinalAmount로 cash 민팅 버그,
+        //   단순 throw는 캠페인이 active에 영구 고착되는 데드락 = Gemini CRITICAL). 완료로 흘려보낸다.
+        const txFinalAmount = Math.max(0, Math.min(reqAmount, currentRemaining));
+        if (txFinalAmount > 0 && (Number(uData.cash) || 0) < txFinalAmount) {
+          throw new Error("잔액이 부족합니다.");
+        }
+
+        // 3) 기여자 목록 갱신(실제 기여 시에만 본인 항목 누적/신규)
+        const nowTs = admin.firestore.Timestamp.fromMillis(Date.now());
+        const newContributors = [...(cData.contributors || [])];
+        if (txFinalAmount > 0) {
+          const idx = newContributors.findIndex((c) => c.userId === uid);
+          if (idx >= 0) {
+            newContributors[idx] = {
+              ...newContributors[idx],
+              amount: (Number(newContributors[idx].amount) || 0) + txFinalAmount,
+              lastContributedAt: nowTs,
+              firstContributedAt: newContributors[idx].firstContributedAt ||
+                newContributors[idx].contributedAt || nowTs,
+            };
+          } else {
+            newContributors.push({
+              userId: uid,
+              userName: userData.name || "알 수 없음",
+              amount: txFinalAmount,
+              contributedAt: nowTs,
+              firstContributedAt: nowTs,
+              lastContributedAt: nowTs,
+            });
+          }
+        }
+
+        const newTotal = currentAmount + txFinalAmount;
+        const isCompleted = newTotal >= effectiveTargetPrice;
+        // 방어: 기여도 0이고 완료도 아니면(도달 안 했는데 참여액 0) 정상적으로 불가능 → 명시적 거부.
+        if (txFinalAmount <= 0 && !isCompleted) {
+          throw new Error("참여할 수 없는 캠페인입니다.");
+        }
+
+        // 4) 완료 시 최다 기여자(동률이면 먼저 참여) = winner
+        let winnerId = null;
+        let winnerName = null;
+        if (isCompleted) {
+          const getTime = (c) => {
+            const t = c.firstContributedAt || c.contributedAt;
+            return (t && t.toMillis && t.toMillis()) ||
+              (t && t.getTime && t.getTime()) ||
+              (typeof t === "number" ? t : 0);
+          };
+          const top = [...newContributors].sort((a, b) => {
+            if ((Number(b.amount) || 0) !== (Number(a.amount) || 0)) {
+              return (Number(b.amount) || 0) - (Number(a.amount) || 0);
+            }
+            return getTime(a) - getTime(b);
+          })[0];
+          winnerId = (top && top.userId) || null;
+          winnerName = (top && top.userName) || null;
+        }
+
+        // 5) 쓰기: 캠페인 갱신, cash 차감(increment), 활동로그
+        transaction.update(campaignRef, {
+          currentAmount: newTotal,
+          contributors: newContributors,
+          status: isCompleted ? "completed" : "active",
+          completedAt: isCompleted ? nowTs : null,
+          winnerId,
+          winnerName,
+          targetPrice: effectiveTargetPrice,
+        });
+        // cash 차감·활동로그는 실제 기여(txFinalAmount>0)일 때만. 이미-도달 완료 경로는 미차감.
+        if (txFinalAmount > 0) {
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(-txFinalAmount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          const logRef = db.collection("activity_logs").doc();
+          const expireAt = admin.firestore.Timestamp.fromMillis(
+            Date.now() + 90 * 24 * 60 * 60 * 1000,
+          );
+          transaction.set(logRef, {
+            userId: uid,
+            userName: userData.name || "알 수 없음",
+            classCode,
+            type: "현금 출금",
+            description: `함께구매 참여: ${cData.itemName || "아이템"} (-${txFinalAmount.toLocaleString()}원)`,
+            amount: -txFinalAmount,
+            metadata: { campaignId, itemName: cData.itemName || "", isCompleted },
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt,
+          });
+        }
+
+        markIdempotent(transaction, keyRef);
+        return { isCompleted, winnerId, winnerName, itemName: cData.itemName, txFinalAmount };
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      logger.error(`[joinGroupPurchase] Error (uid ${uid}, campaign ${campaignId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "함께구매 참여에 실패했습니다.");
+    }
+  },
+);
+
+// 함께구매 삭제 — 관리자 또는 생성자(initiator). 진행중(active) 캠페인이면 기여자에게 환불 후 삭제.
+//   ⚠️ 완료(completed) 캠페인은 환불 안 함: 모금액이 이미 completeGroupPurchase로 관리자에게
+//   입금됐으므로 환불하면 무담보 민팅(구 클라 handleDelete는 status 미검사 + 절대값 cash 덮어쓰기 레이스 버그).
+exports.deleteGroupPurchase = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin } = await checkAuthAndGetUserData(request);
+    const { campaignId } = request.data || {};
+    if (!campaignId || typeof campaignId !== "string" || campaignId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 캠페인 정보가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const campaignRef = db.collection("groupPurchases").doc(campaignId);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 읽기: 캠페인 + (환불 대상이면) 기여자 사용자 문서 전부
+        const campaignSnap = await transaction.get(campaignRef);
+        if (!campaignSnap.exists) {
+          throw new Error("캠페인을 찾을 수 없습니다.");
+        }
+        const cData = campaignSnap.data();
+        if (cData.classCode !== classCode) {
+          throw new HttpsError("permission-denied", "다른 학급의 캠페인입니다.");
+        }
+        // 권한: 관리자 또는 생성자(initiator).
+        const isInitiator = cData.initiatorId === uid;
+        if (!isAdmin && !isInitiator) {
+          throw new HttpsError("permission-denied", "삭제 권한이 없습니다.");
+        }
+
+        // 환불 기준 = 모금액이 아직 관리자에게 입금되지 않았을 때(awardedAt 부재).
+        //   - active: 미완료 → 환불(구매자들이 낸 돈 반환).
+        //   - completed & awardedAt: completeGroupPurchase가 관리자에게 입금 완료 → 환불 금지(민팅 방지).
+        //   - completed & !awardedAt: 목표 달성했으나 지급 CF 미완(실패) → 돈이 아직 관리자에게 안 감 →
+        //     환불해야 기여자 돈이 유실되지 않음. status==="active"만 보면 이 경우를 놓쳐 유실 발생.
+        const notYetSettled = !cData.awardedAt;
+        const shouldRefund = notYetSettled &&
+          Array.isArray(cData.contributors) &&
+          (Number(cData.currentAmount) || 0) > 0;
+
+        const refundList = [];
+        if (shouldRefund) {
+          // 기여자별 합산(같은 사람 중복 항목 방어) 후 각 문서 read
+          const byUser = Object.create(null);
+          for (const c of cData.contributors) {
+            const amt = Number(c && c.amount) || 0;
+            if (c && c.userId && amt > 0) {
+              byUser[c.userId] = (byUser[c.userId] || 0) + amt;
+            }
+          }
+          for (const [userId, amt] of Object.entries(byUser)) {
+            const uRef = db.collection("users").doc(userId);
+            const uSnap = await transaction.get(uRef);
+            refundList.push({ uRef, uSnap, userId, amt });
+          }
+        }
+
+        // 2) 쓰기: 환불(increment) + 활동로그, 캠페인 삭제
+        const expireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        for (const r of refundList) {
+          if (!r.uSnap.exists) continue; // 삭제된 사용자는 스킵(반환할 잔액 없음)
+          transaction.update(r.uRef, {
+            cash: admin.firestore.FieldValue.increment(r.amt),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          const logRef = db.collection("activity_logs").doc();
+          transaction.set(logRef, {
+            userId: r.userId,
+            userName: (r.uSnap.data().name) || "사용자",
+            classCode,
+            type: "현금 입금",
+            description: `함께구매 취소 환불: ${cData.itemName || "아이템"} (+${r.amt.toLocaleString()}원)`,
+            amount: r.amt,
+            metadata: { campaignId, itemName: cData.itemName || "" },
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt,
+          });
+        }
+        transaction.delete(campaignRef);
+      });
+      return { success: true, message: "함께구매가 삭제되었습니다." };
+    } catch (error) {
+      logger.error(`[deleteGroupPurchase] Error (campaign ${campaignId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "함께구매 삭제에 실패했습니다.");
     }
   },
 );

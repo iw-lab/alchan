@@ -95,6 +95,8 @@ exports.migrateStorePriceDownManual = scheduler.migrateStorePriceDownManual; // 
 // 🛒 함께구매 완료 처리 (서버사이드)
 const groupPurchaseService = require("./groupPurchaseService");
 exports.completeGroupPurchase = groupPurchaseService.completeGroupPurchase;
+exports.joinGroupPurchase = groupPurchaseService.joinGroupPurchase;
+exports.deleteGroupPurchase = groupPurchaseService.deleteGroupPurchase;
 
 // 🎭 아바타 상점 구매 + 시드 (서버사이드)
 const avatarShopService = require("./avatarShopService");
