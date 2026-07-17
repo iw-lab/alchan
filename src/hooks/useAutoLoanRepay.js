@@ -6,44 +6,15 @@
 import { useEffect, useRef } from "react";
 import {
  db,
- doc,
  collection,
  query,
  where,
  getDocs,
- limit,
- runTransaction,
- increment,
+ functions,
+ httpsCallable,
 } from "../firebase";
 import { startOfDay } from "date-fns";
-import { logActivity, ACTIVITY_TYPES } from "../utils/firestoreHelpers";
 import { logger } from "../utils/logger";
-
-// 만기 시 총 상환금 계산 (복리: balance * (1 + dailyRate/100)^termInDays)
-const calculateMaturityTotal = (principal, dailyRate, days) => {
- if (!principal || principal <= 0 || !dailyRate || !days || days <= 0) {
- return { total: principal || 0, interest: 0 };
- }
- const total = Math.round(principal * Math.pow(1 + dailyRate / 100, days));
- return { total, interest: total - principal };
-};
-
-const findTeacherAccountId = async (classCode) => {
- if (!classCode) return null;
- try {
- const q = query(
- collection(db, "users"),
- where("classCode", "==", classCode),
- where("isAdmin", "==", true),
- limit(1),
- );
- const snap = await getDocs(q);
- return snap.empty ? null : snap.docs[0].id;
- } catch (e) {
- logger.error("[자동 강제 상환] 선생님 계정 조회 오류:", e);
- return null;
- }
-};
 
 export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
  // 같은 세션 내 동일 대출 중복 처리 방지
@@ -90,81 +61,30 @@ export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
 
  if (cancelled || matured.length === 0) return;
 
- // 선생님 계정 조회 (대출에 teacherId가 저장돼 있으면 우선 사용)
- // 🔥 [읽기최적화] 만기 대출에 teacherId가 하나라도 없을 때만 users 컬렉션 조회(동작 변화 0).
- const fallbackTeacherId = matured.some((l) => !l.teacherId)
- ? await findTeacherAccountId(userDoc.classCode)
- : null;
-
+ // 🔒 만기 대출 강제 상환을 repayLoan CF(mode:maturity)로 처리. 구 클라 runTransaction은 본인·교사
+ //   cash 직접 write라 batch6 rules 잠금 대상 → CF 이관. 이자·teacherId(누락 시 findApprovedAdminSnap
+ //   폴백)·만기검증·활동로그 전부 서버 처리. 멱등키는 대출별 고정(autorepay_${id})으로 다중 탭/재진입
+ //   이중 강제상환 차단. CF의 만기검증과 훅의 만기필터가 동일 기준(만기 도달)이라 정상 통과.
+ const repayFn = httpsCallable(functions, "repayLoan");
  for (const loan of matured) {
  if (cancelled) break;
-
- const teacherId = loan.teacherId || fallbackTeacherId;
- if (!teacherId) {
- logger.error(
- `[자동 강제 상환] 선생님 계정을 찾을 수 없음 - ${loan.name} 처리 스킵`,
- );
- continue;
- }
-
- // 처리 시도 마킹 (실패 시 아래에서 롤백)
- processedRef.current.add(loan.id);
-
- const { total, interest } = calculateMaturityTotal(
- loan.balance,
- loan.rate,
- loan.termInDays,
- );
- if (!total || total <= 0) continue;
-
- const productRef = doc(
- db,
- "users",
- userId,
- "products",
- String(loan.id),
- );
- const userRef = doc(db, "users", userId);
- const teacherRef = doc(db, "users", teacherId);
+ processedRef.current.add(loan.id); // 실패 시 아래에서 롤백
 
  try {
- await runTransaction(db, async (transaction) => {
- // 다른 디바이스/탭이 먼저 처리했으면 noop
- const productSnap = await transaction.get(productRef);
- if (!productSnap.exists()) return;
-
- transaction.update(userRef, { cash: increment(-total) });
- transaction.update(teacherRef, { cash: increment(total) });
- transaction.delete(productRef);
+ await repayFn({
+ productId: String(loan.id),
+ mode: "maturity",
+ idempotencyKey: `autorepay_${loan.id}`,
  });
-
- logger.log(
- `[자동 강제 상환] ${loan.name}: 학생 -${total}, 선생님 +${total} (이자 ${interest})`,
- );
-
- logActivity(db, {
- classCode: userDoc.classCode,
- userId,
- userName: userDoc.name || "사용자",
- type: ACTIVITY_TYPES.LOAN_REPAY,
- description: `대출 만기 자동 강제 상환: ${loan.name} (원금: ${loan.balance}, 이자: ${interest}, 총: ${total})`,
- amount: -total,
- metadata: {
- productName: loan.name,
- principal: loan.balance,
- interest,
- total,
- teacherId,
- repaymentType: "auto_force",
- },
- });
- } catch (txErr) {
- logger.error(
- `[자동 강제 상환] ${loan.name} 트랜잭션 실패:`,
- txErr,
- );
- // 다음 트리거에서 재시도 가능하도록 롤백
- processedRef.current.delete(loan.id);
+ logger.log(`[자동 강제 상환] ${loan.name}: 서버 CF 처리 완료`);
+ } catch (err) {
+ // 이미 처리됨(already-exists)·상품 없음은 다른 탭 선처리로 정상 — 로그만.
+ if (err?.code === "functions/already-exists") {
+ logger.log(`[자동 강제 상환] ${loan.name}: 이미 처리됨`);
+ } else {
+ logger.error(`[자동 강제 상환] ${loan.name} CF 실패:`, err);
+ processedRef.current.delete(loan.id); // 다음 트리거에서 재시도 가능
+ }
  }
  }
 

@@ -6,64 +6,15 @@
 import { useEffect, useRef } from "react";
 import {
   db,
-  doc,
   collection,
   query,
   where,
   getDocs,
-  limit,
-  runTransaction,
-  increment,
+  functions,
+  httpsCallable,
 } from "../firebase";
 import { startOfDay } from "date-fns";
-import { logActivity, ACTIVITY_TYPES } from "../utils/firestoreHelpers";
 import { logger } from "../utils/logger";
-
-// 예금 만기 총액 (일복리: balance * (1 + dailyRate/100)^termInDays)
-const calculateDepositMaturity = (principal, dailyRate, days) => {
-  if (!principal || principal <= 0 || !dailyRate || !days || days <= 0) {
-    return { total: principal || 0, interest: 0 };
-  }
-  const total = Math.round(principal * Math.pow(1 + dailyRate / 100, days));
-  return { total, interest: total - principal };
-};
-
-// 적금 만기 총액: 매일 dailyAmount 납입 시 각 납입금이 남은 기간만큼 복리
-// 만기 시점엔 termInDays 전체를 납입한 것으로 가정 (부족분은 만기 처리 트랜잭션에서 일괄 차감)
-const calculateSavingsMaturity = (dailyAmount, dailyRate, termInDays) => {
-  if (!dailyAmount || dailyAmount <= 0 || !dailyRate || termInDays <= 0) {
-    return { total: 0, interest: 0, totalDeposited: 0 };
-  }
-  const r = dailyRate / 100;
-  let total = 0;
-  for (let i = 0; i < termInDays; i++) {
-    const daysOfInterest = termInDays - i;
-    total += dailyAmount * Math.pow(1 + r, daysOfInterest);
-  }
-  const totalDeposited = dailyAmount * termInDays;
-  return {
-    total: Math.round(total),
-    interest: Math.round(total - totalDeposited),
-    totalDeposited,
-  };
-};
-
-const findTeacherAccountId = async (classCode) => {
-  if (!classCode) return null;
-  try {
-    const q = query(
-      collection(db, "users"),
-      where("classCode", "==", classCode),
-      where("isAdmin", "==", true),
-      limit(1),
-    );
-    const snap = await getDocs(q);
-    return snap.empty ? null : snap.docs[0].id;
-  } catch (e) {
-    logger.error("[자동 만기 지급] 선생님 계정 조회 오류:", e);
-    return null;
-  }
-};
 
 export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
   const processedRef = useRef(new Set());
@@ -107,114 +58,30 @@ export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
 
         if (cancelled || matured.length === 0) return;
 
-        // 🔥 [읽기최적화] 만기 상품에 teacherId가 하나라도 없을 때만 users 컬렉션 조회.
-        //   신규 상품은 생성 시 teacherId를 저장하므로 대부분 이 쿼리를 건너뜀(동작 변화 0).
-        const fallbackTeacherId = matured.some((p) => !p.teacherId)
-          ? await findTeacherAccountId(userDoc.classCode)
-          : null;
-
+        // 🔒 만기 예적금 자동 수령을 redeemDepositSavings CF(mode:maturity)로 처리. 구 클라 runTransaction은
+        //   본인·교사 cash 직접 write라 batch6 rules 잠금 대상 → CF 이관. 이자·적금 arrears·teacherId(누락 시
+        //   findApprovedAdminSnap 폴백)·만기검증·활동로그 전부 서버 처리. 멱등키는 상품별 고정(automature_${id})
+        //   으로 다중 탭/재진입 이중 지급 차단. CF 만기검증과 훅 만기필터가 동일 기준이라 정상 통과.
+        const redeemFn = httpsCallable(functions, "redeemDepositSavings");
         for (const product of matured) {
           if (cancelled) break;
-
-          const teacherId = product.teacherId || fallbackTeacherId;
-          if (!teacherId) {
-            logger.error(
-              `[자동 만기 지급] 선생님 계정을 찾을 수 없음 - ${product.name} 처리 스킵`,
-            );
-            continue;
-          }
-
-          processedRef.current.add(product.id);
-
-          const isSavings = product.type === "savings" && product.dailyAmount > 0;
-          let total, interest, principal;
-          if (isSavings) {
-            const result = calculateSavingsMaturity(
-              product.dailyAmount,
-              product.rate,
-              product.termInDays,
-            );
-            total = result.total;
-            interest = result.interest;
-            principal = result.totalDeposited;
-          } else {
-            const result = calculateDepositMaturity(
-              product.balance,
-              product.rate,
-              product.termInDays,
-            );
-            total = result.total;
-            interest = result.interest;
-            principal = product.balance;
-          }
-          if (!total || total <= 0) continue;
-
-          const productRef = doc(
-            db,
-            "users",
-            userId,
-            "products",
-            String(product.id),
-          );
-          const userRef = doc(db, "users", userId);
-          const teacherRef = doc(db, "users", teacherId);
+          processedRef.current.add(product.id); // 실패 시 아래에서 롤백
 
           try {
-            const txResult = await runTransaction(db, async (transaction) => {
-              // 다른 디바이스/탭이 먼저 처리했으면 noop
-              const productSnap = await transaction.get(productRef);
-              if (!productSnap.exists()) return { skipped: true };
-
-              const pdata = productSnap.data();
-
-              // 적금: 만기 시점에 미납 회차가 있으면 일괄 차감 (잔액 마이너스 허용)
-              // 그 후 만기 총액(termInDays 전체 납입 기준) 지급
-              let arrearsAmount = 0;
-              if (isSavings) {
-                const curDeposits = Number(pdata.depositsCount || 0);
-                const missing = Math.max(0, product.termInDays - curDeposits);
-                arrearsAmount = missing * Number(pdata.dailyAmount || product.dailyAmount);
-              }
-
-              const studentDelta = total - arrearsAmount;
-              const teacherDelta = -total + arrearsAmount;
-
-              transaction.update(userRef, { cash: increment(studentDelta) });
-              transaction.update(teacherRef, { cash: increment(teacherDelta) });
-              transaction.delete(productRef);
-              return { skipped: false, arrearsAmount, studentDelta };
+            await redeemFn({
+              productId: String(product.id),
+              mode: "maturity",
+              idempotencyKey: `automature_${product.id}`,
             });
-
-            if (txResult?.skipped) continue;
-
-            logger.log(
-              `[자동 만기 지급] ${product.name}: 학생 순지급 ${txResult.studentDelta} (만기 +${total}, 적금 미납 차감 -${txResult.arrearsAmount}), 원금 ${principal}, 이자 ${interest}`,
-            );
-
-            logActivity(db, {
-              classCode: userDoc.classCode,
-              userId,
-              userName: userDoc.name || "사용자",
-              type: ACTIVITY_TYPES.DEPOSIT_MATURITY,
-              description: `${product.name} 만기 자동 수령 (원금: ${principal}, 이자: ${interest}, 총: ${total}${isSavings && txResult.arrearsAmount > 0 ? `, 미납 일괄 ${txResult.arrearsAmount}` : ""}) - 선생님 계정에서`,
-              amount: txResult.studentDelta,
-              metadata: {
-                productName: product.name,
-                productType: product.type,
-                principal,
-                interest,
-                total,
-                arrearsAmount: txResult.arrearsAmount,
-                teacherId,
-                payoutType: "auto",
-              },
-            });
-          } catch (txErr) {
-            logger.error(
-              `[자동 만기 지급] ${product.name} 트랜잭션 실패:`,
-              txErr,
-            );
-            processedRef.current.delete(product.id);
+            logger.log(`[자동 만기 지급] ${product.name}: 서버 CF 처리 완료`);
+          } catch (err) {
+            // 이미 처리됨(already-exists)·상품 없음은 다른 탭 선처리로 정상 — 로그만.
+            if (err?.code === "functions/already-exists") {
+              logger.log(`[자동 만기 지급] ${product.name}: 이미 처리됨`);
+            } else {
+              logger.error(`[자동 만기 지급] ${product.name} CF 실패:`, err);
+              processedRef.current.delete(product.id); // 다음 트리거에서 재시도 가능
+            }
           }
         }
 
