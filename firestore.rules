@@ -941,7 +941,13 @@ service cloud.firestore {
       match /courtComplaints/{complaintId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
-        allow update: if isSignedIn() && isSameClass(classCode);
+        // 🔒 2026-07-17 배치6-b: 합의금 결과필드(settlementPaid/Amount/Date/ProcessedBy)는
+        //   processCourtSettlement CF(admin SDK, rules 우회)만 기록. 클라 직접 update가 이 필드를
+        //   되돌리거나 위조하지 못하게 차단(이중지급 reset 공격 방어). status 등 나머지 재판흐름
+        //   필드는 그대로 허용(court-flow 클라 의존 유지 — 전체 잠금은 batch7 court-lock).
+        allow update: if isSignedIn() && isSameClass(classCode) &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy']);
         allow delete: if isAdmin();
       }
 

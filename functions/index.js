@@ -3374,6 +3374,206 @@ exports.requestMusicPayment = onCall(
 );
 
 // ===================================================================================
+// 🏛️ 재판 합의금 지급 (2026-07-17 배치6-b CF 이관 — Court handleSendSettlement 클라 runTransaction 대체)
+//   ⚠️ 함수명 = processCourtSettlement (경찰서 합의금 processSettlement(reportId 기반)과 별개 — 개명해 충돌 회피).
+//   - 구 클라: sender cash 차감 + recipient cash 적립 + complaint.settlementPaid + activity_logs 2건.
+//     sender/recipient는 같은반 임의 유저(cash 직접 write) = batch7 cash rules 잠금 대상 → CF 이관.
+//   - 권한: 관리자/교사(hasTeacherPower) OR 판사(jobTitle "판사"). 클라 게이트를 서버에서 강제.
+//   - 이중지급 차단 = 서버파생 멱등키(courtsettle_{complaintId}) + settlementPaid 게이트 + complaint OCC.
+//     멱등키가 idempotencyKeys 원장(클라 write 불가)이라 settlementPaid를 클라가 되돌려도 재차단.
+//   - 자기거래 차단(처리자≠당사자), 판사는 사건 당사자(피고소인→고소인)만·교사는 재량, same-class 강제, 처리자 감사기록.
+//   ⚠️ 잔여(batch7 court-lock): courtComplaints의 status/defendantId/complainantId가 아직 클라 위조 가능
+//     (rules allow update: isSignedIn && isSameClass) → 가짜 사건 생성 후 settle 드레인은 court-flow
+//     서버이관 + courtComplaints rules 잠금으로만 봉인 가능(구 클라도 동일 취약, regression 아님).
+// ===================================================================================
+exports.processCourtSettlement = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { complaintId, senderId, recipientId, amount } = request.data || {};
+
+    // 🔒 정수·범위·타입·경로주입 검증
+    if (
+      !complaintId || typeof complaintId !== "string" || complaintId.includes("/") ||
+      !senderId || typeof senderId !== "string" || senderId.includes("/") ||
+      !recipientId || typeof recipientId !== "string" || recipientId.includes("/") ||
+      !Number.isInteger(amount) || amount <= 0 || amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "합의 정보(당사자·금액 1 이상의 정수)를 정확히 입력해야 합니다.",
+      );
+    }
+    if (senderId === recipientId) {
+      throw new HttpsError(
+        "invalid-argument",
+        "보내는 사람과 받는 사람은 같을 수 없습니다.",
+      );
+    }
+    // 🔒 이해상충 차단(reviewer/Gemini): 처리자(판사/관리자)는 스스로 당사자가 될 수 없다
+    //    (판사가 피해자→자기 자신 합의로 자산을 빼돌리는 자기거래 차단).
+    if (uid === senderId || uid === recipientId) {
+      throw new HttpsError(
+        "permission-denied",
+        "합의 처리자는 송금자·수금자가 될 수 없습니다.",
+      );
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    // 🔒 권한: 관리자/교사(레거시 isTeacher 포함) OR 판사
+    const isTeacher = hasTeacherPower(userData);
+    let authorized = isTeacher;
+    if (!authorized) {
+      const jobsSnap = await db
+        .collection("jobs")
+        .where("classCode", "==", classCode)
+        .get();
+      authorized = hasJobTitle(userData, buildJobMap(jobsSnap), "판사");
+    }
+    if (!authorized) {
+      throw new HttpsError(
+        "permission-denied",
+        "합의금 지급 처리 권한은 판사 또는 관리자에게 있습니다.",
+      );
+    }
+
+    const complaintRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("courtComplaints")
+      .doc(complaintId);
+    const senderRef = db.collection("users").doc(senderId);
+    const recipientRef = db.collection("users").doc(recipientId);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 모든 읽기 먼저: 멱등키 → complaint·sender·recipient
+        //    🔒 멱등키 = 서버파생 courtsettle_{complaintId}(클라 UUID 불신). 이중지급 차단이
+        //    클라 수정가능 필드(settlementPaid)가 아니라 idempotencyKeys 원장(클라 write 불가)에
+        //    의존하게 함 → settlementPaid를 클라가 false로 되돌려 재호출해도 같은 complaint는 재차단.
+        const keyRef = await checkIdempotent(
+          transaction,
+          `courtsettle_${classCode}_${complaintId}`,
+        );
+        const [complaintDoc, senderDoc, recipientDoc] =
+          await transaction.getAll(complaintRef, senderRef, recipientRef);
+
+        if (!complaintDoc.exists) throw new Error("해당 고소 정보를 찾을 수 없습니다.");
+        const cData = complaintDoc.data();
+        // 상태 게이트(구 handleOpenSettlementModal 조건을 서버에서 강제 — 중복지급 차단)
+        if (cData.status !== "resolved") {
+          throw new Error("재판이 완료된 사건에 대해서만 합의금을 처리할 수 있습니다.");
+        }
+        if (cData.settlementPaid === true) {
+          throw new Error("이미 합의금 지급이 완료된 사건입니다.");
+        }
+        // 🔒 판사(비교사)는 실제 사건 당사자(피고소인→고소인)만 처리 가능(reviewer/Gemini HIGH).
+        //    임의 제3자 간 이체(피해자→친구·자기 자신)를 사건과 결부시키는 남용을 축소.
+        //    교사/관리자는 재량 유지(파산 등 defendantId="system" 예외 사건 처리).
+        //    ⚠️ courtComplaints의 status·defendantId·complainantId 자체는 아직 클라 위조 가능
+        //    (rules 미잠금) = 가짜 사건 생성 드레인은 batch7 court-lock에서 봉인(문서화됨).
+        if (!isTeacher) {
+          if (
+            senderId !== cData.defendantId ||
+            recipientId !== cData.complainantId
+          ) {
+            throw new Error(
+              "판사는 사건의 피고소인→고소인 합의금만 처리할 수 있습니다.",
+            );
+          }
+        }
+
+        if (!senderDoc.exists) throw new Error("보내는 사람의 정보를 찾을 수 없습니다.");
+        if (!recipientDoc.exists) throw new Error("받는 사람의 정보를 찾을 수 없습니다.");
+        const sData = senderDoc.data();
+        const rData = recipientDoc.data();
+
+        // 2) 반경계: 양쪽 모두 판사/관리자와 같은 학급(반 밖으로 돈이 새는 것 차단).
+        if (sData.classCode !== classCode || rData.classCode !== classCode) {
+          throw new Error("같은 학급의 사용자끼리만 합의금을 주고받을 수 있습니다.");
+        }
+
+        // 3) 서버 잔액검증
+        const senderCash = Number(sData.cash) || 0;
+        if (senderCash < amount) {
+          throw new Error(
+            `${sData.name || "송금자"}님의 현금이 부족합니다. (보유: ${senderCash.toLocaleString()}원)`,
+          );
+        }
+
+        // 4) 양방향 increment + complaint 갱신(원자적)
+        transaction.update(senderRef, {
+          cash: admin.firestore.FieldValue.increment(-amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(recipientRef, {
+          cash: admin.firestore.FieldValue.increment(amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(complaintRef, {
+          settlementPaid: true,
+          settlementAmount: amount,
+          settlementDate: admin.firestore.FieldValue.serverTimestamp(),
+          // 🔒 감사(reviewer HIGH): 어느 판사/관리자가 처리했는지 사후 추적 가능하게 기록.
+          settlementProcessedBy: uid,
+        });
+
+        // 5) 거래내역(activity_logs 최상위 amount) — 구 클라와 동일 형태로 양쪽 기록.
+        //    처리자(issuedBy) 식별을 남겨 남용 사후감사 가능(processFine과 일관).
+        const senderName = sData.name || sData.nickname || "송금자";
+        const recipientName = rData.name || rData.nickname || "수금자";
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        const sLogRef = db.collection("activity_logs").doc();
+        transaction.set(sLogRef, {
+          userId: senderId,
+          userName: senderName,
+          type: "legal_settlement",
+          description: `${recipientName}님에게 합의금 ${amount.toLocaleString()}원 지급`,
+          amount: -amount,
+          classCode,
+          issuedBy: uid,
+          issuedByName: userData.name || "",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+        const rLogRef = db.collection("activity_logs").doc();
+        transaction.set(rLogRef, {
+          userId: recipientId,
+          userName: recipientName,
+          type: "legal_settlement",
+          description: `${senderName}님으로부터 합의금 ${amount.toLocaleString()}원 수령`,
+          amount: amount,
+          classCode,
+          issuedBy: uid,
+          issuedByName: userData.name || "",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+
+        markIdempotent(transaction, keyRef);
+      });
+      return { success: true, message: "합의금 지급을 완료했습니다." };
+    } catch (error) {
+      logger.error(
+        `[processCourtSettlement] Error by ${uid} (complaint ${complaintId}):`,
+        error,
+      );
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError(
+        "aborted",
+        error.message || "합의금 지급에 실패했습니다.",
+      );
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 

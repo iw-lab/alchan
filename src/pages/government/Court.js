@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebase";
+import { db, functions, httpsCallable } from "../../firebase";
 import "./Court.css";
 import SubmitComplaint from "./SubmitComplaint";
 import ComplaintStatus from "./ComplaintStatus";
@@ -19,9 +19,7 @@ import {
  collection,
  doc,
  runTransaction,
- increment,
  serverTimestamp,
- Timestamp,
  addDoc,
  updateDoc,
  deleteDoc,
@@ -1027,77 +1025,16 @@ const Court = () => {
  recipient?.name || recipient?.displayName || recipientId;
 
  try {
- await runTransaction(db, async (transaction) => {
- const senderRef = doc(db, "users", senderId);
- const recipientRef = doc(db, "users", recipientId);
- const complaintDocRef = doc(
- db,
- "classes",
- classCode,
- "courtComplaints",
+ // 🔒 합의금(sender·recipient cash 직접 write)을 processSettlement CF로 처리(2026-07-17 배치6-b).
+ //   구 클라 runTransaction은 같은반 임의 유저 cash 직접 write라 batch7 rules 잠금 대상 → CF 이관.
+ //   권한(판사/관리자)·complaint 상태게이트(resolved & !settlementPaid)·반경계·잔액·거래내역 전부 서버.
+ //   서버 settlementPaid 게이트 + 멱등키가 이중지급을 차단(complaint OCC).
+ const settlementFn = httpsCallable(functions, "processCourtSettlement");
+ await settlementFn({
  complaintId,
- );
-
- const senderSnap = await transaction.get(senderRef);
- const recipientSnap = await transaction.get(recipientRef);
- const complaintSnap = await transaction.get(complaintDocRef);
-
- if (!senderSnap.exists())
- throw new Error(`${senderName}님의 사용자 정보를 찾을 수 없습니다.`);
- if (!recipientSnap.exists())
- throw new Error(
- `${recipientName}님의 사용자 정보를 찾을 수 없습니다.`,
- );
- if (!complaintSnap.exists())
- throw new Error("해당 고소 정보를 찾을 수 없습니다.");
-
- const senderCash = senderSnap.data().cash || 0;
-
- if (senderCash < numericAmount) {
- throw new Error(
- `${senderName}님의 현금이 부족합니다. (보유: ${senderCash.toLocaleString()}원)`,
- );
- }
-
- transaction.update(senderRef, {
- cash: increment(-numericAmount),
- });
- transaction.update(recipientRef, {
- cash: increment(numericAmount),
- });
- transaction.update(complaintDocRef, {
- settlementPaid: true,
- settlementAmount: numericAmount,
- settlementDate: serverTimestamp(),
- });
-
- // 🔥 학생 거래 내역 로그 (합의금 양쪽 모두 기록)
- const logExpireAt = new Date();
- logExpireAt.setDate(logExpireAt.getDate() + 90);
- const senderLogRef = doc(collection(db, "activity_logs"));
- transaction.set(senderLogRef, {
- userId: senderId,
- userName: senderName,
- type: "legal_settlement",
- description: `${recipientName}님에게 합의금 ${numericAmount.toLocaleString()}원 지급`,
- amount: -numericAmount,
- classCode: classCode || null,
- timestamp: serverTimestamp(),
- createdAt: serverTimestamp(),
- expireAt: Timestamp.fromDate(logExpireAt),
- });
- const recipientLogRef = doc(collection(db, "activity_logs"));
- transaction.set(recipientLogRef, {
- userId: recipientId,
- userName: recipientName,
- type: "legal_settlement",
- description: `${senderName}님으로부터 합의금 ${numericAmount.toLocaleString()}원 수령`,
+ senderId,
+ recipientId,
  amount: numericAmount,
- classCode: classCode || null,
- timestamp: serverTimestamp(),
- createdAt: serverTimestamp(),
- expireAt: Timestamp.fromDate(logExpireAt),
- });
  });
 
  refetchComplaints();
