@@ -1905,6 +1905,309 @@ exports.parkingWithdraw = onCall(
 );
 
 // ===================================================================================
+// 🔥 예적금/대출 가입 (2026-07-17 CF 이관 — ParkingAccount handleSubscribe 클라 runTransaction 대체)
+//   - 상품 정보(rate·term·min/max·name)를 클라 입력이 아닌 서버 카탈로그(bankingSettings/{classCode})에서
+//     조회해 위조 차단(0일 만기·과대 한도·임의 이율 방지). 클라는 productType·productId·amount만 신뢰.
+//   - 학생↔선생님(승인 관리자=은행) cash 이동. 단일 트랜잭션·멱등·활동로그(최상위 amount로 거래내역 보존).
+//   - 서버 강제 규칙: 카탈로그 존재, min/max, (대출) 활성대출 차단·24h 쿨다운·현금 10배 레버리지,
+//     (적금) 일납입금 ≤ 현금/기간. 순자산음수 차단은 클라 UX 게이트로 유지 — 무결성 경계가 아닌 anti-abuse
+//     이고(활성대출 차단+현금>0+10배 레버리지가 이미 실효 제약), getNetAssets 서버포팅은 divergence 위험이
+//     더 크다. 배치6 rules 잠금(본인/교사 cash·products 클라 write 제거) 대비 방어 이관.
+// ===================================================================================
+exports.subscribeProduct = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { productType, productId, amount, repaymentType, idempotencyKey } =
+      request.data;
+
+    // 1) 입력 검증
+    if (!["deposits", "savings", "loans"].includes(productType)) {
+      throw new HttpsError("invalid-argument", "유효하지 않은 상품 유형입니다.");
+    }
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 10000000000) {
+      throw new HttpsError(
+        "invalid-argument",
+        "가입 금액은 1 이상의 정수여야 합니다.",
+      );
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+    // 멱등키 필수화 — 신규 CF라 레거시 호출자가 없으므로 fail-open(키 생략 시 멱등 생략)을 막는다.
+    // 클라 재시도/연타로 인한 이중 가입·이중 차감을 checkIdempotent가 확실히 차단하도록 강제.
+    if (typeof idempotencyKey !== "string" || !idempotencyKey) {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    const isLoan = productType === "loans";
+    const isSavings = productType === "savings";
+    const safeRepayment =
+      repaymentType === "installment" ? "installment" : "lumpSum";
+
+    // 2) 서버 카탈로그 조회 — 클라가 넘긴 rate/term/name/min/max를 신뢰하지 않는다.
+    const bankingSnap = await db
+      .collection("bankingSettings")
+      .doc(classCode)
+      .get();
+    if (!bankingSnap.exists) {
+      throw new HttpsError(
+        "failed-precondition",
+        "학급 뱅킹 상품이 설정되지 않았습니다.",
+      );
+    }
+    const catalog = bankingSnap.data()[productType];
+    if (!Array.isArray(catalog)) {
+      throw new HttpsError("failed-precondition", "상품 목록을 찾을 수 없습니다.");
+    }
+    const product = catalog.find((p) => Number(p.id) === Number(productId));
+    if (!product) {
+      throw new HttpsError("not-found", "해당 상품을 찾을 수 없습니다.");
+    }
+    // 서버 파생값 — 실제 사용 어댑터(src/pages/banking/Banking.js:21 로컬 convertAdminProductsToAccountFormat,
+    //   dailyRate 없으면 0)와 동일 규칙. ⚠️ 동명의 src/pages/banking/BankingProductAdapter.js(annualRate/365
+    //   폴백)는 BankingProductService 전용이라 이 가입 경로와 무관 — 규칙 동기화 시 반드시 Banking.js 쪽을 볼 것.
+    //   parseInt 절삭 후에도 term≥1을 재보장(예: "0.5"→0이면 즉시만기·적금 일한도 cash/0=Infinity 우회 방지).
+    const termParsed = parseInt(product.termInDays, 10);
+    const termInDays =
+      Number.isFinite(termParsed) && termParsed > 0 ? termParsed : 1;
+    const dailyRate =
+      product.dailyRate !== undefined &&
+      Number.isFinite(Number(product.dailyRate))
+        ? parseFloat(product.dailyRate)
+        : 0;
+    const minParsed = parseInt(product.minAmount, 10);
+    const minAmount = Number.isFinite(minParsed) && minParsed > 0 ? minParsed : 0;
+    const maxParsed = parseInt(product.maxAmount, 10);
+    const maxAmount = Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : 0;
+    const productName =
+      sanitizeInput(String(product.name || "상품")).slice(0, 100) || "상품";
+
+    // 3) min/max (클라 UI와 동일)
+    if (minAmount && amount < minAmount) {
+      throw new HttpsError(
+        "invalid-argument",
+        `최소 가입 금액은 ${minAmount.toLocaleString()}원입니다.`,
+      );
+    }
+    if (maxAmount && amount > maxAmount) {
+      throw new HttpsError(
+        "invalid-argument",
+        `최대 가입 한도는 ${maxAmount.toLocaleString()}원입니다.`,
+      );
+    }
+
+    // 4) 선생님(승인 관리자=은행) 계정 — 클라 getTeacherAccount 대체(승인 관리자만 신뢰).
+    const adminSnap = await findApprovedAdminSnap(classCode);
+    if (adminSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "선생님(은행) 계정을 찾을 수 없습니다. 관리자에게 문의하세요.",
+      );
+    }
+    const teacherId = adminSnap.docs[0].id;
+    const teacherName = adminSnap.docs[0].data().name || "선생님";
+    const userRef = db.collection("users").doc(uid);
+    const teacherRef = db.collection("users").doc(teacherId);
+
+    // ⚠️ 학생==선생님이면 같은 문서 2회 update로 트랜잭션이 깨진다 → 차단(관리자 본인 가입 방어)
+    if (teacherId === uid) {
+      throw new HttpsError(
+        "failed-precondition",
+        "관리자(은행) 계정으로는 상품에 가입할 수 없습니다.",
+      );
+    }
+
+    const maturityDate = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() + termInDays * 24 * 60 * 60 * 1000),
+    );
+    const inc = admin.firestore.FieldValue.increment;
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 읽기 먼저(모든 get은 write 이전). 대출이면 활성대출 확인 쿼리 포함.
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        let activeLoanSnap = null;
+        if (isLoan) {
+          activeLoanSnap = await transaction.get(
+            userRef.collection("products").where("type", "==", "loan"),
+          );
+        }
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+        const uData = userDoc.data();
+        if (uData.classCode !== classCode) {
+          throw new Error("학급 정보가 일치하지 않습니다.");
+        }
+        // 저장값 타입 가드(parking CF와 동일 사유 — increment 교체/Infinity 방지).
+        // cash는 벌금 등으로 음수가 정상이므로 음수는 허용하되 숫자·유한만 통과.
+        const rawCash = uData.cash;
+        if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+          throw new Error(
+            "계정 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.",
+          );
+        }
+        // 교사(은행) 문서도 트랜잭션 내에서 읽어 존재·타입 가드(국고 무결성). 구 클라도
+        // teacherSnapshot.exists()를 확인했다. increment가 비정상 cash를 값교체·포화시켜 국고
+        // 잔액을 소각/민팅하는 것을 차단(정상 유한수만 통과 — 국고는 음수도 정상이라 음수는 허용).
+        const teacherDoc = await transaction.get(teacherRef);
+        if (!teacherDoc.exists) {
+          throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+        }
+        const rawTeacherCash = teacherDoc.data().cash;
+        if (
+          typeof rawTeacherCash !== "number" ||
+          !Number.isFinite(rawTeacherCash)
+        ) {
+          throw new Error(
+            "은행 계정 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.",
+          );
+        }
+
+        if (isLoan) {
+          // 활성 대출 차단(돌려막기·다중대출로 국고 고갈 방지 — 서버 강제).
+          // 현 스키마는 balance만 쓰지만 netAssets가 참조하는 레거시 remainingPrincipal도 방어적으로 포함.
+          const hasActive = activeLoanSnap.docs.some(
+            (d) =>
+              Number(d.data().balance) > 0 ||
+              Number(d.data().remainingPrincipal) > 0,
+          );
+          if (hasActive) {
+            throw new Error(
+              "이미 미상환 대출이 있습니다. 기존 대출을 먼저 갚아주세요.",
+            );
+          }
+          // 대출 상환 후 24시간 쿨다운
+          const lastRepaid = uData.lastLoanRepaidAt;
+          const lastMs = lastRepaid?.toMillis
+            ? lastRepaid.toMillis()
+            : lastRepaid
+              ? new Date(lastRepaid).getTime()
+              : null;
+          if (lastMs && Number.isFinite(lastMs)) {
+            const elapsed = Date.now() - lastMs;
+            const COOLDOWN = 24 * 60 * 60 * 1000;
+            if (elapsed >= 0 && elapsed < COOLDOWN) {
+              const remainingH = Math.ceil(
+                (COOLDOWN - elapsed) / (60 * 60 * 1000),
+              );
+              throw new Error(
+                `대출 상환 후 24시간이 지나야 새 대출이 가능합니다. (남은 시간: ${remainingH}시간)`,
+              );
+            }
+          }
+          // 현금 1원 이상 + 보유 현금의 10배 레버리지(서버 강제)
+          if (rawCash <= 0) {
+            throw new Error(
+              "대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.",
+            );
+          }
+          if (amount > rawCash * 10) {
+            throw new Error(
+              "대출 한도 초과: 보유 현금의 10배까지만 가능합니다.",
+            );
+          }
+        } else {
+          // 예금/적금: 학생 현금 확인
+          if (rawCash < amount) throw new Error("보유 현금이 부족합니다.");
+          if (isSavings) {
+            // 적금 일 납입금 ≤ 보유 현금 ÷ 기간(매일 납입 가능해야 함)
+            const maxDaily = Math.floor(rawCash / termInDays);
+            if (amount > maxDaily) {
+              throw new Error(
+                `적금 일 납입금은 보유 현금 ÷ 기간(${termInDays}일) 이하만 가능합니다.`,
+              );
+            }
+          }
+        }
+
+        // 쓰기: 상품 문서 생성(클라 handleSubscribe 저장 필드 정확 보존)
+        const newProductRef = userRef.collection("products").doc();
+        const newProductData = {
+          name: productName,
+          termInDays,
+          rate: dailyRate,
+          balance: amount,
+          startDate: admin.firestore.FieldValue.serverTimestamp(),
+          maturityDate,
+          type: isLoan ? "loan" : isSavings ? "savings" : "deposit",
+          teacherId,
+          teacherName,
+          ...(isSavings && {
+            dailyAmount: amount,
+            totalDeposited: amount,
+            depositsCount: 1,
+          }),
+          ...(isLoan && {
+            repaymentType: safeRepayment,
+            originalBalance: amount,
+            lastRepaymentDate: null,
+            totalInterestPaid: 0,
+          }),
+        };
+        transaction.set(newProductRef, newProductData);
+
+        // cash 이동: 대출=선생님→학생, 예적금=학생→선생님
+        if (isLoan) {
+          transaction.update(userRef, {
+            cash: inc(amount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          transaction.update(teacherRef, {
+            cash: inc(-amount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.update(userRef, {
+            cash: inc(-amount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          transaction.update(teacherRef, {
+            cash: inc(amount),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        markIdempotent(transaction, keyRef);
+
+        // 활동 로그 — 최상위 amount로 거래내역 표시 보존(클라 logActivity와 동일 형태).
+        const cashChange = isLoan ? amount : -amount;
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(db.collection("activity_logs").doc(), {
+          classCode,
+          userId: uid,
+          userName: uData.name || "사용자",
+          type: isLoan ? "대출 실행" : "예금 가입",
+          description: `${productName} ${isLoan ? "대출" : "가입"} (${amount.toLocaleString()}원) - 선생님 계정 연동`,
+          amount: cashChange,
+          couponAmount: 0,
+          metadata: {
+            productName,
+            productType,
+            termInDays,
+            dailyRate,
+            maturityDate: maturityDate.toDate().toISOString(),
+            teacherId,
+            teacherName,
+          },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+      });
+      return { success: true };
+    } catch (error) {
+      logger.error(`[subscribeProduct] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError(
+        "aborted",
+        error.message || "가입 처리에 실패했습니다.",
+      );
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 관리자 지급/회수 (2026-07-17 CF 이관 — MoneyTransfer의 클라 adminCashAction 대체)
 //   - 권한: 서버에서 관리자(hasAdminPower) 또는 위임(delegatedPermissions.moneyTransfer) 강제.
 //     클라가 넘기던 adminId/adminClassCode를 신뢰하지 않고 auth·userData에서 파생.

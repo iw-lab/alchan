@@ -1363,31 +1363,28 @@ const ParkingAccount = ({
  const amount = parseFloat(subscribeAmount);
  const { product, type } = modal;
 
- logger.log("가입할 상품:", product);
- logger.log(`가입 유형: ${type}, 가입 금액: ${amount}`);
-
  if (isNaN(amount) || amount <= 0) {
- logger.error("유효하지 않은 금액:", subscribeAmount);
  return displayMessage("유효한 금액을 입력하세요.", "error");
  }
+ if (!Number.isInteger(amount)) {
+ return displayMessage("가입 금액은 정수여야 합니다.", "error");
+ }
+ // UX 사전검증(즉시 피드백용) — 최종 강제는 서버 subscribeProduct CF가 카탈로그 기준으로 수행.
  if (product.minAmount && amount < product.minAmount) {
- logger.error(`최소 가입 금액 미달: ${amount} < ${product.minAmount}`);
  return displayMessage(
  `최소 가입 금액은 ${formatCurrency(product.minAmount)}${currencyUnit}입니다.`,
  "error",
  );
  }
  if (product.maxAmount && amount > product.maxAmount) {
- logger.error(`최대 가입 한도 초과: ${amount} > ${product.maxAmount}`);
  return displayMessage(
  `최대 가입 한도는 ${formatCurrency(product.maxAmount)}${currencyUnit}입니다.`,
  "error",
  );
  }
 
- // 🔥 대출 한도: 보유 현금의 10배까지만 가능
+ // 🔥 대출 사전검증(UX) — CF가 동일 규칙을 서버에서 재강제한다.
  if (type === "loans") {
- // 🔥 기존 미상환 대출이 있으면 추가 대출 불가
  const hasActiveLoan = (userLoans || []).some(
  (l) => !l.isOptimistic && Number(l.balance) > 0,
  );
@@ -1397,7 +1394,6 @@ const ParkingAccount = ({
  "error",
  );
  }
- // 🔥 대출 상환 후 24시간 쿨다운 — 친구 송금으로 돌려막기 차단
  const lastRepaid =
  userDoc?.lastLoanRepaidAt?.toDate?.() || userDoc?.lastLoanRepaidAt;
  if (lastRepaid) {
@@ -1411,6 +1407,8 @@ const ParkingAccount = ({
  );
  }
  }
+ // 순자산 음수 차단은 클라 UX 게이트로 유지(서버 CF는 무결성 경계 규칙만 강제 —
+ // 활성대출 차단+현금>0+10배 레버리지가 이미 실효 제약이라 서버 순자산 포팅 생략).
  if (await isNetAssetsNegative(userDoc)) {
  return displayMessage(NEGATIVE_ASSETS_MESSAGE, "error");
  }
@@ -1433,200 +1431,44 @@ const ParkingAccount = ({
  setIsProcessing(true);
  handleCloseModal(); // UX 개선을 위해 모달 즉시 닫기
 
- // --- 선생님 계정 조회 ---
- const teacherAccount = await getTeacherAccount(userDoc?.classCode);
- if (!teacherAccount) {
- displayMessage(
- "선생님(은행) 계정을 찾을 수 없습니다. 관리자에게 문의하세요.",
- "error",
- );
- setIsProcessing(false);
- return;
- }
- logger.log("선생님 계정:", teacherAccount.name, teacherAccount.id);
-
- // --- 낙관적 업데이트 (Optimistic Update) ---
- const tempId = `temp_${Date.now()}`;
- const maturityDate = new Date(
- Date.now() + product.termInDays * 24 * 60 * 60 * 1000,
- );
- const optimisticProduct = {
- id: tempId,
- name: product.name,
- termInDays: product.termInDays,
- rate: product.dailyRate,
- balance: amount,
- startDate: new Date(),
- maturityDate: maturityDate,
- type:
- type === "deposits"
- ? "deposit"
- : type === "savings"
- ? "savings"
- : "loan",
- isOptimistic: true, // 임시 데이터임을 표시
- };
-
- // 상품 목록 낙관적 업데이트
- if (optimisticProduct.type === "deposit") {
- setUserDeposits((prev) => [...prev, optimisticProduct]);
- } else if (optimisticProduct.type === "savings") {
- setUserSavings((prev) => [...prev, optimisticProduct]);
- } else if (optimisticProduct.type === "loan") {
- setUserLoans((prev) => [...prev, optimisticProduct]);
- }
-
- // 현금 보유량 낙관적 업데이트
- const cashChangeAmount = type === "loans" ? amount : -amount;
- setCurrentCash((prev) => prev + cashChangeAmount); // 로컬 UI 상태만 먼저 업데이트
-
  try {
- await runTransaction(db, async (transaction) => {
- const userRef = doc(db, "users", userId);
- const teacherRef = doc(db, "users", teacherAccount.id);
-
- const userSnapshot = await transaction.get(userRef);
- const teacherSnapshot = await transaction.get(teacherRef);
-
- if (!userSnapshot.exists())
- throw new Error("사용자 정보를 찾을 수 없습니다.");
- if (!teacherSnapshot.exists())
- throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
-
- const currentCashInDb = userSnapshot.data()?.cash ?? 0;
- const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
-
- // 예금/적금: 학생 현금 확인
- if (type !== "loans" && currentCashInDb < amount) {
- throw new Error("보유 현금이 부족합니다.");
- }
-
- // 적금: 일 납입금 ≤ 보유 현금 ÷ 기간일 (매일 납입 가능해야 함)
- if (type === "savings") {
- const maxDailyAmount = Math.floor(currentCashInDb / product.termInDays);
- if (amount > maxDailyAmount) {
- throw new Error(
- `적금 일 납입금은 보유 현금 ÷ 기간(${product.termInDays}일) 이하만 가능합니다. (최대: ${formatCurrency(maxDailyAmount)}${currencyUnit})`
- );
- }
- }
-
- // 🔥 대출 한도: 학생 보유 현금의 10배까지만 (DB 기준 재확인)
- if (type === "loans") {
- if (currentCashInDb <= 0) {
- throw new Error("대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.");
- }
- const maxLoan = currentCashInDb * 10;
- if (amount > maxLoan) {
- throw new Error(
- `대출 한도 초과: 보유 현금(${formatCurrency(currentCashInDb)}${currencyUnit})의 10배(${formatCurrency(maxLoan)}${currencyUnit})까지만 가능합니다.`
- );
- }
- }
-
- // 대출: 선생님(은행) 현금 부족 시 경고만 (마이너스 허용)
- if (type === "loans" && teacherCashInDb < amount) {
- logger.log(`[은행] 대출 - 선생님 잔액 부족하지만 진행 (필요: ${amount}, 보유: ${teacherCashInDb})`);
- }
-
- const isSavingsType = type === "savings";
- const isLoanType = type === "loans";
- const newProductData = {
- name: product.name,
- termInDays: product.termInDays,
- rate: product.dailyRate,
- balance: amount,
- startDate: serverTimestamp(),
- maturityDate: maturityDate,
- type:
- type === "deposits"
- ? "deposit"
- : type === "savings"
- ? "savings"
- : "loan",
- teacherId: teacherAccount.id,
- teacherName: teacherAccount.name || "선생님",
- // 적금 전용 필드
- ...(isSavingsType && {
- dailyAmount: amount, // 일 납입금
- totalDeposited: amount, // 누적 납입액 (첫 1일치)
- depositsCount: 1, // 납입 횟수
- }),
- // 대출 전용 필드
- ...(isLoanType && {
- repaymentType: repaymentType || "lumpSum", // 상환 방식
- originalBalance: amount, // 최초 대출 원금
- lastRepaymentDate: null, // 마지막 상환일
- totalInterestPaid: 0, // 누적 이자 납부액
- }),
- };
-
- const newProductRef = doc(collection(db, "users", userId, "products"));
- transaction.set(newProductRef, newProductData);
-
- // 예금/적금: 학생 → 선생님
- // 대출: 선생님 → 학생
- if (type === "loans") {
- // 대출: 선생님에서 학생으로
- transaction.update(userRef, { cash: increment(amount) });
- transaction.update(teacherRef, { cash: increment(-amount) });
- } else {
- // 예금/적금: 학생에서 선생님으로 (적금은 첫 1일치만)
- transaction.update(userRef, { cash: increment(-amount) });
- transaction.update(teacherRef, { cash: increment(amount) });
- }
+ // 🔒 상품 가입(cash 이동·products 문서 생성)을 서버 CF(단일 트랜잭션)로 처리.
+ // 구 클라 runTransaction은 본인·교사 cash 및 products 서브컬렉션 직접 write라 money-glitch 벡터 →
+ // subscribeProduct CF로 이관. 상품 rate/term/min/max는 서버 카탈로그(bankingSettings)에서 재조회해
+ // 클라 위조를 차단하고, 대출 규칙(활성대출·쿨다운·레버리지·적금 일한도)을 서버에서 강제한다.
+ // 활동 로그도 CF가 서버 기록(중복 방지). 표시는 loadAllData 재조회로 서버값 반영.
+ const subscribeFn = httpsCallable(functions, "subscribeProduct");
+ await subscribeFn({
+ productType: type,
+ productId: product.id,
+ amount,
+ repaymentType: repaymentType || "lumpSum",
+ idempotencyKey: crypto.randomUUID(),
  });
 
  const actionText = type === "loans" ? "대출" : "가입";
- const repayLabel = type === "loans" ? (repaymentType === "installment" ? " [분할 상환]" : " [일시 상환]") : "";
+ const repayLabel =
+ type === "loans"
+ ? repaymentType === "installment"
+ ? " [분할 상환]"
+ : " [일시 상환]"
+ : "";
  displayMessage(
  `${product.name} ${actionText}이 완료되었습니다.${repayLabel} (선생님 계정과 연동)`,
  "success",
  );
 
- // 🔥 활동 로그 기록 (예금/적금/대출 가입)
- const activityType =
- type === "deposits"
- ? ACTIVITY_TYPES.DEPOSIT_CREATE
- : type === "savings"
- ? ACTIVITY_TYPES.DEPOSIT_CREATE
- : ACTIVITY_TYPES.LOAN_CREATE;
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId: userId,
- userName: userDoc?.name || "사용자",
- type: activityType,
- description: `${product.name} ${type === "loans" ? "대출" : "가입"} (${formatCurrency(amount)}원) - 선생님 계정 연동`,
- amount: cashChangeAmount,
- metadata: {
- productName: product.name,
- productType: type,
- termInDays: product.termInDays,
- dailyRate: product.dailyRate,
- maturityDate: maturityDate.toISOString(),
- teacherId: teacherAccount.id,
- teacherName: teacherAccount.name,
- },
- });
-
- // 서버 데이터로 다시 로드하여 낙관적 업데이트 결과 교체
+ // 서버 데이터로 다시 로드(상품 목록·현금). 순자산 캐시 무효화로 MyAssets/배너 반영.
+ invalidateAssetCaches(userId);
  await loadAllData();
  if (refreshUserDocument) refreshUserDocument();
  } catch (error) {
  logger.error("가입 처리 중 오류 발생:", error);
- displayMessage(`처리 오류: ${error.message}`, "error");
-
- // --- 낙관적 업데이트 롤백 ---
- if (optimisticProduct.type === "deposit") {
- setUserDeposits((prev) => prev.filter((p) => p.id !== tempId));
- } else if (optimisticProduct.type === "savings") {
- setUserSavings((prev) => prev.filter((p) => p.id !== tempId));
- } else if (optimisticProduct.type === "loan") {
- setUserLoans((prev) => prev.filter((p) => p.id !== tempId));
- }
-
- // 현금 롤백 (로컬 UI)
- setCurrentCash((prev) => prev - cashChangeAmount);
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
  }
