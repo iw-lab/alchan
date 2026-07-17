@@ -2248,6 +2248,25 @@ function kstDiffCalendarDays(a, b) {
     (kstStartOfDayMs(a) - kstStartOfDayMs(b)) / (24 * 60 * 60 * 1000),
   );
 }
+// 대출 경과이자(시작일 또는 마지막 상환일부터 현재까지 복리) — 클라 calculateAccruedLoanInterest(169행) 포팅.
+//   startDate/lastRepaymentDate는 Firestore Timestamp. base가 Invalid이면 이자 0(방어).
+function calcAccruedLoanInterest(balance, dailyRate, startDate, lastRepaymentDate) {
+  const src = lastRepaymentDate || startDate;
+  const base = src?.toDate ? src.toDate() : src ? new Date(src) : null;
+  if (!base || isNaN(base.getTime())) {
+    return { interest: 0, total: balance, elapsedDays: 0 };
+  }
+  const elapsedDays = Math.max(0, kstDiffCalendarDays(new Date(), base));
+  if (elapsedDays <= 0 || balance <= 0 || !dailyRate) {
+    return { interest: 0, total: balance, elapsedDays: 0 };
+  }
+  const total = balance * Math.pow(1 + dailyRate / 100, elapsedDays);
+  return {
+    interest: Math.round(total - balance),
+    total: Math.round(total),
+    elapsedDays,
+  };
+}
 
 // ===================================================================================
 // 🔥 예적금 만기 수령 / 중도 해지 (2026-07-17 CF 이관 — ParkingAccount handleMaturity/handleCancelEarly의
@@ -2298,9 +2317,19 @@ exports.redeemDepositSavings = onCall(
         // ⚠️ products 문서는 batch6 rules 잠금 전까지 학생이 직접 write 가능하므로 teacherId도 위조 가능.
         //   "/" 포함 문자열(예: "<myUID>/products/dummy")이면 Admin SDK가 공격자 소유 중첩 문서로 해석해
         //   상쇄 차감을 가짜 문서로 흘려보내는 '소스 없는 민팅'이 가능(codex 실증) → 반드시 단순 문서 ID만 허용.
-        const teacherId = p.teacherId;
-        if (!teacherId || typeof teacherId !== "string" || teacherId.includes("/")) {
-          throw new Error("상품에 연결된 은행 계정이 올바르지 않습니다.");
+        // ⚠️ 레거시 상품(teacherId 미기록 — 실측 149/156)은 하드에러 대신 구 클라 getTeacherAccount처럼
+        //   findApprovedAdminSnap로 같은 학급 국고를 재조회(폴백). 재조회 결과는 승인 관리자라 반경계 안전.
+        let teacherId = p.teacherId;
+        if (teacherId) {
+          if (typeof teacherId !== "string" || teacherId.includes("/")) {
+            throw new Error("상품에 연결된 은행 계정이 올바르지 않습니다.");
+          }
+        } else {
+          const adminSnap = await findApprovedAdminSnap(classCode);
+          if (adminSnap.empty) {
+            throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+          }
+          teacherId = adminSnap.docs[0].id;
         }
         if (teacherId === uid) {
           throw new Error("관리자 계정으로는 처리할 수 없습니다.");
@@ -2337,11 +2366,16 @@ exports.redeemDepositSavings = onCall(
         const balance = Number(p.balance);
         const rate = Number(p.rate);
         const termInDays = Number(p.termInDays);
-        // rate·termInDays도 유한수 강제(NaN이면 Math.pow→NaN→inc(NaN) 트랜잭션 예외). balance 음수 거부.
+        // rate·termInDays 유한수 강제 + rate 음수 거부(위조 rate<0이면 (1+rate/100)^term이 음수/발산 →
+        //   total 음수·Infinity·NaN으로 inc가 잘못된 방향 이동/민팅 가능). balance 음수 거부.
         if (!Number.isFinite(balance) || balance < 0) {
           throw new Error("상품 잔액 데이터에 오류가 있습니다.");
         }
-        if (!Number.isFinite(rate) || !Number.isFinite(termInDays)) {
+        if (
+          !Number.isFinite(rate) ||
+          rate < 0 ||
+          !Number.isFinite(termInDays)
+        ) {
           throw new Error("상품 이율/기간 데이터에 오류가 있습니다.");
         }
         const isSavings = type === "savings" && Number(p.dailyAmount) > 0;
@@ -2411,6 +2445,10 @@ exports.redeemDepositSavings = onCall(
           logAmount = refundAmount;
         }
 
+        // 계산된 이동액 유한성 강제(rate/term 극단 위조로 Infinity/NaN이 되면 inc가 잔액을 오염).
+        if (!Number.isFinite(studentDelta)) {
+          throw new Error("지급액 계산에 오류가 있습니다.");
+        }
         // cash 이동: 선생님(국고) → 학생 (studentDelta). 마이너스 국고 허용(구 동작 보존).
         transaction.update(userRef, {
           cash: inc(studentDelta),
@@ -2460,6 +2498,263 @@ exports.redeemDepositSavings = onCall(
     }
   },
 );
+
+// ===================================================================================
+// 🔥 대출 상환 (2026-07-17 CF 이관 — ParkingAccount handleLoanLumpSumRepay/handleLoanInstallmentRepay +
+//    handleMaturity 대출 브랜치 대체). mode: lumpSum(경과이자 전액)·installment(부분)·maturity(만기 full-term 강제).
+//    - 이자를 저장 product(balance·rate·startDate·lastRepaymentDate·termInDays)에서 서버 재계산.
+//    - 방향=학생→선생님(국고). lumpSum/installment는 현금부족 거부, maturity는 마이너스 허용(강제상환 보존).
+//    - installment만 incoming 24h 쿨다운(돌려막기)·완납 시 lastLoanRepaidAt 기록(구 동작 보존 — lumpSum/
+//      maturity는 쿨다운 미기록=구 핸들러 그대로). teacherId "/"·반경계 검증(민팅 차단). 단일 tx·멱등·로그.
+// ===================================================================================
+exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+  const { productId, mode, amount, splitMethod, idempotencyKey } =
+    request.data || {};
+
+  if (!productId || typeof productId !== "string" || productId.includes("/")) {
+    throw new HttpsError("invalid-argument", "상품 ID가 올바르지 않습니다.");
+  }
+  if (mode !== "lumpSum" && mode !== "installment" && mode !== "maturity") {
+    throw new HttpsError("invalid-argument", "유효하지 않은 상환 유형입니다.");
+  }
+  if (typeof idempotencyKey !== "string" || !idempotencyKey) {
+    throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+  }
+  if (!classCode) {
+    throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+  }
+  let reqAmount = 0;
+  if (mode === "installment") {
+    reqAmount = Math.round(Number(amount));
+    if (
+      !Number.isFinite(reqAmount) ||
+      reqAmount <= 0 ||
+      reqAmount > 10000000000
+    ) {
+      throw new HttpsError("invalid-argument", "상환 금액이 올바르지 않습니다.");
+    }
+  }
+  const safeSplit = splitMethod === "proportional" ? "proportional" : "interestFirst";
+
+  const userRef = db.collection("users").doc(uid);
+  const productRef = userRef.collection("products").doc(productId);
+  const inc = admin.firestore.FieldValue.increment;
+  const sts = () => admin.firestore.FieldValue.serverTimestamp();
+
+  try {
+    let resultInfo = null;
+    await db.runTransaction(async (transaction) => {
+      // 읽기 먼저 — 멱등키 → 대출(권위값) → 사용자 → 교사
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
+      const productDoc = await transaction.get(productRef);
+      if (!productDoc.exists) throw new Error("대출 정보를 찾을 수 없습니다.");
+      const p = productDoc.data();
+      if (p.type !== "loan") throw new Error("대출 상품이 아닙니다.");
+
+      // teacherId "/" 경로주입 차단 + 레거시 미기록(실측 다수) 시 findApprovedAdminSnap 폴백
+      //   (구 클라 getTeacherAccount 대응 — 재조회 결과는 같은 학급 승인 관리자라 반경계 안전).
+      let teacherId = p.teacherId;
+      if (teacherId) {
+        if (typeof teacherId !== "string" || teacherId.includes("/")) {
+          throw new Error("상품에 연결된 은행 계정이 올바르지 않습니다.");
+        }
+      } else {
+        const adminSnap = await findApprovedAdminSnap(classCode);
+        if (adminSnap.empty) {
+          throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+        }
+        teacherId = adminSnap.docs[0].id;
+      }
+      if (teacherId === uid) {
+        throw new Error("관리자 계정으로는 처리할 수 없습니다.");
+      }
+      const teacherRef = db.collection("users").doc(teacherId);
+
+      const userDoc = await transaction.get(userRef);
+      const teacherDoc = await transaction.get(teacherRef);
+      if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+      if (!teacherDoc.exists) {
+        throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+      }
+      const uData = userDoc.data();
+      const tData = teacherDoc.data();
+      // 국고 반경계 검증(redeemDepositSavings와 동일 — teacherId 위조/경로주입 민팅 차단)
+      if (tData.classCode !== classCode || !hasAdminPower(tData)) {
+        throw new Error("유효한 은행(관리자) 계정이 아닙니다.");
+      }
+      const rawCash = uData.cash;
+      if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+        throw new Error("계정 잔액 데이터에 오류가 있습니다.");
+      }
+      if (typeof tData.cash !== "number" || !Number.isFinite(tData.cash)) {
+        throw new Error("은행 계정 잔액 데이터에 오류가 있습니다.");
+      }
+
+      const balance = Number(p.balance);
+      const rate = Number(p.rate);
+      const termInDays = Number(p.termInDays);
+      if (!Number.isFinite(balance) || balance < 0) {
+        throw new Error("대출 잔액 데이터에 오류가 있습니다.");
+      }
+      // rate 음수 거부 — rate<0이면 (1+rate/100)^term이 음수가 되어 repayAmount 음수 → inc(-음수)로 학생
+      //   cash가 증가하는 민팅 벡터(codex 지적). termInDays 유한수 강제.
+      if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(termInDays)) {
+        throw new Error("대출 이율/기간 데이터에 오류가 있습니다.");
+      }
+
+      // installment만 incoming 24h 쿨다운(구 handleLoanInstallmentRepay 동작 — 송금 돌려막기 차단)
+      if (mode === "installment") {
+        const li = uData.lastIncomingTransferAt;
+        const liMs = li?.toMillis
+          ? li.toMillis()
+          : li
+            ? new Date(li).getTime()
+            : null;
+        if (liMs && Number.isFinite(liMs)) {
+          const elapsed = Date.now() - liMs;
+          const COOLDOWN = 24 * 60 * 60 * 1000;
+          if (elapsed >= 0 && elapsed < COOLDOWN) {
+            const remainingH = Math.ceil((COOLDOWN - elapsed) / (60 * 60 * 1000));
+            throw new Error(
+              `친구로부터 송금받은 후 24시간이 지나야 대출 상환이 가능합니다. (남은 시간: ${remainingH}시간)`,
+            );
+          }
+        }
+      }
+
+      let repayAmount;
+      let interestPortion = 0;
+      let principalPortion = 0;
+      let newBalance = 0;
+      let isFullyRepaid = true;
+      let accruedInterest = 0;
+      let elapsedDays = 0;
+
+      if (mode === "maturity") {
+        // 만기 강제 상환 = 원금 + full-term 이자(calcCompoundInterest). 마이너스 허용(강제상환은 현금부족도 진행).
+        //   조기 강제상환(현금검사 우회·자기 마이너스화 그리핑)을 막기 위해 만기도래(KST) 서버검증 추가
+        //   (redeemDepositSavings와 대칭·codex HIGH). 수동 '만기 상환' 버튼은 UI상 만기 후에만 노출되고
+        //   자동상환 훅(useAutoLoanRepay)은 이 CF를 쓰지 않으므로 정상경로 무영향.
+        const mts = p.maturityDate;
+        const mdate = mts?.toDate ? mts.toDate() : mts ? new Date(mts) : null;
+        if (!mdate || isNaN(mdate.getTime())) {
+          throw new Error("상품 만기일 데이터에 오류가 있습니다.");
+        }
+        if (kstStartOfDayMs(new Date()) < kstStartOfDayMs(mdate)) {
+          throw new Error("아직 만기가 도래하지 않았습니다.");
+        }
+        const rr = calcCompoundInterest(balance, rate, termInDays);
+        repayAmount = rr.total;
+        accruedInterest = rr.interest;
+      } else {
+        // lumpSum/installment = 경과이자 기준
+        const acc = calcAccruedLoanInterest(
+          balance,
+          rate,
+          p.startDate,
+          p.lastRepaymentDate,
+        );
+        accruedInterest = acc.interest;
+        elapsedDays = acc.elapsedDays;
+        const accruedTotal = acc.total;
+        if (mode === "lumpSum") {
+          repayAmount = accruedTotal;
+          if (rawCash < repayAmount) throw new Error("상환금이 부족합니다.");
+        } else {
+          repayAmount = reqAmount;
+          if (repayAmount > accruedTotal) {
+            throw new Error("상환 금액이 총 상환금을 초과합니다.");
+          }
+          if (rawCash < repayAmount) throw new Error("상환금이 부족합니다.");
+          if (safeSplit === "proportional" && accruedTotal > 0) {
+            const ratio = accruedInterest / accruedTotal;
+            interestPortion = Math.round(repayAmount * ratio);
+            principalPortion = repayAmount - interestPortion;
+            if (principalPortion > balance) {
+              principalPortion = balance;
+              interestPortion = repayAmount - principalPortion;
+            }
+          } else {
+            interestPortion = Math.min(repayAmount, accruedInterest);
+            principalPortion = Math.max(0, repayAmount - interestPortion);
+          }
+          newBalance = Math.max(0, balance - principalPortion);
+          isFullyRepaid = newBalance <= 0 && repayAmount >= accruedTotal;
+        }
+      }
+
+      // 계산된 상환액 유한·비음수 강제(rate/term/balance 극단 위조로 Infinity/NaN/음수가 되면 inc가
+      //   잔액을 오염하거나 학생 cash를 증가시키는 역방향 이동을 유발). repayAmount는 항상 ≥0이어야 함.
+      if (!Number.isFinite(repayAmount) || repayAmount < 0) {
+        throw new Error("상환액 계산에 오류가 있습니다.");
+      }
+      // cash 이동: 학생 → 선생님(국고)
+      transaction.update(userRef, {
+        cash: inc(-repayAmount),
+        updatedAt: sts(),
+        // installment 완납 시에만 쿨다운 기록(구 동작 보존 — lumpSum/maturity는 미기록)
+        ...(mode === "installment" && isFullyRepaid
+          ? { lastLoanRepaidAt: sts() }
+          : {}),
+      });
+      transaction.update(teacherRef, { cash: inc(repayAmount), updatedAt: sts() });
+
+      if (mode === "installment" && !isFullyRepaid) {
+        transaction.update(productRef, {
+          balance: newBalance,
+          lastRepaymentDate: sts(),
+          totalInterestPaid: inc(interestPortion),
+        });
+      } else {
+        transaction.delete(productRef);
+      }
+      markIdempotent(transaction, keyRef);
+
+      const desc =
+        mode === "maturity"
+          ? `대출 만기 상환: ${p.name || "대출"} (원금: ${balance.toLocaleString()}, 이자: ${accruedInterest.toLocaleString()}) - 선생님 계정으로`
+          : mode === "lumpSum"
+            ? `대출 일시 상환: ${p.name || "대출"} (원금: ${balance.toLocaleString()}, 이자: ${accruedInterest.toLocaleString()}, 경과: ${elapsedDays}일)`
+            : `대출 분할 상환: ${p.name || "대출"} (이자: ${interestPortion.toLocaleString()}, 원금: ${principalPortion.toLocaleString()}, 남은 원금: ${newBalance.toLocaleString()})`;
+      const expireAt = new Date();
+      expireAt.setDate(expireAt.getDate() + 90);
+      transaction.set(db.collection("activity_logs").doc(), {
+        classCode,
+        userId: uid,
+        userName: uData.name || userData.name || "사용자",
+        type: "대출 상환",
+        description: desc,
+        amount: -repayAmount,
+        couponAmount: 0,
+        metadata: {
+          productName: p.name || "",
+          principal: balance,
+          interest: accruedInterest,
+          total: repayAmount,
+          mode,
+          teacherId,
+          ...(mode === "installment" && {
+            interestPaid: interestPortion,
+            principalPaid: principalPortion,
+            remainingBalance: newBalance,
+            isFullyRepaid,
+            splitMethod: safeSplit,
+          }),
+        },
+        timestamp: sts(),
+        createdAt: sts(),
+        expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+      });
+      resultInfo = { repayAmount, interest: accruedInterest, newBalance, isFullyRepaid };
+    });
+    return { success: true, ...resultInfo };
+  } catch (error) {
+    logger.error(`[repayLoan] Error for user ${uid}:`, error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("aborted", error.message || "대출 상환에 실패했습니다.");
+  }
+});
 
 // ===================================================================================
 // 🔥 관리자 지급/회수 (2026-07-17 CF 이관 — MoneyTransfer의 클라 adminCashAction 대체)

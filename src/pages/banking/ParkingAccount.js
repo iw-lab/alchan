@@ -1143,70 +1143,38 @@ const ParkingAccount = ({
  const product = loanRepayModal.product;
  if (!product || !userId) return;
 
- const { id, name, balance, rate, teacherId } = product;
- const { interest: accruedInterest, total: accruedTotal, elapsedDays } = calculateAccruedLoanInterest(
+ const { id, name, balance, rate } = product;
+ // 경과이자는 표시용(서버 repayLoan CF가 권위 재계산). 성공 메시지 문구에만 사용.
+ const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
  balance, rate, product.startDate, product.lastRepaymentDate
  );
 
  setIsProcessing(true);
  handleCloseLoanRepayModal();
 
- let teacherAccountId = teacherId;
- if (!teacherAccountId) {
- const teacherAccount = await getTeacherAccount(userDoc?.classCode);
- if (!teacherAccount) {
- displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
- setIsProcessing(false);
- return;
- }
- teacherAccountId = teacherAccount.id;
- }
-
- // 낙관적 업데이트
- const originalLoans = [...userLoans];
- const originalCash = currentCash;
- setUserLoans((prev) => prev.filter((p) => p.id !== id));
- setCurrentCash((prev) => prev - accruedTotal);
-
  try {
- const productRef = doc(db, "users", userId, "products", String(id));
- await runTransaction(db, async (transaction) => {
- const userRef = doc(db, "users", userId);
- const teacherRef = doc(db, "users", teacherAccountId);
- const userSnapshot = await transaction.get(userRef);
- const teacherSnapshot = await transaction.get(teacherRef);
-
- if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
- if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
-
- const currentCashInDb = userSnapshot.data()?.cash ?? 0;
- if (currentCashInDb < accruedTotal) {
- throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(accruedTotal)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`);
- }
-
- transaction.update(userRef, { cash: increment(-accruedTotal) });
- transaction.update(teacherRef, { cash: increment(accruedTotal) });
- transaction.delete(productRef);
+ // 🔒 대출 일시 상환(경과이자 서버 재계산·본인/교사 cash 이동·상품 삭제)을 repayLoan CF로 처리.
+ //   구 클라 runTransaction은 본인·교사 cash 직접 write라 batch6 rules 잠금 대상 → CF 이관.
+ //   활동로그도 CF가 서버 기록. 표시는 loadAllData 재조회.
+ const repayFn = httpsCallable(functions, "repayLoan");
+ await repayFn({
+ productId: String(id),
+ mode: "lumpSum",
+ idempotencyKey: crypto.randomUUID(),
  });
 
  displayMessage(`대출 일시 상환 완료: ${formatCurrency(accruedTotal)}${currencyUnit} (원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(accruedInterest)})`, "success");
 
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId, userName: userDoc?.name || "사용자",
- type: ACTIVITY_TYPES.LOAN_REPAY,
- description: `대출 일시 상환: ${name} (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(accruedInterest)}, 경과: ${elapsedDays}일)`,
- amount: -accruedTotal,
- metadata: { productName: name, principal: balance, interest: accruedInterest, total: accruedTotal, elapsedDays, teacherId: teacherAccountId, repaymentType: "lumpSum" },
- });
-
+ invalidateAssetCaches(userId);
  if (refreshUserDocument) refreshUserDocument();
  await loadAllData();
  } catch (error) {
  logger.error("일시 상환 오류:", error);
- displayMessage(`처리 오류: ${error.message}`, "error");
- setUserLoans(originalLoans);
- setCurrentCash(originalCash);
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "상환 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
  }
@@ -1240,7 +1208,8 @@ const ParkingAccount = ({
    }
  }
 
- const { id, name, balance, rate, teacherId } = product;
+ const { id, name, balance, rate } = product;
+ // 경과이자·분배는 표시용(서버 repayLoan CF가 권위 재계산). UX 사전검증·성공 메시지 문구에만 사용.
  const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
  balance, rate, product.startDate, product.lastRepaymentDate
  );
@@ -1251,17 +1220,14 @@ const ParkingAccount = ({
 
  let interestPortion, principalPortion;
  if (splitMethod === "proportional" && accruedTotal > 0) {
- // 원리금 균등: 비율로 분배
  const interestRatio = accruedInterest / accruedTotal;
  interestPortion = Math.round(repayAmount * interestRatio);
  principalPortion = repayAmount - interestPortion;
- // 원금 초과 방지
  if (principalPortion > balance) {
  principalPortion = balance;
  interestPortion = repayAmount - principalPortion;
  }
  } else {
- // 이자 우선: 이자 먼저 갚고 나머지 원금
  interestPortion = Math.min(repayAmount, accruedInterest);
  principalPortion = Math.max(0, repayAmount - interestPortion);
  }
@@ -1272,59 +1238,17 @@ const ParkingAccount = ({
  setIsProcessing(true);
  handleCloseLoanRepayModal();
 
- let teacherAccountId = teacherId;
- if (!teacherAccountId) {
- const teacherAccount = await getTeacherAccount(userDoc?.classCode);
- if (!teacherAccount) {
- displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
- setIsProcessing(false);
- return;
- }
- teacherAccountId = teacherAccount.id;
- }
-
- // 낙관적 업데이트
- const originalLoans = [...userLoans];
- const originalCash = currentCash;
- if (isFullyRepaid) {
- setUserLoans((prev) => prev.filter((p) => p.id !== id));
- } else {
- setUserLoans((prev) => prev.map((p) => p.id === id ? { ...p, balance: newBalance } : p));
- }
- setCurrentCash((prev) => prev - repayAmount);
-
  try {
- const productRef = doc(db, "users", userId, "products", String(id));
- await runTransaction(db, async (transaction) => {
- const userRef = doc(db, "users", userId);
- const teacherRef = doc(db, "users", teacherAccountId);
- const userSnapshot = await transaction.get(userRef);
- const teacherSnapshot = await transaction.get(teacherRef);
-
- if (!userSnapshot.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
- if (!teacherSnapshot.exists()) throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
-
- const currentCashInDb = userSnapshot.data()?.cash ?? 0;
- if (currentCashInDb < repayAmount) {
- throw new Error(`상환금이 부족합니다. (필요: ${formatCurrency(repayAmount)}${currencyUnit}, 보유: ${formatCurrency(currentCashInDb)}${currencyUnit})`);
- }
-
- transaction.update(userRef, {
- cash: increment(-repayAmount),
- // 완납 시점에만 쿨다운 기록 (분할 중간 상환은 미적용)
- ...(isFullyRepaid ? { lastLoanRepaidAt: serverTimestamp() } : {}),
- });
- transaction.update(teacherRef, { cash: increment(repayAmount) });
-
- if (isFullyRepaid) {
- transaction.delete(productRef);
- } else {
- transaction.update(productRef, {
- balance: newBalance,
- lastRepaymentDate: serverTimestamp(),
- totalInterestPaid: increment(interestPortion),
- });
- }
+ // 🔒 대출 분할 상환(경과이자·분배 서버 재계산·cash 이동·잔액 갱신/삭제)을 repayLoan CF로 처리.
+ //   구 클라 runTransaction은 본인·교사 cash 직접 write라 batch6 rules 잠금 대상 → CF 이관.
+ //   incoming 쿨다운·완납 시 lastLoanRepaidAt도 CF가 서버 강제. 활동로그도 CF 서버 기록.
+ const repayFn = httpsCallable(functions, "repayLoan");
+ await repayFn({
+ productId: String(id),
+ mode: "installment",
+ amount: repayAmount,
+ splitMethod,
+ idempotencyKey: crypto.randomUUID(),
  });
 
  const resultMsg = isFullyRepaid
@@ -1332,22 +1256,16 @@ const ParkingAccount = ({
  : `분할 상환 완료: ${formatCurrency(repayAmount)}${currencyUnit} (이자 ${formatCurrency(interestPortion)} + 원금 ${formatCurrency(principalPortion)}) / 남은 원금: ${formatCurrency(newBalance)}${currencyUnit}`;
  displayMessage(resultMsg, "success");
 
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId, userName: userDoc?.name || "사용자",
- type: ACTIVITY_TYPES.LOAN_REPAY,
- description: `대출 분할 상환: ${name} (이자: ${formatCurrency(interestPortion)}, 원금: ${formatCurrency(principalPortion)}, 남은 원금: ${formatCurrency(newBalance)})`,
- amount: -repayAmount,
- metadata: { productName: name, interestPaid: interestPortion, principalPaid: principalPortion, remainingBalance: newBalance, isFullyRepaid, teacherId: teacherAccountId, repaymentType: "installment", splitMethod },
- });
-
+ invalidateAssetCaches(userId);
  if (refreshUserDocument) refreshUserDocument();
  await loadAllData();
  } catch (error) {
  logger.error("분할 상환 오류:", error);
- displayMessage(`처리 오류: ${error.message}`, "error");
- setUserLoans(originalLoans);
- setCurrentCash(originalCash);
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "상환 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
  }
@@ -1549,127 +1467,33 @@ const ParkingAccount = ({
  return;
  }
 
- // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회) — 대출 만기(구 경로) 전용
- let teacherAccountId = teacherId;
- if (!teacherAccountId) {
- const teacherAccount = await getTeacherAccount(userDoc?.classCode);
- if (!teacherAccount) {
- displayMessage("선생님(은행) 계정을 찾을 수 없습니다.", "error");
- setIsProcessing(false);
- return;
- }
- teacherAccountId = teacherAccount.id;
- }
- logger.log("선생님 계정 ID:", teacherAccountId);
-
+ // 🔒 대출 만기(강제) 상환 = repayLoan CF mode:maturity (원금 + full-term 이자 서버 재계산, 마이너스 허용).
+ //   구 클라 runTransaction은 본인·교사 cash 직접 write라 batch6 rules 잠금 대상 → CF 이관.
+ //   total은 표시용(서버 권위 재계산). 예적금 만기는 위 !isLoan 브랜치(redeemDepositSavings)가 이미 처리.
  try {
- const productRef = doc(db, "users", userId, "products", String(id));
- logger.log("Firestore 문서 참조:", productRef.path);
-
- await runTransaction(db, async (transaction) => {
- logger.log("트랜잭션 시작");
- const userRef = doc(db, "users", userId);
- const teacherRef = doc(db, "users", teacherAccountId);
-
- const userSnapshot = await transaction.get(userRef);
- const teacherSnapshot = await transaction.get(teacherRef);
- const productSnapshot = await transaction.get(productRef);
-
- if (!userSnapshot.exists())
- throw new Error("사용자 정보를 찾을 수 없습니다.");
- if (!teacherSnapshot.exists())
- throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
- if (!productSnapshot.exists())
- throw new Error("상품 정보를 찾을 수 없습니다.");
-
- const currentCashInDb = userSnapshot.data()?.cash ?? 0;
- const teacherCashInDb = teacherSnapshot.data()?.cash ?? 0;
-
- if (isLoan) {
- // 대출 만기 상환: 학생 → 선생님 (원금+이자, 잔액 부족 시 마이너스 허용)
- if (currentCashInDb < total) {
- logger.log(`[은행] 대출 만기 상환 - 학생 잔액 부족, 마이너스 차감 진행 (필요: ${total}, 보유: ${currentCashInDb}, 차감 후: ${currentCashInDb - total})`);
- }
- transaction.update(userRef, { cash: increment(-total) });
- transaction.update(teacherRef, { cash: increment(total) });
- logger.log(`대출 상환: 학생 -${total}, 선생님 +${total}`);
- } else {
- // 예금/적금 만기 수령: 선생님 → 학생 (원금+이자, 마이너스 허용)
- // 적금 미납 회차가 있으면 일괄 차감 (학생이 termInDays 전체 납입한 것으로 정산)
- let arrearsAmount = 0;
- if (isSavings) {
- const pdata = productSnapshot.data();
- const curDeposits = Number(pdata.depositsCount || 0);
- const missing = Math.max(0, termInDays - curDeposits);
- arrearsAmount = missing * Number(pdata.dailyAmount || product.dailyAmount || 0);
- if (arrearsAmount > 0) {
- logger.log(`[은행] 적금 만기 - 미납 ${missing}회차 일괄 차감: ${arrearsAmount}`);
- }
- }
- const studentDelta = total - arrearsAmount;
- const teacherDelta = -total + arrearsAmount;
- if (teacherCashInDb + arrearsAmount < total) {
- logger.log(`[은행] 만기 수령 - 선생님 잔액 부족하지만 진행 (필요: ${total}, 보유: ${teacherCashInDb})`);
- }
- transaction.update(userRef, { cash: increment(studentDelta) });
- transaction.update(teacherRef, { cash: increment(teacherDelta) });
- logger.log(`만기 수령: 학생 +${studentDelta} (만기 +${total}, 미납 -${arrearsAmount}), 선생님 ${teacherDelta}`);
- }
-
- transaction.delete(productRef);
- logger.log("상품 문서 삭제 예약");
- logger.log("트랜잭션 커밋 시도");
+ const repayFn = httpsCallable(functions, "repayLoan");
+ await repayFn({
+ productId: String(id),
+ mode: "maturity",
+ idempotencyKey: crypto.randomUUID(),
  });
-
- logger.log("트랜잭션 성공");
 
  const finalCash = (currentCash || 0) - total;
- const successMsg = isLoan
- ? `${force ? "⚠️ 만기일 도래 - 자동 강제 상환: " : "대출 상환 완료: "}${formatCurrency(total)}${currencyUnit} (선생님 계정으로 이체)${finalCash < 0 ? ` · 잔액 ${formatCurrency(finalCash)}${currencyUnit} (마이너스)` : ""}`
- : `만기 수령 완료: ${formatCurrency(total)}${currencyUnit} (선생님 계정에서 지급)`;
- displayMessage(successMsg, "success");
+ displayMessage(
+ `${force ? "⚠️ 만기일 도래 - 자동 강제 상환: " : "대출 상환 완료: "}${formatCurrency(total)}${currencyUnit} (선생님 계정으로 이체)${finalCash < 0 ? ` · 잔액 ${formatCurrency(finalCash)}${currencyUnit} (마이너스)` : ""}`,
+ "success",
+ );
 
- // 🔥 활동 로그 기록 (예금 만기 / 대출 상환)
- const activityType = isLoan
- ? ACTIVITY_TYPES.LOAN_REPAY
- : ACTIVITY_TYPES.DEPOSIT_MATURITY;
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId: userId,
- userName: userDoc?.name || "사용자",
- type: activityType,
- description: isLoan
- ? `대출 만기 상환: ${name} (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(interest)}) - 선생님 계정으로`
- : `${name} 만기 수령 (원금: ${formatCurrency(balance)}, 이자: ${formatCurrency(interest)}) - 선생님 계정에서`,
- amount: isLoan ? -total : total,
- metadata: {
- productName: name,
- productType: type,
- principal: balance,
- interest,
- total,
- teacherId: teacherAccountId,
- },
- });
-
- // 백그라운드에서 userDoc 갱신
- if (refreshUserDocument) {
- logger.log("userDoc 갱신 시작");
- refreshUserDocument().then(() => {
- logger.log("[ParkingAccount] 만기 처리 후 userDoc 갱신 완료");
- });
- }
-
- logger.log("전체 데이터 다시 로드");
+ invalidateAssetCaches(userId);
+ if (refreshUserDocument) refreshUserDocument();
  await loadAllData();
  } catch (error) {
  logger.error("만기 처리 중 오류 발생:", error);
- displayMessage(`처리 오류: ${error.message}`, "error");
- // 에러 발생 시 currentCash 롤백
- if (userDoc?.cash !== undefined) {
- logger.log("오류 발생으로 현금 롤백:", userDoc.cash);
- setCurrentCash(userDoc.cash);
- }
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "만기 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
  logger.log("--- handleMaturity 종료 ---");
