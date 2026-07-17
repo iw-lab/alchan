@@ -11,10 +11,8 @@ import {
   serverTimestamp,
   collection,
   query,
-  where, // 쿼리를 위해 추가
   addDoc,
   doc,
-  updateDoc, // updateDoc 추가
   deleteDoc,
   runTransaction,
   Timestamp,
@@ -87,219 +85,18 @@ export default function Auction() {
   }, []);
 
   // 경매 정산 로직 (수정됨 - 아이템 반환/지급 로직 개선 + 거래세 적용)
+  // 경매 정산(낙찰 지급/유찰 반환/세금/아이템)을 settleAuction CF로 처리(배치6-d2).
+  //   구 클라 runTransaction은 판매자·관리자 cash 직접 write라 batch7 rules 잠금 대상 → CF 이관.
+  //   종료된 경매를 아무 같은학급 뷰어나 트리거 — 서버가 endTime·ongoing 재검증 후 결정론적 정산.
   const settleAuction = async (auction) => {
-    if (!classCode) return;
-    const auctionRef = doc(db, "classes", classCode, "auctions", auction.id);
-
-    logger.log(`[Auction Settle] 정산 시도: ${auction.id}`);
-
-    // 세금 설정 및 관리자 정보 사전 조회 (트랜잭션 밖)
-    let auctionTaxRate = 0.03;
-    let adminUid = null;
+    if (!classCode || !auction?.id) return;
     try {
-      const govSettingsDoc = await getDoc(doc(db, "governmentSettings", classCode));
-      if (govSettingsDoc.exists() && govSettingsDoc.data()?.taxSettings) {
-        auctionTaxRate = govSettingsDoc.data().taxSettings.auctionTransactionTaxRate ?? 0.03;
-      }
-      // 관리자 UID 조회
-      const { getClassAdminUid } = await import("../../firebase/db/core");
-      adminUid = await getClassAdminUid(classCode);
-    } catch (e) {
-      logger.error("[Auction Settle] 세금 설정 로드 실패:", e);
-    }
-
-    // --- 사전 작업: 낙찰자가 있을 경우, 인벤토리에서 동일 아이템 검색 ---
-    let winnerExistingItemQuerySnap = null;
-    if (auction.highestBidder && auction.originalStoreItemId) {
-      const winnerInventoryRef = collection(
-        db,
-        "users",
-        auction.highestBidder,
-        "inventory"
-      );
-      const q = query(
-        winnerInventoryRef,
-        where("itemId", "==", auction.originalStoreItemId)
-      );
-      winnerExistingItemQuerySnap = await getDocs(q);
-    }
-
-    try {
-      await runTransaction(db, async (transaction) => {
-        // ====== 모든 읽기 작업을 먼저 실행 ======
-        const auctionDoc = await transaction.get(auctionRef);
-        if (!auctionDoc.exists() || auctionDoc.data().status !== "ongoing") {
-          logger.log(`[Auction Settle] 경매가 이미 처리되었거나 삭제됨: ${auction.id}`);
-          return;
-        }
-
-        const auctionData = auctionDoc.data();
-        const now = new Date();
-        const endTime = auctionData.endTime.toDate();
-
-        if (endTime > now) {
-          logger.log(`[Auction Settle] 경매가 아직 종료되지 않음: ${auction.id}`);
-          return;
-        }
-
-        let sellerItemDoc = null;
-        let sellerItemRef = null;
-        if (!auctionData.highestBidder) {
-          // 유찰된 경우에만 판매자 아이템 문서 읽기
-          const returnCollection = auctionData.assetSourceCollection || 'inventory'; // 안전장치
-          sellerItemRef = doc(db, "users", auctionData.seller, returnCollection, auctionData.assetId);
-          sellerItemDoc = await transaction.get(sellerItemRef);
-        }
-
-        // ====== 모든 쓰기 작업을 읽기 완료 후 실행 ======
-
-        if (auctionData.highestBidder) {
-          // --- 성공적인 경매 (낙찰자 있음) ---
-          const sellerRef = doc(db, "users", auctionData.seller);
-
-          // 세금 계산
-          const taxAmount = Math.round(auctionData.currentBid * auctionTaxRate);
-          const sellerProceeds = auctionData.currentBid - taxAmount;
-
-          // 1. 판매자에게 세금 차감 금액 지급
-          transaction.update(sellerRef, {
-            cash: increment(sellerProceeds),
-            updatedAt: serverTimestamp(),
-          });
-
-          // 2. 관리자(교사)에게 세금 입금
-          if (taxAmount > 0 && adminUid) {
-            const adminRef = doc(db, "users", adminUid);
-            transaction.update(adminRef, {
-              cash: increment(taxAmount),
-              updatedAt: serverTimestamp(),
-            });
-          }
-
-          // 3. 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-          if (taxAmount > 0) {
-            const treasuryRef = doc(db, "nationalTreasuries", classCode);
-            transaction.set(treasuryRef, {
-              auctionTaxRevenue: increment(taxAmount),
-              lastUpdated: serverTimestamp(),
-            }, { merge: true });
-          }
-
-          // 4. 낙찰자에게 아이템 지급 (개선된 로직)
-          if (winnerExistingItemQuerySnap && !winnerExistingItemQuerySnap.empty) {
-            // 이미 동일 종류의 아이템을 가지고 있으면 수량 증가
-            const winnerItemRef = winnerExistingItemQuerySnap.docs[0].ref;
-            transaction.update(winnerItemRef, {
-              quantity: increment(1),
-              updatedAt: serverTimestamp(),
-            });
-          } else {
-            // 새 아이템이므로 inventory에 새로 추가
-            const winnerInventoryRef = collection(db, "users", auctionData.highestBidder, "inventory");
-            const newWinnerItemRef = doc(winnerInventoryRef); // 자동 ID 생성
-            transaction.set(newWinnerItemRef, {
-              itemId: auctionData.originalStoreItemId, // 상점 아이템 ID
-              name: auctionData.name,
-              description: auctionData.description,
-              icon: auctionData.itemIcon || "📦",
-              quantity: 1,
-              type: "item",
-              purchasedAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
-          }
-
-          // 5. 활동 로그 기록 (세금 정보 포함)
-          const sellerLogRef = collection(db, "users", auctionData.seller, "activityLogs");
-          transaction.set(doc(sellerLogRef), {
-            timestamp: serverTimestamp(), type: "auction_sold",
-            message: taxAmount > 0
-              ? `'${auctionData.name}' 아이템이 ${formatPrice(auctionData.currentBid)}에 판매되었습니다. (거래세 ${formatPrice(taxAmount)} 차감, 실수령 ${formatPrice(sellerProceeds)})`
-              : `'${auctionData.name}' 아이템이 ${formatPrice(auctionData.currentBid)}에 판매되었습니다.`,
-            relatedDocId: auction.id,
-          });
-
-          const winnerLogRef = collection(db, "users", auctionData.highestBidder, "activityLogs");
-          transaction.set(doc(winnerLogRef), {
-            timestamp: serverTimestamp(), type: "auction_won",
-            message: `'${auctionData.name}' 아이템을 ${formatPrice(auctionData.currentBid)}에 낙찰받았습니다.`,
-            relatedDocId: auction.id,
-          });
-
-          // 🔥 학생 거래 내역 (activity_logs 루트 컬렉션) — 양쪽 모두 기록
-          const _logExp = new Date();
-          _logExp.setDate(_logExp.getDate() + 90);
-          const sellerGlobalLog = doc(collection(db, "activity_logs"));
-          transaction.set(sellerGlobalLog, {
-            userId: auctionData.seller,
-            userName: auctionData.sellerName || "판매자",
-            type: "auction_sold",
-            description: `경매 판매: ${auctionData.name} (+${sellerProceeds.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원)`,
-            amount: sellerProceeds,
-            classCode: auctionData.classCode || classCode || null,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(_logExp),
-          });
-          const winnerGlobalLog = doc(collection(db, "activity_logs"));
-          transaction.set(winnerGlobalLog, {
-            userId: auctionData.highestBidder,
-            userName: auctionData.highestBidderName || "낙찰자",
-            type: "auction_won",
-            description: `경매 낙찰: ${auctionData.name} (낙찰가 ${auctionData.currentBid.toLocaleString()}원 — 입찰 시 이미 차감됨)`,
-            amount: 0,
-            classCode: auctionData.classCode || classCode || null,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(_logExp),
-          });
-
-        } else {
-          // --- 유찰된 경매 (낙찰자 없음) ---
-          // 1. 판매자에게 아이템 반환 (개선된 로직)
-          if (sellerItemDoc && sellerItemDoc.exists()) {
-            // 판매자 인벤토리에 해당 아이템 문서가 아직 존재하면 수량만 증가
-            transaction.update(sellerItemRef, {
-              quantity: increment(1),
-              updatedAt: serverTimestamp(),
-            });
-          } else if (sellerItemRef) {
-            // 판매자가 해당 종류의 아이템을 모두 소진해 문서가 없다면 새로 생성
-            transaction.set(sellerItemRef, {
-              itemId: auctionData.originalStoreItemId,
-              name: auctionData.name,
-              description: auctionData.description,
-              icon: auctionData.itemIcon || "📦",
-              quantity: 1,
-              type: "item",
-              addedAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
-          }
-
-          // 2. 활동 로그 기록
-          const sellerLogRef = collection(db, "users", auctionData.seller, "activityLogs");
-          transaction.set(doc(sellerLogRef), {
-            timestamp: serverTimestamp(), type: "auction_unsold",
-            message: `'${auctionData.name}' 아이템이 유찰되어 반환되었습니다.`,
-            relatedDocId: auction.id,
-          });
-        }
-
-        // 6. 경매 상태를 'completed'로 변경
-        transaction.update(auctionRef, {
-          status: "completed",
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      logger.log(`[Auction Settle] 성공적으로 정산 완료: ${auction.id}.`);
+      const settleFn = httpsCallable(functions, "settleAuction");
+      await settleFn({ auctionId: auction.id });
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
       if (itemsContext.refreshData) itemsContext.refreshData();
     } catch (error) {
-      logger.error(`[Auction Settle] 정산 중 오류 발생 ${auction.id}:`, error);
-      // 오류 발생 시 경매 상태를 'error'로 변경하여 재시도를 방지하고 문제 파악을 용이하게 할 수 있습니다.
-      await updateDoc(auctionRef, { status: "error", error: error.message });
+      logger.error(`[Auction Settle] 정산 CF 실패 ${auction.id}:`, error);
     }
   };
 

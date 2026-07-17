@@ -3998,6 +3998,250 @@ exports.placeBid = onCall(
 );
 
 // ===================================================================================
+// 🔨 경매 정산 (2026-07-17 배치6-d2 CF 이관 — Auction settleAuction 클라 runTransaction 대체)
+//   - 낙찰: 판매자 +（낙찰가-거래세), 국고(관리자) +거래세, 낙찰자에게 아이템 지급(낙찰자 cash는
+//     이미 placeBid에서 차감됨=재차감 없음). 유찰: 판매자에게 아이템 반환.
+//   - 판매자·관리자 cash 직접 write = batch7 cash rules 잠금 대상 → CF 이관. 정산은 종료된 경매를
+//     아무 같은학급 뷰어나 트리거(결정론적) — 서버가 endTime 경과·ongoing 재검증 후 처리, status→completed.
+//   - ⚠️ 잔여(배치6-d4): auctions 문서가 클라 writable이라 위조 currentBid로 무담보 민팅 가능 →
+//     auctions rules CF-only 잠금 필요(이 CF 단독으론 미봉인, 구 클라도 동일 취약).
+//   - 개선: 관리자 없으면 거래세 미차감(구 클라는 세금 차감 후 소각 — 소각 방지). delta-map 겹침 안전.
+// ===================================================================================
+exports.settleAuction = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request);
+    const { auctionId } = request.data || {};
+    if (!auctionId || typeof auctionId !== "string" || auctionId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 경매 정보가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const auctionRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("auctions")
+      .doc(auctionId);
+
+    // 트랜잭션 밖 사전조회: 거래세율, 국고 관리자.
+    let auctionTaxRate = 0.03;
+    try {
+      const gov = await db.collection("governmentSettings").doc(classCode).get();
+      const t = gov.exists ? gov.data().taxSettings : null;
+      if (t && typeof t.auctionTransactionTaxRate === "number") {
+        auctionTaxRate = t.auctionTransactionTaxRate;
+      }
+    } catch (e) {
+      logger.warn(`[settleAuction] 세율 조회 실패 ${classCode}:`, e);
+    }
+    // 🔒 세율 클램프(Gemini): 음수 세율이면 taxAmount<0 → proceeds=bid-tax>bid = 무담보 mint.
+    //    0~1로 강제(관리자 오조작·버그로 인한 자금보존 붕괴 방지).
+    if (!Number.isFinite(auctionTaxRate)) auctionTaxRate = 0.03;
+    auctionTaxRate = Math.max(0, Math.min(1, auctionTaxRate));
+    const adminSnap = await findApprovedAdminSnap(classCode);
+    const adminRef = adminSnap.empty ? null : adminSnap.docs[0].ref;
+
+    // 낙찰자 기존 동일아이템 사전조회(트랜잭션 밖 — 있으면 수량증가, 없으면 신규).
+    // auction 문서를 먼저 읽어 highestBidder/originalStoreItemId 파악.
+    const preAuction = await auctionRef.get();
+    if (!preAuction.exists) {
+      return { success: true, message: "이미 정산되었거나 삭제된 경매입니다.", noop: true };
+    }
+    const pa = preAuction.data();
+    if (pa.status !== "ongoing") {
+      return { success: true, message: "이미 처리된 경매입니다.", noop: true };
+    }
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 읽기: 경매 → (낙찰) 낙찰자 기존아이템 쿼리 / (유찰) 판매자 반환아이템.
+        //    ⚠️ 낙찰자 아이템 조회는 반드시 트랜잭션 안에서 fresh highestBidder 기준으로
+        //    수행(막판 동시입찰 레이스 시 사전조회 stale → 이전 입찰자에게 오지급 방지).
+        const auctionDoc = await transaction.get(auctionRef);
+        if (!auctionDoc.exists) throw new Error("경매 정보가 없습니다.");
+        const a = auctionDoc.data();
+        if (a.status !== "ongoing") throw new Error("이미 처리된 경매입니다.");
+        // 종료시각 서버검증(미종료면 정산 불가).
+        const endMs = a.endTime && typeof a.endTime.toMillis === "function"
+          ? a.endTime.toMillis() : 0;
+        if (!endMs || endMs > Date.now()) {
+          throw new Error("아직 종료되지 않은 경매입니다.");
+        }
+
+        const hasWinner = !!a.highestBidder;
+        const returnCollection = a.assetSourceCollection || "inventory";
+
+        // fail-closed: 아이템 식별자 누락 시 조용한 유실/불완전 쓰기 대신 명시적 실패.
+        if (hasWinner && !a.originalStoreItemId) {
+          throw new Error("경매 아이템 식별자(originalStoreItemId)가 없습니다.");
+        }
+        if (!hasWinner && !a.assetId) {
+          throw new Error("반환할 아이템 식별자(assetId)가 없습니다.");
+        }
+
+        // 낙찰자 기존 동일아이템 조회(트랜잭션 내부·fresh highestBidder 기준).
+        let winnerExistingItemRef = null;
+        if (hasWinner) {
+          const winnerItemQuery = db
+            .collection("users")
+            .doc(a.highestBidder)
+            .collection("inventory")
+            .where("itemId", "==", a.originalStoreItemId)
+            .limit(1);
+          const wq = await transaction.get(winnerItemQuery);
+          if (!wq.empty) winnerExistingItemRef = wq.docs[0].ref;
+        }
+
+        // 유찰 반환아이템 조회(트랜잭션 내부).
+        let sellerItemDoc = null;
+        let sellerItemRef = null;
+        if (!hasWinner) {
+          sellerItemRef = db
+            .collection("users")
+            .doc(a.seller)
+            .collection(returnCollection)
+            .doc(a.assetId);
+          sellerItemDoc = await transaction.get(sellerItemRef);
+        }
+
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+
+        if (hasWinner) {
+          const bid = Number(a.currentBid) || 0;
+          // 개선: 관리자 없으면 거래세 미차감(구 클라 소각 방지).
+          const taxAmount = adminRef ? Math.round(bid * auctionTaxRate) : 0;
+          const sellerProceeds = bid - taxAmount;
+
+          // cash delta-map: 판매자 +proceeds, 국고 +tax(겹치면 합산).
+          const deltas = Object.create(null);
+          const addDelta = (id, amt) => { deltas[id] = (deltas[id] || 0) + amt; };
+          if (a.seller) addDelta(a.seller, sellerProceeds);
+          if (adminRef && taxAmount > 0) addDelta(adminRef.id, taxAmount);
+          for (const [id, amt] of Object.entries(deltas)) {
+            if (amt === 0) continue;
+            transaction.update(db.collection("users").doc(id), {
+              cash: admin.firestore.FieldValue.increment(amt),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          // 국고 통계
+          if (taxAmount > 0) {
+            transaction.set(
+              db.collection("nationalTreasuries").doc(classCode),
+              {
+                auctionTaxRevenue: admin.firestore.FieldValue.increment(taxAmount),
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            );
+          }
+
+          // 낙찰자 아이템 지급
+          if (winnerExistingItemRef) {
+            transaction.update(winnerExistingItemRef, {
+              quantity: admin.firestore.FieldValue.increment(1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            const newItemRef = db
+              .collection("users")
+              .doc(a.highestBidder)
+              .collection("inventory")
+              .doc();
+            transaction.set(newItemRef, {
+              itemId: a.originalStoreItemId,
+              name: a.name,
+              description: a.description,
+              icon: a.itemIcon || "📦",
+              quantity: 1,
+              type: "item",
+              purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+
+          // 거래내역(activity_logs 최상위 amount) — 판매자 수익, 낙찰자(입찰 시 이미 차감=amount 0).
+          const sLog = db.collection("activity_logs").doc();
+          transaction.set(sLog, {
+            userId: a.seller,
+            userName: a.sellerName || "판매자",
+            type: "auction_sold",
+            description: `경매 판매: ${a.name || "아이템"} (+${sellerProceeds.toLocaleString()}원${taxAmount > 0 ? `, 세금 ${taxAmount.toLocaleString()}원` : ""})`,
+            amount: sellerProceeds,
+            classCode: a.classCode || classCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: logExpireAt,
+          });
+          const wLog = db.collection("activity_logs").doc();
+          transaction.set(wLog, {
+            userId: a.highestBidder,
+            userName: a.highestBidderName || "낙찰자",
+            type: "auction_won",
+            description: `경매 낙찰: ${a.name || "아이템"} (낙찰가 ${bid.toLocaleString()}원 — 입찰 시 이미 차감됨)`,
+            amount: 0,
+            classCode: a.classCode || classCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: logExpireAt,
+          });
+        } else {
+          // 유찰: 판매자에게 아이템 반환
+          if (sellerItemRef) {
+            if (sellerItemDoc && sellerItemDoc.exists) {
+              transaction.update(sellerItemRef, {
+                quantity: admin.firestore.FieldValue.increment(1),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            } else {
+              transaction.set(sellerItemRef, {
+                itemId: a.originalStoreItemId,
+                name: a.name,
+                description: a.description,
+                icon: a.itemIcon || "📦",
+                quantity: 1,
+                type: "item",
+                addedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            }
+          }
+          const uLog = db.collection("activity_logs").doc();
+          transaction.set(uLog, {
+            userId: a.seller,
+            userName: a.sellerName || "판매자",
+            type: "auction_unsold",
+            description: `경매 유찰: ${a.name || "아이템"} 반환됨`,
+            amount: 0,
+            classCode: a.classCode || classCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: logExpireAt,
+          });
+        }
+
+        // 경매 완료
+        transaction.update(auctionRef, {
+          status: "completed",
+          settledBy: uid,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      return { success: true, message: "경매가 정산되었습니다." };
+    } catch (error) {
+      logger.error(`[settleAuction] Error (auction ${auctionId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "경매 정산에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 
