@@ -16,12 +16,9 @@ import {
   orderBy,
   limit,
   getDocs,
-  runTransaction,
-  increment,
   serverTimestamp,
-  Timestamp,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, functions, httpsCallable } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
@@ -901,9 +898,8 @@ const PersonalShop = () => {
       throw new Error(NEGATIVE_ASSETS_MESSAGE);
     }
 
+    // 낙관적 업데이트·롤백·잔액검증용 클라 추정치(실제 금액은 서버 CF가 재계산).
     const totalAmount = purchaseProduct.totalPrice * quantity;
-    const taxAmount = purchaseProduct.taxAmount * quantity;
-    const sellerAmount = purchaseProduct.price * quantity;
 
     // 잔액 확인
     if ((userProfile?.cash || 0) < totalAmount) {
@@ -915,197 +911,23 @@ const PersonalShop = () => {
       throw new Error("본인 상점에서는 구매할 수 없습니다!");
     }
 
-    // 트랜잭션 전에 관리자 UID 조회 (세금 입금용)
-    const classCode = userProfile?.classCode;
-    let adminUid = null;
-    if (classCode) {
-      const { getClassAdminUid } = await import("../../firebase/db/core");
-      adminUid = await getClassAdminUid(classCode);
-    }
-
     // 🔥 낙관적 업데이트: 즉시 현금 차감 표시
     if (optimisticUpdate) {
       optimisticUpdate({ cash: -totalAmount });
     }
 
     try {
-      await runTransaction(db, async (transaction) => {
-        // 🔹 모든 읽기를 먼저 수행 (Firestore 트랜잭션 규칙)
-        const inventoryItemId = `ps_${purchaseProduct.id}`;
-        const inventoryRef = doc(db, "users", currentUser.uid, "inventory", inventoryItemId);
-        const inventorySnap = await transaction.get(inventoryRef);
-
-        // 🔹 구매자 실제 잔액 확인 (동시 구매 방지)
-        const buyerRef = doc(db, "users", currentUser.uid);
-        const buyerSnap = await transaction.get(buyerRef);
-        if (!buyerSnap.exists() || (buyerSnap.data().cash || 0) < totalAmount) {
-          throw new Error("잔액이 부족합니다!");
-        }
-
-        // 🔹 상품 실제 재고 확인 (동시 구매 방지)
-        const productRef = doc(db, "shopProducts", purchaseProduct.id);
-        const productSnap = await transaction.get(productRef);
-        if (!productSnap.exists()) {
-          throw new Error("상품이 존재하지 않습니다!");
-        }
-        const currentProduct = productSnap.data();
-        if (currentProduct.type === "product" && (currentProduct.stock || 0) < quantity) {
-          throw new Error("재고가 부족합니다!");
-        }
-        if (currentProduct.status === "soldout" || currentProduct.status === "hidden") {
-          throw new Error("판매 중인 상품이 아닙니다!");
-        }
-
-        // 🔹 이후 쓰기 수행
-        // 구매자 잔액 차감
-        transaction.update(buyerRef, {
-          cash: increment(-totalAmount),
-        });
-
-        // 판매자 잔액 증가 (세전 금액)
-        const sellerRef = doc(db, "users", purchaseShop.ownerId);
-        transaction.update(sellerRef, {
-          cash: increment(sellerAmount),
-        });
-
-        // 국고 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-        if (classCode) {
-          const treasuryRef = doc(db, "nationalTreasuries", classCode);
-          transaction.set(
-            treasuryRef,
-            {
-              vatRevenue: increment(taxAmount),
-              lastUpdated: serverTimestamp(),
-            },
-            { merge: true },
-          );
-
-          // 관리자(선생님) cash에 세금 추가
-          if (adminUid) {
-            const adminRef = doc(db, "users", adminUid);
-            transaction.update(adminRef, {
-              cash: increment(taxAmount),
-              updatedAt: serverTimestamp(),
-            });
-          }
-        }
-
-        // 상점 매출 업데이트
-        const shopRef = doc(db, "personalShops", purchaseShop.id);
-        transaction.update(shopRef, {
-          totalSales: increment(sellerAmount),
-          totalTaxPaid: increment(taxAmount),
-        });
-
-        // 상품 재고/판매량 업데이트 (실제 DB 값 기반)
-        const updates = { soldCount: increment(quantity) };
-        if (currentProduct.type === "product") {
-          updates.stock = increment(-quantity);
-          if ((currentProduct.stock || 0) - quantity <= 0) {
-            updates.status = "soldout";
-          }
-        }
-        transaction.update(productRef, updates);
-
-        // 구매자 인벤토리에 아이템 추가
-        const category = SHOP_CATEGORIES.find(c => c.value === purchaseShop.category);
-        const productType = PRODUCT_TYPES.find(t => t.value === purchaseProduct.type);
-
-        if (inventorySnap.exists()) {
-          transaction.update(inventoryRef, {
-            quantity: increment(quantity),
-            updatedAt: serverTimestamp(),
-          });
-        } else {
-          transaction.set(inventoryRef, {
-            itemId: inventoryItemId,
-            name: purchaseProduct.name,
-            icon: productType?.icon || category?.icon || "📦",
-            description: `${purchaseShop.shopName}에서 구매한 ${purchaseProduct.type === "service" ? "서비스" : "상품"}`,
-            type: purchaseProduct.type || "product",
-            quantity: quantity,
-            price: purchaseProduct.totalPrice,
-            source: "personalShop",
-            shopId: purchaseShop.id,
-            shopName: purchaseShop.shopName,
-            sellerId: purchaseShop.ownerId,
-            purchasedAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-        }
-
-        // 🔥 학생 거래 내역에 표시되도록 activity_logs에 구매자/판매자 양쪽 기록
-        const buyerName = userProfile?.name || "익명";
-        const sellerName = purchaseShop.ownerName || "익명";
-        const logExpireAt = new Date();
-        logExpireAt.setDate(logExpireAt.getDate() + 90);
-
-        // 구매자 로그 (지출)
-        const buyerLogRef = doc(collection(db, "activity_logs"));
-        transaction.set(buyerLogRef, {
-          userId: currentUser.uid,
-          userName: buyerName,
-          type: "shop_purchase",
-          description: `${purchaseShop.shopName}에서 ${purchaseProduct.name} ${quantity}개 구매 (-${totalAmount.toLocaleString()}원, VAT ${taxAmount.toLocaleString()}원 포함)`,
-          amount: -totalAmount,
-          classCode: classCode || null,
-          timestamp: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          expireAt: Timestamp.fromDate(logExpireAt),
-          metadata: {
-            shopId: purchaseShop.id,
-            productId: purchaseProduct.id,
-            sellerId: purchaseShop.ownerId,
-            quantity,
-            taxAmount,
-          },
-        });
-
-        // 판매자 로그 (수입, 세후)
-        const sellerLogRef = doc(collection(db, "activity_logs"));
-        transaction.set(sellerLogRef, {
-          userId: purchaseShop.ownerId,
-          userName: sellerName,
-          type: "shop_sale",
-          description: `${buyerName}에게 ${purchaseProduct.name} ${quantity}개 판매 (+${sellerAmount.toLocaleString()}원, 세후)`,
-          amount: sellerAmount,
-          classCode: classCode || null,
-          timestamp: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          expireAt: Timestamp.fromDate(logExpireAt),
-          metadata: {
-            shopId: purchaseShop.id,
-            productId: purchaseProduct.id,
-            buyerId: currentUser.uid,
-            quantity,
-            taxAmount,
-            grossAmount: totalAmount,
-          },
-        });
-
-        // 기존 activities 컬렉션도 호환 위해 유지
-        const activityRef = collection(db, "activities");
-        transaction.set(doc(activityRef), {
-          type: "shop_purchase",
-          buyerId: currentUser.uid,
-          buyerName,
-          sellerId: purchaseShop.ownerId,
-          sellerName,
-          shopId: purchaseShop.id,
-          shopName: purchaseShop.shopName,
-          productId: purchaseProduct.id,
-          productName: purchaseProduct.name,
-          productType: purchaseProduct.type,
-          quantity: quantity,
-          unitPrice: purchaseProduct.totalPrice,
-          totalAmount: totalAmount,
-          taxAmount: taxAmount,
-          classCode: userProfile?.classCode || null,
-          timestamp: serverTimestamp(),
-        });
+      // 🔒 구매(구매자·판매자·국고 cash + 재고/인벤/거래내역)을 purchasePersonalShopItem CF로 처리(배치6-c).
+      //   가격·VAT는 서버 shopProducts에서 재계산(판매자 taxAmount:0 위조=VAT 탈세 차단). 구 클라 runTransaction 대체.
+      const purchaseFn = httpsCallable(functions, "purchasePersonalShopItem");
+      await purchaseFn({
+        productId: purchaseProduct.id,
+        shopId: purchaseShop.id,
+        quantity,
+        idempotencyKey: crypto.randomUUID(),
       });
     } catch (error) {
-      // 트랜잭션 실패 시 낙관적 업데이트 롤백
+      // CF 실패 시 낙관적 업데이트 롤백
       if (optimisticUpdate) {
         optimisticUpdate({ cash: totalAmount });
       }

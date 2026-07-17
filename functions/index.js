@@ -3574,6 +3574,272 @@ exports.processCourtSettlement = onCall(
 );
 
 // ===================================================================================
+// 🏪 개인 상점 구매 (2026-07-17 배치6-c CF 이관 — PersonalShop handlePurchase 클라 runTransaction 대체)
+//   - 구 클라: 구매자 cash -total, 판매자 cash +sellerAmount, 국고(관리자) cash +VAT, 상점/상품/인벤 갱신.
+//     구매자·판매자·관리자 cash 직접 write = batch7 cash rules 잠금 대상 → CF 이관.
+//   - 보안: 가격을 클라 입력이 아닌 서버 shopProducts.price에서 재조회 + VAT 서버재계산(10%,
+//     판매자가 taxAmount:0 위조해 VAT 탈세하던 창 차단). 판매자=product.ownerId, 국고=findApprovedAdminSnap.
+//   - cash는 delta-map으로 합산(구매자/판매자/국고가 같은 문서로 겹쳐도 double-update 없이 순증 정확).
+//   - 단일 tx: 재고/상태/잔액/반경계 검증 후 cash increment + 상점/상품/인벤토리 갱신 + 거래내역 + 멱등.
+// ===================================================================================
+const PERSONAL_SHOP_VAT_RATE = 0.1; // 클라(PersonalShop.js VAT_RATE)와 동일 — 개인상점 고정 10%
+exports.purchasePersonalShopItem = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request);
+    const { productId, shopId, quantity, idempotencyKey } = request.data || {};
+
+    if (
+      !productId || typeof productId !== "string" || productId.includes("/") ||
+      !shopId || typeof shopId !== "string" || shopId.includes("/") ||
+      !Number.isInteger(quantity) || quantity <= 0 || quantity > 100000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "구매 정보(상품·수량 1 이상의 정수)를 정확히 입력해야 합니다.",
+      );
+    }
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    // 국고(승인 관리자) = VAT 수취. 트랜잭션 밖 사전조회(blind increment라 read 불필요).
+    const adminSnap = await findApprovedAdminSnap(classCode);
+    const adminRef = adminSnap.empty ? null : adminSnap.docs[0].ref;
+    if (!adminRef) {
+      throw new HttpsError(
+        "failed-precondition",
+        "승인된 관리자(국고)가 없어 구매를 처리할 수 없습니다.",
+      );
+    }
+
+    const productRef = db.collection("shopProducts").doc(productId);
+    const shopRef = db.collection("personalShops").doc(shopId);
+    const buyerRef = db.collection("users").doc(uid);
+
+    try {
+      const inventoryItemId = `ps_${productId}`;
+      const inventoryRef = buyerRef.collection("inventory").doc(inventoryItemId);
+      const result = await db.runTransaction(async (transaction) => {
+        // 1) 모든 읽기 먼저(read-before-write): 멱등키 → product·shop·buyer·인벤토리
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const [productDoc, shopDoc, buyerDoc, invDoc] = await transaction.getAll(
+          productRef,
+          shopRef,
+          buyerRef,
+          inventoryRef,
+        );
+
+        if (!productDoc.exists) throw new Error("상품이 존재하지 않습니다!");
+        if (!shopDoc.exists) throw new Error("상점이 존재하지 않습니다!");
+        if (!buyerDoc.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        const product = productDoc.data();
+        const shop = shopDoc.data();
+        const buyerData = buyerDoc.data();
+
+        // 2) 서버 권위 검증: 상품=상점 소유자 것, 같은 학급, 본인 상점 아님
+        const sellerId = product.ownerId;
+        if (!sellerId || shop.ownerId !== sellerId) {
+          throw new Error("상품과 상점 정보가 일치하지 않습니다.");
+        }
+        if (sellerId === uid) throw new Error("본인 상점에서는 구매할 수 없습니다!");
+        if (buyerData.classCode !== classCode) {
+          throw new Error("학급 정보가 일치하지 않습니다.");
+        }
+        // 🔒 반경계 fail-closed(Gemini/reviewer MEDIUM): 구 클라 runTransaction은 Firestore read rules
+        //    (isSameClassFast)가 cross-class 상품/판매자 read를 암묵 차단했으나, CF는 Admin SDK라 그 방어가
+        //    사라진다. product.classCode falsy면 skip하던 fail-open을 닫고, **판매자 현재 classCode를
+        //    직접 읽어** 같은 학급인지 강제(돈이 반 밖으로 새는 것 차단). 판매자 read는 write 이전(read단계).
+        const sellerRef = db.collection("users").doc(sellerId);
+        const sellerDoc = await transaction.get(sellerRef);
+        if (!sellerDoc.exists) throw new Error("판매자 정보를 찾을 수 없습니다.");
+        if (sellerDoc.data().classCode !== classCode) {
+          throw new Error("같은 학급의 상점에서만 구매할 수 있습니다.");
+        }
+        if (product.classCode && product.classCode !== classCode) {
+          throw new Error("같은 학급의 상점에서만 구매할 수 있습니다.");
+        }
+
+        // 3) 상태/재고
+        //    🔒 status 화이트리스트(codex): soldout/hidden 외 forged "paused"·알수없는 status도 차단.
+        //       미설정(레거시)·"available"만 판매 가능.
+        if (product.status && product.status !== "available") {
+          throw new Error("판매 중인 상품이 아닙니다!");
+        }
+        //    🔒 type 정규화(codex): "service"만 무한재고. "product"·알수없는 type("productX" 위조 포함)은
+        //       전부 재고 강제 → forged type으로 재고 우회(초과판매) 차단.
+        const isService = product.type === "service";
+        const curStock = Number(product.stock) || 0;
+        if (!isService && curStock < quantity) throw new Error("재고가 부족합니다!");
+
+        // 4) 서버 금액 재계산(price=서버 shopProducts, VAT=서버율 재계산=탈세 차단).
+        //    구 클라와 동일: 단가 VAT를 반올림 후 수량 곱(perUnitTax*qty).
+        //    🔒 정수 number 타입 강제(codex): "100"·false·null 등 강제변환 통과 차단.
+        if (
+          typeof product.price !== "number" ||
+          !Number.isInteger(product.price) ||
+          product.price < 0
+        ) {
+          throw new Error("상품 가격이 올바르지 않습니다.");
+        }
+        const unitPrice = product.price;
+        const unitTax = Math.round(unitPrice * PERSONAL_SHOP_VAT_RATE);
+        const sellerAmount = unitPrice * quantity;
+        const taxAmount = unitTax * quantity;
+        const totalAmount = sellerAmount + taxAmount;
+        if (
+          !Number.isFinite(totalAmount) ||
+          totalAmount < 0 ||
+          totalAmount > 10000000000
+        ) {
+          throw new Error("결제 금액이 올바르지 않습니다.");
+        }
+
+        // 5) 구매자 잔액
+        if ((Number(buyerData.cash) || 0) < totalAmount) {
+          throw new Error("잔액이 부족합니다!");
+        }
+
+        // 6) cash delta-map(구매자 -total, 판매자 +sellerAmount, 국고 +VAT).
+        //    같은 문서로 겹쳐도(판매자==국고 등) 순증만 반영 → double-update로 인한 손실 방지.
+        // Object.create(null): 프로토타입 없는 맵 → id가 "constructor"/"__proto__"/"toString"이어도
+        //   상속 프로퍼티 오염 없이 순수 숫자 누적(방어심화 — 실제 id는 auth UID라 악용불가하나 정석 패턴).
+        const deltas = Object.create(null);
+        const addDelta = (id, amt) => { deltas[id] = (deltas[id] || 0) + amt; };
+        addDelta(uid, -totalAmount);
+        addDelta(sellerId, sellerAmount);
+        addDelta(adminRef.id, taxAmount);
+        for (const [id, amt] of Object.entries(deltas)) {
+          if (amt === 0) continue;
+          transaction.update(db.collection("users").doc(id), {
+            cash: admin.firestore.FieldValue.increment(amt),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 7) 국고 통계(vatRevenue) — 관리자 cash와 별개 통계 문서
+        const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+        transaction.set(
+          treasuryRef,
+          {
+            vatRevenue: admin.firestore.FieldValue.increment(taxAmount),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        // 8) 상점 매출 통계
+        transaction.update(shopRef, {
+          totalSales: admin.firestore.FieldValue.increment(sellerAmount),
+          totalTaxPaid: admin.firestore.FieldValue.increment(taxAmount),
+        });
+
+        // 9) 상품 재고/판매량
+        const productUpdates = {
+          soldCount: admin.firestore.FieldValue.increment(quantity),
+        };
+        if (!isService) {
+          productUpdates.stock = admin.firestore.FieldValue.increment(-quantity);
+          if (curStock - quantity <= 0) productUpdates.status = "soldout";
+        }
+        transaction.update(productRef, productUpdates);
+
+        // 10) 구매자 인벤토리(ps_{productId}) — 구 클라 구조 재현(read는 read단계 invDoc)
+        const shopName = shop.shopName || "개인상점";
+        if (invDoc.exists) {
+          transaction.update(inventoryRef, {
+            quantity: admin.firestore.FieldValue.increment(quantity),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(inventoryRef, {
+            itemId: inventoryItemId,
+            name: product.name || "상품",
+            icon: product.icon || (isService ? "🛠️" : "📦"),
+            description: `${shopName}에서 구매한 ${isService ? "서비스" : "상품"}`,
+            type: product.type || "product",
+            quantity: quantity,
+            price: totalAmount / quantity,
+            source: "personalShop",
+            shopId: shopId,
+            shopName: shopName,
+            sellerId: sellerId,
+            purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 11) 거래내역(activity_logs 최상위 amount) — 구 클라와 동일하게 양쪽 기록.
+        const buyerName = buyerData.name || buyerData.nickname || "익명";
+        const sellerName = shop.ownerName || "판매자";
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        const buyerLogRef = db.collection("activity_logs").doc();
+        transaction.set(buyerLogRef, {
+          userId: uid,
+          userName: buyerName,
+          type: "shop_purchase",
+          description: `${shopName}에서 ${product.name || "상품"} ${quantity}개 구매 (-${totalAmount.toLocaleString()}원, VAT ${taxAmount.toLocaleString()}원 포함)`,
+          amount: -totalAmount,
+          classCode: classCode,
+          metadata: { shopId, productId, sellerId, quantity, taxAmount },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+        const sellerLogRef = db.collection("activity_logs").doc();
+        transaction.set(sellerLogRef, {
+          userId: sellerId,
+          userName: sellerName,
+          type: "shop_sale",
+          description: `${buyerName}님이 ${product.name || "상품"} ${quantity}개 구매 - 매출 (+${sellerAmount.toLocaleString()}원)`,
+          amount: sellerAmount,
+          classCode: classCode,
+          metadata: { shopId, productId, buyerId: uid, quantity, taxAmount, grossAmount: totalAmount },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+
+        // 12) activities 컬렉션 — 판매/구매 내역 뷰(loadSalesHistory)가 sellerId/buyerId로 읽음.
+        //     구 클라 write를 CF에서 복원(누락 시 상점 판매/구매 내역에서 이 거래가 사라짐).
+        const activityRef = db.collection("activities").doc();
+        transaction.set(activityRef, {
+          type: "shop_purchase",
+          buyerId: uid,
+          buyerName,
+          sellerId,
+          sellerName,
+          shopId,
+          shopName,
+          productId,
+          productName: product.name || "상품",
+          productType: product.type || "product",
+          quantity,
+          unitPrice: totalAmount / quantity,
+          totalAmount,
+          taxAmount,
+          classCode,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        markIdempotent(transaction, keyRef);
+        return { totalAmount, sellerAmount, taxAmount };
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      logger.error(`[purchasePersonalShopItem] Error for ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "구매에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 
