@@ -8299,6 +8299,203 @@ exports.cancelRealEstateForSale = onCall({ region: "asia-northeast3" }, async (r
   }
 });
 
+// 부동산 입주/퇴거 (학생 렌트). 구 클라 handleTenancy runTransaction(본인 cash -rent·집주인 +rent·
+//   propertyRef 갱신)을 CF로 이관 — realEstateProperties가 rules상 admin-only write라 학생 클라
+//   트랜잭션이 propertyRef 쓰기에서 막혀 사실상 렌트가 불가였음(2026-07-17 사용자 결정으로 활성화).
+//   CF(Admin SDK)만 propertyRef를 쓸 수 있으므로 이 CF가 유일 경로.
+exports.tenancyAction = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { propertyId, idempotencyKey, action } = request.data || {};
+
+    if (!propertyId || typeof propertyId !== "string" || propertyId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 부동산 정보가 필요합니다.");
+    }
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    // 입주/퇴거 의도를 클라가 명시. 서버는 이 의도를 현재 상태와 대조해 불일치 시 거부.
+    // (구 토글 설계는 연타 시 "입주 직후 자동 퇴거"로 월세만 날리는 자금손실이 있었다.)
+    if (action !== "moveIn" && action !== "vacate") {
+      throw new HttpsError("invalid-argument", "유효한 요청 유형(action)이 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const propsColl = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("realEstateProperties");
+    const propertyRef = propsColl.doc(propertyId);
+    const userRef = db.collection("users").doc(uid);
+    const settingsRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("realEstateSettings")
+      .doc("settingsDoc");
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        // ── 읽기(모든 read 먼저) ──
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const propertyDoc = await transaction.get(propertyRef);
+        if (!propertyDoc.exists) throw new Error("부동산 정보를 찾을 수 없습니다.");
+        const p = propertyDoc.data();
+
+        // 퇴거: 반드시 현재 세입자가 본인이어야 함(cash 이동 없음).
+        // action으로 의도를 명시받아, 연타 시 "입주→자동퇴거" 토글 손실을 차단.
+        if (action === "vacate") {
+          if (p.tenantId !== uid) {
+            throw new Error("이 부동산의 세입자가 아닙니다. 이미 퇴거되었을 수 있습니다.");
+          }
+          transaction.update(propertyRef, {
+            tenant: null,
+            tenantId: null,
+            tenantName: null,
+            lastRentPayment: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          markIdempotent(transaction, keyRef);
+          return { action: "vacate" };
+        }
+
+        // 입주(action === "moveIn"): 이미 본인이 입주 중이면 연타로 간주해 거부(토글 방지).
+        if (p.tenantId === uid) throw new Error("이미 이 부동산에 입주해 있습니다.");
+        // 다른 사람이 입주 중이면 불가.
+        if (p.tenantId) throw new Error("이미 다른 사람이 입주해 있습니다.");
+
+        // 월세 = property.rent, 없으면 설정 비율로 계산(구 클라·purchaseRealEstate와 동일).
+        const settingsDoc = await transaction.get(settingsRef);
+        const rentPercentage = settingsDoc.exists
+          ? (Number(settingsDoc.data().rentPercentage) || 1) : 1;
+        const rent = Number.isFinite(Number(p.rent)) && Number(p.rent) > 0
+          ? Math.floor(Number(p.rent))
+          : Math.round((Number(p.price) || 0) * (rentPercentage / 100));
+        if (!Number.isFinite(rent) || rent < 0 || rent > 10000000000) {
+          throw new Error("월세 정보가 올바르지 않습니다.");
+        }
+
+        // 자기 소유 매물이면 "자기에게 월세"라 현금 이동이 없어야 한다(net 0).
+        // 구 클라 주석("자기 땅 입주 시 cash 변동 없음")의 의도이나 구 코드는 차감만 실행돼
+        // rent가 증발하던 잠재 결함이 있었다 — 이관 시 payRent로 바로잡는다.
+        const owner = p.owner;
+        const selfOwned = owner === uid;
+        const payRent = selfOwned ? 0 : rent;
+
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        const uData = userDoc.data();
+        if (typeof uData.cash !== "number" || !Number.isFinite(uData.cash)) {
+          throw new Error("잔액 정보가 올바르지 않습니다.");
+        }
+        if (payRent > 0 && uData.cash < payRent) {
+          throw new Error("첫 월세를 낼 현금이 부족합니다.");
+        }
+
+        // 이미 다른 부동산에 입주 중이면 불가. tenantId==uid 문서만 조회(전체 스캔·500 한도 회피).
+        const elsewhere = await transaction.get(propsColl.where("tenantId", "==", uid));
+        for (const d of elsewhere.docs) {
+          if (d.id !== propertyId) {
+            throw new Error("이미 다른 부동산에 입주해 있습니다. 먼저 퇴거해야 합니다.");
+          }
+        }
+
+        // 집주인 지급 대상(정부/본인 소유면 지급 없음). 집주인 문서 없음·타학급이면
+        // 세입자 현금이 증발하지 않도록 입주 자체를 중단(구 클라 fail-closed와 동일, 자금보존).
+        let ownerRef = null;
+        let payOwner = false;
+        if (owner && owner !== "government" && !selfOwned && payRent > 0) {
+          ownerRef = db.collection("users").doc(owner);
+          const ownerDoc = await transaction.get(ownerRef);
+          if (!ownerDoc.exists) {
+            throw new Error("집주인 정보를 찾을 수 없어 입주할 수 없습니다.");
+          }
+          const oData = ownerDoc.data();
+          // 반경계: 집주인도 같은 학급이어야 지급(타학급 유출·증발 차단).
+          if (oData.classCode !== classCode) {
+            throw new Error("집주인이 다른 학급이라 입주할 수 없습니다.");
+          }
+          if (typeof oData.cash !== "number" || !Number.isFinite(oData.cash)) {
+            throw new Error("집주인 잔액 정보가 올바르지 않습니다.");
+          }
+          payOwner = true;
+        }
+
+        // ── 쓰기 ──
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        if (payRent > 0) {
+          transaction.update(userRef, {
+            cash: admin.firestore.FieldValue.increment(-payRent),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        if (payOwner) {
+          transaction.update(ownerRef, {
+            cash: admin.firestore.FieldValue.increment(payRent),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        transaction.update(propertyRef, {
+          tenant: userData.name || "익명",
+          tenantId: uid,
+          tenantName: userData.name || "익명",
+          lastRentPayment: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 거래내역(activity_logs 최상위 amount) — 실제 현금 이동이 있을 때만 기록.
+        const addr = p.address || "부동산";
+        if (payRent > 0) {
+          const tenantLogRef = db.collection("activity_logs").doc();
+          transaction.set(tenantLogRef, {
+            userId: uid,
+            userName: userData.name || "익명",
+            type: "realEstateRent",
+            description: `${addr} 입주 (월세 -${payRent.toLocaleString()}원)`,
+            amount: -payRent,
+            classCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: logExpireAt,
+          });
+          if (payOwner) {
+            const ownerLogRef = db.collection("activity_logs").doc();
+            transaction.set(ownerLogRef, {
+              userId: owner,
+              userName: p.ownerName || "건물주",
+              type: "realEstateRent",
+              description: `${userData.name || "학생"}님 입주 - 월세 수익 (+${payRent.toLocaleString()}원)`,
+              amount: payRent,
+              classCode,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              expireAt: logExpireAt,
+            });
+          }
+        }
+
+        markIdempotent(transaction, keyRef);
+        return { action: "moveIn", rent: payRent };
+      });
+      return {
+        success: true,
+        ...result,
+        message: result.action === "vacate"
+          ? "성공적으로 퇴거했습니다."
+          : "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.",
+      };
+    } catch (error) {
+      logger.error(`[tenancyAction] Error (uid ${uid}, property ${propertyId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "입주/퇴거 처리에 실패했습니다.");
+    }
+  },
+);
+
 exports.processSettlement = onCall(
   { region: "asia-northeast3" },
   async (request) => {

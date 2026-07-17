@@ -757,113 +757,26 @@ const RealEstateRegistry = () => {
     }
 
     setOperationLoading(true);
-    const propertyRef = doc(
-      db,
-      "classes",
-      classCode,
-      "realEstateProperties",
-      propertyId
-    );
-    const userRef = doc(db, "users", currentUser.id);
 
     try {
-      let transactionResult = null;
-
-      await runTransaction(db, async (transaction) => {
-        const propertyDoc = await transaction.get(propertyRef);
-        if (!propertyDoc.exists())
-          throw new Error("부동산 정보를 찾을 수 없습니다.");
-        const propertyData = propertyDoc.data();
-
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists())
-          throw new Error("사용자 정보를 찾을 수 없습니다.");
-        const userData = userDoc.data();
-
-        if (propertyData.tenantId === currentUser.id) {
-          // 퇴거 처리
-          transaction.update(propertyRef, {
-            tenant: null,
-            tenantId: null,
-            tenantName: null,
-            lastRentPayment: null,
-            updatedAt: serverTimestamp(),
-          });
-          transactionResult = { type: 'vacate' };
-          return;
-        }
-
-        if (propertyData.tenantId)
-          throw new Error("이미 다른 사람이 입주해 있습니다.");
-        if (isAlreadyTenantElsewhere)
-          throw new Error(
-            "이미 다른 부동산에 입주해 있습니다. 먼저 퇴거해야 합니다."
-          );
-        if (userData.cash < propertyData.rent)
-          throw new Error("첫 월세를 낼 현금이 부족합니다.");
-
-        transaction.update(userRef, {
-          cash: increment(-propertyData.rent),
-          updatedAt: serverTimestamp(),
-        });
-
-        if (propertyData.owner !== "government") {
-          const ownerRef = doc(db, "users", propertyData.owner);
-          // 자기 땅에 입주하는 경우, 자기 자신에게 월세를 내게 되므로 cash는 변동 없음
-          if (propertyData.owner !== currentUser.id) {
-            transaction.update(ownerRef, {
-              cash: increment(propertyData.rent),
-              updatedAt: serverTimestamp(),
-            });
-          }
-        }
-
-        transaction.update(propertyRef, {
-          tenant: currentUser.name,
-          tenantId: currentUser.id,
-          tenantName: currentUser.name,
-          lastRentPayment: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-
-        // 🔥 학생 거래 내역 로그 (입주 첫 월세 지급)
-        const logExpireAt = new Date();
-        logExpireAt.setDate(logExpireAt.getDate() + 90);
-        const tenantLogRef = doc(collection(db, "activity_logs"));
-        transaction.set(tenantLogRef, {
-          userId: currentUser.id,
-          userName: currentUser.name || "익명",
-          type: "realEstateRent",
-          description: `${propertyData.address || "부동산"} 입주 (월세 -${propertyData.rent.toLocaleString()}원)`,
-          amount: -propertyData.rent,
-          classCode: currentUser.classCode || null,
-          timestamp: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          expireAt: Timestamp.fromDate(logExpireAt),
-        });
-        if (propertyData.owner !== "government" && propertyData.owner !== currentUser.id) {
-          const ownerLogRef = doc(collection(db, "activity_logs"));
-          transaction.set(ownerLogRef, {
-            userId: propertyData.owner,
-            userName: propertyData.ownerName || "건물주",
-            type: "realEstateRent",
-            description: `${currentUser.name}님 입주 - 월세 수익 (+${propertyData.rent.toLocaleString()}원)`,
-            amount: propertyData.rent,
-            classCode: currentUser.classCode || null,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(logExpireAt),
-          });
-        }
-
-        transactionResult = { type: 'moveIn', rent: propertyData.rent };
+      // 🔒 P2 배치6-g: 입주/퇴거·첫 월세 이체를 서버(tenancyAction CF)로 이관.
+      //    realEstateProperties는 rules상 admin-only write라 구 클라 트랜잭션은
+      //    학생 세션에서 실패했다(렌트 기능 사실상 비활성). CF(Admin SDK)가 유일 경로.
+      const result = await httpsCallable(functions, "tenancyAction")({
+        propertyId,
+        // 입주/퇴거 의도를 명시(서버가 현재 상태와 대조). 연타 시 토글로 월세만 날리는 손실 차단.
+        action: isVacating ? "vacate" : "moveIn",
+        idempotencyKey:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `tenancy_${currentUser.id}_${propertyId}_${Date.now()}`,
       });
+      const data = result?.data || {};
 
-      // 🔥 트랜잭션 완료 후 처리
-      if (transactionResult?.type === 'vacate') {
-        alert("성공적으로 퇴거했습니다.");
-      } else if (transactionResult?.type === 'moveIn') {
-        alert("성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
+      if (data.action === "vacate") {
+        alert(data.message || "성공적으로 퇴거했습니다.");
+      } else {
+        alert(data.message || "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
 
         // 🔥 [중요] 유저 캐시 무효화 후 서버에서 최신 데이터 가져오기
         if (currentUser?.id) {
