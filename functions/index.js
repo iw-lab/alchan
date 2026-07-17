@@ -3840,6 +3840,164 @@ exports.purchasePersonalShopItem = onCall(
 );
 
 // ===================================================================================
+// 🔨 경매 입찰 (2026-07-17 배치6-d1 CF 이관 — Auction handleBid 클라 runTransaction 대체)
+//   - 구 클라: 입찰자 cash -amount(에스크로) + 직전 최고입찰자 환불 +currentBid + 경매 갱신.
+//     입찰자·직전입찰자 cash 직접 write = batch7 cash rules 잠금 대상 → CF 이관.
+//   - 서버 검증: 경매 ongoing·미종료(endTime>now), amount>현재가·정수, 본인경매 입찰 금지, 잔액.
+//   - cash delta-map: 자기 최고입찰 인상 시(입찰자==직전입찰자) -amount+currentBid=차액만 정확 반영.
+//   - 이중입찰 차단: 경매 currentBid 자연게이트(재호출 시 amount<=currentBid 거부) + 멱등키.
+// ===================================================================================
+exports.placeBid = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { auctionId, amount, idempotencyKey } = request.data || {};
+
+    if (
+      !auctionId || typeof auctionId !== "string" || auctionId.includes("/") ||
+      !Number.isInteger(amount) || amount <= 0 || amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "경매·입찰액(1 이상의 정수)을 정확히 입력해야 합니다.",
+      );
+    }
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const auctionRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("auctions")
+      .doc(auctionId);
+    const bidderRef = db.collection("users").doc(uid);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 모든 읽기 먼저: 멱등키 → 경매 → 입찰자 → (직전 최고입찰자)
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const auctionDoc = await transaction.get(auctionRef);
+        if (!auctionDoc.exists) throw new Error("경매 정보를 찾을 수 없습니다.");
+        const a = auctionDoc.data();
+
+        if (a.status !== "ongoing") throw new Error("경매가 이미 종료되었습니다.");
+        // 종료시각 서버검증(클라 조작 불가). Timestamp 없으면 종료로 간주.
+        const endMs = a.endTime && typeof a.endTime.toMillis === "function"
+          ? a.endTime.toMillis()
+          : 0;
+        if (!endMs || endMs <= Date.now()) {
+          throw new Error("이미 종료되었거나 유효하지 않은 경매입니다.");
+        }
+        if (a.seller === uid) throw new Error("자신의 경매에는 입찰할 수 없습니다.");
+
+        const curBid = Number(a.currentBid) || 0;
+        if (amount <= curBid) {
+          throw new Error(`입찰 금액이 현재가(${curBid.toLocaleString()}원)보다 높아야 합니다.`);
+        }
+
+        const bidderDoc = await transaction.get(bidderRef);
+        if (!bidderDoc.exists) throw new Error("입찰자 정보를 찾을 수 없습니다.");
+        const bidderData = bidderDoc.data();
+        if (bidderData.classCode !== classCode) {
+          throw new Error("같은 학급의 경매에만 입찰할 수 있습니다.");
+        }
+        if ((Number(bidderData.cash) || 0) < amount) {
+          throw new Error("보유 현금이 부족합니다.");
+        }
+
+        // 직전 최고입찰자(환불 대상). 🔒 삭제된 계정이면 환불 스킵(Gemini/reviewer): blind update는
+        //   대상 문서 없으면 throw→트랜잭션 abort→그 경매 영구 입찰불가(DoS). read로 존재확인 후 스킵.
+        const prevBidderId = a.highestBidder || null;
+        const hasPrev = prevBidderId && curBid > 0;
+        let refundApplies = false;
+        if (hasPrev) {
+          if (prevBidderId === uid) {
+            refundApplies = true; // 자기 재입찰 — 입찰자 문서 이미 읽음(존재·같은학급)
+          } else {
+            const prevDoc = await transaction.get(
+              db.collection("users").doc(prevBidderId),
+            );
+            // 🔒 존재 + 같은학급만 환불(codex): CF는 Admin SDK라 rules를 우회하므로, forged 타학급
+            //   highestBidder로 환불이 반 밖으로 새거나 에스크로가 탈취되던 창을 차단(구 클라 read-rule 방어 복원).
+            //   삭제된 계정이면 환불 스킵(입찰은 계속 진행 — blind update abort로 인한 경매 동결 방지).
+            refundApplies = prevDoc.exists && prevDoc.data().classCode === classCode;
+          }
+        }
+
+        // 2) cash delta-map: 입찰자 -amount, (환불대상 존재 시) 직전입찰자 +curBid.
+        //    자기 최고입찰 인상(입찰자==직전입찰자)이면 -amount+curBid=차액만 반영.
+        const deltas = Object.create(null);
+        const addDelta = (id, amt) => { deltas[id] = (deltas[id] || 0) + amt; };
+        addDelta(uid, -amount);
+        if (refundApplies) addDelta(prevBidderId, curBid);
+        for (const [id, amt] of Object.entries(deltas)) {
+          if (amt === 0) continue;
+          transaction.update(db.collection("users").doc(id), {
+            cash: admin.firestore.FieldValue.increment(amt),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 3) 경매 갱신
+        const bidderName = userData.name || bidderData.name || "입찰자";
+        transaction.update(auctionRef, {
+          currentBid: amount,
+          bidCount: admin.firestore.FieldValue.increment(1),
+          highestBidder: uid,
+          highestBidderName: bidderName,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 4) 거래내역(activity_logs 최상위 amount)
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        const bidderLogRef = db.collection("activity_logs").doc();
+        transaction.set(bidderLogRef, {
+          userId: uid,
+          userName: bidderName,
+          type: "auction_bid",
+          description: `경매 입찰: ${a.name || "아이템"} (-${amount.toLocaleString()}원)`,
+          amount: -amount,
+          classCode: classCode,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+        // 🔒 환불이 실제 적용된 경우 항상 기록(자기 재입찰 포함 — 로그합=실제잔액변화 정합, Gemini HIGH).
+        if (refundApplies) {
+          const refundLogRef = db.collection("activity_logs").doc();
+          transaction.set(refundLogRef, {
+            userId: prevBidderId,
+            userName: prevBidderId === uid
+              ? (userData.name || "입찰자")
+              : (a.highestBidderName || "이전 입찰자"),
+            type: "auction_bid_refund",
+            description: `경매 입찰 환불: ${a.name || "아이템"} (+${curBid.toLocaleString()}원)`,
+            amount: curBid,
+            classCode: classCode,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: logExpireAt,
+          });
+        }
+
+        markIdempotent(transaction, keyRef);
+      });
+      return { success: true, message: "입찰이 완료되었습니다." };
+    } catch (error) {
+      logger.error(`[placeBid] Error for ${uid} (auction ${auctionId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "입찰에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 

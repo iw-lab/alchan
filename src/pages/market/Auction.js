@@ -1,11 +1,13 @@
 // src/Auction.js (오류 수정 및 관리자 기능 추가)
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
 
 // firebase.js에서 익스포트하는 함수들
 import {
   db,
+  functions,
+  httpsCallable,
   serverTimestamp,
   collection,
   query,
@@ -441,15 +443,16 @@ export default function Auction() {
     setTimeout(() => setNotification(null), 3500);
   };
 
+  // 경매별 입찰 재진입 lock(더블클릭 시 낙관적 cash 중복 표시 방지 — 서버는 자연게이트로 안전)
+  const biddingRef = useRef(new Set());
+
   // --- Event Handlers ---
   const handleBid = async (auctionId) => {
     if (!currentUserId || !classCode) {
       showNotification("로그인이 필요하거나 학급 정보가 없습니다.", "error");
       return;
     }
-    const auctionRef = doc(db, "classes", classCode, "auctions", auctionId);
-    const userRef = doc(db, "users", currentUserId);
-
+    if (biddingRef.current.has(auctionId)) return; // 진행 중인 입찰 중복 제출 차단
     const auctionFromState = auctions.find((a) => a.id === auctionId);
     if (!auctionFromState) {
       showNotification("경매 정보를 찾을 수 없습니다 (로컬 상태).", "error");
@@ -489,94 +492,17 @@ export default function Auction() {
     }
 
     // 🔥 즉시 UI 업데이트 (낙관적 업데이트)
+    biddingRef.current.add(auctionId);
     if (optimisticUpdate) {
       optimisticUpdate({ cash: -amount });
     }
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const auctionDoc = await transaction.get(auctionRef);
-        if (!auctionDoc.exists()) {
-          throw new Error("경매 정보를 찾을 수 없습니다 (Firestore).");
-        }
-        const currentAuctionData = auctionDoc.data();
-
-        if (currentAuctionData.status !== "ongoing") {
-          throw new Error("경매가 이미 종료되었습니다.");
-        }
-
-        const bidderUserDoc = await transaction.get(userRef);
-        if (!bidderUserDoc.exists()) {
-          throw new Error("입찰자 정보를 찾을 수 없습니다.");
-        }
-        const bidderUserData = bidderUserDoc.data();
-
-        if (bidderUserData.cash < amount) {
-          throw new Error(`보유 현금이 부족합니다. (현재: ${formatPrice(bidderUserData.cash)}, 필요: ${formatPrice(amount)})`);
-        }
-        if (amount <= currentAuctionData.currentBid) {
-          throw new Error(`입찰 금액이 현재가(${formatPrice(currentAuctionData.currentBid)})보다 낮거나 같습니다.`);
-        }
-        if (currentAuctionData.seller === currentUserId) {
-          throw new Error("자신의 경매에는 입찰할 수 없습니다.");
-        }
-        const auctionEndTime = currentAuctionData.endTime.toDate();
-        if (auctionEndTime <= new Date()) {
-          throw new Error("경매가 이미 종료되었습니다.");
-        }
-
-        if (currentAuctionData.highestBidder && currentAuctionData.currentBid > 0) {
-          const previousHighestBidderRef = doc(db, "users", currentAuctionData.highestBidder);
-          transaction.update(previousHighestBidderRef, {
-            cash: increment(currentAuctionData.currentBid),
-            updatedAt: serverTimestamp(),
-          });
-        }
-
-        transaction.update(userRef, {
-          cash: increment(-amount),
-          updatedAt: serverTimestamp(),
-        });
-
-        transaction.update(auctionRef, {
-          currentBid: amount,
-          bidCount: increment(1),
-          highestBidder: currentUserId,
-          highestBidderName: currentUserName,
-          updatedAt: serverTimestamp(),
-        });
-
-        // 🔥 학생 거래 내역 로그 (입찰 — cash 차감)
-        const _logExp = new Date();
-        _logExp.setDate(_logExp.getDate() + 90);
-        const bidderLog = doc(collection(db, "activity_logs"));
-        transaction.set(bidderLog, {
-          userId: currentUserId,
-          userName: currentUserName || "입찰자",
-          type: "auction_bid",
-          description: `경매 입찰: ${currentAuctionData.name || "아이템"} (-${amount.toLocaleString()}원)`,
-          amount: -amount,
-          classCode: classCode || null,
-          timestamp: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          expireAt: Timestamp.fromDate(_logExp),
-        });
-        // 이전 최고가 입찰자 환원 로그
-        if (currentAuctionData.highestBidder && currentAuctionData.currentBid > 0) {
-          const refundLog = doc(collection(db, "activity_logs"));
-          transaction.set(refundLog, {
-            userId: currentAuctionData.highestBidder,
-            userName: currentAuctionData.highestBidderName || "이전 입찰자",
-            type: "auction_bid_refund",
-            description: `경매 입찰 환불: ${currentAuctionData.name || "아이템"} (+${currentAuctionData.currentBid.toLocaleString()}원, 더 높은 입찰자 등장)`,
-            amount: currentAuctionData.currentBid,
-            classCode: classCode || null,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(_logExp),
-          });
-        }
-      });
+      // 🔒 입찰(입찰자 cash 에스크로 + 직전 최고입찰자 환불 + 경매 갱신)을 placeBid CF로 처리(배치6-d1).
+      //   구 클라 runTransaction은 cash 직접 write라 batch7 rules 잠금 대상 → CF 이관. 종료시각·현재가·
+      //   본인경매·잔액 전부 서버검증, 자기입찰 인상은 delta-map으로 차액만 반영.
+      const placeBidFn = httpsCallable(functions, "placeBid");
+      await placeBidFn({ auctionId, amount, idempotencyKey: crypto.randomUUID() });
 
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
 
@@ -590,6 +516,8 @@ export default function Auction() {
       if (optimisticUpdate) {
         optimisticUpdate({ cash: amount });
       }
+    } finally {
+      biddingRef.current.delete(auctionId);
     }
   };
 
