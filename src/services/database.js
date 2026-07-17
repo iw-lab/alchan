@@ -106,6 +106,10 @@ const logActivity = async (userId, type, description, metadata = {}) => {
 };
 
 /**
+ * @deprecated 2026-07-17 서버 CF `adminCashAction`(functions/index.js)으로 이관됨(P2 배치5).
+ *   클라 직접 cash write(절대값 덮어쓰기·권한 클라검사)는 money-glitch 벡터라 더 이상 호출 금지.
+ *   현재 소비처 0(MoneyTransfer.js는 httpsCallable 사용). P4에서 이 함수 본문 삭제 예정.
+ *
  * 관리자 현금 지급/회수 (MoneyTransfer.js용) - Firestore 트랜잭션 적용
  * @param {object} params - 함수 파라미터
  * @param {string} params.adminName - 관리자 이름

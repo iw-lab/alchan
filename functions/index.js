@@ -1905,6 +1905,264 @@ exports.parkingWithdraw = onCall(
 );
 
 // ===================================================================================
+// 🔥 관리자 지급/회수 (2026-07-17 CF 이관 — MoneyTransfer의 클라 adminCashAction 대체)
+//   - 권한: 서버에서 관리자(hasAdminPower) 또는 위임(delegatedPermissions.moneyTransfer) 강제.
+//     클라가 넘기던 adminId/adminClassCode를 신뢰하지 않고 auth·userData에서 파생.
+//   - 기존 동작 정확 보존: send=학생 cash 증가(관리자 cash는 DB 미차감=학급경제 민팅 모델),
+//     take/toMe=학생 차감+국고(관리자) 적립, take/remove=학생 차감만. 세금은 send에만(학생 수령액 감소).
+//     percentage면 baseAmount=floor(cash*pct/100), ≤0이면 해당 학생 skip. 마이너스 cash 허용.
+//   - 🔧 절대값 덮어쓰기(cash:newCash) → increment(±)로 교체(레이스 수정, financial-saas 룰#2).
+//   - 멱등: 대상별 `${key}_${targetId}` 서브키(대량 처리 중 일부만 재시도돼도 이중적용 차단, 이미
+//     처리분은 graceful skip). 같은 학급만. 로그/거래기록(root transactions=거래내역 표시원) 보존.
+// ===================================================================================
+exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+  const {
+    targetUserIds,
+    action,
+    takeMode,
+    amountType,
+    amount,
+    taxRate = 0,
+    idempotencyKey,
+  } = request.data;
+
+  // 1) 권한: 관리자 또는 위임(moneyTransfer) — 서버 강제
+  const isAdmin = hasAdminPower(userData);
+  const isDelegated =
+    !isAdmin && userData.delegatedPermissions?.moneyTransfer === true;
+  if (!isAdmin && !isDelegated) {
+    throw new HttpsError(
+      "permission-denied",
+      "관리자 또는 위임된 학생만 사용할 수 있습니다.",
+    );
+  }
+
+  // 2) 입력 검증
+  if (
+    !Array.isArray(targetUserIds) ||
+    targetUserIds.length === 0 ||
+    targetUserIds.length > 200 ||
+    targetUserIds.some((id) => typeof id !== "string" || !id)
+  ) {
+    throw new HttpsError("invalid-argument", "대상 학생 목록이 올바르지 않습니다.");
+  }
+  if (action !== "send" && action !== "take") {
+    throw new HttpsError("invalid-argument", "action이 올바르지 않습니다.");
+  }
+  if (action === "take" && takeMode !== "toMe" && takeMode !== "remove") {
+    throw new HttpsError("invalid-argument", "회수 방식이 올바르지 않습니다.");
+  }
+  if (amountType !== "fixed" && amountType !== "percentage") {
+    throw new HttpsError("invalid-argument", "금액 유형이 올바르지 않습니다.");
+  }
+  if (amountType === "percentage") {
+    if (typeof amount !== "number" || !(amount >= 0 && amount <= 100)) {
+      throw new HttpsError("invalid-argument", "퍼센트는 0~100 사이여야 합니다.");
+    }
+  } else if (
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > 10000000000
+  ) {
+    throw new HttpsError("invalid-argument", "금액은 1 이상의 정수여야 합니다.");
+  }
+  const safeTaxRate =
+    action === "send" &&
+    typeof taxRate === "number" &&
+    Number.isFinite(taxRate) &&
+    taxRate > 0
+      ? Math.min(taxRate, 100)
+      : 0;
+
+  // 3) 국고(=관리자 cash) 대상: 위임이면 승인 관리자, 아니면 본인
+  let effectiveAdminId = uid;
+  let effectiveAdminName = userData.name;
+  if (isDelegated) {
+    const adminSnap = await findApprovedAdminSnap(classCode);
+    if (adminSnap.empty) {
+      throw new HttpsError("failed-precondition", "학급 관리자(국고)를 찾을 수 없습니다.");
+    }
+    effectiveAdminId = adminSnap.docs[0].id;
+    effectiveAdminName = adminSnap.docs[0].data().name || "관리자";
+  }
+
+  const increment = admin.firestore.FieldValue.increment;
+  const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
+  const updatedUsers = [];
+  const failures = [];
+  let totalProcessed = 0;
+  let successCount = 0;
+
+  // 4) 대상별 트랜잭션(원자적, 대상별 멱등).
+  //    - 자기참조 방지(트랜잭션 전 skip): ① 위임 학생이 자기 자신 대상 = 자기 cash 조작(민팅/회수)
+  //      차단(방어심층화) ② take/toMe에서 대상==국고(관리자) 본인 = 자기→자기 회수 net 0 no-op
+  //      (구현 버그 방지: 차감만 되고 적립 skip돼 관리자 cash가 파괴되던 케이스).
+  //    - 오류 처리: 이미 처리분(already-exists)은 skip, 그 외 per-target 오류는 전체 중단 대신
+  //      failures에 수집하고 계속(부분성공 보고 — 한 학생 데이터 문제로 배치 전체가 깨지지 않게).
+  for (const targetId of targetUserIds) {
+    if (isDelegated && targetId === uid) continue;
+    if (action === "take" && takeMode === "toMe" && targetId === effectiveAdminId) {
+      continue;
+    }
+    try {
+      const result = await db.runTransaction(async (tx) => {
+        const perKey = idempotencyKey ? `${idempotencyKey}_${targetId}` : undefined;
+        // 읽기 먼저: 멱등키 → 대상 유저 → (toMe면) 관리자
+        const keyRef = await checkIdempotent(tx, perKey);
+        const userRef = db.collection("users").doc(targetId);
+        const userDoc = await tx.get(userRef);
+        // 위 self-target skip으로 toMe는 targetId!==effectiveAdminId 보장.
+        const needAdminCredit = action === "take" && takeMode === "toMe";
+        const adminRef = needAdminCredit
+          ? db.collection("users").doc(effectiveAdminId)
+          : null;
+        const adminDoc = adminRef ? await tx.get(adminRef) : null;
+
+        if (!userDoc.exists) throw new Error("사용자를 찾을 수 없습니다.");
+        const tData = userDoc.data();
+        // 같은 학급만(학급 밖 cash 조작 차단)
+        if (tData.classCode !== classCode) {
+          throw new Error("같은 학급의 학생만 처리할 수 있습니다.");
+        }
+        const rawCash = tData.cash;
+        if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+          throw new Error("학생 잔액 데이터에 오류가 있습니다.");
+        }
+        const currentCash = rawCash;
+
+        // 금액 산정
+        const baseAmount =
+          amountType === "percentage"
+            ? Math.floor((currentCash * amount) / 100)
+            : amount;
+        if (baseAmount <= 0) {
+          // 처리할 금액 없음(예: 음수 cash의 퍼센트) → skip(멱등 마킹도 하지 않음: 재시도 시 재평가)
+          return;
+        }
+        let taxAmount = 0;
+        let finalAmount = baseAmount;
+        if (action === "send" && safeTaxRate > 0) {
+          taxAmount = Math.floor((baseAmount * safeTaxRate) / 100);
+          finalAmount = baseAmount - taxAmount;
+        }
+
+        let newCash;
+        if (action === "send") {
+          newCash = currentCash + finalAmount;
+          tx.update(userRef, { cash: increment(finalAmount), updatedAt: serverTimestamp() });
+        } else {
+          // take (toMe/remove 공통): 학생 차감(마이너스 허용)
+          newCash = currentCash - baseAmount;
+          tx.update(userRef, { cash: increment(-baseAmount), updatedAt: serverTimestamp() });
+        }
+        // toMe: 국고(관리자) 적립. 대상==관리자 본인은 위에서 skip됨(항상 별도 문서).
+        //   ⚠️ 국고 문서가 없으면 학생 차감만 커밋되고 적립이 누락돼 현금이 소각된다(TOCTOU:
+        //   사전조회 후 관리자 삭제/승인취소 경합) → fail-closed로 throw해 학생 차감까지 롤백.
+        if (needAdminCredit) {
+          if (!adminDoc || !adminDoc.exists) {
+            throw new Error("국고(관리자) 계정을 찾을 수 없어 회수를 취소합니다.");
+          }
+          // 사전조회 후 관리자가 전학/변경됐을 수 있으니 tx 내부에서 같은 학급인지 재확인(fail-closed).
+          if (adminDoc.data().classCode !== classCode) {
+            throw new Error("국고(관리자) 계정이 유효하지 않아 회수를 취소합니다.");
+          }
+          tx.update(adminRef, { cash: increment(baseAmount), updatedAt: serverTimestamp() });
+        }
+
+        // 로그/거래기록(기존 shape 보존). 거래내역 UI는 root transactions(top-level amount)를 읽는다.
+        let logType;
+        let logDescription;
+        if (action === "send") {
+          logType = "ADMIN_CASH_SEND";
+          logDescription =
+            amountType === "percentage"
+              ? `관리자(${effectiveAdminName})가 ${tData.name}님에게 ${amount}% (${finalAmount.toLocaleString()}원)을 지급했습니다.`
+              : `관리자(${effectiveAdminName})가 ${tData.name}님에게 ${finalAmount.toLocaleString()}원을 지급했습니다.`;
+          if (taxAmount > 0) {
+            logDescription += ` (원금 ${baseAmount.toLocaleString()}원, 세금 ${taxAmount.toLocaleString()}원 제외)`;
+          }
+        } else if (takeMode === "remove") {
+          logType = "ADMIN_CASH_REMOVE";
+          logDescription =
+            amountType === "percentage"
+              ? `관리자(${effectiveAdminName})가 ${tData.name}님의 ${amount}% (${baseAmount.toLocaleString()}원)을 제거했습니다.`
+              : `관리자(${effectiveAdminName})가 ${tData.name}님의 ${baseAmount.toLocaleString()}원을 제거했습니다.`;
+        } else {
+          logType = "ADMIN_CASH_TAKE";
+          logDescription =
+            amountType === "percentage"
+              ? `관리자(${effectiveAdminName})가 ${tData.name}님으로부터 ${amount}% (${baseAmount.toLocaleString()}원)을 회수했습니다.`
+              : `관리자(${effectiveAdminName})가 ${tData.name}님으로부터 ${baseAmount.toLocaleString()}원을 회수했습니다.`;
+        }
+
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        // ⚠️ 최상위 amount를 넣지 않는다(원본 shape 보존): 거래내역 표시는 아래 root
+        //    transactions가 담당하고, activity_logs까지 top-level amount를 가지면 MyAssets가
+        //    두 소스를 모두 읽어 관리자 거래가 2건으로 중복 표시됨(weekKey 없어 dedup 안 됨).
+        tx.set(db.collection("activity_logs").doc(), {
+          userId: targetId,
+          userName: tData.name,
+          timestamp: serverTimestamp(),
+          type: logType,
+          description: sanitizeInput(logDescription),
+          classCode,
+          metadata: {
+            adminName: effectiveAdminName,
+            issuedBy: uid,
+            action,
+            amountType,
+            inputValue: amount,
+            taxRate: action === "send" ? safeTaxRate : 0,
+            baseAmount,
+            taxAmount,
+            finalAmount,
+            previousCash: currentCash,
+            newCash,
+          },
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+        tx.set(db.collection("transactions").doc(), {
+          userId: targetId,
+          amount: action === "send" ? finalAmount : -baseAmount,
+          type: action === "send" ? "income" : "expense",
+          category: "admin",
+          description: action === "send" ? "관리자 지급" : "관리자 회수",
+          timestamp: serverTimestamp(),
+          metadata: {
+            adminName: effectiveAdminName,
+            issuedBy: uid,
+            amountType,
+            taxRate: action === "send" ? safeTaxRate : 0,
+          },
+        });
+
+        markIdempotent(tx, keyRef);
+        // ⚠️ 카운터/배열 집계는 콜백 밖에서. runTransaction 콜백은 경합 시 재실행되므로
+        //    여기서 push/증가하면 커밋 1회여도 응답 카운트가 중복 집계된다 → 결과만 반환.
+        return { processed: true, newCash, baseAmount };
+      });
+      // 트랜잭션이 커밋(1회 확정)된 후에만 집계.
+      if (result && result.processed) {
+        updatedUsers.push({ id: targetId, newCash: result.newCash });
+        totalProcessed += result.baseAmount;
+        successCount++;
+      }
+    } catch (error) {
+      // 이미 처리된 대상(멱등 재시도)은 조용히 skip. 그 외 per-target 오류는 전체 중단 대신
+      // failures에 담고 계속 — 한 학생 데이터 문제가 배치 전체를 롤백/중단시키지 않게(부분성공).
+      const code = error instanceof HttpsError ? error.code : "";
+      if (code === "already-exists") continue;
+      logger.error(`[adminCashAction] ${uid} → ${targetId} 처리 오류:`, error);
+      failures.push({ id: targetId, reason: error.message || "처리 실패" });
+    }
+  }
+
+  return { count: successCount, totalProcessed, updatedUsers, failures };
+});
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 

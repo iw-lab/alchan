@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import { adminCashAction } from "../../services/database";
+import { functions, httpsCallable } from "../../firebase";
 import "./MoneyTransfer.css";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
@@ -34,13 +34,19 @@ function MoneyTransfer() {
   const [error, setError] = useState("");
   const [selectAll, setSelectAll] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // 동기 재진입 가드(더블클릭 이중지급/회수 차단 — isProcessing 상태 반영 갭 보완)
+  const submittingRef = useRef(false);
+  // 제출 시도별 고정 멱등키: 실패 후 "다시 보내기" 시 같은 키를 재사용해 이미 처리된 학생의
+  // 중복 지급/회수를 차단(대상별 서브키 `${key}_${id}`가 서버에서 already-exists로 skip).
+  // 성공 시에만 새 키로 교체(다음 별개 작업). 매 제출 새 UUID면 이 보호가 무력화됨.
+  const idemKeyRef = useRef(null);
 
   // 위임 학생인 경우 실제 관리자 정보 사용
   const isDelegated = !userDoc?.isAdmin && !userDoc?.isSuperAdmin && userDoc?.delegatedPermissions?.moneyTransfer;
   const classAdmin = isDelegated
     ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
     : null;
-  const effectiveAdminId = isDelegated ? classAdmin?.id : (user?.uid || userDoc?.id);
+  // effectiveAdminId(국고 대상)는 서버 CF가 auth·delegatedPermissions에서 파생한다(클라 미신뢰).
   const adminName = isDelegated ? classAdmin?.name : userDoc?.name;
   const adminClassCode = userDoc?.classCode;
 
@@ -157,6 +163,8 @@ function MoneyTransfer() {
       return;
     }
 
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsProcessing(true);
     setMessage("");
     setError("");
@@ -187,18 +195,21 @@ function MoneyTransfer() {
         );
       }
 
-      // ✨ DB 작업 실행하고 서버로부터 실제 결과 받기
-      const { count, totalProcessed, updatedUsers } = await adminCashAction({
-        adminId: effectiveAdminId,
-        adminName,
-        adminClassCode,
-        targetUsers: targetUsersData,
-        action,
-        takeMode: action === "take" ? takeMode : undefined,
-        amountType,
-        amount: inputValue,
-        taxRate,
-      });
+      // ✨ 서버 CF로 지급/회수 실행(권한·국고 대상은 서버가 auth에서 파생 — adminId/classCode 미신뢰).
+      // 멱등키는 이 제출 시도에 고정(실패 재시도 시 재사용해 이미 처리분 중복 방지).
+      if (!idemKeyRef.current) idemKeyRef.current = crypto.randomUUID();
+      const adminCashActionFn = httpsCallable(functions, "adminCashAction");
+      const { count, totalProcessed, updatedUsers, failures } = (
+        await adminCashActionFn({
+          targetUserIds: targetUsersData.map((u) => u.id),
+          action,
+          takeMode: action === "take" ? takeMode : undefined,
+          amountType,
+          amount: inputValue,
+          taxRate,
+          idempotencyKey: idemKeyRef.current,
+        })
+      ).data;
 
       // ✨ 서버에서 받은 '진짜' 데이터로 로컬 상태 업데이트
       if (updatedUsers && updatedUsers.length > 0) {
@@ -213,18 +224,14 @@ function MoneyTransfer() {
         );
 
         // 2. 관리자 본인의 잔액 업데이트 (위임 학생이면 본인 잔액은 변경 없음)
-        if (!isDelegated) {
+        //    ⚠️ send는 학급경제 민팅 모델이라 서버가 관리자 cash를 차감하지 않는다(원본·CF 동일).
+        //    과거엔 여기서 -totalProcessed로 낙관 차감했으나, 서버가 관리자 문서를 write하지 않아
+        //    onSnapshot이 안 울려 새로고침 전까지 잘못된 값이 남았다(민팅 모델과 모순) → 제거.
+        //    take/toMe만 국고(관리자)에 +totalProcessed 적립(서버 increment과 수렴).
+        if (!isDelegated && action === "take" && takeMode === "toMe") {
           setUserDoc((currentAdminDoc) => {
             const currentAdminCash = Number(currentAdminDoc.cash || 0);
-            let newAdminCash;
-            if (action === "send") {
-              newAdminCash = currentAdminCash - totalProcessed;
-            } else if (action === "take" && takeMode === "toMe") {
-              newAdminCash = currentAdminCash + totalProcessed;
-            } else {
-              newAdminCash = currentAdminCash;
-            }
-            return { ...currentAdminDoc, cash: newAdminCash };
+            return { ...currentAdminDoc, cash: currentAdminCash + totalProcessed };
           });
         }
       }
@@ -236,15 +243,23 @@ function MoneyTransfer() {
           : takeMode === "toMe"
             ? "가져오기"
             : "없애기";
+      const failCount = Array.isArray(failures) ? failures.length : 0;
       setMessage(
-        `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})`,
+        `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})${failCount > 0 ? ` · ⚠️ ${failCount}명 처리 실패(다시 시도 시 실패분만 재처리)` : ""}`,
       );
 
-      setAmount("");
-      setSelectedUsers([]);
-      setSelectAll(false);
+      // 완전 성공일 때만 멱등키를 비우고(다음 별개 작업) 폼을 초기화한다.
+      // 부분 성공이면 같은 키·같은 대상 선택을 유지해, "다시 보내기" 시 이미 성공한 대상은
+      // 서버 서브키(`${key}_${id}`)의 already-exists로 skip되고 실패분만 재처리된다
+      // (키를 매번 리셋하면 재시도 시 성공분까지 이중 지급/회수됨 — 교차검증 지적).
+      if (failCount === 0) {
+        idemKeyRef.current = null;
+        setAmount("");
+        setSelectedUsers([]);
+        setSelectAll(false);
+      }
 
-      setTimeout(() => setMessage(""), 3000);
+      setTimeout(() => setMessage(""), failCount > 0 ? 6000 : 3000);
     } catch (err) {
       logger.error("처리 중 오류 발생:", err);
       setError(`오류가 발생했습니다: ${err.message}`);
@@ -253,6 +268,7 @@ function MoneyTransfer() {
       setTimeout(() => setError(""), 5000);
     } finally {
       setIsProcessing(false);
+      submittingRef.current = false;
     }
   };
 
