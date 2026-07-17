@@ -1519,7 +1519,37 @@ const ParkingAccount = ({
  setIsProcessing(true);
  logger.log("만기 처리 시작...");
 
- // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
+ // 🔒 예금/적금 만기 = 서버 redeemDepositSavings CF (이자 서버 재계산·만기도달 서버검증으로
+ //   조기 만기 이자 민팅 차단). 구 클라 runTransaction은 본인·교사 cash 직접 write라 batch6 rules
+ //   잠금 대상 → CF 이관. total은 표시용(서버가 권위 재계산). 대출 만기(강제상환)는 아래 구 경로 유지(배치5-c2).
+ if (!isLoan) {
+ try {
+ const redeemFn = httpsCallable(functions, "redeemDepositSavings");
+ await redeemFn({
+ productId: String(id),
+ mode: "maturity",
+ idempotencyKey: crypto.randomUUID(),
+ });
+ displayMessage(
+ `만기 수령 완료: ${formatCurrency(total)}${currencyUnit} (선생님 계정에서 지급)`,
+ "success",
+ );
+ invalidateAssetCaches(userId);
+ await loadAllData();
+ if (refreshUserDocument) refreshUserDocument();
+ } catch (error) {
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "만기 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
+ } finally {
+ setIsProcessing(false);
+ }
+ return;
+ }
+
+ // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회) — 대출 만기(구 경로) 전용
  let teacherAccountId = teacherId;
  if (!teacherAccountId) {
  const teacherAccount = await getTeacherAccount(userDoc?.classCode);
@@ -1711,7 +1741,37 @@ const ParkingAccount = ({
  setIsProcessing(true);
  logger.log("중도 해지 처리 시작...");
 
- // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회)
+ // 🔒 예금/적금 중도 해지 = 서버 redeemDepositSavings CF(mode:cancel — 원금만 환불·무이자).
+ //   구 클라 runTransaction은 본인·교사 cash 직접 write라 batch6 rules 잠금 대상 → CF 이관.
+ //   refundAmount는 표시용(서버가 권위 재계산). 대출 일시 상환(경과 이자)은 아래 구 경로 유지(배치5-c2).
+ if (!isLoan) {
+ try {
+ const redeemFn = httpsCallable(functions, "redeemDepositSavings");
+ await redeemFn({
+ productId: String(id),
+ mode: "cancel",
+ idempotencyKey: crypto.randomUUID(),
+ });
+ displayMessage(
+ `중도 해지 완료: 원금 ${formatCurrency(refundAmount)}${currencyUnit} 반환 (선생님 계정에서 지급)`,
+ "success",
+ );
+ invalidateAssetCaches(userId);
+ await loadAllData();
+ if (refreshUserDocument) refreshUserDocument();
+ } catch (error) {
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "중도 해지 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
+ } finally {
+ setIsProcessing(false);
+ }
+ return;
+ }
+
+ // 선생님 계정 조회 (저장된 teacherId 사용 또는 새로 조회) — 대출 일시상환(구 경로) 전용
  const teacherId = product.teacherId;
  let teacherAccountId = teacherId;
  if (!teacherAccountId) {

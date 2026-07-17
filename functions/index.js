@@ -2207,6 +2207,260 @@ exports.subscribeProduct = onCall(
   },
 );
 
+// ── 뱅킹 이자 계산 헬퍼 (클라 ParkingAccount.js 정의를 서버로 정확히 포팅 — 이자를 서버 권위로 재계산해
+//    클라 위조(국고 민팅)를 차단하기 위함. 반올림·복리식·적금 회차 합산까지 클라와 동일해야 표시·정산 일치) ──
+function calcCompoundInterest(principal, dailyRate, days) {
+  if (principal <= 0 || !dailyRate || days <= 0) {
+    return { interest: 0, total: principal };
+  }
+  const total = principal * Math.pow(1 + dailyRate / 100, days);
+  return { interest: Math.round(total - principal), total: Math.round(total) };
+}
+function calcSavingsInterest(dailyAmount, dailyRate, termInDays, depositsCount) {
+  if (!dailyAmount || !dailyRate || termInDays <= 0) {
+    return { interest: 0, total: 0, totalDeposited: 0 };
+  }
+  const r = dailyRate / 100;
+  const actualDeposits = depositsCount != null ? depositsCount : termInDays;
+  let total = 0;
+  for (let i = 0; i < actualDeposits; i++) {
+    total += dailyAmount * Math.pow(1 + r, termInDays - i);
+  }
+  const totalDeposited = dailyAmount * actualDeposits;
+  return {
+    interest: Math.round(total - totalDeposited),
+    total: Math.round(total),
+    totalDeposited,
+  };
+}
+// KST(UTC+9) 달력일 헬퍼 — date-fns는 functions 런타임에 미설치라 사용 불가. 서버 런타임은 UTC이므로
+//   +9h 시프트한 UTC 날짜 성분으로 'KST 그 날 00:00'의 UTC epoch(ms)을 만든다. 클라 브라우저(KST)의
+//   date-fns startOfDay/differenceInCalendarDays와 만기·경과일 판정을 일치시킨다.
+function kstStartOfDayMs(date) {
+  const s = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return (
+    Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()) -
+    9 * 60 * 60 * 1000
+  );
+}
+function kstDiffCalendarDays(a, b) {
+  return Math.floor(
+    (kstStartOfDayMs(a) - kstStartOfDayMs(b)) / (24 * 60 * 60 * 1000),
+  );
+}
+
+// ===================================================================================
+// 🔥 예적금 만기 수령 / 중도 해지 (2026-07-17 CF 이관 — ParkingAccount handleMaturity/handleCancelEarly의
+//    예금·적금 브랜치 대체. 대출 브랜치는 별도 repayLoan CF(배치5-c2)까지 구 경로 유지).
+//    - 이자를 클라 계산이 아닌 서버가 저장된 product(balance·rate·termInDays·dailyAmount·depositsCount)에서
+//      재계산 → 이자 위조(국고 민팅) 차단. mode="maturity"는 서버에서 만기도달(startOfDay(now)≥maturityDate)
+//      검증 → 가입 즉시 만기 호출로 full-term 이자를 즉시 빼가는 민팅 차단. mode="cancel"=원금만 환불(무이자).
+//    - 방향 = 선생님(국고=상품에 저장된 teacherId)→학생. 단일 트랜잭션·멱등·활동로그(최상위 amount).
+// ===================================================================================
+exports.redeemDepositSavings = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { productId, mode, idempotencyKey } = request.data || {};
+
+    // productId는 문서 ID여야 함 — "/" 포함 시 Admin SDK가 중첩 경로로 해석해 임의 문서를 가리킬 수
+    //   있으므로 거부(경로 주입 차단).
+    if (!productId || typeof productId !== "string" || productId.includes("/")) {
+      throw new HttpsError("invalid-argument", "상품 ID가 올바르지 않습니다.");
+    }
+    if (mode !== "maturity" && mode !== "cancel") {
+      throw new HttpsError("invalid-argument", "유효하지 않은 처리 유형입니다.");
+    }
+    if (typeof idempotencyKey !== "string" || !idempotencyKey) {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const productRef = userRef.collection("products").doc(productId);
+    const inc = admin.firestore.FieldValue.increment;
+
+    try {
+      let resultInfo = null;
+      await db.runTransaction(async (transaction) => {
+        // 읽기 먼저 — 멱등키 → 상품(권위값) → 사용자 → 교사
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists) throw new Error("상품 정보를 찾을 수 없습니다.");
+        const p = productDoc.data();
+        const type = p.type;
+        if (type !== "deposit" && type !== "savings") {
+          throw new Error("예금/적금 상품이 아닙니다.");
+        }
+        // 상품에 저장된 teacherId로 국고 특정.
+        // ⚠️ products 문서는 batch6 rules 잠금 전까지 학생이 직접 write 가능하므로 teacherId도 위조 가능.
+        //   "/" 포함 문자열(예: "<myUID>/products/dummy")이면 Admin SDK가 공격자 소유 중첩 문서로 해석해
+        //   상쇄 차감을 가짜 문서로 흘려보내는 '소스 없는 민팅'이 가능(codex 실증) → 반드시 단순 문서 ID만 허용.
+        const teacherId = p.teacherId;
+        if (!teacherId || typeof teacherId !== "string" || teacherId.includes("/")) {
+          throw new Error("상품에 연결된 은행 계정이 올바르지 않습니다.");
+        }
+        if (teacherId === uid) {
+          throw new Error("관리자 계정으로는 처리할 수 없습니다.");
+        }
+        const teacherRef = db.collection("users").doc(teacherId);
+
+        const userDoc = await transaction.get(userRef);
+        const teacherDoc = await transaction.get(teacherRef);
+        if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+        if (!teacherDoc.exists) {
+          throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+        }
+        // 🔒 teacherId 반경계 검증 — products 문서는 batch6 rules 잠금 전까지 학생이 직접 write 가능하므로
+        //   teacherId를 위조해 Admin SDK로 임의(타 학급 포함) 계정을 드레인하는 것을 차단(3계열 CRITICAL).
+        //   국고는 반드시 같은 학급의 승인 관리자여야 함 → 구 클라 runTransaction 경로(same-class rules)와
+        //   동등한 blast radius로 축소(회귀 아님). 잔액 위조는 batch6 products rules 잠금이 최종 봉인.
+        const tData = teacherDoc.data();
+        if (tData.classCode !== classCode || !hasAdminPower(tData)) {
+          throw new Error("유효한 은행(관리자) 계정이 아닙니다.");
+        }
+        // 저장값 타입 가드(increment 교체·포화 방지 — 학생·국고 모두).
+        const rawUserCash = userDoc.data().cash;
+        const rawTeacherCash = tData.cash;
+        if (typeof rawUserCash !== "number" || !Number.isFinite(rawUserCash)) {
+          throw new Error("계정 잔액 데이터에 오류가 있습니다.");
+        }
+        if (
+          typeof rawTeacherCash !== "number" ||
+          !Number.isFinite(rawTeacherCash)
+        ) {
+          throw new Error("은행 계정 잔액 데이터에 오류가 있습니다.");
+        }
+
+        const balance = Number(p.balance);
+        const rate = Number(p.rate);
+        const termInDays = Number(p.termInDays);
+        // rate·termInDays도 유한수 강제(NaN이면 Math.pow→NaN→inc(NaN) 트랜잭션 예외). balance 음수 거부.
+        if (!Number.isFinite(balance) || balance < 0) {
+          throw new Error("상품 잔액 데이터에 오류가 있습니다.");
+        }
+        if (!Number.isFinite(rate) || !Number.isFinite(termInDays)) {
+          throw new Error("상품 이율/기간 데이터에 오류가 있습니다.");
+        }
+        const isSavings = type === "savings" && Number(p.dailyAmount) > 0;
+
+        let studentDelta;
+        let interest = 0;
+        let total = 0;
+        let refundAmount = 0;
+        let logType;
+        let logAmount;
+        if (mode === "maturity") {
+          // 만기 도달 검증(클라 isMatured와 동일 — KST 달력일 비교) — 조기 만기 민팅 차단.
+          //   maturityDate가 위조된 비정상값(문자열 등)이면 Invalid Date라 NaN 비교가 항상 false가 되어
+          //   검증이 무력화되므로 isNaN 가드로 명시 거부(HIGH).
+          const mts = p.maturityDate;
+          const mdate = mts?.toDate
+            ? mts.toDate()
+            : mts
+              ? new Date(mts)
+              : null;
+          if (!mdate || isNaN(mdate.getTime())) {
+            throw new Error("상품 만기일 데이터에 오류가 있습니다.");
+          }
+          if (kstStartOfDayMs(new Date()) < kstStartOfDayMs(mdate)) {
+            throw new Error("아직 만기가 도래하지 않았습니다.");
+          }
+          if (isSavings) {
+            const rr = calcSavingsInterest(
+              Number(p.dailyAmount),
+              rate,
+              termInDays,
+              termInDays,
+            );
+            total = rr.total;
+            interest = rr.interest;
+            // 미납 회차 일괄 차감(구 동작 보존 — 전체 납입 정산).
+            //   depositsCount·dailyAmount는 위조 가능 필드라 clamp: depositsCount는 [0, term]로 제한(음수면
+            //   arrears 과다차감, term 초과면 무의미), dailyAmount는 유한·비음수만.
+            const depositsCount = Math.min(
+              termInDays,
+              Math.max(0, Number(p.depositsCount) || 0),
+            );
+            const safeDaily = Math.max(0, Number(p.dailyAmount) || 0);
+            const missing = Math.max(0, termInDays - depositsCount);
+            const arrears = missing * safeDaily;
+            studentDelta = total - arrears;
+          } else {
+            const rr = calcCompoundInterest(balance, rate, termInDays);
+            total = rr.total;
+            interest = rr.interest;
+            studentDelta = total;
+          }
+          logType = "예금 만기";
+          logAmount = total;
+        } else {
+          // cancel: 원금만 환불(무이자). 적금=totalDeposited, 예금=balance.
+          refundAmount =
+            type === "savings" && Number(p.totalDeposited)
+              ? Number(p.totalDeposited)
+              : balance;
+          if (!Number.isFinite(refundAmount) || refundAmount < 0) {
+            throw new Error("환불 금액 계산에 오류가 있습니다.");
+          }
+          studentDelta = refundAmount;
+          total = refundAmount;
+          logType = "예금 출금";
+          logAmount = refundAmount;
+        }
+
+        // cash 이동: 선생님(국고) → 학생 (studentDelta). 마이너스 국고 허용(구 동작 보존).
+        transaction.update(userRef, {
+          cash: inc(studentDelta),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(teacherRef, {
+          cash: inc(-studentDelta),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.delete(productRef);
+        markIdempotent(transaction, keyRef);
+
+        // 활동로그(최상위 amount로 거래내역 표시 보존)
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(db.collection("activity_logs").doc(), {
+          classCode,
+          userId: uid,
+          userName: userDoc.data().name || userData.name || "사용자",
+          type: logType,
+          description:
+            mode === "maturity"
+              ? `${p.name || "상품"} 만기 수령 (원금: ${balance.toLocaleString()}, 이자: ${interest.toLocaleString()}) - 선생님 계정에서`
+              : `중도 해지: ${p.name || "상품"} (원금 ${refundAmount.toLocaleString()}원) - 선생님 계정에서`,
+          amount: logAmount,
+          couponAmount: 0,
+          metadata: {
+            productName: p.name || "",
+            productType: type,
+            principal: balance,
+            interest,
+            total,
+            teacherId,
+            ...(mode === "cancel" && { isEarlyCancellation: true }),
+          },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+        resultInfo = { total, interest, studentDelta };
+      });
+      return { success: true, ...resultInfo };
+    } catch (error) {
+      logger.error(`[redeemDepositSavings] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "처리에 실패했습니다.");
+    }
+  },
+);
+
 // ===================================================================================
 // 🔥 관리자 지급/회수 (2026-07-17 CF 이관 — MoneyTransfer의 클라 adminCashAction 대체)
 //   - 권한: 서버에서 관리자(hasAdminPower) 또는 위임(delegatedPermissions.moneyTransfer) 강제.
