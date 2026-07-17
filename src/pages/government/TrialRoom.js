@@ -1,4 +1,4 @@
-import { transferCash, functions, httpsCallable } from "../../firebase";
+import { functions, httpsCallable } from "../../firebase";
 // src/TrialRoom.js
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -622,7 +622,15 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
           logger.log("Fine processed successfully.");
         } else if (paymentType === 'settlement') {
           logger.log(`Processing settlement of ${paymentAmount} from ${roomData.defendantId} to ${roomData.complainantId}`);
-          await transferCash(roomData.defendantId, roomData.complainantId, paymentAmount, `재판 합의금: ${reason}`);
+          // 🔒 서버(CF)에서 권한(판사/관리자)·같은학급·당사자(방 문서 파생) 검증 후 원자적 처리.
+          //   구 클라 transferCash는 비원자 2단계 cash write(트랜잭션 없음)라 부분실패 시 자금유실.
+          //   멱등키는 서버가 trialsettle_{roomId}로 파생(재판방 1건=합의 1회, 재시도 이중지급 방지).
+          const settlementFn = httpsCallable(functions, "processTrialSettlement");
+          await settlementFn({
+            roomId: roomId,
+            amount: paymentAmount,
+            reason: reason,
+          });
           logger.log("Settlement processed successfully.");
         }
       }

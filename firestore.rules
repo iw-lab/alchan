@@ -968,7 +968,11 @@ service cloud.firestore {
       match /trialRooms/{roomId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
         allow create: if isSignedIn() && isSameClass(classCode);
-        allow update: if isSignedIn() && isSameClass(classCode);
+        // 합의금 완료 마커(settlementPaid 등)는 processTrialSettlement CF(Admin SDK)만 기록 —
+        //   클라가 되돌려(settlementPaid:false) 24h 후 이중지급하던 창 차단(batch6-f, courtComplaints 패턴).
+        allow update: if isSignedIn() && isSameClass(classCode)
+                         && !request.resource.data.diff(resource.data).affectedKeys()
+                              .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy']);
         allow delete: if isAdmin();
 
         // 재판방 메시지 서브컬렉션

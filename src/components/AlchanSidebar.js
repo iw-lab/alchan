@@ -853,6 +853,7 @@ export default function AlchanSidebar({
       "구매",
       "판매",
       "salaryPayment",
+      "legal_settlement",
     ]);
     let cancelled = false;
 

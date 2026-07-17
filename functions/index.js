@@ -3575,6 +3575,166 @@ exports.processCourtSettlement = onCall(
   },
 );
 
+// 재판방 합의금 지급 (TrialRoom 판결 합의금 = 피고인→고소인). 벌금(processFine context:trial)과
+//   짝을 이루는 경로. 구 클라는 services/database.js transferCash(비원자 2단계 cash write, 트랜잭션도
+//   없어 부분실패 시 자금유실)를 썼다. 당사자(sender=피고인·recipient=고소인)를 클라 입력이 아닌
+//   trialRooms 문서에서 서버 파생 → 판사가 임의 당사자 이체하는 남용 차단. 멱등키 = trialsettle_{roomId}.
+exports.processTrialSettlement = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { roomId, amount, reason } = request.data || {};
+
+    if (!roomId || typeof roomId !== "string" || roomId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 재판방 정보가 필요합니다.");
+    }
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 10000000000) {
+      throw new HttpsError("invalid-argument", "합의금은 1 이상의 정수여야 합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+    const safeReason = typeof reason === "string" ? sanitizeInput(reason).slice(0, 200) : "";
+
+    const roomRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("trialRooms")
+      .doc(roomId);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 1) 읽기: 멱등키 → 재판방 → (당사자 파생 후) sender·recipient
+        const keyRef = await checkIdempotent(
+          transaction,
+          `trialsettle_${classCode}_${roomId}`,
+        );
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists) throw new Error("재판방 정보를 찾을 수 없습니다.");
+        const room = roomDoc.data();
+
+        // 🔒 영속 완료 마커(Gemini MEDIUM): 멱등키는 24h TTL이라, 판결 후 재판방 삭제가 실패해 room이
+        //    살아남으면 24h 뒤 재호출 시 이중지급 가능. room에 settlementPaid를 영구 기록·게이트해
+        //    TTL과 무관하게 같은 방은 1회만 지급되게 함(processCourtSettlement의 settlementPaid와 동일).
+        if (room.settlementPaid === true) {
+          throw new Error("이미 합의금이 지급된 재판입니다.");
+        }
+
+        // 권한: 교사/관리자 OR 이 재판방의 판사(judgeId). 클라 authz 미신뢰.
+        const isTeacher = hasTeacherPower(userData);
+        if (!isTeacher && uid !== room.judgeId) {
+          throw new HttpsError(
+            "permission-denied",
+            "합의금 처리 권한은 이 재판의 판사 또는 관리자에게 있습니다.",
+          );
+        }
+
+        // 당사자는 재판방 문서에서 서버 파생(판사가 임의 당사자 이체하는 남용 차단).
+        const senderId = room.defendantId;
+        const recipientId = room.complainantId;
+        if (!senderId || !recipientId) {
+          throw new Error("재판 당사자(피고인·고소인) 정보가 없습니다.");
+        }
+        if (senderId === recipientId) {
+          throw new Error("피고인과 고소인이 같을 수 없습니다.");
+        }
+        // 이해상충: 처리자(판사/관리자)는 당사자가 될 수 없다(자기거래 차단).
+        if (uid === senderId || uid === recipientId) {
+          throw new HttpsError(
+            "permission-denied",
+            "합의 처리자는 당사자가 될 수 없습니다.",
+          );
+        }
+
+        const senderRef = db.collection("users").doc(senderId);
+        const recipientRef = db.collection("users").doc(recipientId);
+        const [senderDoc, recipientDoc] = await transaction.getAll(senderRef, recipientRef);
+        if (!senderDoc.exists) throw new Error("피고인 정보를 찾을 수 없습니다.");
+        if (!recipientDoc.exists) throw new Error("고소인 정보를 찾을 수 없습니다.");
+        const sData = senderDoc.data();
+        const rData = recipientDoc.data();
+
+        // 반경계: 양쪽 모두 처리자와 같은 학급.
+        if (sData.classCode !== classCode || rData.classCode !== classCode) {
+          throw new Error("같은 학급의 사용자끼리만 합의금을 주고받을 수 있습니다.");
+        }
+        // 🔒 잔액 유한수 검증(codex): cash가 Infinity/문자열 등 비정상이면 increment가 값을 교체·포화해
+        //    자금보존이 깨진다(예: sender.cash=Infinity면 차감이 안 돼 recipient에게 무담보 지급).
+        if (typeof sData.cash !== "number" || !Number.isFinite(sData.cash)) {
+          throw new Error("피고인의 잔액 정보가 올바르지 않습니다.");
+        }
+        if (typeof rData.cash !== "number" || !Number.isFinite(rData.cash)) {
+          throw new Error("고소인의 잔액 정보가 올바르지 않습니다.");
+        }
+        const senderCash = sData.cash;
+        if (senderCash < amount) {
+          throw new Error(
+            `${sData.name || "피고인"}님의 현금이 부족합니다. (보유: ${senderCash.toLocaleString()}원)`,
+          );
+        }
+
+        // 2) 양방향 increment + 거래내역(activity_logs 최상위 amount)
+        transaction.update(senderRef, {
+          cash: admin.firestore.FieldValue.increment(-amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(recipientRef, {
+          cash: admin.firestore.FieldValue.increment(amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // 영속 완료 마커(멱등키 TTL 무관 이중지급 차단).
+        transaction.update(roomRef, {
+          settlementPaid: true,
+          settlementAmount: amount,
+          settlementProcessedBy: uid,
+          settlementDate: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        const senderName = sData.name || sData.nickname || "피고인";
+        const recipientName = rData.name || rData.nickname || "고소인";
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        const descSuffix = safeReason ? ` (${safeReason})` : "";
+        const sLogRef = db.collection("activity_logs").doc();
+        transaction.set(sLogRef, {
+          userId: senderId,
+          userName: senderName,
+          type: "legal_settlement",
+          description: `재판 합의금 ${amount.toLocaleString()}원 ${recipientName}님에게 지급${descSuffix}`,
+          amount: -amount,
+          classCode,
+          issuedBy: uid,
+          issuedByName: userData.name || "",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+        const rLogRef = db.collection("activity_logs").doc();
+        transaction.set(rLogRef, {
+          userId: recipientId,
+          userName: recipientName,
+          type: "legal_settlement",
+          description: `재판 합의금 ${amount.toLocaleString()}원 ${senderName}님으로부터 수령${descSuffix}`,
+          amount: amount,
+          classCode,
+          issuedBy: uid,
+          issuedByName: userData.name || "",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+
+        markIdempotent(transaction, keyRef);
+      });
+      return { success: true, message: "재판 합의금 지급을 완료했습니다." };
+    } catch (error) {
+      logger.error(`[processTrialSettlement] Error by ${uid} (room ${roomId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "재판 합의금 지급에 실패했습니다.");
+    }
+  },
+);
+
 // ===================================================================================
 // 🏪 개인 상점 구매 (2026-07-17 배치6-c CF 이관 — PersonalShop handlePurchase 클라 runTransaction 대체)
 //   - 구 클라: 구매자 cash -total, 판매자 cash +sellerAmount, 국고(관리자) cash +VAT, 상점/상품/인벤 갱신.
