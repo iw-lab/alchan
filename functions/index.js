@@ -4388,6 +4388,144 @@ exports.cancelAuction = onCall(
   },
 );
 
+// 경매 등록(아이템 차감 + 경매 문서 생성을 단일 트랜잭션으로 원자화).
+// 구조: 구 클라는 updateUserItemQuantity CF(차감) → addDoc(생성) 2단계 비원자였음. 그래서 학생이
+//   차감 CF를 건너뛰고 create 규칙만 만족하는 경매를 직접 만든 뒤 cancelAuction으로 아이템을
+//   반환받으면 아이템이 복제됐다(codex HIGH). 이 CF로 차감+생성을 원자화하고, auctions create
+//   rules를 `if false`로 잠가 경매 생성을 CF 전용으로 만든다.
+exports.createAuction = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const {
+      assetId,
+      startPrice,
+      durationHours,
+      sourceCollection = "inventory",
+      idempotencyKey,
+      name: clientName,
+      description: clientDescription,
+    } = request.data || {};
+
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    if (!assetId || typeof assetId !== "string" || assetId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 아이템 정보가 필요합니다.");
+    }
+    // 경로주입 방지: 반환/차감 컬렉션 화이트리스트(updateUserItemQuantity와 동일).
+    const ALLOWED_COLLECTIONS = ["inventory"];
+    if (!ALLOWED_COLLECTIONS.includes(sourceCollection)) {
+      throw new HttpsError("invalid-argument", "유효하지 않은 컬렉션입니다.");
+    }
+    // strict 숫자 타입(codex): 문자열/불리언 강제변환 거부("24evil"→24, true→1 등 차단).
+    if (typeof startPrice !== "number" || !Number.isFinite(startPrice)) {
+      throw new HttpsError("invalid-argument", "유효한 시작가를 입력해주세요.");
+    }
+    const price = Math.floor(startPrice);
+    if (price <= 0 || price > 10000000000) {
+      throw new HttpsError("invalid-argument", "유효한 시작가를 입력해주세요.");
+    }
+    if (typeof durationHours !== "number" || !Number.isFinite(durationHours)) {
+      throw new HttpsError("invalid-argument", "유효한 경매 기간(1-24시간)을 선택해주세요.");
+    }
+    const dur = Math.floor(durationHours);
+    if (dur < 1 || dur > 24) {
+      throw new HttpsError("invalid-argument", "유효한 경매 기간(1-24시간)을 선택해주세요.");
+    }
+
+    const itemRef = db
+      .collection("users")
+      .doc(uid)
+      .collection(sourceCollection)
+      .doc(assetId);
+    const auctionRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("auctions")
+      .doc();
+    const endMs = Date.now() + dur * 60 * 60 * 1000;
+
+    // 표시용 name/description은 클라 편집 허용(구 UX — textarea로 수정 유도). 위조 위험 없음
+    //   (아이템 정체성은 originalStoreItemId, 금액은 startPrice). 미제공 시 아이템값 폴백.
+    const safeName = typeof clientName === "string" && clientName.trim()
+      ? sanitizeInput(clientName).slice(0, 100) : null;
+    const safeDescription = typeof clientDescription === "string"
+      ? sanitizeInput(clientDescription).slice(0, 500) : null;
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // 0) 멱등키(read 먼저) — 네트워크 재시도·다중탭 이중 등록(아이템 이중차감) 차단.
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+
+        // 1) 아이템 검증 + 차감(원자). 없거나 수량부족이면 경매 생성 안 함.
+        const itemDoc = await transaction.get(itemRef);
+        if (!itemDoc.exists) {
+          throw new Error("경매에 등록할 아이템을 찾을 수 없습니다.");
+        }
+        const item = itemDoc.data();
+        const qty = Number(item.quantity) || 0;
+        if (qty < 1) {
+          throw new Error("아이템 수량이 부족합니다.");
+        }
+        // 경매는 실물 아이템만(서비스/쿠폰 등 제외, codex). 레거시(type 미기록)는 허용.
+        if (item.type && item.type !== "item") {
+          throw new Error("이 아이템은 경매에 등록할 수 없습니다.");
+        }
+        if (qty - 1 === 0) {
+          transaction.delete(itemRef);
+        } else {
+          transaction.update(itemRef, {
+            quantity: qty - 1,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 2) 경매 생성. 아이템 정체성/금액은 서버 파생(originalStoreItemId·startPrice), 표시용
+        //    name/description만 클라 편집 반영(폴백=아이템값). 입찰 필드는 비움(highestBidder=null·
+        //    bidCount=0·currentBid=startPrice) — payout은 placeBid CF가 highestBidder 설정 시에만.
+        // 표시 필드는 문자열로 강제(codex): 인벤토리가 학생 writable이라 icon/name을 객체로 위조하면
+        //   경매 렌더링(React child)이 크래시할 수 있음 → 비문자열이면 안전한 폴백.
+        const derivedName = typeof item.name === "string" ? item.name : "아이템";
+        const derivedDesc = typeof item.description === "string" ? item.description : "";
+        const derivedIcon = typeof item.icon === "string" ? item.icon : "📦";
+        const derivedItemId = typeof item.itemId === "string" ? item.itemId : null;
+        transaction.set(auctionRef, {
+          assetId: assetId,
+          assetType: "item",
+          assetSourceCollection: sourceCollection,
+          originalStoreItemId: derivedItemId,
+          name: safeName || derivedName,
+          description: safeDescription !== null ? safeDescription : derivedDesc,
+          itemIcon: derivedIcon,
+          startPrice: price,
+          currentBid: price,
+          bidCount: 0,
+          highestBidder: null,
+          seller: uid,
+          sellerName: userData.name || "판매자",
+          status: "ongoing",
+          endTime: admin.firestore.Timestamp.fromMillis(endMs),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          classCode: classCode,
+        });
+
+        // 3) 멱등키 마킹(write) — 재시도 시 위 checkIdempotent가 already-exists로 차단.
+        markIdempotent(transaction, keyRef);
+      });
+      return { success: true, auctionId: auctionRef.id, message: "경매가 등록되었습니다." };
+    } catch (error) {
+      logger.error(`[createAuction] Error (uid ${uid}, asset ${assetId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "경매 등록에 실패했습니다.");
+    }
+  },
+);
+
 // ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================

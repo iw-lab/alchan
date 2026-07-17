@@ -8,13 +8,10 @@ import {
   db,
   functions,
   httpsCallable,
-  serverTimestamp,
   collection,
   query,
-  addDoc,
   doc,
   deleteDoc,
-  Timestamp,
   getDocs, // getDocs 추가
 } from "../../firebase";
 
@@ -44,12 +41,9 @@ export default function Auction() {
   const balance = userDoc?.cash ?? 0;
   const currentUserId = firebaseUser?.uid || userDoc?.id;
   const classCode = userDoc?.classCode;
-  const currentUserName =
-    userDoc?.name || firebaseUser?.displayName || "판매자 정보 없음";
 
   const itemsLoading = itemsContext?.loading ?? true;
   const inventoryItems = !itemsLoading ? itemsContext?.userItems ?? [] : [];
-  const updateUserItemQuantity = itemsContext?.updateUserItemQuantity;
 
   // --- Component State ---
   const [activeTab, setActiveTab] = useState("ongoing");
@@ -239,6 +233,7 @@ export default function Auction() {
 
   // 경매별 입찰 재진입 lock(더블클릭 시 낙관적 cash 중복 표시 방지 — 서버는 자연게이트로 안전)
   const biddingRef = useRef(new Set());
+  const creatingRef = useRef(false); // 경매 등록 더블클릭 재진입 차단
 
   // --- Event Handlers ---
   const handleBid = async (auctionId) => {
@@ -321,10 +316,6 @@ export default function Auction() {
       showNotification("로그인이 필요하거나 학급 또는 사용자 정보가 없습니다.", "error");
       return;
     }
-    if (typeof updateUserItemQuantity !== "function") {
-      showNotification("아이템 상태 업데이트 기능을 사용할 수 없습니다.", "error");
-      return;
-    }
     if (!selectedAssetForAuction || !newAuction.assetId || newAuction.assetType !== "item") {
       showNotification("경매에 등록할 아이템을 선택해주세요.", "error");
       return;
@@ -339,38 +330,21 @@ export default function Auction() {
       showNotification("유효한 경매 기간(1-24시간)을 선택해주세요.", "error");
       return;
     }
+    if (creatingRef.current) return; // 더블클릭 이중 등록(아이템 이중 차감) 차단
+    creatingRef.current = true;
 
-    let itemDeducted = false;
     try {
-      const itemUpdateResult = await updateUserItemQuantity(newAuction.assetId, -1);
-      if (!itemUpdateResult || (typeof itemUpdateResult === "object" && !itemUpdateResult.success)) {
-        throw new Error(itemUpdateResult?.error || "아이템 수량 변경에 실패했습니다.");
-      }
-      itemDeducted = true;
-
-      const auctionsRef = collection(db, "classes", classCode, "auctions");
-      const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
-
-      await addDoc(auctionsRef, {
+      // 아이템 차감 + 경매 생성을 서버(createAuction CF)에서 단일 트랜잭션으로 원자 처리.
+      //   (구 2단계 비원자[차감 CF→클라 addDoc] 제거 → forge-create 아이템 복제 봉인, batch6-d5)
+      const createFn = httpsCallable(functions, "createAuction");
+      await createFn({
         assetId: newAuction.assetId,
-        assetType: newAuction.assetType,
+        startPrice: startPrice,
+        durationHours: durationHours,
+        sourceCollection: selectedAssetForAuction.source || "inventory",
         name: newAuction.name,
         description: newAuction.description,
-        startPrice: startPrice,
-        currentBid: startPrice,
-        bidCount: 0,
-        endTime: Timestamp.fromDate(endTime),
-        highestBidder: null,
-        seller: currentUserId,
-        sellerName: currentUserName,
-        status: "ongoing",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        classCode: classCode,
-        itemIcon: selectedAssetForAuction.icon || "📦",
-        // --- 버그 수정을 위해 추가된 필드 ---
-        assetSourceCollection: selectedAssetForAuction.source || 'inventory',
-        originalStoreItemId: selectedAssetForAuction.itemId, // 아이템 종류를 식별하기 위한 고유 ID
+        idempotencyKey: crypto.randomUUID(),
       });
 
       setNewAuction({
@@ -378,15 +352,14 @@ export default function Auction() {
         startPrice: "", duration: "1",
       });
       setSelectedAssetForAuction(null);
+      if (itemsContext.refreshData) itemsContext.refreshData();
       showNotification("경매가 성공적으로 등록되었습니다.", "success");
       setActiveTab("myAuctions");
     } catch (error) {
       logger.error("[Auction Create] 경매 생성 오류:", error);
       showNotification(`경매 등록 실패: ${error.message}`, "error");
-      if (itemDeducted && newAuction.assetId && typeof updateUserItemQuantity === "function") {
-        await updateUserItemQuantity(newAuction.assetId, 1);
-        logger.log("[Auction Create Error] 아이템 수량 롤백 성공:", newAuction.assetId);
-      }
+    } finally {
+      creatingRef.current = false;
     }
   };
 
