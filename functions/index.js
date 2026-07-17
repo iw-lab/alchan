@@ -4241,6 +4241,153 @@ exports.settleAuction = onCall(
   },
 );
 
+// 경매 취소(판매자 등록취소 + 관리자 강제취소 통합).
+// - 판매자: 본인 경매 & 입찰 0건일 때만. cash 이동 없음(아이템 반환 + 경매 삭제).
+// - 관리자(hasAdminPower): 진행중 경매 강제취소. 최고입찰자 있으면 에스크로(currentBid) 환불 + 아이템 반환.
+// auctions 문서 삭제가 클라 write였던 것을 CF로 이관(배치6-d4 auctions rules 잠금 선행).
+exports.cancelAuction = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin } = await checkAuthAndGetUserData(request);
+    const { auctionId } = request.data || {};
+    if (!auctionId || typeof auctionId !== "string" || auctionId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 경매 정보가 필요합니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const auctionRef = db
+      .collection("classes")
+      .doc(classCode)
+      .collection("auctions")
+      .doc(auctionId);
+
+    // 조기 존재/상태 확인(낙관적 — 실제 게이트·권한은 트랜잭션 내부).
+    const pre = await auctionRef.get();
+    if (!pre.exists) {
+      return { success: true, message: "이미 취소되었거나 삭제된 경매입니다.", noop: true };
+    }
+    if (pre.data().status !== "ongoing") {
+      return { success: true, message: "이미 처리된 경매입니다.", noop: true };
+    }
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        // ── 읽기(모든 read를 write보다 먼저) ──
+        const auctionDoc = await transaction.get(auctionRef);
+        if (!auctionDoc.exists) throw new Error("경매 정보가 없습니다.");
+        const a = auctionDoc.data();
+        if (a.status !== "ongoing") throw new Error("이미 처리된 경매입니다.");
+
+        const isSeller = a.seller === uid;
+        const bidCount = Number(a.bidCount) || 0;
+        // 권한: 관리자는 강제취소(환불 포함), 판매자는 입찰 0건일 때만.
+        // ⚠️ bidCount와 highestBidder를 모두 검사(Gemini): auctions 문서가 아직 클라 writable(d4 전)이라
+        //    판매자가 bidCount=0으로 위조해 실제 입찰자 있는 경매를 취소하면 환불 없이 삭제=입찰자 자금 유실.
+        //    highestBidder가 존재하면(위조 bidCount와 무관) 판매자 취소를 막아 방어심도 확보.
+        if (!isAdmin) {
+          if (!isSeller) throw new Error("취소 권한이 없습니다.");
+          if (bidCount > 0 || a.highestBidder) {
+            throw new Error("입찰이 진행된 경매는 취소할 수 없습니다.");
+          }
+        }
+        // fail-closed: 반환 아이템 식별자 필수(조용한 유실 방지).
+        if (!a.assetId) {
+          throw new Error("반환할 아이템 식별자(assetId)가 없습니다.");
+        }
+
+        // 환불액 상한(폭발반경 축소, code-reviewer L1): auctions 문서가 클라 writable(d4 전)이라
+        //    currentBid가 임의로 위조될 수 있으므로 placeBid 캡(100억)과 동일하게 제한.
+        const bid = Math.min(Math.max(Number(a.currentBid) || 0, 0), 10000000000);
+        // ⚠️ 환불은 관리자 강제취소 경로에서만. 판매자 취소는 bidCount===0(입찰 없음)만 허용되므로
+        //    정상적으로 환불 대상이 없다. isAdmin으로 게이트하지 않으면 판매자가 auctions 문서에
+        //    highestBidder=본인·currentBid=거액·bidCount=0을 위조해 무담보 민팅 가능(구 판매자 취소는
+        //    환불이 전혀 없었음 — 시맨틱 일치). fake-escrow(d4)는 관리자 경로에도 남지만 그건 선재 벡터.
+        const hasRefund = isAdmin && !!a.highestBidder && bid > 0;
+        // 최고입찰자 존재+반경계 확인(삭제된 입찰자 abort DoS·cross-class 유출 방지, placeBid d1과 동일).
+        let prevBidderDoc = null;
+        if (hasRefund) {
+          prevBidderDoc = await transaction.get(
+            db.collection("users").doc(a.highestBidder),
+          );
+        }
+        // 판매자 반환 아이템(트랜잭션 내부 fresh get).
+        const returnCollection = a.assetSourceCollection || "inventory";
+        const sellerItemRef = db
+          .collection("users")
+          .doc(a.seller)
+          .collection(returnCollection)
+          .doc(a.assetId);
+        const sellerItemDoc = await transaction.get(sellerItemRef);
+
+        // ── 쓰기 ──
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+
+        // 1) 입찰금 환불(에스크로 반환). 관리자 강제취소 경로에서만 발생 가능.
+        if (hasRefund) {
+          if (!prevBidderDoc || !prevBidderDoc.exists) {
+            // 입찰자 계정이 삭제됨 → 반환할 잔액 자체가 없음. 환불 스킵하고 취소 진행
+            // (DoS 방지: 삭제된 입찰자 때문에 경매가 영구 취소불가 되는 것 방지, placeBid d1과 동일).
+          } else if (prevBidderDoc.data().classCode !== classCode) {
+            // 존재하지만 타학급 이동 → 실제 held cash가 남아있어 조용히 삭제하면 에스크로 소각(codex M#2).
+            //    반경계 위조 민팅도 차단. 취소를 중단해 관리자 수동 처리를 유도(fail-closed).
+            throw new Error("입찰자가 다른 학급으로 이동해 환불할 수 없습니다. 관리자 확인이 필요합니다.");
+          } else {
+            // 같은 학급 입찰자 → 정상 환불(에스크로 반환).
+            transaction.update(db.collection("users").doc(a.highestBidder), {
+              cash: admin.firestore.FieldValue.increment(bid),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            const rLog = db.collection("activity_logs").doc();
+            transaction.set(rLog, {
+              userId: a.highestBidder,
+              userName: a.highestBidderName || "입찰자",
+              type: "auction_bid_refund",
+              description: `경매 취소 환불: ${a.name || "아이템"} (+${bid.toLocaleString()}원)`,
+              amount: bid,
+              // 로그 classCode는 위조가능한 a.classCode 대신 경로/호출자 classCode 사용(codex M#3).
+              classCode: classCode,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              expireAt: logExpireAt,
+            });
+          }
+        }
+
+        // 2) 판매자에게 아이템 반환
+        if (sellerItemDoc.exists) {
+          transaction.update(sellerItemRef, {
+            quantity: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else {
+          transaction.set(sellerItemRef, {
+            itemId: a.originalStoreItemId,
+            name: a.name,
+            description: a.description,
+            icon: a.itemIcon || "📦",
+            quantity: 1,
+            type: "item",
+            addedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // 3) 경매 문서 삭제
+        transaction.delete(auctionRef);
+      });
+      return { success: true, message: "경매가 취소되었습니다." };
+    } catch (error) {
+      logger.error(`[cancelAuction] Error (auction ${auctionId}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "경매 취소에 실패했습니다.");
+    }
+  },
+);
+
 // ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================

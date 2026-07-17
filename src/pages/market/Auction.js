@@ -14,10 +14,7 @@ import {
   addDoc,
   doc,
   deleteDoc,
-  runTransaction,
   Timestamp,
-  increment,
-  getDoc,
   getDocs, // getDocs 추가
 } from "../../firebase";
 
@@ -395,12 +392,8 @@ export default function Auction() {
 
   const handleCancelAuction = async (auctionId) => {
     if (!currentUserId || !classCode) return;
-    if (typeof updateUserItemQuantity !== "function") {
-      showNotification("아이템 상태 업데이트 기능을 사용할 수 없습니다.", "error");
-      return;
-    }
 
-    const auctionRef = doc(db, "classes", classCode, "auctions", auctionId);
+    // 아이템 반환은 서버(cancelAuction CF)가 처리 → 클라 아이템 헬퍼 가드 불필요.
     const auction = auctions.find((a) => a.id === auctionId);
 
     if (!auction || auction.seller !== currentUserId) {
@@ -413,43 +406,10 @@ export default function Auction() {
     }
 
     try {
-      const auctionDocSnap = await getDoc(auctionRef);
-      if (!auctionDocSnap.exists()) {
-        showNotification("경매 정보를 Firestore에서 찾을 수 없습니다.", "error");
-        return;
-      }
-      const firestoreAuctionData = auctionDocSnap.data();
-
-      if (firestoreAuctionData.status !== "ongoing") {
-        showNotification("이미 처리된 경매는 취소할 수 없습니다 (Firestore 확인).", "info");
-        return;
-      }
-      if (firestoreAuctionData.bidCount > 0) {
-        showNotification("입찰이 진행된 경매는 취소할 수 없습니다 (Firestore 확인).", "error");
-        return;
-      }
-
-      // 아이템 반환 로직을 updateUserItemQuantity를 사용하도록 수정하지 않고,
-      // settleAuction과 동일한 강력한 로직을 사용하기 위해 트랜잭션으로 처리합니다.
-      const returnCollection = firestoreAuctionData.assetSourceCollection || 'inventory';
-      const sellerItemRef = doc(db, "users", firestoreAuctionData.seller, returnCollection, firestoreAuctionData.assetId);
-
-      await runTransaction(db, async (transaction) => {
-        const sellerItemDoc = await transaction.get(sellerItemRef);
-        if (sellerItemDoc.exists()) {
-          transaction.update(sellerItemRef, { quantity: increment(1) });
-        } else {
-          transaction.set(sellerItemRef, {
-            itemId: firestoreAuctionData.originalStoreItemId,
-            name: firestoreAuctionData.name,
-            icon: firestoreAuctionData.itemIcon,
-            description: firestoreAuctionData.description,
-            quantity: 1,
-            type: "item",
-          });
-        }
-        transaction.delete(auctionRef);
-      });
+      // 등록취소·아이템 반환·경매 삭제를 서버(cancelAuction CF)에서 원자적으로 처리.
+      // (auctions 문서 삭제·아이템 write를 클라에서 제거 → 배치6-d4 rules 잠금 선행)
+      const cancelFn = httpsCallable(functions, "cancelAuction");
+      await cancelFn({ auctionId });
 
       showNotification("경매가 취소되었습니다.", "success");
       if (itemsContext.refreshData) itemsContext.refreshData();
@@ -474,47 +434,13 @@ export default function Auction() {
       return;
     }
 
-    const auctionRef = doc(db, "classes", classCode, "auctions", auction.id);
     logger.log(`[Admin Cancel] 관리자 취소 시도: ${auction.id}`);
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const auctionDoc = await transaction.get(auctionRef);
-        if (!auctionDoc.exists() || auctionDoc.data().status !== 'ongoing') {
-          throw new Error("경매가 이미 처리되었거나 삭제되었습니다.");
-        }
-        const auctionData = auctionDoc.data();
-
-        // 1. 최고 입찰자가 있으면 입찰금 환불
-        if (auctionData.highestBidder && auctionData.currentBid > 0) {
-          const bidderRef = doc(db, "users", auctionData.highestBidder);
-          transaction.update(bidderRef, {
-            cash: increment(auctionData.currentBid),
-            updatedAt: serverTimestamp(),
-          });
-        }
-
-        // 2. 판매자에게 아이템 반환 (settleAuction의 유찰 로직과 동일)
-        const returnCollection = auctionData.assetSourceCollection || 'inventory';
-        const sellerItemRef = doc(db, "users", auctionData.seller, returnCollection, auctionData.assetId);
-        const sellerItemDoc = await transaction.get(sellerItemRef);
-
-        if (sellerItemDoc.exists()) {
-          transaction.update(sellerItemRef, { quantity: increment(1) });
-        } else {
-          transaction.set(sellerItemRef, {
-            itemId: auctionData.originalStoreItemId,
-            name: auctionData.name,
-            icon: auctionData.itemIcon || "📦",
-            description: auctionData.description,
-            quantity: 1,
-            type: "item",
-          });
-        }
-
-        // 3. 경매 문서 삭제
-        transaction.delete(auctionRef);
-      });
+      // 강제취소·입찰금 환불·아이템 반환·경매 삭제를 서버(cancelAuction CF)에서 원자적으로 처리.
+      // 서버가 hasAdminPower로 권한 재검증(클라 isAdmin() 미신뢰). 환불은 반경계·존재확인 후 적용.
+      const cancelFn = httpsCallable(functions, "cancelAuction");
+      await cancelFn({ auctionId: auction.id });
 
       showNotification(`'${auction.name}' 경매가 관리자에 의해 취소되었습니다.`, "success");
       if (itemsContext.refreshData) itemsContext.refreshData();
