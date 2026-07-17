@@ -2757,6 +2757,167 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
 });
 
 // ===================================================================================
+// 🔥 적금 일일 자동 납입 (2026-07-17 CF 이관 — useAutoSavingsDeposit 클라 runTransaction 대체).
+//    가입일~오늘 경과일만큼 회차(dailyAmount)를 학생→선생님(국고) catch-up 납입, depositsCount/
+//    totalDeposited 갱신. ⚠️ 멱등키를 쓰지 않는다: 같은 날 여러 번 발동해 부분납입(현금 한도)→추가납입
+//    (현금 충전 후)하는 게 정상이라 고정키로 재실행을 막으면 topup이 깨진다. 대신 트랜잭션 내부에서
+//    depositsCount를 재읽어 expected(가입후경과+1, term 상한) 이내로만 납입 → 이중납입/초과납입 원천 차단
+//    (동시 발동은 트랜잭션 재시도로 두 번째가 curCount 갱신본을 재읽어 no-op). 학생 잔액 한도 내에서만
+//    (마이너스 없음). teacherId "/"·반경계 검증·타입가드는 다른 은행 CF와 동일. batch6 rules 잠금 대비.
+// ===================================================================================
+exports.autoSavingsDeposit = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { productId } = request.data || {};
+
+    if (!productId || typeof productId !== "string" || productId.includes("/")) {
+      throw new HttpsError("invalid-argument", "상품 ID가 올바르지 않습니다.");
+    }
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const productRef = userRef.collection("products").doc(productId);
+    const inc = admin.firestore.FieldValue.increment;
+    const sts = () => admin.firestore.FieldValue.serverTimestamp();
+
+    try {
+      let resultInfo = { added: 0 };
+      await db.runTransaction(async (transaction) => {
+        // 읽기 먼저 — 상품(권위값). need<=0(오늘치 이미 납입)이면 여기서 종료해 user/teacher 읽기를
+        //   생략(no-op 스팸 호출의 read 비용·contention 절감 — codex H-1).
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists) throw new Error("적금 정보를 찾을 수 없습니다.");
+        const p = productDoc.data();
+        if (p.type !== "savings") throw new Error("적금 상품이 아닙니다.");
+
+        // 저장값 정수·양수 강제(위조 소수/음수 방어 — 소수 회차·금액 기록 차단). legit 상품은
+        //   subscribeProduct가 정수로 기록하므로 floor는 무해. 손상/미설정은 조용히 no-op(구 훅 continue와 동일).
+        const dailyAmount = Math.floor(Number(p.dailyAmount));
+        const termInDays = Math.floor(Number(p.termInDays));
+        if (!Number.isFinite(dailyAmount) || dailyAmount <= 0) {
+          resultInfo = { added: 0 };
+          return;
+        }
+        if (!Number.isFinite(termInDays) || termInDays <= 0) {
+          resultInfo = { added: 0 };
+          return;
+        }
+        const startRaw = p.startDate;
+        const startDate = startRaw?.toDate
+          ? startRaw.toDate()
+          : startRaw
+            ? new Date(startRaw)
+            : null;
+        if (!startDate || isNaN(startDate.getTime())) {
+          throw new Error("가입일 데이터에 오류가 있습니다.");
+        }
+
+        // 가입일부터 오늘까지 경과일(KST) → 납입해야 할 누적 회차(가입 당일=1회차). term 상한.
+        const daysSinceStart = kstDiffCalendarDays(new Date(), startDate);
+        const expected = Math.min(Math.max(1, daysSinceStart + 1), termInDays);
+        const curCount = Math.max(0, Math.floor(Number(p.depositsCount) || 0));
+        const need = expected - curCount;
+        if (need <= 0) {
+          // 오늘치까지 이미 납입됨 — user/teacher 읽기 없이 종료(no-op).
+          resultInfo = { added: 0 };
+          return;
+        }
+
+        // 납입 필요 확정 → 교사(국고) 특정 + user/teacher 읽기.
+        // teacherId "/" 경로주입 차단 + 레거시 미기록 폴백(findApprovedAdminSnap)
+        let teacherId = p.teacherId;
+        if (teacherId) {
+          if (typeof teacherId !== "string" || teacherId.includes("/")) {
+            throw new Error("상품에 연결된 은행 계정이 올바르지 않습니다.");
+          }
+        } else {
+          const adminSnap = await findApprovedAdminSnap(classCode);
+          if (adminSnap.empty) {
+            throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+          }
+          teacherId = adminSnap.docs[0].id;
+        }
+        if (teacherId === uid) {
+          throw new Error("관리자 계정으로는 처리할 수 없습니다.");
+        }
+        const teacherRef = db.collection("users").doc(teacherId);
+
+        const userDoc = await transaction.get(userRef);
+        const teacherDoc = await transaction.get(teacherRef);
+        if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+        if (!teacherDoc.exists) {
+          throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
+        }
+        const uData = userDoc.data();
+        const tData = teacherDoc.data();
+        if (tData.classCode !== classCode || !hasAdminPower(tData)) {
+          throw new Error("유효한 은행(관리자) 계정이 아닙니다.");
+        }
+        const rawCash = uData.cash;
+        if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+          throw new Error("계정 잔액 데이터에 오류가 있습니다.");
+        }
+        if (typeof tData.cash !== "number" || !Number.isFinite(tData.cash)) {
+          throw new Error("은행 계정 잔액 데이터에 오류가 있습니다.");
+        }
+
+        // 학생 잔액 한도 내에서만 납입(마이너스 없음). affordable·amount는 정수(dailyAmount 정수 보장).
+        const affordable = Math.min(need, Math.floor(rawCash / dailyAmount));
+        if (affordable <= 0) {
+          resultInfo = { added: 0, reason: "insufficient_cash" };
+          return;
+        }
+        const amount = dailyAmount * affordable;
+
+        transaction.update(userRef, {
+          cash: inc(-amount),
+          updatedAt: sts(),
+        });
+        transaction.update(teacherRef, { cash: inc(amount), updatedAt: sts() });
+        transaction.update(productRef, {
+          depositsCount: inc(affordable),
+          totalDeposited: inc(amount),
+          lastAutoDepositDate: sts(),
+        });
+
+        // 활동로그(최상위 amount로 거래내역 표시 보존)
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(db.collection("activity_logs").doc(), {
+          classCode,
+          userId: uid,
+          userName: uData.name || userData.name || "사용자",
+          type: "예금 가입",
+          description: `${p.name || "적금"} 적금 자동 납입 (${affordable}회차 × ${dailyAmount.toLocaleString()} = ${amount.toLocaleString()}) - 선생님 계정으로`,
+          amount: -amount,
+          couponAmount: 0,
+          metadata: {
+            productName: p.name || "",
+            productType: "savings",
+            dailyAmount,
+            installmentCount: affordable,
+            teacherId,
+            depositType: "auto",
+          },
+          timestamp: sts(),
+          createdAt: sts(),
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+        resultInfo = { added: affordable, amount };
+      });
+      return { success: true, ...resultInfo };
+    } catch (error) {
+      logger.error(`[autoSavingsDeposit] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "적금 자동 납입에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 관리자 지급/회수 (2026-07-17 CF 이관 — MoneyTransfer의 클라 adminCashAction 대체)
 //   - 권한: 서버에서 관리자(hasAdminPower) 또는 위임(delegatedPermissions.moneyTransfer) 강제.
 //     클라가 넘기던 adminId/adminClassCode를 신뢰하지 않고 auth·userData에서 파생.

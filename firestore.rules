@@ -249,10 +249,15 @@ service cloud.firestore {
 
       // ========================================================
       // 📦 가입 상품 서브컬렉션 (users/{userId}/products/{productId})
+      // ⚠️ 2026-07-17 학생(isOwner) 직접 write 제거 — 예적금/대출 가입·만기·해지·상환·자동납입이
+      //    전부 서버 CF(subscribeProduct/redeemDepositSavings/repayLoan/autoSavingsDeposit, Admin SDK로
+      //    rules 우회)로 이관 완료. 학생이 balance/rate/teacherId/maturityDate/depositsCount/totalDeposited를
+      //    직접 위조해 CF가 그 값으로 이자·상환·지급을 계산하던 벡터(3계열 CRITICAL) 봉인. 교사(isAdmin)
+      //    force-delete는 유지. (cash 자체 위조는 별개 — batch6 cash rules 잠금 대상.)
       // ========================================================
       match /products/{productId} {
         allow read: if isOwner(userId) || isAdminFast();
-        allow write: if isOwner(userId) || isAdmin();
+        allow write: if isAdmin();
       }
 
       // ========================================================
