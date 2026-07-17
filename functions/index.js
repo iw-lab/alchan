@@ -1713,6 +1713,198 @@ exports.processFine = onCall(
 );
 
 // ===================================================================================
+// 🔥 파킹통장 입금 (2026-07-17 CF 이관 — ParkingAccount 클라 runTransaction 대체)
+//   - uid=auth.uid 강제(남의 파킹통장 조작 차단). 같은 사용자의 cash↔parkingAccount.balance.
+//   - 단일 트랜잭션: cash 차감 + 파킹 balance 적립. 서버 잔액검증. 멱등.
+//   - 기존 클라 동작 보존: 정수 금액, lastInterestDate(신규 생성 시만) 초기화, 활동로그 type="파킹통장 입금".
+//   - 배치6 rules 잠금(본인 financials.balance 클라 write 제거)을 위한 방어 이관.
+// ===================================================================================
+exports.parkingDeposit = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { amount, idempotencyKey } = request.data;
+
+    // 🔒 정수·범위·타입 검증 (소수점/음수/과대값 차단 — cash는 정수 단위)
+    if (
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "입금액은 1 이상의 정수여야 합니다.",
+      );
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const parkingRef = userRef.collection("financials").doc("parkingAccount");
+
+    try {
+      let newBalance = 0;
+      await db.runTransaction(async (transaction) => {
+        // 1) 읽기 먼저: 멱등키 → 사용자 → 파킹
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const userDoc = await transaction.get(userRef);
+        const parkingDoc = await transaction.get(parkingRef);
+        if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+
+        // 2) 저장값 타입 가드 + 잔액검증.
+        //    ⚠️ Firestore increment은 대상 필드가 숫자가 아니면 '더하기'가 아니라 '값으로 교체'가
+        //    되고, 숫자 타입은 Infinity/NaN도 허용한다 → 문자열·Infinity·NaN 잔액이면 합계 보존이
+        //    깨져 돈 증발/증식이 가능(예: cash=Infinity면 increment 후에도 Infinity, 파킹만 늘어남).
+        //    cash는 벌금 등으로 음수가 정상이므로 음수는 허용하되 숫자·유한만 통과시킨다.
+        const rawCash = userDoc.data().cash;
+        if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+          throw new Error("계정 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.");
+        }
+        if (rawCash < amount) throw new Error("보유 현금이 부족합니다.");
+
+        // 3) 쓰기: cash 차감 + 파킹 balance 적립 (원자적)
+        transaction.update(userRef, {
+          cash: admin.firestore.FieldValue.increment(-amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        if (parkingDoc.exists) {
+          // 파킹 잔액은 음수가 될 수 없으므로 음수도 거부(위 사유 + 데이터 무결성).
+          const prev = parkingDoc.data().balance;
+          if (typeof prev !== "number" || !Number.isFinite(prev) || prev < 0) {
+            throw new Error("파킹통장 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.");
+          }
+          newBalance = prev + amount;
+          transaction.update(parkingRef, {
+            balance: admin.firestore.FieldValue.increment(amount),
+          });
+        } else {
+          // 신규 생성 시에만 lastInterestDate 초기화(기존 클라 동작 보존)
+          newBalance = amount;
+          transaction.set(parkingRef, {
+            balance: amount,
+            lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        markIdempotent(transaction, keyRef);
+
+        // 4) 활동 로그 — MyAssets 거래내역은 activity_logs를 최상위 amount(!=0)로 필터한다.
+        //    서버 공통 logActivity는 amount를 metadata에만 넣어 파킹 거래가 내역에서 사라진다(회귀).
+        //    구 클라 logActivity 필드 형태(최상위 amount·classCode·userName·couponAmount·90일 TTL)를
+        //    그대로 재현해 거래내역 표시를 보존한다.
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(db.collection("activity_logs").doc(), {
+          classCode,
+          userId: uid,
+          userName: userData.name || "사용자",
+          type: "파킹통장 입금",
+          description: `파킹통장 입금 ${amount.toLocaleString()}원`,
+          amount: -amount,
+          couponAmount: 0,
+          metadata: { parkingBalance: newBalance },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+      });
+      return { success: true, balance: newBalance };
+    } catch (error) {
+      logger.error(`[parkingDeposit] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "입금에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
+// 🔥 파킹통장 출금 (2026-07-17 CF 이관 — ParkingAccount 클라 runTransaction 대체)
+//   - uid=auth.uid 강제. 파킹 balance 차감 + cash 적립. 단일 트랜잭션·서버 잔액검증·멱등.
+//   - 기존 클라 동작 보존: 파킹 잔액 부족 시 거부(마이너스 불가), 활동로그 type="파킹통장 출금".
+// ===================================================================================
+exports.parkingWithdraw = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { amount, idempotencyKey } = request.data;
+
+    if (
+      !Number.isInteger(amount) ||
+      amount <= 0 ||
+      amount > 10000000000
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "출금액은 1 이상의 정수여야 합니다.",
+      );
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const parkingRef = userRef.collection("financials").doc("parkingAccount");
+
+    try {
+      let newBalance = 0;
+      await db.runTransaction(async (transaction) => {
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const parkingDoc = await transaction.get(parkingRef);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+
+        // 저장값 타입 가드(입금 CF와 동일 사유 — increment 교체/Infinity 방지).
+        // 파킹 잔액은 음수 불가 → 음수도 거부. cash는 음수 정상이라 숫자·유한만 검사.
+        const rawBalance = parkingDoc.exists ? parkingDoc.data().balance : 0;
+        if (
+          typeof rawBalance !== "number" ||
+          !Number.isFinite(rawBalance) ||
+          rawBalance < 0
+        ) {
+          throw new Error("파킹통장 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.");
+        }
+        const rawCash = userDoc.data().cash;
+        if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
+          throw new Error("계정 잔액 데이터에 오류가 있습니다. 관리자에게 문의하세요.");
+        }
+        if (rawBalance < amount) {
+          throw new Error("파킹통장 잔액이 부족합니다.");
+        }
+        newBalance = rawBalance - amount;
+
+        // 쓰기: 파킹 balance 차감 + cash 적립 (원자적)
+        transaction.update(parkingRef, {
+          balance: admin.firestore.FieldValue.increment(-amount),
+        });
+        transaction.update(userRef, {
+          cash: admin.firestore.FieldValue.increment(amount),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        markIdempotent(transaction, keyRef);
+
+        // 활동 로그 — 최상위 amount 기록(입금 CF와 동일 사유: 거래내역 표시 보존).
+        const expireAt = new Date();
+        expireAt.setDate(expireAt.getDate() + 90);
+        transaction.set(db.collection("activity_logs").doc(), {
+          classCode,
+          userId: uid,
+          userName: userData.name || "사용자",
+          type: "파킹통장 출금",
+          description: `파킹통장 출금 ${amount.toLocaleString()}원`,
+          amount: amount,
+          couponAmount: 0,
+          metadata: { parkingBalance: newBalance },
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: admin.firestore.Timestamp.fromDate(expireAt),
+        });
+      });
+      return { success: true, balance: newBalance };
+    } catch (error) {
+      logger.error(`[parkingWithdraw] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "출금에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 

@@ -1,5 +1,5 @@
 // src/ParkingAccount.js
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
  db,
  doc,
@@ -15,6 +15,8 @@ import {
  query,
  where,
  limit,
+ functions,
+ httpsCallable,
 } from "../../firebase";
 import { format, isToday, differenceInCalendarDays, startOfDay } from "date-fns";
 import {
@@ -980,6 +982,9 @@ const ParkingAccount = ({
  const userId = user?.uid;
 
  const [isProcessing, setIsProcessing] = useState(false);
+ // 동기 재진입 가드: isProcessing 상태는 비동기 반영이라 빠른 더블클릭이 새어들 수 있음.
+ // ref는 동기 갱신이라 CF 이중호출을 확실히 차단(멱등키는 매호출 새 UUID라 서버가 못 막음).
+ const parkingSubmittingRef = useRef(false);
  const [message, setMessage] = useState(null);
  const [messageType, setMessageType] = useState("");
  const [parkingBalance, setParkingBalance] = useState(0);
@@ -2007,66 +2012,42 @@ const ParkingAccount = ({
  const amount = parseFloat(amountStr);
  if (isNaN(amount) || amount <= 0)
  return displayMessage("유효한 금액을 입력하세요.", "error");
+ if (!Number.isInteger(amount))
+ return displayMessage("입금액은 정수여야 합니다.", "error");
+
+ // 동기 재진입 가드(더블클릭 이중입금 차단)
+ if (parkingSubmittingRef.current) return;
+ parkingSubmittingRef.current = true;
 
  setIsProcessing(true);
- const previousParkingBalance = parkingBalance; // Store for rollback
- const previousCurrentCash = currentCash; // Store for rollback
-
- // Optimistically update UI for parking balance
- setParkingBalance((prev) => prev + amount);
 
  try {
- // 🔥 사용자 현금 차감 + 파킹통장 증가를 하나의 트랜잭션으로 처리 (돈 증발 방지)
- await runTransaction(db, async (transaction) => {
- const parkingRef = doc(db, "users", userId, "financials", "parkingAccount");
- const userRef = doc(db, "users", userId);
- const userSnapshot = await transaction.get(userRef);
- const parkingSnapshot = await transaction.get(parkingRef);
-
- const currentUserCash = userSnapshot.data()?.cash ?? 0;
- if (currentUserCash < amount) {
- throw new Error("보유 현금이 부족합니다.");
- }
-
- transaction.update(userRef, { cash: increment(-amount), updatedAt: serverTimestamp() });
-
- if (parkingSnapshot.exists()) {
- transaction.update(parkingRef, { balance: increment(amount) });
- } else {
- transaction.set(parkingRef, {
- balance: amount,
- lastInterestDate: serverTimestamp(),
- });
- }
- });
+ // 🔒 cash 차감 + 파킹 balance 적립을 서버 CF(단일 트랜잭션)로 처리.
+ // 구 클라 runTransaction은 본인 문서/서브컬렉션 직접 write라 money-glitch 벡터 →
+ // parkingDeposit CF로 이관(uid=auth.uid 강제·서버 잔액검증·멱등·로그 서버 기록).
+ const parkingDepositFn = httpsCallable(functions, "parkingDeposit");
+ await parkingDepositFn({ amount, idempotencyKey: crypto.randomUUID() });
 
  displayMessage(
  `${formatCurrency(amount)}${currencyUnit} 입금 완료.`,
  "success",
  );
 
- // 🔥 활동 로그 기록 (파킹통장 입금)
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId: userId,
- userName: userDoc?.name || "사용자",
- type: ACTIVITY_TYPES.PARKING_DEPOSIT,
- description: `파킹통장 입금 ${formatCurrency(amount)}원`,
- amount: -amount,
- metadata: { parkingBalance: parkingBalance + amount },
- });
-
- // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
- // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영
- // (cash만 실시간이고 parking은 5분 캐시라 입금 직후 순자산이 잠깐 하락하던 버그 수정)
+ // 파킹 잔액은 onSnapshot 실시간 리스너(위 useEffect)가 CF 커밋 후 서버값으로 자동 수렴한다.
+ // 낙관적 업데이트·에러 롤백을 두면 응답 유실 시 리스너의 정확한 값을 stale 값으로 덮어써
+ // 잔액이 잘못 표시될 수 있어(교차검증 지적), 표시는 전적으로 리스너에 맡긴다.
+ // 활동 로그는 CF가 서버에서 기록(중복 방지).
+ // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영.
  invalidateAssetCaches(userId);
  } catch (error) {
- displayMessage(`처리 오류: ${error.message}`, "error");
- // Rollback UI on error
- setParkingBalance(previousParkingBalance);
- setCurrentCash(previousCurrentCash);
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "입금 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
+ parkingSubmittingRef.current = false;
  }
  };
 
@@ -2074,57 +2055,41 @@ const ParkingAccount = ({
  const amount = parseFloat(amountStr);
  if (isNaN(amount) || amount <= 0)
  return displayMessage("유효한 금액을 입력하세요.", "error");
+ if (!Number.isInteger(amount))
+ return displayMessage("출금액은 정수여야 합니다.", "error");
+
+ // 동기 재진입 가드(더블클릭 이중출금 차단)
+ if (parkingSubmittingRef.current) return;
+ parkingSubmittingRef.current = true;
 
  setIsProcessing(true);
- const previousParkingBalance = parkingBalance; // Store for rollback
- const previousCurrentCash = currentCash; // Store for rollback
-
- // Optimistically update UI for parking balance
- setParkingBalance((prev) => prev - amount);
 
  try {
- // 🔥 파킹통장 차감 + 사용자 현금 증가를 하나의 트랜잭션으로 처리 (돈 증발 방지)
- await runTransaction(db, async (transaction) => {
- const parkingRef = doc(db, "users", userId, "financials", "parkingAccount");
- const userRef = doc(db, "users", userId);
- const parkingSnapshot = await transaction.get(parkingRef);
- const userSnapshot = await transaction.get(userRef);
- const currentParkingBalance = parkingSnapshot.data()?.balance ?? 0;
-
- if (currentParkingBalance < amount)
- throw new Error("파킹통장 잔액이 부족합니다.");
-
- transaction.update(parkingRef, { balance: increment(-amount) });
- transaction.update(userRef, { cash: increment(amount), updatedAt: serverTimestamp() });
- });
+ // 🔒 파킹 balance 차감 + cash 적립을 서버 CF(단일 트랜잭션)로 처리.
+ // 구 클라 runTransaction은 본인 문서/서브컬렉션 직접 write라 money-glitch 벡터 →
+ // parkingWithdraw CF로 이관(uid=auth.uid 강제·서버 잔액검증·멱등·로그 서버 기록).
+ const parkingWithdrawFn = httpsCallable(functions, "parkingWithdraw");
+ await parkingWithdrawFn({ amount, idempotencyKey: crypto.randomUUID() });
 
  displayMessage(
  `${formatCurrency(amount)}${currencyUnit} 출금 완료.`,
  "success",
  );
 
- // 🔥 활동 로그 기록 (파킹통장 출금)
- logActivity(db, {
- classCode: userDoc?.classCode,
- userId: userId,
- userName: userDoc?.name || "사용자",
- type: ACTIVITY_TYPES.PARKING_WITHDRAW,
- description: `파킹통장 출금 ${formatCurrency(amount)}원`,
- amount: amount,
- metadata: { parkingBalance: parkingBalance - amount },
- });
-
- // 파킹 잔액은 onSnapshot 리스너가 자동 반영(추가 읽기 불필요). 상품은 입출금으로 안 바뀜.
- // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영
- // (cash만 실시간이고 parking은 5분 캐시라 입금 직후 순자산이 잠깐 하락하던 버그 수정)
+ // 파킹 잔액 표시는 onSnapshot 실시간 리스너가 서버값으로 자동 수렴(입금 핸들러와 동일 사유 —
+ // 낙관적 업데이트·롤백 제거로 응답 유실 시 stale 덮어쓰기 방지).
+ // 활동 로그는 CF가 서버에서 기록(중복 방지).
+ // 순자산 표시용 자산 캐시 무효화 → MyAssets/배너가 다음 진입·폴링 시 새 parking 반영.
  invalidateAssetCaches(userId);
  } catch (error) {
- displayMessage(`처리 오류: ${error.message}`, "error");
- // Rollback UI on error
- setParkingBalance(previousParkingBalance);
- setCurrentCash(previousCurrentCash);
+ const msg =
+ error?.code === "functions/already-exists"
+ ? "이미 처리된 요청입니다."
+ : error?.message || "출금 처리 중 오류가 발생했습니다.";
+ displayMessage(`처리 오류: ${msg}`, "error");
  } finally {
  setIsProcessing(false);
+ parkingSubmittingRef.current = false;
  }
  };
 

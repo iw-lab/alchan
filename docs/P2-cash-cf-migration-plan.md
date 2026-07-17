@@ -87,3 +87,14 @@ useAutoSavingsDeposit(122-123) · useAutoLoanRepay(136-137) · useAutoDepositMat
 - 게임 PvP 잔여(OmokGame 등) = 배치1-c.
 
 **rules 잠금(방어 발동)은 위 전부 이관 후 배치6**.
+
+---
+## 배치4 착수 스코핑 (2026-07-17, Opus 세션)
+
+**파킹통장(ParkingAccount) 입출금 = 이미 원자적**: handleParkingDeposit(2006~)·handleParkingWithdraw(2073~)이 cash↔financials/parkingAccount.balance를 **단일 runTransaction + 잔액검증**으로 처리(비원자 split 버그 없음). 활성 버그 아님.
+
+**위험 = rules 레벨만**: 본인 users/{uid}.cash + 본인 financials/parkingAccount.balance 클라 write. 콘솔로 parking balance를 increment(huge) 후 출금하면 cash 증식 가능(rules가 본인 문서/서브컬렉션 write 허용 시). → 배치6 rules 잠금을 위해 CF 이관 필요(방어 이관, defense-in-depth).
+
+**배치4 계획**: parkingDeposit/parkingWithdraw onCall CF 2개. 각 uid=auth.uid 강제·단일 tx로 cash↔parking balance·잔액검증·멱등·logActivity·lastInterestDate 보존. 클라는 httpsCallable로 교체(구 runTransaction 제거). 기존 클라 로직을 서버로 그대로 이관(동작 보존). 이자 자동지급(1045 balance:increment(interest))은 스케줄러/별도 경로라 범위 확인 필요.
+
+**남은 배치**: 배치5=관리자 MoneyTransfer(adminCashAction, services/database.js) + 예적금/대출 상품(financials products) 확인. 배치6=rules 잠금(전 경로 CF 후). 이자 지급 경로도 배치5~6에서 점검.
