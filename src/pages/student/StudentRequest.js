@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { db } from "../../firebase";
+import { db, functions, httpsCallable } from "../../firebase";
 import {
   doc,
   getDoc,
   collection,
   addDoc,
   serverTimestamp,
-  Timestamp,
-  runTransaction,
-  increment,
 } from "firebase/firestore";
 import { searchVideos, parseVideoId, getQuotaExhausted } from "../../utils/youtube-api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -44,6 +41,7 @@ const StudentRequest = () => {
   const [isPriority, setIsPriority] = useState(false); // 우선 신청권: 기본가의 150% 지불, 대기열 맨 앞
   const [story, setStory] = useState(""); // 선택: 사연/메시지 (재생목록에 표시)
   const [isRequesting, setIsRequesting] = useState(false);
+  const submittingRef = useRef(false); // 결제 중복 제출 차단(매 클릭 새 idempotencyKey라 클라 lock 필요)
   const [error, setError] = useState("");
   const [roomError, setRoomError] = useState("");
   const [requestSuccess, setRequestSuccess] = useState(false);
@@ -226,20 +224,6 @@ const StudentRequest = () => {
       const isPaidRequest = pricePerSong > 0 && !!user && !!teacherId;
 
       const trimmedStory = story.trim().slice(0, 200); // 과도한 길이 방지
-      // 익명 신청: 재생목록엔 '익명'으로 표시하고 requesterId도 남기지 않음.
-      // (유료 신청의 결제/거래로그는 자금 추적을 위해 트랜잭션에서 실명 유지 — 화면 표시만 익명)
-      const playlistEntry = {
-        videoId: selectedVideo.id.videoId,
-        title: selectedVideo.snippet.title,
-        requesterName: isAnonymous ? "익명" : name,
-        requestedAt: serverTimestamp(),
-        ...(user && !isAnonymous ? { requesterId: user.uid } : {}),
-        ...(isAnonymous ? { isAnonymous: true } : {}),
-        ...(trimmedStory ? { story: trimmedStory } : {}),
-        // 우선 신청권: 결제가 실제 실행된 경우에만 표시(무료 방/비결제 우회 방지)
-        ...(isPriority && isPaidRequest ? { isPriority: true } : {}),
-        paidAmount: isPaidRequest ? requestCost : 0,
-      };
 
       if (isPaidRequest) {
         const currentCash = userDoc?.cash || 0;
@@ -251,73 +235,46 @@ const StudentRequest = () => {
           return;
         }
 
-        await runTransaction(db, async (transaction) => {
-          const roomRef = doc(db, "musicRooms", roomId);
-          const studentRef = doc(db, "users", user.uid);
-          const teacherRef = doc(db, "users", teacherId);
-          const [roomSnap, studentSnap] = await Promise.all([
-            transaction.get(roomRef),
-            transaction.get(studentRef),
-          ]);
-
-          // 방 정보 재검증 — 화면 로드 후 가격·수취인이 바뀐 stale 결제 차단
-          if (!roomSnap.exists()) throw new Error("방이 삭제되었습니다.");
-          const freshRoom = roomSnap.data();
-          if (
-            (freshRoom.pricePerSong || 0) !== pricePerSong ||
-            freshRoom.teacherId !== teacherId
-          ) {
-            throw new Error("ROOM_CHANGED");
-          }
-
-          if (!studentSnap.exists()) throw new Error("사용자 정보를 찾을 수 없습니다.");
-          const cash = studentSnap.data().cash || 0;
-          if (cash < requestCost) throw new Error("잔액이 부족합니다.");
-
-          transaction.update(studentRef, { cash: increment(-requestCost) });
-          transaction.update(teacherRef, { cash: increment(requestCost) });
-
-          // 🔥 학생 거래 내역 로그 (음악 요청 결제)
-          const sd = studentSnap.data();
-          const studentClassCode = sd.classCode || null;
-          const studentName = sd.name || sd.nickname || name || "익명";
-          const logExpireAt = new Date();
-          logExpireAt.setDate(logExpireAt.getDate() + 90);
-
-          const songTitle = selectedVideo?.snippet?.title || "음악";
-          const requestLabel = isPriority ? "음악 우선 신청" : "음악 신청";
-          const studentLogRef = doc(collection(db, "activity_logs"));
-          transaction.set(studentLogRef, {
-            userId: user.uid,
-            userName: studentName,
-            type: "musicRequest",
-            description: `${requestLabel}: "${songTitle}" (-${requestCost.toLocaleString()}원)`,
-            amount: -requestCost,
-            classCode: studentClassCode,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(logExpireAt),
+        // 🔒 결제(학생·선생님 cash)+곡 등록을 requestMusicPayment CF로 처리(2026-07-17 배치6-a).
+        //   구 클라 runTransaction은 cash 직접 write라 batch7 rules 잠금 대상 → CF 이관.
+        //   가격·수취인은 서버가 room에서 재조회, isPriority/paidAmount도 서버가 곡 문서에 기록(위조 차단).
+        //   화면에 표시한 값(expectedPricePerSong/expectedTeacherId)을 넘겨 stale 결제(ROOM_CHANGED) 차단.
+        if (submittingRef.current) {
+          setIsRequesting(false);
+          return;
+        }
+        submittingRef.current = true;
+        try {
+          const payFn = httpsCallable(functions, "requestMusicPayment");
+          await payFn({
+            roomId,
+            videoId: selectedVideo.id.videoId,
+            videoTitle: selectedVideo.snippet.title,
+            isPriority,
+            isAnonymous,
+            story: trimmedStory,
+            requesterName: name,
+            expectedPricePerSong: pricePerSong,
+            expectedTeacherId: teacherId,
+            idempotencyKey: crypto.randomUUID(),
           });
-          const teacherLogRef = doc(collection(db, "activity_logs"));
-          transaction.set(teacherLogRef, {
-            userId: teacherId,
-            userName: "선생님",
-            type: "musicRequest",
-            description: `${studentName}님의 ${requestLabel} 수익 (+${requestCost.toLocaleString()}원)`,
-            amount: requestCost,
-            classCode: studentClassCode,
-            timestamp: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            expireAt: Timestamp.fromDate(logExpireAt),
-          });
-
-          // 결제와 곡 등록을 같은 트랜잭션으로 묶어
-          // "돈만 차감되고 곡은 미등록"되는 부분 실패를 차단
-          const songRef = doc(collection(db, "musicRooms", roomId, "playlist"));
-          transaction.set(songRef, playlistEntry);
-        });
+        } finally {
+          submittingRef.current = false;
+        }
       } else {
-        await addDoc(collection(db, "musicRooms", roomId, "playlist"), playlistEntry);
+        // 무료 방: cash 이동이 없어 클라 addDoc 유지(유료 결제/곡등록은 CF가 서버구성).
+        //   paidAmount:0 · isPriority 미기재 · requesterId 본인 — playlist create rules와 일치.
+        const freeEntry = {
+          videoId: selectedVideo.id.videoId,
+          title: selectedVideo.snippet.title,
+          requesterName: isAnonymous ? "익명" : name,
+          requestedAt: serverTimestamp(),
+          ...(user && !isAnonymous ? { requesterId: user.uid } : {}),
+          ...(isAnonymous ? { isAnonymous: true } : {}),
+          ...(trimmedStory ? { story: trimmedStory } : {}),
+          paidAmount: 0,
+        };
+        await addDoc(collection(db, "musicRooms", roomId, "playlist"), freeEntry);
       }
 
       setRequestSuccess(true);

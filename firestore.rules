@@ -1090,8 +1090,16 @@ service cloud.firestore {
         // 읽기: 로그인한 모든 사용자 (학생들도 자신의 신청곡 확인)
         allow read: if isSignedIn();
 
-        // 생성: 로그인한 모든 사용자 (학생들의 음악 신청)
-        allow create: if isSignedIn();
+        // 생성: 🔒 2026-07-17 배치6-a — 유료 결제·우선신청권은 requestMusicPayment CF(admin SDK,
+        //   rules 우회)만 기록. 클라 직접 addDoc은 **무료 방(pricePerSong==0)**의 무료곡만 허용.
+        //   - 유료 방(pricePerSong>0)은 클라 create 전면 차단 → 결제 우회(무료곡 등록) 봉인.
+        //   - 무료 방도 paidAmount==0(정수0, 문자열"0" 차단) · isPriority 필드 부재(truthy 문자열
+        //     "0"로 큐점프하는 우회까지 차단) · requesterId 본인만(타인 사칭 차단).
+        allow create: if isSignedIn() &&
+                         get(/databases/$(database)/documents/musicRooms/$(roomId)).data.get('pricePerSong', 0) == 0 &&
+                         request.resource.data.get('paidAmount', 0) == 0 &&
+                         !('isPriority' in request.resource.data) &&
+                         request.resource.data.get('requesterId', request.auth.uid) == request.auth.uid;
 
         // 수정: 방 생성자 또는 관리자만
         allow update: if isOwner(get(/databases/$(database)/documents/musicRooms/$(roomId)).data.teacherId) || isAdmin();

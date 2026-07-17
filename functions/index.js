@@ -3176,6 +3176,204 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
 });
 
 // ===================================================================================
+// 🎵 음악 신청 결제 (2026-07-17 배치6-a CF 이관 — StudentRequest 클라 runTransaction 대체)
+//   - 구 클라: 학생 cash 차감 + 선생님 cash 적립 + activity_logs 2건 + playlist 곡등록을
+//     한 트랜잭션으로. 학생·선생님 cash 직접 write = batch7 cash rules 잠금 대상 → CF 이관.
+//   - 보안설계: 가격(pricePerSong)·수취인(teacherId)을 클라 입력이 아닌 서버 room 문서에서 재조회.
+//     클라는 화면에 표시했던 값(expectedPricePerSong/expectedTeacherId)만 넘겨 stale 결제 차단(ROOM_CHANGED).
+//   - requestCost = 서버계산(우선신청권이면 ceil(price*1.5)). isPriority/paidAmount는 서버가 곡 문서에 기록
+//     (클라가 결제 없이 isPriority·paidAmount 위조하던 창을 결제와 원자적으로 묶어 차단).
+//   - 무료 방(price<=0)은 cash 이동이 없어 클라 addDoc 유지(이 CF는 유료 결제 전용).
+//   - 거래내역 보존: 구 클라와 동일하게 activity_logs 최상위 amount 직접 기록(MyAssets 자산 거래내역 소스).
+// ===================================================================================
+exports.requestMusicPayment = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, userData } = await checkAuthAndGetUserData(request);
+    const {
+      roomId,
+      videoId,
+      videoTitle = "",
+      isPriority = false,
+      isAnonymous = false,
+      story = "",
+      requesterName = "",
+      expectedPricePerSong,
+      expectedTeacherId,
+      idempotencyKey,
+    } = request.data || {};
+
+    // 🔒 필수 인자·경로주입 방어
+    if (!roomId || typeof roomId !== "string" || roomId.includes("/")) {
+      throw new HttpsError("invalid-argument", "유효한 방 정보가 필요합니다.");
+    }
+    if (
+      !videoId ||
+      typeof videoId !== "string" ||
+      videoId.includes("/") ||
+      videoId.length > 128
+    ) {
+      throw new HttpsError("invalid-argument", "유효한 영상 정보가 필요합니다.");
+    }
+    // 🔒 boolean 엄격 강제(codex: "0"·"false" 같은 truthy 문자열 위조 차단).
+    const priority = isPriority === true;
+    const anonymous = isAnonymous === true;
+    if (!idempotencyKey || typeof idempotencyKey !== "string") {
+      throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
+    }
+    if (
+      typeof expectedTeacherId !== "string" ||
+      !expectedTeacherId ||
+      expectedTeacherId.includes("/")
+    ) {
+      throw new HttpsError("invalid-argument", "수취인 정보가 올바르지 않습니다.");
+    }
+    if (uid === expectedTeacherId) {
+      throw new HttpsError("invalid-argument", "자기 자신에게는 신청할 수 없습니다.");
+    }
+
+    const roomRef = db.collection("musicRooms").doc(roomId);
+    const studentRef = db.collection("users").doc(uid);
+    const teacherRef = db.collection("users").doc(expectedTeacherId);
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        // 1) 모든 읽기 먼저: 멱등키 → room·학생·선생님
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+        const [roomSnap, studentSnap, teacherSnap] = await transaction.getAll(
+          roomRef,
+          studentRef,
+          teacherRef,
+        );
+
+        if (!roomSnap.exists) throw new Error("방이 삭제되었습니다.");
+        const room = roomSnap.data();
+        // 서버 권위값 = room 문서. 클라 표시값과 다르면 stale 결제 차단.
+        const serverPrice = Number(room.pricePerSong) || 0;
+        const serverTeacherId = room.teacherId || "";
+        if (serverPrice <= 0) {
+          throw new Error("무료 방은 결제가 필요하지 않습니다.");
+        }
+        // 🔒 정수 강제(transferCash와 일관): 비정수 가격이면 cash에 소수 누적 → 순자산세·주급 등
+        //    정수 가정 로직과 불일치. 방 가격은 정수여야 한다.
+        if (!Number.isInteger(serverPrice)) {
+          throw new Error("방 가격 정보가 올바르지 않습니다.");
+        }
+        if (
+          serverPrice !== Number(expectedPricePerSong) ||
+          serverTeacherId !== expectedTeacherId
+        ) {
+          throw new Error("ROOM_CHANGED");
+        }
+
+        // 2) 서버계산 결제액 (우선신청권 = 기본가 + 50%, 올림). 유한·양수 강제.
+        const cost = priority ? Math.ceil(serverPrice * 1.5) : serverPrice;
+        if (!Number.isFinite(cost) || cost <= 0 || cost > 10000000000) {
+          throw new Error("결제 금액이 올바르지 않습니다.");
+        }
+
+        if (!studentSnap.exists) throw new Error("사용자 정보를 찾을 수 없습니다.");
+        if (!teacherSnap.exists) throw new Error("선생님 정보를 찾을 수 없습니다.");
+        const studentData = studentSnap.data();
+        const teacherData = teacherSnap.data();
+
+        // 3) 반경계: 수취인은 같은 학급의 실제 관리자(선생님)여야 한다(반 밖 유출·학생 수취 차단).
+        const studentClassCode = studentData.classCode;
+        if (
+          !studentClassCode ||
+          teacherData.classCode !== studentClassCode ||
+          !hasAdminPower(teacherData)
+        ) {
+          throw new Error("이 방의 수취인 정보가 올바르지 않습니다.");
+        }
+
+        // 4) 서버 잔액검증
+        const studentCash = Number(studentData.cash) || 0;
+        if (studentCash < cost) throw new Error("잔액이 부족합니다.");
+
+        // 5) 양방향 increment (원자적)
+        transaction.update(studentRef, {
+          cash: admin.firestore.FieldValue.increment(-cost),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        transaction.update(teacherRef, {
+          cash: admin.firestore.FieldValue.increment(cost),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // 6) 거래내역(activity_logs 최상위 amount) — 구 클라와 동일 형태로 보존.
+        const studentName =
+          studentData.name || studentData.nickname || "익명";
+        const songTitle = (sanitizeInput(String(videoTitle)) || "음악").slice(0, 100);
+        const requestLabel = priority ? "음악 우선 신청" : "음악 신청";
+        const logExpireAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 90 * 24 * 60 * 60 * 1000,
+        );
+        const studentLogRef = db.collection("activity_logs").doc();
+        transaction.set(studentLogRef, {
+          userId: uid,
+          userName: studentName,
+          type: "musicRequest",
+          description: `${requestLabel}: "${songTitle}" (-${cost.toLocaleString()}원)`,
+          amount: -cost,
+          classCode: studentClassCode,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+        const teacherLogRef = db.collection("activity_logs").doc();
+        transaction.set(teacherLogRef, {
+          userId: expectedTeacherId,
+          userName: "선생님",
+          type: "musicRequest",
+          description: `${studentName}님의 ${requestLabel} 수익 (+${cost.toLocaleString()}원)`,
+          amount: cost,
+          classCode: studentClassCode,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expireAt: logExpireAt,
+        });
+
+        // 7) 곡 등록 — 서버가 구성(클라의 isPriority/paidAmount 위조 차단).
+        //    결제와 같은 트랜잭션이라 "돈만 빠지고 곡 미등록" 부분실패 없음.
+        const trimmedStory = sanitizeInput(String(story)).slice(0, 200);
+        const displayName = anonymous
+          ? "익명"
+          : (sanitizeInput(String(requesterName)).slice(0, 40) || studentName);
+        const playlistEntry = {
+          videoId,
+          title: songTitle,
+          requesterName: displayName,
+          requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+          ...(anonymous ? { isAnonymous: true } : { requesterId: uid }),
+          ...(trimmedStory ? { story: trimmedStory } : {}),
+          ...(priority ? { isPriority: true } : {}),
+          paidAmount: cost,
+        };
+        const songRef = roomRef.collection("playlist").doc();
+        transaction.set(songRef, playlistEntry);
+
+        markIdempotent(transaction, keyRef);
+        return { cost };
+      });
+      return { success: true, cost: result.cost };
+    } catch (error) {
+      logger.error(`[requestMusicPayment] Error for user ${uid}:`, error);
+      if (error instanceof HttpsError) throw error;
+      const msg = error.message || "음악 신청에 실패했습니다.";
+      // 클라가 분기하는 안정적 코드로 매핑
+      if (msg === "ROOM_CHANGED") {
+        throw new HttpsError("failed-precondition", "ROOM_CHANGED");
+      }
+      if (msg === "잔액이 부족합니다.") {
+        throw new HttpsError("failed-precondition", msg);
+      }
+      throw new HttpsError("aborted", msg);
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 주식 거래 함수 구현
 // ===================================================================================
 
