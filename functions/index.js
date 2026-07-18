@@ -986,6 +986,19 @@ exports.processTaskApproval = onCall(
           if (!studentDoc.exists)
             throw new Error("학생 정보를 찾을 수 없습니다.");
 
+          // 🔒 승인 문서의 rewardAmount 상한 재검증 — 과거 클라 위조(pendingApprovals 직접
+          //   create로 rewardAmount 무제한 주입)된 문서를 승인 시점에 차단. submitTaskApproval과
+          //   동일 상한(cash 50000·coupon 20). rules로 신규 create는 봉인했으나 기존 문서 방어.
+          const maxReward = approval.cardType === "cash" ? 50000 : 20;
+          if (
+            typeof approval.rewardAmount !== "number" ||
+            !Number.isFinite(approval.rewardAmount) ||
+            approval.rewardAmount < 0 ||
+            approval.rewardAmount > maxReward
+          ) {
+            throw new Error("유효하지 않은 보상 금액입니다.");
+          }
+
           const updateData = {};
           if (approval.cardType === "cash") {
             updateData.cash = admin.firestore.FieldValue.increment(
@@ -9494,7 +9507,15 @@ exports.seedCourtData = onCall(
 exports.updateUserItemQuantity = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid } = await checkAuthAndGetUserData(request);
+    const { uid, isAdmin, isSuperAdmin } =
+      await checkAuthAndGetUserData(request);
+    // 🔒 admin 전용 — 이 CF는 호출자 본인 인벤토리 quantity를 상한 없이 증감(quantityChange
+    //   임의 양수)하는데, 정상 클라 호출부가 전무(dead-exposed)하고 학생이 직접 호출 시
+    //   인벤토리 무제한 mint→국고되팔기/마켓 현금화 벡터. 정상 인벤토리 변경은 구매/사용/
+    //   선물/판매 CF가 전담(batch7-e에서 inventory 클라 write는 rules로 봉인됨).
+    if (!isAdmin && !isSuperAdmin) {
+      throw new HttpsError("permission-denied", "이 기능은 관리자 전용입니다.");
+    }
     const {
       itemId,
       quantityChange,

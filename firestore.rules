@@ -1317,10 +1317,11 @@ service cloud.firestore {
     // ========================================================
     match /pendingApprovals/{approvalId} {
       allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
-      // 본인 userId와 본인 classCode로만 생성 가능
-      allow create: if isSignedIn() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.classCode == getUserClassCode();
+      // 🔒 create는 CF 전용(if false) — 과거 create:if isSignedIn()은 userId/classCode만 검증하고
+      //   studentId/cardType/rewardAmount/status는 무검증이라, 학생이 rewardAmount 무제한 위조 문서를
+      //   직접 create → 교사 승인 시 processTaskApproval이 cash/coupon 무제한 지급(mint). 정상 경로는
+      //   submitTaskApproval CF(상한 cash 50000·coupon 20 검증, admin SDK로 생성=if false 우회).
+      allow create: if false;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
