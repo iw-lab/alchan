@@ -1907,6 +1907,88 @@ exports.parkingWithdraw = onCall(
 );
 
 // ===================================================================================
+// 🔒 파킹통장 이자 적립 (2026-07-18 batch7-c CF 이관 — ParkingAccount loadAllData 클라 runTransaction 대체)
+//   - 구 클라는 financials/parkingAccount.balance를 직접 increment(이자)했는데, financials가 owner-write라
+//     학생이 balance를 임의 위조 → parkingWithdraw로 현금화하는 무담보 민팅 통로였다(codex CRITICAL).
+//     이자 적립을 서버로 옮겨 balance write를 CF(Admin SDK) 전용으로 만들고 financials rules를 잠근다.
+//   - 충실 이관: KST 하루 1회 가드, 복리 0.1%/일(구 calculateCompoundInterest와 동일 식), balance 유한 가드.
+//   - '파킹 이율 상품 존재' 게이트는 클라가 유지(depositProducts 있을 때만 호출) — 동작 보존.
+// ===================================================================================
+exports.accrueParkingInterest = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid } = await checkAuthAndGetUserData(request);
+    const parkingRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("financials")
+      .doc("parkingAccount");
+
+    try {
+      const result = await db.runTransaction(async (transaction) => {
+        const snap = await transaction.get(parkingRef);
+        if (!snap.exists) {
+          transaction.set(parkingRef, {
+            balance: 0,
+            lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { accrued: 0, created: true };
+        }
+        const data = snap.data();
+        const nowDate = new Date();
+        const todayKst = kstStartOfDayMs(nowDate);
+        const lastMs =
+          typeof data.lastInterestDate?.toMillis === "function"
+            ? data.lastInterestDate.toMillis()
+            : null;
+        const lastKst = lastMs !== null ? kstStartOfDayMs(new Date(lastMs)) : null;
+        // 오늘 이미 적립됨(또는 미래 날짜 위조) → no-op
+        if (lastKst !== null && lastKst >= todayKst) {
+          return { accrued: 0, alreadyToday: true };
+        }
+        const daysToApply =
+          lastKst !== null
+            ? Math.floor((todayKst - lastKst) / (24 * 60 * 60 * 1000))
+            : 1;
+        if (daysToApply <= 0) return { accrued: 0 };
+
+        // balance 엄격 타입 가드(위조·increment 세탁 방지). parkingWithdraw(typeof==="number")와 대칭.
+        //   Number(data.balance) 코어시브 변환은 문자열/배열("9e12" 등)을 유한수로 세탁해
+        //   increment가 비숫자 필드를 숫자로 교체 → parkingWithdraw 통과 → 민팅(codex CRITICAL).
+        //   따라서 Number()를 쓰지 않고 원시 타입을 그대로 검사, 비숫자는 balance를 절대 건드리지 않는다.
+        const bal = data.balance;
+        if (typeof bal !== "number" || !Number.isFinite(bal) || bal < 0) {
+          transaction.update(parkingRef, {
+            lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { accrued: 0, badBalance: true };
+        }
+        // 복리 0.1%/일 (구 calculateCompoundInterest: principal*(1+rate/100)^days). 일수 안전상한.
+        const cappedDays = Math.min(daysToApply, 3650);
+        const total = bal * Math.pow(1 + 0.1 / 100, cappedDays);
+        const interest = Math.round(total - bal);
+        if (interest > 0 && Number.isFinite(interest) && interest <= 10000000000) {
+          transaction.update(parkingRef, {
+            balance: admin.firestore.FieldValue.increment(interest),
+            lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return { accrued: interest };
+        }
+        transaction.update(parkingRef, {
+          lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { accrued: 0 };
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      logger.error(`[accrueParkingInterest] Error (uid ${uid}):`, error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("aborted", error.message || "이자 적립에 실패했습니다.");
+    }
+  },
+);
+
+// ===================================================================================
 // 🔥 예적금/대출 가입 (2026-07-17 CF 이관 — ParkingAccount handleSubscribe 클라 runTransaction 대체)
 //   - 상품 정보(rate·term·min/max·name)를 클라 입력이 아닌 서버 카탈로그(bankingSettings/{classCode})에서
 //     조회해 위조 차단(0일 만기·과대 한도·임의 이율 방지). 클라는 productType·productId·amount만 신뢰.

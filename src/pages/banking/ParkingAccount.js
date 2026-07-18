@@ -1028,34 +1028,13 @@ const ParkingAccount = ({
  depositProducts.length > 0 ? depositProducts[0] : null;
 
  if (parkingRateProduct) {
- // 🔧 이자 적립을 runTransaction으로 원자화 — lastInterestDate 가드를 트랜잭션 내부에서
- // 재확인해 getDoc 캐시/중복 호출로 같은 날 이자가 2회 적립되던 race를 차단.
+ // 🔒 batch7-c: 이자 적립을 accrueParkingInterest CF로 이관(financials rules 잠금 대비).
+ //   서버가 KST 하루 1회·복리 0.1%로 balance를 적립(구 클라 로직 충실 이관). balance 직접
+ //   클라 write는 이제 rules(if false)로 차단 — 위조→parkingWithdraw 민팅 봉인. 표시는 아래 onSnapshot.
  try {
- await runTransaction(db, async (transaction) => {
- const snap = await transaction.get(parkingRef);
- if (!snap.exists()) {
- transaction.set(parkingRef, { balance: 0, lastInterestDate: serverTimestamp() });
- return;
- }
- const data = snap.data();
- const lastInterestDate = data.lastInterestDate?.toDate?.();
- if (lastInterestDate && isToday(lastInterestDate)) return; // 오늘 이미 지급됨
- const daysToApply = lastInterestDate
- ? differenceInCalendarDays(new Date(), lastInterestDate)
- : 1;
- if (daysToApply <= 0) return;
- const { interest } = calculateCompoundInterest(data.balance || 0, 0.1, daysToApply);
- if (interest > 0) {
- transaction.update(parkingRef, {
- balance: increment(interest),
- lastInterestDate: serverTimestamp(),
- });
- } else {
- transaction.update(parkingRef, { lastInterestDate: serverTimestamp() });
- }
- });
+ await httpsCallable(functions, "accrueParkingInterest")();
  } catch (e) {
- logger.error("[ParkingAccount] 이자 적립 트랜잭션 오류:", e);
+ logger.error("[ParkingAccount] 이자 적립(CF) 오류:", e);
  }
  }
 

@@ -249,7 +249,10 @@ service cloud.firestore {
         //    Admin SDK로 rules 우회)가 정식 경로라 회귀 없음. GroupPurchase 클라 폴백(GroupPurchase.js:292)은
         //    이제 항상 403 → outer catch "관리자 문의"로 우아하게 강등(CF가 트랜잭션 지급이라 폴백은 잉여·P4 정리 대상).
         //    2026-07-10 무기록 아이템 이동/증발 재발 방지도 겸함.
-        allow write: if false;
+        //    ⚠️ delete는 isAdmin() 허용 — StudentManager.js 학생 일괄삭제가 서브컬렉션을 클라 deleteDoc으로
+        //       정리하므로(관리자 실행), 학생 위조(create/update)만 차단하고 관리자 delete는 유지(자산 감소=무해).
+        allow create, update: if false;
+        allow delete: if isAdmin();
       }
 
       // ========================================================
@@ -265,7 +268,14 @@ service cloud.firestore {
       // ========================================================
       match /financials/{document} {
         allow read: if isOwner(userId) || isAdminFast();
-        allow write: if isOwner(userId) || isAdmin();
+        // 🔒 batch7-c (2026-07-18 codex CRITICAL): financials write를 CF 전용(if false)으로 잠금.
+        //    구 `isOwner||isAdmin`은 학생이 parkingAccount.balance를 임의 위조 → parkingWithdraw CF가
+        //    저장 balance를 신뢰해 그만큼 cash를 지급(무담보 민팅)하는 통로였다. 파킹 입출금(parkingDeposit/
+        //    parkingWithdraw)·이자적립(accrueParkingInterest)이 전부 CF(Admin SDK)라 회귀 없음.
+        //    ⚠️ delete는 isAdmin() 허용 — StudentManager.js 학생 일괄삭제가 financials를 클라 deleteDoc으로
+        //       정리하므로(관리자 실행). 학생 위조(create/update)만 차단하고 관리자 delete는 유지.
+        allow create, update: if false;
+        allow delete: if isAdmin();
       }
 
       // ========================================================
