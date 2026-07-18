@@ -195,7 +195,7 @@ service cloud.firestore {
       //  ⚠️ coupons 본인 write는 아직 열림(MyAssets 기부가 클라 write) → sellCoupon으로 cash화 가능한
       //     민팅 벡터 잔존 = batch7-b(기부 CF 이관 후 coupons 잠금)에서 봉인.
       allow update: if (isOwner(userId) &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'cash', 'classCode']) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
                         (!('coupons' in request.resource.data) || request.resource.data.coupons is number)) ||
@@ -222,7 +222,12 @@ service cloud.firestore {
       // ========================================================
       match /portfolio/{stockId} {
         allow read: if isOwner(userId) || isSameClassFast(get(/databases/$(database)/documents/users/$(userId)).data.classCode) || isAdminFast();
-        allow write: if isOwner(userId) || isAdmin();
+        // 🔒 batch7-d (2026-07-18 codex CRITICAL): 매수/매도는 buyStock/sellStock CF(Admin SDK, rules 우회) 전용.
+        //    학생이 portfolio 문서의 quantity/avgPrice를 직접 위조하면 sellStock CF가 그 수량만큼 cash를 지급
+        //    (무담보 민팅)했다. create/update를 CF 전용(if false)으로 잠가 위조 차단. delete만 유지 —
+        //    StockExchange deleteHolding(휴지조각 정리)은 자산 감소라 민팅 벡터 아님.
+        allow create, update: if false;
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       // ========================================================
