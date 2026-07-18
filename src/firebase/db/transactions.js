@@ -115,102 +115,12 @@ export const updateUserCouponsInFirestore = async (userId, amount, logMessage) =
 };
 
 // =================================================================
-// 송금
-// =================================================================
-export const transferCash = async (senderId, receiverId, amount, message = '', allowNegative = false) => {
-  if (!senderId || !receiverId || amount <= 0) {
-    throw new Error('유효하지 않은 송금 정보입니다.');
-  }
-  const senderRef = doc(db, "users", senderId);
-  const receiverRef = doc(db, "users", receiverId);
-  try {
-    await runTransaction(db, async (transaction) => {
-      const [senderSnap, receiverSnap] = await Promise.all([
-        transaction.get(senderRef),
-        transaction.get(receiverRef)
-      ]);
-      if (!senderSnap.exists()) throw new Error('송금자를 찾을 수 없습니다.');
-      if (!receiverSnap.exists()) throw new Error('수신자를 찾을 수 없습니다.');
-      const senderData = senderSnap.data();
-      if (!allowNegative && (senderData.cash || 0) < amount) {
-        throw new Error('잔액이 부족합니다.');
-      }
-      transaction.update(senderRef, { cash: increment(-amount), updatedAt: serverTimestamp() });
-      transaction.update(receiverRef, { cash: increment(amount), updatedAt: serverTimestamp() });
-    });
-
-    const senderDoc = await getUserDocument(senderId, true);
-    const receiverDoc = await getUserDocument(receiverId, true);
-    const senderName = senderDoc?.name || '알 수 없는 사용자';
-    const receiverName = receiverDoc?.name || '알 수 없는 사용자';
-    const senderLogMessage = `${receiverName}님에게 ${amount}원을 송금했습니다.${message ? ` 메시지: ''${message}''` : ''}`;
-    const receiverLogMessage = `${senderName}님으로부터 ${amount}원을 받았습니다.${message ? ` 메시지: ''${message}''` : ''}`;
-
-    await Promise.all([
-      addActivityLog(senderId, '송금', senderLogMessage),
-      addTransaction(senderId, -amount, `송금: ${receiverName}에게`),
-      addActivityLog(receiverId, '송금 수신', receiverLogMessage),
-      addTransaction(receiverId, amount, `송금 수신: ${senderName}으로부터`)
-    ]);
-
-    invalidateCache(`user_${senderId}`);
-    invalidateCache(`user_${receiverId}`);
-    return { success: true, amount };
-  } catch (error) {
-    logger.error('현금 전송 트랜잭션 실패:', error);
-    throw error;
-  }
-};
-
-// =================================================================
 // 벌금/관리자 입출금
 // =================================================================
-export const processFineTransaction = async (userId, classCode, amount, reason) => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (!userId || !classCode || amount <= 0) {
-    throw new Error("벌금 처리를 위한 정보가 유효하지 않습니다.");
-  }
-  const userRef = doc(db, "users", userId);
-  const treasuryRef = doc(db, "nationalTreasuries", classCode);
-  try {
-    await runTransaction(db, async (transaction) => {
-      const userSnap = await transaction.get(userRef);
-      if (!userSnap.exists()) throw new Error("피신고자 정보 없음");
-
-      // 학생 현금 차감
-      transaction.update(userRef, { cash: increment(-amount) });
-
-      // 관리자(국고) cash에 벌금 추가
-      const adminQuery = await getDocs(originalFirebaseQuery(
-        collection(db, "users"),
-        originalFirebaseWhere("classCode", "==", classCode),
-        originalFirebaseWhere("isAdmin", "==", true)
-      ));
-      if (!adminQuery.empty) {
-        transaction.update(adminQuery.docs[0].ref, {
-          cash: increment(amount),
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-      transaction.set(treasuryRef, {
-        otherTaxRevenue: increment(amount),
-        lastUpdated: serverTimestamp()
-      }, { merge: true });
-    });
-    invalidateCache(`user_${userId}`);
-    Promise.all([
-      addActivityLog(userId, '벌금 납부', reason),
-      addTransaction(userId, -amount, reason)
-    ]).catch(err => logger.error('[Police] 로그 기록 실패 (무시됨):', err));
-    return { success: true };
-  } catch (error) {
-    logger.error("[Police] 벌금 처리 트랜잭션 실패:", error);
-    throw error;
-  }
-};
-
+// 🔒 P4(2026-07-18): 죽은 transferCash·processFineTransaction 제거.
+//   transferCash → transferCash CF(MyAssets.js:1200 httpsCallable)로 이관됨, 클라 함수는 dead(호출처 0).
+//   processFineTransaction → processFine CF(판사/경찰 서버권한)로 이관됨, dead(호출처 0).
+//   둘 다 클라 직접 cash write(rules상 이제 차단)라 남겨두면 재import 시 보안 회귀 위험 → 삭제.
 export const adminDepositCash = async (adminId, targetUserId, amount, reason = '') => {
   try {
     const adminDoc = await getUserDocument(adminId);

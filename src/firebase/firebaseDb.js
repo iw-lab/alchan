@@ -29,8 +29,6 @@ export {
 export {
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
-  transferCash,
-  processFineTransaction,
   adminDepositCash,
   adminWithdrawCash,
   processStockSaleTransaction,

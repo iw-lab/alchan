@@ -63,8 +63,6 @@ export {
   // 현금/쿠폰/송금/벌금
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
-  transferCash,
-  processFineTransaction,
   adminDepositCash,
   adminWithdrawCash,
   // 주식/세금
