@@ -242,9 +242,14 @@ service cloud.firestore {
       match /inventory/{itemId} {
         // 읽기: 본인, 관리자, 또는 같은 학급 사용자 (아이템 선물 기능을 위해)
         allow read: if isOwner(userId) || isAdminFast() || (isSignedIn() && isSameClassFast(get(/databases/$(database)/documents/users/$(userId)).data.classCode));
-        // 쓰기: 본인, 관리자만. 선물은 giftItem CF(Admin SDK)가 서버에서 원자 처리.
-        // ⚠️ 2026-07-10 사건: 같은 학급 전체 write 허용이 "무기록 아이템 이동/증발"의 통로였음 — 재개방 금지.
-        allow write: if isOwner(userId) || isAdmin();
+        // 🔒 batch7-e (2026-07-18 codex CRITICAL): inventory write를 CF 전용(if false)으로 잠금.
+        //    구 `isOwner||isAdmin`은 학생이 inventory에 effect.type:"cash"·value:10억 아이템을 위조 삽입 후
+        //    useUserItem CF로 그 값만큼 cash를 지급받는 무담보 민팅 통로였다(codex). 구매/사용/선물/뽑기/
+        //    함께구매 지급은 전부 CF(purchaseStoreItem·useUserItem·giftItem·drawRandomItem·completeGroupPurchase,
+        //    Admin SDK로 rules 우회)가 정식 경로라 회귀 없음. GroupPurchase 클라 폴백(GroupPurchase.js:292)은
+        //    이제 항상 403 → outer catch "관리자 문의"로 우아하게 강등(CF가 트랜잭션 지급이라 폴백은 잉여·P4 정리 대상).
+        //    2026-07-10 무기록 아이템 이동/증발 재발 방지도 겸함.
+        allow write: if false;
       }
 
       // ========================================================
