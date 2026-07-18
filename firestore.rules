@@ -162,10 +162,10 @@ service cloud.firestore {
                        (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
                        isValidString(request.resource.data.name, 50));
 
-      // 수정: 본인, 같은 학급, 또는 관리자
-      // - 본인: 중요 필드(isAdmin, isSuperAdmin, classCode) 제외 모든 필드 수정 가능
-      // - 같은 학급: cash, updatedAt 필드만 수정 가능 (송금, 벌금 등)
-      // - 관리자: 모든 필드 수정 가능
+      // 수정: 본인(제한 필드), 또는 관리자
+      // - 본인: 중요 필드(아래 hasAny 금지목록: isAdmin·jobs·일일카운터·cash·classCode 등) 제외 수정 가능
+      // - 같은 학급 cash 직접 write는 batch7-a(2026-07-18)에서 제거 = 모든 cash 이동은 CF(Admin SDK) 전용
+      // - 관리자(승인 교사·슈퍼관리자): 모든 필드 수정 가능(관리도구·cash 조정·학급 이관)
       //
       // 🔒 selectedJobIds / appointedJobIds 는 본인 write 금지 (2026-07-13 FULL 교차검증):
       //    학생이 대통령 등 지정 전용 직업 id를 직접 써넣어 주급 보너스(+200만/주)와
@@ -179,15 +179,20 @@ service cloud.firestore {
       //    서버(useUserItem·drawRandomItem 등)가 이 값을 한도 판정에 그대로 신뢰하는데 학생이 스스로
       //    지울 수 있어 하루 사용/구매/뽑기 한도를 무제한 우회할 수 있었다. 클라이언트는 이 필드를
       //    읽지도 쓰지도 않는다(CF 전용 카운터) — 차단해도 정상 기능에 영향 없음(2026-07-14 실측).
+      // 🔒 batch7-a (2026-07-18 사용자 결정): cash·classCode 본인/같은학급 직접 write 봉인 = money-glitch cash 직접경로 봉인·학급전환 잠금.
+      //  ⚠️ 이것만으로는 완전봉인 아님 — coupons 자가적립→sellCoupon 현금화 우회가 batch7-b까지 잔존(아래).
+      //  - cash: 모든 cash 이동이 CF(Admin SDK)로 이관 완료(송금·벌금·합의·경매·함께구매·상점·음악·은행·렌트) →
+      //    학생 본인 및 같은학급 cash 직접 write 전면 차단(구 same-class 절 제거). 남은 클라 cash write는
+      //    admin(교사) 관리도구(handleCollectRent 월세징수·파킹 정산루프)뿐이라 isAdmin()으로 유지.
+      //  - classCode: 학생 자가 학급전환 차단(학생 고정 정책). 승인 교사/관리자(isAdmin)·슈퍼관리자만 변경 가능.
+      //    (구 설계는 classCode 자가변경=학급참여 기능이라 허용+isApproved 게이트로 완화했으나 사용자가 고정 선택.)
+      //  ⚠️ coupons 본인 write는 아직 열림(MyAssets 기부가 클라 write) → sellCoupon으로 cash화 가능한
+      //     민팅 벡터 잔존 = batch7-b(기부 CF 이관 후 coupons 잠금)에서 봉인.
       allow update: if (isOwner(userId) &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate']) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'cash', 'classCode']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
-                        (!('cash' in request.resource.data) || request.resource.data.cash is number) &&
                         (!('coupons' in request.resource.data) || request.resource.data.coupons is number)) ||
-                       (isSameClass(resource.data.classCode) &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cash', 'updatedAt', 'lastIncomingTransferAt']) &&
-                        request.resource.data.cash is number) ||
                        isAdmin();
 
       // 삭제: 본인 또는 관리자

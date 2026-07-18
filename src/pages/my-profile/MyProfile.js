@@ -467,7 +467,8 @@ export default function MyProfile() {
  <ChevronRight size={18} className="text-gray-500" />
  </button>
 
- {/* 학급 코드 변경 */}
+ {/* 🔒 batch7-a: 학급 코드 변경은 교사/관리자만(학생 고정 정책). rules에서 학생 classCode write 차단. */}
+ {(userDoc?.isAdmin || userDoc?.isTeacher || userDoc?.isSuperAdmin) && (
  <button
  onClick={() => {
  setShowClassCodeModal(true);
@@ -481,6 +482,7 @@ export default function MyProfile() {
  </span>
  <ChevronRight size={18} className="text-gray-500" />
  </button>
+ )}
 
  {/* 로그아웃 */}
  <button
