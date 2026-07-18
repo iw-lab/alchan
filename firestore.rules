@@ -122,9 +122,15 @@ service cloud.firestore {
 
     // 데이터 유효성 검증
     function isValidUserData() {
+      // 🔒 batch7-a-fix (2026-07-18 codex CRITICAL): 본인(학생) 신규 생성 시 cash·coupons는 반드시 0.
+      //    구 `>= 0`은 상한이 없어, 학생이 '자기 문서 delete → cash:10억으로 재생성'으로 update-잠금(batch7-a)을
+      //    통째로 우회해 무한 민팅할 수 있었다(allow delete: isOwner). 회원가입은 항상 cash:0·coupons:0이므로
+      //    (Login.js:626) 정상 가입엔 영향 없고, 관리자 생성은 위 isAdmin() 분기라 이 검증을 안 탄다.
+      //    ⚠️ classCode 값 자체는 create-time에 이전 값과 대조 불가(문서가 삭제됨) → cash:0 재생성으로 다른
+      //       학급 이동(자기 자산 전소)은 잔존. 완전봉인 = 본인 user 문서 self-delete 차단 + deleteAccount CF(후속).
       return request.resource.data.keys().hasAll(['name', 'classCode', 'cash', 'coupons']) &&
-             request.resource.data.cash >= 0 &&
-             request.resource.data.coupons >= 0;
+             request.resource.data.cash == 0 &&
+             request.resource.data.coupons == 0;
     }
 
     // ========================================================
