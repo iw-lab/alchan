@@ -203,8 +203,13 @@ service cloud.firestore {
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        isAdmin();
 
-      // 삭제: 본인 또는 관리자
-      allow delete: if isOwner(userId) || isAdmin();
+      // 🔒 batch7-f (2026-07-18 사용자 결정: 관리자 전용 삭제): 삭제는 isAdmin()만 허용(학생 self-delete 차단).
+      //    구 `isOwner || isAdmin`은 학생이 updateDoc/deleteDoc으로 자기 user 문서를 직접 지울 수 있어,
+      //    삭제 후 AuthContext가 fresh 문서를 auto-recreate(coupons:0·gameRewardDaily 없음)하는 순간
+      //    모든 서버 일일카운터(gameRewardDaily·dailyItemUse/Buy·dailyDrawCount)가 리셋 → grantGameReward
+      //    게임보상·아이템/뽑기 한도를 무제한 반복 파밍하는 마스터키 우회였다(codex CRITICAL, batch7-b 발견).
+      //    계정삭제는 관리자(StudentManager/SuperAdmin) 전용으로 일원화 — MyProfile 학생 자가삭제 UI는 admin-gate.
+      allow delete: if isAdmin();
 
       // ========================================================
       // 💰 거래 기록 서브컬렉션 (users/{userId}/transactions/{transactionId})

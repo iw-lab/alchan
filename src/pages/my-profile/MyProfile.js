@@ -496,7 +496,9 @@ export default function MyProfile() {
  <ChevronRight size={18} className="text-gray-500" />
  </button>
 
- {/* 계정 삭제 */}
+ {/* 🔒 batch7-f: 계정 삭제는 관리자 전용(학생 self-delete=재생성-리셋 마스터키 차단, 사용자 결정).
+     학생 계정삭제는 교사가 StudentManager로 처리. rules users delete도 isAdmin()으로 잠금됨. */}
+ {(userDoc?.isAdmin || userDoc?.isTeacher || userDoc?.isSuperAdmin) && (
  <button
  onClick={() => {
  setShowDeleteModal(true);
@@ -510,6 +512,7 @@ export default function MyProfile() {
  </span>
  <ChevronRight size={18} className="text-red-500" />
  </button>
+ )}
  </div>
  </div>
  </div>

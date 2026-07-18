@@ -640,15 +640,21 @@ const AlchanHeader = memo(
                       설정
                     </button>
 
-                    <div className="h-px bg-slate-600 my-2" />
-
-                    <button
-                      onClick={handleDeleteAccount}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                      계정 삭제
-                    </button>
+                    {/* 🔒 batch7-f: 계정 삭제는 관리자 전용(학생 self-delete=재생성-리셋 마스터키 차단, 사용자 결정).
+                        MyProfile.js와 동일 게이트. 학생 계정삭제는 교사가 StudentManager로 처리. rules users delete도 isAdmin() 잠금.
+                        (code-reviewer: 전역 헤더의 이 버튼이 MyProfile과 별개 삭제경로였고 admin-gate 누락돼 있었음.) */}
+                    {(userDoc?.isAdmin || userDoc?.isTeacher || userDoc?.isSuperAdmin) && (
+                      <>
+                        <div className="h-px bg-slate-600 my-2" />
+                        <button
+                          onClick={handleDeleteAccount}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                          계정 삭제
+                        </button>
+                      </>
+                    )}
 
                     <div className="h-px bg-slate-600 my-2" />
 
