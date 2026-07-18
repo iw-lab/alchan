@@ -1442,7 +1442,18 @@ exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
       );
       if (!senderDoc.exists) throw new Error("보내는 사람의 정보가 없습니다.");
       if (!recipientDoc.exists) throw new Error("받는 사람의 정보가 없습니다.");
-      const senderCoupons = senderDoc.data().coupons || 0;
+      // 🔒 court-lock 후속(defense-in-depth): coupons 잔액 엄격 검증 — sellCoupon/donateCoupon과 대칭.
+      //   coupons는 batch7-b로 잠겼지만, 과거 위조/레거시 비정상값(Infinity/문자열)이 남아 있으면
+      //   `< amount`를 통과해 recipient에게 증식 이전될 수 있어 유한 안전정수만 허용한다.
+      const rawSenderCoupons = senderDoc.data().coupons ?? 0;
+      if (
+        typeof rawSenderCoupons !== "number" ||
+        !Number.isFinite(rawSenderCoupons) ||
+        rawSenderCoupons < 0
+      ) {
+        throw new Error("쿠폰 잔액이 올바르지 않습니다. 관리자에게 문의하세요.");
+      }
+      const senderCoupons = rawSenderCoupons;
       if (senderCoupons < amount) throw new Error("보유한 쿠폰이 부족합니다.");
       transaction.update(senderRef, {
         coupons: admin.firestore.FieldValue.increment(-amount),
