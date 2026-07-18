@@ -46,7 +46,6 @@ export {
   updateStoreItem,
   deleteStoreItem,
   addItemToInventory,
-  purchaseItemTransaction,
   getUserInventory,
   updateUserInventoryItemQuantity,
   addMarketListing,

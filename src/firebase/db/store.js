@@ -24,7 +24,6 @@ import {
   invalidateCachePattern,
 } from "../firebaseUtils";
 import { addActivityLog } from "./users";
-import { getGovernmentSettings } from "./settings";
 import { logger } from '../../utils/logger';
 
 // =================================================================
@@ -129,127 +128,9 @@ export const addItemToInventory = async (userId, storeItemId, quantity, itemDeta
   return true;
 };
 
-export const purchaseItemTransaction = async (userId, storeItemId, userClassCode, quantityToPurchase = 1, skipCashDeduction = false) => {
-  if (!db) throw new Error("[firebase.js] Firestore가 초기화되지 않았습니다.");
-  if (!userId || !storeItemId || !userClassCode || typeof quantityToPurchase !== "number" || quantityToPurchase <= 0) {
-    throw new Error("[firebase.js] 사용자 ID, 아이템 ID, 학급 코드 또는 구매 수량이 유효하지 않습니다.");
-  }
-  invalidateCache(`user_${userId}`);
-  const storeItemRef = doc(db, "storeItems", storeItemId);
-  const userRef = doc(db, "users", userId);
-  const nationalTreasuryRef = doc(db, "nationalTreasuries", userClassCode);
-
-  let totalItemPrice = 0;
-  let vatAmount = 0;
-  let finalPriceWithVAT = 0;
-  let autoRestockOccurred = false;
-  let purchasedItemName = "알 수 없는 아이템";
-
-  try {
-    const governmentSettings = await getGovernmentSettings(userClassCode);
-    let itemStoreVATRate = 0.1;
-    if (governmentSettings?.taxSettings?.itemStoreVATRate !== undefined) {
-      itemStoreVATRate = governmentSettings.taxSettings.itemStoreVATRate;
-    }
-
-    const inventoryColRef = collection(db, "users", userId, "inventory");
-    const inventoryQuery = originalFirebaseQuery(inventoryColRef, originalFirebaseWhere("itemId", "==", storeItemId));
-    const inventoryQuerySnapshot = await getDocs(inventoryQuery);
-
-    await runTransaction(db, async (transaction) => {
-      const [storeItemSnap, userSnap] = await Promise.all([
-        transaction.get(storeItemRef),
-        skipCashDeduction ? Promise.resolve(null) : transaction.get(userRef),
-      ]);
-
-      if (!storeItemSnap.exists()) {
-        throw new Error(`[firebase.js] 상점 아이템 (ID: ${storeItemId})을 찾을 수 없습니다.`);
-      }
-      const storeItemData = storeItemSnap.data();
-      purchasedItemName = storeItemData.name || "알 수 없는 아이템";
-
-      let userData = null;
-      if (!skipCashDeduction && userSnap) {
-        if (!userSnap.exists()) {
-          throw new Error(`[firebase.js] 사용자 (ID: ${userId})를 찾을 수 없습니다.`);
-        }
-        userData = userSnap.data();
-      }
-
-      if (storeItemData.classCode !== userClassCode) {
-        throw new Error(`[firebase.js] 아이템 '${storeItemData.name}'(ID: ${storeItemId})은 현재 학급(${userClassCode})의 상품이 아닙니다.`);
-      }
-      if (!storeItemData.available) {
-        throw new Error(`[firebase.js] 아이템 '${storeItemData.name}'은 현재 구매할 수 없습니다.`);
-      }
-      if (storeItemData.stock < quantityToPurchase) {
-        throw new Error(`[firebase.js] 아이템 '${storeItemData.name}'의 재고가 부족합니다.`);
-      }
-
-      const itemPricePerUnit = storeItemData.price;
-      totalItemPrice = itemPricePerUnit * quantityToPurchase;
-      vatAmount = Math.round(totalItemPrice * itemStoreVATRate);
-      finalPriceWithVAT = totalItemPrice + vatAmount;
-
-      if (!skipCashDeduction && userData) {
-        if ((userData.cash || 0) < finalPriceWithVAT) {
-          throw new Error(`[firebase.js] 현금이 부족합니다. (필요: ${finalPriceWithVAT})`);
-        }
-      }
-
-      const currentStock = storeItemData.stock || 0;
-      const newStock = currentStock - quantityToPurchase;
-      let itemUpdate = { updatedAt: serverTimestamp() };
-
-      if (newStock <= 0 && storeItemData.initialStock > 0) {
-        autoRestockOccurred = true;
-        const priceIncreaseRate = storeItemData.outOfStockPriceIncreaseRate || 10;
-        const newPrice = Math.round(storeItemData.price * (1 + priceIncreaseRate / 100));
-        const restockAmount = storeItemData.initialStock || 10;
-        itemUpdate = { ...itemUpdate, stock: restockAmount, price: newPrice };
-      } else {
-        itemUpdate = { ...itemUpdate, stock: newStock };
-      }
-      transaction.update(storeItemRef, itemUpdate);
-
-      if (!skipCashDeduction && userData) {
-        transaction.update(userRef, { cash: increment(-finalPriceWithVAT), updatedAt: serverTimestamp() });
-      }
-
-      if (!inventoryQuerySnapshot.empty) {
-        const inventoryDoc = inventoryQuerySnapshot.docs[0];
-        const inventoryItemRef = doc(inventoryColRef, inventoryDoc.id);
-        transaction.update(inventoryItemRef, { quantity: increment(quantityToPurchase), updatedAt: serverTimestamp() });
-      } else {
-        const newInventoryItemRef = doc(inventoryColRef);
-        transaction.set(newInventoryItemRef, {
-          itemId: storeItemId,
-          quantity: quantityToPurchase,
-          name: storeItemData.name || "Unknown Item",
-          icon: storeItemData.icon || "\u{2753}",
-          type: storeItemData.type || "item",
-          purchasedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-      if (vatAmount > 0) {
-        transaction.set(nationalTreasuryRef, {
-          vatRevenue: increment(vatAmount),
-          lastUpdated: serverTimestamp(),
-        }, { merge: true });
-      }
-    });
-
-    const logDescription = `상점에서 ${purchasedItemName} ${quantityToPurchase}개를 ${finalPriceWithVAT}원에 구매했습니다. (부가세 ${vatAmount}원 포함)`;
-    await addActivityLog(userId, '아이템 구매', logDescription);
-    return { success: true, itemPrice: totalItemPrice, vat: vatAmount, autoRestocked: autoRestockOccurred };
-  } catch (error) {
-    logger.error(`[firebase.js] purchaseItemTransaction 오류:`, error);
-    throw error;
-  }
-};
+// 🔒 P4(2026-07-18): 죽은 purchaseItemTransaction 제거 — 상점 구매는 purchaseStoreItem CF(ItemContext.js)로
+//   이관됨, 클라 함수는 호출처 0(재export만). 클라 직접 cash/inventory write라 rules 잠금(batch7-a/e) 후
+//   재import 시 보안 회귀 위험 → 삭제. 재export도 firebase.js·db/index.js·firebaseDb.js에서 제거.
 
 export const getUserInventory = async (userId, useCache = true, tab = 'unknown') => {
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");

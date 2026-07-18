@@ -80,7 +80,6 @@ export {
   deleteStoreItem,
   // 인벤토리
   addItemToInventory,
-  purchaseItemTransaction,
   // 마켓
   addMarketListing,
   updateUserInventoryItemQuantity,
