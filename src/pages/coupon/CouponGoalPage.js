@@ -64,6 +64,7 @@ export default function CouponGoalPage() {
   const [assetsLoading, setAssetsLoading] = useState(true);
   const loadingRef = useRef(false);
   const loadGoalDataRef = useRef(null); // 🔥 loadGoalData 함수를 저장할 ref
+  const actionLockRef = useRef(false); // 🔒 쿠폰 판매/선물 이중제출(더블클릭) 방지 — CF 멱등키 부재 시 클라 1차 방어
   const [goalDonations, setGoalDonations] = useState([]);
 
   const donateCouponFunction = useMemo(
@@ -536,22 +537,24 @@ export default function CouponGoalPage() {
   };
 
   const handleSellCoupon = async () => {
+    if (actionLockRef.current) return; // 🔒 이중제출 방지
     const amount = parseInt(sellAmount, 10);
     if (isNaN(amount) || amount <= 0) {
       alert("유효한 수량을 입력해주세요.");
       return;
     }
 
-    // 🔥 낙관적 업데이트
-    if (optimisticUpdate) {
-      optimisticUpdate({
-        coupons: -amount,
-        cash: amount * couponValue,
-      });
-    }
-
-    setAssetsLoading(true);
+    actionLockRef.current = true;
+    // 🔒 lock 획득 직후 곧바로 try 진입 — 사이에서 throw 시 finally 미도달로 ref 영구잠금 방지
     try {
+      // 🔥 낙관적 업데이트 (try 안에서 — 예외 시에도 finally가 lock 해제)
+      if (optimisticUpdate) {
+        optimisticUpdate({
+          coupons: -amount,
+          cash: amount * couponValue,
+        });
+      }
+      setAssetsLoading(true);
       await sellCouponFunction({ amount });
       alert(`${amount}개 쿠폰을 판매했습니다.`);
       setShowSellCouponModal(false);
@@ -566,12 +569,21 @@ export default function CouponGoalPage() {
       }, 500);
     } catch (error) {
       alert(`판매 오류: ${error.message}`);
+      // 🔄 CF 실패 시 낙관적 업데이트 롤백(전역 userDoc 잔액 desync 방지)
+      if (optimisticUpdate) {
+        optimisticUpdate({
+          coupons: amount,
+          cash: -amount * couponValue,
+        });
+      }
     } finally {
       setAssetsLoading(false);
+      actionLockRef.current = false;
     }
   };
 
   const handleGiftCoupon = async () => {
+    if (actionLockRef.current) return; // 🔒 이중제출(더블클릭 이중선물) 방지
     logger.log("handleGiftCoupon called"); // 함수 호출 확인 로그
     const recipientUser = users.find((u) => u.id === giftRecipient);
     const amount = parseInt(giftAmount, 10);
@@ -585,44 +597,49 @@ export default function CouponGoalPage() {
       return;
     }
 
-    // 낙관적 업데이트
-    if (optimisticUpdate) {
-      optimisticUpdate({ coupons: -amount });
-    }
-
+    // ⚠️ confirm 취소 시 낙관적 차감이 남지 않도록 confirm을 낙관적 업데이트보다 먼저 확인
     if (
-      window.confirm(
+      !window.confirm(
         `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`,
       )
     ) {
-      setAssetsLoading(true);
-      try {
-        await giftCouponFunction({
-          recipientId: recipientUser.id,
-          amount,
-          message: "",
-        });
-        alert("쿠폰 선물이 완료되었습니다.");
-        setShowGiftCouponModal(false);
-        setGiftRecipient("");
-        setGiftAmount("");
+      return; // 취소 — 아직 아무 것도 차감하지 않음
+    }
 
-        // 🔥 ref를 통해 데이터 다시 로드
-        setTimeout(() => {
-          loadingRef.current = false;
-          if (loadGoalDataRef.current) {
-            loadGoalDataRef.current();
-          }
-        }, 500);
-      } catch (error) {
-        alert(`선물 오류: ${error.message}`);
-        // 롤백
-        if (optimisticUpdate) {
-          optimisticUpdate({ coupons: amount });
-        }
-      } finally {
-        setAssetsLoading(false);
+    actionLockRef.current = true;
+    // 🔒 lock 획득 직후 곧바로 try 진입 — 사이에서 throw 시 finally 미도달로 ref 영구잠금 방지
+    try {
+      // 낙관적 업데이트 (confirm 통과 후, try 안에서 — 예외 시에도 finally가 lock 해제)
+      if (optimisticUpdate) {
+        optimisticUpdate({ coupons: -amount });
       }
+      setAssetsLoading(true);
+      await giftCouponFunction({
+        recipientId: recipientUser.id,
+        amount,
+        message: "",
+      });
+      alert("쿠폰 선물이 완료되었습니다.");
+      setShowGiftCouponModal(false);
+      setGiftRecipient("");
+      setGiftAmount("");
+
+      // 🔥 ref를 통해 데이터 다시 로드
+      setTimeout(() => {
+        loadingRef.current = false;
+        if (loadGoalDataRef.current) {
+          loadGoalDataRef.current();
+        }
+      }, 500);
+    } catch (error) {
+      alert(`선물 오류: ${error.message}`);
+      // 롤백
+      if (optimisticUpdate) {
+        optimisticUpdate({ coupons: amount });
+      }
+    } finally {
+      setAssetsLoading(false);
+      actionLockRef.current = false;
     }
   };
 

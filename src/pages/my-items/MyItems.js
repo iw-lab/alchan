@@ -196,6 +196,8 @@ const MyItems = () => {
   // 선물 1건당 고정 idempotency 키 (모달 오픈 시 발급, 재시도에도 동일 키 재사용)
   const giftIdemKeyRef = useRef(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isListingToMarket, setIsListingToMarket] = useState(false); // 버튼 disabled(UX)용
+  const listingToMarketRef = useRef(false); // 🔒 실제 이중제출 가드 — 동기 ref(useState는 같은 틱 재진입 미차단)
   const [sellToMarketModal, setSellToMarketModal] = useState({
     isOpen: false,
     item: null,
@@ -326,6 +328,7 @@ const MyItems = () => {
     error: null,
   });
   const spinLockRef = useRef(false);
+  const useItemLockRef = useRef(false); // 🔒 아이템 '사용하기' 이중제출(더블클릭 이중소모) 방지
 
   const openWheelAndSpin = async (group) => {
     if (spinLockRef.current) return;
@@ -470,6 +473,7 @@ const MyItems = () => {
   };
 
   const handleConfirmUseItem = async () => {
+    if (useItemLockRef.current) return; // 🔒 이중제출(더블클릭 이중소모) 방지
     const { item: group, quantity: quantityToUse } = useItemModal;
     if (!group || !quantityToUse || quantityToUse <= 0) {
       showNotification("error", "사용할 아이템 정보가 올바르지 않습니다.");
@@ -481,10 +485,10 @@ const MyItems = () => {
       return;
     }
 
-    // 모달은 즉시 닫고, 서버 결과를 기다린 뒤 알림
-    handleCloseUseItemModal();
-
+    useItemLockRef.current = true;
     try {
+      // 모달은 즉시 닫고, 서버 결과를 기다린 뒤 알림 (try 안에서 — 예외 시에도 finally가 lock 해제)
+      handleCloseUseItemModal();
       let remainingToUse = quantityToUse;
 
       // 수량 적은 doc부터 소진 (sourceDocs는 cloud function이 만든 inventory doc 배열)
@@ -544,6 +548,8 @@ const MyItems = () => {
         "error",
         `아이템 사용 실패: ${error.message || "알 수 없는 오류"}`,
       );
+    } finally {
+      useItemLockRef.current = false;
     }
   };
 
@@ -654,12 +660,15 @@ const MyItems = () => {
     }
   };
   const handleConfirmSellToMarket = async () => {
+    if (listingToMarketRef.current) return; // 🔒 동기 ref 가드(같은 틱 재진입까지 차단)
     const { item: group, quantity, price } = sellToMarketModal;
     if (!group || !quantity || !price) {
       showNotification("error", "판매 정보가 올바르지 않습니다.");
       return;
     }
 
+    listingToMarketRef.current = true;
+    setIsListingToMarket(true); // 버튼 disabled(UX)
     try {
       // 🔥 실제 Firestore에서 문서 다시 조회
       const docIds = group.sourceDocs.map((doc) => doc.id);
@@ -797,6 +806,9 @@ const MyItems = () => {
       } else {
         showNotification("error", `시장 판매 등록 중 오류: ${error.message}`);
       }
+    } finally {
+      listingToMarketRef.current = false;
+      setIsListingToMarket(false);
     }
   };
 
@@ -1347,7 +1359,7 @@ const MyItems = () => {
               <button
                 onClick={handleConfirmSellToMarket}
                 className="button-primary sell-button"
-                disabled={isSyncing}
+                disabled={isSyncing || isListingToMarket}
               >
                 {isSyncing ? "동기화 중..." : "판매 등록"}
               </button>

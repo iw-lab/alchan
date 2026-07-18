@@ -1713,6 +1713,28 @@ const ParkingAccount = ({
  }
  };
 
+ // 🔒 만기 수령/중도 해지 이중제출(더블클릭 이중 현금이체) 방지 래퍼.
+ //   parkingSubmittingRef(동기 가드)로 CF 이중호출 차단. 내부 핸들러는 setIsProcessing을
+ //   전 경로 finally로 이미 관리하므로 래퍼는 ref만 관리(단일 해제 지점 → 데드락 없음).
+ const handleMaturityGuarded = async (product, options = {}) => {
+ if (parkingSubmittingRef.current) return;
+ parkingSubmittingRef.current = true;
+ try {
+ await handleMaturity(product, options);
+ } finally {
+ parkingSubmittingRef.current = false;
+ }
+ };
+ const handleCancelEarlyGuarded = async (product) => {
+ if (parkingSubmittingRef.current) return;
+ parkingSubmittingRef.current = true;
+ try {
+ await handleCancelEarly(product);
+ } finally {
+ parkingSubmittingRef.current = false;
+ }
+ };
+
  const handleParkingDeposit = async (amountStr) => {
  const amount = parseFloat(amountStr);
  if (isNaN(amount) || amount <= 0)
@@ -2073,8 +2095,8 @@ const ParkingAccount = ({
  subscribedProducts={userDeposits}
  availableProducts={depositProducts}
  onSubscribe={(p) => handleOpenModal(p, "deposits")}
- onCancel={handleCancelEarly}
- onMaturity={handleMaturity}
+ onCancel={handleCancelEarlyGuarded}
+ onMaturity={handleMaturityGuarded}
  isAdmin={isAdmin()}
  onAdminDelete={handleAdminDeleteSubscribedProduct}
  />
@@ -2085,8 +2107,8 @@ const ParkingAccount = ({
  subscribedProducts={userSavings}
  availableProducts={installmentProducts}
  onSubscribe={(p) => handleOpenModal(p, "savings")}
- onCancel={handleCancelEarly}
- onMaturity={handleMaturity}
+ onCancel={handleCancelEarlyGuarded}
+ onMaturity={handleMaturityGuarded}
  isAdmin={isAdmin()}
  onAdminDelete={handleAdminDeleteSubscribedProduct}
  />
@@ -2108,8 +2130,8 @@ const ParkingAccount = ({
  }
  handleOpenModal(p, "loans");
  }}
- onCancel={handleCancelEarly}
- onMaturity={handleMaturity}
+ onCancel={handleCancelEarlyGuarded}
+ onMaturity={handleMaturityGuarded}
  onLoanRepay={handleOpenLoanRepayModal}
  isAdmin={isAdmin()}
  onAdminDelete={handleAdminDeleteSubscribedProduct}
