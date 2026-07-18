@@ -1341,9 +1341,14 @@ service cloud.firestore {
     // ========================================================
     match /marketListings/{listingId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isOwner(resource.data.sellerId) || isAdmin());
-      allow delete: if isOwner(resource.data.sellerId) || isAdmin();
+      // 🔒 write는 CF 전용(if false) — 클라 marketListings write 0건 확인(전수 grep).
+      //   과거 create:if isSignedIn() + update:isOwner(sellerId)는 가짜/조작 리스팅 위조 →
+      //   cancelMarketSale이 위조 quantity를 신뢰해 인벤토리 increment 복원 = 아이템-mint 벡터
+      //   (2026-07-18 codex 발견). listUserItemForSale/buyMarketItem/cancelMarketSale/respondToOffer
+      //   CF가 admin SDK로 write(if false 우회). 위 주석 "CF가 작성, 클라이언트 읽기" 의도와 일치.
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     // ========================================================
@@ -1351,11 +1356,14 @@ service cloud.firestore {
     // ========================================================
     match /marketOffers/{offerId} {
       allow read: if isSignedIn();
-      // 본인 buyerId로만 오퍼 생성 가능
-      allow create: if isSignedIn() && request.resource.data.buyerId == request.auth.uid;
-      // 본인 오퍼이거나 판매자인 경우만 수정 가능
-      allow update: if isSignedIn() && (isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdmin());
-      allow delete: if isOwner(resource.data.buyerId) || isAdmin();
+      // 🔒 write는 CF 전용(if false) — 클라 marketOffers write 0건 확인(전수 grep).
+      //   과거 update:isOwner(buyerId)는 본인 offer의 offerPrice를 makeOffer의 create검증(offerPrice>0)
+      //   이후 음수로 조작 → respondToOffer가 totalPrice=음수 신뢰(buyerCash<음수=false 통과) →
+      //   buyer +현금·seller −현금 = 현금-mint 벡터(2026-07-18 Gemini 발견). makeOffer/respondToOffer/
+      //   buyMarketItem CF가 admin SDK로 write(if false 우회). 위 주석 "CF가 작성, 클라이언트 읽기" 의도와 일치.
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     // ========================================================

@@ -6865,11 +6865,17 @@ exports.listUserItemForSale = onCall(
     const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
     const { inventoryItemId, quantity, price } = request.data;
 
+    // 🔒 root-cause 차단: quantity/price를 strict 숫자 검증. 과거 `!quantity||quantity<=0`은
+    //   문자열("abc")을 통과시켜(NaN 비교) 손상 리스팅(quantity 비숫자) 생성 → 재고상한 우회·
+    //   판매자 인벤토리 NaN 오염 유발. 정수 양수/유한 양수만 허용.
     if (
       !inventoryItemId ||
-      !quantity ||
+      typeof quantity !== "number" ||
+      !Number.isFinite(quantity) ||
+      !Number.isInteger(quantity) ||
       quantity <= 0 ||
-      !price ||
+      typeof price !== "number" ||
+      !Number.isFinite(price) ||
       price <= 0
     ) {
       throw new HttpsError(
@@ -7625,10 +7631,23 @@ exports.makeOffer = onCall(
     const { uid, userData } = await checkAuthAndGetUserData(request);
     const { listingId, offerPrice, quantity = 1 } = request.data;
 
-    if (!listingId || !offerPrice || offerPrice <= 0) {
+    // 🔒 offerPrice/quantity 엄격검사 — 문자열/음수/Infinity/NaN/비정수 세탁 차단
+    //   (rules로 offer 클라 write를 봉인했지만 서버 money 계산 방어를 이중으로 둠).
+    if (!listingId) {
+      throw new HttpsError("invalid-argument", "판매 ID를 입력해야 합니다.");
+    }
+    if (
+      typeof offerPrice !== "number" ||
+      !Number.isFinite(offerPrice) ||
+      offerPrice <= 0 ||
+      typeof quantity !== "number" ||
+      !Number.isFinite(quantity) ||
+      !Number.isInteger(quantity) ||
+      quantity <= 0
+    ) {
       throw new HttpsError(
         "invalid-argument",
-        "유효한 제안 가격을 입력해야 합니다.",
+        "유효한 제안 가격/수량을 입력해야 합니다.",
       );
     }
 
@@ -7650,6 +7669,17 @@ exports.makeOffer = onCall(
 
       if (listingData.sellerId === uid) {
         throw new Error("자신이 판매한 아이템에는 제안할 수 없습니다.");
+      }
+
+      // 🔒 제안 수량이 리스팅 재고를 초과할 수 없음 (수락 시 offer.quantity로 인벤토리
+      //   increment하므로, 상한 없으면 아이템 mint). fail-closed: quantity가 유효한 숫자가
+      //   아니면 스킵이 아니라 즉시 거부(quantity 부재 문서에서 상한 우회 방지).
+      if (
+        typeof listingData.quantity !== "number" ||
+        !Number.isFinite(listingData.quantity) ||
+        quantity > listingData.quantity
+      ) {
+        throw new Error("제안 수량이 판매 수량을 초과할 수 없습니다.");
       }
 
       // 새 제안 생성
@@ -7759,7 +7789,37 @@ exports.respondToOffer = onCall(
             throw new Error("구매자 정보를 찾을 수 없습니다.");
           }
 
-          const totalPrice = offerData.offerPrice * offerData.quantity;
+          // 🔒 저장된 offer 값 재검증 — 과거 위조 update(음수/Infinity/비정수 offerPrice·quantity)로
+          //   남아있을 수 있는 문서를 수락 시점에 차단(음수 totalPrice → 현금 mint 방지).
+          const oPrice = offerData.offerPrice;
+          const oQty = offerData.quantity;
+          if (
+            typeof oPrice !== "number" ||
+            !Number.isFinite(oPrice) ||
+            oPrice <= 0 ||
+            typeof oQty !== "number" ||
+            !Number.isFinite(oQty) ||
+            !Number.isInteger(oQty) ||
+            oQty <= 0
+          ) {
+            throw new Error("유효하지 않은 제안(가격/수량)입니다.");
+          }
+
+          // 🔒 offer↔listing 교차검증 — 위조 offer(타 아이템/판매자 불일치·재고 초과·자기거래)로
+          //   인벤토리 대량 increment(아이템 mint)되는 것을 차단. rules 봉인의 서버측 이중방어.
+          const ld0 = listingDoc.data();
+          if (
+            ld0.itemId !== offerData.itemId ||
+            ld0.sellerId !== offerData.sellerId ||
+            offerData.buyerId === offerData.sellerId ||
+            typeof ld0.quantity !== "number" ||
+            !Number.isFinite(ld0.quantity) ||
+            oQty > ld0.quantity
+          ) {
+            throw new Error("제안과 판매 정보가 일치하지 않습니다.");
+          }
+
+          const totalPrice = oPrice * oQty;
           const buyerCash = buyerDoc.data().cash || 0;
 
           if (buyerCash < totalPrice) {
