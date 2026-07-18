@@ -1146,8 +1146,27 @@ const OmokGame = () => {
           setShowRewardSelection(true);
         } else {
           setShowWinAnimation(true);
-          if (updateData.couponAwardedTo && addCouponsToUserById) {
-            await addCouponsToUserById(user.uid, 1);
+          // 🔒 batch7-b: PvP 승리 쿠폰(+1)을 grantGameReward CF로 이관(coupons rules 잠금 대비).
+          //   구 addCouponsToUserById(self)=클라 자가 increment는 sellCoupon 현금화 통로였다.
+          //   서버가 일일한도(omok dailyLimit 5)·상한 검증. 멱등키=게임+유저(게임당 1회).
+          if (updateData.couponAwardedTo) {
+            try {
+              await httpsCallable(functions, "grantGameReward")({
+                gameType: "omok",
+                rewardType: "coupon",
+                amount: 1,
+                idempotencyKey: `omokpvp_${gameId}_${user.uid}`,
+              });
+            } catch (rewardErr) {
+              // resource-exhausted(일일한도)·already-exists(재시도 중복)는 정상 흐름 — 에러로그 제외. 승리 애니메이션은 유지.
+              const code = rewardErr?.code || "";
+              if (
+                code !== "functions/resource-exhausted" &&
+                code !== "functions/already-exists"
+              ) {
+                logger.error("[Omok PvP] 쿠폰 지급 실패:", rewardErr);
+              }
+            }
           }
         }
       }

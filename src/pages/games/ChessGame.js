@@ -871,20 +871,32 @@ const ChessGame = () => {
           const isWinner = rawData.winner === myColorInGame;
 
           try {
-            const userRef = doc(db, "users", user.uid);
-            const updates = {};
+            // 레이팅(chessRating)은 자산이 아니라 잠금 대상 아님 → 클라 write 유지.
             if (ratingDelta) {
-              updates.chessRating = increment(ratingDelta);
+              const userRef = doc(db, "users", user.uid);
+              await updateDoc(userRef, { chessRating: increment(ratingDelta) });
             }
+            // 🔒 batch7-b: 승리 쿠폰(+3)은 grantGameReward CF로 이관(coupons rules 잠금 대비).
+            //   구 클라 직접 increment(coupons)는 자가적립→sellCoupon 현금화 통로였다.
+            //   서버가 일일한도(chess dailyLimit 3)·상한을 검증. 멱등키=게임+유저(게임당 1회, 재접속·리스너 중복 방지).
             if (isWinner) {
-              updates.coupons = increment(3);
+              await httpsCallable(functions, "grantGameReward")({
+                gameType: "chess",
+                rewardType: "coupon",
+                amount: 3,
+                idempotencyKey: `chesspvp_${gameId}_${user.uid}`,
+              });
             }
-            if (Object.keys(updates).length > 0) {
-              await updateDoc(userRef, updates);
-              logger.log(`[Chess PvP] 보상 지급: rating ${ratingDelta}, coupon ${isWinner ? 3 : 0}`);
-            }
+            logger.log(`[Chess PvP] 보상 지급: rating ${ratingDelta}, coupon ${isWinner ? 3 : 0}`);
           } catch (err) {
-            logger.error("[Chess PvP] 보상 지급 실패:", err);
+            // resource-exhausted(일일한도)·already-exists(재시도 중복)는 정상 흐름 — 에러로그 제외.
+            const code = err?.code || "";
+            if (
+              code !== "functions/resource-exhausted" &&
+              code !== "functions/already-exists"
+            ) {
+              logger.error("[Chess PvP] 보상 지급 실패:", err);
+            }
           }
         }
       } else {

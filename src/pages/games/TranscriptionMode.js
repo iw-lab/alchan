@@ -2,8 +2,9 @@
 // 필사(따라쓰기) 연습 모드 — 저작권 없는 좋은 글을 그대로 따라 입력.
 // 현금/쿠폰 보상 없음(순수 연습). 정확도·타수·시간 통계만 제공.
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { doc, runTransaction, increment, arrayUnion, serverTimestamp } from "firebase/firestore";
-import { db, addActivityLog } from "../../firebase";
+import { doc, runTransaction, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
 import {
@@ -40,7 +41,7 @@ const nextBadgeCrossed = (before, after) => {
 const STAMP_MIN_ACC = 85; // 도장 획득 최소 정확도
 const COUPON_MIN_ACC = 90; // 쿠폰 지급 최소 정확도
 const COUPON_PER = 1; // 글당 쿠폰
-const DAILY_COUPON_CAP = 10; // 하루 최대 쿠폰 (필사·도장은 무제한, 쿠폰만 하루 10개까지)
+// 🔒 batch7-b: 하루 쿠폰 상한(10)은 이제 서버 grantGameReward(transcription dailyLimit)가 강제 — 클라 상수 제거.
 
 const TranscriptionMode = ({ onBack }) => {
   const { user, userDoc, updateUser } = useAuth();
@@ -71,42 +72,52 @@ const TranscriptionMode = ({ onBack }) => {
       if (!user?.uid || acc < STAMP_MIN_ACC) return outcome;
       const userRef = doc(db, "users", user.uid);
       try {
+        // 🔒 batch7-b: 쿠폰은 grantGameReward CF로 이관(coupons rules 잠금). 도장(transcriptionDone)은 클라 유지.
+        // ⚠️ 순서=쿠폰 먼저→도장 나중. 멱등키(글+유저)라 재시도해도 이중지급 없고, 일시 오류 시 도장을 안 찍어
+        //    재도전이 가능하다(구 도장-먼저 순서는 CF 일시실패 시 도장이 남아 정당한 쿠폰이 영구 손실됐다 — codex/Gemini 지적).
+        // 1) 쿠폰 지급(정확도 충족 시). 결과에 따라 도장 여부 결정.
+        if (acc >= COUPON_MIN_ACC) {
+          try {
+            await httpsCallable(functions, "grantGameReward")({
+              gameType: "transcription",
+              rewardType: "coupon",
+              amount: COUPON_PER,
+              idempotencyKey: `transcription_${passageId}_${user.uid}`,
+            });
+            outcome.coupon = COUPON_PER;
+          } catch (rewardErr) {
+            const code = rewardErr?.code || "";
+            if (code === "functions/resource-exhausted") {
+              // 오늘 일일한도 도달 — 쿠폰 없이 도장만(정상 흐름).
+            } else if (code === "functions/already-exists") {
+              // 이 글로 이미 보상받음(도장 실패 후 재시도 등) — 도장으로 진행, 쿠폰 재표시 안 함.
+            } else {
+              // 일시 오류(네트워크 등) — 도장을 찍지 말고 중단해 재도전 가능하게(멱등키로 이중지급 없음).
+              logger.error("[필사] 쿠폰 지급 일시 실패, 도장 보류:", rewardErr);
+              return outcome;
+            }
+          }
+        }
+
+        // 2) 도장(transcriptionDone) — 쿠폰 해결 후. 글당 최초 1회(파밍 차단).
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(userRef);
           if (!snap.exists()) throw new Error("user doc 없음");
           const data = snap.data();
           const done = Array.isArray(data.transcriptionDone) ? data.transcriptionDone : [];
-          if (done.includes(passageId)) return; // 이미 받은 글 → 보상 없음(파밍 차단)
+          if (done.includes(passageId)) return; // 이미 도장 → no-op
 
-          const today = new Date().toDateString();
-          const rewardDate = data.transcriptionRewardDate || "";
-          const todayCount = rewardDate === today ? data.transcriptionRewardCount || 0 : 0;
-
-          const updates = {
+          tx.update(userRef, {
             transcriptionDone: arrayUnion(passageId),
             updatedAt: serverTimestamp(),
-          };
+          });
           outcome.stamp = true;
-
-          if (acc >= COUPON_MIN_ACC && todayCount < DAILY_COUPON_CAP) {
-            updates.coupons = increment(COUPON_PER);
-            updates.transcriptionRewardDate = today;
-            updates.transcriptionRewardCount = todayCount + 1;
-            outcome.coupon = COUPON_PER;
-          }
-          tx.update(userRef, updates);
         });
 
-        if (outcome.coupon > 0) {
-          addActivityLog(user.uid, "쿠폰 획득", `필사 완료 보상: 쿠폰 ${outcome.coupon}개`).catch(() => {});
-        }
-        // 로컬 컨텍스트 갱신 (FieldValue 미사용, 표시용)
+        // 로컬 컨텍스트 갱신 (표시용, 도장만 — 쿠폰은 onSnapshot이 서버값 반영).
         if (outcome.stamp && typeof updateUser === "function") {
           const newDone = [...(userDoc?.transcriptionDone || []), passageId];
-          await updateUser({
-            transcriptionDone: newDone,
-            ...(outcome.coupon > 0 ? { coupons: (userDoc?.coupons || 0) + outcome.coupon } : {}),
-          });
+          await updateUser({ transcriptionDone: newDone });
         }
       } catch (e) {
         logger.error("[필사] 보상 처리 오류:", e);

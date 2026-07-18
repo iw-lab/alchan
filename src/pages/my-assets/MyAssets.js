@@ -12,11 +12,8 @@ import {
   db,
   doc,
   getDoc,
-  setDoc,
   serverTimestamp,
-  increment,
   writeBatch,
-  arrayUnion,
   getDocs,
   collection,
   query,
@@ -827,77 +824,23 @@ export default function MyAssets() {
     }
 
     try {
-      // 1. 사용자 쿠폰 차감 (AuthContext 사용)
-      const couponDeducted = await updateUserInAuth({
-        coupons: increment(-donationAmount),
-      });
-
-      if (!couponDeducted) {
-        throw new Error("쿠폰 차감에 실패했습니다.");
-      }
-
-      // 2. Firestore 트랜잭션으로 목표 업데이트
-      const goalDocRef = doc(db, "goals", currentGoalId);
-
-      await runTransaction(db, async (transaction) => {
-        const goalDoc = await transaction.get(goalDocRef);
-
-        if (!goalDoc.exists()) {
-          throw new Error("목표 문서를 찾을 수 없습니다.");
-        }
-
-        const firestoreDonation = {
-          userId: userId,
-          userName: userName,
-          amount: donationAmount,
-          timestamp: serverTimestamp(),
-          timestampISO: new Date().toISOString(),
-          message: memo || "",
-          classCode: currentUserClassCode,
-        };
-
-        // progress 증가 및 donations 배열에 추가
-        transaction.update(goalDocRef, {
-          progress: increment(donationAmount),
-          donations: arrayUnion(firestoreDonation),
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      // 3. donations 컬렉션에도 기록 (선택사항, 히스토리 추적용)
-      const donationRecordRef = doc(collection(db, "donations"));
-      await setDoc(donationRecordRef, {
-        userId: userId,
-        userName: userName,
+      // 🔒 batch7-b: 쿠폰 기부를 donateCoupon CF로 이관(coupons rules 잠금 대비).
+      //   구 클라 흐름(updateUserInAuth로 coupons 직접 차감 + goal 트랜잭션 + donations 기록 + addTransaction)은
+      //   coupons가 owner-write라 sellCoupon 현금화와 결합해 민팅 통로였다. 서버 단일 트랜잭션으로 대체 —
+      //   쿠폰 차감·myContribution·goal progress/donations·관리자 재원(cash) 원자 처리.
+      //   CouponGoalPage와 동일 CF·동일 goal 문서(goals/{classCode}_goal)라 두 기부 UI 동작이 통일된다.
+      await httpsCallable(functions, "donateCoupon")({
         amount: donationAmount,
-        timestamp: serverTimestamp(),
-        timestampISO: new Date().toISOString(),
         message: memo || "",
-        classCode: currentUserClassCode,
-        goalId: currentGoalId,
+        // 🔒 batch7-b(codex MEDIUM #6): 멱등키로 중복클릭/재시도 이중 기부 차단.
+        idempotencyKey:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `donate_${userId}_${Date.now()}`,
       });
 
-      // 4. 트랜잭션 기록
-      await addTransaction(
-        userId,
-        -donationAmount * couponValue,
-        `학급 목표에 ${donationAmount}쿠폰 기부`,
-      );
-
-      // 🔥 활동 로그 기록 (쿠폰 기부)
-      logActivity(db, {
-        classCode: currentUserClassCode,
-        userId: userId,
-        userName: userName,
-        type: ACTIVITY_TYPES.COUPON_DONATE,
-        description: `학급 목표에 쿠폰 ${donationAmount}개 기부`,
-        couponAmount: -donationAmount,
-        metadata: {
-          goalId: currentGoalId,
-          goalProgress: goalProgress + donationAmount,
-          message: memo || "",
-        },
-      });
+      // 🔒 batch7-b(Gemini MEDIUM): 활동로그는 donateCoupon CF가 서버에서 기록(COUPON_USE+COUPON_DONATE)한다.
+      //   구 클라 logActivity를 남겨두면 activity_logs에 기부 1건당 3줄 중복 기록됨 → 제거(CouponGoalPage와 동일하게 CF 로그만).
 
       // 🔥 5. 캐시 무효화 (모든 관련 캐시 삭제)
       const cacheKey = `goal_${currentGoalId}`;

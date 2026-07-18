@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, storage } from "../../firebase";
+import { db, storage, functions } from "../../firebase";
+import { httpsCallable } from "firebase/functions";
 import {
   collection,
   doc,
@@ -721,13 +722,34 @@ const LearningBoard = () => {
       // 댓글 수 증가
       const postRef = doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id);
       await updateDoc(postRef, { commentCount: increment(1) });
-      // 댓글 쿠폰 지급 (하루 3개 제한)
+      // 🔒 batch7-b: 댓글 쿠폰(+1, 하루 3개)을 grantGameReward CF로 이관(coupons rules 잠금 대비).
+      //   구 addCouponsToUser(self)=클라 자가 increment는 sellCoupon 현금화 통로였다.
+      //   서버가 일일한도(comment dailyLimit 3)를 진실원으로 강제 — localStorage는 UI 힌트일 뿐.
       const today = new Date().toDateString();
       const couponKey = `commentCoupon_${currentUserId}_${today}`;
       const usedCount = parseInt(localStorage.getItem(couponKey) || "0");
-      if (usedCount < 3 && addCouponsToUser) {
-        addCouponsToUser(currentUserId, 1);
-        localStorage.setItem(couponKey, String(usedCount + 1));
+      if (usedCount < 3) {
+        try {
+          await httpsCallable(functions, "grantGameReward")({
+            gameType: "comment",
+            rewardType: "coupon",
+            amount: 1,
+            idempotencyKey:
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `comment_${currentUserId}_${today}_${usedCount}`,
+          });
+          localStorage.setItem(couponKey, String(usedCount + 1));
+        } catch (rewardErr) {
+          // resource-exhausted(일일한도)·already-exists(재시도 중복)는 정상 흐름 — 에러로그 제외. 댓글은 이미 등록됨.
+          const code = rewardErr?.code || "";
+          if (
+            code !== "functions/resource-exhausted" &&
+            code !== "functions/already-exists"
+          ) {
+            logger.error("[학습게시판] 댓글 쿠폰 지급 실패:", rewardErr);
+          }
+        }
       }
       setNewComment("");
       loadComments(selectedBoard.id, selectedPost.id);

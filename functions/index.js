@@ -580,7 +580,8 @@ exports.claimDailyReward = onCall(
 //   ⚠️ 클라 보상표의 최대치와 반드시 동기화: typing=typingWords.js(10만/20),
 //      chess=ChessGame.generateRewardCards(5만/20), omok=OmokGame.generateRewardCards(최대 8999/3).
 //      어느 한쪽만 바뀌면 정상 보상이 거부되거나(상한↓) 새 취약점이 생기므로(상한↑) 함께 수정할 것.
-//   transcription: 예정 — 아직 클라 미배선(필사 쿠폰은 별도 배치에서 CF로 이관 예정).
+//   transcription: TranscriptionMode.claimReward가 이 CF로 배선됨(batch7-b, 도장은 클라·쿠폰은 CF).
+//   comment: LearningBoard 댓글 쿠폰이 이 CF로 배선됨(batch7-b, 하루 3개).
 const GAME_REWARD_CONFIG = {
   // typing 쿠폰 실제 최대 = round(20 * COUPON_REDUCTION(1/3)) = 7 (typingWords.js:639).
   //   보상표 원값 20이 아니라 감산 후 값이라 상한을 7로 둬야 조작 요청(8~20)을 막는다.
@@ -588,6 +589,9 @@ const GAME_REWARD_CONFIG = {
   chess: { maxCash: 50000, maxCoupon: 20, dailyLimit: 3 },
   omok: { maxCash: 9000, maxCoupon: 3, dailyLimit: 5 },
   transcription: { maxCash: 0, maxCoupon: 1, dailyLimit: 10 },
+  // 🔒 batch7-b: 학습게시판 댓글 쿠폰(구 LearningBoard 클라 addCouponsToUser 자가지급, 하루 3개).
+  //    coupons rules 잠금으로 클라 직접 자가적립을 막고 서버 캡(dailyLimit 3)으로 이관.
+  comment: { maxCash: 0, maxCoupon: 1, dailyLimit: 3 },
 };
 
 exports.grantGameReward = onCall(
@@ -620,7 +624,13 @@ exports.grantGameReward = onCall(
     const userRef = db.collection("users").doc(uid);
     let result;
     await db.runTransaction(async (transaction) => {
-      const keyRef = await checkIdempotent(transaction, idempotencyKey);
+      // 🔒 batch7-b(codex MEDIUM): 멱등키를 호출자 uid로 네임스페이스 — 클라가 보낸 키를 그대로 쓰면
+      //   공격자가 피해자의 결정론 키(예: chesspvp_gameId_victimUid)를 선점해 정당한 보상을 24h 차단(griefing)할 수 있다.
+      //   uid를 접두하면 키가 호출자별로 격리되어 타인 보상 선점이 불가능해진다.
+      const keyRef = await checkIdempotent(
+        transaction,
+        idempotencyKey ? `${uid}_${idempotencyKey}` : null,
+      );
 
       const userDoc = await transaction.get(userRef);
       if (!userDoc.exists) {
@@ -1141,15 +1151,15 @@ exports.donateCoupon = onCall(
   { region: "asia-northeast3" },
   async (request) => {
     const { uid, userData, classCode } = await checkAuthAndGetUserData(request);
-    const { amount, message } = request.data;
+    const { amount, message, idempotencyKey = null } = request.data || {};
     if (!classCode) {
       throw new HttpsError(
         "failed-precondition",
         "사용자에게 학급 코드가 할당되지 않았습니다. 프로필을 확인하거나 관리자에게 문의해주세요.",
       );
     }
-    // 🔒 [보안] 정수 검증(소수점 쿠폰 방지)
-    if (!Number.isInteger(amount) || amount <= 0) {
+    // 🔒 [보안] 정수 검증(소수점 쿠폰 방지) + 상한(무한 기부로 관리자 cash 폭증 방지)
+    if (!Number.isInteger(amount) || amount <= 0 || amount > 1000000) {
       throw new HttpsError(
         "invalid-argument",
         "유효한 쿠폰 수량을 입력해야 합니다.",
@@ -1168,6 +1178,11 @@ exports.donateCoupon = onCall(
 
     try {
       await db.runTransaction(async (transaction) => {
+        // 🔒 batch7-b(codex MEDIUM #6): 멱등키(uid 네임스페이스) — 중복클릭/재시도 이중 기부(쿠폰 차감·목표진행·교사cash 이중 반영) 차단.
+        const keyRef = await checkIdempotent(
+          transaction,
+          idempotencyKey ? `${uid}_${idempotencyKey}` : null,
+        );
         const refs = [userRef, goalRef, mainSettingsRef];
         if (adminRef) refs.push(adminRef);
         const docs = await transaction.getAll(...refs);
@@ -1176,7 +1191,17 @@ exports.donateCoupon = onCall(
         if (!userDoc.exists) {
           throw new Error("사용자 정보가 없습니다.");
         }
-        const currentCoupons = userDoc.data().coupons || 0;
+        // 🔒 batch7-b(codex HIGH #2): coupons 잔액 엄격 검증 — 과거 위조로 Infinity/문자열/음수가 저장돼 있으면
+        //   `< amount` 검사를 통과해 관리자 cash를 무한 지급할 수 있다. sellCoupon과 대칭으로 유한 안전정수만 허용.
+        const rawCoupons = userDoc.data().coupons ?? 0;
+        if (
+          typeof rawCoupons !== "number" ||
+          !Number.isFinite(rawCoupons) ||
+          rawCoupons < 0
+        ) {
+          throw new Error("쿠폰 잔액이 올바르지 않습니다. 관리자에게 문의하세요.");
+        }
+        const currentCoupons = rawCoupons;
         if (currentCoupons < amount) {
           throw new Error("보유한 쿠폰이 부족합니다.");
         }
@@ -1247,6 +1272,7 @@ exports.donateCoupon = onCall(
           `쿠폰 ${amount}개를 기부했습니다. 메시지: ${message || "없음"}`,
           { amount, message },
         );
+        markIdempotent(transaction, keyRef);
       });
       return { success: true, message: "쿠폰 기부가 완료되었습니다." };
     } catch (error) {
@@ -1352,7 +1378,17 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
         mainSettingsRef,
       );
       if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
-      const currentCoupons = userDoc.data().coupons || 0;
+      // 🔒 batch7-b(codex HIGH #2): coupons 잔액 엄격 검증 — 과거 위조로 Infinity/문자열/음수가 남아 있으면
+      //   `< amount`를 통과해 무한 현금화된다(rules 잠금은 향후 write만 막고 기존값은 정리 안 함). 유한 안전정수만 허용.
+      const rawCoupons = userDoc.data().coupons ?? 0;
+      if (
+        typeof rawCoupons !== "number" ||
+        !Number.isFinite(rawCoupons) ||
+        rawCoupons < 0
+      ) {
+        throw new Error("쿠폰 잔액이 올바르지 않습니다. 관리자에게 문의하세요.");
+      }
+      const currentCoupons = rawCoupons;
       if (currentCoupons < amount) throw new Error("보유한 쿠폰이 부족합니다.");
       const couponValue = settingsDoc.exists
         ? settingsDoc.data().couponValue

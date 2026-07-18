@@ -278,6 +278,11 @@ export default function CouponGoalPage() {
       const result = await donateCouponFunction({
         amount: donationAmount,
         message: memo,
+        // 🔒 batch7-b(codex MEDIUM #6): 멱등키로 중복클릭/재시도 이중 기부 차단.
+        idempotencyKey:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `donate_${userId}_${Date.now()}`,
       });
 
       // 🔥 캐시 무효화
