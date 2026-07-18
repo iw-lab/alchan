@@ -991,26 +991,41 @@ service cloud.firestore {
       // ⚖️ 법원 고소장 서브컬렉션 (classes/{classCode}/courtComplaints/{complaintId})
       match /courtComplaints/{complaintId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow create: if isSignedIn() && isSameClass(classCode);
+        // 🔒 court-lock Tier-2 방어층(2026-07-18): 고소인은 반드시 본인(request.auth.uid) — 학생이 타인을
+        //   고소인으로 위조("B가 C를 고소")하는 것 차단. 클라는 항상 complainantId=self로 생성(Court.js) = 회귀 0.
+        //   (admin은 대리 생성 가능하도록 || isAdmin() 유지.)
+        allow create: if (isSignedIn() && isSameClass(classCode)
+                          && request.resource.data.complainantId == request.auth.uid)
+                         || isAdmin();
         // 🔒 2026-07-17 배치6-b: 합의금 결과필드(settlementPaid/Amount/Date/ProcessedBy)는
         //   processCourtSettlement CF(admin SDK, rules 우회)만 기록. 클라 직접 update가 이 필드를
         //   되돌리거나 위조하지 못하게 차단(이중지급 reset 공격 방어). status 등 나머지 재판흐름
-        //   필드는 그대로 허용(court-flow 클라 의존 유지 — 전체 잠금은 batch7 court-lock).
+        //   필드는 그대로 허용(court-flow 클라 의존 유지).
+        // 🔒 court-lock Tier-2: complainantId는 생성 후 불변(클라 편집=reason/desiredResolution/defendantId뿐,
+        //   complainantId update 경로 0 — 실측). 잠가서 기존 고소의 고소인을 사후 위조(합의금 수취인 바꿔치기) 차단.
+        //   defendantId는 편집 기능(EditComplaintModal) 있어 잠그지 않음.
         allow update: if isSignedIn() && isSameClass(classCode) &&
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy']);
+            .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'complainantId']);
         allow delete: if isAdmin();
       }
 
       // ⚖️ 재판방 서브컬렉션 (classes/{classCode}/trialRooms/{roomId})
       match /trialRooms/{roomId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow create: if isSignedIn() && isSameClass(classCode);
+        // 🔒 court-lock Tier-2 방어층(2026-07-18): 재판방 생성 시 judgeId는 반드시 본인 — 학생이 남(실제 판사)을
+        //   judgeId로 지정한 방을 위조하는 것 차단. 클라는 항상 judgeId=self로 생성(Court.js handleStartTrial) = 회귀 0.
+        //   (settlement 실권한은 Tier-1에서 이미 hasJobTitle("판사")로 서버검증 — 이건 방 생성 무결성 방어층.)
+        allow create: if (isSignedIn() && isSameClass(classCode)
+                          && request.resource.data.judgeId == request.auth.uid)
+                         || isAdmin();
         // 합의금 완료 마커(settlementPaid 등)는 processTrialSettlement CF(Admin SDK)만 기록 —
         //   클라가 되돌려(settlementPaid:false) 24h 후 이중지급하던 창 차단(batch6-f, courtComplaints 패턴).
+        // 🔒 court-lock Tier-2: judgeId·complainantId·defendantId는 생성 후 불변(클라 update 경로 0 — 실측).
+        //   잠가서 기존 재판방의 판사/당사자를 사후 바꿔치기(합의금 수취인·처리자 위조)하는 것 차단.
         allow update: if isSignedIn() && isSameClass(classCode)
                          && !request.resource.data.diff(resource.data).affectedKeys()
-                              .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy']);
+                              .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'judgeId', 'complainantId', 'defendantId']);
         allow delete: if isAdmin();
 
         // 재판방 메시지 서브컬렉션
