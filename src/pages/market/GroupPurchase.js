@@ -18,7 +18,6 @@ import {
   functions,
 } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
-import { addItemToInventory } from "../../firebase/firebaseDb";
 import {
   Users,
   Plus,
@@ -254,57 +253,12 @@ export default function GroupPurchase() {
           }
         } catch (cfErr) {
           logger.error("함께구매 완료 처리(CF) 실패:", cfErr);
-          // 폴백: 인벤토리만이라도 클라이언트에서 시도 (재고/가격 갱신은 포기)
-          // ⚠️ rules상 타인 인벤토리 클라 write는 차단(2026-07-10) — 본인이 winner이거나
-          //    관리자일 때만 폴백 가능. 그 외엔 아래 catch의 "관리자 문의" 안내로 넘어간다.
-          try {
-            const canWriteWinnerInventory =
-              result.winnerId === user?.uid || isAdmin;
-            if (!canWriteWinnerInventory) {
-              throw new Error(
-                "폴백 불가: 타인 인벤토리 쓰기 권한 없음 (서버 재처리 필요)",
-              );
-            }
-            let fallbackItemId = campaign?.selectedItemId;
-            if (!fallbackItemId && campaign?.itemName && items?.length > 0) {
-              const matched = items.find((i) => i.name === campaign.itemName);
-              if (matched) fallbackItemId = matched.id;
-            }
-            if (fallbackItemId && result.winnerId) {
-              // 🎰 randomDraw면 type+추첨 메타까지 넘겨 실제 돌림판으로 보이게 (없으면 일반템 5분 취급)
-              const storeMeta =
-                items?.find((i) => i.id === fallbackItemId) || {};
-              const fallbackDetails = {
-                name: campaign.itemName,
-                icon: campaign.itemIcon || "🎁",
-                type: storeMeta.type || "item",
-              };
-              if (storeMeta.type === "randomDraw") {
-                fallbackDetails.drawSource = storeMeta.drawSource || "food";
-                fallbackDetails.loseEnabled = storeMeta.loseEnabled === true;
-                fallbackDetails.losePercent = Number(storeMeta.losePercent) || 0;
-                fallbackDetails.drawCandidates = Array.isArray(
-                  storeMeta.drawCandidates,
-                )
-                  ? storeMeta.drawCandidates
-                  : [];
-              }
-              await addItemToInventory(
-                result.winnerId,
-                fallbackItemId,
-                1,
-                fallbackDetails,
-              );
-            }
-            alert(
-              `🎉 목표 달성! ${result.winnerName}님이 아이템을 받았습니다.\n(서버 처리 일부 실패 - 관리자에게 문의)`,
-            );
-          } catch (fallbackErr) {
-            logger.error("폴백 인벤토리 지급 실패:", fallbackErr);
-            alert(
-              "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
-            );
-          }
+          // 🔒 P4(2026-07-18): 구 폴백(클라가 winner 인벤토리 직접 지급)은 inventory rules 잠금
+          //   (batch7-e, create/update if false) 후 winner 본인·관리자 포함 항상 403이라 dead-effect였다.
+          //   지급은 joinGroupPurchase/completeGroupPurchase CF(Admin SDK) 전용 — CF 실패 시 서버 재처리 안내만.
+          alert(
+            "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
+          );
         }
       }
 
