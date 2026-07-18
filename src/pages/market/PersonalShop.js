@@ -660,7 +660,10 @@ const PersonalShop = () => {
     } finally {
       setLoading(false);
     }
-  }, [userProfile]);
+    // deps는 실제 사용 필드(classCode)만 — userProfile 전체 객체를 넣으면
+    // cash/coupon 등 무관 필드 변동마다 재생성돼 상점목록 재fetch(읽기폭주). 거래 후 갱신은 명시 호출로 처리.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.classCode]);
 
   // 내 상점 로드
   const loadMyShop = useCallback(async () => {
@@ -708,7 +711,9 @@ const PersonalShop = () => {
     } catch (error) {
       logger.error("내 상점 로드 오류:", error);
     }
-  }, [currentUser, userProfile]);
+    // deps는 안정 primitive만(uid·classCode) — userProfile 전체를 넣으면 무관 필드 변동마다 재fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.uid, userProfile?.classCode]);
 
   // 상점의 상품 로드 (복합 인덱스 불필요 - 클라이언트 필터+정렬)
   const loadShopProducts = useCallback(async (shopId) => {

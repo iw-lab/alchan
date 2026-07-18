@@ -1997,11 +1997,11 @@ const StockExchange = () => {
             .catch(() => ({ exists: () => false })),
           getDocs(collection(db, "users", user.uid, "products"))
             .catch(() => ({ forEach: () => {} })),
-          userDoc?.name
+          user?.uid
             ? getDocs(
                 query(
                   collection(db, "classes", classCode, "realEstateProperties"),
-                  where("owner", "==", userDoc.name),
+                  where("owner", "==", user.uid),
                 ),
               ).catch(() => ({ docs: [] }))
             : Promise.resolve({ docs: [] }),
@@ -2040,7 +2040,7 @@ const StockExchange = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid, classCode, userDoc?.name]);
+  }, [user?.uid, classCode]);
 
   // === 계산된 값들 ===
   const portfolioStats = useMemo(() => {
