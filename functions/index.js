@@ -7386,6 +7386,14 @@ exports.buyMarketItem = onCall(
           throw new Error("자신이 판매한 아이템은 구매할 수 없습니다.");
         }
 
+        // 🔒 학급 격리 — 다른 학급의 리스팅 구매 불가(학급별 경제 분리). fail-closed.
+        if (
+          !listingData.classCode ||
+          listingData.classCode !== userData.classCode
+        ) {
+          throw new Error("다른 학급의 판매 아이템은 구매할 수 없습니다.");
+        }
+
         const buyerDoc = await transaction.get(buyerRef);
         if (!buyerDoc.exists) {
           throw new Error("구매자 정보를 찾을 수 없습니다.");
@@ -7671,6 +7679,14 @@ exports.makeOffer = onCall(
         throw new Error("자신이 판매한 아이템에는 제안할 수 없습니다.");
       }
 
+      // 🔒 학급 격리 — 다른 학급의 리스팅에는 제안 불가(학급별 경제 분리). fail-closed.
+      if (
+        !listingData.classCode ||
+        listingData.classCode !== userData.classCode
+      ) {
+        throw new Error("다른 학급의 판매 아이템에는 제안할 수 없습니다.");
+      }
+
       // 🔒 제안 수량이 리스팅 재고를 초과할 수 없음 (수락 시 offer.quantity로 인벤토리
       //   increment하므로, 상한 없으면 아이템 mint). fail-closed: quantity가 유효한 숫자가
       //   아니면 스킵이 아니라 즉시 거부(quantity 부재 문서에서 상한 우회 방지).
@@ -7817,6 +7833,16 @@ exports.respondToOffer = onCall(
             oQty > ld0.quantity
           ) {
             throw new Error("제안과 판매 정보가 일치하지 않습니다.");
+          }
+
+          // 🔒 학급 격리 — 리스팅·판매자·구매자가 모두 같은 학급이어야 함(과거 cross-class offer 무력화).
+          const buyerClassCode = buyerDoc.data()?.classCode;
+          if (
+            !ld0.classCode ||
+            ld0.classCode !== userData.classCode ||
+            buyerClassCode !== ld0.classCode
+          ) {
+            throw new Error("학급이 일치하지 않는 제안입니다.");
           }
 
           const totalPrice = oPrice * oQty;
