@@ -11,7 +11,10 @@
 //   appointedJobIds = 교사가 지정한 지정 전용 직업 (관리자만 write)
 
 // appointedOnly 플래그가 없는 구버전 직업 문서용 fallback (functions/jobUtils.js와 동일 목록)
-export const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리"];
+// 🔒 court-lock(2026-07-18, codex CRITICAL): 판사·경찰청장 추가(서버 functions/jobUtils.js와 동일 목록 유지).
+//   합의금 CF에서 cash 권한을 갖는 역할이라 self-select 시 갈취 가능 → 대통령/국무총리처럼 임명 전용으로 강제.
+//   클라 UI(Dashboard RESTRICTED_JOB_TITLES)에서도 학생 self-select 목록에서 제외됨(사용자 결정 2026-07-18).
+export const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장"];
 
 export const isAppointedOnlyJob = (job) =>
   !!job &&

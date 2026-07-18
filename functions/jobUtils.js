@@ -18,7 +18,12 @@
  */
 
 // appointedOnly 플래그가 없는 구버전 직업 문서용 fallback (클라 Dashboard.js와 동일 목록 유지)
-const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리"];
+// 🔒 court-lock(2026-07-18, codex CRITICAL): 판사·경찰청장 추가. 이 역할들은 합의금 CF
+//   (processTrialSettlement·processCourtSettlement·processSettlement)에서 cash 이동 권한을 가지는데,
+//   appointedOnly가 아니면 학생이 saveSelectedJobs로 스스로 선택→hasJobTitle 통과→피해자 자산 갈취가 가능했다.
+//   대통령/국무총리와 동일하게 '임명 전용'으로 강제 — self-select 인스턴스는 resolveStudentJobs에서 무효화되고
+//   교사가 appointedJobIds로 임명한 경우에만 유효(사용자 결정 2026-07-18).
+const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장"];
 
 const isAppointedJob = (jobData) =>
   !!jobData &&

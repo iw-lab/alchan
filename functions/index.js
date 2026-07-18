@@ -3720,6 +3720,26 @@ exports.processTrialSettlement = onCall(
       .collection("trialRooms")
       .doc(roomId);
 
+    // 🔒 court-lock(2026-07-18): 권한을 forgeable room.judgeId가 아니라 서버검증 역할로 판정.
+    //   구 코드는 트랜잭션 안에서 `uid === room.judgeId`만 확인했는데, trialRooms create가 클라 개방
+    //   (isSignedIn && isSameClass)이라 학생이 judgeId=self·complainantId=공범·defendantId=피해자로 방을
+    //   위조한 뒤 스스로 "판사"로서 이 CF를 호출→피해자 cash를 갈취할 수 있었다(임명된 판사 불필요).
+    //   processCourtSettlement와 동일하게 교사 OR 실제 임명된 판사(hasJobTitle)만 허용 —
+    //   selectedJobIds/appointedJobIds는 batch7-a에서 self-write 잠금돼 판사 역할은 서버 신뢰가능.
+    const isTeacher = hasTeacherPower(userData);
+    if (!isTeacher) {
+      const jobsSnap = await db
+        .collection("jobs")
+        .where("classCode", "==", classCode)
+        .get();
+      if (!hasJobTitle(userData, buildJobMap(jobsSnap), "판사")) {
+        throw new HttpsError(
+          "permission-denied",
+          "합의금 처리 권한은 임명된 판사 또는 관리자에게 있습니다.",
+        );
+      }
+    }
+
     try {
       await db.runTransaction(async (transaction) => {
         // 1) 읽기: 멱등키 → 재판방 → (당사자 파생 후) sender·recipient
@@ -3738,12 +3758,14 @@ exports.processTrialSettlement = onCall(
           throw new Error("이미 합의금이 지급된 재판입니다.");
         }
 
-        // 권한: 교사/관리자 OR 이 재판방의 판사(judgeId). 클라 authz 미신뢰.
-        const isTeacher = hasTeacherPower(userData);
+        // 판사(비교사)는 이 재판방에 배정된 판사 본인이어야 함(다른 방을 처리 못 하게).
+        //   임명된 판사 여부(hasJobTitle)는 트랜잭션 밖에서 이미 검증됨 — 여기선 담당 판사인지만 확인.
+        //   room.judgeId는 위조 가능하나, 위 hasJobTitle 검증으로 "실제 판사만" 통과하므로
+        //   비판사가 judgeId=self로 방을 위조해도 이 CF 진입 자체가 차단된다.
         if (!isTeacher && uid !== room.judgeId) {
           throw new HttpsError(
             "permission-denied",
-            "합의금 처리 권한은 이 재판의 판사 또는 관리자에게 있습니다.",
+            "이 재판의 담당 판사만 합의금을 처리할 수 있습니다.",
           );
         }
 
