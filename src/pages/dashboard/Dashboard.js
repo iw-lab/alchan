@@ -5,6 +5,8 @@ import React, {
  useCallback,
  useMemo,
  useRef,
+ lazy,
+ Suspense,
 } from "react";
 import { useLocation } from "react-router-dom";
 import "./Dashboard.css";
@@ -33,7 +35,21 @@ import {
 } from "../../utils/jobPermissions";
 import JobList from "../../components/JobList";
 import CommonTaskList from "../../components/CommonTaskList";
-import AdminSettingsModal from "../../components/modals/AdminSettingsModal";
+// AdminSettingsModal은 3900줄+ 대형 파일이고 관리자만 여는 모달이다. 정적 import면 학생(다수)도
+//   Dashboard 청크에서 이 코드를 전부 다운로드했다 → lazy 로드로 분리(2026-07-19 성능).
+const AdminSettingsModal = lazy(() =>
+ import("../../components/modals/AdminSettingsModal").catch(() => {
+ // ChunkLoadError 방지 — 1회 리로드 후 재시도(App.js lazyWithRetry와 동일 정책)
+ const reloaded = sessionStorage.getItem("chunk_reload");
+ if (reloaded) {
+ sessionStorage.removeItem("chunk_reload");
+ return import("../../components/modals/AdminSettingsModal");
+ }
+ sessionStorage.setItem("chunk_reload", "1");
+ window.location.reload();
+ return new Promise(() => {});
+ }),
+);
 import {
  PageContainer,
  LoadingState,
@@ -2515,6 +2531,7 @@ function Dashboard({ adminTabMode }) {
  )}
 
  {isAdmin?.() && (
+ <Suspense fallback={null}>
  <AdminSettingsModal
  isAdmin={isAdmin?.()}
  isSuperAdmin={isSuperAdmin?.()}
@@ -2565,6 +2582,7 @@ function Dashboard({ adminTabMode }) {
  handleInlineAddTask={handleInlineAddTask}
  handleInlineEditTask={handleInlineEditTask}
  />
+ </Suspense>
  )}
  </div>
  );

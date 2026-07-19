@@ -79,9 +79,17 @@ export const SectionTitle = ({
 );
 
 // ============================================
-// 로딩 상태 - null (HTML 스플래시만 사용)
+// 로딩 상태 - 인라인 스피너 (2026-07-19 수정)
+//   과거 null 스텁이라, Dashboard 등이 appLoading 토글마다 이 컴포넌트를 렌더할 때
+//   중앙정렬 컨테이너 안에 아무것도 없어 '빈 회색 박스만 깜빡'였다. 스피너+메시지로 교체.
+//   (앱 최초 로드는 index.html 스플래시가 담당하므로 중복 아님 — 이건 React 마운트 이후용.)
 // ============================================
-export const LoadingState = ({ message = "데이터를 불러오는 중..." }) => null;
+export const LoadingState = ({ message = "데이터를 불러오는 중..." }) => (
+  <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-600">
+    <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+    <p className="text-sm font-medium">{message}</p>
+  </div>
+);
 
 // ============================================
 // 에러 상태

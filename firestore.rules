@@ -54,6 +54,20 @@ service cloud.firestore {
       return isSignedIn() && getUserClassCode() == classCode;
     }
 
+    // 🏦 국고(nationalTreasuries) 통계 필드 화이트리스트 (2026-07-19 보안 강화):
+    //   국고 잔액=관리자 cash라 이 문서는 세수/수수료 '통계'만 담는다(totalAmount는 미사용 잔재).
+    //   주식/부동산/경매/아이템 거래 시 클라가 revenue 필드를 increment하므로 같은 학급 write를
+    //   완전 차단하지 못하지만, 임의 필드 주입은 막기 위해 이 목록으로 제한한다(hasOnly).
+    // update 시 변경 허용되는 '가변 통계' 필드(생성시각 createdAt은 제외 = update 불변).
+    //   create는 이 목록 + createdAt까지 허용(아래 create 규칙에서 concat).
+    function treasuryStatKeys() {
+      return ['totalAmount', 'stockTaxRevenue', 'stockCommissionRevenue',
+              'realEstateTransactionTaxRevenue', 'vatRevenue', 'auctionTaxRevenue',
+              'propertyHoldingTaxRevenue', 'netAssetTaxRevenue', 'itemMarketTaxRevenue',
+              'incomeTaxRevenue', 'corporateTaxRevenue', 'otherTaxRevenue',
+              'lastUpdated'];
+    }
+
     // ========================================================
     // 🔥 읽기 전용 Fast 헬퍼 — Auth 커스텀 클레임 우선 단락평가로
     //    요청당 get(users/본인) 읽기 과금을 제거. 클레임 부재·불일치 시
@@ -519,8 +533,17 @@ service cloud.firestore {
     // 🏦 국고 (nationalTreasuries)
     // ========================================================
     match /nationalTreasuries/{classCode} {
-      allow read: if isSameClassFast(classCode);
-      allow write: if isAdmin();
+      allow read: if isSameClassFast(classCode) || isAdminFast();
+      // 관리자는 전체 write. 같은 학급 사용자는 통계(세수·수수료) 필드만 — 거래 시 클라가 revenue를
+      //   increment한다. 과거 하단 중복 match 블록(삭제됨)이 같은 학급에 '전체 문서' write를 열어
+      //   임의 필드 주입이 가능했던 것을 treasuryStatKeys()로 제한(2026-07-19).
+      allow create: if isAdmin() ||
+                       (isSameClass(classCode) &&
+                        request.resource.data.keys().hasOnly(treasuryStatKeys().concat(['createdAt'])));
+      allow update: if isAdmin() ||
+                       (isSameClass(classCode) &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(treasuryStatKeys()));
+      allow delete: if isAdmin();
     }
 
     // ========================================================
@@ -1110,36 +1133,16 @@ service cloud.firestore {
     // ========================================================
     // 💰 국고 (treasury) - 루트 레벨
     // ========================================================
+    // 🔒 죽은 컬렉션(클라 참조 0건, 2026-07-19 실측): 과거 same-class에 전체 문서 write를 열어둔
+    //   루트 /treasury. 국고 통계는 nationalTreasuries로 일원화됐다. write 전면 잠금(CF는 Admin SDK로 우회).
     match /treasury/{classCode} {
-      // 읽기: 같은 학급 또는 관리자
       allow read: if isSameClassFast(classCode) || isAdminFast();
-
-      // 생성: 관리자 또는 같은 학급 사용자 (초기 생성 시)
-      allow create: if isAdmin() || isSameClass(classCode);
-
-      // 수정: 관리자 또는 같은 학급 사용자 (세금 납부, 금고 입출금 시)
-      allow update: if isAdmin() || isSameClass(classCode);
-
-      // 삭제: 관리자만
-      allow delete: if isAdmin();
+      allow write: if false;
     }
 
-    // ========================================================
-    // 💰 국고 (nationalTreasuries) - 추가된 규칙
-    // ========================================================
-    match /nationalTreasuries/{classCode} {
-      // 읽기: 같은 학급 또는 관리자
-      allow read: if isSameClassFast(classCode) || isAdminFast();
-
-      // 생성: 관리자 또는 같은 학급 사용자 (초기 생성 시)
-      allow create: if isAdmin() || isSameClass(classCode);
-
-      // 수정: 관리자 또는 같은 학급 사용자 (금고 입출금 시)
-      allow update: if isAdmin() || isSameClass(classCode);
-
-      // 삭제: 관리자만
-      allow delete: if isAdmin();
-    }
+    // 🔒 nationalTreasuries 중복 match 블록 삭제(2026-07-19): 여기 있던 느슨한 규칙
+    //   (allow create/update: isAdmin() || isSameClass — 전체 문서 write)이 상단 엄격 블록을
+    //   OR로 무력화하고 있었다. 상단(통계 필드 제한)으로 일원화.
 
     // ========================================================
     // 💳 거래 기록 (transactions) - 루트 레벨
@@ -1231,8 +1234,13 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       // 수정: 본인/관리자는 전체, 같은 학급 구매자는 매출 관련 필드만
+      // 🔒 isSameClass 추가(2026-07-19): 기존엔 isSignedIn()만이라 타 학급 사용자도 매출통계 조작 가능.
+      //    구매/정산은 CF(Admin SDK)가 처리하므로 이 클라 분기는 vestigial하지만 cross-class 차단.
       allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
-                       (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalSales', 'totalTaxPaid', 'updatedAt']));
+                       (isSignedIn() &&
+                        (resource.data.get('classCode', null) == null ||
+                         isSameClass(resource.data.classCode)) &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalSales', 'totalTaxPaid', 'updatedAt']));
 
       // 삭제: 본인 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();
@@ -1288,18 +1296,12 @@ service cloud.firestore {
     // ========================================================
     // 💰 국세청 (nationalTax)
     // ========================================================
+    // 🔒 죽은 컬렉션(클라 컬렉션 참조 0건 — 사이드바 nav id 문자열뿐, 2026-07-19 실측):
+    //   과거 update가 isSignedIn()만 요구해 학급/소유 무관 로그인 사용자 누구나 payments/totalPaid write 가능했다.
+    //   국세청 통계는 nationalTreasuries로 일원화됨. write 전면 잠금(CF는 Admin SDK로 우회).
     match /nationalTax/{docId} {
-      // 읽기: 로그인한 사용자
       allow read: if isSignedIn();
-
-      // 생성: 관리자
-      allow create: if isAdmin();
-
-      // 수정: 관리자 전체 수정, 일반 사용자는 세금 납부 관련 필드만
-      allow update: if isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'totalPaid', 'lastPaidAt', 'updatedAt']));
-
-      // 삭제: 관리자만
-      allow delete: if isAdmin();
+      allow write: if false;
     }
 
     // ========================================================

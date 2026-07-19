@@ -13,7 +13,6 @@ import {
   where as originalFirebaseWhere,
   addDoc as originalFirebaseAddDoc,
   onSnapshot,
-  limit as firestoreLimit,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { logger } from '../../utils/logger';
@@ -178,8 +177,10 @@ export const getClassmates = async (classCode, forceRefresh = false, tab = 'unkn
           const incrementalQuery = originalFirebaseQuery(
             usersRef,
             originalFirebaseWhere("classCode", "==", classCode),
-            originalFirebaseWhere("updatedAt", ">", new Date(lastSync)),
-            firestoreLimit(50)
+            // 🔒 limit 제거(2026-07-19 정합성): 과거 limit(50) + 결과크기 무관 syncTime 전진이 겹쳐,
+            //   주급/세금 등 학급 전체 이벤트로 변경분이 50건 넘으면 초과분이 영구 누락됐다(대형 학급).
+            //   증분쿼리는 classCode로 학급 규모(수십명)만큼만 반환하므로 limit 불필요 — 전 변경분 동기화.
+            originalFirebaseWhere("updatedAt", ">", new Date(lastSync))
           );
           const incrementalSnap = await getDocs(incrementalQuery);
 
