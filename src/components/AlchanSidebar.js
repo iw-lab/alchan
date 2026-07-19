@@ -723,9 +723,15 @@ export default function AlchanSidebar({
   // 대통령 직업 체크 (학생만) — 대통령은 교사 지정 직업(appointedJobIds)에서만 인정.
   // 화면 표시용이며 실제 권한은 서버(functions)가 재검증한다.
   const [isPresident, setIsPresident] = useState(false);
+  // ⚡ userDoc은 매 onSnapshot마다 새 객체(cash/xp 등 아무 필드 churn)이므로 deps에 통째로 넣으면
+  //   아래 jobs getDocs가 매 상호작용마다 재실행(읽기폭주). 직업 id(appointedJobIds+selectedJobIds)가
+  //   실제로 바뀔 때만 재계산되도록 join 문자열 키로 memo 안정화 → 동일 id면 같은 배열 참조 유지.
+  const rawEffectiveJobIds = getEffectiveJobIds(userDoc);
+  const effectiveJobIdsKey = rawEffectiveJobIds.join(",");
   const effectiveJobIds = useMemo(
-    () => getEffectiveJobIds(userDoc),
-    [userDoc],
+    () => rawEffectiveJobIds,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveJobIdsKey],
   );
   useEffect(() => {
     if (isAdmin || effectiveJobIds.length === 0 || !userDoc?.classCode)

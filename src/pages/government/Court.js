@@ -402,7 +402,10 @@ const BankruptcySection = ({ refetchComplaints }) => {
  } else {
  setIsLoading(false);
  }
- }, [userDoc, classCode]);
+ // ⚡ 본문은 userDoc?.id만 사용 — userDoc 전체 dep이면 cash 등 churn마다 courtComplaints
+ //   3중조건 getDocs 재실행. id 스칼라로 좁혀 로그인/전환 시에만 1회.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [userDoc?.id, classCode]);
 
  const handleApplyForBankruptcy = async () => {
  if (

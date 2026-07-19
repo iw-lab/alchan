@@ -794,7 +794,10 @@ const PersonalShop = () => {
     } finally {
       setLoadingSales(false);
     }
-  }, [currentUser]);
+    // ⚡ 본문은 currentUser.uid만 사용 — 객체 전체 dep이면 판매내역 탭 체류 중 currentUser
+    //   churn마다 activities 2쿼리 재실행. uid로 좁혀 탭 진입 시 1회.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.uid]);
 
   // 초기 로드 - loadMyShop 먼저 실행 (classCode 자동 패치 후 loadShops 실행)
   useEffect(() => {

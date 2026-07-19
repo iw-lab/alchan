@@ -151,7 +151,11 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [userDoc]);
+    // ⚡ loadAllData는 userDoc?.isSuperAdmin만 읽고 전역 데이터(전체 교사·학급·통계)를 로드하므로
+    //   userDoc 전체를 dep에 넣으면 cash/xp 등 아무 필드 churn마다 users 컬렉션 풀스캔 4중복 재실행.
+    //   isSuperAdmin 스칼라로 좁혀 마운트 1회로 수렴(내부 loadStats 등은 안정 클로저).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDoc?.isSuperAdmin]);
 
   // 통계 로드
   const loadStats = async () => {
