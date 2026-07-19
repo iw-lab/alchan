@@ -50,6 +50,15 @@ export default function AvatarHeaderWidget({ size = 140 }) {
     <div className="px-4 pt-2 pb-1 relative group">
       <div
         onClick={() => navigate("/avatar-shop")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            navigate("/avatar-shop");
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="내 아바타 - 아바타 상점으로 이동"
         className="flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.02]"
         title="내 아바타 - 클릭하여 꾸미기"
         style={{ minHeight: size }}
@@ -59,7 +68,9 @@ export default function AvatarHeaderWidget({ size = 140 }) {
       <button
         onClick={() => setHidden(true)}
         title="위젯 숨기기"
-        className="absolute top-2 right-4 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+        aria-label="아바타 위젯 숨기기"
+        /* 모바일(터치)엔 hover가 없어 상시 노출, 데스크톱은 hover 시 강조(P6). */
+        className="absolute top-2 right-4 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center"
       >
         <X className="w-3 h-3" />
       </button>

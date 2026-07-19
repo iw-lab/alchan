@@ -519,6 +519,8 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       alert(`투표가 완료되었습니다: ${vote === "guilty" ? "유죄" : "무죄"}`);
     } catch (error) {
       logger.error("Error voting:", error);
+      // 성공 시 alert가 있으니 실패도 안내(P6, 무언 실패로 투표 반영 여부 모르는 문제).
+      alert("투표에 실패했어요. 다시 시도해 주세요.");
     }
   };
 
@@ -555,6 +557,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
     } catch (error) {
       logger.error("Error ending vote:", error);
+      alert("투표 종료에 실패했어요. 다시 시도해 주세요.");
     }
   };
 

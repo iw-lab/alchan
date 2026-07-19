@@ -271,11 +271,14 @@ const PersonalBoard = () => {
 
   const handleDeleteComment = async (postId, commentId) => {
     if (!viewBoard) return;
+    // 되돌릴 수 없는 삭제 — 글 삭제와 동일하게 확인창 + 실패 안내(P6 UX).
+    if (!window.confirm("이 댓글을 삭제할까요?")) return;
     try {
       await deleteDoc(doc(db, "classes", classCode, "personalBoards", viewBoard.ownerId, "posts", postId, "comments", commentId));
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
       logger.error("[담벼락] 댓글 삭제 오류:", e);
+      alert("삭제하지 못했습니다.");
     }
   };
 
