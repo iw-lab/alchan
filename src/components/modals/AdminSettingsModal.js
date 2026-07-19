@@ -746,6 +746,9 @@ const AdminSettingsModal = ({
         return { gross: 0, tax: 0, net: 0 };
       }
 
+      // ⚠️ 표시(미리보기) 전용 — 실제 지급 금액은 서버가 결정한다(functions/salaryUtils.js
+      //   computeSalaryAmounts = 단일 진실원). 클라는 별도 빌드라 그 모듈을 import할 수 없어
+      //   상수를 복제하나, 값을 바꿀 땐 반드시 functions/salaryUtils.js도 함께 갱신할 것(역도 동일).
       const baseSalary = 2000000;
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;

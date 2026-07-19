@@ -34,6 +34,8 @@ const {
   resolveStudentJobs,
   hasJobTitle,
 } = require("./jobUtils");
+// 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
+const { computeSalaryAmounts } = require("./salaryUtils");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -7198,10 +7200,7 @@ exports.batchPaySalaries = onCall(
         `[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`,
       );
 
-      // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령 보너스
-      const BASE_SALARY = 2000000;
-      const ADDITIONAL_SALARY = 500000;
-      const PRESIDENT_BONUS = 2000000;
+      // 급여 계산 상수·공식은 functions/salaryUtils.js(computeSalaryAmounts) 단일 진실원.
 
       // 직업 정보 로드 (대통령 보너스 적용용)
       const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
@@ -7244,18 +7243,14 @@ exports.batchPaySalaries = onCall(
           continue;
         }
 
-        const grossSalary =
-          BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
-        // 대통령 보너스는 '교사가 지정한' 직업(appointed)에서만, 중복 제거된 id 기준으로 지급.
-        // 학생이 selectedJobIds에 대통령 id를 넣거나 같은 id를 여러 번 넣어도 가산되지 않는다.
-        // scheduler-http.js와 동일 규약.
-        let bonus = 0;
-        for (const jobId of appointed) {
-          if (jobMap.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
-        }
-        const totalGross = grossSalary + bonus;
-        const tax = Math.floor(totalGross * taxRate);
-        const netSalary = totalGross - tax;
+        // 급여 계산은 단일 진실원(functions/salaryUtils.js) — 주간 스케줄러(scheduler-http.js)와
+        // 동일 함수를 공유해 드리프트(과거 국무총리 보너스 과다지급)를 원천 차단.
+        const { totalGross, tax, netSalary } = computeSalaryAmounts(
+          validJobIds.length,
+          appointed,
+          jobMap,
+          taxRate,
+        );
 
         const studentRef = db.collection("users").doc(student.id);
         batch.update(studentRef, {

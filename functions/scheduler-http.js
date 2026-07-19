@@ -29,6 +29,8 @@ const {
 
 const { payMonthlyDividends } = require("./dividendService");
 const { buildJobMap, resolveStudentJobs } = require("./jobUtils");
+// 급여 계산 단일 진실원(index.js batchPaySalaries와 공유).
+const { computeSalaryAmounts } = require("./salaryUtils");
 const {
   DEFAULT_JOBS,
   DEFAULT_STORE_ITEMS,
@@ -1983,10 +1985,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     // 학생 데이터 사전 로드 (Firestore 쿼리 최소화)
     const allStudentsSnap = await db.collection("users").where("isAdmin", "==", false).get();
 
-    // batchPaySalaries와 동일한 급여 기준
-    const BASE_SALARY = 2000000;
-    const ADDITIONAL_SALARY = 500000;
-    const PRESIDENT_BONUS = 2000000;  // 대통령 추가 주급
+    // 급여 상수·공식은 functions/salaryUtils.js(computeSalaryAmounts) 단일 진실원.
     const DEFAULT_MAX_JOBS = 5;       // 학생당 급여 계산 직업 상한 기본값(관리자 조절 가능)
     let totalPaidCount = 0;
     let totalAmount = 0;
@@ -2061,17 +2060,14 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
             continue;
           }
 
-          const grossSalary = BASE_SALARY + Math.max(0, validJobIds.length - 1) * ADDITIONAL_SALARY;
-          // 대통령 보너스는 '교사가 지정한' 직업(appointed)에서만, 중복 제거된 id 기준으로 지급.
-          // 학생이 selectedJobIds에 대통령 id를 넣거나 같은 id를 여러 번 넣어도 가산되지 않는다.
-          // functions/index.js batchPaySalaries와 동일 규약.
-          let bonus = 0;
-          for (const jobId of appointed) {
-            if (jobMap.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
-          }
-          const totalGross = grossSalary + bonus;
-          const tax = Math.floor(totalGross * taxRate);
-          const netSalary = totalGross - tax;
+          // 급여 계산은 단일 진실원(functions/salaryUtils.js) — batchPaySalaries(index.js)와
+          // 동일 함수를 공유해 드리프트(과거 국무총리 보너스 과다지급)를 원천 차단.
+          const { totalGross, tax, netSalary } = computeSalaryAmounts(
+            validJobIds.length,
+            appointed,
+            jobMap,
+            taxRate,
+          );
 
           batch.update(studentDoc.ref, {
             cash: admin.firestore.FieldValue.increment(netSalary),
