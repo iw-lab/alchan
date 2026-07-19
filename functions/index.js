@@ -194,253 +194,16 @@ exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
 exports.completeTask = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
-    const {
-      taskId,
-      jobId = null,
-      isJobTask = false,
-      cardType = null,
-      rewardAmount = null,
-    } = request.data;
-    if (!taskId) {
-      throw new HttpsError("invalid-argument", "할일 ID가 필요합니다.");
-    }
-    const userRef = db.collection("users").doc(uid);
-
-    // 🔥 보안 가드: 모든 할일은 관리자 승인 필수 - completeTask로 직접 완료 불가
+    // 🔒 completeTask 폐기(2026-07-19 코드리뷰): 모든 할일은 submitTaskApproval(서버추첨 + 관리자
+    //   승인) 경로만 사용. 과거 이 함수는 클라가 넘긴 rewardAmount를 신뢰해 cash를 즉시 mint했으나,
+    //   최상단 throw로 이미 전면 차단돼 있었다. 그 아래 미도달 죽은 코드(클라 rewardAmount 50000 캡
+    //   등)는 "throw만 지우면 되살아나는" 유지보수 함정이라 제거. 스텁은 stale 클라 호환을 위해
+    //   인증만 확인한 뒤 명시적 permission-denied를 던진다.
+    await checkAuthAndGetUserData(request);
     throw new HttpsError(
       "permission-denied",
       "모든 할일은 관리자 승인이 필요합니다. submitTaskApproval을 사용하세요.",
     );
-
-    try {
-      let taskReward = 0;
-      let taskName = "";
-      let cashReward = 0;
-      let couponReward = 0;
-      let updatedCash = 0;
-      let updatedCoupons = 0;
-
-      if (isJobTask && jobId) {
-        const jobRef = db.collection("jobs").doc(jobId);
-        await db.runTransaction(async (transaction) => {
-          const jobDoc = await transaction.get(jobRef);
-          if (!jobDoc.exists) throw new Error("직업을 찾을 수 없습니다.");
-
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists)
-            throw new Error("사용자 정보를 찾을 수 없습니다.");
-
-          const jobData = jobDoc.data();
-          const jobTasks = jobData.tasks || [];
-          const taskIndex = jobTasks.findIndex((t) => t.id === taskId);
-          if (taskIndex === -1)
-            throw new Error("직업 할일을 찾을 수 없습니다.");
-
-          const task = jobTasks[taskIndex];
-          taskName = task.name;
-
-          // 🔥 보안: rewardAmount 서버 검증 (카드 선택 랜덤 보상 범위 기준)
-          if (rewardAmount !== null && rewardAmount !== undefined) {
-            const maxReward = cardType === "cash" ? 50000 : 20; // 랜덤 보상 최대값
-            if (
-              typeof rewardAmount !== "number" ||
-              rewardAmount < 0 ||
-              rewardAmount > maxReward
-            ) {
-              throw new Error(
-                `유효하지 않은 보상 금액입니다. (최대: ${maxReward})`,
-              );
-            }
-          }
-
-          // 사용자별 진행 상황 확인 (개인별 클릭 횟수)
-          const userData = userDoc.data();
-          const completedJobTasks = userData.completedJobTasks || {};
-          const jobTaskKey = `${jobId}_${taskId}`;
-          const currentClicks = completedJobTasks[jobTaskKey] || 0;
-
-          if (currentClicks >= task.maxClicks) {
-            throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
-          }
-
-          // 🔥 현재 현금과 쿠폰 값 가져오기
-          const currentCash = userData.cash || 0;
-          const currentCoupons = userData.coupons || 0;
-
-          // 사용자 문서 업데이트 (개인별 클릭 횟수)
-          const updateData = {
-            [`completedJobTasks.${jobTaskKey}`]:
-              admin.firestore.FieldValue.increment(1),
-          };
-
-          // 카드 선택 보상 적용
-          if (cardType && rewardAmount) {
-            if (cardType === "cash") {
-              cashReward = rewardAmount;
-              updateData.cash =
-                admin.firestore.FieldValue.increment(cashReward);
-              updatedCash = currentCash + cashReward; // 🔥 최종 값 계산
-              updatedCoupons = currentCoupons; // 쿠폰은 변하지 않음
-            } else if (cardType === "coupon") {
-              couponReward = rewardAmount;
-              updateData.coupons =
-                admin.firestore.FieldValue.increment(couponReward);
-              updatedCash = currentCash; // 현금은 변하지 않음
-              updatedCoupons = currentCoupons + couponReward; // 🔥 최종 값 계산
-            }
-          } else {
-            updatedCash = currentCash;
-            updatedCoupons = currentCoupons;
-          }
-
-          transaction.update(userRef, updateData);
-        });
-      } else {
-        // 🔥 공통 할일도 랜덤 보상 적용
-        const commonTaskRef = db.collection("commonTasks").doc(taskId);
-        await db.runTransaction(async (transaction) => {
-          const commonTaskDoc = await transaction.get(commonTaskRef);
-          if (!commonTaskDoc.exists)
-            throw new Error("공통 할일을 찾을 수 없습니다.");
-          const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists)
-            throw new Error("사용자 정보를 찾을 수 없습니다.");
-          const taskData = commonTaskDoc.data();
-          taskName = taskData.name;
-          const userData = userDoc.data();
-          const completedTasks = userData.completedTasks || {};
-          const currentClicks = completedTasks[taskId] || 0;
-          if (currentClicks >= taskData.maxClicks) {
-            throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
-          }
-
-          // 🔥 현재 현금과 쿠폰 값 가져오기
-          const currentCash = userData.cash || 0;
-          const currentCoupons = userData.coupons || 0;
-
-          const updateData = {
-            [`completedTasks.${taskId}`]:
-              admin.firestore.FieldValue.increment(1),
-          };
-
-          // 🔥 카드 선택 보상 적용 (공통 할일도 동일) + 서버 검증
-          if (rewardAmount !== null && rewardAmount !== undefined) {
-            const maxRewardCommon = cardType === "cash" ? 50000 : 20;
-            if (
-              typeof rewardAmount !== "number" ||
-              rewardAmount < 0 ||
-              rewardAmount > maxRewardCommon
-            ) {
-              throw new Error(`유효하지 않은 보상 금액입니다.`);
-            }
-          }
-          if (cardType && rewardAmount) {
-            if (cardType === "cash") {
-              cashReward = rewardAmount;
-              updateData.cash =
-                admin.firestore.FieldValue.increment(cashReward);
-              updatedCash = currentCash + cashReward; // 🔥 최종 값 계산
-              updatedCoupons = currentCoupons; // 쿠폰은 변하지 않음
-            } else if (cardType === "coupon") {
-              couponReward = rewardAmount;
-              updateData.coupons =
-                admin.firestore.FieldValue.increment(couponReward);
-              updatedCash = currentCash; // 현금은 변하지 않음
-              updatedCoupons = currentCoupons + couponReward; // 🔥 최종 값 계산
-            }
-          } else {
-            updatedCash = currentCash;
-            updatedCoupons = currentCoupons;
-          }
-
-          transaction.update(userRef, updateData);
-        });
-      }
-      // 활동 로그 기록
-      if (taskReward > 0) {
-        try {
-          await logActivity(
-            null,
-            uid,
-            LOG_TYPES.COUPON_EARN,
-            `'${taskName}' 할일 완료로 쿠폰 ${taskReward}개를 획득했습니다.`,
-            {
-              taskName,
-              reward: taskReward,
-              taskId,
-              isJobTask,
-              jobId: jobId || null,
-            },
-          );
-        } catch (logError) {
-          logger.warn(`[completeTask] 활동 로그 기록 실패:`, logError);
-        }
-      }
-      if (cashReward > 0) {
-        try {
-          await logActivity(
-            null,
-            uid,
-            LOG_TYPES.CASH_INCOME,
-            `'${taskName}' 할일 완료로 ${cashReward.toLocaleString()}원을 획득했습니다.`,
-            {
-              taskName,
-              reward: cashReward,
-              taskId,
-              isJobTask,
-              jobId: jobId || null,
-            },
-          );
-        } catch (logError) {
-          logger.warn(`[completeTask] 활동 로그 기록 실패:`, logError);
-        }
-      }
-      if (couponReward > 0) {
-        try {
-          await logActivity(
-            null,
-            uid,
-            LOG_TYPES.COUPON_EARN,
-            `'${taskName}' 할일 완료로 쿠폰 ${couponReward}개를 획득했습니다.`,
-            {
-              taskName,
-              reward: couponReward,
-              taskId,
-              isJobTask,
-              jobId: jobId || null,
-            },
-          );
-        } catch (logError) {
-          logger.warn(`[completeTask] 활동 로그 기록 실패:`, logError);
-        }
-      }
-
-      let message = `'${taskName}' 완료!`;
-      if (taskReward > 0) message += ` +${taskReward} 쿠폰!`;
-      if (cashReward > 0) message += ` +${cashReward.toLocaleString()}원!`;
-      if (couponReward > 0) message += ` +${couponReward} 쿠폰!`;
-
-      return {
-        success: true,
-        message,
-        taskName: taskName,
-        reward: taskReward + couponReward,
-        cashReward,
-        couponReward,
-        updatedCash: updatedCash, // 🔥 트랜잭션 내에서 계산된 최종 값
-        updatedCoupons: updatedCoupons, // 🔥 트랜잭션 내에서 계산된 최종 값
-      };
-    } catch (error) {
-      logger.error(
-        `[completeTask] User: ${uid}, Task: ${taskId}, Error:`,
-        error,
-      );
-      throw new HttpsError(
-        "aborted",
-        error.message || "할일 완료 처리 중 오류가 발생했습니다.",
-      );
-    }
   },
 );
 
@@ -733,19 +496,34 @@ function generateTaskReward(cardType) {
 exports.resetDailyTasksIfNewDay = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, userData } = await checkAuthAndGetUserData(request);
+    const { uid } = await checkAuthAndGetUserData(request);
     const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
     const todayStr = nowKst.toISOString().split("T")[0];
-    // 이미 오늘 리셋됨 → no-op(같은 날 반복 호출로 카운터 리셋 불가).
-    if (userData?.tasksResetDate === todayStr) {
-      return { success: true, reset: false, tasksResetDate: todayStr };
-    }
-    await db.collection("users").doc(uid).update({
-      completedTasks: {},
-      completedJobTasks: {},
-      tasksResetDate: todayStr,
+    const userRef = db.collection("users").doc(uid);
+    // 🔒 read-check-write를 트랜잭션으로 원자화(2026-07-19 codex CRITICAL): 과거엔 트랜잭션 밖에서
+    //   무조건 .update()해, 병렬 호출 시 카운터를 하루 중 여러 번 소거→maxClicks 우회→pending 무제한
+    //   양산이 가능했다(TOCTOU). 트랜잭션 내부에서 tasksResetDate를 재읽기하므로, 동시 실행분은 낙관적
+    //   동시성으로 재시도되어 tasksResetDate=오늘을 보고 no-op → 하루 경계당 리셋이 "정확히 1회"로
+    //   수렴한다(무제한 반복 리셋 우회 봉인).
+    //   ⚠️ 잔여(비-mint, 의도 동작에 가까움): tx.update가 completedTasks를 무조건 {}로 덮으므로,
+    //   진짜 자정 경계에서 그 하루의 유일한 리셋이 submitTaskApproval increment와 극히 좁게 경합하면
+    //   그 클릭이 함께 지워질 수 있다. 그러나 (1) 리셋은 하루 1회뿐이라 무제한 아님, (2) submit은 즉시
+    //   mint가 아니라 pending 생성뿐이고 실지급은 교사 승인(processTaskApproval) 필요 → mint 경로 아님.
+    //   구조적 완전봉인은 submit 트랜잭션에도 날짜검증을 넣는 후속안(문서화).
+    const reset = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const data = snap.exists ? snap.data() : {};
+      if (data?.tasksResetDate === todayStr) {
+        return false; // 이미 오늘 리셋됨 → no-op(같은 날 반복 호출로 카운터 리셋 불가)
+      }
+      tx.update(userRef, {
+        completedTasks: {},
+        completedJobTasks: {},
+        tasksResetDate: todayStr,
+      });
+      return true;
     });
-    return { success: true, reset: true, tasksResetDate: todayStr };
+    return { success: true, reset, tasksResetDate: todayStr };
   },
 );
 
@@ -824,13 +602,20 @@ exports.submitTaskApproval = onCall(
 
           const completedJobTasks = uData.completedJobTasks || {};
           const jobTaskKey = `${jobId}_${taskId}`;
-          const currentClicks = completedJobTasks[jobTaskKey] || 0;
+          const rawClicks = completedJobTasks[jobTaskKey];
 
-          // 🔒 방어심도(2026-07-19 codex): 음수/비정상 카운터는 조작 신호 — 거부. rules(update+create)로
-          //   주입은 봉인했으나 belt-and-suspenders. 정상 카운터는 0에서 서버 increment로만 증가한다.
-          if (typeof currentClicks !== "number" || currentClicks < 0) {
+          // 🔒 방어심도(2026-07-19 codex): 음수/NaN/Infinity/비정상 카운터는 조작 신호 — 거부.
+          //   rules(update+create)로 주입은 봉인했으나 belt-and-suspenders. `|| 0` 전에 raw를 검사해야
+          //   NaN(=falsy)이 0으로 캐스팅돼 가드를 우회하는 것을 막는다. undefined(신규)만 0 허용.
+          if (
+            rawClicks !== undefined &&
+            (typeof rawClicks !== "number" ||
+              !Number.isFinite(rawClicks) ||
+              rawClicks < 0)
+          ) {
             throw new Error("할일 카운터 상태가 올바르지 않습니다.");
           }
+          const currentClicks = rawClicks || 0;
           if (currentClicks >= task.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
@@ -867,12 +652,19 @@ exports.submitTaskApproval = onCall(
           // 클릭 횟수 확인
           const uData = userDoc.data();
           const completedTasks = uData.completedTasks || {};
-          const currentClicks = completedTasks[taskId] || 0;
+          const rawClicks = completedTasks[taskId];
 
-          // 🔒 방어심도(2026-07-19 codex): 음수/비정상 카운터는 조작 신호 — 거부(belt-and-suspenders).
-          if (typeof currentClicks !== "number" || currentClicks < 0) {
+          // 🔒 방어심도(2026-07-19 codex): 음수/NaN/Infinity/비정상 카운터는 조작 신호 — 거부.
+          //   `|| 0` 전에 raw 검사(NaN=falsy가 0으로 캐스팅돼 가드 우회하는 것 차단). undefined만 0 허용.
+          if (
+            rawClicks !== undefined &&
+            (typeof rawClicks !== "number" ||
+              !Number.isFinite(rawClicks) ||
+              rawClicks < 0)
+          ) {
             throw new Error("할일 카운터 상태가 올바르지 않습니다.");
           }
+          const currentClicks = rawClicks || 0;
           if (currentClicks >= taskData.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
@@ -1153,13 +945,25 @@ exports.processTaskApproval = onCall(
 exports.manualResetClassTasks = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid } = await checkAuthAndGetUserData(request, true);
+    const {
+      uid,
+      classCode: adminClassCode,
+      isSuperAdmin,
+    } = await checkAuthAndGetUserData(request, true);
     const { classCode } = request.data;
     if (!classCode)
       throw new HttpsError(
         "invalid-argument",
         "유효한 classCode가 필요합니다.",
       );
+    // 🔒 학급 범위 검사(2026-07-19 codex): 관리자 권한만 확인하면 타 학급 관리자가 임의 classCode를
+    //   넘겨 남의 학급 카운터를 반복 초기화할 수 있다. 학급 관리자는 본인 학급만, 슈퍼관리자만 예외.
+    if (!isSuperAdmin && classCode !== adminClassCode) {
+      throw new HttpsError(
+        "permission-denied",
+        "본인 학급의 할일만 리셋할 수 있습니다.",
+      );
+    }
     logger.info(
       `[수동 리셋] 관리자(UID: ${uid})가 클래스 '${classCode}'의 할일을 수동 리셋합니다.`,
     );

@@ -203,11 +203,25 @@ service cloud.firestore {
       //    게임보상=grantGameReward(chess/omok/typing/transcription/comment, 서버 일일한도·상한), 기부=donateCoupon,
       //    판매=sellCoupon, 선물=giftCoupon. 남은 클라 coupons write는 교사 CouponTransfer(isAdmin)뿐 → isAdmin()으로 유지.
       //    (학생↔학생 직접 coupons write는 원래 rules상 owner|admin만 허용이라 이미 불가였음 — 변경 없음.)
+      // 🔒 권한상승 필드 봉인 (2026-07-19 codex CRITICAL): 기존 isAdmin() 분기는 userId 스코프도
+      //    필드 제한도 전혀 없어, 승인된 일반 교사(isApproved)가 updateDoc로 자기 문서에 isSuperAdmin:true를
+      //    써넣어 슈퍼관리자로 self-escalation하거나(create 규칙은 "isSuperAdmin 자체설정 불가"로 막는데
+      //    update가 뚫렸다 = 설계 모순), 임의 학생을 관리자/슈퍼관리자로 승격·강등할 수 있었다.
+      //    이제 권한 필드(isSuperAdmin·isAdmin·isApproved·isTeacher·role)는 슈퍼관리자만 write 가능.
+      //    일반 관리자(교사)는 cash·coupons·classCode·직업 등 학급 운영 필드는 그대로 수정 가능(설계 유지).
+      //    실측(2026-07-19): 권한 필드를 쓰는 정상 클라 경로는 슈퍼관리자(SuperAdminDashboard isApproved)와
+      //    교사 가입(create 규칙)뿐 → 이 봉인은 정상 기능 무영향.
+      //    ⚠️ 잔여(문서화): classCode는 관리자 자기변경이 설계상 허용이라, 교사가 자기 classCode를 바꿔
+      //    타 학급 관리작업(예: manualResetClassTasks)에 접근하는 cross-class 경로는 남는다(교사 이동성
+      //    설계결정 필요 = 사용자 판단 대상). 위협주체가 '승인된 교사'로 한정되고 mint가 아닌 정합성/그리핑
+      //    수준이라 이번 라운드 범위 밖.
       allow update: if (isOwner(userId) &&
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
-                       isAdmin();
+                       (isAdmin() &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isSuperAdmin', 'isAdmin', 'isApproved', 'isTeacher', 'role'])) ||
+                       isSuperAdmin();
 
       // 🔒 batch7-f (2026-07-18 사용자 결정: 관리자 전용 삭제): 삭제는 isAdmin()만 허용(학생 self-delete 차단).
       //    구 `isOwner || isAdmin`은 학생이 updateDoc/deleteDoc으로 자기 user 문서를 직접 지울 수 있어,
