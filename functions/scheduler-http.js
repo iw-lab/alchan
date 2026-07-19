@@ -1900,6 +1900,11 @@ async function resetTasksForClass(classCode) {
     const batch = db.batch();
     let userCount = 0;
 
+    // 🔒 리셋과 함께 tasksResetDate(KST)도 갱신 — 안 하면 스케줄러 리셋 후에도 날짜가 어제로 남아
+    //   resetDailyTasksIfNewDay CF가 다시 리셋해 하루 할일 한도가 2번 열린다(2026-07-19 codex WARNING).
+    const nowKstReset = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const resetTodayStr = nowKstReset.toISOString().split("T")[0];
+
     // 사용자별 일일 진행 상황 리셋 (공통 과제 + 직업 과제)
     const usersQuery = db
       .collection("users")
@@ -1910,6 +1915,7 @@ async function resetTasksForClass(classCode) {
         batch.update(userDoc.ref, {
           completedTasks: {}, // 공통 과제 리셋
           completedJobTasks: {}, // 직업 과제 리셋 (개인)
+          tasksResetDate: resetTodayStr, // 날짜 갱신(2번 리셋 방지)
         });
         userCount++;
       });

@@ -826,6 +826,11 @@ exports.submitTaskApproval = onCall(
           const jobTaskKey = `${jobId}_${taskId}`;
           const currentClicks = completedJobTasks[jobTaskKey] || 0;
 
+          // 🔒 방어심도(2026-07-19 codex): 음수/비정상 카운터는 조작 신호 — 거부. rules(update+create)로
+          //   주입은 봉인했으나 belt-and-suspenders. 정상 카운터는 0에서 서버 increment로만 증가한다.
+          if (typeof currentClicks !== "number" || currentClicks < 0) {
+            throw new Error("할일 카운터 상태가 올바르지 않습니다.");
+          }
           if (currentClicks >= task.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
@@ -864,6 +869,10 @@ exports.submitTaskApproval = onCall(
           const completedTasks = uData.completedTasks || {};
           const currentClicks = completedTasks[taskId] || 0;
 
+          // 🔒 방어심도(2026-07-19 codex): 음수/비정상 카운터는 조작 신호 — 거부(belt-and-suspenders).
+          if (typeof currentClicks !== "number" || currentClicks < 0) {
+            throw new Error("할일 카운터 상태가 올바르지 않습니다.");
+          }
           if (currentClicks >= taskData.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
@@ -7184,9 +7193,13 @@ exports.batchPaySalaries = onCall(
           .doc("salarySettings")
           .get();
       }
-      const taxRate = salarySettingsDoc.exists
-        ? salarySettingsDoc.data().taxRate || 0.1
+      // 🔧 세율 전처리를 scheduler-http.js와 통일(2026-07-19 codex WARNING): 구 `|| 0.1`은
+      //    taxRate=0(무세율)을 falsy로 취급해 10%로 둔갑시켜, 같은 학급에서 수동지급(10%)과
+      //    금요일 자동지급(0%)의 실수령액이 달랐다. Number.isFinite로 0%를 정확히 존중.
+      const rawTaxRate = salarySettingsDoc.exists
+        ? salarySettingsDoc.data().taxRate
         : 0.1;
+      const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
       // 직업 개수 상한(관리자 설정) — 미설정 시 기본 5. scheduler-http.js와 동일 규약.
       const rawMaxJobs = salarySettingsDoc.exists
         ? salarySettingsDoc.data().maxJobsPerStudent
