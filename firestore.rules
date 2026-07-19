@@ -198,7 +198,7 @@ service cloud.firestore {
       //    판매=sellCoupon, 선물=giftCoupon. 남은 클라 coupons write는 교사 CouponTransfer(isAdmin)뿐 → isAdmin()으로 유지.
       //    (학생↔학생 직접 coupons write는 원래 rules상 owner|admin만 허용이라 이미 불가였음 — 변경 없음.)
       allow update: if (isOwner(userId) &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons']) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        isAdmin();

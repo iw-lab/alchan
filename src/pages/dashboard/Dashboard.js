@@ -643,13 +643,12 @@ function Dashboard({ adminTabMode }) {
  if (dailyResetCheckedRef.current === guardKey) return;
  dailyResetCheckedRef.current = guardKey;
 
- const userRef = doc(db, "users", userDoc.id);
- updateDoc(userRef, {
- completedTasks: {},
- completedJobTasks: {},
- tasksResetDate: todayStr,
- })
- .then(() => {
+ // 🔒 카운터 리셋을 CF(resetDailyTasksIfNewDay)로 이관 — 서버 KST 날짜가 실제로 바뀐 경우에만
+ //   1회 리셋(같은 날 반복 no-op). users 카운터 필드는 rules로 클라 write 잠금(carousel mint 봉인).
+ const resetFn = httpsCallable(functions, "resetDailyTasksIfNewDay");
+ resetFn()
+ .then((res) => {
+ if (res?.data?.reset) {
  setUserDoc((prev) => ({
  ...prev,
  completedTasks: {},
@@ -657,6 +656,7 @@ function Dashboard({ adminTabMode }) {
  tasksResetDate: todayStr,
  }));
  logger.log("[Dashboard] 일일 할일 카운터 자동 리셋 완료:", todayStr);
+ }
  })
  .catch((err) => {
  logger.error("[Dashboard] 일일 할일 자동 리셋 실패:", err);

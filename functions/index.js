@@ -724,6 +724,31 @@ function generateTaskReward(cardType) {
   return items[items.length - 1].amount;
 }
 
+// 🔒 일일 할일 카운터 리셋(date-gated) — 과거 클라가 users 문서에 completedTasks/
+//   completedJobTasks/tasksResetDate를 직접 write(rules 미잠금)해 카운터를 리셋하던 것을 CF로 이관.
+//   이게 열려 있으면 학생이 카운터를 언제든 리셋→submitTaskApproval 반복(maxClicks 우회)→pending
+//   무제한 양산→(대통령/위임학생 공모 승인)으로 보상 mint 가능(codex CRITICAL, 2026-07-19).
+//   서버 KST 날짜가 실제로 바뀐 경우에만 1회 리셋(같은 날 반복 호출은 no-op) → 미드데이 리셋 봉인.
+//   리셋과 함께 users 필드는 rules로 클라 write 잠금(Admin SDK만 write).
+exports.resetDailyTasksIfNewDay = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, userData } = await checkAuthAndGetUserData(request);
+    const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayStr = nowKst.toISOString().split("T")[0];
+    // 이미 오늘 리셋됨 → no-op(같은 날 반복 호출로 카운터 리셋 불가).
+    if (userData?.tasksResetDate === todayStr) {
+      return { success: true, reset: false, tasksResetDate: todayStr };
+    }
+    await db.collection("users").doc(uid).update({
+      completedTasks: {},
+      completedJobTasks: {},
+      tasksResetDate: todayStr,
+    });
+    return { success: true, reset: true, tasksResetDate: todayStr };
+  },
+);
+
 exports.submitTaskApproval = onCall(
   { region: "asia-northeast3" },
   async (request) => {
