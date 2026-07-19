@@ -765,6 +765,13 @@ exports.submitTaskApproval = onCall(
             throw new Error("사용자 정보를 찾을 수 없습니다.");
 
           const jobData = jobDoc.data();
+
+          // 🔒 학급 격리 — 타 학급 직업의 할일을 자기 학급 요청으로 위장하지 못하게(codex CRITICAL,
+          //   2026-07-19). jobs/commonTasks는 전 로그인 사용자 read 가능이라 id 열거가 쉬움.
+          if (jobData.classCode !== classCode) {
+            throw new Error("다른 학급의 직업 할일은 요청할 수 없습니다.");
+          }
+
           const jobTasks = jobData.tasks || [];
           const taskIndex = jobTasks.findIndex((t) => t.id === taskId);
           if (taskIndex === -1)
@@ -777,6 +784,17 @@ exports.submitTaskApproval = onCall(
 
           // 클릭 횟수 확인
           const uData = userDoc.data();
+
+          // 🔒 직업 소속 검증 — 본인이 실제 가진 직업(selectedJobIds+appointedJobIds, 둘 다 rules
+          //   잠금이라 위조 불가)의 할일만 요청 가능. 미배정 직업 id로 보상 청구 차단(codex CRITICAL).
+          const ownedJobIds = new Set([
+            ...toJobIdArray(uData.appointedJobIds),
+            ...toJobIdArray(uData.selectedJobIds),
+          ]);
+          if (!ownedJobIds.has(jobId)) {
+            throw new Error("본인이 가진 직업의 할일만 요청할 수 있습니다.");
+          }
+
           const completedJobTasks = uData.completedJobTasks || {};
           const jobTaskKey = `${jobId}_${taskId}`;
           const currentClicks = completedJobTasks[jobTaskKey] || 0;
@@ -805,6 +823,12 @@ exports.submitTaskApproval = onCall(
 
           const taskData = commonTaskDoc.data();
           taskName = taskData.name;
+
+          // 🔒 학급 격리 — 타 학급 공통 할일을 자기 학급 요청으로 위장 차단(codex CRITICAL,
+          //   2026-07-19). commonTasks는 classCode 필드 보유(REST 실측 확인).
+          if (taskData.classCode !== classCode) {
+            throw new Error("다른 학급의 공통 할일은 요청할 수 없습니다.");
+          }
 
           // (보상 금액은 상단에서 서버 추첨 = generateTaskReward, 클라 입력 미신뢰)
 
@@ -1006,6 +1030,14 @@ exports.processTaskApproval = onCall(
         // 같은 학급인지 확인
         if (approval.classCode !== adminClassCode) {
           throw new Error("다른 학급의 승인 요청은 처리할 수 없습니다.");
+        }
+
+        // 🔒 자기 자신의 승인 요청은 처리 불가 — 대통령/위임 학생(승인권한 보유)이 자기 pending
+        //   요청을 자가승인해 보상을 무제한 mint하는 것을 차단(codex CRITICAL, 2026-07-19).
+        //   교사·관리자는 submitTaskApproval에서 즉시 auto-approve되어 본인 pending 문서를
+        //   애초에 만들지 않으므로 이 경로에 도달하지 않는다 = 정상 흐름 무영향.
+        if (approval.studentId === uid) {
+          throw new Error("본인의 승인 요청은 처리할 수 없습니다.");
         }
 
         if (action === "approve") {
