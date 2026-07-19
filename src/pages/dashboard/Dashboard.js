@@ -1809,24 +1809,28 @@ function Dashboard({ adminTabMode }) {
  }
 
  try {
+ // 🎲 보상 금액은 서버(submitTaskApproval)가 가중랜덤으로 결정 — 클라 rewardAmount 미전송.
+ //   서버가 굴린 실제 금액을 result.data.rewardAmount로 돌려받아 표시·낙관적 업데이트에 사용.
  const result = await submitTaskApprovalFunction({
  taskId,
  jobId,
  isJobTask,
  cardType,
- rewardAmount,
  });
  if (result.data.success) {
- // 관리자 자동승인인 경우 보상도 낙관적 업데이트
- if (result.data.autoApproved) {
+ const serverReward = result.data.rewardAmount;
+ // 관리자 자동승인인 경우 보상도 낙관적 업데이트(서버가 굴린 금액 기준)
+ if (result.data.autoApproved && typeof serverReward === "number") {
  setUserDoc((prevDoc) => ({
  ...prevDoc,
  ...(cardType === "cash"
- ? { cash: (prevDoc.cash || 0) + rewardAmount }
- : { coupons: (prevDoc.coupons || 0) + rewardAmount }),
+ ? { cash: (prevDoc.cash || 0) + serverReward }
+ : { coupons: (prevDoc.coupons || 0) + serverReward }),
  }));
  }
  alert(result.data.message);
+ // 카드 뒷면에 서버가 굴린 실제 금액을 표시하도록 반환
+ return typeof serverReward === "number" ? serverReward : null;
  } else {
  throw new Error(result.data.message || "알 수 없는 오류");
  }
@@ -1834,6 +1838,7 @@ function Dashboard({ adminTabMode }) {
  logger.error("[Dashboard] 할일 승인 요청 실패:", error);
  alert(`승인 요청에 실패했습니다: ${error.message}`);
  setUserDoc(prevUserDoc);
+ return null;
  } finally {
  setIsHandlingTask(false);
  }

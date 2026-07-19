@@ -683,6 +683,45 @@ exports.grantGameReward = onCall(
 );
 
 // 🔥 할일 승인 요청 (학생이 보너스 할일 완료 시 호출)
+// 🎲 할일 보상 서버 추첨 — 클라이언트 generateJobTaskReward(src/utils/jobTaskRewards.js)의
+//   가중테이블을 서버로 이관. 보상 금액을 서버가 결정해 클라 조작(네트워크 rewardAmount 위조로
+//   cap까지 매번 청구)을 근본 차단. 확률·금액은 클라 테이블과 정확히 일치(초대박 cash 500000 유지).
+const TASK_REWARD_TABLES = {
+  cash: [
+    { amount: 500000, weight: 0.5 },
+    { amount: 300000, weight: 1 },
+    { amount: 100000, weight: 2 },
+    { amount: 50000, weight: 4 },
+    { amount: 30000, weight: 6 },
+    { amount: 20000, weight: 8 },
+    { amount: 10000, weight: 13 },
+    { amount: 5000, weight: 18 },
+    { amount: 3000, weight: 20 },
+    { amount: 1000, weight: 27.5 },
+  ],
+  coupon: [
+    { amount: 20, weight: 10 },
+    { amount: 10, weight: 20 },
+    { amount: 5, weight: 20 },
+    { amount: 3, weight: 20 },
+    { amount: 1, weight: 30 },
+  ],
+};
+
+function generateTaskReward(cardType) {
+  const items = TASK_REWARD_TABLES[cardType];
+  if (!items) {
+    throw new HttpsError("invalid-argument", "유효하지 않은 카드 타입입니다.");
+  }
+  const totalWeight = items.reduce((sum, it) => sum + it.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const it of items) {
+    r -= it.weight;
+    if (r <= 0) return it.amount;
+  }
+  return items[items.length - 1].amount;
+}
+
 exports.submitTaskApproval = onCall(
   { region: "asia-northeast3" },
   async (request) => {
@@ -692,18 +731,22 @@ exports.submitTaskApproval = onCall(
       jobId = null,
       isJobTask = false,
       cardType = null,
-      rewardAmount = null,
     } = request.data;
 
     if (!taskId) {
       throw new HttpsError("invalid-argument", "할일 ID가 필요합니다.");
     }
-    if (!cardType || !rewardAmount) {
+    if (cardType !== "cash" && cardType !== "coupon") {
       throw new HttpsError(
         "invalid-argument",
-        "카드 타입과 보상 금액이 필요합니다.",
+        "유효하지 않은 카드 타입입니다.",
       );
     }
+
+    // 🔒 보상 금액은 서버가 가중랜덤으로 결정 — 클라이언트 rewardAmount 무시(조작 차단).
+    //   과거: 클라가 generateJobTaskReward로 굴린 값을 그대로 신뢰 → 네트워크 조작 시
+    //   cardType당 cap(과거 50000)까지 매번 청구 가능. 서버 추첨으로 근본 봉인.
+    const rewardAmount = generateTaskReward(cardType);
 
     const userRef = db.collection("users").doc(uid);
 
@@ -730,17 +773,7 @@ exports.submitTaskApproval = onCall(
           const task = jobTasks[taskIndex];
           taskName = task.name;
 
-          // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
-          const maxReward = cardType === "cash" ? 50000 : 20;
-          if (
-            typeof rewardAmount !== "number" ||
-            rewardAmount < 0 ||
-            rewardAmount > maxReward
-          ) {
-            throw new Error(
-              `유효하지 않은 보상 금액입니다. (최대: ${maxReward})`,
-            );
-          }
+          // (보상 금액은 상단에서 서버 추첨 = generateTaskReward, 클라 입력 미신뢰)
 
           // 클릭 횟수 확인
           const uData = userDoc.data();
@@ -773,15 +806,7 @@ exports.submitTaskApproval = onCall(
           const taskData = commonTaskDoc.data();
           taskName = taskData.name;
 
-          // 보상 금액 서버 검증 (카드 선택 랜덤 보상 범위 기준)
-          const maxRewardApproval = cardType === "cash" ? 50000 : 20;
-          if (
-            typeof rewardAmount !== "number" ||
-            rewardAmount < 0 ||
-            rewardAmount > maxRewardApproval
-          ) {
-            throw new Error(`유효하지 않은 보상 금액입니다.`);
-          }
+          // (보상 금액은 상단에서 서버 추첨 = generateTaskReward, 클라 입력 미신뢰)
 
           // 클릭 횟수 확인
           const uData = userDoc.data();
@@ -853,6 +878,8 @@ exports.submitTaskApproval = onCall(
           success: true,
           message: `'${taskName}' 완료! ${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`} 지급됨.`,
           taskName,
+          rewardAmount,
+          cardType,
           autoApproved: true,
         };
       }
@@ -897,6 +924,8 @@ exports.submitTaskApproval = onCall(
         success: true,
         message: `'${taskName}' 승인 요청이 완료되었습니다. 관리자 승인 후 보상이 지급됩니다.`,
         taskName,
+        rewardAmount,
+        cardType,
       };
     } catch (error) {
       logger.error(
@@ -987,9 +1016,10 @@ exports.processTaskApproval = onCall(
             throw new Error("학생 정보를 찾을 수 없습니다.");
 
           // 🔒 승인 문서의 rewardAmount 상한 재검증 — 과거 클라 위조(pendingApprovals 직접
-          //   create로 rewardAmount 무제한 주입)된 문서를 승인 시점에 차단. submitTaskApproval과
-          //   동일 상한(cash 50000·coupon 20). rules로 신규 create는 봉인했으나 기존 문서 방어.
-          const maxReward = approval.cardType === "cash" ? 50000 : 20;
+          //   create로 rewardAmount 무제한 주입)된 문서를 승인 시점에 차단. 서버 추첨
+          //   테이블 최대(cash 500000=초대박·coupon 20)와 일치. rules로 신규 create는
+          //   봉인했으나 기존 문서 방어(문서는 이제 submitTaskApproval 서버추첨분만 존재).
+          const maxReward = approval.cardType === "cash" ? 500000 : 20;
           if (
             typeof approval.rewardAmount !== "number" ||
             !Number.isFinite(approval.rewardAmount) ||

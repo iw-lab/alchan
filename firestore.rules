@@ -1320,7 +1320,8 @@ service cloud.firestore {
       // 🔒 create는 CF 전용(if false) — 과거 create:if isSignedIn()은 userId/classCode만 검증하고
       //   studentId/cardType/rewardAmount/status는 무검증이라, 학생이 rewardAmount 무제한 위조 문서를
       //   직접 create → 교사 승인 시 processTaskApproval이 cash/coupon 무제한 지급(mint). 정상 경로는
-      //   submitTaskApproval CF(상한 cash 50000·coupon 20 검증, admin SDK로 생성=if false 우회).
+      //   submitTaskApproval CF(보상 금액을 서버가 가중랜덤 추첨=generateTaskReward, 클라 미신뢰,
+      //   admin SDK로 생성=if false 우회). processTaskApproval도 테이블 최대(cash 500000·coupon 20) 재검증.
       allow create: if false;
       allow update: if isAdmin();
       allow delete: if isAdmin();

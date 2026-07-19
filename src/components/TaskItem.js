@@ -2,7 +2,6 @@
 import React, { useState, useEffect, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
-import { generateJobTaskReward } from "../utils/jobTaskRewards";
 
 import { logger } from "../utils/logger";
 const TaskItem = memo(function TaskItem({
@@ -40,15 +39,16 @@ const TaskItem = memo(function TaskItem({
     }
 
     // 🔥 모든 할일에 랜덤 보상 카드 모달 표시
+    //   ⚠️ 보상 금액은 서버(submitTaskApproval)가 가중랜덤으로 결정 → 여기선 placeholder(null)만
+    //   두고, 카드 선택 후 서버가 굴린 실제 금액을 받아 카드 뒷면에 표시(클라 조작 차단).
     logger.log("[TaskItem] 카드 모달 열기");
-    const rewards = generateJobTaskReward();
-    setRewardData(rewards);
+    setRewardData({ cash: null, coupon: null });
     setSelectedCard(null);
     setIsFlipping(false);
     setShowCardModal(true);
   };
 
-  const handleCardSelect = (cardType) => {
+  const handleCardSelect = async (cardType) => {
     if (isFlipping || selectedCard) return;
 
     logger.log("[TaskItem] 카드 선택:", { cardType, taskId, jobId, isJobTask, requiresApproval: task.requiresApproval });
@@ -56,27 +56,43 @@ const TaskItem = memo(function TaskItem({
     setSelectedCard(cardType);
     setIsFlipping(true);
 
-    // 800ms 후 보상 적용
-    setTimeout(() => {
-      const reward = cardType === "cash" ? rewardData.cash : rewardData.coupon;
-      const rewardText = cardType === "cash" ? `${reward.toLocaleString()}원` : `${reward}개`;
-
-      // 🔥 모든 할일은 관리자 승인 필수: onRequestApproval 호출 (보상 미지급)
+    // 🎲 서버가 보상을 굴려 실제 금액을 반환 (클라 rewardAmount 미전송 = 조작 불가).
+    //   응답 전까지 카드 뒷면은 "..."(로딩) 표시, 응답 후 실제 금액으로 갱신.
+    let serverReward = null;
+    try {
       if (typeof onRequestApproval === "function") {
-        logger.log("[TaskItem] onRequestApproval 호출:", { taskId, jobId, isJobTask, cardType, reward });
-        onRequestApproval(taskId || task.id, jobId, isJobTask, cardType, reward);
+        serverReward = await onRequestApproval(taskId || task.id, jobId, isJobTask, cardType);
+      } else if (typeof onEarnCoupon === "function") {
+        serverReward = await onEarnCoupon(taskId || task.id, jobId, isJobTask, cardType);
+      }
+    } catch (err) {
+      logger.error("[TaskItem] 보상 요청 실패:", err);
+    }
+
+    if (typeof serverReward === "number") {
+      setRewardData((prev) => ({ ...(prev || {}), [cardType]: serverReward }));
+    }
+
+    const reward =
+      typeof serverReward === "number"
+        ? serverReward
+        : cardType === "cash"
+          ? rewardData?.cash
+          : rewardData?.coupon;
+    const rewardText =
+      cardType === "cash"
+        ? `${(reward ?? 0).toLocaleString()}원`
+        : `${reward ?? 0}개`;
+
+    // 서버 금액을 카드 뒷면에서 잠시 보여준 뒤(플립 리빌) 버블/닫기
+    setTimeout(() => {
+      // 🔥 모든 할일은 관리자 승인 필수: 승인 경로면 금액 미리 확정 안 하고 요청완료 안내
+      if (typeof onRequestApproval === "function") {
         setShowCardModal(false);
         setBubbleText("승인 요청 완료! 관리자 승인 후 보상이 지급됩니다.");
         setShowBubble(true);
         setIsFlipping(false);
         return;
-      }
-
-      logger.log("[TaskItem] onEarnCoupon 호출 준비:", { taskId, jobId, isJobTask, cardType, reward });
-
-      // onEarnCoupon 호출 - taskId, jobId, isJobTask, cardType, reward 전달
-      if (typeof onEarnCoupon === "function") {
-        onEarnCoupon(taskId || task.id, jobId, isJobTask, cardType, reward);
       }
 
       setShowCardModal(false);
@@ -223,7 +239,7 @@ const TaskItem = memo(function TaskItem({
                   <div className="text-2xl font-bold" style={mobileCardTextStyle}>현금</div>
                 </div>
                 <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{ ...cardBackStyle, ...(selectedCard === "cash" && cardBackVisibleStyle), backfaceVisibility: "hidden" }}>
-                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{rewardData.cash.toLocaleString()}원</div>
+                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{typeof rewardData.cash === "number" ? `${rewardData.cash.toLocaleString()}원` : "..."}</div>
                   <div className="text-lg" style={mobileRewardLabelStyle}>💰 현금 획득!</div>
                 </div>
               </div>
@@ -247,7 +263,7 @@ const TaskItem = memo(function TaskItem({
                   <div className="text-2xl font-bold" style={mobileCardTextStyle}>쿠폰</div>
                 </div>
                 <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{ ...cardBackStyle, ...(selectedCard === "coupon" && cardBackVisibleStyle), backfaceVisibility: "hidden" }}>
-                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{rewardData.coupon}개</div>
+                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{typeof rewardData.coupon === "number" ? `${rewardData.coupon}개` : "..."}</div>
                   <div className="text-lg" style={mobileRewardLabelStyle}>🎫 쿠폰 획득!</div>
                 </div>
               </div>
