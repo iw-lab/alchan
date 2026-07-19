@@ -10,10 +10,8 @@ import {
  updateUserProfile,
  addUserDocument,
  serverTimestamp,
- db,
  httpsCallable,
 } from "../../firebase";
-import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { logger } from "../../utils/logger";
 import {
  User,
@@ -48,13 +46,6 @@ const getFirebaseErrorMessage = (error) => {
  return errorMessages[error.code] || `오류: ${error.message}`;
 };
 
-const generateClassCode = () => {
- const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
- let code = "";
- for (let i = 0; i < 6; i++)
- code += chars.charAt(Math.floor(Math.random() * chars.length));
- return code;
-};
 
 // 새 학급 기본 직업 목록 (초등학교 교실 경제)
 export const DEFAULT_JOBS = [
@@ -613,12 +604,20 @@ const Login = () => {
  );
  const newUser = userCredential.user;
  // Auth 계정 생성 직후 즉시 선생님 문서 생성 (AuthContext race condition 방지)
- const classCode = generateClassCode();
+ // 🔒 2026-07-20: 자가가입은 '계정만' 생성(미승인 대기). 학급 시딩(classes·jobs·storeItems·banking·
+ //   salary·classCodes 등록)은 슈퍼관리자 승인 시 handleApproveTeacher→initClassroomDefaults가
+ //   Admin 권한으로 수행한다. classCode="미지정"으로 두면 승인 시 needsClassCode 경로가 실코드 발급 +
+ //   전체 시딩(멱등)을 담당한다.
+ //   근본원인(2026-07-14 e8bcf75): isAdmin()이 isApproved==true를 요구하도록 바뀌면서, 미승인 신규
+ //   교사가 등록 직후 실행하던 인라인 시딩(classes/jobs/storeItems/banking/classSettings, 전부 isAdmin
+ //   필요)이 rules에 막혀 throw → 등록 에러 + 빈 교실(승인 시에도 classCode가 이미 있어 needsClassCode
+ //   false로 시딩 스킵)이 6일째 지속. 시딩을 승인 시점으로 일원화해 해소 — 미승인 교사가 아무 학급
+ //   데이터도 만들지 않는 것이 isApproved 보안 모델과도 정합.
  await addUserDocument(newUser.uid, {
  name: registerName.trim(),
  nickname: registerName.trim(),
  email: registerEmail.trim().toLowerCase(),
- classCode,
+ classCode: "미지정",
  isAdmin: true,
  isSuperAdmin: false,
  isTeacher: true,
@@ -632,108 +631,10 @@ const Login = () => {
  createdAt: serverTimestamp(),
  });
  await updateUserProfile(newUser, registerName.trim());
- const classDocRef = doc(db, "classes", classCode);
- await setDoc(classDocRef, {
- code: classCode,
- teacherId: newUser.uid,
- teacherName: registerName.trim(),
- schoolName: schoolName.trim() || "",
- className: className.trim() || "",
- createdAt: serverTimestamp(),
- studentCount: 0,
- settings: { initialCash: 100000, initialCoupons: 10 },
- });
- const classCodesRef = doc(db, "settings", "classCodes");
- const classCodesDoc = await getDoc(classCodesRef);
- const existingCodes = classCodesDoc.exists()
- ? classCodesDoc.data().codes || []
- : [];
- const existingValidCodes = classCodesDoc.exists()
- ? classCodesDoc.data().validCodes || []
- : [];
- await setDoc(
- classCodesRef,
- {
- codes: existingCodes.includes(classCode) ? existingCodes : [...existingCodes, classCode],
- validCodes: existingValidCodes.includes(classCode) ? existingValidCodes : [...existingValidCodes, classCode],
- updatedAt: serverTimestamp(),
- },
- { merge: true },
- );
-
- // addDoc 안전 래퍼 — Firestore offline persistence retry로 같은 ID 재사용 시
- // "Document already exists" 에러가 발생할 수 있음. 그 경우 무시하고 계속 진행
- const safeAddDoc = async (ref, data) => {
- try {
- await addDoc(ref, data);
- } catch (e) {
- const msg = String(e?.message || "");
- if (msg.includes("already exists") || e?.code === "already-exists") {
- logger.warn("[teacher signup] addDoc 충돌 — 이미 존재, skip");
- return;
- }
- throw e;
- }
- };
-
- // 기본 직업 자동 생성
- const jobsRef = collection(db, "jobs");
- for (let i = 0; i < DEFAULT_JOBS.length; i++) {
- const jobTemplate = DEFAULT_JOBS[i];
- const tasks = jobTemplate.tasks.map((t, idx) => ({
- ...t,
- id: `task_${Date.now()}_${i}_${idx}`,
- }));
- await safeAddDoc(jobsRef, {
- title: jobTemplate.title,
- active: true,
- tasks,
- classCode,
- createdAt: serverTimestamp(),
- updatedAt: serverTimestamp(),
- });
- }
-
- // 기본 상점 아이템 자동 생성
- const storeItemsRef = collection(db, "storeItems");
- for (const item of DEFAULT_STORE_ITEMS) {
- await safeAddDoc(storeItemsRef, {
- ...item,
- initialStock: item.stock,
- available: true,
- type: "item",
- classCode,
- createdAt: serverTimestamp(),
- updatedAt: serverTimestamp(),
- });
- }
-
- // 기본 은행 설정 자동 생성
- await setDoc(doc(db, "bankingSettings", classCode), {
- ...DEFAULT_BANKING,
- classCode,
- updatedAt: serverTimestamp(),
- });
-
- // 기본 급여 설정 자동 생성
- const classSettingsRef = doc(db, "classSettings", classCode);
- await setDoc(
- classSettingsRef,
- { classCode, createdAt: serverTimestamp() },
- { merge: true },
- );
- await setDoc(doc(db, "classSettings", classCode, "settings", "salary"), {
- salaries: DEFAULT_SALARIES,
- payDay: "friday",
- autoPay: true,
- classCode,
- createdAt: serverTimestamp(),
- updatedAt: serverTimestamp(),
- });
 
  if (contextLogout) await contextLogout();
  else if (auth?.signOut) await auth.signOut();
- setSuccess(`가입 완료! 학급 코드: ${classCode}`);
+ setSuccess("가입 완료! 관리자 승인 후 이용할 수 있습니다. (승인 시 학급 코드가 발급됩니다)");
  setActiveTab("teacher");
  setRegisterName("");
  setRegisterEmail("");
@@ -1132,7 +1033,7 @@ const Login = () => {
  선생님 계정 만들기
  </h2>
  <p className="text-xs text-slate-500">
- 학급 코드가 자동 생성됩니다
+ 관리자 승인 후 학급 코드가 발급됩니다
  </p>
  </div>
  </div>
@@ -1253,9 +1154,9 @@ const Login = () => {
  <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-start gap-2.5">
  <Sparkles className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
  <p className="text-xs text-indigo-300 leading-relaxed">
- 가입하면{" "}
- <strong className="text-indigo-200">학급 코드</strong>가 자동
- 생성됩니다. 이 코드로 학생 계정을 손쉽게 만들 수 있어요!
+ 가입 후 관리자 승인을 받으면{" "}
+ <strong className="text-indigo-200">학급 코드</strong>가
+ 발급됩니다. 이 코드로 학생 계정을 만들 수 있어요!
  </p>
  </div>
 
