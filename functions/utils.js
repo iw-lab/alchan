@@ -152,6 +152,12 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     if (idempotencyKey.length > 128) {
       throw new HttpsError("invalid-argument", "idempotencyKey가 너무 깁니다.");
     }
+    // 🔒 2026-07-20 codex: '/' 경로 주입 차단 — doc(idempotencyKey)에 '/'가 있으면 중첩 경로
+    //   (idempotencyKeys/a/b/…)로 기록돼 상위 컬렉션 TTL 정리에서 이탈한다. 정당한 키(UUID·
+    //   doc id·`prefix_id` 조합)엔 '/'가 없으므로(Firestore doc id는 '/' 불가) 무해하게 봉인.
+    if (idempotencyKey.includes("/")) {
+      throw new HttpsError("invalid-argument", "idempotencyKey 형식이 올바르지 않습니다.");
+    }
     const keyRef = db.collection("idempotencyKeys").doc(idempotencyKey);
     const keySnap = await transaction.get(keyRef);
     if (keySnap.exists) {

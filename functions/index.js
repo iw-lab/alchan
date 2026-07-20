@@ -536,6 +536,7 @@ exports.submitTaskApproval = onCall(
       jobId = null,
       isJobTask = false,
       cardType = null,
+      idempotencyKey = null,
     } = request.data;
 
     if (!taskId) {
@@ -555,13 +556,37 @@ exports.submitTaskApproval = onCall(
 
     const userRef = db.collection("users").doc(uid);
 
+    // 관리자는 자동 승인(본인이 승인 권한 보유) — 승인된 관리자만(미승인 교사 차단).
+    //   ⚠️ 이 초기값은 트랜잭션 밖 stale 스냅샷(userData) 기준의 fallback일 뿐 —
+    //   실제 판정은 트랜잭션 내부에서 fresh userDoc으로 재계산(아래)해 요청 처리 중 권한이
+    //   바뀌는 좁은 TOCTOU 창을 없앤다.
+    let isAdminUser = hasAdminPower(userData);
+
+    // 🔒 1-2(2026-07-20): 카운터 증가 + (관리자면)보상 지급 + 승인문서 생성을 단일 트랜잭션으로
+    //   원자화. 과거엔 카운터 트랜잭션 커밋 후 보상 update/approval set이 트랜잭션 밖이라
+    //   (a)카운터만 증가하고 보상 미지급되는 부분실패, (b)부분 커밋 시 감사문서 누락이 가능했다.
+    //   approvalRef는 트랜잭션 밖에서 1회 생성해 SDK 컨텐션 재시도가 같은 문서를 재사용하게 한다.
+    //   ⚠️ 멱등키 방어 범위(정직 서술): checkIdempotent는 '동일 payload(같은 idempotencyKey)의
+    //   재전송'(네트워크/SDK 레벨 재시도·두 탭)만 dedup한다. 클라는 클릭마다 새 uuid를 보내므로
+    //   사용자의 '별개 클릭'은 정상적인 새 완료로 처리되며(멱등 무관), 더블클릭/빠른연타로 인한
+    //   이중완료 방지는 클라 lock(isHandlingTask)과 카운터 트랜잭션(maxClicks)이 담당한다.
+    //   멱등키는 옛 PWA 캐시 클라 호환을 위해 optional(checkIdempotent가 null 처리).
+    const approvalRef = db.collection("pendingApprovals").doc();
+    const approvalExpireAt = new Date();
+    approvalExpireAt.setDate(approvalExpireAt.getDate() + 30);
+
     try {
       let taskName = "";
 
-      if (isJobTask && jobId) {
-        // 직업 할일 검증
-        const jobRef = db.collection("jobs").doc(jobId);
-        await db.runTransaction(async (transaction) => {
+      await db.runTransaction(async (transaction) => {
+        // 1) 멱등 체크 — 모든 read의 최상단(옛 클라 호환: 키 없으면 no-op)
+        const keyRef = await checkIdempotent(transaction, idempotencyKey);
+
+        // 2) 할일 문서 + 사용자 문서 read + 검증
+        let counterField;
+        if (isJobTask && jobId) {
+          // 직업 할일 검증
+          const jobRef = db.collection("jobs").doc(jobId);
           const jobDoc = await transaction.get(jobRef);
           if (!jobDoc.exists) throw new Error("직업을 찾을 수 없습니다.");
 
@@ -589,6 +614,8 @@ exports.submitTaskApproval = onCall(
 
           // 클릭 횟수 확인
           const uData = userDoc.data();
+          // 🔒 관리자 자동승인 여부를 fresh read로 재계산(트랜잭션 밖 stale 스냅샷 대신 — TOCTOU 창 제거)
+          isAdminUser = hasAdminPower(uData);
 
           // 🔒 직업 소속 검증 — 본인이 실제 가진 직업(selectedJobIds+appointedJobIds, 둘 다 rules
           //   잠금이라 위조 불가)의 할일만 요청 가능. 미배정 직업 id로 보상 청구 차단(codex CRITICAL).
@@ -619,17 +646,10 @@ exports.submitTaskApproval = onCall(
           if (currentClicks >= task.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
-
-          // 클릭 카운터만 증가 (보상은 지급하지 않음)
-          transaction.update(userRef, {
-            [`completedJobTasks.${jobTaskKey}`]:
-              admin.firestore.FieldValue.increment(1),
-          });
-        });
-      } else {
-        // 공통 할일 검증
-        const commonTaskRef = db.collection("commonTasks").doc(taskId);
-        await db.runTransaction(async (transaction) => {
+          counterField = `completedJobTasks.${jobTaskKey}`;
+        } else {
+          // 공통 할일 검증
+          const commonTaskRef = db.collection("commonTasks").doc(taskId);
           const commonTaskDoc = await transaction.get(commonTaskRef);
           if (!commonTaskDoc.exists)
             throw new Error("공통 할일을 찾을 수 없습니다.");
@@ -651,6 +671,8 @@ exports.submitTaskApproval = onCall(
 
           // 클릭 횟수 확인
           const uData = userDoc.data();
+          // 🔒 관리자 자동승인 여부를 fresh read로 재계산(트랜잭션 밖 stale 스냅샷 대신 — TOCTOU 창 제거)
+          isAdminUser = hasAdminPower(uData);
           const completedTasks = uData.completedTasks || {};
           const rawClicks = completedTasks[taskId];
 
@@ -668,35 +690,26 @@ exports.submitTaskApproval = onCall(
           if (currentClicks >= taskData.maxClicks) {
             throw new Error(`${taskName} 할일은 오늘 이미 최대 완료했습니다.`);
           }
-
-          // 클릭 카운터만 증가 (보상은 지급하지 않음)
-          transaction.update(userRef, {
-            [`completedTasks.${taskId}`]:
-              admin.firestore.FieldValue.increment(1),
-          });
-        });
-      }
-
-      // 관리자는 자동 승인 (본인이 승인 권한을 가지므로) — 승인된 관리자만(미승인 교사 차단)
-      const isAdminUser = hasAdminPower(userData);
-
-      if (isAdminUser) {
-        // 관리자: 즉시 보상 지급 + approved 상태로 저장
-        const userRef2 = db.collection("users").doc(uid);
-        const updateData = {};
-        if (cardType === "cash") {
-          updateData.cash = admin.firestore.FieldValue.increment(rewardAmount);
-        } else if (cardType === "coupon") {
-          updateData.coupons = admin.firestore.FieldValue.increment(rewardAmount);
+          counterField = `completedTasks.${taskId}`;
         }
-        await userRef2.update(updateData);
 
-        // TTL: 30일 후 만료
-        const approvalExpireAt1 = new Date();
-        approvalExpireAt1.setDate(approvalExpireAt1.getDate() + 30);
+        // 3) writes — 클릭 카운터 증가 + (관리자면) 보상 increment를 동일 update로(원자적)
+        const userUpdate = {
+          [counterField]: admin.firestore.FieldValue.increment(1),
+        };
+        if (isAdminUser) {
+          if (cardType === "cash") {
+            userUpdate.cash =
+              admin.firestore.FieldValue.increment(rewardAmount);
+          } else if (cardType === "coupon") {
+            userUpdate.coupons =
+              admin.firestore.FieldValue.increment(rewardAmount);
+          }
+        }
+        transaction.update(userRef, userUpdate);
 
-        const approvalRef = db.collection("pendingApprovals").doc();
-        await approvalRef.set({
+        // 4) 승인 문서 — 관리자=approved 즉시, 학생=pending 대기. TTL 30일.
+        transaction.set(approvalRef, {
           classCode,
           studentId: uid,
           studentName: userData.name || "알 수 없음",
@@ -706,26 +719,38 @@ exports.submitTaskApproval = onCall(
           jobId: jobId || null,
           cardType,
           rewardAmount,
-          status: "approved",
+          status: isAdminUser ? "approved" : "pending",
           requestedAt: admin.firestore.FieldValue.serverTimestamp(),
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          processedBy: uid,
-          autoApproved: true,
-          expireAt: admin.firestore.Timestamp.fromDate(approvalExpireAt1),
+          processedAt: isAdminUser
+            ? admin.firestore.FieldValue.serverTimestamp()
+            : null,
+          processedBy: isAdminUser ? uid : null,
+          ...(isAdminUser ? { autoApproved: true } : {}),
+          expireAt: admin.firestore.Timestamp.fromDate(approvalExpireAt),
         });
 
-        try {
-          await logActivity(
-            null,
-            uid,
-            LOG_TYPES.TASK_APPROVAL_REQUEST,
-            `'${taskName}' 관리자 자동 승인 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`,
-            { taskName, taskId, isJobTask, jobId, cardType, rewardAmount, autoApproved: true },
-          );
-        } catch (logError) {
-          logger.warn("[submitTaskApproval] 로그 기록 실패:", logError);
-        }
+        // 5) 멱등 마킹 — 마지막 write
+        markIdempotent(transaction, keyRef);
+      });
 
+      // 활동 로그 (트랜잭션 밖, best-effort)
+      try {
+        await logActivity(
+          null,
+          uid,
+          LOG_TYPES.TASK_APPROVAL_REQUEST,
+          isAdminUser
+            ? `'${taskName}' 관리자 자동 승인 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`
+            : `'${taskName}' 할일 승인 요청 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`,
+          isAdminUser
+            ? { taskName, taskId, isJobTask, jobId, cardType, rewardAmount, autoApproved: true }
+            : { taskName, taskId, isJobTask, jobId, cardType, rewardAmount },
+        );
+      } catch (logError) {
+        logger.warn("[submitTaskApproval] 로그 기록 실패:", logError);
+      }
+
+      if (isAdminUser) {
         return {
           success: true,
           message: `'${taskName}' 완료! ${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`} 지급됨.`,
@@ -734,42 +759,6 @@ exports.submitTaskApproval = onCall(
           cardType,
           autoApproved: true,
         };
-      }
-
-      // 학생: pendingApprovals 문서 생성 (승인 대기)
-      // TTL: 30일 후 만료
-      const approvalExpireAt2 = new Date();
-      approvalExpireAt2.setDate(approvalExpireAt2.getDate() + 30);
-
-      const approvalRef = db.collection("pendingApprovals").doc();
-      await approvalRef.set({
-        classCode,
-        studentId: uid,
-        studentName: userData.name || "알 수 없음",
-        taskId,
-        taskName,
-        isJobTask: !!isJobTask,
-        jobId: jobId || null,
-        cardType,
-        rewardAmount,
-        status: "pending",
-        requestedAt: admin.firestore.FieldValue.serverTimestamp(),
-        processedAt: null,
-        processedBy: null,
-        expireAt: admin.firestore.Timestamp.fromDate(approvalExpireAt2),
-      });
-
-      // 활동 로그
-      try {
-        await logActivity(
-          null,
-          uid,
-          LOG_TYPES.TASK_APPROVAL_REQUEST,
-          `'${taskName}' 할일 승인 요청 (${cardType === "cash" ? `${rewardAmount.toLocaleString()}원` : `${rewardAmount}쿠폰`})`,
-          { taskName, taskId, isJobTask, jobId, cardType, rewardAmount },
-        );
-      } catch (logError) {
-        logger.warn("[submitTaskApproval] 로그 기록 실패:", logError);
       }
 
       return {
@@ -1276,7 +1265,7 @@ exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) 
 
 exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid } = await checkAuthAndGetUserData(request);
-  const { amount } = request.data;
+  const { amount, idempotencyKey = null } = request.data;
   // 🔒 [보안] 정수 검증(소수점 쿠폰 생성/현금화 방지)
   if (!Number.isInteger(amount) || amount <= 0) {
     throw new HttpsError(
@@ -1288,6 +1277,10 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const mainSettingsRef = db.collection("settings").doc("mainSettings");
   try {
     await db.runTransaction(async (transaction) => {
+      // 🔒 1-3(2026-07-20): 서버 멱등키 — 동일 요청(같은 idempotencyKey)의 재전송(SDK/네트워크
+      //   재시도·두 탭)만 dedup해 쿠폰 이중 현금화를 막는다. 클릭마다 새 uuid라 사용자의 '별개
+      //   클릭'은 못 막고 그건 클라 lock(actionLockRef)이 담당. optional(옛 PWA 캐시 클라 호환·없으면 no-op).
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
       const [userDoc, settingsDoc] = await transaction.getAll(
         userRef,
         mainSettingsRef,
@@ -1320,6 +1313,7 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
         `쿠폰 ${amount}개를 ${cashGained.toLocaleString()}원에 판매했습니다.`,
         { amount, couponValue, cashGained },
       );
+      markIdempotent(transaction, keyRef); // 멱등 마킹 — 마지막 write
     });
     return { success: true, message: "쿠폰 판매가 완료되었습니다." };
   } catch (error) {
@@ -1333,7 +1327,7 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
 
 exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, userData } = await checkAuthAndGetUserData(request);
-  const { recipientId, amount, message } = request.data;
+  const { recipientId, amount, message, idempotencyKey = null } = request.data;
   // 🔒 [보안] 정수 검증: 소수점 amount 허용 시 쿠폰/현금이 소수로 생성·증발할 수 있음.
   if (!recipientId || !Number.isInteger(amount) || amount <= 0) {
     throw new HttpsError(
@@ -1351,12 +1345,24 @@ exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
   const recipientRef = db.collection("users").doc(recipientId);
   try {
     await db.runTransaction(async (transaction) => {
+      // 🔒 1-3(2026-07-20): 서버 멱등키 — 동일 요청 재전송(SDK/네트워크 재시도·두 탭)만 dedup해
+      //   쿠폰 이중 선물을 막는다. 별개 클릭 방어는 클라 lock. optional(옛 클라 호환·없으면 no-op).
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
       const [senderDoc, recipientDoc] = await transaction.getAll(
         senderRef,
         recipientRef,
       );
       if (!senderDoc.exists) throw new Error("보내는 사람의 정보가 없습니다.");
       if (!recipientDoc.exists) throw new Error("받는 사람의 정보가 없습니다.");
+      // 🔒 학급 격리(2026-07-20 codex): 타 학급 계정으로 쿠폰을 선물해 학급 경제 경계를 넘기는
+      //   것을 차단(transferCash·giftItem과 대칭). 기존엔 수신자 존재만 검사해 A학급→B학급 쿠폰
+      //   이전 후 현금화가 가능했다(테넌트 격리 붕괴). ⚠️ 발신자 학급은 트랜잭션 '안'의 fresh
+      //   senderDoc 기준으로 비교 — 인증 시점 stale 스냅샷을 쓰면 처리 도중 학급 이관 시 TOCTOU
+      //   창이 생긴다(codex MEDIUM).
+      const senderClassCode = senderDoc.data().classCode;
+      if (!senderClassCode || recipientDoc.data().classCode !== senderClassCode) {
+        throw new Error("같은 학급 친구에게만 쿠폰을 선물할 수 있습니다.");
+      }
       // 🔒 court-lock 후속(defense-in-depth): coupons 잔액 엄격 검증 — sellCoupon/donateCoupon과 대칭.
       //   coupons는 batch7-b로 잠겼지만, 과거 위조/레거시 비정상값(Infinity/문자열)이 남아 있으면
       //   `< amount`를 통과해 recipient에게 증식 이전될 수 있어 유한 안전정수만 허용한다.
@@ -1391,6 +1397,7 @@ exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
         `${userData.name}님으로부터 쿠폰 ${amount}개를 선물 받았습니다.`,
         { senderId: uid, senderName: userData.name, amount, message },
       );
+      markIdempotent(transaction, keyRef); // 멱등 마킹 — 마지막 write
     });
     return { success: true, message: "쿠폰 선물이 완료되었습니다." };
   } catch (error) {
@@ -6160,7 +6167,7 @@ exports.sellItemToTreasury = onCall(
 
 exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid } = await checkAuthAndGetUserData(request);
-  const { itemId, quantityToUse = 1 } = request.data;
+  const { itemId, quantityToUse = 1, idempotencyKey = null } = request.data;
 
   if (!itemId) {
     throw new HttpsError("invalid-argument", "아이템 ID가 필요합니다.");
@@ -6179,6 +6186,12 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
+      // 🔒 1-3(2026-07-20): 서버 멱등키 — 동일 요청 재전송(SDK/네트워크 재시도·두 탭)만 dedup.
+      //   ⚠️ 이 클라 경로(ItemContext.useItem)엔 명시적 재진입 lock이 없음(낙관적 업데이트만) —
+      //   별개 클릭의 이중 소모는 서버 트랜잭션 가드(보유수량 currentQuantity<useQty·일일사용한도
+      //   dailyItemUse 5/day)가 실질 방어. 아이템은 본인 보유분 소모라 mint 아님. optional(옛 클라 호환).
+      //   모든 read의 최상단.
+      const keyRef = await checkIdempotent(transaction, idempotencyKey);
       // 모든 읽기 먼저 (write 전)
       const [userItemDoc, userDoc] = await Promise.all([
         transaction.get(userItemRef),
@@ -6247,6 +6260,8 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
       } else {
         transaction.delete(userItemRef);
       }
+
+      markIdempotent(transaction, keyRef); // 멱등 마킹 — 마지막 write
 
       return {
         itemName: itemData.name,
