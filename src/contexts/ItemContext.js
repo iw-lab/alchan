@@ -605,6 +605,7 @@ export const ItemProvider = ({ children }) => {
           itemId: inventoryItemId,
           quantityToUse: quantity,
           sourceCollection: "inventory",
+          idempotencyKey: crypto.randomUUID(),
         });
 
         // 🔥 활동 로그 기록 (아이템 사용)

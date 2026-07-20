@@ -527,9 +527,17 @@ function Dashboard({ adminTabMode }) {
  const [appLoading, setAppLoading] = useState(true);
  const [viewMode, setViewMode] = useState("list");
  // 🔥 새로고침해도 관리자 모달이 열린 상태 유지 (sessionStorage)
+ //   🐛 2026-07-20: 복원은 '모달을 열었던 경로'와 현재 경로가 같을 때만. /admin/app-settings는
+ //   /dashboard/tasks와 다른 라우트 래퍼(AdminRoute vs ProtectedRoute)라 이동 시 Dashboard가
+ //   리마운트되는데, 경로 조건이 없으면 새 인스턴스가 open="1"을 읽어 '오늘의 할일' 위에 관리자
+ //   설정이 뜬다(경로변경 close 이펙트는 마운트 시점엔 안 돎). 경로 대조로 이 누수를 차단한다.
  const [showAdminSettingsModal, setShowAdminSettingsModal] = useState(() => {
-   try { return sessionStorage.getItem("alchan_adminModal_open") === "1"; }
-   catch { return false; }
+   try {
+     return (
+       sessionStorage.getItem("alchan_adminModal_open") === "1" &&
+       sessionStorage.getItem("alchan_adminModal_path") === window.location.pathname
+     );
+   } catch { return false; }
  });
  const [adminSelectedMenu, setAdminSelectedMenu] = useState(() => {
    try { return sessionStorage.getItem("alchan_adminModal_menu") || "generalSettings"; }
@@ -542,9 +550,12 @@ function Dashboard({ adminTabMode }) {
      if (showAdminSettingsModal) {
        sessionStorage.setItem("alchan_adminModal_open", "1");
        sessionStorage.setItem("alchan_adminModal_menu", adminSelectedMenu);
+       // 모달을 연 시점의 경로를 함께 저장 — 리마운트 후 초기화 시 경로 대조로 누수 차단.
+       sessionStorage.setItem("alchan_adminModal_path", window.location.pathname);
      } else {
        sessionStorage.removeItem("alchan_adminModal_open");
        sessionStorage.removeItem("alchan_adminModal_menu");
+       sessionStorage.removeItem("alchan_adminModal_path");
      }
    } catch { /* ignore */ }
  }, [showAdminSettingsModal, adminSelectedMenu]);
@@ -604,11 +615,12 @@ function Dashboard({ adminTabMode }) {
  }
  }, [adminTabMode, isAdmin]);
 
- // 🐛 관리자 설정 화면에서 '알찬 오늘의 할일' 등을 눌러도 안 넘어가던 버그 수정.
- //   /admin/app-settings 와 /dashboard/tasks 는 같은 Dashboard 컴포넌트를 렌더하므로
- //   라우트만 바뀌면 재마운트되지 않아 showAdminSettingsModal 상태가 그대로 남는다.
- //   실제 경로 변경을 감지해, 관리자 라우트(adminTabMode)가 아닌 곳으로 이동하면 모달을 닫는다.
- //   (마운트 시점엔 닫지 않으므로, 할일 화면에서 버튼으로 연 모달의 새로고침 유지는 그대로.)
+ // 🐛 관리자 설정 화면에서 '알찬 오늘의 할일' 등으로 이동 시 모달이 잔존하던 버그 방어(보조).
+ //   ⚠️ 정정(2026-07-20): /admin/app-settings(AdminRoute)와 /dashboard/tasks(ProtectedRoute)는
+ //   서로 다른 라우트 래퍼라 전환 시 Dashboard가 '재마운트'된다(과거 주석은 재마운트 안 된다고
+ //   잘못 서술했음). 그 리마운트 누수는 위 useState 초기화의 경로 대조가 1차로 막는다.
+ //   이 effect는 '같은 인스턴스가 유지된 채' 경로만 바뀌는 경우(예: 재사용된 비관리자 라우트 간
+ //   이동)를 위한 보조 방어 — adminTabMode가 아닌 곳으로 이동하면 모달을 닫는다.
  const location = useLocation();
  const prevPathRef = useRef(location.pathname);
  useEffect(() => {
@@ -1832,6 +1844,12 @@ function Dashboard({ adminTabMode }) {
  jobId,
  isJobTask,
  cardType,
+ // 🔒 1-2: 서버 멱등키 — 동일 요청 재전송(SDK/네트워크 재시도)만 dedup. 매 클릭 새 uuid라
+ // 더블클릭/연타 방어는 클라 lock(isHandlingTask)+서버 카운터 트랜잭션(maxClicks)이 담당.
+ idempotencyKey:
+ typeof crypto !== "undefined" && crypto.randomUUID
+ ? crypto.randomUUID()
+ : `task_${taskId}_${Date.now()}`,
  });
  if (result.data.success) {
  const serverReward = result.data.rewardAmount;

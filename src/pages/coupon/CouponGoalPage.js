@@ -555,7 +555,7 @@ export default function CouponGoalPage() {
         });
       }
       setAssetsLoading(true);
-      await sellCouponFunction({ amount });
+      await sellCouponFunction({ amount, idempotencyKey: crypto.randomUUID() });
       alert(`${amount}개 쿠폰을 판매했습니다.`);
       setShowSellCouponModal(false);
       setSellAmount("");
@@ -618,6 +618,7 @@ export default function CouponGoalPage() {
         recipientId: recipientUser.id,
         amount,
         message: "",
+        idempotencyKey: crypto.randomUUID(),
       });
       alert("쿠폰 선물이 완료되었습니다.");
       setShowGiftCouponModal(false);

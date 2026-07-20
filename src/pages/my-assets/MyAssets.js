@@ -1045,7 +1045,7 @@ export default function MyAssets() {
 
     setAssetsLoading(true);
     try {
-      await sellCouponFunction({ amount });
+      await sellCouponFunction({ amount, idempotencyKey: crypto.randomUUID() });
 
       // 🔥 활동 로그 기록 (쿠폰 판매)
       logActivity(db, {
@@ -1109,6 +1109,7 @@ export default function MyAssets() {
           recipientId: recipientUser.id,
           amount,
           message: "",
+          idempotencyKey: crypto.randomUUID(),
         });
 
         // 🔥 활동 로그 기록 (쿠폰 선물 발송)

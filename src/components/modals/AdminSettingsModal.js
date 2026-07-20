@@ -741,9 +741,18 @@ const AdminSettingsModal = ({
 
   // 월급 계산 함수 (세금 공제 포함, 대통령 보너스 반영)
   const calculateSalary = useCallback(
-    (selectedJobIds, includesTax = false) => {
-      if (!Array.isArray(selectedJobIds) || selectedJobIds.length === 0) {
-        return { gross: 0, tax: 0, net: 0 };
+    (jobInput, includesTax = false) => {
+      // 🐛 2026-07-20 desync 수정: 과거엔 병합된 단일 id 리스트(getEffectiveJobIds =
+      //   appointedJobIds ∪ selectedJobIds)를 받아 appointedOnly '플래그'로 재분리했다.
+      //   그러면 필드 출처가 사라져, 학생이 self-select한 지정전용 직업(판사·경찰청장 등이
+      //   selectedJobIds에 남은 경우)을 '유효 지정직업'으로 오산정 → 미리보기가 실지급보다
+      //   높게 표시됐다(예: 미리보기 270만 vs 실지급 225만). 서버 resolveStudentJobs는
+      //   appointed를 appointedJobIds 필드에서만 인정하므로, 여기도 필드별로 받아 동일 판정한다.
+      //   jobInput = { appointedJobIds, selectedJobIds }.
+      const appointedRaw = toJobIdArray(jobInput?.appointedJobIds);
+      const selectedRaw = toJobIdArray(jobInput?.selectedJobIds);
+      if (appointedRaw.length === 0 && selectedRaw.length === 0) {
+        return includesTax ? { gross: 0, tax: 0, net: 0 } : 0;
       }
 
       // ⚠️ 표시(미리보기) 전용 — 실제 지급 금액은 서버가 결정한다(functions/salaryUtils.js
@@ -753,39 +762,36 @@ const AdminSettingsModal = ({
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;
 
-      // 서버 급여 계산(functions/jobUtils.js resolveStudentJobs)과 동일 규약으로 미리보기를 맞춘다:
-      //   유령 id 제외 → 중복 제거 → 지정 전용/일반 분리 → 상한은 일반 직업에만 적용
-      //   → 대통령 보너스는 '지정된' 대통령 직업당 1회.
+      // 서버 resolveStudentJobs(functions/jobUtils.js)와 동일 규약:
+      //   · 유령 id 제외 + 중복 제거
+      //   · appointed = appointedJobIds 중 '지정전용'만 (교사 write 전용 필드)
+      //   · selected  = selectedJobIds 중 '지정전용 아님'만 (self-임명 무효), 남은 슬롯까지만
+      //   · 개수 상한은 지정 + 선택 합계 기준, 지정이 슬롯 먼저 차지
+      //   · 대통령 보너스는 '지정된' 대통령 직업당 1회
       const jobById = new Map((jobs || []).map((j) => [j.id, j]));
-      const uniqueIds = [...new Set(toJobIdArray(selectedJobIds))].filter((id) =>
-        Array.isArray(jobs) ? jobById.has(id) : true,
-      );
-      const appointedIds = uniqueIds.filter((id) =>
-        isAppointedOnlyJob(jobById.get(id)),
-      );
-      const normalIds = uniqueIds.filter(
-        (id) => !isAppointedOnlyJob(jobById.get(id)),
-      );
-      // 🔒 직업 개수 상한: 서버 급여 계산(scheduler/batchPay)과 동일하게 상한 내로 캡 (미리보기 일치)
+      const exists = (id) => (Array.isArray(jobs) ? jobById.has(id) : true);
       const maxJobs =
         Number.isInteger(salarySettings.maxJobsPerStudent) && salarySettings.maxJobsPerStudent >= 1
           ? salarySettings.maxJobsPerStudent
           : 5;
-      // 상한은 지정 + 선택 합계 기준 (서버 resolveStudentJobs와 동일 규약)
-      const remainingSlots = Math.max(0, maxJobs - appointedIds.length);
-      const validJobIds = [
-        ...appointedIds,
-        ...normalIds.slice(0, remainingSlots),
-      ];
+
+      const appointed = [...new Set(appointedRaw)].filter(
+        (id) => exists(id) && isAppointedOnlyJob(jobById.get(id)),
+      );
+      const remainingSlots = Math.max(0, maxJobs - appointed.length);
+      const selected = [...new Set(selectedRaw)]
+        .filter((id) => exists(id) && !isAppointedOnlyJob(jobById.get(id)))
+        .slice(0, remainingSlots);
+      const validJobIds = [...appointed, ...selected];
 
       const grossSalary =
         validJobIds.length === 0
           ? 0
           : baseSalary + Math.max(0, validJobIds.length - 1) * additionalSalary;
 
-      // 대통령 보너스는 교사가 지정한 대통령 직업에서만, 중복 제거 후 1회 (서버와 동일 규약)
+      // 대통령 보너스는 교사가 지정한(appointed) 대통령 직업에서만, 중복 제거 후 1회 (서버와 동일)
       let bonus = 0;
-      for (const jobId of appointedIds) {
+      for (const jobId of appointed) {
         if (jobById.get(jobId)?.title === "대통령") bonus += PRESIDENT_BONUS;
       }
       const totalGross = grossSalary + bonus;
@@ -1020,10 +1026,20 @@ const AdminSettingsModal = ({
           setLastSalaryPaidDate(
             data.lastPaidDate ? data.lastPaidDate.toDate() : null,
           );
-          setSalarySettings({
-            taxRate: data.taxRate || 0.1,
-            salaryIncreaseRate: data.salaryIncreaseRate || 0.03,
-          });
+          // 🐛 2026-07-20(codex W1): 정식 로더(위 useEffect)와 동일 규약으로 3필드 모두 세팅.
+          //   과거엔 maxJobsPerStudent를 누락한 채 객체를 통째 교체해, loadStudents가 실행될 때마다
+          //   (탭 재진입·잔액 갱신 등) 급여 미리보기의 직업 상한이 5로 리셋됐다. taxRate도 `||`는
+          //   0%(무세율)를 falsy로 취급해 10%로 둔갑시키므로 `??`로 보존(서버 7006과 동일 규약).
+          setSalarySettings((prev) => ({
+            ...prev,
+            taxRate: data.taxRate ?? 0.1,
+            salaryIncreaseRate: data.salaryIncreaseRate ?? 0.03,
+            maxJobsPerStudent:
+              Number.isInteger(data.maxJobsPerStudent) &&
+              data.maxJobsPerStudent >= 1
+                ? data.maxJobsPerStudent
+                : 5,
+          }));
         } else {
           setLastSalaryPaidDate(null);
         }
@@ -2771,9 +2787,17 @@ const AdminSettingsModal = ({
                       {/* 학생 카드 그리드 */}
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {students.map((student) => {
-                          // 교사 지정 직업(대통령 등)도 포함해 계산·표시 (jobPermissions 규약)
+                          // 교사 지정 직업(대통령 등)도 포함해 표시 (jobPermissions 규약)
                           const studentJobIds = getEffectiveJobIds(student);
-                          const salaryCalc = calculateSalary(studentJobIds, true);
+                          // 🐛 급여는 필드별로 계산 — 서버 resolveStudentJobs와 동일하게 appointed는
+                          //   appointedJobIds에서만 인정(self-select된 지정전용 직업 과대산정 방지).
+                          const salaryCalc = calculateSalary(
+                            {
+                              appointedJobIds: student.appointedJobIds,
+                              selectedJobIds: student.selectedJobIds,
+                            },
+                            true,
+                          );
                           const isSelected = selectedStudentIds.includes(student.id);
                           const jobTitles = studentJobIds.length > 0
                             ? studentJobIds
@@ -3894,7 +3918,22 @@ const AdminSettingsModal = ({
                   원
                 </p>
                 {(() => {
-                  const salaryCalc = calculateSalary(tempSelectedJobIds, true);
+                  // 🐛 편집 프리뷰: 저장(handleSaveStudentJobs) 규약과 동일하게 temp 리스트를
+                  //   지정전용/일반으로 분리해 넘긴다(저장 시 appointed-only→appointedJobIds로 가므로
+                  //   그 결과와 정확히 일치 = 서버 지급액과도 일치).
+                  const editJobById = new Map(
+                    (jobs || []).map((j) => [j.id, j]),
+                  );
+                  const editAppointed = tempSelectedJobIds.filter((id) =>
+                    isAppointedOnlyJob(editJobById.get(id)),
+                  );
+                  const editSelected = tempSelectedJobIds.filter(
+                    (id) => !isAppointedOnlyJob(editJobById.get(id)),
+                  );
+                  const salaryCalc = calculateSalary(
+                    { appointedJobIds: editAppointed, selectedJobIds: editSelected },
+                    true,
+                  );
                   return (
                     <>
                       <p>
