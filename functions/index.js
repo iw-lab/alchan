@@ -59,6 +59,7 @@ exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이
 exports.triggerEconomicEventManual = scheduler.triggerEconomicEventManual; // 수동 경제 이벤트 실행
 exports.saveEconomicEventSettings = scheduler.saveEconomicEventSettings; // 경제 이벤트 설정 저장
 exports.collectWeeklyTaxesManual = scheduler.collectWeeklyTaxesManual; // 주간 세금(순자산세+보유세) 수동 징수
+exports.collectWeeklyTaxesByOfficer = scheduler.collectWeeklyTaxesByOfficer; // 국세청장(임명 국세청 직원) 학생 주간 세금 징수 (주1회 쿨다운)
 
 // 🔥 방학 모드 관리 (슈퍼관리자 전용)
 exports.toggleVacationMode = scheduler.toggleVacationMode; // 방학 모드 토글

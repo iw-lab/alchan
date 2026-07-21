@@ -23,7 +23,11 @@
 //   appointedOnly가 아니면 학생이 saveSelectedJobs로 스스로 선택→hasJobTitle 통과→피해자 자산 갈취가 가능했다.
 //   대통령/국무총리와 동일하게 '임명 전용'으로 강제 — self-select 인스턴스는 resolveStudentJobs에서 무효화되고
 //   교사가 appointedJobIds로 임명한 경우에만 유효(사용자 결정 2026-07-18).
-const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장"];
+// 🔒 tax-lock(2026-07-21, 사용자 결정): 국세청 직원 추가. collectWeeklyTaxesByOfficer CF에서
+//   전교생 자산을 차감하는 주간 세금 징수 권한을 갖는데, 임명 전용이 아니면 학생이 saveSelectedJobs로
+//   스스로 국세청 직원을 선택→hasJobTitle 통과→전교생 자산 갈취(반복 징수)가 가능하다. 판사·경찰청장과
+//   동일하게 교사 appointedJobIds 임명자만 유효.
+const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장", "국세청 직원"];
 
 const isAppointedJob = (jobData) =>
   !!jobData &&

@@ -5,7 +5,7 @@
 // 국고는 별도의 문서가 아닌 학급 관리자(선생님)의 현금으로 통합됨
 // 모든 세금은 관리자 계정으로 직접 입금됨
 // ========================================
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { db, getCachedDocument, invalidateCache } from "../../firebase";
 import {
   doc,
@@ -21,6 +21,8 @@ import {
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import { useAuth } from "../../contexts/AuthContext";
+import { hasAppointedJobTitle } from "../../utils/jobPermissions";
 import { logger } from '../../utils/logger';
 
 const formatDate = (timestamp) => {
@@ -28,6 +30,16 @@ const formatDate = (timestamp) => {
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   if (isNaN(date.getTime())) return "유효하지 않은 날짜";
   return date.toLocaleString("ko-KR");
+};
+
+// 주차 키(KST) — 서버 computeKstWeekKey(UTC 런타임)와 동일 결과를 브라우저 TZ와 무관하게 내려면
+//   반드시 UTC getter를 써야 한다. 로컬 getFullYear/월 계산을 쓰면 KST(UTC+9) 브라우저에서 +9h가
+//   이중 적용돼 주차가 어긋난다(codex 지적). 쿨다운 배지 표시용(정보성) — 실제 쿨다운은 서버가 판정.
+const getKstWeekKey = () => {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const y = kstNow.getUTCFullYear();
+  const startUtc = Date.UTC(y, 0, 1);
+  return `${y}-W${Math.ceil(((kstNow.getTime() - startUtc) / 86400000 + 1) / 7)}`;
 };
 
 // 세수 통계용 (국고 잔액은 관리자 현금에서 가져옴)
@@ -67,6 +79,36 @@ const NationalTaxService = ({ classCode }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [editableSettings, setEditableSettings] = useState(DEFAULT_TAX_SETTINGS);
   const [collectingTax, setCollectingTax] = useState(false);
+  const [lastTaxWeekKey, setLastTaxWeekKey] = useState(null); // 이번 주 징수 여부(governmentSettings)
+
+  // 🔑 역할 판정 — 교사(관리자) / 국세청장(교사 임명 국세청 직원) / 일반 학생.
+  //   화면 게이팅 전용이며, 실제 권한(징수·세율편집)은 서버가 재검증한다.
+  const { isAdmin, userDoc } = useAuth();
+  const isAdminUser = typeof isAdmin === "function" ? isAdmin() : !!isAdmin;
+
+  // 같은 학급 직업 목록 — 정부·경찰서 등과 세션 캐시(jobs:{classCode}) 공유 → 추가 읽기 없음.
+  const fetchJobs = useCallback(async () => {
+    if (!classCode) return [];
+    const jobsRef = collection(db, "jobs");
+    const snap = await getDocs(query(jobsRef, where("classCode", "==", classCode)));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }, [classCode]);
+  const { data: jobs } = usePolling(fetchJobs, {
+    interval: 60 * 60 * 1000,
+    enabled: !!classCode,
+    cacheKey: classCode ? `jobs:${classCode}` : null,
+    deps: [classCode],
+  });
+
+  // 국세청장 = 교사가 appointedJobIds로 임명한 '국세청 직원'만(자가선택 무효 — 서버와 동일 의미).
+  const isTaxOfficer = useMemo(
+    () => hasAppointedJobTitle(userDoc, jobs || [], "국세청 직원"),
+    [userDoc, jobs],
+  );
+  const canCollect = isAdminUser || isTaxOfficer; // 징수 버튼 노출 대상
+  const canEditPolicy = isAdminUser; // 세율 편집은 교사 전용
+  const weekKeyNow = getKstWeekKey();
+  const alreadyCollectedThisWeek = !!lastTaxWeekKey && lastTaxWeekKey === weekKeyNow;
 
   // 관리자(선생님) 현금 가져오기 - 이것이 곧 국고
   const fetchAdminCash = useCallback(async () => {
@@ -157,6 +199,7 @@ const NationalTaxService = ({ classCode }) => {
         const newSettings = { ...DEFAULT_TAX_SETTINGS, ...cached.taxSettings };
         setTaxSettings(newSettings);
         setEditableSettings(newSettings);
+        setLastTaxWeekKey(cached.lastWeeklyTaxWeekKey || null);
         setLoadingSettings(false);
         return;
       }
@@ -166,6 +209,7 @@ const NationalTaxService = ({ classCode }) => {
         const newSettings = { ...DEFAULT_TAX_SETTINGS, ...docSnap.data().taxSettings };
         setTaxSettings(newSettings);
         setEditableSettings(newSettings);
+        setLastTaxWeekKey(docSnap.data().lastWeeklyTaxWeekKey || null);
         invalidateCache(`doc_governmentSettings_${classCode}`);
       } else {
         await setDoc(settingsRef, {
@@ -242,22 +286,38 @@ const NationalTaxService = ({ classCode }) => {
 
   const handleCollectPropertyTax = async () => {
     if (!classCode) return;
-    if (!window.confirm(
-      "이번 주 세금을 지금 징수하시겠습니까?\n" +
-      "· 순자산세: 순자산이 있는 모든 학생\n" +
-      "· 부동산 보유세: 부동산 소유 학생\n" +
-      "(금요일 자동 징수와 동일하게 계산되어 국고로 들어갑니다)"
-    )) return;
+    if (!canCollect) return; // 서버도 재검증하지만 UI에서도 차단
+
+    const confirmMsg = isAdminUser
+      ? "이번 주 세금을 지금 징수하시겠습니까?\n" +
+        "· 순자산세: 순자산이 있는 모든 학생\n" +
+        "· 부동산 보유세: 부동산 소유 학생\n" +
+        "(금요일 자동 징수와 동일하게 계산되어 국고로 들어갑니다)"
+      : "국세청장 권한으로 이번 주 세금을 징수하시겠습니까?\n" +
+        "· 순자산세 + 부동산 보유세를 반 전체에서 걷습니다\n" +
+        "· 한 주에 한 번만 징수할 수 있어요 (금요일 자동 징수 포함)";
+    if (!window.confirm(confirmMsg)) return;
 
     setCollectingTax(true);
     try {
-      // 금요일 자동 징수와 100% 동일한 클라우드 로직 호출 (순자산세 + 보유세)
-      // 국고 통계는 클라우드 함수가 직접 갱신하므로 여기서 별도 증가 처리 안 함(중복 방지)
-      const { collectWeeklyTaxes } = await import("../../firebase");
-      const result = await collectWeeklyTaxes();
-      if (result.success) {
+      // 교사=관리자용 즉시 징수, 국세청장=학생용 CF(권한·주1회 쿨다운 서버 검증).
+      // 국고 통계는 클라우드 함수가 직접 갱신하므로 여기서 별도 증가 처리 안 함(중복 방지).
+      const { collectWeeklyTaxes, collectWeeklyTaxesAsOfficer } = await import("../../firebase");
+      const result = isAdminUser
+        ? await collectWeeklyTaxes()
+        : await collectWeeklyTaxesAsOfficer();
+
+      if (result?.skipped) {
+        setLastTaxWeekKey(result.weekKey || weekKeyNow);
+        alert("이번 주 세금은 이미 징수되었습니다. 다음 주에 다시 징수할 수 있어요.");
+      } else if (result?.success) {
+        setLastTaxWeekKey(result.weekKey || weekKeyNow);
         alert(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
+        // 캐시 무효화 후 재조회 — 안 하면 묵은 governmentSettings 캐시가 방금 세운 weekKey를 덮어써 배지가 사라짐.
+        invalidateCache(`doc_governmentSettings_${classCode}`);
+        invalidateCache(`doc_nationalTreasuries_${classCode}`);
         refetchTreasury();
+        refetchSettings();
       } else {
         alert("세금 징수에 실패했습니다.");
       }
@@ -319,6 +379,14 @@ const NationalTaxService = ({ classCode }) => {
         <h1 className="text-lg font-bold text-slate-800">
           🏛️ {classCode} 학급 국세청
         </h1>
+        {!isAdminUser && isTaxOfficer && (
+          <span
+            className="px-3 py-1 rounded-full text-xs font-bold"
+            style={{ background: 'rgba(163, 230, 53, 0.15)', border: '1px solid rgba(163, 230, 53, 0.4)', color: '#65a30d', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}
+          >
+            🎖️ 국세청장
+          </span>
+        )}
       </div>
 
       {/* 탭 네비게이션 - 세련된 네온 스타일 */}
@@ -388,34 +456,47 @@ const NationalTaxService = ({ classCode }) => {
             ))}
           </div>
 
-          {/* 주간 세금(순자산세 + 부동산 보유세) 수동 징수 버튼 */}
-          <div className="rounded-xl p-5" style={{ background: 'rgba(240, 253, 244, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
-                  🏦 이번 주 세금 징수
-                </h3>
-                <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
-                  순자산세(순자산 있는 모든 학생) + 부동산 보유세를 금요일 자동 징수와 동일하게 걷습니다.
-                </p>
+          {/* 주간 세금 수동 징수 — 교사 또는 국세청장(임명 학생)만 노출 */}
+          {canCollect && (() => {
+            // 국세청장은 주 1회 쿨다운(이미 이번 주 걷혔으면 비활성). 교사는 제한 없음.
+            const officerBlocked = !isAdminUser && alreadyCollectedThisWeek;
+            const btnDisabled = collectingTax || officerBlocked;
+            return (
+              <div className="rounded-xl p-5" style={{ background: 'rgba(240, 253, 244, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+                      🏦 이번 주 세금 징수
+                    </h3>
+                    <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
+                      순자산세(순자산 있는 모든 학생) + 부동산 보유세를 금요일 자동 징수와 동일하게 걷습니다.
+                      {!isAdminUser && " 국세청장은 한 주에 한 번만 징수할 수 있어요."}
+                    </p>
+                    {officerBlocked && (
+                      <p className="text-xs mt-1 font-semibold" style={{ color: '#65a30d' }}>
+                        ✅ 이번 주 세금은 이미 징수되었습니다 (다음 주에 다시 징수 가능)
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleCollectPropertyTax}
+                    disabled={btnDisabled}
+                    className="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-800 transition-all duration-300"
+                    style={{
+                      background: btnDisabled ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
+                      border: `1px solid ${btnDisabled ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
+                      color: btnDisabled ? '#64748b' : '#a3e635',
+                      cursor: btnDisabled ? 'not-allowed' : 'pointer',
+                      fontFamily: 'Rajdhani, sans-serif',
+                      letterSpacing: '1px',
+                    }}
+                  >
+                    {collectingTax ? "징수 중..." : officerBlocked ? "이번 주 징수 완료" : "세금 징수"}
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={handleCollectPropertyTax}
-                disabled={collectingTax}
-                className="px-5 py-2.5 rounded-lg font-bold text-sm text-slate-800 transition-all duration-300"
-                style={{
-                  background: collectingTax ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
-                  border: `1px solid ${collectingTax ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
-                  color: collectingTax ? '#64748b' : '#a3e635',
-                  cursor: collectingTax ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Rajdhani, sans-serif',
-                  letterSpacing: '1px',
-                }}
-              >
-                {collectingTax ? "징수 중..." : "세금 징수"}
-              </button>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* 최근 업데이트 - 인라인 */}
           <p className="text-xs px-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>
@@ -481,6 +562,13 @@ const NationalTaxService = ({ classCode }) => {
               📋 현행 세금 정책 ({classCode})
             </h3>
 
+            {!canEditPolicy && (
+              <p className="text-xs mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.06)', color: 'rgba(71, 85, 105, 0.85)', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                ℹ️ 세율은 선생님만 바꿀 수 있어요. 우리 반의 현행 세금 정책을 확인해 보세요.
+              </p>
+            )}
+
+            {canEditPolicy ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {taxPolicyFields.map((field) => (
                 <div key={field.name}>
@@ -527,7 +615,28 @@ const NationalTaxService = ({ classCode }) => {
                 </div>
               ))}
             </div>
+            ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {taxPolicyFields.map((field) => (
+                <div
+                  key={field.name}
+                  className="flex items-center justify-between px-4 py-3 rounded-lg"
+                  style={{ background: 'rgba(255, 255, 255, 0.7)', border: '1px solid rgba(203, 213, 225, 0.5)' }}
+                >
+                  <span className="text-xs font-bold" style={{ color: 'rgba(71, 85, 105, 0.9)', fontFamily: 'Rajdhani, sans-serif' }}>
+                    {field.label}
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif' }}>
+                    {field.type === "select"
+                      ? (taxSettings[field.name] === "daily" ? "매일" : taxSettings[field.name] === "monthly" ? "매월" : "매주")
+                      : `${((taxSettings[field.name] || 0) * 100).toFixed(field.name.includes("propertyHoldingTaxRate") ? 2 : 1)}%`}
+                  </span>
+                </div>
+              ))}
+            </div>
+            )}
 
+            {canEditPolicy && (
             <button
               onClick={saveTaxSettings}
               className="mt-5 px-7 py-2.5 rounded-lg font-bold text-sm text-white transition-colors duration-200"
@@ -547,6 +656,7 @@ const NationalTaxService = ({ classCode }) => {
             >
               세금 정책 저장
             </button>
+            )}
           </div>
 
         </div>

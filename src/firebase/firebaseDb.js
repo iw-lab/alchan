@@ -73,6 +73,7 @@ export {
   getCachedDocument,
   processSettlement,
   collectWeeklyTaxes,
+  collectWeeklyTaxesAsOfficer,
   isFirestoreInitialized,
 } from './db/utils';
 

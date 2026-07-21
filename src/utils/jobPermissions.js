@@ -14,7 +14,9 @@
 // 🔒 court-lock(2026-07-18, codex CRITICAL): 판사·경찰청장 추가(서버 functions/jobUtils.js와 동일 목록 유지).
 //   합의금 CF에서 cash 권한을 갖는 역할이라 self-select 시 갈취 가능 → 대통령/국무총리처럼 임명 전용으로 강제.
 //   클라 UI(Dashboard RESTRICTED_JOB_TITLES)에서도 학생 self-select 목록에서 제외됨(사용자 결정 2026-07-18).
-export const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장"];
+// 🔒 tax-lock(2026-07-21): 국세청 직원 추가(서버 functions/jobUtils.js와 동일 목록 유지). 주간 세금 징수
+//   권한을 갖는 역할이라 self-select 시 전교생 자산 갈취 가능 → 임명 전용으로 강제, Dashboard 자가선택 제외.
+export const APPOINTED_FALLBACK_TITLES = ["대통령", "국무총리", "판사", "경찰청장", "국세청 직원"];
 
 export const isAppointedOnlyJob = (job) =>
   !!job &&
@@ -43,4 +45,16 @@ export const hasJobTitle = (userDoc, jobs, title) => {
   if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return false;
   const ids = getEffectiveJobIds(userDoc);
   return jobs.some((job) => ids.includes(job.id) && job.title === title);
+};
+
+/**
+ * 교사 임명(appointedJobIds)으로만 해당 직함을 가졌는지 — 임명 전용 권력직 UI 게이팅용.
+ * hasJobTitle과 달리 selectedJobIds(학생 자가선택)는 무시한다. 서버(jobUtils.js)의
+ * appointed-only 판정과 동일한 의미로, 학생이 자가선택한 임명 전용 직업엔 버튼을 노출하지 않는다.
+ * ⚠️ 표시용일 뿐, 실제 권한은 서버가 재검증한다.
+ */
+export const hasAppointedJobTitle = (userDoc, jobs, title) => {
+  if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return false;
+  const appointedIds = toJobIdArray(userDoc?.appointedJobIds);
+  return jobs.some((job) => appointedIds.includes(job.id) && job.title === title);
 };

@@ -28,7 +28,7 @@ const {
 } = require("./realStockService");
 
 const { payMonthlyDividends } = require("./dividendService");
-const { buildJobMap, resolveStudentJobs } = require("./jobUtils");
+const { buildJobMap, resolveStudentJobs, hasJobTitle } = require("./jobUtils");
 // 급여 계산 단일 진실원(index.js batchPaySalaries와 공유).
 const { computeSalaryAmounts } = require("./salaryUtils");
 const {
@@ -1246,7 +1246,13 @@ exports.collectWeeklyTaxesManual = onCall(
     const { uid, classCode } = await checkAuthAndGetUserData(request, true);
     logger.info(`[수동세금] 관리자 ${uid}, 학급 ${classCode} 주간 세금 징수`);
     try {
-      const result = await collectPropertyHoldingTaxesLogic(classCode);
+      // 교사 수동 버튼은 강제 징수(force) — 같은 주 재징수도 허용(기존 동작 유지).
+      //   단 여기서 lastWeeklyTaxWeekKey가 갱신되므로, 이후 금요일 자동 징수는 이 학급을 스킵(이중과세 방지).
+      const result = await collectPropertyHoldingTaxesLogic(classCode, {
+        force: true,
+        source: "manual",
+        triggeredBy: uid,
+      });
       return {
         success: true,
         totalCollected: result?.totalCollected || 0,
@@ -1255,6 +1261,107 @@ exports.collectWeeklyTaxesManual = onCall(
     } catch (error) {
       if (error instanceof HttpsError) throw error;
       logger.error("[수동세금] 오류:", error);
+      throw new HttpsError("internal", error.message || "세금 징수 실패");
+    }
+  },
+);
+
+// 🔥 국세청장(교사 임명 국세청 직원) 학생용 주간 세금 징수 (onCall)
+//   - 관리자용 collectWeeklyTaxesManual과 동일한 로직(collectPropertyHoldingTaxesLogic)을 쓰되,
+//     ① 호출자가 '교사 임명(appointedJobIds)' 국세청 직원인지 서버가 재검증(자가선택 무효 — jobUtils appointed-only)
+//     ② 주 1회 쿨다운: governmentSettings.lastWeeklyTaxWeekKey 를 트랜잭션으로 선점해
+//        officer 중복클릭 레이스 + 자동/교사 징수 후 중복 징수를 차단(이중과세 방지).
+//   되돌리기 어려운 학생 자산 대량 차감이라 두 게이트를 모두 서버에서 강제한다.
+exports.collectWeeklyTaxesByOfficer = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    // 관리자 요구 아님(false) — 학생 국세청장이 호출한다.
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request, false);
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+    }
+
+    // ① 권한: 교사가 임명한 국세청 직원만. jobUtils.hasJobTitle은 appointed-only 직업을
+    //    appointedJobIds에서만 인정하므로, 학생이 selectedJobIds에 국세청 직원을 넣어도 무효.
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("classCode", "==", classCode)
+      .get();
+    const jobMap = buildJobMap(jobsSnap);
+    if (!hasJobTitle(userData, jobMap, "국세청 직원")) {
+      throw new HttpsError(
+        "permission-denied",
+        "교사가 임명한 국세청 직원만 세금을 징수할 수 있습니다.",
+      );
+    }
+
+    // 국고(=승인 관리자) 존재 확인 후 선점 — 관리자 없는 학급은 징수 대상이 없어
+    //   로직이 continue로 빠지는데, 그 전에 weekKey를 선점하면 "마킹됐지만 0원 징수"로
+    //   그 주 재시도가 막힌다(codex 관찰). 선점 전에 막아 이 상태를 원천 차단한다.
+    const officerAdminSnap = await findApprovedAdminSnap(classCode);
+    if (officerAdminSnap.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "국고(담당 선생님) 계정이 없어 세금을 징수할 수 없습니다.",
+      );
+    }
+
+    // 주차 키(KST) — 로직 본체와 동일한 단일 진실원(computeKstWeekKey) 사용.
+    const weekKey = computeKstWeekKey();
+
+    // ② 주 1회 쿨다운 선점 — 트랜잭션으로 weekKey를 원자적으로 claim.
+    //    이미 이번 주 걷혔으면(자동/교사/이전 officer 포함) skipped 반환.
+    const gsRef = db.collection("governmentSettings").doc(classCode);
+    try {
+      await db.runTransaction(async (tx) => {
+        const gsDoc = await tx.get(gsRef);
+        if (gsDoc.exists && gsDoc.data().lastWeeklyTaxWeekKey === weekKey) {
+          throw new HttpsError("already-exists", "이번 주 세금은 이미 징수되었습니다.");
+        }
+        tx.set(
+          gsRef,
+          {
+            lastWeeklyTaxWeekKey: weekKey,
+            lastWeeklyTaxAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastWeeklyTaxBy: uid,
+            lastWeeklyTaxSource: "officer",
+          },
+          { merge: true },
+        );
+      });
+    } catch (error) {
+      if (error instanceof HttpsError && error.code === "already-exists") {
+        logger.info(`[국세청장세금] ${classCode} ${weekKey} 이미 징수됨 — skip (officer ${uid})`);
+        return { success: true, skipped: true, weekKey };
+      }
+      throw error;
+    }
+
+    // weekKey 선점 성공 → 실제 징수 실행.
+    //   force=true: 방금 선점한 weekKey 때문에 로직의 멱등 스킵에 걸려 자기 징수가 무효화되는 걸 방지.
+    //     중복 클릭·재실행은 위 트랜잭션 선점이 이미 차단했다.
+    //   weekKey 전달: 선점 키와 징수 키를 동일하게 고정(주 경계 race 제거).
+    logger.info(`[국세청장세금] 국세청 직원 ${uid}, 학급 ${classCode} 주간 세금 징수 (${weekKey})`);
+    try {
+      const result = await collectPropertyHoldingTaxesLogic(classCode, {
+        force: true,
+        weekKey,
+        source: "officer",
+        triggeredBy: uid,
+      });
+      return {
+        success: true,
+        skipped: false,
+        weekKey,
+        totalCollected: result?.totalCollected || 0,
+        userCount: result?.totalUsersProcessed || 0,
+      };
+    } catch (error) {
+      // 징수 로직이 실패해도 weekKey는 선점된 상태로 남는다(officer 재시도 차단).
+      //   드문 실패 시엔 교사가 관리자용 즉시 징수로 백업 가능 — 학생 자산 이중 차감 위험을
+      //   재시도 허용보다 우선한다(over-block > double-tax).
+      if (error instanceof HttpsError) throw error;
+      logger.error("[국세청장세금] 오류:", error);
       throw new HttpsError("internal", error.message || "세금 징수 실패");
     }
   },
@@ -2410,13 +2517,34 @@ function lookupProgressiveMultiplier(netAssets) {
   return 3.5;
 }
 
-async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
+// KST 주차 키(예: "2026-W30") — 주간 세금 징수/쿨다운의 단일 진실원.
+//   Cloud Functions 런타임은 UTC라 아래 로컬 getter가 곧 KST(+9h 보정 후)를 읽는다.
+//   ⚠️ 공식이 여러 곳에 복붙되면 동기화 누락으로 버그가 났던 전례(주급 공식) → 반드시 이 헬퍼만 사용.
+function computeKstWeekKey(baseDate = new Date()) {
+  const kstNow = new Date(baseDate.getTime() + 9 * 60 * 60 * 1000);
+  return `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+}
+
+async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options = {}) {
   // 🔥 정책 (2026-05):
   //   주간 세금 = 순자산세(모든 학생, 순자산 기준) + 부동산 보유세(부동산 가치 기준, 누진)
   //   targetClassCode 지정 시 해당 학급만 처리(수동 징수), 없으면 전체 학급(자동 스케줄)
+  // 🔒 주-1회 멱등(2026-07-21, Gemini CRITICAL — 이중과세 차단):
+  //   force=false(자동 금요일 스케줄러·백업 HTTP)면 학급별로 governmentSettings.lastWeeklyTaxWeekKey를
+  //   확인해 이번 주 이미 걷힌 학급은 건너뛴다. 국세청장이 주중에 걷은 학급이 금요일 자동 징수로 또
+  //   걷혀 학생이 주 2회 과세되던 문제를 막는다(전역 systemState/lastPropertyTax 락은 학급별이 아님).
+  //   force=true(교사 수동 버튼·국세청장 선점 후)는 스킵 없이 실행 — 교사는 강제 재징수 가능, 국세청장은
+  //   호출 전 트랜잭션으로 weekKey를 이미 선점했으므로 여기서 스킵되면 자기 징수가 무효화되는 걸 방지.
+  const force = options.force === true;
+  // 트리거 출처(감사 로그·완료마커용): auto(자동 스케줄러) / manual(교사) / officer(국세청장).
+  const triggerSource = options.source || (force ? "manual" : "auto");
+  const triggeredBy = options.triggeredBy || null; // 징수 실행자 uid(officer/교사)
+  // 감사 로그 라벨 — 학생이 대량 차감을 트리거할 수 있는 기능이라 출처를 로그에 명시(cash_safety 원칙).
+  const sourceLabel =
+    triggerSource === "officer" ? "[국세청장]" : triggerSource === "manual" ? "[교사]" : "[자동]";
   logger.info(
     targetClassCode
-      ? `>>> [수동] 주간 세금 징수 시작 (${targetClassCode})`
+      ? `>>> [수동] 주간 세금 징수 시작 (${targetClassCode}${force ? ", force" : ""}, src=${triggerSource})`
       : ">>> [스케줄러] 주간 세금 징수 시작 (순자산세 + 부동산 보유세)",
   );
 
@@ -2427,21 +2555,56 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
     let totalCollected = 0;
     let totalUsersProcessed = 0;
 
-    // 주차 키 (학생 팝업 식별용)
-    const now = new Date();
-    const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+    // 주차 키 (학생 팝업 식별 + 주-1회 멱등). options.weekKey가 오면 그대로 사용 —
+    //   국세청장 경로는 선점 트랜잭션에서 계산한 weekKey를 넘겨 "선점 키 ≠ 징수 키"(주 경계 race)를 없앤다.
+    const weekKey = options.weekKey || computeKstWeekKey();
 
     for (const classCode of classCodes) {
       logger.info(`[부동산세] ${classCode} 클래스 처리 시작`);
 
-      // 관리자(선생님) 찾기
+      // 관리자(선생님) 찾기 — claim(마킹)보다 먼저 확인. 관리자 없는 학급은 징수 대상(국고)이 없어
+      //   과세 없이 건너뛰는데, claim을 먼저 하면 "0원인데 이번 주 징수됨"으로 마킹돼 그 주 재징수가
+      //   막힌다(under-tax). admin 부재를 먼저 걸러 이 잔여 케이스를 없앤다.
       const adminSnapshot = await findApprovedAdminSnap(classCode);
       if (adminSnapshot.empty) {
         logger.warn(`[부동산세] ${classCode}: 관리자 계정을 찾을 수 없음 - 건너뜀`);
         continue;
       }
       const adminDoc = adminSnapshot.docs[0];
+
+      // 🔒 주-1회 멱등(트랜잭션 claim): 이번 주 이미 걷힌 학급은 스킵(자동/백업 경로만 — force면 스킵 안 함).
+      //   단순 read-then-act(get 후 진행)면 국세청장의 원자적 선점과 시간상 교차 시 둘 다 징수해
+      //   이중과세가 났다(code-reviewer/codex HIGH). 그래서 국세청장 경로와 동일하게 weekKey를
+      //   트랜잭션으로 선점한다 — 자동/백업 vs 국세청장이 governmentSettings 문서를 두고 상호 배제된다.
+      //   claim 성공 후 실제 과세(batch)가 실패하면 그 주엔 미징수(under-tax, 안전 방향) → 교사 force 백업.
+      if (!force) {
+        try {
+          await db.runTransaction(async (tx) => {
+            const gsRef = db.collection("governmentSettings").doc(classCode);
+            const gsDoc = await tx.get(gsRef);
+            if (gsDoc.exists && gsDoc.data().lastWeeklyTaxWeekKey === weekKey) {
+              throw new HttpsError("already-exists", "이미 징수됨");
+            }
+            tx.set(
+              gsRef,
+              {
+                lastWeeklyTaxWeekKey: weekKey,
+                lastWeeklyTaxAt: admin.firestore.FieldValue.serverTimestamp(),
+                lastWeeklyTaxSource: "auto",
+              },
+              { merge: true },
+            );
+          });
+        } catch (claimErr) {
+          if (claimErr instanceof HttpsError && claimErr.code === "already-exists") {
+            logger.info(
+              `[주간세금] ${classCode}: 이번 주(${weekKey}) 이미 징수됨 — 스킵(이중과세 방지)`,
+            );
+            continue;
+          }
+          throw claimErr;
+        }
+      }
 
       // 주식 현재가 (학급당 1회 조회 — 거시지표·자산 계산 공유)
       const stockMap = {};
@@ -2618,8 +2781,10 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             type: "taxPayment",
             description:
-              `[자동] 순자산세 ${netAssetTax.toLocaleString()}원 ` +
+              `${sourceLabel} 순자산세 ${netAssetTax.toLocaleString()}원 ` +
               `(순자산 ${netAssets.toLocaleString()}원 × ${(netAssetTaxRate * 100).toFixed(2)}%)`,
+            source: triggerSource,
+            triggeredBy: triggeredBy || null,
             classCode,
             expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
           });
@@ -2631,9 +2796,11 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             type: "taxPayment",
             description:
-              `[자동] 부동산 보유세 ${propertyTax.toLocaleString()}원 ` +
+              `${sourceLabel} 부동산 보유세 ${propertyTax.toLocaleString()}원 ` +
               `(기본 ${(classBaseRate * 100).toFixed(2)}% × 배율 ${multiplier}× = ${(finalRate * 100).toFixed(2)}%, ` +
               `부동산 ${realEstateValue.toLocaleString()}원)`,
+            source: triggerSource,
+            triggeredBy: triggeredBy || null,
             classCode,
             expireAt: admin.firestore.Timestamp.fromDate(logExpireAt),
           });
@@ -2667,9 +2834,26 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null) {
         );
       }
 
+      // 🔒 주간 세금 징수 완료 주차 기록을 과세 batch에 포함 — 과세와 완료마커를 원자적으로 커밋.
+      //   (별도 write로 분리하면 batch.commit 성공 후 마커 write만 실패 시 재시도가 재과세를 유발 — codex HIGH.)
+      //   자동(금)·교사 수동·국세청장 징수가 모두 여기에 weekKey를 남긴다. 학생은 이 값을 읽어 UI 배지를
+      //   표시하되 rules상 write 불가 → 위조 불가. 자동경로는 위 트랜잭션 claim으로 이미 선점했고, 여기선
+      //   force 경로(교사·국세청장)의 완료마커까지 통일해 기록한다.
+      batch.set(
+        db.collection("governmentSettings").doc(classCode),
+        {
+          lastWeeklyTaxWeekKey: weekKey,
+          lastWeeklyTaxAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastWeeklyTaxSource: triggerSource,
+          ...(triggeredBy ? { lastWeeklyTaxBy: triggeredBy } : {}),
+        },
+        { merge: true },
+      );
+
       await batch.commit();
       totalCollected += classTotalTax;
       totalUsersProcessed += classUsersProcessed;
+
       logger.info(
         `[주간세금] ${classCode} 완료: ${classUsersProcessed}명 처리, 과세 ${classTaxedStudents}명, ` +
         `총 ${classTotalTax.toLocaleString()}원 (순자산세 ${classNetAssetTax.toLocaleString()} + 부동산세 ${classPropertyTax.toLocaleString()})`,

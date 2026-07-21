@@ -111,5 +111,19 @@ export const collectWeeklyTaxes = async () => {
   }
 };
 
+// 국세청장(교사 임명 국세청 직원) 학생용 주간 세금 징수 — 주 1회 쿨다운.
+//   권한·쿨다운은 서버(collectWeeklyTaxesByOfficer)가 재검증한다. 반환: { success, skipped, weekKey, ... }
+export const collectWeeklyTaxesAsOfficer = async () => {
+  if (!functions) throw new Error("Firebase Functions가 초기화되지 않았습니다.");
+  const fn = httpsCallable(functions, 'collectWeeklyTaxesByOfficer');
+  try {
+    const result = await fn({});
+    return result.data;
+  } catch (error) {
+    logger.error("[firebase.js] collectWeeklyTaxesByOfficer 호출 오류:", error);
+    throw new Error(error.message || "세금 징수에 실패했습니다.");
+  }
+};
+
 // Firestore 초기화 여부 확인
 export const isFirestoreInitialized = () => Boolean(db);

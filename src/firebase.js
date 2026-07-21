@@ -109,6 +109,7 @@ export {
   // Cloud Functions
   processSettlement,
   collectWeeklyTaxes,
+  collectWeeklyTaxesAsOfficer,
   // 학급 데이터 복사
   copyDefaultDataToNewClass,
   // Firestore primitives
