@@ -60,6 +60,7 @@ const DEFAULT_TREASURY_DATA = {
 };
 
 const DEFAULT_TAX_SETTINGS = {
+  netAssetTaxRate: 0.005, // 주간 순자산세율(기본 0.5%)
   stockTransactionTaxRate: 0.01,
   realEstateTransactionTaxRate: 0.03,
   itemStoreVATRate: 0.1,
@@ -356,6 +357,7 @@ const NationalTaxService = ({ classCode }) => {
     .reduce((sum, key) => sum + (treasuryData[key] || 0), 0);
 
   const taxPolicyFields = [
+    { name: "netAssetTaxRate", label: "주간 순자산세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "stockTransactionTaxRate", label: "주식 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "realEstateTransactionTaxRate", label: "부동산 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "itemStoreVATRate", label: "아이템 상점 부가세율", type: "number", step: "0.01", min: "0", max: "1" },

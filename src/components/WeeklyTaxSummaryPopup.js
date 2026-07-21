@@ -77,28 +77,8 @@ export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
               <strong style={{ color: "#0f172a" }}>{formatWon(summary.avgClassNet)}</strong>
             </span>
             <span>
-              기본세율 <strong style={{ color: "#4338ca" }}>{formatPct(summary.classBaseRate)}</strong>
-            </span>
-          </div>
-          <div className="flex items-center justify-between flex-wrap gap-2 mt-1.5">
-            <span>
               👤 내 순자산:{" "}
               <strong style={{ color: "#0f172a" }}>{formatWon(summary.personalNetAssets)}</strong>
-            </span>
-            <span>
-              내 누진 배율{" "}
-              <strong
-                style={{
-                  color:
-                    summary.personalMultiplier === 0
-                      ? "#15803d"
-                      : summary.personalMultiplier >= 2
-                        ? "#dc2626"
-                        : "#0f172a",
-                }}
-              >
-                {summary.personalMultiplier}×
-              </strong>
             </span>
           </div>
         </div>
@@ -141,8 +121,7 @@ export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
                   </span>
                 ) : (
                   <span>
-                    학급 기본 {formatPct(item.classBaseRate)} × 내 배율 {item.multiplier}× ={" "}
-                    <strong>{formatPct(item.rate)}</strong>
+                    세율 <strong>{formatPct(item.rate)}</strong>
                   </span>
                 )}
               </div>
