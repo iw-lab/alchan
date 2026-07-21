@@ -11,11 +11,48 @@
 // 클라 상수를 바꿀 땐 이 파일도 함께 갱신할 것(역도 동일).
 
 const SALARY = {
-  BASE: 2000000, // 기본 주급
-  ADDITIONAL: 500000, // 추가 직업당 가산(첫 직업 제외)
-  PRESIDENT_BONUS: 2000000, // 대통령 추가 주급(교사 지정 appointed 직업에서만)
+  BASE: 2000000, // 기본 주급(인상 배수 적용 전 기준값)
+  ADDITIONAL: 500000, // 추가 직업당 가산(첫 직업 제외) — 인상 대상 아님(고정)
+  PRESIDENT_BONUS: 2000000, // 대통령 추가 주급(교사 지정 appointed 직업에서만) — 인상 대상 아님(고정)
   DEFAULT_MAX_JOBS: 5, // 학생당 급여 계산 직업 상한 기본값(관리자 조절 가능)
+  // ── 주간 기본급 복리 인상(2026-07-21) ──
+  //   교사 설정 salaryIncreaseRate(settings/salarySettings_{classCode})만큼
+  //   매주 기본급이 복리로 오른다.
+  //   인상 대상은 '기본급'만 — 직업가산·보너스는 고정(사용자 결정 2026-07-21).
+  DEFAULT_RAISE_RATE: 0.05, // 기본 인상률 5%/주
+  MAX_RAISE_RATE: 1, // 인상률 상한 100%/주 (오설정 폭주 방지)
+  MAX_BASE: 1e12, // 실효 기본급 상한 (복리 폭주·오버플로 방지)
 };
+
+/**
+ * 복리 인상 배수를 적용한 '실효 기본급'.
+ * 배수가 없거나 이상하면 원래 기본급으로 폴백.
+ * @param {number} baseMultiplier 누적 인상 배수(1.0 = 인상 없음)
+ * @return {number} 실효 기본급(정수)
+ */
+function computeEffectiveBase(baseMultiplier) {
+  const m =
+    Number.isFinite(baseMultiplier) && baseMultiplier > 0 ? baseMultiplier : 1;
+  return Math.min(Math.round(SALARY.BASE * m), SALARY.MAX_BASE);
+}
+
+/**
+ * 다음 주에 쓸 인상 배수 = 현재 배수 × (1 + 인상률).
+ * 이상값은 안전하게 클램프.
+ * @param {number} current 현재 누적 배수
+ * @param {number} rate 이번 주 적용 인상률(교사 설정)
+ * @return {number} 다음 배수
+ */
+function nextBaseMultiplier(current, rate) {
+  const m = Number.isFinite(current) && current > 0 ? current : 1;
+  const r = Number.isFinite(rate) ?
+    Math.min(Math.max(rate, 0), SALARY.MAX_RAISE_RATE) :
+    SALARY.DEFAULT_RAISE_RATE;
+  const next = m * (1 + r);
+  // 실효 기본급이 상한을 넘지 않는 선에서만 증가(무한 복리 방지)
+  const cap = SALARY.MAX_BASE / SALARY.BASE;
+  return Number.isFinite(next) ? Math.min(next, cap) : m;
+}
 
 /**
  * 학생 1명의 세전총액·세금·세후 급여 계산(순수 함수, 부수효과 없음).
@@ -28,11 +65,20 @@ const SALARY = {
  * @param {string[]} appointed 교사 지정(appointed) 직업 id 목록(대통령 보너스 판정용)
  * @param {Map} jobMap jobId -> {title, ...} 맵(buildJobMap 결과)
  * @param {number} taxRate 세율(호출자가 이미 sanitize한 유한수)
- * @returns {{grossSalary:number, bonus:number, totalGross:number, tax:number, netSalary:number}}
+ * @param {number} [baseSalary] 실효 기본급(복리 인상 반영값). 생략 시 인상 없는 기본급.
+ *   ⚠️ 인상은 기본급에만 적용 — ADDITIONAL(직업가산)·PRESIDENT_BONUS는 고정이다.
+ * @return {{grossSalary:number, bonus:number, totalGross:number,
+ *   tax:number, netSalary:number}}
  */
-function computeSalaryAmounts(validJobCount, appointed, jobMap, taxRate) {
+function computeSalaryAmounts(
+    validJobCount, appointed, jobMap, taxRate, baseSalary,
+) {
+  const base =
+    Number.isFinite(baseSalary) && baseSalary >= 0 ?
+      Math.min(baseSalary, SALARY.MAX_BASE) :
+      SALARY.BASE;
   const grossSalary =
-    SALARY.BASE + Math.max(0, validJobCount - 1) * SALARY.ADDITIONAL;
+    base + Math.max(0, validJobCount - 1) * SALARY.ADDITIONAL;
   // 대통령 보너스는 '교사가 지정한' 직업(appointed)에서만, 중복 제거된 id 기준으로 지급.
   // 학생이 selectedJobIds에 대통령 id를 넣거나 같은 id를 여러 번 넣어도 가산되지 않는다.
   let bonus = 0;
@@ -42,7 +88,12 @@ function computeSalaryAmounts(validJobCount, appointed, jobMap, taxRate) {
   const totalGross = grossSalary + bonus;
   const tax = Math.floor(totalGross * taxRate);
   const netSalary = totalGross - tax;
-  return { grossSalary, bonus, totalGross, tax, netSalary };
+  return {grossSalary, bonus, totalGross, tax, netSalary};
 }
 
-module.exports = { SALARY, computeSalaryAmounts };
+module.exports = {
+  SALARY,
+  computeSalaryAmounts,
+  computeEffectiveBase,
+  nextBaseMultiplier,
+};

@@ -466,11 +466,12 @@ const AdminSettingsModal = ({
   // 급여 설정 상태
   const [salarySettings, setSalarySettings] = useState({
     taxRate: 0.1, // 10% 세율
-    salaryIncreaseRate: 0.03, // 3% 주급 인상률
+    salaryIncreaseRate: 0.05, // 5% 주간 기본급 복리 인상률(기본값)
+    salaryBaseMultiplier: 1, // 누적 인상 배수(서버가 매주 갱신) — 미리보기·표시용
     maxJobsPerStudent: 5, // 학생당 직업 개수 상한(급여 계산·신청 제한 기준)
   });
   const [tempTaxRate, setTempTaxRate] = useState("10");
-  const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("3");
+  const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("5");
   const [tempMaxJobsPerStudent, setTempMaxJobsPerStudent] = useState("5");
   const [salarySettingsLoading, setSalarySettingsLoading] = useState(false);
 
@@ -607,12 +608,21 @@ const AdminSettingsModal = ({
         // ⚠️ || 0.1 fallback 제거 — 사용자가 명시적으로 0%로 저장한 경우도 보존
         // taxRate가 undefined/null인 경우만 기본값 사용 (Number()는 null→0 변환 방지 위해 ??)
         const taxRate = data.taxRate ?? 0.1;
-        const salaryIncreaseRate = data.salaryIncreaseRate ?? 0.03;
+        const salaryIncreaseRate = data.salaryIncreaseRate ?? 0.05;
         // 직업 개수 상한(미설정 시 기본 5). 정수·1이상만 유효.
         const rawMax = data.maxJobsPerStudent;
         const maxJobsPerStudent =
           Number.isInteger(rawMax) && rawMax >= 1 ? rawMax : 5;
-        const settings = { taxRate, salaryIncreaseRate, maxJobsPerStudent };
+        // 서버가 매주 갱신하는 누적 인상 배수(없으면 1.0 = 인상 전).
+        const rawMultiplier = data.salaryBaseMultiplier;
+        const salaryBaseMultiplier =
+          Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1;
+        const settings = {
+          taxRate,
+          salaryIncreaseRate,
+          salaryBaseMultiplier,
+          maxJobsPerStudent,
+        };
         setSalarySettings(settings);
         setTempTaxRate(String((taxRate * 100).toFixed(1)));
         setTempSalaryIncreaseRate(String((salaryIncreaseRate * 100).toFixed(1)));
@@ -758,7 +768,10 @@ const AdminSettingsModal = ({
       // ⚠️ 표시(미리보기) 전용 — 실제 지급 금액은 서버가 결정한다(functions/salaryUtils.js
       //   computeSalaryAmounts = 단일 진실원). 클라는 별도 빌드라 그 모듈을 import할 수 없어
       //   상수를 복제하나, 값을 바꿀 땐 반드시 functions/salaryUtils.js도 함께 갱신할 것(역도 동일).
-      const baseSalary = 2000000;
+      //   기본급은 서버의 주간 복리 인상(salaryBaseMultiplier)이 반영된 '실효 기본급'.
+      const baseSalary = Math.round(
+        2000000 * (salarySettings.salaryBaseMultiplier || 1),
+      );
       const additionalSalary = 500000;
       const PRESIDENT_BONUS = 2000000;
 
@@ -805,7 +818,12 @@ const AdminSettingsModal = ({
 
       return { gross: totalGross, tax, net: netSalary };
     },
-    [salarySettings.taxRate, salarySettings.maxJobsPerStudent, jobs],
+    [
+      salarySettings.taxRate,
+      salarySettings.maxJobsPerStudent,
+      salarySettings.salaryBaseMultiplier,
+      jobs,
+    ],
   );
 
   // 직업 편집 핸들러
@@ -1033,7 +1051,7 @@ const AdminSettingsModal = ({
           setSalarySettings((prev) => ({
             ...prev,
             taxRate: data.taxRate ?? 0.1,
-            salaryIncreaseRate: data.salaryIncreaseRate ?? 0.03,
+            salaryIncreaseRate: data.salaryIncreaseRate ?? 0.05,
             maxJobsPerStudent:
               Number.isInteger(data.maxJobsPerStudent) &&
               data.maxJobsPerStudent >= 1
@@ -3577,7 +3595,7 @@ const AdminSettingsModal = ({
 
                   <div>
                     <label className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-slate-700">주급 인상률</span>
+                      <span className="text-sm font-semibold text-slate-700">기본급 주간 인상률</span>
                       <span className="text-[11px] text-slate-400">단위 %</span>
                     </label>
                     <div className="relative">
@@ -3589,11 +3607,11 @@ const AdminSettingsModal = ({
                         value={tempSalaryIncreaseRate}
                         onChange={(e) => setTempSalaryIncreaseRate(e.target.value)}
                         className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition text-slate-800 text-sm"
-                        placeholder="예: 3"
+                        placeholder="예: 5"
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">매주 자동 적용될 인상률</p>
+                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">매주 자동 지급 때 기본급이 이 비율만큼 복리로 인상됩니다 (직업가산·보너스는 고정)</p>
                   </div>
 
                   <div>
@@ -3635,7 +3653,19 @@ const AdminSettingsModal = ({
                     현재 급여 설정
                   </h4>
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-slate-100">
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
+                  <div className="px-4 py-4 text-center">
+                    <p className="text-[11px] text-slate-500 mb-1">현재 기본급</p>
+                    <p className="text-lg font-bold text-indigo-600 tabular-nums">
+                      {Math.round(
+                        2000000 * (salarySettings.salaryBaseMultiplier || 1),
+                      ).toLocaleString()}
+                      <span className="text-sm text-slate-500 ml-0.5">원</span>
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      기준 200만 × {(salarySettings.salaryBaseMultiplier || 1).toFixed(3)}배
+                    </p>
+                  </div>
                   <div className="px-4 py-4 text-center">
                     <p className="text-[11px] text-slate-500 mb-1">세율</p>
                     <p className="text-lg font-bold text-slate-800 tabular-nums">
@@ -3644,7 +3674,7 @@ const AdminSettingsModal = ({
                     </p>
                   </div>
                   <div className="px-4 py-4 text-center">
-                    <p className="text-[11px] text-slate-500 mb-1">주급 인상률</p>
+                    <p className="text-[11px] text-slate-500 mb-1">기본급 주간 인상률</p>
                     <p className="text-lg font-bold text-emerald-600 tabular-nums">
                       {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}
                       <span className="text-sm text-slate-500 ml-0.5">%</span>

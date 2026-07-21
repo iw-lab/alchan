@@ -30,7 +30,12 @@ const {
 const { payMonthlyDividends } = require("./dividendService");
 const { buildJobMap, resolveStudentJobs, hasJobTitle } = require("./jobUtils");
 // 급여 계산 단일 진실원(index.js batchPaySalaries와 공유).
-const { computeSalaryAmounts } = require("./salaryUtils");
+const {
+  computeSalaryAmounts,
+  computeEffectiveBase,
+  nextBaseMultiplier,
+  SALARY,
+} = require("./salaryUtils");
 const {
   DEFAULT_JOBS,
   DEFAULT_STORE_ITEMS,
@@ -2076,8 +2081,14 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     // weekKeyOverride: 특정 주 재지급용 (예: "2026-W15")
     const computedWeekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
     const weekKey = weekKeyOverride || computedWeekKey;
+    // 백필 모드 = 과거(또는 임의) 주차를 수동 지정해 재지급하는 경우.
+    //   이 모드에선 기본급 복리 인상 원장(salaryBaseMultiplier/salaryLastRaiseWeekKey)을 갱신하지 않는다.
+    const isSalaryBackfill = !!weekKeyOverride;
     if (weekKeyOverride) {
-      logger.info(`[주급 지급] weekKey 오버라이드 사용: ${weekKey} (계산값: ${computedWeekKey})`);
+      logger.info(
+        `[주급 지급] weekKey 오버라이드 사용: ${weekKey} (계산값: ${computedWeekKey}) ` +
+        `— 백필 모드: 기본급 인상 배수는 갱신하지 않음(현재 기본급으로 지급)`,
+      );
     }
     const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
     if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().weekKey === weekKey) {
@@ -2107,12 +2118,31 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     for (const classCode of classCodes) {
       try {
         // 급여 설정 조회 (세율) - settings/salarySettings_{classCode} 경로 사용
-        let salarySettingsDoc = await db.collection("settings").doc(`salarySettings_${classCode}`).get();
+        const perClassSalaryRef = db.collection("settings").doc(`salarySettings_${classCode}`);
+        let salarySettingsDoc = await perClassSalaryRef.get();
+        // 누적 인상 배수·마지막 인상 주차는 '학급별 상태'라 전역 폴백과 섞으면 안 된다(학급별 문서에서만 읽음).
+        const perClassSalaryData = salarySettingsDoc.exists ? salarySettingsDoc.data() : null;
         if (!salarySettingsDoc.exists) {
           salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
         }
         const rawTaxRate = salarySettingsDoc.exists ? salarySettingsDoc.data().taxRate : 0.1;
         const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
+
+        // ── 기본급 주간 복리 인상(2026-07-21) ──
+        //   교사 설정 salaryIncreaseRate(기본 5%)만큼 매주 '기본급'이 복리로 오른다.
+        //   이번 주 지급은 '현재' 배수로 계산하고, 지급 후 배수를 올린다 → 인상은 다음 주부터 반영.
+        //   (직업가산·대통령 보너스는 인상 대상 아님 — 사용자 결정)
+        const rawRaiseRate = salarySettingsDoc.exists
+          ? salarySettingsDoc.data().salaryIncreaseRate
+          : undefined;
+        const raiseRate = Number.isFinite(rawRaiseRate)
+          ? Math.min(Math.max(rawRaiseRate, 0), SALARY.MAX_RAISE_RATE)
+          : SALARY.DEFAULT_RAISE_RATE;
+        const rawMultiplier = perClassSalaryData ? perClassSalaryData.salaryBaseMultiplier : undefined;
+        const baseMultiplier =
+          Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1;
+        const lastRaiseWeekKey = perClassSalaryData ? perClassSalaryData.salaryLastRaiseWeekKey : null;
+        const effectiveBase = computeEffectiveBase(baseMultiplier);
         // 직업 개수 상한(관리자 설정) — 급여 계산에 반영할 최대 직업 수. 미설정 시 기본 5.
         const rawMaxJobs = salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined;
         // 하한1·상한20 클램프(설정 문서가 API/콘솔로 변조돼도 급여 캡 무력화 방지)
@@ -2180,6 +2210,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
             appointed,
             jobMap,
             taxRate,
+            effectiveBase, // 복리 인상이 반영된 실효 기본급
           );
 
           batch.update(studentDoc.ref, {
@@ -2226,6 +2257,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           classPaidCount++;
         }
 
+        // 지급 대상이 0명이면 여기서 빠지므로 기본급 인상(raisePatch)도 함께 스킵된다.
+        //   의도된 설계: '인상은 지급과 결합' — 지급이 없던 주는 인상도 없고, 다음 실제 지급 주에
+        //   정상적으로 1회만 인상된다(이중 인상 없음).
         if (classPaidCount === 0) continue;
 
         // 관리자 잔액 차감 (부족해도 마이너스로 허용)
@@ -2238,13 +2272,34 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
         // lastPaidDate 업데이트
         const salarySettingsRef = db.collection("settings").doc(`salarySettings_${classCode}`);
-        batch.set(salarySettingsRef, { lastPaidDate: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        // 기본급 복리 인상 — 이번 주 지급(현재 배수)이 끝났으니 '다음 주용' 배수를 올린다.
+        //   같은 batch에 담아 지급과 원자적으로 커밋(지급만 되고 인상이 유실되거나 그 반대가 없게).
+        //   lastRaiseWeekKey 가드로 같은 주 재실행(forceRun 등) 시 중복 인상 방지.
+        // 🔒 백필(weekKeyOverride) 시엔 인상 원장을 절대 건드리지 않는다(Gemini CRITICAL):
+        //   과거 주차를 뒤늦게 지급하면 lastRaiseWeekKey가 과거로 역전 덮어써지고, 예정에 없던
+        //   복리 1회가 배수에 영구 잔존해 이후 모든 주의 기본급이 부풀었다. 백필 = '순수 지급'만.
+        //   ⚠️ 백필 지급액은 (주차별 기본급 이력을 보관하지 않으므로) '현재' 실효 기본급 기준이다.
+        const raisePatch =
+          isSalaryBackfill || lastRaiseWeekKey === weekKey
+            ? {}
+            : {
+                salaryBaseMultiplier: nextBaseMultiplier(baseMultiplier, raiseRate),
+                salaryLastRaiseWeekKey: weekKey,
+                salaryRaiseUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              };
+        batch.set(
+          salarySettingsRef,
+          { lastPaidDate: admin.firestore.FieldValue.serverTimestamp(), ...raisePatch },
+          { merge: true },
+        );
 
         await batch.commit();
         totalPaidCount += classPaidCount;
         totalAmount += classTotalNet;
         logger.info(
-          `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급`,
+          `[주급 지급] ${classCode}: ${classPaidCount}명에게 총 ${classTotalNet.toLocaleString()}원 지급 ` +
+          `(기본급 ${effectiveBase.toLocaleString()}원 = 배수 ${baseMultiplier.toFixed(4)}, 인상률 ${(raiseRate * 100).toFixed(1)}%/주` +
+          `${lastRaiseWeekKey === weekKey ? ", 이번 주 인상 이미 적용됨" : ""})`,
         );
       } catch (classError) {
         // 한 학급 실패가 다른 학급 지급을 막지 않도록

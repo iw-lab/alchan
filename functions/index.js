@@ -35,7 +35,7 @@ const {
   hasJobTitle,
 } = require("./jobUtils");
 // 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
-const { computeSalaryAmounts } = require("./salaryUtils");
+const { computeSalaryAmounts, computeEffectiveBase } = require("./salaryUtils");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -7007,12 +7007,24 @@ exports.batchPaySalaries = onCall(
         .collection("settings")
         .doc(`salarySettings_${classCode}`)
         .get();
+      // 누적 인상 배수는 '학급별 상태'라 전역 폴백과 섞지 않는다(scheduler-http.js와 동일 규약).
+      const perClassSalaryData = salarySettingsDoc.exists
+        ? salarySettingsDoc.data()
+        : null;
       if (!salarySettingsDoc.exists) {
         salarySettingsDoc = await db
           .collection("settings")
           .doc("salarySettings")
           .get();
       }
+      // 기본급 복리 인상 반영 — 수동 지급도 자동 지급과 동일한 '현재 실효 기본급'을 쓴다.
+      //   ⚠️ 인상 배수를 올리는 건 주간 자동 지급만(수동 지급은 배수를 올리지 않는다).
+      const rawMultiplier = perClassSalaryData
+        ? perClassSalaryData.salaryBaseMultiplier
+        : undefined;
+      const effectiveBase = computeEffectiveBase(
+        Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1,
+      );
       // 🔧 세율 전처리를 scheduler-http.js와 통일(2026-07-19 codex WARNING): 구 `|| 0.1`은
       //    taxRate=0(무세율)을 falsy로 취급해 10%로 둔갑시켜, 같은 학급에서 수동지급(10%)과
       //    금요일 자동지급(0%)의 실수령액이 달랐다. Number.isFinite로 0%를 정확히 존중.
@@ -7108,6 +7120,7 @@ exports.batchPaySalaries = onCall(
           appointed,
           jobMap,
           taxRate,
+          effectiveBase, // 복리 인상이 반영된 실효 기본급(자동 지급과 동일)
         );
 
         const studentRef = db.collection("users").doc(student.id);
