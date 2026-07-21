@@ -2795,9 +2795,13 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
             basis: netAssets,
             basisLabel: "순자산",
             // 순자산세 항목은 note를 항상 채워 부동산식 계산식이 안 뜨게 함
+            //   면세 기준(netAssetExemption)이 설정된 학급에선 "순자산 없음"이 아니라
+            //   "기준 이하라 면세"임을 정확히 알려준다(기준 노출 후 오해 방지).
             note: netAssets > netAssetExemption
               ? `순자산의 ${(netAssetTaxRate * 100).toFixed(2)}% (현금·예금·주식·부동산 합계 − 대출)`
-              : "순자산 없음 → 과세 0원",
+              : netAssetExemption > 0
+                ? `순자산 ${netAssetExemption.toLocaleString()}원 이하는 면세 (내 순자산 ${netAssets.toLocaleString()}원)`
+                : "순자산 없음 → 과세 0원",
           },
           {
             type: "propertyHoldingTax",

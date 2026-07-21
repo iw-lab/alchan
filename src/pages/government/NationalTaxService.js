@@ -32,6 +32,19 @@ const formatDate = (timestamp) => {
   return date.toLocaleString("ko-KR");
 };
 
+// 세금 정책 필드 표시값 포맷 — 세율은 %, 금액(isAmount)은 원, 주기는 한글.
+//   면세 기준처럼 '비율이 아닌 금액' 필드를 %로 찍으면 5억%처럼 보이므로 반드시 분기한다.
+const formatTaxFieldValue = (field, value) => {
+  if (field.type === "select") {
+    return value === "daily" ? "매일" : value === "monthly" ? "매월" : "매주";
+  }
+  if (field.isAmount) {
+    return `${Number(value || 0).toLocaleString()}원`;
+  }
+  const decimals = field.name.includes("propertyHoldingTaxRate") ? 2 : 1;
+  return `${((value || 0) * 100).toFixed(decimals)}%`;
+};
+
 // 주차 키(KST) — 서버 computeKstWeekKey(UTC 런타임)와 동일 결과를 브라우저 TZ와 무관하게 내려면
 //   반드시 UTC getter를 써야 한다. 로컬 getFullYear/월 계산을 쓰면 KST(UTC+9) 브라우저에서 +9h가
 //   이중 적용돼 주차가 어긋난다(codex 지적). 쿨다운 배지 표시용(정보성) — 실제 쿨다운은 서버가 판정.
@@ -61,6 +74,7 @@ const DEFAULT_TREASURY_DATA = {
 
 const DEFAULT_TAX_SETTINGS = {
   netAssetTaxRate: 0.005, // 주간 순자산세율(기본 0.5%)
+  netAssetTaxExemption: 0, // 순자산세 면세 기준(원) — 순자산이 이 값을 '초과'하면 과세. 0=모두 과세
   stockTransactionTaxRate: 0.01,
   realEstateTransactionTaxRate: 0.03,
   itemStoreVATRate: 0.1,
@@ -253,6 +267,16 @@ const NationalTaxService = ({ classCode }) => {
   const saveTaxSettings = async () => {
     if (!classCode) return;
     for (const key in editableSettings) {
+      // 면세 기준은 '비율'이 아니라 금액(원) — 0 이상만 허용(음수면 전원 과세로 뒤집힘).
+      if (key === "netAssetTaxExemption" && editableSettings[key] !== "") {
+        const won = Number(editableSettings[key]);
+        if (!Number.isFinite(won) || won < 0) {
+          alert(
+            `순자산세 면세 기준은 0 이상의 금액(원)이어야 합니다. 현재값: ${editableSettings[key]}`
+          );
+          return;
+        }
+      }
       if (
         key.endsWith("Rate") &&
         (editableSettings[key] < 0 || editableSettings[key] > 1)
@@ -358,6 +382,7 @@ const NationalTaxService = ({ classCode }) => {
 
   const taxPolicyFields = [
     { name: "netAssetTaxRate", label: "주간 순자산세율", type: "number", step: "0.001", min: "0", max: "1" },
+    { name: "netAssetTaxExemption", label: "순자산세 면세 기준(원)", type: "number", step: "10000", min: "0", isAmount: true },
     { name: "stockTransactionTaxRate", label: "주식 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "realEstateTransactionTaxRate", label: "부동산 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "itemStoreVATRate", label: "아이템 상점 부가세율", type: "number", step: "0.01", min: "0", max: "1" },
@@ -577,9 +602,7 @@ const NationalTaxService = ({ classCode }) => {
                   <label className="block text-xs font-bold mb-2" style={{ color: 'rgba(71, 85, 105, 0.9)', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}>
                     {field.label}
                     <span className="ml-2" style={{ color: '#6366f1', fontWeight: 400 }}>
-                      (현재: {field.type === "select"
-                        ? taxSettings[field.name]
-                        : `${((taxSettings[field.name] || 0) * 100).toFixed(field.name.includes("propertyHoldingTaxRate") ? 2 : 1)}%`})
+                      (현재: {formatTaxFieldValue(field, taxSettings[field.name])})
                     </span>
                   </label>
                   {field.type === "select" ? (
@@ -607,7 +630,11 @@ const NationalTaxService = ({ classCode }) => {
                       step={field.step}
                       min={field.min}
                       max={field.max}
-                      placeholder={`예: ${field.label.includes("부가") ? "0.1 (10%)" : "0.03 (3%)"}`}
+                      placeholder={
+                        field.isAmount
+                          ? "예: 500000 (50만원 초과분부터 과세, 0=모두 과세)"
+                          : `예: ${field.label.includes("부가") ? "0.1 (10%)" : "0.03 (3%)"}`
+                      }
                       className="w-full px-4 py-2.5 rounded-lg text-slate-800 text-sm transition-all duration-200"
                       style={{ background: 'rgba(255, 255, 255, 0.9)', border: '1px solid rgba(203, 213, 225, 0.5)', outline: 'none' }}
                       onFocus={(e) => e.target.style.borderColor = 'rgba(99, 102, 241, 0.5)'}
@@ -629,9 +656,7 @@ const NationalTaxService = ({ classCode }) => {
                     {field.label}
                   </span>
                   <span className="text-sm font-bold" style={{ color: '#6366f1', fontFamily: 'Rajdhani, sans-serif' }}>
-                    {field.type === "select"
-                      ? (taxSettings[field.name] === "daily" ? "매일" : taxSettings[field.name] === "monthly" ? "매월" : "매주")
-                      : `${((taxSettings[field.name] || 0) * 100).toFixed(field.name.includes("propertyHoldingTaxRate") ? 2 : 1)}%`}
+                    {formatTaxFieldValue(field, taxSettings[field.name])}
                   </span>
                 </div>
               ))}
