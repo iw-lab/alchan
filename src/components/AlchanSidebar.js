@@ -363,6 +363,20 @@ export const ALCHAN_MENU_ITEMS = [
     externalUrl: "https://echotale.simssijjang-d79.workers.dev/",
     parentId: "learningSitesCategory",
   },
+  {
+    id: "siteVocawormDefense",
+    label: "보카웜 디펜스(영어단어)",
+    icon: Gamepad2,
+    externalUrl: "https://vocaworm-defense.vercel.app/",
+    parentId: "learningSitesCategory",
+  },
+  {
+    id: "siteAraharu",
+    label: "아라하루(아침학습)",
+    icon: Sparkles,
+    externalUrl: "https://araharu-ecp.pages.dev/",
+    parentId: "learningSitesCategory",
+  },
 
   // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
   {
