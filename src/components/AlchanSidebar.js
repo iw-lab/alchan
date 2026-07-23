@@ -55,6 +55,7 @@ import {
   Send,
   Calculator,
   MessageSquare,
+  Grid3x3,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
 
@@ -344,9 +345,9 @@ export const ALCHAN_MENU_ITEMS = [
   },
   {
     id: "siteNarae",
-    label: "나래(종이비행기)",
+    label: "종이하늘",
     icon: Send,
-    externalUrl: "https://narae-2lg.pages.dev/",
+    externalUrl: "https://papersky.pages.dev/",
     parentId: "learningSitesCategory",
   },
   {
@@ -354,6 +355,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "슬기셈(수학)",
     icon: Calculator,
     externalUrl: "https://word-e329c.web.app",
+    parentId: "learningSitesCategory",
+  },
+  {
+    id: "siteNumeroQuest",
+    label: "칸채움",
+    icon: Grid3x3,
+    externalUrl: "https://numero-quest.pages.dev",
     parentId: "learningSitesCategory",
   },
   {
