@@ -182,20 +182,9 @@ exports.stockPriceScheduler = onRequest(
       // 🔥 force 파라미터를 먼저 확인 (모든 체크 우회)
       const forceUpdate = req.query.force === "true";
 
-      // 🔥 [최적화 v7.0] 방학 모드 체크를 가장 먼저! (30분 캐시로 Firestore 읽기 최소화)
-      if (!forceUpdate) {
-        const vacationMode = await isVacationMode();
-        if (vacationMode) {
-          // 방학 모드면 다른 체크 없이 즉시 종료 (비용 최소화)
-          res.json({
-            success: true,
-            message: "방학 모드 - 스케줄러 비활성화됨",
-            vacationMode: true,
-            firestoreReads: 0,
-          });
-          return;
-        }
-      }
+      // 📈 주식(주가 변동)은 방학 모드와 무관하게 항상 작동한다.
+      //    방학 중 중단 대상은 주급·월세·재산세·배당뿐(각 스케줄러가 개별로 isVacationMode() 체크).
+      //    아래 시장 시간(평일·장중) 체크는 그대로 적용 — 방학이어도 주중 장중에만 갱신.
 
       const now = new Date();
       const kstOffset = 9 * 60;
@@ -313,11 +302,7 @@ exports.stockPriceSchedulerV2 = onSchedule(
   },
   async () => {
     try {
-      const vacationMode = await isVacationMode();
-      if (vacationMode) {
-        logger.info("[stockPriceSchedulerV2] 방학 모드 - skip");
-        return;
-      }
+      // 📈 주식(주가 변동)은 방학 모드와 무관하게 항상 작동(주급·세금·배당만 방학 중단).
 
       const now = new Date();
       const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -1185,16 +1170,7 @@ exports.economicEventScheduler = onRequest(
         return;
       }
 
-      // 방학 모드 체크
-      const vacationMode = await isVacationMode();
-      if (vacationMode) {
-        res.json({
-          success: true,
-          message: "방학 모드 - 경제 이벤트 비활성화됨",
-          vacationMode: true,
-        });
-        return;
-      }
+      // 📈 경제 이벤트(주가·물가 변동)는 방학 모드와 무관하게 항상 작동.
 
       logger.info("[economicEventScheduler] 경제 이벤트 스케줄러 실행");
 
@@ -1690,17 +1666,7 @@ exports.exchangeRateScheduler = onRequest(
         return;
       }
 
-      // 🔥 방학 모드 체크 - 비용 절감을 위해 즉시 종료
-      const vacationMode = await isVacationMode();
-      if (vacationMode) {
-        logger.info(`[exchangeRateScheduler] 방학 모드 - 작업 건너뜀`);
-        res.json({
-          success: true,
-          message: "방학 모드 - 스케줄러 비활성화됨",
-          vacationMode: true,
-        });
-        return;
-      }
+      // 📈 환율 변동은 방학 모드와 무관하게 항상 작동(주식 시세의 일부).
 
       logger.info(`[exchangeRateScheduler] 환율 자동 업데이트 시작`);
 
