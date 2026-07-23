@@ -365,6 +365,13 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "learningSitesCategory",
   },
   {
+    id: "siteTypingverse",
+    label: "타이핑버스",
+    icon: Keyboard,
+    externalUrl: "https://typingverse.pages.dev",
+    parentId: "learningSitesCategory",
+  },
+  {
     id: "siteEchoTale",
     label: "에코테일(영어)",
     icon: BookOpen,
