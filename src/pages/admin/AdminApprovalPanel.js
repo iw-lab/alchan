@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   onSnapshot,
+  limit as firestoreLimit,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide-react";
@@ -38,18 +39,26 @@ const AdminApprovalPanel = () => {
     const approvalsRef = firestoreCollection(db, "pendingApprovals");
     let q;
 
+    // 🔻 [읽기 절감 2026-07-25] limit이 없어서 '승인됨'/'전체' 필터로 바꾸면
+    //    **그 학급의 1년치 승인 이력 전부**를 읽었다(게다가 onSnapshot이라 구독 상태로 유지).
+    //    할일 승인은 매일 쌓이는 데이터라 학년이 갈수록 이 화면 한 번 여는 비용이 계속 커진다.
+    //    승인 패널은 '처리할 일 목록'이므로 최신 50건이면 충분하다.
+    //    (필요한 복합 인덱스 classCode+requestedAt / classCode+status+requestedAt 는 이미 배포돼 있음)
+    const APPROVALS_LIMIT = 50;
     if (filter === "all") {
       q = query(
         approvalsRef,
         where("classCode", "==", classCode),
-        orderBy("requestedAt", "desc")
+        orderBy("requestedAt", "desc"),
+        firestoreLimit(APPROVALS_LIMIT)
       );
     } else {
       q = query(
         approvalsRef,
         where("classCode", "==", classCode),
         where("status", "==", filter),
-        orderBy("requestedAt", "desc")
+        orderBy("requestedAt", "desc"),
+        firestoreLimit(APPROVALS_LIMIT)
       );
     }
 

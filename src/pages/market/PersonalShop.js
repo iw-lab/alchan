@@ -746,13 +746,21 @@ const PersonalShop = () => {
       const activitiesRef = collection(db, "activities");
 
       // 단일 필드 쿼리로 조회 후 클라이언트에서 type 필터링
+      // 🔻 [읽기 절감 2026-07-25] 상한이 없어서 학생 1명의 **1년치 거래 기록 전부**를 읽었다.
+      //    거래는 계속 쌓이므로 이 화면을 여는 비용이 학년 내내 커지는 구조였다.
+      //    orderBy를 붙이면 복합 인덱스(sellerId+timestamp)가 필요한데 CI가 인덱스를 배포하지
+      //    않으므로, 정렬은 지금처럼 클라에서 하고 상한만 건다(정렬 후 화면 표기는 동일).
+      //    학급 상점 거래가 1인 100건을 넘는 일은 사실상 없어 표시 손실은 없다.
+      const HISTORY_LIMIT = 100;
       const soldQuery = query(
         activitiesRef,
         where("sellerId", "==", currentUser.uid),
+        limit(HISTORY_LIMIT),
       );
       const boughtQuery = query(
         activitiesRef,
         where("buyerId", "==", currentUser.uid),
+        limit(HISTORY_LIMIT),
       );
 
       const [soldSnap, boughtSnap] = await Promise.all([
