@@ -1,3 +1,4 @@
+import { getCurrencyUnit } from "./numberFormatter";
 // src/utils/levelSystem.js - 순자산 기반 레벨/칭호 시스템 (고급 버전)
 
 /**
@@ -23,7 +24,8 @@ export const LEVEL_THRESHOLDS = [
     icon: "💰",
     color: "#22c55e",
     badge: "🥉",
-    description: "첫 천만원 달성!"
+    // 모듈 상수라 로드 시점에 단위가 고정되지 않도록 getter로 지연 평가(2026-07-25)
+    get description() { return `첫 천만 ${getCurrencyUnit()} 달성!`; }
   },
   {
     level: 2,

@@ -633,7 +633,7 @@ const NationalTaxService = ({ classCode }) => {
                       max={field.max}
                       placeholder={
                         field.isAmount
-                          ? "예: 500000 (50만원 초과분부터 과세, 0=모두 과세)"
+                          ? `예: 500000 (50만 ${getCurrencyUnit()} 초과분부터 과세, 0=모두 과세)`
                           : `예: ${field.label.includes("부가") ? "0.1 (10%)" : "0.03 (3%)"}`
                       }
                       className="w-full px-4 py-2.5 rounded-lg text-slate-800 text-sm transition-all duration-200"

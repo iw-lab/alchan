@@ -1178,7 +1178,7 @@ const AdminSettingsModal = ({
       const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
       const result = await reverseFn({});
       if (result.data.success) {
-        alert(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만원 회수`);
+        alert(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만 ${getCurrencyUnit()} 회수`);
         loadStudents();
       }
     } catch (error) {
@@ -2700,11 +2700,11 @@ const AdminSettingsModal = ({
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: "#f1f5f9" }}>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>기본 주급</p>
-                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>200만원</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>200만 {getCurrencyUnit()}</p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>추가 직업당</p>
-                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>+50만원</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>+50만 {getCurrencyUnit()}</p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>세율 / 인상률</p>
@@ -3976,7 +3976,7 @@ const AdminSettingsModal = ({
                   );
                 })()}
                 <p className="salary-explanation">
-                  (기본 200만원 + 추가 직업당 50만원, 세금{" "}
+                  (기본 200만 {getCurrencyUnit()} + 추가 직업당 50만 {getCurrencyUnit()}, 세금{" "}
                   {(salarySettings.taxRate * 100).toFixed(1)}% 공제)
                 </p>
               </div>

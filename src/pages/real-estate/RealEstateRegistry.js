@@ -899,7 +899,7 @@ const RealEstateRegistry = () => {
     const targetProperty = emptyProperties[0];
 
     if (!window.confirm(
-      `'${userName}' 학생을 부동산 #${targetProperty.id}에 강제로 입주시키시겠습니까?\n\n월세: ${(targetProperty.rent / 10000).toFixed(0)}만원\n소유자: ${targetProperty.owner === 'government' ? '정부' : targetProperty.ownerName}`
+      `'${userName}' 학생을 부동산 #${targetProperty.id}에 강제로 입주시키시겠습니까?\n\n월세: ${(targetProperty.rent / 10000).toFixed(0)}만 ${getCurrencyUnit()}\n소유자: ${targetProperty.owner === 'government' ? '정부' : targetProperty.ownerName}`
     )) {
       return;
     }
@@ -1208,7 +1208,7 @@ const RealEstateRegistry = () => {
     logger.log(`[FixRent] 현재 월세 비율: ${currentRentPercentage}%`);
 
     if (!window.confirm(
-      `월세가 0원인 부동산을 모두 수정하시겠습니까?\n\n현재 설정:\n- 월세 비율: ${currentRentPercentage}%\n- 기본 부동산 가격: ${(settings.basePrice / 10000).toFixed(0)}만원\n\n각 부동산의 가격 × ${currentRentPercentage}%로 월세가 설정됩니다.`
+      `월세가 0${getCurrencyUnit()}인 부동산을 모두 수정하시겠습니까?\n\n현재 설정:\n- 월세 비율: ${currentRentPercentage}%\n- 기본 부동산 가격: ${(settings.basePrice / 10000).toFixed(0)}만 ${getCurrencyUnit()}\n\n각 부동산의 가격 × ${currentRentPercentage}%로 월세가 설정됩니다.`
     )) {
       return;
     }
@@ -1666,13 +1666,13 @@ const RealEstateRegistry = () => {
               <div className="quick-info-row">
                 <span className="detail-label">부동산 가격</span>
                 <span className="detail-value">
-                  {(property.price / 10000).toFixed(0)}만원
+                  {(property.price / 10000).toFixed(0)}만 {getCurrencyUnit()}
                 </span>
               </div>
               <div className="quick-info-row">
                 <span className="detail-label">월세</span>
                 <span className="detail-value">
-                  {(property.rent / 10000).toFixed(0)}만원
+                  {(property.rent / 10000).toFixed(0)}만 {getCurrencyUnit()}
                 </span>
               </div>
               {tenantName && (
@@ -1688,7 +1688,7 @@ const RealEstateRegistry = () => {
                     className="detail-value"
                     style={{ color: "#ef4444", fontWeight: "bold" }}
                   >
-                    {(property.salePrice / 10000).toFixed(0)}만원
+                    {(property.salePrice / 10000).toFixed(0)}만 {getCurrencyUnit()}
                   </span>
                 </div>
               )}
@@ -1705,7 +1705,7 @@ const RealEstateRegistry = () => {
                         (property.forSale ? property.salePrice : property.price)
                     }
                   >
-                    구매하기{property.forSale ? ` (${(property.salePrice / 10000).toFixed(0)}만원)` : ""}
+                    구매하기{property.forSale ? ` (${(property.salePrice / 10000).toFixed(0)}만 ${getCurrencyUnit()})` : ""}
                   </button>
                 )}
               {!isGovProperty && !isOwner && (
@@ -1715,7 +1715,7 @@ const RealEstateRegistry = () => {
                   disabled={operationLoading}
                 >
                   💬 {myPendingOffer
-                    ? `제시 수정 (${(myPendingOffer.offerPrice / 10000).toFixed(0)}만원)`
+                    ? `제시 수정 (${(myPendingOffer.offerPrice / 10000).toFixed(0)}만 ${getCurrencyUnit()})`
                     : "가격 제시"}
                 </button>
               )}
@@ -1869,13 +1869,13 @@ const RealEstateRegistry = () => {
                 <div className="info-row">
                   <span className="label">가격</span>
                   <span className="value">
-                    {(property.price / 10000).toFixed(0)}만원
+                    {(property.price / 10000).toFixed(0)}만 {getCurrencyUnit()}
                   </span>
                 </div>
                 <div className="info-row">
                   <span className="label">월세</span>
                   <span className="value">
-                    {(property.rent / 10000).toFixed(0)}만원
+                    {(property.rent / 10000).toFixed(0)}만 {getCurrencyUnit()}
                   </span>
                 </div>
                 {tenantNameDisplay && (
@@ -1888,7 +1888,7 @@ const RealEstateRegistry = () => {
                   <div className="info-row sale-price">
                     <span className="label">판매가</span>
                     <span className="value">
-                      {(property.salePrice / 10000).toFixed(0)}만원
+                      {(property.salePrice / 10000).toFixed(0)}만 {getCurrencyUnit()}
                     </span>
                   </div>
                 )}
@@ -2153,7 +2153,7 @@ const RealEstateRegistry = () => {
                 />
                 {priceModal.value && !isNaN(parseInt(priceModal.value, 10)) && (
                   <p style={{ marginTop: 6, color: "#6b7280", fontSize: 13 }}>
-                    = {(parseInt(priceModal.value, 10) / 10000).toFixed(0)}만원
+                    = {(parseInt(priceModal.value, 10) / 10000).toFixed(0)}만 {getCurrencyUnit()}
                   </p>
                 )}
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>

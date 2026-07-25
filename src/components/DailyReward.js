@@ -339,7 +339,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
             </div>
             {nextDay > 10 && (
               <div className="text-center mt-2 text-xs" style={{ color: "rgba(255,255,255,0.8)" }}>
-                ✨ 10일 이상 연속 출석 시 매일 10만원!
+                ✨ 10일 이상 연속 출석 시 매일 10만 {getCurrencyUnit()}!
               </div>
             )}
           </div>
