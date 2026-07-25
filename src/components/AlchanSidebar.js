@@ -56,6 +56,7 @@ import {
   Calculator,
   MessageSquare,
   Grid3x3,
+  Castle,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
 
@@ -390,6 +391,13 @@ export const ALCHAN_MENU_ITEMS = [
     label: "아라하루(아침학습)",
     icon: Sparkles,
     externalUrl: "https://araharu-ecp.pages.dev/",
+    parentId: "learningSitesCategory",
+  },
+  {
+    id: "siteMathCastle",
+    label: "수학성 수호자(수학)",
+    icon: Castle,
+    externalUrl: "https://mathcastle.pages.dev/",
     parentId: "learningSitesCategory",
   },
 
