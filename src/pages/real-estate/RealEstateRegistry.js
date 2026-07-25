@@ -2022,6 +2022,11 @@ const RealEstateRegistry = () => {
               </div>
             </div>
           </div>
+          {/* 한 부동산이 '개인 소유 + 임대 중 + 판매 중'을 동시에 만족할 수 있어 합이 전체와 다르다.
+              합계가 안 맞는 걸 오류로 오해하기 쉬워 각주를 둔다(2026-07-25 리뷰 C6). */}
+          <p className="stats-note">
+            ※ 개인 소유 · 임대 중 · 판매 중은 중복 집계됩니다 (한 부동산이 여러 상태일 수 있어요)
+          </p>
         </div>
         <div className="exchange-content">
           {renderPropertyLayout()}

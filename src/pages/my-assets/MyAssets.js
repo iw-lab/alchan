@@ -1293,7 +1293,54 @@ export default function MyAssets() {
           </div>
         </div>
 
-        {/* 최근 입출금 내역 - 보유 현금 바로 밑에 배치 */}
+        {/* 총 순자산 + 파킹통장 + 보유 쿠폰 — 가장 중요한 요약이라 거래 내역보다 위에 둔다
+            (기존엔 내역 아래라 스크롤해야 보였다. 2026-07-25 리뷰 C7) */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {/* 총 순자산 */}
+          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#ec4899" }}>
+            <div className="mb-1">
+              <span className="text-sm font-semibold text-pink-600">📊 총 순자산</span>
+            </div>
+            <div
+              className="text-xl md:text-2xl font-extrabold tracking-tight text-right"
+              style={{ color: Number(totalNetAssets) < 0 ? "#dc2626" : "#0f172a" }}
+            >
+              {formatKoreanCurrency(Number(totalNetAssets))}
+            </div>
+            <p className="mt-1 text-[10px] text-slate-500 leading-tight">
+              현금+쿠폰+파킹+예적금+부동산-대출
+            </p>
+          </div>
+
+          {/* 파킹통장 */}
+          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#06b6d4" }}>
+            <div className="mb-1">
+              <span className="text-sm font-semibold text-cyan-600">🅿️ 파킹통장</span>
+            </div>
+            <div className="text-xl md:text-2xl font-extrabold tracking-tight text-right text-slate-900">
+              {formatKoreanCurrency(Number(parkingBalance))}
+            </div>
+            <p className="mt-1 text-[10px] text-slate-500 text-right">
+              입출금 및 상품 가입
+            </p>
+          </div>
+
+          {/* 보유 쿠폰 */}
+          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#f59e0b" }}>
+            <div className="mb-1">
+              <span className="text-sm font-semibold text-amber-600">🎟️ 보유 쿠폰</span>
+            </div>
+            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right text-slate-900">
+              {displayCoupons.toLocaleString()}
+              <span className="text-base font-semibold text-slate-600"> 개</span>
+            </div>
+            <p className="mt-1 text-[10px] text-slate-500 text-right">
+              1쿠폰 = {Number(couponValue).toLocaleString()}{getCurrencyUnit()}
+            </p>
+          </div>
+        </div>
+
+        {/* 최근 입출금 내역 */}
         <div className="mb-5">
           <h4 className="text-[15px] text-slate-700 font-bold mb-3">
             💳 최근 입출금 내역
@@ -1362,51 +1409,6 @@ export default function MyAssets() {
           )}
         </div>
 
-        {/* 총 순자산 + 파킹통장 + 보유 쿠폰 - 한 줄 배치 (glass) */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {/* 총 순자산 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#ec4899" }}>
-            <div className="mb-1">
-              <span className="text-sm font-semibold text-pink-600">📊 총 순자산</span>
-            </div>
-            <div
-              className="text-xl md:text-2xl font-extrabold tracking-tight text-right"
-              style={{ color: Number(totalNetAssets) < 0 ? "#dc2626" : "#0f172a" }}
-            >
-              {formatKoreanCurrency(Number(totalNetAssets))}
-            </div>
-            <p className="mt-1 text-[10px] text-slate-500 leading-tight">
-              현금+쿠폰+파킹+예적금+부동산-대출
-            </p>
-          </div>
-
-          {/* 파킹통장 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#06b6d4" }}>
-            <div className="mb-1">
-              <span className="text-sm font-semibold text-cyan-600">🅿️ 파킹통장</span>
-            </div>
-            <div className="text-xl md:text-2xl font-extrabold tracking-tight text-right text-slate-900">
-              {formatKoreanCurrency(Number(parkingBalance))}
-            </div>
-            <p className="mt-1 text-[10px] text-slate-500 text-right">
-              입출금 및 상품 가입
-            </p>
-          </div>
-
-          {/* 보유 쿠폰 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#f59e0b" }}>
-            <div className="mb-1">
-              <span className="text-sm font-semibold text-amber-600">🎟️ 보유 쿠폰</span>
-            </div>
-            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right text-slate-900">
-              {displayCoupons.toLocaleString()}
-              <span className="text-base font-semibold text-slate-600"> 개</span>
-            </div>
-            <p className="mt-1 text-[10px] text-slate-500 text-right">
-              1쿠폰 = {Number(couponValue).toLocaleString()}{getCurrencyUnit()}
-            </p>
-          </div>
-        </div>
       </div>
     );
   };

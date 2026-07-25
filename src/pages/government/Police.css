@@ -368,7 +368,11 @@ button {
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
-  max-width: 600px;
+  /* max-width만 있고 가운데 정렬이 없어 폼이 화면 왼쪽에 붙고 우측 절반이 빈 채로 남았다
+     (2026-07-25 리뷰 C5). 넓은 화면에선 조금 넓히고 가운데로 모은다. */
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .submit-report-container,

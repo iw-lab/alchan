@@ -243,14 +243,14 @@
 .lb-col-num { width: 60px; text-align: center; }
 .lb-col-title { min-width: 200px; }
 .lb-col-author { width: 100px; }
-.lb-col-date { width: 160px; }
+.lb-col-date { width: 110px; }
 .lb-col-likes { width: 80px; text-align: center; }
 .lb-col-comments { width: 70px; text-align: center; }
 
 .lb-cell-num { text-align: center; color: #64748b; font-size: 0.85rem; }
 .lb-cell-title { font-weight: 500; }
 .lb-cell-author { color: #64748b; font-size: 0.85rem; }
-.lb-cell-date { color: #64748b; font-size: 0.8rem; }
+.lb-cell-date { color: #64748b; font-size: 0.8rem; white-space: nowrap; }
 .lb-cell-likes { text-align: center; }
 .lb-cell-comments { text-align: center; }
 

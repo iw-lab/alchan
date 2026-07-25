@@ -449,7 +449,8 @@ const OrganizationChart = ({ classCode }) => {
   return (
     <div className="org-chart-container">
       <div className="org-header">
-        <h1 className="org-title">정부 조직도</h1>
+        {/* 사이드바 메뉴명("대통령실")과 페이지 제목이 달라 다른 페이지로 오해하기 쉬웠다(2026-07-25 리뷰 C8). */}
+        <h1 className="org-title">대통령실</h1>
         <div className="admin-controls">
           {canManage && (
             <div className="admin-indicator">

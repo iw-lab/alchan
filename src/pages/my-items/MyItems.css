@@ -200,31 +200,36 @@
   cursor: not-allowed;
 }
 
+/* 흰 글자 대비: amber-500(#f59e0b)은 2.1:1, sky-500(#0ea5e9)은 2.5:1로 WCAG AA(4.5:1) 미달이라
+   저학년이 읽기 어려웠다(2026-07-25 리뷰 C9). 한 단계 진한 색으로 내려 각각 5.0:1 / 5.9:1 확보.
+   비활성 상태도 흰 글자가 거의 안 보여 글자색을 진하게 바꾼다. */
 .gift-item-button {
-  background-color: #f59e0b;
+  background-color: #b45309;
   color: white !important;
 }
 
 .gift-item-button:hover {
-  background-color: #d97706;
+  background-color: #92400e;
 }
 
 .gift-item-button:disabled {
   background-color: #fcd34d;
+  color: #78350f !important;
   cursor: not-allowed;
 }
 
 .sell-treasury-button {
-  background-color: #0ea5e9;
+  background-color: #0369a1;
   color: white !important;
 }
 
 .sell-treasury-button:hover {
-  background-color: #0284c7;
+  background-color: #075985;
 }
 
 .sell-treasury-button:disabled {
   background-color: #7dd3fc;
+  color: #0c4a6e !important;
   cursor: not-allowed;
 }
 

@@ -2173,12 +2173,23 @@ function Dashboard({ adminTabMode }) {
  return;
  }
 
+ // ⚠️ 학급 전원의 기록을 지우는 되돌릴 수 없는 작업인데 '새로고침' 버튼 바로 옆에 있어
+ //    오클릭 위험이 있다(2026-07-25 리뷰 C4). 버튼을 시각적으로 분리하고 확인을 2단계로 둔다.
  if (
  !window.confirm(
  `'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
  )
  ) {
  logger.log("[Dashboard] 사용자가 리셋을 취소했습니다.");
+ return;
+ }
+
+ const typed = window.prompt(
+ `정말 초기화하려면 학급 코드 "${userDoc.classCode}"를 입력하세요.\n(오늘 학생들이 완료한 할일 기록이 모두 사라집니다)`,
+ );
+ if (!typed || typed.trim().toUpperCase() !== String(userDoc.classCode).toUpperCase()) {
+ logger.log("[Dashboard] 학급 코드 확인 실패 - 리셋 취소");
+ if (typed !== null) alert("학급 코드가 일치하지 않아 초기화를 취소했습니다.");
  return;
  }
 
@@ -2306,12 +2317,14 @@ function Dashboard({ adminTabMode }) {
  >
  새로고침
  </ActionButton>
+ {/* 파괴적 작업이라 자주 쓰는 '새로고침'과 붙여두지 않는다 — 구분선으로 떼어놓는다. */}
+ <span className="self-stretch w-px bg-slate-200 mx-1" aria-hidden="true" />
  <ActionButton
  variant="danger"
  icon={RotateCcw}
  onClick={handleManualTaskReset}
  size="sm"
- title="이 클래스의 모든 사용자 할일을 리셋합니다"
+ title="이 클래스의 모든 사용자 할일을 리셋합니다 (되돌릴 수 없음)"
  >
  할일 리셋
  </ActionButton>

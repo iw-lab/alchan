@@ -93,6 +93,23 @@ const formatDate = (isoString) => {
   }
 };
 
+/**
+ * 목록 표(날짜 열 160px)용 짧은 날짜.
+ * toLocaleString 전체 형식("2026. 07. 25. 오후 07:49")은 열 폭을 넘겨 두 줄로 깨졌다(2026-07-25 리뷰 C10).
+ * 올해 글은 "07.25 19:49", 지난해 글은 "25.07.25"로 한 줄에 들어가게 줄인다. 상세 화면은 전체 형식 유지.
+ */
+const formatDateShort = (isoString) => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+  const p2 = (n) => String(n).padStart(2, "0");
+  const mmdd = `${p2(date.getMonth() + 1)}.${p2(date.getDate())}`;
+  if (date.getFullYear() === new Date().getFullYear()) {
+    return `${mmdd} ${p2(date.getHours())}:${p2(date.getMinutes())}`;
+  }
+  return `${p2(date.getFullYear() % 100)}.${mmdd}`;
+};
+
 const calculateCouponChange = (postData, interactionType, userId) => {
   const { likes = 0, dislikes = 0, likedBy = [], dislikedBy = [] } = postData;
   const userHasLiked = likedBy.includes(userId);
@@ -1030,7 +1047,7 @@ const LearningBoard = () => {
                                 ? <span>익명 <span style={{fontSize:'0.7em',opacity:0.6,color:'#fbbf24'}}>({post.author})</span></span>
                                 : (post.author || "익명")}
                           </td>
-                          <td className="lb-cell-date">{formatDate(post.timestamp)}</td>
+                          <td className="lb-cell-date" title={formatDate(post.timestamp)}>{formatDateShort(post.timestamp)}</td>
                           <td className="lb-cell-likes">
                             <span className="lb-like-num">👍 {post.likes || 0}</span>
                           </td>
