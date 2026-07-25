@@ -210,8 +210,11 @@ const TypingPracticeGame = ({ onClose }) => {
         typingArcadeBestScore: score,
         typingArcadeBestDay: today,
         typingArcadeUpdatedAt: serverTimestamp(),
-        // 학급 증분 동기화(getClassmates)가 점수 변화를 감지하도록 updatedAt 갱신
-        updatedAt: serverTimestamp(),
+        // 🔻 [읽기 절감 2026-07-25] 여기서 updatedAt을 갱신하던 것을 제거했다.
+        //    목적은 "getClassmates 증분 동기화가 점수 변화를 감지하게" 하는 것이었는데,
+        //    그 대가로 **한 명이 게임할 때마다 나머지 학급원 전원의 증분 쿼리가 이 문서를
+        //    다시 읽는** 증폭이 생겼다(쉬는 시간에 여러 명이 하면 배수로 늘어남).
+        //    이제 랭킹(TypingRanking)이 users를 직접 좁혀 조회하므로 이 신호가 필요 없다.
       });
       if (typeof updateUser === "function") {
         await updateUser({ typingArcadeBestScore: score, typingArcadeBestDay: today });

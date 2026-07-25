@@ -3,8 +3,9 @@
 // 같은 학급 학생들의 "오늘" 최고 점수를 내림차순으로 보여준다.
 
 import React, { useEffect, useState, useCallback } from "react";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
-import { getClassmates } from "../../firebase";
+import { db } from "../../firebase";
 import { logger } from "../../utils/logger";
 import "./TypingPracticeGame.css";
 
@@ -35,17 +36,37 @@ const TypingRanking = ({ onBack }) => {
         setLoading(false);
         return;
       }
-      // 🔥 [읽기최적화] forceRefresh=true 제거 → 증분 동기화(updatedAt>lastSync, 변경분만 read).
-      //   캐시 우회 전체 25명 재읽기 방지. 새 점수는 증분 쿼리가 그대로 가져옴.
-      const members = await getClassmates(classCode, false, "typingRanking");
+      // 🔻 [읽기 절감 2026-07-25] 기존엔 getClassmates로 **학급 전원(약 25문서)**을 읽어
+      //    클라에서 "오늘 기록 있는 사람"만 걸러냈다. 랭킹에 필요한 건 오늘 플레이한 학생뿐인데
+      //    반 전체를 읽던 셈(보통 해당자는 한 자릿수).
+      //
+      //    등가 조건 2개(classCode + typingArcadeBestDay)만 쓰는 쿼리는 Firestore가
+      //    자동 단일필드 인덱스만으로 처리한다(복합 인덱스 불필요 — 이 앱의 국고 조회
+      //    `classCode == X && isAdmin == true`가 인덱스 없이 동작 중인 것과 같은 형태).
+      //    CI가 firestore:indexes를 배포하지 않으므로 이 제약을 반드시 지킨다.
       const today = new Date().toDateString();
+      const snap = await getDocs(
+        query(
+          collection(db, "users"),
+          where("classCode", "==", classCode),
+          where("typingArcadeBestDay", "==", today),
+        ),
+      );
+      const members = snap.docs.map((d) => ({ id: d.id, uid: d.id, ...d.data() }));
 
-      // 본인 기록(서버 라운드트립 결과)에서 직접 추출 → 그만하기 기록 저장 검증
+      // 본인 기록 — 쿼리 결과에 있으면 그 값(서버 라운드트립 확인용), 없으면 내 문서 값으로 폴백.
+      // ⚠️ 좁힌 쿼리는 '오늘 플레이한 사람'만 돌려주므로, 오늘 안 한 교사/학생은 결과에 없다.
+      //    교사 제외 여부(iAmExcluded)를 쿼리 결과로 판정하면 오늘 안 한 교사가 '학생'으로
+      //    잘못 표시되므로, 신분 판정은 항상 내 문서(userDoc)를 기준으로 한다.
       const me = members.find((m) => (m.uid || m.id) === user?.uid);
       const myTodayScore =
-        me && me.typingArcadeBestDay === today ? me.typingArcadeBestScore || 0 : 0;
+        me && me.typingArcadeBestDay === today
+          ? me.typingArcadeBestScore || 0
+          : userDoc?.typingArcadeBestDay === today
+            ? userDoc?.typingArcadeBestScore || 0
+            : 0;
       setMyBest(myTodayScore > 0 ? myTodayScore : null);
-      setIAmExcluded(!!(me && (me.isTeacher || me.isAdmin)));
+      setIAmExcluded(!!(userDoc?.isTeacher || userDoc?.isAdmin));
 
       const ranked = members
         .filter(
@@ -70,7 +91,7 @@ const TypingRanking = ({ onBack }) => {
     }
     // 🔥 [읽기최적화] deps를 primitive로 — userDoc 객체는 cash 변동(onSnapshot)마다
     //   identity가 바뀌어 load 재생성→effect 재실행→전체 재읽기를 유발했음. 실제 사용값만 의존.
-  }, [userDoc?.classCode, user?.uid]);
+  }, [userDoc?.classCode, user?.uid, userDoc?.isTeacher, userDoc?.isAdmin, userDoc?.typingArcadeBestDay, userDoc?.typingArcadeBestScore]);
 
   useEffect(() => {
     load();

@@ -487,23 +487,29 @@ export default function MyAssets() {
       // 주식을 아예 로드하지 않아 "총 순자산"에서 주식 평가액이 누락됐다.
       const portfolioRef = collection(db, "users", userId, "portfolio");
       const stockCacheRef = doc(db, "Settings", "centralStocksCache");
+      // 🔻 [읽기 절감 2026-07-25] 세 소스에서 각 50건(=최대 150문서)을 읽어놓고
+      //    아래에서 병합·정렬 후 `slice(0, 20)`으로 20건만 쓰고 있었다.
+      //    세 소스 모두 timestamp 내림차순이므로, 자기 소스에서 21위 밖인 항목은
+      //    전체 상위 20위에 들 수 없다 → 각 소스 20건만 읽어도 **결과가 완전히 동일**하다.
+      //    (150 → 60문서. 화면의 '더 보기'도 최대 20건까지만 펼치므로 표시량 변화 없음)
+      const TX_FETCH_LIMIT = 20;
       const activityLogsRef = query(
         collection(db, "activity_logs"),
         where("classCode", "==", currentUserClassCode),
         where("userId", "==", userId),
         orderBy("timestamp", "desc"),
-        limit(50),
+        limit(TX_FETCH_LIMIT),
       );
       const transactionsRef = query(
         collection(db, "users", userId, "transactions"),
         orderBy("timestamp", "desc"),
-        limit(50),
+        limit(TX_FETCH_LIMIT),
       );
       const rootTransactionsRef = query(
         collection(db, "transactions"),
         where("userId", "==", userId),
         orderBy("timestamp", "desc"),
-        limit(50),
+        limit(TX_FETCH_LIMIT),
       );
 
       const [

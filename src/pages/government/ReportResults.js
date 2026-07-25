@@ -8,6 +8,11 @@ const ReportResults = ({
   isAdminView,
   onEditReport,
   onDeleteReport,
+  // 🔻 [읽기 절감 2026-07-25] 신고는 1년 내내 쌓여 전량 조회가 계속 비싸진다.
+  //    최신 20건만 받고 나머지는 이 버튼으로 이어 읽는다(부모가 startAfter로 조회).
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }) => {
   const [filter, setFilter] = useState("all"); // 'all', 'fine', 'settlement', 'dismissed'
 
@@ -161,6 +166,17 @@ const ReportResults = ({
             </div>
           ))}
         </div>
+      )}
+
+      {hasMore && onLoadMore && (
+        <button
+          type="button"
+          onClick={onLoadMore}
+          disabled={loadingMore}
+          className="load-more-reports"
+        >
+          {loadingMore ? "불러오는 중..." : "▼ 이전 신고 더 보기"}
+        </button>
       )}
     </div>
   );

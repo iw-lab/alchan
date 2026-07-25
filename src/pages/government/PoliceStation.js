@@ -29,6 +29,8 @@ import {
  getDocs,
  writeBatch,
  limit,
+ startAfter,
+ getCountFromServer,
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
@@ -667,22 +669,27 @@ const PoliceStation = () => {
  setReportReasons([...lawReasons, ...customReasons]);
  }, [approvedLaws, customReportReasons, lawsLoading, reasonsLoading]);
 
- // Police reports polling
- const reportsQuery = useMemo(() => {
- if (!classCode) return null;
- const reportsRef = collection(db, "classes", classCode, "policeReports");
- return query(reportsRef, orderBy("submitDate", "desc"), limit(100));
- }, [classCode]);
+ // ─────────────────────────────────────────────────────────────────────────
+ // 🔻 [읽기 절감 2026-07-25] 신고 목록을 "전량 100건" → "미처리 전량 + 최신 페이지"로 분리.
+ //
+ // 기존: limit(100) 한 방에 읽어 클라에서 미처리/처리완료로 나눴다. 신고는 1년 내내 쌓이므로
+ //   방문 1회당 읽기가 학년 진행에 비례해 늘고(측정 시점 54건 → 상한 100건), 학급 수만큼 곱해졌다.
+ //
+ // 지금: ① 미처리(submitted/accepted)는 "처리해야 할 일"이라 전량 필요 — 보통 한 자릿수.
+ //         `where in` + limit만 쓰고 orderBy를 붙이지 않아 **자동 단일필드 인덱스로 충분**하다.
+ //      ② 처리 결과는 최신 20건만 읽고 '더 보기'로 이어 읽는다(startAfter).
+ //         여기에도 status 필터를 붙이면 복합 인덱스가 필요해지므로 붙이지 않고,
+ //         가져온 페이지에서 미처리 건만 클라에서 걸러낸다(미처리는 ①이 이미 전량 보유).
+ //      ③ 탭 카운트는 getCountFromServer 1회(=1읽기)로 정확도를 유지한다.
+ //
+ // ⚠️ 새 복합 인덱스를 요구하지 않는 것이 설계 제약이다 — CI(deploy.yml)는 hosting·functions·
+ //    storage·rules만 배포하고 firestore:indexes는 배포하지 않아, 인덱스가 필요한 쿼리를 넣으면
+ //    배포 직후 목록이 통째로 안 보이는 사고가 난다.
+ // ─────────────────────────────────────────────────────────────────────────
+ const PENDING_STATUSES = useMemo(() => ["submitted", "accepted"], []);
+ const RESULTS_PAGE_SIZE = 20;
 
- const {
- data: reports,
- loading: reportsLoading,
- refetch: refetchReports,
- } = usePolling(
- async () => {
- if (!reportsQuery) return [];
- const querySnapshot = await getDocs(reportsQuery);
- return querySnapshot.docs.map((doc) => {
+ const mapReportDoc = useCallback((doc) => {
  const data = doc.data();
  return {
  id: doc.id,
@@ -697,17 +704,136 @@ const PoliceStation = () => {
  ? data.resolutionDate.toDate().toISOString()
  : null,
  };
- });
+ }, []);
+
+ // ① 미처리 신고 — 전량(안전 상한 50)
+ const {
+ data: pendingReports,
+ loading: pendingLoading,
+ refetch: refetchPending,
+ } = usePolling(
+ async () => {
+ if (!classCode) return [];
+ const ref = collection(db, "classes", classCode, "policeReports");
+ const snap = await getDocs(
+ query(ref, where("status", "in", PENDING_STATUSES), limit(50)),
+ );
+ return snap.docs.map(mapReportDoc);
  },
  {
- interval: 10 * 60 * 1000, // 🔥 [비용 최적화] 5분 → 10분 (신고 목록)
+ interval: 10 * 60 * 1000,
  enabled: !!classCode,
  deps: [classCode],
- // 🔥 [읽기 절감 1단계] 활동성 데이터라 TTL 3분 — 자기 제출은 refetchReports(force)로 즉시
- cacheKey: classCode ? `policeReports:${classCode}` : null,
+ cacheKey: classCode ? `policeReportsPending:${classCode}` : null,
  cacheTTL: 3 * 60 * 1000,
  },
  );
+
+ // ② 처리 결과 첫 페이지 (최신 20건) + ③ 전체 건수(1읽기)
+ const {
+ data: resultsFirstPage,
+ loading: resultsLoading,
+ refetch: refetchResults,
+ } = usePolling(
+ async () => {
+ if (!classCode) return { rows: [], lastDocId: null, total: 0 };
+ const ref = collection(db, "classes", classCode, "policeReports");
+ const snap = await getDocs(
+ query(ref, orderBy("submitDate", "desc"), limit(RESULTS_PAGE_SIZE)),
+ );
+ let total = 0;
+ try {
+ const countSnap = await getCountFromServer(ref);
+ total = countSnap.data().count || 0;
+ } catch (e) {
+ // 카운트 실패는 표시용 숫자에만 영향 — 목록 자체는 정상 동작해야 한다
+ logger.warn("[PoliceStation] 신고 건수 집계 실패(무시):", e?.code);
+ total = snap.size;
+ }
+ return {
+ rows: snap.docs.map(mapReportDoc),
+ lastDocId: snap.docs.length ? snap.docs[snap.docs.length - 1].id : null,
+ exhausted: snap.size < RESULTS_PAGE_SIZE,
+ total,
+ };
+ },
+ {
+ interval: 10 * 60 * 1000,
+ enabled: !!classCode,
+ deps: [classCode],
+ cacheKey: classCode ? `policeReportsPage1:${classCode}` : null,
+ cacheTTL: 3 * 60 * 1000,
+ },
+ );
+
+ // '더 보기'로 이어 읽은 페이지들
+ const [extraResults, setExtraResults] = useState([]);
+ const [extraCursorId, setExtraCursorId] = useState(null);
+ const [extraExhausted, setExtraExhausted] = useState(false);
+ const [loadingMore, setLoadingMore] = useState(false);
+
+ // 첫 페이지가 갱신되면 이어읽기 상태를 초기화(중복·유령 행 방지)
+ useEffect(() => {
+ setExtraResults([]);
+ setExtraCursorId(null);
+ setExtraExhausted(false);
+ }, [resultsFirstPage]);
+
+ const loadMoreResults = useCallback(async () => {
+ if (!classCode || loadingMore) return;
+ const cursorId = extraCursorId || resultsFirstPage?.lastDocId;
+ if (!cursorId) return;
+ setLoadingMore(true);
+ try {
+ const ref = collection(db, "classes", classCode, "policeReports");
+ const cursorSnap = await getDoc(doc(ref, cursorId));
+ if (!cursorSnap.exists()) {
+ setExtraExhausted(true);
+ return;
+ }
+ const snap = await getDocs(
+ query(
+ ref,
+ orderBy("submitDate", "desc"),
+ startAfter(cursorSnap),
+ limit(RESULTS_PAGE_SIZE),
+ ),
+ );
+ setExtraResults((prev) => [...prev, ...snap.docs.map(mapReportDoc)]);
+ if (snap.docs.length) {
+ setExtraCursorId(snap.docs[snap.docs.length - 1].id);
+ }
+ if (snap.size < RESULTS_PAGE_SIZE) setExtraExhausted(true);
+ } catch (e) {
+ logger.error("[PoliceStation] 신고 더 보기 실패:", e);
+ alert("이전 신고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+ } finally {
+ setLoadingMore(false);
+ }
+ }, [classCode, loadingMore, extraCursorId, resultsFirstPage, mapReportDoc]);
+
+ // 기존 코드가 기대하던 단일 `reports` 배열을 그대로 합성해 제공(하위 로직 무변경)
+ const reports = useMemo(() => {
+ const seen = new Set();
+ const merged = [];
+ [
+ ...(pendingReports || []),
+ ...(resultsFirstPage?.rows || []),
+ ...extraResults,
+ ].forEach((r) => {
+ if (r && !seen.has(r.id)) {
+ seen.add(r.id);
+ merged.push(r);
+ }
+ });
+ return merged;
+ }, [pendingReports, resultsFirstPage, extraResults]);
+
+ const reportsLoading = pendingLoading || resultsLoading;
+ const refetchReports = useCallback(() => {
+ refetchPending();
+ return refetchResults();
+ }, [refetchPending, refetchResults]);
 
  const handleTabChange = (newTab) => {
  setPreviousTab(activeTab);
@@ -1171,6 +1297,13 @@ const PoliceStation = () => {
  );
  }, [reportsWithNames]);
 
+ // 처리 결과 총 건수 = 서버 집계(전체 1읽기) − 미처리 건수. 목록을 다 읽지 않고도 숫자는 정확하다.
+ const resolvedTotal = useMemo(() => {
+ const total = resultsFirstPage?.total || 0;
+ const pending = (pendingReports || []).length;
+ return Math.max(0, total - pending);
+ }, [resultsFirstPage, pendingReports]);
+
  const resultReports = useMemo(() => {
  return reportsWithNames
  .filter(
@@ -1316,6 +1449,9 @@ const PoliceStation = () => {
  users={users}
  getUserNameById={getUserNameById}
  isAdmin={hasPoliceAdminRights}
+ hasMore={!extraExhausted && !resultsFirstPage?.exhausted && resultReports.length < resolvedTotal}
+ loadingMore={loadingMore}
+ onLoadMore={loadMoreResults}
  />
  );
  case "admin":
@@ -1448,7 +1584,7 @@ const PoliceStation = () => {
  activeTab === "results" ? "active" : ""
  }`}
  >
- 처리 결과 ({resultReports.length})
+ 처리 결과 ({resolvedTotal})
  </button>
  </div>
  <div className="police-tab-content">{renderTabContent()}</div>

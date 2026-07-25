@@ -407,7 +407,9 @@ const LearningBoard = () => {
     if (!classCode || !boardId || !postId) return;
     try {
       const ref = collection(db, "classes", classCode, "learningBoards", boardId, "posts", postId, "comments");
-      const q = query(ref, orderBy("timestamp", "asc"), limit(200));
+      // 🔻 [읽기 절감 2026-07-25] 글 1건의 댓글 상한이 200이었다. 학급 게시글에 댓글 200개는
+    //    현실적으로 없고, 상한만큼 인덱스 스캔·문서 읽기 비용이 잡힌다. 60으로 축소.
+    const q = query(ref, orderBy("timestamp", "asc"), limit(60));
       const snapshot = await getDocs(q);
       setComments(snapshot.docs.map((d) => ({
         id: d.id,
