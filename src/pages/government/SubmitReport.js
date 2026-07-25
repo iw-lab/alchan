@@ -1,5 +1,6 @@
 // src/SubmitReport.js
 import React, { useState } from "react";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 
 const SubmitReport = ({
   onSubmitReport,
@@ -161,7 +162,7 @@ const SubmitReport = ({
                     value={reason.reason}
                     className="law-reason-option"
                   >
-                    {reason.reason} (벌금: {reason.amount.toLocaleString()}원)
+                    {reason.reason} (벌금: {reason.amount.toLocaleString()}{getCurrencyUnit()})
                   </option>
                 ))}
               </>
@@ -175,7 +176,7 @@ const SubmitReport = ({
               <option key={`standard-${index}`} value={reason.reason}>
                 {reason.reason}{" "}
                 {reason.amount > 0
-                  ? `(벌금: ${reason.amount.toLocaleString()}원)`
+                  ? `(벌금: ${reason.amount.toLocaleString()}${getCurrencyUnit()})`
                   : ""}
               </option>
             ))}

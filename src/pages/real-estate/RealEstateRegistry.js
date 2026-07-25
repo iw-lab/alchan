@@ -27,6 +27,7 @@ import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
 import { getIsIdle } from "../../utils/idleManager";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 // orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
   orderBy as firebaseOrderBy,
@@ -1361,7 +1362,7 @@ const RealEstateRegistry = () => {
                 userId: property.tenantId,
                 userName: _tenantNameLog,
                 type: "realEstateRent",
-                description: `${_addr} 월세 ${isNegative ? "강제 " : ""}납부 (-${rentAmount.toLocaleString()}원)`,
+                description: `${_addr} 월세 ${isNegative ? "강제 " : ""}납부 (-${rentAmount.toLocaleString()}${getCurrencyUnit()})`,
                 amount: -rentAmount,
                 classCode: _tenantClass,
                 timestamp: serverTimestamp(),
@@ -1375,7 +1376,7 @@ const RealEstateRegistry = () => {
                   userId: ownerSnap.id,
                   userName: _ownerData.name || _ownerData.nickname || "건물주",
                   type: "realEstateRent",
-                  description: `${_addr} 월세 수익 (+${rentAmount.toLocaleString()}원, ${_tenantNameLog})`,
+                  description: `${_addr} 월세 수익 (+${rentAmount.toLocaleString()}${getCurrencyUnit()}, ${_tenantNameLog})`,
                   amount: rentAmount,
                   classCode: _ownerData.classCode || _tenantClass,
                   timestamp: serverTimestamp(),
@@ -1423,13 +1424,13 @@ const RealEstateRegistry = () => {
             // 활동 로그 기록 (학생들이 '내 자산'에서 확인할 수 있도록)
             if (result.status === "success" || result.status === "unpaid") {
               const tenantDesc = result.status === "unpaid"
-                ? `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}원이 징수되었습니다. (잔액 부족으로 미납 처리)`
-                : `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}원이 징수되었습니다.`;
+                ? `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}${getCurrencyUnit()}이 징수되었습니다. (잔액 부족으로 미납 처리)`
+                : `${result.propertyLabel} 월세 ${result.rentAmount.toLocaleString()}${getCurrencyUnit()}이 징수되었습니다.`;
               addActivityLog(result.tenantId, "월세 납부", tenantDesc).catch(
                 (err) => logger.error("월세 납부 로그 기록 실패:", err)
               );
               if (result.ownerId && result.ownerId !== result.tenantId) {
-                const ownerDesc = `${result.propertyLabel} 세입자 ${result.name}님으로부터 월세 ${result.rentAmount.toLocaleString()}원을 받았습니다.`;
+                const ownerDesc = `${result.propertyLabel} 세입자 ${result.name}님으로부터 월세 ${result.rentAmount.toLocaleString()}${getCurrencyUnit()}을 받았습니다.`;
                 addActivityLog(result.ownerId, "월세 수입", ownerDesc).catch(
                   (err) => logger.error("월세 수입 로그 기록 실패:", err)
                 );
@@ -2142,7 +2143,7 @@ const RealEstateRegistry = () => {
                   autoFocus
                   value={priceModal.value}
                   onChange={(e) => setPriceModal((m) => ({ ...m, value: e.target.value }))}
-                  placeholder="가격(원)을 입력하세요"
+                  placeholder={`가격(${getCurrencyUnit()})을 입력하세요`}
                   style={{ width: "100%", padding: "10px", fontSize: 16, borderRadius: 8, border: "1px solid #d1d5db", boxSizing: "border-box" }}
                 />
                 {priceModal.value && !isNaN(parseInt(priceModal.value, 10)) && (
@@ -2203,13 +2204,13 @@ const RealEstateRegistry = () => {
                   <div className="detail-row">
                     <span className="detail-label">부동산 가격</span>
                     <span className="detail-value">
-                      {selectedProperty.price.toLocaleString()}원
+                      {selectedProperty.price.toLocaleString()}{getCurrencyUnit()}
                     </span>
                   </div>
                   <div className="detail-row">
                     <span className="detail-label">월세</span>
                     <span className="detail-value">
-                      {selectedProperty.rent.toLocaleString()}원
+                      {selectedProperty.rent.toLocaleString()}{getCurrencyUnit()}
                     </span>
                   </div>
                   {selectedProperty.tenantId && (
@@ -2228,7 +2229,7 @@ const RealEstateRegistry = () => {
                     <div className="detail-row sale-highlight">
                       <span className="detail-label">판매가격</span>
                       <span className="detail-value">
-                        {selectedProperty.salePrice.toLocaleString()}원
+                        {selectedProperty.salePrice.toLocaleString()}{getCurrencyUnit()}
                       </span>
                     </div>
                   )}
@@ -2312,7 +2313,7 @@ const RealEstateRegistry = () => {
                 </div>
               </div>
               <div className="form-group">
-                <label>기본 부동산 가격 (원)</label>
+                <label>기본 부동산 가격 ({getCurrencyUnit()})</label>
                 <input type="number" min="1000000" step="1000000" value={adminInputs.basePrice} onChange={(e) => setAdminInputs(prev => ({ ...prev, basePrice: e.target.value }))} />
               </div>
               <div className="form-group">
@@ -2421,7 +2422,7 @@ const RealEstateRegistry = () => {
                           <option value="">— 부동산 선택 ({distributable.length}개 분배 가능) —</option>
                           {distributable.map((p) => (
                             <option key={p.id} value={p.id}>
-                              #{p.id}{p.name ? ` ${p.name}` : ''} · {((p.price || 0) / 10000).toLocaleString()}만원{p.tenantId ? ` · 임차중(${p.tenantName || '세입자'})` : ' · 빈집'}
+                              #{p.id}{p.name ? ` ${p.name}` : ''} · {((p.price || 0) / 10000).toLocaleString()}만{getCurrencyUnit()}{p.tenantId ? ` · 임차중(${p.tenantName || '세입자'})` : ' · 빈집'}
                             </option>
                           ))}
                         </select>

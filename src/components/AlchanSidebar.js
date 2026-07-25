@@ -658,9 +658,13 @@ const CategoryItem = ({
           }`}
         />
       </button>
+      {/* ⚠️ [2026-07-25] 펼침 높이 상한을 max-h-96(384px)로 두면 하위 항목이 8개를 넘는 순간
+          9번째부터 overflow-hidden에 잘려 화면에서 사라진다(DOM엔 있어서 더 찾기 어려웠음).
+          학습 사이트가 9개가 되며 "수학성 수호자"가 안 보이던 원인. 항목이 늘어도 잘리지 않도록
+          충분히 큰 상한으로 바꾼다(트랜지션 유지를 위해 max-h-none 대신 큰 고정값). */}
       <div
         className={`overflow-hidden transition-all duration-300 ${
-          isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          isExpanded ? "max-h-[3000px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div className="pl-4 mt-2 space-y-1 ml-4" style={{ borderLeft: '2px solid var(--border-primary)' }}>

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 
 import { logger } from "../../utils/logger";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 const ReportStatus = ({
   reports,
   onProcessReport,
@@ -171,7 +172,7 @@ const ReportStatus = ({
 
             <div className="form-group">
               <label htmlFor="processingAmount">
-                벌금 금액 (원)
+                벌금 금액 ({getCurrencyUnit()})
               </label>
               <input
                 type="text"
@@ -216,7 +217,7 @@ const ReportStatus = ({
                       }}
                       className="quick-reason-btn"
                     >
-                      {reasonItem.reason} ({reasonItem.amount.toLocaleString()}원)
+                      {reasonItem.reason} ({reasonItem.amount.toLocaleString()}{getCurrencyUnit()})
                     </button>
                   ))}
                 </div>

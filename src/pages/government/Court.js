@@ -34,6 +34,7 @@ import {
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 // 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
 const noopRefetch = () => {};
 
@@ -281,7 +282,7 @@ const SettlementModal = ({
  </div>
  <div className="form-group">
  <label htmlFor="settlementAmount" className="form-label">
- 합의금 (원):
+ 합의금 ({getCurrencyUnit()}):
  </label>
  <input
  type="number"
@@ -452,7 +453,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  return (
  <div className="bankruptcy-section">
  <h3>파산 신청</h3>
- <p>현재 자산: {userDoc?.money ? userDoc.money.toLocaleString() : 0}원</p>
+ <p>현재 자산: {userDoc?.money ? userDoc.money.toLocaleString() : 0}{getCurrencyUnit()}</p>
  {userDoc?.money < 0 ? (
  <div>
  <p>

@@ -23,6 +23,7 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import "./Auction.css";
 
 import { logger } from "../../utils/logger";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import {
   isNetAssetsNegative,
   NEGATIVE_ASSETS_MESSAGE,
@@ -66,7 +67,8 @@ export default function Auction() {
   // --- Helper Functions ---
   const formatPrice = (price) => {
     if (typeof price !== "number" || isNaN(price)) return "가격 정보 없음";
-    return `${price.toLocaleString("ko-KR")}원`;
+    // 화폐 단위는 관리자 설정값(기본 "알찬")을 따른다 — 표기 통일(2026-07-25)
+    return `${price.toLocaleString("ko-KR")}${getCurrencyUnit()}`;
   };
 
   // --- Effects ---
@@ -737,7 +739,7 @@ export default function Auction() {
                 <textarea id="description" name="description" className="form-control" rows="3" placeholder="자동 입력된 설명을 수정할 수 있습니다." value={newAuction.description} onChange={handleInputChange} aria-label="물품 설명" />
               </div>
               <div className="form-group">
-                <label htmlFor="startPrice">시작가 (원) *</label>
+                <label htmlFor="startPrice">시작가 ({getCurrencyUnit()}) *</label>
                 <input type="text" inputMode="numeric" pattern="[0-9]*" id="startPrice" name="startPrice" className="form-control" placeholder="경매 시작가를 숫자로 입력 (예: 10000)" value={newAuction.startPrice} onChange={handleInputChange} required aria-required="true" aria-label="경매 시작가" />
               </div>
               <div className="form-group">

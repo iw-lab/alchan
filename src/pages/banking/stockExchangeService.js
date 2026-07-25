@@ -17,6 +17,7 @@ import {
 import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 // === 상수 ===
 export const PRODUCT_TYPES = {
   STOCK: "stock",
@@ -220,8 +221,12 @@ export const getMarketStateLabel = (stock) => {
 
 // === 포맷팅 함수 ===
 export const formatCurrency = (amount) => {
-  if (typeof amount !== "number" || isNaN(amount)) return "0원";
-  return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + "원";
+  // 화폐 단위는 관리자 설정값을 따른다(기본 "알찬"). 하드코딩 "원"이 남아 있어
+  // 같은 잔액이 주식·경매 화면에서만 "원"으로 보이는 표기 불일치가 있었다(2026-07-25).
+  if (typeof amount !== "number" || isNaN(amount)) return `0${getCurrencyUnit()}`;
+  return (
+    new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + getCurrencyUnit()
+  );
 };
 
 export const formatPercent = (percent) => {

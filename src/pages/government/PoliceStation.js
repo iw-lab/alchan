@@ -32,6 +32,7 @@ import {
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 // --- Helper Components ---
 
 // EditComplaintModal: 고소장 수정 모달
@@ -320,7 +321,7 @@ const SettlementModal = ({
  </div>
  <div className="form-group">
  <label htmlFor="settlementAmount" className="form-label">
- 합의금 (원):
+ 합의금 ({getCurrencyUnit()}):
  </label>
  <input
  type="number"
@@ -862,7 +863,7 @@ const PoliceStation = () => {
  const reportedUserId = report.reportedUserId || report.defendantId;
 
  try {
- const reasonForLog = `경찰서 신고 (사건번호: ${id.slice(-6)})에 대한 벌금 ${numericProcessingAmount.toLocaleString()}원 납부`;
+ const reasonForLog = `경찰서 신고 (사건번호: ${id.slice(-6)})에 대한 벌금 ${numericProcessingAmount.toLocaleString()}${getCurrencyUnit()} 납부`;
 
  // 🔒 서버(CF)에서 권한(경찰청장/관리자)·같은학급 검증 후 원자적 처리
  const processFineFn = httpsCallable(functions, "processFine");
@@ -1356,7 +1357,7 @@ const PoliceStation = () => {
  </div>
  )}
  <div className="reason-amount">
- 벌금: {reason.amount.toLocaleString()}원
+ 벌금: {reason.amount.toLocaleString()}{getCurrencyUnit()}
  </div>
  </div>
  ))}
@@ -1404,7 +1405,7 @@ const PoliceStation = () => {
  </span>
  )}
  <span className="treasury-balance">
- 현재 국고 잔액: {(treasuryBalance || 0).toLocaleString()}원
+ 현재 국고 잔액: {(treasuryBalance || 0).toLocaleString()}{getCurrencyUnit()}
  </span>
  {hasPoliceAdminRights && (
  <button

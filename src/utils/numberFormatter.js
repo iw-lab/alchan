@@ -181,3 +181,16 @@ export const formatLawFine = (fine, fallback = "정보 없음") => {
   }
   return raw;
 };
+
+/**
+ * 콤마 구분 + 현재 화폐 단위로 금액을 포맷한다 (2026-07-25 추가).
+ * 앱 전체 화폐 단위 통일용 — 페이지마다 "원"을 하드코딩하던 자리를 이걸로 대체한다.
+ * (한글 큰 단위 표기가 필요하면 formatKoreanCurrency를 쓸 것)
+ * @param {number|string} amount
+ * @returns {string} 예: "197,916,192알찬"
+ */
+export const formatMoney = (amount) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return `0${getCurrencyUnit()}`;
+  return `${Math.round(n).toLocaleString()}${getCurrencyUnit()}`;
+};
