@@ -11,6 +11,7 @@ import {
   orderBy,
   onSnapshot,
   limit as firestoreLimit,
+  getCountFromServer,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide-react";
@@ -107,9 +108,45 @@ const AdminApprovalPanel = () => {
     () => approvals.filter((a) => a.status === "pending"),
     [approvals]
   );
+  // 화면에 로드된 목록 기준 — 일괄 선택/승인 대상 계산에 쓴다.
   const pendingCount = pendingApprovals.length;
   const allPendingSelected =
     pendingCount > 0 && pendingApprovals.every((a) => selectedIds.has(a.id));
+
+  // 🔧 탭 배지는 **현재 필터와 무관하게** 정확해야 한다.
+  //    기존엔 로드된 목록에서 셌기 때문에 '승인됨' 탭에선 배지가 아예 사라졌고,
+  //    limit(50)을 넣은 뒤로는 '전체' 탭에서 오래된 대기 건이 잘려 과소 표시됐다(실측 2건→1건).
+  //    서버 집계 1회(=1읽기)로 분리해 목록을 다 읽지 않고도 항상 정확한 숫자를 보여준다.
+  const [pendingTotal, setPendingTotal] = useState(0);
+  useEffect(() => {
+    if (!classCode) {
+      setPendingTotal(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getCountFromServer(
+          query(
+            firestoreCollection(db, "pendingApprovals"),
+            where("classCode", "==", classCode),
+            where("status", "==", "pending")
+          )
+        );
+        if (!cancelled) setPendingTotal(snap.data().count || 0);
+      } catch (e) {
+        // 집계 실패는 배지에만 영향 — 로드된 목록 기준으로 대체
+        logger.warn("[AdminApprovalPanel] 대기 건수 집계 실패(무시):", e?.code);
+        if (!cancelled) setPendingTotal(-1);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // approvals가 바뀌면(승인/거절 반영) 배지도 다시 집계한다
+  }, [classCode, approvals]);
+
+  const pendingBadgeCount = pendingTotal >= 0 ? pendingTotal : pendingCount;
 
   const toggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
@@ -206,7 +243,7 @@ const AdminApprovalPanel = () => {
           >
             <Icon size={14} />
             {label}
-            {key === "pending" && pendingCount > 0 && (
+            {key === "pending" && pendingBadgeCount > 0 && (
               <span
                 className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
                 style={{
@@ -214,7 +251,7 @@ const AdminApprovalPanel = () => {
                   color: "#b45309",
                 }}
               >
-                {pendingCount}
+                {pendingBadgeCount}
               </span>
             )}
           </button>
