@@ -28,14 +28,7 @@ import {
 } from "../../firebase";
 
 // 최적화된 데이터 훅들
-import {
-  useOptimizedAdminSettings,
-  useOptimizedStudents,
-  useOptimizedSalarySettings,
-  useOptimizedSystemManagement,
-  useBatchPaySalaries,
-  useAdminDataPreloader,
-} from "../../hooks/useOptimizedAdminData";
+import { useBatchPaySalaries } from "../../hooks/useOptimizedAdminData";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../services/optimizedFirebaseService";
 
@@ -584,14 +577,18 @@ const AdminSettingsModal = ({
     );
   }, []);
 
-  // 최적화된 데이터 훅들
+  // 🔻 [읽기 절감 2026-07-25] 모달을 열 때마다 getAdminSettingsData CF가 6회 불렸는데
+  //    (preloadAdminData 3회 + students/salarySettings/generalSettings 훅 3회)
+  //    **어느 결과도 화면에 쓰이지 않았다**:
+  //      - studentsQuery / generalSettingsQuery / systemManagementQuery — 선언만 하고 참조처 0
+  //      - salarySettingsQuery — 참조는 `data?.settings`인데 CF 반환 형태는 `{ salarySettings }`라
+  //        항상 undefined → 언제나 뒤의 폴백(loadSalarySettings가 채우는 salarySettings state)이 쓰였다
+  //      - preloadAdminData의 prefetch 키(adminSettings(classCode,tab))는 위 훅들의 키
+  //        (students/salarySettings)와 달라 캐시 적중도 없었다
+  //    실제 데이터는 loadStudents()/loadSalarySettings()/loadMenuLocks()가 직접 읽는다.
+  //    studentManagement 분기는 users를 학급 전체 조회하므로 학생 수만큼 읽기도 함께 낭비됐다.
   const queryClient = useQueryClient();
-  const studentsQuery = useOptimizedStudents();
-  const salarySettingsQuery = useOptimizedSalarySettings();
-  const systemManagementQuery = useOptimizedSystemManagement();
-  const generalSettingsQuery = useOptimizedAdminSettings("generalSettings");
   const batchPaySalariesMutation = useBatchPaySalaries();
-  const { preloadAdminData } = useAdminDataPreloader();
 
   // 급여 설정 로드
   const loadSalarySettings = useCallback(async () => {
@@ -1086,8 +1083,7 @@ const AdminSettingsModal = ({
       return;
     }
 
-    const currentSalarySettings =
-      salarySettingsQuery.data?.settings || salarySettings;
+    const currentSalarySettings = salarySettings;
 
     if (
       !window.confirm(
@@ -1134,8 +1130,7 @@ const AdminSettingsModal = ({
 
   // 최적화된 전체 학생 급여 지급
   const handlePaySalariesToAll = async () => {
-    const currentSalarySettings =
-      salarySettingsQuery.data?.settings || salarySettings;
+    const currentSalarySettings = salarySettings;
 
     if (
       !window.confirm(
@@ -1834,8 +1829,6 @@ const AdminSettingsModal = ({
   // 최적화된 데이터 동기화
   useEffect(() => {
     if (showAdminSettingsModal) {
-      // 데이터 프리로딩 (필요한 탭들 미리 로드)
-      preloadAdminData();
       setError("");
 
       // 금융 상품 및 파킹 이자율 로드
@@ -1872,7 +1865,7 @@ const AdminSettingsModal = ({
     loadSalarySettings,
     loadFinancialProducts,
     loadParkingRate,
-  ]); // preloadAdminData는 내부적으로 adminSelectedMenu에 따라 loadClassMembers, loadStudents, loadSalarySettings를 호출하므로 추가하면 무한루프 발생
+  ]); // 탭별 실제 로드는 아래의 서브탭 effect들(loadStudents/loadClassMembers/loadSalarySettings/loadMenuLocks)이 담당
 
   // 이전 탭 ID → 통합 탭 매핑 (하위 호환)
   useEffect(() => {
