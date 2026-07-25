@@ -162,3 +162,22 @@ formatKoreanCurrency(data.profit)         // "1100원"
 // logger.log(formatKoreanCurrency(123456789012)); // "1234억 5678만 9012원"
 // logger.log(formatCouponCount(782));             // "782개"
 // logger.log(formatCouponCount(38));              // "38개"
+
+/**
+ * 법안 벌금 표시용 포맷 (2026-07-25 추가).
+ * law.fine은 교사가 자유 입력하는 문자열이라 "1000만, 1억원"처럼 서술형일 수도, "1000000000"처럼
+ * 숫자만일 수도 있다. 숫자만 들어온 경우에만 천단위 콤마 + 단위를 붙이고, 나머지는 원문을 보존한다.
+ * (기존엔 문자열에 toLocaleString()을 호출해 사실상 no-op → "1000000000원"이 그대로 노출됐다)
+ * @param {string|number|null|undefined} fine
+ * @param {string} fallback 값이 없을 때 표시할 문자열
+ * @returns {string}
+ */
+export const formatLawFine = (fine, fallback = "정보 없음") => {
+  if (fine === null || fine === undefined) return fallback;
+  const raw = String(fine).trim();
+  if (!raw) return fallback;
+  if (/^\d+$/.test(raw)) {
+    return `${Number(raw).toLocaleString()}원`;
+  }
+  return raw;
+};

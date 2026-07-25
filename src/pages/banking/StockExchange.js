@@ -2047,13 +2047,15 @@ const StockExchange = () => {
     let totalValue = 0,
       totalInvested = 0;
     portfolio.forEach((holding) => {
-      const investedValue = holding.averagePrice * holding.quantity;
-      totalInvested += investedValue;
-      if (!holding.delistedAt) {
-        const stock = stocksMap.get(holding.stockId);
-        if (stock && stock.isListed)
-          totalValue += stock.price * holding.quantity;
-      }
+      // ⚠️ [2026-07-25 수정] 평가액과 매수원가는 반드시 같은 모집단에서 집계한다.
+      //   이전에는 원가만 전 보유분(상장폐지·비상장 포함)을 더하고 평가액은 상장 종목만 더해서,
+      //   폐지 종목을 보유했던 계정은 평가손익이 -원가 전액, 수익률이 -99%대로 붕괴해 보였다.
+      //   (실측: 보유 3종목이 전부 +수익인데 요약 카드는 -132억/-99.60%)
+      if (holding.delistedAt) return;
+      const stock = stocksMap.get(holding.stockId);
+      if (!stock || !stock.isListed) return;
+      totalInvested += holding.averagePrice * holding.quantity;
+      totalValue += stock.price * holding.quantity;
     });
     const totalProfit = totalValue - totalInvested;
     const profitPercent =

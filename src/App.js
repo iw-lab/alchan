@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 // 🔥 [최적화] ItemProvider는 AlchanLayout으로 이동 (로그인 후에만 마운트)
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { clearLocalStoragePreserving } from "./utils/storageReset";
 
 // 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
 const queryClient = new QueryClient({
@@ -125,28 +126,9 @@ class ErrorBoundary extends Component {
         await Promise.all(names.map((name) => caches.delete(name)));
       }
 
-      // 로컬스토리지 삭제 — 단, 게시판 임시저장(작성 중 글)은 보존
-      try {
-        const preserved = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          // 게시판 작성 중 글 + 사용 중인 아이템 5분 타이머 상태는 보존
-          // (ChunkLoadError 복구 reload가 방금 사용한 아이템의 '사용 중' 표시를 지우면 안 됨)
-          if (
-            k &&
-            (k.startsWith("alchan_lb_draft_") ||
-              k.startsWith("recentlyUsedItems_"))
-          ) {
-            preserved.push([k, localStorage.getItem(k)]);
-          }
-        }
-        localStorage.clear();
-        preserved.forEach(([k, v]) => {
-          if (v != null) localStorage.setItem(k, v);
-        });
-      } catch (_) {
-        localStorage.clear();
-      }
+      // 로컬스토리지 삭제 — 단, 게시판 임시저장·사용중 아이템 표시는 보존
+      // (보존 목록은 utils/storageReset.js 한 곳에서 관리 — 초기화 경로가 여러 곳이라 중복 정의 금지)
+      clearLocalStoragePreserving();
       sessionStorage.clear();
 
       // 새로고침

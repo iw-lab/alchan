@@ -23,6 +23,7 @@ import {
 } from "../../firebase";
 import CouponGoal from "../../components/CouponGoal";
 import LoginWarning from "../../components/LoginWarning";
+import { clearLocalStoragePreserving } from "../../utils/storageReset";
 import DonateCouponModal from "../../components/modals/DonateCouponModal";
 import SellCouponModal from "../../components/modals/SellCouponModal";
 import GiftCouponModal from "../../components/modals/GiftCouponModal";
@@ -698,6 +699,9 @@ export default function CouponGoalPage() {
               isSettingNewGoal={isSettingNewGoal}
             />
 
+            {/* 🔒 개발/운영용 진단 도구 — 학생 화면에는 노출하지 않는다(교사만).
+                (캐시 삭제는 로컬 데이터를 지우므로 학생이 무심코 누르면 작성 중인 글이 날아감) */}
+            {canManageGoal && (
             <div className="glass-card rounded-2xl mt-5 p-4">
               <h4
                 style={{
@@ -755,9 +759,10 @@ export default function CouponGoalPage() {
                 </button>
                 <button
                   onClick={() => {
-                    localStorage.clear();
+                    // 게시판 작성 중 글·사용중 아이템 표시는 보존(utils/storageReset.js)
+                    clearLocalStoragePreserving();
                     alert(
-                      "로컬 캐시가 모두 삭제되었습니다. 페이지를 새로고침해주세요.",
+                      "로컬 캐시가 삭제되었습니다. 페이지를 새로고침합니다.\n(작성 중이던 게시판 글은 보존됩니다)",
                     );
                     window.location.reload();
                   }}
@@ -796,6 +801,7 @@ export default function CouponGoalPage() {
                 진행률 {goalProgress}/{classCouponGoal}
               </p>
             </div>
+            )}
           </>
         )}
 

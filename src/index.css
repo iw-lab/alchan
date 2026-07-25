@@ -1289,7 +1289,10 @@ p, span, div, li, td, th, label, h1, h2, h3, h4, h5, h6 {
 
 /* 진한 배경 요소 텍스트 흰색 유지 */
 .buy-button, .admin-action-button, .admin-save-button,
-.header-button, .green-button, .add-job-task-button, .admin-settings-button,
+/* ⚠️ .admin-settings-button 제외(2026-07-25): 경찰서(Police.css)에선 밝은 배경(--bg-input) 버튼이라
+   여기서 흰색을 !important로 박으면 흰 글자+흰 배경이 되어 라벨이 사라진다(실측 대비 1.03:1).
+   진한 배경 변형(Dashboard.css)은 자체 규칙에서 color:white를 선언하므로 !important 없이도 유지된다. */
+.header-button, .green-button, .add-job-task-button,
 .bg-indigo-500, .bg-indigo-600, .bg-indigo-700,
 .bg-violet-500, .bg-violet-600,
 .bg-emerald-500, .bg-emerald-600,

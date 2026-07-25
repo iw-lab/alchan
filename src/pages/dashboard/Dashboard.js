@@ -84,6 +84,13 @@ const CACHE_TTL = {
  CLASS_CODES: 24 * 60 * 60 * 1000, // 24시간 (학급 코드)
 };
 
+// 🔒 [읽기 절감 2026-07-25] 마지막 폴링 시각을 "모듈 레벨"에 보관한다.
+// 기존 가드(lastFetchTime)는 useRef라 페이지를 떠났다 오면 초기화되어, 사이드바를 오갈 때마다
+// jobs(최대 300) + commonTasks(최대 50)를 매번 다시 읽었다(실측: 오늘의 할일 재진입 = 54문서 고정).
+// 캐시가 살아있고 최근에 조회했으면 즉시 폴링을 생략한다 — 교사의 할일 변경은 이 간격 내에 반영된다.
+const lastPollAtByClass = new Map();
+const POLL_MIN_INTERVAL = 5 * 60 * 1000; // 5분
+
 // 🔥 globalCacheService 래퍼 (기존 dataCache 인터페이스 호환)
 const dataCache = {
  get: (key) => globalCacheService.get(key),
@@ -826,13 +833,20 @@ function Dashboard({ adminTabMode }) {
  loadedCommonTasks,
  CACHE_TTL.TASKS,
  );
+ lastPollAtByClass.set(classCode, Date.now());
  } catch (error) {
  logger.error("Polling 에러:", error);
  }
  };
 
- // 즉시 한 번 실행
+ // 즉시 한 번 실행 — 단, 캐시가 살아있고 5분 내 이미 조회했으면 생략(메뉴 왕복 재조회 차단)
+ const lastPolledAt = lastPollAtByClass.get(classCode) || 0;
+ const hasFreshCache =
+ !!dataCache.get(`jobs_${classCode}`) &&
+ !!dataCache.get(`commonTasks_${classCode}`);
+ if (!hasFreshCache || Date.now() - lastPolledAt >= POLL_MIN_INTERVAL) {
  await pollData();
+ }
 
  // 🔥 [최적화 v3.0] 2시간마다 실행 (15분→2시간 - Firestore 읽기 극소화)
  // 데이터 변경 시 사용자가 수동 새로고침하거나 페이지 재진입 시 갱신됨
@@ -904,7 +918,9 @@ function Dashboard({ adminTabMode }) {
  }
 
  // 2단계: 백그라운드에서 실시간 리스너 설정 (한 번만)
- if (!realtimeManager.current.listeners.has("jobs")) {
+ // ⚠️ 등록 키는 아래 setupPolling의 addListener("polling")과 같아야 한다.
+ //    ("jobs"로 조회하면 항상 미등록으로 판정되어 같은 마운트에서 interval이 중복 등록될 수 있었음)
+ if (!realtimeManager.current.listeners.has("polling")) {
  // 리스너 설정을 다음 틱으로 지연하여 초기 렌더링 차단 방지
  setTimeout(() => setupPolling(classCode), 0);
  }

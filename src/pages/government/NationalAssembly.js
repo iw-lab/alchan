@@ -29,6 +29,7 @@ import {
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
+import { formatLawFine } from "../../utils/numberFormatter";
 const NationalAssembly = () => {
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
@@ -984,7 +985,7 @@ const NationalAssembly = () => {
                           <strong>설명:</strong> {law.description}
                         </p>
                         <p>
-                          <strong>벌금:</strong> {law.fine}
+                          <strong>벌금:</strong> {formatLawFine(law.fine, "")}
                         </p>
                         <p className="law-timestamp">
                           제안일: {formatDate(law.timestamp)}
@@ -1106,7 +1107,7 @@ const NationalAssembly = () => {
                           <strong>설명:</strong> {law.description}
                         </p>
                         <p>
-                          <strong>벌금:</strong> {law.fine}
+                          <strong>벌금:</strong> {formatLawFine(law.fine, "")}
                         </p>
                         <p className="law-timestamp">
                           {law.finalStatus === "final_approved" &&
@@ -1169,7 +1170,7 @@ const NationalAssembly = () => {
                           <strong>설명:</strong> {law.description}
                         </p>
                         <p>
-                          <strong>벌금:</strong> {law.fine}
+                          <strong>벌금:</strong> {formatLawFine(law.fine, "")}
                         </p>
                         <p>
                           <strong>거부 사유:</strong>{" "}

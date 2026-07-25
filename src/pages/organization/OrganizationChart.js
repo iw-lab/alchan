@@ -20,6 +20,7 @@ import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache"
 
 import { logger } from "../../utils/logger";
 import { hasJobTitle } from "../../utils/jobPermissions";
+import { formatLawFine } from "../../utils/numberFormatter";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -530,9 +531,7 @@ const OrganizationChart = ({ classCode }) => {
                     </p>
                     <p>
                       <strong>벌금:</strong>{" "}
-                      {law.fine
-                        ? `${law.fine.toLocaleString()}원`
-                        : "정보 없음"}
+                      {formatLawFine(law.fine)}
                     </p>
                     <p>
                       <strong>국회 통과일:</strong>{" "}
@@ -583,9 +582,7 @@ const OrganizationChart = ({ classCode }) => {
                     </p>
                     <p>
                       <strong>벌금:</strong>{" "}
-                      {law.fine
-                        ? `${law.fine.toLocaleString()}원`
-                        : "정보 없음"}
+                      {formatLawFine(law.fine)}
                     </p>
                     <p>
                       <strong>국회 승인:</strong> 찬성 {law.approvals || 0}명,
@@ -641,9 +638,7 @@ const OrganizationChart = ({ classCode }) => {
                     </p>
                     <p>
                       <strong>벌금:</strong>{" "}
-                      {law.fine
-                        ? `${law.fine.toLocaleString()}원`
-                        : "정보 없음"}
+                      {formatLawFine(law.fine)}
                     </p>
                     <p>
                       <strong>거부 사유:</strong> {law.vetoReason}

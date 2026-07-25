@@ -22,6 +22,7 @@ import {
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
+import { formatLawFine } from "../../utils/numberFormatter";
 // 날짜 포맷팅 헬퍼 함수
 const formatDate = (dateString) => {
     if (!dateString) return "정보 없음";
@@ -189,7 +190,7 @@ const LawManagement = ({ classCode }) => {
                     <p><strong>제안자:</strong> {law.proposerName || "정보 없음"}</p>
                     <p><strong>취지:</strong> {law.purpose}</p>
                     <p><strong>설명:</strong> {law.description}</p>
-                    <p><strong>벌금:</strong> {law.fine}</p>
+                    <p><strong>벌금:</strong> {formatLawFine(law.fine, "")}</p>
                     <p className="law-timestamp">국회 통과일: {formatDate(law.approvalDate?.toDate().toISOString())}</p>
                 </div>
                 {canManageLaws() && (
