@@ -7,6 +7,7 @@
 // - isAdmin (관리자): 자기 학급만 관리, 금융/시장/학생/직업/할일 관리
 // ========================================
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, getDocFromServer } from "firebase/firestore";
@@ -1109,11 +1110,11 @@ const AdminSettingsModal = ({
         alert(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
-          ).toFixed(0)}만원\n세금 공제: ${(
+          ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
             summary.totalTaxDeducted / 10000
-          ).toFixed(0)}만원\n실제 지급: ${(
+          ).toFixed(0)}만 ${getCurrencyUnit()}\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만원`,
+          ).toFixed(0)}만 ${getCurrencyUnit()}`,
         );
 
         // 선택 상태 초기화 + 학생 목록 새로고침
@@ -1157,11 +1158,11 @@ const AdminSettingsModal = ({
         alert(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
-          ).toFixed(0)}만원\n세금 공제: ${(
+          ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
             summary.totalTaxDeducted / 10000
-          ).toFixed(0)}만원\n실제 지급: ${(
+          ).toFixed(0)}만 ${getCurrencyUnit()}\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만원`,
+          ).toFixed(0)}만 ${getCurrencyUnit()}`,
         );
         loadStudents(); // 잔액 갱신
       } else {
@@ -2899,7 +2900,7 @@ const AdminSettingsModal = ({
                               {/* 보유 현금 + 최근 주급일 */}
                               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
                                 <span>
-                                  보유 <span className="font-semibold text-slate-700">{(student.cash || 0).toLocaleString()}원</span>
+                                  보유 <span className="font-semibold text-slate-700">{(student.cash || 0).toLocaleString()}{getCurrencyUnit()}</span>
                                 </span>
                                 <span>
                                   {student.lastSalaryDate
@@ -3968,15 +3969,15 @@ const AdminSettingsModal = ({
                     <>
                       <p>
                         예상 총급여:{" "}
-                        {`${(salaryCalc.gross / 10000).toFixed(0)}만원`}
+                        {`${(salaryCalc.gross / 10000).toFixed(0)}만 ${getCurrencyUnit()}`}
                       </p>
                       <p>
                         세금 공제:{" "}
-                        {`${(salaryCalc.tax / 10000).toFixed(0)}만원`} (
+                        {`${(salaryCalc.tax / 10000).toFixed(0)}만 ${getCurrencyUnit()}`} (
                         {(salarySettings.taxRate * 100).toFixed(1)}%)
                       </p>
                       <p>
-                        실급여: {`${(salaryCalc.net / 10000).toFixed(0)}만원`}
+                        실급여: {`${(salaryCalc.net / 10000).toFixed(0)}만 ${getCurrencyUnit()}`}
                       </p>
                     </>
                   );

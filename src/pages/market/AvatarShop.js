@@ -1,4 +1,5 @@
 // src/pages/market/AvatarShop.js - 아바타 상점
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -222,14 +223,14 @@ export default function AvatarShop() {
     const isFree = (effectivePrice || 0) === 0;
     if (!isFree) {
       if ((userDoc?.cash || 0) < effectivePrice) {
-        alert(`잔액 부족. 필요: ${effectivePrice.toLocaleString()}원`);
+        alert(`잔액 부족. 필요: ${effectivePrice.toLocaleString()}${getCurrencyUnit()}`);
         return;
       }
       if (await isNetAssetsNegative(userDoc)) {
         alert(NEGATIVE_ASSETS_MESSAGE);
         return;
       }
-      if (!window.confirm(`${item.name} (${effectivePrice.toLocaleString()}원) 구매하시겠습니까?`)) return;
+      if (!window.confirm(`${item.name} (${effectivePrice.toLocaleString()}${getCurrencyUnit()}) 구매하시겠습니까?`)) return;
     }
 
     setPurchasing(item.id);
@@ -299,7 +300,7 @@ export default function AvatarShop() {
           </div>
         </div>
         <div className="text-sm font-bold text-slate-800">
-          💰 {formatKoreanNumber(userDoc?.cash || 0)}원
+          💰 {formatKoreanNumber(userDoc?.cash || 0)}{getCurrencyUnit()}
         </div>
       </div>
 
@@ -491,11 +492,11 @@ export default function AvatarShop() {
                   )}
                   <div className="flex items-center justify-between mt-auto">
                     <div className="text-sm font-bold flex items-center gap-1" style={{ color: rar.color }}>
-                      💰 {formatKoreanNumber(displayPrice)}원
+                      💰 {formatKoreanNumber(displayPrice)}{getCurrencyUnit()}
                       {hasOverride && (
                         <span
                           className="text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300"
-                          title={`기본가: ${formatKoreanNumber(item.price)}원`}
+                          title={`기본가: ${formatKoreanNumber(item.price)}${getCurrencyUnit()}`}
                         >
                           학급
                         </span>
@@ -582,14 +583,14 @@ export default function AvatarShop() {
                 <div className="flex justify-between mb-1">
                   <span className="text-slate-500">기본 가격</span>
                   <span className="font-bold text-slate-800">
-                    {Number(editingPrice.basePrice || 0).toLocaleString()}원
+                    {Number(editingPrice.basePrice || 0).toLocaleString()}{getCurrencyUnit()}
                   </span>
                 </div>
                 {editingPrice.isOverridden && (
                   <div className="flex justify-between text-amber-700">
                     <span>현재 학급 가격</span>
                     <span className="font-bold">
-                      {Number(priceOverrides[editingPrice.itemId] || 0).toLocaleString()}원
+                      {Number(priceOverrides[editingPrice.itemId] || 0).toLocaleString()}{getCurrencyUnit()}
                     </span>
                   </div>
                 )}

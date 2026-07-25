@@ -1,5 +1,6 @@
 // src/firebase/db/store.js - 상점/인벤토리/마켓 관련
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import {
   doc,
   getDoc,
@@ -220,7 +221,7 @@ export const addMarketListing = async (listingData, classCode) => {
       listedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    const logDescription = `${listingData.name} ${listingData.quantity}개를 개당 ${listingData.pricePerItem}원에 판매 등록했습니다.`;
+    const logDescription = `${listingData.name} ${listingData.quantity}개를 개당 ${listingData.pricePerItem}${getCurrencyUnit()}에 판매 등록했습니다.`;
     await addActivityLog(listingData.sellerId, '아이템 시장 등록', logDescription);
     return { success: true, listingId: docRef.id, data: { ...listingData, classCode } };
   } catch (error) {

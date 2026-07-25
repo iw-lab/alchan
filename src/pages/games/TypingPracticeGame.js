@@ -1,6 +1,7 @@
 // src/TypingPracticeGame.js
 // 한글 타자연습 미니게임
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -391,7 +392,7 @@ const TypingPracticeGame = ({ onClose }) => {
             <div className="reward-preview">
               <p>🎁 카드를 선택하여 랜덤 보상을 받으세요!</p>
               <div className="reward-range">
-                <span>💰 100원 ~ 100,000원</span>
+                <span>💰 100{getCurrencyUnit()} ~ 100,000{getCurrencyUnit()}</span>
                 <span>🎫 1개 ~ 20개</span>
               </div>
             </div>
@@ -688,12 +689,12 @@ const TypingPracticeGame = ({ onClose }) => {
               <div className="card-front">
                 <div className="card-icon">💰</div>
                 <div className="card-title">현금</div>
-                <div className="card-hint">100원 ~ 100,000원</div>
+                <div className="card-hint">100{getCurrencyUnit()} ~ 100,000{getCurrencyUnit()}</div>
               </div>
               <div className="card-back">
                 <div className="reward-reveal">
                   <div className="reward-icon">💰</div>
-                  <div className="reward-amount">{cashDisplay}원</div>
+                  <div className="reward-amount">{cashDisplay}{getCurrencyUnit()}</div>
                   <div className="reward-label">현금 획득!</div>
                 </div>
               </div>
@@ -750,7 +751,7 @@ const TypingPracticeGame = ({ onClose }) => {
             </div>
             <div className="reward-text">
               {rewardType === 'cash'
-                ? `${rewardAmount?.toLocaleString()}원`
+                ? `${rewardAmount?.toLocaleString()}${getCurrencyUnit()}`
                 : `${rewardAmount}개`}
             </div>
             <div className="reward-type">

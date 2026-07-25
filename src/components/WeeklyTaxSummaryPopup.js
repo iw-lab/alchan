@@ -2,13 +2,14 @@
 // 매주 금요일 세금 징수 후 학생에게 "어떤 세금이 얼마 나갔는지" 알려주는 팝업
 // userDoc.pendingTaxSummary가 있을 때만 표시 → "확인" 클릭 시 필드 삭제 (dismiss)
 
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState } from "react";
 import { db } from "../firebase";
 import { doc, updateDoc, deleteField } from "firebase/firestore";
 import { logger } from "../utils/logger";
 
 const formatPct = (rate) => `${(rate * 100).toFixed(2)}%`;
-const formatWon = (n) => `${Number(n || 0).toLocaleString()}원`;
+const formatWon = (n) => `${Number(n || 0).toLocaleString()}${getCurrencyUnit()}`;
 
 export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
   const [closing, setClosing] = useState(false);

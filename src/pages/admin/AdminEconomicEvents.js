@@ -1,5 +1,6 @@
 // src/pages/admin/AdminEconomicEvents.js
 // 경제 이벤트 관리 페이지 - 선생님/관리자 전용
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
@@ -447,13 +448,13 @@ export default function AdminEconomicEvents() {
  return `${result.affectedCount || 0}개 부동산 ${pct > 0 ? "+" : ""}${pct}% 변동`;
  }
  if (type === "TAX_REFUND")
- return `${result.refundedAmount?.toLocaleString() || 0}원 환급`;
+ return `${result.refundedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 환급`;
  if (type === "TAX_EXTRA")
- return `${result.collectedAmount?.toLocaleString() || 0}원 징수`;
+ return `${result.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 징수`;
  if (type === "CASH_BONUS")
- return `${result.affectedCount || 0}명에게 ${result.perStudent?.toLocaleString() || 0}원`;
+ return `${result.affectedCount || 0}명에게 ${result.perStudent?.toLocaleString() || 0}${getCurrencyUnit()}`;
  if (type === "CASH_PENALTY")
- return `${result.affectedCount || 0}명 ${result.collectedAmount?.toLocaleString() || 0}원 차감`;
+ return `${result.affectedCount || 0}명 ${result.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 차감`;
  if (type === "STORE_PRICE_CHANGE")
  return `상점 ${result.affectedCount || 0}개 아이템 ${result.multiplier}배 변경`;
  if (type === "STOCK_TAX_CHANGE") {

@@ -190,7 +190,7 @@ const SubmitReport = ({
             <p>{getReasonDescription()}</p>
             {getDefaultAmount() > 0 && (
               <p className="default-fine">
-                기본 벌금: {getDefaultAmount().toLocaleString()}원
+                기본 벌금: {getDefaultAmount().toLocaleString()}{getCurrencyUnit()}
               </p>
             )}
           </div>

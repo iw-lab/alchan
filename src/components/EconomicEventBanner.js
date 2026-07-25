@@ -1,6 +1,7 @@
 // src/components/EconomicEventBanner.js
 // 활성 경제 이벤트를 모든 사용자에게 표시하는 배너 컴포넌트
 // 🔥 [최적화] onSnapshot 제거 → 공유 훅(useActiveEconomicEvent) 사용으로 리스너 1개 절감
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useActiveEconomicEvent } from "../hooks/useActiveEconomicEvent";
@@ -71,19 +72,19 @@ export default function EconomicEventBanner() {
     }
     if (type === "TAX_REFUND") {
       if (result.refundedAmount > 0) {
-        return `총 ${result.refundedAmount.toLocaleString()}원 환급 (1인당 ${result.perStudent?.toLocaleString() || 0}원)`;
+        return `총 ${result.refundedAmount.toLocaleString()}${getCurrencyUnit()} 환급 (1인당 ${result.perStudent?.toLocaleString() || 0}${getCurrencyUnit()})`;
       }
       return "국고가 부족해 환급이 이루어지지 않았습니다";
     }
     if (type === "TAX_EXTRA") {
-      return `총 ${result.collectedAmount?.toLocaleString() || 0}원 추가 징수 (${result.affectedCount || 0}명)`;
+      return `총 ${result.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 추가 징수 (${result.affectedCount || 0}명)`;
     }
     if (type === "CASH_BONUS") {
-      return `1인당 ${result.perStudent?.toLocaleString() || 0}원 지급 (${result.affectedCount || 0}명)`;
+      return `1인당 ${result.perStudent?.toLocaleString() || 0}${getCurrencyUnit()} 지급 (${result.affectedCount || 0}명)`;
     }
     if (type === "LOTTERY") {
       if (result.winnerNames?.length > 0) {
-        return `당첨자: ${result.winnerNames.join(", ")} (${result.prizeAmount?.toLocaleString() || 0}원)`;
+        return `당첨자: ${result.winnerNames.join(", ")} (${result.prizeAmount?.toLocaleString() || 0}${getCurrencyUnit()})`;
       }
       return "추첨 완료";
     }

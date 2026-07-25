@@ -1,6 +1,7 @@
 // src/components/AlchanSidebar.js
 // 알찬 UI 사이드바 컴포넌트 - 새로운 슬레이트 기반 디자인
 
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -944,7 +945,7 @@ export default function AlchanSidebar({
             const lines = logs.slice(0, 8).map((data) => {
               const amt = typeof data.amount === "number" ? data.amount : null;
               const sign = amt == null ? "" : amt > 0 ? "+" : "";
-              const amtText = amt == null ? "" : ` ${sign}${amt.toLocaleString()}원`;
+              const amtText = amt == null ? "" : ` ${sign}${amt.toLocaleString()}${getCurrencyUnit()}`;
               const typeLabel = data.type === "salaryPayment" ? "주급" : data.type;
               return `• [${typeLabel}]${amtText} — ${data.description || ""}`;
             });

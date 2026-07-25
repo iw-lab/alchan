@@ -1,4 +1,5 @@
 // src/pages/my-items/MyItems.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
@@ -1328,7 +1329,7 @@ const MyItems = () => {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="sellToMarketPrice">개당 판매 가격 (원):</label>
+                <label htmlFor="sellToMarketPrice">개당 판매 가격 ({getCurrencyUnit()}):</label>
                 <input
                   type="number"
                   id="sellToMarketPrice"

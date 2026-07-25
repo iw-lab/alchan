@@ -1,6 +1,7 @@
 // src/components/ui/index.js
 // 알찬 디자인 시스템 - 통합 UI 컴포넌트 라이브러리
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, {
   forwardRef,
   useState,
@@ -843,7 +844,7 @@ export const Money = ({ amount, className = "", showSign = false }) => {
     >
       {showSign && isPositive && "+"}
       {isNegative && "-"}
-      {formatted}원
+      {formatted}{getCurrencyUnit()}
     </span>
   );
 };

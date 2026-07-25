@@ -1,4 +1,5 @@
 // src/NationalAssembly.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import "./NationalAssembly.css";
 import { useAuth } from "../../contexts/AuthContext";
@@ -1502,7 +1503,7 @@ const NationalAssembly = () => {
                   onChange={(e) =>
                     setNewLaw({ ...newLaw, fine: e.target.value })
                   }
-                  placeholder="위반 시 벌금 (예: 5,000원)"
+                  placeholder={`위반 시 벌금 (예: 5,000${getCurrencyUnit()})`}
                 />
               </div>
             </div>

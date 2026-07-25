@@ -1,5 +1,6 @@
 // src/pages/superadmin/AvatarShopSeed.js
 // 아바타 상점 아이템 일괄 시드 (슈퍼관리자 전용)
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { functions } from "../../firebase";
@@ -85,7 +86,7 @@ export default function AvatarShopSeed() {
             <div key={item.id} className="border-b border-slate-200 py-1.5 flex justify-between">
               <span className="font-mono text-slate-700">{item.id}</span>
               <span className="text-slate-500">
-                [{item.slot}] {item.name} · {item.rarity} · {item.price.toLocaleString()}원
+                [{item.slot}] {item.name} · {item.rarity} · {item.price.toLocaleString()}{getCurrencyUnit()}
               </span>
             </div>
           ))}

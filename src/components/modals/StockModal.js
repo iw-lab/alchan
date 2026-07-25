@@ -1,5 +1,6 @@
 // src/StockModal.js
 // 🔥 성능 최적화: React.memo 적용
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, memo } from "react";
 import "../../pages/banking/StockExchange.css"; // 스타일 공유
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
@@ -96,7 +97,7 @@ const StockModal = memo(function StockModal({ isOpen, onClose, onSave, stock, is
             />
           </div>
           <div>
-            <label htmlFor="initialPrice">초기 상장가 (원):</label>
+            <label htmlFor="initialPrice">초기 상장가 ({getCurrencyUnit()}):</label>
             <input
               id="initialPrice"
               type="number"

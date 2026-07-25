@@ -1,5 +1,6 @@
 // src/SellCouponModal.js
 // 🔥 성능 최적화: React.memo 적용
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, memo } from "react";
 import { logger } from "../../utils/logger";
 
@@ -106,7 +107,7 @@ const SellCouponModal = memo(function SellCouponModal({
         </div>
         <div className="flex justify-between mb-4 p-2.5 bg-indigo-50 rounded-md text-[15px] text-indigo-700 border border-indigo-200">
           <span>1쿠폰 판매가:</span>
-          <strong>{couponValue.toLocaleString()}원</strong>
+          <strong>{couponValue.toLocaleString()}{getCurrencyUnit()}</strong>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -141,7 +142,7 @@ const SellCouponModal = memo(function SellCouponModal({
             <div className="flex justify-between text-base font-semibold text-slate-800">
               <span>예상 수령액:</span>
               <span className="text-indigo-700">
-                {calculateValue().toLocaleString()}원
+                {calculateValue().toLocaleString()}{getCurrencyUnit()}
               </span>
             </div>
           </div>

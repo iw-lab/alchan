@@ -1,4 +1,5 @@
 // src/TaskItem.js
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect, memo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
@@ -81,7 +82,7 @@ const TaskItem = memo(function TaskItem({
           : rewardData?.coupon;
     const rewardText =
       cardType === "cash"
-        ? `${(reward ?? 0).toLocaleString()}원`
+        ? `${(reward ?? 0).toLocaleString()}${getCurrencyUnit()}`
         : `${reward ?? 0}개`;
 
     // 서버 금액을 카드 뒷면에서 잠시 보여준 뒤(플립 리빌) 버블/닫기
@@ -239,7 +240,7 @@ const TaskItem = memo(function TaskItem({
                   <div className="text-2xl font-bold" style={mobileCardTextStyle}>현금</div>
                 </div>
                 <div className="absolute w-full h-full rounded-2xl flex flex-col items-center justify-center" style={{ ...cardBackStyle, ...(selectedCard === "cash" && cardBackVisibleStyle), backfaceVisibility: "hidden" }}>
-                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{typeof rewardData.cash === "number" ? `${rewardData.cash.toLocaleString()}원` : "..."}</div>
+                  <div className="text-4xl font-bold mb-2.5" style={mobileRewardAmountStyle}>{typeof rewardData.cash === "number" ? `${rewardData.cash.toLocaleString()}${getCurrencyUnit()}` : "..."}</div>
                   <div className="text-lg" style={mobileRewardLabelStyle}>💰 현금 획득!</div>
                 </div>
               </div>

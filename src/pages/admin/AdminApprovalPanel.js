@@ -1,5 +1,6 @@
 // src/pages/admin/AdminApprovalPanel.js
 // 할일 승인 관리 패널 - 사이버펑크 테마
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
@@ -375,7 +376,7 @@ const AdminApprovalPanel = () => {
                   <div className="flex items-center gap-3 text-xs text-slate-500">
                     <span>
                       {approval.cardType === "cash"
-                        ? `💰 ${approval.rewardAmount?.toLocaleString()}원`
+                        ? `💰 ${approval.rewardAmount?.toLocaleString()}${getCurrencyUnit()}`
                         : `🎫 ${approval.rewardAmount}쿠폰`}
                     </span>
                     <span>{formatDate(approval.requestedAt)}</span>

@@ -5,6 +5,7 @@
 // 국고는 별도의 문서가 아닌 학급 관리자(선생님)의 현금으로 통합됨
 // 모든 세금은 관리자 계정으로 직접 입금됨
 // ========================================
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { db, getCachedDocument, invalidateCache } from "../../firebase";
 import {
@@ -39,7 +40,7 @@ const formatTaxFieldValue = (field, value) => {
     return value === "daily" ? "매일" : value === "monthly" ? "매월" : "매주";
   }
   if (field.isAmount) {
-    return `${Number(value || 0).toLocaleString()}원`;
+    return `${Number(value || 0).toLocaleString()}${getCurrencyUnit()}`;
   }
   const decimals = field.name.includes("propertyHoldingTaxRate") ? 2 : 1;
   return `${((value || 0) * 100).toFixed(decimals)}%`;
@@ -272,7 +273,7 @@ const NationalTaxService = ({ classCode }) => {
         const won = Number(editableSettings[key]);
         if (!Number.isFinite(won) || won < 0) {
           alert(
-            `순자산세 면세 기준은 0 이상의 금액(원)이어야 합니다. 현재값: ${editableSettings[key]}`
+            `순자산세 면세 기준은 0 이상의 금액(${getCurrencyUnit()})이어야 합니다. 현재값: ${editableSettings[key]}`
           );
           return;
         }
@@ -337,7 +338,7 @@ const NationalTaxService = ({ classCode }) => {
         alert("이번 주 세금은 이미 징수되었습니다. 다음 주에 다시 징수할 수 있어요.");
       } else if (result?.success) {
         setLastTaxWeekKey(result.weekKey || weekKeyNow);
-        alert(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}원`);
+        alert(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}${getCurrencyUnit()}`);
         // 캐시 무효화 후 재조회 — 안 하면 묵은 governmentSettings 캐시가 방금 세운 weekKey를 덮어써 배지가 사라짐.
         invalidateCache(`doc_governmentSettings_${classCode}`);
         invalidateCache(`doc_nationalTreasuries_${classCode}`);
@@ -382,7 +383,7 @@ const NationalTaxService = ({ classCode }) => {
 
   const taxPolicyFields = [
     { name: "netAssetTaxRate", label: "주간 순자산세율", type: "number", step: "0.001", min: "0", max: "1" },
-    { name: "netAssetTaxExemption", label: "순자산세 면세 기준(원)", type: "number", step: "10000", min: "0", isAmount: true },
+    { name: "netAssetTaxExemption", label: `순자산세 면세 기준(${getCurrencyUnit()})`, type: "number", step: "10000", min: "0", isAmount: true },
     { name: "stockTransactionTaxRate", label: "주식 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "realEstateTransactionTaxRate", label: "부동산 거래세율", type: "number", step: "0.001", min: "0", max: "1" },
     { name: "itemStoreVATRate", label: "아이템 상점 부가세율", type: "number", step: "0.01", min: "0", max: "1" },

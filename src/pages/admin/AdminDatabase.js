@@ -1,4 +1,5 @@
 // src/AdminDatabase.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -418,7 +419,7 @@ const AdminDatabase = () => {
  <div className="mb-1"><strong>수량:</strong> {log.metadata.quantity}</div>
  )}
  {log.metadata.amount !== undefined && (
- <div className="mb-1"><strong>금액:</strong> {log.metadata.amount.toLocaleString()}원</div>
+ <div className="mb-1"><strong>금액:</strong> {log.metadata.amount.toLocaleString()}{getCurrencyUnit()}</div>
  )}
  {log.metadata.couponAmount !== undefined && (
  <div className="mb-1"><strong>쿠폰:</strong> {log.metadata.couponAmount}개</div>

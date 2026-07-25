@@ -1,5 +1,6 @@
 // src/firebase/db/transactions.js - 현금/쿠폰/송금/세금 트랜잭션
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import {
   doc,
   updateDoc,
@@ -48,29 +49,29 @@ export const updateUserCashInFirestore = async (userId, amount, logMessage = '',
     if (senderInfo && receiverInfo) {
       if (amount > 0) {
         logType = '송금 수신';
-        activityLogMessage = `${senderInfo.name}님으로부터 ${amount}원을 받았습니다.${senderInfo.message ? ` 메시지: "${senderInfo.message}"` : ''}`;
+        activityLogMessage = `${senderInfo.name}님으로부터 ${amount}${getCurrencyUnit()}을 받았습니다.${senderInfo.message ? ` 메시지: "${senderInfo.message}"` : ''}`;
       } else {
         logType = '송금';
-        activityLogMessage = `${receiverInfo.name}님에게 ${Math.abs(amount)}원을 송금했습니다.${senderInfo.message ? ` 메시지: "${senderInfo.message}"` : ''}`;
+        activityLogMessage = `${receiverInfo.name}님에게 ${Math.abs(amount)}${getCurrencyUnit()}을 송금했습니다.${senderInfo.message ? ` 메시지: "${senderInfo.message}"` : ''}`;
       }
     } else if (senderInfo && amount > 0) {
       logType = '현금 입금';
       if (senderInfo.isAdmin) {
-        activityLogMessage = `관리자 ${senderInfo.name}가 ${amount}원을 입금했습니다.${senderInfo.reason ? ` 사유: ${senderInfo.reason}` : ''}`;
+        activityLogMessage = `관리자 ${senderInfo.name}가 ${amount}${getCurrencyUnit()}을 입금했습니다.${senderInfo.reason ? ` 사유: ${senderInfo.reason}` : ''}`;
       } else {
-        activityLogMessage = `${senderInfo.name || '시스템'}에서 ${amount}원을 입금받았습니다.`;
+        activityLogMessage = `${senderInfo.name || '시스템'}에서 ${amount}${getCurrencyUnit()}을 입금받았습니다.`;
       }
     } else if (receiverInfo && amount < 0) {
       logType = '현금 출금';
       if (receiverInfo.isAdmin) {
-        activityLogMessage = `관리자 ${receiverInfo.name}가 ${Math.abs(amount)}원을 출금했습니다.${receiverInfo.reason ? ` 사유: ${receiverInfo.reason}` : ''}`;
+        activityLogMessage = `관리자 ${receiverInfo.name}가 ${Math.abs(amount)}${getCurrencyUnit()}을 출금했습니다.${receiverInfo.reason ? ` 사유: ${receiverInfo.reason}` : ''}`;
       } else {
-        activityLogMessage = `${receiverInfo.name || '외부'}로 ${Math.abs(amount)}원을 출금했습니다.`;
+        activityLogMessage = `${receiverInfo.name || '외부'}로 ${Math.abs(amount)}${getCurrencyUnit()}을 출금했습니다.`;
       }
     } else if (logMessage) {
       activityLogMessage = logMessage;
     } else {
-      activityLogMessage = `${Math.abs(amount)}원 ${amount > 0 ? '입금' : '출금'} 완료.`;
+      activityLogMessage = `${Math.abs(amount)}${getCurrencyUnit()} ${amount > 0 ? '입금' : '출금'} 완료.`;
     }
 
     addActivityLog(userId, logType, activityLogMessage).catch(err =>
@@ -162,7 +163,7 @@ export const processStockSaleTransaction = async (userId, classCode, profit, sto
         await updateDoc(adminRef, { cash: increment(taxAmount) });
         invalidateCache(`user_${adminUid}`);
       }
-      const logDescription = `${stockName} 주식 판매로 발생한 이익 ${profit}원에 대한 거래세 ${taxAmount}원을 납부했습니다.`;
+      const logDescription = `${stockName} 주식 판매로 발생한 이익 ${profit}${getCurrencyUnit()}에 대한 거래세 ${taxAmount}${getCurrencyUnit()}을 납부했습니다.`;
       await addActivityLog(userId, '세금 납부 (주식)', logDescription);
     }
     return { success: true, taxAmount };
@@ -248,8 +249,8 @@ export const processGenericSaleTransaction = async (classCode, buyerId, sellerId
     }
 
     const itemName = inventoryUpdate?.itemDetails?.name || taxType;
-    const buyerLog = `[${sellerName}]님으로부터 ${itemName}을(를) ${transactionPrice}원에 구매했습니다.`;
-    const sellerLog = `[${buyerName}]님에게 ${itemName}을(를) ${transactionPrice}원에 판매하여 ${sellerProceeds}원을 얻었습니다. (세금 ${taxAmount}원 제외)`;
+    const buyerLog = `[${sellerName}]님으로부터 ${itemName}을(를) ${transactionPrice}${getCurrencyUnit()}에 구매했습니다.`;
+    const sellerLog = `[${buyerName}]님에게 ${itemName}을(를) ${transactionPrice}${getCurrencyUnit()}에 판매하여 ${sellerProceeds}${getCurrencyUnit()}을 얻었습니다. (세금 ${taxAmount}${getCurrencyUnit()} 제외)`;
     await Promise.all([
       addActivityLog(buyerId, '구매', buyerLog),
       addActivityLog(sellerId, '판매', sellerLog)
@@ -298,7 +299,7 @@ export const collectPropertyHoldingTaxes = async (classCode) => {
         batch.update(userRef, { cash: increment(-userTotalTax) });
         totalTaxCollected += userTotalTax;
         processedUserCount++;
-        const logDescription = `소유 부동산 (총 가치 ${totalPropertyValue}원)에 대한 보유세 ${userTotalTax}원이 징수되었습니다.`;
+        const logDescription = `소유 부동산 (총 가치 ${totalPropertyValue}${getCurrencyUnit()})에 대한 보유세 ${userTotalTax}${getCurrencyUnit()}이 징수되었습니다.`;
         logPromises.push(addActivityLog(userId, '세금 납부 (보유세)', logDescription));
       }
     }

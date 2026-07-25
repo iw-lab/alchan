@@ -1,3 +1,4 @@
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { functions, httpsCallable } from "../../firebase";
 // src/TrialRoom.js
 import React, { useState, useEffect, useRef } from "react";
@@ -580,7 +581,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   const handleMakeVerdict = async () => {
     if (userRole !== "judge") return;
 
-    const verdict = window.prompt("판결을 입력하세요 (예: 유죄, 무죄, 벌금 10,000원, 합의금 5,000원):");
+    const verdict = window.prompt(`판결을 입력하세요 (예: 유죄, 무죄, 벌금 10,000${getCurrencyUnit()}, 합의금 5,000${getCurrencyUnit()}):`);
     if (!verdict || !verdict.trim()) return;
 
     const reason = window.prompt("판결 이유를 입력하세요:");

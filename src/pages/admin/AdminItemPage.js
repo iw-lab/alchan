@@ -1,4 +1,5 @@
 // src/AdminItemPage.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect } from "react";
 import {
   Store,
@@ -475,7 +476,7 @@ const AdminItemPage = ({
 
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>
-                    기본 가격 (원) <span style={{ color: '#ef4444' }}>*</span>
+                    기본 가격 ({getCurrencyUnit()}) <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     name="price"
@@ -544,7 +545,7 @@ const AdminItemPage = ({
                   <Lightbulb size={14} strokeWidth={2} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
                   <span>
                     재고가 0이 되어 자동으로 초기 재고만큼 보충될 때마다 가격이 설정한 비율만큼 상승합니다.<br />
-                    예: 10% 설정 시, 1000원 → 1100원 → 1210원 순으로 상승
+                    예: 10% 설정 시, 1000{getCurrencyUnit()} → 1100{getCurrencyUnit()} → 1210{getCurrencyUnit()} 순으로 상승
                   </span>
                 </p>
               </div>

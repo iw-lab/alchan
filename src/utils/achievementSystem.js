@@ -6,12 +6,14 @@
  */
 
 import { logger } from './logger';
+// 화폐 단위는 학급 설정을 따르므로(기본 "알찬") 상수 객체에서도 getter로 지연 평가한다.
+import { getCurrencyUnit } from './numberFormatter';
 export const ACHIEVEMENTS = {
   // 자산 관련 업적
   FIRST_THOUSAND: {
     id: "first_thousand",
-    name: "첫 천 원",
-    description: "1,000원 이상 보유하기",
+    get name() { return `첫 천 ${getCurrencyUnit()}`; },
+    get description() { return `1,000${getCurrencyUnit()} 이상 보유하기`; },
     icon: "🪙",
     category: "wealth",
     condition: (stats) => stats.totalAssets >= 1000,
@@ -20,8 +22,8 @@ export const ACHIEVEMENTS = {
   },
   FIRST_TEN_THOUSAND: {
     id: "first_ten_thousand",
-    name: "만 원의 기쁨",
-    description: "10,000원 이상 보유하기",
+    get name() { return `만 ${getCurrencyUnit()}의 기쁨`; },
+    get description() { return `10,000${getCurrencyUnit()} 이상 보유하기`; },
     icon: "💵",
     category: "wealth",
     condition: (stats) => stats.totalAssets >= 10000,
@@ -30,8 +32,8 @@ export const ACHIEVEMENTS = {
   },
   HUNDRED_THOUSAND: {
     id: "hundred_thousand",
-    name: "10만 원 클럽",
-    description: "100,000원 이상 보유하기",
+    get name() { return `10만 ${getCurrencyUnit()} 클럽`; },
+    get description() { return `100,000${getCurrencyUnit()} 이상 보유하기`; },
     icon: "💰",
     category: "wealth",
     condition: (stats) => stats.totalAssets >= 100000,
@@ -41,7 +43,7 @@ export const ACHIEVEMENTS = {
   MILLIONAIRE: {
     id: "millionaire",
     name: "백만장자",
-    description: "1,000,000원 이상 보유하기",
+    get description() { return `1,000,000${getCurrencyUnit()} 이상 보유하기`; },
     icon: "🤑",
     category: "wealth",
     condition: (stats) => stats.totalAssets >= 1000000,
@@ -51,7 +53,7 @@ export const ACHIEVEMENTS = {
   MULTI_MILLIONAIRE: {
     id: "multi_millionaire",
     name: "천만장자",
-    description: "10,000,000원 이상 보유하기",
+    get description() { return `10,000,000${getCurrencyUnit()} 이상 보유하기`; },
     icon: "💎",
     category: "wealth",
     condition: (stats) => stats.totalAssets >= 10000000,

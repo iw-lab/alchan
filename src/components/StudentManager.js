@@ -1,6 +1,7 @@
 // src/components/StudentManager.js
 // 학생 일괄 생성 및 관리 컴포넌트
 
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { db, functions as firebaseFunctions } from "../firebase";
@@ -613,7 +614,7 @@ const StudentManager = () => {
                     {student.email}
                   </TableCell>
                   <TableCell>
-                    {(student.cash || 0).toLocaleString()}원
+                    {(student.cash || 0).toLocaleString()}{getCurrencyUnit()}
                   </TableCell>
                   <TableCell>{student.coupons || 0}장</TableCell>
                   <TableCell>

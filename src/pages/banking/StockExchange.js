@@ -1,3 +1,4 @@
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, {
   useState,
   useEffect,
@@ -2508,7 +2509,7 @@ const StockExchange = () => {
                           <div className="metric-item">
                             <span className="metric-label">현재 가치</span>
                             <span className="metric-value text-red-500 font-bold">
-                              0원
+                              0{getCurrencyUnit()}
                             </span>
                           </div>
                           <div className="metric-item">

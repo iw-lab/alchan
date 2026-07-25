@@ -1,4 +1,5 @@
 // src/components/DailyReward.js - 일일 접속 보상 컴포넌트 (Firestore 동기화)
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect } from "react";
 import { db, functions } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -226,7 +227,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
                 😢 연속 출석이 끊어졌어요. 다시 1일차부터!
               </div>
             )}
-            <div className="text-4xl font-extrabold text-white mt-3">+{nextReward.toLocaleString()}원</div>
+            <div className="text-4xl font-extrabold text-white mt-3">+{nextReward.toLocaleString()}{getCurrencyUnit()}</div>
           </div>
           <button
             onClick={() => { handleClaim(); setShowPopup(false); }}
@@ -297,7 +298,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
                 </div>
               </div>
               <div className="text-2xl font-extrabold mt-1" style={{ color: "rgba(255,255,255,0.95)" }}>
-                +{nextReward.toLocaleString()}원
+                +{nextReward.toLocaleString()}{getCurrencyUnit()}
               </div>
             </div>
             <button
@@ -349,7 +350,7 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
             {rewardResult?.icon || "🎉"}
           </div>
           <div className="text-white text-3xl font-extrabold mb-2">
-            +{rewardResult?.reward?.toLocaleString()}원
+            +{rewardResult?.reward?.toLocaleString()}{getCurrencyUnit()}
           </div>
           <div className="text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
             🔥 {rewardResult?.newStreak}일 연속 출석!
@@ -436,7 +437,7 @@ export function StreakRewardInfo() {
                 fontSize: day.day === 10 ? "15px" : "13px",
               }}
             >
-              {day.reward.toLocaleString()}원
+              {day.reward.toLocaleString()}{getCurrencyUnit()}
             </span>
           </div>
         ))}
@@ -448,7 +449,7 @@ export function StreakRewardInfo() {
           }}
         >
           <span className="text-sm font-semibold" style={{ color: "#b45309" }}>
-            🏆 10일 이후: 매일 100,000원!
+            🏆 10일 이후: 매일 100,000{getCurrencyUnit()}!
           </span>
         </div>
       </div>

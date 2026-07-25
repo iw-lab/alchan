@@ -1,3 +1,4 @@
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, {
   createContext,
   useState,
@@ -486,7 +487,7 @@ export const ItemProvider = ({ children }) => {
             userId: userId,
             userName: userDoc?.name || "사용자",
             type: ACTIVITY_TYPES.ITEM_PURCHASE,
-            description: `${itemToPurchase.name} ${quantity}개 구매 (${totalPrice.toLocaleString()}원)`,
+            description: `${itemToPurchase.name} ${quantity}개 구매 (${totalPrice.toLocaleString()}${getCurrencyUnit()})`,
             amount: -totalPrice,
             metadata: {
               itemId,
@@ -708,7 +709,7 @@ export const ItemProvider = ({ children }) => {
           userId: userId,
           userName: userDoc?.name || "사용자",
           type: ACTIVITY_TYPES.ITEM_MARKET_LIST,
-          description: `${itemName} ${quantity}개 시장 등록 (${price.toLocaleString()}원)`,
+          description: `${itemName} ${quantity}개 시장 등록 (${price.toLocaleString()}${getCurrencyUnit()})`,
           metadata: {
             itemId,
             itemName: itemName,
@@ -809,7 +810,7 @@ export const ItemProvider = ({ children }) => {
             userId: userId,
             userName: userDoc?.name || "사용자",
             type: ACTIVITY_TYPES.ITEM_MARKET_BUY,
-            description: `${itemToBuy.itemName} ${itemToBuy.quantity || 1}개 시장 구매 (${itemPrice.toLocaleString()}원)`,
+            description: `${itemToBuy.itemName} ${itemToBuy.quantity || 1}개 시장 구매 (${itemPrice.toLocaleString()}${getCurrencyUnit()})`,
             amount: -itemPrice,
             metadata: {
               listingId,
@@ -1061,7 +1062,7 @@ export const ItemProvider = ({ children }) => {
           userId,
           userName: userDoc?.name || "사용자",
           type: ACTIVITY_TYPES.ITEM_SELL,
-          description: `${data.itemName || itemName} ${quantity}개 국고 되팔기 (${(data.totalGain || 0).toLocaleString()}원)`,
+          description: `${data.itemName || itemName} ${quantity}개 국고 되팔기 (${(data.totalGain || 0).toLocaleString()}${getCurrencyUnit()})`,
           amount: data.totalGain || 0,
           metadata: {
             itemId,

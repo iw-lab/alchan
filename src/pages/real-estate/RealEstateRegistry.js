@@ -2046,7 +2046,7 @@ const RealEstateRegistry = () => {
                 onClick={handleFixZeroRent}
                 disabled={operationLoading}
               >
-                🔧 월세 0원 수정
+                🔧 월세 0{getCurrencyUnit()} 수정
               </button>
             </div>
           )}
@@ -2058,7 +2058,7 @@ const RealEstateRegistry = () => {
               (o) => o.buyerId === currentUser?.id && o.status === "pending"
             );
             if (received.length === 0 && sent.length === 0) return null;
-            const won = (v) => `${(Number(v) / 10000).toFixed(0)}만원`;
+            const won = (v) => `${(Number(v) / 10000).toFixed(0)}만 ${getCurrencyUnit()}`;
             return (
               <div className="properties-section re-offers-section">
                 {received.length > 0 && (

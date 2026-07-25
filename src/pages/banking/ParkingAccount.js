@@ -1312,7 +1312,7 @@ const ParkingAccount = ({
  const availableCash = Number(currentCash) || 0;
  if (availableCash <= 0) {
  return displayMessage(
- "대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.",
+ `대출은 현금을 1${currencyUnit} 이상 보유해야 신청할 수 있습니다.`,
  "error",
  );
  }
@@ -1675,8 +1675,8 @@ const ParkingAccount = ({
  userName: userDoc?.name || "사용자",
  type: activityType,
  description: isLoan
- ? `대출 일시 상환: ${name} (원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)} = ${formatCurrency(loanTotalRepay)}원, ${loanElapsedDays}일 경과)`
- : `중도 해지: ${name} (원금 ${formatCurrency(balance)}원) - 선생님 계정에서`,
+ ? `대출 일시 상환: ${name} (원금 ${formatCurrency(balance)} + 이자 ${formatCurrency(loanAccruedInterest)} = ${formatCurrency(loanTotalRepay)}${currencyUnit}, ${loanElapsedDays}일 경과)`
+ : `중도 해지: ${name} (원금 ${formatCurrency(balance)}${currencyUnit}) - 선생님 계정에서`,
  amount: cashChangeAmount,
  metadata: {
  productName: name,

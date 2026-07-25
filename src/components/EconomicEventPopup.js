@@ -1,6 +1,7 @@
 // src/components/EconomicEventPopup.js
 // 경제 이벤트 발생 시 학생에게 팝업으로 알려주는 모달
 // 🔥 [최적화] onSnapshot 제거 → 공유 훅(useActiveEconomicEvent) 사용으로 리스너 1개 절감
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -24,7 +25,7 @@ const EVENT_DETAILS = {
     isPositive: true,
     impact:
       result?.refundedAmount > 0
-        ? `1인당 ${result?.perStudent?.toLocaleString() || 0}원 세금이 환급되었습니다! (총 ${result?.refundedAmount?.toLocaleString() || 0}원)`
+        ? `1인당 ${result?.perStudent?.toLocaleString() || 0}${getCurrencyUnit()} 세금이 환급되었습니다! (총 ${result?.refundedAmount?.toLocaleString() || 0}${getCurrencyUnit()})`
         : "국고가 부족해 세금 환급이 이루어지지 않았습니다.",
     tip:
       result?.refundedAmount > 0
@@ -34,17 +35,17 @@ const EVENT_DETAILS = {
   TAX_EXTRA: (params, result) => ({
     isPositive: false,
     impact: `모든 시민에게 추가 세금이 부과되었습니다. (순자산의 ${((params?.taxRate || 0) * 100).toFixed(0)}%)`,
-    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}원이 국고로 이전되었습니다.`,
+    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.`,
   }),
   CASH_BONUS: (params, result) => ({
     isPositive: true,
-    impact: `1인당 ${result?.perStudent?.toLocaleString() || params?.amount?.toLocaleString() || 0}원 지원금이 지급되었습니다!`,
+    impact: `1인당 ${result?.perStudent?.toLocaleString() || params?.amount?.toLocaleString() || 0}${getCurrencyUnit()} 지원금이 지급되었습니다!`,
     tip: "내 계좌에 지원금이 입금되었어요! 확인해보세요.",
   }),
   CASH_PENALTY: (params, result) => ({
     isPositive: false,
     impact: `경제 위기 — 순자산의 ${((params?.penaltyRate || 0) * 100).toFixed(0)}%만큼 현금이 차감되었습니다 (현금 잔고 한도 내).`,
-    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}원이 국고로 이전되었습니다.`,
+    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.`,
   }),
   STORE_PRICE_CHANGE: (params, result) => {
     const mult = params?.multiplier || 1;
@@ -70,7 +71,7 @@ const EVENT_DETAILS = {
           : `24시간 동안 주식 거래세·양도세가 ${mult}배로 인상됩니다!`,
       tip:
         mult === 0
-          ? "지금 주식 거래하면 세금 0원! 적극 활용하세요!"
+          ? `지금 주식 거래하면 세금 0${getCurrencyUnit()}! 적극 활용하세요!`
           : "주식 거래 비용이 늘었어요. 신중하게 거래하세요.",
     };
   },

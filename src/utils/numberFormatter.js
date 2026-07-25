@@ -177,7 +177,7 @@ export const formatLawFine = (fine, fallback = "정보 없음") => {
   const raw = String(fine).trim();
   if (!raw) return fallback;
   if (/^\d+$/.test(raw)) {
-    return `${Number(raw).toLocaleString()}원`;
+    return `${Number(raw).toLocaleString()}${getCurrencyUnit()}`;
   }
   return raw;
 };

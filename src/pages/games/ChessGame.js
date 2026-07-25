@@ -1,4 +1,5 @@
 // src/ChessGame.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, {
   useState,
   useEffect,
@@ -1024,7 +1025,7 @@ const ChessGame = () => {
       setFeedback({
         message:
           selectedCard.type === "cash"
-            ? `현금 ${selectedCard.amount.toLocaleString()}원을 획득했습니다!`
+            ? `현금 ${selectedCard.amount.toLocaleString()}${getCurrencyUnit()}을 획득했습니다!`
             : `쿠폰 ${selectedCard.amount}개를 획득했습니다!`,
         type: "success",
       });
@@ -1034,7 +1035,7 @@ const ChessGame = () => {
         userId: user.uid,
         userName: userDoc?.name || "사용자",
         type: ACTIVITY_TYPES.GAME_WIN,
-        description: `체스 AI(${aiDifficulty}) 승리 - ${selectedCard.type === "cash" ? `현금 ${selectedCard.amount.toLocaleString()}원` : `쿠폰 ${selectedCard.amount}개`} 획득`,
+        description: `체스 AI(${aiDifficulty}) 승리 - ${selectedCard.type === "cash" ? `현금 ${selectedCard.amount.toLocaleString()}${getCurrencyUnit()}` : `쿠폰 ${selectedCard.amount}개`} 획득`,
         amount: selectedCard.type === "cash" ? selectedCard.amount : 0,
         couponAmount: selectedCard.type === "coupon" ? selectedCard.amount : 0,
         metadata: {
@@ -1910,7 +1911,7 @@ const ChessGame = () => {
                     </div>
                     <div className="card-amount">
                       {card.type === "cash"
-                        ? `${card.amount.toLocaleString()}원`
+                        ? `${card.amount.toLocaleString()}${getCurrencyUnit()}`
                         : `${card.amount}개`}
                     </div>
                   </div>

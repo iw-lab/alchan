@@ -1,5 +1,6 @@
 // src/CouponTransfer.js - 로컬 상태 업데이트로 Firestore 사용량 최적화
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
@@ -404,7 +405,7 @@ function CouponTransfer() {
             <div key={user.id} className="user-card">
               <div className="user-name">{user.name}</div>
               <div className="user-coupons">쿠폰: {user.coupons?.toLocaleString() || 0}개</div>
-              <div className="user-cash">현금: {user.cash?.toLocaleString() || 0}원</div>
+              <div className="user-cash">현금: {user.cash?.toLocaleString() || 0}{getCurrencyUnit()}</div>
             </div>
           ))}
         </div>

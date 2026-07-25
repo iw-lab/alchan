@@ -1,5 +1,6 @@
 // src/TradeModal.js
 // 🔥 성능 최적화: React.memo 적용
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, memo } from "react";
 import "../../pages/banking/StockExchange.css"; // 스타일 공유
 import { useAuth } from "../../contexts/AuthContext"; // 사용자 잔고 확인용
@@ -75,9 +76,9 @@ const TradeModal = memo(function TradeModal({
         )}
         {canTrade && (
           <form onSubmit={handleSubmit} className="modal-form">
-            <p>현재가: {stock.currentPrice?.toLocaleString()}원</p>
+            <p>현재가: {stock.currentPrice?.toLocaleString()}{getCurrencyUnit()}</p>
             {action === "buy" && (
-              <p>내 잔고: {(userDoc?.cash || 0).toLocaleString()}원</p>
+              <p>내 잔고: {(userDoc?.cash || 0).toLocaleString()}{getCurrencyUnit()}</p>
             )}
             {action === "sell" && (
               <p>보유 수량: {(userStock?.quantity || 0).toLocaleString()}주</p>
@@ -100,7 +101,7 @@ const TradeModal = memo(function TradeModal({
                 }
               />
             </div>
-            <p>총 금액: {totalPrice.toLocaleString()}원</p>
+            <p>총 금액: {totalPrice.toLocaleString()}{getCurrencyUnit()}</p>
 
             <div className="modal-actions">
               <button

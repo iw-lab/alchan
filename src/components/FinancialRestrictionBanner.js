@@ -1,5 +1,6 @@
 // src/components/FinancialRestrictionBanner.js
 // 순자산 마이너스 또는 미상환 대출 보유 학생에게 제한 상태를 상단에 상시 알림.
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -86,8 +87,8 @@ export default function FinancialRestrictionBanner() {
         </div>
         <p className="text-sm font-bold text-slate-800 mt-0.5">
           {isNegative
-            ? `순자산이 마이너스입니다 (${Number(status.net).toLocaleString()}원)`
-            : `미상환 대출이 남아있습니다 (${Number(status.loan).toLocaleString()}원)`}
+            ? `순자산이 마이너스입니다 (${Number(status.net).toLocaleString()}${getCurrencyUnit()})`
+            : `미상환 대출이 남아있습니다 (${Number(status.loan).toLocaleString()}${getCurrencyUnit()})`}
         </p>
         <p className="text-xs text-slate-600 mt-0.5">
           {isNegative

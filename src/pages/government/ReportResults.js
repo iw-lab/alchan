@@ -1,4 +1,5 @@
 // src/ReportResults.js
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState } from "react";
 
 const ReportResults = ({
@@ -124,7 +125,7 @@ const ReportResults = ({
                   )}
                   {report.amount > 0 && (
                     <p className="amount">
-                      <strong>금액:</strong> {report.amount.toLocaleString()}원
+                      <strong>금액:</strong> {report.amount.toLocaleString()}{getCurrencyUnit()}
                       {report.status === "resolved_settlement" && " (합의금)"}
                       {report.status === "resolved_fine" && " (벌금)"}
                     </p>

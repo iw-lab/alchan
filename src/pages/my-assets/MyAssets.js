@@ -1,4 +1,5 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, {
   useState,
   useEffect,
@@ -1053,7 +1054,7 @@ export default function MyAssets() {
         userId: userId,
         userName: userName,
         type: ACTIVITY_TYPES.COUPON_USE,
-        description: `쿠폰 ${amount}개 판매 (${cashGained.toLocaleString()}원)`,
+        description: `쿠폰 ${amount}개 판매 (${cashGained.toLocaleString()}${getCurrencyUnit()})`,
         amount: cashGained,
         couponAmount: -amount,
         metadata: {
@@ -1402,7 +1403,7 @@ export default function MyAssets() {
               <span className="text-base font-semibold text-slate-600"> 개</span>
             </div>
             <p className="mt-1 text-[10px] text-slate-500 text-right">
-              1쿠폰 = {Number(couponValue).toLocaleString()}원
+              1쿠폰 = {Number(couponValue).toLocaleString()}{getCurrencyUnit()}
             </p>
           </div>
         </div>

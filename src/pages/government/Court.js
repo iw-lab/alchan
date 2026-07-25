@@ -428,7 +428,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  defendantId: "system",
  defendantName: "시스템",
  status: "pending",
- reason: `자산 ${userDoc.money.toLocaleString()}원으로 인한 파산 신청`,
+ reason: `자산 ${userDoc.money.toLocaleString()}${getCurrencyUnit()}으로 인한 파산 신청`,
  desiredResolution: "모든 부채를 청산하고 자산을 0으로 초기화 요청",
  submissionDate: serverTimestamp(),
  likedBy: [],
@@ -1044,7 +1044,7 @@ const Court = () => {
  refetchComplaints();
 
  alert(
- `${senderName}님이 ${recipientName}님에게 ${numericAmount.toLocaleString()}원 합의금 지급을 완료했습니다.`,
+ `${senderName}님이 ${recipientName}님에게 ${numericAmount.toLocaleString()}${getCurrencyUnit()} 합의금 지급을 완료했습니다.`,
  );
  handleCloseSettlementModal();
  return true;

@@ -179,12 +179,12 @@ const ReportStatus = ({
                 id="processingAmount"
                 value={processingAmount}
                 onChange={handleProcessingAmountChange}
-                placeholder="벌금 금액을 입력하세요 (0원은 경고)"
+                placeholder={`벌금 금액을 입력하세요 (0${getCurrencyUnit()}은 경고)`}
                 className="form-input"
               />
               {getDefaultAmount(selectedReport?.reason) !== null && (
                 <p className="form-hint">
-                  기본 금액: {getDefaultAmount(selectedReport?.reason)?.toLocaleString()}원
+                  기본 금액: {getDefaultAmount(selectedReport?.reason)?.toLocaleString()}{getCurrencyUnit()}
                 </p>
               )}
             </div>

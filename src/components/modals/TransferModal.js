@@ -1,5 +1,6 @@
 // src/TransferModal.js
 // 🔥 성능 최적화: React.memo 적용
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { memo } from "react";
 
 const TransferModal = memo(function TransferModal({
@@ -66,7 +67,7 @@ const TransferModal = memo(function TransferModal({
           <p className="text-sm m-0" style={{ color: "var(--text-secondary)" }}>
             현재 보유 현금:{" "}
             <strong style={{ color: "var(--accent)" }}>
-              {userCash.toLocaleString()}원
+              {userCash.toLocaleString()}{getCurrencyUnit()}
             </strong>
           </p>
         </div>

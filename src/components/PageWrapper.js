@@ -1,6 +1,7 @@
 // src/components/PageWrapper.js
 // 페이지 공통 래퍼 - 새로운 슬레이트 기반 디자인 시스템
 
+import { getCurrencyUnit } from "../utils/numberFormatter";
 import React from "react";
 import { Loader2, CheckSquare } from "lucide-react";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
@@ -578,7 +579,7 @@ export const MoneyDisplay = ({
     >
       {showSign && isPositive && "+"}
       {isNegative && "-"}
-      {formatted}원
+      {formatted}{getCurrencyUnit()}
     </span>
   );
 };

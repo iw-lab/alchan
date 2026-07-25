@@ -4,6 +4,7 @@
 // - 학급 목록 관리
 // - 시스템 모니터링 (오류, 성능)
 
+import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -2182,7 +2183,7 @@ export default function SuperAdminDashboard() {
                               {(s.email || "").split("@")[0] || "-"}
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              {(Number(s.cash) || 0).toLocaleString()}원
+                              {(Number(s.cash) || 0).toLocaleString()}{getCurrencyUnit()}
                             </td>
                             <td style={{ textAlign: "right" }}>
                               {Number(s.coupons) || 0}개
