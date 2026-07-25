@@ -687,6 +687,13 @@ const PoliceStation = () => {
  //    배포 직후 목록이 통째로 안 보이는 사고가 난다.
  // ─────────────────────────────────────────────────────────────────────────
  const PENDING_STATUSES = useMemo(() => ["submitted", "accepted"], []);
+ // ⚠️ '처리 결과' 탭이 보여주는 상태 집합. 아래 resultReports의 필터와 반드시 같아야 한다.
+ //    (전체 건수에서 미처리를 빼는 방식은 틀린다 — 어느 탭에도 안 잡히는 레거시 상태 문서가
+ //     섞여 있어 실측에서 54건이 79건으로 부풀었다. 그래서 완료 상태만 직접 집계한다.)
+ const RESOLVED_STATUSES = useMemo(
+ () => ["resolved_fine", "resolved_settlement", "dismissed"],
+ [],
+ );
  const RESULTS_PAGE_SIZE = 20;
 
  const mapReportDoc = useCallback((doc) => {
@@ -741,14 +748,17 @@ const PoliceStation = () => {
  const snap = await getDocs(
  query(ref, orderBy("submitDate", "desc"), limit(RESULTS_PAGE_SIZE)),
  );
+ // 완료 건수만 서버에서 집계(1읽기). 등가 `in` 필터라 복합 인덱스가 필요 없다.
  let total = 0;
  try {
- const countSnap = await getCountFromServer(ref);
+ const countSnap = await getCountFromServer(
+ query(ref, where("status", "in", RESOLVED_STATUSES)),
+ );
  total = countSnap.data().count || 0;
  } catch (e) {
  // 카운트 실패는 표시용 숫자에만 영향 — 목록 자체는 정상 동작해야 한다
  logger.warn("[PoliceStation] 신고 건수 집계 실패(무시):", e?.code);
- total = snap.size;
+ total = -1; // 미상: 아래에서 로드된 개수로 대체
  }
  return {
  rows: snap.docs.map(mapReportDoc),
@@ -1297,18 +1307,9 @@ const PoliceStation = () => {
  );
  }, [reportsWithNames]);
 
- // 처리 결과 총 건수 = 서버 집계(전체 1읽기) − 미처리 건수. 목록을 다 읽지 않고도 숫자는 정확하다.
- const resolvedTotal = useMemo(() => {
- const total = resultsFirstPage?.total || 0;
- const pending = (pendingReports || []).length;
- return Math.max(0, total - pending);
- }, [resultsFirstPage, pendingReports]);
-
  const resultReports = useMemo(() => {
  return reportsWithNames
- .filter(
- (r) => r.status.startsWith("resolved_") || r.status === "dismissed",
- )
+ .filter((r) => RESOLVED_STATUSES.includes(r.status))
  .sort((a, b) => {
  const dateA = a.resolutionDate || a.submitDate;
  const dateB = b.resolutionDate || b.submitDate;
@@ -1322,7 +1323,15 @@ const PoliceStation = () => {
  : new Date(dateB).getTime();
  return timeB - timeA;
  });
- }, [reportsWithNames]);
+ }, [reportsWithNames, RESOLVED_STATUSES]);
+
+ // 처리 결과 총 건수 = 완료 상태만 서버에서 집계(1읽기). 목록을 다 읽지 않아도 숫자가 정확하다.
+ // 집계 실패 시(total < 0) 지금까지 로드된 개수로 대체한다.
+ const resolvedTotal = useMemo(() => {
+ const total = resultsFirstPage?.total;
+ if (typeof total === "number" && total >= 0) return total;
+ return resultReports.length;
+ }, [resultsFirstPage, resultReports]);
 
  if (auth.loading) {
  return (
