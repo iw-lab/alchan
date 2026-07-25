@@ -1,4 +1,5 @@
 // src/pages/dashboard/Dashboard.js - Firestore 최적화 버전 + 일일 할일 리셋 기능 + Tailwind UI
+import { normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, {
  useState,
  useEffect,
@@ -1878,7 +1879,7 @@ function Dashboard({ adminTabMode }) {
  : { coupons: (prevDoc.coupons || 0) + serverReward }),
  }));
  }
- alert(result.data.message);
+ alert(normalizeCurrencyText(result.data.message));
  // 카드 뒷면에 서버가 굴린 실제 금액을 표시하도록 반환
  return typeof serverReward === "number" ? serverReward : null;
  } else {
@@ -2216,7 +2217,7 @@ function Dashboard({ adminTabMode }) {
  const today = new Date().toDateString();
  localStorage.setItem("lastTaskResetDate", today);
 
- alert(`리셋 성공!\n${result.data.message}`);
+ alert(`리셋 성공!\n${normalizeCurrencyText(result.data.message)}`);
  logger.log(`[Dashboard] 리셋 성공: ${result.data.message}`);
  } else {
  throw new Error(result.data.message || "알 수 없는 오류");

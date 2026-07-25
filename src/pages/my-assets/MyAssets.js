@@ -1,5 +1,5 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, {
   useState,
   useEffect,
@@ -1362,10 +1362,12 @@ export default function MyAssets() {
 
                   const txAmount = Number(tx.amount) || 0;
                   const rawDesc = tx.description;
+                  // 서버가 만든 문구엔 "원"이 하드코딩돼 있고 과거 기록은 서버를 고쳐도 안 바뀐다
+                  // → 표시 시점에 현재 화폐 단위로 치환(2026-07-25).
                   const txDescription =
                     !rawDesc || rawDesc === "undefined" || rawDesc === "null"
                       ? "거래 내역"
-                      : String(rawDesc);
+                      : normalizeCurrencyText(String(rawDesc));
 
                   return (
                     <div

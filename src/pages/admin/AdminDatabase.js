@@ -1,5 +1,5 @@
 // src/AdminDatabase.js
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -403,7 +403,7 @@ const AdminDatabase = () => {
  <span className="text-sm font-medium text-gray-700">{log.userName || '알 수 없음'}</span>
  <span className="text-xs text-gray-500">{formatDate(log.timestamp)}</span>
  </div>
- <p className="text-gray-800 text-sm mb-2 font-medium">{log.description || '설명 없음'}</p>
+ <p className="text-gray-800 text-sm mb-2 font-medium">{normalizeCurrencyText(log.description) || '설명 없음'}</p>
  {log.metadata && Object.keys(log.metadata).length > 0 && (
  <div className="bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
  {log.metadata.activity && (

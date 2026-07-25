@@ -1,6 +1,6 @@
 // src/pages/admin/AdminApprovalPanel.js
 // 할일 승인 관리 패널 - 사이버펑크 테마
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
@@ -81,7 +81,7 @@ const AdminApprovalPanel = () => {
       try {
         const result = await processTaskApproval({ approvalId, action });
         if (result.data.success) {
-          alert(result.data.message);
+          alert(normalizeCurrencyText(result.data.message));
         }
       } catch (error) {
         logger.error("[AdminApprovalPanel] 처리 실패:", error);

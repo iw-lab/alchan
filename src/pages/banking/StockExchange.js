@@ -1,4 +1,4 @@
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, {
   useState,
   useEffect,
@@ -1214,7 +1214,7 @@ const StockExchange = () => {
       const toggleVacationModeFn = callables.toggleVacationMode;
       const result = await toggleVacationModeFn({ enabled: !vacationMode });
       setVacationMode(result.data.vacationMode);
-      alert(result.data.message);
+      alert(normalizeCurrencyText(result.data.message));
     } catch (error) {
       logger.error("[toggleVacationMode] 토글 실패:", error);
       alert("방학 모드 설정 실패: " + error.message);

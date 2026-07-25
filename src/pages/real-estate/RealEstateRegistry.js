@@ -27,7 +27,7 @@ import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
 import { getIsIdle } from "../../utils/idleManager";
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 // orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
   orderBy as firebaseOrderBy,
@@ -775,9 +775,9 @@ const RealEstateRegistry = () => {
       const data = result?.data || {};
 
       if (data.action === "vacate") {
-        alert(data.message || "성공적으로 퇴거했습니다.");
+        alert(normalizeCurrencyText(data.message) || "성공적으로 퇴거했습니다.");
       } else {
-        alert(data.message || "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
+        alert(normalizeCurrencyText(data.message) || "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
 
         // 🔥 [중요] 유저 캐시 무효화 후 서버에서 최신 데이터 가져오기
         if (currentUser?.id) {

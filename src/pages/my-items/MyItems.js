@@ -1,5 +1,5 @@
 // src/pages/my-items/MyItems.js
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
@@ -623,7 +623,7 @@ const MyItems = () => {
       }
 
       logger.log("[MyItems] ✅ 선물 완료:", result.data.message);
-      showNotification("success", result.data.message);
+      showNotification("success", normalizeCurrencyText(result.data.message));
       handleCloseGiftModal();
 
       setTimeout(() => {

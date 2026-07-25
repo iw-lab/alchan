@@ -7,7 +7,7 @@
 // - isAdmin (관리자): 자기 학급만 관리, 금융/시장/학생/직업/할일 관리
 // ========================================
 
-import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, getDocFromServer } from "firebase/firestore";
@@ -1430,7 +1430,7 @@ const AdminSettingsModal = ({
           setMembersLoading(true);
           const result = await adminResetUserPassword({ userId, newPassword });
           if (result.data.success) {
-            alert(result.data.message);
+            alert(normalizeCurrencyText(result.data.message));
           } else {
             throw new Error(result.data.message || "알 수 없는 오류");
           }
@@ -1696,7 +1696,7 @@ const AdminSettingsModal = ({
           isOpen: newIsOpenState,
         });
 
-        setMarketMessage(result.data.message);
+        setMarketMessage(normalizeCurrencyText(result.data.message));
       } catch (error) {
         logger.error("시장 상태 변경 오류:", error);
         setMarketMessage(`오류가 발생했습니다: ${error.message}`);

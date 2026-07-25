@@ -194,3 +194,25 @@ export const formatMoney = (amount) => {
   if (!Number.isFinite(n)) return `0${getCurrencyUnit()}`;
   return `${Math.round(n).toLocaleString()}${getCurrencyUnit()}`;
 };
+
+/**
+ * 서버(Cloud Functions)가 만든 문구 속 화폐 단위를 현재 단위로 바꿔 표시한다 (2026-07-25 추가).
+ *
+ * 활동 로그·알림 문구는 CF가 문자열로 만들어 Firestore에 저장하는데(예: "파킹통장 입금 12,000원"),
+ * functions 쪽엔 "원"이 하드코딩돼 있고 **이미 저장된 과거 로그는 서버를 고쳐도 바뀌지 않는다**.
+ * 그래서 표시 시점에 치환한다 — 과거 기록까지 한 번에 정리된다.
+ *
+ * ⚠️ '원금'·'복원'·'지원'·'법원' 같은 단어의 '원'을 건드리면 안 되므로
+ *    **숫자(또는 만/억/조) 바로 뒤에 오는 '원'만** 치환한다. 이 단어들의 '원'은 앞이 숫자가 아니다.
+ *    예) "중도 해지: 예금 (원금 12,000원)" → "…(원금 12,000알찬)"  ← 앞의 '원금'은 그대로
+ * @param {string|undefined|null} text
+ * @returns {string}
+ */
+export const normalizeCurrencyText = (text) => {
+  if (!text) return text === 0 ? "0" : text || "";
+  const unit = getCurrencyUnit();
+  if (unit === "원") return String(text);
+  return String(text)
+    .replace(/(\d)\s*원/g, `$1${unit}`)
+    .replace(/([만억조])\s*원/g, `$1 ${unit}`);
+};
