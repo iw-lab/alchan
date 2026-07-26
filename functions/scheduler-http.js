@@ -290,12 +290,20 @@ exports.stockPriceScheduler = onRequest(
 
 // 🔥 [Cloud Scheduler v2] GHA schedule drop 영구 해결용
 // 기존 stockPriceScheduler(HTTP)는 백업/수동 트리거용으로 유지.
-// 동일 로직을 onSchedule로 5분마다 자동 실행. 시장 시간 외엔 즉시 return하므로 비용 영향 거의 없음.
+// 시장 시간 외엔 즉시 return하므로 비용 영향 거의 없음.
 // 함수 내부 멱등성(updateExchangeRate, updateRealStockPrices의 캐시/lock)으로 GHA와 동시 실행해도 안전.
+//
+// 🔥 [읽기 절감 2026-07-26] 5분 → 15분.
+//   1회 실행 = CentralStocks 44읽기(가격갱신 22 + 스냅샷 22, Monitoring 실측)이고
+//   장중 12회/시간 돌던 것이 4회/시간이 된다 → 하루 약 4,030 → 1,340읽기.
+//   ⚠️ 원래 설계도 15분이었다: realStockService 주석·학생에게 보이는 UI 문구
+//   ("15분마다 자동으로 가격이 업데이트됩니다", StockExchange.js)가 모두 15분 기준이라
+//   5분 cron은 오히려 안내와 불일치였다. 이 변경으로 표기와 실제가 일치한다.
+//   미국장 창(06~08시)은 아래 `minute % 30 >= 5` 게이트로 이미 시간당 2회라 영향 없다.
 exports.stockPriceSchedulerV2 = onSchedule(
   {
     region: "asia-northeast3",
-    schedule: "*/5 * * * *",
+    schedule: "*/15 * * * *",
     timeZone: "Asia/Seoul",
     timeoutSeconds: 540,
     memory: "512MiB",
