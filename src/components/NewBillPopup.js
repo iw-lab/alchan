@@ -14,8 +14,10 @@ import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { X, ScrollText, Vote } from "lucide-react";
+import { startBackgroundPoll } from "../utils/backgroundPoll";
 
 const POLL_INTERVAL = 30 * 60 * 1000; // 30분
+const RESUME_GAP = 5 * 60 * 1000; // 탭 복귀 재조회 최소 간격
 
 export default function NewBillPopup() {
   const { userDoc } = useAuth();
@@ -106,25 +108,12 @@ export default function NewBillPopup() {
     // 초기 체크
     checkForNewBills();
 
-    // 5분마다 폴링
-    const interval = setInterval(checkForNewBills, POLL_INTERVAL);
-
-    // 탭 활성화 시 체크 (visibility API)
-    const handleVisibility = () => {
-      // 🔥 [읽기최적화] 탭 활성화 재폴링은 마지막 조회 5분 경과 후에만(점심 잦은 탭전환 증폭 차단)
-      if (
-        document.visibilityState === "visible" &&
-        Date.now() - lastCheckRef.current > 5 * 60 * 1000
-      ) {
-        checkForNewBills();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
+    // 🔥 [읽기최적화] 탭 숨김/무조작(idle) 중엔 tick 건너뜀 + 복귀 시 5분 경과했을 때만 1회 조회.
+    //   새 법안 팝업은 "화면을 보고 있을 때" 띄우는 것이므로 백그라운드 폴링이 필요 없다.
+    //   (종전엔 tick에 가드가 없어 방치된 탭이 30분마다 계속 조회했다)
+    return startBackgroundPoll(checkForNewBills, POLL_INTERVAL, {
+      resumeGapMs: RESUME_GAP,
+    });
   }, [classCode, userId, checkForNewBills]);
 
   const handleClose = useCallback(() => {

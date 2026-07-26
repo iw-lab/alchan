@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>⚖️ 재판방 배치 편집기</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif;
+    background: #2b2333; color: #eee; display: flex; min-height: 100vh;
+  }
+  #stageWrap {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 20px; gap: 14px;
+  }
+  h1 { font-size: 1.1rem; margin: 0; }
+  .hint { font-size: 0.8rem; color: #b8a9cc; margin: 0; }
+  #stage {
+    position: relative; width: 800px; height: 500px;
+    border-radius: 14px; overflow: hidden;
+    background: linear-gradient(180deg, #f4ecdc 0%, #efe2c8 55%, #e7d4b0 100%);
+    box-shadow: inset 0 0 40px rgba(120,80,30,.18), 0 8px 30px rgba(0,0,0,.4);
+    user-select: none;
+  }
+  .prop, .seat {
+    position: absolute; transform: translate(-50%, -50%); cursor: grab;
+  }
+  .prop img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+  .prop.sel, .seat.sel { outline: 2px dashed #ffd84d; outline-offset: 2px; }
+  .seat {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .seat .badge {
+    font-size: 10px; font-weight: 700; color: #fff; padding: 1px 6px;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .seat .av {
+    width: 100%; aspect-ratio: 1/1;
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  .seat .av img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+  .seat .ring {
+    position: absolute; inset: -3px; border-radius: 50%; pointer-events: none;
+  }
+  .seat .nm { font-size: 9px; background: rgba(255,255,255,.9); color: #333; padding: 0 4px; border-radius: 4px; }
+  #panel {
+    width: 280px; background: #221b2b; padding: 18px; display: flex;
+    flex-direction: column; gap: 14px; overflow-y: auto; max-height: 100vh;
+  }
+  .row { display: flex; flex-direction: column; gap: 4px; }
+  .row label { font-size: 0.8rem; color: #c9bbe0; display: flex; justify-content: space-between; }
+  input[type=range] { width: 100%; }
+  button {
+    padding: 9px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .btn-dl { background: #ffd84d; color: #3a2c00; }
+  .btn-reset { background: #5a4a6e; color: #fff; }
+  .btn-copy { background: #6f42c1; color: #fff; }
+  #sel { font-size: 0.85rem; color: #ffd84d; min-height: 1.2em; }
+  #out {
+    width: 100%; height: 150px; font-size: 10px; font-family: monospace;
+    background: #15101c; color: #9cd6a0; border: 1px solid #3a2f4a; border-radius: 8px;
+    padding: 8px; resize: vertical;
+  }
+  .legend { font-size: 0.72rem; color: #9b8cb5; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <div id="stageWrap">
+    <h1>⚖️ 재판방 배치 편집기</h1>
+    <p class="hint">가구·좌석을 드래그해 배치하고, 선택 후 슬라이더로 크기 조절 → 아래 <b>JSON 다운로드</b></p>
+    <div id="stage"></div>
+    <p class="legend">동그란 점 = 학생 아바타 자리 (실제 앱에선 학생 본인 캐릭터가 표시됨)</p>
+  </div>
+
+  <div id="panel">
+    <div id="sel">선택: 없음</div>
+    <div class="row">
+      <label>너비 W <span id="wVal">-</span></label>
+      <input type="range" id="wSlide" min="2" max="200" step="0.5" disabled />
+    </div>
+    <div class="row">
+      <label>높이 H <span id="hVal">-</span></label>
+      <input type="range" id="hSlide" min="2" max="200" step="0.5" disabled />
+    </div>
+    <div class="row">
+      <label>X <span id="xVal">-</span></label>
+      <input type="range" id="xSlide" min="-20" max="120" step="0.5" disabled />
+    </div>
+    <div class="row">
+      <label>Y <span id="yVal">-</span></label>
+      <input type="range" id="ySlide" min="-20" max="120" step="0.5" disabled />
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#c9bbe0;cursor:pointer;">
+      <input type="checkbox" id="frontChk" checked /> 가구를 캐릭터 앞에 표시 (실제 화면처럼)
+    </label>
+    <button class="btn-dl" id="dlBtn">📥 JSON 다운로드</button>
+    <button class="btn-copy" id="copyBtn">📋 코드 복사</button>
+    <button class="btn-reset" id="resetBtn">↺ 기본값으로</button>
+    <textarea id="out" readonly></textarea>
+  </div>
+
+<script>
+const ASSET_VER = "20260604a";
+const BG_IDS = ["panel_wall", "floor_wood"];
+const FRONT_IDS = ["bench_judge","desk_prosecutor","desk_lawyer","stand_witness","box_jury","bench_gallery","gavel"];
+const SAMPLE_AVATAR = "/avatar-shop/base_male.png?v=20260601n";
+
+// 기본 레이아웃 (src/data/courtroomLayout.js 와 동기화)
+const DEFAULT = {
+  props: [
+    { id: "panel_wall", x: 50, y: 22.7, w: 100, h: 56, z: 0 },
+    { id: "floor_wood", x: 50, y: 79, w: 100, h: 46, z: 1 },
+    { id: "emblem_scale", x: 50, y: 8, w: 16, h: 24, z: 2 },
+    { id: "flag_korea", x: 65, y: 13, w: 9, h: 22, z: 2 },
+    { id: "bench_judge", x: 50, y: 40, w: 42, h: 42, z: 3 },
+    { id: "gavel", x: 64, y: 30, w: 7, h: 8, z: 4 },
+    { id: "stand_witness", x: 68, y: 47, w: 13, h: 20, z: 4 },
+    { id: "desk_prosecutor", x: 22, y: 62, w: 24, h: 28.5, z: 5 },
+    { id: "desk_lawyer", x: 78, y: 60.1, w: 18, h: 28, z: 5 },
+    { id: "box_jury", x: 50, y: 83, w: 66, h: 60, z: 5 },
+  ],
+  seats: {
+    judge: [
+      { x: 50, y: 20.5, w: 11 },
+      { x: 39, y: 22, w: 9 },
+      { x: 61, y: 22, w: 9 },
+    ],
+    prosecutor: { x: 20, y: 54, w: 10, face: "right" },
+    complainant: { x: 10, y: 56, w: 9, face: "right" },
+    lawyer: { x: 80, y: 44.7, w: 10, face: "left" },
+    defendant: { x: 90, y: 56, w: 9, face: "left" },
+    witness: { x: 68, y: 41, w: 9, face: "left" },
+    jury: [
+      { x: 31, y: 70, w: 6 }, { x: 40.5, y: 70, w: 6 }, { x: 50, y: 70, w: 6 }, { x: 59.5, y: 70, w: 6 }, { x: 69, y: 70, w: 6 },
+      { x: 28, y: 80, w: 6.5 }, { x: 39, y: 80, w: 6.5 }, { x: 50, y: 80, w: 6.5 }, { x: 61, y: 80, w: 6.5 }, { x: 75, y: 80, w: 6.5 },
+      { x: 25, y: 90, w: 7 }, { x: 37.5, y: 90, w: 7 }, { x: 50, y: 90, w: 7 }, { x: 62.5, y: 90, w: 7 }, { x: 75, y: 90, w: 7 },
+    ],
+  },
+};
+
+const BADGES = {
+  judge: { i: "⚖️", t: "판사", c: "#6f42c1" },
+  prosecutor: { i: "📋", t: "검사", c: "#dc3545" },
+  lawyer: { i: "💼", t: "변호사", c: "#0d6efd" },
+  complainant: { i: "📝", t: "원고", c: "#198754" },
+  defendant: { i: "🛡️", t: "피고", c: "#fd7e14" },
+  witness: { i: "🙋", t: "증인", c: "#20c997" },
+  jury: { i: "👥", t: "배심원", c: "#0dcaf0" },
+};
+
+const LS_KEY = "courtroomLayout";
+let state = load();
+let showFront = true; // 가구를 캐릭터 앞에 표시 (실제 화면처럼). 끄면 좌석이 위로 = 편집 쉬움
+
+function load() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) {
+      const parsed = JSON.parse(s);
+      // 마이그레이션: 배심원 15석으로 (기존 6석 저장본 업그레이드, 다른 편집은 유지)
+      if (!parsed.seats?.jury || parsed.seats.jury.length !== DEFAULT.seats.jury.length) {
+        parsed.seats = parsed.seats || {};
+        parsed.seats.jury = JSON.parse(JSON.stringify(DEFAULT.seats.jury));
+      }
+      // 판사 3석 마이그레이션 (기존 단일 판사석 저장본 → 합의부 3석)
+      if (!Array.isArray(parsed.seats?.judge)) {
+        parsed.seats = parsed.seats || {};
+        parsed.seats.judge = JSON.parse(JSON.stringify(DEFAULT.seats.judge));
+      }
+      // box_jury 가 옛 위치면 새 기본값으로 (계단식 박스에 맞게)
+      const bj = (parsed.props || []).find((p) => p.id === "box_jury");
+      const dbj = DEFAULT.props.find((p) => p.id === "box_jury");
+      if (bj && (bj.h || 0) > 45) Object.assign(bj, dbj);
+      return parsed;
+    }
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(DEFAULT));
+}
+function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); render(); }
+
+const stage = document.getElementById("stage");
+let selected = null; // {kind:'prop'|'seat', ref}
+
+function render() {
+  stage.innerHTML = "";
+  // props
+  [...state.props].sort((a,b)=>(a.z||0)-(b.z||0)).forEach((p) => {
+    const el = document.createElement("div");
+    el.className = "prop";
+    el.style.left = p.x + "%"; el.style.top = p.y + "%";
+    el.style.width = p.w + "%"; el.style.height = (p.h || p.w) + "%";
+    // 가구는 캐릭터(좌석 z100) 앞/뒤 토글. 편집 편하게 하려면 끄면 좌석이 위로.
+    const isFront = FRONT_IDS.includes(p.id);
+    el.style.zIndex = isFront ? (showFront ? 200 + (p.z||0) : 10 + (p.z||0)) : (10 + (p.z||0));
+    if (selected && selected.kind === "prop" && selected.ref === p) el.classList.add("sel");
+    const img = document.createElement("img");
+    img.src = "/courtroom/" + p.id + ".png?v=" + ASSET_VER;
+    img.style.objectFit = BG_IDS.includes(p.id) ? "fill" : "contain";
+    img.onerror = () => { el.style.background = "rgba(255,0,0,.15)"; el.style.border="1px dashed #f88"; };
+    el.appendChild(img);
+    el.addEventListener("mousedown", (e) => startDrag(e, { kind: "prop", ref: p }));
+    stage.appendChild(el);
+  });
+  // seats
+  const seatList = [];
+  Object.entries(state.seats).forEach(([role, val]) => {
+    if (Array.isArray(val)) val.forEach((s, i) => seatList.push({ role, ref: s, idx: i }));
+    else seatList.push({ role, ref: val });
+  });
+  seatList.forEach(({ role, ref, idx }) => {
+    const b = BADGES[role] || { i: "?", t: role, c: "#888" };
+    const el = document.createElement("div");
+    el.className = "seat";
+    el.style.left = ref.x + "%"; el.style.top = ref.y + "%";
+    el.style.width = (ref.w || 9) + "%"; el.style.zIndex = 100;
+    if (selected && selected.kind === "seat" && selected.ref === ref) el.classList.add("sel");
+    el.innerHTML =
+      '<div class="badge" style="background:'+b.c+'">'+b.i+' '+b.t+(idx!=null?(" "+(idx+1)):"")+'</div>' +
+      '<div class="av"><div class="ring" style="box-shadow:0 0 0 3px '+b.c+'66"></div><img src="'+SAMPLE_AVATAR+'" onerror="this.style.display=\'none\'"></div>' +
+      '<div class="nm">'+b.t+'</div>';
+    el.addEventListener("mousedown", (e) => startDrag(e, { kind: "seat", ref, label: b.t+(idx!=null?(" "+(idx+1)):"") }));
+    stage.appendChild(el);
+  });
+  updateOut();
+}
+
+let drag = null;
+function startDrag(e, sel) {
+  e.preventDefault();
+  selected = sel;
+  const rect = stage.getBoundingClientRect();
+  drag = { sel, rect };
+  selectUI();
+  render();
+  window.addEventListener("mousemove", onDrag);
+  window.addEventListener("mouseup", endDrag);
+}
+function onDrag(e) {
+  if (!drag) return;
+  const { rect, sel } = drag;
+  let x = ((e.clientX - rect.left) / rect.width) * 100;
+  let y = ((e.clientY - rect.top) / rect.height) * 100;
+  x = Math.max(-20, Math.min(120, x));
+  y = Math.max(-20, Math.min(120, y));
+  sel.ref.x = Math.round(x * 100) / 100;
+  sel.ref.y = Math.round(y * 100) / 100;
+  render();
+}
+function endDrag() {
+  drag = null;
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", endDrag);
+  save();
+}
+
+// 슬라이더
+const wS=document.getElementById("wSlide"), hS=document.getElementById("hSlide"),
+      xS=document.getElementById("xSlide"), yS=document.getElementById("ySlide");
+function selectUI() {
+  const r = selected && selected.ref;
+  const has = !!r;
+  [wS,hS,xS,yS].forEach(s=>s.disabled=!has);
+  document.getElementById("sel").textContent = "선택: " + (has ? (selected.kind==="prop"? selected.ref.id : (selected.label||"좌석")) : "없음");
+  if (!has) return;
+  wS.value = r.w; document.getElementById("wVal").textContent = r.w;
+  const hVal = (r.h!=null)? r.h : "(자동)";
+  hS.value = r.h!=null? r.h : 0; document.getElementById("hVal").textContent = hVal;
+  hS.disabled = (selected.kind==="seat"); // 좌석은 정사각이라 H 없음
+  xS.value = r.x; document.getElementById("xVal").textContent = r.x;
+  yS.value = r.y; document.getElementById("yVal").textContent = r.y;
+}
+wS.oninput=()=>{ if(selected){ selected.ref.w=+wS.value; document.getElementById("wVal").textContent=wS.value; render(); save(); } };
+hS.oninput=()=>{ if(selected && selected.kind==="prop"){ selected.ref.h=+hS.value; document.getElementById("hVal").textContent=hS.value; render(); save(); } };
+xS.oninput=()=>{ if(selected){ selected.ref.x=+xS.value; document.getElementById("xVal").textContent=xS.value; render(); save(); } };
+yS.oninput=()=>{ if(selected){ selected.ref.y=+yS.value; document.getElementById("yVal").textContent=yS.value; render(); save(); } };
+
+function buildCode() {
+  const props = state.props.map(p =>
+    "  { id: \""+p.id+"\", x: "+p.x+", y: "+p.y+", w: "+p.w+", h: "+(p.h!=null?p.h:p.w)+", z: "+(p.z||0)+" },"
+  ).join("\n");
+  const s = state.seats;
+  const seatLine = (o) => "{ x: "+o.x+", y: "+o.y+", w: "+o.w+" }";
+  const seats =
+    "  judge: "+seatLine(s.judge)+",\n" +
+    "  prosecutor: "+seatLine(s.prosecutor)+",\n" +
+    "  complainant: "+seatLine(s.complainant)+",\n" +
+    "  lawyer: "+seatLine(s.lawyer)+",\n" +
+    "  defendant: "+seatLine(s.defendant)+",\n" +
+    "  witness: "+seatLine(s.witness)+",\n" +
+    "  jury: [\n" + s.jury.map(j=>"    "+seatLine(j)+",").join("\n") + "\n  ],";
+  return "export const COURTROOM_PROPS = [\n"+props+"\n];\n\nexport const COURTROOM_SEATS = {\n"+seats+"\n};";
+}
+function updateOut(){ document.getElementById("out").value = buildCode(); }
+
+document.getElementById("dlBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "courtroom-layout.json";
+  a.click();
+};
+document.getElementById("copyBtn").onclick = () => {
+  navigator.clipboard.writeText(buildCode());
+  document.getElementById("copyBtn").textContent = "✅ 복사됨";
+  setTimeout(()=>document.getElementById("copyBtn").textContent="📋 코드 복사", 1200);
+};
+document.getElementById("frontChk").onchange = (e) => { showFront = e.target.checked; render(); };
+document.getElementById("resetBtn").onclick = () => {
+  if (confirm("기본 배치로 되돌릴까요?")) { state = JSON.parse(JSON.stringify(DEFAULT)); selected=null; selectUI(); save(); }
+};
+
+render();
+selectUI();
+</script>
+</body>
+</html>

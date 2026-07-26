@@ -73,6 +73,7 @@ import {
 } from "lucide-react";
 
 import { logger } from "../../utils/logger";
+import { startBackgroundPoll } from "../../utils/backgroundPoll";
 // Cloud Functions 호출 함수 설정 (handleManualTaskReset 내부에서 사용)
 
 // 🔥 [최적화 v3.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
@@ -850,13 +851,14 @@ function Dashboard({ adminTabMode }) {
  }
 
  // 🔥 [최적화 v3.0] 2시간마다 실행 (15분→2시간 - Firestore 읽기 극소화)
- // 데이터 변경 시 사용자가 수동 새로고침하거나 페이지 재진입 시 갱신됨
- const intervalId = setInterval(pollData, 2 * 60 * 60 * 1000);
+ // 🔥 [최적화 v3.1] 탭 숨김/무조작(idle) 중엔 tick 건너뜀 + 복귀 시 1회 조회.
+ //   가드가 없던 동안 방치된 탭이 밤새 2시간마다 jobs+commonTasks 전량을 다시 읽었다
+ //   (2026-07-26 실측: 새벽 무사용 구간에 2시간 주기 ~88읽기 버스트).
+ //   화면을 실제로 보는 순간엔 복귀 조회로 갱신되므로 표시 신선도는 종전과 동일.
+ const stopPolling = startBackgroundPoll(pollData, 2 * 60 * 60 * 1000);
 
  // Cleanup 함수 저장
- realtimeManager.current.addListener("polling", () =>
- clearInterval(intervalId),
- );
+ realtimeManager.current.addListener("polling", stopPolling);
  }, []);
 
  // 캐시된 데이터 로드 함수
@@ -1128,20 +1130,15 @@ function Dashboard({ adminTabMode }) {
  }
 
  // 🔥 [최적화 v3.0] 1시간마다 날짜 체크 (5분→1시간, Firestore 읽기 최소화)
- // 서버 리셋 후 브라우저가 켜져있을 때 감지
- const dateCheckInterval = setInterval(
- () => {
- checkDateAndRefresh();
- },
+ // 🔥 [최적화 v3.1] 탭 숨김/무조작 중엔 건너뜀. 날짜 리셋 감지는 "화면을 볼 때" 필요한
+ //   것이므로 복귀 시 1회 조회로 충분하다(방치 탭의 매시간 읽기 제거).
+ const stopDateCheck = startBackgroundPoll(
+ checkDateAndRefresh,
  60 * 60 * 1000,
  ); // 1시간
 
  // 클린업
- return () => {
- if (dateCheckInterval) {
- clearInterval(dateCheckInterval);
- }
- };
+ return stopDateCheck;
  }, [userDoc?.classCode, refreshTasksAfterReset]);
 
  // Job management handlers

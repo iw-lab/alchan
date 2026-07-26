@@ -27,6 +27,7 @@ import { globalCache } from "../../services/globalCacheService";
 
 import { logger } from "../../utils/logger";
 import { getIsIdle } from "../../utils/idleManager";
+import { startBackgroundPoll } from "../../utils/backgroundPoll";
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 // orderBy는 firebase/firestore에서 직접 가져옵니다.
 import {
@@ -160,11 +161,12 @@ const RealEstateRegistry = () => {
     };
 
     fetchSettings(); // 초기 로드
-    const interval = setInterval(fetchSettings, 15 * 60 * 1000); // 🔥 [최적화] 15분마다 폴링 (Firestore 읽기 최소화)
+    // 🔥 [최적화] 15분 폴링 + 탭 숨김/무조작(idle) 시 tick 건너뜀(방치 탭 읽기 차단)
+    const stopPoll = startBackgroundPoll(fetchSettings, 15 * 60 * 1000);
 
     return () => {
       mounted = false;
-      clearInterval(interval);
+      stopPoll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classCode]);
@@ -248,11 +250,13 @@ const RealEstateRegistry = () => {
     };
 
     fetchProperties(); // 초기 로드
-    const interval = setInterval(fetchProperties, 15 * 60 * 1000); // 🔥 [최적화] 15분마다 폴링 (Firestore 읽기 최소화)
+    // 🔥 [최적화] 15분 폴링 + 탭 숨김/무조작(idle) 시 tick 건너뜀.
+    //   부동산 목록은 학급당 20~25문서라 방치 탭에서 반복되면 비용이 크다.
+    const stopPoll = startBackgroundPoll(fetchProperties, 15 * 60 * 1000);
 
     return () => {
       mounted = false;
-      clearInterval(interval);
+      stopPoll();
     };
   }, [classCode, reloadKey]);
 

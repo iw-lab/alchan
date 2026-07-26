@@ -13,8 +13,10 @@ import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Megaphone } from "lucide-react";
+import { startBackgroundPoll } from "../utils/backgroundPoll";
 
 const POLL_INTERVAL = 15 * 60 * 1000; // 15분
+const RESUME_GAP = 5 * 60 * 1000; // 탭 복귀 재조회 최소 간격
 
 export default function VoteReminderBanner() {
   const { userDoc } = useAuth();
@@ -93,23 +95,15 @@ export default function VoteReminderBanner() {
     }
 
     checkUnvoted();
-    const interval = setInterval(checkUnvoted, POLL_INTERVAL);
-
-    const handleVisibility = () => {
-      // 🔥 [읽기최적화] 탭 활성화 재폴링은 마지막 조회 5분 경과 후에만(점심 잦은 탭전환 증폭 차단)
-      if (
-        document.visibilityState === "visible" &&
-        Date.now() - lastCheckRef.current > 5 * 60 * 1000
-      ) {
-        checkUnvoted();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
+    // 🔥 [읽기최적화] 탭 숨김/무조작(idle) 중엔 tick 건너뜀 + 복귀 시 5분 경과했을 때만 1회 조회.
+    //   (종전엔 tick에 가드가 없어 백그라운드 탭이 15분마다 계속 법안을 조회했다)
+    const stopPoll = startBackgroundPoll(checkUnvoted, POLL_INTERVAL, {
+      resumeGapMs: RESUME_GAP,
+    });
 
     return () => {
       mountedRef.current = false;
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      stopPoll();
     };
   }, [classCode, userId, isAdminBool, checkUnvoted]);
 
