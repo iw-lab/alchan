@@ -2,7 +2,7 @@
 /**
  * 실제 주식 데이터를 가져오는 서비스
  * Yahoo Finance 비공식 API 사용 (무료)
- * 15분마다 호출하여 실제 주식 가격 업데이트
+ * 20분마다 호출하여 실제 주식 가격 업데이트 (장 시간에만 — stockPriceSchedulerV2 게이트 참조)
  *
  * 환율: Frankfurter API (무료, 무제한)
  * ETF/채권 ETF: Yahoo Finance 지원

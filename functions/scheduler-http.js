@@ -293,17 +293,16 @@ exports.stockPriceScheduler = onRequest(
 // 시장 시간 외엔 즉시 return하므로 비용 영향 거의 없음.
 // 함수 내부 멱등성(updateExchangeRate, updateRealStockPrices의 캐시/lock)으로 GHA와 동시 실행해도 안전.
 //
-// 🔥 [읽기 절감 2026-07-26] 5분 → 15분.
-//   1회 실행 = CentralStocks 44읽기(가격갱신 22 + 스냅샷 22, Monitoring 실측)이고
-//   장중 12회/시간 돌던 것이 4회/시간이 된다 → 하루 약 4,030 → 1,340읽기.
-//   ⚠️ 원래 설계도 15분이었다: realStockService 주석·학생에게 보이는 UI 문구
-//   ("15분마다 자동으로 가격이 업데이트됩니다", StockExchange.js)가 모두 15분 기준이라
-//   5분 cron은 오히려 안내와 불일치였다. 이 변경으로 표기와 실제가 일치한다.
-//   미국장 창(06~08시)은 아래 `minute % 30 >= 5` 게이트로 이미 시간당 2회라 영향 없다.
+// 🔥 [읽기 절감 2026-07-26] 5분 → 15분 → 20분.
+//   1회 실행 = CentralStocks 44읽기(가격갱신 22 + 스냅샷 22, Monitoring 실측).
+//   수업 중 학생이 주식창을 계속 보고 있지 않으므로 20분 granularity면 충분하다(사용자 판단).
+//   전수 시뮬레이션(장 시간 창 기준): 실행 29회/일 → 22회/일, 하루 1,276 → 968읽기.
+//   ⚠️ 학생에게 보이는 UI 문구(StockExchange.js "N분마다 자동으로 가격이 업데이트됩니다")를
+//     반드시 함께 고칠 것 — 과거 5분 cron일 때 문구만 15분으로 남아 실제와 어긋나 있었다.
 exports.stockPriceSchedulerV2 = onSchedule(
   {
     region: "asia-northeast3",
-    schedule: "*/15 * * * *",
+    schedule: "*/20 * * * *",
     timeZone: "Asia/Seoul",
     timeoutSeconds: 540,
     memory: "512MiB",
@@ -327,10 +326,10 @@ exports.stockPriceSchedulerV2 = onSchedule(
       //   미국주식은 그 시간대에 어차피 skip되므로 실질 갱신 없이 읽기만 쓰던 구간.
       //
       // 🇺🇸 미국장은 KST 05:00 마감 → 08:00 정각 1회만 종가 반영
-      //    (*/15 cron이라 minute<15 조건으로 08:00 한 번만 통과)
+      //    (cron 주기가 바뀌어도 정각 1회를 보장하도록 minute === 0으로 고정)
       //    ⚠️ realStockService.updateRealStockPrices()도 자체 시간창을 갖고 있으므로
       //       거기 `isUSStockFetchTime`(kstHour<9)과 반드시 함께 유지할 것.
-      const isUSStockFetchTime = hour === 8 && minute < 15;
+      const isUSStockFetchTime = hour === 8 && minute === 0;
 
       // 🇰🇷 한국장 09:00~15:30. 종가를 확실히 반영하려고 15:45까지 여유를 둔다
       //    (클라이언트 isKoreaMarketOpen의 09:00~15:30 기준과 동일한 장 시간).

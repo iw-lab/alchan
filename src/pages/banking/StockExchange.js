@@ -373,7 +373,7 @@ const AdminPanel = React.memo(
       try {
         await onCreateRealStocks();
         alert(
-          "실제 주식이 생성되었습니다! 15분마다 자동으로 가격이 업데이트됩니다.",
+          "실제 주식이 생성되었습니다! 20분마다 자동으로 가격이 업데이트됩니다.",
         );
       } catch (error) {
         alert("실제 주식 생성 실패: " + error.message);
@@ -505,7 +505,7 @@ const AdminPanel = React.memo(
                 🌐 실제 주식 데이터를 Yahoo Finance에서 가져옵니다.
                 <br />
                 📈 삼성전자, SK하이닉스, 애플, 테슬라, ETF, 채권 ETF 등 지원
-                <br />⏰ 15분마다 자동으로 가격이 업데이트됩니다. | 💱 환율:
+                <br />⏰ 20분마다 자동으로 가격이 업데이트됩니다. | 💱 환율:
                 하루 1회 자동 업데이트
               </p>
               <div className="flex gap-2.5 mb-2.5">
