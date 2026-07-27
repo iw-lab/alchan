@@ -370,8 +370,11 @@ async function updateRealStockPrices() {
     const now = new Date();
     const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
     const kstHour = kstTime.getUTCHours();
-    // 미국주식은 아침 6~8시 KST에만 fetch (미국 장 마감 후 최종 종가)
-    const isUSStockFetchTime = kstHour >= 6 && kstHour < 8;
+    // 미국주식은 아침 6~9시 KST에만 fetch (미국 장 마감 후 최종 종가).
+    // ⚠️ stockPriceSchedulerV2가 미국장 갱신을 08:00 정각 1회로 옮겼으므로 상한이 9시여야
+    //    그 호출이 US 종목을 건너뛰지 않는다. 두 곳을 반드시 함께 유지할 것.
+    //    (09시부터는 한국장 시간이라 US는 다시 skip → 하루 1회 원칙 유지)
+    const isUSStockFetchTime = kstHour >= 6 && kstHour < 9;
 
     // 심볼 수집
     const stocksToUpdate = [];

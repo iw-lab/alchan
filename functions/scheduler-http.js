@@ -315,28 +315,40 @@ exports.stockPriceSchedulerV2 = onSchedule(
       const now = new Date();
       const kstTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
       const hour = kstTime.getUTCHours();
+      const minute = kstTime.getUTCMinutes();
       const day = kstTime.getUTCDay();
 
       const isWeekday = day >= 1 && day <= 5;
-      const isExtendedHours = hour >= 6 || hour < 1;
+      if (!isWeekday) return; // 주말 - Firestore 읽기 0
 
-      if (!isWeekday || !isExtendedHours) {
-        // 시장 시간 아님 - Firestore 읽기 없이 즉시 종료
+      // 🔥 [읽기 절감 2026-07-26] 실행 창을 실제 장 시간으로 축소.
+      //   종전: 평일 06:00~다음날 01:00 = 19시간. 한국장 마감(15:30) 이후 9시간 반 동안에도
+      //   계속 돌면서 같은 종가를 다시 읽었다(1회 44읽기, 쓰기는 diff로 생략되나 읽기는 그대로).
+      //   미국주식은 그 시간대에 어차피 skip되므로 실질 갱신 없이 읽기만 쓰던 구간.
+      //
+      // 🇺🇸 미국장은 KST 05:00 마감 → 08:00 정각 1회만 종가 반영
+      //    (*/15 cron이라 minute<15 조건으로 08:00 한 번만 통과)
+      //    ⚠️ realStockService.updateRealStockPrices()도 자체 시간창을 갖고 있으므로
+      //       거기 `isUSStockFetchTime`(kstHour<9)과 반드시 함께 유지할 것.
+      const isUSStockFetchTime = hour === 8 && minute < 15;
+
+      // 🇰🇷 한국장 09:00~15:30. 종가를 확실히 반영하려고 15:45까지 여유를 둔다
+      //    (클라이언트 isKoreaMarketOpen의 09:00~15:30 기준과 동일한 장 시간).
+      const kstTotalMinutes = hour * 60 + minute;
+      const isKoreaMarketTime =
+        kstTotalMinutes >= 9 * 60 && kstTotalMinutes <= 15 * 60 + 45;
+
+      if (!isUSStockFetchTime && !isKoreaMarketTime) {
+        // 장 시간 아님 - Firestore 읽기 없이 즉시 종료
         return;
       }
 
       logger.info(
-        `[stockPriceSchedulerV2] 호출됨 - KST ${hour}시, 요일: ${day}`,
+        `[stockPriceSchedulerV2] 호출됨 - KST ${hour}:${String(minute).padStart(2, "0")}, 요일: ${day}`,
       );
 
-      const isUSStockFetchTime = hour >= 6 && hour < 8;
       if (isUSStockFetchTime) {
-        // 🔥 새벽 무인 시간대(활성 사용자 체크 생략)의 풀갱신을 5분마다 24회 → 6:00/6:30/7:00/7:30 4회로 제한
-        // 미국장 종가 반영 목적이라 4회면 충분. 시간 계산만으로 게이트하므로 Firestore 읽기 0
-        const minute = kstTime.getUTCMinutes();
-        if (minute % 30 >= 5) {
-          return;
-        }
+        // 미국장 종가 반영 1회 — 무인 시간대라 활성 사용자 체크 없이 진행
       } else {
         const settingsDoc = await db.doc("Settings/activeStatus").get();
         const lastActiveTime = settingsDoc.exists
