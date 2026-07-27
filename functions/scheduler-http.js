@@ -267,7 +267,8 @@ exports.stockPriceScheduler = onRequest(
         );
 
         // 업데이트된 가격을 기반으로 스냅샷 문서도 갱신하여 클라이언트 읽기 횟수 절감
-        const snapshotResult = await updateCentralStocksSnapshot();
+        // 🔥 realStockResult를 넘겨 CentralStocks 재조회를 생략(1회 실행 44읽기 → 22읽기)
+        const snapshotResult = await updateCentralStocksSnapshot(realStockResult);
         results.updateStocksSnapshot = `success (count: ${snapshotResult.count})`;
         logger.info(
           `[stockPriceScheduler] 중앙 스톡 스냅샷 갱신 완료:`,
@@ -387,7 +388,8 @@ exports.stockPriceSchedulerV2 = onSchedule(
           realStockResult,
         );
 
-        const snapshotResult = await updateCentralStocksSnapshot();
+        // 🔥 realStockResult를 넘겨 CentralStocks 재조회를 생략(1회 실행 44읽기 → 22읽기)
+        const snapshotResult = await updateCentralStocksSnapshot(realStockResult);
         results.updateStocksSnapshot = `success (count: ${snapshotResult.count})`;
         logger.info(
           "[stockPriceSchedulerV2] 중앙 스톡 스냅샷 갱신 완료:",

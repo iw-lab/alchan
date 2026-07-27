@@ -355,15 +355,26 @@ async function updateRealStockPrices() {
     // 먼저 저장된 환율 로드
     await loadExchangeRate();
 
-    // isRealStock: true인 주식만 가져오기
+    // 🔥 [읽기 절감 2026-07-27] 상장 종목 전체를 한 번만 읽는다.
+    //   종전: 여기서 (isRealStock && isListed) 22문서, 직후 updateCentralStocksSnapshot()이
+    //   (isListed) 22문서를 또 읽어 1회 실행에 44읽기가 발생했다.
+    //   이제 더 넓은 조건(isListed)으로 한 번 읽고, 가격 갱신 대상은 메모리에서 걸러내며,
+    //   스냅샷 생성에는 이 결과를 그대로 넘긴다 → 44 → 22.
+    //   ⚠️ 넓은 쪽(isListed)으로 읽어야 한다. 좁은 쪽으로 읽어 스냅샷을 만들면
+    //     수동 생성 종목(isRealStock 아님)이 스냅샷에서 누락돼 학생 화면에서 사라지고
+    //     netAssets(info.isListed 필요)에서 0원 처리된다.
     const stocksSnapshot = await db.collection("CentralStocks")
-      .where("isRealStock", "==", true)
       .where("isListed", "==", true)
       .get();
 
+    // 스냅샷 생성용 원본 보관(가격 갱신 여부와 무관하게 상장 종목 전체)
+    const listedDocs = stocksSnapshot.docs.map(d => ({ id: d.id, data: d.data() }));
+    // 이번 실행에서 실제로 write한 내용 (스냅샷에 병합 — serverTimestamp 센티널은 제외한 안전본)
+    const appliedUpdates = new Map();
+
     if (stocksSnapshot.empty) {
       logger.info("[RealStock] 실제 주식 데이터가 없습니다.");
-      return { updated: 0, failed: 0, skipped: 0 };
+      return { updated: 0, failed: 0, skipped: 0, listedDocs, appliedUpdates };
     }
 
     // 현재 KST 시간 계산 (미국주식 fetch 시간 판단용)
@@ -382,6 +393,9 @@ async function updateRealStockPrices() {
     let etfBondSkipped = 0;
     stocksSnapshot.docs.forEach(doc => {
       const data = doc.data();
+      // 수동 생성 종목은 실물 시세 갱신 대상이 아니다(스냅샷에는 그대로 포함됨).
+      // 종전 쿼리의 isRealStock == true 조건을 메모리 필터로 옮긴 것 — 동작 동일.
+      if (data.isRealStock !== true) return;
       const symbol = data.realStockSymbol || REAL_STOCK_SYMBOLS[data.name];
       if (symbol) {
         const isUSD = !symbol.includes('.KS') && !symbol.includes('.KQ');
@@ -431,7 +445,7 @@ async function updateRealStockPrices() {
 
     if (stocksToUpdate.length === 0) {
       logger.info("[RealStock] 업데이트할 실제 주식이 없습니다.");
-      return { updated: 0, failed: 0, skipped: skipped + usSkipped };
+      return { updated: 0, failed: 0, skipped: skipped + usSkipped, listedDocs, appliedUpdates };
     }
 
     // Yahoo Finance에서 가격 가져오기
@@ -528,6 +542,17 @@ async function updateRealStockPrices() {
 
       batch.update(stock.docRef, updatePayload);
 
+      // 🔥 스냅샷 병합용 안전본. updatePayload의 lastUpdated는 serverTimestamp 센티널이라
+      //   그대로 스냅샷 배열에 넣으면 Firestore가 거부한다(배열 안에는 센티널 불가).
+      //   구체 Timestamp로 치환해 보관한다.
+      const snapshotTs = admin.firestore.Timestamp.now();
+      const snapshotPatch = {
+        ...updatePayload,
+        realStockData: { ...updatePayload.realStockData, lastUpdated: snapshotTs },
+        lastUpdated: snapshotTs,
+      };
+      appliedUpdates.set(stock.docId, snapshotPatch);
+
       logger.info(`[RealStock] ${stock.name}: ${stock.currentPrice} -> ${newPrice} (실물가 ${realPriceKRW}원, 변동 ${(data.changePercent || 0).toFixed(2)}%)`);
       updated++;
     }
@@ -536,7 +561,9 @@ async function updateRealStockPrices() {
 
     logger.info(`[RealStock] 업데이트 완료 - 성공: ${updated}, 실패: ${failed}, 건너뜀: ${skipped}`);
 
-    return { updated, failed, skipped };
+    // listedDocs/appliedUpdates는 updateCentralStocksSnapshot()이 재조회 없이
+    // 스냅샷을 만들도록 넘기는 값이다(1회 실행 44읽기 → 22읽기).
+    return { updated, failed, skipped, listedDocs, appliedUpdates };
   } catch (error) {
     logger.error("[RealStock] 업데이트 중 오류:", error);
     throw error;
@@ -548,17 +575,36 @@ async function updateRealStockPrices() {
  * 클라이언트가 단일 문서만 읽도록 해 읽기 횟수 절감
  * @returns {Promise<{count: number}>}
  */
-async function updateCentralStocksSnapshot() {
+async function updateCentralStocksSnapshot(prefetched = null) {
   logger.info("[RealStock] CentralStocks 스냅샷 생성 시작");
 
-  const snapshot = await db.collection("CentralStocks")
-    .where("isListed", "==", true)
-    .get();
+  // 🔥 [읽기 절감 2026-07-27] updateRealStockPrices()가 방금 읽은 상장 종목 전체와
+  //   이번에 write한 내용을 넘겨주면 재조회 없이 스냅샷을 만든다(1회 실행 44읽기 → 22읽기).
+  //   넘어온 게 없으면(수동 호출·다른 호출부) 종전대로 직접 조회 — 하위 호환.
+  let entries;
+  if (prefetched && Array.isArray(prefetched.listedDocs) && prefetched.listedDocs.length > 0) {
+    const applied = prefetched.appliedUpdates instanceof Map
+      ? prefetched.appliedUpdates
+      : new Map();
+    entries = prefetched.listedDocs.map(({ id, data }) => {
+      const patch = applied.get(id);
+      // 읽은 시점의 원본에 이번 실행이 실제로 write한 값만 덮어쓴다.
+      return { id, data: patch ? { ...data, ...patch } : data };
+    });
+    logger.info(
+      `[RealStock] 스냅샷: 사전조회 결과 재사용 (${entries.length}종, 갱신 ${applied.size}종) - Firestore 재조회 생략`,
+    );
+  } else {
+    const snapshot = await db.collection("CentralStocks")
+      .where("isListed", "==", true)
+      .get();
+    entries = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+  }
 
-  const stocks = snapshot.docs.map(doc => {
-    const data = doc.data();
+  const stocks = entries.map(entry => {
+    const data = entry.data;
     return {
-      id: doc.id,
+      id: entry.id,
       name: data.name,
       price: data.price,
       initialPrice: data.initialPrice,
