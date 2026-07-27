@@ -8,7 +8,7 @@
 // ========================================
 
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, getDocFromServer } from "firebase/firestore";
 import {
@@ -746,6 +746,22 @@ const AdminSettingsModal = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, tempMaxJobsPerStudent, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
+
+  // 📊 표시용 실효 설정값 — 요약 패널·계산 예시가 하드코딩 상수를 쓰다가
+  //    실제 지급 조건과 어긋나던 문제(2026-07-27) 때문에 한 곳에서 파생시킨다.
+  //    계산 규약은 calculateSalary(=서버 salaryUtils 미러)와 동일해야 한다.
+  const effectiveMaxJobs = useMemo(
+    () =>
+      Number.isInteger(salarySettings.maxJobsPerStudent) &&
+      salarySettings.maxJobsPerStudent >= 1
+        ? salarySettings.maxJobsPerStudent
+        : 5,
+    [salarySettings.maxJobsPerStudent],
+  );
+  const effectiveBaseSalary = useMemo(
+    () => Math.round(2000000 * (salarySettings.salaryBaseMultiplier || 1)),
+    [salarySettings.salaryBaseMultiplier],
+  );
 
   // 월급 계산 함수 (세금 공제 포함, 대통령 보너스 반영)
   const calculateSalary = useCallback(
@@ -2700,11 +2716,22 @@ const AdminSettingsModal = ({
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: "#f1f5f9" }}>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>기본 주급</p>
-                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>200만 {getCurrencyUnit()}</p>
+                    <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>
+                      {(effectiveBaseSalary / 10000).toFixed(0)}만 {getCurrencyUnit()}
+                    </p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>추가 직업당</p>
                     <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>+50만 {getCurrencyUnit()}</p>
+                    {/* 직업 개수 상한이 여기 없어서, 상한 1인데도 "추가 직업당 +50만"만 보이던
+                        문제(2026-07-27). 상한 1이면 가산이 영원히 발생하지 않는다. */}
+                    <p
+                      className="text-[10px] mt-0.5"
+                      style={{ color: effectiveMaxJobs <= 1 ? "#b45309" : "#94a3b8" }}
+                    >
+                      직업 상한 {effectiveMaxJobs}개
+                      {effectiveMaxJobs <= 1 ? " · 가산 없음" : ""}
+                    </p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
                     <p className="text-[11px]" style={{ color: "#64748b" }}>세율 / 인상률</p>
@@ -2868,6 +2895,15 @@ const AdminSettingsModal = ({
                                 )}
                               </div>
 
+                              {/* ⚠️ 아래 3칸은 '지금 설정으로 계산한 예상치'다. 실제 지급액이 아니다.
+                                  라벨이 없던 시절, 바로 아래 최근 주급일과 붙어 보여서 교사가
+                                  "그날 이 금액을 줬다"로 읽었다(2026-07-27 오석모 학급 신고:
+                                  화면 10만 vs 실지급 270만 — 09:00 지급 후 16:14에 세율·직업상한을
+                                  바꾼 게 원인이었고 계산은 양쪽 다 정확했다). */}
+                              <div className="text-[10px] text-slate-400 mb-1">
+                                다음 지급 예상{" "}
+                                <span className="text-slate-300">· 현재 설정 기준</span>
+                              </div>
                               {/* 급여/현금 그리드 */}
                               <div className="grid grid-cols-3 gap-1.5 mb-2">
                                 <div className="rounded-lg bg-slate-50 border border-slate-200 px-2 py-1.5 text-center">
@@ -2890,15 +2926,26 @@ const AdminSettingsModal = ({
                                 </div>
                               </div>
 
-                              {/* 보유 현금 + 최근 주급일 */}
-                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                                <span>
-                                  보유 <span className="font-semibold text-slate-700">{(student.cash || 0).toLocaleString()}{getCurrencyUnit()}</span>
-                                </span>
-                                <span>
+                              {/* 최근 '실제' 지급액 — 지급 시점 설정으로 서버가 확정한 금액.
+                                  lastNetSalary는 예전부터 불러오고 있었는데 화면에 쓰지 않아,
+                                  교사가 대조할 수단이 예상치밖에 없었다. */}
+                              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-100">
+                                <span className="text-slate-500">
+                                  최근 실지급{" "}
                                   {student.lastSalaryDate
                                     ? student.lastSalaryDate.toLocaleDateString()
-                                    : "지급 없음"}
+                                    : "없음"}
+                                </span>
+                                <span className="font-semibold text-slate-700 tabular-nums">
+                                  {student.lastSalaryDate
+                                    ? `${(student.lastNetSalary || 0).toLocaleString()}${getCurrencyUnit()}`
+                                    : "-"}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                                <span>보유</span>
+                                <span className="font-semibold text-slate-700 tabular-nums">
+                                  {(student.cash || 0).toLocaleString()}{getCurrencyUnit()}
                                 </span>
                               </div>
                             </div>
@@ -3692,8 +3739,11 @@ const AdminSettingsModal = ({
                   </h4>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {[1, 2, 3].map((n) => {
-                    const gross = 2000000 + (n - 1) * 500000;
+                  {/* 상한을 넘는 직업 수는 실제로 발생할 수 없으므로 예시에서도 제외한다.
+                      기본급도 하드코딩 200만이 아니라 주간 인상 반영된 실효 기본급을 쓴다
+                      (바로 위 '현재 기본급' 칸과 어긋나던 문제, 2026-07-27). */}
+                  {[1, 2, 3].filter((n) => n <= effectiveMaxJobs).map((n) => {
+                    const gross = effectiveBaseSalary + (n - 1) * 500000;
                     const tax = gross * salarySettings.taxRate;
                     const net = gross - tax;
                     return (
@@ -3708,6 +3758,11 @@ const AdminSettingsModal = ({
                       </div>
                     );
                   })}
+                  {effectiveMaxJobs < 3 && (
+                    <div className="px-6 py-2.5 text-[11px] text-slate-400">
+                      직업 개수 상한이 {effectiveMaxJobs}개라 그 이상은 지급되지 않습니다.
+                    </div>
+                  )}
                 </div>
               </div>
 
