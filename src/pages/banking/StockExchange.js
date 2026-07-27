@@ -581,6 +581,8 @@ const AdminPanel = React.memo(
                           ? "실시간"
                           : "자동"}
                       {stock.productType === PRODUCT_TYPES.BOND &&
+                        stock.maturityYears != null &&
+                        stock.couponRate != null &&
                         ` | 만기: ${stock.maturityYears}년 | 이자율: ${stock.couponRate}%`}
                     </span>
                   </div>
@@ -2389,8 +2391,14 @@ const StockExchange = () => {
                         <span
                           className={`stock-badge ${getProductBadgeClass(stock.productType)}`}
                         >
+                          {/* 실제 시장 연동 채권(예: KOSEF 국고채10년)은 수동 등록 폼을 거치지
+                              않아 maturityYears/couponRate 자체가 없다. 가드 없이 템플릿에 넣으면
+                              "undefined년 undefined%"가 그대로 노출된다(2026-07-27 실측). */}
                           {stock.productType === PRODUCT_TYPES.BOND
-                            ? `${stock.maturityYears}년 ${stock.couponRate}%`
+                            ? stock.maturityYears != null &&
+                              stock.couponRate != null
+                              ? `${stock.maturityYears}년 ${stock.couponRate}%`
+                              : SECTORS[stock.sector]?.name || "채권"
                             : SECTORS[stock.sector]?.name || "기타"}
                         </span>
                       </div>
