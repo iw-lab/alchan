@@ -1472,12 +1472,18 @@ exports.updateRealStocksFunction = onCall(
 
     try {
       const result = await updateRealStockPrices();
-      const snapshotResult = await updateCentralStocksSnapshot();
+      // 🔥 여기도 재조회 생략 (관리자 수동 갱신 경로)
+      const snapshotResult = await updateCentralStocksSnapshot(result);
+
+      // ⚠️ listedDocs/appliedUpdates는 스냅샷 생성용 내부 값이다.
+      //   callable 응답에 그대로 펼치면 Map은 {}로 뭉개지고 문서 22개가 통째로
+      //   클라이언트에 실려 나간다 — 반드시 제외하고 반환할 것.
+      const { listedDocs: _ld, appliedUpdates: _au, ...publicResult } = result;
 
       return {
         success: true,
         message: `실제 주식 업데이트 완료 - 성공: ${result.updated}, 실패: ${result.failed} (스냅샷 ${snapshotResult.count}개)`,
-        ...result,
+        ...publicResult,
         snapshot: snapshotResult,
       };
     } catch (error) {
