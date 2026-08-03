@@ -371,6 +371,13 @@ export const ALCHAN_MENU_ITEMS = [
     externalUrl: "https://mathcastle.pages.dev/",
     parentId: "learningSitesCategory",
   },
+  {
+    id: "siteGuguGuardians",
+    label: "구구성 수호대(구구단)",
+    icon: Shield,
+    externalUrl: "https://iw-lab.github.io/gugu-guardians/",
+    parentId: "learningSitesCategory",
+  },
 
   // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
   {
