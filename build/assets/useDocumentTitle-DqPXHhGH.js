@@ -1,1 +1,0 @@
-import{r as u}from"./index-Bxlg2TS8.js";const e="알찬 - 학급경제 시뮬레이션";function n(t){u.useEffect(()=>{const o=document.title;return document.title=t?`${t} | ${e}`:e,()=>{document.title=o}},[t])}export{n as u};
