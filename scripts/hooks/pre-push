@@ -1,0 +1,49 @@
+#!/bin/sh
+# alchan pre-push — firestore.rules 가 바뀐 푸시에서만 거부 테스트(43건)를 돌린다.
+#
+# 왜: rules 는 학생 자산(cash·coupons·예적금·주식·인벤토리)의 마지막 방어선인데,
+#     실수로 봉인이 풀려도 배포까지 아무것도 막지 않았다. GitHub Actions 는 이 테스트를
+#     못 돌린다(firebase 로그인·네트워크 필요) → 로컬 푸시 시점이 유일한 자동 게이트다.
+#
+# 설치: git config core.hooksPath scripts/hooks   (리포당 1회)
+# 우회: git push --no-verify
+#
+# 네트워크·로그인 문제로 테스트를 '돌리지 못한' 경우엔 경고만 하고 통과시킨다
+# (오프라인에서 푸시가 막히는 편이 더 나쁘다). 테스트가 '돌아서 실패'하면 차단한다.
+set -u
+
+RULES="firestore.rules"
+ZERO="0000000000000000000000000000000000000000"
+changed=0
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "$ZERO" ] && continue # 브랜치 삭제 푸시
+  if [ "$remote_sha" = "$ZERO" ]; then
+    changed=1 # 새 브랜치 — 범위 판단이 애매하면 그냥 돌린다(3초)
+  elif [ -n "$(git diff --name-only "$remote_sha" "$local_sha" -- "$RULES")" ]; then
+    changed=1
+  fi
+done
+
+[ "$changed" -eq 0 ] && exit 0
+
+printf '\n🔒 firestore.rules 변경 감지 — 거부 테스트 실행 중...\n'
+if out=$(npm run --silent test:rules 2>&1); then
+  printf '%s\n' "$out" | grep -E '통과|passed' | tail -1
+  exit 0
+fi
+
+# 테스트가 '돌지 못한' 경우와 '돌아서 실패한' 경우를 구분한다.
+case "$out" in
+*"로그인이 없습니다"* | *"토큰 갱신 실패"* | *"fetch failed"* | *ENOTFOUND* | *ETIMEDOUT* | *ECONNREFUSED* | *EAI_AGAIN*)
+  printf '⚠️  rules 테스트를 실행하지 못했습니다(네트워크 또는 firebase 로그인).\n'
+  printf '    푸시는 계속합니다 — 배포 후 반드시 `npm run test:rules` 로 확인하세요.\n\n'
+  exit 0
+  ;;
+esac
+
+printf '%s\n' "$out"
+printf '\n🔴 rules 거부 테스트 실패 — 푸시를 중단합니다.\n'
+printf '   학생 자산 경로의 봉인이 풀렸을 수 있습니다. 위 ✗ 항목을 확인하세요.\n'
+printf '   의도한 변경이라면 테스트를 함께 고치고, 그래도 밀어야 하면: git push --no-verify\n\n'
+exit 1
