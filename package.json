@@ -58,7 +58,8 @@
     "test:watch": "vitest",
     "test:cra": "react-scripts test --env=jsdom --watchAll=false",
     "test:all": "vitest run",
-    "test:rules": "node scripts/rules-test.mjs"
+    "test:rules": "node scripts/rules-test.mjs",
+    "assets:snapshot": "node scripts/asset-snapshot.mjs"
   },
   "browserslist": [
     ">0.2%",

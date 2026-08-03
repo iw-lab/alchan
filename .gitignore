@@ -61,3 +61,6 @@ DEBUG_LOG.md
 .playwright-profile-chrome/
 check-scheduler.mjs
 check-*.png
+
+# 자산 스냅샷 — 학생 이름 포함, 커밋 금지 (scripts/asset-snapshot.mjs)
+.asset-snapshots/
