@@ -20,6 +20,7 @@
   "devDependencies": {
     "@babel/runtime": "^7.28.6",
     "@playwright/test": "^1.57.0",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -45,7 +46,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "vitest run",
+    "test": "vitest run --exclude '**/globalCacheService.test.js' --exclude '**/useFirestoreData.test.js' --exclude '**/logger.test.js'",
     "test:unit": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -55,7 +56,8 @@
     "deploy:all": "npx firebase-tools deploy",
     "firebase": "npx firebase-tools",
     "test:watch": "vitest",
-    "test:cra": "react-scripts test --env=jsdom --watchAll=false"
+    "test:cra": "react-scripts test --env=jsdom --watchAll=false",
+    "test:all": "vitest run"
   },
   "browserslist": [
     ">0.2%",
