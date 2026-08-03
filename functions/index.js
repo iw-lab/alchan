@@ -9639,7 +9639,7 @@ exports.createStudentAccounts = onCall(
 exports.resetStudentPassword = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isAdmin } = await checkAuthAndGetUserData(
+    const { uid, classCode, isSuperAdmin } = await checkAuthAndGetUserData(
       request,
       true,
     );
@@ -9660,20 +9660,53 @@ exports.resetStudentPassword = onCall(
 
     try {
       const userRecord = await admin.auth().getUserByEmail(email);
+
+      // 🔒 학급 경계 검사 (2026-08-03 추가).
+      //    여기엔 '인증'만 있고 '권한'이 없었다. checkAuthAndGetUserData(request, true) 는
+      //    "승인된 교사인가"만 보고 **어느 학급 교사인지는 보지 않는다**. 그래서 교사 아무나
+      //    임의 이메일로 이 함수를 불러 다른 반 학생은 물론 **다른 교사·슈퍼관리자의**
+      //    비밀번호까지 바꿀 수 있었다(수직 권한상승).
+      //    형제 함수 adminResetUserPassword 는 같은 상황에서 이미 이 검사를 하고 있었다
+      //    (functions/index.js 의 targetUserData.classCode !== classCode) — 두 함수가
+      //    어긋나 있던 것이고, firestore.rules 의 isClassAdminOfUser 가 표방하는
+      //    "한 교사 = 한 학급" 모델을 CF 쪽에서 못 지키고 있었다.
+      if (!isSuperAdmin) {
+        const targetDoc = await db.collection("users").doc(userRecord.uid).get();
+        // ⚠️ 단순히 `a !== b` 로 비교하면 양쪽이 모두 undefined 일 때(교사가 아직 학급에
+        //    참여 안 함 + 대상 문서에 classCode 없음) `undefined !== undefined` 가 false 라
+        //    검사를 그냥 통과한다. 값이 실제로 있는지부터 확인한다(fail-closed).
+        const mine = targetDoc.exists ? classCode : null;
+        const theirs = targetDoc.exists ? targetDoc.data().classCode : null;
+        if (!mine || !theirs || mine !== theirs) {
+          logger.warn(
+            `[resetStudentPassword] 학급 밖 리셋 시도 차단: ${uid} → ${email}`,
+          );
+          throw new HttpsError(
+            "permission-denied",
+            "자신의 학급 학생만 비밀번호를 초기화할 수 있습니다.",
+          );
+        }
+      }
+
       await admin.auth().updateUser(userRecord.uid, { password: newPassword });
       logger.info(
         `[resetStudentPassword] ${uid}가 ${email}의 비밀번호를 리셋함`,
       );
       return { success: true, message: "비밀번호가 리셋되었습니다." };
     } catch (error) {
+      // 위 학급경계 검사가 던진 permission-denied 를 여기서 internal 로 덮으면
+      // 클라이언트가 '권한 없음'과 '서버 오류'를 구분하지 못한다. 그대로 통과시킨다.
+      if (error instanceof HttpsError) throw error;
       logger.error(`[resetStudentPassword] 오류: ${error.message}`);
       throw new HttpsError("internal", `비밀번호 리셋 실패: ${error.message}`);
     }
   },
 );
 
-// 학생 로그인 자동 복구 (Auth 계정 없거나 비밀번호 불일치 시)
-// 인증 불필요 - .alchan 학생 이메일만 허용
+// 학생 로그인 자동 복구 — **Auth 계정이 아예 없을 때만**.
+// 인증 불필요(로그인 전 호출) + .alchan 학생 이메일만 허용.
+// 🔒 2026-08-03: 예전엔 "비밀번호 불일치 시"에도 리셋해줬고, 그게 미인증 계정 탈취
+//    경로였다. 기존 계정에는 절대 손대지 않는다 — 비번 분실은 교사가 재설정한다.
 exports.repairStudentLogin = onCall(
   { region: "asia-northeast3" },
   async (request) => {
@@ -9683,6 +9716,26 @@ exports.repairStudentLogin = onCall(
       throw new HttpsError(
         "invalid-argument",
         "이메일과 비밀번호가 필요합니다.",
+      );
+    }
+
+    // ⚠️ 순서 주의: **공짜 형식 검사 먼저, Firestore 접근은 그 다음**.
+    //    예전엔 rate limit 이 맨 앞이라, 미인증 호출자가 아무 문자열이나 email 로 보내면
+    //    그때마다 `_rateLimits` 문서가 하나씩 생겼다(읽기 1 + 쓰기 1). 인증도 없으니
+    //    무한정 컬렉션을 부풀리고 비용을 태울 수 있었다. 형식이 틀린 요청은 Firestore 를
+    //    건드리기 전에 잘라낸다.
+    if (typeof email !== "string" || !email.endsWith(".alchan")) {
+      throw new HttpsError(
+        "permission-denied",
+        "학생 계정만 복구할 수 있습니다.",
+      );
+    }
+
+    // 비밀번호는 6자 이상
+    if (typeof password !== "string" || password.length < 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "비밀번호는 6자 이상이어야 합니다.",
       );
     }
 
@@ -9706,95 +9759,90 @@ exports.repairStudentLogin = onCall(
       await rateLimitRef.set({ attempts: [now] });
     }
 
-    // .alchan 도메인 학생 계정만 허용
-    if (!email.endsWith(".alchan")) {
-      throw new HttpsError(
+    // 🔒 학급코드 존재 여부로 응답이 갈리던 블록을 제거했다(2026-08-03).
+    //    예전엔 classes/{코드} 를 조회해 세 갈래로 답했다 — 통과 / "학급코드가
+    //    올바르지 않습니다" / "존재하지 않는 학급코드입니다". 미인증 호출자는 그
+    //    응답 차이만으로 임의 문자열이 실재하는 학급코드인지 알아낼 수 있었다
+    //    (rate limit 은 이메일 단위라 값을 바꿔가며 부르면 무력화된다).
+    //    이제 아래에서 "이 이메일의 학생 문서가 실제로 있는가" 하나만 보고,
+    //    복구 불가인 경우는 전부 **같은 응답**으로 답한다 — 갈래가 없으면 오라클도 없다.
+
+    // ⚠️ 🔒 이 함수는 의도적으로 **미인증**이다(로그인 전에 호출된다).
+    //    그래서 "이미 존재하는 계정"에는 절대 손대면 안 된다.
+    //
+    //    2026-08-03 실측 취약점: 여기서 기존 계정의 비밀번호를 호출자가 준 값으로
+    //    리셋하고 있었다. 학생 이메일은 `{아이디}@{학급코드}.alchan` 로 규칙적이고
+    //    같은 반 학생이면 둘 다 안다 → 미인증 curl 두 번으로 임의 학생 계정 탈취가
+    //    가능했다(resolveStudentEmail 로 이메일 조회 → 여기서 비번 리셋 → 로그인).
+    //    실증: 미인증 요청이 인증 경계를 통과해 학급코드 조회까지 도달함(HTTP 404 응답).
+    //
+    //    비밀번호를 잊은 학생은 **교사**가 재설정한다(adminResetUserPassword — 관리자
+    //    인증 + 자기 학급 학생인지까지 검사한다). 교사는 교실에 있다.
+    //    ⚠️ resetStudentPassword 도 같은 일을 하지만 2026-08-03까지 학급 경계 검사가
+    //       없었다(같은 날 추가). "인증이 있다"와 "권한이 맞다"는 다른 말이다 — 이 구분을
+    //       흐리면 다음 사람이 안전하다고 믿고 넘어간다.
+    //
+    //    이 함수가 해도 되는 일은 딱 하나다:
+    //      "Firestore 학생 문서는 멀쩡한데 Auth 계정만 유실된" 계정을 되살리는 것.
+    //    그 밖의 모든 경우는 아래 REFUSED 하나로 답한다. 응답을 갈래내면 그게 오라클이 된다.
+    //
+    //    ⚠️ 정확히 말하면 없앤 건 **응답으로 판별하는** 오라클이다. 거부 경로마다 수행하는
+    //       I/O 횟수가 달라(계정 있음 = Auth 조회까지 / 문서 없음 = Firestore 쿼리 1회 더)
+    //       응답 시간에는 여전히 차이가 남는다. 통계적으로 구분하려면 다수 샘플과 안정된
+    //       네트워크가 필요해 실익이 낮고, I/O 를 맞추면 거부마다 쿼리가 늘어 미인증
+    //       호출자에게 비용을 더 태우게 된다 — 그래서 맞추지 않고 여기 적어 둔다.
+    const REFUSED = () =>
+      new HttpsError(
         "permission-denied",
-        "학생 계정만 복구할 수 있습니다.",
+        "이 계정은 여기서 복구할 수 없습니다. 선생님께 말씀드리세요.",
       );
+
+    let existingUser = null;
+    try {
+      existingUser = await admin.auth().getUserByEmail(email);
+    } catch (e) {
+      if (e.code !== "auth/user-not-found") throw e;
     }
 
-    // 비밀번호는 6자 이상
-    if (password.length < 6) {
-      throw new HttpsError(
-        "invalid-argument",
-        "비밀번호는 6자 이상이어야 합니다.",
+    if (existingUser) {
+      // 계정이 이미 있다 = 비번을 잊었을 뿐이다. 소유 증명이 없으니 손대지 않는다.
+      logger.warn(
+        `[repairStudentLogin] 기존 계정 복구 시도 차단: ${email} (uid: ${existingUser.uid})`,
       );
+      throw REFUSED();
     }
 
-    // 학급코드가 실제로 존재하는지 검증 (잘못된 학급코드로 신규 계정 생성 방지)
-    const emailParts = email.split("@");
-    const emailClassCode = emailParts[1]
-      ? emailParts[1].replace(".alchan", "").toUpperCase()
-      : "";
-    if (emailClassCode) {
-      const classDoc = await db
-        .collection("classes")
-        .doc(emailClassCode)
-        .get();
-      if (!classDoc.exists) {
-        // 학급코드가 존재하지 않으면, 올바른 이메일을 찾아서 반환
-        const sid = emailParts[0].toLowerCase();
-        const usersSnap = await db
-          .collection("users")
-          .where("email", ">=", `${sid}@`)
-          .where("email", "<=", `${sid}@\uf8ff`)
-          .get();
-        const correctDoc = usersSnap.docs.find((d) =>
-          d.data().email?.endsWith(".alchan")
-        );
-        if (correctDoc) {
-          throw new HttpsError(
-            "failed-precondition",
-            `학급코드가 올바르지 않습니다. 올바른 학급코드로 다시 시도해주세요.`
-          );
-        }
-        throw new HttpsError(
-          "not-found",
-          "존재하지 않는 학급코드입니다. 학급코드를 확인해주세요."
-        );
-      }
+    // 🔒 Auth 계정이 없다고 아무 이메일이나 만들어주면 '계정 선점'이 된다(2026-08-03 Gemini 지적).
+    //    유효한 학급코드 + 아직 안 쓰는 아이디로 미리 계정을 만들어두면, 나중에 그 아이디를
+    //    받은 전학생·신입생이 정작 가입하지 못한다. 그래서 **Firestore 학생 문서가 실재할 때만**
+    //    복구한다 — 정당한 복구 케이스는 정의상 문서가 남아 있다.
+    //    (이 조건 덕분에 위에서 지운 '학급코드 존재 확인'도 필요 없어졌다. 문서가 곧 근거다.)
+    const usersSnapshot = await db
+      .collection("users")
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    if (usersSnapshot.empty) {
+      logger.warn(`[repairStudentLogin] 학생 문서 없음 → 생성 거부(선점 차단): ${email}`);
+      throw REFUSED();
     }
 
     try {
-      let userRecord;
-      let action;
+      // 여기까지 왔다 = Auth 계정 없음 + Firestore 학생 문서 있음 = 진짜 고장난 계정.
+      // (2026-08-03 실측 시점엔 이 상태인 학생이 0명이었다. 앞으로 생길 수 있는 상태이고,
+      //  그때 이 경로가 그 학생을 되살린다 — "아무도 못 탄다"는 뜻이 아니다.)
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: email.split("@")[0],
+      });
+      const action = "account_created";
+      logger.info(
+        `[repairStudentLogin] 계정 생성: ${email} (uid: ${userRecord.uid})`,
+      );
 
-      try {
-        // Auth 계정이 있는지 확인
-        userRecord = await admin.auth().getUserByEmail(email);
-        // 있으면 비밀번호 리셋
-        await admin.auth().updateUser(userRecord.uid, { password });
-        action = "password_reset";
-        logger.info(
-          `[repairStudentLogin] 비밀번호 리셋: ${email} (uid: ${userRecord.uid})`,
-        );
-      } catch (e) {
-        if (e.code === "auth/user-not-found") {
-          // Auth 계정이 없으면 새로 생성
-          const displayName = email.split("@")[0];
-          userRecord = await admin.auth().createUser({
-            email,
-            password,
-            displayName,
-          });
-          action = "account_created";
-          logger.info(
-            `[repairStudentLogin] 계정 생성: ${email} (uid: ${userRecord.uid})`,
-          );
-        } else {
-          throw e;
-        }
-      }
-
-      // Firestore 문서 확인 및 생성
-      const usersSnapshot = await db
-        .collection("users")
-        .where("email", "==", email)
-        .limit(1)
-        .get();
-
-      if (!usersSnapshot.empty) {
+      {
         const existingDoc = usersSnapshot.docs[0];
         const oldUid = existingDoc.id;
 
@@ -9834,33 +9882,16 @@ exports.repairStudentLogin = onCall(
             `[repairStudentLogin] Firestore 문서 이동: ${oldUid} → ${userRecord.uid} (기존 삭제)`,
           );
         }
-      } else {
-        // Firestore 문서가 아예 없으면 기본 문서 생성
-        const parts = email.split("@");
-        const studentId = parts[0];
-        const classCode = parts[1].replace(".alchan", "").toUpperCase();
-
-        await db.collection("users").doc(userRecord.uid).set({
-          name: studentId,
-          nickname: studentId,
-          email,
-          classCode,
-          isAdmin: false,
-          isSuperAdmin: false,
-          isTeacher: false,
-          cash: 0,
-          coupons: 0,
-          selectedJobIds: [],
-          myContribution: 0,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        logger.info(
-          `[repairStudentLogin] Firestore 문서 생성: ${email} (classCode: ${classCode})`,
-        );
       }
+      // 🔻 옛 `else` 가지(= Firestore 문서가 없으면 학생 문서를 새로 만들어주던 코드)를
+      //    제거했다. 위에서 "문서가 있을 때만 복구"로 조건을 좁혔으므로 도달할 수 없고,
+      //    남겨두면 계정 선점 경로가 되살아난다(아무 아이디로나 학급에 학생이 생겼다).
+      //    새 학생 계정 생성은 교사 인증이 있는 createStudentAccounts 의 몫이다.
 
       return { success: true, uid: userRecord.uid, action };
     } catch (error) {
+      // 위 학급/선점 검사가 던진 HttpsError 를 internal 로 덮지 않는다.
+      if (error instanceof HttpsError) throw error;
       logger.error(`[repairStudentLogin] 실패: ${email}`, error);
       throw new HttpsError(
         "internal",
@@ -9887,23 +9918,34 @@ exports.migrateUserDoc = onCall(
       throw new HttpsError("failed-precondition", "이메일 정보가 없습니다.");
     }
 
-    const studentId = email.split("@")[0].toLowerCase();
-
     // 1. 현재 UID 문서 읽기
     const currentDoc = await db.collection("users").doc(uid).get();
     const currentData = currentDoc.exists ? currentDoc.data() : null;
     const currentCash = currentData?.cash || 0;
 
-    // 2. 같은 studentId prefix로 모든 .alchan 문서 검색
+    // 2. **같은 이메일**의 중복 문서만 찾는다 (2026-08-03 수정).
+    //
+    //    🔴 예전엔 studentId 접두사로 범위검색해서 **학급을 가로질러** 문서를 모았다.
+    //       그리고 아래에서 cash 가 가장 많은 문서를 호출자 uid 로 복사한 뒤
+    //       **나머지를 서브컬렉션까지 전부 삭제**한다(transactions·portfolio·properties·loans…).
+    //       이 함수는 학생이 로그인할 때 AuthContext 가 자동으로 부른다(uid당 1회).
+    //       즉 다른 반에 같은 아이디의 학생이 있으면, 공격이 아니라 **평범한 로그인만으로**
+    //       그 학생의 현금과 자산이 사라졌다.
+    //
+    //    실측(2026-08-03): 현재 학생 82명의 아이디가 전부 유일해 피해자는 0명이다.
+    //       그런데 그건 우연이 아니라 옛 "아이디만으로 로그인"이 전교 유일 아이디를
+    //       요구했기 때문이다 — 학급별로 alchan* / alchann* / alchannn* 처럼 n 을 늘려
+    //       회피한 흔적이 남아 있다. 같은 날 로그인에 학급코드를 필수화하면서 그 제약이
+    //       사라졌으므로 아이디 충돌은 이제 시간문제다 → 접두사 검색을 지금 없앤다.
+    //
+    //    같은 이메일 = 같은 계정. 그게 이 함수가 원래 고치려던 것(uid 불일치로 생긴
+    //    중복 문서)이고, 다른 학급 문서는 애초에 대상이 아니었다.
     const snapshot = await db
       .collection("users")
-      .where("email", ">=", `${studentId}@`)
-      .where("email", "<=", `${studentId}@\uf8ff`)
+      .where("email", "==", email)
       .get();
 
-    const candidates = snapshot.docs.filter(
-      (d) => d.data().email?.endsWith(".alchan") && d.id !== uid
-    );
+    const candidates = snapshot.docs.filter((d) => d.id !== uid);
 
     // 중복 없고 현재 문서 있으면 → 정상
     if (candidates.length === 0 && currentDoc.exists) {
@@ -9932,7 +9974,7 @@ exports.migrateUserDoc = onCall(
     }
 
     logger.info(
-      `[migrateUserDoc] 중복 감지: ${studentId}, 현재=${uid}(${currentCash}), best=${bestId}(${bestCash}), 중복=${candidates.length}개`
+      `[migrateUserDoc] 중복 감지: ${email}, 현재=${uid}(${currentCash}), best=${bestId}(${bestCash}), 중복=${candidates.length}개`
     );
 
     const subcollections = [
@@ -10170,51 +10212,82 @@ exports.resetPasswordHttp = onRequest(
 );
 
 // ========================================================
-// 🔍 학생 이메일 조회 (학급코드 없이 로그인 시)
-// 비인증 상태에서 studentId로 .alchan 이메일을 찾아 반환
-// 1단계: Firestore users 컬렉션 이메일 범위 검색
-// 2단계: 실패 시 모든 학급코드로 Firebase Auth 직접 조회 (폴백)
+// 🔍 학생 이메일 조회 — ⚠️ 2026-08-03 이후 **로그인한 사용자 전용**.
+//
+//    옛 동작: 미인증 + studentId 하나만 받아 이메일 전체(= 학급코드 포함)를 반환,
+//             못 찾으면 전 학급을 순회하며 Auth 를 뒤졌다. rate limit 없음.
+//    문제:    ① 아이디만 알면 그 학생의 학급을 누구나 알아냈고
+//             ② 응답이 {email} / {email:null} 로 갈려 **학급 명부 전체를 열거**할 수 있었다
+//             ③ repairStudentLogin 의 비번 리셋과 엮여 "아이디 하나 → 계정 탈취" 체인이 됐다
+//    지금:    학급코드 필수 + 단건 대조 + **인증 필수**.
+//
+//    ⚠️ 이 함수는 현재 클라이언트에서 호출되지 않는다(Login.js 가 학급코드를 직접 조합).
+//       지우는 게 맞지만 `firebase deploy --only functions --non-interactive` 는 함수 삭제를
+//       확인 없이 진행하지 않아 배포에 남는다. 그래서 우선 봉인해 두고, 별도 정리 때
+//       `--force` 로 삭제할 것. (안 쓰이는 채 방치된 CF 가 권한검사 누락으로 남는 게
+//        바로 이번에 터진 패턴이다 — 죽은 코드라고 안전한 게 아니다.)
 // ========================================================
 exports.resolveStudentEmail = onCall(
   { region: "asia-northeast3", timeoutSeconds: 30 },
   async (request) => {
-    const { studentId } = request.data;
+    // 인증 필수 — 미인증 열거를 원천 차단한다.
+    // ⚠️ 인증만으로는 부족하다. 로그인한 아무 학생이나 남의 학급코드를 넣어 그 반 명부를
+    //    열거할 수 있으면 '미인증 열거'를 '인증된 열거'로 바꾼 것뿐이다. 아래에서
+    //    호출자 자신의 학급인지까지 확인한다 — 자기 반 구성원 목록은 앱이 이미 보여주므로
+    //    추가 노출이 아니지만, 남의 반은 아니다.
+    const { classCode: callerClassCode, isSuperAdmin } =
+      await checkAuthAndGetUserData(request);
+
+    const { studentId, classCode } = request.data;
     if (!studentId || typeof studentId !== "string") {
       throw new HttpsError("invalid-argument", "studentId가 필요합니다.");
+    }
+    if (!classCode || typeof classCode !== "string" || !classCode.trim()) {
+      throw new HttpsError("invalid-argument", "학급코드를 입력해주세요.");
     }
     const sid = studentId.trim().toLowerCase();
     if (!sid || sid.length > 50) {
       throw new HttpsError("invalid-argument", "유효하지 않은 studentId입니다.");
     }
+    const code = classCode.trim().toLowerCase();
+    if (code.length > 50) {
+      throw new HttpsError("invalid-argument", "유효하지 않은 학급코드입니다.");
+    }
+
+    // 🔒 자기 학급만. 슈퍼관리자는 예외(운영상 전 학급을 봐야 한다).
+    //    빈 학급코드끼리 우연히 같아져 통과하는 일이 없도록 값이 있는지도 함께 본다.
+    if (!isSuperAdmin) {
+      const mine = (callerClassCode || "").trim().toLowerCase();
+      if (!mine || mine !== code) {
+        throw new HttpsError(
+          "permission-denied",
+          "자신의 학급만 조회할 수 있습니다.",
+        );
+      }
+    }
+
     try {
-      // 1단계: Firestore users 컬렉션에서 이메일 검색
+      // 주어진 학급코드 안에서만 확인한다 — 호출자가 이미 조합할 수 있는 값만
+      // 돌려주므로 정보가 새지 않는다.
+      const candidateEmail = `${sid}@${code}.alchan`;
       const snapshot = await admin
         .firestore()
         .collection("users")
-        .where("email", ">=", `${sid}@`)
-        .where("email", "<=", `${sid}@\uf8ff`)
+        .where("email", "==", candidateEmail)
+        .limit(1)
         .get();
-      const studentDoc = snapshot.docs.find((d) =>
-        d.data().email?.endsWith(".alchan")
-      );
-      if (studentDoc) {
-        return { email: studentDoc.data().email };
+      if (!snapshot.empty) {
+        return { email: candidateEmail };
       }
 
-      // 2단계: Firestore에서 못 찾으면 모든 학급코드로 Firebase Auth 직접 검색
-      const classesSnap = await admin.firestore().collection("classes").get();
-      for (const classDoc of classesSnap.docs) {
-        const code = classDoc.id.toLowerCase();
-        const candidateEmail = `${sid}@${code}.alchan`;
-        try {
-          await admin.auth().getUserByEmail(candidateEmail);
-          return { email: candidateEmail };
-        } catch (_) {
-          // 해당 학급코드에 없음, 다음 시도
-        }
+      // Firestore 문서가 없어도 Auth 계정은 있을 수 있다(문서 유실 케이스).
+      // 이 분기도 '주어진 학급코드'에 한정되므로 열거에 쓸 수 없다.
+      try {
+        await admin.auth().getUserByEmail(candidateEmail);
+        return { email: candidateEmail };
+      } catch (_) {
+        return { email: null };
       }
-
-      return { email: null };
     } catch (error) {
       logger.error("[resolveStudentEmail] 실패:", error);
       throw new HttpsError("internal", "학생 계정 조회에 실패했습니다.");

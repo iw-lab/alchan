@@ -462,51 +462,22 @@ const Login = () => {
  return;
  }
  setIsLoading(true);
- // 학급코드 없이 입력된 경우 Cloud Function으로 학생 이메일 조회
+ // 🔒 학급코드 필수 (2026-08-03 보안 수정).
+ //    예전에는 아이디만 넣으면 CF(resolveStudentEmail)가 이메일 전체 = 학급코드까지
+ //    돌려줬다. 그게 "아이디 하나 → 그 학생의 학급 파악 → repairStudentLogin 으로
+ //    비밀번호 리셋 → 계정 탈취" 체인의 첫 단계였다(미인증 호출로 실증).
+ //    이제 CF 도 학급코드를 요구하므로 여기서 미리 막는다.
+ //    ⚠️ 같은 기기에서 한 번 로그인했으면 아래에서 캐시해 두므로 다시 입력할 필요 없다.
  if (activeTab === "student" && !classCode.trim()) {
- const cacheKey = `studentEmail_${studentId.trim().toLowerCase()}`;
- const cachedEmail = localStorage.getItem(cacheKey);
+ const cachedEmail = localStorage.getItem(
+ `studentEmail_${studentId.trim().toLowerCase()}`,
+ );
  if (cachedEmail) {
  loginEmail = cachedEmail;
  } else {
- const resolveEmail = async () => {
- const { functions: firebaseFunctions } = await import("../../firebase");
- const resolveFn = httpsCallable(firebaseFunctions, "resolveStudentEmail");
- const result = await resolveFn({ studentId: studentId.trim() });
- return result.data.email;
- };
- try {
- let resolved = await resolveEmail();
- if (!resolved) {
- // 한 번 재시도 (콜드스타트 후 warm 상태에서)
- await new Promise((r) => setTimeout(r, 2000));
- resolved = await resolveEmail();
- }
- if (!resolved) {
- setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
+ setError("학급코드를 입력해주세요.");
  setIsLoading(false);
  return;
- }
- loginEmail = resolved;
- localStorage.setItem(cacheKey, resolved);
- } catch (err) {
- // 콜드스타트로 실패 시 1회 자동 재시도
- try {
- await new Promise((r) => setTimeout(r, 2000));
- const resolved = await resolveEmail();
- if (!resolved) {
- setError("해당 아이디의 학생 계정을 찾을 수 없습니다. 학급코드를 입력해주세요.");
- setIsLoading(false);
- return;
- }
- loginEmail = resolved;
- localStorage.setItem(cacheKey, resolved);
- } catch (retryErr) {
- setError("학생 계정 조회 중 오류가 발생했습니다. 학급코드를 입력해주세요.");
- setIsLoading(false);
- return;
- }
- }
  }
  }
  try {
@@ -531,7 +502,13 @@ const Login = () => {
  try {
  repairResult = await doRepair();
  } catch (firstErr) {
- // 콜드스타트 실패 시 2초 후 재시도
+ // 🔒 permission-denied 는 "서버가 거부했다"는 뜻이다. 이 함수에서는 대개
+ //    "복구 대상이 아니다"(계정이 이미 있거나 학생 문서가 없다)지만, App Check 실패
+ //    같은 다른 사유도 같은 코드를 낼 수 있으므로 '계정이 존재한다'로 단정하지 않는다.
+ //    확실한 건 하나다 — **재시도로 풀릴 성질이 아니다**. 그래서 2초를 버리지 않는다.
+ //    처리는 아래 catch 한 곳에서 한다(1차·2차 어느 쪽에서 나오든 같게 다루려고).
+ if (firstErr?.code === "functions/permission-denied") throw firstErr;
+ // 그 외(콜드스타트 등)만 2초 후 1회 재시도
  logger.log("[Login] 복구 1차 실패, 재시도...");
  await new Promise((r) => setTimeout(r, 2000));
  repairResult = await doRepair();
@@ -543,6 +520,14 @@ const Login = () => {
  logger.log("[Login] 학생 계정 복구 후 로그인 성공:", loginEmail);
  } catch (repairError) {
  logger.error("[Login] 학생 계정 복구 실패:", repairError);
+ // 서버가 '복구 대상 아님'이라 확답한 경우(1차든 2차든). 압도적으로 흔한 원인은
+ // 그냥 비밀번호를 틀린 것이므로 그렇게 안내하고, 반복되면 선생님께 가도록 한다.
+ if (repairError?.code === "functions/permission-denied") {
+ setError(
+ "비밀번호가 올바르지 않습니다. 여러 번 틀렸다면 선생님께 비밀번호를 다시 정해 달라고 하세요.",
+ );
+ return; // isLoading 은 바깥 finally 가 내린다
+ }
  throw loginError;
  }
  } else {
@@ -552,12 +537,23 @@ const Login = () => {
 
  if (firebaseUser) {
  if (activeTab === "student") {
+ const sidKey = `studentEmail_${studentId.trim().toLowerCase()}`;
  if (saveId) {
  localStorage.setItem("savedStudentId", studentId.trim());
+ // ⚠️ 빈 값으로 덮어쓰지 않는다. 캐시된 이메일로 로그인하면 학급코드 칸이 비어 있는데,
+ //    그대로 저장하면 예전에 저장해 둔 학급코드가 지워져 다음 로그인이 더 불편해진다.
+ if (classCode.trim()) {
  localStorage.setItem("savedClassCode", classCode.trim());
+ }
+ // 학급코드 CF 조회를 없앤 대신, 성공한 이메일을 이 기기에만 기억해
+ // 다음부터는 아이디만으로 로그인할 수 있게 한다(서버 조회 없음).
+ localStorage.setItem(sidKey, loginEmail);
  } else {
  localStorage.removeItem("savedStudentId");
  localStorage.removeItem("savedClassCode");
+ // '아이디 저장' 해제 = 이 기기에 아무것도 남기지 않는다.
+ // 교실 공용 PC 를 고려하면 이쪽이 기본값이어야 한다.
+ localStorage.removeItem(sidKey);
  }
  } else {
  if (saveId) localStorage.setItem("savedLoginId", loginEmail);
