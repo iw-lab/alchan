@@ -45,7 +45,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
+    "test": "vitest run",
     "test:unit": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
@@ -53,7 +53,9 @@
     "deploy": "npx firebase-tools deploy --only functions",
     "deploy:hosting": "npx firebase-tools deploy --only hosting",
     "deploy:all": "npx firebase-tools deploy",
-    "firebase": "npx firebase-tools"
+    "firebase": "npx firebase-tools",
+    "test:watch": "vitest",
+    "test:cra": "react-scripts test --env=jsdom --watchAll=false"
   },
   "browserslist": [
     ">0.2%",
