@@ -69,21 +69,6 @@
       "density": "SPARSE_ALL"
     },
     {
-      "collectionGroup": "omokGames",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "gameStatus",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ],
-      "density": "SPARSE_ALL"
-    },
-    {
       "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -162,8 +147,8 @@
         }
       ],
       "density": "SPARSE_ALL"
-    }
-    ,{
+    },
+    {
       "collectionGroup": "groupPurchases",
       "queryScope": "COLLECTION",
       "fields": [

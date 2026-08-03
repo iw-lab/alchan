@@ -687,64 +687,17 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.requesterId) || isAdmin();
     }
 
-    // ========================================================
-    // 🎮 게임 (games - 오목, 장기, 체스 등)
-    // ========================================================
-    match /games/{gameId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() &&
-                       (resource.data.player1 == request.auth.uid ||
-                        resource.data.player2 == request.auth.uid ||
-                        isAdmin());
-      allow delete: if isAdmin();
-    }
+    // 🎮 범용 게임 컬렉션(games — 오목·장기·체스)도 2026-08-03 제거.
+    //    codex 교차검증 발견: 이 규칙만 `create: if isSignedIn()` 이라 로그인한 학생이
+    //    문서를 무제한 생성할 수 있었는데, src/·functions/ 어디에도 이 컬렉션을 쓰는
+    //    코드가 없었다(사용처 0). 즉 기능은 없고 쓰기 공격면만 열려 있던 상태다.
+    //    자산 민팅 경로는 아니지만 저장·쓰기 비용을 태울 수 있어 함께 닫는다.
 
     // ========================================================
-    // ♟️ 체스 게임 (chessGames)
+    // 🎮 게임 컬렉션(chessGames·omokGames·gonuGames)은 2026-08-03 제거
+    //    게임 기능 자체를 걷어내면서 규칙도 함께 삭제 — 기본 deny로 떨어진다.
+    //    기존 문서는 Firestore에 남아 있으나 읽기·쓰기 모두 차단된다.
     // ========================================================
-    match /chessGames/{gameId} {
-      allow read, create: if isSignedIn();
-      allow update: if isSignedIn() &&
-                       (resource.data.players.white == request.auth.uid ||
-                        resource.data.players.black == request.auth.uid ||
-                        resource.data.aiMode == true ||
-                        resource.data.status == "waiting" ||
-                        isAdmin());
-      allow delete: if isSignedIn() &&
-                       (resource.data.players.white == request.auth.uid ||
-                        resource.data.players.black == request.auth.uid ||
-                        isAdmin());
-    }
-
-    // ========================================================
-    // ⚫️ 오목 게임 (omokGames)
-    // ========================================================
-    match /omokGames/{gameId} {
-      allow read, create: if isSignedIn();
-      // 이미 플레이어이거나, 대기 중인 방에 입장하려는 경우(join), 또는 관리자
-      allow update: if isSignedIn() && (
-        request.auth.uid in resource.data.players.keys() ||
-        resource.data.gameStatus == "waiting" ||
-        isAdmin()
-      );
-      allow delete: if isSignedIn() && (resource.data.host == request.auth.uid || isAdmin());
-    }
-
-    // ========================================================
-    // 🎮 고누 게임 (gonuGames)
-    // ========================================================
-    match /gonuGames/{gameId} {
-      allow read, create: if isSignedIn();
-      allow update: if isSignedIn() &&
-                       (resource.data.players.B == request.auth.uid ||
-                        resource.data.players.W == request.auth.uid ||
-                        isAdmin());
-      allow delete: if isSignedIn() &&
-                       (resource.data.players.B == request.auth.uid ||
-                        resource.data.players.W == request.auth.uid ||
-                        isAdmin());
-    }
 
     // ========================================================
     // 📊 통계 (system_stats)

@@ -52,7 +52,6 @@ exports.weeklyPropertyTax = scheduler.weeklyPropertyTax; // 부동산 보유세 
 exports.reverseLastWeeklySalary = scheduler.reverseLastWeeklySalary; // 🚨 일회성 회수 endpoint (2026-04-13 중복지급 롤백)
 exports.backfillSalaryLogs = scheduler.backfillSalaryLogs; // 🔁 과거 주급 기록 소급 백필 endpoint
 exports.backfillDrawItems = scheduler.backfillDrawItems; // 🎰 깨진 랜덤뽑기 인벤토리 보정 endpoint
-exports.cleanupStaleOmokGames = scheduler.cleanupStaleOmokGames; // 🧹 유령 오목 방 정리 (heartbeat 기반)
 
 // 🔥 경제 이벤트 시스템
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
@@ -342,21 +341,20 @@ exports.claimDailyReward = onCall(
 //   ⚠️ 한계: 서버는 학생이 실제로 게임을 이겼는지 검증할 수 없다(클라 주장). 그래서 무한증식만
 //         차단(일일 상한 + 금액 상한). 금액은 클라 제안값을 상한 내에서 수용하되 audit 로그로 기록.
 //   ⚠️ 병행 배포: rules 미변경(P2 배치6에서 gameRewardDaily·cash 직접 write 잠금).
-// 게임별 보상 상한 (모듈 상수 — 매 호출 재생성 방지).
-//   ⚠️ 클라 보상표의 최대치와 반드시 동기화: typing=typingWords.js(10만/20),
-//      chess=ChessGame.generateRewardCards(5만/20), omok=OmokGame.generateRewardCards(최대 8999/3).
-//      어느 한쪽만 바뀌면 정상 보상이 거부되거나(상한↓) 새 취약점이 생기므로(상한↑) 함께 수정할 것.
-//   transcription: TranscriptionMode.claimReward가 이 CF로 배선됨(batch7-b, 도장은 클라·쿠폰은 CF).
+// 보상 상한 (모듈 상수 — 매 호출 재생성 방지).
 //   comment: LearningBoard 댓글 쿠폰이 이 CF로 배선됨(batch7-b, 하루 3개).
+//   ⚠️ 여기에 새 타입을 추가할 때는 클라 보상표 최대치와 반드시 동기화할 것 —
+//      어느 한쪽만 바뀌면 정상 보상이 거부되거나(상한↓) 새 취약점이 생긴다(상한↑).
+// 🔒 2026-08-03: 게임(typing·chess·omok·transcription) 제거에 맞춰 보상 타입도 제거.
+//    게임 보상은 "학생이 실제로 이겼는지"를 서버가 검증할 수 없어 일일 상한으로 피해
+//    상한만 두던 구조적 민팅 경로였다(클라가 결과를 주장하면 서버는 믿을 수밖에 없음).
+//    클라이언트가 사라진 뒤에도 CF가 타입을 계속 받으면 공격면은 그대로 남는다 —
+//    구 상한 기준 학생 1인당 하루 최대 약 69.5만(typing 10만×5 + chess 5만×3 + omok 9천×5).
+//    남은 comment 는 학습게시판 댓글 쿠폰으로 현재도 사용 중(LearningBoard.js:752).
 const GAME_REWARD_CONFIG = {
-  // typing 쿠폰 실제 최대 = round(20 * COUPON_REDUCTION(1/3)) = 7 (typingWords.js:639).
-  //   보상표 원값 20이 아니라 감산 후 값이라 상한을 7로 둬야 조작 요청(8~20)을 막는다.
-  typing: { maxCash: 100000, maxCoupon: 7, dailyLimit: 5 },
-  chess: { maxCash: 50000, maxCoupon: 20, dailyLimit: 3 },
-  omok: { maxCash: 9000, maxCoupon: 3, dailyLimit: 5 },
-  transcription: { maxCash: 0, maxCoupon: 1, dailyLimit: 10 },
   // 🔒 batch7-b: 학습게시판 댓글 쿠폰(구 LearningBoard 클라 addCouponsToUser 자가지급, 하루 3개).
   //    coupons rules 잠금으로 클라 직접 자가적립을 막고 서버 캡(dailyLimit 3)으로 이관.
+  //    cash는 0이라 현금 민팅 경로가 아니다.
   comment: { maxCash: 0, maxCoupon: 1, dailyLimit: 3 },
 };
 

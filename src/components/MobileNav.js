@@ -17,29 +17,16 @@ const MobileNav = memo(function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 2026-08-03: 게임 탭 전용이던 `tab.paths` 분기 제거(유일한 사용처가 /learning-games였고
+  // 클릭 시 "/omok"을 덧붙였다). 이제 모든 탭이 단일 `path`를 쓴다.
   const isTabActive = useCallback(
-    (tab) => {
-      if (tab.paths) {
-        return tab.paths.some((p) => location.pathname.startsWith(p));
-      }
-      return (
-        location.pathname === tab.path ||
-        location.pathname.startsWith(tab.path + "/")
-      );
-    },
+    (tab) =>
+      location.pathname === tab.path ||
+      location.pathname.startsWith(tab.path + "/"),
     [location.pathname],
   );
 
-  const handleTabClick = useCallback(
-    (tab) => {
-      if (tab.paths) {
-        navigate(tab.paths[0] + "/omok");
-      } else {
-        navigate(tab.path);
-      }
-    },
-    [navigate],
-  );
+  const handleTabClick = useCallback((tab) => navigate(tab.path), [navigate]);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 backdrop-blur-md border-t pb-safe pt-2 px-6 z-50" style={{ backgroundColor: "rgba(15, 18, 37, 0.95)", borderColor: "rgba(100, 116, 139, 0.2)" }}>

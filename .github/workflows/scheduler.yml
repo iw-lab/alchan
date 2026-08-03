@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, cleanup-omok, backfill-salary-dry, backfill-salary-commit, backfill-draw-dry, backfill-draw-commit, recover-teachers, init-classroom, backfill-musicrooms, migrate-store-price-down)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, backfill-salary-dry, backfill-salary-commit, backfill-draw-dry, backfill-draw-commit, recover-teachers, init-classroom, backfill-musicrooms, migrate-store-price-down)'
         required: true
         default: 'reset'
       weekKey:
@@ -192,18 +192,8 @@ jobs:
           echo "HTTP Status: $HTTP_STATUS"
           echo "Response: $BODY"
 
-      # 🧹 유령 오목 방 정리
-      - name: Cleanup stale omok games
-        continue-on-error: true
-        if: github.event.inputs.task == 'cleanup-omok'
-        run: |
-          echo "🧹 유령 오목 방 정리 시작"
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            "https://cleanupstaleomokgames-j7kazbsvxq-du.a.run.app?token=${{ secrets.SCHEDULER_AUTH_TOKEN }}")
-          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
-          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
-          echo "HTTP Status: $HTTP_STATUS"
-          echo "Response: $BODY"
+      # 🧹 유령 오목 방 정리 스텝은 2026-08-03 제거 — 게임 기능과 함께 CF를 없앴다.
+      #    남겨두면 수동 실행 시 삭제된 엔드포인트로 요청해 404가 난다.
 
       # 🚨 주급 회수 - 실제 실행
       - name: Reverse salary (commit)

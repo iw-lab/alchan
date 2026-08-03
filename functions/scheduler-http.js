@@ -449,14 +449,6 @@ exports.midnightReset = onRequest(
         savingsResult.error = savingsError.message;
       }
 
-      // 🔥 유령 오목 방 정리
-      let omokCleanup = null;
-      try {
-        omokCleanup = await cleanupStaleOmokGamesLogic();
-      } catch (e) {
-        logger.error("[midnightReset] 오목 방 정리 오류:", e);
-      }
-
       // 🔥 리셋 완료 기록 (중복 방지용)
       await db.collection("systemState").doc("lastMidnightReset").set({
         date: todayStr,
@@ -468,7 +460,6 @@ exports.midnightReset = onRequest(
         message: "일일 과제 리셋 + 적금 자동 납입 완료",
         date: todayStr,
         savings: savingsResult,
-        omokCleanup,
       });
     } catch (error) {
       logger.error("[midnightReset] 오류:", error);
@@ -899,73 +890,6 @@ exports.weeklyPropertyTax = onRequest(
   },
 );
 
-// ===================================================================================
-// 🧹 유령 오목 방 정리 — heartbeat 기반 stale 감지
-// waiting 상태 + lastHeartbeat 90초 이상 (or createdAt 3분 이상) 오래된 방 삭제
-// ===================================================================================
-async function cleanupStaleOmokGamesLogic() {
-  const now = Date.now();
-  const HEARTBEAT_STALE_MS = 90 * 1000;
-  const LEGACY_STALE_MS = 3 * 60 * 1000;
-
-  const snap = await db
-    .collection("omokGames")
-    .where("gameStatus", "==", "waiting")
-    .get();
-
-  let deleted = 0;
-  let kept = 0;
-  const batch = db.batch();
-  for (const doc of snap.docs) {
-    const data = doc.data();
-    const hb = data.lastHeartbeat?.toMillis?.();
-    const created = data.createdAt?.toMillis?.();
-    let stale = false;
-    if (hb) {
-      stale = now - hb > HEARTBEAT_STALE_MS;
-    } else if (created) {
-      stale = now - created > LEGACY_STALE_MS;
-    } else {
-      stale = true;
-    }
-    if (stale) {
-      batch.delete(doc.ref);
-      deleted++;
-    } else {
-      kept++;
-    }
-  }
-  if (deleted > 0) {
-    await batch.commit();
-  }
-  logger.info(`[cleanupStaleOmokGames] deleted=${deleted} kept=${kept}`);
-  return { deleted, kept };
-}
-
-exports.cleanupStaleOmokGames = onRequest(
-  {
-    region: "asia-northeast3",
-    timeoutSeconds: 120,
-    invoker: "public",
-  },
-  async (req, res) => {
-    try {
-      const token = req.query.token;
-      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-        res.status(401).json({ success: false, error: "Unauthorized" });
-        return;
-      }
-      const result = await cleanupStaleOmokGamesLogic();
-      res.json({ success: true, ...result });
-    } catch (error) {
-      logger.error("[cleanupStaleOmokGames] 오류:", error, error?.stack);
-      res.status(500).json({
-        success: false,
-        error: error?.message || String(error),
-      });
-    }
-  },
-);
 
 // ===================================================================================
 // 🚨 일회성 회수 endpoint - 2026-04-13 테스트 중복 지급 롤백용
@@ -2976,6 +2900,25 @@ exports.cleanupExpiredDocuments = onRequest(
   { region: "asia-northeast3", timeoutSeconds: 120 },
   async (req, res) => {
     try {
+      // 🔒 2026-08-03: 이 엔드포인트만 형제 17개와 달리 토큰 검사가 없어 인증 없이
+      //    호출 가능했다. 만료(expireAt <= now)된 문서만 지우므로 자산 위조 경로는
+      //    아니지만, 반복 호출로 컬렉션당 500건씩 읽기·삭제를 유발해 과금을 태울 수
+      //    있었다(activity_logs는 감사 로그라 조기 삭제 자체도 바람직하지 않다).
+      const token = req.query.token;
+      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
+        // ⚠️ 이 엔드포인트는 저장소 안에 호출자가 없다(GHA 워크플로에도 없음). 정기 실행이
+        //    있다면 GCP Cloud Scheduler에 콘솔로 직접 등록된 것이고, 그 job의 URL에
+        //    ?token= 이 없으면 이 인증 추가로 조용히 멈춘다. 그래서 눈에 띄게 남긴다 —
+        //    로그에 이 문구가 보이면 해당 job URL에 토큰을 붙일 것.
+        logger.warn(
+          "[cleanupExpiredDocuments] 401 — 토큰 없는 호출. 정기 실행 job이라면 " +
+            "Cloud Scheduler URL에 ?token=<SCHEDULER_AUTH_TOKEN> 추가 필요.",
+          { hasToken: Boolean(token), ua: req.get("user-agent") || null }
+        );
+        res.status(401).json({ success: false, error: "Unauthorized" });
+        return;
+      }
+
       const now = admin.firestore.Timestamp.now();
       const collections = [
         { name: "activity_logs", field: "expireAt" },
@@ -3240,7 +3183,8 @@ async function migrateCashPenaltyDescriptionsOnce() {
 
 // ===================================================================================
 // 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋(0시), 경제이벤트(8~17시), 환율(7시)
-// 1개 Cloud Scheduler job으로 자정리셋/경제이벤트/환율/적금납입/오목정리 통합 처리
+// 1개 Cloud Scheduler job으로 자정리셋/경제이벤트/환율/적금납입 통합 처리
+// (2026-08-03: 게임 제거로 '오목정리' 단계는 삭제됨)
 // ===================================================================================
 exports.hourlySchedulerV2 = onSchedule(
   {
@@ -3282,12 +3226,6 @@ exports.hourlySchedulerV2 = onSchedule(
             logger.info("[hourlyV2] 적금 자동 납입 완료:", savingsResult);
           } catch (e) {
             logger.error("[hourlyV2] 적금 자동 납입 오류:", e);
-          }
-
-          try {
-            await cleanupStaleOmokGamesLogic();
-          } catch (e) {
-            logger.error("[hourlyV2] 오목 정리 오류:", e);
           }
 
           await db.collection("systemState").doc("lastMidnightReset").set({
