@@ -85,19 +85,19 @@ const TUTORIAL_STEPS = [
     },
   },
   {
-    id: "games",
-    title: "게임으로 실력 겨루기 🎮",
-    description: "친구들과 오목, 타자연습 등 게임을 즐겨요!",
+    id: "shopping",
+    title: "번 돈으로 사고팔기 🛍️",
+    description: "상점에서 아이템을 사고, 내 물건은 개인 상점에 팔아요!",
     icon: Gamepad2,
     color: "from-purple-500 to-violet-600",
     tips: [
-      "오목, 체스 게임이 있어요",
-      "타자연습으로 실력을 키워요",
-      "게임에서 이기면 보상을 받을 수도!",
+      "아이템 상점에서 필요한 걸 사요",
+      "개인 상점을 열어 친구에게 팔 수 있어요",
+      "경매장에서는 더 비싸게 팔 수도 있어요",
     ],
     action: {
-      label: "게임 하기",
-      path: "/learning-games/omok",
+      label: "상점 가기",
+      path: "/item-shop",
     },
   },
   {

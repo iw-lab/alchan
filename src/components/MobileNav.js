@@ -3,12 +3,13 @@
 
 import React, { useCallback, useMemo, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Wallet, Gamepad2, Users } from "lucide-react";
+import { Home, Wallet, Store, Users } from "lucide-react";
 
 const tabs = [
   { id: "home", icon: Home, label: "홈", path: "/dashboard/tasks" },
   { id: "assets", icon: Wallet, label: "자산", path: "/my-assets" },
-  { id: "game", icon: Gamepad2, label: "게임", paths: ["/learning-games"] },
+  // 게임 탭(2026-08-03 제거) 자리에 아이템 상점 — 경제 활동 동선으로 대체.
+  { id: "shop", icon: Store, label: "상점", path: "/item-shop" },
   { id: "community", icon: Users, label: "커뮤니티", path: "/learning-board" },
 ];
 

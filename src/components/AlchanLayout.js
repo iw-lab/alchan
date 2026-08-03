@@ -88,12 +88,9 @@ const Banking = lazyWithRetry(() => import("../pages/banking/Banking"));
 const MyProfile = lazyWithRetry(() => import("../pages/my-profile/MyProfile"));
 const MyAssets = lazyWithRetry(() => import("../pages/my-assets/MyAssets"));
 
-// 🔥 게임 페이지 - 동적 로딩 (번들 크기 절감)
-const OmokGame = lazyWithRetry(() => import("../pages/games/OmokGame"));
-const ChessGame = lazyWithRetry(() => import("../pages/games/ChessGame"));
-const TypingPracticeGame = lazyWithRetry(
-  () => import("../pages/games/TypingPracticeGame"),
-);
+// 게임(오목·체스·타자)은 2026-08-03 제거 — 경제 교육 본질과 무관하고
+// three.js 875KB 청크·에셋 1.4MB를 끌고 왔으며, grantGameReward는 서버가
+// "실제로 이겼는지" 검증할 수 없는 구조적 공격면이었다.
 
 // 🔥 관리자/선생님 페이지 - 동적 로딩
 const AdminApprovalPanel = lazyWithRetry(
@@ -544,31 +541,8 @@ export default function AlchanLayout() {
                   }
                 />
 
-                {/* 게임 */}
-                <Route
-                  path="/learning-games/omok"
-                  element={
-                    <ProtectedRoute>
-                      <OmokGame />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/learning-games/typing"
-                  element={
-                    <ProtectedRoute>
-                      <TypingPracticeGame />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/learning-games/science"
-                  element={
-                    <ProtectedRoute>
-                      <ChessGame />
-                    </ProtectedRoute>
-                  }
-                />
+                {/* 게임 라우트(/learning-games/*)는 2026-08-03 제거 —
+                    사이드바 항목도 함께 삭제. 옛 링크는 아래 * 폴백이 처리한다. */}
 
                 {/* 아이템 */}
                 <Route

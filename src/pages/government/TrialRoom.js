@@ -24,8 +24,8 @@ import { db, storage } from "../../firebase";
 import "./TrialRoom.css";
 
 import { logger } from "../../utils/logger";
-// 재판방 비주얼 개편(CourtroomScene) 보류 — WIP. 추후 에셋 커밋 후 활성화.
-// import CourtroomScene from "./CourtroomScene";
+// 재판방 3D 비주얼(CourtroomScene)은 2026-08-03 제거 — 활성화된 적 없는 WIP인데
+// 에셋 11MB를 배포마다 끌고 다녔다. 재판 기능 자체는 아래 패널에서 그대로 동작한다.
 
 // 재판방 + 서브컬렉션(messages, evidence) 깊은 삭제 — DB 사용량 절감.
 // 판결 결과는 trialResults 에 영구 보존되므로 방 자체는 삭제해도 안전.
@@ -733,7 +733,6 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       
       <div className="trial-room-layout">
         <div className="courtroom-view">
-          {/* 재판방 비주얼 개편(CourtroomScene) 보류 — 추후 활성화. 재판 기능은 우측 패널에서 그대로 동작. */}
           <div
             className="courtroom-scene-placeholder"
             style={{

@@ -30,7 +30,6 @@ import {
   TrendingUp,
   Landmark,
   FileText,
-  Crown,
   ShoppingBag,
   Building2,
   Music,
@@ -46,7 +45,6 @@ import {
   BarChart3,
   BookOpen,
   Keyboard,
-  Circle,
   LayoutDashboard,
   CheckCircle,
   Zap,
@@ -142,35 +140,7 @@ export const ALCHAN_MENU_ITEMS = [
     category: "main",
   },
 
-  // Games Category - 게임
-  {
-    id: "gamesCategory",
-    label: "알찬 학습 게임",
-    icon: Gamepad2,
-    isCategory: true,
-    category: "play",
-  },
-  {
-    id: "omokGame",
-    label: "오목",
-    icon: Circle,
-    path: "/learning-games/omok",
-    parentId: "gamesCategory",
-  },
-  {
-    id: "typingGame",
-    label: "타자연습",
-    icon: Keyboard,
-    path: "/learning-games/typing",
-    parentId: "gamesCategory",
-  },
-  {
-    id: "chessGame",
-    label: "체스 게임",
-    icon: Crown,
-    path: "/learning-games/science",
-    parentId: "gamesCategory",
-  },
+  // 게임 카테고리(오목·타자연습·체스)는 2026-08-03 제거 — 경제 교육 본질에 집중.
 
   // Items Category - 아이템
   {
