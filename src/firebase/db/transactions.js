@@ -5,13 +5,9 @@ import {
   doc,
   updateDoc,
   collection,
-  getDocs,
   serverTimestamp,
   increment,
   runTransaction,
-  writeBatch,
-  query as originalFirebaseQuery,
-  where as originalFirebaseWhere,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { invalidateCache } from "../firebaseUtils";
@@ -263,59 +259,14 @@ export const processGenericSaleTransaction = async (classCode, buyerId, sellerId
   }
 };
 
-export const collectPropertyHoldingTaxes = async (classCode) => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  const adminUid = await getClassAdminUid(classCode);
-  try {
-    const governmentSettings = await getGovernmentSettings(classCode);
-    const taxRate = governmentSettings?.taxSettings?.propertyHoldingTaxRate || 0;
-    if (taxRate === 0) {
-      return { success: true, totalCollected: 0, userCount: 0 };
-    }
-    const usersQuery = originalFirebaseQuery(
-      collection(db, "users"),
-      originalFirebaseWhere("classCode", "==", classCode)
-    );
-    const usersSnapshot = await getDocs(usersQuery);
-    const batch = writeBatch(db);
-    let totalTaxCollected = 0;
-    let processedUserCount = 0;
-    const logPromises = [];
-    for (const userDoc of usersSnapshot.docs) {
-      const userId = userDoc.id;
-      const userRef = doc(db, "users", userId);
-      let userTotalTax = 0;
-      let totalPropertyValue = 0;
-      const propertiesRef = collection(db, "users", userId, "properties");
-      const propertiesSnapshot = await getDocs(propertiesRef);
-      if (propertiesSnapshot.empty) continue;
-      propertiesSnapshot.forEach((propDoc) => {
-        const propertyValue = propDoc.data().value || 0;
-        totalPropertyValue += propertyValue;
-        userTotalTax += Math.round(propertyValue * taxRate);
-      });
-      if (userTotalTax > 0) {
-        invalidateCache(`user_${userId}`);
-        batch.update(userRef, { cash: increment(-userTotalTax) });
-        totalTaxCollected += userTotalTax;
-        processedUserCount++;
-        const logDescription = `소유 부동산 (총 가치 ${totalPropertyValue}${getCurrencyUnit()})에 대한 보유세 ${userTotalTax}${getCurrencyUnit()}이 징수되었습니다.`;
-        logPromises.push(addActivityLog(userId, '세금 납부 (보유세)', logDescription));
-      }
-    }
-    if (totalTaxCollected > 0 && adminUid) {
-      const adminRef = doc(db, "users", adminUid);
-      invalidateCache(`user_${adminUid}`);
-      batch.update(adminRef, { cash: increment(totalTaxCollected) });
-    }
-    await batch.commit();
-    await Promise.all(logPromises);
-    return { success: true, totalCollected: totalTaxCollected, userCount: processedUserCount };
-  } catch (error) {
-    logger.error(`[firebase.js] 부동산 보유세 징수 오류 (학급: ${classCode}):`, error);
-    throw error;
-  }
-};
+// 🗑️ collectPropertyHoldingTaxes 제거 (2026-08-03, Phase 1 자산 안전망)
+//   클라이언트 측 부동산 보유세 징수. 호출부가 0이었지만 배럴(src/firebase.js 등)로
+//   앱 표면에 노출돼 있어 언제든 되살아날 수 있는 두 번째 징수 경로였다. 서버 경로
+//   (scheduler-http.js collectPropertyHoldingTaxesLogic)와 어긋난 점:
+//     - weekKey 이중과세 가드가 없다 → 서버 징수와 같은 주에 돌면 두 번 걷힌다
+//     - 과세표준이 users/{uid}/properties (레거시 경로) — 서버는 통일된 realEstateValue 사용
+//     - 감사 로그에 expireAt 이 없어 TTL 정리 대상에서 누락
+//   보유세 징수 경로는 이제 서버 하나뿐이고, 공식은 functions/taxMath.js 단일 정본이다.
 
 // =================================================================
 // 기부/합의 기록

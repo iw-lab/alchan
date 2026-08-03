@@ -29,6 +29,7 @@ const {
 
 const { payMonthlyDividends } = require("./dividendService");
 const { buildJobMap, resolveStudentJobs, hasJobTitle } = require("./jobUtils");
+const { normalizeWeeklyTaxSettings, computeWeeklyTax } = require("./taxMath");
 // 급여 계산 단일 진실원(index.js batchPaySalaries와 공유).
 const {
   computeSalaryAmounts,
@@ -2660,22 +2661,18 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
       //   netAssetTaxRate: 순자산 세율(기본 0.5%), netAssetTaxExemption: 면세 기준(순자산 이 값 초과면 과세),
       //   propertyHoldingTaxRate: 부동산 보유세율(플랫, 기본 0.2%). 과거 taxSettings 컬렉션(dead)·누진
       //   알고리즘 대신 교사가 편집한 값을 직접 사용(사용자 결정 2026-07-21).
-      let netAssetTaxRate = 0.005;
-      let netAssetExemption = 0; // 순자산 0원 초과 = 모두 과세
-      let propertyHoldingTaxRate = 0.002; // 부동산 보유세 플랫 세율(기본 0.2%)
+      // 세율 정규화(기본값 적용·클램프)는 taxMath.js 단일 정본 — 공식이 테스트로 고정돼 있다.
+      let rawTaxSettings = {};
       try {
         const gsDoc = await db.collection("governmentSettings").doc(classCode).get();
-        const t = (gsDoc.exists && gsDoc.data().taxSettings) || {};
-        if (Number.isFinite(t.netAssetTaxRate)) netAssetTaxRate = t.netAssetTaxRate;
-        if (Number.isFinite(t.netAssetTaxExemption)) netAssetExemption = t.netAssetTaxExemption;
-        if (Number.isFinite(t.propertyHoldingTaxRate)) propertyHoldingTaxRate = t.propertyHoldingTaxRate;
+        rawTaxSettings = (gsDoc.exists && gsDoc.data().taxSettings) || {};
       } catch (err) {
         logger.warn(`[주간세] ${classCode}: governmentSettings 조회 실패 - 기본값 사용`, err.message);
       }
-      // 세율 클램프(음수·비정상 값이 과세를 뒤집지 않게) — 0~100% 범위.
-      netAssetTaxRate = Math.min(Math.max(netAssetTaxRate, 0), 1);
-      propertyHoldingTaxRate = Math.min(Math.max(propertyHoldingTaxRate, 0), 1);
-      if (!Number.isFinite(netAssetExemption) || netAssetExemption < 0) netAssetExemption = 0;
+      const taxSettings = normalizeWeeklyTaxSettings(rawTaxSettings);
+      const netAssetTaxRate = taxSettings.netAssetTaxRate;
+      const netAssetExemption = taxSettings.netAssetTaxExemption;
+      const propertyHoldingTaxRate = taxSettings.propertyHoldingTaxRate;
 
       let classTotalTax = 0;
       let classNetAssetTax = 0;
@@ -2686,21 +2683,16 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
       for (const result of validResults) {
         const { userId, userName, netAssets, realEstateValue } = result;
 
-        // ── 1) 순자산세 — 순자산 기준, 모든 학생 대상 (현금이 아닌 순자산!) ──
-        const netAssetTax = netAssets > netAssetExemption
-          ? Math.round(netAssets * netAssetTaxRate)
-          : 0;
-
-        // ── 2) 부동산 보유세 — 부동산 가치 × 교사 UI 플랫 세율(2026-07-21 사용자 결정: 누진 알고리즘 포기) ──
-        //   기존 classBaseRate×개인배율(lookupProgressiveMultiplier) 누진 대신 governmentSettings의
-        //   propertyHoldingTaxRate를 그대로 적용. classBaseRate/gini는 거시경제 대시보드용으로만 계속 계산.
-        const finalRate = propertyHoldingTaxRate;
+        // ── 세액 계산 — 공식은 taxMath.js 단일 정본(taxMath.test.js 가 고정) ──
+        //   1) 순자산세: 순자산이 면세 기준을 초과할 때만. 과세표준은 현금이 아니라 순자산.
+        //   2) 부동산 보유세: 부동산 가치 × 교사 UI 플랫 세율(2026-07-21 누진 알고리즘 폐지).
+        //      기존 classBaseRate×개인배율(lookupProgressiveMultiplier) 대신 governmentSettings 값을
+        //      그대로 적용. classBaseRate/gini는 거시경제 대시보드용으로만 계속 계산.
+        const { netAssetTax, propertyTax, totalTax } = computeWeeklyTax(
+          { netAssets, realEstateValue },
+          taxSettings,
+        );
         const multiplier = 1; // 누진 배율 폐지 — 팝업 호환 위해 1로 고정
-        const propertyTax = realEstateValue > 0 && finalRate > 0
-          ? Math.round(realEstateValue * finalRate)
-          : 0;
-
-        const totalTax = netAssetTax + propertyTax;
 
         // 학생 팝업 데이터 — 두 세금 항목 모두 저장 (면세든 과세든 알려줌)
         const items = [
@@ -2724,15 +2716,15 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
             type: "propertyHoldingTax",
             label: "부동산 보유세",
             amount: propertyTax,
-            rate: Number(finalRate.toFixed(5)),
+            rate: Number(propertyHoldingTaxRate.toFixed(5)),
             // 플랫 세율 — 팝업의 "학급기본 × 배율" 표기가 헷갈리지 않게 기본=최종세율, 배율=1로 통일.
-            classBaseRate: Number(finalRate.toFixed(5)),
+            classBaseRate: Number(propertyHoldingTaxRate.toFixed(5)),
             multiplier,
             basis: realEstateValue,
             basisLabel: "부동산 가치",
             note: realEstateValue <= 0
               ? "보유 부동산 없음 → 과세 0원"
-              : `부동산 가치의 ${(finalRate * 100).toFixed(2)}%`,
+              : `부동산 가치의 ${(propertyHoldingTaxRate * 100).toFixed(2)}%`,
           },
         ];
 
@@ -2744,7 +2736,7 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
             total: totalTax,
             avgClassNet: avgNet,
             // 플랫 보유세로 전환 — 팝업의 기본세율=최종세율, 배율=1(누진 배율 폐지).
-            classBaseRate: Number(finalRate.toFixed(5)),
+            classBaseRate: Number(propertyHoldingTaxRate.toFixed(5)),
             personalMultiplier: multiplier,
             personalNetAssets: netAssets,
             generatedAt: admin.firestore.Timestamp.now(),
@@ -2783,7 +2775,7 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
             type: "taxPayment",
             description:
               `${sourceLabel} 부동산 보유세 ${propertyTax.toLocaleString()}원 ` +
-              `(세율 ${(finalRate * 100).toFixed(2)}% × 부동산 ${realEstateValue.toLocaleString()}원)`,
+              `(세율 ${(propertyHoldingTaxRate * 100).toFixed(2)}% × 부동산 ${realEstateValue.toLocaleString()}원)`,
             source: triggerSource,
             triggeredBy: triggeredBy || null,
             classCode,

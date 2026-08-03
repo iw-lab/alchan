@@ -33,7 +33,6 @@ export {
   adminWithdrawCash,
   processStockSaleTransaction,
   processGenericSaleTransaction,
-  collectPropertyHoldingTaxes,
   addDonationRecord,
   addSettlementRecord,
   getDonationsForClass,

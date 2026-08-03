@@ -68,7 +68,6 @@ export {
   // 주식/세금
   processStockSaleTransaction,
   processGenericSaleTransaction,
-  collectPropertyHoldingTaxes,
   // 기부/합의
   addDonationRecord,
   addSettlementRecord,
