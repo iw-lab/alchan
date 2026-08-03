@@ -8,9 +8,9 @@
 // ========================================
 
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { httpsCallable } from "firebase/functions";
-import { doc, getDoc, setDoc, getDocFromServer } from "firebase/firestore";
+import { doc, getDocFromServer } from "firebase/firestore";
 import {
   db,
   functions,
@@ -441,11 +441,8 @@ const AdminSettingsModal = ({
   // ========================================
   // 시장 제어 상태
   // ========================================
-  const [marketStatus, setMarketStatus] = useState({ isOpen: false });
+  // marketMessage 는 아래 '주식 정보 초기화'가 공유한다(시장 개폐 제거 후에도 유지).
   const [marketMessage, setMarketMessage] = useState("");
-  const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
-  const marketStatusCache = useRef(null);
-  const CACHE_DURATION = 5 * 60 * 1000; // 5분
 
   // ========================================
   // 파킹 통장 상태
@@ -454,8 +451,6 @@ const AdminSettingsModal = ({
   const [newInterestRate, setNewInterestRate] = useState("");
   const [parkingMessage, setParkingMessage] = useState(null);
 
-  // Firebase Functions
-  const toggleMarketManually = httpsCallable(functions, "toggleMarketManually");
 
   // 급여 설정 상태
   const [salarySettings, setSalarySettings] = useState({
@@ -1649,85 +1644,16 @@ const AdminSettingsModal = ({
     [depositProducts, savingProducts, loanProducts],
   );
 
-  // ========================================
-  // 시장 제어 함수들
-  // ========================================
-
-  // 시장 상태 가져오기
-  const fetchMarketStatus = useCallback(
-    async (forceRefresh = false) => {
-      if (!userClassCode) return;
-
-      // 캐시 확인
-      if (!forceRefresh && marketStatusCache.current && isMarketDataLoaded) {
-        setMarketStatus(marketStatusCache.current);
-        return;
-      }
-
-      try {
-        const marketStatusRef = doc(
-          db,
-          `ClassStock/${userClassCode}/marketStatus/status`,
-        );
-        const docSnap = await getDoc(marketStatusRef);
-
-        let statusData;
-        if (docSnap.exists()) {
-          statusData = docSnap.data();
-        } else {
-          statusData = { isOpen: false };
-          await setDoc(marketStatusRef, statusData);
-        }
-
-        marketStatusCache.current = statusData;
-        setMarketStatus(statusData);
-        setIsMarketDataLoaded(true);
-      } catch (error) {
-        logger.error("시장 상태 조회 실패:", error);
-        setMarketMessage("시장 상태를 불러오는 데 실패했습니다.");
-      }
-    },
-    [userClassCode, isMarketDataLoaded],
-  );
-
-  // 시장 개장/폐장 제어
-  const handleMarketControl = useCallback(
-    async (newIsOpenState) => {
-      const actionText = newIsOpenState ? "수동 개장" : "수동 폐장";
-      if (
-        !window.confirm(
-          `정말로 시장을 '${actionText}' 상태로 변경하시겠습니까?`,
-        )
-      )
-        return;
-
-      try {
-        // 낙관적 업데이트
-        const optimisticStatus = { isOpen: newIsOpenState };
-        setMarketStatus(optimisticStatus);
-        marketStatusCache.current = optimisticStatus;
-
-        const result = await toggleMarketManually({
-          classCode: userClassCode,
-          isOpen: newIsOpenState,
-        });
-
-        setMarketMessage(normalizeCurrencyText(result.data.message));
-      } catch (error) {
-        logger.error("시장 상태 변경 오류:", error);
-        setMarketMessage(`오류가 발생했습니다: ${error.message}`);
-
-        // 롤백
-        if (marketStatusCache.current) {
-          setMarketStatus(marketStatusCache.current);
-        } else {
-          fetchMarketStatus(true);
-        }
-      }
-      setTimeout(() => setMarketMessage(""), 5000);
-    },
-    [userClassCode, toggleMarketManually, fetchMarketStatus],
-  );
+  // 🗑️ [2026-08-03] 시장 수동 개장/폐장 제거 — 한 번도 동작한 적 없는 기능.
+  //   · fetchMarketStatus 가 읽던 `ClassStock/{cc}/marketStatus/status` 는 firestore.rules 에
+  //     match 블록이 아예 없어 파일 끝 포괄 규칙(`if false`)에 막혔다. Rules :test API 로
+  //     교사 권한 read/write 둘 다 거부 확인 → 교사에게 "시장 상태를 불러오는 데 실패했습니다."
+  //     가 뜨고 있었다.
+  //   · handleMarketControl 이 호출하던 `toggleMarketManually` Cloud Function 은 functions/
+  //     소스에도, 배포된 117개 함수에도 존재하지 않는다.
+  //   · 그래서 프로덕션 어느 학급에도 marketStatus 문서가 없다(= setDoc 이 한 번도 성공 못함).
+  //   주식 거래 자체는 CentralStocks + Settings/centralStocksCache 로 정상 동작하므로 영향 없다.
+  //   되살리려면 CF 신설 + rules 블록 추가가 둘 다 필요하다.
 
   // 주식 정보 초기화
   const handleInitializeStocks = useCallback(async () => {
@@ -1968,21 +1894,6 @@ const AdminSettingsModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAdminSettingsModal, adminSelectedMenu, userClassCode]);
 
-  // 시장 서브탭 선택 시 시장 상태 로드
-  useEffect(() => {
-    if (
-      showAdminSettingsModal &&
-      adminSelectedMenu === "financeAndMarket" &&
-      financeMarketSubTab === "market"
-    ) {
-      fetchMarketStatus();
-    }
-  }, [
-    showAdminSettingsModal,
-    adminSelectedMenu,
-    financeMarketSubTab,
-    fetchMarketStatus,
-  ]);
 
   // 마지막 월급 지급일 포맷
   const formatLastSalaryDate = () => {
@@ -2052,16 +1963,6 @@ const AdminSettingsModal = ({
     padding: "10px 12px",
     width: "100%",
     fontSize: "0.95rem",
-  };
-  const actionBtnStyle = {
-    background: "rgba(99, 102, 241, 0.1)",
-    color: "#4f46e5",
-    padding: "10px 20px",
-    borderRadius: "8px",
-    fontWeight: 600,
-    fontSize: "0.9rem",
-    border: "1px solid rgba(99, 102, 241, 0.3)",
-    cursor: "pointer",
   };
   const cancelBtnStyle = {
     background: "#f1f5f9",
@@ -3242,75 +3143,15 @@ const AdminSettingsModal = ({
                     주식 시장 제어
                   </h3>
                   <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
-                    주식 시장의 개장/폐장 상태를 수동으로 제어합니다.
+                    주식 시장은 월–금 오전 8시 개장 / 오후 3시 폐장으로 자동 운영됩니다.
                   </p>
                 </div>
                 <div className="px-6 py-5">
 
-                {/* 시장 상태 */}
-                <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-slate-800 dark:text-white">
-                      현재 상태:{" "}
-                      <span
-                        className="font-bold px-3 py-1 rounded-2xl"
-                        style={{
-                          color: marketStatus.isOpen ? "#22c55e" : "#ef4444",
-                          background: marketStatus.isOpen
-                            ? "rgba(34, 197, 94, 0.2)"
-                            : "rgba(239, 68, 68, 0.2)",
-                        }}
-                      >
-                        {marketStatus.isOpen ? "🟢 개장" : "🔴 폐장"}
-                      </span>
-                    </p>
-                    <button
-                      onClick={() => fetchMarketStatus(true)}
-                      style={actionBtnStyle}
-                      disabled={!userClassCode}
-                    >
-                      새로고침
-                    </button>
-                  </div>
-
-                  <div className="flex gap-3 mb-4">
-                    <button
-                      onClick={() => handleMarketControl(true)}
-                      disabled={marketStatus.isOpen}
-                      className="flex-1"
-                      style={{
-                        ...saveBtnStyle,
-                        background: marketStatus.isOpen ? "#374151" : "#22c55e",
-                        cursor: marketStatus.isOpen ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      수동 개장
-                    </button>
-                    <button
-                      onClick={() => handleMarketControl(false)}
-                      disabled={!marketStatus.isOpen}
-                      className="admin-cancel-button flex-1"
-                      style={{
-                        background: !marketStatus.isOpen
-                          ? "#374151"
-                          : "#ef4444",
-                        cursor: !marketStatus.isOpen
-                          ? "not-allowed"
-                          : "pointer",
-                      }}
-                    >
-                      수동 폐장
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-slate-500 dark:text-gray-400">
-                    버튼을 누르면 정해진 시간과 상관없이 시장 상태가 즉시
-                    변경됩니다.
-                    <br />
-                    자동 개장/폐장 시간(월-금, 오전 8시/오후 3시)이 되면
-                    자동으로 상태가 변경됩니다.
-                  </p>
-                </div>
+                {/* 🗑️ [2026-08-03] 시장 수동 개장/폐장 UI 제거 — 한 번도 동작한 적 없는 기능이었다.
+                    상태 조회는 rules 에 막혀 "시장 상태를 불러오는 데 실패했습니다."가 떴고,
+                    개폐 버튼이 부르던 toggleMarketManually CF 는 소스에도 배포본에도 없었다.
+                    (근거 상세는 위 handleInitializeStocks 앞 주석) */}
 
                 {/* 메시지 */}
                 {marketMessage && (
