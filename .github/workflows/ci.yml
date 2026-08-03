@@ -40,7 +40,12 @@ jobs:
       - name: Firestore rules — 중복 match 경로 검사
         run: node scripts/check-rules-dup-paths.mjs firestore.rules
 
-      - name: Production build
-        # CI=false: 사전 존재하는 eslint 경고가 빌드를 깨지 않도록(하드 컴파일 에러만 차단).
-        #   경고 자체의 정리는 별도 트랙(exhaustive-deps 등)에서 진행.
-        run: CI=false npm run build
+      - name: 기술부채 천장 검사
+        # 새 alert()·!important·직접 Firestore 접근이 늘면 실패한다.
+        # 기존 671/721/51/46 은 천장으로 인정하고 **늘어나는 것만** 막는다.
+        run: npm run debt
+
+      - name: Production build (Vite)
+        # CRA 시절의 CI=false 제거 — 그건 react-scripts 가 경고를 에러로 올리던 걸
+        # 끄는 플래그였고 Vite 에는 그런 동작이 없다.
+        run: npm run build

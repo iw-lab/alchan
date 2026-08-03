@@ -53,7 +53,9 @@
     "test:all": "vitest run",
     "test:rules": "node scripts/rules-test.mjs",
     "assets:snapshot": "node scripts/asset-snapshot.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "debt": "node scripts/debt-ratchet.mjs",
+    "debt:update": "node scripts/debt-ratchet.mjs --update"
   },
   "browserslist": [
     ">0.2%",
