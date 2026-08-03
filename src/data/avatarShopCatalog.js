@@ -974,6 +974,16 @@ const DEPRECATED_ITEMS = DEPRECATED_BASE_IDS.map((id) => ({
   prompt: "deprecated",
 }));
 
+// 에셋 버전 — Avatar.js ASSET_VERSION 과 반드시 동시에 올릴 것(둘 중 하나만 올리면
+// firebase max-age=0이어도 브라우저 디스크캐시로 옛 자산이 남는다).
+const ASSET_VERSION = "20260803a";
+
+// 2026-08-03 에셋 최적화: 아바타 PNG 111개(70MB)를 512px WebP로 변환(6.1MB, -91%).
+// base/editor 계열만 PNG 유지 — Avatar.js가 `.png`를 문자열로 치환해 `_outfit.png`
+// 변종을 찾기 때문에(Avatar.js:30) 확장자를 바꾸면 옷 입은 베이스 탐색이 깨진다.
+const RAW_PNG_IDS = new Set(["base_male", "base_female", "editor_bald"]);
+const assetExt = (id) => (RAW_PNG_IDS.has(id) ? "png" : "webp");
+
 const ALL_AVATAR_ITEMS = [
   ...BASE_ITEMS,
   ...DEPRECATED_ITEMS,
@@ -988,7 +998,7 @@ const ALL_AVATAR_ITEMS = [
   ...item,
   active: item.active === false ? false : true,
   sortOrder: idx,
-  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.png?v=20260601n`,
+  imageUrl: item.active === false ? "" : `/avatar-shop/${item.id}.${assetExt(item.id)}?v=${ASSET_VERSION}`,
 }));
 
 // ES module export (webpack/React 및 Node ES module 호환)

@@ -6,7 +6,8 @@ import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avat
 const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
 
 // PNG cache-buster — firestore에 저장된 옛 imageUrl(query string 없음)도 강제 갱신
-const ASSET_VERSION = "20260601n";
+// ⚠️ avatarShopCatalog.js 의 ASSET_VERSION 과 반드시 동시에 올릴 것.
+const ASSET_VERSION = "20260803a";
 const withCacheBust = (url) => {
   if (!url) return url;
   return url.includes("?") ? url : `${url}?v=${ASSET_VERSION}`;

@@ -681,6 +681,10 @@ const PSIZE = 600; // px (큰 미리보기)
 const MSIZE = 130; // px (갤러리 mini, 실제는 CSS가 결정)
 // 페이지 로드 1회만 nonce 계산 — 슬라이더/렌더링마다 매번 새 URL 만들면 PNG 재fetch 깜빡 흰화면 발생
 const PAGE_NONCE = Date.now();
+// 2026-08-03 에셋 최적화: 아이템은 512px WebP, base/editor 계열만 PNG 유지
+// (Avatar.js 가 `.png`를 치환해 `_outfit.png` 변종을 찾으므로 base는 확장자 고정)
+const RAW_PNG_IDS = new Set(["base_male", "base_female", "editor_bald"]);
+const aExt = (id) => (RAW_PNG_IDS.has(id) ? "png" : "webp");
 
 function render() {
   renderBigPreview();
@@ -710,7 +714,7 @@ function renderBigPreview() {
   if (currentSlot !== "base") {
     const a = getAnchor(currentItem);
     const img = document.createElement("img");
-    img.src = `/avatar-shop/${currentItem}.png?t=${PAGE_NONCE}`;
+    img.src = `/avatar-shop/${currentItem}.${aExt(currentItem)}?t=${PAGE_NONCE}`;
     img.style.cssText = `left:${(a.x - a.w/2)/100*PSIZE}px;top:${(a.y - a.h/2)/100*PSIZE}px;width:${a.w/100*PSIZE}px;height:${a.h/100*PSIZE}px;z-index:${SLOT_ZINDEX[currentSlot] ?? 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
     bigPreview.appendChild(img);
 
@@ -781,12 +785,12 @@ function renderGallery() {
     // mini: 베이스 (base 슬롯이면 그 자체)
     if (currentSlot === "base") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
+      m.src = `/avatar-shop/${itemId}.${aExt(itemId)}?t=${PAGE_NONCE}`;
       m.style.cssText = `inset:0;width:100%;height:100%;`;
       mini.appendChild(m);
     } else if (currentSlot === "preset" || currentSlot === "background") {
       const m = document.createElement("img");
-      m.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
+      m.src = `/avatar-shop/${itemId}.${aExt(itemId)}?t=${PAGE_NONCE}`;
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
@@ -801,7 +805,7 @@ function renderGallery() {
 
       const a = getAnchor(itemId);
       const it = document.createElement("img");
-      it.src = `/avatar-shop/${itemId}.png?t=${PAGE_NONCE}`;
+      it.src = `/avatar-shop/${itemId}.${aExt(itemId)}?t=${PAGE_NONCE}`;
       it.style.cssText = `left:${a.x - a.w/2}%;top:${a.y - a.h/2}%;width:${a.w}%;height:${a.h}%;z-index:${SLOT_ZINDEX[currentSlot] ?? 30};object-fit:contain;mix-blend-mode:${SLOT_BLEND_MODE[currentSlot] || 'normal'};`;
       mini.appendChild(it);
     }
@@ -925,7 +929,7 @@ let assetCache = null; // { id, W, H, data }
 async function loadAssetPixels(id) {
   if (assetCache && assetCache.id === id) return assetCache;
   const img = new Image(); img.crossOrigin = "anonymous";
-  img.src = `/avatar-shop/${id}.png?t=${PAGE_NONCE}`;
+  img.src = `/avatar-shop/${id}.${aExt(id)}?t=${PAGE_NONCE}`;
   await new Promise((r) => { img.onload = r; img.onerror = r; });
   const c = document.createElement("canvas");
   c.width = img.naturalWidth; c.height = img.naturalHeight;
@@ -991,7 +995,7 @@ if (eraseDownload) eraseDownload.onclick = async () => {
   // 현재 표시 중인 자산 결정: base 슬롯이면 currentBase, 다른 슬롯이면 currentItem
   const targetId = (currentSlot === "base") ? currentBase : currentItem;
   if (!targetId) { alert("대상 자산이 없습니다."); return; }
-  const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
+  const url = `/avatar-shop/${targetId}.${aExt(targetId)}?t=${PAGE_NONCE}`;
   // 1. 현재 자산 PNG 로드 → ImageBitmap
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -1079,7 +1083,7 @@ if (outfitBaseDownload) outfitBaseDownload.onclick = async () => {
   // 항상 현재 base 캐릭터 (base_male/base_female)를 대상으로
   const targetId = currentBase;
   if (!targetId) { alert("base 캐릭터가 없습니다."); return; }
-  const url = `/avatar-shop/${targetId}.png?t=${PAGE_NONCE}`;
+  const url = `/avatar-shop/${targetId}.${aExt(targetId)}?t=${PAGE_NONCE}`;
   const img = new Image(); img.crossOrigin = "anonymous";
   img.src = url;
   await new Promise((r, e) => { img.onload = r; img.onerror = e; });

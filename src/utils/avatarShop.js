@@ -1,4 +1,11 @@
 // src/utils/avatarShop.js - 아바타 상점 데이터 모델
+import { ALL_AVATAR_ITEMS } from "../data/avatarShopCatalog";
+
+// 아이템 id → 현재 카탈로그 imageUrl. 저장된(=낡을 수 있는) URL 대신 이걸 우선 사용한다.
+// (avatarShopCatalog.js 는 import가 없어 순환 참조 위험 없음)
+const CATALOG_IMAGE_URLS = Object.fromEntries(
+  ALL_AVATAR_ITEMS.filter((i) => i.imageUrl).map((i) => [i.id, i.imageUrl])
+);
 
 /**
  * 아바타 상점 아이템 카테고리 (오버레이 슬롯)
@@ -222,15 +229,21 @@ export function buildAvatarOverlays(userDoc) {
   Object.entries(eq).forEach(([slot, itemId]) => {
     if (!itemId) return;
     const item = owned[itemId];
-    if (!item?.imageUrl) return;
-    if (slot === "background") bgUrl = item.imageUrl;
-    else if (slot === "preset") presetUrl = item.imageUrl;
-    else if (slot === "base") baseUrl = item.imageUrl;
+    if (!item) return;
+    // ⚠️ 학생 문서(ownedAvatarItems)·avatarShopItems 컬렉션에 imageUrl이 복제 저장돼 있어
+    //    (functions/avatarShopService.js:293) 카탈로그에서 확장자·경로를 바꾸면 이미 산
+    //    아이템이 전부 404가 된다. 그래서 URL은 항상 카탈로그(단일 진실원)에서 해석하고,
+    //    카탈로그에 없는 항목(폐지된 아이템 등)만 저장값으로 폴백한다. 데이터 마이그레이션 불필요.
+    const imageUrl = CATALOG_IMAGE_URLS[itemId] || item.imageUrl;
+    if (!imageUrl) return;
+    if (slot === "background") bgUrl = imageUrl;
+    else if (slot === "preset") presetUrl = imageUrl;
+    else if (slot === "base") baseUrl = imageUrl;
     else {
       const anchor = ITEM_ANCHORS[itemId];
       slots[slot] = anchor
-        ? { url: item.imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
-        : { url: item.imageUrl };
+        ? { url: imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
+        : { url: imageUrl };
     }
   });
 
