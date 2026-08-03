@@ -1,0 +1,1 @@
+import{j as s}from"./vendor-react-C2ANKD2O.js";const r=()=>s.jsxs("div",{className:"login-warning",children:[s.jsx("h3",{children:"로그인이 필요합니다"}),s.jsx("p",{children:"아이템을 구매하거나 사용하려면 로그인해주세요."})]});export{r as L};

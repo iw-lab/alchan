@@ -1,0 +1,1 @@
+import{r as t}from"./vendor-react-C2ANKD2O.js";const e="알찬 - 학급경제 시뮬레이션";function o(o){t.useEffect(()=>{const t=document.title;return document.title=o?`${o} | ${e}`:e,()=>{document.title=t}},[o])}export{o as u};
