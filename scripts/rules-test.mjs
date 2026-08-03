@@ -207,6 +207,51 @@ const CASES = [
   tc("ALLOW", "🐤 학생이 자기 financials 를 읽는다 (정상 조회)", {
     path: "/users/stu1/financials/main", method: "get", as: "stu1", before: { balance: 500000 },
   }),
+
+  // ── F. ClassStock 학생 자산 경로 제거 (2026-08-03 이중경로 정리) ──
+  //   구 규칙은 `allow write: if isOwner(userId)` 라 학생이 가짜 부동산·파킹잔액을 써넣어
+  //   MyAssets 표시 자산을 부풀릴 수 있었다. 프로덕션 전수 0건 확인 후 규칙째 삭제 →
+  //   이제 포괄 규칙(if false)이 막는다. 읽기까지 막히는 게 맞다(코드 참조 0).
+  // ko 는 조사(을/를)까지 포함한다 — 받침이 제각각이라 템플릿에서 붙이면 "부동산를"이 된다.
+  ...[
+    ["students/stu1/realestates/e1", { price: 99999999 }, "가짜 부동산을"],
+    ["students/stu1/parkingAccounts/p1", { balance: 99999999 }, "가짜 파킹잔액을"],
+    ["portfolio/stu1/holdings/h1", { quantity: 9999 }, "가짜 주식보유를"],
+  ].flatMap(([sub, data, ko]) => [
+    tc("DENY", `학생이 ClassStock 에 ${ko} 써넣는다`, {
+      path: `/ClassStock/C1/${sub}`, method: "create", as: "stu1", after: data,
+    }),
+    tc("DENY", `학생이 ClassStock 의 ${ko} 읽는다 (경로 자체가 폐기됨)`, {
+      path: `/ClassStock/C1/${sub}`, method: "get", as: "stu1", before: data,
+    }),
+  ]),
+  tc("DENY", "교사도 ClassStock 학생 자산 경로에 쓸 수 없다", {
+    path: "/ClassStock/C1/students/stu1/realestates/e1", method: "create", as: "tch1",
+    after: { price: 100 }, actors: ["stu1"],
+  }),
+  // 부모 문서 자체와 update/delete/list 도 함께 고정한다(codex 커버리지 지적 2026-08-03).
+  //   하위 경로 create/get 만 막혀 있고 부모나 다른 메서드가 열리면 우회가 된다.
+  ...[
+    ["/ClassStock/C1/students/stu1", "students 부모 문서"],
+    ["/ClassStock/C1/portfolio/stu1", "portfolio 부모 문서"],
+  ].flatMap(([path, ko]) => [
+    tc("DENY", `학생이 ${ko}를 생성`, { path, method: "create", as: "stu1", after: { fake: 1 } }),
+    tc("DENY", `학생이 ${ko}를 수정`, {
+      path, method: "update", as: "stu1", before: { fake: 1 }, after: { fake: 2 },
+    }),
+    tc("DENY", `학생이 ${ko}를 삭제`, { path, method: "delete", as: "stu1", before: { fake: 1 } }),
+  ]),
+  tc("DENY", "학생이 ClassStock 하위 문서를 수정", {
+    path: "/ClassStock/C1/students/stu1/realestates/e1", method: "update", as: "stu1",
+    before: { price: 1 }, after: { price: 99999999 },
+  }),
+  tc("DENY", "학생이 ClassStock 하위 문서를 삭제", {
+    path: "/ClassStock/C1/students/stu1/realestates/e1", method: "delete", as: "stu1",
+    before: { price: 1 },
+  }),
+  tc("DENY", "학생이 ClassStock 학생 목록을 조회(list)", {
+    path: "/ClassStock/C1/students", method: "list", as: "stu1",
+  }),
 ];
 
 // ────────────────────────────────────────────────────────────

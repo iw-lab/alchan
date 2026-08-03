@@ -419,36 +419,30 @@ service cloud.firestore {
     }
 
     // ========================================================
-    // 📈 주식 포트폴리오 (ClassStock/{classCode}/portfolio/{userId})
+    // 🗑️ ClassStock 학생 자산 경로 폐기 (2026-08-03, Phase 1 이중경로 정리)
+    //   구 규칙은 `allow write: if isOwner(userId)` 라 학생이 자기 경로에 가짜 부동산·
+    //   파킹잔액을 써넣을 수 있었고, MyAssets 가 그걸 표시용 폴백으로 읽어 **화면상 자산을
+    //   부풀릴 수** 있었다(세금·순자산 정식 계산은 netAssets.js 가 이 경로를 안 읽어 무영향).
+    //
+    //   실측(프로덕션 전수, 학급 7개·학생 88명): 이 경로들의 문서는 **전부 0건**.
+    //   같은 날 MyAssets 의 폴백 읽기도 제거해 코드 참조가 0이 됐다.
+    //
+    //   정식 소스: 부동산 = classes/{classCode}/realEstateProperties (owner==uid, 관리자만 write)
+    //             파킹   = users/{uid}/financials/parkingAccount (batch7-c 로 CF 전용)
+    //             주식   = users/{uid}/portfolio (batch7-d 로 CF 전용)
+    //
+    //   ⚠️ 아래 `if false` 블록은 **문서화용**이다(schedulerLocks 와 같은 관례).
+    //      실측 확인(2026-08-03): Firestore 규칙은 매칭되는 규칙 중 하나라도 허용하면 허용이라,
+    //      명시적 `if false` 는 나중에 누가 `ClassStock/{cc}/{document=**}` 같은 넓은 허용
+    //      규칙을 추가하는 것을 **막지 못한다**. 실제 봉인은 파일 끝 포괄 `if false` 와
+    //      `npm run test:rules` 의 거부 테스트가 담당한다. 이 블록의 값어치는 ClassStock
+    //      규칙을 고치러 온 사람이 1000줄 떨어진 포괄 규칙 대신 여기서 폐기 사실을 본다는 것.
     // ========================================================
-    match /ClassStock/{classCode}/portfolio/{userId} {
-      allow read: if isSameClassFast(classCode) || isAdminFast();
-      allow write: if isOwner(userId) || isClassAdmin(classCode); // 🏫 Phase1: 관리자는 자기 학급만
-
-      match /holdings/{holdingId} {
-        allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow write: if isOwner(userId) || isClassAdmin(classCode); // 🏫 Phase1: 관리자는 자기 학급만
-      }
+    match /ClassStock/{classCode}/portfolio/{userId}/{document=**} {
+      allow read, write: if false; // 폐기 — 정식 소스는 users/{uid}/portfolio
     }
-
-    // ========================================================
-    // 👨‍🎓 학생 데이터 (ClassStock/{classCode}/students/{userId})
-    // ========================================================
-    match /ClassStock/{classCode}/students/{userId} {
-      allow read: if isSameClassFast(classCode) || isAdminFast();
-      allow write: if isOwner(userId) || isClassAdmin(classCode); // 🏫 Phase1: 관리자는 자기 학급만
-
-      // 부동산 서브컬렉션
-      match /realestates/{estateId} {
-        allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow write: if isOwner(userId) || isClassAdmin(classCode); // 🏫 Phase1: 관리자는 자기 학급만
-      }
-
-      // 파킹통장 서브컬렉션
-      match /parkingAccounts/{accountId} {
-        allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow write: if isOwner(userId) || isClassAdmin(classCode); // 🏫 Phase1: 관리자는 자기 학급만
-      }
+    match /ClassStock/{classCode}/students/{userId}/{document=**} {
+      allow read, write: if false; // 폐기 — 부동산/파킹 정식 소스는 위 주석 참조
     }
 
     // ========================================================

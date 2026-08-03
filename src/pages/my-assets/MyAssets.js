@@ -448,36 +448,18 @@ export default function MyAssets() {
         where("owner", "==", userId),
         limit(50),
       );
-      const realEstateRef2 = query(
-        collection(
-          db,
-          "ClassStock",
-          currentUserClassCode,
-          "students",
-          userId,
-          "realestates",
-        ),
-        limit(50),
-      );
-      const realEstateRef3 = query(
-        collection(db, "realEstate"),
-        where("ownerId", "==", userId),
-        limit(50),
-      );
+      // 🔻 [2026-08-03] 레거시 자산 소스 3개 제거 — 부동산 `ClassStock/{cc}/students/{uid}/realestates`,
+      //    전역 `realEstate`, 파킹 `ClassStock/{cc}/students/{uid}/parkingAccounts`.
+      //    프로덕션 전수 실측(전 학급 7개·학생 88명): 세 경로 모두 문서 0건. 항상 빈 결과를
+      //    돌려주면서 "나의 자산"을 열 때마다 읽기만 나가고 있었다. 정식 소스는 각각
+      //    `classes/{cc}/realEstateProperties`(owner==uid)와 `users/{uid}/financials/parkingAccount`
+      //    이며, 순자산 원장(src/utils/netAssets.js)도 정식 소스만 읽는다(이중경로 해소).
       const parkingRef1 = doc(
         db,
         "users",
         userId,
         "financials",
         "parkingAccount",
-      );
-      const parkingRef2 = collection(
-        db,
-        "ClassStock",
-        currentUserClassCode,
-        "students",
-        userId,
-        "parkingAccounts",
       );
       const productsRef = query(
         collection(db, "users", userId, "products"),
@@ -514,10 +496,7 @@ export default function MyAssets() {
 
       const [
         snap1,
-        snap2,
-        snap3,
         parkingSnap1,
-        parkingSnap2,
         productsSnap,
         portfolioSnap,
         stockCacheSnap,
@@ -526,10 +505,7 @@ export default function MyAssets() {
         rootTransactionsSnap,
       ] = await Promise.all([
         getDocs(realEstateRef1),
-        getDocs(realEstateRef2),
-        getDocs(realEstateRef3),
         getDoc(parkingRef1),
-        getDocs(parkingRef2),
         getDocs(productsRef),
         getDocs(portfolioRef).catch(() => ({ docs: [] })),
         getDoc(stockCacheRef).catch(() => null),
@@ -538,15 +514,12 @@ export default function MyAssets() {
         getDocs(rootTransactionsRef).catch(() => ({ docs: [] })),
       ]);
 
-      // 부동산 처리 — 3개 소스를 합치되 문서 id로 중복 제거(같은 부동산이 여러 컬렉션에
-      // 존재할 때 2~3배 중복 합산되던 문제 차단).
-      const allRealEstateAssets = [];
-      const seenRealEstate = new Set();
-      [...snap1.docs, ...snap2.docs, ...snap3.docs].forEach((doc) => {
-        if (seenRealEstate.has(doc.id)) return;
-        seenRealEstate.add(doc.id);
-        allRealEstateAssets.push({ id: doc.id, ...doc.data() });
-      });
+      // 부동산 처리 — 소스가 `classes/{cc}/realEstateProperties` 하나뿐이라 문서 id가
+      // 이미 유일하다(과거의 3소스 id 중복제거는 그래서 제거했다 — 단일 컬렉션에서는 무의미).
+      const allRealEstateAssets = snap1.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
       // 주식 평가액 = Σ(보유수량 × 현재가), 상장 종목만(미러는 isListed==true만 담음)
       const stockList = stockCacheSnap && stockCacheSnap.exists()
@@ -564,14 +537,10 @@ export default function MyAssets() {
         }
       });
 
-      // 파킹통장 처리
-      let totalParkingBalance = 0;
-      if (parkingSnap1.exists()) {
-        totalParkingBalance += parkingSnap1.data().balance || 0;
-      }
-      parkingSnap2.forEach((doc) => {
-        totalParkingBalance += doc.data().balance || 0;
-      });
+      // 파킹통장 처리 — 정식 소스 `users/{uid}/financials/parkingAccount` 하나.
+      const totalParkingBalance = parkingSnap1.exists()
+        ? parkingSnap1.data().balance || 0
+        : 0;
       setParkingBalance(totalParkingBalance);
 
       // 상품(예금/적금/대출) 처리
