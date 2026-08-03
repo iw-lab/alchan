@@ -44,22 +44,21 @@
     "underscore": "^1.13.7"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "vite",
+    "build": "vite build",
     "test": "vitest run --exclude '**/globalCacheService.test.js' --exclude '**/useFirestoreData.test.js' --exclude '**/logger.test.js'",
     "test:unit": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "eject": "react-scripts eject",
     "deploy": "npx firebase-tools deploy --only functions",
     "deploy:hosting": "npx firebase-tools deploy --only hosting",
     "deploy:all": "npx firebase-tools deploy",
     "firebase": "npx firebase-tools",
     "test:watch": "vitest",
-    "test:cra": "react-scripts test --env=jsdom --watchAll=false",
     "test:all": "vitest run",
     "test:rules": "node scripts/rules-test.mjs",
-    "assets:snapshot": "node scripts/asset-snapshot.mjs"
+    "assets:snapshot": "node scripts/asset-snapshot.mjs",
+    "preview": "vite preview"
   },
   "browserslist": [
     ">0.2%",

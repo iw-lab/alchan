@@ -1,0 +1,1 @@
+import{j as n}from"./index-Bxlg2TS8.js";const s=()=>n.jsxs("div",{className:"login-warning",children:[n.jsx("h3",{children:"로그인이 필요합니다"}),n.jsx("p",{children:"아이템을 구매하거나 사용하려면 로그인해주세요."})]});export{s as L};
