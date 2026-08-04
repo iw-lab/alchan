@@ -7217,6 +7217,28 @@ exports.reverseSalaryOnce = onCall(
     const { uid, classCode } =
       await checkAuthAndGetUserData(request, true);
 
+    // 🔒 같은 회수 요청이 두 번 들어오는 걸 막는다(네트워크 재시도·두 탭).
+    //    ⚠️ 이것만으로는 부족하다 — 더블클릭은 클라이언트가 키를 새로 만들어 보내므로
+    //    키가 달라 여기서 못 걸린다. 그래서 호출부에도 잠금이 있어야 한다(둘 다 필요).
+    //
+    // ⚠️ **키를 미리 소비하면 안 된다.** 처음엔 별도의 작은 트랜잭션으로 먼저 claim 하고
+    //    그 다음에 회수 batch 를 커밋했는데, 그러면 batch 가 실패했을 때 **키만 소모되고
+    //    회수는 하나도 안 된 상태**가 남는다. 같은 키로 재시도하면 "이미 처리된 요청"이
+    //    떠서, 실제로는 아무것도 회수 안 됐는데 처리됐다고 믿게 된다.
+    //    (utils.js 의 계약도 "mark 는 모든 쓰기 끝난 뒤 같은 원자 단위에서"라고 적혀 있다.)
+    //
+    //    그래서 여기서는 **읽기만** 하고(형식 검증 + 조기 안내), 실제 보증은 아래에서
+    //    같은 batch 안의 `create` 가 한다. `set` 이 아니라 `create` 인 이유는, 같은 키로
+    //    동시에 두 요청이 들어오면 둘 다 읽기를 통과할 수 있기 때문이다 —
+    //    `create` 는 문서가 이미 있으면 **배치 전체를 실패**시켜 이중 회수를 막는다.
+    const { idempotencyKey } = request.data || {};
+    let idemKeyRef = null;
+    if (idempotencyKey) {
+      idemKeyRef = await db.runTransaction((tx) =>
+        checkIdempotent(tx, idempotencyKey),
+      );
+    }
+
     try {
       // 해당 클래스 학생 조회
       const studentsSnapshot = await db
@@ -7233,6 +7255,11 @@ exports.reverseSalaryOnce = onCall(
       const batch = db.batch();
       let totalReversed = 0;
       let totalAmount = 0;
+
+      // 거래내역 로그 TTL: 90일 (지급 쪽과 같은 기준)
+      const logExpireAt = new Date();
+      logExpireAt.setDate(logExpireAt.getDate() + 90);
+      const logExpireTs = admin.firestore.Timestamp.fromDate(logExpireAt);
 
       for (const student of targetStudents) {
         // 재계산이 아니라 직전 지급 시 실제로 기록된 금액(lastNetSalary)을 그대로 회수.
@@ -7251,11 +7278,49 @@ exports.reverseSalaryOnce = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // 🧾 거래내역 기록. **이게 없었다.**
+        //    지급(batchPaySalaries)은 activity_logs + transactions 둘 다 남기는데
+        //    회수는 아무것도 안 남겨서, 학생 입장에선 **돈이 줄었는데 내역이 없었다.**
+        //    이 프로젝트의 자산 손실 신고 진단 1번이 "transactions 에서 큰 차감 항목
+        //    검색"인데, 회수분은 거기서 영영 안 나온다.
+        const studentName = student.name || student.nickname || "학생";
+        batch.set(db.collection("activity_logs").doc(), {
+          userId: student.id,
+          userName: studentName,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          type: "salaryReversal",
+          amount: -netSalary,
+          description: `[주급 회수] ${netSalary.toLocaleString()}원 회수 (관리자)`,
+          classCode: classCode,
+          netSalary: -netSalary,
+          reversedBy: uid,
+          expireAt: logExpireTs,
+        });
+        batch.set(
+          db.collection("users").doc(student.id).collection("transactions").doc(),
+          {
+            amount: -netSalary,
+            description: `[주급 회수] ${netSalary.toLocaleString()}원`,
+            type: "salaryReversal",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            reversedBy: uid,
+          },
+        );
+
         totalReversed++;
         totalAmount += netSalary;
       }
 
       if (totalReversed > 0) {
+        // 멱등키 클레임을 **회수 쓰기와 같은 배치**에 넣는다 = 다 되거나 다 안 된다.
+        if (idemKeyRef) {
+          batch.create(idemKeyRef, {
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: admin.firestore.Timestamp.fromMillis(
+              Date.now() + 24 * 60 * 60 * 1000,
+            ),
+          });
+        }
         await batch.commit();
       }
 
@@ -7269,6 +7334,16 @@ exports.reverseSalaryOnce = onCall(
         summary: { totalReversed, totalAmount },
       };
     } catch (error) {
+      // 같은 키가 이미 있으면 batch.create 가 ALREADY_EXISTS(gRPC 6)로 실패한다.
+      // 이건 오류가 아니라 **중복 차단이 제대로 동작한 것**이라 그대로 전달한다.
+      if (error instanceof HttpsError) throw error;
+      if (error?.code === 6 || /ALREADY_EXISTS/i.test(error?.message || "")) {
+        logger.warn(`[reverseSalaryOnce] 중복 요청 차단: ${uid}`);
+        throw new HttpsError(
+          "already-exists",
+          "이미 처리된 요청입니다. (중복 회수 차단)",
+        );
+      }
       logger.error(`[reverseSalaryOnce] Error:`, error);
       throw new HttpsError(
         "internal",
@@ -9568,20 +9643,60 @@ exports.createStudentAccounts = onCall(
     for (const student of students) {
       try {
         // 기존 계정이 있으면 삭제 후 재생성
+        //
+        // 🔒 삭제 전에 **그 계정이 정말 내 학급의 학생인지** 확인한다.
+        //    예전엔 이 검사가 없어서, 이메일만 알면 남의 계정을 지우고 내 학급 학생으로
+        //    다시 만들 수 있었다(새 UID·비밀번호까지 응답으로 돌려줬다 = 계정 탈취).
+        //
+        //    악의가 없어도 위험했다: 이 앱은 **학생 아이디가 전교에서 유일**해야 해서
+        //    (그래서 alchan/alchann/alchannn 같은 아이디가 생긴다) 교사가 명단을 올리다
+        //    다른 반 학생과 아이디가 겹치면 그 학생의 계정과 **현금이 통째로 사라졌다.**
+        //    되돌릴 방법이 없다. 그래서 확인 못 하면 지우지 않고 실패로 남긴다.
         let userRecord;
+        let existingUid = null;
         try {
           const existingUser = await admin.auth().getUserByEmail(student.email);
-          // 기존 Auth 계정 삭제
-          await admin.auth().deleteUser(existingUser.uid);
-          // 기존 Firestore 문서도 삭제
-          await db.collection("users").doc(existingUser.uid).delete();
+          existingUid = existingUser.uid;
         } catch (e) {
           // auth/user-not-found는 정상 (신규 계정)
           if (e.code !== "auth/user-not-found") {
             logger.warn(
-              `[createStudentAccounts] 기존 계정 정리 중 오류: ${e.message}`,
+              `[createStudentAccounts] 기존 계정 조회 중 오류: ${e.message}`,
             );
           }
+        }
+
+        if (existingUid) {
+          const existingDoc = await db.collection("users").doc(existingUid).get();
+          if (existingDoc.exists) {
+            const ex = existingDoc.data();
+            // ⚠️ `ex.classCode && ...` 로 쓰면 **classCode 가 없거나 빈 문자열인 문서에서
+            //    검사가 통째로 건너뛰어진다**(단락 평가). 보안 가드가 fail-open 이 된다.
+            //    이 앱은 미배정을 `classCode: "미지정"` 이라는 truthy 문자열로 채우는
+            //    관례라 알려진 케이스는 안 걸리지만, 관례를 어긴 레거시·부분쓰기 문서
+            //    하나면 뚫린다. **불명확하면 차단**이 맞다 — 여기서 틀리면 남의 계정과
+            //    현금이 사라지고 되돌릴 방법이 없다.
+            const otherClass = ex.classCode !== classCode;
+            const privileged =
+              ex.isAdmin === true ||
+              ex.isTeacher === true ||
+              ex.isSuperAdmin === true;
+            if (otherClass || privileged) {
+              logger.error(
+                `[createStudentAccounts] 차단: ${uid}(${classCode})가 ` +
+                  `${student.email}(classCode=${ex.classCode}, 권한계정=${privileged})를 덮어쓰려 함`,
+              );
+              throw new Error(
+                otherClass
+                  ? "이미 다른 학급에서 쓰는 아이디입니다. 다른 아이디로 만들어 주세요."
+                  : "관리자·교사 계정은 이 방법으로 덮어쓸 수 없습니다.",
+              );
+            }
+          }
+          // 여기까지 왔으면 (a) 내 학급의 일반 학생이거나 (b) Firestore 문서가 없는
+          // 고아 Auth 계정이다. (b)는 지울 데이터가 없어 안전하다.
+          await admin.auth().deleteUser(existingUid);
+          await db.collection("users").doc(existingUid).delete();
         }
 
         // Admin SDK로 계정 생성 (reCAPTCHA 불필요)

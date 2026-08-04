@@ -879,6 +879,11 @@ export default function AlchanSidebar({
       "구매",
       "판매",
       "salaryPayment",
+      // ⚠️ 회수를 여기 안 넣으면 **돈이 빠져나갔는데 알림이 안 뜬다.**
+      //    지급만 있고 회수가 없으면 학생 입장에선 "받은 건 알려주고 뺏긴 건 안 알려주는"
+      //    꼴이 된다. (아래 TYPE_LABELS 의 "주급 회수" 라벨도 이 필터를 타야 쓰인다 —
+      //    필터에 없으면 라벨은 죽은 코드다.)
+      "salaryReversal",
       "legal_settlement",
     ]);
     let cancelled = false;
@@ -924,7 +929,14 @@ export default function AlchanSidebar({
               const amt = typeof data.amount === "number" ? data.amount : null;
               const sign = amt == null ? "" : amt > 0 ? "+" : "";
               const amtText = amt == null ? "" : ` ${sign}${amt.toLocaleString()}${getCurrencyUnit()}`;
-              const typeLabel = data.type === "salaryPayment" ? "주급" : data.type;
+              // ⚠️ 라벨이 없는 type 은 영문 코드가 학생 화면에 그대로 나온다
+              //    (`salaryReversal` 같은 게 그냥 보였다). 새 type 을 추가할 땐
+              //    여기에도 한글 이름을 같이 넣을 것.
+              const TYPE_LABELS = {
+                salaryPayment: "주급",
+                salaryReversal: "주급 회수",
+              };
+              const typeLabel = TYPE_LABELS[data.type] || data.type;
               return `• [${typeLabel}]${amtText} — ${data.description || ""}`;
             });
             const more = logs.length > 8 ? `\n\n외 ${logs.length - 8}건` : "";

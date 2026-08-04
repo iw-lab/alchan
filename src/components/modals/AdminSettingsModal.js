@@ -385,6 +385,8 @@ const AdminSettingsModal = ({
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [appLoading, setAppLoading] = useState(false);
   const [isPayingSalary, setIsPayingSalary] = useState(false);
+  // 주급 회수 진행 중 잠금 — 반 전체 현금이 오가므로 두 번 눌리면 안 된다.
+  const [isReversingSalary, setIsReversingSalary] = useState(false);
   const [lastSalaryPaidDate, setLastSalaryPaidDate] = useState(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [selectAllStudents, setSelectAllStudents] = useState(false);
@@ -1184,16 +1186,28 @@ const AdminSettingsModal = ({
 
   // 주급 1회분 회수 (임시)
   const handleReverseSalary = async () => {
+    // 🔒 진행 중이면 두 번째 클릭을 아예 안 보낸다.
+    //    ⚠️ 서버 멱등키만으로는 못 막는다 — 클릭할 때마다 키를 새로 만들기 때문에
+    //    더블클릭은 서로 다른 키로 두 번 도착한다. 반 전체 현금이 두 번 빠진다.
+    if (isReversingSalary) return;
     if (!(await confirmDialog("주급 1회분을 모든 학생에게서 회수하시겠습니까?", { danger: true, confirmText: "회수하기" }))) return;
+    setIsReversingSalary(true);
     try {
       const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
-      const result = await reverseFn({});
+      const result = await reverseFn({ idempotencyKey: crypto.randomUUID() });
       if (result.data.success) {
         toast.error(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만 ${getCurrencyUnit()} 회수`);
         loadStudents();
       }
     } catch (error) {
-      toast.error("회수 오류: " + error.message);
+      // 같은 요청이 이미 처리됐으면(재시도·두 탭) 조용히 알린다 — 오류가 아니다.
+      if (error?.code === "functions/already-exists") {
+        toast.info("이미 처리된 회수 요청입니다.");
+      } else {
+        toast.error("회수 오류: " + error.message);
+      }
+    } finally {
+      setIsReversingSalary(false);
     }
   };
 
@@ -2668,10 +2682,11 @@ const AdminSettingsModal = ({
                   </button>
                   <button
                     onClick={handleReverseSalary}
-                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition"
+                    disabled={isReversingSalary}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ background: "#ffffff", color: "#dc2626", border: "1px solid #fca5a5" }}
                   >
-                    🔄 주급 1회분 회수
+                    {isReversingSalary ? "회수 중..." : "🔄 주급 1회분 회수"}
                   </button>
                   <button
                     onClick={handleMigrateAppointedJobs}

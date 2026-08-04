@@ -17,6 +17,7 @@
  * 예: 학급 초기화는 학급 코드를 그대로 타이핑해야 진행된다(Dashboard).
  */
 import { createDialogChannel } from "./dialogChannel";
+import { __resetDialogLock } from "../hooks/useDialogQueue";
 
 const channel = createDialogChannel("promptDialog", null);
 
@@ -24,7 +25,11 @@ const channel = createDialogChannel("promptDialog", null);
 export const subscribePrompt = channel.subscribe;
 
 /** 테스트 전용. */
-export const __resetPrompt = channel.reset;
+export const __resetPrompt = () => {
+  channel.reset();
+  // 앞 테스트의 '확정'이 다음 테스트의 모달을 잠그지 않게 함께 초기화한다.
+  __resetDialogLock();
+};
 
 /**
  * 입력을 받는다.

@@ -29,6 +29,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const ARM_DELAY_MS = 400;
 
 /**
+ * 마지막으로 **어떤 모달이든** 확정된 시각. 모듈 스코프라 확인창·입력창이 함께 본다.
+ *
+ * ⚠️ 처음엔 잠금이 채널마다 따로였다. 그래서 **같은 채널 안에서 바꿔치기된 질문**만
+ *    잠기고, 다른 채널에서 새로 뜨는 질문은 "처음 뜨는 것"이라 안 잠겼다.
+ *    그런데 이 앱의 실제 흐름이 정확히 그 모양이다 — 입력을 받고 **곧바로** 확인을 묻는다:
+ *      · 쿠폰 목표 입력 → "기여 기록을 초기화하시겠습니까?"(danger)
+ *      · 새 비밀번호 입력 → "정말 초기화?"(danger)
+ *    두 모달의 확인 버튼이 화면상 거의 같은 자리(가운데 모달 우측 하단)에 그려지므로,
+ *    입력을 확정하려고 누른 클릭이 두 번 겹치면 **두 번째가 확인창에 그대로 꽂힌다.**
+ *    실측으로 재현했다: 확인 버튼이 `disabled=false` 인 채 떠서 초기화가 실행됐다.
+ *    그래서 "직전 400ms 안에 아무 모달이든 확정됐으면" 새로 뜨는 것도 잠근다.
+ */
+let lastCommitAt = 0;
+
+/** 테스트 전용 — 앞 테스트의 확정이 다음 테스트를 잠그지 않게 초기화한다. */
+export function __resetDialogLock() {
+  lastCommitAt = 0;
+}
+
+/**
  * @param {(fn:(request:object)=>void)=>()=>void} subscribe 채널 구독 함수
  * @param {*} cancelValue 취소로 간주할 값(확인=false, 입력=null)
  */
@@ -51,7 +71,10 @@ export function useDialogQueue(subscribe, cancelValue) {
       currentRef.current = request;
       if (armTimer.current) clearTimeout(armTimer.current);
       armTimer.current = null;
-      const lock = Boolean(request) && fromQueue;
+      // 큐에서 바꿔치기됐거나(같은 채널), 직전에 다른 모달이 확정됐으면(채널 무관) 잠근다.
+      const lock =
+        Boolean(request) &&
+        (fromQueue || Date.now() - lastCommitAt < ARM_DELAY_MS);
       setArmedBoth(!lock);
       if (lock) armTimer.current = setTimeout(() => setArmedBoth(true), ARM_DELAY_MS);
       setCurrent(request); // 값만 넘긴다 — 업데이터 함수를 쓰지 않는다(①)
@@ -68,6 +91,8 @@ export function useDialogQueue(subscribe, cancelValue) {
       // 잠긴 동안의 확정은 앞 클릭의 여파다 — 무시한다.
       // 취소는 언제나 통과시킨다. 막는 방향은 항상 '취소' 쪽이어야 한다.
       if (isCommit && !armedRef.current) return;
+      // 확정 시각을 남긴다 — 다른 채널에서 바로 뜨는 모달이 이걸 보고 잠긴다.
+      if (isCommit) lastCommitAt = Date.now();
       const cur = currentRef.current;
       if (cur) cur.answer(result);
       const next = queue.current.shift() ?? null;

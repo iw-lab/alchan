@@ -14,6 +14,7 @@
  * `hooks/useDialogQueue.js` 에 있다 — 입력창(promptDialog)과 같은 것을 쓴다.
  */
 import { createDialogChannel } from "./dialogChannel";
+import { __resetDialogLock } from "../hooks/useDialogQueue";
 
 const channel = createDialogChannel("confirmDialog", false);
 
@@ -21,7 +22,11 @@ const channel = createDialogChannel("confirmDialog", false);
 export const subscribeConfirm = channel.subscribe;
 
 /** 테스트 전용. */
-export const __resetConfirm = channel.reset;
+export const __resetConfirm = () => {
+  channel.reset();
+  // 앞 테스트의 '확정'이 다음 테스트의 모달을 잠그지 않게 함께 초기화한다.
+  __resetDialogLock();
+};
 
 /**
  * 확인을 묻고 답을 기다린다.
