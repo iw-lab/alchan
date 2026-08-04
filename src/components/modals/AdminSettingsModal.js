@@ -48,6 +48,7 @@ import {
 } from "../../utils/jobPermissions";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
 // 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
@@ -1421,8 +1422,10 @@ const AdminSettingsModal = ({
         return;
       }
 
-      const newPassword = prompt(
+      const newPassword = await promptDialog(
         "새로운 비밀번호를 입력하세요. 6자 이상이어야 합니다.",
+        "",
+        { confirmText: "비밀번호 변경", danger: true },
       );
 
       if (!newPassword || newPassword.length < 6) {

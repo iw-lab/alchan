@@ -26,6 +26,7 @@ import "./TrialRoom.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 // 재판방 3D 비주얼(CourtroomScene)은 2026-08-03 제거 — 활성화된 적 없는 WIP인데
 // 에셋 11MB를 배포마다 끌고 다녔다. 재판 기능 자체는 아래 패널에서 그대로 동작한다.
 
@@ -583,10 +584,20 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   const handleMakeVerdict = async () => {
     if (userRole !== "judge") return;
 
-    const verdict = window.prompt(`판결을 입력하세요 (예: 유죄, 무죄, 벌금 10,000${getCurrencyUnit()}, 합의금 5,000${getCurrencyUnit()}):`);
+    const verdict = await promptDialog(
+      `판결을 입력하세요 (예: 유죄, 무죄, 벌금 10,000${getCurrencyUnit()}, 합의금 5,000${getCurrencyUnit()}):`,
+      "",
+      // 판결은 "유죄 + 벌금 10,000원 + 봉사활동"처럼 조건을 조합해 쓸 수 있다.
+      // 판결 '이유'만 여러 줄이고 판결 '내용'은 한 줄인 건 비대칭이라 맞춘다.
+      { confirmText: "판결 입력", multiline: true },
+    );
     if (!verdict || !verdict.trim()) return;
 
-    const reason = window.prompt("판결 이유를 입력하세요:");
+    const reason = await promptDialog(
+      "판결 이유를 입력하세요:",
+      "",
+      { confirmText: "이유 입력", multiline: true },
+    );
     if (!reason || !reason.trim()) return;
 
     logger.log("Making verdict...", { verdict, reason });
@@ -894,7 +905,11 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
                 아바타 클릭으로 침묵 패널티 적용/해제
               </p>
               <button className="judge-action-btn" onClick={async () => {
-                const q = window.prompt("투표 질문을 입력하세요:");
+                const q = await promptDialog(
+                      "투표 질문을 입력하세요:",
+                      "",
+                      { confirmText: "질문 등록" },
+                    );
                 if (q) {
                   const isAnon = await confirmDialog("익명 투표로 진행하시겠습니까?");
                   handleStartVoting(q, isAnon);

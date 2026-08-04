@@ -1,5 +1,5 @@
 {
-  "alertConfirm": 10,
+  "alertConfirm": 0,
   "important": 714,
   "lintSuppress": 51,
   "firestoreDirect": 46

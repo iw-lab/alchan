@@ -36,6 +36,7 @@ import {
 } from "../../utils/jobPermissions";
 import JobList from "../../components/JobList";
 import CommonTaskList from "../../components/CommonTaskList";
+import { promptDialog } from "../../utils/promptDialog";
 // AdminSettingsModal은 3900줄+ 대형 파일이고 관리자만 여는 모달이다. 정적 import면 학생(다수)도
 //   Dashboard 청크에서 이 코드를 전부 다운로드했다 → lazy 로드로 분리(2026-07-19 성능).
 const AdminSettingsModal = lazy(() =>
@@ -2182,8 +2183,10 @@ function Dashboard({ adminTabMode }) {
  return;
  }
 
- const typed = window.prompt(
+ const typed = await promptDialog(
  `정말 초기화하려면 학급 코드 "${userDoc.classCode}"를 입력하세요.\n(오늘 학생들이 완료한 할일 기록이 모두 사라집니다)`,
+ "",
+ { placeholder: userDoc.classCode, confirmText: "초기화하기", danger: true },
  );
  if (!typed || typed.trim().toUpperCase() !== String(userDoc.classCode).toUpperCase()) {
  logger.log("[Dashboard] 학급 코드 확인 실패 - 리셋 취소");

@@ -23,6 +23,7 @@ import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -215,7 +216,11 @@ const OrganizationChart = ({ classCode }) => {
       toast.error("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
       return;
     }
-    const reason = prompt("거부권 행사 사유를 입력해주세요.");
+    const reason = await promptDialog(
+      "거부권 행사 사유를 입력해주세요.",
+      "",
+      { confirmText: "거부권 행사", danger: true, multiline: true },
+    );
     if (!reason || !reason.trim()) {
       toast.error("거부 사유를 반드시 입력해야 합니다.");
       return;

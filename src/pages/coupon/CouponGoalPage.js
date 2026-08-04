@@ -39,6 +39,7 @@ import { logger } from "../../utils/logger";
 import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 export default function CouponGoalPage() {
   const {
     user,
@@ -469,9 +470,10 @@ export default function CouponGoalPage() {
       toast.error("학급 코드나 목표 정보가 없어 설정할 수 없습니다.");
       return;
     }
-    const input = window.prompt(
+    const input = await promptDialog(
       "새 쿠폰 목표 수량을 입력하세요 (기존 기여·진행률은 0으로 초기화됩니다)",
       String(Math.max(classCouponGoal * 2, 100)),
+      { inputMode: "numeric", confirmText: "목표 설정", danger: true },
     );
     if (input === null) return;
     const newTarget = parseInt(input, 10);

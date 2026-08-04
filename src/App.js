@@ -15,6 +15,8 @@ import ToastHost from "./components/ToastHost";
 // window.confirm 대체재. 같은 이유로 lazy 하지 않는다 — 되돌릴 수 없는 작업의
 // 마지막 관문이라 청크를 기다리는 사이 화면이 비면 안 된다.
 import ConfirmHost from "./components/ConfirmHost";
+// window.prompt 대체재. 같은 이유로 lazy 하지 않는다.
+import PromptHost from "./components/PromptHost";
 
 // 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
 const queryClient = new QueryClient({
@@ -207,6 +209,7 @@ function App() {
                   그러면 학생은 아무것도 못 본다. (alert 대체재 — src/utils/toast.js) */}
               <ToastHost />
               <ConfirmHost />
+              <PromptHost />
               {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
               <Router>
                 {/* fallback=null: index.html splash(z-index:9999)가 덮고 있어 깜빡임 방지

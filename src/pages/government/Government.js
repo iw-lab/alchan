@@ -25,6 +25,7 @@ import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 // 날짜 포맷팅 헬퍼 함수
 const formatDate = (dateString) => {
     if (!dateString) return "정보 없음";
@@ -143,7 +144,11 @@ const LawManagement = ({ classCode }) => {
         toast.error("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
         return;
     }
-    const reason = prompt("거부권 행사 사유를 입력해주세요.");
+    const reason = await promptDialog(
+      "거부권 행사 사유를 입력해주세요.",
+      "",
+      { confirmText: "거부권 행사", danger: true, multiline: true },
+    );
     if (reason && reason.trim() !== "") {
         const lawDocRef = doc(db, "classes", classCode, "nationalAssemblyLaws", lawId);
         const deadline = new Date();

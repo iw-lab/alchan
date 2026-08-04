@@ -35,6 +35,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 
 const DEFAULT_SETTINGS = {
   totalProperties: 30,
@@ -582,7 +583,11 @@ const RealEstateRegistry = () => {
             toast.error("권한이 없습니다.");
             return;
         }
-        const salePriceInput = prompt("판매 가격을 입력하세요 (숫자만):");
+        const salePriceInput = await promptDialog(
+      "판매 가격을 입력하세요 (숫자만):",
+      "",
+      { inputMode: "numeric", confirmText: "판매 등록" },
+    );
         if (!salePriceInput) return;
         const salePrice = parseInt(salePriceInput);
         if (isNaN(salePrice) || salePrice <= 0) {

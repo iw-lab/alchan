@@ -6,6 +6,8 @@
     "react/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "error",
 
+    "no-alert": "error",
+
     "no-cond-assign": "error",
     "no-dupe-keys": "error",
     "no-unsafe-negation": "error",

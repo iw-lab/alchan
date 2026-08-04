@@ -56,6 +56,7 @@ import {
 } from "./stockExchangeService";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { promptDialog } from "../../utils/promptDialog";
 
 // === 아이콘 컴포넌트들 ===
 const TrendingUp = ({ size = 24, color = "currentColor" }) => (
@@ -1330,9 +1331,10 @@ const StockExchange = () => {
       if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
       const stock = stocks.find((s) => s.id === stockId);
       if (!stock) return;
-      const newPriceStr = prompt(
+      const newPriceStr = await promptDialog(
         `'${stock.name}'의 새로운 가격:`,
         stock.price.toString(),
+        { inputMode: "numeric", confirmText: "가격 변경" },
       );
       const newPrice = parseFloat(newPriceStr);
       if (isNaN(newPrice) || newPrice <= 0)

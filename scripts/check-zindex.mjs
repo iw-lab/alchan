@@ -35,8 +35,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "src");
 
 /** 최상단을 차지해야 하는 것들. 값은 파일에서 직접 읽어 온다(문서와 코드가 어긋나지 않게). */
+// ⚠️ 확인창·입력창은 z-index 를 `src/components/dialogA11y.js` 의 DIALOG_Z 에서
+//    함께 가져다 쓴다. 그래서 그 파일을 최상단 대표로 본다.
 const TOP = [
-  { file: "src/components/ConfirmHost.js", role: "확인 모달" },
+  { file: "src/components/dialogA11y.js", role: "확인·입력 모달" },
   { file: "src/components/ToastHost.js", role: "토스트" },
 ];
 
