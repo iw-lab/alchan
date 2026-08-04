@@ -34,6 +34,7 @@ import {
   orderBy as firebaseOrderBy,
 } from "firebase/firestore";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const DEFAULT_SETTINGS = {
   totalProperties: 30,
@@ -324,9 +325,11 @@ const RealEstateRegistry = () => {
       return;
     }
     if (
-      !skipConfirm && !window.confirm(
-        `정말로 학급 [${classCode}]의 모든 부동산을 정부 소유 초기값으로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.`
-      )
+      !skipConfirm &&
+      !(await confirmDialog(
+        `정말로 학급 [${classCode}]의 모든 부동산을 정부 소유 초기값으로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+        { danger: true },
+      ))
     )
       return;
     setOperationLoading(true);
@@ -870,7 +873,7 @@ const RealEstateRegistry = () => {
 
       // 부동산 개수가 변경된 경우에만 초기화 제안
       if (newTotal !== properties.length) {
-        if (window.confirm(`부동산 개수가 ${properties.length}→${newTotal}개로 변경되었습니다.\n부동산을 초기화하시겠습니까? (소유권/입주 초기화)`)) {
+        if (await confirmDialog(`부동산 개수가 ${properties.length}→${newTotal}개로 변경되었습니다.\n부동산을 초기화하시겠습니까? (소유권/입주 초기화)`, { danger: true })) {
           await handleInitializeProperties(true);
         }
       }
@@ -903,9 +906,9 @@ const RealEstateRegistry = () => {
     // 첫 번째 빈 부동산 선택
     const targetProperty = emptyProperties[0];
 
-    if (!window.confirm(
+    if (!(await confirmDialog(
       `'${userName}' 학생을 부동산 #${targetProperty.id}에 강제로 입주시키시겠습니까?\n\n월세: ${(targetProperty.rent / 10000).toFixed(0)}만 ${getCurrencyUnit()}\n소유자: ${targetProperty.owner === 'government' ? '정부' : targetProperty.ownerName}`
-    )) {
+    ))) {
       return;
     }
 
@@ -1019,9 +1022,9 @@ const RealEstateRegistry = () => {
       return;
     }
 
-    if (!window.confirm(
+    if (!(await confirmDialog(
       `${nonTenantsList.length}명의 학생을 자동으로 빈 부동산에 배정하시겠습니까?`
-    )) {
+    ))) {
       return;
     }
 
@@ -1114,13 +1117,13 @@ const RealEstateRegistry = () => {
     // 임차인이 있고 그 임차인이 받는 학생과 다르면 → 받는 학생은 '집주인'만 되고 임차인 유지(세입자 그대로).
     // 빈 부동산이거나 임차인이 곧 받는 학생이면 → 받는 학생이 소유+거주(자동 입주).
     const hasOtherTenant = targetProperty.tenantId && targetProperty.tenantId !== targetUser.id;
-    if (!window.confirm(
+    if (!(await confirmDialog(
       `'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}${targetProperty.name ? ` (${targetProperty.name})` : ""}을(를) ` +
       `무료로 분배(소유권 이전)하시겠습니까?\n\n` +
       (hasOtherTenant
         ? `현재 임차인(${targetProperty.tenantName || "세입자"})은 그대로 거주하며, ${targetUser.name} 학생이 집주인이 되어 월세를 받습니다.`
         : `학생은 비용 없이 소유자가 되며 자동으로 입주합니다.`)
-    )) return;
+    ))) return;
 
     setOperationLoading(true);
     const previousProperties = [...properties];
@@ -1212,9 +1215,9 @@ const RealEstateRegistry = () => {
     const currentRentPercentage = settings.rentPercentage || 1;
     logger.log(`[FixRent] 현재 월세 비율: ${currentRentPercentage}%`);
 
-    if (!window.confirm(
+    if (!(await confirmDialog(
       `월세가 0${getCurrencyUnit()}인 부동산을 모두 수정하시겠습니까?\n\n현재 설정:\n- 월세 비율: ${currentRentPercentage}%\n- 기본 부동산 가격: ${(settings.basePrice / 10000).toFixed(0)}만 ${getCurrencyUnit()}\n\n각 부동산의 가격 × ${currentRentPercentage}%로 월세가 설정됩니다.`
-    )) {
+    ))) {
       return;
     }
 
@@ -1264,9 +1267,9 @@ const RealEstateRegistry = () => {
       return;
     }
     if (
-      !window.confirm(
+      !(await confirmDialog(
         `학급 [${classCode}]의 모든 세입자로부터 월세를 강제 징수하시겠습니까? (잔액 부족 시 가진 현금을 모두 징수)`
-      )
+      , { danger: true }))
     )
       return;
 

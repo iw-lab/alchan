@@ -38,6 +38,7 @@ import {
 import { logger } from "../../utils/logger";
 import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 export default function CouponGoalPage() {
   const {
     user,
@@ -423,9 +424,8 @@ export default function CouponGoalPage() {
       return;
     }
     if (
-      !window.confirm(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`,
-      )
+      !(await confirmDialog(
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true }))
     ) {
       return;
     }
@@ -480,9 +480,8 @@ export default function CouponGoalPage() {
       return;
     }
     if (
-      !window.confirm(
-        `새 목표를 ${newTarget.toLocaleString()}쿠폰으로 설정하고 기존 진행률/기여 기록을 초기화합니다. 진행할까요?`,
-      )
+      !(await confirmDialog(
+        `새 목표를 ${newTarget.toLocaleString()}쿠폰으로 설정하고 기존 진행률/기여 기록을 초기화합니다. 진행할까요?`, { danger: true }))
     ) {
       return;
     }
@@ -601,9 +600,8 @@ export default function CouponGoalPage() {
 
     // ⚠️ confirm 취소 시 낙관적 차감이 남지 않도록 confirm을 낙관적 업데이트보다 먼저 확인
     if (
-      !window.confirm(
-        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`,
-      )
+      !(await confirmDialog(
+        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`, { danger: true }))
     ) {
       return; // 취소 — 아직 아무 것도 차감하지 않음
     }

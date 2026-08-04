@@ -28,6 +28,7 @@ import {
   isNetAssetsNegative,
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
+import { confirmDialog } from "../../utils/confirmDialog";
 export default function Auction() {
   // --- Context Data ---
   const authContext = useAuth();
@@ -405,7 +406,7 @@ export default function Auction() {
       showNotification("진행 중인 경매만 취소할 수 있습니다.", "error");
       return;
     }
-    if (!window.confirm(`[관리자] '${auction.name}' 경매를 강제로 취소하고 아이템을 판매자에게 반환하시겠습니까? 입찰금이 있다면 최고 입찰자에게 환불됩니다.`)) {
+    if (!(await confirmDialog(`[관리자] '${auction.name}' 경매를 강제로 취소하고 아이템을 판매자에게 반환하시겠습니까? 입찰금이 있다면 최고 입찰자에게 환불됩니다.`, { danger: true }))) {
       return;
     }
 

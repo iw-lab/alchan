@@ -36,6 +36,7 @@ import {
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // --- Helper Components ---
 
 // EditComplaintModal: 고소장 수정 모달
@@ -1158,7 +1159,7 @@ const PoliceStation = () => {
 
  const handleDeleteAllReports = async () => {
  if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
- if (window.confirm("모든 신고 기록 삭제?")) {
+ if (await confirmDialog("모든 신고 기록 삭제?", { danger: true })) {
  try {
  const reportsRef = collection(
  db,
@@ -1184,7 +1185,7 @@ const PoliceStation = () => {
  if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
  const reportToDelete = reports.find((r) => r.id === idToDelete);
  if (!reportToDelete) return;
- if (window.confirm(`사건번호 ${idToDelete.slice(-6)} 삭제?`)) {
+ if (await confirmDialog(`사건번호 ${idToDelete.slice(-6)} 삭제?`, { danger: true })) {
  try {
  const reportRef = doc(
  db,

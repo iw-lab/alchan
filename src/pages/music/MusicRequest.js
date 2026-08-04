@@ -16,6 +16,7 @@ import { usePolling } from "../../hooks/usePolling";
 import "../../MusicRequest.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const MusicRequest = ({ user }) => {
   const [roomName, setRoomName] = useState("");
@@ -139,9 +140,8 @@ const MusicRequest = ({ user }) => {
     }
 
     if (
-      !window.confirm(
-        `"${roomName}" 방을 정말 삭제하시겠습니까?\n모든 재생목록이 함께 삭제됩니다.`,
-      )
+      !(await confirmDialog(
+        `"${roomName}" 방을 정말 삭제하시겠습니까?\n모든 재생목록이 함께 삭제됩니다.`, { danger: true }))
     ) {
       return;
     }

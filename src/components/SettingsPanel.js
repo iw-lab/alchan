@@ -15,6 +15,7 @@ import {
   Check,
   HelpCircle,
 } from "lucide-react";
+import { confirmDialog } from "../utils/confirmDialog";
 
 export function SettingsPanel({ isOpen, onClose }) {
   const { fontSize, setFontSize } = useTheme();
@@ -38,8 +39,8 @@ export function SettingsPanel({ isOpen, onClose }) {
     localStorage.setItem("alchan-sounds", String(newValue));
   };
 
-  const handleResetTutorial = () => {
-    if (window.confirm("튜토리얼을 다시 보시겠습니까?")) {
+  const handleResetTutorial = async () => {
+    if (await confirmDialog("튜토리얼을 다시 보시겠습니까?")) {
       resetTutorial();
       onClose();
     }

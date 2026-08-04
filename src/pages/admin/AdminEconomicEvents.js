@@ -29,6 +29,7 @@ import {
  AlertCircle,
  CheckCircle,
 } from "lucide-react";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // 이벤트 타입 정의
 const EVENT_TYPES = [
@@ -327,9 +328,9 @@ export default function AdminEconomicEvents() {
  // 즉시 이벤트 실행
  const handleTriggerNow = async (eventId = null) => {
  if (
- !window.confirm(
+ !(await confirmDialog(
  "지금 바로 경제 이벤트를 실행하시겠습니까?\n오늘의 이벤트가 이미 발생했어도 강제로 실행됩니다.",
- )
+ ))
  )
  return;
  setTriggering(true);
@@ -363,8 +364,8 @@ export default function AdminEconomicEvents() {
  };
 
  // 이벤트 삭제
- const deleteEvent = (eventId) => {
- if (!window.confirm("이 이벤트를 삭제하시겠습니까?")) return;
+ const deleteEvent = async (eventId) => {
+ if (!(await confirmDialog("이 이벤트를 삭제하시겠습니까?", { danger: true }))) return;
  setSettings((prev) => ({
  ...prev,
  events: prev.events.filter((e) => e.id !== eventId),

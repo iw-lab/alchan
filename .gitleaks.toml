@@ -1,0 +1,53 @@
+# gitleaks 설정 — 이 저장소에만 적용되는 예외.
+#
+# 왜 필요한가: 이 저장소는 빌드 산출물(build/)을 git 에 커밋해서 배포한다.
+# 그 번들 안에는 Firebase 웹 API 키가 **반드시** 들어 있다 — 클라이언트 SDK 가
+# 브라우저에서 그 키로 프로젝트를 식별하기 때문이다. 즉 이건 비밀이 아니라
+# 공개 식별자이고, 감추면 앱이 동작하지 않는다. 이미 라이브 번들에서 누구나 읽을 수 있다.
+#
+# 실제 보호는 다른 층이 한다:
+#   · Firestore 규칙 (firestore.rules) — 누가 무엇을 읽고 쓸 수 있는가
+#   · App Check — 정상 앱에서 온 요청인가
+#   · API 키의 HTTP 리퍼러 제한 (GCP 콘솔)
+#
+# ⚠️ 이 예외는 **build/ 경로**에만 적용된다. 소스(src/·functions/)의 시크릿은
+#    종류를 불문하고 그대로 잡힌다. 예외를 넓히면 그때부터 이 게이트의 "통과"는
+#    아무 의미도 없어진다 — 아래 뮤테이션으로 그 경계를 확인했다:
+#      · src 에 AIza 키 삽입      → 잡힘 ✅
+#      · build 안 AWS 키 삽입     → 잡힘 ✅ (build 예외는 gcp-api-key 규칙에만 걸림)
+#      · build 안 Firebase 웹 키  → 통과 ✅ (의도한 예외)
+
+[extend]
+useDefault = true
+
+# 전역 allowlist: 저장소가 추적하지 않는 로컬 파일들.
+# (gitleaks detect --no-git 로 작업트리를 훑을 때 .env·playwright 프로필이 잡힌다.
+#  전부 .gitignore 대상이라 커밋될 일이 없다 — 확인함.)
+[[allowlists]]
+description = "추적하지 않는 로컬 파일"
+paths = [
+  '''^\.env''',
+  '''^\.playwright-profile''',
+  '''^node_modules/''',
+  '''^package-lock\.json$''',
+  '''^dataconnect-generated/''',
+]
+
+# build/ 안의 Firebase 웹 API 키만 예외.
+#
+# ⚠️ 규칙 이름을 반드시 실제 출력에서 확인할 것. 처음엔 `gcp-api-key` 로 적었다가
+#    예외가 전혀 안 먹었다 — 이 키를 잡는 규칙은 `generic-api-key` 였다.
+#    (`gitleaks protect --staged -v` 의 RuleID 로 확인)
+#    잘못된 규칙명을 써도 gitleaks 는 조용히 넘어간다. "설정했으니 됐겠지"가 아니라
+#    **숫자가 실제로 줄었는지**를 봐야 한다.
+#
+# targetRules 로 해당 규칙에만 한정한다 — build/ 전체를 푸는 게 아니다.
+[[allowlists]]
+description = "빌드 산출물의 Firebase 웹 API 키 — 브라우저에 내려가야 하는 공개 값"
+targetRules = ["generic-api-key", "gcp-api-key"]
+# ⚠️ paths 와 regexes 를 함께 쓰면 gitleaks 는 **둘 중 하나만 맞아도** 통과시킨다(OR).
+#    그래서 regexes 를 넣는 순간 `src/` 의 AIza 키까지 풀려 버렸다(실측: ②③ 뮤테이션이
+#    전부 통과 = 게이트 무용지물). AND 로 묶으려면 `condition = "AND"` 가 필요하다.
+condition = "AND"
+paths = ['''^build/''']
+regexes = ['''AIza[0-9A-Za-z\-_]{35}''']

@@ -32,6 +32,7 @@ import {
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 const NationalAssembly = () => {
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
@@ -532,7 +533,7 @@ const NationalAssembly = () => {
       toast.error("관리자만 이 작업을 수행할 수 있습니다.");
       return;
     }
-    if (window.confirm("이 법안의 모든 투표를 초기화하시겠습니까?")) {
+    if (await confirmDialog("이 법안의 모든 투표를 초기화하시겠습니까?", { danger: true })) {
       const lawDocRef = doc(
         db,
         "classes",
@@ -588,7 +589,7 @@ const NationalAssembly = () => {
       toast.error("관리자 또는 부결된 법안의 제안자만 삭제할 수 있습니다.");
       return;
     }
-    if (window.confirm("정말로 이 법안을 삭제하시겠습니까?")) {
+    if (await confirmDialog("정말로 이 법안을 삭제하시겠습니까?", { danger: true })) {
       // 낙관적 업데이트: 즉시 UI에서 제거
       setOptimisticDeletedLaws(prev => new Set([...prev, id]));
 
@@ -1401,10 +1402,11 @@ const NationalAssembly = () => {
                   </p>
                   <button
                     className="admin-button danger"
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        window.confirm(
-                          "모든 법안을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                        await confirmDialog(
+                          "모든 법안을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+                          { danger: true },
                         )
                       ) {
                         const batch = writeBatch(db);

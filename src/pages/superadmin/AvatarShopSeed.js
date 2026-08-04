@@ -9,6 +9,7 @@ import { logger } from "../../utils/logger";
 
 // 아이템 카탈로그를 require로 가져옴 (Node 형식이지만 webpack도 처리 가능)
 import { ALL_AVATAR_ITEMS } from "../../data/avatarShopCatalog";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 export default function AvatarShopSeed() {
   const { userDoc } = useAuth() || {};
@@ -25,7 +26,7 @@ export default function AvatarShopSeed() {
   }
 
   const handleSeed = async () => {
-    if (!window.confirm(`총 ${ALL_AVATAR_ITEMS.length}개 아이템을 시드합니다. 진행하시겠습니까?`)) return;
+    if (!(await confirmDialog(`총 ${ALL_AVATAR_ITEMS.length}개 아이템을 시드합니다. 진행하시겠습니까?`))) return;
 
     setSeeding(true);
     setError(null);

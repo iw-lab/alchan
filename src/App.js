@@ -12,6 +12,9 @@ import { clearLocalStoragePreserving } from "./utils/storageReset";
 // alert 대체재. lazy 로 하지 않는다 — 초기화 중 뜨는 오류를 보여줘야 하는데
 // 그때 청크를 받아오고 있으면 그 오류를 놓친다.
 import ToastHost from "./components/ToastHost";
+// window.confirm 대체재. 같은 이유로 lazy 하지 않는다 — 되돌릴 수 없는 작업의
+// 마지막 관문이라 청크를 기다리는 사이 화면이 비면 안 된다.
+import ConfirmHost from "./components/ConfirmHost";
 
 // 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
 const queryClient = new QueryClient({
@@ -203,6 +206,7 @@ function App() {
                   화면을 옮기는 순간 알림이 같이 사라진다. 저장 직후 이동은 흔한 흐름이라
                   그러면 학생은 아무것도 못 본다. (alert 대체재 — src/utils/toast.js) */}
               <ToastHost />
+              <ConfirmHost />
               {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
               <Router>
                 {/* fallback=null: index.html splash(z-index:9999)가 덮고 있어 깜빡임 방지

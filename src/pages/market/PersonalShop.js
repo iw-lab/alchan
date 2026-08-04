@@ -28,6 +28,7 @@ import {
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // 부가세율 (10%)
 const VAT_RATE = 0.1;
@@ -890,7 +891,7 @@ const PersonalShop = () => {
 
   // 상품 삭제
   const handleDeleteProduct = async (product) => {
-    if (!window.confirm(`"${product.name}"을(를) 삭제하시겠습니까?`)) return;
+    if (!(await confirmDialog(`"${product.name}"을(를) 삭제하시겠습니까?`, { danger: true }))) return;
 
     await deleteDoc(doc(db, "shopProducts", product.id));
     await loadMyShop();

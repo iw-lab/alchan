@@ -45,6 +45,7 @@ const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // 붙여넣기는 교사 요청으로 다시 허용(Ctrl+V 정상 작동). 파일 드롭만 차단 유지.
 // (복사·잘라내기·우클릭 선택 차단은 아래 blockCopyProps에서 별도 유지)
@@ -616,7 +617,7 @@ const LearningBoard = () => {
   // Post delete (학생 본인글 + 관리자)
   const handleDeletePost = async () => {
     if (!selectedBoard || !selectedPost || !classCode) return;
-    if (!window.confirm("게시글을 삭제하시겠습니까?")) return;
+    if (!(await confirmDialog("게시글을 삭제하시겠습니까?", { danger: true }))) return;
     try {
       // 첨부파일 Storage 삭제 (담임이 올린 파일이라 담임만 실제 권한 있음)
       if (currentUserIsAdmin) {
@@ -643,7 +644,7 @@ const LearningBoard = () => {
   const handleDeletePostFromList = async (e, post) => {
     e.stopPropagation();
     if (!selectedBoard || !classCode) return;
-    if (!window.confirm(`"${post.title}" 게시글을 삭제하시겠습니까?`)) return;
+    if (!(await confirmDialog(`"${post.title}" 게시글을 삭제하시겠습니까?`, { danger: true }))) return;
     try {
       // 첨부파일 Storage 삭제
       await deleteAttachmentsFromStorage(post.attachments);
@@ -782,7 +783,7 @@ const LearningBoard = () => {
 
   const handleDeleteComment = async (commentId) => {
     if (!selectedBoard || !selectedPost || !classCode) return;
-    if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
+    if (!(await confirmDialog("댓글을 삭제하시겠습니까?", { danger: true }))) return;
     try {
       await deleteDoc(doc(db, "classes", classCode, "learningBoards", selectedBoard.id, "posts", selectedPost.id, "comments", commentId));
       // 댓글 수 감소
@@ -916,7 +917,7 @@ const LearningBoard = () => {
   const handleDeleteBoard = async (boardId) => {
     if (!currentUserIsAdmin || !classCode) return;
     const boardToDelete = boards.find((b) => b.id === boardId);
-    if (!window.confirm(`'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`)) return;
+    if (!(await confirmDialog(`'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`, { danger: true }))) return;
     try {
       const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
       const postsRef = collection(boardRef, "posts");
@@ -1375,8 +1376,8 @@ const LearningBoard = () => {
                 <button
                   type="button"
                   className="lb-draft-clear"
-                  onClick={() => {
-                    if (window.confirm("작성 중인 내용을 지우고 새로 쓸까요?")) {
+                  onClick={async () => {
+                    if (await confirmDialog("작성 중인 내용을 지우고 새로 쓸까요?")) {
                       setNewPost({ title: "", content: "" });
                       clearDraft();
                     }

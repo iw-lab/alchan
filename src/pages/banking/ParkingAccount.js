@@ -40,6 +40,7 @@ import {
 } from "../../utils/netAssets";
 
 import { logger } from "../../utils/logger";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
 const getTeacherAccount = async (classCode) => {
  if (!classCode) return null;
@@ -1407,7 +1408,7 @@ const ParkingAccount = ({
  ? `대출 만기 상환: 원금 ${formatCurrency(balance)}${currencyUnit} + 이자 ${formatCurrency(interest)}${currencyUnit} = ${formatCurrency(total)}${currencyUnit}을 상환하시겠습니까?`
  : `만기 수령: 원금 ${formatCurrency(balance)}${currencyUnit} + 이자 ${formatCurrency(interest)}${currencyUnit} = ${formatCurrency(total)}${currencyUnit}을 수령하시겠습니까?`;
 
- if (!window.confirm(confirmMsg)) {
+ if (!(await confirmDialog(confirmMsg, { danger: true }))) {
  logger.log("사용자가 만기 처리를 취소했습니다.");
  return;
  }
@@ -1536,7 +1537,7 @@ const ParkingAccount = ({
  ? `대출 일시 상환\n\n원금: ${formatCurrency(balance)}${currencyUnit}\n경과 이자: ${formatCurrency(loanAccruedInterest)}${currencyUnit} (${loanElapsedDays}일)\n총 상환액: ${formatCurrency(loanTotalRepay)}${currencyUnit}\n\n상환하시겠습니까?`
  : `'${name}'을(를) 중도 해지하시겠습니까? (이자 없이 납입 원금 ${formatCurrency(refundAmount)}${currencyUnit}만 반환됩니다)`;
 
- if (!window.confirm(confirmMessage)) {
+ if (!(await confirmDialog(confirmMessage, { danger: true }))) {
  logger.log("사용자가 중도 해지를 취소했습니다.");
  return;
  }
@@ -1827,9 +1828,8 @@ const ParkingAccount = ({
  }
 
  if (
- !window.confirm(
- `정말로 이 상품(${product.name})을 강제로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
- )
+ !(await confirmDialog(
+ `정말로 이 상품(${product.name})을 강제로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`, { danger: true }))
  ) {
  return;
  }

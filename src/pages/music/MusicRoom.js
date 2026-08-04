@@ -17,6 +17,7 @@ import "../../MusicRoom.css";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const YOUTUBE_ERROR_MESSAGES = {
   2: "영상 주소가 올바르지 않습니다.",
@@ -234,9 +235,8 @@ const MusicRoom = ({ user }) => {
 
   const deleteRoom = async () => {
     if (
-      !window.confirm(
-        "정말로 이 방을 삭제하시겠습니까? 모든 신청 목록도 함께 삭제됩니다.",
-      )
+      !(await confirmDialog(
+        "정말로 이 방을 삭제하시겠습니까? 모든 신청 목록도 함께 삭제됩니다.", { danger: true }))
     ) {
       return;
     }

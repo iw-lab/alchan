@@ -37,6 +37,7 @@ import {
 } from "../../utils/netAssets";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 export default function GroupPurchase() {
   const { user, userDoc, isAdmin, optimisticUpdate } = useAuth();
@@ -281,9 +282,8 @@ export default function GroupPurchase() {
   // 캠페인 삭제 (관리자 또는 생성자)
   const handleDelete = async (campaign) => {
     if (
-      !window.confirm(
-        "정말 삭제하시겠습니까? 진행 중인 모금은 참여자에게 환불되며, 이미 지급 완료된 캠페인은 환불되지 않습니다.",
-      )
+      !(await confirmDialog(
+        "정말 삭제하시겠습니까? 진행 중인 모금은 참여자에게 환불되며, 이미 지급 완료된 캠페인은 환불되지 않습니다.", { danger: true }))
     )
       return;
     if (isDeleting) return; // 더블클릭 재진입 차단

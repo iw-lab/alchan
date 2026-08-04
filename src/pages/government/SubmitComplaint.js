@@ -1,6 +1,7 @@
 // src/SubmitComplaint.js
 import React, { useState, useEffect } from "react";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // users: 사용자 목록 배열 (예: [{id: 'user1', name: '김민준'}, ...])
 // currentUserId: 현재 로그인한 사용자 ID
@@ -90,8 +91,8 @@ const SubmitComplaint = ({
   };
 
   // 고소 사유 삭제
-  const handleDeleteReason = (index) => {
-    if (window.confirm("이 고소 사유를 삭제하시겠습니까?")) {
+  const handleDeleteReason = async (index) => {
+    if (await confirmDialog("이 고소 사유를 삭제하시겠습니까?", { danger: true })) {
       const updatedReasons = [...predefinedReasons];
       updatedReasons.splice(index, 1);
       setPredefinedReasons(updatedReasons);

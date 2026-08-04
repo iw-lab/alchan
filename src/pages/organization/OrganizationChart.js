@@ -22,6 +22,7 @@ import { logger } from "../../utils/logger";
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -184,7 +185,7 @@ const OrganizationChart = ({ classCode }) => {
       toast.error("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
       return;
     }
-    if (!window.confirm("이 법안을 최종 승인하시겠습니까?")) return;
+    if (!(await confirmDialog("이 법안을 최종 승인하시겠습니까?"))) return;
     const lawDocRef = doc(
       db,
       "classes",

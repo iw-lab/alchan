@@ -36,6 +36,7 @@ import {
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
 const noopRefetch = () => {};
 
@@ -411,9 +412,8 @@ const BankruptcySection = ({ refetchComplaints }) => {
 
  const handleApplyForBankruptcy = async () => {
  if (
- window.confirm(
- "정말로 파산을 신청하시겠습니까? 재판 결과에 따라 모든 자산이 초기화될 수 있습니다.",
- )
+ await confirmDialog(
+ "정말로 파산을 신청하시겠습니까? 재판 결과에 따라 모든 자산이 초기화될 수 있습니다.", { danger: true })
  ) {
  try {
  const casesRef = collection(
@@ -718,7 +718,7 @@ const Court = () => {
  return toast.error("삭제 권한이 없습니다.");
 
  if (
- window.confirm(`사건번호 ${id.slice(-6)} 기록을 정말 삭제하시겠습니까?`)
+ await confirmDialog(`사건번호 ${id.slice(-6)} 기록을 정말 삭제하시겠습니까?`, { danger: true })
  ) {
  const complaintRef = doc(db, "classes", classCode, "courtComplaints", id);
  try {

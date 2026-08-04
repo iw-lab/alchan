@@ -14,6 +14,7 @@ import {
   serverTimestamp,
 } from "../../firebase";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 export default function RecoverDonations() {
   const { user, userDoc } = useAuth();
@@ -37,7 +38,7 @@ export default function RecoverDonations() {
       return;
     }
 
-    if (!window.confirm(`${classCode} 학급의 기부 내역을 donations 컬렉션에서 복구하시겠습니까?`)) {
+    if (!(await confirmDialog(`${classCode} 학급의 기부 내역을 donations 컬렉션에서 복구하시겠습니까?`))) {
       return;
     }
 

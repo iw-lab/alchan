@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const PoliceAdminSettings = ({
   reportReasons,
@@ -29,8 +30,8 @@ const PoliceAdminSettings = ({
     ]);
   };
 
-  const handleDeleteReason = (indexToDelete) => {
-    if (window.confirm("이 사유를 정말 삭제하시겠습니까?")) {
+  const handleDeleteReason = async (indexToDelete) => {
+    if (await confirmDialog("이 사유를 정말 삭제하시겠습니까?", { danger: true })) {
       setReasons(reasons.filter((_, index) => index !== indexToDelete));
     }
   };
@@ -43,10 +44,11 @@ const PoliceAdminSettings = ({
     onUpdateReasons(reasons);
   };
 
-  const handleDeleteAllClick = () => {
+  const handleDeleteAllClick = async () => {
     if (
-      window.confirm(
-        "정말로 모든 신고 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      await confirmDialog(
+        "정말로 모든 신고 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        { danger: true },
       )
     ) {
       onDeleteAllReports();

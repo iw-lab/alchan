@@ -17,6 +17,7 @@ import { httpsCallable } from "firebase/functions";
 import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide-react";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
@@ -175,7 +176,7 @@ const AdminApprovalPanel = () => {
     async (action) => {
       if (bulkProcessing || selectedIds.size === 0) return;
       const label = action === "approve" ? "승인" : "거절";
-      if (!window.confirm(`선택한 ${selectedIds.size}건을 일괄 ${label}하시겠습니까?`)) return;
+      if (!(await confirmDialog(`선택한 ${selectedIds.size}건을 일괄 ${label}하시겠습니까?`))) return;
 
       setBulkProcessing(true);
       let success = 0;

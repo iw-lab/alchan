@@ -63,6 +63,7 @@ import {
   Spinner,
 } from "./ui/index";
 import { toast } from "../utils/toast";
+import { confirmDialog } from "../utils/confirmDialog";
 
 // 랜덤 비밀번호 생성
 const generatePassword = (length = 8) => {
@@ -335,9 +336,8 @@ const StudentManager = () => {
   // 학생 삭제
   const handleDeleteStudent = async (student) => {
     if (
-      !window.confirm(
-        `${student.name} 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`,
-      )
+      !(await confirmDialog(
+        `${student.name} 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`, { danger: true }))
     ) {
       return;
     }
@@ -374,9 +374,8 @@ const StudentManager = () => {
     if (selectedStudents.size === 0) return;
 
     if (
-      !window.confirm(
-        `선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`,
-      )
+      !(await confirmDialog(
+        `선택된 ${selectedStudents.size}명의 학생을 삭제하시겠습니까?\n\n주의: 이 작업은 되돌릴 수 없습니다.`, { danger: true }))
     ) {
       return;
     }

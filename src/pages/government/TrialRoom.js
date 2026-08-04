@@ -25,6 +25,7 @@ import "./TrialRoom.css";
 
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 재판방 3D 비주얼(CourtroomScene)은 2026-08-03 제거 — 활성화된 적 없는 WIP인데
 // 에셋 11MB를 배포마다 끌고 다녔다. 재판 기능 자체는 아래 패널에서 그대로 동작한다.
 
@@ -568,11 +569,11 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     if (userRole !== "judge" || !clickedUserId || clickedUserId === currentUser.id) return;
 
     if (roomData?.silencedUsers?.includes(clickedUserId)) {
-      if (window.confirm(`${getUserName(clickedUserId)}님의 침묵 패널티를 해제하시겠습니까?`)) {
+      if (await confirmDialog(`${getUserName(clickedUserId)}님의 침묵 패널티를 해제하시겠습니까?`)) {
         await handleRemoveSilence(clickedUserId);
       }
     } else {
-      if (window.confirm(`${getUserName(clickedUserId)}님에게 침묵 패널티를 적용하시겠습니까?`)) {
+      if (await confirmDialog(`${getUserName(clickedUserId)}님에게 침묵 패널티를 적용하시겠습니까?`)) {
         await handleApplySilence(clickedUserId);
       }
     }
@@ -892,10 +893,10 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
               <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '10px' }}>
                 아바타 클릭으로 침묵 패널티 적용/해제
               </p>
-              <button className="judge-action-btn" onClick={() => {
+              <button className="judge-action-btn" onClick={async () => {
                 const q = window.prompt("투표 질문을 입력하세요:");
                 if (q) {
-                  const isAnon = window.confirm("익명 투표로 진행하시겠습니까?");
+                  const isAnon = await confirmDialog("익명 투표로 진행하시겠습니까?");
                   handleStartVoting(q, isAnon);
                 }
               }}>📊 투표 시작</button>

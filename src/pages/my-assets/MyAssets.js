@@ -38,6 +38,7 @@ import { DailyRewardBanner } from "../../components/DailyReward";
 
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 export default function MyAssets() {
   const {
     user,
@@ -971,9 +972,8 @@ export default function MyAssets() {
       return;
     }
     if (
-      !window.confirm(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`,
-      )
+      !(await confirmDialog(
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true }))
     )
       return;
 
@@ -1071,9 +1071,8 @@ export default function MyAssets() {
     }
 
     if (
-      window.confirm(
-        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`,
-      )
+      await confirmDialog(
+        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`, { danger: true })
     ) {
       // 🔥 쿠폰 즉시 UI 업데이트 (낙관적 업데이트)
       if (optimisticUpdate) {

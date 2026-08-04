@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // ── 디자인 헬퍼 ─────────────────────────
 const AVATAR_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#14b8a6", "#3b82f6", "#a855f7"];
@@ -255,7 +256,7 @@ const PersonalBoard = () => {
 
   const handleDeletePost = async (post) => {
     if (!viewBoard) return;
-    if (!window.confirm("이 글을 삭제할까요?")) return;
+    if (!(await confirmDialog("이 글을 삭제할까요?", { danger: true }))) return;
     try {
       const commentsRef = collection(db, "classes", classCode, "personalBoards", viewBoard.ownerId, "posts", post.id, "comments");
       const csnap = await getDocs(commentsRef);
@@ -273,7 +274,7 @@ const PersonalBoard = () => {
   const handleDeleteComment = async (postId, commentId) => {
     if (!viewBoard) return;
     // 되돌릴 수 없는 삭제 — 글 삭제와 동일하게 확인창 + 실패 안내(P6 UX).
-    if (!window.confirm("이 댓글을 삭제할까요?")) return;
+    if (!(await confirmDialog("이 댓글을 삭제할까요?", { danger: true }))) return;
     try {
       await deleteDoc(doc(db, "classes", classCode, "personalBoards", viewBoard.ownerId, "posts", postId, "comments", commentId));
       await loadBoardPosts(viewBoard.ownerId);

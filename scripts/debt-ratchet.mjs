@@ -67,11 +67,15 @@ const METRICS = {
   // 탭 전체를 얼리고, 금액을 못 보여주고, 되돌릴 수 없다. 모바일에선 특히 나쁘다.
   // `globalThis.alert`·`window["confirm"]` 형태도 센다 — 지금 이 코드베이스엔 0건이지만,
   // 세지 않는 형태가 있으면 그게 곧 우회로가 된다.
+  //
+  // ⚠️ `prompt` 도 센다. 처음엔 alert·confirm 만 셌는데, 둘을 다 걷어낸 뒤 린트를
+  //    켜 보니 **prompt 가 10건 남아 있었다**(2026-08-04). 세지 않는 것은 줄지 않는다 —
+  //    "부채 0"이라고 보고할 뻔했다. 셋 다 같은 종류의 문제(탭을 얼리는 시스템 창)다.
   alertConfirm: {
-    label: "alert()/confirm() 호출",
+    label: "alert()/confirm()/prompt() 호출",
     value: count(
       code,
-      /(?<![\w.])(?:(?:window|globalThis)\.)?(?:alert|confirm)\s*\(|(?:window|globalThis)\s*\[\s*["'](?:alert|confirm)["']\s*\]/g,
+      /(?<![\w.])(?:(?:window|globalThis)\.)?(?:alert|confirm|prompt)\s*\(|(?:window|globalThis)\s*\[\s*["'](?:alert|confirm|prompt)["']\s*\]/g,
     ),
   },
   // CSS 가 서로 싸우고 있다는 뜻. "한 군데 고쳤더니 다른 데가 깨진다"의 기계적 원인.

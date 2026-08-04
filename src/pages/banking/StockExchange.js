@@ -55,6 +55,7 @@ import {
   clearLocalStorageBatchCache,
 } from "./stockExchangeService";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // === 아이콘 컴포넌트들 ===
 const TrendingUp = ({ size = 24, color = "currentColor" }) => (
@@ -363,9 +364,9 @@ const AdminPanel = React.memo(
 
     const handleCreateRealStocks = async () => {
       if (
-        !window.confirm(
+        !(await confirmDialog(
           "실제 주식 데이터(삼성전자, 애플 등)를 생성하시겠습니까?\n(Yahoo Finance에서 실시간 가격을 가져옵니다)",
-        )
+        ))
       ) {
         return;
       }
@@ -398,9 +399,8 @@ const AdminPanel = React.memo(
 
     const handleDeleteSimulationStocks = async () => {
       if (
-        !window.confirm(
-          "⚠️ 모든 시뮬레이션 주식을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n(실제 주식은 유지됩니다)",
-        )
+        !(await confirmDialog(
+          "⚠️ 모든 시뮬레이션 주식을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n(실제 주식은 유지됩니다)", { danger: true }))
       ) {
         return;
       }
@@ -417,7 +417,7 @@ const AdminPanel = React.memo(
     };
 
     const handleDeduplicateStocks = async () => {
-      if (!window.confirm("중복된 주식을 정리하시겠습니까?\n(같은 종목이 여러 개 있으면 하나만 남기고 삭제합니다)")) return;
+      if (!(await confirmDialog("중복된 주식을 정리하시겠습니까?\n(같은 종목이 여러 개 있으면 하나만 남기고 삭제합니다)", { danger: true }))) return;
       if (isDeduplicating) return;
       setIsDeduplicating(true);
       try {
@@ -1301,7 +1301,7 @@ const StockExchange = () => {
   const deleteStock = useCallback(
     async (stockId, stockName) => {
       if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
-      if (window.confirm(`'${stockName}' 상품을 정말로 삭제하시겠습니까?`)) {
+      if (await confirmDialog(`'${stockName}' 상품을 정말로 삭제하시겠습니까?`, { danger: true })) {
         try {
           await deleteDoc(doc(db, "CentralStocks", stockId));
 
@@ -1369,7 +1369,7 @@ const StockExchange = () => {
       if (!stock) return;
       const action = currentIsListed ? "상장폐지" : "재상장";
 
-      if (window.confirm(`'${stock.name}' 상품을 ${action}하시겠습니까?`)) {
+      if (await confirmDialog(`'${stock.name}' 상품을 ${action}하시겠습니까?`)) {
         try {
           const updateData = currentIsListed
             ? { isListed: false, price: 0, delistedAt: serverTimestamp() }
@@ -1738,7 +1738,7 @@ const StockExchange = () => {
     async (holdingId) => {
       if (!user || !classCode) return;
       if (
-        window.confirm("이 상품(휴지조각)을 포트폴리오에서 삭제하시겠습니까?")
+        await confirmDialog("이 상품(휴지조각)을 포트폴리오에서 삭제하시겠습니까?", { danger: true })
       ) {
         try {
           await deleteDoc(doc(db, "users", user.uid, "portfolio", holdingId));

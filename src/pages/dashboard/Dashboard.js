@@ -75,6 +75,7 @@ import {
 import { logger } from "../../utils/logger";
 import { startBackgroundPoll } from "../../utils/backgroundPoll";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // Cloud Functions 호출 함수 설정 (handleManualTaskReset 내부에서 사용)
 
 // 🔥 [최적화 v3.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
@@ -1211,9 +1212,8 @@ function Dashboard({ adminTabMode }) {
  }
 
  if (
- !window.confirm(
- "정말로 이 직업을 삭제하시겠습니까? 관련된 할일도 모두 삭제됩니다.",
- )
+ !(await confirmDialog(
+ "정말로 이 직업을 삭제하시겠습니까? 관련된 할일도 모두 삭제됩니다.", { danger: true }))
  ) {
  return;
  }
@@ -1543,7 +1543,7 @@ function Dashboard({ adminTabMode }) {
  return;
  }
 
- if (!window.confirm("정말로 이 할일을 삭제하시겠습니까?")) {
+ if (!(await confirmDialog("정말로 이 할일을 삭제하시겠습니까?", { danger: true }))) {
  return;
  }
 
@@ -2104,7 +2104,7 @@ function Dashboard({ adminTabMode }) {
  const handleRemoveClassCode = useCallback(async (codeToRemove) => {
  if (!db) return false;
 
- if (!window.confirm(`'${codeToRemove}' 코드를 삭제하시겠습니까?`)) {
+ if (!(await confirmDialog(`'${codeToRemove}' 코드를 삭제하시겠습니까?`, { danger: true }))) {
  return false;
  }
 
@@ -2175,9 +2175,8 @@ function Dashboard({ adminTabMode }) {
  // ⚠️ 학급 전원의 기록을 지우는 되돌릴 수 없는 작업인데 '새로고침' 버튼 바로 옆에 있어
  //    오클릭 위험이 있다(2026-07-25 리뷰 C4). 버튼을 시각적으로 분리하고 확인을 2단계로 둔다.
  if (
- !window.confirm(
- `'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
- )
+ !(await confirmDialog(
+ `'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`, { danger: true }))
  ) {
  logger.log("[Dashboard] 사용자가 리셋을 취소했습니다.");
  return;

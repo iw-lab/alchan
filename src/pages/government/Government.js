@@ -24,6 +24,7 @@ import {
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 날짜 포맷팅 헬퍼 함수
 const formatDate = (dateString) => {
     if (!dateString) return "정보 없음";
@@ -119,7 +120,7 @@ const LawManagement = ({ classCode }) => {
         toast.error("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
         return;
     }
-    if(window.confirm("이 법안을 최종 승인하시겠습니까?")) {
+    if(await confirmDialog("이 법안을 최종 승인하시겠습니까?")) {
         const lawDocRef = doc(db, "classes", classCode, "nationalAssemblyLaws", lawId);
         try {
             await updateDoc(lawDocRef, {

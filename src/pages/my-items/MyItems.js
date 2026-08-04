@@ -22,6 +22,7 @@ import {
   functions,
   httpsCallable,
 } from "../../firebase";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const ITEM_DEFAULT_DURATION_MS = 5 * 60 * 1000;
 
@@ -765,8 +766,10 @@ const MyItems = () => {
       );
       handleCloseSellToMarketModal();
 
-      setTimeout(() => {
-        if (window.confirm("아이템 시장으로 이동하시겠습니까?")) {
+      // setTimeout 콜백을 async 로 바꾼다. 반환값(Promise)을 setTimeout 은 무시하므로
+      // 동작에 영향이 없다 — 여기서 await 을 쓰려면 이 방법뿐이다.
+      setTimeout(async () => {
+        if (await confirmDialog("아이템 시장으로 이동하시겠습니까?")) {
           navigate("/item-market");
         }
       }, 500);

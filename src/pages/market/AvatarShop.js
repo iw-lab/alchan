@@ -30,6 +30,7 @@ import {
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const TAB_OPTIONS = [
   { id: "all", name: "전체", icon: Sparkles },
@@ -231,7 +232,7 @@ export default function AvatarShop() {
         toast.error(NEGATIVE_ASSETS_MESSAGE);
         return;
       }
-      if (!window.confirm(`${item.name} (${effectivePrice.toLocaleString()}${getCurrencyUnit()}) 구매하시겠습니까?`)) return;
+      if (!(await confirmDialog(`${item.name} (${effectivePrice.toLocaleString()}${getCurrencyUnit()}) 구매하시겠습니까?`))) return;
     }
 
     setPurchasing(item.id);

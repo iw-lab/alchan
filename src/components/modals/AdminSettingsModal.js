@@ -47,6 +47,7 @@ import {
   getEffectiveJobIds,
 } from "../../utils/jobPermissions";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
 // 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
@@ -116,9 +117,8 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
     }
 
     // 이중 확인
-    const finalConfirm = window.confirm(
-      `정말로 '${userClassCode}' 학급의 모든 학생 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 다음 데이터가 영구 삭제됩니다:\n- 학생 계정 (role: 'student')\n- 활동 로그\n- 거래 내역\n\n선생님(admin) 계정은 유지됩니다.`,
-    );
+    const finalConfirm = await confirmDialog(
+      `정말로 '${userClassCode}' 학급의 모든 학생 데이터를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며 다음 데이터가 영구 삭제됩니다:\n- 학생 계정 (role: 'student')\n- 활동 로그\n- 거래 내역\n\n선생님(admin) 계정은 유지됩니다.`, { danger: true });
 
     if (!finalConfirm) {
       return;
@@ -1098,9 +1098,8 @@ const AdminSettingsModal = ({
     const currentSalarySettings = salarySettings;
 
     if (
-      !window.confirm(
-        `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`,
-      )
+      !(await confirmDialog(
+        `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`, { danger: true }))
     ) {
       return;
     }
@@ -1145,9 +1144,8 @@ const AdminSettingsModal = ({
     const currentSalarySettings = salarySettings;
 
     if (
-      !window.confirm(
-        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`,
-      )
+      !(await confirmDialog(
+        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`, { danger: true }))
     ) {
       return;
     }
@@ -1185,7 +1183,7 @@ const AdminSettingsModal = ({
 
   // 주급 1회분 회수 (임시)
   const handleReverseSalary = async () => {
-    if (!window.confirm("주급 1회분을 모든 학생에게서 회수하시겠습니까?")) return;
+    if (!(await confirmDialog("주급 1회분을 모든 학생에게서 회수하시겠습니까?", { danger: true }))) return;
     try {
       const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
       const result = await reverseFn({});
@@ -1219,11 +1217,10 @@ const AdminSettingsModal = ({
         )
         .join("\n");
       if (
-        !window.confirm(
+        !(await confirmDialog(
           `아래 학생의 지정 직업을 '선생님 지정' 필드로 옮깁니다.\n` +
             `선생님이 배정한 게 맞는지 확인해주세요 (학생이 몰래 넣은 직업이면 여기서 취소하고 먼저 회수하세요).\n\n` +
-            `${list}\n\n적용할까요?`,
-        )
+            `${list}\n\n적용할까요?`, { danger: true }))
       ) {
         return;
       }
@@ -1434,9 +1431,8 @@ const AdminSettingsModal = ({
       }
 
       if (
-        window.confirm(
-          `사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`,
-        )
+        await confirmDialog(
+          `사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`, { danger: true })
       ) {
         try {
           setMembersLoading(true);
@@ -1471,11 +1467,10 @@ const AdminSettingsModal = ({
       }
 
       if (
-        window.confirm(
+        await confirmDialog(
           `이 사용자의 관리자 권한을 ${
             currentStatus ? "제거" : "부여"
-          }하시겠습니까?`,
-        )
+          }하시겠습니까?`, { danger: true })
       ) {
         setMembersLoading(true);
 
@@ -1612,11 +1607,11 @@ const AdminSettingsModal = ({
 
   // 금융 상품 삭제
   const handleDeleteProduct = useCallback(
-    (id, type) => {
+    async (id, type) => {
       const typeText =
         type === "deposit" ? "예금" : type === "saving" ? "적금" : "대출";
 
-      if (!window.confirm(`이 ${typeText} 상품을 삭제하시겠습니까?`)) return;
+      if (!(await confirmDialog(`이 ${typeText} 상품을 삭제하시겠습니까?`, { danger: true }))) return;
 
       let updatedProducts = [];
       let storageKey = "";
@@ -1659,9 +1654,8 @@ const AdminSettingsModal = ({
   // 주식 정보 초기화
   const handleInitializeStocks = useCallback(async () => {
     if (
-      !window.confirm(
-        "모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-      )
+      !(await confirmDialog(
+        "모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.", { danger: true }))
     )
       return;
 

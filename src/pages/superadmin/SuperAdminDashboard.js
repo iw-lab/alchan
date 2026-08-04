@@ -64,6 +64,7 @@ import "./SuperAdminDashboard.css";
 
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 // 탭 목록
 // Cloud Function 참조 (모듈 스코프)
 const listAllAuthUsersFn = httpsCallable(functions, "listAllAuthUsers");
@@ -475,7 +476,7 @@ export default function SuperAdminDashboard() {
 
   // 선생님 승인 (학급 코드 없으면 자동 생성 + classes 문서 생성)
   const handleApproveTeacher = async (teacherId) => {
-    if (!window.confirm("이 선생님을 승인하시겠습니까?")) return;
+    if (!(await confirmDialog("이 선생님을 승인하시겠습니까?"))) return;
 
     try {
       const teacher = pendingTeachers.find((t) => t.id === teacherId);
@@ -555,9 +556,8 @@ export default function SuperAdminDashboard() {
   // 선생님 거절/삭제 — 영구 차단 (이메일 거절 목록에 기록)
   const handleRejectTeacher = async (teacherId, teacherName) => {
     if (
-      !window.confirm(
-        `'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.\n해당 이메일은 영구적으로 차단됩니다.`,
-      )
+      !(await confirmDialog(
+        `'${teacherName}' 선생님의 가입을 거절하시겠습니까?\n이 작업은 되돌릴 수 없습니다.\n해당 이메일은 영구적으로 차단됩니다.`, { danger: true }))
     )
       return;
 
@@ -746,9 +746,9 @@ export default function SuperAdminDashboard() {
   // 학급 코드 발급 (이미 승인된 선생님 중 classCode가 "미지정"인 경우)
   const handleAssignClassCode = async (teacherId, teacherName) => {
     if (
-      !window.confirm(
+      !(await confirmDialog(
         `'${teacherName}' 선생님에게 새 학급 코드를 발급하시겠습니까?`,
-      )
+      ))
     )
       return;
 
@@ -815,7 +815,7 @@ export default function SuperAdminDashboard() {
 
   // 선생님 승인 취소
   const handleRevokeApproval = async (teacherId, teacherName) => {
-    if (!window.confirm(`'${teacherName}' 선생님의 승인을 취소하시겠습니까?`))
+    if (!(await confirmDialog(`'${teacherName}' 선생님의 승인을 취소하시겠습니까?`, { danger: true })))
       return;
 
     try {
@@ -886,9 +886,8 @@ export default function SuperAdminDashboard() {
   const handleBulkDelete = async () => {
     if (selectedAccounts.size === 0) return;
     if (
-      !window.confirm(
-        `선택된 ${selectedAccounts.size}개 계정을 모두 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`,
-      )
+      !(await confirmDialog(
+        `선택된 ${selectedAccounts.size}개 계정을 모두 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`, { danger: true }))
     )
       return;
     setBulkDeleting(true);
@@ -911,9 +910,8 @@ export default function SuperAdminDashboard() {
   // Auth 계정 삭제
   const handleDeleteAuthUser = async (targetUid, email) => {
     if (
-      !window.confirm(
-        `정말 '${email}' 계정을 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`,
-      )
+      !(await confirmDialog(
+        `정말 '${email}' 계정을 삭제하시겠습니까?\nFirebase Auth + Firestore 모두에서 삭제됩니다.`, { danger: true }))
     )
       return;
     try {
@@ -939,9 +937,8 @@ export default function SuperAdminDashboard() {
   // 에러 로그 전체 삭제
   const handleClearAllErrorLogs = async () => {
     if (
-      !window.confirm(
-        `에러 로그 ${errorLogs.length}개를 모두 삭제하시겠습니까?`,
-      )
+      !(await confirmDialog(
+        `에러 로그 ${errorLogs.length}개를 모두 삭제하시겠습니까?`, { danger: true }))
     )
       return;
     try {
@@ -2080,9 +2077,9 @@ export default function SuperAdminDashboard() {
                   className="class-detail-init"
                   onClick={async () => {
                     if (
-                      !window.confirm(
+                      !(await confirmDialog(
                         "직업·상점·은행·급여 등 누락된 초기 데이터를 만들어줍니다.\n이미 있는 항목은 건너뜁니다. 진행하시겠습니까?",
-                      )
+                      ))
                     )
                       return;
                     try {

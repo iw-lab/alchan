@@ -5,6 +5,7 @@ import { functions } from "../../firebase";
 import "./SystemMonitoring.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 // 컴포넌트 외부에 선언하여 매 렌더마다 새 참조 생성 방지
 const getSystemStatusFn = httpsCallable(functions, "getSystemStatus");
@@ -57,7 +58,7 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
 
   // 경고 해결 처리
   const handleResolveAlert = async (alertId) => {
-    if (!window.confirm("이 경고를 해결 처리하시겠습니까?")) {
+    if (!(await confirmDialog("이 경고를 해결 처리하시겠습니까?"))) {
       return;
     }
 

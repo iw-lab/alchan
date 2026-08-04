@@ -18,6 +18,7 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import "./Banking.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
  if (!Array.isArray(adminProducts)) {
@@ -146,9 +147,8 @@ const Banking = () => {
  }
 
  if (
- !window.confirm(
- `'${product.userName}'님의 '${product.name}' 상품을 강제로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
- )
+ !(await confirmDialog(
+ `'${product.userName}'님의 '${product.name}' 상품을 강제로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`, { danger: true }))
  ) {
  logger.log("사용자가 삭제 취소");
  return;
