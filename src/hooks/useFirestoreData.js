@@ -491,6 +491,17 @@ export function usePaginatedCollection(path, queryConstraints = [], pageSize = 2
     setHasMore(true);
   }, []);
 
+  // ⚠️ exhaustive-deps 가 loadMore 를 넣으라고 하는데, **넣으면 무한루프다.**
+  //    loadMore 의 deps 에 loading·lastDoc 이 들어 있어서 한 번 부를 때마다
+  //    setLoading(true) → loadMore 정체성 변경 → 이 effect 재실행 → 다시 loadMore…
+  //    가 된다. 여기서 원하는 동작은 "path 가 바뀔 때 처음부터 다시"뿐이므로
+  //    의존성은 path 하나가 맞다. (reset 은 deps 가 [] 라 넣어도 무해하지만,
+  //    둘 중 하나만 넣으면 규칙이 계속 나머지를 요구하므로 함께 억제한다.)
+  //    제대로 고치려면 loadMore 를 ref 에 담거나 함수형 setState 로 loading·lastDoc
+  //    의존을 없애야 한다 — 이 훅은 현재 앱에서 아무도 쓰지 않아 미뤄 둔다.
+  //    ⚠️ 인라인 억제(eslint-disable-next-line)는 oxlint 가 이 규칙에서 안 받는다(실측).
+  //       그래서 .oxlintrc.json 의 overrides 에 이 파일만 예외로 적어 뒀다 —
+  //       위 무한루프를 고치면 그 override 도 같이 지울 것.
   useEffect(() => {
     mountedRef.current = true;
 

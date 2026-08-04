@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "import"],
+  "ignorePatterns": ["build/**", "dataconnect-generated/**", "scripts/**"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "error",
+
+    "no-cond-assign": "error",
+    "no-dupe-keys": "error",
+    "no-unsafe-negation": "error",
+    "for-direction": "error",
+    "no-self-assign": "error",
+    "no-unreachable": "error",
+
+    "no-unused-vars": "off",
+    "no-empty": "off",
+    "no-useless-escape": "off"
+  },
+  "overrides": [
+    {
+      "files": ["src/hooks/useFirestoreData.js"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "off"
+      }
+    }
+  ]
+}

@@ -54,9 +54,12 @@ const METRICS = {
     value: count(styles, /!important/g),
   },
   // 억제 한 줄이 파일 전체 검사를 무력화하는 경우가 있다. 늘어나면 검사가 그만큼 눈이 먼다.
+  // ⚠️ 주석 시작(`//` 또는 `/*`) 바로 뒤에 오는 것만 센다 = **실제 지시자만**.
+  //    맨 문자열로 세면 "eslint-disable 은 여기서 안 먹는다" 같은 설명 문장까지 부채로
+  //    잡혀서, 함정을 문서로 남기려 할수록 천장이 올라간다 — 실제로 한 번 걸렸다.
   lintSuppress: {
     label: "린트 억제 주석",
-    value: count(code, /eslint-disable/g),
+    value: count(code, /(?:\/\/|\/\*)\s*eslint-disable/g),
   },
   // 화면이 데이터 계층을 건너뛰고 Firestore 를 직접 부르는 파일 수.
   // 읽기 방식을 바꾸려면 이 파일들을 전부 고쳐야 한다 = 변경 비용이 여기 비례한다.

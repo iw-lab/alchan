@@ -37,6 +37,14 @@ jobs:
           --exclude '**/useFirestoreData.test.js'
           --exclude '**/logger.test.js'
 
+      - name: 린트 (oxlint — React 훅 규칙)
+        # CRA 를 걷어내면서 린트가 통째로 사라졌다. react-scripts 가 빌드 중에
+        # ESLint 를 대신 돌려 줬는데, 이 저장소엔 자체 ESLint 설정이 없어서
+        # react-scripts 제거 = 린트 0 이 됐다(실측: .eslintrc 없음, eslintConfig 없음).
+        # 훅 규칙 2개(rules-of-hooks·exhaustive-deps)만 error 로 되살린다 —
+        # 나머지 스타일 경고는 debt 천장이 담당한다.
+        run: npm run lint
+
       - name: Firestore rules — 중복 match 경로 검사
         run: node scripts/check-rules-dup-paths.mjs firestore.rules
 
