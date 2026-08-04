@@ -57,8 +57,35 @@ const files = walk(SRC);
 const code = files.filter((f) => [".js", ".jsx"].includes(extname(f)));
 const styles = files.filter((f) => [".css", ".js", ".jsx"].includes(extname(f)));
 
-const count = (list, re) =>
-  list.reduce((n, f) => n + (readFileSync(f, "utf8").match(re) || []).length, 0);
+/**
+ * 주석을 지운 뒤 센다.
+ *
+ * ⚠️ 왜 필요한가 — 이 저장소에서 두 번 걸렸다. `lintSuppress` 는 처음에 맨 문자열로
+ *    세다가 "eslint-disable 은 여기서 안 먹는다" 같은 **설명 문장**까지 부채로 잡았다.
+ *    이번엔 `!important` 가 같은 식으로 걸렸다: Police.css 의 `!important` 함정을
+ *    주석으로 적어 두자 천장이 721 → 723 으로 올라갔다.
+ *
+ *    함정을 문서로 남길수록 부채가 늘어나는 지표는 사람이 결국 문서를 안 쓰게 만든다.
+ *    지표는 **실행되는 코드**만 세야 한다.
+ *
+ *    URL 의 `://` 는 줄 주석으로 오인하지 않는다.
+ */
+const stripComments = (text) =>
+  text
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+/**
+ * @param keepComments 주석 자체가 측정 대상인 지표만 true.
+ *   ⚠️ 이걸 빼먹으면 `lintSuppress` 가 **항상 0** 이 된다(억제 지시자는 주석이니까).
+ *      실제로 한 번 그렇게 만들었고, 0 이라는 숫자가 너무 이상해서 알아챘다.
+ *      "개선됐다"로 보이는 고장이 가장 위험하다.
+ */
+const count = (list, re, { keepComments = false } = {}) =>
+  list.reduce((n, f) => {
+    const text = readFileSync(f, "utf8");
+    return n + ((keepComments ? text : stripComments(text)).match(re) || []).length;
+  }, 0);
 
 /**
  * 각 지표는 "왜 이게 부채인가"가 분명한 것만 넣는다. 숫자를 위한 숫자는 사람이 무시한다.
@@ -89,7 +116,8 @@ const METRICS = {
   //    잡혀서, 함정을 문서로 남기려 할수록 천장이 올라간다 — 실제로 한 번 걸렸다.
   lintSuppress: {
     label: "린트 억제 주석",
-    value: count(code, /(?:\/\/|\/\*)\s*eslint-disable/g),
+    // 이 지표만 주석을 살려서 센다 — 억제 지시자 자체가 주석이다.
+    value: count(code, /(?:\/\/|\/\*)\s*eslint-disable/g, { keepComments: true }),
   },
   // 화면이 데이터 계층을 건너뛰고 Firestore 를 직접 부르는 파일 수.
   // 읽기 방식을 바꾸려면 이 파일들을 전부 고쳐야 한다 = 변경 비용이 여기 비례한다.
@@ -102,8 +130,11 @@ const METRICS = {
       // `await import("firebase/firestore")` 를 쓰는 파일이 4개 있다 — 지금은 넷 다
       // 정적 import 도 함께 있어서 어느 쪽으로 세든 같지만, 동적만 쓰는 파일이 생기면
       // 정적만 보는 검사는 그걸 못 본다.
-      return /(?:from\s+|import\s*\(\s*|require\s*\(\s*)["']firebase\/firestore["']/.test(
-        readFileSync(f, "utf8"),
+      // ⚠️ `from\s+` 였다가 **공백 없는 `from"firebase/firestore"` 를 놓쳤다**(뮤테이션으로
+      //    발견). 유효한 JS 이고 포매터를 안 거친 코드에서 흔하다. `\s*` 로 고쳤다.
+      //    지표가 못 세는 형태는 그대로 우회로가 된다.
+      return /(?:from\s*|import\s*\(\s*|require\s*\(\s*)["']firebase\/firestore["']/.test(
+        stripComments(readFileSync(f, "utf8")),
       );
     }).length,
   },

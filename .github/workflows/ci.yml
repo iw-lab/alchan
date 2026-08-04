@@ -57,6 +57,13 @@ jobs:
       - name: 커밋된 build/ 무결성 검사
         run: node scripts/check-build-integrity.mjs
 
+      - name: z-index 최상단 검사
+        # 확인 모달이 다른 UI 뒤에 숨으면 에러 없이 조용히 멈춘다 — 사용자는
+        # "버튼이 안 눌린다"고 느끼고, 호출부는 await 에서 안 끝난다.
+        # 실제로 확인창(10001) 위에 그려지는 파일이 8개 있었다(Police.css 의
+        # `.modal-container{1000000!important}` 은 12개 화면이 공유하는 클래스다).
+        run: node scripts/check-zindex.mjs
+
       - name: 기술부채 천장 검사
         # 새 alert()·!important·직접 Firestore 접근이 늘면 실패한다.
         # 기존 671/721/51/46 은 천장으로 인정하고 **늘어나는 것만** 막는다.

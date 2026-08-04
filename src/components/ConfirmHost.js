@@ -36,17 +36,63 @@ export default function ConfirmHost() {
    */
   const currentRef = useRef(null);
 
-  const show = useCallback((request) => {
-    currentRef.current = request;
-    setCurrent(request); // 값만 넘긴다 — 업데이터 함수를 쓰지 않는다
+  /**
+   * 대기열에서 올라온 질문은 잠깐 '확인'을 못 누르게 한다.
+   *
+   * ⚠️ 실측한 버그다. 질문이 둘 쌓인 상태에서 '확인'을 두 번 누르면 — 같은 배치든,
+   *    리렌더 뒤 진짜 더블클릭이든 — **두 번째 클릭이 다음 질문을 승인**했다.
+   *    확인 버튼이 같은 자리에 다시 그려지기 때문이다. 측정 결과 `B=true, D=true` 로
+   *    사용자가 읽은 적도 없는 질문이 승인됐다. 여기 질문들이 법안 삭제·주급 회수라
+   *    그 결과가 크다.
+   *
+   *    `window.confirm` 은 이 문제가 없었다 — 동기라 창이 떠 있는 동안 클릭이 아예
+   *    페이지로 안 갔다. 앱 모달로 바꾸면서 생긴 새 구멍이라 여기서 막는다.
+   *
+   *    **처음 뜨는 질문에는 적용하지 않는다.** 그건 사용자가 방금 다른 버튼을 눌러
+   *    연 것이고, 지연을 넣으면 82곳 전부가 느려진다. 위험한 건 '바꿔치기'뿐이다.
+   */
+  const ARM_DELAY_MS = 400;
+  const [armed, setArmed] = useState(true);
+  // ⚠️ state 와 ref 를 **둘 다** 둔다. state 는 버튼을 흐리게/못 누르게 그리는 용도고,
+  //    ref 는 판정용이다. state 만 쓰면 같은 배치 안에서 연달아 눌렸을 때 아직
+  //    리렌더 전이라 `disabled` 가 DOM 에 반영되지 않아 그대로 통과한다(실측).
+  //    판정은 항상 동기적인 ref 로 한다.
+  const armedRef = useRef(true);
+  const armTimer = useRef(null);
+
+  const setArmedBoth = useCallback((v) => {
+    armedRef.current = v;
+    setArmed(v);
   }, []);
+
+  const show = useCallback(
+    (request, fromQueue = false) => {
+      currentRef.current = request;
+      if (armTimer.current) clearTimeout(armTimer.current);
+      armTimer.current = null;
+      // 큐에서 바꿔치기된 질문만 잠깐 잠근다.
+      const lock = Boolean(request) && fromQueue;
+      setArmedBoth(!lock);
+      if (lock) {
+        armTimer.current = setTimeout(() => setArmedBoth(true), ARM_DELAY_MS);
+      }
+      setCurrent(request); // 값만 넘긴다 — 업데이터 함수를 쓰지 않는다
+    },
+    [setArmedBoth],
+  );
+
+  useEffect(() => () => clearTimeout(armTimer.current), []);
 
   const close = useCallback(
     (result) => {
+      // 아직 잠긴 질문을 '확인'으로 닫으려는 건 앞 클릭의 여파다 — 무시한다.
+      // 취소(false)는 언제나 통과시킨다. 막는 방향은 항상 '취소' 쪽이어야 한다.
+      if (result === true && !armedRef.current) return;
       // 부작용(답하기·큐에서 꺼내기)은 전부 업데이터 **밖**에서 한다.
       const cur = currentRef.current;
       if (cur) cur.answer(result);
-      show(queue.current.shift() ?? null);
+      const next = queue.current.shift() ?? null;
+      show(next, next !== null);
     },
     [show],
   );
@@ -142,7 +188,19 @@ export default function ConfirmHost() {
 
   return (
     <div
-      className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/40 px-4"
+      /* ⚠️ z-index 는 앱 최상단(int32 최대값)이다. 숫자 경쟁에서 이기려는 게 아니라
+         **경쟁을 끝내려는** 것이다 — scripts/check-zindex.mjs 가 src 안에 이보다 크거나
+         같은 값이 생기면 CI 를 세운다.
+
+         왜 이렇게까지: 원래 10001 이었는데 그 위에 그려지는 게 8개 파일이나 있었다.
+         특히 Police.css 가 **일반적인 클래스 이름**에 `!important` 로
+         `.modal-overlay{999999}` / `.modal-container{1000000}` (모바일은 10000000) 를
+         걸어 두는데, 이 클래스는 12개 화면이 공유하고 CSS 는 한 번 로드되면 전역이다.
+         결과: 경찰서를 한 번 들르면 그 뒤로 확인창이 **다른 모달 뒤에 숨는다.**
+         사용자는 "버튼이 안 눌린다"고 느껴 계속 누르고, 호출부는 await 에서 멈춘다.
+         하필 가장 파괴적인 확인들(법안 전체 삭제·신고 기록 전체 삭제·파산 신청)이
+         그 높은 z-index 화면 안에 있다. */
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-black/40 px-4"
       // 바깥을 누르면 취소. 모달 안쪽 클릭이 여기로 올라오지 않게 target 을 확인한다.
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) close(false);
@@ -178,9 +236,13 @@ export default function ConfirmHost() {
           <button
             type="button"
             onClick={() => close(true)}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
-              danger ? "bg-rose-600 hover:bg-rose-700" : "bg-indigo-600 hover:bg-indigo-700"
-            }`}
+            // 바꿔치기된 직후에는 눌리지 않는다(위 ARM_DELAY_MS 참고).
+            // 취소는 항상 눌린다 — 막는 방향은 언제나 '취소' 쪽이어야 한다.
+            disabled={!armed}
+            aria-disabled={!armed}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity ${
+              armed ? "" : "cursor-not-allowed opacity-50"
+            } ${danger ? "bg-rose-600 hover:bg-rose-700" : "bg-indigo-600 hover:bg-indigo-700"}`}
           >
             {confirmText}
           </button>

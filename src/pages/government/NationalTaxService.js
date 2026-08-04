@@ -324,7 +324,9 @@ const NationalTaxService = ({ classCode }) => {
       : "국세청장 권한으로 이번 주 세금을 징수하시겠습니까?\n" +
         "· 순자산세 + 부동산 보유세를 반 전체에서 걷습니다\n" +
         "· 한 주에 한 번만 징수할 수 있어요 (금요일 자동 징수 포함)";
-    if (!(await confirmDialog(confirmMsg))) return;
+    // 반 전체에서 현금을 걷고 주 1회만 가능하다 = 되돌릴 수 없다.
+    // (메시지를 변수로 조립해서, 리터럴만 보는 자동 분류가 이 건을 놓쳤다.)
+    if (!(await confirmDialog(confirmMsg, { danger: true }))) return;
 
     setCollectingTax(true);
     try {

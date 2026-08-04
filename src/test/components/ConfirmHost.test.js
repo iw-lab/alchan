@@ -110,14 +110,99 @@ describe("ConfirmHost", () => {
     await expect(second).resolves.toBe(false);
   });
 
+  /**
+   * ⚠️ 이 테스트는 원래 이름만 "겹쳐 눌려도"였고 실제로는 **취소를 한 번** 누르고
+   *    끝났다. 교차검증에서 두 리뷰어가 각각 "이 테스트는 아무것도 안 잡는다"고
+   *    지적했고, 맞았다. 이름이 검증 내용을 앞서가면 그 자리는 비어 있는 채로
+   *    지켜지는 것처럼 보인다 — 통과하는 테스트가 오히려 위험해진다.
+   *    지금은 같은 틱에 확인·취소를 **둘 다** 누른다.
+   */
   it("확인과 취소가 겹쳐 눌려도 첫 답만 유효하다", async () => {
     render(<ConfirmHost />);
     const answer = ask("삭제할까요?");
     await screen.findByText("삭제할까요?");
+    const confirmBtn = screen.getByText("확인");
+    const cancelBtn = screen.getByText("취소");
     await act(async () => {
-      screen.getByText("취소").click();
+      cancelBtn.click(); // 먼저 취소
+      confirmBtn.click(); // 뒤늦은 확인은 무시돼야 한다
     });
     await expect(answer).resolves.toBe(false);
+  });
+
+  /**
+   * ⭐ 실측으로 확인한 버그의 회귀 테스트.
+   *
+   * 질문이 둘 쌓인 상태에서 '확인'을 두 번 누르면 두 번째 클릭이 **아직 읽지도 않은**
+   * 다음 질문을 승인했다(측정: `A=true, B=true`). 확인 버튼이 같은 자리에 다시
+   * 그려지기 때문이다. `window.confirm` 은 동기라 이 구멍이 없었다 — 앱 모달로
+   * 바꾸면서 생긴 새 위험이라 여기서 잠근다.
+   *
+   * 두 경로를 모두 본다. 사람의 더블클릭은 리렌더 뒤에 오지만, 같은 배치에서
+   * 연달아 들어오는 경우엔 `disabled` 가 아직 DOM 에 반영되지 않아 통과한다.
+   * 그래서 판정은 state 가 아니라 동기 ref 로 한다.
+   */
+  it.each([
+    ["같은 배치에서 연달아", false],
+    ["리렌더 뒤 두 번째 클릭(사람의 더블클릭)", true],
+  ])("⭐ 뒤이은 질문이 앞 클릭에 휩쓸려 승인되지 않는다 — %s", async (_label, afterRerender) => {
+    render(<ConfirmHost />);
+    const first = ask("첫째를 삭제할까요?");
+    const second = ask("둘째를 삭제할까요?");
+    await screen.findByText("첫째를 삭제할까요?");
+
+    if (afterRerender) {
+      await act(async () => screen.getByText("확인").click());
+      await act(async () => screen.getByText("확인").click());
+    } else {
+      await act(async () => {
+        const btn = screen.getByText("확인");
+        btn.click();
+        btn.click();
+      });
+    }
+
+    await expect(first).resolves.toBe(true);
+    // 둘째는 여전히 열려 있고, 아무도 답하지 않았어야 한다
+    expect(screen.getByText("둘째를 삭제할까요?")).toBeInTheDocument();
+    let settled = "미결";
+    second.then((v) => (settled = v));
+    await act(async () => {});
+    expect(settled).toBe("미결");
+
+    await act(async () => screen.getByText("취소").click());
+    await expect(second).resolves.toBe(false);
+  });
+
+  it("잠긴 동안에는 확인 버튼이 눌리지 않는 것으로 보인다", async () => {
+    // 실제 방어는 동기 ref 가 하고(위 테스트), 이건 **보이는 신호**다.
+    // 눌리지 않는데 멀쩡해 보이면 사용자는 고장으로 여기고 계속 누른다.
+    render(<ConfirmHost />);
+    ask("첫째?");
+    ask("둘째?");
+    await screen.findByText("첫째?");
+    expect(screen.getByText("확인")).not.toBeDisabled();
+
+    await act(async () => screen.getByText("확인").click());
+    await screen.findByText("둘째?");
+    expect(screen.getByText("확인")).toBeDisabled();
+
+    await act(async () => new Promise((r) => setTimeout(r, 450)));
+    expect(screen.getByText("확인")).not.toBeDisabled();
+  });
+
+  it("잠금은 잠깐이다 — 잠시 뒤엔 정상적으로 확인할 수 있다", async () => {
+    // 영구 잠금이면 그것도 버그다. 사용자가 다음 질문에 답할 수 있어야 한다.
+    render(<ConfirmHost />);
+    const first = ask("첫째?");
+    const second = ask("둘째?");
+    await screen.findByText("첫째?");
+    await act(async () => screen.getByText("확인").click());
+    await expect(first).resolves.toBe(true);
+
+    await act(async () => new Promise((r) => setTimeout(r, 450)));
+    await act(async () => screen.getByText("확인").click());
+    await expect(second).resolves.toBe(true);
   });
 
   it("danger 면 확인 버튼이 빨간색이다", async () => {

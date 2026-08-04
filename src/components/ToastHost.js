@@ -70,7 +70,10 @@ export default function ToastHost() {
       // z-index 를 스플래시(index.html, 9999)보다 위로 둔다. 같은 값이면 DOM 순서로
       // 우연히 토스트가 이기지만, 그건 마크업 순서가 바뀌면 조용히 뒤집힌다.
       // 초기화 중 뜨는 오류가 스플래시에 가리는 게 가장 나쁜 경우라 명시적으로 올린다.
-      className="pointer-events-none fixed inset-x-0 top-4 z-[10000] flex flex-col items-center gap-2 px-4"
+      /* 확인창(2147483647) 바로 아래. 확인창은 답을 받아야 하므로 토스트에 가리면 안 되고,
+         토스트는 그 밖의 모든 것보다 위여야 한다(같은 이유 — Police.css 의 전역
+         `.modal-container{1000000!important}` 등에 가려 알림이 안 보였다). */
+      className="pointer-events-none fixed inset-x-0 top-4 z-[2147483646] flex flex-col items-center gap-2 px-4"
       data-testid="toast-host"
     >
       {toasts.map((t) => (

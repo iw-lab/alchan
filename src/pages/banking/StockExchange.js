@@ -1369,7 +1369,13 @@ const StockExchange = () => {
       if (!stock) return;
       const action = currentIsListed ? "상장폐지" : "재상장";
 
-      if (await confirmDialog(`'${stock.name}' 상품을 ${action}하시겠습니까?`)) {
+      // 상장폐지는 price 를 0 으로 만든다 = 보유 학생 전원의 평가액이 사라진다.
+      // 재상장은 되돌리는 쪽이라 danger 가 아니다.
+      if (
+        await confirmDialog(`'${stock.name}' 상품을 ${action}하시겠습니까?`, {
+          danger: currentIsListed,
+        })
+      ) {
         try {
           const updateData = currentIsListed
             ? { isListed: false, price: 0, delistedAt: serverTimestamp() }
