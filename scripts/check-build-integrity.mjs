@@ -149,8 +149,14 @@ if (!tokenizer) {
       `     참조 무결성은 검사했습니다. 문법 검사는 CI(npm ci 뒤)에서 돕니다.`,
   );
 }
+// ⚠️ 통과했을 때도 **몇 개를 봤는지 출력한다.** 예전엔 통과 시 아무 말도 안 했는데,
+//    그러면 "돌아서 통과"와 "0개 파일을 보고 통과"가 화면상 똑같아 보인다.
+//    이 저장소에서 이미 한 번 당했다 — esbuild 비교식 검사가 "86/86 통과"라는
+//    가짜 초록불을 냈었다. 검사는 자기가 무엇을 했는지 말해야 한다.
+let scanned = 0;
 for (const { file, text } of tokenizer ? sources : []) {
   if (!file.endsWith(".js")) continue;
+  scanned++;
   const found = new Set();
   try {
     for (const token of tokenizer(text, {
@@ -189,6 +195,15 @@ if (modern.length) {
       `  target: ["es2019","safari13",…] 를 복구하세요 — 비용은 gzip 1.3 kB 입니다.\n`,
   );
   process.exit(1);
+}
+
+if (tokenizer) {
+  if (scanned === 0) {
+    // 0개를 보고 "통과"라고 말하면 그건 통과가 아니라 검사를 안 한 것이다.
+    console.error(`\n❌ 문법 하한선 검사가 파일을 하나도 못 봤습니다 — 검사가 고장났습니다.`);
+    process.exit(1);
+  }
+  console.log(`  문법 하한선     ${scanned}개 파일 검사 — es2019 초과 문법 없음`);
 }
 
 // 반대 방향: 아무도 참조하지 않는 청크가 대량으로 남아 있으면 옛 빌드 잔재일 수 있다.
