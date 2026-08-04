@@ -37,6 +37,7 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import { DailyRewardBanner } from "../../components/DailyReward";
 
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 export default function MyAssets() {
   const {
     user,
@@ -754,20 +755,20 @@ export default function MyAssets() {
   // 🔥 [수정] 기부 처리 함수 - 캐시 무효화 개선
   const handleDonateCoupon = async (amount, memo) => {
     if (!userId || !currentUserClassCode) {
-      alert("사용자 또는 학급 정보가 없어 기부할 수 없습니다.");
+      toast.error("사용자 또는 학급 정보가 없어 기부할 수 없습니다.");
       return false;
     }
 
     const donationAmount = parseInt(amount, 10);
     if (isNaN(donationAmount) || donationAmount <= 0) {
-      alert("유효한 쿠폰 수량을 입력해주세요.");
+      toast.error("유효한 쿠폰 수량을 입력해주세요.");
       return false;
     }
 
     // 쿠폰 보유량 확인
     const currentCoupons = Number(userDoc?.coupons) || 0;
     if (currentCoupons < donationAmount) {
-      alert(
+      toast.error(
         `쿠폰이 부족합니다. (보유: ${currentCoupons}개, 필요: ${donationAmount}개)`,
       );
       return false;
@@ -825,7 +826,7 @@ export default function MyAssets() {
         `goalDonationHistory_${currentUserClassCode}_goal`,
       );
 
-      alert(`${donationAmount}개 쿠폰 기부가 완료되었습니다!`);
+      toast.success(`${donationAmount}개 쿠폰 기부가 완료되었습니다!`);
       setShowDonateModal(false);
 
       // 🔥 6. 최신 데이터 다시 로드 (캐시가 삭제되었으므로 Firestore에서 가져옴)
@@ -836,7 +837,7 @@ export default function MyAssets() {
       return true;
     } catch (error) {
       logger.error("[MyAssets] 기부 오류:", error);
-      alert(`기부 오류: ${error.message}`);
+      toast.error(`기부 오류: ${error.message}`);
 
       // 에러 발생 시 낙관적 업데이트 롤백
       setGoalProgress(previousProgress);
@@ -857,7 +858,7 @@ export default function MyAssets() {
   // 🔥 [수정] 기부 내역 복구를 위한 강제 새로고침 함수
   const forceRefreshGoalData = async () => {
     if (!currentGoalId || !currentUserClassCode) {
-      alert("학급 정보가 없습니다.");
+      toast.error("학급 정보가 없습니다.");
       return;
     }
 
@@ -925,15 +926,15 @@ export default function MyAssets() {
         // 캐시에 저장
         setCachedFirestoreData(cacheKey, userId, latestGoalData);
 
-        alert(
+        toast.info(
           `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개\n내 기여도: ${myTotal}개`,
         );
       } else {
-        alert("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
+        toast.error("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
       }
     } catch (error) {
       logger.error("[MyAssets] 데이터 새로고침 오류:", error);
-      alert(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
+      toast.error(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setAssetsLoading(false);
     }
@@ -954,7 +955,7 @@ export default function MyAssets() {
       userCash: userDoc?.cash,
     };
 
-    alert(
+    toast.info(
       `디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
     );
   };
@@ -962,11 +963,11 @@ export default function MyAssets() {
   // 🔥 [핵심 수정] 'resetCouponGoal' 함수에 async 키워드 추가
   const resetCouponGoal = async () => {
     if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin && !userDoc?.isTeacher) {
-      alert("교사/관리자만 초기화 가능합니다.");
+      toast.error("교사/관리자만 초기화 가능합니다.");
       return;
     }
     if (!currentUserClassCode || !currentGoalId) {
-      alert("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
+      toast.error("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
       return;
     }
     if (
@@ -996,11 +997,11 @@ export default function MyAssets() {
       setGoalProgress(0);
       setGoalDonations([]);
 
-      alert(
+      toast.success(
         `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
       );
     } catch (error) {
-      alert(`목표 초기화 오류: ${error.message}`);
+      toast.error(`목표 초기화 오류: ${error.message}`);
     } finally {
       setIsResettingGoal(false);
     }
@@ -1009,7 +1010,7 @@ export default function MyAssets() {
   const handleSellCoupon = async () => {
     const amount = parseInt(sellAmount, 10);
     if (isNaN(amount) || amount <= 0) {
-      alert("유효한 수량을 입력해주세요.");
+      toast.error("유효한 수량을 입력해주세요.");
       return;
     }
 
@@ -1039,13 +1040,13 @@ export default function MyAssets() {
         },
       });
 
-      alert(`${amount}개 쿠폰을 판매했습니다.`);
+      toast.success(`${amount}개 쿠폰을 판매했습니다.`);
       setShowSellCouponModal(false);
       setSellAmount("");
       // 🔥 [최적화] Firebase Function이 자동으로 userDoc를 업데이트하므로
       // AuthContext의 실시간 리스너가 자동으로 UI를 갱신함 (loadMyAssetsData 제거)
     } catch (error) {
-      alert(`판매 오류: ${error.message}`);
+      toast.error(`판매 오류: ${error.message}`);
 
       // 실패 시 롤백
       if (optimisticUpdate) {
@@ -1061,11 +1062,11 @@ export default function MyAssets() {
     const amount = parseInt(giftAmount, 10);
 
     if (!recipientUser) {
-      alert("받는 사람을 선택해주세요.");
+      toast.error("받는 사람을 선택해주세요.");
       return;
     }
     if (isNaN(amount) || amount <= 0) {
-      alert("올바른 수량을 입력해주세요.");
+      toast.error("올바른 수량을 입력해주세요.");
       return;
     }
 
@@ -1116,14 +1117,14 @@ export default function MyAssets() {
           },
         });
 
-        alert("쿠폰 선물이 완료되었습니다.");
+        toast.success("쿠폰 선물이 완료되었습니다.");
         setShowGiftCouponModal(false);
         setGiftRecipient("");
         setGiftAmount("");
         // 🔥 [최적화] Firebase Function이 자동으로 userDoc를 업데이트하므로
         // AuthContext의 실시간 리스너가 자동으로 UI를 갱신함 (loadMyAssetsData 제거)
       } catch (error) {
-        alert(`선물 오류: ${error.message}`);
+        toast.error(`선물 오류: ${error.message}`);
 
         // 실패 시 롤백
         if (optimisticUpdate) {
@@ -1143,31 +1144,31 @@ export default function MyAssets() {
     setAssetsLoading(true);
     try {
       if (!userDoc || !userId || !functions || !users) {
-        alert("필수 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("필수 정보가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.");
         return;
       }
 
       const amount = parseInt(transferAmount, 10);
       if (isNaN(amount) || amount <= 0) {
-        alert("올바른 송금액을 입력해주세요.");
+        toast.error("올바른 송금액을 입력해주세요.");
         return;
       }
 
       if ((Number(userDoc.cash) || 0) < amount) {
-        alert("보유 현금이 부족합니다.");
+        toast.error("보유 현금이 부족합니다.");
         return;
       }
 
       const recipientUser = users.find((u) => u.id === transferRecipient);
       if (!recipientUser) {
-        alert(
+        toast.error(
           "송금 대상을 찾을 수 없습니다. 목록을 새로고침하고 다시 시도해주세요.",
         );
         return;
       }
 
       if (recipientUser.id === userId) {
-        alert("자기 자신에게는 송금할 수 없습니다.");
+        toast.error("자기 자신에게는 송금할 수 없습니다.");
         return;
       }
 
@@ -1184,20 +1185,20 @@ export default function MyAssets() {
 
       if (result?.data?.success) {
         // 잔액은 Firestore 리스너가 갱신 (수동 cash write 금지 — CF increment 덮어쓰기 방지)
-        alert("송금이 완료되었습니다.");
+        toast.success("송금이 완료되었습니다.");
         setShowTransferModal(false);
         setTransferRecipient("");
         setTransferAmount("");
       } else {
-        alert("송금에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        toast.error("송금에 실패했습니다. 잠시 후 다시 시도해주세요.");
       }
     } catch (error) {
       logger.error("!!! 송금 처리 중 오류 발생 !!!", error);
       // Firebase Functions 클라 SDK는 code를 `functions/<code>` 형태로 준다.
       if (error?.code === "functions/already-exists") {
-        alert("이미 처리된 송금입니다.");
+        toast.error("이미 처리된 송금입니다.");
       } else {
-        alert(`송금 중 오류가 발생했습니다: ${error?.message || "알 수 없는 오류"}`);
+        toast.error(`송금 중 오류가 발생했습니다: ${error?.message || "알 수 없는 오류"}`);
       }
     } finally {
       setAssetsLoading(false);

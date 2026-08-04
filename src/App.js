@@ -9,6 +9,9 @@ import { CurrencyProvider } from "./contexts/CurrencyContext";
 // 🔥 [최적화] ItemProvider는 AlchanLayout으로 이동 (로그인 후에만 마운트)
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { clearLocalStoragePreserving } from "./utils/storageReset";
+// alert 대체재. lazy 로 하지 않는다 — 초기화 중 뜨는 오류를 보여줘야 하는데
+// 그때 청크를 받아오고 있으면 그 오류를 놓친다.
+import ToastHost from "./components/ToastHost";
 
 // 🔥 React Query 전역 설정 - Firestore 읽기 비용 최소화
 const queryClient = new QueryClient({
@@ -196,6 +199,10 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <CurrencyProvider>
+              {/* 알림 표시기. **Router 바깥**에 둔다 — 안에 두면 "저장했습니다"를 띄우고
+                  화면을 옮기는 순간 알림이 같이 사라진다. 저장 직후 이동은 흔한 흐름이라
+                  그러면 학생은 아무것도 못 본다. (alert 대체재 — src/utils/toast.js) */}
+              <ToastHost />
               {/* 🔥 [최적화] ItemProvider를 제거 - AlchanLayout 내부로 이동하여 로그인 후에만 마운트 */}
               <Router>
                 {/* fallback=null: index.html splash(z-index:9999)가 덮고 있어 깜빡임 방지
