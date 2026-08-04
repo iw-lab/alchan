@@ -533,7 +533,7 @@ const NationalAssembly = () => {
       toast.error("관리자만 이 작업을 수행할 수 있습니다.");
       return;
     }
-    if (await confirmDialog("이 법안의 모든 투표를 초기화하시겠습니까?", { danger: true })) {
+    if (await confirmDialog("이 법안의 모든 투표를 초기화하시겠습니까?", { danger: true, confirmText: "초기화하기" })) {
       const lawDocRef = doc(
         db,
         "classes",
@@ -1406,7 +1406,7 @@ const NationalAssembly = () => {
                       if (
                         await confirmDialog(
                           "모든 법안을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-                          { danger: true },
+                          { danger: true, confirmText: "전부 삭제하기" },
                         )
                       ) {
                         const batch = writeBatch(db);

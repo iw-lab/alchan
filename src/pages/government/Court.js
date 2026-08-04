@@ -413,7 +413,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  const handleApplyForBankruptcy = async () => {
  if (
  await confirmDialog(
- "정말로 파산을 신청하시겠습니까? 재판 결과에 따라 모든 자산이 초기화될 수 있습니다.", { danger: true })
+ "정말로 파산을 신청하시겠습니까? 재판 결과에 따라 모든 자산이 초기화될 수 있습니다.", { danger: true, confirmText: "파산 신청하기" })
  ) {
  try {
  const casesRef = collection(

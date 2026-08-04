@@ -425,7 +425,7 @@ export default function CouponGoalPage() {
     }
     if (
       !(await confirmDialog(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true }))
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true, confirmText: "초기화하기" }))
     ) {
       return;
     }
@@ -481,7 +481,7 @@ export default function CouponGoalPage() {
     }
     if (
       !(await confirmDialog(
-        `새 목표를 ${newTarget.toLocaleString()}쿠폰으로 설정하고 기존 진행률/기여 기록을 초기화합니다. 진행할까요?`, { danger: true }))
+        `새 목표를 ${newTarget.toLocaleString()}쿠폰으로 설정하고 기존 진행률/기여 기록을 초기화합니다. 진행할까요?`, { danger: true, confirmText: "초기화하기" }))
     ) {
       return;
     }

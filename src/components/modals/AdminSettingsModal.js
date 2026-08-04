@@ -1145,7 +1145,7 @@ const AdminSettingsModal = ({
 
     if (
       !(await confirmDialog(
-        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`, { danger: true }))
+        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`, { danger: true, confirmText: "지급하기" }))
     ) {
       return;
     }
@@ -1183,7 +1183,7 @@ const AdminSettingsModal = ({
 
   // 주급 1회분 회수 (임시)
   const handleReverseSalary = async () => {
-    if (!(await confirmDialog("주급 1회분을 모든 학생에게서 회수하시겠습니까?", { danger: true }))) return;
+    if (!(await confirmDialog("주급 1회분을 모든 학생에게서 회수하시겠습니까?", { danger: true, confirmText: "회수하기" }))) return;
     try {
       const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
       const result = await reverseFn({});
@@ -1432,7 +1432,7 @@ const AdminSettingsModal = ({
 
       if (
         await confirmDialog(
-          `사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`, { danger: true })
+          `사용자(ID: ${userId})의 비밀번호를 정말로 초기화하시겠습니까?`, { danger: true, confirmText: "초기화하기" })
       ) {
         try {
           setMembersLoading(true);
@@ -1655,7 +1655,7 @@ const AdminSettingsModal = ({
   const handleInitializeStocks = useCallback(async () => {
     if (
       !(await confirmDialog(
-        "모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.", { danger: true }))
+        "모든 주식 정보를 초기화하고 기본값으로 설정하시겠습니까? 이 작업은 되돌릴 수 없습니다.", { danger: true, confirmText: "초기화하기" }))
     )
       return;
 

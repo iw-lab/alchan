@@ -917,7 +917,7 @@ const LearningBoard = () => {
   const handleDeleteBoard = async (boardId) => {
     if (!currentUserIsAdmin || !classCode) return;
     const boardToDelete = boards.find((b) => b.id === boardId);
-    if (!(await confirmDialog(`'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`, { danger: true }))) return;
+    if (!(await confirmDialog(`'${boardToDelete?.name}' 게시판과 모든 게시글을 영구 삭제하시겠습니까?`, { danger: true, confirmText: "삭제하기" }))) return;
     try {
       const boardRef = doc(db, "classes", classCode, "learningBoards", boardId);
       const postsRef = collection(boardRef, "posts");

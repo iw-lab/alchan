@@ -176,7 +176,7 @@ const AdminApprovalPanel = () => {
     async (action) => {
       if (bulkProcessing || selectedIds.size === 0) return;
       const label = action === "approve" ? "승인" : "거절";
-      if (!(await confirmDialog(`선택한 ${selectedIds.size}건을 일괄 ${label}하시겠습니까?`))) return;
+      if (!(await confirmDialog(`선택한 ${selectedIds.size}건을 일괄 ${label}하시겠습니까?`, { confirmText: `${label}하기` }))) return;
 
       setBulkProcessing(true);
       let success = 0;

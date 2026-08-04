@@ -2176,7 +2176,7 @@ function Dashboard({ adminTabMode }) {
  //    오클릭 위험이 있다(2026-07-25 리뷰 C4). 버튼을 시각적으로 분리하고 확인을 2단계로 둔다.
  if (
  !(await confirmDialog(
- `'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`, { danger: true }))
+ `'${userDoc.classCode}' 클래스의 모든 학생들의 '오늘의 할일' 완료 기록을 초기화하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`, { danger: true, confirmText: "초기화하기" }))
  ) {
  logger.log("[Dashboard] 사용자가 리셋을 취소했습니다.");
  return;

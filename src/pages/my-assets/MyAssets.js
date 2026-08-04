@@ -973,7 +973,7 @@ export default function MyAssets() {
     }
     if (
       !(await confirmDialog(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true }))
+        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true, confirmText: "초기화하기" }))
     )
       return;
 

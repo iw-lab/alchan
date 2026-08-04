@@ -236,7 +236,7 @@ const MusicRoom = ({ user }) => {
   const deleteRoom = async () => {
     if (
       !(await confirmDialog(
-        "정말로 이 방을 삭제하시겠습니까? 모든 신청 목록도 함께 삭제됩니다.", { danger: true }))
+        "정말로 이 방을 삭제하시겠습니까? 모든 신청 목록도 함께 삭제됩니다.", { danger: true, confirmText: "삭제하기" }))
     ) {
       return;
     }

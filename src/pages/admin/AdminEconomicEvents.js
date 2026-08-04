@@ -331,7 +331,7 @@ export default function AdminEconomicEvents() {
  !(await confirmDialog(
  "지금 바로 경제 이벤트를 실행하시겠습니까?\n오늘의 이벤트가 이미 발생했어도 강제로 실행됩니다.",
  // 반 전체 가격이 움직이고, 하루 1회 제한을 넘겨 중복 적용된다 = 되돌릴 수 없다.
- { danger: true },
+ { danger: true, confirmText: "실행하기" },
  ))
  )
  return;

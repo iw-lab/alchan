@@ -141,7 +141,7 @@ const MusicRequest = ({ user }) => {
 
     if (
       !(await confirmDialog(
-        `"${roomName}" 방을 정말 삭제하시겠습니까?\n모든 재생목록이 함께 삭제됩니다.`, { danger: true }))
+        `"${roomName}" 방을 정말 삭제하시겠습니까?\n모든 재생목록이 함께 삭제됩니다.`, { danger: true, confirmText: "삭제하기" }))
     ) {
       return;
     }

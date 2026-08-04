@@ -400,7 +400,7 @@ const AdminPanel = React.memo(
     const handleDeleteSimulationStocks = async () => {
       if (
         !(await confirmDialog(
-          "⚠️ 모든 시뮬레이션 주식을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n(실제 주식은 유지됩니다)", { danger: true }))
+          "⚠️ 모든 시뮬레이션 주식을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n(실제 주식은 유지됩니다)", { danger: true, confirmText: "삭제하기" }))
       ) {
         return;
       }

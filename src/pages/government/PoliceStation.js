@@ -1159,7 +1159,7 @@ const PoliceStation = () => {
 
  const handleDeleteAllReports = async () => {
  if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
- if (await confirmDialog("모든 신고 기록 삭제?", { danger: true })) {
+ if (await confirmDialog("모든 신고 기록 삭제?", { danger: true, confirmText: "전부 삭제하기" })) {
  try {
  const reportsRef = collection(
  db,

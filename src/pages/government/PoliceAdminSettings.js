@@ -48,7 +48,7 @@ const PoliceAdminSettings = ({
     if (
       await confirmDialog(
         "정말로 모든 신고 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-        { danger: true },
+        { danger: true, confirmText: "전부 삭제하기" },
       )
     ) {
       onDeleteAllReports();

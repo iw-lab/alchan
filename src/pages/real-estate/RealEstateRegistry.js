@@ -328,7 +328,7 @@ const RealEstateRegistry = () => {
       !skipConfirm &&
       !(await confirmDialog(
         `정말로 학급 [${classCode}]의 모든 부동산을 정부 소유 초기값으로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
-        { danger: true },
+        { danger: true, confirmText: "초기화하기" },
       ))
     )
       return;
@@ -873,7 +873,7 @@ const RealEstateRegistry = () => {
 
       // 부동산 개수가 변경된 경우에만 초기화 제안
       if (newTotal !== properties.length) {
-        if (await confirmDialog(`부동산 개수가 ${properties.length}→${newTotal}개로 변경되었습니다.\n부동산을 초기화하시겠습니까? (소유권/입주 초기화)`, { danger: true })) {
+        if (await confirmDialog(`부동산 개수가 ${properties.length}→${newTotal}개로 변경되었습니다.\n부동산을 초기화하시겠습니까? (소유권/입주 초기화)`, { danger: true, confirmText: "초기화하기" })) {
           await handleInitializeProperties(true);
         }
       }
@@ -1269,7 +1269,7 @@ const RealEstateRegistry = () => {
     if (
       !(await confirmDialog(
         `학급 [${classCode}]의 모든 세입자로부터 월세를 강제 징수하시겠습니까? (잔액 부족 시 가진 현금을 모두 징수)`
-      , { danger: true }))
+      , { danger: true, confirmText: "징수하기" }))
     )
       return;
 
