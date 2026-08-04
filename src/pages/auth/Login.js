@@ -885,7 +885,33 @@ const Login = () => {
  />
  </div>
  </div>
- {/* 학급코드 입력란 제거 - 서버에서 자동 매칭 */}
+ {/* 🔒 학급코드 입력란 복원 (2026-08-03).
+ 예전엔 "서버에서 자동 매칭"이라 이 칸이 없었다. 그 자동 매칭(resolveStudentEmail)이
+ 계정 탈취 체인의 첫 단계여서 서버 쪽을 잠갔는데, 서버만 잠그고 이 칸을 안 되살리면
+ **학생이 로그인 자체를 못 한다** — 코드를 넣을 곳이 없어 "학급코드를 입력해주세요"만
+ 반복되는 막다른 길이 된다. 같은 기기에서 한 번 넣으면 아래에서 기억한다. */}
+ <div className="space-y-1.5">
+ <label className="block text-sm font-semibold text-slate-600">
+ 학급코드
+ </label>
+ <div className="relative">
+ <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+ <input
+ type="text"
+ value={classCode}
+ onChange={(e) => setClassCode(e.target.value)}
+ placeholder="예: ABC123"
+ autoComplete="off"
+ autoCapitalize="characters"
+ className={darkInput}
+ style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
+ disabled={isLoading}
+ />
+ </div>
+ <p className="text-xs text-slate-500">
+ 선생님이 알려주신 우리 반 코드예요. 이 기기에는 한 번만 넣으면 돼요.
+ </p>
+ </div>
  </>
  ) : (
  /* 선생님: 이메일 */
