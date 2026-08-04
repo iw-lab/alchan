@@ -57,6 +57,16 @@ jobs:
       - name: 커밋된 build/ 무결성 검사
         run: node scripts/check-build-integrity.mjs
 
+      - name: functions 린트
+        # 이 폴더의 린트는 꺼져 있던 게 아니라 **고장 나 있었다** — 상위 폴더의
+        # CRA 잔재 `.eslintrc.json` 을 읽다가 파서를 못 찾고 exit 2 로 죽었다.
+        # 게다가 index.js 1행에 `/* eslint-disable */` 가 있어 10,691줄이 통째로
+        # 검사 대상 밖이었다. 결제·정산 코드가 거기 있다.
+        working-directory: functions
+        run: |
+          npm ci --no-audit --no-fund
+          npm run lint
+
       - name: z-index 최상단 검사
         # 확인 모달이 다른 UI 뒤에 숨으면 에러 없이 조용히 멈춘다 — 사용자는
         # "버튼이 안 눌린다"고 느끼고, 호출부는 await 에서 안 끝난다.

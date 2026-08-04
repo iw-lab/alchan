@@ -1,8 +1,6 @@
-/* eslint-disable */
 /* eslint-disable max-len */
 // eslint-disable-next-line no-unused-vars
 const functions = require("firebase-functions");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const {
   LOG_TYPES,
@@ -19,14 +17,8 @@ const {
   logger,
 } = require("./utils");
 const {
-  updateCentralStockMarketLogic,
-  createCentralMarketNewsLogic,
-  autoManageStocksLogic,
-  cleanupExpiredCentralNewsLogic,
-  resetDailyTasksLogic,
   resetTasksForClass,
 } = require("./scheduler-http");
-const { initialStocks } = require("./initialStocks");
 const {
   isAppointedJob,
   toJobIdArray,
@@ -106,6 +98,16 @@ exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
 exports.seedAvatarShop = avatarShopService.seedAvatarShop;
 exports.seedAvatarShopHttp = avatarShopService.seedAvatarShopHttp;
 exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
+
+// ⚠️ 아래 스케줄 함수들은 비용 때문에 꺼 두고 cron-job.org 의 simpleScheduler 가 대신 돈다.
+//    다시 켜려면 **import 부터 되살려야 한다** — 주석 안에서만 쓰이는 상태라
+//    린트가 미사용으로 잡아 지웠다(2026-08-04):
+//      const { onSchedule } = require("firebase-functions/v2/scheduler");
+//      const { updateCentralStockMarketLogic, createCentralMarketNewsLogic,
+//              autoManageStocksLogic, cleanupExpiredCentralNewsLogic,
+//              resetDailyTasksLogic } = require("./scheduler-http");
+//      const { initialStocks } = require("./initialStocks");
+//    (주석만 풀면 `onSchedule is not defined` 로 배포가 통째로 죽는다)
 
 // 5분마다 주식 가격 업데이트
 // exports.updateCentralStockMarket = onSchedule({
@@ -1969,7 +1971,7 @@ exports.accrueParkingInterest = onCall(
 exports.subscribeProduct = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
+    const { uid, classCode } = await checkAuthAndGetUserData(request);
     const { productType, productId, amount, repaymentType, idempotencyKey } =
       request.data;
 
@@ -3241,7 +3243,7 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
 exports.requestMusicPayment = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, userData } = await checkAuthAndGetUserData(request);
+    const { uid } = await checkAuthAndGetUserData(request);
     const {
       roomId,
       videoId,
@@ -5964,7 +5966,6 @@ exports.sellItemToTreasury = onCall(
 
     const userRef = db.collection("users").doc(uid);
     const itemRef = db.collection("storeItems").doc(itemId);
-    let userItemRef = userRef.collection("inventory").doc(itemId);
     const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
 
     // 국고 지출처(관리자/교사) 찾기 — isAdmin 우선, 없으면 레거시 isTeacher 폴백.
@@ -5987,6 +5988,12 @@ exports.sellItemToTreasury = onCall(
 
     try {
       const result = await db.runTransaction(async (transaction) => {
+        // ⚠️ 이 ref 는 **트랜잭션 안에서** 선언한다. 아래 레거시 폴백이 이 값을 바꾸는데,
+        //    바깥에 두면 Firestore 가 충돌로 트랜잭션을 **재시도할 때** 앞 시도에서
+        //    바뀐 값을 그대로 들고 다시 들어온다(린트 require-atomic-updates 가 잡아준 것).
+        //    지금은 재시도마다 기본값에서 다시 시작한다.
+        let userItemRef = userRef.collection("inventory").doc(itemId);
+
         // 🚨 서버측 idempotency check (read만, 첫 줄)
         const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
 
@@ -6898,7 +6905,7 @@ exports.listUserItemForSale = onCall(
 exports.getAdminSettingsData = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isAdmin, isSuperAdmin } =
+    const { uid, classCode, isSuperAdmin } =
       await checkAuthAndGetUserData(request, true);
     const { tab } = request.data;
 
@@ -6906,7 +6913,7 @@ exports.getAdminSettingsData = onCall(
       let data = {};
 
       switch (tab) {
-        case "studentManagement":
+        case "studentManagement": {
           // 학생 데이터 조회 (classCode로만 쿼리 후 관리자 필터)
           const studentsSnapshot = await db
             .collection("users")
@@ -6923,8 +6930,9 @@ exports.getAdminSettingsData = onCall(
               ...doc.data(),
             }));
           break;
+        }
 
-        case "salarySettings":
+        case "salarySettings": {
           // 급여 설정 조회
           const salaryDoc = await db
             .collection("classSettings")
@@ -6935,8 +6943,9 @@ exports.getAdminSettingsData = onCall(
 
           data.salarySettings = salaryDoc.exists ? salaryDoc.data() : {};
           break;
+        }
 
-        case "generalSettings":
+        case "generalSettings": {
           // 일반 설정 조회
           const settingsDoc = await db
             .collection("classSettings")
@@ -6945,8 +6954,9 @@ exports.getAdminSettingsData = onCall(
 
           data.generalSettings = settingsDoc.exists ? settingsDoc.data() : {};
           break;
+        }
 
-        case "systemManagement":
+        case "systemManagement": {
           if (!isSuperAdmin) {
             throw new HttpsError(
               "permission-denied",
@@ -6961,8 +6971,9 @@ exports.getAdminSettingsData = onCall(
             ...doc.data(),
           }));
           break;
+        }
 
-        default:
+        default: {
           // 기본적으로 일반 설정 반환
           const defaultDoc = await db
             .collection("classSettings")
@@ -6970,6 +6981,7 @@ exports.getAdminSettingsData = onCall(
             .get();
 
           data = defaultDoc.exists ? defaultDoc.data() : {};
+        }
       }
 
       logger.info(`[getAdminSettingsData] ${uid}님이 ${tab} 데이터 조회`);
@@ -6995,7 +7007,7 @@ exports.getAdminSettingsData = onCall(
 exports.batchPaySalaries = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isAdmin, isSuperAdmin } =
+    const { uid, classCode } =
       await checkAuthAndGetUserData(request, true);
     const { studentIds, payAll } = request.data;
 
@@ -7202,7 +7214,7 @@ exports.batchPaySalaries = onCall(
 exports.reverseSalaryOnce = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isAdmin, isSuperAdmin } =
+    const { uid, classCode } =
       await checkAuthAndGetUserData(request, true);
 
     try {
@@ -9033,7 +9045,8 @@ exports.seedCourtData = onCall(
 
     try {
       // 헬퍼: 컬렉션 내 모든 문서 삭제 (서브컬렉션 포함)
-      async function deleteAll(collRef, subNames = []) {
+      // (블록 안의 function 선언은 호이스팅 동작이 환경마다 달라 const 로 묶는다)
+      const deleteAll = async (collRef, subNames = []) => {
         const snap = await collRef.get();
         let count = 0;
         for (const doc of snap.docs) {
@@ -9045,7 +9058,7 @@ exports.seedCourtData = onCall(
           count++;
         }
         return count;
-      }
+      };
 
       // 1. 기존 데이터 삭제
       const classRef = db.collection("classes").doc(targetClassCode);
@@ -9530,7 +9543,7 @@ exports.updateUserItemQuantity = onCall(
 exports.createStudentAccounts = onCall(
   { region: "asia-northeast3", timeoutSeconds: 300 },
   async (request) => {
-    const { uid, classCode, isAdmin, isSuperAdmin } =
+    const { uid, classCode } =
       await checkAuthAndGetUserData(request, true);
 
     const { students } = request.data;
@@ -9953,7 +9966,6 @@ exports.migrateUserDoc = onCall(
     }
 
     // 가장 높은 cash를 가진 문서 찾기 (현재 문서 포함)
-    let bestDoc = null;
     let bestData = currentData;
     let bestCash = currentCash;
     let bestId = uid;
@@ -9961,7 +9973,6 @@ exports.migrateUserDoc = onCall(
     for (const doc of candidates) {
       const data = doc.data();
       if ((data.cash || 0) > bestCash) {
-        bestDoc = doc;
         bestData = data;
         bestCash = data.cash || 0;
         bestId = doc.id;
