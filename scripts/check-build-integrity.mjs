@@ -23,6 +23,8 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+// rollup 이 이미 의존성으로 끌고 오는 파서. 이 스크립트 때문에 새로 설치하는 건 없다.
+import { tokenizer } from "acorn";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BUILD = join(ROOT, "build");
@@ -104,23 +106,45 @@ if (missing.length) {
  * 그래서 설정을 믿지 않고 **산출물을 직접 본다.** 아래 셋은 CRA 가 변환해 주던 것이고
  * (라이브 번들 실측), 낮춰 잡는 비용은 gzip +1.3 kB 였다.
  *
- * ⚠️ 정규식은 문자열 안까지 본다. 그래서 **오탐이 안 나는 것만** 골라 넣었다.
- *    클래스 private 필드(`#x`)도 후보였지만 뺐다 — 이 앱의 프롬프트 문자열에 든
- *    CSS 색상 `(#ffffff)` 를 private 필드로 오인해 정상 빌드를 13개 파일에서
- *    실패시켰다(실측). 어차피 target 이 빠지면 아래 셋이 48개·15개 파일에서
- *    한꺼번에 터지므로, 신호는 이걸로 충분하고 남는다.
+ * 검사 방법: **정규식이 아니라 토크나이저**를 쓴다(acorn — rollup 이 이미 끌고 온다).
+ *   정규식은 문자열 안까지 보기 때문에 이 앱에서 바로 오탐이 났다:
+ *     · 프롬프트 문자열의 CSS 색상 `(#ffffff)` → private 필드로 오인, 13개 파일 오검출
+ *   반대로 파싱(acorn.parse)만 쓰는 것도 안 된다:
+ *     · 동적 `import()` 는 ES2020 이라 ecmaVersion 2019 파싱이 거부하는데, 이건
+ *       코드 스플리팅의 핵심이라 변환 대상이 아니고 Safari 11+ 에서 잘 돈다 → 오탐
+ *   토크나이저는 문자열을 토큰 하나로 넘기고 문법만 토큰으로 내보내므로 둘 다 피한다.
+ *   (판별기 자체를 실측 검증했다: 문법 5종 검출, 문자열 속 같은 글자·동적 import 무시)
  */
-const TOO_MODERN = [
-  { name: "옵셔널 체이닝 ?.", re: /\?\.[a-zA-Z_([]/, since: "Safari 13.1" },
-  { name: "널 병합 ??", re: /\?\?[^=]/, since: "Safari 13.1" },
-  { name: "논리 대입 ??= ||= &&=", re: /(\?\?=|\|\|=|&&=)/, since: "Safari 14" },
-];
+const RISKY = new Map([
+  ["?.", { name: "옵셔널 체이닝 ?.", since: "Safari 13.1" }],
+  ["??", { name: "널 병합 ??", since: "Safari 13.1" }],
+  ["??=", { name: "논리 대입 ??=", since: "Safari 14" }],
+  ["||=", { name: "논리 대입 ||=", since: "Safari 14" }],
+  ["&&=", { name: "논리 대입 &&=", since: "Safari 14" }],
+  ["#private", { name: "클래스 private 필드 #", since: "Safari 14.1" }],
+]);
 
 const modern = [];
 for (const { file, text } of sources) {
   if (!file.endsWith(".js")) continue;
-  for (const { name, re, since } of TOO_MODERN) {
-    if (re.test(text)) modern.push({ file, name, since });
+  const found = new Set();
+  try {
+    for (const token of tokenizer(text, {
+      ecmaVersion: 2022,
+      sourceType: "module",
+    })) {
+      const label = token.type.label;
+      if (RISKY.has(label)) found.add(label);
+      else if (token.type.isAssign && RISKY.has(token.value)) found.add(token.value);
+      else if (label === "privateId") found.add("#private");
+    }
+  } catch (err) {
+    // 토큰화조차 안 되면 산출물이 깨진 것이다 — 문법 하한선보다 심각하다.
+    console.error(`\n❌ ${file} 를 토큰화하지 못했습니다: ${err.message}`);
+    process.exit(1);
+  }
+  for (const key of found) {
+    modern.push({ file, ...RISKY.get(key) });
   }
 }
 
