@@ -33,6 +33,19 @@ jobs:
             exit 1
           fi
 
+      # 배포 직전 최종 관문. ci.yml 과 이 워크플로는 서로 독립이라(needs 없음)
+      # CI 가 빨간불이어도 여기까지 온다 — 그래서 "올릴 것"을 여기서 직접 본다.
+      # 두 스크립트 모두 의존성이 없어 npm ci 없이 그대로 돈다.
+      - name: 배포 전 산출물 검사
+        run: |
+          # ① 커밋된 build/ 가 참조하는 청크가 실제로 다 있는가.
+          #    `git add -u build` 로 커밋하면 신규 해시 파일이 빠지고, index.html 만
+          #    새 해시를 가리켜 배포 직후 전원 404 가 된다. 빌드도 테스트도 못 잡는다.
+          node scripts/check-build-integrity.mjs
+          # ② 캐시 헤더가 의도대로 걸리는가. Hosting 은 뒤에 오는 규칙이 이겨서
+          #    앞의 규칙이 조용히 무효가 된다(실측: /sw.js 가 7일 캐시되고 있었다).
+          node scripts/check-hosting-headers.mjs
+
       - name: Deploy Hosting to Firebase
         run: |
           npm install -g firebase-tools

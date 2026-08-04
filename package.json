@@ -58,7 +58,9 @@
     "preview": "vite preview",
     "debt": "node scripts/debt-ratchet.mjs",
     "debt:update": "node scripts/debt-ratchet.mjs --update",
-    "lint": "oxlint src/"
+    "lint": "oxlint src/",
+    "check:headers": "node scripts/check-hosting-headers.mjs",
+    "check:build": "node scripts/check-build-integrity.mjs"
   },
   "browserslist": [
     ">0.2%",

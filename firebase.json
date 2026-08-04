@@ -54,24 +54,6 @@
         ]
       },
       {
-        "source": "/sw.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "/firebase-messaging-sw.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
         "source": "/index.html",
         "headers": [
           {
@@ -125,11 +107,24 @@
         ]
       },
       {
-        "_comment": [
-          "Vite 는 파일명에 내용 해시를 박는다 → 이름이 다르면 다른 파일이므로 영구 캐시가 안전하다.",
-          "⚠️ 이 항목은 반드시 `**/*.@(js|css)` **뒤에** 있어야 한다. Firebase Hosting 은",
-          "   같은 헤더 키에 대해 뒤에 오는 규칙이 이긴다(실측 확인). 앞에 두면 조용히 무효가 된다."
-        ],
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/firebase-messaging-sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "/assets/**",
         "headers": [
           {

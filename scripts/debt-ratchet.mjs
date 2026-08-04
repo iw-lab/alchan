@@ -22,11 +22,32 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "src");
 const BASELINE = join(ROOT, "scripts", "debt-baseline.json");
 
-/** src 아래 파일을 모두 훑는다. node_modules 는 애초에 없다. */
+/**
+ * src 아래 파일을 모두 훑는다. node_modules 는 애초에 없다.
+ *
+ * 깨진 심볼릭 링크 하나로 CI 가 raw stack trace 를 뱉으며 죽으면, 사람은 "부채 검사가
+ * 고장났다"가 아니라 "CI 가 이상하다"로 읽고 검사를 꺼 버린다. 무엇이 문제인지
+ * 말해 주고 죽는다.
+ */
 function walk(dir, out = []) {
-  for (const name of readdirSync(dir)) {
+  let names;
+  try {
+    names = readdirSync(dir);
+  } catch (err) {
+    console.error(`디렉터리를 읽지 못했습니다: ${dir}\n  ${err.message}`);
+    process.exit(1);
+  }
+  for (const name of names) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, out);
+    let stat;
+    try {
+      stat = statSync(p);
+    } catch {
+      // 깨진 심볼릭 링크 등. 셀 수 없는 것은 세지 않고 넘어간다 — 다만 조용히는 아니다.
+      console.warn(`  ⚠️ 건너뜀(읽을 수 없음): ${relative(ROOT, p)}`);
+      continue;
+    }
+    if (stat.isDirectory()) walk(p, out);
     else out.push(p);
   }
   return out;
@@ -44,9 +65,14 @@ const count = (list, re) =>
  */
 const METRICS = {
   // 탭 전체를 얼리고, 금액을 못 보여주고, 되돌릴 수 없다. 모바일에선 특히 나쁘다.
+  // `globalThis.alert`·`window["confirm"]` 형태도 센다 — 지금 이 코드베이스엔 0건이지만,
+  // 세지 않는 형태가 있으면 그게 곧 우회로가 된다.
   alertConfirm: {
     label: "alert()/confirm() 호출",
-    value: count(code, /(?<![\w.])(?:window\.)?(?:alert|confirm)\s*\(/g),
+    value: count(
+      code,
+      /(?<![\w.])(?:(?:window|globalThis)\.)?(?:alert|confirm)\s*\(|(?:window|globalThis)\s*\[\s*["'](?:alert|confirm)["']\s*\]/g,
+    ),
   },
   // CSS 가 서로 싸우고 있다는 뜻. "한 군데 고쳤더니 다른 데가 깨진다"의 기계적 원인.
   important: {
@@ -68,7 +94,13 @@ const METRICS = {
     value: code.filter((f) => {
       const rel = relative(SRC, f).replace(/\\/g, "/");
       if (rel.startsWith("firebase/")) return false; // 여기가 데이터 계층 — 정상
-      return /from\s+["']firebase\/firestore["']/.test(readFileSync(f, "utf8"));
+      // 정적 import 뿐 아니라 동적 import()·require() 도 센다. 실제로 이 코드베이스엔
+      // `await import("firebase/firestore")` 를 쓰는 파일이 4개 있다 — 지금은 넷 다
+      // 정적 import 도 함께 있어서 어느 쪽으로 세든 같지만, 동적만 쓰는 파일이 생기면
+      // 정적만 보는 검사는 그걸 못 본다.
+      return /(?:from\s+|import\s*\(\s*|require\s*\(\s*)["']firebase\/firestore["']/.test(
+        readFileSync(f, "utf8"),
+      );
     }).length,
   },
 };

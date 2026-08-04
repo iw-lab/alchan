@@ -48,6 +48,15 @@ jobs:
       - name: Firestore rules — 중복 match 경로 검사
         run: node scripts/check-rules-dup-paths.mjs firestore.rules
 
+      - name: Hosting 캐시 헤더 검사
+        # firebase.json 은 뒤에 오는 규칙이 이긴다. 규칙을 추가하다 앞의 것을
+        # 조용히 덮는 사고가 두 번 있었다(라이브 실측으로 확인). JSON 은 주석을
+        # 못 담으니 "순서 지켜라"를 적어 둘 데가 없다 — 그래서 검사로 대체한다.
+        run: node scripts/check-hosting-headers.mjs
+
+      - name: 커밋된 build/ 무결성 검사
+        run: node scripts/check-build-integrity.mjs
+
       - name: 기술부채 천장 검사
         # 새 alert()·!important·직접 Firestore 접근이 늘면 실패한다.
         # 기존 671/721/51/46 은 천장으로 인정하고 **늘어나는 것만** 막는다.
@@ -56,4 +65,17 @@ jobs:
       - name: Production build (Vite)
         # CRA 시절의 CI=false 제거 — 그건 react-scripts 가 경고를 에러로 올리던 걸
         # 끄는 플래그였고 Vite 에는 그런 동작이 없다.
+        #
+        # ALLOW_MISSING_ENV: .env 는 gitignore 대상이라 여기 체크아웃엔 없다.
+        #   vite.config.js 의 "필수 env 없으면 빌드 중단" 가드를 그대로 두면 이 스텝이
+        #   **항상** 실패한다(실측 exit 1). 여기서 확인하려는 건 "코드가 컴파일 되는가"이지
+        #   "배포 가능한 산출물이 나오는가"가 아니다 — 실제로 배포되는 건 로컬에서 빌드해
+        #   커밋한 build/ 이고(deploy.yml), 그 가드는 그 로컬 빌드를 지킨다.
+        #
+        #   👉 이 빌드를 진짜 프로덕션과 동일하게 만들고 싶다면, Firebase 웹 설정 6개를
+        #      리포지토리 Variables 로 넣고 아래 env 블록을 채운 뒤 이 플래그를 지우면 된다.
+        #      (그 값들은 이미 배포된 번들에서 누구나 읽을 수 있는 공개 설정이다 —
+        #       비밀은 Firestore 규칙과 App Check 가 지킨다)
+        env:
+          ALLOW_MISSING_ENV: "1"
         run: npm run build

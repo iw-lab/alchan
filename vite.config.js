@@ -22,8 +22,12 @@ export default defineConfig(({ mode, command }) => {
       .map((k) => [`process.env.${k}`, JSON.stringify(env[k])]),
   );
   // 소스 65곳이 참조한다. Vite 도 넣어주지만 명시해 두면 값이 예상과 어긋날 일이 없다.
+  // ⚠️ `mode` 가 아니라 `command` 로 판단한다. mode 로 하면 `vite build --mode staging`
+  //    처럼 기본이 아닌 모드로 빌드했을 때 **프로덕션 산출물인데 NODE_ENV=development**
+  //    가 박힌다. 이 앱에서 그건 단순한 라벨 문제가 아니라, 소스가 그 값으로
+  //    Firebase 에뮬레이터(127.0.0.1) 연결 여부를 가르기 때문에 실제 접속처가 바뀐다.
   define["process.env.NODE_ENV"] = JSON.stringify(
-    mode === "production" ? "production" : "development",
+    command === "build" ? "production" : "development",
   );
 
   // ⚠️ 값이 비어도 빌드는 성공한다 — 그리고 앱은 배포된 뒤 흰 화면으로 죽는다.
@@ -38,12 +42,30 @@ export default defineConfig(({ mode, command }) => {
     "REACT_APP_FIREBASE_MESSAGING_SENDER_ID",
     "REACT_APP_FIREBASE_APP_ID",
   ];
+  //    ⚠️ 단, **CI 에서는 세우면 안 된다.** `.env` 는 gitignore 대상이라 GitHub Actions
+  //       체크아웃엔 없다. 이 가드를 무조건 던지게 두면 머지하는 순간 CI 가 영구 적색이
+  //       되고(실측: exit 1), "CI 는 원래 빨간 것"이 되는 순간 진짜 회귀도 안 보인다.
+  //       그리고 CI 를 세울 이유도 없다 — 배포되는 건 CI 의 산출물이 아니라 **로컬에서
+  //       빌드해 커밋한 build/** 다(deploy.yml). 즉 이 가드가 지켜야 할 지점은
+  //       개발자 machine 이고, CI 의 빌드는 "컴파일 되는가"를 보는 것이다.
+  //       그래서 CI 는 ALLOW_MISSING_ENV=1 로 명시적으로 빠져나간다 —
+  //       자동 CI 감지가 아니라 ci.yml 에 적힌 한 줄이라, 읽으면 보이고 grep 도 된다.
   const missing = REQUIRED.filter((k) => !env[k]);
   if (missing.length > 0 && command === "build") {
-    throw new Error(
-      `환경변수 누락으로 빌드를 중단합니다: ${missing.join(", ")}\n` +
-        `.env 파일을 확인하세요. 이대로 빌드하면 배포 후 흰 화면이 됩니다.`,
-    );
+    const message = `환경변수 누락: ${missing.join(", ")}`;
+    if (process.env.ALLOW_MISSING_ENV === "1") {
+      console.warn(
+        `\n⚠️  ${message}\n` +
+          `   ALLOW_MISSING_ENV=1 이라 빌드를 계속합니다(컴파일 검사용).\n` +
+          `   ⛔ 이 산출물은 배포하면 안 됩니다 — 실행하면 흰 화면입니다.\n`,
+      );
+    } else {
+      throw new Error(
+        `${message}\n` +
+          `.env 파일을 확인하세요. 이대로 빌드하면 배포 후 흰 화면이 됩니다.\n` +
+          `(컴파일만 확인하려면 ALLOW_MISSING_ENV=1)`,
+      );
+    }
   }
 
   return {
@@ -66,6 +88,17 @@ export default defineConfig(({ mode, command }) => {
       //    반응하고 폴더 존재를 확인한다). firebase.json 의 "public": "build" 도 같다.
       //    `dist` 로 바꾸면 빌드는 되는데 배포가 조용히 옛 파일을 계속 올린다.
       outDir: "build",
+      // ④ 문법 하한선. Vite 기본값은 Safari 16 근방을 전제하는데, CRA 는 이 저장소의
+      //    browserslist(`>0.2%, not dead`)를 읽어 **ios_saf 11 까지** 낮춰 내보내고 있었다.
+      //    실측으로 확인한 차이(라이브 번들 vs 새 번들):
+      //        ?. ??      구앱 변환됨 / 신앱 그대로  → Safari 13.1+ 필요
+      //        ??= ||=    구앱 변환됨 / 신앱 그대로  → Safari 14+ 필요
+      //    학생 기기 82대의 사양을 알 수 없고, 이 구문은 **파싱 단계에서 죽는다** —
+      //    한 줄도 실행되기 전에 화면이 하얗게 남고, 로그인조차 못 간다. 에러도 안 뜬다.
+      //    낮춰 잡는 비용은 실측 gzip +1.3 kB(첫 방문 0.5%)뿐이라 안 살 이유가 없다.
+      //    ⚠️ Vite 는 CRA 와 달리 package.json 의 browserslist 를 **안 읽는다.** 여기서
+      //       명시하지 않으면 그 설정은 있으나 마나다.
+      target: ["es2019", "safari13", "chrome80", "firefox78", "edge88"],
       // 비운다. 확인해 보니 build/ 는 `public/ 전체 + CRA 산출물(static·asset-manifest·
       // index.html)` 로만 이루어져 있고, public/ 은 Vite 가 그대로 다시 복사한다.
       // 안 비우면 CRA 시절 번들(static/js/main.*.js)이 남아 계속 배포된다 —
