@@ -23,8 +23,26 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-// rollup 이 이미 의존성으로 끌고 오는 파서. 이 스크립트 때문에 새로 설치하는 건 없다.
-import { tokenizer } from "acorn";
+
+/**
+ * acorn(문법 검사용)은 **있으면 쓰고 없으면 건너뛴다.**
+ *
+ * 이 스크립트는 두 곳에서 돈다:
+ *   · ci.yml     — npm ci 뒤라 node_modules 가 있다 → 문법 검사까지 전부
+ *   · deploy.yml — npm ci 를 안 한다 → node_modules 가 없다
+ * 정적 import 로 두었더니 배포가 ERR_MODULE_NOT_FOUND 로 죽었다(실측). 배포 경로에
+ * 의존성 설치를 새로 넣는 것보다, 의존성 없이도 도는 쪽이 맞다 — 여기서 진짜 막아야 할
+ * 건 "청크 누락 = 전원 404"이고 그건 파서가 필요 없다. 문법 검사는 CI 가 담당한다.
+ *
+ * ⚠️ 단 **조용히 건너뛰지 않는다.** 검사가 사라진 것은 실패로 보이지 않기 때문에,
+ *    건너뛴다는 사실 자체를 출력한다.
+ */
+let tokenizer = null;
+try {
+  ({ tokenizer } = await import("acorn"));
+} catch {
+  // 아래에서 안내 문구와 함께 문법 검사만 건너뛴다.
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BUILD = join(ROOT, "build");
@@ -125,7 +143,13 @@ const RISKY = new Map([
 ]);
 
 const modern = [];
-for (const { file, text } of sources) {
+if (!tokenizer) {
+  console.log(
+    `  \x1b[33m⚠️ 문법 하한선 검사 건너뜀\x1b[0m — acorn 이 없습니다(node_modules 미설치).\n` +
+      `     참조 무결성은 검사했습니다. 문법 검사는 CI(npm ci 뒤)에서 돕니다.`,
+  );
+}
+for (const { file, text } of tokenizer ? sources : []) {
   if (!file.endsWith(".js")) continue;
   const found = new Set();
   try {
