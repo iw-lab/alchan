@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { Shield, CheckCircle, Search, Users } from "lucide-react";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 // 위임 가능한 권한 목록
 const PERMISSION_TYPES = [
@@ -95,7 +96,7 @@ const AdminPermissionManager = () => {
         );
       } catch (error) {
         logger.error("[AdminPermissionManager] 권한 변경 실패:", error);
-        alert("권한 변경에 실패했습니다.");
+        toast.error("권한 변경에 실패했습니다.");
       } finally {
         setSaving(null);
       }

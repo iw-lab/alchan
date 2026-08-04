@@ -35,6 +35,7 @@ import { httpsCallable } from "firebase/functions";
 
 import { logger } from "../utils/logger";
 import { invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
+import { toast } from "../utils/toast";
 export const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -943,7 +944,7 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       if (error.code === "auth/requires-recent-login") {
-        alert(
+        toast.error(
           "계정 삭제는 보안을 위해 최근에 로그인한 사용자만 가능합니다. 다시 로그인한 후 시도해 주세요.",
         );
       }

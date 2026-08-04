@@ -2,6 +2,7 @@
 // 🔥 성능 최적화: React.memo 적용
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, memo } from "react";
+import { toast } from "../../utils/toast";
 import "../../pages/banking/StockExchange.css"; // 스타일 공유
 import { useAuth } from "../../contexts/AuthContext"; // 사용자 잔고 확인용
 
@@ -46,15 +47,15 @@ const TradeModal = memo(function TradeModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (quantity <= 0) {
-      alert("수량은 1 이상이어야 합니다.");
+      toast.error("수량은 1 이상이어야 합니다.");
       return;
     }
     if (action === "buy" && (userDoc?.cash || 0) < totalPrice) {
-      alert("현금이 부족합니다.");
+      toast.error("현금이 부족합니다.");
       return;
     }
     if (action === "sell" && (userStock?.quantity || 0) < quantity) {
-      alert("보유 수량이 부족합니다.");
+      toast.error("보유 수량이 부족합니다.");
       return;
     }
     onConfirmTrade(stock.id, quantity, stock.currentPrice, action);

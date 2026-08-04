@@ -16,6 +16,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide-react";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
@@ -91,11 +92,11 @@ const AdminApprovalPanel = () => {
       try {
         const result = await processTaskApproval({ approvalId, action });
         if (result.data.success) {
-          alert(normalizeCurrencyText(result.data.message));
+          toast.success(normalizeCurrencyText(result.data.message));
         }
       } catch (error) {
         logger.error("[AdminApprovalPanel] 처리 실패:", error);
-        alert(`처리 실패: ${error.message}`);
+        toast.error(`처리 실패: ${error.message}`);
       } finally {
         setProcessingId(null);
       }
@@ -193,7 +194,7 @@ const AdminApprovalPanel = () => {
 
       setSelectedIds(new Set());
       setBulkProcessing(false);
-      alert(`일괄 ${label} 완료: 성공 ${success}건${fail > 0 ? `, 실패 ${fail}건` : ""}`);
+      toast.success(`일괄 ${label} 완료: 성공 ${success}건${fail > 0 ? `, 실패 ${fail}건` : ""}`);
     },
     [bulkProcessing, selectedIds, processTaskApproval]
   );

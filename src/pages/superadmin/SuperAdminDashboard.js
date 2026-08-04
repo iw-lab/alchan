@@ -63,6 +63,7 @@ import {
 import "./SuperAdminDashboard.css";
 
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 // 탭 목록
 // Cloud Function 참조 (모듈 스코프)
 const listAllAuthUsersFn = httpsCallable(functions, "listAllAuthUsers");
@@ -505,7 +506,7 @@ export default function SuperAdminDashboard() {
           }
         }
         if (!newClassCode) {
-          alert("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
+          toast.error("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
           return;
         }
         updates.classCode = newClassCode;
@@ -540,14 +541,14 @@ export default function SuperAdminDashboard() {
       }
 
       await loadStats();
-      alert(
+      toast.success(
         newClassCode
           ? `선생님이 승인되었습니다.\n학급 코드: ${newClassCode}`
           : "선생님이 승인되었습니다.",
       );
     } catch (error) {
       logger.error("승인 오류:", error);
-      alert("승인 처리 중 오류가 발생했습니다.");
+      toast.error("승인 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -591,10 +592,10 @@ export default function SuperAdminDashboard() {
 
       setPendingTeachers((prev) => prev.filter((t) => t.id !== teacherId));
       await loadStats();
-      alert("선생님 가입이 거절되었습니다.\n해당 이메일은 영구 차단되었습니다.");
+      toast.success("선생님 가입이 거절되었습니다.\n해당 이메일은 영구 차단되었습니다.");
     } catch (error) {
       logger.error("거절 오류:", error);
-      alert("거절 처리 중 오류가 발생했습니다.");
+      toast.error("거절 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -712,7 +713,7 @@ export default function SuperAdminDashboard() {
   // 학급 상세 모달 열기 — 학생 목록 + 자산 통계 fetch
   const openClassDetail = async (classCode, teacherName) => {
     if (!classCode || classCode === "미지정") {
-      alert("학급 코드가 없습니다. 먼저 '학급 코드 발급' 버튼으로 코드를 부여해주세요.");
+      toast.error("학급 코드가 없습니다. 먼저 '학급 코드 발급' 버튼으로 코드를 부여해주세요.");
       return;
     }
     setClassDetail({ classCode, teacherName });
@@ -731,7 +732,7 @@ export default function SuperAdminDashboard() {
       setClassStudents(students);
     } catch (error) {
       logger.error("학급 상세 로드 오류:", error);
-      alert("학급 정보를 불러오지 못했습니다.");
+      toast.error("학급 정보를 불러오지 못했습니다.");
     } finally {
       setClassDetailLoading(false);
     }
@@ -754,7 +755,7 @@ export default function SuperAdminDashboard() {
     try {
       const teacher = approvedTeachers.find((t) => t.id === teacherId);
       if (!teacher) {
-        alert("선생님 정보를 찾을 수 없습니다.");
+        toast.error("선생님 정보를 찾을 수 없습니다.");
         return;
       }
 
@@ -773,7 +774,7 @@ export default function SuperAdminDashboard() {
         }
       }
       if (!newClassCode) {
-        alert("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
+        toast.error("학급 코드 생성에 실패했습니다. 다시 시도해주세요.");
         return;
       }
 
@@ -805,10 +806,10 @@ export default function SuperAdminDashboard() {
         ),
       );
 
-      alert(`학급 코드가 발급되었습니다.\n학급 코드: ${newClassCode}`);
+      toast.success(`학급 코드가 발급되었습니다.\n학급 코드: ${newClassCode}`);
     } catch (error) {
       logger.error("학급 코드 발급 오류:", error);
-      alert("학급 코드 발급 중 오류가 발생했습니다.");
+      toast.error("학급 코드 발급 중 오류가 발생했습니다.");
     }
   };
 
@@ -835,10 +836,10 @@ export default function SuperAdminDashboard() {
       }
 
       await loadStats();
-      alert("승인이 취소되었습니다.");
+      toast.error("승인이 취소되었습니다.");
     } catch (error) {
       logger.error("승인 취소 오류:", error);
-      alert("승인 취소 중 오류가 발생했습니다.");
+      toast.error("승인 취소 중 오류가 발생했습니다.");
     }
   };
 
@@ -850,7 +851,7 @@ export default function SuperAdminDashboard() {
       setAllAuthUsers(result.data.users || []);
     } catch (error) {
       logger.error("전체 계정 로드 오류:", error);
-      alert("전체 계정 로드 실패: " + error.message);
+      toast.error("전체 계정 로드 실패: " + error.message);
     } finally {
       setAccountsLoading(false);
     }
@@ -904,7 +905,7 @@ export default function SuperAdminDashboard() {
     setAllAuthUsers((prev) => prev.filter((u) => !selectedAccounts.has(u.uid)));
     setSelectedAccounts(new Set());
     setBulkDeleting(false);
-    alert(`삭제 완료: ${success}개 성공${fail > 0 ? `, ${fail}개 실패` : ""}`);
+    toast.error(`삭제 완료: ${success}개 성공${fail > 0 ? `, ${fail}개 실패` : ""}`);
   };
 
   // Auth 계정 삭제
@@ -918,10 +919,10 @@ export default function SuperAdminDashboard() {
     try {
       await deleteAuthUserFn({ targetUid });
       setAllAuthUsers((prev) => prev.filter((u) => u.uid !== targetUid));
-      alert("계정이 삭제되었습니다.");
+      toast.success("계정이 삭제되었습니다.");
     } catch (error) {
       logger.error("계정 삭제 오류:", error);
-      alert("계정 삭제 실패: " + error.message);
+      toast.error("계정 삭제 실패: " + error.message);
     }
   };
 
@@ -2088,14 +2089,14 @@ export default function SuperAdminDashboard() {
                       const result = await initClassroomDefaults(
                         classDetail.classCode,
                       );
-                      alert(
+                      toast.error(
                         result.created
                           ? "학급 초기 데이터를 보충했습니다."
                           : "이미 모든 항목이 설정되어 있습니다.",
                       );
                     } catch (e) {
                       logger.error("학급 초기화 오류:", e);
-                      alert("학급 초기화 중 오류가 발생했습니다.");
+                      toast.error("학급 초기화 중 오류가 발생했습니다.");
                     }
                   }}
                   title="누락된 직업/상점/은행/급여 초기 데이터를 생성"

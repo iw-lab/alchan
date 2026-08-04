@@ -37,6 +37,7 @@ import {
 
 import { logger } from "../../utils/logger";
 import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
+import { toast } from "../../utils/toast";
 export default function CouponGoalPage() {
   const {
     user,
@@ -255,13 +256,13 @@ export default function CouponGoalPage() {
 
   const handleDonateCoupon = async (amount, memo) => {
     if (!userId || !currentUserClassCode || !userDoc) {
-      alert("사용자 또는 학급 정보가 없어 응모할 수 없습니다.");
+      toast.error("사용자 또는 학급 정보가 없어 응모할 수 없습니다.");
       return false;
     }
 
     const donationAmount = parseInt(amount, 10);
     if (isNaN(donationAmount) || donationAmount <= 0) {
-      alert("유효한 쿠폰 수량을 입력해주세요.");
+      toast.error("유효한 쿠폰 수량을 입력해주세요.");
       return false;
     }
 
@@ -300,7 +301,7 @@ export default function CouponGoalPage() {
         await loadGoalDataRef.current();
       }
 
-      alert(`${donationAmount} 쿠폰 응모 완료!`);
+      toast.success(`${donationAmount} 쿠폰 응모 완료!`);
       setShowDonateModal(false);
 
       return true;
@@ -312,7 +313,7 @@ export default function CouponGoalPage() {
         details: error.details,
         stack: error.stack,
       });
-      alert(`응모 오류: ${error.message}`);
+      toast.error(`응모 오류: ${error.message}`);
 
       // 실패 시 롤백
       if (optimisticUpdate) {
@@ -327,7 +328,7 @@ export default function CouponGoalPage() {
 
   const forceRefreshGoalData = async () => {
     if (!currentGoalId || !currentUserClassCode) {
-      alert("학급 정보가 없습니다.");
+      toast.error("학급 정보가 없습니다.");
       return;
     }
 
@@ -379,14 +380,14 @@ export default function CouponGoalPage() {
         setGoalDonations(freshDonations);
         setCachedFirestoreData(`goal_${currentGoalId}`, userId, latestGoalData);
 
-        alert(
+        toast.success(
           `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n응모 내역: ${freshDonations.length}개`,
         );
       } else {
-        alert("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
+        toast.error("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
       }
     } catch (error) {
-      alert(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
+      toast.error(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setAssetsLoading(false);
     }
@@ -407,18 +408,18 @@ export default function CouponGoalPage() {
     };
 
     logger.log("[CouponGoalPage Debug]", debugInfo);
-    alert(
+    toast.success(
       `디버그 정보가 콘솔에 출력되었습니다.\n응모 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
     );
   };
 
   const resetCouponGoal = async () => {
     if (!canManageGoal) {
-      alert("교사/관리자만 초기화 가능합니다.");
+      toast.error("교사/관리자만 초기화 가능합니다.");
       return;
     }
     if (!currentUserClassCode || !currentGoalId) {
-      alert("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
+      toast.error("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
       return;
     }
     if (
@@ -448,11 +449,11 @@ export default function CouponGoalPage() {
       setGoalProgress(0);
       setGoalDonations([]);
 
-      alert(
+      toast.success(
         `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
       );
     } catch (error) {
-      alert(`목표 초기화 오류: ${error.message}`);
+      toast.error(`목표 초기화 오류: ${error.message}`);
     } finally {
       setIsResettingGoal(false);
     }
@@ -461,11 +462,11 @@ export default function CouponGoalPage() {
   const [isSettingNewGoal, setIsSettingNewGoal] = useState(false);
   const setNewGoal = async () => {
     if (!canManageGoal) {
-      alert("교사/관리자만 새 목표를 설정할 수 있습니다.");
+      toast.error("교사/관리자만 새 목표를 설정할 수 있습니다.");
       return;
     }
     if (!currentUserClassCode || !currentGoalId) {
-      alert("학급 코드나 목표 정보가 없어 설정할 수 없습니다.");
+      toast.error("학급 코드나 목표 정보가 없어 설정할 수 없습니다.");
       return;
     }
     const input = window.prompt(
@@ -475,7 +476,7 @@ export default function CouponGoalPage() {
     if (input === null) return;
     const newTarget = parseInt(input, 10);
     if (!Number.isFinite(newTarget) || newTarget <= 0) {
-      alert("1 이상의 숫자를 입력해주세요.");
+      toast.error("1 이상의 숫자를 입력해주세요.");
       return;
     }
     if (
@@ -529,9 +530,9 @@ export default function CouponGoalPage() {
       setGoalDonations([]);
       setGoalAchieved(false);
 
-      alert(`새 목표(${newTarget.toLocaleString()}쿠폰)가 설정되었습니다.`);
+      toast.success(`새 목표(${newTarget.toLocaleString()}쿠폰)가 설정되었습니다.`);
     } catch (error) {
-      alert(`새 목표 설정 오류: ${error.message}`);
+      toast.error(`새 목표 설정 오류: ${error.message}`);
     } finally {
       setIsSettingNewGoal(false);
     }
@@ -541,7 +542,7 @@ export default function CouponGoalPage() {
     if (actionLockRef.current) return; // 🔒 이중제출 방지
     const amount = parseInt(sellAmount, 10);
     if (isNaN(amount) || amount <= 0) {
-      alert("유효한 수량을 입력해주세요.");
+      toast.error("유효한 수량을 입력해주세요.");
       return;
     }
 
@@ -557,7 +558,7 @@ export default function CouponGoalPage() {
       }
       setAssetsLoading(true);
       await sellCouponFunction({ amount, idempotencyKey: crypto.randomUUID() });
-      alert(`${amount}개 쿠폰을 판매했습니다.`);
+      toast.success(`${amount}개 쿠폰을 판매했습니다.`);
       setShowSellCouponModal(false);
       setSellAmount("");
 
@@ -569,7 +570,7 @@ export default function CouponGoalPage() {
         }
       }, 500);
     } catch (error) {
-      alert(`판매 오류: ${error.message}`);
+      toast.error(`판매 오류: ${error.message}`);
       // 🔄 CF 실패 시 낙관적 업데이트 롤백(전역 userDoc 잔액 desync 방지)
       if (optimisticUpdate) {
         optimisticUpdate({
@@ -590,11 +591,11 @@ export default function CouponGoalPage() {
     const amount = parseInt(giftAmount, 10);
 
     if (!recipientUser) {
-      alert("받는 사람을 선택해주세요.");
+      toast.error("받는 사람을 선택해주세요.");
       return;
     }
     if (isNaN(amount) || amount <= 0) {
-      alert("올바른 수량을 입력해주세요.");
+      toast.error("올바른 수량을 입력해주세요.");
       return;
     }
 
@@ -621,7 +622,7 @@ export default function CouponGoalPage() {
         message: "",
         idempotencyKey: crypto.randomUUID(),
       });
-      alert("쿠폰 선물이 완료되었습니다.");
+      toast.success("쿠폰 선물이 완료되었습니다.");
       setShowGiftCouponModal(false);
       setGiftRecipient("");
       setGiftAmount("");
@@ -634,7 +635,7 @@ export default function CouponGoalPage() {
         }
       }, 500);
     } catch (error) {
-      alert(`선물 오류: ${error.message}`);
+      toast.error(`선물 오류: ${error.message}`);
       // 롤백
       if (optimisticUpdate) {
         optimisticUpdate({ coupons: amount });
@@ -761,9 +762,10 @@ export default function CouponGoalPage() {
                   onClick={() => {
                     // 게시판 작성 중 글·사용중 아이템 표시는 보존(utils/storageReset.js)
                     clearLocalStoragePreserving();
-                    alert(
-                      "로컬 캐시가 삭제되었습니다. 페이지를 새로고침합니다.\n(작성 중이던 게시판 글은 보존됩니다)",
-                    );
+                    // ⚠️ 여기엔 토스트를 띄우지 않는다. alert 은 확인을 누른 **뒤에**
+                    //    새로고침했지만 토스트는 안 멈춘다 — 뜨자마자 reload 가 페이지째
+                    //    지워서 아무도 못 본다. 새로고침 자체가 눈에 보이는 결과라
+                    //    알림이 없어도 무슨 일이 일어났는지 안다.
                     window.location.reload();
                   }}
                   style={{

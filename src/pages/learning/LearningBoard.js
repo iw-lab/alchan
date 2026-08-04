@@ -44,6 +44,7 @@ const formatFileSize = (bytes) => {
 const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 // 붙여넣기는 교사 요청으로 다시 허용(Ctrl+V 정상 작동). 파일 드롭만 차단 유지.
 // (복사·잘라내기·우클릭 선택 차단은 아래 blockCopyProps에서 별도 유지)
@@ -466,7 +467,7 @@ const LearningBoard = () => {
       //     = "글을 눌렀는데 옆 게시판으로 튀는" 버그.)
       setBoardParam(boardId);
     } else if (board && board.isHidden && !currentUserIsAdmin && !fromHiddenView) {
-      alert("이 게시판은 현재 접근할 수 없습니다.");
+      toast.error("이 게시판은 현재 접근할 수 없습니다.");
     }
   };
 
@@ -475,11 +476,11 @@ const LearningBoard = () => {
     for (const f of files) {
       const ext = getFileExt(f.name);
       if (!ALLOWED_ATTACHMENT_EXTS.includes(ext)) {
-        alert(`허용되지 않는 파일 형식입니다: ${f.name}\n(허용: ${ALLOWED_ATTACHMENT_EXTS.join(", ")})`);
+        toast.error(`허용되지 않는 파일 형식입니다: ${f.name}\n(허용: ${ALLOWED_ATTACHMENT_EXTS.join(", ")})`);
         return false;
       }
       if (f.size > MAX_ATTACHMENT_SIZE) {
-        alert(`파일 크기는 20MB 이하여야 합니다: ${f.name}`);
+        toast.error(`파일 크기는 20MB 이하여야 합니다: ${f.name}`);
         return false;
       }
     }
@@ -558,15 +559,15 @@ const LearningBoard = () => {
     if (isSubmitting) return;
     if (!selectedBoard || !classCode || !currentUserId) return;
     if (selectedBoard.isHidden && !currentUserIsAdmin) {
-      alert("숨겨진 게시판에는 글을 작성할 수 없습니다.");
+      toast.error("숨겨진 게시판에는 글을 작성할 수 없습니다.");
       return;
     }
     if (!newPost.title.trim() || !newPost.content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
+      toast.error("제목과 내용을 모두 입력해주세요.");
       return;
     }
     if (pendingFiles.length > 0 && !currentUserIsAdmin) {
-      alert("첨부파일은 담임 선생님만 추가할 수 있습니다.");
+      toast.error("첨부파일은 담임 선생님만 추가할 수 있습니다.");
       return;
     }
     setIsSubmitting(true);
@@ -593,7 +594,7 @@ const LearningBoard = () => {
           await updateDoc(docRef, { attachments: uploaded });
         } catch (uploadErr) {
           logger.error("Error uploading attachments:", uploadErr);
-          alert(`첨부파일 업로드 오류: ${uploadErr.message}\n(게시글은 등록되었습니다)`);
+          toast.error(`첨부파일 업로드 오류: ${uploadErr.message}\n(게시글은 등록되었습니다)`);
         } finally {
           setIsUploadingAttachment(false);
         }
@@ -603,10 +604,10 @@ const LearningBoard = () => {
       setPendingFiles([]);
       clearDraft(); // 등록 완료 → 임시저장 삭제
       setIsWriting(false);
-      alert("게시글이 등록되었습니다!");
+      toast.success("게시글이 등록되었습니다!");
     } catch (error) {
       logger.error("Error submitting post:", error);
-      alert(`게시글 제출 오류: ${error.message}`);
+      toast.error(`게시글 제출 오류: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -631,10 +632,10 @@ const LearningBoard = () => {
       setSelectedPost(null);
       setSearchParams(prev => { const next = new URLSearchParams(prev); next.delete('post'); return next; });
       refetchPosts();
-      alert("게시글이 삭제되었습니다.");
+      toast.success("게시글이 삭제되었습니다.");
     } catch (error) {
       logger.error("Error deleting post:", error);
-      alert("게시글 삭제 오류.");
+      toast.error("게시글 삭제 오류.");
     }
   };
 
@@ -659,7 +660,7 @@ const LearningBoard = () => {
       refetchPosts();
     } catch (error) {
       logger.error("Error deleting post from list:", error);
-      alert("게시글 삭제 오류.");
+      toast.error("게시글 삭제 오류.");
     }
   };
 
@@ -675,11 +676,11 @@ const LearningBoard = () => {
     e.preventDefault();
     if (!selectedBoard || !classCode || !selectedPost) return;
     if (!editPost.title.trim() || !editPost.content.trim()) {
-      alert("제목과 내용을 모두 입력해주세요.");
+      toast.error("제목과 내용을 모두 입력해주세요.");
       return;
     }
     if ((editPendingFiles.length > 0 || (selectedPost.attachments?.length || 0) !== editAttachments.length) && !currentUserIsAdmin) {
-      alert("첨부파일은 담임 선생님만 변경할 수 있습니다.");
+      toast.error("첨부파일은 담임 선생님만 변경할 수 있습니다.");
       return;
     }
     try {
@@ -720,10 +721,10 @@ const LearningBoard = () => {
       setEditPendingFiles([]);
       setEditAttachments([]);
       refetchPosts();
-      alert("게시글이 수정되었습니다!");
+      toast.success("게시글이 수정되었습니다!");
     } catch (error) {
       logger.error("Error updating post:", error);
-      alert(`게시글 수정 오류: ${error.message}`);
+      toast.error(`게시글 수정 오류: ${error.message}`);
     }
   };
 
@@ -775,7 +776,7 @@ const LearningBoard = () => {
       refetchPosts();
     } catch (error) {
       logger.error("Error adding comment:", error);
-      alert("댓글 작성 오류.");
+      toast.error("댓글 작성 오류.");
     }
   };
 
@@ -821,7 +822,7 @@ const LearningBoard = () => {
           if (userHasLiked) { updates.likedBy = arrayRemove(currentUserId); updates.likes = increment(-1); }
           couponChange = calculateCouponChange(postData, "dislike", currentUserId);
         } else if (updateType === "adminCoupon" && currentUserIsAdmin && typeof interactionValue === "number" && interactionValue > 0) {
-          if (postData.adminCouponGiven) { alert("이미 관리자 쿠폰이 지급되었습니다."); return; }
+          if (postData.adminCouponGiven) { toast.error("이미 관리자 쿠폰이 지급되었습니다."); return; }
           updates.adminCouponGiven = true;
           couponChange = interactionValue;
         } else { return; }
@@ -836,12 +837,12 @@ const LearningBoard = () => {
       });
       refetchPosts();
       if (updateType === "adminCoupon" && currentUserIsAdmin) {
-        alert(`관리자 쿠폰 ${interactionValue}개가 지급되었습니다.`);
+        toast.success(`관리자 쿠폰 ${interactionValue}개가 지급되었습니다.`);
         setCustomCouponAmount(0);
       }
     } catch (error) {
       logger.error(`Error updating post ${updateType}:`, error);
-      alert(`처리 중 오류: ${error.message}`);
+      toast.error(`처리 중 오류: ${error.message}`);
     }
   };
 
@@ -854,8 +855,8 @@ const LearningBoard = () => {
     e.preventDefault();
     if (!currentUserIsAdmin || !classCode || !boardsCollectionRef) return;
     const trimmedName = newBoardName.trim();
-    if (!trimmedName) return alert("게시판 이름을 입력해주세요.");
-    if (boards.some((b) => b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
+    if (!trimmedName) return toast.error("게시판 이름을 입력해주세요.");
+    if (boards.some((b) => b.name === trimmedName)) return toast.error("이미 존재하는 이름입니다.");
     try {
       await addDoc(boardsCollectionRef, { name: trimmedName, isHidden: false, isAnonymous: newBoardAnonymous, createdAt: serverTimestamp(), classCode });
       notifyBoardsChanged();
@@ -863,7 +864,7 @@ const LearningBoard = () => {
       setNewBoardAnonymous(false);
     } catch (error) {
       logger.error("Error adding board:", error);
-      alert("게시판 추가 오류.");
+      toast.error("게시판 추가 오류.");
     }
   };
 
@@ -874,8 +875,8 @@ const LearningBoard = () => {
     e.preventDefault();
     if (!editingBoardId || !classCode || !currentUserIsAdmin) return;
     const trimmedName = editingBoardName.trim();
-    if (!trimmedName) return alert("이름을 입력해주세요.");
-    if (boards.some((b) => b.id !== editingBoardId && b.name === trimmedName)) return alert("이미 존재하는 이름입니다.");
+    if (!trimmedName) return toast.error("이름을 입력해주세요.");
+    if (boards.some((b) => b.id !== editingBoardId && b.name === trimmedName)) return toast.error("이미 존재하는 이름입니다.");
     try {
       await updateDoc(doc(db, "classes", classCode, "learningBoards", editingBoardId), { name: trimmedName, updatedAt: serverTimestamp() });
       notifyBoardsChanged();
@@ -932,7 +933,7 @@ const LearningBoard = () => {
       if (selectedBoard?.id === boardId) { setSelectedBoard(null); setBoardParam(null); }
     } catch (error) {
       logger.error("Error deleting board:", error);
-      alert("삭제 오류.");
+      toast.error("삭제 오류.");
     }
   };
 

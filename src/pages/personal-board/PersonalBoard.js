@@ -23,6 +23,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 // ── 디자인 헬퍼 ─────────────────────────
 const AVATAR_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#14b8a6", "#3b82f6", "#a855f7"];
@@ -227,7 +228,7 @@ const PersonalBoard = () => {
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
       logger.error("[담벼락] 글 작성 오류:", e);
-      alert("글을 올리지 못했습니다. 권한 또는 네트워크를 확인해주세요.");
+      toast.error("글을 올리지 못했습니다. 권한 또는 네트워크를 확인해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -248,7 +249,7 @@ const PersonalBoard = () => {
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
       logger.error("[담벼락] 댓글 작성 오류:", e);
-      alert("댓글을 올리지 못했습니다.");
+      toast.error("댓글을 올리지 못했습니다.");
     }
   };
 
@@ -265,7 +266,7 @@ const PersonalBoard = () => {
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
       logger.error("[담벼락] 글 삭제 오류:", e);
-      alert("삭제하지 못했습니다.");
+      toast.error("삭제하지 못했습니다.");
     }
   };
 
@@ -278,7 +279,7 @@ const PersonalBoard = () => {
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
       logger.error("[담벼락] 댓글 삭제 오류:", e);
-      alert("삭제하지 못했습니다.");
+      toast.error("삭제하지 못했습니다.");
     }
   };
 
@@ -290,7 +291,7 @@ const PersonalBoard = () => {
       setViewBoard((prev) => (prev && prev.ownerId === board.ownerId ? { ...prev, visibility: next } : prev));
     } catch (e) {
       logger.error("[담벼락] 공개범위 변경 오류:", e);
-      alert("공개범위를 바꾸지 못했습니다.");
+      toast.error("공개범위를 바꾸지 못했습니다.");
     }
   };
 

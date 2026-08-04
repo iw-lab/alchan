@@ -12,6 +12,7 @@ import {
   Circle,
 } from "lucide-react";
 import { useItems } from "../../contexts/ItemContext";
+import { toast } from "../../utils/toast";
 
 const styles = {
   container: {
@@ -311,7 +312,7 @@ const AdminItemPage = ({
       parseInt(item.price, 10) < 0 ||
       parseInt(item.stock, 10) < 0
     ) {
-      alert("상품명, 가격, 재고를 올바르게 (0 이상 숫자) 입력해주세요.");
+      toast.error("상품명, 가격, 재고를 올바르게 (0 이상 숫자) 입력해주세요.");
       return;
     }
 
@@ -326,7 +327,7 @@ const AdminItemPage = ({
         loseEnabled &&
         (isNaN(losePercent) || losePercent < 0 || losePercent > 50)
       ) {
-        alert("꽝 확률은 0~50% 사이로 입력해주세요. (사행성 방지 상한 50%)");
+        toast.error("꽝 확률은 0~50% 사이로 입력해주세요. (사행성 방지 상한 50%)");
         return;
       }
       // 간식·아이템 모두 상점 아이템에서 고른 후보(storeItemId)로 통일
@@ -342,7 +343,7 @@ const AdminItemPage = ({
           };
         });
       if (candidates.length < 1) {
-        alert("후보 아이템을 상점에서 1개 이상 선택해주세요.");
+        toast.error("후보 아이템을 상점에서 1개 이상 선택해주세요.");
         return;
       }
       drawFields = {

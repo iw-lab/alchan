@@ -4,6 +4,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "../../firebase";
 import "./SystemMonitoring.css";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 // 컴포넌트 외부에 선언하여 매 렌더마다 새 참조 생성 방지
 const getSystemStatusFn = httpsCallable(functions, "getSystemStatus");
@@ -63,12 +64,12 @@ const SystemMonitoring = ({ isSuperAdmin }) => {
     try {
       const result = await resolveSystemAlertFn({ alertId });
       if (result.data.success) {
-        alert("경고가 해결되었습니다.");
+        toast.success("경고가 해결되었습니다.");
         fetchSystemStatus();
       }
     } catch (err) {
       logger.error("[SystemMonitoring] 경고 해결 오류:", err);
-      alert(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
+      toast.error(`경고 해결 중 오류가 발생했습니다: ${err.message}`);
     }
   };
 

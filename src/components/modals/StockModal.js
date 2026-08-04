@@ -4,6 +4,7 @@ import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, memo } from "react";
 import "../../pages/banking/StockExchange.css"; // 스타일 공유
 import { formatKoreanCurrency } from '../../utils/numberFormatter';
+import { toast } from "../../utils/toast";
 
 const StockModal = memo(function StockModal({ isOpen, onClose, onSave, stock, isAdmin }) {
   const [name, setName] = useState("");
@@ -34,18 +35,18 @@ const StockModal = memo(function StockModal({ isOpen, onClose, onSave, stock, is
   const handleSubmit = (e) => {
     e.preventDefault();
     if (initialPrice <= 0) {
-      alert("초기 상장가는 0보다 커야 합니다.");
+      toast.error("초기 상장가는 0보다 커야 합니다.");
       return;
     }
     if (type === "manual" && currentPrice <= 0) {
-      alert("수동 주식의 현재가는 0보다 커야 합니다.");
+      toast.error("수동 주식의 현재가는 0보다 커야 합니다.");
       return;
     }
     if (
       type === "auto" &&
       (autoResetPercentage <= 1 || autoResetPercentage > 3)
     ) {
-      alert(
+      toast.error(
         "자동 주식 리셋 비율은 1 (100%) 초과, 3 (300%) 이하로 설정해주세요 (예: 1.15는 115%)."
       );
       return;

@@ -17,6 +17,7 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import "./Banking.css";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
  if (!Array.isArray(adminProducts)) {
@@ -140,7 +141,7 @@ const Banking = () => {
 
  if (!(auth.userDoc?.isAdmin || auth.userDoc?.role === "admin")) {
  logger.log("관리자 권한 없음");
- alert("관리자 권한이 필요합니다.");
+ toast.error("관리자 권한이 필요합니다.");
  return;
  }
 

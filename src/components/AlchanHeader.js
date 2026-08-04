@@ -30,6 +30,7 @@ import {
   getAchievementById,
 } from "../utils/achievementSystem";
 import { formatKoreanNumber, getCurrencyUnit } from "../utils/numberFormatter";
+import { toast } from "../utils/toast";
 
 // 금액 포맷 - numberFormatter.js 사용 (화폐 단위 포함)
 const formatMoney = (amount) => formatKoreanNumber(amount, getCurrencyUnit());
@@ -219,7 +220,7 @@ const AlchanHeader = memo(
       try {
         const success = await updateUser({ name: trimmed });
         if (success) {
-          alert("닉네임이 변경되었습니다.");
+          toast.success("닉네임이 변경되었습니다.");
           closeModal();
         } else {
           setNicknameError("변경에 실패했습니다.");
@@ -287,7 +288,7 @@ const AlchanHeader = memo(
         if (success) {
           setClassCodeSuccess(true);
           setTimeout(() => {
-            alert(`학급 코드가 '${trimmed}'로 변경되었습니다!`);
+            toast.success(`학급 코드가 '${trimmed}'로 변경되었습니다!`);
             closeModal();
           }, 1000);
         } else {
@@ -326,7 +327,7 @@ const AlchanHeader = memo(
         setActiveModal(null);
         setDeleteConfirmText("");
         setDeletePassword("");
-        alert("계정이 삭제되었습니다.");
+        toast.success("계정이 삭제되었습니다.");
       } catch (error) {
         setDeleteError(`삭제 오류: ${error.message}`);
       } finally {

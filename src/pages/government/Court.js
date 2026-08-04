@@ -35,6 +35,7 @@ import {
 
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 // 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
 const noopRefetch = () => {};
 
@@ -48,7 +49,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
 
  const handleSave = () => {
  if (!defendantId || !reason.trim() || !desiredResolution.trim()) {
- alert("모든 필드를 입력해주세요.");
+ toast.error("모든 필드를 입력해주세요.");
  return;
  }
  onSave({ ...complaint, reason, desiredResolution, defendantId });
@@ -136,7 +137,7 @@ const JudgmentModal = ({ complaint, onSave, onCancel }) => {
 
  const handleSaveClick = () => {
  if (!judgmentText.trim()) {
- alert("판결 내용을 입력해주세요.");
+ toast.error("판결 내용을 입력해주세요.");
  return;
  }
  onSave(complaint.id, judgmentText);
@@ -194,15 +195,15 @@ const SettlementModal = ({
 
  const handleSave = async () => {
  if (!amount || isNaN(parseInt(amount)) || parseInt(amount) <= 0) {
- alert("유효한 금액을 입력해주세요.");
+ toast.error("유효한 금액을 입력해주세요.");
  return;
  }
  if (!senderId || !recipientId) {
- alert("보내는 사람과 받는 사람을 모두 선택해주세요.");
+ toast.error("보내는 사람과 받는 사람을 모두 선택해주세요.");
  return;
  }
  if (senderId === recipientId) {
- alert("보내는 사람과 받는 사람은 같을 수 없습니다.");
+ toast.error("보내는 사람과 받는 사람은 같을 수 없습니다.");
  return;
  }
 
@@ -218,7 +219,7 @@ const SettlementModal = ({
  }
  } catch (error) {
  logger.error("Settlement error:", error);
- alert("합의금 처리 중 오류가 발생했습니다.");
+ toast.error("합의금 처리 중 오류가 발생했습니다.");
  }
  };
 
@@ -435,13 +436,13 @@ const BankruptcySection = ({ refetchComplaints }) => {
  dislikedBy: [],
  });
  refetchComplaints();
- alert(
+ toast.error(
  "파산 신청이 정상적으로 접수되었습니다. 재판 결과를 기다려주세요.",
  );
  setHasPendingBankruptcyCase(true);
  } catch (error) {
  logger.error("파산 신청 중 오류 발생:", error);
- alert("오류가 발생하여 파산 신청에 실패했습니다.");
+ toast.error("오류가 발생하여 파산 신청에 실패했습니다.");
  }
  }
  };
@@ -654,7 +655,7 @@ const Court = () => {
 
  const handleAddComplaint = async (newComplaintData) => {
  if (!currentUserId || !classCode) {
- alert("로그인 정보 또는 학급 정보가 유효하지 않습니다.");
+ toast.error("로그인 정보 또는 학급 정보가 유효하지 않습니다.");
  return;
  }
  const currentUserInfo =
@@ -685,16 +686,16 @@ const Court = () => {
  await addDoc(complaintsRef, complaintToSave);
  refetchComplaints();
  setActiveTab("status");
- alert("고소장이 성공적으로 제출되었습니다.");
+ toast.success("고소장이 성공적으로 제출되었습니다.");
  } catch (error) {
  logger.error("Error adding complaint to Firestore:", error);
- alert("고소장 제출 중 오류가 발생했습니다.");
+ toast.error("고소장 제출 중 오류가 발생했습니다.");
  }
  };
 
  const handleIndictComplaint = async (id) => {
  if (!(hasProsecutorPrivileges || hasAdminPrivileges) || !classCode)
- return alert("기소 권한이 없습니다.");
+ return toast.error("기소 권한이 없습니다.");
  const complaintRef = doc(db, "classes", classCode, "courtComplaints", id);
  try {
  await updateDoc(complaintRef, {
@@ -702,10 +703,10 @@ const Court = () => {
  indictmentDate: serverTimestamp(),
  });
  refetchComplaints();
- alert(`사건번호 ${id.slice(-6)}이(가) 기소되었습니다.`);
+ toast.success(`사건번호 ${id.slice(-6)}이(가) 기소되었습니다.`);
  } catch (error) {
  logger.error("Error indicting complaint:", error);
- alert("기소 처리 중 오류가 발생했습니다.");
+ toast.error("기소 처리 중 오류가 발생했습니다.");
  }
  };
 
@@ -714,7 +715,7 @@ const Court = () => {
  !(hasProsecutorPrivileges || hasJudgePrivileges || hasAdminPrivileges) ||
  !classCode
  )
- return alert("삭제 권한이 없습니다.");
+ return toast.error("삭제 권한이 없습니다.");
 
  if (
  window.confirm(`사건번호 ${id.slice(-6)} 기록을 정말 삭제하시겠습니까?`)
@@ -723,10 +724,10 @@ const Court = () => {
  try {
  await deleteDoc(complaintRef);
  refetchComplaints();
- alert("기록이 삭제되었습니다.");
+ toast.success("기록이 삭제되었습니다.");
  } catch (error) {
  logger.error("Error deleting complaint:", error);
- alert("기록 삭제 중 오류가 발생했습니다.");
+ toast.error("기록 삭제 중 오류가 발생했습니다.");
  }
  }
  };
@@ -736,21 +737,21 @@ const Court = () => {
  !(hasProsecutorPrivileges || hasJudgePrivileges || hasAdminPrivileges) ||
  !classCode
  )
- return alert("처리 권한이 없습니다.");
+ return toast.error("처리 권한이 없습니다.");
  const complaintRef = doc(db, "classes", classCode, "courtComplaints", id);
  try {
  await updateDoc(complaintRef, { status: "dismissed" });
  refetchComplaints();
- alert(`사건번호 ${id.slice(-6)}이(가) 불기소/기각 처리되었습니다.`);
+ toast.success(`사건번호 ${id.slice(-6)}이(가) 불기소/기각 처리되었습니다.`);
  } catch (error) {
  logger.error("Error dismissing complaint:", error);
- alert("처리 중 오류가 발생했습니다.");
+ toast.error("처리 중 오류가 발생했습니다.");
  }
  };
 
  const handleEditClick = (complaint) => {
  if (!currentUserId) {
- alert("로그인이 필요합니다.");
+ toast.error("로그인이 필요합니다.");
  return;
  }
  const canModify =
@@ -758,21 +759,21 @@ const Court = () => {
  const isOwner = complaint.complainantId === currentUserId;
 
  if (!canModify && !isOwner) {
- return alert(
+ return toast.error(
  "본인이 작성했거나 권한이 있는 고소장만 수정할 수 있습니다.",
  );
  }
 
  if (!canModify && isOwner && complaint.status !== "pending") {
- return alert("진행 중이거나 완료된 사건은 수정할 수 없습니다.");
+ return toast.error("진행 중이거나 완료된 사건은 수정할 수 없습니다.");
  }
 
  if (["resolved", "dismissed"].includes(complaint.status) && !isAdmin) {
- return alert("완료된 사건은 수정할 수 없습니다.");
+ return toast.error("완료된 사건은 수정할 수 없습니다.");
  }
 
  if (complaint.caseType === "bankruptcy") {
- return alert("파산 신청서는 수정할 수 없습니다.");
+ return toast.error("파산 신청서는 수정할 수 없습니다.");
  }
 
  setEditingComplaint(complaint);
@@ -803,10 +804,10 @@ const Court = () => {
  refetchComplaints();
  setIsEditModalOpen(false);
  setEditingComplaint(null);
- alert(`사건번호 ${editingComplaint.id.slice(-6)} 정보가 수정되었습니다.`);
+ toast.success(`사건번호 ${editingComplaint.id.slice(-6)} 정보가 수정되었습니다.`);
  } catch (error) {
  logger.error("Error updating complaint:", error);
- alert("고소장 수정 중 오류가 발생했습니다.");
+ toast.error("고소장 수정 중 오류가 발생했습니다.");
  }
  };
 
@@ -816,7 +817,7 @@ const Court = () => {
  };
 
  const handleVote = async (complaintId, voteType) => {
- if (!currentUserId || !classCode) return alert("로그인이 필요합니다.");
+ if (!currentUserId || !classCode) return toast.error("로그인이 필요합니다.");
  const complaintRef = doc(
  db,
  "classes",
@@ -858,16 +859,16 @@ const Court = () => {
  refetchComplaints();
  } catch (error) {
  logger.error("Error voting on complaint:", error);
- alert("투표 처리 중 오류가 발생했습니다: " + error.message);
+ toast.error("투표 처리 중 오류가 발생했습니다: " + error.message);
  }
  };
 
  const handleStartTrial = async (complaintId) => {
  if (!hasJudgePrivileges || !classCode)
- return alert("재판 시작 권한이 없습니다.");
+ return toast.error("재판 시작 권한이 없습니다.");
 
  const complaint = (complaints || []).find((c) => c.id === complaintId);
- if (!complaint) return alert("사건을 찾을 수 없습니다.");
+ if (!complaint) return toast.error("사건을 찾을 수 없습니다.");
 
  try {
  const trialRoomData = {
@@ -905,7 +906,7 @@ const Court = () => {
  refetchComplaints();
  refetchTrialRooms();
 
- alert(
+ toast.success(
  `사건번호 ${complaintId.slice(-6)}의 재판방이 생성되었습니다. 재판을 시작합니다.`,
  );
 
@@ -913,14 +914,14 @@ const Court = () => {
  setActiveTab("trial-room");
  } catch (error) {
  logger.error("Error starting trial:", error);
- alert("재판 시작 처리 중 오류가 발생했습니다.");
+ toast.error("재판 시작 처리 중 오류가 발생했습니다.");
  }
  };
 
  const handleOpenJudgmentModal = (complaint) => {
- if (!hasJudgePrivileges) return alert("판결문 작성 권한이 없습니다.");
+ if (!hasJudgePrivileges) return toast.error("판결문 작성 권한이 없습니다.");
  if (complaint.status !== "on_trial")
- return alert("재판 진행 중인 사건만 판결할 수 있습니다.");
+ return toast.error("재판 진행 중인 사건만 판결할 수 있습니다.");
  setJudgingComplaint(complaint);
  setIsJudgmentModalOpen(true);
  };
@@ -961,11 +962,11 @@ const Court = () => {
 
  setIsJudgmentModalOpen(false);
  setJudgingComplaint(null);
- alert(`사건번호 ${complaintId.slice(-6)}의 판결문이 저장되었습니다.`);
+ toast.success(`사건번호 ${complaintId.slice(-6)}의 판결문이 저장되었습니다.`);
  setActiveTab("results");
  } catch (error) {
  logger.error("Error saving judgment:", error);
- alert("판결문 저장 중 오류가 발생했습니다.");
+ toast.error("판결문 저장 중 오류가 발생했습니다.");
  }
  };
 
@@ -976,13 +977,13 @@ const Court = () => {
 
  const handleOpenSettlementModal = (complaint) => {
  if (!hasJudgePrivileges && !hasAdminPrivileges)
- return alert("합의금 지급 처리 권한은 판사 또는 관리자에게 있습니다.");
+ return toast.error("합의금 지급 처리 권한은 판사 또는 관리자에게 있습니다.");
  if (complaint.status !== "resolved")
- return alert(
+ return toast.error(
  "재판이 완료된 사건에 대해서만 합의금을 처리할 수 있습니다.",
  );
  if (complaint.settlementPaid)
- return alert("이미 합의금 지급이 완료된 사건입니다.");
+ return toast.error("이미 합의금 지급이 완료된 사건입니다.");
 
  setSettlementComplaint(complaint);
  setIsSettlementModalOpen(true);
@@ -1000,20 +1001,20 @@ const Court = () => {
  recipientId,
  ) => {
  if (!classCode) {
- alert("학급 정보가 없어 합의금 지급을 처리할 수 없습니다.");
+ toast.error("학급 정보가 없어 합의금 지급을 처리할 수 없습니다.");
  return false;
  }
  const numericAmount = parseInt(amount, 10);
  if (isNaN(numericAmount) || numericAmount <= 0) {
- alert("유효한 금액을 입력해주세요.");
+ toast.error("유효한 금액을 입력해주세요.");
  return false;
  }
  if (!senderId || !recipientId) {
- alert("보내는 사람과 받는 사람을 모두 선택해주세요.");
+ toast.error("보내는 사람과 받는 사람을 모두 선택해주세요.");
  return false;
  }
  if (senderId === recipientId) {
- alert("보내는 사람과 받는 사람은 같을 수 없습니다.");
+ toast.error("보내는 사람과 받는 사람은 같을 수 없습니다.");
  return false;
  }
 
@@ -1021,7 +1022,7 @@ const Court = () => {
  const recipient = users.find((u) => u.id === recipientId);
 
  if (!sender || !recipient) {
- alert("유효하지 않은 사용자 정보입니다.");
+ toast.error("유효하지 않은 사용자 정보입니다.");
  return false;
  }
  const senderName = sender?.name || sender?.displayName || senderId;
@@ -1043,14 +1044,14 @@ const Court = () => {
 
  refetchComplaints();
 
- alert(
+ toast.success(
  `${senderName}님이 ${recipientName}님에게 ${numericAmount.toLocaleString()}${getCurrencyUnit()} 합의금 지급을 완료했습니다.`,
  );
  handleCloseSettlementModal();
  return true;
  } catch (error) {
  logger.error("합의금 지급 트랜잭션 오류:", error);
- alert(`합의금 지급에 실패했습니다: ${error.message}`);
+ toast.error(`합의금 지급에 실패했습니다: ${error.message}`);
  return false;
  }
  };

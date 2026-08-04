@@ -28,6 +28,7 @@ import {
  Settings,
  ChevronRight,
 } from "lucide-react";
+import { toast } from "../../utils/toast";
 
 export default function MyProfile() {
  const { user, userDoc, setUserDoc, logout } = useAuth();
@@ -105,7 +106,7 @@ export default function MyProfile() {
  if (setUserDoc) {
  setUserDoc((prev) => prev ? { ...prev, nickname: trimmed, name: trimmed, hasSetNickname: true } : prev);
  }
- alert("닉네임이 변경되었습니다.");
+ toast.success("닉네임이 변경되었습니다.");
  setShowNicknameModal(false);
  resetModals();
  } catch (err) {
@@ -139,7 +140,7 @@ export default function MyProfile() {
  );
  await reauthenticateWithCredential(user, credential);
  await updatePassword(user, newPassword);
- alert("비밀번호가 변경되었습니다.");
+ toast.success("비밀번호가 변경되었습니다.");
  setShowPasswordModal(false);
  resetModals();
  } catch (err) {
@@ -171,7 +172,7 @@ export default function MyProfile() {
 
  const userRef = doc(db, "users", userId);
  await updateDoc(userRef, { classCode: newClassCode.trim() });
- alert("학급 코드가 변경되었습니다.");
+ toast.success("학급 코드가 변경되었습니다.");
  setShowClassCodeModal(false);
  resetModals();
  } catch (err) {
@@ -208,7 +209,7 @@ export default function MyProfile() {
  const userRef = doc(db, "users", userId);
  await deleteDoc(userRef);
 
- alert("계정이 삭제되었습니다.");
+ toast.success("계정이 삭제되었습니다.");
  } catch (err) {
  if (
  err.code === "auth/wrong-password" ||

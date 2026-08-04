@@ -16,6 +16,7 @@ import { usePolling } from "../../hooks/usePolling";
 import "../../MusicRoom.css";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const YOUTUBE_ERROR_MESSAGES = {
   2: "영상 주소가 올바르지 않습니다.",
@@ -87,7 +88,7 @@ const MusicRoom = ({ user }) => {
       const docSnap = await getDoc(roomRef);
 
       if (!docSnap.exists()) {
-        alert("존재하지 않는 방입니다.");
+        toast.error("존재하지 않는 방입니다.");
         navigate("/learning-board/music-request");
         return null;
       }
@@ -101,7 +102,7 @@ const MusicRoom = ({ user }) => {
         userData.role === "admin";
 
       if (roomData.teacherId !== user.uid && !isAdmin) {
-        alert("접근 권한이 없습니다.");
+        toast.error("접근 권한이 없습니다.");
         navigate("/learning-board/music-request");
         return null;
       }
@@ -250,11 +251,11 @@ const MusicRoom = ({ user }) => {
 
       await deleteDoc(doc(db, "musicRooms", roomId));
       refetchRoom();
-      alert("방이 삭제되었습니다.");
+      toast.success("방이 삭제되었습니다.");
       navigate("/learning-board/music-request");
     } catch (error) {
       logger.error("Error deleting room:", error);
-      alert("방을 삭제하는 중 오류가 발생했습니다.");
+      toast.error("방을 삭제하는 중 오류가 발생했습니다.");
     }
   };
 

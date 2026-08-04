@@ -46,6 +46,7 @@ import {
   toJobIdArray,
   getEffectiveJobIds,
 } from "../../utils/jobPermissions";
+import { toast } from "../../utils/toast";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
 // 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
@@ -105,12 +106,12 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
 
   const handleDeleteClassData = async () => {
     if (!userClassCode) {
-      alert("학급 코드가 없습니다.");
+      toast.error("학급 코드가 없습니다.");
       return;
     }
 
     if (deleteConfirmText !== "삭제") {
-      alert("'삭제'를 정확히 입력해주세요.");
+      toast.error("'삭제'를 정확히 입력해주세요.");
       return;
     }
 
@@ -206,7 +207,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
         );
       }
 
-      alert(
+      toast.success(
         `학급 데이터 삭제 완료!\n\n삭제된 데이터:\n- 학생 계정: ${studentsSnapshot.size}명\n- 활동 로그: ${activityLogsSnapshot.size}개\n- 거래 내역: ${transactionsToDelete.length}개`,
       );
 
@@ -217,7 +218,7 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       setShowConfirmation(false);
     } catch (error) {
       logger.error("[ClassDataDeletion] 삭제 중 오류:", error);
-      alert(
+      toast.error(
         `오류 발생: ${error.message}\n\n일부 데이터만 삭제되었을 수 있습니다. 다시 시도해주세요.`,
       );
     } finally {
@@ -480,7 +481,7 @@ const AdminSettingsModal = ({
 
   const handleSaveCurrencyUnit = useCallback(async () => {
     if (!db || !tempCurrencyUnit.trim()) {
-      alert("화폐 단위를 입력해주세요.");
+      toast.error("화폐 단위를 입력해주세요.");
       return;
     }
 
@@ -503,10 +504,10 @@ const AdminSettingsModal = ({
       });
 
       setCurrencyUnitLocal(tempCurrencyUnit.trim());
-      alert("화폐 단위가 저장되었습니다.");
+      toast.success("화폐 단위가 저장되었습니다.");
     } catch (error) {
       logger.error("화폐 단위 저장 오류:", error);
-      alert("화폐 단위 저장 중 오류가 발생했습니다: " + error.message);
+      toast.error("화폐 단위 저장 중 오류가 발생했습니다: " + error.message);
     } finally {
       setCurrencyUnitSaving(false);
     }
@@ -532,11 +533,11 @@ const AdminSettingsModal = ({
   // 🔒 메뉴 잠금 저장
   const handleSaveMenuLocks = useCallback(async () => {
     if (!db) {
-      alert("데이터베이스 연결 오류.");
+      toast.error("데이터베이스 연결 오류.");
       return;
     }
     if (!userClassCode) {
-      alert("학급 코드가 확인되지 않습니다.");
+      toast.error("학급 코드가 확인되지 않습니다.");
       return;
     }
     setMenuLocksSaving(true);
@@ -557,10 +558,10 @@ const AdminSettingsModal = ({
       } catch (_) {
         /* noop */
       }
-      alert("메뉴 잠금 설정이 저장되었습니다.");
+      toast.success("메뉴 잠금 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("메뉴 잠금 저장 오류:", error);
-      alert("메뉴 잠금 저장 중 오류가 발생했습니다: " + error.message);
+      toast.error("메뉴 잠금 저장 중 오류가 발생했습니다: " + error.message);
     } finally {
       setMenuLocksSaving(false);
     }
@@ -638,7 +639,7 @@ const AdminSettingsModal = ({
   // 급여 설정 저장
   const handleSaveSalarySettings = useCallback(async () => {
     if (!db) {
-      alert("데이터베이스 연결 오류.");
+      toast.error("데이터베이스 연결 오류.");
       return;
     }
 
@@ -646,7 +647,7 @@ const AdminSettingsModal = ({
     const increaseRateNum = parseFloat(tempSalaryIncreaseRate);
 
     if (isNaN(taxRateNum) || taxRateNum < 0 || taxRateNum > 100) {
-      alert("세율은 0~100 사이의 숫자여야 합니다.");
+      toast.error("세율은 0~100 사이의 숫자여야 합니다.");
       return;
     }
 
@@ -655,13 +656,13 @@ const AdminSettingsModal = ({
       increaseRateNum < 0 ||
       increaseRateNum > 100
     ) {
-      alert("주급 인상률은 0~100 사이의 숫자여야 합니다.");
+      toast.error("주급 인상률은 0~100 사이의 숫자여야 합니다.");
       return;
     }
 
     const maxJobsNum = parseInt(tempMaxJobsPerStudent, 10);
     if (!Number.isInteger(maxJobsNum) || maxJobsNum < 1 || maxJobsNum > 20) {
-      alert("직업 개수 상한은 1~20 사이의 정수여야 합니다.");
+      toast.error("직업 개수 상한은 1~20 사이의 정수여야 합니다.");
       return;
     }
 
@@ -700,7 +701,7 @@ const AdminSettingsModal = ({
       }
 
       if (!serverVerified) {
-        alert(
+        toast.error(
           "급여 설정이 서버에 반영되지 않았습니다. 네트워크/권한을 확인하고 다시 시도해주세요.",
         );
         return;
@@ -732,10 +733,10 @@ const AdminSettingsModal = ({
         logger.warn("queryClient invalidate 실패(무시):", qErr);
       }
 
-      alert("급여 설정이 저장되었습니다.");
+      toast.success("급여 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("급여 설정 저장 오류:", error);
-      alert("급여 설정 저장 중 오류가 발생했습니다: " + error.message);
+      toast.error("급여 설정 저장 중 오류가 발생했습니다: " + error.message);
     } finally {
       setSalarySettingsLoading(false);
     }
@@ -845,7 +846,7 @@ const AdminSettingsModal = ({
         logger.error(
           "[AdminSettingsModal] handleEditJob 함수가 정의되지 않았습니다.",
         );
-        alert("직업 편집 기능을 사용할 수 없습니다.");
+        toast.error("직업 편집 기능을 사용할 수 없습니다.");
       }
     },
     [handleEditJob],
@@ -861,7 +862,7 @@ const AdminSettingsModal = ({
         logger.error(
           "[AdminSettingsModal] handleDeleteJob 함수가 정의되지 않았습니다.",
         );
-        alert("직업 삭제 기능을 사용할 수 없습니다.");
+        toast.error("직업 삭제 기능을 사용할 수 없습니다.");
       }
     },
     [handleDeleteJob],
@@ -877,7 +878,7 @@ const AdminSettingsModal = ({
         logger.error(
           "[AdminSettingsModal] handleEditTask 함수가 정의되지 않았습니다.",
         );
-        alert("할일 편집 기능을 사용할 수 없습니다.");
+        toast.error("할일 편집 기능을 사용할 수 없습니다.");
       }
     },
     [handleEditTask],
@@ -898,7 +899,7 @@ const AdminSettingsModal = ({
         logger.error(
           "[AdminSettingsModal] handleDeleteTask 함수가 정의되지 않았습니다.",
         );
-        alert("할일 삭제 기능을 사용할 수 없습니다.");
+        toast.error("할일 삭제 기능을 사용할 수 없습니다.");
       }
     },
     [handleDeleteTask],
@@ -918,8 +919,8 @@ const AdminSettingsModal = ({
   const handleInlineTaskSave = useCallback(async (targetId) => {
     const name = inlineTaskName.trim();
     const maxClicks = parseInt(inlineTaskMaxClicks, 10);
-    if (!name) { alert("할일 이름을 입력하세요."); return; }
-    if (isNaN(maxClicks) || maxClicks <= 0) { alert("최대 횟수는 1 이상이어야 합니다."); return; }
+    if (!name) { toast.error("할일 이름을 입력하세요."); return; }
+    if (isNaN(maxClicks) || maxClicks <= 0) { toast.error("최대 횟수는 1 이상이어야 합니다."); return; }
     if (handleInlineAddTask) {
       await handleInlineAddTask(name, maxClicks, targetId === "common" ? null : targetId);
     }
@@ -932,8 +933,8 @@ const AdminSettingsModal = ({
   const handleInlineEditSave = useCallback(async (taskId, jobId) => {
     const name = inlineEditName.trim();
     const maxClicks = parseInt(inlineEditMaxClicks, 10);
-    if (!name) { alert("할일 이름을 입력하세요."); return; }
-    if (isNaN(maxClicks) || maxClicks <= 0) { alert("최대 횟수는 1 이상이어야 합니다."); return; }
+    if (!name) { toast.error("할일 이름을 입력하세요."); return; }
+    if (isNaN(maxClicks) || maxClicks <= 0) { toast.error("최대 횟수는 1 이상이어야 합니다."); return; }
     if (handleInlineEditTask) {
       await handleInlineEditTask(taskId, name, maxClicks, jobId || null);
     }
@@ -1090,7 +1091,7 @@ const AdminSettingsModal = ({
   // 최적화된 선택 학생 급여 지급
   const handlePaySalariesToSelected = async () => {
     if (selectedStudentIds.length === 0) {
-      alert("선택된 학생이 없습니다.");
+      toast.error("선택된 학생이 없습니다.");
       return;
     }
 
@@ -1114,7 +1115,7 @@ const AdminSettingsModal = ({
 
       if (result.success) {
         const { summary } = result;
-        alert(
+        toast.error(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
@@ -1129,11 +1130,11 @@ const AdminSettingsModal = ({
         setSelectAllStudents(false);
         loadStudents(); // 잔액 갱신
       } else {
-        alert(result.message || "주급 지급에 실패했습니다.");
+        toast.error(result.message || "주급 지급에 실패했습니다.");
       }
     } catch (error) {
       logger.error("[AdminSettingsModal] 선택된 학생 주급 지급 오류:", error);
-      alert("주급 지급 중 오류가 발생했습니다: " + error.message);
+      toast.error("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
       setIsPayingSalary(false);
     }
@@ -1161,7 +1162,7 @@ const AdminSettingsModal = ({
 
       if (result.success) {
         const { summary } = result;
-        alert(
+        toast.error(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
@@ -1172,11 +1173,11 @@ const AdminSettingsModal = ({
         );
         loadStudents(); // 잔액 갱신
       } else {
-        alert(result.message || "주급 지급에 실패했습니다.");
+        toast.error(result.message || "주급 지급에 실패했습니다.");
       }
     } catch (error) {
       logger.error("[AdminSettingsModal] 전체 학생 주급 지급 오류:", error);
-      alert("주급 지급 중 오류가 발생했습니다: " + error.message);
+      toast.error("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
       setIsPayingSalary(false);
     }
@@ -1189,11 +1190,11 @@ const AdminSettingsModal = ({
       const reverseFn = httpsCallable(functions, "reverseSalaryOnce");
       const result = await reverseFn({});
       if (result.data.success) {
-        alert(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만 ${getCurrencyUnit()} 회수`);
+        toast.error(`회수 완료: ${result.data.summary.totalReversed}명에게서 ${(result.data.summary.totalAmount / 10000).toFixed(0)}만 ${getCurrencyUnit()} 회수`);
         loadStudents();
       }
     } catch (error) {
-      alert("회수 오류: " + error.message);
+      toast.error("회수 오류: " + error.message);
     }
   };
 
@@ -1207,7 +1208,7 @@ const AdminSettingsModal = ({
       const moved = preview.data?.moved || [];
 
       if (moved.length === 0) {
-        alert("이관할 지정 직업이 없습니다. (이미 이관되었거나 대상 없음)");
+        toast.error("이관할 지정 직업이 없습니다. (이미 이관되었거나 대상 없음)");
         return;
       }
 
@@ -1228,10 +1229,10 @@ const AdminSettingsModal = ({
       }
 
       const result = await migrateFn({ dryRun: false });
-      alert(`이관 완료: ${result.data?.movedCount ?? 0}명`);
+      toast.info(`이관 완료: ${result.data?.movedCount ?? 0}명`);
       loadStudents();
     } catch (error) {
-      alert("지정 직업 이관 오류: " + error.message);
+      toast.error("지정 직업 이관 오류: " + error.message);
     }
   };
 
@@ -1346,7 +1347,7 @@ const AdminSettingsModal = ({
   // 학생 직업 저장
   const handleSaveStudentJobs = async () => {
     if (!selectedStudent || !db) {
-      alert("학생 정보 또는 데이터베이스 연결 오류");
+      toast.error("학생 정보 또는 데이터베이스 연결 오류");
       return;
     }
 
@@ -1380,7 +1381,7 @@ const AdminSettingsModal = ({
           : 5;
       if (cleanedJobIds.length > maxJobs) {
         setAppLoading(false);
-        alert(
+        toast.error(
           `직업은 최대 ${maxJobs}개까지 배정할 수 있어요. 더 배정하려면 급여 설정에서 '직업 개수 상한'을 올려주세요.`,
         );
         return;
@@ -1401,11 +1402,11 @@ const AdminSettingsModal = ({
         ),
       );
 
-      alert("학생 직업이 성공적으로 업데이트되었습니다.");
+      toast.success("학생 직업이 성공적으로 업데이트되었습니다.");
       setShowEditStudentJobsModal(false);
     } catch (error) {
       logger.error("학생 직업 업데이트 오류:", error);
-      alert("학생 직업 업데이트 중 오류가 발생했습니다: " + error.message);
+      toast.error("학생 직업 업데이트 중 오류가 발생했습니다: " + error.message);
     } finally {
       setAppLoading(false);
     }
@@ -1419,7 +1420,7 @@ const AdminSettingsModal = ({
   const handleResetPassword = useCallback(
     async (userId) => {
       if (!isAdmin && !isSuperAdmin) {
-        alert("관리자만 비밀번호를 초기화할 수 있습니다.");
+        toast.error("관리자만 비밀번호를 초기화할 수 있습니다.");
         return;
       }
 
@@ -1428,7 +1429,7 @@ const AdminSettingsModal = ({
       );
 
       if (!newPassword || newPassword.length < 6) {
-        alert("비밀번호는 6자 이상이어야 합니다.");
+        toast.error("비밀번호는 6자 이상이어야 합니다.");
         return;
       }
 
@@ -1441,13 +1442,13 @@ const AdminSettingsModal = ({
           setMembersLoading(true);
           const result = await adminResetUserPassword({ userId, newPassword });
           if (result.data.success) {
-            alert(normalizeCurrencyText(result.data.message));
+            toast.success(normalizeCurrencyText(result.data.message));
           } else {
             throw new Error(result.data.message || "알 수 없는 오류");
           }
         } catch (error) {
           logger.error("비밀번호 초기화 오류:", error);
-          alert(`비밀번호 초기화 중 오류가 발생했습니다: ${error.message}`);
+          toast.error(`비밀번호 초기화 중 오류가 발생했습니다: ${error.message}`);
         } finally {
           setMembersLoading(false);
         }
@@ -1460,12 +1461,12 @@ const AdminSettingsModal = ({
   const toggleAdminStatus = useCallback(
     async (userId, currentStatus) => {
       if (!db) {
-        alert("데이터베이스 연결 오류.");
+        toast.error("데이터베이스 연결 오류.");
         return;
       }
 
       if (!isSuperAdmin) {
-        alert("최고 관리자만 관리자 권한을 부여/해제할 수 있습니다.");
+        toast.error("최고 관리자만 관리자 권한을 부여/해제할 수 있습니다.");
         return;
       }
 
@@ -1499,10 +1500,10 @@ const AdminSettingsModal = ({
             ),
           );
 
-          alert(`관리자 권한이 ${!currentStatus ? "부여" : "제거"}되었습니다.`);
+          toast.error(`관리자 권한이 ${!currentStatus ? "부여" : "제거"}되었습니다.`);
         } catch (error) {
           logger.error("관리자 권한 변경 오류:", error);
-          alert("관리자 권한 변경 중 오류가 발생했습니다.");
+          toast.error("관리자 권한 변경 중 오류가 발생했습니다.");
         } finally {
           setMembersLoading(false);
         }
@@ -1673,7 +1674,7 @@ const AdminSettingsModal = ({
       });
 
       await batch.commit();
-      alert("주식 정보가 성공적으로 초기화되었습니다.");
+      toast.success("주식 정보가 성공적으로 초기화되었습니다.");
       setMarketMessage("주식 정보가 성공적으로 초기화되었습니다.");
     } catch (error) {
       logger.error("주식 정보 초기화 중 오류 발생:", error);
@@ -1723,13 +1724,13 @@ const AdminSettingsModal = ({
   // 학급 코드 추가
   const handleAddClassCode = useCallback(async () => {
     if (!onAddClassCode || typeof onAddClassCode !== "function") {
-      alert("학급 코드 추가 기능을 사용할 수 없습니다.");
+      toast.error("학급 코드 추가 기능을 사용할 수 없습니다.");
       return;
     }
 
     const codeToAdd = newClassCode.trim();
     if (!codeToAdd) {
-      alert("학급 코드를 입력해주세요.");
+      toast.error("학급 코드를 입력해주세요.");
       return;
     }
 
@@ -1751,7 +1752,7 @@ const AdminSettingsModal = ({
   const handleRemoveClassCode = useCallback(
     async (codeToRemove) => {
       if (!onRemoveClassCode || typeof onRemoveClassCode !== "function") {
-        alert("학급 코드 삭제 기능을 사용할 수 없습니다.");
+        toast.error("학급 코드 삭제 기능을 사용할 수 없습니다.");
         return;
       }
 
@@ -2291,7 +2292,7 @@ const AdminSettingsModal = ({
                           handleSaveTask();
                         } else {
                           logger.error("[AdminSettingsModal] handleSaveTask 함수가 정의되지 않았습니다.");
-                          alert("할일 저장 기능을 사용할 수 없습니다.");
+                          toast.error("할일 저장 기능을 사용할 수 없습니다.");
                         }
                       }}
                       style={{ ...saveBtnStyle, borderRadius: '10px', padding: '10px 24px' }}
@@ -2406,7 +2407,7 @@ const AdminSettingsModal = ({
                       if (handleSaveJob && typeof handleSaveJob === "function") {
                         handleSaveJob();
                       } else {
-                        alert("직업 저장 기능을 사용할 수 없습니다.");
+                        toast.error("직업 저장 기능을 사용할 수 없습니다.");
                       }
                     }}
                     style={{ ...saveBtnStyle, borderRadius: '10px', padding: '10px 18px', fontSize: '14px', whiteSpace: 'nowrap' }}

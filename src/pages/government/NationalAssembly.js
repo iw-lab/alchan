@@ -31,6 +31,7 @@ import {
 
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 const NationalAssembly = () => {
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
@@ -262,12 +263,12 @@ const NationalAssembly = () => {
 
     if (!classCode || !currentUser) {
       logger.log("[NationalAssembly] 학급 정보 또는 유저 정보 없음");
-      alert("학급 정보가 없거나 로그인되지 않았습니다.");
+      toast.error("학급 정보가 없거나 로그인되지 않았습니다.");
       return;
     }
     if (!newLaw.title || !newLaw.description || !newLaw.fine) {
       logger.log("[NationalAssembly] 필수 필드 누락");
-      alert("모든 필드를 입력해주세요.");
+      toast.error("모든 필드를 입력해주세요.");
       return;
     }
 
@@ -325,13 +326,13 @@ const NationalAssembly = () => {
       // 롤백: 낙관적으로 추가된 법안 제거
       setOptimisticNewLaws(prev => prev.filter(law => law.id !== tempId));
 
-      alert("법안 제안 중 오류가 발생했습니다.");
+      toast.error("법안 제안 중 오류가 발생했습니다.");
     }
   };
 
   const handleOpenEditModal = (law) => {
     if (!isAdmin()) {
-      alert("관리자만 법안을 수정할 수 있습니다.");
+      toast.error("관리자만 법안을 수정할 수 있습니다.");
       return;
     }
     setEditingLaw({ ...law });
@@ -340,11 +341,11 @@ const NationalAssembly = () => {
 
   const handleSaveEditLaw = async () => {
     if (!classCode || !editingLaw || !editingLaw.id || !isAdmin()) {
-      alert("수정 권한이 없거나 정보가 부족합니다.");
+      toast.error("수정 권한이 없거나 정보가 부족합니다.");
       return;
     }
     if (!editingLaw.title || !editingLaw.description || !editingLaw.fine) {
-      alert("모든 필드를 입력해주세요.");
+      toast.error("모든 필드를 입력해주세요.");
       return;
     }
 
@@ -398,13 +399,13 @@ const NationalAssembly = () => {
         return newState;
       });
 
-      alert("법안 저장 중 오류가 발생했습니다.");
+      toast.error("법안 저장 중 오류가 발생했습니다.");
     }
   };
 
   const handleVote = async (lawId, voteType) => {
     if (!classCode || !currentUser?.id) {
-      alert("투표를 처리할 수 없습니다. (정보 부족)");
+      toast.error("투표를 처리할 수 없습니다. (정보 부족)");
       return;
     }
 
@@ -412,13 +413,13 @@ const NationalAssembly = () => {
     const hasVotedOptimistic = optimisticUserVotes[lawId];
     const hasVotedServer = userVotes[lawId];
     if (!isAdmin() && (hasVotedOptimistic || hasVotedServer)) {
-      alert("이미 이 법안에 투표하셨습니다.");
+      toast.error("이미 이 법안에 투표하셨습니다.");
       return;
     }
 
     const law = laws.find(l => l.id === lawId);
     if (!law) {
-      alert("법안을 찾을 수 없습니다.");
+      toast.error("법안을 찾을 수 없습니다.");
       return;
     }
 
@@ -521,14 +522,14 @@ const NationalAssembly = () => {
         return newState;
       });
 
-      alert(`투표 중 오류 발생: ${error.message || error}`);
+      toast.error(`투표 중 오류 발생: ${error.message || error}`);
     }
   };
 
 
   const handleResetVotes = async (lawId) => {
     if (!isAdmin() || !classCode) {
-      alert("관리자만 이 작업을 수행할 수 있습니다.");
+      toast.error("관리자만 이 작업을 수행할 수 있습니다.");
       return;
     }
     if (window.confirm("이 법안의 모든 투표를 초기화하시겠습니까?")) {
@@ -563,10 +564,10 @@ const NationalAssembly = () => {
         });
         // 🔥 [읽기 절감 1단계] finalStatus 변경 → 관련 세션 캐시 무효화
         invalidateFetchCache("naLaws");
-        alert("법안 투표가 초기화되었습니다.");
+        toast.success("법안 투표가 초기화되었습니다.");
       } catch (error) {
         logger.error("Error resetting votes:", error);
-        alert("투표 초기화 중 오류가 발생했습니다.");
+        toast.error("투표 초기화 중 오류가 발생했습니다.");
       }
     }
   };
@@ -584,7 +585,7 @@ const NationalAssembly = () => {
         lawToDelete.proposerId === currentUser?.id
       )
     ) {
-      alert("관리자 또는 부결된 법안의 제안자만 삭제할 수 있습니다.");
+      toast.error("관리자 또는 부결된 법안의 제안자만 삭제할 수 있습니다.");
       return;
     }
     if (window.confirm("정말로 이 법안을 삭제하시겠습니까?")) {
@@ -620,14 +621,14 @@ const NationalAssembly = () => {
           return newSet;
         });
 
-        alert("법안 삭제 중 오류가 발생했습니다.");
+        toast.error("법안 삭제 중 오류가 발생했습니다.");
       }
     }
   };
 
   const handleSaveAdminSettings = async () => {
     if (!classCode || !isAdmin()) {
-      alert("관리자 권한이 없거나 학급 정보가 없습니다.");
+      toast.error("관리자 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     const adminSettingsDocRefNode = doc(
@@ -649,16 +650,16 @@ const NationalAssembly = () => {
       setLocalAdminSettings(null);
       // 🔥 [읽기 절감 1단계] 설정 쓰기 → 세션 캐시 무효화(재방문 시 구설정 재서빙 방지)
       invalidateFetchCache(`naSettings:admin:${classCode}`);
-      alert("관리자 설정이 저장되었습니다.");
+      toast.success("관리자 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("Error saving admin settings:", error);
-      alert("관리자 설정 저장 중 오류가 발생했습니다.");
+      toast.error("관리자 설정 저장 중 오류가 발생했습니다.");
     }
   };
 
   const handleSaveGovernmentSettings = async () => {
     if (!classCode || !isAdmin()) {
-      alert("설정 저장 권한이 없거나 학급 정보가 없습니다.");
+      toast.error("설정 저장 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     const govSettingsDocRefNode = doc(
@@ -682,10 +683,10 @@ const NationalAssembly = () => {
       setLocalGovSettings(null);
       // 🔥 [읽기 절감 1단계] 설정 쓰기 → 세션 캐시 무효화
       invalidateFetchCache(`naSettings:gov:${classCode}`);
-      alert("재의결 설정이 저장되었습니다.");
+      toast.success("재의결 설정이 저장되었습니다.");
     } catch (error) {
       logger.error("Error saving government settings:", error);
-      alert("재의결 설정 저장 중 오류가 발생했습니다.");
+      toast.error("재의결 설정 저장 중 오류가 발생했습니다.");
     }
   };
 
@@ -737,7 +738,7 @@ const NationalAssembly = () => {
     localStorage.setItem(storageKey, today);
     const lawTitles = unvotedPendingLaws.map(l => `• ${l.title}`).join('\n');
     setTimeout(() => {
-      alert(
+      toast.error(
         `📢 투표 참여 안내\n\n아직 투표하지 않은 법안이 ${unvotedPendingLaws.length}건 있습니다:\n\n${lawTitles}\n\n법안 심의에 참여해주세요!`
       );
     }, 500);
@@ -1422,11 +1423,11 @@ const NationalAssembly = () => {
                         batch
                           .commit()
                           .then(() => {
-                            alert("모든 법안이 삭제되었습니다.");
+                            toast.success("모든 법안이 삭제되었습니다.");
                           })
                           .catch((err) => {
                             logger.error("Error deleting all laws:", err);
-                            alert("모든 법안 삭제 중 오류가 발생했습니다.");
+                            toast.error("모든 법안 삭제 중 오류가 발생했습니다.");
                           });
                       }
                     }}

@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 
 import { logger } from "../../utils/logger";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 const ReportStatus = ({
   reports,
   onProcessReport,
@@ -51,7 +52,7 @@ const ReportStatus = ({
 
     if (!onSettlement) {
       logger.error("onSettlement 함수가 전달되지 않았습니다");
-      alert("합의 처리 기능을 사용할 수 없습니다. 관리자에게 문의하세요.");
+      toast.error("합의 처리 기능을 사용할 수 없습니다. 관리자에게 문의하세요.");
       return;
     }
 
@@ -64,7 +65,7 @@ const ReportStatus = ({
       onSettlement(report);
     } catch (error) {
       logger.error("합의 처리 중 오류:", error);
-      alert("합의 처리 중 오류가 발생했습니다.");
+      toast.error("합의 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -88,7 +89,7 @@ const ReportStatus = ({
     }
 
     if (!onProcessReport) {
-      alert("벌금 처리 기능을 사용할 수 없습니다.");
+      toast.error("벌금 처리 기능을 사용할 수 없습니다.");
       return;
     }
 
@@ -99,7 +100,7 @@ const ReportStatus = ({
       closeModals();
     } catch (error) {
       logger.error("벌금 처리 중 오류:", error);
-      alert("벌금 처리 중 오류가 발생했습니다.");
+      toast.error("벌금 처리 중 오류가 발생했습니다.");
     }
   };
 

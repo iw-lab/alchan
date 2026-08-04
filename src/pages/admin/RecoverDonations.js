@@ -13,6 +13,7 @@ import {
   writeBatch,
   serverTimestamp,
 } from "../../firebase";
+import { toast } from "../../utils/toast";
 
 export default function RecoverDonations() {
   const { user, userDoc } = useAuth();
@@ -26,13 +27,13 @@ export default function RecoverDonations() {
 
   const recoverDonationsFromCollection = async () => {
     if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin) {
-      alert("관리자만 복구 작업을 수행할 수 있습니다.");
+      toast.error("관리자만 복구 작업을 수행할 수 있습니다.");
       return;
     }
 
     const classCode = userDoc?.classCode;
     if (!classCode) {
-      alert("학급 코드가 없습니다.");
+      toast.error("학급 코드가 없습니다.");
       return;
     }
 
@@ -55,7 +56,7 @@ export default function RecoverDonations() {
 
       if (donationsSnapshot.empty) {
         addLog("❌ donations 컬렉션에서 복구 가능한 데이터를 찾을 수 없습니다.");
-        alert("복구 가능한 데이터가 없습니다.");
+        toast.error("복구 가능한 데이터가 없습니다.");
         setRecovering(false);
         return;
       }
@@ -101,7 +102,7 @@ export default function RecoverDonations() {
 
       if (!goalDoc.exists()) {
         addLog("❌ 목표 문서가 존재하지 않습니다. 먼저 목표를 생성해주세요.");
-        alert("목표 문서를 찾을 수 없습니다.");
+        toast.error("목표 문서를 찾을 수 없습니다.");
         setRecovering(false);
         return;
       }
@@ -136,12 +137,12 @@ export default function RecoverDonations() {
       addLog(`📝 총 ${donations.length}개의 기부 기록 복구됨`);
       addLog(`💰 총 기부액: ${totalAmount}쿠폰`);
 
-      alert(`기부 내역 복구 완료!\n총 ${donations.length}개 기록, ${totalAmount}쿠폰`);
+      toast.success(`기부 내역 복구 완료!\n총 ${donations.length}개 기록, ${totalAmount}쿠폰`);
 
     } catch (error) {
       logger.error("복구 실패:", error);
       addLog(`❌ 오류 발생: ${error.message}`);
-      alert(`복구 실패: ${error.message}`);
+      toast.error(`복구 실패: ${error.message}`);
     } finally {
       setRecovering(false);
     }

@@ -33,6 +33,7 @@ import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormat
 import {
   orderBy as firebaseOrderBy,
 } from "firebase/firestore";
+import { toast } from "../../utils/toast";
 
 const DEFAULT_SETTINGS = {
   totalProperties: 30,
@@ -319,7 +320,7 @@ const RealEstateRegistry = () => {
 
   const handleInitializeProperties = async (skipConfirm = false) => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("초기화 권한이 없거나 학급 정보가 없습니다.");
+      toast.error("초기화 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     if (
@@ -388,11 +389,11 @@ const RealEstateRegistry = () => {
       }
       setProperties(initialProperties);
 
-      alert("부동산이 성공적으로 초기화되었습니다.");
+      toast.success("부동산이 성공적으로 초기화되었습니다.");
       setShowAdminPanel(false);
     } catch (error) {
       logger.error("[RealEstate] Error initializing properties:", error);
-      alert("부동산 초기화 중 오류 발생: " + error.message);
+      toast.error("부동산 초기화 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
     }
@@ -400,13 +401,13 @@ const RealEstateRegistry = () => {
 
   const handlePurchaseProperty = async (propertyId) => {
     if (!currentUser || !classCode) {
-      alert("로그인이 필요하거나 학급 정보가 없습니다.");
+      toast.error("로그인이 필요하거나 학급 정보가 없습니다.");
       return;
     }
 
     const property = properties.find(p => p.id === propertyId);
     if (!property) {
-      alert("부동산 정보를 찾을 수 없습니다.");
+      toast.error("부동산 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -460,7 +461,7 @@ const RealEstateRegistry = () => {
       if (refreshUserDocument) refreshUserDocument();
       setShowQuickAction(null);
       setSelectedProperty(null);
-      alert(`부동산 #${propertyId}를 성공적으로 구매했습니다.`);
+      toast.success(`부동산 #${propertyId}를 성공적으로 구매했습니다.`);
     } catch (error) {
       logger.error('[RealEstate] 구매 실패:', error);
 
@@ -472,7 +473,7 @@ const RealEstateRegistry = () => {
       // 실패 시 롤백 2: 부동산 상태 전체 복구 (이전 상태로 되돌림)
       setProperties(previousProperties);
 
-      alert(error.message || '부동산 구매 중 오류가 발생했습니다.');
+      toast.error(error.message || '부동산 구매 중 오류가 발생했습니다.');
     } finally {
       setOperationLoading(false);
     }
@@ -482,7 +483,7 @@ const RealEstateRegistry = () => {
   const handleSetForSale = (propertyId) => {
     const property = properties.find((p) => p.id === propertyId);
     if (!property || !currentUser || property.owner !== currentUser.id || !classCode) {
-      alert("소유한 부동산만 판매할 수 있거나 정보가 부족합니다.");
+      toast.error("소유한 부동산만 판매할 수 있거나 정보가 부족합니다.");
       return;
     }
     setShowQuickAction(null);
@@ -499,7 +500,7 @@ const RealEstateRegistry = () => {
     const property = properties.find((p) => p.id === propertyId);
     if (!property || !currentUser) return;
     if (property.owner === currentUser.id) {
-      alert("내 부동산에는 제안할 수 없습니다.");
+      toast.error("내 부동산에는 제안할 수 없습니다.");
       return;
     }
     setShowQuickAction(null);
@@ -516,7 +517,7 @@ const RealEstateRegistry = () => {
     if (!priceModal) return;
     const price = parseInt(priceModal.value, 10);
     if (isNaN(price) || price <= 0) {
-      alert("유효한 가격을 입력하세요.");
+      toast.error("유효한 가격을 입력하세요.");
       return;
     }
     setOperationLoading(true);
@@ -524,17 +525,17 @@ const RealEstateRegistry = () => {
       if (priceModal.mode === "sell") {
         const fn = httpsCallable(functions, "setRealEstateForSale");
         await fn({ propertyId: priceModal.propertyId, salePrice: price });
-        alert("판매 등록되었습니다.");
+        toast.success("판매 등록되었습니다.");
       } else {
         const fn = httpsCallable(functions, "makeRealEstateOffer");
         const res = await fn({ propertyId: priceModal.propertyId, offerPrice: price });
-        alert(res?.data?.message || "가격 제안이 전송되었습니다.");
+        toast.success(res?.data?.message || "가격 제안이 전송되었습니다.");
       }
       setPriceModal(null);
       reloadAll();
     } catch (error) {
       logger.error("[RealEstate] 가격 처리 오류:", error);
-      alert(error.message || "처리 중 오류가 발생했습니다.");
+      toast.error(error.message || "처리 중 오류가 발생했습니다.");
     } finally {
       setOperationLoading(false);
     }
@@ -546,11 +547,11 @@ const RealEstateRegistry = () => {
     try {
       const fn = httpsCallable(functions, "respondToRealEstateOffer");
       const res = await fn({ offerId, response, idempotencyKey: crypto.randomUUID() });
-      alert(res?.data?.message || (response === "accept" ? "수락했습니다." : "거절했습니다."));
+      toast.success(res?.data?.message || (response === "accept" ? "수락했습니다." : "거절했습니다."));
       reloadAll();
     } catch (error) {
       logger.error("[RealEstate] 제안 응답 오류:", error);
-      alert(error.message || "제안 응답에 실패했습니다.");
+      toast.error(error.message || "제안 응답에 실패했습니다.");
     } finally {
       setOperationLoading(false);
     }
@@ -562,11 +563,11 @@ const RealEstateRegistry = () => {
     try {
       const fn = httpsCallable(functions, "cancelRealEstateOffer");
       await fn({ offerId });
-      alert("제안을 취소했습니다.");
+      toast.error("제안을 취소했습니다.");
       reloadAll();
     } catch (error) {
       logger.error("[RealEstate] 제안 취소 오류:", error);
-      alert(error.message || "제안 취소에 실패했습니다.");
+      toast.error(error.message || "제안 취소에 실패했습니다.");
     } finally {
       setOperationLoading(false);
     }
@@ -575,14 +576,14 @@ const RealEstateRegistry = () => {
     // 관리자가 정부 소유 부동산 판매 설정
     const handleAdminSetForSale = async (propertyId) => {
         if (!isAdmin()) {
-            alert("권한이 없습니다.");
+            toast.error("권한이 없습니다.");
             return;
         }
         const salePriceInput = prompt("판매 가격을 입력하세요 (숫자만):");
         if (!salePriceInput) return;
         const salePrice = parseInt(salePriceInput);
         if (isNaN(salePrice) || salePrice <= 0) {
-            alert("유효한 판매 가격을 입력하세요.");
+            toast.error("유효한 판매 가격을 입력하세요.");
             return;
         }
 
@@ -611,7 +612,7 @@ const RealEstateRegistry = () => {
 
             setShowQuickAction(null);
             setSelectedProperty(null);
-            alert("정부 소유 부동산 판매 설정이 완료되었습니다.");
+            toast.success("정부 소유 부동산 판매 설정이 완료되었습니다.");
         } catch (error) {
             logger.error("정부 소유 부동산 판매 설정 오류:", error);
 
@@ -624,7 +625,7 @@ const RealEstateRegistry = () => {
               );
             }
 
-            alert("처리 중 오류 발생: " + error.message);
+            toast.error("처리 중 오류 발생: " + error.message);
         } finally {
             setOperationLoading(false);
         }
@@ -633,7 +634,7 @@ const RealEstateRegistry = () => {
     // 관리자가 정부 소유 부동산 판매 취소
     const handleAdminCancelSale = async (propertyId) => {
         if (!isAdmin()) {
-            alert("권한이 없습니다.");
+            toast.error("권한이 없습니다.");
             return;
         }
 
@@ -662,7 +663,7 @@ const RealEstateRegistry = () => {
 
             setShowQuickAction(null);
             setSelectedProperty(null);
-            alert("정부 소유 부동산 판매가 취소되었습니다.");
+            toast.error("정부 소유 부동산 판매가 취소되었습니다.");
         } catch (error) {
             logger.error("정부 소유 부동산 판매 취소 오류:", error);
 
@@ -675,7 +676,7 @@ const RealEstateRegistry = () => {
               );
             }
 
-            alert("처리 중 오류 발생: " + error.message);
+            toast.error("처리 중 오류 발생: " + error.message);
         } finally {
             setOperationLoading(false);
         }
@@ -690,11 +691,11 @@ const RealEstateRegistry = () => {
       await fn({ propertyId });
       setShowQuickAction(null);
       setSelectedProperty(null);
-      alert("판매가 취소되었습니다.");
+      toast.error("판매가 취소되었습니다.");
       reloadAll();
     } catch (error) {
       logger.error("판매 취소 오류:", error);
-      alert("판매 취소 중 오류 발생: " + (error.message || ""));
+      toast.error("판매 취소 중 오류 발생: " + (error.message || ""));
     } finally {
       setOperationLoading(false);
     }
@@ -705,7 +706,7 @@ const RealEstateRegistry = () => {
 
     const property = properties.find(p => p.id === propertyId);
     if (!property) {
-      alert("부동산 정보를 찾을 수 없습니다.");
+      toast.error("부동산 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -779,9 +780,9 @@ const RealEstateRegistry = () => {
       const data = result?.data || {};
 
       if (data.action === "vacate") {
-        alert(normalizeCurrencyText(data.message) || "성공적으로 퇴거했습니다.");
+        toast.success(normalizeCurrencyText(data.message) || "성공적으로 퇴거했습니다.");
       } else {
-        alert(normalizeCurrencyText(data.message) || "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
+        toast.success(normalizeCurrencyText(data.message) || "성공적으로 입주했습니다. 첫 월세가 지불되었습니다.");
 
         // 🔥 [중요] 유저 캐시 무효화 후 서버에서 최신 데이터 가져오기
         if (currentUser?.id) {
@@ -804,7 +805,7 @@ const RealEstateRegistry = () => {
         optimisticUpdate({ cash: property.rent });
       }
 
-      alert(`처리 중 오류 발생: ${error.message}`);
+      toast.error(`처리 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
     }
@@ -812,7 +813,7 @@ const RealEstateRegistry = () => {
 
   const handleSaveSettings = async () => {
     if (!classCode || !isAdmin()) {
-      alert("설정 저장 권한이 없거나 학급 정보가 없습니다.");
+      toast.error("설정 저장 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     const newTotal = parseInt(adminInputs.totalProperties);
@@ -829,7 +830,7 @@ const RealEstateRegistry = () => {
       newRentPercentage < 0 ||
       newLayoutColumns <= 0
     ) {
-      alert(
+      toast.error(
         "유효하지 않은 값이 있습니다. 가격, 부동산 개수, 칸 수는 0보다 커야합니다."
       );
       return;
@@ -874,11 +875,11 @@ const RealEstateRegistry = () => {
         }
       }
 
-      alert("설정이 저장되고 기존 부동산에 반영되었습니다.");
+      toast.success("설정이 저장되고 기존 부동산에 반영되었습니다.");
       setShowAdminPanel(false);
     } catch (error) {
       logger.error("설정 저장 오류:", error);
-      alert("설정 저장 중 오류 발생: " + error.message);
+      toast.error("설정 저장 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
     }
@@ -887,7 +888,7 @@ const RealEstateRegistry = () => {
   // 🔥 [추가] 관리자가 학생을 강제로 빈 부동산에 입주시키는 함수
   const handleAdminAssignSeat = async (userId, userName) => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("권한이 없거나 학급 정보가 없습니다.");
+      toast.error("권한이 없거나 학급 정보가 없습니다.");
       return;
     }
 
@@ -895,7 +896,7 @@ const RealEstateRegistry = () => {
     const emptyProperties = properties.filter(p => !p.tenantId);
 
     if (emptyProperties.length === 0) {
-      alert("배정할 수 있는 빈 부동산이 없습니다.");
+      toast.error("배정할 수 있는 빈 부동산이 없습니다.");
       return;
     }
 
@@ -971,7 +972,7 @@ const RealEstateRegistry = () => {
       });
 
       logger.log(`[RealEstate] 관리자 강제 입주 완료: ${userName} -> 부동산 #${targetProperty.id}`);
-      alert(`'${userName}' 학생이 부동산 #${targetProperty.id}에 입주했습니다.`);
+      toast.success(`'${userName}' 학생이 부동산 #${targetProperty.id}에 입주했습니다.`);
 
       // 🔥 서버 데이터와 동기화
       await refreshProperties();
@@ -988,7 +989,7 @@ const RealEstateRegistry = () => {
       // 🔥 롤백: 이전 상태로 복구
       setProperties(previousProperties);
 
-      alert(`강제 입주 중 오류 발생: ${error.message}`);
+      toast.error(`강제 입주 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
     }
@@ -997,7 +998,7 @@ const RealEstateRegistry = () => {
   // 🔥 [최적화] 모든 미입주 학생을 자동으로 빈 부동산에 배정 - 배치 쓰기로 변경
   const handleAdminAssignAllSeats = async () => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("권한이 없거나 학급 정보가 없습니다.");
+      toast.error("권한이 없거나 학급 정보가 없습니다.");
       return;
     }
 
@@ -1007,14 +1008,14 @@ const RealEstateRegistry = () => {
     );
 
     if (nonTenantsList.length === 0) {
-      alert("모든 학생이 이미 입주해 있습니다.");
+      toast.error("모든 학생이 이미 입주해 있습니다.");
       return;
     }
 
     const emptyProperties = properties.filter(p => !p.tenantId);
 
     if (emptyProperties.length < nonTenantsList.length) {
-      alert(`빈 부동산이 부족합니다.\n미입주 학생: ${nonTenantsList.length}명\n빈 부동산: ${emptyProperties.length}개`);
+      toast.error(`빈 부동산이 부족합니다.\n미입주 학생: ${nonTenantsList.length}명\n빈 부동산: ${emptyProperties.length}개`);
       return;
     }
 
@@ -1081,14 +1082,14 @@ const RealEstateRegistry = () => {
       );
 
       logger.log(`[RealEstate] 배치 자동 배정 완료: ${assignments.length}명`);
-      alert(`자동 배정 완료!\n\n성공: ${assignments.length}명`);
+      toast.success(`자동 배정 완료!\n\n성공: ${assignments.length}명`);
 
       // 🔥 서버 데이터와 동기화
       await refreshProperties();
 
     } catch (error) {
       logger.error("[RealEstate] 자동 배정 전체 오류:", error);
-      alert(`자동 배정 중 오류 발생: ${error.message}`);
+      toast.error(`자동 배정 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
     }
@@ -1097,17 +1098,17 @@ const RealEstateRegistry = () => {
   // 🎁 [관리자] 부동산 무료 분배 — 정부 소유 빈 부동산의 소유권을 학생에게 무상 이전
   const handleAdminGiveProperty = async () => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("권한이 없거나 학급 정보가 없습니다.");
+      toast.error("권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     if (!giveUserId || !givePropertyId) {
-      alert("분배할 부동산과 받을 학생을 모두 선택하세요.");
+      toast.error("분배할 부동산과 받을 학생을 모두 선택하세요.");
       return;
     }
     const targetProperty = properties.find((p) => p.id === givePropertyId);
     const targetUser = allUsersData.find((u) => u.id === giveUserId);
     if (!targetProperty || !targetUser) {
-      alert("선택한 부동산 또는 학생 정보를 찾을 수 없습니다.");
+      toast.error("선택한 부동산 또는 학생 정보를 찾을 수 없습니다.");
       return;
     }
     // 임차인이 있고 그 임차인이 받는 학생과 다르면 → 받는 학생은 '집주인'만 되고 임차인 유지(세입자 그대로).
@@ -1185,7 +1186,7 @@ const RealEstateRegistry = () => {
       }
 
       logger.log(`[RealEstate] 무료 분배 완료: ${targetUser.name} <- 부동산 #${targetProperty.id}`);
-      alert(`'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}를 무료로 분배했습니다.`);
+      toast.success(`'${targetUser.name}' 학생에게 부동산 #${targetProperty.id}를 무료로 분배했습니다.`);
       setGiveUserId("");
       setGivePropertyId("");
       await refreshProperties();
@@ -1193,7 +1194,7 @@ const RealEstateRegistry = () => {
     } catch (error) {
       logger.error("[RealEstate] 무료 분배 오류:", error);
       setProperties(previousProperties);
-      alert(`무료 분배 중 오류 발생: ${error.message}`);
+      toast.error(`무료 분배 중 오류 발생: ${error.message}`);
     } finally {
       setOperationLoading(false);
     }
@@ -1203,7 +1204,7 @@ const RealEstateRegistry = () => {
   // 🔥 [추가] 월세 0원인 부동산 수정 함수
   const handleFixZeroRent = async () => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("권한이 없거나 학급 정보가 없습니다.");
+      toast.error("권한이 없거나 학급 정보가 없습니다.");
       return;
     }
 
@@ -1245,13 +1246,13 @@ const RealEstateRegistry = () => {
       if (fixedCount > 0) {
         await batch.commit();
         await refreshProperties();
-        alert(`월세 수정 완료!\n\n${fixedCount}개 부동산의 월세를 수정했습니다.\n(월세 비율: ${currentRentPercentage}%)`);
+        toast.success(`월세 수정 완료!\n\n${fixedCount}개 부동산의 월세를 수정했습니다.\n(월세 비율: ${currentRentPercentage}%)`);
       } else {
-        alert("월세가 0원인 부동산이 없습니다.");
+        toast.error("월세가 0원인 부동산이 없습니다.");
       }
     } catch (error) {
       logger.error("[FixRent] 오류:", error);
-      alert("월세 수정 중 오류 발생: " + error.message);
+      toast.error("월세 수정 중 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
     }
@@ -1259,7 +1260,7 @@ const RealEstateRegistry = () => {
 
   const handleCollectRent = async () => {
     if (!classCode || !currentUser || !isAdmin()) {
-      alert("월세 징수 권한이 없거나 학급 정보가 없습니다.");
+      toast.error("월세 징수 권한이 없거나 학급 정보가 없습니다.");
       return;
     }
     if (
@@ -1288,7 +1289,7 @@ const RealEstateRegistry = () => {
     try {
       const rentedPropertiesSnapshot = await getDocs(rentedPropertiesQuery);
       if (rentedPropertiesSnapshot.empty) {
-        alert("월세를 징수할 세입자가 있는 부동산이 없습니다.");
+        toast.error("월세를 징수할 세입자가 있는 부동산이 없습니다.");
         setOperationLoading(false);
         return;
       }
@@ -1466,12 +1467,12 @@ const RealEstateRegistry = () => {
       if (unpaidUsers.length > 0) {
         resultMessage += `\n\n[미납 학생 명단]\n${unpaidUsers.join(", ")}`;
       }
-      alert(resultMessage);
+      toast.info(resultMessage);
 
       if (refreshUserDocument) refreshUserDocument();
     } catch (error) {
       logger.error("월세 징수 중 전체 오류:", error);
-      alert("월세 징수 중 심각한 오류 발생: " + error.message);
+      toast.error("월세 징수 중 심각한 오류 발생: " + error.message);
     } finally {
       setOperationLoading(false);
     }

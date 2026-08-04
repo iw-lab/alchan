@@ -12,6 +12,7 @@ import { searchVideos, parseVideoId, getQuotaExhausted } from "../../utils/youtu
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
 import "./StudentRequest.css";
+import { toast } from "../../utils/toast";
 
 const StudentRequest = () => {
   const { roomId } = useParams();
@@ -196,25 +197,25 @@ const StudentRequest = () => {
 
   const handleRequest = async () => {
     if (!selectedVideo) {
-      alert("영상을 선택해주세요.");
+      toast.error("영상을 선택해주세요.");
       return;
     }
 
     const name = requesterName.trim();
     // 익명 신청이면 이름 없이도 신청 가능(재생목록엔 '익명'으로 표시)
     if (!isAnonymous && !name) {
-      alert("신청자 이름을 입력해주세요.");
+      toast.error("신청자 이름을 입력해주세요.");
       return;
     }
 
     if (pricePerSong > 0 && !user) {
-      alert("유료 음악 신청은 로그인이 필요합니다.");
+      toast.error("유료 음악 신청은 로그인이 필요합니다.");
       return;
     }
 
     // fail-closed: 유료 방인데 수취인(선생님) 정보가 없으면 무료로 통과시키지 않고 차단
     if (pricePerSong > 0 && !teacherId) {
-      alert("방 정보에 오류가 있습니다. 선생님께 문의해주세요.");
+      toast.error("방 정보에 오류가 있습니다. 선생님께 문의해주세요.");
       return;
     }
 
@@ -228,7 +229,7 @@ const StudentRequest = () => {
       if (isPaidRequest) {
         const currentCash = userDoc?.cash || 0;
         if (currentCash < requestCost) {
-          alert(
+          toast.error(
             `잔액이 부족합니다. 필요: ${requestCost.toLocaleString()}, 보유: ${currentCash.toLocaleString()}`
           );
           setIsRequesting(false);
@@ -280,13 +281,13 @@ const StudentRequest = () => {
       setRequestSuccess(true);
     } catch (err) {
       if (err.message === "잔액이 부족합니다.") {
-        alert("잔액이 부족합니다.");
+        toast.error("잔액이 부족합니다.");
       } else if (err.message === "ROOM_CHANGED") {
-        alert(
+        toast.error(
           "방의 가격 정보가 변경되었습니다. 화면을 새로고침한 뒤 다시 신청해주세요."
         );
       } else if (err.message === "방이 삭제되었습니다.") {
-        alert("방이 삭제되어 신청할 수 없습니다.");
+        toast.error("방이 삭제되어 신청할 수 없습니다.");
       } else {
         setError("음악을 신청하는 중 오류가 발생했습니다.");
         logger.error(err);

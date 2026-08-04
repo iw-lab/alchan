@@ -1,6 +1,7 @@
 // src/SubmitReport.js
 import React, { useState } from "react";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 
 const SubmitReport = ({
   onSubmitReport,
@@ -36,11 +37,11 @@ const SubmitReport = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!reportData.reportedUserId || !reportData.reason) {
-      alert("신고 대상과 사유를 모두 선택해주세요.");
+      toast.error("신고 대상과 사유를 모두 선택해주세요.");
       return;
     }
     if (reportData.victimId && reportData.victimId === reportData.reportedUserId) {
-      alert("피해자와 신고 대상(가해자)은 같을 수 없습니다.");
+      toast.error("피해자와 신고 대상(가해자)은 같을 수 없습니다.");
       return;
     }
     onSubmitReport(reportData);

@@ -27,6 +27,7 @@ import {
   isNetAssetsNegative,
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
+import { toast } from "../../utils/toast";
 
 // 부가세율 (10%)
 const VAT_RATE = 0.1;
@@ -82,7 +83,7 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.shopName.trim()) {
-      alert("상점 이름을 입력해주세요!");
+      toast.error("상점 이름을 입력해주세요!");
       return;
     }
     setLoading(true);
@@ -91,7 +92,7 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
       onClose();
     } catch (error) {
       logger.error("상점 저장 오류:", error);
-      alert("저장 중 오류가 발생했습니다.");
+      toast.error("저장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -218,18 +219,18 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      alert("상품/서비스 이름을 입력해주세요!");
+      toast.error("상품/서비스 이름을 입력해주세요!");
       return;
     }
     if (!formData.price || parseInt(formData.price) <= 0) {
-      alert("올바른 가격을 입력해주세요!");
+      toast.error("올바른 가격을 입력해주세요!");
       return;
     }
     if (
       formData.type === "product" &&
       (!formData.stock || parseInt(formData.stock) <= 0)
     ) {
-      alert("상품의 재고 수량을 입력해주세요!");
+      toast.error("상품의 재고 수량을 입력해주세요!");
       return;
     }
 
@@ -248,7 +249,7 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
       onClose();
     } catch (error) {
       logger.error("상품 저장 오류:", error);
-      alert("저장 중 오류가 발생했습니다.");
+      toast.error("저장 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -415,7 +416,7 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
       await onConfirm(quantity);
       onClose();
     } catch (error) {
-      alert(error.message || "구매 중 오류가 발생했습니다.");
+      toast.error(error.message || "구매 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -962,7 +963,7 @@ const PersonalShop = () => {
 
     setPurchaseProduct(null);
     setPurchaseShop(null);
-    alert("구매가 완료되었습니다!");
+    toast.success("구매가 완료되었습니다!");
   };
 
   // 필터링된 거래 내역

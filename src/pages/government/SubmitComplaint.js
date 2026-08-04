@@ -1,5 +1,6 @@
 // src/SubmitComplaint.js
 import React, { useState, useEffect } from "react";
+import { toast } from "../../utils/toast";
 
 // users: 사용자 목록 배열 (예: [{id: 'user1', name: '김민준'}, ...])
 // currentUserId: 현재 로그인한 사용자 ID
@@ -78,7 +79,7 @@ const SubmitComplaint = ({
   // 관리자가 새 고소 사유 추가
   const handleAddPredefinedReason = () => {
     if (!newReason.trim()) {
-      alert("고소 사유를 입력해주세요.");
+      toast.error("고소 사유를 입력해주세요.");
       return;
     }
 
@@ -132,11 +133,11 @@ const SubmitComplaint = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!defendantId) {
-      alert("피고소인을 선택해주세요.");
+      toast.error("피고소인을 선택해주세요.");
       return;
     }
     if (!reason.trim()) {
-      alert("고소 사유를 입력해주세요.");
+      toast.error("고소 사유를 입력해주세요.");
       return;
     }
     onSubmitComplaint({

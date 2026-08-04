@@ -23,6 +23,7 @@ import {
 
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 // 날짜 포맷팅 헬퍼 함수
 const formatDate = (dateString) => {
     if (!dateString) return "정보 없음";
@@ -98,7 +99,7 @@ const LawManagement = ({ classCode }) => {
       setLaws(loadedLaws);
     } catch (error) {
       logger.error("Error fetching pending laws:", error);
-      alert("정부 이송 법안을 불러오는 데 실패했습니다. 콘솔을 확인해주세요.");
+      toast.error("정부 이송 법안을 불러오는 데 실패했습니다. 콘솔을 확인해주세요.");
     }
   };
 
@@ -115,7 +116,7 @@ const LawManagement = ({ classCode }) => {
   // 법안 승인 핸들러
   const handleApprove = async (lawId) => {
     if (!canManageLaws()) {
-        alert("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
+        toast.error("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
         return;
     }
     if(window.confirm("이 법안을 최종 승인하시겠습니까?")) {
@@ -126,11 +127,11 @@ const LawManagement = ({ classCode }) => {
                 finalStatus: "final_approved",
                 finalApprovalDate: serverTimestamp(),
             });
-            alert("법안이 최종 승인되었습니다.");
+            toast.success("법안이 최종 승인되었습니다.");
             refetch(); // 즉시 데이터 갱신
         } catch (error) {
             logger.error("Error approving law:", error);
-            alert("법안 승인 중 오류가 발생했습니다.");
+            toast.error("법안 승인 중 오류가 발생했습니다.");
         }
     }
   };
@@ -138,7 +139,7 @@ const LawManagement = ({ classCode }) => {
   // 거부권 행사 핸들러
   const handleVeto = async (lawId) => {
     if (!canManageLaws()) {
-        alert("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
+        toast.error("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
         return;
     }
     const reason = prompt("거부권 행사 사유를 입력해주세요.");
@@ -157,14 +158,14 @@ const LawManagement = ({ classCode }) => {
                 disapprovals: 0,
                 voters: {},
             });
-            alert("거부권이 행사되었습니다. 해당 법안은 국회에서 재의결 절차를 거칩니다.");
+            toast.error("거부권이 행사되었습니다. 해당 법안은 국회에서 재의결 절차를 거칩니다.");
             refetch(); // 즉시 데이터 갱신
         } catch (error) {
             logger.error("Error vetoing law:", error);
-            alert("거부권 행사 중 오류가 발생했습니다.");
+            toast.error("거부권 행사 중 오류가 발생했습니다.");
         }
     } else {
-        alert("거부 사유를 반드시 입력해야 합니다.");
+        toast.error("거부 사유를 반드시 입력해야 합니다.");
     }
   };
 

@@ -2,6 +2,7 @@
 // 🔥 성능 최적화: React.memo 적용
 import React, { useState, memo } from "react";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const DonateCouponModal = memo(function DonateCouponModal({
   showDonateModal,
@@ -17,11 +18,11 @@ const DonateCouponModal = memo(function DonateCouponModal({
   const handleDonate = async () => {
     const amount = parseInt(donateAmount, 10);
     if (isNaN(amount) || amount <= 0) {
-      alert("올바른 쿠폰 수량을 입력해주세요.");
+      toast.error("올바른 쿠폰 수량을 입력해주세요.");
       return;
     }
     if (amount > currentCoupons) {
-      alert("보유 쿠폰보다 많이 응모할 수 없습니다.");
+      toast.error("보유 쿠폰보다 많이 응모할 수 없습니다.");
       return;
     }
 
@@ -37,7 +38,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
       }
     } catch (error) {
       logger.error("[DonateCouponModal] 응모 처리 중 오류:", error);
-      alert("응모 처리 중 오류가 발생했습니다.");
+      toast.error("응모 처리 중 오류가 발생했습니다.");
     } finally {
       setIsDonating(false);
     }

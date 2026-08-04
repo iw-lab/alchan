@@ -35,6 +35,7 @@ import {
 
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 // --- Helper Components ---
 
 // EditComplaintModal: 고소장 수정 모달
@@ -47,7 +48,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
 
  const handleSave = () => {
  if (!defendantId || !reason.trim() || !desiredResolution.trim()) {
- alert("모든 필드를 입력해주세요.");
+ toast.error("모든 필드를 입력해주세요.");
  return;
  }
  onSave({ ...complaint, reason, desiredResolution, defendantId });
@@ -125,7 +126,7 @@ const JudgmentModal = ({ complaint, onSave, onCancel }) => {
 
  const handleSaveClick = () => {
  if (!judgmentText.trim()) {
- alert("판결 내용을 입력해주세요.");
+ toast.error("판결 내용을 입력해주세요.");
  return;
  }
  onSave(complaint.id, judgmentText);
@@ -214,19 +215,19 @@ const SettlementModal = ({
  });
 
  if (!safeComplaint.id) {
- alert("오류: 사건 ID를 찾을 수 없어 처리할 수 없습니다.");
+ toast.error("오류: 사건 ID를 찾을 수 없어 처리할 수 없습니다.");
  return;
  }
  if (!amount || isNaN(parseInt(amount)) || parseInt(amount) <= 0) {
- alert("유효한 합의 금액을 입력해주세요.");
+ toast.error("유효한 합의 금액을 입력해주세요.");
  return;
  }
  if (!senderId || !recipientId) {
- alert("송금자와 수금자를 모두 선택해주세요.");
+ toast.error("송금자와 수금자를 모두 선택해주세요.");
  return;
  }
  if (senderId === recipientId) {
- alert("송금자와 수금자는 같을 수 없습니다.");
+ toast.error("송금자와 수금자는 같을 수 없습니다.");
  return;
  }
 
@@ -244,7 +245,7 @@ const SettlementModal = ({
  }
  } catch (error) {
  logger.error("Settlement Modal - 저장 중 오류:", error);
- alert(`오류 발생: ${error.message}`);
+ toast.error(`오류 발생: ${error.message}`);
  }
  };
 
@@ -816,7 +817,7 @@ const PoliceStation = () => {
  if (snap.size < RESULTS_PAGE_SIZE) setExtraExhausted(true);
  } catch (e) {
  logger.error("[PoliceStation] 신고 더 보기 실패:", e);
- alert("이전 신고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+ toast.error("이전 신고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
  } finally {
  setLoadingMore(false);
  }
@@ -856,15 +857,15 @@ const PoliceStation = () => {
 
  const handleAddReport = async (newReportData) => {
  if (!currentUserId || !classCode) {
- alert("로그인이 필요하거나 학급 정보가 없습니다.");
+ toast.error("로그인이 필요하거나 학급 정보가 없습니다.");
  return;
  }
  if (!canSubmitReport) {
- alert("경찰서 신고는 '경찰' 직업을 가진 학생만 할 수 있습니다.");
+ toast.error("경찰서 신고는 '경찰' 직업을 가진 학생만 할 수 있습니다.");
  return;
  }
  if (!newReportData.reportedUserId || !newReportData.reason) {
- alert("신고 대상과 사유를 모두 선택해주세요.");
+ toast.error("신고 대상과 사유를 모두 선택해주세요.");
  return;
  }
  const reasonInfo = reportReasons.find(
@@ -897,17 +898,17 @@ const PoliceStation = () => {
  await addDoc(reportsRef, newReport);
  refetchReports(); // 🔥 즉시 새로고침
  handleTabChange("status");
- alert("신고가 성공적으로 제출되었습니다.");
+ toast.success("신고가 성공적으로 제출되었습니다.");
  } catch (error) {
  logger.error("Error adding report:", error);
- alert("신고 제출 오류.");
+ toast.error("신고 제출 오류.");
  }
  };
 
  const handleAcceptReport = async (id) => {
  logger.log("handleAcceptReport 호출됨:", id);
  if (!hasPoliceAdminRights || !classCode || !currentUserId) {
- alert("권한이 없거나 정보가 부족합니다.");
+ toast.error("권한이 없거나 정보가 부족합니다.");
  return;
  }
  const reportRef = doc(db, "classes", classCode, "policeReports", id);
@@ -921,17 +922,17 @@ const PoliceStation = () => {
  });
  refetchReports(); // 🔥 즉시 새로고침
  logger.log("신고 접수 성공:", id);
- alert("신고가 접수되었습니다.");
+ toast.success("신고가 접수되었습니다.");
  } catch (error) {
  logger.error("Error accepting report:", error);
- alert("신고 접수 오류.");
+ toast.error("신고 접수 오류.");
  }
  };
 
  const handleDismissReport = async (id) => {
  logger.log("handleDismissReport 호출됨:", id);
  if (!hasPoliceAdminRights || !classCode || !currentUserId) {
- alert("권한이 없거나 정보가 부족합니다.");
+ toast.error("권한이 없거나 정보가 부족합니다.");
  return;
  }
  const reportRef = doc(db, "classes", classCode, "policeReports", id);
@@ -946,10 +947,10 @@ const PoliceStation = () => {
  });
  refetchReports(); // 🔥 즉시 새로고침
  logger.log("신고 반려 성공:", id);
- alert("신고가 반려되었습니다.");
+ toast.success("신고가 반려되었습니다.");
  } catch (error) {
  logger.error("Error dismissing report:", error);
- alert("신고 반려 오류.");
+ toast.error("신고 반려 오류.");
  }
  };
 
@@ -965,24 +966,24 @@ const PoliceStation = () => {
  });
 
  if (!hasPoliceAdminRights || !currentUserId || !classCode) {
- alert("권한 또는 정보 부족");
+ toast.error("권한 또는 정보 부족");
  return;
  }
 
  const report = reports.find((r) => r.id === id);
  if (!report) {
- alert("신고를 찾을 수 없습니다.");
+ toast.error("신고를 찾을 수 없습니다.");
  return;
  }
 
  if (report.status !== "accepted") {
- alert("접수된 신고만 처리 가능합니다.");
+ toast.error("접수된 신고만 처리 가능합니다.");
  return;
  }
 
  const numericProcessingAmount = parseInt(processingAmount, 10);
  if (isNaN(numericProcessingAmount) || numericProcessingAmount < 0) {
- alert("유효한 금액(0 이상) 입력 필요");
+ toast.error("유효한 금액(0 이상) 입력 필요");
  return;
  }
 
@@ -1023,10 +1024,10 @@ const PoliceStation = () => {
  });
 
  refetchReports(); // 🔥 즉시 새로고침
- alert("벌금 처리가 완료되었습니다.");
+ toast.success("벌금 처리가 완료되었습니다.");
  } catch (error) {
  logger.error("벌금 처리 트랜잭션 오류:", error);
- alert(`벌금 처리 실패: ${error.message}`);
+ toast.error(`벌금 처리 실패: ${error.message}`);
  return;
  }
  } else {
@@ -1041,10 +1042,10 @@ const PoliceStation = () => {
  currentUser.name || currentUser.displayName || "관리자",
  });
  refetchReports(); // 🔥 즉시 새로고침
- alert("경고 처리가 완료되었습니다.");
+ toast.success("경고 처리가 완료되었습니다.");
  } catch (error) {
  logger.error("벌금 0원 처리 오류:", error);
- alert("처리 중 오류가 발생했습니다.");
+ toast.error("처리 중 오류가 발생했습니다.");
  }
  }
  };
@@ -1067,7 +1068,7 @@ const PoliceStation = () => {
  });
 
  if (!hasPoliceAdminRights || !classCode) {
- alert("권한이 없거나 학급 정보가 없습니다.");
+ toast.error("권한이 없거나 학급 정보가 없습니다.");
  return false;
  }
 
@@ -1083,7 +1084,7 @@ const PoliceStation = () => {
  });
 
  if (result.success) {
- alert(
+ toast.success(
  result.message || "합의금 지급 처리가 성공적으로 완료되었습니다.",
  );
  refetchReports(); // Refresh the reports list
@@ -1095,14 +1096,14 @@ const PoliceStation = () => {
  }
  } catch (error) {
  logger.error("합의금 처리 실패 (Cloud Function):", error);
- alert(`오류: ${error.message || "합의금 처리 중 오류가 발생했습니다."}`);
+ toast.error(`오류: ${error.message || "합의금 처리 중 오류가 발생했습니다."}`);
  return false;
  }
  };
 
  const handleSaveEdit = async (updatedComplaint) => {
  if (!hasPoliceAdminRights || !classCode) {
- alert("권한이 없거나 학급 정보가 없습니다.");
+ toast.error("권한이 없거나 학급 정보가 없습니다.");
  return;
  }
  const reportRef = doc(
@@ -1120,18 +1121,18 @@ const PoliceStation = () => {
  reportedUserId: updatedComplaint.defendantId,
  });
  refetchReports(); // 🔥 즉시 새로고침
- alert("고소장 정보가 업데이트되었습니다.");
+ toast.success("고소장 정보가 업데이트되었습니다.");
  setIsEditModalOpen(false);
  setEditingComplaint(null);
  } catch (error) {
  logger.error("고소장 업데이트 오류:", error);
- alert("고소장 정보 업데이트에 실패했습니다.");
+ toast.error("고소장 정보 업데이트에 실패했습니다.");
  }
  };
 
  const handleSaveJudgment = async (complaintId, judgmentText) => {
  if (!hasPoliceAdminRights || !classCode) {
- alert("권한이 없거나 학급 정보가 없습니다.");
+ toast.error("권한이 없거나 학급 정보가 없습니다.");
  return;
  }
  const reportRef = doc(
@@ -1146,17 +1147,17 @@ const PoliceStation = () => {
  judgment: judgmentText,
  });
  refetchReports(); // 🔥 즉시 새로고침
- alert("판결 내용이 저장되었습니다.");
+ toast.success("판결 내용이 저장되었습니다.");
  setIsJudgmentModalOpen(false);
  setJudgingComplaint(null);
  } catch (error) {
  logger.error("판결 저장 오류:", error);
- alert("판결 내용 저장에 실패했습니다.");
+ toast.error("판결 내용 저장에 실패했습니다.");
  }
  };
 
  const handleDeleteAllReports = async () => {
- if (!hasPoliceAdminRights || !classCode) return alert("권한이 없습니다.");
+ if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
  if (window.confirm("모든 신고 기록 삭제?")) {
  try {
  const reportsRef = collection(
@@ -1171,16 +1172,16 @@ const PoliceStation = () => {
  await batch.commit();
  // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시 stale 방지
  await refetchReports();
- alert("모든 신고 기록 삭제 완료.");
+ toast.success("모든 신고 기록 삭제 완료.");
  } catch (error) {
  logger.error("Error deleting all reports:", error);
- alert("모든 신고 기록 삭제 오류.");
+ toast.error("모든 신고 기록 삭제 오류.");
  }
  }
  };
 
  const handleDeleteSingleReport = async (idToDelete) => {
- if (!hasPoliceAdminRights || !classCode) return alert("권한이 없습니다.");
+ if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
  const reportToDelete = reports.find((r) => r.id === idToDelete);
  if (!reportToDelete) return;
  if (window.confirm(`사건번호 ${idToDelete.slice(-6)} 삭제?`)) {
@@ -1195,10 +1196,10 @@ const PoliceStation = () => {
  await deleteDoc(reportRef);
  // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시 stale 방지
  await refetchReports();
- alert("신고 기록 삭제 완료.");
+ toast.success("신고 기록 삭제 완료.");
  } catch (error) {
  logger.error("Error deleting report:", error);
- alert("신고 기록 삭제 오류.");
+ toast.error("신고 기록 삭제 오류.");
  }
  }
  };
@@ -1216,7 +1217,7 @@ const PoliceStation = () => {
  };
 
  const handleUpdateReasons = async (updatedCustomReasons) => {
- if (!hasPoliceAdminRights || !classCode) return alert("권한이 없습니다.");
+ if (!hasPoliceAdminRights || !classCode) return toast.error("권한이 없습니다.");
  if (
  !Array.isArray(updatedCustomReasons) ||
  updatedCustomReasons.some(
@@ -1224,7 +1225,7 @@ const PoliceStation = () => {
  typeof r !== "object" || !r.reason || typeof r.amount !== "number",
  )
  ) {
- alert("신고 사유 데이터 형식 오류.");
+ toast.error("신고 사유 데이터 형식 오류.");
  return;
  }
  try {
@@ -1242,10 +1243,10 @@ const PoliceStation = () => {
  });
  // 🔥 [읽기 절감 1단계] 쓰기 후 force refetch — 세션 캐시가 구버전 사유를 재서빙하지 않도록
  await refetchReasons();
- alert("사용자 정의 신고 사유 업데이트 완료.");
+ toast.info("사용자 정의 신고 사유 업데이트 완료.");
  } catch (error) {
  logger.error("Error updating reasons:", error);
- alert("신고 사유 업데이트 오류.");
+ toast.error("신고 사유 업데이트 오류.");
  }
  };
 
@@ -1257,7 +1258,7 @@ const PoliceStation = () => {
  "합의 처리 오류: 유효한 사건 객체를 전달받지 못했습니다.",
  reportToProcess,
  );
- alert(
+ toast.error(
  "오류: 사건 정보를 찾지 못했습니다. 페이지를 새로고침 후 다시 시도해 주세요.",
  );
  return;
@@ -1278,7 +1279,7 @@ const PoliceStation = () => {
  "합의 처리 오류: 고소인 또는 피고소인 정보가 누락되었습니다.",
  mappedReport,
  );
- alert(
+ toast.error(
  "오류: 고소인 또는 피고소인 정보가 없는 사건은 처리할 수 없습니다.",
  );
  return;
@@ -1481,7 +1482,7 @@ const PoliceStation = () => {
  classCode
  ? handleDeleteAllReports
  : () =>
- alert(
+ toast.success(
  "모든 신고 삭제는 학급 코드가 설정된 후 가능합니다.",
  )
  }

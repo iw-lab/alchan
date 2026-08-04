@@ -25,6 +25,7 @@ import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { useAuth } from "../../contexts/AuthContext";
 import { hasAppointedJobTitle } from "../../utils/jobPermissions";
 import { logger } from '../../utils/logger';
+import { toast } from "../../utils/toast";
 
 const formatDate = (timestamp) => {
   if (!timestamp) return "-";
@@ -272,7 +273,7 @@ const NationalTaxService = ({ classCode }) => {
       if (key === "netAssetTaxExemption" && editableSettings[key] !== "") {
         const won = Number(editableSettings[key]);
         if (!Number.isFinite(won) || won < 0) {
-          alert(
+          toast.error(
             `순자산세 면세 기준은 0 이상의 금액(${getCurrencyUnit()})이어야 합니다. 현재값: ${editableSettings[key]}`
           );
           return;
@@ -286,7 +287,7 @@ const NationalTaxService = ({ classCode }) => {
           editableSettings[key] !== "" &&
           !(key === "itemStoreVATRate" && editableSettings[key] > 1)
         ) {
-          alert(
+          toast.error(
             `${key} 세율은 0과 1 사이의 값이어야 합니다 (예: 3%는 0.03). 현재값: ${editableSettings[key]}`
           );
           return;
@@ -303,10 +304,10 @@ const NationalTaxService = ({ classCode }) => {
         },
       });
       refetchSettings();
-      alert("세금 정책이 성공적으로 업데이트되었습니다.");
+      toast.success("세금 정책이 성공적으로 업데이트되었습니다.");
     } catch (error) {
       logger.error("세금 정책 업데이트 실패:", error);
-      alert("세금 정책 업데이트 중 오류가 발생했습니다.");
+      toast.error("세금 정책 업데이트 중 오류가 발생했습니다.");
     }
   };
 
@@ -335,21 +336,21 @@ const NationalTaxService = ({ classCode }) => {
 
       if (result?.skipped) {
         setLastTaxWeekKey(result.weekKey || weekKeyNow);
-        alert("이번 주 세금은 이미 징수되었습니다. 다음 주에 다시 징수할 수 있어요.");
+        toast.error("이번 주 세금은 이미 징수되었습니다. 다음 주에 다시 징수할 수 있어요.");
       } else if (result?.success) {
         setLastTaxWeekKey(result.weekKey || weekKeyNow);
-        alert(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}${getCurrencyUnit()}`);
+        toast.success(`세금 징수 완료!\n처리 학생: ${result.userCount}명\n총 징수액: ${(result.totalCollected || 0).toLocaleString()}${getCurrencyUnit()}`);
         // 캐시 무효화 후 재조회 — 안 하면 묵은 governmentSettings 캐시가 방금 세운 weekKey를 덮어써 배지가 사라짐.
         invalidateCache(`doc_governmentSettings_${classCode}`);
         invalidateCache(`doc_nationalTreasuries_${classCode}`);
         refetchTreasury();
         refetchSettings();
       } else {
-        alert("세금 징수에 실패했습니다.");
+        toast.error("세금 징수에 실패했습니다.");
       }
     } catch (error) {
       logger.error("세금 징수 실패:", error);
-      alert("세금 징수 중 오류가 발생했습니다: " + error.message);
+      toast.error("세금 징수 중 오류가 발생했습니다: " + error.message);
     } finally {
       setCollectingTax(false);
     }

@@ -54,6 +54,7 @@ import {
   invalidateStockCache as invalidateCache,
   clearLocalStorageBatchCache,
 } from "./stockExchangeService";
+import { toast } from "../../utils/toast";
 
 // === 아이콘 컴포넌트들 ===
 const TrendingUp = ({ size = 24, color = "currentColor" }) => (
@@ -206,9 +207,9 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
     setIsAdding(true);
     try {
       await onAddStock({ name: stock.name, symbol: stock.symbol });
-      alert(`${stock.name} 추가 완료!`);
+      toast.success(`${stock.name} 추가 완료!`);
     } catch (error) {
-      alert("추가 실패: " + error.message);
+      toast.error("추가 실패: " + error.message);
     } finally {
       setIsAdding(false);
     }
@@ -216,14 +217,14 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
 
   const handleCustomAdd = async () => {
     if (!formData.name || !formData.symbol) {
-      alert("이름과 심볼을 모두 입력해주세요.");
+      toast.error("이름과 심볼을 모두 입력해주세요.");
       return;
     }
     if (isAdding) return;
     setIsAdding(true);
     try {
       await onAddStock(formData);
-      alert(`${formData.name} 추가 완료!`);
+      toast.success(`${formData.name} 추가 완료!`);
       setFormData({
         name: "",
         symbol: "",
@@ -232,7 +233,7 @@ const RealStockAdder = React.memo(({ onAddStock }) => {
       });
       setShowForm(false);
     } catch (error) {
-      alert("추가 실패: " + error.message);
+      toast.error("추가 실패: " + error.message);
     } finally {
       setIsAdding(false);
     }
@@ -352,9 +353,9 @@ const AdminPanel = React.memo(
       setIsUpdating(true);
       try {
         await onManualUpdate();
-        alert("주식 가격 업데이트 완료!");
+        toast.success("주식 가격 업데이트 완료!");
       } catch (error) {
-        alert("업데이트 실패: " + error.message);
+        toast.error("업데이트 실패: " + error.message);
       } finally {
         setIsUpdating(false);
       }
@@ -372,11 +373,11 @@ const AdminPanel = React.memo(
       setIsCreatingRealStocks(true);
       try {
         await onCreateRealStocks();
-        alert(
+        toast.success(
           "실제 주식이 생성되었습니다! 20분마다 자동으로 가격이 업데이트됩니다.",
         );
       } catch (error) {
-        alert("실제 주식 생성 실패: " + error.message);
+        toast.error("실제 주식 생성 실패: " + error.message);
       } finally {
         setIsCreatingRealStocks(false);
       }
@@ -387,9 +388,9 @@ const AdminPanel = React.memo(
       setIsUpdatingRealStocks(true);
       try {
         await onUpdateRealStocks();
-        alert("실제 주식 가격이 업데이트되었습니다!");
+        toast.success("실제 주식 가격이 업데이트되었습니다!");
       } catch (error) {
-        alert("실제 주식 업데이트 실패: " + error.message);
+        toast.error("실제 주식 업데이트 실패: " + error.message);
       } finally {
         setIsUpdatingRealStocks(false);
       }
@@ -407,9 +408,9 @@ const AdminPanel = React.memo(
       setIsDeletingSimulation(true);
       try {
         await onDeleteSimulationStocks();
-        alert("시뮬레이션 주식이 삭제되었습니다!");
+        toast.success("시뮬레이션 주식이 삭제되었습니다!");
       } catch (error) {
-        alert("삭제 실패: " + error.message);
+        toast.error("삭제 실패: " + error.message);
       } finally {
         setIsDeletingSimulation(false);
       }
@@ -422,13 +423,13 @@ const AdminPanel = React.memo(
       try {
         const result = await onDeduplicateStocks();
         if (result.deleted === 0) {
-          alert(`중복된 주식이 없습니다. (총 ${result.kept}개 종목)`);
+          toast.error(`중복된 주식이 없습니다. (총 ${result.kept}개 종목)`);
         } else {
-          alert(`중복 정리 완료!\n삭제: ${result.deleted}개 / 유지: ${result.kept}개`);
+          toast.success(`중복 정리 완료!\n삭제: ${result.deleted}개 / 유지: ${result.kept}개`);
         }
       } catch (error) {
         console.error("중복 정리 에러 상세:", error);
-        alert("중복 정리 실패: " + (error.code || "") + " " + error.message);
+        toast.error("중복 정리 실패: " + (error.code || "") + " " + error.message);
       } finally {
         setIsDeduplicating(false);
       }
@@ -436,11 +437,11 @@ const AdminPanel = React.memo(
 
     const handleAddStock = async () => {
       if (!newStock.name || !newStock.price || !newStock.minListingPrice)
-        return alert("모든 필드를 입력해주세요.");
+        return toast.error("모든 필드를 입력해주세요.");
       const price = parseFloat(newStock.price);
       const minPrice = parseFloat(newStock.minListingPrice);
       if (price <= 0 || minPrice <= 0)
-        return alert("가격은 0보다 커야 합니다.");
+        return toast.error("가격은 0보다 커야 합니다.");
 
       const stockData = {
         name: newStock.name,
@@ -1158,7 +1159,7 @@ const StockExchange = () => {
       } catch (error) {
         logger.error("[StockExchange] 배치 로드 실패:", error);
         // Polling 중에는 alert을 띄우지 않는 것이 사용자 경험에 좋음
-        // alert('데이터를 불러오는 중 오류가 발생했습니다.');
+        // toast.error('데이터를 불러오는 중 오류가 발생했습니다.');
       } finally {
         isFetchingRef.current = false;
         setIsFetching(false);
@@ -1216,10 +1217,10 @@ const StockExchange = () => {
       const toggleVacationModeFn = callables.toggleVacationMode;
       const result = await toggleVacationModeFn({ enabled: !vacationMode });
       setVacationMode(result.data.vacationMode);
-      alert(normalizeCurrencyText(result.data.message));
+      toast.success(normalizeCurrencyText(result.data.message));
     } catch (error) {
       logger.error("[toggleVacationMode] 토글 실패:", error);
-      alert("방학 모드 설정 실패: " + error.message);
+      toast.error("방학 모드 설정 실패: " + error.message);
     } finally {
       setVacationLoading(false);
     }
@@ -1239,7 +1240,7 @@ const StockExchange = () => {
   // === 거래 함수들 (최적화된 캐시 무효화) ===
   const addStock = useCallback(
     async (stockData) => {
-      if (!classCode || !user) return alert("클래스 정보가 없습니다.");
+      if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
       try {
         // 관리자 권한으로 Cloud Function 먼저 시도 (Rules 우회)
         const addStockFn = callables.addStockDoc;
@@ -1256,7 +1257,7 @@ const StockExchange = () => {
         invalidateCache(`STOCKS_${classCode}`);
         await fetchAllData(true);
 
-        alert(`${stockData.name} 상품이 추가되었습니다.`);
+        toast.success(`${stockData.name} 상품이 추가되었습니다.`);
       } catch (error) {
         logger.error("[addStock] 함수 추가 실패, Firestore 직접 시도:", error);
         try {
@@ -1285,10 +1286,10 @@ const StockExchange = () => {
           invalidateCache(`STOCKS_${classCode}`);
           await fetchAllData(true);
 
-          alert(`${stockData.name} 상품이 추가되었습니다.`);
+          toast.success(`${stockData.name} 상품이 추가되었습니다.`);
         } catch (innerError) {
           logger.error("[addStock] Firestore 직접 추가 실패:", innerError);
-          alert(
+          toast.error(
             "상품 추가 중 오류가 발생했습니다. 관리자 권한/Rules를 확인해주세요.",
           );
         }
@@ -1299,7 +1300,7 @@ const StockExchange = () => {
 
   const deleteStock = useCallback(
     async (stockId, stockName) => {
-      if (!classCode || !user) return alert("클래스 정보가 없습니다.");
+      if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
       if (window.confirm(`'${stockName}' 상품을 정말로 삭제하시겠습니까?`)) {
         try {
           await deleteDoc(doc(db, "CentralStocks", stockId));
@@ -1315,9 +1316,9 @@ const StockExchange = () => {
           invalidateCache(`STOCKS_${classCode}`);
           await fetchAllData(true);
 
-          alert(`${stockName} 상품이 삭제되었습니다.`);
+          toast.success(`${stockName} 상품이 삭제되었습니다.`);
         } catch (error) {
-          alert("상품 삭제 중 오류가 발생했습니다.");
+          toast.error("상품 삭제 중 오류가 발생했습니다.");
         }
       }
     },
@@ -1326,7 +1327,7 @@ const StockExchange = () => {
 
   const editStock = useCallback(
     async (stockId) => {
-      if (!classCode || !user) return alert("클래스 정보가 없습니다.");
+      if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
       const stock = stocks.find((s) => s.id === stockId);
       if (!stock) return;
       const newPriceStr = prompt(
@@ -1335,7 +1336,7 @@ const StockExchange = () => {
       );
       const newPrice = parseFloat(newPriceStr);
       if (isNaN(newPrice) || newPrice <= 0)
-        return alert("유효한 가격을 입력해주세요.");
+        return toast.error("유효한 가격을 입력해주세요.");
       try {
         await updateDoc(doc(db, "CentralStocks", stockId), {
           price: newPrice,
@@ -1353,9 +1354,9 @@ const StockExchange = () => {
         invalidateCache(`STOCKS_${classCode}`);
         await fetchAllData(true);
 
-        alert("가격이 수정되었습니다.");
+        toast.success("가격이 수정되었습니다.");
       } catch (error) {
-        alert("가격 수정 중 오류가 발생했습니다.");
+        toast.error("가격 수정 중 오류가 발생했습니다.");
       }
     },
     [stocks, classCode, user, fetchAllData, refreshStocksSnapshot],
@@ -1363,7 +1364,7 @@ const StockExchange = () => {
 
   const toggleManualStock = useCallback(
     async (stockId, currentIsListed) => {
-      if (!classCode || !user) return alert("클래스 정보가 없습니다.");
+      if (!classCode || !user) return toast.error("클래스 정보가 없습니다.");
       const stock = stocks.find((s) => s.id === stockId);
       if (!stock) return;
       const action = currentIsListed ? "상장폐지" : "재상장";
@@ -1411,9 +1412,9 @@ const StockExchange = () => {
           invalidateCache(`PORTFOLIO`);
           await fetchAllData(true);
 
-          alert(`${action} 처리되었습니다.`);
+          toast.success(`${action} 처리되었습니다.`);
         } catch (error) {
-          alert(`${action} 처리 중 오류가 발생했습니다.`);
+          toast.error(`${action} 처리 중 오류가 발생했습니다.`);
         }
       }
     },
@@ -1423,19 +1424,19 @@ const StockExchange = () => {
   const buyStock = useCallback(
     async (stockId, quantityString) => {
       if (!marketOpen)
-        return alert(
+        return toast.error(
           "주식시장이 마감되었습니다. 운영 시간: 월-금 오전 8시-오후 3시",
         );
       if (isTrading || !classCode) return;
       const quantity = parseInt(quantityString, 10);
       if (isNaN(quantity) || quantity <= 0)
-        return alert("유효한 수량을 입력해주세요.");
+        return toast.error("유효한 수량을 입력해주세요.");
       const stock = stocks.find((s) => s.id === stockId);
       if (!user || !stock || !stock.isListed)
-        return alert("매수할 수 없는 상태입니다.");
+        return toast.error("매수할 수 없는 상태입니다.");
 
       if (await isNetAssetsNegative(userDoc)) {
-        return alert(NEGATIVE_ASSETS_MESSAGE);
+        return toast.error(NEGATIVE_ASSETS_MESSAGE);
       }
 
       const cost = stock.price * quantity;
@@ -1542,7 +1543,7 @@ const StockExchange = () => {
           },
         });
 
-        alert(
+        toast.success(
           `${stock.name} ${quantity}주 매수 완료!\n수수료: ${formatCurrency(commission)}`,
         );
       } catch (error) {
@@ -1553,7 +1554,7 @@ const StockExchange = () => {
           optimisticUpdate({ cash: totalCost });
         }
 
-        alert(error.message || "매수 처리 중 오류가 발생했습니다.");
+        toast.error(error.message || "매수 처리 중 오류가 발생했습니다.");
       } finally {
         setIsTrading(false);
       }
@@ -1575,29 +1576,29 @@ const StockExchange = () => {
   const sellStock = useCallback(
     async (holdingId, quantityString) => {
       if (!marketOpen)
-        return alert(
+        return toast.error(
           "주식시장이 마감되었습니다. 운영 시간: 월-금 오전 8시-오후 3시",
         );
       if (isTrading) return;
       const quantity = parseInt(quantityString, 10);
       if (isNaN(quantity) || quantity <= 0)
-        return alert("유효한 수량을 입력해주세요.");
+        return toast.error("유효한 수량을 입력해주세요.");
       const holding = portfolio.find((h) => h.id === holdingId);
       if (!user || !userDoc || !holding || quantity > holding.quantity)
-        return alert("매도할 수 없는 상태입니다.");
+        return toast.error("매도할 수 없는 상태입니다.");
       if (holding.delistedAt)
-        return alert("상장폐지된 상품은 매도할 수 없습니다.");
+        return toast.error("상장폐지된 상품은 매도할 수 없습니다.");
 
       if (!canSellHolding(holding)) {
         const remaining = getRemainingLockTime(holding);
-        return alert(
+        return toast.error(
           `매수 후 1시간 동안은 매도할 수 없습니다.\n남은 시간: ${formatTime(remaining)}`,
         );
       }
 
       const stock = stocks.find((s) => s.id === holding.stockId);
       if (!stock || !stock.isListed)
-        return alert("현재 거래할 수 없는 상품입니다.");
+        return toast.error("현재 거래할 수 없는 상품입니다.");
 
       // 예상 수익 계산 (낙관적 업데이트용)
       const sellPrice = stock.price * quantity;
@@ -1704,7 +1705,7 @@ const StockExchange = () => {
 
         const taxInfo =
           actualTax > 0 ? `\n세금: ${formatCurrency(actualTax)}` : "";
-        alert(
+        toast.success(
           `${stockName} ${quantity}주 매도 완료!\n수익: ${formatCurrency(actualProfit)}${taxInfo}\n수수료: ${formatCurrency(actualCommission)}\n순수익: ${formatCurrency(netRevenue)}`,
         );
       } catch (error) {
@@ -1715,7 +1716,7 @@ const StockExchange = () => {
           optimisticUpdate({ cash: -estimatedNetRevenue });
         }
 
-        alert(error.message || "매도 처리 중 오류가 발생했습니다.");
+        toast.error(error.message || "매도 처리 중 오류가 발생했습니다.");
       } finally {
         setIsTrading(false);
       }
@@ -1751,9 +1752,9 @@ const StockExchange = () => {
           invalidateCache(`PORTFOLIO_user_${user.uid}`);
           await fetchAllData(true);
 
-          alert("삭제되었습니다.");
+          toast.success("삭제되었습니다.");
         } catch (error) {
-          alert("삭제 중 오류가 발생했습니다.");
+          toast.error("삭제 중 오류가 발생했습니다.");
         }
       }
     },

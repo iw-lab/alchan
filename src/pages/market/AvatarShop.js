@@ -29,6 +29,7 @@ import {
   ITEM_ANCHORS,
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const TAB_OPTIONS = [
   { id: "all", name: "전체", icon: Sparkles },
@@ -115,7 +116,7 @@ export default function AvatarShop() {
     if (!editingPrice) return;
     const priceNum = parseInt(newPriceInput, 10);
     if (Number.isNaN(priceNum) || priceNum < 0) {
-      alert("0 이상의 숫자를 입력하세요.");
+      toast.error("0 이상의 숫자를 입력하세요.");
       return;
     }
     setSavingPrice(true);
@@ -127,7 +128,7 @@ export default function AvatarShop() {
       setNewPriceInput("");
     } catch (err) {
       logger.error("가격 수정 실패:", err);
-      alert(err?.message || "가격 수정 실패");
+      toast.error(err?.message || "가격 수정 실패");
     } finally {
       setSavingPrice(false);
     }
@@ -148,7 +149,7 @@ export default function AvatarShop() {
       setNewPriceInput("");
     } catch (err) {
       logger.error("가격 초기화 실패:", err);
-      alert(err?.message || "가격 초기화 실패");
+      toast.error(err?.message || "가격 초기화 실패");
     } finally {
       setSavingPrice(false);
     }
@@ -215,7 +216,7 @@ export default function AvatarShop() {
   const handlePurchase = async (item) => {
     if (!user?.uid) return;
     if (isOwned(userDoc, item.id)) {
-      alert("이미 보유 중인 아이템입니다.");
+      toast.error("이미 보유 중인 아이템입니다.");
       return;
     }
     // 학급별 override 가격 적용 (서버와 동일)
@@ -223,11 +224,11 @@ export default function AvatarShop() {
     const isFree = (effectivePrice || 0) === 0;
     if (!isFree) {
       if ((userDoc?.cash || 0) < effectivePrice) {
-        alert(`잔액 부족. 필요: ${effectivePrice.toLocaleString()}${getCurrencyUnit()}`);
+        toast.error(`잔액 부족. 필요: ${effectivePrice.toLocaleString()}${getCurrencyUnit()}`);
         return;
       }
       if (await isNetAssetsNegative(userDoc)) {
-        alert(NEGATIVE_ASSETS_MESSAGE);
+        toast.error(NEGATIVE_ASSETS_MESSAGE);
         return;
       }
       if (!window.confirm(`${item.name} (${effectivePrice.toLocaleString()}${getCurrencyUnit()}) 구매하시겠습니까?`)) return;
@@ -240,11 +241,11 @@ export default function AvatarShop() {
     try {
       const fn = httpsCallable(functions, "purchaseAvatarItem");
       await fn({ itemId: item.id, idempotencyKey: crypto.randomUUID() });
-      if (!isFree) alert(`🎉 ${item.name} 구매 완료!`);
+      if (!isFree) toast.success(`🎉 ${item.name} 구매 완료!`);
     } catch (err) {
       logger.error("아바타 아이템 구매 실패:", err);
       if (!isFree && optimisticUpdate) optimisticUpdate({ cash: effectivePrice });
-      alert(err?.message || "구매 실패");
+      toast.error(err?.message || "구매 실패");
     } finally {
       setPurchasing(null);
     }
@@ -253,7 +254,7 @@ export default function AvatarShop() {
   const handleEquip = async (item) => {
     if (!user?.uid) return;
     if (!isOwned(userDoc, item.id)) {
-      alert("먼저 구매가 필요합니다.");
+      toast.error("먼저 구매가 필요합니다.");
       return;
     }
     try {
@@ -263,7 +264,7 @@ export default function AvatarShop() {
       await updateDoc(doc(db, "users", user.uid), { equippedAvatarItems: eq });
     } catch (err) {
       logger.error("장착 실패:", err);
-      alert("장착 실패");
+      toast.error("장착 실패");
     }
   };
 

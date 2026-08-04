@@ -74,6 +74,7 @@ import {
 
 import { logger } from "../../utils/logger";
 import { startBackgroundPoll } from "../../utils/backgroundPoll";
+import { toast } from "../../utils/toast";
 // Cloud Functions 호출 함수 설정 (handleManualTaskReset 내부에서 사용)
 
 // 🔥 [최적화 v3.0] 극단적 최적화 - Firestore 읽기 95% 감소 목표
@@ -295,7 +296,7 @@ function SelectMultipleJobsView({
  const handleAddNewJob = useCallback(() => {
  const title = newJobTitle.trim();
  if (!title) {
- alert("직업 이름을 입력해주세요.");
+ toast.error("직업 이름을 입력해주세요.");
  return;
  }
  if (onAddJob) {
@@ -314,7 +315,7 @@ function SelectMultipleJobsView({
  const handleSaveEdit = useCallback(() => {
  const title = editingJobTitle.trim();
  if (!title) {
- alert("직업 이름을 입력해주세요.");
+ toast.error("직업 이름을 입력해주세요.");
  return;
  }
  if (onEditJob) {
@@ -1144,13 +1145,13 @@ function Dashboard({ adminTabMode }) {
  // Job management handlers
  const handleSaveJob = useCallback(async () => {
  if (!db || !userDoc?.classCode) {
- alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+ toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
  }
 
  const title = adminNewJobTitle.trim();
  if (!title) {
- alert("직업 이름을 입력해주세요.");
+ toast.error("직업 이름을 입력해주세요.");
  return;
  }
 
@@ -1171,7 +1172,7 @@ function Dashboard({ adminTabMode }) {
  setAdminNewJobTitle("");
  setEditingJob(null);
  setAdminEditingJobAppointedOnly(false);
- alert(`직업이 수정되었습니다.`);
+ toast.success(`직업이 수정되었습니다.`);
  } else {
  const newJobId = generateId();
  const newJobData = {
@@ -1189,14 +1190,14 @@ function Dashboard({ adminTabMode }) {
  // 로컬 state 즉시 반영
  setJobs((prev) => [...prev, { id: newJobId, ...newJobData, tasks: [] }]);
  setAdminNewJobTitle("");
- alert(`직업이 추가되었습니다.`);
+ toast.success(`직업이 추가되었습니다.`);
  }
 
  // 캐시 무효화
  dataCache.invalidate(`jobs_${userDoc.classCode}`);
  } catch (error) {
  logger.error("handleSaveJob 오류:", error);
- alert("직업 저장 중 오류 발생");
+ toast.error("직업 저장 중 오류 발생");
  } finally {
  setAppLoading(false);
  }
@@ -1205,7 +1206,7 @@ function Dashboard({ adminTabMode }) {
  const handleDeleteJob = useCallback(
  async (jobIdToDelete) => {
  if (!db) {
- alert("데이터베이스 연결 오류.");
+ toast.error("데이터베이스 연결 오류.");
  return;
  }
 
@@ -1292,7 +1293,7 @@ function Dashboard({ adminTabMode }) {
  dataCache.invalidate(`jobs_${userDoc.classCode}`);
  } catch (error) {
  logger.error("handleDeleteJob 오류:", error);
- alert("직업 삭제 중 오류 발생");
+ toast.error("직업 삭제 중 오류 발생");
  } finally {
  setAppLoading(false);
  }
@@ -1308,7 +1309,7 @@ function Dashboard({ adminTabMode }) {
  setAdminSelectedMenu("jobSettings");
  setShowAdminSettingsModal(true);
  } else {
- alert("해당 직업을 찾을 수 없습니다.");
+ toast.error("해당 직업을 찾을 수 없습니다.");
  }
  }, []);
 
@@ -1338,13 +1339,13 @@ function Dashboard({ adminTabMode }) {
  setShowAddTaskForm(true);
  setShowAdminSettingsModal(true);
  } else {
- alert("수정할 할일을 찾을 수 없습니다.");
+ toast.error("수정할 할일을 찾을 수 없습니다.");
  }
  }, []);
 
  const handleSaveTask = useCallback(async () => {
  if (!db || !userDoc?.classCode) {
- alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+ toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
  }
 
@@ -1359,7 +1360,7 @@ function Dashboard({ adminTabMode }) {
  isNaN(maxClicks) ||
  maxClicks <= 0
  ) {
- alert(
+ toast.error(
  "입력값을 확인해주세요. (이름, 보상: 0 이상 숫자, 최대 클릭: 1 이상 숫자)",
  );
  return;
@@ -1414,7 +1415,7 @@ function Dashboard({ adminTabMode }) {
  }
  setShowAddTaskForm(false);
  setEditingTask(null);
- alert(`할일이 수정되었습니다.`);
+ toast.success(`할일이 수정되었습니다.`);
  } else {
  const newTaskId = generateId();
  const newTaskDataWithId = { ...taskData, id: newTaskId };
@@ -1444,7 +1445,7 @@ function Dashboard({ adminTabMode }) {
  setAdminNewTaskMaxClicks("5");
  setAdminNewTaskRequiresApproval(true);
  setShowAddTaskForm(false);
- alert(`할일이 추가되었습니다.`);
+ toast.success(`할일이 추가되었습니다.`);
  }
 
  // 캐시 무효화
@@ -1455,7 +1456,7 @@ function Dashboard({ adminTabMode }) {
  }
  } catch (error) {
  logger.error("handleSaveTask 오류:", error);
- alert("할일 저장 중 오류 발생: " + error.message);
+ toast.error("할일 저장 중 오류 발생: " + error.message);
  } finally {
  setAppLoading(false);
  }
@@ -1500,7 +1501,7 @@ function Dashboard({ adminTabMode }) {
  dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
  } catch (error) {
  logger.error("인라인 할일 추가 오류:", error);
- alert("할일 추가 중 오류: " + error.message);
+ toast.error("할일 추가 중 오류: " + error.message);
  }
  }, [generateId, userDoc]);
 
@@ -1531,14 +1532,14 @@ function Dashboard({ adminTabMode }) {
  dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
  } catch (error) {
  logger.error("인라인 할일 수정 오류:", error);
- alert("할일 수정 중 오류: " + error.message);
+ toast.error("할일 수정 중 오류: " + error.message);
  }
  }, [userDoc]);
 
  const handleDeleteTask = useCallback(
  async (taskIdToDelete, jobId = null) => {
  if (!db) {
- alert("데이터베이스 연결 오류.");
+ toast.error("데이터베이스 연결 오류.");
  return;
  }
 
@@ -1585,7 +1586,7 @@ function Dashboard({ adminTabMode }) {
  }
  } catch (error) {
  logger.error("handleDeleteTask 오류:", error);
- alert("할일 삭제 중 오류 발생: " + error.message);
+ toast.error("할일 삭제 중 오류 발생: " + error.message);
  } finally {
  setAppLoading(false);
  }
@@ -1601,7 +1602,7 @@ function Dashboard({ adminTabMode }) {
  const handleConfirmJobSelection = useCallback(
  async (newlySelectedJobIds) => {
  if (!user?.uid) {
- alert("사용자 정보 오류.");
+ toast.error("사용자 정보 오류.");
  return;
  }
 
@@ -1620,11 +1621,11 @@ function Dashboard({ adminTabMode }) {
  setUserDoc((prev) => ({ ...prev, selectedJobIds: saved }));
  }
  setViewMode("list");
- alert("선택한 직업이 저장되었습니다.");
+ toast.success("선택한 직업이 저장되었습니다.");
  } catch (error) {
  logger.error("handleConfirmJobSelection 오류:", error);
  // 서버가 돌려준 사유(상한 초과·지정 전용 선택 등)를 그대로 보여준다.
- alert(error?.message || "선택 직업 저장 중 예상치 못한 오류 발생.");
+ toast.error(error?.message || "선택 직업 저장 중 예상치 못한 오류 발생.");
  } finally {
  setAppLoading(false);
  }
@@ -1647,7 +1648,7 @@ function Dashboard({ adminTabMode }) {
  ) => {
  if (isHandlingTask) return;
  if (!userDoc?.id) {
- alert("사용자 정보가 로드되지 않았습니다.");
+ toast.error("사용자 정보가 로드되지 않았습니다.");
  return;
  }
 
@@ -1774,13 +1775,13 @@ function Dashboard({ adminTabMode }) {
  coupons: newCoupons,
  }));
 
- alert(resultData.message);
+ toast.success(resultData.message);
  } else {
  throw new Error(resultData.message || "알 수 없는 서버 오류");
  }
  } catch (error) {
  logger.error("[Dashboard] 할일 완료 처리 중 심각한 오류:", error);
- alert(`할일 완료에 실패했습니다: ${error.message}`);
+ toast.error(`할일 완료에 실패했습니다: ${error.message}`);
 
  // 롤백: 이전 상태로 복원
  setUserDoc(prevUserDoc);
@@ -1814,7 +1815,7 @@ function Dashboard({ adminTabMode }) {
  ) => {
  if (isHandlingTask) return;
  if (!userDoc?.id) {
- alert("사용자 정보가 로드되지 않았습니다.");
+ toast.error("사용자 정보가 로드되지 않았습니다.");
  return;
  }
 
@@ -1876,7 +1877,7 @@ function Dashboard({ adminTabMode }) {
  : { coupons: (prevDoc.coupons || 0) + serverReward }),
  }));
  }
- alert(normalizeCurrencyText(result.data.message));
+ toast.success(normalizeCurrencyText(result.data.message));
  // 카드 뒷면에 서버가 굴린 실제 금액을 표시하도록 반환
  return typeof serverReward === "number" ? serverReward : null;
  } else {
@@ -1884,7 +1885,7 @@ function Dashboard({ adminTabMode }) {
  }
  } catch (error) {
  logger.error("[Dashboard] 할일 승인 요청 실패:", error);
- alert(`승인 요청에 실패했습니다: ${error.message}`);
+ toast.error(`승인 요청에 실패했습니다: ${error.message}`);
  setUserDoc(prevUserDoc);
  return null;
  } finally {
@@ -1910,7 +1911,7 @@ function Dashboard({ adminTabMode }) {
  "--- [DEBUG] EXECUTING handleSaveAdminSettings with LATEST code ---",
  );
  if (!db) {
- alert("데이터베이스 연결 오류.");
+ toast.error("데이터베이스 연결 오류.");
  return;
  }
 
@@ -1918,7 +1919,7 @@ function Dashboard({ adminTabMode }) {
  const newValue = parseInt(adminCouponValueInput, 10);
 
  if (isNaN(newGoal) || newGoal <= 0 || isNaN(newValue) || newValue <= 0) {
- alert("올바른 목표 금액과 쿠폰 가치를 입력하세요 (0보다 큰 숫자).");
+ toast.error("올바른 목표 금액과 쿠폰 가치를 입력하세요 (0보다 큰 숫자).");
  return;
  }
 
@@ -1965,7 +1966,7 @@ function Dashboard({ adminTabMode }) {
  setClassCouponGoal(newGoal);
  }
  setShowAdminSettingsModal(false);
- alert("관리자 설정이 저장되었습니다.");
+ toast.success("관리자 설정이 저장되었습니다.");
 
  // 캐시 무효화
  dataCache.invalidate("mainSettings");
@@ -1974,7 +1975,7 @@ function Dashboard({ adminTabMode }) {
  }
  } catch (error) {
  logger.error("관리자 설정 저장 오류:", error);
- alert("관리자 설정 저장 중 오류: " + error.message);
+ toast.error("관리자 설정 저장 중 오류: " + error.message);
  } finally {
  setAppLoading(false);
  }
@@ -2037,12 +2038,12 @@ function Dashboard({ adminTabMode }) {
 
  const trimmedCode = codeToAdd.trim();
  if (!trimmedCode) {
- alert("학급 코드를 입력해주세요.");
+ toast.error("학급 코드를 입력해주세요.");
  return false;
  }
 
  if (classCodes.includes(trimmedCode)) {
- alert("이미 등록된 학급 코드입니다.");
+ toast.error("이미 등록된 학급 코드입니다.");
  return false;
  }
 
@@ -2067,17 +2068,17 @@ function Dashboard({ adminTabMode }) {
  try {
  const copyResult = await copyDefaultDataToNewClass(trimmedCode);
  if (copyResult.success) {
- alert(
+ toast.success(
  `학급 코드 '${trimmedCode}'가 추가되었습니다!\n\n기본 데이터 복사 완료:\n- 직업 ${copyResult.results.jobs.copied}개\n- 상점 아이템 ${copyResult.results.storeItems.copied}개`,
  );
  } else {
- alert(
+ toast.error(
  `학급 코드 '${trimmedCode}'가 추가되었습니다.\n\n⚠️ 기본 데이터 복사 중 오류: ${copyResult.error}\n(나중에 직접 추가해주세요)`,
  );
  }
  } catch (copyError) {
  logger.error("기본 데이터 복사 오류:", copyError);
- alert(
+ toast.error(
  `학급 코드 '${trimmedCode}'가 추가되었습니다.\n\n⚠️ 기본 데이터 복사 실패\n(나중에 직접 추가해주세요)`,
  );
  }
@@ -2091,7 +2092,7 @@ function Dashboard({ adminTabMode }) {
  return true;
  } catch (error) {
  logger.error("학급 코드 추가 오류:", error);
- alert("학급 코드 추가 중 오류 발생");
+ toast.error("학급 코드 추가 중 오류 발생");
  return false;
  } finally {
  setAppLoading(false);
@@ -2130,7 +2131,7 @@ function Dashboard({ adminTabMode }) {
  },
  });
 
- alert("학급 코드가 삭제되었습니다.");
+ toast.success("학급 코드가 삭제되었습니다.");
 
  // 낙관적 업데이트
  setClassCodes((prev) => prev.filter((code) => code !== codeToRemove));
@@ -2141,7 +2142,7 @@ function Dashboard({ adminTabMode }) {
  return true;
  } catch (error) {
  logger.error("학급 코드 삭제 오류:", error);
- alert("학급 코드 삭제 중 오류 발생: " + error.message);
+ toast.error("학급 코드 삭제 중 오류 발생: " + error.message);
  return false;
  } finally {
  setAppLoading(false);
@@ -2167,7 +2168,7 @@ function Dashboard({ adminTabMode }) {
  logger.log("[Dashboard] 수동 할일 리셋 시작");
  if (!userDoc?.classCode) {
  logger.error("[Dashboard] 학급 코드 정보가 없어 리셋을 중단합니다.");
- alert("학급 코드 정보가 없습니다.");
+ toast.error("학급 코드 정보가 없습니다.");
  return;
  }
 
@@ -2187,7 +2188,7 @@ function Dashboard({ adminTabMode }) {
  );
  if (!typed || typed.trim().toUpperCase() !== String(userDoc.classCode).toUpperCase()) {
  logger.log("[Dashboard] 학급 코드 확인 실패 - 리셋 취소");
- if (typed !== null) alert("학급 코드가 일치하지 않아 초기화를 취소했습니다.");
+ if (typed !== null) toast.error("학급 코드가 일치하지 않아 초기화를 취소했습니다.");
  return;
  }
 
@@ -2214,14 +2215,14 @@ function Dashboard({ adminTabMode }) {
  const today = new Date().toDateString();
  localStorage.setItem("lastTaskResetDate", today);
 
- alert(`리셋 성공!\n${normalizeCurrencyText(result.data.message)}`);
+ toast.success(`리셋 성공!\n${normalizeCurrencyText(result.data.message)}`);
  logger.log(`[Dashboard] 리셋 성공: ${result.data.message}`);
  } else {
  throw new Error(result.data.message || "알 수 없는 오류");
  }
  } catch (error) {
  logger.error("[Dashboard] 할일 리셋 실패:", error);
- alert(`오류: 할일 리셋에 실패했습니다.\n\n${error.message}`);
+ toast.error(`오류: 할일 리셋에 실패했습니다.\n\n${error.message}`);
  } finally {
  setAppLoading(false);
  logger.log("[Dashboard] 수동 할일 리셋 종료");
@@ -2513,7 +2514,7 @@ function Dashboard({ adminTabMode }) {
  maxJobs={selectableJobSlots}
  onAddJob={async (title) => {
  if (!db || !userDoc?.classCode) {
- alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+ toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
  }
  try {
@@ -2539,13 +2540,13 @@ function Dashboard({ adminTabMode }) {
  dataCache.invalidate(`jobs_${userDoc.classCode}`);
  } catch (error) {
  console.error("직업 추가 오류:", error);
- alert("직업 추가 중 오류 발생");
+ toast.error("직업 추가 중 오류 발생");
  }
  }}
  onDeleteJob={(jobId) => handleDeleteJob(jobId)}
  onEditJob={async (jobId, newTitle, appointedOnly) => {
  if (!db || !userDoc?.classCode) {
- alert("데이터베이스 연결 오류 또는 학급 코드 없음.");
+ toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
  }
  try {
@@ -2569,7 +2570,7 @@ function Dashboard({ adminTabMode }) {
  dataCache.invalidate(`jobs_${userDoc.classCode}`);
  } catch (error) {
  console.error("직업 수정 오류:", error);
- alert("직업 수정 중 오류 발생");
+ toast.error("직업 수정 중 오류 발생");
  }
  }}
  />

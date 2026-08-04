@@ -58,6 +58,7 @@ import {
   Castle,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
+import { toast } from "../utils/toast";
 
 // ============================================
 // 앱 아이콘 컴포넌트 (export하여 다른 곳에서도 사용)
@@ -803,7 +804,7 @@ export default function AlchanSidebar({
           const key = `govLawAlertShown:${classCode}`;
           if (!sessionStorage.getItem(key)) {
             sessionStorage.setItem(key, "1");
-            window.alert(
+            toast.error(
               `🏛️ 정부로 이송된 법안이 ${count}건 있습니다.\n` +
               `대통령실 > 법안 관리에서 승인 또는 거부권을 행사할 수 있습니다.`
             );
@@ -927,7 +928,7 @@ export default function AlchanSidebar({
               return `• [${typeLabel}]${amtText} — ${data.description || ""}`;
             });
             const more = logs.length > 8 ? `\n\n외 ${logs.length - 8}건` : "";
-            window.alert(
+            toast.error(
               `💰 확인하지 않은 거래 내역 ${logs.length}건이 있어요.\n\n` +
                 lines.join("\n") +
                 more +

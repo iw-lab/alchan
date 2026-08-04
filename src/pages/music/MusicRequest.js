@@ -15,6 +15,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { usePolling } from "../../hooks/usePolling";
 import "../../MusicRequest.css";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 const MusicRequest = ({ user }) => {
   const [roomName, setRoomName] = useState("");
@@ -133,7 +134,7 @@ const MusicRequest = ({ user }) => {
 
   const deleteRoom = async (roomId, roomName) => {
     if (!isAdmin) {
-      alert("관리자만 방을 삭제할 수 있습니다.");
+      toast.error("관리자만 방을 삭제할 수 있습니다.");
       return;
     }
 
@@ -167,10 +168,10 @@ const MusicRequest = ({ user }) => {
         setCreatedRoom(null);
       }
 
-      alert("방이 삭제되었습니다.");
+      toast.success("방이 삭제되었습니다.");
     } catch (error) {
       logger.error("Error deleting room: ", error);
-      alert("방을 삭제하는 중 오류가 발생했습니다.");
+      toast.error("방을 삭제하는 중 오류가 발생했습니다.");
     }
   };
 

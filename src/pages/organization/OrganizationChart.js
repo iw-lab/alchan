@@ -21,6 +21,7 @@ import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache"
 import { logger } from "../../utils/logger";
 import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
+import { toast } from "../../utils/toast";
 // 기본 관리자 설정 (Firestore에 없을 경우 사용)
 const DEFAULT_ADMIN_SETTINGS = {
   vetoOverrideRequired: 17,
@@ -180,7 +181,7 @@ const OrganizationChart = ({ classCode }) => {
   // 정부 이송 법안 승인
   const approveGovLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
+      toast.error("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
       return;
     }
     if (!window.confirm("이 법안을 최종 승인하시겠습니까?")) return;
@@ -200,22 +201,22 @@ const OrganizationChart = ({ classCode }) => {
       // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 국회(naLaws)·경찰서(naLawsApproved) 세션 캐시 무효화
       invalidateFetchCache("naLaws");
       await fetchGovLaws();
-      alert(`"${law.title}" 법안이 최종 승인되었습니다.`);
+      toast.success(`"${law.title}" 법안이 최종 승인되었습니다.`);
     } catch (error) {
       logger.error("정부 이송 법안 승인 오류:", error);
-      alert("법안 승인 중 오류가 발생했습니다.");
+      toast.error("법안 승인 중 오류가 발생했습니다.");
     }
   };
 
   // 정부 이송 법안 거부권
   const vetoGovLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
+      toast.error("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
       return;
     }
     const reason = prompt("거부권 행사 사유를 입력해주세요.");
     if (!reason || !reason.trim()) {
-      alert("거부 사유를 반드시 입력해야 합니다.");
+      toast.error("거부 사유를 반드시 입력해야 합니다.");
       return;
     }
     const lawDocRef = doc(
@@ -240,10 +241,10 @@ const OrganizationChart = ({ classCode }) => {
       // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 관련 세션 캐시 무효화
       invalidateFetchCache("naLaws");
       await fetchGovLaws();
-      alert(`"${law.title}" 법안에 거부권이 행사되었습니다.`);
+      toast.error(`"${law.title}" 법안에 거부권이 행사되었습니다.`);
     } catch (error) {
       logger.error("정부 이송 법안 거부 오류:", error);
-      alert("거부권 행사 중 오류가 발생했습니다.");
+      toast.error("거부권 행사 중 오류가 발생했습니다.");
     }
   };
 
@@ -254,7 +255,7 @@ const OrganizationChart = ({ classCode }) => {
       !newSettings.vetoOverrideRequired ||
       newSettings.vetoOverrideRequired < 1
     ) {
-      alert("재의결 필요 찬성수는 1 이상이어야 합니다.");
+      toast.error("재의결 필요 찬성수는 1 이상이어야 합니다.");
       return;
     }
 
@@ -272,17 +273,17 @@ const OrganizationChart = ({ classCode }) => {
       await updateDoc(settingsDocRef, updatedSettingsData);
       await fetchSettings();
       setShowSettingsModal(false);
-      alert("설정이 저장되었습니다.");
+      toast.success("설정이 저장되었습니다.");
     } catch (error) {
       logger.error("설정 저장 오류:", error);
-      alert("설정 저장 중 오류가 발생했습니다.");
+      toast.error("설정 저장 중 오류가 발생했습니다.");
     }
   };
 
   // 법안 승인 처리 (Firestore)
   const approveLaw = async (law) => {
     if (!canManage || !classCode) {
-      alert("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
+      toast.error("대통령 또는 관리자만 법안을 승인할 수 있습니다.");
       return;
     }
     const lawDocRef = doc(db, "laws", law.id);
@@ -294,17 +295,17 @@ const OrganizationChart = ({ classCode }) => {
         status: "final_approved", // 상태도 최종 승인으로 변경 (혼선 방지)
       });
       await fetchLaws();
-      alert(`"${law.title}" 법안이 최종 승인되었습니다.`);
+      toast.success(`"${law.title}" 법안이 최종 승인되었습니다.`);
     } catch (error) {
       logger.error("법안 승인 오류:", error);
-      alert("법안 승인 중 오류가 발생했습니다.");
+      toast.error("법안 승인 중 오류가 발생했습니다.");
     }
   };
 
   // 거부권 행사 모달 열기
   const openVetoModal = (law) => {
     if (!canManage) {
-      alert("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
+      toast.error("대통령 또는 관리자만 거부권을 행사할 수 있습니다.");
       return;
     }
     setSelectedLaw(law);
@@ -315,7 +316,7 @@ const OrganizationChart = ({ classCode }) => {
   // 거부권 행사 처리 (Firestore)
   const vetoLaw = async () => {
     if (!vetoReason) {
-      alert("거부 사유를 입력해주세요.");
+      toast.error("거부 사유를 입력해주세요.");
       return;
     }
     if (!selectedLaw || !classCode) return;
@@ -347,12 +348,12 @@ const OrganizationChart = ({ classCode }) => {
 
       setShowModal(false);
       setSelectedLaw(null);
-      alert(
+      toast.error(
         `"${selectedLaw.title}" 법안에 거부권이 행사되었습니다. 국회에서 재의결 절차가 시작됩니다.`,
       );
     } catch (error) {
       logger.error("거부권 행사 오류:", error);
-      alert("거부권 행사 중 오류가 발생했습니다.");
+      toast.error("거부권 행사 중 오류가 발생했습니다.");
     }
   };
 

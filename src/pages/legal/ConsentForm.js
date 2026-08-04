@@ -5,6 +5,7 @@ import React, { useRef } from 'react';
 import { Printer, Download, ArrowLeft, FileText, Scissors } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { toast } from "../../utils/toast";
 
 // 인쇄 전용 스타일 (화면에는 안 보이고 인쇄 시에만 적용)
 const printStyles = `
@@ -43,7 +44,7 @@ const ConsentForm = () => {
  const textContent = printRef.current?.innerText;
  if (textContent) {
  navigator.clipboard.writeText(textContent).then(() => {
- alert('텍스트가 클립보드에 복사되었습니다.\n한글(HWP), Word 등에 붙여넣기 하세요.');
+ toast.error('텍스트가 클립보드에 복사되었습니다.\n한글(HWP), Word 등에 붙여넣기 하세요.');
  });
  }
  };

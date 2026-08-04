@@ -36,6 +36,7 @@ import {
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 
 export default function GroupPurchase() {
   const { user, userDoc, isAdmin, optimisticUpdate } = useAuth();
@@ -107,7 +108,7 @@ export default function GroupPurchase() {
   // 캠페인 생성
   const handleCreate = async () => {
     if (!newCampaign.selectedItemId) {
-      alert("아이템을 먼저 선택해주세요.");
+      toast.error("아이템을 먼저 선택해주세요.");
       return;
     }
 
@@ -117,13 +118,13 @@ export default function GroupPurchase() {
       const storeItemRef = doc(db, "storeItems", newCampaign.selectedItemId);
       const storeItemSnap = await getDoc(storeItemRef);
       if (!storeItemSnap.exists()) {
-        alert("상점에서 아이템을 찾을 수 없습니다.");
+        toast.error("상점에서 아이템을 찾을 수 없습니다.");
         return;
       }
       const storeData = storeItemSnap.data();
       currentShopPrice = Number(storeData.price) || 0;
       if (currentShopPrice <= 0) {
-        alert("유효한 가격이 없는 아이템입니다.");
+        toast.error("유효한 가격이 없는 아이템입니다.");
         return;
       }
 
@@ -136,14 +137,14 @@ export default function GroupPurchase() {
       );
       const dupSnap = await getDocs(dupQuery);
       if (!dupSnap.empty) {
-        alert(
+        toast.error(
           "이미 같은 아이템의 함께구매가 진행 중입니다. 완료되거나 취소된 후에 새로 만들 수 있습니다.\n(한 번에 한 건만 허용됨)",
         );
         return;
       }
     } catch (err) {
       logger.error("캠페인 사전 체크 실패:", err);
-      alert("캠페인 생성 전 확인에 실패했습니다.");
+      toast.error("캠페인 생성 전 확인에 실패했습니다.");
       return;
     }
 
@@ -178,7 +179,7 @@ export default function GroupPurchase() {
       fetchCampaigns();
     } catch (err) {
       logger.error("함께구매 생성 실패:", err);
-      alert("생성에 실패했습니다.");
+      toast.error("생성에 실패했습니다.");
     }
   };
 
@@ -203,14 +204,14 @@ export default function GroupPurchase() {
 
     if ((userDoc?.cash || 0) < actualAmount) {
       setIsContributing(false);
-      alert("잔액이 부족합니다.");
+      toast.error("잔액이 부족합니다.");
       return;
     }
 
     // 순자산(자산-대출미상환금) 마이너스면 참여 금지
     if (await isNetAssetsNegative(userDoc)) {
       setIsContributing(false);
-      alert(NEGATIVE_ASSETS_MESSAGE);
+      toast.error(NEGATIVE_ASSETS_MESSAGE);
       return;
     }
 
@@ -247,7 +248,7 @@ export default function GroupPurchase() {
           if (cfResult?.data?.alreadyAwarded) {
             // 이미 처리됨 - 알림 생략
           } else {
-            alert(
+            toast.success(
               `🎉 목표 달성! ${result.winnerName}님이 최다 기여자로 '${campaign.itemName}'을(를) 획득했습니다!`,
             );
           }
@@ -256,7 +257,7 @@ export default function GroupPurchase() {
           // 🔒 P4(2026-07-18): 구 폴백(클라가 winner 인벤토리 직접 지급)은 inventory rules 잠금
           //   (batch7-e, create/update if false) 후 winner 본인·관리자 포함 항상 403이라 dead-effect였다.
           //   지급은 joinGroupPurchase/completeGroupPurchase CF(Admin SDK) 전용 — CF 실패 시 서버 재처리 안내만.
-          alert(
+          toast.error(
             "목표는 달성했지만 아이템 지급 중 오류가 발생했습니다. 관리자에게 문의하세요.",
           );
         }
@@ -271,7 +272,7 @@ export default function GroupPurchase() {
         optimisticUpdate({ cash: finalAmount });
       }
       logger.error("모금 참여 실패:", err);
-      alert(err.message || "참여에 실패했습니다.");
+      toast.error(err.message || "참여에 실패했습니다.");
     } finally {
       setIsContributing(false);
     }
@@ -296,7 +297,7 @@ export default function GroupPurchase() {
       fetchCampaigns();
     } catch (err) {
       logger.error("함께구매 삭제 실패:", err);
-      alert(err.message || "삭제에 실패했습니다.");
+      toast.error(err.message || "삭제에 실패했습니다.");
     } finally {
       setIsDeleting(false);
     }

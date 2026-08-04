@@ -62,6 +62,7 @@ import {
   PageHeader,
   Spinner,
 } from "./ui/index";
+import { toast } from "../utils/toast";
 
 // 랜덤 비밀번호 생성
 const generatePassword = (length = 8) => {
@@ -173,12 +174,12 @@ const StudentManager = () => {
   // 단일 학생 추가 (Cloud Function 사용)
   const handleAddStudent = async () => {
     if (!newStudentName.trim() || !newStudentNumber.trim()) {
-      alert("이름과 번호를 입력해주세요.");
+      toast.error("이름과 번호를 입력해주세요.");
       return;
     }
 
     if (!parentalConsent) {
-      alert("법정대리인(학부모) 동의 확인이 필요합니다.");
+      toast.error("법정대리인(학부모) 동의 확인이 필요합니다.");
       return;
     }
 
@@ -199,7 +200,7 @@ const StudentManager = () => {
 
       const data = result.data;
       if (data.success.length > 0) {
-        alert(`학생 추가 완료!\n이메일: ${email}\n비밀번호: ${password}`);
+        toast.success(`학생 추가 완료!\n이메일: ${email}\n비밀번호: ${password}`);
         setNewStudentName("");
         setNewStudentNumber("");
         setNewStudentPassword("");
@@ -208,11 +209,11 @@ const StudentManager = () => {
         loadStudents(true);
       } else {
         const errMsg = data.failed[0]?.error || "알 수 없는 오류";
-        alert(`학생 추가 실패: ${errMsg}`);
+        toast.error(`학생 추가 실패: ${errMsg}`);
       }
     } catch (error) {
       logger.error("Failed to add student:", error);
-      alert(`학생 추가 실패: ${error.message}`);
+      toast.error(`학생 추가 실패: ${error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -222,11 +223,11 @@ const StudentManager = () => {
   const generateBulkStudents = () => {
     const prefix = bulkPrefix.trim().toLowerCase();
     if (!prefix) {
-      alert("접두어를 입력해주세요.");
+      toast.error("접두어를 입력해주세요.");
       return;
     }
     if (bulkCount < 1 || bulkCount > 100) {
-      alert("학생 수는 1~100명 사이로 입력해주세요.");
+      toast.error("학생 수는 1~100명 사이로 입력해주세요.");
       return;
     }
 
@@ -253,7 +254,7 @@ const StudentManager = () => {
     if (bulkStudents.length === 0) return;
 
     if (!bulkParentalConsent) {
-      alert("법정대리인(학부모) 동의 확인이 필요합니다.");
+      toast.error("법정대리인(학부모) 동의 확인이 필요합니다.");
       return;
     }
 
@@ -358,11 +359,11 @@ const StudentManager = () => {
         });
       }
 
-      alert("학생이 삭제되었습니다.");
+      toast.success("학생이 삭제되었습니다.");
       await loadStudents(true);
     } catch (error) {
       logger.error("Failed to delete student:", error);
-      alert(`삭제 실패: ${error.message}`);
+      toast.error(`삭제 실패: ${error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -434,9 +435,9 @@ const StudentManager = () => {
 
     setSelectedStudents(new Set());
     if (failed.length > 0) {
-      alert(`${deleteCount}명 삭제 완료, ${failed.length}명 실패`);
+      toast.error(`${deleteCount}명 삭제 완료, ${failed.length}명 실패`);
     } else {
-      alert(`${deleteCount}명의 학생이 삭제되었습니다.`);
+      toast.success(`${deleteCount}명의 학생이 삭제되었습니다.`);
     }
     await loadStudents(true);
     setProcessing(false);
@@ -1085,7 +1086,7 @@ const StudentManager = () => {
                   setEditingStudent(null);
                   loadStudents(true);
                 } catch (error) {
-                  alert(`수정 실패: ${error.message}`);
+                  toast.error(`수정 실패: ${error.message}`);
                 } finally {
                   setProcessing(false);
                 }

@@ -24,6 +24,7 @@ import { db, storage } from "../../firebase";
 import "./TrialRoom.css";
 
 import { logger } from "../../utils/logger";
+import { toast } from "../../utils/toast";
 // 재판방 3D 비주얼(CourtroomScene)은 2026-08-03 제거 — 활성화된 적 없는 WIP인데
 // 에셋 11MB를 배포마다 끌고 다녔다. 재판 기능 자체는 아래 패널에서 그대로 동작한다.
 
@@ -295,7 +296,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
     } catch (error) {
       logger.error("Error assigning role:", error);
-      alert("역할 지명 중 오류가 발생했습니다.");
+      toast.error("역할 지명 중 오류가 발생했습니다.");
     }
   };
 
@@ -331,7 +332,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       .map((u) => u.id);
 
     if (candidates.length === 0) {
-      alert("배심원으로 배정할 남은 인원이 없습니다.");
+      toast.error("배심원으로 배정할 남은 인원이 없습니다.");
       return;
     }
 
@@ -350,7 +351,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
     } catch (error) {
       logger.error("Error auto-filling jury:", error);
-      alert("배심원 자동 배정 중 오류가 발생했습니다.");
+      toast.error("배심원 자동 배정 중 오류가 발생했습니다.");
     }
   };
 
@@ -359,7 +360,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
 
     // 침묵 패널티가 있으면 발언 불가
     if (isSilenced) {
-      alert("침묵 패널티가 적용되어 발언할 수 없습니다.");
+      toast.error("침묵 패널티가 적용되어 발언할 수 없습니다.");
       return;
     }
 
@@ -424,11 +425,11 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
   const handleUploadEvidence = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) return alert("파일 크기는 10MB 이하여야 합니다.");
+    if (file.size > 10 * 1024 * 1024) return toast.error("파일 크기는 10MB 이하여야 합니다.");
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf',
       'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return alert("허용되지 않는 파일 형식입니다. (이미지, PDF, Word만 가능)");
+      return toast.error("허용되지 않는 파일 형식입니다. (이미지, PDF, Word만 가능)");
     }
     
     setUploadingEvidence(true);
@@ -457,10 +458,10 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
         timestamp: serverTimestamp(),
       });
       
-      alert("증거 자료가 제출되었습니다.");
+      toast.success("증거 자료가 제출되었습니다.");
     } catch (error) {
       logger.error("Error uploading evidence:", error);
-      alert("증거 자료 업로드 중 오류가 발생했습니다.");
+      toast.error("증거 자료 업로드 중 오류가 발생했습니다.");
     } finally {
       setUploadingEvidence(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -517,11 +518,11 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       
       await updateDoc(roomRef, updateData);
       setMyVote(vote);
-      alert(`투표가 완료되었습니다: ${vote === "guilty" ? "유죄" : "무죄"}`);
+      toast.success(`투표가 완료되었습니다: ${vote === "guilty" ? "유죄" : "무죄"}`);
     } catch (error) {
       logger.error("Error voting:", error);
       // 성공 시 alert가 있으니 실패도 안내(P6, 무언 실패로 투표 반영 여부 모르는 문제).
-      alert("투표에 실패했어요. 다시 시도해 주세요.");
+      toast.error("투표에 실패했어요. 다시 시도해 주세요.");
     }
   };
 
@@ -558,7 +559,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       });
     } catch (error) {
       logger.error("Error ending vote:", error);
-      alert("투표 종료에 실패했어요. 다시 시도해 주세요.");
+      toast.error("투표 종료에 실패했어요. 다시 시도해 주세요.");
     }
   };
 
@@ -683,13 +684,13 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       await deleteTrialRoomDeep(classCode, roomId);
       logger.log("Trial room deleted.");
 
-      alert("판결이 완료되었습니다. 재판 결과 탭에서 확인할 수 있습니다.");
+      toast.success("판결이 완료되었습니다. 재판 결과 탭에서 확인할 수 있습니다.");
 
       // 6. Close the trial room
       if (onClose) onClose();
     } catch (error) {
       logger.error("Error making verdict:", error);
-      alert(`판결 처리 중 오류가 발생했습니다: ${error.message}`);
+      toast.error(`판결 처리 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 

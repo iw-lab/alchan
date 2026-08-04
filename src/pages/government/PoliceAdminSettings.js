@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "../../utils/toast";
 
 const PoliceAdminSettings = ({
   reportReasons,
@@ -36,7 +37,7 @@ const PoliceAdminSettings = ({
 
   const handleSaveChanges = () => {
     if (reasons.some((r) => !r.reason.trim())) {
-      alert("사유 이름은 비워둘 수 없습니다.");
+      toast.error("사유 이름은 비워둘 수 없습니다.");
       return;
     }
     onUpdateReasons(reasons);
