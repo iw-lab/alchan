@@ -2952,8 +2952,14 @@ exports.cleanupExpiredDocuments = onRequest(
 exports.weeklyEconomySchedulerV2 = onSchedule(
   {
     region: "asia-northeast3",
-    schedule: "0 0 * * 1,5", // UTC 월·금 00:00 = KST 09:00
-    timeZone: "UTC",
+    // KST 월·금 08:30 — 주급(월) / 재산세+월세(금).
+    // ⚠️ timeZone 을 UTC 로 두면 "KST 08:30 = UTC 23:30 **전날**"이라 요일 필드까지
+    //    하루 당겨 써야 한다(월 08:30 → 일 23:30). 실제로 예전엔 그렇게 적혀 있었고,
+    //    시간만 고치고 요일을 안 당기면 지급이 통째로 하루 밀린다. 그 함정을 없애려고
+    //    스케줄 자체를 KST 로 표기한다. 한국은 서머타임이 없어 연중 고정이다.
+    //    (아래 본문의 요일 판정 `kstNow.getUTCDay()` 는 실제 시각 기준이라 이 설정과 무관하게 그대로 동작한다.)
+    schedule: "30 8 * * 1,5", // KST 월·금 08:30
+    timeZone: "Asia/Seoul",
     timeoutSeconds: 540,
     memory: "512MiB",
   },
