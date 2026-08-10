@@ -7344,6 +7344,10 @@ exports.batchPaySalaries = onCall(
           totalGrossPaid,
           totalTaxDeducted,
           totalNetPaid,
+          // 경계 검사로 걸러낸 인원 — 조용히 빠지면 교사는 "왜 5명 골랐는데 4명이지?"를
+          // 알 길이 없다. 관리 화면 학생 목록이 isTeacher 계정을 걸러내지 않아서
+          // 정상 조작으로도 발생할 수 있다(2026-08-10).
+          excludedCount: rejectedTargets.length,
         },
       };
     } catch (error) {

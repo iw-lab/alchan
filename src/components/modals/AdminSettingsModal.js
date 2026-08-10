@@ -1159,7 +1159,12 @@ const AdminSettingsModal = ({
             summary.totalTaxDeducted / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만 ${getCurrencyUnit()}`,
+          ).toFixed(0)}만 ${getCurrencyUnit()}` +
+            // 서버 경계 검사(다른 학급·교사 계정)로 빠진 인원이 있으면 알린다.
+            // 말 안 하면 "5명 골랐는데 왜 4명이지?"를 교사가 알 수 없다.
+            (summary.excludedCount > 0
+              ? `\n\n※ ${summary.excludedCount}명은 지급 대상이 아니라 제외했습니다(다른 학급 또는 교사 계정).`
+              : ""),
         );
 
         // 선택 상태 초기화 + 학생 목록 새로고침
@@ -1226,7 +1231,12 @@ const AdminSettingsModal = ({
             summary.totalTaxDeducted / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n실제 지급: ${(
             summary.totalNetPaid / 10000
-          ).toFixed(0)}만 ${getCurrencyUnit()}`,
+          ).toFixed(0)}만 ${getCurrencyUnit()}` +
+            // 서버 경계 검사(다른 학급·교사 계정)로 빠진 인원이 있으면 알린다.
+            // 말 안 하면 "5명 골랐는데 왜 4명이지?"를 교사가 알 수 없다.
+            (summary.excludedCount > 0
+              ? `\n\n※ ${summary.excludedCount}명은 지급 대상이 아니라 제외했습니다(다른 학급 또는 교사 계정).`
+              : ""),
         );
         loadStudents(); // 잔액 갱신
       } else {
