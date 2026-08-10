@@ -32,7 +32,7 @@ export default function RandomDrawWheel({ segments = [], winningIndex = 0, onDon
       clearTimeout(fb);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [n, winningIndex, seg]);
+  }, [n, winningIndex, seg]); // onDone 은 부모가 그릴 때마다 새 함수 — 넣으면 타이머가 재설정돼 돌림판이 끝나지 않는다
 
   const handleTransitionEnd = () => {
     if (doneRef.current) return;

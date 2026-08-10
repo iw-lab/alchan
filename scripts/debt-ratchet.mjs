@@ -88,6 +88,73 @@ const count = (list, re, { keepComments = false } = {}) =>
   }, 0);
 
 /**
+ * `react-hooks/exhaustive-deps` 를 **이유도 안 적고** 끈 곳을 센다.
+ *
+ * 왜 이것만 따로 세는가: 이 앱에서 가장 비쌌던 사고들이 전부 deps 에서 나왔다.
+ * 야간 150 read/분(자기참조 useCallback 이 무한 재fetch), 오늘의 할일 54→3 문서,
+ * 방치 탭 백그라운드 폴링 — 원인은 매번 "의존성 배열에 뭘 넣고 뺐느냐"였다.
+ *
+ * 그런데 이 규칙은 **끄는 게 맞을 때가 실제로 있다**. useFirestoreData.js 의
+ * `loadMore` 처럼 넣으면 무한루프가 되는 경우다. 그래서 "억제 금지"는 틀린 처방이고,
+ * 켜 두면 팀이 규칙 자체를 끄게 된다(이 파일 맨 위 주석과 같은 이유).
+ *
+ * 대신 **이유를 적으라**고 요구한다. 이유가 적힌 억제는 다음 사람이 판단할 수 있고,
+ * 맨몸 억제는 판단할 수 없다 — 무한루프를 막으려고 끈 건지, 린트가 시끄러워서 끈 건지
+ * 구분이 안 되니 아무도 손을 못 댄다. 48건 중 40건이 맨몸이었다(2026-08-10).
+ *
+ * '이유 있음'의 기준은 **네 자리 전부**다:
+ *   ① 같은 줄 뒤                      ② 바로 위 1~2줄의 주석
+ *   ③ 바로 아래 deps 줄의 꼬리 주석    ④ 이 억제가 속한 훅 호출 바로 위의 주석
+ *
+ * ⚠️ ③④ 를 빼먹었다가 40건으로 셌는데, 실제 맨몸은 그보다 훨씬 적었다(2026-08-10).
+ *    이 저장소의 관행은 두 자리다:
+ *      `}, [a, b, ...deps]); // deps 가 스프레드라 …`        ← ③ 다음 줄
+ *      `// ⚡ userDoc 은 매 onSnapshot 마다 새 객체라 …`      ← ④ 훅 호출 위
+ *       `const x = useMemo(() => {  …  // eslint-disable …`
+ *    지시자는 훅 **본문 끝**(deps 바로 앞)에 오므로, 설명은 지시자 위가 아니라
+ *    훅 시작 위에 적히는 게 자연스럽다. 지표가 그걸 못 읽으면 "설명을 쓸수록 부채가
+ *    늘어난다"가 되고, 그건 이 파일 위쪽에서 `!important` 로 이미 한 번 겪은 실패다.
+ */
+function countBareDepsSuppress(list) {
+  const DIRECTIVE = /(?:\/\/|\/\*)\s*eslint-disable(?:-next-line)?\s+react-hooks\/exhaustive-deps/;
+  const HOOK = /\b(?:useEffect|useMemo|useCallback|useLayoutEffect)\s*\(/;
+  const isComment = (l) => /^\s*(\/\/|\*|\/\*)/.test(l ?? "");
+  const hasText = (s) => (s ?? "").replace(/^[\s*/-]+/, "").length > 3;
+
+  let bare = 0;
+  for (const f of list) {
+    const lines = readFileSync(f, "utf8").split("\n");
+    lines.forEach((line, i) => {
+      if (!DIRECTIVE.test(line)) return;
+      // ① 같은 줄 뒤
+      if (hasText(line.split("exhaustive-deps")[1])) return;
+      // ② 바로 위 1~2줄이 (다른 억제가 아닌) 주석
+      if ([lines[i - 1], lines[i - 2]].some((l) => isComment(l) && !DIRECTIVE.test(l ?? ""))) return;
+      // ③ 아래쪽 deps 영역의 꼬리 주석.
+      //    deps 가 한 줄이 아닐 수 있다 — StockExchange 는 배열이 10줄이라 설명이
+      //    닫는 `); ` 뒤에 붙어 있었고, i+1 만 보던 판정이 이걸 '맨몸'으로 잘못 셌다.
+      //    그래서 훅 호출이 닫히는 줄까지 훑는다(최대 40줄).
+      let closed = false;
+      for (let k = i + 1; k < lines.length && k - i <= 40 && !closed; k++) {
+        const l = lines[k];
+        if (/\)\s*[;,]?\s*(\/\/.*)?$/.test(l)) closed = true; // 이 줄에서 훅 호출이 닫힌다
+        if (hasText(l.split("//")[1])) return;
+      }
+      // ④ 이 억제를 감싼 훅 호출을 위로 찾아, 그 바로 위 1~3줄에 주석이 있는지.
+      //    훅 본문이 길 수 있으므로 60줄까지만 거슬러 본다(그 이상이면 '가까운 설명'이 아니다).
+      for (let j = i - 1; j >= 0 && i - j <= 60; j--) {
+        if (!HOOK.test(lines[j])) continue;
+        const near = [lines[j - 1], lines[j - 2], lines[j - 3]];
+        if (near.some((l) => isComment(l) && !DIRECTIVE.test(l ?? ""))) return;
+        break; // 가장 가까운 훅만 본다
+      }
+      bare++;
+    });
+  }
+  return bare;
+}
+
+/**
  * 각 지표는 "왜 이게 부채인가"가 분명한 것만 넣는다. 숫자를 위한 숫자는 사람이 무시한다.
  */
 const METRICS = {
@@ -118,6 +185,11 @@ const METRICS = {
     label: "린트 억제 주석",
     // 이 지표만 주석을 살려서 센다 — 억제 지시자 자체가 주석이다.
     value: count(code, /(?:\/\/|\/\*)\s*eslint-disable/g, { keepComments: true }),
+  },
+  // 위 `countBareDepsSuppress` 주석 참조 — 억제 자체가 아니라 **이유 없는 억제**를 센다.
+  bareDepsSuppress: {
+    label: "설명 없는 exhaustive-deps 억제",
+    value: countBareDepsSuppress(code),
   },
   // 화면이 데이터 계층을 건너뛰고 Firestore 를 직접 부르는 파일 수.
   // 읽기 방식을 바꾸려면 이 파일들을 전부 고쳐야 한다 = 변경 비용이 여기 비례한다.

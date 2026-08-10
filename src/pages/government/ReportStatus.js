@@ -244,7 +244,7 @@ const ReportStatus = ({
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showProcessModal, selectedReport, processingAmount, processingReason, reportReasons]);
+  }, [showProcessModal, selectedReport, processingAmount, processingReason, reportReasons]); // handleProcessSubmit·getDefaultAmount 는 렌더마다 새 함수 — 넣으면 memo 가 매번 깨져 모달이 재생성된다
 
   return (
     <div className="report-status-container">

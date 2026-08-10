@@ -395,8 +395,13 @@ export default function MyAssets() {
     } catch (error) {
       logger.error("[MyAssets] 목표 데이터 로드 실패:", error);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGoalId, currentUserClassCode, userId, createDefaultGoalForClass]);
+  }, [
+    currentGoalId,
+    currentUserClassCode,
+    userId,
+    createDefaultGoalForClass,
+    CACHE_DURATION, // 컴포넌트 안 상수라 늘 같은 숫자 — 이 파일의 다른 deps 배열들과 같은 규약
+  ]);
 
   const loadMyAssetsData = useCallback(async (force = false) => {
     if (!userId || !db) {
@@ -667,6 +672,9 @@ export default function MyAssets() {
     }
   }, [userId, currentUserClassCode, CACHE_DURATION]); // loadGoalData 제거하여 무한 루프 방지
 
+  // ⚡ loadMyAssetsData 를 deps 에 넣지 않는다 — 이 함수는 렌더마다 새 신원이라
+  //    넣으면 로드 → 상태변경 → 재렌더 → 다시 로드로 Firestore 읽기가 폭주한다.
+  //    바로 위 loadMyAssetsData 정의도 같은 이유로 loadGoalData 를 deps 에서 뺐다(그 줄 주석 참조).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && user) {

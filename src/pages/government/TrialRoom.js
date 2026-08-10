@@ -171,7 +171,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
       handleLeaveRoom();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, classCode]);
+  }, [roomId, classCode]); // 입·퇴장은 '방이 바뀔 때'만 — handleJoinRoom/LeaveRoom 은 렌더마다 새 함수라 넣으면 재입장이 반복된다
 
   // 채팅 메시지 실시간 구독 — 새 메시지 1건당 1 read (폴링보다 저렴 + 실시간 말풍선).
   useEffect(() => {

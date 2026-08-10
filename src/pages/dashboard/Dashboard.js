@@ -1632,7 +1632,7 @@ function Dashboard({ adminTabMode }) {
  }
  },
  // eslint-disable-next-line react-hooks/exhaustive-deps
- [user, saveSelectedJobsFn],
+ [user, saveSelectedJobsFn], // setUserDoc 은 상태 setter 라 신원이 고정 — deps 에 넣어도 의미가 없다
  );
 
  const handleCancelForm = useCallback(() => {
@@ -2230,7 +2230,7 @@ function Dashboard({ adminTabMode }) {
  logger.log("[Dashboard] 수동 할일 리셋 종료");
  }
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [userDoc?.classCode, setUserDoc]);
+ }, [userDoc?.classCode, setUserDoc]); // manualResetClassTasksFn 은 httpsCallable 결과라 렌더마다 새 신원 — 넣으면 콜백이 매번 재생성된다
 
  // Loading and error states
  if (authLoading || appLoading) {

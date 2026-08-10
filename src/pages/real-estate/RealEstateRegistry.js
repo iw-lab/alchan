@@ -172,7 +172,7 @@ const RealEstateRegistry = () => {
       stopPoll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classCode]);
+  }, [classCode]); // isAdmin 은 컨텍스트가 새로 그릴 때마다 새 함수 — 넣으면 15분 폴링이 매번 재시작된다
 
   // 🔥 Properties 새로고침 함수 (낙관적 업데이트 후 서버 데이터와 동기화)
   const refreshProperties = React.useCallback(async () => {

@@ -160,7 +160,6 @@ const StudentRequest = () => {
         setUrlLoading(false);
       }
     }, 500);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlInput]);
 
   const handleSearch = async (e) => {
