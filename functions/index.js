@@ -7101,6 +7101,23 @@ exports.batchPaySalaries = onCall(
         }
       }
 
+      // ── 같은 학생이 두 번 담히지 않게 ────────────────────────────────────────
+      // studentIds 에 같은 UID 가 두 번 오면 targetStudents 에 두 번 들어가고,
+      // batch 가 **같은 문서에 increment 를 두 번 쌓아** 그 학생만 조용히 2배 지급된다
+      // (Firestore 는 에러를 내지 않는다 — 순서대로 누적할 뿐이다. 2026-08-10 codex).
+      // 정상 UI 로는 생기기 어렵지만 방어가 한 줄도 없었다. 경계 검사와 마찬가지로
+      // 분기마다 막지 않고 **합류 지점에서 한 번만** 제거한다.
+      const dedupById = new Map();
+      targetStudents.forEach((s) => {
+        if (!dedupById.has(s.id)) dedupById.set(s.id, s);
+      });
+      if (dedupById.size !== targetStudents.length) {
+        logger.warn(
+          `[batchPaySalaries] 중복 대상 ${targetStudents.length - dedupById.size}건 제거 (요청자 ${uid})`,
+        );
+      }
+      targetStudents = [...dedupById.values()];
+
       // ── 지급 대상 경계 — 두 조회 경로가 **같은** 필터를 지나게 한다 ──────────────
       // payAll 경로는 where("classCode","==",classCode) + 역할 제외가 걸려 있었는데,
       // studentIds 경로는 users/{id} 를 그대로 get 해서 담기만 했다(2026-08-10 교차검증).
