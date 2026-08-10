@@ -35,6 +35,7 @@ const {
   computeSalaryAmounts,
   computeEffectiveBase,
   nextBaseMultiplier,
+  computeWeekKey,
   SALARY,
 } = require("./salaryUtils");
 const {
@@ -814,7 +815,7 @@ exports.weeklyRent = onRequest(
       const forceRun = req.query.force === "true";
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      const weekKey = computeWeekKey(now);
       const lockRef = db.collection("systemState").doc("lastWeeklyRent");
       const lockDoc = await lockRef.get();
       if (!forceRun && lockDoc.exists && lockDoc.data().weekKey === weekKey) {
@@ -867,7 +868,7 @@ exports.weeklyPropertyTax = onRequest(
       // 🔥 주간 중복 실행 방지
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const weekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      const weekKey = computeWeekKey(now);
       const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
       if (lastTaxDoc.exists && lastTaxDoc.data().weekKey === weekKey) {
         res.json({ success: true, message: "이번 주 이미 보유세 징수 완료", skipped: true, weekKey });
@@ -1997,7 +1998,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
     // 주간 중복 방지 (같은 주에 여러 번 호출되어도 1회만 지급)
     // weekKeyOverride: 특정 주 재지급용 (예: "2026-W15")
-    const computedWeekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+    const computedWeekKey = computeWeekKey(now);
     const weekKey = weekKeyOverride || computedWeekKey;
     // 백필 모드 = 과거(또는 임의) 주차를 수동 지정해 재지급하는 경우.
     //   이 모드에선 기본급 복리 인상 원장(salaryBaseMultiplier/salaryLastRaiseWeekKey)을 갱신하지 않는다.
@@ -2494,8 +2495,7 @@ function lookupProgressiveMultiplier(netAssets) {
 //   Cloud Functions 런타임은 UTC라 아래 로컬 getter가 곧 KST(+9h 보정 후)를 읽는다.
 //   ⚠️ 공식이 여러 곳에 복붙되면 동기화 누락으로 버그가 났던 전례(주급 공식) → 반드시 이 헬퍼만 사용.
 function computeKstWeekKey(baseDate = new Date()) {
-  const kstNow = new Date(baseDate.getTime() + 9 * 60 * 60 * 1000);
-  return `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+  return computeWeekKey(baseDate);
 }
 
 async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options = {}) {
@@ -2979,7 +2979,7 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
         logger.info("[weeklyEconomyV2] 금요일 — 재산세 + 월세 징수 시작");
 
         // 재산세
-        const taxWeekKey = `${kstNow.getFullYear()}-W${Math.ceil(((kstNow - new Date(kstNow.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+        const taxWeekKey = computeWeekKey(now);
         const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
         if (!lastTaxDoc.exists || lastTaxDoc.data().weekKey !== taxWeekKey) {
           await collectPropertyHoldingTaxesLogic();

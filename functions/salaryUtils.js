@@ -91,9 +91,131 @@ function computeSalaryAmounts(
   return {grossSalary, bonus, totalGross, tax, netSalary};
 }
 
+/**
+ * 주차 키(KST 기준). 거래내역 라벨과 '이번 주 이미 지급했나' 판정에 함께 쓴다.
+ *
+ * ⚠️ ISO 8601 주차가 **아니다**. 1월 1일부터 7일씩 끊는 단순 주차라 연초에
+ *    ISO 와 어긋난다. 그래도 이 공식을 그대로 두는 이유는, 이미 저장된
+ *    activity_logs.weekKey 수천 건과 schedulerLocks/weeklySalary 가 이 값으로
+ *    적혀 있어서 공식을 바꾸면 **과거 기록과 대조가 안 되기** 때문이다.
+ *    바꾸려면 마이그레이션이 따로 필요하다.
+ *
+ * ⚠️ 원래 공식은 `new Date(y, 0, 1)` 과 `getFullYear()` 를 썼다 — 둘 다 **서버 로컬
+ *    시간** 기준이라, 같은 순간이 환경에 따라 다른 주차가 됐다. 실측:
+ *      2026-08-11T06:00:00.001Z → TZ=UTC 이면 2026-W32, TZ=Asia/Seoul 이면 2026-W33
+ *    운영 Cloud Functions 는 UTC 라 지금까지 문제가 안 났을 뿐이고, 에뮬레이터·개발자
+ *    기기·런타임 TZ 변경이면 저장된 weekKey 와 판정이 어긋난다.
+ *    그래서 UTC 고정 함수(`Date.UTC`·`getUTC*`)로 바꿨다 —
+ *    **운영(UTC)에서는 결과가 한 글자도 안 바뀌고**, 다른 환경에서만 운영과 같아진다.
+ *
+ * @param {Date} date 판정 기준 시각
+ * @return {string} 예: "2026-W32"
+ */
+function computeWeekKey(date) {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  const year = kst.getUTCFullYear();
+  const days = (kst.getTime() - Date.UTC(year, 0, 1)) / 86400000;
+  return `${year}-W${Math.ceil((days + 1) / 7)}`;
+}
+
+/**
+ * 이번 급여 주(월요일 09:00 KST 자동 지급 기준)의 시작 = **그 주 월요일 00:00 KST**.
+ *
+ * ⚠️ 중복 판정에 `computeWeekKey` 를 쓰면 안 된다. 그 주차는 1월 1일부터 7일씩
+ *    끊어서 **월요일에 시작하지 않는다** — 2026년 8월엔 수요일에 넘어간다(실측).
+ *    주급 자동 지급은 월요일(`schedule: "0 0 * * 1,5"` = KST 월 09:00)이므로,
+ *    월요일에 자동 지급된 뒤 교사가 **수·목·금**에 수동 지급하면 주차가 이미
+ *    넘어가 "이미 줬다"를 못 잡는다. 교사가 말하는 "이번 주"와도 어긋난다.
+ *    그래서 판정만큼은 월요일 기준으로 따로 계산한다.
+ *    (`computeWeekKey` 는 거래내역 **라벨**과 스케줄러 잠금에 계속 쓴다 —
+ *     이미 저장된 기록 수천 건이 그 값이라 바꾸려면 마이그레이션이 필요하다.)
+ *
+ * @param {Date} date 기준 시각
+ * @return {number} 그 주 월요일 00:00 KST 의 epoch ms
+ */
+function startOfPayWeek(date) {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  const dow = kst.getUTCDay(); // 0=일 … 1=월
+  const daysSinceMonday = (dow + 6) % 7; // 월=0, 화=1 … 일=6
+  const mondayKstMidnight = Date.UTC(
+    kst.getUTCFullYear(),
+    kst.getUTCMonth(),
+    kst.getUTCDate() - daysSinceMonday,
+  );
+  return mondayKstMidnight - 9 * 60 * 60 * 1000; // 다시 실제 시각으로
+}
+
+/**
+ * 이 학생이 **이번 급여 주**에 주급을 받았고 **아직 회수되지 않았는가**.
+ *
+ * 교사가 주급 버튼을 눌렀을 때 "이미 이번 주에 지급했습니다, 중복 지급할까요?"를
+ * 물을지 결정하는 유일한 판정이다(사용자 결정 2026-08-06: 막지 말고 묻기).
+ *
+ * ⚠️ `lastSalaryDate` 만 보면 안 된다. reverseSalaryOnce 는 회수할 때
+ *    lastNetSalary 만 0으로 만들고 **lastSalaryDate 는 그대로 둔다**.
+ *    날짜만 보면 지급했다 회수한 학생까지 '받은 사람'으로 세어, 회수 직후
+ *    재지급할 때 쓸데없이 경고가 뜬다. 두 필드를 함께 봐야 뜻이 맞는다.
+ *
+ * @param {object} student users 문서 데이터(lastNetSalary, lastSalaryDate)
+ * @param {number} weekStartMs startOfPayWeek 결과
+ * @return {boolean}
+ */
+function wasPaidInWeek(student, weekStartMs) {
+  if (!student || !Number.isFinite(weekStartMs)) return false;
+  // 0·null·undefined·문자열 모두 안전하게 걸러낸다(회수됐거나 미지급).
+  if (!(Number(student.lastNetSalary) > 0)) return false;
+  const raw = student.lastSalaryDate;
+  if (!raw) return false;
+  // Firestore Timestamp | Date | ISO 문자열 어느 쪽이 와도 Date 로.
+  const paidAt = typeof raw.toDate === "function" ? raw.toDate() : new Date(raw);
+  if (!(paidAt instanceof Date) || Number.isNaN(paidAt.getTime())) return false;
+  return paidAt.getTime() >= weekStartMs;
+}
+
+/** 표식 문서 id 용 — 그 주 월요일의 KST 날짜("2026-08-10"). */
+function payWeekId(date) {
+  return new Date(startOfPayWeek(date) + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * 이 사용자가 **주급을 받을 대상**인가.
+ *
+ * ⚠️ batchPaySalaries 는 대상 목록을 두 경로로 만든다(payAll = classCode 쿼리 /
+ *    studentIds = UID 직접 조회). 예전엔 payAll 쪽에만 학급·역할 필터가 있었고
+ *    studentIds 쪽엔 **둘 다 없어서**, UID만 알면 남의 학급 학생에게 지급할 수 있었고
+ *    교사·관리자 계정에도 주급이 나갔다(2026-08-10 교차검증). 지급은 발행이라
+ *    호출자 잔액이 줄지 않아 억제력도 없다.
+ *    분기마다 필터를 복붙하면 또 한쪽만 고치게 되므로 판정은 여기 한 곳에만 둔다.
+ *
+ * @param {object} student users 문서(+id)
+ * @param {{classCode: string, isSuperAdmin: boolean}} caller 요청한 관리자
+ * @return {{ok: boolean, reason?: string}} reason 은 로그용(사용자에게 노출 안 함)
+ */
+function isPayableTarget(student, caller) {
+  if (!student) return {ok: false, reason: "빈 대상"};
+  // 교사·관리자 계정은 학생이 아니다.
+  if (student.isAdmin || student.isSuperAdmin || student.isTeacher) {
+    return {ok: false, reason: "교사·관리자"};
+  }
+  // 슈퍼관리자는 학급 경계 없음 — 관리 화면이 전 학급 학생을 보여주는 기존 동작 유지.
+  if (caller && caller.isSuperAdmin === true) return {ok: true};
+  // 교사는 자기 학급만. classCode 가 비어 있는 문서도 통과시키지 않는다.
+  if (!caller || !caller.classCode || student.classCode !== caller.classCode) {
+    return {ok: false, reason: `다른 학급(${student.classCode || "미지정"})`};
+  }
+  return {ok: true};
+}
+
 module.exports = {
   SALARY,
   computeSalaryAmounts,
   computeEffectiveBase,
   nextBaseMultiplier,
+  computeWeekKey,
+  startOfPayWeek,
+  payWeekId,
+  wasPaidInWeek,
+  isPayableTarget,
 };

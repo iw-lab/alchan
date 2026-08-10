@@ -8,7 +8,7 @@
 // ========================================
 
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { httpsCallable } from "firebase/functions";
 import { doc, getDocFromServer } from "firebase/firestore";
 import {
@@ -48,6 +48,8 @@ import {
 } from "../../utils/jobPermissions";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { paySalariesAskingIfDuplicate } from "../../utils/salaryDuplicateConfirm";
+import { randomId } from "../../utils/randomId";
 import { promptDialog } from "../../utils/promptDialog";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
@@ -385,6 +387,10 @@ const AdminSettingsModal = ({
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [appLoading, setAppLoading] = useState(false);
   const [isPayingSalary, setIsPayingSalary] = useState(false);
+  // 주급 지급 잠금. state 가 아니라 ref 인 이유: 버튼의 disabled 는 상태가 반영된
+  // **다음 렌더**부터 걸리므로, 같은 배치 안의 두 번째 클릭은 그걸 그냥 통과한다.
+  // ref 는 동기라 그 틈이 없다. 반 전체에 돈이 나가는 버튼이라 틈을 두지 않는다.
+  const payingRef = useRef(false);
   // 주급 회수 진행 중 잠금 — 반 전체 현금이 오가므로 두 번 눌리면 안 된다.
   const [isReversingSalary, setIsReversingSalary] = useState(false);
   const [lastSalaryPaidDate, setLastSalaryPaidDate] = useState(null);
@@ -1091,33 +1097,62 @@ const AdminSettingsModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin, userClassCode]); // db는 외부 스코프 값으로 의존성에서 제외
 
+  // 주급 지급 + 중복 확인 흐름은 src/utils/salaryDuplicateConfirm.js 한 곳에 있다
+  // (버튼이 둘이라 한쪽만 고치는 사고를 막고, 이 파일 밖이라야 테스트가 가능하다).
+  const paySalaries = (payload) =>
+    paySalariesAskingIfDuplicate(batchPaySalariesMutation.mutateAsync, payload);
+
   // 최적화된 선택 학생 급여 지급
   const handlePaySalariesToSelected = async () => {
+    // 🔒 진행 중이면 두 번째 클릭을 아예 안 보낸다. 버튼 disabled 는 상태가 반영된
+    //    **다음 렌더**부터라, 같은 배치 안의 빠른 두 번째 클릭은 그걸 통과한다.
+    if (payingRef.current) return;
     if (selectedStudentIds.length === 0) {
       toast.error("선택된 학생이 없습니다.");
       return;
     }
 
-    const currentSalarySettings = salarySettings;
-
-    if (
-      !(await confirmDialog(
-        `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`, { danger: true }))
-    ) {
-      return;
-    }
-
-    setIsPayingSalary(true);
+    payingRef.current = true;
 
     try {
-      const result = await batchPaySalariesMutation.mutateAsync({
+      const currentSalarySettings = salarySettings;
+
+      if (
+        !(await confirmDialog(
+          `선택된 ${selectedStudentIds.length}명의 학생에게 주급을 지급하시겠습니까?\n(세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제 후 지급)`, { danger: true }))
+      ) {
+        return;
+      }
+
+      setIsPayingSalary(true);
+
+      const result = await paySalaries({
         studentIds: selectedStudentIds,
         payAll: false,
+        // 버튼 한 번 누른 것 = 키 하나. 중복 지급을 승인하고 다시 보낼 때도 **같은 키**를
+        // 쓴다 — 첫 호출은 한 푼도 안 나가고 키도 안 남기므로 그대로 통과한다.
+        // 반면 네트워크 재시도·두 탭이 같은 키로 도착하면 두 번째는 서버가 막는다.
+        idempotencyKey: randomId(),
       });
+
+      // null = 이미 이번 주에 줬다는 경고를 보고 교사가 그만두기로 한 경우.
+      // ⚠️ 취소는 교사가 누른 대로 된 것이라 어떤 경고도 안 뜬다. 그런데 그 경고가
+      //    "표식 충돌"(학급+주 단위)에서 온 것이면 **아직 한 번도 못 받은 학생**이
+      //    섞여 있을 수 있다 — 그대로 두면 그 학생들은 이번 주 주급이 0원인 채
+      //    아무도 모르게 넘어간다. 확인할 곳을 함께 알려준다.
+      //    (학생 카드 '최근 실지급' 줄이 실제 지급액을 보여준다.)
+      if (result === null) {
+        toast.info(
+          "주급 지급을 취소했습니다.\n아직 못 받은 학생이 있을 수 있으니 학생 목록의 '최근 실지급'을 확인해 주세요.",
+        );
+        return;
+      }
 
       if (result.success) {
         const { summary } = result;
-        toast.error(
+        // 지급 성공인데 toast.error 라 빨간 오류로 떴다(2026-08-10 발견).
+        // 돈이 나가는 화면에서 성공을 실패색으로 보여주면 교사가 재시도한다.
+        toast.success(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
@@ -1138,32 +1173,53 @@ const AdminSettingsModal = ({
       logger.error("[AdminSettingsModal] 선택된 학생 주급 지급 오류:", error);
       toast.error("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
+      payingRef.current = false;
       setIsPayingSalary(false);
     }
   };
 
   // 최적화된 전체 학생 급여 지급
   const handlePaySalariesToAll = async () => {
-    const currentSalarySettings = salarySettings;
-
-    if (
-      !(await confirmDialog(
-        `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`, { danger: true, confirmText: "지급하기" }))
-    ) {
-      return;
-    }
-
-    setIsPayingSalary(true);
+    // 🔒 선택 지급과 같은 잠금을 공유한다 — 두 버튼을 번갈아 눌러도 한 번에 하나만 나간다.
+    if (payingRef.current) return;
+    payingRef.current = true;
 
     try {
-      const result = await batchPaySalariesMutation.mutateAsync({
+      const currentSalarySettings = salarySettings;
+
+      if (
+        !(await confirmDialog(
+          `모든 학생들에게 직업별 주급을 지급하시겠습니까?\n(직업이 있는 학생만 해당, 세금 ${(currentSalarySettings.taxRate * 100).toFixed(1)}% 공제)`, { danger: true, confirmText: "지급하기" }))
+      ) {
+        return;
+      }
+
+      setIsPayingSalary(true);
+
+      const result = await paySalaries({
         studentIds: [], // 빈 배열은 전체 지급을 의미
         payAll: true,
+        idempotencyKey: randomId(), // 위 '선택 지급'과 같은 규약
       });
+
+      // null = 이미 이번 주에 줬다는 경고를 보고 교사가 그만두기로 한 경우.
+      // ⚠️ 취소는 교사가 누른 대로 된 것이라 어떤 경고도 안 뜬다. 그런데 그 경고가
+      //    "표식 충돌"(학급+주 단위)에서 온 것이면 **아직 한 번도 못 받은 학생**이
+      //    섞여 있을 수 있다 — 그대로 두면 그 학생들은 이번 주 주급이 0원인 채
+      //    아무도 모르게 넘어간다. 확인할 곳을 함께 알려준다.
+      //    (학생 카드 '최근 실지급' 줄이 실제 지급액을 보여준다.)
+      if (result === null) {
+        toast.info(
+          "주급 지급을 취소했습니다.\n아직 못 받은 학생이 있을 수 있으니 학생 목록의 '최근 실지급'을 확인해 주세요.",
+        );
+        return;
+      }
 
       if (result.success) {
         const { summary } = result;
-        toast.error(
+        // 지급 성공인데 toast.error 라 빨간 오류로 떴다(2026-08-10 발견).
+        // 돈이 나가는 화면에서 성공을 실패색으로 보여주면 교사가 재시도한다.
+        toast.success(
           `주급 지급 완료!\n${summary.totalStudentsPaid}명의 학생에게 지급\n총 급여: ${(
             summary.totalGrossPaid / 10000
           ).toFixed(0)}만 ${getCurrencyUnit()}\n세금 공제: ${(
@@ -1180,6 +1236,7 @@ const AdminSettingsModal = ({
       logger.error("[AdminSettingsModal] 전체 학생 주급 지급 오류:", error);
       toast.error("주급 지급 중 오류가 발생했습니다: " + error.message);
     } finally {
+      payingRef.current = false;
       setIsPayingSalary(false);
     }
   };

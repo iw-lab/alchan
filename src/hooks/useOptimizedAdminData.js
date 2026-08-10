@@ -109,10 +109,15 @@ export const useBatchPaySalaries = () => {
   const classCode = userDoc?.classCode;
 
   return useMutation({
-    mutationFn: async ({ studentIds, payAll }) => {
+    // confirmDuplicate: "이미 이번 주에 줬다"는 서버 경고를 교사가 보고 승인한 경우에만 true.
+    //   ⚠️ 여기 인자 목록에서 빠뜨리면 조용히 사라져 서버가 영원히 다시 물어본다
+    //      (구조분해라 타입 오류도 안 난다).
+    mutationFn: async ({ studentIds, payAll, confirmDuplicate, idempotencyKey }) => {
       return await optimizedFirebaseService.batchPaySalaries({
         studentIds,
         payAll,
+        confirmDuplicate,
+        idempotencyKey,
       });
     },
     onSuccess: () => {

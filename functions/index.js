@@ -27,7 +27,15 @@ const {
   hasJobTitle,
 } = require("./jobUtils");
 // 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
-const { computeSalaryAmounts, computeEffectiveBase } = require("./salaryUtils");
+const {
+  computeSalaryAmounts,
+  computeEffectiveBase,
+  computeWeekKey,
+  startOfPayWeek,
+  payWeekId,
+  wasPaidInWeek,
+  isPayableTarget,
+} = require("./salaryUtils");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -7007,9 +7015,26 @@ exports.getAdminSettingsData = onCall(
 exports.batchPaySalaries = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode } =
+    const { uid, classCode, isSuperAdmin } =
       await checkAuthAndGetUserData(request, true);
-    const { studentIds, payAll } = request.data;
+    // confirmDuplicate: 교사가 "이미 이번 주에 줬다"는 경고를 보고도 한 번 더 주기로 한 경우.
+    //   ⚠️ 막는 게 아니라 **묻는다**. 보충 지급처럼 일부러 두 번 주는 경우가 실제로 있다
+    //      (사용자 결정 2026-08-06: "선생님이 누르면 두 번 줘도 된다").
+    // idempotencyKey: 버튼 한 번 누른 것 = 키 하나. 네트워크 재시도·두 탭·더블탭이
+    //   **같은 키**로 도착하면 두 번째는 안 나간다. 교사가 일부러 다시 누르면 키가
+    //   새로 생기므로 그건 정상적으로 나간다 — 묻기와 막기가 이렇게 갈린다.
+    const { studentIds, payAll, confirmDuplicate, idempotencyKey } =
+      request.data;
+
+    // 멱등키 선점 확인은 쓰기 **전에** 한 번(읽기 전용). 실제 클레임은 아래 배치 안에서
+    // batch.create 로 한다 — 지급 쓰기와 원자적으로 묶여야 "키만 남고 돈은 안 나간"
+    // 상태가 생기지 않는다(reverseSalaryOnce 와 같은 규약).
+    let idemKeyRef = null;
+    if (idempotencyKey) {
+      idemKeyRef = await db.runTransaction((tx) =>
+        checkIdempotent(tx, idempotencyKey),
+      );
+    }
 
     try {
       // 급여 설정 가져오기 (세율)
@@ -7076,9 +7101,92 @@ exports.batchPaySalaries = onCall(
         }
       }
 
+      // ── 지급 대상 경계 — 두 조회 경로가 **같은** 필터를 지나게 한다 ──────────────
+      // payAll 경로는 where("classCode","==",classCode) + 역할 제외가 걸려 있었는데,
+      // studentIds 경로는 users/{id} 를 그대로 get 해서 담기만 했다(2026-08-10 교차검증).
+      // 그래서 UID만 알면 **남의 학급 학생에게 지급**할 수 있었고, 교사·관리자 계정에도
+      // 주급이 나갔다. batchPaySalaries 는 발행이라 호출자 잔액이 줄지 않아 억제력도 없다.
+      //
+      // 필터를 분기마다 복붙하면 또 한쪽만 고치는 사고가 난다 → 합류 지점 한 곳에서만,
+      // 판정 자체는 salaryUtils.isPayableTarget 단일 진실원에 둔다(테스트 가능).
+      // payAll 경로에는 이미 같은 조건이 적용돼 있어 이 필터가 아무것도 바꾸지 않는다.
+      const rejectedTargets = [];
+      targetStudents = targetStudents.filter((s) => {
+        const verdict = isPayableTarget(s, { classCode, isSuperAdmin });
+        if (!verdict.ok) rejectedTargets.push(`${s.id}(${verdict.reason})`);
+        return verdict.ok;
+      });
+      if (rejectedTargets.length > 0) {
+        // 조용히 버리지 않고 남긴다 — 정상 UI로는 나올 수 없는 요청이라 흔적이 있어야 한다.
+        logger.warn(
+          `[batchPaySalaries] 지급 대상에서 제외 ${rejectedTargets.length}명 ` +
+            `(요청자 ${uid} / 학급 ${classCode}): ${rejectedTargets.slice(0, 10).join(", ")}`,
+        );
+      }
+
       logger.info(
         `[batchPaySalaries] 대상 학생 ${targetStudents.length}명 조회 완료 (payAll: ${payAll})`,
       );
+
+      // 두 가지 '주'가 따로 논다 — 섞으면 안 된다.
+      //   · weekKey     = 거래내역 **라벨**용(기존 기록 수천 건과 같은 값이어야 한다)
+      //   · weekStartMs = **중복 판정**용. 월요일 09:00 KST 자동 지급 기준의 그 주 월요일.
+      //     weekKey 로 판정하면 안 되는 이유는 salaryUtils.startOfPayWeek 주석 참조
+      //     (그 주차는 월요일에 시작하지 않아 월요일 지급 뒤 수·목·금을 놓친다).
+      const now = new Date();
+      const weekKey = computeWeekKey(now);
+      const weekStartMs = startOfPayWeek(now);
+
+      // ── 이번 주에 이미 주급을 받은 학생이 있는지 ────────────────────────────
+      // 금요일 자동 지급(scheduler-http.js)이 돌고 나서 교사가 수동 지급 버튼을 누르면
+      // 예전에는 **아무 말 없이 두 번** 나갔다. 막지는 않는다 — 보충 지급이 실제로 있다.
+      // 대신 한 번 물어보고, 교사가 그렇다고 하면 그대로 지급한다.
+      //
+      // 판정은 functions/salaryUtils.js(wasPaidInWeek) 단일 진실원 — 회수된 주급을
+      // 제외하는 규약이 거기 적혀 있다. 추가 읽기는 없다(이미 실려 온 필드만 본다).
+      const alreadyPaid = targetStudents.filter((s) =>
+        wasPaidInWeek(s, weekStartMs),
+      );
+
+      // ⚠️ `!confirmDuplicate` 로 두면 `"false"`·`{}`·`1` 같은 비불리언 truthy 가
+      //    확인 절차를 그냥 통과한다(codex 2026-08-06). 정확히 true 만 승인으로 본다.
+      const duplicateApproved = confirmDuplicate === true;
+      if (alreadyPaid.length > 0 && !duplicateApproved) {
+        const names = alreadyPaid
+          .slice(0, 3)
+          .map((s) => s.name || s.nickname || s.id);
+        // 화면에는 weekKey("2026-W32") 대신 **사람이 읽는 날짜**를 보여준다.
+        // 주차 번호는 내부 판정용이고, 교사에겐 "8월 7일에 줬다"가 훨씬 명확하다.
+        const lastPaidAt = alreadyPaid.reduce((latest, s) => {
+          const raw = s.lastSalaryDate;
+          const d = typeof raw?.toDate === "function" ? raw.toDate() : null;
+          return d && (!latest || d > latest) ? d : latest;
+        }, null);
+        logger.info(
+          `[batchPaySalaries] 중복 지급 확인 요청 — 급여주 ${payWeekId(now)} 기지급 ${alreadyPaid.length}/${targetStudents.length}명 (요청자 ${uid})`,
+        );
+        // ⚠️ 여기서 던지면 **한 푼도 나가지 않는다**(batch 를 만들기 전이다).
+        //    부분 지급 상태로 남겨두면 교사가 뭘 되돌려야 할지 알 수 없다.
+        //    멱등키도 아직 클레임 전이라(클레임은 배치 안에서 한다) 교사가 승인하고
+        //    같은 키로 다시 보내면 그대로 통과한다 — 묻는 것과 막는 것이 안 엉킨다.
+        //
+        // ⚠️ 코드를 `already-exists` 로 두지 않는다. checkIdempotent 가 **중복 요청 차단**에
+        //    이미 그 코드를 쓰기 때문에, 같이 두면 클라이언트가 둘을 구분하지 못한다
+        //    ("재시도가 막힌 것"을 "또 줄까요?"로 잘못 읽어 무한히 되묻는다).
+        //    이건 막힌 게 아니라 **확인이 필요한 상태**라 failed-precondition 이 맞다.
+        throw new HttpsError(
+          "failed-precondition",
+          `이미 이번 주에 주급을 지급했습니다.`,
+          {
+            reason: "duplicate-week",
+            weekKey,
+            lastPaidAt: lastPaidAt ? lastPaidAt.toISOString() : null,
+            alreadyPaidCount: alreadyPaid.length,
+            targetCount: targetStudents.length,
+            sampleNames: names,
+          },
+        );
+      }
 
       // 급여 계산 상수·공식은 functions/salaryUtils.js(computeSalaryAmounts) 단일 진실원.
 
@@ -7093,9 +7201,7 @@ exports.batchPaySalaries = onCall(
       let totalNetPaid = 0;
       const skippedStudents = [];
 
-      // weekKey 계산 (KST 기준) — 내 재산 거래내역 표시용
-      const nowKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-      const weekKey = `${nowKst.getFullYear()}-W${Math.ceil(((nowKst - new Date(nowKst.getFullYear(), 0, 1)) / 86400000 + 1) / 7)}`;
+      // (weekKey 는 위에서 이미 계산했다 — 중복 판정과 같은 값을 써야 한다)
       // 거래내역 로그 TTL: 90일
       const logExpireAt = new Date();
       logExpireAt.setDate(logExpireAt.getDate() + 90);
@@ -7181,6 +7287,48 @@ exports.batchPaySalaries = onCall(
       }
 
       if (totalStudentsPaid > 0) {
+        // 멱등키 클레임을 **지급 쓰기와 같은 배치**에 넣는다 = 다 되거나 다 안 된다.
+        //   set 이 아니라 create 인 이유: 같은 키가 동시에 둘 도착하면 create 는
+        //   두 번째가 ALREADY_EXISTS 로 실패한다(set 이면 둘 다 통과해 두 번 나간다).
+        if (idemKeyRef) {
+          batch.create(idemKeyRef, {
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: admin.firestore.Timestamp.fromMillis(
+              Date.now() + 24 * 60 * 60 * 1000,
+            ),
+          });
+        }
+
+        // ── 이번 주 지급 표식: **위 확인 절차의 경쟁 구간을 닫는다** ─────────────
+        // 위 wasPaidInWeek 검사는 읽고(students) → 쓰는(commit) 사이가 열려 있다.
+        // 탭 두 개에서 거의 동시에 누르면 둘 다 "아직 아무도 안 받았다"를 읽고
+        // 둘 다 통과해 **확인창이 한 번도 안 뜬 채** 82명 전원이 두 번 받는다.
+        // 멱등키로는 못 막는다 — 클릭이 둘이면 키도 둘이라 서로를 모른다.
+        //
+        // 그래서 학급+주차마다 표식 문서 하나를 **지급과 같은 배치에서 create** 한다.
+        // 먼저 커밋한 쪽만 성공하고, 늦은 쪽은 배치가 통째로 실패해 한 푼도 안 나간다.
+        // 실패는 아래 catch 에서 "이미 지급됨 → 물어보기"로 바뀐다 = 원래 의도대로 굴러간다.
+        //
+        // ⚠️ 교사가 승인한 재요청(confirmDuplicate)은 create 가 아니라 merge 다.
+        //    일부러 두 번 주는 것은 막지 않기로 했기 때문이다.
+        // 표식 id 도 **월요일 기준 급여 주**로 잡는다(라벨용 weekKey 와 다르다).
+        const runRef = db
+          .collection("salaryRuns")
+          .doc(`${classCode}_${payWeekId(now)}`);
+        const runPayload = {
+          classCode,
+          weekKey,
+          lastPaidAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastPaidBy: uid,
+          payCount: admin.firestore.FieldValue.increment(1),
+          expireAt: logExpireTs,
+        };
+        if (duplicateApproved) {
+          batch.set(runRef, runPayload, { merge: true });
+        } else {
+          batch.create(runRef, { ...runPayload, payCount: 1 });
+        }
+
         await batch.commit();
       }
 
@@ -7199,6 +7347,46 @@ exports.batchPaySalaries = onCall(
         },
       };
     } catch (error) {
+      // ⚠️ 이게 없으면 위에서 던진 failed-precondition 이 여기서 "internal" 로 덧칠돼
+      //    클라이언트가 중복 확인창을 띄울 근거(code·details)를 통째로 잃는다.
+      //    reverseSalaryOnce 와 같은 규약이다.
+      if (error instanceof HttpsError) throw error;
+      // batch 안의 create 가 ALREADY_EXISTS(gRPC 6)로 실패했다 = 배치 전체가 안 나갔다.
+      // 오류가 아니라 **중복 차단이 제대로 동작한 것**이다. 다만 둘 중 무엇이 걸렸는지에
+      // 따라 사용자에게 할 말이 다르므로, 멱등키 문서를 한 번 읽어 갈라낸다.
+      //   · 멱등키가 있다  → 같은 요청의 재시도(네트워크 재전송) → 조용히 차단
+      //   · 멱등키가 없다  → 주간 표식이 걸린 것 = 다른 화면에서 방금 지급됨 → **물어본다**
+      if (error?.code === 6 || /ALREADY_EXISTS/i.test(error?.message || "")) {
+        let idemClaimed = false;
+        if (idemKeyRef) {
+          idemClaimed = await idemKeyRef
+            .get()
+            .then((s) => s.exists)
+            .catch(() => false);
+        }
+        if (idemClaimed) {
+          logger.warn(`[batchPaySalaries] 중복 요청 차단(멱등키): ${uid}`);
+          throw new HttpsError(
+            "already-exists",
+            "이미 처리된 요청입니다. (중복 지급 차단)",
+          );
+        }
+        logger.warn(
+          `[batchPaySalaries] 주간 표식 충돌 — 이번 주에 이미 지급 실행 기록이 있다 (요청자 ${uid})`,
+        );
+        // ⚠️ 문구를 "방금 다른 화면에서 지급됐다"로 단정하지 않는다. 표식은 **이번 주에
+        //    지급이 실행된 적이 있다**는 것만 말해 준다. 실제로 걸리는 경우는 셋이다:
+        //      ① 진짜 동시 요청(막으려던 것)
+        //      ② 같은 주에 **다른 학생 묶음**을 나눠 지급 — 정상인데 한 번 더 묻게 된다
+        //      ③ 지급 → 회수 → 재지급 — 역시 정상인데 한 번 더 묻게 된다
+        //    ②③ 에 헛경고가 뜨는 대신 ①에서 82명이 두 번 받는 사고를 막는다. 막지는
+        //    않으므로(승인하면 그대로 나간다) 비용은 클릭 한 번이다.
+        throw new HttpsError(
+          "failed-precondition",
+          "이번 주에 이미 주급 지급이 실행된 기록이 있습니다.",
+          { reason: "duplicate-week", raced: true },
+        );
+      }
       logger.error(`[batchPaySalaries] Error for user ${uid}:`, error);
       throw new HttpsError(
         "internal",
