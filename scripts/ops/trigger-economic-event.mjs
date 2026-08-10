@@ -5,7 +5,16 @@
  * 방학 모드를 임시 비활성화하고 이벤트를 강제 실행합니다.
  */
 
-const TOKEN = 'my-super-secret-token-2024-isw';
+// 사용법: SCHEDULER_AUTH_TOKEN=… node scripts/ops/trigger-economic-event.mjs
+//
+// ⚠️ 토큰을 여기 적지 말 것. 이 저장소는 **공개**다.
+//    실제로 예전엔 값이 박혀 있었고(교체돼 지금은 무효), 같은 실수가 test-event.mjs 에서도
+//    있었다. cron-setup.mjs·cron-verify.mjs 와 같은 규약(process.env)으로 맞춘다.
+const TOKEN = process.env.SCHEDULER_AUTH_TOKEN || '';
+if (!TOKEN) {
+  console.error('SCHEDULER_AUTH_TOKEN 환경변수가 필요합니다.');
+  process.exit(1);
+}
 const SCHEDULER_URL = 'https://economiceventscheduler-j7kazbsvxq-du.a.run.app';
 
 // 1. 먼저 방학 모드 체크

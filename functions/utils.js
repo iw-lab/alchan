@@ -100,9 +100,29 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
   };
   
   const checkAuthAndGetUserData = async (request, checkAdmin = false) => {
-    // App Check 토큰 검증 (소프트 적용 - 경고만, 차단 안함)
+    // App Check 토큰 검증 — **의도적으로 소프트**(경고만, 차단 안 함).
+    //
+    // 2026-08-10 운영로그 60일 실측으로 강제 적용(enforceAppCheck)을 보류했다.
+    //   · 누락률 평균 0.38%(180/46,948) 지만 **몰려서** 터진다 — 38일 중 31일은 0건,
+    //     대신 7/17 하루는 15.1%.
+    //   · 그 폭발이 산발이 아니라 **한 사람이 몇 시간 내리** 실패하는 모양이다
+    //     (교사 계정 2개가 각각 59건 3시간41분 · 54건 8시간9분, 한 계정은 3주 뒤 재발).
+    //     즉 "가끔 튀는 네트워크"가 아니라 특정 기기·환경이 토큰을 아예 못 받는다.
+    //     강제로 켰다면 그날 그 교사의 앱이 통째로 멈춘다.
+    //   · 게다가 막으려던 구멍을 못 막는다 — 학생이 앱 페이지에서 F12로 CF를 부르면
+    //     App Check 토큰은 **정상 발급**된다. 차단되는 건 외부 스크립트뿐이다.
+    //     실제 방어선은 이 아래의 인증·역할·학급코드 검증과 firestore.rules 다.
+    //
+    // 강제 적용을 다시 검토할 조건: 아래 경고에 찍히는 ua/origin 으로 원인(APK WebView·
+    // 학교망 차단 등)을 특정해 없앤 뒤, 학기 중 2주 연속 누락 0건일 때.
     if (request.app === undefined && process.env.FUNCTIONS_EMULATOR !== 'true') {
-      logger.warn('App Check token missing for request from:', request.auth?.uid);
+      const h = request.rawRequest?.headers || {};
+      logger.warn("App Check token missing for request from:", request.auth?.uid, {
+        ua: h["user-agent"] || "?",
+        origin: h["origin"] || h["referer"] || "?",
+        // 안드로이드 래퍼는 UA 에 "AlchanApp/1.0 Android" 를 덧붙인다(MainActivity.kt).
+        isAndroidApp: String(h["user-agent"] || "").includes("AlchanApp"),
+      });
     }
 
     if (!request.auth) {
