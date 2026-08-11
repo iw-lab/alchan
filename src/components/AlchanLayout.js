@@ -96,9 +96,7 @@ const MyAssets = lazyWithRetry(() => import("../pages/my-assets/MyAssets"));
 const AdminApprovalPanel = lazyWithRetry(
   () => import("../pages/admin/AdminApprovalPanel"),
 );
-const AdminItemPage = lazyWithRetry(
-  () => import("../pages/admin/AdminItemPage"),
-);
+// AdminItemPage 는 여기서 직접 라우팅하지 않는다 — 아래 /admin/items 주석 참조.
 const AdminDatabase = lazyWithRetry(
   () => import("../pages/admin/AdminDatabase"),
 );
@@ -773,13 +771,15 @@ export default function AlchanLayout() {
                     </AdminRoute>
                   }
                 />
+                {/* /admin/items 는 AdminItemPage 를 **props 없이** 렌더하고 있었다.
+                    그런데 AdminItemPage 는 onAddItem/onUpdateItem/classCode 를 전부 부모에게서
+                    받아 쓴다(AdminItemPage.js 의 `await onAddItem(itemData)` 는 가드가 없다).
+                    즉 화면은 멀쩡히 뜨는데 '추가하기'를 누르면 TypeError 로 죽고 아무것도 저장되지 않았다.
+                    사이드바 어디에도 링크가 없어 아무도 안 밟았을 뿐이다.
+                    정상 동작하는 진짜 경로는 아이템 상점 안의 관리 패널(ItemStore.js)이므로 그리로 보낸다. */}
                 <Route
                   path="/admin/items"
-                  element={
-                    <AdminRoute>
-                      <AdminItemPage />
-                    </AdminRoute>
-                  }
+                  element={<Navigate to="/item-shop" replace />}
                 />
                 <Route
                   path="/admin/economic-events"

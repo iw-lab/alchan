@@ -35,8 +35,9 @@ import { queryKeys } from "../../services/optimizedFirebaseService";
 // 시스템 모니터링 컴포넌트
 import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 
-// 데이터베이스 관리 컴포넌트
-import AdminDatabase from "../../pages/admin/AdminDatabase";
+// AdminDatabase 는 더 이상 여기서 임베드하지 않는다 — 사이드바 '관리 > 데이터베이스'
+// (/admin/activity-log)가 같은 컴포넌트를 띄운다. 아래 '학급 데이터' 탭 주석 참조.
+import { Link } from "react-router-dom";
 
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { ALCHAN_MENU_ITEMS } from "../AlchanSidebar";
@@ -419,6 +420,33 @@ const AdminSettingsModal = ({
   const [inlineEditingTaskId, setInlineEditingTaskId] = useState(null);
   const [inlineEditName, setInlineEditName] = useState("");
   const [inlineEditMaxClicks, setInlineEditMaxClicks] = useState("5");
+
+  // 직업 목록 검색·접기.
+  // 실사용 학급이 직업 38개 · 할일 90여 개라 전부 펼친 카드로 깔면 목표 하나 찾는 데
+  // 화면 다섯 장을 훑어야 했다. 기본은 접어 두고, 검색어가 있으면 맞는 것만 펼친다.
+  const [jobFilter, setJobFilter] = useState("");
+  const [expandedJobIds, setExpandedJobIds] = useState(() => new Set());
+  const toggleJobExpanded = useCallback((jobId) => {
+    setExpandedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  }, []);
+  // 직업명뿐 아니라 **할일 이름으로도** 찾을 수 있어야 한다 —
+  // 교사는 "아침쓸기가 어느 직업에 있더라"로 들어오는 경우가 더 많다.
+  const filteredJobs = useMemo(() => {
+    const all = Array.isArray(jobs) ? jobs : [];
+    const q = jobFilter.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(
+      (job) =>
+        String(job.title || "").toLowerCase().includes(q) ||
+        (Array.isArray(job.tasks) &&
+          job.tasks.some((t) => String(t?.name || "").toLowerCase().includes(q))),
+    );
+  }, [jobs, jobFilter]);
 
   // 통합 탭 서브탭 상태 (sessionStorage로 새로고침 복원)
   const [jobTaskSubTab, setJobTaskSubTab] = useState(() => {
@@ -2074,8 +2102,18 @@ const AdminSettingsModal = ({
             <span className="super-admin-badge">(최고 관리자)</span>
           )}
         </h2>
+        {/* 학급 코드는 여기 한 번만 보여준다. 예전엔 이 줄에 더해 '🏫 현재 관리 학급' 배너를
+            **하위 탭 9곳에서 각각** 다시 그렸다 — 탭을 바꿔도 안 바뀌는 값이라 반복될 이유가 없고,
+            매 화면 첫 줄을 잡아먹어 정작 그 탭의 내용이 아래로 밀렸다. */}
         {!isSuperAdmin && userClassCode && (
-          <p className="admin-class-info">관리 학급: {userClassCode}</p>
+          <p
+            className="admin-class-info inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border"
+            style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
+          >
+            <span>🏫</span>
+            <span className="text-sm font-medium" style={{ color: "#334155" }}>관리 학급</span>
+            <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
+          </p>
         )}
 
         {/* ========================================
@@ -2119,17 +2157,6 @@ const AdminSettingsModal = ({
         {/* 일반 설정 탭 */}
         {adminSelectedMenu === "generalSettings" && (
           <div className="space-y-5">
-            {!isSuperAdmin && userClassCode && (
-              <div
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-              >
-                <span className="text-base">🏫</span>
-                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-              </div>
-            )}
-
             {/* 목표 설정 섹션 */}
             <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
               <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
@@ -2277,17 +2304,6 @@ const AdminSettingsModal = ({
         {/* ===== 직업/할일 통합 관리 ===== */}
         {adminSelectedMenu === "jobAndTask" && (
           <div className="space-y-5">
-            {!isSuperAdmin && userClassCode && (
-              <div
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-              >
-                <span className="text-base">🏫</span>
-                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-              </div>
-            )}
-
             <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
               <div className="px-6 py-4 border-b flex items-center justify-between gap-2 flex-wrap" style={{ borderColor: "#f1f5f9" }}>
                 <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
@@ -2462,12 +2478,36 @@ const AdminSettingsModal = ({
               </div>
 
               {/* 직업 추가 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '10px', flexWrap: 'wrap' }}>
                 <h4 style={{ color: '#4f46e5', fontSize: '15px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ width: '4px', height: '16px', background: '#818cf8', borderRadius: '2px', display: 'inline-block' }}></span>
                   직업별 할일
-                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>({Array.isArray(jobs) ? jobs.length : 0}개 직업)</span>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>
+                    ({jobFilter.trim()
+                      ? `${filteredJobs.length} / ${Array.isArray(jobs) ? jobs.length : 0}개 직업`
+                      : `${Array.isArray(jobs) ? jobs.length : 0}개 직업`})
+                  </span>
                 </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="search"
+                    value={jobFilter}
+                    onChange={(e) => setJobFilter(e.target.value)}
+                    placeholder="직업·할일 이름 검색"
+                    style={{ width: '200px', padding: '7px 12px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '10px', color: '#0f172a', fontSize: '13px', outline: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedJobIds((prev) =>
+                        prev.size > 0 ? new Set() : new Set(filteredJobs.map((j) => j.id)),
+                      )
+                    }
+                    style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '10px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  >
+                    {expandedJobIds.size > 0 ? "모두 접기" : "모두 펼치기"}
+                  </button>
+                </div>
               </div>
 
               {/* 직업 추가/수정 인라인 폼 */}
@@ -2519,12 +2559,30 @@ const AdminSettingsModal = ({
 
               {/* 직업별 카드 목록 */}
               {Array.isArray(jobs) && jobs.length > 0 ? (
+                filteredJobs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-2 rounded-xl" style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
+                  <span className="text-3xl">🔍</span>
+                  <p className="text-sm" style={{ color: "#64748b" }}>&ldquo;{jobFilter}&rdquo; 와 맞는 직업·할일이 없습니다.</p>
+                </div>
+                ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
-                  {jobs.map((job) => (
+                  {filteredJobs.map((job) => {
+                  // 검색 중에는 맞은 카드를 바로 펼쳐 준다 — 찾으려던 할일이 접힌 채로
+                  // 나오면 검색이 아무 소용이 없다.
+                  const isOpen = expandedJobIds.has(job.id) || jobFilter.trim().length > 0;
+                  return (
                     <div key={job.id} style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.2)', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)', overflow: 'hidden' }}>
                       {/* 직업 헤더 */}
-                      <div style={{ padding: '10px 16px', background: 'rgba(99, 102, 241, 0.06)', borderBottom: '1px solid rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#4f46e5', fontWeight: 700, fontSize: '14px' }}>💼 {job.title}</span>
+                      <div style={{ padding: '10px 16px', background: 'rgba(99, 102, 241, 0.06)', borderBottom: isOpen ? '1px solid rgba(99, 102, 241, 0.15)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleJobExpanded(job.id)}
+                          aria-expanded={isOpen}
+                          style={{ background: 'none', border: 'none', padding: 0, margin: 0, color: '#4f46e5', fontWeight: 700, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'left', minWidth: 0 }}
+                        >
+                          <span style={{ fontSize: '10px', color: '#818cf8', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💼 {job.title}</span>
+                        </button>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                           <span style={{ fontSize: '11px', color: '#64748b' }}>할일 {Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
                           <button
@@ -2541,7 +2599,8 @@ const AdminSettingsModal = ({
                           </button>
                         </div>
                       </div>
-                      {/* 직업 내 할일 목록 */}
+                      {/* 직업 내 할일 목록 — 접혀 있으면 통째로 렌더하지 않는다 */}
+                      {isOpen && (<>
                       {Array.isArray(job.tasks) && job.tasks.length > 0 ? (
                         <div style={{ padding: '6px 8px' }}>
                           {job.tasks.map((task, idx) => (
@@ -2616,9 +2675,12 @@ const AdminSettingsModal = ({
                           </button>
                         )}
                       </div>
+                      </>)}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 gap-2 rounded-xl" style={{ background: "#f8fafc", border: "1px dashed #cbd5e1" }}>
                   <span className="text-3xl">💼</span>
@@ -2658,17 +2720,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "student" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
-
               {/* 헤더 */}
               <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
                 <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
@@ -2730,6 +2781,8 @@ const AdminSettingsModal = ({
                     자동 주급 지급: 매주 <strong style={{ color: "#4338ca" }}>월요일 오전 8시 30분</strong> (서버 자동 실행)
                   </p>
                 </div>
+                {/* 지급(자주 씀)과 회수·이관(되돌리기·일회성)을 같은 줄에 두면 오클릭이 곧
+                    학급 전체 지급/회수로 이어진다. 줄과 구분선으로 분리한다. */}
                 <div className="px-6 py-4 border-t flex flex-wrap gap-2" style={{ borderColor: "#f1f5f9" }}>
                   <button
                     onClick={handlePaySalariesToAll}
@@ -2747,23 +2800,33 @@ const AdminSettingsModal = ({
                   >
                     {isPayingSalary ? "지급 중..." : `💰 선택 학생(${selectedStudentIds.length}) 주급 지급`}
                   </button>
-                  <button
-                    onClick={handleReverseSalary}
-                    disabled={isReversingSalary}
-                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: "#ffffff", color: "#dc2626", border: "1px solid #fca5a5" }}
-                  >
-                    {isReversingSalary ? "회수 중..." : "🔄 주급 1회분 회수"}
-                  </button>
-                  <button
-                    onClick={handleMigrateAppointedJobs}
-                    title="대통령 등 '선생님 지정' 직업을 교사 전용 필드로 옮깁니다. 업데이트 후 한 번만 실행하면 됩니다."
-                    className="px-4 py-2.5 rounded-xl text-sm font-bold transition"
-                    style={{ background: "#ffffff", color: "#0f766e", border: "1px solid #5eead4" }}
-                  >
-                    🛡️ 지정 직업 이관 (1회)
-                  </button>
                 </div>
+                <details className="px-6 pb-4">
+                  <summary
+                    className="cursor-pointer text-[11px] font-semibold select-none py-1"
+                    style={{ color: "#94a3b8" }}
+                  >
+                    되돌리기 · 일회성 도구
+                  </summary>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <button
+                      onClick={handleReverseSalary}
+                      disabled={isReversingSalary}
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: "#ffffff", color: "#dc2626", border: "1px solid #fca5a5" }}
+                    >
+                      {isReversingSalary ? "회수 중..." : "🔄 주급 1회분 회수"}
+                    </button>
+                    <button
+                      onClick={handleMigrateAppointedJobs}
+                      title="대통령 등 '선생님 지정' 직업을 교사 전용 필드로 옮깁니다. 업데이트 후 한 번만 실행하면 됩니다."
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold transition"
+                      style={{ background: "#ffffff", color: "#0f766e", border: "1px solid #5eead4" }}
+                    >
+                      🛡️ 지정 직업 이관 (1회)
+                    </button>
+                  </div>
+                </details>
               </div>
 
               {/* 학생 목록 카드 */}
@@ -2977,16 +3040,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "financial" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
               <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
                 <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
@@ -3206,16 +3259,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "market" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
               <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
                 <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
@@ -3263,16 +3306,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "financeAndMarket" &&
           financeMarketSubTab === "parking" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
               <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
                 <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
@@ -3351,17 +3384,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "member" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
-
               {/* 헤더 + 통계 */}
               <div
                 className="rounded-2xl border shadow-sm overflow-hidden"
@@ -3504,17 +3526,6 @@ const AdminSettingsModal = ({
         {adminSelectedMenu === "studentAndMember" &&
           studentMemberSubTab === "salary" && (
             <div className="space-y-5">
-              {!isSuperAdmin && userClassCode && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                  style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-                >
-                  <span className="text-base">🏫</span>
-                  <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
-                </div>
-              )}
-
               {/* 설정 입력 카드 */}
               <div
                 className="rounded-2xl border shadow-sm overflow-hidden"
@@ -3725,7 +3736,7 @@ const AdminSettingsModal = ({
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${systemSubTab === "database" ? "bg-indigo-50 text-indigo-700 border border-indigo-300" : "text-slate-600 border border-transparent hover:text-indigo-600 hover:bg-indigo-50/60"}`}
               onClick={() => setSystemSubTab("database")}
             >
-              데이터베이스
+              학급 데이터
             </button>
             {isSuperAdmin && (
               <button
@@ -3738,21 +3749,32 @@ const AdminSettingsModal = ({
           </div>
         )}
 
-        {/* 데이터베이스 서브탭 */}
+        {/* 학급 데이터 서브탭 */}
         {adminSelectedMenu === "system" && systemSubTab === "database" && (
           <div className="space-y-5">
-            {!isSuperAdmin && userClassCode && (
-              <div
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border"
-                style={{ background: "#eef2ff", borderColor: "#c7d2fe" }}
-              >
-                <span className="text-base">🏫</span>
-                <span className="text-sm font-medium" style={{ color: "#334155" }}>현재 관리 학급:</span>
-                <span className="text-sm font-bold tracking-wide" style={{ color: "#4338ca" }}>{userClassCode}</span>
+            {/* 여기에 <AdminDatabase /> 를 그대로 한 번 더 심어 두고 있었다 —
+                사이드바 '관리 > 데이터베이스'(/admin/activity-log)가 **똑같은 컴포넌트**를
+                띄운다. 같은 화면으로 가는 길이 둘이면 어느 쪽이 최신인지 헷갈리고,
+                이 탭을 열 때마다 활동로그 쿼리가 한 번 더 돌았다. 게다가 500px~70vh 짜리
+                뷰어가 자리를 차지해 정작 이 탭의 본론(개인정보 문서·학급 데이터 삭제)이
+                스크롤 밖으로 밀려 있었다. 링크 한 줄로 바꾼다. */}
+            <div className="rounded-2xl border shadow-sm px-6 py-5 flex flex-wrap items-center justify-between gap-3" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#dbeafe", color: "#1e40af" }}>🗂️</span>
+                  활동 기록 조회
+                </h3>
+                <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
+                  학생별·유형별 활동 내역은 사이드바 <strong>관리 &gt; 데이터베이스</strong> 에서 봅니다.
+                </p>
               </div>
-            )}
-            <div className="rounded-2xl border shadow-sm overflow-hidden min-h-[500px] max-h-[70vh] overflow-auto" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
-              <AdminDatabase />
+              <Link
+                to="/admin/activity-log"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+                style={{ background: "#4f46e5", color: "#ffffff" }}
+              >
+                🗂️ 데이터베이스 열기
+              </Link>
             </div>
 
             {/* 개인정보 관련 문서 */}

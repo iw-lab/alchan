@@ -1,6 +1,5 @@
 // src/CouponTransfer.js - 로컬 상태 업데이트로 Firestore 사용량 최적화
 
-import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
@@ -398,18 +397,10 @@ function CouponTransfer() {
         </button>
       </form>
 
-      <div className="recent-users">
-        <h4>학급 사용자 목록</h4>
-        <div className="users-grid">
-          {users.map(user => (
-            <div key={user.id} className="user-card">
-              <div className="user-name">{user.name}</div>
-              <div className="user-coupons">쿠폰: {user.coupons?.toLocaleString() || 0}개</div>
-              <div className="user-cash">현금: {user.cash?.toLocaleString() || 0}{getCurrencyUnit()}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* '학급 사용자 목록'을 여기서 한 번 더 그리고 있었다 — 바로 위 '대상 선택'이
+          같은 학생을 같은 순서로 쿠폰 수까지 붙여 이미 보여준다. 21명 학급에서 화면이
+          두 배로 길어지기만 했다(돈 보내기 페이지엔 원래 없다). 현금은 쿠폰 페이지에서
+          쓰지 않는 정보라 함께 정리한다. */}
     </div>
   );
 }
