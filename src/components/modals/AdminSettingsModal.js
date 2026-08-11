@@ -50,6 +50,10 @@ import {
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { paySalariesAskingIfDuplicate } from "../../utils/salaryDuplicateConfirm";
+import {
+  CLIENT_SALARY,
+  computeClientEffectiveBase,
+} from "../../utils/salaryCalculator";
 import { randomId } from "../../utils/randomId";
 import { promptDialog } from "../../utils/promptDialog";
 
@@ -792,7 +796,7 @@ const AdminSettingsModal = ({
     [salarySettings.maxJobsPerStudent],
   );
   const effectiveBaseSalary = useMemo(
-    () => Math.round(2000000 * (salarySettings.salaryBaseMultiplier || 1)),
+    () => computeClientEffectiveBase(salarySettings.salaryBaseMultiplier),
     [salarySettings.salaryBaseMultiplier],
   );
 
@@ -814,13 +818,14 @@ const AdminSettingsModal = ({
 
       // ⚠️ 표시(미리보기) 전용 — 실제 지급 금액은 서버가 결정한다(functions/salaryUtils.js
       //   computeSalaryAmounts = 단일 진실원). 클라는 별도 빌드라 그 모듈을 import할 수 없어
-      //   상수를 복제하나, 값을 바꿀 땐 반드시 functions/salaryUtils.js도 함께 갱신할 것(역도 동일).
+      //   상수를 복제하나, 그 복제본은 이제 src/utils/salaryCalculator.js 한 곳에만 있고
+      //   서버 값과 어긋나면 salaryConstantsSync.test.js 가 실패한다(2026-08-11 M4).
       //   기본급은 서버의 주간 복리 인상(salaryBaseMultiplier)이 반영된 '실효 기본급'.
-      const baseSalary = Math.round(
-        2000000 * (salarySettings.salaryBaseMultiplier || 1),
+      const baseSalary = computeClientEffectiveBase(
+        salarySettings.salaryBaseMultiplier,
       );
-      const additionalSalary = 500000;
-      const PRESIDENT_BONUS = 2000000;
+      const additionalSalary = CLIENT_SALARY.ADDITIONAL;
+      const PRESIDENT_BONUS = CLIENT_SALARY.PRESIDENT_BONUS;
 
       // 서버 resolveStudentJobs(functions/jobUtils.js)와 동일 규약:
       //   · 유령 id 제외 + 중복 제거
@@ -3629,14 +3634,16 @@ const AdminSettingsModal = ({
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
                   <div className="px-4 py-4 text-center">
                     <p className="text-[11px] text-slate-500 mb-1">현재 기본급</p>
+                    {/* 바로 아래 '계산 예시'와 **같은 값**을 써야 한다. 2026-07-27에 두 칸이
+                        다른 숫자를 보이는 사고가 있었는데, 그때 수정은 예시 쪽만 하고 이 칸은
+                        인라인 공식으로 남아 있었다(2026-08-11 M4에서 발견). 둘 다 effectiveBaseSalary. */}
                     <p className="text-lg font-bold text-indigo-600 tabular-nums">
-                      {Math.round(
-                        2000000 * (salarySettings.salaryBaseMultiplier || 1),
-                      ).toLocaleString()}
+                      {effectiveBaseSalary.toLocaleString()}
                       <span className="text-sm text-slate-500 ml-0.5">원</span>
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      기준 200만 × {(salarySettings.salaryBaseMultiplier || 1).toFixed(3)}배
+                      기준 {(CLIENT_SALARY.BASE / 10000).toLocaleString()}만 ×{" "}
+                      {(salarySettings.salaryBaseMultiplier || 1).toFixed(3)}배
                     </p>
                   </div>
                   <div className="px-4 py-4 text-center">
@@ -3675,7 +3682,8 @@ const AdminSettingsModal = ({
                       기본급도 하드코딩 200만이 아니라 주간 인상 반영된 실효 기본급을 쓴다
                       (바로 위 '현재 기본급' 칸과 어긋나던 문제, 2026-07-27). */}
                   {[1, 2, 3].filter((n) => n <= effectiveMaxJobs).map((n) => {
-                    const gross = effectiveBaseSalary + (n - 1) * 500000;
+                    const gross =
+                      effectiveBaseSalary + (n - 1) * CLIENT_SALARY.ADDITIONAL;
                     const tax = gross * salarySettings.taxRate;
                     const net = gross - tax;
                     return (

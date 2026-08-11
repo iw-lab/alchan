@@ -36,6 +36,8 @@ const {
   wasPaidInWeek,
   isPayableTarget,
 } = require("./salaryUtils");
+// 금액·가격 가드 단일 진실원(순수) — 같은 구멍에 두 번 뚫려서 모듈로 뽑았다.
+const { isValidStockPrice, isSafeAmount, MAX_MONEY } = require("./moneyGuards");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -4854,13 +4856,27 @@ exports.buyStock = onCall({ region: "asia-northeast3" }, async (request) => {
         throw new Error("상장되지 않은 주식입니다.");
       }
 
-      const stockPrice = stockData.price || 0;
+      // 🔒 가격을 신뢰하지 않는다. 입력 검증(addStockDocFunction)과 **별개로** 여기서도 막는다 —
+      //    CentralStocks 는 전역 컬렉션이고 쓰기 경로가 여럿이라 소비지점이 마지막 방어선이다.
+      //    가드는 functions/moneyGuards.js 단일 진실원(1 이상 100억 이하의 정수).
+      const stockPrice = stockData.price;
+      if (!isValidStockPrice(stockPrice)) {
+        throw new Error(
+          "이 종목의 가격 정보가 올바르지 않아 거래할 수 없습니다. 관리자에게 문의하세요.",
+        );
+      }
       const cost = stockPrice * quantity;
       const commission = Math.round(cost * COMMISSION_RATE);
       const transactionTax = Math.floor(
         cost * TRANSACTION_TAX_RATE * stockTaxMult,
       );
       const totalCost = cost + commission + transactionTax;
+
+      // 🔒 파생 금액도 확인한다. 가격이 상한 안이어도 수량·세율 배수와 곱해지면
+      //    범위를 벗어날 수 있고, 그대로 increment() 에 들어가면 장부가 깨진다.
+      if (!isSafeAmount(totalCost) || totalCost <= 0) {
+        throw new Error("거래 금액이 처리 가능한 범위를 벗어났습니다.");
+      }
 
       const currentCash = userData.cash || 0;
       if (currentCash < totalCost) {
@@ -4994,17 +5010,17 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
   const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
   const { holdingId, quantity, idempotencyKey } = request.data;
 
-  // 🧪 테스트 계정(alchan21) 매도 제한 우회용 플래그
-  // — userData 어딘가에 'alchan21' 들어있으면 우회 (광범위 매칭으로 학생 doc 필드 변형 대응)
-  const isTestAccount = (() => {
-    try {
-      return JSON.stringify(userData || {})
-        .toLowerCase()
-        .includes("alchan21");
-    } catch {
-      return false;
-    }
-  })();
+  // 🧪 테스트 계정: 매수 후 1시간 매도 잠금 우회.
+  //
+  // 종전엔 `JSON.stringify(userData).includes("alchan21")` 였다 — **문서 아무 필드에나**
+  // 그 문자열이 있으면 통과했다. users update 규칙은 블록리스트 방식이라 학생이 임의의
+  // 새 필드를 자기 문서에 추가할 수 있고(닉네임 20자 제한도 우회 가능한 경로가 남는다),
+  // 그러면 매도 잠금을 스스로 풀어 데이 트레이딩을 할 수 있었다.
+  // (Claude·codex 두 계열이 독립적으로 지적 — 2026-08-11.)
+  //
+  // 이제 학생이 못 쓰는 필드 하나만 본다. `isTestAccount` 는 firestore.rules 의
+  // 본인수정 블록리스트에 올라가 있어 **관리자/슈퍼관리자만** 설정할 수 있다.
+  const isTestAccount = userData?.isTestAccount === true;
   logger.info(`[sellStock] uid=${uid} isTestAccount=${isTestAccount}`);
 
   if (!holdingId || !quantity || quantity <= 0) {
@@ -5112,7 +5128,15 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
         throw new Error("상장되지 않은 주식은 매도할 수 없습니다.");
       }
 
-      const stockPrice = stockData.price || 0;
+      // 🔒 매수와 같은 가드. 매도는 민팅이 아니라 반대로 학생 현금을 깎지만
+      //    (netRevenue 음수 → increment(음수)) 역시 틀린 결과다.
+      //    그리고 가격이 거대하면 sellPrice 가 Infinity 가 되어 increment(Infinity) 로 들어간다.
+      const stockPrice = stockData.price;
+      if (!isValidStockPrice(stockPrice)) {
+        throw new Error(
+          "이 종목의 가격 정보가 올바르지 않아 거래할 수 없습니다. 관리자에게 문의하세요.",
+        );
+      }
       const sellPrice = stockPrice * quantity;
       const commission = Math.round(sellPrice * COMMISSION_RATE);
 
@@ -5134,6 +5158,11 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
       );
       const totalTax = profitTax + transactionTax;
       const netRevenue = sellPrice - commission - totalTax;
+
+      // 🔒 파생 금액 확인 — 매수와 같은 이유
+      if (!isSafeAmount(netRevenue) || !isSafeAmount(totalTax)) {
+        throw new Error("거래 금액이 처리 가능한 범위를 벗어났습니다.");
+      }
 
       // 🔥 이제 모든 쓰기 작업 수행
 
@@ -9025,9 +9054,23 @@ exports.processSettlement = onCall(
         );
       }
 
-      const settlementAmount = parseInt(amount, 10);
-      if (isNaN(settlementAmount) || settlementAmount <= 0) {
-        throw new HttpsError("invalid-argument", "합의금은 0보다 커야 합니다.");
+      // 🔒 상한. **경찰청장은 학생 직업이다.** 상한이 없으면 그 학생이 합의금 10억을 지정해
+      //    상대 학생 현금을 깊은 음수로 보낼 수 있었다. 같은 앱의 법원 합의(processCourtSettlement)
+      //    는 이미 `Number.isInteger(amount) && 0 < amount <= 100억` 을 강제한다 — 같은 기준으로 맞춘다.
+      //   ⚠️ `parseInt` **후에** Number.isInteger 를 걸면 검증이 무의미하다 —
+      //   parseInt("100.9")·parseInt("100원") 이 전부 100 이라 항상 통과한다(2차 검증 MEDIUM).
+      //   원본 입력이 정수인지를 본 뒤에 쓴다.
+      const settlementAmount =
+        typeof amount === "number" ? amount : Number(amount);
+      if (
+        !Number.isInteger(settlementAmount) ||
+        settlementAmount <= 0 ||
+        settlementAmount > MAX_MONEY
+      ) {
+        throw new HttpsError(
+          "invalid-argument",
+          "합의금은 1 이상 100억 이하의 정수여야 합니다.",
+        );
       }
 
       const reportRef = db
@@ -9126,6 +9169,22 @@ exports.processSettlement = onCall(
           throw new HttpsError(
             "failed-precondition",
             "합의 당사자가 이 학급 소속이 아닙니다.",
+          );
+        }
+
+        // 🔒 송금자 잔액 검사. 법원 합의(processCourtSettlement)는 이미 하고 있는데
+        //    여기만 빠져 있어 가해자 현금이 음수로 내려갔다.
+        if (
+          typeof senderData.cash !== "number" ||
+          !Number.isFinite(senderData.cash)
+        ) {
+          throw new Error("가해자의 잔액 정보가 올바르지 않습니다.");
+        }
+        if (senderData.cash < settlementAmount) {
+          throw new HttpsError(
+            "failed-precondition",
+            `${senderData.name || "가해자"}님의 현금이 부족합니다. ` +
+              `(보유: ${senderData.cash.toLocaleString()}원, 합의금: ${settlementAmount.toLocaleString()}원)`,
           );
         }
 

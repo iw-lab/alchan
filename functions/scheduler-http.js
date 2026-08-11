@@ -30,6 +30,15 @@ const {
 const { payMonthlyDividends } = require("./dividendService");
 const { buildJobMap, resolveStudentJobs, hasJobTitle } = require("./jobUtils");
 const { normalizeWeeklyTaxSettings, computeWeeklyTax } = require("./taxMath");
+// 주기 작업 락 — 판정은 periodLock.js(순수), Firestore 바인딩은 periodLockStore.js(공유 모듈).
+// 공유 모듈로 둔 이유: 진입점이 여러 파일에 흩어져 있어 지역 함수로 두면 반드시 하나를 빠뜨린다.
+const {
+  claimPeriodLock,
+  completePeriodLock,
+  releasePeriodLock,
+} = require("./periodLockStore");
+// 금액·가격 가드 단일 진실원(순수) — 같은 구멍에 두 번 뚫려서 모듈로 뽑았다.
+const { MAX_STOCK_PRICE, isValidStockPrice } = require("./moneyGuards");
 // 급여 계산 단일 진실원(index.js batchPaySalaries와 공유).
 const {
   computeSalaryAmounts,
@@ -408,6 +417,9 @@ exports.stockPriceSchedulerV2 = onSchedule(
       logger.info("[stockPriceSchedulerV2] 작업 완료:", results);
     } catch (error) {
       logger.error("[stockPriceSchedulerV2] 전체 오류:", error);
+      // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
+      //    이라 자동 재시도는 붙지 않는다. 삼키면 실패가 성공으로 보고돼 아무도 모른다.
+      throw error;
     }
   },
 );
@@ -431,28 +443,36 @@ exports.midnightReset = onRequest(
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
       const todayStr = kstNow.toISOString().split("T")[0];
-      const lastResetDoc = await db.collection("systemState").doc("lastMidnightReset").get();
-      if (lastResetDoc.exists && lastResetDoc.data().date === todayStr) {
+      // 🔒 hourlySchedulerV2 자정 분기와 **같은 락 문서**를 원자적으로 점유한다.
+      //    두 경로가 동시에 들어와도 하나만 통과한다(적금은 실제 현금 이체다).
+      const resetLockRef = db.collection("systemState").doc("lastMidnightReset");
+      const claimed = await claimPeriodLock(resetLockRef, todayStr, {
+        label: "midnightReset",
+      });
+      if (!claimed) {
         res.json({ success: true, message: "이미 오늘 리셋 완료됨", skipped: true, date: todayStr });
         return;
       }
 
       logger.info(`[midnightReset] 일일 과제 리셋 + 적금 자동 납입 시작 (${todayStr})`);
 
-      await resetDailyTasksLogic();
-
-      // 🔥 적금 매일 자동 납입 처리
       let savingsResult = { processed: 0, skipped: 0, failed: 0 };
       try {
+        await resetDailyTasksLogic();
+
+        // 🔥 적금 매일 자동 납입 처리
+        //   삼키지 않는다 — 삼키면 아래 완료 표시가 그날을 닫아 버려 납입이 사라진다(C9).
+        //   상품 단위 마커(lastDepositDate)가 재실행을 안전하게 해 준다.
         savingsResult = await processDailySavingsDeposits();
         logger.info(`[midnightReset] 적금 자동 납입 완료:`, savingsResult);
-      } catch (savingsError) {
-        logger.error("[midnightReset] 적금 자동 납입 오류:", savingsError);
-        savingsResult.error = savingsError.message;
+      } catch (resetError) {
+        // 실패했으면 락을 풀어 다음 실행이 재시도할 수 있게 한다(안 풀면 그날은 영영 못 돈다).
+        await releasePeriodLock(resetLockRef, todayStr, resetError);
+        throw resetError;
       }
 
-      // 🔥 리셋 완료 기록 (중복 방지용)
-      await db.collection("systemState").doc("lastMidnightReset").set({
+      // 🔥 완료 표시는 성공 뒤에
+      await completePeriodLock(resetLockRef, todayStr, {
         date: todayStr,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -742,7 +762,22 @@ exports.backfillDrawItems = onRequest(
             samples.push({ uid, itemId, docIds: docs.map((x) => x.id), totalQty });
 
           if (!dryRun) {
-            const batch = db.batch();
+            // 🔒 배치를 **분할 커밋**한다(2026-08-11 2차 검증 C7).
+        //   종전엔 학급 전체를 batch 하나에 담아 한 번에 커밋했다. 지급 학생당 3쓰기 +
+        //   관리자·설정 2쓰기라 **167명부터 Firestore 500 한도를 넘어 그 학급 전체가 실패**한다
+        //   (지금은 최대 학급이 그보다 훨씬 작지만, 학급이 커지면 조용히 절벽을 만난다).
+        //   분할이 안전한 이유는 바로 아래 학생 단위 마커(lastSalaryWeekKey) 덕분이다 —
+        //   중간까지 커밋된 뒤 죽어도 재실행이 이미 받은 학생을 건너뛴다.
+        let batch = db.batch();
+        let batchOps = 0;
+        const BATCH_SOFT_LIMIT = 450; // 500 한도의 90%
+        const flushIfNeeded = async (extraOps) => {
+          if (batchOps + extraOps > BATCH_SOFT_LIMIT) {
+            await batch.commit();
+            batch = db.batch();
+            batchOps = 0;
+          }
+        };
             const canonRef = userDoc.ref.collection("inventory").doc(itemId);
             batch.set(
               canonRef,
@@ -811,22 +846,32 @@ exports.weeklyRent = onRequest(
 
       logger.info(`[weeklyRent] 월세 징수 시작`);
 
-      // 🔥 주간 중복 실행 방지 (widened schedule window 대응)
+      // 🔒 weeklyEconomySchedulerV2 와 **같은 락 문서**를 원자적으로 점유한다.
+      //   종전엔 `.get()` 후 징수하고 **끝에** 락을 걸어서, 실행 중에는 점유가 아예 없었다 —
+      //   자동(cron)과 수동(이 엔드포인트)이 겹치거나 수동이 두 번 호출되면 **이중 징수**됐다.
+      //   이 엔드포인트는 죽은 코드가 아니다: index.js:49 가 export 하고
+      //   .github/workflows/scheduler.yml 의 workflow_dispatch 가 지금도 호출한다.
       const forceRun = req.query.force === "true";
       const now = new Date();
-      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
       const weekKey = computeWeekKey(now);
       const lockRef = db.collection("systemState").doc("lastWeeklyRent");
-      const lockDoc = await lockRef.get();
-      if (!forceRun && lockDoc.exists && lockDoc.data().weekKey === weekKey) {
+      const claimed = await claimPeriodLock(lockRef, weekKey, {
+        forceRun,
+        label: "weeklyRent(수동)",
+      });
+      if (!claimed) {
         res.json({ success: true, message: "이번 주 이미 월세 징수 완료", skipped: true, weekKey });
         return;
       }
 
-      await collectWeeklyRentLogic();
+      try {
+        await collectWeeklyRentLogic();
+      } catch (jobError) {
+        await releasePeriodLock(lockRef, weekKey, jobError);
+        throw jobError;
+      }
 
-      await lockRef.set({
-        weekKey,
+      await completePeriodLock(lockRef, weekKey, {
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -865,22 +910,30 @@ exports.weeklyPropertyTax = onRequest(
         return;
       }
 
-      // 🔥 주간 중복 실행 방지
+      // 🔒 weeklyRent 와 같은 이유로 원자적 점유. (자동 cron 과 락 문서를 공유한다.)
+      const forceRun = req.query.force === "true";
       const now = new Date();
-      const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
       const weekKey = computeWeekKey(now);
-      const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
-      if (lastTaxDoc.exists && lastTaxDoc.data().weekKey === weekKey) {
+      const lockRef = db.collection("systemState").doc("lastPropertyTax");
+      const claimed = await claimPeriodLock(lockRef, weekKey, {
+        forceRun,
+        label: "weeklyPropertyTax(수동)",
+      });
+      if (!claimed) {
         res.json({ success: true, message: "이번 주 이미 보유세 징수 완료", skipped: true, weekKey });
         return;
       }
 
       logger.info(`[weeklyPropertyTax] 재산세 자동 징수 시작 (${weekKey})`);
 
-      await collectPropertyHoldingTaxesLogic();
+      try {
+        await collectPropertyHoldingTaxesLogic();
+      } catch (jobError) {
+        await releasePeriodLock(lockRef, weekKey, jobError);
+        throw jobError;
+      }
 
-      await db.collection("systemState").doc("lastPropertyTax").set({
-        weekKey,
+      await completePeriodLock(lockRef, weekKey, {
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -931,15 +984,21 @@ exports.reverseLastWeeklySalary = onRequest(
         return;
       }
 
-      // 중복 실행 방지
+      // 🔒 중복 실행 방지 — 다른 주기작업과 같은 락 규약. 종전엔 `.get()` 으로 보고
+      //   회수를 다 한 **뒤에** 락을 걸어서, 두 번 호출되면 **두 번 회수**됐다(돈을 두 번 뺏는다).
+      //   dryRun 은 아무것도 안 바꾸므로 점유하지 않는다.
       const reversalLockRef = db.collection("schedulerLocks").doc(`lastSalaryReversal_${weekKey}`);
+      let reversalClaimed = false;
       if (!dryRun) {
-        const existing = await reversalLockRef.get();
-        if (existing.exists) {
+        reversalClaimed = await claimPeriodLock(reversalLockRef, weekKey, {
+          label: `주급 회수 ${weekKey}`,
+        });
+        if (!reversalClaimed) {
+          const existing = await reversalLockRef.get();
           res.status(409).json({
             success: false,
-            error: `이미 ${weekKey} 주급 회수가 실행되었습니다`,
-            executedAt: existing.data().timestamp,
+            error: `이미 ${weekKey} 주급 회수가 실행되었거나 진행 중입니다`,
+            executedAt: existing.exists ? existing.data().timestamp : null,
           });
           return;
         }
@@ -1057,8 +1116,9 @@ exports.reverseLastWeeklySalary = onRequest(
       }
 
       if (!dryRun) {
-        await reversalLockRef.set({
-          weekKey,
+        // 완료 표시는 회수가 **끝난 뒤**. 중간에 죽으면 in-progress 로 남고,
+        // 20분 stale 회수 후에만 재시도가 열린다(그 사이 두 번 회수되는 창이 없다).
+        await completePeriodLock(reversalLockRef, weekKey, {
           totalReversedCount,
           totalReversedAmount,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
@@ -1083,9 +1143,17 @@ exports.reverseLastWeeklySalary = onRequest(
       });
     } catch (error) {
       logger.error("[reverseSalary] 오류:", error, error?.stack);
+      // ⚠️ 여기서는 락을 **일부러 풀지 않는다.** 회수는 학생 현금을 되가져오는 작업이라
+      //    부분 실패 후 자동 재시도하면 이미 회수된 학생에게서 **두 번** 빼앗는다
+      //    (학생 단위 멱등 마커가 없다). 사람이 로그를 보고 판단해야 한다.
       res.status(500).json({
         success: false,
         error: error?.message || String(error),
+        lockHeld: true,
+        note:
+          "회수가 중간에 실패했습니다. 락은 잡힌 채로 둡니다 — 자동 재시도가 이미 회수된 " +
+          "학생에게서 두 번 빼앗는 것을 막기 위해서입니다. 로그로 어디까지 처리됐는지 " +
+          "확인한 뒤 수동으로 결정하세요.",
         stack: error?.stack,
       });
     }
@@ -1520,6 +1588,38 @@ exports.addStockDocFunction = onCall(
       );
     }
 
+    // 🔒 진위(truthy) 검사만으로는 음수를 못 막는다. price: -100 은 truthy 라 통과했고,
+    //    buyStock 의 cost = price × quantity 가 음수가 되어 잔액 검사를 우회하고
+    //    increment(-totalCost) 가 현금을 **발행**했다(2026-08-11 교차검증). CentralStocks 는
+    //    학급 구분이 없는 전역 컬렉션이라 교사 한 명의 오타가 전 학급에 열린다.
+    //
+    //    ⚠️ "유한한 양수"만으로도 부족하다(2차 교차검증에서 codex 가 뚫었다):
+    //      · Number.MIN_VALUE(5e-324)는 유한 양수라 통과 → cost 가 0 으로 반올림돼 **공짜 매수**.
+    //        게다가 실물가 갱신이 최소 100원으로 올려 주므로 되팔면 무담보 차익이 된다.
+    //      · Number.MAX_VALUE 는 유한하지만 × 수량 하면 **Infinity** → increment(Infinity).
+    //    그래서 **1 이상 100억 이하의 정수**로 좁힌다(다른 금액 검증과 같은 상한).
+    for (const [key, label] of [
+      ["price", "현재가"],
+      ["minListingPrice", "최소 상장가"],
+    ]) {
+      const v = stock[key];
+      if (!isValidStockPrice(v)) {
+        throw new HttpsError(
+          "invalid-argument",
+          `${label}는 1 이상 ${MAX_STOCK_PRICE.toLocaleString()} 이하의 정수여야 합니다. (받은 값: ${v})`,
+        );
+      }
+    }
+    if (stock.volatility !== undefined) {
+      const vol = stock.volatility;
+      if (typeof vol !== "number" || !Number.isFinite(vol) || vol < 0 || vol > 1) {
+        throw new HttpsError(
+          "invalid-argument",
+          `변동성은 0~1 사이의 숫자여야 합니다. (받은 값: ${vol})`,
+        );
+      }
+    }
+
     try {
       const stockRef = db.collection("CentralStocks").doc();
       const stockData = {
@@ -1818,6 +1918,12 @@ exports.deleteSimulationStocksFunction = onCall(
 async function processDailySavingsDeposits() {
   logger.info("[적금] 매일 자동 납입 처리 시작");
   let processed = 0, skipped = 0, failed = 0;
+  // 🔒 상품 단위 일일 멱등 마커. 이 함수는 호출 경로가 둘(hourlySchedulerV2 자정 분기 ·
+  //    midnightReset public HTTP)인데 어느 쪽도 원자적 락이 아니었다. 바깥 락을 원자화해도
+  //    "하루 두 번 호출되면 두 번 빠진다"는 성질 자체를 없애는 게 확실하다.
+  const kstToday = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
 
   // 모든 사용자의 적금 상품 조회 (collectionGroup)
   const savingsQuery = await db.collectionGroup("products")
@@ -1855,9 +1961,34 @@ async function processDailySavingsDeposits() {
       const teacherRef = db.collection("users").doc(teacherId);
 
       await db.runTransaction(async (transaction) => {
-        const userSnap = await transaction.get(userRef);
+        const [userSnap, productSnap] = await transaction.getAll(
+          userRef,
+          productRef,
+        );
         if (!userSnap.exists) {
           throw new Error("사용자 없음");
+        }
+
+        // 🔒 오늘 이미 납입했으면 건너뛴다. 마커를 같은 트랜잭션에서 읽고 쓰므로
+        //    동시 실행 두 개가 들어와도 하나만 통과한다.
+        //
+        //    ⚠️ 상한·마커를 **트랜잭션 안에서 다시** 본다(2026-08-11 2차 검증 C10).
+        //    바깥 collectionGroup 스냅샷은 stale 이고, 같은 상품을 건드리는 경로가 하나 더 있다
+        //    (`autoSavingsDeposit` CF — 회차 따라잡기 모델이라 이 마커를 쓰지 않는다).
+        //    학생이 자정 즈음 수동 납입을 먼저 커밋하면 바깥 스냅샷은 그걸 못 보고,
+        //    여기서 재확인하지 않으면 같은 날 한 번 더 빠진다.
+        const fresh = productSnap.exists ? productSnap.data() : null;
+        if (!fresh) {
+          skipped++;
+          return;
+        }
+        if (fresh.lastDepositDate === kstToday) {
+          skipped++;
+          return;
+        }
+        if ((fresh.depositsCount || 0) >= fresh.termInDays) {
+          skipped++;
+          return;
         }
 
         const userCash = userSnap.data().cash || 0;
@@ -1882,6 +2013,7 @@ async function processDailySavingsDeposits() {
           totalDeposited: admin.firestore.FieldValue.increment(dailyAmount),
           depositsCount: admin.firestore.FieldValue.increment(1),
           balance: admin.firestore.FieldValue.increment(dailyAmount),
+          lastDepositDate: kstToday,
         });
 
         processed++;
@@ -1990,6 +2122,9 @@ async function resetDailyTasksLogic() {
 
 async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) {
   logger.info(">>> [스케줄러] 주급 지급 시작");
+  const salaryLockRef = db.collection("schedulerLocks").doc("weeklySalary");
+  let lockClaimed = false;
+  let weekKeyForLock = null;
   try {
     // 오늘 이미 지급했는지 확인 (중복 방지)
     const now = new Date();
@@ -2003,25 +2138,34 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     // 백필 모드 = 과거(또는 임의) 주차를 수동 지정해 재지급하는 경우.
     //   이 모드에선 기본급 복리 인상 원장(salaryBaseMultiplier/salaryLastRaiseWeekKey)을 갱신하지 않는다.
     const isSalaryBackfill = !!weekKeyOverride;
+    weekKeyForLock = weekKey;
     if (weekKeyOverride) {
       logger.info(
         `[주급 지급] weekKey 오버라이드 사용: ${weekKey} (계산값: ${computedWeekKey}) ` +
         `— 백필 모드: 기본급 인상 배수는 갱신하지 않음(현재 기본급으로 지급)`,
       );
     }
-    const salaryLockDoc = await db.collection("schedulerLocks").doc("weeklySalary").get();
-    if (!forceRun && salaryLockDoc.exists && salaryLockDoc.data().weekKey === weekKey) {
-      logger.info(`[주급 지급] 이번 주(${weekKey}) 이미 지급 완료 - 건너뜀`);
+    // 🔒 점유를 트랜잭션으로. 동시 실행 중 하나만 통과한다(중복지급 차단).
+    const claimed = await claimPeriodLock(salaryLockRef, weekKey, {
+      forceRun,
+      label: "주급 지급",
+    });
+    if (!claimed) {
+      logger.info(`[주급 지급] 이번 주(${weekKey}) 이미 지급 완료 또는 진행 중 - 건너뜀`);
       return { skipped: true, weekKey };
     }
-
-    // 지급 시작 - 락 설정
-    await db.collection("schedulerLocks").doc("weeklySalary").set({ weekKey, lastPayDate: todayStr, startedAt: admin.firestore.FieldValue.serverTimestamp() });
+    lockClaimed = true;
+    // lastPayDate 는 완료 시점에만 기록한다(completePeriodLock). 아무도 읽지 않는 기록용 필드라
+    // 시작 시점에 미리 박아 둘 이유가 없고, 실패한 실행이 "지급한 날"을 남기는 게 더 나쁘다.
 
     const classCodes = await getAllActiveClassCodes();
     logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);
     if (classCodes.length === 0) {
       logger.warn("[주급 지급] 활성 학급 없음");
+      // 지급한 게 없으니 완료로 표시하지 않는다. 조회가 일시적으로 빈 결과를 준 것일 수도 있고,
+      // 완료로 박아버리면 그 주는 영영 못 준다. 락만 풀고 다음 실행에 맡긴다(재시도 비용 ≈ 0).
+      await releasePeriodLock(salaryLockRef, weekKey, new Error("no-active-classes"));
+      lockClaimed = false;
       return { skipped: true, reason: "no-active-classes", weekKey };
     }
 
@@ -2041,6 +2185,19 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         let salarySettingsDoc = await perClassSalaryRef.get();
         // 누적 인상 배수·마지막 인상 주차는 '학급별 상태'라 전역 폴백과 섞으면 안 된다(학급별 문서에서만 읽음).
         const perClassSalaryData = salarySettingsDoc.exists ? salarySettingsDoc.data() : null;
+
+        // 🔒 학급 단위 멱등 가드. 전역 락이 stale 회수돼 재실행되더라도 이미 지급한 학급은
+        //    건너뛴다(마커는 지급 배치와 **같은 커밋**에 쓰이므로 지급 없이 마커만 남을 수 없다).
+        //    forceRun/백필은 "알고 다시 준다"는 의도적 재지급이라 통과시킨다.
+        if (
+          !forceRun &&
+          !isSalaryBackfill &&
+          perClassSalaryData?.salaryLastPaidWeekKey === weekKey
+        ) {
+          logger.info(`[주급 지급] ${classCode}: 이번 주(${weekKey}) 이미 지급됨 - 건너뜀`);
+          continue;
+        }
+
         if (!salarySettingsDoc.exists) {
           salarySettingsDoc = await db.collection("settings").doc("salarySettings").get();
         }
@@ -2093,6 +2250,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         const batch = db.batch();
         let classTotalNet = 0;
         let classPaidCount = 0;
+        // 재시도로 들어와 "이미 이번 주 받은" 학생 수. 이게 있으면 지급은 0이어도
+        // 학급 마감(인상 원장·지급 주차 마커)은 해야 한다 — 아래 continue 조건 참고.
+        let alreadyPaidCount = 0;
 
         // 거래내역 로그 TTL: 90일 후 만료 (재산세 로그와 동일 정책)
         const logExpireAt = new Date();
@@ -2101,6 +2261,18 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
         for (const studentDoc of students) {
           const student = studentDoc.data();
+
+          // 🔒 학생 단위 멱등 마커. 지급 batch 와 **같은 쓰기**에 실리므로(필드 하나 추가라
+          //    쓰기 수 증가 0) "지급했는데 마커가 없다"가 불가능하다. 이게 있어야 위의
+          //    분할 커밋이 안전하다 — 중간까지 커밋된 뒤 죽어도 재실행이 여기서 걸러진다.
+          if (
+            !forceRun &&
+            !isSalaryBackfill &&
+            student.lastSalaryWeekKey === weekKey
+          ) {
+            alreadyPaidCount++;
+            continue;
+          }
           // 🔒 저장값을 신뢰하지 않고 재검증: 유령 id 제외 + 중복 제거 + 상한 적용 +
           //    지정 전용 직업은 appointedJobIds(교사 write 전용)에서만 인정.
           //    타입 오염(배열 아님)도 여기서 정규화. 상세 규약은 functions/jobUtils.js.
@@ -2113,6 +2285,8 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
             // 이번 회차 미지급 — 이전 지급 기록이 남아있으면 reverseSalaryOnce가
             // (지급 안 한) 이번 회차를 잘못 회수하게 되므로 초기화
             if (student.lastNetSalary) {
+              await flushIfNeeded(1);
+              batchOps++;
               batch.update(studentDoc.ref, {
                 lastNetSalary: 0,
                 lastGrossSalary: 0,
@@ -2132,8 +2306,13 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
             effectiveBase, // 복리 인상이 반영된 실효 기본급
           );
 
+          // 이 학생이 쓸 3개(현금·활동로그·거래내역) 자리를 미리 확보한다
+          await flushIfNeeded(3);
+          batchOps += 3;
+
           batch.update(studentDoc.ref, {
             cash: admin.firestore.FieldValue.increment(netSalary),
+            lastSalaryWeekKey: weekKey, // 멱등 마커 — 쓰기 수 증가 0(같은 update 에 필드 하나)
             lastSalaryDate: admin.firestore.FieldValue.serverTimestamp(),
             lastGrossSalary: totalGross,
             lastTaxAmount: tax,
@@ -2179,7 +2358,14 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         // 지급 대상이 0명이면 여기서 빠지므로 기본급 인상(raisePatch)도 함께 스킵된다.
         //   의도된 설계: '인상은 지급과 결합' — 지급이 없던 주는 인상도 없고, 다음 실제 지급 주에
         //   정상적으로 1회만 인상된다(이중 인상 없음).
-        if (classPaidCount === 0) continue;
+        // 지급도 0이고 기지급도 0이면 이 학급은 애초에 대상이 없다 → 인상도 없다(기존 설계).
+        // 단 재시도로 전원이 이미 지급된 경우(alreadyPaidCount>0)는 **마감을 해야 한다** —
+        // 안 그러면 그 주 인상 원장과 학급 마커가 영영 안 써진다(분할 커밋 도입의 부작용).
+        if (classPaidCount === 0 && alreadyPaidCount === 0) continue;
+
+        // 관리자 차감 + 설정 갱신(2쓰기) 자리 확보
+        await flushIfNeeded(2);
+        batchOps += 2;
 
         // 관리자 잔액 차감 (부족해도 마이너스로 허용)
         if (adminDoc) {
@@ -2208,7 +2394,13 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
               };
         batch.set(
           salarySettingsRef,
-          { lastPaidDate: admin.firestore.FieldValue.serverTimestamp(), ...raisePatch },
+          {
+            lastPaidDate: admin.firestore.FieldValue.serverTimestamp(),
+            // 🔒 학급 단위 멱등 마커. 지급과 같은 batch 라 "지급했는데 마커가 없다"가 불가능하다.
+            //    백필은 과거 주차를 되짚는 것이라 '현재 주 지급 완료'로 오인되면 안 되므로 제외.
+            ...(isSalaryBackfill ? {} : { salaryLastPaidWeekKey: weekKey }),
+            ...raisePatch,
+          },
           { merge: true },
         );
 
@@ -2230,6 +2422,32 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     logger.info(
       `→ 주급 지급 완료: 총 ${totalPaidCount}명, ${totalAmount.toLocaleString()}원 (실패 학급: ${classErrors.length})`,
     );
+    // 🔒 완료 표시는 **여기서**. 이 줄에 닿기 전에 죽으면 락은 in-progress 로 남고
+    //    다음 실행이 회수해 재시도한다(학급 단위 멱등 가드가 중복지급을 막는다).
+    //
+    //    ⚠️ 한 학급이라도 실패했으면 '완료'로 박지 않는다. 종전 구조에선 학급 하나가 터져도
+    //    락이 그 주 키로 남아 **그 학급 학생들은 그 주 주급을 영영 못 받았다**(재시도 경로 없음).
+    //    이제 학급 단위 멱등 마커(salaryLastPaidWeekKey)가 있으니 재실행해도 성공한 학급은
+    //    건너뛴다 — 즉 재시도가 안전해졌고, 그래서 재시도할 수 있게 열어 두는 게 맞다.
+    if (classErrors.length > 0) {
+      logger.error(
+        `[주급 지급] ${classErrors.length}개 학급 실패 — 락을 'failed' 로 두어 재실행 시 그 학급만 재시도한다: ` +
+          JSON.stringify(classErrors),
+      );
+      await releasePeriodLock(
+        salaryLockRef,
+        weekKey,
+        new Error(`${classErrors.length}개 학급 지급 실패`),
+      );
+    } else {
+      await completePeriodLock(salaryLockRef, weekKey, {
+        lastPayDate: todayStr,
+        totalPaidCount,
+        totalAmount,
+        failedClassCount: 0,
+      });
+    }
+    lockClaimed = false;
     return {
       totalPaidCount,
       totalAmount,
@@ -2238,6 +2456,10 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     };
   } catch (error) {
     logger.error("→ 주급 지급 중 오류:", error, error?.stack);
+    // 락을 잡은 채로 실패했다면 반드시 푼다. 안 풀면 그 주 주급이 영구 누락된다.
+    if (lockClaimed && weekKeyForLock) {
+      await releasePeriodLock(salaryLockRef, weekKeyForLock, error);
+    }
     throw error;
   }
 }
@@ -2984,38 +3206,49 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
         // 금요일: 재산세 + 월세
         logger.info("[weeklyEconomyV2] 금요일 — 재산세 + 월세 징수 시작");
 
-        // 재산세
+        // 재산세 · 월세 — 주급과 같은 락 규약(점유는 트랜잭션, 완료 표시는 성공 뒤).
+        //   종전 패턴은 `.get()` 후 별개 쓰기라 동시 실행 시 둘 다 징수했다.
         const taxWeekKey = computeWeekKey(now);
-        const lastTaxDoc = await db.collection("systemState").doc("lastPropertyTax").get();
-        if (!lastTaxDoc.exists || lastTaxDoc.data().weekKey !== taxWeekKey) {
-          await collectPropertyHoldingTaxesLogic();
-          await db.collection("systemState").doc("lastPropertyTax").set({
-            weekKey: taxWeekKey,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        const jobs = [
+          { doc: "lastPropertyTax", label: "재산세", run: collectPropertyHoldingTaxesLogic },
+          { doc: "lastWeeklyRent", label: "월세", run: collectWeeklyRentLogic },
+        ];
+        // 한 작업이 실패해도 다른 작업은 돌린다. 재산세가 터졌다고 월세까지 안 걷을 이유가 없고,
+        // 둘은 서로 독립적인 락을 쓴다. 실패는 모아서 마지막에 던진다(재throw = 실패가 보이게).
+        const jobErrors = [];
+        for (const job of jobs) {
+          const ref = db.collection("systemState").doc(job.doc);
+          const claimed = await claimPeriodLock(ref, taxWeekKey, {
+            label: `weeklyEconomyV2 ${job.label}`,
           });
-          logger.info("[weeklyEconomyV2] 재산세 징수 완료:", taxWeekKey);
-        } else {
-          logger.info("[weeklyEconomyV2] 재산세 이번 주 이미 완료 — skip");
+          if (!claimed) {
+            logger.info(`[weeklyEconomyV2] ${job.label} 이번 주 이미 완료 또는 진행 중 — skip`);
+            continue;
+          }
+          try {
+            await job.run();
+            await completePeriodLock(ref, taxWeekKey, {
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            logger.info(`[weeklyEconomyV2] ${job.label} 징수 완료: ${taxWeekKey}`);
+          } catch (jobError) {
+            logger.error(`[weeklyEconomyV2] ${job.label} 실패:`, jobError);
+            await releasePeriodLock(ref, taxWeekKey, jobError);
+            jobErrors.push(`${job.label}: ${jobError?.message || jobError}`);
+          }
         }
-
-        // 월세
-        const rentWeekKey = taxWeekKey;
-        const lastRentDoc = await db.collection("systemState").doc("lastWeeklyRent").get();
-        if (!lastRentDoc.exists || lastRentDoc.data().weekKey !== rentWeekKey) {
-          await collectWeeklyRentLogic();
-          await db.collection("systemState").doc("lastWeeklyRent").set({
-            weekKey: rentWeekKey,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          });
-          logger.info("[weeklyEconomyV2] 월세 징수 완료:", rentWeekKey);
-        } else {
-          logger.info("[weeklyEconomyV2] 월세 이번 주 이미 완료 — skip");
+        if (jobErrors.length > 0) {
+          throw new Error(`금요일 징수 실패 — ${jobErrors.join(" / ")}`);
         }
       } else {
         logger.info(`[weeklyEconomyV2] 오늘(${day})은 대상 요일 아님 — skip`);
       }
     } catch (error) {
       logger.error("[weeklyEconomyV2] 오류:", error);
+      // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
+      //    이라 자동 재시도는 붙지 않는다. 삼키면 주급이 통째로 실패해도 대시보드는 초록색이다.
+      //    락은 위에서 이미 풀렸으므로(status:"failed") 수동/다음 실행이 실제로 지급한다.
+      throw error;
     }
   },
 );
@@ -3214,19 +3447,28 @@ exports.hourlySchedulerV2 = onSchedule(
       // 🕛 자정 (KST 0시): 일일 과제 리셋 + 적금 자동 납입
       if (hour === 0) {
         const todayStr = kstNow.toISOString().split("T")[0];
-        const lastResetDoc = await db.collection("systemState").doc("lastMidnightReset").get();
-        if (!lastResetDoc.exists || lastResetDoc.data().date !== todayStr) {
+        const resetLockRef = db.collection("systemState").doc("lastMidnightReset");
+        // 🔒 이 분기는 적금 자동 납입(학생→교사 현금 이체)을 돌린다. 점유를 원자화한다.
+        const claimed = await claimPeriodLock(resetLockRef, todayStr, {
+          label: "hourlyV2 자정 리셋",
+        });
+        if (claimed) {
           logger.info("[hourlyV2] 자정 리셋 시작");
-          await resetDailyTasksLogic();
-
           try {
+            await resetDailyTasksLogic();
+
+            // ⚠️ 적금 실패를 삼키면 안 된다(2026-08-11 2차 검증 C9).
+            //    삼키면 아래 completePeriodLock 이 그날을 '완료'로 박고, 같은 날 수동
+            //    midnightReset 도 같은 락에 막혀 **그날 납입이 통째로 사라진다**.
+            //    상품 단위 마커(lastDepositDate)가 있어 재실행이 안전하므로 던져서 재시도를 연다.
             const savingsResult = await processDailySavingsDeposits();
             logger.info("[hourlyV2] 적금 자동 납입 완료:", savingsResult);
-          } catch (e) {
-            logger.error("[hourlyV2] 적금 자동 납입 오류:", e);
+          } catch (resetError) {
+            await releasePeriodLock(resetLockRef, todayStr, resetError);
+            throw resetError;
           }
 
-          await db.collection("systemState").doc("lastMidnightReset").set({
+          await completePeriodLock(resetLockRef, todayStr, {
             date: todayStr,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
@@ -3265,6 +3507,9 @@ exports.hourlySchedulerV2 = onSchedule(
       }
     } catch (error) {
       logger.error("[hourlyV2] 전체 오류:", error);
+      // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
+      //    이라 자동 재시도는 붙지 않는다. 삼키면 실패가 성공으로 보고돼 아무도 모른다.
+      throw error;
     }
   },
 );
@@ -3293,6 +3538,9 @@ exports.dividendSchedulerV2 = onSchedule(
       logger.info("[dividendV2] 완료:", result);
     } catch (error) {
       logger.error("[dividendV2] 오류:", error);
+      // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
+      //    이라 자동 재시도는 붙지 않는다. 삼키면 실패가 성공으로 보고돼 아무도 모른다.
+      throw error;
     }
   },
 );
@@ -3587,8 +3835,17 @@ exports.payDividendsManual = onRequest(
       return;
     }
     try {
-      logger.info("[payDividendsManual] 수동 배당 지급 시작");
-      const result = await payMonthlyDividends();
+      // 멱등 마커(lastDividendMonthKey)가 생겼으므로 같은 달 재호출은 이제 no-op 이다.
+      // 누락된 달을 뒤늦게 지급하려면 ?monthKey=2026-07 처럼 명시한다(그 달 마커가 없는 보유분만 나간다).
+      const monthKeyOverride = req.query.monthKey || null;
+      if (monthKeyOverride && !/^\d{4}-\d{2}$/.test(monthKeyOverride)) {
+        res.status(400).json({ error: "monthKey 형식은 YYYY-MM 입니다." });
+        return;
+      }
+      logger.info(
+        `[payDividendsManual] 수동 배당 지급 시작${monthKeyOverride ? ` (monthKey=${monthKeyOverride})` : ""}`,
+      );
+      const result = await payMonthlyDividends(monthKeyOverride);
       res.json({ success: true, ...result });
     } catch (error) {
       logger.error("[payDividendsManual] 오류:", error);

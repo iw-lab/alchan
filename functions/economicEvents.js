@@ -132,6 +132,50 @@ const DEFAULT_EVENT_TEMPLATES = [
 // 주식 세금 멀티플라이어 조회 (index.js buyStock/sellStock에서 사용)
 // ============================================================
 
+// ===================================================================================
+// 📒 경제이벤트 감사 로그 — 학생 현금을 바꿨으면 반드시 남긴다
+// ===================================================================================
+// 2026-08-11 전수 교차검증(C1): 이 파일의 네 함수 중 **셋이 학생 cash 를 increment 하면서
+// activity_logs 를 하나도 안 남기고 있었다**(executeTaxExtra 만 남겼다).
+// 교사가 "경제 위기"를 실행하면 학급 전원 현금이 줄지만 학생 "내 자산 > 거래내역"엔
+// 아무것도 안 떠서, "내 돈 왜 줄었냐"에 서버가 답할 근거가 없었다.
+// 같은 파일 안에 정답 패턴이 있는데 셋이 안 따른 것이라, 아예 헬퍼로 만들어 놓는다.
+
+/** 감사 로그 보존 기간(90일) — executeTaxExtra 가 쓰던 값과 같다. */
+const LOG_RETENTION_DAYS = 90;
+
+function logExpiryTimestamp() {
+  return admin.firestore.Timestamp.fromDate(
+    new Date(Date.now() + LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000),
+  );
+}
+
+/**
+ * 학생 감사 로그 1건을 배치에 싣는다. **현금 변동과 같은 배치**에 넣을 것 —
+ * 따로 쓰면 "돈은 움직였는데 기록은 없다"가 다시 생긴다.
+ * @param {FirebaseFirestore.WriteBatch} batch
+ * @param {{classCode:string, studentId:string, studentName:string,
+ *          type:string, amount:number, description:string}} entry
+ * @param {FirebaseFirestore.Timestamp} [expireAt]
+ */
+function queueStudentLog(batch, entry, expireAt) {
+  batch.set(db.collection("activity_logs").doc(), {
+    userId: entry.studentId,
+    userName: entry.studentName,
+    classCode: entry.classCode,
+    type: entry.type,
+    amount: entry.amount,
+    description: entry.description,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    expireAt: expireAt || logExpiryTimestamp(),
+  });
+}
+
+/** 학생 문서에서 표시 이름을 뽑는다(로그가 "학생"으로만 남지 않게). */
+function studentDisplayName(data) {
+  return data?.name || data?.nickname || "학생";
+}
+
 /**
  * 현재 유효한 주식 세금 멀티플라이어를 반환합니다.
  * 0 = 면제, 1 = 기본, 2 = 2배
@@ -285,8 +329,9 @@ async function executeTaxRefund(classCode, params) {
     return { affectedCount: 0, refundedAmount: 0 };
   }
 
-  const batchSize = 400;
+  const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
   let affectedCount = 0;
+  const expireAt = logExpiryTimestamp();
 
   for (let i = 0; i < studentDocs.length; i += batchSize) {
     const batch = db.batch();
@@ -295,6 +340,22 @@ async function executeTaxRefund(classCode, params) {
         cash: admin.firestore.FieldValue.increment(refundPerStudent),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      // 📒 감사 로그 — 지급과 같은 배치라 "돈만 들어오고 기록은 없다"가 불가능하다
+      queueStudentLog(
+        batch,
+        {
+          classCode,
+          studentId: d.id,
+          studentName: studentDisplayName(d.data()),
+          type: "세금 환급 (경제이벤트)",
+          amount: refundPerStudent,
+          description:
+            `[경제이벤트] 국고 ${treasuryAmount.toLocaleString()}원의 ` +
+            `${(refundRate * 100).toFixed(1)}%를 학급 ${studentCount}명에게 균등 환급 — ` +
+            `1인당 ${refundPerStudent.toLocaleString()}원`,
+        },
+        expireAt,
+      );
       affectedCount++;
     });
     await batch.commit();
@@ -563,8 +624,9 @@ async function executeCashBonus(classCode, params) {
   );
   const totalNeeded = amount * studentDocs.length;
 
-  const batchSize = 400;
+  const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
   let affectedCount = 0;
+  const expireAt = logExpiryTimestamp();
 
   for (let i = 0; i < studentDocs.length; i += batchSize) {
     const batch = db.batch();
@@ -573,6 +635,19 @@ async function executeCashBonus(classCode, params) {
         cash: admin.firestore.FieldValue.increment(amount),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      // 📒 감사 로그 — 지급과 같은 배치
+      queueStudentLog(
+        batch,
+        {
+          classCode,
+          studentId: d.id,
+          studentName: studentDisplayName(d.data()),
+          type: "현금 지급 (경제이벤트)",
+          amount,
+          description: `[경제이벤트] 학급 전원에게 현금 ${amount.toLocaleString()}원 지급`,
+        },
+        expireAt,
+      );
       affectedCount++;
     });
     await batch.commit();
@@ -720,7 +795,14 @@ async function executeCashPenalty(classCode, params) {
     const target = Math.floor(netAssets * penaltyRate);
     const penalty = Math.min(target, cash);
     if (penalty > 0) {
-      penaltyItems.push({ ref: d.ref, penalty, netAssets, target });
+      penaltyItems.push({
+        ref: d.ref,
+        studentId: d.id,
+        studentName: studentDisplayName(data),
+        penalty,
+        netAssets,
+        target,
+      });
       totalPenalty += penalty;
     }
   }
@@ -728,14 +810,35 @@ async function executeCashPenalty(classCode, params) {
   if (penaltyItems.length === 0)
     return { affectedCount: 0, collectedAmount: 0 };
 
-  const batchSize = 400;
+  const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
+  const expireAt = logExpiryTimestamp();
   for (let i = 0; i < penaltyItems.length; i += batchSize) {
     const batch = db.batch();
-    penaltyItems.slice(i, i + batchSize).forEach(({ ref, penalty }) => {
-      batch.update(ref, {
-        cash: admin.firestore.FieldValue.increment(-penalty),
+    penaltyItems.slice(i, i + batchSize).forEach((item) => {
+      batch.update(item.ref, {
+        cash: admin.firestore.FieldValue.increment(-item.penalty),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      // 📒 감사 로그 — 차감과 같은 배치. 이게 없어서 "경제 위기"로 현금이 줄어도
+      //    학생 거래내역엔 아무것도 안 떴다(학급 단위 총계만 남았다).
+      queueStudentLog(
+        batch,
+        {
+          classCode,
+          studentId: item.studentId,
+          studentName: item.studentName,
+          type: "재산 손실 (경제이벤트)",
+          amount: -item.penalty,
+          description:
+            `[경제이벤트] 순자산 ${item.netAssets.toLocaleString()}원 기준 ` +
+            `${(penaltyRate * 100).toFixed(1)}% = ${item.target.toLocaleString()}원 부과. ` +
+            `차감 ${item.penalty.toLocaleString()}원` +
+            (item.target > item.penalty
+              ? ` (보유 현금까지만 차감, 미징수 ${(item.target - item.penalty).toLocaleString()}원)`
+              : ""),
+        },
+        expireAt,
+      );
     });
     await batch.commit();
   }

@@ -252,6 +252,118 @@ const CASES = [
   tc("DENY", "학생이 ClassStock 학생 목록을 조회(list)", {
     path: "/ClassStock/C1/students", method: "list", as: "stu1",
   }),
+
+  // ── G. 2026-08-11 전수 교차검증 — 열려 있던 네 곳 ──
+  //   전부 "read 는 좁혀 놨는데 write 만 isSignedIn() 으로 열려 있던" 같은 계열이다.
+
+  // C2. 루트 /transactions — 남의 거래내역 위조
+  //   현금 잔액은 안 움직이지만 MyAssets 가 이 컬렉션을 병합 표시하므로
+  //   "관리자 지급 1억" 같은 허위 항목을 **타인 화면에** 심을 수 있었다.
+  tc("DENY", "학생이 남의 거래내역을 위조 생성 (루트 transactions)", {
+    path: "/transactions/forged1", method: "create", as: "stu1",
+    after: { userId: "stu2", amount: 100000000, description: "관리자 지급", type: "admin" },
+  }),
+  tc("DENY", "학생이 자기 이름으로도 루트 거래내역을 만들 수 없다 (기록은 CF 전용)", {
+    path: "/transactions/mine1", method: "create", as: "stu1",
+    after: { userId: "stu1", amount: 5000, description: "용돈", type: "income" },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 루트 거래내역을 읽는다 (자산 화면 정상 조회)", {
+    path: "/transactions/mine1", method: "get", as: "stu1",
+    before: { userId: "stu1", amount: 5000, type: "income" },
+  }),
+
+  // H1. legislations/{id}/votes — 타 학급 표결 문서 무제한 생성
+  tc("DENY", "타 학급 학생이 남의 학급 법안에 표결 문서를 만든다", {
+    path: "/legislations/L1/votes/v1", method: "create", as: "farStu",
+    after: { choice: "찬성", userId: "farStu" },
+  }),
+  tc("DENY", "같은 학급 학생도 표결 문서를 직접 만들 수 없다 (미사용 컬렉션 봉인)", {
+    path: "/legislations/L1/votes/v1", method: "create", as: "stu1",
+    after: { choice: "찬성", userId: "stu1" },
+  }),
+
+  // H2. goals — 타 학급 쿠폰 목표 진행률·기부액 조작
+  tc("DENY", "타 학급 학생이 남의 학급 쿠폰 목표 진행률을 조작", {
+    path: "/goals/C1_goal", method: "update", as: "farStu",
+    before: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100 },
+    after: { classCode: "C1", progress: 100, donations: 5, currentAmount: 100 },
+  }),
+  tc("DENY", "학생이 목표의 classCode 를 자기 학급으로 바꿔 가로채기", {
+    path: "/goals/C1_goal", method: "update", as: "farStu",
+    before: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100 },
+    after: { classCode: "C2", progress: 10, donations: 5, currentAmount: 100 },
+  }),
+  // 2차 검증(codex)에서 더 근본적인 게 나왔다: 학생은 goals update 권한이 **애초에 필요 없다.**
+  //   정상 기부는 donateCoupon CF(Admin SDK, rules 우회)가 쿠폰 차감과 함께 한 트랜잭션으로 처리한다.
+  //   필드 화이트리스트는 "무엇을" 만 막고 "대가를 치렀는지"는 못 막으므로, 학생 분기를 통째로 없앴다.
+  tc("DENY", "학생이 쿠폰 차감 없이 진행률만 올린다 (donateCoupon CF 우회)", {
+    path: "/goals/C1_goal", method: "update", as: "stu1",
+    before: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100 },
+    after: { classCode: "C1", progress: 999999, donations: 5, currentAmount: 100 },
+  }),
+  tc("DENY", "같은 학급 학생이어도 goals 를 직접 수정할 수 없다", {
+    path: "/goals/C1_goal", method: "update", as: "stu1",
+    before: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100 },
+    after: { classCode: "C1", progress: 20, donations: 6, currentAmount: 200 },
+  }),
+  tc("DENY", "허용 필드 밖(targetAmount)은 당연히 못 바꾼다", {
+    path: "/goals/C1_goal", method: "update", as: "stu1",
+    before: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100, targetAmount: 1000 },
+    after: { classCode: "C1", progress: 10, donations: 5, currentAmount: 100, targetAmount: 1 },
+  }),
+  tc("ALLOW", "🐤 교사는 자기 학급 쿠폰 목표를 수정한다 (정상 관리도구)", {
+    path: "/goals/C1_goal", method: "update", as: "tch1",
+    before: { classCode: "C1", progress: 10, targetAmount: 1000 },
+    after: { classCode: "C1", progress: 10, targetAmount: 2000 },
+  }),
+
+  // HIGH2 — create 만 막고 update/delete 를 두면 학급 경계 없는 전권이 남는다
+  tc("DENY", "교사가 타 학급 학생의 거래기록을 수정한다", {
+    path: "/transactions/t1", method: "update", as: "tch1",
+    before: { userId: "farStu", amount: 1000, description: "용돈" },
+    after: { userId: "farStu", amount: 999999999, description: "관리자 지급" }, actors: ["farStu"],
+  }),
+  tc("DENY", "교사가 자기 학급 학생의 거래기록이라도 수정할 수 없다 (감사 기록)", {
+    path: "/transactions/t1", method: "update", as: "tch1",
+    before: { userId: "stu1", amount: 1000, description: "용돈" },
+    after: { userId: "stu1", amount: 2000, description: "용돈" }, actors: ["stu1"],
+  }),
+  tc("DENY", "교사가 타 학급 학생의 거래기록을 삭제한다", {
+    path: "/transactions/t1", method: "delete", as: "tch1",
+    before: { userId: "farStu", amount: 1000 }, actors: ["farStu"],
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 학생의 거래기록을 정리한다 (계정 삭제 시)", {
+    path: "/transactions/t1", method: "delete", as: "tch1",
+    before: { userId: "stu1", amount: 1000 }, actors: ["stu1"],
+  }),
+
+  // H3. users/{uid}/loans — 형제(financials·products)는 봉인됐는데 여기만 열려 있었다
+  tc("DENY", "학생이 자기 대출 문서를 직접 생성 (잔액 위조 통로)", {
+    path: "/users/stu1/loans/l1", method: "create", as: "stu1",
+    after: { amount: 1000000, balance: 0, rate: 0 },
+  }),
+  tc("DENY", "학생이 자기 대출 잔액을 0 으로 수정 (상환 위조)", {
+    path: "/users/stu1/loans/l1", method: "update", as: "stu1",
+    before: { amount: 1000000, balance: 1000000 }, after: { amount: 1000000, balance: 0 },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 대출을 읽는다 (정상 조회)", {
+    path: "/users/stu1/loans/l1", method: "get", as: "stu1",
+    before: { amount: 1000000, balance: 1000000 },
+  }),
+  tc("ALLOW", "🐤 같은 학급 교사가 학생 대출 문서를 정리한다 (관리도구)", {
+    path: "/users/stu1/loans/l1", method: "delete", as: "tch1",
+    before: { amount: 1000000, balance: 1000000 }, actors: ["stu1"],
+  }),
+
+  // 테스트계정 우회 self-grant — 종전엔 문서 아무 필드에나 매직스트링이 있으면 통과였다
+  tc("DENY", "학생이 isTestAccount 를 self-grant (매도 1시간 잠금 우회)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: S, after: { ...S, isTestAccount: true },
+  }),
+  tc("DENY", "학생이 자기 email 을 바꾼다 (구 우회 매칭의 실제 통로였다)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, email: "s1@x.kr" }, after: { ...S, email: "alchan21@x.kr" },
+  }),
 ];
 
 // ────────────────────────────────────────────────────────────

@@ -263,7 +263,12 @@ service cloud.firestore {
       //    classCode 변경은 이제 슈퍼관리자 전용(아래 || isSuperAdmin). 교사용 "학급 코드 변경" UI
       //    (AlchanHeader/MyProfile)도 같은 커밋에서 슈퍼관리자 전용으로 게이팅해 깨진 버튼 미노출(code-reviewer 지적).
       allow update: if (isOwner(userId) &&
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate']) &&
+                        // 🔒 2026-08-11 추가: 'email' · 'isTestAccount'
+                        //   email — 문서 생성 시에만 쓰인다(AuthContext 신규생성 · StudentManager 일괄생성).
+                        //     클라이언트가 기존 문서의 email 을 수정하는 경로는 0건이라 막아도 회귀 없다.
+                        //   isTestAccount — sellStock 의 '매수 후 1시간 매도잠금' 우회 플래그.
+                        //     학생이 self-grant 하면 잠금을 스스로 풀 수 있으므로 관리자 전용이어야 한다.
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        (isAdmin() &&
@@ -377,9 +382,16 @@ service cloud.firestore {
       // ========================================================
       // 💸 대출 서브컬렉션 (users/{userId}/loans/{loanId})
       // ========================================================
+      // 🔒 2026-08-11: 형제 경로가 전부 봉인됐는데 여기만 학생 write 가 열려 있었다.
+      //   financials(:360 create,update:false) · products(:374 isClassAdminOfUser) 는 **같은 사고**
+      //   — 학생이 잔액을 위조하면 CF 가 그 값을 신뢰해 지급 — 로 이미 각각 잠갔다. loans 만 빠졌다.
+      //   실측: 이 경로를 읽는 코드 0 · 쓰는 코드 0(Banking.js 의 firestoreType="loans" 는
+      //   bankingSettings/{classCode} 교사 상품 카탈로그로 가지 이 경로가 아니다).
+      //   대출 잔액의 실제 소스는 users/{uid}/products(type=loan)이고 그쪽은 잠겨 있다.
+      //   즉 죽은 경로 + 열린 규칙 — 형제와 같은 기준으로 통일한다.
       match /loans/{loanId} {
         allow read: if isOwner(userId) || isAdminFast();
-        allow write: if isOwner(userId) || isClassAdminOfUser(userId); // 🏫 Phase1: 관리자는 자기 학급만
+        allow write: if isClassAdminOfUser(userId); // 🏫 Phase1: 관리자는 자기 학급만
       }
 
       // ========================================================
@@ -737,7 +749,12 @@ service cloud.firestore {
 
     match /legislations/{legislationId}/votes/{voteId} {
       allow read: if isSameClassFast(get(/databases/$(database)/documents/legislations/$(legislationId)).data.classCode);
-      allow create: if isSignedIn();
+      // 🔒 create 만 열려 있었다 — read 는 isSameClassFast 로 올바르게 좁혀져 있는데
+      //   create 는 로그인만 보고 통과시켜, 타 학급 학생이 남의 학급 법안 표결 문서를
+      //   무제한 생성할 수 있었다(학급 검증도 신원 검증도 없음).
+      //   실측(2026-08-11): legislations 는 **라이브 문서 0건 · src/functions 참조 0줄** =
+      //   미사용 컬렉션이다. 되살릴 때 학급·신원 검증을 넣어 다시 열 것.
+      allow create: if false;
       allow update: if false;
       allow delete: if isAdmin();
     }
@@ -857,8 +874,19 @@ service cloud.firestore {
       // 생성: 관리자만
       allow create: if isAdmin();
 
-      // 수정: 기부 관련 필드만 일반 사용자 수정 가능, 나머지는 관리자만
-      allow update: if isAdmin() || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['progress', 'donations', 'currentAmount', 'updatedAt']));
+      // 수정: 🔒 관리자만. 학생 분기를 **통째로 없앴다**(2026-08-11).
+      //
+      //   1차 판단은 "학급 검사만 추가"였다. 종전 규칙(`isSignedIn() && hasOnly([progress,
+      //   donations, currentAmount, updatedAt])`)엔 학급 대조가 없어 타 학급 학생이 남의 학급
+      //   쿠폰 목표를 조작할 수 있었기 때문이다. 그런데 2차 교차검증에서 더 근본적인 게 나왔다:
+      //   **학생은 이 권한이 애초에 필요 없다.**
+      //     · 정상 기부는 전부 `donateCoupon` CF(Admin SDK, rules 우회)가 처리한다 —
+      //       쿠폰 차감·progress/donations/donationCount 갱신·활동로그가 한 트랜잭션이다.
+      //     · 실측: src 전체에서 goals 에 대한 클라이언트 `updateDoc` **0건**
+      //       (MyAssets 의 transaction.set 은 문서 부재 시 생성이고 그건 create 규칙이 governs).
+      //   즉 이 분기는 기능에 쓰이지 않으면서 **CF 를 우회해 쿠폰 차감 없이 진행률만 올리는
+      //   통로**로만 남아 있었다. 필드 화이트리스트는 "무엇을" 만 막고 "대가를 치렀는지"는 못 막는다.
+      allow update: if isAdmin();
 
       // 삭제: 관리자만
       allow delete: if isAdmin();
@@ -1178,14 +1206,26 @@ service cloud.firestore {
       // 읽기: 본인 거래 또는 관리자
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminFast());
 
-      // 생성: 로그인한 사용자 (자신의 거래만)
-      allow create: if isSignedIn();
+      // 생성: 🔒 금지. 주석은 "자신의 거래만"이라고 했지만 실제 규칙엔 userId 대조가 없어서
+      //   `addDoc(transactions, {userId: 남의UID, amount: 1억, description: "관리자 지급"})` 로
+      //   **타인의 거래내역에 허위 항목을 심을 수 있었다.** MyAssets.js 가 이 루트 컬렉션을
+      //   where("userId","==",uid) 로 읽어 자산 화면에 병합 표시하므로 그대로 보인다.
+      //   현금 잔액 자체는 별도로 봉인돼 있어 안 움직이지만, 감사 기록의 신뢰성이 위조 가능했다.
+      //   실측(2026-08-11): src 전체에서 이 컬렉션에 대한 클라이언트 write 는 0건 —
+      //   유일한 등장이 위 read 쿼리다. 실제 기록은 전부 CF(Admin SDK, rules 우회)가 쓴다.
+      allow create: if false;
 
-      // 수정: 임시: 이름 교체용
-      allow update: if isAdmin();
+      // 🔒 update/delete 도 함께 좁힌다(2026-08-11 2차 검증 HIGH2).
+      //   create 만 막고 나머지를 그대로 뒀더니 **학급 경계가 없는 전권**이 남았다 —
+      //   `isAdmin()` 은 "승인된 교사면 누구나"라서, C1 교사가 C2 학생의 거래기록
+      //   amount·description·userId 를 임의로 고치거나 지울 수 있었다.
+      //   이 컬렉션엔 classCode 필드가 없으므로(실측) 소유자 문서로 학급을 판정한다.
+      //   "임시: 이름 교체용" 이라던 update 는 그 마이그레이션이 끝난 지 오래다 — 필요하면
+      //   CF(Admin SDK)로 하면 되고, 감사 기록을 클라에서 고칠 이유가 없다.
+      allow update: if false;
 
-      // 삭제: 관리자만
-      allow delete: if isAdmin();
+      // 삭제: 자기 학급 학생의 기록만(학생 계정 정리 시 필요)
+      allow delete: if isClassAdminOfUser(resource.data.userId);
     }
 
     // ========================================================

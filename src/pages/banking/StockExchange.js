@@ -28,7 +28,8 @@ import {
 } from "firebase/firestore";
 
 import { globalCache } from "../../services/globalCacheService";
-import { logActivity, ACTIVITY_TYPES } from "../../utils/firestoreHelpers";
+// logActivity/ACTIVITY_TYPES 는 더 이상 쓰지 않는다 — 주식 매수·매도 활동 기록은
+// 서버(functions/index.js buyStock/sellStock)가 진실원으로 쓴다. 2026-08-11 중복 제거.
 
 import { logger } from "../../utils/logger";
 import {
@@ -1054,16 +1055,10 @@ const StockExchange = () => {
     }
   }, [userDoc]);
 
-  // 🧪 테스트 계정(alchan21) 매도 락 우회 — 클라이언트도 동일 광범위 매칭
-  const isTestAccount = useMemo(() => {
-    try {
-      return JSON.stringify(userDoc || {})
-        .toLowerCase()
-        .includes("alchan21");
-    } catch {
-      return false;
-    }
-  }, [userDoc]);
+  // 🧪 테스트 계정 매도 락 우회 — 서버(sellStock)와 **같은 조건**을 본다.
+  //   여기 표시는 편의일 뿐이고 실제 강제는 서버가 한다. 조건이 어긋나면
+  //   "버튼은 눌리는데 서버가 거부"하는 혼란이 생기므로 같은 필드를 쓴다.
+  const isTestAccount = userDoc?.isTestAccount === true;
 
   // 🔥 매도 제한 타이머: 1초마다 업데이트 (portfolio를 ref로 참조)
   const portfolioRef = useRef(portfolio);
@@ -1532,24 +1527,11 @@ const StockExchange = () => {
 
         setBuyQuantities((prev) => ({ ...prev, [stockId]: "" }));
 
-        // 🔥 활동 로그 기록 (주식 매수)
-        logActivity(db, {
-          classCode,
-          userId: user.uid,
-          userName: userDoc?.name || user.displayName || "사용자",
-          type: ACTIVITY_TYPES.STOCK_BUY,
-          description: `${stock.name} ${quantity}주 매수 (${formatCurrency(totalCost)})`,
-          amount: -totalCost,
-          metadata: {
-            stockId,
-            stockName: stock.name,
-            quantity,
-            pricePerShare: stock.price,
-            commission,
-            taxAmount,
-            totalCost,
-          },
-        });
+        // 활동 로그는 **서버가 이미 쓴다**(functions/index.js buyStock → users/{uid}/transactions,
+        //   type:"stockBuy"). 여기서 한 번 더 쓰면 "내 자산 > 거래내역"에 같은 거래가 두 줄로 뜬다.
+        //   MyAssets 의 cross-dedupe 는 키가 `${type}_${weekKey}` 인데 주식 기록엔 weekKey 가 없고
+        //   타입 문자열도 서버("stockBuy")와 클라("주식 매수")가 달라 두 겹 다 안 걸린다.
+        //   잔액은 서버가 1회만 차감하므로 정확했다 — 표시만 중복이었다. (2026-08-11 교차검증 H4)
 
         toast.success(
           `${stock.name} ${quantity}주 매수 완료!\n수수료: ${formatCurrency(commission)}`,
@@ -1691,25 +1673,7 @@ const StockExchange = () => {
           netRevenue,
         } = result.data;
 
-        // 🔥 활동 로그 기록 (주식 매도)
-        logActivity(db, {
-          classCode,
-          userId: user.uid,
-          userName: userDoc?.name || user.displayName || "사용자",
-          type: ACTIVITY_TYPES.STOCK_SELL,
-          description: `${stockName} ${quantity}주 매도 (순수익: ${formatCurrency(netRevenue)})`,
-          amount: netRevenue,
-          metadata: {
-            holdingId,
-            stockName,
-            quantity,
-            sellPrice: actualSellPrice,
-            commission: actualCommission,
-            tax: actualTax,
-            profit: actualProfit,
-            netRevenue,
-          },
-        });
+        // 매수와 같은 이유로 제거 — 서버(sellStock)가 type:"stockSell" 로 이미 기록한다.
 
         const taxInfo =
           actualTax > 0 ? `\n세금: ${formatCurrency(actualTax)}` : "";
