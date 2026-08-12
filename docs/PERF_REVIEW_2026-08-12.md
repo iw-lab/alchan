@@ -161,12 +161,15 @@ A4 상세: `prompt:` 필드 36,914 B(파일의 54%)는 `scripts/generate-avatar-
 |---|---|---|---|
 | **B1** | 하트비트(`lastActiveAt`/`lastLoginAt`)가 `updatedAt` 을 같이 찍어 학급 전체 증분동기화를 유발 | `firebase/db/users.js:194` | 학급당 하루 최대 100~150회의 "위장 변경" 제거 |
 | **B2** | 경제이벤트 스케줄러가 평일 매시간 `users` **전체 스캔**으로 이미 아는 학급 2개를 재확인 | `functions/economicEvents.js:1282` | 420~520 → **~50 읽기/일** |
-| **B3** | `restoreExpiredOverrides` 가 호출부가 이미 읽은 문서를 다시 조회 | `functions/economicEvents.js:1331` | **20 → 0 읽기/일** |
+| ~~B3~~ | ~~`restoreExpiredOverrides` 중복 조회 제거~~ | `functions/economicEvents.js:1331` | **되돌림** — §5-2 codex W3 |
 | **B4** | `realEstateOffers` 를 `where` 없이 전량 조회하면서 화면은 `pending` 만 씀(영구 누적 컬렉션) | `RealEstateRegistry.js:274` | 누적분 제외, 학기말 폭발 차단 |
 | **B5** | 만기·납입 자동처리 3개 훅이 같은 `products` 서브컬렉션을 각자 조회 + 탭 포커스마다 재조회 | `useAutoLoanRepay/SavingsDeposit/DepositMature` | 마운트당 **3 → 1**, 포커스당 **3 → 0** |
 | **B6** | `salarySettings` 를 대시보드 방문마다 캐시 없이 재조회(기본 랜딩 라우트) | `Dashboard.js:655` | 세션당 1회로 수렴 |
 | **B7** | 사이드바와 대시보드가 같은 `jobs` 컬렉션을 캐시 공유 없이 각자 조회 | `AlchanSidebar.js:762` | 캐시 적중 시 **2 → 1** |
 | **B8** | `settings/mainSettings` 를 CurrencyContext·Dashboard 가 각자 조회 | `CurrencyContext.js:59` | 세션당 **2 → 1** |
+| **B9** | 출석 스트릭 문서를 게이트 체크와 배너가 각각 조회 | `AlchanLayout.js:292` | 미수령 학생 하루 **2 → 1** |
+| **B10** | `PersonalShop` 이 학급 전체 활성 상점을 캐시 없이 매 마운트 전량 조회 | `PersonalShop.js:812` | 재방문 시 0건(TTL 내) |
+| **B11** | `SuperAdminDashboard` errorLogs 리스너가 `userDoc` 전체를 deps 로 둬 재구독 | `SuperAdminDashboard.js:463` | 4시간 체류 시 ~200건 재읽기 제거 |
 
 > **B7 은 읽기 전용 공유로만 했다.** 처음엔 사이드바가 캐시를 **채우게** 짰다가 되돌렸다 —
 > Dashboard 는 이 캐시의 내용을 그대로 `setJobs` 로 화면에 올리는데, 거기 필요한 건 raw 문서가
@@ -179,9 +182,6 @@ A4 상세: `prompt:` 필드 36,914 B(파일의 54%)는 `scripts/generate-avatar-
 > 화면엔 최대 12시간 늦게 반영된다(교사 본인 기기는 저장 시 무효화된다). 이건 새로 만든 지연이
 > 아니라 **이미 Dashboard 가 같은 문서에 적용하고 있던 정책**에 CurrencyContext 를 맞춘 것이다
 > (같은 문서의 `couponValue` 도 이미 12시간 캐시된다).
-| **B9** | 출석 스트릭 문서를 게이트 체크와 배너가 각각 조회 | `AlchanLayout.js:292` | 미수령 학생 하루 **2 → 1** |
-| **B10** | `PersonalShop` 이 학급 전체 활성 상점을 캐시 없이 매 마운트 전량 조회 | `PersonalShop.js:812` | 재방문 시 0건(TTL 내) |
-| **B11** | `SuperAdminDashboard` errorLogs 리스너가 `userDoc` 전체를 deps 로 둬 재구독 | `SuperAdminDashboard.js:463` | 4시간 체류 시 ~200건 재읽기 제거 |
 
 B5 보강: 3개 훅은 `visibilitychange` 마다 재조회한다. 주석이 밝힌 목적은 "**다음 날** 진입 케이스 커버"다.
 그러면 **날짜가 바뀐 경우에만** 재조회하면 목적을 100% 지키면서 탭 전환마다의 조회가 사라진다.
@@ -247,8 +247,8 @@ D1 의 실질 이유는 바이트가 아니다. **"이 훅을 쓰면 캐시가 �
 |---|---:|---:|---:|
 | **base 아바타 5종** | 3,489,987 B | 125,466 B | **−96.4%** |
 | `public/avatar-shop` 전체 | 6.0 MB | 2.9 MB | −52% |
-| **AlchanLayout 청크** (모든 학생) | 203,109 / 60,258 gz | 159,411 / 45,740 gz | **−21.5% / −24.1%** |
-| JS 번들 합계 | 2,159,440 / 647,131 gz | 2,116,105 / 630,879 gz | −43,335 / −16,252 gz |
+| **AlchanLayout 청크** (모든 학생) | 203,109 / 60,258 gz | 159,454 / 45,727 gz | **−21.5% / −24.1%** |
+| JS 번들 합계 | 2,159,440 / 647,131 gz | 2,116,422 / 631,048 gz | −43,018 / −16,083 gz |
 | **Noto Sans KR CSS** | 666,022 / 163,205 gz | 95,642 / 23,402 gz | **−85.7% gz** |
 | 폰트 바이너리(서브셋 1개 기준) | 116,676 B (7파일) | 16,668 B (1파일) | **−86%** |
 | **Pretendard CSS** | 53,513 / 13,185 gz | 0 | 전량 제거 |
@@ -258,7 +258,7 @@ D1 의 실질 이유는 바이트가 아니다. **"이 훅을 쓰면 캐시가 �
 
 ### 검증
 
-- `npm test` **411/411** (기준선 387 + 신규 24, 파일 27개)
+- `npm test` **415/415** (기준선 387 + 신규 28, 파일 27개) — 교차검증 지적을 반영해 4개 추가
 - `npm run test:rules` 75/75 · `npm run lint` 경고 7건(전부 기존) · Tier-0 게이트 통과
 - `check-build-integrity` · `check-hosting-headers` 통과
 - 부채 천장: `firestoreDirect` 46 → **45** (개선분 반영해 천장을 내렸다)
@@ -271,7 +271,7 @@ D1 의 실질 이유는 바이트가 아니다. **"이 훅을 쓰면 캐시가 �
 알파가 `_outfit` 합성과 투명 배경을 좌우하므로 여기가 어긋나면 아바타가 깨진다.
 보이는 RGB 는 평균 0.06~0.24 / 255, 얼굴 영역 1:1 육안 대조에서 구별 불가.
 
-### 회귀 테스트로 못 박은 것 (신규 24개)
+### 회귀 테스트로 못 박은 것 (신규 28개)
 
 - `avatarAssets.test.js` — `_outfit` 변종 탐색이 **확장자를 가리지 않는다**, 확장자를 못 알아보면
   원본이 아니라 **null** 을 준다(원본을 돌려주던 게 정확히 예전 버그), 두 파일의 `ASSET_VERSION` 일치
@@ -318,6 +318,20 @@ Tier-0(기계) 통과 후 3계열에 **서로 다른 렌즈**를 주고 병렬�
 - **새 복합 인덱스 0건** — `where("status","==","pending")` 이 단일필드 등가라 기본 인덱스로 처리됨을
   codex 가 `firestore.indexes.json` 대조로 확인했다.
 
+## 5-3. 배포 후 라이브 확인 (`247969f`)
+
+CI · Android APK · Deploy 3개 워크플로 전부 success. `Deploy complete!`
+
+| 확인 | 결과 |
+|---|---|
+| 라이브 `index.html` 폰트 링크 | `Noto+Sans+KR:wght@100..900` (가변축) · Pretendard 링크 **0** (남은 4건은 이유를 적어 둔 주석) |
+| 라이브 `base_male.webp` | HTTP 200 · **31,378 B** (전 709,070 B) |
+| `avatarShopItems` 재시드 | 자동 실행 **106개** — Firestore 의 `imageUrl` 도 `.webp?v=20260812a` 로 갱신됨 |
+| 배포 쿼터 초과 | **6건**(전부 자동 재시도 후 성공). 직전 배포는 30건이었다 |
+
+`avatarShopItems` 재시드는 `deploy.yml` 이 카탈로그 변경을 감지해 자동으로 돈다. 학생 문서에 복제된
+낡은 `imageUrl` 은 `buildAvatarOverlays` 가 항상 카탈로그에서 해석하므로 마이그레이션이 필요 없다.
+
 ## 6. 검증 계획
 
 | 대상 | 어떻게 |
@@ -327,7 +341,7 @@ Tier-0(기계) 통과 후 3계열에 **서로 다른 렌즈**를 주고 병렬�
 | A4 prompt 분리 | 빌드 후 청크에서 프롬프트 지문 문자열 **0건** 확인 · 생성 스크립트가 여전히 90개 prompt 를 읽는지 실행 검사 |
 | B그룹 | 쿼리 호출 횟수 단위 테스트(스텁이 2회째 호출 시 throw) · B1 은 `updatedAt` 미포함을 직접 단언 |
 | C2 | 할일 수정 폼에 **이름·보상·클릭수가 채워지는지** 회귀 테스트 |
-| 전체 | `npm test` (기준선 **387/387**) · `npm run test:rules` (75/75) · Tier-0 게이트 · FULL 교차검증 3계열 |
+| 전체 | `npm test` **387 → 415/415** · Tier-0 게이트 **7/7** · FULL 교차검증 3계열 (§5-2) |
 
 **측정 불가를 측정한 척하지 않는다.** 읽기 절감의 라이브 검증은 개학 후 Monitoring 일별 수치로만 가능하고,
 그때 학생 1명당 하루 읽기(직전 학기 ≈1,775)를 다시 재는 것이 유일한 정답이다.
