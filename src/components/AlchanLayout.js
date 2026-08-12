@@ -41,6 +41,7 @@ import MobileNav from "./MobileNav";
 import PWAInstallPrompt from "./PWAInstallPrompt";
 import UpdateNotification from "./UpdateNotification";
 import { useServiceWorker } from "../hooks/useServiceWorker";
+import { useStudentProducts } from "../hooks/useStudentProducts";
 import { useAutoLoanRepay } from "../hooks/useAutoLoanRepay";
 import { useAutoSavingsDeposit } from "../hooks/useAutoSavingsDeposit";
 import { useAutoDepositMature } from "../hooks/useAutoDepositMature";
@@ -263,12 +264,16 @@ export default function AlchanLayout() {
   const { user, userDoc, loading, logout, refreshUserDocument } = useAuth();
   const isImmersiveMusicRoom = location.pathname.startsWith("/music-room/");
 
+  // 금융 상품(대출·적금·예금)을 **한 번만** 읽어 아래 세 훅이 나눠 쓴다.
+  // 예전엔 세 훅이 같은 서브컬렉션을 각자 조회했고(적금은 두 번 읽혔다), 게다가
+  // 탭 전환마다 다시 읽었다. 사정은 useStudentProducts.js 헤더에 적어 뒀다.
+  const studentProducts = useStudentProducts(userDoc);
   // 만기 도달 대출 자동 강제 상환 (학생 전용 — 어떤 페이지든 진입/복귀 시 처리)
-  useAutoLoanRepay(userDoc, refreshUserDocument);
+  useAutoLoanRepay(userDoc, refreshUserDocument, studentProducts);
   // 적금 일일 자동 납입 (학생 전용 — 가입 후 매일 dailyAmount 학생→선생님 이체)
-  useAutoSavingsDeposit(userDoc, refreshUserDocument);
+  useAutoSavingsDeposit(userDoc, refreshUserDocument, studentProducts);
   // 만기 도달 예금/적금 자동 지급 (학생 전용 — 선생님→학생 원금+이자 이체 후 상품 삭제)
-  useAutoDepositMature(userDoc, refreshUserDocument);
+  useAutoDepositMature(userDoc, refreshUserDocument, studentProducts);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -284,6 +289,8 @@ export default function AlchanLayout() {
     }
   });
   const [showDailyRewardPopup, setShowDailyRewardPopup] = useState(false);
+  // 아래 게이트 체크가 읽은 출석 정보. 배너에 넘겨 같은 문서를 두 번 읽지 않는다.
+  const [dailyStreakInfo, setDailyStreakInfo] = useState(null);
 
   // PWA 서비스 워커 훅
   const { updateAvailable, updateServiceWorker, isOnline } = useServiceWorker();
@@ -298,7 +305,11 @@ export default function AlchanLayout() {
     ) {
       let cancelled = false;
       getStreakInfo(userDoc.uid).then((streakInfo) => {
-        if (!cancelled && streakInfo.canClaim) {
+        if (cancelled) return;
+        // 결과를 보관해 아래 DailyRewardBanner 에 넘긴다 — 넘기지 않으면 배너가
+        // **같은 dailyStreak 문서를 한 번 더** 읽는다(팝업이 뜨는 경우가 정확히 그 경우다).
+        setDailyStreakInfo(streakInfo);
+        if (streakInfo.canClaim) {
           setTimeout(() => setShowDailyRewardPopup(true), 500);
         }
       });
@@ -964,6 +975,7 @@ export default function AlchanLayout() {
               <DailyRewardBanner
                 userId={userDoc.uid}
                 onClaim={handleDailyRewardClaim}
+                prefetchedStreakInfo={dailyStreakInfo}
               />
               <div className="text-center mt-3 text-[13px] text-slate-800 dark:text-white/60">
                 배경을 터치하면 닫힙니다

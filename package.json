@@ -5,7 +5,6 @@
   "keywords": [],
   "main": "src/index.js",
   "dependencies": {
-    "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@tanstack/react-query": "^5.90.2",
     "date-fns": "^4.1.0",
     "firebase": "^11.10.0",
@@ -43,7 +42,7 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "test": "vitest run --exclude '**/globalCacheService.test.js' --exclude '**/useFirestoreData.test.js' --exclude '**/logger.test.js'",
+    "test": "vitest run --exclude '**/globalCacheService.test.js' --exclude '**/logger.test.js'",
     "test:unit": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",

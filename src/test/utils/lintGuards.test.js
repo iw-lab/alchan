@@ -30,14 +30,16 @@ describe("린트 규칙이 실제로 켜져 있는지", () => {
     expect(config.rules?.["no-alert"]).toBe("error");
   });
 
-  it("exhaustive-deps 예외 파일은 useFirestoreData 하나뿐이다", () => {
-    // 이 파일은 loadMore 를 deps 에 넣으면 무한루프라 파일 단위로 껐다(그 파일 주석 참조).
-    // 예외가 늘어나면 규칙이 조용히 무의미해지므로, 늘어날 때 여기서 걸리게 한다.
+  it("exhaustive-deps 를 파일 단위로 끈 예외가 하나도 없다", () => {
+    // 종전 유일한 예외였던 src/hooks/useFirestoreData.js 는 2026-08-12 에 삭제됐다.
+    // 프로덕션 호출부가 0건인 죽은 캐시 계층이었다(이 저장소엔 캐시가 다섯 겹이고,
+    // 그중 하나가 "쓰면 캐시되는 줄" 착각을 만들어 이중 캐시 버그의 씨앗이 됐다).
+    // 예외가 다시 생기면 여기서 걸린다 — 규칙이 조용히 무의미해지는 걸 막는 게 목적이다.
     const off = (config.overrides || []).filter(
       (o) => o.rules?.["react-hooks/exhaustive-deps"] === "off",
     );
     const files = off.flatMap((o) => o.files || []);
-    expect(files).toEqual(["src/hooks/useFirestoreData.js"]);
+    expect(files).toEqual([]);
   });
 
   it("부채 천장에 exhaustive-deps 지표가 있고 0 이다", () => {

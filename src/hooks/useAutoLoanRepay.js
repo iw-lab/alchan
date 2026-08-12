@@ -4,19 +4,19 @@
 // 잔액 부족 시 마이너스 차감 허용 (강제 상환)
 
 import { useEffect, useRef } from "react";
-import {
- db,
- collection,
- query,
- where,
- getDocs,
- functions,
- httpsCallable,
-} from "../firebase";
+import { functions, httpsCallable } from "../firebase";
 import { startOfDay } from "date-fns";
 import { logger } from "../utils/logger";
 
-export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
+/**
+ * @param {object} userDoc
+ * @param {function} refreshUserDocument
+ * @param {Array|null} products `useStudentProducts` 가 읽어 온 상품 전량.
+ *   null 이면 아직 안 읽은 것 — 아무 것도 하지 않는다.
+ *   (예전엔 이 훅이 직접 `where(type==loan)` 으로 조회했다. 형제 훅 둘도 각자 조회해서
+ *    같은 서브컬렉션을 세 번 읽었다 — useStudentProducts.js 헤더 참조.)
+ */
+export const useAutoLoanRepay = (userDoc, refreshUserDocument, products) => {
  // 같은 세션 내 동일 대출 중복 처리 방지
  const processedRef = useRef(new Set());
  // 동시 실행 방지
@@ -26,6 +26,7 @@ export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
  if (!userDoc?.uid) return;
  // 학생만 대상 — 관리자/교사/슈퍼어드민 제외
  if (userDoc.isAdmin || userDoc.isSuperAdmin || userDoc.isTeacher) return;
+ if (!products) return; // 아직 안 읽음
 
  let cancelled = false;
 
@@ -33,29 +34,20 @@ export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
  if (inFlightRef.current) return;
  inFlightRef.current = true;
  try {
- const userId = userDoc.uid;
-
- // 학생의 대출 상품만 조회
- const productsSnap = await getDocs(
- query(
- collection(db, "users", userId, "products"),
- where("type", "==", "loan"),
- ),
- );
- if (cancelled || productsSnap.empty) return;
+ const loans = products.filter((p) => p.type === "loan");
+ if (cancelled || loans.length === 0) return;
 
  const today = startOfDay(new Date());
  const matured = [];
- productsSnap.forEach((docSnap) => {
- const data = docSnap.data();
- if (processedRef.current.has(docSnap.id)) return;
+ loans.forEach((data) => {
+ if (processedRef.current.has(data.id)) return;
  const maturity = data.maturityDate?.toDate
  ? data.maturityDate.toDate()
  : data.maturityDate
  ? new Date(data.maturityDate)
  : null;
  if (maturity && startOfDay(maturity) <= today) {
- matured.push({ id: docSnap.id, ...data });
+ matured.push(data);
  }
  });
 
@@ -96,26 +88,20 @@ export const useAutoLoanRepay = (userDoc, refreshUserDocument) => {
  }
  };
 
- // 1) 마운트/로그인 시 1회 체크
+ // 상품 목록이 새로 들어올 때마다 체크한다. "다음 날 진입" 재체크는
+ // useStudentProducts 가 **날짜가 실제로 바뀐 경우에만** 다시 읽어 주는 것으로 대신한다
+ // (예전엔 탭 전환마다 재조회했다 — 목적은 같고 조회는 훨씬 적다).
  checkAndForceRepay();
-
- // 2) 탭이 백그라운드에서 활성으로 돌아올 때 재체크 (다음 날 진입 케이스 커버)
- const onVisible = () => {
- if (document.visibilityState === "visible") checkAndForceRepay();
- };
- document.addEventListener("visibilitychange", onVisible);
 
  return () => {
  cancelled = true;
- document.removeEventListener("visibilitychange", onVisible);
  };
  }, [
+ products,
  userDoc?.uid,
  userDoc?.isAdmin,
  userDoc?.isSuperAdmin,
  userDoc?.isTeacher,
- userDoc?.classCode,
- userDoc?.name,
  refreshUserDocument,
  ]);
 };

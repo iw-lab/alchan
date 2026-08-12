@@ -58,6 +58,7 @@ import {
   Castle,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
+import globalCacheService from "../services/globalCacheService";
 import { toast } from "../utils/toast";
 
 // ============================================
@@ -756,19 +757,41 @@ export default function AlchanSidebar({
   useEffect(() => {
     if (isAdmin || effectiveJobIds.length === 0 || !userDoc?.classCode)
       return void setIsPresident(false);
+    const classCode = userDoc.classCode;
+    const cacheKey = `jobs_${classCode}`;
+    const isPresidentIn = (jobs) =>
+      jobs.some(
+        (j) => effectiveJobIds.includes(j.id) && j.title === "대통령",
+      );
+
+    // Dashboard 가 같은 학급의 jobs 를 `jobs_{classCode}` 로 캐싱한다(globalCacheService).
+    // 종전엔 사이드바가 그걸 모르고 따로 조회해, 직업이 배정된 학생은 세션당 학급 jobs 를
+    // **두 번** 읽었다. 캐시가 있으면 그대로 재사용한다.
+    //
+    // ⚠️ **읽기만 한다. 쓰지 않는다.** Dashboard 는 이 캐시에 담긴 걸 그대로 `setJobs` 로
+    //    화면에 올리는데(loadCachedData), 그때 필요한 건 raw 문서가 아니라
+    //    `tasks[].reward/clicks/maxClicks` 기본값과 `active` 가 채워진 **정규화된 모양**이다.
+    //    여기서 raw 문서를 캐시에 넣으면 Dashboard 가 그걸 집어 들어 할일의 maxClicks 가
+    //    undefined 가 된다 — 읽기 1건 아끼려다 클릭 제한이 깨지는 교환은 하지 않는다.
+    //    (정규화를 여기 복제하는 것도 답이 아니다. 같은 규약이 두 곳에 생기면 반드시 갈라진다.)
+    const cached = globalCacheService.get(cacheKey);
+    if (cached) {
+      setIsPresident(isPresidentIn(cached));
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
         const q = fbQuery(
           fbCollection(firebaseDb, "jobs"),
-          fbWhere("classCode", "==", userDoc.classCode),
+          fbWhere("classCode", "==", classCode),
         );
         const snap = await getDocs(q);
         if (cancelled) return;
-        const found = snap.docs.some(
-          (d) => effectiveJobIds.includes(d.id) && d.data().title === "대통령",
+        setIsPresident(
+          isPresidentIn(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
         );
-        setIsPresident(found);
       } catch {
         /* ignore */
       }

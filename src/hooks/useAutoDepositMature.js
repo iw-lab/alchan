@@ -4,25 +4,27 @@
 // 대출의 useAutoLoanRepay와 대칭: 선생님 → 학생 (원금+이자), 선생님 잔액 마이너스 허용
 
 import { useEffect, useRef } from "react";
-import {
-  db,
-  collection,
-  query,
-  where,
-  getDocs,
-  functions,
-  httpsCallable,
-} from "../firebase";
+import { functions, httpsCallable } from "../firebase";
 import { startOfDay } from "date-fns";
 import { logger } from "../utils/logger";
 
-export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
+/**
+ * @param {Array|null} products `useStudentProducts` 가 읽어 온 상품 전량(형제 훅과 공유).
+ *   종전엔 이 훅이 `type in [deposit, savings]` 로 따로 조회했는데, savings 는
+ *   useAutoSavingsDeposit 의 쿼리와 겹쳐 **같은 문서를 두 번** 읽고 있었다.
+ */
+export const useAutoDepositMature = (
+  userDoc,
+  refreshUserDocument,
+  products,
+) => {
   const processedRef = useRef(new Set());
   const inFlightRef = useRef(false);
 
   useEffect(() => {
     if (!userDoc?.uid) return;
     if (userDoc.isAdmin || userDoc.isSuperAdmin || userDoc.isTeacher) return;
+    if (!products) return;
 
     let cancelled = false;
 
@@ -30,29 +32,23 @@ export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       try {
-        const userId = userDoc.uid;
-
-        // 학생의 예금 + 적금 상품 조회
-        const productsSnap = await getDocs(
-          query(
-            collection(db, "users", userId, "products"),
-            where("type", "in", ["deposit", "savings"]),
-          ),
+        // 예금 + 적금 (대출은 useAutoLoanRepay 담당)
+        const candidates = products.filter(
+          (p) => p.type === "deposit" || p.type === "savings",
         );
-        if (cancelled || productsSnap.empty) return;
+        if (cancelled || candidates.length === 0) return;
 
         const today = startOfDay(new Date());
         const matured = [];
-        productsSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (processedRef.current.has(docSnap.id)) return;
+        candidates.forEach((data) => {
+          if (processedRef.current.has(data.id)) return;
           const maturity = data.maturityDate?.toDate
             ? data.maturityDate.toDate()
             : data.maturityDate
               ? new Date(data.maturityDate)
               : null;
           if (maturity && startOfDay(maturity) <= today) {
-            matured.push({ id: docSnap.id, ...data });
+            matured.push(data);
           }
         });
 
@@ -93,24 +89,19 @@ export const useAutoDepositMature = (userDoc, refreshUserDocument) => {
       }
     };
 
+    // 상품 목록이 새로 들어올 때마다 체크. "다음 날 진입" 재체크는 useStudentProducts 가
+    // 날짜가 실제로 바뀐 경우에만 다시 읽어 주는 것으로 대신한다.
     checkAndPayout();
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") checkAndPayout();
-    };
-    document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       cancelled = true;
-      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [
+    products,
     userDoc?.uid,
     userDoc?.isAdmin,
     userDoc?.isSuperAdmin,
     userDoc?.isTeacher,
-    userDoc?.classCode,
-    userDoc?.name,
     refreshUserDocument,
   ]);
 };

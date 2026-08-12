@@ -267,7 +267,15 @@ const RealEstateRegistry = () => {
   useEffect(() => {
     if (!classCode) { setOffers([]); return; }
     let mounted = true;
-    const offersRef = collection(db, "classes", classCode, "realEstateOffers");
+    // ⚠️ 미결(pending) 오퍼만 읽는다. 이 컬렉션은 **영구 누적**이다 —
+    //    수락·거절·취소는 status 만 바꾸고 문서를 지우지 않는다(functions/index.js 의 오퍼 처리부).
+    //    종전엔 where 없이 전량 읽고 화면에서 pending 만 골랐다. 화면 소비처 3곳
+    //    (내 제안 배지 · 받은 제안 · 보낸 제안)이 **전부** status==='pending' 필터라 표시는 그대로고,
+    //    학기가 갈수록 커지던 조회량만 사라진다. 단일 필드 등가 조건이라 새 인덱스도 필요 없다.
+    const offersRef = query(
+      collection(db, "classes", classCode, "realEstateOffers"),
+      where("status", "==", "pending"),
+    );
     const fetchOffers = async () => {
       if (!mounted) return;
       try {

@@ -30,10 +30,21 @@ const __dirname = path.dirname(__filename);
 // 동적 import로 ES/CJS 양쪽 호환
 const catalogPath = path.resolve(__dirname, "../src/data/avatarShopCatalog.js");
 const catalogMod = await import(`file://${catalogPath}`);
-const ALL_AVATAR_ITEMS = catalogMod.ALL_AVATAR_ITEMS || catalogMod.default?.ALL_AVATAR_ITEMS;
-if (!Array.isArray(ALL_AVATAR_ITEMS)) {
+const RAW_ITEMS = catalogMod.ALL_AVATAR_ITEMS || catalogMod.default?.ALL_AVATAR_ITEMS;
+if (!Array.isArray(RAW_ITEMS)) {
   throw new Error("ALL_AVATAR_ITEMS not found in catalog");
 }
+
+// 프롬프트는 카탈로그가 아니라 여기에 있다 — 카탈로그는 브라우저 번들에 실리므로
+// 브라우저가 절대 안 읽는 36 KB 짜리 프롬프트를 거기 두면 모든 학생이 그걸 받는다
+// (2026-08-12 분리, AlchanLayout 청크 -43.9 KB raw). 자세한 사정은 그 파일 헤더 참조.
+const { AVATAR_PROMPTS } = await import(
+  `file://${path.resolve(__dirname, "avatar-prompts.mjs")}`
+);
+const ALL_AVATAR_ITEMS = RAW_ITEMS.map((item) => ({
+  ...item,
+  prompt: AVATAR_PROMPTS[item.id],
+}));
 
 const OUTPUT_DIR = path.resolve(__dirname, "../public/avatar-shop");
 const LOCK_FILE = path.resolve(process.env.HOME, ".claude/state/codex-batch.lock");
@@ -101,6 +112,18 @@ function checkOtherCodex() {
 // ============================================================================
 function callCodex(item) {
   const outPath = path.join(OUTPUT_DIR, `${item.id}.png`);
+
+  // 프롬프트가 없으면 여기서 세운다. 없는 채로 진행하면 codex 가
+  // "프롬프트: undefined" 를 받아 **엉뚱한 그림을 그리고 성공으로 끝난다** —
+  // 조용히 잘못된 자산이 만들어지는 게 실패보다 훨씬 나쁘다.
+  if (!item.prompt) {
+    return Promise.reject(
+      new Error(
+        `${item.id}: scripts/avatar-prompts.mjs 에 프롬프트가 없습니다. ` +
+          `새 아이템이라면 거기에 먼저 추가하세요.`,
+      ),
+    );
+  }
 
   return new Promise((resolve, reject) => {
     const fingerprint = `alchan-avatar-shop/${item.id}/${Date.now()}`;

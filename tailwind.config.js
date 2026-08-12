@@ -8,8 +8,10 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'sans': ['Pretendard', '"Noto Sans KR"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
-        'display': ['Pretendard', '"Noto Sans KR"', 'sans-serif'],
+        // 'Pretendard' 는 등록된 적 없는 이름이었다(CDN 은 'Pretendard Variable' 로 등록한다).
+        // 2026-08-12 에 죽은 후보와 링크를 함께 제거 — index.html 폰트 블록 주석 참조.
+        'sans': ['"Noto Sans KR"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        'display': ['"Noto Sans KR"', 'sans-serif'],
         'jua': ['Jua', 'sans-serif'],
         'gamja': ['"Gamja Flower"', 'cursive'],
         'dancing': ['"Dancing Script"', 'cursive'],

@@ -55,7 +55,9 @@ const JobList = memo(function JobList({
         {isAdmin && (
           <div>
             <button
-              onClick={() => onEditJob(job.id)} // job.id 전달 확인
+              // 🐛 job **객체**를 넘긴다 — Dashboard 의 handleEditJob 은 title·지정전용 여부를
+              //    읽으므로 id 만 넘기면 수정 폼이 비어서 열린다.
+              onClick={() => onEditJob(job)}
               className="cursor-pointer p-0 mr-2"
               style={{
                 background: "none",
@@ -67,7 +69,7 @@ const JobList = memo(function JobList({
               ✏️
             </button>
             <button
-              onClick={() => onDeleteJob(job.id)} // job.id 전달 확인
+              onClick={() => onDeleteJob(job.id)}
               className="cursor-pointer p-0"
               style={{
                 background: "none",
@@ -85,17 +87,21 @@ const JobList = memo(function JobList({
       {/* 직업 할일 목록 (flex-grow로 남은 공간 채우기) */}
       <div className="flex-grow overflow-y-auto" style={{ padding: isMobile ? "8px" : "10px" }}>
         {job.tasks && job.tasks.length > 0 ? (
+          // 핸들러는 **그대로** 넘긴다. 인자(task, jobId)는 TaskItem 이 자기 props 로 붙인다.
+          // 여기서 클로저를 만들면 렌더마다 새 함수가 되어 TaskItem 의 memo 가 무의미해진다.
+          // 🐛 게다가 예전 클로저는 `task.id`(문자열)를 넘겼는데 Dashboard 의 handleEditTask 는
+          //    task **객체**를 기대한다(`.name`/`.reward`/`.maxClicks` 를 읽는다).
+          //    그래서 직업 카드에서 할일을 수정하면 폼이 빈 채로 열렸다.
           job.tasks.map((task) => (
             <TaskItem
               key={task.id}
               task={task}
               taskId={task.id}
               jobId={job.id}
-              // 핸들러에 task.id 전달 확인
               onEarnCoupon={onEarnCoupon}
               onRequestApproval={onRequestApproval}
-              onEditTask={() => onEditTask(task.id, job.id)} // Dashboard 핸들러 형식에 맞게 job.id 전달
-              onDeleteTask={() => onDeleteTask(task.id, job.id)} // Dashboard 핸들러 형식에 맞게 job.id 전달
+              onEditTask={onEditTask}
+              onDeleteTask={onDeleteTask}
               isAdmin={isAdmin}
               isJobTask={true}
             />
@@ -117,7 +123,8 @@ const JobList = memo(function JobList({
       {isAdmin && (
         <div style={{ padding: isMobile ? "8px" : "10px", borderTop: "1px solid #e2e8f0" }}>
           <button
-            onClick={onAddTask} // Dashboard에서 job.id 포함하여 생성된 핸들러 전달
+            // 인자는 여기서 붙인다(부모는 안정된 handleAddTaskClick 을 그대로 넘긴다).
+            onClick={() => onAddTask(job.id, true)}
             // --- 인라인 스타일 대신 전달받은 스타일 적용 ---
             className="w-full cursor-pointer rounded-md mt-0 transition-all"
             style={

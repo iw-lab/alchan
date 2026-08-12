@@ -29,9 +29,18 @@ import {
 } from "../../utils/netAssets";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import {
+  getCachedFirestoreData,
+  setCachedFirestoreData,
+} from "../../utils/firestoreHelpers";
 
 // 부가세율 (10%)
 const VAT_RATE = 0.1;
+
+// 상점 목록 캐시 TTL. 짧게 둔다 — 친구가 새 상점을 열면 곧 보여야 하지만,
+// 화면을 오갈 때마다 학급 인원만큼(20~25문서) 다시 읽을 이유는 없다.
+// 내 상점 변경은 loadShops({ force: true }) 로 즉시 반영한다.
+const SHOPS_CACHE_TTL = 5 * 60 * 1000;
 
 // 업종 카테고리
 const SHOP_CATEGORIES = [
@@ -632,11 +641,31 @@ const PersonalShop = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   // 상점 목록 로드 (같은 학급만)
-  const loadShops = useCallback(async () => {
+  //
+  // ⚠️ 캐시를 거친다. 이 화면은 마운트마다 학급 전체의 활성 상점을 전량 조회했고
+  //    (학급 인원만큼 = 20~25문서) 캐시가 전혀 없어 재방문마다 그대로 반복됐다.
+  //    상점 목록은 분 단위로 바뀌는 데이터가 아니라 짧은 TTL 로 충분하다.
+  //    ⚠️ 내 상점을 만들거나 고친 직후에는 반드시 force 로 우회해야 한다 —
+  //       안 그러면 **자기가 방금 한 변경이 자기 화면에 안 보인다**(호출부 2곳에 force:true).
+  const loadShops = useCallback(async (options = {}) => {
+    const { force = false } = options;
     try {
       setLoading(true);
       const shopsRef = collection(db, "personalShops");
       const userClassCode = userProfile?.classCode;
+      const cacheScope = userClassCode || "all";
+      if (!force) {
+        const cached = getCachedFirestoreData(
+          "personalShops",
+          cacheScope,
+          SHOPS_CACHE_TTL,
+        );
+        if (cached) {
+          setShops(cached);
+          setLoading(false);
+          return;
+        }
+      }
       // 같은 학급 상점만 조회 (classCode 없는 기존 문서 제외)
       const q = userClassCode
         ? query(shopsRef, where("status", "==", "active"), where("classCode", "==", userClassCode))
@@ -657,6 +686,7 @@ const PersonalShop = () => {
         .slice(0, 50);
 
       setShops(shopsData);
+      setCachedFirestoreData("personalShops", cacheScope, shopsData);
     } catch (error) {
       logger.error("상점 목록 로드 오류:", error);
     } finally {
@@ -858,7 +888,8 @@ const PersonalShop = () => {
     }
 
     await loadMyShop();
-    await loadShops();
+    // 방금 만든/고친 내 상점이 목록에 즉시 보여야 하므로 캐시를 우회한다.
+    await loadShops({ force: true });
   };
 
   // 상품 등록/수정

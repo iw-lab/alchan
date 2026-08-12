@@ -15,6 +15,13 @@ import { db } from "../firebase";
 import { useAuth } from "./AuthContext";
 import { setGlobalCurrencyUnit } from "../utils/numberFormatter";
 import { logger } from "../utils/logger";
+// Dashboard 와 같은 캐시를 공유한다(키 "mainSettings", TTL 12시간).
+// ⚠️ 이 문서를 쓰는 경로가 **둘**이고 둘 다 무효화해야 한다:
+//    ① Dashboard 의 couponValue 저장 → 이미 dataCache.invalidate("mainSettings") 호출
+//    ② AdminSettingsModal 의 handleSaveCurrencyUnit → 2026-08-12 에 추가했다.
+//       처음엔 ①만 보고 "배선 불필요"라고 적었는데, currencyUnit 을 실제로 쓰는 건 ②였다.
+//       그대로 뒀으면 교사가 화폐 단위를 바꿔도 최대 12시간 뒤 옛 값으로 되돌아갔다.
+import globalCacheService from "../services/globalCacheService";
 
 const DEFAULT_CURRENCY_UNIT = "알찬";
 
@@ -54,15 +61,28 @@ export const CurrencyProvider = ({ children }) => {
   useEffect(() => {
     if (!firebaseReady || !db || !user) return;
 
+    const applyUnit = (data) => {
+      const unit = data?.currencyUnit || DEFAULT_CURRENCY_UNIT;
+      setCurrencyUnit(unit);
+      localStorage.setItem("alchan_currencyUnit", unit);
+    };
+
     const fetchCurrency = async () => {
+      // Dashboard 도 같은 문서를 `mainSettings` 키로 캐싱한다(globalCacheService).
+      // 종전엔 서로를 몰라 그날 첫 세션에 settings/mainSettings 를 두 번 읽었다.
+      // 같은 키를 공유해 먼저 읽는 쪽이 채우고 나중 쪽이 재사용한다.
+      const cached = globalCacheService.get("mainSettings");
+      if (cached) {
+        applyUnit(cached);
+        return;
+      }
       try {
         const settingsRef = doc(db, "settings", "mainSettings");
         const snap = await getDoc(settingsRef);
         if (snap.exists()) {
           const data = snap.data();
-          const unit = data.currencyUnit || DEFAULT_CURRENCY_UNIT;
-          setCurrencyUnit(unit);
-          localStorage.setItem("alchan_currencyUnit", unit);
+          globalCacheService.set("mainSettings", data, 12 * 60 * 60 * 1000);
+          applyUnit(data);
         }
       } catch (error) {
         // 에러 시 localStorage 캐시 유지 (이미 초기값으로 설정됨)

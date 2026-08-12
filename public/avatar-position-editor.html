@@ -187,7 +187,7 @@
           <button id="eraseDownload" type="button" style="margin-top:4px;background:#dc2626;color:white;border-color:#dc2626;">🧽 그린 영역을 알파 처리한 PNG 다운로드</button>
           <button id="outfitBaseDownload" type="button" style="margin-top:4px;background:#7c3aed;color:white;border-color:#7c3aed;">🎭 outfit용 base 다운로드 (빨강=alpha, 나머지=보임)</button>
         </div>
-        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드 PNG를 <code>public/avatar-shop/[id].png</code>에 덮어쓰면 적용.</div>
+        <div style="margin-top:4px;font-size:11px;color:#92400e;">다운로드한 PNG를 <code>cwebp -q 90 -alpha_q 100 -m 6</code> 로 변환해 <code>public/avatar-shop/[id].webp</code> 에 덮어쓰면 적용 (에셋은 전부 WebP).</div>
       </div>
       <div class="help" style="margin-top:8px;width:600px;">
         빨간 점선 박스 = 선택된 아이템. 드래그로 이동 / 우하단 점으로 크기 조정.<br>
@@ -681,10 +681,13 @@ const PSIZE = 600; // px (큰 미리보기)
 const MSIZE = 130; // px (갤러리 mini, 실제는 CSS가 결정)
 // 페이지 로드 1회만 nonce 계산 — 슬라이더/렌더링마다 매번 새 URL 만들면 PNG 재fetch 깜빡 흰화면 발생
 const PAGE_NONCE = Date.now();
-// 2026-08-03 에셋 최적화: 아이템은 512px WebP, base/editor 계열만 PNG 유지
-// (Avatar.js 가 `.png`를 치환해 `_outfit.png` 변종을 찾으므로 base는 확장자 고정)
-const RAW_PNG_IDS = new Set(["base_male", "base_female", "editor_bald"]);
-const aExt = (id) => (RAW_PNG_IDS.has(id) ? "png" : "webp");
+// 2026-08-03 에셋 최적화: 아이템은 512px WebP.
+// 2026-08-12: base/editor 5종도 WebP 로 옮겼다(3.49MB → 125KB). 예외는 이제 없다.
+//   ⚠️ 이 파일은 카탈로그(src/data/avatarShopCatalog.js)를 import 하지 못하는 단독 HTML 이라
+//      확장자 규칙의 **사본**을 들고 있다. 카탈로그 쪽이 바뀌면 여기도 같이 바꿔야 한다
+//      (실제로 2026-08-12 변환 때 이 파일만 남아 베이스 미리보기가 404 가 될 뻔했다).
+const aExt = () => "webp";
+const BASE_EXT = "webp";
 
 function render() {
   renderBigPreview();
@@ -698,14 +701,14 @@ function render() {
 
 function renderBigPreview() {
   bigPreview.innerHTML = "";
-  // 베이스 — outfit 슬롯이면 _outfit.png 변종 사용 (없으면 onError → 원본 fallback)
+  // 베이스 — outfit 슬롯이면 _outfit 변종 사용 (없으면 onError → 원본 fallback)
   const baseImg = document.createElement("img");
   const useOutfitVariant = (currentSlot === "outfit");
-  baseImg.src = `/avatar-shop/${currentBase}${useOutfitVariant ? "_outfit" : ""}.png?t=${PAGE_NONCE}`;
+  baseImg.src = `/avatar-shop/${currentBase}${useOutfitVariant ? "_outfit" : ""}.${BASE_EXT}?t=${PAGE_NONCE}`;
   baseImg.onerror = () => {
-    if (useOutfitVariant) baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`;
+    if (useOutfitVariant) baseImg.src = `/avatar-shop/${currentBase}.${BASE_EXT}?t=${PAGE_NONCE}`;
   };
-  // _outfit.png 사용 시 이미 alpha 처리되어 있어 clipPath 불필요
+  // _outfit 변종은 이미 alpha 처리되어 있어 clipPath 불필요
   const baseClip = "";
   baseImg.style.cssText = `left:0;top:0;width:${PSIZE}px;height:${PSIZE}px;z-index:10;${baseClip}`;
   bigPreview.appendChild(baseImg);
@@ -794,11 +797,11 @@ function renderGallery() {
       m.style.cssText = `inset:0;width:100%;height:100%;object-fit:cover;`;
       mini.appendChild(m);
     } else {
-      // 베이스 + 해당 아이템 합성 — outfit 탭이면 _outfit.png 변종 사용
+      // 베이스 + 해당 아이템 합성 — outfit 탭이면 _outfit 변종 사용
       const baseImg = document.createElement("img");
       const useV = (currentSlot === "outfit");
-      baseImg.src = `/avatar-shop/${currentBase}${useV ? "_outfit" : ""}.png?t=${PAGE_NONCE}`;
-      baseImg.onerror = () => { if (useV) baseImg.src = `/avatar-shop/${currentBase}.png?t=${PAGE_NONCE}`; };
+      baseImg.src = `/avatar-shop/${currentBase}${useV ? "_outfit" : ""}.${BASE_EXT}?t=${PAGE_NONCE}`;
+      baseImg.onerror = () => { if (useV) baseImg.src = `/avatar-shop/${currentBase}.${BASE_EXT}?t=${PAGE_NONCE}`; };
       const baseClip2 = "";
       baseImg.style.cssText = `left:0;top:0;width:100%;height:100%;z-index:10;${baseClip2}`;
       mini.appendChild(baseImg);
@@ -1074,7 +1077,7 @@ if (eraseDownload) eraseDownload.onclick = async () => {
   a.href = cv.toDataURL("image/png");
   a.download = `${targetId}-erased.png`;
   a.click();
-  alert(`${painted}px 알파 처리. 다운로드 PNG를 public/avatar-shop/${targetId}.png 에 덮어쓰세요.`);
+  alert(`${painted}px 알파 처리. 다운로드 PNG를 cwebp -q 90 -alpha_q 100 -m 6 으로 변환해 public/avatar-shop/${targetId}.webp 에 덮어쓰세요.`);
 };
 
 // 🎭 outfit용 base 다운로드 — 빨강 영역 alpha 처리한 base PNG
@@ -1112,7 +1115,7 @@ if (outfitBaseDownload) outfitBaseDownload.onclick = async () => {
   a.href = cv.toDataURL("image/png");
   a.download = `${targetId}_outfit.png`;
   a.click();
-  alert(`${painted}px 알파 처리. 다운로드 PNG를 public/avatar-shop/${targetId}_outfit.png 에 저장하세요. outfit 입었을 때 자동 사용됩니다.`);
+  alert(`${painted}px 알파 처리. 다운로드 PNG를 cwebp -q 90 -alpha_q 100 -m 6 으로 변환해 public/avatar-shop/${targetId}_outfit.webp 에 저장하세요. outfit 입었을 때 자동 사용됩니다.`);
 };
 
 annDownload.onclick = async () => {

@@ -31,6 +31,7 @@ import {
 import { useBatchPaySalaries } from "../../hooks/useOptimizedAdminData";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../services/optimizedFirebaseService";
+import globalCacheService from "../../services/globalCacheService";
 
 // 시스템 모니터링 컴포넌트
 import SystemMonitoring from "../../pages/admin/SystemMonitoring";
@@ -544,6 +545,13 @@ const AdminSettingsModal = ({
         );
       });
 
+      // ⚠️ globalCacheService 의 `mainSettings` 를 반드시 지운다.
+      //    `setCurrencyUnitLocal` 은 React state 와 localStorage 만 바꾼다. 캐시를 안 지우면
+      //    CurrencyContext 의 fetch effect 가 다시 도는 순간(토큰 갱신 등으로 user 참조가 바뀔 때)
+      //    최대 12시간짜리 옛 캐시를 읽어 **방금 바꾼 화폐 단위가 되돌아간다.**
+      //    (2026-08-12 교차검증에서 잡힌 회귀 — 캐시를 새로 달면 쓰기 경로를 같은 커밋에서 잡는다.)
+      globalCacheService.invalidate("mainSettings");
+
       setCurrencyUnitLocal(tempCurrencyUnit.trim());
       toast.success("화폐 단위가 저장되었습니다.");
     } catch (error) {
@@ -772,6 +780,15 @@ const AdminSettingsModal = ({
         });
       } catch (qErr) {
         logger.warn("queryClient invalidate 실패(무시):", qErr);
+      }
+
+      // 4) globalCacheService 도 함께 — Dashboard 가 maxJobsPerStudent 를 이 캐시에서 읽는다
+      //    (2026-08-12 읽기 절감). 여기를 빼먹으면 상한을 바꿔도 학생 화면엔 최대 12시간 안 보인다.
+      //    캐시를 새로 다는 변경은 **무효화 지점을 같은 커밋에서** 잡아야 한다.
+      try {
+        globalCacheService.invalidate(`salarySettings_${userClassCode}`);
+      } catch (cErr) {
+        logger.warn("globalCache invalidate 실패(무시):", cErr);
       }
 
       toast.success("급여 설정이 저장되었습니다.");

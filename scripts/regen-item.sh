@@ -109,7 +109,9 @@ npm run build 2>&1 | tail -5
 
 echo ""
 echo "📝 git add/commit/push..."
-FILES_TO_ADD=("$EDITOR_HTML" "src/data/avatarShopCatalog.js")
+# 프롬프트는 2026-08-12 부터 카탈로그가 아니라 scripts/avatar-prompts.mjs 에 있다
+# (브라우저 번들에서 빼기 위해 분리). 프롬프트를 고쳐 재생성했다면 그 파일도 같이 올라가야 한다.
+FILES_TO_ADD=("$EDITOR_HTML" "src/data/avatarShopCatalog.js" "scripts/avatar-prompts.mjs")
 for id in "${IDS[@]}"; do
   FILES_TO_ADD+=("public/avatar-shop/${id}.png")
 done

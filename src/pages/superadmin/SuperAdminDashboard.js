@@ -427,7 +427,10 @@ export default function SuperAdminDashboard() {
         clearInterval(intervalId);
       }
     };
-  }, [userDoc]);
+    // 본문이 읽는 건 isSuperAdmin 뿐이다. userDoc 전체를 넣으면 cash·lastActiveAt 같은
+    // 무관한 필드가 바뀔 때마다 effect 가 다시 돈다(AuthContext 의 onSnapshot 이 매번
+    // 새 객체를 만들기 때문에 참조도 매번 바뀐다).
+  }, [userDoc?.isSuperAdmin]);
 
   // 에러 로그 실시간 리스너
   useEffect(() => {
@@ -460,7 +463,11 @@ export default function SuperAdminDashboard() {
         errorListenerRef.current();
       }
     };
-  }, [userDoc]);
+    // ⚠️ deps 는 boolean 하나여야 한다. `[userDoc]` 이면 슈퍼관리자 본인의 lastActiveAt 이
+    //    55분마다 갱신될 때마다(AuthContext INTERVAL_LAST_ACTIVE) 이 리스너가 해지·재구독되고,
+    //    재구독은 limit(50) 쿼리를 **처음부터 다시 읽는다**. 대시보드를 몇 시간 켜두면
+    //    변경분만 받았어야 할 리스너가 수백 건을 재과금했다.
+  }, [userDoc?.isSuperAdmin]);
 
   // 초기 데이터 로드
   useEffect(() => {

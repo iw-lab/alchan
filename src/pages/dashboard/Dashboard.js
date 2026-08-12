@@ -59,6 +59,7 @@ import {
  ActionButton,
 } from "../../components/PageWrapper";
 import globalCacheService from "../../services/globalCacheService";
+import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 import {
  Briefcase,
  ListTodo,
@@ -103,6 +104,26 @@ const dataCache = {
  globalCacheService.set(key, data, ttl || CACHE_TTL.TASKS),
  invalidate: (key) => globalCacheService.invalidate(key),
  clear: () => globalCacheService.clearAll(),
+};
+
+/**
+ * 직업 목록 캐시를 **양쪽 다** 지운다.
+ *
+ * 이 앱엔 jobs 를 캐싱하는 계층이 둘이고 키 모양이 다르다:
+ *   - 이 화면: globalCacheService, 언더스코어 `jobs_{classCode}`
+ *   - 정부 계열 6개 페이지(국회·경찰서·법원·국세청·조직도·정부):
+ *     utils/fetchCache, 콜론 `jobs:{classCode}`
+ * 서로를 모르기 때문에, 교사가 여기서 직업을 만들거나 고치거나 지워도
+ * 그 6개 화면은 최대 TTL(폴링 간격의 0.9배 = 27~54분) 동안 **옛 목록을 보여줬다.**
+ * 직업 목록은 경찰청장·대통령 같은 역할 판정에도 쓰여서 단순 표시 문제가 아니다.
+ *
+ * ⚠️ 언더스코어 쪽을 지우는 걸 빼면 안 된다 — 이 화면 자신이 그 캐시를 읽는다(869행).
+ *    '교체'가 아니라 '둘 다'다.
+ */
+const invalidateJobsCaches = (classCode) => {
+ if (!classCode) return;
+ dataCache.invalidate(`jobs_${classCode}`);
+ invalidateFetchCache(`jobs:${classCode}`);
 };
 
 // 배치 작업 관리 클래스
@@ -646,15 +667,28 @@ function Dashboard({ adminTabMode }) {
 
  // 직업 개수 상한 로드 — 급여 설정(settings/salarySettings_{classCode})의 maxJobsPerStudent.
  // 학생 직업 선택 UI 제한 기준. 문서/필드 없으면 기본 5 유지.
+ // ⚠️ 캐시를 반드시 거친다. 여긴 기본 랜딩 라우트(/dashboard/tasks)이고, Dashboard 는
+ //    관리자 탭까지 **4개의 별도 Route** 로 렌더돼 탭을 오갈 때마다 통째로 remount 된다.
+ //    캐시가 없으면 그 왕복마다 문서 1건씩 새로 읽었다. 직업 개수 상한은 교사가 아주 드물게
+ //    바꾸는 값이라 SETTINGS TTL(12시간)로 충분하다.
  useEffect(() => {
  const classCode = userDoc?.classCode;
  if (!db || !classCode) return;
+ const cacheKey = `salarySettings_${classCode}`;
+ const cached = dataCache.get(cacheKey);
+ if (cached) {
+ const raw = cached.maxJobsPerStudent;
+ if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
+ return;
+ }
  let cancelled = false;
  (async () => {
  try {
- const snap = await getDoc(doc(db, "settings", `salarySettings_${classCode}`));
+ const snap = await getDoc(doc(db, "settings", cacheKey));
  if (cancelled) return;
- const raw = snap.exists() ? snap.data().maxJobsPerStudent : undefined;
+ const data = snap.exists() ? snap.data() : {};
+ dataCache.set(cacheKey, data, CACHE_TTL.SETTINGS);
+ const raw = data.maxJobsPerStudent;
  if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
  } catch (e) {
  logger.warn("[Dashboard] 직업 개수 상한 로드 실패(기본 5 사용):", e);
@@ -728,9 +762,26 @@ function Dashboard({ adminTabMode }) {
  return Math.max(0, maxJobsPerStudent - appointedCount);
  }, [userDoc, maxJobsPerStudent]);
 
- const jobsToShow = useMemo(() => {
- const completedJobTasks = userDoc?.completedJobTasks || {};
+ // ⚠️ deps 는 **실제로 읽는 필드의 서명**이어야 한다. `userDoc` 전체를 넣으면
+ //    cash·lastActiveAt 같은 무관한 필드가 바뀔 때마다(AuthContext 의 onSnapshot 이
+ //    매번 새 객체를 만든다) 이 memo 가 재계산되고, spread 로 만든 job/task 객체가
+ //    전부 새 참조가 되어 JobList·TaskItem 의 memo 가 다시 뚫린다.
+ //    핸들러를 안정화(위 JobList props)해도 prop 이 새 객체면 소용이 없다 — 둘은 세트다.
+ //    같은 패턴이 AlchanSidebar 에도 있다(effectiveJobIdsKey).
+ const completedJobTasksSig = JSON.stringify(userDoc?.completedJobTasks || {});
+ const completedTasksSig = JSON.stringify(userDoc?.completedTasks || {});
+ // 서명에서 되살린 객체를 memo 로 고정한다. 이렇게 하면 아래 두 memo 의 deps 가
+ // **정직해진다** — 억제 주석 없이 exhaustive-deps 를 그대로 통과한다.
+ const completedJobTasks = useMemo(
+ () => JSON.parse(completedJobTasksSig),
+ [completedJobTasksSig],
+ );
+ const completedTasks = useMemo(
+ () => JSON.parse(completedTasksSig),
+ [completedTasksSig],
+ );
 
+ const jobsToShow = useMemo(() => {
  return Array.isArray(jobs)
  ? jobs
  .filter(
@@ -744,18 +795,19 @@ function Dashboard({ adminTabMode }) {
  })),
  }))
  : [];
- }, [jobs, effectiveJobIds, userDoc]);
+ }, [jobs, effectiveJobIds, completedJobTasks]);
 
  const commonTasksWithUserProgress = useMemo(() => {
- if (!commonTasks || !userDoc) {
+ // `!userDoc` 가드를 `userDoc?.id` 로 좁혀 유지한다 — 사용자 문서가 아직 없을 때
+ // 빈 목록을 주던 기존 동작 그대로다. userDoc 전체를 deps 에 넣지 않는 게 요점이다.
+ if (!commonTasks || !userDoc?.id) {
  return [];
  }
- const userCompletedTasks = userDoc.completedTasks || {};
  return commonTasks.map((task) => ({
  ...task,
- clicks: userCompletedTasks[task.id] || 0,
+ clicks: completedTasks[task.id] || 0,
  }));
- }, [commonTasks, userDoc]);
+ }, [commonTasks, completedTasks, userDoc?.id]);
 
  // Utility function for generating IDs
  const generateId = useCallback(() => {
@@ -786,7 +838,32 @@ function Dashboard({ adminTabMode }) {
  limit(300),
  );
 
- const jobsSnap = await getDocs(jobsQuery);
+ // Common Tasks 조회 (인덱스 없이 작동하도록 orderBy 제거)
+ const tasksQuery = query(
+ firestoreCollection(db, "commonTasks"),
+ where("classCode", "==", classCode),
+ limit(50),
+ );
+
+ // ⚠️ 두 쿼리는 서로의 결과에 의존하지 않는다. 순차 await 였을 땐 왕복 시간이 더해졌다 —
+ //    읽기 **수**는 그대로지만 첫 화면이 그만큼 늦게 찼다. 여긴 기본 랜딩 라우트다.
+ //    `Promise.all` 이 아니라 `allSettled` 인 이유: all 은 한쪽이 실패하면 **성공한 쪽 결과까지
+ //    버린다**. 순차 await 시절엔 적어도 jobs 는 먼저 반영됐는데, all 로 바꾸면 commonTasks
+ //    한 번 실패에 직업 목록까지 통째로 안 뜬다 — 병렬화하면서 조용히 나빠지는 지점이다.
+ const [jobsResult, tasksResult] = await Promise.allSettled([
+ getDocs(jobsQuery),
+ getDocs(tasksQuery),
+ ]);
+ if (jobsResult.status === "rejected") {
+ logger.error("Polling 에러(jobs):", jobsResult.reason);
+ }
+ if (tasksResult.status === "rejected") {
+ logger.error("Polling 에러(commonTasks):", tasksResult.reason);
+ }
+ const jobsSnap = jobsResult.status === "fulfilled" ? jobsResult.value : null;
+ const tasksSnap = tasksResult.status === "fulfilled" ? tasksResult.value : null;
+
+ if (jobsSnap) {
  const loadedJobs = jobsSnap.docs
  .map((d) => ({
  id: d.id,
@@ -808,15 +885,9 @@ function Dashboard({ adminTabMode }) {
 
  setJobs(loadedJobs);
  dataCache.set(`jobs_${classCode}`, loadedJobs, CACHE_TTL.JOBS);
+ }
 
- // Common Tasks 조회 (인덱스 없이 작동하도록 orderBy 제거)
- const tasksQuery = query(
- firestoreCollection(db, "commonTasks"),
- where("classCode", "==", classCode),
- limit(50),
- );
-
- const tasksSnap = await getDocs(tasksQuery);
+ if (tasksSnap) {
  const loadedCommonTasks = tasksSnap.docs
  .map((d) => ({
  id: d.id,
@@ -838,7 +909,13 @@ function Dashboard({ adminTabMode }) {
  loadedCommonTasks,
  CACHE_TTL.TASKS,
  );
+ }
+
+ // 둘 다 성공했을 때만 "이번 주기는 조회했다"로 친다 —
+ // 한쪽이 실패했는데 스로틀을 찍으면 그 실패가 5분간 재시도 없이 굳는다.
+ if (jobsSnap && tasksSnap) {
  lastPollAtByClass.set(classCode, Date.now());
+ }
  } catch (error) {
  logger.error("Polling 에러:", error);
  }
@@ -1196,7 +1273,7 @@ function Dashboard({ adminTabMode }) {
  }
 
  // 캐시 무효화
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } catch (error) {
  logger.error("handleSaveJob 오류:", error);
  toast.error("직업 저장 중 오류 발생");
@@ -1291,7 +1368,7 @@ function Dashboard({ adminTabMode }) {
  setJobs((prev) => prev.filter((j) => j.id !== jobIdToDelete));
 
  // 캐시 무효화
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } catch (error) {
  logger.error("handleDeleteJob 오류:", error);
  toast.error("직업 삭제 중 오류 발생");
@@ -1451,7 +1528,7 @@ function Dashboard({ adminTabMode }) {
 
  // 캐시 무효화
  if (isJobTaskForForm) {
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } else {
  dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
  }
@@ -1499,7 +1576,11 @@ function Dashboard({ adminTabMode }) {
  });
  setCommonTasks((prev) => [...prev, { ...newTaskDataWithId, classCode: userDoc.classCode }]);
  }
- dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
+ if (jobId) {
+ invalidateJobsCaches(userDoc.classCode);
+ } else {
+ dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
+ }
  } catch (error) {
  logger.error("인라인 할일 추가 오류:", error);
  toast.error("할일 추가 중 오류: " + error.message);
@@ -1530,7 +1611,11 @@ function Dashboard({ adminTabMode }) {
  t.id === taskId ? { ...t, ...taskData } : t
  ));
  }
- dataCache.invalidate(jobId ? `jobs_${userDoc.classCode}` : `commonTasks_${userDoc.classCode}`);
+ if (jobId) {
+ invalidateJobsCaches(userDoc.classCode);
+ } else {
+ dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
+ }
  } catch (error) {
  logger.error("인라인 할일 수정 오류:", error);
  toast.error("할일 수정 중 오류: " + error.message);
@@ -1581,7 +1666,7 @@ function Dashboard({ adminTabMode }) {
 
  // 캐시 무효화
  if (jobId) {
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } else {
  dataCache.invalidate(`commonTasks_${userDoc.classCode}`);
  }
@@ -2373,43 +2458,18 @@ function Dashboard({ adminTabMode }) {
  key={job.id}
  job={job}
  isAdmin={isAdmin?.()}
- onEditJob={() => handleEditJob(job)}
- onDeleteJob={() => handleDeleteJob(job.id)}
- onAddTask={() => handleAddTaskClick(job.id, true)}
- onEarnCoupon={(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- ) =>
- handleTaskEarnCoupon(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- )
- }
- onRequestApproval={(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- ) =>
- handleTaskApprovalRequest(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- )
- }
- onEditTask={(task) => handleEditTask(task, job.id)}
- onDeleteTask={(taskId) =>
- handleDeleteTask(taskId, job.id)
- }
+ // ⚠️ 아래는 전부 **안정된 핸들러 그대로** 넘긴다. 인라인 화살표를 쓰면 렌더마다 새
+ //    함수가 되어 JobList·TaskItem 의 React.memo 가 통째로 무력화된다 — userDoc 의 cash 가
+ //    1원 바뀌어도 직업 카드와 그 아래 할일 수십 개가 전부 다시 그려졌다. 그 순간은
+ //    정확히 할일 카드 뒤집기 애니메이션이 도는 순간과 겹친다.
+ //    인자(job / task / jobId)는 자식이 자기 props 로 붙인다.
+ onEditJob={handleEditJob}
+ onDeleteJob={handleDeleteJob}
+ onAddTask={handleAddTaskClick}
+ onEarnCoupon={handleTaskEarnCoupon}
+ onRequestApproval={handleTaskApprovalRequest}
+ onEditTask={handleEditTask}
+ onDeleteTask={handleDeleteTask}
  isHandlingTask={isHandlingTask}
  />
  ))
@@ -2460,43 +2520,11 @@ function Dashboard({ adminTabMode }) {
  <CommonTaskList
  tasks={commonTasksWithUserProgress}
  isAdmin={isAdmin?.()}
- onEarnCoupon={(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- ) =>
- handleTaskEarnCoupon(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- )
- }
- onRequestApproval={(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- ) =>
- handleTaskApprovalRequest(
- taskId,
- jobId,
- isJobTask,
- cardType,
- rewardAmount,
- )
- }
- onEditTask={(taskId) =>
- handleEditTask(
- commonTasks.find((t) => t.id === taskId),
- null,
- )
- }
- onDeleteTask={(taskId) => handleDeleteTask(taskId, null)}
+ // JobList 와 같은 규약 — 안정된 핸들러 그대로. TaskItem 이 (task, jobId=null) 로 부른다.
+ onEarnCoupon={handleTaskEarnCoupon}
+ onRequestApproval={handleTaskApprovalRequest}
+ onEditTask={handleEditTask}
+ onDeleteTask={handleDeleteTask}
  isHandlingTask={isHandlingTask}
  />
  </div>
@@ -2539,7 +2567,7 @@ function Dashboard({ adminTabMode }) {
  });
  // 로컬 state 즉시 업데이트
  setJobs((prev) => [...prev, { id: newJobId, ...newJobData, tasks: [] }]);
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } catch (error) {
  console.error("직업 추가 오류:", error);
  toast.error("직업 추가 중 오류 발생");
@@ -2569,7 +2597,7 @@ function Dashboard({ adminTabMode }) {
  : j
  )
  );
- dataCache.invalidate(`jobs_${userDoc.classCode}`);
+ invalidateJobsCaches(userDoc.classCode);
  } catch (error) {
  console.error("직업 수정 오류:", error);
  toast.error("직업 수정 중 오류 발생");

@@ -167,14 +167,25 @@ export const updateUserDocument = async (userId, updates, maxRetries = 3, tab = 
   if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
   if (!userId || !updates || Object.keys(updates).length === 0) return false;
 
-  const updateKeys = Object.keys(updates);
+  // ⚠️ 판정은 **실제로 쓸 필드**(undefined 제거본) 기준이어야 한다.
+  //    정리 전 키로 판정하면 `{lastActiveAt, nickname: undefined}` 같은 입력에서
+  //    실제 write 는 하트비트뿐인데 "하트비트가 아니다"로 읽는다.
+  //    (지금은 안전한 방향으로만 틀리지만, 두 판정이 같은 집합을 봐야 어긋나지 않는다.)
+  //    정리는 결정적이라 루프 밖에서 한 번만 한다 — 재시도마다 같은 결과다.
+  const cleanedUpdates = { ...updates };
+  Object.keys(cleanedUpdates).forEach(
+    (key) => cleanedUpdates[key] === undefined && delete cleanedUpdates[key]
+  );
+  if (Object.keys(cleanedUpdates).length === 0) return false;
+
+  const updateKeys = Object.keys(cleanedUpdates);
   const isOnlyTimestamp = updateKeys.every(key =>
     key === 'lastLoginAt' || key === 'lastActiveAt'
   );
   if (!isOnlyTimestamp) {
     invalidateCache(`user_${userId}`);
     invalidateCache('users_all');
-    if (updates.classCode) {
+    if (cleanedUpdates.classCode) {
       invalidateCachePattern('classmates_');
     }
   }
@@ -184,14 +195,20 @@ export const updateUserDocument = async (userId, updates, maxRetries = 3, tab = 
   while (attempt < maxRetries) {
     attempt++;
     try {
-      const cleanedUpdates = { ...updates };
-      Object.keys(cleanedUpdates).forEach(
-        (key) => cleanedUpdates[key] === undefined && delete cleanedUpdates[key]
-      );
-      if (Object.keys(cleanedUpdates).length === 0) return false;
-
       const userRef = doc(db, "users", userId);
-      const finalUpdates = { ...cleanedUpdates, updatedAt: serverTimestamp() };
+      // 하트비트(lastLoginAt/lastActiveAt)만 찍는 갱신에는 updatedAt 을 **얹지 않는다.**
+      //
+      // updatedAt 은 학급 명단 증분 동기화의 커서다 — getClassmates() 가
+      // `where("classCode","==",cc) + where("updatedAt",">",lastSync)` 로 읽는다(core.js:183).
+      // 하트비트가 updatedAt 을 갱신하면 **아무것도 안 바뀐 문서**가 그 쿼리에 걸려,
+      // 한 사람이 탭을 열어둔 것만으로 학급원들의 다음 동기화가 그 문서를 다시 읽는다.
+      // 55분마다 학생 수만큼 발생하는 "위장 변경"이었다.
+      //
+      // 위 캐시 무효화는 이미 같은 판단을 하고 있었다 — 실제 write 만 그 밖에 있었다.
+      // 두 곳이 **같은 키 집합**(cleanedUpdates)을 보게 맞추는 것이 이 변경의 전부다.
+      const finalUpdates = isOnlyTimestamp
+        ? cleanedUpdates
+        : { ...cleanedUpdates, updatedAt: serverTimestamp() };
       logDbOperation('UPDATE', 'users', userId, { tab, extra: Object.keys(cleanedUpdates).join(',') });
 
       const updatePromise = updateDoc(userRef, finalUpdates);

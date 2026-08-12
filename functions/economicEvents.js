@@ -1031,6 +1031,8 @@ async function executeMarketFeeChange(classCode, params) {
  * 만료된 시간제한 이벤트 오버라이드 복원 (스케줄러 매 시간 호출)
  */
 async function restoreExpiredOverrides(classCode) {
+  // ⚠️ 반드시 **여기서 직접 읽는다.** 호출부의 스냅샷을 받아 쓰면 그 사이에 걸린
+  //    새 오버라이드를 낡은 값으로 덮어쓴다(호출부 주석 참조).
   const settingsDoc = await db
     .collection("economicEventSettings")
     .doc(classCode)
@@ -1038,6 +1040,7 @@ async function restoreExpiredOverrides(classCode) {
   if (!settingsDoc.exists) return;
 
   const settings = settingsDoc.data();
+
   const now = new Date();
   const updates = {};
 
@@ -1278,49 +1281,84 @@ async function runEconomicEventsForAllClasses() {
     return { processed: 0, triggered: 0, results: [] };
   }
 
-  // 1단계: 모든 활성 학급 코드 수집 (users 컬렉션에서)
-  const usersSnapshot = await db.collection("users").get();
-  const allClassCodes = new Set();
-  usersSnapshot.docs.forEach((doc) => {
-    const classCode = doc.data().classCode;
-    if (classCode) allClassCodes.add(classCode);
-  });
+  // 1단계: 신규 학급 프로비저닝 — **하루 한 번만** 한다.
+  //
+  // 종전엔 매 실행(평일 8~17시 = 하루 10회)마다 `users` 컬렉션을 **필터 없이 전량 스캔**해서
+  // classCode 집합을 만들고, 학급마다 설정 문서 존재 확인 get() 을 또 돌았다.
+  // 학급이 새로 생기는 건 학기당 몇 번인데, 그걸 감지하려고 하루 400~500 읽기를 썼다.
+  //
+  // 그렇다고 이 스캔을 **없앨 수는 없다** — economicEventSettings 문서를 만드는 경로가
+  // 여기 하나뿐이라, 지우면 새 학급은 교사가 설정을 수동 저장하기 전까지 경제이벤트가
+  // 영영 안 돈다. 그래서 없애는 대신 **빈도만** 하루 1회로 낮춘다.
+  // (근본 해결은 학급 생성 시점(classroomDefaults)에서 설정을 함께 만드는 것이다.
+  //  그건 교사 가입·승인 경로를 건드리는 별개 변경이라 여기서 하지 않는다.)
+  //
+  // 게이트: **그날 아직 스캔을 안 했으면** 한다. 마커 문서 1건을 읽어 판정한다.
+  //   ⚠️ `currentHour === 8`(그날 첫 실행) 로 짰다가 고쳤다 — 8시 실행이 실패하면
+  //      그날은 스캔이 통째로 없고, 금요일 8시 이후에 생긴 학급은 월요일 8시까지 기다린다.
+  //      "몇 시냐"가 아니라 "오늘 했느냐"가 조건이어야 한다. 읽기 1건이면 그게 된다
+  //      (없앤 users 전수 스캔은 실행당 40~50건이었다).
+  const provisionMarkerRef = db
+    .collection("schedulerLocks")
+    .doc("economicEventProvision");
+  const scanDateStr = kstTime.toISOString().split("T")[0];
 
-  if (allClassCodes.size === 0) {
-    logger.info("[경제이벤트] 활성 학급 없음");
-    return { processed: 0, triggered: 0, results: [] };
-  }
-
-  logger.info(`[경제이벤트] ${allClassCodes.size}개 학급 발견: ${[...allClassCodes].join(", ")}`);
-
-  // 2단계: 설정 없는 학급에 자동 생성
-  for (const classCode of allClassCodes) {
-    const settingRef = db.collection("economicEventSettings").doc(classCode);
-    const settingDoc = await settingRef.get();
-
-    if (!settingDoc.exists) {
-      // 8~15시 사이 랜덤 triggerHour 배정
-      const randomHour = 8 + Math.floor(Math.random() * 8);
-      await settingRef.set({
-        enabled: true,
-        triggerHour: randomHour,
-        events: DEFAULT_EVENT_TEMPLATES,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        autoCreated: true,
-      });
-      logger.info(`[경제이벤트] ${classCode}: 기본 설정 자동 생성 (triggerHour: ${randomHour}시)`);
-    } else if (!settingDoc.data().enabled) {
-      // 비활성화된 설정을 활성화
-      await settingRef.update({ enabled: true });
-      logger.info(`[경제이벤트] ${classCode}: 비활성화 → 자동 활성화`);
-    }
-  }
-
-  // 3단계: 활성화된 설정 전체 조회
-  const settingsSnapshot = await db
+  let settingsSnapshot = await db
     .collection("economicEventSettings")
     .where("enabled", "==", true)
     .get();
+
+  const markerSnap = await provisionMarkerRef.get();
+  const alreadyScannedToday = markerSnap.exists && markerSnap.data()?.date === scanDateStr;
+
+  if (!alreadyScannedToday || settingsSnapshot.empty) {
+    const usersSnapshot = await db.collection("users").get();
+    const allClassCodes = new Set();
+    usersSnapshot.docs.forEach((doc) => {
+      const classCode = doc.data().classCode;
+      if (classCode) allClassCodes.add(classCode);
+    });
+
+    logger.info(
+      `[경제이벤트] 학급 프로비저닝 점검(${alreadyScannedToday ? "부트스트랩" : "오늘 첫 스캔"}): ` +
+        `${allClassCodes.size}개 학급`,
+    );
+
+    // 2단계: 설정 없는 학급에 자동 생성
+    for (const classCode of allClassCodes) {
+      const settingRef = db.collection("economicEventSettings").doc(classCode);
+      const settingDoc = await settingRef.get();
+
+      if (!settingDoc.exists) {
+        // 8~15시 사이 랜덤 triggerHour 배정
+        const randomHour = 8 + Math.floor(Math.random() * 8);
+        await settingRef.set({
+          enabled: true,
+          triggerHour: randomHour,
+          events: DEFAULT_EVENT_TEMPLATES,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          autoCreated: true,
+        });
+        logger.info(`[경제이벤트] ${classCode}: 기본 설정 자동 생성 (triggerHour: ${randomHour}시)`);
+      } else if (!settingDoc.data().enabled) {
+        // 비활성화된 설정을 활성화
+        await settingRef.update({ enabled: true });
+        logger.info(`[경제이벤트] ${classCode}: 비활성화 → 자동 활성화`);
+      }
+    }
+
+    // 스캔을 **끝낸 뒤** 마커를 찍는다. 중간에 실패하면 마커가 안 남아 다음 실행이 다시 한다.
+    await provisionMarkerRef.set(
+      { date: scanDateStr, scannedAt: admin.firestore.FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+
+    // 방금 만들었거나 켠 학급이 이번 실행에 바로 반영되도록 다시 읽는다.
+    settingsSnapshot = await db
+      .collection("economicEventSettings")
+      .where("enabled", "==", true)
+      .get();
+  }
 
   if (settingsSnapshot.empty) {
     logger.info("[경제이벤트] 활성화된 학급 없음");
@@ -1328,6 +1366,12 @@ async function runEconomicEventsForAllClasses() {
   }
 
   // 만료된 오버라이드 복원 (매시간 체크)
+  // ⚠️ 여기서 **스냅샷을 재사용하지 않는다.** 중복 조회를 없애려고 위에서 읽은 데이터를
+  //    넘기게 고쳤다가 되돌렸다 — 스냅샷을 읽은 뒤 이 루프가 도는 사이에 수동 경제이벤트가
+  //    오버라이드를 새로 걸면(만료 시각 연장 포함), 낡은 스냅샷 기준으로 판단한 복원이
+  //    **방금 건 오버라이드를 지운다.** 절감은 학급 수 × 하루 10회(≈20 읽기/일)뿐이고
+  //    잃는 건 경제이벤트 상태의 정확성이라 교환이 성립하지 않는다.
+  //    (제대로 하려면 트랜잭션이나 update-time precondition 이 필요하다 — 별건.)
   for (const settingDoc of settingsSnapshot.docs) {
     try {
       await restoreExpiredOverrides(settingDoc.id);

@@ -9,7 +9,6 @@
 - **setup.js**: 테스트 환경 초기 설정 (모킹, 전역 설정 등)
 
 ### 테스트 파일
-- **hooks/useFirestoreData.test.js**: Firestore 데이터 훅 캐시 로직 테스트
 - **utils/logger.test.js**: 로거 유틸리티 테스트
 - **services/globalCacheService.test.js**: 전역 캐시 서비스 테스트
 
@@ -43,20 +42,13 @@ npm run test:unit -- --watch
 ## 테스트 통계
 
 현재 테스트 커버리지:
-- **총 테스트**: 82개
-- **통과**: 76개
-- **실패**: 6개 (엣지 케이스, 개선 필요)
+- `npm test`: **411개 전부 통과** (2026-08-12)
+- 단, `npm test` 는 아래 두 파일을 **제외**한 수치다 — 둘 다 실패가 남아 있다.
+  (`globalCacheService.test.js` 3건 · `logger.test.js` 2건. 이번 변경과 무관한 기존 실패다.)
+  종전엔 `useFirestoreData.test.js` 도 제외 대상이었으나, 그 모듈이 프로덕션 호출부 0건인
+  죽은 코드로 확인돼 테스트와 함께 삭제했다(2026-08-12).
 
 ### 테스트 범위
-
-#### useFirestoreData Hook (30개 테스트)
-- ✅ 캐시 키 생성
-- ✅ 캐시 저장/조회
-- ✅ 캐시 무효화
-- ✅ 캐시 통계
-- ✅ 캐시 제거 (LRU)
-- ✅ TTL 검증
-- ✅ 메모리 관리
 
 #### Logger Utility (26개 테스트)
 - ✅ Development 환경 로깅

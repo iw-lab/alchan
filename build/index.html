@@ -120,11 +120,22 @@
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Jua&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap"></noscript>
 
-    <!-- Pretendard + Noto Sans KR - 비차단 로드 (preload+onload)로 변경하여 첫 페인트 지연 제거 -->
-    <link rel="preload" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript><link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" /></noscript>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap"></noscript>
+    <!-- 본문 폰트 = Noto Sans KR. 비차단 로드(preload+onload)로 첫 페인트를 막지 않는다.
+         ⚠️ 여기 있던 Pretendard 링크는 2026-08-12 에 **지웠다.** 지운 이유가 중요하다 —
+            CDN 이 등록하는 이름은 `Pretendard Variable` 인데 index.css/tailwind.config.js 는
+            `Pretendard` 를 찾고 있었다. 즉 **한 번도 매치된 적이 없고**, 실제로 화면을 그리는
+            폰트는 언제나 그 다음 후보인 Noto Sans KR 이었다. 13.2 KB(gzip) CSS 와 그 뒤의
+            폰트 바이너리를 매 방문마다 받고 한 글자도 안 그리고 있었다.
+            (Pretendard 를 정말 쓰고 싶다면 이름을 `Pretendard Variable` 로 고치면 된다.
+             그건 앱 전체 서체가 바뀌는 디자인 결정이라 성능 작업에 섞지 않았다.)
+
+         ⚠️ weight 를 `300;400;…;900` 로 나열하지 말 것. 그러면 Google Fonts 가
+            @font-face 를 **868개** 뱉는다(666 KB raw / 163 KB gzip). 한글은 서브셋이 100개 넘게
+            쪼개져 있어서 weight 수만큼 곱해지기 때문이다. 가변축 하나면 124개(95 KB / 23 KB)로 끝나고
+            100~900 연속이라 나열식의 상위집합이다. 폰트 바이너리도 같은 서브셋 기준
+            7개 파일 116,676 B → 1개 파일 16,668 B (-86%). 실측값이다. -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap"></noscript>
 
     <title>알찬 - 학급경제 시뮬레이션 교육 앱 | 교실경제 체험학습</title>
 
@@ -235,10 +246,10 @@
         50% { transform: translateY(-6px); }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-BDI83pPn.js"></script>
+    <script type="module" crossorigin src="/assets/index-CzVrPkUa.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-react-C2ANKD2O.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-DFTrd9tP.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-BQjanYKe.css">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-BLNnWYGJ.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B-07fuyC.css">
   </head>
   <body>
     <script>

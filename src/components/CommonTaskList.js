@@ -29,6 +29,8 @@ export default function CommonTaskList({
       gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
       gap: isMobile ? "8px" : "10px",
     }}>
+      {/* JobList 와 같은 규약: 핸들러는 그대로 넘기고 인자는 TaskItem 이 붙인다.
+          공통 할일은 jobId 가 없으므로 TaskItem 이 (task, null) 로 부른다. */}
       {tasks.map((task) => (
         <TaskItem
           key={task.id}
@@ -36,8 +38,8 @@ export default function CommonTaskList({
           taskId={task.id}
           onEarnCoupon={onEarnCoupon}
           onRequestApproval={onRequestApproval}
-          onEditTask={() => onEditTask(task.id)}
-          onDeleteTask={() => onDeleteTask(task.id)}
+          onEditTask={onEditTask}
+          onDeleteTask={onDeleteTask}
           isAdmin={isAdmin}
           isJobTask={false}
         />

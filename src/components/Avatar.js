@@ -3,15 +3,39 @@ import React from "react";
 import { AVATAR_SHOP_SLOTS, SLOT_ANCHORS, SLOT_BLEND_MODES } from "../utils/avatarShop";
 
 // 폴백 베이스 이미지 (베이스 미선택 시) - 남자 기본
-const DEFAULT_BASE_URL = "/avatar-shop/base_male.png";
+const DEFAULT_BASE_URL = "/avatar-shop/base_male.webp";
 
-// PNG cache-buster — firestore에 저장된 옛 imageUrl(query string 없음)도 강제 갱신
-// ⚠️ avatarShopCatalog.js 의 ASSET_VERSION 과 반드시 동시에 올릴 것.
-const ASSET_VERSION = "20260803a";
+// 캐시버스터 — firestore에 저장된 옛 imageUrl(query string 없음)도 강제 갱신
+// ⚠️ avatarShopCatalog.js 의 ASSET_VERSION 과 반드시 동시에 올릴 것
+//    (어긋나면 avatarAssets.test.js 가 빨간불이 된다).
+export const ASSET_VERSION = "20260812a";
 const withCacheBust = (url) => {
   if (!url) return url;
   return url.includes("?") ? url : `${url}?v=${ASSET_VERSION}`;
 };
+
+/**
+ * 옷을 입었을 때 쓰는 base 변종(`_outfit`) URL.
+ *
+ * ⚠️ 이 함수가 **확장자를 가려서는 안 된다.** 예전엔 `.png` 만 치환했고, 그래서 base 5종만
+ *    WebP 이관에서 제외돼 700 KB PNG 로 남아 있었다(모든 학생이 매 화면에서 받는 파일이다).
+ *    확장자를 못 찾으면 `replace` 가 원본을 **그대로 돌려주므로** 호출부는
+ *    "변종이 있다"고 오판한다 — 그래서 매치 여부를 먼저 확인하고 없으면 null 을 준다.
+ *
+ * @returns {string|null} 변종 URL, 또는 확장자를 못 알아본 경우 null
+ */
+export function outfitVariantUrl(baseUrl) {
+  if (!baseUrl) return null;
+  // ⚠️ **경로 부분만** 본다. `\.(png|webp)(\?.*)?$` 로 URL 전체를 훑으면 두 방향으로 틀린다:
+  //    - `/a.jpg?next=.webp` 처럼 쿼리·해시에 확장자 문자열이 섞이면 매치돼 non-null 을 준다
+  //      → 호출부가 "변종이 있다"고 오판해 clipPath 가 틀어진다.
+  //    - `/a.png#frag` 처럼 해시가 붙으면 매치가 안 돼 null 을 준다 → 멀쩡한 URL 을 버린다.
+  //    지금 이 앱의 URL 은 `?v=` 만 붙지만, 이 함수의 존재 이유가 "확장자를 잘못 읽지 않는 것"이라
+  //    실제로 그렇게 읽는다. 대소문자는 원본을 보존한다(서버 파일명 casing 을 우리가 정하지 않는다).
+  const m = /^([^?#]*)\.(png|webp)([?#].*)?$/i.exec(baseUrl);
+  if (!m) return null;
+  return `${m[1]}_outfit.${m[2]}${m[3] || ""}`;
+}
 
 /**
  * Avatar 컴포넌트 - PNG 베이스 + 슬롯 합성
@@ -26,10 +50,8 @@ const withCacheBust = (url) => {
 export default function Avatar({ size = 100, showBorder = true, onClick, shopOverlays, defaultBackground = false }) {
   const rawBaseUrl = shopOverlays?.baseUrl || DEFAULT_BASE_URL;
   const slots = shopOverlays?.slots || {};
-  // outfit 입을 때 자동으로 _outfit.png 변종 시도 (없으면 onError로 원본 fallback)
-  const outfitBaseUrl = slots.outfit?.url
-    ? rawBaseUrl.replace(/\.png(\?.*)?$/, "_outfit.png$1")
-    : null;
+  // outfit 입을 때 자동으로 _outfit 변종 시도 (없으면 onError로 원본 fallback)
+  const outfitBaseUrl = slots.outfit?.url ? outfitVariantUrl(rawBaseUrl) : null;
   const baseUrl = withCacheBust(outfitBaseUrl || rawBaseUrl);
   const fallbackBaseUrl = withCacheBust(rawBaseUrl);
   const bgUrl = withCacheBust(shopOverlays?.bgUrl);
@@ -150,7 +172,7 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
         src={baseUrl}
         alt="base"
         onError={(e) => {
-          // _outfit.png 변종 없으면 원본 base로 fallback
+          // _outfit 변종 없으면 원본 base로 fallback
           if (e.currentTarget.src !== fallbackBaseUrl) {
             e.currentTarget.src = fallbackBaseUrl;
           }

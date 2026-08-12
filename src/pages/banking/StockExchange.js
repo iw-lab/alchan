@@ -975,6 +975,9 @@ const StockExchange = () => {
   });
   const [portfolio, setPortfolio] = useState([]);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  // 인라인 화살표로 넘기면 StockExchange 가 리렌더될 때마다(가격 폴링·setLastUpdated 등)
+  // memo 된 AdminPanel 이 통째로 다시 그려진다. setter 만 부르는 순수 콜백이라 참조를 고정한다.
+  const closeAdminPanel = useCallback(() => setShowAdminPanel(false), []);
   const [buyQuantities, setBuyQuantities] = useState({});
   const [sellQuantities, setSellQuantities] = useState({});
   const [isTrading, setIsTrading] = useState(false);
@@ -2141,7 +2144,7 @@ const StockExchange = () => {
       <AdminPanel
         stocks={stocks}
         classCode={classCode}
-        onClose={() => setShowAdminPanel(false)}
+        onClose={closeAdminPanel}
         onAddStock={addStock}
         onDeleteStock={deleteStock}
         onEditStock={editStock}

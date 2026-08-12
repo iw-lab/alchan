@@ -317,10 +317,14 @@ const TaskItem = memo(function TaskItem({
 
           {isAdmin && (
             <>
+              {/* ⚠️ 인자를 **여기서** 붙인다. 예전엔 부모(JobList/CommonTaskList)가
+                  `() => onEditTask(task.id, job.id)` 같은 클로저를 만들어 넘겼는데,
+                  그 클로저가 렌더마다 새로 생겨 이 컴포넌트의 memo 를 통째로 무력화했다.
+                  자기 id 는 자기가 안다 — 부모는 안정된 핸들러만 넘기면 된다. */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEditTask();
+                  onEditTask(task, jobId);
                 }}
                 className="cursor-pointer p-1 flex items-center justify-center"
                 style={adminButtonStyles}
@@ -331,7 +335,7 @@ const TaskItem = memo(function TaskItem({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteTask();
+                  onDeleteTask(taskId, jobId);
                 }}
                 className="cursor-pointer p-1 flex items-center justify-center"
                 style={adminButtonStyles}

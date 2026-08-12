@@ -235,7 +235,11 @@ html {
    ============================================ */
 body {
   margin: 0;
-  font-family: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  /* "Pretendard" 를 첫 후보로 두고 있었으나 그 이름은 어디에도 등록된 적이 없다 —
+     CDN 이 등록하는 이름은 'Pretendard Variable' 이다. 즉 이 스택은 늘 두 번째 후보인
+     Noto Sans KR 로 그려져 왔다. 2026-08-12 에 죽은 첫 후보를 지우고 링크도 뺐다.
+     (index.html 의 폰트 블록 주석 참조) */
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Soft gradient mesh background — glassmorphism 베이스 */
@@ -455,7 +459,7 @@ button, a, input, select, textarea {
 
 /* Font classes */
 .font-display {
-  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
 }

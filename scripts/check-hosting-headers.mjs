@@ -86,7 +86,7 @@ const EXPECTED = [
     why: "같은 이유",
   },
   {
-    path: "/avatar-shop/base_male.png",
+    path: "/avatar-shop/base_male.webp",
     want: /max-age=0|no-cache/,
     why: "해시가 없는 이름이라 갱신되어야 한다",
   },

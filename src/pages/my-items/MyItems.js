@@ -677,10 +677,15 @@ const MyItems = () => {
       const actualSourceDocs = [];
       let actualTotalQuantity = 0;
 
-      for (const docId of docIds) {
-        const docRef = firebaseDoc(db, "users", user.uid, "inventory", docId);
-        const docSnap = await getDoc(docRef);
-
+      // 순차 await 였다 — 읽기 **수**는 그대로지만(Firestore 는 문서 단위 과금) 왕복이
+      // 문서 수만큼 직렬로 쌓여 "시장에 팔기"가 그만큼 늦게 반응했다.
+      // 결과 취합은 순서에 의존하지 않으므로 병렬화가 값을 바꾸지 않는다.
+      const snaps = await Promise.all(
+        docIds.map((docId) =>
+          getDoc(firebaseDoc(db, "users", user.uid, "inventory", docId)),
+        ),
+      );
+      for (const docSnap of snaps) {
         if (docSnap.exists()) {
           const data = docSnap.data();
           actualSourceDocs.push({

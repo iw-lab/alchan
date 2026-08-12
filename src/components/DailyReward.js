@@ -156,7 +156,18 @@ export async function claimDailyReward(userId) {
 /**
  * 일일 보상 배너 컴포넌트
  */
-export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
+/**
+ * @param {object} [prefetchedStreakInfo] 이미 `getStreakInfo` 를 부른 호출부가 그 결과를 넘긴다.
+ *   AlchanLayout 은 팝업을 띄울지 판단하려고 앱 진입 시 한 번 부르는데, 그 판단이 참이면
+ *   배너도 마운트돼 **같은 문서를 또** 읽었다. 넘겨 주면 그 두 번째 읽기가 사라진다.
+ *   안 넘어오면 종전대로 직접 읽는다 — MyAssets 처럼 prop 없이 쓰는 호출부가 있다.
+ */
+export function DailyRewardBanner({
+  userId,
+  onClaim,
+  autoPopup = true,
+  prefetchedStreakInfo = null,
+}) {
   const [streakInfo, setStreakInfo] = useState(null);
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -165,16 +176,18 @@ export function DailyRewardBanner({ userId, onClaim, autoPopup = true }) {
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    if (userId) {
-      getStreakInfo(userId).then((info) => {
-        setStreakInfo(info);
-        setIsVisible(info.canClaim);
-        if (autoPopup && info.canClaim) {
-          setShowPopup(true);
-        }
-      });
+    if (!userId) return;
+    const apply = (info) => {
+      setStreakInfo(info);
+      setIsVisible(info.canClaim);
+      if (autoPopup && info.canClaim) setShowPopup(true);
+    };
+    if (prefetchedStreakInfo) {
+      apply(prefetchedStreakInfo);
+      return;
     }
-  }, [userId, autoPopup]);
+    getStreakInfo(userId).then(apply);
+  }, [userId, autoPopup, prefetchedStreakInfo]);
 
   const handleClaim = async () => {
     // 중복 클릭 가드 — 서버가 idempotency로 이중지급은 막지만, 실패 응답이 성공 UI로
