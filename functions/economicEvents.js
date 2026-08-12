@@ -333,13 +333,17 @@ async function executeTaxRefund(classCode, params) {
   let affectedCount = 0;
   const expireAt = logExpiryTimestamp();
 
+  const adminRef = db.collection("users").doc(adminDoc.id);
   for (let i = 0; i < studentDocs.length; i += batchSize) {
+    const chunk = studentDocs.slice(i, i + batchSize);
     const batch = db.batch();
-    studentDocs.slice(i, i + batchSize).forEach((d) => {
+    let chunkPaid = 0;
+    chunk.forEach((d) => {
       batch.update(d.ref, {
         cash: admin.firestore.FieldValue.increment(refundPerStudent),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      chunkPaid += refundPerStudent;
       // 📒 감사 로그 — 지급과 같은 배치라 "돈만 들어오고 기록은 없다"가 불가능하다
       queueStudentLog(
         batch,
@@ -358,24 +362,27 @@ async function executeTaxRefund(classCode, params) {
       );
       affectedCount++;
     });
+    // 🔒 관리자 차감을 **같은 배치**에 싣는다(2026-08-11 3차 검증 C11).
+    //    종전엔 학생 배치를 전부 커밋한 **뒤** 관리자 cash 를 별도로 갱신했다.
+    //    그 쓰기가 실패하면 학생 돈은 이미 늘었는데 국고는 그대로 — 무담보 발행이다.
+    //    이제 커밋된 배치는 언제나 "나간 만큼 국고에서 빠졌다"가 성립한다.
+    batch.update(adminRef, {
+      cash: admin.firestore.FieldValue.increment(-chunkPaid),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     await batch.commit();
   }
 
-  // 관리자 cash에서 환급액 차감 (국고 = 관리자 cash)
-  await db
-    .collection("users")
-    .doc(adminDoc.id)
-    .update({
-      cash: admin.firestore.FieldValue.increment(-totalRefund),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+  // 🔒 실제 지급 합계 = 1인당액 × 인원. 종전엔 관리자에게서 totalRefund(나누기 전 총액)를
+  //    빼서 **나머지(총액 − 1인당액×인원)가 아무에게도 안 가고 소각**됐다.
+  const actuallyRefunded = refundPerStudent * affectedCount;
 
   logger.info(
     `[경제이벤트] ${classCode}: 세금 환급 - ${affectedCount}명 × ${refundPerStudent.toLocaleString()}원`,
   );
   return {
     affectedCount,
-    refundedAmount: totalRefund,
+    refundedAmount: actuallyRefunded,
     perStudent: refundPerStudent,
   };
 }
@@ -406,16 +413,16 @@ async function executeTaxExtra(classCode, params) {
   if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
 
   // === 학급 공통 데이터 1회 로드 (쿠폰가치, 주식시세, 부동산 전체) ===
+  // 🔒 학급 **공통** 입력은 fail-open 하면 안 된다(2026-08-12 codex CRITICAL).
+  //    쿠폰가치·주식시세·부동산이 빈 값이면 전원의 과세표준이 통째로 틀어진다.
+  //    mainSettings 만 예외 — 없으면 기본 쿠폰가치 1000 을 쓰는 게 정상 동작이다.
   const [mainSettingsSnap, stockListSnap, realEstateSnap] = await Promise.all([
     db.doc("settings/mainSettings").get().catch(() => null),
     // 주식 시세: 정식 소스 CentralStocks의 전역 스냅샷(realStockService 갱신).
     // 과거 classes/{classCode}/stocks/stockList 는 write가 없는 죽은 경로라 항상 비어
     // 주식이 과세 순자산에서 누락되던 버그를 차단한다.
-    db.doc("Settings/centralStocksCache").get().catch(() => null),
-    db
-      .collection(`classes/${classCode}/realEstateProperties`)
-      .get()
-      .catch(() => ({ docs: [] })),
+    db.doc("Settings/centralStocksCache").get(), // 실패 시 전파 — 주식가치 0 과세 방지
+    db.collection(`classes/${classCode}/realEstateProperties`).get(), // 실패 시 전파
   ]);
 
   const couponValue =
@@ -451,23 +458,26 @@ async function executeTaxExtra(classCode, params) {
       const coupons = Number(sData.coupons) || 0;
       const studentId = sDoc.id;
 
-      const [parkingSnap, productsSnap, portfolioSnap] = await Promise.all([
-        db
-          .doc(`users/${studentId}/financials/parkingAccount`)
-          .get()
-          .catch(() => null),
-        // 예금/적금/대출 정식 소스 = users/{uid}/products (type=deposit|savings|loan).
-        // 과거 financials/loans 는 write 없는 죽은 경로라 대출이 0으로 잡혀 과세 순자산이
-        // 과대(부채 미차감) 계산되던 버그를 차단한다.
-        db
-          .collection(`users/${studentId}/products`)
-          .get()
-          .catch(() => ({ docs: [] })),
-        db
-          .collection(`users/${studentId}/portfolio`)
-          .get()
-          .catch(() => ({ docs: [] })),
-      ]);
+      // 🔒 조회 실패를 0 으로 접으면 **읽지도 못한 값으로 과세**한다(2026-08-12 codex CRITICAL).
+      //    특히 products 실패는 대출이 0 으로 잡혀 순자산이 **과대** 계산되고 과세가 과해진다.
+      //    이 학생은 이번 회차에서 제외한다(아래 catch 가 null 을 반환해 걸러진다).
+      //    `executeCashPenalty` 와 같은 기준이다 — 추정치로 돈을 걷느니 한 번 거른다.
+      let parkingSnap, productsSnap, portfolioSnap;
+      try {
+        [parkingSnap, productsSnap, portfolioSnap] = await Promise.all([
+          db.doc(`users/${studentId}/financials/parkingAccount`).get(),
+          // 예금/적금/대출 정식 소스 = users/{uid}/products (type=deposit|savings|loan).
+          // 과거 financials/loans 는 write 없는 죽은 경로라 대출이 0으로 잡혀 과세 순자산이
+          // 과대(부채 미차감) 계산되던 버그를 차단한다.
+          db.collection(`users/${studentId}/products`).get(),
+          db.collection(`users/${studentId}/portfolio`).get(),
+        ]);
+      } catch (e) {
+        logger.warn(
+          `[TaxExtra] ${studentId} 자산 조회 실패 — 이번 회차 과세에서 제외: ${e.message}`,
+        );
+        return null;
+      }
 
       const parking =
         parkingSnap && parkingSnap.exists
@@ -532,9 +542,11 @@ async function executeTaxExtra(classCode, params) {
 
   // === 학생 cash 차감 + activity_logs 기록 (배치) ===
   let totalCollected = 0;
+  const adminRef = db.collection("users").doc(adminDoc.id);
   const batchSize = 200; // activity_logs 1건 추가되어 문서당 2쓰기 → 한 배치 500 제한 여유
   for (let i = 0; i < taxItems.length; i += batchSize) {
     const batch = db.batch();
+    let chunkCollected = 0;
     taxItems.slice(i, i + batchSize).forEach((item) => {
       if (item.actualDeduct > 0) {
         batch.update(item.ref, {
@@ -560,19 +572,18 @@ async function executeTaxExtra(classCode, params) {
         expireAt: logExpireAt,
       });
       totalCollected += item.actualDeduct;
+      chunkCollected += item.actualDeduct;
     });
-    await batch.commit();
-  }
-
-  // 관리자 cash에 추가 (국고 = 관리자 cash)
-  if (totalCollected > 0) {
-    await db
-      .collection("users")
-      .doc(adminDoc.id)
-      .update({
-        cash: admin.firestore.FieldValue.increment(totalCollected),
+    // 🔒 국고 입금을 **같은 배치**에(2026-08-12, 형제 3함수와 통일).
+    //    종전엔 학생 배치를 전부 커밋한 뒤 관리자 cash 를 별도로 갱신했다 —
+    //    그 쓰기가 실패하면 **학생 돈만 사라진다**(소각).
+    if (chunkCollected > 0) {
+      batch.update(adminRef, {
+        cash: admin.firestore.FieldValue.increment(chunkCollected),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+    }
+    await batch.commit();
   }
 
   // 통계 기록
@@ -622,19 +633,21 @@ async function executeCashBonus(classCode, params) {
   const studentDocs = studentsSnapshot.docs.filter(
     (d) => !d.data().isSuperAdmin,
   );
-  const totalNeeded = amount * studentDocs.length;
 
   const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
   let affectedCount = 0;
   const expireAt = logExpiryTimestamp();
 
+  const adminRef = db.collection("users").doc(adminDoc.id);
   for (let i = 0; i < studentDocs.length; i += batchSize) {
     const batch = db.batch();
+    let chunkPaid = 0;
     studentDocs.slice(i, i + batchSize).forEach((d) => {
       batch.update(d.ref, {
         cash: admin.firestore.FieldValue.increment(amount),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      chunkPaid += amount;
       // 📒 감사 로그 — 지급과 같은 배치
       queueStudentLog(
         batch,
@@ -650,21 +663,18 @@ async function executeCashBonus(classCode, params) {
       );
       affectedCount++;
     });
-    await batch.commit();
-  }
-
-  await db
-    .collection("users")
-    .doc(adminDoc.id)
-    .update({
-      cash: admin.firestore.FieldValue.increment(-totalNeeded),
+    // 🔒 지급과 국고 차감을 같은 배치에 — 커밋된 배치는 언제나 수지가 맞는다(C11).
+    batch.update(adminRef, {
+      cash: admin.firestore.FieldValue.increment(-chunkPaid),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    await batch.commit();
+  }
 
   logger.info(
     `[경제이벤트] ${classCode}: 현금 지급 - ${affectedCount}명 × ${amount.toLocaleString()}원`,
   );
-  return { affectedCount, totalAmount: totalNeeded, perStudent: amount };
+  return { affectedCount, totalAmount: amount * affectedCount, perStudent: amount };
 }
 
 /**
@@ -683,7 +693,11 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
     const snap = await db.collection("users").doc(userId)
       .collection("financials").doc("parkingAccount").get();
     if (snap.exists) parking = Number(snap.data().balance) || 0;
-  } catch (_) {}
+  } catch (e) {
+    // 🔒 삼키면 parking=0 으로 계산이 이어져 **읽지도 못한 값으로 과세**한다(3차 검증 C12).
+    //    못 읽었으면 못 읽었다고 말한다 — 호출자가 그 학생을 건너뛴다.
+    throw new Error(`순자산 계산 실패(파킹통장, ${userId}): ${e.message}`);
+  }
 
   // 예금/적금/대출 (users/{uid}/products, type=deposit|savings|loan) — 정식 소스.
   // 과거 financials/loans(activeLoans) 는 write 없는 죽은 경로라 대출이 0으로 잡혀
@@ -700,7 +714,10 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
         depositSavingsTotal += Number(p.balance) || 0;
       }
     });
-  } catch (_) {}
+  } catch (e) {
+    // 대출이 0으로 잡히면 순자산이 **과대** 계산돼 과세가 과해진다 — 더 나쁜 방향이다.
+    throw new Error(`순자산 계산 실패(예적금·대출, ${userId}): ${e.message}`);
+  }
 
   // 주식 보유가치
   let stockValue = 0;
@@ -717,7 +734,9 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
         stockValue += (Number(info.price) || 0) * qty;
       }
     });
-  } catch (_) {}
+  } catch (e) {
+    throw new Error(`순자산 계산 실패(주식, ${userId}): ${e.message}`);
+  }
 
   // 부동산 가치 (학급 단위 캐시에서 owner별 조회). owner 필드 = 소유자 UID 이므로
   // userId 로 조회한다(과거 userName 조회는 항상 빈 결과라 부동산이 누락됐다).
@@ -745,12 +764,16 @@ async function executeCashPenalty(classCode, params) {
   const adminDoc = adminSnapshot.docs[0];
 
   // 순자산 계산용 캐시: CentralStocks 한 번 + 학급 부동산 한 번
+  // 🔒 학급 **공통** 입력이 실패하면 전원이 잘못된 과세표준으로 계산된다 —
+  //    학생 단위 방어(calcNetAssetsForUser throw)만으론 못 막는다(2026-08-12 codex CRITICAL).
+  //    빈 맵으로 진행하면 전원 주식가치 0 / 부동산 0 이 되어 과세가 통째로 어긋난다.
+  //    못 읽으면 이 이벤트를 아예 실행하지 않는다.
   const stocksMap = new Map();
   try {
     const stocksSnap = await db.collection("CentralStocks").get();
     stocksSnap.docs.forEach((d) => stocksMap.set(d.id, { id: d.id, ...d.data() }));
   } catch (e) {
-    logger.warn("[CashPenalty] CentralStocks 조회 실패:", e.message);
+    throw new Error(`[CashPenalty] 주식 시세를 못 읽어 과세를 중단합니다: ${e.message}`);
   }
 
   const realEstateByOwner = new Map();
@@ -767,7 +790,7 @@ async function executeCashPenalty(classCode, params) {
       realEstateByOwner.get(owner).push(data);
     });
   } catch (e) {
-    logger.warn("[CashPenalty] 부동산 조회 실패:", e.message);
+    throw new Error(`[CashPenalty] 부동산 정보를 못 읽어 과세를 중단합니다: ${e.message}`);
   }
 
   const studentsSnapshot = await db
@@ -788,7 +811,14 @@ async function executeCashPenalty(classCode, params) {
     const cash = Number(data.cash) || 0;
     if (cash <= 0) continue;
 
-    const netAssets = await calcNetAssetsForUser(d, stocksMap, realEstateByOwner);
+    // 순자산을 못 읽은 학생은 **과세하지 않는다**. 추정치로 돈을 걷는 것보다 한 번 거르는 게 낫다.
+    let netAssets;
+    try {
+      netAssets = await calcNetAssetsForUser(d, stocksMap, realEstateByOwner);
+    } catch (e) {
+      logger.warn(`[CashPenalty] ${d.id} 순자산 계산 실패 — 이번 이벤트에서 제외: ${e.message}`);
+      continue;
+    }
     if (netAssets <= 0) continue; // 순자산 음수/0인 학생 보호
 
     // 순자산 ×N% → cash 잔고로 cap
@@ -812,13 +842,16 @@ async function executeCashPenalty(classCode, params) {
 
   const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
   const expireAt = logExpiryTimestamp();
+  const adminRef = db.collection("users").doc(adminDoc.id);
   for (let i = 0; i < penaltyItems.length; i += batchSize) {
     const batch = db.batch();
+    let chunkCollected = 0;
     penaltyItems.slice(i, i + batchSize).forEach((item) => {
       batch.update(item.ref, {
         cash: admin.firestore.FieldValue.increment(-item.penalty),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      chunkCollected += item.penalty;
       // 📒 감사 로그 — 차감과 같은 배치. 이게 없어서 "경제 위기"로 현금이 줄어도
       //    학생 거래내역엔 아무것도 안 떴다(학급 단위 총계만 남았다).
       queueStudentLog(
@@ -840,17 +873,14 @@ async function executeCashPenalty(classCode, params) {
         expireAt,
       );
     });
-    await batch.commit();
-  }
-
-  // 관리자 cash에 납입 (국고 = 관리자 cash)
-  await db
-    .collection("users")
-    .doc(adminDoc.id)
-    .update({
-      cash: admin.firestore.FieldValue.increment(totalPenalty),
+    // 🔒 차감과 국고 입금을 같은 배치에(C11). 종전엔 학생 배치를 전부 커밋한 뒤
+    //    관리자 입금을 별도로 했다 — 그 쓰기가 실패하면 **학생 돈만 사라진다**(소각).
+    batch.update(adminRef, {
+      cash: admin.firestore.FieldValue.increment(chunkCollected),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    await batch.commit();
+  }
 
   // 통계만 기록
   await db
@@ -1103,11 +1133,11 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
   }
 
   // 오늘 이미 이벤트 발생했는지 확인 (강제 실행 시 무시)
+  //   여기 검사는 **빠른 종료용**이다. 실제 판정은 아래 실행 직전의 트랜잭션 점유가 한다.
+  const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
   if (!forceEventId) {
-    const now = new Date();
-    const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const todayStr = kstDate.toISOString().split("T")[0];
-
     if (settings.lastEventDate === todayStr) {
       logger.info(
         `[경제이벤트] ${classCode}: 오늘(${todayStr}) 이미 이벤트 발생 - 건너뜀`,
@@ -1168,12 +1198,40 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     `[경제이벤트] ${classCode}: 이벤트 시작 - "${selectedEvent.title}"`,
   );
 
+  // 🔒 그날을 **실행 전에** 원자적으로 점유한다(2026-08-12 codex CRITICAL).
+  //    종전엔 완료 마커(lastEventDate)를 실행이 다 끝난 **뒤** 썼다. 그런데 이 이벤트는
+  //    학생 단위 멱등 마커가 없고, hourlySchedulerV2 가 평일 8~17시에 **매시간** 돈다.
+  //    지급 도중 실패하면 마커가 없으니 같은 날 최대 9번 재실행되고, 그때마다 이미 받은
+  //    학생에게 또 지급된다(환급·보너스=민팅, 패널티=이중 차감).
+  //    그래서 claim-before 로 바꾼다 — 실패하면 그날 이벤트는 없던 일이 된다.
+  //    랜덤 연출 이벤트라 하루 거르는 쪽이 이중지급보다 훨씬 낫고, 재산세가 쓰는 것과 같은 판단이다.
+  if (!forceEventId) {
+    const claimedDay = await db.runTransaction(async (tx) => {
+      const ref = db.collection("economicEventSettings").doc(classCode);
+      const snap = await tx.get(ref);
+      if (snap.exists && snap.data().lastEventDate === todayStr) return false;
+      tx.set(
+        ref,
+        {
+          lastEventDate: todayStr,
+          lastEventAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        },
+        { merge: true },
+      );
+      return true;
+    });
+    if (!claimedDay) {
+      logger.info(`[경제이벤트] ${classCode}: 오늘(${todayStr}) 이미 점유됨 - 건너뜀`);
+      return null;
+    }
+  }
+
   const result = await executeEvent(classCode, selectedEvent);
 
   const nowTs = admin.firestore.Timestamp.now();
   const now = new Date();
-  const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const todayStr = kstDate.toISOString().split("T")[0];
+  // todayStr 은 함수 상단에서 이미 계산했다(그날 점유 판정에 쓴 값과 같아야 한다).
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
   await db
@@ -1193,13 +1251,7 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     .collection("entries")
     .add({ classCode, event: selectedEvent, result, triggeredAt: nowTs });
 
-  if (!forceEventId) {
-    await db.collection("economicEventSettings").doc(classCode).update({
-      lastEventDate: todayStr,
-      lastEventAt: nowTs,
-      updatedAt: nowTs,
-    });
-  }
+  // (완료 마커는 위 claim 에서 이미 기록했다 — 여기서 다시 쓰지 않는다)
 
   logger.info(
     `[경제이벤트] ${classCode}: 완료 - "${selectedEvent.title}"`,
@@ -1292,6 +1344,7 @@ async function runEconomicEventsForAllClasses() {
 
   // 오늘 KST 날짜 문자열 (idempotent 체크용)
   const todayStr = kstTime.toISOString().split("T")[0];
+  const classErrors = [];
 
   for (const settingDoc of settingsSnapshot.docs) {
     const settings = settingDoc.data();
@@ -1334,13 +1387,22 @@ async function runEconomicEventsForAllClasses() {
       }
     } catch (error) {
       logger.error(`[경제이벤트] ${classCode}: 오류`, error.message);
+      // 학급 하나가 실패해도 다른 학급은 돌린다(부분 실패 허용). 다만 **삼키지는 않는다** —
+      // 호출자(hourlySchedulerV2)가 이걸 봐야 job 이 초록색으로 끝나지 않는다(codex HIGH).
+      classErrors.push(`${classCode}: ${error?.message || error}`);
     }
   }
 
   logger.info(
-    `[경제이벤트] 완료: ${settingsSnapshot.size}개 학급 확인, ${triggered}개 이벤트 발생`,
+    `[경제이벤트] 완료: ${settingsSnapshot.size}개 학급 확인, ${triggered}개 이벤트 발생` +
+      (classErrors.length ? ` (실패 학급 ${classErrors.length})` : ""),
   );
-  return { processed: settingsSnapshot.size, triggered, results };
+  return {
+    processed: settingsSnapshot.size,
+    triggered,
+    results,
+    classErrors: classErrors.length ? classErrors : undefined,
+  };
 }
 
 module.exports = {

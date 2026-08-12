@@ -20,7 +20,6 @@ const { db, admin, logger, findApprovedAdminSnap } = require("./utils");
 const {
   calculateDividend,
   computeMonthKey,
-  monthFieldKey,
   DIVIDEND_TAX_RATE,
 } = require("./dividendMath");
 const {
@@ -36,7 +35,6 @@ const BATCH_OP_LIMIT = 450;       // 안전 마진 (500 한도의 90%)
  */
 async function payMonthlyDividends(monthKeyOverride = null) {
   const monthKey = monthKeyOverride || computeMonthKey();
-  const monthField = monthFieldKey(monthKey); // "2026-08" → "m2026_08" (Firestore 필드명)
   logger.info(`[Dividend] 월간 배당 지급 시작 (${monthKey})`);
 
   let paid = 0;
@@ -175,6 +173,16 @@ async function payMonthlyDividends(monthKeyOverride = null) {
 
       if (portfolioSnap.empty) continue;
 
+      // 🔒 멱등 원장을 **보유 문서 밖**에 둔다(2026-08-11 3차 검증 C3).
+      //    마커를 holding 문서에 두면 학생이 전량매도 → 재매수 할 때 문서가 새로 생기면서
+      //    마커가 사라져, 같은 달 재실행에서 또 받는다. 원장은 사용자·월 단위라 그 영향을 안 받는다.
+      //    비용: 보유가 있는 사용자당 월 1읽기(실측 88명 규모에서 무시 가능).
+      const ledgerRef = db
+        .collection("users").doc(userId)
+        .collection("dividendLedger").doc(monthKey);
+      const ledgerSnap = await ledgerRef.get();
+      const paidStocks = (ledgerSnap.exists && ledgerSnap.data().paid) || {};
+
       for (const holdingDoc of portfolioSnap.docs) {
         const holding = holdingDoc.data();
 
@@ -186,14 +194,15 @@ async function payMonthlyDividends(monthKeyOverride = null) {
           continue;
         }
 
-        // 🔒 이번 달 이미 배당한 보유분은 건너뛴다. 마커는 지급과 **같은 batch** 에 쓰이므로
-        //    "지급했는데 마커가 없다"가 불가능하다(batch 는 원자적).
+        // 🔒 이번 달 이 종목에 이미 배당했으면 건너뛴다. 원장 기록은 지급과 **같은 batch** 라
+        //    "지급했는데 기록이 없다"가 불가능하다(batch 는 원자적).
         //
-        //    ⚠️ 스칼라 `lastDividendMonthKey` 였다가 **월별 맵**으로 바꿨다(2026-08-11 2차 검증 C2):
-        //    수동 백필(?monthKey=2026-07)이 마커를 과거로 **덮어써서**, 그 뒤 정상 8월 실행이
-        //    다시 통과해 8월분을 재지급했다. "마지막 달"은 기억이 하나뿐이라 되돌릴 수 있다.
-        //    달마다 별개 키를 남기면 과거를 채워 넣어도 현재가 지워지지 않는다.
-        if (holding.dividendPaidMonths?.[monthField] === true) {
+        //    마커 위치가 두 번 바뀐 이력이 있다 — 둘 다 교차검증에서 뚫려서다:
+        //      ① 스칼라 `lastDividendMonthKey` → 수동 백필이 마커를 과거로 덮어써 그 달 재지급(C2)
+        //      ② 보유 문서 위의 월별 맵 → 전량매도 후 재매수 시 문서가 새로 생겨 마커 소실(C3)
+        //    이제 **사용자·월 단위 원장**이라 둘 다 해당 없다. 달마다 문서가 갈리고,
+        //    보유 문서를 지웠다 만들어도 원장은 그대로다.
+        if (paidStocks[stockId] === true) {
           skipped++;
           continue;
         }
@@ -207,7 +216,7 @@ async function payMonthlyDividends(monthKeyOverride = null) {
         const { grossAmount, taxAmount, netAmount } = result;
 
         try {
-          await commitIfNeeded(4);
+          await commitIfNeeded(5);
 
           // (a) 학생 cash 증가 (세후 금액)
           batch.update(userDoc.ref, {
@@ -216,10 +225,23 @@ async function payMonthlyDividends(monthKeyOverride = null) {
           });
           opsInBatch++;
 
-          // (a-2) 멱등 마커 — 이 보유분은 **이 달** 배당을 받았다(달마다 별개 키)
+          // (a-2) 멱등 원장 — 지급과 **같은 batch** 라 "지급했는데 기록이 없다"가 불가능하다.
+          //   문서 단위가 사용자·월이므로 보유 문서를 지웠다 새로 만들어도 살아남는다.
+          batch.set(
+            ledgerRef,
+            {
+              monthKey,
+              paid: { [stockId]: true },
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          );
+          opsInBatch++;
+          paidStocks[stockId] = true; // 같은 실행 안에서 중복 방문 방지
+
+          // 보유 문서엔 사람이 읽는 기록만 남긴다(판정엔 쓰지 않는다)
           batch.update(holdingDoc.ref, {
-            [`dividendPaidMonths.${monthField}`]: true,
-            lastDividendMonthKey: monthKey, // 사람이 읽는 용도 — 판정엔 쓰지 않는다
+            lastDividendMonthKey: monthKey,
             lastDividendPaidAt: admin.firestore.FieldValue.serverTimestamp(),
           });
           opsInBatch++;

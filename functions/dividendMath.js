@@ -44,14 +44,6 @@ function calculateDividend(stock, holding) {
 }
 
 /**
- * monthKey 를 Firestore 필드명으로 안전하게 바꾼다. "2026-08" → "m2026_08".
- * 하이픈·선행 숫자는 Firestore 필드 경로에서 이스케이프가 필요해 점표기 업데이트가 깨진다.
- */
-function monthFieldKey(monthKey) {
-  return `m${String(monthKey).replace(/-/g, "_")}`;
-}
-
-/**
  * 수동 백필로 들어오는 monthKey 가 실제로 존재하는 달인가.
  * `/^\d{4}-\d{2}$/` 만으로는 "2026-00" · "2026-99" · "9999-13" 이 전부 통과한다(실측).
  */
@@ -64,7 +56,6 @@ function isValidMonthKey(v) {
 module.exports = {
   calculateDividend,
   computeMonthKey,
-  monthFieldKey,
   isValidMonthKey,
   DIVIDEND_TAX_RATE,
 };

@@ -160,13 +160,56 @@ describe("문서 모양 · 강제 실행", () => {
     expect(r.claim).toBe(false);
   });
 
-  it("forceRun 은 완료된 주기도 관통한다 (관리자 의도적 재지급)", () => {
+  it("forceRun 은 완료된 주기를 관통한다 (관리자 의도적 재실행)", () => {
     const r = decideClaim({ weekKey: WEEK, status: "completed" }, WEEK, {
       forceRun: true,
       nowMs: NOW,
     });
     expect(r.claim).toBe(true);
     expect(r.reason).toBe("force-run");
+  });
+
+  it("forceRun 도 실패한 주기는 관통한다", () => {
+    const r = decideClaim({ weekKey: WEEK, status: "failed" }, WEEK, {
+      forceRun: true,
+      nowMs: NOW,
+    });
+    expect(r.claim).toBe(true);
+  });
+
+  // force 는 "완료된 걸 다시 돈다"는 뜻이지 "다른 실행과 나란히 돈다"가 아니다.
+  // 교사가 수동 징수 버튼을 연달아 두 번 누르면 두 실행이 같은 스냅샷을 보고 둘 다 걷었다.
+  it("🔒 forceRun 이어도 **진행 중인** 실행은 관통하지 못한다 (동시 이중징수 차단)", () => {
+    const r = decideClaim(
+      { weekKey: WEEK, status: "in-progress", startedAt: NOW - 30_000 },
+      WEEK,
+      { forceRun: true, nowMs: NOW },
+    );
+    expect(r.claim).toBe(false);
+    expect(r.reason).toBe("force-blocked-by-in-progress");
+  });
+
+  it("forceRun 은 방치된(stale) 진행중 락은 회수한다", () => {
+    const r = decideClaim(
+      {
+        weekKey: WEEK,
+        status: "in-progress",
+        startedAt: NOW - DEFAULT_STALE_MS - 1,
+      },
+      WEEK,
+      { forceRun: true, nowMs: NOW },
+    );
+    expect(r.claim).toBe(true);
+  });
+
+  it("forceRun + 시작시각 불명이면 막는다 (중복지급보다 한 번 거르는 게 낫다)", () => {
+    const r = decideClaim(
+      { weekKey: WEEK, status: "in-progress", startedAt: null },
+      WEEK,
+      { forceRun: true, nowMs: NOW },
+    );
+    expect(r.claim).toBe(false);
+    expect(r.reason).toBe("force-blocked-unknown-start");
   });
 
   it("알 수 없는 status 는 재점유한다 (묶여서 영영 못 도는 것보다 낫다)", () => {

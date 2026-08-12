@@ -271,7 +271,12 @@ exports.stockPriceScheduler = onRequest(
       // 🔥 실제 주식 데이터만 업데이트 (Yahoo Finance)
       try {
         const realStockResult = await updateRealStockPrices();
-        results.updateRealStocks = `success (updated: ${realStockResult.updated}, failed: ${realStockResult.failed})`;
+        // 같은 이유 — 종목 일부가 실패해도 정상 반환한다. failed>0 이면 실패로 올린다:
+        // 시세가 안 갱신되면 학생이 **옛 가격으로 거래**하므로 조용히 넘어가면 안 된다.
+        results.updateRealStocks =
+          realStockResult.failed > 0
+            ? `error: 종목 ${realStockResult.failed}개 시세 갱신 실패 (성공 ${realStockResult.updated})`
+            : `success (updated: ${realStockResult.updated})`;
         logger.info(
           `[stockPriceScheduler] 실제 주식 업데이트 완료:`,
           realStockResult,
@@ -379,9 +384,14 @@ exports.stockPriceSchedulerV2 = onSchedule(
 
       try {
         const exchangeResult = await updateExchangeRate();
-        results.exchangeRate = `${exchangeResult.rate}원 (updated: ${exchangeResult.updated})`;
+        // ⚠️ updateExchangeRate 는 실패해도 **throw 하지 않고** {updated:false} 를 돌려준다
+        //    (fail-soft — 폴백 환율로 계속 돌게 하려는 의도). 그래서 호출부가 결과를 봐야
+        //    실패가 실패로 보고된다(2026-08-12 codex HIGH). 안 보면 job 이 초록색으로 끝난다.
+        results.exchangeRate = exchangeResult.updated
+          ? `${exchangeResult.rate}원 (updated: true)`
+          : `error: 환율 갱신 실패 — 폴백 ${exchangeResult.rate}원 사용`;
         logger.info(
-          `[stockPriceSchedulerV2] 환율 갱신: ${exchangeResult.rate}원`,
+          `[stockPriceSchedulerV2] 환율 갱신: ${exchangeResult.rate}원 (updated: ${exchangeResult.updated})`,
         );
       } catch (error) {
         logger.warn(
@@ -415,6 +425,16 @@ exports.stockPriceSchedulerV2 = onSchedule(
       }
 
       logger.info("[stockPriceSchedulerV2] 작업 완료:", results);
+
+      // 🔁 위 두 분기는 부분 실패를 허용하지만(환율이 죽어도 시세는 갱신돼야 한다),
+      //    삼키기만 하면 job 이 초록색으로 끝난다. 주가가 안 갱신되면 학생이 **옛 가격으로 거래**하므로
+      //    조용히 지나가면 안 된다(3차 검증 HIGH3).
+      const failed = Object.entries(results)
+        .filter(([, v]) => typeof v === "string" && v.startsWith("error:"))
+        .map(([k, v]) => `${k} ${v}`);
+      if (failed.length > 0) {
+        throw new Error(`stockPriceSchedulerV2 부분 실패 — ${failed.join(" / ")}`);
+      }
     } catch (error) {
       logger.error("[stockPriceSchedulerV2] 전체 오류:", error);
       // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
@@ -1633,8 +1653,14 @@ exports.addStockDocFunction = onCall(
         sellVolume: 0,
         recentBuyVolume: 0,
         recentSellVolume: 0,
+        // `||` 는 0 을 falsy 로 보고 기본값으로 덮는다 — 위에서 volatility:0 을
+        // 정식으로 통과시켜 놓고 여기서 0.02 로 바꿔 버리면 "변동 없는 종목"을 만들 수 없다.
         volatility:
-          stock.volatility || (stock.productType === "bond" ? 0.005 : 0.02),
+          stock.volatility !== undefined
+            ? stock.volatility
+            : stock.productType === "bond"
+              ? 0.005
+              : 0.02,
         isListed: stock.isListed !== undefined ? stock.isListed : true,
         isManual: !!stock.isManual,
         sector: stock.sector || "TECH",
@@ -2466,6 +2492,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
 
 async function collectWeeklyRentLogic() {
   logger.info(">>> [스케줄러] 월세 징수 시작");
+  // 🔒 매물 단위 멱등 마커의 키. 전역 락이 실패로 풀린 뒤 재실행되면 이미 걷은 매물을
+  //    또 걷는 것을 막는다(2026-08-11 3차 검증 C8). 매물별 트랜잭션 안에서 검사·기록한다.
+  const rentWeekKey = computeWeekKey(new Date());
   try {
     const classCodes = await getAllActiveClassCodes();
     let totalCollected = 0;
@@ -2514,24 +2543,47 @@ async function collectWeeklyRentLogic() {
           await db.runTransaction(async (transaction) => {
             const now = admin.firestore.Timestamp.now();
 
+            // 🔒 이번 주 이미 걷은 매물인지 **트랜잭션 안에서** 확인한다.
+            //    바깥 스냅샷은 stale 이라 동시 실행·재시도를 못 막는다.
+            const propertyRef = propertyDoc.ref;
+            const freshProperty = await transaction.get(propertyRef);
+            if (!freshProperty.exists) return;
+            if (freshProperty.data().lastRentWeekKey === rentWeekKey) {
+              logger.info(
+                `[월세 징수] 부동산 #${property.id} 이번 주(${rentWeekKey}) 이미 징수됨 — 건너뜀`,
+              );
+              return;
+            }
+
+            // ⚠️ 이 아래는 **전부 fresh 를 쓴다**. 바깥 루프의 `property` 는 트랜잭션 시작 전
+            //    스냅샷이라, 재시도 사이에 계약이 바뀌면(세입자 교체·임대료 조정·소유권 이전)
+            //    옛 세입자에게서 옛 임대료를 걷고 새 계약 문서에 "이번 주 완료" 마커를 심는다
+            //    → 새 세입자의 월세가 영구 누락된다(2026-08-12 codex CRITICAL).
+            //    마커만 fresh 로 보고 나머지를 stale 로 쓰면 트랜잭션을 쓰는 의미가 없다.
+            const fresh = freshProperty.data();
+
+            // 계약 상태가 그 사이 바뀌었으면 이번 회차는 건너뛴다(다음 실행이 새 계약으로 처리).
+            if (!fresh.tenantId || !fresh.rent) return;
+            if (fresh.owner && fresh.owner === fresh.tenantId) return; // 자가 거주 면제
+
             // 세입자 정보 조회
-            const tenantRef = db.collection("users").doc(property.tenantId);
+            const tenantRef = db.collection("users").doc(fresh.tenantId);
             const tenantDoc = await transaction.get(tenantRef);
 
             if (!tenantDoc.exists) {
               logger.warn(
-                `[월세 징수] 세입자 ${property.tenantId} 문서가 없습니다.`,
+                `[월세 징수] 세입자 ${fresh.tenantId} 문서가 없습니다.`,
               );
               return;
             }
 
             const tenantData = tenantDoc.data();
-            const rentAmount = property.rent;
+            const rentAmount = fresh.rent;
 
             // 집주인 정보 조회 (정부 소유 → 관리자에게 지급)
             let ownerRef = null;
-            const actualOwner = property.owner === "government" ? adminUid : property.owner;
-            if (actualOwner && actualOwner !== property.tenantId) {
+            const actualOwner = fresh.owner === "government" ? adminUid : fresh.owner;
+            if (actualOwner && actualOwner !== fresh.tenantId) {
               ownerRef = db.collection("users").doc(actualOwner);
               const ownerDoc = await transaction.get(ownerRef);
               if (!ownerDoc.exists) {
@@ -2540,6 +2592,17 @@ async function collectWeeklyRentLogic() {
                 );
                 ownerRef = null;
               }
+            }
+
+            // 🔒 받을 사람이 없으면 **걷지 않는다**(2026-08-12 codex CRITICAL).
+            //    종전엔 ownerRef 가 null 이어도 세입자 차감과 마커 기록은 그대로 커밋돼,
+            //    그 돈이 아무에게도 안 가고 사라졌다(소각). 게다가 마커 때문에 그 주 재처리도 막혔다.
+            //    정부 소유인데 승인 관리자가 없거나, 개인 집주인 문서가 삭제된 경우가 여기 걸린다.
+            if (!ownerRef) {
+              logger.warn(
+                `[월세 징수] 부동산 #${fresh.id} 수취인 없음 — 이번 회차 건너뜀(소각 방지)`,
+              );
+              return;
             }
 
             // 강제 징수: 돈이 부족해도 마이너스로 차감
@@ -2551,15 +2614,21 @@ async function collectWeeklyRentLogic() {
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
+            // 🔒 멱등 마커 — 차감과 **같은 트랜잭션**이라 "걷었는데 마커가 없다"가 불가능하다.
+            transaction.update(propertyRef, {
+              lastRentWeekKey: rentWeekKey,
+              lastRentCollectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
             // 세입자 거래 로그
             const rentTxRef = tenantRef.collection("transactions").doc();
             transaction.set(rentTxRef, {
               type: "rentPayment",
               amount: -rentAmount,
-              description: `[월세 자동 납부] ${property.name || `매물 #${property.id}`} 월세 ${rentAmount.toLocaleString()}원 (집주인: ${property.ownerName || "정부"})`,
-              propertyId: property.id,
-              propertyName: property.name,
-              ownerName: property.ownerName || "정부",
+              description: `[월세 자동 납부] ${fresh.name || `매물 #${fresh.id}`} 월세 ${rentAmount.toLocaleString()}원 (집주인: ${fresh.ownerName || "정부"})`,
+              propertyId: fresh.id,
+              propertyName: fresh.name,
+              ownerName: fresh.ownerName || "정부",
               rentAmount,
               timestamp: admin.firestore.FieldValue.serverTimestamp(),
             });
@@ -2576,10 +2645,10 @@ async function collectWeeklyRentLogic() {
               transaction.set(ownerRentTxRef, {
                 type: "rentIncome",
                 amount: rentAmount,
-                description: `[월세 수령] ${property.name || `매물 #${property.id}`} 월세 ${rentAmount.toLocaleString()}원 (세입자: ${property.tenantName})`,
-                propertyId: property.id,
-                propertyName: property.name,
-                tenantName: property.tenantName,
+                description: `[월세 수령] ${fresh.name || `매물 #${fresh.id}`} 월세 ${rentAmount.toLocaleString()}원 (세입자: ${fresh.tenantName})`,
+                propertyId: fresh.id,
+                propertyName: fresh.name,
+                tenantName: fresh.tenantName,
                 rentAmount,
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
               });
@@ -2593,7 +2662,7 @@ async function collectWeeklyRentLogic() {
 
             classCollected += rentAmount;
             logger.info(
-              `[월세 징수] ${property.tenantName} → ${property.ownerName || "정부"}: ${rentAmount.toLocaleString()}원 ${
+              `[월세 징수] ${fresh.tenantName} → ${fresh.ownerName || "정부"}: ${rentAmount.toLocaleString()}원 ${
                 newTenantCash < 0 ? "(마이너스 발생)" : ""
               }`,
             );
@@ -2867,7 +2936,55 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
 
       // classMacroStats 저장 (학급 거시경제 대시보드 데이터 소스)
       const macroRef = db.collection("classMacroStats").doc(classCode);
-      const batch = db.batch();
+      // 🔒 분할 커밋(2026-08-11 3차 검증 C6-b). 학생당 최대 3쓰기(현금·순자산세로그·보유세로그)라
+      //   166명 안팎에서 Firestore 500 한도를 넘어 **그 학급 전체 징수가 실패**했다.
+      //   분할이 안전한 이유는 아래 학생 단위 마커(lastWeeklyTaxWeekKey) 덕분이다.
+      let batch = db.batch();
+      let batchOps = 0;
+      // 🔒 이 배치가 걷은 세금. **같은 배치**에서 국고(관리자)에 입금해야
+      //    커밋된 배치가 항상 수지가 맞는다(2026-08-12 Gemini CRITICAL).
+      //    종전엔 학생 차감은 배치별로 나가는데 국고 입금만 **맨 끝 한 번**이라,
+      //    중간 배치 커밋 후 죽으면 걷은 돈이 국고에 안 들어가고
+      //    재실행은 학생 마커에 막혀 그만큼이 **영구 소각**됐다.
+      //    같은 PR 의 economicEvents 3함수가 이미 이 규약인데 여기만 빠져 있었다.
+      let chunkTax = 0;
+      let chunkNetAssetTax = 0;
+      let chunkPropertyTax = 0;
+      const TAX_BATCH_SOFT_LIMIT = 450;
+      const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
+      const creditTreasury = () => {
+        if (chunkTax <= 0) return;
+        batch.update(adminDoc.ref, {
+          cash: admin.firestore.FieldValue.increment(chunkTax),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // 국고 **통계**도 같은 배치에. 현금은 청크별인데 통계만 맨 끝 한 번이면,
+        // 마지막 청크가 실패했을 때 앞 청크들의 징수는 살아 있는데 통계만 유실된다
+        // (마커 때문에 재실행이 보정하지도 못한다). 대시보드가 조용히 틀려진다.
+        batch.set(
+          treasuryRef,
+          {
+            netAssetTaxRevenue: admin.firestore.FieldValue.increment(chunkNetAssetTax),
+            propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(chunkPropertyTax),
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+        batchOps += 2;
+        chunkTax = 0;
+        chunkNetAssetTax = 0;
+        chunkPropertyTax = 0;
+      };
+      const flushTaxIfNeeded = async (extraOps) => {
+        // +2 = 국고 입금 자리(관리자 cash + 국고 통계) — 걷은 게 있으면 반드시 함께 나간다
+        if (batchOps + extraOps + 2 > TAX_BATCH_SOFT_LIMIT) {
+          creditTreasury();
+          await batch.commit();
+          batch = db.batch();
+          batchOps = 0;
+        }
+      };
+      batchOps++; // 아래 macroRef set
       batch.set(macroRef, {
         weekKey,
         studentCount: validResults.length,
@@ -2904,6 +3021,17 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
 
       for (const result of validResults) {
         const { userId, userName, netAssets, realEstateValue } = result;
+
+        // 🔒 학생 단위 멱등 마커. 아래 userUpdate 에 필드 하나로 실리므로 **쓰기 증가 0**.
+        //   이게 있어야 위 분할 커밋이 안전하다(중간까지 커밋된 뒤 죽어도 재실행이 걸러진다).
+        //   force 경로에도 적용한다 — 교사의 재징수는 "못 걷은 학생을 마저 걷는 것"이지
+        //   이미 낸 학생에게 두 번 물리는 게 아니다. 덕분에 문서화된 복구 경로(force)가
+        //   비로소 안전해진다(종전엔 force 재실행이 전원 재과세였다).
+        //   (result 는 userDoc 을 그대로 들고 있다 — 별도 조회 없이 마커를 읽는다.)
+        if (result.userDoc?.data()?.lastWeeklyTaxWeekKey === weekKey) {
+          classUsersProcessed++;
+          continue;
+        }
 
         // ── 세액 계산 — 공식은 taxMath.js 단일 정본(taxMath.test.js 가 고정) ──
         //   1) 순자산세: 순자산이 면세 기준을 초과할 때만. 과세표준은 현금이 아니라 순자산.
@@ -2963,12 +3091,16 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
             personalNetAssets: netAssets,
             generatedAt: admin.firestore.Timestamp.now(),
           },
+          lastWeeklyTaxWeekKey: weekKey, // 멱등 마커 — 같은 update 에 필드 하나(쓰기 증가 0)
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
         // ⚠️ 순자산 기준 전액 징수 — 현금이 부족해도 increment로 차감(마이너스 허용)
         if (totalTax > 0) {
           userUpdate.cash = admin.firestore.FieldValue.increment(-totalTax);
         }
+        // 이 학생이 쓸 최대 3개(현금·순자산세로그·보유세로그) 자리를 확보한다
+        await flushTaxIfNeeded(3);
+        batchOps += 3;
         batch.update(userRef, userUpdate);
 
         // 감사 로그 — 세금 항목별로 분리 기록 (audit trail)
@@ -3007,6 +3139,9 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
 
         if (totalTax > 0) {
           classTotalTax += totalTax;
+          chunkTax += totalTax; // 이 배치 몫 — flush/마감 때 국고로 함께 나간다
+          chunkNetAssetTax += netAssetTax;
+          chunkPropertyTax += propertyTax;
           classNetAssetTax += netAssetTax;
           classPropertyTax += propertyTax;
           classTaxedStudents++;
@@ -3014,24 +3149,16 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
         classUsersProcessed++;
       }
 
-      if (classTotalTax > 0) {
-        // 관리자에게 세금 수입 입금 (순자산세 + 부동산세 합계)
-        batch.update(adminDoc.ref, {
-          cash: admin.firestore.FieldValue.increment(classTotalTax),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        // 국고 통계 — 세목별로 분리 집계
-        const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
-        batch.set(
-          treasuryRef,
-          {
-            netAssetTaxRevenue: admin.firestore.FieldValue.increment(classNetAssetTax),
-            propertyHoldingTaxRevenue: admin.firestore.FieldValue.increment(classPropertyTax),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
+      // 학급 마감 쓰기(완료 마커 1개) 자리 확보.
+      //   국고 입금·통계는 creditTreasury() 가 자체적으로 batchOps 를 올리고,
+      //   flushTaxIfNeeded 가 이미 +2 를 예약해 두므로 여기서 다시 세지 않는다.
+      await flushTaxIfNeeded(1);
+      batchOps += 1;
+
+      // 남은 배치 몫을 국고에 입금(위 flush 에서 이미 나간 분은 제외돼 있다)
+      creditTreasury();
+
+      // (국고 통계는 creditTreasury() 가 청크마다 현금 입금과 함께 기록한다 — 여기서 다시 쓰지 않는다)
 
       // 🔒 주간 세금 징수 완료 주차 기록을 과세 batch에 포함 — 과세와 완료마커를 원자적으로 커밋.
       //   (별도 write로 분리하면 batch.commit 성공 후 마커 write만 실패 시 재시도가 재과세를 유발 — codex HIGH.)
@@ -3444,6 +3571,10 @@ exports.hourlySchedulerV2 = onSchedule(
 
       logger.info(`[hourlyV2] KST ${hour}시, 요일=${day}`);
 
+      // 🔁 분기별 try/catch 는 **부분 실패 허용**이 의도다(환율이 죽어도 경제이벤트는 돌아야 한다).
+      //    다만 종전엔 삼키기만 해서 job 이 초록색으로 끝났다 — 실패를 모아 마지막에 던진다(3차 검증 HIGH3).
+      const branchErrors = [];
+
       // 🕛 자정 (KST 0시): 일일 과제 리셋 + 적금 자동 납입
       if (hour === 0) {
         const todayStr = kstNow.toISOString().split("T")[0];
@@ -3486,6 +3617,7 @@ exports.hourlySchedulerV2 = onSchedule(
           logger.info("[hourlyV2] 환율 업데이트 완료:", result.rate);
         } catch (e) {
           logger.error("[hourlyV2] 환율 업데이트 오류:", e);
+          branchErrors.push(`환율: ${e?.message || e}`);
         }
       }
 
@@ -3495,8 +3627,13 @@ exports.hourlySchedulerV2 = onSchedule(
         try {
           const result = await runEconomicEventsForAllClasses();
           logger.info("[hourlyV2] 경제 이벤트 완료:", result);
+          // 학급별 실패는 그 안에서 부분 허용되지만, 여기까지 올려야 job 이 실패로 보인다.
+          if (result?.classErrors?.length) {
+            branchErrors.push(`경제이벤트 학급실패: ${result.classErrors.join(" / ")}`);
+          }
         } catch (e) {
           logger.error("[hourlyV2] 경제 이벤트 오류:", e);
+          branchErrors.push(`경제이벤트: ${e?.message || e}`);
         }
       }
 
@@ -3504,6 +3641,10 @@ exports.hourlySchedulerV2 = onSchedule(
       if (hour !== 0 && hour !== 7 && !(isWeekday && hour >= 8 && hour <= 17)) {
         // no-op: 빠른 종료 (Firestore 읽기 0)
         return;
+      }
+
+      if (branchErrors.length > 0) {
+        throw new Error(`hourlyV2 부분 실패 — ${branchErrors.join(" / ")}`);
       }
     } catch (error) {
       logger.error("[hourlyV2] 전체 오류:", error);

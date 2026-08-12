@@ -360,6 +360,60 @@ const CASES = [
     path: "/users/stu1", method: "update", as: "stu1",
     before: S, after: { ...S, isTestAccount: true },
   }),
+
+  // 🔒 주기작업 멱등 마커 — 학생이 쓸 수 있으면 "이미 처리됨"으로 위장해 스케줄러를 건너뛴다.
+  //   특히 세금 마커는 그대로 **세금 회피**가 된다.
+  tc("DENY", "학생이 세금 징수 마커를 심어 이번 주 과세를 건너뛴다", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: S, after: { ...S, lastWeeklyTaxWeekKey: "2026-W33" },
+  }),
+  tc("DENY", "학생이 주급 지급 마커를 조작한다", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: S, after: { ...S, lastSalaryWeekKey: "2026-W33" },
+  }),
+  tc("DENY", "학생이 주급 실수령액 기록을 위조한다 (회수 로직의 입력값)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, lastNetSalary: 1000 }, after: { ...S, lastNetSalary: 99999999 },
+  }),
+  // pendingTaxSummary 는 **의도적으로 열어 둔다** — 학생이 주간 세금 팝업을 "확인"으로 닫을 때
+  //   본인이 deleteField() 로 지운다(WeeklyTaxSummaryPopup.js). 막으면 팝업이 안 닫힌다.
+  //   위조해도 자기 화면 안내 문구가 바뀔 뿐 실제 징수액은 서버가 계산한다.
+  tc("ALLOW", "🐤 학생이 세금 안내 팝업을 닫는다 (pendingTaxSummary 정리)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, pendingTaxSummary: { total: 5000 } }, after: S,
+  }),
+
+  // 서버가 한도·제한 판정에 쓰는 필드 — 지우거나 위조하면 한도를 우회한다
+  tc("DENY", "학생이 추첨 한도 카운터를 지운다 (하루 3회 무한 반복)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, dailySpinCount: 3, dailySpinDate: "2026-08-12" }, after: S,
+  }),
+  tc("DENY", "학생이 송금수령 시각을 지운다 (24h 대출상환 제한 우회)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, lastIncomingTransferAt: "2026-08-12T00:00:00Z" }, after: S,
+  }),
+  tc("DENY", "학생이 대출완납 시각을 지운다 (24h 재대출 제한 우회)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, lastLoanRepaidAt: "2026-08-12T00:00:00Z" }, after: S,
+  }),
+  tc("DENY", "학생이 누적 급여 수령액을 위조한다 (백필 감사로그 오염)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, totalSalaryReceived: 1000 }, after: { ...S, totalSalaryReceived: 999999999 },
+  }),
+
+  // 💎 배당 멱등 원장 — 쓰면 지급 스킵(자해), 지우면 재지급(이득). 둘 다 막는다.
+  tc("DENY", "학생이 배당 원장을 직접 만든다", {
+    path: "/users/stu1/dividendLedger/2026-08", method: "create", as: "stu1",
+    after: { monthKey: "2026-08", paid: { stockA: true } },
+  }),
+  tc("DENY", "학생이 배당 원장을 지워 재지급을 노린다", {
+    path: "/users/stu1/dividendLedger/2026-08", method: "delete", as: "stu1",
+    before: { monthKey: "2026-08", paid: { stockA: true } },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 배당 원장을 읽는다 (정상 조회)", {
+    path: "/users/stu1/dividendLedger/2026-08", method: "get", as: "stu1",
+    before: { monthKey: "2026-08", paid: { stockA: true } },
+  }),
   tc("DENY", "학생이 자기 email 을 바꾼다 (구 우회 매칭의 실제 통로였다)", {
     path: "/users/stu1", method: "update", as: "stu1",
     before: { ...S, email: "s1@x.kr" }, after: { ...S, email: "alchan21@x.kr" },

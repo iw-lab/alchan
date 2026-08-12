@@ -43,7 +43,23 @@ function decideClaim(lockData, periodKey, opts = {}) {
   const staleMs =
     Number.isFinite(rawStaleMs) && rawStaleMs > 0 ? rawStaleMs : DEFAULT_STALE_MS;
 
-  if (forceRun) return { claim: true, reason: "force-run" };
+  // forceRun 은 "이미 완료된 주기를 **의도적으로** 다시 돈다"는 뜻이지
+  // "다른 실행과 나란히 돈다"는 뜻이 아니다.
+  // 종전엔 무조건 통과시켜서, 교사가 수동 징수 버튼을 연달아 두 번 누르면 두 실행이
+  // 같은 스냅샷을 보고 **둘 다 걷었다**(2026-08-12 codex CRITICAL).
+  // 그래서 force 도 "진행 중인 실행"은 존중한다 — 완료·실패만 관통한다.
+  if (forceRun) {
+    if (lockData?.status === "in-progress") {
+      const startedMs = toMillis(lockData.startedAt);
+      if (startedMs !== null && nowMs - startedMs < staleMs) {
+        return { claim: false, reason: "force-blocked-by-in-progress" };
+      }
+      if (startedMs === null) {
+        return { claim: false, reason: "force-blocked-unknown-start" };
+      }
+    }
+    return { claim: true, reason: "force-run" };
+  }
   if (!lockData) return { claim: true, reason: "no-lock" };
 
   // 락 문서는 두 모양을 쓴다: 주간 작업은 weekKey, 일간 작업은 date.

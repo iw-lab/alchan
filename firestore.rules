@@ -268,7 +268,24 @@ service cloud.firestore {
                         //     클라이언트가 기존 문서의 email 을 수정하는 경로는 0건이라 막아도 회귀 없다.
                         //   isTestAccount — sellStock 의 '매수 후 1시간 매도잠금' 우회 플래그.
                         //     학생이 self-grant 하면 잠금을 스스로 풀 수 있으므로 관리자 전용이어야 한다.
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount']) &&
+                        // 🔒 2026-08-12 추가: 주기작업 **멱등 마커**
+                        //   lastSalaryWeekKey / lastWeeklyTaxWeekKey 는 "이번 주 이미 지급/징수됨"을
+                        //   뜻해서, 스케줄러가 그 학생을 건너뛰는 근거로 쓴다. 학생이 직접 쓸 수 있으면
+                        //   **세금을 안 내는 통로**가 된다(자기 문서에 이번 주 키만 박으면 징수를 건너뛴다).
+                        //   🔒 2026-08-12 2차 추가(codex): 서버가 **한도·제한 판정에 쓰는** 필드들.
+                        //     dailySpinDate/dailySpinCount — 지우면 하루 3회 추첨 한도를 무한 반복
+                        //     lastIncomingTransferAt — 지우면 송금 수령 후 24h 대출상환 제한 우회
+                        //     lastLoanRepaidAt — 지우면 완납 후 24h 재대출 제한 우회
+                        //     totalSalaryReceived — 위조 후 백필 실행 시 급여 감사로그가 위조액으로 생성
+                        //     🔬 전부 클라이언트 write 0건 확인(src 전수) — 막아도 회귀 없다.
+                        //   같은 계열의 다른 마커는 이미 안전하다 — 적금 lastDepositDate 는 products
+                        //   (교사 전용 write), 배당 dividendPaidMonths 는 portfolio(create/update:false).
+                        //   user 문서에 얹는 마커만 여기서 막으면 된다.
+                        //   ⚠️ `pendingTaxSummary` 는 **일부러 뺐다** — 학생이 주간 세금 팝업을
+                        //   "확인"으로 닫을 때 본인이 `deleteField()` 로 지운다
+                        //   (WeeklyTaxSummaryPopup.js:26). 막으면 팝업이 안 닫힌다.
+                        //   위조해 봐야 자기 화면의 안내 문구가 바뀔 뿐 징수액은 서버가 계산한다.
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount', 'lastSalaryWeekKey', 'lastWeeklyTaxWeekKey', 'lastSalaryDate', 'lastNetSalary', 'lastGrossSalary', 'lastTaxAmount', 'dailySpinDate', 'dailySpinCount', 'lastIncomingTransferAt', 'lastLoanRepaidAt', 'totalSalaryReceived']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        (isAdmin() &&
@@ -316,6 +333,18 @@ service cloud.firestore {
         //    StockExchange deleteHolding(휴지조각 정리)은 자산 감소라 민팅 벡터 아님.
         allow create, update: if false;
         allow delete: if isOwner(userId) || isClassAdminOfUser(userId); // 🏫 Phase1: 관리자는 자기 학급만
+      }
+
+      // ========================================================
+      // 💎 배당 멱등 원장 (users/{userId}/dividendLedger/{monthKey})
+      // ========================================================
+      // "이 학생이 이번 달 어느 종목 배당을 받았는가"의 기록. 배당 CF 가 지급과 같은 batch 로 쓴다.
+      // 🔒 학생이 쓸 수 있으면 **아직 안 받은 종목을 '받았다'고 심어 지급을 건너뛰게** 하거나
+      //    (자해), 지운 뒤 재실행을 유도해 **두 번 받을** 수 있다. 전부 CF(Admin SDK) 전용이다.
+      //    delete 도 막는다 — 원장을 지우는 것이 곧 재지급 통로다(portfolio 와 달리 자산 감소가 아니다).
+      match /dividendLedger/{monthKey} {
+        allow read: if isOwner(userId) || isAdminFast();
+        allow write: if false;
       }
 
       // ========================================================
