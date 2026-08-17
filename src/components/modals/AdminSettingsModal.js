@@ -42,6 +42,11 @@ import { Link } from "react-router-dom";
 
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { ALCHAN_MENU_ITEMS } from "../AlchanSidebar";
+import {
+  getLearningAppItems,
+  loadLearningAppItems,
+  LEARNING_APPS_CHANGED,
+} from "../../services/learningAppRegistry";
 import { logger } from "../../utils/logger";
 import {
   isAppointedOnlyJob,
@@ -72,14 +77,18 @@ const catOfMenuItem = (it) =>
   it.category ||
   ALCHAN_MENU_ITEMS.find((p) => p.id === it.parentId)?.category ||
   "기타";
-const LOCKABLE_MENU_ITEMS = ALCHAN_MENU_ITEMS.filter(
-  (it) =>
-    !it.isCategory &&
-    !it.adminOnly &&
-    !it.superAdminOnly &&
-    !it.delegatedOnly &&
-    (it.path || it.externalUrl),
-);
+// 🧩 2026-08-17: 학습 사이트 10개가 ALCHAN_MENU_ITEMS 에서 레지스트리로 빠지면서,
+//   상수로 한 번 계산해두면 **교사가 학습 사이트를 잠글 수 없게 된다**(목록에서 사라짐).
+//   그래서 상수 → 함수. 호출 시점의 레지스트리(동기 캐시)를 합쳐 계산한다.
+const lockableMenuItems = () =>
+  [...ALCHAN_MENU_ITEMS, ...getLearningAppItems()].filter(
+    (it) =>
+      !it.isCategory &&
+      !it.adminOnly &&
+      !it.superAdminOnly &&
+      !it.delegatedOnly &&
+      (it.path || it.externalUrl),
+  );
 // 주식 초기화를 위한 기본 데이터
 const initialStocks = [
   {
@@ -511,6 +520,23 @@ const AdminSettingsModal = ({
   const [lockedItemIds, setLockedItemIds] = useState([]);
   const [menuLocksSaving, setMenuLocksSaving] = useState(false);
 
+  // 🧩 학습앱 레지스트리는 **비동기**로 도착한다(세션당 1읽기). 도착 전에는
+  //    getLearningAppItems() 가 기본 10개만 돌려주므로, 그 상태로 잠금을 저장하면
+  //    아래 validIds 필터가 **신규 앱의 잠금을 조용히 지워버린다**(교사가 숨긴 앱이 다시 보임).
+  //    그래서 ① 모달이 뜨면 로드를 보장하고 ② 도착하면 체크박스 목록을 다시 그린다.
+  //    (저장 직전에도 await 로 한 번 더 막는다 — handleSaveMenuLocks 참조)
+  const [, setLearningAppsTick] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const bump = () => alive && setLearningAppsTick((n) => n + 1);
+    window.addEventListener(LEARNING_APPS_CHANGED, bump);
+    loadLearningAppItems().then(bump).catch(() => {});
+    return () => {
+      alive = false;
+      window.removeEventListener(LEARNING_APPS_CHANGED, bump);
+    };
+  }, []);
+
   // 화폐 단위 설정
   const { currencyUnit, setCurrencyUnitLocal } = useCurrency();
   const [tempCurrencyUnit, setTempCurrencyUnit] = useState(currencyUnit);
@@ -592,7 +618,10 @@ const AdminSettingsModal = ({
     setMenuLocksSaving(true);
     try {
       // 유효한 leaf 항목 id만 저장(과거 항목·오염 방지)
-      const validIds = new Set(LOCKABLE_MENU_ITEMS.map((it) => it.id));
+      // ⚠️ 레지스트리가 아직 안 왔으면 신규 학습앱이 목록에 없어 그 잠금이 지워진다.
+      //    저장은 되돌리기 어려우니 여기서 한 번 더 기다린다(이미 로드됐으면 즉시 resolve).
+      await loadLearningAppItems().catch(() => {});
+      const validIds = new Set(lockableMenuItems().map((it) => it.id));
       const cleaned = lockedItemIds.filter((id) => validIds.has(id));
       const ref = firebaseDoc(db, "settings", `menuLocks_${userClassCode}`);
       await firebaseSetDoc(
@@ -2274,7 +2303,7 @@ const AdminSettingsModal = ({
               </div>
               <div className="px-6 py-5 space-y-4">
                 {Object.entries(
-                  LOCKABLE_MENU_ITEMS.reduce((acc, it) => {
+                  lockableMenuItems().reduce((acc, it) => {
                     const cat = catOfMenuItem(it);
                     (acc[cat] = acc[cat] || []).push(it);
                     return acc;

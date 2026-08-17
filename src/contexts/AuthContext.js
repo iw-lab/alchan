@@ -295,10 +295,16 @@ export const AuthProvider = ({ children }) => {
         });
         // 스케줄러용 activeStatus 업데이트 (주식 가격 업데이트 트리거)
         if (db) {
+          // ⚠️ 이 하트비트는 주식 스케줄러의 게이트다(scheduler-http.js:237 — 최근 70분 내
+          //    접속자가 없으면 시세 갱신을 건너뛴다). 종전엔 실패를 통째로 삼켜서, 규칙이나
+          //    네트워크 문제로 하트비트가 멎어도 **아무 신호가 없었다** — 시세만 조용히 멈춘다.
+          //    사용자에게 띄울 일은 아니지만(정상 동작에 영향 없음) 로그로는 남긴다.
           setDoc(doc(db, "Settings", "activeStatus"), {
             lastActiveAt: serverTimestamp(),
             lastActiveUserId: firebaseUid,
-          }, { merge: true }).catch(() => {});
+          }, { merge: true }).catch((e) => {
+            logger.warn("[AuthContext] 접속 하트비트 기록 실패(주식 시세 갱신 게이트):", e?.code || e?.message);
+          });
         }
         lastActiveUpdateRef.current = now;
       } catch (error) {

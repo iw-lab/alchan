@@ -25,7 +25,6 @@ import {
   ChevronDown,
   Wallet,
   Target,
-  Gamepad2,
   Package,
   TrendingUp,
   Landmark,
@@ -44,20 +43,19 @@ import {
   Hammer,
   BarChart3,
   BookOpen,
-  Keyboard,
   LayoutDashboard,
   CheckCircle,
   Zap,
   Sparkles,
   Globe,
-  Palette,
-  Send,
-  Calculator,
   MessageSquare,
-  Grid3x3,
-  Castle,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
+import {
+  getLearningAppItems,
+  loadLearningAppItems,
+  LEARNING_APPS_CHANGED,
+} from "../services/learningAppRegistry";
 import globalCacheService from "../services/globalCacheService";
 import { toast } from "../utils/toast";
 
@@ -300,85 +298,17 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "boardCategory",
   },
 
-  // Learning Sites Category - 학습 사이트 (외부 링크 · Firestore 읽기 0)
-  // 👉 새 학습 사이트 추가는 아래 배열에 { id, label, icon, externalUrl, parentId:"learningSitesCategory" } 한 줄만 추가.
-  //    externalUrl 항목은 클릭 시 새 탭으로 열림(내부 라우팅과 분리).
+  // Learning Sites Category — 학습 사이트(외부 링크)
+  // 🧩 2026-08-17: 개별 앱 10개가 여기 하드코딩돼 있었다(추가·수정 = 코드 배포).
+  //    이제 Firestore `platformApps/_registry` 문서 하나에서 온다 —
+  //    목록은 src/services/learningAppRegistry.js, 폴백/검증은 src/config/learningApps.js.
+  //    카테고리 항목만 여기 남는다(구조는 코드, 내용은 데이터).
   {
     id: "learningSitesCategory",
     label: "학습 사이트",
     icon: Globe,
     isCategory: true,
     category: "community",
-  },
-  {
-    id: "siteArtOn",
-    label: "미술아트온",
-    icon: Palette,
-    externalUrl: "https://arton.simssijjang.workers.dev/coloring",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteNarae",
-    label: "종이하늘",
-    icon: Send,
-    externalUrl: "https://papersky.pages.dev/",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteSeulgisem",
-    label: "슬기셈(수학)",
-    icon: Calculator,
-    externalUrl: "https://word-e329c.web.app",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteNumeroQuest",
-    label: "칸채움",
-    icon: Grid3x3,
-    externalUrl: "https://numero-quest.pages.dev",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteTypingverse",
-    label: "타이핑버스",
-    icon: Keyboard,
-    externalUrl: "https://typingverse.pages.dev",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteEchoTale",
-    label: "에코테일(영어)",
-    icon: BookOpen,
-    externalUrl: "https://echotale.simssijjang-d79.workers.dev/",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteVocawormDefense",
-    label: "보카웜 디펜스(영어단어)",
-    icon: Gamepad2,
-    externalUrl: "https://vocaworm-defense.vercel.app/",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteAraharu",
-    label: "아라하루(아침학습)",
-    icon: Sparkles,
-    externalUrl: "https://araharu-ecp.pages.dev/",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteMathCastle",
-    label: "수학성 수호자(수학)",
-    icon: Castle,
-    externalUrl: "https://mathcastle.pages.dev/",
-    parentId: "learningSitesCategory",
-  },
-  {
-    id: "siteGuguGuardians",
-    label: "구구성 수호대(구구단)",
-    icon: Shield,
-    externalUrl: "https://iw-lab.github.io/gugu-guardians/",
-    parentId: "learningSitesCategory",
   },
 
   // 위임 기능 카테고리 (위임된 학생 또는 대통령 직업 학생에게 표시)
@@ -1053,6 +983,26 @@ export default function AlchanSidebar({
     };
   }, [userDoc?.classCode]);
 
+  // 🧩 학습앱 레지스트리 — 첫 페인트는 캐시/기본값(동기)으로 깜빡임 없이, 이후 1회 갱신.
+  //    세션당 최대 1읽기(서비스 내부에서 sessionStorage 로 중복 제거).
+  const [learningAppItems, setLearningAppItems] = useState(() => getLearningAppItems());
+  useEffect(() => {
+    let cancelled = false;
+    loadLearningAppItems().then((items) => { if (!cancelled) setLearningAppItems(items); });
+    const handler = () => setLearningAppItems(getLearningAppItems());
+    window.addEventListener(LEARNING_APPS_CHANGED, handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(LEARNING_APPS_CHANGED, handler);
+    };
+  }, []);
+
+  // 정적 메뉴(구조) + 레지스트리 앱(내용). 하위 항목 조회는 이 합본을 쓴다.
+  const allMenuItems = useMemo(
+    () => [...ALCHAN_MENU_ITEMS, ...learningAppItems],
+    [learningAppItems],
+  );
+
   // 🔒 메뉴 잠금 목록 로드 (settings/menuLocks_{classCode})
   // 교사가 관리자설정에서 저장하면 'menuLocks:changed' 이벤트로 즉시 반영, 타 기기는 다음 로드 시 반영.
   useEffect(() => {
@@ -1132,7 +1082,7 @@ export default function AlchanSidebar({
       <MenuSection key={categoryKey} title={CATEGORY_LABELS[categoryKey]}>
         {items.map((item) => {
           if (item.isCategory) {
-            const childItems = ALCHAN_MENU_ITEMS.filter((child) => {
+            const childItems = allMenuItems.filter((child) => {
               if (child.parentId !== item.id) return false;
               return shouldShowItem(child);
             });

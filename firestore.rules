@@ -106,6 +106,55 @@ service cloud.firestore {
               getUserClassCode() == classCode);
     }
 
+    // 🏫 settings/ 안의 '학급 소유' 문서 — docID 접미사가 곧 소유 학급이다.
+    //   payload 의 self-report classCode 가 아니라 **docID** 를 자기 학급과 대조한다
+    //   (payload 는 docID 와 decouple 돼 위조 가능 — 2026-07-19 Gemini v2 재현 사례).
+    //   ⚠️ 여기 없는 새 접미사는 **거부**된다(fail-closed). settings/ 에 학급별 문서를
+    //      새로 추가하면 이 목록에 등록할 것 — 조용히 통과시키는 것보다 낫다.
+    // 🎯 goals 문서 ID(`{classCode}_goal`)가 자기 학급 것인가. 쓰기 규칙용이라 클레임이 아니라
+    //   문서 기반(getUserClassCode)만 쓴다. 빈 학급코드 가드 포함(`'' + '_goal'` = `'_goal'` 차단).
+    // 💓 Settings/activeStatus 하트비트 — 학생도 써야 하지만 **값까지** 고정한다.
+    //   두 검증자의 지적이 정면으로 충돌한 지점이라 둘 다 만족시키는 형태로 짰다:
+    //     · Gemini: 전체 키에 hasOnly() 를 걸면 이 문서에 레거시 필드가 하나만 생겨도
+    //       하트비트가 **조용히** 막힌다(클라가 .catch(()=>{}) 로 삼킨다).
+    //     · codex : hasOnly() 는 "이 키들만"이지 "이 키들이 있어야"가 아니라서,
+    //       학생이 문서를 **빈 문서로 덮어** 주식 스케줄러를 멈출 수 있다.
+    //   → 답은 "무엇이 바뀌었나"(affectedKeys)와 "값이 정당한가"(아래)를 **분리**하는 것이다.
+    //     이 함수는 값만 본다. 키 제한은 create/update 각자의 규칙이 건다.
+    function isValidHeartbeat(documentId) {
+      return isSignedIn() && documentId == 'activeStatus' &&
+             request.resource.data.keys().hasAll(['lastActiveAt', 'lastActiveUserId']) &&
+             request.resource.data.lastActiveUserId == request.auth.uid &&
+             request.resource.data.lastActiveAt is timestamp &&
+             request.resource.data.lastActiveAt <= request.time;
+    }
+
+    function isOwnClassGoal(goalId) {
+      return isSuperAdmin() ||
+             (getUserClassCode() is string &&
+              getUserClassCode().size() > 0 &&
+              goalId == getUserClassCode() + '_goal');
+    }
+
+    // 읽기용 Fast 변형 — 클레임이 있으면 문서 조회 없이 판정(요청당 get 과금 회피).
+    //   클레임이 없거나 안 맞으면 문서 기반으로 fallback(동작 동일·fail-closed).
+    function isOwnClassSettingDocFast(documentId) {
+      return (request.auth.token.get('classCode', '') is string &&
+              request.auth.token.get('classCode', '').size() > 0 &&
+              (documentId == 'salarySettings_' + request.auth.token.classCode ||
+               documentId == 'menuLocks_' + request.auth.token.classCode)) ||
+             isOwnClassSettingDoc(documentId);
+    }
+
+    function isOwnClassSettingDoc(documentId) {
+      // 빈 학급코드 가드 — 없으면 `'salarySettings_' + ''` = `'salarySettings_'` 같은
+      // "접미사 없는 껍데기 문서"를 학급 없는 계정이 쓸 수 있다(goals 와 같은 계열의 함정).
+      return getUserClassCode() is string &&
+             getUserClassCode().size() > 0 &&
+             (documentId == 'salarySettings_' + getUserClassCode() ||
+              documentId == 'menuLocks_' + getUserClassCode());
+    }
+
     function isAdminFast() {
       // 클레임 경로도 승인(isApproved) 검사 — 미승인 계정이 클레임만으로 통과하지 못하게 한다.
       // 클레임에 isApproved가 없으면(구 토큰) 이 분기는 false가 되고 아래 isAdmin() 문서조회로 fallback.
@@ -518,16 +567,24 @@ service cloud.firestore {
     // ========================================================
     // 📊 시장 상황 (MarketCondition)
     // ========================================================
+    // ⚠️ 죽은 컬렉션 (2026-08-17 하드닝). 라이브 1건(잔재) · 참조 0건 —
+    //    이 문서를 갱신하던 updateMarketConditionLogic 은 이미 제거됐다(scheduler-http.js:2058 주석).
     match /MarketCondition/{conditionId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if false;
+      allow write: if false;
     }
 
     // ========================================================
     // 🏪 상점 아이템 (storeItems)
     // ========================================================
     match /storeItems/{itemId} {
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 종전 `if isSignedIn()` 은 "클라가 항상
+      //   where(classCode == 자기학급) 로만 조회하니까" 를 전제로 열려 있었다 — 클라이언트 쿼리는
+      //   보안 통제가 아니다. 필터 없는 getDocs(collection(db,'...')) 한 줄이면 전국 학급 문서가
+      //   그대로 나온다. 쓰기는 2026-07-19 하드닝에서 resource.data.classCode 로 이미 잠갔고,
+      //   읽기만 같은 필드를 안 보고 있었다(감사 3회가 놓친 이유: 헬퍼 호출 횟수를 셌기 때문).
+      //   클라 조회(getStoreItems·SuperAdmin·학급복사) 전부 classCode 필터 실측 → 회귀 0.
+      allow read: if isSignedIn() && (isAdminFast() || isSameClassFast(resource.data.classCode));
       // 🏫 Phase1(2026-07-19): storeItems는 classCode 필드 보유(전수 실측) → 자기 학급 카탈로그만 관리.
       //   create=신규 아이템의 classCode, update/delete=기존 아이템의 classCode로 스코프. 앱은 storeItems를
       //   항상 where(classCode==자기학급)로만 조회하므로 classCode 없는 문서는 UI에 노출 불가(회귀 0).
@@ -537,6 +594,22 @@ service cloud.firestore {
       allow update: if isClassAdmin(resource.data.classCode) &&
                        request.resource.data.classCode == resource.data.classCode;
       allow delete: if isClassAdmin(resource.data.classCode);
+    }
+
+    // ========================================================
+    // 🧩 플랫폼 앱 레지스트리 (platformApps) — 2026-08-17 신설
+    //    사이드바의 학습 사이트 목록. 종전엔 AlchanSidebar.js 에 10개가 하드코딩돼 있어
+    //    앱 하나 추가가 코드 배포였다. 이제 `platformApps/_registry` 문서 하나가 정본이다.
+    //    · 읽기 = 로그인 전원(학급 무관한 공용 카탈로그, 개인정보 아님).
+    //      비용: 클라가 브라우저 세션당 1회만 읽는다(learningAppRegistry.js 세션 캐시).
+    //    · 쓰기 = 슈퍼관리자만. 교사가 만지면 **전국 사이드바**가 바뀐다.
+    //      학급별 on/off 는 여기가 아니라 settings/menuLocks_{classCode} 가 담당한다.
+    //    ⚠️ 앞으로 "누가 어떤 앱에 보상을 줄 수 있나" 같은 **집행 정책**은 이 문서에 넣지 말 것.
+    //       표시용 카탈로그(캐시됨)와 집행 정책(캐시 금지·즉시 반영)은 분리해야 한다.
+    // ========================================================
+    match /platformApps/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
 
     // ========================================================
@@ -664,21 +737,25 @@ service cloud.firestore {
     // ========================================================
     // 🏘️ 부동산 (realEstate)
     // ========================================================
+    // ⚠️ 죽은 컬렉션 (2026-08-17 하드닝). 라이브 문서 0건 · src/·functions/ 참조 0건 —
+    //    실사용 경로는 /realEstateProperties 다. 2026-07-19 하드닝 때 auctions·treasury·
+    //    nationalTax 는 잠갔는데 여기만 빠졌다. 종전 규칙은 read 전역 공개 + update 가
+    //    resource.data.ownerId 만 봐서 학급 경계가 없었다(누군가 top-level 조회 로직을
+    //    다시 붙이는 순간 부활하는 지뢰). 되살릴 땐 이 블록을 지우지 말고 스코프를 넣을 것.
     match /realEstate/{propertyId} {
-      allow read: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isOwner(resource.data.ownerId) || isAdmin();
-      allow delete: if isAdmin();
+      allow read: if false;
+      allow write: if false;
     }
 
     // ========================================================
     // ⚖️ 재판 (trials)
     // ========================================================
+    // ⚠️ 죽은 컬렉션 (2026-08-17 하드닝). 라이브 문서 0건 · 참조 0건 — 실사용 경로는 /trialRooms.
+    //    종전 `create: if isSignedIn()` 은 로그인한 학생이 아무 학급으로나 문서를 무제한 생성할 수
+    //    있는 상태였다(기능은 0, 쓰기 공격면만 열림 — 2026-08-03 games 컬렉션과 같은 패턴).
     match /trials/{trialId} {
-      allow read: if isSameClassFast(resource.data.classCode) || isAdminFast();
-      allow create: if isSignedIn();
-      allow update: if isAdmin(); // 재판 진행은 관리자만
-      allow delete: if isAdmin();
+      allow read: if false;
+      allow write: if false;
     }
 
     // ========================================================
@@ -689,7 +766,8 @@ service cloud.firestore {
     //    다만 구 규칙이 nested와 동일한 fake-escrow 패턴(update: isSameClass)을 방치 → 향후 누군가
     //    top-level 조회 로직을 추가해도 취약점이 부활하지 않도록 nested 잠금형과 동일하게 하드닝.
     match /auctions/{auctionId} {
-      allow read: if isSignedIn();
+      // 🔒 2026-08-17: 쓰기는 잠갔는데 읽기가 전역으로 남아 있었다(라이브 1건 잔재 · 참조 0건).
+      allow read: if false;
       // 죽은 top-level 컬렉션 — 실사용 경로는 classes/{classCode}/auctions(873). 어떤 클라·CF도
       //   이 경로에 쓰지 않으므로 create/update 전면 차단(landmine 제거).
       allow create: if false;
@@ -698,7 +776,8 @@ service cloud.firestore {
     }
 
     match /auctions/{auctionId}/bids/{bidId} {
-      allow read: if isSameClassFast(get(/databases/$(database)/documents/auctions/$(auctionId)).data.classCode);
+      // 🔒 2026-08-17: 부모가 죽은 컬렉션이라 함께 닫는다(문서당 get() 과금도 사라진다).
+      allow read: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if isAdmin();
@@ -707,9 +786,11 @@ service cloud.firestore {
     // ========================================================
     // 📚 학습 자료 (learningMaterials)
     // ========================================================
+    // ⚠️ 죽은 컬렉션 (2026-08-17 하드닝). 라이브 문서 0건 · src/·functions/ 참조 0건.
+    //    `write: if isAdmin()` 은 학급 스코프가 없어 승인 교사 누구나 전역 자료를 쓸 수 있었다.
     match /learningMaterials/{materialId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if false;
+      allow write: if false;
     }
 
     // ========================================================
@@ -810,8 +891,13 @@ service cloud.firestore {
     // 💼 직업 (jobs)
     // ========================================================
     match /jobs/{jobId} {
-      // 읽기: 로그인한 사용자, classCode 쿼리 허용
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 종전 `if isSignedIn()` 은 "클라가 항상
+      //   where(classCode == 자기학급) 로만 조회하니까" 를 전제로 열려 있었다 — 클라이언트 쿼리는
+      //   보안 통제가 아니다. 필터 없는 getDocs(collection(db,'...')) 한 줄이면 전국 학급 문서가
+      //   그대로 나온다. 쓰기는 2026-07-19 하드닝에서 resource.data.classCode 로 이미 잠갔고,
+      //   읽기만 같은 필드를 안 보고 있었다(감사 3회가 놓친 이유: 헬퍼 호출 횟수를 셌기 때문).
+      //   클라 조회 6곳 전부 where(classCode==자기학급) 사용 실측 → 회귀 0.
+      allow read: if isSignedIn() && (isAdminFast() || isSameClassFast(resource.data.classCode));
       // 🏫 Phase1(2026-07-19): jobs는 classCode 필드 보유(전수 실측) → 자기 학급 직업만 관리.
       allow create: if isClassAdmin(request.resource.data.classCode);
       // 🏫 Phase1(codex+Gemini CRITICAL): update 시 classCode 동결 — 자기 학급 문서의 classCode만 바꿔
@@ -825,8 +911,13 @@ service cloud.firestore {
     // 📝 공통 할일 (commonTasks)
     // ========================================================
     match /commonTasks/{taskId} {
-      // 읽기: 로그인한 사용자, classCode 쿼리 허용
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 종전 `if isSignedIn()` 은 "클라가 항상
+      //   where(classCode == 자기학급) 로만 조회하니까" 를 전제로 열려 있었다 — 클라이언트 쿼리는
+      //   보안 통제가 아니다. 필터 없는 getDocs(collection(db,'...')) 한 줄이면 전국 학급 문서가
+      //   그대로 나온다. 쓰기는 2026-07-19 하드닝에서 resource.data.classCode 로 이미 잠갔고,
+      //   읽기만 같은 필드를 안 보고 있었다(감사 3회가 놓친 이유: 헬퍼 호출 횟수를 셌기 때문).
+      //   클라 조회는 Dashboard 1곳뿐이고 where(classCode)+limit(50) 사용 실측 → 회귀 0.
+      allow read: if isSignedIn() && (isAdminFast() || isSameClassFast(resource.data.classCode));
       // 🏫 Phase1(2026-07-19): commonTasks는 classCode 필드 보유(REST 실측 확인) → 자기 학급 할일만 관리.
       allow create: if isClassAdmin(request.resource.data.classCode);
       // 🏫 Phase1(codex+Gemini CRITICAL): update 시 classCode 동결 — 자기 학급 문서의 classCode만 바꿔
@@ -855,13 +946,54 @@ service cloud.firestore {
 
     match /Settings/{documentId} {
       allow read: if isSignedIn();
-      // activeStatus는 로그인한 모든 사용자가 업데이트 가능 (주식 스케줄러 트리거용)
-      allow write: if isAdmin() || (isSignedIn() && documentId == 'activeStatus');
+      // 🔒 2026-08-17 전역 설정 쓰기 좁히기.
+      //   종전 `isAdmin()` 은 **승인된 교사 누구나** 이 컬렉션 전체를 쓸 수 있다는 뜻이었다.
+      //   여기 들어 있는 문서는 전부 학급이 아니라 **서비스 전체**를 좌우한다:
+      //     · scheduler.vacationMode  — 전국 자동 주급/세금 스케줄러 on/off
+      //     · exchangeRate            — 환율(실주식 서비스)
+      //     · centralStocksCache      — 전 학급 공용 시세 미러
+      //     · rejectedTeachers        — 교사 가입 거부 명단
+      //   rules 주석에 남아 있던 "전역 공용이라 학급 스코프 무의미"는 **교사가 수동 승인된
+      //   5명일 때만 참**이다. 전국 개방을 하는 순간 이 전제가 깨진다(온보딩 자동화보다 먼저
+      //   좁혀야 하는 이유). 실측: 클라이언트가 쓰는 문서는 activeStatus 와 rejectedTeachers
+      //   둘뿐이고, 나머지는 전부 Cloud Functions(Admin SDK, rules 우회)가 쓴다.
+      //   activeStatus 는 주식 스케줄러 트리거라 학생도 써야 하므로 **필드까지 고정**한다
+      //   (AuthContext 의 setDoc merge 는 이 두 필드만 보낸다 — 임의 키 주입 차단).
+      //   ⚠️ create 와 update 를 나눈 이유(Gemini 교차검증): `request.resource.data` 는 델타가 아니라
+      //      **병합 결과 문서 전체**다. update 에 keys().hasOnly() 를 걸면 이 문서에 레거시 필드가
+      //      하나라도 생기는 순간 학생 하트비트가 **조용히** 거부된다(클라가 .catch(()=>{}) 로 삼킨다
+      //      → 주식 스케줄러 트리거가 말없이 멎는다). update 는 **바뀐 키**만 본다.
+      //   🔒 값 무결성 (codex 교차검증). `hasOnly()` 는 "이 키들만"이지 "이 키들이 있어야 한다"가
+      //      아니다 — 그래서 종전 형태로는 학생이 이 문서를 **빈 문서로 덮어쓸 수** 있었다.
+      //      그게 왜 문제인가: stockPriceScheduler(scheduler-http.js:237)가 `lastActiveAt` 을 읽어
+      //      "최근 70분 내 접속자 없음"이면 시세 갱신을 통째로 건너뛴다. 즉 학생 한 명이
+      //      **전국 주식 시세를 멈출 수** 있었다(비용 절감 게이트를 DoS 로 뒤집는 경로).
+      //      미래 시각을 박아 스케줄러를 상시 깨우는 반대 방향도 함께 막는다(<= request.time).
+      // create 는 문서 전체가 곧 델타라 전체 키를 제한해도 같다.
+      allow create: if isSuperAdmin() ||
+                       (isValidHeartbeat(documentId) &&
+                        request.resource.data.keys().hasOnly(['lastActiveAt', 'lastActiveUserId']));
+      // update 는 **바뀐 키**만 제한한다(레거시 필드가 있어도 하트비트가 산다).
+      allow update: if isSuperAdmin() ||
+                       (isValidHeartbeat(documentId) &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['lastActiveAt', 'lastActiveUserId']));
+      allow delete: if isSuperAdmin();
     }
 
     // settings (소문자) - classCodes(전역)·mainSettings(전역)·salarySettings_{classCode}(학급별) 혼합
     match /settings/{documentId} {
-      allow read: if isSignedIn();
+      // 🔒 읽기도 학급 스코프 (2026-08-17 codex 교차검증). 쓰기만 잠그고 읽기를 열어둔
+      //   **이번 P0 가 고친 것과 똑같은 버그클래스**가 여기에도 있었다 — 타 학급의
+      //   salarySettings_{cc}(세율·급여상한)와 menuLocks_{cc}(그 반이 뭘 숨겼는지)가 다 보였다.
+      //   전역 문서 둘은 열어 둔다: mainSettings(화폐단위·쿠폰가치, 전 학급 공용) ·
+      //   classCodes(가입 시 학급코드 검증에 필요 — core.js:255).
+      allow read: if isSignedIn() && (
+                     isAdminFast() ||
+                     documentId == 'mainSettings' ||
+                     documentId == 'classCodes' ||
+                     isOwnClassSettingDocFast(documentId)
+                   );
       // 🏫 Phase1(2026-07-19 codex CRITICAL + Gemini v2 재검증): 이 컬렉션은 전역 문서(classCodes·mainSettings)와
       //   학급별 급여설정(salarySettings_{classCode}, 세율·급여상한)이 섞여 있다. 학급별 문서는
       //   documentId 접미사('salarySettings_'+classCode)가 곧 소유 학급이므로, 그 docID를 '자기 학급'과 직접
@@ -869,25 +1001,53 @@ service cloud.firestore {
       //   교사 A가 setDoc(salarySettings_B, {classCode:A})로 B 급여를 왜곡할 수 있었다, Gemini v2 재현).
       //   salarySettings_ 패턴이 아닌 전역 문서(classCodes·mainSettings·접미사없는 salarySettings)는 기존 isAdmin().
       //   슈퍼관리자는 전부 통과. delete는 isAdmin 유지(request.resource=null이라 docID 대조는 create/update만).
-      allow create, update: if isSuperAdmin() ||
-                               (isAdmin() &&
-                                (documentId.matches('salarySettings_.+')
-                                  ? documentId == 'salarySettings_' + getUserClassCode()
-                                  : true));
+      // 🔒 2026-08-17: 종전 3항연산자의 else 분기가 `true` 였다 — 즉 salarySettings_ 접미사가
+      //   아닌 **모든 전역 문서**(classCodes·mainSettings·stockExchange·stockExchangeSettings·
+      //   무접미 salarySettings)를 승인 교사 누구나 쓸 수 있었다. 실사용을 실측해 셋으로 쪼갠다:
+      //     · salarySettings_{classCode} → 자기 학급만 (기존 유지)
+      //     · mainSettings               → 교사 OK. 단 실제로 쓰는 두 필드만
+      //         (couponValue = Dashboard 쿠폰가치, currencyUnit = AdminSettingsModal 화폐단위).
+      //         ⚠️ 이 둘이 학급별이 아니라 **전역**인 것 자체가 설계 부채다 — 한 교사가 바꾸면
+      //            모든 학급의 쿠폰가치·화폐단위가 바뀐다. 여기서는 임의 키 주입만 막고,
+      //            학급별 분리는 별도 작업으로 남긴다(기능을 바꾸지 않기 위함).
+      //     · menuLocks_{classCode}      → 자기 학급만 (교사 메뉴 잠금)
+      //         ⚠️ 종전 `: true` 분기에서 이게 **타 학급 것도 쓸 수 있었다** — 교사 A 가 B 반 학생의
+      //            메뉴를 임의로 숨길 수 있었다는 뜻이다. 라이브 문서가 0건이라 실측 목록엔 안 잡혔고,
+      //            "기능이 안 깨지나" 자체 점검에서 뒤늦게 드러났다(없는 문서는 세어지지 않는다 —
+      //            read_leak 때 감사가 헬퍼 호출 횟수를 세다 놓친 것과 같은 함정).
+      //     · 그 외 전역 문서(classCodes 등) → 슈퍼관리자만.
+      //         classCodes 는 UI 가 이미 isSuperAdmin 게이팅이라(AdminSettingsModal 학급 코드
+      //         관리 섹션) 기능 변화 0. 규칙만 UI 를 따라간다.
+      //   ⚠️ create/update 분리(Gemini 교차검증): update 의 화이트리스트는 **바뀐 키**에만 건다.
+      //      병합 결과 전체에 걸면 mainSettings 에 레거시 필드가 하나라도 있는 순간
+      //      교사의 쿠폰가치·화폐단위 저장이 통째로 막힌다(현재 라이브 필드는 couponValue·updatedAt 둘뿐이라
+      //      지금은 안 걸리지만, 필드 하나 추가되면 조용히 깨지는 형태다).
+      allow create: if isSuperAdmin() ||
+                       (isAdmin() &&
+                        (isOwnClassSettingDoc(documentId) ||
+                         (documentId == 'mainSettings' &&
+                          request.resource.data.keys()
+                            .hasOnly(['couponValue', 'currencyUnit', 'updatedAt']))));
+      allow update: if isSuperAdmin() ||
+                       (isAdmin() &&
+                        (isOwnClassSettingDoc(documentId) ||
+                         (documentId == 'mainSettings' &&
+                          request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['couponValue', 'currencyUnit', 'updatedAt']))));
       // delete도 동일 docID 대조(codex v2): 타 학급 salarySettings 삭제(급여설정 DoS) 차단.
-      allow delete: if isSuperAdmin() ||
-                        (isAdmin() &&
-                         (documentId.matches('salarySettings_.+')
-                           ? documentId == 'salarySettings_' + getUserClassCode()
-                           : true));
+      // 🔒 2026-08-17: 여기도 else 분기가 `true` 라 교사가 classCodes·mainSettings 를 **삭제**할
+      //   수 있었다(전 학급 로그인 차단 = 전역 DoS). 전역 문서 삭제는 슈퍼관리자만.
+      allow delete: if isSuperAdmin() || (isAdmin() && isOwnClassSettingDoc(documentId));
     }
 
     // ========================================================
     // 💰 세금 설정 (taxSettings)
     // ========================================================
     match /taxSettings/{classCode} {
-      // 읽기: 로그인한 사용자 (주식 거래 시 세율 확인용)
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 경로 자체가 학급이라 필드 의존이 없다.
+      //   주석의 "주식 거래 시 세율 확인용"은 실제로 성립하지 않는다 — 라이브 문서 0건,
+      //   클라이언트 참조 0건(세율은 governmentSettings 에 들어 있다). 읽기 노출만 남아 있었다.
+      allow read: if isSameClassFast(classCode) || isAdminFast();
       // 🏫 Phase1(2026-07-19): 세율 설정은 자기 학급만. 기존 isAdmin()은 교사 A가 타 학급 세율을
       //   조작할 수 있었다(경제 그리핑). classCode=경로.
       allow write: if isClassAdmin(classCode);
@@ -897,11 +1057,33 @@ service cloud.firestore {
     // 🎯 학급 목표 (goals)
     // ========================================================
     match /goals/{goalId} {
-      // 읽기: 로그인한 모든 사용자 (목표 확인용)
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). **필드가 아니라 문서 ID 로** 스코프하는 이유:
+      //   goals 문서 ID 는 전 호출부에서 `${classCode}_goal` 로 파생된다(CouponGoalPage·MyAssets·
+      //   Dashboard·RecoverDonations·FirestoreDoctor·CF 전부 동일). 필드 기반으로 잠그면
+      //   **아직 목표를 안 만든 신규 학급**이 getDoc 할 때 resource 가 null 이라 규칙이 오류로
+      //   떨어져 "문서 없음"이 아니라 permission-denied 가 된다. 문서 ID 대조는 그 함정이 없다.
+      //   (라이브 실측: goals 17건 중 3건은 classCode 필드 자체가 없고 오타 ID 도 5건 섞여 있다)
+      //   ⚠️ **빈 학급코드 가드** — 이게 없으면 `'' + '_goal'` = `'_goal'` 이 되어, 학급코드가
+      //      비어 있는 계정(클레임 미부여·user 문서 부재)이 `goals/_goal` 을 읽을 수 있다.
+      //      지금 그 이름의 문서는 없지만, 규칙이 "빈 값이면 아무거나"로 읽히는 형태를 남기지 않는다.
+      //      (자체 테스트에서 잡힌 실제 구멍이다 — 문자열 결합 스코프는 늘 빈 값을 먼저 의심할 것)
+      allow read: if isSignedIn() && (
+                     isAdminFast() ||
+                     (request.auth.token.get('classCode', '') is string &&
+                      request.auth.token.get('classCode', '').size() > 0 &&
+                      goalId == request.auth.token.get('classCode', '') + '_goal') ||
+                     (getUserClassCode() is string &&
+                      getUserClassCode().size() > 0 &&
+                      goalId == getUserClassCode() + '_goal')
+                   );
 
-      // 생성: 관리자만
-      allow create: if isAdmin();
+      // 생성: 🔒 자기 학급 목표만 (2026-08-17 Gemini 교차검증).
+      //   종전 `if isAdmin()` 은 교사 A 가 `goals/{B학급}_goal` 을 **선점 생성**해
+      //   B 학급의 쿠폰 목표를 조작할 수 있었다(읽기는 이미 잠갔는데 쓰기가 열려 있었다 —
+      //   이번 P0 가 고친 것과 정확히 반대 방향의 같은 버그클래스).
+      //   실사용 확인: MyAssets·FirestoreDoctor·RecoverDonations 전부 `userDoc.classCode` 로
+      //   goalId 를 만든다 → 자기 학급만 쓰므로 회귀 0.
+      allow create: if isAdmin() && isOwnClassGoal(goalId);
 
       // 수정: 🔒 관리자만. 학생 분기를 **통째로 없앴다**(2026-08-11).
       //
@@ -915,10 +1097,10 @@ service cloud.firestore {
       //       (MyAssets 의 transaction.set 은 문서 부재 시 생성이고 그건 create 규칙이 governs).
       //   즉 이 분기는 기능에 쓰이지 않으면서 **CF 를 우회해 쿠폰 차감 없이 진행률만 올리는
       //   통로**로만 남아 있었다. 필드 화이트리스트는 "무엇을" 만 막고 "대가를 치렀는지"는 못 막는다.
-      allow update: if isAdmin();
+      allow update: if isAdmin() && isOwnClassGoal(goalId);
 
-      // 삭제: 관리자만
-      allow delete: if isAdmin();
+      // 삭제: 자기 학급 목표만
+      allow delete: if isAdmin() && isOwnClassGoal(goalId);
     }
 
     // ========================================================
@@ -1282,15 +1464,29 @@ service cloud.firestore {
 
       // 재생목록 서브컬렉션 (musicRooms/{roomId}/playlist/{songId})
       match /playlist/{songId} {
-        // 읽기: 로그인한 모든 사용자 (학생들도 자신의 신청곡 확인)
-        allow read: if isSignedIn();
+        // 🔒 학급 스코프 (2026-08-17 Gemini 교차검증 CRITICAL).
+        //   종전 `if isSignedIn()` — **타 학급 학생이 남의 학급 신청곡 목록을 그대로 읽었다.**
+        //   부모 방(musicRooms)은 이미 학급 스코프인데 **하위 컬렉션만 열려 있었다**
+        //   (2026-07-19 하드닝이 top-level 만 훑고 서브컬렉션을 안 본 것과 같은 누락).
+        //   비용: 규칙의 `get()` 은 **같은 경로면 요청 안에서 캐시**된다 — 재생목록 N곡을
+        //   조회해도 부모 방 읽기는 1회다(auctions/{id}/bids 가 쓰는 것과 동일한 패턴).
+        //   실측: 라이브 방 3개 전부 classCode 보유, 재생목록 0곡 → 회귀 0.
+        allow read: if isSignedIn() && (
+          isAdminFast() ||
+          isSameClassFast(get(/databases/$(database)/documents/musicRooms/$(roomId)).data.get('classCode', ''))
+        );
 
         // 생성: 🔒 2026-07-17 배치6-a — 유료 결제·우선신청권은 requestMusicPayment CF(admin SDK,
         //   rules 우회)만 기록. 클라 직접 addDoc은 **무료 방(pricePerSong==0)**의 무료곡만 허용.
         //   - 유료 방(pricePerSong>0)은 클라 create 전면 차단 → 결제 우회(무료곡 등록) 봉인.
         //   - 무료 방도 paidAmount==0(정수0, 문자열"0" 차단) · isPriority 필드 부재(truthy 문자열
         //     "0"로 큐점프하는 우회까지 차단) · requesterId 본인만(타인 사칭 차단).
+        //   🔒 2026-08-17: 여기에 **학급 검사가 통째로 없었다.** 로그인한 학생이면 누구나
+        //      전국의 무료 음악방에 곡을 무제한 등록할 수 있었다(재생목록 오염·스팸).
+        //      이 규칙은 이미 부모 방을 get() 하고 있으므로 학급 대조 추가 비용은 0이다.
+        //      쓰기라서 클레임(Fast)이 아니라 문서 기반 isSameClass 를 쓴다.
         allow create: if isSignedIn() &&
+                         isSameClass(get(/databases/$(database)/documents/musicRooms/$(roomId)).data.get('classCode', '')) &&
                          get(/databases/$(database)/documents/musicRooms/$(roomId)).data.get('pricePerSong', 0) == 0 &&
                          request.resource.data.get('paidAmount', 0) == 0 &&
                          !('isPriority' in request.resource.data) &&
@@ -1456,16 +1652,37 @@ service cloud.firestore {
     match /laws/{lawId} {
       allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
       // 본인 학급 법안만 생성 가능
-      allow create: if isSignedIn() && (request.resource.data.classCode == getUserClassCode() || isAdmin());
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      // 🔒 2026-08-17: create 의 `|| isAdmin()` 은 교사가 **아무 학급 이름표로** 법안을 만들 수
+      //   있게 했다. 자기 학급 생성은 첫 분기가 이미 통과시키므로 예외는 슈퍼관리자만 남긴다.
+      //   🔒 빈 학급코드 가드(codex): user 문서가 없으면 getUserClassCode() 가 `''` 를 돌려주므로
+      //      `classCode: ''` 짜리 법안을 인증 계정 누구나 무제한 만들 수 있었다(무스코프 스팸).
+      allow create: if isSignedIn() && (
+                       isSuperAdmin() ||
+                       (userDocExists() &&
+                        getUserClassCode() is string &&
+                        getUserClassCode().size() > 0 &&
+                        request.resource.data.classCode == getUserClassCode())
+                     );
+      // 🔒 2026-08-17: update/delete 가 학급을 전혀 안 봤다 — 승인 교사 누구나 타 학급 법안을
+      //   승인·거부·삭제할 수 있었고, 이건 죽은 경로가 아니라 OrganizationChart 의 라이브 경로다.
+      //   classCode 동결도 함께 건다(자기 학급 법안을 타 학급으로 옮기는 위조 차단 —
+      //   jobs·storeItems 와 같은 패턴). 필드 없는 잔재 문서는 get() 기본값으로 슈퍼관리자만 통과.
+      allow update: if isClassAdmin(resource.data.get('classCode', '')) &&
+                       request.resource.data.get('classCode', '') == resource.data.get('classCode', '');
+      allow delete: if isClassAdmin(resource.data.get('classCode', ''));
     }
 
     // ========================================================
     // 🛍️ 마켓 리스팅 (marketListings) - CF가 작성, 클라이언트 읽기
     // ========================================================
     match /marketListings/{listingId} {
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 종전 `if isSignedIn()` 은 "클라가 항상
+      //   where(classCode == 자기학급) 로만 조회하니까" 를 전제로 열려 있었다 — 클라이언트 쿼리는
+      //   보안 통제가 아니다. 필터 없는 getDocs(collection(db,'...')) 한 줄이면 전국 학급 문서가
+      //   그대로 나온다. 쓰기는 2026-07-19 하드닝에서 resource.data.classCode 로 이미 잠갔고,
+      //   읽기만 같은 필드를 안 보고 있었다(감사 3회가 놓친 이유: 헬퍼 호출 횟수를 셌기 때문).
+      //   클라 직접 조회 0건(ItemContext 가 getItemContextData CF 응답으로 받는다) → 회귀 0.
+      allow read: if isSignedIn() && (isAdminFast() || isSameClassFast(resource.data.classCode));
       // 🔒 write는 CF 전용(if false) — 클라 marketListings write 0건 확인(전수 grep).
       //   과거 create:if isSignedIn() + update:isOwner(sellerId)는 가짜/조작 리스팅 위조 →
       //   cancelMarketSale이 위조 quantity를 신뢰해 인벤토리 increment 복원 = 아이템-mint 벡터
@@ -1480,7 +1697,13 @@ service cloud.firestore {
     // 💬 마켓 오퍼 (marketOffers) - CF가 작성, 클라이언트 읽기
     // ========================================================
     match /marketOffers/{offerId} {
-      allow read: if isSignedIn();
+      // 🔒 읽기 학급 스코프 (2026-08-17). 종전 `if isSignedIn()` 은 "클라가 항상
+      //   where(classCode == 자기학급) 로만 조회하니까" 를 전제로 열려 있었다 — 클라이언트 쿼리는
+      //   보안 통제가 아니다. 필터 없는 getDocs(collection(db,'...')) 한 줄이면 전국 학급 문서가
+      //   그대로 나온다. 쓰기는 2026-07-19 하드닝에서 resource.data.classCode 로 이미 잠갔고,
+      //   읽기만 같은 필드를 안 보고 있었다(감사 3회가 놓친 이유: 헬퍼 호출 횟수를 셌기 때문).
+      //   클라 직접 조회 0건(ItemContext 가 getItemContextData CF 응답으로 받는다) → 회귀 0.
+      allow read: if isSignedIn() && (isAdminFast() || isSameClassFast(resource.data.classCode));
       // 🔒 write는 CF 전용(if false) — 클라 marketOffers write 0건 확인(전수 grep).
       //   과거 update:isOwner(buyerId)는 본인 offer의 offerPrice를 makeOffer의 create검증(offerPrice>0)
       //   이후 음수로 조작 → respondToOffer가 totalPrice=음수 신뢰(buyerCash<음수=false 통과) →

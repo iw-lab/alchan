@@ -308,15 +308,25 @@ describe('GlobalCacheService', () => {
       expect(result).toEqual({ success: true });
     });
 
+    // 실제 백오프 대기는 1000+2000+4000 = 7,000ms 라 vitest 기본 타임아웃(5,000ms)을 넘긴다.
+    // 구현은 정상인데 테스트만 실시간 타이머를 써서 깨져 있었다 → 가짜 타이머로 즉시 진행시킨다.
     it('should fail after max retries', async () => {
-      const operation = vi.fn(async () => {
-        const error = new Error('Network error');
-        error.code = 'unavailable';
-        throw error;
-      });
+      vi.useFakeTimers();
+      try {
+        const operation = vi.fn(async () => {
+          const error = new Error('Network error');
+          error.code = 'unavailable';
+          throw error;
+        });
 
-      await expect(globalCache.retryWithBackoff(operation)).rejects.toThrow('Network error');
-      expect(operation).toHaveBeenCalledTimes(4); // Initial + 3 retries
+        const pending = globalCache.retryWithBackoff(operation);
+        const assertion = expect(pending).rejects.toThrow('Network error');
+        await vi.runAllTimersAsync();
+        await assertion;
+        expect(operation).toHaveBeenCalledTimes(4); // Initial + 3 retries
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

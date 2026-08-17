@@ -56,6 +56,10 @@ const {
 
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
+// 🔑 스케줄러 토큰은 헤더 우선, 쿼리는 하위호환 폴백 (2026-08-17).
+//    쿼리스트링에 담긴 시크릿은 Cloud Logging 의 요청 URL·프록시 액세스로그·브라우저 히스토리에
+//    **그대로 남는다**. 실제로 이 프로젝트의 스케줄러 토큰 3종이 한 번 유출돼 전량 폐기한 전례가 있다.
+//    기존 cron 잡을 깨지 않기 위해 쿼리를 막지는 않는다 — 잡을 헤더 방식으로 옮긴 뒤에 닫을 것.
 const AUTH_TOKEN = process.env.SCHEDULER_AUTH_TOKEN || null;
 if (!AUTH_TOKEN) {
   logger.warn(
@@ -151,7 +155,7 @@ exports.simpleScheduler = onRequest(
   async (req, res) => {
     try {
       // URL 파라미터로 인증 토큰 확인
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -184,7 +188,7 @@ exports.stockPriceScheduler = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -453,7 +457,7 @@ exports.midnightReset = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -519,7 +523,7 @@ exports.weeklySalary = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -556,7 +560,7 @@ exports.backfillSalaryLogs = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -700,7 +704,7 @@ exports.backfillDrawItems = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -858,7 +862,7 @@ exports.weeklyRent = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -912,7 +916,7 @@ exports.weeklyPropertyTax = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -980,7 +984,7 @@ exports.reverseLastWeeklySalary = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -1199,7 +1203,7 @@ exports.economicEventScheduler = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -1739,7 +1743,7 @@ exports.exchangeRateScheduler = onRequest(
   },
   async (req, res) => {
     try {
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;
@@ -2061,8 +2065,9 @@ async function processDailySavingsDeposits() {
 // 공통 헬퍼: 학생 기반으로 모든 활성 classCode 추출
 // settings/classCodes에 의존하지 않으므로 신규 학급도 자동 포함
 // ────────────────────────────────────────────────────────
-async function getAllActiveClassCodes() {
-  const snap = await db.collection("users").where("isAdmin", "==", false).get();
+// 이미 읽어둔 학생 스냅샷에서 학급코드를 파생한다(추가 읽기 0).
+// 스냅샷을 가진 호출부는 이 함수를 쓰고, 없는 호출부만 아래 getAllActiveClassCodes()를 쓴다.
+function classCodesFromStudentSnap(snap) {
   const codeSet = new Set();
   snap.docs.forEach((d) => {
     const data = d.data();
@@ -2071,6 +2076,45 @@ async function getAllActiveClassCodes() {
     }
   });
   return Array.from(codeSet);
+}
+
+// 🧭 학급 목록 '정본' 이행 준비 — classes 컬렉션 vs 실제 학생 분포의 드리프트를 기록한다.
+//   getAllActiveClassCodes() 의 users 전량 스캔을 없애려면 classes 컬렉션을 정본으로 삼아야 하는데,
+//   **오늘 그대로 갈아타면 안 된다.** 2026-08-17 실측 드리프트:
+//     · classes 에 없는데 학생이 있는 학급 1건(QAZWSX12) — 갈아탔으면 그 학급 주급이 조용히 끊긴다
+//     · classes 에만 있고 학생 0인 학급 3건(6ZVKV3·CLASS2025·XHAWPR)
+//   그래서 지금은 **정본을 바꾸지 않고 차이만 남긴다**. 주급 로그에 몇 주 연속 "일치"가 찍히면
+//   그때 교체하는 게 안전하다(교체 전 이 로그가 유일한 근거다).
+//   비용: 주 1회, 문서 ID만 읽는 소형 쿼리.
+async function logClassRegistryDrift(activeClassCodes) {
+  try {
+    const snap = await db.collection("classes").select().get();
+    const registered = new Set(snap.docs.map((d) => d.id));
+    const missing = activeClassCodes.filter((c) => !registered.has(c));
+    const empty = [...registered].filter((c) => !activeClassCodes.includes(c));
+    if (missing.length > 0 || empty.length > 0) {
+      logger.warn(
+        `[학급정본] 드리프트 — classes 미등록(학생 있음): ${JSON.stringify(missing)} · ` +
+        `classes 에만 있고 학생 0: ${JSON.stringify(empty)}`,
+      );
+    } else {
+      logger.info(
+        "[학급정본] classes 가 실제 학급과 일치 — getAllActiveClassCodes() 의 전량 스캔을 classes 조회로 교체 가능",
+      );
+    }
+  } catch (e) {
+    // 점검 실패가 주급을 막아선 안 된다(부가 관측일 뿐).
+    logger.warn("[학급정본] 드리프트 점검 실패(주급에는 영향 없음):", e?.message);
+  }
+}
+
+async function getAllActiveClassCodes() {
+  // ⚠️ 이 쿼리는 **전국 학생 전량 스캔**이다. 학급이 늘수록 선형으로 커지고,
+  //    주기 작업 5곳(주급·재산세·월세·리셋·배당)이 각자 한 번씩 부른다.
+  //    학급 목록의 정본(classes 컬렉션)이 생기면 이 함수를 그쪽으로 갈아끼울 것.
+  return classCodesFromStudentSnap(
+    await db.collection("users").where("isAdmin", "==", false).get(),
+  );
 }
 
 // 하위 호환성을 위한 빈 함수 (manualUpdateStockMarket에서 호출)
@@ -2184,8 +2228,16 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     // lastPayDate 는 완료 시점에만 기록한다(completePeriodLock). 아무도 읽지 않는 기록용 필드라
     // 시작 시점에 미리 박아 둘 이유가 없고, 실패한 실행이 "지급한 날"을 남기는 게 더 나쁘다.
 
-    const classCodes = await getAllActiveClassCodes();
+    // 🔻 2026-08-17: 종전엔 **같은 함수 안에서 users 전량 스캔을 두 번** 했다 —
+    //    getAllActiveClassCodes() 가 한 번(구 2187행), allStudentsSnap 이 또 한 번(구 2199행).
+    //    두 쿼리의 조건(`isAdmin == false`)이 글자 그대로 같아서 한 번만 읽고 학급 목록을
+    //    파생하면 된다. 학생 N명이면 이 함수의 users 읽기가 2N → N 으로 준다.
+    //    부수효과로 학급 목록과 학생 명단이 **같은 스냅샷**에서 나와 정합성도 좋아진다
+    //    (종전엔 두 읽기 사이에 학생이 들어오면 학급은 잡히는데 명단엔 없는 창이 있었다).
+    const allStudentsSnap = await db.collection("users").where("isAdmin", "==", false).get();
+    const classCodes = classCodesFromStudentSnap(allStudentsSnap);
     logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);
+    await logClassRegistryDrift(classCodes);
     if (classCodes.length === 0) {
       logger.warn("[주급 지급] 활성 학급 없음");
       // 지급한 게 없으니 완료로 표시하지 않는다. 조회가 일시적으로 빈 결과를 준 것일 수도 있고,
@@ -2195,8 +2247,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
       return { skipped: true, reason: "no-active-classes", weekKey };
     }
 
-    // 학생 데이터 사전 로드 (Firestore 쿼리 최소화)
-    const allStudentsSnap = await db.collection("users").where("isAdmin", "==", false).get();
+    // (학생 데이터는 위에서 이미 한 번만 읽었다 — allStudentsSnap)
 
     // 급여 상수·공식은 functions/salaryUtils.js(computeSalaryAmounts) 단일 진실원.
     const DEFAULT_MAX_JOBS = 5;       // 학생당 급여 계산 직업 상한 기본값(관리자 조절 가능)
@@ -2204,7 +2255,35 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     let totalAmount = 0;
     const classErrors = [];
 
+    // ⏱️ 시간 예산 가드 (2026-08-17).
+    //   이 루프는 학급을 **순차** 처리하는데 함수 타임아웃은 540초 고정이다(3312행 onSchedule).
+    //   학급이 늘면 어느 순간 루프 도중에 런타임이 그냥 죽는다. 데이터는 학급 단위 멱등
+    //   마커(salaryLastPaidWeekKey)가 지켜주지만, 락이 in-progress 로 남은 채 죽으면
+    //   stale 회수까지 나머지 학급의 주급이 **조용히 지연**된다 — 로그도 안 남는다.
+    //   예산을 넘기면 스스로 멈추고 남은 학급을 error 로그에 남긴 뒤 락을 푼다
+    //   (성공한 학급은 마커로 건너뛰므로 재실행해도 중복지급은 없다).
+    //
+    //   ⚠️ **자동으로 이어받지 않는다 — 사람이 재실행해야 한다.** 근거 셋:
+    //     1) 자동 주급은 **월요일 1회뿐**이다. 이 스케줄러는 월·금(`30 8 * * 1,5`)에 뜨지만
+    //        본문 요일 가드가 `day===1`만 주급으로 보내고 금요일은 재산세·월세만 돈다.
+    //     2) `computeWeekKey` 는 1/1부터 7일씩 끊어 **요일 정렬이 아니다** — 주중에 넘어간다
+    //        (2026-08 실측: 월 W33 → 금 W34). 그래서 다음 주 월요일엔 weekKey 가 이미 달라져
+    //        이월된 그 주가 아니라 **새 주를 지급한다 → 이월된 주는 영구 누락된다.**
+    //     3) 복구 = `weeklySalary` HTTP 재호출. 단 **파라미터 없이, weekKey 가 넘어가기 전에**
+    //        불러야 이미 받은 학급이 마커로 걸러지고 이월분만 지급된다.
+    //        ⚠️ `?weekKey=` 를 붙이면 백필 모드(`isSalaryBackfill`)로 들어가 **학급별 스킵
+    //        가드가 꺼진다** — 전 학급 재지급이므로 `reverseLastWeeklySalary` 없이 쓰면 안 된다.
+    //   ⚠️ 이건 근본 해법이 아니라 **안전 정지**다. 근본 해법은 학급 단위 팬아웃이고,
+    //      그건 되돌리기 어려운 변경이라 별도 작업으로 분리했다.
+    const SALARY_TIME_BUDGET_MS = 420 * 1000; // 540s 타임아웃 - 마감 처리 여유 120s
+    const salaryStartedAt = Date.now();
+    const deferredClasses = [];
+
     for (const classCode of classCodes) {
+      if (Date.now() - salaryStartedAt > SALARY_TIME_BUDGET_MS) {
+        deferredClasses.push(classCode);
+        continue; // break 가 아니라 continue — 남은 학급을 전부 세어 로그에 남긴다
+      }
       try {
         // 급여 설정 조회 (세율) - settings/salarySettings_{classCode} 경로 사용
         const perClassSalaryRef = db.collection("settings").doc(`salarySettings_${classCode}`);
@@ -2455,15 +2534,28 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     //    락이 그 주 키로 남아 **그 학급 학생들은 그 주 주급을 영영 못 받았다**(재시도 경로 없음).
     //    이제 학급 단위 멱등 마커(salaryLastPaidWeekKey)가 있으니 재실행해도 성공한 학급은
     //    건너뛴다 — 즉 재시도가 안전해졌고, 그래서 재시도할 수 있게 열어 두는 게 맞다.
-    if (classErrors.length > 0) {
+    if (deferredClasses.length > 0) {
       logger.error(
-        `[주급 지급] ${classErrors.length}개 학급 실패 — 락을 'failed' 로 두어 재실행 시 그 학급만 재시도한다: ` +
-          JSON.stringify(classErrors),
+        `[주급 지급] ⏱️ 시간 예산(${SALARY_TIME_BUDGET_MS / 1000}s) 초과로 ${deferredClasses.length}개 학급 이월 — ` +
+          `⚠️ 자동 복구 안 됨 — weekKey=${weekKey} 가 넘어가기 전에 weeklySalary 를 ` +
+          `**파라미터 없이** 재호출할 것(이미 받은 학급은 마커로 스킵): ${JSON.stringify(deferredClasses)}`,
       );
+    }
+    // 실패 학급이 있거나 이월 학급이 있으면 '완료'로 박지 않는다 — 둘 다 재실행이 필요하다.
+    if (classErrors.length > 0 || deferredClasses.length > 0) {
+      if (classErrors.length > 0) {
+        logger.error(
+          `[주급 지급] ${classErrors.length}개 학급 실패 — 락을 'failed' 로 두어 재실행 시 그 학급만 재시도한다: ` +
+            JSON.stringify(classErrors),
+        );
+      }
       await releasePeriodLock(
         salaryLockRef,
         weekKey,
-        new Error(`${classErrors.length}개 학급 지급 실패`),
+        new Error(
+          `${classErrors.length}개 학급 지급 실패` +
+            (deferredClasses.length > 0 ? ` · ${deferredClasses.length}개 학급 시간초과 이월` : ""),
+        ),
       );
     } else {
       await completePeriodLock(salaryLockRef, weekKey, {
@@ -2479,6 +2571,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
       totalAmount,
       weekKey,
       classErrors: classErrors.length > 0 ? classErrors : undefined,
+      deferredClasses: deferredClasses.length > 0 ? deferredClasses : undefined,
     };
   } catch (error) {
     logger.error("→ 주급 지급 중 오류:", error, error?.stack);
@@ -3245,7 +3338,7 @@ exports.cleanupExpiredDocuments = onRequest(
       //    호출 가능했다. 만료(expireAt <= now)된 문서만 지우므로 자산 위조 경로는
       //    아니지만, 반복 호출로 컬렉션당 500건씩 읽기·삭제를 유발해 과금을 태울 수
       //    있었다(activity_logs는 감사 로그라 조기 삭제 자체도 바람직하지 않다).
-      const token = req.query.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         // ⚠️ 이 엔드포인트는 저장소 안에 호출자가 없다(GHA 워크플로에도 없음). 정기 실행이
         //    있다면 GCP Cloud Scheduler에 콘솔로 직접 등록된 것이고, 그 job의 URL에

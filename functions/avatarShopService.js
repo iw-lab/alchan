@@ -20,7 +20,7 @@ exports.seedAvatarShopHttp = onRequest(
   { region: "asia-northeast3", invoker: "public", timeoutSeconds: 120 },
   async (req, res) => {
     try {
-      const token = req.query.token || req.body?.token;
+      const token = req.headers["x-scheduler-auth"] || req.query.token || req.body?.token;
       if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
         res.status(401).json({ success: false, error: "Unauthorized" });
         return;

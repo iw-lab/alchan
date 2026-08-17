@@ -68,17 +68,20 @@ const DOCS = {
   farStu: { name: "타학급학생", classCode: "C2", cash: 500, coupons: 0 },
   tch1: { name: "교사1", classCode: "C1", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
   sup1: { name: "슈퍼", classCode: "C1", cash: 0, coupons: 0, isSuperAdmin: true },
+  tchNoClass: { name: "학급없는교사", classCode: "", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
 };
 
 /** uid 들의 user 문서를 get()/exists() 목으로 만든다. */
+// ghost = user 문서가 없는 인증 계정(getUserClassCode() 가 '' 를 돌려주는 경로 재현)
+const GHOSTS = new Set(["ghost"]);
 const mocks = (...uids) =>
   uids.flatMap((uid) => [
     {
       function: "get",
       args: [{ exactValue: `${DB}/users/${uid}` }],
-      result: { value: { data: DOCS[uid] } },
+      result: { value: { data: DOCS[uid] || {} } },
     },
-    { function: "exists", args: [{ exactValue: `${DB}/users/${uid}` }], result: { value: true } },
+    { function: "exists", args: [{ exactValue: `${DB}/users/${uid}` }], result: { value: !GHOSTS.has(uid) } },
   ]);
 
 const auth = (uid, token = {}) => ({ uid, token });
@@ -88,14 +91,21 @@ const auth = (uid, token = {}) => ({ uid, token });
  * @param opts.before 기존 문서 data (update/delete 용) — 최상위 resource
  * @param opts.after  쓰려는 문서 data (create/update 용) — request.resource
  */
-function tc(expect, label, { path, method, as, before, after, token, actors = [] }) {
+function tc(expect, label, { path, method, as, before, after, token, actors = [], gets = [] }) {
   const request = { auth: auth(as, token), path: `${DB}${path}`, method, time: NOW };
   if (after) request.resource = { __name__: `${DB}${path}`, data: after };
   const c = {
     __label: label,
     expectation: expect,
     request,
-    functionMocks: mocks(as, ...actors),
+    functionMocks: [
+      ...mocks(as, ...actors),
+      // 임의 경로 get()/exists() 목(예: playlist 규칙이 읽는 부모 musicRooms 문서)
+      ...gets.flatMap(({ path: p, data }) => [
+        { function: "get", args: [{ exactValue: `${DB}${p}` }], result: { value: { data } } },
+        { function: "exists", args: [{ exactValue: `${DB}${p}` }], result: { value: true } },
+      ]),
+    ],
   };
   if (before) c.resource = { __name__: `${DB}${path}`, data: before };
   return c;
@@ -417,6 +427,313 @@ const CASES = [
   tc("DENY", "학생이 자기 email 을 바꾼다 (구 우회 매칭의 실제 통로였다)", {
     path: "/users/stu1", method: "update", as: "stu1",
     before: { ...S, email: "s1@x.kr" }, after: { ...S, email: "alchan21@x.kr" },
+  }),
+
+  // ── H. 2026-08-17 P0-A — "쓰기는 잠그고 읽기는 놔둔" 버그클래스 봉인 ──
+  //   2026-07-19 하드닝은 jobs·storeItems·commonTasks 등의 **쓰기**를 resource.data.classCode 로
+  //   잠갔지만, 읽기는 `if isSignedIn()` 그대로 두고 주석에 이유를 적어놨다:
+  //   "읽기: 로그인한 사용자, classCode 쿼리 허용". 클라이언트 쿼리는 보안 통제가 아니다 —
+  //   필터를 빼고 부르면 규칙이 허용하는 전부가 나온다. 아래가 그 회귀를 막는 자물쇠다.
+  ...[
+    ["jobs", "/jobs/j1", { classCode: "C1", name: "대통령", salary: 5000 }],
+    ["storeItems", "/storeItems/i1", { classCode: "C1", name: "간식", price: 100 }],
+    ["commonTasks", "/commonTasks/t1", { classCode: "C1", title: "독서" }],
+    ["marketListings", "/marketListings/m1", { classCode: "C1", sellerId: "stu1", price: 50 }],
+    ["marketOffers", "/marketOffers/o1", { classCode: "C1", buyerId: "stu1", offerPrice: 30 }],
+  ].flatMap(([name, path, data]) => [
+    tc("DENY", `타 학급 학생이 남의 학급 ${name} 를 읽는다`, {
+      path, method: "get", as: "farStu", before: data,
+    }),
+    tc("ALLOW", `🐤 같은 학급 학생이 ${name} 를 읽는다 (정상 조회)`, {
+      path, method: "get", as: "stu1", before: data,
+    }),
+  ]),
+  tc("ALLOW", "🐤 클레임 경로로도 같은 학급 jobs 를 읽는다 (isSameClassFast 단락)", {
+    path: "/jobs/j1", method: "get", as: "stu1", token: { classCode: "C1" },
+    before: { classCode: "C1", name: "대통령" },
+  }),
+  tc("DENY", "클레임이 타 학급이면 jobs 읽기가 막힌다", {
+    path: "/jobs/j1", method: "get", as: "farStu", token: { classCode: "C2" },
+    before: { classCode: "C1", name: "대통령" },
+  }),
+
+  // goals 는 **필드가 아니라 문서 ID**(`{classCode}_goal`)로 스코프한다.
+  //   필드 기반이면 목표를 아직 안 만든 학급이 getDoc 할 때 resource 가 null 이라
+  //   "문서 없음"이 아니라 permission-denied 로 떨어진다.
+  // ⚠️ **list(쿼리) 는 이 하네스로 검증할 수 없다.** :test API 에 method:"list" 를 주면
+  //   평가할 문서가 없어 `resource.data.*` 가 무조건 오류→거부로 떨어진다. 즉 list DENY 케이스는
+  //   전부 "통과"하지만 그건 봉인 때문이 아니라 하네스 때문이다 — 그래서 아예 넣지 않았다
+  //   (같은 학급 ALLOW list 카나리아를 넣어보면 똑같이 실패하는 것으로 확인, 2026-08-17).
+  //   필터된 쿼리가 실제로 통과한다는 근거는 **프로덕션 선례**다: laws 는 오래전부터
+  //   `isSameClassFast(resource.data.classCode)` 규칙이고, OrganizationChart.js:130 이
+  //   where("classCode","==",classCode) 로 목록을 정상 조회한다(라이브 기능).
+  //   쿼리 단위 검증은 Emulator 기반 테스트로 옮길 때 제대로 붙일 것.
+  tc("DENY", "타 학급 학생이 남의 학급 쿠폰 목표를 읽는다", {
+    path: "/goals/C1_goal", method: "get", as: "farStu", before: { classCode: "C1", targetAmount: 1000 },
+  }),
+  tc("ALLOW", "🐤 같은 학급 학생이 자기 학급 쿠폰 목표를 읽는다", {
+    path: "/goals/C1_goal", method: "get", as: "stu1", before: { classCode: "C1", targetAmount: 1000 },
+  }),
+  tc("ALLOW", "🐤 아직 만들지 않은 자기 학급 목표를 읽어도 규칙이 막지 않는다(신규 학급)", {
+    path: "/goals/C1_goal", method: "get", as: "stu1",
+  }),
+  tc("DENY", "classCode 필드만 자기 학급으로 위장한 목표 문서는 못 읽는다(ID 기준)", {
+    path: "/goals/C2_goal", method: "get", as: "stu1", before: { classCode: "C1" },
+  }),
+
+  tc("ALLOW", "🐤 클레임 경로로도 자기 학급 목표를 읽는다 (token.classCode 단락)", {
+    path: "/goals/C1_goal", method: "get", as: "stu1", token: { classCode: "C1" },
+    before: { classCode: "C1" },
+  }),
+  tc("DENY", "클레임이 비었을 때 '_goal' 문서로 우회하지 못한다", {
+    path: "/goals/_goal", method: "get", as: "farStu", token: { classCode: "" },
+    before: { classCode: "C1" },
+  }),
+  tc("DENY", "학급코드 없는 계정이 'salarySettings_' 껍데기 문서를 쓴다", {
+    path: "/settings/salarySettings_", method: "update", as: "tchNoClass",
+    before: { taxRate: 0.1 }, after: { taxRate: 0.9 },
+  }),
+  tc("DENY", "타 학급 학생이 남의 학급 세율 설정을 읽는다", {
+    path: "/taxSettings/C1", method: "get", as: "farStu", before: { netAssetTaxRate: 0.5 },
+  }),
+  tc("ALLOW", "🐤 같은 학급 학생이 세율 설정을 읽는다", {
+    path: "/taxSettings/C1", method: "get", as: "stu1", before: { netAssetTaxRate: 0.5 },
+  }),
+
+  // ── I. 2026-08-17 P0-B — 죽은 컬렉션(라이브 문서 0~1건, 코드 참조 0건) 봉인 ──
+  //   되살릴 땐 블록을 지우지 말고 스코프를 넣을 것. 지금은 "지뢰"만 제거한 상태다.
+  ...[
+    ["realEstate", "/realEstate/p1"],
+    ["trials", "/trials/tr1"],
+    ["learningMaterials", "/learningMaterials/lm1"],
+    ["MarketCondition", "/MarketCondition/mc1"],
+    ["auctions(top-level)", "/auctions/a1"],
+  ].flatMap(([name, path]) => [
+    tc("DENY", `학생이 죽은 컬렉션 ${name} 를 읽는다`, {
+      path, method: "get", as: "stu1", before: { classCode: "C1" },
+    }),
+    tc("DENY", `교사도 죽은 컬렉션 ${name} 에 쓸 수 없다`, {
+      path, method: "create", as: "tch1", after: { classCode: "C1" },
+    }),
+  ]),
+  tc("DENY", "학생이 죽은 trials 에 문서를 만든다 (구 create: isSignedIn 통로)", {
+    path: "/trials/tr2", method: "create", as: "stu1", after: { classCode: "C1" },
+  }),
+
+  // ── J. 2026-08-17 P0-C — 전역 설정 쓰기 좁히기 ──
+  //   `isAdmin()` 과 3항연산자의 `: true` 분기가 "승인된 교사 = 전국 설정 관리자"를 뜻했다.
+  //   전국 개방 시 온보딩 자동화보다 **먼저** 좁혀야 하는 곳.
+  tc("DENY", "교사가 전국 스케줄러 방학모드를 끈다 (Settings/scheduler)", {
+    path: "/Settings/scheduler", method: "update", as: "tch1",
+    before: { vacationMode: true }, after: { vacationMode: false, updatedBy: "tch1" },
+  }),
+  tc("DENY", "교사가 교사 가입 거부명단을 조작한다 (Settings/rejectedTeachers)", {
+    path: "/Settings/rejectedTeachers", method: "update", as: "tch1",
+    before: { list: [] }, after: { list: ["x"] },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자는 스케줄러 설정을 바꾼다", {
+    path: "/Settings/scheduler", method: "update", as: "sup1",
+    before: { vacationMode: true }, after: { vacationMode: false },
+  }),
+  tc("ALLOW", "🐤 학생 접속 하트비트는 그대로 동작한다 (주식 스케줄러 트리거)", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" },
+    after: { lastActiveAt: NOW, lastActiveUserId: "stu1" },
+  }),
+  tc("DENY", "학생이 activeStatus 에 임의 필드를 주입한다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" },
+    after: { lastActiveAt: NOW, lastActiveUserId: "stu1", vacationMode: false },
+  }),
+
+  tc("DENY", "교사가 전국 학급코드 목록을 수정한다 (settings/classCodes)", {
+    path: "/settings/classCodes", method: "update", as: "tch1",
+    before: { validCodes: ["C1"] }, after: { validCodes: ["C1", "C9"] },
+  }),
+  tc("DENY", "교사가 전국 학급코드 목록을 삭제한다 (전역 DoS)", {
+    path: "/settings/classCodes", method: "delete", as: "tch1", before: { validCodes: ["C1"] },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자는 학급코드를 추가한다 (UI 도 이미 슈퍼 전용)", {
+    path: "/settings/classCodes", method: "update", as: "sup1",
+    before: { validCodes: ["C1"] }, after: { validCodes: ["C1", "C9"] },
+  }),
+  tc("DENY", "교사가 주식거래소 전역 설정을 바꾼다 (settings/stockExchange)", {
+    path: "/settings/stockExchange", method: "update", as: "tch1",
+    before: { relistPriceMultiplier: 1 }, after: { relistPriceMultiplier: 99 },
+  }),
+  tc("DENY", "교사가 무접미 salarySettings(전 학급 폴백)를 덮어쓴다", {
+    path: "/settings/salarySettings", method: "update", as: "tch1",
+    before: { maxJobsPerStudent: 5 }, after: { maxJobsPerStudent: 99 },
+  }),
+  tc("ALLOW", "🐤 교사가 쿠폰 가치를 저장한다 (settings/mainSettings 정상 기능)", {
+    path: "/settings/mainSettings", method: "update", as: "tch1",
+    before: { couponValue: 1000 }, after: { couponValue: 2000, updatedAt: NOW },
+  }),
+  tc("ALLOW", "🐤 교사가 화폐 단위를 저장한다 (settings/mainSettings 정상 기능)", {
+    path: "/settings/mainSettings", method: "update", as: "tch1",
+    before: { couponValue: 1000 }, after: { couponValue: 1000, currencyUnit: "알", updatedAt: NOW },
+  }),
+  tc("DENY", "교사가 mainSettings 에 임의 키를 주입한다", {
+    path: "/settings/mainSettings", method: "update", as: "tch1",
+    before: { couponValue: 1000 }, after: { couponValue: 1000, isSuperAdmin: true },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 급여설정을 저장한다 (기존 기능 유지)", {
+    path: "/settings/salarySettings_C1", method: "update", as: "tch1",
+    before: { taxRate: 0.1 }, after: { taxRate: 0.2 },
+  }),
+  tc("DENY", "교사가 타 학급 급여설정을 저장한다", {
+    path: "/settings/salarySettings_C2", method: "update", as: "tch1",
+    before: { taxRate: 0.1 }, after: { taxRate: 0.9 },
+  }),
+
+  // ── K. 2026-08-17 Gemini 교차검증 반영 ──
+  // playlist: 부모 방은 학급 스코프인데 하위 컬렉션만 열려 있었다(서브컬렉션 누락 버그클래스)
+  tc("DENY", "타 학급 학생이 남의 학급 음악방 재생목록을 읽는다", {
+    path: "/musicRooms/room1/playlist/s1", method: "get", as: "farStu",
+    gets: [{ path: "/musicRooms/room1", data: { classCode: "C1", pricePerSong: 0, teacherId: "tch1" } }],
+    before: { title: "곡" },
+  }),
+  tc("DENY", "타 학급 학생이 남의 학급 무료 음악방에 곡을 등록한다 (전국 스팸 통로)", {
+    path: "/musicRooms/room1/playlist/s2", method: "create", as: "farStu",
+    gets: [{ path: "/musicRooms/room1", data: { classCode: "C1", pricePerSong: 0, teacherId: "tch1" } }],
+    after: { videoId: "v", title: "t", paidAmount: 0, requesterId: "farStu" },
+  }),
+  tc("ALLOW", "🐤 같은 학급 학생이 무료 음악방에 곡을 등록한다 (정상 기능)", {
+    path: "/musicRooms/room1/playlist/s3", method: "create", as: "stu1",
+    gets: [{ path: "/musicRooms/room1", data: { classCode: "C1", pricePerSong: 0, teacherId: "tch1" } }],
+    after: { videoId: "v", title: "t", paidAmount: 0, requesterId: "stu1" },
+  }),
+  // goals 쓰기 — 읽기는 잠갔는데 create/update/delete 가 학급을 안 봤다
+  tc("DENY", "교사가 타 학급 쿠폰 목표를 선점 생성한다", {
+    path: "/goals/C2_goal", method: "create", as: "tch1", after: { targetAmount: 1, classCode: "C2" },
+  }),
+  tc("DENY", "교사가 타 학급 쿠폰 목표를 수정한다", {
+    path: "/goals/C2_goal", method: "update", as: "tch1",
+    before: { targetAmount: 1000 }, after: { targetAmount: 1 },
+  }),
+  tc("DENY", "교사가 타 학급 쿠폰 목표를 삭제한다", {
+    path: "/goals/C2_goal", method: "delete", as: "tch1", before: { targetAmount: 1000 },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 쿠폰 목표를 만든다 (정상 기능)", {
+    path: "/goals/C1_goal", method: "create", as: "tch1", after: { targetAmount: 1000, classCode: "C1" },
+  }),
+  // hasOnly 를 update 에선 바뀐 키에만 — 레거시 필드가 있어도 정상 저장돼야 한다
+  tc("ALLOW", "🐤 mainSettings 에 레거시 필드가 있어도 쿠폰가치 저장이 된다", {
+    path: "/settings/mainSettings", method: "update", as: "tch1",
+    before: { couponValue: 1000, legacyField: "옛날필드", createdAt: NOW },
+    after: { couponValue: 2000, legacyField: "옛날필드", createdAt: NOW, updatedAt: NOW },
+  }),
+  tc("DENY", "레거시 필드가 있어도 임의 키 주입은 여전히 막힌다", {
+    path: "/settings/mainSettings", method: "update", as: "tch1",
+    before: { couponValue: 1000, legacyField: "옛날필드" },
+    after: { couponValue: 1000, legacyField: "옛날필드", isSuperAdmin: true },
+  }),
+  tc("ALLOW", "🐤 activeStatus 에 레거시 필드가 있어도 하트비트가 동작한다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x", legacyPing: 1 },
+    after: { lastActiveAt: NOW, lastActiveUserId: "stu1", legacyPing: 1 },
+  }),
+
+  // ── L. 2026-08-17 codex 교차검증 반영 ──
+  // hasOnly 는 "이 키들만"이지 "이 키들이 있어야"가 아니다 → 빈 문서 덮어쓰기로 스케줄러 정지
+  tc("DENY", "학생이 activeStatus 를 빈 문서로 덮어 주식 시세를 멈춘다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" }, after: {},
+  }),
+  tc("DENY", "학생이 activeStatus 의 lastActiveAt 만 지운다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" }, after: { lastActiveUserId: "stu1" },
+  }),
+  tc("DENY", "학생이 남의 uid 로 하트비트를 위조한다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" },
+    after: { lastActiveAt: NOW, lastActiveUserId: "stu2" },
+  }),
+  tc("DENY", "학생이 미래 시각을 박아 스케줄러를 상시 깨운다", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" },
+    after: { lastActiveAt: "2099-01-01T00:00:00Z", lastActiveUserId: "stu1" },
+  }),
+  tc("DENY", "학생이 lastActiveAt 을 문자열로 넣는다 (타입 혼동)", {
+    path: "/Settings/activeStatus", method: "update", as: "stu1",
+    before: { lastActiveAt: NOW, lastActiveUserId: "x" },
+    after: { lastActiveAt: "아무거나", lastActiveUserId: "stu1" },
+  }),
+  // settings 읽기도 크로스테넌트였다
+  tc("DENY", "학생이 타 학급 급여설정(세율·급여상한)을 읽는다", {
+    path: "/settings/salarySettings_C2", method: "get", as: "stu1", before: { taxRate: 0.1 },
+  }),
+  tc("DENY", "학생이 타 학급 메뉴잠금 목록을 읽는다", {
+    path: "/settings/menuLocks_C2", method: "get", as: "stu1", before: { lockedItemIds: ["banking"] },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 학급 메뉴잠금을 읽는다 (사이드바 정상 동작)", {
+    path: "/settings/menuLocks_C1", method: "get", as: "stu1", before: { lockedItemIds: [] },
+  }),
+  tc("ALLOW", "🐤 학생이 화폐단위/쿠폰가치를 읽는다 (전역 공용)", {
+    path: "/settings/mainSettings", method: "get", as: "stu1", before: { couponValue: 1000 },
+  }),
+  tc("ALLOW", "🐤 학생이 학급코드 목록을 읽는다 (가입 시 코드 검증)", {
+    path: "/settings/classCodes", method: "get", as: "stu1", before: { validCodes: ["C1"] },
+  }),
+  // laws 빈 학급코드 스팸
+  tc("DENY", "user 문서 없는 계정이 classCode 빈 법안을 만든다 (무스코프 스팸)", {
+    path: "/laws/l9", method: "create", as: "ghost", after: { classCode: "", title: "스팸" },
+  }),
+
+  // platformApps — 2026-08-17 신설. 전국 사이드바를 좌우하므로 쓰기는 슈퍼관리자만.
+  tc("ALLOW", "🐤 학생이 학습앱 레지스트리를 읽는다 (사이드바 목록)", {
+    path: "/platformApps/_registry", method: "get", as: "stu1", before: { apps: [] },
+  }),
+  tc("DENY", "교사가 전국 학습앱 레지스트리를 수정한다", {
+    path: "/platformApps/_registry", method: "update", as: "tch1",
+    before: { apps: [] }, after: { apps: [{ id: "x", label: "x", url: "https://x/" }] },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 학습앱 레지스트리를 수정한다", {
+    path: "/platformApps/_registry", method: "update", as: "sup1",
+    before: { apps: [] }, after: { apps: [{ id: "x", label: "x", url: "https://x/" }] },
+  }),
+
+  // menuLocks — 교사 메뉴 잠금. 종전 규칙의 \`: true\` 분기로 **타 학급 것도 쓸 수 있었다**.
+  tc("ALLOW", "🐤 교사가 자기 학급 메뉴 잠금을 저장한다 (정상 기능)", {
+    path: "/settings/menuLocks_C1", method: "update", as: "tch1",
+    before: { lockedItemIds: [] }, after: { lockedItemIds: ["siteArtOn"], classCode: "C1" },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 메뉴 잠금을 처음 만든다 (문서 부재 → create)", {
+    path: "/settings/menuLocks_C1", method: "create", as: "tch1",
+    after: { lockedItemIds: ["siteArtOn"], classCode: "C1" },
+  }),
+  tc("DENY", "교사가 타 학급 메뉴를 임의로 숨긴다 (menuLocks 교차학급)", {
+    path: "/settings/menuLocks_C2", method: "update", as: "tch1",
+    before: { lockedItemIds: [] }, after: { lockedItemIds: ["banking"], classCode: "C2" },
+  }),
+  tc("DENY", "교사가 타 학급 메뉴 잠금을 삭제한다", {
+    path: "/settings/menuLocks_C2", method: "delete", as: "tch1", before: { lockedItemIds: ["banking"] },
+  }),
+
+  // laws — 읽기는 이미 스코프였는데 update/delete 가 학급을 안 봤다(죽은 경로가 아니라 라이브)
+  tc("DENY", "교사가 타 학급 법안을 승인한다", {
+    path: "/laws/l1", method: "update", as: "tch1",
+    before: { classCode: "C2", status: "pending" },
+    after: { classCode: "C2", status: "final_approved" },
+  }),
+  tc("DENY", "교사가 타 학급 법안을 삭제한다", {
+    path: "/laws/l1", method: "delete", as: "tch1", before: { classCode: "C2" },
+  }),
+  tc("DENY", "교사가 자기 학급 법안의 classCode 를 타 학급으로 옮긴다", {
+    path: "/laws/l1", method: "update", as: "tch1",
+    before: { classCode: "C1", status: "pending" },
+    after: { classCode: "C2", status: "pending" },
+  }),
+  tc("DENY", "교사가 타 학급 이름표로 법안을 만든다", {
+    path: "/laws/l2", method: "create", as: "tch1", after: { classCode: "C2", title: "위조법" },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 법안을 승인한다 (정상 기능)", {
+    path: "/laws/l1", method: "update", as: "tch1",
+    before: { classCode: "C1", status: "pending" },
+    after: { classCode: "C1", status: "final_approved" },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 학급 법안을 발의한다 (국회 정상 기능)", {
+    path: "/laws/l3", method: "create", as: "stu1", after: { classCode: "C1", title: "청소법" },
   }),
 ];
 

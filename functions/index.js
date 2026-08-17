@@ -10419,7 +10419,7 @@ exports.migrateUserDoc = onCall(
 exports.fixDuplicateUser = onRequest(
   { region: "asia-northeast3", invoker: "public" },
   async (req, res) => {
-    const token = req.query.token;
+    const token = req.headers["x-scheduler-auth"] || req.query.token;
     if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -10556,7 +10556,7 @@ exports.fixDuplicateUser = onRequest(
 exports.resetPasswordHttp = onRequest(
   { region: "asia-northeast3" },
   async (req, res) => {
-    const token = req.query.token || req.body.token;
+    const token = req.headers["x-scheduler-auth"] || req.query.token || req.body.token;
     if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -10693,7 +10693,7 @@ exports.resolveStudentEmail = onCall(
 exports.migrateDonationCashToAdmin = onRequest(
   { region: "asia-northeast3" },
   async (req, res) => {
-    const token = req.query.token || req.body.token;
+    const token = req.headers["x-scheduler-auth"] || req.query.token || req.body.token;
     if (!process.env.SCHEDULER_AUTH_TOKEN || token !== process.env.SCHEDULER_AUTH_TOKEN) {
       res.status(401).json({ error: "Unauthorized" });
       return;

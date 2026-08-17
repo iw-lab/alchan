@@ -345,12 +345,18 @@ class GlobalCacheService {
   }
 
   // 패턴 기반 캐시 무효화 (메모리 + localStorage)
+  //   pattern 은 **문자열**(부분일치) 또는 **술어 함수**(key => boolean).
+  //   술어를 받는 이유: 키가 `type_{"a":"x","b":"y"}` 라 값 하나만으로는
+  //   "이 타입이면서 이 id" 를 문자열 하나로 표현할 수 없다(clearUserData 참조).
   invalidatePattern(pattern) {
+    const matches =
+      typeof pattern === "function" ? pattern : (key) => key.includes(pattern);
+    const label = typeof pattern === "function" ? pattern.label || "predicate" : pattern;
     const keysToInvalidate = [];
 
     // 메모리 캐시에서 패턴 매칭
     for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) {
+      if (matches(key)) {
         keysToInvalidate.push(key);
       }
     }
@@ -362,7 +368,7 @@ class GlobalCacheService {
           const lsKey = localStorage.key(i);
           if (lsKey && lsKey.startsWith(this.localStoragePrefix)) {
             const actualKey = lsKey.substring(this.localStoragePrefix.length);
-            if (actualKey.includes(pattern) && !keysToInvalidate.includes(actualKey)) {
+            if (matches(actualKey) && !keysToInvalidate.includes(actualKey)) {
               keysToInvalidate.push(actualKey);
             }
           }
@@ -373,7 +379,7 @@ class GlobalCacheService {
     }
 
     keysToInvalidate.forEach(key => this.invalidate(key));
-    logger.log(`[GlobalCache] 패턴 '${pattern}' 매칭: ${keysToInvalidate.length}개 캐시 무효화`);
+    logger.log(`[GlobalCache] 패턴 '${label}' 매칭: ${keysToInvalidate.length}개 캐시 무효화`);
   }
 
   // 구독 추가
@@ -625,43 +631,12 @@ class GlobalCacheService {
     return await this.retryWithBackoff(operation);
   }
 
-  // 아이템 데이터 가져오기 (캐시됨)
-  async getItems(forceRefresh = false) {
-    const key = this.generateKey('items', {});
-
-    if (!forceRefresh) {
-      const cached = this.get(key);
-      if (cached) {
-        logger.log('[GlobalCache] ✅ getItems - 캐시 히트 (Firestore 읽기 0건):', cached?.length, '개');
-        return cached;
-      }
-    }
-
-    return await this.executeOrWait(key, async () => {
-      try {
-        logger.log('[GlobalCache] 🔥 getItems - Firestore 조회 시작 (19건 읽기 예상)');
-        const itemsRef = collection(db, 'storeItems');
-        const querySnapshot = await getDocs(itemsRef);
-
-        const items = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        logger.log('[GlobalCache] ✅ getItems - Firestore 조회 완료 (' + items.length + '건 읽음)');
-        this.set(key, items, this.ITEMS_TTL);
-        return items;
-      } catch (error) {
-        logger.error('[GlobalCache] ❌ getItems - 조회 오류:', error.message);
-        const cached = this.cache.get(key);
-        if (cached) {
-          logger.warn('[GlobalCache] ⚠️ 네트워크 오류 - 만료된 캐시 반환 (Firestore 읽기 0건)');
-          return cached.data;
-        }
-        throw error;
-      }
-    });
-  }
+  // ⚠️ [제거됨 2026-08-17] getItems() — storeItems 를 **필터 없이 전량 조회**하던 메서드.
+  //    `getDocs(collection(db,'storeItems'))` 한 줄로 전국 모든 학급의 상점 카탈로그를 읽었다.
+  //    호출부는 0건이었다(실측: src 전체 grep). 즉 기능은 없고 크로스테넌트 조회 경로만
+  //    남아 있던 코드다 — 같은 날 firestore.rules 의 storeItems 읽기를 학급 스코프로
+  //    잠갔으므로, 이대로 뒀다면 누군가 되살리는 순간 permission-denied 로 터졌을 자리다.
+  //    학급 상점 조회는 src/firebase/db/store.js 의 getStoreItems(classCode) 를 쓸 것.
 
   // 사용자 아이템 가져오기 (캐시됨)
   async getUserItems(userId, forceRefresh = false) {
@@ -757,15 +732,35 @@ class GlobalCacheService {
   }
 
   // 사용자 로그아웃 시 캐시 정리
+  //  ⚠️ 2026-08-17: 종전엔 `user_${userId}` 를 부분일치로 넘겼는데, 실제 키는
+  //     generateKey 가 만든 `user_{"uid":"..."}` 라 **한 건도 안 지워졌다**(무해한 no-op).
+  //     호출부가 0건이라 사고는 안 났지만, 로그아웃에 붙이는 순간 공유 기기에서
+  //     앞 학생 캐시가 남는다. 그래서 키 형태에 맞춰 술어로 고친다.
+  //     (id 는 JSON 값이라 따옴표까지 포함해 비교 — 다른 학생 id 의 접두어 오매칭 방지)
   clearUserData(userId) {
-    this.invalidatePattern(`user_${userId}`);
-    this.invalidatePattern(`userItems_${userId}`);
+    const uid = JSON.stringify(String(userId));
+    this.invalidatePattern(
+      Object.assign(
+        (key) =>
+          (key.startsWith("user_") || key.startsWith("userItems_")) && key.includes(uid),
+        { label: `user:${userId}` },
+      ),
+    );
   }
 
   // 학급 변경 시 캐시 정리
+  //  ⚠️ clearUserData 와 같은 결함이었다. activityLogs 는 `...restFilters` 가 붙어
+  //     키 안의 파라미터 순서가 유동적이라 정확한 키 문자열로는 못 잡는다 → 술어.
   clearClassData(classCode) {
-    this.invalidatePattern(`classMembers_${classCode}`);
-    this.invalidatePattern(`activityLogs_${classCode}`);
+    const cc = JSON.stringify(String(classCode));
+    this.invalidatePattern(
+      Object.assign(
+        (key) =>
+          (key.startsWith("classMembers_") || key.startsWith("activityLogs_")) &&
+          key.includes(cc),
+        { label: `class:${classCode}` },
+      ),
+    );
   }
 
   // 전체 캐시 정리 (Memory + IndexedDB + localStorage)
