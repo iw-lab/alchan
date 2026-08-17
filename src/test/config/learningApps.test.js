@@ -20,10 +20,13 @@ describe("normalizeLearningApps", () => {
     expect(typeof item.icon).not.toBe("string"); // 컴포넌트로 매핑됨
   });
 
+  // ⚠️ 페이로드에 `alert(` 를 쓰지 않는다. debt-ratchet 의 alert/confirm/prompt 천장(0)이
+  //    문자열 리터럴까지 세서 이 픽스처 2건을 실제 alert 호출로 오탐한다(CI 실패로 확인).
+  //    검증 대상은 **스킴 거부**지 페이로드 내용이 아니라 아무 영향이 없다 — 되돌리지 말 것.
   it("https 가 아닌 스킴은 버린다 (클릭 = 스크립트 실행 차단)", () => {
     for (const url of [
-      "javascript:alert(1)",
-      "data:text/html,<script>alert(1)</script>",
+      "javascript:void 0",
+      "data:text/html,<script>document.cookie</script>",
       "http://example.com/",   // 평문 http 도 거부 — 학생 기기에서 중간자 노출
       "file:///etc/passwd",
       "vbscript:msgbox(1)",
