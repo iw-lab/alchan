@@ -83,6 +83,11 @@ firebase deploy --only functions --project inconomysu-class
 
 콘솔이 아니라 **실제 계정으로** 본다. 방학 중이면 학생 트래픽이 없어 "조용함"은 정상 신호가 아니다.
 
+**먼저 기계로 확인한다** — 게시된 규칙이 내 파일과 같은지는 CI 초록과 별개 사실이다:
+```bash
+node scripts/ops/verify-live-rules.mjs   # 라이브 ruleset 원문 vs 로컬 firestore.rules
+```
+
 | 확인 | 정상 |
 |---|---|
 | 학생 계정 로그인 → 사이드바 | 학습 사이트 10개가 그대로 보인다 |
