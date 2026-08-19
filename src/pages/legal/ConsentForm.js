@@ -133,7 +133,7 @@ const ConsentForm = () => {
  </p>
  <p className="mb-2">
  앱 사용을 위해 아래와 같이 학생의 개인정보를 수집·이용하고자 하오니,
- <strong> 「개인정보 보호법」 제22조(만 14세 미만 아동의 개인정보 수집)</strong>에 따라
+ <strong> 「개인정보 보호법」 제22조의2(아동의 개인정보 보호)</strong>에 따라
  법정대리인의 동의를 요청드립니다.
  </p>
  </div>
@@ -174,7 +174,14 @@ const ConsentForm = () => {
  </tr>
  <tr>
  <td className="border border-slate-200 px-4 py-2 font-medium">처리 방법</td>
- <td className="border border-slate-200 px-4 py-2">Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)</td>
+ <td className="border border-slate-200 px-4 py-2">
+ Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)
+ <br />
+ <span className="text-slate-600">
+ ※ 다만 학생이 <strong>게시판에 직접 올린 첨부파일(이미지 등)</strong>은 미국 소재 저장소(Google Cloud Storage)에 저장됩니다.
+ 첨부파일을 올리지 않으면 국외 이전은 발생하지 않으며, 자세한 내용은 개인정보처리방침 7항을 참고하세요.
+ </span>
+ </td>
  </tr>
  </tbody>
  </table>

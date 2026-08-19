@@ -239,15 +239,29 @@ const PrivacyPolicy = () => {
  <div className="space-y-3">
  <div>
  <p className="text-slate-800 font-semibold mb-1">Google Firebase (Google LLC)</p>
- <p className="text-slate-700 text-sm">위탁 업무: 클라우드 서버 운영, 데이터베이스(Firestore), 인증(Firebase Auth)</p>
- <p className="text-slate-700 text-sm">서버 위치: <span className="text-green-400 font-medium">대한민국 서울 리전 (asia-northeast3)</span> — 국내 서버에 저장됩니다.</p>
+ <p className="text-slate-700 text-sm">위탁 업무: 클라우드 서버 운영, 데이터베이스(Firestore), 인증(Firebase Auth), 파일 저장(Cloud Storage)</p>
+ <p className="text-slate-700 text-sm">데이터베이스·인증·연산 처리: <span className="text-green-600 font-medium">대한민국 서울 리전 (asia-northeast3)</span> — 학생 계정·자산·활동 기록은 국내 서버에 저장됩니다. (2026-08-19 미국 리전에서 국내로 이전 완료)</p>
+ <p className="text-slate-700 text-sm">파일 저장(게시판 첨부파일): <span className="text-amber-600 font-medium">미국 (us-central1)</span> — 아래 국외 이전 안내를 참고하세요.</p>
  </div>
  </div>
  </div>
  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
- <p className="text-yellow-700 text-sm font-semibold mb-2">⚠ 국외 이전 안내</p>
+ <p className="text-yellow-700 text-sm font-semibold mb-2">⚠ 개인정보의 국외 이전 안내</p>
+ <p className="text-yellow-700 text-sm leading-relaxed mb-2">
+ 학생 계정·자산·활동 기록을 담는 데이터베이스는 <strong>대한민국(서울)</strong>에 있습니다.
+ 다만 <strong>게시판에 올린 첨부파일</strong>은 아래와 같이 미국에 저장됩니다.
+ </p>
+ <ul className="text-yellow-700 text-sm leading-relaxed list-disc pl-5 mb-2">
+ <li>이전되는 항목: 게시판 첨부파일(이미지 등)</li>
+ <li>이전 국가: 미국</li>
+ <li>이전받는 자: Google LLC (Google Cloud Storage) · 연락처: <a href="https://support.google.com/policies/troubleshooter/7575787" target="_blank" rel="noreferrer" className="underline text-yellow-700">Google 개인정보 문의 창구</a> (1600 Amphitheatre Parkway, Mountain View, CA 94043, USA)</li>
+ <li>이전 일시 및 방법: 파일 업로드 시점에 네트워크를 통한 전송</li>
+ <li>이용 목적: 클라우드 파일 저장소 제공</li>
+ <li>보유·이용 기간: 게시물 삭제 또는 학년 종료 시까지</li>
+ <li>거부 방법 및 효과: 첨부파일을 올리지 않으면 국외 이전이 발생하지 않으며, 그 밖의 서비스 이용에는 제한이 없습니다.</li>
+ </ul>
  <p className="text-yellow-700 text-sm leading-relaxed">
- Google LLC 본사는 미국에 있으며, Google의 개인정보처리방침에 따라
+ 또한 Google LLC 본사는 미국에 있으며, Google의 개인정보처리방침에 따라
  일부 기술적 처리(보안 모니터링 등)가 국외에서 이루어질 수 있습니다.
  Google의 개인정보처리방침: <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline text-yellow-700">policies.google.com/privacy</a>
  </p>

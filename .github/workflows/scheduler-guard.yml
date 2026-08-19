@@ -1,0 +1,43 @@
+name: Scheduler Guard (예약 함수 정지 방치 감시)
+
+# 왜 있나
+#   점검·마이그레이션 때 `scripts/ops/scheduler-pause.mjs pause` 로 예약 함수를 멈춘다.
+#   멈춘 채로 잊으면 **주급·세금·이자·배당이 조용히 안 나간다** — 에러도 안 나고
+#   화면도 멀쩡하다. 사람이 기억하는 것 말고는 되돌릴 장치가 없어서 이 워크플로를 뒀다.
+#   하나라도 PAUSED 면 워크플로가 실패하고, GitHub 이 저장소 소유자에게 알림을 보낸다.
+#
+# 언제 도나
+#   3시간마다 + 주급 직전(월·금 08:00 KST = 일·목 23:00 UTC).
+#   주급은 월·금 08:30 KST 라 그 30분 전 점검이 마지막 방어선이다.
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"    # 3시간마다 (정각을 피해 17분)
+    - cron: "0 23 * * 0,4"    # 일·목 23:00 UTC = 월·금 08:00 KST (주급 30분 전)
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install firebase-tools
+        # _auth.mjs 가 firebase-tools 의 공개 client_id/secret 을 읽어 쓴다
+        run: npm install -g firebase-tools
+
+      - name: 예약 함수 상태 확인
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          node scripts/ops/scheduler-pause.mjs status --fail-if-paused
+
+      - name: 실패 시 안내
+        if: failure()
+        run: |
+          echo "::error::예약 함수가 멈춰 있다. 주급·세금·이자·배당이 나가지 않는다."
+          echo "::error::재개: node scripts/ops/scheduler-pause.mjs resume"
