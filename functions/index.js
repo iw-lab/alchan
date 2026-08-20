@@ -3114,6 +3114,41 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
         if (tData.classCode !== classCode) {
           throw new Error("같은 학급의 학생만 처리할 수 있습니다.");
         }
+        // 🧾 돈이 하나도 안 옮겨진 **회수 시도**를 기록으로 남긴다(2026-08-20 codex WARNING).
+        //   종전엔 그냥 `return` 이라 activity_logs 에도, 거래기록에도, 멱등 원장에도 안 남았다.
+        //   2026-07-27 사고의 두 번째 −50,000,000 시도가 정확히 이렇게 **무흔적으로** 사라진다 —
+        //   나중에 "왜 두 번 눌렀나"를 되짚을 근거가 없어진다.
+        //   ⚠️ 돈은 안 움직이므로 루트 transactions(거래내역 표시원)에는 쓰지 않는다.
+        //      거기 쓰면 학생 자산 화면에 있지도 않은 거래가 뜬다.
+        const logNoMoveAttempt = (requested, currentBalance) => {
+          if (action === "send") return; // 지급은 이 기록의 대상이 아니다
+          const expire = new Date();
+          expire.setDate(expire.getDate() + 90);
+          tx.set(db.collection("activity_logs").doc(), {
+            userId: targetId,
+            userName: tData.name,
+            timestamp: serverTimestamp(),
+            type: "ADMIN_CASH_TAKE_SKIPPED",
+            description: sanitizeInput(
+              `관리자(${effectiveAdminName})가 ${tData.name}님으로부터 ` +
+                `${Number(requested || 0).toLocaleString()}원 회수를 시도했으나 ` +
+                `잔액(${Number(currentBalance || 0).toLocaleString()}원)이 없어 아무것도 처리되지 않았습니다.`,
+            ),
+            classCode,
+            metadata: {
+              adminName: effectiveAdminName,
+              issuedBy: uid,
+              action,
+              amountType,
+              inputValue: amount,
+              requested: Number(requested) || 0,
+              previousCash: Number(currentBalance) || 0,
+              moved: 0,
+            },
+            expireAt: admin.firestore.Timestamp.fromDate(expire),
+          });
+        };
+
         const rawCash = tData.cash;
         if (typeof rawCash !== "number" || !Number.isFinite(rawCash)) {
           throw new Error("학생 잔액 데이터에 오류가 있습니다.");
@@ -3129,6 +3164,7 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
           // 처리할 금액 없음(예: 음수 cash의 퍼센트) → skip(멱등 마킹도 하지 않음: 재시도 시 재평가)
           //   ⚠️ 그냥 `return` 하면 이 학생이 결과에서 **통째로 사라진다** — 선생님은 5명에게 걸었는데
           //   "3명 완료"만 보고 나머지 둘이 왜 빠졌는지 모른다(2026-08-20). 표시용 표식을 돌려준다.
+          logNoMoveAttempt(baseAmount, currentCash);
           return { processed: false, skippedNoBalance: true };
         }
 
@@ -3159,6 +3195,7 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
           if (baseAmount <= 0) {
             // 이미 0 이하 잔액 → 가져갈 게 없다. 멱등 마킹도 하지 않는다(위 skip 과 같은 규약).
             // 사고의 두 번째 −50,000,000 회수가 바로 이 경로다. 조용히 사라지면 안 된다.
+            logNoMoveAttempt(clampedFrom, currentCash);
             return { processed: false, skippedNoBalance: true };
           }
         }

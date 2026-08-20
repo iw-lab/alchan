@@ -105,6 +105,26 @@ describe("index.js 배선 — 순수 함수가 맞아도 배선이 틀리면 소
     expect(INDEX).toContain("skippedNoBalance");
     expect(INDEX).toContain("noBalanceCount");
   });
+
+  it("⭐ 돈을 못 옮긴 회수 시도도 흔적을 남긴다", () => {
+    // 2026-07-27 사고의 두 번째 −50,000,000 시도가 이 경로로 무흔적 소멸했다.
+    expect(body).toContain("logNoMoveAttempt(");
+    expect(INDEX).toContain("ADMIN_CASH_TAKE_SKIPPED");
+    // 두 조기반환 **모두** 남겨야 한다(퍼센트 경로 · 자르기 후 0 경로).
+    //   정의부는 `logNoMoveAttempt = (` 라 이 정규식에 안 걸린다 = 호출 2곳만 세어진다.
+    expect((body.match(/logNoMoveAttempt\(/g) || []).length).toBe(2);
+  });
+
+  it("⭐ 그 기록이 학생 거래내역을 오염시키지 않는다", () => {
+    // MyAssets 는 `amount !== 0` 인 것만 거래로 보여준다. 최상위 amount 를 넣으면
+    // 돈이 안 움직였는데 거래 한 줄이 생긴다.
+    const helper = INDEX.slice(
+      INDEX.indexOf("const logNoMoveAttempt"),
+      INDEX.indexOf("const rawCash = tData.cash;"),
+    );
+    expect(helper).not.toMatch(/^\s*amount:/m);
+    expect(helper).toContain("moved: 0");
+  });
 });
 
 describe("파산 사건은 합의금 경로에 못 들어온다", () => {

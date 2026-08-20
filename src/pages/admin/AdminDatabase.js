@@ -262,6 +262,8 @@ const AdminDatabase = () => {
  'TAX_PAYMENT': '주식 거래세',
  'ADMIN_CASH_SEND': '관리자 지급',
  'ADMIN_CASH_TAKE': '관리자 회수',
+ // 잔액이 없어 아무것도 못 옮긴 회수 시도(돈은 안 움직였다는 기록).
+ 'ADMIN_CASH_TAKE_SKIPPED': '관리자 회수 시도(잔액 없음)',
  'ADMIN_COUPON_GIVE': '관리자 쿠폰 지급',
  'ADMIN_COUPON_TAKE': '관리자 쿠폰 회수',
  'TASK_COMPLETE': '과제 완료',

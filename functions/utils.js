@@ -42,6 +42,7 @@ const LOG_TYPES = {
     CASH_TRANSFER_RECEIVE: "송금 수신",
     ADMIN_CASH_SEND: "관리자 지급",
     ADMIN_CASH_TAKE: "관리자 회수",
+    ADMIN_CASH_TAKE_SKIPPED: "관리자 회수 시도(잔액 없음)",
     COUPON_EARN: "쿠폰 획득",
     COUPON_USE: "쿠폰 사용",
     COUPON_GIVE: "쿠폰 지급",
