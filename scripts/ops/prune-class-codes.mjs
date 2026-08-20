@@ -61,8 +61,12 @@ const body = {
   },
 };
 // updateMask 에 오타 필드도 넣되 body 에서 빼면 삭제된다.
+//   ⚠️ 필드 경로에 공백 같은 문자가 있으면 **백틱으로 감싸야** 한다. 안 그러면
+//      Firestore 가 경로 자체를 거부한다(400 INVALID_ARGUMENT, 실측 2026-08-20).
+//      `updatedAt ` 처럼 오타로 생긴 필드가 정확히 그 경우다.
+const quotePath = (f) => (/^[a-zA-Z_][a-zA-Z_0-9]*$/.test(f) ? f : `\`${f.replace(/[`\\]/g, "\\$&")}\``);
 const mask = ["codes", "validCodes", "updatedAt", ...junkFields]
-  .map((f) => `updateMask.fieldPaths=${encodeURIComponent(f)}`)
+  .map((f) => `updateMask.fieldPaths=${encodeURIComponent(quotePath(f))}`)
   .join("&");
 const r = await fetch(`${BASE}/settings/classCodes?${mask}`, {
   method: "PATCH", headers: JH, body: JSON.stringify(body),

@@ -41,6 +41,36 @@ git add build/                # 빠뜨리면 push 해도 Hosting 이 안 바뀐�
 
 ---
 
+## 2-b. 함수를 **지울** 때 (2026-08-20 실측)
+
+`functions/index.js` 에서 export 를 지우고 push 하면 **배포 전체가 실패한다.** 일부만 건너뛰는 게
+아니라 `firebase deploy --only functions` 가 통째로 중단된다:
+
+```
+Error: The following functions are found in your project but do not exist in your local source code:
+	backfillMusicRoomsManual(asia-northeast3)
+	recoverTeachersManual(asia-northeast3)
+Aborting because deletion cannot proceed in non-interactive mode.
+```
+
+즉 **엔드포인트 하나를 지우면 같은 커밋의 다른 수정도 하나도 안 올라간다.** 2026-08-20 에
+주급 장애 수정이 이것 때문에 한 번 배포되지 못했다(코드는 맞았는데 라이브는 그대로였다).
+
+순서를 지킬 것:
+
+```bash
+# 1) 배포된 함수를 먼저 지운다 (이건 재배포가 아니라 삭제라 .env 를 건드리지 않는다)
+firebase functions:delete <이름> --region asia-northeast3 --project inconomysu-class --force
+# 2) 그다음 push (또는 실패한 워크플로 재실행)
+gh run rerun <run-id> --failed
+```
+
+⚠️ `firebase deploy --only functions` 를 **로컬에서** 돌리지 말 것 — functions/.env 가 없어
+SCHEDULER_AUTH_TOKEN 이 날아가고 HTTP 스케줄러가 401 로 죽는다. `functions:delete` 는 안전하다.
+
+⚠️ `--force` 를 deploy 에 붙여 자동 삭제하게 만들고 싶어지는데, 그러면 빌드가 잘못돼
+export 가 누락된 날 **함수가 통째로 지워진다**. 지금의 "시끄럽게 멈춤"이 더 안전하다.
+
 ## 3. 롤백
 
 ### 3-1. Firestore 규칙 (가장 급한 층 — 학생이 화면을 못 쓰게 될 수 있음)
