@@ -370,13 +370,18 @@ const TrialResults = ({ complaints, users, onOpenSettlementModal }) => {
 
 // 파산 신청 컴포넌트
 const BankruptcySection = ({ refetchComplaints }) => {
- const { userDoc, classCode } = useAuth();
+ // ⚠️ `user.uid` 를 함께 받는다. 규칙이 비교하는 값은 `request.auth.uid` 인데,
+ //   AuthContext 가 `{ id: snap.id, uid: snap.id, ...snap.data() }` 순서로 합쳐서
+ //   users 문서에 `id` 필드가 생기면 그게 문서ID를 **가린다**(규칙은 `id` 를 막지 않는다).
+ //   지금은 45명 중 0명이라 안 깨졌지만, 그때 가서 파산 신청이 조용히 다시 고장난다.
+ const { userDoc, classCode, user } = useAuth();
+ const myUid = user?.uid || userDoc?.id;
  const [hasPendingBankruptcyCase, setHasPendingBankruptcyCase] =
  useState(false);
  const [isLoading, setIsLoading] = useState(true);
 
  useEffect(() => {
- if (userDoc?.id && classCode) {
+ if (myUid && classCode) {
  const checkPendingCase = async () => {
  setIsLoading(true);
  try {
@@ -388,7 +393,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  );
  const q = query(
  casesRef,
- where("complainantId", "==", userDoc.id),
+ where("complainantId", "==", myUid),
  where("caseType", "==", "bankruptcy"),
  where("status", "==", "pending"),
  limit(10),
@@ -405,10 +410,10 @@ const BankruptcySection = ({ refetchComplaints }) => {
  } else {
  setIsLoading(false);
  }
- // ⚡ 본문은 userDoc?.id만 사용 — userDoc 전체 dep이면 cash 등 churn마다 courtComplaints
- //   3중조건 getDocs 재실행. id 스칼라로 좁혀 로그인/전환 시에만 1회.
+ // ⚡ 본문은 myUid만 사용 — userDoc 전체 dep이면 cash 등 churn마다 courtComplaints
+ //   3중조건 getDocs 재실행. uid 스칼라로 좁혀 로그인/전환 시에만 1회.
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [userDoc?.id, classCode]);
+ }, [myUid, classCode]);
 
  const handleApplyForBankruptcy = async () => {
  if (
@@ -423,20 +428,21 @@ const BankruptcySection = ({ refetchComplaints }) => {
  "courtComplaints",
  );
  await addDoc(casesRef, {
- complainantId: userDoc.id,
+ complainantId: myUid,
  complainantName: userDoc.name,
  caseType: "bankruptcy",
  defendantId: "system",
  defendantName: "시스템",
  status: "pending",
- reason: `자산 ${userDoc.money.toLocaleString()}${getCurrencyUnit()}으로 인한 파산 신청`,
+ reason: `자산 ${(userDoc?.cash ?? 0).toLocaleString()}${getCurrencyUnit()}으로 인한 파산 신청`,
  desiredResolution: "모든 부채를 청산하고 자산을 0으로 초기화 요청",
  submissionDate: serverTimestamp(),
  likedBy: [],
  dislikedBy: [],
  });
  refetchComplaints();
- toast.error(
+ // 성공인데 error 토스트였다(2026-08-20 codex). 학생이 실패로 읽고 다시 누른다.
+ toast.success(
  "파산 신청이 정상적으로 접수되었습니다. 재판 결과를 기다려주세요.",
  );
  setHasPendingBankruptcyCase(true);
@@ -453,12 +459,24 @@ const BankruptcySection = ({ refetchComplaints }) => {
 
  return (
  <div className="bankruptcy-section">
+ {/* ⚠️ 2026-08-20: 여기는 원래 `userDoc.money` 를 읽었다. 그런 필드를 가진 사용자가
+     전체 45명 중 슈퍼관리자 1명뿐이라, `undefined < 0` 이 false 가 되어 **신청 버튼이
+     누구에게도 뜨지 않았다** — 화면엔 늘 "현재 자산: 0원"만 찍혔다. 실제 필드는 `cash` 다.
+     (`money` 를 우선하던 유일한 다른 코드는 존재하지 않는 `Class` 컬렉션을 읽는 죽은 경로였다.)
+     판결이 자산을 자동으로 건드리는 경로는 없다 — 신청은 법정 문서 1건을 만들 뿐이고
+     실제 초기화는 선생님이 관리자 도구로 한다. 그래서 이 복구로 돈이 저절로 움직이지는 않는다.
+
+     ⚠️ 판정 기준은 **현금**이지 순자산이 아니다(문구도 "현금"으로 맞췄다).
+     이 앱의 다른 곳(FinancialRestrictionBanner)은 순자산(`net < 0`)으로 판정하므로 기준이 다르다 —
+     대출 때문에 순자산만 음수인 학생은 신청할 수 없고, 주식·부동산이 있는데 현금만 음수인 학생은
+     신청할 수 있다. 순자산으로 바꾸는 건 파킹·주식·부동산·대출을 **비동기로 더 읽어야** 하는
+     설계 변경이라(이 앱은 읽기 비용이 병목) 별도 결정으로 남긴다. */}
  <h3>파산 신청</h3>
- <p>현재 자산: {userDoc?.money ? userDoc.money.toLocaleString() : 0}{getCurrencyUnit()}</p>
- {userDoc?.money < 0 ? (
+ <p>현재 현금: {(userDoc?.cash ?? 0).toLocaleString()}{getCurrencyUnit()}</p>
+ {(userDoc?.cash ?? 0) < 0 ? (
  <div>
  <p>
- 자산이 마이너스 상태입니다. 파산을 신청하여 모든 빚을 청산하고
+ 현금이 마이너스 상태입니다. 파산을 신청하여 모든 빚을 청산하고
  새롭게 시작할 수 있습니다. (재판 필요)
  </p>
  {hasPendingBankruptcyCase ? (
@@ -475,7 +493,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  )}
  </div>
  ) : (
- <p>자산이 마이너스 상태일 때 파산을 신청할 수 있습니다.</p>
+ <p>현금이 마이너스 상태일 때 파산을 신청할 수 있습니다.</p>
  )}
  </div>
  );

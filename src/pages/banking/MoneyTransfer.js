@@ -199,7 +199,15 @@ function MoneyTransfer() {
       // 멱등키는 이 제출 시도에 고정(실패 재시도 시 재사용해 이미 처리분 중복 방지).
       if (!idemKeyRef.current) idemKeyRef.current = crypto.randomUUID();
       const adminCashActionFn = httpsCallable(functions, "adminCashAction");
-      const { count, totalProcessed, updatedUsers, failures } = (
+      const {
+        count,
+        totalProcessed,
+        updatedUsers,
+        failures,
+        clampedCount,
+        clampedShortfall,
+        noBalanceCount,
+      } = (
         await adminCashActionFn({
           targetUserIds: targetUsersData.map((u) => u.id),
           action,
@@ -244,8 +252,22 @@ function MoneyTransfer() {
             ? "가져오기"
             : "없애기";
       const failCount = Array.isArray(failures) ? failures.length : 0;
+      // 🔒 잔액이 모자라 요청보다 적게 회수된 경우를 **여기서 바로** 알린다(2026-08-20).
+      //   회수는 0원을 바닥으로 하므로 "50만 눌렀는데 12만만 갔다"가 정상 동작인데,
+      //   화면이 아무 말도 안 하면 선생님은 실패로 읽는다(그러면 다시 누른다).
+      const clamped = Number(clampedCount) || 0;
+      const shortfall = Number(clampedShortfall) || 0;
+      const clampNote =
+        clamped > 0
+          ? ` · ${clamped}명은 잔액이 모자라 가진 만큼만 회수(${shortfall.toLocaleString()}${currencyUnit} 미처리 — 0${currencyUnit} 아래로는 내려가지 않습니다)`
+          : "";
+      // 잔액이 0 이하라 아예 못 가져간 학생. 종전엔 결과에서 통째로 빠져서
+      // 선생님이 "왜 이 학생은 안 됐지"를 알 방법이 없었다.
+      const noBalance = Number(noBalanceCount) || 0;
+      const noBalanceNote =
+        noBalance > 0 ? ` · ${noBalance}명은 잔액이 없어 건너뜀` : "";
       setMessage(
-        `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})${failCount > 0 ? ` · ⚠️ ${failCount}명 처리 실패(다시 시도 시 실패분만 재처리)` : ""}`,
+        `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})${failCount > 0 ? ` · ⚠️ ${failCount}명 처리 실패(다시 시도 시 실패분만 재처리)` : ""}${clampNote}${noBalanceNote}`,
       );
 
       // 완전 성공일 때만 멱등키를 비우고(다음 별개 작업) 폼을 초기화한다.

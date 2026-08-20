@@ -19,6 +19,8 @@ const {
 const {
   resetTasksForClass,
 } = require("./scheduler-http");
+// 관리자 회수의 0원 바닥 — 차감과 적립이 같은 값을 쓰게 하는 단일 진실원.
+const { clampTakeAmount } = require("./cashFloor");
 const {
   isAppointedJob,
   toJobIdArray,
@@ -2991,7 +2993,10 @@ exports.autoSavingsDeposit = onCall(
 //     클라가 넘기던 adminId/adminClassCode를 신뢰하지 않고 auth·userData에서 파생.
 //   - 기존 동작 정확 보존: send=학생 cash 증가(관리자 cash는 DB 미차감=학급경제 민팅 모델),
 //     take/toMe=학생 차감+국고(관리자) 적립, take/remove=학생 차감만. 세금은 send에만(학생 수령액 감소).
-//     percentage면 baseAmount=floor(cash*pct/100), ≤0이면 해당 학생 skip. 마이너스 cash 허용.
+//     percentage면 baseAmount=floor(cash*pct/100), ≤0이면 해당 학생 skip.
+//   - ⚠️ 2026-08-20: 회수(take)는 **더 이상 마이너스를 허용하지 않는다**(functions/cashFloor.js).
+//     이 줄은 원래 "마이너스 cash 허용"이라 적혀 있었다 — 함수 맨 위 주석만 보고 반대로 아는 일이
+//     없게 여기서 바로잡는다. 지급(send)은 종전 그대로다.
 //   - 🔧 절대값 덮어쓰기(cash:newCash) → increment(±)로 교체(레이스 수정, financial-saas 룰#2).
 //   - 멱등: 대상별 `${key}_${targetId}` 서브키(대량 처리 중 일부만 재시도돼도 이중적용 차단, 이미
 //     처리분은 graceful skip). 같은 학급만. 로그/거래기록(root transactions=거래내역 표시원) 보존.
@@ -3074,6 +3079,9 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
   const failures = [];
   let totalProcessed = 0;
   let successCount = 0;
+  let clampedCount = 0;      // 잔액이 모자라 요청보다 적게 회수된 학생 수
+  let clampedShortfall = 0;  // 그렇게 못 가져간 금액의 합
+  let noBalanceCount = 0;    // 잔액이 0 이하라 아예 건너뛴 학생 수
 
   // 4) 대상별 트랜잭션(원자적, 대상별 멱등).
   //    - 자기참조 방지(트랜잭션 전 skip): ① 위임 학생이 자기 자신 대상 = 자기 cash 조작(민팅/회수)
@@ -3113,13 +3121,46 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
         const currentCash = rawCash;
 
         // 금액 산정
-        const baseAmount =
+        let baseAmount =
           amountType === "percentage"
             ? Math.floor((currentCash * amount) / 100)
             : amount;
         if (baseAmount <= 0) {
           // 처리할 금액 없음(예: 음수 cash의 퍼센트) → skip(멱등 마킹도 하지 않음: 재시도 시 재평가)
-          return;
+          //   ⚠️ 그냥 `return` 하면 이 학생이 결과에서 **통째로 사라진다** — 선생님은 5명에게 걸었는데
+          //   "3명 완료"만 보고 나머지 둘이 왜 빠졌는지 모른다(2026-08-20). 표시용 표식을 돌려준다.
+          return { processed: false, skippedNoBalance: true };
+        }
+
+        // 🔒 회수는 **0원을 바닥**으로 한다(2026-08-20). 종전엔 주석 그대로 "마이너스 허용"이라
+        //   가진 것보다 많이 회수하면 학생이 빚을 졌다. 실측: 2026-07-27 에 −50,000,000 회수가
+        //   28분 간격으로 두 번 들어가 한 학생이 **−99,724,000** 이 됐다(9BVPKP). 두 번째 회수는
+        //   가져갈 게 없는데도 그대로 실행됐고, 그만큼이 국고에 **없던 돈으로 적립**됐다.
+        //
+        //   ⚠️ 자르는 곳이 여기여야 하는 이유: baseAmount 하나가 학생 차감·국고 적립·로그·
+        //   거래기록·집계 전부로 흘러간다. 여기서 자르면 차감과 적립이 저절로 같은 값이 된다.
+        //   차감만 자르면 국고에 돈이 생긴다.
+        //
+        //   되돌리려면(의도적으로 빚을 지우는 벌칙 등) 이 블록을 걷어내는 게 아니라
+        //   호출부에서 명시 플래그를 받도록 넓힐 것 — 사고와 의도를 구분할 수 있어야 한다.
+        //
+        //   ⚠️ **이 바닥은 회수에만 적용된다.** 다른 두 곳은 마이너스를 **일부러** 허용한다 —
+        //   벌금(processFine, "잔액 하한 없음(벌금은 마이너스 허용)")과 대출 만기 강제상환
+        //   (mode==="maturity", "강제상환은 현금부족도 진행"). 빈털터리라고 벌금·빚을 피할 수는
+        //   없어야 하니 그게 맞다. **일관성을 이유로 저기까지 바닥을 넣지 말 것** — 학급경제가
+        //   성립하지 않는다.
+        let clampedFrom = 0;
+        // `=== "take"` 로 좁히지 않는다(3033행에서 send/take 로 이미 검증된다).
+        // 액션이 하나 늘면 `=== "take"` 는 바닥을 **조용히** 건너뛰지만, 이 형태는 기본으로 걸린다.
+        if (action !== "send") {
+          const capped = clampTakeAmount(currentCash, baseAmount);
+          baseAmount = capped.amount;
+          clampedFrom = capped.clampedFrom;
+          if (baseAmount <= 0) {
+            // 이미 0 이하 잔액 → 가져갈 게 없다. 멱등 마킹도 하지 않는다(위 skip 과 같은 규약).
+            // 사고의 두 번째 −50,000,000 회수가 바로 이 경로다. 조용히 사라지면 안 된다.
+            return { processed: false, skippedNoBalance: true };
+          }
         }
         let taxAmount = 0;
         let finalAmount = baseAmount;
@@ -3133,7 +3174,8 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
           newCash = currentCash + finalAmount;
           tx.update(userRef, { cash: increment(finalAmount), updatedAt: serverTimestamp() });
         } else {
-          // take (toMe/remove 공통): 학생 차감(마이너스 허용)
+          // take (toMe/remove 공통): 학생 차감. **마이너스로는 안 내려간다** —
+          //   baseAmount 가 위에서 잔액 상한으로 잘렸다(2026-08-20, 종전 주석은 "마이너스 허용"이었다).
           newCash = currentCash - baseAmount;
           tx.update(userRef, { cash: increment(-baseAmount), updatedAt: serverTimestamp() });
         }
@@ -3175,6 +3217,11 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
             amountType === "percentage"
               ? `관리자(${effectiveAdminName})가 ${tData.name}님으로부터 ${amount}% (${baseAmount.toLocaleString()}원)을 회수했습니다.`
               : `관리자(${effectiveAdminName})가 ${tData.name}님으로부터 ${baseAmount.toLocaleString()}원을 회수했습니다.`;
+        }
+        // 잘렸으면 로그에도 남긴다. 선생님이 바로 보는 건 결과 메시지(MoneyTransfer.js 가
+        // clampedCount/clampedShortfall 로 띄운다)고, 이 줄은 **나중에 되짚을 때** 쓰는 기록이다.
+        if (clampedFrom > 0) {
+          logDescription += ` (요청 ${clampedFrom.toLocaleString()}원 중 잔액만큼만 회수 — 0원 아래로는 내려가지 않습니다)`;
         }
 
         const expireAt = new Date();
@@ -3222,13 +3269,22 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
         markIdempotent(tx, keyRef);
         // ⚠️ 카운터/배열 집계는 콜백 밖에서. runTransaction 콜백은 경합 시 재실행되므로
         //    여기서 push/증가하면 커밋 1회여도 응답 카운트가 중복 집계된다 → 결과만 반환.
-        return { processed: true, newCash, baseAmount };
+        return { processed: true, newCash, baseAmount, clampedFrom };
       });
       // 트랜잭션이 커밋(1회 확정)된 후에만 집계.
       if (result && result.processed) {
         updatedUsers.push({ id: targetId, newCash: result.newCash });
         totalProcessed += result.baseAmount;
         successCount++;
+        // 잔액이 모자라 일부만 회수된 건은 따로 센다 — 선생님이 "왜 덜 갔지"를
+        // activity_logs 를 학생별로 뒤지지 않고 **결과 화면에서 바로** 알아야 한다.
+        if (result.clampedFrom > 0) {
+          clampedCount++;
+          clampedShortfall += result.clampedFrom - result.baseAmount;
+        }
+      } else if (result && result.skippedNoBalance) {
+        // 가져갈 잔액이 아예 없어 건너뛴 학생. 실패가 아니라 정상 동작이지만, 말은 해 줘야 한다.
+        noBalanceCount++;
       }
     } catch (error) {
       // 이미 처리된 대상(멱등 재시도)은 조용히 skip. 그 외 per-target 오류는 전체 중단 대신
@@ -3240,7 +3296,10 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
     }
   }
 
-  return { count: successCount, totalProcessed, updatedUsers, failures };
+  return {
+    count: successCount, totalProcessed, updatedUsers, failures,
+    clampedCount, clampedShortfall, noBalanceCount,
+  };
 });
 
 // ===================================================================================
@@ -3536,6 +3595,16 @@ exports.processCourtSettlement = onCall(
         }
         if (cData.settlementPaid === true) {
           throw new Error("이미 합의금 지급이 완료된 사건입니다.");
+        }
+        // 🔒 파산 사건은 합의금 경로에 못 들어온다(2026-08-20 codex CRITICAL).
+        //   파산은 defendantId="system"(사람이 아님)으로 만들어지는데, courtComplaints 의
+        //   `defendantId`·`status` 는 규칙상 같은 학급이면 누구나 바꿀 수 있다(편집 기능 때문에
+        //   일부러 안 잠갔다 — 아래 ⚠️ 주석의 "batch7 court-lock" 미결 항목).
+        //   그래서 파산 신청서를 "피고=피해 학생, status=resolved" 로 고쳐 놓고 합의금을 태우면
+        //   남의 현금이 신청자에게 넘어간다. 파산은 애초에 당사자 간 배상이 아니므로 여기서 막는다.
+        //   (일반 고소장을 통한 같은 경로는 이 변경의 범위 밖 — 기존 미결 항목 그대로다.)
+        if (cData.caseType === "bankruptcy") {
+          throw new Error("파산 사건은 합의금 지급 대상이 아닙니다.");
         }
         // 🔒 판사(비교사)는 실제 사건 당사자(피고소인→고소인)만 처리 가능(reviewer/Gemini HIGH).
         //    임의 제3자 간 이체(피해자→친구·자기 자신)를 사건과 결부시키는 남용을 축소.
