@@ -36,6 +36,8 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { ItemProvider } from "../contexts/ItemContext"; // 🔥 [최적화] 로그인 후에만 마운트
 import AlchanSidebar from "./AlchanSidebar";
+import { MenuLocksProvider, useMenuLocks } from "../contexts/MenuLocksContext";
+import { ALCHAN_MENU_ITEMS } from "./AlchanSidebar";
 import AlchanHeader from "./AlchanHeader";
 import MobileNav from "./MobileNav";
 import PWAInstallPrompt from "./PWAInstallPrompt";
@@ -179,9 +181,20 @@ const AlchanLoading = ({ message = "로딩 중..." }) => {
 };
 
 // Protected Route 컴포넌트
+// 경로 → 메뉴 항목 id 조회표. 잠금은 메뉴 id 로 저장되는데 라우트는 경로만 알기 때문이다.
+// ALCHAN_MENU_ITEMS 를 한 번만 훑어 만든다(모듈 수준 = 렌더마다 다시 만들지 않는다).
+const PATH_TO_MENU_ID = (() => {
+  const map = new Map();
+  for (const item of ALCHAN_MENU_ITEMS) {
+    if (item?.path && item?.id) map.set(item.path, item.id);
+  }
+  return map;
+})();
+
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, userDoc, loading } = useAuth();
   const location = useLocation();
+  const { lockedItemIds, ready: locksReady } = useMenuLocks();
 
   if (loading) {
     return <AlchanLoading />;
@@ -189,6 +202,26 @@ const ProtectedRoute = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // 🔒 선생님이 잠근 기능은 **주소로도** 못 들어간다.
+  //    전에는 잠금이 사이드바 표시에만 걸려서, 주소를 아는 학생은 그대로 들어갈 수 있었다.
+  //
+  //    ⚠️ `locksReady` 전에는 판정하지 않는다 — 잠금을 읽기 전에 튕기면 정상 페이지가
+  //       깜빡이며 쫓겨난다(로드 전 기본값은 "잠긴 것 없음"이라 전부 잠긴 것처럼 보인다).
+  //    ⚠️ 선생님은 면제 — 관리자 설정에서 잠근 화면을 본인은 계속 볼 수 있어야 한다
+  //       (그 화면의 안내 문구도 "학생에게만 숨겨집니다" 다).
+  //    이 가드는 교육적 편의(안 쓰는 기능 감추기)이지 보안 경계가 아니다 —
+  //    돈·권한은 firestore.rules 와 Cloud Functions 가 막는다.
+  const isTeacher =
+    userDoc?.isAdmin === true ||
+    userDoc?.isSuperAdmin === true ||
+    userDoc?.isTeacher === true;
+  if (locksReady && !isTeacher && lockedItemIds.length > 0) {
+    const menuId = PATH_TO_MENU_ID.get(location.pathname);
+    if (menuId && lockedItemIds.includes(menuId)) {
+      return <Navigate to="/dashboard/tasks" replace />;
+    }
   }
 
   return children;
@@ -468,6 +501,9 @@ export default function AlchanLayout() {
     // 🔥 [최적화] ItemProvider를 여기에 배치 - 로그인 후에만 마운트되어 불필요한 Firestore 읽기 방지
     <ItemProvider>
       <EconomicEventProvider>
+      {/* 🔒 메뉴 잠금은 사이드바(표시)와 ProtectedRoute(접근 차단)가 **같은 값**을 봐야 한다.
+          둘 다 이 안에 있어야 하므로 여기(레이아웃 최상위)에 둔다 — 읽기는 여전히 1회. */}
+      <MenuLocksProvider>
       <div className="min-h-screen text-slate-800 font-sans selection:bg-indigo-500/30 selection:text-indigo-800 flex flex-col md:flex-row">
         {/* PC 사이드바 */}
         <AlchanSidebar
@@ -986,6 +1022,7 @@ export default function AlchanLayout() {
 
         {/* 전역 스타일은 index.css로 이동됨 */}
       </div>
+      </MenuLocksProvider>
       </EconomicEventProvider>
     </ItemProvider>
   );

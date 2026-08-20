@@ -230,3 +230,25 @@ export const copyDefaultDataToNewClass = async (newClassCode) => {
     return { success: false, results, error: error.message };
   }
 };
+
+// =================================================================
+// 🔒 메뉴 잠금 (settings/menuLocks_{classCode})
+// =================================================================
+/**
+ * 학급이 학생에게 숨긴 메뉴 항목 id 목록.
+ *
+ * 사이드바(표시)와 라우트 가드(접근 차단)가 **같은 값**을 써야 하므로 여기에 둔다.
+ * 실패하면 빈 배열 — 잠금 정보를 못 읽었다고 정상 화면을 막으면 안 된다(fail-open).
+ * 잠금은 교육적 편의 기능이지 보안 경계가 아니다(돈·권한은 rules 와 CF 가 막는다).
+ */
+export const fetchMenuLockedItemIds = async (classCode) => {
+  if (!db || !classCode) return [];
+  try {
+    const snap = await getDoc(doc(db, "settings", `menuLocks_${classCode}`));
+    const arr = snap.exists() ? snap.data().lockedItemIds : [];
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch (e) {
+    logger.warn("[settings] 메뉴 잠금 로드 실패(빈 목록으로 진행):", e);
+    return [];
+  }
+};

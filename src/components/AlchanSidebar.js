@@ -6,12 +6,11 @@ import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { useMenuLocks } from "../contexts/MenuLocksContext";
 import { getIsIdle } from "../utils/idleManager";
 import { db as firebaseDb } from "../firebase";
 import {
   collection as fbCollection,
-  doc as fbDoc,
-  getDoc as fbGetDoc,
   query as fbQuery,
   where as fbWhere,
   getDocs,
@@ -600,7 +599,6 @@ export default function AlchanSidebar({
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [learningBoards, setLearningBoards] = useState([]);
-  const [lockedItemIds, setLockedItemIds] = useState([]); // 교사가 학생에게 잠근 메뉴 id
 
   useEffect(() => {
     let timeoutId;
@@ -1003,28 +1001,11 @@ export default function AlchanSidebar({
     [learningAppItems],
   );
 
-  // 🔒 메뉴 잠금 목록 로드 (settings/menuLocks_{classCode})
-  // 교사가 관리자설정에서 저장하면 'menuLocks:changed' 이벤트로 즉시 반영, 타 기기는 다음 로드 시 반영.
-  useEffect(() => {
-    const classCode = userDoc?.classCode;
-    if (!classCode) return void setLockedItemIds([]);
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const snap = await fbGetDoc(fbDoc(firebaseDb, "settings", `menuLocks_${classCode}`));
-        if (cancelled) return;
-        const arr = snap.exists() ? snap.data().lockedItemIds : [];
-        setLockedItemIds(Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : []);
-      } catch { /* ignore */ }
-    };
-    load();
-    const handler = () => load();
-    window.addEventListener("menuLocks:changed", handler);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("menuLocks:changed", handler);
-    };
-  }, [userDoc?.classCode]);
+  // 🔒 메뉴 잠금은 MenuLocksProvider(레이아웃 최상위)가 한 번 읽어 공유한다.
+  //    전에는 사이드바가 혼자 읽었고, 그래서 잠금이 **표시에만** 적용됐다 —
+  //    주소를 아는 학생은 잠긴 화면에 그대로 들어갈 수 있었다.
+  //    이제 ProtectedRoute 가 같은 값으로 접근도 막는다(읽기 횟수는 그대로 1회).
+  const { lockedItemIds } = useMenuLocks();
 
   const hasDelegatedTaskApproval =
     userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
