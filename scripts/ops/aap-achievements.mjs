@@ -26,7 +26,9 @@
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BASE, authHeaders, S, B, I, A, plain } from "./_firestore-rest.mjs";
+import { firestoreBase, authHeaders, S, B, I, A, plain } from "./_firestore-rest.mjs";
+
+const BASE = firestoreBase();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const require = createRequire(import.meta.url);

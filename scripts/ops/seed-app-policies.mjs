@@ -20,7 +20,9 @@
  *
  * 실행: node scripts/ops/seed-app-policies.mjs [--dry] [--sync-url]
  */
-import { BASE, authHeaders } from "./_firestore-rest.mjs";
+import { firestoreBase, authHeaders } from "./_firestore-rest.mjs";
+
+const BASE = firestoreBase();
 
 const DRY = process.argv.includes("--dry");
 const SYNC_URL = process.argv.includes("--sync-url");

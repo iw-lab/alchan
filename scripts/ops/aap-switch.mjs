@@ -21,7 +21,9 @@
  * ⚠️ off 는 **즉시** 듣는다 — 서버가 정책을 캐시하지 않기 때문이다.
  *    이미 발급된 토큰(최대 5분)은 살아 있지만 새 실행은 그 순간부터 막힌다.
  */
-import { BASE, authHeaders } from "./_firestore-rest.mjs";
+import { firestoreBase, authHeaders } from "./_firestore-rest.mjs";
+
+const BASE = firestoreBase();
 
 const [cmd, appId] = process.argv.slice(2);
 const COMMANDS = { list: null, off: null, on: null, migrate: null, unmigrate: null, "off-all": null };

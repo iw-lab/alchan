@@ -18,13 +18,23 @@ import { execSync } from "node:child_process";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
+// ⚠️ **모듈 로드 시점에 파일을 읽지 않는다.** `.firebaserc` 는 gitignore 대상이라 CI 체크아웃에
+//    없고, 로드 중에 읽으면 이 파일을 import 하는 **테스트가 CI 에서만 죽는다**
+//    (2026-08-21 실측: 로컬 694/694 초록불, CI 는 ENOENT). 아래 값 래퍼(S·B·I·A·plain)는
+//    순수 함수라 프로젝트 설정과 아무 상관이 없는데, 상수 두 개 때문에 같이 묶여 있었다.
+let _project = null;
+
 /** .firebaserc 의 기본 프로젝트. 스크립트마다 프로젝트 id 를 적어두지 않는다. */
-export const PROJECT = JSON.parse(
-  readFileSync(join(ROOT, ".firebaserc"), "utf8"),
-).projects.default;
+export function firestoreProject() {
+  if (_project) return _project;
+  _project = JSON.parse(readFileSync(join(ROOT, ".firebaserc"), "utf8")).projects.default;
+  return _project;
+}
 
 /** Firestore REST 문서 루트. `(default)` = 2026-08-19 서울 이전 후의 유일한 DB. */
-export const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+export function firestoreBase() {
+  return `https://firestore.googleapis.com/v1/projects/${firestoreProject()}/databases/(default)/documents`;
+}
 
 /**
  * firebase CLI 로그인에서 access 토큰을 얻어 요청 헤더를 만든다.

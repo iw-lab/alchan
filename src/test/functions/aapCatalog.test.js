@@ -364,6 +364,21 @@ describe("운영 CLI 가 서버와 **같은 판정**을 하려면 타입이 같�
     }
   });
 
+  it("⭐ 공용 REST 모듈이 **로드 중에 파일을 읽지 않는다**", () => {
+    // `.firebaserc` 는 gitignore 대상이라 CI 체크아웃에 없다. 모듈 로드 시점에 읽으면
+    // 이 파일을 import 하는 테스트가 **CI 에서만** ENOENT 로 죽는다
+    // (2026-08-21 실측: 로컬 694/694 초록불, CI 빨간불. `.firebaserc` 를 잠깐 치워 재현했다).
+    // 값 래퍼(S·B·I·A·plain)는 순수 함수라 프로젝트 설정과 상관이 없는데 상수 두 개가 묶고 있었다.
+    const SRC = codeOnly(read("scripts/ops/_firestore-rest.mjs"));
+    // 최상위(들여쓰기 0)에서 파일을 읽는 줄이 없어야 한다.
+    const topLevelIO = SRC.split("\n").filter(
+      (l) => /^(export\s+)?(const|let|var)\s.*readFileSync\(/.test(l),
+    );
+    expect(topLevelIO, `로드 중 파일을 읽는다: ${topLevelIO.join(" / ")}`).toEqual([]);
+    // 읽기는 함수 안에서만.
+    expect(SRC).toMatch(/export function firestoreProject\(\)/);
+  });
+
   it("⭐ on/off 는 **있는 성취에만** 쓴다 (PATCH 가 없는 문서를 만든다)", () => {
     // 오타 한 번에 `{active:true}` 뿐인 반쪽 문서가 남고 CLI 는 "🟢 켜짐" 이라고 성공을 찍었다.
     // 서버는 그걸 bad_reward_type 으로 거부하니, 운영자는 켰다고 믿는데 학생은 못 받는다.
