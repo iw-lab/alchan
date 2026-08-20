@@ -1,4 +1,5 @@
-/* eslint-disable */
+/* eslint no-unused-vars: "warn" */
+// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). no-undef 를 살리기 위해서다.
 /* eslint-disable max-len */
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, checkIdempotent, markIdempotent, findApprovedAdminSnap } = require("./utils");

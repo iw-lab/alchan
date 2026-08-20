@@ -1,4 +1,6 @@
-/* eslint-disable */
+/* eslint require-atomic-updates: "off" */
+// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). require-atomic-updates 만 끈다 —
+//    `let batch` 분할커밋 패턴을 ESLint 가 경합으로 오판한다(scheduler-http.js 와 동일).
 /**
  * 배당 지급 서비스
  *

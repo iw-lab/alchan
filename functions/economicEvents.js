@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * 경제 이벤트 시스템 - 랜덤 경제 이벤트 실행 로직
  * 평일 설정 시간(기본값 오후 1시)에 랜덤으로 경제 이벤트가 발생합니다.
@@ -1313,16 +1312,43 @@ async function runEconomicEventsForAllClasses() {
 
   if (!alreadyScannedToday || settingsSnapshot.empty) {
     const usersSnapshot = await db.collection("users").get();
-    const allClassCodes = new Set();
+    // ⚠️ 2026-08-20: 종전엔 **모든 사용자**의 classCode 를 학급으로 인정했다.
+    //   그래서 교사 계정 하나만 남은 학급(XHAWPR·CLASS2025)과, 학생이 다 빠진 뒤
+    //   교사 문서만 남은 학급까지 설정이 생겨 **매시간 경제이벤트 쓰기가 나갔다**.
+    //   더 나쁜 건 되돌릴 수 없다는 점이다 — 아래 루프는 만들기만 하고 지우지 않아서,
+    //   한 번 오타로 들어온 학급코드("미지정" 등)가 영원히 남아 매시간 돈다(라이브 실측:
+    //   `economicEventSettings/미지정` 이 2026-08-20 까지도 lastEventAt 을 갱신 중이었다).
+    //   학급의 정의를 **학생이 있는 곳**으로 좁힌다(주급의 classCodesFromStudentSnap 과 동일 기준).
+    const allClassCodes = new Set();   // 학생이 있는 학급 — **설정을 만들/켤** 대상
+    const anyUserCodes = new Set();     // 교사 포함 아무나 있는 학급 — **끄지 않을** 대상
     usersSnapshot.docs.forEach((doc) => {
-      const classCode = doc.data().classCode;
-      if (classCode) allClassCodes.add(classCode);
+      const d = doc.data();
+      if (!d.classCode) return;
+      anyUserCodes.add(d.classCode);
+      if (d.isAdmin === true || d.isTeacher === true || d.isSuperAdmin === true) return;
+      allClassCodes.add(d.classCode);
     });
 
     logger.info(
       `[경제이벤트] 학급 프로비저닝 점검(${alreadyScannedToday ? "부트스트랩" : "오늘 첫 스캔"}): ` +
-        `${allClassCodes.size}개 학급`,
+        `학생이 있는 학급 ${allClassCodes.size}개`,
     );
+
+    // 🧹 고아 설정 회수. 이게 없으면 위 필터를 좁혀도 **이미 만들어진** 고아가 계속 돈다.
+    //   ⚠️ 기준은 "학생 0명"이 아니라 **"사용자 0명"**이다(2026-08-20 codex WARNING).
+    //   학생 기준으로 끄면, 교사가 막 가입해 아직 학생이 없는 신규 학급이 이 스캔에 걸려
+    //   꺼진다 — 학생이 들어와도 다음 평일 스캔까지 경제이벤트가 안 돈다(레이스).
+    //   교사조차 없는 학급코드는 오타이거나 삭제된 학급이라 되살아날 일이 없다.
+    //   삭제가 아니라 비활성화인 이유: 되돌릴 수 있는 쪽을 고른다(아래 루프가 그대로 되살린다).
+    for (const doc of settingsSnapshot.docs) {
+      if (anyUserCodes.has(doc.id)) continue;
+      await doc.ref.update({
+        enabled: false,
+        disabledReason: "no-users",
+        disabledAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      logger.warn(`[경제이벤트] ${doc.id}: 사용자 0명 — 설정 비활성화(고아 회수)`);
+    }
 
     // 2단계: 설정 없는 학급에 자동 생성
     for (const classCode of allClassCodes) {

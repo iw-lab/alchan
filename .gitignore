@@ -64,3 +64,12 @@ check-*.png
 
 # 자산 스냅샷 — 학생 이름 포함, 커밋 금지 (scripts/asset-snapshot.mjs)
 .asset-snapshots/
+
+# 학생 PII 덤프가 저장소로 들어오는 것을 막는다 (이 저장소는 public 이다)
+#   ⚠️ 패턴은 **실제로 생기는 파일명**과 맞아야 한다. 처음 쓴 `*-backup-*.json` 은
+#      scripts/ops/cleanup-ghost-classes.mjs 가 만드는 `ghost-cleanup-<stamp>.json` 을
+#      한 글자도 못 막았다(git check-ignore 로 확인). 안전망은 "있다"가 아니라 "걸린다"여야 한다.
+.cleanup-backup/
+alchan-backups/
+*-backup-*.json
+ghost-cleanup-*.json

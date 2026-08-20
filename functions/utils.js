@@ -1,4 +1,5 @@
-/* eslint-disable */
+/* eslint quotes: "off" */
+// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). no-undef 를 살리기 위해서다.
 const {HttpsError} = require("firebase-functions/v2/https");
 const {logger} = require("firebase-functions/v2");
 const admin = require("firebase-admin");

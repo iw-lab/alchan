@@ -574,7 +574,7 @@ export default function SuperAdminDashboard() {
       const email = (teacher?.email || "").trim().toLowerCase();
 
       // 2) Settings/rejectedTeachers 거절 목록에 이메일+uid 추가
-      //    이후 recoverTeacherAccountsOnce 등 마이그 로직이 이 목록 검사 후 skip
+      //    이후 교사 복구 마이그레이션(2026-08-20 제거됨) 등 마이그 로직이 이 목록 검사 후 skip
       if (email || teacherId) {
         const rejRef = doc(db, "Settings", "rejectedTeachers");
         const rejSnap = await getDoc(rejRef);

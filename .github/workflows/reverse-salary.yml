@@ -25,23 +25,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call reverseLastWeeklySalary
+        # ⚠️ 2026-08-20 (P0-F) 두 가지가 바뀌었다.
+        #   · 토큰을 URL 쿼리 → **헤더**로. 쿼리에 담긴 시크릿은 요청 URL 로그에 그대로 남는다.
+        #   · 실제 회수(dryRun=false)는 2차 시크릿 SCHEDULER_ADMIN_TOKEN 을 추가로 요구한다.
+        #     학생 현금을 되가져오는 조작이라, 정기 스케줄러 토큰만으로는 못 돌린다.
         env:
           TOKEN: ${{ secrets.SCHEDULER_AUTH_TOKEN }}
+          ADMIN: ${{ secrets.SCHEDULER_ADMIN_TOKEN }}
+          WEEK_KEY: ${{ inputs.weekKey }}
+          TARGET_DATE: ${{ inputs.targetDate }}
+          DRY_RUN: ${{ inputs.dryRun }}
         run: |
+          set -uo pipefail
           BASE_URL="https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app"
-          if [ "${{ inputs.dryRun }}" = "true" ]; then
+          # ⚠️ 상태코드를 본다. 토큰이 틀려 401/403 이 와도 초록으로 끝나면
+          #    "회수했다"고 착각한다(2026-08-20 codex WARNING).
+          run() {
+            OUT=$(curl -s -w '\nHTTP_STATUS:%{http_code}' "$@")
+            CODE=$(echo "$OUT" | grep 'HTTP_STATUS:' | cut -d':' -f2)
+            echo "$OUT" | sed '/HTTP_STATUS:/d' | python3 -m json.tool 2>/dev/null || echo "$OUT" | sed '/HTTP_STATUS:/d'
+            echo "HTTP Status: $CODE"
+            case "$CODE" in 2*) return 0 ;; *) echo "❌ 요청 거부 (HTTP $CODE)"; return 1 ;; esac
+          }
+          if [ "$DRY_RUN" = "true" ]; then
             echo "=== DRY RUN: 진단 모드 ==="
-            curl -s -G "$BASE_URL" \
-              --data-urlencode "token=$TOKEN" \
-              --data-urlencode "weekKey=${{ inputs.weekKey }}" \
-              --data-urlencode "targetDate=${{ inputs.targetDate }}" \
-              --data-urlencode "dryRun=true" | python3 -m json.tool
+            run -G "$BASE_URL" \
+              -H "x-scheduler-auth: $TOKEN" \
+              --data-urlencode "weekKey=$WEEK_KEY" \
+              --data-urlencode "targetDate=$TARGET_DATE" \
+              --data-urlencode "dryRun=true"
           else
+            if [ -z "$ADMIN" ]; then
+              echo "❌ SCHEDULER_ADMIN_TOKEN 시크릿이 없습니다 — 실제 회수는 2차 토큰이 필요합니다."
+              echo "   GitHub → Settings → Secrets → Actions 에 추가하세요."
+              exit 1
+            fi
             echo "=== 실제 회수 실행 ==="
-            curl -s -G "$BASE_URL" \
-              --data-urlencode "token=$TOKEN" \
-              --data-urlencode "weekKey=${{ inputs.weekKey }}" \
-              --data-urlencode "targetDate=${{ inputs.targetDate }}" \
+            run -G "$BASE_URL" \
+              -H "x-scheduler-auth: $TOKEN" \
+              -H "x-scheduler-admin: $ADMIN" \
+              --data-urlencode "weekKey=$WEEK_KEY" \
+              --data-urlencode "targetDate=$TARGET_DATE" \
               --data-urlencode "dryRun=false" \
-              --data-urlencode "confirm=YES" | python3 -m json.tool
+              --data-urlencode "confirm=YES"
           fi

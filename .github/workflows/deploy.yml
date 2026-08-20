@@ -83,6 +83,9 @@ jobs:
           fi
 
       - name: Deploy Functions (if changed)
+        env:
+          SCHEDULER_AUTH_TOKEN: ${{ secrets.SCHEDULER_AUTH_TOKEN }}
+          SCHEDULER_ADMIN_TOKEN: ${{ secrets.SCHEDULER_ADMIN_TOKEN }}
         run: |
           # HEAD~1..HEAD 변경 파일 목록 (fetch-depth: 2 덕분에 가능)
           CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
@@ -92,7 +95,13 @@ jobs:
           if echo "$CHANGED" | grep -q '^functions/'; then
             echo "✅ Functions 변경 감지 - 배포 시작"
             # GitHub Secrets에서 환경변수 주입 (새 컴퓨터 배포 시 .env 누락 방지)
-            echo "SCHEDULER_AUTH_TOKEN=${{ secrets.SCHEDULER_AUTH_TOKEN }}" > functions/.env
+            # ⚠️ 시크릿을 run 본문에 보간하지 않는다 — 값에 따옴표·백틱이 섞이면 이 스텝이
+            #    깨진다(Gemini WARNING). env 로 받아 셸 변수로만 쓴다.
+            printf 'SCHEDULER_AUTH_TOKEN=%s\n' "$SCHEDULER_AUTH_TOKEN" > functions/.env
+            # 🔐 2차 토큰(P0-F). force·백필·회수처럼 **멱등 검사를 우회하는** 조작 전용.
+            #    비어 있어도 배포는 되고 정기 작업도 정상이다 — 그 조작들만 403 으로 막힌다
+            #    (fail-closed). 쓰려면 GitHub Secrets 에 SCHEDULER_ADMIN_TOKEN 을 추가할 것.
+            printf 'SCHEDULER_ADMIN_TOKEN=%s\n' "$SCHEDULER_ADMIN_TOKEN" >> functions/.env
             echo "=== functions/.env (masked) ==="
             sed 's/=.*/=***/' functions/.env
             echo "==============================="

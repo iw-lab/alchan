@@ -1,4 +1,6 @@
-/* eslint-disable */
+/* eslint-disable quotes, no-unused-vars, no-promise-executor-return */
+// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). 남은 347건은 전부 따옴표 스타일이라
+//    돈 코드를 스타일 때문에 건드리지 않는다. **no-undef 는 켜 둔다.**
 /**
  * 실제 주식 데이터를 가져오는 서비스
  * Yahoo Finance 비공식 API 사용 (무료)

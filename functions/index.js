@@ -91,9 +91,11 @@ exports.dividendSchedulerV2 = scheduler.dividendSchedulerV2; // 월간 배당 �
 exports.payDividendsManual = scheduler.payDividendsManual;   // 수동 배당 지급 (테스트/긴급용)
 
 // 🔄 마이그레이션 endpoint
-exports.recoverTeachersManual = scheduler.recoverTeachersManual; // 잘못 학생화된 선생님 복구
+// [제거됨 2026-08-20] recoverTeachersManual — systemState/teacherRecovered_v1 로 완료 확인
+//   (migratedAt 2026-05-12, recovered 6 / skipped 2). 끝난 일회성 마이그레이션을 열어 둘 이유가 없다.
 exports.initializeClassroomManual = scheduler.initializeClassroomManual; // 학급 부가 데이터 백필
-exports.backfillMusicRoomsManual = scheduler.backfillMusicRoomsManual; // musicRooms classCode 백필
+// [제거됨 2026-08-20] backfillMusicRoomsManual — 라이브 musicRooms 3건이 전부 classCode 를
+//   갖고 있어 백필 대상이 0 이다(실측). 끝난 마이그레이션.
 exports.migrateStorePriceDownManual = scheduler.migrateStorePriceDownManual; // 물가 안정 25%로 일괄
 
 // 🛒 함께구매 완료 처리 (서버사이드)
@@ -109,7 +111,9 @@ exports.seedAvatarShop = avatarShopService.seedAvatarShop;
 exports.seedAvatarShopHttp = avatarShopService.seedAvatarShopHttp;
 exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
 
-// ⚠️ 아래 스케줄 함수들은 비용 때문에 꺼 두고 cron-job.org 의 simpleScheduler 가 대신 돈다.
+// ⚠️ 아래 스케줄 함수들은 꺼 두고 **Cloud Scheduler v2**(…SchedulerV2)가 대신 돈다.
+//    (옛 주석은 "cron-job.org 의 simpleScheduler" 라고 했지만 그 경로는 죽었다 —
+//     cron-job.org 잡은 토큰 폐기로 전부 401 이고, simpleScheduler 는 2026-08-20 제거됐다.)
 //    다시 켜려면 **import 부터 되살려야 한다** — 주석 안에서만 쓰이는 상태라
 //    린트가 미사용으로 잡아 지웠다(2026-08-04):
 //      const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -126,7 +130,7 @@ exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
 //   timeoutSeconds: 540,
 // }, updateCentralStockMarketLogic);
 
-// 🔥 뉴스 생성 및 정리는 cron-job.org의 simpleScheduler에서 처리 (비용 절감)
+// 🔥 뉴스 기능은 제거됨(simpleScheduler 와 함께 2026-08-20 정리).
 // 3분마다 뉴스 생성
 // exports.createCentralMarketNews = onSchedule({
 //   region: "asia-northeast3",

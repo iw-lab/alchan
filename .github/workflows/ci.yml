@@ -57,6 +57,12 @@ jobs:
       - name: 커밋된 build/ 무결성 검사
         run: node scripts/check-build-integrity.mjs
 
+      - name: functions 린트 사각지대 검사
+        # 2026-08-17 주급 전 학급 실패의 원인은 규칙이 아니라 **검사 범위**였다 —
+        # scheduler-http.js 1행의 통짜 eslint-disable 이 4,096줄 돈 코드를 가렸다.
+        # 린트를 켜 두는 것만으론 부족하다. 통짜 해제가 되돌아오는 것을 막는다.
+        run: node scripts/check-functions-lint-coverage.mjs
+
       - name: functions 린트
         # 이 폴더의 린트는 꺼져 있던 게 아니라 **고장 나 있었다** — 상위 폴더의
         # CRA 잔재 `.eslintrc.json` 을 읽다가 파서를 못 찾고 exit 2 로 죽었다.

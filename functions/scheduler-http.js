@@ -1,4 +1,16 @@
-/* eslint-disable */
+/* eslint no-unused-vars: "warn", require-await: "off", require-atomic-updates: "off" */
+//
+// ⚠️ 2026-08-20: 이 파일 1행은 원래 통짜 `eslint-disable` 이었다 — 4,096줄 돈 코드가
+//    전부 린트 밖이었고, 그래서 `flushIfNeeded is not defined` 를 아무도 못 잡았다.
+//    그 한 줄 때문에 2026-08-17 주급이 **전 학급 실패**했다(라이브 로그로 확인).
+//    통짜 해제 대신 **필요한 것만** 끈다:
+//      · no-unused-vars         → warn. 죽은 스텁 14곳이 남아 있어 error 면 CI 가 멎는다.
+//                                 끄지는 않는다 — 잘못 붙은 정의(backfillDrawItems 안의
+//                                 flushIfNeeded)를 잡아낸 게 바로 이 규칙이다.
+//      · require-await          → off. 의도적 no-op 스텁(updateCentralStockMarketLogic 등).
+//      · require-atomic-updates → off. `let batch` 를 await 뒤 재대입하는 분할커밋 패턴을
+//                                 경합으로 오판한다(dividendService.js 도 같은 오탐).
+//    ✅ no-undef 는 켜 둔다 — 이번 사고를 잡은 규칙이다.
 /**
  * GitHub Actions에서 HTTP로 호출 가능한 스케줄러 엔드포인트입니다.
  * 기존 onSchedule 함수의 로직을 HTTP 호출 가능하게 변환
@@ -107,11 +119,63 @@ async function isVacationMode() {
 
 // [삭제됨] SECTOR_NEWS_TEMPLATES - 뉴스 기능 제거됨
 
-function verifyAuth(req) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (token !== AUTH_TOKEN) {
-    throw new Error("Unauthorized");
+// [제거됨 2026-08-20] verifyAuth — 최초 커밋부터 호출부 0건인 죽은 코드였는데,
+//   하필 `Authorization: Bearer` 스킴을 검사했다. 실제 엔드포인트 12곳은 전부
+//   `x-scheduler-auth` 헤더(+ token 쿼리)를 쓴다. 아래 requireForceAuth 옆에 나란히 두면
+//   다음 사람이 이걸 "기존 패턴"으로 알고 복사한다 — 그러면 그 엔드포인트는 항상 401 이다.
+//   이번 사고가 정확히 "잘못된 자리에 있는 코드를 아무도 못 본" 유형이라 같이 치운다.
+
+// 🔐 2차 토큰 — "돈을 한 번 더 움직이는" 조작 전용 (2026-08-20, P0-F).
+//
+//   종전엔 AUTH_TOKEN **하나**가 전국 주급 지급·회수·임의 주차 재지급을 전부 쥐고 있었다.
+//   그 토큰은 하위호환 때문에 쿼리스트링으로도 받는데, 쿼리에 담긴 시크릿은 Cloud Logging
+//   요청 URL·프록시 액세스로그·브라우저 히스토리에 그대로 남는다. 실제로 이 프로젝트의
+//   스케줄러 토큰 3종이 한 번 유출돼 전량 폐기한 전례가 있다.
+//
+//   토큰 1회 유출의 최대 피해가 "정기 작업이 한 번 더 도는 것"(멱등 가드가 막는다)과
+//   "임의 주차를 전 학급 강제 재지급"(멱등 가드를 **전부 우회한다**)은 크기가 다르다.
+//   후자만 떼어 별도 시크릿 뒤에 둔다. 정상 자동 실행(월요일 주급 등)은 force 를 쓰지
+//   않으므로 이 게이트를 지나지 않는다 — 즉 기능 손상 0.
+//
+//   ⚠️ fail-closed: SCHEDULER_ADMIN_TOKEN 이 없으면 force 계열은 **거부**된다.
+//      (GitHub Secrets 에 등록하고 deploy.yml 이 functions/.env 로 주입해야 살아난다)
+const ADMIN_TOKEN = process.env.SCHEDULER_ADMIN_TOKEN || null;
+
+/**
+ * force/백필처럼 멱등 가드를 우회하는 조작을 허용할지 판정한다.
+ * 허용되지 않으면 이 함수가 응답까지 끝내고 false 를 준다(호출부는 그대로 return).
+ *
+ * @param {object} req  요청
+ * @param {object} res  응답
+ * @param {string} what 감사 로그에 남길 조작 이름
+ * @return {boolean} 진행해도 되면 true
+ */
+function requireForceAuth(req, res, what) {
+  // ⚠️ **헤더 전용이다.** 쿼리 폴백을 두지 않는다 — 이 토큰을 만든 이유 자체가
+  //    "쿼리스트링에 담긴 시크릿이 로그에 남는다"였다. 폴백을 두면 새 토큰이 옛 토큰과
+  //    같은 통로로 새어 분리가 무의미해진다(2026-08-20 codex WARNING).
+  //    호출자가 이 워크플로들뿐이라 하위호환 부담도 없다.
+  const provided = req.headers["x-scheduler-admin"];
+  if (!ADMIN_TOKEN || provided !== ADMIN_TOKEN) {
+    logger.error(`[force거부] ${what} — 관리자 토큰 불일치(또는 미설정)`);
+    res.status(403).json({
+      success: false,
+      error:
+        "이 조작은 멱등 검사를 우회합니다. 헤더 x-scheduler-admin 에 " +
+        "SCHEDULER_ADMIN_TOKEN 을 넣어 보내세요(쿼리스트링으로는 받지 않습니다).",
+    });
+    return false;
   }
+  if (req.query.confirm !== "YES") {
+    res.status(400).json({
+      success: false,
+      error: `${what} — 되돌리기 어려운 조작입니다. confirm=YES 를 함께 보내세요.`,
+    });
+    return false;
+  }
+  // 감사 흔적. 누가 언제 무엇을 우회했는지 로그에 반드시 남긴다.
+  logger.warn(`[force허용] ${what} — 관리자 토큰 확인됨, 멱등 가드를 우회합니다.`);
+  return true;
 }
 
 // ===================================================================================
@@ -121,7 +185,7 @@ function verifyAuth(req) {
 
 // Deprecated: 더 이상 사용되지 않는 runScheduler 함수 제거
 // 이유: GitHub Actions 사용했었으나 더 이상 사용하지 않음
-// 대신 simpleScheduler를 cron-job.org에서 사용 중
+// 대신 Cloud Scheduler v2(stockPriceSchedulerV2 등)가 돈다.
 
 // 수동 테스트용 엔드포인트 (관리자용)
 exports.manualUpdateStockMarket = onCall(
@@ -145,38 +209,6 @@ exports.manualUpdateStockMarket = onCall(
   },
 );
 
-// 간단한 GET 방식 스케줄러 (cron-job.org 등 외부 cron 서비스용)
-exports.simpleScheduler = onRequest(
-  {
-    region: "asia-northeast3",
-    timeoutSeconds: 540,
-    invoker: "public",
-  },
-  async (req, res) => {
-    try {
-      // URL 파라미터로 인증 토큰 확인
-      const token = req.headers["x-scheduler-auth"] || req.query.token;
-      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-        res.status(401).json({ success: false, error: "Unauthorized" });
-        return;
-      }
-
-      // 🔥 최적화: 이 스케줄러는 더 이상 사용되지 않음 (deprecated)
-      // stockPriceScheduler가 동일한 역할을 수행하므로, 중복 실행을 막기 위해 즉시 종료
-      logger.info(
-        `[simpleScheduler] 호출됨 - Deprecated. 아무 작업도 수행하지 않고 종료합니다.`,
-      );
-      res.json({
-        success: true,
-        message: "Scheduler is deprecated and no longer in use.",
-      });
-      return;
-    } catch (error) {
-      logger.error("[simpleScheduler] 전체 오류:", error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  },
-);
 
 // 주식 가격 업데이트용 스케줄러 (15분마다 실행 - cron-job.org)
 // 🔥 최적화 v6.0: 시장 시간 체크를 먼저 해서 불필요한 Firestore 읽기 방지
@@ -196,6 +228,7 @@ exports.stockPriceScheduler = onRequest(
 
       // 🔥 force 파라미터를 먼저 확인 (모든 체크 우회)
       const forceUpdate = req.query.force === "true";
+      if (forceUpdate && !requireForceAuth(req, res, "주식 가격 강제 갱신(장중·요일 체크 우회)")) return;
 
       // 📈 주식(주가 변동)은 방학 모드와 무관하게 항상 작동한다.
       //    방학 중 중단 대상은 주급·월세·재산세·배당뿐(각 스케줄러가 개별로 isVacationMode() 체크).
@@ -533,6 +566,14 @@ exports.weeklySalary = onRequest(
 
       const forceRun = req.query.force === "true";
       const weekKeyOverride = req.query.weekKey || null; // 예: "2026-W15" (미지급 주 재지급용)
+      // 🔐 둘 다 학급·학생 단위 멱등 마커를 통째로 무시한다 → 전 학급 재지급이 된다.
+      //    파라미터 없는 평범한 재호출(이월분 복구)은 마커가 걸러 주므로 게이트를 안 탄다.
+      if (
+        (forceRun || weekKeyOverride) &&
+        !requireForceAuth(req, res, `주급 강제 재지급(force=${forceRun}, weekKey=${weekKeyOverride || "-"})`)
+      ) {
+        return;
+      }
       const result = await payWeeklySalariesLogic(forceRun, weekKeyOverride);
 
       res.json({ success: true, message: "주급 지급 완료", ...result });
@@ -575,6 +616,8 @@ exports.backfillSalaryLogs = onRequest(
         });
         return;
       }
+      // 🔐 과거 주급 기록을 소급 생성하는 일회성 마이그레이션. 정기 작업 토큰만으로는 못 돌린다.
+      if (!dryRun && !requireForceAuth(req, res, "주급 기록 소급 백필")) return;
 
       logger.info(`[backfillSalaryLogs] 시작 (dryRun=${dryRun})`);
 
@@ -718,6 +761,8 @@ exports.backfillDrawItems = onRequest(
         });
         return;
       }
+      // 🔐 학생 인벤토리 문서를 병합·삭제하는 일회성 마이그레이션.
+      if (!dryRun && !requireForceAuth(req, res, "랜덤뽑기 인벤토리 보정")) return;
 
       logger.info(`[backfillDrawItems] 시작 (dryRun=${dryRun})`);
 
@@ -786,22 +831,7 @@ exports.backfillDrawItems = onRequest(
             samples.push({ uid, itemId, docIds: docs.map((x) => x.id), totalQty });
 
           if (!dryRun) {
-            // 🔒 배치를 **분할 커밋**한다(2026-08-11 2차 검증 C7).
-        //   종전엔 학급 전체를 batch 하나에 담아 한 번에 커밋했다. 지급 학생당 3쓰기 +
-        //   관리자·설정 2쓰기라 **167명부터 Firestore 500 한도를 넘어 그 학급 전체가 실패**한다
-        //   (지금은 최대 학급이 그보다 훨씬 작지만, 학급이 커지면 조용히 절벽을 만난다).
-        //   분할이 안전한 이유는 바로 아래 학생 단위 마커(lastSalaryWeekKey) 덕분이다 —
-        //   중간까지 커밋된 뒤 죽어도 재실행이 이미 받은 학생을 건너뛴다.
-        let batch = db.batch();
-        let batchOps = 0;
-        const BATCH_SOFT_LIMIT = 450; // 500 한도의 90%
-        const flushIfNeeded = async (extraOps) => {
-          if (batchOps + extraOps > BATCH_SOFT_LIMIT) {
-            await batch.commit();
-            batch = db.batch();
-            batchOps = 0;
-          }
-        };
+            const batch = db.batch();
             const canonRef = userDoc.ref.collection("inventory").doc(itemId);
             batch.set(
               canonRef,
@@ -876,6 +906,7 @@ exports.weeklyRent = onRequest(
       //   이 엔드포인트는 죽은 코드가 아니다: index.js:49 가 export 하고
       //   .github/workflows/scheduler.yml 의 workflow_dispatch 가 지금도 호출한다.
       const forceRun = req.query.force === "true";
+      if (forceRun && !requireForceAuth(req, res, "월세 강제 재징수")) return;
       const now = new Date();
       const weekKey = computeWeekKey(now);
       const lockRef = db.collection("systemState").doc("lastWeeklyRent");
@@ -936,6 +967,7 @@ exports.weeklyPropertyTax = onRequest(
 
       // 🔒 weeklyRent 와 같은 이유로 원자적 점유. (자동 cron 과 락 문서를 공유한다.)
       const forceRun = req.query.force === "true";
+      if (forceRun && !requireForceAuth(req, res, "재산세 강제 재징수")) return;
       const now = new Date();
       const weekKey = computeWeekKey(now);
       const lockRef = db.collection("systemState").doc("lastPropertyTax");
@@ -1007,6 +1039,8 @@ exports.reverseLastWeeklySalary = onRequest(
         });
         return;
       }
+      // 🔐 학생 현금을 **되가져오는** 조작이다. 지급보다 더 강하게 막는다.
+      if (!dryRun && !requireForceAuth(req, res, `주급 회수 ${weekKey}`)) return;
 
       // 🔒 중복 실행 방지 — 다른 주기작업과 같은 락 규약. 종전엔 `.get()` 으로 보고
       //   회수를 다 한 **뒤에** 락을 걸어서, 두 번 호출되면 **두 번 회수**됐다(돈을 두 번 뺏는다).
@@ -1185,8 +1219,7 @@ exports.reverseLastWeeklySalary = onRequest(
 );
 
 // Deprecated: cleanupOldNews 함수 제거
-// 이유: simpleScheduler의 cleanupExpiredCentralNews와 중복
-// 또한 simpleScheduler가 15분마다 자동으로 만료된 뉴스를 정리함
+// 이유: 뉴스 기능 자체가 제거됐다(정리 대상이 없다).
 
 // 🔥 경제 이벤트 스케줄러 (매시간 실행 - cron-job.org)
 // 평일 설정된 시간(기본 오후 1시)에 랜덤 경제 이벤트 발생
@@ -2352,7 +2385,46 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         if (students.length === 0) continue;
 
         // 급여 계산: 기본급 200만 + 추가 직업당 50만 + 대통령 보너스
-        const batch = db.batch();
+        // 🔒 배치를 **분할 커밋**한다(2026-08-11 2차 검증 C7).
+        //   종전엔 학급 전체를 batch 하나에 담아 한 번에 커밋했다. 지급 학생당 3쓰기 +
+        //   관리자·설정 2쓰기라 **167명부터 Firestore 500 한도를 넘어 그 학급 전체가 실패**한다
+        //   (지금은 최대 학급이 그보다 훨씬 작지만, 학급이 커지면 조용히 절벽을 만난다).
+        //   분할이 안전한 이유는 바로 아래 학생 단위 마커(lastSalaryWeekKey) 덕분이다 —
+        //   중간까지 커밋된 뒤 죽어도 재실행이 이미 받은 학생을 건너뛴다.
+        //
+        //   ⚠️ 2026-08-20: 이 블록은 99265c1 에서 **backfillDrawItems 안에 잘못 붙었다.**
+        //   flushIfNeeded 를 부르는 쪽(이 함수)에는 정의가 없어 `ReferenceError` 로
+        //   **주급이 학급 전부 실패했다**(2026-08-17 실측, 9BVPKP·BG6QUC 미지급).
+        //   호출부와 정의를 같은 스코프에 둔다.
+        let batch = db.batch();
+        let batchOps = 0;
+        // 이번 batch 에 실린 학생 지급액 합계. **커밋 단위로** 관리자에게서 뺀다.
+        //   ⚠️ 2026-08-20 codex CRITICAL: 종전 설계는 학생 지급을 여러 batch 로 쪼개면서
+        //   관리자 차감(-classTotalNet)만 **마지막 batch 에 한 번** 실었다. 중간 커밋 뒤
+        //   함수가 죽으면 그 학생들은 지급·마커가 확정된 채 관리자는 차감되지 않고,
+        //   재실행은 그 학생들을 마커로 건너뛰므로 그 금액이 classTotalNet 에 다시는 안 잡힌다
+        //   → **아무도 안 낸 돈이 학생에게 남는다(화폐 무상 생성).**
+        //   주간세금(collectWeeklyTaxes)은 2026-08-12 Gemini CRITICAL 로 이미 이 규약(chunkTax)을
+        //   갖고 있었다. 주급만 빠져 있었던 건 분할 커밋이 **한 번도 실행된 적이 없었기 때문**이다
+        //   (flushIfNeeded 가 다른 함수에 붙어 ReferenceError 로 죽었다). 같은 규약으로 맞춘다.
+        let chunkNet = 0;
+        const BATCH_SOFT_LIMIT = 450; // 500 한도의 90%
+        const commitBatch = async () => {
+          if (adminDoc && chunkNet > 0) {
+            batch.update(adminDoc.ref, {
+              cash: admin.firestore.FieldValue.increment(-chunkNet),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          await batch.commit();
+          batch = db.batch();
+          batchOps = 0;
+          chunkNet = 0;
+        };
+        // extraOps 에 +1 을 더해 본다 — 위 관리자 차감이 이 batch 에 한 자리를 더 쓰기 때문이다.
+        const flushIfNeeded = async (extraOps) => {
+          if (batchOps + extraOps + 1 > BATCH_SOFT_LIMIT) await commitBatch();
+        };
         let classTotalNet = 0;
         let classPaidCount = 0;
         // 재시도로 들어와 "이미 이번 주 받은" 학생 수. 이게 있으면 지급은 0이어도
@@ -2457,6 +2529,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           });
 
           classTotalNet += netSalary;
+          chunkNet += netSalary;   // 이 batch 가 커밋될 때 관리자에게서 빠질 몫
           classPaidCount++;
         }
 
@@ -2468,17 +2541,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         // 안 그러면 그 주 인상 원장과 학급 마커가 영영 안 써진다(분할 커밋 도입의 부작용).
         if (classPaidCount === 0 && alreadyPaidCount === 0) continue;
 
-        // 관리자 차감 + 설정 갱신(2쓰기) 자리 확보
-        await flushIfNeeded(2);
-        batchOps += 2;
-
-        // 관리자 잔액 차감 (부족해도 마이너스로 허용)
-        if (adminDoc) {
-          batch.update(adminDoc.ref, {
-            cash: admin.firestore.FieldValue.increment(-classTotalNet),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+        // 설정 갱신(1쓰기) 자리 확보. 관리자 차감은 commitBatch() 가 커밋 직전에 얹는다.
+        await flushIfNeeded(1);
+        batchOps += 1;
 
         // lastPaidDate 업데이트
         const salarySettingsRef = db.collection("settings").doc(`salarySettings_${classCode}`);
@@ -2509,7 +2574,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           { merge: true },
         );
 
-        await batch.commit();
+        await commitBatch();
         totalPaidCount += classPaidCount;
         totalAmount += classTotalNet;
         logger.info(
@@ -2626,7 +2691,7 @@ async function collectWeeklyRentLogic() {
         // 🏠 자가 거주(소유주 == 거주자) 월세 면제 — 자기 집에 자기가 사는 학생은 월세 안 냄
         //    (정부 소유 owner="government"는 tenantId와 같을 수 없어 임대로 정상 징수됨)
         if (property.owner && property.owner === property.tenantId) {
-          logger.info(`[월세 징수] 자가 거주 면제: 부동산 #${property.id} (${property.ownerName || ''})`);
+          logger.info(`[월세 징수] 자가 거주 면제: 부동산 #${property.id} (${property.ownerName || ""})`);
           continue;
         }
 
@@ -3479,112 +3544,18 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
 // 해결: classes/{*}.teacherId 로 식별 → 해당 user에 isAdmin/isTeacher:true, isApproved:false 설정
 // systemState 플래그로 1회만 실행
 // ===================================================================================
-async function recoverTeacherAccountsOnce() {
-  const flagRef = db.collection("systemState").doc("teacherRecovered_v1");
-  const flagSnap = await flagRef.get();
-  if (flagSnap.exists) return;
-
-  // 거절 목록 로드 — 영구 차단된 이메일/uid는 복구 대상에서 제외
-  const rejSnap = await db.collection("Settings").doc("rejectedTeachers").get();
-  const rejectedEmails = new Set(
-    (rejSnap.exists ? rejSnap.data().emails || [] : []).map((e) =>
-      (e || "").toLowerCase(),
-    ),
-  );
-  const rejectedUids = new Set(
-    rejSnap.exists ? rejSnap.data().uids || [] : [],
-  );
-
-  let recovered = 0;
-  let skipped = 0;
-  const candidatesByUid = new Map(); // userId → { classCode, source }
-
-  // ── 방법 1: classes.teacherId로 식별 (정상 가입 케이스)
-  const classesSnap = await db.collection("classes").get();
-  for (const classDoc of classesSnap.docs) {
-    const classData = classDoc.data();
-    const teacherId = classData.teacherId;
-    if (!teacherId) continue;
-    candidatesByUid.set(teacherId, {
-      classCode: classData.code || classDoc.id,
-      source: "classes",
-    });
-  }
-
-  // ── 방법 2: 이메일이 .alchan 아닌데 isTeacher/isAdmin 둘 다 false인 user
-  //   (가입 시 룰 차단 → AuthContext 백업 학생 문서 케이스)
-  //   학생은 모두 "{id}@{classCode}.alchan" 형식 (Login.js 학생 가입 로직)
-  const usersSnap = await db.collection("users").get();
-  for (const userDoc of usersSnap.docs) {
-    const data = userDoc.data();
-    if (data.isSuperAdmin === true) continue;
-    if (data.isTeacher === true || data.isAdmin === true) continue;
-    const email = (data.email || "").trim().toLowerCase();
-    if (!email || email.endsWith(".alchan")) continue;
-    // 이미 classes 기반으로 잡혔으면 그대로 (classCode 우선)
-    if (!candidatesByUid.has(userDoc.id)) {
-      candidatesByUid.set(userDoc.id, {
-        classCode: data.classCode && data.classCode !== "미지정" ? data.classCode : null,
-        source: "email",
-      });
-    }
-  }
-
-  // ── 복구 실행
-  for (const [uid, info] of candidatesByUid.entries()) {
-    // 거절 목록(uid 기준) 제외
-    if (rejectedUids.has(uid)) { skipped++; continue; }
-
-    const userSnap = await db.collection("users").doc(uid).get();
-    if (!userSnap.exists) {
-      skipped++;
-      continue;
-    }
-    const userData = userSnap.data();
-    if (userData.isTeacher === true || userData.isAdmin === true) {
-      skipped++;
-      continue;
-    }
-    if (userData.isSuperAdmin === true) {
-      skipped++;
-      continue;
-    }
-    // 거절 목록(이메일 기준) 제외
-    const emailLower = (userData.email || "").toLowerCase();
-    if (emailLower && rejectedEmails.has(emailLower)) { skipped++; continue; }
-
-    const updates = {
-      isAdmin: true,
-      isTeacher: true,
-      isApproved: false,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-    if (info.classCode) {
-      updates.classCode = info.classCode;
-    }
-
-    await userSnap.ref.update(updates);
-    recovered++;
-    logger.info(
-      `[Migration] 선생님 복구: ${userData.name || uid} (${userData.email}) source=${info.source}`,
-    );
-  }
-
-  await flagRef.set({
-    migratedAt: admin.firestore.FieldValue.serverTimestamp(),
-    recovered,
-    skipped,
-  });
-  logger.info(
-    `[Migration] 선생님 계정 복구 완료: ${recovered}명 복구, ${skipped}명 skip`,
-  );
-}
 
 // ===================================================================================
 // 🔄 일회성 마이그레이션: 기존 학급의 CASH_PENALTY description을 정확한 텍스트로 갱신
 // 정책 변경(현금 5% → 순자산 5%)에 맞춰 학생 안내문 동기화
 // systemState 플래그로 1회만 실행
 // ===================================================================================
+// ⚠️ 왜 이건 안 지웠나(2026-08-20 code-reviewer 지적에 대한 답): 이번 정리의 기준은
+//   "죽은 함수"가 아니라 **"열려 있는 HTTP 엔드포인트"**다(P0-F = 공격면 축소).
+//   recoverTeacherAccountsOnce 가 지워진 건 그 자체가 죽어서가 아니라 유일한 호출부였던
+//   공개 엔드포인트(recoverTeachersManual)를 없앴기 때문이다. 이 함수엔 엔드포인트가 없어
+//   공격면이 0 이라 이번 범위 밖이다. (완료 표식은 systemState/cashPenaltyDescMigrated_v2,
+//   migratedAt 2026-05-07 — 지울 근거는 있으니 별건으로 정리할 것.)
 async function migrateCashPenaltyDescriptionsOnce() {
   const flagRef = db.collection("systemState").doc("cashPenaltyDescMigrated_v2");
   const flagSnap = await flagRef.get();
@@ -3654,7 +3625,8 @@ exports.hourlySchedulerV2 = onSchedule(
       }
 
       // 🔄 일회성 마이그레이션은 hourly 호출 제거 (매시간 read 비용 절감)
-      //   필요 시 scheduler.yml workflow_dispatch로 수동 실행 (recover-teachers 등)
+      //   필요 시 scheduler.yml workflow_dispatch로 수동 실행 (init-classroom 등).
+      //   ⚠️ recover-teachers·backfill-musicrooms 는 2026-08-20 제거됐다(완료된 마이그레이션).
 
       const now = new Date();
       const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -3824,6 +3796,8 @@ exports.migrateStorePriceDownManual = onRequest(
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+    // 🔐 전 학급 상점가를 일괄 변경하는 일회성 마이그레이션.
+    if (!requireForceAuth(req, res, "상점 물가안정 25% 일괄 적용")) return;
     try {
       const result = await migrateStorePriceDown();
       res.json({ success: true, ...result });
@@ -3834,54 +3808,6 @@ exports.migrateStorePriceDownManual = onRequest(
   },
 );
 
-// ===================================================================================
-// 🎵 기존 musicRooms 학급 격리 백필 — classCode 누락된 방에 teacherId 기준 학급 부여
-// 마이그 후엔 학급 격리 룰이 정상 작동
-// ===================================================================================
-async function backfillMusicRoomsClassCode() {
-  let updated = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  const roomsSnap = await db.collection("musicRooms").get();
-  for (const roomDoc of roomsSnap.docs) {
-    const data = roomDoc.data();
-    if (data.classCode) { skipped++; continue; }
-    const teacherId = data.teacherId;
-    if (!teacherId) { failed++; continue; }
-    try {
-      const teacherSnap = await db.collection("users").doc(teacherId).get();
-      if (!teacherSnap.exists) { failed++; continue; }
-      const cc = teacherSnap.data().classCode;
-      if (!cc || cc === "미지정") { failed++; continue; }
-      await roomDoc.ref.update({ classCode: cc, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-      updated++;
-    } catch (e) {
-      logger.warn(`[musicRooms backfill] ${roomDoc.id} 실패:`, e.message);
-      failed++;
-    }
-  }
-  logger.info(`[musicRooms backfill] 완료 — updated:${updated}, skipped:${skipped}, failed:${failed}`);
-  return { updated, skipped, failed };
-}
-
-exports.backfillMusicRoomsManual = onRequest(
-  { region: "asia-northeast3", cors: true },
-  async (req, res) => {
-    const token = req.headers["x-scheduler-auth"] || req.query.auth;
-    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-    try {
-      const result = await backfillMusicRoomsClassCode();
-      res.json({ success: true, ...result });
-    } catch (error) {
-      logger.error("[backfillMusicRoomsManual] 오류:", error);
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
 
 // ===================================================================================
 // 🏫 학급 부가 데이터(직업/상점/은행/급여) 백필 — idempotent
@@ -4018,6 +3944,8 @@ exports.initializeClassroomManual = onRequest(
       res.status(400).json({ error: "classCode query parameter required" });
       return;
     }
+    // 🔐 학급 기본 데이터를 덮어쓴다. 살아 있는 학급에 잘못 쏘면 설정이 초기화된다.
+    if (!requireForceAuth(req, res, `학급 기본값 초기화 ${classCode}`)) return;
     try {
       logger.info(`[initializeClassroomManual] ${classCode} 초기화 시작`);
       const result = await initClassroomDefaultsServerSide(classCode);
@@ -4030,32 +3958,6 @@ exports.initializeClassroomManual = onRequest(
   },
 );
 
-// ===================================================================================
-// 🔄 잘못 학생 문서로 생성된 선생님 수동 복구 endpoint (AUTH_TOKEN 보호)
-// hourly 자동 실행과 동일 로직, 즉시 호출용
-// ===================================================================================
-exports.recoverTeachersManual = onRequest(
-  { region: "asia-northeast3", cors: true },
-  async (req, res) => {
-    const token = req.headers["x-scheduler-auth"] || req.query.auth;
-    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-    try {
-      // 플래그 리셋도 허용 (force=1)
-      if (req.query.force === "1") {
-        await db.collection("systemState").doc("teacherRecovered_v1").delete();
-      }
-      await recoverTeacherAccountsOnce();
-      const flagSnap = await db.collection("systemState").doc("teacherRecovered_v1").get();
-      res.json({ success: true, ...(flagSnap.exists ? flagSnap.data() : {}) });
-    } catch (error) {
-      logger.error("[recoverTeachersManual] 오류:", error);
-      res.status(500).json({ error: error.message });
-    }
-  },
-);
 
 // ===================================================================================
 // 💎 배당 수동 실행 endpoint (테스트/긴급 지급용, AUTH_TOKEN 보호)
@@ -4076,6 +3978,8 @@ exports.payDividendsManual = onRequest(
         res.status(400).json({ error: "monthKey 형식은 YYYY-MM 입니다." });
         return;
       }
+      // 🔐 monthKey 지정 = 과거 달 소급 지급. 파라미터 없는 호출은 멱등 마커가 막으므로 게이트 밖.
+      if (monthKeyOverride && !requireForceAuth(req, res, `배당 소급 지급 ${monthKeyOverride}`)) return;
       logger.info(
         `[payDividendsManual] 수동 배당 지급 시작${monthKeyOverride ? ` (monthKey=${monthKeyOverride})` : ""}`,
       );

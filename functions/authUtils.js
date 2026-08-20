@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * 권한 판정 순수 함수 (firebase-admin 의존 없음 → 단위 테스트 가능).
  *
