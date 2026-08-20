@@ -75,6 +75,7 @@ import {
 } from "lucide-react";
 
 import { logger } from "../../utils/logger";
+import { fetchPendingJobIds } from "../../firebase/db/jobApplications";
 import { startBackgroundPoll } from "../../utils/backgroundPoll";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -261,10 +262,22 @@ function SelectMultipleJobsView({
  onDeleteJob,
  onEditJob,
  maxJobs = 5,
+ pendingJobIds = [],
+ approvalRequired = false,
 }) {
- const [tempSelection, setTempSelection] = useState(
- Array.isArray(currentSelectedJobIds) ? [...currentSelectedJobIds] : [],
+ // 승인 대기 중인 직업도 **체크된 상태로 시작**한다. 안 그러면 학생이 화면을 다시 열 때마다
+ // "신청한 게 사라졌다"고 느끼고 다시 체크하게 되는데, 그러면 상한 계산에 대기분이 이중으로 잡힌다.
+ const pendingSet = useMemo(
+ () => new Set(Array.isArray(pendingJobIds) ? pendingJobIds : []),
+ [pendingJobIds],
  );
+ const [tempSelection, setTempSelection] = useState(() => {
+ const base = Array.isArray(currentSelectedJobIds) ? [...currentSelectedJobIds] : [];
+ const extra = (Array.isArray(pendingJobIds) ? pendingJobIds : []).filter(
+ (id) => !base.includes(id),
+ );
+ return [...base, ...extra];
+ });
  const [newJobTitle, setNewJobTitle] = useState("");
  const [showAddForm, setShowAddForm] = useState(false);
  const [editingJobId, setEditingJobId] = useState(null);
@@ -453,6 +466,11 @@ function SelectMultipleJobsView({
  선생님 지정
  </span>
  )}
+ {pendingSet.has(job.id) && (
+ <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 align-middle">
+ 신청 중
+ </span>
+ )}
  </span>
  </label>
  );
@@ -523,6 +541,12 @@ function SelectMultipleJobsView({
  </div>
  )}
 
+ {approvalRequired && !isAdmin && (
+ <p className="mt-5 text-xs text-slate-500">
+ 새로 고른 직업은 <b>선생님이 확인한 뒤</b> 붙어요. 체크를 풀면 바로 그만둘 수 있어요.
+ </p>
+ )}
+
  <div className="flex justify-end gap-3 mt-6">
  <ActionButton variant="secondary" onClick={onCancel}>
  취소
@@ -531,7 +555,7 @@ function SelectMultipleJobsView({
  variant="primary"
  onClick={() => onConfirmSelection(tempSelection)}
  >
- 선택 완료
+ {approvalRequired && !isAdmin ? "신청하기" : "선택 완료"}
  </ActionButton>
  </div>
  </div>
@@ -597,6 +621,10 @@ function Dashboard({ adminTabMode }) {
  const [commonTasks, setCommonTasks] = useState([]);
  // 직업 개수 상한(관리자 설정, 기본 5) — 학생 직업 선택 UI 제한 기준
  const [maxJobsPerStudent, setMaxJobsPerStudent] = useState(5);
+ // 직업 신청 승인제 여부 — 바로 아래 상한 로드가 **같은 문서**를 이미 읽으므로 추가 읽기 0.
+ const [jobApprovalRequired, setJobApprovalRequired] = useState(false);
+ // 승인 대기 중인 직업 id — 직업 선택 화면을 열 때만 조회한다(대시보드 진입마다 읽지 않는다).
+ const [pendingJobIds, setPendingJobIds] = useState([]);
 
  const [editingJob, setEditingJob] = useState(null);
  const [adminNewJobTitle, setAdminNewJobTitle] = useState("");
@@ -679,6 +707,7 @@ function Dashboard({ adminTabMode }) {
  if (cached) {
  const raw = cached.maxJobsPerStudent;
  if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
+ setJobApprovalRequired(cached.jobApprovalRequired === true);
  return;
  }
  let cancelled = false;
@@ -690,6 +719,7 @@ function Dashboard({ adminTabMode }) {
  dataCache.set(cacheKey, data, CACHE_TTL.SETTINGS);
  const raw = data.maxJobsPerStudent;
  if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
+ setJobApprovalRequired(data.jobApprovalRequired === true);
  } catch (e) {
  logger.warn("[Dashboard] 직업 개수 상한 로드 실패(기본 5 사용):", e);
  }
@@ -1683,7 +1713,15 @@ function Dashboard({ adminTabMode }) {
  // Job selection handlers
  const handleSelectJobClick = useCallback(() => {
  setViewMode("selectJob");
- }, []);
+ // 승인제가 켜진 학급에서만, 그리고 **이 화면을 열 때만** 대기 신청을 읽는다.
+ //   대시보드 진입마다 읽으면 탭 왕복(이 화면은 4개 Route 로 remount 된다)마다 비용이 붙는다.
+ // 쿼리는 데이터 계층(firebase/db/jobApplications)에 있다 — 인덱스 제약도 거기 적혀 있다.
+ if (!jobApprovalRequired || !user?.uid) {
+ setPendingJobIds([]);
+ return;
+ }
+ fetchPendingJobIds(user.uid).then(setPendingJobIds);
+ }, [jobApprovalRequired, user?.uid]);
 
  const handleConfirmJobSelection = useCallback(
  async (newlySelectedJobIds) => {
@@ -1706,8 +1744,20 @@ function Dashboard({ adminTabMode }) {
  if (Array.isArray(saved)) {
  setUserDoc((prev) => ({ ...prev, selectedJobIds: saved }));
  }
+ // 승인제면 서버가 "지금 붙은 직업"과 "대기 중"을 나눠서 돌려준다.
+ const pending = res?.data?.pendingJobIds;
+ if (Array.isArray(pending)) setPendingJobIds(pending);
  setViewMode("list");
+ if (res?.data?.approvalRequired) {
+ const applied = res?.data?.appliedCount || 0;
+ toast.success(
+ applied > 0
+ ? `직업 ${applied}개를 신청했어요. 선생님이 확인한 뒤 붙습니다.`
+ : "저장했어요.",
+ );
+ } else {
  toast.success("선택한 직업이 저장되었습니다.");
+ }
  } catch (error) {
  logger.error("handleConfirmJobSelection 오류:", error);
  // 서버가 돌려준 사유(상한 초과·지정 전용 선택 등)를 그대로 보여준다.
@@ -2542,6 +2592,8 @@ function Dashboard({ adminTabMode }) {
  onCancel={handleCancelForm}
  isAdmin={isAdmin?.()}
  maxJobs={selectableJobSlots}
+ pendingJobIds={pendingJobIds}
+ approvalRequired={jobApprovalRequired}
  onAddJob={async (title) => {
  if (!db || !userDoc?.classCode) {
  toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");

@@ -1651,6 +1651,27 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🧑‍🏫 직업 신청 (jobApplications) — 학생이 신청, 교사가 허가
+    // ========================================================
+    //   직업 개수가 주급을 정하므로(세전 = 200만 + (직업수−1)×50만) 직업이 붙는 경로는
+    //   곧 돈이 늘어나는 경로다. pendingApprovals 와 **같은 규약**을 그대로 쓴다.
+    //   ⚠️ pendingApprovals 에 섞지 않고 컬렉션을 나눈 이유: 그쪽 문서는 processTaskApproval 로
+    //   흘러들어가 현금·쿠폰을 지급한다. 직업 문서가 보상 지급 코드에 닿을 가능성을 구조적으로 없앤다.
+    match /jobApplications/{applicationId} {
+      allow read: if isSignedIn() && (isSameClassFast(resource.data.classCode) || isAdminFast());
+      // 🔒 create는 CF 전용 — 클라가 직접 만들면 studentId/jobId/status 를 무검증으로 심을 수 있고,
+      //   교사가 승인하는 순간 processJobApplication 이 그 직업을 붙인다(상한·지정전용 우회).
+      //   정상 경로는 saveSelectedJobs CF(admin SDK 라 이 규칙을 우회).
+      allow create: if false;
+      // 승인/거절은 '자기 학급 교사'만. classCode 동결 — 신청서를 타 학급으로 옮기는 위조 차단.
+      //   ⚠️ status 를 클라가 바꿔도 직업이 붙지는 않는다(붙이는 건 CF 의 트랜잭션뿐).
+      //   그래도 잠근다: 열어두면 교사 화면의 대기 목록을 남이 비워버릴 수 있다.
+      allow update: if isClassAdmin(resource.data.classCode) &&
+                       request.resource.data.classCode == resource.data.classCode;
+      allow delete: if isClassAdmin(resource.data.classCode);
+    }
+
+    // ========================================================
     // 📜 법안 (laws) - 국회/조직도에서 사용
     // ========================================================
     match /laws/{lawId} {

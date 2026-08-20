@@ -18,6 +18,7 @@ import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import JobApplicationsPanel from "./JobApplicationsPanel";
 
 const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
@@ -29,6 +30,9 @@ const AdminApprovalPanel = () => {
   const [processingId, setProcessingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  // 상단 탭: 할일 승인 ↔ 직업 신청. 직업은 로직이 전혀 달라(보상 지급 없음, 직업 부여)
+  // 같은 목록에 섞지 않고 컴포넌트를 나눈다.
+  const [tab, setTab] = useState("tasks");
 
   const processTaskApproval = useMemo(
     () => httpsCallable(functions, "processTaskApproval"),
@@ -221,10 +225,34 @@ const AdminApprovalPanel = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
       {/* 헤더 - 컴팩트 */}
-      <h1 className="text-lg font-bold mb-4 px-1 text-slate-800">
-        할일 승인 관리
-      </h1>
+      <h1 className="text-lg font-bold mb-4 px-1 text-slate-800">승인 관리</h1>
 
+      {/* 상단 탭 */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {[
+          { key: "tasks", label: "할일 승인" },
+          { key: "jobs", label: "직업 신청" },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className="px-4 py-2 rounded-lg text-sm font-bold transition-all"
+            style={{
+              backgroundColor: tab === key ? "#4f46e5" : "#ffffff",
+              border: `1px solid ${tab === key ? "#4f46e5" : "#e2e8f0"}`,
+              color: tab === key ? "#ffffff" : "#64748b",
+              cursor: "pointer",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "jobs" && <JobApplicationsPanel />}
+
+      {tab === "tasks" && (
+      <>
       {/* 필터 버튼 */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {filterButtons.map(({ key, label, icon: Icon }) => (
@@ -475,6 +503,8 @@ const AdminApprovalPanel = () => {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

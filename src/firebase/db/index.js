@@ -12,6 +12,12 @@ export {
   verifyClassCode,
 } from './core';
 
+// 직업 신청 (jobApplications)
+export {
+  subscribeToJobApplications,
+  fetchPendingJobIds,
+} from './jobApplications';
+
 // User functions
 export {
   addActivityLog,
