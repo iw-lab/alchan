@@ -810,6 +810,15 @@
   opacity: 0.7;
 }
 
+/* 판사에게 보이는 안내(합의금은 선생님 전용, 2026-08-20). 버튼처럼 보이면 안 되므로
+   .settlement-button 을 재사용하지 않고 별도 텍스트 스타일로 둔다. */
+.settlement-note {
+  display: inline-block;
+  padding: 0.4rem 0.2rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
 /* --- 기타 유틸리티 --- */
 .empty-state {
   text-align: center;

@@ -37,6 +37,7 @@ import { hasJobTitle } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { getNetAssetsDetail } from "../../utils/netAssets";
 // 실시간 리스너가 변경분을 자동 반영하므로 기존 refetch 호출부는 no-op으로 호환 유지
 const noopRefetch = () => {};
 
@@ -311,7 +312,7 @@ const SettlementModal = ({
  );
 };
 
-const TrialResults = ({ complaints, users, onOpenSettlementModal }) => {
+const TrialResults = ({ complaints, users, onOpenSettlementModal, canSettle }) => {
  const getUserNameById = (userId) => {
  const user = users.find((u) => u.id === userId);
  return user?.name || user?.displayName || userId || "알 수 없음";
@@ -353,13 +354,18 @@ const TrialResults = ({ complaints, users, onOpenSettlementModal }) => {
  <button className="settlement-button paid" disabled>
  지급 완료
  </button>
- ) : (
+ ) : canSettle ? (
  <button
  className="settlement-button"
  onClick={() => onOpenSettlementModal(complaint)}
  >
  합의금 지급
  </button>
+ ) : (
+ // 판사에게는 누를 수 없는 버튼 대신 안내를 보인다(2026-08-20 교사 전용화).
+ <span className="settlement-note">
+ 배상은 선생님이 지급합니다
+ </span>
  )}
  </div>
  </div>
@@ -379,6 +385,8 @@ const BankruptcySection = ({ refetchComplaints }) => {
  const [hasPendingBankruptcyCase, setHasPendingBankruptcyCase] =
  useState(false);
  const [isLoading, setIsLoading] = useState(true);
+ const [netAssets, setNetAssets] = useState(null);
+ const [isNetLoading, setIsNetLoading] = useState(true);
 
  useEffect(() => {
  if (myUid && classCode) {
@@ -415,6 +423,49 @@ const BankruptcySection = ({ refetchComplaints }) => {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [myUid, classCode]);
 
+ // 💰 파산 자격은 **순자산**으로 판정한다(2026-08-20). 현금만 보면 대출 때문에 순자산이
+ //   음수인 학생이 신청조차 못 하고, 반대로 주식·부동산이 멀쩡한데 현금만 잠깐 음수인
+ //   학생에게 신청 버튼이 뜬다. 앱의 다른 판정(FinancialRestrictionBanner)이 이미 순자산이라
+ //   기준이 갈리던 것을 여기서 맞춘다.
+ //
+ //   ⚠️ 위 pending-case effect 와 **합치지 않는다**. 저쪽은 deps 를 [myUid, classCode] 로
+ //   일부러 좁혀, cash churn 마다 courtComplaints 3중조건 쿼리가 재실행되던 걸 고친 자리다.
+ //   순자산은 반대로 cash·coupons 변화에 반응해야 정확하므로(대출 상환 직후 등) 따로 둔다.
+ //   합치면 이미 한 번 고친 읽기 폭주가 되살아난다.
+ useEffect(() => {
+ if (!myUid) {
+ setIsNetLoading(false);
+ return undefined;
+ }
+ let cancelled = false;
+ (async () => {
+ try {
+ // FinancialRestrictionBanner 와 같은 호출 형태(명시적 객체)라 같은
+ // assetCache_{uid} 5분 캐시를 공유한다 → 보통은 추가 읽기 0.
+ // (캐시가 비어 있을 때만 파킹·상품·부동산·포트폴리오·시세 5문서를 읽는다.)
+ const { net } = await getNetAssetsDetail({
+ id: myUid,
+ cash: userDoc?.cash,
+ coupons: userDoc?.coupons,
+ name: userDoc?.name,
+ classCode,
+ });
+ if (!cancelled) setNetAssets(net);
+ } catch (error) {
+ logger.error("파산 자격 순자산 계산 실패:", error);
+ // 실패하면 자격을 열어주지 않는다. 신청은 문서 1건이라 되돌리기 쉽지만,
+ // 기준이 조용히 현금으로 되돌아가는 것보다 버튼이 안 뜨는 편이 낫다.
+ if (!cancelled) setNetAssets(null);
+ } finally {
+ if (!cancelled) setIsNetLoading(false);
+ }
+ })();
+ return () => {
+ cancelled = true;
+ };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [myUid, classCode, userDoc?.cash, userDoc?.coupons]);
+
  const handleApplyForBankruptcy = async () => {
  if (
  await confirmDialog(
@@ -434,7 +485,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  defendantId: "system",
  defendantName: "시스템",
  status: "pending",
- reason: `자산 ${(userDoc?.cash ?? 0).toLocaleString()}${getCurrencyUnit()}으로 인한 파산 신청`,
+ reason: `순자산 ${(netAssets ?? 0).toLocaleString()}${getCurrencyUnit()}으로 인한 파산 신청`,
  desiredResolution: "모든 부채를 청산하고 자산을 0으로 초기화 요청",
  submissionDate: serverTimestamp(),
  likedBy: [],
@@ -453,7 +504,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  }
  };
 
- if (isLoading) {
+ if (isLoading || isNetLoading) {
  return <p>파산 신청 정보를 불러오는 중...</p>;
  }
 
@@ -466,18 +517,22 @@ const BankruptcySection = ({ refetchComplaints }) => {
      판결이 자산을 자동으로 건드리는 경로는 없다 — 신청은 법정 문서 1건을 만들 뿐이고
      실제 초기화는 선생님이 관리자 도구로 한다. 그래서 이 복구로 돈이 저절로 움직이지는 않는다.
 
-     ⚠️ 판정 기준은 **현금**이지 순자산이 아니다(문구도 "현금"으로 맞췄다).
-     이 앱의 다른 곳(FinancialRestrictionBanner)은 순자산(`net < 0`)으로 판정하므로 기준이 다르다 —
-     대출 때문에 순자산만 음수인 학생은 신청할 수 없고, 주식·부동산이 있는데 현금만 음수인 학생은
-     신청할 수 있다. 순자산으로 바꾸는 건 파킹·주식·부동산·대출을 **비동기로 더 읽어야** 하는
-     설계 변경이라(이 앱은 읽기 비용이 병목) 별도 결정으로 남긴다. */}
+     ⚠️ 판정 기준은 **순자산**이다(2026-08-20 변경, 그 전엔 현금이었다).
+     FinancialRestrictionBanner 가 이미 순자산으로 이용을 제한하고 있어서, 현금 기준이면
+     "제한은 걸렸는데 파산 신청은 못 하는" 막다른 골목이 생겼다. 실측(라이브 45명): 이 변경으로
+     자격을 잃는 학생 7명(현금 -15,000~-111,000 인데 주식·부동산 770만~2,150만 보유 — 팔면 갚는다),
+     새로 얻는 학생 0명. 즉 지금은 자격을 좁히는 방향이고, 대출로 순자산만 음수인 학생이
+     생기면 그때 자동으로 열린다. */}
  <h3>파산 신청</h3>
- <p>현재 현금: {(userDoc?.cash ?? 0).toLocaleString()}{getCurrencyUnit()}</p>
- {(userDoc?.cash ?? 0) < 0 ? (
+ <p>
+ 현재 순자산:{" "}
+ {netAssets === null ? "계산할 수 없음" : `${netAssets.toLocaleString()}${getCurrencyUnit()}`}
+ </p>
+ {netAssets !== null && netAssets < 0 ? (
  <div>
  <p>
- 현금이 마이너스 상태입니다. 파산을 신청하여 모든 빚을 청산하고
- 새롭게 시작할 수 있습니다. (재판 필요)
+ 순자산(현금·예금·주식·부동산에서 빚을 뺀 값)이 마이너스 상태입니다.
+ 파산을 신청하여 모든 빚을 청산하고 새롭게 시작할 수 있습니다. (재판 필요)
  </p>
  {hasPendingBankruptcyCase ? (
  <p>
@@ -493,7 +548,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  )}
  </div>
  ) : (
- <p>현금이 마이너스 상태일 때 파산을 신청할 수 있습니다.</p>
+ <p>순자산이 마이너스 상태일 때 파산을 신청할 수 있습니다.</p>
  )}
  </div>
  );
@@ -994,8 +1049,17 @@ const Court = () => {
  };
 
  const handleOpenSettlementModal = (complaint) => {
- if (!hasJudgePrivileges && !hasAdminPrivileges)
- return toast.error("합의금 지급 처리 권한은 판사 또는 관리자에게 있습니다.");
+ // 🔒 2026-08-20: 이 모달은 **선생님 전용**이 됐다. 서버(processCourtSettlement)가
+ //   비교사를 거부하므로, 판사에게 버튼을 띄워두면 눌렀다가 실패 토스트만 보게 된다.
+ //   판사의 배상 집행 경로는 재판방(processTrialSettlement)이다 — 그쪽은 당사자를
+ //   재판방 문서에서만 파생해 위조가 안 된다.
+ // ⚠️ `hasAdminPrivileges` 를 쓰면 안 된다 — 이름과 달리 722행에서
+ //   `hasJudgePrivileges`(= isAdmin || isJudge)의 **별칭**이라 판사가 그대로 통과한다.
+ //   서버 게이트와 같은 기준인 `isAdmin` 을 직접 본다.
+ if (!isAdmin)
+ return toast.error(
+ "합의금 지급은 선생님이 처리합니다. 판사는 재판방에서 배상을 집행해 주세요.",
+ );
  if (complaint.status !== "resolved")
  return toast.error(
  "재판이 완료된 사건에 대해서만 합의금을 처리할 수 있습니다.",
@@ -1150,6 +1214,7 @@ const Court = () => {
  complaints={complaints}
  users={users}
  onOpenSettlementModal={handleOpenSettlementModal}
+ canSettle={isAdmin}
  />
  );
  case "trial-room":

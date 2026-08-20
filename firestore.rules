@@ -1332,9 +1332,13 @@ service cloud.firestore {
         //   클라가 되돌려(settlementPaid:false) 24h 후 이중지급하던 창 차단(batch6-f, courtComplaints 패턴).
         // 🔒 court-lock Tier-2: judgeId·complainantId·defendantId는 생성 후 불변(클라 update 경로 0 — 실측).
         //   잠가서 기존 재판방의 판사/당사자를 사후 바꿔치기(합의금 수취인·처리자 위조)하는 것 차단.
+        // 🔒 caseId 추가(2026-08-20): processTrialSettlement 이 지급 시 `room.caseId` 로 고소장을 찾아
+        //   '지급 완료' 마커를 남기게 됐다(이중지급 차단). caseId 가 위조되면 엉뚱한 사건이 지급완료로
+        //   찍혀 그 사건의 정당한 정산이 막힌다(현금 이동 자체는 방 문서 기준이라 영향 없음).
+        //   caseId 도 생성 후 바뀌는 코드 경로가 0이다 — 위 셋과 같은 근거로 잠근다.
         allow update: if isSignedIn() && isSameClass(classCode)
                          && !request.resource.data.diff(resource.data).affectedKeys()
-                              .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'judgeId', 'complainantId', 'defendantId']);
+                              .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'judgeId', 'complainantId', 'defendantId', 'caseId']);
         allow delete: if isAdmin();
 
         // 재판방 메시지 서브컬렉션

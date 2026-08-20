@@ -3586,20 +3586,38 @@ exports.processCourtSettlement = onCall(
       throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
     }
 
-    // 🔒 권한: 관리자/교사(레거시 isTeacher 포함) OR 판사
+    // 🔒 권한: **교사·관리자 전용**(2026-08-20 변경. 전에는 임명된 판사도 허용했다).
+    //
+    //   왜 판사를 뺐나 — 이 경로는 고소장의 `defendantId`·`status` 를 믿는데 그 둘이
+    //   규칙상 잠겨 있지 않다. 그리고 잠글 수도 없다:
+    //     · `defendantId` 는 고소장을 **낼 때** 아무나 지정하는 게 정상 기능이다
+    //       (누구를 고소할지 고르는 게 고소장이다). 게다가 판사·검사는 재판 중에도
+    //       피고를 정정할 수 있다(Court.js handleEditClick — canModify 분기).
+    //     · `status` 는 pending→indicted→on_trial→resolved 전이를 전부 클라가 쓴다.
+    //       잠그면 법정이 통째로 멎는다.
+    //   그래서 학생이 "부자 학생을 피고로" 정상 고소장을 낸 뒤 status 만 resolved 로
+    //   밀어넣으면, 재판이 열린 적 없는 사건이 '판결 완료'로 보인다. 그 상태에서
+    //   판사 권한이 여기 있으면 피해자→고소인 현금 이동이 성립한다.
+    //   재판방 스냅샷으로 대조하는 안도 검토했으나 불가능하다 — 방은 판결 직후
+    //   삭제되도록 설계돼 있어(TrialRoom.js deleteTrialRoomDeep, cleanupStaleTrialRooms)
+    //   합의 시점엔 이미 없다(라이브 실측: trialRooms 서브컬렉션 자체가 없고,
+    //   trialRoomId 를 든 고소장 9건은 전부 죽은 참조다).
+    //
+    //   판사가 권한을 잃는 게 아니다 — 배상 집행의 봉인된 경로가 따로 있다:
+    //   `processTrialSettlement` 은 임명된 판사를 허용하고, 당사자를 클라에서 받지 않고
+    //   **재판방 문서에서만 파생**하며 그 필드들은 규칙상 불변이다. 판사는 재판방에서
+    //   집행하면 되고, 여기(자유입력 모달)는 교사 재량 창구로 남는다.
+    //   회귀 위험 0 — 이 경로의 실사용 이력은 역대 0건이다(전 학급 고소장 129건 중
+    //   settlementPaid=true 1건은 studentCount=0 데모 학급의 시딩 산출물).
+    //
+    //   교사는 계속 재량을 갖는다. 막을 실익이 없다 — 교사는 adminCashAction 으로
+    //   어차피 직접 옮길 수 있고, 위조된 사건에 속아 지급하는 위험은 이 앱 전체의
+    //   신뢰모델(교사=최상위)과 같은 결이다. **의도적으로 미보호**임을 명시해 둔다.
     const isTeacher = hasTeacherPower(userData);
-    let authorized = isTeacher;
-    if (!authorized) {
-      const jobsSnap = await db
-        .collection("jobs")
-        .where("classCode", "==", classCode)
-        .get();
-      authorized = hasJobTitle(userData, buildJobMap(jobsSnap), "판사");
-    }
-    if (!authorized) {
+    if (!isTeacher) {
       throw new HttpsError(
         "permission-denied",
-        "합의금 지급 처리 권한은 판사 또는 관리자에게 있습니다.",
+        "합의금 지급 처리 권한은 선생님에게 있습니다. 판사는 재판방에서 배상을 집행해 주세요.",
       );
     }
 
@@ -3642,21 +3660,6 @@ exports.processCourtSettlement = onCall(
         //   (일반 고소장을 통한 같은 경로는 이 변경의 범위 밖 — 기존 미결 항목 그대로다.)
         if (cData.caseType === "bankruptcy") {
           throw new Error("파산 사건은 합의금 지급 대상이 아닙니다.");
-        }
-        // 🔒 판사(비교사)는 실제 사건 당사자(피고소인→고소인)만 처리 가능(reviewer/Gemini HIGH).
-        //    임의 제3자 간 이체(피해자→친구·자기 자신)를 사건과 결부시키는 남용을 축소.
-        //    교사/관리자는 재량 유지(파산 등 defendantId="system" 예외 사건 처리).
-        //    ⚠️ courtComplaints의 status·defendantId·complainantId 자체는 아직 클라 위조 가능
-        //    (rules 미잠금) = 가짜 사건 생성 드레인은 batch7 court-lock에서 봉인(문서화됨).
-        if (!isTeacher) {
-          if (
-            senderId !== cData.defendantId ||
-            recipientId !== cData.complainantId
-          ) {
-            throw new Error(
-              "판사는 사건의 피고소인→고소인 합의금만 처리할 수 있습니다.",
-            );
-          }
         }
 
         if (!senderDoc.exists) throw new Error("보내는 사람의 정보를 찾을 수 없습니다.");
@@ -3842,9 +3845,73 @@ exports.processTrialSettlement = onCall(
 
         const senderRef = db.collection("users").doc(senderId);
         const recipientRef = db.collection("users").doc(recipientId);
-        const [senderDoc, recipientDoc] = await transaction.getAll(senderRef, recipientRef);
+        // 🔒 이 지급을 **고소장에도** 기록한다(2026-08-20). 안 하면 이중지급된다:
+        //    이 함수는 완료 마커를 방(roomRef)에만 남기는데, 판결 직후 TrialRoom.js가
+        //    방을 통째로 지운다(deleteTrialRoomDeep) → 마커가 방과 함께 증발한다.
+        //    그러면 고소장은 `status:"resolved"` + `settlementPaid:false` 로 남고,
+        //    Court.js의 "합의금 지급" 버튼이 그 조건만 보므로 다시 떠서 한 번 더 지급된다.
+        //    멱등키도 서로 다르다(trialsettle_{roomId} vs courtsettle_{complaintId})라
+        //    원장 차원에서도 안 막혔다. 방의 caseId가 그 고소장을 가리킨다(Court.js handleStartTrial).
+        //    ⚠️ 읽기는 반드시 쓰기 이전 — 그래서 아래 getAll에 함께 싣는다.
+        const caseId =
+          typeof room.caseId === "string" &&
+          room.caseId &&
+          !room.caseId.includes("/")
+            ? room.caseId
+            : null;
+        const complaintRef = caseId
+          ? db
+              .collection("classes")
+              .doc(classCode)
+              .collection("courtComplaints")
+              .doc(caseId)
+          : null;
+        const [senderDoc, recipientDoc, complaintDoc] = await transaction.getAll(
+          ...(complaintRef
+            ? [senderRef, recipientRef, complaintRef]
+            : [senderRef, recipientRef]),
+        );
         if (!senderDoc.exists) throw new Error("피고인 정보를 찾을 수 없습니다.");
         if (!recipientDoc.exists) throw new Error("고소인 정보를 찾을 수 없습니다.");
+
+        // 🔒 재판방을 **실제 고소 사건과 대조**한다(2026-08-20).
+        //
+        //   재판방의 당사자는 생성 시 검증되지 않는다 — 규칙은 `judgeId == auth.uid` 만
+        //   강제하고 `complainantId`·`defendantId`·`caseId` 는 무검증이다(생성 '후'에만 불변).
+        //   그래서 임명된 판사가 고소장 없이 방을 하나 만들어
+        //   `{defendantId: 피해자, complainantId: 아무나}` 로 채우면 모든 가드를 통과한다:
+        //   판사 직함 ✓ · 담당 판사(자기가 만든 방) ✓ · 자기거래 아님(제3자끼리) ✓
+        //   → **사건이 존재한 적도 없는데** 남의 현금이 조용히 옮겨진다.
+        //   ("생성 후 불변"을 "위조 불가"로 잘못 읽으면 이 구멍이 안 보인다.)
+        //
+        //   대조의 앵커는 `complainantId` 다 — 고소장 생성 규칙이 `complainantId == auth.uid`
+        //   를 강제하고(firestore.rules) 그 뒤로는 차단목록에 있어 못 바꾼다. 즉 "이 학생이
+        //   실제로 이 사건을 냈다"는 사실만큼은 위조할 수 없다.
+        //
+        //   교사는 면제한다 — 레거시·예외 사건 처리 재량이 필요하고, 교사는 어차피
+        //   adminCashAction 으로 직접 옮길 수 있어 막을 실익이 없다(앱 전체 신뢰모델과 동일).
+        if (!isTeacher) {
+          if (!complaintDoc || !complaintDoc.exists) {
+            throw new Error(
+              "연결된 고소 사건이 없는 재판은 합의금을 지급할 수 없습니다.",
+            );
+          }
+          const cData = complaintDoc.data();
+          if (recipientId !== cData.complainantId) {
+            throw new Error(
+              "재판의 고소인이 실제 고소장의 고소인과 다릅니다.",
+            );
+          }
+          if (senderId !== cData.defendantId) {
+            // 재판 중 피고가 정정되면(판사·검사 권한) 방의 스냅샷이 낡는다.
+            // 낡은 쪽에서 돈을 빼면 **더 이상 피고가 아닌 학생**의 현금이 나간다 —
+            // 막고 선생님께 넘긴다.
+            throw new Error(
+              "재판의 피고인이 현재 고소장의 피고인과 다릅니다. 선생님께 문의해 주세요.",
+            );
+          }
+        }
+
         const sData = senderDoc.data();
         const rData = recipientDoc.data();
 
@@ -3883,6 +3950,16 @@ exports.processTrialSettlement = onCall(
           settlementProcessedBy: uid,
           settlementDate: admin.firestore.FieldValue.serverTimestamp(),
         });
+        // 방은 곧 삭제되므로, 살아남는 쪽(고소장)에도 같은 마커를 남긴다.
+        //   사건이 아직 on_trial 이어도 기록한다 — 돈은 이미 움직였다는 사실이 중요하다.
+        if (complaintRef && complaintDoc && complaintDoc.exists) {
+          transaction.update(complaintRef, {
+            settlementPaid: true,
+            settlementAmount: amount,
+            settlementProcessedBy: uid,
+            settlementDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
         const senderName = sData.name || sData.nickname || "피고인";
         const recipientName = rData.name || rData.nickname || "고소인";
         const logExpireAt = admin.firestore.Timestamp.fromMillis(
