@@ -55,7 +55,7 @@
 | # | 항목 | 상태 | 근거 |
 |---|---|---|---|
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
-| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 39개 · 변이 22개 전부 검출 · codex REQUEST_CHANGES 4건 반영. **아래 결정 2건 확인 필요** |
+| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 41개 · 변이 29개 전부 검출 · codex REQUEST_CHANGES 4건 반영. **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ⬜ | ⚠️ **착수 전 확인한 함정 2개** (아래) |
 | P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | ⬜ | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
@@ -151,6 +151,12 @@ rules 의 `appAchievements`/`items` 가 학생·교사를 실제 차단(전역 `
 ⚠️ 수정 직후 변이시험에서 **2건이 새어 나갔다**(`plain()` 배열 변환·`on/off` 전제조건).
 코드는 고쳤는데 그 자리를 지키는 테스트가 없었다 — 테스트를 채우고 재변이로 확인했다.
 **"고쳤다"와 "고친 것이 지켜진다"는 다르다.**
+
+**Claude 계열은 이번에도 에이전트가 멈춰서 내가 직접 적대적으로 훑었다.** 그 결과 실제로 빈 자리를
+찾았다: **경계값(off-by-one) 테스트가 하나도 없었다.** `<=` 를 `<` 로, `>` 를 `>=` 로 바꾸는 변이는
+"정상 문서 하나"만 보는 테스트를 그냥 통과한다 — 상한을 정하는 코드에서 경계 한 칸이 곧 정책이다.
+`label` 처리(60자 절단·trim·비문자열)도 비어 있었다. 이건 **표시용이라 거부하면 안 되는** 자리다 —
+화면 문구 하나로 돈이 멈추면 안 된다. 둘 다 채우고 변이 7종으로 확인했다.
 
 ### 📐 P1-2 설계안 (착수 전 FULL 검증 대상 — 아직 구현 없음)
 

@@ -119,6 +119,46 @@ describe("빠진 필드의 기본값이 관대하지 않다", () => {
     expect(v.reason).toBe("day_total_over_ceiling");
   });
 
+  it("⭐ 경계값: **딱 상한이면 통과, 1 넘으면 거부** (off-by-one)", () => {
+    // `<=` 를 `<` 로, `>` 를 `>=` 로 바꾸는 변이는 "정상 문서 하나"만 보는 테스트를 통과한다.
+    // 상한을 정하는 코드에서 경계 한 칸이 곧 정책이다.
+    for (const lvl of ["L0", "L2"]) {
+      const lim = TRUST_LIMITS[lvl];
+
+      // 1건 상한: 딱 상한 → 통과 / +1 → 거부
+      expect(normalizeAchievement(ok({ amount: lim.cashPerGrant }), lvl).ok, `${lvl} 1건 상한이 막힌다`).toBe(true);
+      expect(normalizeAchievement(ok({ amount: lim.cashPerGrant + 1 }), lvl).reason).toBe("bad_amount");
+
+      // 하루 합계: 금액 × 횟수가 딱 상한 → 통과 / +1회 → 거부
+      const times = Math.floor(lim.cashPerAppPerDay / lim.cashPerGrant);
+      const exact = normalizeAchievement(ok({ amount: lim.cashPerGrant, maxPerDay: times }), lvl);
+      expect(lim.cashPerGrant * times).toBe(lim.cashPerAppPerDay);
+      expect(exact.ok, `${lvl} 하루 합계가 딱 상한인데 막힌다`).toBe(true);
+      expect(
+        normalizeAchievement(ok({ amount: lim.cashPerGrant, maxPerDay: times + 1 }), lvl).reason,
+      ).toBe("day_total_over_ceiling");
+
+      // 쿠폰 축도 같은 경계를 갖는다.
+      expect(normalizeAchievement(ok({ rewardType: "coupon", amount: lim.couponPerGrant }), lvl).ok).toBe(true);
+      expect(
+        normalizeAchievement(ok({ rewardType: "coupon", amount: lim.couponPerGrant + 1 }), lvl).reason,
+      ).toBe("bad_amount");
+    }
+
+    // 횟수 상한도 같은 경계.
+    expect(normalizeAchievement(ok({ amount: 1, maxPerDay: HARD_CEILING.PER_DAY_COUNT }), "L2").ok).toBe(true);
+    expect(
+      normalizeAchievement(ok({ amount: 1, maxPerDay: HARD_CEILING.PER_DAY_COUNT + 1 }), "L2").reason,
+    ).toBe("bad_max_per_day");
+  });
+
+  it("긴 이름은 잘리고, 이름이 없어도 지급은 막지 않는다", () => {
+    // label 은 표시용이다. 여기서 거부하면 화면 문구 하나로 돈이 멈춘다.
+    expect(normalizeAchievement(ok({ label: "가".repeat(200) }), "L0").value.label).toHaveLength(60);
+    expect(normalizeAchievement(ok({ label: 123 }), "L0").value.label).toBe("");
+    expect(normalizeAchievement(ok({ label: "  띄어쓰기  " }), "L0").value.label).toBe("띄어쓰기");
+  });
+
   it("revocable 기본값이 true 다 (되돌릴 수 없는 지급을 기본으로 두지 않는다)", () => {
     expect(normalizeAchievement(ok(), "L0").value.revocable).toBe(true);
     expect(normalizeAchievement(ok({ revocable: false }), "L0").value.revocable).toBe(false);
