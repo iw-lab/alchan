@@ -136,6 +136,19 @@ const CASES = [
     path: "/users/ghost", method: "create", as: "ghost",
     after: { name: "침입자", classCode: "C1", cash: 0, coupons: 0, isTeacher: true, isApproved: false },
   }),
+  tc("DENY", "가입하면서 일일 카운터에 음수를 심는다 (한도 검사 무력화)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0,
+             gameRewardDaily: { comment: { date: "2026-08-21", count: -999999 } } },
+  }),
+  tc("DENY", "가입하면서 뽑기·아이템 카운터를 심는다", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0, dailyDrawCount: -50 },
+  }),
+  tc("DENY", "가입하면서 role:admin 을 넣는다 (클라 관리자 화면)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0, role: "admin" },
+  }),
   tc("ALLOW", "🐤 교사 자가가입 (classCode 미지정 — 승인 시 발급)", {
     path: "/users/ghost", method: "create", as: "ghost",
     after: { name: "새교사", classCode: "미지정", cash: 0, coupons: 0, isTeacher: true, isAdmin: true, isApproved: false },

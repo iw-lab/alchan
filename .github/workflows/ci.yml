@@ -57,6 +57,13 @@ jobs:
       - name: Firestore rules — 중복 match 경로 검사
         run: node scripts/check-rules-dup-paths.mjs firestore.rules
 
+      - name: Firestore rules — create/update 대칭 검사
+        # 이 저장소는 "update 만 잠그고 create 를 안 잠근" 실패를 **두 번** 냈다:
+        #   2026-07-15 policeReports.victimId, 2026-08-21 users.classCode
+        #   (후자는 누구나 계정을 만들어 남의 학급 학생이 될 수 있던 라이브 결함이었다).
+        # 첫 번째 때 교훈을 메모리에 적었는데도 재발했다 — 산문은 재발을 못 막는다.
+        run: node scripts/check-rules-create-update-parity.mjs firestore.rules
+
       - name: Hosting 캐시 헤더 검사
         # firebase.json 은 뒤에 오는 규칙이 이긴다. 규칙을 추가하다 앞의 것을
         # 조용히 덮는 사고가 두 번 있었다(라이브 실측으로 확인). JSON 은 주석을

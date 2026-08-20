@@ -282,6 +282,17 @@ service cloud.firestore {
                        //    학급 배정은 승인(handleApproveTeacher) 또는 CF 만 한다.
                        //    ⚠️ update 쪽은 이미 classCode 를 블록리스트로 막고 있었다 — create 만 열려 있었다.
                        request.resource.data.get('classCode', '미지정') == '미지정' &&
+                       // 🔒 2026-08-21 전수조사: **update 블록리스트에 있는데 create 에서 안 보던 필드들.**
+                       //    이 저장소는 정확히 이 실패모드를 반복했다 — policeReports 에서 "update만 잠그면
+                       //    create 로 우회된다"를 배웠는데(2026-07-15) users 에는 적용되지 않았다.
+                       //    · 일일 카운터에 **음수**를 심으면 서버의 `count >= limit` 검사가 통과한다
+                       //      (completedTasks 는 같은 이유로 이미 막혀 있었다 — 나머지가 빠져 있었다).
+                       //    · role 은 클라이언트가 `role === "admin"` 으로 관리자 화면을 여는 데 쓴다.
+                       //    정상 가입 경로 두 곳은 이 필드들을 아예 쓰지 않는다 → 회귀 0.
+                       !request.resource.data.keys().hasAny([
+                         'gameRewardDaily', 'dailyItemUse', 'dailyItemBuy',
+                         'dailyDrawCount', 'dailySpinCount', 'role'
+                       ]) &&
                        isValidString(request.resource.data.name, 50));
 
       // 수정: 본인(제한 필드), 또는 관리자
