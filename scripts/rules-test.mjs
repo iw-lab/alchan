@@ -123,6 +123,28 @@ const CASES = [
     path: "/users/stu1", method: "update", as: "stu1",
     before: S, after: { ...S, coupons: 990000 },
   }),
+  // ── A-2. 🔒 2026-08-21: **가입할 때 학급을 스스로 주장할 수 없다** ──
+  //   update 는 classCode 를 막고 있었는데 **create 가 열려 있었다.** Firebase Auth 이메일 가입은
+  //   누구에게나 열려 있고 앱의 Firebase 설정은 배포 번들에서 읽힌다 → 계정 만들고
+  //   users/{내UID} 에 classCode:"C1" 을 써 넣으면 그 학급 학생으로 취급된다(주급 대상 + 명단 열람).
+  //   정상 경로 둘(교사 자가가입·문서 자동 재생성)은 전부 "미지정" 을 쓴다.
+  tc("DENY", "낯선 계정이 남의 학급 학생으로 가입한다 (주급·명단 탈취)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "C1", cash: 0, coupons: 0 },
+  }),
+  tc("DENY", "낯선 계정이 남의 학급 교사로 가입한다", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "C1", cash: 0, coupons: 0, isTeacher: true, isApproved: false },
+  }),
+  tc("ALLOW", "🐤 교사 자가가입 (classCode 미지정 — 승인 시 발급)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "새교사", classCode: "미지정", cash: 0, coupons: 0, isTeacher: true, isAdmin: true, isApproved: false },
+  }),
+  tc("ALLOW", "🐤 문서 유실 시 자동 재생성 (AuthContext — 미지정)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "복구", classCode: "미지정", cash: 0, coupons: 0, isAdmin: false, isSuperAdmin: false },
+  }),
+
   tc("DENY", "학생이 자기 classCode 를 바꾼다 (학급 hop)", {
     path: "/users/stu1", method: "update", as: "stu1",
     before: S, after: { ...S, classCode: "C2" },
@@ -173,9 +195,14 @@ const CASES = [
     path: "/users/stu1", method: "create", as: "stu1",
     after: { name: "학생1", classCode: "C1", cash: 0, coupons: 0, completedTasks: { t: -9e15 } },
   }),
-  tc("ALLOW", "🐤 정상 회원가입 (cash:0, coupons:0)", {
+  // ⚠️ 2026-08-21 정정: 이 카나리아는 원래 `classCode: "C1"` 이었다 — 즉 **학생이 자기 문서를
+  //    남의 학급 이름표로 직접 만드는 것**을 "정상 회원가입" 으로 못 박아 두고 있었다.
+  //    실제로는 학생 계정을 createStudentAccounts CF(Admin SDK)가 만들고, 클라가 만드는 두 경로
+  //    (교사 자가가입·문서 자동 재생성)는 전부 "미지정" 을 쓴다. 테스트가 구멍을 정상으로
+  //    기록해 두면 그 구멍은 감사에서 영영 안 보인다 — 실제로 세 번의 감사가 이걸 지나쳤다.
+  tc("ALLOW", "🐤 정상 회원가입 (cash:0 · coupons:0 · 학급은 미지정)", {
     path: "/users/stu1", method: "create", as: "stu1",
-    after: { name: "학생1", classCode: "C1", cash: 0, coupons: 0 },
+    after: { name: "학생1", classCode: "미지정", cash: 0, coupons: 0 },
   }),
 
   // ── C. batch7-f — 학생 self-delete 봉인 (카운터 리셋 마스터키) ──

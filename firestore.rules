@@ -267,6 +267,21 @@ service cloud.firestore {
                        !('jobName' in request.resource.data) &&
                        !('jobTitle' in request.resource.data) &&
                        (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20)) &&
+                       // 🔒 2026-08-21 (P1-2 설계검증 중 codex CRITICAL, 재현 확인):
+                       //    **자기 문서를 만들 때 학급을 스스로 주장할 수 없다.**
+                       //    종전 create 규칙은 classCode 를 전혀 안 봤다. Firebase Auth 이메일 가입은
+                       //    누구에게나 열려 있고(교사 등록 폼), 앱의 Firebase 설정은 배포 번들에서
+                       //    누구나 읽는다 → 계정을 만들고 users/{내UID} 에 classCode:"BG6QUC" 를 써 넣으면
+                       //    **그 학급의 학생으로 취급된다**: 주급 지급 대상(studentScope.isStudentDoc 은
+                       //    classCode 유무 + 교사/슈퍼관리자 아님만 본다)이 되고, 학급 스코프 읽기로
+                       //    반 아이들 이름까지 읽힌다. 초등학생 데이터다.
+                       //    실측(2026-08-21): 클라가 user 문서를 만드는 경로는 **정확히 두 곳**이고
+                       //    둘 다 "미지정" 을 쓴다 — 교사 자가가입(Login.js:612)과 문서 유실 시
+                       //    자동 재생성(AuthContext.js:506). 학생 계정은 createStudentAccounts CF
+                       //    (Admin SDK, rules 우회)가 만든다. 그래서 이 제약의 정상 경로 회귀는 0 이다.
+                       //    학급 배정은 승인(handleApproveTeacher) 또는 CF 만 한다.
+                       //    ⚠️ update 쪽은 이미 classCode 를 블록리스트로 막고 있었다 — create 만 열려 있었다.
+                       request.resource.data.get('classCode', '미지정') == '미지정' &&
                        isValidString(request.resource.data.name, 50));
 
       // 수정: 본인(제한 필드), 또는 관리자
