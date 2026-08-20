@@ -26,6 +26,17 @@ jobs:
       - name: Install deps
         run: npm ci --legacy-peer-deps
 
+      - name: functions 의존성 설치
+        # ⚠️ **유닛테스트보다 먼저**여야 한다. 일부 테스트는 functions/ 모듈을 텍스트로 읽는 게
+        #    아니라 진짜로 import 한다(aapToken.test.js → functions/aap/policy.js →
+        #    functions/utils.js → firebase-functions). 설치가 뒤에 있으면 CI 에서만
+        #    "Cannot find module 'firebase-functions/v2/https'" 로 죽는다 — 로컬은
+        #    functions/node_modules 가 이미 있어 초록불이라, **CI 에서만 나는 실패**가 된다
+        #    (2026-08-20 실측: functions/node_modules 를 치우고 로컬에서 동일 재현).
+        #    아래 "functions 린트"가 이미 같은 설치를 하고 있었다 — 앞으로 옮긴 것뿐이라 비용은 0.
+        working-directory: functions
+        run: npm ci --no-audit --no-fund
+
       - name: Unit tests (vitest)
         # ⚠️ **제외 목록을 두지 않는다.** 2026-07-19 에 test-infra 이슈로 3개를 임시 제외했는데,
         #    그 이슈가 고쳐진 뒤에도 제외만 남아 CI 가 **575개**, 로컬(`npm test`)이 **636개**를
@@ -67,9 +78,7 @@ jobs:
         # 게다가 index.js 1행에 `/* eslint-disable */` 가 있어 10,691줄이 통째로
         # 검사 대상 밖이었다. 결제·정산 코드가 거기 있다.
         working-directory: functions
-        run: |
-          npm ci --no-audit --no-fund
-          npm run lint
+        run: npm run lint
 
       - name: z-index 최상단 검사
         # 확인 모달이 다른 UI 뒤에 숨으면 에러 없이 조용히 멈춘다 — 사용자는
