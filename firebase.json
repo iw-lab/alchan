@@ -186,9 +186,16 @@
       "source": "functions"
     }
   ],
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "storage": [
+    {
+      "bucket": "inconomysu-class-kr",
+      "rules": "storage.rules"
+    },
+    {
+      "bucket": "inconomysu-class.firebasestorage.app",
+      "rules": "storage.rules"
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099

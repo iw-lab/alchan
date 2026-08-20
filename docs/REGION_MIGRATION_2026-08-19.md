@@ -161,13 +161,32 @@ sha256** 을 낸다. 정규형은 키를 정렬하고 `referenceValue` 에서 DB
   복붙돼 있었다. 신규 2개는 공용 모듈을 쓴다(기존 3개 `verify-live-rules`·`live-audit-p0`·
   `seed-app-registry` 이관은 후속 작업). CI 용 `FIREBASE_TOKEN` 폴백도 여기 한 곳에만 있다.
 
-## 남는 것 (이번 범위 밖)
+## Storage 도 옮겼다 (2026-08-20)
 
-- **Storage 는 여전히 미국(US-CENTRAL1)** 이다. 살아 있는 업로드 경로는 **학습게시판 하나**
-  (`LearningBoard.js:527`)뿐이다 — `TrialRoom.js:440` 에도 업로드가 있지만 그 페이지는
-  `AlchanLayout` 에 라우트가 없는 죽은 코드다. 버킷도 위치 변경이 불가라
-  서울 버킷 신설 + 객체 이동 + `REACT_APP_FIREBASE_STORAGE_BUCKET` 교체가 별건으로 필요하다.
-  **객체는 2개·30MB 뿐**이라 작업 자체는 작다(2026-08-19 실측).
+DB 만 옮기면 "국내 저장"이 반만 참이라, 이어서 Cloud Storage 도 서울로 옮겼다.
+버킷도 위치 변경이 불가해 같은 방식(새 버킷 + 이동)이다.
+
+| | 전 | 후 |
+|---|---|---|
+| 버킷 | `inconomysu-class.firebasestorage.app` (US-CENTRAL1) | **`inconomysu-class-kr` (ASIA-NORTHEAST3)** |
+| 객체 | 2개 · 30MB | 같음 (md5 일치) |
+
+- 살아 있는 업로드 경로는 **학습게시판 하나**(`LearningBoard.js:527`)뿐이다 —
+  `TrialRoom.js:440` 에도 업로드가 있지만 그 페이지는 `AlchanLayout` 에 라우트가 없는 죽은 코드다.
+- 복사는 GCS **rewrite API**(서버끼리 복사)로 했다. 로컬로 내려받지 않고,
+  **`firebaseStorageDownloadTokens` 메타데이터가 함께 복사**돼 기존 다운로드 URL 의 토큰이 그대로 유효하다
+  → 저장된 URL 은 **버킷 이름만 바꾸면** 된다(실측: 새 URL 이 `206`으로 열린다).
+- Firestore 에 박혀 있던 첨부 URL은 **정확히 2건**이었다(로컬 백업 덤프를 grep 해서 무료로 찾았다).
+  `updateMask.fieldPaths=attachments` 로 그 필드만 갱신했다.
+- `firebase.json` 의 `storage` 도 배열로 바꿔 **두 버킷 모두에 규칙을 배포**한다.
+  구 버킷은 롤백 대비로 당분간 남긴다(객체도 그대로). 지울 때 이 블록도 같이 지울 것.
+- ⚠️ 무료 사용량은 **기본 버킷에만** 붙는다. 새 버킷은 과금 대상이지만 30MB 라 월 몇 원 수준이다.
+
+이로써 처리방침 §7 의 "국내 서버에 저장됩니다"가 **온전히 참**이 됐고,
+첨부파일 국외이전 고지 블록은 필요 없어져 원래의 일반 고지로 되돌렸다.
+같이 발견해 고친 것: 처리방침 본문 2곳에도 구법 조문(제22조)이 남아 있었다 → **제22조의2**.
+
+## 남는 것 (이번 범위 밖)
 - `alchan-kr`(사본)은 당분간 **롤백용으로 남긴다**. 이전이 안정됐다고 판단되면 삭제한다.
   ⚠️ **지울 때 `firebase.json` 의 `alchan-kr` 블록도 같이 지울 것.** 안 지우면 다음번
   `firebase deploy --only firestore:rules`(CI 가 매 배포마다 돈다)가 없는 DB 에 규칙을 배포하려다

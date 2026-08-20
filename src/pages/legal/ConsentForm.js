@@ -178,8 +178,7 @@ const ConsentForm = () => {
  Google Firebase 대한민국 서울 서버에 암호화 저장 (HTTPS 전송 암호화)
  <br />
  <span className="text-slate-600">
- ※ 다만 학생이 <strong>게시판에 직접 올린 첨부파일(이미지 등)</strong>은 미국 소재 저장소(Google Cloud Storage)에 저장됩니다.
- 첨부파일을 올리지 않으면 국외 이전은 발생하지 않으며, 자세한 내용은 개인정보처리방침 7항을 참고하세요.
+ ※ 학생이 게시판에 올린 첨부파일도 동일하게 국내(서울) 저장소에 보관됩니다.
  </span>
  </td>
  </tr>
