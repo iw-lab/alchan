@@ -29,7 +29,7 @@ const {
   completePeriodLock,
   releasePeriodLock,
 } = require("./periodLockStore");
-const BATCH_OP_LIMIT = 450;       // 안전 마진 (500 한도의 90%)
+const { shouldFlush } = require("./batchChunk");
 
 /**
  * 매월 1회 배당 지급 실행
@@ -154,7 +154,7 @@ async function payMonthlyDividends(monthKeyOverride = null) {
     const commitIfNeeded = async (extraOps) => {
       // 대기 세금도 이 batch 에 실릴 자리를 미리 잡아 둔다(학급당 국고 1 + 관리자 1).
       const reserved = pendingTaxByClass.size * 2;
-      if (opsInBatch + reserved + extraOps > BATCH_OP_LIMIT) {
+      if (shouldFlush(opsInBatch, extraOps, { reserved })) {
         await flushBatch();
       }
     };

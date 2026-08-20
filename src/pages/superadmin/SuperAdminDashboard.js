@@ -531,6 +531,25 @@ export default function SuperAdminDashboard() {
         });
         // 직업·상점·은행·급여 부가 데이터 초기화
         await initClassroomDefaults(newClassCode);
+      } else {
+        // 🕳️ 여기가 드리프트의 근원이었다(2026-08-20 교차검증).
+        //   이미 학급코드를 가진 교사를 승인하면 위 분기를 안 타고 지나가서,
+        //   `classes/{code}` 문서 없이 학생만 있는 학급이 생긴다(QAZWSX12 가 그 산물).
+        //   주급 자가치유가 주 1회 메우긴 하지만, 사후 복구보다 안 만드는 게 낫다.
+        const existingCode = teacher.classCode;
+        const existingSnap = await getDoc(doc(db, "classes", existingCode));
+        if (!existingSnap.exists()) {
+          await setDoc(doc(db, "classes", existingCode), {
+            code: existingCode,
+            teacherId,
+            teacherName: teacher?.name || "",
+            schoolName: teacher?.schoolName || "",
+            className: teacher?.className || "",
+            createdAt: serverTimestamp(),
+            studentCount: 0,
+            settings: { initialCash: 100000, initialCoupons: 10 },
+          });
+        }
       }
 
       await updateDoc(userRef, updates);

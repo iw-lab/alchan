@@ -65,6 +65,10 @@ const {
   DEFAULT_BANKING,
   DEFAULT_SALARIES,
 } = require("./classroomDefaults");
+// 배치 분할 "언제 커밋하나" 판정 — 세 곳(주급·재산세·배당)이 손으로 복붙하던 것을 모았다.
+//   그 복붙이 2026-08-17 주급 전 학급 실패를 만들었다(functions/batchChunk.js 주석 참고).
+const { shouldFlush } = require("./batchChunk");
+const { classCodesFromStudentSnap, studentCountsFromSnap } = require("./studentScope");
 
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
@@ -2094,49 +2098,152 @@ async function processDailySavingsDeposits() {
 // [삭제됨] 시뮬레이션 로직 - 실제 주식만 사용
 // updateMarketConditionLogic, updateCentralStockMarketLogic, autoManageStocksLogic 등 제거됨
 
+// 🏫 classes/{code} 문서의 **필드 세트 정본**.
+//   같은 문서를 만드는 곳이 셋이다(슈퍼관리자 승인 화면 · 서버 초기화 · 주급 자가치유).
+//   2026-08-20 리뷰에서 셋의 필드가 갈려 있었다 — 자가치유엔 teacherId 가 없고, 서버 둘은
+//   settings 가 빈 객체였다. 지금은 무해하다(functions/index.js 가 `settings.initialCash || 100000`
+//   으로 폴백하고 그 값이 승인 화면 하드코딩과 우연히 같다). **우연에 기대지 않는다** —
+//   교사별 설정 UI 가 생기는 순간 빈 settings 로 만들어진 학급만 조용히 다르게 굴러간다.
+//   ⚠️ 기본값을 바꾸려면 여기와 SuperAdminDashboard.js 의 승인 경로를 함께 고쳐야 한다.
+function buildClassDoc({ classCode, teacherId, teacherName, className, schoolName, studentCount, createdBy }) {
+  return {
+    code: classCode,
+    className: className || "",
+    schoolName: schoolName || "",
+    teacherId: teacherId || null,
+    teacherName: teacherName || "",
+    studentCount: studentCount || 0,
+    settings: { initialCash: 100000, initialCoupons: 10 },
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdBy,
+  };
+}
+
 // ────────────────────────────────────────────────────────
 // 공통 헬퍼: 학생 기반으로 모든 활성 classCode 추출
 // settings/classCodes에 의존하지 않으므로 신규 학급도 자동 포함
 // ────────────────────────────────────────────────────────
-// 이미 읽어둔 학생 스냅샷에서 학급코드를 파생한다(추가 읽기 0).
+// 이미 읽어둔 학생 스냅샷에서 학급코드·인원수를 파생한다(추가 읽기 0).
+// 판정식(무엇을 학생으로 보는가)은 functions/studentScope.js 가 정본 — 여기서 다시 적지 않는다.
 // 스냅샷을 가진 호출부는 이 함수를 쓰고, 없는 호출부만 아래 getAllActiveClassCodes()를 쓴다.
-function classCodesFromStudentSnap(snap) {
-  const codeSet = new Set();
-  snap.docs.forEach((d) => {
-    const data = d.data();
-    if (data.classCode && !data.isSuperAdmin && !data.isTeacher) {
-      codeSet.add(data.classCode);
-    }
-  });
-  return Array.from(codeSet);
-}
 
 // 🧭 학급 목록 '정본' 이행 준비 — classes 컬렉션 vs 실제 학생 분포의 드리프트를 기록한다.
 //   getAllActiveClassCodes() 의 users 전량 스캔을 없애려면 classes 컬렉션을 정본으로 삼아야 하는데,
 //   **오늘 그대로 갈아타면 안 된다.** 2026-08-17 실측 드리프트:
 //     · classes 에 없는데 학생이 있는 학급 1건(QAZWSX12) — 갈아탔으면 그 학급 주급이 조용히 끊긴다
 //     · classes 에만 있고 학생 0인 학급 3건(6ZVKV3·CLASS2025·XHAWPR)
-//   그래서 지금은 **정본을 바꾸지 않고 차이만 남긴다**. 주급 로그에 몇 주 연속 "일치"가 찍히면
-//   그때 교체하는 게 안전하다(교체 전 이 로그가 유일한 근거다).
+//   그래서 지금은 **정본을 바꾸지 않는다** — 차이를 남기고, 아래처럼 빠진 쪽만 메운다.
+//   주급 로그에 몇 주 연속 "일치"가 찍히면 그때 교체하는 게 안전하다(그 로그가 유일한 근거다).
+//   2026-08-20 에 드리프트 4건은 정리됐지만, 그건 손으로 지운 결과지 불변식이 아니다.
 //   비용: 주 1회, 문서 ID만 읽는 소형 쿼리.
-async function logClassRegistryDrift(activeClassCodes) {
+async function logClassRegistryDrift(activeClassCodes, studentCounts = new Map()) {
   try {
+    // 학생이 하나도 안 잡혔으면 드리프트를 논할 수 없다. 조회가 일시적으로 빈 결과를 준 것일 수도
+    // 있는데, 그대로 진행하면 **등록된 모든 학급을 "학생 0"으로 기록**한다(2026-08-20 codex).
+    // 그 로그가 유일한 cutover 근거라, 거짓 기록은 안 남기는 것보다 나쁘다.
+    if (activeClassCodes.length === 0) {
+      logger.info("[학급정본] 활성 학급 0 — 드리프트 점검을 건너뛴다(빈 조회일 수 있다)");
+      return;
+    }
     const snap = await db.collection("classes").select().get();
     const registered = new Set(snap.docs.map((d) => d.id));
     const missing = activeClassCodes.filter((c) => !registered.has(c));
     const empty = [...registered].filter((c) => !activeClassCodes.includes(c));
-    if (missing.length > 0 || empty.length > 0) {
+
+    // 🔧 관찰에서 **복구**로 (2026-08-20). 종전엔 차이를 로그로만 남겼는데, 그러면
+    //   드리프트가 영원히 안 줄어든다 — 아무도 그 로그를 보고 손으로 고치지 않는다.
+    //
+    //   ⚠️ 정정(2026-08-20 codex): 처음엔 "만드는 코드가 아예 없다"고 적었는데 **사실이 아니다.**
+    //   슈퍼관리자 승인 화면이 만든다(SuperAdminDashboard.js:521·789, 규칙 isClassAdmin 에
+    //   `|| isSuperAdmin()` 이 있어 허용된다). 진짜 문제는 **그 경로에 구멍이 있다**는 것:
+    //   `needsClassCode = !classCode || classCode === "미지정"` 이라, 이미 학급코드를 가진 교사를
+    //   승인하면 문서를 만들지 않고 지나간다. QAZWSX12(학생은 있는데 classes 문서 없음)가 그렇게 생겼다.
+    //   여기서 메우는 건 그 구멍이지, 없는 경로를 대신하는 게 아니다.
+    //
+    //   대상은 "학생이 실제로 있는데 classes 에 없는 학급"뿐이다. 반대쪽(classes 에만 있고
+    //   학생 0)은 **지우지 않는다** — 교사만 있고 아직 학생을 안 받은 신규 학급이 거기 있다.
+    if (missing.length > 0) {
+      // batch 를 쓰지 않는다(2026-08-20 codex WARNING 2건):
+      //   ① batch 는 500쓰기가 상한이라 501건이 밀리면 **매주 같은 자리에서 실패**해 영원히 안 줄어든다.
+      //   ② `set(merge:true)` 는 경합을 못 막는다 — 조회 후 커밋 전에 승인 화면이 같은 문서를
+      //      제대로 만들어 두면 여기서 빈 className·새 createdAt 으로 덮어쓴다.
+      //   `create()` 는 문서가 이미 있으면 그 한 건만 실패한다(ALREADY_EXISTS=6). 덮어쓸 수가 없고,
+      //   한 건 실패가 나머지를 막지도 않는다. 대신 실행당 상한을 둬 주급 시간을 잠식하지 않게 한다.
+      const SELF_HEAL_MAX_PER_RUN = 50;
+      const targets = missing.slice(0, SELF_HEAL_MAX_PER_RUN);
+      const healed = [];
+      const skipped = [];
+      for (const code of targets) {
+        // 교사 정보는 initClassroomDefaultsServerSide 와 같은 방식으로 채운다.
+        // missing 은 정상 상태에서 0건이라 학급당 쿼리 1회는 사실상 공짜다.
+        let teacherId = null;
+        let teacherName = "";
+        let className = "";
+        let schoolName = "";
+        try {
+          const t = await db
+            .collection("users")
+            .where("classCode", "==", code)
+            .where("isAdmin", "==", true)
+            .limit(1)
+            .get();
+          if (!t.empty) {
+            const td = t.docs[0].data();
+            teacherId = t.docs[0].id;
+            teacherName = td.name || "";
+            className = td.className || "";
+            schoolName = td.schoolName || "";
+          }
+        } catch (e) {
+          logger.warn(`[학급정본] ${code} 교사 조회 실패(문서는 그대로 생성): ${e.message}`);
+        }
+        try {
+          await db.collection("classes").doc(code).create(
+            buildClassDoc({
+              classCode: code,
+              teacherId,
+              teacherName,
+              className,
+              schoolName,
+              // ⚠️ 0 이 아니라 **실측 인원**이다. 이 경로는 "학생이 있는데 문서가 없는" 학급만
+              //    타므로 0 은 언제나 거짓이고, 그 거짓이 증감 연산에 그대로 눌러앉는다.
+              studentCount: studentCounts.get(code) || 0,
+              createdBy: "logClassRegistryDrift(self-heal)",
+            }),
+          );
+          healed.push(code);
+        } catch (e) {
+          // 6 = ALREADY_EXISTS. 그 사이 승인 화면이 제대로 만든 것이니 건드리지 않는 게 맞다.
+          if (e && e.code === 6) skipped.push(code);
+          else logger.error(`[학급정본] ${code} 등록 실패: ${e.message}`);
+        }
+      }
       logger.warn(
-        `[학급정본] 드리프트 — classes 미등록(학생 있음): ${JSON.stringify(missing)} · ` +
-        `classes 에만 있고 학생 0: ${JSON.stringify(empty)}`,
+        `[학급정본] classes 미등록(학생 있음) ${missing.length}건 중 ${healed.length}건 자동 등록` +
+          `${skipped.length > 0 ? ` · ${skipped.length}건은 그 사이 생겨 건너뜀` : ""}` +
+          `${missing.length > targets.length ? ` · ${missing.length - targets.length}건은 다음 실행으로 미룸` : ""}` +
+          `: ${JSON.stringify(healed)}`,
       );
-    } else {
+    }
+    if (empty.length > 0) {
       logger.info(
-        "[학급정본] classes 가 실제 학급과 일치 — getAllActiveClassCodes() 의 전량 스캔을 classes 조회로 교체 가능",
+        `[학급정본] classes 에만 있고 학생 0 (지우지 않음 — 신규 학급일 수 있다): ${JSON.stringify(empty)}`,
+      );
+    }
+    // ⚠️ "빠진 학급 없음"만으로 전제 충족이라고 쓰면 **거짓 양성**이다(2026-08-20 codex).
+    //   cutover 는 정본을 users 스캔 → classes 전량으로 바꾸는 일이라, classes 쪽에만 있는
+    //   유령 학급(empty)이 남아 있으면 두 목록이 애초에 같지 않다. 양방향이 0일 때만 충족이다.
+    if (missing.length === 0 && empty.length === 0) {
+      logger.info(
+        "[학급정본] 양방향 일치(미등록 0 · 학생0 학급 0) — 정본 교체(P0-E)의 전제 충족",
+      );
+    } else if (missing.length === 0) {
+      logger.info(
+        `[학급정본] 미등록은 0 이지만 학생 0 학급 ${empty.length}건 남음 — 아직 전제 미충족`,
       );
     }
   } catch (e) {
-    // 점검 실패가 주급을 막아선 안 된다(부가 관측일 뿐).
+    // 점검·복구 실패가 주급을 막아선 안 된다(부가 작업일 뿐).
     logger.warn("[학급정본] 드리프트 점검 실패(주급에는 영향 없음):", e?.message);
   }
 }
@@ -2270,7 +2377,7 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     const allStudentsSnap = await db.collection("users").where("isAdmin", "==", false).get();
     const classCodes = classCodesFromStudentSnap(allStudentsSnap);
     logger.info(`[주급 지급] 대상 학급: ${JSON.stringify(classCodes)}`);
-    await logClassRegistryDrift(classCodes);
+    await logClassRegistryDrift(classCodes, studentCountsFromSnap(allStudentsSnap));
     if (classCodes.length === 0) {
       logger.warn("[주급 지급] 활성 학급 없음");
       // 지급한 게 없으니 완료로 표시하지 않는다. 조회가 일시적으로 빈 결과를 준 것일 수도 있고,
@@ -2408,7 +2515,6 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
         //   갖고 있었다. 주급만 빠져 있었던 건 분할 커밋이 **한 번도 실행된 적이 없었기 때문**이다
         //   (flushIfNeeded 가 다른 함수에 붙어 ReferenceError 로 죽었다). 같은 규약으로 맞춘다.
         let chunkNet = 0;
-        const BATCH_SOFT_LIMIT = 450; // 500 한도의 90%
         const commitBatch = async () => {
           if (adminDoc && chunkNet > 0) {
             batch.update(adminDoc.ref, {
@@ -2421,9 +2527,9 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           batchOps = 0;
           chunkNet = 0;
         };
-        // extraOps 에 +1 을 더해 본다 — 위 관리자 차감이 이 batch 에 한 자리를 더 쓰기 때문이다.
+        // reserved:1 = 위 관리자 차감. 커밋 직전에 반드시 실리므로 자리를 미리 잡아 둔다.
         const flushIfNeeded = async (extraOps) => {
-          if (batchOps + extraOps + 1 > BATCH_SOFT_LIMIT) await commitBatch();
+          if (shouldFlush(batchOps, extraOps, { reserved: 1 })) await commitBatch();
         };
         let classTotalNet = 0;
         let classPaidCount = 0;
@@ -3108,7 +3214,6 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
       let chunkTax = 0;
       let chunkNetAssetTax = 0;
       let chunkPropertyTax = 0;
-      const TAX_BATCH_SOFT_LIMIT = 450;
       const treasuryRef = db.collection("nationalTreasuries").doc(classCode);
       const creditTreasury = () => {
         if (chunkTax <= 0) return;
@@ -3134,8 +3239,8 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
         chunkPropertyTax = 0;
       };
       const flushTaxIfNeeded = async (extraOps) => {
-        // +2 = 국고 입금 자리(관리자 cash + 국고 통계) — 걷은 게 있으면 반드시 함께 나간다
-        if (batchOps + extraOps + 2 > TAX_BATCH_SOFT_LIMIT) {
+        // reserved:2 = 국고 입금 자리(관리자 cash + 국고 통계) — 걷은 게 있으면 반드시 함께 나간다
+        if (shouldFlush(batchOps, extraOps, { reserved: 2 })) {
           creditTreasury();
           await batch.commit();
           batch = db.batch();
@@ -3817,7 +3922,7 @@ async function initClassroomDefaultsServerSide(classCode) {
   if (!classCode) return { created: false, error: "classCode missing" };
 
   let createdAny = false;
-  const created = { jobs: 0, storeItems: 0, banking: false, classSettings: false, salary: false, classCodes: false };
+  const created = { jobs: 0, storeItems: 0, banking: false, classSettings: false, salary: false, classCodes: false, classDoc: false };
 
   // 1) jobs
   const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).limit(1).get();
@@ -3922,6 +4027,72 @@ async function initClassroomDefaultsServerSide(classCode) {
     }
   } catch (e) {
     logger.warn("[initClassroom] classCodes 추가 실패 (skip):", e.message);
+  }
+
+  // 6) classes/{classCode} — **학급 목록의 정본이 될 문서**.
+  //
+  //   만드는 경로는 원래 있다 — 슈퍼관리자 승인 화면(SuperAdminDashboard.js:521·789).
+  //   ⚠️ 다만 그 경로엔 구멍이 있다: `needsClassCode = !classCode || classCode === "미지정"` 이라
+  //   **이미 학급코드를 가진 교사**를 승인하면 문서를 만들지 않고 지나간다(QAZWSX12 가 그 산물).
+  //   또 초기화 경로(여기·클라 initClassroomDefaults)는 jobs·storeItems·banking·salary 만 만들었다.
+  //
+  //   이게 왜 중요한가: P0-E(학급 목록 정본을 users 전량 스캔 → classes 조회로 교체)의
+  //   전제가 "classes 가 실제 학급과 일치한다"인데, **구멍이 있으면 그 일치는
+  //   불변식이 아니라 우연**이다. 구멍으로 빠진 학급은 classes 에 없고,
+  //   정본을 갈아탄 뒤라면 그 학급 학생들의 주급·세금이 **조용히** 끊긴다.
+  //
+  //   ⚠️ 이 블록의 도달 범위를 오해하지 말 것: 여기는 **수동 엔드포인트
+  //   `initializeClassroomManual` 에서만** 불린다. 승인 흐름의 구멍은 클라이언트에서 막았고
+  //   (SuperAdminDashboard.js `needsClassCode === false` 분기), 그래도 빠지는 건
+  //   logClassRegistryDrift 의 주간 자가치유가 메운다. 여기는 그 둘의 뒤를 받치는 3중 안전망이다.
+  //   cutover 는 세 경로로 만들어진 학급이 쌓이고
+  //   logClassRegistryDrift 가 몇 주 연속 **양방향** 일치를 찍은 뒤에 한다.
+  try {
+    const classRef = db.collection("classes").doc(classCode);
+    const classSnap = await classRef.get();
+    if (!classSnap.exists) {
+      // 아래는 `create()` 다 — `get() → set()` 사이에 승인 화면이 제대로 만들어 두면
+      // 빈 className 과 새 createdAt 으로 그걸 덮어쓴다(2026-08-20 codex WARNING).
+      // 교사 문서에서 이름을 끌어온다(없어도 학급 생성은 막지 않는다).
+      let teacherId = null;
+      let teacherName = "";
+      try {
+        const t = await db
+          .collection("users")
+          .where("classCode", "==", classCode)
+          .where("isAdmin", "==", true)
+          .limit(1)
+          .get();
+        if (!t.empty) {
+          teacherId = t.docs[0].id;
+          teacherName = t.docs[0].data().name || "";
+        }
+      } catch (e) {
+        logger.warn("[initClassroom] 교사 조회 실패(학급 문서는 그대로 생성):", e.message);
+      }
+      try {
+        await classRef.create(
+          buildClassDoc({
+            classCode,
+            teacherId,
+            teacherName,
+            createdBy: "initClassroomDefaultsServerSide",
+          }),
+        );
+        created.classDoc = true;
+        createdAny = true;
+        logger.info(`[initClassroom] ${classCode}: classes 문서 생성(정본 등록)`);
+      } catch (e) {
+        if (e && e.code === 6) {
+          logger.info(`[initClassroom] ${classCode}: 그 사이 생성됨 — 건드리지 않음`);
+        } else {
+          throw e;
+        }
+      }
+    }
+  } catch (e) {
+    // 학급 문서 생성 실패가 나머지 초기화를 되돌리게 하지 않는다 — 드리프트 로그가 잡아 준다.
+    logger.error("[initClassroom] classes 문서 생성 실패:", e.message);
   }
 
   return { created: createdAny, detail: created };

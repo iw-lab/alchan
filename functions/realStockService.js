@@ -1,6 +1,6 @@
-/* eslint-disable quotes, no-unused-vars, no-promise-executor-return */
-// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). 남은 347건은 전부 따옴표 스타일이라
-//    돈 코드를 스타일 때문에 건드리지 않는다. **no-undef 는 켜 둔다.**
+/* eslint no-unused-vars: "warn" */
+// ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). 따옴표 347건은 --fix 로 기계가 고쳤고
+//    (사람이 손대지 않았다), no-promise-executor-return 1건은 실제 코드로 고쳤다.
 /**
  * 실제 주식 데이터를 가져오는 서비스
  * Yahoo Finance 비공식 API 사용 (무료)
@@ -15,82 +15,82 @@ const { db, admin, logger } = require("./utils");
 // 실제 주식 심볼 매핑 (한국 주식은 .KS 또는 .KQ 접미사)
 const REAL_STOCK_SYMBOLS = {
   // 한국 주식 (KOSPI: .KS, KOSDAQ: .KQ)
-  '삼성전자': '005930.KS',
-  '삼성전자우': '005935.KS',
-  'SK하이닉스': '000660.KS',
-  'LG에너지솔루션': '373220.KS',
-  '삼성바이오로직스': '207940.KS',
-  '현대차': '005380.KS',
-  '기아': '000270.KS',
-  'NAVER': '035420.KS',
-  '네이버': '035420.KS',
-  '카카오': '035720.KS',
-  'LG화학': '051910.KS',
-  'POSCO홀딩스': '005490.KS',
-  '삼성SDI': '006400.KS',
-  '셀트리온': '068270.KS',
-  '현대모비스': '012330.KS',
-  'KB금융': '105560.KS',
-  '신한지주': '055550.KS',
-  '하나금융지주': '086790.KS',
-  'SK이노베이션': '096770.KS',
-  'SK': '034730.KS',
-  'LG전자': '066570.KS',
-  '카카오뱅크': '323410.KS',
-  '크래프톤': '259960.KS',
-  '두산에너빌리티': '034020.KS',
-  'HMM': '011200.KS',
-  'KT': '030200.KS',
-  '한화에어로스페이스': '012450.KS',
+  "삼성전자": "005930.KS",
+  "삼성전자우": "005935.KS",
+  "SK하이닉스": "000660.KS",
+  "LG에너지솔루션": "373220.KS",
+  "삼성바이오로직스": "207940.KS",
+  "현대차": "005380.KS",
+  "기아": "000270.KS",
+  "NAVER": "035420.KS",
+  "네이버": "035420.KS",
+  "카카오": "035720.KS",
+  "LG화학": "051910.KS",
+  "POSCO홀딩스": "005490.KS",
+  "삼성SDI": "006400.KS",
+  "셀트리온": "068270.KS",
+  "현대모비스": "012330.KS",
+  "KB금융": "105560.KS",
+  "신한지주": "055550.KS",
+  "하나금융지주": "086790.KS",
+  "SK이노베이션": "096770.KS",
+  "SK": "034730.KS",
+  "LG전자": "066570.KS",
+  "카카오뱅크": "323410.KS",
+  "크래프톤": "259960.KS",
+  "두산에너빌리티": "034020.KS",
+  "HMM": "011200.KS",
+  "KT": "030200.KS",
+  "한화에어로스페이스": "012450.KS",
 
   // 미국 주식
-  'Apple': 'AAPL',
-  '애플': 'AAPL',
-  'Microsoft': 'MSFT',
-  '마이크로소프트': 'MSFT',
-  'Google': 'GOOGL',
-  '구글': 'GOOGL',
-  'Amazon': 'AMZN',
-  '아마존': 'AMZN',
-  'Tesla': 'TSLA',
-  '테슬라': 'TSLA',
-  'NVIDIA': 'NVDA',
-  '엔비디아': 'NVDA',
-  'Meta': 'META',
-  '메타': 'META',
-  'Netflix': 'NFLX',
-  '넷플릭스': 'NFLX',
+  "Apple": "AAPL",
+  "애플": "AAPL",
+  "Microsoft": "MSFT",
+  "마이크로소프트": "MSFT",
+  "Google": "GOOGL",
+  "구글": "GOOGL",
+  "Amazon": "AMZN",
+  "아마존": "AMZN",
+  "Tesla": "TSLA",
+  "테슬라": "TSLA",
+  "NVIDIA": "NVDA",
+  "엔비디아": "NVDA",
+  "Meta": "META",
+  "메타": "META",
+  "Netflix": "NFLX",
+  "넷플릭스": "NFLX",
 
   // ETF (한국)
-  'KODEX 200': '069500.KS',
-  'KODEX 코스닥150': '229200.KS',
-  'KODEX 레버리지': '122630.KS',
-  'KODEX 인버스': '114800.KS',
-  'TIGER 200': '102110.KS',
-  'TIGER 미국S&P500': '360750.KS',
-  'TIGER 미국나스닥100': '133690.KS',
-  'KOSEF 국고채10년': '148070.KS',
-  'KODEX 미국채10년선물': '308620.KS',
+  "KODEX 200": "069500.KS",
+  "KODEX 코스닥150": "229200.KS",
+  "KODEX 레버리지": "122630.KS",
+  "KODEX 인버스": "114800.KS",
+  "TIGER 200": "102110.KS",
+  "TIGER 미국S&P500": "360750.KS",
+  "TIGER 미국나스닥100": "133690.KS",
+  "KOSEF 국고채10년": "148070.KS",
+  "KODEX 미국채10년선물": "308620.KS",
 
   // ETF (미국)
-  'SPY': 'SPY',           // S&P 500
-  'QQQ': 'QQQ',           // 나스닥 100
-  'DIA': 'DIA',           // 다우존스
-  'IWM': 'IWM',           // 러셀 2000
-  'VTI': 'VTI',           // 미국 전체 주식
+  "SPY": "SPY",           // S&P 500
+  "QQQ": "QQQ",           // 나스닥 100
+  "DIA": "DIA",           // 다우존스
+  "IWM": "IWM",           // 러셀 2000
+  "VTI": "VTI",           // 미국 전체 주식
 
   // 채권 ETF (미국)
-  'TLT': 'TLT',           // 미국 장기 국채 (20년+)
-  'IEF': 'IEF',           // 미국 중기 국채 (7-10년)
-  'SHY': 'SHY',           // 미국 단기 국채 (1-3년)
-  'LQD': 'LQD',           // 미국 투자등급 회사채
-  'HYG': 'HYG',           // 미국 하이일드 채권
-  'BND': 'BND',           // 미국 전체 채권
+  "TLT": "TLT",           // 미국 장기 국채 (20년+)
+  "IEF": "IEF",           // 미국 중기 국채 (7-10년)
+  "SHY": "SHY",           // 미국 단기 국채 (1-3년)
+  "LQD": "LQD",           // 미국 투자등급 회사채
+  "HYG": "HYG",           // 미국 하이일드 채권
+  "BND": "BND",           // 미국 전체 채권
 
   // 원자재 ETF
-  'GLD': 'GLD',           // 금
-  'SLV': 'SLV',           // 은
-  'USO': 'USO',           // 원유
+  "GLD": "GLD",           // 금
+  "SLV": "SLV",           // 은
+  "USO": "USO",           // 원유
 };
 
 // 종목별 연간 배당률(%) 매핑 — 2026 기준 실측 근사값
@@ -98,26 +98,26 @@ const REAL_STOCK_SYMBOLS = {
 // 관리자가 CentralStocks 문서에서 dividendYieldAnnual 직접 수정 가능 (override)
 const STOCK_DIVIDEND_YIELDS_BY_SYMBOL = {
   // 한국 대형주
-  '005930.KS': 2.5, '005935.KS': 3.0, '000660.KS': 1.5, '373220.KS': 0.0,
-  '207940.KS': 0.0, '005380.KS': 5.0, '000270.KS': 5.5, '035420.KS': 0.5,
-  '035720.KS': 0.0, '051910.KS': 1.5, '005490.KS': 4.0, '006400.KS': 1.0,
-  '068270.KS': 0.0, '012330.KS': 4.5, '105560.KS': 6.0, '055550.KS': 5.0,
-  '086790.KS': 6.5, '096770.KS': 3.5, '034730.KS': 4.0, '066570.KS': 1.0,
-  '323410.KS': 1.5, '259960.KS': 0.0, '034020.KS': 0.5, '011200.KS': 8.0,
-  '030200.KS': 6.0, '012450.KS': 1.5,
+  "005930.KS": 2.5, "005935.KS": 3.0, "000660.KS": 1.5, "373220.KS": 0.0,
+  "207940.KS": 0.0, "005380.KS": 5.0, "000270.KS": 5.5, "035420.KS": 0.5,
+  "035720.KS": 0.0, "051910.KS": 1.5, "005490.KS": 4.0, "006400.KS": 1.0,
+  "068270.KS": 0.0, "012330.KS": 4.5, "105560.KS": 6.0, "055550.KS": 5.0,
+  "086790.KS": 6.5, "096770.KS": 3.5, "034730.KS": 4.0, "066570.KS": 1.0,
+  "323410.KS": 1.5, "259960.KS": 0.0, "034020.KS": 0.5, "011200.KS": 8.0,
+  "030200.KS": 6.0, "012450.KS": 1.5,
   // 미국 대형주
-  'AAPL': 0.5, 'MSFT': 0.7, 'GOOGL': 0.0, 'AMZN': 0.0, 'TSLA': 0.0,
-  'NVDA': 0.05, 'META': 0.4, 'NFLX': 0.0,
+  "AAPL": 0.5, "MSFT": 0.7, "GOOGL": 0.0, "AMZN": 0.0, "TSLA": 0.0,
+  "NVDA": 0.05, "META": 0.4, "NFLX": 0.0,
   // 한국 ETF
-  '069500.KS': 1.8, '229200.KS': 0.5, '122630.KS': 0.5, '114800.KS': 0.5,
-  '102110.KS': 1.8, '360750.KS': 1.0, '133690.KS': 0.5,
-  '148070.KS': 3.0, '308620.KS': 3.5,
+  "069500.KS": 1.8, "229200.KS": 0.5, "122630.KS": 0.5, "114800.KS": 0.5,
+  "102110.KS": 1.8, "360750.KS": 1.0, "133690.KS": 0.5,
+  "148070.KS": 3.0, "308620.KS": 3.5,
   // 미국 ETF
-  'SPY': 1.3, 'QQQ': 0.6, 'DIA': 1.7, 'IWM': 1.3, 'VTI': 1.4,
+  "SPY": 1.3, "QQQ": 0.6, "DIA": 1.7, "IWM": 1.3, "VTI": 1.4,
   // 채권 ETF (이자수익을 배당으로 처리)
-  'TLT': 4.0, 'IEF': 3.5, 'SHY': 3.0, 'LQD': 4.5, 'HYG': 7.0, 'BND': 3.5,
+  "TLT": 4.0, "IEF": 3.5, "SHY": 3.0, "LQD": 4.5, "HYG": 7.0, "BND": 3.5,
   // 원자재 ETF (배당 없음)
-  'GLD': 0.0, 'SLV': 0.0, 'USO': 0.0,
+  "GLD": 0.0, "SLV": 0.0, "USO": 0.0,
 };
 
 // 기본 환율 (실시간 환율로 업데이트됨, Firestore에서 로드 후 덮어씌워짐)
@@ -131,11 +131,11 @@ async function fetchExchangeRate() {
   try {
     // Frankfurter API는 KRW를 직접 지원하지 않으므로,
     // ExchangeRate-API 무료 티어 사용 (월 1,500회)
-    const url = 'https://api.exchangerate-api.com/v4/latest/USD';
+    const url = "https://api.exchangerate-api.com/v4/latest/USD";
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0'
+        "User-Agent": "Mozilla/5.0"
       }
     });
 
@@ -155,7 +155,7 @@ async function fetchExchangeRate() {
 
     return USD_TO_KRW;
   } catch (error) {
-    logger.error('[ExchangeRate] 환율 조회 오류:', error.message);
+    logger.error("[ExchangeRate] 환율 조회 오류:", error.message);
     return USD_TO_KRW; // 기존 환율 반환
   }
 }
@@ -173,14 +173,14 @@ async function updateExchangeRate() {
     await exchangeRateRef.set({
       USD_KRW: newRate,
       lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-      source: 'ExchangeRate-API'
+      source: "ExchangeRate-API"
     }, { merge: true });
 
     logger.info(`[ExchangeRate] Firestore 환율 업데이트 완료: ${newRate}원`);
 
     return { rate: newRate, updated: true };
   } catch (error) {
-    logger.error('[ExchangeRate] 환율 업데이트 오류:', error);
+    logger.error("[ExchangeRate] 환율 업데이트 오류:", error);
     return { rate: USD_TO_KRW, updated: false };
   }
 }
@@ -201,7 +201,7 @@ async function loadExchangeRate() {
 
     return USD_TO_KRW;
   } catch (error) {
-    logger.warn('[ExchangeRate] 환율 로드 실패, 기본값 사용:', USD_TO_KRW);
+    logger.warn("[ExchangeRate] 환율 로드 실패, 기본값 사용:", USD_TO_KRW);
     return USD_TO_KRW;
   }
 }
@@ -233,7 +233,7 @@ function calculateMarketState(meta) {
   // currentTradingPeriod를 사용해 직접 계산
   const tradingPeriod = meta.currentTradingPeriod;
   if (!tradingPeriod) {
-    return 'CLOSED';
+    return "CLOSED";
   }
 
   const now = Math.floor(Date.now() / 1000); // 현재 시간 (Unix timestamp)
@@ -247,21 +247,21 @@ function calculateMarketState(meta) {
 
   // 장중 (Regular Market Hours)
   if (now >= regularStart && now < regularEnd) {
-    return 'REGULAR';
+    return "REGULAR";
   }
 
   // 장전 (Pre-Market)
   if (now >= preStart && now < preEnd) {
-    return 'PRE';
+    return "PRE";
   }
 
   // 장후 (Post-Market/After Hours)
   if (now >= postStart && now < postEnd) {
-    return 'POST';
+    return "POST";
   }
 
   // 그 외는 장마감
-  return 'CLOSED';
+  return "CLOSED";
 }
 
 async function fetchYahooFinancePrice(symbol) {
@@ -270,7 +270,7 @@ async function fetchYahooFinancePrice(symbol) {
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
       }
     });
 
@@ -335,7 +335,7 @@ async function fetchMultipleStockPrices(symbols) {
 
     // Rate limiting 방지를 위한 딜레이 (1.5초)
     if (i < symbols.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => { setTimeout(resolve, 1500); });
     }
   }
 
@@ -400,15 +400,15 @@ async function updateRealStockPrices() {
       if (data.isRealStock !== true) return;
       const symbol = data.realStockSymbol || REAL_STOCK_SYMBOLS[data.name];
       if (symbol) {
-        const isUSD = !symbol.includes('.KS') && !symbol.includes('.KQ');
+        const isUSD = !symbol.includes(".KS") && !symbol.includes(".KQ");
         // 미국주식은 아침 시간대에만 fetch
         if (isUSD && !isUSStockFetchTime) {
           usSkipped++;
           return;
         }
         // ETF/채권은 장중 1시간에 1번만 업데이트
-        const pType = data.productType || 'stock';
-        if (pType === 'etf' || pType === 'bond') {
+        const pType = data.productType || "stock";
+        if (pType === "etf" || pType === "bond") {
           const lastUpd = data.lastUpdated?.toDate?.() || data.lastUpdated;
           if (lastUpd) {
             const msSinceUpdate = now.getTime() - new Date(lastUpd).getTime();
@@ -503,7 +503,7 @@ async function updateRealStockPrices() {
         newPrice === stock.currentPrice &&
         previousCloseKRW === (stock.prevPreviousClose || 0) &&
         (data.changePercent || 0) === (stock.prevChangePercent || 0) &&
-        (data.marketState || 'CLOSED') === (stock.prevMarketState || 'CLOSED');
+        (data.marketState || "CLOSED") === (stock.prevMarketState || "CLOSED");
       if (nothingChanged) {
         skipped++;
         continue;
@@ -519,7 +519,7 @@ async function updateRealStockPrices() {
         previousClose: previousCloseKRW,
         // 변동률은 실물 변동률 그대로 사용 (전일 종가 대비)
         changePercent: data.changePercent || 0,
-        marketState: data.marketState || 'CLOSED',
+        marketState: data.marketState || "CLOSED",
         volatilityMultiplier: 1,
         realStockData: {
           lastPrice: data.price || 0,
@@ -527,8 +527,8 @@ async function updateRealStockPrices() {
           previousClose: data.previousClose || 0,
           change: data.change || 0,
           changePercent: data.changePercent || 0, // 실물 기준 변동률
-          currency: data.currency || 'KRW',
-          marketState: data.marketState || 'CLOSED',
+          currency: data.currency || "KRW",
+          marketState: data.marketState || "CLOSED",
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         },
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
@@ -709,7 +709,7 @@ async function createRealStocks(stockConfigs) {
     }
 
     // USD -> KRW 변환
-    const isUSD = !symbol.includes('.KS') && !symbol.includes('.KQ');
+    const isUSD = !symbol.includes(".KS") && !symbol.includes(".KQ");
     let price = priceData.price;
     if (isUSD) {
       price = Math.round(priceData.price * USD_TO_KRW);
@@ -735,8 +735,8 @@ async function createRealStocks(stockConfigs) {
       isManual: false,
       isRealStock: true, // 실제 주식 플래그
       realStockSymbol: symbol,
-      sector: config.sector || 'TECH',
-      productType: config.productType || 'stock',
+      sector: config.sector || "TECH",
+      productType: config.productType || "stock",
       volatility: 0.02,
       holderCount: 0,
       tradingVolume: 1000,
@@ -746,14 +746,14 @@ async function createRealStocks(stockConfigs) {
       recentSellVolume: 0,
       previousClose: previousCloseKRW, // KRW 환산 (price와 같은 단위)
       changePercent: priceData.changePercent || 0,
-      marketState: priceData.marketState || 'CLOSED',
+      marketState: priceData.marketState || "CLOSED",
       realStockData: {
         lastPrice: priceData.price || 0,
         previousClose: priceData.previousClose || 0,
         change: priceData.change || 0,
         changePercent: priceData.changePercent || 0,
-        currency: priceData.currency || 'KRW',
-        marketState: priceData.marketState || 'CLOSED',
+        currency: priceData.currency || "KRW",
+        marketState: priceData.marketState || "CLOSED",
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -774,27 +774,27 @@ async function createRealStocks(stockConfigs) {
 // 기본 실제 주식 설정 (주식 14개 + ETF 2개 + 채권 2개)
 const DEFAULT_REAL_STOCKS = [
   // 한국 주식 (8개)
-  { name: '삼성전자', sector: 'TECH', productType: 'stock' },
-  { name: 'SK하이닉스', sector: 'TECH', productType: 'stock' },
-  { name: 'NAVER', sector: 'TECH', productType: 'stock' },
-  { name: '카카오', sector: 'TECH', productType: 'stock' },
-  { name: '현대차', sector: 'INDUSTRIAL', productType: 'stock' },
-  { name: 'KB금융', sector: 'FINANCE', productType: 'stock' },
-  { name: 'KT', sector: 'TECH', productType: 'stock' },
-  { name: '한화에어로스페이스', sector: 'INDUSTRIAL', productType: 'stock' },
+  { name: "삼성전자", sector: "TECH", productType: "stock" },
+  { name: "SK하이닉스", sector: "TECH", productType: "stock" },
+  { name: "NAVER", sector: "TECH", productType: "stock" },
+  { name: "카카오", sector: "TECH", productType: "stock" },
+  { name: "현대차", sector: "INDUSTRIAL", productType: "stock" },
+  { name: "KB금융", sector: "FINANCE", productType: "stock" },
+  { name: "KT", sector: "TECH", productType: "stock" },
+  { name: "한화에어로스페이스", sector: "INDUSTRIAL", productType: "stock" },
   // 미국 주식 (6개)
-  { name: 'Apple', sector: 'TECH', productType: 'stock' },
-  { name: 'Tesla', sector: 'INDUSTRIAL', productType: 'stock' },
-  { name: 'NVIDIA', sector: 'TECH', productType: 'stock' },
-  { name: 'Microsoft', sector: 'TECH', productType: 'stock' },
-  { name: 'Amazon', sector: 'TECH', productType: 'stock' },
-  { name: 'Google', sector: 'TECH', productType: 'stock' },
+  { name: "Apple", sector: "TECH", productType: "stock" },
+  { name: "Tesla", sector: "INDUSTRIAL", productType: "stock" },
+  { name: "NVIDIA", sector: "TECH", productType: "stock" },
+  { name: "Microsoft", sector: "TECH", productType: "stock" },
+  { name: "Amazon", sector: "TECH", productType: "stock" },
+  { name: "Google", sector: "TECH", productType: "stock" },
   // ETF
-  { name: 'KODEX 200', sector: 'INDEX', productType: 'etf' },
-  { name: 'SPY', sector: 'INDEX', productType: 'etf' },
+  { name: "KODEX 200", sector: "INDEX", productType: "etf" },
+  { name: "SPY", sector: "INDEX", productType: "etf" },
   // 채권 ETF
-  { name: 'TLT', sector: 'BOND', productType: 'bond' },
-  { name: 'KOSEF 국고채10년', sector: 'BOND', productType: 'bond' },
+  { name: "TLT", sector: "BOND", productType: "bond" },
+  { name: "KOSEF 국고채10년", sector: "BOND", productType: "bond" },
 ];
 
 /**
@@ -841,7 +841,7 @@ async function addSingleRealStock(config) {
     }
 
     // USD -> KRW 변환
-    const isUSD = !symbol.includes('.KS') && !symbol.includes('.KQ');
+    const isUSD = !symbol.includes(".KS") && !symbol.includes(".KQ");
     let price = priceData.price;
     if (isUSD) {
       price = Math.round(priceData.price * USD_TO_KRW);
@@ -850,17 +850,17 @@ async function addSingleRealStock(config) {
     }
 
     // productType 자동 감지
-    let productType = config.productType || 'stock';
+    let productType = config.productType || "stock";
     const symbolUpper = symbol.toUpperCase();
-    if (['SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'BND', 'GLD', 'SLV', 'USO'].includes(symbolUpper) ||
-        config.name.includes('KODEX') || config.name.includes('TIGER') || config.name.includes('KOSEF')) {
-      productType = 'etf';
+    if (["SPY", "QQQ", "DIA", "IWM", "VTI", "TLT", "IEF", "SHY", "LQD", "HYG", "BND", "GLD", "SLV", "USO"].includes(symbolUpper) ||
+        config.name.includes("KODEX") || config.name.includes("TIGER") || config.name.includes("KOSEF")) {
+      productType = "etf";
     }
 
     // 채권 ETF 감지
-    if (['TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'BND'].includes(symbolUpper) ||
-        config.name.includes('국고채') || config.name.includes('채권')) {
-      productType = 'etf'; // 채권 ETF도 ETF 타입으로
+    if (["TLT", "IEF", "SHY", "LQD", "HYG", "BND"].includes(symbolUpper) ||
+        config.name.includes("국고채") || config.name.includes("채권")) {
+      productType = "etf"; // 채권 ETF도 ETF 타입으로
     }
 
     const previousCloseKRW = priceData.previousClose
@@ -880,7 +880,7 @@ async function addSingleRealStock(config) {
       isManual: false,
       isRealStock: true,
       realStockSymbol: symbol,
-      sector: config.sector || 'TECH',
+      sector: config.sector || "TECH",
       productType: productType,
       volatility: 0.02,
       holderCount: 0,
@@ -891,14 +891,14 @@ async function addSingleRealStock(config) {
       recentSellVolume: 0,
       previousClose: previousCloseKRW, // KRW 환산 (price와 같은 단위)
       changePercent: priceData.changePercent || 0,
-      marketState: priceData.marketState || 'CLOSED',
+      marketState: priceData.marketState || "CLOSED",
       realStockData: {
         lastPrice: priceData.price || 0,
         previousClose: priceData.previousClose || 0,
         change: priceData.change || 0,
         changePercent: priceData.changePercent || 0,
-        currency: priceData.currency || 'KRW',
-        marketState: priceData.marketState || 'CLOSED',
+        currency: priceData.currency || "KRW",
+        marketState: priceData.marketState || "CLOSED",
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -917,7 +917,7 @@ async function addSingleRealStock(config) {
         symbol: symbol,
         price: price,
         productType: productType,
-        currency: isUSD ? 'USD' : 'KRW'
+        currency: isUSD ? "USD" : "KRW"
       }
     };
   } catch (error) {
@@ -936,18 +936,18 @@ async function addSingleRealStock(config) {
 function getAvailableSymbols() {
   return {
     korean_stocks: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => symbol.includes('.KS') || symbol.includes('.KQ'))
-      .filter(([name, symbol]) => !name.includes('KODEX') && !name.includes('TIGER') && !name.includes('KOSEF'))
+      .filter(([name, symbol]) => symbol.includes(".KS") || symbol.includes(".KQ"))
+      .filter(([name, symbol]) => !name.includes("KODEX") && !name.includes("TIGER") && !name.includes("KOSEF"))
       .map(([name, symbol]) => ({ name, symbol })),
     us_stocks: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => !symbol.includes('.') && !['SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'BND', 'GLD', 'SLV', 'USO'].includes(symbol))
+      .filter(([name, symbol]) => !symbol.includes(".") && !["SPY", "QQQ", "DIA", "IWM", "VTI", "TLT", "IEF", "SHY", "LQD", "HYG", "BND", "GLD", "SLV", "USO"].includes(symbol))
       .map(([name, symbol]) => ({ name, symbol })),
     korean_etf: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => name.includes('KODEX') || name.includes('TIGER') || name.includes('KOSEF'))
+      .filter(([name, symbol]) => name.includes("KODEX") || name.includes("TIGER") || name.includes("KOSEF"))
       .map(([name, symbol]) => ({ name, symbol })),
-    us_etf: ['SPY', 'QQQ', 'DIA', 'IWM', 'VTI'].map(s => ({ name: s, symbol: s })),
-    bond_etf: ['TLT', 'IEF', 'SHY', 'LQD', 'HYG', 'BND'].map(s => ({ name: s, symbol: s })),
-    commodity_etf: ['GLD', 'SLV', 'USO'].map(s => ({ name: s, symbol: s }))
+    us_etf: ["SPY", "QQQ", "DIA", "IWM", "VTI"].map(s => ({ name: s, symbol: s })),
+    bond_etf: ["TLT", "IEF", "SHY", "LQD", "HYG", "BND"].map(s => ({ name: s, symbol: s })),
+    commodity_etf: ["GLD", "SLV", "USO"].map(s => ({ name: s, symbol: s }))
   };
 }
 
