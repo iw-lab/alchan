@@ -717,6 +717,43 @@ const CASES = [
     before: { status: "active" }, after: { status: "disabled" },
   }),
 
+  // appAchievements — 2026-08-20 신설(AAP v1 · P1-7). "무엇을 얼마에 준다"는 서버만 안다.
+  //   금액표가 읽히면 학생은 제일 비싼 성취만 노린다. 쓰기가 열리면 그게 곧 화폐 발행이다.
+  tc("DENY", "학생이 성취 금액표를 읽는다", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "get", as: "stu1",
+    before: { rewardType: "cash", amount: 1000, maxPerDay: 1 },
+  }),
+  tc("DENY", "교사가 성취 금액표를 읽는다", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "get", as: "tch1",
+    before: { rewardType: "cash", amount: 1000, maxPerDay: 1 },
+  }),
+  tc("DENY", "교사가 성취 금액을 올린다 (화폐 발행)", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "update", as: "tch1",
+    before: { rewardType: "cash", amount: 1000, maxPerDay: 1 },
+    after: { rewardType: "cash", amount: 19999, maxPerDay: 50 },
+  }),
+  tc("DENY", "학생이 성취를 새로 만든다", {
+    path: "/appAchievements/siteGuguGuardians/items/mine", method: "create", as: "stu1",
+    after: { rewardType: "cash", amount: 20000, maxPerDay: 50 },
+  }),
+  tc("DENY", "학생이 성취를 지운다 (지급 거부 유발)", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "delete", as: "stu1",
+    before: { rewardType: "cash", amount: 1000 },
+  }),
+  tc("DENY", "교사가 앱 성취 부모 문서를 만든다", {
+    path: "/appAchievements/newapp", method: "create", as: "tch1",
+    after: { note: "x" },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 성취를 등록한다 (정상 운영)", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "create", as: "sup1",
+    after: { rewardType: "cash", amount: 1000, maxPerDay: 1, active: true },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 성취를 끈다", {
+    path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "update", as: "sup1",
+    before: { rewardType: "cash", amount: 1000, active: true },
+    after: { rewardType: "cash", amount: 1000, active: false },
+  }),
+
   // menuLocks — 교사 메뉴 잠금. 종전 규칙의 \`: true\` 분기로 **타 학급 것도 쓸 수 있었다**.
   tc("ALLOW", "🐤 교사가 자기 학급 메뉴 잠금을 저장한다 (정상 기능)", {
     path: "/settings/menuLocks_C1", method: "update", as: "tch1",

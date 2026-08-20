@@ -631,6 +631,30 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🏅 앱별 **성취 카탈로그** (appAchievements) — 2026-08-20 신설 (AAP v1 · P1-7)
+    //    "무엇을 얼마에 준다"를 서버만 안다. 클라이언트는 achievementId 만 보낸다.
+    //    ⚠️ 초안 설계는 클라가 amount 를 보내고 서버가 캡으로 막는 모양이었는데, 그러면
+    //       **캡이 방어가 아니라 가격표가 된다** — 공격자는 매일 확정적으로 최대치를 가져간다
+    //       (계획서 §2.4 A1).
+    //    ⚠️ 이름: `src/utils/achievementSystem.js`(로컬 배지, 돈 무관)와 **다른 물건**이다.
+    //       그래서 컬렉션 이름을 achievements 가 아니라 appAchievements 로 두었다.
+    //    · 읽기 = 슈퍼관리자만. 학생이 금액표를 읽을 수 있으면 "어느 성취가 제일 비싼지"를
+    //      먼저 알고 그것만 노린다. 서버(Admin SDK)는 규칙을 우회하므로 지급에는 지장이 없다.
+    //    · 쓰기 = 슈퍼관리자만. 교사 계정이 털려도 금액을 못 바꾼다(계획서 §2.4 A8).
+    //      코드의 절대 상한(functions/aap/catalog.js HARD_CEILING)이 최종 방어선이다 —
+    //      이 문서 값이 그걸 넘으면 지급이 **거부**된다(조용히 깎지 않는다).
+    // ========================================================
+    match /appAchievements/{appId} {
+      allow read: if isSuperAdminFast();
+      allow write: if isSuperAdmin();
+
+      match /items/{achievementId} {
+        allow read: if isSuperAdminFast();
+        allow write: if isSuperAdmin();
+      }
+    }
+
+    // ========================================================
     // 🏪 카탈로그 버전 (catalogMeta) — 상점 변경 실시간 전파용.
     //    학생은 같은 학급 문서 1개만 onSnapshot으로 읽음.
     //    쓰기는 Cloud Function(Admin SDK, rules 우회) 전용.

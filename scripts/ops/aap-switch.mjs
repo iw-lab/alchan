@@ -21,16 +21,7 @@
  * ⚠️ off 는 **즉시** 듣는다 — 서버가 정책을 캐시하지 않기 때문이다.
  *    이미 발급된 토큰(최대 5분)은 살아 있지만 새 실행은 그 순간부터 막힌다.
  */
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-import { execSync } from "node:child_process";
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROJECT = JSON.parse(readFileSync(join(ROOT, ".firebaserc"), "utf8")).projects.default;
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+import { BASE, authHeaders } from "./_firestore-rest.mjs";
 
 const [cmd, appId] = process.argv.slice(2);
 const COMMANDS = { list: null, off: null, on: null, migrate: null, unmigrate: null, "off-all": null };
@@ -40,21 +31,7 @@ if (!(cmd in COMMANDS) || (NEEDS_APP && !appId)) {
   process.exit(2);
 }
 
-const require = createRequire(import.meta.url);
-const api = require(join(execSync("npm root -g", { encoding: "utf8" }).trim(), "firebase-tools/lib/api.js"));
-const store = JSON.parse(readFileSync(join(homedir(), ".config/configstore/firebase-tools.json"), "utf8"));
-const tk = await (await fetch("https://oauth2.googleapis.com/token", {
-  method: "POST",
-  headers: { "content-type": "application/x-www-form-urlencoded" },
-  body: new URLSearchParams({
-    refresh_token: store.tokens.refresh_token,
-    client_id: api.clientId(),
-    client_secret: api.clientSecret(),
-    grant_type: "refresh_token",
-  }),
-})).json();
-if (!tk.access_token) throw new Error("토큰 갱신 실패");
-const H = { authorization: `Bearer ${tk.access_token}`, "content-type": "application/json" };
+const H = await authHeaders();
 
 if (cmd === "list") {
   const r = await (await fetch(`${BASE}/platformAppPolicies?pageSize=200`, { headers: H })).json();

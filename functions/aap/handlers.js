@@ -128,12 +128,15 @@ exports.issueAppToken = onCall({ region: REGION }, async (request) => {
 exports.aapJwks = onRequest({ region: REGION, invoker: "public" }, (req, res) => {
   // 공개키다. 브라우저에서 직접 가져가는 앱이 있으므로 CORS 를 연다.
   res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
   }
-  if (req.method !== "GET") {
+  // HEAD 는 "본문 없는 GET" 이다 — 모니터·프록시·헬스체크가 표준으로 쓴다.
+  // 막으면 그쪽에서 405 를 장애로 읽는다(2026-08-20 라이브에서 실제로 405 를 받았다).
+  // Express 가 HEAD 응답의 본문을 알아서 떼므로 아래 json() 을 그대로 태워도 된다.
+  if (req.method !== "GET" && req.method !== "HEAD") {
     res.status(405).json({ error: "method_not_allowed" });
     return;
   }

@@ -20,34 +20,11 @@
  *
  * 실행: node scripts/ops/seed-app-policies.mjs [--dry] [--sync-url]
  */
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-import { execSync } from "node:child_process";
+import { BASE, authHeaders } from "./_firestore-rest.mjs";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const PROJECT = JSON.parse(readFileSync(join(ROOT, ".firebaserc"), "utf8")).projects.default;
 const DRY = process.argv.includes("--dry");
 const SYNC_URL = process.argv.includes("--sync-url");
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
-
-const require = createRequire(import.meta.url);
-const api = require(join(execSync("npm root -g", { encoding: "utf8" }).trim(), "firebase-tools/lib/api.js"));
-const store = JSON.parse(readFileSync(join(homedir(), ".config/configstore/firebase-tools.json"), "utf8"));
-const tk = await (await fetch("https://oauth2.googleapis.com/token", {
-  method: "POST",
-  headers: { "content-type": "application/x-www-form-urlencoded" },
-  body: new URLSearchParams({
-    refresh_token: store.tokens.refresh_token,
-    client_id: api.clientId(),
-    client_secret: api.clientSecret(),
-    grant_type: "refresh_token",
-  }),
-})).json();
-if (!tk.access_token) throw new Error("토큰 갱신 실패");
-const H = { authorization: `Bearer ${tk.access_token}`, "content-type": "application/json" };
+const H = await authHeaders();
 
 // 1) 카탈로그에서 앱 목록을 읽는다(정본).
 const regRes = await fetch(`${BASE}/platformApps/_registry`, { headers: H });

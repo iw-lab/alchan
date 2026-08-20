@@ -335,6 +335,24 @@ describe("kill switch 와 학급 스위치", () => {
   });
 });
 
+describe("공개 엔드포인트가 표준 메서드를 막지 않는다", () => {
+  const H = readFileSync(resolve(process.cwd(), "functions/aap/handlers.js"), "utf8");
+
+  it("⭐ JWKS 가 HEAD 를 405 로 막지 않는다", () => {
+    // HEAD 는 "본문 없는 GET" 이라 모니터·프록시·헬스체크가 표준으로 쓴다.
+    // 라이브에서 실제로 405 를 받았다(2026-08-20) — 그쪽에선 장애로 읽힌다.
+    const jwks = H.slice(H.indexOf("exports.aapJwks"), H.indexOf("exports.aapDiscovery"));
+    expect(jwks).toMatch(/req\.method !== "GET" && req\.method !== "HEAD"/);
+    expect(jwks).toMatch(/Access-Control-Allow-Methods", "GET, HEAD, OPTIONS"/);
+  });
+
+  it("⭐ JWKS 캐시가 토큰 TTL 과 같은 5분이다 (회전 절차의 전제)", () => {
+    // 회전 ①단계의 "5분 이상 대기"가 이 값에 걸려 있다. 길어지면 회전이 장애가 된다.
+    const jwks = H.slice(H.indexOf("exports.aapJwks"), H.indexOf("exports.aapDiscovery"));
+    expect(jwks).toMatch(/Cache-Control", "public, max-age=300/);
+  });
+});
+
 describe("규칙·배포 배선", () => {
   it("⭐ platformAppPolicies 는 슈퍼관리자만 읽고 쓴다", () => {
     const start = RULES.indexOf("match /platformAppPolicies/");
