@@ -46,6 +46,8 @@ const USAGE = `사용법:
   aap-achievements.mjs list [appId]
   aap-achievements.mjs set <appId> <achievementId> --type cash|coupon --amount N
        [--per-day N] [--lifetime N] [--cooldown N] [--label "표시이름"]
+       [--prerequisites a,b] [--policy-version N]
+    · 안 준 값은 **기존 문서의 값을 그대로 이어받는다**(전체 치환이라 그냥 두면 리셋된다)
   aap-achievements.mjs off|on|rm <appId> <achievementId>`;
 
 if (!["list", "set", "off", "on", "rm"].includes(cmd)) {
@@ -151,6 +153,11 @@ if (!rules.ACHIEVEMENT_ID_RE.test(achId)) {
   process.exit(1);
 }
 
+
+const prevRes = await fetch(docUrl(appId, achId), { headers: H });
+const prev = prevRes.ok ? plain((await prevRes.json()).fields) : {};
+const keepActive = prev.active === undefined ? true : prev.active !== false;
+
 const candidate = {
   label: flag("label", ""),
   rewardType: flag("type"),
@@ -158,7 +165,21 @@ const candidate = {
   maxPerDay: flag("per-day") === undefined ? 1 : Number(flag("per-day")),
   maxLifetime: flag("lifetime") === undefined ? 0 : Number(flag("lifetime")),
   cooldownSec: flag("cooldown") === undefined ? 0 : Number(flag("cooldown")),
-  prerequisites: [],
+  // `--prerequisites a,b` 로 주면 그것, 안 주면 **기존 값을 이어받는다**(빈 배열로 덮지 않는다).
+  prerequisites:
+    flag("prerequisites") !== undefined
+      ? flag("prerequisites").split(",").map((x) => x.trim()).filter(Boolean)
+      : Array.isArray(prev.prerequisites)
+        ? prev.prerequisites
+        : [],
+  // 감사 값. 규칙을 바꿨으면 `--policy-version` 으로 올리고, 안 주면 기존 값을 지킨다.
+  policyVersion:
+    flag("policy-version") !== undefined
+      ? Number(flag("policy-version"))
+      : Number.isInteger(prev.policyVersion)
+        ? prev.policyVersion
+        : 0,
+  revocable: prev.revocable === false ? false : true,
   active: true,
 };
 
@@ -175,14 +196,13 @@ if (!verdict.ok) {
   process.exit(1);
 }
 
-// 🔒 이미 있는 문서면 **active 를 그대로 둔다.**
-//    아래 PATCH 는 updateMask 없이 = 전체 치환이라, 그냥 두면 `active:true` 가 항상 실린다.
-//    그러면 "일부러 꺼 둔 성취의 금액만 손봤을 뿐인데 다시 켜지는" 일이 생긴다 —
-//    끄기는 사고 대응 수단이라, 다른 조작의 부수효과로 풀리면 안 된다.
-const prevRes = await fetch(docUrl(appId, achId), { headers: H });
-const prevActive = prevRes.ok ? plain((await prevRes.json()).fields).active : undefined;
-const keepActive = prevActive === undefined ? true : prevActive !== false;
-
+// 🔒 이미 있는 문서면 **손대라고 하지 않은 것은 그대로 둔다.**
+//    아래 PATCH 는 updateMask 없이 = **전체 치환**이라, 그냥 두면 이번에 안 준 값이 전부
+//    기본값으로 되돌아간다. 실측(2026-08-21): `set --amount` 한 번에
+//    `policyVersion 7→0`, `prerequisites ["course_1"]→[]` 로 날아갔다.
+//    · active — 끄기는 **사고 대응 수단**이라 금액 수정의 부수효과로 풀리면 안 된다.
+//    · prerequisites — 조용히 사라지면 **선행조건 잠금이 풀린다.**
+//    · policyVersion — 지급 원장에 남는 감사 값이라 리셋되면 "그때 어떤 규칙으로 줬는지"를 잃는다.
 const v = verdict.value;
 const body = {
   fields: {
@@ -192,7 +212,8 @@ const body = {
     maxPerDay: I(v.maxPerDay),
     maxLifetime: I(v.maxLifetime),
     cooldownSec: I(v.cooldownSec),
-    prerequisites: A([]),
+    // 검증을 통과한 값(v)을 쓴다 — 여기서 빈 배열을 하드코딩하면 위의 보존이 무의미해진다.
+    prerequisites: A(v.prerequisites.map((id) => S(id))),
     policyVersion: I(v.policyVersion),
     revocable: B(v.revocable),
     active: B(keepActive),

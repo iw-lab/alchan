@@ -91,9 +91,17 @@ describe("대기 신청이 조용히 취소되지 않는다", () => {
 
   it("⭐ fetchPendingJobIds 는 실패를 빈 배열로 뭉개지 않는다", () => {
     // fail-open 이 곧 데이터 손실인 자리다. catch 가 [] 를 돌려주면 안 된다.
+    // ⚠️ `/return \[\];/` 처럼 **공백까지 고정한** 정규식은 `return[];` 한 글자로 회피된다
+    //    (2026-08-20 리뷰가 실제로 이 변이를 통과시켰다). 공백을 유연하게 두고,
+    //    "빈 배열을 돌려주는 문장이 하나도 없다"를 본다.
     const catchBlock = DB.slice(DB.indexOf("} catch (e) {"));
-    expect(catchBlock).toContain("return null;");
-    expect(catchBlock).not.toMatch(/return \[\];/);
+    expect(catchBlock).toMatch(/return\s+null\s*;/);
+    expect(catchBlock, "실패를 빈 배열로 뭉갠다").not.toMatch(/return\s*\[\s*\]\s*;/);
+    // 그리고 그 return null 이 **도달 가능**해야 한다 — 앞에 조건 없이 나와야 한다.
+    //    (`if (false) { return null; } return[];` 로 죽은 코드를 만드는 변이 방어)
+    const iNull = catchBlock.search(/return\s+null\s*;/);
+    const beforeNull = catchBlock.slice(0, iNull);
+    expect(beforeNull, "return null 앞에 분기가 생겨 도달 불가일 수 있다").not.toMatch(/\bif\s*\(/);
   });
 
   it("⭐ 조회가 **동시에 두 번** 돌지 않는다 (연타 가드)", () => {
@@ -150,6 +158,16 @@ describe("교사에게 실패 사유가 도달한다", () => {
 
   it("이미 HttpsError 인 예외는 코드를 덮어쓰지 않는다", () => {
     expect(PROC).toMatch(/if \(error instanceof HttpsError\) throw error;/);
+    // ⚠️ **존재만 보면 안 된다.** 이 줄을 아래 throw 뒤로 옮기면 도달 불가 코드가 되는데
+    //    두 줄 다 파일에 남아 있어서 존재 단언은 통과한다(2026-08-20 리뷰가 통과시킨 변이).
+    //    봐야 할 것은 **순서**다: 보존 가드가 재분류 throw 보다 앞이어야 한다.
+    const iGuard = PROC.indexOf("if (error instanceof HttpsError) throw error;");
+    // ⚠️ `failed-precondition` 은 함수 앞쪽 검증(학급 정보 없음)에도 쓰인다 —
+    //    catch 안의 **재분류** throw 를 정확히 집어야 한다(처음엔 앞쪽 것이 잡혔다).
+    const iReclass = PROC.indexOf('throw new HttpsError("failed-precondition", error.message);');
+    expect(iGuard, "보존 가드가 없다").toBeGreaterThan(-1);
+    expect(iReclass, "재분류 throw 를 찾지 못했다").toBeGreaterThan(-1);
+    expect(iGuard, "보존 가드가 재분류보다 뒤에 있다(도달 불가)").toBeLessThan(iReclass);
   });
 
   it("⭐ **판정 사유**와 **운영 장애**를 구분해서 내보낸다", () => {
@@ -283,13 +301,23 @@ describe("직업 개수 상한 클램프가 한 곳뿐이다", () => {
 describe("메뉴 잠금 취소 가드가 죽어 있지 않다", () => {
   const CTX = codeOnly(read("src/contexts/MenuLocksContext.js"));
 
+  it("⭐ **호출부가** isCancelled 를 실제로 넘긴다", () => {
+    // ⚠️ `load` 본문만 보면 안 된다. 시그니처가 `load(isCancelled = () => false)` 라서
+    //    호출부를 `await load()` 로 되돌리면 **기본값이 조용히 채워져** 가드가 다시 죽는다
+    //    — 본문은 그대로라 본문만 보는 단언은 통과한다(2026-08-20 리뷰가 이 변이를 통과시켰다).
+    //    "안 쓰는 인자 제거" 같은 무심한 정리 한 번이면 이 수정 전체가 무효가 된다.
+    expect(CTX, "useEffect 가 isCancelled 를 안 넘긴다").toMatch(/await load\(isCancelled\)/);
+    expect(CTX, "인자 없는 load\(\) 호출이 남아 있다").not.toMatch(/await load\(\s*\)/);
+  });
+
   it("⭐ 취소 확인이 setState **직전**에 있다", () => {
     // 종전엔 `await load()` 가 끝난 뒤에 확인해서 아무것도 막지 못하는 죽은 코드였다.
     // ⚠️ 파일 전체에서 indexOf 하면 안 된다 — 앞쪽 `!classCode` 분기의 확인이 잡혀서
     //    정작 비동기 분기에서 순서를 뒤집어도 통과한다(이 단언이 실제로 변이를 놓쳤다).
     //    **await 뒤 구간만** 잘라서 본다.
-    const region = CTX.slice(CTX.indexOf("const ids = await fetchMenuLockedItemIds"));
-    expect(region.length, "await 구간을 찾지 못했다").toBeGreaterThan(0);
+    const iRegion = CTX.indexOf("const ids = await fetchMenuLockedItemIds");
+    expect(iRegion, "await 구간을 찾지 못했다").toBeGreaterThan(-1);
+    const region = CTX.slice(iRegion);
     const iCheck = region.indexOf("if (isCancelled()) return;");
     const iSet = region.indexOf("setLockedItemIds(ids);");
     expect(iCheck, "await 뒤에 취소 확인이 없다").toBeGreaterThan(-1);

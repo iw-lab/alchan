@@ -55,7 +55,7 @@
 | # | 항목 | 상태 | 근거 |
 |---|---|---|---|
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
-| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 41개 · 변이 29개 전부 검출 · codex REQUEST_CHANGES 4건 반영. **아래 결정 2건 확인 필요** |
+| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 44개 · 변이 46개 전부 검출 · 3계열 리뷰 반영(codex 4 + 리뷰어 6). **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ⬜ | ⚠️ **착수 전 확인한 함정 2개** (아래) |
 | P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | ⬜ | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
@@ -169,6 +169,32 @@ Gemini 는 쿼터 소진으로 이번에도 불참(2계열).
 **곁가지로 라이브 결함을 하나 찾았다** — codex 의 "users.classCode 는 권위 있는 membership 이
 아니다"를 확인하다가, **누구나 계정을 만들어 남의 학급 학생이 될 수 있는 것**을 재현했다.
 별도 커밋으로 닫고 재발을 CI 검사로 내렸다(위 커밋 참고).
+
+### 🧪 리뷰어들이 **내 테스트를 통과시킨 변이 6종** (2026-08-21)
+
+검증자 셋이 뒤늦게 한꺼번에 돌아왔고, 판정은 전부 APPROVE 였다. 그런데 값은 판정이 아니라
+**"네가 잡았다고 한 것이 실제로는 안 잡힌다"** 는 목록에 있었다. 전부 재현해 고쳤다.
+
+| 변이 | 왜 새어 나갔나 |
+|---|---|
+| `return null;` 을 죽은 코드로 만들고 `return[];` (공백 없음) 실행 | 정규식이 **공백까지 고정**돼 한 글자로 회피됨 |
+| `await load(isCancelled)` → `await load()` | 테스트가 `load` **본문**만 보고 **호출부**를 안 봤다. 기본값 `isCancelled = () => false` 가 조용히 채워져 가드가 다시 죽는다 |
+| `if (error instanceof HttpsError) throw error;` 를 throw **뒤로** 이동 | 두 줄의 **존재**만 보고 **순서**를 안 봤다 → 도달 불가 코드가 됐는데 초록불 |
+| `currentDocument.exists=true` 를 안 쓰는 변수에 박고 URL 은 취약하게 되돌림 | 문자열이 **근처에 있는지**만 봤다. 실제 fetch URL 템플릿을 봐야 한다 |
+| `slice(indexOf(...))` 로 자른 구간의 `length > 0` 검사 (6곳) | 못 찾으면 `indexOf` 가 -1 이고 **`slice(-1)` 은 마지막 1글자**를 준다 → `length > 0` 이 **항상 참** |
+| 규칙 블록을 고정 600자로 자름 | 실제 블록은 246자인데 창이 **이웃 블록까지 침범**했다. 지금은 우연히 통과할 뿐 |
+
+**공통 원인**: 소스 텍스트 매칭은 "무엇이 적혀 있나"를 보지 "무엇이 실행되나"를 못 본다.
+그래서 ① 존재가 아니라 **순서**를 보고 ② 본문이 아니라 **호출부**를 보고 ③ 근처가 아니라
+**실제 배선(fetch URL 템플릿)**을 보고 ④ 구간을 자를 땐 **찾았는지 먼저 단언**하도록 고쳤다
+(`after()`·`ruleBlock()` 헬퍼로 묶어 같은 실수가 7번째로 복붙되지 않게 했다).
+
+### 🔧 `set` 이 손대라고 하지 않은 필드를 리셋했다 (라이브 재현)
+
+`set --amount` 한 번에 `policyVersion 7→0`, `prerequisites ["course_1"]→[]` 로 날아갔다
+(전체 치환 PATCH). **선행조건이 사라지는 건 잠금이 풀리는 것**이고 `policyVersion` 은 지급 원장에
+남는 감사 값이다. 기존 문서를 먼저 읽어 이어받도록 고치고, 규약 문서가 약속했는데 도구엔 없던
+`--prerequisites`·`--policy-version` 플래그를 만들었다. 라이브 왕복으로 확인.
 
 ### 📐 P1-2 설계안 **2판** (codex REQUEST_CHANGES 반영 — 아직 구현 없음)
 

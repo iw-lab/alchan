@@ -20,6 +20,20 @@ import * as rules from "../../../functions/aap/catalogRules.js";
 import { SALARY } from "../../../functions/salaryUtils.js";
 
 const read = (rel) => readFileSync(resolve(process.cwd(), rel), "utf8");
+
+/**
+ * `haystack` 에서 `needle` **뒤쪽**을 잘라 온다.
+ *
+ * ⚠️ `s.slice(s.indexOf(x))` 를 그냥 쓰면 안 된다. 못 찾으면 `indexOf` 가 -1 이고
+ *    `slice(-1)` 은 "못 찾음"이 아니라 **파일 마지막 1글자**를 돌려준다 → `length > 0` 이
+ *    **항상 참**이라 "구간을 못 찾았다" 단언이 영원히 안 뜬다(2026-08-21 리뷰 지적, 재현 확인).
+ *    이 파일 안에서만 6번 반복되던 패턴이라 헬퍼로 묶는다.
+ */
+const after = (haystack, needle) => {
+  const i = haystack.indexOf(needle);
+  expect(i, `구간을 찾지 못했다: ${needle}`).toBeGreaterThan(-1);
+  return haystack.slice(i);
+};
 const codeOnly = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
@@ -251,16 +265,15 @@ describe("순수 규칙이 Firestore 를 모른다", () => {
     // ⚠️ 파일 전체에서 찾으면 안 된다 — `list` 쪽에도 같은 호출이 있어서, 정작 **쓰기 직전**
     //    검증을 통째로 들어내도 통과한다(2026-08-20 변이 N11 이 실제로 새어 나갔다).
     //    **set 구간만** 잘라서 본다.
-    const setRegion = OPS.slice(OPS.indexOf("const candidate = {"));
-    expect(setRegion.length, "set 구간을 찾지 못했다").toBeGreaterThan(0);
+    const setRegion = after(OPS, "const level = await trustLevelOf(appId);");
     expect(setRegion, "쓰기 전에 서버와 같은 판정을 하지 않는다").toMatch(
       /const verdict = rules\.normalizeAchievement\(candidate, level\);/,
     );
     // 판정 결과를 실제로 **막는 데** 써야 한다. 계산만 하고 넘어가면 의미가 없다.
     // ⚠️ "몇 글자 안에 exit 이 있나"로 재지 말 것 — 안내 문구를 한 줄 늘리면 깨진다(실제로
     //    528/600 까지 갔다). 봐야 할 것은 거리가 아니라 **순서**다: 거부 종료가 값 사용보다 앞.
-    const afterVerdict = setRegion.slice(setRegion.indexOf("const verdict ="));
-    const guard = afterVerdict.slice(afterVerdict.indexOf("if (!verdict.ok)"));
+    const afterVerdict = after(setRegion, "const verdict =");
+    const guard = after(afterVerdict, "if (!verdict.ok)");
     expect(afterVerdict.indexOf("if (!verdict.ok)"), "거부 분기가 없다").toBeGreaterThan(-1);
     const iExit = guard.indexOf("process.exit(1);");
     const iUse = guard.indexOf("const v = verdict.value;");
@@ -277,10 +290,40 @@ describe("순수 규칙이 Firestore 를 모른다", () => {
     // 끄기는 사고 대응 수단이다 — 금액만 손보다가 부수효과로 다시 켜지면 안 된다.
     // (2026-08-20 라이브 왕복으로 재현·수정: off → set → 여전히 꺼짐)
     const OPS = codeOnly(read("scripts/ops/aap-achievements.mjs"));
-    const setRegion = OPS.slice(OPS.indexOf("const candidate = {"));
-    expect(setRegion, "기존 active 를 읽지 않는다").toMatch(/const prevActive =/);
+    const setRegion = after(OPS, "const level = await trustLevelOf(appId);");
+    expect(setRegion, "기존 active 를 읽지 않는다").toMatch(/prev\.active/);
     expect(setRegion, "active 를 무조건 true 로 쓴다").not.toMatch(/active: B\(true\)/);
     expect(setRegion).toMatch(/active: B\(keepActive\)/);
+  });
+
+  it("⭐ `set` 이 **손대라고 하지 않은 필드를 리셋하지 않는다**", () => {
+    // PATCH 는 updateMask 없이 전체 치환이라, 기본값을 실으면 이번에 안 준 값이 전부 날아간다.
+    // 실측(2026-08-21 라이브): `set --amount` 한 번에 policyVersion 7→0,
+    // prerequisites ["course_1"]→[] 로 사라졌다. **선행조건이 사라지는 건 잠금이 풀리는 것**이고,
+    // policyVersion 은 지급 원장에 남는 감사 값이라 리셋되면 "그때 어떤 규칙이었는지"를 잃는다.
+    const OPS = codeOnly(read("scripts/ops/aap-achievements.mjs"));
+    const setRegion = after(OPS, "const level = await trustLevelOf(appId);");
+    // 기존 문서를 먼저 읽고
+    expect(setRegion, "기존 문서를 안 읽는다").toMatch(/const prev = prevRes\.ok/);
+    // 안 준 값은 이어받는다
+    expect(setRegion, "prerequisites 를 이어받지 않는다").toMatch(/prev\.prerequisites/);
+    expect(setRegion, "policyVersion 을 이어받지 않는다").toMatch(/prev\.policyVersion/);
+    expect(setRegion, "revocable 을 이어받지 않는다").toMatch(/prev\.revocable/);
+    // 그리고 **쓰는 쪽**이 검증된 값을 써야 한다 — 여기에 기본값을 하드코딩하면 위가 무의미해진다
+    // (실제로 처음엔 `prerequisites: A([])` 가 남아 있어 보존이 안 먹었다).
+    expect(setRegion, "본문이 빈 배열을 하드코딩한다").not.toMatch(/prerequisites:\s*A\(\[\]\)/);
+    expect(setRegion).toMatch(/prerequisites: A\(v\.prerequisites/);
+  });
+
+  it("⭐ 규약 문서가 약속한 `--prerequisites` 를 도구가 실제로 받는다", () => {
+    // docs/AAP_V1_SPEC.md §5.1 은 prerequisites 를 "앱이 제안"으로 문서화했는데, 이 값을 설정할
+    // 유일한 도구에 플래그가 없었다(2026-08-21 리뷰 지적). 문서와 도구가 어긋나 있었다.
+    const OPS = codeOnly(read("scripts/ops/aap-achievements.mjs"));
+    expect(OPS).toMatch(/flag\("prerequisites"\)/);
+    expect(OPS).toMatch(/flag\("policy-version"\)/);
+    expect(read("scripts/ops/aap-achievements.mjs"), "사용법에 안 적혀 있다").toMatch(
+      /--prerequisites/,
+    );
   });
 
   it("⭐ 정수 필드가 서버에서 number 로 읽힌다 (useBigInt 를 켜지 않는다)", () => {
@@ -383,30 +426,57 @@ describe("운영 CLI 가 서버와 **같은 판정**을 하려면 타입이 같�
     // 오타 한 번에 `{active:true}` 뿐인 반쪽 문서가 남고 CLI 는 "🟢 켜짐" 이라고 성공을 찍었다.
     // 서버는 그걸 bad_reward_type 으로 거부하니, 운영자는 켰다고 믿는데 학생은 못 받는다.
     const OPS = codeOnly(read("scripts/ops/aap-achievements.mjs"));
-    const region = OPS.slice(OPS.indexOf('if (cmd === "off" || cmd === "on")'));
-    expect(region.length, "on/off 구간을 찾지 못했다").toBeGreaterThan(0);
-    expect(region.slice(0, 800), "존재 전제조건이 없다").toMatch(/currentDocument\.exists=true/);
+    const region = after(OPS, 'if (cmd === "off" || cmd === "on")');
+    // ⚠️ "그 문자열이 근처에 있나"로 보면 안 된다 — 리터럴을 안 쓰는 변수에 박아 두고 정작
+    //    fetch URL 은 취약한 형태로 되돌려도 통과한다(2026-08-21 리뷰가 지적한 변이).
+    //    **fetch 에 실제로 넘기는 URL 템플릿 안**에 있는지를 본다.
+    expect(region, "전제조건이 실제 요청 URL 에 배선되지 않았다").toMatch(
+      /fetch\(\s*`\$\{docUrl\(appId, achId\)\}\?updateMask\.fieldPaths=active&currentDocument\.exists=true`/,
+    );
   });
 });
+
+/**
+ * `match` 블록 하나를 **중괄호 깊이로 정확히** 잘라 온다.
+ *
+ * ⚠️ 고정 길이(`slice(i, i+600)`)로 자르면 안 된다. 실측하니 이 블록은 약 230자인데
+ *    600자 창은 **이웃 블록(catalogMeta)까지 침범**했다(2026-08-21 리뷰 지적).
+ *    지금은 우연히 금지 패턴과 안 겹쳐 통과하지만, 옆 블록이 바뀌거나 순서가 바뀌면
+ *    이 테스트가 엉뚱한 이유로 깨지거나 조용히 의미를 잃는다.
+ */
+const ruleBlock = (rules, header) => {
+  const i = rules.indexOf(header);
+  expect(i, `규칙 블록이 없다: ${header}`).toBeGreaterThan(-1);
+  // ⚠️ 여는 괄호는 **헤더 뒤**부터 찾는다 — 헤더 자체에 `{appId}` 가 들어 있어서
+  //    그냥 찾으면 그걸 블록 시작으로 오인한다(이 헬퍼를 처음 쓸 때 실제로 그랬다).
+  let depth = 0;
+  for (let j = rules.indexOf("{", i + header.length); j < rules.length; j += 1) {
+    if (rules[j] === "{") depth += 1;
+    else if (rules[j] === "}") {
+      depth -= 1;
+      if (depth === 0) return rules.slice(i, j + 1);
+    }
+  }
+  throw new Error(`블록의 닫는 괄호를 찾지 못했다: ${header}`);
+};
 
 describe("규칙이 카탈로그를 잠근다", () => {
   const RULES = read("firestore.rules");
 
   it("⭐ appAchievements 는 슈퍼관리자만 읽고 쓴다", () => {
-    const i = RULES.indexOf("match /appAchievements/{appId}");
-    expect(i, "appAchievements 규칙 블록이 없다").toBeGreaterThan(-1);
-    const block = RULES.slice(i, i + 600);
+    const block = ruleBlock(RULES, "match /appAchievements/{appId}");
+    // 블록이 이웃까지 삼키지 않았는지 — 옆 블록 이름이 섞여 들어오면 창이 넓다는 뜻이다.
+    expect(block, "블록이 이웃 규칙까지 삼켰다").not.toMatch(/catalogMeta|platformAppPolicies/);
     // 하위 items 까지 같이 잠겨야 한다 — 부모만 잠그면 서브컬렉션은 전국 공개다
     // (이 저장소는 musicRooms/playlist 에서 정확히 그걸 겪었다).
     expect(block).toMatch(/match \/items\/\{achievementId\}/);
-    const items = block.slice(block.indexOf("match /items/{achievementId}"));
+    const items = after(block, "match /items/{achievementId}");
     expect(items).toMatch(/allow read: if isSuperAdminFast\(\);/);
     expect(items).toMatch(/allow write: if isSuperAdmin\(\);/);
   });
 
   it("⭐ 학생·교사에게 열린 분기가 없다", () => {
-    const i = RULES.indexOf("match /appAchievements/{appId}");
-    const block = RULES.slice(i, i + 600);
+    const block = ruleBlock(RULES, "match /appAchievements/{appId}");
     expect(block).not.toMatch(/isAuthenticated\(\)|isClassAdmin|request\.auth\.uid ==/);
   });
 });

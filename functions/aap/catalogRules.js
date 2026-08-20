@@ -209,16 +209,20 @@ function normalizeAchievement(raw, trustLevel) {
 }
 
 /** 거부 사유 → 학생에게 보여줄 문구. 사유를 그대로 노출하지 않는다(카탈로그 구조가 새어 나간다). */
+// 설정이 잘못된 경우는 학생에게 **한 가지 말로** 전한다. 사유를 나눠 보여주면
+// 카탈로그의 구조(어떤 필드가 있고 무엇이 상한인지)가 학생 화면으로 새어 나간다.
+const BAD_CONFIG = "보상 설정에 문제가 있어요. 선생님께 알려 주세요.";
+
 const DENY_MESSAGE = Object.freeze({
   not_registered: "이 활동은 아직 보상이 준비되지 않았어요.",
   inactive: "이 활동의 보상은 지금 꺼져 있어요.",
-  bad_reward_type: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  bad_amount: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  bad_max_per_day: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  day_total_over_ceiling: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  bad_max_lifetime: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  bad_cooldown: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-  bad_prerequisites: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
+  bad_reward_type: BAD_CONFIG,
+  bad_amount: BAD_CONFIG,
+  bad_max_per_day: BAD_CONFIG,
+  day_total_over_ceiling: BAD_CONFIG,
+  bad_max_lifetime: BAD_CONFIG,
+  bad_cooldown: BAD_CONFIG,
+  bad_prerequisites: BAD_CONFIG,
 });
 
 module.exports = {
