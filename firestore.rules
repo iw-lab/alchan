@@ -613,6 +613,24 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🧩 앱별 **집행 정책** (platformAppPolicies) — 2026-08-20 신설 (AAP v1)
+    //    위 platformApps 주석이 예고한 분리다. 표시용 카탈로그와 집행 정책은 다른 물건이다:
+    //    · 카탈로그는 브라우저 세션당 1회 **캐시**된다 → 여기에 kill switch 를 넣으면
+    //      앱을 끈 뒤에도 캐시가 살아 있는 학생에겐 계속 켜져 있다.
+    //    · 그래서 정책은 앱별 문서로 두고 서버가 **실행/지급 때마다 직접** 읽는다(캐시 금지).
+    //    담는 것: status(kill switch) · aapEnabled · launchUrl · trustLevel · 보상 캡 · allowedClaims.
+    //    ⚠️ launchUrl 이 여기 있는 이유 = 실행 URL 을 요청자가 정하면 fragment 의 토큰을
+    //       공격자 사이트로 보낼 수 있다. **서버가 정한다**(계획서 §3.2 C6).
+    //    · 읽기 = 슈퍼관리자만. 학생·교사는 이 값을 알 필요가 없고, 캡을 노출하면
+    //      "얼마까지 긁을 수 있는지"를 알려주는 셈이다. 서버(Admin SDK)는 규칙을 우회한다.
+    //    · 쓰기 = 슈퍼관리자만. 전국 모든 학급의 앱 실행·보상이 이 문서에 달려 있다.
+    // ========================================================
+    match /platformAppPolicies/{appId} {
+      allow read: if isSuperAdminFast();
+      allow write: if isSuperAdmin();
+    }
+
+    // ========================================================
     // 🏪 카탈로그 버전 (catalogMeta) — 상점 변경 실시간 전파용.
     //    학생은 같은 학급 문서 1개만 onSnapshot으로 읽음.
     //    쓰기는 Cloud Function(Admin SDK, rules 우회) 전용.

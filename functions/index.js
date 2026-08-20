@@ -58,6 +58,13 @@ exports.reverseLastWeeklySalary = scheduler.reverseLastWeeklySalary; // 🚨 일
 exports.backfillSalaryLogs = scheduler.backfillSalaryLogs; // 🔁 과거 주급 기록 소급 백필 endpoint
 exports.backfillDrawItems = scheduler.backfillDrawItems; // 🎰 깨진 랜덤뽑기 인벤토리 보정 endpoint
 
+// 🧩 AAP v1 — 위성 학습앱 규약 (계획서 docs/AI_PLATFORM_PLAN_2026-08-17.md §3)
+//    알찬이 계정·화폐·보상·학습기록의 코어가 되고, 학습앱은 각자 호스팅에 남은 채 규약으로 꽂힌다.
+const aap = require("./aap/handlers");
+exports.issueAppToken = aap.issueAppToken; // 학습앱 실행 토큰 발급(RS256·5분·pairwise sub)
+exports.aapJwks = aap.aapJwks; // 공개키(JWKS) — 위성앱이 토큰 서명을 검증한다
+exports.aapDiscovery = aap.aapDiscovery; // 규약 상수 디스커버리(제작자용)
+
 // 🔥 경제 이벤트 시스템
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
 exports.triggerEconomicEventManual = scheduler.triggerEconomicEventManual; // 수동 경제 이벤트 실행

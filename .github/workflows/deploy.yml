@@ -136,6 +136,9 @@ jobs:
           DEPLOY_CHANGED_FILES: ${{ steps.changed.outputs.files }}
           SCHEDULER_AUTH_TOKEN: ${{ secrets.SCHEDULER_AUTH_TOKEN }}
           SCHEDULER_ADMIN_TOKEN: ${{ secrets.SCHEDULER_ADMIN_TOKEN }}
+          AAP_SIGNING_KEY_CURRENT: ${{ secrets.AAP_SIGNING_KEY_CURRENT }}
+          AAP_SIGNING_KEY_PREVIOUS: ${{ secrets.AAP_SIGNING_KEY_PREVIOUS }}
+          AAP_PAIRWISE_SALT: ${{ secrets.AAP_PAIRWISE_SALT }}
         run: |
           CHANGED="$DEPLOY_CHANGED_FILES"
           echo "=== Changed files ==="
@@ -151,6 +154,14 @@ jobs:
             #    비어 있어도 배포는 되고 정기 작업도 정상이다 — 그 조작들만 403 으로 막힌다
             #    (fail-closed). 쓰려면 GitHub Secrets 에 SCHEDULER_ADMIN_TOKEN 을 추가할 것.
             printf 'SCHEDULER_ADMIN_TOKEN=%s\n' "$SCHEDULER_ADMIN_TOKEN" >> functions/.env
+            # 🧩 AAP v1 서명키(base64 PKCS8 PEM)와 pairwise salt.
+            #    ⚠️ 셋 다 비어 있어도 배포는 되고 기존 기능은 멀쩡하다 — 학습앱 토큰 발급만
+            #       fail-closed 로 거부된다. PREVIOUS 는 **키 회전 중복기간에만** 채운다.
+            #    ⚠️ PAIRWISE_SALT 는 회전 대상이 아니다. 바꾸면 모든 위성앱의 학생 신원이
+            #       통째로 갈려 앱 쪽 기록이 고아가 된다.
+            printf 'AAP_SIGNING_KEY_CURRENT=%s\n' "$AAP_SIGNING_KEY_CURRENT" >> functions/.env
+            printf 'AAP_SIGNING_KEY_PREVIOUS=%s\n' "$AAP_SIGNING_KEY_PREVIOUS" >> functions/.env
+            printf 'AAP_PAIRWISE_SALT=%s\n' "$AAP_PAIRWISE_SALT" >> functions/.env
             echo "=== functions/.env (masked) ==="
             sed 's/=.*/=***/' functions/.env
             echo "==============================="

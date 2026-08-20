@@ -56,5 +56,6 @@ for (const [label, needle] of [
   ["학급 설정문서 스코프", "isOwnClassSettingDocFast"],
   ["goals 문서ID 스코프", "isOwnClassGoal"],
   ["platformApps 신설", "match /platformApps/"],
+  ["앱 집행정책 잠금(AAP)", "match /platformAppPolicies/"],
   ["playlist 학급 스코프", "pricePerSong"],
 ]) console.log(`  ${src.includes(needle) ? "✅" : "❌"}  ${label}`);

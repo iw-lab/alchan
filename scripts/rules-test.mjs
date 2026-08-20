@@ -693,6 +693,30 @@ const CASES = [
     before: { apps: [] }, after: { apps: [{ id: "x", label: "x", url: "https://x/" }] },
   }),
 
+  // platformAppPolicies — 2026-08-20 신설(AAP v1). 집행 정책(kill switch·실행URL·캡).
+  //   카탈로그와 달리 **읽기도 잠근다**: 캡을 노출하면 "얼마까지 긁을 수 있는지"를 알려준다.
+  tc("DENY", "학생이 앱 집행 정책을 읽는다 (캡·kill switch 노출)", {
+    path: "/platformAppPolicies/siteGuguGuardians", method: "get", as: "stu1",
+    before: { status: "active", dailyCashCap: 0 },
+  }),
+  tc("DENY", "교사가 앱 집행 정책을 읽는다", {
+    path: "/platformAppPolicies/siteGuguGuardians", method: "get", as: "tch1",
+    before: { status: "active", dailyCashCap: 0 },
+  }),
+  tc("DENY", "교사가 앱 실행 URL 을 바꾼다 (fragment 토큰 탈취 경로)", {
+    path: "/platformAppPolicies/siteGuguGuardians", method: "update", as: "tch1",
+    before: { status: "active", launchUrl: "https://iw-lab.github.io/gugu-guardians/" },
+    after: { status: "active", launchUrl: "https://evil.example/" },
+  }),
+  tc("DENY", "학생이 앱 정책 문서를 새로 만든다", {
+    path: "/platformAppPolicies/fake", method: "create", as: "stu1",
+    after: { status: "active", aapEnabled: true, launchUrl: "https://evil.example/" },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 앱을 끈다 (kill switch)", {
+    path: "/platformAppPolicies/siteGuguGuardians", method: "update", as: "sup1",
+    before: { status: "active" }, after: { status: "disabled" },
+  }),
+
   // menuLocks — 교사 메뉴 잠금. 종전 규칙의 \`: true\` 분기로 **타 학급 것도 쓸 수 있었다**.
   tc("ALLOW", "🐤 교사가 자기 학급 메뉴 잠금을 저장한다 (정상 기능)", {
     path: "/settings/menuLocks_C1", method: "update", as: "tch1",
