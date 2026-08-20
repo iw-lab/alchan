@@ -62,17 +62,29 @@ export const B = (v) => ({ booleanValue: v });
 export const I = (v) => ({ integerValue: String(v) });
 export const A = (arr) => ({ arrayValue: { values: arr } });
 
-/** REST 문서 fields → 평범한 객체 (얕은 변환. 중첩 map 은 mapValue 그대로 둔다) */
+/**
+ * REST 문서 fields → 평범한 객체.
+ *
+ * ⚠️ **Admin SDK 가 주는 것과 같은 타입이어야 한다.** 운영 스크립트는 이 값을 서버와 **같은
+ *    검증 함수**에 넣어 "서버가 받아 줄 문서인가"를 미리 판정한다. 타입이 어긋나면 그 판정이
+ *    거짓말을 한다.
+ *    실제로 그랬다: 배열 원소를 `x.stringValue ?? x.integerValue` 로 꺼내는 바람에 정수 원소가
+ *    **문자열**로 나왔고, `prerequisites:[123]` 을 CLI 는 ✅ 로, 서버는 `bad_prerequisites` 로
+ *    판정했다(2026-08-20 codex WARNING, 재현 확인). Admin SDK 는 int64 를 JS number 로 준다.
+ *
+ * 중첩 map 은 여기서 풀지 않는다(지금 쓰는 문서에 없다) — 필요해지면 그때 재귀로 넓힌다.
+ */
 export function plain(fields = {}) {
+  const one = (v) => {
+    if (v.stringValue !== undefined) return v.stringValue;
+    if (v.booleanValue !== undefined) return v.booleanValue;
+    if (v.integerValue !== undefined) return Number(v.integerValue);
+    if (v.doubleValue !== undefined) return v.doubleValue;
+    if (v.nullValue !== undefined) return null;
+    if (v.arrayValue !== undefined) return (v.arrayValue.values || []).map(one);
+    return v;
+  };
   const out = {};
-  for (const [k, v] of Object.entries(fields)) {
-    if (v.stringValue !== undefined) out[k] = v.stringValue;
-    else if (v.booleanValue !== undefined) out[k] = v.booleanValue;
-    else if (v.integerValue !== undefined) out[k] = Number(v.integerValue);
-    else if (v.doubleValue !== undefined) out[k] = v.doubleValue;
-    else if (v.arrayValue !== undefined) {
-      out[k] = (v.arrayValue.values || []).map((x) => x.stringValue ?? x.integerValue ?? x);
-    } else out[k] = v;
-  }
+  for (const [k, v] of Object.entries(fields)) out[k] = one(v);
   return out;
 }

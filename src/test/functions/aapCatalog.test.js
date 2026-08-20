@@ -25,8 +25,12 @@ const codeOnly = (s) =>
 
 const { HARD_CEILING, TRUST_LIMITS, DENY_MESSAGE, normalizeAchievement, trustLimitsFor } = rules;
 
-/** 유효한 최소 문서 */
-const ok = (over = {}) => ({ rewardType: "cash", amount: 1000, ...over });
+/**
+ * 유효한 최소 문서.
+ * ⚠️ `active: true` 가 **최소 조건에 들어간다** — "꺼져 있지 않다"가 아니라 "켜져 있다"를
+ *    요구하도록 바꿨기 때문이다(2026-08-20 codex CRITICAL). 이 한 줄을 빼면 전부 inactive 다.
+ */
+const ok = (over = {}) => ({ rewardType: "cash", amount: 1000, active: true, ...over });
 
 describe("절대 상한이 코드에 있다", () => {
   it("⭐ 상한이 주급 상수에서 파생된다 (경제와 따로 놀지 않게)", () => {
@@ -78,6 +82,10 @@ describe("신뢰등급이 상한을 정한다", () => {
     expect(Object.isFrozen(TRUST_LIMITS)).toBe(true);
     expect(Object.isFrozen(TRUST_LIMITS.L0)).toBe(true);
     expect(Object.isFrozen(TRUST_LIMITS.L2)).toBe(true);
+    // 보상 종류 허용목록·거부 문구도 실행 중에 늘어나면 안 된다(2026-08-20 codex NIT:
+    // `REWARD_TYPES.push("gold")` 후 rewardType:"gold" 가 통과했다).
+    expect(Object.isFrozen(rules.REWARD_TYPES)).toBe(true);
+    expect(Object.isFrozen(DENY_MESSAGE)).toBe(true);
     const before = TRUST_LIMITS.L0.cashPerGrant;
     try {
       TRUST_LIMITS.L0.cashPerGrant = 999999;
@@ -124,7 +132,7 @@ describe("오염된 문서를 통과시키지 않는다", () => {
     ["금액이 소수", ok({ amount: 100.5 }), "bad_amount"],
     ["금액이 문자열", ok({ amount: "1000" }), "bad_amount"],
     ["보상 종류가 이상함", ok({ rewardType: "gold" }), "bad_reward_type"],
-    ["보상 종류 없음", { amount: 100 }, "bad_reward_type"],
+    ["보상 종류 없음", { amount: 100, active: true }, "bad_reward_type"],
     ["하루횟수가 0", ok({ maxPerDay: 0 }), "bad_max_per_day"],
     ["하루횟수가 상한 초과", ok({ maxPerDay: HARD_CEILING.PER_DAY_COUNT + 1 }), "bad_max_per_day"],
     ["쿨다운이 음수", ok({ cooldownSec: -1 }), "bad_cooldown"],
@@ -141,6 +149,21 @@ describe("오염된 문서를 통과시키지 않는다", () => {
       expect(v.reason).toBe(reason);
     });
   }
+
+  it("⭐ **켜짐이 명시적**이어야 한다 (active 가 fail-open 이면 안 된다)", () => {
+    // `active === false` 만 걸렀더니 null·0·"false"·"off" 는 물론 **필드가 없는 문서까지**
+    // 지급 대상이었다(2026-08-20 codex CRITICAL, 재현 확인).
+    // "꺼져 있지 않다"와 "켜져 있다"는 다르다 — 돈이 나가는 쪽은 후자를 요구한다.
+    for (const a of [undefined, null, 0, 1, "true", "false", "off", {}, []]) {
+      const doc = { rewardType: "cash", amount: 1000 };
+      if (a !== undefined) doc.active = a;
+      const v = normalizeAchievement(doc, "L0");
+      expect(v.ok, `active=${JSON.stringify(a)} 인데 지급된다`).toBe(false);
+      expect(v.reason).toBe("inactive");
+    }
+    // 진짜 true 일 때만 통과한다.
+    expect(normalizeAchievement({ rewardType: "cash", amount: 1000, active: true }, "L0").ok).toBe(true);
+  });
 
   it("⭐ 오염된 선행조건을 **조용히 걸러내지** 않는다", () => {
     // 걸러내면 선행조건이 사라진 채로 지급된다 — 잠금이 조용히 풀린다.
@@ -259,6 +282,55 @@ describe("순수 규칙이 Firestore 를 모른다", () => {
     const CAT = codeOnly(read("functions/aap/catalog.js"));
     expect(CAT).toMatch(/require\("\.\/catalogRules"\)/);
     expect(CAT, "catalog.js 가 검증을 다시 구현했다").not.toMatch(/HARD_CEILING\s*=/);
+  });
+});
+
+describe("운영 CLI 가 서버와 **같은 판정**을 하려면 타입이 같아야 한다", () => {
+  it("⭐ REST 배열 안의 정수가 number 로 나온다 (Admin SDK 와 같게)", async () => {
+    // 운영 CLI 는 REST 로 읽은 값을 서버와 같은 검증 함수에 넣어 미리 판정한다.
+    // 배열 원소를 `x.stringValue ?? x.integerValue` 로 꺼내면 정수가 **문자열**이 되어,
+    // `prerequisites:[123]` 을 CLI 는 ✅ 로 서버는 bad_prerequisites 로 판정했다
+    // (2026-08-20 codex WARNING, 재현 확인). Admin SDK 는 int64 를 JS number 로 준다.
+    const { plain } = await import("../../../scripts/ops/_firestore-rest.mjs");
+    const got = plain({
+      prerequisites: { arrayValue: { values: [{ integerValue: "123" }, { stringValue: "ok_id" }] } },
+      amount: { integerValue: "500" },
+      active: { booleanValue: true },
+      note: { nullValue: null },
+    });
+    expect(got.prerequisites).toEqual([123, "ok_id"]);
+    expect(typeof got.prerequisites[0], "배열 정수가 문자열로 나온다").toBe("number");
+    expect(got.amount).toBe(500);
+    expect(got.active).toBe(true);
+    expect(got.note).toBeNull();
+  });
+
+  it("⭐ 같은 문서를 CLI 와 서버가 같은 결론으로 본다", async () => {
+    const { plain } = await import("../../../scripts/ops/_firestore-rest.mjs");
+    // Firestore 에 저장돼 있을 수 있는 모양들. 왼쪽=REST 표현, 오른쪽=Admin SDK 표현.
+    const pairs = [
+      [{ rewardType: { stringValue: "cash" }, amount: { integerValue: "1000" }, active: { booleanValue: true } },
+       { rewardType: "cash", amount: 1000, active: true }],
+      [{ rewardType: { stringValue: "cash" }, amount: { integerValue: "1000" }, active: { booleanValue: true },
+         prerequisites: { arrayValue: { values: [{ integerValue: "7" }] } } },
+       { rewardType: "cash", amount: 1000, active: true, prerequisites: [7] }],
+      [{ rewardType: { stringValue: "cash" }, amount: { integerValue: "99999" }, active: { booleanValue: true } },
+       { rewardType: "cash", amount: 99999, active: true }],
+    ];
+    for (const [restDoc, sdkDoc] of pairs) {
+      const viaCli = normalizeAchievement(plain(restDoc), "L0");
+      const viaServer = normalizeAchievement(sdkDoc, "L0");
+      expect(viaCli, `CLI 와 서버 판정이 갈린다: ${JSON.stringify(sdkDoc)}`).toEqual(viaServer);
+    }
+  });
+
+  it("⭐ on/off 는 **있는 성취에만** 쓴다 (PATCH 가 없는 문서를 만든다)", () => {
+    // 오타 한 번에 `{active:true}` 뿐인 반쪽 문서가 남고 CLI 는 "🟢 켜짐" 이라고 성공을 찍었다.
+    // 서버는 그걸 bad_reward_type 으로 거부하니, 운영자는 켰다고 믿는데 학생은 못 받는다.
+    const OPS = codeOnly(read("scripts/ops/aap-achievements.mjs"));
+    const region = OPS.slice(OPS.indexOf('if (cmd === "off" || cmd === "on")'));
+    expect(region.length, "on/off 구간을 찾지 못했다").toBeGreaterThan(0);
+    expect(region.slice(0, 800), "존재 전제조건이 없다").toMatch(/currentDocument\.exists=true/);
   });
 });
 

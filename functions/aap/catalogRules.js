@@ -26,7 +26,7 @@ const { SALARY } = require("../salaryUtils");
 /** 성취 id 형식. 앱 id 와 같은 규칙을 쓴다(경로 조작·과도한 길이 차단). */
 const ACHIEVEMENT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
-const REWARD_TYPES = ["cash", "coupon"];
+const REWARD_TYPES = Object.freeze(["cash", "coupon"]);
 
 /**
  * 🧱 **코드에 박은 절대 상한.** Firestore 문서 값은 이 이하일 때만 유효하다.
@@ -128,7 +128,12 @@ const isNonNegInt = (v, max) => Number.isInteger(v) && v >= 0 && v <= max;
  */
 function normalizeAchievement(raw, trustLevel) {
   if (!raw || typeof raw !== "object") return { ok: false, reason: "not_registered" };
-  if (raw.active === false) return { ok: false, reason: "inactive" };
+  // 🔒 **켜짐은 명시적이어야 한다.** `active === false` 만 걸렀더니 `null`·`0`·`"false"`·`"off"`
+  //    는 물론 **필드가 아예 없는 문서까지** 지급 대상이 됐다(2026-08-20 codex CRITICAL, 재현 확인).
+  //    "꺼져 있지 않다"와 "켜져 있다"는 다르다 — 돈이 나가는 쪽은 후자를 요구한다.
+  //    운영 CLI 는 언제나 진짜 boolean 을 쓰므로 정상 경로에는 영향이 없고,
+  //    손으로 만든 반쪽 문서는 여기서 멈춘다.
+  if (raw.active !== true) return { ok: false, reason: "inactive" };
 
   const rewardType = raw.rewardType;
   if (!REWARD_TYPES.includes(rewardType)) {
@@ -204,7 +209,7 @@ function normalizeAchievement(raw, trustLevel) {
 }
 
 /** 거부 사유 → 학생에게 보여줄 문구. 사유를 그대로 노출하지 않는다(카탈로그 구조가 새어 나간다). */
-const DENY_MESSAGE = {
+const DENY_MESSAGE = Object.freeze({
   not_registered: "이 활동은 아직 보상이 준비되지 않았어요.",
   inactive: "이 활동의 보상은 지금 꺼져 있어요.",
   bad_reward_type: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
@@ -214,7 +219,7 @@ const DENY_MESSAGE = {
   bad_max_lifetime: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
   bad_cooldown: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
   bad_prerequisites: "보상 설정에 문제가 있어요. 선생님께 알려 주세요.",
-};
+});
 
 module.exports = {
   ACHIEVEMENT_ID_RE,

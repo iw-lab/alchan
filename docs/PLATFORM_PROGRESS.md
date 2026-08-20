@@ -55,7 +55,7 @@
 | # | 항목 | 상태 | 근거 |
 |---|---|---|---|
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
-| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 34개 · 변이 15개 전부 검출. **아래 결정 2건 확인 필요** |
+| P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 39개 · 변이 22개 전부 검출 · codex REQUEST_CHANGES 4건 반영. **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ⬜ | ⚠️ **착수 전 확인한 함정 2개** (아래) |
 | P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | ⬜ | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
@@ -126,6 +126,31 @@ fail-closed** 지 설계가 아니다. 상한 판정이 우연에 기대면 안 
 5. **레이트리밋 장치가 사실상 없다.** `_rateLimits` 컬렉션을 쓰는 곳이 딱 한 군데
    (`functions/index.js:10333` 계정복구)뿐이고 범용 헬퍼가 아니다. 계획서 §3.3 6번
    (레이트리밋·차단기)은 **새로 만들어야 한다.**
+
+### 🔎 P1-7 교차검증 결과 (2026-08-20~21)
+
+**⚠️ 이번은 3계열이 아니라 2계열이다.** Gemini 가 개인 쿼터 소진으로 참여하지 못했다
+(`agy` 직접 호출 시 `Individual quota reached. Resets in 131h`). 웹 ChatGPT 로 메우지 않았다 —
+codex 와 같은 GPT 계열이라 독립성이 없는데 있다고 세게 된다. **약 5.5일 뒤 Gemini 로 한 번 더 볼 것.**
+또 검증자 에이전트 셋이 **실패를 보고하지 않고 한 시간 넘게 멈춰 있었다** — 그래서 CLI 를 직접 호출했다.
+
+**codex(gpt-5.6-sol) 판정: REQUEST_CHANGES → 4건 전부 반영**
+
+| 심각도 | 발견 | 조치 |
+|---|---|---|
+| CRITICAL | `active` 가 fail-open — `null`·`0`·`"false"`·`"off"` 는 물론 **필드가 없는 문서까지** 지급 대상 | `active !== true` 면 거부 |
+| WARNING | `plain()` 이 **배열 안의 정수**를 문자열로 바꿔, 같은 문서를 CLI 는 ✅ 서버는 ✗ 로 판정 | 재귀 변환으로 Admin SDK 와 타입 일치 |
+| WARNING | 없는 성취에 `on` 하면 `{active:true}` **반쪽 문서**가 생기고 CLI 는 "🟢 켜짐" 이라고 거짓 성공 | `currentDocument.exists=true` 전제조건 |
+| NIT | `REWARD_TYPES` 미동결 — `push("gold")` 후 `rewardType:"gold"` 통과 | `Object.freeze`(+`DENY_MESSAGE`) |
+
+**codex 가 확인해 준 것**: 상수 불변 전제에서 상한 초과를 `ok:true` 로 만드는 입력 없음
+(경계 조합 23,040개 위반 0건) · `amount × maxPerDay` 최대 1,000,000 으로 오버플로 없음 ·
+rules 의 `appAchievements`/`items` 가 학생·교사를 실제 차단(전역 `/{document=**}` 는 `false` 라
+덮지 않음) · `...rules` 스프레드 이름 충돌 없음.
+
+⚠️ 수정 직후 변이시험에서 **2건이 새어 나갔다**(`plain()` 배열 변환·`on/off` 전제조건).
+코드는 고쳤는데 그 자리를 지키는 테스트가 없었다 — 테스트를 채우고 재변이로 확인했다.
+**"고쳤다"와 "고친 것이 지켜진다"는 다르다.**
 
 ### 📐 P1-2 설계안 (착수 전 FULL 검증 대상 — 아직 구현 없음)
 

@@ -117,13 +117,21 @@ if (cmd === "rm") {
 
 if (cmd === "off" || cmd === "on") {
   const active = cmd === "on";
-  const res = await fetch(`${docUrl(appId, achId)}?updateMask.fieldPaths=active`, {
-    method: "PATCH",
-    headers: H,
-    body: JSON.stringify({ fields: { active: B(active) } }),
-  });
+  // 🔒 **없는 성취에 대고 켜면 반쪽 문서가 생긴다.** PATCH 는 문서가 없으면 만들어 버려서,
+  //    오타 한 번에 `{active:true}` 뿐인 문서가 남고 CLI 는 "🟢 켜짐" 이라고 성공을 찍는다.
+  //    서버는 그걸 `bad_reward_type` 으로 거부하므로, 운영자는 켰다고 믿는데 학생은 못 받는다
+  //    (2026-08-20 codex WARNING, 라이브 재현 확인).
+  //    `currentDocument.exists=true` 전제조건으로 **있을 때만** 쓴다.
+  const res = await fetch(
+    `${docUrl(appId, achId)}?updateMask.fieldPaths=active&currentDocument.exists=true`,
+    { method: "PATCH", headers: H, body: JSON.stringify({ fields: { active: B(active) } }) },
+  );
   if (!res.ok) {
-    console.error(`✗ 실패 ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    if (res.status === 404 || res.status === 400) {
+      console.error(`✗ '${appId}/${achId}' 성취가 없습니다. \`list ${appId}\` 로 id 를 확인하세요.`);
+    } else {
+      console.error(`✗ 실패 ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    }
     process.exit(1);
   }
   console.log(`${appId}/${achId} → ${active ? "🟢 켜짐" : "🔴 꺼짐 (즉시 지급 중단)"}`);
