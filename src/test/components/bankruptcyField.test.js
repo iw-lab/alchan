@@ -54,7 +54,8 @@ describe("파산 신청 자격 판정", () => {
     // pending-case effect 는 deps 가 [myUid, classCode] 로 좁혀져 있어야 한다.
     expect(COMPONENT).toContain("}, [myUid, classCode]);");
     // 순자산 effect 는 반대로 cash·coupons 에 반응해야 한다.
-    expect(COMPONENT).toContain("}, [myUid, classCode, userDoc?.cash, userDoc?.coupons]);");
+    // deps 는 스칼라로 뽑아 둔다(userDoc 객체를 넣으면 매 렌더 새 참조라 계속 재실행).
+    expect(COMPONENT).toContain("}, [myUid, classCode, myCash, myCoupons, myName]);");
   });
 
   it("⭐ 순자산 계산에 실패하면 자격을 열어주지 않는다", () => {

@@ -387,6 +387,11 @@ const BankruptcySection = ({ refetchComplaints }) => {
  const [isLoading, setIsLoading] = useState(true);
  const [netAssets, setNetAssets] = useState(null);
  const [isNetLoading, setIsNetLoading] = useState(true);
+ // deps 를 스칼라로 뽑는다 — userDoc 객체를 dep 에 넣으면 매 렌더 새 참조라 계속 재실행되고,
+ // 억제 주석으로 덮으면 진짜 누락을 나중에 못 잡는다.
+ const myCash = userDoc?.cash;
+ const myCoupons = userDoc?.coupons;
+ const myName = userDoc?.name;
 
  useEffect(() => {
  if (myUid && classCode) {
@@ -445,9 +450,9 @@ const BankruptcySection = ({ refetchComplaints }) => {
  // (캐시가 비어 있을 때만 파킹·상품·부동산·포트폴리오·시세 5문서를 읽는다.)
  const { net } = await getNetAssetsDetail({
  id: myUid,
- cash: userDoc?.cash,
- coupons: userDoc?.coupons,
- name: userDoc?.name,
+ cash: myCash,
+ coupons: myCoupons,
+ name: myName,
  classCode,
  });
  if (!cancelled) setNetAssets(net);
@@ -463,8 +468,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
  return () => {
  cancelled = true;
  };
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [myUid, classCode, userDoc?.cash, userDoc?.coupons]);
+ }, [myUid, classCode, myCash, myCoupons, myName]);
 
  const handleApplyForBankruptcy = async () => {
  if (
