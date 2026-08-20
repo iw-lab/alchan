@@ -2310,11 +2310,19 @@ const AdminSettingsModal = ({
             <div className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#ffffff", borderColor: "#e2e8f0" }}>
               <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9" }}>
                 <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
-                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#fee2e2", color: "#b91c1c" }}>🔒</span>
-                  메뉴 잠금 (학생 화면에서 숨기기)
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4338ca" }}>🎛️</span>
+                  기능 켜기 / 끄기
                 </h3>
                 <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
-                  체크한 메뉴는 <b>학생에게만</b> 숨겨집니다. 선생님 화면에는 계속 보여요. 아직 안 쓰는 기능을 잠가두면 학생 화면이 깔끔해집니다.
+                  <b>체크한 기능만</b> 학생 화면에 보입니다. 선생님 화면에는 전부 계속 보여요.
+                  아직 안 가르친 기능은 꺼 두었다가 나중에 켜면 됩니다 —
+                  끈 기능은 <b>주소로도 들어갈 수 없어요.</b>
+                </p>
+                {/* ⚠️ 저장 형태는 여전히 '끈 것 목록'(lockedItemIds)이다. 표시만 뒤집는다 —
+                    저장 의미를 뒤집으면 이미 저장된 학급들의 데이터를 이관해야 한다. */}
+                <p className="text-xs mt-2 ml-9 font-semibold" style={{ color: "#4338ca" }}>
+                  지금 {lockableMenuItems().length}개 중 {lockableMenuItems().filter((it) => !lockedItemIds.includes(it.id)).length}개를 켜 두셨어요
+                  {lockedItemIds.length > 0 && ` (${lockedItemIds.length}개 꺼짐)`}
                 </p>
               </div>
               <div className="px-6 py-5 space-y-4">
@@ -2331,24 +2339,26 @@ const AdminSettingsModal = ({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {items.map((it) => {
+                        // 체크 = 켜짐. 저장은 여전히 '끈 것 목록'이라 여기서만 뒤집는다.
                         const locked = lockedItemIds.includes(it.id);
+                        const enabled = !locked;
                         return (
                           <label
                             key={it.id}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm"
                             style={{
-                              background: locked ? "#fef2f2" : "#f8fafc",
-                              border: `1px solid ${locked ? "#fecaca" : "#e2e8f0"}`,
-                              color: locked ? "#b91c1c" : "#334155",
+                              background: enabled ? "#f0fdf4" : "#f8fafc",
+                              border: `1px solid ${enabled ? "#bbf7d0" : "#e2e8f0"}`,
+                              color: enabled ? "#166534" : "#94a3b8",
                             }}
                           >
                             <input
                               type="checkbox"
-                              checked={locked}
+                              checked={enabled}
                               onChange={() => toggleLockItem(it.id)}
                               style={{ width: 16, height: 16, cursor: "pointer" }}
                             />
-                            <span className="truncate">{locked ? "🔒 " : ""}{it.label}</span>
+                            <span className="truncate">{enabled ? "" : "🚫 "}{it.label}</span>
                           </label>
                         );
                       })}
@@ -2359,9 +2369,9 @@ const AdminSettingsModal = ({
                   onClick={handleSaveMenuLocks}
                   disabled={menuLocksSaving || !userClassCode}
                   className="w-full py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "#b91c1c", color: "#ffffff" }}
+                  style={{ background: "#4338ca", color: "#ffffff" }}
                 >
-                  {menuLocksSaving ? "저장 중..." : "🔒 메뉴 잠금 저장"}
+                  {menuLocksSaving ? "저장 중..." : "💾 기능 설정 저장"}
                 </button>
               </div>
             </div>
