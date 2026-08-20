@@ -625,6 +625,12 @@ function Dashboard({ adminTabMode }) {
  const [jobApprovalRequired, setJobApprovalRequired] = useState(false);
  // 승인 대기 중인 직업 id — 직업 선택 화면을 열 때만 조회한다(대시보드 진입마다 읽지 않는다).
  const [pendingJobIds, setPendingJobIds] = useState([]);
+ // 🔒 대기 신청 조회가 **동시에 두 번 돌지 않게** 막는 빗장. 버튼 연타로 두 조회가 겹치면
+ //    먼저 끝난 쪽이 화면을 열어 tempSelection(lazy 초기화)을 고정해 버리고, 늦게 온 결과는
+ //    뱃지만 갈아끼운다 → "신청 중이라고 떠 있는데 체크는 안 된" 상태로 저장되어 그 신청이
+ //    서버에서 취소된다(2026-08-20 codex CRITICAL). state 가 아니라 ref 인 이유는
+ //    렌더를 유발하지 않고 **클릭 핸들러가 도는 그 순간** 값이 보여야 하기 때문이다.
+ const pendingFetchInFlight = useRef(false);
 
  const [editingJob, setEditingJob] = useState(null);
  const [adminNewJobTitle, setAdminNewJobTitle] = useState("");
@@ -1711,16 +1717,41 @@ function Dashboard({ adminTabMode }) {
  );
 
  // Job selection handlers
- const handleSelectJobClick = useCallback(() => {
- setViewMode("selectJob");
+ //
+ // ⚠️ **대기 신청을 먼저 받아온 뒤에 화면을 연다.** 순서를 반대로 하면 조용히 데이터가 사라진다:
+ //    SelectMultipleJobsView 의 tempSelection 은 lazy useState 초기화라 **마운트 순간 딱 한 번**
+ //    돈다. setViewMode 를 먼저 부르면 그 순간 pendingJobIds 는 아직 [] 이고, 뒤늦게 값이
+ //    도착해도 초기화는 다시 안 돈다 → 대기 중인 직업이 **체크 안 된 채로** 그려진다.
+ //    그 상태로 저장하면 서버는 "체크 해제 = 마음을 접음"으로 읽고 그 신청들을 **취소**한다.
+ //    뱃지(useMemo)만 늦게 갱신돼서 "신청 중이라고 떠 있는데 체크는 안 된" 모습이 된다.
+ //    (2026-08-20 사후 교차검증에서 RTL 로 재현 확인)
+ const handleSelectJobClick = useCallback(async () => {
  // 승인제가 켜진 학급에서만, 그리고 **이 화면을 열 때만** 대기 신청을 읽는다.
  //   대시보드 진입마다 읽으면 탭 왕복(이 화면은 4개 Route 로 remount 된다)마다 비용이 붙는다.
  // 쿼리는 데이터 계층(firebase/db/jobApplications)에 있다 — 인덱스 제약도 거기 적혀 있다.
  if (!jobApprovalRequired || !user?.uid) {
  setPendingJobIds([]);
+ setViewMode("selectJob");
  return;
  }
- fetchPendingJobIds(user.uid).then(setPendingJobIds);
+ // 연타로 들어온 두 번째 클릭은 버린다(위 빗장 참고). 첫 조회가 끝나면 화면이 열리고
+ // 그때는 이 버튼이 사라지므로, 사용자가 잃는 것은 없다.
+ if (pendingFetchInFlight.current) return;
+ pendingFetchInFlight.current = true;
+ let pending;
+ try {
+ pending = await fetchPendingJobIds(user.uid);
+ } finally {
+ pendingFetchInFlight.current = false;
+ }
+ // 🔒 조회 실패(null)면 **화면을 열지 않는다.** 대기 신청을 모르는 채로 저장을 허용하면
+ //    그 신청들이 통째로 취소된다. 여는 게 아니라 못 여는 쪽이 안전한 자리다.
+ if (pending === null) {
+ toast.error("신청 현황을 불러오지 못했어요. 잠시 후 다시 눌러 주세요.");
+ return;
+ }
+ setPendingJobIds(pending);
+ setViewMode("selectJob");
  }, [jobApprovalRequired, user?.uid]);
 
  const handleConfirmJobSelection = useCallback(

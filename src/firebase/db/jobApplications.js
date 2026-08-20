@@ -52,7 +52,16 @@ export const subscribeToJobApplications = (
 
 /**
  * 한 학생의 승인 대기 중인 직업 id 목록(학생 화면의 "신청 중" 표시용).
- * 실패해도 화면을 막지 않는다 — 빈 배열을 돌려준다.
+ *
+ * ⚠️ **실패를 `[]` 로 뭉개지 않는다 — `null` 을 돌려준다.**
+ *    처음엔 fail-open 으로 `[]` 를 돌려줬는데, 그게 조용한 데이터 손실 경로였다:
+ *    직업 선택 화면은 "체크 안 된 대기 신청 = 학생이 마음을 접었다"로 읽고 서버가 그 신청을
+ *    **취소**한다(functions/index.js `canceledDocs`). 즉 조회가 한 번 실패하면
+ *    학생이 저장 버튼을 누르는 순간 대기 중인 신청이 전부 사라진다 — 경고도 에러도 없이.
+ *    "없다"와 "모른다"를 같은 값으로 표현하면 안 되는 자리다.
+ *
+ * @param {string} studentId 학생 uid
+ * @return {Promise<string[]|null>} 대기 중인 직업 id 배열, 조회 실패 시 null
  */
 export const fetchPendingJobIds = async (studentId) => {
   if (!db || !studentId) return [];
@@ -67,6 +76,6 @@ export const fetchPendingJobIds = async (studentId) => {
     return snap.docs.map((d) => d.data().jobId).filter(Boolean);
   } catch (e) {
     logger.warn("[jobApplications] 대기 신청 조회 실패:", e);
-    return [];
+    return null;
   }
 };

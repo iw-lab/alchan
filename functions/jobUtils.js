@@ -16,6 +16,11 @@
  *     · appointedJobIds에 섞인 일반 직업은 무효 (경로 오염 차단)
  */
 
+// ⚠️ 기본값을 이 파일에서 다시 적지 않는다. 급여 상수의 정본은 salaryUtils.SALARY 하나이고,
+//    클라이언트(src/utils/salaryCalculator.js)와의 동기화도 이미 테스트로 묶여 있다
+//    (src/test/utils/salaryConstantsSync.test.js). 여기에 5 를 또 적으면 그게 세 번째 사본이다.
+const { SALARY } = require("./salaryUtils");
+
 // appointedOnly 플래그가 없는 구버전 직업 문서용 fallback (클라 Dashboard.js와 동일 목록 유지)
 // 🔒 court-lock(2026-07-18, codex CRITICAL): 판사·경찰청장 추가. 이 역할들은 합의금 CF
 //   (processTrialSettlement·processCourtSettlement·processSettlement)에서 cash 이동 권한을 가지는데,
@@ -64,10 +69,12 @@ const buildJobMap = (jobsSnap) => {
  * @returns {{selected: string[], appointed: string[], all: string[]}}
  */
 const resolveStudentJobs = (userData, jobMap, maxJobsPerStudent) => {
+  // 호출부가 이미 clampMaxJobs 를 거친 값을 넘기지만, 직접 호출(테스트·미래의 새 경로)에
+  // 대비한 폴백이다. 여기에 5 를 리터럴로 적으면 정본이 또 하나 생긴다(2026-08-20 codex NIT).
   const cap =
     Number.isInteger(maxJobsPerStudent) && maxJobsPerStudent >= 1
       ? maxJobsPerStudent
-      : 5;
+      : SALARY.DEFAULT_MAX_JOBS;
 
   const appointed = dedupe(toJobIdArray(userData?.appointedJobIds)).filter(
     (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
@@ -102,6 +109,22 @@ const hasJobTitle = (userData, jobMap, title) => {
   );
 };
 
+/**
+ * 직업 개수 상한을 안전한 범위로 조인다.
+ *
+ * 왜 함수로 뽑았나: 이 다섯 줄이 **네 곳에 복붙**돼 있었다(주급 배치·주급 스케줄러·
+ * saveSelectedJobs·processJobApplication). 이 저장소는 정확히 이 실패모드로
+ * 주급 과다지급 사고를 낸 적이 있고(salaryUtils.js 헤더 주석 참고), 그래서 급여 공식은
+ * 순수 함수로 봉인해 뒀다. 상한도 급여를 정하는 값이니 같은 대접을 한다.
+ *
+ * 하한 1·상한 20 클램프는 **설정 문서가 변조돼도 급여 캡이 무력화되지 않게** 하는 방어다.
+ *
+ * @param {*} raw settings 문서의 maxJobsPerStudent 원값
+ * @return {number} 1~20 사이의 정수
+ */
+const clampMaxJobs = (raw) =>
+  Number.isInteger(raw) && raw >= 1 ? Math.min(20, raw) : SALARY.DEFAULT_MAX_JOBS;
+
 module.exports = {
   APPOINTED_FALLBACK_TITLES,
   isAppointedJob,
@@ -109,4 +132,5 @@ module.exports = {
   buildJobMap,
   resolveStudentJobs,
   hasJobTitle,
+  clampMaxJobs,
 };

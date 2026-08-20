@@ -69,6 +69,8 @@ const {
 //   그 복붙이 2026-08-17 주급 전 학급 실패를 만들었다(functions/batchChunk.js 주석 참고).
 const { shouldFlush } = require("./batchChunk");
 const { classCodesFromStudentSnap, studentCountsFromSnap } = require("./studentScope");
+// 직업 개수 상한 클램프 — 네 곳에 복붙돼 있던 것을 단일 정본으로.
+const { clampMaxJobs } = require("./jobUtils");
 
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
@@ -2390,7 +2392,6 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
     // (학생 데이터는 위에서 이미 한 번만 읽었다 — allStudentsSnap)
 
     // 급여 상수·공식은 functions/salaryUtils.js(computeSalaryAmounts) 단일 진실원.
-    const DEFAULT_MAX_JOBS = 5;       // 학생당 급여 계산 직업 상한 기본값(관리자 조절 가능)
     let totalPaidCount = 0;
     let totalAmount = 0;
     const classErrors = [];
@@ -2464,12 +2465,10 @@ async function payWeeklySalariesLogic(forceRun = false, weekKeyOverride = null) 
           Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1;
         const lastRaiseWeekKey = perClassSalaryData ? perClassSalaryData.salaryLastRaiseWeekKey : null;
         const effectiveBase = computeEffectiveBase(baseMultiplier);
-        // 직업 개수 상한(관리자 설정) — 급여 계산에 반영할 최대 직업 수. 미설정 시 기본 5.
-        const rawMaxJobs = salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined;
-        // 하한1·상한20 클램프(설정 문서가 API/콘솔로 변조돼도 급여 캡 무력화 방지)
-        const maxJobsPerStudent = Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1
-          ? Math.min(20, rawMaxJobs)
-          : DEFAULT_MAX_JOBS;
+        // 직업 개수 상한(관리자 설정) — 클램프는 jobUtils.clampMaxJobs 가 유일 정본.
+        const maxJobsPerStudent = clampMaxJobs(
+          salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined,
+        );
 
         // 직업 정보 로드 (대통령 보너스 적용용)
         const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();

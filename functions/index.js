@@ -27,6 +27,7 @@ const {
   buildJobMap,
   resolveStudentJobs,
   hasJobTitle,
+  clampMaxJobs,
 } = require("./jobUtils");
 // 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
 const {
@@ -7283,13 +7284,11 @@ exports.batchPaySalaries = onCall(
         ? salarySettingsDoc.data().taxRate
         : 0.1;
       const taxRate = Number.isFinite(rawTaxRate) ? rawTaxRate : 0.1;
-      // 직업 개수 상한(관리자 설정) — 미설정 시 기본 5. scheduler-http.js와 동일 규약.
-      const rawMaxJobs = salarySettingsDoc.exists
-        ? salarySettingsDoc.data().maxJobsPerStudent
-        : undefined;
-      // 하한1·상한20 클램프(설정 변조 대비 급여 캡 방어). scheduler-http.js와 동일.
-      const maxJobsPerStudent =
-        Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1 ? Math.min(20, rawMaxJobs) : 5;
+      // 직업 개수 상한(관리자 설정) — 클램프는 jobUtils.clampMaxJobs 가 유일 정본.
+      //   같은 다섯 줄이 네 곳에 복붙돼 있었다(주급 과다지급 사고와 같은 실패모드).
+      const maxJobsPerStudent = clampMaxJobs(
+        salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined,
+      );
 
       // 지급할 학생 목록 결정
       let targetStudents = [];
@@ -11075,13 +11074,9 @@ exports.saveSelectedJobs = onCall(
         .doc("salarySettings")
         .get();
     }
-    const rawMaxJobs = salarySettingsDoc.exists
-      ? salarySettingsDoc.data().maxJobsPerStudent
-      : undefined;
-    const maxJobsPerStudent =
-      Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1
-        ? Math.min(20, rawMaxJobs)
-        : 5;
+    const maxJobsPerStudent = clampMaxJobs(
+      salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined,
+    );
 
     // 같은 학급 직업만 유효
     const jobsSnap = await db
@@ -11216,11 +11211,22 @@ exports.saveSelectedJobs = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
+      // 🔒 취소는 **읽은 그 상태 그대로일 때만** 쓴다(lastUpdateTime 전제조건).
+      //    전제조건이 없으면 이런 겹침이 가능하다: 이 함수가 pending 을 읽음 → 그 사이
+      //    선생님이 `processJobApplication` 으로 **승인**을 커밋 → 여기 배치가 같은 문서를
+      //    조건 없이 `canceled` 로 덮어씀. 학생은 직업을 갖는데(arrayRemove 라 안 지워진다)
+      //    신청서는 "취소됨"으로 남아, 선생님이 방금 허가한 기록이 사라진다.
+      //    승인 쪽은 트랜잭션이라 자기를 지키지만, 조건 없는 배치는 그 보호를 그냥 지나간다
+      //    (2026-08-20 codex CRITICAL). 배치는 전부-아니면-전무라, 어긋나면 아무것도 안 써진다.
       for (const d of canceledDocs) {
-        batch.update(d.ref, {
-          status: "canceled",
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        batch.update(
+          d.ref,
+          {
+            status: "canceled",
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { lastUpdateTime: d.updateTime },
+        );
       }
       // ⚠️ `expireAt` 은 pendingApprovals 와 모양을 맞추려고 넣지만 **지금은 아무것도 안 한다** —
       //    2026-08-20 실측: 이 프로젝트에 TTL 정책이 **0개**다(pendingApprovals.expireAt 도 여태
@@ -11242,7 +11248,23 @@ exports.saveSelectedJobs = onCall(
           expireAt: admin.firestore.Timestamp.fromDate(applicationExpireAt),
         });
       }
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (e) {
+        // lastUpdateTime 불일치 = FAILED_PRECONDITION(9), 문서가 사라졌으면 NOT_FOUND(5).
+        // 둘 다 "내가 읽은 뒤에 누가 먼저 만졌다"는 뜻이고, 배치는 전부-아니면-전무라
+        // 이 시점에 써진 것은 하나도 없다. 다시 누르면 새로 읽어 올바르게 계산된다.
+        if (e?.code === 9 || e?.code === 5) {
+          logger.warn(
+            `[saveSelectedJobs] 신청 상태가 그 사이 바뀌어 저장 중단: uid=${uid} code=${e.code}`,
+          );
+          throw new HttpsError(
+            "aborted",
+            "선생님이 방금 신청을 처리했어요. 화면을 새로 고친 뒤 다시 저장해 주세요.",
+          );
+        }
+        throw e;
+      }
 
       logger.info(
         `[saveSelectedJobs] (승인제) uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length} · 취소 ${canceledDocs.length}`,
@@ -11317,7 +11339,15 @@ exports.processJobApplication = onCall(
       );
     }
 
-    // 상한·직업 목록은 트랜잭션 밖에서 로드(트랜잭션 안 쿼리 불가).
+    // 상한·직업 목록은 트랜잭션 **밖에서** 로드한다.
+    //   ⚠️ "트랜잭션 안에서 쿼리를 못 해서"가 아니다 — Admin SDK 는 `transaction.get(query)` 를
+    //      지원한다(클라이언트 SDK 만 못 한다. 2026-08-20 정정). 밖에서 읽는 건 선택이다:
+    //      학급 직업 전체를 read set 에 넣으면 **아무 직업이나 한 글자만 고쳐도** 승인 트랜잭션이
+    //      충돌·재시도한다. 대신 아래에서 **승인하려는 그 직업 한 건만** 트랜잭션 안에서 다시 읽어
+    //      삭제·지정전용 전환을 놓치지 않게 한다.
+    //   ⚠️ 상한(maxJobsPerStudent)·지정직업 개수는 여전히 트랜잭션 밖 스냅샷이다. 승인 직전에
+    //      상한이 내려가면 한 건이 초과 상태로 붙을 수 있는데, **급여는 그 값을 믿지 않는다** —
+    //      resolveStudentJobs 가 지급 때마다 상한으로 다시 자른다. 돈에는 닿지 않는 잔여다.
     //   승인 순간의 값으로 판정하기 위해 **신청 시점 값을 재사용하지 않는다**.
     let salarySettingsDoc = await db
       .collection("settings")
@@ -11329,13 +11359,9 @@ exports.processJobApplication = onCall(
         .doc("salarySettings")
         .get();
     }
-    const rawMaxJobs = salarySettingsDoc.exists
-      ? salarySettingsDoc.data().maxJobsPerStudent
-      : undefined;
-    const maxJobsPerStudent =
-      Number.isInteger(rawMaxJobs) && rawMaxJobs >= 1
-        ? Math.min(20, rawMaxJobs)
-        : 5;
+    const maxJobsPerStudent = clampMaxJobs(
+      salarySettingsDoc.exists ? salarySettingsDoc.data().maxJobsPerStudent : undefined,
+    );
     const jobsSnap = await db
       .collection("jobs")
       .where("classCode", "==", classCode)
@@ -11345,91 +11371,125 @@ exports.processJobApplication = onCall(
     const appRef = db.collection("jobApplications").doc(applicationId);
     let resultMessage = "";
 
-    await db.runTransaction(async (transaction) => {
-      const appDoc = await transaction.get(appRef);
-      if (!appDoc.exists) throw new Error("직업 신청을 찾을 수 없습니다.");
-      const app = appDoc.data();
+    // 🏷️ "선생님에게 그대로 보여줄 판정 사유"에만 표식을 단다.
+    //    표식이 없는 예외는 운영 장애다 — Firestore 의 UNAVAILABLE·DEADLINE_EXCEEDED·
+    //    PERMISSION_DENIED·RESOURCE_EXHAUSTED 는 전부 `HttpsError` 가 아닌 GoogleError 라,
+    //    아래 catch 가 뭉뚱그리면 선생님은 인프라 장애를 "규칙상 안 되는 일"로 읽고
+    //    로그에는 진짜 원인이 안 남는다(2026-08-20 codex WARNING).
+    const deny = (message) => Object.assign(new Error(message), { jobAppDeny: true });
 
-      // 멱등: 이미 처리된 신청은 다시 처리하지 않는다(두 번 승인 = 직업 중복 부여 시도).
-      if (app.status !== "pending") {
-        throw new Error(`이미 처리된 신청입니다. (상태: ${app.status})`);
-      }
-      // 반경계: 다른 학급 신청은 못 만진다.
-      if (app.classCode !== classCode) {
-        throw new Error("다른 학급의 신청은 처리할 수 없습니다.");
-      }
-      // 자기 자신 승인 차단 — 교사 경로는 애초에 신청서를 만들지 않으므로 정상 흐름 무영향.
-      if (app.studentId === uid) {
-        throw new Error("본인의 신청은 처리할 수 없습니다.");
-      }
+    // ⚠️ 트랜잭션을 try 로 감싸는 이유: `onCall` 은 **HttpsError 가 아닌 예외를 클라이언트에
+    //    그대로 보내지 않는다** — `internal` 로 마스킹한다. 아래 트랜잭션 안의 throw 들은
+    //    전부 순수 Error 라, 감싸지 않으면 교사는 "그 직업이 삭제되었습니다" 같은 실제 사유를
+    //    영영 못 보고 의미 없는 오류만 본다. 같은 파일의 processTaskApproval·transferCash·
+    //    buyStock·purchaseStoreItem 이 전부 이 패턴으로 봉인돼 있는데 여기만 빠져 있었다.
+    try {
+      await db.runTransaction(async (transaction) => {
+        const appDoc = await transaction.get(appRef);
+        if (!appDoc.exists) throw deny("직업 신청을 찾을 수 없습니다.");
+        const app = appDoc.data();
 
-      if (action === "reject") {
-        transaction.update(appRef, {
-          status: "rejected",
-          processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          processedBy: uid,
-        });
-        resultMessage = `'${app.jobTitle}' 신청을 거절했습니다.`;
-        return;
-      }
+        // 멱등: 이미 처리된 신청은 다시 처리하지 않는다(두 번 승인 = 직업 중복 부여 시도).
+        if (app.status !== "pending") {
+          throw deny(`이미 처리된 신청입니다. (상태: ${app.status})`);
+        }
+        // 반경계: 다른 학급 신청은 못 만진다.
+        if (app.classCode !== classCode) {
+          throw deny("다른 학급의 신청은 처리할 수 없습니다.");
+        }
+        // 자기 자신 승인 차단 — 교사 경로는 애초에 신청서를 만들지 않으므로 정상 흐름 무영향.
+        if (app.studentId === uid) {
+          throw deny("본인의 신청은 처리할 수 없습니다.");
+        }
 
-      const studentRef = db.collection("users").doc(app.studentId);
-      const studentDoc = await transaction.get(studentRef);
-      if (!studentDoc.exists) throw new Error("학생 정보를 찾을 수 없습니다.");
-      const sData = studentDoc.data();
-      if (sData.classCode !== classCode) {
-        throw new Error("학생이 이 학급 소속이 아닙니다.");
-      }
+        if (action === "reject") {
+          transaction.update(appRef, {
+            status: "rejected",
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            processedBy: uid,
+          });
+          resultMessage = `'${app.jobTitle}' 신청을 거절했습니다.`;
+          return;
+        }
 
-      // 🔒 승인 시점 재검증 ①: 직업이 아직 존재하는가
-      const job = jobMap.get(app.jobId);
-      if (!job) {
-        throw new Error("그 직업이 삭제되어 승인할 수 없습니다.");
-      }
-      // 🔒 재검증 ②: 그 사이 '선생님 지정 전용'으로 바뀌지 않았는가
-      //    (지정 전용은 appointedJobIds 로만 부여해야 한다 — 학생 신청으로 붙으면 안 된다)
-      if (isAppointedJob(job)) {
-        throw new Error(
-          "선생님이 지정하는 직업이라 신청으로는 줄 수 없습니다. 직업 배정에서 지정해 주세요.",
+        const studentRef = db.collection("users").doc(app.studentId);
+        const studentDoc = await transaction.get(studentRef);
+        if (!studentDoc.exists) throw deny("학생 정보를 찾을 수 없습니다.");
+        const sData = studentDoc.data();
+        if (sData.classCode !== classCode) {
+          throw deny("학생이 이 학급 소속이 아닙니다.");
+        }
+
+        // 🔒 승인 시점 재검증 ①: 직업이 아직 존재하는가
+        //    **트랜잭션 안에서 다시 읽는다** — 위 jobMap 은 트랜잭션 시작 전 스냅샷이라
+        //    "읽은 뒤 삭제/변경"을 못 본다. 이 한 건만 read set 에 넣으면 그 직업이 바뀔 때만
+        //    재시도가 걸린다(2026-08-20 codex WARNING).
+        //    id 로 직접 읽으므로 **학급 대조를 여기서 직접 한다** — 학급 필터 쿼리가 해 주던 일이다.
+        const jobDoc = await transaction.get(db.collection("jobs").doc(app.jobId));
+        const job = jobDoc.exists ? jobDoc.data() : null;
+        if (!job || job.classCode !== classCode) {
+          throw deny("그 직업이 삭제되어 승인할 수 없습니다.");
+        }
+        // 🔒 재검증 ②: 그 사이 '선생님 지정 전용'으로 바뀌지 않았는가
+        //    (지정 전용은 appointedJobIds 로만 부여해야 한다 — 학생 신청으로 붙으면 안 된다)
+        if (isAppointedJob(job)) {
+          throw deny(
+            "선생님이 지정하는 직업이라 신청으로는 줄 수 없습니다. 직업 배정에서 지정해 주세요.",
+          );
+        }
+
+        const current = toJobIdArray(sData.selectedJobIds).filter(
+          (id) => jobMap.has(id) && !isAppointedJob(jobMap.get(id)),
         );
-      }
+        // 이미 갖고 있으면 승인만 기록하고 끝낸다(중복 부여 방지).
+        if (current.includes(app.jobId)) {
+          transaction.update(appRef, {
+            status: "approved",
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            processedBy: uid,
+          });
+          resultMessage = `'${app.jobTitle}' 는 이미 맡고 있어서 신청만 정리했습니다.`;
+          return;
+        }
 
-      const current = toJobIdArray(sData.selectedJobIds).filter(
-        (id) => jobMap.has(id) && !isAppointedJob(jobMap.get(id)),
-      );
-      // 이미 갖고 있으면 승인만 기록하고 끝낸다(중복 부여 방지).
-      if (current.includes(app.jobId)) {
+        // 🔒 재검증 ③: 지금 기준 상한. 신청 후 교사가 상한을 낮췄을 수 있다.
+        const appointedCount = toJobIdArray(sData.appointedJobIds).filter(
+          (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+        ).length;
+        const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
+        if (current.length + 1 > allowedSelected) {
+          throw deny(
+            `${sData.name || "학생"}님은 직업을 ${allowedSelected}개까지 가질 수 있어서 더 줄 수 없습니다.`,
+          );
+        }
+
+        transaction.update(studentRef, {
+          selectedJobIds: [...current, app.jobId],
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         transaction.update(appRef, {
           status: "approved",
           processedAt: admin.firestore.FieldValue.serverTimestamp(),
           processedBy: uid,
         });
-        resultMessage = `'${app.jobTitle}' 는 이미 맡고 있어서 신청만 정리했습니다.`;
-        return;
-      }
-
-      // 🔒 재검증 ③: 지금 기준 상한. 신청 후 교사가 상한을 낮췄을 수 있다.
-      const appointedCount = toJobIdArray(sData.appointedJobIds).filter(
-        (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
-      ).length;
-      const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
-      if (current.length + 1 > allowedSelected) {
-        throw new Error(
-          `${sData.name || "학생"}님은 직업을 ${allowedSelected}개까지 가질 수 있어서 더 줄 수 없습니다.`,
-        );
-      }
-
-      transaction.update(studentRef, {
-        selectedJobIds: [...current, app.jobId],
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resultMessage = `'${app.jobTitle}' 신청을 허가했습니다.`;
       });
-      transaction.update(appRef, {
-        status: "approved",
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
-        processedBy: uid,
-      });
-      resultMessage = `'${app.jobTitle}' 신청을 허가했습니다.`;
-    });
+    } catch (error) {
+      // 이미 HttpsError 면 그대로 올린다(코드·메시지를 덮어쓰지 않는다).
+      if (error instanceof HttpsError) throw error;
+      // 판정 사유 — 선생님이 읽고 조치할 수 있는 말이므로 그대로 전한다.
+      if (error?.jobAppDeny === true) {
+        throw new HttpsError("failed-precondition", error.message);
+      }
+      // 그 밖은 전부 운영 장애. 원인은 로그에 남기고, 선생님에게는 재시도를 안내한다.
+      logger.error(
+        `[processJobApplication] 처리 실패: applicationId=${applicationId} code=${error?.code} ${error?.message}`,
+      );
+      throw new HttpsError(
+        "internal",
+        "처리 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.",
+      );
+    }
 
     return { success: true, message: resultMessage };
   },

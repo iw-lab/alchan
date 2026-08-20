@@ -27,15 +27,13 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Unit tests (vitest)
-        # 재무/로직 계산 테스트(자산 보호 핵심) 143개를 게이팅한다.
-        # ⚠️ 격리(2026-07-19): globalCacheService/useFirestoreData/logger 테스트는 사전 존재하는
-        #   test-infra 이슈(NODE_ENV=test인데 development 가정, retry fake-timer 타임아웃)로 실패 중.
-        #   제품 버그 아님. Phase5 테스트 하드닝에서 고쳐 재편입 예정 — 그 전까지 CI green 유지 위해 제외.
-        run: >
-          npx vitest run
-          --exclude '**/globalCacheService.test.js'
-          --exclude '**/useFirestoreData.test.js'
-          --exclude '**/logger.test.js'
+        # ⚠️ **제외 목록을 두지 않는다.** 2026-07-19 에 test-infra 이슈로 3개를 임시 제외했는데,
+        #    그 이슈가 고쳐진 뒤에도 제외만 남아 CI 가 **575개**, 로컬(`npm test`)이 **636개**를
+        #    돌리는 상태로 한 달을 갔다(2026-08-20 실측). 초록불이 "다 통과했다"는 뜻이 아니게 된다 —
+        #    이 저장소가 이미 한 번 겪은 실패 유형이다(메모리 test_script_hid_failures).
+        #    제외한 3개는 지금 전부 통과한다(`useFirestoreData.test.js` 는 아예 존재하지도 않았다).
+        #    앞으로 특정 테스트를 빼야 한다면 **여기서 숨기지 말고** 그 테스트를 고치거나 지울 것.
+        run: npm test
 
       - name: 린트 (oxlint — React 훅 규칙)
         # CRA 를 걷어내면서 린트가 통째로 사라졌다. react-scripts 가 빌드 중에

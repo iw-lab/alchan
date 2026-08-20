@@ -1079,6 +1079,13 @@ const StudentManager = () => {
                   await updateDoc(doc(db, "users", editingStudent.id), {
                     name: editingStudent.name,
                     nickname: editingStudent.name,
+                    // 🔒 교사가 이름을 고치면 "학생이 스스로 정한 닉네임"이라는 신뢰가 깨진다.
+                    //    이 화면이 넣는 값은 실명일 수 있고(위 학생 추가 라벨이 "학생 이름"·"홍길동"),
+                    //    AAP 는 hasSetNickname === true 를 "자기결정 닉네임"의 증명으로 삼아
+                    //    그 값을 **외부 학습앱에 보낸다**(functions/aap/handlers.js).
+                    //    여기서 플래그를 안 내리면 교사의 평범한 명단 수정 한 번으로
+                    //    초등학생 실명이 제3자 호스팅으로 나간다. 학생은 닉네임 팝업에서 다시 정하면 된다.
+                    hasSetNickname: false,
                     studentNumber: editingStudent.studentNumber,
                   });
                   setShowEditModal(false);

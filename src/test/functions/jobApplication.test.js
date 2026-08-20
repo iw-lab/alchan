@@ -121,7 +121,11 @@ describe("직업 신청 — 승인 경로(processJobApplication)", () => {
 
   it("⭐ 승인 시점에 직업 존재를 다시 확인한다", () => {
     // 신청 후 직업이 삭제됐을 수 있다.
-    expect(PROCESS).toMatch(/const job = jobMap\.get\(app\.jobId\)[\s\S]{0,120}if \(!job\)/);
+    // ⚠️ 2026-08-20: 트랜잭션 **밖** jobMap 스냅샷을 보던 것을 **안에서 다시 읽도록** 바꿨다.
+    //    id 로 직접 읽으므로 학급 대조가 함께 있어야 다른 학급 직업이 새어 들어오지 않는다.
+    expect(PROCESS).toMatch(
+      /const jobDoc = await transaction\.get\(db\.collection\("jobs"\)\.doc\(app\.jobId\)\)[\s\S]{0,240}if \(!job \|\| job\.classCode !== classCode\)/,
+    );
   });
 
   it("⭐ 승인 시점에 '선생님 지정 전용'인지 다시 확인한다", () => {
@@ -138,12 +142,16 @@ describe("직업 신청 — 승인 경로(processJobApplication)", () => {
     const grant = PROCESS.indexOf("selectedJobIds: [...current, app.jobId]");
     expect(grant).toBeGreaterThan(-1);
     for (const guard of [
-      "if (!job)",
+      "if (!job || job.classCode !== classCode)",
       "isAppointedJob(job)",
       "current.length + 1 > allowedSelected",
       "app.studentId === uid",
     ]) {
-      expect(PROCESS.indexOf(guard), `${guard} 가 부여보다 뒤에 있다`).toBeLessThan(grant);
+      // ⚠️ **먼저 존재를 확인한다.** 없으면 indexOf 가 -1 이라 "부여보다 앞"이 자동으로
+      //    참이 되어, 가드를 통째로 지워도 이 테스트가 초록불로 남는다(2026-08-20).
+      const at = PROCESS.indexOf(guard);
+      expect(at, `${guard} 가 사라졌다`).toBeGreaterThan(-1);
+      expect(at, `${guard} 가 부여보다 뒤에 있다`).toBeLessThan(grant);
     }
   });
 
