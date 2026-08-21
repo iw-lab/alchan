@@ -347,6 +347,31 @@ exports.clawbackAppReward = onCall({ region: REGION, maxInstances: MAX_INSTANCES
 //
 //    돈이 아니라서 CORS·인증 형태만 같고 방어선은 다르다(상세는 learning.js 머리말).
 // ───────────────────────────────────────────────────────────────
+/**
+ * 학습기록 거부를 **한 곳에서** 남긴다. 사유마다 흩뿌리면 규칙이 갈라진다.
+ *
+ * 두 갈래로 나뉜다 (2026-08-21 — 처음엔 안 나눴다가 스스로 폭주 경로를 만들 뻔했다)
+ *   · **안 찍는 것**: `rate_limited` — 호출 횟수에 상한이 없는 유일한 사유다. 찍으면 방금
+ *     0 으로 줄인 쓰기 비용이 로깅 비용으로 되돌아온다. 429 는 이미 함수 지표에 잡힌다.
+ *     `token_invalid` 도 안 찍는다 — 레이트리밋 **앞**이라 역시 무제한이고, 원인은
+ *     `learning.js` 가 이미 한 번 남긴다(두 번 찍을 이유가 없다).
+ *   · **경보로 올리는 것**(`event` 필드): 운영자가 손을 대야 하는 사유만.
+ *     나머지는 맥락만 붙여 조용히 남긴다 — 신고가 들어왔을 때 찾을 수 있으면 된다.
+ *
+ * @param {string} reason 사유
+ * @param {string} [app] 앱 id
+ * @param {string} [classCode] 학급코드 (uid 는 **싣지 않는다**)
+ */
+function logDeny(reason, app, classCode) {
+  if (reason === "rate_limited" || reason === "token_invalid") return;
+  const ctx = { reason, app: app || "?", ...(classCode ? { classCode } : {}) };
+  if (L.isAlertable(reason)) {
+    logger.warn("[AAP] 학습기록 거부", { event: "aap_stats_denied", ...ctx });
+  } else {
+    logger.warn(`[AAP] 학습기록 거부 사유=${reason} app=${ctx.app}${classCode ? ` class=${classCode}` : ""}`);
+  }
+}
+
 exports.recordLearningEvent = onRequest(
   { region: REGION, invoker: "public", maxInstances: MAX_INSTANCES },
   async (req, res) => {
@@ -375,7 +400,7 @@ exports.recordLearningEvent = onRequest(
       out = await recordLearningEvent({ body: req.body, headerToken: m ? m[1] : "" });
     } catch (e) {
       if (e instanceof LearningDenied) {
-        logger.warn(`[AAP] 학습기록 거부 사유=${e.reason}`);
+        logDeny(e.reason, e.appId, e.classCode);
         res
           .status(L.denyStatus(e.reason))
           .json({ success: false, error: e.reason, message: L.denyMessage(e.reason) });
@@ -396,9 +421,7 @@ exports.recordLearningEvent = onRequest(
       // ⚠️ `rate_limited` 만 뺀다. 그것만 **호출 횟수에 상한이 없는** 사유라(차단된 요청은
       //    막을 방법이 없다) 로그로 찍으면 방금 0 으로 줄인 쓰기 비용이 로깅 비용으로
       //    되돌아온다. 그 사유는 429 응답코드가 이미 함수 지표에 그대로 잡힌다.
-      if (out.reason !== "rate_limited") {
-        logger.warn("[AAP] 학습기록 거부", { event: "aap_stats_denied", reason: out.reason, app: out.appId || "?" });
-      }
+      logDeny(out.reason, out.appId);
       res
         .status(L.denyStatus(out.reason))
         .json({ success: false, error: out.reason, message: L.denyMessage(out.reason) });

@@ -1782,11 +1782,49 @@ describe("학습기록 — 돈이 아닌 기록", () => {
     expect(b.appId).toBe(APP);
   });
 
-  it("거부 진입점이 사유를 로그로 남긴다 (rate_limited 만 뺀다 — 상한이 없는 유일한 사유)", () => {
+  // 🔴 2026-08-21 — 여기서 내가 **스스로 폭주 경로를 만들 뻔했다.** 거부를 전부 경보
+  //    이벤트로 찍었는데, `token_invalid` 는 레이트리밋 **앞**이라 인증 없는 호출자가
+  //    무제한으로 만들 수 있다 → 경보 메일 폭주. 상한이 없는 사유는 경보가 아니다.
+  it("⭐ 경보로 올리는 사유는 **상한이 있는 것만**이다 (메일 폭주 경로를 안 만든다)", () => {
+    const L2 = req("../../../functions/aap/learningRules.js");
+    // 레이트리밋 앞에서 판정돼 무제한인 사유 — 절대 경보 금지
+    expect(L2.isAlertable("token_invalid"), "토큰 검증은 레이트리밋 앞이다").toBe(false);
+    expect(L2.isAlertable("rate_limited")).toBe(false);
+    // 정상 운영 중에도 나는 소리 — 로그는 남기되 경보는 아니다
+    expect(L2.isAlertable("event_daily_cap")).toBe(false);
+    expect(L2.isAlertable("session_expired")).toBe(false);
+    // 사람이 손대야 하는 것만 경보
+    expect(L2.isAlertable("stats_off")).toBe(true);
+    expect(L2.isAlertable("disabled")).toBe(true);
+    expect(L2.isAlertable("stats_corrupt")).toBe(true);
+  });
+
+  it("거부 로그가 한 곳(logDeny)에 모여 있고, 상한 없는 사유는 아예 안 찍는다", () => {
     const H = read("functions/aap/handlers.js");
+    const fn = after(H, "function logDeny(");
+    expect(fn).toMatch(/reason === "rate_limited" \|\| reason === "token_invalid"/);
+    expect(fn).toMatch(/L\.isAlertable\(reason\)/);
+    expect(fn).toMatch(/aap_stats_denied/);
+    // uid 는 로그에 싣지 않는다 (초등학생 식별자)
+    expect(fn).not.toMatch(/\buid\b/);
+
+    // 정의만 있고 **부르지 않으면** 아무 로그도 안 남는다 — 두 갈래 모두에서 부른다.
     const tail = after(H, "exports.recordLearningEvent = onRequest(");
-    expect(tail).toMatch(/out\.reason !== "rate_limited"/);
-    expect(tail).toMatch(/aap_stats_denied/);
+    expect(tail, "던지는 경로에서 안 부른다").toMatch(/logDeny\(e\.reason, e\.appId, e\.classCode\)/);
+    expect(tail, "반환 경로에서 안 부른다").toMatch(/logDeny\(out\.reason, out\.appId\)/);
+  });
+
+  it("트랜잭션 안에서 던지는 거부도 맥락을 달고 나온다", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: DAY, appId: APP,
+      events: L.LIMITS.EVENTS_PER_SUBJECT_PER_DAY, sec: 0, sessions: 1, best: 0, lastEventAt: NOW,
+    });
+    const err = await rec(issued).then(() => null, (e) => e);
+    expect(err?.reason).toBe("event_daily_cap");
+    expect(err?.appId, "어느 앱인지 없으면 신고를 역추적 못 한다").toBe(APP);
+    expect(err?.classCode, "어느 학급인지 없으면 교사 신고를 좁힐 수 없다").toBe(CLASS);
+    expect(err?.uid, "uid 는 절대 싣지 않는다").toBeUndefined();
   });
 
   it("⭐ 거부 상태코드가 지급 경로와 **같은 계약**이다", () => {

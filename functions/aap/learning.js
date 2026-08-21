@@ -30,11 +30,20 @@ const RAW_RETENTION_MS = 120 * 24 * 60 * 60 * 1000;
 
 /** 거부를 사유 코드로 던진다. HTTP 변환은 진입점(handlers.js)이 한다. */
 class LearningDenied extends Error {
-  /** @param {string} reason 사유 코드 */
-  constructor(reason) {
+  /**
+   * @param {string} reason 사유 코드
+   * @param {{appId?: string, classCode?: string}} [ctx] 진단 맥락.
+   *   🔴 사유만 남기면 "우리 반 기록이 안 쌓여요" 를 역추적할 수 없다 — 어느 앱인지,
+   *      어느 학급인지가 있어야 로그가 답이 된다(2026-08-21 Gemini WARNING).
+   *   🚫 **uid 는 싣지 않는다.** 초등학생 식별자를 로그에 흘리지 않는 것이 이 규약의 전제고,
+   *      학급코드만으로 교사 신고를 좁히는 데 충분하다.
+   */
+  constructor(reason, ctx = {}) {
     super(reason);
     this.name = "LearningDenied";
     this.reason = reason;
+    this.appId = ctx.appId;
+    this.classCode = ctx.classCode;
   }
 }
 
@@ -98,22 +107,22 @@ async function recordLearningEvent({ body, headerToken, nowMs = Date.now() }) {
   const value = await db.runTransaction(async (tx) => {
     // ─── 읽기 구간 ───
     const sessionSnap = await tx.get(sessionRef);
-    if (!sessionSnap.exists) throw new LearningDenied("session_missing");
+    if (!sessionSnap.exists) throw new LearningDenied("session_missing", { appId });
     const session = sessionSnap.data();
 
     // 세션이 이 토큰의 것인지 전부 대조한다. 하나라도 어긋나면 남의 실행권이다.
-    if (session.appId !== appId || session.sub !== sub) throw new LearningDenied("session_mismatch");
+    if (session.appId !== appId || session.sub !== sub) throw new LearningDenied("session_mismatch", { appId });
     const uid = session.uid;
     const classCode = session.classCode;
-    if (typeof uid !== "string" || !L.UID_RE.test(uid)) throw new LearningDenied("session_mismatch");
+    if (typeof uid !== "string" || !L.UID_RE.test(uid)) throw new LearningDenied("session_mismatch", { appId });
     if (typeof classCode !== "string" || !L.CLASS_CODE_RE.test(classCode)) {
-      throw new LearningDenied("session_mismatch");
+      throw new LearningDenied("session_mismatch", { appId });
     }
     // sub 를 **재계산**해서 맞춘다 — 세션 문서가 잘못 쓰였어도 여기서 죽는다.
-    if (pairwise(salt, appId, uid) !== sub) throw new LearningDenied("session_mismatch");
+    if (pairwise(salt, appId, uid) !== sub) throw new LearningDenied("session_mismatch", { appId });
     // ⚠️ `consumedGrantId` 는 **보지 않는다.** 지급으로 소비된 세션도 기록은 계속 받는다.
     if (!Number.isFinite(session.exp) || nowMs >= session.exp * 1000) {
-      throw new LearningDenied("session_expired");
+      throw new LearningDenied("session_expired", { appId, classCode });
     }
 
     const statsRef = db.doc(L.statsPath(classCode, uid, day, appId));
@@ -121,12 +130,12 @@ async function recordLearningEvent({ body, headerToken, nowMs = Date.now() }) {
     const used = L.dayStats(statsSnap.exists ? statsSnap.data() : null, day);
     if (used === null) {
       logger.error(`[AAP] 학습집계 손상 class=${classCode} app=${appId} day=${day}`);
-      throw new LearningDenied("stats_corrupt");
+      throw new LearningDenied("stats_corrupt", { appId, classCode });
     }
 
     // ─── 판정 ───
     const limit = L.checkLimits({ used, sec });
-    if (!limit.ok) throw new LearningDenied(limit.reason);
+    if (!limit.ok) throw new LearningDenied(limit.reason, { appId, classCode });
 
     // ─── 쓰기 ───
     const next = L.nextStats({ used, nowMs, sec, score, hasScore });

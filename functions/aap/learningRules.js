@@ -259,6 +259,30 @@ const DENY_STATUS = Object.freeze({
   sec_daily_cap: 429,
 });
 
+/**
+ * 🚨 **경보로 올릴 사유** — 운영자가 실제로 손을 대야 하는 것만이다.
+ *
+ * 🔴 여기 아무거나 넣으면 안 된다. `token_invalid` 는 레이트리밋 **앞**에서 판정되므로
+ *    인증 없는 호출자가 무제한으로 만들 수 있다 — 경보에 넣으면 **메일 폭주 경로**가 열린다.
+ *    `rate_limited`·상한·세션만료는 정상 운영 중에도 나는 소리라 경보가 아니라 로그다.
+ *
+ * 가르는 기준 하나: **"이걸 받고 사람이 할 일이 있는가."** 스위치가 꺼져 있거나 정책이
+ * 닫혀 있는데 앱이 계속 보내고 있다면 사람이 켜야 한다. 상한에 걸린 건 설계대로 도는 것이다.
+ */
+const ALERTABLE_DENY = Object.freeze([
+  "stats_off",
+  "disabled",
+  "not_migrated",
+  "not_registered",
+  "bad_launch_url",
+  "stats_corrupt",
+]);
+
+/** @param {string} r 사유 @return {boolean} 경보로 올릴 것인가 */
+function isAlertable(r) {
+  return ALERTABLE_DENY.includes(r);
+}
+
 /** 위 표에 없는 사유는 409. */
 const DEFAULT_DENY_STATUS = 409;
 
@@ -287,6 +311,8 @@ module.exports = {
   denyStatus,
   DENY_MESSAGE,
   DENY_STATUS,
+  ALERTABLE_DENY,
+  isAlertable,
   DEFAULT_DENY_STATUS,
   UID_RE,
   CLASS_CODE_RE,
