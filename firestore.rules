@@ -728,6 +728,24 @@ service cloud.firestore {
     match /appRewardGrants/{grantId} {
       allow read, write: if false;
     }
+
+    // ↩️ 환수 역원장 (appRewardClawbacks) — 2026-08-21 신설 · P1-9b
+    //
+    //    문서 id = 환수한 지급의 grantId. `create()` 충돌이 곧 **이중 환수 방어**다.
+    //    지급 원장(append-only)을 고치지 않으려고 뺀 컬렉션이라, 여기도 append-only 여야
+    //    한다 — 고칠 수 있으면 원장을 안 고친 의미가 없다.
+    //
+    //    ⚠️ 지급 원장과 달리 **읽기는 교사에게 연다.** 교사가 무엇을 되돌렸는지 못 보면
+    //       환수가 "돈이 그냥 사라진 사건"이 된다. 학생은 자기 거래내역(activity_logs)에서
+    //       음수 기록으로 본다 — 이 문서를 직접 읽을 필요가 없다.
+    //    ⚠️ 교사 읽기는 **자기 학급으로 좁힌다.** `isAdminFast()` 만 두면 어느 교사든
+    //       필터 없는 list 로 **전 학급의 환수 원장**(학생 uid + 사유 원문)을 긁는다.
+    //       이 저장소는 "쓰기는 학급으로 잠그고 read 는 클라가 알아서 필터하겠지"로
+    //       열어 둔 컬렉션이 7곳이나 있었던 전례가 있다 — 클라 쿼리는 보안 통제가 아니다.
+    match /appRewardClawbacks/{grantId} {
+      allow read: if (isAdminFast() && isSameClassFast(resource.data.classCode)) || isSuperAdminFast();
+      allow write: if false;
+    }
     match /appRewardSubjects/{subjectId} {
       allow read, write: if false;
     }

@@ -868,6 +868,34 @@ const CASES = [
     before: { uid: "stu1", amount: 1000 }, after: { uid: "stu1", amount: 999999 },
   }),
 
+  // ↩️ 환수 역원장(appRewardClawbacks) — P1-9b. 읽기만 교사에게 연다.
+  tc("ALLOW", "🐤 교사가 환수 기록을 읽는다 (무엇을 되돌렸는지 봐야 한다)", {
+    path: "/appRewardClawbacks/" + "a".repeat(64), method: "get", as: "tch1",
+    before: { grantId: "a".repeat(64), uid: "stu1", classCode: "C1", recoveredAmount: 1000 },
+  }),
+  tc("DENY", "타 학급 교사가 환수 기록을 읽는다 (학생 uid·사유 원문 유출)", {
+    path: "/appRewardClawbacks/" + "c".repeat(64), method: "get", as: "tch1",
+    before: { grantId: "c".repeat(64), uid: "stuX", classCode: "C2", recoveredAmount: 1000,
+              reason: "다른 반 사정" },
+  }),
+  tc("DENY", "학생이 환수 기록을 읽는다", {
+    path: "/appRewardClawbacks/" + "a".repeat(64), method: "get", as: "stu1",
+    before: { grantId: "a".repeat(64), uid: "stu1", classCode: "C1" },
+  }),
+  tc("DENY", "교사가 환수 기록을 지운다 (되돌린 사실을 지운다)", {
+    path: "/appRewardClawbacks/" + "a".repeat(64), method: "delete", as: "tch1",
+    before: { grantId: "a".repeat(64), uid: "stu1", classCode: "C1" },
+  }),
+  tc("DENY", "교사가 환수 기록을 위조한다 (안 되돌리고 되돌린 척)", {
+    path: "/appRewardClawbacks/" + "b".repeat(64), method: "create", as: "tch1",
+    after: { grantId: "b".repeat(64), uid: "stu1", classCode: "C1", recoveredAmount: 9999 },
+  }),
+  // ⚠️ 이중 환수 방어가 이 문서의 존재 자체라, 슈퍼관리자도 못 지운다.
+  tc("DENY", "슈퍼관리자도 환수 기록을 지우지 못한다 (지우면 두 번 빼진다)", {
+    path: "/appRewardClawbacks/" + "a".repeat(64), method: "delete", as: "sup1",
+    before: { grantId: "a".repeat(64), uid: "stu1", classCode: "C1" },
+  }),
+
   // 🚨 차단기 경보(platformAlerts) — 읽기만 교사에게 연다. P1-9.
   tc("ALLOW", "🐤 교사가 차단기 경보를 읽는다 (사고를 봐야 조치가 된다)", {
     path: "/platformAlerts/20260821_siteGuguGuardians_cash_trip", method: "get", as: "tch1",

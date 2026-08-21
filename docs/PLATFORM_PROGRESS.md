@@ -57,7 +57,7 @@
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
 | P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 44개 · 변이 46개 전부 검출 · 3계열 리뷰 반영(codex 4 + 리뷰어 6). **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ✅ **배포 완료** (`f888b2d`, 2026-08-21) | 아래 「P1-2 구현」 절. 테스트 72개 · 변이 43종 전부 검출 · rules 190개 · Tier-0 전부 PASS. **라이브 영향 0**(앱 11개 전부 지급 꺼짐) |
-| P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | 🟡 **9a 완료(배포 전)** · 9b 환수 · 9c 운영 남음 | **파일럿(P1-4) 전에 있어야 한다** |
+| P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | 🟡 **9a·9b 완료(배포 전)** · 9c 운영 게이트 3건 남음 | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
 | P1-4 | 파일럿 1개 앱 이관 — 구구성 수호대(GitHub Pages) | ⬜ | 가장 제약이 심한 앱으로 먼저 증명 |
 | P1-5 | 교사 대시보드 — 학급 학습현황 + 보상 이상치 | ⬜ | |
@@ -656,6 +656,61 @@ race 를 만들지 않음(같은 트랜잭션에서 읽고 씀) · 인증 사용
 - **P1-9c(운영)**: `aapRewardSessions.expireAt` TTL 정책 · `platformAlerts` 를 실제로 수신하는
   Monitoring 정책 + 수신 테스트. **둘 다 보상을 켜기 전에** 끝나 있어야 한다
 - Gemini 레그 재실행(쿼터 회복 ≈2026-08-26) — 가용성·운영 렌즈가 통째로 비어 있다
+
+### ✅ P1-9b 환수 (2026-08-21) — 배포 전
+
+| 파일 | 무엇 |
+|---|---|
+| `functions/aap/clawback.js` (신규) | 순수 핸들러. 인가·멱등·소각·부분회수 |
+| `functions/aap/handlers.js` | `clawbackAppReward` onCall 진입점 — 인가와 사유→HttpsError 변환만 |
+| `firestore.rules` | `appRewardClawbacks` — 교사 읽기는 **자기 학급만**, 쓰기 서버 전용 |
+| `scripts/ops/aap-grants.mjs` (신규) | 지급 원장 조회. **grantId 를 볼 수 있게 하는 유일한 수단** |
+
+**실측**: vitest 824 · rules 202 · **환수 변이 21종 전부 검출(생존 0)** · Tier-0 전부 PASS.
+
+#### 💥 발행의 반대는 회수가 아니라 **소각**이다
+
+`adminCashAction`(관리자 회수)은 학생에게서 빼서 **국고에 넣는다**. 그런데 학습앱 보상은
+국고에서 나온 돈이 아니다 — `grantAppReward` 는 국고를 건드리지 않고 학생 잔액을
+`increment` 로 **발행**한다. 회수로 되돌리면 **국고에 없던 돈이 생긴다.**
+그래서 `clawbackAppReward` 는 어디에도 적립하지 않는다. 변이 시험이 이 불변식을 잠근다
+("소각이 아니라 국고로 옮긴다" → 검출).
+
+#### 되돌리지 않는 것 (일부러)
+하루 카운터 · 성취 횟수 · 쿨다운 · 차단 플래그를 **하나도** 되돌리지 않는다. 하루 캡은 잔액
+회계가 아니라 **발행 속도 제한**이라, 환수가 캡을 되열면 "환수 → 재지급"으로 상한을 무한히
+우회할 수 있다. 대가는 그날 그 학생·앱이 계속 막히는 가용성 문제뿐이고 돈 쪽에선 fail-safe 다.
+
+#### 🔎 교차검증 — 2계열 (Gemini 여전히 쿼터 소진)
+
+**Claude: REQUEST_CHANGES — CRITICAL 은 "부를 방법이 없다"였다.**
+`grep -rn "clawbackAppReward" src/` = 테스트 외 **0건**. 게다가 `grantId`(sha256 64자)가 어느
+화면에도 안 나온다 — `MyAssets.js` 가 활동로그의 `metadata` 를 버린다. 교사가 부를 길이
+Firebase 콘솔뿐이었다. **함수만 있고 호출자가 없으면 기능이 없는 것과 같다.**
+→ `aap-grants.mjs` 로 **조회**를 열었고(어려운 절반), **호출 UI 는 P1-5 로 명시적으로 미룬다**.
+→ 그리고 아래 게이트에 넣었다: **호출 경로 없이 파일럿을 열지 않는다.**
+
+Claude 가 직접 확인해 문제없다고 한 것: 회계 대칭(발행=mint/환수=소각, 국고 미접촉) ·
+MyAssets 이중 카운팅 없음 · `callerClass` 스푸핑 불가(서버 파생) · 잔액 손상 가드 ·
+이중 환수 방어 · 일별 캡 미환원 · 프로토타입 오염 안전 · 자기참조 테스트 없음.
+
+WARNING 2건도 채택: onCall **배선 계층** 테스트가 0건이었다(형제 함수는 있었다) → 구조 테스트
+5개 추가. `appRewardClawbacks` 읽기가 학급 스코프 없이 열려 있었다 → **좁혔다**(리뷰어는 기존
+부채로 분류했지만, 이 저장소엔 "읽기만 안 잠근 버그클래스" 전례가 있다).
+
+#### 🪤 내 변이 스크립트가 codex 와 **같은 함정**에 걸렸다
+
+`checkAuthAndGetUserData(request, true)` 를 없애는 변이가 생존했다. 원인은 테스트 공백이
+아니라, **그 코드 문자열을 담은 주석이 실제 호출부보다 앞에 있어서** 첫 매치가 주석으로
+갔기 때문이다(주석만 바뀌었으니 테스트가 통과하는 게 맞다). 앵커를
+`= await checkAuthAndGetUserData(request, true);` 로 좁히자 즉시 검출됐다.
+→ 지난 라운드 codex 오탐 3건과 **같은 원인**이다: 이 저장소의 주석은 코드를 그대로 인용한다.
+   사람이든 모델이든 스크립트든, **주석을 코드로 착각한다.**
+
+#### 🚦 파일럿(P1-4)을 열기 전 게이트 — 셋 다 미완
+1. **환수 호출 경로** — 교사 화면(P1-5). 지금은 조회만 된다
+2. `aapRewardSessions.expireAt` **TTL 정책** (콘솔/gcloud. 이 프로젝트 TTL 0개)
+3. `platformAlerts` 를 실제로 **수신**하는 Monitoring 정책 + 수신 테스트
 
 ## 이 프로젝트에서 반드시 지키는 것
 - `functions` 배포는 **`git push` → GitHub Actions 로만**. 로컬 `firebase deploy --only functions` 는 `functions/.env` 의 토큰을 파괴한다

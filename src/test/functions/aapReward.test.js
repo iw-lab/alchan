@@ -1268,3 +1268,244 @@ describe("발급 구조", () => {
     expect(after(H, "exports.grantAppReward = onRequest(")).toMatch(/maxInstances: MAX_INSTANCES/);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// ↩️ 환수 (P1-9b)
+//
+//   지급은 국고를 건드리지 않는 **순수 발행**이다. 그러니 환수도 **순수 소각**이어야 한다 —
+//   국고에 넣으면 없던 돈이 생긴다. 이 describe 의 첫 번째 불변식이 그것이다.
+// ═══════════════════════════════════════════════════════════════
+describe("환수 — 발행의 반대는 회수가 아니라 소각이다", () => {
+  const { clawbackAppReward, ClawbackDenied, clawbackError } = req("../../../functions/aap/clawback.js");
+  const CLAWBACK_SRC = read("functions/aap/clawback.js");
+  const GID = "a".repeat(64);
+  const TEACHER = "teacher00000000000000000001";
+  const TREASURY = "treasury0000000000000000001";
+
+  const seedGrant = (over = {}) => {
+    FAKE.reset();
+    FAKE.set(`users/${UID}`, { name: "테스트학생", classCode: CLASS, cash: 5000, coupons: 3 });
+    FAKE.set(`users/${TEACHER}`, { name: "선생님", classCode: CLASS, isAdmin: true, cash: 999999 });
+    FAKE.set(`users/${TREASURY}`, { name: "국고", classCode: CLASS, isAdmin: true, cash: 100000 });
+    FAKE.set(`appRewardGrants/${GID}`, {
+      requestHash: GID, uid: UID, classCode: CLASS, appId: APP,
+      achievementId: "stage_clear", label: "1단 통과",
+      rewardType: "cash", amount: 1000, revocable: true, kstDay: DAY, ...over,
+    });
+  };
+  const claw = (over = {}) =>
+    clawbackAppReward({
+      callerUid: TEACHER, callerName: "선생님", callerClass: CLASS,
+      isSuperAdmin: false, grantId: GID, nowMs: NOW, ...over,
+    });
+  const denied = async (fn) => {
+    try { await fn(); return null; } catch (e) {
+      if (e instanceof ClawbackDenied) return e.reason;
+      throw e;
+    }
+  };
+
+  it("⭐ 학생 잔액만 줄고 **어디에도 적립되지 않는다** (소각)", async () => {
+    seedGrant();
+    const before = FAKE.get(`users/${TREASURY}`).cash;
+    const out = await claw();
+    expect(out.success).toBe(true);
+    expect(out.recoveredAmount).toBe(1000);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(4000);
+    // 국고·교사 어느 쪽에도 들어가면 안 된다 — 지급이 거기서 나온 돈이 아니다.
+    expect(FAKE.get(`users/${TREASURY}`).cash).toBe(before);
+    expect(FAKE.get(`users/${TEACHER}`).cash).toBe(999999);
+  });
+
+  it("역원장이 생기고 지급 원장은 **그대로**다 (append-only)", async () => {
+    seedGrant();
+    await claw();
+    const back = FAKE.get(`appRewardClawbacks/${GID}`);
+    expect(back.recoveredAmount).toBe(1000);
+    expect(back.shortfall).toBe(0);
+    expect(back.byUid).toBe(TEACHER);
+    // 원장은 손대지 않는다.
+    expect(FAKE.get(`appRewardGrants/${GID}`)).toEqual(
+      expect.objectContaining({ amount: 1000, revocable: true }),
+    );
+    expect(FAKE.get(`appRewardGrants/${GID}`).clawedBack).toBeUndefined();
+  });
+
+  it("⭐ 두 번 환수해도 두 번 빠지지 않는다 (문서 id 가 멱등키)", async () => {
+    seedGrant();
+    await claw();
+    const out2 = await claw();
+    expect(out2.duplicate).toBe(true);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(4000);   // 3000 이 아니다
+  });
+
+  it("잔액이 모자라면 있는 만큼만 — 0 아래로 안 내려간다", async () => {
+    seedGrant({ amount: 8000 });
+    const out = await claw();
+    expect(out.recoveredAmount).toBe(5000);
+    expect(out.shortfall).toBe(3000);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(0);
+    expect(FAKE.get(`appRewardClawbacks/${GID}`).shortfall).toBe(3000);
+  });
+
+  it("⭐ 잔액이 손상돼 있으면 **아무것도 하지 않는다** (0원 환수 완료로 확정하지 않는다)", async () => {
+    seedGrant();
+    FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), cash: "5000" });   // 문자열
+    expect(await denied(() => claw())).toBe("balance_corrupt");
+    // 기록이 남으면 나머지가 영구 회수 불가가 된다.
+    expect(FAKE.get(`appRewardClawbacks/${GID}`)).toBeUndefined();
+  });
+
+  it("쿠폰도 같은 규칙으로 소각된다", async () => {
+    seedGrant({ rewardType: "coupon", amount: 2 });
+    const out = await claw();
+    expect(out.recoveredAmount).toBe(2);
+    expect(FAKE.get(`users/${UID}`).coupons).toBe(1);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(5000);   // 현금은 안 건드린다
+  });
+
+  it("⭐ 하루 카운터·성취 횟수는 하나도 되돌리지 않는다 (환수→재지급 무한 우회 차단)", async () => {
+    seedGrant();
+    FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), appRewardDaily: { day: DAY, cash: 1000, coupon: 0 } });
+    FAKE.set(`appRewardSubjects/${UID}_${APP}`, { day: DAY, cash: 1000, coupon: 0 });
+    FAKE.set(`appRewardCounters/${DAY}_app_${APP}`, { day: DAY, cash: 1000, coupon: 0, cashTripped: true });
+    await claw();
+    expect(FAKE.get(`users/${UID}`).appRewardDaily).toEqual({ day: DAY, cash: 1000, coupon: 0 });
+    expect(FAKE.get(`appRewardSubjects/${UID}_${APP}`).cash).toBe(1000);
+    expect(FAKE.get(`appRewardCounters/${DAY}_app_${APP}`).cash).toBe(1000);
+    expect(FAKE.get(`appRewardCounters/${DAY}_app_${APP}`).cashTripped).toBe(true);
+  });
+
+  // ── 인가 ──
+  it("⭐ 다른 학급 교사는 못 건드린다 (grantId 는 비밀이 아니다)", async () => {
+    seedGrant();
+    expect(await denied(() => claw({ callerClass: "OTHER1" }))).toBe("other_class");
+    expect(FAKE.get(`users/${UID}`).cash).toBe(5000);
+  });
+
+  it("전학 간 학생은 교사가 못 되돌린다 (원장 학급은 맞아도 지금 학급이 다르다)", async () => {
+    seedGrant();
+    FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), classCode: "OTHER1" });
+    expect(await denied(() => claw())).toBe("other_class");
+  });
+
+  it("전학 간 학생도 슈퍼관리자는 되돌릴 수 있다", async () => {
+    seedGrant();
+    FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), classCode: "OTHER1" });
+    const out = await claw({ isSuperAdmin: true, callerClass: "" });
+    expect(out.recoveredAmount).toBe(1000);
+  });
+
+  it("⭐ revocable:false 는 교사가 못 되돌린다", async () => {
+    seedGrant({ revocable: false });
+    expect(await denied(() => claw())).toBe("not_revocable");
+  });
+
+  it("revocable:false 를 슈퍼관리자가 되돌리려면 **사유가 있어야** 한다", async () => {
+    seedGrant({ revocable: false });
+    expect(await denied(() => claw({ isSuperAdmin: true }))).toBe("reason_required");
+    const out = await claw({ isSuperAdmin: true, reason: "카탈로그 오설정으로 잘못 지급" });
+    expect(out.recoveredAmount).toBe(1000);
+    expect(FAKE.get(`appRewardClawbacks/${GID}`).reason).toContain("오설정");
+  });
+
+  it("학급코드가 빈 호출자는 통과하지 못한다 (빈 문자열끼리 맞아떨어지지 않게)", async () => {
+    seedGrant({ classCode: "" });
+    FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), classCode: "" });
+    expect(await denied(() => claw({ callerClass: "" }))).toBe("other_class");
+  });
+
+  // ── 입력 ──
+  it("grantId 형식이 아니면 읽기도 하지 않는다", async () => {
+    seedGrant();
+    for (const bad of ["", "../users/x", "A".repeat(64), "a".repeat(63), "__proto__", null]) {
+      expect(await denied(() => claw({ grantId: bad }))).toBe("bad_grant_id");
+    }
+  });
+
+  it("없는 지급은 not_found (환수 기록도 안 남는다)", async () => {
+    seedGrant();
+    expect(await denied(() => claw({ grantId: "b".repeat(64) }))).toBe("grant_not_found");
+  });
+
+  it("원장 금액이 이상하면 되돌리지 않는다", async () => {
+    for (const bad of [0, -100, 1.5, "1000", null]) {
+      seedGrant({ amount: bad });
+      expect(await denied(() => claw())).toBe("bad_grant_amount");
+    }
+  });
+
+  it("⭐ 소수 잔액도 손상으로 본다 (이 경제는 소수를 쓰지 않는다)", async () => {
+    // isFinite 로 완화하면 5000.5 가 통과해 잔액이 영원히 소수로 남는다.
+    for (const bad of [5000.5, NaN, Infinity, null, undefined, "5000"]) {
+      seedGrant();
+      FAKE.set(`users/${UID}`, { ...FAKE.get(`users/${UID}`), cash: bad });
+      expect(await denied(() => claw()), String(bad)).toBe("balance_corrupt");
+      expect(FAKE.get(`appRewardClawbacks/${GID}`)).toBeUndefined();
+    }
+  });
+
+  it("사유 코드 조회가 프로토타입 키에서 새지 않는다", () => {
+    for (const k of ["constructor", "toString", "__proto__", "hasOwnProperty", "nope"]) {
+      expect(clawbackError(k)).toEqual(["failed-precondition", "지금은 환수할 수 없습니다."]);
+    }
+    expect(clawbackError("other_class")[0]).toBe("permission-denied");
+  });
+
+  it("역원장은 **create** 로 쓴다 (가짜 Firestore 가 재현 못 하는 경합 방어)", () => {
+    // 멱등 조회가 무력화되는 경합에서도 `create` 면 이중 환수가 아니라 **실패**가 된다.
+    // set 이면 조용히 덮어써서 두 번 빠진다 — 순차 실행만 하는 가짜로는 못 잡는다.
+    expect(codeOnly(CLAWBACK_SRC)).toMatch(/tx\.create\(clawbackRef,/);
+    expect(codeOnly(CLAWBACK_SRC)).not.toMatch(/tx\.set\(clawbackRef,/);
+  });
+
+  it("학생 거래내역에 **음수**로 남는다 (지급이 양수로 남는 자리와 같은 곳)", async () => {
+    seedGrant();
+    await claw();
+    const logs = [...FAKE.store.entries()].filter(([k]) => k.startsWith("activity_logs/"));
+    expect(logs).toHaveLength(1);
+    const [, log] = logs[0];
+    expect(log.userId).toBe(UID);
+    expect(log.amount).toBe(-1000);
+    expect(log.metadata.source).toBe("aap_clawback");
+    expect(log.metadata.grantId).toBe(GID);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🔬 환수 진입점(onCall)의 구조 — 순수 로직 밑의 **배선 계층**
+//    형제 함수(grantAppReward)는 이 계층을 구조 테스트로 덮는데 환수만 비어 있었다
+//    (2026-08-21 Claude 리뷰 WARNING).
+// ═══════════════════════════════════════════════════════════════
+describe("환수 진입점 구조", () => {
+  const H = read("functions/aap/handlers.js");
+  const ENTRY = after(H, "exports.clawbackAppReward = onCall(");
+
+  it("관리자 권한을 요구한다 (checkAdmin=true)", () => {
+    expect(codeOnly(ENTRY)).toMatch(/checkAuthAndGetUserData\(request,\s*true\)/);
+  });
+
+  it("호출자 신원을 **서버에서** 만든다 (요청 본문에서 받지 않는다)", () => {
+    const body = codeOnly(ENTRY);
+    for (const f of ["callerUid: uid", "callerClass: classCode", "isSuperAdmin,"]) {
+      expect(body).toContain(f);
+    }
+    // 학급·슈퍼관리자 여부를 request.data 에서 읽으면 교사가 스스로 승격한다.
+    expect(body).not.toMatch(/callerClass:\s*request\.data/);
+    expect(body).not.toMatch(/isSuperAdmin:\s*request\.data/);
+  });
+
+  it("사유 코드를 HttpsError 로 옮기되 **순수 매퍼**를 쓴다", () => {
+    expect(codeOnly(ENTRY)).toMatch(/clawbackError\(e\.reason\)/);
+    expect(codeOnly(ENTRY)).toMatch(/e instanceof ClawbackDenied/);
+  });
+
+  it("판정 거부가 아닌 오류는 삼키지 않고 그대로 올린다", () => {
+    // 운영 장애(Firestore UNAVAILABLE 등)를 "환수할 수 없습니다"로 뭉개면 원인이 안 남는다.
+    expect(codeOnly(ENTRY)).toMatch(/\}\s*\n\s*throw e;\s*\n\s*\}/);
+  });
+
+  it("동시 인스턴스 천장이 있다", () => {
+    expect(ENTRY.slice(0, 200)).toMatch(/maxInstances: MAX_INSTANCES/);
+  });
+});

@@ -21,6 +21,7 @@ const {
   isAppLockedForClass,
 } = require("./policy");
 const { grantAppReward } = require("./reward");
+const { clawbackAppReward, ClawbackDenied, clawbackError } = require("./clawback");
 const R = require("./rewardRules");
 
 const REGION = "asia-northeast3";
@@ -312,3 +313,29 @@ exports.grantAppReward = onRequest(
     res.status(200).json({ success: true, ...out.value });
   },
 );
+
+// ↩️ 환수 진입점. 로직은 clawback.js(순수), 여기서는 **인가와 사유→HttpsError 변환**만 한다.
+//
+//    ⚠️ `checkAuthAndGetUserData(request, true)` 는 **승인된 교사인지만** 본다 —
+//       대상 학급 대조는 clawback.js 안에서 한다(원장·학생 문서를 읽어야 알 수 있다).
+
+exports.clawbackAppReward = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, async (request) => {
+  const { uid, classCode, isSuperAdmin, userData } = await checkAuthAndGetUserData(request, true);
+  try {
+    return await clawbackAppReward({
+      callerUid: uid,
+      callerName: userData?.name,
+      callerClass: classCode,
+      isSuperAdmin,
+      grantId: request.data?.grantId,
+      reason: request.data?.reason,
+    });
+  } catch (e) {
+    if (e instanceof ClawbackDenied) {
+      logger.warn(`[AAP] 환수 거부 by=${uid} 사유=${e.reason}`);
+      const hit = clawbackError(e.reason);
+      throw new HttpsError(hit[0], hit[1]);
+    }
+    throw e;
+  }
+});

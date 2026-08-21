@@ -65,6 +65,7 @@ exports.issueAppToken = aap.issueAppToken; // 학습앱 실행 토큰 발급(RS2
 exports.aapJwks = aap.aapJwks; // 공개키(JWKS) — 위성앱이 토큰 서명을 검증한다
 exports.aapDiscovery = aap.aapDiscovery; // 규약 상수 디스커버리(제작자용)
 exports.grantAppReward = aap.grantAppReward; // 학습앱 보상 지급(AAP 토큰 → 1회용 실행권 → 지급)
+exports.clawbackAppReward = aap.clawbackAppReward; // 잘못 나간 학습앱 보상 되돌리기(소각 — 국고 적립 아님)
 
 // 🔥 경제 이벤트 시스템
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
