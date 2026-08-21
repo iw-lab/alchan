@@ -9,7 +9,7 @@
 //   · 앱이 늘어도 학생이 외울 것이 늘지 않는다
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onRequest } = require("firebase-functions/v2/https");
-const { checkAuthAndGetUserData, logger } = require("../utils");
+const { checkAuthAndGetUserData, logger, db, admin } = require("../utils");
 const { getPublicJwks, hasKeys } = require("./keys");
 const { signAppToken, TTL_SEC, MAX_AGE_SEC, ISSUER, AAP_VERSION, pairwise } = require("./token");
 const {
@@ -20,16 +20,10 @@ const {
   resolveOptionalClaims,
   isAppLockedForClass,
 } = require("./policy");
+const { grantAppReward } = require("./reward");
+const R = require("./rewardRules");
 
 const REGION = "asia-northeast3";
-
-/** 거부 사유 → 학생에게 보여줄 문구. 원인은 로그에, 문구는 아이 눈높이로. */
-const DENY_MESSAGE = {
-  not_registered: "아직 알찬과 연결되지 않은 앱이에요.",
-  disabled: "이 앱은 지금 잠시 사용할 수 없어요.",
-  not_migrated: "이 앱은 아직 준비 중이에요.",
-  bad_launch_url: "앱 주소 설정에 문제가 있어요. 선생님께 알려 주세요.",
-};
 
 // ───────────────────────────────────────────────────────────────
 // 🎫 실행 토큰 발급
@@ -58,7 +52,8 @@ exports.issueAppToken = onCall({ region: REGION }, async (request) => {
     logger.warn(`[AAP] 발급 거부 app=${appId} uid=${uid} 사유=${open.reason}`);
     throw new HttpsError(
       open.reason === "not_registered" ? "not-found" : "failed-precondition",
-      DENY_MESSAGE[open.reason] || "지금은 이 앱을 열 수 없어요.",
+      // 문구 정본은 rewardRules.DENY_MESSAGE 하나뿐이다 — 실행과 지급이 같은 말을 하게.
+      R.denyMessage(open.reason),
     );
   }
 
@@ -102,10 +97,48 @@ exports.issueAppToken = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("internal", "앱 연결에 실패했어요. 잠시 후 다시 시도해 주세요.");
   }
 
-  // 🔎 재생 탐지의 근거. 문서를 쓰지 않고 구조화 로그로 남긴다 —
+  // 🎟️ **1회용 실행권** — 보상이 켜진 앱에만 쓴다.
+  //
+  //    왜 필요한가: AAP 토큰에는 uid 가 없다(앱별 pairwise sub 뿐). 위성앱은 다른 origin 이라
+  //    Firebase 세션도 없다 → 지급 요청이 왔을 때 **누구에게 줄지 알 방법이 서버에 없다.**
+  //    요청에 담긴 uid 를 믿으면 남에게 지급된다. 그래서 **발급 시점에 서버가 기억한다.**
+  //    이 문서가 곧 1회용 실행권이라 재생 방어(같은 토큰 재사용)도 같이 해결된다.
+  //
+  //    ⚠️ 비용: 이 앱을 여는 실행마다 쓰기 1건. 보상이 꺼진 앱(`rewardsEnabled !== true`)은
+  //       쓰지 않는다 — 지금 등록된 11개가 전부 여기 해당해서 비용 증가는 0 이다.
+  //    ⚠️ fail-closed: 세션을 못 쓰면 토큰도 안 준다. 쓰지 못한 채 토큰만 나가면 학생은
+  //       앱을 열어 문제를 풀고 **보상만 조용히 실패**한다 — 그게 제일 나쁜 실패다.
+  if (policy.rewardsEnabled === true) {
+    try {
+      await db
+        .collection("aapRewardSessions")
+        .doc(issued.jti)
+        .create({
+          uid,
+          classCode,
+          appId,
+          sub: issued.sub,
+          exp: issued.exp,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          // 토큰은 5분이면 죽는다. 문서를 오래 둘 이유는 감사뿐이라 하루면 충분하다.
+          // (이 프로젝트엔 아직 TTL 정책이 0개다 — 실제 삭제는 별도 작업이다.)
+          expireAt: admin.firestore.Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+        });
+    } catch (e) {
+      logger.error(`[AAP] 실행권 기록 실패 app=${appId} uid=${uid}: ${e?.message}`);
+      throw new HttpsError("internal", "앱 연결에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  }
+
+  // 🔎 재생 탐지의 근거. 보상이 꺼진 앱은 문서를 쓰지 않고 구조화 로그로만 남긴다 —
   //    실행마다 Firestore 쓰기 1건이면 학급이 늘수록 그게 곧 비용이다(§3.2).
-  //    **보상을 동반하는 실행**의 1회용 세션은 P1-2 에서 이 위에 얹는다.
-  logger.info("[AAP] 토큰 발급", { app: appId, uid, jti: issued.jti, exp: issued.exp });
+  logger.info("[AAP] 토큰 발급", {
+    app: appId,
+    uid,
+    jti: issued.jti,
+    exp: issued.exp,
+    reward: policy.rewardsEnabled === true,
+  });
 
   // 🔒 실행 URL 은 **서버가 정한다.** 요청자가 지정할 수 있으면 fragment 의 토큰을
   //    공격자 사이트로 보낼 수 있다(§3.2 C6). 정책 문서는 슈퍼관리자만 쓴다.
@@ -167,4 +200,63 @@ exports.aapDiscovery = onRequest({ region: REGION, invoker: "public" }, (req, re
     subject_type: "pairwise",
     docs: "https://github.com/iw-lab/alchan/blob/main/docs/AAP_V1_SPEC.md",
   });
+});
+
+// ───────────────────────────────────────────────────────────────
+// 💸 보상 지급 — 위성앱이 부르는 유일한 쓰기 엔드포인트
+//
+//    `onCall` 이 **될 수 없다**: onCall 의 Bearer 는 Firebase ID 토큰인데, 위성앱은
+//    다른 origin 이라 Firebase 세션이 없다. 그래서 평범한 HTTP + AAP 토큰이다.
+//
+//    CORS 를 `*` 로 여는 근거: 이 엔드포인트는 **쿠키를 쓰지 않는다**(Allow-Credentials 도
+//    켜지 않는다). 인증은 요청에 실린 토큰 하나뿐이고 그 토큰은 앱 origin 안에만 있다 —
+//    origin 을 좁혀도 얻는 게 없고(서버 대 서버 호출은 CORS 를 통과할 필요조차 없다),
+//    좁히면 preflight 에서 appId 를 모르는 채 판정해야 해서 정책 문서를 매번 훑게 된다.
+// ───────────────────────────────────────────────────────────────
+exports.grantAppReward = onRequest({ region: REGION, invoker: "public" }, async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("Access-Control-Max-Age", "3600");
+  // 돈이 걸린 응답이다. 중간 캐시가 성공 응답을 재사용하면 "받았는데 안 받은" 상태가 생긴다.
+  res.set("Cache-Control", "no-store");
+  res.set("Vary", "Origin");
+
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ success: false, error: "method_not_allowed" });
+    return;
+  }
+
+  let out;
+  try {
+    // 토큰은 **헤더 우선**. 본문에 넣으면 프록시·에러리포터 로그에 남기 쉽다.
+    const auth = String(req.get("authorization") || "");
+    const m = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth);
+    out = await grantAppReward({ body: req.body, headerToken: m ? m[1] : "" });
+  } catch (e) {
+    // 판정 거부가 아니라 **운영 장애**다(Firestore UNAVAILABLE·ABORTED 등).
+    // 409 로 내려보내면 앱이 "오늘은 안 되는구나"로 읽고 재시도를 포기한다.
+    logger.error(`[AAP] 지급 실패(운영 장애): ${e?.message}`, e);
+    res.status(503).json({
+      success: false,
+      error: "unavailable",
+      message: "잠시 뒤에 다시 시도해 주세요.",
+      retryable: true,
+    });
+    return;
+  }
+
+  if (!out.ok) {
+    res.status(R.denyStatus(out.reason)).json({
+      success: false,
+      error: out.reason,
+      message: R.denyMessage(out.reason),
+    });
+    return;
+  }
+  res.status(200).json({ success: true, ...out.value });
 });

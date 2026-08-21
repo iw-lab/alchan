@@ -263,6 +263,11 @@ service cloud.firestore {
                        //    통과 → maxClicks 무력화 → pending 무제한(공모 mint). create도 빈 맵만 허용.
                        request.resource.data.get('completedTasks', {}).size() == 0 &&
                        request.resource.data.get('completedJobTasks', {}).size() == 0 &&
+                       // 🔒 2026-08-21 (AAP P1-2): 학습앱 보상 카운터는 create 에서 **부재**여야 한다.
+                       //    update 만 막으면 가입 시 `appRewardDaily: {day:'오늘', cash:-9e15}` 를
+                       //    심어 하루 한도를 사실상 무한으로 늘릴 수 있다(음수는 남은 한도를 키운다).
+                       //    서버는 이 값을 캡 판정에 쓴다 — 정상 가입 경로는 이 필드를 만들지 않는다.
+                       !('appRewardDaily' in request.resource.data) &&
                        !('delegatedPermissions' in request.resource.data) &&
                        !('jobName' in request.resource.data) &&
                        !('jobTitle' in request.resource.data) &&
@@ -356,11 +361,19 @@ service cloud.firestore {
                         //   같은 계열의 다른 마커는 이미 안전하다 — 적금 lastDepositDate 는 products
                         //   (교사 전용 write), 배당 dividendPaidMonths 는 portfolio(create/update:false).
                         //   user 문서에 얹는 마커만 여기서 막으면 된다.
+                        //   🔒 2026-08-21 추가(AAP P1-2): `appRewardDaily`
+                        //     학습앱 보상의 **학생×전체×일** 합계다. 서버가 이 값을 캡 판정에
+                        //     그대로 신뢰하므로, 학생이 쓸 수 있으면 스스로 0 으로 되돌려
+                        //     하루 한도를 무한 우회한다. 이 저장소는 같은 실패를 이미 겪었다
+                        //     (user 문서 마커 → 세금 회피 통로). 클라이언트는 이 필드를
+                        //     읽지도 쓰지도 않는다(CF 전용 카운터) — 막아도 회귀 없다.
+                        //     ⚠️ create 쪽도 같이 막는다(아래) — update 만 잠그면
+                        //     음수를 심은 채 문서를 만들어 한도를 **늘릴** 수 있다.
                         //   ⚠️ `pendingTaxSummary` 는 **일부러 뺐다** — 학생이 주간 세금 팝업을
                         //   "확인"으로 닫을 때 본인이 `deleteField()` 로 지운다
                         //   (WeeklyTaxSummaryPopup.js:26). 막으면 팝업이 안 닫힌다.
                         //   위조해 봐야 자기 화면의 안내 문구가 바뀔 뿐 징수액은 서버가 계산한다.
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount', 'lastSalaryWeekKey', 'lastWeeklyTaxWeekKey', 'lastSalaryDate', 'lastNetSalary', 'lastGrossSalary', 'lastTaxAmount', 'dailySpinDate', 'dailySpinCount', 'lastIncomingTransferAt', 'lastLoanRepaidAt', 'totalSalaryReceived']) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount', 'lastSalaryWeekKey', 'lastWeeklyTaxWeekKey', 'lastSalaryDate', 'lastNetSalary', 'lastGrossSalary', 'lastTaxAmount', 'dailySpinDate', 'dailySpinCount', 'lastIncomingTransferAt', 'lastLoanRepaidAt', 'totalSalaryReceived', 'appRewardDaily']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        (isAdmin() &&
@@ -371,7 +384,17 @@ service cloud.firestore {
                         // classCode를 블록리스트에 추가 = 학생 학급이동(자기변경)은 슈퍼관리자 전용(아래 || isSuperAdmin).
                         //   "한 교사 = 한 학급" 확정 → 교사가 학생을 타 학급으로 옮기는 경로 봉인(정상 이동=슈퍼관리자).
                         //   실측: 학생 classCode를 클라에서 바꾸는 교사 도구 없음(일괄생성=createStudentAccounts CF) → 회귀 0.
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isSuperAdmin', 'isAdmin', 'isApproved', 'isTeacher', 'role', 'classCode'])) ||
+                        // 🔒 2026-08-21 (AAP P1-2 · codex CRITICAL, ALLOW 카나리아로 재현 확인):
+                        //   `appRewardDaily` 를 **교사 분기에도** 넣는다. 학생 분기만 막아 뒀더니
+                        //   같은 학급 승인 교사가 학생 문서의 이 필드를 0 으로 되돌려 **AAP 하루 상한을
+                        //   무제한 재발급**할 수 있었다(학생이 앱 10개로 10만원을 채운 뒤 교사가 리셋 → 계속).
+                        //   ⚠️ "교사는 어차피 cash 를 직접 올릴 수 있으니 같은 것 아니냐"는 반론이 있다.
+                        //     다르다. cash 직접 조정은 **교사가 스스로 금액을 정하는** 행위이고 감사 대상이지만,
+                        //     이 필드를 여는 것은 **위성앱에게 무제한 발행 권한을 넘기는** 일이다. 캡은 교사가 아니라
+                        //     자동 지급 채널을 향한 방어선이다. 그리고 이 필드를 쓰는 정당한 교사 UI 는 **0곳**이다.
+                        //   ⚠️ 같은 모양의 기존 카운터(gameRewardDaily·dailyItemUse·dailyDrawCount·dailySpinCount)도
+                        //     교사 분기에는 빠져 있다. 그건 이번 변경 범위 밖의 **선재 항목**이라 대장에 적어 둔다.
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isSuperAdmin', 'isAdmin', 'isApproved', 'isTeacher', 'role', 'classCode', 'appRewardDaily'])) ||
                        isSuperAdmin();
 
       // 🔒 batch7-f (2026-07-18 사용자 결정: 관리자 전용 삭제): 삭제는 isAdmin()만 허용(학생 self-delete 차단).
@@ -678,6 +701,40 @@ service cloud.firestore {
         allow read: if isSuperAdminFast();
         allow write: if isSuperAdmin();
       }
+    }
+
+    // ========================================================
+    // 💸 AAP 보상 지급 계열 (2026-08-21 신설 · P1-2) — **전부 서버 전용**
+    //
+    //    다섯 컬렉션이 한 세트다. 하나라도 클라이언트에 열리면 나머지 넷의 방어가 무의미해진다.
+    //      · aapRewardSessions/{jti}          1회용 실행권. uid ↔ 토큰을 잇는 유일한 다리이고,
+    //                                          consumedGrantId 가 재생 방어의 전부다.
+    //      · appRewardGrants/{requestHash}    지급 **원장**(append-only) 겸 멱등 레코드.
+    //                                          문서 id 가 곧 멱등키라 두 물건이 하나다.
+    //      · appRewardSubjects/{uid}_{appId}  학생×앱×일 합계 + 성취별 상태(횟수·쿨다운).
+    //      · appRewardCounters/{day}_{scope}  학급×일 · 앱×일 합계(폭주 차단기).
+    //      · aapRateLimits/{uid}_{appId}      token bucket.
+    //
+    //    ⚠️ 읽기도 닫는다. 학생이 자기 카운터를 **읽을** 수 있으면 "얼마 남았는지"를 알고
+    //       그 선까지 정확히 긁는다. 교사 화면(P1-5)은 서버 집계를 통해 본다.
+    //    ⚠️ 서버는 Admin SDK 라 이 규칙을 우회한다 — 지급에는 지장이 없다.
+    //       바꿔 말하면 **이 컬렉션들의 진짜 방어는 rules 가 아니라 지급 코드 안의 캡**이다
+    //       (functions/aap/rewardRules.js). rules 는 "클라이언트는 손도 못 댄다"만 보장한다.
+    // ========================================================
+    match /aapRewardSessions/{jti} {
+      allow read, write: if false;
+    }
+    match /appRewardGrants/{grantId} {
+      allow read, write: if false;
+    }
+    match /appRewardSubjects/{subjectId} {
+      allow read, write: if false;
+    }
+    match /appRewardCounters/{counterId} {
+      allow read, write: if false;
+    }
+    match /aapRateLimits/{bucketId} {
+      allow read, write: if false;
     }
 
     // ========================================================

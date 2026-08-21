@@ -141,6 +141,27 @@ const CASES = [
     after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0,
              gameRewardDaily: { comment: { date: "2026-08-21", count: -999999 } } },
   }),
+  // 🔒 2026-08-21 (AAP P1-2): 학습앱 보상의 **학생×전체×일** 합계.
+  //   서버가 캡 판정에 그대로 신뢰하는 값이라, 학생이 지우면 하루 한도가 무한이 된다.
+  //   그리고 create 로 **음수**를 심으면 한도가 늘어난다 — update 만 막으면 우회된다.
+  tc("DENY", "학생이 학습앱 보상 카운터를 지운다 (하루 한도 무한 우회)", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: { ...S, appRewardDaily: { day: "20260821", cash: 10000, coupon: 2 } },
+    after: { ...S, appRewardDaily: { day: "20260821", cash: 0, coupon: 0 } },
+  }),
+  // 🔴 2026-08-21 codex CRITICAL — ALLOW 카나리아로 **통과하는 것을 재현한 뒤** 막았다.
+  //    학생 분기만 막아 뒀더니 같은 학급 승인 교사가 이 필드를 리셋해 AAP 하루 상한을
+  //    무제한 재발급할 수 있었다. 캡은 교사가 아니라 **자동 지급 채널**을 향한 방어선이다.
+  tc("DENY", "교사가 학생 학습앱 카운터를 0 으로 되돌린다 (AAP 하루 상한 무제한 재발급)", {
+    path: "/users/stu1", method: "update", as: "tch1",
+    before: { ...S, appRewardDaily: { day: "20260821", cash: 100000, coupon: 10 } },
+    after: { ...S, appRewardDaily: { day: "20260821", cash: 0, coupon: 0 } },
+  }),
+  tc("DENY", "가입하면서 학습앱 보상 카운터에 음수를 심는다 (한도를 늘린다)", {
+    path: "/users/ghost", method: "create", as: "ghost",
+    after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0,
+             appRewardDaily: { day: "20260821", cash: -9000000, coupon: -100 } },
+  }),
   tc("DENY", "가입하면서 뽑기·아이템 카운터를 심는다", {
     path: "/users/ghost", method: "create", as: "ghost",
     after: { name: "침입자", classCode: "미지정", cash: 0, coupons: 0, dailyDrawCount: -50 },
@@ -792,6 +813,59 @@ const CASES = [
     path: "/appAchievements/siteGuguGuardians/items/first_clear", method: "update", as: "sup1",
     before: { rewardType: "cash", amount: 1000, active: true },
     after: { rewardType: "cash", amount: 1000, active: false },
+  }),
+
+  // 💸 AAP 보상 계열 — 2026-08-21 신설(P1-2). **다섯 컬렉션 전부 서버 전용.**
+  //   하나라도 열리면 나머지 넷의 방어가 무의미해진다:
+  //   실행권을 읽으면 남의 uid 를 알고, 원장을 지우면 멱등이 풀려 재지급되고,
+  //   카운터를 지우면 캡이 리셋되고, 버킷을 지우면 레이트리밋이 사라진다.
+  tc("DENY", "학생이 남의 실행권(세션)을 읽는다 (uid 노출)", {
+    path: "/aapRewardSessions/jti1", method: "get", as: "stu1",
+    before: { uid: "stu2", appId: "siteGuguGuardians", classCode: "C1", exp: 4102444800 },
+  }),
+  tc("DENY", "학생이 실행권의 소비 표식을 지운다 (같은 토큰 재사용)", {
+    path: "/aapRewardSessions/jti1", method: "update", as: "stu1",
+    before: { uid: "stu1", appId: "siteGuguGuardians", consumedGrantId: "g1" },
+    after: { uid: "stu1", appId: "siteGuguGuardians" },
+  }),
+  tc("DENY", "학생이 지급 원장을 지운다 (멱등이 풀려 재지급된다)", {
+    path: "/appRewardGrants/abc123", method: "delete", as: "stu1",
+    before: { uid: "stu1", amount: 1000, rewardType: "cash" },
+  }),
+  tc("DENY", "학생이 지급 원장을 읽는다", {
+    path: "/appRewardGrants/abc123", method: "get", as: "stu1",
+    before: { uid: "stu1", amount: 1000 },
+  }),
+  tc("DENY", "교사가 지급 원장을 위조한다 (화폐 발행 기록)", {
+    path: "/appRewardGrants/fake", method: "create", as: "tch1",
+    after: { uid: "stu1", amount: 20000, rewardType: "cash" },
+  }),
+  tc("DENY", "학생이 자기 앱별 카운터를 지운다 (앱 하루 한도 리셋)", {
+    path: "/appRewardSubjects/stu1_siteGuguGuardians", method: "delete", as: "stu1",
+    before: { uid: "stu1", day: "20260821", cash: 10000 },
+  }),
+  tc("DENY", "학생이 자기 앱별 카운터를 0 으로 되돌린다", {
+    path: "/appRewardSubjects/stu1_siteGuguGuardians", method: "update", as: "stu1",
+    before: { uid: "stu1", day: "20260821", cash: 10000 },
+    after: { uid: "stu1", day: "20260821", cash: 0 },
+  }),
+  tc("DENY", "학생이 학급 폭주 차단기를 되돌린다", {
+    path: "/appRewardCounters/20260821_class_C1", method: "update", as: "stu1",
+    before: { day: "20260821", cash: 2000000 }, after: { day: "20260821", cash: 0 },
+  }),
+  tc("DENY", "교사가 앱 폭주 차단기를 되돌린다", {
+    path: "/appRewardCounters/20260821_app_siteGuguGuardians", method: "update", as: "tch1",
+    before: { day: "20260821", cash: 4000000 }, after: { day: "20260821", cash: 0 },
+  }),
+  tc("DENY", "학생이 자기 레이트리밋 버킷을 채운다", {
+    path: "/aapRateLimits/stu1_siteGuguGuardians", method: "update", as: "stu1",
+    before: { tokens: 0, lastRefillMs: 1 }, after: { tokens: 30, lastRefillMs: 1 },
+  }),
+  // ⚠️ 슈퍼관리자도 못 쓴다 — 이 컬렉션들은 **서버(Admin SDK)만** 다룬다.
+  //    사람이 손으로 고칠 수 있으면 그 자리가 곧 우회로다(원장은 감사 대상이기도 하다).
+  tc("DENY", "슈퍼관리자도 지급 원장을 손대지 못한다 (append-only 감사 원장)", {
+    path: "/appRewardGrants/abc123", method: "update", as: "sup1",
+    before: { uid: "stu1", amount: 1000 }, after: { uid: "stu1", amount: 999999 },
   }),
 
   // menuLocks — 교사 메뉴 잠금. 종전 규칙의 \`: true\` 분기로 **타 학급 것도 쓸 수 있었다**.
