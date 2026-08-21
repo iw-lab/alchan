@@ -1516,6 +1516,47 @@ describe("환수 — 발행의 반대는 회수가 아니라 소각이다", () =
     expect(log.metadata.source).toBe("aap_clawback");
     expect(log.metadata.grantId).toBe(GID);
   });
+
+  // 🔴 2026-08-21 codex — 전학 간 학생을 슈퍼관리자가 환수하면 로그가 **옛 학급**에 꽂혔다.
+  //    MyAssets 는 `where(classCode == 현재 학급)` 으로 읽으므로 학생 화면에서 그 환수가
+  //    안 보인다 — **잔액만 줄고 거래내역엔 없는** 상태다(이 저장소 금융 1번 규칙의 증상).
+  it("⭐ 전학 간 학생의 환수도 **학생 화면에 보인다** (로그는 현재 학급으로)", async () => {
+    seedGrant();
+    // 지급은 C1(=CLASS)에서 났고, 학생은 그 뒤 C2 로 전학했다.
+    FAKE.set(`users/${UID}`, { name: "테스트학생", classCode: "TRANSFER2", cash: 5000, coupons: 3 });
+    const out = await claw({ isSuperAdmin: true, callerClass: "", reason: "잘못 지급" });
+    expect(out.success).toBe(true);
+
+    const [, log] = [...FAKE.store.entries()].find(([k]) => k.startsWith("activity_logs/"));
+    expect(log.classCode, "옛 학급에 꽂히면 학생 화면에서 사라진다").toBe("TRANSFER2");
+
+    // 역원장은 반대다 — **지급 당시** 학급이 사실의 기록이다. 두 문서의 뜻이 다르다.
+    expect(FAKE.get(`appRewardClawbacks/${GID}`).classCode).toBe(CLASS);
+  });
+
+  // 🔴 2026-08-21 codex NIT — 멱등 조기반환이 인가를 앞질렀다. grantId 는 비밀이 아니라
+  //    (지급 활동로그 metadata 에 들어가고 같은 학급 전체가 읽는다) 남의 학급 교사가
+  //    이미 환수된 건의 id 로 부르면 success:true 와 금액 셋을 그대로 받아 갔다.
+  it("⭐ 이미 환수된 건이라도 **남의 학급 교사에겐 답하지 않는다**", async () => {
+    seedGrant();
+    await claw();                                    // 정당한 교사가 먼저 환수
+    expect(FAKE.get(`appRewardClawbacks/${GID}`)).toBeTruthy();
+
+    const reason = await denied(() => claw({
+      callerUid: "otherteacher0000000000000001", callerClass: "OTHERCLS",
+    }));
+    expect(reason, "멱등이 인가를 앞지르면 금액이 새어 나간다").toBe("other_class");
+  });
+
+  it("정당한 호출자의 재시도는 여전히 **같은 답**을 받는다 (멱등은 안 깨졌다)", async () => {
+    seedGrant();
+    const first = await claw();
+    const cashAfterFirst = FAKE.get(`users/${UID}`).cash;
+    const again = await claw();
+    expect(again.duplicate).toBe(true);
+    expect(again.recoveredAmount).toBe(first.recoveredAmount);
+    expect(FAKE.get(`users/${UID}`).cash, "재시도로 두 번 빠지면 안 된다").toBe(cashAfterFirst);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

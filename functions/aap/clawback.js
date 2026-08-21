@@ -108,19 +108,19 @@ async function clawbackAppReward({
   const out = await db.runTransaction(async (tx) => {
     // ─── 읽기 구간 ───
 
-    // ① 멱등이 먼저다. 이미 환수된 건이면 **아무것도 하지 않고** 같은 답을 돌려준다.
-    //    두 번 빼면 학생이 받은 적 없는 돈을 잃는다.
+    // ① 멱등 판정에 쓸 문서를 **읽어만 둔다.** 돌려주는 건 인가를 통과한 뒤다.
+    //
+    // 🔴 2026-08-21 codex — 예전엔 여기서 바로 반환했다. 그런데 `grantId` 는 비밀이 아니라서
+    //    (아래 인가 주석 참고) **남의 학급 교사가 이미 환수된 건의 id 로 부르면** 돈은 안
+    //    움직이지만 `success:true` 와 금액 셋을 그대로 받아 갔고 거부 로그도 안 남았다.
+    //    바로 아래 주석이 "여기서 막아야 한다"고 적어 둔 그 인가를 조기반환이 앞질렀다.
+    //
+    // ⚠️ 그렇다고 멱등을 캡·정책 **뒤로** 미루면 안 된다(P1-2 에서 배운 것). 재시도를
+    //    "지금은 캡이 찼다"로 거부하면 학생 화면은 실패인데 잔액은 이미 줄어 있다.
+    //    가르는 선은 이것이다 — 멱등은 **"지금 해도 되나"(캡·정책)보다 앞**이고,
+    //    **"네가 누구냐"(인가)보다 뒤**다. 정당한 재시도는 같은 호출자가 하므로 인가를
+    //    먼저 봐도 통과한다. 통과 못 하는 호출자는 재시도든 아니든 답을 받을 자격이 없다.
     const doneSnap = await tx.get(clawbackRef);
-    if (doneSnap.exists) {
-      const d = doneSnap.data();
-      return {
-        duplicate: true,
-        grantId,
-        requestedAmount: d.requestedAmount,
-        recoveredAmount: d.recoveredAmount,
-        shortfall: d.shortfall,
-      };
-    }
 
     const grantSnap = await tx.get(grantRef);
     if (!grantSnap.exists) throw new ClawbackDenied("grant_not_found");
@@ -155,6 +155,19 @@ async function clawbackAppReward({
       }
     } else if (grant.revocable !== true && reason.length === 0) {
       throw new ClawbackDenied("reason_required");
+    }
+
+    // ② 인가를 통과했으니 이제 멱등을 답한다. 이미 환수된 건이면 **아무것도 하지 않고**
+    //    같은 답을 돌려준다 — 두 번 빼면 학생이 받은 적 없는 돈을 잃는다.
+    if (doneSnap.exists) {
+      const d = doneSnap.data();
+      return {
+        duplicate: true,
+        grantId,
+        requestedAmount: d.requestedAmount,
+        recoveredAmount: d.recoveredAmount,
+        shortfall: d.shortfall,
+      };
     }
 
     // ─── 금액 확정 ───
@@ -217,7 +230,14 @@ async function clawbackAppReward({
     tx.set(db.collection("activity_logs").doc(), {
       userId: grant.uid,
       userName: student.name || "학생",
-      classCode: grant.classCode,
+      // 🔴 2026-08-21 codex — 여기가 `grant.classCode`(지급 당시)였다. 학생이 전학한 뒤
+      //    슈퍼관리자가 환수하면(교사는 학급 대조에 막혀 이 경로가 안 열린다) 로그가
+      //    **옛 학급**에 꽂힌다. MyAssets 는 `where(classCode == 현재 학급)` 으로 읽으므로
+      //    학생 화면에서 그 환수가 **안 보인다** — 잔액만 줄고 거래내역엔 없는 상태다.
+      //    이 저장소의 금융 1번 규칙("돈 잃었는데 거래내역에 없다")이 정확히 그 증상이다.
+      //    역원장(위 appRewardClawbacks)은 **지급 당시 학급**을 그대로 둔다 — 그건 사실의
+      //    기록이고, 이건 **학생에게 보여 줄 화면**이다. 두 문서의 classCode 는 뜻이 다르다.
+      classCode: student.classCode || grant.classCode,
       type: cash ? LOG_TYPES.ADMIN_CASH_TAKE : LOG_TYPES.COUPON_TAKE,
       description: sanitizeInput(
         `학습앱 보상 환수 · ${grant.label || grant.achievementId}` +
