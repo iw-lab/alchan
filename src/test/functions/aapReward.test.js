@@ -119,6 +119,9 @@ const FAKE = vi.hoisted(() => {
 
   const db = {
     collection: (name) => makeCollection(name),
+    // 진짜 Firestore 는 `db.doc("a/b/c/d")` 로 깊은 경로를 한 번에 가리킬 수 있다.
+    // 학습기록의 집계 경로(classes/…/learningStats/…/days/…/apps/…)가 이걸 쓴다.
+    doc: (path) => makeRef(path),
     runTransaction: async (fn) => {
       const writes = [];
       wroteInTx = false;
@@ -872,10 +875,13 @@ describe("배선과 순서 — 소스가 아니라 **실행 순서**를 본다",
     expect(block).toMatch(/catch[\s\S]*throw new HttpsError/);
   });
 
-  it("⭐ 보상이 꺼진 앱에는 실행권을 쓰지 않는다 (실행마다 쓰기 1건은 비용이다)", () => {
-    const issue = after(HANDLERS, "exports.issueAppToken");
-    const guard = issue.slice(issue.indexOf("if (policy.rewardsEnabled"), issue.indexOf("aapRewardSessions"));
-    expect(guard, "실행권을 무조건 쓴다").toMatch(/rewardsEnabled === true/);
+  it("⭐ 보상·학습기록이 **둘 다** 꺼진 앱에는 실행권을 쓰지 않는다 (실행마다 쓰기 1건은 비용이다)", () => {
+    const issue = codeOnly(after(HANDLERS, "exports.issueAppToken"));
+    // P1-3 에서 조건이 넓어졌다: 학습기록도 uid 를 찾으려면 같은 문서가 필요하다.
+    // 넓어진 것과 **무조건 쓰는 것**은 다르다 — 둘 다 꺼지면 여전히 안 쓴다.
+    expect(issue).toMatch(/rewardsEnabled === true \|\| policy\.statsEnabled === true/);
+    const guard = issue.slice(issue.indexOf("const needsSession"), issue.indexOf("aapRewardSessions"));
+    expect(guard, "실행권을 무조건 쓴다").toMatch(/if \(needsSession && !hasRole\)/);
   });
 
   it("⭐ 엔드포인트가 **실제로 export** 된다 (만들었다 ≠ 연결됐다)", () => {
@@ -1247,7 +1253,7 @@ describe("발급 구조", () => {
   });
 
   it("⭐ 역할 계정에는 실행권을 만들지 않는다", () => {
-    expect(ISSUE).toMatch(/rewardsEnabled === true && !hasRole/);
+    expect(ISSUE).toMatch(/if \(needsSession && !hasRole\)/);
     // 지급 쪽 역할 검사와 같은 세 필드를 본다 — 한쪽만 늘면 다시 어긋난다.
     for (const f of ["isSuperAdmin", "isAdmin", "isTeacher"]) {
       expect(ISSUE).toMatch(new RegExp(`userData\\?\\.${f} === true`));
@@ -1507,5 +1513,267 @@ describe("환수 진입점 구조", () => {
 
   it("동시 인스턴스 천장이 있다", () => {
     expect(ENTRY.slice(0, 200)).toMatch(/maxInstances: MAX_INSTANCES/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 📚 학습기록 (P1-3)
+//
+//   돈이 아니다. 그래서 지급의 방어선(세션 1회용 소비·멱등 원장·네 축 캡)을 그대로
+//   지고 오지 않는다 — 대신 **쓰기 비용**을 막는다(레이트리밋·하루 이벤트·하루 초).
+//   이 describe 가 지키는 것:
+//     ① 세션을 읽되 **소비하지 않는다**(한 실행에서 여러 번 기록하는 게 정상)
+//     ② 집계는 경로가 아니라 **필드**로도 식별된다(계획서 C15)
+//     ③ 세션 수는 토큰 수명이 아니라 **시간 공백**으로 센다
+// ═══════════════════════════════════════════════════════════════
+describe("학습기록 — 돈이 아닌 기록", () => {
+  const L = req("../../../functions/aap/learningRules.js");
+  const { recordLearningEvent, LearningDenied } = req("../../../functions/aap/learning.js");
+
+  const stageStats = (over = {}) => {
+    FAKE.reset();
+    FAKE.set(`users/${UID}`, { name: "테스트학생", classCode: CLASS, cash: 1000, coupons: 0 });
+    FAKE.set(`platformAppPolicies/${APP}`, {
+      status: "active", aapEnabled: true, statsEnabled: true, rewardsEnabled: false,
+      trustLevel: "L0", launchUrl: "https://apps.example.com/gugu/",
+      dailyCashCap: 0, dailyCouponCap: 0, ...(over.policy || {}),
+    });
+    const issued = signAppToken({ appId: APP, uid: UID, salt: SALT, nowMs: NOW });
+    FAKE.set(`aapRewardSessions/${issued.jti}`, {
+      uid: UID, classCode: CLASS, appId: APP, sub: issued.sub, exp: issued.exp,
+      ...(over.session || {}),
+    });
+    return issued;
+  };
+  const rec = (issued, body = {}, nowMs = NOW) =>
+    recordLearningEvent({
+      body: { kind: "clear", sec: 45, score: 120, ...body },
+      headerToken: issued.token,
+      nowMs,
+    });
+  const statsDoc = () => FAKE.get(L.statsPath(CLASS, UID, DAY, APP));
+  const rawEvents = () => [...FAKE.store.entries()].filter(([k]) => k.startsWith("appLearningEvents/"));
+  const deniedL = async (fn) => {
+    const out = await fn().catch((e) => {
+      if (e instanceof LearningDenied) return { ok: false, reason: e.reason };
+      throw e;
+    });
+    return out.ok === false ? out.reason : null;
+  };
+
+  it("⭐ 집계와 원시 이벤트가 **같이** 생긴다", async () => {
+    const issued = stageStats();
+    const out = await rec(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    const s = statsDoc();
+    expect(s.events).toBe(1);
+    expect(s.sec).toBe(45);
+    expect(s.best).toBe(120);
+    expect(s.sessions).toBe(1);
+    expect(rawEvents()).toHaveLength(1);
+  });
+
+  it("⭐ 경로가 **계층**이다 (이어붙이기 id 는 문서를 충돌시킨다 — 계획서 C14)", async () => {
+    // ⚠️ 기대 경로를 `L.statsPath()` 로 만들지 않는다 — 그러면 경로를 바꾸는 변이에서
+    //    테스트도 같이 움직여 통과한다(이 저장소에서 이미 두 번 당했다).
+    const issued = stageStats();
+    await rec(issued);
+    const key = `classes/${CLASS}/learningStats/${UID}/days/${DAY}/apps/${APP}`;
+    expect(FAKE.get(key), "집계가 계층 경로에 없다").toBeTruthy();
+    // `${classCode}_${uid}_${day}` 류의 이어붙이기는 (a_b,c) 와 (a,b_c) 가 충돌한다.
+    expect([...FAKE.store.keys()].some((k) => k.includes(`${CLASS}_${UID}`))).toBe(false);
+  });
+
+  it("⭐ 다른 앱의 실행권으로는 기록하지 못한다", async () => {
+    // sub 재계산만으로는 못 막는다: 같은 학생이면 pairwise(appId, uid) 가 토큰 sub 와 맞아
+    // **남의 앱 실행권이 통과**한다. appId·sub 대조가 그 자리를 막는다.
+    const issued = stageStats();
+    FAKE.set(`aapRewardSessions/${issued.jti}`, {
+      ...FAKE.get(`aapRewardSessions/${issued.jti}`), appId: "other-app",
+    });
+    expect(await deniedL(() => rec(issued))).toBe("session_mismatch");
+  });
+
+  it("실행권의 sub 가 토큰과 다르면 거부한다", async () => {
+    const issued = stageStats();
+    FAKE.set(`aapRewardSessions/${issued.jti}`, {
+      ...FAKE.get(`aapRewardSessions/${issued.jti}`), sub: "f".repeat(32),
+    });
+    expect(await deniedL(() => rec(issued))).toBe("session_mismatch");
+  });
+
+  it("⭐ 식별값이 경로에만 있지 않다 (경로 안의 값은 쿼리할 수 없다 — 계획서 C15)", async () => {
+    const issued = stageStats();
+    await rec(issued);
+    const s = statsDoc();
+    expect(s.classCode).toBe(CLASS);
+    expect(s.uid).toBe(UID);
+    expect(s.date).toBe(DAY);
+    expect(s.appId).toBe(APP);
+  });
+
+  it("⭐ 세션을 **소비하지 않는다** (한 실행에서 여러 번 기록하는 게 정상)", async () => {
+    const issued = stageStats();
+    await rec(issued);
+    await rec(issued, { sec: 30, score: 200 });
+    await rec(issued, { sec: 10 });
+    expect(FAKE.get(`aapRewardSessions/${issued.jti}`).consumedGrantId).toBeUndefined();
+    const s = statsDoc();
+    expect(s.events).toBe(3);
+    expect(s.sec).toBe(85);
+    expect(s.best).toBe(200);
+    expect(s.sessions).toBe(1);   // 같은 시각대라 한 세션
+  });
+
+  it("지급으로 이미 소비된 세션도 기록은 받는다", async () => {
+    const issued = stageStats({ session: { consumedGrantId: "g1" } });
+    const out = await rec(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+  });
+
+  it("⭐ 세션 수는 **시간 공백**으로 센다 (토큰이 5분마다 갈려도 1세션)", async () => {
+    // ⚠️ 토큰 수명이 5분이라 뒤의 이벤트는 **새 토큰**이어야 한다. 그게 바로 이 테스트가
+    //    지키려는 것이다 — 토큰이 갈려도(=jti 가 바뀌어도) 세션은 안 는다.
+    const mint = (atMs) => {
+      const t = signAppToken({ appId: APP, uid: UID, salt: SALT, nowMs: atMs });
+      FAKE.set(`aapRewardSessions/${t.jti}`, {
+        uid: UID, classCode: CLASS, appId: APP, sub: t.sub, exp: t.exp,
+      });
+      return t;
+    };
+    stageStats();
+    await rec(mint(NOW), {}, NOW);
+    await rec(mint(NOW + 6 * 60 * 1000), {}, NOW + 6 * 60 * 1000);   // 새 토큰·새 jti
+    expect(statsDoc().sessions, "토큰이 갈렸다고 세션이 늘면 안 된다").toBe(1);
+    await rec(mint(NOW + 40 * 60 * 1000), {}, NOW + 40 * 60 * 1000); // 30분 이상 공백
+    expect(statsDoc().sessions, "30분 넘게 끊기면 새 세션이다").toBe(2);
+  });
+
+  it("statsEnabled 가 꺼져 있으면 기록하지 않는다", async () => {
+    const issued = stageStats({ policy: { statsEnabled: false } });
+    const out = await rec(issued);
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("stats_off");
+    expect(rawEvents()).toHaveLength(0);
+  });
+
+  it("세션이 없으면 uid 를 모르므로 기록하지 않는다", async () => {
+    const issued = stageStats();
+    FAKE.store.delete(`aapRewardSessions/${issued.jti}`);
+    expect(await deniedL(() => rec(issued))).toBe("session_missing");
+  });
+
+  it("남의 세션으로는 기록하지 못한다 (sub 재계산 대조)", async () => {
+    const issued = stageStats();
+    FAKE.set(`aapRewardSessions/${issued.jti}`, {
+      ...FAKE.get(`aapRewardSessions/${issued.jti}`), uid: "otherstudent000000000000001",
+    });
+    expect(await deniedL(() => rec(issued))).toBe("session_mismatch");
+  });
+
+  it("만료된 세션은 거부한다", async () => {
+    const issued = stageStats();
+    FAKE.set(`aapRewardSessions/${issued.jti}`, {
+      ...FAKE.get(`aapRewardSessions/${issued.jti}`), exp: Math.floor(NOW / 1000) - 1,
+    });
+    expect(await deniedL(() => rec(issued))).toBe("session_expired");
+  });
+
+  it("위조 토큰은 읽기 전에 막힌다", async () => {
+    stageStats();
+    const out = await recordLearningEvent({ body: { kind: "clear" }, headerToken: "a.b.c", nowMs: NOW });
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("token_invalid");
+  });
+
+  // ── 입력 ──
+  it("종류는 허용 목록이다 (프로토타입 키 포함)", async () => {
+    const issued = stageStats();
+    for (const kind of ["constructor", "toString", "__proto__", "hack", "", 1, null]) {
+      const out = await rec(issued, { kind });
+      expect(out.ok, String(kind)).toBe(false);
+      expect(out.reason).toBe("bad_kind");
+    }
+  });
+
+  it("초·점수는 정수여야 한다 (\"45\" 가 45 로 통과하지 않는다)", async () => {
+    const issued = stageStats();
+    for (const sec of ["45", 45.5, -1, NaN, L.LIMITS.MAX_SEC_PER_EVENT + 1]) {
+      expect((await rec(issued, { sec })).reason, String(sec)).toBe("bad_sec");
+    }
+    for (const score of ["1", 1.5, -1, L.LIMITS.MAX_SCORE + 1]) {
+      expect((await rec(issued, { score })).reason, String(score)).toBe("bad_score");
+    }
+  });
+
+  it("점수를 안 보내도 기록된다 (best 는 그대로)", async () => {
+    const issued = stageStats();
+    await rec(issued, { score: 500 });
+    await rec(issued, { score: undefined });
+    expect(statsDoc().best).toBe(500);
+    expect(statsDoc().events).toBe(2);
+  });
+
+  it("meta 는 크기와 형식을 제한한다", async () => {
+    const issued = stageStats();
+    expect((await rec(issued, { meta: [] })).reason).toBe("bad_meta");
+    expect((await rec(issued, { meta: { a: "x".repeat(200) } })).reason).toBe("bad_meta");
+    expect((await rec(issued, { meta: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`k${i}`, 1])) })).reason).toBe("bad_meta");
+    expect((await rec(issued, { meta: { ok: "짧음", n: 3, b: true } })).ok).toBe(true);
+  });
+
+  // ── 상한 (돈이 아니라 **쓰기 비용**의 방어선) ──
+  it("⭐ 하루 이벤트 상한을 넘으면 거부한다", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: DAY, appId: APP,
+      events: L.LIMITS.EVENTS_PER_SUBJECT_PER_DAY, sec: 0, sessions: 1, best: 0, lastEventAt: NOW,
+    });
+    expect(await deniedL(() => rec(issued, { sec: 0 }))).toBe("event_daily_cap");
+  });
+
+  it("하루 누적 초 상한을 넘으면 거부한다", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: DAY, appId: APP,
+      events: 1, sec: L.LIMITS.MAX_SEC_PER_DAY, sessions: 1, best: 0, lastEventAt: NOW,
+    });
+    expect(await deniedL(() => rec(issued, { sec: 1 }))).toBe("sec_daily_cap");
+  });
+
+  it("어제 집계는 오늘로 넘어오지 않는다", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: "20260820", appId: APP,
+      events: 999, sec: 40000, sessions: 9, best: 777, lastEventAt: NOW - 86400000,
+    });
+    const out = await rec(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    expect(statsDoc().events).toBe(1);
+    expect(statsDoc().best).toBe(120);   // 어제 최고점이 안 넘어온다
+  });
+
+  it("집계가 손상돼 있으면 기록하지 않는다 (fail-closed)", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: DAY, appId: APP, events: "3", sec: 0, sessions: 1, best: 0,
+    });
+    expect(await deniedL(() => rec(issued))).toBe("stats_corrupt");
+  });
+
+  it("원시 이벤트에 보존기한이 붙는다 (영원히 쌓이지 않는다)", async () => {
+    const issued = stageStats();
+    await rec(issued);
+    const [, ev] = rawEvents()[0];
+    expect(ev.expireAt.__tsms).toBeGreaterThan(NOW);
+    expect(ev.uid).toBe(UID);
+    expect(ev.kind).toBe("clear");
+  });
+
+  it("레이트리밋을 지급과 **같은 버킷**으로 나눠 쓴다", async () => {
+    const issued = stageStats();
+    await rec(issued);
+    // 지급 버킷의 키는 토큰의 sub 다 — 기록도 같은 문서를 쓴다.
+    expect(FAKE.get(`aapRateLimits/${issued.sub}`)).toBeTruthy();
   });
 });

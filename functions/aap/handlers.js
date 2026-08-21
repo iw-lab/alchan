@@ -22,6 +22,8 @@ const {
 } = require("./policy");
 const { grantAppReward } = require("./reward");
 const { clawbackAppReward, ClawbackDenied, clawbackError } = require("./clawback");
+const { recordLearningEvent, LearningDenied } = require("./learning");
+const L = require("./learningRules");
 const R = require("./rewardRules");
 
 const REGION = "asia-northeast3";
@@ -158,7 +160,13 @@ exports.issueAppToken = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, 
   //    (2026-08-21 codex CRITICAL). 지급 쪽 역할 검사와 **같은 조건**을 쓴다.
   const hasRole =
     userData?.isSuperAdmin === true || userData?.isAdmin === true || userData?.isTeacher === true;
-  if (policy.rewardsEnabled === true && !hasRole) {
+  // 📚 **학습기록(P1-3)도 같은 다리를 쓴다.** 토큰에는 uid 가 없어서, 어느 학생의 기록인지
+  //    아는 유일한 길이 이 문서다. 그래서 조건이 보상 하나가 아니라 **보상 또는 통계**다.
+  //    ⚠️ 이걸 안 넓히면 학습기록은 영원히 uid 를 못 찾는다 — 지금 11개 앱이 전부 보상
+  //       꺼짐이라 세션이 한 건도 안 생긴다(2026-08-21 P1-3 착수 시 발견).
+  //    "쓰는 만큼만 낸다"는 원칙은 그대로다 — 둘 다 꺼진 앱은 여전히 아무것도 안 쓴다.
+  const needsSession = policy.rewardsEnabled === true || policy.statsEnabled === true;
+  if (needsSession && !hasRole) {
     try {
       await db
         .collection("aapRewardSessions")
@@ -169,6 +177,9 @@ exports.issueAppToken = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, 
           appId,
           sub: issued.sub,
           exp: issued.exp,
+          // 무엇 때문에 만들어졌는지 남긴다 — 나중에 "왜 이 문서가 있지"를 되짚을 때 쓴다.
+          forRewards: policy.rewardsEnabled === true,
+          forStats: policy.statsEnabled === true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           // 토큰은 5분이면 죽는다. 문서를 오래 둘 이유는 감사뿐이라 하루면 충분하다.
           // (이 프로젝트엔 아직 TTL 정책이 0개다 — 실제 삭제는 별도 작업이다.)
@@ -339,3 +350,59 @@ exports.clawbackAppReward = onCall({ region: REGION, maxInstances: MAX_INSTANCES
     throw e;
   }
 });
+
+// ───────────────────────────────────────────────────────────────
+// 📚 학습기록 (P1-3) — 위성앱이 직접 부른다. `grantAppReward` 와 같은 모양의 HTTP 진입점.
+//
+//    돈이 아니라서 CORS·인증 형태만 같고 방어선은 다르다(상세는 learning.js 머리말).
+// ───────────────────────────────────────────────────────────────
+exports.recordLearningEvent = onRequest(
+  { region: REGION, invoker: "public", maxInstances: MAX_INSTANCES },
+  async (req, res) => {
+    // 쿠키를 안 쓰므로 와일드카드 origin 이고, **Allow-Credentials 는 켜지 않는다**
+    // (둘을 같이 켜는 것이 전형적인 사고다).
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.set("Access-Control-Max-Age", "3600");
+    res.set("Cache-Control", "no-store");
+    res.set("Vary", "Origin");
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.status(405).json({ success: false, error: "method_not_allowed" });
+      return;
+    }
+
+    let out;
+    try {
+      const auth = String(req.get("authorization") || "");
+      const m = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth);
+      out = await recordLearningEvent({ body: req.body, headerToken: m ? m[1] : "" });
+    } catch (e) {
+      if (e instanceof LearningDenied) {
+        logger.warn(`[AAP] 학습기록 거부 사유=${e.reason}`);
+        res
+          .status(L.denyStatus(e.reason))
+          .json({ success: false, error: e.reason, message: L.denyMessage(e.reason) });
+        return;
+      }
+      // 판정 거부가 아니라 **운영 장애**다. 앱이 재시도할 수 있게 503 으로 알린다 —
+      // 기록은 돈이 아니라 잃어도 되지만, 잃었다는 사실은 앱이 알아야 한다.
+      logger.error(`[AAP] 학습기록 장애: ${e?.message}`);
+      res.status(503).json({ success: false, error: "unavailable", retryable: true });
+      return;
+    }
+
+    if (!out.ok) {
+      res
+        .status(L.denyStatus(out.reason))
+        .json({ success: false, error: out.reason, message: L.denyMessage(out.reason) });
+      return;
+    }
+    res.status(200).json({ success: true, ...out.value });
+  },
+);

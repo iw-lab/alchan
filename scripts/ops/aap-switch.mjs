@@ -15,6 +15,8 @@
  *   node scripts/ops/aap-switch.mjs rewards-on <appId>   # 💸 보상 지급 켜기(rewardsEnabled=true)
  *   node scripts/ops/aap-switch.mjs rewards-off <appId>  # 💸 보상 지급 끄기
  *   node scripts/ops/aap-switch.mjs cap <appId> <현금> <쿠폰>  # 하루 상한(학생 1명 기준)
+ *   node scripts/ops/aap-switch.mjs stats-on <appId>     # 📚 학습기록 켜기(statsEnabled=true)
+ *   node scripts/ops/aap-switch.mjs stats-off <appId>    # 📚 학습기록 끄기
  *   node scripts/ops/aap-switch.mjs breaker-reset <appId>  # 🔓 자동 차단기 해제(오늘만)
  *   node scripts/ops/aap-switch.mjs off-all              # 🚨 전부 차단(비상)
  *
@@ -42,10 +44,10 @@ const BASE = firestoreBase();
 const [cmd, appId, ...rest] = process.argv.slice(2);
 // ⚠️ 허용 **목록**으로 판정한다. `cmd in COMMANDS` 는 `"constructor"` 같은 프로토타입 키에서
 //    참이 되어(Object.prototype) 아래 조회가 엉뚱한 값을 집는다 — 같은 함정을 P1-7 에서 겪었다.
-const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "cap", "breaker-reset", "off-all"];
+const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "stats-on", "stats-off", "cap", "breaker-reset", "off-all"];
 const NEEDS_APP = !["list", "off-all"].includes(cmd);
 if (!COMMANDS.includes(cmd) || (NEEDS_APP && !appId)) {
-  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | cap <appId> <현금> <쿠폰> | breaker-reset <appId> | off-all");
+  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | stats-on <appId> | stats-off <appId> | cap <appId> <현금> <쿠폰> | breaker-reset <appId> | off-all");
   process.exit(2);
 }
 
@@ -174,7 +176,12 @@ const patch = {
   migrate: { field: "aapEnabled", body: { aapEnabled: { booleanValue: true } }, msg: "✅ AAP 이관 켜짐 — 이제 토큰이 나갑니다" },
   unmigrate: { field: "aapEnabled", body: { aapEnabled: { booleanValue: false } }, msg: "· AAP 이관 꺼짐 — 그냥 링크로만 열립니다" },
   "rewards-on": { field: "rewardsEnabled", body: { rewardsEnabled: { booleanValue: true } }, msg: "💸 보상 켜짐 — 상한이 0 이 아니면 이제 돈이 나갑니다" },
-  "rewards-off": { field: "rewardsEnabled", body: { rewardsEnabled: { booleanValue: false } }, msg: "· 보상 꺼짐 — 실행권 문서도 더 이상 만들지 않습니다" },
+  "rewards-off": { field: "rewardsEnabled", body: { rewardsEnabled: { booleanValue: false } }, msg: "· 보상 꺼짐 — 학습기록도 꺼져 있으면 실행권 문서를 더 이상 만들지 않습니다" },
+  // 📚 학습기록은 **돈이 아니다.** 그래서 보상과 별개 스위치이고, 상한도 따로 없다
+  //    (대신 학생×앱×하루 이벤트 300건 · 누적 12시간이 코드 상수로 박혀 있다).
+  //    ⚠️ 켜면 실행마다 실행권 문서 1건이 생긴다 — 학습기록이 uid 를 찾는 유일한 다리다.
+  "stats-on": { field: "statsEnabled", body: { statsEnabled: { booleanValue: true } }, msg: "📚 학습기록 켜짐 — 이제 실행마다 실행권이 생기고 학습 이벤트를 받습니다" },
+  "stats-off": { field: "statsEnabled", body: { statsEnabled: { booleanValue: false } }, msg: "· 학습기록 꺼짐" },
 }[cmd];
 
 const url = `${BASE}/platformAppPolicies/${encodeURIComponent(appId)}?updateMask.fieldPaths=${patch.field}`;

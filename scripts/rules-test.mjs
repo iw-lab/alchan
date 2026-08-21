@@ -868,6 +868,52 @@ const CASES = [
     before: { uid: "stu1", amount: 1000 }, after: { uid: "stu1", amount: 999999 },
   }),
 
+  // 📚 학습기록(P1-3) — 쓰기는 서버 전용, 읽기는 본인·담임만.
+  tc("ALLOW", "🐤 학생이 자기 학습기록을 읽는다", {
+    path: "/classes/C1/learningStats/stu1/days/20260821/apps/siteGuguGuardians", method: "get", as: "stu1",
+    before: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+  }),
+  tc("ALLOW", "🐤 담임이 자기 반 학생의 학습기록을 읽는다", {
+    path: "/classes/C1/learningStats/stu1/days/20260821/apps/siteGuguGuardians", method: "get", as: "tch1",
+    before: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+  }),
+  // ⚠️ 활동로그(거래)는 학급 공개지만 학습기록은 **개인의 수행**이다.
+  tc("DENY", "같은 반 학생이 남의 학습기록을 읽는다", {
+    path: "/classes/C1/learningStats/stu2/days/20260821/apps/siteGuguGuardians", method: "get", as: "stu1",
+    before: { classCode: "C1", uid: "stu2", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+  }),
+  tc("DENY", "타 학급 교사가 학습기록을 읽는다", {
+    path: "/classes/C2/learningStats/stuX/days/20260821/apps/siteGuguGuardians", method: "get", as: "tch1",
+    before: { classCode: "C2", uid: "stuX", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+  }),
+  tc("DENY", "학생이 자기 학습시간을 적는다 (통계가 자기신고가 된다)", {
+    path: "/classes/C1/learningStats/stu1/days/20260821/apps/siteGuguGuardians", method: "update", as: "stu1",
+    before: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+    after: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 99999 },
+  }),
+  tc("DENY", "교사도 학습기록을 고치지 못한다 (고칠 수 있는 통계는 통계가 아니다)", {
+    path: "/classes/C1/learningStats/stu1/days/20260821/apps/siteGuguGuardians", method: "update", as: "tch1",
+    before: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 300 },
+    after: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians", sec: 0 },
+  }),
+  tc("DENY", "학생이 학습기록을 지운다", {
+    path: "/classes/C1/learningStats/stu1/days/20260821/apps/siteGuguGuardians", method: "delete", as: "stu1",
+    before: { classCode: "C1", uid: "stu1", date: "20260821", appId: "siteGuguGuardians" },
+  }),
+  // 원시 이벤트는 읽기도 닫는다 — "누가 언제 무엇을 했는지"가 한 문서에 모여 있다.
+  tc("DENY", "학생이 학습 원시 이벤트를 읽는다", {
+    path: "/appLearningEvents/e1", method: "get", as: "stu1",
+    before: { classCode: "C1", uid: "stu1", appId: "siteGuguGuardians", kind: "clear" },
+  }),
+  tc("DENY", "교사가 학습 원시 이벤트를 읽는다 (집계로 본다)", {
+    path: "/appLearningEvents/e1", method: "get", as: "tch1",
+    before: { classCode: "C1", uid: "stu1", appId: "siteGuguGuardians", kind: "clear" },
+  }),
+  tc("DENY", "학생이 학습 원시 이벤트를 위조한다", {
+    path: "/appLearningEvents/e2", method: "create", as: "stu1",
+    after: { classCode: "C1", uid: "stu1", appId: "siteGuguGuardians", kind: "clear", sec: 9999 },
+  }),
+
   // ↩️ 환수 역원장(appRewardClawbacks) — P1-9b. 읽기만 교사에게 연다.
   tc("ALLOW", "🐤 교사가 환수 기록을 읽는다 (무엇을 되돌렸는지 봐야 한다)", {
     path: "/appRewardClawbacks/" + "a".repeat(64), method: "get", as: "tch1",

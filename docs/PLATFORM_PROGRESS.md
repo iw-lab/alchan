@@ -58,7 +58,7 @@
 | P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 44개 · 변이 46개 전부 검출 · 3계열 리뷰 반영(codex 4 + 리뷰어 6). **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ✅ **배포 완료** (`f888b2d`, 2026-08-21) | 아래 「P1-2 구현」 절. 테스트 72개 · 변이 43종 전부 검출 · rules 190개 · Tier-0 전부 PASS. **라이브 영향 0**(앱 11개 전부 지급 꺼짐) |
 | P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | 🟡 **9a·9b 완료(배포 전)** · 9c 운영 게이트 3건 남음 | **파일럿(P1-4) 전에 있어야 한다** |
-| P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
+| P1-3 | `recordLearningEvent` + 일 단위 집계 | ✅ **구현 완료(배포 전)** | 아래 「P1-3 구현」. 계획서 §3.4. 테스트 149개 · 변이 24종 전부 검출 · rules 212개 |
 | P1-4 | 파일럿 1개 앱 이관 — 구구성 수호대(GitHub Pages) | ⬜ | 가장 제약이 심한 앱으로 먼저 증명 |
 | P1-5 | 교사 대시보드 — 학급 학습현황 + 보상 이상치 | ⬜ | |
 | P1-6 | 나머지 위성앱 순차 이관 | ⬜ | 앱당 독립 작업 |
@@ -727,6 +727,59 @@ WARNING 2건도 채택: onCall **배선 계층** 테스트가 0건이었다(형�
 도구: `scripts/ops/firestore-ttl.mjs`(조회 · `--check` · `--enable`).
 ⚠️ 함정: Admin 의 `fields.patch` 는 `updateMask` 를 **평문 FieldMask** 로 받는다.
    문서 REST 의 `updateMask.fieldPaths=` 관례를 쓰면 400 이다(실측).
+
+### ✅ P1-3 학습기록 (2026-08-21) — 계획서 §3.4. 배포 전
+
+| 파일 | 무엇 |
+|---|---|
+| `functions/aap/learningRules.js` (신규) | 순수 규칙 — 경로·상한·집계 산술·세션 경계 |
+| `functions/aap/learning.js` (신규) | `recordLearningEvent` 본체 |
+| `functions/aap/handlers.js` | HTTP 진입점 + **실행권 조건을 `rewards || stats` 로 확장** |
+| `firestore.rules` | 집계는 본인·담임만 읽기·**쓰기 전면 금지** · 원시 이벤트는 서버 전용 |
+| `scripts/ops/aap-switch.mjs` | `stats-on` / `stats-off` |
+| `docs/AAP_V1_SPEC.md` §5.5 | 앱 제작자용 계약 |
+
+**실측**: vitest 847 · rules 212 · **변이 24종 전부 검출(생존 0)** · Tier-0 전부 PASS.
+
+#### 착수하자마자 막혔던 것 — 학습기록이 uid 를 못 찾는다
+
+토큰에는 uid 가 없다(앱별 pairwise `sub` 뿐). P1-2 가 그 다리를 `aapRewardSessions` 로 놓았는데
+그 문서는 **`rewardsEnabled` 일 때만** 만들어진다 — 지금 11개 앱이 전부 보상 꺼짐이라
+**세션이 한 건도 안 생긴다.** 그래서 조건을 `rewardsEnabled || statsEnabled` 로 넓혔다.
+"쓰는 만큼만 낸다"는 원칙은 그대로다 — 둘 다 꺼진 앱은 여전히 아무것도 안 쓴다.
+
+#### 계획서와 현실이 어긋난 곳 — `classId` 가 아직 없다
+
+계획서 §3.6 은 **불변 랜덤 `classId`** 를 쓰라고 하고 "`classCode` 를 영구 PK 로 쓰면 코드
+재사용 시 통계가 섞인다"고 경고한다(C18). 그런데 라이브의 `classes` 는 아직 **classCode 가
+문서 id** 다(`BG6QUC`·`9BVPKP`). classId 도입은 스케줄러·대시보드·`settings/classCodes` 를
+전부 건드리는 별도 공사다.
+
+→ 지금은 `classes/{classCode}/learningStats/…` 로 가되, 계획서가 요구한 대로 **식별값을 전부
+명시 필드로도** 남긴다(`classCode`·`uid`·`date`·`appId`). 나중에 경로가 바뀌어도 필드로
+재부모화할 수 있다. **남는 노출은 "코드를 재사용하면 섞인다" 하나** — 그건 기록해 둔다.
+
+#### 정한 것 셋
+- **세션 수는 시간 공백(30분)으로 센다.** 실행 id(jti)로 세면 토큰 수명이 5분이라 20분 놀면
+  **4세션**이 되어 교사 화면이 거짓말을 한다.
+- **세션을 읽되 소비하지 않는다.** 소비는 지급의 규약이고, 학습기록은 한 실행에서 여러 번
+  일어나는 게 정상이다. 이미 지급으로 소비된 세션도 기록은 계속 받는다.
+- **집계 쓰기는 교사도 막는다.** 고칠 수 있는 통계는 통계가 아니다.
+
+#### 🚫 이번에 **일부러 안 한 것**: 서버 발급 event nonce
+P1-2 주석이 예고한 "한 실행에서 여러 보상"(nonce)은 **이미 배포된 돈 코드의 세션 소비 규약을
+바꾸는 일**이라 자기 몫의 FULL 라운드가 필요하다. 지금 구조는 세션이 1회용이라 nonce 없이도
+안전하다 — `eventId` 는 멱등 해시에 자리만 잡아 두었고 지급이 검증하지는 않는다.
+
+#### 내 버그 하나 (테스트가 잡음)
+`dayStats` 의 "새 하루" 조기 반환에 `lastEventAt` 이 빠져 첫 이벤트에서 `undefined` 가 흘렀다.
+`nowMs - undefined = NaN` 이고 NaN 비교는 false 라 **첫 세션이 0으로 세졌다.**
+조기 반환은 늘 같은 모양이어야 한다.
+
+#### 🪤 자기참조 테스트에 **세 번째** 걸렸다
+기대 경로를 `L.statsPath()` 로 만들었더니, 경로를 이어붙이기 id 로 바꾸는 변이에서
+**테스트도 같이 움직여** 통과했다. 경로 문자열을 손으로 박자 즉시 검출됐다.
+(앞선 두 번: 차단기 임계값 비율 · 환수 `checkAuthAndGetUserData` 주석 앵커)
 
 ## 이 프로젝트에서 반드시 지키는 것
 - `functions` 배포는 **`git push` → GitHub Actions 로만**. 로컬 `firebase deploy --only functions` 는 `functions/.env` 의 토큰을 파괴한다
