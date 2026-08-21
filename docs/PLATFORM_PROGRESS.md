@@ -56,7 +56,7 @@
 |---|---|---|---|
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
 | P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 44개 · 변이 46개 전부 검출 · 3계열 리뷰 반영(codex 4 + 리뷰어 6). **아래 결정 2건 확인 필요** |
-| P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ✅ **구현·검증 완료 (배포 전)** | 아래 「P1-2 구현」 절. 테스트 72개 · 변이 43종 전부 검출 · rules 190개 · Tier-0 전부 PASS. **라이브 영향 0**(앱 11개 전부 지급 꺼짐) |
+| P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ✅ **배포 완료** (`f888b2d`, 2026-08-21) | 아래 「P1-2 구현」 절. 테스트 72개 · 변이 43종 전부 검출 · rules 190개 · Tier-0 전부 PASS. **라이브 영향 0**(앱 11개 전부 지급 꺼짐) |
 | P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | ⬜ | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
 | P1-4 | 파일럿 1개 앱 이관 — 구구성 수호대(GitHub Pages) | ⬜ | 가장 제약이 심한 앱으로 먼저 증명 |
@@ -328,7 +328,7 @@ P1-9 에서 별도로 만든다.
 **P1 성공조건**: 학생이 알찬에서 앱으로 넘어갈 때 다시 로그인하지 않는다.
 앱에서 얻은 성과가 알찬 화폐로 들어오고, **캡을 넘기려는 시도가 서버에서 거부된다**(직접 재현으로 증명).
 
-### ✅ P1-2 구현 (2026-08-21) — 설계 2판대로. 배포는 아직 안 함
+### ✅ P1-2 구현 (2026-08-21) — 설계 2판대로. **배포 완료** (`f888b2d`)
 
 | 파일 | 무엇 |
 |---|---|
@@ -341,6 +341,22 @@ P1-9 에서 별도로 만든다.
 
 **돈이 나가려면 스위치 셋이 전부 켜져야 한다**: `migrate`(토큰) → `rewards-on`(실행권) → `cap`(상한).
 기본값이 전부 꺼짐/0 이라 **지금 배포해도 한 푼도 안 나간다**(2026-08-21 라이브 11개 앱 실측: 이관 · · 보상 · · 상한 0/0).
+
+#### 🛰️ 배포 후 **라이브 산출물** 확인 (2026-08-21, 워크플로 초록불 말고)
+
+푸시 `e84c0e3..f888b2d`(커밋 5개) → 워크플로 3개 전부 success. 그 다음에 **결과물 자체**를 봤다:
+
+| 확인한 것 | 방법 | 결과 |
+|---|---|---|
+| Functions 에 새 함수가 실제로 생겼나 | 배포 로그 | `functions[grantAppReward(asia-northeast3)]` **Successful create** — update 가 아니라 create |
+| 게시된 규칙이 내 파일과 같나 | `scripts/ops/verify-live-rules.mjs` | 라이브 원문 == 로컬 **완전 일치**, ruleset `4433cbf2…`, 00:51:37Z |
+| 엔드포인트가 살아 있나 | 실제 HTTP 요청 | OPTIONS **204** · GET **405** `method_not_allowed` · POST(토큰 없음/위조) **401** `token_invalid` — 404 가 아니다 |
+| CORS 가 설계대로인가 | 응답 헤더 | `allow-origin: *` · `allow-methods: POST, OPTIONS` · `cache-control: no-store` · **`allow-credentials` 없음**(와일드카드와 같이 켜면 안 되는 것) |
+| 돈이 나갈 수 있나 | `aap-switch.mjs list` | 11개 앱 전부 이관 `·` · 보상 `·` · 상한 `0/0` → **한 푼도 못 나간다** |
+
+`(if changed)` 스텝은 성공해도 내용이 no-op 일 수 있다 — 그래서 스텝 초록불이 아니라
+로그의 `Successful create` 와 `released rules` 를 봤고, 그마저도 믿지 않고 **라이브에 직접
+물었다**(규칙 원문 대조 · HTTP 프로브). 배포 로그는 "보냈다"까지만 증명한다.
 
 #### 설계 2판에서 **의도적으로 벗어난 한 곳**
 2판은 `users.appRewardDaily` 를 `{day, total, apps:{[appId]}}` 중첩으로 두라고 했다(`_all` 충돌 회피).
