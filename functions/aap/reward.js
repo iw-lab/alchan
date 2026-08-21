@@ -25,6 +25,7 @@ const { verifyAppToken, pairwise, SKEW_SEC } = require("./token");
 const { checkPolicyOpen, APP_ID_RE } = require("./policy");
 const catalog = require("./catalog");
 const R = require("./rewardRules");
+const { passRewardBucket } = require("./rateBucket");
 
 const { FieldValue, Timestamp } = admin.firestore;
 
@@ -62,23 +63,10 @@ class RewardDenied extends Error {
  * @return {Promise<boolean>} 통과하면 true
  */
 // (async 를 붙이지 않는다 — 안쪽 트랜잭션 프라미스를 그대로 돌려준다)
+// 구현은 `rateBucket.js` 한 곳에 있다. 여기 이름을 남겨 두는 이유는 이 파일의 호출부와
+// 위 주석(왜 키가 sub 인가)이 짝이기 때문이다.
 function passRateLimit(sub, appId, nowMs) {
-  const ref = db.collection("aapRateLimits").doc(sub);
-  return db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const { allowed, next } = R.consumeBucket(snap.exists ? snap.data() : null, nowMs);
-    tx.set(
-      ref,
-      {
-        ...next,
-        appId,
-        // 이 문서는 순수 캐시다. 30일 뒤 지워도 최악이 "버킷이 가득 찬 상태로 시작"이라 안전하다.
-        expireAt: Timestamp.fromMillis(nowMs + 30 * 24 * 60 * 60 * 1000),
-      },
-      { merge: true },
-    );
-    return allowed;
-  });
+  return passRewardBucket(sub, appId, nowMs);
 }
 
 /**

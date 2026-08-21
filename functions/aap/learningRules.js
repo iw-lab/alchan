@@ -115,6 +115,11 @@ function normalizeEvent(raw) {
     const keys = Object.keys(raw.meta);
     if (keys.length > LIMITS.MAX_META_KEYS) return { ok: false, reason: "bad_meta" };
     for (const k of keys) {
+      // 🔴 **키 길이도 잰다.** 개수와 값만 재던 판에서는 2MB 짜리 키 하나가 검증을 통과하고
+      //    Firestore 쓰기에서 터졌다 — 그때는 레이트리밋 쓰기와 정책·세션·집계 읽기를 이미
+      //    다 태운 뒤라, 앱에는 `retryable:true` 인 503 이 가서 재시도까지 유발했다
+      //    (2026-08-21 codex 재현). 통과시킬 수 없는 것은 **읽기 전에** 떨군다.
+      if (k.length > LIMITS.MAX_META_LEN) return { ok: false, reason: "bad_meta" };
       const v = raw.meta[k];
       const okType =
         (typeof v === "string" && v.length <= LIMITS.MAX_META_LEN) ||
@@ -139,6 +144,16 @@ function normalizeEvent(raw) {
  * @return {{events: number, sec: number, sessions: number, best: number}|null} 집계
  */
 function dayStats(raw, day) {
+  // 🔴 **문서가 있는데 날짜가 다르면 "어제 것"이 아니라 손상이다.** 경로가 이미
+  //    `.../days/{day}/...` 라, 그 자리에 다른 날짜가 적힌 문서는 존재할 수 없다.
+  //    0 으로 리셋하던 판에서는 손상 문서 하나가 **하루 상한을 통째로 다시 열었다**
+  //    (2026-08-21 codex — 같은 날짜의 타입 손상은 fail-closed 인데 날짜만 fail-open 이었다).
+  //    자가치유 창은 최대 하루다(자정에 경로가 바뀌면 새 문서가 선다).
+  //    `date` 가 **아예 없는** 문서도 같은 손상이다(쓰기는 늘 date 를 같이 넣는다).
+  //    빈 문서 `{}` 만 예외로 두는데, 그건 값이 아니라 자리이기 때문이다.
+  if (raw && typeof raw === "object" && Object.keys(raw).length > 0 && raw.date !== day) {
+    return null;
+  }
   if (!raw || typeof raw !== "object" || raw.date !== day) {
     // ⚠️ `lastEventAt` 을 **여기서도** 준다. 빼놨더니 첫 이벤트에서 undefined 가 흘러
     //    `nowMs - undefined = NaN` 이 되고, NaN 비교가 false 라 **첫 세션이 0으로 세졌다**
@@ -218,12 +233,28 @@ const DENY_MESSAGE = Object.freeze({
   stats_corrupt: "학습 기록에 문제가 있어요. 선생님께 알려 주세요.",
 });
 
+// 🔴 지급 경로(`rewardRules.DENY_STATUS`)와 **같은 계약**이어야 한다. 인증·레이트 계열을
+//    빠뜨려 전부 기본값 409 로 나가던 판에서는, 만료된 토큰에도 409 가 가서 위성앱이
+//    **죽은 토큰으로 무한 재시도**했다(2026-08-21 codex 재현). 409 는 "다시 보내도 같다"가
+//    아니라 "충돌"이라, 앱이 재발급을 해야 할 자리에서 재발급을 안 하게 만든다.
 const DENY_STATUS = Object.freeze({
   malformed: 400,
   bad_kind: 400,
   bad_sec: 400,
   bad_score: 400,
   bad_meta: 400,
+  // 401 = 토큰·세션을 **다시 받아 오라**. 사유는 뭉쳐도 상태코드는 갈라야 앱이 행동을 정한다.
+  token_invalid: 401,
+  session_missing: 401,
+  session_mismatch: 401,
+  session_expired: 401,
+  // 403 = 다시 받아 와도 소용없다(정책이 닫혔다).
+  disabled: 403,
+  not_migrated: 403,
+  stats_off: 403,
+  bad_launch_url: 403,
+  not_registered: 404,
+  rate_limited: 429,
   event_daily_cap: 429,
   sec_daily_cap: 429,
 });

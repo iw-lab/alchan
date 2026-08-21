@@ -20,7 +20,7 @@ const { readAppPolicy, checkPolicyOpen } = require("./policy");
 const L = require("./learningRules");
 // 지급과 **같은 버킷**을 쓴다. 사본을 만들지 않는다 — 이 저장소는 복붙 다섯 줄이
 // 주급 과다지급으로 돌아온 전례가 있다(functions/jobUtils.js clampMaxJobs).
-const { passRateLimit } = require("./reward");
+const { passLearningBucket } = require("./rateBucket");
 
 const FieldValue = admin.firestore.FieldValue;
 const Timestamp = admin.firestore.Timestamp;
@@ -75,7 +75,10 @@ async function recordLearningEvent({ body, headerToken, nowMs = Date.now() }) {
   // 3️⃣ 레이트리밋 — **읽기보다 앞**이다. 지급과 같은 버킷(sub 키)을 공유한다:
   //    한 학생이 한 앱에서 만드는 부하는 지급이든 기록이든 같은 지갑에서 나가야 한다.
   //    따로 두면 두 배로 두드릴 수 있다.
-  if (!(await passRateLimit(sub, appId, nowMs))) {
+  // 🔴 **지급과 다른 통이다.** 같은 통을 쓰던 판에서는 학습 이벤트 30건이 통을 비우고,
+  //    바로 뒤의 진짜 지급이 거부됐다 — 학생이 스테이지를 깼는데 돈을 못 받았다
+  //    (2026-08-21 codex 재현). 기록은 시끄럽고 지급은 드물다. 통을 나눈다.
+  if (!(await passLearningBucket(sub, appId, nowMs))) {
     return { ok: false, reason: "rate_limited" };
   }
 

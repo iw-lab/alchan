@@ -311,6 +311,18 @@ const RATE_LIMIT = Object.freeze({ CAPACITY: 30, REFILL_MS: 2000 });
 const TOKEN_RATE_LIMIT = Object.freeze({ CAPACITY: 20, REFILL_MS: 6000 });
 
 /**
+ * 📚 **학습기록**(`recordLearningEvent`)용 버킷. 지급과 **절대 같은 통을 쓰지 않는다.**
+ *
+ * 🔴 2026-08-21 codex — 같은 통을 쓰던 판에서, 학습 이벤트 30건이 통을 비우면 **바로 뒤의
+ *    실제 지급이 거부됐다**(학생이 스테이지를 깼는데 돈을 못 받는다). 시끄러운 경로가 돈
+ *    경로를 굶긴 것이다. 빈도가 다른 두 동작은 통을 나눈다 — 발급이 이미 그렇게 돼 있었다.
+ *
+ * 용량 60 · 1초당 1개 회복. 진짜 상한은 하루 300건(`learningRules.LIMITS`)이고
+ * 이 통은 **순간 폭주만** 막는다.
+ */
+const LEARNING_RATE_LIMIT = Object.freeze({ CAPACITY: 60, REFILL_MS: 1000 });
+
+/**
  * 버킷 상태를 갱신한다(순수).
  *
  * @param {object|null} prev 저장된 {tokens, lastRefillMs}
@@ -318,7 +330,8 @@ const TOKEN_RATE_LIMIT = Object.freeze({ CAPACITY: 20, REFILL_MS: 6000 });
  * @param {{CAPACITY: number, REFILL_MS: number}} [limit] 버킷 설정. 기본은 지급용.
  *   ⚠️ 인자로 받는 이유: 예전엔 함수가 모듈 상수 `RATE_LIMIT` 을 직접 참조해서, 발급용으로
  *      다른 값을 쓰려 해도 **조용히 지급용 설정이 적용됐다**(2026-08-21 codex WARNING).
- * @return {{allowed: boolean, next: {tokens: number, lastRefillMs: number}}} 판정과 새 상태
+ * @return {{allowed: boolean, next: {tokens: number, lastRefillMs: number}, changed: boolean}}
+ *   판정 · 새 상태 · **저장값과 달라졌는지**(false 면 호출부가 쓰기를 건너뛴다)
  */
 function consumeBucket(prev, nowMs, limit = RATE_LIMIT) {
   const stored = prev && typeof prev === "object" ? prev : {};
@@ -342,12 +355,20 @@ function consumeBucket(prev, nowMs, limit = RATE_LIMIT) {
     storedTokens + Math.floor(elapsed / limit.REFILL_MS),
   );
 
+  // 저장값과 **똑같은 상태**를 다시 쓰는 것은 순수 낭비다. 거부가 이어지는 동안 next 는
+  // 매번 {tokens:0, lastRefillMs} 로 같으므로, 이 플래그가 있으면 호출부가 쓰기를 건너뛴다.
+  // ⚠️ 단, 저장값이 미래거나 손상됐을 땐 next 가 달라진다 — 그때는 반드시 써야 **치유**된다
+  //    (위 lastRefillMs 클램프는 읽을 때마다 다시 계산되므로, 안 쓰면 영구히 잠긴 채로 남는다).
+  const same = (n) => stored.tokens === n.tokens && stored.lastRefillMs === n.lastRefillMs;
+
   if (refilled < 1) {
     // 거부해도 lastRefillMs 는 **전진시키지 않는다**. 매 요청마다 갱신하면 회복 시계가
     // 계속 리셋되어, 초당 수십 번 두드리는 쪽이 영원히 회복하지 못한다(=자기 DoS).
-    return { allowed: false, next: { tokens: 0, lastRefillMs } };
+    const next = { tokens: 0, lastRefillMs };
+    return { allowed: false, next, changed: !same(next) };
   }
-  return { allowed: true, next: { tokens: refilled - 1, lastRefillMs: nowMs } };
+  const next = { tokens: refilled - 1, lastRefillMs: nowMs };
+  return { allowed: true, next, changed: !same(next) };
 }
 
 /**
@@ -515,6 +536,17 @@ function bucketKeyForUid(uid) {
 }
 
 /**
+ * 학습기록 버킷 키. `sub` 는 이미 앱별 pairwise 라 해시할 게 없다 — 접두사만 붙여
+ * 지급용 버킷(`aapRateLimits/{sub}`)과 **다른 문서**가 되게 한다.
+ *
+ * @param {string} sub 검증된 토큰의 pairwise 식별자
+ * @return {string} 버킷 문서 id
+ */
+function bucketKeyForLearning(sub) {
+  return `lrn_${String(sub)}`;
+}
+
+/**
  * 사유 → 학생 문구. **`hasOwnProperty` 로 찾는다.**
  *
  * ⚠️ `MAP[reason] || DEFAULT` 로 쓰면 `"constructor"`·`"toString"` 같은 프로토타입 키에서
@@ -570,8 +602,10 @@ module.exports = {
   checkCaps,
   consumeBucket,
   TOKEN_RATE_LIMIT,
+  LEARNING_RATE_LIMIT,
   BREAKER,
   BREAKER_KINDS,
   checkBreaker,
   bucketKeyForUid,
+  bucketKeyForLearning,
 };

@@ -58,7 +58,7 @@ if (cmd === "list") {
   const docs = r.documents || [];
   if (docs.length === 0) { console.log("등록된 앱 정책이 없습니다. seed-app-policies.mjs 를 먼저 실행하세요."); process.exit(0); }
   console.log(`앱 정책 ${docs.length}개\n`);
-  console.log("  상태     이관  보상   등급  appId                   하루상한(현금/쿠폰)  실행URL");
+  console.log("  상태     이관  보상  기록   등급  appId                   하루상한(현금/쿠폰)  실행URL");
   for (const d of docs.sort((a, b) => a.name.localeCompare(b.name))) {
     const f = d.fields || {};
     const id = d.name.split("/").pop();
@@ -66,14 +66,17 @@ if (cmd === "list") {
     const on = status === "active" ? "🟢 켜짐 " : "🔴 꺼짐 ";
     const mig = f.aapEnabled?.booleanValue === true ? "✅" : "· ";
     const rew = f.rewardsEnabled?.booleanValue === true ? "💸" : "· ";
+    // 학습기록도 실행권 문서를 만든다 — 목록에 없으면 "왜 실행권이 생기지?" 를 못 푼다.
+    const sta = f.statsEnabled?.booleanValue === true ? "📚" : "· ";
     // integerValue 는 REST 에서 **문자열**로 온다. Number() 로 세우지 않으면 "0" 이 truthy 다.
     const cashCap = Number(f.dailyCashCap?.integerValue ?? 0);
     const couponCap = Number(f.dailyCouponCap?.integerValue ?? 0);
     const caps = `${cashCap.toLocaleString("ko-KR")}/${couponCap}`.padEnd(19);
-    console.log(`  ${on}  ${mig}   ${rew}    ${(f.trustLevel?.stringValue || "?").padEnd(4)}  ${id.padEnd(22)} ${caps} ${f.launchUrl?.stringValue || ""}`);
+    console.log(`  ${on}  ${mig}   ${rew}   ${sta}    ${(f.trustLevel?.stringValue || "?").padEnd(4)}  ${id.padEnd(22)} ${caps} ${f.launchUrl?.stringValue || ""}`);
   }
   console.log("\n  이관 ✅ = AAP 토큰이 나가는 앱. `·` 는 아직 그냥 링크로만 열린다.");
   console.log("  보상 💸 = 지급이 켜진 앱. 상한이 0 이면 켜져 있어도 한 푼도 안 나간다.");
+  console.log("  기록 📚 = 학습기록이 켜진 앱. 보상이 꺼져 있어도 이게 켜져 있으면 실행권이 생긴다.");
   process.exit(0);
 }
 

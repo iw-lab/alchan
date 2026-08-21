@@ -25,6 +25,7 @@ const { clawbackAppReward, ClawbackDenied, clawbackError } = require("./clawback
 const { recordLearningEvent, LearningDenied } = require("./learning");
 const L = require("./learningRules");
 const R = require("./rewardRules");
+const { passIssueBucket } = require("./rateBucket");
 
 const REGION = "asia-northeast3";
 
@@ -46,17 +47,7 @@ const MAX_INSTANCES = 20;
  * @return {Promise<boolean>} 통과 여부
  */
 function passIssueRateLimit(uid) {
-  const ref = db.collection("aapRateLimits").doc(R.bucketKeyForUid(uid));
-  return db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const { allowed, next } = R.consumeBucket(
-      snap.exists ? snap.data() : null,
-      Date.now(),
-      R.TOKEN_RATE_LIMIT,
-    );
-    tx.set(ref, { ...next, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    return allowed;
-  });
+  return passIssueBucket(uid, Date.now());
 }
 
 // ───────────────────────────────────────────────────────────────

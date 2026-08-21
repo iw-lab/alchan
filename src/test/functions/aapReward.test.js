@@ -743,6 +743,38 @@ describe("KST 하루 경계 · 레이트리밋", () => {
   it("⭐ 저장값이 없으면 가득 찬 버킷으로 시작한다", () => {
     expect(R.consumeBucket(null, 1).next.tokens).toBe(R.RATE_LIMIT.CAPACITY - 1);
   });
+
+  // 🔴 2026-08-21 codex CRITICAL — 차단된 요청 1,000건이 **쓰기 1,000회**를 만들었다.
+  //    거부가 이어지는 동안 새 상태는 저장값과 똑같은데도 매번 썼기 때문이다.
+  //    `changed` 가 "써야 하나"를 말한다. `allowed` 로 갈음하면 치유가 죽는다.
+  it("⭐ 거부가 이어지면 상태가 안 바뀐다 (호출부가 쓰기를 건너뛸 근거)", () => {
+    const t0 = 1_000_000_000;
+    const out = R.consumeBucket({ tokens: 0, lastRefillMs: t0 }, t0 + 500);
+    expect(out.allowed).toBe(false);
+    expect(out.changed, "같은 상태를 다시 쓰면 차단이 곧 비용이 된다").toBe(false);
+  });
+
+  it("⭐ 거부라도 **손상된 저장값은 바뀐다** (건너뛰기가 치유를 죽이면 안 된다)", () => {
+    const t0 = 1_000_000_000;
+    const stuck = { tokens: 0, lastRefillMs: Number.MAX_SAFE_INTEGER };
+    const out = R.consumeBucket(stuck, t0);
+    expect(out.allowed).toBe(false);
+    expect(out.changed, "미래 시각을 안 쓰면 그 버킷은 영구히 잠긴다").toBe(true);
+  });
+
+  it("⭐ 통과하면 언제나 바뀐다 (토큰이 줄거나 시계가 움직인다)", () => {
+    const t0 = 1_000_000_000;
+    expect(R.consumeBucket(null, t0).changed).toBe(true);
+    expect(R.consumeBucket({ tokens: 5, lastRefillMs: t0 }, t0).changed).toBe(true);
+  });
+
+  it("⭐ 학습용 통은 지급용과 **다른 설정·다른 키**다", () => {
+    expect(R.LEARNING_RATE_LIMIT).not.toBe(R.RATE_LIMIT);
+    expect(R.bucketKeyForLearning("abc")).toBe("lrn_abc");
+    expect(R.bucketKeyForLearning("abc")).not.toBe("abc");
+    // 기록은 지급보다 훨씬 잦다 — 통이 더 커야 정상 플레이가 안 막힌다.
+    expect(R.LEARNING_RATE_LIMIT.CAPACITY).toBeGreaterThan(R.RATE_LIMIT.CAPACITY);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1238,6 +1270,7 @@ describe("발급 버킷 — 키와 설정", () => {
 // ═══════════════════════════════════════════════════════════════
 describe("발급 구조", () => {
   const H = read("functions/aap/handlers.js");
+  const B = read("functions/aap/rateBucket.js");
   const ISSUE = codeOnly(after(H, "exports.issueAppToken = onCall("));
 
   it("⭐ 레이트리밋이 사용자 문서 읽기보다 **앞**이다", () => {
@@ -1260,12 +1293,19 @@ describe("발급 구조", () => {
     }
   });
 
+  // 버킷 구현은 2026-08-21 에 `rateBucket.js` 한 곳으로 모았다(세 벌이 될 참이었다).
+  // 그래서 "어느 키·어느 설정" 단언은 그 파일을 본다.
   it("발급 버킷은 해시 키를 쓴다 (uid 원문이 경로에 안 들어간다)", () => {
-    expect(H).toMatch(/aapRateLimits"\)\.doc\(R\.bucketKeyForUid\(uid\)\)/);
+    expect(B).toMatch(/docId: R\.bucketKeyForUid\(uid\)/);
   });
 
   it("발급 버킷은 발급용 설정을 넘긴다", () => {
-    expect(H).toMatch(/R\.consumeBucket\([\s\S]{0,120}?R\.TOKEN_RATE_LIMIT/);
+    expect(after(B, "function passIssueBucket(")).toMatch(/limit: R\.TOKEN_RATE_LIMIT/);
+  });
+
+  it("handlers 는 버킷을 직접 구현하지 않는다 (구현이 한 벌이어야 한다)", () => {
+    expect(H).not.toMatch(/R\.consumeBucket\(/);
+    expect(H).toMatch(/passIssueBucket\(uid, Date\.now\(\)\)/);
   });
 
   it("두 함수 모두 동시 인스턴스 천장이 있다 (레이트리밋은 청구액을 못 막는다)", () => {
@@ -1719,7 +1759,34 @@ describe("학습기록 — 돈이 아닌 기록", () => {
     expect((await rec(issued, { meta: [] })).reason).toBe("bad_meta");
     expect((await rec(issued, { meta: { a: "x".repeat(200) } })).reason).toBe("bad_meta");
     expect((await rec(issued, { meta: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`k${i}`, 1])) })).reason).toBe("bad_meta");
+    // 🔴 2026-08-21 codex — **키 길이**는 안 재고 있었다. 2MB 짜리 키 하나가 검증을 통과해
+    //    Firestore 쓰기에서 터지면, 읽기·레이트리밋 쓰기를 다 태운 뒤 retryable 503 이 나가
+    //    재시도까지 부른다. 통과시킬 수 없는 것은 읽기 **전에** 떨군다.
+    expect((await rec(issued, { meta: { ["k".repeat(200)]: true } })).reason).toBe("bad_meta");
     expect((await rec(issued, { meta: { ok: "짧음", n: 3, b: true } })).ok).toBe(true);
+  });
+
+  // 🔴 2026-08-21 codex — 인증·레이트 계열이 상태표에 없어 전부 기본값 409 로 나갔다.
+  //    409 를 받은 위성앱은 재발급을 안 하고 **죽은 토큰으로 무한 재시도**한다.
+  it("⭐ 거부 상태코드가 지급 경로와 **같은 계약**이다", () => {
+    expect(L.denyStatus("token_invalid")).toBe(401);
+    expect(L.denyStatus("session_missing")).toBe(401);
+    expect(L.denyStatus("session_mismatch")).toBe(401);
+    expect(L.denyStatus("session_expired")).toBe(401);
+    expect(L.denyStatus("stats_off")).toBe(403);
+    expect(L.denyStatus("disabled")).toBe(403);
+    expect(L.denyStatus("not_migrated")).toBe(403);
+    expect(L.denyStatus("not_registered")).toBe(404);
+    expect(L.denyStatus("rate_limited")).toBe(429);
+    expect(L.denyStatus("event_daily_cap")).toBe(429);
+    expect(L.denyStatus("malformed")).toBe(400);
+    expect(L.denyStatus("알 수 없는 사유"), "모르는 사유만 409").toBe(409);
+  });
+
+  it("⭐ 인증 계열은 하나도 409 로 새지 않는다", () => {
+    for (const r of ["token_invalid", "session_missing", "session_mismatch", "session_expired"]) {
+      expect(L.denyStatus(r), `${r} 가 409 로 샜다`).not.toBe(409);
+    }
   });
 
   // ── 상한 (돈이 아니라 **쓰기 비용**의 방어선) ──
@@ -1741,9 +1808,10 @@ describe("학습기록 — 돈이 아닌 기록", () => {
     expect(await deniedL(() => rec(issued, { sec: 1 }))).toBe("sec_daily_cap");
   });
 
-  it("어제 집계는 오늘로 넘어오지 않는다", async () => {
+  it("어제 집계는 오늘로 넘어오지 않는다 (경로가 날짜를 가른다)", async () => {
     const issued = stageStats();
-    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+    // 어제 것은 **어제 경로**에 있다. 오늘 경로는 아예 다른 문서다.
+    FAKE.set(L.statsPath(CLASS, UID, "20260820", APP), {
       classCode: CLASS, uid: UID, date: "20260820", appId: APP,
       events: 999, sec: 40000, sessions: 9, best: 777, lastEventAt: NOW - 86400000,
     });
@@ -1751,6 +1819,39 @@ describe("학습기록 — 돈이 아닌 기록", () => {
     expect(out.ok, JSON.stringify(out)).toBe(true);
     expect(statsDoc().events).toBe(1);
     expect(statsDoc().best).toBe(120);   // 어제 최고점이 안 넘어온다
+    // 어제 문서는 건드리지 않는다.
+    expect(FAKE.get(L.statsPath(CLASS, UID, "20260820", APP)).events).toBe(999);
+  });
+
+  // 🔴 2026-08-21 codex — 날짜 손상은 fail-**open** 이었다. 같은 날짜의 타입 손상은 막으면서
+  //    날짜 필드만 어긋난 문서는 0 으로 리셋해 **하루 상한을 통째로 다시 열었다.**
+  //    경로가 이미 days/{day} 라, 그 자리의 날짜 불일치는 "어제 것"이 아니라 손상이다.
+  it("오늘 경로에 다른 날짜가 적혀 있으면 손상이다 (상한이 다시 열리지 않는다)", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      classCode: CLASS, uid: UID, date: "20260820", appId: APP,
+      events: L.LIMITS.EVENTS_PER_SUBJECT_PER_DAY, sec: 1, sessions: 1, best: 0,
+    });
+    expect(await deniedL(() => rec(issued))).toBe("stats_corrupt");
+  });
+
+  // 반대쪽 과잉차단도 막는다: **필드 0개의 실재 문서**는 Firestore 에서 실제로 존재할 수 있고
+  // (이 저장소가 마이그레이션에서 한 번 겪었다), 그건 손상이 아니라 **자리**다.
+  // 손상 취급하면 그 학생은 자정까지 아무것도 기록하지 못한다.
+  it("빈 문서 `{}` 는 손상이 아니라 새 하루다 (과잉 차단 금지)", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {});
+    const out = await rec(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    expect(statsDoc().events).toBe(1);
+  });
+
+  it("date 필드가 아예 없는 문서도 손상이다", async () => {
+    const issued = stageStats();
+    FAKE.set(L.statsPath(CLASS, UID, DAY, APP), {
+      events: L.LIMITS.EVENTS_PER_SUBJECT_PER_DAY, sec: 1, sessions: 1, best: 0,
+    });
+    expect(await deniedL(() => rec(issued))).toBe("stats_corrupt");
   });
 
   it("집계가 손상돼 있으면 기록하지 않는다 (fail-closed)", async () => {
@@ -1770,10 +1871,66 @@ describe("학습기록 — 돈이 아닌 기록", () => {
     expect(ev.kind).toBe("clear");
   });
 
-  it("레이트리밋을 지급과 **같은 버킷**으로 나눠 쓴다", async () => {
+  // 🔴 2026-08-21 codex — 여기 있던 테스트는 **버그를 사양으로 박아두고 있었다**
+  //    ("지급과 같은 버킷을 나눠 쓴다"). 같은 통이면 시끄러운 쪽이 조용한 쪽을 굶는다.
+  it("⭐ 레이트리밋 통이 지급과 **다르다** (기록이 돈을 굶기지 않는다)", async () => {
     const issued = stageStats();
     await rec(issued);
-    // 지급 버킷의 키는 토큰의 sub 다 — 기록도 같은 문서를 쓴다.
-    expect(FAKE.get(`aapRateLimits/${issued.sub}`)).toBeTruthy();
+    expect(FAKE.get(`aapRateLimits/lrn_${issued.sub}`), "학습 전용 통이 있어야 한다").toBeTruthy();
+    expect(FAKE.get(`aapRateLimits/${issued.sub}`), "지급 통은 손대지 않는다").toBeFalsy();
+  });
+
+  // 🔴 codex 가 실행으로 재현한 사고 그대로다: 학습 30건 → 그 뒤 진짜 지급이 rate_limited.
+  //    학생은 스테이지를 깼는데 돈을 못 받았다. 통을 나눈 지금은 지급이 성공해야 한다.
+  it("⭐ 학습을 잔뜩 보낸 뒤에도 **진짜 지급이 나간다** (codex 재현의 회귀 가드)", async () => {
+    const R = req("../../../functions/aap/rewardRules.js");
+    // 보상까지 켜진 정책 + 카탈로그를 세우고, 같은 토큰으로 두 경로를 다 부른다.
+    const issued = stage({ policy: { statsEnabled: true } });
+    for (let i = 0; i < R.LEARNING_RATE_LIMIT.CAPACITY; i += 1) {
+      await recordLearningEvent({
+        body: { kind: "progress" }, headerToken: issued.token, nowMs: NOW,
+      }).catch(() => {});
+    }
+    expect(FAKE.get(`aapRateLimits/lrn_${issued.sub}`).tokens).toBe(0);
+
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(2000);
+  });
+
+  // ── 버킷 **호출부**가 지키는 것 (순수 함수 테스트가 못 보는 자리) ──
+  //    관측 방법: 쓰기가 일어나면 `expireAt` 이 붙는다. 미리 없이 심어 두고 붙는지 본다.
+  it("⭐ 차단이 이어지는 동안 **쓰기를 안 한다** (차단이 곧 비용이면 안 된다)", async () => {
+    const issued = stageStats();
+    FAKE.set(`aapRateLimits/lrn_${issued.sub}`, { tokens: 0, lastRefillMs: NOW });
+    expect(await deniedL(() => rec(issued))).toBe("rate_limited");
+    expect(
+      FAKE.get(`aapRateLimits/lrn_${issued.sub}`).expireAt,
+      "같은 상태를 다시 썼다 — 차단 1,000건이 쓰기 1,000회가 된다",
+    ).toBeUndefined();
+  });
+
+  it("⭐ 차단이라도 **손상된 값은 고쳐 쓴다** (건너뛰기가 치유를 죽이면 안 된다)", async () => {
+    const issued = stageStats();
+    FAKE.set(`aapRateLimits/lrn_${issued.sub}`, { tokens: 0, lastRefillMs: Number.MAX_SAFE_INTEGER });
+    expect(await deniedL(() => rec(issued))).toBe("rate_limited");
+    const doc = FAKE.get(`aapRateLimits/lrn_${issued.sub}`);
+    expect(doc.expireAt, "미래 시각을 안 고치면 그 버킷은 영구히 잠긴다").toBeDefined();
+    expect(doc.lastRefillMs).toBeLessThanOrEqual(NOW);
+  });
+
+  it("⭐ 학습 이벤트를 통이 빌 때까지 보내도 **지급 통은 가득 차 있다**", async () => {
+    const issued = stageStats();
+    const R = req("../../../functions/aap/rewardRules.js");
+    let ok = 0;
+    for (let i = 0; i < R.LEARNING_RATE_LIMIT.CAPACITY + 5; i += 1) {
+      const out = await rec(issued).catch((e) => ({ ok: false, reason: e.reason }));
+      if (out.ok) ok += 1;
+    }
+    // 학습 통은 비었다 …
+    expect(ok).toBe(R.LEARNING_RATE_LIMIT.CAPACITY);
+    expect(FAKE.get(`aapRateLimits/lrn_${issued.sub}`).tokens).toBe(0);
+    // … 그런데 지급 통은 아직 만들어지지도 않았다. 학생은 돈을 받을 수 있다.
+    expect(FAKE.get(`aapRateLimits/${issued.sub}`)).toBeFalsy();
   });
 });
