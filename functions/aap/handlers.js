@@ -389,6 +389,16 @@ exports.recordLearningEvent = onRequest(
     }
 
     if (!out.ok) {
+      // 🔴 거부를 **여기 한 곳에서** 남긴다. 예전엔 토큰 계열만 로그가 있어서, 교사가
+      //    "기록이 안 쌓인다"고 할 때 가장 흔한 원인(`stats_off`·정책 닫힘)이 서버에
+      //    흔적을 하나도 안 남겼다(2026-08-21 Gemini WARNING).
+      //
+      // ⚠️ `rate_limited` 만 뺀다. 그것만 **호출 횟수에 상한이 없는** 사유라(차단된 요청은
+      //    막을 방법이 없다) 로그로 찍으면 방금 0 으로 줄인 쓰기 비용이 로깅 비용으로
+      //    되돌아온다. 그 사유는 429 응답코드가 이미 함수 지표에 그대로 잡힌다.
+      if (out.reason !== "rate_limited") {
+        logger.warn("[AAP] 학습기록 거부", { event: "aap_stats_denied", reason: out.reason, app: out.appId || "?" });
+      }
       res
         .status(L.denyStatus(out.reason))
         .json({ success: false, error: out.reason, message: L.denyMessage(out.reason) });

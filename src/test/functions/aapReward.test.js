@@ -1768,6 +1768,27 @@ describe("학습기록 — 돈이 아닌 기록", () => {
 
   // 🔴 2026-08-21 codex — 인증·레이트 계열이 상태표에 없어 전부 기본값 409 로 나갔다.
   //    409 를 받은 위성앱은 재발급을 안 하고 **죽은 토큰으로 무한 재시도**한다.
+  // 🔴 2026-08-21 Gemini — 교사가 "우리 반 기록이 안 쌓여요" 라고 할 때 가장 흔한 원인
+  //    (정책이 닫힘·기록 스위치 꺼짐)이 서버에 아무 흔적도 안 남겼다.
+  it("⭐ 진단에 필요한 거부는 appId 를 달고 올라온다 (조용히 실패하지 않는다)", async () => {
+    const off = stageStats({ policy: { statsEnabled: false } });
+    const a = await rec(off);
+    expect(a.reason).toBe("stats_off");
+    expect(a.appId, "사유만 있고 어느 앱인지 없으면 추적이 안 된다").toBe(APP);
+
+    const closed = stageStats({ policy: { status: "disabled" } });
+    const b = await rec(closed);
+    expect(b.ok).toBe(false);
+    expect(b.appId).toBe(APP);
+  });
+
+  it("거부 진입점이 사유를 로그로 남긴다 (rate_limited 만 뺀다 — 상한이 없는 유일한 사유)", () => {
+    const H = read("functions/aap/handlers.js");
+    const tail = after(H, "exports.recordLearningEvent = onRequest(");
+    expect(tail).toMatch(/out\.reason !== "rate_limited"/);
+    expect(tail).toMatch(/aap_stats_denied/);
+  });
+
   it("⭐ 거부 상태코드가 지급 경로와 **같은 계약**이다", () => {
     expect(L.denyStatus("token_invalid")).toBe(401);
     expect(L.denyStatus("session_missing")).toBe(401);

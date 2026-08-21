@@ -72,14 +72,12 @@ async function recordLearningEvent({ body, headerToken, nowMs = Date.now() }) {
     return { ok: false, reason: "token_invalid" };
   }
 
-  // 3️⃣ 레이트리밋 — **읽기보다 앞**이다. 지급과 같은 버킷(sub 키)을 공유한다:
-  //    한 학생이 한 앱에서 만드는 부하는 지급이든 기록이든 같은 지갑에서 나가야 한다.
-  //    따로 두면 두 배로 두드릴 수 있다.
+  // 3️⃣ 레이트리밋 — **읽기보다 앞**이다. 뒤로 밀면 유효 토큰 하나로 읽기만 태우는 길이 열린다.
   // 🔴 **지급과 다른 통이다.** 같은 통을 쓰던 판에서는 학습 이벤트 30건이 통을 비우고,
   //    바로 뒤의 진짜 지급이 거부됐다 — 학생이 스테이지를 깼는데 돈을 못 받았다
   //    (2026-08-21 codex 재현). 기록은 시끄럽고 지급은 드물다. 통을 나눈다.
   if (!(await passLearningBucket(sub, appId, nowMs))) {
-    return { ok: false, reason: "rate_limited" };
+    return { ok: false, reason: "rate_limited", appId };
   }
 
   // 4️⃣ 정책. 학습기록은 돈이 아니라 **트랜잭션 밖에서** 읽어도 된다 —
@@ -87,8 +85,12 @@ async function recordLearningEvent({ body, headerToken, nowMs = Date.now() }) {
   //    (지급은 잔액이 걸려 있어 트랜잭션 안에서 읽는다).
   const policy = await readAppPolicy(appId);
   const open = checkPolicyOpen(policy);
-  if (!open.ok) return { ok: false, reason: open.reason };
-  if (policy.statsEnabled !== true) return { ok: false, reason: "stats_off" };
+  // 🔴 사유를 **appId 와 함께** 올려보낸다. 교사가 "우리 반 기록이 안 쌓여요" 라고 할 때
+  //    가장 흔한 원인이 이 둘(정책이 닫힘·기록 스위치 꺼짐)인데, 예전엔 서버에 아무 흔적도
+  //    안 남아 Cloud Logging 으로 추적이 안 됐다(2026-08-21 Gemini WARNING).
+  //    찍는 자리는 진입점 한 곳이다 — 여기서 찍으면 사유마다 흩어진다.
+  if (!open.ok) return { ok: false, reason: open.reason, appId };
+  if (policy.statsEnabled !== true) return { ok: false, reason: "stats_off", appId };
 
   const day = L.kstDayKey(nowMs);
   const sessionRef = db.collection("aapRewardSessions").doc(jti);
