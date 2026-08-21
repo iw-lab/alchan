@@ -707,10 +707,26 @@ WARNING 2건도 채택: onCall **배선 계층** 테스트가 0건이었다(형�
 → 지난 라운드 codex 오탐 3건과 **같은 원인**이다: 이 저장소의 주석은 코드를 그대로 인용한다.
    사람이든 모델이든 스크립트든, **주석을 코드로 착각한다.**
 
-#### 🚦 파일럿(P1-4)을 열기 전 게이트 — 셋 다 미완
-1. **환수 호출 경로** — 교사 화면(P1-5). 지금은 조회만 된다
-2. `aapRewardSessions.expireAt` **TTL 정책** (콘솔/gcloud. 이 프로젝트 TTL 0개)
-3. `platformAlerts` 를 실제로 **수신**하는 Monitoring 정책 + 수신 테스트
+#### 🚦 파일럿(P1-4)을 열기 전 게이트
+1. ⬜ **환수 호출 경로** — 교사 화면(P1-5). 지금은 `aap-grants.mjs` 로 조회만 된다
+2. ✅ **TTL** — `aapRewardSessions.expireAt` 적용 완료(2026-08-21, 문서 0건 상태에서 켜 삭제 위험 0)
+3. ⬜ `platformAlerts` 를 실제로 **수신**하는 Monitoring 정책 + 수신 테스트
+
+#### ⏳ TTL 을 조사하다 더 큰 걸 찾았다 (라이브 실측 2026-08-21)
+
+| 항목 | 실측 |
+|---|---|
+| 이 프로젝트의 TTL 정책 | **0개** (Firestore Admin API 직접 조회) |
+| `expireAt` 을 쓰는 코드 지점 | **99군데** |
+| `activity_logs` | **37,267건**, 그중 **3,164건이 이미 만료 시각을 지남** |
+| `transactions` | 1,910건 |
+
+**만료 표시만 찍고 지우는 사람이 아무도 없었다.** AAP 세션 누적은 이것 옆에서 각주다.
+이번엔 **AAP 세션만** 켰다(문서 0건 = 삭제 위험 0). `activity_logs` 의 보존 기간(현재 코드상
+90일)은 **교육적 판단**이라 — 학생이 자기 거래를 언제까지 볼 수 있어야 하는가 — 남겨 둔다.
+도구: `scripts/ops/firestore-ttl.mjs`(조회 · `--check` · `--enable`).
+⚠️ 함정: Admin 의 `fields.patch` 는 `updateMask` 를 **평문 FieldMask** 로 받는다.
+   문서 REST 의 `updateMask.fieldPaths=` 관례를 쓰면 400 이다(실측).
 
 ## 이 프로젝트에서 반드시 지키는 것
 - `functions` 배포는 **`git push` → GitHub Actions 로만**. 로컬 `firebase deploy --only functions` 는 `functions/.env` 의 토큰을 파괴한다
