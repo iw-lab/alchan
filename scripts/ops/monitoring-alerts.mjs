@@ -16,6 +16,7 @@
 //   node scripts/ops/monitoring-alerts.mjs list
 //   node scripts/ops/monitoring-alerts.mjs setup --email you@example.com
 //   node scripts/ops/monitoring-alerts.mjs verify --code 123456
+//   node scripts/ops/monitoring-alerts.mjs test            # 합성 로그로 배선 끝까지 울려보기
 //   node scripts/ops/monitoring-alerts.mjs teardown        # 만든 것 되돌리기
 import { accessToken } from "./_auth.mjs";
 
@@ -167,6 +168,32 @@ async function cmdVerify(code) {
   console.log(`✅ 인증 완료 — ${ch.labels?.email_address} 로 경보가 갑니다.`);
 }
 
+/**
+ * 🔔 배선을 **끝까지** 울려 본다.
+ *
+ * 채널을 만들었다는 것도, 정책이 있다는 것도 수신의 증거가 아니다. 유일한 증거는
+ * **메일이 실제로 도착하는 것**이다. 그래서 합성 로그를 한 줄 심어 지표를 올린다.
+ * 자기 자신을 `__wiring_test__` 로 표시하므로 진짜 사고와 헷갈리지 않는다.
+ */
+async function cmdTest() {
+  const w = WATCH.find((x) => x.metric === "aap_stats_denied");
+  await api("https://logging.googleapis.com/v2/entries:write", {
+    method: "POST",
+    body: JSON.stringify({
+      logName: `projects/${P}/logs/run.googleapis.com%2Fstderr`,
+      resource: { type: "cloud_run_revision", labels: { project_id: P, service_name: "recordlearningevent", revision_name: "wiring-test", location: "asia-northeast3", configuration_name: "recordlearningevent" } },
+      entries: [{
+        severity: w.severity,
+        jsonPayload: { event: w.event, reason: "__wiring_test__", app: "__wiring_test__", message: "[AAP] 경보 배선 확인용 합성 로그 — 실제 거부가 아닙니다" },
+      }],
+    }),
+  });
+  console.log("✅ 합성 로그 1건 기록 — 지표 aap_stats_denied 가 오릅니다.");
+  console.log("   경보 정책은 300초 정렬 주기라 **5~10분 안에** 메일이 도착해야 정상입니다.");
+  console.log("   메일이 오면 배선 확인 끝. 안 오면 채널 인증이 안 끝난 것입니다.");
+  console.log("   ⚠️ 이 로그의 app·reason 은 __wiring_test__ 입니다 — 진짜 사고가 아닙니다.");
+}
+
 async function cmdTeardown() {
   for (const p of await listPolicies()) {
     if (!WATCH.some((w) => w.title === p.displayName)) continue;
@@ -188,6 +215,7 @@ const cmd = argv[0];
 try {
   if (cmd === "setup") await cmdSetup(flag("--email"));
   else if (cmd === "verify") await cmdVerify(flag("--code"));
+  else if (cmd === "test") await cmdTest();
   else if (cmd === "teardown") await cmdTeardown();
   else await cmdList();
 } catch (e) {
