@@ -868,6 +868,36 @@ const CASES = [
     before: { uid: "stu1", amount: 1000 }, after: { uid: "stu1", amount: 999999 },
   }),
 
+  // 🚨 차단기 경보(platformAlerts) — 읽기만 교사에게 연다. P1-9.
+  tc("ALLOW", "🐤 교사가 차단기 경보를 읽는다 (사고를 봐야 조치가 된다)", {
+    path: "/platformAlerts/20260821_siteGuguGuardians_cash_trip", method: "get", as: "tch1",
+    before: { kind: "cash_trip", appId: "siteGuguGuardians", day: "20260821", observed: 3200000 },
+  }),
+  tc("DENY", "학생이 차단기 경보를 읽는다", {
+    path: "/platformAlerts/20260821_siteGuguGuardians_cash_trip", method: "get", as: "stu1",
+    before: { kind: "cash_trip", appId: "siteGuguGuardians", day: "20260821" },
+  }),
+  tc("DENY", "교사가 차단기 경보를 지운다 (사고 기록 은폐)", {
+    path: "/platformAlerts/20260821_siteGuguGuardians_cash_trip", method: "delete", as: "tch1",
+    before: { kind: "cash_trip", appId: "siteGuguGuardians", day: "20260821" },
+  }),
+  tc("DENY", "교사가 차단기 경보를 위조한다", {
+    path: "/platformAlerts/20260821_siteX_cash_trip", method: "create", as: "tch1",
+    after: { kind: "cash_trip", appId: "siteX", day: "20260821", observed: 0 },
+  }),
+  // 🚨 차단 플래그는 카운터 문서에 얹혀 있다 — 그걸 지우면 차단이 풀린다.
+  tc("DENY", "교사가 앱 차단 플래그를 내린다 (자동 차단 해제)", {
+    path: "/appRewardCounters/20260821_app_siteGuguGuardians", method: "update", as: "tch1",
+    before: { day: "20260821", cash: 3200000, cashTripped: true },
+    after: { day: "20260821", cash: 3200000, cashTripped: false },
+  }),
+  // 🎫 발급 버킷은 해시 키(tok_…)라 종전 케이스와 문서 id 모양이 다르다. 같은 컬렉션이므로
+  //    같은 규칙에 걸려야 한다 — 키 모양이 바뀌었다고 구멍이 생기지 않는지 본다.
+  tc("DENY", "학생이 발급 레이트리밋 버킷을 채운다 (해시 키)", {
+    path: "/aapRateLimits/tok_d5452366ff6c550aa6c65d3d216c9cba", method: "update", as: "stu1",
+    before: { tokens: 0, lastRefillMs: 1 }, after: { tokens: 20, lastRefillMs: 1 },
+  }),
+
   // menuLocks — 교사 메뉴 잠금. 종전 규칙의 \`: true\` 분기로 **타 학급 것도 쓸 수 있었다**.
   tc("ALLOW", "🐤 교사가 자기 학급 메뉴 잠금을 저장한다 (정상 기능)", {
     path: "/settings/menuLocks_C1", method: "update", as: "tch1",

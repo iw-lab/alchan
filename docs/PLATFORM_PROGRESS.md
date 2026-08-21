@@ -57,7 +57,7 @@
 | P1-1 | AAP 토큰 발급 CF + JWKS (P1-8 토큰 위생 포함) | ✅ **배포·라이브 확인** | `7f4d139`. 라이브 확인: 함수 3개 ACTIVE(asia-northeast3) · `aapJwks` kid `88zLZzGu…` 가 로컬 키 파일과 일치 · rules 라이브 원문 == 로컬. 테스트 37개 · 변이 15개 전부 검출 |
 | P1-7 | 서버 소유 achievement 카탈로그 | ✅ 구현·라이브 왕복 시험 | `functions/aap/catalogRules.js`(순수) + `catalog.js`(조회) · `scripts/ops/aap-achievements.mjs` · rules 8건 · 테스트 44개 · 변이 46개 전부 검출 · 3계열 리뷰 반영(codex 4 + 리뷰어 6). **아래 결정 2건 확인 필요** |
 | P1-2 | `grantAppReward` (돈 — FULL 교차검증) | ✅ **배포 완료** (`f888b2d`, 2026-08-21) | 아래 「P1-2 구현」 절. 테스트 72개 · 변이 43종 전부 검출 · rules 190개 · Tier-0 전부 PASS. **라이브 영향 0**(앱 11개 전부 지급 꺼짐) |
-| P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | ⬜ | **파일럿(P1-4) 전에 있어야 한다** |
+| P1-9 | 앱별 kill switch + 지급량 경보 + 환수 | 🟡 **9a 완료(배포 전)** · 9b 환수 · 9c 운영 남음 | **파일럿(P1-4) 전에 있어야 한다** |
 | P1-3 | `recordLearningEvent` + 일 단위 집계 | ⬜ | |
 | P1-4 | 파일럿 1개 앱 이관 — 구구성 수호대(GitHub Pages) | ⬜ | 가장 제약이 심한 앱으로 먼저 증명 |
 | P1-5 | 교사 대시보드 — 학급 학습현황 + 보상 이상치 | ⬜ | |
@@ -482,6 +482,180 @@ P1-9 에서 별도로 만든다.
 ## P2 이후 — 미착수
 계획서 §4 참조. P2 = 개방 전제조건 대공사(격리·스케줄러·온보딩·법), 겨울방학.
 P3 = 2027-03 개방. P4 = 내장 AI. P5 = 생성 템플릿.
+
+### 📐 P1-9 설계안 **2판** (2026-08-21, codex REQUEST_CHANGES 반영)
+
+1판은 **경보를 만들려다 지급을 끄는 설계**였다. codex 지적 6건을 전부 코드에서 재현했고
+CRITICAL 3건은 내가 만든 결함이었다. 아래는 재현 결과와 고친 설계다.
+
+#### 재현한 것 (지적을 믿기 전에 근거를 봤다)
+
+| 지적 | 근거 | 판정 |
+|---|---|---|
+| 경보 `create()` 충돌이 **지급 전체를 롤백**시킨다 | 트랜잭션 안 `ALREADY_EXISTS` 는 콜백에서 정상 결과로 못 바꾼다 | ✅ 사실 |
+| 환수 권한 헬퍼가 **대상 학급을 안 본다** | `functions/utils.js:150` — `checkAdmin` 은 승인 교사 여부만 | ✅ 사실 |
+| `grantId` 는 비밀이 아니다 | `firestore.rules:777` `activity_logs` read = `isSameClassFast` | ✅ 사실 |
+| 원장에 이미 `revocable` 이 있는데 설계가 안 봤다 | `reward.js:377`, 기본값 `true`(`catalogRules.js:206`) | ✅ 사실 |
+| 손상된 잔액이 "회수액 0, 환수 완료"가 된다 | `cashFloor.js:26` `Number.isFinite(x) ? x : 0` | ✅ 사실 |
+| 교사 계정에도 세션이 만들어진다 | `handlers.js:110` — 역할 검사 없음. 지급은 나중에 `not_student` | ✅ 사실 |
+
+#### ① 자동 차단기 — **지속형 latch**. 자정에 안 풀린다
+
+```
+경보선 = appPerDay × 0.5   → 카운터에 alerted{cash|coupon}   ... 지급 계속
+차단선 = appPerDay × 0.8   → 카운터에 tripped{cash|coupon}
+                            + **정책 문서 rewardsEnabled:false**  ← 여기가 진짜 kill switch
+하드캡 = appPerDay          → 기존 app_total_daily_cap
+```
+
+- 판정은 **지급 후 합계**로 한다: `used.app[type] + amount >= 임계`.
+- 현금·쿠폰은 단위가 다르므로(400만원 / 400장) **플래그를 종류별로 나눈다**. 한 종류가 넘었다고
+  다른 종류까지 막으면 원인을 못 찾는다.
+- 🔑 **자정 리셋 문제의 해답**: 날짜 카운터에만 두면 자정에 저절로 풀려 "직전 80% + 직후 80%"가
+  된다. 그래서 차단은 **날짜가 없는 정책 문서**(`rewardsEnabled:false`)에 건다.
+  정책 문서는 트랜잭션이 **이미 읽고 있으므로** 추가 읽기가 없다.
+- 🔓 **푸는 길은 `breaker-reset` 하나다**(3판 정정 — 아래 「복구가 막혀 있었다」 참고).
+  `rewards-on` 만으로는 안 풀린다: latch 조건이 전이가 아니라 **상태**라 다음 지급에서 곧바로
+  다시 끊긴다(fail-safe). reset 은 `breakerOverrideDay` 에 오늘(KST)을 박아 **자정에 만료**된다.
+- 동시성은 안전하다 — 같은 앱의 모든 지급이 같은 카운터 문서를 읽고 쓰므로 Firestore 가
+  직렬화한다. 차단선을 넘길 수 있는 건 **처음 넘기는 그 1건**뿐이다.
+
+#### ② 경보 — **보호는 원자적으로, 통지는 최선노력으로**
+
+이 둘을 갈라놓는 것이 1판의 결함을 고치는 핵심이다.
+- 트랜잭션 **안**: 카운터 플래그 + `rewardsEnabled:false`. 여기까지가 **보호**이고 원자적이다.
+- 트랜잭션 **밖**(커밋 성공 후): `logger.error({event:"aap_reward_alert"...})` + `platformAlerts` 문서.
+  통지가 유실돼도 **보호는 이미 걸려 있다**. 반대로 통지를 원자적으로 만들려다 지급을 죽인 게 1판이다.
+- `logger` 를 트랜잭션 콜백 안에서 부르지 않는다 — 콜백은 재실행되므로 커밋 안 된 경보가 찍힌다.
+  전이 여부(`newlyAlerted`/`newlyTripped`)를 **반환값으로** 빼서 밖에서 기록한다.
+- `platformAlerts` 는 `set()` 으로 쓴다(`create()` 아님 — 충돌이 곧 실패였다). 문서 id 는
+  `{day}_{appId}_{kind}`, `kind` 는 **고정 enum**(`cash_alert|cash_trip|coupon_alert|coupon_trip`).
+- rules 에 `platformAlerts` 블록을 명시한다(교사 읽기 허용 · 쓰기 서버 전용).
+- ⚠️ **완료 조건에 "Monitoring 정책을 실제로 걸고 수신까지 확인"을 넣는다.** 로그를 뱉는 것은
+  경보가 아니다.
+
+#### ③ 환수 — `appRewardClawbacks/{grantId}` 를 `create()` 로. 원장은 안 건드린다
+
+`clawbackAppReward` (callable). 원장이 append-only 라고 선언돼 있으므로 **원본을 수정하지 않고**
+별도 컬렉션을 멱등키 겸 역원장으로 쓴다(문서 id = grantId → `create()` 충돌이 곧 중복 방어).
+
+인가 (`grantId` 가 비밀이 아니므로 여기가 유일한 벽):
+- 교사: `grant.classCode === 호출자.classCode` **그리고** 지금 그 학생도 같은 학급일 때만
+- 전학 간 학생 / 다른 학급 원장 → **슈퍼관리자만**
+- `grant.revocable !== true` → 교사 거부(슈퍼관리자 예외는 **사유를 기록**)
+
+한 트랜잭션 안에서: 원장 읽기 → 환수문서 존재 확인(멱등) → 잔액 읽기 → **잔액 타입 엄격 검사** →
+`clampTakeAmount` → 차감 → 역원장 `create()` → `activity_logs`.
+- ⚠️ 손상된 잔액을 `clampTakeAmount` 에 그대로 넣으면 0 으로 읽혀 **"회수액 0, 환수 완료"** 가
+  확정되고 나머지는 영구 회수 불가가 된다. 타입이 이상하면 **환수하지 말고 거부**한다.
+- 역원장에 `requestedAmount` · `recoveredAmount` · `shortfall` 을 남긴다. 부분 회수는 **1회성**이고
+  나머지는 교사가 일반 회수(`adminCashAction`)로 처리한다 — 그렇게 문서에 못 박는다.
+- 🔒 **하루 카운터·성취 횟수·쿨다운·차단 플래그는 하나도 안 되돌린다.** 되돌리면
+  환수→재지급으로 발행 한도를 무한 재사용할 수 있다. 그날 그 앱이 계속 막히는 건 가용성
+  문제일 뿐이고, 돈 쪽에선 이게 fail-safe 다.
+
+#### ④ `issueAppToken` 레이트리밋 — uid 를 경로에 붙이지 않는다
+
+- 키 = `aapRateLimits/tok_{sha256(uid).slice(0,32)}`. raw uid 를 쓰면 "Firebase uid 는 영숫자"라는
+  **계약에 없는 전제**에 기댄다(커스텀 uid 는 1~128자 임의 문자열이고 공식 예시가 `some-uid` 다).
+  해시로 고정 길이를 만들면 그 전제가 통째로 사라진다.
+- `consumeBucket` 이 내부 상수 `RATE_LIMIT` 을 직접 참조하므로 **설정을 인자로 받게 고친다**
+  (기본값 = 기존 값이라 지급 경로의 동작은 안 바뀐다). 발급은 `{CAPACITY:20, REFILL_MS:6000}`.
+- **사용자 문서 읽기보다 앞에** 놓는다. 지금은 `checkAuthAndGetUserData` 가 첫 줄이라
+  거부될 호출도 사용자 문서를 읽는다.
+- 🚫 **역할 있는 계정에는 세션을 만들지 않는다.** 교사도 앱은 열되, 지급이 어차피 `not_student`
+  로 거부할 세션을 쓰지 않는다.
+
+#### ⑤ 비용 천장 — 오류율 카운터 대신 `maxInstances`
+
+codex 는 오류율 차단기 제외가 위험을 남긴다고 했고 그 지적 자체는 맞다(금액 차단기는 **성공한
+지급만** 세므로, 전부 실패하는 앱 배포엔 영원히 반응하지 않는다). 다만 호출마다 +1R/+1W 를
+붙이는 대안은 채택하지 않는다 — 고정 비용이 두 배가 되고, 그 카운터 자체가 공격 표면이다.
+대신 codex 가 같이 제시한 것 중 **실효가 확실한 쪽**을 택한다:
+- `grantAppReward`·`issueAppToken` 에 **`maxInstances`** 를 건다. Firestore 비용이 아니라
+  **함수 호출 비용에 천장**이 생긴다. 레이트리밋으로는 못 막는 부분이 이걸로 막힌다.
+- 로그 기반 오류율 알림은 ②의 Monitoring 정책과 같은 자리에서 건다.
+
+#### ⑥ 운영 게이트 — **보상을 켜기 전에** 반드시 끝나 있어야 하는 것
+- `aapRewardSessions.expireAt` **TTL 정책 적용**(콘솔/gcloud. 코드가 아니다. 이 프로젝트 TTL 0개)
+- `platformAlerts` 를 실제로 수신하는 Monitoring 정책 1개 + 수신 테스트
+
+#### 나누기 — 한 번에 다 하지 않는다
+- **P1-9a**: 차단기 latch · 경보(커밋 후) · rules · `maxInstances` · 발급 레이트리밋 · 역할 계정 세션 제외
+- **P1-9b**: `clawbackAppReward` + `appRewardClawbacks` + rules
+- **P1-9c**: TTL 정책 · Monitoring 경보 (운영 작업 — 배포가 아니라 게이트)
+
+### ✅ P1-9a 구현 + 교차검증 (2026-08-21) — 배포 전
+
+| 파일 | 무엇 |
+|---|---|
+| `functions/aap/rewardRules.js` | `checkBreaker`(지급 후 합계·현금/쿠폰 분리·override) · `bucketKeyForUid`(uid 해시) · `consumeBucket` 설정 인자화 · `TOKEN_RATE_LIMIT` · `app_tripped` 사유 |
+| `functions/aap/reward.js` | 차단기를 지급 트랜잭션 안에 · 정책 latch · `announceBreaker`(커밋 **후**) |
+| `functions/aap/handlers.js` | 발급 레이트리밋을 사용자 읽기보다 **앞**으로 · 역할 계정 실행권 제외 · `maxInstances` |
+| `firestore.rules` | `platformAlerts`(교사 읽기 · 쓰기 서버 전용) |
+| `scripts/ops/aap-switch.mjs` | `breaker-reset <appId>` — **유일한 해제 수단** |
+
+**실측**: vitest 799 통과 · rules 196 통과 · **변이 20종 전부 검출(생존 0)** · Tier-0 전부 PASS.
+라이브 영향 0(앱 11개 전부 이관·보상 꺼짐, 상한 0/0).
+
+#### 🔴 복구가 막혀 있었다 — 안전장치의 복구 경로가 설계상 불가능했다
+
+1판(구현 직후)은 차단기가 끊으면 **자정까지 아무도 되돌릴 수 없었다.** 세 겹으로 막혀 있었다:
+1. 거부를 **날짜 카운터의 `cashTripped`** 로 했다 → `rewards-on` 해도 그 플래그가 남아 계속 거부.
+2. 정책만 보게 고쳐도, latch 조건이 **전이(`newlyTripped`)** 라 재활성 후엔 전이가 안 일어나
+   **방어가 조용히 사라졌다.** (거부는 풀리는데 차단기도 같이 죽는다 — 더 나쁜 쪽)
+3. 앱 축 상한(`APP_CASH_PER_DAY` 400만)은 **코드 상수**라 "상한을 올려 해제"라는 길이 없다.
+
+고친 방법:
+- 거부 사유를 **정책 문서**(`rewardsDisabledReason` 접두사 `auto_breaker_`)에서 끌어온다
+  → 상태가 한 문서에 모이고, 사유 정확도도 유지된다(`app_tripped` vs `rewards_off`).
+- latch 조건을 **상태(`tripped`)** 로. 재활성 후 첫 지급에서 다시 끊긴다 = fail-safe.
+- **`breakerOverrideDay`** — 날짜가 박힌 하루짜리 override. 경보는 그대로 남긴다
+  (조용해지는 스위치면 켠 사람도 무슨 일이 나는지 못 본다). 하드캡은 여전히 살아 있다.
+- `isAppTripped` 는 죽어서 삭제.
+
+**교훈**: 안전장치를 만들 때 "발동하면 어떻게 되돌리나"를 **같이** 만들지 않으면, 안전장치가
+정상 수업을 하루 죽이는 장치가 된다. 이번엔 세 겹이라 한 겹만 고쳤으면 2번(방어 소멸)에 빠졌다.
+
+#### 🔎 P1-9a 교차검증 — **2계열**(Gemini 미참여)
+
+| 계열 | 판정 | 결과 |
+|---|---|---|
+| Claude (정확성·유지보수성) | REQUEST_CHANGES | CRITICAL 1(복구 경로 — 위와 같은 결함에 **독립 도달**) · WARNING 1 · NIT 2. **전부 채택** |
+| codex `gpt-5.6-sol` (공격자) | REQUEST_CHANGES | 지적 3건 **전부 오탐**(아래). 다만 "결함이 아닌 것" 확인은 유효 |
+| Gemini (가용성·운영) | — | **쿼터 소진**(계정 한도, 리셋 ≈2026-08-26). 로컬은 diff 1,139줄이라 조건 밖, 웹 ChatGPT는 같은 GPT 계열이라 대체 불가 |
+
+**Claude 가 잡은 것 중 내가 못 본 것**: `"차단된 뒤의 다음 지급은 거부된다"` 테스트가
+`expect(["rewards_off","app_tripped"]).toContain(...)` 로 **헤징**했는데, `stage()` 가 넘긴 정책을
+기본값 뒤에 스프레드해 `rewardsEnabled` 가 **항상 false 로 결정적**이었다 → 사유는 늘
+`rewards_off` 이고 `app_tripped` 는 나올 수 없다. **두 검사의 순서가 뒤바뀌는 회귀를 못 잡는
+테스트**였다. 사유를 못 박고 수동 차단 케이스를 분리했다.
+
+#### ⚠️ codex 오탐 3건 — **고친 기록을 버그로 되읽었다**
+
+세 지적 모두 이 저장소가 **고친 결함을 그 자리에 남긴 주석**을 현재 상태로 읽은 것이다.
+전부 코드에서 직접 재현해 반증했다:
+
+| codex 지적 | 반증 |
+|---|---|
+| 교사가 `appRewardDaily` 를 리셋해 학생 캡 우회 (CRITICAL) | 교사 분기 차단목록에 있음(`firestore.rules:376,397`). 그 시나리오 그대로의 **DENY 테스트가 통과** |
+| `dayTotals` 가 손상값을 0 으로 읽어 fail-open | 문자열·음수·NaN 전부 **`null`** → `counter_corrupt` 거부 |
+| 미래 `lastRefillMs` 가 영구 잠금 | `Math.min(nowMs, ...)` 로 현재로 끌어내림. 2초 뒤 정상 회복 |
+
+셋 다 주석에 `2026-08-21 codex WARNING/CRITICAL` 이라고 **수정 이력이 적힌 자리**다.
+codex 는 자기가 지난 라운드에 지적하고 이미 고쳐진 것을, 그 수정 기록을 읽고 다시 지적했다.
+(검토 중 변이 시험이 겹친 것도 사실이지만, 세 건 다 변이가 건드리지 않은 줄이다.)
+
+**codex 가 유효하게 확인해 준 것**: 정책 문서 부재 시 `tx.update` 가 NOT_FOUND 로 지급을 죽이는
+경로 없음(`checkPolicyOpen(null)` 이 먼저 거부) · 카운터의 절대값과 `increment(1)` 혼용이
+race 를 만들지 않음(같은 트랜잭션에서 읽고 씀) · 인증 사용자가 남의 발급 버킷을 소모시키는
+경로 없음 · 발급과 지급의 역할 검사가 동일.
+
+#### 🟡 P1-9 남은 것
+- **P1-9b**: `clawbackAppReward` + `appRewardClawbacks` + rules (설계 2판 ③ 참고)
+- **P1-9c(운영)**: `aapRewardSessions.expireAt` TTL 정책 · `platformAlerts` 를 실제로 수신하는
+  Monitoring 정책 + 수신 테스트. **둘 다 보상을 켜기 전에** 끝나 있어야 한다
+- Gemini 레그 재실행(쿼터 회복 ≈2026-08-26) — 가용성·운영 렌즈가 통째로 비어 있다
 
 ## 이 프로젝트에서 반드시 지키는 것
 - `functions` 배포는 **`git push` → GitHub Actions 로만**. 로컬 `firebase deploy --only functions` 는 `functions/.env` 의 토큰을 파괴한다

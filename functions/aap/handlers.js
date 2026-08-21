@@ -25,16 +25,60 @@ const R = require("./rewardRules");
 
 const REGION = "asia-northeast3";
 
+/**
+ * 🧯 **비용 천장.** 레이트리밋은 한 사람이 얼마나 빨리 두드리는지를 막지, 전체 청구액을 막지
+ * 못한다 — 거부되는 호출도 함수 호출 비용과 버킷 1R+1W 를 계속 만든다(2026-08-21 codex
+ * WARNING). 동시 인스턴스에 천장을 씌우면 **최악의 경우 청구액이 유한**해진다.
+ * 교사 1명·학급 2개(약 40명) 규모에서 20 은 정상 트래픽보다 한참 위다.
+ */
+const MAX_INSTANCES = 20;
+
+/**
+ * 🪣 발급 레이트리밋 — 지급용(`passRateLimit`)과 **같은 컬렉션, 다른 설정·다른 키**.
+ *
+ * 키는 uid 를 그대로 쓰지 않고 해시한다(`bucketKeyForUid` 주석 참고). 설정도 지급용보다
+ * 느슨할 이유가 없어 따로 준다 — 앱을 여는 동작은 지급보다 훨씬 드물다.
+ *
+ * @param {string} uid Firebase uid
+ * @return {Promise<boolean>} 통과 여부
+ */
+function passIssueRateLimit(uid) {
+  const ref = db.collection("aapRateLimits").doc(R.bucketKeyForUid(uid));
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const { allowed, next } = R.consumeBucket(
+      snap.exists ? snap.data() : null,
+      Date.now(),
+      R.TOKEN_RATE_LIMIT,
+    );
+    tx.set(ref, { ...next, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    return allowed;
+  });
+}
+
 // ───────────────────────────────────────────────────────────────
 // 🎫 실행 토큰 발급
 // ───────────────────────────────────────────────────────────────
-exports.issueAppToken = onCall({ region: REGION }, async (request) => {
-  const { uid, classCode, isAdmin, userData } = await checkAuthAndGetUserData(request);
+exports.issueAppToken = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, async (request) => {
   const appId = request.data?.appId;
 
   if (typeof appId !== "string" || !APP_ID_RE.test(appId)) {
     throw new HttpsError("invalid-argument", "앱 정보가 올바르지 않습니다.");
   }
+
+  // 🪣 레이트리밋을 **사용자 문서 읽기보다 앞에** 둔다.
+  //    예전엔 `checkAuthAndGetUserData` 가 첫 줄이라, 거부될 호출도 users 문서를 한 번 읽었다
+  //    (2026-08-21 codex WARNING). 발급은 실행권 쓰기까지 만들므로 **돈이 아니라 비용**을
+  //    막는 자리이고, 관문은 읽기 0회 지점에 있어야 관문이다.
+  //    인증 자체는 게이트웨이가 이미 했다 — 여기 오는 request.auth 는 검증된 값이다.
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "인증된 사용자만 함수를 호출할 수 있습니다.");
+  }
+  if (!(await passIssueRateLimit(request.auth.uid))) {
+    throw new HttpsError("resource-exhausted", R.denyMessage("rate_limited"));
+  }
+
+  const { uid, classCode, isAdmin, userData } = await checkAuthAndGetUserData(request);
 
   // 🔑 fail-closed. 키·솔트가 없으면 발급하지 않는다 — "일단 열어주고 나중에"는 없다.
   //    (계획서 §3.7: 장애 시 fail-closed, 의심스러우면 지급하지 않는다)
@@ -108,7 +152,12 @@ exports.issueAppToken = onCall({ region: REGION }, async (request) => {
   //       쓰지 않는다 — 지금 등록된 11개가 전부 여기 해당해서 비용 증가는 0 이다.
   //    ⚠️ fail-closed: 세션을 못 쓰면 토큰도 안 준다. 쓰지 못한 채 토큰만 나가면 학생은
   //       앱을 열어 문제를 풀고 **보상만 조용히 실패**한다 — 그게 제일 나쁜 실패다.
-  if (policy.rewardsEnabled === true) {
+  // 🚫 **역할 표식이 있는 계정에는 실행권을 만들지 않는다.** 교사도 앱은 열어야 하지만,
+  //    지급은 어차피 `not_student` 로 거부된다 — 쓰지 않을 문서를 실행마다 쓰고 있었다
+  //    (2026-08-21 codex CRITICAL). 지급 쪽 역할 검사와 **같은 조건**을 쓴다.
+  const hasRole =
+    userData?.isSuperAdmin === true || userData?.isAdmin === true || userData?.isTeacher === true;
+  if (policy.rewardsEnabled === true && !hasRole) {
     try {
       await db
         .collection("aapRewardSessions")
@@ -213,50 +262,53 @@ exports.aapDiscovery = onRequest({ region: REGION, invoker: "public" }, (req, re
 //    origin 을 좁혀도 얻는 게 없고(서버 대 서버 호출은 CORS 를 통과할 필요조차 없다),
 //    좁히면 preflight 에서 appId 를 모르는 채 판정해야 해서 정책 문서를 매번 훑게 된다.
 // ───────────────────────────────────────────────────────────────
-exports.grantAppReward = onRequest({ region: REGION, invoker: "public" }, async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.set("Access-Control-Max-Age", "3600");
-  // 돈이 걸린 응답이다. 중간 캐시가 성공 응답을 재사용하면 "받았는데 안 받은" 상태가 생긴다.
-  res.set("Cache-Control", "no-store");
-  res.set("Vary", "Origin");
+exports.grantAppReward = onRequest(
+  { region: REGION, invoker: "public", maxInstances: MAX_INSTANCES },
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.set("Access-Control-Max-Age", "3600");
+    // 돈이 걸린 응답이다. 중간 캐시가 성공 응답을 재사용하면 "받았는데 안 받은" 상태가 생긴다.
+    res.set("Cache-Control", "no-store");
+    res.set("Vary", "Origin");
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({ success: false, error: "method_not_allowed" });
-    return;
-  }
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.status(405).json({ success: false, error: "method_not_allowed" });
+      return;
+    }
 
-  let out;
-  try {
-    // 토큰은 **헤더 우선**. 본문에 넣으면 프록시·에러리포터 로그에 남기 쉽다.
-    const auth = String(req.get("authorization") || "");
-    const m = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth);
-    out = await grantAppReward({ body: req.body, headerToken: m ? m[1] : "" });
-  } catch (e) {
-    // 판정 거부가 아니라 **운영 장애**다(Firestore UNAVAILABLE·ABORTED 등).
-    // 409 로 내려보내면 앱이 "오늘은 안 되는구나"로 읽고 재시도를 포기한다.
-    logger.error(`[AAP] 지급 실패(운영 장애): ${e?.message}`, e);
-    res.status(503).json({
-      success: false,
-      error: "unavailable",
-      message: "잠시 뒤에 다시 시도해 주세요.",
-      retryable: true,
-    });
-    return;
-  }
+    let out;
+    try {
+      // 토큰은 **헤더 우선**. 본문에 넣으면 프록시·에러리포터 로그에 남기 쉽다.
+      const auth = String(req.get("authorization") || "");
+      const m = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth);
+      out = await grantAppReward({ body: req.body, headerToken: m ? m[1] : "" });
+    } catch (e) {
+      // 판정 거부가 아니라 **운영 장애**다(Firestore UNAVAILABLE·ABORTED 등).
+      // 409 로 내려보내면 앱이 "오늘은 안 되는구나"로 읽고 재시도를 포기한다.
+      logger.error(`[AAP] 지급 실패(운영 장애): ${e?.message}`, e);
+      res.status(503).json({
+        success: false,
+        error: "unavailable",
+        message: "잠시 뒤에 다시 시도해 주세요.",
+        retryable: true,
+      });
+      return;
+    }
 
-  if (!out.ok) {
-    res.status(R.denyStatus(out.reason)).json({
-      success: false,
-      error: out.reason,
-      message: R.denyMessage(out.reason),
-    });
-    return;
-  }
-  res.status(200).json({ success: true, ...out.value });
-});
+    if (!out.ok) {
+      res.status(R.denyStatus(out.reason)).json({
+        success: false,
+        error: out.reason,
+        message: R.denyMessage(out.reason),
+      });
+      return;
+    }
+    res.status(200).json({ success: true, ...out.value });
+  },
+);

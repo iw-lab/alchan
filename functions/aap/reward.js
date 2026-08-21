@@ -88,6 +88,62 @@ function passRateLimit(sub, appId, nowMs) {
  * @param {string} headerToken Authorization 헤더에서 뽑은 토큰(없으면 "")
  * @return {{ok: boolean, reason?: string, value?: object}} 판정
  */
+/**
+ * 🔔 차단기 경보를 남긴다 — **커밋 후, 트랜잭션 밖**.
+ *
+ * 왜 밖인가: 트랜잭션 안에서 `create()` 로 "하루 한 번"을 만들면, 그날 경보가 이미 있는
+ * 순간부터 **모든 지급이 ALREADY_EXISTS 로 롤백된다.** 경보를 만들려다 지급을 끄는 셈이다
+ * (2026-08-21 codex CRITICAL). 그래서 보호(카운터 플래그·정책 latch)만 원자적으로 하고,
+ * 통지는 최선노력으로 분리했다. 통지가 유실돼도 지급은 이미 멈춰 있다.
+ *
+ * 두 갈래로 남긴다:
+ *   · `logger.error` — Cloud Monitoring 의 **로그 기반 알림 정책**을 이 라벨에 건다.
+ *     코드가 슬랙·메일 같은 외부 채널을 알 필요가 없다.
+ *     ⚠️ 정책을 실제로 걸고 수신까지 확인해야 경보다. 로그를 뱉는 것만으로는 아니다.
+ *   · `platformAlerts/{day}_{appId}_{kind}` — 나중에 교사 화면이 읽을 자리.
+ *     `set()` 이다(`create()` 아님 — 충돌이 곧 실패였다).
+ *
+ * @param {string} appId 앱
+ * @param {string} classCode 학급
+ * @param {string} day KST YYYYMMDD
+ * @param {object} breaker checkBreaker 결과
+ * @return {Promise<void>}
+ */
+async function announceBreaker(appId, classCode, day, breaker) {
+  const kind = `${breaker.rewardType}_${breaker.newlyTripped ? "trip" : "alert"}`;
+  logger.error("[AAP] 보상 차단기", {
+    event: "aap_reward_alert",
+    kind,
+    app: appId,
+    classCode,
+    day,
+    rewardType: breaker.rewardType,
+    observed: breaker.observed,
+    threshold: breaker.newlyTripped ? breaker.tripAt : breaker.alertAt,
+    cap: breaker.cap,
+    // 끊겼으면 breaker-reset 전까지 안 풀린다 — 로그만 보고도 조치 여부를 알 수 있어야 한다.
+    tripped: breaker.tripped,
+  });
+  await db
+    .collection("platformAlerts")
+    .doc(`${day}_${appId}_${kind}`)
+    .set(
+      {
+        kind,
+        appId,
+        classCode,
+        day,
+        rewardType: breaker.rewardType,
+        observed: breaker.observed,
+        threshold: breaker.newlyTripped ? breaker.tripAt : breaker.alertAt,
+        cap: breaker.cap,
+        tripped: breaker.tripped,
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+}
+
 function parseRequest(body, headerToken) {
   const src = body && typeof body === "object" ? body : {};
   // 헤더가 우선이다 — 본문에 토큰이 있으면 프록시·에러리포터 로그에 남기 쉽다.
@@ -243,7 +299,18 @@ async function grantAppReward({ body, headerToken = "", nowMs = Date.now() }) {
       if (!open.ok) throw new RewardDenied(open.reason);
       // 실행이 열려 있다고 지급이 열린 건 아니다. 보상은 **별도 스위치**로 켠다 —
       // 그래야 "앱은 쓰되 돈은 아직" 상태가 만들어지고, 그게 이관의 기본 단계다.
-      if (policy.rewardsEnabled !== true) throw new RewardDenied("rewards_off");
+      // 🚨 **왜 사유를 정책에서 읽나**: 처음엔 날짜 카운터의 tripped 플래그로 거부했는데,
+      //    그러면 운영자가 보상을 다시 켜도 그 플래그가 남아 **자정까지 계속 거부**됐다.
+      //    상태를 한 문서에 모으면 스위치 하나로 복구되고 사유도 정확해진다.
+      //    "다 받았어요"(소진)와 "안전을 위해 멈췄어요"(사고)는 다른 사건이다.
+      if (policy.rewardsEnabled !== true) {
+        throw new RewardDenied(
+          typeof policy.rewardsDisabledReason === "string" &&
+            policy.rewardsDisabledReason.startsWith("auto_breaker_")
+            ? "app_tripped"
+            : "rewards_off",
+        );
+      }
 
       const achievementRef = db
         .collection("appAchievements")
@@ -359,7 +426,48 @@ async function grantAppReward({ body, headerToken = "", nowMs = Date.now() }) {
         updatedAt: FieldValue.serverTimestamp(),
       });
       tx.set(classCounterRef, counterPatch(used.classroom, { classCode }), { merge: true });
-      tx.set(appCounterRef, counterPatch(used.app, { appId }), { merge: true });
+
+      // 🚨 차단기 — **지급 후 합계**로 판정한다(임계선을 넘긴 그 건이 표시돼야 추적이 된다).
+      //    같은 앱의 지급은 전부 이 카운터 문서를 읽고 쓰므로 Firestore 가 직렬화한다 →
+      //    여러 건이 차단선 뒤로 빠져나가는 창이 없다.
+      const breaker = R.checkBreaker({
+        used: rewardType === "cash" ? used.app.cash : used.app.coupon,
+        amount,
+        rewardType,
+        appPerDay: caps.appPerDay,
+        prev: appSnap.exists ? appSnap.data() : null,
+        day,
+        // 🔓 운영자가 오늘은 통과시키기로 한 앱. 날짜가 박혀 있어 자정에 저절로 만료된다.
+        overridden: policy.breakerOverrideDay === day,
+      });
+      tx.set(
+        appCounterRef,
+        {
+          ...counterPatch(used.app, { appId }),
+          [`${breaker.rewardType}Alerted`]: breaker.alerted,
+          [`${breaker.rewardType}Tripped`]: breaker.tripped,
+        },
+        { merge: true },
+      );
+
+      // 🔴 **여기가 진짜 kill switch 다.** 플래그를 날짜 카운터에만 두면 자정에 저절로 풀려
+      //    "자정 직전 80% + 직후 80%" 가 가능하다 — 그건 차단기가 아니라 하루 소프트캡이다
+      //    (2026-08-21 codex WARNING). 날짜가 없는 정책 문서를 끈다.
+      //    ⚠️ **`rewards-on` 만으로는 안 풀린다** — 위 조건이 상태라서 다음 지급에 다시 끊긴다.
+      //       푸는 길은 `aap-switch.mjs breaker-reset <appId>` 하나뿐이고, 그건
+      //       `breakerOverrideDay` 에 오늘 날짜를 박아 **자정에 저절로 만료**된다.
+      //    정책 문서는 위에서 이미 읽었으므로 추가 읽기가 없다.
+      // ⚠️ 조건이 `newlyTripped` 가 아니라 **`tripped`** 인 이유: 전이로 걸면, 운영자가
+      //    보상을 다시 켠 뒤에는 이미 플래그가 서 있어 전이가 안 일어나고 **방어가 조용히
+      //    사라진다.** 상태로 걸면 재활성 후 첫 지급에서 곧바로 다시 끊긴다 = fail-safe.
+      //    (진짜로 통과시키려면 `breaker-reset` 으로 override 를 박아야 한다.)
+      if (breaker.tripped) {
+        tx.update(policyRef, {
+          rewardsEnabled: false,
+          rewardsDisabledReason: `auto_breaker_${breaker.rewardType}`,
+          rewardsDisabledAt: FieldValue.serverTimestamp(),
+        });
+      }
 
       // 🧾 서버 전용 append-only 원장. **이게 정본이다.**
       //    create 라서 같은 해시가 이미 있으면 트랜잭션이 죽는다 — 위의 멱등 조회가
@@ -415,8 +523,22 @@ async function grantAppReward({ body, headerToken = "", nowMs = Date.now() }) {
         amount,
         label: achievement.label,
         grantId: hash,
+        classCode,
+        // 🔔 통지는 **커밋 후**에 한다. 트랜잭션 콜백은 재실행될 수 있어서 여기서 로그를 찍으면
+        //    커밋되지 않은 경보가 남는다. 전이 여부만 실어 보낸다.
+        breaker,
       };
     });
+
+    // 🔔 경보 — **보호는 이미 원자적으로 걸렸고**(카운터 플래그 + 정책 latch), 여기는 통지다.
+    //    이 순서가 설계 1판의 결함을 고치는 핵심이다: 통지를 트랜잭션 안에 넣으면
+    //    경보 문서 충돌 한 번이 **지급 전체를 롤백**시킨다(2026-08-21 codex CRITICAL).
+    //    통지가 유실돼도 지급은 이미 멈춰 있다 — 반대는 성립하지 않는다.
+    if (!value.duplicate && value.breaker && (value.breaker.newlyTripped || value.breaker.newlyAlerted)) {
+      await announceBreaker(appId, value.classCode, day, value.breaker).catch((e) => {
+        logger.error(`[AAP] 경보 기록 실패 app=${appId}: ${e?.message}`);
+      });
+    }
 
     if (!value.duplicate) {
       logger.info("[AAP] 지급", {
@@ -439,4 +561,4 @@ async function grantAppReward({ body, headerToken = "", nowMs = Date.now() }) {
   }
 }
 
-module.exports = { grantAppReward, parseRequest, passRateLimit, RewardDenied };
+module.exports = { grantAppReward, parseRequest, passRateLimit, announceBreaker, RewardDenied };

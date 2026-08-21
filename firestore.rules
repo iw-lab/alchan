@@ -713,7 +713,8 @@ service cloud.firestore {
     //                                          문서 id 가 곧 멱등키라 두 물건이 하나다.
     //      · appRewardSubjects/{uid}_{appId}  학생×앱×일 합계 + 성취별 상태(횟수·쿨다운).
     //      · appRewardCounters/{day}_{scope}  학급×일 · 앱×일 합계(폭주 차단기).
-    //      · aapRateLimits/{uid}_{appId}      token bucket.
+    //      · aapRateLimits/{bucketId}         token bucket. 지급은 토큰의 `sub`(32자리 hex),
+    //                                          발급은 `tok_{uid}` — 접두사가 있어 서로 못 겹친다.
     //
     //    ⚠️ 읽기도 닫는다. 학생이 자기 카운터를 **읽을** 수 있으면 "얼마 남았는지"를 알고
     //       그 선까지 정확히 긁는다. 교사 화면(P1-5)은 서버 집계를 통해 본다.
@@ -735,6 +736,22 @@ service cloud.firestore {
     }
     match /aapRateLimits/{bucketId} {
       allow read, write: if false;
+    }
+
+    // ========================================================
+    // 🚨 보상 차단기 경보 (platformAlerts) — 2026-08-21 신설 · P1-9
+    //
+    //    지급액이 앱 하루 상한의 50%(경보)·80%(차단)를 넘으면 서버가 남긴다.
+    //    문서 id = `{day}_{appId}_{kind}`, kind 는 고정 집합
+    //    (cash_alert · cash_trip · coupon_alert · coupon_trip).
+    //
+    //    ⚠️ 위 지급 계열과 달리 **읽기는 연다.** 이건 학생의 잔여 한도가 아니라 "사고가 났다"는
+    //       사실이고, 교사가 봐야 조치가 된다. 학생 신원(uid·sub)은 담지 않는다.
+    //    ⚠️ 쓰기는 서버 전용. 교사가 지울 수 있으면 사고 기록이 지워진다.
+    // ========================================================
+    match /platformAlerts/{alertId} {
+      allow read: if isAdminFast() || isSuperAdminFast();
+      allow write: if false;
     }
 
     // ========================================================

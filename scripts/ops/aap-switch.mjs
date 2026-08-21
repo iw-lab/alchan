@@ -15,6 +15,7 @@
  *   node scripts/ops/aap-switch.mjs rewards-on <appId>   # 💸 보상 지급 켜기(rewardsEnabled=true)
  *   node scripts/ops/aap-switch.mjs rewards-off <appId>  # 💸 보상 지급 끄기
  *   node scripts/ops/aap-switch.mjs cap <appId> <현금> <쿠폰>  # 하루 상한(학생 1명 기준)
+ *   node scripts/ops/aap-switch.mjs breaker-reset <appId>  # 🔓 자동 차단기 해제(오늘만)
  *   node scripts/ops/aap-switch.mjs off-all              # 🚨 전부 차단(비상)
  *
  * ⚠️ **이관(migrate)과 보상(rewards-on)은 다른 스위치다.** 이관은 "이 앱이 알찬 신원으로
@@ -24,6 +25,12 @@
  * ⚠️ off-all 에 짝이 되는 on-all 은 **일부러 만들지 않았다.** 되돌릴 때 한 번에 켜면
  *    비상 전에 개별적으로 꺼 뒀던 앱까지 같이 켜진다 — 그게 두 번째 사고다.
  *    복구는 `on <appId>` 로 하나씩(앱이 11개뿐이다).
+ *
+ * ⚠️ **자동 차단기가 끊은 앱은 `rewards-on` 으로 안 풀린다.** 일부러 그렇게 만들었다 —
+ *    보상만 다시 켜면 다음 지급에서 곧바로 재차단된다(fail-safe). 앱 축 상한은 코드 상수라
+ *    "상한을 올려서 해제"라는 길도 없다. 푸는 수단은 `breaker-reset` 하나이고, 그건
+ *    `breakerOverrideDay` 에 **오늘 날짜(KST)** 를 박아 자정에 저절로 만료된다.
+ *    즉 override 는 "오늘은 통과시킨다"는 **하루짜리 결정**이지 영구 해제가 아니다.
  *
  * ⚠️ off 는 **즉시** 듣는다 — 서버가 정책을 캐시하지 않기 때문이다.
  *    이미 발급된 토큰(최대 5분)은 살아 있지만 새 실행은 그 순간부터 막힌다.
@@ -35,10 +42,10 @@ const BASE = firestoreBase();
 const [cmd, appId, ...rest] = process.argv.slice(2);
 // ⚠️ 허용 **목록**으로 판정한다. `cmd in COMMANDS` 는 `"constructor"` 같은 프로토타입 키에서
 //    참이 되어(Object.prototype) 아래 조회가 엉뚱한 값을 집는다 — 같은 함정을 P1-7 에서 겪었다.
-const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "cap", "off-all"];
+const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "cap", "breaker-reset", "off-all"];
 const NEEDS_APP = !["list", "off-all"].includes(cmd);
 if (!COMMANDS.includes(cmd) || (NEEDS_APP && !appId)) {
-  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | cap <appId> <현금> <쿠폰> | off-all");
+  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | cap <appId> <현금> <쿠폰> | breaker-reset <appId> | off-all");
   process.exit(2);
 }
 
@@ -86,6 +93,43 @@ if (cmd === "off-all") {
   }
   console.log(`\n🚨 ${done}/${ids.length}개 차단됨. 복구는 \`on <appId>\` 로 하나씩 하세요.`);
   process.exit(done === ids.length ? 0 : 1);
+}
+
+if (cmd === "breaker-reset") {
+  // 🔓 자동 차단기 해제. **오늘 하루만** 통과시킨다.
+  //
+  //    왜 rewards-on 과 따로 두나: 둘은 다른 뜻이다.
+  //      rewards-on    = "이 앱이 돈을 만들어도 된다"
+  //      breaker-reset = "차단기가 끊은 걸 **내가 확인했고** 오늘은 통과시킨다"
+  //    한 명령으로 묶으면 평소의 보상 켜기가 사고 해제까지 같이 해 버린다.
+  //
+  //    ⚠️ 상한을 늘리는 게 아니다. 하드캡(app_total_daily_cap)은 그대로 살아 있다 —
+  //       override 는 차단기(80% 선)만 오늘 무시하고, 100% 선에서는 여전히 멈춘다.
+  const kstDay = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "");
+  const url =
+    `${BASE}/platformAppPolicies/${encodeURIComponent(appId)}` +
+    "?updateMask.fieldPaths=breakerOverrideDay" +
+    "&updateMask.fieldPaths=rewardsEnabled" +
+    "&updateMask.fieldPaths=rewardsDisabledReason";
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: H,
+    body: JSON.stringify({
+      fields: {
+        breakerOverrideDay: { stringValue: kstDay },
+        rewardsEnabled: { booleanValue: true },
+        // updateMask 에 넣고 값을 안 주면 **삭제**된다 — 사유가 남아 있으면 상태가 거짓말을 한다.
+      },
+    }),
+  });
+  if (!res.ok) {
+    console.error(`✗ 실패 ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    process.exit(1);
+  }
+  console.log(`🔓 ${appId} → 차단기 해제 (오늘 ${kstDay} 한정) · 보상 다시 켜짐`);
+  console.log("   자정(KST)에 override 는 저절로 만료된다. 하드캡은 그대로 살아 있다.");
+  console.log("   ⚠️ 왜 끊겼는지 확인하지 않았다면 지금 로그를 볼 것: platformAlerts 컬렉션");
+  process.exit(0);
 }
 
 if (cmd === "cap") {

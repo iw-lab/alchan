@@ -303,13 +303,24 @@ function checkCaps({ amount, rewardType, caps, used }) {
 const RATE_LIMIT = Object.freeze({ CAPACITY: 30, REFILL_MS: 2000 });
 
 /**
+ * 🎫 **발급**(`issueAppToken`)용 버킷. 지급보다 훨씬 드문 동작이라 따로 둔다.
+ *
+ * 용량 20 · 6초당 1개 회복 = 지속 10회/분. 앱을 여는 동작이므로 이걸로 충분하고,
+ * 발급 1회가 Firestore 쓰기를 만들기 때문에(실행권) **돈이 아니라 비용을 막는 자리**다.
+ */
+const TOKEN_RATE_LIMIT = Object.freeze({ CAPACITY: 20, REFILL_MS: 6000 });
+
+/**
  * 버킷 상태를 갱신한다(순수).
  *
  * @param {object|null} prev 저장된 {tokens, lastRefillMs}
  * @param {number} nowMs 현재 시각
+ * @param {{CAPACITY: number, REFILL_MS: number}} [limit] 버킷 설정. 기본은 지급용.
+ *   ⚠️ 인자로 받는 이유: 예전엔 함수가 모듈 상수 `RATE_LIMIT` 을 직접 참조해서, 발급용으로
+ *      다른 값을 쓰려 해도 **조용히 지급용 설정이 적용됐다**(2026-08-21 codex WARNING).
  * @return {{allowed: boolean, next: {tokens: number, lastRefillMs: number}}} 판정과 새 상태
  */
-function consumeBucket(prev, nowMs) {
+function consumeBucket(prev, nowMs, limit = RATE_LIMIT) {
   const stored = prev && typeof prev === "object" ? prev : {};
   // ⚠️ 저장값이 **미래**면 `elapsed` 가 영원히 0 이라 그 버킷은 **영구히 잠긴다**(1년 뒤도 동일).
   //    시계가 뒤로 간 경우만 막고 이쪽을 안 막았다(2026-08-21 codex WARNING).
@@ -320,15 +331,15 @@ function consumeBucket(prev, nowMs) {
   );
   // 저장값이 음수면(손상·수동 편집) 회복에 몇 시간이 걸려 **정상 학생이 잠긴다** → 0..CAPACITY 로 조인다.
   const storedTokens = Number.isFinite(stored.tokens)
-    ? Math.min(RATE_LIMIT.CAPACITY, Math.max(0, stored.tokens))
-    : RATE_LIMIT.CAPACITY;
+    ? Math.min(limit.CAPACITY, Math.max(0, stored.tokens))
+    : limit.CAPACITY;
 
   // ⚠️ 시계가 뒤로 갔거나(서버 교체) 미래 값이 저장돼 있으면 elapsed 가 음수다.
   //    음수를 그대로 더하면 토큰이 줄어들어 **정상 사용자가 영구히 막힌다** → 0 으로 바닥친다.
   const elapsed = Math.max(0, nowMs - lastRefillMs);
   const refilled = Math.min(
-    RATE_LIMIT.CAPACITY,
-    storedTokens + Math.floor(elapsed / RATE_LIMIT.REFILL_MS),
+    limit.CAPACITY,
+    storedTokens + Math.floor(elapsed / limit.REFILL_MS),
   );
 
   if (refilled < 1) {
@@ -385,6 +396,8 @@ const DENY_MESSAGE = Object.freeze({
   student_daily_cap: "오늘 받을 수 있는 보상을 다 받았어요. 내일 또 만나요!",
   class_daily_cap: "오늘 우리 반 보상이 모두 소진됐어요.",
   app_total_daily_cap: "오늘 이 앱의 보상이 모두 소진됐어요.",
+  // 🚨 차단기가 끊었다. 학생 잘못이 아니므로 "다 받았어요"(소진)와 다른 말을 쓴다.
+  app_tripped: "이 앱의 보상이 안전을 위해 잠시 멈췄어요. 선생님께 알려 주세요.",
   rate_limited: "너무 빨리 요청했어요. 잠시 뒤에 다시 해 주세요.",
   // 카운터가 손상돼 "오늘 얼마나 받았는지"를 알 수 없는 상태. 모르면 주지 않는다.
   counter_corrupt: "보상 기록에 문제가 있어요. 선생님께 알려 주세요.",
@@ -412,9 +425,94 @@ const DENY_STATUS = Object.freeze({
   not_student: 403,
   class_changed: 401,
   rate_limited: 429,
+  app_tripped: 403,
 });
 /** 위 표에 없는 사유(한도·쿨다운·카탈로그)는 전부 409. */
 const DEFAULT_DENY_STATUS = 409;
+
+/**
+ * 🚨 자동 차단기의 임계선. `appPerDay`(앱 하루 총량) 대비 비율.
+ *
+ * 하드캡(`app_total_daily_cap`)은 **막기만 하고 알리지 않는다** — 상한에 닿았을 때는 이미
+ * 하루치가 다 나간 뒤다. 그 전에 두 번 개입한다: 절반에서 알리고, 80%에서 끊는다.
+ *
+ * ⚠️ **끊긴 것을 되돌리는 길은 하나뿐이다** — `aap-switch.mjs breaker-reset <appId>`.
+ *    앱 축 상한(`APP_CASH_PER_DAY`)은 코드 상수라 "상한을 올려 해제"라는 길이 없고,
+ *    `rewards-on` 만으로는 안 풀린다(다음 지급에서 곧바로 다시 끊긴다 — 일부러 그렇다).
+ *    reset 은 `breakerOverrideDay` 에 **오늘 날짜를 박아** 자정에 저절로 만료된다.
+ */
+const BREAKER = Object.freeze({ ALERT_RATIO: 0.5, TRIP_RATIO: 0.8 });
+
+/** 경보 문서 id 에 들어가는 종류. **고정 집합**이라 나중에 문자열을 쪼갤 일이 없다. */
+const BREAKER_KINDS = Object.freeze(["cash_alert", "cash_trip", "coupon_alert", "coupon_trip"]);
+
+/**
+ * 🚨 차단기 판정(순수) — **지급 후 합계** 기준.
+ *
+ * 왜 지급 전이 아니라 후인가: 지급 전 합계로 보면 임계선을 **넘긴 그 지급**이 무사히 나가고
+ * 다음 지급부터 걸린다. 넘긴 건은 넘긴 순간에 표시돼야 원인 추적이 된다.
+ *
+ * 왜 현금·쿠폰을 나누는가: 단위가 다르다(400만원 vs 400장). 플래그가 하나면 현금이 넘었을 때
+ * 쿠폰까지 같이 끊기고, 로그만 봐선 **어느 쪽이 터졌는지 알 수 없다**(2026-08-21 codex WARNING).
+ *
+ * @param {object} p 파라미터
+ * @param {number} p.used 오늘 이 앱이 이미 발행한 양(그 종류)
+ * @param {number} p.amount 이번 지급액
+ * @param {string} p.rewardType "cash" | "coupon"
+ * @param {number} p.appPerDay 앱 하루 총량 상한
+ * @param {*} p.prev 카운터 문서 데이터(이전 플래그)
+ * @param {string} p.day KST YYYYMMDD
+ * @return {{rewardType: string, observed: number, cap: number, alertAt: number, tripAt: number,
+ *           alerted: boolean, tripped: boolean, newlyAlerted: boolean, newlyTripped: boolean}}
+ */
+function checkBreaker({ used, amount, rewardType, appPerDay, prev, day, overridden = false }) {
+  const key = rewardType === "cash" ? "cash" : "coupon";
+  const fresh = prev && typeof prev === "object" && prev.day === day ? prev : {};
+  const wasAlerted = fresh[`${key}Alerted`] === true;
+  const wasTripped = fresh[`${key}Tripped`] === true;
+
+  // 상한이 정수 양수가 아니면 판정하지 않는다. 여기까지 오려면 `checkCaps` 를 통과했어야 하고,
+  // 그쪽이 `used + amount > appPerDay` 로 이미 막으므로 도달 불가다 — 그래도 0 으로 나눈 값이나
+  // NaN 비교가 **조용히 false** 가 되는 길은 남기지 않는다.
+  const cap = Number.isInteger(appPerDay) && appPerDay > 0 ? appPerDay : 0;
+  const alertAt = Math.ceil(cap * BREAKER.ALERT_RATIO);
+  const tripAt = Math.ceil(cap * BREAKER.TRIP_RATIO);
+  const observed = used + amount;
+
+  const alerted = wasAlerted || (cap > 0 && observed >= alertAt);
+  // 🔓 **오늘만 무시**(운영자가 확인하고 통과시킨 상태). 경보는 그대로 남긴다 —
+  //    override 가 조용해지는 스위치면, 켠 사람도 무슨 일이 벌어지는지 못 본다.
+  const tripped = overridden ? false : wasTripped || (cap > 0 && observed >= tripAt);
+  return {
+    overridden,
+    rewardType: key,
+    observed,
+    cap,
+    alertAt,
+    tripAt,
+    alerted,
+    tripped,
+    newlyAlerted: alerted && !wasAlerted,
+    newlyTripped: tripped && !wasTripped,
+  };
+}
+
+/**
+ * 🎫 발급 레이트리밋 버킷의 문서 id.
+ *
+ * ⚠️ **uid 를 경로에 그대로 붙이지 않는다.** "Firebase uid 는 영숫자"는 이 저장소의 관찰이지
+ *    Firebase 의 계약이 아니다 — 커스텀 uid 는 1~128자 임의 문자열이고 공식 예시가 `some-uid`
+ *    처럼 하이픈을 쓴다(2026-08-21 codex WARNING). 해시로 고정 길이를 만들면 그 전제가 통째로
+ *    사라지고, 문서 id 에 `/` 가 섞일 걱정도 없다.
+ *
+ * 지급 버킷의 키는 토큰의 `sub`(32자리 소문자 hex)라 `tok_` 접두사와 **겹칠 수 없다.**
+ *
+ * @param {string} uid Firebase uid
+ * @return {string} 문서 id
+ */
+function bucketKeyForUid(uid) {
+  return `tok_${crypto.createHash("sha256").update(String(uid), "utf8").digest("hex").slice(0, 32)}`;
+}
 
 /**
  * 사유 → 학생 문구. **`hasOwnProperty` 로 찾는다.**
@@ -471,4 +569,9 @@ module.exports = {
   checkAchievementState,
   checkCaps,
   consumeBucket,
+  TOKEN_RATE_LIMIT,
+  BREAKER,
+  BREAKER_KINDS,
+  checkBreaker,
+  bucketKeyForUid,
 };

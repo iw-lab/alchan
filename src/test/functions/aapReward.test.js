@@ -88,11 +88,25 @@ const FAKE = vi.hoisted(() => {
     return out;
   };
 
+  // 트랜잭션 **밖** 쓰기. 경보(announceBreaker)와 실행권 발급이 여기로 온다 —
+  // 트랜잭션 안에서만 쓸 수 있는 가짜였다면, "경보를 밖으로 뺐다"는 사실 자체를 검증할 수 없다.
+  const applyOutside = (path, op, data) => {
+    const prev = store.get(path);
+    if (op === "create" && store.has(path)) {
+      const e = new Error(`ALREADY_EXISTS: ${path}`);
+      e.code = 6;
+      throw e;
+    }
+    store.set(path, op === "merge" ? mergeDeep(prev, data) : resolveFlat(null, data));
+    log.push({ op: `outside:${op}`, path });
+  };
   const makeRef = (path) => ({
     path,
     id: path.split("/").pop(),
     collection: (name) => makeCollection(`${path}/${name}`),
     get: async () => snap(path),
+    set: async (data, opts) => applyOutside(path, opts && opts.merge ? "merge" : "set", data),
+    create: async (data) => applyOutside(path, "create", data),
   });
   const makeCollection = (prefix) => ({
     doc: (id) => makeRef(`${prefix}/${id ?? `auto${(autoSeq += 1)}`}`),
@@ -931,5 +945,326 @@ describe("규칙이 보상 계열을 잠근다", () => {
     // 정상: 필드가 아예 없는 건 손상이 아니다(그 종류를 아직 안 받은 날).
     expect(R.dayTotals({ day: "d" }, "d")).toEqual({ cash: 0, coupon: 0 });
     expect(R.dayTotals({ day: "다른날", cash: "쓰레기" }, "d")).toEqual({ cash: 0, coupon: 0 });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🚨 자동 차단기 (P1-9)
+//
+//   1판은 경보 문서를 트랜잭션 안에서 `create()` 했다 — 그날 경보가 이미 있으면
+//   ALREADY_EXISTS 로 **지급 전체가 롤백**된다. 경보를 만들려다 지급을 끄는 설계였다.
+//   그래서 이 describe 의 핵심은 "경보가 남는가"가 아니라 **"경보가 지급을 못 죽이는가"** 다.
+// ═══════════════════════════════════════════════════════════════
+describe("차단기 — 보호는 원자적으로, 통지는 최선노력으로", () => {
+  beforeEach(() => FAKE.reset());
+
+  // ⚠️ 임계선을 **상수에서 계산하지 않는다.** 처음엔 `APP_CAP * R.BREAKER.TRIP_RATIO` 로 썼는데,
+  //    그러면 비율을 1.0 으로 바꾸는 변이에서 **테스트도 같이 움직여** 통과해 버렸다(실측).
+  //    기대값은 손으로 박아야 방어선이 잠긴다.
+  const APP_CAP = 4000000;
+  const ALERT_AT = 2000000;
+  const TRIP_AT = 3200000;
+
+  it("임계선이 설계 값 그대로다 (여기가 바뀌면 아래 테스트가 전부 거짓말이 된다)", () => {
+    expect(R.GLOBAL_CEILING.APP_CASH_PER_DAY).toBe(APP_CAP);
+    expect(Math.ceil(APP_CAP * R.BREAKER.ALERT_RATIO)).toBe(ALERT_AT);
+    expect(Math.ceil(APP_CAP * R.BREAKER.TRIP_RATIO)).toBe(TRIP_AT);
+  });
+  const appCounter = () => FAKE.get(`appRewardCounters/${DAY}_app_${APP}`);
+  const seedApp = (cash, extra = {}) =>
+    FAKE.set(`appRewardCounters/${DAY}_app_${APP}`, { day: DAY, appId: APP, cash, coupon: 0, ...extra });
+  const alertDoc = (kind) => FAKE.get(`platformAlerts/${DAY}_${APP}_${kind}`);
+
+  it("경보선(50%)을 넘으면 경보가 남지만 **지급은 계속된다**", async () => {
+    const issued = stage();
+    seedApp(ALERT_AT - 1000);
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    expect(appCounter().cashAlerted).toBe(true);
+    expect(appCounter().cashTripped).toBe(false);
+    expect(alertDoc("cash_alert").observed).toBe(ALERT_AT);
+    // 경보는 잠그지 않는다 — 정책은 그대로 켜져 있어야 한다.
+    expect(FAKE.get(`platformAppPolicies/${APP}`).rewardsEnabled).toBe(true);
+  });
+
+  it("⭐ 차단선(80%)을 넘으면 **정책이 꺼진다** — 자정에 안 풀리는 잠금", async () => {
+    const issued = stage();
+    seedApp(TRIP_AT - 1000);
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);   // 넘긴 그 건은 나간다
+    expect(appCounter().cashTripped).toBe(true);
+    const policy = FAKE.get(`platformAppPolicies/${APP}`);
+    expect(policy.rewardsEnabled).toBe(false);
+    expect(policy.rewardsDisabledReason).toBe("auto_breaker_cash");
+    expect(alertDoc("cash_trip").tripped).toBe(true);
+  });
+
+  it("⭐ 차단된 뒤의 다음 지급은 **app_tripped** 로 거부된다 (교사가 끈 것과 구분된다)", async () => {
+    const issued = stage();
+    seedApp(TRIP_AT - 1000);
+    await call(issued);                       // 여기서 정책이 자동으로 꺼진다
+    const disabled = FAKE.get(`platformAppPolicies/${APP}`);
+    expect(disabled.rewardsEnabled).toBe(false);
+    expect(disabled.rewardsDisabledReason).toBe("auto_breaker_cash");
+
+    // 새 실행권으로 다시 시도. ⚠️ 사유를 배열로 헤징하지 않는다 — 두 검사의 순서가
+    //    뒤바뀌는 회귀를 못 잡는다(2026-08-21 Claude 리뷰 WARNING).
+    const again = stage({ policy: disabled });
+    seedApp(TRIP_AT, { cashTripped: true, cashAlerted: true });
+    const out = await call(again, { clientRunId: "run2" });
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("app_tripped");
+  });
+
+  it("교사가 손으로 끈 앱은 **rewards_off** 다 (사고가 아니다)", async () => {
+    const issued = stage({ policy: { rewardsEnabled: false } });
+    const out = await call(issued);
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("rewards_off");
+  });
+
+  it("⭐ 경보 문서가 **이미 있어도** 지급이 성공한다 (1판 결함의 회귀 테스트)", async () => {
+    const issued = stage();
+    // 그날 경보가 이미 남아 있는 상태. 1판이면 여기서 ALREADY_EXISTS 로 지급이 죽었다.
+    FAKE.set(`platformAlerts/${DAY}_${APP}_cash_alert`, { kind: "cash_alert", day: DAY, appId: APP });
+    seedApp(ALERT_AT - 1000);
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    expect(FAKE.get(`users/${UID}`).cash).toBe(2000);   // 1000 + 1000
+  });
+
+  it("경보 쓰기가 실패해도 지급은 살아남는다 (통지는 최선노력)", async () => {
+    const issued = stage();
+    seedApp(ALERT_AT - 1000);
+    const { announceBreaker } = req("../../../functions/aap/reward.js");
+    expect(typeof announceBreaker).toBe("function");
+    // 경보 경로를 강제로 깨뜨린다.
+    const orig = FAKE.db.collection;
+    FAKE.db.collection = (name) =>
+      name === "platformAlerts"
+        ? { doc: () => ({ set: async () => { throw new Error("경보 저장소 장애"); } }) }
+        : orig(name);
+    try {
+      const out = await call(issued);
+      expect(out.ok, JSON.stringify(out)).toBe(true);
+      expect(FAKE.get(`users/${UID}`).cash).toBe(2000);
+    } finally {
+      FAKE.db.collection = orig;
+    }
+  });
+
+  it("⭐ 보상만 다시 켜면 **곧바로 다시 끊긴다** (방어가 조용히 사라지지 않는다)", async () => {
+    // 처음엔 latch 를 전이(newlyTripped)로 걸었다. 그러면 운영자가 rewards-on 을 한 뒤엔
+    // 이미 플래그가 서 있어 전이가 안 일어나고 **차단기가 통째로 무력해졌다.**
+    // 상태(tripped)로 걸어야 재활성 후 첫 지급에서 다시 끊긴다.
+    const issued = stage();                                   // rewardsEnabled: true (=수동 재활성 상태)
+    seedApp(TRIP_AT, { cashTripped: true, cashAlerted: true }); // 이미 끊겨 있던 하루
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);           // 이 한 건은 통과한다
+    const policy = FAKE.get(`platformAppPolicies/${APP}`);
+    expect(policy.rewardsEnabled).toBe(false);                // 그리고 곧바로 다시 꺼진다
+    expect(policy.rewardsDisabledReason).toBe("auto_breaker_cash");
+  });
+
+  it("⭐ breaker-reset(override)이 있으면 오늘은 통과한다 — 그리고 경보는 남는다", async () => {
+    const issued = stage({ policy: { breakerOverrideDay: DAY } });
+    seedApp(TRIP_AT, { cashTripped: true, cashAlerted: true });
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    // override 는 차단만 무시한다. 정책은 켜진 채로 남아야 복구가 성립한다.
+    expect(FAKE.get(`platformAppPolicies/${APP}`).rewardsEnabled).toBe(true);
+    expect(appCounter().cashTripped).toBe(false);
+  });
+
+  it("override 는 **어제 날짜면 안 듣는다** (자정에 저절로 만료)", async () => {
+    const issued = stage({ policy: { breakerOverrideDay: "20260820" } });
+    seedApp(TRIP_AT, { cashTripped: true, cashAlerted: true });
+    await call(issued);
+    expect(FAKE.get(`platformAppPolicies/${APP}`).rewardsEnabled).toBe(false);
+  });
+
+  it("override 라도 하드캡(100%)은 그대로 멈춘다", async () => {
+    const issued = stage({ policy: { breakerOverrideDay: DAY } });
+    seedApp(APP_CAP);   // 앱 하루 총량을 이미 다 썼다
+    const out = await call(issued);
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("app_total_daily_cap");
+  });
+
+  it("차단된 뒤에는 경보를 다시 쏘지 않는다 (플래그가 전이만 잡는다)", async () => {
+    const issued = stage();
+    seedApp(TRIP_AT - 1000);
+    await call(issued);                     // 여기서 1회 전이
+    const first = alertDoc("cash_trip").createdAt;
+    expect(first).toBeTruthy();
+    // 같은 상태에서 checkBreaker 를 다시 돌리면 전이가 아니어야 한다.
+    const again = R.checkBreaker({
+      used: TRIP_AT, amount: 1000, rewardType: "cash",
+      appPerDay: APP_CAP, prev: { day: DAY, cashTripped: true, cashAlerted: true }, day: DAY,
+    });
+    expect(again.tripped).toBe(true);
+    expect(again.newlyTripped).toBe(false);
+    expect(again.newlyAlerted).toBe(false);
+  });
+
+  it("어제 플래그가 오늘 카운터·정책으로 새지 않는다", async () => {
+    const issued = stage();
+    FAKE.set(`appRewardCounters/${DAY}_app_${APP}`, {
+      day: "20260820", appId: APP, cash: TRIP_AT, coupon: 0, cashTripped: true, cashAlerted: true,
+    });
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+    // 어제 플래그를 오늘 것으로 읽으면 여기가 무너진다.
+    expect(appCounter().cashTripped).toBe(false);
+    expect(appCounter().cashAlerted).toBe(false);
+    expect(appCounter().cash).toBe(1000);   // 어제 누적이 오늘로 안 넘어온다
+    expect(FAKE.get(`platformAppPolicies/${APP}`).rewardsEnabled).toBe(true);
+  });
+
+  it("어제의 차단 플래그는 오늘 지급을 막지 않는다", async () => {
+    const issued = stage();
+    FAKE.set(`appRewardCounters/${DAY}_app_${APP}`, {
+      day: "20260820", appId: APP, cash: TRIP_AT, coupon: 0, cashTripped: true, cashAlerted: true,
+    });
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);
+  });
+
+  it("현금이 끊겨도 쿠폰 플래그는 따로다 (단위가 다르므로)", async () => {
+    const issued = stage({
+      // L0 는 앱·학생·하루 쿠폰 2장이 상한이라 amount×maxPerDay 가 2 를 넘으면
+      // 카탈로그가 문서 자체를 거부한다(day_total_over_ceiling).
+      achievement: { active: true, rewardType: "coupon", amount: 1, maxPerDay: 2, label: "쿠폰" },
+    });
+    seedApp(TRIP_AT, { cashTripped: true, cashAlerted: true });
+    const out = await call(issued);
+    expect(out.ok, JSON.stringify(out)).toBe(true);   // 쿠폰은 아직 안 끊겼다
+    expect(appCounter().couponTripped).toBe(false);
+    expect(appCounter().cashTripped).toBe(true);      // 현금 플래그는 그대로
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🔬 구조 — 코드가 어디에 있는지가 곧 계약인 것들
+// ═══════════════════════════════════════════════════════════════
+describe("차단기 구조", () => {
+  const REWARD = read("functions/aap/reward.js");
+
+  it("경보는 트랜잭션 **밖**에서 불린다", () => {
+    const body = after(REWARD, "async function grantAppReward(");
+    const txEnd = body.indexOf("await db.runTransaction");
+    const callAt = body.indexOf("announceBreaker(");
+    expect(txEnd).toBeGreaterThan(-1);
+    expect(callAt).toBeGreaterThan(-1);
+    // 트랜잭션 콜백이 닫힌 뒤(= `});` 다음)에 호출돼야 한다.
+    const closeAt = body.indexOf("\n    });", txEnd);
+    expect(closeAt).toBeGreaterThan(-1);
+    expect(callAt).toBeGreaterThan(closeAt);
+  });
+
+  it("트랜잭션 콜백 안에서 logger 를 부르지 않는다 (재실행되면 유령 경보가 남는다)", () => {
+    const body = after(REWARD, "async function grantAppReward(");
+    const start = body.indexOf("await db.runTransaction");
+    const end = body.indexOf("\n    });", start);
+    const inside = codeOnly(body.slice(start, end));
+    // 카운터 손상 로그 하나는 의도적 예외 — 그건 **거부**라 커밋되지 않고, 남겨야 원인을 안다.
+    const hits = inside.match(/logger\.(info|warn|error)\(/g) || [];
+    expect(hits.length).toBeLessThanOrEqual(1);
+  });
+
+  it("정책 latch 는 트랜잭션 **안**에서 걸린다 (보호는 원자적이어야 한다)", () => {
+    const body = after(REWARD, "async function grantAppReward(");
+    const start = body.indexOf("await db.runTransaction");
+    const end = body.indexOf("\n    });", start);
+    const inside = body.slice(start, end);
+    expect(inside).toMatch(/tx\.update\(policyRef,\s*\{\s*\n?\s*rewardsEnabled: false/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🎫 발급 레이트리밋의 순수 부분 (P1-9)
+// ═══════════════════════════════════════════════════════════════
+describe("발급 버킷 — 키와 설정", () => {
+  it("uid 를 문서 경로에 그대로 붙이지 않는다", () => {
+    // 커스텀 uid 는 임의 문자열이라 `/`·`.`·`__proto__` 가 올 수 있다. 해시가 그걸 다 지운다.
+    for (const uid of ["some-uid", "a/b", "..", "__proto__", "가나다", "x".repeat(300)]) {
+      const key = R.bucketKeyForUid(uid);
+      expect(key).toMatch(/^tok_[0-9a-f]{32}$/);
+      expect(key).not.toContain(uid.slice(0, 3));
+    }
+  });
+
+  it("같은 uid 는 같은 키, 다른 uid 는 다른 키", () => {
+    expect(R.bucketKeyForUid("u1")).toBe(R.bucketKeyForUid("u1"));
+    expect(R.bucketKeyForUid("u1")).not.toBe(R.bucketKeyForUid("u2"));
+  });
+
+  it("발급 키는 지급 키(32자리 hex sub)와 **구조적으로** 겹칠 수 없다", () => {
+    // 지급 버킷 키는 sub 자체(접두사 없음). 발급은 항상 tok_ 로 시작한다.
+    expect(R.bucketKeyForUid("anything").startsWith("tok_")).toBe(true);
+    expect(/^[0-9a-f]{32}$/.test(R.bucketKeyForUid("anything"))).toBe(false);
+  });
+
+  it("⭐ consumeBucket 이 넘겨준 설정을 **실제로** 쓴다", () => {
+    // 예전엔 모듈 상수를 직접 참조해서, 발급용 설정을 넘겨도 조용히 지급용(30)이 적용됐다.
+    const tight = { CAPACITY: 3, REFILL_MS: 1000 };
+    expect(R.consumeBucket(null, 0, tight).next.tokens).toBe(2);
+    expect(R.consumeBucket(null, 0).next.tokens).toBe(R.RATE_LIMIT.CAPACITY - 1);
+    // 용량을 넘겨 저장돼 있어도 넘겨준 설정으로 조인다.
+    expect(R.consumeBucket({ tokens: 99, lastRefillMs: 0 }, 0, tight).next.tokens).toBe(2);
+    // 3개를 다 쓰면 거부된다(기본 설정이었다면 아직 27개 남았을 것이다).
+    let st = { tokens: 3, lastRefillMs: 0 };
+    for (let i = 0; i < 3; i += 1) st = R.consumeBucket(st, 0, tight).next;
+    expect(R.consumeBucket(st, 0, tight).allowed).toBe(false);
+  });
+
+  it("발급 설정은 지급 설정보다 촘촘하다 (앱 여는 동작은 드물다)", () => {
+    expect(R.TOKEN_RATE_LIMIT.CAPACITY).toBe(20);
+    expect(R.TOKEN_RATE_LIMIT.REFILL_MS).toBe(6000);
+    expect(Object.isFrozen(R.TOKEN_RATE_LIMIT)).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 🔬 발급 경로의 구조 — onCall 하네스 없이 잠글 수 있는 것들
+//    (issueAppToken 은 onCall 이라 이 파일의 가짜로는 못 부른다. 대신 **순서**를 본다 —
+//     순서가 곧 방어인 항목들이다.)
+// ═══════════════════════════════════════════════════════════════
+describe("발급 구조", () => {
+  const H = read("functions/aap/handlers.js");
+  const ISSUE = codeOnly(after(H, "exports.issueAppToken = onCall("));
+
+  it("⭐ 레이트리밋이 사용자 문서 읽기보다 **앞**이다", () => {
+    const limitAt = ISSUE.indexOf("passIssueRateLimit(");
+    const readAt = ISSUE.indexOf("checkAuthAndGetUserData(");
+    expect(limitAt).toBeGreaterThan(-1);
+    expect(readAt).toBeGreaterThan(-1);
+    expect(limitAt).toBeLessThan(readAt);
+  });
+
+  it("레이트리밋에 걸리면 발급을 중단한다 (경고만 찍고 지나가지 않는다)", () => {
+    expect(ISSUE).toMatch(/if \(!\(await passIssueRateLimit\([\s\S]{0,40}?\)\)\) \{[\s\S]{0,160}?throw new HttpsError/);
+  });
+
+  it("⭐ 역할 계정에는 실행권을 만들지 않는다", () => {
+    expect(ISSUE).toMatch(/rewardsEnabled === true && !hasRole/);
+    // 지급 쪽 역할 검사와 같은 세 필드를 본다 — 한쪽만 늘면 다시 어긋난다.
+    for (const f of ["isSuperAdmin", "isAdmin", "isTeacher"]) {
+      expect(ISSUE).toMatch(new RegExp(`userData\\?\\.${f} === true`));
+    }
+  });
+
+  it("발급 버킷은 해시 키를 쓴다 (uid 원문이 경로에 안 들어간다)", () => {
+    expect(H).toMatch(/aapRateLimits"\)\.doc\(R\.bucketKeyForUid\(uid\)\)/);
+  });
+
+  it("발급 버킷은 발급용 설정을 넘긴다", () => {
+    expect(H).toMatch(/R\.consumeBucket\([\s\S]{0,120}?R\.TOKEN_RATE_LIMIT/);
+  });
+
+  it("두 함수 모두 동시 인스턴스 천장이 있다 (레이트리밋은 청구액을 못 막는다)", () => {
+    expect(H).toMatch(/const MAX_INSTANCES = \d+;/);
+    expect(after(H, "exports.issueAppToken = onCall(")).toMatch(/maxInstances: MAX_INSTANCES/);
+    expect(after(H, "exports.grantAppReward = onRequest(")).toMatch(/maxInstances: MAX_INSTANCES/);
   });
 });
