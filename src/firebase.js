@@ -51,6 +51,9 @@ export {
   subscribeToCollection,
   // 학급 구성원
   getClassmates,
+  // 학습앱(AAP) 교사 화면 조회
+  fetchPlatformAlerts,
+  fetchClassLearningStats,
   // 활동 로그 & 거래
   addActivityLog,
   addTransaction,

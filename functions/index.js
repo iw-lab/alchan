@@ -67,6 +67,7 @@ exports.aapDiscovery = aap.aapDiscovery; // 규약 상수 디스커버리(제작
 exports.grantAppReward = aap.grantAppReward; // 학습앱 보상 지급(AAP 토큰 → 1회용 실행권 → 지급)
 exports.clawbackAppReward = aap.clawbackAppReward; // 잘못 나간 학습앱 보상 되돌리기(소각 — 국고 적립 아님)
 exports.recordLearningEvent = aap.recordLearningEvent; // 학습기록 — 원시 이벤트 + 학생×앱×일 집계(돈 아님)
+exports.listAppRewards = aap.listAppRewards; // 지급 원장 조회(교사 화면 — 환수할 건을 지목하는 유일한 길)
 
 // 🔥 경제 이벤트 시스템
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)

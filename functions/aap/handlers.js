@@ -22,6 +22,8 @@ const {
 } = require("./policy");
 const { grantAppReward } = require("./reward");
 const { clawbackAppReward, ClawbackDenied, clawbackError } = require("./clawback");
+const { listAppRewards, GrantsDenied } = require("./grants");
+const { queryError } = require("./grantsQuery");
 const { recordLearningEvent, LearningDenied } = require("./learning");
 const L = require("./learningRules");
 const R = require("./rewardRules");
@@ -336,6 +338,28 @@ exports.clawbackAppReward = onCall({ region: REGION, maxInstances: MAX_INSTANCES
     if (e instanceof ClawbackDenied) {
       logger.warn(`[AAP] 환수 거부 by=${uid} 사유=${e.reason}`);
       const hit = clawbackError(e.reason);
+      throw new HttpsError(hit[0], hit[1]);
+    }
+    throw e;
+  }
+});
+
+// 🧾 지급 원장 조회 진입점 (P1-5). 읽기 전용 — 여기서 돈이 움직이는 일은 없다.
+//
+//    ⚠️ 학급 스코프는 `grantsQuery.normalizeQuery` 가 **호출자 문서의 classCode 로 고정**한다.
+//       요청이 보낸 classCode 는 슈퍼관리자일 때만 의미가 있다.
+exports.listAppRewards = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, async (request) => {
+  const { uid, classCode, isSuperAdmin } = await checkAuthAndGetUserData(request, true);
+  try {
+    return await listAppRewards({
+      callerClass: classCode,
+      isSuperAdmin,
+      data: request.data,
+    });
+  } catch (e) {
+    if (e instanceof GrantsDenied) {
+      logger.warn(`[AAP] 원장 조회 거부 by=${uid} 사유=${e.reason}`);
+      const hit = queryError(e.reason);
       throw new HttpsError(hit[0], hit[1]);
     }
     throw e;

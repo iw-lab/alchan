@@ -106,6 +106,10 @@ const AdminDatabase = lazyWithRetry(
 const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
+// 🧭 학습앱 현황(P1-5) — 학급 학습기록·보상 지급·환수. 파일럿 게이트 ②가 이 화면이다.
+const AppRewardDashboard = lazyWithRetry(
+  () => import("../pages/admin/AppRewardDashboard"),
+);
 const AdminPermissionManager = lazyWithRetry(
   () => import("../pages/admin/AdminPermissionManager"),
 );
@@ -827,6 +831,14 @@ export default function AlchanLayout() {
                 <Route
                   path="/admin/items"
                   element={<Navigate to="/item-shop" replace />}
+                />
+                <Route
+                  path="/admin/learning-apps"
+                  element={
+                    <AdminRoute>
+                      <AppRewardDashboard />
+                    </AdminRoute>
+                  }
                 />
                 <Route
                   path="/admin/economic-events"

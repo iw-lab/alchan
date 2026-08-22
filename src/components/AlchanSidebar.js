@@ -48,6 +48,7 @@ import {
   Sparkles,
   Globe,
   MessageSquare,
+  Activity,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
 import {
@@ -406,6 +407,14 @@ export const ALCHAN_MENU_ITEMS = [
     label: "데이터베이스",
     icon: FileText,
     path: "/admin/activity-log",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
+  {
+    id: "learningApps",
+    label: "학습앱 현황",
+    icon: Activity,
+    path: "/admin/learning-apps",
     parentId: "adminCategory",
     adminOnly: true,
   },

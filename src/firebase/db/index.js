@@ -18,6 +18,12 @@ export {
   fetchPendingJobIds,
 } from './jobApplications';
 
+// 학습앱(AAP) 교사 화면 조회 — 읽기 전용
+export {
+  fetchPlatformAlerts,
+  fetchClassLearningStats,
+} from './learningApps';
+
 // User functions
 export {
   addActivityLog,
