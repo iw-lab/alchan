@@ -87,6 +87,34 @@ function validateLaunchUrl(raw) {
 }
 
 /**
+ * 👤 `nick` 클레임에 **무엇을 실을지** 정한다. 안 실을 때는 빈 문자열.
+ *
+ * 왜 순수 함수로 꺼냈나: 이건 "아이 실명이 외부로 나가는가"를 가르는 판정이다.
+ * 핸들러 안에 인라인으로 두면 소스 grep 으로밖에 못 지킨다 — 실제 입력을 넣어
+ * 결과를 보는 테스트가 붙어야 하는 종류다.
+ *
+ * 🔴 **`hasSetNickname` 만으로는 부족하다**(2026-08-22 라이브 실측).
+ *    그 플래그가 보장하는 건 "학생이 직접 입력했다"뿐이고 "실명이 아니다"가 아니다.
+ *    닉네임을 정한 41명 중 **27명(66%)이 `nickname` 과 `name` 이 글자 그대로 같았다** —
+ *    아이들은 자기 이름을 적는다. 그대로 켰으면 학생 3분의 2의 실명이 외부 앱으로 갔다.
+ *
+ * ⚠️ **완전한 방어가 아니다.** `name` 이 비어 있거나 ID 인 학생의 닉네임이 우연히 실명이면
+ *    여전히 나간다. 가장 흔한 경로를 막을 뿐이라, 이 클레임은 앱별 심사 후에만 켠다.
+ *
+ * @param {object} userData 사용자 문서
+ * @return {string} 실을 닉네임(안 실으면 "")
+ */
+function chooseNickClaim(userData) {
+  if (userData?.hasSetNickname !== true) return "";
+  const nick = typeof userData?.nickname === "string" ? userData.nickname.trim() : "";
+  if (!nick) return "";
+  const name = typeof userData?.name === "string" ? userData.name.trim() : "";
+  // 이름과 같으면 안 싣는다. 판정할 수 없을 때는 주지 않는다.
+  if (name && nick === name) return "";
+  return nick.slice(0, 20);
+}
+
+/**
  * 정책이 허용한 선택 클레임만 골라낸다(코드 화이트리스트 ∩ 정책 목록).
  *
  * @param {object} policy 정책 문서
@@ -125,6 +153,7 @@ async function isAppLockedForClass(classCode, appId) {
 module.exports = {
   APP_ID_RE,
   ALLOWED_OPTIONAL_CLAIMS,
+  chooseNickClaim,
   readAppPolicy,
   checkPolicyOpen,
   validateLaunchUrl,

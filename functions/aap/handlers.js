@@ -18,6 +18,7 @@ const {
   checkPolicyOpen,
   validateLaunchUrl,
   resolveOptionalClaims,
+  chooseNickClaim,
   isAppLockedForClass,
 } = require("./policy");
 const { grantAppReward } = require("./reward");
@@ -115,12 +116,22 @@ exports.issueAppToken = onCall({ region: REGION, maxInstances: MAX_INSTANCES }, 
       //    개별 학생 추가 화면(`src/components/StudentManager.js`)은 라벨이 "학생 이름",
       //    placeholder 가 "홍길동" 이라 교사가 실명을 넣는 경로가 실제로 있다
       //    (일괄 생성 경로는 반대로 ID 만 쓴다 — 같은 필드에 두 종류가 섞여 있다).
-      //    학생이 **스스로 정한 닉네임**(hasSetNickname)일 때만 그 값이 닉네임임이 보장된다.
       //    계획서 §5.3: AAP 클레임에 실명·학번을 넣지 않는다.
-      const chosen =
-        userData?.hasSetNickname === true && typeof userData?.nickname === "string"
-          ? userData.nickname.trim().slice(0, 20)
-          : "";
+      //
+      // 🔴 **`hasSetNickname` 만으로는 부족하다** (2026-08-22 라이브 실측으로 확인).
+      //    예전 주석은 "학생이 스스로 정한 닉네임일 때만 그 값이 닉네임임이 **보장**된다"고
+      //    적혀 있었는데 **거짓이었다.** 그 플래그가 보장하는 건 "학생이 직접 입력했다"뿐이고,
+      //    아이들은 자기 이름을 적는다 — 닉네임을 정한 41명 중 **27명(66%)이 `nickname`
+      //    과 `name` 이 글자 그대로 같았다.** 이 클레임을 켰다면 학생 3분의 2의 실명이
+      //    외부 앱으로 나갔다.
+      //
+      //    → 이름과 **같으면 안 싣는다.** 그 학생은 `nick` 없이 나가고, 앱은 이름 없는
+      //      표시로 떨어진다(그게 실명이 나가는 것보다 낫다). 판정할 수 없을 때는 안 준다.
+      //    ⚠️ 이건 휴리스틱이다 — `name` 이 비어 있거나 ID 인 학생의 닉네임이 우연히
+      //      실명이면 여전히 나간다. 완전한 방어가 아니라 **가장 흔한 경로를 막는 것**이다.
+      //      그래서 이 클레임은 여전히 앱별 심사 후에만 켠다.
+      //    판정은 `policy.chooseNickClaim` 에 있다 — 순수 함수라 실제 입력으로 테스트된다.
+      const chosen = chooseNickClaim(userData);
       if (chosen) extra.nick = chosen;
     } else if (claim === "cls") {
       // ⚠️ 학급코드 원본이 아니라 **앱별 pairwise 값**이다. 앱은 "같은 반끼리 묶기"만

@@ -16,6 +16,7 @@
  *   node scripts/ops/aap-switch.mjs rewards-off <appId>  # 💸 보상 지급 끄기
  *   node scripts/ops/aap-switch.mjs cap <appId> <현금> <쿠폰>  # 하루 상한(학생 1명 기준)
  *   node scripts/ops/aap-switch.mjs url <appId> <https://...>  # 🔗 실행 주소(정책+사이드바 동시)
+ *   node scripts/ops/aap-switch.mjs claims <appId> <none|nick|cls|nick,cls>  # 👤 선택 클레임
  *   node scripts/ops/aap-switch.mjs stats-on <appId>     # 📚 학습기록 켜기(statsEnabled=true)
  *   node scripts/ops/aap-switch.mjs stats-off <appId>    # 📚 학습기록 끄기
  *   node scripts/ops/aap-switch.mjs breaker-reset <appId>  # 🔓 자동 차단기 해제(오늘만)
@@ -90,10 +91,10 @@ async function syncRegistryHint(id, want) {
 const [cmd, appId, ...rest] = process.argv.slice(2);
 // ⚠️ 허용 **목록**으로 판정한다. `cmd in COMMANDS` 는 `"constructor"` 같은 프로토타입 키에서
 //    참이 되어(Object.prototype) 아래 조회가 엉뚱한 값을 집는다 — 같은 함정을 P1-7 에서 겪었다.
-const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "stats-on", "stats-off", "cap", "url", "breaker-reset", "off-all"];
+const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "stats-on", "stats-off", "cap", "url", "claims", "breaker-reset", "off-all"];
 const NEEDS_APP = !["list", "off-all"].includes(cmd);
 if (!COMMANDS.includes(cmd) || (NEEDS_APP && !appId)) {
-  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | stats-on <appId> | stats-off <appId> | cap <appId> <현금> <쿠폰> | url <appId> <주소> | breaker-reset <appId> | off-all");
+  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | stats-on <appId> | stats-off <appId> | cap <appId> <현금> <쿠폰> | url <appId> <주소> | claims <appId> <none|nick|cls|nick,cls> | breaker-reset <appId> | off-all");
   process.exit(2);
 }
 
@@ -104,7 +105,7 @@ if (cmd === "list") {
   const docs = r.documents || [];
   if (docs.length === 0) { console.log("등록된 앱 정책이 없습니다. seed-app-policies.mjs 를 먼저 실행하세요."); process.exit(0); }
   console.log(`앱 정책 ${docs.length}개\n`);
-  console.log("  상태     이관  보상  기록   등급  appId                   하루상한(현금/쿠폰)  실행URL");
+  console.log("  상태     이관  보상  기록  클레임    등급  appId                   하루상한(현금/쿠폰)  실행URL");
   for (const d of docs.sort((a, b) => a.name.localeCompare(b.name))) {
     const f = d.fields || {};
     const id = d.name.split("/").pop();
@@ -114,11 +115,14 @@ if (cmd === "list") {
     const rew = f.rewardsEnabled?.booleanValue === true ? "💸" : "· ";
     // 학습기록도 실행권 문서를 만든다 — 목록에 없으면 "왜 실행권이 생기지?" 를 못 푼다.
     const sta = f.statsEnabled?.booleanValue === true ? "📚" : "· ";
+    // 👤 선택 클레임은 **학생 데이터가 나가는 유일한 스위치**다. 목록에 안 보이면
+    //    켜 놓고 잊는다 — 잊히면 안 되는 종류라 등급 옆에 같이 찍는다.
+    const claims = (f.allowedClaims?.arrayValue?.values || []).map((v) => v.stringValue).join("+") || "·";
     // integerValue 는 REST 에서 **문자열**로 온다. Number() 로 세우지 않으면 "0" 이 truthy 다.
     const cashCap = Number(f.dailyCashCap?.integerValue ?? 0);
     const couponCap = Number(f.dailyCouponCap?.integerValue ?? 0);
     const caps = `${cashCap.toLocaleString("ko-KR")}/${couponCap}`.padEnd(19);
-    console.log(`  ${on}  ${mig}   ${rew}   ${sta}    ${(f.trustLevel?.stringValue || "?").padEnd(4)}  ${id.padEnd(22)} ${caps} ${f.launchUrl?.stringValue || ""}`);
+    console.log(`  ${on}  ${mig}   ${rew}   ${sta}  ${claims.padEnd(8)} ${(f.trustLevel?.stringValue || "?").padEnd(4)}  ${id.padEnd(22)} ${caps} ${f.launchUrl?.stringValue || ""}`);
   }
   // 🔎 드리프트 탐지 — 정책과 사이드바 힌트가 어긋나면 그 자리에서 말한다.
   //    "맞추라"고 산문으로 적어 두는 것보다 **어긋난 걸 보여 주는 쪽**이 값이 크다.
@@ -150,6 +154,7 @@ if (cmd === "list") {
   console.log("\n  이관 ✅ = AAP 토큰이 나가는 앱. `·` 는 아직 그냥 링크로만 열린다.");
   console.log("  보상 💸 = 지급이 켜진 앱. 상한이 0 이면 켜져 있어도 한 푼도 안 나간다.");
   console.log("  기록 📚 = 학습기록이 켜진 앱. 보상이 꺼져 있어도 이게 켜져 있으면 실행권이 생긴다.");
+  console.log("  클레임 = 토큰에 실리는 **학생 데이터**. `·` 는 아무것도 안 나간다(기본).");
   process.exit(0);
 }
 
@@ -207,6 +212,45 @@ if (cmd === "breaker-reset") {
   console.log(`🔓 ${appId} → 차단기 해제 (오늘 ${kstDay} 한정) · 보상 다시 켜짐`);
   console.log("   자정(KST)에 override 는 저절로 만료된다. 하드캡은 그대로 살아 있다.");
   console.log("   ⚠️ 왜 끊겼는지 확인하지 않았다면 지금 로그를 볼 것: platformAlerts 컬렉션");
+  process.exit(0);
+}
+
+if (cmd === "claims") {
+  // 👤 **학생 데이터를 앱에 더 주는 스위치다.** 기본은 아무것도 안 준다(§3.2 C21).
+  //
+  //    · `nick` = 학생이 **스스로 정한** 닉네임. 실명이 아니다 — 서버가 `hasSetNickname`
+  //      으로 가른다(교사가 실명을 넣을 수 있는 `name` 필드는 절대 안 나간다).
+  //    · `cls`  = 학급의 **앱별 pairwise 값**. 학급코드 원문이 아니라 "같은 반끼리 묶기"만 된다.
+  //
+  //    🔴 코드의 화이트리스트(`functions/aap/policy.js` ALLOWED_OPTIONAL_CLAIMS)와 교집합만
+  //       실린다. 여기 이상한 값을 써도 서버가 안 싣지만, **여기서도 막는다** — 문서에
+  //       쓰레기가 남으면 다음 사람이 "이건 왜 안 나가지"로 시간을 쓴다.
+  const KNOWN = ["nick", "cls"];
+  const raw = (rest[0] || "").trim();
+  const list = raw === "none" ? [] : raw.split(",").map((x) => x.trim()).filter(Boolean);
+  const bad = list.filter((c) => !KNOWN.includes(c));
+  if (!raw || bad.length > 0 || new Set(list).size !== list.length) {
+    console.error("사용법: aap-switch.mjs claims <appId> <none|nick|cls|nick,cls>");
+    if (bad.length) console.error(`  · 모르는 클레임: ${bad.join(", ")} (가능: ${KNOWN.join(", ")})`);
+    process.exit(2);
+  }
+  const url =
+    `${BASE}/platformAppPolicies/${encodeURIComponent(appId)}?updateMask.fieldPaths=allowedClaims`;
+  const res = await fetch(url, {
+    method: "PATCH", headers: H,
+    body: JSON.stringify({
+      fields: { allowedClaims: { arrayValue: { values: list.map((c) => ({ stringValue: c })) } } },
+    }),
+  });
+  if (!res.ok) {
+    console.error(`✗ 실패 ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    process.exit(1);
+  }
+  console.log(`${appId} → 선택 클레임 ${list.length ? list.join(", ") : "(없음)"}`);
+  if (list.includes("nick")) console.log("  👤 학생이 스스로 정한 닉네임이 나갑니다 — 실명은 나가지 않습니다");
+  if (list.includes("cls")) console.log("  👥 학급 pairwise 값이 나갑니다 — 학급코드 원문은 아닙니다");
+  if (!list.length) console.log("  · 이제 아무 선택 클레임도 싣지 않습니다");
+  console.log("  ⚠️ 이미 발급된 토큰(최대 5분)에는 옛 설정이 그대로 들어 있습니다");
   process.exit(0);
 }
 

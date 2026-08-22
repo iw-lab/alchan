@@ -239,15 +239,52 @@ describe("I2 — 학생이 앱 사이로 추적되지 않는다", () => {
     }
   });
 
-  it("⭐ nick 은 학생이 **스스로 정한 닉네임**일 때만 나간다 (실명 유출 차단)", () => {
-    // 이 앱의 `users.name` 에는 두 종류가 섞여 있다: 일괄 생성은 ID, 개별 추가는
-    // 교사가 넣은 실명("학생 이름" / placeholder "홍길동"). 그래서 name 을 그대로
-    // 보내면 초등학생 실명이 제3자 호스팅으로 나간다(계획서 §5.3 위반).
+  it("⭐ nick 판정은 핸들러에 인라인이 아니라 **테스트 가능한 순수 함수**로 있다", () => {
+    // 실명이 나가는지를 가르는 판정이라 소스 grep 으로 지킬 물건이 아니다.
     const H = codeOnly(HANDLERS);
-    expect(H).toMatch(/userData\?\.hasSetNickname === true/);
-    expect(H).toMatch(/userData\.nickname/);
+    expect(H).toMatch(/chooseNickClaim\(userData\)/);
     // name 을 nick 클레임에 직접 싣는 경로가 없어야 한다.
     expect(H).not.toMatch(/extra\.nick\s*=\s*[^;]*userData\??\.?name/);
+  });
+
+  describe("⭐ chooseNickClaim — 초등학생 실명이 외부 앱으로 나가지 않게", () => {
+    const pick = (u) => policy.chooseNickClaim(u);
+
+    it("스스로 정했고 이름과 다르면 내보낸다", () => {
+      expect(pick({ hasSetNickname: true, nickname: "별똥별", name: "김철수" })).toBe("별똥별");
+    });
+
+    it("🔴 닉네임이 이름과 같으면 **안 내보낸다** — 실측 41명 중 27명이 이 경우였다", () => {
+      // `hasSetNickname` 은 "학생이 직접 입력했다"만 보장한다. 아이들은 자기 이름을 적는다.
+      // 이 한 줄이 없으면 학생 3분의 2의 실명이 나간다(2026-08-22 라이브 실측).
+      expect(pick({ hasSetNickname: true, nickname: "김철수", name: "김철수" })).toBe("");
+    });
+
+    it("🔴 공백만 다른 경우도 막는다 — trim 전에 비교하면 뚫린다", () => {
+      expect(pick({ hasSetNickname: true, nickname: " 김철수 ", name: "김철수" })).toBe("");
+      expect(pick({ hasSetNickname: true, nickname: "김철수", name: " 김철수" })).toBe("");
+    });
+
+    it("플래그가 없으면 무엇이든 안 내보낸다 (교사가 넣은 값일 수 있다)", () => {
+      expect(pick({ hasSetNickname: false, nickname: "별똥별", name: "김철수" })).toBe("");
+      expect(pick({ nickname: "별똥별" })).toBe("");
+    });
+
+    it("빈 닉네임·비문자열은 안 내보낸다", () => {
+      expect(pick({ hasSetNickname: true, nickname: "   ", name: "김철수" })).toBe("");
+      expect(pick({ hasSetNickname: true, nickname: 42, name: "김철수" })).toBe("");
+      expect(pick({ hasSetNickname: true })).toBe("");
+    });
+
+    it("20자로 자른다", () => {
+      expect(pick({ hasSetNickname: true, nickname: "가".repeat(30), name: "김철수" })).toHaveLength(20);
+    });
+
+    it("⚠️ 완전한 방어가 아니다 — 이름 필드가 없으면 대조할 게 없다(문서화된 한계)", () => {
+      // 일괄 생성 학생은 `name` 이 ID 라 이 대조가 안 통한다. 그래서 이 클레임은
+      // 앱별 심사 후에만 켠다 — 코드가 다 막아 준다고 믿으면 안 된다.
+      expect(pick({ hasSetNickname: true, nickname: "김철수" })).toBe("김철수");
+    });
   });
 
   it("cls 는 학급코드 원문이 아니라 앱별 pairwise 값이다", () => {
