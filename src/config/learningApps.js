@@ -24,7 +24,16 @@ export const LEARNING_APP_ICONS = {
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
 
-/** 레지스트리 문서가 없을 때 쓰는 기본값 = 2026-08-17 시점의 하드코딩 목록 그대로. */
+/**
+ * 레지스트리 문서가 없을 때 쓰는 기본값 = 2026-08-17 시점의 하드코딩 목록.
+ *
+ * ⚠️ 2026-08-22: 구구성 수호대의 URL 을 `iw-lab.github.io` → `gugu-guardians.pages.dev`
+ *    로 고쳤다. **교육청 네트워크가 github.io 를 통째로 막는다**(ERR_TIMED_OUT — 누구나
+ *    올릴 수 있는 도메인이라 필터가 도메인 단위로 차단한 것으로 보인다). 앱 저장소는
+ *    2026-08-21 에 Cloudflare Pages 로 옮겼는데 **알찬 쪽 주소가 그대로였다** — 학교에서
+ *    누르면 아무것도 안 열리는 상태였다. 여긴 폴백일 뿐이고 정본은 `platformApps/_registry`
+ *    와 `platformAppPolicies/{appId}.launchUrl` 이라 **셋을 같이** 고쳐야 한다.
+ */
 export const DEFAULT_LEARNING_APPS = [
   { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/coloring" },
   { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://papersky.pages.dev/" },
@@ -35,7 +44,10 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteVocawormDefense",   label: "보카웜 디펜스(영어단어)", icon: "Gamepad2",   url: "https://vocaworm-defense.vercel.app/" },
   { id: "siteAraharu",           label: "아라하루(아침학습)",      icon: "Sparkles",   url: "https://araharu-ecp.pages.dev/" },
   { id: "siteMathCastle",        label: "수학성 수호자(수학)",     icon: "Castle",     url: "https://mathcastle.pages.dev/" },
-  { id: "siteGuguGuardians",     label: "구구성 수호대(구구단)",   icon: "Shield",     url: "https://iw-lab.github.io/gugu-guardians/" },
+  { id: "siteGuguGuardians",     label: "구구성 수호대(구구단)",   icon: "Shield",     url: "https://gugu-guardians.pages.dev/" },
+  // 레지스트리에만 있고 여기 없어서 **폴백이 낡아 있었다**(2026-08-22 씨앗 가드가 잡았다).
+  // 레지스트리를 못 읽는 날엔 학생 사이드바에서 이 앱만 사라졌다.
+  { id: "siteChromaFall",        label: "크로마폴(색채 퍼즐)",      icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
@@ -68,6 +80,12 @@ export function normalizeLearningApps(raw) {
       label: label.trim(),
       icon: LEARNING_APP_ICONS[a.icon] || Globe,
       externalUrl: parsed.href,
+      // 🚪 AAP 이관 힌트. **권위가 아니다** — "토큰을 물어볼 가치가 있나"만 정한다.
+      //    진짜 판정은 서버의 `platformAppPolicies.aapEnabled` 하나뿐이고, 이 값이
+      //    틀려도 안전한 쪽으로 떨어진다(켜져 있는데 서버가 거부 → 그냥 링크로).
+      //    ⚠️ 그래서 이관 스위치(`aap-switch.mjs migrate`)가 이 플래그를 **같이** 쓴다 —
+      //       두 원장을 사람이 맞추게 두면 반드시 어긋난다(이 저장소의 반복 결함).
+      aap: a.aap === true,
       parentId: LEARNING_SITES_CATEGORY_ID,
     });
     if (out.length >= MAX_APPS) break;
@@ -75,7 +93,26 @@ export function normalizeLearningApps(raw) {
   return out;
 }
 
-/** 폴백(기본 목록)을 메뉴 아이템 형태로. 정규화 경로를 그대로 타서 두 경로가 어긋나지 않게 한다. */
+/**
+ * 폴백(기본 목록)을 메뉴 아이템 형태로. 정규화 경로를 그대로 타서 두 경로가 어긋나지 않게 한다.
+ *
+ * 🔴 **`aapUnknown` 을 붙인다 — 이 목록은 이관 여부를 알 수가 없다.**
+ *
+ *    이관 여부의 진실은 Firestore(`platformAppPolicies.aapEnabled` → 레지스트리 `aap`)에
+ *    있는데 이건 **코드**다. 여기 `aap: true` 를 박으면 낡은 배포가 거짓말을 하고,
+ *    `false` 로 두면 **이관된 앱이 토큰 없이 열린다** — 학생은 문제를 풀고 기록·보상만
+ *    조용히 실패한다(이 규약이 막으려던 바로 그 실패다).
+ *
+ *    폴백이 실제로 쓰이는 창은 좁지 않다(2026-08-22 Gemini 레인 발견 · 직접 확인):
+ *      ① `AlchanSidebar.js` 의 **첫 페인트** — `useState(() => getLearningAppItems())` 는
+ *         캐시가 없으면 폴백을 준다. 즉 **세션마다** 레지스트리가 도착하기 전 창이 열린다.
+ *      ② 레지스트리 조회 실패(학교 와이파이 순단) → 그 세션 내내 폴백.
+ *      ③ 문서가 비었을 때 → 폴백 + 빈 값이 12시간 세션 캐시에 남는다.
+ *
+ *    → 그래서 `false`(= 안 물어본다)가 아니라 **"모른다"** 라고 말한다. 모르면 서버에
+ *      물어보고, 서버가 "이관 안 됐다"고 하면 그때 그냥 링크로 연다. 비용은 그 좁은
+ *      창에서의 왕복 1회뿐이고, 대신 **조용한 실패가 구조적으로 불가능해진다.**
+ */
 export function defaultLearningAppItems() {
-  return normalizeLearningApps(DEFAULT_LEARNING_APPS);
+  return normalizeLearningApps(DEFAULT_LEARNING_APPS).map((item) => ({ ...item, aapUnknown: true }));
 }

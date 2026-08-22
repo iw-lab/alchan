@@ -15,6 +15,7 @@
  *   node scripts/ops/aap-switch.mjs rewards-on <appId>   # 💸 보상 지급 켜기(rewardsEnabled=true)
  *   node scripts/ops/aap-switch.mjs rewards-off <appId>  # 💸 보상 지급 끄기
  *   node scripts/ops/aap-switch.mjs cap <appId> <현금> <쿠폰>  # 하루 상한(학생 1명 기준)
+ *   node scripts/ops/aap-switch.mjs url <appId> <https://...>  # 🔗 실행 주소(정책+사이드바 동시)
  *   node scripts/ops/aap-switch.mjs stats-on <appId>     # 📚 학습기록 켜기(statsEnabled=true)
  *   node scripts/ops/aap-switch.mjs stats-off <appId>    # 📚 학습기록 끄기
  *   node scripts/ops/aap-switch.mjs breaker-reset <appId>  # 🔓 자동 차단기 해제(오늘만)
@@ -41,13 +42,58 @@ import { firestoreBase, authHeaders } from "./_firestore-rest.mjs";
 
 const BASE = firestoreBase();
 
+/**
+ * 🔗 사이드바 레지스트리의 이관 힌트를 정책과 **같은 명령으로** 맞춘다.
+ *
+ * 왜 필요한가: 클라이언트는 앱을 누를 때마다 CF 를 부를 수 없어(10개 앱에 왕복을 물리면
+ * 그게 곧 지연이다) "이 앱이 이관됐나"를 레지스트리 힌트로 먼저 거른다. 그런데 그 힌트와
+ * 정책의 `aapEnabled` 가 **두 벌의 원장**이 되는 순간, 사람이 한쪽만 고치는 날이 온다.
+ * 이 저장소는 그 사고를 이미 겪었다(같은 도메인 값을 두 스토어가 각자 갱신).
+ *
+ * → 그래서 원장을 하나로 만들지 못한다면(클라가 정책을 못 읽는다) **쓰는 손을 하나로**
+ *   만든다. `migrate`/`unmigrate` 가 두 문서를 같이 쓴다.
+ *
+ * ⚠️ 방향이 중요하다. 힌트가 **꺼져 있는데 정책이 켜진** 경우가 위험하다 —
+ *    학생이 토큰 없이 앱을 열어 기록·보상만 조용히 실패한다. 반대(힌트 켜짐·정책 꺼짐)는
+ *    서버가 `not_migrated` 로 거부하고 그냥 링크로 떨어져 무해하다.
+ *
+ * @param {string} id appId
+ * @param {boolean} want 원하는 힌트 값
+ * @return {Promise<string>} 사람이 읽을 결과 한 줄
+ */
+async function syncRegistryHint(id, want) {
+  const url = `${BASE}/platformApps/_registry`;
+  const snap = await fetch(url, { headers: H });
+  if (snap.status === 404) return "  ⚠️ 레지스트리 문서가 없습니다 — 사이드바는 코드 폴백으로 뜹니다. seed-app-registry.mjs 를 실행하세요.";
+  if (!snap.ok) return `  ⚠️ 레지스트리를 읽지 못했습니다(${snap.status}) — 힌트가 어긋난 채로 남습니다.`;
+  const doc = await snap.json();
+  const arr = doc.fields?.apps?.arrayValue?.values || [];
+  let found = false;
+  for (const v of arr) {
+    const f = v.mapValue?.fields;
+    if (f?.id?.stringValue !== id) continue;
+    found = true;
+    if ((f.aap?.booleanValue === true) === want) return `  · 레지스트리 힌트는 이미 ${want ? "켜짐" : "꺼짐"}`;
+    f.aap = { booleanValue: want };
+  }
+  if (!found) return `  ⚠️ 레지스트리에 ${id} 가 없습니다 — 사이드바에 안 보이는 앱입니다.`;
+
+  // 읽고-고쳐-쓰기다. 그 사이 남이 고쳤으면 **덮어쓰지 않고 실패**한다.
+  const res = await fetch(`${url}?currentDocument.updateTime=${encodeURIComponent(doc.updateTime)}&updateMask.fieldPaths=apps`, {
+    method: "PATCH", headers: H,
+    body: JSON.stringify({ fields: { apps: { arrayValue: { values: arr } } } }),
+  });
+  if (!res.ok) return `  ⚠️ 레지스트리 갱신 실패(${res.status}) — 다시 실행하세요. 정책만 바뀐 상태입니다.`;
+  return `  🔗 레지스트리 힌트 → ${want ? "켜짐(토큰과 함께 연다)" : "꺼짐(그냥 링크로 연다)"}`;
+}
+
 const [cmd, appId, ...rest] = process.argv.slice(2);
 // ⚠️ 허용 **목록**으로 판정한다. `cmd in COMMANDS` 는 `"constructor"` 같은 프로토타입 키에서
 //    참이 되어(Object.prototype) 아래 조회가 엉뚱한 값을 집는다 — 같은 함정을 P1-7 에서 겪었다.
-const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "stats-on", "stats-off", "cap", "breaker-reset", "off-all"];
+const COMMANDS = ["list", "off", "on", "migrate", "unmigrate", "rewards-on", "rewards-off", "stats-on", "stats-off", "cap", "url", "breaker-reset", "off-all"];
 const NEEDS_APP = !["list", "off-all"].includes(cmd);
 if (!COMMANDS.includes(cmd) || (NEEDS_APP && !appId)) {
-  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | stats-on <appId> | stats-off <appId> | cap <appId> <현금> <쿠폰> | breaker-reset <appId> | off-all");
+  console.error("사용법: aap-switch.mjs list | off <appId> | on <appId> | migrate <appId> | unmigrate <appId> | rewards-on <appId> | rewards-off <appId> | stats-on <appId> | stats-off <appId> | cap <appId> <현금> <쿠폰> | url <appId> <주소> | breaker-reset <appId> | off-all");
   process.exit(2);
 }
 
@@ -74,6 +120,33 @@ if (cmd === "list") {
     const caps = `${cashCap.toLocaleString("ko-KR")}/${couponCap}`.padEnd(19);
     console.log(`  ${on}  ${mig}   ${rew}   ${sta}    ${(f.trustLevel?.stringValue || "?").padEnd(4)}  ${id.padEnd(22)} ${caps} ${f.launchUrl?.stringValue || ""}`);
   }
+  // 🔎 드리프트 탐지 — 정책과 사이드바 힌트가 어긋나면 그 자리에서 말한다.
+  //    "맞추라"고 산문으로 적어 두는 것보다 **어긋난 걸 보여 주는 쪽**이 값이 크다.
+  const reg = await fetch(`${BASE}/platformApps/_registry`, { headers: H });
+  // ⚠️ **"검사를 못 했다"와 "어긋난 게 없다"를 같은 화면으로 두지 않는다.** 조용히 넘어가면
+  //    운영자는 초록불로 읽는다(2026-08-22 Claude 레인).
+  if (!reg.ok) {
+    console.log(`\n  ⚠️ 레지스트리를 못 읽어(${reg.status}) 정책↔사이드바 대조를 **건너뛰었습니다** — 어긋난 게 없다는 뜻이 아닙니다.`);
+  } else {
+    const hint = new Map();
+    for (const v of ((await reg.json()).fields?.apps?.arrayValue?.values) || []) {
+      const f = v.mapValue?.fields;
+      if (f?.id?.stringValue) hint.set(f.id.stringValue, f.aap?.booleanValue === true);
+    }
+    const drift = docs
+      .map((d) => [d.name.split("/").pop(), d.fields?.aapEnabled?.booleanValue === true])
+      .filter(([id, pol]) => hint.has(id) && hint.get(id) !== pol);
+    if (drift.length > 0) {
+      console.log("\n  🔴 정책 ↔ 사이드바 힌트가 어긋난 앱:");
+      for (const [id, pol] of drift) {
+        const bad = pol && !hint.get(id);
+        console.log(`     ${bad ? "🔴" : "🟡"} ${id}: 정책 ${pol ? "이관됨" : "이관 안 됨"} / 힌트 ${hint.get(id) ? "켜짐" : "꺼짐"}` +
+          (bad ? "  ← 위험: 학생이 토큰 없이 열어 기록·보상이 조용히 실패합니다" : "  ← 무해: 서버가 거부하고 그냥 링크로 떨어집니다"));
+      }
+      console.log(`     고치기: node scripts/ops/aap-switch.mjs ${drift[0][1] ? "migrate" : "unmigrate"} ${drift[0][0]}`);
+    }
+  }
+
   console.log("\n  이관 ✅ = AAP 토큰이 나가는 앱. `·` 는 아직 그냥 링크로만 열린다.");
   console.log("  보상 💸 = 지급이 켜진 앱. 상한이 0 이면 켜져 있어도 한 푼도 안 나간다.");
   console.log("  기록 📚 = 학습기록이 켜진 앱. 보상이 꺼져 있어도 이게 켜져 있으면 실행권이 생긴다.");
@@ -137,6 +210,56 @@ if (cmd === "breaker-reset") {
   process.exit(0);
 }
 
+if (cmd === "url") {
+  // 🔗 실행 주소는 **두 곳**에 있다. 정책의 `launchUrl`(토큰이 향하는 곳, 서버가 정한다)과
+  //    레지스트리의 `url`(이관 전 그냥 링크). 둘이 어긋나면 같은 앱이 이관 여부에 따라
+  //    **다른 주소로 열린다.** 그래서 한 명령이 둘 다 쓴다.
+  //
+  // 🔴 실제로 어긋나 있었다(2026-08-22): 앱은 학교망이 `github.io` 를 막아 Cloudflare 로
+  //    옮겼는데 알찬 쪽 주소가 그대로였다 — 교실에서 누르면 아무것도 안 열렸다.
+  //    "앱을 옮겼다"와 "알찬이 그걸 안다"는 다른 문장이다.
+  const raw = rest[0];
+  let parsed;
+  try { parsed = new URL(raw); } catch { parsed = null; }
+  // ⚠️ `parsed.hash` 가 아니라 **원문의 `#`** 을 본다 — 트레일링 `#` 은 hash 가 빈 문자열인데
+  //    href 에는 남아, 서버가 토큰을 붙이면 `##aap=` 이 되어 앱이 토큰을 못 읽는다.
+  if (!parsed || parsed.protocol !== "https:" || raw.includes("#")) {
+    console.error("사용법: aap-switch.mjs url <appId> <https 주소>");
+    console.error("  · https 만 허용 · fragment(#) 가 있으면 거부 — 토큰 fragment 와 충돌한다");
+    process.exit(2);
+  }
+  const href = parsed.href;
+
+  const pRes = await fetch(
+    `${BASE}/platformAppPolicies/${encodeURIComponent(appId)}?updateMask.fieldPaths=launchUrl`,
+    { method: "PATCH", headers: H, body: JSON.stringify({ fields: { launchUrl: { stringValue: href } } }) },
+  );
+  if (!pRes.ok) {
+    console.error(`✗ 정책 갱신 실패 ${pRes.status}: ${(await pRes.text()).slice(0, 300)}`);
+    process.exit(1);
+  }
+  console.log(`${appId} → 실행 주소 ${href}`);
+  console.log("  🔒 정책(launchUrl) 갱신됨 — 토큰은 이제 이 주소로 나갑니다");
+
+  // 사이드바 쪽도 같이. 읽고-고쳐-쓰기라 그 사이 남이 고쳤으면 덮어쓰지 않고 실패한다.
+  const regUrl = `${BASE}/platformApps/_registry`;
+  const snap = await fetch(regUrl, { headers: H });
+  if (!snap.ok) { console.log(`  ⚠️ 레지스트리를 읽지 못했습니다(${snap.status}) — 사이드바 주소는 옛것 그대로입니다.`); process.exit(1); }
+  const doc = await snap.json();
+  const arr = doc.fields?.apps?.arrayValue?.values || [];
+  const hit = arr.find((v) => v.mapValue?.fields?.id?.stringValue === appId);
+  if (!hit) { console.log(`  ⚠️ 레지스트리에 ${appId} 가 없습니다 — 사이드바에 안 보이는 앱입니다.`); process.exit(0); }
+  if (hit.mapValue.fields.url?.stringValue === href) { console.log("  · 사이드바 주소는 이미 같습니다"); process.exit(0); }
+  hit.mapValue.fields.url = { stringValue: href };
+  const rRes = await fetch(`${regUrl}?currentDocument.updateTime=${encodeURIComponent(doc.updateTime)}&updateMask.fieldPaths=apps`, {
+    method: "PATCH", headers: H, body: JSON.stringify({ fields: { apps: { arrayValue: { values: arr } } } }),
+  });
+  if (!rRes.ok) { console.error(`  ⚠️ 사이드바 갱신 실패(${rRes.status}) — 정책만 바뀐 상태입니다. 다시 실행하세요.`); process.exit(1); }
+  console.log("  🔗 사이드바(레지스트리) 주소도 같이 갱신됨");
+  console.log("  ⚠️ src/config/learningApps.js 의 폴백은 코드다 — 배포해야 반영됩니다.");
+  process.exit(0);
+}
+
 if (cmd === "cap") {
   // 💰 하루 상한 = **학생 1명이 이 앱에서** 하루에 받을 수 있는 총량.
   //    코드의 절대 상한(functions/aap/rewardRules.js GLOBAL_CEILING)과 신뢰등급 상한 중
@@ -195,3 +318,18 @@ if (!res.ok) {
   process.exit(1);
 }
 console.log(`${appId} → ${patch.msg}`);
+
+// 🔗 이관 스위치는 사이드바 힌트까지 **같이** 옮긴다(위 syncRegistryHint 주석 참조).
+//
+// ⚠️ 실패하면 **0 으로 끝내지 않는다.** 이 명령을 `&&` 로 엮어 쓰는 사람에게 "정책만
+//    바뀌고 사이드바는 안 바뀐 상태"가 성공으로 보이면, 그게 바로 위험한 방향의
+//    드리프트다(학생이 토큰 없이 앱을 연다). 같은 파일의 `url` 명령과 관례를 맞춘다
+//    (2026-08-22 Claude 레인 — 한 파일 안에서 종료코드 관례가 갈려 있었다).
+if (cmd === "migrate" || cmd === "unmigrate") {
+  const line = await syncRegistryHint(appId, cmd === "migrate");
+  console.log(line);
+  if (line.includes("⚠️")) {
+    console.error("  ↑ 사이드바 힌트가 정책과 어긋난 채 남았습니다. 다시 실행하세요.");
+    process.exit(1);
+  }
+}

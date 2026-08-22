@@ -275,6 +275,13 @@ describe("I3 — 실행 URL 은 서버가 정한다", () => {
 
   it("⭐ 이미 fragment 가 있는 URL 은 거부된다 — 토큰이 먹히거나 덮어쓴다", () => {
     expect(policy.validateLaunchUrl("https://example.com/app#play")).toBeNull();
+    // 🔴 **트레일링 `#` 도 거부한다.** `new URL("https://x/#").hash` 는 빈 문자열이라
+    //    `parsed.hash` 검사만으로는 통과하는데, `href` 에는 `#` 이 남아 토큰을 붙이면
+    //    `https://x/##aap=…` 가 된다. 앱이 `hash.slice(1)` 로 파싱하면 키가 `#aap` 이 되어
+    //    **토큰을 영영 못 읽는다** — 서명도 정책도 멀쩡한데 학생만 조용히 못 받는다
+    //    (2026-08-22 codex 레인 NIT · 실측 확인).
+    expect(policy.validateLaunchUrl("https://example.com/app#")).toBeNull();
+    expect(policy.validateLaunchUrl("https://example.com/#")).toBeNull();
   });
 
   it("⭐ 자격증명(userinfo)이 붙은 URL 은 거부된다 — 검토자를 속이는 모양", () => {

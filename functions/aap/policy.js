@@ -73,7 +73,12 @@ function validateLaunchUrl(raw) {
     return null;
   }
   if (parsed.protocol !== "https:") return null;
-  if (parsed.hash) return null;
+  // ⚠️ `parsed.hash` 만 보면 **트레일링 `#`** 을 놓친다 — `new URL("https://x/#").hash` 는
+  //    빈 문자열인데 `href` 에는 `#` 이 남는다(실측). 그대로 두면 아래에서 토큰을 붙일 때
+  //    `https://x/##aap=…` 가 되고, 앱이 `hash.slice(1)` 로 파싱하면 키가 `#aap` 이 되어
+  //    **토큰을 영영 못 읽는다**(조용한 실패). 원문에 `#` 이 있으면 그냥 거부한다.
+  //    (2026-08-22 codex 레인 NIT — ops 쪽 검증에도 같은 구멍이 있었다)
+  if (raw.includes("#")) return null;
   // `https://진짜앱.example@evil.test/` 형태를 막는다. 브라우저는 `evil.test` 로 가는데
   // 콘솔에서 값을 훑는 사람 눈에는 앞쪽 호스트로 읽힌다 — 정책 문서를 검토하는 사람을
   // 속이는 모양이라 애초에 받지 않는다(정상적인 학습앱 URL 에 자격증명이 붙을 이유가 없다).

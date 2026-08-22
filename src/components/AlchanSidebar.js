@@ -58,6 +58,7 @@ import {
 } from "../services/learningAppRegistry";
 import globalCacheService from "../services/globalCacheService";
 import { toast } from "../utils/toast";
+import { launchLearningApp } from "../services/appLaunch";
 
 // ============================================
 // 앱 아이콘 컴포넌트 (export하여 다른 곳에서도 사용)
@@ -650,9 +651,13 @@ export default function AlchanSidebar({
 
   const handleItemClick = useCallback(
     (item) => {
-      // 외부 학습 사이트: 새 탭으로 이동(내부 라우팅과 분리, opener 격리)
+      // 외부 학습 사이트: 새 탭으로 이동(내부 라우팅과 분리, opener 격리).
+      // 🚪 이관된 앱은 **토큰과 함께** 연다 — `launchLearningApp` 이 그 분기를 안다.
+      //    ⚠️ `await` 하지 않는다. 기다리면 이 핸들러가 사용자 제스처 태스크를 벗어나고,
+      //       그 뒤의 `window.open` 은 Chrome 이 차단한다(2026-08-22 실측 — 6초 지연에서
+      //       실제로 막혔다). 다리 함수는 **첫 줄에서 동기로** 탭을 연다.
       if (item.externalUrl) {
-        window.open(item.externalUrl, "_blank", "noopener,noreferrer");
+        void launchLearningApp(item);
         if (isMobile) onClose?.();
         return;
       }

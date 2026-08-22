@@ -81,12 +81,48 @@ describe("normalizeLearningApps", () => {
 });
 
 describe("폴백 기본 목록", () => {
-  it("기본 10개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
-    expect(DEFAULT_LEARNING_APPS).toHaveLength(10);
-    expect(defaultLearningAppItems()).toHaveLength(10);
+  it("기본 11개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
+    // 절대 개수와 "하나도 안 떨어졌다"를 **둘 다** 본다. 앞은 항목이 실수로 지워지는 것을,
+    // 뒤는 정규화가 조용히 걸러 내는 것을 잡는다 — 뒤만 두면 목록이 비어도 통과한다.
+    expect(DEFAULT_LEARNING_APPS).toHaveLength(11);
+    expect(defaultLearningAppItems()).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
   it("기본 목록의 URL 은 전부 https 다", () => {
     for (const a of DEFAULT_LEARNING_APPS) expect(a.url.startsWith("https://")).toBe(true);
+  });
+
+  it("🔴 학교망이 막는 도메인을 쓰지 않는다", () => {
+    // 2026-08-21 교육청 네트워크가 `github.io` 를 통째로 막았다(ERR_TIMED_OUT — 누구나
+    // 올릴 수 있는 도메인이라 필터가 도메인 단위로 건다). 앱 두 개를 Cloudflare 로 옮겼는데
+    // **알찬 쪽 주소가 그대로여서** 교실에서 누르면 아무것도 안 열렸다.
+    // 앱을 옮기는 것과 알찬이 그걸 아는 것은 다른 일이라, 그 간극을 여기서 잡는다.
+    // ⚠️ 이건 폴백만 지킨다. 정본은 `platformApps/_registry` 라 운영 점검이 따로 필요하다
+    //    (`aap-switch.mjs list` 가 실행주소를 같이 찍는다).
+    const BLOCKED = ["github.io"];
+    for (const a of DEFAULT_LEARNING_APPS) {
+      const host = new URL(a.url).hostname;
+      for (const bad of BLOCKED) {
+        expect(host.endsWith(bad), `${a.id} 가 학교에서 막히는 도메인(${bad})을 씁니다: ${a.url}`).toBe(false);
+      }
+    }
+  });
+
+  it("🔴 폴백은 이관 여부를 **모른다고** 말한다 — false 로 뭉개면 조용한 실패가 난다", () => {
+    // 코드는 이관 여부를 알 수가 없다(진실은 Firestore 다). `false` 로 두면 이관된 앱이
+    // 토큰 없이 열려 기록·보상만 조용히 실패한다 — 사이드바 첫 페인트가 매 세션 폴백이라
+    // 그 창은 예외가 아니다.
+    for (const item of defaultLearningAppItems()) {
+      expect(item.aap).toBe(false);
+      expect(item.aapUnknown).toBe(true);
+    }
+  });
+
+  it("레지스트리에서 온 항목은 **모른다고 하지 않는다** — 거기엔 답이 있다", () => {
+    const [item] = normalizeLearningApps([
+      { id: "siteX", label: "테스트앱", icon: "Globe", url: "https://example.com/", aap: true },
+    ]);
+    expect(item.aap).toBe(true);
+    expect(item.aapUnknown).toBeUndefined();
   });
 });
