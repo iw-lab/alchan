@@ -39,6 +39,24 @@ import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 
+// completeGroupPurchase Cloud Function 도입 시점(2026-05-18, 1643a13).
+// 그 이전 캠페인은 클라이언트가 직접 지급했고 awardedAt 을 남기지 않으므로,
+// 필드 부재를 '지급 실패'로 읽으면 과거 기록 전부가 거짓 경고가 된다.
+// 라이브 검증(2026-08-24): 이 시점 이전 완료 6건 전부 awardedAt 부재,
+// 이후 완료 9건 전부 존재 — 경계에 걸치는 기록 0건.
+const AWARD_FLAG_SINCE = Date.parse("2026-05-18T00:00:00+09:00");
+
+const toMillis = (t) =>
+  t?.toDate ? t.toDate().getTime() : t ? Date.parse(t) : NaN;
+
+// 완료 캠페인인데 지급 CF 가 끝나지 않은 경우(= 학생이 아이템을 못 받음)를 판정한다.
+// CF 도입 이전 기록은 판정 근거가 없으므로 실패로 보지 않는다.
+const isAwardFailed = (c) => {
+  if (c.status !== "completed" || c.awardedAt) return false;
+  const done = toMillis(c.completedAt);
+  return !Number.isNaN(done) && done >= AWARD_FLAG_SINCE;
+};
+
 export default function GroupPurchase() {
   const { user, userDoc, isAdmin, optimisticUpdate } = useAuth();
   const { items } = useItems() || { items: [] };
@@ -89,11 +107,15 @@ export default function GroupPurchase() {
     fetchCampaigns();
   }, [fetchCampaigns]);
 
-  // 🔥 캠페인의 targetPrice를 상점 현재가로 실시간 동기화
+  // 🔥 진행 중 캠페인의 targetPrice를 상점 현재가로 실시간 동기화
   // 상점 가격 인상/인하 시 함께구매도 자동으로 따라감
+  // ⚠️ 완료 캠페인은 제외 — 저장된 targetPrice 는 '달성 당시 목표가'라는 과거 사실이다.
+  //    게다가 completeGroupPurchase 는 지급하며 재고를 보충하고 상점가를 인상하므로,
+  //    동기화하면 완료 처리 자신이 자기 진행률을 100%→50% 로 깨뜨린다(2026-08-24 실측).
   const enrichedCampaigns = useMemo(() => {
     if (!items || items.length === 0) return campaigns;
     return campaigns.map((c) => {
+      if (c.status === "completed") return c;
       if (!c.selectedItemId) return c;
       const storeItem = items.find((i) => i.id === c.selectedItemId);
       const currentShopPrice = Number(storeItem?.price) || 0;
@@ -409,6 +431,7 @@ export default function GroupPurchase() {
             const progress = getProgress(campaign);
             const myAmount = getMyContribution(campaign);
             const isCompleted = campaign.status === "completed";
+            const awardFailed = isAwardFailed(campaign);
             const isExpanded = expandedId === campaign.id;
             const canDelete = isAdmin() || campaign.initiatorId === user?.uid;
             const remaining = campaign.targetPrice - campaign.currentAmount;
@@ -449,8 +472,14 @@ export default function GroupPurchase() {
                           </span>
                         )}
                         {isCompleted && campaign.winnerName && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 text-xs font-bold">
-                            🏆 {campaign.winnerName}
+                          <span
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+                              awardFailed
+                                ? "bg-red-500/20 text-red-600"
+                                : "bg-amber-500/20 text-amber-600"
+                            }`}
+                          >
+                            {awardFailed ? "⚠️" : "🏆"} {campaign.winnerName}
                           </span>
                         )}
                       </div>
@@ -545,14 +574,33 @@ export default function GroupPurchase() {
 
                     {/* 당첨자 안내 */}
                     {isCompleted && campaign.winnerName && (
-                      <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2.5">
-                        <span className="text-lg">🏆</span>
+                      <div
+                        className={`flex items-center gap-2 border rounded-lg px-3 py-2.5 ${
+                          awardFailed
+                            ? "bg-red-500/10 border-red-500/20"
+                            : "bg-amber-500/10 border-amber-500/20"
+                        }`}
+                      >
+                        <span className="text-lg">
+                          {awardFailed ? "⚠️" : "🏆"}
+                        </span>
                         <div>
-                          <p className="text-sm font-bold text-amber-600">
-                            아이템 획득: {campaign.winnerName}
+                          <p
+                            className={`text-sm font-bold ${
+                              awardFailed ? "text-red-600" : "text-amber-600"
+                            }`}
+                          >
+                            {awardFailed ? "당첨자" : "아이템 획득"}:{" "}
+                            {campaign.winnerName}
                           </p>
-                          <p className="text-xs text-amber-600">
-                            최다 기여자에게 아이템이 지급되었습니다
+                          <p
+                            className={`text-xs ${
+                              awardFailed ? "text-red-600" : "text-amber-600"
+                            }`}
+                          >
+                            {awardFailed
+                              ? "지급이 완료되지 않았습니다 — 관리자 확인이 필요합니다"
+                              : "최다 기여자에게 아이템이 지급되었습니다"}
                           </p>
                         </div>
                       </div>
