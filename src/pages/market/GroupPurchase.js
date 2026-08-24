@@ -122,7 +122,7 @@ export default function GroupPurchase() {
       if (currentShopPrice <= 0) return c;
       // 상점 가격이 저장된 targetPrice와 다르면 override
       if (currentShopPrice !== Number(c.targetPrice)) {
-        return { ...c, targetPrice: currentShopPrice, _priceOverride: true };
+        return { ...c, targetPrice: currentShopPrice };
       }
       return c;
     });
