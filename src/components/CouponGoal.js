@@ -72,6 +72,7 @@ export default function CouponGoal({
   isResettingGoal,
   setNewGoalButton,
   isSettingNewGoal,
+  randomDrawButton,
 }) {
   const validClassCouponGoal =
     typeof classCouponGoal === "number" && classCouponGoal > 0
@@ -148,6 +149,21 @@ export default function CouponGoal({
               <Trophy size={14} strokeWidth={2.4} />
               목표 달성
             </span>
+          )}
+          {/* 🎰 목표를 달성했을 때만 뜨는 추첨 버튼. 응모한 쿠폰 수가 곧 당첨 확률이다. */}
+          {randomDrawButton && (
+            <button
+              onClick={randomDrawButton}
+              className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5"
+              style={{
+                background: "linear-gradient(135deg, #f59e0b, #ef4444)",
+                boxShadow: "0 2px 10px rgba(245,158,11,0.45)",
+                cursor: "pointer",
+                animation: "couponPulse 2s infinite",
+              }}
+            >
+              🎰 랜덤뽑기
+            </button>
           )}
           {setNewGoalButton && (
             <button

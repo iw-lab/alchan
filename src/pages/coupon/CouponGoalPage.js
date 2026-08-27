@@ -35,6 +35,7 @@ import {
   setCachedFirestoreData,
 } from "../../utils/firestoreHelpers";
 
+import { openPickOn, buildEntriesFromDonations } from "../../utils/pickOn";
 import { logger } from "../../utils/logger";
 import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "../../utils/toast";
@@ -461,6 +462,40 @@ export default function CouponGoalPage() {
   };
 
   const [isSettingNewGoal, setIsSettingNewGoal] = useState(false);
+
+  // 🎰 목표 달성 후 추첨 — 응모한 쿠폰 장수가 그대로 당첨 확률이 된다.
+  // 추첨 자체는 외부 정적 페이지(뽑기ON)가 하고, 여기서는 명단만 넘긴다.
+  // 쿠폰·현금은 건드리지 않는다(읽기 전용).
+  const handleRandomDraw = async () => {
+    const entries = buildEntriesFromDonations(goalDonations);
+    if (!entries.length) {
+      toast.error("응모 내역이 없어 추첨할 수 없습니다.");
+      return;
+    }
+    const tickets = entries.reduce((s, e) => s + e.weight, 0);
+    const ok = await confirmDialog(
+      `응모자 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n\n` +
+        `새 탭에서 추첨 화면이 열립니다. 명단은 주소의 # 뒤에 담겨 전달되며, ` +
+        `추첨 사이트의 서버에는 저장되지 않습니다.`,
+      { confirmText: "추첨 시작" },
+    );
+    if (!ok) return;
+
+    // 확인창에 보여 준 그 명단을 그대로 넘긴다(사이에 응모가 들어와도 화면과 어긋나지 않게)
+    const r = openPickOn(entries, {
+      title: "쿠폰 목표 달성 추첨",
+      mode: "race",
+      winnerRule: "last",
+      winnerCount: 1,
+    });
+    if (!r.ok) {
+      toast.error(
+        r.reason === "blocked"
+          ? "팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요."
+          : "응모 내역이 없어 추첨할 수 없습니다.",
+      );
+    }
+  };
   const setNewGoal = async () => {
     if (!canManageGoal) {
       toast.error("교사/관리자만 새 목표를 설정할 수 있습니다.");
@@ -698,6 +733,9 @@ export default function CouponGoalPage() {
                 canManageGoal && goalAchieved ? setNewGoal : null
               }
               isSettingNewGoal={isSettingNewGoal}
+              randomDrawButton={
+                canManageGoal && goalAchieved ? handleRandomDraw : null
+              }
             />
 
             {/* 🔒 개발/운영용 진단 도구 — 학생 화면에는 노출하지 않는다(교사만).
