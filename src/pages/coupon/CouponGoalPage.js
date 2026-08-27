@@ -35,7 +35,14 @@ import {
   setCachedFirestoreData,
 } from "../../utils/firestoreHelpers";
 
-import { openPickOn, buildEntriesFromDonations } from "../../utils/pickOn";
+import {
+  openPickOn,
+  openPickOnForPrize,
+  listenForPickOnResult,
+  buildEntriesFromDonations,
+  PICKON_DEFAULT_TAX,
+} from "../../utils/pickOn";
+import { formatMoney } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
 import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "../../utils/toast";
@@ -465,37 +472,224 @@ export default function CouponGoalPage() {
 
   // 🎰 목표 달성 후 추첨 — 응모한 쿠폰 장수가 그대로 당첨 확률이 된다.
   // 추첨 자체는 외부 정적 페이지(뽑기ON)가 하고, 여기서는 명단만 넘긴다.
-  // 쿠폰·현금은 건드리지 않는다(읽기 전용).
+  // 쿠폰은 건드리지 않는다. 다만 상금을 정하면 추첨 뒤에 현금이 오간다(아래 참고).
+  // 🎰 랜덤뽑기 — 1등 상금을 정하면 추첨이 끝나는 즉시 국고에서 자동 지급된다.
+  //
+  // 돈은 기존 서버 함수(transferCash)를 그대로 쓴다. 새 돈 경로를 만들지 않는 이유는,
+  // 그 함수가 이미 ① 같은 학급인지 ② 국고 잔액이 되는지 ③ 같은 추첨으로 두 번
+  // 나가지 않는지(멱등)를 서버에서 검사하고, 양쪽 거래내역까지 원자적으로 남기기 때문이다.
+  // 보내는 사람이 교사 본인이므로 상금은 교사의 국고에서 실제로 빠져나간다(발행이 아니다).
+  const prizeWatchRef = useRef(null);
+  useEffect(() => () => prizeWatchRef.current?.(), []); // 화면을 떠나면 대기 해제
+
   const handleRandomDraw = async () => {
+    // 앞선 추첨의 결과를 아직 기다리는 중이면, 그걸 버리는 일임을 먼저 알린다.
+    // (안 알리면 앞 추첨의 당첨자가 조용히 사라지고 상금도 안 나간다.)
+    if (prizeWatchRef.current) {
+      const go = await confirmDialog(
+        "아직 앞선 추첨의 결과를 기다리는 중입니다.\n\n" +
+          "새로 시작하면 앞 추첨의 당첨자는 무시되고 상금도 지급되지 않습니다.\n" +
+          "앞 추첨 창에서 결과가 나오는 것을 먼저 확인해 주세요.",
+        { confirmText: "그래도 새로 추첨", danger: true },
+      );
+      if (!go) return;
+      prizeWatchRef.current();
+      prizeWatchRef.current = null;
+    }
     const entries = buildEntriesFromDonations(goalDonations);
     if (!entries.length) {
       toast.error("응모 내역이 없어 추첨할 수 없습니다.");
       return;
     }
     const tickets = entries.reduce((s, e) => s + e.weight, 0);
+
+    // 1) 상금 정하기 — 비워 두면 지급 없이 추첨만 한다
+    let remembered = "";
+    try {
+      remembered = localStorage.getItem("pickon.prize") || "";
+    } catch { /* 시크릿 모드 등 저장소가 막힌 환경 — 기억 없이 진행한다 */ }
+    const raw = await promptDialog(
+      "1등 상금을 얼마로 할까요?\n\n" +
+        "· 추첨이 끝나면 1등에게 자동으로 지급됩니다.\n" +
+        "· 선생님의 국고에서 빠져나갑니다.\n" +
+        "· 지급을 원하지 않으면 비워 두고 확인을 누르세요.",
+      remembered,
+      { confirmText: "다음", inputMode: "numeric", placeholder: "예: 50000" },
+    );
+    if (raw === null) return; // 취소
+    // ⚠️ 숫자 아닌 글자를 지워서 통과시키면 안 된다 — "1.5"가 15가 되고 "1e9"가 19가 된다.
+    //    쉼표·공백·단위만 걷어내고, 그래도 숫자가 아니면 되묻는다.
+    const cleaned = String(raw).trim().replace(/[,\s]/g, "").replace(/[가-힣]+$/, "");
+    if (cleaned && !/^\d+$/.test(cleaned)) {
+      toast.error("상금은 숫자만 입력해 주세요.");
+      return;
+    }
+    const prize = cleaned ? Number(cleaned) : 0;
+    if (!Number.isSafeInteger(prize) || prize < 0 || prize > 10000000000) {
+      toast.error("상금이 올바르지 않습니다.");
+      return;
+    }
+    try {
+      localStorage.setItem("pickon.prize", prize ? String(prize) : "");
+    } catch { /* 저장 못 해도 이번 추첨은 계속한다 */ }
+
+    // 2) 세율 — 알찬의 다른 지급과 마찬가지로 상금에도 세금을 매긴다.
+    //    기본 33%. 뗀 세금은 국고에 그대로 남는다(국고에서 세후 금액만 나간다).
+    let taxRate = PICKON_DEFAULT_TAX;
+    if (prize) {
+      let rememberedTax = "";
+      try {
+        rememberedTax = localStorage.getItem("pickon.tax") ?? "";
+      } catch { /* 저장소가 막힌 환경 */ }
+      const rawTax = await promptDialog(
+        "상금에 매길 세율(%)을 정해 주세요.\n\n" +
+          "· 0을 넣으면 세금 없이 전액 지급합니다.\n" +
+          "· 뗀 세금은 선생님의 국고에 그대로 남습니다.",
+        rememberedTax === "" ? String(PICKON_DEFAULT_TAX) : rememberedTax,
+        { confirmText: "다음", inputMode: "numeric", placeholder: "예: 33" },
+      );
+      if (rawTax === null) return;
+      const t = String(rawTax).trim().replace(/[%\s]/g, "");
+      if (t && !/^\d+(\.\d+)?$/.test(t)) {
+        toast.error("세율은 0~100 사이 숫자로 입력해 주세요.");
+        return;
+      }
+      taxRate = t === "" ? 0 : Number(t);
+      if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
+        toast.error("세율은 0~100 사이여야 합니다.");
+        return;
+      }
+      try {
+        localStorage.setItem("pickon.tax", String(taxRate));
+      } catch { /* 저장 못 해도 계속 */ }
+    }
+    // 세금은 버림, 실지급은 남는 금액. 상금이 있으면 최소 1은 나가게 한다.
+    const tax = Math.floor((prize * taxRate) / 100);
+    const net = prize ? Math.max(1, prize - tax) : 0;
+
+    // 2) 마지막 확인 — 돈이 나가는 것을 여기서 한 번만 확실히 알린다
+    const money = prize
+      ? `\n\n💰 상금 ${formatMoney(prize)}` +
+        (tax > 0 ? ` · 세금 ${taxRate}% ${formatMoney(tax)}` : " · 세금 없음") +
+        `\n   → 1등에게 실제 지급 ${formatMoney(net)} (선생님의 국고에서 나갑니다)` +
+        `\n\n🔁 추첨 화면에서 '다시 추첨'을 누르면 판마다 또 지급됩니다.`
+      : "\n\n(상금 지급 없이 추첨만 합니다.)";
     const ok = await confirmDialog(
       `응모자 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n\n` +
         `새 탭에서 추첨 화면이 열립니다. 명단은 주소의 # 뒤에 담겨 전달되며, ` +
-        `추첨 사이트의 서버에는 저장되지 않습니다.`,
-      { confirmText: "추첨 시작" },
+        `추첨 사이트의 서버에는 저장되지 않습니다.` +
+        money,
+      { confirmText: prize ? "추첨하고 상금 주기" : "추첨 시작" },
     );
     if (!ok) return;
 
-    // 확인창에 보여 준 그 명단을 그대로 넘긴다(사이에 응모가 들어와도 화면과 어긋나지 않게)
-    const r = openPickOn(entries, {
+    // 3) 상금이 없으면 예전처럼 그냥 연다(결과를 돌려받을 이유가 없다)
+    if (!prize) {
+      const r = openPickOn(entries, {
+        title: "쿠폰 목표 달성 추첨",
+        mode: "race",
+        winnerRule: "last",
+        winnerCount: 1,
+      });
+      if (!r.ok) {
+        toast.error(
+          r.reason === "blocked"
+            ? "팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요."
+            : "응모 내역이 없어 추첨할 수 없습니다.",
+        );
+      }
+      return;
+    }
+
+    // 4) 결과를 돌려받는 방식으로 연다
+    const r = openPickOnForPrize(entries, {
       title: "쿠폰 목표 달성 추첨",
       mode: "race",
       winnerRule: "last",
       winnerCount: 1,
     });
     if (!r.ok) {
-      toast.error(
-        r.reason === "blocked"
-          ? "팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요."
-          : "응모 내역이 없어 추첨할 수 없습니다.",
-      );
+      toast.error("팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.");
+      return;
     }
+
+    const nameToUserId = new Map(entries.map((e) => [e.name, e.userId]));
+    prizeWatchRef.current?.();
+    prizeWatchRef.current = listenForPickOnResult({
+      rid: r.rid,
+      entries,
+      nameToUserId,
+      onWinner: async ({ userId: winnerId, name, mismatch, round }) => {
+        // 판마다 지급한다 — 리스너는 살려 둔다(교사가 '다시 추첨'을 누를 수 있다).
+        // 같은 판이 두 번 오는 것은 listenForPickOnResult 가 이미 막는다.
+        if (mismatch) {
+          toast.error(
+            `1등이 ${name}으로 왔는데 명단의 자리와 맞지 않아 지급하지 않았습니다. ` +
+              `추첨 화면에서 명단을 바꾸셨다면 다시 추첨해 주세요.`,
+          );
+          return;
+        }
+        if (!winnerId) {
+          toast.error(
+            `1등은 ${name}인데 학생을 찾지 못해 지급하지 못했습니다. ` +
+              `직접 송금해 주세요.`,
+          );
+          return;
+        }
+        if (winnerId === userId) {
+          toast.error("1등이 선생님 본인이라 지급하지 않았습니다.");
+          return;
+        }
+        // 같은 추첨은 같은 멱등키를 쓴다 — 서버가 두 번 나가는 것을 막으므로
+        // 재시도해도 안전하다(실패했을 때만 다시 부른다).
+        const key = `pickon_${userId}_${round || r.rid}`;
+        const pay = () =>
+          httpsCallable(functions, "transferCash")({
+            recipientId: winnerId,
+            amount: net,
+            message:
+              tax > 0
+                ? `🎰 뽑기ON 1등 상금 ${formatMoney(prize)} (세금 ${taxRate}% 공제)`
+                : "🎰 뽑기ON 1등 상금",
+            idempotencyKey: key,
+          });
+        try {
+          await pay();
+          toast.success(
+            `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
+              (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
+          );
+        } catch (e) {
+          logger.error("뽑기ON 상금 지급 실패", e);
+          // 추첨 창은 이미 닫혔을 수 있다 — 여기 말고는 '누구에게 얼마를' 이 남는 곳이 없다.
+          const retry = await confirmDialog(
+            `${name}님에게 상금 ${formatMoney(net)}을 지급하지 못했습니다.\n\n` +
+              `사유: ${e?.message || "알 수 없는 오류"}\n\n` +
+              `다시 시도할까요? (이미 지급됐다면 두 번 나가지 않습니다)`,
+            { confirmText: "다시 시도" },
+          );
+          if (retry) {
+            try {
+              await pay();
+              toast.success(
+                `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
+              (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
+              );
+              return;
+            } catch (e2) {
+              logger.error("뽑기ON 상금 재지급 실패", e2);
+            }
+          }
+          toast.error(
+            `${name}님에게 상금 ${formatMoney(net)}이 지급되지 않았습니다. ` +
+              `송금 화면에서 직접 보내 주세요.`,
+          );
+        }
+      },
+    });
+    toast.success("추첨이 끝나면 1등에게 상금이 자동으로 지급됩니다.");
   };
+
   const setNewGoal = async () => {
     if (!canManageGoal) {
       toast.error("교사/관리자만 새 목표를 설정할 수 있습니다.");
