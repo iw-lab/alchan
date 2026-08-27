@@ -14,12 +14,12 @@
 
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
-  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball,
+  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
-  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball,
+  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -59,6 +59,7 @@ export const DEFAULT_LEARNING_APPS = [
   // 레지스트리를 못 읽는 날엔 학생 사이드바에서 이 앱만 사라졌다.
   { id: "siteChromaFall",        label: "크로마폴(색채 퍼즐)",      icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
+  { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://zep-chi.vercel.app/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지

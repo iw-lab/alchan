@@ -81,10 +81,10 @@ describe("normalizeLearningApps", () => {
 });
 
 describe("폴백 기본 목록", () => {
-  it("기본 12개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
+  it("기본 13개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
     // 절대 개수와 "하나도 안 떨어졌다"를 **둘 다** 본다. 앞은 항목이 실수로 지워지는 것을,
     // 뒤는 정규화가 조용히 걸러 내는 것을 잡는다 — 뒤만 두면 목록이 비어도 통과한다.
-    expect(DEFAULT_LEARNING_APPS).toHaveLength(12);
+    expect(DEFAULT_LEARNING_APPS).toHaveLength(13);
     expect(defaultLearningAppItems()).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
