@@ -127,9 +127,20 @@ describe("대기 신청이 조용히 취소되지 않는다", () => {
     expect(DASH).toMatch(/const pendingFetchInFlight = useRef\(false\);/);
   });
 
-  it("승인제가 꺼진 학급은 조회 없이 바로 연다 (읽기 0)", () => {
-    expect(HANDLER).toMatch(/if \(!jobApprovalRequired \|\| !user\?\.uid\)/);
-    const off = HANDLER.slice(HANDLER.indexOf("if (!jobApprovalRequired"));
+  it("학생은 승인제 토글과 무관하게 **항상** 대기 신청을 읽는다", () => {
+    // 🔴 2026-08-27 사양 변경. 전에는 `if (!jobApprovalRequired) → 조회 없이 연다` 로
+    //    읽기를 아꼈고, 이 테스트가 그 지름길을 사양으로 박고 있었다.
+    //    임명 전용 직업(대통령 등)이 토글과 무관하게 신청→승인이 되면서 그 지름길은
+    //    **데이터를 지우는 경로**가 됐다: 토글이 꺼진 학급에서 조회를 건너뛰면 화면이
+    //    대기 신청을 체크 안 된 채 그리고, 저장하는 순간 서버가 '마음을 접었다'고 읽어
+    //    방금 낸 신청을 취소한다. 읽기 1회보다 그 손실이 크다.
+    expect(
+      HANDLER,
+      "승인제 토글로 조회를 건너뛰는 지름길이 되살아났다",
+    ).not.toMatch(/if \(!jobApprovalRequired/);
+    // 건너뛰어도 되는 건 교사뿐이다 — 교사는 이 화면에서 신청서를 만들지 않는다.
+    expect(HANDLER).toMatch(/if \(!user\?\.uid \|\| isAdmin\?\.\(\)\)/);
+    const off = HANDLER.slice(HANDLER.indexOf("if (!user?.uid || isAdmin?.()"));
     expect(off.slice(0, 300)).toContain('setViewMode("selectJob")');
   });
 });

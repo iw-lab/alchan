@@ -120,6 +120,7 @@ export const ItemProvider = ({ children }) => {
     () => ({
       addStoreItem: httpsCallable(functions, "addStoreItem"),
       updateStoreItem: httpsCallable(functions, "updateStoreItem"),
+      adjustStorePrices: httpsCallable(functions, "adjustStorePrices"),
       deleteStoreItem: httpsCallable(functions, "deleteStoreItem"),
       purchaseStoreItem: httpsCallable(functions, "purchaseStoreItem"),
       useUserItem: httpsCallable(functions, "useUserItem"),
@@ -403,6 +404,37 @@ export const ItemProvider = ({ children }) => {
       }
     },
     [isAuthAdmin, firebaseFunctions, refreshData],
+  );
+
+  /**
+   * 🏷️ 학급 상점 물가 일괄 조정 (교사 전용) — "전체 +10% / −10%".
+   *
+   * 가격 계산·제외 판정·상한은 전부 서버(adjustStorePrices)가 한다. 여기서 하는 일은
+   * 호출과 **캐시 버리기**뿐이다: 상점 카탈로그는 세션 캐시(27분)에 들어 있어서
+   * 무효화하지 않으면 교사 본인 화면조차 옛 가격을 계속 보여준다("바꿨는데 그대로다").
+   * 학생 화면은 서버가 올린 catalogMeta 버전 리스너가 알아서 버린다.
+   */
+  const adjustPrices = useCallback(
+    async (percent) => {
+      if (typeof isAuthAdmin !== "function" || !isAuthAdmin())
+        return { success: false, message: "관리자 권한 필요" };
+      try {
+        const res = await firebaseFunctions.adjustStorePrices({ percent });
+        invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
+        refreshData();
+        return { success: true, ...(res?.data || {}) };
+      } catch (error) {
+        if (error.code === "not-found") {
+          return {
+            success: false,
+            message:
+              "물가 조정 함수(adjustStorePrices)가 아직 배포되지 않았습니다.",
+          };
+        }
+        return { success: false, message: error.message };
+      }
+    },
+    [isAuthAdmin, firebaseFunctions, refreshData, currentUserClassCode, userId],
   );
 
   const purchaseItem = useCallback(
@@ -1110,6 +1142,7 @@ export const ItemProvider = ({ children }) => {
       addItem,
       updateItem,
       deleteItem,
+      adjustPrices,
       purchaseItem,
       useItem,
       drawRandomItem,
@@ -1135,6 +1168,7 @@ export const ItemProvider = ({ children }) => {
       addItem,
       updateItem,
       deleteItem,
+      adjustPrices,
       purchaseItem,
       useItem,
       drawRandomItem,

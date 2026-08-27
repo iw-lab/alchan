@@ -573,7 +573,9 @@ describe("유효 캡 = min(등급, 정책, 코드)", () => {
   });
 
   it("⭐ 전역 상한이 주급 상수에서 파생된다", () => {
-    expect(R.GLOBAL_CEILING.STUDENT_CASH_PER_DAY).toBe(Math.round(SALARY.BASE * 0.05));
+    // 📉 2026-08-27 5% → 1% 하향(사용자 결정). AAP 는 알찬 내부 보상과 **별개 통**이라
+    //    여기 값이 다른 소득 위에 그대로 얹힌다 — 5% 면 출석 최대와 합쳐 주급 일할에 육박했다.
+    expect(R.GLOBAL_CEILING.STUDENT_CASH_PER_DAY).toBe(Math.round(SALARY.BASE * 0.01));
     expect(codeOnly(read("functions/aap/rewardRules.js"))).toMatch(/SALARY\.BASE/);
   });
 
@@ -999,9 +1001,11 @@ describe("차단기 — 보호는 원자적으로, 통지는 최선노력으로"
   // ⚠️ 임계선을 **상수에서 계산하지 않는다.** 처음엔 `APP_CAP * R.BREAKER.TRIP_RATIO` 로 썼는데,
   //    그러면 비율을 1.0 으로 바꾸는 변이에서 **테스트도 같이 움직여** 통과해 버렸다(실측).
   //    기대값은 손으로 박아야 방어선이 잠긴다.
-  const APP_CAP = 4000000;
-  const ALERT_AT = 2000000;
-  const TRIP_AT = 3200000;
+  // 📉 2026-08-27 하향에 맞춰 갱신. 기대값은 **손으로 박는다** — 비율로 쓰면 상수를 바꾸는
+  //    변이에서 테스트도 같이 움직여 통과해 버린다(이 파일 위 주석의 실측 교훈).
+  const APP_CAP = 1200000;
+  const ALERT_AT = 600000;
+  const TRIP_AT = 960000;
 
   it("임계선이 설계 값 그대로다 (여기가 바뀌면 아래 테스트가 전부 거짓말이 된다)", () => {
     expect(R.GLOBAL_CEILING.APP_CASH_PER_DAY).toBe(APP_CAP);

@@ -244,8 +244,32 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     return { empty: docs.length === 0, docs, size: docs.length };
   };
 
+  // 🔥 카탈로그 버전 문서(catalogMeta/{classCode}) 갱신 — **상점 가격·목록을 바꾼 모든 경로가 부른다.**
+  //
+  //    학생 화면은 상점 카탈로그를 세션 캐시(27분)에 들고 있고, 이 문서의 버전 변경을
+  //    리스너 하나로 감지해 캐시를 버린다(읽기 절감 2단계). 안 올리면 교사는 바꿨는데
+  //    학생 화면은 최대 27분간 옛 값을 본다 — "바꿨는데 그대로다" 의 전형이다.
+  //
+  //    ⚠️ 여기 있는 이유: 2026-08-27 까지 이 5줄이 **두 벌**이었다(index.js 의 헬퍼 +
+  //       economicEvents.js 의 인라인 사본). 지금은 같아도 한쪽만 고치면 조용히 어긋난다 —
+  //       이 저장소는 "정본이 둘"로 이미 여러 번 데였다. 두 파일 다 ./utils 를 require 하므로
+  //       순환참조 없이 여기가 유일 정본이 된다.
+  //    비치명 실패로 둔다 — 값은 이미 바뀌었고 캐시는 늦어도 27분 뒤 스스로 만료된다.
+  const bumpCatalogVersion = async (classCode) => {
+    if (!classCode) return;
+    try {
+      await db.collection("catalogMeta").doc(classCode).set(
+        { version: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+    } catch (e) {
+      logger.warn(`[bumpCatalogVersion] ${classCode} 갱신 실패(비치명):`, e);
+    }
+  };
+
   module.exports = {
       LOG_TYPES,
+      bumpCatalogVersion,
       logActivity,
       checkAuthAndGetUserData,
       hasAdminPower,

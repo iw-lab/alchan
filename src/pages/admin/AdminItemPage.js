@@ -10,7 +10,10 @@ import {
   Check,
   X as XIcon,
   Circle,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
+import { confirmDialog } from "../../utils/confirmDialog";
 import { useItems } from "../../contexts/ItemContext";
 import { toast } from "../../utils/toast";
 
@@ -220,7 +223,9 @@ const AdminItemPage = ({
   const [item, setItem] = useState(EMPTY_ITEM);
 
   // 🎰 랜덤뽑기 후보로 고를 수 있는 상점 아이템(랜덤뽑기 자신·다른 뽑기 제외)
-  const { items: storeItems } = useItems();
+  const { items: storeItems, adjustPrices } = useItems();
+  // 물가 조정 진행 중 잠금 — 연타로 +10% 가 두 번 먹으면 물가가 21% 오른다.
+  const [adjustingPercent, setAdjustingPercent] = useState(null);
   const candidatePool = (storeItems || []).filter(
     (it) => it.type !== "randomDraw" && it.id !== editingItemFromStore?.id,
   );
@@ -393,8 +398,97 @@ const AdminItemPage = ({
     setItem(EMPTY_ITEM);
   };
 
+  // 🏷️ 전체 물가 조정. 되돌리기 어려운 일괄 변경이라 **확인을 받고** 실행한다.
+  //    (−10% 로 되돌려도 원래 값으로 정확히 돌아오지 않는다: 0.9 × 1.1 = 0.99 + 반올림.)
+  const handleAdjustPrices = async (percent) => {
+    if (adjustingPercent !== null) return; // 연타 잠금 — 두 번 먹으면 물가가 21% 오른다
+    const label = percent > 0 ? `${percent}% 인상` : `${Math.abs(percent)}% 인하`;
+    const ok = await confirmDialog(
+      `학급 상점의 모든 아이템 가격을 한 번에 ${label}합니다.\n` +
+        `'자유 시간'처럼 가치가 고정된 아이템은 빠집니다.\n\n` +
+        `되돌리려면 반대 방향으로 다시 눌러야 하고, 반올림 때문에 원래 값과 조금 달라질 수 있어요.`,
+      { confirmText: `${label}하기`, danger: true },
+    );
+    if (!ok) return;
+
+    setAdjustingPercent(percent);
+    try {
+      const res = await adjustPrices(percent);
+      if (!res?.success) {
+        toast.error(res?.message || "물가 조정에 실패했어요.");
+        return;
+      }
+      const sample = (res.samples || [])
+        .map((x) => `${x.name} ${x.from.toLocaleString()}→${x.to.toLocaleString()}`)
+        .join(", ");
+      toast.success(
+        `물가 ${label} 완료 — ${res.changedCount}개 변경` +
+          (res.excludedCount ? ` (제외 ${res.excludedCount}개)` : "") +
+          (sample ? `\n예: ${sample}` : ""),
+      );
+    } catch (e) {
+      toast.error(e?.message || "물가 조정 중 오류가 발생했어요.");
+    } finally {
+      setAdjustingPercent(null);
+    }
+  };
+
   return (
     <div style={styles.container}>
+      {/* 🏷️ 전체 물가 조정 — 아이템을 하나씩 고치지 않고 학급 경제의 물가 수준을 움직인다 */}
+      <div style={{ ...styles.card, marginBottom: "20px" }}>
+        <div style={styles.header}>
+          <div style={{ ...styles.headerIcon, background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)" }}>
+            <TrendingUp size={22} strokeWidth={2.2} />
+          </div>
+          <div>
+            <h2 style={styles.title}>전체 물가 조정</h2>
+            <p style={styles.subtitle}>
+              상점 아이템 가격을 한꺼번에 올리거나 내려요 (자유 시간 등 고정 아이템 제외)
+            </p>
+          </div>
+        </div>
+        <div style={{ padding: "20px 24px", backgroundColor: "#fafbfc", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {[
+            { p: 20, tone: "up" },
+            { p: 10, tone: "up" },
+            { p: 5, tone: "up" },
+            { p: -5, tone: "down" },
+            { p: -10, tone: "down" },
+            { p: -20, tone: "down" },
+          ].map(({ p, tone }) => {
+            const busy = adjustingPercent === p;
+            const locked = adjustingPercent !== null;
+            const up = tone === "up";
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => handleAdjustPrices(p)}
+                disabled={locked}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 16px",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: locked ? "not-allowed" : "pointer",
+                  opacity: locked && !busy ? 0.45 : 1,
+                  backgroundColor: up ? "#fef2f2" : "#eff6ff",
+                  color: up ? "#b91c1c" : "#1d4ed8",
+                  border: `1px solid ${up ? "#fecaca" : "#bfdbfe"}`,
+                }}
+              >
+                {up ? <TrendingUp size={15} strokeWidth={2.4} /> : <TrendingDown size={15} strokeWidth={2.4} />}
+                {busy ? "적용 중..." : `${p > 0 ? "+" : ""}${p}%`}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.headerIcon}>

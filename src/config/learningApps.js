@@ -25,6 +25,16 @@ export const LEARNING_APP_ICONS = {
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
 
 /**
+ * 🧑‍🏫 제작자 표시 이름이 없는 앱이 들어가는 묶음.
+ *
+ * 2026-08-27 이전에 등재된 앱들(기본 10여 개)에는 `owner` 필드가 없다. 그 앱들을
+ * "선생님 미상" 같은 말로 묶으면 정상 상태가 결함처럼 보인다 — 원래 앱 만든 사람이
+ * 만든 것들이고, 그게 사실이다. 슈퍼관리자가 레지스트리에 owner 를 넣으면 그때
+ * 그 이름으로 옮겨간다.
+ */
+export const DEFAULT_APP_OWNER = "알찬 기본";
+
+/**
  * 레지스트리 문서가 없을 때 쓰는 기본값 = 2026-08-17 시점의 하드코딩 목록.
  *
  * ⚠️ 2026-08-22: 구구성 수호대의 URL 을 `iw-lab.github.io` → `gugu-guardians.pages.dev`
@@ -80,6 +90,13 @@ export function normalizeLearningApps(raw) {
       label: label.trim(),
       icon: LEARNING_APP_ICONS[a.icon] || Globe,
       externalUrl: parsed.href,
+      // 🧑‍🏫 제작자 — 사이드바가 '선생님별'로 묶는 기준(2026-08-27).
+      //    값이 없으면 기본 묶음으로 떨어진다. 길이를 자르는 이유는 사이드바가
+      //    한 줄짜리 좁은 영역이기 때문이고, 잘려도 링크는 멀쩡히 동작한다.
+      owner:
+        typeof a.owner === "string" && a.owner.trim()
+          ? a.owner.trim().slice(0, 30)
+          : DEFAULT_APP_OWNER,
       // 🚪 AAP 이관 힌트. **권위가 아니다** — "토큰을 물어볼 가치가 있나"만 정한다.
       //    진짜 판정은 서버의 `platformAppPolicies.aapEnabled` 하나뿐이고, 이 값이
       //    틀려도 안전한 쪽으로 떨어진다(켜져 있는데 서버가 거부 → 그냥 링크로).

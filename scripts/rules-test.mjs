@@ -69,6 +69,10 @@ const DOCS = {
   tch1: { name: "교사1", classCode: "C1", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
   sup1: { name: "슈퍼", classCode: "C1", cash: 0, coupons: 0, isSuperAdmin: true },
   tchNoClass: { name: "학급없는교사", classCode: "", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
+  // 알찬광장은 **학급을 가로지르는** 공간이라, 타 학급 교사가 읽을 수 있어야 정상이다.
+  tch2: { name: "교사2", classCode: "C2", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
+  // 자가가입 직후(미승인) 교사 — isAdmin() 이 isApproved 를 포함하는지 확인하는 카나리아.
+  tchPending: { name: "미승인교사", classCode: "C1", cash: 0, coupons: 0, isAdmin: true, isApproved: false },
 };
 
 /** uid 들의 user 문서를 get()/exists() 목으로 만든다. */
@@ -1013,6 +1017,182 @@ const CASES = [
   }),
   tc("ALLOW", "🐤 학생이 자기 학급 법안을 발의한다 (국회 정상 기능)", {
     path: "/laws/l3", method: "create", as: "stu1", after: { classCode: "C1", title: "청소법" },
+  }),
+  // ────────────────────────────────────────────────────────────
+  // 🏛️ 알찬광장 (2026-08-27 신설) — 선생님만의 공간
+  //   여기엔 다른 반 운영 이야기와 교사 실명이 그대로 오간다. 학생 차단이 핵심이다.
+  // ────────────────────────────────────────────────────────────
+  tc("ALLOW", "🐤 교사가 광장 글을 읽는다 (광장 정상 기능)", {
+    path: "/plazaPosts/p1", method: "get", as: "tch1",
+    before: { authorUid: "tch2", title: "건의", content: "x", status: "received", likedBy: [] },
+    actors: ["tch2"],
+  }),
+  tc("ALLOW", "🐤 타 학급 교사도 광장 글을 읽는다 (학급을 가로지르는 게 요점)", {
+    path: "/plazaPosts/p1", method: "get", as: "tch2",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "학생이 광장 글을 읽는다 (교사 실명·타 학급 운영 이야기 유출)", {
+    path: "/plazaPosts/p1", method: "get", as: "stu1",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "미승인 교사가 광장 글을 읽는다 (교사 자가가입이 열려 있다)", {
+    path: "/plazaPosts/p1", method: "get", as: "tchPending",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("ALLOW", "🐤 교사가 자기 이름으로 글을 쓴다", {
+    path: "/plazaPosts/p2", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사1", title: "건의", content: "x", status: "received", likedBy: [] },
+  }),
+  // 🔴 2026-08-27 Gemini 레인 CRITICAL: create 가 `likedBy` 를 안 봐서 **처음부터 남의 공감을
+  //    채워 넣을 수 있었다**. update 쪽 likeOnlyChange() 가 아무리 엄해도 생성이 열려 있으면 소용없다.
+  tc("DENY", "글을 만들 때 남의 공감을 미리 심는다 (create 가 likedBy 를 안 보던 구멍)", {
+    path: "/plazaPosts/p2", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사1", title: "건의", content: "x", status: "received",
+             likedBy: ["tch2", "sup1"] },
+  }),
+  tc("DENY", "uid 는 내 것인데 **이름만 남의 것**으로 글을 쓴다 (사칭)", {
+    path: "/plazaPosts/p2", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사2", title: "건의", content: "x", status: "received", likedBy: [] },
+  }),
+  tc("DENY", "규칙이 모르는 필드를 끼워 넣는다 (허용목록 밖)", {
+    path: "/plazaPosts/p2", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사1", title: "건의", content: "x", status: "received",
+             likedBy: [], pinned: true },
+  }),
+  tc("ALLOW", "🐤 교사가 댓글을 단다", {
+    path: "/plazaPosts/p1/comments/c1", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사1", content: "저도요", isOfficial: false },
+  }),
+  tc("DENY", "교사가 '공식 답변' 배지를 스스로 단다 (앱 만든 사람 사칭)", {
+    path: "/plazaPosts/p1/comments/c1", method: "create", as: "tch1",
+    after: { authorUid: "tch1", authorName: "교사1", content: "반영했습니다", isOfficial: true },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자는 공식 답변을 단다", {
+    path: "/plazaPosts/p1/comments/c1", method: "create", as: "sup1",
+    after: { authorUid: "sup1", authorName: "슈퍼", content: "반영했습니다", isOfficial: true },
+  }),
+  tc("DENY", "승인 취소된 교사가 자기 글을 계속 고친다 (write 에 isAdmin 재검사 누락)", {
+    path: "/plazaPosts/p1", method: "update", as: "tchPending",
+    before: { authorUid: "tchPending", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tchPending", title: "건의", content: "고침", status: "received", likedBy: [] },
+  }),
+  tc("DENY", "승인 취소된 교사가 자기 글을 지운다", {
+    path: "/plazaPosts/p1", method: "delete", as: "tchPending",
+    before: { authorUid: "tchPending", title: "건의", content: "x", status: "received", likedBy: [] },
+  }),
+  tc("DENY", "이미 등재된 사이트의 주소를 소유자가 몰래 바꾼다 (레지스트리와 어긋난다)", {
+    path: "/plazaApps/a1", method: "update", as: "tch1",
+    before: { ownerUid: "tch1", label: "L", url: "https://good.dev/", status: "approved" },
+    after: { ownerUid: "tch1", label: "L", url: "https://other.dev/", status: "approved" },
+  }),
+  tc("ALLOW", "🐤 아직 승인 전이면 소유자가 주소를 고칠 수 있다", {
+    path: "/plazaApps/a1", method: "update", as: "tch1",
+    before: { ownerUid: "tch1", label: "L", url: "https://good.dev/", status: "pending" },
+    after: { ownerUid: "tch1", label: "L", url: "https://better.dev/", status: "pending" },
+  }),
+  tc("DENY", "등재된 사이트의 원본 신청서를 소유자가 지운다 (지우면 영영 못 내린다)", {
+    // 지우면 publishPlazaApp('unpublish') 가 신청 문서를 못 찾아 실패하고,
+    // 전국 학생 사이드바에 고아 링크가 박힌 채 정상 도구로는 못 내린다.
+    path: "/plazaApps/a1", method: "delete", as: "tch1",
+    before: { ownerUid: "tch1", label: "L", url: "https://e.dev/", status: "approved" },
+  }),
+  tc("ALLOW", "🐤 아직 승인 전이면 소유자가 자기 신청을 지울 수 있다", {
+    path: "/plazaApps/a1", method: "delete", as: "tch1",
+    before: { ownerUid: "tch1", label: "L", url: "https://e.dev/", status: "pending" },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자는 광장 글을 읽는다 (isAdmin() 의 OR 절이 살아 있다)", {
+    // codex 레인이 "슈퍼관리자가 광장을 못 읽는다"고 지적했는데 실제 규칙엔 `|| isSuperAdmin()`
+    // 이 있어 오탐이었다. 다만 그걸 **증명하는 카나리아가 없었던 것**은 진짜 빈틈이라 채운다.
+    path: "/plazaPosts/p1", method: "get", as: "sup1",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자는 사이트 신청을 읽는다", {
+    path: "/plazaApps/a1", method: "get", as: "sup1",
+    before: { ownerUid: "tch1", label: "L", url: "https://e.dev/", status: "pending" },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "남의 이름으로 사이트를 올린다 (사이드바 묶음 이름이 된다)", {
+    path: "/plazaApps/a5", method: "create", as: "tch1",
+    after: { ownerUid: "tch1", ownerName: "교사2", label: "낱말놀이", url: "https://e.pages.dev/", status: "pending" },
+  }),
+  tc("DENY", "교사가 남의 이름으로 글을 쓴다 (작성자 위조)", {
+    path: "/plazaPosts/p2", method: "create", as: "tch1",
+    after: { authorUid: "tch2", authorName: "교사2", title: "사칭", content: "x", status: "received", likedBy: [] },
+  }),
+  tc("DENY", "글쓴이가 자기 건의를 '반영됨'으로 바꾼다 (상태는 슈퍼관리자 전용)", {
+    path: "/plazaPosts/p1", method: "update", as: "tch1",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "x", status: "done", likedBy: [] },
+  }),
+  tc("ALLOW", "🐤 글쓴이가 자기 글 내용을 고친다", {
+    path: "/plazaPosts/p1", method: "update", as: "tch1",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "고침", status: "received", likedBy: [] },
+  }),
+  tc("DENY", "교사가 남의 글 내용을 고친다", {
+    path: "/plazaPosts/p1", method: "update", as: "tch2",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "낙서", status: "received", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 상태를 '검토중'으로 바꾼다", {
+    path: "/plazaPosts/p1", method: "update", as: "sup1",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "x", status: "reviewing", likedBy: [] },
+    actors: ["tch1"],
+  }),
+  tc("ALLOW", "🐤 교사가 공감을 누른다 (자기 uid 만 들어간다)", {
+    path: "/plazaPosts/p1", method: "update", as: "tch2",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: ["tch2"] },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "공감 버튼으로 남의 본문을 갈아끼운다 (한 요청에 두 가지)", {
+    path: "/plazaPosts/p1", method: "update", as: "tch2",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "낙서", status: "received", likedBy: ["tch2"] },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "공감을 남의 이름으로 누른다 (공감 수 부풀리기)", {
+    path: "/plazaPosts/p1", method: "update", as: "tch2",
+    before: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: [] },
+    after: { authorUid: "tch1", title: "건의", content: "x", status: "received", likedBy: ["tch1"] },
+    actors: ["tch1"],
+  }),
+  tc("DENY", "학생이 광장에 글을 쓴다", {
+    path: "/plazaPosts/p3", method: "create", as: "stu1",
+    after: { authorUid: "stu1", title: "학생글", content: "x", status: "received", likedBy: [] },
+  }),
+
+  // 선생님이 만든 학습 사이트 신청
+  tc("ALLOW", "🐤 교사가 자기가 만든 사이트를 신청한다", {
+    path: "/plazaApps/a1", method: "create", as: "tch1",
+    after: { ownerUid: "tch1", ownerName: "교사1", label: "우리반 낱말놀이", url: "https://example.pages.dev/", status: "pending" },
+  }),
+  tc("DENY", "신청자가 스스로 '승인됨'으로 만든다 (승인 절차 무력화)", {
+    path: "/plazaApps/a1", method: "create", as: "tch1",
+    after: { ownerUid: "tch1", ownerName: "교사1", label: "우리반 낱말놀이", url: "https://example.pages.dev/", status: "approved" },
+  }),
+  tc("DENY", "신청자가 나중에 상태를 승인으로 바꾼다", {
+    path: "/plazaApps/a1", method: "update", as: "tch1",
+    before: { ownerUid: "tch1", label: "L", url: "https://e.dev/", status: "pending" },
+    after: { ownerUid: "tch1", label: "L", url: "https://e.dev/", status: "approved" },
+  }),
+  tc("DENY", "javascript: 스킴을 사이트로 신청한다 (클릭 한 번이 스크립트 실행)", {
+    path: "/plazaApps/a2", method: "create", as: "tch1",
+    after: { ownerUid: "tch1", ownerName: "교사1", label: "나쁜앱", url: "javascript:alert(1)", status: "pending" },
+  }),
+  tc("DENY", "http(비암호) 사이트를 신청한다", {
+    path: "/plazaApps/a3", method: "create", as: "tch1",
+    after: { ownerUid: "tch1", ownerName: "교사1", label: "평문", url: "http://example.com/", status: "pending" },
+  }),
+  tc("DENY", "학생이 사이드바에 사이트를 밀어넣는다", {
+    path: "/plazaApps/a4", method: "create", as: "stu1",
+    after: { ownerUid: "stu1", label: "학생앱", url: "https://x.dev/", status: "pending" },
   }),
 ];
 

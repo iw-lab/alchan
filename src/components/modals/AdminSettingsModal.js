@@ -3546,30 +3546,48 @@ const AdminSettingsModal = ({
                           <span className="font-semibold" style={{ color: "#475569" }}>학급</span>
                           <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold" style={{ background: "#f1f5f9", color: "#1e293b" }}>{member.classCode || "—"}</span>
                         </div>
-                        {isSuperAdmin && (
-                          <div className="px-4 py-3 border-t flex flex-wrap gap-2 mt-auto" style={{ borderColor: "#f1f5f9", background: "#fafbfc" }}>
-                            {!member.isSuperAdmin && (
-                              <button
-                                onClick={() => toggleAdminStatus(member.id, member.isAdmin)}
-                                disabled={membersLoading}
-                                className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                                style={member.isAdmin
-                                  ? { background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }
-                                  : { background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
-                              >
-                                {member.isAdmin ? "관리자 해제" : "관리자 지정"}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleResetPassword(member.id)}
-                              disabled={membersLoading}
-                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                              style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }}
-                            >
-                              비밀번호 초기화
-                            </button>
-                          </div>
-                        )}
+                        {/* 🔑 비밀번호 초기화 — 2026-08-27 교사에게도 연다.
+                            여태 이 블록이 통째로 `isSuperAdmin &&` 이라 교사에겐 버튼이 없었는데,
+                            서버(adminResetUserPassword)는 처음부터 교사에게 열려 있었다.
+                            즉 막고 있던 건 화면 한 겹뿐이었고, 정작 학생 비번을 잊었을 때
+                            교실에서 아무것도 못 하는 상태였다.
+                            🔒 단, 교사는 **학생만** 바꿀 수 있다 — 같은 학급 교사·슈퍼관리자 계정을
+                               바꿀 수 있으면 그건 계정 탈취다. 서버가 같은 판정을 다시 한다
+                               (여기 숨김은 편의이지 보안 경계가 아니다). */}
+                        {(() => {
+                          const targetIsStaff =
+                            member.isAdmin === true ||
+                            member.isSuperAdmin === true ||
+                            member.role === "admin";
+                          const canResetPassword = isSuperAdmin || !targetIsStaff;
+                          if (!isSuperAdmin && !canResetPassword) return null;
+                          return (
+                            <div className="px-4 py-3 border-t flex flex-wrap gap-2 mt-auto" style={{ borderColor: "#f1f5f9", background: "#fafbfc" }}>
+                              {isSuperAdmin && !member.isSuperAdmin && (
+                                <button
+                                  onClick={() => toggleAdminStatus(member.id, member.isAdmin)}
+                                  disabled={membersLoading}
+                                  className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                  style={member.isAdmin
+                                    ? { background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }
+                                    : { background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}
+                                >
+                                  {member.isAdmin ? "관리자 해제" : "관리자 지정"}
+                                </button>
+                              )}
+                              {canResetPassword && (
+                                <button
+                                  onClick={() => handleResetPassword(member.id)}
+                                  disabled={membersLoading}
+                                  className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                  style={{ background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }}
+                                >
+                                  비밀번호 초기화
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

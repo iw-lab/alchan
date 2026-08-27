@@ -161,6 +161,17 @@ const JobApplicationsPanel = () => {
                 <div key={a.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
                   <span className="text-sm flex-1" style={{ color: "#334155" }}>
                     {a.jobTitle || "직업"}
+                    {/* 🏷️ 권한이 붙는 자리(대통령·판사·경찰청장·국세청 직원 등)는 눈에 띄게 —
+                        허가 한 번이 합의금·세금 징수 권한을 준다. 표시는 신청 시점 값이고,
+                        실제 부여 판정은 서버가 승인 순간에 직업 문서를 다시 읽어서 한다. */}
+                    {a.appointedOnly === true && (
+                      <span
+                        className="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold align-middle"
+                        style={{ backgroundColor: "rgba(245, 158, 11, 0.18)", color: "#b45309" }}
+                      >
+                        임명
+                      </span>
+                    )}
                   </span>
                   {filter === "pending" ? (
                     <div className="flex gap-2">

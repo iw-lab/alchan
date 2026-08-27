@@ -56,6 +56,10 @@ import {
   loadLearningAppItems,
   LEARNING_APPS_CHANGED,
 } from "../services/learningAppRegistry";
+import {
+  LEARNING_SITES_CATEGORY_ID,
+  DEFAULT_APP_OWNER,
+} from "../config/learningApps";
 import globalCacheService from "../services/globalCacheService";
 import { toast } from "../utils/toast";
 import { launchLearningApp } from "../services/appLaunch";
@@ -353,6 +357,16 @@ export const ALCHAN_MENU_ITEMS = [
     icon: Settings,
     isCategory: true,
     category: "admin",
+    adminOnly: true,
+  },
+  // 🏛️ 알찬광장 — 선생님들끼리 쓰는 공간이라 '알찬 관리자' 묶음 맨 위에 둔다.
+  //    학생에게는 adminOnly 로 보이지 않고, 데이터도 rules 가 잠근다(두 겹).
+  {
+    id: "alchanPlaza",
+    label: "알찬광장",
+    icon: MessageSquare,
+    path: "/plaza",
+    parentId: "adminCategory",
     adminOnly: true,
   },
   {
@@ -1077,12 +1091,36 @@ export default function AlchanSidebar({
       <MenuSection key={categoryKey} title={CATEGORY_LABELS[categoryKey]}>
         {items.map((item) => {
           if (item.isCategory) {
-            const childItems = allMenuItems.filter((child) => {
+            let childItems = allMenuItems.filter((child) => {
               if (child.parentId !== item.id) return false;
               return shouldShowItem(child);
             });
 
             if (childItems.length === 0) return null;
+
+            // 🧑‍🏫 학습 사이트는 **제작자(선생님)별로 묶어서** 보여준다(2026-08-27).
+            //    선생님들이 자기가 만든 사이트를 알찬광장에 올릴 수 있게 되면서, 목록이
+            //    한 줄로 쭉 늘어서면 누가 만든 건지 알 수 없어진다.
+            //    ⚠️ 제작자가 **한 명뿐이면 묶지 않는다.** 묶음이 하나뿐인 머리글은
+            //       정보를 주지 않으면서 세로 공간만 먹는다(오늘 화면은 그대로 유지된다).
+            //    ⚠️ 이 화면은 이미 max-h 상한에 한 번 잘려 본 적이 있다(2026-07-25).
+            //       머리글이 늘어도 잘리지 않도록 상한은 3000px 로 넉넉하다.
+            if (item.id === LEARNING_SITES_CATEGORY_ID) {
+              const owners = [...new Set(childItems.map((c) => c.owner || DEFAULT_APP_OWNER))];
+              if (owners.length > 1) {
+                // 기본 묶음을 맨 위로, 나머지는 가나다순. 제작자별 순서가 매번 바뀌면
+                // "아까 거기 있었는데" 가 된다 — 순서는 결정적이어야 한다.
+                owners.sort((a, b) => {
+                  if (a === DEFAULT_APP_OWNER) return -1;
+                  if (b === DEFAULT_APP_OWNER) return 1;
+                  return a.localeCompare(b, "ko");
+                });
+                childItems = owners.flatMap((owner) => [
+                  { id: `owner-${owner}`, label: owner, isSubGroup: true },
+                  ...childItems.filter((c) => (c.owner || DEFAULT_APP_OWNER) === owner),
+                ]);
+              }
+            }
 
             return (
               <CategoryItem

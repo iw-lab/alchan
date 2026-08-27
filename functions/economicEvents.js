@@ -4,7 +4,7 @@
  * 배포 시 SCHEDULER_AUTH_TOKEN 환경변수 필수 (deploy.yml에서 자동 주입)
  */
 
-const { db, admin, logger, findApprovedAdminSnap } = require("./utils");
+const { db, admin, logger, findApprovedAdminSnap, bumpCatalogVersion } = require("./utils");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -943,15 +943,29 @@ async function executeStorePriceChange(classCode, params) {
       }
       const currentPrice = data.price || 0;
       if (currentPrice > 0) {
-        batch.update(doc.ref, {
+        // 🧭 물가 기준선 — `adjustStorePrices` 와 **같은 규약**이다(functions/index.js 주석 참조).
+        //    물가를 움직이는 곳이 둘뿐이라 둘 다 박아야 기준선이 신뢰할 수 있다.
+        //    여기만 빠지면 "물가 폭등 이벤트(×2) 뒤 선물 아이템 되팔기" 로 그대로 뚫린다.
+        const patch = {
           price: Math.max(100, Math.round(currentPrice * multiplier)),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        };
+        if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) {
+          patch.basePrice = currentPrice;
+        }
+        batch.update(doc.ref, patch);
         affectedCount++;
       }
     });
     await batch.commit();
   }
+
+  // 🔥 학생 화면의 상점 카탈로그는 세션 캐시(27분)에 있고 `catalogMeta/{classCode}` 버전
+  //    리스너로만 버려진다(읽기 절감 2단계). 여기엔 그 갱신이 **없었다**(2026-08-27 확인) —
+  //    물가 이벤트 팝업은 "2배가 됐다"고 알리는데 상점은 최대 27분간 옛 가격을 보여줬다.
+  //    가격을 쓰는 곳이 셋인데 무효화는 둘에만 있었던 것이다(index.js 의 add/update/delete).
+  //    비치명 실패로 둔다 — 물가는 이미 바뀌었고, 캐시는 늦어도 27분 뒤 스스로 만료된다.
+  await bumpCatalogVersion(classCode);
 
   logger.info(
     `[경제이벤트] ${classCode}: 상점 물가 ${multiplier}배 변경 - ${affectedCount}개 아이템 적용, ${excludedCount}개 제외(자유 시간 등)`,

@@ -35,22 +35,24 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     expect(SAVE).toMatch(/selectedJobIds: validSelected/);
   });
 
-  it("⭐ 상한을 '유지 + 대기중 + 신규신청' 합으로 센다", () => {
+  it("⭐ 상한을 '이미 가진 것 + 대기중 + 신규신청' 합으로 센다", () => {
     // 대기 중인 걸 빼고 세면 승인 전에 계속 신청해 상한을 무한 우회할 수 있다.
+    // ⚠️ 2026-08-27: 임명직도 신청 대상이 되면서 **임명분까지 같은 합에 든다**.
+    //    임명분을 빼고 세면 "대통령 + 일반직 상한만큼"으로 상한을 넘길 수 있다.
     expect(SAVE).toContain(
-      "const projected = kept.length + pendingJobIds.size + toApply.length",
+      "appointedCountFresh + heldSelected + pendingJobIds.size + toApply.length",
     );
-    expect(SAVE).toMatch(/if \(projected > allowedSelected\)/);
+    expect(SAVE).toMatch(/if \(projected > maxJobsPerStudent\)/);
   });
 
   it("⭐ 상한 검사가 신청서 생성보다 먼저다", () => {
-    expect(SAVE.indexOf("if (projected > allowedSelected)")).toBeLessThan(
-      SAVE.indexOf("status: \"pending\""),
-    );
+    const capAt = SAVE.indexOf("if (projected > maxJobsPerStudent)");
+    expect(capAt, "상한 검사가 사라졌다").toBeGreaterThan(-1);
+    expect(capAt).toBeLessThan(SAVE.indexOf("status: \"pending\""));
   });
 
   it("⭐ 이미 대기 중인 직업은 다시 신청하지 않는다", () => {
-    expect(SAVE).toContain("added.filter((id) => !pendingJobIds.has(id))");
+    expect(SAVE).toContain("].filter((id) => !pendingJobIds.has(id))");
   });
 
   it("⭐ 그만두기는 승인 없이 즉시 반영된다", () => {
@@ -63,7 +65,7 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     // cash 를 increment 로만 만지는 것과 같은 이유 — 이건 절대값 덮어쓰기다.
     // ⚠️ `selectedJobIds: kept` 는 **반환값**(화면 표시용)이라 정당하다 — 겨냥할 것은 **쓰기**다.
     //    users 문서로 가는 update 가 arrayRemove 를 쓰는지 본다.
-    const write = SAVE.indexOf('batch.update(db.collection("users").doc(uid)');
+    const write = SAVE.indexOf("batch.update(\n            userRef,");
     expect(write, "users 문서 갱신을 찾지 못했다").toBeGreaterThan(-1);
     const writeBody = SAVE.slice(write, write + 260);
     expect(writeBody).toContain("FieldValue.arrayRemove(...removed)");
@@ -75,18 +77,90 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     expect(SAVE).toContain('status: "canceled"');
   });
 
-  it("⭐ 승인 경로가 selectedJobIds 에 새 직업을 직접 붙이지 않는다", () => {
+  it("⭐ 승인제 학급에서 selectedJobIds 에 새 직업을 직접 붙이지 않는다", () => {
     // 신청은 문서만 만들 뿐이어야 한다. validSelected 를 그대로 쓰면 승인제가 무의미해진다.
-    // ⚠️ 슬라이스를 파일 끝까지 잡으면 **승인제가 꺼진 경우의 정상 경로**까지 들어와
-    //    항상 실패한다. 승인 분기 안(= 모든 쓰기가 끝나는 지점)까지만 본다.
-    const start = SAVE.indexOf("if (approvalRequired)");
-    const end = SAVE.indexOf("appliedCount");
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
+    // ⚠️ 2026-08-27: 신청 분기의 조건이 `approvalRequired || appointedToRequest.length > 0`
+    //    으로 넓어졌다. 그 분기 전체를 보면 **승인제가 꺼진 학급의 정상 즉시 저장**까지
+    //    들어와 항상 실패한다. 겨냥할 것은 그 안의 `if (approvalRequired) {` 쓰기 블록이다.
+    const start = SAVE.indexOf("if (approvalRequired) {");
+    expect(start, "승인제 쓰기 블록을 찾지 못했다").toBeGreaterThan(-1);
+    const end = SAVE.indexOf("} else if (", start);
+    expect(end, "승인제/비승인제 분기 경계를 찾지 못했다").toBeGreaterThan(start);
     const branch = SAVE.slice(start, end);
     expect(branch).not.toContain("selectedJobIds: validSelected");
     // 이 분기에서 selectedJobIds 에 하는 유일한 쓰기는 '뺀 것 제거' 뿐이어야 한다.
     expect(branch).toContain("arrayRemove");
+  });
+
+  it("⭐ 학생 경로는 appointedJobIds 를 **쓰지 않는다** (임명은 승인 CF 전용)", () => {
+    // 2026-08-27: 임명직도 학생이 신청할 수 있게 됐다. 신청은 문서만 만들고,
+    // 부여는 교사 전용 processJobApplication 에서만 일어난다. 여기서 한 줄이라도
+    // appointedJobIds 에 쓰면 2026-07-13 자가임명 결함이 그대로 되살아난다.
+    const studentPath = SAVE.slice(SAVE.indexOf("const currentAppointed ="));
+    expect(studentPath, "학생 경로를 찾지 못했다").toBeTruthy();
+    // 남아도 되는 건 읽기(toJobIdArray(userData?.appointedJobIds))와 반환값뿐이다.
+    for (const forbidden of [
+      "appointedJobIds: [",
+      "appointedJobIds: appointedRequested",
+      "arrayUnion",
+    ]) {
+      expect(studentPath, `학생 경로가 ${forbidden} 로 임명을 쓴다`).not.toContain(
+        forbidden,
+      );
+    }
+  });
+
+  it("⭐ 사용자 문서 쓰기에 낙관적 잠금이 걸린다 (상한 우회 레이스 차단)", () => {
+    // 🔴 2026-08-27 codex CRITICAL. 진입 시점 스냅샷으로 상한을 세고 조건 없이 쓰면,
+    //    그 사이 교사가 임명을 커밋한 경우 상한을 넘긴 채로 커밋된다:
+    //      상한 1 · 임명직 A 대기 → 학생이 일반직 B 저장(임명 0개로 읽음)
+    //      → 교사가 A 승인 → 학생 쪽 쓰기가 그대로 커밋 → A+B 두 개. 주급 200만 → 250만.
+    //    아이러니하게도 이 함수는 **신청서에는** 이미 lastUpdateTime 을 걸고 있었다 —
+    //    정작 돈이 걸린 users 문서에만 빠져 있었다.
+    // ① 다시 읽는다
+    expect(SAVE).toContain("const userSnap = await userRefForRead.get()");
+    expect(SAVE).toContain("const tailSnap = await tailUserRef.get()");
+    // ② 그 판일 때만 쓴다 — 두 경로 모두
+    expect(SAVE).toContain("lastUpdateTime: userSnap.updateTime");
+    expect(SAVE).toContain("lastUpdateTime: tailSnap.updateTime");
+    // ③ 상한 계산이 **다시 읽은 값**을 쓴다(진입 시점 값이 아니라)
+    expect(SAVE).toContain("const appointedCountFresh = freshAppointed.length");
+    expect(
+      SAVE,
+      "즉시저장 경로가 아직 진입 시점 appointedCount 로 상한을 센다",
+    ).toContain("const tailAllowed = Math.max(0, maxJobsPerStudent - tailAppointedCount)");
+  });
+
+  it("⭐ 잠금이 걸리면 아무것도 안 써지고 학생에게 다시 하라고 말한다", () => {
+    // 조용히 실패하면 학생은 저장된 줄 안다. 두 경로 다 code 9/5 를 aborted 로 바꿔 안내한다.
+    const aborted = [...SAVE.matchAll(/"aborted"/g)].length;
+    expect(aborted, "aborted 안내가 두 경로에 다 있지 않다").toBeGreaterThanOrEqual(2);
+  });
+
+  it("⭐ 낡은 번들이 임명직 **신청서**를 취소하지 못한다 (능력 플래그)", () => {
+    // 2026-08-27 이전 번들은 임명 전용 직업을 payload 에 담지 않는다(서버가 거부했으니까).
+    // 그 payload 를 "뺐다"로 읽으면 열려 있던 옛 탭이 저장 한 번으로 방금 낸 임명 신청을
+    // 스스로 취소한다. 빠진 것이 '뺐다'인지 '모른다'인지는 payload 로 구분할 수 없으므로,
+    // 새 번들이 스스로 신고하게 하고 신고 없으면 임명직 신청은 건드리지 않는다.
+    expect(SAVE).toContain("request.data?.includesAppointed === true");
+    const guard = SAVE.indexOf(
+      "if (!clientKnowsAppointed && isAppointedJob(jobMap.get(jobId))) return false;",
+    );
+    expect(guard, "임명직 신청 취소 가드가 없다").toBeGreaterThan(-1);
+    // 가드는 **취소 목록을 만드는 자리**에 있어야 한다 — 뒤에서 걸러내면 이미 늦다.
+    expect(guard).toBeLessThan(SAVE.indexOf('status: "canceled"'));
+  });
+
+  it("⭐ 학생이 체크를 풀어도 임명직은 벗겨지지 않는다", () => {
+    // 낡은 번들은 임명직을 payload 에 아예 안 넣는다. 그걸 '그만두기'로 읽으면
+    // 그 탭의 저장 한 번이 이미 임명된 직업을 조용히 날린다.
+    // 그만두기 계산(`removed`)이 **일반직 목록(current)** 에서만 나오는지 본다.
+    expect(SAVE).toContain(
+      "const removed = current.filter((id) => !requestedSet.has(id))",
+    );
+    expect(SAVE).toContain(
+      "const current = toJobIdArray(freshUser?.selectedJobIds).filter(",
+    );
   });
 });
 
@@ -135,16 +209,24 @@ describe("직업 신청 — 승인 경로(processJobApplication)", () => {
 
   it("⭐ 승인 시점에 상한을 다시 확인한다", () => {
     // 신청 후 교사가 상한을 낮췄을 수 있다.
-    expect(PROCESS).toContain("current.length + 1 > allowedSelected");
+    expect(PROCESS).toContain("heldCount + 1 > maxJobsPerStudent");
   });
 
   it("⭐ 재검증이 전부 직업 부여보다 먼저다", () => {
-    const grant = PROCESS.indexOf("selectedJobIds: [...current, app.jobId]");
-    expect(grant).toBeGreaterThan(-1);
+    // 부여 지점은 둘이다(임명/일반). **더 앞선 쪽**을 기준으로 재야 한 쪽만 보호되는 일이 없다.
+    const grants = [
+      "appointedJobIds: [...currentAppointed, app.jobId]",
+      "selectedJobIds: [...currentSelected, app.jobId]",
+    ].map((g) => {
+      const at = PROCESS.indexOf(g);
+      expect(at, `${g} 가 사라졌다`).toBeGreaterThan(-1);
+      return at;
+    });
+    const grant = Math.min(...grants);
     for (const guard of [
       "if (!job || job.classCode !== classCode)",
       "isAppointedJob(job)",
-      "current.length + 1 > allowedSelected",
+      "heldCount + 1 > maxJobsPerStudent",
       "app.studentId === uid",
     ]) {
       // ⚠️ **먼저 존재를 확인한다.** 없으면 indexOf 가 -1 이라 "부여보다 앞"이 자동으로
@@ -156,7 +238,29 @@ describe("직업 신청 — 승인 경로(processJobApplication)", () => {
   });
 
   it("⭐ 이미 가진 직업은 중복으로 붙이지 않는다", () => {
-    expect(PROCESS).toContain("current.includes(app.jobId)");
+    // ⚠️ 두 필드를 **모두** 본다. 한쪽만 보면 반대쪽에 이미 있는 직업이 다시 붙어
+    //    같은 직업이 두 필드에 동시에 존재하고, 상한 계산이 그만큼 부풀려진다.
+    expect(PROCESS).toContain("currentSelected.includes(app.jobId)");
+    expect(PROCESS).toContain("currentAppointed.includes(app.jobId)");
+  });
+
+  it("⭐ 지정 전용 직업은 appointedJobIds 로만 부여된다", () => {
+    // 학생이 자기 문서에 못 쓰는 필드다. 여기서 selectedJobIds 로 부여하면
+    // 권한 판정(hasAppointedJobTitle)이 통과하지 않아 조용히 고장나거나,
+    // 반대로 self-select 무효화 규약이 깨진다.
+    expect(PROCESS).toContain("const grantAsAppointed = isAppointedJob(job)");
+    const grantAt = PROCESS.indexOf("grantAsAppointed\n            ? {");
+    expect(grantAt, "부여 분기가 grantAsAppointed 로 갈리지 않는다").toBeGreaterThan(-1);
+    const branch = PROCESS.slice(grantAt, grantAt + 400);
+    // 참 가지 = 임명, 거짓 가지 = 일반. 순서가 뒤집히면 지정 전용이 selectedJobIds 로 간다.
+    // ⚠️ **먼저 존재를 확인한다.** indexOf 가 -1 이면 "앞에 있다"가 자동으로 참이 되어
+    //    부여 필드를 통째로 바꿔도 이 테스트가 초록불로 남는다(이 파일의 기존 교훈과 같은 함정 —
+    //    2026-08-27 변이 테스트로 실제로 걸렸다).
+    const appointedAt = branch.indexOf("appointedJobIds: [...currentAppointed");
+    const selectedAt = branch.indexOf("selectedJobIds: [...currentSelected");
+    expect(appointedAt, "참 가지가 appointedJobIds 로 부여하지 않는다").toBeGreaterThan(-1);
+    expect(selectedAt, "거짓 가지가 selectedJobIds 로 부여하지 않는다").toBeGreaterThan(-1);
+    expect(appointedAt, "부여 분기가 뒤집혔다").toBeLessThan(selectedAt);
   });
 
   it("⭐ 거절은 직업을 건드리지 않는다", () => {

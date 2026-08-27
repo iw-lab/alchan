@@ -15,6 +15,7 @@ const {
   db,
   admin,
   logger,
+  bumpCatalogVersion,
 } = require("./utils");
 const {
   resetTasksForClass,
@@ -1028,7 +1029,7 @@ exports.adminResetUserPassword = onCall(
     }
 
     try {
-      // 학급 관리자인 경우, 같은 학급 학생인지 확인
+      // 학급 관리자인 경우, 같은 학급 **학생**인지 확인
       if (isAdmin && !isSuperAdmin) {
         const targetUserRef = db.collection("users").doc(userId);
         const targetUserDoc = await targetUserRef.get();
@@ -1044,6 +1045,26 @@ exports.adminResetUserPassword = onCall(
           throw new HttpsError(
             "permission-denied",
             "자신의 학급 학생만 비밀번호를 초기화할 수 있습니다.",
+          );
+        }
+
+        // 🔒 대상이 **학생**인지 확인 (2026-08-27 추가).
+        //    종전엔 학급만 봤다. 그래서 같은 classCode 를 가진 **다른 교사·슈퍼관리자**의
+        //    비밀번호도 교사가 바꿀 수 있었다 — 비번을 바꾼 뒤 그 계정으로 로그인하면
+        //    그대로 계정 탈취이고, 대상이 슈퍼관리자면 앱 전체가 넘어간다.
+        //    화면이 이 버튼을 슈퍼관리자에게만 그려서 여태 안 밟혔을 뿐,
+        //    CF 는 처음부터 교사에게 열려 있었다(F12 로 직접 호출 가능).
+        //    이번에 교사에게 버튼을 열면서 그 구멍을 먼저 막는다.
+        //    ⚠️ 자기 자신도 막는다 — 교사가 자기 비번을 바꾸는 정상 경로는 '내 정보'(MyProfile)의
+        //       updatePassword 이고, 그쪽은 재인증을 요구한다. 여기로 우회하면 재인증이 사라진다.
+        if (
+          targetUserData.isAdmin === true ||
+          targetUserData.isSuperAdmin === true ||
+          targetUserData.role === "admin"
+        ) {
+          throw new HttpsError(
+            "permission-denied",
+            "선생님 계정의 비밀번호는 여기서 바꿀 수 없습니다. 학생 계정만 초기화할 수 있어요.",
           );
         }
       }
@@ -5567,20 +5588,9 @@ exports.getItemContextData = onCall(
   },
 );
 
-// 🔥 [읽기 절감 2단계] 카탈로그 버전 문서(catalogMeta/{classCode}) 갱신.
-// 학생 클라이언트가 이 문서 1개를 onSnapshot 구독 → 버전 변경 시 세션 캐시를 버리고
-// 즉시 재조회한다(관리자 가격/상품 변경의 실시간 전파). 실패는 비치명(TTL 27분으로 수렴).
-const bumpCatalogVersion = async (classCode) => {
-  if (!classCode) return;
-  try {
-    await db.collection("catalogMeta").doc(classCode).set(
-      { version: admin.firestore.FieldValue.serverTimestamp() },
-      { merge: true },
-    );
-  } catch (e) {
-    logger.warn(`[bumpCatalogVersion] ${classCode} 갱신 실패(비치명):`, e);
-  }
-};
+// 🔥 카탈로그 버전 갱신(bumpCatalogVersion)의 정본은 `./utils` 하나다 —
+//    2026-08-27 까지 여기와 economicEvents.js 에 사본이 각각 있었다(같은 값을 두 벌 적으면
+//    반드시 어긋난다는, 이 저장소가 반복해서 데인 패턴).
 
 exports.updateStoreItem = onCall(
   { region: "asia-northeast3" },
@@ -5764,6 +5774,135 @@ exports.deleteStoreItem = onCall(
         error.message || "아이템 삭제에 실패했습니다.",
       );
     }
+  },
+);
+
+
+/**
+ * 🏷️ 학급 상점 물가 일괄 조정 (교사 전용) — "전체 10% 인상 / 10% 인하" 버튼의 서버.
+ *
+ * 왜 CF 인가
+ *   `storeItems` 는 rules 상 관리자만 쓸 수 있고, 학급 격리(classCode)도 서버가 정해야 한다.
+ *   클라에서 N개를 각각 updateStoreItem 으로 때리면 왕복 N회 + 부분 실패로 물가가 얼룩진다.
+ *
+ * 🔒 상한이 왜 필요한가 — 되팔기와 맞물린다
+ *   국고 되팔기(sellItemToTreasury)는 **지금 상점가의 70%** 를 준다. 학생이 실제로 낸 돈은
+ *   표시가격 그대로다(VAT 는 관리자 세수 계산일 뿐, 학생에게 더 받지 않는다 — 2026-08-27 실측).
+ *   그래서 물가가 구매 시점보다 **1/0.7 ≈ 1.43배** 를 넘으면 "싸게 사서 국고에 되팔기" 가
+ *   그 자리에서 이익이 된다. +10% 를 네 번만 눌러도 넘는 선이라, 이 버튼은 그냥 두면
+ *   교사가 물가를 관리할 때마다 학생에게 무담보 차익을 나눠 주게 된다.
+ *   → 그래서 **되팔기 쪽을 같이 고쳤다**: 되팔기 기준가는 '그 학생이 마지막에 낸 단가' 를
+ *     넘지 못한다(아래 sellItemToTreasury 참고). 여기 한 스텝 상한(±50%)은 그 위에 얹는
+ *     오조작 방지선이다 — 0 을 하나 더 눌러 물가가 10배가 되는 사고를 막는다.
+ */
+const STORE_PRICE_MIN = 100; // 경제이벤트(executeStorePriceChange)와 같은 하한
+const STORE_PRICE_MAX = 1000000000; // 10억 — MAX_MONEY(100억) 아래로 넉넉히 잡은 표시가 상한
+exports.adjustStorePrices = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode } = await checkAuthAndGetUserData(request, true); // 교사 전용
+    if (!classCode) {
+      throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+    }
+
+    const percent = Number(request.data?.percent);
+    // 한 번에 바꿀 수 있는 폭을 좁게 묶는다. 크게 움직이고 싶으면 여러 번 누르면 되고,
+    // 그 편이 "얼마나 올렸는지" 를 교사가 체감하기도 쉽다.
+    if (!Number.isFinite(percent) || !Number.isInteger(percent)) {
+      throw new HttpsError("invalid-argument", "조정 비율이 올바르지 않습니다.");
+    }
+    if (percent === 0 || percent < -50 || percent > 50) {
+      throw new HttpsError(
+        "invalid-argument",
+        "한 번에 −50% ~ +50% 까지만 조정할 수 있어요. (0% 제외)",
+      );
+    }
+
+    const multiplier = 1 + percent / 100;
+
+    const itemsSnapshot = await db
+      .collection("storeItems")
+      .where("classCode", "==", classCode)
+      .get();
+
+    if (itemsSnapshot.empty) {
+      return { success: true, changedCount: 0, excludedCount: 0, clampedCount: 0, percent };
+    }
+
+    let changedCount = 0;
+    let excludedCount = 0;
+    let clampedCount = 0;
+    const samples = []; // 교사에게 "무엇이 얼마로" 를 몇 개만 보여준다
+
+    const docs = itemsSnapshot.docs;
+    const BATCH_SIZE = 400; // Firestore 배치 상한(500) 아래
+    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      let writesInBatch = 0;
+      for (const d of docs.slice(i, i + BATCH_SIZE)) {
+        const data = d.data();
+        // 가치가 고정된 아이템(자유 시간 등)은 물가에서 뺀다 — 경제이벤트와 같은 판별을 쓴다.
+        // 판별을 여기서 새로 적으면 두 경로가 반드시 어긋난다(이 저장소의 반복 결함).
+        if (isStorePriceEventExcluded(data)) {
+          excludedCount++;
+          continue;
+        }
+        const current = Number(data.price);
+        if (!Number.isFinite(current) || current <= 0) continue;
+
+        const raw = Math.round(current * multiplier);
+        const next = Math.min(STORE_PRICE_MAX, Math.max(STORE_PRICE_MIN, raw));
+        if (next !== raw) clampedCount++;
+        // 반올림 때문에 값이 그대로인 경우(예: 100원에 -10%면 하한에 걸려 100원)는 쓰지 않는다.
+        // 안 그러면 아무것도 안 바뀐 문서에 updatedAt 만 찍혀 읽기 캐시가 헛돈다.
+        if (next === current) continue;
+
+        // 🧭 물가 기준선. **일괄 조정을 처음 받을 때의 가격**을 한 번만 박는다.
+        //    되팔기(sellItemToTreasury)는 구매 이력이 없는 아이템(선물·뽑기·경매·마켓으로
+        //    받은 것)에 대해 "지금 상점가 × 70%" 로 떨어지는데, 그러면 교사가 물가를 올린
+        //    만큼이 그대로 국고에서 나가는 현금이 된다 — 학생이 낸 돈은 0원인데.
+        //    획득 경로는 여섯 곳이라 거기마다 기준가를 심으면 반드시 한 곳을 빠뜨린다
+        //    (이 저장소의 "N곳 중 M곳만" 반복 결함). 그래서 **레버 쪽에** 기준선을 남긴다 —
+        //    물가를 움직이는 곳은 여기와 경제이벤트 둘뿐이다.
+        //    ⚠️ 덮어쓰지 않는다. 두 번째 조정부터는 첫 기준선이 그대로 유지돼야
+        //       "인상 → 되팔기" 를 반복해도 기준선이 따라 오르지 않는다.
+        const patch = {
+          price: next,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) {
+          patch.basePrice = current;
+        }
+        batch.update(d.ref, patch);
+        writesInBatch++;
+        changedCount++;
+        if (samples.length < 3) {
+          samples.push({ name: data.name || "아이템", from: current, to: next });
+        }
+      }
+      if (writesInBatch > 0) await batch.commit();
+    }
+
+    // 🔥 학생 화면은 상점 카탈로그를 세션 캐시(27분)에 들고 있고, `catalogMeta/{classCode}` 의
+    //    버전 변경을 리스너 하나로 감지해 캐시를 버린다(읽기 절감 2단계). 이걸 안 올리면
+    //    교사는 물가를 바꿨는데 학생 화면은 최대 27분간 옛 가격을 보여준다 —
+    //    "바꿨는데 그대로다" 의 전형이다.
+    //    ⚠️ 경제이벤트의 물가 변경(executeStorePriceChange)에는 이 갱신이 **빠져 있다**(2026-08-27 확인).
+    //       거기도 같이 고쳤다.
+    await bumpCatalogVersion(classCode);
+
+    logger.info(
+      `[adjustStorePrices] ${uid} · ${classCode} 물가 ${percent > 0 ? "+" : ""}${percent}% — 변경 ${changedCount} · 제외 ${excludedCount} · 한계보정 ${clampedCount}`,
+    );
+
+    return {
+      success: true,
+      percent,
+      changedCount,
+      excludedCount,
+      clampedCount,
+      samples,
+    };
   },
 );
 
@@ -6087,10 +6226,26 @@ exports.purchaseStoreItem = onCall(
           transaction.update(itemRef, stockUpdate);
         }
 
+        // 🏷️ 되팔기 기준가 = 이 학생이 이 아이템에 **실제로 낸 단가**.
+        //    국고 되팔기는 지금 상점가의 70% 를 주는데, 학생이 낸 돈은 표시가격 그대로다
+        //    (VAT 는 관리자 세수 계산일 뿐 학생에게 더 받지 않는다 — 2026-08-27 실측).
+        //    그래서 물가가 구매 시점의 1/0.7 ≈ 1.43배를 넘는 순간 "싸게 사서 되팔기" 가
+        //    이익이 된다. 물가 조정 버튼(adjustStorePrices)과 물가 이벤트(×2)가 그 선을
+        //    쉽게 넘기므로, 되팔기가 이 값을 넘지 못하게 기록해 둔다.
+        //    ⚠️ 여러 번 나눠 사면 로트가 섞인다. 로트를 따로 추적하는 대신 **더 싼 쪽으로만**
+        //       내린다(min) — 비싼 단가 1개를 얹어 기준가를 끌어올리는 우회를 막기 위해서다.
+        //       학생에게 불리한 쪽이지만, 국고에서 돈이 발행되는 쪽보다 안전하다.
+        const prevBasisRaw = Number(userItemDoc.exists ? userItemDoc.data()?.lastPurchaseUnitPrice : NaN);
+        const purchaseBasis =
+          Number.isFinite(prevBasisRaw) && prevBasisRaw > 0
+            ? Math.min(prevBasisRaw, currentPrice)
+            : currentPrice;
+
         // 사용자 아이템에 추가
         if (userItemDoc.exists) {
           transaction.update(userItemRef, {
             quantity: admin.firestore.FieldValue.increment(quantity),
+            lastPurchaseUnitPrice: purchaseBasis,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
         } else {
@@ -6098,6 +6253,9 @@ exports.purchaseStoreItem = onCall(
             itemId: itemId,
             name: itemData.name || "",
             quantity: quantity,
+            // 되팔기 기준가(위 주석 참고). 선물·뽑기로 받은 아이템엔 이 필드가 없고,
+            // 그 경우 되팔기는 종전대로 '지금 상점가의 70%' 로 떨어진다.
+            lastPurchaseUnitPrice: purchaseBasis,
             acquiredAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
@@ -6180,7 +6338,11 @@ exports.purchaseStoreItem = onCall(
 //    직접 읽어 결정(클라 가격 신뢰 안 함 — 치팅 방지).
 //    - 자격: 상점에 현재 판매중인 아이템만(storeItems 존재 + available!==false).
 //      삭제·판매중지된 아이템(선물·뽑기로 받은 것 포함)은 되팔기 불가 → 국고 고갈 통제.
-//    - 무한증식 불가: VAT 포함 구매가(110%)보다 항상 싸게(70%) 팔리므로 차익거래 구조상 X.
+//    - 무한증식 불가: **기준가 = min(지금 상점가, 학생이 마지막에 낸 단가)** 의 70% 만 준다.
+//      ⚠️ 2026-08-27 정정: 여기엔 "VAT 포함 구매가(110%)보다 싸다" 고 적혀 있었는데 **사실이 아니다.**
+//      학생이 내는 돈은 표시가격 그대로고(VAT 는 관리자 세수 계산일 뿐) 되팔기는 70% 였다.
+//      즉 물가가 1/0.7 ≈ 1.43배를 넘으면 그때부터 차익거래가 열려 있었다(물가 폭등 이벤트 ×2 로
+//      이미 도달 가능). 근거가 틀린 주석을 남겨 두면 다음 사람이 그 근거로 또 안심한다.
 //    - 안전망: 클라 lock + 서버 idempotency + increment + 거래로그(audit) + 국고 통계.
 //    - 상점 재고(stock)는 건드리지 않음(국고 연동 = 현금만; 자동보충 가격로직과 분리).
 const TREASURY_BUYBACK_RATIO = 0.7;
@@ -6303,10 +6465,30 @@ exports.sellItemToTreasury = onCall(
           );
         }
 
-        // 되팔기 단가 = 현재 상점가 × 70% (최소 1원)
+        // 되팔기 단가 = **기준가 × 70%** (최소 1원).
+        //   기준가 = min(지금 상점가, 이 학생이 마지막에 낸 단가).
+        //   ⚠️ 종전엔 '지금 상점가' 하나만 봤다. 그러면 물가가 오른 뒤 되팔 때
+        //      0.7 × (오른 가격) 이 원래 낸 돈을 넘어 **국고가 돈을 발행한다.**
+        //      물가 조정 버튼(+10%)을 네 번만 눌러도 넘는 선이라, 물가 관리 기능이
+        //      곧 무담보 차익 배포기가 된다(2026-08-27).
+        //   구버전 인벤토리·선물·뽑기 아이템엔 이 필드가 없다 → 종전 동작 그대로.
+        //   구매 이력이 없으면(선물·뽑기·경매·마켓으로 받은 것) **물가 기준선**으로 떨어진다.
+        //   기준선 = 그 아이템이 일괄 물가조정을 처음 받기 직전의 가격(storeItems.basePrice).
+        //   기준선도 없으면(한 번도 물가를 안 움직인 학급) 종전대로 지금 상점가다 —
+        //   물가가 안 움직였으면 인상분을 캐낼 것도 없다.
+        const paidUnitRaw = Number(invData.lastPurchaseUnitPrice);
+        const baselineRaw = Number(storeData.basePrice);
+        const fallbackBasis =
+          Number.isFinite(baselineRaw) && baselineRaw > 0
+            ? Math.min(storePrice, baselineRaw)
+            : storePrice;
+        const basisPrice =
+          Number.isFinite(paidUnitRaw) && paidUnitRaw > 0
+            ? Math.min(storePrice, paidUnitRaw)
+            : fallbackBasis;
         const unitPrice = Math.max(
           1,
-          Math.round(storePrice * TREASURY_BUYBACK_RATIO),
+          Math.round(basisPrice * TREASURY_BUYBACK_RATIO),
         );
         const totalGain = unitPrice * quantity;
         const itemName = storeData.name || invData.name || "아이템";
@@ -10228,78 +10410,31 @@ exports.createStudentAccounts = onCall(
   },
 );
 
-// 학생 비밀번호 리셋 (관리자 전용)
+// 🪦 학생 비밀번호 리셋 — **2026-08-27 폐기.** 정본은 `adminResetUserPassword` 하나다.
+//
+// 왜 지웠나
+//   이 함수는 `adminResetUserPassword` 와 같은 일을 하는 형제였는데, 검사가 **한 칸 뒤처져
+//   있었다.** 2026-08-03 에 학급 경계 검사가 한쪽에만 있어 한 번 어긋났고(그때 이쪽에 추가),
+//   2026-08-27 에 "대상이 학생인가" 검사가 다시 한쪽에만 추가되며 **같은 모양으로 또 어긋났다.**
+//   그 사이 이 함수는 같은 학급의 다른 교사·슈퍼관리자 비밀번호를 바꿀 수 있었다 —
+//   바꾼 뒤 그 계정으로 로그인하면 계정 탈취이고, 대상이 슈퍼관리자면 앱 전체가 넘어간다.
+//   화면에서 안 불렀을 뿐(호출처 0곳) 배포된 onCall 은 이름만 알면 devtools 로 부를 수 있다.
+//
+//   "두 함수를 앞으로 잘 동기화하자"는 두 번 실패한 처방이다. 하나를 없애는 것이 처방이다.
+//   ⚠️ 본문을 남긴 채 throw 만 얹지 않는다 — `completeTask` 주석이 적어 둔 그대로,
+//      "throw 만 지우면 되살아나는" 유지보수 함정이 된다. 본문은 통째로 걷었다.
+//   스텁을 남기는 이유는 낡은 호출자에게 "없는 함수" 대신 이유를 돌려주기 위해서다.
 exports.resetStudentPassword = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isSuperAdmin } = await checkAuthAndGetUserData(
-      request,
-      true,
+    await checkAuthAndGetUserData(request, true);
+    throw new HttpsError(
+      "permission-denied",
+      "이 경로는 폐기되었습니다. 관리자 설정 → 학생/구성원에서 비밀번호를 초기화해 주세요.",
     );
-
-    const { email, newPassword } = request.data;
-    if (!email || !newPassword) {
-      throw new HttpsError(
-        "invalid-argument",
-        "이메일과 새 비밀번호가 필요합니다.",
-      );
-    }
-    if (newPassword.length < 6) {
-      throw new HttpsError(
-        "invalid-argument",
-        "비밀번호는 6자 이상이어야 합니다.",
-      );
-    }
-
-    try {
-      const userRecord = await admin.auth().getUserByEmail(email);
-
-      // 🔒 학급 경계 검사 (2026-08-03 추가).
-      //    여기엔 '인증'만 있고 '권한'이 없었다. checkAuthAndGetUserData(request, true) 는
-      //    "승인된 교사인가"만 보고 **어느 학급 교사인지는 보지 않는다**. 그래서 교사 아무나
-      //    임의 이메일로 이 함수를 불러 다른 반 학생은 물론 **다른 교사·슈퍼관리자의**
-      //    비밀번호까지 바꿀 수 있었다(수직 권한상승).
-      //    형제 함수 adminResetUserPassword 는 같은 상황에서 이미 이 검사를 하고 있었다
-      //    (functions/index.js 의 targetUserData.classCode !== classCode) — 두 함수가
-      //    어긋나 있던 것이고, firestore.rules 의 isClassAdminOfUser 가 표방하는
-      //    "한 교사 = 한 학급" 모델을 CF 쪽에서 못 지키고 있었다.
-      if (!isSuperAdmin) {
-        const targetDoc = await db.collection("users").doc(userRecord.uid).get();
-        // ⚠️ 단순히 `a !== b` 로 비교하면 양쪽이 모두 undefined 일 때(교사가 아직 학급에
-        //    참여 안 함 + 대상 문서에 classCode 없음) `undefined !== undefined` 가 false 라
-        //    검사를 그냥 통과한다. 값이 실제로 있는지부터 확인한다(fail-closed).
-        const mine = targetDoc.exists ? classCode : null;
-        const theirs = targetDoc.exists ? targetDoc.data().classCode : null;
-        if (!mine || !theirs || mine !== theirs) {
-          logger.warn(
-            `[resetStudentPassword] 학급 밖 리셋 시도 차단: ${uid} → ${email}`,
-          );
-          throw new HttpsError(
-            "permission-denied",
-            "자신의 학급 학생만 비밀번호를 초기화할 수 있습니다.",
-          );
-        }
-      }
-
-      await admin.auth().updateUser(userRecord.uid, { password: newPassword });
-      logger.info(
-        `[resetStudentPassword] ${uid}가 ${email}의 비밀번호를 리셋함`,
-      );
-      return { success: true, message: "비밀번호가 리셋되었습니다." };
-    } catch (error) {
-      // 위 학급경계 검사가 던진 permission-denied 를 여기서 internal 로 덮으면
-      // 클라이언트가 '권한 없음'과 '서버 오류'를 구분하지 못한다. 그대로 통과시킨다.
-      if (error instanceof HttpsError) throw error;
-      logger.error(`[resetStudentPassword] 오류: ${error.message}`);
-      throw new HttpsError("internal", `비밀번호 리셋 실패: ${error.message}`);
-    }
   },
 );
 
-// 학생 로그인 자동 복구 — **Auth 계정이 아예 없을 때만**.
-// 인증 불필요(로그인 전 호출) + .alchan 학생 이메일만 허용.
-// 🔒 2026-08-03: 예전엔 "비밀번호 불일치 시"에도 리셋해줬고, 그게 미인증 계정 탈취
-//    경로였다. 기존 계정에는 절대 손대지 않는다 — 비번 분실은 교사가 재설정한다.
 exports.repairStudentLogin = onCall(
   { region: "asia-northeast3" },
   async (request) => {
@@ -11125,49 +11260,77 @@ exports.saveSelectedJobs = onCall(
       };
     }
 
-    // 학생: 지정 전용 직업을 요청에 섞어 보낸 경우는 UI 우회 시도 — 거부하고 기록
-    if (appointedRequested.length > 0) {
-      logger.warn(
-        `[saveSelectedJobs] 지정 전용 직업 선택 시도 차단: uid=${uid}, jobIds=${JSON.stringify(
-          appointedRequested,
-        )}`,
-      );
-      throw new HttpsError(
-        "permission-denied",
-        "선생님이 지정하는 직업은 직접 선택할 수 없어요.",
-      );
-    }
+    // ── 학생 경로 ──────────────────────────────────────────────────────────────
+    // 🧑‍🏫 2026-08-27: 지정 전용 직업(대통령·국무총리·판사·경찰청장·국세청 직원)도
+    //   학생이 **신청**할 수 있다. 전에는 여기서 곧장 거부했고, 그 직업들은 교사가 배정
+    //   화면에서 직접 꽂아야 했다 — 누가 하고 싶은지 교사가 일일이 물어야 해서 편의가 아니라
+    //   손이 더 가는 구조였다(사용자 결정 2026-08-27).
+    //
+    //   바뀐 것은 **입구뿐이다.** 부여는 여전히 교사 승인(processJobApplication)에서만
+    //   일어나고, 승인되면 `appointedJobIds` 로 들어간다 — 학생이 자기 문서에 직접 못 쓰는
+    //   그 필드다. 즉 2026-07-13 자가임명 결함의 봉인(rules + 서버 재검증)은 그대로다.
+    //
+    // 🔒 임명직은 **추가만** 가능하다. 체크를 풀어도 여기서 appointedJobIds 를 지우지 않는다:
+    //   ① 해임은 교사의 판단이다(합의금·세금 징수 권한이 붙은 자리다).
+    //   ② 낡은 번들을 띄워둔 탭은 임명직을 payload 에 **아예 안 넣는다** — 그걸 "그만두겠다는
+    //      뜻"으로 읽으면 그 탭의 저장 한 번이 이미 임명된 직업을 조용히 날린다.
+    //      (이 저장소가 휴면 필드를 라이브화하다 두 번 사고 낸 바로 그 모양이다.)
+    //   대신 대기 중인 **신청**은 취소해 준다 — 교사가 식은 신청을 승인하지 않도록.
+    const currentAppointed = toJobIdArray(userData?.appointedJobIds).filter(
+      (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+    );
+    const currentAppointedSet = new Set(currentAppointed);
+    const appointedToRequest = appointedRequested.filter(
+      (id) => !currentAppointedSet.has(id),
+    );
 
     // 개수 상한은 '지정 + 선택 합계'에 적용한다(급여 계산 resolveStudentJobs와 동일 규약).
     // 교사가 지정한 직업이 슬롯을 먼저 차지하므로, 학생이 고를 수 있는 몫은 그만큼 줄어든다.
-    const appointedCount = toJobIdArray(userData?.appointedJobIds).filter(
-      (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
-    ).length;
+    const appointedCount = currentAppointed.length;
     const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
-    if (validSelected.length > allowedSelected) {
-      throw new HttpsError(
-        "invalid-argument",
-        appointedCount > 0
-          ? `직업은 최대 ${maxJobsPerStudent}개까지 가질 수 있어요. 선생님이 지정한 직업 ${appointedCount}개를 빼면 ${allowedSelected}개까지 고를 수 있어요.`
-          : `직업은 최대 ${maxJobsPerStudent}개까지 선택할 수 있어요.`,
-      );
-    }
 
     // 🧑‍🏫 학급이 '직업 신청 승인제'를 켰으면, **직업이 붙는 것**은 교사 승인을 거친다.
     //   직업 개수가 주급을 정하므로(세전 = 200만 + (직업수−1)×50만) 직업이 붙는 경로는
-    //   곧 돈이 늘어나는 경로다. 지금까지는 학생이 고르면 그대로 반영됐다.
-    //   끈 학급은 아래 기존 경로를 그대로 탄다(동작 100% 동일).
+    //   곧 돈이 늘어나는 경로다. 끈 학급의 **일반 직업**은 아래 기존 경로를 그대로 탄다.
+    //   ⚠️ 임명직은 토글과 무관하게 **항상** 신청→승인이다. 토글은 일반 직업용이고,
+    //      임명직까지 토글에 맡기면 토글이 꺼진 학급에서 학생이 대통령을 자가임명하게 된다.
     const approvalRequired =
       salarySettingsDoc.exists &&
       salarySettingsDoc.data().jobApprovalRequired === true;
 
-    if (approvalRequired) {
+    if (approvalRequired || appointedToRequest.length > 0) {
+      // 🔒 **사용자 문서를 여기서 다시 읽는다.** 위 `userData` 는 함수 진입 시점 스냅샷이라
+      //    그 뒤에 교사가 `processJobApplication` 으로 임명을 커밋한 것을 못 본다.
+      //    그 상태로 상한을 계산하고 조건 없이 쓰면 이런 겹침이 통과한다(2026-08-27 codex CRITICAL):
+      //      상한 1 · 임명직 A 신청 대기 → 학생이 일반직 B 저장(진입 시 임명 0개로 읽음)
+      //      → 그 사이 교사가 A 승인(appointedJobIds=[A]) → 학생 쪽 쓰기가 그대로 커밋
+      //      → 최종 A+B 두 개(상한 1) · 주급 200만 → 250만.
+      //    아래에서 이 스냅샷의 `updateTime` 을 전제조건으로 걸어, 그 사이 누가 먼저 만졌으면
+      //    **아무것도 안 써지고** 학생은 다시 저장하라는 안내를 받는다.
+      //    ⚠️ 이 함수는 신청서에는 이미 lastUpdateTime 을 걸고 있었다 — 정작 돈이 걸린
+      //       `users` 문서에만 안 걸려 있었다(짝이 빠진 자리).
+      const userRefForRead = db.collection("users").doc(uid);
+      const userSnap = await userRefForRead.get();
+      if (!userSnap.exists) {
+        throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
+      }
+      const freshUser = userSnap.data();
+
+      // 갱신된 임명 목록으로 상한을 다시 센다(진입 시점 값이 아니라).
+      const freshAppointed = toJobIdArray(freshUser?.appointedJobIds).filter(
+        (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+      );
+      const freshAppointedSet = new Set(freshAppointed);
+      const appointedCountFresh = freshAppointed.length;
+
       // 현재 보유 중인(유효한) 선택 직업
-      const current = toJobIdArray(userData?.selectedJobIds).filter(
+      const current = toJobIdArray(freshUser?.selectedJobIds).filter(
         (id) => jobMap.has(id) && !isAppointedJob(jobMap.get(id)),
       );
       const currentSet = new Set(current);
-      const requestedSet = new Set(validSelected);
+      // ⚠️ 요청 집합은 `validSelected`(일반직만)가 아니라 `existing`(임명직 포함)이다.
+      //    임명직 신청서를 "체크가 풀렸다"고 오판해 방금 낸 신청을 스스로 취소하지 않도록.
+      const requestedSet = new Set(existing);
 
       // 유지 = 현재 ∩ 요청. 빠진 건 '그만두기'이고 **즉시 반영**한다 —
       //   직업이 줄면 주급도 줄어 악용할 이유가 없고, 승인 대기시키면 교사 일감만 는다.
@@ -11183,45 +11346,101 @@ exports.saveSelectedJobs = onCall(
 
       // 학생이 체크를 풀었으면 그 직업의 대기 신청도 함께 취소한다.
       //   안 그러면 교사가 "학생이 이미 마음을 접은 직업"을 승인하게 된다.
-      const canceledDocs = pendingSnap.docs.filter(
-        (d) => !requestedSet.has(d.data().jobId),
-      );
-      const stillPending = pendingSnap.docs.filter((d) =>
-        requestedSet.has(d.data().jobId),
-      );
+      //
+      // 🔴 단, **임명직은 낡은 번들을 조심해야 한다.** 2026-08-27 이전 번들은 임명 전용
+      //    직업을 payload 에 아예 담지 않는다(서버가 거부했으니 담을 이유가 없었다).
+      //    그 payload 를 그대로 읽으면 "대통령 신청을 뺐다"가 되어, 열려 있던 옛 탭이
+      //    저장 한 번으로 **방금 낸 임명 신청을 스스로 취소한다.**
+      //    빠진 것이 '뺐다'인지 '모른다'인지는 payload 로 알 수 없으므로, 새 번들이
+      //    `includesAppointed: true` 로 **자기가 임명직까지 담았다고 말한다**(능력 플래그).
+      //    말하지 않은 클라이언트에겐 임명직 신청을 건드리지 않는다 —
+      //    취소를 못 해서 남는 신청은 교사가 거절하면 되지만, 조용히 사라진 신청은 아무도 모른다.
+      const clientKnowsAppointed = request.data?.includesAppointed === true;
+      const canceledDocs = pendingSnap.docs.filter((d) => {
+        const jobId = d.data().jobId;
+        if (requestedSet.has(jobId)) return false;
+        if (!clientKnowsAppointed && isAppointedJob(jobMap.get(jobId))) return false;
+        return true;
+      });
+      const canceledIds = new Set(canceledDocs.map((d) => d.id));
+      // 이 저장 뒤에도 살아 있는 대기 신청 = 취소하지 않은 것 전부.
+      //   이미 가진 직업(선택·임명 모두)과 겹치는 건은 상한에 두 번 세지 않는다.
       const pendingJobIds = new Set(
-        stillPending.map((d) => d.data().jobId).filter((id) => !currentSet.has(id)),
+        pendingSnap.docs
+          .filter((d) => !canceledIds.has(d.id))
+          .map((d) => d.data().jobId)
+          .filter((id) => !currentSet.has(id) && !freshAppointedSet.has(id)),
       );
 
+      // 신청 대상 = 임명직 신규 + (승인제일 때만) 일반직 신규.
+      //   승인제가 꺼진 학급에서 일반직은 아래에서 **즉시** 붙는다(기존 동작 보존).
       // 이미 대기 중인 직업은 다시 신청하지 않는다(중복 문서 방지).
-      const toApply = added.filter((id) => !pendingJobIds.has(id));
+      // 다시 읽은 판 기준으로 "아직 안 가진 임명직"만 신청 대상이다 —
+      // 그 사이 승인된 것을 또 신청하면 교사 대기열에 유령이 쌓인다.
+      const toApply = [
+        ...appointedToRequest.filter((id) => !freshAppointedSet.has(id)),
+        ...(approvalRequired ? added : []),
+      ].filter((id) => !pendingJobIds.has(id));
 
-      // 🔒 상한은 **유지분 + 대기중 + 신규신청** 합으로 본다.
+      // 🔒 상한은 **이미 가진 것 + 대기중 + 신규신청** 합으로 본다.
       //    대기 중인 걸 빼고 세면 "승인 전에 계속 신청"으로 상한을 무한히 우회할 수 있다.
-      const projected = kept.length + pendingJobIds.size + toApply.length;
-      if (projected > allowedSelected) {
+      //    승인제가 꺼진 학급에선 일반직이 즉시 붙으므로 `kept` 가 아니라 `validSelected` 를 센다.
+      const heldSelected = approvalRequired ? kept.length : validSelected.length;
+      const projected =
+        appointedCountFresh + heldSelected + pendingJobIds.size + toApply.length;
+      if (projected > maxJobsPerStudent) {
+        const room = Math.max(
+          0,
+          maxJobsPerStudent - appointedCountFresh - heldSelected - pendingJobIds.size,
+        );
         throw new HttpsError(
           "invalid-argument",
           `직업은 최대 ${maxJobsPerStudent}개까지 가질 수 있어요. ` +
-            `지금 ${kept.length}개를 맡고 있고 ${pendingJobIds.size}개가 승인 대기 중이라 ` +
-            `${Math.max(0, allowedSelected - kept.length - pendingJobIds.size)}개까지 더 신청할 수 있어요.`,
+            `지금 ${appointedCountFresh + heldSelected}개를 맡고 있고 ${pendingJobIds.size}개가 승인 대기 중이라 ` +
+            `${room}개까지 더 신청할 수 있어요.`,
         );
       }
 
-      // 🔒 그만두기는 **arrayRemove** 로 쓴다 — 배열 전체를 덮어쓰면 안 된다.
-      //    학생이 직업 화면을 열어둔 사이 선생님이 다른 직업을 승인하면 `selectedJobIds` 가
-      //    이미 바뀌어 있는데, 여기서 (열었을 때 기준으로 만든) `kept` 로 통째 덮어쓰면
-      //    **방금 승인된 직업이 조용히 사라진다**(승인 기록은 남고 직업만 없어져 주급이 준다).
-      //    cash 를 increment 로만 만지는 것과 같은 이유다 — 이건 절대값 덮어쓰기다.
-      //    (processJobApplication 쪽은 트랜잭션 안에서 읽고 쓰므로 그쪽은 안전하다.)
-      const removed = current.filter((id) => !requestedSet.has(id));
       const batch = db.batch();
-      if (removed.length > 0) {
-        batch.update(db.collection("users").doc(uid), {
-          selectedJobIds: admin.firestore.FieldValue.arrayRemove(...removed),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+      const userRef = userRefForRead;
+      // 🔒 이 배치의 모든 쓰기는 **위에서 읽은 그 판일 때만** 유효하다.
+      //    배치는 전부-아니면-전무라, 사용자 문서가 그 사이 바뀌면 신청서도 안 써진다.
+      const userPrecondition = { lastUpdateTime: userSnap.updateTime };
+
+      if (approvalRequired) {
+        // 🔒 그만두기는 **arrayRemove** 로 쓴다 — 배열 전체를 덮어쓰면 안 된다.
+        //    학생이 직업 화면을 열어둔 사이 선생님이 다른 직업을 승인하면 `selectedJobIds` 가
+        //    이미 바뀌어 있는데, 여기서 (열었을 때 기준으로 만든) `kept` 로 통째 덮어쓰면
+        //    **방금 승인된 직업이 조용히 사라진다**(승인 기록은 남고 직업만 없어져 주급이 준다).
+        //    cash 를 increment 로만 만지는 것과 같은 이유다 — 이건 절대값 덮어쓰기다.
+        //    (processJobApplication 쪽은 트랜잭션 안에서 읽고 쓰므로 그쪽은 안전하다.)
+        const removed = current.filter((id) => !requestedSet.has(id));
+        if (removed.length > 0) {
+          batch.update(
+            userRef,
+            {
+              selectedJobIds: admin.firestore.FieldValue.arrayRemove(...removed),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            userPrecondition,
+          );
+        }
+      } else if (
+        validSelected.length !== current.length ||
+        added.length > 0
+      ) {
+        // 승인제가 꺼진 학급: 일반 직업은 즉시 반영(기존 경로와 동일한 절대 저장).
+        //   ⚠️ appointedJobIds 는 여기서도 건드리지 않는다.
+        batch.update(
+          userRef,
+          {
+            selectedJobIds: validSelected,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          userPrecondition,
+        );
       }
+
       // 🔒 취소는 **읽은 그 상태 그대로일 때만** 쓴다(lastUpdateTime 전제조건).
       //    전제조건이 없으면 이런 겹침이 가능하다: 이 함수가 pending 을 읽음 → 그 사이
       //    선생님이 `processJobApplication` 으로 **승인**을 커밋 → 여기 배치가 같은 문서를
@@ -11246,12 +11465,16 @@ exports.saveSelectedJobs = onCall(
       const applicationExpireAt = new Date();
       applicationExpireAt.setDate(applicationExpireAt.getDate() + 180);
       for (const jobId of toApply) {
+        const jobData = jobMap.get(jobId);
         batch.set(db.collection("jobApplications").doc(), {
           studentId: uid,
           studentName: userData?.name || userData?.nickname || "학생",
           classCode,
           jobId,
-          jobTitle: jobMap.get(jobId)?.title || "직업",
+          jobTitle: jobData?.title || "직업",
+          // 🏷️ 신청 시점의 성격. 표시용 배지에만 쓴다 — 승인 시점에 서버가 직업 문서를
+          //    다시 읽어 판정하므로, 이 값이 낡아도 **부여 경로는 안 틀린다.**
+          appointedOnly: isAppointedJob(jobData),
           status: "pending",
           requestedAt: admin.firestore.FieldValue.serverTimestamp(),
           processedAt: null,
@@ -11278,25 +11501,65 @@ exports.saveSelectedJobs = onCall(
       }
 
       logger.info(
-        `[saveSelectedJobs] (승인제) uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length} · 취소 ${canceledDocs.length}`,
+        `[saveSelectedJobs] (승인제=${approvalRequired}) uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length}(임명 ${appointedToRequest.length}) · 취소 ${canceledDocs.length}`,
       );
 
       return {
         success: true,
-        approvalRequired: true,
-        selectedJobIds: kept,
-        appointedJobIds: toJobIdArray(userData?.appointedJobIds),
+        // ⚠️ 실제 토글 값을 그대로 돌려준다. 임명직 신청 때문에 이 분기에 들어온 것뿐인
+        //    학급에 `true` 를 돌려주면 화면이 "일반 직업도 승인이 필요하다"고 거짓말한다.
+        approvalRequired,
+        selectedJobIds: approvalRequired ? kept : validSelected,
+        appointedJobIds: freshAppointed,
         pendingJobIds: [...pendingJobIds, ...toApply],
         appliedCount: toApply.length,
-        droppedCount: requested.length - validSelected.length,
+        droppedCount: requested.length - existing.length,
       };
     }
 
+    // 🔒 즉시저장 경로도 **다시 읽고, 그 판일 때만 쓴다.** 위 신청 분기와 같은 이유다
+    //    (2026-08-27 codex CRITICAL): 진입 시점 스냅샷으로 상한을 세고 조건 없이 쓰면,
+    //    그 사이 교사가 임명을 커밋한 경우 상한을 넘긴 채로 커밋된다.
+    //    이쪽은 임명직 신청이 없는 평범한 저장 경로지만, **교사의 직업 배정 화면**
+    //    (AdminSettingsModal)이 언제든 appointedJobIds 를 바꿀 수 있어 창은 똑같이 열려 있다.
+    const tailUserRef = db.collection("users").doc(uid);
+    const tailSnap = await tailUserRef.get();
+    if (!tailSnap.exists) {
+      throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
+    }
+    const tailAppointedCount = toJobIdArray(tailSnap.data()?.appointedJobIds).filter(
+      (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+    ).length;
+    const tailAllowed = Math.max(0, maxJobsPerStudent - tailAppointedCount);
+    if (validSelected.length > tailAllowed) {
+      throw new HttpsError(
+        "invalid-argument",
+        tailAppointedCount > 0
+          ? `직업은 최대 ${maxJobsPerStudent}개까지 가질 수 있어요. 선생님이 지정한 직업 ${tailAppointedCount}개를 빼면 ${tailAllowed}개까지 고를 수 있어요.`
+          : `직업은 최대 ${maxJobsPerStudent}개까지 선택할 수 있어요.`,
+      );
+    }
+
     // appointedJobIds는 교사 전용이라 건드리지 않는다 (부분 갱신).
-    await db.collection("users").doc(uid).update({
-      selectedJobIds: validSelected,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    try {
+      await tailUserRef.update(
+        {
+          selectedJobIds: validSelected,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { lastUpdateTime: tailSnap.updateTime },
+      );
+    } catch (e) {
+      // 내가 읽은 뒤에 누가 먼저 만졌다 = 아무것도 안 써졌다. 다시 누르면 새로 읽어 계산한다.
+      if (e?.code === 9 || e?.code === 5) {
+        logger.warn(`[saveSelectedJobs] 저장 중 사용자 문서가 바뀌어 중단: uid=${uid} code=${e.code}`);
+        throw new HttpsError(
+          "aborted",
+          "선생님이 방금 직업을 바꿨어요. 화면을 새로 고친 뒤 다시 저장해 주세요.",
+        );
+      }
+      throw e;
+    }
 
     logger.info(
       `[saveSelectedJobs] uid=${uid} 저장 ${validSelected.length}개 (요청 ${requested.length}개)`,
@@ -11307,7 +11570,13 @@ exports.saveSelectedJobs = onCall(
       success: true,
       selectedJobIds: validSelected,
       appointedJobIds: toJobIdArray(userData?.appointedJobIds),
-      droppedCount: requested.length - validSelected.length,
+      // ⚠️ "버려진 것" = 존재하지 않는 유령 id 뿐이다(`requested` − `existing`).
+      //    옛 공식은 `requested − validSelected` 였는데, validSelected 는 임명직을 뺀 목록이라
+      //    학생이 이미 임명직을 가진 채 저장하면(새 화면은 임명직도 함께 보낸다)
+      //    **아무것도 안 버렸는데 N개 버렸다**고 센다. 같은 함수의 다른 반환문 두 곳은
+      //    이미 `existing` 기준이라 셋이 어긋나 있었다(2026-08-27 Claude 레인 WARNING).
+      //    지금은 아무도 안 읽는 필드지만, 읽기 시작하는 순간 틀린 값을 읽게 된다.
+      droppedCount: requested.length - existing.length,
     };
   },
 );
@@ -11441,19 +11710,29 @@ exports.processJobApplication = onCall(
         if (!job || job.classCode !== classCode) {
           throw deny("그 직업이 삭제되어 승인할 수 없습니다.");
         }
-        // 🔒 재검증 ②: 그 사이 '선생님 지정 전용'으로 바뀌지 않았는가
-        //    (지정 전용은 appointedJobIds 로만 부여해야 한다 — 학생 신청으로 붙으면 안 된다)
-        if (isAppointedJob(job)) {
-          throw deny(
-            "선생님이 지정하는 직업이라 신청으로는 줄 수 없습니다. 직업 배정에서 지정해 주세요.",
-          );
-        }
+        // 🔒 재검증 ②: 이 직업이 지금 '지정 전용'인가 — 신청 시점 값을 믿지 않고 다시 본다.
+        //    2026-08-27 이전엔 여기서 **거부**했다(지정 전용은 신청으로 줄 수 없다).
+        //    이제는 거부하지 않고 **부여할 필드를 가른다**:
+        //      · 지정 전용 → appointedJobIds  (권한 판정이 읽는 필드. hasAppointedJobTitle)
+        //      · 일반      → selectedJobIds
+        //    학생이 스스로 쓸 수 있는 필드는 여전히 하나도 없다. 부여는 이 교사 전용 CF 뿐이다.
+        //    ⚠️ 신청서의 `appointedOnly` 는 **읽지 않는다** — 신청 후 교사가 직업의 성격을
+        //       바꿨을 수 있다. 판정 근거는 방금 트랜잭션 안에서 읽은 직업 문서 하나다.
+        const grantAsAppointed = isAppointedJob(job);
 
-        const current = toJobIdArray(sData.selectedJobIds).filter(
+        const currentSelected = toJobIdArray(sData.selectedJobIds).filter(
           (id) => jobMap.has(id) && !isAppointedJob(jobMap.get(id)),
         );
+        const currentAppointed = toJobIdArray(sData.appointedJobIds).filter(
+          (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
+        );
         // 이미 갖고 있으면 승인만 기록하고 끝낸다(중복 부여 방지).
-        if (current.includes(app.jobId)) {
+        //   ⚠️ 두 필드를 **모두** 본다. 한쪽만 보면 반대쪽에 이미 있는 직업이 다시 붙어
+        //      같은 직업이 두 필드에 동시에 존재하게 되고, 상한 계산이 그만큼 부풀려진다.
+        if (
+          currentSelected.includes(app.jobId) ||
+          currentAppointed.includes(app.jobId)
+        ) {
           transaction.update(appRef, {
             status: "approved",
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -11464,26 +11743,34 @@ exports.processJobApplication = onCall(
         }
 
         // 🔒 재검증 ③: 지금 기준 상한. 신청 후 교사가 상한을 낮췄을 수 있다.
-        const appointedCount = toJobIdArray(sData.appointedJobIds).filter(
-          (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
-        ).length;
-        const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
-        if (current.length + 1 > allowedSelected) {
+        //    상한은 '지정 + 선택 합계'다(급여 계산 resolveStudentJobs와 동일 규약).
+        const heldCount = currentSelected.length + currentAppointed.length;
+        if (heldCount + 1 > maxJobsPerStudent) {
           throw deny(
-            `${sData.name || "학생"}님은 직업을 ${allowedSelected}개까지 가질 수 있어서 더 줄 수 없습니다.`,
+            `${sData.name || "학생"}님은 직업을 ${maxJobsPerStudent}개까지 가질 수 있어서 더 줄 수 없습니다. (지금 ${heldCount}개)`,
           );
         }
 
-        transaction.update(studentRef, {
-          selectedJobIds: [...current, app.jobId],
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        transaction.update(
+          studentRef,
+          grantAsAppointed
+            ? {
+                appointedJobIds: [...currentAppointed, app.jobId],
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }
+            : {
+                selectedJobIds: [...currentSelected, app.jobId],
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              },
+        );
         transaction.update(appRef, {
           status: "approved",
           processedAt: admin.firestore.FieldValue.serverTimestamp(),
           processedBy: uid,
         });
-        resultMessage = `'${app.jobTitle}' 신청을 허가했습니다.`;
+        resultMessage = grantAsAppointed
+          ? `'${app.jobTitle}' 임명을 허가했습니다.`
+          : `'${app.jobTitle}' 신청을 허가했습니다.`;
       });
     } catch (error) {
       // 이미 HttpsError 면 그대로 올린다(코드·메시지를 덮어쓰지 않는다).
@@ -11607,5 +11894,141 @@ exports.migrateAppointedJobs = onCall(
       `[migrateAppointedJobs] classCode=${classCode} dryRun=${dryRun} 이관 대상 ${moved.length}명`,
     );
     return { success: true, dryRun, movedCount: moved.length, moved };
+  },
+);
+
+// ===================================================================================
+// 🏛️ 알찬광장 — 선생님이 만든 학습 사이트를 사이드바에 등재/해제 (슈퍼관리자 전용)
+// ===================================================================================
+// 왜 CF 인가
+//   `platformApps/_registry` 는 **전국 사이드바**다. rules 상 슈퍼관리자만 쓸 수 있고,
+//   클라에서 배열을 통째로 읽어 고쳐 쓰면 두 관리 화면이 겹칠 때 서로의 항목을 날린다.
+//   여기서 트랜잭션으로 읽고-고치고-쓴다.
+//
+// 🔒 두 원장을 사람이 맞추게 두지 않는다
+//   신청 문서(plazaApps)와 레지스트리는 각각 "무엇을 신청했나" / "무엇이 보이나" 다.
+//   승인·해제가 **같은 트랜잭션에서 둘 다** 움직이므로 어긋난 상태가 남지 않는다
+//   (이 저장소에서 두 원장을 손으로 맞추다 어긋난 사례가 여럿 있다).
+const PLAZA_REGISTRY_MAX = 60; // config/learningApps.js 의 MAX_APPS 와 같은 상한
+/**
+ * 레지스트리 id 는 `^[A-Za-z0-9_-]{1,64}$` 만 통과한다(normalizeLearningApps).
+ *
+ * ⚠️ 여기서 **새니타이즈하지 않는다.** 문자를 지워 맞추면 함수가 비단사가 되어
+ *    서로 다른 신청서가 같은 레지스트리 항목을 차지한다 — `plazaApps/a.b` 와 `plazaApps/ab`
+ *    가 둘 다 `plaza_ab` 가 되고, 나중에 승인된 쪽이 먼저 승인된 쪽을 덮어쓴다
+ *    (2026-08-27 codex WARNING). 규칙은 필드만 검사하고 **문서 ID 형식은 못 막으므로**
+ *    클라이언트가 `setDoc(doc(db,'plazaApps','a.b'))` 로 임의 ID 를 만들 수 있다.
+ *    → 지우는 대신 **거부한다.** 정상 경로(addDoc auto-ID)는 항상 통과한다.
+ */
+const PLAZA_APP_ID_RE = /^[A-Za-z0-9_-]{1,56}$/;
+const plazaRegistryId = (appId) => `plaza_${appId}`;
+
+exports.publishPlazaApp = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, isSuperAdmin } = await checkAuthAndGetUserData(request, true);
+    if (!isSuperAdmin) {
+      throw new HttpsError(
+        "permission-denied",
+        "학습 사이트 등재는 앱 관리자만 할 수 있습니다.",
+      );
+    }
+
+    const { appId, action } = request.data || {};
+    if (!appId || typeof appId !== "string" || !PLAZA_APP_ID_RE.test(appId)) {
+      // 정상 경로(addDoc auto-ID = 20자 영숫자)는 항상 통과한다. 걸리는 것은
+      // 손으로 만든 이상한 문서 ID 뿐이고, 그건 위 주석의 충돌 경로다.
+      throw new HttpsError("invalid-argument", "신청 ID 형식이 올바르지 않습니다.");
+    }
+    if (action !== "approve" && action !== "reject" && action !== "unpublish") {
+      throw new HttpsError(
+        "invalid-argument",
+        "유효한 액션이 필요합니다. (approve · reject · unpublish)",
+      );
+    }
+
+    const appRef = db.collection("plazaApps").doc(appId);
+    const registryRef = db.collection("platformApps").doc("_registry");
+    let message = "";
+
+    await db.runTransaction(async (tx) => {
+      const appDoc = await tx.get(appRef);
+      if (!appDoc.exists) throw new HttpsError("not-found", "신청을 찾을 수 없습니다.");
+      const app = appDoc.data();
+
+      const registryDoc = await tx.get(registryRef);
+      const apps = Array.isArray(registryDoc.data()?.apps)
+        ? [...registryDoc.data().apps]
+        : [];
+      const entryId = plazaRegistryId(appId);
+      const at = apps.findIndex((a) => a && a.id === entryId);
+
+      if (action === "approve") {
+        // 🔒 URL 검증은 여기서도 한 번 더 한다. rules 가 이미 https 를 강제하지만,
+        //    등재는 **전국 학생이 누르는 링크**를 만드는 일이라 마지막 관문을 둔다.
+        //    (표시 시점의 normalizeLearningApps 까지 세 겹 — 하나가 뚫려도 남는다.)
+        let parsed;
+        try {
+          parsed = new URL(String(app.url || ""));
+        } catch {
+          throw new HttpsError("failed-precondition", "주소 형식이 올바르지 않습니다.");
+        }
+        if (parsed.protocol !== "https:") {
+          throw new HttpsError("failed-precondition", "https 주소만 등재할 수 있습니다.");
+        }
+        const label = String(app.label || "").trim();
+        if (!label || label.length > 60) {
+          throw new HttpsError("failed-precondition", "사이트 이름이 올바르지 않습니다.");
+        }
+        if (at === -1 && apps.length >= PLAZA_REGISTRY_MAX) {
+          throw new HttpsError(
+            "resource-exhausted",
+            `사이드바에 올릴 수 있는 사이트는 ${PLAZA_REGISTRY_MAX}개까지입니다.`,
+          );
+        }
+
+        const entry = {
+          id: entryId,
+          label,
+          url: parsed.href,
+          icon: typeof app.icon === "string" && app.icon ? app.icon : "Globe",
+          // 🧑‍🏫 제작자 — 사이드바가 '선생님별'로 묶는 기준이다. 이름이 비면 묶이지 않고
+          //    기본 묶음으로 떨어지므로, 여기서 빈 문자열을 넣지 않는다.
+          owner: String(app.ownerName || "선생님").trim().slice(0, 30),
+          ownerUid: String(app.ownerUid || ""),
+          enabled: true,
+        };
+        if (at === -1) apps.push(entry);
+        else apps[at] = { ...apps[at], ...entry };
+
+        tx.set(registryRef, { apps }, { merge: true });
+        tx.update(appRef, {
+          status: "approved",
+          registryId: entryId,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+          processedBy: uid,
+        });
+        message = `'${label}' 을(를) 사이드바에 등재했습니다.`;
+        return;
+      }
+
+      // reject · unpublish — 둘 다 레지스트리에서 빼고 상태만 다르게 남긴다.
+      //   거절은 "안 올린다", 내리기는 "올렸다가 뺀다". 레지스트리에서 빼는 동작은 같다.
+      if (at !== -1) apps.splice(at, 1);
+      tx.set(registryRef, { apps }, { merge: true });
+      tx.update(appRef, {
+        status: action === "reject" ? "rejected" : "unpublished",
+        registryId: admin.firestore.FieldValue.delete(),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedBy: uid,
+      });
+      message =
+        action === "reject"
+          ? `'${app.label || "신청"}' 을(를) 거절했습니다.`
+          : `'${app.label || "사이트"}' 을(를) 사이드바에서 내렸습니다.`;
+    });
+
+    logger.info(`[publishPlazaApp] ${uid} · ${appId} · ${action}`);
+    return { success: true, message };
   },
 );

@@ -103,6 +103,8 @@ const AdminApprovalPanel = lazyWithRetry(
 const AdminDatabase = lazyWithRetry(
   () => import("../pages/admin/AdminDatabase"),
 );
+// 🏛️ 알찬광장 — 교사 전용. 학생 번들에 섞이지 않게 lazy 로 둔다.
+const AlchanPlaza = lazyWithRetry(() => import("../pages/plaza/AlchanPlaza"));
 const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
@@ -837,6 +839,17 @@ export default function AlchanLayout() {
                   element={
                     <AdminRoute>
                       <AppRewardDashboard />
+                    </AdminRoute>
+                  }
+                />
+                {/* 🏛️ 알찬광장 — AdminRoute 로 학생을 막는다. 데이터 자체도
+                    firestore.rules 의 plazaPosts/plazaApps read 가 isAdmin() 으로 잠겨 있다
+                    (화면 가드만 있으면 devtools 로 컬렉션을 그냥 읽을 수 있다). */}
+                <Route
+                  path="/plaza"
+                  element={
+                    <AdminRoute>
+                      <AlchanPlaza />
                     </AdminRoute>
                   }
                 />

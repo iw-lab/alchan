@@ -662,6 +662,148 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🏛️ 알찬광장 (plazaPosts) — 2026-08-27 신설. **선생님들만의 공간**이다.
+    //    쓰는 곳: 불편한 점·건의·질문을 앱 만든 사람에게 직접 말하고, 서로 읽고 공감한다.
+    //
+    //    · 읽기 = 승인된 교사(isAdmin) 전원. 학급을 가로지른다 — 광장의 요점이 그것이다.
+    //      🔒 학생은 읽을 수 없다. 여기엔 다른 반 운영 이야기·교사 이름이 그대로 오간다.
+    //      ⚠️ isAdmin() 은 `isApproved == true` 를 포함한다(위 정의). 미승인 가입자가
+    //         광장을 읽는 일은 그래서 없다 — 교사 자가가입이 열려 있다는 걸 잊지 말 것.
+    //    · 작성 = 교사 본인 명의로만. authorUid 를 남의 것으로 쓰면 거부한다.
+    //    · 수정 = 글쓴이(제목·내용만) 또는 슈퍼관리자.
+    //      🔒 `status`(접수/검토중/반영/보류)는 **슈퍼관리자 전용**이다. 글쓴이가 자기 건의를
+    //         '반영됨'으로 바꿀 수 있으면 그 표시가 아무 뜻도 없어진다.
+    //    · 공감 = 교사 누구나, 단 **자기 자신만** 넣고 뺀다. likedBy 외의 필드를 함께
+    //      건드리는 요청은 거부한다(공감 버튼으로 본문을 갈아끼우는 경로 차단).
+    // ========================================================
+    // 🪪 "내 이름으로만 쓴다" — 표시 이름까지 서버가 대조한다.
+    //    2026-08-27 Gemini 레인 CRITICAL 의 확대 적용. 처음엔 `authorUid` 만 봤는데,
+    //    화면은 `authorName` 을 그대로 그린다(AlchanPlaza.js). 즉 uid 는 내 것이면서
+    //    이름만 다른 선생님으로 적으면 **그 선생님이 쓴 글처럼 보인다** — 광장은 서로에게
+    //    말하려고 만든 곳이라 이건 기능의 요점을 무너뜨린다.
+    //    이름은 `name` 또는 `nickname` 둘 중 하나여야 한다(클라가 그 순서로 고른다).
+    //    ⚠️ get() 두 번이 아니라 **같은 문서 한 번**이다 — 규칙은 요청 안에서 같은 경로를 캐시한다.
+    function isMyDisplayName(n) {
+      return n == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('name', '')
+             || n == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('nickname', '');
+    }
+
+    match /plazaPosts/{postId} {
+      allow read: if isAdmin();
+
+      // 🔒 create 는 **허용 목록**으로 잠근다.
+      //    필드를 하나씩 검사하는 방식은 "검사 안 한 필드"가 조용히 통과한다 —
+      //    실제로 `likedBy` 가 그랬다(2026-08-27 Gemini CRITICAL): 규칙이 안 보니
+      //    devtools 로 `likedBy: [다른교사uid, ...]` 를 **처음부터 채워서** 만들 수 있었다.
+      //    update 쪽 likeOnlyChange() 가 아무리 엄해도 생성 시점이 열려 있으면 소용이 없다.
+      //    화면 가드가 보안 경계가 아니라는 이 저장소의 원칙이 write 쪽에도 그대로 적용된다.
+      allow create: if isAdmin()
+                    && request.resource.data.keys().hasOnly([
+                         'authorUid', 'authorName', 'title', 'content',
+                         'category', 'status', 'likedBy', 'createdAt', 'updatedAt'
+                       ])
+                    && request.resource.data.authorUid == request.auth.uid
+                    && isMyDisplayName(request.resource.data.get('authorName', ''))
+                    && request.resource.data.get('status', '') == 'received'
+                    // 공감은 **빈 채로** 시작한다. 남의 공감을 미리 심어둘 수 없다.
+                    && request.resource.data.likedBy == []
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 120
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() <= 4000;
+
+      // 공감 토글 — likedBy 하나만 바뀌고, 그 변화가 '나 자신'일 때만.
+      function likeOnlyChange() {
+        return isAdmin()
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy'])
+               && (request.resource.data.likedBy.toSet().difference(resource.data.likedBy.toSet())
+                     .union(resource.data.likedBy.toSet().difference(request.resource.data.likedBy.toSet()))
+                   == [request.auth.uid].toSet());
+      }
+      // 글쓴이 수정 — 본문만. status·authorUid·createdAt 은 못 건드린다.
+      // ⚠️ `isAdmin()` 을 **다시** 검사한다. isOwner 만 보면, 승인이 취소되거나 교사 권한이
+      //    해제된 계정도 자기가 쓴 글을 계속 고치고 지울 수 있다 — read·create 는 isAdmin() 을
+      //    요구하는데 write 만 안 요구하면 "승인된 교사만"이라는 설계가 반쪽이 된다.
+      function authorEdit() {
+        return isAdmin()
+               && isOwner(resource.data.authorUid)
+               && request.resource.data.diff(resource.data)
+                    .affectedKeys().hasOnly(['title', 'content', 'category', 'updatedAt'])
+               && request.resource.data.title.size() <= 120
+               && request.resource.data.content.size() <= 4000;
+      }
+      allow update: if isSuperAdmin() || authorEdit() || likeOnlyChange();
+      allow delete: if isSuperAdmin() || (isAdmin() && isOwner(resource.data.authorUid));
+
+      // 댓글 — 교사끼리 답하고, 슈퍼관리자가 공식 답변을 단다.
+      match /comments/{commentId} {
+        allow read: if isAdmin();
+        // 🪪 댓글도 같은 이유로 이름을 대조한다. 그리고 `isOfficial`(✓ 공식 답변 배지)은
+        //    **슈퍼관리자만** 붙일 수 있다 — 아니면 아무 교사나 "앱 만든 사람의 공식 답변"
+        //    모양으로 글을 달 수 있고, 그건 광장에서 제일 무게 있는 말을 위조하는 것이다.
+        allow create: if isAdmin()
+                      && request.resource.data.keys().hasOnly([
+                           'authorUid', 'authorName', 'content', 'isOfficial', 'createdAt'
+                         ])
+                      && request.resource.data.authorUid == request.auth.uid
+                      && isMyDisplayName(request.resource.data.get('authorName', ''))
+                      && (request.resource.data.get('isOfficial', false) == false || isSuperAdmin())
+                      && request.resource.data.content is string
+                      && request.resource.data.content.size() > 0
+                      && request.resource.data.content.size() <= 2000;
+        allow update, delete: if isSuperAdmin()
+                              || (isAdmin() && isOwner(resource.data.authorUid));
+      }
+    }
+
+    // ========================================================
+    // 🧩 선생님이 만든 학습 사이트 신청 (plazaApps) — 2026-08-27 신설
+    //    교사가 자기가 만든 사이트를 올리면, 슈퍼관리자가 승인해 사이드바(platformApps/_registry)에
+    //    **제작자 이름과 함께** 등재된다. 등재는 CF(publishPlazaApp)가 한다 — 레지스트리는
+    //    전국 사이드바라 클라 write 를 열 수 없다.
+    //    · `status` 는 신청자가 못 바꾼다. 바꿀 수 있으면 승인 절차가 장식이 된다.
+    //    · URL 검증(https 한정)은 신청 시점(여기)과 등재 시점(CF)과 표시 시점
+    //      (config/learningApps.js normalizeLearningApps) 세 곳에 다 있다. 하나가 뚫려도
+    //      javascript: 스킴이 사이드바 링크가 되는 일은 없어야 한다.
+    // ========================================================
+    match /plazaApps/{appId} {
+      allow read: if isAdmin();
+      // 🪪 `ownerName` 은 승인되면 **사이드바의 묶음 이름**이 된다(publishPlazaApp 이 그대로 복사).
+      //    대조하지 않으면 남의 이름 아래에 자기 사이트를 끼워 넣을 수 있다.
+      allow create: if isAdmin()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && isMyDisplayName(request.resource.data.get('ownerName', ''))
+                    && request.resource.data.get('status', '') == 'pending'
+                    && request.resource.data.label is string
+                    && request.resource.data.label.size() > 0
+                    && request.resource.data.label.size() <= 60
+                    && request.resource.data.url is string
+                    && request.resource.data.url.matches('https://.*');
+      // ⚠️ **승인된 뒤에는 소유자가 못 고친다.** 사이드바가 실제로 읽는 곳은
+      //    `platformApps/_registry` 이고, 거기엔 승인 시점의 값이 복사돼 있다(publishPlazaApp).
+      //    승인 후 신청 문서만 고치면 두 원장이 서로 다른 말을 하게 되고, 나중에
+      //    "내렸다 다시 올리기" 를 하면 **처음 검토한 것과 다른 주소**가 등재된다.
+      //    고칠 일이 있으면 슈퍼관리자가 내린 뒤(status != approved) 고치고 다시 올린다.
+      allow update: if isSuperAdmin()
+                    || (isAdmin()
+                        && isOwner(resource.data.ownerUid)
+                        && resource.data.get('status', '') != 'approved'
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['label', 'url', 'description', 'icon', 'updatedAt'])
+                        && request.resource.data.url.matches('https://.*'));
+      // ⚠️ **등재된 신청서는 소유자가 못 지운다.** 지우면 `publishPlazaApp({action:'unpublish'})`
+      //    가 신청 문서를 못 찾아 실패하고, 레지스트리에 남은 링크를 **정상 도구로는 영영 못
+      //    내린다**(전국 학생 사이드바에 고아 링크가 박힌다). 화면은 이미 막고 있었지만
+      //    그건 화면 가드일 뿐이다 — devtools 의 deleteDoc 은 규칙만 통과하면 된다
+      //    (2026-08-27 codex WARNING). 슈퍼관리자는 내린 뒤 지우면 되므로 제한하지 않는다.
+      allow delete: if isSuperAdmin()
+                    || (isAdmin()
+                        && isOwner(resource.data.ownerUid)
+                        && resource.data.get('status', '') != 'approved');
+    }
+
+    // ========================================================
     // 🧩 앱별 **집행 정책** (platformAppPolicies) — 2026-08-20 신설 (AAP v1)
     //    위 platformApps 주석이 예고한 분리다. 표시용 카탈로그와 집행 정책은 다른 물건이다:
     //    · 카탈로그는 브라우저 세션당 1회 **캐시**된다 → 여기에 kill switch 를 넣으면
