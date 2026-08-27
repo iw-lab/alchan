@@ -11286,8 +11286,9 @@ exports.saveSelectedJobs = onCall(
 
     // 개수 상한은 '지정 + 선택 합계'에 적용한다(급여 계산 resolveStudentJobs와 동일 규약).
     // 교사가 지정한 직업이 슬롯을 먼저 차지하므로, 학생이 고를 수 있는 몫은 그만큼 줄어든다.
-    const appointedCount = currentAppointed.length;
-    const allowedSelected = Math.max(0, maxJobsPerStudent - appointedCount);
+    // ⚠️ 상한 계산은 여기서 하지 않는다 — 진입 시점 스냅샷으로 세면 그 사이 커밋된 임명을
+    //    못 봐서 상한을 넘긴다(2026-08-27 codex CRITICAL). 두 쓰기 경로가 각자 사용자 문서를
+    //    다시 읽어 `appointedCountFresh` / `tailAppointedCount` 로 검사한다.
 
     // 🧑‍🏫 학급이 '직업 신청 승인제'를 켰으면, **직업이 붙는 것**은 교사 승인을 거친다.
     //   직업 개수가 주급을 정하므로(세전 = 200만 + (직업수−1)×50만) 직업이 붙는 경로는

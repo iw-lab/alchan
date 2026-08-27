@@ -58,6 +58,7 @@
     "debt": "node scripts/debt-ratchet.mjs",
     "debt:update": "node scripts/debt-ratchet.mjs --update",
     "lint": "oxlint src/",
+  "lint:functions": "npm --prefix functions run lint",
     "check:headers": "node scripts/check-hosting-headers.mjs",
     "check:build": "node scripts/check-build-integrity.mjs"
   },
