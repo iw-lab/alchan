@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # GitHub Releases 생성 권한
+      actions: read    # '마지막 성공 배포' 조회 (변경 파일 기준선)
 
     steps:
       - name: Checkout code
@@ -107,12 +108,30 @@ jobs:
           # 이 저장소 규약대로 run 본문에 보간하지 않고 env 로 받는다.
           PUSH_BEFORE: ${{ github.event.before }}
           DEPLOY_ALL: ${{ inputs.deploy_all }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          BEFORE="$PUSH_BEFORE"
+          # ── 기준선은 '마지막으로 **배포에 성공한** 커밋' 이다 ─────────────────────
+          # 왜 github.event.before 가 아닌가 (2026-08-27 실측):
+          #   배포가 실패하면 그 커밋은 라이브에 없는 채로 다음 푸시의 before 가 된다.
+          #   그러면 before..HEAD 에 그 변경이 안 잡혀 **영원히 배포 범위 밖**으로 빠진다.
+          #   실제로 9ab8c13(functions 린트 실패) 뒤 6f1b8ae 를 밀었더니 firestore.rules
+          #   변경이 통째로 누락됐다 — 워크플로는 전부 초록불이었고 라이브 규칙은 6일 전 것이었다.
+          #   '마지막 성공' 을 기준선으로 잡으면 실패한 배포의 변경이 자동으로 따라온다.
+          BEFORE=""
+          LAST_OK=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy.yml/runs?status=success&branch=main&per_page=1" \
+            -q '.workflow_runs[0].head_sha' 2>/dev/null || echo "")
+          if [ -n "$LAST_OK" ] && git cat-file -e "${LAST_OK}^{commit}" 2>/dev/null; then
+            echo "✅ 기준선 = 마지막 성공 배포 ${LAST_OK}"
+            BEFORE="$LAST_OK"
+          else
+            echo "⚠️ 마지막 성공 배포를 못 찾음 — push 범위로 대체(누락 가능)"
+            BEFORE="$PUSH_BEFORE"
+          fi
           if [ -z "$BEFORE" ] \
              || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
              || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
-            echo "ℹ️ push 범위를 못 써서 HEAD~1 로 대체(첫 푸시·force push·수동 실행)"
+            echo "ℹ️ 범위를 못 써서 HEAD~1 로 대체(첫 푸시·force push·수동 실행)"
             BEFORE="HEAD~1"
           fi
           if [ "$DEPLOY_ALL" = "true" ]; then
