@@ -473,19 +473,24 @@ export default function CouponGoalPage() {
   // 🎰 목표 달성 후 추첨 — 응모한 쿠폰 장수가 그대로 당첨 확률이 된다.
   // 추첨 자체는 외부 정적 페이지(뽑기ON)가 하고, 여기서는 명단만 넘긴다.
   // 쿠폰은 건드리지 않는다. 다만 상금을 정하면 추첨 뒤에 현금이 오간다(아래 참고).
-  // 🎰 랜덤뽑기 — 1등 상금을 정하면 추첨이 끝나는 즉시 국고에서 자동 지급된다.
+  // 🎰 랜덤뽑기 — 상금을 정하면 추첨이 끝나는 즉시 국고에서 자동 지급된다.
+  // 1·2·3등과 보너스를 한 자리에서 여러 판 돌리므로, 기록에는 등수를 박지 않고
+  // "뽑기 상금"으로만 남긴다.
   //
   // 돈은 기존 서버 함수(transferCash)를 그대로 쓴다. 새 돈 경로를 만들지 않는 이유는,
   // 그 함수가 이미 ① 같은 학급인지 ② 국고 잔액이 되는지 ③ 같은 추첨으로 두 번
   // 나가지 않는지(멱등)를 서버에서 검사하고, 양쪽 거래내역까지 원자적으로 남기기 때문이다.
   // 보내는 사람이 교사 본인이므로 상금은 교사의 국고에서 실제로 빠져나간다(발행이 아니다).
   const prizeWatchRef = useRef(null);
+  // 이 추첨에서 한 판이라도 지급이 끝났는지 — 다음 판을 시작할 때 경고할지 정한다
+  const prizePaidRef = useRef(false);
   useEffect(() => () => prizeWatchRef.current?.(), []); // 화면을 떠나면 대기 해제
 
   const handleRandomDraw = async () => {
-    // 앞선 추첨의 결과를 아직 기다리는 중이면, 그걸 버리는 일임을 먼저 알린다.
-    // (안 알리면 앞 추첨의 당첨자가 조용히 사라지고 상금도 안 나간다.)
-    if (prizeWatchRef.current) {
+    // 1·2·3등과 보너스를 이어서 돌리는 게 보통이라, 앞 추첨이 '지급까지 끝난' 상태면
+    // 굳이 겁줄 이유가 없다. 아직 결과를 못 받은 상태일 때만 경고한다 —
+    // 그때 새로 시작하면 앞 추첨의 당첨자가 조용히 사라지고 상금도 안 나간다.
+    if (prizeWatchRef.current && !prizePaidRef.current) {
       const go = await confirmDialog(
         "아직 앞선 추첨의 결과를 기다리는 중입니다.\n\n" +
           "새로 시작하면 앞 추첨의 당첨자는 무시되고 상금도 지급되지 않습니다.\n" +
@@ -493,9 +498,10 @@ export default function CouponGoalPage() {
         { confirmText: "그래도 새로 추첨", danger: true },
       );
       if (!go) return;
-      prizeWatchRef.current();
-      prizeWatchRef.current = null;
     }
+    prizeWatchRef.current?.();
+    prizeWatchRef.current = null;
+    prizePaidRef.current = false;
     const entries = buildEntriesFromDonations(goalDonations);
     if (!entries.length) {
       toast.error("응모 내역이 없어 추첨할 수 없습니다.");
@@ -509,8 +515,8 @@ export default function CouponGoalPage() {
       remembered = localStorage.getItem("pickon.prize") || "";
     } catch { /* 시크릿 모드 등 저장소가 막힌 환경 — 기억 없이 진행한다 */ }
     const raw = await promptDialog(
-      "1등 상금을 얼마로 할까요?\n\n" +
-        "· 추첨이 끝나면 1등에게 자동으로 지급됩니다.\n" +
+      "이번 판 상금을 얼마로 할까요?\n\n" +
+        "· 추첨이 끝나면 당첨자에게 자동으로 지급됩니다.\n" +
         "· 선생님의 국고에서 빠져나갑니다.\n" +
         "· 지급을 원하지 않으면 비워 두고 확인을 누르세요.",
       remembered,
@@ -571,8 +577,9 @@ export default function CouponGoalPage() {
     const money = prize
       ? `\n\n💰 상금 ${formatMoney(prize)}` +
         (tax > 0 ? ` · 세금 ${taxRate}% ${formatMoney(tax)}` : " · 세금 없음") +
-        `\n   → 1등에게 실제 지급 ${formatMoney(net)} (선생님의 국고에서 나갑니다)` +
-        `\n\n🔁 추첨 화면에서 '다시 추첨'을 누르면 판마다 또 지급됩니다.`
+        `\n   → 당첨자에게 실제 지급 ${formatMoney(net)} (선생님의 국고에서 나갑니다)` +
+        `\n\n🔁 추첨 화면에서 '다시 추첨'을 누르면 판마다 같은 금액이 또 지급됩니다.`
+        + `\n   (2·3등처럼 금액을 바꾸려면 이 화면에서 랜덤뽑기를 다시 누르세요.)`
       : "\n\n(상금 지급 없이 추첨만 합니다.)";
     const ok = await confirmDialog(
       `응모자 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n\n` +
@@ -614,7 +621,6 @@ export default function CouponGoalPage() {
     }
 
     const nameToUserId = new Map(entries.map((e) => [e.name, e.userId]));
-    prizeWatchRef.current?.();
     prizeWatchRef.current = listenForPickOnResult({
       rid: r.rid,
       entries,
@@ -624,20 +630,20 @@ export default function CouponGoalPage() {
         // 같은 판이 두 번 오는 것은 listenForPickOnResult 가 이미 막는다.
         if (mismatch) {
           toast.error(
-            `1등이 ${name}으로 왔는데 명단의 자리와 맞지 않아 지급하지 않았습니다. ` +
+            `당첨자가 ${name}으로 왔는데 명단의 자리와 맞지 않아 지급하지 않았습니다. ` +
               `추첨 화면에서 명단을 바꾸셨다면 다시 추첨해 주세요.`,
           );
           return;
         }
         if (!winnerId) {
           toast.error(
-            `1등은 ${name}인데 학생을 찾지 못해 지급하지 못했습니다. ` +
+            `당첨자는 ${name}인데 학생을 찾지 못해 지급하지 못했습니다. ` +
               `직접 송금해 주세요.`,
           );
           return;
         }
         if (winnerId === userId) {
-          toast.error("1등이 선생님 본인이라 지급하지 않았습니다.");
+          toast.error("당첨자가 선생님 본인이라 지급하지 않았습니다.");
           return;
         }
         // 같은 추첨은 같은 멱등키를 쓴다 — 서버가 두 번 나가는 것을 막으므로
@@ -649,12 +655,13 @@ export default function CouponGoalPage() {
             amount: net,
             message:
               tax > 0
-                ? `🎰 뽑기ON 1등 상금 ${formatMoney(prize)} (세금 ${taxRate}% 공제)`
-                : "🎰 뽑기ON 1등 상금",
+                ? `🎰 뽑기 상금 ${formatMoney(prize)} (세금 ${taxRate}% 공제)`
+                : "🎰 뽑기 상금",
             idempotencyKey: key,
           });
         try {
           await pay();
+          prizePaidRef.current = true;
           toast.success(
             `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
               (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
@@ -671,6 +678,7 @@ export default function CouponGoalPage() {
           if (retry) {
             try {
               await pay();
+              prizePaidRef.current = true;
               toast.success(
                 `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
               (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
@@ -687,7 +695,7 @@ export default function CouponGoalPage() {
         }
       },
     });
-    toast.success("추첨이 끝나면 1등에게 상금이 자동으로 지급됩니다.");
+    toast.success("추첨이 끝나면 당첨자에게 상금이 자동으로 지급됩니다.");
   };
 
   const setNewGoal = async () => {
