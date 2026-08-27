@@ -12,8 +12,8 @@
  *   이 스크립트와 무관하다. 여긴 **기존 앱 소급 표기** 전용이다.
  *
  * 실행:
- *   node scripts/ops/set-app-owner.mjs --owner "심수인" --all [--dry]
- *   node scripts/ops/set-app-owner.mjs --owner "심수인" --ids siteArtOn,siteNarae [--dry]
+ *   node scripts/ops/set-app-owner.mjs --owner "iw-lab" --all [--dry]
+ *   node scripts/ops/set-app-owner.mjs --owner "iw-lab" --ids siteArtOn,siteNarae [--dry]
  *
  * 🛑 이 스크립트는 **owner 만** 만진다. 배열을 통째로 다시 쓰지 않고, 읽은 항목을
  *    그대로 옮겨 담으면서 owner 만 얹는다 — 씨앗 스크립트(seed-app-registry)가 라이브에만

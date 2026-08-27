@@ -45,14 +45,30 @@ const H = await authHeaders();
 //    그대로 돌렸으면 학생 사이드바에서 멀쩡한 앱 하나가 조용히 사라졌다.
 //    → 코드가 모르는 앱이 라이브에 있으면 **멈춘다**. 덮어쓰려면 `--force` 로 명시할 것.
 let guardUpdateTime = null;   // 가드가 읽은 시점 — 최종 PATCH 의 전제조건으로 쓴다
+// 🧑‍🏫 **제작자 표기는 라이브에서 이어받는다.** 이 스크립트는 배열을 통째로 덮어쓰는데
+//    `owner` 는 코드에 없는 값이다(정본은 라이브 — set-app-owner.mjs 나 CF publishPlazaApp 이 쓴다).
+//    이어받지 않으면 씨앗을 한 번 돌리는 순간 11개 앱의 제작자가 전부 사라지고, 사이드바의
+//    '선생님별 묶음'이 조용히 기본 묶음 하나로 주저앉는다 — `aap` 힌트와 똑같은 함정이라
+//    (그건 정책에서 파생해 막았다) 같은 방식으로 막는다.
+const carried = new Map();    // id → { owner?, ownerUid? }
 {
   const cur = await fetch(`${BASE}/platformApps/_registry`, { headers: H });
   if (cur.ok) {
-    const curDoc = await cur.clone().json();
+    const curDoc = await cur.json();
     guardUpdateTime = curDoc.updateTime || null;
     const known = new Set(APPS.map((a) => a.id));
-    const orphans = (((await cur.json()).fields?.apps?.arrayValue?.values) || [])
-      .map((v) => v.mapValue?.fields?.id?.stringValue)
+    const liveEntries = (curDoc.fields?.apps?.arrayValue?.values || [])
+      .map((v) => v.mapValue?.fields)
+      .filter(Boolean);
+    for (const f of liveEntries) {
+      const id = f.id?.stringValue;
+      if (!id) continue;
+      const owner = f.owner?.stringValue;
+      const ownerUid = f.ownerUid?.stringValue;
+      if (owner || ownerUid) carried.set(id, { owner, ownerUid });
+    }
+    const orphans = liveEntries
+      .map((f) => f.id?.stringValue)
       .filter((id) => id && !known.has(id));
     if (orphans.length > 0 && !process.argv.includes("--force")) {
       console.error(`\n🛑 라이브 레지스트리에 코드가 모르는 앱이 ${orphans.length}개 있습니다: ${orphans.join(", ")}`);
@@ -94,6 +110,10 @@ const doc = {
             id: S(a.id), label: S(a.label), icon: S(a.icon), url: S(a.url),
             enabled: { booleanValue: true },
             aap: { booleanValue: migrated.has(a.id) },
+            // 라이브에만 있는 값이라 이어받는다(위 `carried` 주석 참고). 없으면 필드를 안 쓴다 —
+            // 빈 문자열을 넣으면 사이드바가 "이름 있는 제작자"로 오인한다.
+            ...(carried.get(a.id)?.owner ? { owner: S(carried.get(a.id).owner) } : {}),
+            ...(carried.get(a.id)?.ownerUid ? { ownerUid: S(carried.get(a.id).ownerUid) } : {}),
           } },
         })),
       },
