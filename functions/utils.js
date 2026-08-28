@@ -67,23 +67,56 @@ const LOG_TYPES = {
     ADMIN_ACTION: "관리자 조치",
   };
 
-const logActivity = async (transaction, userId, type, description, metadata = {}) => {
+/**
+ * 활동 기록(activity_logs) 한 줄.
+ *
+ * 🔴 **`ledger` 를 안 주면 학생 거래내역에 안 보인다** (2026-08-28 실측).
+ *    「나의 자산」의 거래내역은 세 원장을 합치면서
+ *    `.filter((tx) => tx.amount !== 0 || tx.couponAmount !== 0)` 로 거른다
+ *    (src/pages/my-assets/MyAssets.js). 그런데 이 함수는 금액을 `metadata` **안에만** 넣어
+ *    최상위 `amount`/`couponAmount` 가 늘 0 이었다 — 그래서 기록이 남아도 화면에서 사라진다.
+ *    표본 3,000건 중 1,778건이 그 상태였다.
+ *
+ *    ⚠️ **아무 데나 붙이면 안 된다.** 같은 사건을 `users/{uid}/transactions` 나 루트
+ *    `transactions` 에도 쓰는 경로(부동산 구매·주식·송금 등)에 이걸 붙이면 거래내역에
+ *    **두 줄**로 뜬다. activity_logs 가 유일한 원장인 곳에만 준다.
+ *
+ * @param {{amount?: number, couponAmount?: number}} ledger 부호 있는 증감(받으면 +, 나가면 −).
+ *   생략하면 0 — 돈이 움직이지 않은 기록(할일 승인 요청 등)은 그게 맞다.
+ */
+const logActivity = async (transaction, userId, type, description, metadata = {}, ledger = {}) => {
     if (!userId || userId === "system") {
       logger.info(`[System Log] ${type}: ${description}`, {metadata});
       return;
     }
+    // 🔴 **읽기 실패가 기록까지 통째로 없애면 안 된다** (2026-08-28).
+    //    종전엔 이 아래 전체가 하나의 try 안에 있어서, 이름/학급 조회가 실패하면
+    //    `transaction.set` 까지 건너뛰었다 — 돈은 움직였는데 원장만 사라진다.
+    //    이름은 표시용이라 몰라도 되지만 **기록의 존재 여부는 타협 대상이 아니다.**
+    let userName = "알 수 없는 사용자";
+    let classCode = "미지정";
     try {
       const userDoc = await db.collection("users").doc(userId).get();
-      const userName = userDoc.exists ? userDoc.data().name : "알 수 없는 사용자";
-      const classCode = userDoc.exists ? userDoc.data().classCode : "미지정";
+      if (userDoc.exists) {
+        userName = userDoc.data().name || userName;
+        classCode = userDoc.data().classCode || classCode;
+      }
+    } catch (error) {
+      logger.error(`[logActivity 조회 실패] User: ${userId}, Type: ${type}`, error);
+    }
+    try {
       // TTL: 90일 후 만료
       const expireAt = new Date();
       expireAt.setDate(expireAt.getDate() + 90);
 
+      const toNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
       const logData = {
         userId,
         userName,
         classCode,
+        // 최상위 금액 — 거래내역 화면이 보는 필드다(위 주석).
+        amount: toNum(ledger.amount),
+        couponAmount: toNum(ledger.couponAmount),
         type,
         description: sanitizeInput(description),
         metadata,
@@ -97,7 +130,13 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
         await logRef.set(logData);
       }
     } catch (error) {
+      // 🔴 여기까지 왔는데 실패했다면 **원장이 비었다는 뜻**이다. 삼키지 않는다.
+      //    종전엔 조용히 넘어가서, 호출부가 `await` 를 빠뜨려 커밋 뒤에 쓰려다 난
+      //    "Cannot modify a WriteBatch that has been committed" 가 30일간 28건 쌓이는 동안
+      //    아무도 몰랐다(쿠폰 판매·기부·사용·송금·수신·부동산 구매가 거래내역에서 사라졌다).
+      //    트랜잭션 경로에서는 던져서 **돈도 같이 되돌린다** — 기록 없는 이동을 남기지 않는다.
       logger.error(`[logActivity Error] User: ${userId}, Type: ${type}`, error);
+      if (transaction) throw error;
     }
   };
   

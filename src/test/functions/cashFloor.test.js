@@ -98,7 +98,11 @@ describe("index.js 배선 — 순수 함수가 맞아도 배선이 틀리면 소
   });
 
   it("⭐ 지급(send)은 자르기를 타지 않는다", () => {
-    expect(body).toContain('if (action !== "send")');
+    // 2026-08-28: 여기에 allowNegativeTake 조건이 붙었다(마이너스 회수 복원).
+    //   단언이 보는 것은 여전히 **`=== "take"` 로 좁히지 않았다**는 것이다 —
+    //   액션이 하나 늘면 `=== "take"` 는 바닥을 조용히 건너뛴다.
+    expect(body).toContain('if (action !== "send"');
+    expect(body).not.toContain('if (action === "take")');
   });
 
   it("⭐ 잔액이 없어 건너뛴 학생이 결과에서 사라지지 않는다", () => {
@@ -137,5 +141,108 @@ describe("파산 사건은 합의금 경로에 못 들어온다", () => {
     expect(settle).toContain('cData.caseType === "bankruptcy"');
     // 잔액 이동보다 **앞**에서 막아야 한다.
     expect(settle.indexOf("bankruptcy")).toBeLessThan(settle.indexOf("increment"));
+  });
+});
+
+/**
+ * 🔴 2026-08-28 — 마이너스 회수를 **명시 플래그**로 되살렸다.
+ *
+ * 배경: 위 사고 때문에 0원 바닥이 생겼는데, 선생님은 벌칙으로 빚을 지우는 회수를 원한다.
+ * 그때 남긴 지침이 "블록을 걷어내지 말고 호출부에서 명시 플래그를 받도록 넓힐 것"이었다 —
+ * 사고와 의도를 가를 수 있어야 하기 때문이다. 그대로 했다.
+ *
+ * 지켜야 하는 것 셋:
+ *   ① 플래그가 없으면 종전과 완전히 동일하다(회귀 0).
+ *   ② 위임받은 학생은 이 플래그를 쓸 수 없다 — 남을 빚지게 하는 건 교사의 판단이다.
+ *   ③ 화면 스위치는 한 번 쓰면 꺼진다 — 켠 채로 잊고 두 번 누른 것이 그 사고였다.
+ */
+describe("마이너스 회수는 명시 플래그로만", () => {
+  const SRC = readFileSync(resolve(process.cwd(), "functions/index.js"), "utf8");
+  const UI = readFileSync(resolve(process.cwd(), "src/pages/banking/MoneyTransfer.js"), "utf8");
+
+  it("⭐ 서버가 플래그를 **관리자에게만** 인정한다", () => {
+    expect(SRC).toMatch(
+      /const allowNegativeTake =\s*\n\s*action !== "send" && allowNegative === true && isAdmin === true;/,
+    );
+  });
+
+  it("⭐ 플래그가 켜졌을 때만 바닥을 건너뛴다", () => {
+    expect(SRC).toMatch(/if \(action !== "send" && !allowNegativeTake\) \{/);
+    // 바닥 자체는 남아 있어야 한다 — 걷어내면 기본 동작이 사고 시절로 돌아간다.
+    expect(SRC).toMatch(/const capped = clampTakeAmount\(currentCash, baseAmount\);/);
+  });
+
+  it("⭐ 화면 스위치는 기본 꺼짐이고 제출 후 다시 꺼진다", () => {
+    expect(UI).toMatch(/const \[allowNegative, setAllowNegative\] = useState\(false\);/);
+    expect(UI).toMatch(/setAllowNegative\(false\);/);
+    // 회수(take)에만 실어 보낸다 — 지급에 실리면 서버가 무시하더라도 의미가 흐려진다.
+    expect(UI).toMatch(/allowNegative: action === "take" \? allowNegative === true : undefined,/);
+  });
+});
+
+/**
+ * 🔴 2026-08-28 — 음수 이율 대출이 **상환을 영구 차단**하던 것을 고쳤다.
+ *
+ * 라이브: 상품표 오타로 `rate: -0.05` 대출(2천만)이 생겼고, 상환 쪽이 `rate < 0` 을
+ * 예외로 던져 학생이 5일간 15회 시도해 전부 막혔다(로그 실측).
+ * 막아야 할 것은 "이자가 음수인 것"이지 "상환"이 아니다.
+ */
+describe("음수 이율이 상환을 막지 않는다", () => {
+  const SRC = readFileSync(resolve(process.cwd(), "functions/index.js"), "utf8");
+
+  it("⭐ rate<0 을 던지지 않고 0 으로 본다", () => {
+    expect(SRC, "rate<0 을 여전히 던진다").not.toMatch(/rate < 0 \|\| !Number\.isFinite\(termInDays\)/);
+    expect(SRC).toMatch(/const safeRate = Math\.max\(0, rate\);/);
+  });
+
+  it("⭐ 기간도 같이 바닥을 건다 (국고 수령액 ≥ 원금)", () => {
+    // 이율만 자르면 termInDays 음수로 복리계수<1 이 되어 원금보다 적게 받는다.
+    expect(SRC).toMatch(/const safeTermInDays = Math\.max\(0, termInDays\);/);
+    expect(SRC).toMatch(/calcCompoundInterest\(balance, safeRate, safeTermInDays\)/);
+  });
+
+  it("⭐ 만드는 쪽은 **거절**한다 — 조용히 0 으로 자르지 않는다", () => {
+    // 자르면 잘못된 상품이 "0% 대출"로 굴러가고 카탈로그의 -0.05 는 그대로 남아
+    // 다음 학생도 같은 길을 간다(grok 레인 지적). 만드는 곳은 막고, 갚는 곳은 연다.
+    expect(SRC).toMatch(/if \(rawDailyRate < 0 \|\| rawDailyRate > MAX_DAILY_RATE\) \{/);
+    expect(SRC).toMatch(/이 상품의 이율 설정이 잘못되었습니다/);
+  });
+});
+
+/**
+ * 🔴 2026-08-28 — 기록이 남아도 **거래내역에서 걸러지던** 문제.
+ *
+ * 「나의 자산」거래내역은 세 원장을 합치며 `amount !== 0 || couponAmount !== 0` 으로 거른다.
+ * 그런데 logActivity 는 금액을 metadata 안에만 넣어 최상위 값이 늘 0 이었다.
+ * 게다가 호출부 7곳이 await 를 빠뜨려 트랜잭션 커밋 뒤에 쓰려다 30일간 28건이 통째로 유실됐다
+ * ("Cannot modify a WriteBatch that has been committed" — 서버로그 실측).
+ */
+describe("활동 기록이 거래내역까지 도달한다", () => {
+  const SRC = readFileSync(resolve(process.cwd(), "functions/index.js"), "utf8");
+  const UTIL = readFileSync(resolve(process.cwd(), "functions/utils.js"), "utf8");
+
+  it("⭐ logActivity 호출에 await 가 빠진 곳이 없다", () => {
+    const bare = SRC.split("\n").filter(
+      (l) => /(^|[^.\w])logActivity\(/.test(l) && !/await logActivity\(/.test(l),
+    );
+    expect(bare, `await 없는 호출: ${bare.join(" | ")}`).toHaveLength(0);
+  });
+
+  it("⭐ 최상위 금액 필드를 쓴다 (없으면 화면이 걸러낸다)", () => {
+    expect(UTIL).toMatch(/amount: toNum\(ledger\.amount\)/);
+    expect(UTIL).toMatch(/couponAmount: toNum\(ledger\.couponAmount\)/);
+  });
+
+  it("⭐ 조회 실패가 기록 자체를 없애지 않는다", () => {
+    // 종전엔 이름/학급 조회와 기록 쓰기가 한 try 안이라, 읽기가 실패하면 원장까지 비었다.
+    const i = UTIL.indexOf("const logActivity");
+    const body = UTIL.slice(i, i + 2000);
+    expect(body).toMatch(/let userName = "알 수 없는 사용자";/);
+    expect(body).toMatch(/logActivity 조회 실패/);
+  });
+
+  it("⭐ 쿠폰 3종이 금액을 실어 보낸다", () => {
+    expect(SRC).toMatch(/\{ amount: cashGained, couponAmount: -amount \},/); // 판매
+    expect(SRC).toMatch(/\{ couponAmount: amount \},/);                      // 선물 수신
   });
 });

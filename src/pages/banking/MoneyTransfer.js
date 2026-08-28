@@ -7,6 +7,7 @@ import { functions, httpsCallable } from "../../firebase";
 import "./MoneyTransfer.css";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
+import { confirmDialog } from "../../utils/confirmDialog";
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
@@ -27,6 +28,12 @@ function MoneyTransfer() {
   const [amountType, setAmountType] = useState("fixed");
   const [action, setAction] = useState("send");
   const [takeMode, setTakeMode] = useState("toMe"); // "toMe" 또는 "remove"
+  // 🔴 마이너스까지 회수할지 — **기본 꺼짐**. 2026-07-27 에 −50,000,000 회수가 28분 간격으로
+  //    두 번 들어가 한 학생이 −99,724,000 이 된 사고 뒤로 서버에 0원 바닥이 생겼는데,
+  //    선생님이 의도적으로 빚을 지우는 벌칙에는 그게 필요하다. 그래서 없애지 않고
+  //    **매번 손으로 켜는 스위치**로 뒀다 — 사고와 의도를 구분할 수 있어야 한다.
+  //    제출할 때마다 다시 꺼진다(아래 finally). 켠 채로 잊고 두 번 누르는 것이 그 사고였다.
+  const [allowNegative, setAllowNegative] = useState(false);
   // 기본 세금 10% (보내기 시 학생은 90% 수령). 마이너스 학생 보충 시 부족분만큼만
   // 보내면 10%가 빠져 1/10이 마이너스로 남으니, 그때는 세금 칸을 0으로 두고 보낼 것.
   const [taxRate, setTaxRate] = useState(10);
@@ -163,6 +170,24 @@ function MoneyTransfer() {
       return;
     }
 
+    // 🔴 마이너스 회수는 **숫자를 눈으로 다시 보게** 한다 (2026-08-28, grok 레인 지적).
+    //    체크박스 하나만으로는 오타(0 하나 더)와 의도를 못 가른다. 2026-07-27 사고도
+    //    악의가 아니라 같은 회수를 28분 뒤 한 번 더 누른 것이었다. 금액과 결과를 글자로
+    //    보여주고 확인을 받는다 — 자동으로 자르는 대신 **사람이 판단할 재료**를 준다.
+    if (action === "take" && allowNegative) {
+      const 대상 = selectedUsers.length;
+      const 표기 =
+        amountType === "percentage"
+          ? `현재 잔액의 ${inputValue}%`
+          : `${Number(inputValue).toLocaleString()}${currencyUnit}`;
+      const ok = await confirmDialog(
+        `학생 ${대상}명에게서 ${표기}을(를) 가져옵니다.\n\n` +
+          `⚠️ 잔액이 모자라면 **마이너스(빚)** 가 됩니다. 계속할까요?`,
+        { danger: true, confirmText: "마이너스까지 가져오기" },
+      );
+      if (!ok) return;
+    }
+
     if (submittingRef.current) return;
     submittingRef.current = true;
     setIsProcessing(true);
@@ -215,6 +240,8 @@ function MoneyTransfer() {
           amountType,
           amount: inputValue,
           taxRate,
+          // 회수에만 의미가 있다. 서버도 action!=="send" 이고 **진짜 관리자**일 때만 받아들인다.
+          allowNegative: action === "take" ? allowNegative === true : undefined,
           idempotencyKey: idemKeyRef.current,
         })
       ).data;
@@ -291,6 +318,9 @@ function MoneyTransfer() {
     } finally {
       setIsProcessing(false);
       submittingRef.current = false;
+      // 🔴 위험 스위치는 **한 번 쓰고 꺼진다.** 켠 채로 잊고 다시 누르는 것이 바로
+      //    2026-07-27 사고의 모양이었다(같은 −50,000,000 회수가 28분 뒤 한 번 더).
+      setAllowNegative(false);
     }
   };
 
@@ -408,6 +438,31 @@ function MoneyTransfer() {
                 </span>
               </label>
             </div>
+            <label
+              style={{
+                display: "flex", alignItems: "flex-start", gap: "8px",
+                marginTop: "12px", padding: "10px 12px", borderRadius: "10px",
+                border: `1px solid ${allowNegative ? "#fca5a5" : "#e2e8f0"}`,
+                background: allowNegative ? "#fef2f2" : "#f8fafc",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={allowNegative}
+                onChange={(e) => setAllowNegative(e.target.checked)}
+                style={{ marginTop: "3px" }}
+              />
+              <span className="mode-text">
+                <strong style={{ color: allowNegative ? "#b91c1c" : "#334155" }}>
+                  ⚠️ 잔액보다 많이 가져오기(마이너스 허용)
+                </strong>
+                <small>
+                  체크하면 학생 잔액이 <b>마이너스</b>가 될 때까지 가져옵니다. 벌칙·빚
+                  용도예요. 체크하지 않으면 가진 만큼만 가져옵니다.
+                </small>
+              </span>
+            </label>
           </div>
         )}
 

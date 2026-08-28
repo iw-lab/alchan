@@ -482,12 +482,23 @@ export default function MyAssets() {
       //    전체 상위 20위에 들 수 없다 → 각 소스 20건만 읽어도 **결과가 완전히 동일**하다.
       //    (150 → 60문서. 화면의 '더 보기'도 최대 20건까지만 펼치므로 표시량 변화 없음)
       const TX_FETCH_LIMIT = 20;
+      // 🔴 **activity_logs 만 더 읽는다** (2026-08-28).
+      //    위 절감 논리("자기 소스 21위 밖은 전체 20위에 못 든다")는 **거르기 전** 기준이라
+      //    맞는데, 이 소스는 읽고 **나서** `amount !== 0 || couponAmount !== 0` 으로 거른다.
+      //    그런데 activity_logs 에는 돈이 안 움직인 기록(할일 승인 요청·아이템 사용·게임 등)이
+      //    훨씬 많아서 — 표본 3,000건 중 절반이 그렇다 — 최근 20칸을 그것들이 채워 버리면
+      //    **진짜 거래가 창 밖으로 밀려나 거래내역에서 사라진다.** 선생님이 신고한
+      //    "최근 거래가 잘 입력이 안 된다"의 세 번째 경로가 이것이다.
+      //    ⚠️ 쿼리에서 걸러내는 게 정석이지만 classCode+userId+timestamp 에 amount 조건을
+      //       더하면 **새 복합 인덱스**가 필요하고, 이 저장소는 CI 가 인덱스를 배포하지 않는다.
+      //       그래서 창을 넓히는 쪽을 택했다(+40문서/방문, 서울 단가로 무시할 수준).
+      const ACTIVITY_FETCH_LIMIT = 60;
       const activityLogsRef = query(
         collection(db, "activity_logs"),
         where("classCode", "==", currentUserClassCode),
         where("userId", "==", userId),
         orderBy("timestamp", "desc"),
-        limit(TX_FETCH_LIMIT),
+        limit(ACTIVITY_FETCH_LIMIT),
       );
       const transactionsRef = query(
         collection(db, "users", userId, "transactions"),

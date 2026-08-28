@@ -1212,19 +1212,22 @@ exports.donateCoupon = onCall(
             createdBy: uid,
           });
         }
-        logActivity(
+        await logActivity(
           transaction,
           uid,
           LOG_TYPES.COUPON_USE,
           `학급 목표에 쿠폰 ${amount}개를 기부했습니다.`,
           { amount, message, type: "donation" },
         );
-        logActivity(
+        await logActivity(
           transaction,
           uid,
           LOG_TYPES.COUPON_DONATE,
           `쿠폰 ${amount}개를 기부했습니다. 메시지: ${message || "없음"}`,
           { amount, message },
+          // 한 번의 기부에 로그가 둘이라(COUPON_USE·COUPON_DONATE) 금액은 **여기 한 줄에만** 준다.
+          // 둘 다 주면 학생 거래내역에 같은 기부가 두 줄로 뜬다.
+          { couponAmount: -amount },
         );
         markIdempotent(transaction, keyRef);
       });
@@ -1356,12 +1359,13 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
         coupons: admin.firestore.FieldValue.increment(-amount),
         cash: admin.firestore.FieldValue.increment(cashGained),
       });
-      logActivity(
+      await logActivity(
         transaction,
         uid,
         LOG_TYPES.COUPON_SELL,
         `쿠폰 ${amount}개를 ${cashGained.toLocaleString()}원에 판매했습니다.`,
         { amount, couponValue, cashGained },
+        { amount: cashGained, couponAmount: -amount },
       );
       markIdempotent(transaction, keyRef); // 멱등 마킹 — 마지막 write
     });
@@ -1433,19 +1437,21 @@ exports.giftCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
         coupons: admin.firestore.FieldValue.increment(amount),
       });
       const recipientData = recipientDoc.data();
-      logActivity(
+      await logActivity(
         transaction,
         uid,
         LOG_TYPES.COUPON_TRANSFER_SEND,
         `${recipientData.name}님에게 쿠폰 ${amount}개를 선물했습니다.`,
         { recipientId, recipientName: recipientData.name, amount, message },
+        { couponAmount: -amount },
       );
-      logActivity(
+      await logActivity(
         transaction,
         recipientId,
         LOG_TYPES.COUPON_TRANSFER_RECEIVE,
         `${userData.name}님으로부터 쿠폰 ${amount}개를 선물 받았습니다.`,
         { senderId: uid, senderName: userData.name, amount, message },
+        { couponAmount: amount },
       );
       markIdempotent(transaction, keyRef); // 멱등 마킹 — 마지막 write
     });
@@ -2073,11 +2079,32 @@ exports.subscribeProduct = onCall(
     const termParsed = parseInt(product.termInDays, 10);
     const termInDays =
       Number.isFinite(termParsed) && termParsed > 0 ? termParsed : 1;
-    const dailyRate =
+    // 🔴 **음수 이율은 여기서 막는다** (2026-08-28 라이브 사고).
+    //    관리자 상품표에 `dailyRate: -0.05` 가 들어간 대출이 생겼고, 상환 쪽 가드가
+    //    `rate < 0` 을 예외로 던지는 바람에 그 학생은 2천만 빚을 **영영 갚을 수 없었다**
+    //    (5일간 15회 시도 전부 차단). 만드는 곳에서 막지 않으면 갚는 곳에서 막힌다.
+    //    ⚠️ 예금·적금도 같이 자른다 — 음수 이율 예금은 만기에 원금이 깎이는데 그건
+    //       상품표 오타로 일어날 일이지 학급경제가 의도할 일이 아니다.
+    const rawDailyRate =
       product.dailyRate !== undefined &&
       Number.isFinite(Number(product.dailyRate))
         ? parseFloat(product.dailyRate)
         : 0;
+    // 🔴 **자르지 않고 거절한다** (grok 레인 지적, 2026-08-28).
+    //    조용히 0 으로 자르면 잘못된 상품이 "0% 대출"로 가입돼 굴러가고, 카탈로그의
+    //    `-0.05` 는 그대로 남아 다음 학생도 같은 길을 간다 — 선생님은 끝까지 모른다.
+    //    상한도 같이 본다(codex): 999999 같은 오타는 복리에서 Infinity 가 되어
+    //    **상환이 다시 영구 차단**된다(방금 고친 사고와 똑같은 모양).
+    //    ⚠️ 이미 만들어진 음수 이율 대출은 repayLoan 에서 0 으로 간주해 **갚을 수 있게** 둔다 —
+    //       만드는 곳은 막고, 갚는 곳은 열어 준다. 반대로 하면 학생이 빚에 갇힌다.
+    const MAX_DAILY_RATE = 100;
+    if (rawDailyRate < 0 || rawDailyRate > MAX_DAILY_RATE) {
+      throw new HttpsError(
+        "failed-precondition",
+        `이 상품의 이율 설정이 잘못되었습니다(${rawDailyRate}%). 선생님께 알려주세요.`,
+      );
+    }
+    const dailyRate = rawDailyRate;
     const minParsed = parseInt(product.minAmount, 10);
     const minAmount = Number.isFinite(minParsed) && minParsed > 0 ? minParsed : 0;
     const maxParsed = parseInt(product.maxAmount, 10);
@@ -2700,11 +2727,24 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
       if (!Number.isFinite(balance) || balance < 0) {
         throw new Error("대출 잔액 데이터에 오류가 있습니다.");
       }
-      // rate 음수 거부 — rate<0이면 (1+rate/100)^term이 음수가 되어 repayAmount 음수 → inc(-음수)로 학생
-      //   cash가 증가하는 민팅 벡터(codex 지적). termInDays 유한수 강제.
-      if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(termInDays)) {
+      // rate 음수 방어 — rate<0이면 (1+rate/100)^term 이 1보다 작아져 repayAmount 가 원금
+      //   아래로 내려가고, 극단값에서는 음수가 되어 inc(-음수)로 학생 cash 가 늘어나는
+      //   민팅 벡터가 된다(codex 지적). termInDays 유한수 강제.
+      //
+      // 🔴 **그런데 던지면 안 된다** (2026-08-28 라이브 사고). 종전엔 여기서 예외를 던져
+      //    상환 자체를 막았는데, 그러면 이미 만들어진 음수 이율 대출은 **영원히 못 갚는 빚**이
+      //    된다 — 라이브에서 rate:-0.05 대출 한 건이 5일간 15회 상환 실패로 묶여 있었다.
+      //    막아야 하는 것은 "이자가 음수인 것"이지 "상환"이 아니다. 0 으로 보고 진행한다:
+      //    이자 0 · 원금은 전액 상환 → 민팅도 없고(불변식 3: 국고 수령액 ≥ 원금) 학생도 풀려난다.
+      //    ⚠️ 생성 쪽(subscribeProduct)에서도 같이 잘랐다. 한쪽만 고치면 새 대출이 또 생긴다.
+      if (!Number.isFinite(rate) || !Number.isFinite(termInDays)) {
         throw new Error("대출 이율/기간 데이터에 오류가 있습니다.");
       }
+      const safeRate = Math.max(0, rate);
+      // 🔒 기간도 같이 바닥을 건다(codex CRITICAL, 2026-08-28). 이율만 0 으로 잘라도
+      //    termInDays 가 음수면 (1+r/100)^음수 < 1 이라 만기 상환액이 **원금보다 작아진다**
+      //    — 불변식 3(국고 수령액 ≥ 원금)이 깨지는 다른 문이다. 한쪽만 막으면 다른 쪽으로 샌다.
+      const safeTermInDays = Math.max(0, termInDays);
 
       // installment만 incoming 24h 쿨다운(구 handleLoanInstallmentRepay 동작 — 송금 돌려막기 차단)
       if (mode === "installment") {
@@ -2747,14 +2787,14 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
         if (kstStartOfDayMs(new Date()) < kstStartOfDayMs(mdate)) {
           throw new Error("아직 만기가 도래하지 않았습니다.");
         }
-        const rr = calcCompoundInterest(balance, rate, termInDays);
+        const rr = calcCompoundInterest(balance, safeRate, safeTermInDays);
         repayAmount = rr.total;
         accruedInterest = rr.interest;
       } else {
         // lumpSum/installment = 경과이자 기준
         const acc = calcAccruedLoanInterest(
           balance,
-          rate,
+          safeRate,
           p.startDate,
           p.lastRepaymentDate,
         );
@@ -2808,6 +2848,10 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
           balance: newBalance,
           lastRepaymentDate: sts(),
           totalInterestPaid: inc(interestPortion),
+          // 🔧 계산에 쓴 값을 문서에도 남긴다(Claude 레인 지적). 안 그러면 화면은 저장된
+          //    `rate: -0.05` 를 그대로 "이자율 −5%" 로 보여주는데 실제 징수는 0% 다 —
+          //    표시와 실제가 어긋난 채로 남는다. 다음 회차부터는 문서도 같은 말을 한다.
+          ...(safeRate !== rate ? { rate: safeRate } : {}),
         });
       } else {
         transaction.delete(productRef);
@@ -3043,6 +3087,7 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
     amountType,
     amount,
     taxRate = 0,
+    allowNegative,
     idempotencyKey,
   } = request.data;
 
@@ -3105,6 +3150,17 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
     effectiveAdminId = adminSnap.docs[0].id;
     effectiveAdminName = adminSnap.docs[0].data().name || "관리자";
   }
+
+  // 🔴 **마이너스 회수는 명시 플래그로만** (2026-08-28, 사용자 지시로 복원).
+  //    0원 바닥은 2026-07-27 사고(−50,000,000 회수가 28분 간격 두 번 → 학생 −99,724,000)
+  //    때문에 생겼고, 그때 주석에 "되돌리려면 블록을 걷어내지 말고 **호출부에서 명시
+  //    플래그를 받도록 넓힐 것**"이라고 적어 뒀다. 그대로 한다 — 사고와 의도를 가른다.
+  //    · 기본값(플래그 없음)은 종전과 완전히 동일하다(회귀 0).
+  //    · **위임받은 학생은 못 쓴다.** 남을 빚지게 만드는 건 교사의 판단이어야 한다.
+  //    · 돈은 여전히 보존된다: 학생 −N · 국고 +N 으로 같은 baseAmount 를 쓰므로,
+  //      학생의 마이너스 잔액이 곧 그만큼의 빚이다(불변식 2 유지).
+  const allowNegativeTake =
+    action !== "send" && allowNegative === true && isAdmin === true;
 
   const increment = admin.firestore.FieldValue.increment;
   const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
@@ -3221,7 +3277,7 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
         let clampedFrom = 0;
         // `=== "take"` 로 좁히지 않는다(3033행에서 send/take 로 이미 검증된다).
         // 액션이 하나 늘면 `=== "take"` 는 바닥을 **조용히** 건너뛰지만, 이 형태는 기본으로 걸린다.
-        if (action !== "send") {
+        if (action !== "send" && !allowNegativeTake) {
           const capped = clampTakeAmount(currentCash, baseAmount);
           baseAmount = capped.amount;
           clampedFrom = capped.clampedFrom;
@@ -8864,7 +8920,7 @@ exports.purchaseRealEstate = onCall(
         // 6. 활동 로그 기록
         const taxInfo =
           taxAmount > 0 ? ` (거래세 ${taxAmount.toLocaleString()}원 납부)` : "";
-        logActivity(
+        await logActivity(
           transaction,
           uid,
           "부동산 구매",
@@ -9093,7 +9149,7 @@ exports.respondToRealEstateOffer = onCall({ region: "asia-northeast3" }, async (
         }
       });
 
-      logActivity(transaction, offer.buyerId, "부동산 구매",
+      await logActivity(transaction, offer.buyerId, "부동산 구매",
         `부동산 #${offer.propertyId}를 흥정으로 ${price.toLocaleString()}원에 구매하고 입주했습니다.`,
         { propertyId: offer.propertyId, purchasePrice: price, taxAmount, previousOwner: uid });
 
