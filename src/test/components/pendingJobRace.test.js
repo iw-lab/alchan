@@ -335,3 +335,44 @@ describe("메뉴 잠금 취소 가드가 죽어 있지 않다", () => {
     expect(iSet, "취소 확인이 setState 뒤에 있다(죽은 가드)").toBeGreaterThan(iCheck);
   });
 });
+
+/**
+ * 🔴 2026-08-28 라이브 장애 — 학생이 직업을 **추가도 삭제도** 못 했다.
+ *
+ * `fetchPendingJobIds` 가 `studentId + status` 로만 조회했는데, 읽기 규칙은
+ * `isSameClassFast(resource.data.classCode)` 다. Firestore 는 쿼리에 학급 조건이 없으면
+ * "학급 밖 문서가 섞일 수 있다"고 보고 **결과가 0건이어도** 쿼리 자체를 거부한다
+ * (라이브에서 학생 토큰으로 403 PERMISSION_DENIED 확인, 같은 토큰의 classCode 붙인
+ * 쿼리는 200). 거부 → null → 토스트 → 화면이 안 열림 → 추가·삭제가 통째로 막힘.
+ *
+ * 교사는 관리자 단락으로 이 경로를 안 타서 아무도 못 봤고, 같은 파일의 교사용
+ * 구독은 처음부터 classCode 를 걸고 있었다 — **한 파일 안에서 한쪽만 빠진 자리**다.
+ */
+describe("학생 대기 신청 조회가 학급 스코프다", () => {
+  it("⭐ 쿼리에 classCode 등가 조건이 있다 (없으면 규칙이 통째로 거부)", () => {
+    const i = DB.indexOf("export const fetchPendingJobIds");
+    expect(i, "fetchPendingJobIds 를 찾지 못했다").toBeGreaterThan(-1);
+    const body = DB.slice(i, i + 900);
+    expect(body, "classCode where 가 없다 — 학생에게 PERMISSION_DENIED 가 난다").toMatch(
+      /where\(\s*"classCode"\s*,\s*"=="/,
+    );
+    expect(body).toMatch(/where\(\s*"studentId"\s*,\s*"=="/);
+    expect(body).toMatch(/where\(\s*"status"\s*,\s*"=="/);
+  });
+
+  it("⭐ 호출부가 classCode 를 실제로 넘긴다", () => {
+    // 시그니처만 고치고 호출부를 그대로 두면 classCode 가 undefined 로 들어와
+    // 아래 가드에 걸려 **여전히 화면이 안 열린다**(증상이 똑같아 고친 줄로 착각한다).
+    expect(DASH, "호출부가 classCode 를 안 넘긴다").toMatch(
+      /fetchPendingJobIds\(\s*user\.uid\s*,\s*userDoc\?\.classCode\s*\)/,
+    );
+  });
+
+  it("⭐ 학급을 모르면 [] 가 아니라 null 이다 (모름 ≠ 없음)", () => {
+    const i = DB.indexOf("export const fetchPendingJobIds");
+    const body = DB.slice(i, i + 500);
+    expect(body, "classCode 가 없을 때 []를 주면 저장 시 실제 신청이 취소된다").toMatch(
+      /if\s*\(!classCode\)\s*return null;/,
+    );
+  });
+});

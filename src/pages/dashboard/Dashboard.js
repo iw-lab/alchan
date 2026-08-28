@@ -1789,7 +1789,7 @@ function Dashboard({ adminTabMode }) {
  pendingFetchInFlight.current = true;
  let pending;
  try {
- pending = await fetchPendingJobIds(user.uid);
+ pending = await fetchPendingJobIds(user.uid, userDoc?.classCode);
  } finally {
  pendingFetchInFlight.current = false;
  }
@@ -1801,7 +1801,7 @@ function Dashboard({ adminTabMode }) {
  }
  setPendingJobIds(pending);
  setViewMode("selectJob");
- }, [user?.uid, isAdmin]);
+ }, [user?.uid, isAdmin, userDoc?.classCode]);
 
  const handleConfirmJobSelection = useCallback(
  async (newlySelectedJobIds) => {
