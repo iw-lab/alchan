@@ -653,6 +653,23 @@ function Dashboard({ adminTabMode }) {
    } catch { /* ignore */ }
  }, [showAdminSettingsModal, adminSelectedMenu]);
 
+ // 🔴 **화면을 가리는 판정은 "모달이 실제로 보이는가"여야 한다** (2026-08-28 라이브 장애).
+ //    `showAdminSettingsModal` 은 sessionStorage 에서 복원되는데 그 값은 **탭에 남는다**.
+ //    교사가 이 경로에서 관리자 설정을 열어 둔 탭에 학생이 로그인하면 플래그가 그대로 살아서
+ //    아래 본문(직업 할일·공통 할일)이 통째로 숨고, 정작 모달은 `isAdmin` 이 아니라 안 뜬다
+ //    → **아무것도 없는 화면**. sessionStorage 는 강력 새로고침으로도 안 지워져서 그 탭에서는
+ //    영영 복구되지 않았다(새 탭에서만 멀쩡해 재현이 어려웠다).
+ //    "열려 있다"와 "보인다"를 같은 값으로 쓰면 안 되는 자리다.
+ const adminModalOpen = showAdminSettingsModal && isAdmin?.() === true;
+
+ // 남아 있던 남의 플래그는 지운다 — 위 동기화 이펙트가 sessionStorage 까지 비운다.
+ // ⚠️ 인증 로딩 중에는 건드리지 않는다. 그때 isAdmin() 은 아직 false 라, 여기서 지우면
+ //    교사의 '새로고침해도 모달 유지'가 매번 깨진다(고치려던 것과 다른 것을 부순다).
+ useEffect(() => {
+   if (authLoading || !userDoc?.id) return;
+   if (showAdminSettingsModal && !isAdmin?.()) setShowAdminSettingsModal(false);
+ }, [authLoading, userDoc?.id, showAdminSettingsModal, isAdmin]);
+
  const [jobs, setJobs] = useState([]);
  const [commonTasks, setCommonTasks] = useState([]);
  // 직업 개수 상한(관리자 설정, 기본 5) — 학생 직업 선택 UI 제한 기준
@@ -2520,7 +2537,7 @@ function Dashboard({ adminTabMode }) {
  </p>
  </div>
  </div>
- {isAdmin?.() && viewMode === "list" && !showAdminSettingsModal && (
+ {isAdmin?.() && viewMode === "list" && !adminModalOpen && (
  <div className="flex flex-wrap gap-1.5">
  <ActionButton
  variant="primary"
@@ -2564,7 +2581,7 @@ function Dashboard({ adminTabMode }) {
  </section>
  )}
 
- {viewMode === "list" && !showAdminSettingsModal && !adminTabMode && (
+ {viewMode === "list" && !adminModalOpen && !adminTabMode && (
  <>
  {/* 나의 직업 할일 섹션 */}
  <div className="glass-card rounded-2xl overflow-hidden mb-6">
