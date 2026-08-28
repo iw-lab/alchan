@@ -150,16 +150,22 @@ export default function CouponGoal({
               목표 달성
             </span>
           )}
-          {/* 🎰 목표를 달성했을 때만 뜨는 추첨 버튼. 응모한 쿠폰 수가 곧 당첨 확률이다. */}
+          {/* 🎰 추첨 버튼(선생님만 보인다). 응모한 쿠폰 수가 곧 당첨 확률이다.
+              목표 달성 전에도 누를 수 있게 열어 뒀다 — 목표는 몇 달 걸리는데 그때까지
+              한 번도 못 써 보면 정작 필요할 때 처음 눌러 보게 된다.
+              대신 달성 전에는 눈에 덜 띄게(회색·깜빡임 없이) 두고, 누르면 확인창이 알린다. */}
           {randomDrawButton && (
             <button
               onClick={randomDrawButton}
+              title={goalAchieved ? "응모한 학생들끼리 추첨합니다" : "아직 목표 달성 전입니다 — 지금까지 응모한 학생들끼리만 뽑습니다"}
               className="text-white border-none rounded-xl px-3 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5"
               style={{
-                background: "linear-gradient(135deg, #f59e0b, #ef4444)",
-                boxShadow: "0 2px 10px rgba(245,158,11,0.45)",
+                background: goalAchieved
+                  ? "linear-gradient(135deg, #f59e0b, #ef4444)"
+                  : "linear-gradient(135deg, #94a3b8, #64748b)",
+                boxShadow: goalAchieved ? "0 2px 10px rgba(245,158,11,0.45)" : "none",
                 cursor: "pointer",
-                animation: "couponPulse 2s infinite",
+                animation: goalAchieved ? "couponPulse 2s infinite" : "none",
               }}
             >
               🎰 랜덤뽑기

@@ -581,10 +581,16 @@ export default function CouponGoalPage() {
         `\n\n🔁 추첨 화면에서 '다시 추첨'을 누르면 판마다 같은 금액이 또 지급됩니다.`
         + `\n   (2·3등처럼 금액을 바꾸려면 이 화면에서 랜덤뽑기를 다시 누르세요.)`
       : "\n\n(상금 지급 없이 추첨만 합니다.)";
+    // 목표 달성 전에도 뽑을 수 있게 열어 뒀다(선생님만 보인다). 다만 그 사실은 알린다 —
+    // 아직 안 낸 학생이 있는 상태라 확률이 실제 목표 달성 때와 다르다.
+    const notYet = goalAchieved
+      ? ""
+      : "\n\n⚠️ 아직 목표를 달성하기 전입니다. 지금까지 응모한 학생들끼리만 뽑습니다.";
     const ok = await confirmDialog(
       `응모자 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n\n` +
         `새 탭에서 추첨 화면이 열립니다. 명단은 주소의 # 뒤에 담겨 전달되며, ` +
         `추첨 사이트의 서버에는 저장되지 않습니다.` +
+        notYet +
         money,
       { confirmText: prize ? "추첨하고 상금 주기" : "추첨 시작" },
     );
@@ -935,9 +941,7 @@ export default function CouponGoalPage() {
                 canManageGoal && goalAchieved ? setNewGoal : null
               }
               isSettingNewGoal={isSettingNewGoal}
-              randomDrawButton={
-                canManageGoal && goalAchieved ? handleRandomDraw : null
-              }
+              randomDrawButton={canManageGoal ? handleRandomDraw : null}
             />
 
             {/* 🔒 개발/운영용 진단 도구 — 학생 화면에는 노출하지 않는다(교사만).
