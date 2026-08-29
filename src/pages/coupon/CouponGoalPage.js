@@ -502,9 +502,14 @@ export default function CouponGoalPage() {
     prizeWatchRef.current?.();
     prizeWatchRef.current = null;
     prizePaidRef.current = false;
-    const entries = buildEntriesFromDonations(goalDonations);
+    // 🎟️ 학급 학생 전원을 최소 1장으로 넣는다 — 한 장도 못 낸 아이가 아예 못 뽑히면
+    //    그건 상이 아니라 벌이다. 선생님(교사 계정)은 추첨 대상이 아니다.
+    const roster = (allClassMembers || []).filter(
+      (m) => !(m?.isTeacher || m?.isAdmin || m?.isSuperAdmin),
+    );
+    const entries = buildEntriesFromDonations(goalDonations, roster);
     if (!entries.length) {
-      toast.error("응모 내역이 없어 추첨할 수 없습니다.");
+      toast.error("추첨할 학생이 없습니다.");
       return;
     }
     const tickets = entries.reduce((s, e) => s + e.weight, 0);
@@ -587,7 +592,8 @@ export default function CouponGoalPage() {
       ? ""
       : "\n\n⚠️ 아직 목표를 달성하기 전입니다. 지금까지 응모한 학생들끼리만 뽑습니다.";
     const ok = await confirmDialog(
-      `응모자 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n\n` +
+      `참가 ${entries.length}명 · 응모권 ${tickets}장으로 추첨을 시작합니다.\n` +
+        `(한 장도 응모하지 않은 학생도 1장으로 함께 참가합니다.)\n\n` +
         `새 탭에서 추첨 화면이 열립니다. 명단은 주소의 # 뒤에 담겨 전달되며, ` +
         `추첨 사이트의 서버에는 저장되지 않습니다.` +
         notYet +

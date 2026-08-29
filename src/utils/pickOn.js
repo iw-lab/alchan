@@ -27,8 +27,22 @@ function b64urlEncode(str) {
  * @param {Array} donations  [{ userId, userName, amount }]
  * @returns {Array} [{ name, weight }]  weight = 응모한 쿠폰 장수
  */
-export function buildEntriesFromDonations(donations) {
+export function buildEntriesFromDonations(donations, everyone = null) {
   const byUser = new Map();
+  // 🎟️ 한 장도 응모 안 한 학생도 참여시킨다(선생님 요청).
+  //    "쿠폰을 못 모은 아이는 아예 못 뽑힌다"가 되면 그건 상이 아니라 벌에 가깝다.
+  //    먼저 전원을 1장으로 깔고, 실제 응모분을 그 위에 더한다.
+  //    ⚠️ 더하는 게 아니라 '최소 1장'이다 — 5장 낸 학생은 5장 그대로다.
+  for (const m of everyone || []) {
+    const uid = String(m?.id ?? m?.uid ?? "");
+    if (!uid) continue;
+    byUser.set(uid, {
+      name: String(m.name || m.nickname || "이름없음").slice(0, 20),
+      weight: 1,
+      userId: uid,
+      seeded: true,          // 아직 실제 응모가 없는 '바닥 1장'
+    });
+  }
   for (const d of donations || []) {
     const amount = Number(d?.amount) || 0;
     if (amount <= 0) continue;
@@ -39,7 +53,10 @@ export function buildEntriesFromDonations(donations) {
     if (!key) continue;
     const prev = byUser.get(key);
     if (prev) {
-      prev.weight += amount;
+      // 전원 1장으로 깔아 둔 자리면 그 1장은 '바닥'이지 보너스가 아니다 —
+      // 실제 응모분으로 갈아 끼운다(그래야 5장 낸 학생이 6장이 되지 않는다).
+      prev.weight = prev.seeded ? amount : prev.weight + amount;
+      prev.seeded = false;
     } else {
       byUser.set(key, {
         name: String(d.userName || "이름없음").slice(0, 20),
