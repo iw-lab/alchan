@@ -28,11 +28,23 @@ const SAVE = codeOnly(sliceFn("saveSelectedJobs"));
 const PROCESS = codeOnly(sliceFn("processJobApplication"));
 
 describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
-  it("⭐ 승인제가 꺼진 학급은 기존 경로를 그대로 탄다", () => {
-    // 스위치는 명시적으로 true 일 때만 켜진다(문서·필드 없으면 꺼짐).
-    expect(SAVE).toContain("salarySettingsDoc.data().jobApprovalRequired === true");
-    // 꺼진 경우의 즉시 저장 경로가 남아 있어야 한다.
-    expect(SAVE).toMatch(/selectedJobIds: validSelected/);
+  it("⭐ 승인은 학급 설정이 아니라 **규칙**이다 (2026-08-29)", () => {
+    // 직업 개수가 주급을 정하므로 직업이 붙는 경로 = 돈이 늘어나는 경로다.
+    // 토글로 열어 둘 수 있으면 끈 학급에서 학생이 자기 주급을 올린다.
+    expect(SAVE).toContain("const approvalRequired = true");
+    // 학급 설정 필드를 **다시 읽지 않는다** — 읽는 순간 그 필드가 규칙이 된다.
+    expect(
+      SAVE,
+      "승인 여부를 다시 학급 설정에서 읽고 있다",
+    ).not.toContain("jobApprovalRequired");
+    // 승인을 건너뛰고 직업을 바로 붙이던 즉시 저장 경로가 남아 있으면 안 된다.
+    // ⚠️ **학생 경로만** 본다 — 교사 경로의 `selectedJobIds: validSelected` 는 정당하다
+    //    (선생님은 승인을 받을 대상이 아니다). 전부를 보면 이 단언은 늘 실패한다.
+    const studentOnly = SAVE.slice(SAVE.indexOf("const currentAppointed ="));
+    expect(
+      studentOnly,
+      "학생 경로에 즉시 저장(승인 우회)이 아직 살아 있다",
+    ).not.toContain("selectedJobIds: validSelected");
   });
 
   it("⭐ 상한을 '이미 가진 것 + 대기중 + 신규신청' 합으로 센다", () => {
@@ -65,11 +77,15 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     // cash 를 increment 로만 만지는 것과 같은 이유 — 이건 절대값 덮어쓰기다.
     // ⚠️ `selectedJobIds: kept` 는 **반환값**(화면 표시용)이라 정당하다 — 겨냥할 것은 **쓰기**다.
     //    users 문서로 가는 update 가 arrayRemove 를 쓰는지 본다.
-    const write = SAVE.indexOf("batch.update(\n            userRef,");
+    // ⚠️ 2026-08-29: 이 쓰기는 `userUpdate` 객체를 먼저 만들고 한 줄로 커밋한다
+    //    (그만둘 게 없어도 updatedAt 만 써서 전제조건을 붙이기 위해). 겨냥할 것은
+    //    그 객체가 **무엇을 쓰는가** 다.
+    const write = SAVE.indexOf("const userUpdate =");
     expect(write, "users 문서 갱신을 찾지 못했다").toBeGreaterThan(-1);
-    const writeBody = SAVE.slice(write, write + 260);
+    const writeBody = SAVE.slice(write, write + 400);
     expect(writeBody).toContain("FieldValue.arrayRemove(...removed)");
     expect(writeBody).not.toContain("selectedJobIds: kept");
+    expect(SAVE).toContain("batch.update(userRef, userUpdate, userPrecondition)");
   });
 
   it("⭐ 체크를 푼 직업의 대기 신청은 함께 취소된다", () => {
@@ -79,13 +95,12 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
 
   it("⭐ 승인제 학급에서 selectedJobIds 에 새 직업을 직접 붙이지 않는다", () => {
     // 신청은 문서만 만들 뿐이어야 한다. validSelected 를 그대로 쓰면 승인제가 무의미해진다.
-    // ⚠️ 2026-08-27: 신청 분기의 조건이 `approvalRequired || appointedToRequest.length > 0`
-    //    으로 넓어졌다. 그 분기 전체를 보면 **승인제가 꺼진 학급의 정상 즉시 저장**까지
-    //    들어와 항상 실패한다. 겨냥할 것은 그 안의 `if (approvalRequired) {` 쓰기 블록이다.
+    //    겨냥할 것은 users 문서 쓰기 블록이다 — 신청서 생성(canceledDocs 이후)은
+    //    문서를 만들 뿐이라 여기 판정과 무관하다.
     const start = SAVE.indexOf("if (approvalRequired) {");
-    expect(start, "승인제 쓰기 블록을 찾지 못했다").toBeGreaterThan(-1);
-    const end = SAVE.indexOf("} else if (", start);
-    expect(end, "승인제/비승인제 분기 경계를 찾지 못했다").toBeGreaterThan(start);
+    expect(start, "승인 쓰기 블록을 찾지 못했다").toBeGreaterThan(-1);
+    const end = SAVE.indexOf("for (const d of canceledDocs)", start);
+    expect(end, "쓰기 블록의 끝을 찾지 못했다").toBeGreaterThan(start);
     const branch = SAVE.slice(start, end);
     expect(branch).not.toContain("selectedJobIds: validSelected");
     // 이 분기에서 selectedJobIds 에 하는 유일한 쓰기는 '뺀 것 제거' 뿐이어야 한다.
@@ -119,22 +134,46 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     //    정작 돈이 걸린 users 문서에만 빠져 있었다.
     // ① 다시 읽는다
     expect(SAVE).toContain("const userSnap = await userRefForRead.get()");
-    expect(SAVE).toContain("const tailSnap = await tailUserRef.get()");
-    // ② 그 판일 때만 쓴다 — 두 경로 모두
+    // ② 그 판일 때만 쓴다
     expect(SAVE).toContain("lastUpdateTime: userSnap.updateTime");
-    expect(SAVE).toContain("lastUpdateTime: tailSnap.updateTime");
     // ③ 상한 계산이 **다시 읽은 값**을 쓴다(진입 시점 값이 아니라)
     expect(SAVE).toContain("const appointedCountFresh = freshAppointed.length");
-    expect(
-      SAVE,
-      "즉시저장 경로가 아직 진입 시점 appointedCount 로 상한을 센다",
-    ).toContain("const tailAllowed = Math.max(0, maxJobsPerStudent - tailAppointedCount)");
+    // ④ 2026-08-29: 두 번째 쓰기 경로(즉시저장)는 **지웠다**. 안 도는 경로를 남기면
+    //    나중에 규칙을 되돌릴 때 검증되지 않은 옛 코드가 그대로 살아난다.
+    for (const gone of ["tailUserRef", "tailSnap", "tailAllowed", "tailAppointedCount"]) {
+      expect(SAVE, `죽은 즉시저장 경로의 ${gone} 가 남아 있다`).not.toContain(gone);
+    }
+    // ⑤ 그 자리는 조용한 undefined 대신 소리 내어 실패한다.
+    expect(SAVE).toContain("직업 저장 경로가 잘못되었습니다");
+  });
+
+  it("⭐ **신청만 하는 저장**에도 잠금이 걸린다 (전제조건이 아무 데도 안 걸리던 구멍)", () => {
+    // 🔴 2026-08-29 codex CRITICAL. 낙관적 잠금은 **쓰기에 붙는다** — 쓸 게 없으면
+    //    전제조건도 없다. 전에는 `if (removed.length > 0)` 안에서만 users 문서를 갱신해서,
+    //    '그만둘 것 없이 신청만 하는' 흔한 저장에서는 배치에 users 쓰기가 하나도 없었다.
+    //    그 사이 다른 탭이 저장하거나 교사가 승인을 커밋해도 신청서가 그대로 커밋된다.
+    //    (승인 CF 가 부여 직전에 상한을 다시 보므로 돈은 안 새지만, 교사에게는 승인할 수
+    //     없는 신청이 쌓인다 — 그리고 '못 잠근 판'을 남겨두는 습관 자체가 이 파일의 주제다.)
+    // 그만두기·신청·취소 — **상태를 바꾸는 저장이면 전부** 같은 판에 잠근다.
+    for (const kind of ["removed.length > 0", "toApply.length > 0", "canceledDocs.length > 0"]) {
+      expect(SAVE, `${kind} 가 users 쓰기 조건에서 빠졌다`).toContain(kind);
+    }
+    // 그만둘 게 없을 때도 최소한 updatedAt 은 써야 전제조건이 붙는다.
+    const write = SAVE.indexOf("const userUpdate =");
+    expect(write, "신청 저장의 users 쓰기를 찾지 못했다").toBeGreaterThan(-1);
+    const body = SAVE.slice(write, write + 600);
+    expect(body, "이 쓰기에 lastUpdateTime 전제조건이 없다").toContain("userPrecondition");
+    // 그만둘 게 없을 때도 updatedAt 은 쓴다 — 그래야 전제조건이 붙을 자리가 생긴다.
+    expect(SAVE).toContain(
+      ": { updatedAt: admin.firestore.FieldValue.serverTimestamp() }",
+    );
   });
 
   it("⭐ 잠금이 걸리면 아무것도 안 써지고 학생에게 다시 하라고 말한다", () => {
-    // 조용히 실패하면 학생은 저장된 줄 안다. 두 경로 다 code 9/5 를 aborted 로 바꿔 안내한다.
+    // 조용히 실패하면 학생은 저장된 줄 안다. code 9/5 를 aborted 로 바꿔 안내한다.
+    // (2026-08-29: 쓰기 경로가 하나로 줄어 안내도 하나다 — 전에는 즉시저장 경로가 따로 있었다.)
     const aborted = [...SAVE.matchAll(/"aborted"/g)].length;
-    expect(aborted, "aborted 안내가 두 경로에 다 있지 않다").toBeGreaterThanOrEqual(2);
+    expect(aborted, "aborted 안내가 없다").toBeGreaterThanOrEqual(1);
   });
 
   it("⭐ 낡은 번들이 임명직 **신청서**를 취소하지 못한다 (능력 플래그)", () => {

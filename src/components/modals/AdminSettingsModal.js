@@ -510,15 +510,10 @@ const AdminSettingsModal = ({
     salaryIncreaseRate: 0.05, // 5% 주간 기본급 복리 인상률(기본값)
     salaryBaseMultiplier: 1, // 누적 인상 배수(서버가 매주 갱신) — 미리보기·표시용
     maxJobsPerStudent: 5, // 학생당 직업 개수 상한(급여 계산·신청 제한 기준)
-    jobApprovalRequired: false, // 직업 신청을 선생님이 허가해야 하는가
   });
   const [tempTaxRate, setTempTaxRate] = useState("10");
   const [tempSalaryIncreaseRate, setTempSalaryIncreaseRate] = useState("5");
   const [tempMaxJobsPerStudent, setTempMaxJobsPerStudent] = useState("5");
-  // ⚠️ temp state 로 두는 이유: handleSaveSalarySettings 의 deps 가 salarySettings 를
-  //    일부러 제외한다(841행 주석). 거기서 salarySettings.jobApprovalRequired 를 읽으면
-  //    stale 값이 저장돼 "켰는데 안 켜지는" 사고가 난다. 다른 필드와 같은 규약을 쓴다.
-  const [tempJobApprovalRequired, setTempJobApprovalRequired] = useState(false);
   const [salarySettingsLoading, setSalarySettingsLoading] = useState(false);
 
   // 🔒 메뉴 잠금 (학생에게 숨길 메뉴 항목 id 목록)
@@ -694,20 +689,16 @@ const AdminSettingsModal = ({
         const rawMultiplier = data.salaryBaseMultiplier;
         const salaryBaseMultiplier =
           Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1;
-        // 직업 신청 승인제(미설정 = 꺼짐 → 기존처럼 학생이 고르면 바로 반영).
-        const jobApprovalRequired = data.jobApprovalRequired === true;
         const settings = {
           taxRate,
           salaryIncreaseRate,
           salaryBaseMultiplier,
           maxJobsPerStudent,
-          jobApprovalRequired,
         };
         setSalarySettings(settings);
         setTempTaxRate(String((taxRate * 100).toFixed(1)));
         setTempSalaryIncreaseRate(String((salaryIncreaseRate * 100).toFixed(1)));
         setTempMaxJobsPerStudent(String(maxJobsPerStudent));
-        setTempJobApprovalRequired(jobApprovalRequired);
 
         if (data.lastPaidDate) {
           setLastSalaryPaidDate(data.lastPaidDate.toDate());
@@ -763,7 +754,10 @@ const AdminSettingsModal = ({
         taxRate: taxRateNum / 100,
         salaryIncreaseRate: increaseRateNum / 100,
         maxJobsPerStudent: maxJobsNum,
-        jobApprovalRequired: tempJobApprovalRequired === true,
+        // 🔒 승인제는 2026-08-29 부터 학급 설정이 아니라 **규칙**이다(서버가 항상 승인을 요구한다).
+        //    서버는 이 필드를 더 이상 읽지 않는다. 낡은 번들을 띄워 둔 탭이 '바로 저장됨'이라고
+        //    거짓 안내를 하지 않도록 true 로 못 박아 둘 뿐이다.
+        jobApprovalRequired: true,
         classCode: userClassCode || null,
         updatedAt: serverTimestamp(),
       };
@@ -782,9 +776,7 @@ const AdminSettingsModal = ({
           const dt = Math.abs((v.taxRate ?? -1) - newSettings.taxRate);
           const ds = Math.abs((v.salaryIncreaseRate ?? -1) - newSettings.salaryIncreaseRate);
           const dm = (v.maxJobsPerStudent ?? -1) === newSettings.maxJobsPerStudent;
-          // 승인제 스위치도 read-back 으로 확인한다 — 조용히 안 켜지면
-          // 선생님은 켠 줄 아는데 학생 신청이 계속 즉시 반영된다.
-          const dj = (v.jobApprovalRequired === true) === newSettings.jobApprovalRequired;
+          const dj = v.jobApprovalRequired === true;
           serverVerified = dt < 0.0001 && ds < 0.0001 && dm && dj;
         }
       } catch (verifyErr) {
@@ -804,7 +796,6 @@ const AdminSettingsModal = ({
         taxRate: newSettings.taxRate,
         salaryIncreaseRate: newSettings.salaryIncreaseRate,
         maxJobsPerStudent: newSettings.maxJobsPerStudent,
-        jobApprovalRequired: newSettings.jobApprovalRequired,
       }));
 
       // 2) 입력 박스도 정규화된 값(소수점 한 자리)으로 동기화
@@ -813,7 +804,6 @@ const AdminSettingsModal = ({
         String((newSettings.salaryIncreaseRate * 100).toFixed(1)),
       );
       setTempMaxJobsPerStudent(String(newSettings.maxJobsPerStudent));
-      setTempJobApprovalRequired(newSettings.jobApprovalRequired);
 
       // 3) react-query 캐시 무효화 — 다른 화면(주급 지급 등)이 stale 옛 값 사용 방지
       try {
@@ -844,7 +834,7 @@ const AdminSettingsModal = ({
       setSalarySettingsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, tempMaxJobsPerStudent, tempJobApprovalRequired, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
+  }, [userClassCode, tempTaxRate, tempSalaryIncreaseRate, tempMaxJobsPerStudent, queryClient]); // db와 salarySettings.x는 외부 스코프 값으로 의존성에서 제외
 
   // 📊 표시용 실효 설정값 — 요약 패널·계산 예시가 하드코딩 상수를 쓰다가
   //    실제 지급 조건과 어긋나던 문제(2026-07-27) 때문에 한 곳에서 파생시킨다.
@@ -3703,29 +3693,17 @@ const AdminSettingsModal = ({
                     <p className="text-[11px] text-slate-500 mt-1.5 ml-1">학생 1명이 가질 수 있는 최대 직업 수(급여 계산·신청·배정 모두 적용)</p>
                   </div>
 
-                  {/* 직업 신청 승인제 — 직업 개수가 주급을 정하므로 여기(급여 설정)가 제자리다. */}
-                  <div>
-                    <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-white transition">
-                      <input
-                        type="checkbox"
-                        checked={tempJobApprovalRequired}
-                        onChange={(e) => setTempJobApprovalRequired(e.target.checked)}
-                        style={{ width: 18, height: 18, marginTop: 2, cursor: "pointer" }}
-                      />
-                      <span>
-                        <span className="text-sm font-semibold text-slate-700">
-                          직업 신청을 선생님이 허가하기
-                        </span>
-                        <span className="block text-[11px] text-slate-500 mt-1">
-                          켜면 학생이 고른 직업이 바로 붙지 않고 <b>신청</b>으로 쌓입니다.
-                          「할일 승인」 화면의 <b>직업 신청</b> 탭에서 하나씩 허가·거절할 수 있어요.
-                          직업을 <b>그만두는 건</b> 허가 없이 바로 됩니다.
-                        </span>
-                        <span className="block text-[11px] text-slate-400 mt-1">
-                          끄면 지금처럼 학생이 고르는 즉시 반영됩니다.
-                        </span>
-                      </span>
-                    </label>
+                  {/* 직업 신청 승인 — 2026-08-29 부터 끄고 켤 수 없는 규칙이다.
+                      직업 개수가 주급을 정하므로 직업이 붙는 경로는 곧 돈이 늘어나는 경로다. */}
+                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                    <span className="text-sm font-semibold text-slate-700">
+                      직업은 모두 신청 → 선생님 허가
+                    </span>
+                    <span className="block text-[11px] text-slate-500 mt-1">
+                      학생이 고른 직업은 바로 붙지 않고 <b>신청</b>으로 쌓입니다.
+                      「할일 승인」 화면의 <b>직업 신청</b> 탭에서 하나씩 허가·거절하세요.
+                      직업을 <b>그만두는 건</b> 허가 없이 바로 됩니다.
+                    </span>
                   </div>
 
                   <button

@@ -1350,7 +1350,7 @@ exports.collectWeeklyTaxesByOfficer = onCall(
     if (!hasJobTitle(userData, jobMap, "국세청 직원")) {
       throw new HttpsError(
         "permission-denied",
-        "교사가 임명한 국세청 직원만 세금을 징수할 수 있습니다.",
+        "선생님이 허가한 국세청 직원만 세금을 징수할 수 있습니다.",
       );
     }
 

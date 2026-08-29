@@ -3881,7 +3881,7 @@ exports.processTrialSettlement = onCall(
       if (!hasJobTitle(userData, buildJobMap(jobsSnap), "판사")) {
         throw new HttpsError(
           "permission-denied",
-          "합의금 처리 권한은 임명된 판사 또는 관리자에게 있습니다.",
+          "합의금 처리 권한은 선생님이 허가한 판사 또는 관리자에게 있습니다.",
         );
       }
     }
@@ -11343,19 +11343,21 @@ exports.saveSelectedJobs = onCall(
     // 개수 상한은 '지정 + 선택 합계'에 적용한다(급여 계산 resolveStudentJobs와 동일 규약).
     // 교사가 지정한 직업이 슬롯을 먼저 차지하므로, 학생이 고를 수 있는 몫은 그만큼 줄어든다.
     // ⚠️ 상한 계산은 여기서 하지 않는다 — 진입 시점 스냅샷으로 세면 그 사이 커밋된 임명을
-    //    못 봐서 상한을 넘긴다(2026-08-27 codex CRITICAL). 두 쓰기 경로가 각자 사용자 문서를
-    //    다시 읽어 `appointedCountFresh` / `tailAppointedCount` 로 검사한다.
+    //    못 봐서 상한을 넘긴다(2026-08-27 codex CRITICAL). 아래에서 사용자 문서를 다시 읽어
+    //    `appointedCountFresh` 로 검사한다. (2026-08-29: 승인제가 규칙이 되면서 학생 쓰기
+    //     경로는 하나로 줄었다 — 예전엔 즉시저장 경로가 따로 있어 각자 다시 읽었다.)
 
-    // 🧑‍🏫 학급이 '직업 신청 승인제'를 켰으면, **직업이 붙는 것**은 교사 승인을 거친다.
+    // 🧑‍🏫 **학생의 모든 직업은 신청 → 선생님 승인이다**(2026-08-29 사용자 결정).
+    //   전에는 학급 설정 `jobApprovalRequired` 토글로 켜고 껐다. 없앤 이유:
     //   직업 개수가 주급을 정하므로(세전 = 200만 + (직업수−1)×50만) 직업이 붙는 경로는
-    //   곧 돈이 늘어나는 경로다. 끈 학급의 **일반 직업**은 아래 기존 경로를 그대로 탄다.
-    //   ⚠️ 임명직은 토글과 무관하게 **항상** 신청→승인이다. 토글은 일반 직업용이고,
-    //      임명직까지 토글에 맡기면 토글이 꺼진 학급에서 학생이 대통령을 자가임명하게 된다.
-    const approvalRequired =
-      salarySettingsDoc.exists &&
-      salarySettingsDoc.data().jobApprovalRequired === true;
+    //   곧 **돈이 늘어나는 경로**다. 그걸 학급 설정으로 열어 둘 수 있으면, 토글이 꺼진
+    //   학급에서는 학생이 스스로 직업을 붙여 자기 주급을 올린다.
+    //   ⚠️ 상수로 둔다 — 값이 아니라 **규칙**이다. 서버가 정본이고, 화면도 토글을 지웠다.
+    //   (설정 문서의 `jobApprovalRequired` 필드는 낡은 번들 안내용으로만 남아 있다.
+    //    여기서 **읽지 않는다** — 읽으면 그 필드가 다시 규칙이 된다.)
+    const approvalRequired = true;
 
-    if (approvalRequired || appointedToRequest.length > 0) {
+    if (approvalRequired) {
       // 🔒 **사용자 문서를 여기서 다시 읽는다.** 위 `userData` 는 함수 진입 시점 스냅샷이라
       //    그 뒤에 교사가 `processJobApplication` 으로 임명을 커밋한 것을 못 본다.
       //    그 상태로 상한을 계산하고 조건 없이 쓰면 이런 겹침이 통과한다(2026-08-27 codex CRITICAL):
@@ -11429,20 +11431,19 @@ exports.saveSelectedJobs = onCall(
           .filter((id) => !currentSet.has(id) && !freshAppointedSet.has(id)),
       );
 
-      // 신청 대상 = 임명직 신규 + (승인제일 때만) 일반직 신규.
-      //   승인제가 꺼진 학급에서 일반직은 아래에서 **즉시** 붙는다(기존 동작 보존).
+      // 신청 대상 = 새로 고른 직업 전부(임명직·일반직 구분 없이). 승인이 규칙이 된 뒤로
+      //   '즉시 붙는' 직업은 없다 — 예전엔 승인제가 꺼진 학급의 일반직이 그랬다.
       // 이미 대기 중인 직업은 다시 신청하지 않는다(중복 문서 방지).
       // 다시 읽은 판 기준으로 "아직 안 가진 임명직"만 신청 대상이다 —
       // 그 사이 승인된 것을 또 신청하면 교사 대기열에 유령이 쌓인다.
       const toApply = [
         ...appointedToRequest.filter((id) => !freshAppointedSet.has(id)),
-        ...(approvalRequired ? added : []),
+        ...added,
       ].filter((id) => !pendingJobIds.has(id));
 
       // 🔒 상한은 **이미 가진 것 + 대기중 + 신규신청** 합으로 본다.
       //    대기 중인 걸 빼고 세면 "승인 전에 계속 신청"으로 상한을 무한히 우회할 수 있다.
-      //    승인제가 꺼진 학급에선 일반직이 즉시 붙으므로 `kept` 가 아니라 `validSelected` 를 센다.
-      const heldSelected = approvalRequired ? kept.length : validSelected.length;
+      const heldSelected = kept.length;
       const projected =
         appointedCountFresh + heldSelected + pendingJobIds.size + toApply.length;
       if (projected > maxJobsPerStudent) {
@@ -11472,30 +11473,31 @@ exports.saveSelectedJobs = onCall(
         //    cash 를 increment 로만 만지는 것과 같은 이유다 — 이건 절대값 덮어쓰기다.
         //    (processJobApplication 쪽은 트랜잭션 안에서 읽고 쓰므로 그쪽은 안전하다.)
         const removed = current.filter((id) => !requestedSet.has(id));
-        if (removed.length > 0) {
-          batch.update(
-            userRef,
-            {
-              selectedJobIds: admin.firestore.FieldValue.arrayRemove(...removed),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            },
-            userPrecondition,
-          );
+        // 🔒 **신청만 하는 저장에도** 사용자 문서를 건드린다(그만둘 게 없어도).
+        //    전에는 removed 가 비면 배치에 users 쓰기가 하나도 없었고, 그러면
+        //    `userPrecondition` 이 **아무 데도 안 걸렸다** — 상한 계산의 근거(userSnap·
+        //    pendingSnap)가 그 사이 바뀌어도 신청서가 그대로 커밋됐다
+        //    (2026-08-29 codex CRITICAL). 두 탭이 동시에 저장하거나, 이 함수가 읽은 뒤
+        //    교사가 승인을 커밋한 경우가 그 자리다. 승인 CF 가 부여 직전에 상한을 다시
+        //    보므로 **돈이 새지는 않지만**, 교사에게는 승인할 수 없는 신청이 쌓인다.
+        //    쓰기 한 번(updatedAt)으로 '내가 읽은 그 판'을 잠근다.
+        const userUpdate =
+          removed.length > 0
+            ? {
+                selectedJobIds: admin.firestore.FieldValue.arrayRemove(...removed),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }
+            : { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        // ⚠️ 취소만 하는 저장도 잠근다(2026-08-29 codex 2R). 신청 취소도 상태 변경이라,
+        //    빼놓으면 '취소하는 탭'과 '그 신청을 살려둔 채 다른 직업을 신청하는 탭'이
+        //    둘 다 성공하고 뒤쪽 응답이 거짓말을 한다.
+        if (
+          removed.length > 0 ||
+          toApply.length > 0 ||
+          canceledDocs.length > 0
+        ) {
+          batch.update(userRef, userUpdate, userPrecondition);
         }
-      } else if (
-        validSelected.length !== current.length ||
-        added.length > 0
-      ) {
-        // 승인제가 꺼진 학급: 일반 직업은 즉시 반영(기존 경로와 동일한 절대 저장).
-        //   ⚠️ appointedJobIds 는 여기서도 건드리지 않는다.
-        batch.update(
-          userRef,
-          {
-            selectedJobIds: validSelected,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          userPrecondition,
-        );
       }
 
       // 🔒 취소는 **읽은 그 상태 그대로일 때만** 쓴다(lastUpdateTime 전제조건).
@@ -11558,15 +11560,14 @@ exports.saveSelectedJobs = onCall(
       }
 
       logger.info(
-        `[saveSelectedJobs] (승인제=${approvalRequired}) uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length}(임명 ${appointedToRequest.length}) · 취소 ${canceledDocs.length}`,
+        `[saveSelectedJobs] uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length}(임명 ${appointedToRequest.length}) · 취소 ${canceledDocs.length}`,
       );
 
       return {
         success: true,
-        // ⚠️ 실제 토글 값을 그대로 돌려준다. 임명직 신청 때문에 이 분기에 들어온 것뿐인
-        //    학급에 `true` 를 돌려주면 화면이 "일반 직업도 승인이 필요하다"고 거짓말한다.
-        approvalRequired,
-        selectedJobIds: approvalRequired ? kept : validSelected,
+        // 화면 호환용 — 이제 언제나 true 다(토글이 없어졌다).
+        approvalRequired: true,
+        selectedJobIds: kept,
         appointedJobIds: freshAppointed,
         pendingJobIds: [...pendingJobIds, ...toApply],
         appliedCount: toApply.length,
@@ -11574,67 +11575,16 @@ exports.saveSelectedJobs = onCall(
       };
     }
 
-    // 🔒 즉시저장 경로도 **다시 읽고, 그 판일 때만 쓴다.** 위 신청 분기와 같은 이유다
-    //    (2026-08-27 codex CRITICAL): 진입 시점 스냅샷으로 상한을 세고 조건 없이 쓰면,
-    //    그 사이 교사가 임명을 커밋한 경우 상한을 넘긴 채로 커밋된다.
-    //    이쪽은 임명직 신청이 없는 평범한 저장 경로지만, **교사의 직업 배정 화면**
-    //    (AdminSettingsModal)이 언제든 appointedJobIds 를 바꿀 수 있어 창은 똑같이 열려 있다.
-    const tailUserRef = db.collection("users").doc(uid);
-    const tailSnap = await tailUserRef.get();
-    if (!tailSnap.exists) {
-      throw new HttpsError("not-found", "사용자 정보를 찾을 수 없습니다.");
-    }
-    const tailAppointedCount = toJobIdArray(tailSnap.data()?.appointedJobIds).filter(
-      (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
-    ).length;
-    const tailAllowed = Math.max(0, maxJobsPerStudent - tailAppointedCount);
-    if (validSelected.length > tailAllowed) {
-      throw new HttpsError(
-        "invalid-argument",
-        tailAppointedCount > 0
-          ? `직업은 최대 ${maxJobsPerStudent}개까지 가질 수 있어요. 선생님이 지정한 직업 ${tailAppointedCount}개를 빼면 ${tailAllowed}개까지 고를 수 있어요.`
-          : `직업은 최대 ${maxJobsPerStudent}개까지 선택할 수 있어요.`,
-      );
-    }
-
-    // appointedJobIds는 교사 전용이라 건드리지 않는다 (부분 갱신).
-    try {
-      await tailUserRef.update(
-        {
-          selectedJobIds: validSelected,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { lastUpdateTime: tailSnap.updateTime },
-      );
-    } catch (e) {
-      // 내가 읽은 뒤에 누가 먼저 만졌다 = 아무것도 안 써졌다. 다시 누르면 새로 읽어 계산한다.
-      if (e?.code === 9 || e?.code === 5) {
-        logger.warn(`[saveSelectedJobs] 저장 중 사용자 문서가 바뀌어 중단: uid=${uid} code=${e.code}`);
-        throw new HttpsError(
-          "aborted",
-          "선생님이 방금 직업을 바꿨어요. 화면을 새로 고친 뒤 다시 저장해 주세요.",
-        );
-      }
-      throw e;
-    }
-
-    logger.info(
-      `[saveSelectedJobs] uid=${uid} 저장 ${validSelected.length}개 (요청 ${requested.length}개)`,
+    // 🚧 여기는 **도달할 수 없다.** 위 블록이 학생 저장의 유일한 경로다
+    //    (approvalRequired 는 상수 true — 학급 토글이 아니라 규칙이다).
+    //    전에는 여기에 '즉시 저장' 경로가 있었다. 승인제를 규칙으로 못 박으면서
+    //    지웠다 — 안 도는 두 번째 쓰기 경로를 남겨두면, 나중에 누가 규칙을 되돌릴 때
+    //    검증되지 않은 옛 코드가 그대로 살아난다(이 저장소가 휴면 코드로 두 번 사고 낸 모양).
+    //    조용히 undefined 를 돌려주는 대신 소리 내어 실패한다.
+    throw new HttpsError(
+      "internal",
+      "직업 저장 경로가 잘못되었습니다. 선생님께 알려주세요.",
     );
-
-    // appointedJobIds는 교사 전용이라 건드리지 않는다. 클라 표시용으로 현재값만 돌려준다.
-    return {
-      success: true,
-      selectedJobIds: validSelected,
-      appointedJobIds: toJobIdArray(userData?.appointedJobIds),
-      // ⚠️ "버려진 것" = 존재하지 않는 유령 id 뿐이다(`requested` − `existing`).
-      //    옛 공식은 `requested − validSelected` 였는데, validSelected 는 임명직을 뺀 목록이라
-      //    학생이 이미 임명직을 가진 채 저장하면(새 화면은 임명직도 함께 보낸다)
-      //    **아무것도 안 버렸는데 N개 버렸다**고 센다. 같은 함수의 다른 반환문 두 곳은
-      //    이미 `existing` 기준이라 셋이 어긋나 있었다(2026-08-27 Claude 레인 WARNING).
-      //    지금은 아무도 안 읽는 필드지만, 읽기 시작하는 순간 틀린 값을 읽게 된다.
-      droppedCount: requested.length - existing.length,
-    };
   },
 );
 
@@ -11826,7 +11776,7 @@ exports.processJobApplication = onCall(
           processedBy: uid,
         });
         resultMessage = grantAsAppointed
-          ? `'${app.jobTitle}' 임명을 허가했습니다.`
+          ? `'${app.jobTitle}' 신청을 허가했습니다. 권한도 함께 부여됐어요.`
           : `'${app.jobTitle}' 신청을 허가했습니다.`;
       });
     } catch (error) {

@@ -263,7 +263,6 @@ function SelectMultipleJobsView({
  onEditJob,
  maxJobs = 5,
  pendingJobIds = [],
- approvalRequired = false,
  appointedJobIds = [],
 }) {
  // 🧑‍🏫 이미 **임명된** 직업 = 교사만 벗길 수 있다. 학생 화면에선 체크된 채 잠긴다.
@@ -385,13 +384,6 @@ function SelectMultipleJobsView({
  // 화면 표시·상한 판정용 유효 선택 수(유령 제외)
  const selectedValidCount = countTowardCap(tempSelection);
 
- // 안내 문구용 — '신청해야 붙는' 직업이 이 학급에 실제로 있는가.
- // 승인제가 꺼진 학급에서도 임명 전용 직업은 신청→승인이라, 있을 때만 그 사실을 알린다.
- const hasAppointedCandidate = useMemo(
- () => activeJobs.some((job) => isAppointedOnlyJob(job) && !appointedSet.has(job.id)),
- [activeJobs, appointedSet],
- );
-
  return (
  <div className="glass-card rounded-2xl p-6 max-w-3xl mx-auto my-8">
  <h4 className="text-xl font-semibold text-slate-800 text-center mb-2">
@@ -459,9 +451,6 @@ function SelectMultipleJobsView({
  <>
  {(() => {
  const checked = tempSelection.includes(job.id);
- // 임명 전용 직업 = 학생도 **신청**은 할 수 있다(2026-08-27). 잠기는 건
- // 이미 임명받은 자리뿐이고, 그건 선생님만 벗길 수 있다.
- const appointedOnly = isAppointedOnlyJob(job);
  const alreadyAppointed = !isAdmin && appointedSet.has(job.id);
  const capReached =
  !isAdmin && !checked && selectedValidCount >= maxJobs;
@@ -485,9 +474,9 @@ function SelectMultipleJobsView({
  }`}
  >
  {job.title}
- {appointedOnly && !isAdmin && (
+ {alreadyAppointed && (
  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 align-middle">
- {alreadyAppointed ? "임명됨" : "선생님 허가 필요"}
+ 선생님만 해제
  </span>
  )}
  {pendingSet.has(job.id) && (
@@ -565,19 +554,10 @@ function SelectMultipleJobsView({
  </div>
  )}
 
- {!isAdmin && (approvalRequired || hasAppointedCandidate) && (
+ {!isAdmin && (
  <p className="mt-5 text-xs text-slate-500">
- {approvalRequired ? (
- <>
  새로 고른 직업은 <b>선생님이 확인한 뒤</b> 붙어요. 체크를 풀면 바로 그만둘 수 있어요.
- </>
- ) : (
- <>
- <b>선생님 허가 필요</b> 표시가 붙은 직업(대통령 등)은 신청만 되고,{" "}
- <b>선생님이 허가해야</b> 맡게 돼요. 나머지는 바로 저장돼요.
- </>
- )}
- {" "}이미 <b>임명됨</b>인 직업은 선생님만 바꿀 수 있어요.
+ {" "}<b>선생님만 해제</b> 표시가 붙은 직업은 선생님께 말해야 그만둘 수 있어요.
  </p>
  )}
 
@@ -589,9 +569,7 @@ function SelectMultipleJobsView({
  variant="primary"
  onClick={() => onConfirmSelection(tempSelection)}
  >
- {!isAdmin && (approvalRequired || hasAppointedCandidate)
- ? "저장 / 신청하기"
- : "선택 완료"}
+ {!isAdmin ? "저장 / 신청하기" : "선택 완료"}
  </ActionButton>
  </div>
  </div>
@@ -674,8 +652,6 @@ function Dashboard({ adminTabMode }) {
  const [commonTasks, setCommonTasks] = useState([]);
  // 직업 개수 상한(관리자 설정, 기본 5) — 학생 직업 선택 UI 제한 기준
  const [maxJobsPerStudent, setMaxJobsPerStudent] = useState(5);
- // 직업 신청 승인제 여부 — 바로 아래 상한 로드가 **같은 문서**를 이미 읽으므로 추가 읽기 0.
- const [jobApprovalRequired, setJobApprovalRequired] = useState(false);
  // 승인 대기 중인 직업 id — 직업 선택 화면을 열 때만 조회한다(대시보드 진입마다 읽지 않는다).
  const [pendingJobIds, setPendingJobIds] = useState([]);
  // 🔒 대기 신청 조회가 **동시에 두 번 돌지 않게** 막는 빗장. 버튼 연타로 두 조회가 겹치면
@@ -766,7 +742,6 @@ function Dashboard({ adminTabMode }) {
  if (cached) {
  const raw = cached.maxJobsPerStudent;
  if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
- setJobApprovalRequired(cached.jobApprovalRequired === true);
  return;
  }
  let cancelled = false;
@@ -778,7 +753,6 @@ function Dashboard({ adminTabMode }) {
  dataCache.set(cacheKey, data, CACHE_TTL.SETTINGS);
  const raw = data.maxJobsPerStudent;
  if (Number.isInteger(raw) && raw >= 1) setMaxJobsPerStudent(raw);
- setJobApprovalRequired(data.jobApprovalRequired === true);
  } catch (e) {
  logger.warn("[Dashboard] 직업 개수 상한 로드 실패(기본 5 사용):", e);
  }
@@ -1789,11 +1763,10 @@ function Dashboard({ adminTabMode }) {
  //   대시보드 진입마다 읽으면 탭 왕복(이 화면은 4개 Route 로 remount 된다)마다 비용이 붙는다.
  // 쿼리는 데이터 계층(firebase/db/jobApplications)에 있다 — 인덱스 제약도 거기 적혀 있다.
  //
- // 🔴 2026-08-27: 여기 있던 `if (!jobApprovalRequired) return` 지름길을 **없앴다.**
- //    임명 전용 직업(대통령 등)은 승인제 토글과 **무관하게** 항상 신청→승인이라,
- //    토글이 꺼진 학급에도 대기 신청이 존재한다. 그 학급에서 조회를 건너뛰면 화면은
- //    신청을 체크 안 된 상태로 그리고, 저장하는 순간 서버가 "마음을 접었다"고 읽어
- //    **방금 낸 대통령 신청을 스스로 취소한다.** 조회를 아끼려다 데이터를 지우는 자리다.
+ // 🔴 조회를 건너뛰는 지름길을 두지 않는다. 학생의 모든 직업은 신청→승인이라
+ //    대기 신청은 늘 있을 수 있고, 건너뛰면 화면이 그 신청을 체크 안 된 상태로 그린다.
+ //    그 상태로 저장하면 서버가 "마음을 접었다"로 읽어 **방금 낸 신청을 스스로 취소한다.**
+ //    조회를 아끼려다 데이터를 지우는 자리다.
  //    (교사는 이 화면에서 신청서를 만들지 않으므로 조회할 것도 없다.)
  if (!user?.uid || isAdmin?.()) {
  setPendingJobIds([]);
@@ -1851,8 +1824,8 @@ function Dashboard({ adminTabMode }) {
  const pending = res?.data?.pendingJobIds;
  if (Array.isArray(pending)) setPendingJobIds(pending);
  setViewMode("list");
- // 신청이 생겼는지로 문구를 가른다. `approvalRequired` 로 가르면, 토글이 꺼진 학급에서
- // 임명직만 신청한 경우가 "그냥 저장됨"으로 보인다 — 학생은 대통령이 붙은 줄 안다.
+ // 신청이 **생겼는지**로 문구를 가른다. 체크를 푸는 저장(그만두기)은 신청을 만들지
+ // 않으므로, 그때까지 "신청했어요"라고 하면 학생이 그만둔 줄 모른다.
  const applied = res?.data?.appliedCount || 0;
  if (applied > 0) {
  toast.success(
@@ -2696,7 +2669,6 @@ function Dashboard({ adminTabMode }) {
  isAdmin={isAdmin?.()}
  maxJobs={selectableJobSlots}
  pendingJobIds={pendingJobIds}
- approvalRequired={jobApprovalRequired}
  appointedJobIds={appointedJobIdsFromUserDoc}
  onAddJob={async (title) => {
  if (!db || !userDoc?.classCode) {
