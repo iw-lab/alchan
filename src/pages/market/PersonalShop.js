@@ -20,9 +20,13 @@ import {
 } from "firebase/firestore";
 import { db, functions, httpsCallable } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
-import { formatKoreanCurrency } from "../../utils/numberFormatter";
+import {
+  formatKoreanCurrency,
+  getCurrencyUnit,
+} from "../../utils/numberFormatter";
 import {
   isNetAssetsNegative,
   NEGATIVE_ASSETS_MESSAGE,
@@ -186,6 +190,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
 
 // ==================== 상품/서비스 등록 모달 ====================
 const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
+  // 화폐 단위는 학급 설정값이다. **훅으로** 받아야 교사가 바꿨을 때 이 화면도 다시 그려진다
+  //   (모듈 전역을 읽는 getCurrencyUnit() 은 값은 맞지만 리렌더를 일으키지 않는다).
+  const { currencyUnit } = useCurrency();
   const [formData, setFormData] = useState({
     type: "product",
     name: "",
@@ -341,7 +348,7 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
                 placeholder="0"
                 min="1"
               />
-              <span className="suffix">원</span>
+              <span className="suffix">{currencyUnit}</span>
             </div>
           </div>
 

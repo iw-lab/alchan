@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const PoliceAdminSettings = ({
   reportReasons,
   onUpdateReasons,
   onDeleteAllReports,
 }) => {
+  // 화폐 단위는 학급 설정값이다. **훅으로** 받아야 교사가 바꿨을 때 이 화면도 다시 그려진다
+  //   (모듈 전역을 읽는 getCurrencyUnit() 은 값은 맞지만 리렌더를 일으키지 않는다).
+  const { currencyUnit } = useCurrency();
   const [reasons, setReasons] = useState([]);
 
   useEffect(() => {
@@ -90,7 +94,7 @@ const PoliceAdminSettings = ({
                   min="0"
                   step="1000"
                 />
-                <span>원</span>
+                <span>{currencyUnit}</span>
               </div>
               <button
                 onClick={() => handleDeleteReason(index)}

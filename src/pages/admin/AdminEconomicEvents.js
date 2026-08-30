@@ -3,6 +3,7 @@
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import { db } from "../../firebase";
 import {
  doc,
@@ -199,6 +200,9 @@ const getDefaultParams = (type) => {
 };
 
 export default function AdminEconomicEvents() {
+  // 화폐 단위는 학급 설정값이다. **훅으로** 받아야 교사가 바꿨을 때 이 화면도 다시 그려진다
+  //   (모듈 전역을 읽는 getCurrencyUnit() 은 값은 맞지만 리렌더를 일으키지 않는다).
+  const { currencyUnit } = useCurrency();
  const { userDoc } = useAuth();
  const classCode = userDoc?.classCode;
 
@@ -549,7 +553,7 @@ export default function AdminEconomicEvents() {
  step="10000"
  min="1000"
  />
- <span className="text-xs text-slate-400">원</span>
+ <span className="text-xs text-slate-400">{currencyUnit}</span>
  </div>
  );
  case "CASH_PENALTY":
@@ -963,7 +967,7 @@ export default function AdminEconomicEvents() {
  }
  className="w-28 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
  />
- <span className="text-xs text-slate-400">원</span>
+ <span className="text-xs text-slate-400">{currencyUnit}</span>
  </div>
  )}
  {newEvent.type === "CASH_PENALTY" && (

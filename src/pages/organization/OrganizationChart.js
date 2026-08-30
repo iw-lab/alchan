@@ -35,7 +35,7 @@ const OrganizationChart = ({ classCode }) => {
   const { isAdmin: isAuthAdmin, userDoc } = useAuth() || {};
 
   // 직업 목록 로드 (selectedJobIds 기반 대통령 체크용)
-  const { data: jobs } = usePolling(
+  const { data: jobs, loading: jobsLoading } = usePolling(
     async () => {
       if (!classCode) return [];
       const jobsRef = collection(db, "jobs");
@@ -503,13 +503,21 @@ const OrganizationChart = ({ classCode }) => {
       <div className="president-section">
         <div className="president-office">
           <h2>대통령실</h2>
+          {/* 🔴 2026-08-30: 여기는 **세 가지 상태**다. 전에는 두 가지로 그려서,
+              권한이 없는 학생에게 "권한 확인 중..."이 **영원히** 떠 있었다.
+              끝난 판정을 진행 중이라고 말하면 학생은 기다리다 새로고침을 반복한다
+              (진짜 '확인 중'은 jobs 쿼리가 도착하기 전 잠깐뿐이다). */}
           {canManage ? (
             <div className="admin-indicator">
               {isPresident ? "대통령 권한" : "관리자 권한"}
             </div>
-          ) : (
+          ) : jobsLoading ? (
             <div className="admin-indicator" style={{ opacity: 0.6 }}>
               권한 확인 중...
+            </div>
+          ) : (
+            <div className="admin-indicator" style={{ opacity: 0.6 }}>
+              열람 전용 · 대통령만 처리할 수 있어요
             </div>
           )}
         </div>

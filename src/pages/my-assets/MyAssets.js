@@ -37,6 +37,7 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import { DailyRewardBanner } from "../../components/DailyReward";
 
 import { logger } from "../../utils/logger";
+import { dropDuplicateActivityRows } from "../../utils/ledgerDedupe";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 export default function MyAssets() {
@@ -642,7 +643,16 @@ export default function MyAssets() {
         return !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
       });
 
-      const allTransactions = [...activityData, ...dedupedTransactionsData, ...dedupedUniqueRootData];
+      // 🔴 **같은 돈 한 번이 두 줄로 보이던 문제** (2026-08-30 라이브 실측).
+      //    위 weekKey 대조는 **주급만** 걸렀다 — 상점 구매·국고 되팔기·송금은 그대로 두 줄이었다.
+      //    판정은 순수 함수로 뺐다(utils/ledgerDedupe.js). 근거·창 크기·1:1 인 이유는 그 파일에.
+      const ledgerRows = [...dedupedTransactionsData, ...dedupedUniqueRootData];
+      const activityWithoutDuplicates = dropDuplicateActivityRows(
+        activityData,
+        ledgerRows,
+      );
+
+      const allTransactions = [...activityWithoutDuplicates, ...ledgerRows];
       allTransactions.sort((a, b) => {
         const dateA = a.timestamp?.toDate
           ? a.timestamp.toDate()

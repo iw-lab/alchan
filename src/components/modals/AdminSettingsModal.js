@@ -3732,7 +3732,7 @@ const AdminSettingsModal = ({
                         인라인 공식으로 남아 있었다(2026-08-11 M4에서 발견). 둘 다 effectiveBaseSalary. */}
                     <p className="text-lg font-bold text-indigo-600 tabular-nums">
                       {effectiveBaseSalary.toLocaleString()}
-                      <span className="text-sm text-slate-500 ml-0.5">원</span>
+                      <span className="text-sm text-slate-500 ml-0.5">{currencyUnit}</span>
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       기준 {(CLIENT_SALARY.BASE / 10000).toLocaleString()}만 ×{" "}
