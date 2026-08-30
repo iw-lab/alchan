@@ -14,12 +14,12 @@
 
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
-  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound,
+  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
-  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound,
+  BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -60,6 +60,8 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteChromaFall",        label: "크로마폴(색채 퍼즐)",      icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
   { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
+  // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
+  { id: "siteReloadArena",       label: "리로드 아레나(교과 대항전)", icon: "SprayCan",  url: "https://reload-arena.simssijjang-d79.workers.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
