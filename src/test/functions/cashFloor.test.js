@@ -172,11 +172,36 @@ describe("마이너스 회수는 명시 플래그로만", () => {
     expect(SRC).toMatch(/const capped = clampTakeAmount\(currentCash, baseAmount\);/);
   });
 
-  it("⭐ 화면 스위치는 기본 꺼짐이고 제출 후 다시 꺼진다", () => {
-    expect(UI).toMatch(/const \[allowNegative, setAllowNegative\] = useState\(false\);/);
-    expect(UI).toMatch(/setAllowNegative\(false\);/);
+  // 🔴 2026-08-31 — 화면 스위치를 **기본 켜짐**으로 바꿨다(사용자 지시).
+  //    벌칙·빚 회수가 이 학급의 일상이라 매번 켜는 편이 오히려 실수를 부른다는 판단이다.
+  //    그래서 사고를 막는 무게가 전부 **확인창**으로 옮겨갔다 — 아래 단언이 그 자리를 지킨다.
+  //    확인창을 지우면 2026-07-27 사고(같은 −50,000,000 회수를 28분 뒤 한 번 더)를
+  //    막는 것이 하나도 남지 않는다.
+  it("⭐ 화면 스위치는 기본 켜짐이고, 선생님이 끄면 그대로 있는다", () => {
+    expect(UI).toMatch(/const \[allowNegative, setAllowNegative\] = useState\(true\);/);
+    // 선생님이 끈 것을 화면이 되돌리지 않는다 — finally 에서 다시 켜거나 끄지 않는다.
+    expect(UI).not.toMatch(/finally[^]{0,400}setAllowNegative\(/);
+    // 체크는 사람이 바꾼다(onChange 는 남아 있어야 한다).
+    expect(UI).toMatch(/onChange=\{\(e\) => setAllowNegative\(e\.target\.checked\)\}/);
     // 회수(take)에만 실어 보낸다 — 지급에 실리면 서버가 무시하더라도 의미가 흐려진다.
     expect(UI).toMatch(/allowNegative: action === "take" \? allowNegative === true : undefined,/);
+  });
+
+  it("⭐ 마이너스 회수는 **매번** 금액을 보여주고 확인을 받는다", () => {
+    // 기본 켜짐이 된 뒤로 이것이 유일한 관문이다. 조건·확인창·조기반환 셋이 다 있어야 한다.
+    expect(UI).toMatch(/if \(action === "take" && allowNegative\) \{/);
+    const gate = UI.slice(
+      UI.indexOf('if (action === "take" && allowNegative) {'),
+      UI.indexOf("if (submittingRef.current) return;"),
+    );
+    expect(gate).toContain("await confirmDialog(");
+    expect(gate).toMatch(/마이너스/); // 결과가 빚이라는 걸 글자로 말한다
+    // 🔴 "금액을 보여준다"는 단언은 **값이 실제로 끼워지는지**를 봐야 한다(codex 2R 지적).
+    //    `percentage` 라는 낱말이 그 구간에 있기만 해도 통과하면 확인창이 빈 문장이어도 초록불이다.
+    expect(gate).toMatch(/\$\{Number\(inputValue\)\.toLocaleString\(\)\}/); // 고정 금액
+    expect(gate).toMatch(/현재 잔액의 \$\{inputValue\}%/); // 퍼센트
+    expect(gate).toMatch(/\$\{대상\}명/); // 몇 명한테서 가져가는지
+    expect(gate).toMatch(/if \(!ok\) return;/); // 취소하면 아무 일도 안 일어난다
   });
 });
 
