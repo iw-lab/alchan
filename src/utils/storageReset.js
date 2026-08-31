@@ -9,6 +9,14 @@
 export const PRESERVED_KEY_PREFIXES = [
   "alchan_lb_draft_", // 학습 게시판 작성 중 글(임시저장)
   "recentlyUsedItems_", // 사용 중 아이템 5분 타이머 표시(기기 로컬 전용 상태)
+  // 🔑 로그인 힌트(비밀번호 아님). 학생이 '아이디 저장'을 켰을 때만 생기는 값들이고,
+  //    이게 날아가면 다음 로그인에 **학급코드까지 다시 타이핑**해야 한다.
+  //    웨일북처럼 껐다 켜는 교실 기기에서 「자동 채움이 없다」의 실체가 이것이었다.
+  //    ('아이디 저장'을 끄면 Login.js 가 이 키들을 직접 지운다 — 보존은 그 결정을 덮지 않는다.)
+  "savedStudentId", // 학생 아이디
+  "savedClassCode", // 학급코드
+  "studentEmail_", // 아이디 → 로그인 이메일(학급코드 재입력 생략용)
+  "savedLoginId", // 교사 이메일
 ];
 
 const isPreserved = (key) =>

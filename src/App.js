@@ -72,6 +72,12 @@ import "./index.css"; // Tailwind CSS - 마지막에 import하여 우선 적용
 import { logger } from "./utils/logger";
 
 // 🔥 에러 바운더리 - PWA 흰화면 방지
+// Firebase Auth 가 로그인 세션을 담아 두는 IndexedDB 이름(SDK 상수).
+// 캐시 초기화가 이걸 지우면 그 순간 로그아웃이다.
+const FIREBASE_AUTH_DB = "firebaseLocalStorageDb";
+const RESET_MARK_KEY = "alchan:lastCacheReset";
+const RESET_REPEAT_WINDOW_MS = 10 * 60 * 1000;
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -100,7 +106,9 @@ class ErrorBoundary extends Component {
         return;
       }
       sessionStorage.removeItem("chunk_reload");
-      this.clearCachesAndReload();
+      // 청크가 404 난 것은 **HTTP·캐시 문제**다. 저장소는 멀쩡하니 건드리지 않는다
+      // — 로그인 세션과 저장해 둔 아이디·학급코드가 여기서 날아가고 있었다.
+      this.clearCachesAndReload({ wipeStorage: false });
       return;
     }
 
@@ -116,15 +124,30 @@ class ErrorBoundary extends Component {
     }
   }
 
-  clearCachesAndReload = async () => {
+  clearCachesAndReload = async ({ wipeStorage = true } = {}) => {
+    // 🔴 같은 기기에서 짧은 시간 안에 두 번째 초기화라면, 남겨 둔 저장소 자체가 원인일 수
+    //    있다. 그때만 인증까지 통째로 지운다 — 안 그러면 되살릴 수 없는 고리에 갇힌다.
+    let repeatedReset = false;
+    try {
+      const prev = Number(localStorage.getItem(RESET_MARK_KEY) || 0);
+      repeatedReset = prev > 0 && Date.now() - prev < RESET_REPEAT_WINDOW_MS;
+    } catch (_) {
+      /* localStorage 를 못 읽는 환경이면 그냥 1회차로 본다 */
+    }
+
     try {
       // IndexedDB 삭제
-      if (window.indexedDB) {
+      // ⚠️ 청크 오류(새 배포 뒤 옛 청크 404)는 IndexedDB 와 아무 상관이 없다.
+      //    예전엔 그때도 전부 지웠고, 거기에 **로그인 세션**(firebaseLocalStorageDb)이
+      //    들어 있어서 배포 한 번에 학생 전원이 로그아웃됐다. 웨일북처럼 껐다 켜는
+      //    기기에선 이게 「자꾸 자동로그인이 풀린다」로 나타난다.
+      if (wipeStorage && window.indexedDB) {
         const databases = (await window.indexedDB.databases?.()) || [];
         databases.forEach((db) => {
-          if (db.name) {
-            window.indexedDB.deleteDatabase(db.name);
-          }
+          if (!db.name) return;
+          // 로그인 세션은 남긴다. 캐시를 고치자고 아이를 로그아웃시키지 않는다.
+          if (db.name === FIREBASE_AUTH_DB && !repeatedReset) return;
+          window.indexedDB.deleteDatabase(db.name);
         });
       }
 
@@ -134,10 +157,17 @@ class ErrorBoundary extends Component {
         await Promise.all(names.map((name) => caches.delete(name)));
       }
 
-      // 로컬스토리지 삭제 — 단, 게시판 임시저장·사용중 아이템 표시는 보존
+      // 로컬스토리지 삭제 — 단, 게시판 임시저장·사용중 아이템 표시·로그인 힌트는 보존
       // (보존 목록은 utils/storageReset.js 한 곳에서 관리 — 초기화 경로가 여러 곳이라 중복 정의 금지)
-      clearLocalStoragePreserving();
+      if (wipeStorage) clearLocalStoragePreserving();
       sessionStorage.clear();
+
+      // 초기화 시각을 남긴다(위 repeatedReset 판정용). localStorage 를 비운 **뒤**에 찍어야 한다.
+      try {
+        localStorage.setItem(RESET_MARK_KEY, String(Date.now()));
+      } catch (_) {
+        /* noop */
+      }
 
       // 새로고침
       window.location.reload();

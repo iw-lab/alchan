@@ -423,6 +423,22 @@ const Login = () => {
  if (savedClassCode) setClassCode(savedClassCode);
  const savedStudentId = localStorage.getItem("savedStudentId");
  if (savedStudentId) setStudentId(savedStudentId);
+
+ // 🔖 주소로 받은 학급코드는 저장값보다 우선한다.
+ //    웨일북·학교 공용PC 처럼 **종료 시 사이트 데이터를 지우는** 기기에서는 위의
+ //    localStorage 가 매번 비어 있다. 그런 기기에서도 북마크는 남으므로,
+ //    선생님이 `.../login?class=BG6QUC` 를 북마크로 나눠 주면 학급코드 칸이 채워진다.
+ //    (학급코드는 비밀이 아니다 — 칠판에 적어 두는 값이고, 서버는 여전히 아이디·비밀번호를
+ //     따로 검사한다. 예전에 막은 것은 '아이디만으로 학급코드를 알아내는' 서버 조회였고,
+ //     학생이 이미 아는 코드를 주소로 넘기는 것은 그 통로를 되살리지 않는다.)
+ try {
+ const fromUrl = new URLSearchParams(window.location.search).get("class");
+ if (fromUrl && /^[A-Za-z0-9]{4,12}$/.test(fromUrl)) {
+ setClassCode(fromUrl.toUpperCase());
+ }
+ } catch (_) {
+ /* 주소를 못 읽는 환경이면 저장값 그대로 간다 */
+ }
  }, []);
 
  const handleTabChange = (tab) => {
@@ -873,8 +889,13 @@ const Login = () => {
  </label>
  <div className="relative">
  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+ {/* name·id 를 준다. 브라우저 비밀번호 관리자는 autocomplete 만으로도 대개 동작하지만,
+ 다시 채워 넣을 때는 **필드 이름으로 짝을 찾는다** — 익명 입력칸이면 저장은 돼도
+ 다음에 안 채워지는 일이 생긴다(교실 기기에서 「자동 채움이 없다」의 한 갈래). */}
  <input
  type="text"
+ name="username"
+ id="alchan-student-id"
  value={studentId}
  onChange={(e) => setStudentId(e.target.value)}
  placeholder="예: alchan01"
@@ -896,12 +917,17 @@ const Login = () => {
  </label>
  <div className="relative">
  <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+ {/* autoComplete 는 "off" 였다. 그러면 브라우저가 이 칸을 기억하지 못한다.
+ 학급코드는 비밀이 아니라 칠판에 적힌 값이고, 저장소가 지워지는 기기에선
+ 브라우저 기억이 마지막 방어선이다. */}
  <input
  type="text"
+ name="classCode"
+ id="alchan-class-code"
  value={classCode}
  onChange={(e) => setClassCode(e.target.value)}
  placeholder="예: ABC123"
- autoComplete="off"
+ autoComplete="on"
  autoCapitalize="characters"
  className={darkInput}
  style={{ paddingLeft: "2.5rem", paddingRight: "1rem", paddingTop: "0.75rem", paddingBottom: "0.75rem" }}
@@ -944,6 +970,8 @@ const Login = () => {
  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
  <input
  type={showPassword ? "text" : "password"}
+ name="password"
+ id="alchan-password"
  value={password}
  onChange={(e) => setPassword(e.target.value)}
  placeholder="비밀번호를 입력하세요"
