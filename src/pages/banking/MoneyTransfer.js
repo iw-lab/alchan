@@ -8,6 +8,7 @@ import "./MoneyTransfer.css";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { takeSignature, describeElapsed } from "../../utils/takeSignature";
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
@@ -28,16 +29,15 @@ function MoneyTransfer() {
   const [amountType, setAmountType] = useState("fixed");
   const [action, setAction] = useState("send");
   const [takeMode, setTakeMode] = useState("toMe"); // "toMe" 또는 "remove"
-  // 🔴 마이너스까지 회수할지 — **기본 꺼짐**. 2026-07-27 에 −50,000,000 회수가 28분 간격으로
-  //    두 번 들어가 한 학생이 −99,724,000 이 된 사고 뒤로 서버에 0원 바닥이 생겼는데,
-  //    선생님이 의도적으로 빚을 지우는 벌칙에는 그게 필요하다. 그래서 없애지 않고
-  //    **매번 손으로 켜는 스위치**로 뒀다 — 사고와 의도를 구분할 수 있어야 한다.
-  //    제출할 때마다 다시 꺼진다(아래 finally). 켠 채로 잊고 두 번 누르는 것이 그 사고였다.
-  // 🔴 기본 **켜짐**(2026-08-31 사용자 지시). 벌칙·빚 회수가 이 학급의 일상이라,
-  //    쓸 때마다 켜는 것이 오히려 실수를 부른다고 판단했다.
-  //    ⚠️ 그래도 2026-07-27 사고(같은 −50,000,000 회수를 28분 뒤 한 번 더)를 막는 장치는
-  //       그대로 있다 — 마이너스 회수는 **매번** 금액과 결과를 글자로 보여주고 확인을 받는다
-  //       (아래 confirmDialog). 체크 상태가 아니라 그 확인창이 사고를 가르는 자리다.
+  // 🔴 마이너스까지 회수할지 — **기본 켜짐**(2026-08-31 사용자 지시).
+  //    2026-07-27 에 −50,000,000 회수가 28분 간격으로 두 번 들어가 한 학생이 −99,724,000 이
+  //    된 사고가 있었고, 그 뒤로 이 스위치는 '매번 손으로 켜고 제출하면 다시 꺼지는' 것이었다.
+  //    그런데 이 학급에선 벌칙·빚 회수가 일상이라, 매번 켜는 쪽이 오히려 실수를 부른다는
+  //    선생님 판단으로 기본 켜짐이 됐다. 화면이 마음대로 끄지도 않는다.
+  //    ⚠️ 그래서 사고를 가르는 자리가 **전부 확인창으로 옮겨갔다**:
+  //       ① 마이너스 회수마다 금액·인원·결과를 글자로 보여주고 확인을 받고
+  //       ② 직전에 성공한 **같은 회수**가 있으면 "N분 전에 같은 걸 했다"고 함께 알린다.
+  //       둘 중 하나라도 지우면 2026-07-27 형태를 막는 것이 하나도 안 남는다.
   const [allowNegative, setAllowNegative] = useState(true);
   // 기본 세금 10% (보내기 시 학생은 90% 수령). 마이너스 학생 보충 시 부족분만큼만
   // 보내면 10%가 빠져 1/10이 마이너스로 남으니, 그때는 세금 칸을 0으로 두고 보낼 것.
@@ -48,6 +48,12 @@ function MoneyTransfer() {
   const [isProcessing, setIsProcessing] = useState(false);
   // 동기 재진입 가드(더블클릭 이중지급/회수 차단 — isProcessing 상태 반영 갭 보완)
   const submittingRef = useRef(false);
+  // 🔴 직전에 **성공한 회수**의 지문. 2026-07-27 사고는 같은 −50,000,000 회수를 28분 뒤
+  //    한 번 더 누른 것이었다. 확인창은 "마이너스인 줄 몰랐다"는 막지만 "이미 한 걸 잊었다"는
+  //    못 막는다 — 그 자리를 이 기억이 맡는다. **막지 않고 알려만 준다**(사용자 결정):
+  //    정말 두 번 하려는 경우가 있기 때문이다.
+  //    화면을 벗어나면 사라진다(서버에 저장하지 않는다 — 판단 재료일 뿐 통제가 아니다).
+  const lastTakeRef = useRef(null); // { sig, at, count }
   // 제출 시도별 고정 멱등키: 실패 후 "다시 보내기" 시 같은 키를 재사용해 이미 처리된 학생의
   // 중복 지급/회수를 차단(대상별 서브키 `${key}_${id}`가 서버에서 already-exists로 skip).
   // 성공 시에만 새 키로 교체(다음 별개 작업). 매 제출 새 UUID면 이 보호가 무력화됨.
@@ -185,8 +191,17 @@ function MoneyTransfer() {
         amountType === "percentage"
           ? `현재 잔액의 ${inputValue}%`
           : `${Number(inputValue).toLocaleString()}${currencyUnit}`;
+      // 직전에 성공한 회수와 **같은 금액·같은 학생들**이면 그 사실을 함께 보여준다.
+      // (막지 않는다 — 정말 두 번 회수할 때가 있다. 잊고 누른 것인지 아닌지는 사람이 안다.)
+      const 지문 = takeSignature(action, amountType, inputValue, selectedUsers);
+      const 직전 = lastTakeRef.current;
+      const 중복문구 =
+        직전 && 직전.sig === 지문
+          ? `⏰ ${describeElapsed(Date.now() - 직전.at)} 전에 같은 금액을 같은 학생들에게서 가져갔습니다.\n\n`
+          : "";
       const ok = await confirmDialog(
         `학생 ${대상}명에게서 ${표기}을(를) 가져옵니다.\n\n` +
+          중복문구 +
           `⚠️ 잔액이 모자라면 **마이너스(빚)** 가 됩니다. 계속할까요?`,
         { danger: true, confirmText: "마이너스까지 가져오기" },
       );
@@ -301,6 +316,17 @@ function MoneyTransfer() {
       setMessage(
         `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})${failCount > 0 ? ` · ⚠️ ${failCount}명 처리 실패(다시 시도 시 실패분만 재처리)` : ""}${clampNote}${noBalanceNote}`,
       );
+
+      // 🔴 성공한 **회수**만 기억한다(지급은 대상 아님). 다음에 같은 금액·같은 학생들을
+      //    다시 회수하려 하면 확인창이 "N분 전에 같은 걸 했다"고 알려 준다.
+      //    실패분이 있으면 기억하지 않는다 — 재시도를 중복으로 오해시키면 안 된다.
+      if (action === "take" && failCount === 0 && count > 0) {
+        lastTakeRef.current = {
+          sig: takeSignature(action, amountType, inputValue, selectedUsers),
+          at: Date.now(),
+          count,
+        };
+      }
 
       // 완전 성공일 때만 멱등키를 비우고(다음 별개 작업) 폼을 초기화한다.
       // 부분 성공이면 같은 키·같은 대상 선택을 유지해, "다시 보내기" 시 이미 성공한 대상은

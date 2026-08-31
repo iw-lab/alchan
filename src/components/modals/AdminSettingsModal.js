@@ -2039,16 +2039,19 @@ const AdminSettingsModal = ({
   // 🔥 fix: 급여 설정 서브탭 진입 시 DB에서 실제 값 로드
   // (이전엔 loadSalarySettings가 deps에만 있고 호출이 안 되어, 화면이 항상 초기값
   //  "10%, 3%"만 보여주는 버그였음. DB에 저장된 새 값이 화면에 반영되지 않음.)
+  //
+  // 🔴 2026-08-31 — 그때 **급여 서브탭만** 고쳤다. 그런데 급여 설정을 쓰는 화면은
+  //    하나가 더 있다: 학생 목록의 「다음 지급 예상」 카드다. 거기는 로드를 안 타서
+  //    항상 초기값(배수 1·상한 5·세율 10%)으로 계산했고, 주간 복리 인상이 붙은 학급에서
+  //    **전원이 실지급보다 497,307원 낮게** 표시됐다(2026-08-31 실측, 21명 전원).
+  //    선생님 눈엔 "화면이랑 실제 지급액이 다르다"로 보인다.
+  //    두 서브탭이 같은 설정을 쓰므로 조건을 서브탭이 아니라 **메뉴** 기준으로 넓힌다.
   useEffect(() => {
-    if (
-      showAdminSettingsModal &&
-      adminSelectedMenu === "studentAndMember" &&
-      studentMemberSubTab === "salary"
-    ) {
+    if (showAdminSettingsModal && adminSelectedMenu === "studentAndMember") {
       loadSalarySettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAdminSettingsModal, adminSelectedMenu, studentMemberSubTab, userClassCode]);
+  }, [showAdminSettingsModal, adminSelectedMenu, userClassCode]);
 
   // 일반설정 탭 진입 시 메뉴 잠금 목록 로드
   useEffect(() => {
