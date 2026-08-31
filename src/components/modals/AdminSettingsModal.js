@@ -2952,14 +2952,31 @@ const AdminSettingsModal = ({
                             true,
                           );
                           const isSelected = selectedStudentIds.includes(student.id);
-                          const jobTitles = studentJobIds.length > 0
-                            ? studentJobIds
-                                .map((jobId) => {
-                                  const job = Array.isArray(jobs) ? jobs.find((j) => j.id === jobId) : null;
-                                  return job ? job.title : null;
-                                })
-                                .filter(Boolean)
-                            : [];
+                          // 🔴 칩을 **유효/무효로 갈라서** 보여준다(2026-08-31 오석모 학급 신고).
+                          //    임명 전용 직업(판사·경찰청장·대통령 등)이 학생의 selectedJobIds 에
+                          //    들어 있으면 서버는 그걸 급여에 세지 않는다 — 교사가 임명한 것만 센다.
+                          //    그런데 화면은 유효한 직업과 똑같이 그려서, 「칩 3개인데 왜 2개분만
+                          //    나오지?」를 선생님이 숫자를 세어 보기 전엔 알 수가 없었다
+                          //    (그 반 9명이 이 상태였고, 판사만 7명이었다).
+                          //    이제 안 세어지는 칩은 회색으로 흐리고 "임명 필요"를 붙인다.
+                          const appointedSet = new Set(
+                            toJobIdArray(student.appointedJobIds),
+                          );
+                          const jobChips = studentJobIds
+                            .map((jobId) => {
+                              const job = Array.isArray(jobs)
+                                ? jobs.find((j) => j.id === jobId)
+                                : null;
+                              if (!job) return null;
+                              // 임명 전용인데 교사 임명 목록에 없다 = 급여에 안 세어진다
+                              const needsAppointment =
+                                isAppointedOnlyJob(job) && !appointedSet.has(jobId);
+                              return { title: job.title, needsAppointment };
+                            })
+                            .filter(Boolean);
+                          const unpaidCount = jobChips.filter(
+                            (c) => c.needsAppointment,
+                          ).length;
                           return (
                             <div
                               key={student.id}
@@ -2995,19 +3012,37 @@ const AdminSettingsModal = ({
 
                               {/* 직업 태그 */}
                               <div className="mb-2 flex flex-wrap gap-1">
-                                {jobTitles.length > 0 ? (
-                                  jobTitles.map((t, i) => (
+                                {jobChips.length > 0 ? (
+                                  jobChips.map((c, i) => (
                                     <span
                                       key={i}
-                                      className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                                      title={
+                                        c.needsAppointment
+                                          ? "선생님이 임명해야 인정되는 직업이에요. 지금은 급여에 포함되지 않습니다."
+                                          : undefined
+                                      }
+                                      className={
+                                        c.needsAppointment
+                                          ? "text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 line-through"
+                                          : "text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                                      }
                                     >
-                                      {t}
+                                      {c.title}
+                                      {c.needsAppointment && (
+                                        <span className="ml-1 no-underline">⚠️임명 필요</span>
+                                      )}
                                     </span>
                                   ))
                                 ) : (
                                   <span className="text-[11px] text-slate-400">직업 없음</span>
                                 )}
                               </div>
+                              {unpaidCount > 0 && (
+                                <div className="mb-2 text-[10px] text-slate-500">
+                                  회색 {unpaidCount}개는 <b>급여에 포함되지 않습니다</b> — 「직업
+                                  설정」에서 임명하거나 목록에서 빼 주세요.
+                                </div>
+                              )}
 
                               {/* ⚠️ 아래 3칸은 '지금 설정으로 계산한 예상치'다. 실제 지급액이 아니다.
                                   라벨이 없던 시절, 바로 아래 최근 주급일과 붙어 보여서 교사가
