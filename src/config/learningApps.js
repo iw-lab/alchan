@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -73,6 +73,10 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteYutDash",           label: "한달음 윷놀이(자료·확률)", icon: "Dices",     url: "https://yutdash.vercel.app" },
   // 2026-09-02 추가 — 급수별 한자를 손으로 쓰며 익히는 앱(획순 채점).
   { id: "sitePilhan",            label: "필한(한자 급수)",          icon: "Brush",     url: "https://pilhan.pages.dev/" },
+  { id: "siteBeatOn",            label: "비트:온(리듬 게임)",       icon: "Music",     url: "https://beaton-evo.pages.dev" },
+  // 2026-09-02 추가 — 위에서 내려오는 적을 아래에서 막는 웨이브 디펜스.
+  // 웨이브 사이·전투 중에 국어·수학·과학·사회 문항이 섞인다(122문항, 3~6학년). 계정·개인정보 없음.
+  { id: "siteSkyGuard",          label: "하늘수비대(교과 디펜스)",  icon: "Swords",    url: "https://skyguard-bdk.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
