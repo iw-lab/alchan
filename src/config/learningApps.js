@@ -15,11 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
+  Ticket, Hash, LandPlot, Dices, Brush,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
+  Ticket, Hash, LandPlot, Dices, Brush,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -62,6 +64,15 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
   // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
   { id: "siteReloadArena",       label: "리로드 아레나(교과 대항전)", icon: "SprayCan",  url: "https://reload-arena.simssijjang-d79.workers.dev/" },
+  // 2026-08-31 추가 — 킹수학 등재분 중 알찬에 없던 4개.
+  // 넘버러시·한뼘 땅따먹기·한달음 윷놀이는 **전자칠판 핫시트**(한 기기를 4~6명이 교대)라
+  // 개인 기기용 앱들과 성격이 다르다. 뽑기ON 은 교사가 쓰는 추첨 도구다.
+  { id: "sitePickOn",            label: "뽑기ON(교실 추첨)",        icon: "Ticket",    url: "https://iwpick.pages.dev/" },
+  { id: "siteNumRush",           label: "넘버러시(수 감각)",        icon: "Hash",      url: "https://numrush.vercel.app" },
+  { id: "siteSpanLand",          label: "한뼘 땅따먹기(측정)",      icon: "LandPlot",  url: "https://spanland.vercel.app" },
+  { id: "siteYutDash",           label: "한달음 윷놀이(자료·확률)", icon: "Dices",     url: "https://yutdash.vercel.app" },
+  // 2026-09-02 추가 — 급수별 한자를 손으로 쓰며 익히는 앱(획순 채점).
+  { id: "sitePilhan",            label: "필한(한자 급수)",          icon: "Brush",     url: "https://pilhan.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
