@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -77,6 +77,9 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-09-02 추가 — 위에서 내려오는 적을 아래에서 막는 웨이브 디펜스.
   // 웨이브 사이·전투 중에 국어·수학·과학·사회 문항이 섞인다(122문항, 3~6학년). 계정·개인정보 없음.
   { id: "siteSkyGuard",          label: "하늘수비대(교과 디펜스)",  icon: "Swords",    url: "https://skyguard-bdk.pages.dev/" },
+  // 2026-09-02 추가 — 교실 비밀 투표·개표 도구(한 기기를 돌려가며 찍는다).
+  // 후보 투표(1인 1~2표)·찬반 투표, 학급 60명 / 전교 3,000명. 기록은 그 기기에만 남는다.
+  { id: "siteClassVoteBox",      label: "우리 반 투표함(교실 투표)", icon: "Vote",     url: "https://class-vote-box.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
