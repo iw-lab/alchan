@@ -80,6 +80,9 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-09-02 추가 — 교실 비밀 투표·개표 도구(한 기기를 돌려가며 찍는다).
   // 후보 투표(1인 1~2표)·찬반 투표, 학급 60명 / 전교 3,000명. 기록은 그 기기에만 남는다.
   { id: "siteClassVoteBox",      label: "우리 반 투표함(교실 투표)", icon: "Vote",     url: "https://class-vote-box.pages.dev/" },
+  // 2026-09-06 추가 — 놀이공원을 짓고 굴리는 3D 경영 시뮬. 연구소 문제를 풀어야 시설이 열린다.
+  // 학년·학기를 고르면 그 학기 교과 범위로만 출제된다(3-1~6-2, 36단원). 계정·개인정보 없음.
+  { id: "siteLoopPark",          label: "루프 파크(놀이공원 경영)",  icon: "Ticket",   url: "https://loop-park.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
