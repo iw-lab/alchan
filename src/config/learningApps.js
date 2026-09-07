@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -83,6 +83,12 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-09-06 추가 — 놀이공원을 짓고 굴리는 3D 경영 시뮬. 연구소 문제를 풀어야 시설이 열린다.
   // 학년·학기를 고르면 그 학기 교과 범위로만 출제된다(3-1~6-2, 36단원). 계정·개인정보 없음.
   { id: "siteLoopPark",          label: "루프 파크(놀이공원 경영)",  icon: "Ticket",   url: "https://loop-park.pages.dev/" },
+  // 레지스트리에만 있고 폴백에 없어서 **또 어긋나 있었다**(2026-09-07 발견). 레지스트리를
+  // 못 읽는 날엔 학생 사이드바에서 이 앱만 사라진다 — 2026-08-22 크로마폴과 같은 결함이다.
+  { id: "siteOreudap",           label: "오르답(구구단·영단어)",    icon: "Calculator", url: "https://oreudap.vercel.app" },
+  // 2026-09-07 추가 — 국사편찬위원회 «우리역사넷» 한국사 연대기를 분석해 만든 오리지널 문제은행.
+  // 5,446문항(심화·기본), 학습·모의고사·게임·오답노트. 계정 없음, 기록은 그 기기에만.
+  { id: "siteKoreaHis",          label: "한국사 문제은행(한국사)",  icon: "Landmark", url: "https://koreahis.vercel.app/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
