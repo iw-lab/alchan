@@ -209,7 +209,7 @@ const ConsentForm = () => {
  </li>
  <li className="flex gap-2">
  <span>•</span>
- <span>개인정보 관련 문의: <strong className="text-violet-400">215253422+iw-lab@users.noreply.github.com</strong></span>
+ <span>개인정보 관련 문의: <strong className="text-violet-400">simssijjang@gmail.com</strong></span>
  </li>
  <li className="flex gap-2">
  <span>•</span>

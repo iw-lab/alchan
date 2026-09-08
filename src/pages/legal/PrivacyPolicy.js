@@ -355,7 +355,7 @@ const PrivacyPolicy = () => {
  <p className="text-slate-700">직책: 담임교사 (서비스 운영자)</p>
  <p className="text-slate-700 flex items-center gap-2">
  <Mail className="w-4 h-4 text-violet-600" />
- 이메일: <a href="mailto:215253422+iw-lab@users.noreply.github.com" className="text-violet-600 hover:text-violet-700 underline">215253422+iw-lab@users.noreply.github.com</a>
+ 이메일: <a href="mailto:simssijjang@gmail.com" className="text-violet-600 hover:text-violet-700 underline">simssijjang@gmail.com</a>
  </p>
  <p className="text-slate-500 text-sm mt-2">※ 이메일 문의 시 10일 이내 회신합니다.</p>
  </div>

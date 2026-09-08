@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const ADMIN_EMAIL = "215253422+iw-lab@users.noreply.github.com";
+const ADMIN_EMAIL = "simssijjang@gmail.com";
 const FUNCTION_URL = "https://asia-northeast3-inconomysu-class.cloudfunctions.net/seedCourtData";
 
 async function main() {

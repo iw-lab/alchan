@@ -2,7 +2,7 @@
 // seed-data.mjs — 공모전 데모용 학생 시드 데이터 생성
 // 실행: node --env-file=.env.local seed-data.mjs <admin_password>
 //
-// 관리자(215253422+iw-lab@users.noreply.github.com) 로그인 → classCode 가져옴
+// 관리자(simssijjang@gmail.com) 로그인 → classCode 가져옴
 // → 학생 5명 Auth + Firestore 생성 + 샘플 거래/포트폴리오 데이터
 
 import { initializeApp } from "firebase/app";
@@ -43,7 +43,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const ADMIN_EMAIL = "215253422+iw-lab@users.noreply.github.com";
+const ADMIN_EMAIL = "simssijjang@gmail.com";
 const STUDENT_PASSWORD = "123456789";
 const INITIAL_CASH = 100000;
 const INITIAL_COUPONS = 10;

@@ -35,7 +35,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const ADMIN_EMAIL = "215253422+iw-lab@users.noreply.github.com";
+const ADMIN_EMAIL = "simssijjang@gmail.com";
 const DEMO_NAMES = ["김민준", "이서연", "박지호", "최수아", "정예준"];
 // 관리자 이름은 건드리지 않음
 const SKIP_NAMES = new Set(["관리자", "선생님", "admin", "simssijjang", "", ...DEMO_NAMES]);
