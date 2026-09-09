@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -89,6 +89,10 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-09-07 추가 — 국사편찬위원회 «우리역사넷» 한국사 연대기를 분석해 만든 오리지널 문제은행.
   // 5,446문항(심화·기본), 학습·모의고사·게임·오답노트. 계정 없음, 기록은 그 기기에만.
   { id: "siteKoreaHis",          label: "한국사 문제은행(한국사)",  icon: "Landmark", url: "https://koreahis.vercel.app/" },
+  // 2026-09-09 추가 — 찌를 기다리는 몇 초에 교과 문항 하나를 푸는 3D 낚시 게임.
+  // 맞히면 황금미끼·물때가 올라 큰 물고기가 문다(오답 페널티 0). 3~6학년 5과목 2,491문항,
+  // 어종 203종, 일일 랭킹. 계정·개인정보 없음.
+  { id: "sitePongdangFishing",   label: "퐁당 낚시터(교과 통합)",   icon: "Fish",     url: "https://pongdang-fishing.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
