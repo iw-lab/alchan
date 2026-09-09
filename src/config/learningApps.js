@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -93,6 +93,10 @@ export const DEFAULT_LEARNING_APPS = [
   // 맞히면 황금미끼·물때가 올라 큰 물고기가 문다(오답 페널티 0). 3~6학년 5과목 2,491문항,
   // 어종 203종, 일일 랭킹. 계정·개인정보 없음.
   { id: "sitePongdangFishing",   label: "퐁당 낚시터(교과 통합)",   icon: "Fish",     url: "https://pongdang-fishing.pages.dev/" },
+  // 2026-09-09 추가 — 점프 플랫포머. 스테이지 곳곳의 «지혜의 돌»에서 국어·수학·영어·과학
+  //   4지선다가 나온다(1913문항). 타이틀에서 학년·학기 출제 범위를 고를 수 있고, 문제를
+  //   안 풀어도 클리어된다(학습은 상으로만 작동). 계정·개인정보 없음.
+  { id: "siteHopSquad",          label: "폴짝 원정대(교과 점프)",   icon: "Sprout",    url: "https://hop-squad-mu.vercel.app" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
