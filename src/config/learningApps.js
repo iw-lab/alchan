@@ -15,13 +15,13 @@
 import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
-  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout,
+  Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -97,6 +97,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   4지선다가 나온다(1913문항). 타이틀에서 학년·학기 출제 범위를 고를 수 있고, 문제를
   //   안 풀어도 클리어된다(학습은 상으로만 작동). 계정·개인정보 없음.
   { id: "siteHopSquad",          label: "폴짝 원정대(교과 점프)",   icon: "Sprout",    url: "https://hop-squad-mu.vercel.app" },
+  // 2026-09-14 추가 — 받아쓰기. 국어 537급 5,370문항 · 영어 229급 2,290문항이 음원까지
+  //   내장이라 급수표를 안 만들어도 바로 된다. 자모/철자 채점, 칠판 모드, 인쇄물 5종.
+  //   서버가 없어 아이 기록이 기기 밖으로 나가지 않는다. 계정·개인정보 없음.
+  { id: "siteTtobagi",           label: "또박이(받아쓰기)",        icon: "PencilLine", url: "https://ttobagi.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
