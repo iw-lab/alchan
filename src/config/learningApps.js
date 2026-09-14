@@ -16,12 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
+  Gem,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
+  Gem,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -101,6 +103,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   내장이라 급수표를 안 만들어도 바로 된다. 자모/철자 채점, 칠판 모드, 인쇄물 5종.
   //   서버가 없어 아이 기록이 기기 밖으로 나가지 않는다. 계정·개인정보 없음.
   { id: "siteTtobagi",           label: "또박이(받아쓰기)",        icon: "PencilLine", url: "https://ttobagi.pages.dev/" },
+  // 2026-09-14 추가 — 매치3 퍼즐. 조각을 맞추다 보면 4지선다가 끼어든다(수학 756 · 영어 413 ·
+  //   국어 265 · 한국사 132 = 1,566문항). 첫 실행에 학년·학기를 고르면 그 학기까지 배운 것만
+  //   나오고, 한국사는 5-2부터 열린다. 단계는 끝이 없다. 계정·개인정보 없음.
+  { id: "sitePrismPop",          label: "프리즘 팝(매치3 학습)",    icon: "Gem",       url: "https://prism-pop.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
