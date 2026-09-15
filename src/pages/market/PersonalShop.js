@@ -42,6 +42,16 @@ import {
 // 부가세율 (10%)
 const VAT_RATE = 0.1;
 
+// 개인상점 상품 가격·재고 상한(2026-09-15).
+// 서버는 결제 총액 100억 초과를 거부한다(purchasePersonalShopItem). 수량 상한 10개를 곱해도
+// 그 벽에 닿지 않도록 단가 상한을 10억으로 둔다 — 상한이 없으면 "등록은 되는데 아무도 못 사는"
+// 상품이 만들어진다.
+const MAX_PRODUCT_PRICE = 1000000000;
+const MAX_PRODUCT_STOCK = 10000;
+
+// 서버(purchasePersonalShopItem)가 거부하는 결제 총액 상한. 클라에서 같은 벽을 먼저 알려준다.
+const MAX_PURCHASE_TOTAL = 10000000000;
+
 // 상점 목록 캐시 TTL. 짧게 둔다 — 친구가 새 상점을 열면 곧 보여야 하지만,
 // 화면을 오갈 때마다 학급 인원만큼(20~25문서) 다시 읽을 이유는 없다.
 // 내 상점 변경은 loadShops({ force: true }) 로 즉시 반영한다.
@@ -240,15 +250,31 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
       toast.error("상품/서비스 이름을 입력해주세요!");
       return;
     }
-    if (!formData.price || parseInt(formData.price) <= 0) {
+    // 🔒 가격 상한(2026-09-15): 상한이 없어서 학생이 지수 표기(1e148 등)나 자릿수 폭주를
+    //    입력하면 parseInt 결과가 안전정수 범위를 넘어 Firestore에 double로 저장됐다.
+    //    그런 상품은 등록은 되는데 구매 시 서버가 결제 총액 상한(100억)에서 무조건 거부한다
+    //    (= 아무도 못 사는 유령 상품). 실측 3건: "꽝" 1e19, "기부" 1e148, "6767" 6.7e307.
+    const priceNum = parseInt(formData.price, 10);
+    if (!Number.isSafeInteger(priceNum) || priceNum <= 0) {
       toast.error("올바른 가격을 입력해주세요!");
       return;
     }
+    if (priceNum > MAX_PRODUCT_PRICE) {
+      toast.error(
+        `가격은 ${formatKoreanCurrency(MAX_PRODUCT_PRICE)} 이하로 정해주세요!`,
+      );
+      return;
+    }
+    const stockNum = parseInt(formData.stock, 10);
     if (
       formData.type === "product" &&
-      (!formData.stock || parseInt(formData.stock) <= 0)
+      (!Number.isSafeInteger(stockNum) || stockNum <= 0)
     ) {
       toast.error("상품의 재고 수량을 입력해주세요!");
+      return;
+    }
+    if (formData.type === "product" && stockNum > MAX_PRODUCT_STOCK) {
+      toast.error(`재고는 ${MAX_PRODUCT_STOCK}개 이하로 입력해주세요!`);
       return;
     }
 
@@ -258,10 +284,10 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
         type: formData.type,
         name: formData.name.trim(),
         description: formData.description.trim(),
-        price: parseInt(formData.price),
+        price: priceNum,
         taxAmount: taxAmount,
         totalPrice: totalPrice,
-        stock: formData.type === "service" ? -1 : parseInt(formData.stock),
+        stock: formData.type === "service" ? -1 : stockNum,
       };
       await onSave(productData);
       onClose();
@@ -348,6 +374,7 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
                 }
                 placeholder="0"
                 min="1"
+                max={MAX_PRODUCT_PRICE}
               />
               <span className="suffix">{currencyUnit}</span>
             </div>
@@ -389,6 +416,7 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
                   }
                   placeholder="0"
                   min="1"
+                  max={MAX_PRODUCT_STOCK}
                 />
                 <span className="suffix">개</span>
               </div>
@@ -752,6 +780,33 @@ const PersonalShop = () => {
             const dateB = b.createdAt?.toDate?.() || new Date(0);
             return dateB - dateA;
           });
+
+        // classCode 누락 상품 자동 패치(2026-09-15). 상점에는 자동 패치가 있었는데 상품에는
+        // 없어서, 초기에 만든 상품 12건이 classCode 없이 남아 있었다(실측). 그 문서는
+        // firestore.rules 의 하위호환 분기(classCode == null 이면 읽기 허용)를 타서
+        // **다른 학급 학생에게도 읽힌다**. 구매 자체는 서버가 판매자 학급을 확인해 막지만,
+        // 읽기 노출은 여기서 닫는다. 내 상점 = 내 상품이라 rules 상 소유자 수정으로 통과.
+        const cc = shopData.classCode || userProfile?.classCode;
+        if (cc) {
+          const orphans = products.filter((pr) => !pr.classCode);
+          if (orphans.length > 0) {
+            await Promise.all(
+              orphans.map((pr) =>
+                updateDoc(doc(db, "shopProducts", pr.id), {
+                  classCode: cc,
+                  updatedAt: serverTimestamp(),
+                }).catch((e) =>
+                  logger.warn("상품 classCode 패치 실패:", pr.id, e),
+                ),
+              ),
+            );
+            orphans.forEach((pr) => {
+              pr.classCode = cc;
+            });
+            logger.info("상품 classCode 자동 패치:", orphans.length, "건");
+          }
+        }
+
         setMyProducts(products);
       }
     } catch (error) {
@@ -922,7 +977,7 @@ const PersonalShop = () => {
         ...productData,
         shopId: myShop.id,
         ownerId: currentUser.uid,
-        classCode: userProfile?.classCode || null,
+        classCode: userProfile?.classCode || myShop.classCode || null,
         status: "available",
         soldCount: 0,
         createdAt: serverTimestamp(),
@@ -963,6 +1018,14 @@ const PersonalShop = () => {
 
     // 낙관적 업데이트·롤백·잔액검증용 클라 추정치(실제 금액은 서버 CF가 재계산).
     const totalAmount = purchaseProduct.totalPrice * quantity;
+
+    // 서버 결제 총액 상한(100억)에 걸리는 상품은 "결제 금액이 올바르지 않습니다"라는
+    // 원인 모를 오류로 끝난다. 원인(판매자가 정한 가격)을 사는 쪽에 그대로 알려준다.
+    if (!Number.isFinite(totalAmount) || totalAmount > MAX_PURCHASE_TOTAL) {
+      throw new Error(
+        "판매자가 가격을 너무 높게 정한 상품이라 살 수 없어요. 판매자에게 가격을 낮춰달라고 해주세요!",
+      );
+    }
 
     // 잔액 확인
     if ((userProfile?.cash || 0) < totalAmount) {
