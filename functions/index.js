@@ -8031,6 +8031,31 @@ exports.reverseSalaryOnce = onCall(
 // ===================================================================================
 
 // 🔥 CORS 설정 추가 (Firebase v2 함수)
+
+// 🔒 인벤토리 지급(시장 구매·취소복원·제안수락 공용) — 근거·함정은 functions/inventoryGrant.js 참고.
+const {
+  readInventoryGrantTarget: readGrantTargetRaw,
+  writeInventoryGrant: writeGrantRaw,
+} = require("./inventoryGrant");
+
+/** users/{uid}/inventory 에서 지급 대상을 읽는다(트랜잭션 **읽기 단계** 전용). */
+function readInventoryGrantTarget(transaction, ownerUid, itemId) {
+  return readGrantTargetRaw(
+    transaction,
+    db.collection("users").doc(ownerUid).collection("inventory"),
+    itemId,
+  );
+}
+
+/** 확정된 대상에 수량을 더한다(increment + merge). */
+function writeInventoryGrant(transaction, target, quantity, payload, tag) {
+  return writeGrantRaw(transaction, target, quantity, payload, tag, {
+    increment: (n) => admin.firestore.FieldValue.increment(n),
+    serverTimestamp: () => admin.firestore.FieldValue.serverTimestamp(),
+    warn: (m) => logger.warn(m),
+  });
+}
+
 exports.buyMarketItem = onCall(
   {
     region: "asia-northeast3",
@@ -8107,6 +8132,13 @@ exports.buyMarketItem = onCall(
           );
         }
 
+        // 🔒 인벤토리 지급 대상은 **모든 쓰기 이전**에 읽어 둔다(읽기-선행 + 부재 락).
+        const grantTarget = await readInventoryGrantTarget(
+          transaction,
+          uid,
+          listingData.itemId,
+        );
+
         // 세금 계산
         const taxAmount = Math.round(totalPrice * itemMarketTaxRate);
         const sellerProceeds = totalPrice - taxAmount;
@@ -8174,46 +8206,30 @@ exports.buyMarketItem = onCall(
           );
         }
 
-        // 구매자 인벤토리에 아이템 추가
-        const buyerInventoryRef = db
-          .collection("users")
-          .doc(uid)
-          .collection("inventory");
-        const buyerItemQuery = await buyerInventoryRef
-          .where("itemId", "==", listingData.itemId)
-          .get();
-
-        if (!buyerItemQuery.empty) {
-          const buyerItemDoc = buyerItemQuery.docs[0];
-          transaction.update(buyerItemDoc.ref, {
-            quantity: admin.firestore.FieldValue.increment(
-              listingData.quantity,
-            ),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          // doc id = itemId (drawRandomItem/useUserItem이 inventory.doc(itemId) 조회)
-          const newItemRef = buyerInventoryRef.doc(listingData.itemId);
-          const boughtItem = {
-            itemId: listingData.itemId,
-            name: listingData.name,
-            icon: listingData.icon || "🔮",
-            description: listingData.description || "",
-            type: listingData.type || "general",
-            quantity: listingData.quantity,
-            purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (listingData.type === "randomDraw") {
-            boughtItem.drawSource = listingData.drawSource || "food";
-            boughtItem.loseEnabled = listingData.loseEnabled === true;
-            boughtItem.losePercent = Number(listingData.losePercent) || 0;
-            boughtItem.drawCandidates = Array.isArray(listingData.drawCandidates)
-              ? listingData.drawCandidates
-              : [];
-          }
-          transaction.set(newItemRef, boughtItem);
+        // 구매자 인벤토리에 아이템 추가 (대상은 위 읽기 단계에서 확정)
+        const boughtItem = {
+          itemId: listingData.itemId,
+          name: listingData.name,
+          icon: listingData.icon || "🔮",
+          description: listingData.description || "",
+          type: listingData.type || "general",
+          purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (listingData.type === "randomDraw") {
+          boughtItem.drawSource = listingData.drawSource || "food";
+          boughtItem.loseEnabled = listingData.loseEnabled === true;
+          boughtItem.losePercent = Number(listingData.losePercent) || 0;
+          boughtItem.drawCandidates = Array.isArray(listingData.drawCandidates)
+            ? listingData.drawCandidates
+            : [];
         }
+        writeInventoryGrant(
+          transaction,
+          grantTarget,
+          listingData.quantity,
+          boughtItem,
+          "buyMarketItem",
+        );
 
         // 마켓 리스팅 상태 업데이트
         transaction.update(listingRef, {
@@ -8274,45 +8290,35 @@ exports.cancelMarketSale = onCall(
           throw new Error("이미 판매 완료되었거나 취소된 아이템입니다.");
         }
 
-        // 판매자 인벤토리에 아이템 복원
-        const sellerInventoryRef = db
-          .collection("users")
-          .doc(uid)
-          .collection("inventory");
-        const sellerItemQuery = await sellerInventoryRef
-          .where("itemId", "==", listingData.itemId)
-          .get();
-
-        if (!sellerItemQuery.empty) {
-          const sellerItemDoc = sellerItemQuery.docs[0];
-          transaction.update(sellerItemDoc.ref, {
-            quantity: admin.firestore.FieldValue.increment(
-              listingData.quantity,
-            ),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        } else {
-          const newItemRef = sellerInventoryRef.doc(listingData.itemId);
-          const restoredItem = {
-            itemId: listingData.itemId,
-            name: listingData.name,
-            icon: listingData.icon || "🔮",
-            description: listingData.description || "",
-            type: listingData.type || "general",
-            quantity: listingData.quantity,
-            restoredAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (listingData.type === "randomDraw") {
-            restoredItem.drawSource = listingData.drawSource || "food";
-            restoredItem.loseEnabled = listingData.loseEnabled === true;
-            restoredItem.losePercent = Number(listingData.losePercent) || 0;
-            restoredItem.drawCandidates = Array.isArray(listingData.drawCandidates)
-              ? listingData.drawCandidates
-              : [];
-          }
-          transaction.set(newItemRef, restoredItem);
+        // 판매자 인벤토리에 아이템 복원 — 대상은 쓰기 이전에 확정(읽기-선행 + 부재 락)
+        const restoreTarget = await readInventoryGrantTarget(
+          transaction,
+          uid,
+          listingData.itemId,
+        );
+        const restoredItem = {
+          itemId: listingData.itemId,
+          name: listingData.name,
+          icon: listingData.icon || "🔮",
+          description: listingData.description || "",
+          type: listingData.type || "general",
+          restoredAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (listingData.type === "randomDraw") {
+          restoredItem.drawSource = listingData.drawSource || "food";
+          restoredItem.loseEnabled = listingData.loseEnabled === true;
+          restoredItem.losePercent = Number(listingData.losePercent) || 0;
+          restoredItem.drawCandidates = Array.isArray(listingData.drawCandidates)
+            ? listingData.drawCandidates
+            : [];
         }
+        writeInventoryGrant(
+          transaction,
+          restoreTarget,
+          listingData.quantity,
+          restoredItem,
+          "cancelMarketSale",
+        );
 
         // 마켓 리스팅 삭제
         transaction.delete(listingRef);
@@ -8553,6 +8559,13 @@ exports.respondToOffer = onCall(
             );
           }
 
+          // 🔒 인벤토리 지급 대상은 **모든 쓰기 이전**에 읽어 둔다(읽기-선행 + 부재 락).
+          const offerGrantTarget = await readInventoryGrantTarget(
+            transaction,
+            offerData.buyerId,
+            offerData.itemId,
+          );
+
           // 세금 계산
           const taxAmount = Math.round(totalPrice * itemMarketTaxRate);
           const sellerProceeds = totalPrice - taxAmount;
@@ -8619,46 +8632,31 @@ exports.respondToOffer = onCall(
             );
           }
 
-          // 구매자 인벤토리에 아이템 추가
-          const buyerInventoryRef = db
-            .collection("users")
-            .doc(offerData.buyerId)
-            .collection("inventory");
-          const buyerItemQuery = await buyerInventoryRef
-            .where("itemId", "==", offerData.itemId)
-            .get();
-
-          if (!buyerItemQuery.empty) {
-            const buyerItemDoc = buyerItemQuery.docs[0];
-            transaction.update(buyerItemDoc.ref, {
-              quantity: admin.firestore.FieldValue.increment(
-                offerData.quantity,
-              ),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          } else {
-            const ld = listingDoc.data();
-            const newItemRef = buyerInventoryRef.doc(offerData.itemId);
-            const boughtItem = {
-              itemId: offerData.itemId,
-              name: offerData.itemName,
-              icon: ld.icon || "🔮",
-              description: ld.description || "",
-              type: ld.type || "general",
-              quantity: offerData.quantity,
-              purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            if (ld.type === "randomDraw") {
-              boughtItem.drawSource = ld.drawSource || "food";
-              boughtItem.loseEnabled = ld.loseEnabled === true;
-              boughtItem.losePercent = Number(ld.losePercent) || 0;
-              boughtItem.drawCandidates = Array.isArray(ld.drawCandidates)
-                ? ld.drawCandidates
-                : [];
-            }
-            transaction.set(newItemRef, boughtItem);
+          // 구매자 인벤토리에 아이템 추가 (대상은 위 읽기 단계에서 확정)
+          const ld = listingDoc.data();
+          const offerBoughtItem = {
+            itemId: offerData.itemId,
+            name: offerData.itemName,
+            icon: ld.icon || "🔮",
+            description: ld.description || "",
+            type: ld.type || "general",
+            purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          if (ld.type === "randomDraw") {
+            offerBoughtItem.drawSource = ld.drawSource || "food";
+            offerBoughtItem.loseEnabled = ld.loseEnabled === true;
+            offerBoughtItem.losePercent = Number(ld.losePercent) || 0;
+            offerBoughtItem.drawCandidates = Array.isArray(ld.drawCandidates)
+              ? ld.drawCandidates
+              : [];
           }
+          writeInventoryGrant(
+            transaction,
+            offerGrantTarget,
+            offerData.quantity,
+            offerBoughtItem,
+            "respondToOffer",
+          );
 
           // 마켓 리스팅 상태 업데이트
           transaction.update(listingRef, {

@@ -1864,14 +1864,13 @@ service cloud.firestore {
       // 생성: 본인 상점만
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // 수정: 본인/관리자는 전체, 같은 학급 구매자는 매출 관련 필드만
-      // 🔒 isSameClass 추가(2026-07-19): 기존엔 isSignedIn()만이라 타 학급 사용자도 매출통계 조작 가능.
-      //    구매/정산은 CF(Admin SDK)가 처리하므로 이 클라 분기는 vestigial하지만 cross-class 차단.
-      allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
-                       (isSignedIn() &&
-                        (resource.data.get('classCode', null) == null ||
-                         isSameClass(resource.data.classCode)) &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalSales', 'totalTaxPaid', 'updatedAt']));
+      // 수정: 본인 또는 관리자만.
+      // 🔒 [2026-09-15] 같은 학급 '구매자' 분기 삭제. 구매·정산은 purchasePersonalShopItem CF
+      //    (Admin SDK → rules 우회)가 전담하고, 클라이언트가 남의 상점에 쓰는 경로는 0곳이다
+      //    (src 전수 grep: personalShops 쓰기 3곳 전부 내 상점). 즉 이 분기는 아무도 안 쓰는
+      //    권한이면서, 같은 반 학생이 남의 매출 통계(totalSales/totalTaxPaid)를 조작할 수 있는
+      //    구멍으로만 남아 있었다.
+      allow update: if isOwner(resource.data.ownerId) || isAdmin();
 
       // 삭제: 본인 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();
@@ -1891,17 +1890,13 @@ service cloud.firestore {
       // 생성: 상점 소유자
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // 수정: 상품 소유자/관리자는 전체 수정, 구매자는 재고/판매 관련 필드만
-      // status는 'soldout'으로만 변경 가능 (재고 0 시 자동 마킹) — 사보타주 방지
-      // 🔒 [보안] 구매자 분기에 같은-학급 조건 추가: 개인상점은 학급 내 거래이므로
-      //    정당 구매자는 항상 같은 학급. 타 학급 사용자의 재고/구매자목록 무단 조작 차단.
-      allow update: if isOwner(resource.data.ownerId) || isAdmin() ||
-                       (isSignedIn() &&
-                        (resource.data.get('classCode', null) == null ||
-                         isSameClassFast(resource.data.classCode)) &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'soldCount', 'buyers', 'status', 'updatedAt']) &&
-                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
-                         request.resource.data.status == 'soldout'));
+      // 수정: 상품 소유자 또는 관리자만.
+      // 🔒 [2026-09-15] 같은 학급 '구매자' 분기 삭제. 재고 차감·soldCount 증가·품절 마킹은
+      //    전부 purchasePersonalShopItem CF(Admin SDK → rules 우회)가 트랜잭션 안에서 한다.
+      //    클라이언트가 남의 상품에 쓰는 경로는 0곳(src 전수 grep: shopProducts 쓰기 4곳 전부
+      //    내 상품). 남아 있던 이 분기는 같은 반 학생이 남의 상품을 stock=0·status='soldout'
+      //    으로 만들거나 soldCount 를 부풀리는 사보타주 경로일 뿐이었다.
+      allow update: if isOwner(resource.data.ownerId) || isAdmin();
 
       // 삭제: 상품 소유자 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();

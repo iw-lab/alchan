@@ -118,6 +118,37 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── 🏪 개인상점 (2026-09-15): 구매·정산이 CF 로 이관된 뒤에도 rules 에 남아 있던
+  //    "같은 학급 구매자" 분기를 제거했다. 그 분기는 정상 경로가 쓰지 않으면서
+  //    같은 반 학생의 사보타주(남의 상품 품절 처리·매출 부풀리기)만 가능하게 했다.
+  tc("DENY", "학생이 남의 상품을 품절로 만든다 (가게 사보타주)", {
+    path: "/shopProducts/p1", method: "update", as: "stu2",
+    before: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 5, status: "available" },
+    after: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 0, status: "soldout" },
+    actors: ["stu1"],
+  }),
+  tc("DENY", "학생이 남의 상품 판매량을 부풀린다", {
+    path: "/shopProducts/p1", method: "update", as: "stu2",
+    before: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 5, soldCount: 0 },
+    after: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 5, soldCount: 99999 },
+    actors: ["stu1"],
+  }),
+  tc("DENY", "학생이 남의 상점 매출 통계를 조작한다", {
+    path: "/personalShops/s1", method: "update", as: "stu2",
+    before: { ownerId: "stu1", classCode: "C1", shopName: "민재네", totalSales: 0, totalTaxPaid: 0 },
+    after: { ownerId: "stu1", classCode: "C1", shopName: "민재네", totalSales: 99999999, totalTaxPaid: 0 },
+    actors: ["stu1"],
+  }),
+  tc("ALLOW", "🐤 주인은 자기 상품 가격·재고를 고친다", {
+    path: "/shopProducts/p1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 5, status: "available" },
+    after: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 600, stock: 9, status: "available" },
+  }),
+  tc("ALLOW", "🐤 주인은 자기 상품의 빠진 classCode 를 채운다", {
+    path: "/shopProducts/p1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", name: "사탕", price: 550, stock: 5, status: "available" },
+    after: { ownerId: "stu1", classCode: "C1", name: "사탕", price: 550, stock: 5, status: "available" },
+  }),
   // ── A. batch7-a/b — 학생 본인의 자산·권한·카운터 직접 write 봉인 ──
   tc("DENY", "학생이 자기 cash 를 직접 올린다 (money glitch)", {
     path: "/users/stu1", method: "update", as: "stu1",
@@ -1201,19 +1232,32 @@ const token = await accessToken();
 // RULES_FILE 로 다른 rules 파일을 겨눌 수 있다 — 배포 전 후보 rules 검증, 그리고
 // "봉인을 일부러 되돌린 사본"으로 이 스위트가 실제로 탐지하는지 확인(뮤테이션 검사)할 때 쓴다.
 const source = readFileSync(process.env.RULES_FILE || join(ROOT, "firestore.rules"), "utf8");
-const res = await fetch(`https://firebaserules.googleapis.com/v1/projects/${PROJECT}:test`, {
-  method: "POST",
-  headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-  body: JSON.stringify({
-    source: { files: [{ name: "firestore.rules", content: source }] },
-    testSuite: { testCases: CASES.map(({ __label, ...c }) => c) },
-  }),
-});
-const body = await res.json();
-if (!res.ok) {
-  console.error(`✗ :test API ${res.status} — ${JSON.stringify(body).slice(0, 500)}`);
-  process.exit(1);
+// ⚠️ :test 는 한 요청의 testCases 를 **250건**까지만 받는다(초과 시 본문 없는
+//    400 INVALID_ARGUMENT — 어느 케이스가 문제인지 안 알려준다. 2026-09-15 실측:
+//    247건 통과 → 252건 400). 케이스가 늘 때마다 원인을 다시 찾지 않도록 나눠 보낸다.
+const CHUNK = 200;
+const testResults = [];
+for (let i = 0; i < CASES.length; i += CHUNK) {
+  const slice = CASES.slice(i, i + CHUNK);
+  const res = await fetch(`https://firebaserules.googleapis.com/v1/projects/${PROJECT}:test`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      source: { files: [{ name: "firestore.rules", content: source }] },
+      testSuite: { testCases: slice.map(({ __label, ...c }) => c) },
+    }),
+  });
+  const chunkBody = await res.json();
+  if (!res.ok) {
+    console.error(
+      `✗ :test API ${res.status} (케이스 ${i + 1}~${i + slice.length}) — ` +
+        `${JSON.stringify(chunkBody).slice(0, 500)}`,
+    );
+    process.exit(1);
+  }
+  testResults.push(...(chunkBody.testResults || []));
 }
+const body = { testResults };
 
 let failed = 0;
 let canaryFailed = 0;
