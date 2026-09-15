@@ -966,9 +966,16 @@ const PersonalShop = () => {
     if (!myShop) return;
 
     if (editingProduct) {
-      // 수정
+      // 수정 — status 를 재고에 맞춰 다시 계산한다(2026-09-15).
+      //   종전엔 수정이 status 를 건드리지 않아서, 품절(soldout)된 상품을 **재입고해도**
+      //   status 가 soldout 으로 남아 둘러보기 목록(status==='available' 필터)에 영영
+      //   안 나왔다. 서비스는 재고 개념이 없으므로 항상 판매중.
+      //   숨김(hidden) 처리된 상품도 주인이 고치면 이 계산으로 다시 살아난다.
+      const restocked =
+        productData.type === "service" || Number(productData.stock) > 0;
       await updateDoc(doc(db, "shopProducts", editingProduct.id), {
         ...productData,
+        status: restocked ? "available" : "soldout",
         updatedAt: serverTimestamp(),
       });
     } else {
