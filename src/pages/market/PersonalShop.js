@@ -21,6 +21,7 @@ import {
 import { db, functions, httpsCallable } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useItems } from "../../contexts/ItemContext";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
 import {
@@ -616,6 +617,12 @@ const PersonalShop = () => {
     refreshUserDocument,
     optimisticUpdate,
   } = useAuth();
+  // 🔥 구매 후 인벤토리 반영용(2026-09-15): 개인상점 구매는 ItemContext를 거치지 않고
+  //    purchasePersonalShopItem CF를 직접 부른다. 그래서 「내 아이템」이 읽는 itemCtx 세션 캐시
+  //    (TTL 27분·sessionStorage persist)가 그대로 남아, 서버 인벤토리에는 들어갔는데 화면에는
+  //    최대 27분간 안 보였다(학생 신고 "돈만 빠지고 아이템이 안 들어옴"). 일반 상점 구매는
+  //    ItemContext.purchaseItem이 refreshData()를 불러 이 구멍이 없었다 — 여기만 빠져 있었다.
+  const { refreshData: refreshItemData } = useItems() || {};
 
   // 탭 상태
   const [activeTab, setActiveTab] = useState("browse"); // browse, myshop, sales
@@ -993,6 +1000,16 @@ const PersonalShop = () => {
     // 잔액 갱신
     if (refreshUserDocument) {
       await refreshUserDocument();
+    }
+
+    // 인벤토리 갱신(캐시 우회) — 구매 즉시 「내 아이템」에 보이게 한다.
+    if (refreshItemData) {
+      try {
+        await refreshItemData();
+      } catch (e) {
+        // 갱신 실패는 구매 자체를 되돌릴 이유가 아니다(서버는 이미 커밋됨).
+        logger.warn("[PersonalShop] 구매 후 아이템 갱신 실패:", e);
+      }
     }
 
     // 상품 목록 갱신
