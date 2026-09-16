@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem,
+  Gem, Target,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem,
+  Gem, Target,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -107,6 +107,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   국어 265 · 한국사 132 = 1,566문항). 첫 실행에 학년·학기를 고르면 그 학기까지 배운 것만
   //   나오고, 한국사는 5-2부터 열린다. 단계는 끝이 없다. 계정·개인정보 없음.
   { id: "sitePrismPop",          label: "프리즘 팝(매치3 학습)",    icon: "Gem",       url: "https://prism-pop.pages.dev/" },
+  // 2026-09-17 추가 — 2.5D 야구. 타석·마운드 사이에 4지선다 3개가 끼어들고(판당 3문항),
+  //   맞히면 집중 게이지·타구 위력이 오른다(오답 페널티 0). 3~6학년 5과목 2,536문항,
+  //   하루 3회 일일 랭킹(역할별). 계정·개인정보 없음.
+  { id: "siteBatOn",             label: "배트온(교과 야구)",        icon: "Target",    url: "https://baton-8x7.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
