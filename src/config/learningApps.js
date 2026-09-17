@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target,
+  Gem, Target, Zap,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target,
+  Gem, Target, Zap,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -111,6 +111,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   맞히면 집중 게이지·타구 위력이 오른다(오답 페널티 0). 3~6학년 5과목 2,536문항,
   //   하루 3회 일일 랭킹(역할별). 계정·개인정보 없음.
   { id: "siteBatOn",             label: "배트온(교과 야구)",        icon: "Target",    url: "https://baton-8x7.pages.dev/" },
+  // 2026-09-17 추가 — 3D 볼링(핀 100개가 실제 물리로 무너진다). 조준하는 동안 보기 3개짜리
+  //   수학 문제가 하나 뜨고, 맞히면 «천둥 볼»이 충전된다(오답 페널티 0 · 학년대는 교사가 고른다:
+  //   2~3 / 3~4 / 4~5학년, 끄기 포함). 한 기기 2~4인 핫시트·AI 4단계·일일 랭킹. 계정·개인정보 없음.
+  { id: "sitePinThunder",        label: "핀 천둥(수학 볼링)",       icon: "Zap",       url: "https://pin-thunder.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
