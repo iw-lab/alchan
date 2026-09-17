@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag,
+  Gem, Target, Zap, Flag, Camera,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag,
+  Gem, Target, Zap, Flag, Camera,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -120,6 +120,11 @@ export const DEFAULT_LEARNING_APPS = [
   //   (오답 페널티 0). 오늘의 코스 3홀 일일 랭킹(하루 3회) · 자유 연습 9홀 · 3~6학년 25단원.
   //   계정·개인정보 없음.
   { id: "siteTeeshotIsland",     label: "티샷 아일랜드(교과 골프)", icon: "Flag",      url: "https://teeshot-island.pages.dev/" },
+  // 2026-09-17 추가 — 1인칭 3D 방탈출 5편(시즌 1 《미현상》 4편 + 시즌 2 《밤차》 1편).
+  //   한 편은 방 3칸·자물쇠 12개·제한 60분(무제한 모드 있음). 막히면 «힌트»를 사는데,
+  //   값이 교과 문제다 — 1/2/3단계에 1·2·3문항(4지선다, 132문항 6영역). 오답 페널티 0이고
+  //   3단계만 기록이 «힌트 사용»으로 남는다. 계정·로그인 없음 · 외부 요청 0(게이트가 잰다).
+  { id: "siteMichyeonsang",      label: "미현상(1인칭 방탈출)",     icon: "Camera",    url: "https://michyeonsang.vercel.app/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
