@@ -47,12 +47,60 @@ const SPEC = {
   personalShops: [["ownerName", "ownerId"]],
   policeReports: [["reporterName", "reporterId"], ["processedByName", "processedById"], ["reportedUserName", "reportedUserId"]],
   realEstateOffers: [["ownerName", "ownerId"], ["buyerName", "buyerId"]],
-  realEstateProperties: [["ownerName", "ownerId"], ["tenantName", "tenantId"]],
+  realEstateProperties: [["ownerName", "ownerId"], ["tenantName", "tenantId"], ["tenant", "tenantId"]],
   pendingApprovals: [["studentName", "studentId"]],
   auctions: [["sellerName", "sellerId"]],
   trialResults: [["judgeName", "judgeId"]],
 };
 const ROOT_ONLY = new Set(["users", "classes", "personalShops"]);
+
+// 🔴 **이름은 이름 필드에만 있지 않다**(2026-09-17 1차 적용 후 검증에서 발견).
+//    이름 필드 4,497건을 다 고치고도 학생 실명이 1,024건 남아 있었다 — 거래 설명문,
+//    고소 사유, 신고 내용, 상품 설명처럼 **사람이 쓴 문장 속**에 들어 있었기 때문이다.
+//    "이름 칼럼을 다 고쳤다"는 것과 "이름이 사라졌다"는 것은 다른 말이다.
+const FREETEXT = {
+  transactions: ["description"],
+  courtComplaints: ["reason", "desiredResolution"],
+  inventory: ["description", "name"],
+  policeReports: ["details", "reason"],
+  personalShops: ["description"],
+  activities: ["productName"],
+};
+const HANGUL = /[가-힣]/;
+// 이름 뒤에 붙는 조사·호칭. 2자 이름은 보통 낱말에 섞일 수 있어 경계를 본다.
+// 「라고」(인용) 처럼 흔한 조사가 빠지면 그 한 건이 그대로 남는다 — 실측으로 하나씩 메웠다.
+const PARTICLE = /^(이|가|은|는|을|를|에|의|와|과|님|씨|도|만|랑|한|께|아|야|네|라|고|보|처)/;
+
+/** 문장 속 실명을 새 표시명으로 바꾼다. 긴 이름부터 — 짧은 이름이 긴 이름을 잘라먹지 않게. */
+function scrubText(text, renames) {
+  let out = String(text);
+  for (const [name, neo] of renames) {
+    if (!out.includes(name)) continue;
+    if (name.length >= 3) { out = out.split(name).join(neo); continue; }
+    // 2자 이름은 보통 낱말에 섞일 수 있어 경계를 본다.
+    // 🔴 앞 글자가 한글이라고 무조건 건너뛰면 **성(姓)이 붙은 진짜 이름을 놓친다** —
+    //    1차 적용 후 남은 22건이 전부 "김◆◆님에게 송금" 꼴이었다(2026-09-17 실측).
+    //    그래서 앞 글자가 한글이고 **그 앞은 한글이 아닐 때**(= 낱말의 시작)는
+    //    그 한 글자까지 이름으로 보고 같이 지운다. 성만 남겨두면 지운 의미가 없다.
+    let res = "";
+    let i = 0;
+    while (i < out.length) {
+      if (out.startsWith(name, i)) {
+        const before = i > 0 ? out[i - 1] : "";
+        const before2 = i > 1 ? out[i - 2] : "";
+        const after = out.slice(i + name.length);
+        const okAfter = after === "" || !HANGUL.test(after[0]) || PARTICLE.test(after);
+        if (okAfter) {
+          if (!HANGUL.test(before)) { res += neo; i += name.length; continue; }
+          if (!HANGUL.test(before2)) { res = res.slice(0, -1) + neo; i += name.length; continue; }
+        }
+      }
+      res += out[i]; i += 1;
+    }
+    out = res;
+  }
+  return out;
+}
 
 // ── REST ────────────────────────────────────────────────────────────────────
 async function queryAll(col, headers, { pageSize = 300 } = {}) {
@@ -122,7 +170,11 @@ for (const u of users) {
   const display = prior?.display || buildDisplayName(f.studentNumber, alias);
   // 옛 이름도 계획이 정본이다. 이미 한 번 돌아 users.name 이 별명이면 라이브에는 옛 이름이 없다.
   const oldName = prior?.oldName ?? String(f.name || "").trim();
-  plan.aliases[uid] = { alias, display, oldName };
+  // 🔴 옛 **닉네임**도 계획에 남긴다. 1차 적용 때 uid 없는 필드(선물 보낸 사람 등)에 담긴
+  //    옛 닉네임은 그 시점엔 아직 `liveNames` 에 있어 건너뛰었고, 적용 직후 stale 이 되면서
+  //    "누군지 모르는 이름"으로 보이게 된다. 계획이 기억하면 그 학생의 새 별명으로 이어진다.
+  const oldNick = prior?.oldNick ?? String(f.nickname || "").trim();
+  plan.aliases[uid] = { alias, display, oldName, oldNick };
   newNameByUid.set(uid, display);
   students.push({ uid, doc: u, fields: f, alias, display });
 }
@@ -144,10 +196,11 @@ for (const s of students) {
 const oldNameToUid = new Map();
 const ambiguousOldNames = new Set();
 for (const [uid, a] of Object.entries(plan.aliases)) {
-  const k = a.oldName;
-  if (!k) continue;
-  if (oldNameToUid.has(k) && oldNameToUid.get(k) !== uid) ambiguousOldNames.add(k);
-  else oldNameToUid.set(k, uid);
+  for (const k of [a.oldName, a.oldNick]) {
+    if (!k) continue;
+    if (oldNameToUid.has(k) && oldNameToUid.get(k) !== uid) ambiguousOldNames.add(k);
+    else oldNameToUid.set(k, uid);
+  }
 }
 for (const k of ambiguousOldNames) oldNameToUid.delete(k);
 
@@ -253,6 +306,29 @@ for (const [col, pairs] of Object.entries(SPEC)) {
     backup.docs.push({ path: d.name, before });
     writes.push(strUpdate(d.name, d.updateTime, set));
     for (const k of Object.keys(set)) bump(`${col}.${k}`);
+  }
+}
+
+// 자유 서술 필드: 문장 속 실명 치환
+const renames = Object.values(plan.aliases)
+  .filter((a) => PERSON_NAME.test(a.oldName || ""))
+  .map((a) => [a.oldName, a.display])
+  .sort((x, y) => y[0].length - x[0].length);   // 긴 이름 먼저
+for (const [col, fields] of Object.entries(FREETEXT)) {
+  const docs = await queryAll(col, headers);
+  for (const d of docs) {
+    const set = {};
+    const before = {};
+    for (const f of fields) {
+      const cur = d.fields[f];
+      if (typeof cur !== "string" || !cur.trim()) continue;
+      const neo = scrubText(cur, renames);
+      if (neo !== cur) { set[f] = neo; before[f] = cur; }
+    }
+    if (!Object.keys(set).length) continue;
+    backup.docs.push({ path: d.name, before });
+    writes.push(strUpdate(d.name, d.updateTime, set));
+    for (const k of Object.keys(set)) bump(`${col}.${k}(서술문)`);
   }
 }
 
