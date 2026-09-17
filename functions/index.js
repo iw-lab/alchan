@@ -11057,11 +11057,11 @@ exports.studentLogin = onCall(
     if (!sid || typeof password !== "string" || password.length < 1) {
       throw new HttpsError("invalid-argument", "아이디와 비밀번호를 입력해주세요.");
     }
-    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+    const apiKey = process.env.WEB_API_KEY;
     if (!apiKey) {
       // fail-closed. 키가 없으면 비밀번호를 확인할 방법이 없고, 확인 없이 이메일을 주는 건
       // 이 함수가 존재하는 이유를 뒤집는 짓이다. 학생은 학급코드 입력으로 폴백한다.
-      logger.error("[studentLogin] FIREBASE_WEB_API_KEY 없음 — 거부");
+      logger.error("[studentLogin] WEB_API_KEY 없음 — 거부");
       throw new HttpsError("failed-precondition", "지금은 학급코드를 입력해주세요.");
     }
 
