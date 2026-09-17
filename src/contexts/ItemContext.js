@@ -289,6 +289,56 @@ export const ItemProvider = ({ children }) => {
     };
   }, [userId, currentUserClassCode]);
 
+  // 🔔 남이 내 인벤토리를 바꿨을 때의 신호 (2026-09-17)
+  //
+  //   내 아이템 목록은 getItemContextData 응답을 세션 캐시(27분·sessionStorage)로 들고 있다.
+  //   내가 산 건 내 클릭 끝에 refreshData() 를 부르면 되지만, **남이 내 인벤토리를 바꾸는
+  //   경로**(함께구매 당첨·경매 낙찰·선물 받기·내 제안이 수락됨)는 내 쪽에 계기가 없어서
+  //   최대 27분간 "아이템이 안 들어왔다"로 보인다. sessionStorage 라 **새로고침해도 그대로다**
+  //   (2026-09-17 자유시간 함께구매 신고 — 서버 지급은 정상이었다).
+  //
+  //   서버가 그 순간 users/{uid}.inventoryVersion 을 올린다. 이 문서는 AuthContext 가 이미
+  //   onSnapshot 으로 구독 중이라 **추가 읽기 0회**로 신호가 도착한다. 여기서는 그 값이
+  //   "바뀔 때만" 캐시를 버리고 다시 받는다 — 첫 관측은 기록만(마운트 시 중복 조회 방지).
+  //   마지막 관측 버전은 **sessionStorage 에 남긴다** — 데이터 캐시와 같은 수명이라야
+  //   "캐시는 지급 전 스냅샷인데 버전은 이미 올라가 있는" 상태를 마운트 때 알아채고 받아온다
+  //   (클로저 메모리만 쓰면 그 창에서 첫 관측이 그냥 기록으로 끝나 화면이 계속 옛 것이다).
+  //   catalogMeta 버전 리스너와 같은 패턴이다.
+  //   ⚠️ 관측값은 **uid 와 함께** 들고 다닌다. 교실 기기는 한 탭에서 계정이 바뀐다 —
+  //      uid 를 안 붙이면 앞 학생의 버전이 남아, 새 학생의 버전이 우연히 같은 숫자일 때
+  //      "변경 없음"으로 읽고 갱신을 건너뛴다(교차검증 codex·gemini 지적).
+  //   ⚠️ 이 기기에서 **처음 본 버전은 기록만** 한다. 마운트 시 어차피 한 번 조회하므로,
+  //      여기서 또 강제 조회하면 새 탭마다 CF 호출이 두 번씩 난다(읽기 비용 2배).
+  const lastInvVersionRef = useRef({ uid: null, version: null });
+  useEffect(() => {
+    const v = userDoc?.inventoryVersion;
+    if (v === undefined || v === null) return;
+    if (!userId || !currentUserClassCode) return;
+    const key = `invVer:${userId}`;
+    const cur = String(v);
+    let prev = null;
+    if (lastInvVersionRef.current.uid === userId) {
+      prev = lastInvVersionRef.current.version;
+    } else {
+      try {
+        prev = sessionStorage.getItem(key);
+      } catch (e) {
+        prev = null; // storage 접근 불가 — 클로저 메모리로 계속 동작
+      }
+    }
+    if (prev === cur) return;
+    lastInvVersionRef.current = { uid: userId, version: cur };
+    try {
+      sessionStorage.setItem(key, cur);
+    } catch (e) {
+      /* 무시 — 메모리 값으로 이번 세션은 정상 동작 */
+    }
+    if (prev === null) return; // 첫 관측 = 기준점만 잡는다(마운트 조회가 이미 최신본을 가져온다)
+    logger.log("[ItemContext] inventoryVersion 변경 감지 → 아이템 재조회");
+    invalidateFetchCache(`itemCtx:${currentUserClassCode}:${userId}`);
+    fetchDataRef.current({ force: true });
+  }, [userDoc?.inventoryVersion, userId, currentUserClassCode]);
+
   // Public refresh function
   // 🔥 [읽기 절감 2단계] 쓰기 후 갱신 경로 — 반드시 캐시 우회(force)
   const refreshData = useCallback(() => {

@@ -2,7 +2,7 @@
 // ⚠️ 통짜 `eslint-disable` 에서 좁혔다(2026-08-20). no-undef 를 살리기 위해서다.
 /* eslint-disable max-len */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, findApprovedAdminSnap, hasTeacherPower, checkIdempotent, markIdempotent } = require("./utils");
+const { db, admin, logger, logActivity, LOG_TYPES, checkAuthAndGetUserData, findApprovedAdminSnap, hasTeacherPower, checkIdempotent, markIdempotent, bumpCatalogVersion, bumpInventoryVersion } = require("./utils");
 
 // 정상 상점과 동일한 정책
 const WHOLESALE_COST_RATIO = 0.3; // 재고 보충 도매가 = 정가의 30%
@@ -191,6 +191,13 @@ exports.completeGroupPurchase = onCall(
           }
         }
 
+        // 5.2) 🔔 당첨자 화면에 "인벤토리가 바뀌었다"를 알린다.
+        //   당첨자는 이 CF 를 부른 사람이 아니다 — 자기 화면을 새로고침할 이유도 계기도 없다.
+        //   이 신호가 없으면 아이템은 들어갔는데 화면엔 최대 27분간 안 보인다(세션 캐시).
+        if (storeItemId) {
+          bumpInventoryVersion(transaction, winnerUserRef);
+        }
+
         // 5.5) 🎰 randomDraw면 당첨자 하루 "구매" 카운트에 +1 (함께구매로 구매 제한 우회 방지)
         //   - 학생만 반영(관리자 제외). 날짜(KST) 바뀌면 자동 리셋.
         //   - 카운트만 올리고 한도 초과로 throw하지 않음(이미 완료된 캠페인 깨지면 안 됨).
@@ -315,6 +322,14 @@ exports.completeGroupPurchase = onCall(
       if (result.alreadyAwarded) {
         logger.info(`[completeGroupPurchase] ${campaignId} 이미 처리됨 (idempotent)`);
         return { success: true, alreadyAwarded: true };
+      }
+
+      // 🔥 이 CF 는 storeItems 의 재고를 채우고 가격을 올린다(재고보충 +100%). 그런데
+      //    카탈로그 버전을 안 올려서, 학급 전체 화면이 최대 27분간 옛 가격·옛 재고를 봤다
+      //    ("바꿨는데 그대로다"의 전형 — 가격을 바꾼 모든 경로가 이걸 부르기로 한 규약을
+      //    이 경로만 안 지키고 있었다). 트랜잭션 밖·비치명.
+      if (result.restocked) {
+        await bumpCatalogVersion(callerClassCode);
       }
 
       logger.info(

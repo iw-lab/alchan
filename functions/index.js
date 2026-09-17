@@ -16,6 +16,7 @@ const {
   admin,
   logger,
   bumpCatalogVersion,
+  bumpInventoryVersion,
 } = require("./utils");
 const {
   resetTasksForClass,
@@ -4687,6 +4688,13 @@ exports.settleAuction = onCall(
             });
           }
 
+          // 🔔 낙찰자 화면에 인벤토리 변경을 알린다(낙찰자는 이 CF 를 부른 사람이 아닐 수 있다 —
+          //    스케줄러·관리자·판매자가 정산해도 아이템은 낙찰자에게 간다).
+          bumpInventoryVersion(
+            transaction,
+            db.collection("users").doc(a.highestBidder),
+          );
+
           // 거래내역(activity_logs 최상위 amount) — 판매자 수익, 낙찰자(입찰 시 이미 차감=amount 0).
           const sLog = db.collection("activity_logs").doc();
           transaction.set(sLog, {
@@ -4714,6 +4722,10 @@ exports.settleAuction = onCall(
           });
         } else {
           // 유찰: 판매자에게 아이템 반환
+          // 🔔 정산은 스케줄러·관리자가 돌릴 수 있다 — 아이템이 돌아오는 판매자 화면에 알린다.
+          if (sellerItemRef) {
+            bumpInventoryVersion(transaction, db.collection("users").doc(a.seller));
+          }
           if (sellerItemRef) {
             if (sellerItemDoc && sellerItemDoc.exists) {
               transaction.update(sellerItemRef, {
@@ -4880,6 +4892,8 @@ exports.cancelAuction = onCall(
         }
 
         // 2) 판매자에게 아이템 반환
+        //    🔔 판매자 본인이 취소한 경우라도 화면 갱신 계기가 없을 수 있어 같이 알린다.
+        bumpInventoryVersion(transaction, db.collection("users").doc(uid));
         if (sellerItemDoc.exists) {
           transaction.update(sellerItemRef, {
             quantity: admin.firestore.FieldValue.increment(1),
@@ -6913,6 +6927,9 @@ exports.giftItem = onCall({ region: "asia-northeast3" }, async (request) => {
         throw new Error("아이템 차감에 실패했습니다. 다시 시도해주세요.");
       }
 
+      // 🔔 받는 사람 화면에 인벤토리 변경을 알린다(받는 사람은 이 CF 를 부르지 않았다).
+      bumpInventoryVersion(transaction, recipientRef);
+
       // 2) 받는 사람 지급 (기존 문서면 increment, 없으면 생성)
       const senderName = userData?.name || "익명";
       const recipientName = recipientData.name || "익명";
@@ -8657,6 +8674,8 @@ exports.respondToOffer = onCall(
             offerBoughtItem,
             "respondToOffer",
           );
+          // 🔔 제안을 수락한 건 판매자다 — 아이템을 받는 구매자 화면에 변경을 알린다.
+          bumpInventoryVersion(transaction, buyerRef);
 
           // 마켓 리스팅 상태 업데이트
           transaction.update(listingRef, {

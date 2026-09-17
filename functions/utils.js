@@ -306,9 +306,34 @@ const logActivity = async (transaction, userId, type, description, metadata = {}
     }
   };
 
+  // 🔔 남이 내 인벤토리를 바꿨을 때 **내 화면**에 알리는 신호 (2026-09-17)
+  //
+  //    학생 화면의 아이템 목록은 `getItemContextData` 응답을 세션 캐시(27분·sessionStorage)에
+  //    들고 있다. 내가 산 건 내 클릭이 끝나고 다시 불러오면 되지만, **남이 내 인벤토리를
+  //    바꾸는 경로**(함께구매 당첨·경매 낙찰·선물 받기·내 제안이 수락됨)는 내 쪽에 아무 신호가
+  //    없어서 최대 27분간 "돈은 나갔는데/당첨됐다는데 아이템이 없다"로 보인다.
+  //    **새로고침해도 안 보인다** — sessionStorage 라 F5 로는 안 지워지기 때문이다
+  //    (2026-09-17 자유시간 함께구매 신고: 서버 지급은 04:42:55 에 정상 완료돼 있었다).
+  //
+  //    users/{uid} 문서는 이미 클라이언트가 onSnapshot 으로 실시간 구독 중이다(현금 표시).
+  //    그래서 **추가 읽기 0회**로 신호를 얹을 수 있다 — 이 카운터가 오르면 ItemContext 가
+  //    세션 캐시를 버리고 다시 받는다. catalogMeta 처럼 학급 전체를 흔들지 않고
+  //    **당사자 한 명만** 다시 받게 하는 게 이 방식의 이유다.
+  //
+  //    ⚠️ 트랜잭션 안에서 부를 것 — 지급 쓰기와 같은 커밋에 실려야 "지급은 됐는데 신호는
+  //       안 갔다"가 안 생긴다.
+  const bumpInventoryVersion = (transaction, userRef) => {
+    transaction.set(
+      userRef,
+      { inventoryVersion: admin.firestore.FieldValue.increment(1) },
+      { merge: true },
+    );
+  };
+
   module.exports = {
       LOG_TYPES,
       bumpCatalogVersion,
+      bumpInventoryVersion,
       logActivity,
       checkAuthAndGetUserData,
       hasAdminPower,
