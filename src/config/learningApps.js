@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap,
+  Gem, Target, Zap, Flag,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap,
+  Gem, Target, Zap, Flag,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -115,6 +115,11 @@ export const DEFAULT_LEARNING_APPS = [
   //   수학 문제가 하나 뜨고, 맞히면 «천둥 볼»이 충전된다(오답 페널티 0 · 학년대는 교사가 고른다:
   //   2~3 / 3~4 / 4~5학년, 끄기 포함). 한 기기 2~4인 핫시트·AI 4단계·일일 랭킹. 계정·개인정보 없음.
   { id: "sitePinThunder",        label: "핀 천둥(수학 볼링)",       icon: "Zap",       url: "https://pin-thunder.pages.dev/" },
+  // 2026-09-17 추가 — 3D 골프(섬 코스). 조준하는 동안 보기 4개짜리 교과 문제가 뜨고, 맞히면
+  //   «집중 토큰»(샷 판정 창 ×2.6)과 비거리 보너스(정답당 +3 %, 판 상한 +12 %)가 쌓인다
+  //   (오답 페널티 0). 오늘의 코스 3홀 일일 랭킹(하루 3회) · 자유 연습 9홀 · 3~6학년 25단원.
+  //   계정·개인정보 없음.
+  { id: "siteTeeshotIsland",     label: "티샷 아일랜드(교과 골프)", icon: "Flag",      url: "https://teeshot-island.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
