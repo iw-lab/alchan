@@ -84,12 +84,18 @@ describe("문서 스키마가 세 곳에서 갈라지지 않는다", () => {
 describe("승인 경로의 구멍", () => {
   it("⭐ 이미 학급코드를 가진 교사도 classes 문서를 얻는다", () => {
     // `needsClassCode === false` 분기가 그냥 지나가던 것이 드리프트의 근원이었다(QAZWSX12).
+    // ⚠️ 2026-09-17: 종전엔 "첫 `await updateDoc(userRef, updates);` 까지"를 잘라 봤는데,
+    //    승인 순서가 바뀌면서(새 코드 분기에서 교사 문서를 **먼저** 확정) 그 문장이 위로
+    //    올라와 슬라이스가 빈 껍데기가 됐다. 잘라 보는 기준을 함수의 끝(거절 핸들러 시작)으로
+    //    바꾼다 — 지키려는 불변식은 "이미 코드가 있는 교사도 classes 문서를 얻는다" 하나다.
     const approve = SUPERADMIN.slice(
       SUPERADMIN.indexOf("const handleApproveTeacher"),
-      SUPERADMIN.indexOf("await updateDoc(userRef, updates);"),
+      SUPERADMIN.indexOf("const handleRejectTeacher"),
     );
     expect(approve).toContain("} else {");
     expect(approve).toMatch(/existingSnap\.exists\(\)/);
+    // 새 코드 분기에서 초기화가 실패해도 승인 자체는 살아남아야 한다(잔재 재생성 방지).
+    expect(approve).toMatch(/try \{\s*await initClassroomDefaults/);
   });
 });
 

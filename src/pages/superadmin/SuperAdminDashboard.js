@@ -518,7 +518,13 @@ export default function SuperAdminDashboard() {
           return;
         }
         updates.classCode = newClassCode;
-        // classes 문서 생성
+        // 🔒 [2026-09-17] **교사 문서를 먼저 확정한다.** 종전엔 classes 생성 → 부가데이터
+        //   초기화 → 마지막에 교사 승인 순서였는데, 중간에서 한 번 실패하면(그날은
+        //   bankingSettings 읽기 권한이 없어 매번 실패했다) 교사는 계속 미승인인 채
+        //   **재시도할 때마다 새 학급코드가 발급돼** classes·jobs·storeItems 잔재만 쌓였다
+        //   (실측: classes 4 · jobs 32 · storeItems 40). 코드를 먼저 배정해 두면 재시도는
+        //   같은 코드로 이어진다(needsClassCode=false 분기).
+        await updateDoc(userRef, updates);
         await setDoc(doc(db, "classes", newClassCode), {
           code: newClassCode,
           teacherId,
@@ -529,8 +535,17 @@ export default function SuperAdminDashboard() {
           studentCount: 0,
           settings: { initialCash: 100000, initialCoupons: 10 },
         });
-        // 직업·상점·은행·급여 부가 데이터 초기화
-        await initClassroomDefaults(newClassCode);
+        // 직업·상점·은행·급여 부가 데이터 초기화.
+        //   여기서 실패해도 승인은 이미 끝났다 — 교사가 로그인해 쓰는 데는 지장이 없고
+        //   빠진 기본값은 다음 승인 재시도나 주급 자가치유가 메운다. 승인 전체를 되돌리지 않는다.
+        try {
+          await initClassroomDefaults(newClassCode);
+        } catch (e) {
+          logger.error("[승인] 학급 기본값 초기화 실패(승인은 완료됨):", e);
+          toast.info(
+            "승인은 됐지만 학급 기본 데이터 일부가 만들어지지 않았습니다. 다시 승인 버튼을 눌러 보충할 수 있어요.",
+          );
+        }
       } else {
         // 🕳️ 여기가 드리프트의 근원이었다(2026-08-20 교차검증).
         //   이미 학급코드를 가진 교사를 승인하면 위 분기를 안 타고 지나가서,
@@ -552,7 +567,10 @@ export default function SuperAdminDashboard() {
         }
       }
 
-      await updateDoc(userRef, updates);
+      // 새 코드 분기는 위에서 이미 확정했다(재시도 대비). 기존 코드 교사만 여기서 승인한다.
+      if (!newClassCode) {
+        await updateDoc(userRef, updates);
+      }
 
       // 로컬 상태 업데이트
       if (teacher) {

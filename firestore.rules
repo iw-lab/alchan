@@ -1023,7 +1023,13 @@ service cloud.firestore {
     // 🏦 은행 상품 설정 (bankingSettings)
     // ========================================================
     match /bankingSettings/{classCode} {
-      allow read: if isSameClassFast(classCode);
+      // 🔒 [2026-09-17] 슈퍼관리자 읽기 추가. 교사 승인 절차가 **여기서 죽고 있었다** —
+      //    승인 시 initClassroomDefaults 가 새 학급의 bankingSettings 존재를 getDoc 으로
+      //    확인하는데, 슈퍼관리자는 그 학급 소속이 아니라 permission-denied 로 예외가 났다.
+      //    그 예외 하나 때문에 승인 전체가 실패하고, 재시도할 때마다 새 학급코드·jobs·
+      //    storeItems 잔재만 쌓였다(2026-09-17 실측: classes 4 · jobs 32 · storeItems 40).
+      //    쓰기는 이미 isClassAdmin(=담임 또는 슈퍼관리자)이라 읽기만 맞춰 준다.
+      allow read: if isSameClassFast(classCode) || isSuperAdminFast();
       allow write: if isClassAdmin(classCode); // 🏫 Phase1: 자기 학급 은행설정만
     }
 

@@ -118,6 +118,30 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── 🏫 교사 승인 경로 (2026-09-17): 슈퍼관리자는 승인 대상 학급의 구성원이 아니다.
+  //    이 경로에서 한 군데라도 막히면 승인 전체가 예외로 끝나고 잔재만 쌓인다.
+  tc("ALLOW", "🐤 슈퍼관리자가 새 학급 은행설정을 읽는다 (교사 승인 경로)", {
+    path: "/bankingSettings/NEWCODE", method: "get", as: "sup1",
+    before: { classCode: "NEWCODE" },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 새 학급 은행설정을 만든다", {
+    path: "/bankingSettings/NEWCODE", method: "create", as: "sup1",
+    after: { classCode: "NEWCODE", depositRate: 0.02 },
+  }),
+  tc("DENY", "다른 학급 학생이 남의 학급 은행설정을 읽는다", {
+    path: "/bankingSettings/NEWCODE", method: "get", as: "farStu",
+    before: { classCode: "NEWCODE" },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 새 학급 문서를 만든다 (교사 승인 경로)", {
+    path: "/classes/NEWCODE", method: "create", as: "sup1",
+    after: { code: "NEWCODE", teacherId: "tch1", teacherName: "교사1", studentCount: 0 },
+  }),
+  tc("ALLOW", "🐤 슈퍼관리자가 교사를 승인한다 (isApproved + 학급코드 배정)", {
+    path: "/users/tchPending", method: "update", as: "sup1",
+    before: { name: "미승인교사", classCode: "미지정", cash: 0, coupons: 0, isTeacher: true, isAdmin: true, isApproved: false },
+    after: { name: "미승인교사", classCode: "NEWCODE", cash: 0, coupons: 0, isTeacher: true, isAdmin: true, isApproved: true, approvedBy: "sup1" },
+    actors: ["tchPending"],
+  }),
   // ── 🏪 개인상점 (2026-09-15): 구매·정산이 CF 로 이관된 뒤에도 rules 에 남아 있던
   //    "같은 학급 구매자" 분기를 제거했다. 그 분기는 정상 경로가 쓰지 않으면서
   //    같은 반 학생의 사보타주(남의 상품 품절 처리·매출 부풀리기)만 가능하게 했다.
