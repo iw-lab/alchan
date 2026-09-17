@@ -118,6 +118,20 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── 🔑 학급코드 없는 학생 로그인(2026-09-17): 조회 한도 카운터는 서버 전용이다.
+  tc("DENY", "학생이 로그인 조회 한도 카운터를 읽는다", {
+    path: "/studentLoginLookups/alchan01", method: "get", as: "stu1",
+    before: { windowStartMs: 1, count: 12 },
+  }),
+  tc("DENY", "학생이 로그인 조회 한도 카운터를 지운다 (한도 무력화)", {
+    path: "/studentLoginLookups/alchan01", method: "delete", as: "stu1",
+    before: { windowStartMs: 1, count: 12 },
+  }),
+  tc("DENY", "교사가 로그인 조회 한도 카운터를 고친다", {
+    path: "/studentLoginLookups/alchan01", method: "update", as: "tch1",
+    before: { windowStartMs: 1, count: 12 },
+    after: { windowStartMs: 1, count: 0 },
+  }),
   // ── 🏫 교사 승인 경로 (2026-09-17): 슈퍼관리자는 승인 대상 학급의 구성원이 아니다.
   //    이 경로에서 한 군데라도 막히면 승인 전체가 예외로 끝나고 잔재만 쌓인다.
   tc("ALLOW", "🐤 슈퍼관리자가 새 학급 은행설정을 읽는다 (교사 승인 경로)", {

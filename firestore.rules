@@ -2117,6 +2117,13 @@ service cloud.firestore {
       allow read, write: if false; // Cloud Functions Admin SDK만 접근
     }
 
+    // 🔒 학급코드 없는 학생 로그인의 조회 한도 카운터 (studentLoginLookups)
+    //    lookupStudentLogin CF 가 아이디당 창(10분)에 몇 번 물었는지 센다. 이 값이 클라에서
+    //    읽히거나 지워지면 한도 자체가 무의미해진다 — 열거 속도를 늦추는 게 유일한 방어라 더 그렇다.
+    match /studentLoginLookups/{studentId} {
+      allow read, write: if false; // Cloud Functions Admin SDK만 접근
+    }
+
     // ========================================================
     // 🔒 스케줄러 락 (schedulerLocks) - CF 내부 전용
     // ========================================================

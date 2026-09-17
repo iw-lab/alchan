@@ -158,6 +158,7 @@ jobs:
           AAP_SIGNING_KEY_CURRENT: ${{ secrets.AAP_SIGNING_KEY_CURRENT }}
           AAP_SIGNING_KEY_PREVIOUS: ${{ secrets.AAP_SIGNING_KEY_PREVIOUS }}
           AAP_PAIRWISE_SALT: ${{ secrets.AAP_PAIRWISE_SALT }}
+          FIREBASE_WEB_API_KEY: ${{ secrets.FIREBASE_WEB_API_KEY }}
         run: |
           CHANGED="$DEPLOY_CHANGED_FILES"
           echo "=== Changed files ==="
@@ -181,6 +182,11 @@ jobs:
             printf 'AAP_SIGNING_KEY_CURRENT=%s\n' "$AAP_SIGNING_KEY_CURRENT" >> functions/.env
             printf 'AAP_SIGNING_KEY_PREVIOUS=%s\n' "$AAP_SIGNING_KEY_PREVIOUS" >> functions/.env
             printf 'AAP_PAIRWISE_SALT=%s\n' "$AAP_PAIRWISE_SALT" >> functions/.env
+            # 🔑 학급코드 없는 학생 로그인(studentLogin)이 비밀번호를 **서버에서 검증**할 때 쓴다.
+            #    Firebase 웹 API 키는 클라이언트 번들에 이미 들어 있는 공개 값이다(비밀이 아니다).
+            #    그래도 시크릿으로 주입한다 — 공개 저장소에 상수로 박아 두면 회전할 때 찾을 곳이 는다.
+            #    ⚠️ 비어 있으면 studentLogin 이 fail-closed 로 거부한다(학급코드 입력으로 폴백).
+            printf 'FIREBASE_WEB_API_KEY=%s\n' "$FIREBASE_WEB_API_KEY" >> functions/.env
             echo "=== functions/.env (masked) ==="
             sed 's/=.*/=***/' functions/.env
             echo "==============================="

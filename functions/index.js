@@ -3,6 +3,13 @@
 const functions = require("firebase-functions");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const {
+  normalizeStudentId,
+  decideLookupQuota,
+  quotaKeyForIp,
+  emailPrefixRange,
+  pickStudentCandidates,
+} = require("./studentLookup");
+const {
   LOG_TYPES,
   logActivity,
   checkAuthAndGetUserData,
@@ -11026,6 +11033,126 @@ exports.resetPasswordHttp = onRequest(
 //       `--force` 로 삭제할 것. (안 쓰이는 채 방치된 CF 가 권한검사 누락으로 남는 게
 //        바로 이번에 터진 패턴이다 — 죽은 코드라고 안전한 게 아니다.)
 // ========================================================
+// ────────────────────────────────────────────────────────────────────────────────
+// 🔑 학급코드 없는 학생 로그인 (2026-09-17, 사용자 요청)
+//
+//   학생은 아이디와 비밀번호만 넣는다. 서버가 그 아이디로 후보 계정을 찾아
+//   **비밀번호까지 직접 확인**하고, 맞을 때만 로그인용 이메일을 돌려준다.
+//
+//   ⚠️ 처음 만든 형태는 아이디만 받아 후보 이메일을 돌려주는 것이었다. 교차검증 3계열
+//      (codex·Gemini·Grok)이 독립적으로 같은 곳을 짚었다 — **비밀번호 없이 학급코드가 샌다.**
+//      이 반은 비밀번호가 아이디와 같은 계정이 41/47 이라, 그 유출은 곧 계정 목록 배포다.
+//      그래서 지금 형태는 "맞는 비밀번호를 가져온 사람에게만 알려준다" 이다.
+//      비밀번호를 모르는 호출자는 성공·실패 말고 아무것도 얻지 못한다(존재 여부도).
+//
+//   남는 위험은 하나다: 비밀번호가 아이디와 같은 계정은 아이디만 알면 열린다.
+//   그건 학급코드가 가려 주던 것이고, 사용자(교사)가 수치를 알고 "로그인 편의 먼저"를 택했다.
+//   비밀번호 일괄 재설정이 끝나면 이 위험은 사라진다.
+exports.studentLogin = onCall(
+  { region: "asia-northeast3", timeoutSeconds: 30 },
+  async (request) => {
+    const sid = normalizeStudentId(request.data?.studentId);
+    const password = request.data?.password;
+    // 형식 검사는 Firestore 를 건드리기 전에(미인증 호출로 문서·읽기 비용을 태우지 못하게).
+    if (!sid || typeof password !== "string" || password.length < 1) {
+      throw new HttpsError("invalid-argument", "아이디와 비밀번호를 입력해주세요.");
+    }
+    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+    if (!apiKey) {
+      // fail-closed. 키가 없으면 비밀번호를 확인할 방법이 없고, 확인 없이 이메일을 주는 건
+      // 이 함수가 존재하는 이유를 뒤집는 짓이다. 학생은 학급코드 입력으로 폴백한다.
+      logger.error("[studentLogin] FIREBASE_WEB_API_KEY 없음 — 거부");
+      throw new HttpsError("failed-precondition", "지금은 학급코드를 입력해주세요.");
+    }
+
+    // 한도는 **호출자(IP)** 기준. 아이디 기준이면 아이디를 바꿔 가며 열거할 수 있고,
+    // 반대로 남의 아이디를 두드려 그 학생만 막는 표적 방해가 된다.
+    // 인프라가 채운 값만 쓴다(헤더는 안 본다 — 아래 quotaKeyForIp 주석 참고).
+    const ip = request.rawRequest?.ip;
+    const quotaRef = db.collection("studentLoginLookups").doc(quotaKeyForIp(ip));
+    const nowMs = Date.now();
+    const verdict = await db.runTransaction(async (transaction) => {
+      const snap = await transaction.get(quotaRef);
+      const d = decideLookupQuota(snap.exists ? snap.data() : null, nowMs);
+      // 🔒 막힌 요청은 **쓰지 않는다.** 거부마다 쓰기가 나가면 차단 자체가 과금 통로가 된다
+      //    (같은 교훈이 이 저장소 메모리에 있다 — "차단이 곧 비용이었다").
+      if (d.allow || d.reason === "corrupt") {
+        transaction.set(
+          quotaRef,
+          {
+            ...d.next,
+            // TTL 정리 대상(scripts/ops/firestore-ttl.mjs). 카운터가 영구히 쌓이면 그 자체가 비용이다.
+            expireAt: admin.firestore.Timestamp.fromMillis(nowMs + 24 * 60 * 60 * 1000),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      return d;
+    });
+    if (!verdict.allow) {
+      logger.warn(`[studentLogin] 한도 초과 ip=${quotaKeyForIp(ip)} 사유=${verdict.reason}`);
+      throw new HttpsError("resource-exhausted", "잠시 후 다시 시도해주세요.", {
+        retryAfterSec: verdict.retryAfterSec,
+      });
+    }
+
+    const { start, end } = emailPrefixRange(sid);
+    const SCAN_LIMIT = 25;
+    const snapshot = await db
+      .collection("users")
+      .where("email", ">=", start)
+      .where("email", "<", end)
+      .limit(SCAN_LIMIT)
+      .get();
+    // 잘렸으면 **조용히 일부만 보지 않는다**. 못 찾은 게 아니라 못 본 것이므로,
+    // 학급코드를 달라고 명시적으로 말한다(codex 지적).
+    if (snapshot.size >= SCAN_LIMIT) {
+      logger.warn(`[studentLogin] 후보 과다 sid=${sid} — 학급코드 요구`);
+      throw new HttpsError("failed-precondition", "학급코드도 함께 입력해주세요.");
+    }
+    const candidates = pickStudentCandidates(snapshot.docs.map((d) => d.data()));
+
+    // 후보마다 비밀번호를 확인한다(최대 3회). 맞는 게 나오면 그 이메일만 돌려준다.
+    // 하나도 안 맞으면 "아이디 또는 비밀번호가 올바르지 않습니다" 한 가지로만 답한다 —
+    // 아이디가 존재하는지조차 알려주지 않는다.
+    // 🔒 확인 요청 횟수를 **후보 수와 무관하게 항상 3회**로 고정하고 병렬로 보낸다.
+    //    후보가 없으면 빨리, 여럿이면 느리게 끝나면 응답 시간만으로 "그 아이디가 있는지",
+    //    "몇 학급에 있는지"가 드러난다(2026-09-17 교차검증 — 타이밍 사이드채널).
+    //    없는 자리는 존재할 수 없는 더미 이메일로 채운다.
+    const SLOTS = 3;
+    const slots = Array.from(
+      { length: SLOTS },
+      (_, i) => candidates[i] || `${sid}.${i}@_none_.invalid`,
+    );
+    const verifyOne = async (email) => {
+      try {
+        const res = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password, returnSecureToken: false }),
+          },
+        );
+        return res.ok;
+      } catch (e) {
+        logger.warn("[studentLogin] 비밀번호 확인 실패(네트워크):", e.message);
+        return false;
+      }
+    };
+    const results = await Promise.all(slots.map(verifyOne));
+    const hit = results.findIndex((ok, i) => ok && i < candidates.length);
+    if (hit >= 0) {
+      return { email: candidates[hit] };
+    }
+    throw new HttpsError(
+      "permission-denied",
+      "아이디 또는 비밀번호가 올바르지 않습니다.",
+    );
+  },
+);
+
 exports.resolveStudentEmail = onCall(
   { region: "asia-northeast3", timeoutSeconds: 30 },
   async (request) => {

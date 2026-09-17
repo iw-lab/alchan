@@ -478,22 +478,52 @@ const Login = () => {
  return;
  }
  setIsLoading(true);
- // 🔒 학급코드 필수 (2026-08-03 보안 수정).
- //    예전에는 아이디만 넣으면 CF(resolveStudentEmail)가 이메일 전체 = 학급코드까지
- //    돌려줬다. 그게 "아이디 하나 → 그 학생의 학급 파악 → repairStudentLogin 으로
- //    비밀번호 리셋 → 계정 탈취" 체인의 첫 단계였다(미인증 호출로 실증).
- //    이제 CF 도 학급코드를 요구하므로 여기서 미리 막는다.
- //    ⚠️ 같은 기기에서 한 번 로그인했으면 아래에서 캐시해 두므로 다시 입력할 필요 없다.
- if (activeTab === "student" && !classCode.trim()) {
- const cachedEmail = localStorage.getItem(
- `studentEmail_${studentId.trim().toLowerCase()}`,
+ // 🔑 학급코드는 **선택**이다 (2026-09-17, 사용자 요청).
+ //    비어 있으면 서버(studentLogin)가 아이디로 후보 계정을 찾아 **비밀번호까지 직접 확인**하고
+ //    맞는 학급의 이메일만 돌려준다. 비밀번호를 모르는 호출자는 아무것도 얻지 못한다
+ //    (아이디가 존재하는지조차 — 응답 시간까지 고정해 두었다).
+ //    ⚠️ 남는 위험: 비밀번호가 아이디와 같은 계정은 아이디만 알면 열린다
+ //       (2026-08-31 실측 47명 중 41명). 학급코드가 가려 주던 것이 그거였고,
+ //       비밀번호 일괄 재설정 전까지는 그 상태다.
+  if (activeTab === "student" && !classCode.trim()) {
+ const sid = studentId.trim().toLowerCase();
+ // ⚠️ 이 기기에 캐시된 이메일을 쓰지 **않는다**(2026-09-17 교차검증 지적).
+ //    공용 기기에서 같은 아이디를 쓰는 다른 학급 학생이 들어오면 앞 사람의 학급으로
+ //    고정돼 "비밀번호가 틀렸다"는 막다른 길이 된다. 서버가 비밀번호까지 확인해
+ //    맞는 학급을 골라 주므로 캐시로 아낄 것도 없다(호출 1회 = 학생 1명당 하루 몇 번).
+ {
+ try {
+ const { functions: fns } = await import("../../firebase");
+ const resolve = httpsCallable(fns, "studentLogin");
+ const res = await resolve({ studentId: sid, password });
+ loginEmail = res?.data?.email || "";
+ } catch (lookupError) {
+ // 코드는 SDK 가 "functions/permission-denied" 로 준다. 접두어 유무에 안 기대도록 뒤만 본다.
+ const code = String(lookupError?.code || "").replace(/^functions\//, "");
+ logger.warn("[Login] 학급 조회 실패:", code);
+ // 서버는 "맞는 비밀번호"일 때만 이메일을 준다. 그래서 permission-denied 는
+ // 아이디/비밀번호 오류와 같은 뜻이고, 그 외(한도·키 없음·네트워크)는 학급코드로 돌아간다.
+ if (code === "permission-denied") {
+ setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+ } else if (code === "resource-exhausted") {
+ const wait = Number(lookupError?.details?.retryAfterSec) || 0;
+ const mins = wait > 0 ? Math.ceil(wait / 60) : 0;
+ setError(
+ mins > 0
+ ? `요청이 많아요. ${mins}분 뒤에 다시 하거나, 학급코드를 입력해주세요.`
+ : "잠시 후 다시 시도하거나, 학급코드를 입력해주세요.",
  );
- if (cachedEmail) {
- loginEmail = cachedEmail;
  } else {
- setError("학급코드를 입력해주세요.");
+ setError("지금은 학급코드도 함께 입력해주세요.");
+ }
  setIsLoading(false);
  return;
+ }
+ if (!loginEmail) {
+ setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+ setIsLoading(false);
+ return;
+ }
  }
  }
  try {
@@ -906,14 +936,13 @@ const Login = () => {
  />
  </div>
  </div>
- {/* 🔒 학급코드 입력란 복원 (2026-08-03).
- 예전엔 "서버에서 자동 매칭"이라 이 칸이 없었다. 그 자동 매칭(resolveStudentEmail)이
- 계정 탈취 체인의 첫 단계여서 서버 쪽을 잠갔는데, 서버만 잠그고 이 칸을 안 되살리면
- **학생이 로그인 자체를 못 한다** — 코드를 넣을 곳이 없어 "학급코드를 입력해주세요"만
- 반복되는 막다른 길이 된다. 같은 기기에서 한 번 넣으면 아래에서 기억한다. */}
+ {/* 🔑 학급코드는 **선택**이다 (2026-09-17).
+ 비워 두면 서버(studentLogin)가 아이디·비밀번호로 학급을 찾아 준다.
+ 칸을 없애지는 않는다 — 같은 아이디가 여러 학급에 있을 때, 그리고 서버 조회가
+ 막혔을 때(조회 한도) 이 칸이 유일한 길이다. 한 번 넣으면 이 기기가 기억한다. */}
  <div className="space-y-1.5">
  <label className="block text-sm font-semibold text-slate-600">
- 학급코드
+ 학급코드 <span className="font-normal text-slate-400">(선택 — 비워도 됩니다)</span>
  </label>
  <div className="relative">
  <School className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -926,7 +955,7 @@ const Login = () => {
  id="alchan-class-code"
  value={classCode}
  onChange={(e) => setClassCode(e.target.value)}
- placeholder="예: ABC123"
+ placeholder="비워도 됩니다"
  autoComplete="on"
  autoCapitalize="characters"
  className={darkInput}
