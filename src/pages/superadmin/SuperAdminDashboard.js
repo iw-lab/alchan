@@ -24,6 +24,7 @@ import {
   serverTimestamp,
   getDoc,
   limit,
+  deleteField,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
@@ -493,6 +494,13 @@ export default function SuperAdminDashboard() {
         isApproved: true,
         approvedAt: serverTimestamp(),
         approvedBy: userDoc?.id || user?.uid,
+        // 🔒 [2026-09-17] 심사용으로 받은 학교명·학급명을 **승인과 동시에 지운다**.
+        //   목적(이 사람이 진짜 교사인지 판단)이 끝나면 보관할 근거가 없다.
+        //   그냥 두면 학생 실명과 classCode 로 이어져 "○○초 5학년 3반 누구"가 되고,
+        //   그 순간 유출 시 피해가 학급 명단 전체로 커진다. 화면에서 감추는 걸로는
+        //   유출이 안 줄어든다 — 유출은 보는 게 아니라 통째로 가져가는 것이라서 지워야 한다.
+        schoolName: deleteField(),
+        className: deleteField(),
       };
 
       // 학급 코드가 없거나 "미지정"이면 새 코드 생성 + classes 문서 생성
@@ -529,8 +537,6 @@ export default function SuperAdminDashboard() {
           code: newClassCode,
           teacherId,
           teacherName: teacher?.name || "",
-          schoolName: teacher?.schoolName || "",
-          className: teacher?.className || "",
           createdAt: serverTimestamp(),
           studentCount: 0,
           settings: { initialCash: 100000, initialCoupons: 10 },
@@ -558,8 +564,6 @@ export default function SuperAdminDashboard() {
             code: existingCode,
             teacherId,
             teacherName: teacher?.name || "",
-            schoolName: teacher?.schoolName || "",
-            className: teacher?.className || "",
             createdAt: serverTimestamp(),
             studentCount: 0,
             settings: { initialCash: 100000, initialCoupons: 10 },
@@ -827,8 +831,6 @@ export default function SuperAdminDashboard() {
         code: newClassCode,
         teacherId,
         teacherName: teacher.name || "",
-        schoolName: teacher.schoolName || "",
-        className: teacher.className || "",
         createdAt: serverTimestamp(),
         studentCount: 0,
         settings: { initialCash: 100000, initialCoupons: 10 },
@@ -841,6 +843,9 @@ export default function SuperAdminDashboard() {
       await updateDoc(doc(db, "users", teacherId), {
         classCode: newClassCode,
         updatedAt: serverTimestamp(),
+        // 심사 목적이 끝났으므로 여기서도 같이 파기한다(위 승인 경로와 동일 규칙).
+        schoolName: deleteField(),
+        className: deleteField(),
       });
 
       // 로컬 상태 갱신

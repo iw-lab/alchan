@@ -404,8 +404,11 @@ const Login = () => {
  const [registerEmail, setRegisterEmail] = useState("");
  const [registerPassword, setRegisterPassword] = useState("");
  const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
- const [schoolName, setSchoolName] = useState("");
- const [className, setClassName] = useState("");
+ // 🔒 [2026-09-17] 학교명·학급 입력을 없앴다.
+ //   이 두 값은 가입 때 받아 Firestore 에 저장했지만 **어느 화면에서도 쓰이지 않았다**
+ //   (승인 대기 카드는 이름·이메일·가입일만 보여준다). 쓰지 않는데 보관만 하면
+ //   학생 실명·classCode 와 이어져 "○○초 5학년 3반 누구"로 특정되는 재료가 될 뿐이다.
+ //   기존 문서에 남은 값은 승인 시 deleteField 로 파기한다(SuperAdminDashboard).
 
  const from = location.state?.from?.pathname || "/dashboard/tasks";
 
@@ -668,8 +671,6 @@ const Login = () => {
  coupons: 0,
  selectedJobIds: [],
  myContribution: 0,
- schoolName: schoolName.trim() || "",
- className: className.trim() || "",
  createdAt: serverTimestamp(),
  });
  await updateUserProfile(newUser, registerName.trim());
@@ -682,8 +683,6 @@ const Login = () => {
  setRegisterEmail("");
  setRegisterPassword("");
  setRegisterConfirmPassword("");
- setSchoolName("");
- setClassName("");
  } catch (error) {
  logger.error("Teacher registration error:", error);
  setError(getFirebaseErrorMessage(error));
@@ -1188,44 +1187,6 @@ const Login = () => {
  required
  disabled={isLoading}
  />
- </div>
- </div>
-
- {/* 학교/학급 */}
- <div className="grid grid-cols-2 gap-3">
- <div className="space-y-1.5">
- <label className="block text-sm font-semibold text-slate-600">
- 학교명
- </label>
- <div className="relative">
- <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
- <input
- type="text"
- value={schoolName}
- onChange={(e) => setSchoolName(e.target.value)}
- placeholder="예: 알찬초등학교"
- className={darkInput}
- style={{ paddingLeft: "2.5rem", paddingRight: "0.75rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
- disabled={isLoading}
- />
- </div>
- </div>
- <div className="space-y-1.5">
- <label className="block text-sm font-semibold text-slate-600">
- 학급
- </label>
- <div className="relative">
- <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
- <input
- type="text"
- value={className}
- onChange={(e) => setClassName(e.target.value)}
- placeholder="예: 6-1반"
- className={darkInput}
- style={{ paddingLeft: "2.5rem", paddingRight: "0.75rem", paddingTop: "0.625rem", paddingBottom: "0.625rem" }}
- disabled={isLoading}
- />
- </div>
  </div>
  </div>
 

@@ -18,6 +18,7 @@ import {
  getAchievementById,
 } from "../../utils/achievementSystem";
 import { StreakDisplay, StreakRewardInfo } from "../../components/DailyReward";
+import { makeAliasChoices, buildDisplayName } from "../../utils/alias";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import {
  User,
@@ -47,7 +48,9 @@ export default function MyProfile() {
  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
  // 입력 상태
- const [newNickname, setNewNickname] = useState("");
+ // 🔴 닉네임은 타이핑이 아니라 고르기다 — 자유 입력칸이 있던 동안 학생 45%가 실명을 적었다.
+ const [aliasChoices, setAliasChoices] = useState(() => makeAliasChoices(4));
+ const [pickedAlias, setPickedAlias] = useState(null);
  const [currentPassword, setCurrentPassword] = useState("");
  const [newPassword, setNewPassword] = useState("");
  const [confirmPassword, setConfirmPassword] = useState("");
@@ -75,7 +78,7 @@ export default function MyProfile() {
 
  // 모달 초기화
  const resetModals = () => {
- setNewNickname("");
+ setPickedAlias(null);
  setCurrentPassword("");
  setNewPassword("");
  setConfirmPassword("");
@@ -86,32 +89,30 @@ export default function MyProfile() {
  setIsLoading(false);
  };
 
- // 닉네임 변경
+ // 별명 변경 (고른 값만 받는다)
  const handleChangeNickname = async () => {
- const trimmed = newNickname.trim();
- if (!trimmed) {
- setError("닉네임을 입력해주세요.");
+ if (!pickedAlias) {
+ setError("별명을 하나 골라주세요.");
  return;
  }
- if (trimmed.length < 2 || trimmed.length > 10) {
- setError("닉네임은 2~10자 사이여야 합니다.");
- return;
- }
+ // 번호는 여기서 한 번만 합쳐 저장한다 — 이름을 표시하는 곳이 329군데라
+ // 표시 시점마다 붙이게 하면 그중 몇 곳은 반드시 빠진다.
+ const displayName = buildDisplayName(userDoc?.studentNumber, pickedAlias);
 
  setIsLoading(true);
  try {
  const userRef = doc(db, "users", userId);
- await updateDoc(userRef, { nickname: trimmed, name: trimmed, hasSetNickname: true });
+ await updateDoc(userRef, { nickname: pickedAlias, name: displayName, hasSetNickname: true });
  // 로컬 상태도 즉시 갱신
  if (setUserDoc) {
- setUserDoc((prev) => prev ? { ...prev, nickname: trimmed, name: trimmed, hasSetNickname: true } : prev);
+ setUserDoc((prev) => prev ? { ...prev, nickname: pickedAlias, name: displayName, hasSetNickname: true } : prev);
  }
- toast.success("닉네임이 변경되었습니다.");
+ toast.success("별명이 변경되었습니다.");
  setShowNicknameModal(false);
  resetModals();
  } catch (err) {
- console.error("[MyProfile] 닉네임 변경 실패:", err);
- setError("닉네임 변경에 실패했습니다: " + (err.message || err));
+ console.error("[MyProfile] 별명 변경 실패:", err);
+ setError("별명 변경에 실패했습니다: " + (err.message || err));
  } finally {
  setIsLoading(false);
  }
@@ -448,7 +449,7 @@ export default function MyProfile() {
  >
  <User size={20} className="text-[#a78bfa]" />
  <span className="text-slate-800 text-sm flex-1 text-left">
- 닉네임 변경
+ 별명 바꾸기
  </span>
  <ChevronRight size={18} className="text-gray-500" />
  </button>
@@ -531,17 +532,49 @@ export default function MyProfile() {
  className="bg-white rounded-2xl p-6 max-w-[400px] w-full border border-slate-200 shadow-xl"
  onClick={(e) => e.stopPropagation()}
  >
- <h3 className="text-slate-800 text-lg font-bold mb-5">
- 닉네임 변경
+ <h3 className="text-slate-800 text-lg font-bold mb-1">
+ 별명 바꾸기
  </h3>
- <input
- type="text"
- value={newNickname}
- onChange={(e) => setNewNickname(e.target.value)}
- placeholder="새 닉네임 (2~10자)"
- maxLength={10}
- className="w-full p-3.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-sm mb-3 focus:border-indigo-400 focus:outline-none"
- />
+ <p className="text-slate-500 text-xs mb-4">
+ 마음에 드는 게 없으면 다시 뽑을 수 있어요
+ </p>
+ <div className="grid grid-cols-1 gap-2 mb-2">
+ {aliasChoices.map((c) => {
+ const isPicked = pickedAlias === c;
+ return (
+ <button
+ key={c}
+ type="button"
+ onClick={() => {
+ setPickedAlias(c);
+ setError("");
+ }}
+ disabled={isLoading}
+ className={
+ "w-full p-3 rounded-xl text-sm text-left cursor-pointer border transition-colors " +
+ (isPicked
+ ? "bg-indigo-50 border-indigo-400 text-indigo-900 font-semibold"
+ : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50")
+ }
+ >
+ <span className="mr-2">{isPicked ? "✅" : "⬜"}</span>
+ {buildDisplayName(userDoc?.studentNumber, c)}
+ </button>
+ );
+ })}
+ </div>
+ <button
+ type="button"
+ onClick={() => {
+ setAliasChoices(makeAliasChoices(4));
+ setPickedAlias(null);
+ setError("");
+ }}
+ disabled={isLoading}
+ className="w-full p-2 mb-3 rounded-xl text-indigo-600 text-sm cursor-pointer bg-white border border-dashed border-indigo-300 hover:bg-indigo-50"
+ >
+ 🎲 다시 뽑기
+ </button>
  {error && <p className="text-red-500 text-[13px] mb-3">{error}</p>}
  <div className="flex gap-2.5">
  <button
@@ -558,7 +591,7 @@ export default function MyProfile() {
  disabled={isLoading}
  className="flex-1 p-3 bg-indigo-500 hover:bg-indigo-600 border-none rounded-[10px] text-white text-sm font-semibold cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
  >
- {isLoading ? "변경 중..." : "변경"}
+ {isLoading ? "변경 중..." : "이걸로 할래요"}
  </button>
  </div>
  </div>

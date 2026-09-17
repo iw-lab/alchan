@@ -1,17 +1,33 @@
 // src/components/NicknameSetupPopup.js
-// 첫 로그인 학생 닉네임 설정 팝업
+// 첫 로그인 학생 별명 **고르기** 팝업
+//
+// 🔴 2026-09-17: 자유 입력칸을 없앴다.
+//    이 팝업이 자유 입력이던 동안 학생 62명 중 28명이 자기 실명을 적어 넣었다.
+//    "실명 쓰지 마세요" 안내로는 못 막는다 — 쓸 칸이 있으면 쓴다. 그래서 칸을 없앴다.
+//    수집하지 않은 것은 샐 수 없고, 유출돼도 개인정보 유출이 아니다.
+//    누가 누군지는 출석번호가 구분한다(반 안에서 유일, 반 밖에서는 무의미).
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { db, doc, updateDoc } from "../firebase";
+import { makeAliasChoices, buildDisplayName } from "../utils/alias";
+
+const CHOICE_COUNT = 4;
 
 export default function NicknameSetupPopup() {
   const { userDoc, setUserDoc } = useAuth();
-  const [nickname, setNickname] = useState("");
+  const [choices, setChoices] = useState(() => makeAliasChoices(CHOICE_COUNT));
+  const [picked, setPicked] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 학생만 + 아직 닉네임 설정 안 한 경우만 표시
+  const reroll = useCallback(() => {
+    setChoices(makeAliasChoices(CHOICE_COUNT));
+    setPicked(null);
+    setError("");
+  }, []);
+
+  // 학생만 + 아직 별명 설정 안 한 경우만 표시
   const isStudent =
     userDoc?.uid &&
     !userDoc?.isAdmin &&
@@ -20,43 +36,37 @@ export default function NicknameSetupPopup() {
 
   if (!isStudent || userDoc?.hasSetNickname) return null;
 
+  const studentNumber = userDoc?.studentNumber;
+
   const handleSubmit = async () => {
-    const trimmed = nickname.trim();
-    if (!trimmed) {
-      setError("닉네임을 입력해주세요.");
+    if (!picked) {
+      setError("별명을 하나 골라주세요.");
       return;
     }
-    if (trimmed.length < 2 || trimmed.length > 10) {
-      setError("닉네임은 2~10자 사이여야 합니다.");
-      return;
-    }
+    // 🔴 화면에 쓰는 이름은 여기서 한 번만 합친다. 이름을 표시하는 곳이 329군데라
+    //    표시 시점마다 번호를 붙이게 하면 그중 몇 곳은 반드시 빠진다.
+    const displayName = buildDisplayName(studentNumber, picked);
 
     setIsLoading(true);
     setError("");
     try {
       const userRef = doc(db, "users", userDoc.uid);
       await updateDoc(userRef, {
-        nickname: trimmed,
-        name: trimmed,
+        nickname: picked,
+        name: displayName,
         hasSetNickname: true,
       });
       if (setUserDoc) {
         setUserDoc((prev) =>
           prev
-            ? { ...prev, nickname: trimmed, name: trimmed, hasSetNickname: true }
+            ? { ...prev, nickname: picked, name: displayName, hasSetNickname: true }
             : prev,
         );
       }
     } catch (err) {
-      console.error("[NicknameSetup] 닉네임 설정 실패:", err);
-      setError("닉네임 설정에 실패했습니다. 다시 시도해주세요.");
+      console.error("[NicknameSetup] 별명 설정 실패:", err);
+      setError("별명 설정에 실패했습니다. 다시 시도해주세요.");
       setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !isLoading) {
-      handleSubmit();
     }
   };
 
@@ -81,61 +91,62 @@ export default function NicknameSetupPopup() {
             background: "linear-gradient(180deg, rgba(0, 212, 255, 0.15) 0%, transparent 100%)",
           }}
         >
-          <div className="text-4xl mb-3">👋</div>
+          <div className="text-4xl mb-3">🎭</div>
           <h2
             className="text-xl font-bold text-white m-0"
             style={{ fontFamily: "'Orbitron', 'Rajdhani', sans-serif" }}
           >
-            환영합니다!
+            별명을 골라주세요!
           </h2>
           <p className="text-sm text-white/60 mt-2">
-            수업에서 사용할 닉네임을 설정해주세요
+            마음에 드는 게 없으면 다시 뽑을 수 있어요
           </p>
         </div>
 
-        {/* 입력 영역 */}
+        {/* 고르기 영역 */}
         <div className="px-6 pb-6">
-          <div className="mb-4">
-            <label className="block text-xs text-cyan-300/80 mb-2 font-medium">
-              닉네임 (2~10자)
-            </label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => {
-                setNickname(e.target.value);
-                setError("");
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="닉네임을 입력하세요"
-              maxLength={10}
-              autoFocus
-              className="w-full px-4 py-3 rounded-xl text-white text-base outline-none transition-all"
-              style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: error
-                  ? "1px solid rgba(255, 80, 80, 0.6)"
-                  : "1px solid rgba(0, 212, 255, 0.2)",
-                boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.2)",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = "rgba(0, 212, 255, 0.5)";
-                e.target.style.boxShadow =
-                  "inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 212, 255, 0.1)";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = error
-                  ? "rgba(255, 80, 80, 0.6)"
-                  : "rgba(0, 212, 255, 0.2)";
-                e.target.style.boxShadow = "inset 0 2px 4px rgba(0, 0, 0, 0.2)";
-              }}
-            />
-            {nickname.length > 0 && (
-              <div className="text-right text-xs text-white/40 mt-1">
-                {nickname.length}/10
-              </div>
-            )}
+          <div className="grid grid-cols-1 gap-2 mb-3">
+            {choices.map((c) => {
+              const isPicked = picked === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    setPicked(c);
+                    setError("");
+                  }}
+                  disabled={isLoading}
+                  className="w-full py-3 px-4 rounded-xl text-white text-base font-medium cursor-pointer transition-all text-left"
+                  style={{
+                    background: isPicked
+                      ? "linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(0, 153, 204, 0.25) 100%)"
+                      : "rgba(255, 255, 255, 0.08)",
+                    border: isPicked
+                      ? "1px solid rgba(0, 212, 255, 0.7)"
+                      : "1px solid rgba(0, 212, 255, 0.15)",
+                    boxShadow: isPicked ? "0 0 12px rgba(0, 212, 255, 0.2)" : "none",
+                  }}
+                >
+                  <span className="mr-2">{isPicked ? "✅" : "⬜"}</span>
+                  {buildDisplayName(studentNumber, c)}
+                </button>
+              );
+            })}
           </div>
+
+          <button
+            type="button"
+            onClick={reroll}
+            disabled={isLoading}
+            className="w-full py-2 rounded-xl text-cyan-200 text-sm font-medium cursor-pointer transition-all mb-4"
+            style={{
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px dashed rgba(0, 212, 255, 0.3)",
+            }}
+          >
+            🎲 다시 뽑기
+          </button>
 
           {error && (
             <div
@@ -152,25 +163,23 @@ export default function NicknameSetupPopup() {
 
           <button
             onClick={handleSubmit}
-            disabled={isLoading || !nickname.trim()}
+            disabled={isLoading || !picked}
             className="w-full py-3 rounded-xl text-white font-bold text-base cursor-pointer transition-all border-none"
             style={{
               background:
-                isLoading || !nickname.trim()
+                isLoading || !picked
                   ? "rgba(100, 100, 100, 0.3)"
                   : "linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)",
               boxShadow:
-                isLoading || !nickname.trim()
-                  ? "none"
-                  : "0 4px 15px rgba(0, 212, 255, 0.3)",
-              opacity: isLoading || !nickname.trim() ? 0.5 : 1,
+                isLoading || !picked ? "none" : "0 4px 15px rgba(0, 212, 255, 0.3)",
+              opacity: isLoading || !picked ? 0.5 : 1,
             }}
           >
-            {isLoading ? "설정 중..." : "닉네임 설정하기"}
+            {isLoading ? "설정 중..." : "이걸로 할래요"}
           </button>
 
           <p className="text-center text-xs text-white/40 mt-3">
-            나중에 프로필에서 변경할 수 있어요
+            나중에 프로필에서 바꿀 수 있어요
           </p>
         </div>
       </div>

@@ -2107,11 +2107,13 @@ async function processDailySavingsDeposits() {
 //   으로 폴백하고 그 값이 승인 화면 하드코딩과 우연히 같다). **우연에 기대지 않는다** —
 //   교사별 설정 UI 가 생기는 순간 빈 settings 로 만들어진 학급만 조용히 다르게 굴러간다.
 //   ⚠️ 기본값을 바꾸려면 여기와 SuperAdminDashboard.js 의 승인 경로를 함께 고쳐야 한다.
-function buildClassDoc({ classCode, teacherId, teacherName, className, schoolName, studentCount, createdBy }) {
+// 🔒 [2026-09-17] className·schoolName 을 더 이상 담지 않는다.
+//   어느 화면에서도 읽지 않는 값인데 학생 실명·classCode 와 이어지면 "○○초 5학년 3반 누구"로
+//   특정되는 재료가 된다. 승인 경로(SuperAdminDashboard)도 같이 끊었으니 여기만 남으면
+//   자가치유가 지운 값을 되살린다 — 세 생성 경로가 같은 모양이어야 한다.
+function buildClassDoc({ classCode, teacherId, teacherName, studentCount, createdBy }) {
   return {
     code: classCode,
-    className: className || "",
-    schoolName: schoolName || "",
     teacherId: teacherId || null,
     teacherName: teacherName || "",
     studentCount: studentCount || 0,
@@ -2180,8 +2182,6 @@ async function logClassRegistryDrift(activeClassCodes, studentCounts = new Map()
         // missing 은 정상 상태에서 0건이라 학급당 쿼리 1회는 사실상 공짜다.
         let teacherId = null;
         let teacherName = "";
-        let className = "";
-        let schoolName = "";
         try {
           const t = await db
             .collection("users")
@@ -2193,8 +2193,6 @@ async function logClassRegistryDrift(activeClassCodes, studentCounts = new Map()
             const td = t.docs[0].data();
             teacherId = t.docs[0].id;
             teacherName = td.name || "";
-            className = td.className || "";
-            schoolName = td.schoolName || "";
           }
         } catch (e) {
           logger.warn(`[학급정본] ${code} 교사 조회 실패(문서는 그대로 생성): ${e.message}`);
@@ -2205,8 +2203,6 @@ async function logClassRegistryDrift(activeClassCodes, studentCounts = new Map()
               classCode: code,
               teacherId,
               teacherName,
-              className,
-              schoolName,
               // ⚠️ 0 이 아니라 **실측 인원**이다. 이 경로는 "학생이 있는데 문서가 없는" 학급만
               //    타므로 0 은 언제나 거짓이고, 그 거짓이 증감 연산에 그대로 눌러앉는다.
               studentCount: studentCounts.get(code) || 0,
