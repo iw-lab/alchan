@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -130,6 +130,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   화살 교대 세트제(2/1/0점, 6점 선취) · AI 3단계 · «오늘의 바람» 12발 일일 순위.
   //   교과 문항은 없다(체육·아케이드). 계정 없음 · 이름은 가운데 글자를 지운 뒤에만 저장한다.
   { id: "siteHwalbaram",         label: "활바람(3D 양궁)",          icon: "Wind",      url: "https://hwalbaram.pages.dev/" },
+  // 2026-09-18 추가 — 3D 스키 다운힐(한 산을 정상에서 베이스까지). 깃대 사이를 지나며 속도×정확도로
+  //   점수가 쌓이고, 빙판에서 조금만 무리하면 날이 걸려 넘어진다. 코스 6 · 스키어 5 · 데일리 랭킹
+  //   (세 글자 이니셜은 가운데를 *로 가려 올라간다). 계정·개인정보 없음.
+  { id: "siteSeolbongRush",      label: "설봉 러시(3D 스키)",      icon: "MountainSnow", url: "https://seolbong-rush.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
