@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera,
+  Gem, Target, Zap, Flag, Camera, Wind,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera,
+  Gem, Target, Zap, Flag, Camera, Wind,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -125,6 +125,11 @@ export const DEFAULT_LEARNING_APPS = [
   //   값이 교과 문제다 — 1/2/3단계에 1·2·3문항(4지선다, 132문항 6영역). 오답 페널티 0이고
   //   3단계만 기록이 «힌트 사용»으로 남는다. 계정·로그인 없음 · 외부 요청 0(게이트가 잰다).
   { id: "siteMichyeonsang",      label: "미현상(1인칭 방탈출)",     icon: "Camera",    url: "https://michyeonsang.vercel.app/" },
+  // 2026-09-18 추가 — 풀 3D 양궁(70 m). 바람을 읽고 흔들림이 멎는 순간에 놓는 게 전부다:
+  //   측풍 1 m/s = 과녁 한 칸, 상승·하강 기류는 짧은 돌풍으로 따로 온다. 한 기기 둘이서
+  //   화살 교대 세트제(2/1/0점, 6점 선취) · AI 3단계 · «오늘의 바람» 12발 일일 순위.
+  //   교과 문항은 없다(체육·아케이드). 계정 없음 · 이름은 가운데 글자를 지운 뒤에만 저장한다.
+  { id: "siteHwalbaram",         label: "활바람(3D 양궁)",          icon: "Wind",      url: "https://hwalbaram.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
