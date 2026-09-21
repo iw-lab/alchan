@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -134,6 +134,7 @@ export const DEFAULT_LEARNING_APPS = [
   //   점수가 쌓이고, 빙판에서 조금만 무리하면 날이 걸려 넘어진다. 코스 6 · 스키어 5 · 데일리 랭킹
   //   (세 글자 이니셜은 가운데를 *로 가려 올라간다). 계정·개인정보 없음.
   { id: "siteSeolbongRush",      label: "설봉 러시(3D 스키)",      icon: "MountainSnow", url: "https://seolbong-rush.pages.dev/" },
+  { id: "siteRacketRush",        label: "래킷 러시(테니스)",        icon: "CircleDot",  url: "https://racket-rush.vercel.app" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
