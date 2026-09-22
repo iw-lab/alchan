@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -135,6 +135,11 @@ export const DEFAULT_LEARNING_APPS = [
   //   (세 글자 이니셜은 가운데를 *로 가려 올라간다). 계정·개인정보 없음.
   { id: "siteSeolbongRush",      label: "설봉 러시(3D 스키)",      icon: "MountainSnow", url: "https://seolbong-rush.pages.dev/" },
   { id: "siteRacketRush",        label: "래킷 러시(테니스)",        icon: "CircleDot",  url: "https://racket-rush.vercel.app" },
+  // 2026-09-22 추가 — 탑다운 2.5D 7인제 축구. 조작은 문맥 버튼 하나로 갈린다(공을 가지면 패스·슛,
+  //   없으면 뺏기·슬라이딩) · 달리기를 «탭»하면 0.6초 순간 대시. 하프타임·프리킥에 작전판 문항이
+  //   뜨고, 맞히면 그 경기 안에서만 쓰는 카드가 생긴다(+10.5%p · 못 풀어도 경기·랭킹은 100% 그대로).
+  //   문항은 **암산으로 닿는 수만** 낸다(14초 타이머라 종이 계산을 내면 찍고 넘어간다).
+  { id: "siteGoldenWhistle",     label: "골든 휘슬(축구)",          icon: "Goal",       url: "https://golden-whistle.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
