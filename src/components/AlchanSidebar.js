@@ -49,6 +49,7 @@ import {
   Globe,
   MessageSquare,
   Activity,
+  Star,
 } from "lucide-react";
 import { getEffectiveJobIds } from "../utils/jobPermissions";
 import {
@@ -63,6 +64,13 @@ import {
 import globalCacheService from "../services/globalCacheService";
 import { toast } from "../utils/toast";
 import { launchLearningApp } from "../services/appLaunch";
+import {
+  loadFavorites,
+  toggleFavorite,
+  recordUse,
+  pinnedSections,
+  FAV_MAX,
+} from "../services/learningAppFavorites";
 
 // ============================================
 // 앱 아이콘 컴포넌트 (export하여 다른 곳에서도 사용)
@@ -529,10 +537,11 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick, badgeCo
 // ============================================
 // 서브메뉴 아이템 컴포넌트
 // ============================================
-const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0 }) => (
+const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0, starred = null, onStar }) => (
+  <div className="w-full flex items-center">
   <button
     onClick={onClick}
-    className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+    className="flex-1 min-w-0 flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
     style={active ? {
       color: 'var(--accent)',
       background: 'var(--accent-light)',
@@ -540,8 +549,8 @@ const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0 }
       color: 'var(--text-secondary)',
     }}
   >
-    <Icon className="w-3.5 h-3.5" />
-    <span className="flex-1 text-left">{label}</span>
+    <Icon className="w-3.5 h-3.5 shrink-0" />
+    <span className="flex-1 text-left truncate">{label}</span>
     {badgeCount > 0 && (
       <span
         className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full"
@@ -552,6 +561,25 @@ const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0 }
       </span>
     )}
   </button>
+    {/* ⭐ 별은 **본문 순서를 바꾸지 않는다** — 맨 위 「내 즐겨찾기」 묶음에만 얹는다.
+        손가락 표적은 44px 이상(교실 태블릿). 클릭이 위로 새면 앱이 열려 버리므로 stopPropagation. */}
+    {starred !== null && (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onStar?.(); }}
+        className="shrink-0 w-11 h-11 -ml-1 flex items-center justify-center rounded-lg"
+        aria-pressed={starred}
+        aria-label={starred ? `${label} 즐겨찾기 해제` : `${label} 즐겨찾기 추가`}
+        title={starred ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
+      >
+        <Star
+          className="w-4 h-4"
+          style={{ color: starred ? "#f59e0b" : "var(--text-secondary)", opacity: starred ? 1 : 0.35 }}
+          fill={starred ? "#f59e0b" : "none"}
+        />
+      </button>
+    )}
+  </div>
 ));
 
 // ============================================
@@ -620,6 +648,16 @@ export default function AlchanSidebar({
   const navigate = useNavigate();
   const { userDoc, logout } = useAuth();
 
+  // ⭐ 학습 사이트 즐겨찾기 — 학생 ID로 키를 나눠 이 기기에 저장한다(학교 태블릿은 주인이 바뀐다).
+  //    `useTick` 은 「자주 쓴 것」을 다시 계산시키는 용도 — 앱을 열면 횟수가 늘어난다.
+  const favUid = userDoc?.id || "";
+  const [favApps, setFavApps] = useState([]);
+  const [useTick, setUseTick] = useState(0);
+  useEffect(() => { setFavApps(loadFavorites(favUid)); }, [favUid]);
+  const onToggleFav = useCallback((appId) => {
+    setFavApps(toggleFavorite(favUid, appId));
+  }, [favUid]);
+
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [learningBoards, setLearningBoards] = useState([]);
@@ -671,6 +709,8 @@ export default function AlchanSidebar({
       //       그 뒤의 `window.open` 은 Chrome 이 차단한다(2026-08-22 실측 — 6초 지연에서
       //       실제로 막혔다). 다리 함수는 **첫 줄에서 동기로** 탭을 연다.
       if (item.externalUrl) {
+        recordUse(favUid, item.id);          // 「자주 쓴 것」의 근거 — 열기 전에 남긴다(탭 전환 뒤엔 못 남긴다)
+        setUseTick((t) => t + 1);
         void launchLearningApp(item);
         if (isMobile) onClose?.();
         return;
@@ -680,7 +720,7 @@ export default function AlchanSidebar({
         if (isMobile) onClose?.();
       }
     },
-    [navigate, isMobile, onClose],
+    [navigate, isMobile, onClose, favUid],
   );
 
   const handleLogout = useCallback(async () => {
@@ -1120,6 +1160,23 @@ export default function AlchanSidebar({
                   ...childItems.filter((c) => (c.owner || DEFAULT_APP_OWNER) === owner),
                 ]);
               }
+
+              // ⭐ 맨 위에 «내 즐겨찾기»와 «자주 쓴 것»을 **복사해서** 얹는다.
+              //    아래 본문은 그대로 둔다 — 누른 것이 통째로 위로 올라가면 선생님의
+              //    「위에서 세 번째」가 매일 달라진다(그래서 자동 정렬이 아니라 별이다).
+              //    빈 묶음은 머리글도 그리지 않는다. `pinKey` 로 키 충돌을 피한다.
+              void useTick; // 앱을 열 때마다 이 목록을 다시 센다
+              const pinned = pinnedSections(favUid, childItems.filter((c) => c.externalUrl));
+              const head = [];
+              if (pinned.favorites.length > 0) {
+                head.push({ id: "grp-fav", label: "★ 내 즐겨찾기", isSubGroup: true });
+                head.push(...pinned.favorites.map((a) => ({ ...a, pinKey: `fav-${a.id}` })));
+              }
+              if (pinned.frequent.length > 0) {
+                head.push({ id: "grp-frequent", label: "⏱ 자주 쓴 것", isSubGroup: true });
+                head.push(...pinned.frequent.map((a) => ({ ...a, pinKey: `freq-${a.id}` })));
+              }
+              if (head.length > 0) childItems = [...head, ...childItems];
             }
 
             return (
@@ -1162,11 +1219,24 @@ export default function AlchanSidebar({
                   // 일반 메뉴 아이템
                   return (
                     <SubMenuItem
-                      key={child.id}
+                      key={child.pinKey || child.id}
                       icon={child.icon}
                       label={child.label}
                       active={isActive(child.path)}
                       onClick={() => handleItemClick(child)}
+                      starred={
+                        child.externalUrl
+                          ? favApps.includes(child.id)
+                          : null
+                      }
+                      onStar={() => {
+                        // 상한을 넘기면 조용히 무시되는 대신 이유를 말해 준다
+                        if (!favApps.includes(child.id) && favApps.length >= FAV_MAX) {
+                          toast.info(`즐겨찾기는 ${FAV_MAX}개까지예요. 하나를 먼저 빼 주세요.`);
+                          return;
+                        }
+                        onToggleFav(child.id);
+                      }}
                       badgeCount={
                         child.id === "organizationChart" && isPresident
                           ? pendingGovLawCount
