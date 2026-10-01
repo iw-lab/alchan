@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -147,6 +147,9 @@ export const DEFAULT_LEARNING_APPS = [
   //   3~6학년 5과목 7,535문항을 학기·단원(212단원)으로 고를 수 있고, 교실 방은 선생님이 학년·학기·단원을 정한다.
   //   계정·개인정보 없음.
   { id: "siteSchoolStars",       label: "스쿨 스타즈(8인 학교 대전)", icon: "Star",       url: "https://school-stars.pages.dev/" },
+  // 2026-10-01 추가 — 3D 모래놀이 물길 농장. 손가락으로 모래를 파고 쌓아 물길을 이어 밭에 물을 대면 곡식이 자란다.
+  //   36개 미션 + 내 정원(농장 경영·계절·지구 환경). 학습 카드는 새참(문제) 자리. 계정 없음 — 온라인 순위는 선택이고 생성 닉네임만 쓴다.
+  { id: "siteMulkko",            label: "물꼬(모래 물길 농장)",       icon: "Droplets",   url: "https://mulkko-a7z.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
