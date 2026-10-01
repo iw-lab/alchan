@@ -105,6 +105,8 @@ const AdminDatabase = lazyWithRetry(
 );
 // 🏛️ 알찬광장 — 교사 전용. 학생 번들에 섞이지 않게 lazy 로 둔다.
 const AlchanPlaza = lazyWithRetry(() => import("../pages/plaza/AlchanPlaza"));
+// 🖼️ 학습 사이트 갤러리 — 사이드바 «학습 사이트» 를 누르면 오른쪽에 썸네일 카드로 뜬다.
+const LearningSitesGallery = lazyWithRetry(() => import("../pages/learning/LearningSitesGallery"));
 const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
@@ -596,6 +598,14 @@ export default function AlchanLayout() {
                     사이드바 항목도 함께 삭제. 옛 링크는 아래 * 폴백이 처리한다. */}
 
                 {/* 아이템 */}
+                <Route
+                  path="/learning-sites"
+                  element={
+                    <ProtectedRoute>
+                      <LearningSitesGallery />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/item-shop"
                   element={

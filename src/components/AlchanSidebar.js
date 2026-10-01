@@ -590,6 +590,7 @@ const CategoryItem = ({
   children,
   isExpanded,
   onToggle,
+  onOpen,
   hasActiveChild,
 }) => {
   const Icon = category.icon;
@@ -597,7 +598,7 @@ const CategoryItem = ({
   return (
     <div className="mb-1">
       <button
-        onClick={onToggle}
+        onClick={() => { onToggle(); onOpen?.(); }}      // onOpen: 헤더를 누르면 본문 화면(예: 학습 사이트 갤러리)도 연다
         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group"
         style={hasActiveChild ? {
           background: 'var(--accent-bg)',
@@ -1187,6 +1188,11 @@ export default function AlchanSidebar({
                   expandedCategories[item.id] || hasActiveChild(item.id)
                 }
                 onToggle={() => toggleCategory(item.id)}
+                onOpen={
+                  item.id === LEARNING_SITES_CATEGORY_ID
+                    ? () => { navigate("/learning-sites"); if (isMobile) onClose?.(); }
+                    : undefined
+                }
                 hasActiveChild={hasActiveChild(item.id)}
               >
                 {childItems.map((child) => {

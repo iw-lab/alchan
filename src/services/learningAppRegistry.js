@@ -13,10 +13,12 @@
 
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { normalizeLearningApps, defaultLearningAppItems } from "../config/learningApps";
+import { normalizeLearningApps, defaultLearningAppItems, DEFAULT_LEARNING_APPS } from "../config/learningApps";
 import logger from "../utils/logger";
 
-const CACHE_KEY = "alchan_learning_apps_v1";
+// 🔴 기본 목록의 개수를 키에 넣는다 — 앱을 등재해 배포하면 키가 바뀌어, 이미 열려 있던 탭의 12시간 캐시가 자동으로 무효가 된다
+//    (2026-10-01: 물꼬를 등재했는데 «안 보인다» 던 원인 — 옛 세션 캐시가 옛 목록을 계속 보여 줬다).
+const CACHE_KEY = `alchan_learning_apps_v1_${DEFAULT_LEARNING_APPS.length}`;
 const TTL_MS = 12 * 60 * 60 * 1000; // 12시간 — 앱 목록은 거의 안 바뀐다
 export const LEARNING_APPS_CHANGED = "learningApps:changed";
 
