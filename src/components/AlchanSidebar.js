@@ -592,13 +592,14 @@ const CategoryItem = ({
   onToggle,
   onOpen,
   hasActiveChild,
+  flat = false,
 }) => {
   const Icon = category.icon;
 
   return (
     <div className="mb-1">
       <button
-        onClick={() => { onToggle(); onOpen?.(); }}      // onOpen: 헤더를 누르면 본문 화면(예: 학습 사이트 갤러리)도 연다
+        onClick={() => { if (!flat) onToggle(); onOpen?.(); }}      // onOpen: 헤더를 누르면 본문 화면(예: 학습 사이트 갤러리)을 연다. flat 이면 펼침 없이 이동만
         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group"
         style={hasActiveChild ? {
           background: 'var(--accent-bg)',
@@ -614,12 +615,15 @@ const CategoryItem = ({
           style={{ color: hasActiveChild ? 'var(--accent)' : 'var(--text-muted)' }}
         />
         <span className="flex-1 text-left">{category.label}</span>
-        <ChevronDown
-          className={`w-3.5 h-3.5 transition-transform duration-300 opacity-50 flex-shrink-0 ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        />
+        {!flat && (
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-300 opacity-50 flex-shrink-0 ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+          />
+        )}
       </button>
+      {flat ? null : (<>
       {/* ⚠️ [2026-07-25] 펼침 높이 상한을 max-h-96(384px)로 두면 하위 항목이 8개를 넘는 순간
           9번째부터 overflow-hidden에 잘려 화면에서 사라진다(DOM엔 있어서 더 찾기 어려웠음).
           학습 사이트가 9개가 되며 "수학성 수호자"가 안 보이던 원인. 항목이 늘어도 잘리지 않도록
@@ -633,6 +637,7 @@ const CategoryItem = ({
           {children}
         </div>
       </div>
+      </>)}
     </div>
   );
 };
@@ -1184,6 +1189,7 @@ export default function AlchanSidebar({
               <CategoryItem
                 key={item.id}
                 category={item}
+                flat={item.id === LEARNING_SITES_CATEGORY_ID}
                 isExpanded={
                   expandedCategories[item.id] || hasActiveChild(item.id)
                 }
@@ -1193,9 +1199,9 @@ export default function AlchanSidebar({
                     ? () => { navigate("/learning-sites"); if (isMobile) onClose?.(); }
                     : undefined
                 }
-                hasActiveChild={hasActiveChild(item.id)}
+                hasActiveChild={hasActiveChild(item.id) || (item.id === LEARNING_SITES_CATEGORY_ID && location.pathname === "/learning-sites")}
               >
-                {childItems.map((child) => {
+                {item.id === LEARNING_SITES_CATEGORY_ID ? null : childItems.map((child) => {
                   // 서브그룹 헤더인 경우
                   if (child.isSubGroup) {
                     return (
