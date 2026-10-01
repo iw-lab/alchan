@@ -42,6 +42,7 @@ export const LEARNING_GALLERY = {
   siteGongbunyang: {"image": "/images/learning/gongbunyang.webp", "tagline": "문제를 풀어 모은 별로 내 3D 고양이를 손으로 돌본다 — 공부한 만큼 자란다"},
   siteSchoolStars: {"image": "/images/learning/schoolstars.webp", "tagline": "최대 8명이 실시간으로 붙는 학교 대전 — 판이 끝나면 보너스 퀴즈로 보상이 커진다"},
   siteMulkko: {"image": "/images/learning/mulkko.webp", "tagline": "손가락으로 모래를 파서 물길을 이어 밭에 물을 대면 곡식이 자란다 — 문제는 광고 자리에"},
+  siteDosiTambang: {"image": "/images/learning/dosi-tambang.webp", "tagline": "진짜 서울을 하늘에서 보고 내려가 걷는다 — 58곳을 관찰하며 우리 도시를 배운다"},
 };
 
 export const galleryInfoFor = (id) => LEARNING_GALLERY[id] || null;

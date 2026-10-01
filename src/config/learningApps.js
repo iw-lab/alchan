@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -150,6 +150,9 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-10-01 추가 — 3D 모래놀이 물길 농장. 손가락으로 모래를 파고 쌓아 물길을 이어 밭에 물을 대면 곡식이 자란다.
   //   36개 미션 + 내 정원(농장 경영·계절·지구 환경). 학습 카드는 새참(문제) 자리. 계정 없음 — 온라인 순위는 선택이고 생성 닉네임만 쓴다.
   { id: "siteMulkko",            label: "물꼬(모래 물길 농장)",       icon: "Droplets",   url: "https://mulkko-a7z.pages.dev/" },
+  // 2026-10-01 추가 — 3D 서울 탐방(초등 3~6 사회 «실제 도시의 모습»). 진짜 서울을 하늘 지도에서 보고 58곳에 내려가 걸으며 관찰·질문(1,840문항)·사진을 모은다.
+  //   지하철·한강버스로 이동, 문구의 사실은 출처 원장으로 관리. 계정·개인정보 없음(진행은 기기에만 저장).
+  { id: "siteDosiTambang",       label: "도시 탐방대(3D 서울 탐방)", icon: "Building2",  url: "https://dosi-tambang-9wd.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
