@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -140,6 +140,9 @@ export const DEFAULT_LEARNING_APPS = [
   //   뜨고, 맞히면 그 경기 안에서만 쓰는 카드가 생긴다(+10.5%p · 못 풀어도 경기·랭킹은 100% 그대로).
   //   문항은 **암산으로 닿는 수만** 낸다(14초 타이머라 종이 계산을 내면 찍고 넘어간다).
   { id: "siteGoldenWhistle",     label: "골든 휘슬(축구)",          icon: "Goal",       url: "https://golden-whistle.pages.dev/" },
+  // 2026-10-01 추가 — 3D 고양이 키우기 학습. 공부 한 판(수학)으로 별을 모아 손가락으로 빗질·간식·놀이·쓰다듬기,
+  //   고양이는 «공부한 날 + 내 것이 된 문제 + 유대 + 누적 정답률»이 차야 자란다(찍기로는 안 자람).
+  { id: "siteGongbunyang",       label: "공부냥(고양이 키우기)",    icon: "Cat",        url: "https://gongbunyang.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
