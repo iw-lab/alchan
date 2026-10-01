@@ -46,6 +46,7 @@ import { LEARNING_APP_ICONS, DEFAULT_APP_OWNER } from "../../config/learningApps
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const CATEGORIES = [
   { key: "improve", label: "이렇게 바꿔주세요" },
@@ -89,6 +90,8 @@ const AlchanPlaza = () => {
   const isSuperAdmin = userDoc?.isSuperAdmin === true;
 
   const [tab, setTab] = useState("posts");
+  // 뒤로가기 = 기본 탭(건의·불편)으로
+  useBackClose(tab !== "posts", () => setTab("posts"));
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
   const [apps, setApps] = useState([]);

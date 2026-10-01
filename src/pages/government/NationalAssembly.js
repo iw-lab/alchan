@@ -5,6 +5,7 @@ import "./NationalAssembly.css";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 import { AlchanLoading } from "../../components/AlchanLayout";
 
@@ -74,6 +75,15 @@ const NationalAssembly = () => {
     fine: "",
   });
   const [editingLaw, setEditingLaw] = useState(null);
+
+  // 뒤로가기 = 기본 탭(법안 제안)으로
+  useBackClose(activeTab !== "propose", () => setActiveTab("propose"));
+  // 뒤로가기 = 취소(오버레이 클릭)와 동일하게 모달 닫기
+  useBackClose(showProposeLawModal, () => setShowProposeLawModal(false));
+  useBackClose(showEditLawModal, () => {
+    setShowEditLawModal(false);
+    setEditingLaw(null);
+  });
   const [localAdminSettings, setLocalAdminSettings] = useState(null);
   const [localGovSettings, setLocalGovSettings] = useState(null);
 

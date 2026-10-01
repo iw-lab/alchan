@@ -21,6 +21,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { useAuth } from "../../contexts/AuthContext";
 import { hasAppointedJobTitle } from "../../utils/jobPermissions";
@@ -95,6 +96,9 @@ const NationalTaxService = ({ classCode }) => {
   const [loadingTreasury, setLoadingTreasury] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+
+  // 뒤로가기 = 기본 탭(개요)으로
+  useBackClose(activeTab !== "overview", () => setActiveTab("overview"));
   const [editableSettings, setEditableSettings] = useState(DEFAULT_TAX_SETTINGS);
   const [collectingTax, setCollectingTax] = useState(false);
   const [lastTaxWeekKey, setLastTaxWeekKey] = useState(null); // 이번 주 징수 여부(governmentSettings)

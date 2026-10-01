@@ -23,6 +23,7 @@ import {
   httpsCallable,
 } from "../../firebase";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const ITEM_DEFAULT_DURATION_MS = 5 * 60 * 1000;
 
@@ -822,6 +823,13 @@ const MyItems = () => {
   };
 
   const itemToGift = giftModal.isOpen ? giftModal.item : null;
+
+  // 뒤로가기 = 각 모달 닫기(기존 닫기 핸들러와 동일, 회전 중 뽑기 모달은 closeWheelModal 자체가 보호)
+  useBackClose(wheelModal.isOpen, () => (wheelModal.spinning ? false : closeWheelModal()));
+  useBackClose(useItemModal.isOpen, () => handleCloseUseItemModal());
+  useBackClose(giftModal.isOpen, () => handleCloseGiftModal());
+  useBackClose(sellToMarketModal.isOpen, () => handleCloseSellToMarketModal());
+  useBackClose(sellToTreasuryModal.isOpen, () => handleCloseSellToTreasuryModal());
 
   return (
     <>

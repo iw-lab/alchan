@@ -3,6 +3,7 @@
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, memo } from "react";
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const SellCouponModal = memo(function SellCouponModal({
   showSellCouponModal,
@@ -18,6 +19,9 @@ const SellCouponModal = memo(function SellCouponModal({
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
+
+  // 뒤로가기 = 모달 닫기(아래 handleCancel과 동일, TDZ 회피용 래핑)
+  useBackClose(showSellCouponModal, () => handleCancel());
 
   // 모달이 표시되지 않을 때는 렌더링하지 않음
   if (!showSellCouponModal) return null;

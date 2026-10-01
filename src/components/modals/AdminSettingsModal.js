@@ -32,6 +32,7 @@ import { useBatchPaySalaries } from "../../hooks/useOptimizedAdminData";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../services/optimizedFirebaseService";
 import globalCacheService from "../../services/globalCacheService";
+import { useBackClose } from "../../hooks/useBackClose";
 
 // 시스템 모니터링 컴포넌트
 import SystemMonitoring from "../../pages/admin/SystemMonitoring";
@@ -397,6 +398,11 @@ const AdminSettingsModal = ({
   const [showEditStudentJobsModal, setShowEditStudentJobsModal] =
     useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  // 뒤로가기 = 학생 직업 수정 모달 닫기
+  useBackClose(
+    showEditStudentJobsModal && !!selectedStudent,
+    () => setShowEditStudentJobsModal(false),
+  );
   const [tempSelectedJobIds, setTempSelectedJobIds] = useState([]);
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);

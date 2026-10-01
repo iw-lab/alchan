@@ -4,6 +4,7 @@ import React, { useState, useEffect, memo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 const DonationHistoryModal = memo(function DonationHistoryModal({
   showDonationHistoryModal,
   setShowDonationHistoryModal,
@@ -217,6 +218,9 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
   const handleClose = () => {
     setShowDonationHistoryModal(false);
   };
+
+  // 뒤로가기 = 모달 닫기
+  useBackClose(showDonationHistoryModal, handleClose);
 
   const formatAmount = (amount) => {
     if (typeof amount !== "number" || isNaN(amount)) return "0";

@@ -8,6 +8,7 @@ import SubmitComplaint from "./SubmitComplaint";
 import ComplaintStatus from "./ComplaintStatus";
 import TrialRoom, { cleanupStaleTrialRooms } from "./TrialRoom";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import {
  PageContainer,
  PageHeader,
@@ -48,6 +49,9 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
  complaint.desiredResolution,
  );
  const [defendantId, setDefendantId] = useState(complaint.defendantId);
+
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
 
  const handleSave = () => {
  if (!defendantId || !reason.trim() || !desiredResolution.trim()) {
@@ -137,6 +141,9 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
 const JudgmentModal = ({ complaint, onSave, onCancel }) => {
  const [judgmentText, setJudgmentText] = useState(complaint.judgment || "");
 
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
+
  const handleSaveClick = () => {
  if (!judgmentText.trim()) {
  toast.error("판결 내용을 입력해주세요.");
@@ -194,6 +201,9 @@ const SettlementModal = ({
  const [amount, setAmount] = useState("");
  const [senderId, setSenderId] = useState(complaint.defendantId || "");
  const [recipientId, setRecipientId] = useState(complaint.complainantId || "");
+
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
 
  const handleSave = async () => {
  if (!amount || isNaN(parseInt(amount)) || parseInt(amount) <= 0) {
@@ -580,6 +590,14 @@ const Court = () => {
  const [settlementComplaint, setSettlementComplaint] = useState(null);
 
  const [activeTrialRoom, setActiveTrialRoom] = useState(null);
+
+ // 뒤로가기 = 기본 탭(고소장 제출)으로
+ useBackClose(activeTab !== "submit", () => setActiveTab("submit"));
+ // 뒤로가기 = 재판방 나가기(1231행 onClose 와 동일)
+ useBackClose(!!activeTrialRoom, () => {
+ setActiveTrialRoom(null);
+ setActiveTab("status");
+ });
 
  // modal-root 엘리먼트 생성
  useEffect(() => {

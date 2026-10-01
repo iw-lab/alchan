@@ -19,6 +19,7 @@ import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import JobApplicationsPanel from "./JobApplicationsPanel";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
@@ -33,6 +34,8 @@ const AdminApprovalPanel = () => {
   // 상단 탭: 할일 승인 ↔ 직업 신청. 직업은 로직이 전혀 달라(보상 지급 없음, 직업 부여)
   // 같은 목록에 섞지 않고 컴포넌트를 나눈다.
   const [tab, setTab] = useState("tasks");
+  // 뒤로가기 = 기본 탭(할일 승인)으로
+  useBackClose(tab !== "tasks", () => setTab("tasks"));
 
   const processTaskApproval = useMemo(
     () => httpsCallable(functions, "processTaskApproval"),

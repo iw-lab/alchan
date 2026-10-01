@@ -12,6 +12,7 @@ import { db, functions } from "../../firebase";
 // 🔥 자동 상장/폐지: Firebase Functions에서 처리 (10분마다)
 import { httpsCallable } from "firebase/functions";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import {
   collection,
   doc,
@@ -334,6 +335,8 @@ const AdminPanel = React.memo(
     onDeleteSimulationStocks,
     onDeduplicateStocks,
   }) => {
+    // 뒤로가기 = 관리자 패널 닫기(이 컴포넌트는 열릴 때만 렌더됨)
+    useBackClose(true, onClose);
     const [showAddForm, setShowAddForm] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isCreatingRealStocks, setIsCreatingRealStocks] = useState(false);
@@ -780,6 +783,8 @@ const AdminPanel = React.memo(
 
 // === 가격 차트 모달 (SVG 직접 그리기) ===
 const StockChartModal = ({ stock, onClose, formatCurrency }) => {
+  // 뒤로가기 = 차트 모달 닫기
+  useBackClose(!!stock, onClose);
   if (!stock) return null;
   const priceHistory = Array.isArray(stock.priceHistory) ? stock.priceHistory : [];
   const points = priceHistory.length >= 2
@@ -983,6 +988,8 @@ const StockExchange = () => {
   const [isTrading, setIsTrading] = useState(false);
   const [lockTimers, setLockTimers] = useState({});
   const [activeTab, setActiveTab] = useState("stocks");
+  // 뒤로가기 = 기본 탭(stocks)으로 복귀
+  useBackClose(activeTab !== "stocks", () => setActiveTab("stocks"));
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
   const [marketOpen, setMarketOpen] = useState(false);

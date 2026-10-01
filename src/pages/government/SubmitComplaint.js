@@ -1,5 +1,6 @@
 // src/SubmitComplaint.js
 import React, { useState, useEffect } from "react";
+import { useBackClose } from "../../hooks/useBackClose";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 
@@ -28,6 +29,12 @@ const SubmitComplaint = ({
   // 관리자용 새 고소 사유 추가 상태
   const [newReason, setNewReason] = useState("");
   const [showAddReasonModal, setShowAddReasonModal] = useState(false);
+
+  // 뒤로가기 = 취소 단추와 동일하게 모달 닫기
+  useBackClose(showAddReasonModal, () => {
+    setShowAddReasonModal(false);
+    setNewReason("");
+  });
 
   // 초기 데이터 로드 (고소 사유 목록, 가결된 법안 목록)
   useEffect(() => {

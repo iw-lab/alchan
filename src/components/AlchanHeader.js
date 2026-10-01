@@ -21,6 +21,7 @@ import {
   Send,
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
+import { useBackClose } from "../hooks/useBackClose";
 import Avatar from "./Avatar";
 import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { buildAvatarOverlays } from "../utils/avatarShop";
@@ -188,6 +189,9 @@ const AlchanHeader = memo(
       setNewPassword("");
       setConfirmPassword("");
     };
+
+    // 뒤로가기 = 지역 모달 4개(닉네임/비밀번호/학급코드/계정삭제) 닫기
+    useBackClose(activeModal !== null, closeModal);
 
     const handleLogout = async () => {
       try {

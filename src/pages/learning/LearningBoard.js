@@ -43,6 +43,7 @@ const formatFileSize = (bytes) => {
 };
 const getFileExt = (name) => (name.split(".").pop() || "").toLowerCase();
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -169,6 +170,11 @@ const LearningBoard = () => {
   const [editAttachments, setEditAttachments] = useState([]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const POSTS_PER_PAGE = 10;
+
+  // 뒤로가기 = 관리자 패널 닫기(board/post 는 이미 URL로 처리됨, 겹치지 않음)
+  useBackClose(showAdminPanel, () => setShowAdminPanel(false));
+  // 글쓰기 화면 — 뒤로가기 = «← 목록으로»(쓰던 글은 임시저장에 남는다)
+  useBackClose(isWriting, () => { setIsWriting(false); setPendingFiles([]); });
 
   // =========================================================
   // 💾 글쓰기 임시 자동저장 (localStorage)

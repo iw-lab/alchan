@@ -30,6 +30,7 @@ import {
  ChevronRight,
 } from "lucide-react";
 import { toast } from "../../utils/toast";
+import { useBackClose } from "../../hooks/useBackClose";
 
 export default function MyProfile() {
  const { user, userDoc, setUserDoc, logout } = useAuth();
@@ -88,6 +89,12 @@ export default function MyProfile() {
  setError("");
  setIsLoading(false);
  };
+
+ // 뒤로가기 = 각 모달 닫기(배경 클릭 때와 같은 처리)
+ useBackClose(showNicknameModal, () => { setShowNicknameModal(false); resetModals(); });
+ useBackClose(showPasswordModal, () => { setShowPasswordModal(false); resetModals(); });
+ useBackClose(showClassCodeModal, () => { setShowClassCodeModal(false); resetModals(); });
+ useBackClose(showDeleteModal, () => { setShowDeleteModal(false); resetModals(); });
 
  // 별명 변경 (고른 값만 받는다)
  const handleChangeNickname = async () => {

@@ -19,6 +19,7 @@ import "./Banking.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const convertAdminProductsToAccountFormat = (adminProducts) => {
  if (!Array.isArray(adminProducts)) {
@@ -66,6 +67,9 @@ const Banking = () => {
 
  // 유저별 가입 상품 관리
  const [allUserProducts, setAllUserProducts] = useState([]);
+
+ // 뒤로가기 = «은행으로 돌아가기»(관리자 화면 닫기)
+ useBackClose(activeView === "admin", () => setActiveView("parking"));
 
  // 모든 유저의 가입 상품 로드
  const loadAllUserProducts = async () => {

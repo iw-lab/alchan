@@ -22,6 +22,7 @@ import { db, functions, httpsCallable } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useItems } from "../../contexts/ItemContext";
+import { useBackClose } from "../../hooks/useBackClose";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
 import {
@@ -122,6 +123,9 @@ const ShopModal = ({ isOpen, onClose, shop, onSave }) => {
       setLoading(false);
     }
   };
+
+  // 뒤로가기 = 모달 닫기
+  useBackClose(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -299,6 +303,9 @@ const ProductModal = ({ isOpen, onClose, product, shopId, onSave }) => {
     }
   };
 
+  // 뒤로가기 = 모달 닫기
+  useBackClose(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
@@ -467,6 +474,9 @@ const PurchaseModal = ({ isOpen, onClose, product, shop, onConfirm }) => {
       setLoading(false);
     }
   };
+
+  // 뒤로가기 = 모달 닫기
+  useBackClose(isOpen && !!product, onClose);
 
   if (!isOpen || !product) return null;
 
@@ -681,6 +691,14 @@ const PersonalShop = () => {
   // 필터/검색
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 뒤로가기 = 상점 상세 → 목록으로 (기존 «← 상점 목록으로» 단추와 동일한 닫기)
+  useBackClose(!!selectedShop, () => {
+    setSelectedShop(null);
+    setSelectedShopProducts([]);
+  });
+  // 뒤로가기 = 기본 탭(browse)으로
+  useBackClose(activeTab !== "browse", () => setActiveTab("browse"));
 
   // 상점 목록 로드 (같은 학급만)
   //

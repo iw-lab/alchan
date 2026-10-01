@@ -16,6 +16,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { confirmDialog } from "../utils/confirmDialog";
+import { useBackClose } from "../hooks/useBackClose";
 
 export function SettingsPanel({ isOpen, onClose }) {
   const { fontSize, setFontSize } = useTheme();
@@ -45,6 +46,9 @@ export function SettingsPanel({ isOpen, onClose }) {
       onClose();
     }
   };
+
+  // 뒤로가기 = 설정 패널 닫기
+  useBackClose(isOpen, onClose);
 
   if (!isOpen) return null;
 

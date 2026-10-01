@@ -31,6 +31,7 @@ import {
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const TAB_OPTIONS = [
   { id: "all", name: "전체", icon: Sparkles },
@@ -279,6 +280,9 @@ export default function AvatarShop() {
       logger.error("해제 실패:", err);
     }
   };
+
+  // 뒤로가기 = 가격 수정 모달 닫기(저장 중엔 기존 오버레이 클릭과 동일하게 보호)
+  useBackClose(!!editingPrice, () => (savingPrice ? false : setEditingPrice(null)));
 
   if (loading) {
     return (

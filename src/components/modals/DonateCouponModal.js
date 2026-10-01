@@ -3,6 +3,7 @@
 import React, { useState, memo } from "react";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const DonateCouponModal = memo(function DonateCouponModal({
   showDonateModal,
@@ -51,6 +52,9 @@ const DonateCouponModal = memo(function DonateCouponModal({
       setDonateMessage("");
     }
   };
+
+  // 뒤로가기 = 모달 닫기
+  useBackClose(showDonateModal, handleClose);
 
   if (!showDonateModal) return null;
 

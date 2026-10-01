@@ -38,6 +38,7 @@ import {
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 
 // completeGroupPurchase Cloud Function 도입 시점(2026-05-18, 1643a13).
 // 그 이전 캠페인은 클라이언트가 직접 지급했고 awardedAt 을 남기지 않으므로,
@@ -356,6 +357,10 @@ export default function GroupPurchase() {
       }));
     }
   };
+
+  // 뒤로가기 = 모달 닫기(기존 닫기 단추와 동일)
+  useBackClose(showCreateModal, () => setShowCreateModal(false));
+  useBackClose(!!contributeModal, () => setContributeModal(null));
 
   if (loading) {
     return (

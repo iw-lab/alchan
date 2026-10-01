@@ -1,6 +1,7 @@
 // 🔥 성능 최적화: React.memo 적용
 import React, { memo } from "react";
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const GiftCouponModal = memo(function GiftCouponModal({
   showGiftCouponModal,
@@ -14,6 +15,9 @@ const GiftCouponModal = memo(function GiftCouponModal({
   currentCoupons,
   userId,
 }) {
+  // 뒤로가기 = 모달 닫기(아래 closeModal과 동일, TDZ 회피용 래핑)
+  useBackClose(showGiftCouponModal, () => closeModal());
+
   if (!showGiftCouponModal) {
     return null;
   }

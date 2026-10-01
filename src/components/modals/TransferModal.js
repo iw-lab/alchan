@@ -2,6 +2,7 @@
 // 🔥 성능 최적화: React.memo 적용
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { memo } from "react";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const TransferModal = memo(function TransferModal({
   showTransferModal,
@@ -29,6 +30,9 @@ const TransferModal = memo(function TransferModal({
       const nameB = b.name || b.nickname || `사용자 ${b.id.substring(0, 6)}`;
       return nameA.localeCompare(nameB, "ko");
     });
+
+  // 뒤로가기 = 모달 닫기(기존 닫기 단추와 동일)
+  useBackClose(showTransferModal, () => setShowTransferModal(false));
 
   return (
     <div

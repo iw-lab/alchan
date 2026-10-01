@@ -66,6 +66,7 @@ import "./SuperAdminDashboard.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 // 탭 목록
 // Cloud Function 참조 (모듈 스코프)
 const listAllAuthUsersFn = httpsCallable(functions, "listAllAuthUsers");
@@ -85,6 +86,8 @@ export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const { userDoc, user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  // 뒤로가기 = 기본 탭(overview)으로 복귀
+  useBackClose(activeTab !== "overview", () => setActiveTab("overview"));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -790,6 +793,9 @@ export default function SuperAdminDashboard() {
     setClassDetail(null);
     setClassStudents([]);
   };
+
+  // 뒤로가기 = 학급 상세 모달 닫기
+  useBackClose(!!classDetail, closeClassDetail);
 
   // 학급 코드 발급 (이미 승인된 선생님 중 classCode가 "미지정"인 경우)
   const handleAssignClassCode = async (teacherId, teacherName) => {

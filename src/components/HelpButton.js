@@ -5,11 +5,15 @@ import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { HelpCircle, X } from "lucide-react";
 import { getHelpContent } from "../utils/helpContent";
+import { useBackClose } from "../hooks/useBackClose";
 
 export default function HelpButton() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const helpData = getHelpContent(location.pathname);
+
+  // 뒤로가기 = 도움말 모달 닫기
+  useBackClose(isOpen, () => setIsOpen(false));
 
   // 도움말 데이터가 없는 페이지에서는 숨김
   if (!helpData) return null;

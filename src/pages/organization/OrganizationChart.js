@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 
 import { logger } from "../../utils/logger";
@@ -78,6 +79,13 @@ const OrganizationChart = ({ classCode }) => {
   const [loadingLaws, setLoadingLaws] = useState(true);
   // fetch 에러 표시 (학생/대통령 권한 디버그용)
   const [fetchError, setFetchError] = useState(null);
+
+  // 뒤로가기 = 취소 단추와 동일하게 모달 닫기
+  useBackClose(showModal && !!selectedLaw, () => {
+    setShowModal(false);
+    setSelectedLaw(null);
+  });
+  useBackClose(showSettingsModal, () => setShowSettingsModal(false));
 
   // Firestore에서 관리자 설정 로드 및 초기화
   const fetchSettings = useCallback(async () => {

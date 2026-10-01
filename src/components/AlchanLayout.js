@@ -47,6 +47,7 @@ import { useStudentProducts } from "../hooks/useStudentProducts";
 import { useAutoLoanRepay } from "../hooks/useAutoLoanRepay";
 import { useAutoSavingsDeposit } from "../hooks/useAutoSavingsDeposit";
 import { useAutoDepositMature } from "../hooks/useAutoDepositMature";
+import { useBackClose } from "../hooks/useBackClose";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
 import { getStreakInfo } from "./DailyReward";
@@ -422,6 +423,9 @@ export default function AlchanLayout() {
   const closeSidebar = useCallback(() => {
     setIsSidebarOpen(false);
   }, []);
+
+  // 뒤로가기 = 모바일 드로어 사이드바 닫기 (데스크톱은 항상 보이는 구조라 모바일일 때만 기록을 쌓는다)
+  useBackClose(isSidebarOpen && isMobile, closeSidebar);
 
   const toggleSidebarCollapse = useCallback(() => {
     setIsSidebarCollapsed((prev) => !prev);

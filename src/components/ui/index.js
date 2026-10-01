@@ -2,6 +2,7 @@
 // 알찬 디자인 시스템 - 통합 UI 컴포넌트 라이브러리
 
 import { getCurrencyUnit } from "../../utils/numberFormatter";
+import { useBackClose } from "../../hooks/useBackClose";
 import React, {
   forwardRef,
   useState,
@@ -420,6 +421,9 @@ export const Modal = ({
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  // 뒤로가기 = 모달 닫기(사용처 3곳 — StudentManager 추가/일괄추가/수정 모달)
+  useBackClose(isOpen, onClose);
 
   if (!isOpen) return null;
 

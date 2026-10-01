@@ -29,6 +29,7 @@ import {
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 export default function Auction() {
   // --- Context Data ---
   const authContext = useAuth();
@@ -491,6 +492,9 @@ export default function Auction() {
   const availableItems = inventoryItems.filter(
     (item) => item.quantity >= 1 && item.type === "item"
   );
+
+  // 뒤로가기 = 기본 탭(ongoing)으로
+  useBackClose(activeTab !== "ongoing", () => setActiveTab("ongoing"));
 
   return (
     <div className="auction-container">

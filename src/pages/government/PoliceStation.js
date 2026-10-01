@@ -10,6 +10,7 @@ import ReportStatus from "./ReportStatus";
 import ReportResults from "./ReportResults";
 import PoliceAdminSettings from "./PoliceAdminSettings";
 import { usePolling } from "../../hooks/usePolling";
+import { useBackClose } from "../../hooks/useBackClose";
 
 import { logger } from "../../utils/logger";
 import {
@@ -46,6 +47,9 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
  complaint.desiredResolution,
  );
  const [defendantId, setDefendantId] = useState(complaint.defendantId);
+
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
 
  const handleSave = () => {
  if (!defendantId || !reason.trim() || !desiredResolution.trim()) {
@@ -125,6 +129,9 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
 const JudgmentModal = ({ complaint, onSave, onCancel }) => {
  const [judgmentText, setJudgmentText] = useState(complaint.judgment || "");
 
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
+
  const handleSaveClick = () => {
  if (!judgmentText.trim()) {
  toast.error("판결 내용을 입력해주세요.");
@@ -196,6 +203,9 @@ const SettlementModal = ({
  );
  const auth = useAuth();
  const currentAdminId = auth.userDoc?.id;
+
+ // 뒤로가기 = 취소 단추(onCancel)와 동일하게 모달 닫기
+ useBackClose(true, onCancel);
 
  // 모달이 열릴 때 디버깅 로그
  useEffect(() => {
@@ -405,6 +415,11 @@ const PoliceStation = () => {
  const [judgingComplaint, setJudgingComplaint] = useState(null);
  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
  const [settlementComplaint, setSettlementComplaint] = useState(null);
+
+ // 뒤로가기 = admin 탭이면 handleBackToPolice, 그 밖은 기본 탭(submit)으로
+ useBackClose(activeTab !== "submit", () =>
+ activeTab === "admin" ? handleBackToPolice() : setActiveTab("submit"),
+ );
 
  // modal-root 엘리먼트 생성
  useEffect(() => {

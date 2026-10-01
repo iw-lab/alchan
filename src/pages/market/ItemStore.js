@@ -9,6 +9,7 @@ import "../admin/AdminPanel.css";
 import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import {
   isNetAssetsNegative,
@@ -369,6 +370,12 @@ const ItemStore = () => {
   };
 
   const canOpenAdminPanel = isCurrentUserAdmin && currentUserClassCode;
+
+  // 뒤로가기 = 관리자 패널(AdminItemPage 전체화면) 닫기(기존 onClose와 동일)
+  useBackClose(showAdminPanel && canOpenAdminPanel, () => {
+    setShowAdminPanel(false);
+    setEditingItem(null);
+  });
 
   return (
     <div

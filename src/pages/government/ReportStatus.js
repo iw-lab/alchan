@@ -1,6 +1,7 @@
 // src/ReportStatus.js
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
+import { useBackClose } from "../../hooks/useBackClose";
 
 import { logger } from "../../utils/logger";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
@@ -23,6 +24,11 @@ const ReportStatus = ({
   const [selectedReport, setSelectedReport] = useState(null);
   const [processingAmount, setProcessingAmount] = useState("");
   const [processingReason, setProcessingReason] = useState("");
+
+  // 뒤로가기 = 기본 탭(제출된 신고)으로
+  useBackClose(activeTab !== "submitted", () => setActiveTab("submitted"));
+  // 뒤로가기 = 모달 닫기(closeModals)와 동일하게
+  useBackClose(showProcessModal && !!selectedReport, () => closeModals());
 
   // 처리 모달 열기
   const openProcessModal = (report) => {

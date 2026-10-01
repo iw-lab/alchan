@@ -37,6 +37,7 @@ import {
 import JobList from "../../components/JobList";
 import CommonTaskList from "../../components/CommonTaskList";
 import { promptDialog } from "../../utils/promptDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 // AdminSettingsModal은 3900줄+ 대형 파일이고 관리자만 여는 모달이다. 정적 import면 학생(다수)도
 //   Dashboard 청크에서 이 코드를 전부 다운로드했다 → lazy 로드로 분리(2026-07-19 성능).
 const AdminSettingsModal = lazy(() =>
@@ -1849,6 +1850,9 @@ function Dashboard({ adminTabMode }) {
  const handleCancelForm = useCallback(() => {
  setViewMode("list");
  }, []);
+
+ // 뒤로가기 = 직업 선택 화면 "← 목록" 과 같은 처리
+ useBackClose(viewMode !== "list", handleCancelForm);
 
  const handleTaskEarnCoupon = useCallback(
  async (

@@ -36,6 +36,7 @@ import {
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
+import { useBackClose } from "../../hooks/useBackClose";
 
 const DEFAULT_SETTINGS = {
   totalProperties: 30,
@@ -83,6 +84,12 @@ const RealEstateRegistry = () => {
   const [priceModal, setPriceModal] = useState(null);
   // 받은/보낸 제안 패널 표시
   const [showOffersPanel, setShowOffersPanel] = useState(false);
+
+  // 뒤로가기 = 각 화면/모달 닫기
+  useBackClose(!!showQuickAction, () => setShowQuickAction(null));
+  useBackClose(!!selectedProperty, () => setSelectedProperty(null));
+  useBackClose(!!priceModal, () => setPriceModal(null));
+  useBackClose(showAdminPanel, () => setShowAdminPanel(false));
 
   // 🔥 [제거] body 스크롤 조작 완전 제거 - CSS로만 처리
   // 모달 오버레이에 overflow-y: auto 설정으로 모달 내부 스크롤 허용

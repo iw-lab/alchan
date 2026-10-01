@@ -27,6 +27,7 @@ import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
 import { toast } from "../../utils/toast";
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 
 /** KST 기준 오늘(YYYYMMDD). 서버(`learningRules.kstDayKey`)와 **같은 규칙**이어야 한다. */
 function kstDayKey(ms = Date.now()) {
@@ -74,6 +75,8 @@ export default function AppRewardDashboard() {
   const superAdmin = typeof isSuperAdmin === "function" ? isSuperAdmin() : !!isSuperAdmin;
 
   const [tab, setTab] = useState("rewards");
+  // 뒤로가기 = 기본 탭(보상 지급 현황)으로
+  useBackClose(tab !== "rewards", () => setTab("rewards"));
   const [day, setDay] = useState(() => kstDayKey());
   const [rewards, setRewards] = useState(null);
   const [alerts, setAlerts] = useState([]);

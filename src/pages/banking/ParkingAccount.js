@@ -40,6 +40,7 @@ import {
 } from "../../utils/netAssets";
 
 import { logger } from "../../utils/logger";
+import { useBackClose } from "../../hooks/useBackClose";
 import { confirmDialog } from "../../utils/confirmDialog";
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
 const getTeacherAccount = async (classCode) => {
@@ -1117,6 +1118,9 @@ const ParkingAccount = ({
  const handleCloseLoanRepayModal = () => {
  setLoanRepayModal({ isOpen: false, product: null, repayMode: "lumpSum" });
  };
+ // 브라우저 뒤로가기 = 모달 닫기. 단 «처리 중»(가입·대출·상환 제출 진행)에는 닫지 않는다.
+ useBackClose(modal.isOpen, () => (isProcessing ? false : handleCloseModal()));
+ useBackClose(loanRepayModal.isOpen, () => (isProcessing ? false : handleCloseLoanRepayModal()));
 
  // 대출 일시 상환 (전액: 원금 + 경과 이자)
  const handleLoanLumpSumRepay = async () => {
