@@ -142,7 +142,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteGoldenWhistle",     label: "골든 휘슬(축구)",          icon: "Goal",       url: "https://golden-whistle.pages.dev/" },
   // 2026-10-01 추가 — 3D 고양이 키우기 학습. 공부 한 판(수학)으로 별을 모아 손가락으로 빗질·간식·놀이·쓰다듬기,
   //   고양이는 «공부한 날 + 내 것이 된 문제 + 유대 + 누적 정답률»이 차야 자란다(찍기로는 안 자람).
-  { id: "siteGongbunyang",       label: "공부냥(고양이 키우기)",    icon: "Cat",        url: "https://gongbunyang.pages.dev/" },
+  { id: "siteGongbunyang",       label: "공부냥(고양이 키우기)",    icon: "Cat",        url: "https://gongbunyang-bdd.pages.dev/" },
   // 2026-10-01 추가 — 최대 8명이 실시간으로 겨루는 3D 학교 대전(브롤형). 판이 끝나면 보너스 퀴즈로 별을 받는다.
   //   3~6학년 5과목 7,535문항을 학기·단원(212단원)으로 고를 수 있고, 교실 방은 선생님이 학년·학기·단원을 정한다.
   //   계정·개인정보 없음.
