@@ -84,7 +84,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteClassVoteBox",      label: "우리 반 투표함(교실 투표)", icon: "Vote",     url: "https://class-vote-box.pages.dev/" },
   // 2026-09-06 추가 — 놀이공원을 짓고 굴리는 3D 경영 시뮬. 연구소 문제를 풀어야 시설이 열린다.
   // 학년·학기를 고르면 그 학기 교과 범위로만 출제된다(3-1~6-2, 36단원). 계정·개인정보 없음.
-  { id: "siteLoopPark",          label: "루프 파크(놀이공원 경영)",  icon: "Ticket",   url: "https://loop-park.pages.dev/" },
+  { id: "siteLoopPark",          label: "루프 파크(놀이공원 경영)",  icon: "Ticket",   url: "https://loop-park-dyy.pages.dev/" },
   // 레지스트리에만 있고 폴백에 없어서 **또 어긋나 있었다**(2026-09-07 발견). 레지스트리를
   // 못 읽는 날엔 학생 사이드바에서 이 앱만 사라진다 — 2026-08-22 크로마폴과 같은 결함이다.
   { id: "siteOreudap",           label: "오르답(구구단·영단어)",    icon: "Calculator", url: "https://oreudap.vercel.app" },
