@@ -62,6 +62,7 @@ import {
   DEFAULT_APP_OWNER,
 } from "../config/learningApps";
 import globalCacheService from "../services/globalCacheService";
+import { fetchUnreadBoardCount, WALL_SEEN_EVENT } from "../pages/personal-board/wallUnread";
 import { toast } from "../utils/toast";
 import { launchLearningApp } from "../services/appLaunch";
 import {
@@ -879,6 +880,62 @@ export default function AlchanSidebar({
     };
   }, [isPresident, userDoc?.classCode]);
 
+  // 교사용 담벼락 «새 글» 배지 — 학생이 올렸는데 교사가 아직 안 연 담벼락 수.
+  //   반 전체 판 문서를 한 번 읽는다(학생 수만큼). 탭이 보일 때만 15분 간격 + 교사가 판을 열면 즉시 갱신.
+  const [unreadWallCount, setUnreadWallCount] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || !userDoc?.classCode) {
+      setUnreadWallCount(0);
+      return;
+    }
+    const classCode = userDoc.classCode;
+    let cancelled = false;
+    let seq = 0; // 겹친 요청 중 늦게 끝난 옛 집계가 최신 값을 덮지 않게 — 마지막 요청만 반영
+    const fetchWall = async () => {
+      const mine = ++seq;
+      try {
+        const n = await fetchUnreadBoardCount(firebaseDb, classCode);
+        if (!cancelled && mine === seq) setUnreadWallCount(n);
+      } catch (err) {
+        /* ignore */
+      }
+    };
+    fetchWall();
+    let intervalId = null;
+    const start = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        if (!getIsIdle()) fetchWall();
+      }, 15 * 60 * 1000);
+    };
+    const stop = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchWall();
+        start();
+      } else {
+        stop();
+      }
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", handleVisibility);
+    const onSeen = (e) => {
+      if (e?.detail?.wasUnread) setUnreadWallCount((c) => Math.max(0, c - 1));
+    };
+    window.addEventListener(WALL_SEEN_EVENT, onSeen);
+    return () => {
+      cancelled = true;
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener(WALL_SEEN_EVENT, onSeen);
+    };
+  }, [isAdmin, userDoc?.classCode]);
+
   // 학생용 거래 알림 (세금/월세/월급/송금 등 — '내 자산'에서 확인 전까지 배지 + 세션 1회 요약)
   const [unreadTxCount, setUnreadTxCount] = useState(0);
   useEffect(() => {
@@ -1252,7 +1309,9 @@ export default function AlchanSidebar({
                       badgeCount={
                         child.id === "organizationChart" && isPresident
                           ? pendingGovLawCount
-                          : 0
+                          : child.id === "personalBoard" && isAdmin
+                            ? unreadWallCount
+                            : 0
                       }
                     />
                   );

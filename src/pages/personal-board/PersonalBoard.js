@@ -3,7 +3,11 @@
 //  - 학생: 본인 담벼락에 글(텍스트) 작성, 교사/친구 댓글 확인·답글. 학급공개된 친구 담벼락 열람·댓글.
 //  - 교사: 반 전체 담벼락 목록 열람·댓글, 공개범위(비공개/학급공개) 토글.
 //  - 공개범위는 판 문서(visibility)에 저장하며 교사만 변경. 사진 없음(텍스트 전용).
+//  - 쓰던 글·댓글은 기기(localStorage)에 임시 저장 → 새로고침·탭 전환에도 남는다. 올리면 지운다.
+//  - 학생이 글을 올리면 판 문서 lastPostAt, 교사가 판을 열면 teacherSeenAt → «새 글» 표시·사이드바 배지.
+//  - 남의 판을 열면 주소에 ?board=<uid> 를 남겨, 브라우저·폰 «뒤로가기»가 담벼락 첫 화면으로 돌아온다.
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
 import {
@@ -25,6 +29,8 @@ import {
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { isBoardUnread, WALL_SEEN_EVENT } from "./wallUnread";
+import { useBackClose } from "../../hooks/useBackClose";
 
 // ── 디자인 헬퍼 ─────────────────────────
 const AVATAR_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#14b8a6", "#3b82f6", "#a855f7"];
@@ -80,6 +86,14 @@ const linkify = (text) => {
   );
 };
 
+// 글쓰기 칸 — 6줄에서 시작해 내용만큼 늘어난다(최대 화면 60%). 3줄은 한두 문장만 써도 스크롤이 생겨 좁았다.
+const autoGrow = (el) => {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight + 2, Math.round(window.innerHeight * 0.6))}px`;
+};
+const WRITE_BOX = { width: "100%", minHeight: 150, borderRadius: 12, padding: 12, fontSize: "0.95rem", lineHeight: 1.6, resize: "vertical", outline: "none", boxSizing: "border-box", fontFamily: "inherit" };
+
 const boardsCol = (classCode) => collection(db, "classes", classCode, "personalBoards");
 const boardDoc = (classCode, ownerId) => doc(db, "classes", classCode, "personalBoards", ownerId);
 const postsCol = (classCode, ownerId) => collection(db, "classes", classCode, "personalBoards", ownerId, "posts");
@@ -123,6 +137,50 @@ const PersonalBoard = () => {
 
   const [roster, setRoster] = useState([]);
   const [rosterLoading, setRosterLoading] = useState(false);
+
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const boardParam = searchParams.get("board");
+  // 학생 «학급 담벼락» 탭 — 뒤로가기 = «나의 담벼락»(친구 판 열기는 ?board= 가 따로 맡는다)
+  useBackClose(!isTeacher && studentTab === "class", () => setStudentTab("mine"));
+
+  // ── 쓰던 글 임시 저장(기기에만) ─────────────────────────
+  const draftKey = classCode && currentUserId ? `alchan:wallDraft:${classCode}:${currentUserId}` : null;
+  //   키(=학급·사용자)가 바뀌면 화면의 초안을 그 키의 저장분으로 «갈아끼운다»(없으면 비운다) — 계정이
+  //   바뀌었는데 앞 사람 초안이 남아 새 키에 저장되던 결함 방지. 저장은 복원이 반영된 렌더부터만.
+  const [draftReadyKey, setDraftReadyKey] = useState(null);
+  useEffect(() => {
+    if (!draftKey || draftReadyKey === draftKey) return;
+    let post = "";
+    let comments = {};
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
+      if (saved && typeof saved === "object") {
+        if (typeof saved.post === "string") post = saved.post;
+        if (saved.comments && typeof saved.comments === "object") comments = saved.comments;
+      }
+    } catch {
+      /* 저장소를 못 쓰는 브라우저 — 임시 저장 없이 동작 */
+    }
+    setNewPost(post);
+    setCommentDrafts(comments);
+    setDraftReadyKey(draftKey);
+  }, [draftKey, draftReadyKey]);
+  useEffect(() => {
+    if (!draftKey || draftReadyKey !== draftKey) return;
+    try {
+      const comments = Object.fromEntries(Object.entries(commentDrafts).filter(([, v]) => v && v.trim()));
+      if (!newPost.trim() && Object.keys(comments).length === 0) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, JSON.stringify({ post: newPost, comments }));
+    } catch {
+      /* 저장 실패는 조용히 — 글쓰기 자체는 막지 않는다 */
+    }
+  }, [draftKey, draftReadyKey, newPost, commentDrafts]);
 
   const loadBoardPosts = useCallback(async (ownerId) => {
     if (!classCode || !ownerId) return;
@@ -201,7 +259,9 @@ const PersonalBoard = () => {
     if (studentTab === "class") {
       setViewBoard(null);
       loadClassBoards();
+      if (boardParam) setSearchParams({}, { replace: true });
     } else if (studentTab === "mine") {
+      if (boardParam) setSearchParams({}, { replace: true });
       (async () => {
         const b = await ensureMyBoard();
         if (b) {
@@ -218,13 +278,23 @@ const PersonalBoard = () => {
     if (!content || !viewBoard || submitting) return;
     setSubmitting(true);
     try {
-      await addDoc(postsCol(classCode, viewBoard.ownerId), {
+      const post = {
         content: content.slice(0, 2000),
         authorId: currentUserId,
         authorName: currentUserName,
         isTeacher,
         createdAt: serverTimestamp(),
-      });
+      };
+      if (!isTeacher && viewBoard.ownerId === currentUserId) {
+        // 학생이 자기 판에 올린 글 → 글과 «새 글 시각»(lastPostAt)을 한 번에 쓴다.
+        //   따로 쓰면 시각만 실패했을 때 글은 있는데 교사 배지가 그 글을 놓친다(2026-10-01 교차검증).
+        const batch = writeBatch(db);
+        batch.set(doc(postsCol(classCode, currentUserId)), post);
+        batch.update(boardDoc(classCode, currentUserId), { lastPostAt: serverTimestamp() });
+        await batch.commit();
+      } else {
+        await addDoc(postsCol(classCode, viewBoard.ownerId), post);
+      }
       setNewPost("");
       await loadBoardPosts(viewBoard.ownerId);
     } catch (e) {
@@ -271,6 +341,34 @@ const PersonalBoard = () => {
     }
   };
 
+  const startEdit = (post) => {
+    setEditingId(post.id);
+    setEditDraft(post.content || "");
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft("");
+  };
+  const handleSaveEdit = async (post) => {
+    const content = editDraft.trim();
+    if (!content || !viewBoard || savingEdit) return;
+    if (content === (post.content || "").trim()) return cancelEdit();
+    setSavingEdit(true);
+    try {
+      await updateDoc(doc(db, "classes", classCode, "personalBoards", viewBoard.ownerId, "posts", post.id), {
+        content: content.slice(0, 2000),
+        editedAt: serverTimestamp(),
+      });
+      cancelEdit();
+      await loadBoardPosts(viewBoard.ownerId);
+    } catch (e) {
+      logger.error("[담벼락] 글 수정 오류:", e);
+      toast.error("글을 고치지 못했습니다.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleDeleteComment = async (postId, commentId) => {
     if (!viewBoard) return;
     // 되돌릴 수 없는 삭제 — 글 삭제와 동일하게 확인창 + 실패 안내(P6 UX).
@@ -296,10 +394,69 @@ const PersonalBoard = () => {
     }
   };
 
-  const openBoard = (board) => {
-    setViewBoard(board);
-    loadBoardPosts(board.ownerId);
+  // 교사가 판을 열면 «봤다» 시각을 남긴다(새 글 표시·사이드바 배지 해제)
+  //   «봤음»을 먼저 기록하고 그다음 글을 읽는다 — 거꾸로면 읽은 뒤·기록 전에 올라온 글이 화면엔 없는데 읽음 처리된다.
+  //   사이드바는 반 전체를 다시 읽지 않고 «새 글이던 판 하나 줄이기»만 받는다(판을 넘길 때마다 N건 재조회 방지).
+  const markSeen = async (board) => {
+    if (!isTeacher) return;
+    const wasUnread = isBoardUnread(board);
+    try {
+      await updateDoc(boardDoc(classCode, board.ownerId), { teacherSeenAt: serverTimestamp() });
+      const now = new Date();
+      setRoster((prev) => prev.map((b) => (b.ownerId === board.ownerId ? { ...b, teacherSeenAt: now } : b)));
+      if (wasUnread) window.dispatchEvent(new CustomEvent(WALL_SEEN_EVENT, { detail: { wasUnread: true } }));
+    } catch (e) {
+      logger.error("[담벼락] teacherSeenAt 기록 오류:", e);
+    }
   };
+
+  // fromHistory: 주소(?board=)에서 복원할 때는 기록을 또 쌓지 않는다
+  const openBoard = (board, { fromHistory = false } = {}) => {
+    setViewBoard(board);
+    cancelEdit();
+    markSeen(board).then(() => loadBoardPosts(board.ownerId));
+    if (!fromHistory) setSearchParams({ board: board.ownerId }, { state: { wallPushed: true } });
+  };
+
+  // «← 목록» 단추 = 브라우저 뒤로가기와 같은 길(기록이 어긋나지 않게)
+  //   단, 새로고침·링크로 바로 들어와 우리가 쌓은 기록이 없으면 뒤로 가지 않고(앱 밖으로 나간다) 주소만 지운다.
+  const closeBoard = () => {
+    if (boardParam && location.state?.wallPushed) navigate(-1);
+    else if (boardParam) setSearchParams({}, { replace: true });
+    else setViewBoard(null);
+  };
+
+  // 뒤로가기로 ?board= 가 빠지면 남의 판을 닫고 첫 화면(명단·학급 담벼락)으로
+  const viewingOther = !!viewBoard && (isTeacher || viewBoard.ownerId !== currentUserId);
+  useEffect(() => {
+    if (boardParam || !viewingOther) return;
+    if (!isTeacher && studentTab !== "class") return; // «나의 담벼락» 탭 전환 중엔 탭 이펙트가 맡는다
+    setViewBoard(null);
+    cancelEdit();
+    if (isTeacher) loadRoster();
+    else loadClassBoards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardParam]);
+
+  // 새로고침했는데 주소에 ?board= 가 남아 있으면: 교사는 명단에서 그 판을 다시 열고, 학생은 첫 화면으로
+  useEffect(() => {
+    if (!boardParam || viewBoard?.ownerId === boardParam) return;
+    if (isTeacher) {
+      if (rosterLoading || roster.length === 0) return;
+      const b = roster.find((r) => r.ownerId === boardParam);
+      if (b) openBoard(b, { fromHistory: true });
+      else setSearchParams({}, { replace: true });
+    } else if (!authLoading && classCode) {
+      // 학생: «학급 담벼락» 탭에서 앞으로가기로 친구 판 기록이 돌아오면 그 판을 다시 연다(지우지 않는다)
+      if (studentTab === "class") {
+        if (classBoards.length === 0) return; // 목록을 아직 못 읽었다 — 읽힌 뒤 다시 본다
+        const b = classBoards.find((c) => c.ownerId === boardParam);
+        if (b) return openBoard(b, { fromHistory: true });
+      }
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardParam, viewBoard, isTeacher, roster, rosterLoading, authLoading, classCode, studentTab, classBoards]);
 
   if (authLoading) return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>불러오는 중…</div>;
   if (!classCode) return <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>학급 코드가 설정되어야 담벼락을 이용할 수 있어요.</div>;
@@ -334,11 +491,12 @@ const PersonalBoard = () => {
         <div style={{ ...CARD, padding: 16, marginBottom: 16, background: "linear-gradient(180deg,#fafbff,#ffffff)" }}>
           <textarea
             value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
+            onChange={(e) => { setNewPost(e.target.value); autoGrow(e.target); }}
+            ref={(el) => { if (el && newPost) autoGrow(el); }}
             placeholder="오늘의 이야기, 배운 점, 하고 싶은 말을 자유롭게 적어보세요 ✍️"
             maxLength={2000}
-            rows={3}
-            style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 12, padding: 12, fontSize: "0.95rem", resize: "vertical", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+            rows={6}
+            style={{ ...WRITE_BOX, border: "1px solid #e2e8f0" }}
           />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
             <span style={{ fontSize: "0.72rem", color: "#cbd5e1" }}>{newPost.length}/2000</span>
@@ -366,13 +524,43 @@ const PersonalBoard = () => {
                 <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.92rem" }}>
                   {post.isTeacher ? "선생님" : post.authorName || "이름없음"}
                 </div>
-                <div style={{ color: "#94a3b8", fontSize: "0.74rem" }}>{tsToStr(post.createdAt)}</div>
+                <div style={{ color: "#94a3b8", fontSize: "0.74rem" }}>
+                  {tsToStr(post.createdAt)}
+                  {post.editedAt && <span style={{ marginLeft: 6 }}>(수정됨)</span>}
+                </div>
               </div>
-              {(post.authorId === currentUserId || isTeacher) && (
+              {post.authorId === currentUserId && editingId !== post.id && (
+                <button onClick={() => startEdit(post)} style={{ background: "none", border: "none", color: "#818cf8", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}>수정</button>
+              )}
+              {(post.authorId === currentUserId || isTeacher) && editingId !== post.id && (
                 <button onClick={() => handleDeletePost(post)} style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: "0.78rem" }}>삭제</button>
               )}
             </div>
-            <div style={{ whiteSpace: "pre-wrap", color: "#1e293b", fontSize: "0.95rem", lineHeight: 1.6, paddingLeft: 44 }}>{linkify(post.content)}</div>
+            {editingId === post.id ? (
+              <div style={{ paddingLeft: 44 }}>
+                <textarea
+                  value={editDraft}
+                  onChange={(e) => { setEditDraft(e.target.value); autoGrow(e.target); }}
+                  ref={(el) => { if (el) autoGrow(el); }}
+                  maxLength={2000}
+                  rows={6}
+                  autoFocus
+                  style={{ ...WRITE_BOX, border: "1px solid #c7d2fe" }}
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                  <button onClick={cancelEdit} disabled={savingEdit} style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: "7px 14px", cursor: "pointer", fontWeight: 600, color: "#475569" }}>취소</button>
+                  <button
+                    onClick={() => handleSaveEdit(post)}
+                    disabled={savingEdit || !editDraft.trim()}
+                    style={{ background: "linear-gradient(135deg,#6366f1,#7c3aed)", color: "#fff", border: "none", borderRadius: 10, padding: "7px 16px", fontWeight: 700, cursor: "pointer", opacity: savingEdit || !editDraft.trim() ? 0.5 : 1 }}
+                  >
+                    {savingEdit ? "저장 중…" : "수정 완료"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ whiteSpace: "pre-wrap", color: "#1e293b", fontSize: "0.95rem", lineHeight: 1.6, paddingLeft: 44 }}>{linkify(post.content)}</div>
+            )}
 
             {/* 댓글 */}
             <div style={{ marginTop: 12, paddingLeft: 44 }}>
@@ -439,13 +627,17 @@ const PersonalBoard = () => {
             <EmptyBox emoji="🧑‍🏫" title="아직 담벼락을 시작한 학생이 없어요" desc="학생이 담벼락에 처음 들어가면 여기에 나타납니다." />
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
-              {roster.map((b) => {
+              {[...roster].sort((a, b) => isBoardUnread(b) - isBoardUnread(a)).map((b) => {
                 const v = b.visibility === "class" ? "class" : "private";
+                const unread = isBoardUnread(b);
                 return (
-                  <div key={b.ownerId} style={{ ...CARD, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div key={b.ownerId} style={{ ...CARD, padding: 14, display: "flex", flexDirection: "column", gap: 10, ...(unread ? { borderColor: "#fca5a5" } : null) }}>
                     <button onClick={() => openBoard(b)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
                       <Avatar name={b.ownerName} size={38} />
                       <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.98rem" }}>{b.ownerName || "이름없음"}</span>
+                      {unread && (
+                        <span style={{ marginLeft: "auto", background: "#ef4444", color: "#fff", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>새 글</span>
+                      )}
                     </button>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <VisBadge v={v} />
@@ -459,7 +651,7 @@ const PersonalBoard = () => {
         ) : (
           <>
             <div style={{ ...CARD, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-              <BackBtn onClick={() => { setViewBoard(null); loadRoster(); }} />
+              <BackBtn onClick={closeBoard} />
               <Avatar name={viewBoard.ownerName} size={30} />
               <b style={{ color: "#0f172a" }}>{viewBoard.ownerName || "이름없음"}</b>
               <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>의 담벼락</span>
@@ -522,7 +714,7 @@ const PersonalBoard = () => {
         (viewBoard && viewBoard.ownerId !== currentUserId ? (
           <>
             <div style={{ ...CARD, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <BackBtn onClick={() => setViewBoard(null)} />
+              <BackBtn onClick={closeBoard} />
               <Avatar name={viewBoard.ownerName} size={30} />
               <b style={{ color: "#0f172a" }}>{viewBoard.ownerName || "이름없음"}</b>
               <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>의 담벼락</span>

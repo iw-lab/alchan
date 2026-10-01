@@ -1263,6 +1263,79 @@ const CASES = [
     path: "/plazaApps/a4", method: "create", as: "stu1",
     after: { ownerUid: "stu1", label: "학생앱", url: "https://x.dev/", status: "pending" },
   }),
+  // ── 🧱 담벼락 (2026-10-01 — 글 수정 버튼 · 교사 «새 글» 표시) ─────────────────
+  tc("ALLOW", "🐤 학생이 자기 담벼락 글 본문을 고친다 (content+editedAt)", {
+    path: "/classes/C1/personalBoards/stu1/posts/p1", method: "update", as: "stu1",
+    before: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW },
+    after: { content: "고친 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW, editedAt: NOW },
+  }),
+  tc("DENY", "학생이 자기 글을 «선생님 글»로 바꾼다 (isTeacher 위조)", {
+    path: "/classes/C1/personalBoards/stu1/posts/p1", method: "update", as: "stu1",
+    before: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW },
+    after: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: true, createdAt: NOW, editedAt: NOW },
+  }),
+  tc("DENY", "학생이 자기 글 작성자를 친구로 바꾼다", {
+    path: "/classes/C1/personalBoards/stu1/posts/p1", method: "update", as: "stu1",
+    before: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW },
+    after: { content: "처음 글", authorId: "stu2", authorName: "학생2", isTeacher: false, createdAt: NOW, editedAt: NOW },
+  }),
+  tc("DENY", "학생이 남의 담벼락 글을 고친다", {
+    path: "/classes/C1/personalBoards/stu2/posts/p9", method: "update", as: "stu1",
+    before: { content: "친구 글", authorId: "stu2", authorName: "학생2", isTeacher: false, createdAt: NOW },
+    after: { content: "바꿈", authorId: "stu2", authorName: "학생2", isTeacher: false, createdAt: NOW, editedAt: NOW },
+    actors: ["stu2"],
+  }),
+  tc("DENY", "학생이 자기 글을 빈 글로 고친다", {
+    path: "/classes/C1/personalBoards/stu1/posts/p1", method: "update", as: "stu1",
+    before: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW },
+    after: { content: "", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW, editedAt: NOW },
+  }),
+  tc("DENY", "교사가 학생 글 본문을 몰래 고친다 (수정은 글쓴이만)", {
+    path: "/classes/C1/personalBoards/stu1/posts/p1", method: "update", as: "tch1",
+    before: { content: "처음 글", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW },
+    after: { content: "교사가 고침", authorId: "stu1", authorName: "학생1", isTeacher: false, createdAt: NOW, editedAt: NOW },
+    actors: ["stu1"],
+  }),
+  tc("ALLOW", "🐤 학생이 자기 담벼락에 «새 글 시각»을 남긴다", {
+    path: "/classes/C1/personalBoards/stu1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", ownerName: "학생1", visibility: "private" },
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW },
+  }),
+  tc("DENY", "학생이 새 글 시각과 함께 자기 담벼락을 학급공개로 바꾼다", {
+    path: "/classes/C1/personalBoards/stu1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", ownerName: "학생1", visibility: "private" },
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "class", lastPostAt: NOW },
+  }),
+  tc("DENY", "학생이 «선생님이 봤음»(teacherSeenAt)을 위조한다", {
+    path: "/classes/C1/personalBoards/stu1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW },
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW, teacherSeenAt: NOW },
+  }),
+  tc("DENY", "학생이 새 글 시각을 서버 시각이 아닌 값으로 쓴다", {
+    path: "/classes/C1/personalBoards/stu1", method: "update", as: "stu1",
+    before: { ownerId: "stu1", ownerName: "학생1", visibility: "private" },
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: "2099-01-01T00:00:00Z" },
+  }),
+  tc("DENY", "학생이 친구 담벼락의 새 글 시각을 바꾼다", {
+    path: "/classes/C1/personalBoards/stu2", method: "update", as: "stu1",
+    before: { ownerId: "stu2", ownerName: "학생2", visibility: "class" },
+    after: { ownerId: "stu2", ownerName: "학생2", visibility: "class", lastPostAt: NOW },
+    actors: ["stu2"],
+  }),
+  tc("ALLOW", "🐤 학생이 처음 들어와 자기 담벼락(비공개)을 만든다", {
+    path: "/classes/C1/personalBoards/stu1", method: "create", as: "stu1",
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", createdAt: NOW },
+  }),
+  tc("DENY", "학생이 담벼락을 만들면서 «봤음» 시각을 먼 미래로 심는다 (새 글 표시 영구 숨김)", {
+    path: "/classes/C1/personalBoards/stu1", method: "create", as: "stu1",
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", createdAt: NOW, teacherSeenAt: "2099-01-01T00:00:00Z" },
+  }),
+  tc("ALLOW", "🐤 교사가 학생 담벼락을 열고 «봤음» 시각을 남긴다", {
+    path: "/classes/C1/personalBoards/stu1", method: "update", as: "tch1",
+    before: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW },
+    after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW, teacherSeenAt: NOW },
+    actors: ["stu1"],
+  }),
 ];
 
 // ────────────────────────────────────────────────────────────

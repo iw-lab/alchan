@@ -1501,9 +1501,17 @@ service cloud.firestore {
         allow read: if isOwner(ownerId) || isAdminFast() ||
                        (isSameClassFast(classCode) && resource.data.get('visibility', 'private') == 'class');
         // 생성: 주인 학생 본인(비공개로만) 또는 교사. 학생이 스스로 학급공개로 만들지 못하게 강제.
-        allow create: if (isOwner(ownerId) && request.resource.data.get('visibility', 'private') == 'private') || isAdmin();
-        // 공개범위 변경 등 수정·삭제: 교사만
-        allow update: if isAdmin();
+        //   필드도 정해 둔다 — 생성 때 teacherSeenAt 을 먼 미래로 넣어 «새 글» 표시를 영영 숨기는 우회 차단(2026-10-01 교차검증).
+        allow create: if (isOwner(ownerId) &&
+                          request.resource.data.keys().hasOnly(['ownerId', 'ownerName', 'visibility', 'createdAt']) &&
+                          request.resource.data.get('visibility', 'private') == 'private') || isAdmin();
+        // 공개범위 변경 등 수정·삭제: 교사만.
+        // 예외 — 주인 학생은 «새 글 시각»(lastPostAt)만, 그것도 서버 시각으로만 고칠 수 있다(교사 «새 글» 표시용).
+        //   visibility·teacherSeenAt 등 다른 필드는 못 건드린다(스스로 학급공개·«선생님이 봤음» 위조 차단).
+        allow update: if isAdmin() ||
+                         (isOwner(ownerId) &&
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastPostAt']) &&
+                          request.resource.data.lastPostAt == request.time);
         allow delete: if isAdmin();
 
         // 글: 주인 학생이 자기 담벼락에 작성(교사도 가능)
@@ -1516,7 +1524,14 @@ service cloud.firestore {
                            request.resource.data.authorId == request.auth.uid &&
                            (request.resource.data.get('isTeacher', false) == false || isAdmin()) &&
                            isValidString(request.resource.data.content, 2000);
-          allow update: if isOwner(resource.data.authorId) || isAdmin();
+          // 수정: 글쓴이 본인만, 본문(content)과 수정 시각(editedAt=서버 시각)만.
+          //   authorId·isTeacher·createdAt 은 못 바꾼다 — 이전 규칙은 필드 제한이 없어 학생이 자기 글을
+          //   isTeacher:true(«선생님» 표시)로 바꾸거나 작성자를 남으로 바꿀 수 있었다(2026-10-01 수정).
+          allow update: if isOwner(resource.data.authorId) &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']) &&
+                           isValidString(request.resource.data.content, 2000) &&
+                           request.resource.data.content.size() > 0 &&
+                           request.resource.data.editedAt == request.time;
           allow delete: if isOwner(resource.data.authorId) || isAdmin();
 
           // 댓글: 교사 + 판 주인 학생 + (학급공개면 같은 반 전체)

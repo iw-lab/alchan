@@ -817,6 +817,12 @@ export const AuthProvider = ({ children }) => {
       // 🔥 [읽기 절감 1단계] 세션 쿼리 캐시 전체 비움 — 다음 로그인 사용자에게
       // 이전 세션 데이터가 재서빙되지 않도록(학급 격리 안전핀)
       invalidateFetchCache('');
+      // 담벼락 쓰던 글 초안 — 공용 기기에서 다음 사람에게 남지 않게(2026-10-01 교차검증)
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith("alchan:wallDraft:")).forEach((k) => localStorage.removeItem(k));
+      } catch {
+        /* 저장소 접근 불가 — 무시 */
+      }
       await fbSignOut(auth);
     } catch (error) {
       logger.warn("[AuthContext] logout failed:", error);
