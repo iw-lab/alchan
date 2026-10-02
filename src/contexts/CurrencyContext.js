@@ -9,21 +9,33 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "./AuthContext";
 import { setGlobalCurrencyUnit } from "../utils/numberFormatter";
 import { logger } from "../utils/logger";
-// Dashboard 와 같은 캐시를 공유한다(키 "mainSettings", TTL 12시간).
-// ⚠️ 이 문서를 쓰는 경로가 **둘**이고 둘 다 무효화해야 한다:
-//    ① Dashboard 의 couponValue 저장 → 이미 dataCache.invalidate("mainSettings") 호출
-//    ② AdminSettingsModal 의 handleSaveCurrencyUnit → 2026-08-12 에 추가했다.
-//       처음엔 ①만 보고 "배선 불필요"라고 적었는데, currencyUnit 을 실제로 쓰는 건 ②였다.
-//       그대로 뒀으면 교사가 화폐 단위를 바꿔도 최대 12시간 뒤 옛 값으로 되돌아갔다.
+// 캐시 키 = classCurrency_{classCode}(TTL 12시간). 쓰는 곳(AdminSettingsModal 화폐 단위 저장)이 같은 키를 지운다 —
+//   안 지우면 방금 바꾼 단위가 최대 12시간 옛 값으로 되돌아간다(2026-08-12 교차검증에서 잡힌 회귀와 같은 모양).
 import globalCacheService from "../services/globalCacheService";
+import {
+  DEFAULT_CURRENCY_UNIT,
+  classCurrencyPath,
+  classCurrencyCacheKey,
+  CURRENCY_LS_KEY,
+  validClassCode,
+} from "../utils/classCurrency";
 
-const DEFAULT_CURRENCY_UNIT = "알찬";
+// 🔴 화폐 단위는 «학급별»이다(utils/classCurrency.js 참고). 전역 settings/mainSettings 의 currencyUnit 은
+//    마지막으로 저장한 교사의 반 값일 뿐이라 읽지 않는다 — 학급 설정이 없으면 기본값.
+
+const readLS = () => {
+  try { return JSON.parse(localStorage.getItem(CURRENCY_LS_KEY) || "null"); } catch { return null; }
+};
+const writeLS = (classCode, unit) => {
+  try { localStorage.setItem(CURRENCY_LS_KEY, JSON.stringify({ classCode, unit })); } catch { /* 저장 불가 기기 */ }
+};
 
 const CurrencyContext = createContext({
   currencyUnit: DEFAULT_CURRENCY_UNIT,
@@ -41,62 +53,73 @@ export const useCurrency = () => {
   return context;
 };
 
+// 학급 설정 문서가 아직 없을 때의 캐시는 짧게 — 길게 두면 교사가 처음 단위를 정해도 학생 화면이 12시간 기본값에 묶인다.
+const TTL_SET = 12 * 60 * 60 * 1000, TTL_MISSING = 10 * 60 * 1000;
+
 export const CurrencyProvider = ({ children }) => {
+  const { firebaseReady, user, userDoc } = useAuth();
+  const classCode = user ? validClassCode(userDoc?.classCode) : null;
   const [currencyUnit, setCurrencyUnit] = useState(() => {
-    // 초기값: localStorage 캐시 -> 기본값
-    const cached = localStorage.getItem("alchan_currencyUnit");
-    const initial = cached || DEFAULT_CURRENCY_UNIT;
+    // 초기값: 이 기기 캐시가 «지금 학급» 것일 때만 쓴다(다른 반 값이 첫 화면에 새지 않게). 아니면 기본값.
+    const ls = readLS();
+    const initial = (classCode && ls?.classCode === classCode && ls.unit) || DEFAULT_CURRENCY_UNIT;
     setGlobalCurrencyUnit(initial);
     return initial;
   });
-  const { firebaseReady, user } = useAuth();
+  // 저장 세대 — 저장이 끝나면 올린다. 그보다 먼저 떠난 조회 응답은 상태·캐시에 반영하지 않는다.
+  const genRef = useRef(0);
+  const classRef = useRef(classCode);
+  classRef.current = classCode;
 
   // currencyUnit이 변경될 때마다 전역 변수 동기화
   useEffect(() => {
     setGlobalCurrencyUnit(currencyUnit);
   }, [currencyUnit]);
 
-  // 🔥 [최적화] onSnapshot → getDoc 1회 읽기
-  // localStorage 캐시로 즉시 표시 + 로그인 시 1회 서버 확인으로 최신값 반영
+  // 로그인·학급 확정 시 1회 학급 문서를 읽는다. 학급이 없으면(로그아웃·미지정) 기본값으로 되돌린다.
   useEffect(() => {
-    if (!firebaseReady || !db || !user) return;
+    if (!classCode) { setCurrencyUnit(DEFAULT_CURRENCY_UNIT); return; }
+    if (!firebaseReady || !db) return;
+    let alive = true;
+    const gen = genRef.current;
+    const ls = readLS();
+    setCurrencyUnit(ls?.classCode === classCode && ls.unit ? ls.unit : DEFAULT_CURRENCY_UNIT);
 
     const applyUnit = (data) => {
+      if (!alive || genRef.current !== gen) return;
       const unit = data?.currencyUnit || DEFAULT_CURRENCY_UNIT;
       setCurrencyUnit(unit);
-      localStorage.setItem("alchan_currencyUnit", unit);
+      writeLS(classCode, unit);
     };
 
     const fetchCurrency = async () => {
-      // Dashboard 도 같은 문서를 `mainSettings` 키로 캐싱한다(globalCacheService).
-      // 종전엔 서로를 몰라 그날 첫 세션에 settings/mainSettings 를 두 번 읽었다.
-      // 같은 키를 공유해 먼저 읽는 쪽이 채우고 나중 쪽이 재사용한다.
-      const cached = globalCacheService.get("mainSettings");
-      if (cached) {
-        applyUnit(cached);
-        return;
-      }
+      const key = classCurrencyCacheKey(classCode);
+      const cached = globalCacheService.get(key);
+      if (cached) { applyUnit(cached); return; }
       try {
-        const settingsRef = doc(db, "settings", "mainSettings");
-        const snap = await getDoc(settingsRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          globalCacheService.set("mainSettings", data, 12 * 60 * 60 * 1000);
-          applyUnit(data);
-        }
+        const snap = await getDoc(doc(db, ...classCurrencyPath(classCode)));
+        if (!alive || genRef.current !== gen) return;   // 그사이 저장됐다 — 옛 응답으로 캐시를 채우지 않는다
+        const data = snap.exists() ? snap.data() : {};
+        globalCacheService.set(key, data, data.currencyUnit ? TTL_SET : TTL_MISSING);
+        applyUnit(data);
       } catch (error) {
-        // 에러 시 localStorage 캐시 유지 (이미 초기값으로 설정됨)
-        logger.warn("[CurrencyContext] 설정 로드 실패 (무시):", error.code);
+        // 에러 시 현재 값 유지(이 학급 것이거나 기본값)
+        logger.warn("[CurrencyContext] 화폐 단위 로드 실패 (무시):", error.code);
       }
     };
 
     fetchCurrency();
-  }, [firebaseReady, user]);
+    return () => { alive = false; };
+  }, [firebaseReady, user, classCode]);
 
-  // 로컬 상태만 업데이트 (낙관적 업데이트용, Firestore 저장은 별도)
-  const setCurrencyUnitLocal = useCallback((unit) => {
+  // 저장 완료 후 화면 갱신(Firestore 저장은 AdminSettingsModal). forClass 가 지금 학급이 아니면 무시한다.
+  const setCurrencyUnitLocal = useCallback((unit, forClass) => {
+    const cc = classRef.current;
+    if (!cc || (forClass && forClass !== cc)) return;
+    genRef.current += 1;
+    globalCacheService.set(classCurrencyCacheKey(cc), { currencyUnit: unit }, TTL_SET);
     setCurrencyUnit(unit);
-    localStorage.setItem("alchan_currencyUnit", unit);
+    writeLS(cc, unit);
   }, []);
 
   return (

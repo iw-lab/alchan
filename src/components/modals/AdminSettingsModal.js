@@ -31,6 +31,7 @@ import {
 import { useBatchPaySalaries } from "../../hooks/useOptimizedAdminData";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../services/optimizedFirebaseService";
+import { classCurrencyPath, classCurrencyCacheKey } from "../../utils/classCurrency";
 import globalCacheService from "../../services/globalCacheService";
 import { useBackClose } from "../../hooks/useBackClose";
 
@@ -559,32 +560,26 @@ const AdminSettingsModal = ({
       return;
     }
 
+    if (!userClassCode) {
+      toast.error("학급 정보가 없어 화폐 단위를 저장할 수 없습니다.");
+      return;
+    }
+
     setCurrencyUnitSaving(true);
     try {
-      const settingsRef = firebaseDoc(db, "settings", "mainSettings");
-      await firebaseUpdateDoc(settingsRef, {
-        currencyUnit: tempCurrencyUnit.trim(),
-        updatedAt: serverTimestamp(),
-      }).catch(async () => {
-        // 문서가 없으면 setDoc으로 생성
-        await firebaseSetDoc(
-          settingsRef,
-          {
-            currencyUnit: tempCurrencyUnit.trim(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-      });
+      // 🔴 학급별 문서에 쓴다(utils/classCurrency.js). 종전 전역 settings/mainSettings 에 쓰면
+      //    모든 학급의 화폐 단위가 이 반 값으로 바뀌었다(2026-10-02 다른 반 «복» → 심인수 클래스).
+      await firebaseSetDoc(
+        firebaseDoc(db, ...classCurrencyPath(userClassCode)),
+        { currencyUnit: tempCurrencyUnit.trim(), updatedAt: serverTimestamp() },
+        { merge: true },
+      );
 
-      // ⚠️ globalCacheService 의 `mainSettings` 를 반드시 지운다.
-      //    `setCurrencyUnitLocal` 은 React state 와 localStorage 만 바꾼다. 캐시를 안 지우면
-      //    CurrencyContext 의 fetch effect 가 다시 도는 순간(토큰 갱신 등으로 user 참조가 바뀔 때)
-      //    최대 12시간짜리 옛 캐시를 읽어 **방금 바꾼 화폐 단위가 되돌아간다.**
-      //    (2026-08-12 교차검증에서 잡힌 회귀 — 캐시를 새로 달면 쓰기 경로를 같은 커밋에서 잡는다.)
-      globalCacheService.invalidate("mainSettings");
+      // ⚠️ CurrencyContext 의 캐시를 반드시 지운다 — 안 지우면 fetch effect 가 다시 도는 순간
+      //    최대 12시간짜리 옛 캐시를 읽어 방금 바꾼 화폐 단위가 되돌아간다.
+      globalCacheService.invalidate(classCurrencyCacheKey(userClassCode));
 
-      setCurrencyUnitLocal(tempCurrencyUnit.trim());
+      setCurrencyUnitLocal(tempCurrencyUnit.trim(), userClassCode);   // 저장 중 학급이 바뀌었으면 화면은 건드리지 않는다
       toast.success("화폐 단위가 저장되었습니다.");
     } catch (error) {
       logger.error("화폐 단위 저장 오류:", error);
@@ -592,7 +587,7 @@ const AdminSettingsModal = ({
     } finally {
       setCurrencyUnitSaving(false);
     }
-  }, [tempCurrencyUnit, setCurrencyUnitLocal]);
+  }, [tempCurrencyUnit, setCurrencyUnitLocal, userClassCode]);
 
   // 🔒 메뉴 잠금 로드 (settings/menuLocks_{classCode})
   const loadMenuLocks = useCallback(async () => {

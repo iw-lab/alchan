@@ -806,6 +806,25 @@ const CASES = [
   tc("ALLOW", "🐤 학생이 화폐단위/쿠폰가치를 읽는다 (전역 공용)", {
     path: "/settings/mainSettings", method: "get", as: "stu1", before: { couponValue: 1000 },
   }),
+  // 학급별 화폐 단위(2026-10-02) — 전역 mainSettings.currencyUnit 을 한 반 교사가 바꾸면 전 학급이 바뀌던 문제.
+  //   classSettings/{cc}/settings/display 로 옮겼다: 같은 학급 읽기 · 자기 학급 교사만 쓰기.
+  tc("ALLOW", "🐤 교사가 자기 학급 화폐 단위를 저장한다", {
+    path: "/classSettings/C1/settings/display", method: "create", as: "tch1", after: { currencyUnit: "골드" },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 학급 화폐 단위를 읽는다", {
+    path: "/classSettings/C1/settings/display", method: "get", as: "stu1", before: { currencyUnit: "골드" },
+  }),
+  tc("DENY", "다른 학급 교사가 이 학급 화폐 단위를 바꾼다", {
+    path: "/classSettings/C1/settings/display", method: "update", as: "tch2",
+    before: { currencyUnit: "골드" }, after: { currencyUnit: "복" },
+  }),
+  tc("DENY", "학생이 자기 학급 화폐 단위를 바꾼다", {
+    path: "/classSettings/C1/settings/display", method: "update", as: "stu1",
+    before: { currencyUnit: "골드" }, after: { currencyUnit: "복" },
+  }),
+  tc("DENY", "다른 학급 학생이 이 학급 화폐 단위를 읽는다", {
+    path: "/classSettings/C2/settings/display", method: "get", as: "stu1", before: { currencyUnit: "콩" },
+  }),
   tc("ALLOW", "🐤 학생이 학급코드 목록을 읽는다 (가입 시 코드 검증)", {
     path: "/settings/classCodes", method: "get", as: "stu1", before: { validCodes: ["C1"] },
   }),
