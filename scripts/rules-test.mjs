@@ -825,6 +825,44 @@ const CASES = [
   tc("DENY", "다른 학급 학생이 이 학급 화폐 단위를 읽는다", {
     path: "/classSettings/C2/settings/display", method: "get", as: "stu1", before: { currencyUnit: "콩" },
   }),
+  // 학급별 쿠폰 가치(2026-10-02) — 전역 mainSettings.couponValue 를 3학급이 같이 쓰던 문제.
+  tc("ALLOW", "🐤 교사가 자기 학급 쿠폰 가치를 정한다", {
+    path: "/classSettings/C1/settings/coupon", method: "create", as: "tch1", after: { couponValue: 1500 },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 학급 쿠폰 가치를 읽는다", {
+    path: "/classSettings/C1/settings/coupon", method: "get", as: "stu1", before: { couponValue: 1500 },
+  }),
+  tc("DENY", "다른 학급 교사가 이 학급 쿠폰 가치를 바꾼다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch2",
+    before: { couponValue: 1500 }, after: { couponValue: 999999 },
+  }),
+  tc("DENY", "학생이 자기 학급 쿠폰 가치를 올린다 (현금 발행)", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "stu1",
+    before: { couponValue: 1500 }, after: { couponValue: 999999 },
+  }),
+  tc("DENY", "교사가 쿠폰 가치를 상한(100만) 넘게 정한다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch1",
+    before: { couponValue: 1500 }, after: { couponValue: 1000001 },
+  }),
+  tc("DENY", "교사가 쿠폰 가치를 0 으로 정한다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch1",
+    before: { couponValue: 1500 }, after: { couponValue: 0 },
+  }),
+  tc("DENY", "교사가 쿠폰 가치를 소수로 정한다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch1",
+    before: { couponValue: 1500 }, after: { couponValue: 1500.5 },
+  }),
+  tc("DENY", "교사가 쿠폰 가치를 문자열로 정한다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch1",
+    before: { couponValue: 1500 }, after: { couponValue: "1500" },
+  }),
+  tc("DENY", "교사가 쿠폰 문서에 다른 키를 끼워 넣는다", {
+    path: "/classSettings/C1/settings/coupon", method: "update", as: "tch1",
+    before: { couponValue: 1500 }, after: { couponValue: 1500, bonus: 1 },
+  }),
+  tc("DENY", "다른 학급 학생이 이 학급 쿠폰 가치를 읽는다", {
+    path: "/classSettings/C2/settings/coupon", method: "get", as: "stu1", before: { couponValue: 1500 },
+  }),
   tc("ALLOW", "🐤 학생이 학급코드 목록을 읽는다 (가입 시 코드 검증)", {
     path: "/settings/classCodes", method: "get", as: "stu1", before: { validCodes: ["C1"] },
   }),

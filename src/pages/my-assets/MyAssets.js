@@ -1,4 +1,5 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
+import { fetchClassCouponValue } from "../../utils/classCoupon";
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, {
   useState,
@@ -107,25 +108,22 @@ export default function MyAssets() {
 
   // 🔥 [버그 수정] Firestore에서 쿠폰 가치 설정 로드
   useEffect(() => {
+    // 쿠폰 가치는 학급별(utils/classCoupon.js) — 전역 mainSettings 는 다른 반 교사가 정한 값이었다
+    let alive = true;
     const loadCouponValueFromSettings = async () => {
       try {
-        const settingsRef = doc(db, "settings", "mainSettings");
-        const settingsSnap = await getDoc(settingsRef);
-        if (settingsSnap.exists()) {
-          const settingsData = settingsSnap.data();
-          if (settingsData.couponValue) {
-            setCouponValue(Number(settingsData.couponValue));
-          }
-        }
+        const v = await fetchClassCouponValue(db, currentUserClassCode);
+        if (alive) setCouponValue(v);
       } catch (error) {
         logger.error("[MyAssets] 쿠폰 가치 설정 로드 실패:", error);
       }
     };
 
-    if (userId) {
+    if (userId && currentUserClassCode) {   // 학급이 정해지기 전엔 읽지 않는다(기본값이 먼저 떴다 바뀌는 깜빡임)
       loadCouponValueFromSettings();
     }
-  }, [userId]);
+    return () => { alive = false; };
+  }, [userId, currentUserClassCode]);
 
   const [goalProgress, setGoalProgress] = useState(0);
   const [myContribution, setMyContribution] = useState(0);

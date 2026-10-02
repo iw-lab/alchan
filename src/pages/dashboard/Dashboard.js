@@ -1,4 +1,5 @@
 // src/pages/dashboard/Dashboard.js - Firestore 최적화 버전 + 일일 할일 리셋 기능 + Tailwind UI
+import { classCouponPath, classCouponCacheKey, couponValueFrom, MAX_COUPON_VALUE } from "../../utils/classCoupon";
 import { normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, {
  useState,
@@ -1015,7 +1016,7 @@ function Dashboard({ adminTabMode }) {
  const loadCachedData = useCallback(async (classCode) => {
  const jobsCache = dataCache.get(`jobs_${classCode}`);
  const tasksCache = dataCache.get(`commonTasks_${classCode}`);
- const settingsCache = dataCache.get("mainSettings");
+ const settingsCache = dataCache.get(classCouponCacheKey(classCode));
 
  if (jobsCache) {
  setJobs(jobsCache);
@@ -1024,8 +1025,8 @@ function Dashboard({ adminTabMode }) {
  setCommonTasks(tasksCache);
  }
  if (settingsCache) {
- setCouponValue(settingsCache.couponValue || 1000);
- setAdminCouponValueInput(String(settingsCache.couponValue || 1000));
+ setCouponValue(couponValueFrom(settingsCache));
+ setAdminCouponValueInput(String(couponValueFrom(settingsCache)));
  }
 
  return {
@@ -1083,9 +1084,10 @@ function Dashboard({ adminTabMode }) {
 
  if (!cacheStatus.hasSettingsCache || forceRefresh) {
  promises.push(
- getDoc(doc(db, "settings", "mainSettings")).then((snap) => ({
+ // 쿠폰 가치는 학급별(utils/classCoupon.js) — 전역 mainSettings 는 다른 반 교사가 정한 값이었다
+ getDoc(doc(db, ...classCouponPath(classCode))).then((snap) => ({
  type: "settings",
- data: snap.exists() ? snap.data() : null,
+ data: snap.exists() ? snap.data() : null,   // 없으면 캐시하지 않는다(교사가 처음 정하면 바로 읽히게)
  })),
  );
  }
@@ -1121,12 +1123,16 @@ function Dashboard({ adminTabMode }) {
  results.forEach((result) => {
  switch (result.type) {
  case "settings":
+ if (!result.data) {
+ setCouponValue(couponValueFrom(null));
+ setAdminCouponValueInput(String(couponValueFrom(null)));
+ }
  if (result.data) {
- const newCouponValue = result.data.couponValue || 1000;
+ const newCouponValue = couponValueFrom(result.data);
  setCouponValue(newCouponValue);
  setAdminCouponValueInput(String(newCouponValue));
  dataCache.set(
- "mainSettings",
+ classCouponCacheKey(classCode),
  result.data,
  CACHE_TTL.SETTINGS,
  );
@@ -2134,14 +2140,20 @@ function Dashboard({ adminTabMode }) {
  const newGoal = parseInt(adminGoalAmountInput, 10);
  const newValue = parseInt(adminCouponValueInput, 10);
 
- if (isNaN(newGoal) || newGoal <= 0 || isNaN(newValue) || newValue <= 0) {
- toast.error("올바른 목표 금액과 쿠폰 가치를 입력하세요 (0보다 큰 숫자).");
+ if (isNaN(newGoal) || newGoal <= 0 || isNaN(newValue) || newValue <= 0 || newValue > MAX_COUPON_VALUE) {
+ toast.error(`올바른 목표 금액과 쿠폰 가치를 입력하세요 (쿠폰 가치 1 ~ ${MAX_COUPON_VALUE.toLocaleString()}).`);
+ return;
+ }
+ const myClass = userDoc?.classCode;
+ if (!myClass || myClass === "미지정") {
+ toast.error("학급 정보가 없어 쿠폰 가치를 저장할 수 없습니다.");
  return;
  }
 
  setAppLoading(true);
  try {
- const settingsRef = doc(db, "settings", "mainSettings");
+ // 이 학급의 쿠폰 가치만 바꾼다(utils/classCoupon.js) — 전역 문서에 쓰면 모든 학급이 바뀌었다
+ const settingsRef = doc(db, ...classCouponPath(myClass));
  const settingsSnap = await getDoc(settingsRef);
 
  if (
@@ -2185,7 +2197,7 @@ function Dashboard({ adminTabMode }) {
  toast.success("관리자 설정이 저장되었습니다.");
 
  // 캐시 무효화
- dataCache.invalidate("mainSettings");
+ dataCache.invalidate(classCouponCacheKey(myClass));
  if (currentGoalId) {
  dataCache.invalidate(`goal_${currentGoalId}`);
  }

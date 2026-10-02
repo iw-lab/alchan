@@ -129,6 +129,13 @@ service cloud.firestore {
              request.resource.data.lastActiveAt <= request.time;
     }
 
+    function isValidClassCoupon() {
+      return request.resource.data.keys().hasOnly(['couponValue', 'updatedAt']) &&
+             request.resource.data.couponValue is int &&
+             request.resource.data.couponValue >= 1 &&
+             request.resource.data.couponValue <= 1000000;
+    }
+
     function isOwnClassGoal(goalId) {
       return isSuperAdmin() ||
              (getUserClassCode() is string &&
@@ -2100,7 +2107,12 @@ service cloud.firestore {
       // 급여 등 세부 설정 서브컬렉션 (classSettings/{classCode}/settings/{settingId})
       match /settings/{settingId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow write: if isClassAdmin(classCode); // 🏫 Phase1: classCode=상위 경로 바인딩
+        // 🏫 Phase1: classCode=상위 경로 바인딩.
+        // 💰 coupon(학급별 쿠폰 가치, 2026-10-02 전역 mainSettings 에서 분리) — 쿠폰 1개가 현금이 되는 비율이라
+        //    값까지 묶는다: 정수 1 ~ 1,000,000, 키는 couponValue·updatedAt 만(functions/classCoupon.js 와 같은 상한).
+        allow create, update: if isClassAdmin(classCode) &&
+                                 (settingId != 'coupon' || isValidClassCoupon());
+        allow delete: if isClassAdmin(classCode) && settingId != 'coupon';
       }
     }
 

@@ -50,6 +50,7 @@ const {
 } = require("./salaryUtils");
 // 금액·가격 가드 단일 진실원(순수) — 같은 구멍에 두 번 뚫려서 모듈로 뽑았다.
 const { isValidStockPrice, isSafeAmount, MAX_MONEY } = require("./moneyGuards");
+const { classCouponRef, couponValueFrom, readClassCouponValue } = require("./classCoupon");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -1129,7 +1130,8 @@ exports.donateCoupon = onCall(
     }
     const userRef = db.collection("users").doc(uid);
     const goalRef = db.collection("goals").doc(`${classCode}_goal`);
-    const mainSettingsRef = db.collection("settings").doc("mainSettings");
+    // 쿠폰 가치는 학급별(classCoupon.js) — 전역 mainSettings 를 읽으면 다른 반 교사가 정한 값으로 계산됐다
+    const couponRef = classCouponRef(db, classCode);
 
     // 관리자(선생님) 계정 조회
     let adminRef = null;
@@ -1145,7 +1147,7 @@ exports.donateCoupon = onCall(
           transaction,
           idempotencyKey ? `${uid}_${idempotencyKey}` : null,
         );
-        const refs = [userRef, goalRef, mainSettingsRef];
+        const refs = [userRef, goalRef, couponRef];
         if (adminRef) refs.push(adminRef);
         const docs = await transaction.getAll(...refs);
         const [userDoc, goalDoc, settingsDoc] = docs;
@@ -1169,7 +1171,7 @@ exports.donateCoupon = onCall(
         }
 
         // 쿠폰 가치 계산
-        const couponValue = settingsDoc.exists ? settingsDoc.data().couponValue : 1000;
+        const couponValue = couponValueFrom(settingsDoc);
         const cashToAdmin = amount * couponValue;
 
         transaction.set(
@@ -1335,18 +1337,18 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
     );
   }
   const userRef = db.collection("users").doc(uid);
-  const mainSettingsRef = db.collection("settings").doc("mainSettings");
   try {
     await db.runTransaction(async (transaction) => {
       // 🔒 1-3(2026-07-20): 서버 멱등키 — 동일 요청(같은 idempotencyKey)의 재전송(SDK/네트워크
       //   재시도·두 탭)만 dedup해 쿠폰 이중 현금화를 막는다. 클릭마다 새 uuid라 사용자의 '별개
       //   클릭'은 못 막고 그건 클라 lock(actionLockRef)이 담당. optional(옛 PWA 캐시 클라 호환·없으면 no-op).
       const keyRef = await checkIdempotent(transaction, idempotencyKey);
-      const [userDoc, settingsDoc] = await transaction.getAll(
-        userRef,
-        mainSettingsRef,
-      );
+      const userDoc = await transaction.get(userRef);
       if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
+      // 쿠폰 가치는 «판매하는 학생의 학급» 값(classCoupon.js). 학급이 없으면 현금화하지 않는다.
+      const sellerClass = userDoc.data().classCode;
+      if (!sellerClass || typeof sellerClass !== "string") throw new Error("학급 정보가 없어 쿠폰을 판매할 수 없습니다.");
+      const settingsDoc = await transaction.get(classCouponRef(db, sellerClass));
       // 🔒 batch7-b(codex HIGH #2): coupons 잔액 엄격 검증 — 과거 위조로 Infinity/문자열/음수가 남아 있으면
       //   `< amount`를 통과해 무한 현금화된다(rules 잠금은 향후 write만 막고 기존값은 정리 안 함). 유한 안전정수만 허용.
       const rawCoupons = userDoc.data().coupons ?? 0;
@@ -1359,9 +1361,7 @@ exports.sellCoupon = onCall({ region: "asia-northeast3" }, async (request) => {
       }
       const currentCoupons = rawCoupons;
       if (currentCoupons < amount) throw new Error("보유한 쿠폰이 부족합니다.");
-      const couponValue = settingsDoc.exists
-        ? settingsDoc.data().couponValue
-        : 1000;
+      const couponValue = couponValueFrom(settingsDoc);
       const cashGained = amount * couponValue;
       transaction.update(userRef, {
         coupons: admin.firestore.FieldValue.increment(-amount),
@@ -11232,9 +11232,6 @@ exports.migrateDonationCashToAdmin = onRequest(
     }
 
     try {
-      // 쿠폰 가치 조회
-      const settingsDoc = await db.collection("settings").doc("mainSettings").get();
-      const couponValue = settingsDoc.exists ? settingsDoc.data().couponValue : 1000;
 
       // 모든 goals 문서 조회
       const goalsSnap = await db.collection("goals").get();
@@ -11256,6 +11253,7 @@ exports.migrateDonationCashToAdmin = onRequest(
         }
 
         const adminRef = adminSnap.docs[0].ref;
+        const couponValue = await readClassCouponValue(db, classCode);   // 학급별(classCoupon.js)
         const cashToAdd = totalDonated * couponValue;
 
         await adminRef.update({
@@ -11276,7 +11274,7 @@ exports.migrateDonationCashToAdmin = onRequest(
         );
       }
 
-      res.json({ success: true, couponValue, results });
+      res.json({ success: true, results });
     } catch (error) {
       logger.error("[migrateDonationCash] 실패:", error);
       res.status(500).json({ error: error.message });

@@ -5,6 +5,7 @@
  */
 
 const { db, admin, logger, findApprovedAdminSnap, bumpCatalogVersion } = require("./utils");
+const { classCouponRef, couponValueFrom } = require("./classCoupon");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -414,9 +415,10 @@ async function executeTaxExtra(classCode, params) {
   // === 학급 공통 데이터 1회 로드 (쿠폰가치, 주식시세, 부동산 전체) ===
   // 🔒 학급 **공통** 입력은 fail-open 하면 안 된다(2026-08-12 codex CRITICAL).
   //    쿠폰가치·주식시세·부동산이 빈 값이면 전원의 과세표준이 통째로 틀어진다.
-  //    mainSettings 만 예외 — 없으면 기본 쿠폰가치 1000 을 쓰는 게 정상 동작이다.
-  const [mainSettingsSnap, stockListSnap, realEstateSnap] = await Promise.all([
-    db.doc("settings/mainSettings").get().catch(() => null),
+  //    학급 쿠폰가치 문서가 «없으면» 기본 1000 이 정상(classCoupon.js, 학급별) — 하지만 «읽기 실패»는 전파한다.
+  //    예전엔 .catch(() => null) 로 삼켜 실제 1500 인 반을 1000 으로 과세할 수 있었다(2026-10-02 교차검증 gemini).
+  const [couponSnap, stockListSnap, realEstateSnap] = await Promise.all([
+    classCouponRef(db, classCode).get(),
     // 주식 시세: 정식 소스 CentralStocks의 전역 스냅샷(realStockService 갱신).
     // 과거 classes/{classCode}/stocks/stockList 는 write가 없는 죽은 경로라 항상 비어
     // 주식이 과세 순자산에서 누락되던 버그를 차단한다.
@@ -424,9 +426,7 @@ async function executeTaxExtra(classCode, params) {
     db.collection(`classes/${classCode}/realEstateProperties`).get(), // 실패 시 전파
   ]);
 
-  const couponValue =
-    (mainSettingsSnap && mainSettingsSnap.exists &&
-      Number(mainSettingsSnap.data().couponValue)) || 1000;
+  const couponValue = couponValueFrom(couponSnap);
   const stocks =
     stockListSnap && stockListSnap.exists && Array.isArray(stockListSnap.data().stocks)
       ? stockListSnap.data().stocks

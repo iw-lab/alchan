@@ -26,6 +26,7 @@ const {
 } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { checkAuthAndGetUserData, findApprovedAdminSnap, db, admin, logger } = require("./utils");
+const { classCouponRef, couponValueFrom } = require("./classCoupon");
 const {
   updateRealStockPrices,
   createRealStocks,
@@ -3146,13 +3147,10 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
         logger.warn(`[부동산세] ${classCode}: 주식 목록 조회 실패`, err.message);
       }
 
-      // 쿠폰 가치(순자산 계산에 필요) — settings/mainSettings 에서 1회 조회
+      // 쿠폰 가치(순자산 계산에 필요) — 이 학급의 값(classCoupon.js). 전역 mainSettings 는 다른 반 값이었다.
       let couponValue = 1000;
       try {
-        const msSnap = await db.doc("settings/mainSettings").get();
-        if (msSnap.exists && Number(msSnap.data().couponValue)) {
-          couponValue = Number(msSnap.data().couponValue);
-        }
+        couponValue = couponValueFrom(await classCouponRef(db, classCode).get());
       } catch (err) {
         logger.warn(`[부동산세] ${classCode}: 쿠폰가치 조회 실패 - 기본값 1000`, err.message);
       }
