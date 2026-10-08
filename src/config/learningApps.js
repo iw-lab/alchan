@@ -153,6 +153,9 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-10-01 추가 — 3D 서울 탐방(초등 3~6 사회 «실제 도시의 모습»). 진짜 서울을 하늘 지도에서 보고 58곳에 내려가 걸으며 관찰·질문(1,840문항)·사진을 모은다.
   //   지하철·한강버스로 이동, 문구의 사실은 출처 원장으로 관리. 계정·개인정보 없음(진행은 기기에만 저장).
   { id: "siteDosiTambang",       label: "도시 탐방대(3D 서울 탐방)", icon: "Building2",  url: "https://dosi-tambang-9wd.pages.dev/" },
+  // 2026-10-08 추가 — 박자에 맞춰 장애물을 뛰어넘는 원터치 리듬 점프(지오메트리 대시류). 판 안에선 퀴즈가 안 뜨고,
+  //   수학·영단어 문제를 풀어 모은 배터리로 논다. 20판 + 끝없는 길(무한 단계), 학교 대항(학교 합계만 — 이름·반 없음).
+  { id: "siteKongkongSongRoad",  label: "콩콩 노래길(리듬 점프)",    icon: "Music",      url: "https://hopsody.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
