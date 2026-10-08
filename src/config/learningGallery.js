@@ -12,7 +12,7 @@ export const LEARNING_GALLERY = {
   siteAraharu: {"image": "/images/learning/araharu.webp", "tagline": "매일 아침, 알아가는 즐거움"},
   siteMathCastle: {"image": "/images/learning/mathcastle.webp", "tagline": "문제를 맞혀 마법을 쏘는 수학 타워 디펜스"},
   siteGuguGuardians: {"image": "/images/learning/gugu.webp", "tagline": "계산이 빨라질수록 내 군대가 강해진다"},
-  siteChromaFall: {"image": "/images/learning/chromafall.webp", "tagline": "색을 섞어 터뜨리는 낙하 퍼즐"},
+  siteChromaFall: {"image": "/images/learning/chromafall.webp", "tagline": "떨어지는 블록, 1/2·0.5·50% 같은 값이면 펑!"},
   siteKongkongVolley: {"image": "/images/learning/kongkong.webp", "tagline": "3개 키만 알면 되는데, 옆사람과 30분을 싸우게 되는 배구"},
   siteKeywordSchool: {"image": "/images/learning/keywordschool.webp", "tagline": "배움이 곧 열쇠"},
   siteReloadArena: {"image": "/images/learning/reloadarena.webp", "tagline": "물감은 시간으로도 돈으로도 안 나온다 — 문제를 맞혀야 충전된다"},

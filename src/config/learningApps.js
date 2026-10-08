@@ -61,7 +61,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteGuguGuardians",     label: "구구성 수호대(구구단)",   icon: "Shield",     url: "https://gugu-guardians.pages.dev/" },
   // 레지스트리에만 있고 여기 없어서 **폴백이 낡아 있었다**(2026-08-22 씨앗 가드가 잡았다).
   // 레지스트리를 못 읽는 날엔 학생 사이드바에서 이 앱만 사라졌다.
-  { id: "siteChromaFall",        label: "크로마폴(색채 퍼즐)",      icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
+  { id: "siteChromaFall",        label: "분수 블록 팡(낙하 퍼즐)",  icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
   { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
   // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
