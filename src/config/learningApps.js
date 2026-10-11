@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -61,7 +61,8 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteGuguGuardians",     label: "구구성 수호대(구구단)",   icon: "Shield",     url: "https://gugu-guardians.pages.dev/" },
   // 레지스트리에만 있고 여기 없어서 **폴백이 낡아 있었다**(2026-08-22 씨앗 가드가 잡았다).
   // 레지스트리를 못 읽는 날엔 학생 사이드바에서 이 앱만 사라졌다.
-  { id: "siteChromaFall",        label: "분수 블록 팡(낙하 퍼즐)",  icon: "Gamepad2",   url: "https://chromafall.pages.dev/" },
+  // 2026-10-11 크로마폴(분수 블록 팡) → 새 게임 «딱1 로켓»(합이 딱 1이면 발사) · 새 주소. id 는 그대로(정책·보상 기록).
+  { id: "siteChromaFall",        label: "딱1 로켓(분수 덧셈)",     icon: "Rocket",     url: "https://ttak1-rocket.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
   { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
   // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
