@@ -52,7 +52,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/coloring" },
   { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://papersky.pages.dev/" },
   { id: "siteSeulgisem",         label: "슬기셈(수학)",           icon: "Calculator", url: "https://word-e329c.web.app" },
-  { id: "siteNumeroQuest",       label: "칸채움",                 icon: "Grid3x3",    url: "https://numero-quest.pages.dev" },
+  { id: "siteNumeroQuest",       label: "칸채움",                 icon: "Grid3x3",    url: "https://kanchaeum.pages.dev/" },
   { id: "siteTypingverse",       label: "타이핑버스",             icon: "Keyboard",   url: "https://typingverse.pages.dev" },
   { id: "siteEchoTale",          label: "에코테일(영어)",         icon: "BookOpen",   url: "https://echotale.simssijjang-d79.workers.dev/" },
   { id: "siteVocawormDefense",   label: "보카웜 디펜스(영어단어)", icon: "Gamepad2",   url: "https://vocaworm-defense.vercel.app/" },

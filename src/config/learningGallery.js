@@ -5,7 +5,7 @@ export const LEARNING_GALLERY = {
   siteArtOn: {"image": "/images/learning/arton.webp", "tagline": "로그인 없이 바로 색칠하는 도안 라이브러리"},
   siteNarae: {"image": "/images/learning/papersky.webp", "tagline": "종이비행기를 날려 보드를 비우는 원터치 퍼즐"},
   siteSeulgisem: {"image": "/images/learning/seulgisem.webp", "tagline": "내 수준에 맞춰 매일 10문제씩"},
-  siteNumeroQuest: {"image": "/images/learning/numeroquest.webp", "tagline": "매일 새로운 도전, 매일 더 강해지는 두뇌"},
+  siteNumeroQuest: {"image": "/images/learning/numeroquest.webp", "tagline": "4×4부터 9×9까지 — 타임어택·서바이벌·대각선 스도쿠"},
   siteTypingverse: {"image": "/images/learning/typingverse.webp", "tagline": "손끝으로 여는 무한한 세계"},
   siteEchoTale: {"image": "/images/learning/echotale.webp", "tagline": "AI가 읽어주는 단계별 영어 그림책"},
   siteVocawormDefense: {"image": "/images/learning/vocaworm.webp", "tagline": "단어를 맞히면 포탄이 나가는 학습 디펜스 게임"},
