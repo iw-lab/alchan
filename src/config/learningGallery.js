@@ -8,7 +8,7 @@ export const LEARNING_GALLERY = {
   siteNumeroQuest: {"image": "/images/learning/numeroquest.webp", "tagline": "4×4부터 9×9까지 — 타임어택·서바이벌·대각선 스도쿠"},
   siteTypingverse: {"image": "/images/learning/typingverse.webp", "tagline": "손끝으로 여는 무한한 세계"},
   siteEchoTale: {"image": "/images/learning/echotale.webp", "tagline": "AI가 읽어주는 단계별 영어 그림책"},
-  siteVocawormDefense: {"image": "/images/learning/vocaworm.webp", "tagline": "단어를 맞히면 포탄이 나가는 학습 디펜스 게임"},
+  siteVocawormDefense: {"image": "/images/learning/vocaworm.webp", "tagline": "단어 맞혀 거대 책벌레 막기! 우리 학교 이름 걸고 하는 영어 디펜스"},
   siteAraharu: {"image": "/images/learning/araharu.webp", "tagline": "매일 아침, 알아가는 즐거움"},
   siteMathCastle: {"image": "/images/learning/mathcastle.webp", "tagline": "문제를 맞혀 마법을 쏘는 수학 타워 디펜스"},
   siteGuguGuardians: {"image": "/images/learning/gugu.webp", "tagline": "계산이 빨라질수록 내 군대가 강해진다"},
