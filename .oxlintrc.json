@@ -6,7 +6,6 @@
   ],
   "ignorePatterns": [
     "build/**",
-    "dataconnect-generated/**",
     "scripts/**"
   ],
   "rules": {
