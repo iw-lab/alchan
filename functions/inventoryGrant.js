@@ -1,7 +1,7 @@
 /**
  * 인벤토리 지급 대상 확정·쓰기 — 아이템 시장(구매·취소복원·제안수락) 공용.
  *
- * 왜 모듈로 뺐나: 같은 20줄이 `buyMarketItem`·`cancelMarketSale`·`respondToOffer` 세 곳에
+ * 왜 모듈로 뺐나: 같은 20줄이 `buyMarketItem`·`cancelMarketSale`·`respondToOffer`(2026-10-14 제거) 세 곳에
  * 복붙돼 있었고, 세 사본이 **똑같이** 세 가지를 틀렸다(2026-09-15 교차검증에서 4계열이
  * 독립적으로 같은 지점을 지목).
  *

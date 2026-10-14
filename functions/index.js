@@ -49,7 +49,7 @@ const {
   isPayableTarget,
 } = require("./salaryUtils");
 // 금액·가격 가드 단일 진실원(순수) — 같은 구멍에 두 번 뚫려서 모듈로 뽑았다.
-const { isValidStockPrice, isSafeAmount, MAX_MONEY } = require("./moneyGuards");
+const { isValidMoney, isValidStockPrice, isSafeAmount, MAX_MONEY } = require("./moneyGuards");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
@@ -5681,7 +5681,6 @@ exports.getItemContextData = onCall(
         storeItemsSnapshot,
         userItemsSnapshot,
         marketListingsSnapshot,
-        marketOffersSnapshot,
       ] = await Promise.all([
         db.collection("storeItems").where("classCode", "==", classCode).get(),
         db.collection("users").doc(uid).collection("inventory").get(),
@@ -5689,11 +5688,6 @@ exports.getItemContextData = onCall(
           .collection("marketListings")
           .where("classCode", "==", classCode)
           .where("status", "==", "active")
-          .get(),
-        db
-          .collection("marketOffers")
-          .where("sellerId", "==", uid)
-          .where("status", "==", "pending")
           .get(),
       ]);
 
@@ -5738,24 +5732,12 @@ exports.getItemContextData = onCall(
           return bTime - aTime;
         });
 
-      const marketOffers = marketOffersSnapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .sort((a, b) => {
-          const aTime = a.offeredAt?.toMillis() || 0;
-          const bTime = b.offeredAt?.toMillis() || 0;
-          return bTime - aTime;
-        });
-
       return {
         success: true,
         data: {
           storeItems,
           userItems,
           marketListings,
-          marketOffers,
         },
       };
     } catch (error) {
@@ -6780,7 +6762,8 @@ exports.useUserItem = onCall({ region: "asia-northeast3" }, async (request) => {
   // 🔒 [보안] NaN 방어: quantityToUse가 문자열/객체면 Math.max(1, Math.floor(NaN))=NaN이라
   // (Math.max는 NaN을 1로 보정하지 못함) 이후 cash effect가 increment(NaN)으로 커밋돼
   // 사용자 cash가 영구 NaN 오염된다. 정수 검증으로 원천 차단.
-  const qty = Number(quantityToUse);
+  //   숫자 타입만 — Number(true)=1 · Number([2])=2 같은 강제 변환으로 통과시키지 않는다(2026-10-14 퍼징).
+  const qty = typeof quantityToUse === "number" ? quantityToUse : NaN;
   if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
     throw new HttpsError("invalid-argument", "사용 수량은 1~100 사이의 정수여야 합니다.");
   }
@@ -6919,7 +6902,7 @@ exports.giftItem = onCall({ region: "asia-northeast3" }, async (request) => {
   if (!idempotencyKey || typeof idempotencyKey !== "string") {
     throw new HttpsError("invalid-argument", "idempotencyKey가 필요합니다.");
   }
-  const qty = Number(quantity);
+  const qty = typeof quantity === "number" ? quantity : NaN; // true·"2"·[2] 강제 변환 금지
   if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
     throw new HttpsError("invalid-argument", "선물 수량은 1~100 사이의 정수여야 합니다.");
   }
@@ -7411,9 +7394,7 @@ exports.listUserItemForSale = onCall(
       !Number.isFinite(quantity) ||
       !Number.isInteger(quantity) ||
       quantity <= 0 ||
-      typeof price !== "number" ||
-      !Number.isFinite(price) ||
-      price <= 0
+      !isValidMoney(price) // 정수 1~100억 — 0.5원 등록은 거래 시 현금을 소수로 오염시킨다
     ) {
       throw new HttpsError(
         "invalid-argument",
@@ -8251,6 +8232,10 @@ exports.buyMarketItem = onCall(
         }
 
         const buyerData = buyerDoc.data();
+        // 저장된 판매가 재검증 — 3차 봉인(2026-10-14) 전에 소수 가격으로 등록된 매물이 남아 있을 수 있다
+        if (!isValidMoney(listingData.price)) {
+          throw new Error("판매 가격이 올바르지 않은 매물입니다. 판매자에게 다시 등록을 요청하세요.");
+        }
         const totalPrice = listingData.price * listingData.quantity;
 
         if (buyerData.cash < totalPrice) {
@@ -8462,383 +8447,6 @@ exports.cancelMarketSale = onCall(
   },
 );
 
-exports.makeOffer = onCall(
-  {
-    region: "asia-northeast3",
-    cors: true,
-  },
-  async (request) => {
-    const { uid, userData } = await checkAuthAndGetUserData(request);
-    const { listingId, offerPrice, quantity = 1 } = request.data;
-
-    // 🔒 offerPrice/quantity 엄격검사 — 문자열/음수/Infinity/NaN/비정수 세탁 차단
-    //   (rules로 offer 클라 write를 봉인했지만 서버 money 계산 방어를 이중으로 둠).
-    if (!listingId) {
-      throw new HttpsError("invalid-argument", "판매 ID를 입력해야 합니다.");
-    }
-    if (
-      typeof offerPrice !== "number" ||
-      !Number.isFinite(offerPrice) ||
-      offerPrice <= 0 ||
-      typeof quantity !== "number" ||
-      !Number.isFinite(quantity) ||
-      !Number.isInteger(quantity) ||
-      quantity <= 0
-    ) {
-      throw new HttpsError(
-        "invalid-argument",
-        "유효한 제안 가격/수량을 입력해야 합니다.",
-      );
-    }
-
-    const listingRef = db.collection("marketListings").doc(listingId);
-    const offersRef = db.collection("marketOffers");
-
-    try {
-      const listingDoc = await listingRef.get();
-
-      if (!listingDoc.exists) {
-        throw new Error("판매 정보를 찾을 수 없습니다.");
-      }
-
-      const listingData = listingDoc.data();
-
-      if (listingData.status !== "active") {
-        throw new Error("현재 판매 중인 아이템이 아닙니다.");
-      }
-
-      if (listingData.sellerId === uid) {
-        throw new Error("자신이 판매한 아이템에는 제안할 수 없습니다.");
-      }
-
-      // 🔒 학급 격리 — 다른 학급의 리스팅에는 제안 불가(학급별 경제 분리). fail-closed.
-      if (
-        !listingData.classCode ||
-        listingData.classCode !== userData.classCode
-      ) {
-        throw new Error("다른 학급의 판매 아이템에는 제안할 수 없습니다.");
-      }
-
-      // 🔒 제안 수량이 리스팅 재고를 초과할 수 없음 (수락 시 offer.quantity로 인벤토리
-      //   increment하므로, 상한 없으면 아이템 mint). fail-closed: quantity가 유효한 숫자가
-      //   아니면 스킵이 아니라 즉시 거부(quantity 부재 문서에서 상한 우회 방지).
-      if (
-        typeof listingData.quantity !== "number" ||
-        !Number.isFinite(listingData.quantity) ||
-        quantity > listingData.quantity
-      ) {
-        throw new Error("제안 수량이 판매 수량을 초과할 수 없습니다.");
-      }
-
-      // 새 제안 생성
-      const newOfferRef = offersRef.doc();
-      await newOfferRef.set({
-        listingId: listingId,
-        buyerId: uid,
-        buyerName: userData.name,
-        sellerId: listingData.sellerId,
-        sellerName: listingData.sellerName,
-        itemId: listingData.itemId,
-        itemName: listingData.name,
-        originalPrice: listingData.price,
-        offerPrice: offerPrice,
-        quantity: quantity,
-        status: "pending",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return {
-        success: true,
-        message: "가격 제안이 전송되었습니다.",
-        offerId: newOfferRef.id,
-      };
-    } catch (error) {
-      logger.error(`[makeOffer] Error for user ${uid}:`, error);
-      throw new HttpsError(
-        "aborted",
-        error.message || "가격 제안에 실패했습니다.",
-      );
-    }
-  },
-);
-
-exports.respondToOffer = onCall(
-  {
-    region: "asia-northeast3",
-    cors: true,
-  },
-  async (request) => {
-    const { uid, userData } = await checkAuthAndGetUserData(request);
-    const { offerId, response, idempotencyKey } = request.data;
-
-    if (!offerId || !response || !["accept", "reject"].includes(response)) {
-      throw new HttpsError(
-        "invalid-argument",
-        "유효한 제안 ID와 응답(accept/reject)을 입력해야 합니다.",
-      );
-    }
-
-    const offerRef = db.collection("marketOffers").doc(offerId);
-
-    try {
-      // 세금 설정 및 관리자 정보 사전 조회 (트랜잭션 외부)
-      const govSettingsDoc = await db
-        .collection("governmentSettings")
-        .doc(userData.classCode)
-        .get();
-      const taxSettings = govSettingsDoc.exists
-        ? govSettingsDoc.data()?.taxSettings
-        : {};
-      const itemMarketTaxRate =
-        taxSettings?.itemMarketTransactionTaxRate || 0.03;
-
-      const adminQuery = await findApprovedAdminSnap(userData.classCode);
-      const adminDocRef = adminQuery.empty ? null : adminQuery.docs[0].ref;
-
-      await db.runTransaction(async (transaction) => {
-        // 🚨 서버측 idempotency check (read만)
-        const idemKeyRef = await checkIdempotent(transaction, idempotencyKey);
-
-        const offerDoc = await transaction.get(offerRef);
-
-        if (!offerDoc.exists) {
-          throw new Error("제안 정보를 찾을 수 없습니다.");
-        }
-
-        const offerData = offerDoc.data();
-
-        if (offerData.sellerId !== uid) {
-          throw new Error(
-            "본인의 판매 아이템에 대한 제안만 응답할 수 있습니다.",
-          );
-        }
-
-        if (offerData.status !== "pending") {
-          throw new Error("이미 처리된 제안입니다.");
-        }
-
-        if (response === "accept") {
-          // 제안 수락 - buyMarketItem과 유사한 로직
-          const listingRef = db
-            .collection("marketListings")
-            .doc(offerData.listingId);
-          const buyerRef = db.collection("users").doc(offerData.buyerId);
-          const sellerRef = db.collection("users").doc(offerData.sellerId);
-
-          const listingDoc = await transaction.get(listingRef);
-          if (!listingDoc.exists || listingDoc.data().status !== "active") {
-            throw new Error(
-              "해당 판매 아이템을 찾을 수 없거나 이미 판매되었습니다.",
-            );
-          }
-
-          const buyerDoc = await transaction.get(buyerRef);
-          if (!buyerDoc.exists) {
-            throw new Error("구매자 정보를 찾을 수 없습니다.");
-          }
-
-          // 🔒 저장된 offer 값 재검증 — 과거 위조 update(음수/Infinity/비정수 offerPrice·quantity)로
-          //   남아있을 수 있는 문서를 수락 시점에 차단(음수 totalPrice → 현금 mint 방지).
-          const oPrice = offerData.offerPrice;
-          const oQty = offerData.quantity;
-          if (
-            typeof oPrice !== "number" ||
-            !Number.isFinite(oPrice) ||
-            oPrice <= 0 ||
-            typeof oQty !== "number" ||
-            !Number.isFinite(oQty) ||
-            !Number.isInteger(oQty) ||
-            oQty <= 0
-          ) {
-            throw new Error("유효하지 않은 제안(가격/수량)입니다.");
-          }
-
-          // 🔒 offer↔listing 교차검증 — 위조 offer(타 아이템/판매자 불일치·재고 초과·자기거래)로
-          //   인벤토리 대량 increment(아이템 mint)되는 것을 차단. rules 봉인의 서버측 이중방어.
-          const ld0 = listingDoc.data();
-          if (
-            ld0.itemId !== offerData.itemId ||
-            ld0.sellerId !== offerData.sellerId ||
-            offerData.buyerId === offerData.sellerId ||
-            typeof ld0.quantity !== "number" ||
-            !Number.isFinite(ld0.quantity) ||
-            oQty > ld0.quantity
-          ) {
-            throw new Error("제안과 판매 정보가 일치하지 않습니다.");
-          }
-
-          // 🔒 학급 격리 — 리스팅·판매자·구매자가 모두 같은 학급이어야 함(과거 cross-class offer 무력화).
-          const buyerClassCode = buyerDoc.data()?.classCode;
-          if (
-            !ld0.classCode ||
-            ld0.classCode !== userData.classCode ||
-            buyerClassCode !== ld0.classCode
-          ) {
-            throw new Error("학급이 일치하지 않는 제안입니다.");
-          }
-
-          const totalPrice = oPrice * oQty;
-          const buyerCash = buyerDoc.data().cash || 0;
-
-          if (buyerCash < totalPrice) {
-            throw new Error(
-              `구매자의 현금이 부족합니다. (필요: ${totalPrice.toLocaleString()}원, 보유: ${buyerCash.toLocaleString()}원)`,
-            );
-          }
-
-          // 🔒 인벤토리 지급 대상은 **모든 쓰기 이전**에 읽어 둔다(읽기-선행 + 부재 락).
-          const offerGrantTarget = await readInventoryGrantTarget(
-            transaction,
-            offerData.buyerId,
-            offerData.itemId,
-          );
-
-          // 세금 계산
-          const taxAmount = Math.round(totalPrice * itemMarketTaxRate);
-          const sellerProceeds = totalPrice - taxAmount;
-
-          // 구매자 현금 차감 (전체 가격)
-          transaction.update(buyerRef, {
-            cash: admin.firestore.FieldValue.increment(-totalPrice),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // 구매자 거래 로그
-          const offerBuyTxRef = buyerRef.collection("transactions").doc();
-          transaction.set(offerBuyTxRef, {
-            type: "marketOfferBuy",
-            amount: -totalPrice,
-            description: `[제안 수락 매수] ${offerData.itemName} ${offerData.quantity}개 × ${offerData.offerPrice.toLocaleString()}원 (판매자: ${offerData.sellerName || offerData.sellerId})`,
-            offerId,
-            itemName: offerData.itemName,
-            quantity: offerData.quantity,
-            unitPrice: offerData.offerPrice,
-            sellerId: offerData.sellerId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // 판매자에게 세금 차감 금액 지급
-          transaction.update(sellerRef, {
-            cash: admin.firestore.FieldValue.increment(sellerProceeds),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // 판매자 거래 로그
-          const offerSellTxRef = sellerRef.collection("transactions").doc();
-          transaction.set(offerSellTxRef, {
-            type: "marketOfferSell",
-            amount: sellerProceeds,
-            description: `[제안 수락 매도] ${offerData.itemName} ${offerData.quantity}개 × ${offerData.offerPrice.toLocaleString()}원 (세금 ${taxAmount.toLocaleString()}원 차감, 구매자: ${offerData.buyerName || offerData.buyerId})`,
-            offerId,
-            itemName: offerData.itemName,
-            quantity: offerData.quantity,
-            unitPrice: offerData.offerPrice,
-            taxAmount,
-            buyerId: offerData.buyerId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // 관리자(교사)에게 세금 입금 (국고 = 관리자 cash) + 통계 기록
-          if (taxAmount > 0 && adminDocRef) {
-            transaction.update(adminDocRef, {
-              cash: admin.firestore.FieldValue.increment(taxAmount),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-
-            const treasuryRef = db
-              .collection("nationalTreasuries")
-              .doc(userData.classCode);
-            transaction.set(
-              treasuryRef,
-              {
-                itemMarketTaxRevenue:
-                  admin.firestore.FieldValue.increment(taxAmount),
-                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            );
-          }
-
-          // 구매자 인벤토리에 아이템 추가 (대상은 위 읽기 단계에서 확정)
-          const ld = listingDoc.data();
-          const offerBoughtItem = {
-            itemId: offerData.itemId,
-            name: offerData.itemName,
-            icon: ld.icon || "🔮",
-            description: ld.description || "",
-            type: ld.type || "general",
-            purchasedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (ld.type === "randomDraw") {
-            offerBoughtItem.drawSource = ld.drawSource || "food";
-            offerBoughtItem.loseEnabled = ld.loseEnabled === true;
-            offerBoughtItem.losePercent = Number(ld.losePercent) || 0;
-            offerBoughtItem.drawCandidates = Array.isArray(ld.drawCandidates)
-              ? ld.drawCandidates
-              : [];
-          }
-          writeInventoryGrant(
-            transaction,
-            offerGrantTarget,
-            offerData.quantity,
-            offerBoughtItem,
-            "respondToOffer",
-          );
-          // 🔔 제안을 수락한 건 판매자다 — 아이템을 받는 구매자 화면에 변경을 알린다.
-          bumpInventoryVersion(transaction, buyerRef);
-
-          // 마켓 리스팅 상태 업데이트
-          transaction.update(listingRef, {
-            status: "sold",
-            buyerId: offerData.buyerId,
-            buyerName: offerData.buyerName,
-            soldAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // 제안 상태 업데이트
-          transaction.update(offerRef, {
-            status: "accepted",
-            respondedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // ✅ idempotency mark (수락 경로)
-          markIdempotent(transaction, idemKeyRef);
-
-          return {
-            success: true,
-            message: "제안을 수락하여 거래가 완료되었습니다.",
-          };
-        } else {
-          // 제안 거절
-          transaction.update(offerRef, {
-            status: "rejected",
-            respondedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // ✅ idempotency mark (거절 경로)
-          markIdempotent(transaction, idemKeyRef);
-
-          return { success: true, message: "제안을 거절했습니다." };
-        }
-      });
-
-      if (response === "accept") {
-        return {
-          success: true,
-          message: "제안을 수락하여 거래가 완료되었습니다.",
-        };
-      } else {
-        return { success: true, message: "제안을 거절했습니다." };
-      }
-    } catch (error) {
-      logger.error(`[respondToOffer] Error for user ${uid}:`, error);
-      throw new HttpsError(
-        "aborted",
-        error.message || "제안 응답에 실패했습니다.",
-      );
-    }
-  },
-);
 
 // ===================================================================================
 // 🏠 부동산 구매 함수

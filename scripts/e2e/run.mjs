@@ -40,10 +40,13 @@ const IGNORE = [
   /firebasestorage|storage\.googleapis/i, // Storage 는 에뮬레이터 밖(운영) — 판정 제외
 ];
 let currentStep = "boot";
+// 퍼징처럼 «거부가 정답»인 구간 — 그동안의 4xx 응답(과 그 콘솔 줄)은 결함이 아니다. 5xx·페이지 오류는 그대로 잡는다.
+let expectRejections = false;
 const safePath = (page) => { try { return new URL(page.url()).pathname; } catch { return "?"; } };
 function attach(page, who) {
   const push = (type, text, extra = {}) => {
     if (IGNORE.some((re) => re.test(text) || re.test(extra.url || ""))) return;
+    if (expectRejections && ((type === "http" && /^4\d\d /.test(text)) || (type === "console.error" && /status of 4\d\d/.test(text)))) return;
     findings.push({ who, step: currentStep, path: safePath(page), type, text: String(text).slice(0, 500), ...extra });
   };
   page.on("console", (m) => { if (m.type() === "error") push("console.error", m.text(), { url: m.location()?.url || "" }); });
@@ -596,6 +599,100 @@ if (want("assembly")) {
     }
     await waitFor(async () => (await lawNow()).status === "veto_overridden", { msg: "재의결 가결" });
   });
+}
+
+// ══ 시나리오: 돈 CF 악성 입력 퍼징 ═════════════════════════════════
+//   불변식 ① 거부된 호출은 아무것도 바꾸지 않는다(학급 전원 숫자 필드·국고·인벤토리 스냅샷 동일)
+//          ② 양의 정수가 아닌 금액·수량으로 성공하면 결함
+if (want("fuzz")) {
+  const A = st.students[0], B = st.students[1];
+  const callAs = (i, name, data) => S[i].page.evaluate(async ({ name, data }) => {
+    const m = await import("/src/firebase.js");
+    try { const r = await m.httpsCallable(m.functions, name)(data); return { ok: true, data: r.data }; }
+    catch (e) { return { ok: false, code: e.code, msg: String(e.message).slice(0, 120) }; }
+  }, { name, data });
+  const nums = (x) => Object.fromEntries(Object.entries(x || {}).filter(([, v]) => typeof v === "number").sort());
+  const snap = async () => {
+    const o = {};
+    for (const d of (await fdb.collection("users").where("classCode", "==", st.classCode).get()).docs) o[d.id] = nums(d.data());
+    const t = await fdb.doc(`nationalTreasuries/${st.classCode}`).get();
+    o.treasury = t.exists ? nums(t.data()) : null;
+    for (const u of [A.uid, B.uid]) {
+      o["inv:" + u] = (await fdb.collection(`users/${u}/inventory`).get()).docs.map((d) => `${d.id}:${d.data().quantity}`).sort().join(",");
+    }
+    o.listings = (await fdb.collection("marketListings").where("sellerId", "in", [A.uid, B.uid]).get()).docs.map((d) => `${d.id}:${d.data().status}:${d.data().quantity}`).sort().join(",");
+    return JSON.stringify(o);
+  };
+  const ctx = {};
+  await step("fuzz: 준비(현금·쿠폰 지급, 아이템 구매, 장터 등록)", async () => {
+    for (const u of [A, B]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000, coupons: 50 });
+    const item = (await fdb.collection("storeItems").where("classCode", "==", st.classCode).get()).docs.find((d) => (d.data().price || 0) > 0 && (d.data().stock ?? 99) > 2);
+    expect(!!item, "상점 아이템 없음");
+    ctx.itemId = item.id;
+    const r1 = await callAs(0, "purchaseStoreItem", { itemId: item.id, quantity: 3, idempotencyKey: "fz-buy-" + Date.now() });
+    expect(r1.ok, "정상 구매 실패 " + JSON.stringify(r1));
+    const r2 = await callAs(0, "listUserItemForSale", { inventoryItemId: item.id, quantity: 1, price: 100 });
+    expect(r2.ok, "정상 장터 등록 실패 " + JSON.stringify(r2));
+    const l = (await fdb.collection("marketListings").where("sellerId", "==", A.uid).get()).docs[0];
+    ctx.listingId = l?.id;
+    note("fuzz-ctx", ctx);
+  });
+  const BAD = [-1000, -1, 0, 0.5, 1e-7, "100", "abc", 1e21, 9007199254740993, null, true, [100], { n: 1 }];
+  const isValid = (v) => Number.isInteger(v) && v > 0 && v < 1e12;
+  const MATRIX = [
+    [0, "transferCash", () => ({ recipientId: B.uid, message: "fz" }), ["amount"]],
+    [0, "giftCoupon", () => ({ recipientId: B.uid, message: "fz" }), ["amount"]],
+    [0, "sellCoupon", () => ({}), ["amount"]],
+    [0, "donateCoupon", () => ({ message: "fz" }), ["amount"]],
+    [0, "parkingDeposit", () => ({}), ["amount"]],
+    [0, "parkingWithdraw", () => ({}), ["amount"]],
+    [0, "processFine", () => ({ defendantId: B.uid, reason: "fz", context: "police" }), ["amount"]],
+    [0, "purchaseStoreItem", () => ({ itemId: ctx.itemId }), ["quantity"]],
+    [0, "sellItemToTreasury", () => ({ itemId: ctx.itemId }), ["quantity"]],
+    [0, "useUserItem", () => ({ itemId: ctx.itemId }), ["quantityToUse"]],
+    [0, "giftItem", () => ({ recipientUid: B.uid, itemId: ctx.itemId }), ["quantity"]],
+    [0, "listUserItemForSale", () => ({ inventoryItemId: ctx.itemId, quantity: 1, price: 100 }), ["quantity", "price"]],
+    [0, "createAuction", () => ({ assetId: ctx.itemId, startPrice: 100, durationHours: 1, sourceCollection: "inventory", name: "fz", description: "fz" }), ["startPrice", "durationHours"]],
+    [0, "buyStock", () => ({ stockId: "nope" }), ["quantity"]],
+    [0, "subscribeProduct", () => ({ productType: "deposit", productId: "nope" }), ["amount"]],
+    [0, "repayLoan", () => ({ productId: "nope", mode: "partial" }), ["amount"]],
+    [0, "makeRealEstateOffer", () => ({ propertyId: "nope" }), ["offerPrice"]],
+    [0, "setRealEstateForSale", () => ({ propertyId: "nope" }), ["salePrice"]],
+  ];
+  const bad = [];
+  const counts = { calls: 0, ok: 0, denied: 0 };
+  expectRejections = true;
+  await step("fuzz: 돈 CF × 악성 값 행렬", async () => {
+    let before = await snap();
+    for (const [who, name, base, fields] of MATRIX) {
+      for (const field of fields) {
+        for (const v of BAD) {
+          const payload = { ...base(), [field]: v, idempotencyKey: `fz-${name}-${field}-${counts.calls}-${Date.now()}` };
+          const r = await callAs(who, name, payload);
+          counts.calls++;
+          const after = await snap();
+          if (r.ok) {
+            counts.ok++;
+            if (!isValid(v)) bad.push({ name, field, v, kind: "invalid-accepted", res: JSON.stringify(r.data).slice(0, 160) });
+          } else {
+            counts.denied++;
+            if (after !== before) bad.push({ name, field, v, kind: "denied-but-changed", code: r.code });
+            if (r.code === "internal") bad.push({ name, field, v, kind: "internal-error", msg: r.msg });
+          }
+          before = after;
+        }
+      }
+    }
+    note("fuzz-counts", counts);
+    note("fuzz-bad", bad);
+    expect(bad.length === 0, `퍼징 결함 ${bad.length}건 — notes.fuzz-bad`);
+  });
+  await step("fuzz: 남의 물건 조작(장터 취소) → 거부·무변화", async () => {
+    const before = await snap();
+    const r = await callAs(1, "cancelMarketSale", { listingId: ctx.listingId });
+    expect(!r.ok && (await snap()) === before, "남의 장터 등록을 취소했다 " + JSON.stringify(r));
+  });
+  expectRejections = false;
 }
 
 report.state = { classCode: st.classCode, students: st.students.map((s) => `${s.id}:${s.uid}`) };

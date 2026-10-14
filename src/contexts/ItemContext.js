@@ -28,7 +28,6 @@ export const useItems = () => {
       items: [],
       userItems: [],
       marketListings: [],
-      marketOffers: [],
       loading: true,
       error: null,
       addItem: async () => ({
@@ -67,14 +66,6 @@ export const useItems = () => {
         success: false,
         message: "Context not available",
       }),
-      makeOffer: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      respondToOffer: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
       adminCancelSale: async () => ({
         success: false,
         message: "Context not available",
@@ -104,7 +95,6 @@ export const ItemProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [userItems, setUserItems] = useState([]);
   const [marketListings, setMarketListings] = useState([]);
-  const [marketOffers, setMarketOffers] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -133,8 +123,6 @@ export const ItemProvider = ({ children }) => {
       sellItemToTreasury: httpsCallable(functions, "sellItemToTreasury"),
       buyMarketItem: httpsCallable(functions, "buyMarketItem"),
       cancelMarketSale: httpsCallable(functions, "cancelMarketSale"),
-      makeOffer: httpsCallable(functions, "makeOffer"),
-      respondToOffer: httpsCallable(functions, "respondToOffer"),
       adminCancelSale: httpsCallable(functions, "adminCancelSale"),
       adminDeleteItem: httpsCallable(functions, "adminDeleteItem"),
     }),
@@ -177,12 +165,10 @@ export const ItemProvider = ({ children }) => {
         storeItems,
         userItems: groupedUserItems,
         marketListings,
-        marketOffers,
       } = payload;
       setItems(storeItems || []);
       setUserItems(groupedUserItems || []);
       setMarketListings(marketListings || []);
-      setMarketOffers(marketOffers || []);
       setError(null);
     } catch (err) {
       logger.error("[ItemContext] 데이터 로드 오류:", err);
@@ -963,54 +949,6 @@ export const ItemProvider = ({ children }) => {
     [userId, firebaseFunctions, refreshData],
   );
 
-  const makeOffer = useCallback(
-    async ({ listingId, offerPrice, quantity = 1 }) => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-      try {
-        const result = await firebaseFunctions.makeOffer({
-          listingId,
-          offerPrice,
-          quantity,
-        });
-        refreshData();
-        return { success: true, offerId: result.data.offerId };
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "가격 제안 함수(makeOffer)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [userId, firebaseFunctions, refreshData],
-  );
-
-  const respondToOffer = useCallback(
-    async ({ offerId, response }) => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-      try {
-        await firebaseFunctions.respondToOffer({ offerId, response, idempotencyKey: crypto.randomUUID() });
-        refreshData();
-        return { success: true };
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "제안 응답 함수(respondToOffer)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [userId, firebaseFunctions, refreshData],
-  );
-
   const adminCancelSale = useCallback(
     async (listingId) => {
       if (typeof isAuthAdmin !== "function" || !isAuthAdmin())
@@ -1186,7 +1124,6 @@ export const ItemProvider = ({ children }) => {
       items,
       userItems,
       marketListings,
-      marketOffers,
       loading,
       error,
       addItem,
@@ -1201,8 +1138,6 @@ export const ItemProvider = ({ children }) => {
       sellItemToTreasury,
       buyMarketItem,
       cancelSale,
-      makeOffer,
-      respondToOffer,
       adminCancelSale,
       adminDeleteItem,
       refreshData,
@@ -1212,7 +1147,6 @@ export const ItemProvider = ({ children }) => {
       items,
       userItems,
       marketListings,
-      marketOffers,
       loading,
       error,
       addItem,
@@ -1227,8 +1161,6 @@ export const ItemProvider = ({ children }) => {
       sellItemToTreasury,
       buyMarketItem,
       cancelSale,
-      makeOffer,
-      respondToOffer,
       adminCancelSale,
       adminDeleteItem,
       refreshData,
