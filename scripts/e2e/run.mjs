@@ -544,8 +544,8 @@ if (want("assembly")) {
   // 새 반엔 국회 설정 문서가 없다(교사가 국회를 한 번 열어야 생긴다) — 학생이 먼저 열면 전엔 학생의 기본값
   //   쓰기가 rules 에 막히고(설정 쓰기는 교사만), 그 실패로 설정이 null 로 남아 **무한 로딩**이었다.
   await step("assembly: 설정 문서 없는 반 — 학생이 먼저 열어도 화면이 뜬다", async () => {
-    const adminSettings = await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).get();
-    expect(!adminSettings.exists, "새 반인데 설정 문서가 이미 있다(전제 깨짐)");
+    // --visit 순회에서 교사가 먼저 국회를 열면 문서가 생긴다 — 교사가 한 번도 안 연 반으로 되돌린다
+    for (const id of ["admin", "government"]) await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/${id}`).delete();
     await go(S[1], "/national-assembly");
     await S[1].page.getByRole("heading", { name: "국회 의사당" }).waitFor({ timeout: 10000 });
   });
