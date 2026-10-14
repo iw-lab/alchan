@@ -21,13 +21,14 @@ name: Scheduled Tasks (Manual Only)
 #  제거된 작업(끝난 일회성 마이그레이션 — 함수도 함께 삭제):
 #    · recover-teachers    systemState/teacherRecovered_v1 로 완료 확인(2026-05-12)
 #    · backfill-musicrooms 라이브 musicRooms 3건 전부 classCode 보유(실측)
+#    · backfill-salary·backfill-draw·migrate-store-price-down (2026-10-14) — 한 번 돌고 끝난 보정·마이그레이션
 
 on:
   # 수동 실행 (긴급 상황용)
   workflow_dispatch:
     inputs:
       task:
-        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, backfill-salary-dry, backfill-salary-commit, backfill-draw-dry, backfill-draw-commit, init-classroom, migrate-store-price-down)'
+        description: '실행할 작업 (stock, reset, salary, salary-force, rent, property-tax, economic-event, all, reverse-salary-dry, reverse-salary-commit, init-classroom)'
         required: true
         default: 'reset'
       weekKey:
@@ -118,14 +119,6 @@ jobs:
 
       # ── dry run (아무것도 바꾸지 않는다 — 정기 토큰만) ──────────────────────────
 
-      - name: Backfill salary logs (dry run)
-        if: github.event.inputs.task == 'backfill-salary-dry'
-        run: call https://backfillsalarylogs-j7kazbsvxq-du.a.run.app dryRun=true
-
-      - name: Backfill draw items (dry run)
-        if: github.event.inputs.task == 'backfill-draw-dry'
-        run: call https://backfilldrawitems-j7kazbsvxq-du.a.run.app dryRun=true
-
       - name: Reverse salary (dry run)
         if: github.event.inputs.task == 'reverse-salary-dry'
         run: call https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app "weekKey=$WK" dryRun=true
@@ -142,19 +135,6 @@ jobs:
       - name: Reverse salary (commit)
         if: github.event.inputs.task == 'reverse-salary-commit'
         run: scall https://reverselastweeklysalary-j7kazbsvxq-du.a.run.app "weekKey=$WK" dryRun=false confirm=YES
-
-      - name: Backfill salary logs (commit)
-        if: github.event.inputs.task == 'backfill-salary-commit'
-        run: scall https://backfillsalarylogs-j7kazbsvxq-du.a.run.app dryRun=false confirm=YES
-
-      - name: Backfill draw items (commit)
-        if: github.event.inputs.task == 'backfill-draw-commit'
-        run: scall https://backfilldrawitems-j7kazbsvxq-du.a.run.app dryRun=false confirm=YES
-
-      # 💰 전 학급 상점가 일괄 변경
-      - name: Migrate store-price-down to 25%
-        if: github.event.inputs.task == 'migrate-store-price-down'
-        run: scall https://asia-northeast3-inconomysu-class.cloudfunctions.net/migrateStorePriceDownManual confirm=YES
 
       # 🏫 학급 기본 데이터를 덮어쓴다. weekKey 입력란에 classCode 를 넣는다.
       - name: Initialize classroom defaults

@@ -24,7 +24,7 @@ const WHOLESALE_COST_RATIO = 0.3; // 재고 보충 도매가 = 정가의 30%
 exports.completeGroupPurchase = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode: callerClassCode } = await checkAuthAndGetUserData(request);
+    const { classCode: callerClassCode } = await checkAuthAndGetUserData(request);
     const { campaignId } = request.data || {};
 
     if (!campaignId || typeof campaignId !== "string") {
@@ -97,15 +97,6 @@ exports.completeGroupPurchase = onCall(
           const itemSnap = await transaction.get(itemRef);
           if (itemSnap.exists) {
             itemData = itemSnap.data();
-          }
-        }
-
-        // 3) 관리자 읽기 (있는 경우)
-        let adminData = null;
-        if (adminRef) {
-          const adminSnap = await transaction.get(adminRef);
-          if (adminSnap.exists) {
-            adminData = adminSnap.data();
           }
         }
 

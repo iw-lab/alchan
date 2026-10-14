@@ -200,19 +200,12 @@ async function loadExchangeRate() {
     }
 
     return USD_TO_KRW;
-  } catch (error) {
+  } catch {
     logger.warn("[ExchangeRate] 환율 로드 실패, 기본값 사용:", USD_TO_KRW);
     return USD_TO_KRW;
   }
 }
 
-/**
- * 현재 환율 반환
- * @returns {number}
- */
-function getCurrentExchangeRate() {
-  return USD_TO_KRW;
-}
 
 /**
  * Yahoo Finance에서 주식 가격 가져오기
@@ -470,15 +463,6 @@ async function updateRealStockPrices() {
       const realPriceKRW = stock.isUSD
         ? Math.round(data.price * USD_TO_KRW)
         : Math.round(data.price);
-
-      // 직전 실물 가격 (KRW) — 변동률 계산용
-      const prevRealStored = stock.realStockData?.lastPriceKRW
-        || (stock.realStockData?.lastPrice
-              ? (stock.isUSD
-                   ? Math.round(stock.realStockData.lastPrice * USD_TO_KRW)
-                   : Math.round(stock.realStockData.lastPrice))
-              : null)
-        || realPriceKRW;
 
       // ── 실물가 그대로 미러링 ──
       // ×10 변동성/Mean Reversion 폐기. 실물가(KRW 환산)를 가격으로 그대로 사용.
@@ -929,75 +913,6 @@ async function addSingleRealStock(config) {
   }
 }
 
-/**
- * 사용 가능한 실제 주식 심볼 목록 반환
- * @returns {object}
- */
-function getAvailableSymbols() {
-  return {
-    korean_stocks: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => symbol.includes(".KS") || symbol.includes(".KQ"))
-      .filter(([name, symbol]) => !name.includes("KODEX") && !name.includes("TIGER") && !name.includes("KOSEF"))
-      .map(([name, symbol]) => ({ name, symbol })),
-    us_stocks: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => !symbol.includes(".") && !["SPY", "QQQ", "DIA", "IWM", "VTI", "TLT", "IEF", "SHY", "LQD", "HYG", "BND", "GLD", "SLV", "USO"].includes(symbol))
-      .map(([name, symbol]) => ({ name, symbol })),
-    korean_etf: Object.entries(REAL_STOCK_SYMBOLS)
-      .filter(([name, symbol]) => name.includes("KODEX") || name.includes("TIGER") || name.includes("KOSEF"))
-      .map(([name, symbol]) => ({ name, symbol })),
-    us_etf: ["SPY", "QQQ", "DIA", "IWM", "VTI"].map(s => ({ name: s, symbol: s })),
-    bond_etf: ["TLT", "IEF", "SHY", "LQD", "HYG", "BND"].map(s => ({ name: s, symbol: s })),
-    commodity_etf: ["GLD", "SLV", "USO"].map(s => ({ name: s, symbol: s }))
-  };
-}
-
-/**
- * 중복 주식 정리 - 같은 심볼의 주식이 여러 개 있으면 하나만 남기고 삭제
- * 보유자가 있는 문서를 우선 보존, 없으면 최신 문서 보존
- * @returns {Promise<{deleted: number, kept: number}>}
- */
-async function deduplicateStocks() {
-  logger.info("[RealStock] 중복 주식 정리 시작");
-
-  const allStocksSnap = await db.collection("CentralStocks").get();
-  const symbolMap = {}; // symbol -> [docs]
-
-  allStocksSnap.forEach(docSnap => {
-    const data = docSnap.data();
-    const key = data.realStockSymbol || data.name; // 심볼 또는 이름 기준
-    if (!symbolMap[key]) symbolMap[key] = [];
-    symbolMap[key].push({ id: docSnap.id, data });
-  });
-
-  const batch = db.batch();
-  let deleted = 0;
-  let kept = 0;
-
-  for (const [key, docs] of Object.entries(symbolMap)) {
-    if (docs.length <= 1) {
-      kept++;
-      continue;
-    }
-
-    // 보유자 있는 문서 우선, 없으면 holderCount 높은 것, 그것도 같으면 첫 번째 보존
-    docs.sort((a, b) => (b.data.holderCount || 0) - (a.data.holderCount || 0));
-    const keepDoc = docs[0];
-    kept++;
-
-    for (let i = 1; i < docs.length; i++) {
-      batch.delete(db.collection("CentralStocks").doc(docs[i].id));
-      deleted++;
-      logger.info(`[RealStock] 중복 삭제: ${key} (docId: ${docs[i].id})`);
-    }
-  }
-
-  if (deleted > 0) {
-    await batch.commit();
-  }
-
-  logger.info(`[RealStock] 중복 정리 완료: ${deleted}개 삭제, ${kept}개 유지`);
-  return { deleted, kept };
-}
 
 module.exports = {
   fetchYahooFinancePrice,
@@ -1007,13 +922,10 @@ module.exports = {
   getCentralStocksSnapshot,
   createRealStocks,
   addSingleRealStock,
-  getAvailableSymbols,
-  deduplicateStocks,
   // 환율 관련
   fetchExchangeRate,
   updateExchangeRate,
   loadExchangeRate,
-  getCurrentExchangeRate,
   // 상수
   REAL_STOCK_SYMBOLS,
   DEFAULT_REAL_STOCKS,

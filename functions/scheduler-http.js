@@ -31,10 +31,10 @@ const {
   updateRealStockPrices,
   createRealStocks,
   addSingleRealStock,
-  getAvailableSymbols,
-  deduplicateStocks,
+  
+  
   updateExchangeRate,
-  getCurrentExchangeRate,
+  
   DEFAULT_REAL_STOCKS,
   updateCentralStocksSnapshot,
   getCentralStocksSnapshot,
@@ -595,300 +595,6 @@ exports.weeklySalary = onRequest(
   },
 );
 
-// ===================================================================================
-// 🔁 주급 기록 소급 백필 endpoint - 과거 totalSalaryReceived를 내 재산 거래내역에 1건으로 요약 기록
-// 파라미터: token, confirm=YES (필수), dryRun (기본 true)
-// 각 학생당 activity_logs/salary_backfill_{userId} 문서로 멱등 처리
-// ===================================================================================
-exports.backfillSalaryLogs = onRequest(
-  {
-    region: "asia-northeast3",
-    timeoutSeconds: 540,
-    invoker: "public",
-  },
-  async (req, res) => {
-    try {
-      const token = req.headers["x-scheduler-auth"] || req.query.token;
-      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-        res.status(401).json({ success: false, error: "Unauthorized" });
-        return;
-      }
-      const confirm = req.query.confirm;
-      const dryRun = req.query.dryRun !== "false"; // 기본 true
-
-      if (!dryRun && confirm !== "YES") {
-        res.status(400).json({
-          success: false,
-          error: "실제 실행하려면 confirm=YES가 필요합니다 (dryRun=false일 때)",
-        });
-        return;
-      }
-      // 🔐 과거 주급 기록을 소급 생성하는 일회성 마이그레이션. 정기 작업 토큰만으로는 못 돌린다.
-      if (!dryRun && !requireForceAuth(req, res, "주급 기록 소급 백필")) return;
-
-      logger.info(`[backfillSalaryLogs] 시작 (dryRun=${dryRun})`);
-
-      // 전체 학생(비관리자) 조회
-      const studentsSnap = await db
-        .collection("users")
-        .where("isAdmin", "==", false)
-        .get();
-
-      // 백필 로그 TTL: 1년
-      const expireAt = new Date();
-      expireAt.setDate(expireAt.getDate() + 365);
-      const expireTs = admin.firestore.Timestamp.fromDate(expireAt);
-
-      let processed = 0;
-      let skippedNoSalary = 0;
-      let skippedNoClass = 0;
-      let totalBackfilledAmount = 0;
-      const perClassSummary = {};
-
-      // Firestore batch 한도(500) 고려해 청크 단위 커밋
-      const CHUNK = 100; // 학생당 2 ops(log + tx) → 200 ops/chunk
-      let batch = db.batch();
-      let pendingOps = 0;
-
-      for (const studentDoc of studentsSnap.docs) {
-        const data = studentDoc.data();
-        if (data.isSuperAdmin || data.isTeacher) continue;
-
-        const total = Number(data.totalSalaryReceived) || 0;
-        if (total <= 0) {
-          skippedNoSalary++;
-          continue;
-        }
-        const classCode = data.classCode;
-        if (!classCode) {
-          skippedNoClass++;
-          continue;
-        }
-
-        const studentName = data.name || data.nickname || "학생";
-        const summary = `[주급 누적 소급] 과거 주급 합계 ${total.toLocaleString()}원 (개별 내역 없음)`;
-
-        if (!dryRun) {
-          // 멱등성: 고정 문서 ID 사용
-          const logRef = db.collection("activity_logs").doc(`salary_backfill_${studentDoc.id}`);
-          batch.set(logRef, {
-            userId: studentDoc.id,
-            userName: studentName,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            type: "salaryPaymentBackfill",
-            amount: total,
-            description: summary,
-            classCode,
-            totalSalaryReceived: total,
-            expireAt: expireTs,
-            backfill: true,
-          });
-
-          const txRef = db.collection("users")
-            .doc(studentDoc.id)
-            .collection("transactions")
-            .doc(`salary_backfill_${studentDoc.id}`);
-          batch.set(txRef, {
-            amount: total,
-            description: summary,
-            type: "salaryPaymentBackfill",
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            backfill: true,
-          });
-
-          pendingOps += 2;
-          if (pendingOps >= CHUNK * 2) {
-            await batch.commit();
-            batch = db.batch();
-            pendingOps = 0;
-          }
-        }
-
-        processed++;
-        totalBackfilledAmount += total;
-        if (!perClassSummary[classCode]) {
-          perClassSummary[classCode] = { count: 0, total: 0 };
-        }
-        perClassSummary[classCode].count++;
-        perClassSummary[classCode].total += total;
-      }
-
-      if (!dryRun && pendingOps > 0) {
-        await batch.commit();
-      }
-
-      logger.info(
-        `[backfillSalaryLogs] 완료: ${processed}명, 총 ${totalBackfilledAmount.toLocaleString()}원 (dryRun=${dryRun})`,
-      );
-
-      res.json({
-        success: true,
-        dryRun,
-        processed,
-        skippedNoSalary,
-        skippedNoClass,
-        totalBackfilledAmount,
-        perClassSummary,
-      });
-    } catch (error) {
-      logger.error("[backfillSalaryLogs] 오류:", error, error?.stack);
-      res.status(500).json({
-        success: false,
-        error: error?.message || String(error),
-        stack: error?.stack,
-      });
-    }
-  },
-);
-
-// 🎰 깨진 랜덤뽑기 인벤토리 보정 (선물·개인상점 거래로 doc id 랜덤화 + 메타 누락된 것 복구)
-// 파라미터: token, dryRun(기본 true), confirm=YES (dryRun=false일 때 필수)
-// 동작: 각 유저 inventory의 type==randomDraw doc을 itemId별로 묶어
-//   ① doc id=itemId 정본으로 통합(수량 합산) ② storeItems에서 메타(drawCandidates 등) 복원
-//   ③ doc id≠itemId인 중복 doc 삭제. 멱등(여러 번 실행해도 안전).
-exports.backfillDrawItems = onRequest(
-  {
-    region: "asia-northeast3",
-    timeoutSeconds: 540,
-    invoker: "public",
-  },
-  async (req, res) => {
-    try {
-      const token = req.headers["x-scheduler-auth"] || req.query.token;
-      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-        res.status(401).json({ success: false, error: "Unauthorized" });
-        return;
-      }
-      const confirm = req.query.confirm;
-      const dryRun = req.query.dryRun !== "false"; // 기본 true
-      if (!dryRun && confirm !== "YES") {
-        res.status(400).json({
-          success: false,
-          error: "실제 실행하려면 confirm=YES가 필요합니다 (dryRun=false일 때)",
-        });
-        return;
-      }
-      // 🔐 학생 인벤토리 문서를 병합·삭제하는 일회성 마이그레이션.
-      if (!dryRun && !requireForceAuth(req, res, "랜덤뽑기 인벤토리 보정")) return;
-
-      logger.info(`[backfillDrawItems] 시작 (dryRun=${dryRun})`);
-
-      const usersSnap = await db.collection("users").get();
-      const storeCache = {}; // itemId -> storeItem data | null
-      const hasCands = (m) =>
-        m && Array.isArray(m.drawCandidates) && m.drawCandidates.length > 0;
-
-      let scannedUsers = 0;
-      let drawDocs = 0;
-      let fixedGroups = 0;
-      let deletedDupDocs = 0;
-      let unresolvable = 0;
-      const samples = [];
-
-      for (const userDoc of usersSnap.docs) {
-        const uid = userDoc.id;
-        const invSnap = await userDoc.ref
-          .collection("inventory")
-          .where("type", "==", "randomDraw")
-          .get();
-        if (invSnap.empty) continue;
-        scannedUsers++;
-        drawDocs += invSnap.size;
-
-        // itemId별 그룹핑
-        const groups = {};
-        invSnap.forEach((d) => {
-          const data = d.data();
-          const itemId = data.itemId || d.id;
-          (groups[itemId] = groups[itemId] || []).push({ id: d.id, ref: d.ref, data });
-        });
-
-        for (const itemId in groups) {
-          const docs = groups[itemId];
-          // 정상: doc 1개 + doc id==itemId + drawSource 유효 + drawCandidates 있음
-          const healthy =
-            docs.length === 1 &&
-            docs[0].id === itemId &&
-            (docs[0].data.drawSource === "food" || docs[0].data.drawSource === "item") &&
-            hasCands(docs[0].data);
-          if (healthy) continue;
-
-          // 메타 소스: storeItems 우선, 없으면 보유 doc 중 후보 가진 것
-          if (storeCache[itemId] === undefined) {
-            const ss = await db.collection("storeItems").doc(itemId).get();
-            storeCache[itemId] = ss.exists ? ss.data() : null;
-          }
-          let metaSrc = storeCache[itemId];
-          if (!hasCands(metaSrc)) {
-            const withMeta = docs.find((x) => hasCands(x.data));
-            if (withMeta) metaSrc = withMeta.data;
-          }
-          if (!hasCands(metaSrc)) {
-            unresolvable++;
-            if (samples.length < 20)
-              samples.push({ uid, itemId, reason: "메타 복원 불가(상점·보유doc 모두 후보 없음)" });
-            continue;
-          }
-
-          const totalQty = docs.reduce((s, x) => s + (x.data.quantity || 0), 0);
-          const sample = docs[0].data;
-          const dupIds = docs.filter((x) => x.id !== itemId);
-          fixedGroups++;
-          if (samples.length < 20)
-            samples.push({ uid, itemId, docIds: docs.map((x) => x.id), totalQty });
-
-          if (!dryRun) {
-            const batch = db.batch();
-            const canonRef = userDoc.ref.collection("inventory").doc(itemId);
-            batch.set(
-              canonRef,
-              {
-                itemId,
-                name: metaSrc.name || sample.name || "아이템",
-                icon: metaSrc.icon || sample.icon || "🎁",
-                description: metaSrc.description || sample.description || "",
-                type: "randomDraw",
-                quantity: totalQty,
-                drawSource: metaSrc.drawSource === "item" ? "item" : "food",
-                loseEnabled: metaSrc.loseEnabled === true,
-                losePercent: Number(metaSrc.losePercent) || 0,
-                drawCandidates: metaSrc.drawCandidates,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                backfilledAt: admin.firestore.FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            );
-            dupIds.forEach((x) => batch.delete(x.ref));
-            await batch.commit();
-          }
-          deletedDupDocs += dupIds.length;
-        }
-      }
-
-      logger.info(
-        `[backfillDrawItems] 완료 (dryRun=${dryRun}): 수정그룹 ${fixedGroups}, 중복doc삭제 ${deletedDupDocs}, 복원불가 ${unresolvable}`,
-      );
-
-      res.json({
-        success: true,
-        dryRun,
-        scannedUsers,
-        drawDocs,
-        fixedGroups,
-        deletedDupDocs,
-        unresolvable,
-        samples,
-      });
-    } catch (error) {
-      logger.error("[backfillDrawItems] 오류:", error, error?.stack);
-      res.status(500).json({
-        success: false,
-        error: error?.message || String(error),
-        stack: error?.stack,
-      });
-    }
-  },
-);
 
 // 월세 징수용 GET 엔드포인트 (매주 금요일 14:40에 실행)
 exports.weeklyRent = onRequest(
@@ -1267,7 +973,7 @@ exports.economicEventScheduler = onRequest(
 exports.triggerEconomicEventManual = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid, classCode, isAdmin } = await checkAuthAndGetUserData(
+    const { uid, classCode } = await checkAuthAndGetUserData(
       request,
       true,
     );
@@ -1493,30 +1199,6 @@ exports.createRealStocksFunction = onCall(
   },
 );
 
-// 🔥 중복 주식 정리 (관리자용 Cloud Function)
-exports.deduplicateStocksFunction = onCall(
-  { region: "asia-northeast3" },
-  async (request) => {
-    await checkAuthAndGetUserData(request, true);
-
-    logger.info("[deduplicateStocks] 중복 주식 정리 요청 - 관리자 호출");
-
-    try {
-      const result = await deduplicateStocks();
-      const snapshotResult = await updateCentralStocksSnapshot();
-
-      return {
-        success: true,
-        message: `중복 주식 ${result.deleted}개 삭제, ${result.kept}개 유지 (스냅샷 ${snapshotResult.count}개)`,
-        ...result,
-        snapshot: snapshotResult,
-      };
-    } catch (error) {
-      logger.error("[deduplicateStocks] 오류:", error);
-      throw new HttpsError("internal", error.message || "중복 주식 정리 실패");
-    }
-  },
-);
 
 // 🔥 실제 주식 가격 수동 업데이트 (관리자용 Cloud Function)
 exports.updateRealStocksFunction = onCall(
@@ -1726,91 +1408,6 @@ exports.addStockDocFunction = onCall(
   },
 );
 
-// 🔥 사용 가능한 실제 주식 심볼 목록 조회
-exports.getAvailableSymbolsFunction = onCall(
-  { region: "asia-northeast3" },
-  async (request) => {
-    await checkAuthAndGetUserData(request, true); // 관리자만 실행 가능
-
-    logger.info("[getAvailableSymbols] 사용 가능한 심볼 목록 조회");
-
-    try {
-      const symbols = getAvailableSymbols();
-      const currentRate = getCurrentExchangeRate();
-
-      return {
-        success: true,
-        symbols: symbols,
-        exchangeRate: currentRate,
-      };
-    } catch (error) {
-      logger.error("[getAvailableSymbols] 오류:", error);
-      throw new HttpsError("internal", error.message || "심볼 목록 조회 실패");
-    }
-  },
-);
-
-// 🔥 환율 수동 업데이트 (관리자용 Cloud Function)
-exports.updateExchangeRateFunction = onCall(
-  { region: "asia-northeast3" },
-  async (request) => {
-    await checkAuthAndGetUserData(request, true); // 관리자만 실행 가능
-
-    logger.info("[updateExchangeRate] 환율 수동 업데이트 요청");
-
-    try {
-      const result = await updateExchangeRate();
-
-      return {
-        success: true,
-        message: `환율 업데이트 완료: 1 USD = ${result.rate} KRW`,
-        rate: result.rate,
-        updated: result.updated,
-      };
-    } catch (error) {
-      logger.error("[updateExchangeRate] 오류:", error);
-      throw new HttpsError("internal", error.message || "환율 업데이트 실패");
-    }
-  },
-);
-
-// 🔥 환율 자동 업데이트 스케줄러 (하루 1회 - cron-job.org용)
-exports.exchangeRateScheduler = onRequest(
-  {
-    region: "asia-northeast3",
-    timeoutSeconds: 60,
-    invoker: "public",
-  },
-  async (req, res) => {
-    try {
-      const token = req.headers["x-scheduler-auth"] || req.query.token;
-      if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-        res.status(401).json({ success: false, error: "Unauthorized" });
-        return;
-      }
-
-      // 📈 환율 변동은 방학 모드와 무관하게 항상 작동(주식 시세의 일부).
-
-      logger.info(`[exchangeRateScheduler] 환율 자동 업데이트 시작`);
-
-      const result = await updateExchangeRate();
-
-      logger.info(
-        `[exchangeRateScheduler] 환율 업데이트 완료: ${result.rate}원`,
-      );
-
-      res.json({
-        success: true,
-        message: `환율 업데이트 완료`,
-        rate: result.rate,
-        updated: result.updated,
-      });
-    } catch (error) {
-      logger.error("[exchangeRateScheduler] 오류:", error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  },
-);
 
 // 🔥 방학 모드 토글 API (슈퍼관리자 전용)
 exports.toggleVacationMode = onCall(
@@ -1891,13 +1488,7 @@ exports.deleteSimulationStocksFunction = onCall(
     logger.info("[deleteSimulationStocks] 시뮬레이션 주식 삭제 요청");
 
     try {
-      // isRealStock이 없거나 false인 주식 가져오기
-      const simulationStocksSnapshot = await db
-        .collection("CentralStocks")
-        .where("isRealStock", "!=", true)
-        .get();
-
-      // isRealStock 필드가 없는 주식도 포함
+      // isRealStock 이 없거나 false 인 주식 — 필드가 없는 문서도 포함해야 해서 전체를 읽어 거른다
       const allStocksSnapshot = await db.collection("CentralStocks").get();
 
       const stocksToDelete = [];
@@ -3033,14 +2624,6 @@ function lookupClassBaseRate(avgNetAssets) {
   return 0.005;                                   // 0.5% (과열)
 }
 
-// 개인 순자산 → 누진 배율
-function lookupProgressiveMultiplier(netAssets) {
-  if (netAssets <= 500000) return 0;              // 면세
-  if (netAssets <= 1000000) return 0.5;
-  if (netAssets <= 3000000) return 1;
-  if (netAssets <= 5000000) return 2;
-  return 3.5;
-}
 
 // KST 주차 키(예: "2026-W30") — 주간 세금 징수/쿨다운의 단일 진실원.
 //   Cloud Functions 런타임은 UTC라 아래 로컬 getter가 곧 KST(+9h 보정 후)를 읽는다.
@@ -3452,43 +3035,6 @@ async function collectPropertyHoldingTaxesLogic(targetClassCode = null, options 
   }
 }
 
-async function provideSocialSafetyNetLogic() {
-  logger.info(">>> [스케줄러] 사회안전망 제공 시작");
-  // 추후 복지 시스템과 연동하여 구현 예정
-  logger.info("사회안전망 제공 로직은 아직 구현되지 않았습니다.");
-}
-
-async function openMarketLogic() {
-  logger.info(">>> [스케줄러] 시장 개장 시작");
-  // 필요시 시장 상태 플래그 설정 등으로 구현 가능
-  logger.info("시장 개장 로직은 아직 구현되지 않았습니다.");
-}
-
-async function closeMarketLogic() {
-  logger.info(">>> [스케줄러] 시장 폐장 시작");
-  // 필요시 시장 상태 플래그 설정 등으로 구현 가능
-  logger.info("시장 폐장 로직은 아직 구현되지 않았습니다.");
-}
-
-async function aggregateActivityStatsLogic() {
-  logger.info(">>> [스케줄러] 활동 통계 집계 시작");
-  // 필요시 추후에 구현
-}
-
-async function updateClassStatsLogic() {
-  logger.info(">>> [스케줄러] 클래스 통계 업데이트 시작");
-  // 필요시 추후에 구현
-}
-
-async function updatePortfolioSummaryLogic() {
-  logger.info(">>> [스케줄러] 포트폴리오 요약 업데이트 시작");
-  // 필요시 추후에 구현
-}
-
-async function aggregateActivityLogsLogic() {
-  logger.info(">>> [스케줄러] 활동 로그 집계 시작");
-  // 필요시 추후에 구현
-}
 
 // ===================================================================================
 // TTL 만료 문서 정리
@@ -3636,70 +3182,6 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
   },
 );
 
-// ===================================================================================
-// 🔄 일회성 마이그레이션: 잘못 학생 문서로 생성된 선생님 복구
-// 원인: firestore.rules가 가입 시 isAdmin:true를 차단 → AuthContext가 학생 문서로 대체
-// 해결: classes/{*}.teacherId 로 식별 → 해당 user에 isAdmin/isTeacher:true, isApproved:false 설정
-// systemState 플래그로 1회만 실행
-// ===================================================================================
-
-// ===================================================================================
-// 🔄 일회성 마이그레이션: 기존 학급의 CASH_PENALTY description을 정확한 텍스트로 갱신
-// 정책 변경(현금 5% → 순자산 5%)에 맞춰 학생 안내문 동기화
-// systemState 플래그로 1회만 실행
-// ===================================================================================
-// ⚠️ 왜 이건 안 지웠나(2026-08-20 code-reviewer 지적에 대한 답): 이번 정리의 기준은
-//   "죽은 함수"가 아니라 **"열려 있는 HTTP 엔드포인트"**다(P0-F = 공격면 축소).
-//   recoverTeacherAccountsOnce 가 지워진 건 그 자체가 죽어서가 아니라 유일한 호출부였던
-//   공개 엔드포인트(recoverTeachersManual)를 없앴기 때문이다. 이 함수엔 엔드포인트가 없어
-//   공격면이 0 이라 이번 범위 밖이다. (완료 표식은 systemState/cashPenaltyDescMigrated_v2,
-//   migratedAt 2026-05-07 — 지울 근거는 있으니 별건으로 정리할 것.)
-async function migrateCashPenaltyDescriptionsOnce() {
-  const flagRef = db.collection("systemState").doc("cashPenaltyDescMigrated_v2");
-  const flagSnap = await flagRef.get();
-  if (flagSnap.exists) return; // 이미 완료
-
-  const NEW_TEXT = "경제 위기 — 순자산의 5%만큼 현금이 차감됩니다 (현금 잔고 한도 내)";
-  // 옛 텍스트 패턴: "현금이 N% 삭감", "현금의 N%" 등 폭넓게 매칭
-  const OLD_PATTERN = /현금이?\s*\d+\s*%\s*(가\s*)?삭감|모든\s*시민의\s*현금/;
-
-  const settingsSnap = await db.collection("economicEventSettings").get();
-  let classesUpdated = 0;
-  let eventsUpdated = 0;
-
-  for (const docSnap of settingsSnap.docs) {
-    const data = docSnap.data();
-    const events = Array.isArray(data.events) ? data.events : [];
-    if (events.length === 0) continue;
-
-    let changed = false;
-    const newEvents = events.map((e) => {
-      if (e.type === "CASH_PENALTY") {
-        const desc = e.description || "";
-        if (desc !== NEW_TEXT && OLD_PATTERN.test(desc)) {
-          changed = true;
-          eventsUpdated++;
-          return { ...e, description: NEW_TEXT };
-        }
-      }
-      return e;
-    });
-
-    if (changed) {
-      await docSnap.ref.update({ events: newEvents });
-      classesUpdated++;
-    }
-  }
-
-  await flagRef.set({
-    migratedAt: admin.firestore.FieldValue.serverTimestamp(),
-    classesUpdated,
-    eventsUpdated,
-  });
-  logger.info(
-    `[Migration] CASH_PENALTY description 마이그레이션 완료: ${classesUpdated}개 학급 / ${eventsUpdated}개 이벤트`,
-  );
-}
 
 // ===================================================================================
 // 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋(0시), 경제이벤트(8~17시), 환율(7시)
@@ -3845,63 +3327,6 @@ exports.dividendSchedulerV2 = onSchedule(
       // 🔁 재throw = **가시성**. 실측(2026-08-11): 배포된 4개 job 전부 retryConfig={} (retryCount 0)
       //    이라 자동 재시도는 붙지 않는다. 삼키면 실패가 성공으로 보고돼 아무도 모른다.
       throw error;
-    }
-  },
-);
-
-// ===================================================================================
-// 💰 모든 학급의 'store_price_down' 이벤트를 25% 인하(multiplier: 0.75)로 마이그
-// ===================================================================================
-async function migrateStorePriceDown() {
-  let updated = 0, skipped = 0;
-  const settingsSnap = await db.collection("economicEventSettings").get();
-  for (const docSnap of settingsSnap.docs) {
-    const data = docSnap.data();
-    const events = Array.isArray(data.events) ? data.events : [];
-    if (events.length === 0) { skipped++; continue; }
-    let changed = false;
-    const newEvents = events.map((e) => {
-      if (e.id === "store_price_down" || (e.type === "STORE_PRICE_CHANGE" && (e.params?.multiplier || 0) < 1)) {
-        const newMult = 0.75;
-        if (e.params?.multiplier !== newMult) {
-          changed = true;
-          return {
-            ...e,
-            title: "물가 안정!",
-            description: "정부 물가 안정 정책으로 관리자 상점의 모든 상품 가격이 25% 인하되었습니다!",
-            params: { ...(e.params || {}), multiplier: newMult },
-          };
-        }
-      }
-      return e;
-    });
-    if (changed) {
-      await docSnap.ref.update({ events: newEvents });
-      updated++;
-    } else {
-      skipped++;
-    }
-  }
-  logger.info(`[migrateStorePriceDown] 완료 — updated:${updated}, skipped:${skipped}`);
-  return { updated, skipped };
-}
-
-exports.migrateStorePriceDownManual = onRequest(
-  { region: "asia-northeast3", cors: true },
-  async (req, res) => {
-    const token = req.headers["x-scheduler-auth"] || req.query.auth;
-    if (!AUTH_TOKEN || token !== AUTH_TOKEN) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-    // 🔐 전 학급 상점가를 일괄 변경하는 일회성 마이그레이션.
-    if (!requireForceAuth(req, res, "상점 물가안정 25% 일괄 적용")) return;
-    try {
-      const result = await migrateStorePriceDown();
-      res.json({ success: true, ...result });
-    } catch (error) {
-      logger.error("[migrateStorePriceDownManual] 오류:", error);
-      res.status(500).json({ error: error.message });
     }
   },
 );

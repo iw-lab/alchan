@@ -168,23 +168,6 @@ exports.updateAvatarShopPrice = onCall(
   },
 );
 
-/**
- * 학급별 override 가격을 적용한 효과 가격 계산
- */
-async function getEffectivePrice(classCode, itemId, basePrice) {
-  try {
-    const govDoc = await db.doc(`governments/${classCode}`).get();
-    if (govDoc.exists) {
-      const override = govDoc.data()?.avatarShopPriceOverrides?.[itemId];
-      if (typeof override === "number" && override >= 0) {
-        return override;
-      }
-    }
-  } catch (e) {
-    logger.warn(`[getEffectivePrice] ${classCode} ${itemId} 조회 실패:`, e.message);
-  }
-  return basePrice;
-}
 
 /**
  * 아바타 상점 아이템 구매 (서버사이드)
