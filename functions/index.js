@@ -4688,14 +4688,17 @@ exports.settleAuction = onCall(
     }
 
     try {
-      await db.runTransaction(async (transaction) => {
+      const settled = await db.runTransaction(async (transaction) => {
         // 1) 읽기: 경매 → (낙찰) 낙찰자 기존아이템 쿼리 / (유찰) 판매자 반환아이템.
         //    ⚠️ 낙찰자 아이템 조회는 반드시 트랜잭션 안에서 fresh highestBidder 기준으로
         //    수행(막판 동시입찰 레이스 시 사전조회 stale → 이전 입찰자에게 오지급 방지).
         const auctionDoc = await transaction.get(auctionRef);
-        if (!auctionDoc.exists) throw new Error("경매 정보가 없습니다.");
+        // 🔁 정산은 멱등이다 — 종료된 경매 화면을 여러 학생이 동시에 열면 모두 정산을 부른다.
+        //   위 사전조회를 같이 통과한 두 번째 호출이 여기서 던지면 409 + 콘솔 오류가 났다
+        //   (2026-10-14 e2e 실측). 이미 끝난 건 «할 일 없음»으로 돌려준다.
+        if (!auctionDoc.exists) return false;
         const a = auctionDoc.data();
-        if (a.status !== "ongoing") throw new Error("이미 처리된 경매입니다.");
+        if (a.status !== "ongoing") return false;
         // 종료시각 서버검증(미종료면 정산 불가).
         const endMs = a.endTime && typeof a.endTime.toMillis === "function"
           ? a.endTime.toMillis() : 0;
@@ -4875,7 +4878,9 @@ exports.settleAuction = onCall(
           settledBy: uid,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        return true;
       });
+      if (!settled) return { success: true, message: "이미 처리된 경매입니다.", noop: true };
       return { success: true, message: "경매가 정산되었습니다." };
     } catch (error) {
       logger.error(`[settleAuction] Error (auction ${auctionId}):`, error);

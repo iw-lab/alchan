@@ -1422,6 +1422,7 @@ const CASES = [
   tc("DENY", "학생이 상품을 학급 이름표 없이 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", shopId: "s1", price: 500 } }),
   tc("ALLOW", "🐤 학생이 자기 상품 가격을 고친다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 700 } }),
   tc("DENY", "학생이 자기 상품의 학급을 바꿔 다른 반에 노출한다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C2", shopId: "s1", price: 500 } }),
+  tc("ALLOW", "🐤 학급이 빈 문자열인 옛 상품을 자기 학급으로 채운다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 } }),
   tc("DENY", "학생이 자기 상점 주인을 친구로 바꾼다", { path: "/personalShops/s1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1" }, after: { ownerId: "stu2", classCode: "C1" } }),
 
   // ── 🏛️ 국회 법안 (2026-10-14) — 내용 불변 · 한 사람 한 표 · 표수가 받쳐주는 상태 전이 ──
@@ -1454,6 +1455,7 @@ const CASES = [
       up("ALLOW", "🐤 임명된 대통령이 정부 이송 법안을 승인", "pres1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPres" }),
       up("DENY", "대통령 아닌 학생이 정부 이송 법안을 승인", "stu1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPres" }),
       up("DENY", "다른 반 «대통령» 직업 id 로 승인", "pres1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPresC2" }),
+      up("DENY", "학생이 투표하면서 대통령 표식을 심는다", "stu1", L0, { ...L0, approvals: 1, voters: { stu1: "approvals" }, presidentJobId: "jobPres" }),
       up("DENY", "거부권 모양에 벌금액 변경을 끼워 넣는다", "pres1", GOV, { ...VETO, fine: "1", presidentJobId: "jobPres" }),
       up("DENY", "심의 중 법안에 거부권 모양으로 표를 지운다", "stu2", { ...L0, approvals: 1, voters: { stu1: "approvals" } }, { ...L0, status: "vetoed", approvals: 0, voters: {} }),
       up("ALLOW", "🐤 재의결 회차 — 1차 찬성자가 다시 찬성한다", "stu1", VETO, { ...VETO, approvals: 1, voters: { stu1: "approvals" } }),

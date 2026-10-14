@@ -1709,6 +1709,10 @@ service cloud.firestore {
                           !request.resource.data.diff(resource.data).affectedKeys()
                             .hasAny(['title', 'purpose', 'description', 'fine', 'proposerId', 'proposerName', 'classCode', 'timestamp']) &&
                           naStatusOk(classCode, resource.data, request.resource.data) &&
+                          // 대통령 표식은 대통령 승인·거부 전이 때만 쓴다(그 밖의 쓰기에 심거나 덮어쓰기 금지)
+                          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['presidentJobId']) ||
+                           (resource.data.get('status', '') == 'pending_government_approval' &&
+                            request.resource.data.get('status', '') in ['approved', 'vetoed'])) &&
                           (naVoteOk(resource.data, request.resource.data, request.auth.uid) ||
                            // 거부권 초기화는 표가 줄어든다 — naStatusOk 의 vetoed 분기가 모양을 이미 봤다
                            (resource.data.get('status', '') == 'pending_government_approval' &&
@@ -2006,7 +2010,7 @@ service cloud.firestore {
                        (isOwner(resource.data.ownerId) &&
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']) &&
                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['classCode']) ||
-                         (resource.data.get('classCode', null) == null && isSameClass(request.resource.data.get('classCode', '')))));
+                         (resource.data.get('classCode', null) in [null, ''] && isSameClass(request.resource.data.get('classCode', '')))));
 
       // 삭제: 본인 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();
@@ -2037,7 +2041,7 @@ service cloud.firestore {
                        (isOwner(resource.data.ownerId) &&
                         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'shopId']) &&
                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['classCode']) ||
-                         (resource.data.get('classCode', null) == null && isSameClass(request.resource.data.get('classCode', '')))));
+                         (resource.data.get('classCode', null) in [null, ''] && isSameClass(request.resource.data.get('classCode', '')))));
 
       // 삭제: 상품 소유자 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();

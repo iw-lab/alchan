@@ -701,9 +701,10 @@ if (want("auction")) {
     await waitFor(async () => (await cash(B.uid)) === base[B.uid], { msg: "밀려난 입찰자 환불" });
     expect((await cash(C.uid)) === base[C.uid] - 200, "최고 입찰자 에스크로 −200 아님");
   });
-  await step("auction: 기한 경과 → 화면이 정산 → 돈 보존", async () => {
+  await step("auction: 기한 경과 → 두 화면이 동시에 정산(멱등) → 돈 보존", async () => {
     await auctionsCol().doc(auctionId).update({ endTime: new Date(Date.now() - 1000) });
-    await go(S[1], "/auction");
+    // 종료된 경매를 여러 학생이 동시에 열면 모두 정산을 부른다 — 409 없이 한 번만 정산돼야 한다
+    await Promise.all([go(S[1], "/auction"), go(S[2], "/auction")]);
     await waitFor(async () => (await auctionsCol().doc(auctionId).get()).data().status !== "ongoing", { timeout: 20000, msg: "정산" });
     const dA = (await cash(A.uid)) - base[A.uid], dB = (await cash(B.uid)) - base[B.uid], dC = (await cash(C.uid)) - base[C.uid], dT = (await cash(teacherUid)) - base.teacher;
     note("auction-deltas", { dA, dB, dC, dT });
