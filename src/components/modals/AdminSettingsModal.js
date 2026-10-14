@@ -34,8 +34,6 @@ import { classCurrencyPath, classCurrencyCacheKey } from "../../utils/classCurre
 import globalCacheService from "../../services/globalCacheService";
 import { useBackClose } from "../../hooks/useBackClose";
 
-// 시스템 모니터링 컴포넌트
-import SystemMonitoring from "../../pages/admin/SystemMonitoring";
 
 // AdminDatabase 는 더 이상 여기서 임베드하지 않는다 — 사이드바 '관리 > 데이터베이스'
 // (/admin/activity-log)가 같은 컴포넌트를 띄운다. 아래 '학급 데이터' 탭 주석 참조.
@@ -4010,8 +4008,6 @@ const AdminSettingsModal = ({
               </div>
             )}
 
-            {/* 서버 상태 모니터링 섹션 */}
-            <SystemMonitoring isSuperAdmin={isSuperAdmin} />
           </div>
         )}
 

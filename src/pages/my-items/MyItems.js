@@ -1,12 +1,11 @@
 // src/pages/my-items/MyItems.js
-import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
+import { normalizeCurrencyText } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
 import RandomDrawWheel from "./RandomDrawWheel";
 import "./MyItems.css";
 import LoginWarning from "../../components/LoginWarning";
-import { useNavigate } from "react-router-dom";
 
 import { logger } from "../../utils/logger";
 import {
@@ -14,15 +13,7 @@ import {
   NEGATIVE_ASSETS_MESSAGE,
 } from "../../utils/netAssets";
 // Firebase
-import {
-  db,
-  firebaseDoc,
-  getDoc,
-  updateDoc,
-  functions,
-  httpsCallable,
-} from "../../firebase";
-import { confirmDialog } from "../../utils/confirmDialog";
+import { functions, httpsCallable } from "../../firebase";
 import { useBackClose } from "../../hooks/useBackClose";
 
 const ITEM_DEFAULT_DURATION_MS = 5 * 60 * 1000;
@@ -60,7 +51,6 @@ const MyItems = () => {
     userItems,
     useItem,
     drawRandomItem,
-    listItemForSale,
     sellItemToTreasury,
     refreshData,
     updateLocalUserItems,
@@ -69,13 +59,11 @@ const MyItems = () => {
     userItems: [],
     useItem: null,
     drawRandomItem: null,
-    listItemForSale: null,
     sellItemToTreasury: null,
     refreshData: null,
     updateLocalUserItems: null,
   };
 
-  const navigate = useNavigate();
 
   const [notification, setNotification] = useState(null);
   const showNotification = (type, message) => {
@@ -198,15 +186,6 @@ const MyItems = () => {
   const [isGifting, setIsGifting] = useState(false);
   // 선물 1건당 고정 idempotency 키 (모달 오픈 시 발급, 재시도에도 동일 키 재사용)
   const giftIdemKeyRef = useRef(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isListingToMarket, setIsListingToMarket] = useState(false); // 버튼 disabled(UX)용
-  const listingToMarketRef = useRef(false); // 🔒 실제 이중제출 가드 — 동기 ref(useState는 같은 틱 재진입 미차단)
-  const [sellToMarketModal, setSellToMarketModal] = useState({
-    isOpen: false,
-    item: null,
-    quantity: 1,
-    price: 0,
-  });
   // 💰 국고 되팔기 모달
   const [sellToTreasuryModal, setSellToTreasuryModal] = useState({
     isOpen: false,
@@ -426,32 +405,6 @@ const MyItems = () => {
   };
 
 
-  const handleCloseSellToMarketModal = () => {
-    setSellToMarketModal({
-      isOpen: false,
-      item: null,
-      quantity: 1,
-      price: 0,
-    });
-  };
-
-  const handleSellToMarketQuantityChange = (value) => {
-    const maxQty = sellToMarketModal.item?.totalQuantity || 1;
-    const newQty = Math.max(1, Math.min(maxQty, parseInt(value) || 1));
-    setSellToMarketModal((prev) => ({
-      ...prev,
-      quantity: newQty,
-    }));
-  };
-
-  const handleSellToMarketPriceChange = (value) => {
-    const newPrice = Math.max(1, parseInt(value) || 1);
-    setSellToMarketModal((prev) => ({
-      ...prev,
-      price: newPrice,
-    }));
-  };
-
   const handleConfirmUseItem = async () => {
     if (useItemLockRef.current) return; // 🔒 이중제출(더블클릭 이중소모) 방지
     const { item: group, quantity: quantityToUse } = useItemModal;
@@ -639,173 +592,12 @@ const MyItems = () => {
       setIsGifting(false);
     }
   };
-  const handleConfirmSellToMarket = async () => {
-    if (listingToMarketRef.current) return; // 🔒 동기 ref 가드(같은 틱 재진입까지 차단)
-    const { item: group, quantity, price } = sellToMarketModal;
-    if (!group || !quantity || !price) {
-      showNotification("error", "판매 정보가 올바르지 않습니다.");
-      return;
-    }
-
-    listingToMarketRef.current = true;
-    setIsListingToMarket(true); // 버튼 disabled(UX)
-    try {
-      // 🔥 실제 Firestore에서 문서 다시 조회
-      const docIds = group.sourceDocs.map((doc) => doc.id);
-      const actualSourceDocs = [];
-      let actualTotalQuantity = 0;
-
-      // 순차 await 였다 — 읽기 **수**는 그대로지만(Firestore 는 문서 단위 과금) 왕복이
-      // 문서 수만큼 직렬로 쌓여 "시장에 팔기"가 그만큼 늦게 반응했다.
-      // 결과 취합은 순서에 의존하지 않으므로 병렬화가 값을 바꾸지 않는다.
-      const snaps = await Promise.all(
-        docIds.map((docId) =>
-          getDoc(firebaseDoc(db, "users", user.uid, "inventory", docId)),
-        ),
-      );
-      for (const docSnap of snaps) {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          actualSourceDocs.push({
-            id: docSnap.id,
-            ...data,
-          });
-          actualTotalQuantity += data.quantity || 0;
-        }
-      }
-
-      logger.log("[MyItems] 시장에 팔기 - 실제 조회:", {
-        요청수량: quantity,
-        실제보유: actualTotalQuantity,
-        문서수: actualSourceDocs.length,
-      });
-
-      if (actualSourceDocs.length === 0) {
-        throw new Error(
-          "판매할 아이템을 찾을 수 없습니다. 페이지를 새로고침해주세요.",
-        );
-      }
-
-      if (actualTotalQuantity < quantity) {
-        throw new Error(
-          `아이템 수량이 부족합니다. (필요: ${quantity}, 실제 보유: ${actualTotalQuantity})`,
-        );
-      }
-
-      // 실제 문서들로 판매 진행
-      let remainingToSell = quantity;
-      const itemsToProcess = [...actualSourceDocs].sort(
-        (a, b) => a.quantity - b.quantity,
-      );
-
-      for (const doc of itemsToProcess) {
-        if (remainingToSell <= 0) break;
-        const amountToSell = Math.min(doc.quantity, remainingToSell);
-
-        // 🔥 FIX: 판매 전 필수 필드가 undefined인 경우 기본값으로 업데이트
-        const updateFields = {};
-        if (doc.description === undefined) {
-          logger.warn(`[MyItems] 누락된 description 필드 수정: ${doc.id}`);
-          updateFields.description = "";
-        }
-        if (doc.icon === undefined) {
-          logger.warn(`[MyItems] 누락된 icon 필드 수정: ${doc.id}`);
-          updateFields.icon = "🔮";
-        }
-        if (doc.type === undefined) {
-          logger.warn(`[MyItems] 누락된 type 필드 수정: ${doc.id}`);
-          updateFields.type = "general";
-        }
-        if (Object.keys(updateFields).length > 0) {
-          const itemRef = firebaseDoc(
-            db,
-            "users",
-            user.uid,
-            "inventory",
-            doc.id,
-          );
-          await updateDoc(itemRef, updateFields);
-          // 로컬 doc 객체도 업데이트
-          Object.assign(doc, updateFields);
-        }
-
-        const result = await listItemForSale({
-          itemId: doc.id,
-          quantity: amountToSell,
-          price,
-        });
-
-        if (!result.success) {
-          throw new Error(
-            result.message || "일부 아이템 판매 등록에 실패했습니다.",
-          );
-        }
-        remainingToSell -= amountToSell;
-      }
-
-      showNotification(
-        "success",
-        `${group.displayInfo.name} ${quantity}개를 시장에 판매 등록했습니다.`,
-      );
-      handleCloseSellToMarketModal();
-
-      // setTimeout 콜백을 async 로 바꾼다. 반환값(Promise)을 setTimeout 은 무시하므로
-      // 동작에 영향이 없다 — 여기서 await 을 쓰려면 이 방법뿐이다.
-      setTimeout(async () => {
-        if (await confirmDialog("아이템 시장으로 이동하시겠습니까?")) {
-          navigate("/item-market");
-        }
-      }, 500);
-    } catch (error) {
-      logger.error("[MyItems] 시장 판매 등록 실패:", error);
-
-      if (
-        error.message.includes("아이템을 찾을 수 없") ||
-        error.message.includes("수량이 부족합니다")
-      ) {
-        showNotification(
-          "warning",
-          "아이템 정보가 변경되었습니다. 데이터를 동기화합니다.",
-        );
-        setIsSyncing(true);
-
-        if (refreshData) {
-          refreshData()
-            .then(() => {
-              showNotification(
-                "success",
-                "동기화가 완료되었습니다. 다시 시도해주세요.",
-              );
-              setIsSyncing(false);
-            })
-            .catch((syncError) => {
-              logger.error("[MyItems] 데이터 동기화 실패:", syncError);
-              showNotification("error", "데이터 동기화에 실패했습니다.");
-              setIsSyncing(false);
-            });
-        } else {
-          showNotification(
-            "error",
-            `오류가 발생했으며 데이터를 새로고칠 수 없습니다: ${error.message}`,
-          );
-          setIsSyncing(false);
-        }
-      } else {
-        showNotification("error", `시장 판매 등록 중 오류: ${error.message}`);
-      }
-    } finally {
-      listingToMarketRef.current = false;
-      setIsListingToMarket(false);
-    }
-  };
-
   const itemToGift = giftModal.isOpen ? giftModal.item : null;
 
   // 뒤로가기 = 각 모달 닫기(기존 닫기 핸들러와 동일, 회전 중 뽑기 모달은 closeWheelModal 자체가 보호)
   useBackClose(wheelModal.isOpen, () => (wheelModal.spinning ? false : closeWheelModal()));
   useBackClose(useItemModal.isOpen, () => handleCloseUseItemModal());
   useBackClose(giftModal.isOpen, () => handleCloseGiftModal());
-  useBackClose(sellToMarketModal.isOpen, () => handleCloseSellToMarketModal());
   useBackClose(sellToTreasuryModal.isOpen, () => handleCloseSellToTreasuryModal());
 
   return (
@@ -898,7 +690,6 @@ const MyItems = () => {
                             onClick={() => {
                               handleOpenUseItemModal(group);
                             }}
-                            disabled={isSyncing}
                           >
                             사용하기
                           </button>
@@ -907,13 +698,9 @@ const MyItems = () => {
                             onClick={() => {
                               handleOpenGiftModal(group);
                             }}
-                            disabled={
-                              !classmates ||
-                              classmates.length === 0 ||
-                              isSyncing
-                            }
+                            disabled={!classmates || classmates.length === 0}
                           >
-                            {isSyncing ? "동기화 중" : "선물하기"}
+                            선물하기
                           </button>
                           {getTreasuryBuyback(group).eligible && (
                             <button
@@ -921,7 +708,6 @@ const MyItems = () => {
                               onClick={() => {
                                 handleOpenSellToTreasuryModal(group);
                               }}
-                              disabled={isSyncing}
                               title="현재 상점가의 70%로 국고에 되팔기"
                             >
                               국고에 팔기
@@ -1264,98 +1050,9 @@ const MyItems = () => {
               <button
                 onClick={handleSendGift}
                 className="button-primary"
-                disabled={isGifting || isSyncing}
+                disabled={isGifting}
               >
-                {isGifting
-                  ? "선물하는 중..."
-                  : isSyncing
-                    ? "동기화 중..."
-                    : "선물하기"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sellToMarketModal.isOpen && sellToMarketModal.item && (
-        <div
-          className="myitems-modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleCloseSellToMarketModal();
-          }}
-        >
-          <div className="myitems-modal-container">
-            <div className="myitems-modal-header">
-              <h3>
-                '{sellToMarketModal.item.displayInfo.name}' 시장에 판매하기
-              </h3>
-              <button
-                onClick={handleCloseSellToMarketModal}
-                className="myitems-close-button"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="myitems-modal-body">
-              <div className="item-preview-simple">
-                <span className="item-icon-small">
-                  {sellToMarketModal.item.displayInfo.icon}
-                </span>
-                <span>
-                  {sellToMarketModal.item.displayInfo.name} (보유:{" "}
-                  {sellToMarketModal.item.totalQuantity}개)
-                </span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="sellToMarketQuantity">
-                  판매 수량 (최대: {sellToMarketModal.item.totalQuantity}개):
-                </label>
-                <input
-                  type="number"
-                  id="sellToMarketQuantity"
-                  value={sellToMarketModal.quantity}
-                  onChange={(e) =>
-                    handleSellToMarketQuantityChange(e.target.value)
-                  }
-                  min="1"
-                  max={sellToMarketModal.item.totalQuantity}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="sellToMarketPrice">개당 판매 가격 ({getCurrencyUnit()}):</label>
-                <input
-                  type="number"
-                  id="sellToMarketPrice"
-                  value={sellToMarketModal.price}
-                  onChange={(e) =>
-                    handleSellToMarketPriceChange(e.target.value)
-                  }
-                  min="1"
-                />
-              </div>
-              <div className="total-price-preview">
-                예상 판매 총액:{" "}
-                <strong>
-                  {(
-                    sellToMarketModal.price * sellToMarketModal.quantity
-                  ).toLocaleString()}
-                  원
-                </strong>
-              </div>
-            </div>
-            <div className="myitems-modal-footer">
-              <button
-                onClick={handleCloseSellToMarketModal}
-                className="button-secondary"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleConfirmSellToMarket}
-                className="button-primary sell-button"
-                disabled={isSyncing || isListingToMarket}
-              >
-                {isSyncing ? "동기화 중..." : "판매 등록"}
+                {isGifting ? "선물하는 중..." : "선물하기"}
               </button>
             </div>
           </div>

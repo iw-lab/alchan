@@ -620,21 +620,16 @@ if (want("fuzz")) {
     for (const u of [A.uid, B.uid]) {
       o["inv:" + u] = (await fdb.collection(`users/${u}/inventory`).get()).docs.map((d) => `${d.id}:${d.data().quantity}`).sort().join(",");
     }
-    o.listings = (await fdb.collection("marketListings").where("sellerId", "in", [A.uid, B.uid]).get()).docs.map((d) => `${d.id}:${d.data().status}:${d.data().quantity}`).sort().join(",");
     return JSON.stringify(o);
   };
   const ctx = {};
-  await step("fuzz: 준비(현금·쿠폰 지급, 아이템 구매, 장터 등록)", async () => {
+  await step("fuzz: 준비(현금·쿠폰 지급, 아이템 구매)", async () => {
     for (const u of [A, B]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000, coupons: 50 });
     const item = (await fdb.collection("storeItems").where("classCode", "==", st.classCode).get()).docs.find((d) => (d.data().price || 0) > 0 && (d.data().stock ?? 99) > 2);
     expect(!!item, "상점 아이템 없음");
     ctx.itemId = item.id;
     const r1 = await callAs(0, "purchaseStoreItem", { itemId: item.id, quantity: 3, idempotencyKey: "fz-buy-" + Date.now() });
     expect(r1.ok, "정상 구매 실패 " + JSON.stringify(r1));
-    const r2 = await callAs(0, "listUserItemForSale", { inventoryItemId: item.id, quantity: 1, price: 100 });
-    expect(r2.ok, "정상 장터 등록 실패 " + JSON.stringify(r2));
-    const l = (await fdb.collection("marketListings").where("sellerId", "==", A.uid).get()).docs[0];
-    ctx.listingId = l?.id;
     note("fuzz-ctx", ctx);
   });
   const BAD = [-1000, -1, 0, 0.5, 1e-7, "100", "abc", 1e21, 9007199254740993, null, true, [100], { n: 1 }];
@@ -651,7 +646,6 @@ if (want("fuzz")) {
     [0, "sellItemToTreasury", () => ({ itemId: ctx.itemId }), ["quantity"]],
     [0, "useUserItem", () => ({ itemId: ctx.itemId }), ["quantityToUse"]],
     [0, "giftItem", () => ({ recipientUid: B.uid, itemId: ctx.itemId }), ["quantity"]],
-    [0, "listUserItemForSale", () => ({ inventoryItemId: ctx.itemId, quantity: 1, price: 100 }), ["quantity", "price"]],
     [0, "createAuction", () => ({ assetId: ctx.itemId, startPrice: 100, durationHours: 1, sourceCollection: "inventory", name: "fz", description: "fz" }), ["startPrice", "durationHours"]],
     [0, "buyStock", () => ({ stockId: "nope" }), ["quantity"]],
     [0, "subscribeProduct", () => ({ productType: "deposit", productId: "nope" }), ["amount"]],
@@ -687,10 +681,53 @@ if (want("fuzz")) {
     note("fuzz-bad", bad);
     expect(bad.length === 0, `퍼징 결함 ${bad.length}건 — notes.fuzz-bad`);
   });
-  await step("fuzz: 남의 물건 조작(장터 취소) → 거부·무변화", async () => {
-    const before = await snap();
-    const r = await callAs(1, "cancelMarketSale", { listingId: ctx.listingId });
-    expect(!r.ok && (await snap()) === before, "남의 장터 등록을 취소했다 " + JSON.stringify(r));
+  // 권한 스윕 — 학생이 교사·관리자 전용 CF 를 그럴듯한 값으로 직접 부른다. 전부 거부·무변화여야 한다.
+  await step("fuzz: 학생 → 교사·관리자 전용 CF 권한 스윕", async () => {
+    const shopSnap = async () => (await fdb.collection("storeItems").where("classCode", "==", st.classCode).get()).docs.map((d) => `${d.id}:${d.data().price}:${d.data().stock}`).sort().join(",");
+    const k = () => `az-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const PRIV = [
+      ["adminCashAction", { targetUserIds: [A.uid, B.uid], action: "give", amountType: "fixed", amount: 100000, idempotencyKey: k() }],
+      ["adminCashAction", { targetUserIds: [B.uid], action: "take", takeMode: "toTreasury", amountType: "fixed", amount: 100000, allowNegative: true, idempotencyKey: k() }],
+      ["processTaskApproval", { approvalId: "x", action: "approve" }],
+      ["manualResetClassTasks", { classCode: st.classCode }],
+      ["processCourtSettlement", { complaintId: "x", senderId: B.uid, recipientId: A.uid, amount: 5000 }],
+      ["processTrialSettlement", { roomId: "x", amount: 5000, reason: "r" }],
+      ["processSettlement", { reportId: "x", amount: 5000, senderId: B.uid, recipientId: A.uid, reason: "r" }],
+      ["updateStoreItem", { itemId: ctx.itemId, updatesToApply: { price: 1, stock: 9999 } }],
+      ["addStoreItem", { name: "해킹", price: 1, stock: 999, classCode: st.classCode, icon: "x", description: "x" }],
+      ["deleteStoreItem", { itemId: ctx.itemId }],
+      ["adjustStorePrices", { classCode: st.classCode, percent: -99 }],
+      ["reverseSalaryOnce", { idempotencyKey: k() }],
+      ["deleteAuthUser", { targetUid: B.uid }],
+      ["listAllAuthUsers", {}],
+      ["createStudentAccounts", { students: [{ name: "가짜", number: 99 }] }],
+      ["processJobApplication", { applicationId: "x", action: "approve" }],
+      ["migrateAppointedJobs", { classCode: st.classCode }],
+      ["publishPlazaApp", { appId: "x", action: "publish" }],
+      ["triggerEconomicEventManual", { forceEventId: "x" }],
+      ["toggleVacationMode", { enabled: true }],
+      ["seedAvatarShop", {}],
+      ["updateAvatarShopPrice", { itemId: "x", price: 1 }],
+      ["completeGroupPurchase", { groupPurchaseId: "x" }],
+      ["deleteGroupPurchase", { groupPurchaseId: "x" }],
+      ["clawbackAppReward", { uid: B.uid, amount: 1000 }],
+      ["updateStocksSnapshot", {}],
+      ["addStockDoc", { name: "해킹주", price: 1 }],
+      ["createRealStocks", {}],
+      ["updateRealStocks", {}],
+      ["addSingleRealStock", { symbol: "005930" }],
+      ["resetCouponGoal", {}],
+    ];
+    const before = (await snap()) + (await shopSnap());
+    const leaks = [];
+    for (const [name, data] of PRIV) {
+      const r = await callAs(0, name, data);
+      if (r.ok) leaks.push(`${name}: 성공 ${JSON.stringify(r.data).slice(0, 120)}`);
+      else if (r.code === "internal") leaks.push(`${name}: internal ${r.msg}`);
+    }
+    const after = (await snap()) + (await shopSnap());
+    note("authz-leaks", leaks);
+    expect(leaks.length === 0 && after === before, `권한 스윕 결함 ${leaks.length}건${after !== before ? " + 상태 변화" : ""} — notes.authz-leaks`);
   });
   expectRejections = false;
 }

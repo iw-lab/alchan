@@ -27,7 +27,6 @@ export const useItems = () => {
     return {
       items: [],
       userItems: [],
-      marketListings: [],
       loading: true,
       error: null,
       addItem: async () => ({
@@ -47,30 +46,6 @@ export const useItems = () => {
         message: "Context not available",
       }),
       useItem: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      updateUserItemQuantity: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      listItemForSale: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      buyMarketItem: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      cancelSale: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      adminCancelSale: async () => ({
-        success: false,
-        message: "Context not available",
-      }),
-      adminDeleteItem: async () => ({
         success: false,
         message: "Context not available",
       }),
@@ -94,7 +69,6 @@ export const ItemProvider = ({ children }) => {
   // State for all economic data
   const [items, setItems] = useState([]);
   const [userItems, setUserItems] = useState([]);
-  const [marketListings, setMarketListings] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -115,16 +89,7 @@ export const ItemProvider = ({ children }) => {
       purchaseStoreItem: httpsCallable(functions, "purchaseStoreItem"),
       useUserItem: httpsCallable(functions, "useUserItem"),
       drawRandomItem: httpsCallable(functions, "drawRandomItem"),
-      updateUserItemQuantity: httpsCallable(
-        functions,
-        "updateUserItemQuantity",
-      ),
-      listUserItemForSale: httpsCallable(functions, "listUserItemForSale"),
       sellItemToTreasury: httpsCallable(functions, "sellItemToTreasury"),
-      buyMarketItem: httpsCallable(functions, "buyMarketItem"),
-      cancelMarketSale: httpsCallable(functions, "cancelMarketSale"),
-      adminCancelSale: httpsCallable(functions, "adminCancelSale"),
-      adminDeleteItem: httpsCallable(functions, "adminDeleteItem"),
     }),
     [],
   );
@@ -164,11 +129,9 @@ export const ItemProvider = ({ children }) => {
       const {
         storeItems,
         userItems: groupedUserItems,
-        marketListings,
       } = payload;
       setItems(storeItems || []);
       setUserItems(groupedUserItems || []);
-      setMarketListings(marketListings || []);
       setError(null);
     } catch (err) {
       logger.error("[ItemContext] 데이터 로드 오류:", err);
@@ -738,296 +701,6 @@ export const ItemProvider = ({ children }) => {
     [userId, firebaseFunctions, refreshData],
   );
 
-  const listItemForSale = useCallback(
-    async ({ itemId, quantity, price }) => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-
-      // 🔥 아이템 정보를 먼저 저장 (Firebase 호출 전에)
-      const itemToSell = userItems.find(
-        (item) => item.id === itemId || item.itemId === itemId,
-      );
-      const itemName = itemToSell?.name || itemToSell?.itemName || "아이템";
-
-      // 🔥 낙관적 업데이트: userItems에서 수량 즉시 차감
-      const originalUserItems = [...userItems];
-      setUserItems((prev) => {
-        return prev
-          .map((item) => {
-            if (item.id === itemId || item.itemId === itemId) {
-              const newQuantity = item.quantity - quantity;
-              if (newQuantity <= 0) return null;
-              return { ...item, quantity: newQuantity };
-            }
-            return item;
-          })
-          .filter(Boolean);
-      });
-
-      try {
-        await firebaseFunctions.listUserItemForSale({
-          inventoryItemId: itemId,
-          quantity,
-          price,
-          sourceCollection: "inventory",
-        });
-
-        // 🔥 활동 로그 기록 (아이템 시장 등록)
-        logActivity(db, {
-          classCode: currentUserClassCode,
-          userId: userId,
-          userName: userDoc?.name || "사용자",
-          type: ACTIVITY_TYPES.ITEM_MARKET_LIST,
-          description: `${itemName} ${quantity}개 시장 등록 (${price.toLocaleString()}${getCurrencyUnit()})`,
-          metadata: {
-            itemId,
-            itemName: itemName,
-            quantity,
-            price,
-          },
-        });
-
-        refreshData();
-        return { success: true };
-      } catch (error) {
-        // 🔥 에러: 낙관적 업데이트 롤백
-        logger.error("[ItemContext] 시장 등록 에러, 롤백 수행:", error);
-        setUserItems(originalUserItems);
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "아이템 판매 등록 함수(listUserItemForSale)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [
-      userId,
-      firebaseFunctions,
-      refreshData,
-      userItems,
-      currentUserClassCode,
-      userDoc,
-    ],
-  );
-
-  const buyMarketItem = useCallback(
-    async (listingId) => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-      const itemToBuy = marketListings.find((item) => item.id === listingId);
-      if (!itemToBuy)
-        return {
-          success: false,
-          message: "판매 목록에서 아이템을 찾을 수 없습니다.",
-        };
-
-      const itemPrice = itemToBuy.price || itemToBuy.totalPrice || 0;
-
-      // 🔒 현금 차감은 buyMarketItem CF가 원자적으로 처리한다(구매자 차감·판매자 지급·세금).
-      //    구 코드의 클라 deductCash는 CF 차감과 겹쳐 이중차감이 되므로 제거(2026-07-16).
-
-      // 🔥 낙관적 업데이트: 내 아이템에 추가
-      const newUserItem = {
-        id: `temp-${Date.now()}-${Math.random()}`, // 임시 ID
-        itemId: itemToBuy.itemId || itemToBuy.id,
-        name: itemToBuy.itemName,
-        icon: itemToBuy.icon || "🔮",
-        description: itemToBuy.description || "",
-        type: itemToBuy.category || itemToBuy.itemType || "general",
-        quantity: itemToBuy.quantity || 1,
-        purchasedAt: new Date(),
-      };
-
-      logger.log("[ItemContext] 낙관적 업데이트: 아이템 추가", newUserItem);
-
-      // 기존 상태 백업 (롤백용)
-      const originalUserItems = [...userItems];
-      const originalMarketListings = [...marketListings];
-
-      // 🔥 userItems에 즉시 추가
-      setUserItems((prev) => {
-        // 동일한 itemId가 있으면 수량 증가, 없으면 새로 추가
-        const existingIndex = prev.findIndex(
-          (item) => item.itemId === newUserItem.itemId,
-        );
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            quantity: updated[existingIndex].quantity + newUserItem.quantity,
-          };
-          return updated;
-        } else {
-          return [...prev, newUserItem];
-        }
-      });
-
-      // 🔥 marketListings에서 즉시 제거
-      setMarketListings((prev) => prev.filter((item) => item.id !== listingId));
-
-      try {
-        const result = await firebaseFunctions.buyMarketItem({ listingId, idempotencyKey: crypto.randomUUID() });
-        if (result.data.success) {
-          logger.log("[ItemContext] 구매 성공, 서버 데이터로 동기화");
-
-          // 🔥 활동 로그 기록 (아이템 시장 구매)
-          logActivity(db, {
-            classCode: currentUserClassCode,
-            userId: userId,
-            userName: userDoc?.name || "사용자",
-            type: ACTIVITY_TYPES.ITEM_MARKET_BUY,
-            description: `${itemToBuy.itemName} ${itemToBuy.quantity || 1}개 시장 구매 (${itemPrice.toLocaleString()}${getCurrencyUnit()})`,
-            amount: -itemPrice,
-            metadata: {
-              listingId,
-              itemName: itemToBuy.itemName,
-              quantity: itemToBuy.quantity || 1,
-              sellerId: itemToBuy.sellerId,
-              sellerName: itemToBuy.sellerName,
-              price: itemPrice,
-            },
-          });
-
-          // 🎯 성공: refreshData로 정확한 데이터 동기화
-          refreshData();
-          return { success: true };
-        } else {
-          // 🔥 실패: 아이템/마켓 낙관 업데이트 롤백 (cash는 CF가 커밋 안 했으므로 롤백 불필요)
-          logger.warn("[ItemContext] 구매 실패, 롤백 수행");
-          setUserItems(originalUserItems);
-          setMarketListings(originalMarketListings);
-          throw new Error(result.data.message || "구매에 실패했습니다.");
-        }
-      } catch (error) {
-        // 🔥 에러: 아이템/마켓 낙관 업데이트 롤백 (cash는 CF 트랜잭션이 실패했으므로 원복 불필요)
-        logger.error("[ItemContext] 구매 에러, 롤백 수행:", error);
-        setUserItems(originalUserItems);
-        setMarketListings(originalMarketListings);
-
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "구매 처리 함수(buyMarketItem)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [
-      userId,
-      firebaseFunctions,
-      refreshData,
-      marketListings,
-      userItems,
-      currentUserClassCode,
-      userDoc,
-    ],
-  );
-
-  const cancelSale = useCallback(
-    async (listingId) => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-      try {
-        await firebaseFunctions.cancelMarketSale({ listingId });
-        refreshData();
-        return { success: true };
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "판매 취소 함수(cancelMarketSale)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [userId, firebaseFunctions, refreshData],
-  );
-
-  const adminCancelSale = useCallback(
-    async (listingId) => {
-      if (typeof isAuthAdmin !== "function" || !isAuthAdmin())
-        return { success: false, message: "관리자 권한 필요" };
-      try {
-        await firebaseFunctions.adminCancelSale({ listingId });
-        refreshData();
-        return { success: true };
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "관리자 판매 취소 함수(adminCancelSale)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [isAuthAdmin, firebaseFunctions, refreshData],
-  );
-
-  const adminDeleteItem = useCallback(
-    async (listingId) => {
-      if (typeof isAuthAdmin !== "function" || !isAuthAdmin())
-        return { success: false, message: "관리자 권한 필요" };
-      try {
-        await firebaseFunctions.adminDeleteItem({ listingId });
-        refreshData();
-        return { success: true };
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "관리자 아이템 삭제 함수(adminDeleteItem)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [isAuthAdmin, firebaseFunctions, refreshData],
-  );
-
-  const updateUserItemQuantity = useCallback(
-    async (itemId, quantityChange, sourceCollection = "inventory") => {
-      if (!userId) return { success: false, message: "로그인 필요" };
-      try {
-        const result = await firebaseFunctions.updateUserItemQuantity({
-          itemId,
-          quantityChange,
-          sourceCollection,
-        });
-        if (result.data.success) {
-          refreshData();
-          return { success: true };
-        } else {
-          throw new Error(
-            result.data.message || "아이템 수량 업데이트에 실패했습니다.",
-          );
-        }
-      } catch (error) {
-        refreshData();
-        if (error.code === "not-found") {
-          return {
-            success: false,
-            message:
-              "아이템 수량 업데이트 함수(updateUserItemQuantity)를 찾을 수 없습니다. 관리자에게 문의하세요.",
-          };
-        }
-        return { success: false, message: error.message };
-      }
-    },
-    [userId, firebaseFunctions, refreshData],
-  );
-
-  // 💰 국고에 되팔기: 현재 상점가 × 70% (서버가 시세·금액 결정). 낙관적 cash 증액 + 인벤토리 차감.
   const sellItemToTreasury = useCallback(
     async (itemId, quantity = 1) => {
       if (!userId) return { success: false, message: "로그인 필요" };
@@ -1123,7 +796,6 @@ export const ItemProvider = ({ children }) => {
     () => ({
       items,
       userItems,
-      marketListings,
       loading,
       error,
       addItem,
@@ -1133,20 +805,13 @@ export const ItemProvider = ({ children }) => {
       purchaseItem,
       useItem,
       drawRandomItem,
-      updateUserItemQuantity,
-      listItemForSale,
       sellItemToTreasury,
-      buyMarketItem,
-      cancelSale,
-      adminCancelSale,
-      adminDeleteItem,
       refreshData,
       updateLocalUserItems,
     }),
     [
       items,
       userItems,
-      marketListings,
       loading,
       error,
       addItem,
@@ -1156,13 +821,7 @@ export const ItemProvider = ({ children }) => {
       purchaseItem,
       useItem,
       drawRandomItem,
-      updateUserItemQuantity,
-      listItemForSale,
       sellItemToTreasury,
-      buyMarketItem,
-      cancelSale,
-      adminCancelSale,
-      adminDeleteItem,
       refreshData,
       updateLocalUserItems,
     ],

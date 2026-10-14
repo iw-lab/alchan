@@ -20,7 +20,7 @@ import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
 
 const require_ = createRequire(import.meta.url);
-const { isValidMoney, isValidStockPrice, isSafeAmount, MAX_STOCK_PRICE, MAX_MONEY } =
+const { isValidStockPrice, isSafeAmount, MAX_STOCK_PRICE, MAX_MONEY } =
   require_("../../../functions/moneyGuards.js");
 
 describe("isValidStockPrice — 1차·2차로 뚫린 값이 전부 막히는가", () => {
@@ -117,16 +117,5 @@ describe("가드를 통과한 가격은 실제 거래 계산에서 안전한가"
       const total = cost + Math.round(cost * 0.005) + Math.floor(cost * 0.003);
       expect(isSafeAmount(total)).toBe(true);
     }
-  });
-});
-
-describe("isValidMoney — 3차(2026-10-14 퍼징): 장터 판매가 0.5·1e-7 등록", () => {
-  it("소수·극소·음수·0·문자열·불리언·배열·상한 초과를 전부 막는다", () => {
-    for (const v of [0.5, 1e-7, Number.MIN_VALUE, -1, 0, "100", true, [100], null, NaN, Infinity, MAX_MONEY + 1, Number.MAX_SAFE_INTEGER + 2]) {
-      expect(isValidMoney(v)).toBe(false);
-    }
-  });
-  it("1 · 보통 가격 · 상한(100억)은 통과한다", () => {
-    for (const v of [1, 100, 50000, MAX_MONEY]) expect(isValidMoney(v)).toBe(true);
   });
 });

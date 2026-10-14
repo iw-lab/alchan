@@ -21,17 +21,6 @@ const MAX_MONEY = 10000000000;
 const MAX_STOCK_PRICE = MAX_MONEY;
 
 /**
- * 사람이 정하는 거래 금액(장터 판매가 등)인가 — 1 이상 100억 이하의 **정수**.
- * 3차(2026-10-14 퍼징): 장터 판매가가 «유한한 양수»만 봐서 0.5·1e-7 로 등록됐다.
- *   사면 구매자·판매자 현금이 소수(99,999.5)로 오염된다.
- * @param {unknown} v
- * @returns {boolean}
- */
-function isValidMoney(v) {
-  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= MAX_MONEY;
-}
-
-/**
  * 거래에 쓸 수 있는 가격인가.
  * @param {unknown} v
  * @returns {boolean} 1 이상 MAX_STOCK_PRICE 이하의 정수일 때만 true
@@ -66,7 +55,6 @@ function isSafeAmount(v, max = Number.MAX_SAFE_INTEGER) {
 module.exports = {
   MAX_MONEY,
   MAX_STOCK_PRICE,
-  isValidMoney,
   isValidStockPrice,
   isSafeAmount,
 };
