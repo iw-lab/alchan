@@ -530,7 +530,8 @@ if (want("tasks")) {
 if (want("assembly")) {
   let lawId;
   const lawsCol = () => `classes/${st.classCode}/nationalAssemblyLaws`;
-  await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).set({ totalStudents: 4 });
+  // 3명 반으로 둔다 — 과반(절반 초과) = 2표. (학생1·3 찬성, 학생2 반대 흐름)
+  await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).set({ totalStudents: 3 });
   await step("assembly: 교사 법안 제안(벌금 3,000)", async () => {
     await go(T, "/national-assembly");
     await T.page.getByRole("button", { name: "새 법안 제안하기" }).click();
@@ -566,11 +567,12 @@ if (want("assembly")) {
       skipToGov: await forge(S[0], p, { status: "pending_government_approval" }),
       skipToApproved: await forge(S[0], p, { status: "approved" }),
       doubleVote: await forge(S[0], p, {}, { approvals: 1 }),
+      plantFinal: await forge(S[0], p, { finalStatus: "final_approved" }), // 경찰서는 이 값으로 «가결된 법»을 고른다
     };
     note("assembly-forge2", r);
     expect(Object.values(r).every((v) => v === "permission-denied"), "표수 근거 없는 쓰기가 허용됐다 " + JSON.stringify(r));
   });
-  await step("assembly: 학생3 찬성 → 정부 이송(4명 반 과반)", async () => {
+  await step("assembly: 학생3 찬성 → 정부 이송(3명 반 과반 2표)", async () => {
     await go(S[2], "/national-assembly");
     await S[2].page.locator(".vote-button.approve").first().click();
     await waitFor(async () => (await lawNow()).status === "pending_government_approval", { msg: "정부 이송" });

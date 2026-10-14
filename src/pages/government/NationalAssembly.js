@@ -474,7 +474,9 @@ const NationalAssembly = () => {
         }
 
         const totalStudents = adminSettings.totalStudents;
-        const halfStudents = Math.ceil(totalStudents / 2);
+        // 과반 = 절반 «초과»(rules naStatusOk 와 같은 기준). 전엔 ceil(n/2) 라 짝수 반에선 동수(12:12)로
+        //   가결·부결이 둘 다 열렸고, 부결된 법이 다음 찬성 한 표에 가결로 뒤집혔다.
+        const halfStudents = Math.floor(totalStudents / 2) + 1;
         const vetoOverrideRequiredCount = governmentSettings.vetoOverrideRequired;
 
         const newApprovals = (lawData.approvals || 0) + (voteType === "approvals" ? 1 : 0);

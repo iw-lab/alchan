@@ -1686,14 +1686,31 @@ service cloud.firestore {
                  (changed.hasOnly([uid]) && !(uid in vb) && dA + dD == 1 &&
                   ((dA == 1 && va[uid] == 'approvals') || (dD == 1 && va[uid] == 'disapprovals')));
         }
+        // 학생이 바꿀 수 있는 키 = 허용목록. 결과 필드는 그 결과를 만드는 전이 때만.
+        //   🔴 2026-10-14 교차검증(gemini): 금지목록(내용 키)만 보던 때는 심의 중 법안에 finalStatus 만
+        //   'final_approved' 로 심을 수 있었다 — 경찰서는 finalStatus 로 «가결된 법»을 조회하므로
+        //   통과 안 된 법이 벌금 목록에 떴다.
+        function naKeysOk(before, after) {
+          let keys = after.diff(before).affectedKeys();
+          let s0 = before.get('status', 'pending');
+          let s1 = after.get('status', 'pending');
+          return keys.hasOnly(['voters', 'approvals', 'disapprovals', 'status', 'updatedAt', 'approvalDate',
+                               'finalStatus', 'finalApprovalDate', 'vetoReason', 'vetoDate', 'vetoDeadline', 'presidentJobId']) &&
+                 (!keys.hasAny(['finalStatus', 'finalApprovalDate']) || (s0 != s1 && s1 in ['approved', 'veto_overridden'])) &&
+                 (!keys.hasAny(['vetoReason', 'vetoDate', 'vetoDeadline', 'presidentJobId']) ||
+                  (s0 == 'pending_government_approval' && s1 in ['approved', 'vetoed'])) &&
+                 (!keys.hasAny(['vetoReason', 'vetoDate', 'vetoDeadline']) || s1 == 'vetoed') &&
+                 (!keys.hasAny(['approvalDate']) || (s0 != s1 && s1 == 'pending_government_approval'));
+        }
         function naStatusOk(classCode, before, after) {
           let s0 = before.get('status', 'pending');
           let s1 = after.get('status', 'pending');
           return s0 == s1 ||
+                 // 과반 = 절반 «초과»(동수면 어느 쪽도 아니다 — 짝수 반에서 가결·부결이 둘 다 열리던 것 수정)
                  (s0 in ['pending', 'rejected', 'auto_rejected'] && s1 == 'pending_government_approval' &&
-                    after.get('approvals', 0) * 2 >= naTotalStudents(classCode)) ||
+                    after.get('approvals', 0) * 2 > naTotalStudents(classCode)) ||
                  (s0 in ['pending', 'rejected', 'auto_rejected'] && s1 == 'rejected' &&
-                    after.get('disapprovals', 0) * 2 >= naTotalStudents(classCode)) ||
+                    after.get('disapprovals', 0) * 2 > naTotalStudents(classCode)) ||
                  (s0 == 'vetoed' && s1 == 'veto_overridden' && naOverrideOk(classCode, after.get('approvals', 0))) ||
                  // 대통령 승인·거부권 — 실제 대통령(임명 직업)만(2026-10-14 교차검증 grok·codex)
                  (s0 == 'pending_government_approval' && s1 == 'approved' &&
@@ -1706,13 +1723,8 @@ service cloud.firestore {
         }
         allow update: if isClassAdmin(classCode) ||
                          (isSignedIn() && isSameClass(classCode) &&
-                          !request.resource.data.diff(resource.data).affectedKeys()
-                            .hasAny(['title', 'purpose', 'description', 'fine', 'proposerId', 'proposerName', 'classCode', 'timestamp']) &&
+                          naKeysOk(resource.data, request.resource.data) &&
                           naStatusOk(classCode, resource.data, request.resource.data) &&
-                          // 대통령 표식은 대통령 승인·거부 전이 때만 쓴다(그 밖의 쓰기에 심거나 덮어쓰기 금지)
-                          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['presidentJobId']) ||
-                           (resource.data.get('status', '') == 'pending_government_approval' &&
-                            request.resource.data.get('status', '') in ['approved', 'vetoed'])) &&
                           (naVoteOk(resource.data, request.resource.data, request.auth.uid) ||
                            // 거부권 초기화는 표가 줄어든다 — naStatusOk 의 vetoed 분기가 모양을 이미 봤다
                            (resource.data.get('status', '') == 'pending_government_approval' &&
