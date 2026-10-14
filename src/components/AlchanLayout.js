@@ -24,7 +24,7 @@ function lazyWithRetry(importFn) {
           const regs = await navigator.serviceWorker.getRegistrations();
           await Promise.all(regs.map((r) => r.unregister()));
         }
-      } catch (e) {
+      } catch {
         // 무시 - 그래도 리로드 시도
       }
       window.location.reload();
@@ -71,7 +71,6 @@ const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
 const NicknameSetupPopup = lazyWithRetry(() => import("./NicknameSetupPopup"));
 const WeeklyTaxSummaryPopup = lazyWithRetry(() => import("./WeeklyTaxSummaryPopup"));
 import globalCacheService from "../services/globalCacheService";
-import { logger } from "../utils/logger";
 
 // 🔥 핵심 페이지 - Dashboard도 lazy로 전환
 const Dashboard = lazyWithRetry(() => import("../pages/dashboard/Dashboard"));
@@ -117,15 +116,6 @@ const AppRewardDashboard = lazyWithRetry(
 );
 const AdminPermissionManager = lazyWithRetry(
   () => import("../pages/admin/AdminPermissionManager"),
-);
-const FirestoreDoctor = lazyWithRetry(
-  () => import("../pages/admin/FirestoreDoctor"),
-);
-const RecoverDonations = lazyWithRetry(
-  () => import("../pages/admin/RecoverDonations"),
-);
-const AuditAdminCash = lazyWithRetry(
-  () => import("../pages/admin/AuditAdminCash"),
 );
 const StudentManager = lazyWithRetry(() => import("./StudentManager"));
 
@@ -907,32 +897,6 @@ export default function AlchanLayout() {
                     <SuperAdminRoute>
                       <SuperAdminDashboard />
                     </SuperAdminRoute>
-                  }
-                />
-
-                {/* 유틸리티 */}
-                <Route
-                  path="/doctor"
-                  element={
-                    <ProtectedRoute>
-                      <FirestoreDoctor />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/recover-donations"
-                  element={
-                    <ProtectedRoute>
-                      <RecoverDonations />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/audit-admin-cash"
-                  element={
-                    <ProtectedRoute>
-                      <AuditAdminCash />
-                    </ProtectedRoute>
                   }
                 />
 

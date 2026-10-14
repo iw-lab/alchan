@@ -14,24 +14,22 @@ import { useBackClose } from "../../hooks/useBackClose";
 
 import { logger } from "../../utils/logger";
 import {
- collection,
- doc,
- getDoc,
- runTransaction,
- increment,
- serverTimestamp,
- setDoc,
- addDoc,
- updateDoc,
- deleteDoc,
- query,
- orderBy,
- where,
- getDocs,
- writeBatch,
- limit,
- startAfter,
- getCountFromServer,
+  collection,
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  where,
+  getDocs,
+  writeBatch,
+  limit,
+  startAfter,
+  getCountFromServer,
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
@@ -386,8 +384,6 @@ const defaultReasons = [
  { reason: "기타", amount: 0, isLaw: false },
 ];
 
-// 국세청과 동일한 nationalTreasuries 컬렉션 사용
-const getClassTreasuryPath = (classCode) => `nationalTreasuries/${classCode}`;
 
 const PoliceStation = () => {
  const auth = useAuth();
@@ -566,11 +562,6 @@ const PoliceStation = () => {
  // 신고 제출 권한: '경찰' 직업 학생 또는 관리자(교사)
  const canSubmitReport = isPolice || isSystemAdmin;
 
- // Treasury balance polling
- const treasuryRef = useMemo(() => {
- if (!classCode) return null;
- return doc(db, getClassTreasuryPath(classCode));
- }, [classCode]);
 
  const { data: treasuryBalance, loading: treasuryLoading } = usePolling(
  async () => {

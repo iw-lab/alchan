@@ -6,7 +6,7 @@
 // 모든 세금은 관리자 계정으로 직접 입금됨
 // ========================================
 import { getCurrencyUnit } from "../../utils/numberFormatter";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { db, getCachedDocument, invalidateCache } from "../../firebase";
 import {
   doc,
@@ -14,7 +14,6 @@ import {
   updateDoc,
   setDoc,
   serverTimestamp,
-  increment,
   collection,
   query,
   where,

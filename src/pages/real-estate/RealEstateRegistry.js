@@ -82,8 +82,6 @@ const RealEstateRegistry = () => {
   const reloadAll = () => setReloadKey((k) => k + 1);
   // 가격 입력 모달: { mode: "sell" | "offer", propertyId, value }
   const [priceModal, setPriceModal] = useState(null);
-  // 받은/보낸 제안 패널 표시
-  const [showOffersPanel, setShowOffersPanel] = useState(false);
 
   // 뒤로가기 = 각 화면/모달 닫기
   useBackClose(!!showQuickAction, () => setShowQuickAction(null));
@@ -440,7 +438,6 @@ const RealEstateRegistry = () => {
     }
 
     // 🔥 낙관적 업데이트 2: 구매한 부동산에 즉시 입주 + 소유자 변경 (UI 업데이트)
-    const previousPropertyState = { ...property };
     const previousProperties = [...properties];
 
     setProperties(prevProperties =>
@@ -733,9 +730,6 @@ const RealEstateRegistry = () => {
       return;
     }
 
-    const isAlreadyTenantElsewhere = properties.some(
-      (p) => p.tenantId === currentUser.id && p.id !== propertyId
-    );
 
     const isTenantOfThisProperty = property.tenantId === currentUser.id;
 
@@ -976,7 +970,6 @@ const RealEstateRegistry = () => {
         if (!userDocSnap.exists()) {
           throw new Error("사용자 정보를 찾을 수 없습니다.");
         }
-        const userData = userDocSnap.data();
 
         // 이미 다른 사람이 입주했는지 확인
         if (propertyData.tenantId) {

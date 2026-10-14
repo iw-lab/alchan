@@ -8,9 +8,6 @@ import {
   getDoc,
   collection,
   getDocs,
-  query,
-  where,
-  orderBy,
   updateDoc,
   functions,
 } from "../../firebase";
@@ -25,7 +22,6 @@ import {
   getRarity,
   getSlot,
   isOwned,
-  buildAvatarOverlays,
   ITEM_ANCHORS,
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";

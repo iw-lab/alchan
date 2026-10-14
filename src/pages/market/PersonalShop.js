@@ -9,11 +9,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  getDoc,
-  setDoc,
   query,
   where,
-  orderBy,
   limit,
   getDocs,
   serverTimestamp,
@@ -25,10 +22,7 @@ import { useItems } from "../../contexts/ItemContext";
 import { useBackClose } from "../../hooks/useBackClose";
 import "./PersonalShop.css";
 import { logger } from "../../utils/logger";
-import {
-  formatKoreanCurrency,
-  getCurrencyUnit,
-} from "../../utils/numberFormatter";
+import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import {
   isNetAssetsNegative,
   NEGATIVE_ASSETS_MESSAGE,

@@ -1,52 +1,12 @@
 // src/components/SettingsPanel.js
-// 사용자 설정 패널 (다크 모드, 폰트 크기 등)
+// 사용자 설정 패널 — 글꼴 크기 (알림·소리·튜토리얼 토글은 아무 데서도 안 읽혀 2026-10-14 제거)
 
-import React, { useState } from "react";
 import { useTheme, FONT_SIZES } from "../contexts/ThemeContext";
-import { useTutorial } from "./TutorialGuide";
-import {
-  X,
-  Type,
-  RefreshCw,
-  Bell,
-  Volume2,
-  Smartphone,
-  ChevronRight,
-  Check,
-  HelpCircle,
-} from "lucide-react";
-import { confirmDialog } from "../utils/confirmDialog";
+import { X, Type, Smartphone } from "lucide-react";
 import { useBackClose } from "../hooks/useBackClose";
 
-export function SettingsPanel({ isOpen, onClose }) {
+function SettingsPanel({ isOpen, onClose }) {
   const { fontSize, setFontSize } = useTheme();
-  const { resetTutorial } = useTutorial();
-  const [notifications, setNotifications] = useState(
-    localStorage.getItem("alchan-notifications") !== "false",
-  );
-  const [sounds, setSounds] = useState(
-    localStorage.getItem("alchan-sounds") !== "false",
-  );
-
-  const handleNotificationToggle = () => {
-    const newValue = !notifications;
-    setNotifications(newValue);
-    localStorage.setItem("alchan-notifications", String(newValue));
-  };
-
-  const handleSoundToggle = () => {
-    const newValue = !sounds;
-    setSounds(newValue);
-    localStorage.setItem("alchan-sounds", String(newValue));
-  };
-
-  const handleResetTutorial = async () => {
-    if (await confirmDialog("튜토리얼을 다시 보시겠습니까?")) {
-      resetTutorial();
-      onClose();
-    }
-  };
-
   // 뒤로가기 = 설정 패널 닫기
   useBackClose(isOpen, onClose);
 
@@ -106,63 +66,6 @@ export function SettingsPanel({ isOpen, onClose }) {
             </div>
           </section>
 
-          {/* 알림 설정 */}
-          <section>
-            <h3 className="text-sm font-semibold text-slate-400 mb-3 uppercase tracking-wider">
-              알림
-            </h3>
-
-            <div className="bg-gray-700/50 rounded-2xl divide-y divide-gray-600">
-              {/* 푸시 알림 */}
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <Bell size={20} className="text-green-500" />
-                  <div>
-                    <p className="font-medium text-white">푸시 알림</p>
-                    <p className="text-sm text-slate-400">
-                      새 소식을 알려드려요
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleNotificationToggle}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${
-                    notifications ? "bg-green-500" : "bg-gray-500"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                      notifications ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* 소리 */}
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <Volume2 size={20} className="text-purple-500" />
-                  <div>
-                    <p className="font-medium text-white">소리</p>
-                    <p className="text-sm text-slate-400">알림음과 효과음</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleSoundToggle}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${
-                    sounds ? "bg-purple-500" : "bg-gray-500"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                      sounds ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </section>
-
           {/* 기타 */}
           <section>
             <h3 className="text-sm font-semibold text-slate-400 mb-3 uppercase tracking-wider">
@@ -170,23 +73,6 @@ export function SettingsPanel({ isOpen, onClose }) {
             </h3>
 
             <div className="bg-gray-700/50 rounded-2xl divide-y divide-gray-600">
-              {/* 튜토리얼 다시 보기 */}
-              <button
-                onClick={handleResetTutorial}
-                className="flex items-center justify-between p-4 w-full hover:bg-gray-600/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <HelpCircle size={20} className="text-amber-500" />
-                  <div className="text-left">
-                    <p className="font-medium text-white">튜토리얼 다시 보기</p>
-                    <p className="text-sm text-slate-400">
-                      사용법을 다시 배워요
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={20} className="text-slate-400" />
-              </button>
-
               {/* 앱 정보 */}
               <div className="p-4">
                 <div className="flex items-center gap-3">

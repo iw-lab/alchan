@@ -361,7 +361,7 @@ const AdminItemPage = ({
     }
 
     // UI 전용 필드 제거 후 직렬화
-    const { itemKind, loseEnabled, losePercent, drawCandidates, ...rest } = item;
+    const { ...rest } = item;
     const itemData = {
       ...rest,
       price: parseInt(item.price, 10),

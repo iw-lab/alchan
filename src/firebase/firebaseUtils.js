@@ -77,7 +77,7 @@ export const logDbOperation = (type, collection, docId = null, details = {}) => 
   );
 };
 
-export const getDbStats = () => {
+const getDbStats = () => {
   const elapsed = (Date.now() - dbStats.startTime) / 1000;
   const stats = {
     ...dbStats,
@@ -103,7 +103,7 @@ export const getDbStats = () => {
   return stats;
 };
 
-export const printRecentOperations = (count = 20) => {
+const printRecentOperations = (count = 20) => {
   const recent = dbStats.operations.slice(-count);
   logger.log(`\n\u{1F4CA} \uCD5C\uADFC ${count}\uAC1C DB \uC791\uC5C5:`);
   logger.table(recent.map(op => ({
@@ -115,7 +115,7 @@ export const printRecentOperations = (count = 20) => {
   })));
 };
 
-export const getTabStats = () => {
+const getTabStats = () => {
   const tabStats = {};
   dbStats.operations.forEach(op => {
     const tab = op.tab || 'unknown';
@@ -132,7 +132,7 @@ export const getTabStats = () => {
   return tabStats;
 };
 
-export const resetDbStats = () => {
+const resetDbStats = () => {
   dbStats.reads = 0;
   dbStats.writes = 0;
   dbStats.deletes = 0;
@@ -196,22 +196,5 @@ export const invalidateCachePattern = (pattern) => {
   logger.log(`[Cache] PATTERN_INVALIDATED: fb_${pattern}`);
 };
 
-export const setBatchCache = (dataMap) => {
-  Object.entries(dataMap).forEach(([key, data]) => {
-    setCache(key, data);
-  });
-};
-
-// 캐시 관리 유틸리티
-export const clearCache = () => {
-  globalCacheService.clearAll();
-  logger.log('[Cache] \uBAA8\uB4E0 \uCE90\uC2DC\uAC00 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.');
-};
-
-export const getCacheStats = () => {
-  const stats = globalCacheService.getStats();
-  logger.log('[Cache] \uCE90\uC2DC \uD1B5\uACC4:', stats);
-  return stats;
-};
 
 export { globalCacheService };

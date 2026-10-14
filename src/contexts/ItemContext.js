@@ -11,12 +11,12 @@ import React, {
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 import { functions, httpsCallable, db } from "../firebase";
-import { usePolling, POLLING_INTERVALS } from "../hooks/usePolling";
+import { usePolling } from "../hooks/usePolling";
 import { cachedFetch, invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
 import { logActivity, ACTIVITY_TYPES } from "../utils/firestoreHelpers";
 
 import { logger } from "../utils/logger";
-export const ItemContext = createContext(null);
+const ItemContext = createContext(null);
 
 export const useItems = () => {
   const context = useContext(ItemContext);
@@ -215,14 +215,14 @@ export const ItemProvider = ({ children }) => {
     const ssGet = () => {
       try {
         return sessionStorage.getItem(verKey);
-      } catch (e) {
+      } catch {
         return null;
       }
     };
     const ssSet = (v) => {
       try {
         sessionStorage.setItem(verKey, v);
-      } catch (e) {
+      } catch {
         /* storage 접근 불가 환경 — 클로저 메모리(lastSeen)로 계속 동작 */
       }
     };
@@ -322,7 +322,7 @@ export const ItemProvider = ({ children }) => {
     } else {
       try {
         prev = sessionStorage.getItem(key);
-      } catch (e) {
+      } catch {
         prev = null; // storage 접근 불가 — 클로저 메모리로 계속 동작
       }
     }
@@ -330,7 +330,7 @@ export const ItemProvider = ({ children }) => {
     lastInvVersionRef.current = { uid: userId, version: cur };
     try {
       sessionStorage.setItem(key, cur);
-    } catch (e) {
+    } catch {
       /* 무시 — 메모리 값으로 이번 세션은 정상 동작 */
     }
     if (prev === null) return; // 첫 관측 = 기준점만 잡는다(마운트 조회가 이미 최신본을 가져온다)

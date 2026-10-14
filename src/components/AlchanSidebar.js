@@ -76,7 +76,7 @@ import {
 // ============================================
 // 앱 아이콘 컴포넌트 (export하여 다른 곳에서도 사용)
 // ============================================
-export const AppIcon = ({ className, style }) => (
+const AppIcon = ({ className, style }) => (
   <svg
     className={className}
     style={style}
@@ -736,7 +736,7 @@ export default function AlchanSidebar({
         await logout();
         navigate("/login");
       }
-    } catch (e) {
+    } catch {
       navigate("/login");
     }
   }, [logout, navigate]);
@@ -836,7 +836,7 @@ export default function AlchanSidebar({
             );
           }
         }
-      } catch (err) {
+      } catch {
         /* ignore */
       }
     };
@@ -896,7 +896,7 @@ export default function AlchanSidebar({
       try {
         const n = await fetchUnreadBoardCount(firebaseDb, classCode);
         if (!cancelled && mine === seq) setUnreadWallCount(n);
-      } catch (err) {
+      } catch {
         /* ignore */
       }
     };
@@ -1030,7 +1030,7 @@ export default function AlchanSidebar({
             );
           }
         }
-      } catch (err) {
+      } catch {
         /* ignore — 인덱스 미생성 등 */
       }
     };

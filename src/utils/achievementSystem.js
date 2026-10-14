@@ -8,7 +8,7 @@
 import { logger } from './logger';
 // 화폐 단위는 학급 설정을 따르므로(기본 "알찬") 상수 객체에서도 getter로 지연 평가한다.
 import { getCurrencyUnit } from './numberFormatter';
-export const ACHIEVEMENTS = {
+const ACHIEVEMENTS = {
   // 자산 관련 업적
   FIRST_THOUSAND: {
     id: "first_thousand",
@@ -244,89 +244,6 @@ export const ACHIEVEMENTS = {
   },
 };
 
-export const RARITY_COLORS = {
-  common: { color: "#9ca3af", bg: "#374151", label: "일반" },
-  uncommon: { color: "#22c55e", bg: "#14532d", label: "희귀" },
-  rare: { color: "#3b82f6", bg: "#1e3a8a", label: "레어" },
-  epic: { color: "#a855f7", bg: "#581c87", label: "에픽" },
-  legendary: { color: "#f59e0b", bg: "#78350f", label: "전설" },
-};
-
-export const CATEGORIES = {
-  wealth: { name: "자산", icon: "💰" },
-  coupon: { name: "쿠폰", icon: "🎟️" },
-  trading: { name: "거래", icon: "📊" },
-  donation: { name: "기부", icon: "❤️" },
-  saving: { name: "저축", icon: "🏦" },
-  realestate: { name: "부동산", icon: "🏠" },
-  special: { name: "특별", icon: "⭐" },
-};
-
-/**
- * 사용자 통계를 기반으로 달성한 업적 목록을 반환합니다.
- * @param {object} userStats - 사용자 통계
- * @returns {Array} 달성한 업적 목록
- */
-export function getUnlockedAchievements(userStats) {
-  const stats = {
-    totalAssets: userStats.totalAssets || 0,
-    coupons: userStats.coupons || 0,
-    totalTransactions: userStats.totalTransactions || 0,
-    totalDonations: userStats.totalDonations || 0,
-    savingProducts: userStats.savingProducts || 0,
-    properties: userStats.properties || 0,
-    loginStreak: userStats.loginStreak || 0,
-    ...userStats,
-  };
-
-  return Object.values(ACHIEVEMENTS).filter(
-    (achievement) => achievement.condition(stats)
-  );
-}
-
-/**
- * 전체 업적 진행도 계산
- * @param {object} userStats - 사용자 통계
- * @returns {{ unlocked: number, total: number, percentage: number, points: number }}
- */
-export function getAchievementProgress(userStats) {
-  const unlockedAchievements = getUnlockedAchievements(userStats);
-  const totalAchievements = Object.keys(ACHIEVEMENTS).length;
-  const totalPoints = unlockedAchievements.reduce((sum, a) => sum + a.points, 0);
-
-  return {
-    unlocked: unlockedAchievements.length,
-    total: totalAchievements,
-    percentage: Math.round((unlockedAchievements.length / totalAchievements) * 100),
-    points: totalPoints,
-  };
-}
-
-/**
- * 카테고리별 업적 그룹화
- * @param {object} userStats - 사용자 통계
- * @returns {object} 카테고리별 업적 그룹
- */
-export function getAchievementsByCategory(userStats) {
-  const unlockedIds = new Set(
-    getUnlockedAchievements(userStats).map((a) => a.id)
-  );
-
-  const grouped = {};
-  for (const [category, info] of Object.entries(CATEGORIES)) {
-    grouped[category] = {
-      ...info,
-      achievements: Object.values(ACHIEVEMENTS)
-        .filter((a) => a.category === category)
-        .map((a) => ({
-          ...a,
-          unlocked: unlockedIds.has(a.id),
-        })),
-    };
-  }
-
-  return grouped;
-}
 
 /**
  * ID로 업적 정보를 찾습니다.
@@ -354,55 +271,4 @@ export function getUserAchievements(userId) {
   }
 }
 
-/**
- * 사용자에게 업적을 부여합니다.
- * @param {string} userId - 사용자 ID
- * @param {string} achievementId - 업적 ID
- * @returns {boolean} 새로 부여된 경우 true
- */
-export function grantAchievement(userId, achievementId) {
-  if (!userId || !achievementId) return false;
 
-  try {
-    const key = `alchan_achievements_${userId}`;
-    const achievements = getUserAchievements(userId);
-
-    // 이미 획득한 경우 false 반환
-    if (achievements.some((a) => a.id === achievementId)) {
-      return false;
-    }
-
-    // 새 업적 추가
-    achievements.push({
-      id: achievementId,
-      unlockedAt: new Date().toISOString(),
-    });
-
-    localStorage.setItem(key, JSON.stringify(achievements));
-    return true;
-  } catch (error) {
-    logger.error("업적 부여 실패:", error);
-    return false;
-  }
-}
-
-/**
- * 사용자 통계를 기반으로 업적을 자동으로 체크하고 부여합니다.
- * @param {string} userId - 사용자 ID
- * @param {object} userStats - 사용자 통계
- * @returns {Array} 새로 획득한 업적 목록
- */
-export function checkAndGrantAchievements(userId, userStats) {
-  if (!userId) return [];
-
-  const newAchievements = [];
-  const unlockedAchievements = getUnlockedAchievements(userStats);
-
-  for (const achievement of unlockedAchievements) {
-    if (grantAchievement(userId, achievement.id)) {
-      newAchievements.push(achievement);
-    }
-  }
-
-  return newAchievements;
-}

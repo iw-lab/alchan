@@ -26,7 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** 바꿔치기 직후 '확정'을 막아 두는 시간. 사람의 더블클릭(보통 500ms 이내)을 넘긴다. */
-export const ARM_DELAY_MS = 400;
+const ARM_DELAY_MS = 400;
 
 /**
  * 마지막으로 **어떤 모달이든** 확정된 시각. 모듈 스코프라 확인창·입력창이 함께 본다.

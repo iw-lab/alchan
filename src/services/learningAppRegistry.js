@@ -80,9 +80,3 @@ export function loadLearningAppItems() {
   return inFlight;
 }
 
-/** 레지스트리를 고친 직후 강제 재조회(관리 화면용). */
-export function invalidateLearningApps() {
-  cachedItems = null;
-  inFlight = null;
-  try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
-}

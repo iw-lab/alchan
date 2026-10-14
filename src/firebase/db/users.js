@@ -6,11 +6,9 @@ import {
   setDoc,
   updateDoc,
   collection,
-  getDocs,
   deleteDoc,
   serverTimestamp,
   getDocFromCache,
-  getDocsFromCache,
 } from "firebase/firestore";
 import { addDoc as originalFirebaseAddDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -256,73 +254,4 @@ export const deleteUserDocument = async (userId) => {
   return deleteDoc(userDocRef);
 };
 
-export const getAllUsersDocuments = async (useCache = true) => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  const cacheKey = 'users_all';
-  if (useCache) {
-    const cached = getCache(cacheKey);
-    if (cached) {
-      return cached;
-    }
-  }
-  try {
-    const usersCollectionRef = collection(db, "users");
-    let usersSnapshot;
-    try {
-      usersSnapshot = await getDocsFromCache(usersCollectionRef);
-    } catch {
-      usersSnapshot = await getDocs(usersCollectionRef);
-    }
-    const result = usersSnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    if (useCache) {
-      setCache(cacheKey, result);
-    }
-    return result;
-  } catch (error) {
-    logger.error("[firebase.js] getAllUsersDocuments 오류:", error);
-    throw error;
-  }
-};
 
-// =================================================================
-// 활동 로그 조회
-// =================================================================
-export const getActivityLogs = async (classCode, limit = 50, useCache = false, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (!classCode) throw new Error("학급 코드가 필요합니다.");
-
-  const { query, where, limit: firestoreLimit } = await import("firebase/firestore");
-  const { globalCacheService } = await import("../firebaseUtils");
-
-  const cacheKey = `activity_logs_${classCode}_${limit}`;
-  if (useCache) {
-    const cached = getCache(cacheKey, tab);
-    if (cached) return cached;
-  }
-  try {
-    const logsRef = collection(db, "activity_logs");
-    const q = query(logsRef, where("classCode", "==", classCode), firestoreLimit(limit > 0 ? limit : 50));
-    const logsSnapshot = await getDocs(q);
-    let logs = logsSnapshot.docs.map((d) => {
-      const data = d.data();
-      return { id: d.id, ...data, timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : data.timestamp };
-    });
-    logDbOperation('READ', 'activity_logs', null, { tab, extra: `${classCode}: ${logsSnapshot.docs.length}개` });
-    logs.sort((a, b) => {
-      if (!a.timestamp && !b.timestamp) return 0;
-      if (!a.timestamp) return 1;
-      if (!b.timestamp) return -1;
-      const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-      const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
-      return timeB - timeA;
-    });
-    if (limit > 0) logs = logs.slice(0, limit);
-    if (useCache) {
-      globalCacheService.set(`fb_${cacheKey}`, logs, 5 * 60 * 1000);
-    }
-    return logs;
-  } catch (error) {
-    logger.error(`[firebase.js] 활동 로그 조회 오류 (학급: ${classCode}):`, error);
-    return [];
-  }
-};

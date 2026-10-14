@@ -4,30 +4,16 @@
 
 // Config: app, db, auth, storage, functions, isInitialized, firebaseConfig
 export {
-  app,
   db,
   auth,
   storage,
   functions,
   isInitialized,
-  firebaseConfig,
 } from "./firebase/firebaseConfig";
 
 // Utils: DB 로깅, 캐시 시스템
 export {
-  logDbOperation,
-  getDbStats,
-  printRecentOperations,
-  getTabStats,
-  resetDbStats,
-  setCache,
-  getCache,
   invalidateCache,
-  invalidateCachePattern,
-  setBatchCache,
-  clearCache,
-  getCacheStats,
-  CACHE_TTL,
 } from "./firebase/firebaseUtils";
 
 // Auth: 인증 함수
@@ -42,13 +28,7 @@ export {
 // DB: Firestore CRUD, 트랜잭션, 모든 비즈니스 로직
 export {
   // 학급 관리자
-  getClassAdminUid,
   // CRUD
-  addData,
-  updateData,
-  deleteData,
-  fetchCollectionOnce,
-  subscribeToCollection,
   // 학급 구성원
   getClassmates,
   // 학습앱(AAP) 교사 화면 조회
@@ -62,50 +42,24 @@ export {
   addUserDocument,
   updateUserDocument,
   deleteUserDocument,
-  getAllUsersDocuments,
   // 현금/쿠폰/송금/벌금
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
-  adminDepositCash,
-  adminWithdrawCash,
   // 주식/세금
-  processStockSaleTransaction,
-  processGenericSaleTransaction,
   // 기부/합의
-  addDonationRecord,
-  addSettlementRecord,
-  getDonationsForClass,
   // 상점
-  getStoreItems,
-  addStoreItem,
-  updateStoreItem,
-  deleteStoreItem,
   // 인벤토리
-  addItemToInventory,
   // 마켓
-  addMarketListing,
-  updateUserInventoryItemQuantity,
   // 학급 코드
   verifyClassCode,
   // 조회
-  getUserInventory,
-  getMarketItems,
-  updateMarketListing,
   getGovernmentSettings,
-  updateGovernmentSettings,
-  getNationalTreasury,
-  getActivityLogs,
   // 뱅킹
   getBankingProducts,
   updateBankingProducts,
   // 마켓 요약
-  subscribeToMarketSummary,
   // 배치
-  batchGetDocs,
-  batchGetUsers,
   // 네트워크
-  goOffline,
-  goOnline,
   // 캐시 문서
   getCachedDocument,
   // Cloud Functions
@@ -125,32 +79,23 @@ export {
   firebaseSetDoc,
   getDocs,
   firebaseGetDocs,
-  originalFirebaseAddDoc,
   addDoc,
-  firebaseAddDoc,
   updateDoc,
   firebaseUpdateDoc,
   deleteDoc,
-  firebaseDeleteDoc,
   query,
-  firebaseQuery,
   where,
-  firebaseWhere,
   serverTimestamp,
   increment,
   runTransaction,
   writeBatch,
   onSnapshot,
   orderBy,
-  isFirestoreInitialized,
   httpsCallable,
   // Auth re-exports
   updatePassword,
   deleteUser,
   // Additional Firestore
-  arrayUnion,
-  arrayRemove,
   Timestamp,
-  firebaseLimit,
   limit,
 } from "./firebase/firebaseDb";

@@ -9,29 +9,22 @@ import ComplaintStatus from "./ComplaintStatus";
 import TrialRoom, { cleanupStaleTrialRooms } from "./TrialRoom";
 import { usePolling } from "../../hooks/usePolling";
 import { useBackClose } from "../../hooks/useBackClose";
-import {
- PageContainer,
- PageHeader,
- LoadingState,
-} from "../../components/PageWrapper";
 
 import { logger } from "../../utils/logger";
 import {
- collection,
- doc,
- runTransaction,
- serverTimestamp,
- addDoc,
- updateDoc,
- deleteDoc,
- query,
- orderBy,
- limit,
- getDoc,
- setDoc,
- where,
- getDocs,
- onSnapshot,
+  collection,
+  doc,
+  runTransaction,
+  serverTimestamp,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  limit,
+  where,
+  getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 
 import { hasJobTitle } from "../../utils/jobPermissions";
@@ -664,12 +657,10 @@ const Court = () => {
 
  // 🔥 [비용 최적화] 10분 폴링(폴마다 limit(50) 전체 재과금) → 체류 중 실시간 리스너 (변경분만 과금)
  const [trialRooms, setTrialRooms] = useState([]);
- const [trialRoomsLoading, setTrialRoomsLoading] = useState(true);
  const refetchTrialRooms = noopRefetch;
  useEffect(() => {
  if (!classCode) {
  setTrialRooms([]);
- setTrialRoomsLoading(false);
  return;
  }
  const trialRoomsRef = collection(db, "classes", classCode, "trialRooms");
@@ -683,11 +674,9 @@ const Court = () => {
  ...doc.data(),
  })),
  );
- setTrialRoomsLoading(false);
  },
  (error) => {
  logger.error("[Court] trialRooms listener error:", error);
- setTrialRoomsLoading(false);
  },
  );
  return unsubscribe;
@@ -886,8 +875,6 @@ const Court = () => {
  editingComplaint.id,
  );
  const {
- id,
- classCode: prevClassCode,
  ...dataToSave
  } = updatedComplaintData;
 

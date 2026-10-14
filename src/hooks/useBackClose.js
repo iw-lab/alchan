@@ -112,4 +112,3 @@ export function useBackClose(open, onClose) {
   }, [open]);
 }
 
-export default useBackClose;

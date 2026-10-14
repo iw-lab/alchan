@@ -17,8 +17,8 @@ const listeners = new Set(); // { onIdle?, onActive? }
 function notify(active) {
   listeners.forEach((l) => {
     try {
-      if (active) l.onActive && l.onActive();
-      else l.onIdle && l.onIdle();
+      if (active) l.onActive?.();
+      else l.onIdle?.();
     } catch {
       /* 구독자 콜백 오류는 무시 */
     }
@@ -67,4 +67,4 @@ export function subscribeIdle({ onIdle, onActive }) {
   return () => listeners.delete(l);
 }
 
-export { IDLE_THRESHOLD };
+;

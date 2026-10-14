@@ -21,7 +21,7 @@ const USE_KEY = (uid) => `alchan:appUse:${uid || "anon"}`;
 /** 한 학생이 고정할 수 있는 개수 — 넘으면 «묶음»이 아니라 또 하나의 긴 목록이 된다 */
 export const FAV_MAX = 8;
 /** 자동으로 얹는 «자주 쓴 것» 개수 */
-export const TOP_USED = 3;
+const TOP_USED = 3;
 /** 이 횟수 미만은 «자주»가 아니다 — 한 번 눌러 본 것이 맨 위에 오래 남으면 그게 더 헷갈린다 */
 export const MIN_USES = 2;
 

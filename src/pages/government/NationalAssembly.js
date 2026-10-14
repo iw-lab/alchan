@@ -323,7 +323,7 @@ const NationalAssembly = () => {
 
     try {
       // 🔥 수정된 collection 참조를 사용하여 문서를 추가합니다.
-      const docRef = await addDoc(lawsCollectionRef, newLawData);
+      await addDoc(lawsCollectionRef, newLawData);
       logger.log("새 법안이 성공적으로 제안되었습니다:", newLawData.title);
 
       // 성공 시: 즉시 서버에서 최신 법안 목록을 가져옴
@@ -378,12 +378,6 @@ const NationalAssembly = () => {
     );
     try {
       const {
-        id,
-        voters,
-        timestamp,
-        classCode: lawClassCode,
-        proposerId,
-        proposerName,
         ...dataToUpdate
       } = previousEditingLaw;
       await updateDoc(lawDocRef, {
@@ -812,7 +806,7 @@ const NationalAssembly = () => {
       return `${date.getFullYear()}년 ${
         date.getMonth() + 1
       }월 ${date.getDate()}일 ${date.getHours()}시 ${date.getMinutes()}분`;
-    } catch (e) {
+    } catch {
       return "날짜 변환 오류";
     }
   };

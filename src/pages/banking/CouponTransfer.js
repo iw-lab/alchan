@@ -15,7 +15,7 @@ function CouponTransfer() {
     loading: authLoading,
     addCouponsToUserById,
     deductCouponsFromUserById,
-    updateLocalUserState, // 로컬 상태만 업데이트하는 함수 (있다면)
+    // 로컬 상태만 업데이트하는 함수 (있다면)
   } = useAuth();
 
   const [message, setMessage] = useState("");

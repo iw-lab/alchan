@@ -7,7 +7,6 @@ import './index.css'; // Tailwind CSS - 반드시 먼저 import
 
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
-import { logger } from "./utils/logger";
 
 const rootElement = document.getElementById("root");
 const root = createRoot(rootElement);

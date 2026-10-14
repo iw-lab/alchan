@@ -113,23 +113,6 @@ export const getCurrencyUnit = () => {
   return _globalCurrencyUnit;
 };
 
-/**
- * 수량을 한국식 형식으로 포맷팅합니다
- * @param {number|string} quantity - 포맷팅할 수량
- * @returns {string} 포맷팅된 수량 문자열
- */
-export const formatKoreanQuantity = (quantity) => {
-  return formatKoreanNumber(quantity, "");
-};
-
-/**
- * 쿠폰 개수를 포맷팅합니다
- * @param {number|string} count - 포맷팅할 개수
- * @returns {string} 포맷팅된 개수 문자열
- */
-export const formatCouponCount = (count) => {
-  return formatKoreanNumber(count, "개");
-};
 
 // React 컴포넌트에서 사용 예제 (주석으로 참고용):
 /*

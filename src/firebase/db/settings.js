@@ -9,7 +9,6 @@ import {
   serverTimestamp,
   writeBatch,
   getDocFromCache,
-  onSnapshot,
   query as originalFirebaseQuery,
   where as originalFirebaseWhere,
 } from "firebase/firestore";
@@ -54,44 +53,6 @@ export const getGovernmentSettings = async (classCode, useCache = true, tab = 'u
   }
 };
 
-export const updateGovernmentSettings = async (classCode, settings, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (!classCode || !settings) throw new Error("학급 코드와 설정 데이터가 필요합니다.");
-  try {
-    invalidateCache(`gov_settings_${classCode}`);
-    logDbOperation('WRITE', 'governmentSettings', classCode, { tab });
-    const settingsRef = doc(db, "governmentSettings", classCode);
-    await setDoc(settingsRef, { ...settings, updatedAt: serverTimestamp() }, { merge: true });
-    return true;
-  } catch (error) {
-    logger.error(`[firebase.js] 정부 설정 업데이트 오류 (학급: ${classCode}):`, error);
-    throw error;
-  }
-};
-
-// =================================================================
-// 국고
-// =================================================================
-export const getNationalTreasury = async (classCode, useCache = true, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (!classCode) throw new Error("학급 코드가 필요합니다.");
-  const cacheKey = `treasury_${classCode}`;
-  if (useCache) {
-    const cached = getCache(cacheKey, tab);
-    if (cached) return cached;
-  }
-  try {
-    const treasuryRef = doc(db, "nationalTreasuries", classCode);
-    const treasurySnap = await getDoc(treasuryRef);
-    const result = treasurySnap.exists() ? treasurySnap.data() : null;
-    logDbOperation('READ', 'nationalTreasuries', classCode, { tab });
-    if (result && useCache) setCache(cacheKey, result);
-    return result;
-  } catch (error) {
-    logger.error(`[firebase.js] 국고 조회 오류 (학급: ${classCode}):`, error);
-    throw error;
-  }
-};
 
 // =================================================================
 // 뱅킹 상품
@@ -148,38 +109,6 @@ export const updateBankingProducts = async (classCode, productType, products, ta
   await setDoc(docRef, { [productType]: products, updatedAt: serverTimestamp() }, { merge: true });
 };
 
-// =================================================================
-// 마켓 요약 구독
-// =================================================================
-export const subscribeToMarketSummary = (classCode, callback, tab = 'unknown') => {
-  if (!db) {
-    logger.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
-    return () => {};
-  }
-  if (!classCode) {
-    logger.error("학급 코드가 없어 마켓 요약 데이터를 구독할 수 없습니다.");
-    return () => {};
-  }
-  const summaryRef = doc(db, "classes", classCode, "marketSummary", "summary");
-  logDbOperation('SUBSCRIBE', `classes/${classCode}/marketSummary`, 'summary', { tab });
-  const unsubscribe = onSnapshot(
-    summaryRef,
-    (docSnap) => {
-      if (docSnap.exists()) {
-        const summaryData = docSnap.data();
-        logDbOperation('READ', `classes/${classCode}/marketSummary`, 'summary', { tab, extra: 'onSnapshot' });
-        callback(summaryData);
-      } else {
-        callback(null);
-      }
-    },
-    (error) => {
-      logger.error("[Market] 마켓 요약 데이터 구독 중 오류 발생:", error);
-      callback(null);
-    }
-  );
-  return unsubscribe;
-};
 
 // =================================================================
 // 학급 기본 데이터 복사

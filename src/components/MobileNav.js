@@ -1,7 +1,7 @@
 // src/components/MobileNav.js
 // 모바일 하단 네비게이션 컴포넌트
 
-import React, { useCallback, useMemo, memo } from "react";
+import React, { useCallback, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, Wallet, Store, Users } from "lucide-react";
 

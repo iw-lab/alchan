@@ -4,26 +4,15 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   collection,
   getDocs,
-  deleteDoc,
   serverTimestamp,
   query as originalFirebaseQuery,
   where as originalFirebaseWhere,
-  addDoc as originalFirebaseAddDoc,
-  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { logger } from '../../utils/logger';
-import { sanitizeInput } from '../../utils/validation';
-import {
-  logDbOperation,
-  setCache,
-  getCache,
-  invalidateCache,
-  invalidateCachePattern,
-} from "../firebaseUtils";
+import { logDbOperation, setCache, getCache } from "../firebaseUtils";
 
 // =================================================================
 // 학급 관리자 uid 조회 헬퍼
@@ -58,101 +47,6 @@ export const getClassAdminUid = async (classCode) => {
   }
 };
 
-// =================================================================
-// 캐시 우선 CRUD 함수들
-// =================================================================
-export const addData = (collectionName, data, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  invalidateCachePattern(collectionName);
-  logDbOperation('WRITE', collectionName, null, { tab, extra: 'addData' });
-  const sanitizedData = {};
-  for (const [key, value] of Object.entries(data)) {
-    sanitizedData[key] = typeof value === 'string' ? sanitizeInput(value) : value;
-  }
-  const dataWithTimestamp = {
-    ...sanitizedData,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-  return originalFirebaseAddDoc(collection(db, collectionName), dataWithTimestamp);
-};
-
-export const updateData = (collectionName, docId, updates, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (collectionName === 'users') {
-    invalidateCache(`user_${docId}`);
-    invalidateCache('users_all');
-    invalidateCachePattern(`classmates_`);
-  }
-  if (collectionName === 'governmentSettings') {
-    invalidateCache(`gov_settings_${docId}`);
-  }
-  invalidateCachePattern(collectionName);
-  logDbOperation('UPDATE', collectionName, docId, { tab });
-  const docRef = doc(db, collectionName, docId);
-  const dataWithTimestamp = { ...updates, updatedAt: serverTimestamp() };
-  return updateDoc(docRef, dataWithTimestamp);
-};
-
-export const deleteData = (collectionName, docId, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (collectionName === 'users') {
-    invalidateCache(`user_${docId}`);
-    invalidateCache('users_all');
-    invalidateCachePattern(`classmates_`);
-  }
-  invalidateCachePattern(collectionName);
-  logDbOperation('DELETE', collectionName, docId, { tab });
-  const docRef = doc(db, collectionName, docId);
-  return deleteDoc(docRef);
-};
-
-export const fetchCollectionOnce = async (collectionName, useCache = true, tab = 'unknown') => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  const cacheKey = `collection_${collectionName}`;
-  if (useCache) {
-    const cached = getCache(cacheKey, tab);
-    if (cached) return cached;
-  }
-  try {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    const data = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    logDbOperation('READ', collectionName, null, { tab, extra: `${data.length}개 문서` });
-    if (useCache) {
-      setCache(cacheKey, data);
-    }
-    return data;
-  } catch (error) {
-    logger.error(`[firebase.js] ${collectionName} 컬렉션 조회 오류:`, error);
-    throw error;
-  }
-};
-
-export const subscribeToCollection = (collectionName, callback, conditions = [], tab = 'unknown') => {
-  if (!db) {
-    logger.error("Firestore가 초기화되지 않아 구독할 수 없습니다.");
-    return () => {};
-  }
-  logDbOperation('SUBSCRIBE', collectionName, null, { tab, extra: '실시간 구독 시작' });
-  let q = originalFirebaseQuery(collection(db, collectionName));
-  conditions.forEach(condition => {
-    q = originalFirebaseQuery(q, condition);
-  });
-  const unsubscribe = onSnapshot(q,
-    { source: 'default' },
-    (querySnapshot) => {
-      const data = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setCache(`collection_${collectionName}`, data);
-      logDbOperation('READ', collectionName, null, { tab, extra: `onSnapshot: ${data.length}개` });
-      callback(data);
-    },
-    (error) => {
-      logger.error(`[firebase.js] ${collectionName} 구독 오류:`, error);
-      callback([]);
-    }
-  );
-  return unsubscribe;
-};
 
 // =================================================================
 // 학급 구성원 조회
@@ -204,7 +98,7 @@ export const getClassmates = async (classCode, forceRefresh = false, tab = 'unkn
           // 업데이트 없음 - 기존 캐시 반환
           setCache(syncTimeKey, Date.now());
           return cached;
-        } catch (e) {
+        } catch {
           // 증분 조회 실패 시 기존 캐시 반환
           return cached;
         }

@@ -32,7 +32,7 @@ import { promptDialog } from "../../utils/promptDialog";
 
 // 재판방 + 서브컬렉션(messages, evidence) 깊은 삭제 — DB 사용량 절감.
 // 판결 결과는 trialResults 에 영구 보존되므로 방 자체는 삭제해도 안전.
-export async function deleteTrialRoomDeep(classCode, roomId) {
+async function deleteTrialRoomDeep(classCode, roomId) {
   if (!classCode || !roomId) return;
   for (const sub of ["messages", "evidence"]) {
     try {
@@ -382,47 +382,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     }
   };
 
-  // 침묵 패널티 적용
-  const handleApplySilence = async (userId) => {
-    if (userRole !== "judge" || !userId) return;
 
-    try {
-      const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
-      await updateDoc(roomRef, {
-        silencedUsers: arrayUnion(userId),
-      });
-
-      const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
-      await addDoc(messagesRef, {
-        type: "system",
-        text: `⚠️ 판사가 ${getUserName(userId)}님에게 침묵 패널티를 적용했습니다.`,
-        timestamp: serverTimestamp(),
-      });
-    } catch (error) {
-      logger.error("Error applying silence:", error);
-    }
-  };
-
-  // 침묵 패널티 해제
-  const handleRemoveSilence = async (userId) => {
-    if (userRole !== "judge" || !userId) return;
-
-    try {
-      const roomRef = doc(db, "classes", classCode, "trialRooms", roomId);
-      await updateDoc(roomRef, {
-        silencedUsers: arrayRemove(userId),
-      });
-
-      const messagesRef = collection(db, "classes", classCode, "trialRooms", roomId, "messages");
-      await addDoc(messagesRef, {
-        type: "system",
-        text: `✅ 판사가 ${getUserName(userId)}님의 침묵 패널티를 해제했습니다.`,
-        timestamp: serverTimestamp(),
-      });
-    } catch (error) {
-      logger.error("Error removing silence:", error);
-    }
-  };
   
   const handleUploadEvidence = async (event) => {
     const file = event.target.files[0];
@@ -565,20 +525,6 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     }
   };
 
-  // 아바타 클릭 핸들러 - 침묵 패널티 적용/해제
-  const handleAvatarClick = async (clickedUserId) => {
-    if (userRole !== "judge" || !clickedUserId || clickedUserId === currentUser.id) return;
-
-    if (roomData?.silencedUsers?.includes(clickedUserId)) {
-      if (await confirmDialog(`${getUserName(clickedUserId)}님의 침묵 패널티를 해제하시겠습니까?`)) {
-        await handleRemoveSilence(clickedUserId);
-      }
-    } else {
-      if (await confirmDialog(`${getUserName(clickedUserId)}님에게 침묵 패널티를 적용하시겠습니까?`)) {
-        await handleApplySilence(clickedUserId);
-      }
-    }
-  };
 
   // 판결하기 기능
   const handleMakeVerdict = async () => {
@@ -706,10 +652,6 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
     }
   };
 
-  const getUserName = (userId) => {
-    const user = users.find(u => u.id === userId);
-    return user?.name || user?.displayName || userId || "알 수 없음";
-  };
 
   const getRoleDisplay = (role) => ({
     judge: "👨‍⚖️ 판사", prosecutor: "👔 검사", lawyer: "💼 변호사",

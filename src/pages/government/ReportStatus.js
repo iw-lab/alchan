@@ -1,5 +1,5 @@
 // src/ReportStatus.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom";
 import { useBackClose } from "../../hooks/useBackClose";
 

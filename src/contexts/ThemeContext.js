@@ -66,4 +66,3 @@ export function useTheme() {
   return context;
 }
 
-export default ThemeContext;

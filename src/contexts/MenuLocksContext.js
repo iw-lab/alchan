@@ -75,4 +75,3 @@ export const MenuLocksProvider = ({ children }) => {
   );
 };
 
-export default MenuLocksContext;

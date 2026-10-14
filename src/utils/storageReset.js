@@ -41,15 +41,14 @@ export const clearLocalStoragePreserving = () => {
       if (value != null) localStorage.setItem(key, value);
     });
     return preserved.length;
-  } catch (_) {
+  } catch {
     // 보존 로직이 실패해도 초기화 자체는 수행(복구 경로가 막히면 안 됨)
     try {
       localStorage.clear();
-    } catch (__) {
+    } catch {
       /* noop */
     }
     return 0;
   }
 };
 
-export default clearLocalStoragePreserving;

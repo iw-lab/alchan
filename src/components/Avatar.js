@@ -199,23 +199,3 @@ export default function Avatar({ size = 100, showBorder = true, onClick, shopOve
   );
 }
 
-/**
- * 헤더용 미니 아바타
- */
-export function MiniAvatar({ size = 40, onClick, shopOverlays }) {
-  return (
-    <div
-      onClick={onClick}
-      className="rounded-full overflow-hidden relative"
-      style={{
-        width: size,
-        height: size,
-        cursor: onClick ? "pointer" : "default",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        border: "2px solid white",
-      }}
-    >
-      <Avatar size={size} showBorder={false} shopOverlays={shopOverlays} />
-    </div>
-  );
-}

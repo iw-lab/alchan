@@ -5,7 +5,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { functions, httpsCallable } from "../../firebase";
 import "./MoneyTransfer.css";
-import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { takeSignature, describeElapsed } from "../../utils/takeSignature";
@@ -13,7 +12,6 @@ import { takeSignature, describeElapsed } from "../../utils/takeSignature";
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
   const {
-    user,
     userDoc,
     allClassMembers,
     loading: authLoading,

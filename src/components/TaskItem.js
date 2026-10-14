@@ -1,6 +1,6 @@
 // src/TaskItem.js
 import { getCurrencyUnit } from "../utils/numberFormatter";
-import React, { useState, useEffect, memo, useCallback } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 
@@ -157,13 +157,6 @@ const TaskItem = memo(function TaskItem({
     gap: isMobile ? "4px" : "8px",
   };
 
-  const couponStyle = {
-    backgroundColor: isJobTask ? "var(--accent-light)" : "var(--success-bg)",
-    color: isJobTask ? "var(--accent)" : "var(--success)",
-    border: isJobTask ? "1px solid var(--border-accent)" : "1px solid rgba(16, 185, 129, 0.3)",
-    padding: isMobile ? "3px 6px" : "4px 10px",
-    fontSize: isMobile ? "10px" : "13px",
-  };
 
   const renderCardModal = () => {
     if (!showCardModal || !rewardData) return null;

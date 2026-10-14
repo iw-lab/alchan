@@ -13,4 +13,3 @@ export function kstDateString(nowMs = Date.now()) {
   return new Date(nowMs + 9 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
 
-export default kstDateString;

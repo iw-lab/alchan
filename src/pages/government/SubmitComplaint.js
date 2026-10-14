@@ -14,7 +14,7 @@ const SubmitComplaint = ({
   currentUserId,
   isAdmin = false,
 }) => {
-  const [complainantName, setComplainantName] = useState(""); // 직접 입력받거나, 로그인 정보 사용
+  const [complainantName, ] = useState(""); // 직접 입력받거나, 로그인 정보 사용
   const [defendantId, setDefendantId] = useState(""); // 선택된 피고소인 ID 상태
   const [reason, setReason] = useState("");
   const [desiredResolution, setDesiredResolution] = useState("");

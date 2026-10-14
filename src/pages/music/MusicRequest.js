@@ -10,7 +10,7 @@ import {
   getDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { usePolling } from "../../hooks/usePolling";
 import "../../MusicRequest.css";
@@ -25,10 +25,8 @@ const MusicRequest = ({ user }) => {
   const [error, setError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [classCode, setClassCode] = useState(null); // 본인 학급 코드
-  const navigate = useNavigate();
-
   // 관리자 권한 + 학급 코드 확인
-  const { data: isAdminData, loading: adminLoading } = usePolling(
+  const { loading: adminLoading } = usePolling(
     async () => {
       if (!user) return false;
       const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -49,7 +47,6 @@ const MusicRequest = ({ user }) => {
   // 본인 학급의 방 목록만 폴링으로 가져옵니다 (학급 격리)
   const {
     data: myRooms,
-    loading,
     refetch,
   } = usePolling(
     async () => {

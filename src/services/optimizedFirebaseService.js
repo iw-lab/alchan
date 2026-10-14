@@ -54,20 +54,6 @@ export const queryKeys = {
   generalSettings: (classCode) => ["generalSettings", classCode],
 };
 
-// 배치 연산 헬퍼
-export const batchOperations = {
-  // 여러 학생의 직업을 한 번에 업데이트
-  updateMultipleStudentJobs: async (updates) => {
-    // 실제 구현 시 Firebase Function으로 배치 처리
-    logger.log("배치 직업 업데이트:", updates);
-  },
-
-  // 여러 설정을 한 번에 저장
-  saveMultipleSettings: async (settings) => {
-    // 실제 구현 시 Firebase Function으로 배치 처리
-    logger.log("배치 설정 저장:", settings);
-  },
-};
 
 // 실시간 최적화 헬퍼
 export const realtimeOptimizer = {

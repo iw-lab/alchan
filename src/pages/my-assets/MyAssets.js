@@ -1,21 +1,13 @@
 // src/pages/my-assets/MyAssets.js - Firestore 직접 조회 방식으로 수정된 최종 버전
 import { fetchClassCouponValue } from "../../utils/classCoupon";
 import { getCurrencyUnit, normalizeCurrencyText } from "../../utils/numberFormatter";
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   db,
   doc,
   getDoc,
-  serverTimestamp,
-  writeBatch,
   getDocs,
   collection,
   query,
@@ -23,15 +15,9 @@ import {
   functions,
   httpsCallable,
 } from "../../firebase";
-import { limit, orderBy, runTransaction } from "firebase/firestore";
+import { limit, orderBy } from "firebase/firestore";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
-import {
-  logActivity,
-  ACTIVITY_TYPES,
-  safeTimestampToDate,
-  getCachedFirestoreData,
-  setCachedFirestoreData,
-} from "../../utils/firestoreHelpers";
+import { safeTimestampToDate, getCachedFirestoreData, setCachedFirestoreData } from "../../utils/firestoreHelpers";
 import LoginWarning from "../../components/LoginWarning";
 import TransferModal from "../../components/modals/TransferModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
@@ -40,28 +26,23 @@ import { DailyRewardBanner } from "../../components/DailyReward";
 import { logger } from "../../utils/logger";
 import { dropDuplicateActivityRows } from "../../utils/ledgerDedupe";
 import { toast } from "../../utils/toast";
-import { confirmDialog } from "../../utils/confirmDialog";
 export default function MyAssets() {
   const {
     user,
     userDoc,
     users, // 전체 사용자 목록 (송금 대상 찾기 등에서 필요)
     classmates, // '나'를 제외한 학급 친구 목록 (송금, 선물 모달용)
-    allClassMembers, // 🔥 [추가] '나'를 포함한 학급 전체 구성원 목록 (기부 내역 모달용)
+    // 🔥 [추가] '나'를 포함한 학급 전체 구성원 목록 (기부 내역 모달용)
     loading: authLoading,
-    updateUser: updateUserInAuth,
     optimisticUpdate,
   } = useAuth();
 
   const userId = user?.uid;
-  const userName =
-    userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
   const currentUserClassCode = userDoc?.classCode;
 
   // 🔥 [최적화 1] 상태 및 레퍼런스
   const [assetsLoading, setAssetsLoading] = useState(true);
-  const loadingRef = useRef(false); // 로딩 중복 방지용 플래그
-  const dataFetchRef = useRef({}); // 데이터 페치 시간 추적용
+  const loadingRef = useRef(false);  // 데이터 페치 시간 추적용
   const [parkingBalance, setParkingBalance] = useState(0);
   const [deposits, setDeposits] = useState([]); // 예금 상품 목록
   const [savings, setSavings] = useState([]); // 적금 상품 목록
@@ -69,32 +50,10 @@ export default function MyAssets() {
   const [realEstateAssets, setRealEstateAssets] = useState([]);
   const [stockValue, setStockValue] = useState(0); // 보유 주식 평가액
   const [totalNetAssets, setTotalNetAssets] = useState(0);
-  const [goalDonations, setGoalDonations] = useState([]);
   const [transactionHistory, setTransactionHistory] = useState([]);
-  const [forceReload, setForceReload] = useState(0); // 캐시 문제 해결을 위한 상태 변수
-
-  // 🔥 [최적화 2] Firebase Functions 호출 함수들 (기부 제외) - 메모이제이션
-  const getUserAssetsDataFunction = useMemo(
-    () => httpsCallable(functions, "getUserAssetsData"),
-    [],
-  );
-  const sellCouponFunction = useMemo(
-    () => httpsCallable(functions, "sellCoupon"),
-    [],
-  );
-  const giftCouponFunction = useMemo(
-    () => httpsCallable(functions, "giftCoupon"),
-    [],
-  );
 
   // 🔥 [최적화 4] 캐시 유효 시간 설정
-  const CACHE_DURATION = 60 * 60 * 1000; // 🔥 [최적화] 1시간 (Firestore 읽기 최소화)
-
-  const currentGoalId = currentUserClassCode
-    ? `${currentUserClassCode}_goal`
-    : null;
-
-  const [classCouponGoal, setClassCouponGoal] = useState(1000);
+  const CACHE_DURATION = 60 * 60 * 1000; // 1시간 (Firestore 읽기 최소화)
   const [couponValue, setCouponValue] = useState(1000);
 
   // '내 자산' 페이지 방문 = 사이드바 거래 알림 배지 해제 신호
@@ -125,19 +84,7 @@ export default function MyAssets() {
     return () => { alive = false; };
   }, [userId, currentUserClassCode]);
 
-  const [goalProgress, setGoalProgress] = useState(0);
-  const [myContribution, setMyContribution] = useState(0);
-  const [goalAchieved, setGoalAchieved] = useState(false);
-  const [isResettingGoal, setIsResettingGoal] = useState(false);
 
-  const [showDonateModal, setShowDonateModal] = useState(false);
-  const [showSellCouponModal, setShowSellCouponModal] = useState(false);
-  const [sellAmount, setSellAmount] = useState("");
-  const [showGiftCouponModal, setShowGiftCouponModal] = useState(false);
-  const [giftRecipient, setGiftRecipient] = useState("");
-  const [giftAmount, setGiftAmount] = useState("");
-  const [showDonationHistoryModal, setShowDonationHistoryModal] =
-    useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferRecipient, setTransferRecipient] = useState("");
@@ -156,251 +103,6 @@ export default function MyAssets() {
     }
   }, [searchParams, setSearchParams]);
 
-  // 🔥 [최적화 5] 캐시 유효성 확인 함수
-  const isCacheValid = (cacheKey) => {
-    const cachedTime = dataFetchRef.current[cacheKey];
-    return cachedTime && Date.now() - cachedTime < CACHE_DURATION;
-  };
-
-  // 🔥 [수정 2] 안전한 트랜잭션 기록 함수 - 로컬에서만 처리하고 나중에 배치로 동기화
-  const addTransaction = async (userId, amount, description) => {
-    try {
-      // 먼저 로컬 저장소에 저장
-      const localKey = `pending_transactions_${userId}`;
-      const existing = localStorage.getItem(localKey);
-      const pendingTransactions = existing ? JSON.parse(existing) : [];
-
-      // 🔥 일관된 timestamp 형식 사용 - Date 객체 생성
-      const now = new Date();
-      const newTransaction = {
-        id: `local_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        amount: Number(amount) || 0, // 숫자로 안전하게 변환
-        description: String(description) || "거래 내역", // 문자열로 안전하게 변환
-        timestamp: now, // Date 객체로 직접 저장
-        timestampISO: now.toISOString(), // ISO 문자열도 보관
-        synced: false,
-      };
-
-      pendingTransactions.push(newTransaction);
-      localStorage.setItem(
-        localKey,
-        JSON.stringify(pendingTransactions, (key, value) => {
-          // Date 객체를 JSON으로 직렬화할 때 ISO 문자열로 변환
-          if (key === "timestamp" && value instanceof Date) {
-            return value.toISOString();
-          }
-          return value;
-        }),
-      );
-
-      // 로컬 상태 즉시 업데이트
-      setTransactionHistory((prev) => [newTransaction, ...prev.slice(0, 4)]);
-
-      // 🔥 [수정 3] 백그라운드에서 비동기 동기화 (실패해도 메인 기능에 영향 없음)
-      setTimeout(async () => {
-        try {
-          await syncPendingTransactions(userId);
-        } catch (error) {
-          logger.warn("[MyAssets] syncPendingTransactions failed:", error);
-        }
-      }, 1000);
-    } catch (error) {
-      logger.warn("[MyAssets] addTransaction failed:", error);
-    }
-  };
-
-  // 🔥 [수정 4] 보류 중인 트랜잭션 동기화 함수
-  const syncPendingTransactions = async (userId) => {
-    const localKey = `pending_transactions_${userId}`;
-    const pendingStr = localStorage.getItem(localKey);
-
-    if (!pendingStr) return;
-
-    try {
-      const pendingTransactions = JSON.parse(pendingStr, (key, value) => {
-        // JSON에서 Date 객체로 복원
-        if (key === "timestamp" && typeof value === "string") {
-          return new Date(value);
-        }
-        return value;
-      });
-
-      const unsyncedTransactions = pendingTransactions.filter(
-        (tx) => !tx.synced,
-      );
-
-      if (unsyncedTransactions.length === 0) return;
-
-      const batch = writeBatch(db);
-      const userTransactionsRef = collection(
-        db,
-        "users",
-        userId,
-        "transactions",
-      );
-
-      unsyncedTransactions.forEach((tx) => {
-        const docRef = doc(userTransactionsRef);
-        batch.set(docRef, {
-          amount: tx.amount,
-          description: tx.description,
-          timestamp: serverTimestamp(), // Firestore에는 serverTimestamp 사용
-          localTimestamp: tx.timestampISO || tx.timestamp, // 로컬 타임스탬프도 보존
-          syncedAt: serverTimestamp(),
-        });
-      });
-
-      await batch.commit();
-
-      // 동기화 완료 표시
-      const updatedTransactions = pendingTransactions.map((tx) =>
-        unsyncedTransactions.find((utx) => utx.id === tx.id)
-          ? { ...tx, synced: true }
-          : tx,
-      );
-
-      localStorage.setItem(
-        localKey,
-        JSON.stringify(updatedTransactions, (key, value) => {
-          if (key === "timestamp" && value instanceof Date) {
-            return value.toISOString();
-          }
-          return value;
-        }),
-      );
-    } catch (error) {
-      logger.warn("[MyAssets] syncPendingTransactions failed:", error);
-    }
-  };
-
-  // 🔥 [핵심 수정] 데이터 덮어쓰기 방지를 위해 트랜잭션을 사용한 안전한 목표 생성 함수
-  const createDefaultGoalForClass = useCallback(
-    async (classCode, goalId) => {
-      try {
-        const goalDocRef = doc(db, "goals", goalId);
-        const defaultGoalData = {
-          classCode: classCode,
-          targetAmount: 1000,
-          progress: 0,
-          donations: [],
-          donationCount: 0,
-          title: `${classCode} 학급 목표`,
-          description: `${classCode} 학급의 쿠폰 목표입니다.`,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          createdBy: userId,
-        };
-
-        // 트랜잭션을 사용하여 문서가 없을 때만 안전하게 생성 (덮어쓰기 방지)
-        await runTransaction(db, async (transaction) => {
-          const goalDoc = await transaction.get(goalDocRef);
-          if (!goalDoc.exists()) {
-            transaction.set(goalDocRef, defaultGoalData);
-            setCachedFirestoreData(`goal_${goalId}`, userId, defaultGoalData);
-          } else {
-            const existingData = goalDoc.data();
-            setCachedFirestoreData(`goal_${goalId}`, userId, existingData);
-          }
-        });
-      } catch (error) {
-        throw error;
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [userId],
-  );
-
-  // 🔥 [수정] 목표 데이터 로드 함수 - 캐시 추가 및 최적화
-  const loadGoalData = useCallback(async () => {
-    if (!currentGoalId || !currentUserClassCode) {
-      return;
-    }
-
-    // 🔥 캐시 먼저 확인
-    const cacheKey = `goal_${currentGoalId}`;
-    const cachedData = getCachedFirestoreData(cacheKey, userId, CACHE_DURATION);
-
-    if (cachedData) {
-      setClassCouponGoal(Number(cachedData.targetAmount) || 1000);
-      setGoalProgress(Number(cachedData.progress) || 0);
-
-      const donations = Array.isArray(cachedData.donations)
-        ? cachedData.donations
-        : [];
-      setGoalDonations(donations);
-
-      const myDonations = donations.filter((d) => d.userId === userId);
-      const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
-      setMyContribution(myTotal);
-
-      return;
-    }
-
-    try {
-      const goalDocRef = doc(db, "goals", currentGoalId);
-      const goalDocSnap = await getDoc(goalDocRef);
-
-      if (goalDocSnap.exists()) {
-        const goalData = goalDocSnap.data();
-
-        // 목표 정보 업데이트
-        setClassCouponGoal(Number(goalData.targetAmount) || 1000);
-        setGoalProgress(Number(goalData.progress) || 0);
-
-        // 기부 내역 처리
-        const donations = Array.isArray(goalData.donations)
-          ? goalData.donations.map((donation) => {
-              let processedTimestamp;
-              if (donation.timestamp && donation.timestamp.toDate) {
-                processedTimestamp = donation.timestamp.toDate().toISOString();
-              } else if (donation.timestamp && donation.timestamp.seconds) {
-                processedTimestamp = new Date(
-                  donation.timestamp.seconds * 1000,
-                ).toISOString();
-              } else if (donation.timestampISO) {
-                processedTimestamp = donation.timestampISO;
-              } else if (typeof donation.timestamp === "string") {
-                processedTimestamp = donation.timestamp;
-              } else {
-                processedTimestamp = new Date().toISOString();
-              }
-
-              return {
-                ...donation,
-                amount: Number(donation.amount) || 0,
-                timestamp: processedTimestamp,
-                userId: donation.userId || "",
-                userName: donation.userName || "알 수 없는 사용자",
-                message: donation.message || "",
-                classCode: donation.classCode || currentUserClassCode,
-              };
-            })
-          : [];
-
-        setGoalDonations(donations);
-
-        // 내 기여 계산
-        const myDonations = donations.filter((d) => d.userId === userId);
-        const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
-        setMyContribution(myTotal);
-
-        // 🔥 캐시에 저장
-        setCachedFirestoreData(cacheKey, userId, goalData);
-      } else {
-        // 목표 문서가 없으면 기본값 생성
-        logger.log("[MyAssets] 목표 문서가 없어 기본값 생성");
-        await createDefaultGoalForClass(currentUserClassCode, currentGoalId);
-      }
-    } catch (error) {
-      logger.error("[MyAssets] 목표 데이터 로드 실패:", error);
-    }
-  }, [
-    currentGoalId,
-    currentUserClassCode,
-    userId,
-    createDefaultGoalForClass,
-    CACHE_DURATION, // 컴포넌트 안 상수라 늘 같은 숫자 — 이 파일의 다른 deps 배열들과 같은 규약
-  ]);
 
   const loadMyAssetsData = useCallback(async (force = false) => {
     if (!userId || !db) {
@@ -689,11 +391,10 @@ export default function MyAssets() {
       setAssetsLoading(false);
       loadingRef.current = false;
     }
-  }, [userId, currentUserClassCode, CACHE_DURATION]); // loadGoalData 제거하여 무한 루프 방지
+  }, [userId, currentUserClassCode, CACHE_DURATION]);
 
   // ⚡ loadMyAssetsData 를 deps 에 넣지 않는다 — 이 함수는 렌더마다 새 신원이라
   //    넣으면 로드 → 상태변경 → 재렌더 → 다시 로드로 Firestore 읽기가 폭주한다.
-  //    바로 위 loadMyAssetsData 정의도 같은 이유로 loadGoalData 를 deps 에서 뺐다(그 줄 주석 참조).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && user) {
@@ -705,11 +406,7 @@ export default function MyAssets() {
       setRealEstateAssets([]);
       setStockValue(0);
       setTotalNetAssets(0);
-      setMyContribution(0);
-      setClassCouponGoal(1000);
-      setGoalProgress(0);
       setCouponValue(1000);
-      setGoalDonations([]);
       setTransactionHistory([]);
     } else if (authLoading) {
       setAssetsLoading(true);
@@ -764,403 +461,6 @@ export default function MyAssets() {
     loans,
   ]);
 
-  useEffect(() => {
-    setGoalAchieved(goalProgress >= classCouponGoal && classCouponGoal > 0);
-  }, [goalProgress, classCouponGoal]);
-
-  // 🔥 [수정] 목표 데이터 폴링 제거 - 캐시로 충분함
-  // 초기 로드만 수행하고 폴링은 하지 않음 (불필요한 Firestore 조회 방지)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!user || !currentGoalId) {
-      return;
-    }
-
-    loadGoalData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, currentGoalId]); // loadGoalData 제거하여 무한 루프 방지
-
-  // 🔥 [수정] 기부 처리 함수 - 캐시 무효화 개선
-  const handleDonateCoupon = async (amount, memo) => {
-    if (!userId || !currentUserClassCode) {
-      toast.error("사용자 또는 학급 정보가 없어 기부할 수 없습니다.");
-      return false;
-    }
-
-    const donationAmount = parseInt(amount, 10);
-    if (isNaN(donationAmount) || donationAmount <= 0) {
-      toast.error("유효한 쿠폰 수량을 입력해주세요.");
-      return false;
-    }
-
-    // 쿠폰 보유량 확인
-    const currentCoupons = Number(userDoc?.coupons) || 0;
-    if (currentCoupons < donationAmount) {
-      toast.error(
-        `쿠폰이 부족합니다. (보유: ${currentCoupons}개, 필요: ${donationAmount}개)`,
-      );
-      return false;
-    }
-
-    setAssetsLoading(true);
-
-    // 낙관적 업데이트 (UI 즉시 반영)
-    const previousProgress = goalProgress;
-    const previousMyContribution = myContribution;
-    const previousDonations = goalDonations;
-
-    const newDonation = {
-      userId: userId,
-      userName: userName,
-      amount: donationAmount,
-      timestamp: new Date().toISOString(),
-      timestampISO: new Date().toISOString(),
-      message: memo || "",
-      classCode: currentUserClassCode,
-    };
-
-    setGoalProgress((prev) => prev + donationAmount);
-    setMyContribution((prev) => prev + donationAmount);
-    setGoalDonations((prev) => [...prev, newDonation]);
-
-    // 🔥 쿠폰 즉시 UI 업데이트 (낙관적 업데이트)
-    if (optimisticUpdate) {
-      optimisticUpdate({ coupons: -donationAmount });
-    }
-
-    try {
-      // 🔒 batch7-b: 쿠폰 기부를 donateCoupon CF로 이관(coupons rules 잠금 대비).
-      //   구 클라 흐름(updateUserInAuth로 coupons 직접 차감 + goal 트랜잭션 + donations 기록 + addTransaction)은
-      //   coupons가 owner-write라 sellCoupon 현금화와 결합해 민팅 통로였다. 서버 단일 트랜잭션으로 대체 —
-      //   쿠폰 차감·myContribution·goal progress/donations·관리자 재원(cash) 원자 처리.
-      //   CouponGoalPage와 동일 CF·동일 goal 문서(goals/{classCode}_goal)라 두 기부 UI 동작이 통일된다.
-      await httpsCallable(functions, "donateCoupon")({
-        amount: donationAmount,
-        message: memo || "",
-        // 🔒 batch7-b(codex MEDIUM #6): 멱등키로 중복클릭/재시도 이중 기부 차단.
-        idempotencyKey:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `donate_${userId}_${Date.now()}`,
-      });
-
-      // 🔒 batch7-b(Gemini MEDIUM): 활동로그는 donateCoupon CF가 서버에서 기록(COUPON_USE+COUPON_DONATE)한다.
-      //   구 클라 logActivity를 남겨두면 activity_logs에 기부 1건당 3줄 중복 기록됨 → 제거(CouponGoalPage와 동일하게 CF 로그만).
-
-      // 🔥 5. 캐시 무효화 (모든 관련 캐시 삭제)
-      const cacheKey = `goal_${currentGoalId}`;
-      localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
-      localStorage.removeItem(
-        `goalDonationHistory_${currentUserClassCode}_goal`,
-      );
-
-      toast.success(`${donationAmount}개 쿠폰 기부가 완료되었습니다!`);
-      setShowDonateModal(false);
-
-      // 🔥 6. 최신 데이터 다시 로드 (캐시가 삭제되었으므로 Firestore에서 가져옴)
-      setTimeout(() => {
-        loadGoalData();
-      }, 500);
-
-      return true;
-    } catch (error) {
-      logger.error("[MyAssets] 기부 오류:", error);
-      toast.error(`기부 오류: ${error.message}`);
-
-      // 에러 발생 시 낙관적 업데이트 롤백
-      setGoalProgress(previousProgress);
-      setMyContribution(previousMyContribution);
-      setGoalDonations(previousDonations);
-
-      // 쿠폰도 롤백
-      if (optimisticUpdate) {
-        optimisticUpdate({ coupons: donationAmount });
-      }
-
-      return false;
-    } finally {
-      setAssetsLoading(false);
-    }
-  };
-
-  // 🔥 [수정] 기부 내역 복구를 위한 강제 새로고침 함수
-  const forceRefreshGoalData = async () => {
-    if (!currentGoalId || !currentUserClassCode) {
-      toast.error("학급 정보가 없습니다.");
-      return;
-    }
-
-    setAssetsLoading(true);
-
-    try {
-      // 모든 관련 캐시 삭제
-      const cacheKey = `goal_${currentGoalId}`;
-      localStorage.removeItem(`firestore_cache_${cacheKey}_${userId}`);
-      localStorage.removeItem(`firestore_cache_settings_${userId}`);
-      localStorage.removeItem(
-        `goalDonationHistory_${currentUserClassCode}_goal`,
-      );
-
-      logger.log(
-        "[MyAssets] 캐시 삭제 완료, Firestore에서 최신 데이터 로드 중...",
-      );
-
-      // 🔥 Firestore에서 직접 최신 데이터 가져오기
-      const goalDocRef = doc(db, "goals", currentGoalId);
-      const goalDocSnap = await getDoc(goalDocRef);
-
-      if (goalDocSnap.exists()) {
-        const latestGoalData = goalDocSnap.data();
-
-        setClassCouponGoal(Number(latestGoalData.targetAmount) || 1000);
-        setGoalProgress(Number(latestGoalData.progress) || 0);
-
-        const freshDonations = Array.isArray(latestGoalData.donations)
-          ? latestGoalData.donations.map((donation) => {
-              let processedTimestamp;
-              if (donation.timestamp && donation.timestamp.toDate) {
-                processedTimestamp = donation.timestamp.toDate().toISOString();
-              } else if (donation.timestamp && donation.timestamp.seconds) {
-                processedTimestamp = new Date(
-                  donation.timestamp.seconds * 1000,
-                ).toISOString();
-              } else if (donation.timestampISO) {
-                processedTimestamp = donation.timestampISO;
-              } else if (typeof donation.timestamp === "string") {
-                processedTimestamp = donation.timestamp;
-              } else {
-                processedTimestamp = new Date().toISOString();
-              }
-
-              return {
-                ...donation,
-                amount: Number(donation.amount) || 0,
-                timestamp: processedTimestamp,
-                userId: donation.userId || "",
-                userName: donation.userName || "알 수 없는 사용자",
-                message: donation.message || "",
-                classCode: donation.classCode || currentUserClassCode,
-              };
-            })
-          : [];
-
-        setGoalDonations(freshDonations);
-
-        // 내 기여도 재계산
-        const myDonations = freshDonations.filter((d) => d.userId === userId);
-        const myTotal = myDonations.reduce((sum, d) => sum + d.amount, 0);
-        setMyContribution(myTotal);
-
-        // 캐시에 저장
-        setCachedFirestoreData(cacheKey, userId, latestGoalData);
-
-        toast.info(
-          `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n기부 내역: ${freshDonations.length}개\n내 기여도: ${myTotal}개`,
-        );
-      } else {
-        toast.error("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
-      }
-    } catch (error) {
-      logger.error("[MyAssets] 데이터 새로고침 오류:", error);
-      toast.error(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
-    } finally {
-      setAssetsLoading(false);
-    }
-  };
-
-  // 🔥 [추가] 개발자용 디버그 정보 표시 함수
-  const showDebugInfo = () => {
-    const debugInfo = {
-      userId,
-      currentUserClassCode,
-      currentGoalId,
-      goalProgress,
-      classCouponGoal,
-      myContribution,
-      donationsCount: goalDonations.length,
-      donations: goalDonations,
-      userCoupons: userDoc?.coupons,
-      userCash: userDoc?.cash,
-    };
-
-    toast.info(
-      `디버그 정보가 콘솔에 출력되었습니다.\n기부 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
-    );
-  };
-
-  // 🔥 [핵심 수정] 'resetCouponGoal' 함수에 async 키워드 추가
-  const resetCouponGoal = async () => {
-    if (!userDoc?.isAdmin && !userDoc?.isSuperAdmin && !userDoc?.isTeacher) {
-      toast.error("교사/관리자만 초기화 가능합니다.");
-      return;
-    }
-    if (!currentUserClassCode || !currentGoalId) {
-      toast.error("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
-      return;
-    }
-    if (
-      !(await confirmDialog(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true, confirmText: "초기화하기" }))
-    )
-      return;
-
-    setIsResettingGoal(true);
-    try {
-      // 🎯 서버(CF)에서 권한 검증 + admin SDK로 일괄 리셋.
-      //    클라 writeBatch는 firestore.rules의 isAdmin()을 요구해 isTeacher-only
-      //    교사 계정에서 권한 오류로 막혔으므로 CF 호출로 통일.
-      const resetFn = httpsCallable(functions, "resetCouponGoal");
-      await resetFn({});
-
-      // 🔥 [최적화 23] 초기화 후 관련 캐시 모두 삭제
-      localStorage.removeItem(
-        `goalDonationHistory_${currentUserClassCode}_goal`,
-      );
-      localStorage.removeItem(
-        `firestore_cache_goal_${currentGoalId}_${userId}`,
-      );
-
-      setMyContribution(0);
-      setGoalProgress(0);
-      setGoalDonations([]);
-
-      toast.success(
-        `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
-      );
-    } catch (error) {
-      toast.error(`목표 초기화 오류: ${error.message}`);
-    } finally {
-      setIsResettingGoal(false);
-    }
-  };
-
-  const handleSellCoupon = async () => {
-    const amount = parseInt(sellAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("유효한 수량을 입력해주세요.");
-      return;
-    }
-
-    // 🔥 쿠폰 차감 및 현금 증가 즉시 UI 업데이트 (낙관적 업데이트)
-    const cashGained = amount * couponValue;
-    if (optimisticUpdate) {
-      optimisticUpdate({ coupons: -amount, cash: cashGained });
-    }
-
-    setAssetsLoading(true);
-    try {
-      await sellCouponFunction({ amount, idempotencyKey: crypto.randomUUID() });
-
-      // 🔥 활동 로그 기록 (쿠폰 판매)
-      logActivity(db, {
-        classCode: currentUserClassCode,
-        userId: userId,
-        userName: userName,
-        type: ACTIVITY_TYPES.COUPON_USE,
-        description: `쿠폰 ${amount}개 판매 (${cashGained.toLocaleString()}${getCurrencyUnit()})`,
-        amount: cashGained,
-        couponAmount: -amount,
-        metadata: {
-          couponsSold: amount,
-          cashReceived: cashGained,
-          couponValue: couponValue,
-        },
-      });
-
-      toast.success(`${amount}개 쿠폰을 판매했습니다.`);
-      setShowSellCouponModal(false);
-      setSellAmount("");
-      // 🔥 [최적화] Firebase Function이 자동으로 userDoc를 업데이트하므로
-      // AuthContext의 실시간 리스너가 자동으로 UI를 갱신함 (loadMyAssetsData 제거)
-    } catch (error) {
-      toast.error(`판매 오류: ${error.message}`);
-
-      // 실패 시 롤백
-      if (optimisticUpdate) {
-        optimisticUpdate({ coupons: amount, cash: -cashGained });
-      }
-    } finally {
-      setAssetsLoading(false);
-    }
-  };
-
-  const handleGiftCoupon = async () => {
-    const recipientUser = users.find((u) => u.id === giftRecipient);
-    const amount = parseInt(giftAmount, 10);
-
-    if (!recipientUser) {
-      toast.error("받는 사람을 선택해주세요.");
-      return;
-    }
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("올바른 수량을 입력해주세요.");
-      return;
-    }
-
-    if (
-      await confirmDialog(
-        `${recipientUser.name}님에게 쿠폰 ${amount}개를 선물하시겠습니까?`, { danger: true })
-    ) {
-      // 🔥 쿠폰 즉시 UI 업데이트 (낙관적 업데이트)
-      if (optimisticUpdate) {
-        optimisticUpdate({ coupons: -amount });
-      }
-
-      setAssetsLoading(true);
-      try {
-        await giftCouponFunction({
-          recipientId: recipientUser.id,
-          amount,
-          message: "",
-          idempotencyKey: crypto.randomUUID(),
-        });
-
-        // 🔥 활동 로그 기록 (쿠폰 선물 발송)
-        logActivity(db, {
-          classCode: currentUserClassCode,
-          userId: userId,
-          userName: userName,
-          type: ACTIVITY_TYPES.COUPON_GIFT_SEND,
-          description: `${recipientUser.name}님에게 쿠폰 ${amount}개 선물`,
-          couponAmount: -amount,
-          metadata: {
-            recipientId: recipientUser.id,
-            recipientName: recipientUser.name,
-          },
-        });
-
-        // 🔥 활동 로그 기록 (쿠폰 선물 수신) - 받는 사람도 기록
-        logActivity(db, {
-          classCode: currentUserClassCode,
-          userId: recipientUser.id,
-          userName: recipientUser.name,
-          type: ACTIVITY_TYPES.COUPON_GIFT_RECEIVE,
-          description: `${userName}님으로부터 쿠폰 ${amount}개 수신`,
-          couponAmount: amount,
-          metadata: {
-            senderId: userId,
-            senderName: userName,
-          },
-        });
-
-        toast.success("쿠폰 선물이 완료되었습니다.");
-        setShowGiftCouponModal(false);
-        setGiftRecipient("");
-        setGiftAmount("");
-        // 🔥 [최적화] Firebase Function이 자동으로 userDoc를 업데이트하므로
-        // AuthContext의 실시간 리스너가 자동으로 UI를 갱신함 (loadMyAssetsData 제거)
-      } catch (error) {
-        toast.error(`선물 오류: ${error.message}`);
-
-        // 실패 시 롤백
-        if (optimisticUpdate) {
-          optimisticUpdate({ coupons: amount });
-        }
-      } finally {
-        setAssetsLoading(false);
-      }
-    }
-  };
 
   const handleTransferMoney = async () => {
     // 🔒 재진입 차단(클라 lock) — 빠른 더블클릭/재시도로 인한 이중 송금 방지
@@ -1358,7 +658,7 @@ export default function MyAssets() {
                       month: "2-digit",
                       day: "2-digit",
                     });
-                  } catch (dateError) {
+                  } catch {
                     displayDate = "오늘";
                   }
 

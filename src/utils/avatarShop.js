@@ -33,37 +33,6 @@ export const AVATAR_RARITIES = {
   legendary: { name: "전설", color: "#f59e0b", glow: "rgba(245,158,11,0.8)", priceRange: [300000, 1000000] },
 };
 
-/**
- * 아바타 상점 아이템 스키마 (Firestore avatarShopItems/{itemId})
- *
- * {
- *   id: "hair_unicorn_horn",
- *   slot: "hair" | "hat" | "glasses" | "outfit" | "background" | "effect" | "preset",
- *   name: "유니콘 뿔",
- *   description: "신비로운 무지개 뿔",
- *   imageUrl: "https://.../hair_unicorn_horn.png",  // 투명 PNG
- *   rarity: "epic",
- *   price: 100000,
- *   active: true,                                    // 판매 활성화
- *   limited: false,                                  // 한정판 여부
- *   anchorOverride?: { top: -10, left: 0 },          // 슬롯 기본 위치 미세조정
- *   scale?: 1.0,                                     // 슬롯 기본 크기 미세조정
- *   createdAt: serverTimestamp,
- *   sortOrder: number,                               // 진열 순서
- * }
- *
- * 사용자 측 (users/{uid}):
- *   ownedAvatarItems: { [itemId]: { purchasedAt, rarity, slot, ... } }  // map (배열 X)
- *   equippedAvatarItems: { hair: itemId, hat: itemId, ... }             // 슬롯별 장착
- *   activePreset?: itemId                                                // 프리셋 활성화 시
- */
-
-/**
- * 슬롯 z-index 가져오기
- */
-export function getSlotZIndex(slot) {
-  return AVATAR_SHOP_SLOTS[slot]?.zIndex ?? 10;
-}
 
 /**
  * 등급 정보 가져오기
@@ -87,19 +56,6 @@ export function isOwned(userDoc, itemId) {
   return Boolean(userDoc.ownedAvatarItems[itemId]);
 }
 
-/**
- * 사용자가 해당 슬롯에 장착한 아이템 id
- */
-export function getEquippedItem(userDoc, slot) {
-  return userDoc?.equippedAvatarItems?.[slot] || null;
-}
-
-/**
- * 프리셋 활성화 여부 (프리셋 장착 시 다른 슬롯/SVG 숨김)
- */
-export function getActivePreset(userDoc) {
-  return userDoc?.activePreset || null;
-}
 
 /**
  * 슬롯별 기본 위치 (PNG 오버레이 좌표) - SVG viewBox(100x100 기준)

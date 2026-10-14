@@ -50,7 +50,6 @@ const ItemStore = () => {
     deleteItem,
     updateItem,
     addItem,
-    setAdminPriceIncrease,
     adminPriceIncreasePercentage,
   } = useItems() || {
     items: [],
@@ -68,9 +67,6 @@ const ItemStore = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [priceIncreasePercentage, setPriceIncreasePercentage] = useState(
-    adminPriceIncreasePercentage || 10,
-  );
   const [isMobile, setIsMobile] = useState(false);
   const [purchaseQuantities, setPurchaseQuantities] = useState({});
   // 🔥 중복 결제 방지 — 진행 중인 아이템 id 추적
@@ -136,7 +132,6 @@ const ItemStore = () => {
   }, [items]);
 
   useEffect(() => {
-    setPriceIncreasePercentage(adminPriceIncreasePercentage || 10);
   }, [adminPriceIncreasePercentage]);
 
   useEffect(() => {
@@ -178,18 +173,6 @@ const ItemStore = () => {
     }
   };
 
-  const handlePriceIncreaseChange = (value) => {
-    const numericValue = parseInt(value, 10);
-    if (isNaN(numericValue) || numericValue < 0) {
-      showNotification("error", "가격 인상률은 0 이상의 숫자여야 합니다.");
-      setPriceIncreasePercentage(adminPriceIncreasePercentage || 10);
-      if (setAdminPriceIncrease)
-        setAdminPriceIncrease(adminPriceIncreasePercentage || 10);
-      return;
-    }
-    setPriceIncreasePercentage(numericValue);
-    if (setAdminPriceIncrease) setAdminPriceIncrease(numericValue);
-  };
 
   const handleQuantityChange = (itemId, value) => {
     const item = shopItems.find((item) => item.id === itemId);

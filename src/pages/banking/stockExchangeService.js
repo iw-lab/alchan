@@ -10,9 +10,6 @@ import {
   getDocs,
   query,
   where,
-  increment,
-  serverTimestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { globalCache } from "../../services/globalCacheService";
 
@@ -42,10 +39,10 @@ export const SECTORS = {
   CORPORATE: { name: "회사채" }
 };
 
-export const HOLDING_LOCK_PERIOD = 60 * 60 * 1000; // 1시간
+const HOLDING_LOCK_PERIOD = 60 * 60 * 1000; // 1시간
 export const COMMISSION_RATE = 0.003;
-export const TAX_RATE = 0.22;
-export const BOND_TAX_RATE = 0.154;
+const TAX_RATE = 0.22;
+const BOND_TAX_RATE = 0.154;
 
 export const CACHE_TTL = {
   BATCH_DATA: 1000 * 60 * 30,
@@ -172,7 +169,7 @@ const isKoreanStock = (stock) => {
 };
 
 // 클라이언트 사이드에서 현재 시간 기반으로 실시간 시장 상태 계산
-export const getRealtimeMarketState = (stock) => {
+const getRealtimeMarketState = (stock) => {
   if (!stock?.isRealStock) return null;
 
   const now = new Date();
@@ -251,68 +248,6 @@ export const calculateStockTax = (profit, productType = PRODUCT_TYPES.STOCK) => 
   return Math.round(profit * TAX_RATE);
 };
 
-// === 국고 업데이트 배치 처리 ===
-const treasuryUpdateQueue = new Map();
-
-export const updateNationalTreasury = async (amount, type, classCode) => {
-  if (amount <= 0 || !classCode) return;
-  const key = `${classCode}_${type}`;
-  const existing = treasuryUpdateQueue.get(key) || { amount: 0, type, classCode };
-  existing.amount += amount;
-  treasuryUpdateQueue.set(key, existing);
-  setTimeout(() => processTreasuryQueue(), 1000);
-};
-
-export const processTreasuryQueue = async () => {
-  if (treasuryUpdateQueue.size === 0) return;
-  const batch = writeBatch(db);
-  const updates = Array.from(treasuryUpdateQueue.values());
-  treasuryUpdateQueue.clear();
-
-  for (const { amount, type, classCode } of updates) {
-    const treasuryRef = doc(db, "nationalTreasuries", classCode);
-    // 통계만 기록 (totalAmount 제외 - 국고=관리자cash)
-    const updateData = {
-      lastUpdated: serverTimestamp(),
-    };
-    if (type === 'tax') {
-      updateData.stockTaxRevenue = increment(amount);
-    } else if (type === 'commission') {
-      updateData.stockCommissionRevenue = increment(amount);
-    }
-    batch.set(treasuryRef, updateData, { merge: true });
-  }
-
-  try {
-    await batch.commit();
-  } catch (error) {
-    updates.forEach(update => {
-      const key = `${update.classCode}_${update.type}`;
-      treasuryUpdateQueue.set(key, update);
-    });
-  }
-};
-
-// === 시장 지수 계산 ===
-export const calculateMarketIndex = (stocks) => {
-  if (!stocks || stocks.length === 0) return 1000;
-  const listedStocks = stocks.filter(s => s && s.isListed && s.productType === PRODUCT_TYPES.STOCK);
-  if (listedStocks.length === 0) return 1000;
-
-  const totalMarketCap = listedStocks.reduce((sum, stock) => {
-    const shares = 1000;
-    return sum + (stock.price * shares);
-  }, 0);
-
-  const baseMarketCap = listedStocks.reduce((sum, stock) => {
-    const shares = 1000;
-    const basePrice = stock.initialPrice || stock.minListingPrice || stock.price;
-    return sum + (basePrice * shares);
-  }, 0);
-
-  if (baseMarketCap === 0) return 1000;
-  return Math.round((totalMarketCap / baseMarketCap) * 1000);
-};
 
 // === 보유 잠금 관련 ===
 export const canSellHolding = (holding) => {

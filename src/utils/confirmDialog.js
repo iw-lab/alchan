@@ -42,4 +42,3 @@ export function confirmDialog(message, options = {}) {
   return channel.ask({ message: text, options }, (raw) => raw === true);
 }
 
-export default confirmDialog;

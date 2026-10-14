@@ -1,7 +1,7 @@
 {
   "alertConfirm": 0,
-  "important": 714,
-  "lintSuppress": 49,
+  "important": 708,
+  "lintSuppress": 47,
   "bareDepsSuppress": 0,
-  "firestoreDirect": 46
+  "firestoreDirect": 45
 }

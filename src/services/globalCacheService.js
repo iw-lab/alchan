@@ -259,7 +259,7 @@ class GlobalCacheService {
         // 업데이트 없음 - 캐시 연장
         this.set(cacheKey, { ...cached, _lastSync: Date.now() }, ttl);
         return cached.data;
-      } catch (e) {
+      } catch {
         // 증분 조회 실패 - 기존 캐시 반환
         return cached.data;
       }
@@ -338,7 +338,7 @@ class GlobalCacheService {
       try {
         const lsKey = this.localStoragePrefix + key;
         localStorage.removeItem(lsKey);
-      } catch (error) {
+      } catch {
         // 무시
       }
     }
@@ -780,7 +780,7 @@ class GlobalCacheService {
           }
         }
       }
-    } catch (e) { /* IndexedDB 미지원 환경 무시 */ }
+    } catch { /* IndexedDB 미지원 환경 무시 */ }
 
     // localStorage 캐시 키 정리
     try {
@@ -792,7 +792,7 @@ class GlobalCacheService {
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
-    } catch (e) { /* localStorage 미지원 환경 무시 */ }
+    } catch { /* localStorage 미지원 환경 무시 */ }
   }
 
   // 캐시 상태 정보
@@ -809,9 +809,5 @@ class GlobalCacheService {
 // 전역 인스턴스 생성
 export const globalCache = new GlobalCacheService();
 
-// React Hook
-export const useGlobalCache = () => {
-  return globalCache;
-};
 
 export default globalCache;

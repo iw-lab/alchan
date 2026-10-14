@@ -20,7 +20,6 @@ import {
   httpsCallable,
   writeBatch,
   serverTimestamp,
-  runTransaction,
 } from "../../firebase";
 import CouponGoal from "../../components/CouponGoal";
 import LoginWarning from "../../components/LoginWarning";
@@ -30,11 +29,7 @@ import SellCouponModal from "../../components/modals/SellCouponModal";
 import GiftCouponModal from "../../components/modals/GiftCouponModal";
 import DonationHistoryModal from "../../components/modals/DonationHistoryModal";
 import { AlchanLoading } from "../../components/AlchanLayout";
-import {
-  safeTimestampToDate,
-  getCachedFirestoreData,
-  setCachedFirestoreData,
-} from "../../utils/firestoreHelpers";
+import { getCachedFirestoreData, setCachedFirestoreData } from "../../utils/firestoreHelpers";
 
 import {
   openPickOn,
@@ -286,7 +281,7 @@ export default function CouponGoalPage() {
 
     try {
       // Call the server function in the background
-      const result = await donateCouponFunction({
+      await donateCouponFunction({
         amount: donationAmount,
         message: memo,
         // 🔒 batch7-b(codex MEDIUM #6): 멱등키로 중복클릭/재시도 이중 기부 차단.

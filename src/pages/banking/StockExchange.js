@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import "./StockExchange.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, functions } from "../../firebase";
+import { db } from "../../firebase";
 // 🔥 자동 상장/폐지: Firebase Functions에서 처리 (10분마다)
 import { httpsCallable } from "firebase/functions";
 import { usePolling } from "../../hooks/usePolling";
@@ -129,30 +129,6 @@ const BarChart3 = ({ size = 24, color = "currentColor" }) => (
     <line x1="12" y1="20" x2="12" y2="10" />
     <line x1="18" y1="20" x2="18" y2="4" />
     <line x1="6" y1="20" x2="6" y2="16" />
-  </svg>
-);
-const ChevronDown = ({ size = 24, color = "currentColor" }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={color}
-    strokeWidth="2"
-  >
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-const ChevronUp = ({ size = 24, color = "currentColor" }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={color}
-    strokeWidth="2"
-  >
-    <polyline points="18 15 12 9 6 15" />
   </svg>
 );
 const Lock = ({ size = 24, color = "currentColor" }) => (
@@ -338,7 +314,6 @@ const AdminPanel = React.memo(
     // 뒤로가기 = 관리자 패널 닫기(이 컴포넌트는 열릴 때만 렌더됨)
     useBackClose(true, onClose);
     const [showAddForm, setShowAddForm] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
     const [isCreatingRealStocks, setIsCreatingRealStocks] = useState(false);
     const [isUpdatingRealStocks, setIsUpdatingRealStocks] = useState(false);
     const [isDeletingSimulation, setIsDeletingSimulation] = useState(false);
@@ -354,18 +329,6 @@ const AdminPanel = React.memo(
       couponRate: "",
     });
 
-    const handleManualUpdate = async () => {
-      if (isUpdating) return;
-      setIsUpdating(true);
-      try {
-        await onManualUpdate();
-        toast.success("주식 가격 업데이트 완료!");
-      } catch (error) {
-        toast.error("업데이트 실패: " + error.message);
-      } finally {
-        setIsUpdating(false);
-      }
-    };
 
     const handleCreateRealStocks = async () => {
       if (
@@ -939,7 +902,6 @@ const StockExchange = () => {
     firebaseReady,
     functions,
     optimisticUpdate,
-    refreshUserDocument,
   } = useAuth();
 
   // 🔥 [최적화] httpsCallable 메모이제이션 (매 렌더마다 재생성 방지)
@@ -999,12 +961,11 @@ const StockExchange = () => {
   const [vacationLoading, setVacationLoading] = useState(false);
 
   // 성능 최적화를 위한 상태 추가
-  const [cacheStatus, setCacheStatus] = useState({
+  const [cacheStatus, ] = useState({
     hits: 0,
     misses: 0,
     savings: 0,
   });
-  const [lastBatchLoad, setLastBatchLoad] = useState(null);
 
   const lastFetchTimeRef = useRef({
     stocks: 0,
@@ -1160,7 +1121,6 @@ const StockExchange = () => {
         lastFetchTimeRef.current.portfolio = now;
         lastFetchTimeRef.current.marketStatus = now;
 
-        setLastBatchLoad(new Date());
         setLastUpdated(new Date());
       } catch (error) {
         logger.error("[StockExchange] 배치 로드 실패:", error);
@@ -1323,7 +1283,7 @@ const StockExchange = () => {
           await fetchAllData(true);
 
           toast.success(`${stockName} 상품이 삭제되었습니다.`);
-        } catch (error) {
+        } catch {
           toast.error("상품 삭제 중 오류가 발생했습니다.");
         }
       }
@@ -1362,7 +1322,7 @@ const StockExchange = () => {
         await fetchAllData(true);
 
         toast.success("가격이 수정되었습니다.");
-      } catch (error) {
+      } catch {
         toast.error("가격 수정 중 오류가 발생했습니다.");
       }
     },
@@ -1426,7 +1386,7 @@ const StockExchange = () => {
           await fetchAllData(true);
 
           toast.success(`${action} 처리되었습니다.`);
-        } catch (error) {
+        } catch {
           toast.error(`${action} 처리 중 오류가 발생했습니다.`);
         }
       }
@@ -1676,7 +1636,6 @@ const StockExchange = () => {
 
         const {
           stockName,
-          sellPrice: actualSellPrice,
           commission: actualCommission,
           totalTax: actualTax,
           profit: actualProfit,
@@ -1735,7 +1694,7 @@ const StockExchange = () => {
           await fetchAllData(true);
 
           toast.success("삭제되었습니다.");
-        } catch (error) {
+        } catch {
           toast.error("삭제 중 오류가 발생했습니다.");
         }
       }
@@ -2534,7 +2493,6 @@ const StockExchange = () => {
                   investedValue > 0 ? (profit / investedValue) * 100 : 0;
                 // 🧪 테스트 계정은 매도 락 우회
                 const isLocked = !isTestAccount && !!lockTimers[holding.id];
-                const canSell = !isLocked;
 
                 return (
                   <div

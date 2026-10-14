@@ -77,4 +77,4 @@ const isInitialized = () => {
   return initialized;
 };
 
-export { app, db, auth, storage, functions, isInitialized, firebaseConfig };
+export {  db, auth, storage, functions, isInitialized,  };

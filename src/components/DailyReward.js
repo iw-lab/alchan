@@ -123,7 +123,7 @@ function getRewardForDay(day) {
  *    increment 했다(비원자적 + canClaim 클라판정 → 무한 반복 가능). 이제 지급 권위는
  *    전적으로 서버에 있고, 클라는 결과로 UI/캐시만 갱신한다. cash write는 하지 않는다.
  */
-export async function claimDailyReward(userId) {
+async function claimDailyReward(userId) {
   try {
     // KST 오늘 날짜로 idempotencyKey 구성 → 같은 날 이중클릭 이중지급 차단
     const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000)
@@ -470,4 +470,3 @@ export function StreakRewardInfo() {
   );
 }
 
-export default DailyRewardBanner;

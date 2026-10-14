@@ -36,7 +36,7 @@ import { httpsCallable } from "firebase/functions";
 import { logger } from "../utils/logger";
 import { invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
 import { toast } from "../utils/toast";
-export const AuthContext = createContext(null);
+const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -261,7 +261,7 @@ export const AuthProvider = ({ children }) => {
         classmatesRef.current = calculatedClassmates;
 
         return classMembers;
-      } catch (error) {
+      } catch {
         setUsers([]);
         setAllClassMembers([]);
         setClassmates([]);
@@ -307,7 +307,7 @@ export const AuthProvider = ({ children }) => {
           });
         }
         lastActiveUpdateRef.current = now;
-      } catch (error) {
+      } catch {
         // 네트워크 오류 등은 무시 (중요하지 않음)
       }
     },
@@ -544,7 +544,7 @@ export const AuthProvider = ({ children }) => {
                       logger.log("[AuthContext] 중복 문서 마이그레이션 완료, UI 갱신");
                     }
                   }).catch(() => {});
-                } catch (_) {}
+                } catch {}
               }
             }
 
@@ -676,7 +676,7 @@ export const AuthProvider = ({ children }) => {
           }
 
           setLoading(false);
-        } catch (error) {
+        } catch {
           setUser(null);
           setUserDoc(null);
           setUsers([]);
@@ -794,7 +794,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           return false;
         }
-      } catch (error) {
+      } catch {
         return false;
       } finally {
         setLoading(false);
@@ -874,11 +874,6 @@ export const AuthProvider = ({ children }) => {
                 } else if (value.operand !== undefined) {
                   incrementValue = value.operand;
                 } else if (
-                  value._methodName === "FieldValue.increment" &&
-                  value._operand !== undefined
-                ) {
-                  incrementValue = value._operand;
-                } else if (
                   value.constructor &&
                   value.constructor.name === "NumericIncrementTransform"
                 ) {
@@ -914,7 +909,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           return false;
         }
-      } catch (error) {
+      } catch {
         return false;
       }
     },
@@ -928,12 +923,8 @@ export const AuthProvider = ({ children }) => {
           "인증 서비스가 준비되지 않았거나 로그인 상태가 아닙니다.",
         );
       }
-      try {
-        await fbUpdatePassword(auth.currentUser, newPassword);
-        return true;
-      } catch (error) {
-        throw error;
-      }
+      await fbUpdatePassword(auth.currentUser, newPassword);
+      return true;
     },
     [firebaseReady],
   );
@@ -1073,7 +1064,7 @@ export const AuthProvider = ({ children }) => {
         } else {
           return false;
         }
-      } catch (error) {
+      } catch {
         return false;
       }
     },
@@ -1111,7 +1102,7 @@ export const AuthProvider = ({ children }) => {
           setCachedUserDoc(userId, doc);
         }
         return doc;
-      } catch (error) {
+      } catch {
         return null;
       }
     },

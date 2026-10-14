@@ -183,7 +183,7 @@ export default function MyProfile() {
  toast.success("학급 코드가 변경되었습니다.");
  setShowClassCodeModal(false);
  resetModals();
- } catch (err) {
+ } catch {
  setError("학급 코드 변경에 실패했습니다.");
  } finally {
  setIsLoading(false);

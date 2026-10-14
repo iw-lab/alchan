@@ -7,7 +7,7 @@
 //  · 그래도 이름이 화면에 뜨는 건 사실이므로, 이 함수는 이름을 **가공하지 않고 그대로**
 //    넘기되 호출부가 무엇을 넘기는지 알 수 있게 반환값에 목록을 함께 준다.
 
-export const PICKON_URL = "https://iwpick.pages.dev/";
+const PICKON_URL = "https://iwpick.pages.dev/";
 
 const MAX_ENTRIES = 300;
 // 응모권 장수는 자르지 않는다. 여기서 100 같은 값으로 clamp 하면 많이 낸 학생의
@@ -99,7 +99,7 @@ export function buildEntriesFromDonations(donations, everyone = null) {
  * @param {string} opts.winnerRule   "last" | "first"
  * @param {number} opts.winnerCount  당첨자 수
  */
-export function buildPickOnUrl({
+function buildPickOnUrl({
   entries,
   title = "",
   mode = "race",
@@ -144,12 +144,12 @@ export function openPickOn(entries, opts = {}) {
 //  ③ 금액은 메시지에서 읽지 않는다 — 이 페이지가 아는 값으로만 지급한다.
 //     메시지가 정할 수 있는 것은 '누가 1등인가'뿐이고, 실제 이체는 서버 함수가
 //     학급·잔액·멱등을 다시 검사한다.
-export const PICKON_ORIGIN = new URL(PICKON_URL).origin;
+const PICKON_ORIGIN = new URL(PICKON_URL).origin;
 
 // 상금에 매기는 기본 세율(%). 교사가 추첨할 때마다 바꿀 수 있고, 마지막 값이 기억된다.
 export const PICKON_DEFAULT_TAX = 33;
 
-export function newDrawId() {
+function newDrawId() {
   const a = new Uint8Array(9);
   window.crypto.getRandomValues(a);
   return Array.from(a, (b) => b.toString(36)).join("").slice(0, 12);

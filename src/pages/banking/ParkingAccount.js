@@ -1,24 +1,22 @@
 // src/ParkingAccount.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
- db,
- doc,
- getDoc,
- serverTimestamp,
- updateDoc,
- increment,
- runTransaction,
- onSnapshot,
- collection,
- getDocs,
- deleteDoc,
- query,
- where,
- limit,
- functions,
- httpsCallable,
+  db,
+  doc,
+  serverTimestamp,
+  increment,
+  runTransaction,
+  onSnapshot,
+  collection,
+  getDocs,
+  deleteDoc,
+  query,
+  where,
+  limit,
+  functions,
+  httpsCallable,
 } from "../../firebase";
-import { format, isToday, differenceInCalendarDays, startOfDay } from "date-fns";
+import { format, differenceInCalendarDays, startOfDay } from "date-fns";
 import {
  PiggyBank,
  Landmark,
@@ -978,8 +976,6 @@ const ParkingAccount = ({
  loading,
  refreshUserDocument,
  isAdmin,
- addCash,
- deductCash,
  } = auth;
  const userId = user?.uid;
 
@@ -1018,14 +1014,6 @@ const ParkingAccount = ({
  if (!userId) return;
  setIsProcessing(true);
  try {
- // 파킹통장 처리
- const parkingRef = doc(
- db,
- "users",
- userId,
- "financials",
- "parkingAccount",
- );
  const parkingRateProduct =
  depositProducts.length > 0 ? depositProducts[0] : null;
 
@@ -1127,7 +1115,7 @@ const ParkingAccount = ({
  const product = loanRepayModal.product;
  if (!product || !userId) return;
 
- const { id, name, balance, rate } = product;
+ const { id, balance, rate } = product;
  // 경과이자는 표시용(서버 repayLoan CF가 권위 재계산). 성공 메시지 문구에만 사용.
  const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
  balance, rate, product.startDate, product.lastRepaymentDate
@@ -1192,7 +1180,7 @@ const ParkingAccount = ({
    }
  }
 
- const { id, name, balance, rate } = product;
+ const { id, balance, rate } = product;
  // 경과이자·분배는 표시용(서버 repayLoan CF가 권위 재계산). UX 사전검증·성공 메시지 문구에만 사용.
  const { interest: accruedInterest, total: accruedTotal } = calculateAccruedLoanInterest(
  balance, rate, product.startDate, product.lastRepaymentDate
@@ -1382,7 +1370,7 @@ const ParkingAccount = ({
  logger.log(`--- handleMaturity 시작 ${force ? "(강제 상환)" : ""} ---`);
  logger.log("처리할 상품:", product);
 
- const { id, name, type, balance, termInDays, rate, teacherId } = product;
+ const { id, type, balance, termInDays, rate } = product;
  const isLoan = type === "loan";
 
  if (!userId) {

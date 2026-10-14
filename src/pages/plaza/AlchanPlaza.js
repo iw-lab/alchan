@@ -253,7 +253,7 @@ function PostsTab({ posts, myUid, myName, isSuperAdmin, loading, busy, setBusy, 
     try {
       await setPlazaPostStatus(post.id, status);
       setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, status } : p)));
-    } catch (e) {
+    } catch {
       toast.error("상태를 바꾸지 못했어요.");
     }
   };
@@ -267,7 +267,7 @@ function PostsTab({ posts, myUid, myName, isSuperAdmin, loading, busy, setBusy, 
     try {
       await deletePlazaPost(post.id);
       setPosts((prev) => prev.filter((p) => p.id !== post.id));
-    } catch (e) {
+    } catch {
       toast.error("지우지 못했어요.");
     }
   };
@@ -417,7 +417,7 @@ function Comments({ postId, myUid, myName, isSuperAdmin }) {
       });
       setText("");
       await load();
-    } catch (e) {
+    } catch {
       toast.error("댓글을 남기지 못했어요.");
     } finally {
       setSending(false);
@@ -562,7 +562,7 @@ function AppsTab({ apps, myUid, myName, isSuperAdmin, loading, busy, setBusy, re
     try {
       await deletePlazaApp(app.id);
       await reload();
-    } catch (e) {
+    } catch {
       toast.error("지우지 못했어요.");
     }
   };

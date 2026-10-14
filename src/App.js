@@ -131,7 +131,7 @@ class ErrorBoundary extends Component {
     try {
       const prev = Number(localStorage.getItem(RESET_MARK_KEY) || 0);
       repeatedReset = prev > 0 && Date.now() - prev < RESET_REPEAT_WINDOW_MS;
-    } catch (_) {
+    } catch {
       /* localStorage 를 못 읽는 환경이면 그냥 1회차로 본다 */
     }
 
@@ -165,7 +165,7 @@ class ErrorBoundary extends Component {
       // 초기화 시각을 남긴다(위 repeatedReset 판정용). localStorage 를 비운 **뒤**에 찍어야 한다.
       try {
         localStorage.setItem(RESET_MARK_KEY, String(Date.now()));
-      } catch (_) {
+      } catch {
         /* noop */
       }
 

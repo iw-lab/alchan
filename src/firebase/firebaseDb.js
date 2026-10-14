@@ -3,12 +3,6 @@
 
 // Core functions
 export {
-  getClassAdminUid,
-  addData,
-  updateData,
-  deleteData,
-  fetchCollectionOnce,
-  subscribeToCollection,
   getClassmates,
   verifyClassCode,
 } from './db/core';
@@ -27,59 +21,31 @@ export {
   addUserDocument,
   updateUserDocument,
   deleteUserDocument,
-  getAllUsersDocuments,
-  getActivityLogs,
 } from './db/users';
 
 // Transaction functions
 export {
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
-  adminDepositCash,
-  adminWithdrawCash,
-  processStockSaleTransaction,
-  processGenericSaleTransaction,
-  addDonationRecord,
-  addSettlementRecord,
-  getDonationsForClass,
 } from './db/transactions';
 
 // Store functions
-export {
-  getStoreItems,
-  addStoreItem,
-  updateStoreItem,
-  deleteStoreItem,
-  addItemToInventory,
-  getUserInventory,
-  updateUserInventoryItemQuantity,
-  addMarketListing,
-  getMarketItems,
-  updateMarketListing,
-} from './db/store';
+;
 
 // Settings functions
 export {
   getGovernmentSettings,
-  updateGovernmentSettings,
-  getNationalTreasury,
   getBankingProducts,
   updateBankingProducts,
-  subscribeToMarketSummary,
   copyDefaultDataToNewClass,
 } from './db/settings';
 
 // Utility functions
 export {
-  batchGetDocs,
-  batchGetUsers,
-  goOffline,
-  goOnline,
   getCachedDocument,
   processSettlement,
   collectWeeklyTaxes,
   collectWeeklyTaxesAsOfficer,
-  isFirestoreInitialized,
 } from './db/utils';
 
 // Re-export Firestore primitives
@@ -100,8 +66,6 @@ import {
   writeBatch,
   onSnapshot,
   orderBy,
-  arrayUnion,
-  arrayRemove,
   Timestamp,
   limit,
 } from "firebase/firestore";
@@ -121,27 +85,19 @@ export {
   setDoc as firebaseSetDoc,
   getDocs,
   getDocs as firebaseGetDocs,
-  originalFirebaseAddDoc,
   addDoc,
-  originalFirebaseAddDoc as firebaseAddDoc,
   updateDoc,
   updateDoc as firebaseUpdateDoc,
   deleteDoc,
-  deleteDoc as firebaseDeleteDoc,
   query,
-  originalFirebaseQuery as firebaseQuery,
   where,
-  originalFirebaseWhere as firebaseWhere,
   serverTimestamp,
   increment,
   runTransaction,
   writeBatch,
   onSnapshot,
   orderBy,
-  arrayUnion,
-  arrayRemove,
   Timestamp,
-  limit as firebaseLimit,
   limit,
 };
 

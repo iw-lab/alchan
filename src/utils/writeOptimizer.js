@@ -37,7 +37,7 @@ export function debouncedWrite(key, writeFn, delay = 2000) {
 /**
  * Flush all pending debounced writes immediately
  */
-export async function flushPendingWrites() {
+async function flushPendingWrites() {
   const writes = [];
   for (const [key, entry] of pendingWrites) {
     clearTimeout(entry.timer);

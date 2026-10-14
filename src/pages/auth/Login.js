@@ -14,20 +14,19 @@ import {
 } from "../../firebase";
 import { logger } from "../../utils/logger";
 import {
- User,
- Mail,
- Lock,
- Eye,
- EyeOff,
- GraduationCap,
- School,
- ChevronRight,
- Loader2,
- AlertCircle,
- CheckCircle2,
- Users,
- Sparkles,
- ArrowLeft,
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  School,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 
 const getFirebaseErrorMessage = (error) => {
@@ -439,7 +438,7 @@ const Login = () => {
  if (fromUrl && /^[A-Za-z0-9]{4,12}$/.test(fromUrl)) {
  setClassCode(fromUrl.toUpperCase());
  }
- } catch (_) {
+ } catch {
  /* 주소를 못 읽는 환경이면 저장값 그대로 간다 */
  }
  }, []);

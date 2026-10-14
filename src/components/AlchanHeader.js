@@ -23,7 +23,6 @@ import {
 import SettingsPanel from "./SettingsPanel";
 import { useBackClose } from "../hooks/useBackClose";
 import Avatar from "./Avatar";
-import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { buildAvatarOverlays } from "../utils/avatarShop";
 import { getLevelInfo } from "../utils/levelSystem";
 import {
@@ -120,19 +119,6 @@ const AlchanHeader = memo(
     // 아바타 overlays (userDoc 기반 - 베이스 PNG + 슬롯)
     const avatarOverlays = useMemo(() => buildAvatarOverlays(userDoc), [userDoc]);
 
-    // (레거시) 아바타 변경 이벤트 핸들러 - 기존 SVG 시스템 대체로 useEffect 유지하되 본문 비움
-    useEffect(() => {
-      if (false && user?.uid) {
-        // no-op
-      }
-
-      // 아바타 변경 이벤트 구독 (레거시 - 더 이상 사용 X)
-      const handleAvatarChange = () => {};
-      window.addEventListener("avatarChanged", handleAvatarChange);
-      return () =>
-        window.removeEventListener("avatarChanged", handleAvatarChange);
-    }, [user?.uid]);
-
     const levelInfo = useMemo(() => {
       const cash = Number(userDoc?.cash) || 0;
       const stockValue = Number(userDoc?.stockValue) || 0;
@@ -199,7 +185,7 @@ const AlchanHeader = memo(
           await logout();
           navigate("/login");
         }
-      } catch (e) {
+      } catch {
         navigate("/login");
       }
       setShowUserMenu(false);

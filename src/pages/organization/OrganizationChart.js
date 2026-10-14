@@ -1,5 +1,5 @@
 // src/pages/organization/OrganizationChart.js
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import "./OrganizationChart.css";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -13,7 +13,6 @@ import {
   getDoc,
   getDocs,
   serverTimestamp,
-  writeBatch,
 } from "firebase/firestore";
 import { usePolling } from "../../hooks/usePolling";
 import { useBackClose } from "../../hooks/useBackClose";
@@ -75,7 +74,6 @@ const OrganizationChart = ({ classCode }) => {
     vetoOverrideRequired: DEFAULT_ADMIN_SETTINGS.vetoOverrideRequired,
     adminPassword: "",
   });
-  const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingLaws, setLoadingLaws] = useState(true);
   // fetch 에러 표시 (학생/대통령 권한 디버그용)
   const [fetchError, setFetchError] = useState(null);
@@ -90,7 +88,6 @@ const OrganizationChart = ({ classCode }) => {
   // Firestore에서 관리자 설정 로드 및 초기화
   const fetchSettings = useCallback(async () => {
     if (!classCode) return;
-    setLoadingSettings(true);
     const settingsDocRef = doc(db, "governmentSettings", classCode);
 
     try {
@@ -124,7 +121,6 @@ const OrganizationChart = ({ classCode }) => {
     } catch (error) {
       logger.error("정부 설정 로드 오류:", error);
     } finally {
-      setLoadingSettings(false);
     }
   }, [classCode, isAuthAdmin]);
 

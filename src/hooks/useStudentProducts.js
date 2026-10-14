@@ -100,4 +100,3 @@ export function useStudentProducts(userDoc) {
   return products;
 }
 
-export default useStudentProducts;

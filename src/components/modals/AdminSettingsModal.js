@@ -21,7 +21,6 @@ import {
   firebaseSetDoc,
   firebaseGetDocs,
   serverTimestamp,
-  increment,
   writeBatch,
   query as firebaseQuery,
   where as firebaseWhere,
@@ -470,7 +469,7 @@ const AdminSettingsModal = ({
   }, [jobs, jobFilter]);
 
   // 통합 탭 서브탭 상태 (sessionStorage로 새로고침 복원)
-  const [jobTaskSubTab, setJobTaskSubTab] = useState(() => {
+  const [jobTaskSubTab, ] = useState(() => {
     try { return sessionStorage.getItem("alchan_adminModal_subtab_job") || "job"; } catch { return "job"; }
   });
   const [studentMemberSubTab, setStudentMemberSubTab] = useState(() => {
@@ -634,7 +633,7 @@ const AdminSettingsModal = ({
       // 사이드바가 즉시 반영하도록 브로드캐스트(같은 탭). 다른 기기 학생은 다음 로드 시 반영.
       try {
         window.dispatchEvent(new CustomEvent("menuLocks:changed"));
-      } catch (_) {
+      } catch {
         /* noop */
       }
       toast.success("메뉴 잠금 설정이 저장되었습니다.");
@@ -963,21 +962,6 @@ const AdminSettingsModal = ({
     [handleDeleteJob],
   );
 
-  // 할일 편집 핸들러
-  const handleTaskEdit = useCallback(
-    (task, jobId = null) => {
-      logger.log("[AdminSettingsModal] 할일 편집 클릭:", task, "jobId:", jobId);
-      if (handleEditTask && typeof handleEditTask === "function") {
-        handleEditTask(task, jobId);
-      } else {
-        logger.error(
-          "[AdminSettingsModal] handleEditTask 함수가 정의되지 않았습니다.",
-        );
-        toast.error("할일 편집 기능을 사용할 수 없습니다.");
-      }
-    },
-    [handleEditTask],
-  );
 
   // 할일 삭제 핸들러
   const handleTaskDelete = useCallback(
@@ -1000,15 +984,6 @@ const AdminSettingsModal = ({
     [handleDeleteTask],
   );
 
-  // 할일 추가 핸들러 (관리자 설정 모달 폼 열기 — 수정 시 사용)
-  const handleTaskAdd = useCallback(
-    (jobId = null, isJobTask = false) => {
-      if (handleAddTaskClick && typeof handleAddTaskClick === "function") {
-        handleAddTaskClick(jobId, isJobTask);
-      }
-    },
-    [handleAddTaskClick],
-  );
 
   // 인라인 할일 추가 저장
   const handleInlineTaskSave = useCallback(async (targetId) => {
@@ -1092,7 +1067,7 @@ const AdminSettingsModal = ({
               totalSalaryReceived: userData.totalSalaryReceived || 0,
             });
           });
-        } catch (classError) {
+        } catch {
           // Class 구조에서 로드 실패 시 users 구조에서 재시도
         }
       }
@@ -2122,7 +2097,6 @@ const AdminSettingsModal = ({
     border: "1px solid #e2e8f0",
     cursor: "pointer",
   };
-  const labelStyle = { color: "#334155", fontWeight: 600 };
   const inputStyle = {
     background: "#ffffff",
     border: "1px solid #e2e8f0",

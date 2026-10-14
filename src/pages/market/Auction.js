@@ -467,6 +467,11 @@ export default function Auction() {
     }
   };
 
+  // 뒤로가기 = 기본 탭(ongoing)으로.
+  // ⚠️ 아래 로딩 분기(early return)보다 **위**에 있어야 한다 — 아래에 두면 로딩 렌더와 완료 렌더의
+  //    훅 개수가 달라져 React 가 "Rendered more hooks" 로 화면을 죽인다(2026-10-14 수정).
+  useBackClose(activeTab !== "ongoing", () => setActiveTab("ongoing"));
+
   // --- 로딩 및 사용자/학급 코드 확인 ---
   if (authLoading || itemsLoading) {
     return <AlchanLoading />;
@@ -492,9 +497,6 @@ export default function Auction() {
   const availableItems = inventoryItems.filter(
     (item) => item.quantity >= 1 && item.type === "item"
   );
-
-  // 뒤로가기 = 기본 탭(ongoing)으로
-  useBackClose(activeTab !== "ongoing", () => setActiveTab("ongoing"));
 
   return (
     <div className="auction-container">

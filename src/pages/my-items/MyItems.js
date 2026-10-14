@@ -54,7 +54,7 @@ const QuantityBadge = ({ quantity }) => {
 };
 
 const MyItems = () => {
-  const { user, userDoc, users, classmates } = useAuth() || {};
+  const { user, userDoc, classmates } = useAuth() || {};
   const {
     items: storeItems,
     userItems,
@@ -143,7 +143,7 @@ const MyItems = () => {
         `recentlyUsedItems_${user?.uid || "guest"}`,
       );
       return saved ? JSON.parse(saved) : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   });
@@ -425,29 +425,6 @@ const MyItems = () => {
     setGiftModal({ isOpen: false, item: null });
   };
 
-  const handleOpenSellToMarketModal = (group) => {
-    if (!user) {
-      showNotification("error", "로그인이 필요합니다.");
-      return;
-    }
-    if (!group || group.totalQuantity <= 0) {
-      showNotification("error", "판매할 아이템이 없습니다.");
-      return;
-    }
-    if (!listItemForSale) {
-      showNotification("error", "판매 기능을 사용할 수 없습니다.");
-      return;
-    }
-    const defaultPrice = group.displayInfo.price
-      ? Math.max(1, Math.round(group.displayInfo.price * 0.8))
-      : 100;
-    setSellToMarketModal({
-      isOpen: true,
-      item: group,
-      quantity: 1,
-      price: defaultPrice,
-    });
-  };
 
   const handleCloseSellToMarketModal = () => {
     setSellToMarketModal({

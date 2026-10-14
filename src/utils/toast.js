@@ -76,4 +76,3 @@ export const toast = {
   info: (message) => emit("info", message),
 };
 
-export default toast;

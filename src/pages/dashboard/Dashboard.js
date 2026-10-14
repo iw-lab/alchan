@@ -225,29 +225,6 @@ class RealtimeManager {
  }
 }
 
-// Utility functions - 캐시 및 최적화 적용
-const saveSharedData = async (data, classCode) => {
- try {
- // 배치 매니저 사용
- const newDocRef = doc(firestoreCollection(db, "sharedData"));
- batchManager.addWrite({
- type: "set",
- ref: newDocRef,
- data: {
- ...data,
- classCode,
- createdAt: serverTimestamp(),
- },
- });
-
- // 캐시 무효화
- dataCache.invalidate(`classData_${classCode}`);
- return true;
- } catch (error) {
- logger.error("Error saving shared data:", error);
- return false;
- }
-};
 
 // 🔒 지정 전용 역할: 학생이 자가신청할 수 없고 선생님만 배정하는 직업 제목.
 // 직업 문서의 appointedOnly 플래그가 우선이며, 이 목록은 플래그 없는 기존 문서용 fallback.
@@ -588,7 +565,6 @@ function Dashboard({ adminTabMode }) {
  refreshUserDocument,
  isAdmin,
  isSuperAdmin,
- optimisticUpdate,
  } = useAuth();
 
  // Refs for cleanup

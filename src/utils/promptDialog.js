@@ -52,4 +52,3 @@ export function promptDialog(message, defaultValue = "", options = {}) {
   );
 }
 
-export default promptDialog;

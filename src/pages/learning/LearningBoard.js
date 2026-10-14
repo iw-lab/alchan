@@ -11,18 +11,15 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  getDoc,
   getDocs,
   query,
   orderBy,
-  where,
   limit,
   serverTimestamp,
   increment,
   arrayUnion,
   arrayRemove,
   writeBatch,
-  setDoc,
   runTransaction,
 } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -91,7 +88,7 @@ const formatDate = (isoString) => {
       hour: "2-digit",
       minute: "2-digit",
     });
-  } catch (error) {
+  } catch {
     return "";
   }
 };
@@ -190,7 +187,7 @@ const LearningBoard = () => {
 
   const clearDraft = useCallback(() => {
     if (draftKey) {
-      try { localStorage.removeItem(draftKey); } catch (_) { /* noop */ }
+      try { localStorage.removeItem(draftKey); } catch { /* noop */ }
     }
     setDraftSavedAt(null);
     setDraftRestored(false);
@@ -206,7 +203,7 @@ const LearningBoard = () => {
       const savedAt = Date.now();
       localStorage.setItem(draftKey, JSON.stringify({ title, content, savedAt }));
       setDraftSavedAt(savedAt);
-    } catch (_) { /* 용량 초과 등 무시 */ }
+    } catch { /* 용량 초과 등 무시 */ }
   }, [draftKey, newPost]);
 
   // 글쓰기 화면 진입 시 임시저장 복구 (작성 중인 내용이 없을 때만)
@@ -224,7 +221,7 @@ const LearningBoard = () => {
         }
         setDraftSavedAt(d.savedAt || null);
       }
-    } catch (_) { /* noop */ }
+    } catch { /* noop */ }
     // 진입(isWriting/draftKey 변경) 시 1회만 — newPost는 의도적으로 deps 제외
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWriting, draftKey]);
@@ -292,7 +289,7 @@ const LearningBoard = () => {
     refetchBoards();
     try {
       window.dispatchEvent(new Event("learningBoards:changed"));
-    } catch (_) {
+    } catch {
       /* noop */
     }
   }, [refetchBoards]);
