@@ -19,7 +19,7 @@ import { useBackClose } from "../../hooks/useBackClose";
 import { invalidateCache as invalidateFetchCache } from "../../utils/fetchCache";
 
 import { logger } from "../../utils/logger";
-import { hasAppointedJobTitle } from "../../utils/jobPermissions";
+import { hasAppointedJobTitle, toJobIdArray } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -59,6 +59,13 @@ const OrganizationChart = ({ classCode }) => {
     () => hasAppointedJobTitle(userDoc, jobs, "대통령"),
     [userDoc, jobs],
   );
+
+  // rules 가 대통령을 직접 확인한다(firestore.rules naIsPresident) — 승인·거부 쓰기에 내 «대통령» 직업 id 를 함께 보낸다.
+  const presidentJobId = useMemo(() => {
+    const mine = toJobIdArray(userDoc?.appointedJobIds);
+    return (jobs || []).find((j) => j.title === "대통령" && mine.includes(j.id))?.id || null;
+  }, [userDoc, jobs]);
+  const presidentStamp = presidentJobId ? { presidentJobId } : {};
 
   const isAdminUser =
     typeof isAuthAdmin === "function" ? isAuthAdmin() : !!isAuthAdmin;
@@ -135,6 +142,7 @@ const OrganizationChart = ({ classCode }) => {
         status: "approved",
         finalStatus: "final_approved",
         finalApprovalDate: serverTimestamp(),
+        ...presidentStamp,
       });
       // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 국회(naLaws)·경찰서(naLawsApproved) 세션 캐시 무효화
       invalidateFetchCache("naLaws");
@@ -179,6 +187,7 @@ const OrganizationChart = ({ classCode }) => {
         approvals: 0,
         disapprovals: 0,
         voters: {},
+        ...presidentStamp,
       });
       // 🔥 [읽기 절감 1단계] 법안 상태 변경 → 관련 세션 캐시 무효화
       invalidateFetchCache("naLaws");

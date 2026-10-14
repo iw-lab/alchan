@@ -1498,15 +1498,19 @@ service cloud.firestore {
                            request.resource.data.get('likedBy', []).size() == 0 &&
                            request.resource.data.get('dislikedBy', []).size() == 0 &&
                            request.resource.data.get('coupons', 0) == 0 &&
+                           request.resource.data.get('commentCount', 0) == 0 &&
                            request.resource.data.get('adminCouponGiven', false) == false &&
                            !('likeCouponsPaid' in request.resource.data) &&
                            (request.resource.data.get('attachments', []).size() == 0 || isClassAdmin(classCode));
           // 수정: 교사는 전부 · 글쓴이는 제목·본문만 · 같은 반은 댓글 수만(댓글 달기·지우기·옛 글 보정)
+          //   (댓글 수는 표시용 숫자지만 음수·문자열·터무니없는 값은 막는다 — 옛 글 보정이 절대값을 쓰므로 ±1 로는 못 묶는다)
           allow update: if isClassAdmin(classCode) ||
-                           (isOwner(resource.data.authorId) &&
+                           (isOwner(resource.data.authorId) && isSameClass(classCode) &&
                             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'updatedAt'])) ||
                            (isSameClass(classCode) &&
-                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']));
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']) &&
+                            request.resource.data.commentCount is int &&
+                            request.resource.data.commentCount >= 0 && request.resource.data.commentCount <= 100000);
           allow delete: if isOwner(resource.data.authorId) || isClassAdmin(classCode);
 
           // 댓글 서브컬렉션 — 작성자=본인(남의 이름으로 댓글 달기 차단)
@@ -1516,8 +1520,12 @@ service cloud.firestore {
                              request.resource.data.authorId == request.auth.uid;
             // 글쓴이도 지울 수 있다 — 자기 글을 지울 때 화면이 댓글까지 한 배치로 지우는데, 남의 댓글이 하나라도
             //   있으면 배치 전체가 거부돼 «학생은 댓글 달린 자기 글을 못 지우는» 상태였다(get 은 배치 이전 상태를 본다).
+            //   단 **글을 함께 지울 때만**(existsAfter = 이 배치가 끝난 뒤 글이 없다) — 글은 두고 반 친구의
+            //   비판 댓글만 골라 지우는 건 막는다(2026-10-14 교차검증 grok·meta).
             allow delete: if isOwner(resource.data.authorId) || isClassAdmin(classCode) ||
-                             get(/databases/$(database)/documents/classes/$(classCode)/learningBoards/$(boardId)/posts/$(postId)).data.authorId == request.auth.uid;
+                             (isSameClass(classCode) &&
+                              get(/databases/$(database)/documents/classes/$(classCode)/learningBoards/$(boardId)/posts/$(postId)).data.authorId == request.auth.uid &&
+                              !existsAfter(/databases/$(database)/documents/classes/$(classCode)/learningBoards/$(boardId)/posts/$(postId)));
           }
         }
       }
@@ -1643,20 +1651,30 @@ service cloud.firestore {
                           request.resource.data.get('approvals', 0) == 0 &&
                           request.resource.data.get('disapprovals', 0) == 0 &&
                           request.resource.data.get('status', 'pending') == 'pending' &&
+                          request.resource.data.get('voters', {}) is map &&
                           request.resource.data.get('voters', {}).size() == 0);
         // 수정(학생): 내용·제안자는 못 바꾸고, 표는 «한 사람 한 표»로만 늘고, 상태는 표수가 받쳐줄 때만 바뀐다.
         //   (상태 전이 계산은 아직 클라이언트에 있다 — 그래서 rules 가 표수 근거를 다시 본다.)
-        //   남은 구멍: 대통령 승인/거부(pending_government_approval → approved|vetoed)는 rules 가 직업을
-        //   못 봐서 같은 반 누구나 가능하다(국회 가결을 거친 법안에만 해당).
         function naTotalStudents(classCode) {
           let p = /databases/$(database)/documents/classes/$(classCode)/nationalAssemblySettings/admin;
           return exists(p) ? get(p).data.get('totalStudents', 25) : 25;
         }
-        // 재의결 정족수 — 문서가 없으면 국회 화면 기본값 ceil(전체 × 2/3)
+        // 재의결 정족수 — 문서·필드가 없으면 국회 화면 기본값 ceil(전체 × 2/3)
         function naOverrideOk(classCode, approvals) {
           let p = /databases/$(database)/documents/classes/$(classCode)/nationalAssemblySettings/government;
-          return exists(p) ? approvals >= get(p).data.get('vetoOverrideRequired', 17)
-                           : approvals * 3 >= naTotalStudents(classCode) * 2;
+          return (exists(p) && get(p).data.get('vetoOverrideRequired', null) is int)
+                   ? approvals >= get(p).data.vetoOverrideRequired
+                   : approvals * 3 >= naTotalStudents(classCode) * 2;
+        }
+        // 대통령인가 — 화면이 자기 «대통령» 직업 id 를 presidentJobId 로 함께 보낸다.
+        //   rules 는 직업 목록을 훑을 수 없어서, 그 id 가 ① 본인 users.appointedJobIds(교사 임명)에 있고
+        //   ② jobs/{id} 가 이 학급의 «대통령» 인지를 직접 확인한다(자가선택 selectedJobIds 는 인정 안 함).
+        function naIsPresident(classCode, jobId) {
+          let j = /databases/$(database)/documents/jobs/$(jobId);
+          return jobId is string && jobId.size() > 0 &&
+                 jobId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('appointedJobIds', []) &&
+                 exists(j) && get(j).data.get('title', '') == '대통령' &&
+                 get(j).data.get('classCode', '') == classCode;
         }
         function naVoteOk(before, after, uid) {
           let vb = before.get('voters', {});
@@ -1677,9 +1695,12 @@ service cloud.firestore {
                  (s0 in ['pending', 'rejected', 'auto_rejected'] && s1 == 'rejected' &&
                     after.get('disapprovals', 0) * 2 >= naTotalStudents(classCode)) ||
                  (s0 == 'vetoed' && s1 == 'veto_overridden' && naOverrideOk(classCode, after.get('approvals', 0))) ||
-                 (s0 == 'pending_government_approval' && s1 == 'approved') ||
+                 // 대통령 승인·거부권 — 실제 대통령(임명 직업)만(2026-10-14 교차검증 grok·codex)
+                 (s0 == 'pending_government_approval' && s1 == 'approved' &&
+                    naIsPresident(classCode, after.get('presidentJobId', ''))) ||
                  // 거부권: 표·투표자를 비우고 재의결 회차를 연다
                  (s0 == 'pending_government_approval' && s1 == 'vetoed' &&
+                    naIsPresident(classCode, after.get('presidentJobId', '')) &&
                     after.get('approvals', 0) == 0 && after.get('disapprovals', 0) == 0 &&
                     after.get('voters', {}).size() == 0);
         }

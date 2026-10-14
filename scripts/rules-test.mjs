@@ -73,6 +73,9 @@ const DOCS = {
   tch2: { name: "교사2", classCode: "C2", cash: 0, coupons: 0, isAdmin: true, isApproved: true },
   // 자가가입 직후(미승인) 교사 — isAdmin() 이 isApproved 를 포함하는지 확인하는 카나리아.
   tchPending: { name: "미승인교사", classCode: "C1", cash: 0, coupons: 0, isAdmin: true, isApproved: false },
+  // 국회·대통령실 — 교사가 임명한 대통령 / 스스로 고른(임명 아님) 대통령
+  pres1: { name: "대통령", classCode: "C1", cash: 0, coupons: 0, appointedJobIds: ["jobPres"] },
+  selfPres: { name: "자칭대통령", classCode: "C1", cash: 0, coupons: 0, selectedJobIds: ["jobPres"] },
 };
 
 /** uid 들의 user 문서를 get()/exists() 목으로 만든다. */
@@ -95,7 +98,7 @@ const auth = (uid, token = {}) => ({ uid, token });
  * @param opts.before 기존 문서 data (update/delete 용) — 최상위 resource
  * @param opts.after  쓰려는 문서 data (create/update 용) — request.resource
  */
-function tc(expect, label, { path, method, as, before, after, token, actors = [], gets = [] }) {
+function tc(expect, label, { path, method, as, before, after, token, actors = [], gets = [], fnMocks = [] }) {
   const request = { auth: auth(as, token), path: `${DB}${path}`, method, time: NOW };
   if (after) request.resource = { __name__: `${DB}${path}`, data: after };
   const c = {
@@ -109,6 +112,8 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
         { function: "get", args: [{ exactValue: `${DB}${p}` }], result: { value: { data } } },
         { function: "exists", args: [{ exactValue: `${DB}${p}` }], result: { value: true } },
       ]),
+      // 그 밖의 함수 목(예: existsAfter — 배치가 끝난 뒤 문서가 남는가)
+      ...fnMocks.map(({ fn, path: p, value }) => ({ function: fn, args: [{ exactValue: `${DB}${p}` }], result: { value } })),
     ],
   };
   if (before) c.resource = { __name__: `${DB}${path}`, data: before };
@@ -1394,6 +1399,21 @@ const CASES = [
     actors: ["stu1"],
   }),
 
+  // ── 📚 학습게시판 보강 (2026-10-14 교차검증) — 글쓴이의 남 댓글 삭제는 글과 함께일 때만, 댓글 수는 정수 범위 ──
+  ...(() => {
+    const POST = "/classes/C1/learningBoards/b1/posts/p1";
+    const C = `${POST}/comments/c1`;
+    const postGet = [{ path: POST, data: { authorId: "stu1", title: "t", content: "c" } }];
+    return [
+      tc("ALLOW", "🐤 글쓴이가 자기 글을 지우며 반 친구 댓글도 함께 지운다", { path: C, method: "delete", as: "stu1", before: { authorId: "stu2", text: "x" }, gets: postGet, fnMocks: [{ fn: "existsAfter", path: POST, value: false }] }),
+      tc("DENY", "글쓴이가 글은 두고 반 친구 댓글만 골라 지운다", { path: C, method: "delete", as: "stu1", before: { authorId: "stu2", text: "x" }, gets: postGet, fnMocks: [{ fn: "existsAfter", path: POST, value: true }] }),
+      tc("ALLOW", "🐤 반 친구가 댓글 수를 3으로 맞춘다(댓글 달기)", { path: POST, method: "update", as: "stu2", before: { authorId: "stu1", commentCount: 2 }, after: { authorId: "stu1", commentCount: 3 } }),
+      tc("DENY", "반 친구가 댓글 수를 음수로 만든다", { path: POST, method: "update", as: "stu2", before: { authorId: "stu1", commentCount: 2 }, after: { authorId: "stu1", commentCount: -5 } }),
+      tc("DENY", "반 친구가 댓글 수를 문자열로 만든다", { path: POST, method: "update", as: "stu2", before: { authorId: "stu1", commentCount: 2 }, after: { authorId: "stu1", commentCount: "999" } }),
+      tc("DENY", "학생이 댓글 수 50으로 글을 만든다", { path: POST, method: "create", as: "stu1", after: { authorId: "stu1", title: "t", content: "c", commentCount: 50 } }),
+    ];
+  })(),
+
   // ── 🏪 개인상점 (2026-10-14) — 자기 학급 이름표로만 만들고, 주인·학급은 못 바꾼다 ──
   tc("ALLOW", "🐤 학생이 자기 학급 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", name: "가게" } }),
   tc("DENY", "학생이 학급 이름표 없이(전 학급 노출) 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: null, name: "가게" } }),
@@ -1411,6 +1431,8 @@ const CASES = [
     const gets = [
       { path: "/classes/C1/nationalAssemblySettings/admin", data: { totalStudents: 4 } },
       { path: "/classes/C1/nationalAssemblySettings/government", data: { vetoOverrideRequired: 2 } },
+      { path: "/jobs/jobPres", data: { title: "대통령", classCode: "C1" } },
+      { path: "/jobs/jobPresC2", data: { title: "대통령", classCode: "C2" } },
     ];
     const up = (expect, label, as, before, after) => tc(expect, label, { path: P, method: "update", as, before, after, gets });
     const GOV = { ...L0, status: "pending_government_approval", approvals: 2, voters: { stu1: "approvals", stu2: "approvals" } };
@@ -1425,8 +1447,14 @@ const CASES = [
       up("DENY", "표 없이 상태만 정부 이송으로 바꾼다", "stu1", L0, { ...L0, status: "pending_government_approval" }),
       up("ALLOW", "🐤 과반(4명 중 2표)을 채우는 표와 함께 정부 이송", "stu1", { ...L0, approvals: 1, voters: { stu2: "approvals" } }, { ...L0, approvals: 2, voters: { stu2: "approvals", stu1: "approvals" }, status: "pending_government_approval" }),
       up("DENY", "국회 표결 없이 바로 가결(approved)로 바꾼다", "stu1", L0, { ...L0, status: "approved" }),
-      up("ALLOW", "🐤 정부 이송 법안에 거부권(표·투표자 초기화)", "stu2", GOV, VETO),
-      up("DENY", "거부권 모양에 벌금액 변경을 끼워 넣는다", "stu2", GOV, { ...VETO, fine: "1" }),
+      up("ALLOW", "🐤 임명된 대통령이 정부 이송 법안에 거부권(표·투표자 초기화)", "pres1", GOV, { ...VETO, presidentJobId: "jobPres" }),
+      up("DENY", "대통령 아닌 학생이 대통령 직업 id 를 대며 거부권", "stu2", GOV, { ...VETO, presidentJobId: "jobPres" }),
+      up("DENY", "대통령 직업을 스스로 고른(임명 아닌) 학생이 거부권", "selfPres", GOV, { ...VETO, presidentJobId: "jobPres" }),
+      up("DENY", "대통령이 직업 id 없이 거부권", "pres1", GOV, VETO),
+      up("ALLOW", "🐤 임명된 대통령이 정부 이송 법안을 승인", "pres1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPres" }),
+      up("DENY", "대통령 아닌 학생이 정부 이송 법안을 승인", "stu1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPres" }),
+      up("DENY", "다른 반 «대통령» 직업 id 로 승인", "pres1", GOV, { ...GOV, status: "approved", presidentJobId: "jobPresC2" }),
+      up("DENY", "거부권 모양에 벌금액 변경을 끼워 넣는다", "pres1", GOV, { ...VETO, fine: "1", presidentJobId: "jobPres" }),
       up("DENY", "심의 중 법안에 거부권 모양으로 표를 지운다", "stu2", { ...L0, approvals: 1, voters: { stu1: "approvals" } }, { ...L0, status: "vetoed", approvals: 0, voters: {} }),
       up("ALLOW", "🐤 재의결 회차 — 1차 찬성자가 다시 찬성한다", "stu1", VETO, { ...VETO, approvals: 1, voters: { stu1: "approvals" } }),
       up("DENY", "재의결 정족수(2) 미달인데 재의결 가결로 바꾼다", "stu1", VETO, { ...VETO, approvals: 1, voters: { stu1: "approvals" }, status: "veto_overridden" }),
@@ -1434,6 +1462,7 @@ const CASES = [
       up("DENY", "타 학급 학생이 표를 던진다", "farStu", L0, { ...L0, approvals: 1, voters: { farStu: "approvals" } }),
       up("ALLOW", "🐤 교사가 법안 내용을 고친다", "tch1", L0, { ...L0, fine: "5000" }),
       tc("ALLOW", "🐤 학생이 자기 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1" } }),
+      tc("DENY", "학생이 투표자 칸을 배열로 만들어 법안을 제안한다(투표 불능 사보타주)", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", voters: [] } }),
       tc("DENY", "학생이 법안을 제안하며 찬성표를 미리 채운다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", approvals: 3 } }),
       tc("DENY", "학생이 친구 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu2", proposerName: "학생2" } }),
       tc("DENY", "학생이 법안을 지운다", { path: P, method: "delete", as: "stu1", before: L0 }),

@@ -193,6 +193,35 @@ const step = async (name, fn) => {
 };
 const userDoc = async (uid) => (await fdb.doc(`users/${uid}`).get()).data() || {};
 
+// 위조 쓰기(rules 거부 확인)는 앱 SDK 가 아니라 **학생 ID 토큰 + Firestore REST** 로 보낸다.
+//   앱 페이지에서 SDK 로 거부될 쓰기를 연달아 보내면 에뮬레이터 응답에 버전이 빠져 SDK 가
+//   «INTERNAL ASSERTION FAILED (ID: c050)» 로 멈추고 그 페이지가 10분 넘게 굳었다(2026-10-14 전체 실행).
+//   rules 판정은 경로와 무관하게 같다 — 시험이 앱 상태를 흔들지 않게 분리한다.
+const FS_DB = "projects/inconomysu-class/databases/(default)";
+const restVal = (v) => (typeof v === "number" ? (Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v })
+  : typeof v === "boolean" ? { booleanValue: v } : v === null ? { nullValue: null } : { stringValue: String(v) });
+async function forge(sess, docPath, data, inc = {}) {
+  const tk = await sess.page.evaluate(async () => (await import("/src/firebase.js")).auth.currentUser.getIdToken());
+  const fields = {};
+  const mask = [];
+  for (const [k, v] of Object.entries(data)) {
+    const parts = k.split(".");
+    mask.push(parts.map((p) => (/^[A-Za-z_][A-Za-z_0-9]*$/.test(p) ? p : "`" + p + "`")).join("."));
+    let cur = fields;
+    for (const p of parts.slice(0, -1)) { cur[p] ??= { mapValue: { fields: {} } }; cur = cur[p].mapValue.fields; }
+    cur[parts.at(-1)] = restVal(v);
+  }
+  const write = { update: { name: `${FS_DB}/documents/${docPath}`, fields }, updateMask: { fieldPaths: mask }, currentDocument: { exists: true } };
+  const incs = Object.entries(inc);
+  if (incs.length) write.updateTransforms = incs.map(([k, n]) => ({ fieldPath: k, increment: restVal(n) }));
+  const r = await fetch(`http://127.0.0.1:8080/v1/${FS_DB}/documents:commit`, {
+    method: "POST", headers: { authorization: `Bearer ${tk}`, "content-type": "application/json" }, body: JSON.stringify({ writes: [write] }),
+  });
+  if (r.ok) return "ALLOWED";
+  const j = await r.json().catch(() => ({}));
+  return j.error?.status === "PERMISSION_DENIED" ? "permission-denied" : `http-${r.status}:${j.error?.status || ""}`;
+}
+
 // ══ 준비: 교사 가입 → 승인 → 학생 4명 ═════════════════════════════════
 const st = { classCode: null, students: [] };
 const T = await newSession("teacher");
@@ -335,15 +364,9 @@ if (want("board")) {
     expect(post.adminCouponGiven === true, "adminCouponGiven 미표시");
   });
   await step("board: 반 친구가 남의 글 likes·제목 직접 쓰기 → 거부(rules)", async () => {
-    const r = await S[1].page.evaluate(async ({ code, boardId, postId }) => {
-      const m = await import("/src/firebase.js"); // 앱과 같은 SDK 인스턴스(다른 경로로 import 하면 인스턴스가 갈린다)
-      const ref = m.doc(m.db, "classes", code, "learningBoards", boardId, "posts", postId);
-      const out = {};
-      for (const [k, v] of [["likes", { likes: 300 }], ["title", { title: "해킹" }], ["adminCouponGiven", { adminCouponGiven: false }]]) {
-        try { await m.updateDoc(ref, v); out[k] = "ALLOWED"; } catch (e) { out[k] = e.code; }
-      }
-      return out;
-    }, { code: st.classCode, boardId, postId });
+    const p = `classes/${st.classCode}/learningBoards/${boardId}/posts/${postId}`;
+    const r = {};
+    for (const [k, v] of [["likes", { likes: 300 }], ["title", { title: "해킹" }], ["adminCouponGiven", { adminCouponGiven: false }]]) r[k] = await forge(S[1], p, v);
     note("board-forge", r);
     expect(Object.values(r).every((v) => v === "permission-denied"), "직접 쓰기가 허용됐다 " + JSON.stringify(r));
   });
@@ -525,15 +548,9 @@ if (want("assembly")) {
     await waitFor(async () => { const x = (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data(); return x.approvals === 1 && x.voters?.[st.students[0].uid] === "approvals"; }, { msg: "찬성 1·voters 기록" });
   });
   await step("assembly: 반 친구가 벌금액·남의 표 직접 쓰기 → 거부(rules)", async () => {
-    const r = await S[1].page.evaluate(async ({ code, lawId, other }) => {
-      const m = await import("/src/firebase.js");
-      const ref = m.doc(m.db, "classes", code, "nationalAssemblyLaws", lawId);
-      const out = {};
-      for (const [k, v] of [["fine", { fine: "999999" }], ["otherVoter", { [`voters.${other}`]: "disapprovals" }], ["proposer", { proposerId: "x" }], ["inflate", { approvals: 999 }]]) {
-        try { await m.updateDoc(ref, v); out[k] = "ALLOWED"; } catch (e) { out[k] = e.code; }
-      }
-      return out;
-    }, { code: st.classCode, lawId, other: st.students[2].uid });
+    const p = `${lawsCol()}/${lawId}`;
+    const r = {};
+    for (const [k, v] of [["fine", { fine: "999999" }], ["otherVoter", { [`voters.${st.students[2].uid}`]: "disapprovals" }], ["proposer", { proposerId: "x" }], ["inflate", { approvals: 999 }]]) r[k] = await forge(S[1], p, v);
     note("assembly-forge", r);
     expect(Object.values(r).every((v) => v === "permission-denied"), "직접 쓰기가 허용됐다 " + JSON.stringify(r));
   });
@@ -544,15 +561,12 @@ if (want("assembly")) {
   });
   const lawNow = async () => (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data();
   await step("assembly: 표수 없이 상태만 바꾸기·중복 표 → 거부(rules)", async () => {
-    const r = await S[0].page.evaluate(async ({ code, lawId }) => {
-      const m = await import("/src/firebase.js");
-      const ref = m.doc(m.db, "classes", code, "nationalAssemblyLaws", lawId);
-      const out = {};
-      for (const [k, v] of [["skipToGov", { status: "pending_government_approval" }], ["skipToApproved", { status: "approved" }], ["doubleVote", { approvals: m.increment(1) }]]) {
-        try { await m.updateDoc(ref, v); out[k] = "ALLOWED"; } catch (e) { out[k] = e.code; }
-      }
-      return out;
-    }, { code: st.classCode, lawId });
+    const p = `${lawsCol()}/${lawId}`;
+    const r = {
+      skipToGov: await forge(S[0], p, { status: "pending_government_approval" }),
+      skipToApproved: await forge(S[0], p, { status: "approved" }),
+      doubleVote: await forge(S[0], p, {}, { approvals: 1 }),
+    };
     note("assembly-forge2", r);
     expect(Object.values(r).every((v) => v === "permission-denied"), "표수 근거 없는 쓰기가 허용됐다 " + JSON.stringify(r));
   });
@@ -566,6 +580,10 @@ if (want("assembly")) {
     let pres = jobs.docs.find((d) => d.data().title === "대통령");
     if (!pres) pres = await fdb.collection("jobs").add({ title: "대통령", classCode: st.classCode, salary: 0, tasks: [] });
     await fdb.doc(`users/${st.students[3].uid}`).update({ appointedJobIds: [pres.id] });
+    // 대통령 아닌 학생이 대통령 직업 id 를 대며 승인 → rules 거부
+    const fake = await forge(S[1], `${lawsCol()}/${lawId}`, { status: "approved", presidentJobId: pres.id });
+    note("assembly-fake-president", fake);
+    expect(fake === "permission-denied", "대통령 아닌 학생의 승인이 허용됐다 " + fake);
     await go(S[3], "/organization-chart");
     await S[3].page.getByText("대통령 권한").first().waitFor({ timeout: 15000 });
     await S[3].page.locator(".law-approval-section .veto-button").first().click();
@@ -648,10 +666,16 @@ if (want("auction")) {
     for (const u of [A, B, C]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000 });
     teacherUid = (await fdb.collection("users").where("classCode", "==", st.classCode).where("isAdmin", "==", true).get()).docs[0]?.id;
     // 실제 상점 화면으로 산다 — 자기 구매는 화면이 아이템 목록을 직접 갱신한다(CF 직접 호출은 그 갱신을 건너뛴다)
+    //   앞 시나리오가 이미 아이템을 넣어 뒀을 수 있다 — «있음»이 아니라 «수량이 늘었음»을 기다린다
+    //   (안 그러면 구매가 다음 단계의 측정 구간 안에서 끝나 돈 보존 계산이 어긋난다).
+    const invTotal = async () => (await fdb.collection(`users/${A.uid}/inventory`).get()).docs.reduce((n, d) => n + (d.data().quantity || 0), 0);
+    const q0 = await invTotal();
     await go(S[0], "/item-shop");
     await S[0].page.locator(".buy-item-button:not([disabled])").first().click();
-    const inv = await waitFor(async () => { const q = await fdb.collection(`users/${A.uid}/inventory`).get(); return q.size > 0 ? q : null; }, { msg: "인벤토리 반영" });
-    itemId = inv.docs[0].data().itemId || inv.docs[0].id;
+    await waitFor(async () => (await invTotal()) > q0, { msg: "인벤토리 수량 증가" });
+    await settle(S[0].page);
+    const inv = await fdb.collection(`users/${A.uid}/inventory`).get();
+    itemId = inv.docs.find((d) => (d.data().quantity || 0) > 0)?.data().itemId || inv.docs[0].id;
   });
   const base = {};
   await step("auction: 판매자 경매 등록(UI, 시작가 100)", async () => {
