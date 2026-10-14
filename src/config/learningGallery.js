@@ -44,6 +44,7 @@ export const LEARNING_GALLERY = {
   siteMulkko: {"image": "/images/learning/mulkko.webp", "tagline": "손가락으로 모래를 파서 물길을 이어 밭에 물을 대면 곡식이 자란다 — 문제는 광고 자리에"},
   siteDosiTambang: {"image": "/images/learning/dosi-tambang.webp", "tagline": "진짜 서울을 하늘에서 보고 내려가 걷는다 — 58곳을 관찰하며 우리 도시를 배운다"},
   siteKongkongSongRoad: {"image": "/images/learning/kongkong-song-road.webp", "tagline": "박자에 맞춰 장애물을 뛰어넘는 원터치 리듬 점프 — 문제를 풀어 모은 배터리로 논다"},
+  siteArtQuest: {"image": "/images/learning/artquest.webp", "tagline": "진짜 명화 222점이 걸린 3D 미술관을 걸으며 잃어버린 이름표를 되찾는다"},
 };
 
 export const galleryInfoFor = (id) => LEARNING_GALLERY[id] || null;

@@ -157,6 +157,9 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-10-08 추가 — 박자에 맞춰 장애물을 뛰어넘는 원터치 리듬 점프(지오메트리 대시류). 판 안에선 퀴즈가 안 뜨고,
   //   수학·영단어 문제를 풀어 모은 배터리로 논다. 20판 + 끝없는 길(무한 단계), 학교 대항(학교 합계만 — 이름·반 없음).
   { id: "siteKongkongSongRoad",  label: "콩콩 노래길(리듬 점프)",    icon: "Music",      url: "https://hopsody.pages.dev/" },
+  // 2026-10-14 추가 — 3D 디지털 미술관(초등 3~6 미술 감상). 실제 미술관 퍼블릭 도메인 명화 222점을 6관에서 걸으며 보고,
+  //   수수께끼·관찰 문제로 잃어버린 이름표를 되찾는다. 계정·개인정보 없음(학교 대항은 학교 합계만), 외부 서버 요청 0.
+  { id: "siteArtQuest",          label: "명화 탐험대(3D 미술관)",    icon: "Palette",    url: "https://artquest-museum.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
