@@ -6,7 +6,7 @@
 //  - 쓰던 글·댓글은 기기(localStorage)에 임시 저장 → 새로고침·탭 전환에도 남는다. 올리면 지운다.
 //  - 학생이 글을 올리면 판 문서 lastPostAt, 교사가 판을 열면 teacherSeenAt → «새 글» 표시·사이드바 배지.
 //  - 남의 판을 열면 주소에 ?board=<uid> 를 남겨, 브라우저·폰 «뒤로가기»가 담벼락 첫 화면으로 돌아온다.
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
@@ -205,20 +205,33 @@ const PersonalBoard = () => {
   }, [classCode]);
 
   // 내 담벼락 문서 보장(없으면 비공개로 생성) — visibility는 절대 덮어쓰지 않음(교사가 바꾼 값 보호)
+  // ⚠️ 같은 판을 동시에 두 번 준비하면(개발 모드 StrictMode 이펙트 2회 등) 둘 다 «없음»을 보고 setDoc 하고,
+  //    늦은 쪽은 이미 생긴 문서를 덮어쓰는 update 가 되어 규칙에 거부된다(2026-10-14 에뮬레이터 실측).
+  //    진행 중인 준비를 공유하고, 그래도 거부되면 다시 읽어 이미 생긴 판을 쓴다.
+  const ensureInFlight = useRef(null);
   const ensureMyBoard = useCallback(async () => {
     if (!classCode || !currentUserId) return null;
-    try {
-      const ref = boardDoc(classCode, currentUserId);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        await setDoc(ref, { ownerId: currentUserId, ownerName: currentUserName, visibility: "private", createdAt: serverTimestamp() });
-        return { ownerId: currentUserId, ownerName: currentUserName, visibility: "private" };
+    if (ensureInFlight.current) return ensureInFlight.current;
+    const ref = boardDoc(classCode, currentUserId);
+    const run = (async () => {
+      try {
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, { ownerId: currentUserId, ownerName: currentUserName, visibility: "private", createdAt: serverTimestamp() });
+          return { ownerId: currentUserId, ownerName: currentUserName, visibility: "private" };
+        }
+        return { ownerId: currentUserId, ...snap.data() };
+      } catch (e) {
+        const again = await getDoc(ref).catch(() => null);
+        if (again?.exists()) return { ownerId: currentUserId, ...again.data() };
+        logger.error("[담벼락] 내 판 준비 오류:", e);
+        return null;
+      } finally {
+        ensureInFlight.current = null;
       }
-      return { ownerId: currentUserId, ...snap.data() };
-    } catch (e) {
-      logger.error("[담벼락] 내 판 준비 오류:", e);
-      return null;
-    }
+    })();
+    ensureInFlight.current = run;
+    return run;
   }, [classCode, currentUserId, currentUserName]);
 
   const loadRoster = useCallback(async () => {

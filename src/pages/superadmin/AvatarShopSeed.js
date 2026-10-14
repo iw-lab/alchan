@@ -83,8 +83,8 @@ export default function AvatarShopSeed() {
           시드 카탈로그 미리보기 ({ALL_AVATAR_ITEMS.length}개)
         </summary>
         <div className="mt-3 max-h-[400px] overflow-y-auto bg-slate-50 rounded-lg p-3 text-xs">
-          {ALL_AVATAR_ITEMS.map((item) => (
-            <div key={item.id} className="border-b border-slate-200 py-1.5 flex justify-between">
+          {ALL_AVATAR_ITEMS.map((item, i) => (
+            <div key={`${item.id}:${i}`} className="border-b border-slate-200 py-1.5 flex justify-between">
               <span className="font-mono text-slate-700">{item.id}</span>
               <span className="text-slate-500">
                 [{item.slot}] {item.name} · {item.rarity} · {item.price.toLocaleString()}{getCurrencyUnit()}

@@ -1,7 +1,7 @@
 // src/pages/auth/Login.js
 // 다크 테마 로그인 - 앱 테마에 맞춘 디자인
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
@@ -411,7 +411,12 @@ const Login = () => {
 
  const from = location.state?.from?.pathname || "/dashboard/tasks";
 
+ // 가입 처리 중엔 이동하지 않는다. createUser 는 곧바로 로그인 상태를 만들기 때문에, 이걸 막지 않으면
+ // 미승인 교사가 대시보드로 튕겼다가 로그아웃으로 /login 에 **새로** 마운트돼 «가입 완료» 안내가
+ // 사라졌다(2026-10-14 에뮬레이터 실측 — 가입은 됐는데 화면엔 아무 말 없이 학생 탭만 남음).
+ const registeringRef = useRef(false);
  useEffect(() => {
+ if (registeringRef.current) return;
  if (!loading && user && userDoc) navigate(from, { replace: true });
  }, [user, userDoc, loading, navigate, from]);
 
@@ -640,6 +645,7 @@ const Login = () => {
  return;
  }
  setIsLoading(true);
+ registeringRef.current = true;
  try {
  const userCredential = await registerWithEmailAndPassword(
  auth,
@@ -686,6 +692,7 @@ const Login = () => {
  logger.error("Teacher registration error:", error);
  setError(getFirebaseErrorMessage(error));
  } finally {
+ registeringRef.current = false;
  setIsLoading(false);
  }
  };
@@ -899,7 +906,7 @@ const Login = () => {
  <div className="text-sm text-emerald-300">
  <p className="font-bold">{success}</p>
  <p className="mt-0.5 text-emerald-400 text-xs">
- 학생들에게 이 코드를 알려주세요!
+ 승인되면 이 계정으로 로그인해 학급 코드를 확인하세요.
  </p>
  </div>
  </div>
