@@ -139,8 +139,10 @@ updatedAt 조건이 대통령 승인을 막음(바뀐 키에만 적용 — 새 r
 - 검증: rules 352/352(배포 전 rules 로는 새 거부 3건 빨강), e2e «기한 지난 법 → 폐기(화면·rules·스케줄러)» 옛 화면에서 빨강,
   전체 e2e 61/61 console_errors=0.
 - 교차검증(7라운드, rules·서버 / 화면 두 번들): codex ✅ · gemini ✅ · meta ✅ · Claude(메인) ✅ · **grok ❌**
-  (CLI 사용량 잔액 소진 402, 웹 주간 한도 — 10월 18일 초기화). → **FULL 미성립(PARTIAL, frontier 3/4)**.
-  사용자 승인으로 이 상태로 배포했고, 10/18 이후 grok 보충 검증을 한다.
+  (CLI 사용량 잔액 소진 402, 웹 주간 한도 — 10월 18일 초기화).
+  `full-lanes.sh check codex gemini claude meta` → **✅ FULL 성립(면제 1)** — **grok 면제**(사유: SuperGrok 주간 토큰 소진,
+  사용자 지시 2026-10-14 «18일 돌아올 때까지 8way 에서 빼», `grok-off.sh`). 사용자 승인으로 배포. **8way 반영 완료**
+  (채택 지적 반영·기각 근거 아래). 10/18 이후 grok 보충 검증 권장.
   채택: 서버 경계 보수 판정(밀리초 절삭 — codex). 기각: «기한 안 정상 재의결 차단»(rules 시험·e2e 로 반박),
   «select 로 읽으면 updateTime 없음»(e2e 실측 확정 1건), 오류 코드 형식(숫자 9 처리), «vetoDate 매핑 누락»(남아 있음),
   화면을 오래 열어 둔 채 기한 경과(클릭 시점 판정 + rules 가 막음).
