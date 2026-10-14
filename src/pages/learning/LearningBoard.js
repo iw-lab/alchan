@@ -1,5 +1,5 @@
 // src/pages/learning/LearningBoard.js
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
@@ -17,8 +17,6 @@ import {
   limit,
   serverTimestamp,
   increment,
-  arrayUnion,
-  arrayRemove,
   writeBatch,
   runTransaction,
 } from "firebase/firestore";
@@ -110,28 +108,6 @@ const formatDateShort = (isoString) => {
   return `${p2(date.getFullYear() % 100)}.${mmdd}`;
 };
 
-const calculateCouponChange = (postData, interactionType, userId) => {
-  const { likes = 0, dislikes = 0, likedBy = [], dislikedBy = [] } = postData;
-  const userHasLiked = likedBy.includes(userId);
-  const userHasDisliked = dislikedBy.includes(userId);
-  let oldEffectiveLikes, newEffectiveLikes;
-
-  if (interactionType === 'like') {
-    if (userHasLiked) return 0;
-    oldEffectiveLikes = likes - dislikes;
-    newEffectiveLikes = userHasDisliked ? (likes + 1) - (dislikes - 1) : (likes + 1) - dislikes;
-  } else if (interactionType === 'dislike') {
-    if (userHasDisliked) return 0;
-    oldEffectiveLikes = likes - dislikes;
-    newEffectiveLikes = userHasLiked ? (likes - 1) - (dislikes + 1) : likes - (dislikes + 1);
-  } else {
-    return 0;
-  }
-
-  const prevThreshold = Math.max(0, Math.floor(oldEffectiveLikes / 3));
-  const currThreshold = Math.max(0, Math.floor(newEffectiveLikes / 3));
-  return currThreshold - prevThreshold;
-};
 
 const LearningBoard = () => {
   const {
@@ -351,6 +327,7 @@ const LearningBoard = () => {
   const currentUserIsAdmin = useMemo(() => isAdmin && isAdmin(), [isAdmin]);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const reactingRef = useRef(false); // 좋아요·싫어요 연타 차단(서버도 1인 1회로 막는다)
 
   // URL의 board/post 파라미터 조작 헬퍼 (게시판 선택의 단일 진실원 = URL)
   const setBoardParam = useCallback((boardId, { replace = false } = {}) => {
@@ -436,6 +413,8 @@ const LearningBoard = () => {
   }, [selectedBoard, selectedPost, loadComments]);
 
   // URL 파라미터로 글 상세 ↔ 목록 전환 (브라우저 뒤로가기 지원)
+  // selectedBoardPosts 도 본다 — 주소로 바로 들어오면(새로고침·링크) 글 목록이 아직 없을 때 한 번 돌고
+  // 끝나 상세가 영영 안 열렸다(2026-10-14 에뮬레이터 실측: ?board=…&post=… 가 목록만 보여 줌).
   useEffect(() => {
     const postIdFromUrl = searchParams.get('post');
     if (postIdFromUrl && selectedBoardPosts.length > 0 && !selectedPost) {
@@ -447,7 +426,7 @@ const LearningBoard = () => {
       setIsEditingPost(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, selectedBoardPosts]);
 
   // Loading / guard screens
   if (authLoading) return <div className="lb-msg">사용자 정보 로딩 중...</div>;
@@ -585,6 +564,7 @@ const LearningBoard = () => {
         authorId: currentUserId,
         likes: 0, dislikes: 0, likedBy: [], dislikedBy: [],
         coupons: 0,
+        commentCount: 0, // 없으면 목록을 열 때마다 댓글을 세어 보정 쓰기를 한다(postsQueryFn)
         timestamp: serverTimestamp(),
         adminCouponGiven: false,
         attachments: [],
@@ -799,60 +779,71 @@ const LearningBoard = () => {
     }
   };
 
-  // Post interactions (like, dislike, adminCoupon)
-  const updatePostInteraction = async (boardId, postId, updateType, interactionValue = null) => {
-    if (!classCode || !currentUserId) return;
+  // 좋아요·싫어요 = 서버(reactLearningPost)만 쓴다. 순좋아요 3단계마다 글쓴이 쿠폰도 서버가 같은 트랜잭션에서 준다.
+  //   종전엔 클라가 글쓴이 coupons 를 직접 올렸는데, 학생은 남의 coupons 를 못 쓰게 잠긴 뒤(2026-07)
+  //   학생이 누른 좋아요의 쿠폰이 조용히 사라지고 있었다.
+  const handleReaction = async (boardId, postId, reaction) => {
+    if (!classCode || !currentUserId || reactingRef.current) return;
+    reactingRef.current = true;
+    try {
+      const res = await httpsCallable(functions, "reactLearningPost")({ boardId, postId, reaction });
+      const { changed, likes, dislikes } = res.data || {};
+      if (changed) {
+        // 상세 화면 숫자·버튼 상태를 바로 바꾼다(목록은 refetch 로)
+        setSelectedPost((prev) =>
+          prev && prev.id === postId
+            ? {
+                ...prev,
+                likes,
+                dislikes,
+                likedBy: reaction === "like" ? [...(prev.likedBy || []), currentUserId] : prev.likedBy,
+                dislikedBy: reaction === "dislike" ? [...(prev.dislikedBy || []), currentUserId] : prev.dislikedBy,
+              }
+            : prev,
+        );
+      }
+      refetchPosts();
+    } catch (error) {
+      logger.error(`[학습게시판] ${reaction} 실패:`, error);
+      toast.error(error?.message || "처리 중 오류가 발생했습니다.");
+    } finally {
+      reactingRef.current = false;
+    }
+  };
+  const handleLike = (boardId, postId) => handleReaction(boardId, postId, "like");
+  const handleDislike = (boardId, postId) => handleReaction(boardId, postId, "dislike");
+
+  // 교사 쿠폰 지급 — 글 표시(adminCouponGiven)는 트랜잭션으로 한 번만 세우고, 쿠폰은 **커밋 뒤**에 준다.
+  //   종전엔 지급 호출이 트랜잭션 콜백 안에 있어, 경합으로 콜백이 재실행되면 쿠폰이 두 번 나갈 수 있었다.
+  const handleGiveCoupons = async (boardId, postId, amount) => {
+    if (!classCode || !currentUserIsAdmin || !Number.isInteger(amount) || amount <= 0) return;
     const postRef = doc(db, "classes", classCode, "learningBoards", boardId, "posts", postId);
     try {
-      await runTransaction(db, async (transaction) => {
+      const authorId = await runTransaction(db, async (transaction) => {
         const postDoc = await transaction.get(postRef);
         if (!postDoc.exists()) throw new Error("게시글을 찾을 수 없습니다.");
         const postData = postDoc.data();
-        const updates = {};
-        let couponChange = 0;
-        const userHasLiked = postData.likedBy?.includes(currentUserId);
-        const userHasDisliked = postData.dislikedBy?.includes(currentUserId);
-
-        if (updateType === "like") {
-          if (userHasLiked) return;
-          updates.likedBy = arrayUnion(currentUserId);
-          updates.likes = increment(1);
-          if (userHasDisliked) { updates.dislikedBy = arrayRemove(currentUserId); updates.dislikes = increment(-1); }
-          couponChange = calculateCouponChange(postData, "like", currentUserId);
-        } else if (updateType === "dislike") {
-          if (userHasDisliked) return;
-          updates.dislikedBy = arrayUnion(currentUserId);
-          updates.dislikes = increment(1);
-          if (userHasLiked) { updates.likedBy = arrayRemove(currentUserId); updates.likes = increment(-1); }
-          couponChange = calculateCouponChange(postData, "dislike", currentUserId);
-        } else if (updateType === "adminCoupon" && currentUserIsAdmin && typeof interactionValue === "number" && interactionValue > 0) {
-          if (postData.adminCouponGiven) { toast.error("이미 관리자 쿠폰이 지급되었습니다."); return; }
-          updates.adminCouponGiven = true;
-          couponChange = interactionValue;
-        } else { return; }
-
-        if (couponChange !== 0) updates.coupons = increment(couponChange);
-        updates.updatedAt = serverTimestamp();
-        transaction.update(postRef, updates);
-
-        if (couponChange !== 0 && postData.authorId && postData.authorId !== currentUserId && addCouponsToUser) {
-          addCouponsToUser(postData.authorId, couponChange);
-        }
+        if (postData.adminCouponGiven) return null;
+        transaction.update(postRef, { adminCouponGiven: true, coupons: increment(amount), updatedAt: serverTimestamp() });
+        return postData.authorId || null;
       });
-      refetchPosts();
-      if (updateType === "adminCoupon" && currentUserIsAdmin) {
-        toast.success(`관리자 쿠폰 ${interactionValue}개가 지급되었습니다.`);
-        setCustomCouponAmount(0);
+      if (!authorId) {
+        toast.error("이미 관리자 쿠폰이 지급되었습니다.");
+        return;
       }
+      if (authorId !== currentUserId && addCouponsToUser) {
+        const ok = await addCouponsToUser(authorId, amount);
+        if (!ok) toast.error("글에는 표시됐지만 쿠폰 지급에 실패했습니다. 쿠폰 보내기로 직접 지급해 주세요.");
+      }
+      setSelectedPost((prev) => (prev && prev.id === postId ? { ...prev, adminCouponGiven: true, coupons: (prev.coupons || 0) + amount } : prev));
+      refetchPosts();
+      toast.success(`관리자 쿠폰 ${amount}개가 지급되었습니다.`);
+      setCustomCouponAmount(0);
     } catch (error) {
-      logger.error(`Error updating post ${updateType}:`, error);
+      logger.error("Error giving admin coupons:", error);
       toast.error(`처리 중 오류: ${error.message}`);
     }
   };
-
-  const handleLike = (boardId, postId) => updatePostInteraction(boardId, postId, "like");
-  const handleDislike = (boardId, postId) => updatePostInteraction(boardId, postId, "dislike");
-  const handleGiveCoupons = (boardId, postId, amount) => updatePostInteraction(boardId, postId, "adminCoupon", amount);
 
   // Board CRUD
   const handleAddBoard = async (e) => {

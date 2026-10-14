@@ -50,7 +50,8 @@ import { useAutoDepositMature } from "../hooks/useAutoDepositMature";
 import { useBackClose } from "../hooks/useBackClose";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
 import { WifiOff } from "lucide-react";
-import { getStreakInfo } from "./DailyReward";
+// DailyReward 는 getStreakInfo 때문에 어차피 이 청크에 정적으로 들어온다 — lazy 로 감싸도 쪼개지지 않았다(빌드 경고)
+import { getStreakInfo, DailyRewardBanner } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
 import { EconomicEventProvider } from "../hooks/useActiveEconomicEvent";
 const EconomicEventPopup = lazyWithRetry(() => import("./EconomicEventPopup"));
@@ -60,9 +61,6 @@ const VoteReminderBanner = lazyWithRetry(() =>
 );
 const FinancialRestrictionBanner = lazyWithRetry(() =>
   import("./FinancialRestrictionBanner"),
-);
-const DailyRewardBanner = lazyWithRetry(() =>
-  import("./DailyReward").then((m) => ({ default: m.DailyRewardBanner })),
 );
 const WelcomePopup = lazyWithRetry(() => import("./WelcomePopup"));
 const HelpButton = lazyWithRetry(() => import("./HelpButton"));

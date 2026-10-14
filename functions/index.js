@@ -343,6 +343,8 @@ exports.claimDailyReward = onCall(
         LOG_TYPES.CASH_INCOME,
         `${newStreak}일차 출석 보상`,
         { amount: reward, streak: newStreak, source: "dailyReward" },
+        // 원장이 activity_logs 하나뿐이다 — 최상위 금액이 없으면 거래내역에서 빠지고 «0알찬»으로 알림이 뜬다
+        { amount: reward },
       );
 
       // ✅ idempotency mark (모든 write 후)
@@ -390,6 +392,100 @@ const GAME_REWARD_CONFIG = {
   //    cash는 0이라 현금 민팅 경로가 아니다.
   comment: { maxCash: 0, maxCoupon: 1, dailyLimit: 3 },
 };
+
+// ===================================================================================
+// 👍 학습 게시판 좋아요·싫어요 (2026-10-14)
+// ===================================================================================
+// 종전엔 클라이언트가 글 문서를 트랜잭션으로 고치고, 순좋아요가 3의 배수를 넘을 때마다
+// 글쓴이 쿠폰을 **클라에서** 올렸다. 2026-07-18(batch7-b)에 users.coupons 를 학생이 못 쓰게 잠근 뒤로
+// 학생이 누른 좋아요의 쿠폰은 규칙에 막혀 조용히 사라졌다 — 글에는 «쿠폰 1» 이 찍히는데 글쓴이는 못 받았다
+// (에뮬레이터 실측: 좋아요 3개 → post.coupons 1, 글쓴이 쿠폰 +0).
+// 그리고 글 문서 수정 규칙이 «같은 반이면 아무 필드나»라 likes 를 직접 300 으로 올리는 것도 막혀 있지 않았다.
+// 이제 반응은 서버만 쓴다(rules 가 likes·likedBy·coupons 를 클라 쓰기에서 뺐다).
+//   · 한 사람 한 번 — 좋아요·싫어요 중 하나만, 바꾸기 없음(화면도 이미 그렇게 막는다)
+//   · 자기 글엔 못 누른다(교사는 예외 — 화면과 같다)
+//   · 쿠폰은 **지금까지 도달한 최고 단계**(likeCouponsPaid)를 넘을 때만 지급 — 싫어요로 내려갔다
+//     다시 올라와도 같은 단계를 두 번 주지 않는다. 회수는 없다.
+const LIKE_COUPON_STEP = 3;
+exports.reactLearningPost = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const { uid, classCode, isAdmin } = await checkAuthAndGetUserData(request);
+    const { boardId, postId, reaction } = request.data || {};
+    const isId = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(v);
+    if (!isId(boardId) || !isId(postId)) {
+      throw new HttpsError("invalid-argument", "게시글을 찾을 수 없습니다.");
+    }
+    if (reaction !== "like" && reaction !== "dislike") {
+      throw new HttpsError("invalid-argument", "알 수 없는 반응입니다.");
+    }
+    if (!classCode || classCode === "미지정") {
+      throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+    }
+    const postRef = db
+      .collection("classes").doc(classCode)
+      .collection("learningBoards").doc(boardId)
+      .collection("posts").doc(postId);
+
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(postRef);
+      if (!snap.exists) throw new HttpsError("not-found", "게시글을 찾을 수 없습니다.");
+      const post = snap.data();
+      if (post.authorId === uid && !isAdmin) {
+        throw new HttpsError("permission-denied", "자기 글에는 누를 수 없습니다.");
+      }
+      const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+      const dislikedBy = Array.isArray(post.dislikedBy) ? post.dislikedBy : [];
+      if (likedBy.includes(uid) || dislikedBy.includes(uid)) {
+        return { changed: false, couponsAwarded: 0 };
+      }
+      const likes = (Number(post.likes) || 0) + (reaction === "like" ? 1 : 0);
+      const dislikes = (Number(post.dislikes) || 0) + (reaction === "dislike" ? 1 : 0);
+      // 지급 기준선: 이 필드가 없는 옛 글은 «이미 찍힌 쿠폰 수»를 이미 준 단계로 본다
+      // (옛 방식으로 교사가 누른 좋아요는 실제로 지급됐다 — 다시 주지 않는다)
+      const paid = Number.isInteger(post.likeCouponsPaid)
+        ? post.likeCouponsPaid
+        : Math.max(0, Math.floor(((Number(post.likes) || 0) - (Number(post.dislikes) || 0)) / LIKE_COUPON_STEP));
+      const reached = Math.max(0, Math.floor((likes - dislikes) / LIKE_COUPON_STEP));
+      const award = Math.max(0, reached - paid);
+
+      // 글쓴이 문서 — 같은 반일 때만 지급(다른 반으로 옮긴 학생·삭제된 계정엔 주지 않는다)
+      let authorRef = null;
+      if (award > 0 && post.authorId && post.authorId !== uid) {
+        const aRef = db.collection("users").doc(post.authorId);
+        const aSnap = await tx.get(aRef);
+        if (aSnap.exists && aSnap.data().classCode === classCode) authorRef = aRef;
+      }
+
+      const update = {
+        likes,
+        dislikes,
+        likeCouponsPaid: Math.max(paid, reached),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (reaction === "like") update.likedBy = admin.firestore.FieldValue.arrayUnion(uid);
+      else update.dislikedBy = admin.firestore.FieldValue.arrayUnion(uid);
+      if (authorRef) update.coupons = admin.firestore.FieldValue.increment(award);
+      tx.update(postRef, update);
+
+      if (authorRef) {
+        tx.update(authorRef, {
+          coupons: admin.firestore.FieldValue.increment(award),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await logActivity(
+          tx,
+          post.authorId,
+          LOG_TYPES.COUPON_EARN,
+          `학습 게시판 «${String(post.title || "").slice(0, 30)}» 좋아요 보상`,
+          { boardId, postId, source: "learningBoardLike" },
+          { couponAmount: award },
+        );
+      }
+      return { changed: true, couponsAwarded: authorRef ? award : 0, likes, dislikes };
+    });
+  },
+);
 
 exports.grantGameReward = onCall(
   { region: "asia-northeast3" },
@@ -464,6 +560,7 @@ exports.grantGameReward = onCall(
         rewardType === "cash" ? LOG_TYPES.CASH_INCOME : LOG_TYPES.COUPON_EARN,
         `${gameType} 게임 보상`,
         { amount, gameType, rewardType, source: "gameReward" },
+        rewardType === "cash" ? { amount } : { couponAmount: amount },
       );
 
       markIdempotent(transaction, keyRef);
@@ -921,6 +1018,19 @@ exports.processTaskApproval = onCall(
             );
           }
           transaction.update(studentRef, updateData);
+
+          // 학생 쪽 원장 — 종전엔 승인한 교사 쪽에만 로그가 남아, 학생 거래내역에는 할일 보상이
+          // 한 줄도 없었다(돈은 들어오는데 «어디서 왔는지» 안 보임). 이 보상의 원장은 이것뿐이다.
+          await logActivity(
+            transaction,
+            approval.studentId,
+            approval.cardType === "cash" ? LOG_TYPES.CASH_INCOME : LOG_TYPES.COUPON_EARN,
+            `'${approval.taskName}' 할일 보상`,
+            { approvalId, source: "taskApproval" },
+            approval.cardType === "cash"
+              ? { amount: approval.rewardAmount }
+              : { couponAmount: approval.rewardAmount },
+          );
 
           resultMessage = `${approval.studentName}의 '${approval.taskName}' 승인 완료! ${approval.cardType === "cash" ? `${approval.rewardAmount.toLocaleString()}원` : `${approval.rewardAmount}쿠폰`} 지급됨.`;
         } else {
@@ -9670,6 +9780,7 @@ exports.processSettlement = onCall(
           LOG_TYPES.CASH_EXPENSE,
           `경찰서 합의금으로 ${recipientData.name}에게 ${settlementAmount}원 지급`,
           { reportId, victimName: recipientData.name },
+          { amount: -settlementAmount },
         );
         await logActivity(
           transaction,
@@ -9677,6 +9788,7 @@ exports.processSettlement = onCall(
           LOG_TYPES.CASH_INCOME,
           `경찰서 합의금으로 ${senderData.name}에게서 ${settlementAmount}원 수령`,
           { reportId, offenderName: senderData.name },
+          { amount: settlementAmount },
         );
       });
 

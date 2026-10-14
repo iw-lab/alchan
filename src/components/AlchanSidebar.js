@@ -1008,7 +1008,8 @@ export default function AlchanSidebar({
           if (!sessionStorage.getItem(alertKey)) {
             sessionStorage.setItem(alertKey, "1");
             const lines = logs.slice(0, 8).map((data) => {
-              const amt = typeof data.amount === "number" ? data.amount : null;
+              // 금액이 0 이면 숨긴다 — 금액이 metadata 에만 있던 옛 기록이 «0알찬»으로 보였다
+              const amt = typeof data.amount === "number" && data.amount !== 0 ? data.amount : null;
               const sign = amt == null ? "" : amt > 0 ? "+" : "";
               const amtText = amt == null ? "" : ` ${sign}${amt.toLocaleString()}${getCurrencyUnit()}`;
               // ⚠️ 라벨이 없는 type 은 영문 코드가 학생 화면에 그대로 나온다
