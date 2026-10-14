@@ -7,6 +7,20 @@
  */
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { sourceFingerprint } from "./scripts/build-source.mjs";
+
+// ⑤ 소스 지문 — 빌드가 끝나면 build/build-source.json 에 «이 build/ 를 만든 소스»를 적는다.
+//    deploy.yml 이 커밋된 소스로 다시 계산해 다르면 배포를 멈춘다(scripts/build-source.mjs 머리말).
+const buildSourceStamp = () => ({
+  name: "build-source-stamp",
+  apply: "build",
+  closeBundle() {
+    const fp = sourceFingerprint(process.cwd());
+    writeFileSync(join(process.cwd(), "build", "build-source.json"), JSON.stringify(fp) + "\n");
+  },
+});
 
 export default defineConfig(({ mode, command }) => {
   // ① 환경변수: 소스 17곳이 `process.env.REACT_APP_*` 를 쓴다.
@@ -75,6 +89,7 @@ export default defineConfig(({ mode, command }) => {
       //    파일 100개를 `.jsx` 로 rename 하는 방법도 있지만, 기반 교체와 무관한
       //    대량 변경이 섞이고 git 이력이 끊긴다. 플러그인에 확장자를 알려주는 쪽을 택했다.
       react({ include: /\.(jsx?|tsx?)$/ }),
+      buildSourceStamp(),
     ],
     // esbuild 도 같은 사실을 알아야 한다(플러그인 전/후 단계가 갈린다).
     esbuild: { loader: "jsx", include: /src\/.*\.jsx?$/, exclude: [] },
