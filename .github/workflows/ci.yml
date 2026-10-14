@@ -79,6 +79,11 @@ jobs:
         # 린트를 켜 두는 것만으론 부족하다. 통짜 해제가 되돌아오는 것을 막는다.
         run: node scripts/check-functions-lint-coverage.mjs
 
+      - name: 화면이 부르는 CF 존재 검사
+        # 2026-10-14: 슈퍼관리자 «시스템 모니터링»이 1월에 지운 CF 두 개를 9개월간 불렀다(열 때마다 오류).
+        #   함수를 지우는 쪽과 부르는 쪽이 다른 폴더라 빌드·린트·테스트가 못 잡는다.
+        run: node scripts/check-callables.mjs
+
       - name: functions 린트
         # 이 폴더의 린트는 꺼져 있던 게 아니라 **고장 나 있었다** — 상위 폴더의
         # CRA 잔재 `.eslintrc.json` 을 읽다가 파서를 못 찾고 exit 2 로 죽었다.
