@@ -211,10 +211,6 @@ service cloud.firestore {
       return value is string && value.size() <= maxLen;
     }
 
-    function isValidNumber(value, min, max) {
-      return value is number && value >= min && value <= max;
-    }
-
     // 데이터 유효성 검증
     function isValidUserData() {
       // 🔒 batch7-a-fix (2026-07-18 codex CRITICAL): 본인(학생) 신규 생성 시 cash·coupons는 반드시 0.
