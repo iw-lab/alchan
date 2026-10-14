@@ -1418,7 +1418,8 @@ const CASES = [
   tc("ALLOW", "🐤 학생이 자기 학급 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", name: "가게" } }),
   tc("DENY", "학생이 학급 이름표 없이(전 학급 노출) 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: null, name: "가게" } }),
   tc("DENY", "학생이 다른 학급 이름표로 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C2", name: "가게" } }),
-  tc("ALLOW", "🐤 학생이 자기 학급 상품을 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 } }),
+  tc("ALLOW", "🐤 학생이 자기 학급 상품을 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, gets: [{ path: "/personalShops/s1", data: { ownerId: "stu1", classCode: "C1" } }] }),
+  tc("DENY", "학생이 친구 상점 id 로 자기 상품을 등록한다(남의 진열대 끼어들기)", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", shopId: "s2", price: 500 }, gets: [{ path: "/personalShops/s2", data: { ownerId: "stu2", classCode: "C1" } }] }),
   tc("DENY", "학생이 상품을 학급 이름표 없이 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", shopId: "s1", price: 500 } }),
   tc("ALLOW", "🐤 학생이 자기 상품 가격을 고친다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 700 } }),
   tc("DENY", "학생이 자기 상품의 학급을 바꿔 다른 반에 노출한다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C2", shopId: "s1", price: 500 } }),
@@ -1476,6 +1477,8 @@ const CASES = [
       tc("ALLOW", "🐤 학생이 자기 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1" } }),
       tc("DENY", "학생이 투표자 칸을 배열로 만들어 법안을 제안한다(투표 불능 사보타주)", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", voters: [] } }),
       tc("DENY", "학생이 법안을 제안하며 찬성표를 미리 채운다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", approvals: 3 } }),
+      tc("DENY", "학생이 처음부터 «최종 가결»인 법안을 만든다(경찰서 벌금 목록 직행)", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", finalStatus: "final_approved", finalApprovalDate: NOW } }),
+      tc("DENY", "학생이 거부권·대통령 표식을 심은 법안을 만든다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", vetoReason: "x", presidentJobId: "jobPres" } }),
       tc("DENY", "학생이 친구 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu2", proposerName: "학생2" } }),
       tc("DENY", "학생이 법안을 지운다", { path: P, method: "delete", as: "stu1", before: L0 }),
     ];

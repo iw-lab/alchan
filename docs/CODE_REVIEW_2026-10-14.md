@@ -37,7 +37,10 @@
   · 대통령 전이는 **임명된 대통령만**(rules 가 `users.appointedJobIds` 와 `jobs/{id}` 를 직접 확인).
 - **학습게시판** — 남의 글 likes·제목·관리자 쿠폰 표시 변조, 남의 이름으로 댓글, 글은 두고 남 댓글만 삭제,
   댓글 수 임의 값 → 봉인(반응·쿠폰은 서버만, 글쓴이의 남 댓글 삭제는 글과 함께일 때만).
-- **개인상점** — `classCode: null` 로 만들면 **모든 학급**에 노출 → 자기 학급만.
+- **국회 법안 생성** — update 만 잠근 사이 create 로 **처음부터 «최종 가결»인 법**을 만들어 경찰서 벌금 목록에
+  올릴 수 있었다(예전부터 있던 구멍 — CI create/update 대칭 검사가 첫 배포 직후 잡음) → 생성 시 결과 필드 금지.
+- **개인상점** — `classCode: null` 로 만들면 **모든 학급**에 노출 → 자기 학급만. 상품은 **자기 상점에만**
+  (남의 상점 id 로 진열대에 끼어들기 차단).
 - **돈 CF 퍼징**(18개 CF × 13종 악성 값): 장터 판매가 0.5·1e-7 등록 성공(현금 소수 오염), 수량 `true` 수용
   → 수정 후 234회 전부 거부·무변화·internal 0. **권한 스윕**(학생 → 교사·관리자 전용 CF 31종): 유출 0.
 - **대통령실 평문 비밀번호** — 쓰이지 않는 «관리자 비밀번호» 칸이 학생이 읽는 문서에 평문 저장 → 칸 제거.
@@ -60,7 +63,7 @@
 |---|---|---|
 | `scripts/build-source.mjs --check` | deploy.yml 배포 전 | 커밋된 소스와 다른 작업 트리로 만든 build/ 배포 |
 | `scripts/check-callables.mjs` | ci.yml | 화면이 부르는데 functions 에 없는 CF |
-| `scripts/rules-test.mjs` +54건(343건) | 커밋 훅·수동 | 국회·게시판·개인상점 봉인 회귀 |
+| `scripts/rules-test.mjs` +57건(346건) | 커밋 훅·수동 | 국회·게시판·개인상점 봉인 회귀 |
 | `scripts/e2e/` (에뮬레이터 실조작) | 수동 | 화면 흐름·돈 보존·퍼징·권한 스윕 |
 | debt-ratchet 천장 하향 | ci | 린트 억제 47→45 |
 
@@ -85,7 +88,8 @@
 
 ## 7. 검증 수치
 
-- 단위 1088 통과 · oxlint 0 · functions eslint 0 error · Rules `:test` 343/343(커밋 전 rules 로 돌리면 새 거부 테스트 5건 빨강).
+- 단위 1088 통과 · oxlint 0 · functions eslint 0 error · Rules `:test` 346/346(배포 전 rules 로 돌리면 새 거부 테스트 빨강)
+  · ci.yml 전 단계 로컬 통과(대칭·중복 경로·헤더·무결성·z-index·부채).
 - e2e(에뮬레이터, 숨김 브라우저): 시나리오 board·wall·money·music·tasks·assembly·coupon·auction·shop·fuzz
   + 슈퍼/교사/학생 전 경로 방문 — console_errors=0.
 

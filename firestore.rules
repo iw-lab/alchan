@@ -1652,7 +1652,12 @@ service cloud.firestore {
                           request.resource.data.get('disapprovals', 0) == 0 &&
                           request.resource.data.get('status', 'pending') == 'pending' &&
                           request.resource.data.get('voters', {}) is map &&
-                          request.resource.data.get('voters', {}).size() == 0);
+                          request.resource.data.get('voters', {}).size() == 0 &&
+                          // 결과 필드는 만들 때 못 심는다 — update 만 잠그면 «처음부터 가결(finalStatus)인 법»을
+                          //   만들어 경찰서 벌금 목록에 올릴 수 있었다(CI create/update 대칭 검사, 2026-10-14)
+                          !request.resource.data.keys().hasAny(['finalStatus', 'finalApprovalDate', 'approvalDate',
+                                                                'vetoReason', 'vetoDate', 'vetoDeadline', 'presidentJobId']) &&
+                          request.resource.data.get('updatedAt', request.time) == request.time);
         // 수정(학생): 내용·제안자는 못 바꾸고, 표는 «한 사람 한 표»로만 늘고, 상태는 표수가 받쳐줄 때만 바뀐다.
         //   (상태 전이 계산은 아직 클라이언트에 있다 — 그래서 rules 가 표수 근거를 다시 본다.)
         function naTotalStudents(classCode) {
@@ -2052,7 +2057,11 @@ service cloud.firestore {
 
       // 생성: 상점 소유자 · 자기 학급 이름표로만(위 personalShops 와 같은 이유)
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid &&
-                       isSameClass(request.resource.data.get('classCode', ''));
+                       isSameClass(request.resource.data.get('classCode', '')) &&
+                       // 자기 상점에만 — 남의 상점 id 로 만들면 그 상점 진열대에 끼어든다(구매는 CF 가 막지만 노출 스팸)
+                       request.resource.data.get('shopId', '') is string &&
+                       request.resource.data.get('shopId', '') != '' &&
+                       get(/databases/$(database)/documents/personalShops/$(request.resource.data.shopId)).data.get('ownerId', '') == request.auth.uid;
 
       // 수정: 상품 소유자 또는 관리자만.
       // 🔒 [2026-09-15] 같은 학급 '구매자' 분기 삭제. 재고 차감·soldCount 증가·품절 마킹은
