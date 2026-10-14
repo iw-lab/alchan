@@ -1487,15 +1487,37 @@ service cloud.firestore {
         // 게시글 서브컬렉션 (classes/{classCode}/learningBoards/{boardId}/posts/{postId})
         match /posts/{postId} {
           allow read: if isSameClassFast(classCode) || isAdminFast();
-          allow create: if isSignedIn() && isSameClass(classCode);
-          allow update: if isSignedIn() && isSameClass(classCode);
-          allow delete: if isOwner(resource.data.authorId) || isAdmin();
+          // 🔒 2026-10-14: 종전 create/update 는 «같은 반이면 아무 필드나»였다 — 반 친구 글의 제목·본문·작성자를
+          //   바꾸거나, likes 를 직접 300 으로 올리거나, adminCouponGiven 을 세워 교사 쿠폰을 막을 수 있었다.
+          //   좋아요·싫어요·글쓴이 쿠폰은 이제 서버(reactLearningPost)만 쓴다.
+          // 생성: 작성자=본인, 반응·쿠폰은 0으로만, 첨부는 교사만.
+          allow create: if isSignedIn() && isSameClass(classCode) &&
+                           request.resource.data.authorId == request.auth.uid &&
+                           request.resource.data.get('likes', 0) == 0 &&
+                           request.resource.data.get('dislikes', 0) == 0 &&
+                           request.resource.data.get('likedBy', []).size() == 0 &&
+                           request.resource.data.get('dislikedBy', []).size() == 0 &&
+                           request.resource.data.get('coupons', 0) == 0 &&
+                           request.resource.data.get('adminCouponGiven', false) == false &&
+                           !('likeCouponsPaid' in request.resource.data) &&
+                           (request.resource.data.get('attachments', []).size() == 0 || isClassAdmin(classCode));
+          // 수정: 교사는 전부 · 글쓴이는 제목·본문만 · 같은 반은 댓글 수만(댓글 달기·지우기·옛 글 보정)
+          allow update: if isClassAdmin(classCode) ||
+                           (isOwner(resource.data.authorId) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'content', 'updatedAt'])) ||
+                           (isSameClass(classCode) &&
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount']));
+          allow delete: if isOwner(resource.data.authorId) || isClassAdmin(classCode);
 
-          // 댓글 서브컬렉션
+          // 댓글 서브컬렉션 — 작성자=본인(남의 이름으로 댓글 달기 차단)
           match /comments/{commentId} {
             allow read: if isSameClassFast(classCode) || isAdminFast();
-            allow create: if isSignedIn() && isSameClass(classCode);
-            allow delete: if isOwner(resource.data.authorId) || isAdmin();
+            allow create: if isSignedIn() && isSameClass(classCode) &&
+                             request.resource.data.authorId == request.auth.uid;
+            // 글쓴이도 지울 수 있다 — 자기 글을 지울 때 화면이 댓글까지 한 배치로 지우는데, 남의 댓글이 하나라도
+            //   있으면 배치 전체가 거부돼 «학생은 댓글 달린 자기 글을 못 지우는» 상태였다(get 은 배치 이전 상태를 본다).
+            allow delete: if isOwner(resource.data.authorId) || isClassAdmin(classCode) ||
+                             get(/databases/$(database)/documents/classes/$(classCode)/learningBoards/$(boardId)/posts/$(postId)).data.authorId == request.auth.uid;
           }
         }
       }

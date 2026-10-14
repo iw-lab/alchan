@@ -17,33 +17,18 @@ import "../../MusicRequest.css";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { useAuth } from "../../contexts/AuthContext";
 
 const MusicRequest = ({ user }) => {
   const [roomName, setRoomName] = useState("");
   const [pricePerSong, setPricePerSong] = useState(0);
   const [createdRoom, setCreatedRoom] = useState(null); // 새로 생성된 방 정보
   const [error, setError] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [classCode, setClassCode] = useState(null); // 본인 학급 코드
-  // 관리자 권한 + 학급 코드 확인
-  const { loading: adminLoading } = usePolling(
-    async () => {
-      if (!user) return false;
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (!userDoc.exists()) return false;
-
-      const userData = userDoc.data();
-      const isAdminUser =
-        userData.role === "admin" ||
-        userData.isAdmin === true ||
-        userData.isSuperAdmin === true;
-      setIsAdmin(isAdminUser);
-      setClassCode(userData.classCode || null);
-      return isAdminUser;
-    },
-    { interval: 30 * 60 * 1000, enabled: !!user, deps: [user] },
-  );
-
+  // 관리자 여부·학급 코드는 이미 로그인 컨텍스트에 있다 — 종전엔 이 화면이 users 문서를 따로 한 번 더 읽고
+  //   30분마다 다시 읽었다(방문마다 읽기 1회 낭비).
+  const { userDoc, isAdmin: isAdminFn, loading: adminLoading } = useAuth();
+  const isAdmin = !!(isAdminFn && isAdminFn());
+  const classCode = userDoc?.classCode || null; // 본인 학급 코드
   // 본인 학급의 방 목록만 폴링으로 가져옵니다 (학급 격리)
   const {
     data: myRooms,
