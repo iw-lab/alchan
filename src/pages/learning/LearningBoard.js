@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useSearchParams } from "react-router-dom";
 import "./LearningBoard.css";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, storage, functions } from "../../firebase";
+import { db, storage, functions, addActivityLog } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
 import {
   collection,
@@ -113,7 +113,6 @@ const LearningBoard = () => {
   const {
     userDoc: currentUser,
     isAdmin,
-    addCouponsToUserById: addCouponsToUser,
     loading: authLoading,
   } = useAuth();
 
@@ -813,27 +812,40 @@ const LearningBoard = () => {
   const handleLike = (boardId, postId) => handleReaction(boardId, postId, "like");
   const handleDislike = (boardId, postId) => handleReaction(boardId, postId, "dislike");
 
-  // 교사 쿠폰 지급 — 글 표시(adminCouponGiven)는 트랜잭션으로 한 번만 세우고, 쿠폰은 **커밋 뒤**에 준다.
-  //   종전엔 지급 호출이 트랜잭션 콜백 안에 있어, 경합으로 콜백이 재실행되면 쿠폰이 두 번 나갈 수 있었다.
+  // 교사 쿠폰 지급 — 글 표시(adminCouponGiven)와 글쓴이 쿠폰을 **한 트랜잭션**으로 쓴다.
+  //   ① 처음엔 지급 호출이 트랜잭션 콜백 안의 별도 쓰기라, 경합으로 콜백이 재실행되면 두 번 나갈 수 있었다.
+  //   ② 그래서 커밋 뒤로 뺐더니 이번엔 지급이 실패하면 «지급됨» 표시만 남아 재시도도 못 했다
+  //      (2026-10-14 교차검증 codex·grok). 교사는 rules 상 자기 반 학생 쿠폰을 직접 쓸 수 있으므로,
+  //      같은 트랜잭션의 쓰기로 넣으면 재실행돼도 커밋은 한 번이고 실패하면 둘 다 안 남는다.
   const handleGiveCoupons = async (boardId, postId, amount) => {
     if (!classCode || !currentUserIsAdmin || !Number.isInteger(amount) || amount <= 0) return;
     const postRef = doc(db, "classes", classCode, "learningBoards", boardId, "posts", postId);
     try {
-      const authorId = await runTransaction(db, async (transaction) => {
+      const res = await runTransaction(db, async (transaction) => {
         const postDoc = await transaction.get(postRef);
         if (!postDoc.exists()) throw new Error("게시글을 찾을 수 없습니다.");
         const postData = postDoc.data();
-        if (postData.adminCouponGiven) return null;
+        if (postData.adminCouponGiven) return { already: true };
+        const authorId = postData.authorId;
+        if (!authorId) throw new Error("작성자 정보가 없는 글이라 쿠폰을 줄 수 없습니다.");
+        const pays = authorId !== currentUserId; // 교사 자기 글은 표시만
+        const authorRef = doc(db, "users", authorId);
+        if (pays) {
+          const authorDoc = await transaction.get(authorRef);
+          if (!authorDoc.exists() || authorDoc.data().classCode !== classCode) {
+            throw new Error("글쓴이가 이 학급에 없어 쿠폰을 줄 수 없습니다.");
+          }
+        }
         transaction.update(postRef, { adminCouponGiven: true, coupons: increment(amount), updatedAt: serverTimestamp() });
-        return postData.authorId || null;
+        if (pays) transaction.update(authorRef, { coupons: increment(amount), updatedAt: serverTimestamp() });
+        return { already: false, authorId, pays };
       });
-      if (!authorId) {
+      if (res.already) {
         toast.error("이미 관리자 쿠폰이 지급되었습니다.");
         return;
       }
-      if (authorId !== currentUserId && addCouponsToUser) {
-        const ok = await addCouponsToUser(authorId, amount);
-        if (!ok) toast.error("글에는 표시됐지만 쿠폰 지급에 실패했습니다. 쿠폰 보내기로 직접 지급해 주세요.");
+      if (res.pays) {
+        addActivityLog(res.authorId, "쿠폰 획득", `학습 게시판 관리자 쿠폰 ${amount}개.`).catch(() => {});
       }
       setSelectedPost((prev) => (prev && prev.id === postId ? { ...prev, adminCouponGiven: true, coupons: (prev.coupons || 0) + amount } : prev));
       refetchPosts();

@@ -208,10 +208,11 @@ const PersonalBoard = () => {
   // ⚠️ 같은 판을 동시에 두 번 준비하면(개발 모드 StrictMode 이펙트 2회 등) 둘 다 «없음»을 보고 setDoc 하고,
   //    늦은 쪽은 이미 생긴 문서를 덮어쓰는 update 가 되어 규칙에 거부된다(2026-10-14 에뮬레이터 실측).
   //    진행 중인 준비를 공유하고, 그래도 거부되면 다시 읽어 이미 생긴 판을 쓴다.
-  const ensureInFlight = useRef(null);
+  const ensureInFlight = useRef(null); // { key, run } — 같은 학급·사용자의 준비끼리만 공유한다
   const ensureMyBoard = useCallback(async () => {
     if (!classCode || !currentUserId) return null;
-    if (ensureInFlight.current) return ensureInFlight.current;
+    const key = `${classCode}/${currentUserId}`;
+    if (ensureInFlight.current?.key === key) return ensureInFlight.current.run;
     const ref = boardDoc(classCode, currentUserId);
     const run = (async () => {
       try {
@@ -227,10 +228,10 @@ const PersonalBoard = () => {
         logger.error("[담벼락] 내 판 준비 오류:", e);
         return null;
       } finally {
-        ensureInFlight.current = null;
+        if (ensureInFlight.current?.key === key) ensureInFlight.current = null;
       }
     })();
-    ensureInFlight.current = run;
+    ensureInFlight.current = { key, run };
     return run;
   }, [classCode, currentUserId, currentUserName]);
 
