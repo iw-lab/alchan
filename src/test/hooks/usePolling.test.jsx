@@ -26,9 +26,10 @@ describe("usePolling defaultValue·onError", () => {
     const { result } = renderHook(() =>
       usePolling(async () => { throw boom; }, { defaultValue: [], onError }),
     );
-    await waitFor(() => expect(onError).toHaveBeenCalledWith(boom));
+    // onError 는 setError 보다 먼저 불린다 — 상태 반영을 기다린다(전엔 onError 만 기다려 간헐 실패)
+    await waitFor(() => expect(result.current.error).toBe(boom));
+    expect(onError).toHaveBeenCalledWith(boom);
     expect(result.current.data).toEqual([]);
-    expect(result.current.error).toBe(boom);
   });
 
   it("옵션을 안 주면 종전대로 null 에서 시작", () => {
