@@ -24,6 +24,7 @@ import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
+import { isVetoDiscarded, vetoDeadlineOf } from "../../utils/vetoDeadline";
 // 재의결 필요 찬성수 기본값 — 국회 화면(NationalAssembly)의 기본값(25명 × 2/3)과 같다.
 const DEFAULT_VETO_OVERRIDE = 17;
 // 🔴 2026-10-14: 이 화면의 설정은 전엔 최상위 governmentSettings/{classCode} 에 저장돼, 교사가 바꿔도
@@ -111,7 +112,8 @@ const OrganizationChart = ({ classCode }) => {
       const snapshot = await getDocs(q);
       const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setPendingGovLaws(all.filter((l) => l.status === "pending_government_approval"));
-      setVetoPendingLaws(all.filter((l) => l.status === "vetoed"));
+      // 재의결 기한(거부 + 7일)이 지난 법은 폐기 — 진행 중 목록에서 뺀다(서버가 0시에 상태를 확정)
+      setVetoPendingLaws(all.filter((l) => l.status === "vetoed" && !isVetoDiscarded(l)));
       setFetchError(null);
     } catch (error) {
       logger.error("정부 이송 법안 로드 오류:", error);
@@ -176,14 +178,13 @@ const OrganizationChart = ({ classCode }) => {
       "nationalAssemblyLaws",
       law.id,
     );
-    const deadline = new Date();
-    deadline.setDate(deadline.getDate() + 7);
+    // 재의결 기한은 따로 적지 않는다 — 서버 시각 vetoDate + 7일이 기한이다(src/utils/vetoDeadline.js).
+    //   전엔 기기 시각 + 7일을 vetoDeadline 으로 적어 기기 시계에 따라 기한이 흔들렸다.
     try {
       await updateDoc(lawDocRef, {
         status: "vetoed",
         vetoReason: reason,
         vetoDate: serverTimestamp(),
-        vetoDeadline: deadline,
         approvals: 0,
         disapprovals: 0,
         voters: {},
@@ -429,8 +430,8 @@ const OrganizationChart = ({ classCode }) => {
                     </p>
                     <p>
                       <strong>재의결 마감:</strong>{" "}
-                      {formatDate(law.vetoDeadline)} (
-                      {getRemainingTime(law.vetoDeadline)})
+                      {formatDate(vetoDeadlineOf(law))} (
+                      {getRemainingTime(vetoDeadlineOf(law))})
                     </p>
                     <p>
                       <strong>현재 재의결 현황 (국회):</strong> 찬성{" "}

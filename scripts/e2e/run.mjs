@@ -652,10 +652,37 @@ if (want("assembly")) {
     const raw = (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data();
     expect(raw.status === before.status && raw.finalStatus === "final_approved", `상태가 바뀜 ${raw.status}/${raw.finalStatus}`);
     expect(raw.approvals === before.approvals && JSON.stringify(raw.voters) === JSON.stringify(before.voters), "표가 바뀜");
-    for (const k of ["timestamp", "vetoDeadline", "finalApprovalDate"]) {
+    for (const k of ["timestamp", "vetoDate", "finalApprovalDate"]) {
       expect(raw[k] && typeof raw[k].toDate === "function", `${k} 가 Timestamp 가 아님(${typeof raw[k]})`);
     }
     expect(!("id" in raw), "문서에 id 필드가 새로 생김");
+  });
+  // 재의결 기한(거부 시각 + 7일)이 지나면 폐기 — 화면은 즉시 폐기로, rules 는 표 거부, 0시 스케줄러가 상태 확정
+  await step("assembly: 재의결 기한 지난 법 → 폐기(화면·rules·스케줄러)", async () => {
+    const { expireVetoedLaws } = require("./vetoExpiry.js");
+    const eightDaysAgo = admin.firestore.Timestamp.fromMillis(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    const ref = await fdb.collection(lawsCol()).add({
+      title: "급식 남기면 벌금", purpose: "잔반", description: "남기면 벌금", fine: "1000",
+      proposerId: st.students[0].uid, proposerName: "학생1", classCode: st.classCode,
+      approvals: 0, disapprovals: 0, voters: {}, status: "vetoed", vetoReason: "과하다",
+      vetoDate: eightDaysAgo, timestamp: eightDaysAgo,
+    });
+    await go(S[0], "/national-assembly");
+    await S[0].page.getByRole("button", { name: "재의결 법안" }).click();
+    const card = S[0].page.locator(".law-card.discarded", { hasText: "급식 남기면 벌금" });
+    await card.waitFor({ timeout: 10000 });
+    expect(await card.getByText("폐기 (재의결 기한 만료)").isVisible(), "폐기 표시 없음");
+    expect((await card.getByRole("button", { name: "재의결 찬성" }).count()) === 0, "폐기된 법에 재의결 찬성 버튼이 있다");
+    const forged = await forge(S[0], `${lawsCol()}/${ref.id}`, { [`voters.${st.students[0].uid}`]: "approvals" }, { approvals: 1 });
+    expect(forged === "permission-denied", "기한 지난 재의결 표가 허용됐다: " + forged);
+    const res = await expireVetoedLaws(fdb); // hourlySchedulerV2 가 0시에 부르는 함수 그대로
+    note("veto-expire", res);
+    const after = (await ref.get()).data();
+    expect(after.status === "veto_expired" && !!after.vetoExpiredAt, "폐기 상태 확정 안 됨: " + after.status);
+    await go(S[3], "/organization-chart");
+    const sec = S[3].page.locator(".vetoed-laws-section");
+    await sec.waitFor({ timeout: 10000 });
+    expect(!(await sec.innerText()).includes("급식 남기면 벌금"), "대통령실 «재의결 진행 중»에 폐기된 법이 보인다");
   });
 }
 

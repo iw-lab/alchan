@@ -72,6 +72,7 @@ const { shouldFlush } = require("./batchChunk");
 const { classCodesFromStudentSnap, studentCountsFromSnap } = require("./studentScope");
 // 직업 개수 상한 클램프 — 네 곳에 복붙돼 있던 것을 단일 정본으로.
 const { clampMaxJobs } = require("./jobUtils");
+const { expireVetoedLaws } = require("./vetoExpiry");
 
 // 보안: 인증 토큰 체크 (GitHub Actions 스케줄러에서 호출)
 // Secret Manager 또는 환경변수(.env)에서 읽기 - deploy.yml이 .env 주입
@@ -3184,7 +3185,7 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
 
 
 // ===================================================================================
-// 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋(0시), 경제이벤트(8~17시), 환율(7시)
+// 🔥 [Cloud Scheduler v2] 매시간 스케줄러 — 자정리셋·재의결 폐기(0시), 경제이벤트(8~17시), 환율(7시)
 // 1개 Cloud Scheduler job으로 자정리셋/경제이벤트/환율/적금납입 통합 처리
 // (2026-08-03: 게임 제거로 '오목정리' 단계는 삭제됨)
 // ===================================================================================
@@ -3251,6 +3252,19 @@ exports.hourlySchedulerV2 = onSchedule(
           logger.info("[hourlyV2] 자정 리셋 완료:", todayStr);
         } else {
           logger.info("[hourlyV2] 오늘 자정 리셋 이미 완료 — skip");
+        }
+      }
+
+      // 🏛️ 0시: 재의결 기한(거부 + 7일)이 지난 법안을 «폐기»로 확정 — 화면·rules 는 기한이 지나는 즉시
+      //   폐기로 다루고, 이건 상태를 문서에 박아 다른 화면·집계가 같은 값을 보게 한다(하루 1회 · 법안 수만큼 읽기).
+      if (hour === 0) {
+        try {
+          const r = await expireVetoedLaws(db);
+          logger.info("[hourlyV2] 재의결 기한 만료 처리:", r);
+          if (r.errors.length) branchErrors.push(`재의결 폐기: ${r.errors.join(" / ")}`);
+        } catch (e) {
+          logger.error("[hourlyV2] 재의결 기한 만료 처리 오류:", e);
+          branchErrors.push(`재의결 폐기: ${e?.message || e}`);
         }
       }
 

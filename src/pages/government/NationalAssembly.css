@@ -277,6 +277,17 @@
   border: 1px solid rgba(245, 158, 11, 0.5);
 }
 
+.law-status.discarded {
+  background: rgba(107, 114, 128, 0.15);
+  color: #4b5563;
+  border: 1px solid rgba(107, 114, 128, 0.45);
+}
+
+.law-card.discarded {
+  border-left-color: #9ca3af;
+  opacity: 0.85;
+}
+
 .law-status.vetoed {
   background: rgba(239, 68, 68, 0.3);
   color: #dc2626;

@@ -1667,6 +1667,13 @@ service cloud.firestore {
                    ? approvals >= get(p).data.vetoOverrideRequired
                    : approvals * 3 >= naTotalStudents(classCode) * 2;
         }
+        // 재의결 기한 — 거부 시각(서버 vetoDate) + 7일. 지나면 폐기다: 학생 표·재의결 전이 금지,
+        //   매일 0시 스케줄러가 status 를 veto_expired 로 확정한다. vetoDate 없는 옛 문서는 기한 없음.
+        //   같은 기준: 화면 src/utils/vetoDeadline.js · 서버 functions/vetoExpiry.js
+        function naVetoOpen(law) {
+          return !(law.get('vetoDate', null) is timestamp) ||
+                 request.time < law.vetoDate + duration.value(7, 'd');
+        }
         // 대통령인가 — 화면이 자기 «대통령» 직업 id 를 presidentJobId 로 함께 보낸다.
         //   rules 는 직업 목록을 훑을 수 없어서, 그 id 가 ① 본인 users.appointedJobIds(교사 임명)에 있고
         //   ② jobs/{id} 가 이 학급의 «대통령» 인지를 직접 확인한다(자가선택 selectedJobIds 는 인정 안 함).
@@ -1735,6 +1742,9 @@ service cloud.firestore {
         }
         allow update: if isClassAdmin(classCode) ||
                          (isSignedIn() && isSameClass(classCode) &&
+                          // 폐기된 법(veto_expired)은 손댈 수 없고, 거부된 법은 재의결 기한 안에서만
+                          resource.data.get('status', '') != 'veto_expired' &&
+                          (resource.data.get('status', '') != 'vetoed' || naVetoOpen(resource.data)) &&
                           naKeysOk(resource.data, request.resource.data) &&
                           naStatusOk(classCode, resource.data, request.resource.data) &&
                           (naVoteOk(resource.data, request.resource.data, request.auth.uid) ||

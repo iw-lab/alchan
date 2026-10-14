@@ -34,6 +34,7 @@ import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { isVetoDiscarded, vetoDeadlineOf } from "../../utils/vetoDeadline";
 // 과반 = 절반 «초과»(rules naStatusOk 와 같은 기준) — 투표 판정과 화면 안내가 같은 수를 쓴다.
 const majorityOf = (totalStudents) => Math.floor(totalStudents / 2) + 1;
 
@@ -206,9 +207,6 @@ const NationalAssembly = () => {
           : new Date().toISOString(),
         vetoDate: doc.data().vetoDate?.toDate
           ? doc.data().vetoDate.toDate().toISOString()
-          : null,
-        vetoDeadline: doc.data().vetoDeadline?.toDate
-          ? doc.data().vetoDeadline.toDate().toISOString()
           : null,
         finalApprovalDate: doc.data().finalApprovalDate?.toDate
           ? doc.data().finalApprovalDate.toDate().toISOString()
@@ -429,6 +427,11 @@ const NationalAssembly = () => {
       toast.error("법안을 찾을 수 없습니다.");
       return;
     }
+    // 재의결 기한(거부 + 7일)이 지난 법은 폐기 — 표를 받지 않는다(rules naVetoOpen 이 최종 판정)
+    if (isVetoDiscarded(law)) {
+      toast.error("재의결 기한이 지나 폐기된 법안입니다.");
+      return;
+    }
 
     // 중복 투표 체크 (낙관적 상태 또는 서버 상태)
     //   🔴 2026-10-14: 재의결(거부권 뒤)은 **새 회차**다. 전엔 1차 투표 기록(userVotes)으로 막아,
@@ -474,6 +477,10 @@ const NationalAssembly = () => {
 
         const lawData = lawDoc.data();
         const userVotesData = userVotesDoc.exists() ? userVotesDoc.data() : {};
+        // 화면을 연 뒤 기한이 지났을 수 있다 — 문서 기준으로 다시 본다(rules naVetoOpen 이 최종 판정)
+        if (isVetoDiscarded(lawData)) {
+          throw new Error("재의결 기한이 지나 폐기된 법안입니다.");
+        }
         // 재의결 정족수는 문서에서 직접 — 화면의 정부 설정은 다른 폴링 뒤에 늦게 온다(그 사이엔 기본값).
         const govSnap = lawData.status === "vetoed"
           ? await transaction.get(doc(db, "classes", classCode, "nationalAssemblySettings", "government"))
@@ -789,7 +796,9 @@ const NationalAssembly = () => {
       law.status === "auto_rejected" ||
       law.status === "pending_government_approval"
   );
-  const vetoedLaws = displayLaws.filter((law) => law.status === "vetoed");
+  // 재의결 기한(거부 + 7일)이 지난 법은 폐기 — 서버가 상태를 확정하기 전에도 화면은 바로 폐기로 본다
+  const vetoedLaws = displayLaws.filter((law) => law.status === "vetoed" && !isVetoDiscarded(law));
+  const discardedLaws = displayLaws.filter((law) => isVetoDiscarded(law));
 
   let displayedLaws;
   if (activeTab === "approved") {
@@ -805,6 +814,9 @@ const NationalAssembly = () => {
   const getLawStatusDisplay = (law) => {
     if (law.finalStatus === "final_approved") {
       return <span className="law-status final-approved">최종 가결</span>;
+    }
+    if (isVetoDiscarded(law)) {
+      return <span className="law-status discarded">폐기 (재의결 기한 만료)</span>;
     }
     switch (law.status) {
       // ✨ 추가된 부분: '정부 이송' 상태 표시
@@ -878,6 +890,7 @@ const NationalAssembly = () => {
         {(law.status === "pending" ||
           law.status === "rejected" ||
           law.status === "vetoed" ||
+          law.status === "veto_expired" ||
           law.status === "auto_rejected") && (
           <button
             onClick={() => handleResetVotes(law.id)}
@@ -1215,7 +1228,7 @@ const NationalAssembly = () => {
                         </p>
                         <p>
                           <strong>재의결 기한:</strong>{" "}
-                          {getRemainingTime(law.vetoDeadline)}
+                          {getRemainingTime(vetoDeadlineOf(law))}
                         </p>
                       </div>
                       <div className="law-footer">
@@ -1257,6 +1270,38 @@ const NationalAssembly = () => {
                   </div>
                 ))}
               </div>
+            )}
+            {discardedLaws.length > 0 && (
+              <>
+                <h2 className="section-title">🗑️ 폐기된 법안 (재의결 기한 만료)</h2>
+                <div className="law-list discarded-laws">
+                  {discardedLaws.map((law) => (
+                    <div key={law.id} className="law-card discarded">
+                      <div className="law-content-wrapper">
+                        <div className="law-header">
+                          <h2 className="law-title">{law.title}</h2>
+                          {getLawStatusDisplay(law)}
+                        </div>
+                        <div className="law-content">
+                          <p>
+                            <strong>거부 사유:</strong> {law.vetoReason || "사유 없음"}
+                          </p>
+                          <p>
+                            <strong>거부 일시:</strong> {formatDate(law.vetoDate)}
+                          </p>
+                          <p>
+                            <strong>재의결 마감:</strong> {formatDate(vetoDeadlineOf(law))} — 재의결 정족수를
+                            채우지 못해 폐기되었습니다.
+                          </p>
+                        </div>
+                        <div className="law-footer">
+                          <div className="action-buttons">{renderAdminActions(law)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -1639,6 +1684,7 @@ const NationalAssembly = () => {
                     <option value="rejected">부결됨</option>
                     <option value="vetoed">거부권 행사됨</option>
                     <option value="veto_overridden">재의결 가결됨</option>
+                    <option value="veto_expired">폐기 (재의결 기한 만료)</option>
                   </select>
                 </div>
               )}
