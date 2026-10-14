@@ -1633,9 +1633,66 @@ service cloud.firestore {
       // 🏛️ 국회 법안 서브컬렉션 (classes/{classCode}/nationalAssemblyLaws/{lawId})
       match /nationalAssemblyLaws/{lawId} {
         allow read: if isSameClassFast(classCode) || isAdminFast();
-        allow create: if isSignedIn() && (isSameClass(classCode) || isAdmin());
-        allow update: if isSignedIn() && (isSameClass(classCode) || isAdmin());
-        allow delete: if isAdmin();
+        // 🔒 2026-10-14: 종전 create/update 는 «같은 반이면 아무 필드나»였다 — 반 친구가 가결된 법의 벌금액(fine)·
+        //   본문·제안자를 바꿀 수 있었다(경찰청장 화면은 그 fine 을 그대로 벌금으로 제시한다).
+        //   법안 내용 수정은 화면에서도 관리자 전용(handleOpenEditModal)이다.
+        // 생성: 제안자=본인, 표·상태는 0/심의중으로만.
+        allow create: if isClassAdmin(classCode) ||
+                         (isSignedIn() && isSameClass(classCode) &&
+                          request.resource.data.proposerId == request.auth.uid &&
+                          request.resource.data.get('approvals', 0) == 0 &&
+                          request.resource.data.get('disapprovals', 0) == 0 &&
+                          request.resource.data.get('status', 'pending') == 'pending' &&
+                          request.resource.data.get('voters', {}).size() == 0);
+        // 수정(학생): 내용·제안자는 못 바꾸고, 표는 «한 사람 한 표»로만 늘고, 상태는 표수가 받쳐줄 때만 바뀐다.
+        //   (상태 전이 계산은 아직 클라이언트에 있다 — 그래서 rules 가 표수 근거를 다시 본다.)
+        //   남은 구멍: 대통령 승인/거부(pending_government_approval → approved|vetoed)는 rules 가 직업을
+        //   못 봐서 같은 반 누구나 가능하다(국회 가결을 거친 법안에만 해당).
+        function naTotalStudents(classCode) {
+          let p = /databases/$(database)/documents/classes/$(classCode)/nationalAssemblySettings/admin;
+          return exists(p) ? get(p).data.get('totalStudents', 25) : 25;
+        }
+        // 재의결 정족수 — 문서가 없으면 국회 화면 기본값 ceil(전체 × 2/3)
+        function naOverrideOk(classCode, approvals) {
+          let p = /databases/$(database)/documents/classes/$(classCode)/nationalAssemblySettings/government;
+          return exists(p) ? approvals >= get(p).data.get('vetoOverrideRequired', 17)
+                           : approvals * 3 >= naTotalStudents(classCode) * 2;
+        }
+        function naVoteOk(before, after, uid) {
+          let vb = before.get('voters', {});
+          let va = after.get('voters', {});
+          let dA = after.get('approvals', 0) - before.get('approvals', 0);
+          let dD = after.get('disapprovals', 0) - before.get('disapprovals', 0);
+          let changed = va.diff(vb).affectedKeys();
+          return (changed.size() == 0 && dA == 0 && dD == 0) ||
+                 (changed.hasOnly([uid]) && !(uid in vb) && dA + dD == 1 &&
+                  ((dA == 1 && va[uid] == 'approvals') || (dD == 1 && va[uid] == 'disapprovals')));
+        }
+        function naStatusOk(classCode, before, after) {
+          let s0 = before.get('status', 'pending');
+          let s1 = after.get('status', 'pending');
+          return s0 == s1 ||
+                 (s0 in ['pending', 'rejected', 'auto_rejected'] && s1 == 'pending_government_approval' &&
+                    after.get('approvals', 0) * 2 >= naTotalStudents(classCode)) ||
+                 (s0 in ['pending', 'rejected', 'auto_rejected'] && s1 == 'rejected' &&
+                    after.get('disapprovals', 0) * 2 >= naTotalStudents(classCode)) ||
+                 (s0 == 'vetoed' && s1 == 'veto_overridden' && naOverrideOk(classCode, after.get('approvals', 0))) ||
+                 (s0 == 'pending_government_approval' && s1 == 'approved') ||
+                 // 거부권: 표·투표자를 비우고 재의결 회차를 연다
+                 (s0 == 'pending_government_approval' && s1 == 'vetoed' &&
+                    after.get('approvals', 0) == 0 && after.get('disapprovals', 0) == 0 &&
+                    after.get('voters', {}).size() == 0);
+        }
+        allow update: if isClassAdmin(classCode) ||
+                         (isSignedIn() && isSameClass(classCode) &&
+                          !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['title', 'purpose', 'description', 'fine', 'proposerId', 'proposerName', 'classCode', 'timestamp']) &&
+                          naStatusOk(classCode, resource.data, request.resource.data) &&
+                          (naVoteOk(resource.data, request.resource.data, request.auth.uid) ||
+                           // 거부권 초기화는 표가 줄어든다 — naStatusOk 의 vetoed 분기가 모양을 이미 봤다
+                           (resource.data.get('status', '') == 'pending_government_approval' &&
+                            request.resource.data.get('status', '') == 'vetoed')));
+        allow delete: if isClassAdmin(classCode);
       }
 
       // 🏛️ 국회 설정 서브컬렉션 (classes/{classCode}/nationalAssemblySettings/{document})

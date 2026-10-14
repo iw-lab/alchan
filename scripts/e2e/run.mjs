@@ -500,6 +500,104 @@ if (want("tasks")) {
   });
 }
 
+// ══ 시나리오: 국회 법안 ═════════════════════════════════════════════
+if (want("assembly")) {
+  let lawId;
+  const lawsCol = () => `classes/${st.classCode}/nationalAssemblyLaws`;
+  await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).set({ totalStudents: 4 });
+  await step("assembly: 교사 법안 제안(벌금 3,000)", async () => {
+    await go(T, "/national-assembly");
+    await T.page.getByRole("button", { name: "새 법안 제안하기" }).click();
+    await T.page.getByPlaceholder("법안의 제목을 입력하세요").fill("복도에서 뛰지 않기");
+    await T.page.getByPlaceholder("법안의 취지를 간략히 설명하세요").fill("안전");
+    await T.page.getByPlaceholder("법안에 대한 자세한 설명을 작성하세요").fill("복도에서 뛰면 벌금");
+    await T.page.getByPlaceholder(/위반 시 벌금/).fill("3000");
+    await T.page.getByRole("button", { name: /^제안하기$/ }).click();
+    const d = await waitFor(async () => (await fdb.collection(lawsCol()).get()).docs[0], { msg: "법안 저장" });
+    lawId = d.id;
+  });
+  await step("assembly: 학생1 찬성 투표", async () => {
+    await go(S[0], "/national-assembly");
+    await S[0].page.locator(".vote-button.approve").first().click();
+    await waitFor(async () => { const x = (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data(); return x.approvals === 1 && x.voters?.[st.students[0].uid] === "approvals"; }, { msg: "찬성 1·voters 기록" });
+  });
+  await step("assembly: 반 친구가 벌금액·남의 표 직접 쓰기 → 거부(rules)", async () => {
+    const r = await S[1].page.evaluate(async ({ code, lawId, other }) => {
+      const m = await import("/src/firebase.js");
+      const ref = m.doc(m.db, "classes", code, "nationalAssemblyLaws", lawId);
+      const out = {};
+      for (const [k, v] of [["fine", { fine: "999999" }], ["otherVoter", { [`voters.${other}`]: "disapprovals" }], ["proposer", { proposerId: "x" }], ["inflate", { approvals: 999 }]]) {
+        try { await m.updateDoc(ref, v); out[k] = "ALLOWED"; } catch (e) { out[k] = e.code; }
+      }
+      return out;
+    }, { code: st.classCode, lawId, other: st.students[2].uid });
+    note("assembly-forge", r);
+    expect(Object.values(r).every((v) => v === "permission-denied"), "직접 쓰기가 허용됐다 " + JSON.stringify(r));
+  });
+  await step("assembly: 학생2 반대 투표(정상 경로는 그대로)", async () => {
+    await go(S[1], "/national-assembly");
+    await S[1].page.locator(".vote-button.disapprove, .vote-button.reject").first().click();
+    await waitFor(async () => (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data().disapprovals === 1, { msg: "반대 1" });
+  });
+  const lawNow = async () => (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data();
+  await step("assembly: 표수 없이 상태만 바꾸기·중복 표 → 거부(rules)", async () => {
+    const r = await S[0].page.evaluate(async ({ code, lawId }) => {
+      const m = await import("/src/firebase.js");
+      const ref = m.doc(m.db, "classes", code, "nationalAssemblyLaws", lawId);
+      const out = {};
+      for (const [k, v] of [["skipToGov", { status: "pending_government_approval" }], ["skipToApproved", { status: "approved" }], ["doubleVote", { approvals: m.increment(1) }]]) {
+        try { await m.updateDoc(ref, v); out[k] = "ALLOWED"; } catch (e) { out[k] = e.code; }
+      }
+      return out;
+    }, { code: st.classCode, lawId });
+    note("assembly-forge2", r);
+    expect(Object.values(r).every((v) => v === "permission-denied"), "표수 근거 없는 쓰기가 허용됐다 " + JSON.stringify(r));
+  });
+  await step("assembly: 학생3 찬성 → 정부 이송(4명 반 과반)", async () => {
+    await go(S[2], "/national-assembly");
+    await S[2].page.locator(".vote-button.approve").first().click();
+    await waitFor(async () => (await lawNow()).status === "pending_government_approval", { msg: "정부 이송" });
+  });
+  await step("assembly: 대통령(학생4) 거부권 행사(UI)", async () => {
+    const jobs = await fdb.collection("jobs").where("classCode", "==", st.classCode).get();
+    let pres = jobs.docs.find((d) => d.data().title === "대통령");
+    if (!pres) pres = await fdb.collection("jobs").add({ title: "대통령", classCode: st.classCode, salary: 0, tasks: [] });
+    await fdb.doc(`users/${st.students[3].uid}`).update({ appointedJobIds: [pres.id] });
+    await go(S[3], "/organization-chart");
+    await S[3].page.getByText("대통령 권한").first().waitFor({ timeout: 15000 });
+    await S[3].page.locator(".law-approval-section .veto-button").first().click();
+    const dlg = S[3].page.getByRole("dialog", { name: "입력" });
+    await dlg.locator("textarea").fill("벌금이 너무 큽니다");
+    await dlg.getByRole("button", { name: "거부권 행사" }).click();
+    await waitFor(async () => { const x = await lawNow(); return x.status === "vetoed" && x.approvals === 0 && Object.keys(x.voters || {}).length === 0; }, { msg: "vetoed + 초기화" });
+  });
+  await step("assembly: 대통령실 재의결 목록에 보임 + 남은 시간 정상", async () => {
+    await go(S[3], "/organization-chart");
+    const sec = S[3].page.locator(".vetoed-laws-section");
+    await sec.getByText("복도에서 뛰지 않기").waitFor({ timeout: 15000 });
+    const txt = await sec.innerText();
+    expect(!/NaN/.test(txt) && /남음/.test(txt), "남은 시간 표시 이상: " + txt.slice(0, 200));
+  });
+  await step("assembly: 교사 대통령실 설정 → 재의결 정족수 2", async () => {
+    await go(T, "/organization-chart");
+    await T.page.locator(".settings-button").click();
+    await T.page.locator(".modal-container input[type=number]").fill("2");
+    await T.page.getByRole("button", { name: "저장" }).click();
+    await waitFor(async () => (await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/government`).get()).data()?.vetoOverrideRequired === 2, { msg: "국회 판정 문서에 저장" });
+  });
+  await step("assembly: 1차 찬성자(학생1·3)가 재의결 찬성 → veto_overridden", async () => {
+    for (const i of [0, 2]) {
+      await go(S[i], "/national-assembly");
+      await S[i].page.getByRole("button", { name: "재의결 법안" }).click();
+      const btn = S[i].page.getByRole("button", { name: "재의결 찬성" }).first();
+      expect(await btn.isEnabled(), `학생${i + 1} 재의결 찬성 버튼이 막혀 있다`);
+      await btn.click();
+      await waitFor(async () => !!(await lawNow()).voters?.[st.students[i].uid], { msg: `학생${i + 1} 재의결 표` });
+    }
+    await waitFor(async () => (await lawNow()).status === "veto_overridden", { msg: "재의결 가결" });
+  });
+}
+
 report.state = { classCode: st.classCode, students: st.students.map((s) => `${s.id}:${s.uid}`) };
 report.findings = findings;
 report.finishedAt = new Date().toISOString();

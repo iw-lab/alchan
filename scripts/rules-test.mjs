@@ -1393,6 +1393,42 @@ const CASES = [
     after: { ownerId: "stu1", ownerName: "학생1", visibility: "private", lastPostAt: NOW, teacherSeenAt: NOW },
     actors: ["stu1"],
   }),
+
+  // ── 🏛️ 국회 법안 (2026-10-14) — 내용 불변 · 한 사람 한 표 · 표수가 받쳐주는 상태 전이 ──
+  ...(() => {
+    const P = "/classes/C1/nationalAssemblyLaws/law1";
+    const L0 = { title: "복도에서 뛰지 않기", purpose: "안전", description: "벌금", fine: "3000", proposerId: "tch1", proposerName: "교사1", classCode: "C1", timestamp: NOW, approvals: 0, disapprovals: 0, status: "pending", voters: {} };
+    const gets = [
+      { path: "/classes/C1/nationalAssemblySettings/admin", data: { totalStudents: 4 } },
+      { path: "/classes/C1/nationalAssemblySettings/government", data: { vetoOverrideRequired: 2 } },
+    ];
+    const up = (expect, label, as, before, after) => tc(expect, label, { path: P, method: "update", as, before, after, gets });
+    const GOV = { ...L0, status: "pending_government_approval", approvals: 2, voters: { stu1: "approvals", stu2: "approvals" } };
+    const VETO = { ...L0, status: "vetoed", approvals: 0, disapprovals: 0, voters: {}, vetoReason: "너무 큼" };
+    return [
+      up("ALLOW", "🐤 학생이 찬성 한 표를 던진다", "stu1", L0, { ...L0, approvals: 1, voters: { stu1: "approvals" } }),
+      up("DENY", "학생이 가결 전 법안의 벌금액을 바꾼다", "stu1", L0, { ...L0, fine: "999999" }),
+      up("DENY", "학생이 친구 이름으로 표를 쓴다", "stu1", L0, { ...L0, approvals: 1, voters: { stu2: "approvals" } }),
+      up("DENY", "학생이 한 번에 찬성 5표를 더한다", "stu1", L0, { ...L0, approvals: 5, voters: { stu1: "approvals" } }),
+      up("DENY", "이미 투표한 학생이 표만 하나 더 얹는다", "stu1", { ...L0, approvals: 1, voters: { stu1: "approvals" } }, { ...L0, approvals: 2, voters: { stu1: "approvals" } }),
+      up("DENY", "반대표를 세면서 투표자 칸엔 찬성이라 적는다", "stu1", L0, { ...L0, disapprovals: 1, voters: { stu1: "approvals" } }),
+      up("DENY", "표 없이 상태만 정부 이송으로 바꾼다", "stu1", L0, { ...L0, status: "pending_government_approval" }),
+      up("ALLOW", "🐤 과반(4명 중 2표)을 채우는 표와 함께 정부 이송", "stu1", { ...L0, approvals: 1, voters: { stu2: "approvals" } }, { ...L0, approvals: 2, voters: { stu2: "approvals", stu1: "approvals" }, status: "pending_government_approval" }),
+      up("DENY", "국회 표결 없이 바로 가결(approved)로 바꾼다", "stu1", L0, { ...L0, status: "approved" }),
+      up("ALLOW", "🐤 정부 이송 법안에 거부권(표·투표자 초기화)", "stu2", GOV, VETO),
+      up("DENY", "거부권 모양에 벌금액 변경을 끼워 넣는다", "stu2", GOV, { ...VETO, fine: "1" }),
+      up("DENY", "심의 중 법안에 거부권 모양으로 표를 지운다", "stu2", { ...L0, approvals: 1, voters: { stu1: "approvals" } }, { ...L0, status: "vetoed", approvals: 0, voters: {} }),
+      up("ALLOW", "🐤 재의결 회차 — 1차 찬성자가 다시 찬성한다", "stu1", VETO, { ...VETO, approvals: 1, voters: { stu1: "approvals" } }),
+      up("DENY", "재의결 정족수(2) 미달인데 재의결 가결로 바꾼다", "stu1", VETO, { ...VETO, approvals: 1, voters: { stu1: "approvals" }, status: "veto_overridden" }),
+      up("ALLOW", "🐤 재의결 정족수를 채우는 표와 함께 재의결 가결", "stu1", { ...VETO, approvals: 1, voters: { stu2: "approvals" } }, { ...VETO, approvals: 2, voters: { stu2: "approvals", stu1: "approvals" }, status: "veto_overridden" }),
+      up("DENY", "타 학급 학생이 표를 던진다", "farStu", L0, { ...L0, approvals: 1, voters: { farStu: "approvals" } }),
+      up("ALLOW", "🐤 교사가 법안 내용을 고친다", "tch1", L0, { ...L0, fine: "5000" }),
+      tc("ALLOW", "🐤 학생이 자기 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1" } }),
+      tc("DENY", "학생이 법안을 제안하며 찬성표를 미리 채운다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu1", proposerName: "학생1", approvals: 3 } }),
+      tc("DENY", "학생이 친구 이름으로 법안을 제안한다", { path: P, method: "create", as: "stu1", after: { ...L0, proposerId: "stu2", proposerName: "학생2" } }),
+      tc("DENY", "학생이 법안을 지운다", { path: P, method: "delete", as: "stu1", before: L0 }),
+    ];
+  })(),
 ];
 
 // ────────────────────────────────────────────────────────────

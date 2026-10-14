@@ -414,22 +414,28 @@ const NationalAssembly = () => {
       return;
     }
 
-    // 중복 투표 체크 (낙관적 상태 또는 서버 상태)
-    const hasVotedOptimistic = optimisticUserVotes[lawId];
-    const hasVotedServer = userVotes[lawId];
-    if (!isAdmin() && (hasVotedOptimistic || hasVotedServer)) {
-      toast.error("이미 이 법안에 투표하셨습니다.");
-      return;
-    }
-
     const law = laws.find(l => l.id === lawId);
     if (!law) {
       toast.error("법안을 찾을 수 없습니다.");
       return;
     }
 
+    // 중복 투표 체크 (낙관적 상태 또는 서버 상태)
+    //   🔴 2026-10-14: 재의결(거부권 뒤)은 **새 회차**다. 전엔 1차 투표 기록(userVotes)으로 막아,
+    //   1차에서 찬성한 학생은 재의결 찬성을 못 했다 — 25명 반에서 1차 가결(13명↑) 뒤 남은 12명으로는
+    //   재의결 정족수(17명)를 영영 못 채웠다(운영 거부 9건 · 재의결 성공 0건). 재의결 회차의 중복은
+    //   거부권 때 비워지는 법안의 voters 로 본다.
+    const isOverrideRound = law.status === "vetoed";
+    const hasVoted = isOverrideRound
+      ? optimisticUserVotes[lawId] === "override" || !!law.voters?.[currentUser.id]
+      : !!(optimisticUserVotes[lawId] || userVotes[lawId]);
+    if (!isAdmin() && hasVoted) {
+      toast.error("이미 이 법안에 투표하셨습니다.");
+      return;
+    }
+
     // 낙관적 업데이트: 즉시 UI 업데이트
-    setOptimisticUserVotes(prev => ({ ...prev, [lawId]: voteType }));
+    setOptimisticUserVotes(prev => ({ ...prev, [lawId]: isOverrideRound ? "override" : voteType }));
     setOptimisticVotes(prev => ({
       ...prev,
       [lawId]: {
@@ -459,9 +465,12 @@ const NationalAssembly = () => {
         const lawData = lawDoc.data();
         const userVotesData = userVotesDoc.exists() ? userVotesDoc.data() : {};
 
-        // 재의결이 아닌 경우 중복 투표 확인
-        if (!isAdmin() && userVotesData[lawId] && lawData.status !== "vetoed") {
-          throw new Error("이미 이 법안에 투표하셨습니다.");
+        // 중복 투표 확인 — 재의결 회차는 법안의 voters(거부권 때 비워짐)로, 그 외엔 1차 기록으로
+        if (!isAdmin()) {
+          const votedThisRound = lawData.status === "vetoed"
+            ? !!lawData.voters?.[currentUser.id]
+            : !!(userVotesData[lawId] || lawData.voters?.[currentUser.id]);
+          if (votedThisRound) throw new Error("이미 이 법안에 투표하셨습니다.");
         }
 
         const totalStudents = adminSettings.totalStudents;
@@ -1210,18 +1219,14 @@ const NationalAssembly = () => {
                             <button
                               onClick={() => handleVote(law.id, "approvals")}
                               className={`vote-button approve ${
-                                !isAdmin() && (optimisticUserVotes[law.id] === "approvals" ||
-                                userVotes[law.id] === "approvals" ||
-                                (law.voters &&
-                                  law.voters[currentUser?.id] === "approvals"))
+                                !isAdmin() && (optimisticUserVotes[law.id] === "override" ||
+                                  !!law.voters?.[currentUser?.id])
                                   ? "voted"
                                   : ""
                               }`}
                               disabled={
-                                !isAdmin() && (optimisticUserVotes[law.id] === "approvals" ||
-                                userVotes[law.id] === "approvals" ||
-                                (law.voters &&
-                                  law.voters[currentUser?.id] === "approvals"))
+                                !isAdmin() && (optimisticUserVotes[law.id] === "override" ||
+                                  !!law.voters?.[currentUser?.id])
                               }
                             >
                               재의결 찬성
