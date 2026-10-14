@@ -601,6 +601,136 @@ if (want("assembly")) {
   });
 }
 
+// ══ 시나리오: 쿠폰 응모·판매 ═══════════════════════════════════════
+if (want("coupon")) {
+  const A = st.students[0];
+  let teacherUid;
+  await step("coupon: 준비(쿠폰 20)", async () => {
+    await fdb.doc(`users/${A.uid}`).update({ coupons: 20 });
+    teacherUid = (await fdb.collection("users").where("classCode", "==", st.classCode).where("isAdmin", "==", true).get()).docs[0]?.id;
+    expect(!!teacherUid, "교사 문서 없음");
+  });
+  await step("coupon: 응모 3장(UI) → 쿠폰 −3 · 목표 +3 · 교사 현금 +3×쿠폰가", async () => {
+    const goalRef = fdb.doc(`goals/${st.classCode}_goal`);
+    const g0 = (await goalRef.get()).data()?.progress || 0;
+    const t0 = (await userDoc(teacherUid)).cash || 0;
+    await go(S[0], "/coupon-goal");
+    await S[0].page.getByRole("button", { name: "쿠폰 응모" }).click();
+    await S[0].page.getByPlaceholder("응모할 쿠폰 수량을 입력하세요").fill("3");
+    await S[0].page.getByRole("button", { name: "응모하기" }).click();
+    await waitFor(async () => (await userDoc(A.uid)).coupons === 17, { msg: "쿠폰 17" });
+    await waitFor(async () => ((await goalRef.get()).data()?.progress || 0) === g0 + 3, { msg: "목표 +3" });
+    const dt = ((await userDoc(teacherUid)).cash || 0) - t0;
+    note("coupon-donate-teacher-cash", dt);
+    expect(dt > 0 && dt % 3 === 0, "교사 현금 증가가 3의 배수가 아님 " + dt);
+  });
+  await step("coupon: 판매 2장(UI) → 쿠폰 −2 · 현금 +", async () => {
+    const c0 = (await userDoc(A.uid)).cash || 0;
+    await go(S[0], "/coupon-goal");
+    await S[0].page.getByRole("button", { name: "쿠폰 판매" }).click();
+    await S[0].page.locator("input[type=number]").last().fill("2");
+    await S[0].page.getByRole("button", { name: "판매하기" }).click();
+    await waitFor(async () => (await userDoc(A.uid)).coupons === 15, { msg: "쿠폰 15" });
+    const dc = ((await userDoc(A.uid)).cash || 0) - c0;
+    note("coupon-sell-cash", dc);
+    expect(dc > 0, "판매 대금 미입금");
+  });
+}
+
+// ══ 시나리오: 경매 (등록 → 입찰 → 상향 입찰 환불 → 정산) ═══════════════
+//   돈 보존: 판매자 +(낙찰가−세금), 교사 +세금, 낙찰자 −낙찰가, 밀려난 입찰자 ±0
+if (want("auction")) {
+  const [A, B, C] = st.students;
+  const auctionsCol = () => fdb.collection(`classes/${st.classCode}/auctions`);
+  let auctionId, teacherUid, itemId;
+  const cash = async (uid) => (await userDoc(uid)).cash || 0;
+  await step("auction: 준비(현금 지급 · 판매자 아이템 구매)", async () => {
+    for (const u of [A, B, C]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000 });
+    teacherUid = (await fdb.collection("users").where("classCode", "==", st.classCode).where("isAdmin", "==", true).get()).docs[0]?.id;
+    // 실제 상점 화면으로 산다 — 자기 구매는 화면이 아이템 목록을 직접 갱신한다(CF 직접 호출은 그 갱신을 건너뛴다)
+    await go(S[0], "/item-shop");
+    await S[0].page.locator(".buy-item-button:not([disabled])").first().click();
+    const inv = await waitFor(async () => { const q = await fdb.collection(`users/${A.uid}/inventory`).get(); return q.size > 0 ? q : null; }, { msg: "인벤토리 반영" });
+    itemId = inv.docs[0].data().itemId || inv.docs[0].id;
+  });
+  const base = {};
+  await step("auction: 판매자 경매 등록(UI, 시작가 100)", async () => {
+    for (const u of [A, B, C]) base[u.uid] = await cash(u.uid);
+    base.teacher = await cash(teacherUid);
+    await go(S[0], "/auction");
+    await S[0].page.getByRole("button", { name: "경매 등록", exact: true }).first().click();
+    const sel = S[0].page.locator("#auctionAssetSelect");
+    const val = await sel.locator("option").nth(1).getAttribute("value");
+    await sel.selectOption(val);
+    await S[0].page.locator("#startPrice").fill("100");
+    await S[0].page.locator("button.register-button").click();
+    const d = await waitFor(async () => (await auctionsCol().where("seller", "==", A.uid).get()).docs[0], { msg: "경매 문서" });
+    auctionId = d.id;
+  });
+  await step("auction: 학생2 150 입찰 → 학생3 200 상향 → 학생2 환불", async () => {
+    for (const [i, amt] of [[1, 150], [2, 200]]) {
+      await go(S[i], "/auction");
+      await S[i].page.locator(".bid-input").first().fill(String(amt));
+      await S[i].page.locator(".bid-button").first().click();
+      await waitFor(async () => (await auctionsCol().doc(auctionId).get()).data().currentBid === amt, { msg: `현재가 ${amt}` });
+    }
+    await waitFor(async () => (await cash(B.uid)) === base[B.uid], { msg: "밀려난 입찰자 환불" });
+    expect((await cash(C.uid)) === base[C.uid] - 200, "최고 입찰자 에스크로 −200 아님");
+  });
+  await step("auction: 기한 경과 → 화면이 정산 → 돈 보존", async () => {
+    await auctionsCol().doc(auctionId).update({ endTime: new Date(Date.now() - 1000) });
+    await go(S[1], "/auction");
+    await waitFor(async () => (await auctionsCol().doc(auctionId).get()).data().status !== "ongoing", { timeout: 20000, msg: "정산" });
+    const dA = (await cash(A.uid)) - base[A.uid], dB = (await cash(B.uid)) - base[B.uid], dC = (await cash(C.uid)) - base[C.uid], dT = (await cash(teacherUid)) - base.teacher;
+    note("auction-deltas", { dA, dB, dC, dT });
+    expect(dC === -200 && dB === 0 && dA > 0 && dA + dT === 200, `돈 보존 실패 ${JSON.stringify({ dA, dB, dC, dT })}`);
+    const inv = await fdb.collection(`users/${C.uid}/inventory`).get();
+    expect(inv.docs.some((d) => (d.data().itemId || d.id) === itemId && (d.data().quantity || 0) >= 1), "낙찰자에게 아이템 미지급");
+  });
+}
+
+// ══ 시나리오: 개인상점 (상점 개설 → 상품 등록 → 다른 학생 구매) ═══════════
+//   돈 보존: 구매자 −(가격+부가세), 판매자 +가격, 교사(학급 금고) +부가세 · 국고 문서엔 vatRevenue 통계만
+if (want("shop")) {
+  const [A, B] = st.students;
+  const cash = async (uid) => (await userDoc(uid)).cash || 0;
+  let productId;
+  await step("shop: 학생1 상점 개설·상품 등록(UI, 500 × 재고 3)", async () => {
+    for (const u of [A, B]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000 });
+    await go(S[0], "/personal-shop");
+    await S[0].page.getByRole("button", { name: /내 상점/ }).click();
+    await S[0].page.getByRole("button", { name: /상점 만들기/ }).click();
+    await S[0].page.getByPlaceholder("예: 민수네 간식가게").fill("일번 가게");
+    await S[0].page.getByRole("button", { name: "만들기", exact: true }).click();
+    await waitFor(async () => (await fdb.collection("personalShops").where("ownerId", "==", A.uid).get()).size === 1, { msg: "상점 문서" });
+    await S[0].page.getByRole("button", { name: /등록하기/ }).first().click();
+    await S[0].page.getByPlaceholder("예: 수제 쿠키").fill("연필");
+    const nums = S[0].page.locator(".modal-content input[type=number], [role=dialog] input[type=number], form input[type=number]");
+    await nums.nth(0).fill("500");
+    await nums.nth(1).fill("3");
+    await S[0].page.getByRole("button", { name: "등록하기", exact: true }).last().click();
+    const p = await waitFor(async () => (await fdb.collection("shopProducts").where("ownerId", "==", A.uid).get()).docs[0], { msg: "상품 문서" });
+    productId = p.id;
+    expect(p.data().classCode === st.classCode && p.data().price === 500, "상품 학급·가격 이상 " + JSON.stringify(p.data()));
+  });
+  await step("shop: 학생2 구매(UI) → 돈 보존", async () => {
+    const teacherUid = (await fdb.collection("users").where("classCode", "==", st.classCode).where("isAdmin", "==", true).get()).docs[0].id;
+    const a0 = await cash(A.uid), b0 = await cash(B.uid), t0 = await cash(teacherUid);
+    const tRef = fdb.doc(`nationalTreasuries/${st.classCode}`);
+    const v0 = (await tRef.get()).data()?.vatRevenue || 0;
+    await go(S[1], "/personal-shop");
+    await S[1].page.locator(".shop-card", { hasText: "일번 가게" }).first().click();
+    await S[1].page.getByRole("button", { name: /구매하기/ }).first().click();
+    await S[1].page.getByRole("button", { name: "구매하기", exact: true }).last().click();
+    await waitFor(async () => (await cash(A.uid)) !== a0, { msg: "판매자 입금" });
+    const dA = (await cash(A.uid)) - a0, dB = (await cash(B.uid)) - b0, dT = (await cash(teacherUid)) - t0;
+    const dV = ((await tRef.get()).data()?.vatRevenue || 0) - v0;
+    note("shop-deltas", { dA, dB, dT, dV });
+    expect(dA === 500 && dB === -(500 + dT) && dT > 0 && dV === dT, "돈 보존 실패 " + JSON.stringify({ dA, dB, dT, dV }));
+    expect((await fdb.doc(`shopProducts/${productId}`).get()).data().stock === 2, "재고 3→2 아님");
+  });
+}
+
 // ══ 시나리오: 돈 CF 악성 입력 퍼징 ═════════════════════════════════
 //   불변식 ① 거부된 호출은 아무것도 바꾸지 않는다(학급 전원 숫자 필드·국고·인벤토리 스냅샷 동일)
 //          ② 양의 정수가 아닌 금액·수량으로 성공하면 결함

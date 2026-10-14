@@ -1968,8 +1968,11 @@ service cloud.firestore {
         isAdminFast()
       );
 
-      // 생성: 본인 상점만
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      // 생성: 본인 상점만 · 자기 학급 이름표로만.
+      // 🔒 2026-10-14: classCode 를 안 봐서 `classCode: null` 로 만들면 위 하위 호환 읽기 분기
+      //    때문에 **모든 학급**에 보였다(구매는 CF 가 학급을 봐서 막지만 노출 스팸).
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid &&
+                       isSameClass(request.resource.data.get('classCode', ''));
 
       // 수정: 본인 또는 관리자만.
       // 🔒 [2026-09-15] 같은 학급 '구매자' 분기 삭제. 구매·정산은 purchasePersonalShopItem CF
@@ -1977,7 +1980,12 @@ service cloud.firestore {
       //    (src 전수 grep: personalShops 쓰기 3곳 전부 내 상점). 즉 이 분기는 아무도 안 쓰는
       //    권한이면서, 같은 반 학생이 남의 매출 통계(totalSales/totalTaxPaid)를 조작할 수 있는
       //    구멍으로만 남아 있었다.
-      allow update: if isOwner(resource.data.ownerId) || isAdmin();
+      //   학급은 «비어 있던 걸 자기 학급으로 채우기»만(옛 문서 백필 — 화면이 로드 때 한다)
+      allow update: if isAdmin() ||
+                       (isOwner(resource.data.ownerId) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']) &&
+                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['classCode']) ||
+                         (resource.data.get('classCode', null) == null && isSameClass(request.resource.data.get('classCode', '')))));
 
       // 삭제: 본인 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();
@@ -1994,8 +2002,9 @@ service cloud.firestore {
         isAdminFast()
       );
 
-      // 생성: 상점 소유자
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      // 생성: 상점 소유자 · 자기 학급 이름표로만(위 personalShops 와 같은 이유)
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid &&
+                       isSameClass(request.resource.data.get('classCode', ''));
 
       // 수정: 상품 소유자 또는 관리자만.
       // 🔒 [2026-09-15] 같은 학급 '구매자' 분기 삭제. 재고 차감·soldCount 증가·품절 마킹은
@@ -2003,7 +2012,11 @@ service cloud.firestore {
       //    클라이언트가 남의 상품에 쓰는 경로는 0곳(src 전수 grep: shopProducts 쓰기 4곳 전부
       //    내 상품). 남아 있던 이 분기는 같은 반 학생이 남의 상품을 stock=0·status='soldout'
       //    으로 만들거나 soldCount 를 부풀리는 사보타주 경로일 뿐이었다.
-      allow update: if isOwner(resource.data.ownerId) || isAdmin();
+      allow update: if isAdmin() ||
+                       (isOwner(resource.data.ownerId) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'shopId']) &&
+                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['classCode']) ||
+                         (resource.data.get('classCode', null) == null && isSameClass(request.resource.data.get('classCode', '')))));
 
       // 삭제: 상품 소유자 또는 관리자
       allow delete: if isOwner(resource.data.ownerId) || isAdmin();

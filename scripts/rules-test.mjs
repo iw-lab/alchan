@@ -1394,6 +1394,16 @@ const CASES = [
     actors: ["stu1"],
   }),
 
+  // ── 🏪 개인상점 (2026-10-14) — 자기 학급 이름표로만 만들고, 주인·학급은 못 바꾼다 ──
+  tc("ALLOW", "🐤 학생이 자기 학급 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", name: "가게" } }),
+  tc("DENY", "학생이 학급 이름표 없이(전 학급 노출) 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: null, name: "가게" } }),
+  tc("DENY", "학생이 다른 학급 이름표로 상점을 연다", { path: "/personalShops/s1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C2", name: "가게" } }),
+  tc("ALLOW", "🐤 학생이 자기 학급 상품을 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 } }),
+  tc("DENY", "학생이 상품을 학급 이름표 없이 등록한다", { path: "/shopProducts/p1", method: "create", as: "stu1", after: { ownerId: "stu1", shopId: "s1", price: 500 } }),
+  tc("ALLOW", "🐤 학생이 자기 상품 가격을 고친다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 700 } }),
+  tc("DENY", "학생이 자기 상품의 학급을 바꿔 다른 반에 노출한다", { path: "/shopProducts/p1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1", shopId: "s1", price: 500 }, after: { ownerId: "stu1", classCode: "C2", shopId: "s1", price: 500 } }),
+  tc("DENY", "학생이 자기 상점 주인을 친구로 바꾼다", { path: "/personalShops/s1", method: "update", as: "stu1", before: { ownerId: "stu1", classCode: "C1" }, after: { ownerId: "stu2", classCode: "C1" } }),
+
   // ── 🏛️ 국회 법안 (2026-10-14) — 내용 불변 · 한 사람 한 표 · 표수가 받쳐주는 상태 전이 ──
   ...(() => {
     const P = "/classes/C1/nationalAssemblyLaws/law1";
