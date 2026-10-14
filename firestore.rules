@@ -1700,7 +1700,18 @@ service cloud.firestore {
                  (!keys.hasAny(['vetoReason', 'vetoDate', 'vetoDeadline', 'presidentJobId']) ||
                   (s0 == 'pending_government_approval' && s1 in ['approved', 'vetoed'])) &&
                  (!keys.hasAny(['vetoReason', 'vetoDate', 'vetoDeadline']) || s1 == 'vetoed') &&
-                 (!keys.hasAny(['approvalDate']) || (s0 != s1 && s1 == 'pending_government_approval'));
+                 (!keys.hasAny(['approvalDate']) || (s0 != s1 && s1 == 'pending_government_approval')) &&
+                 // 가결 전이의 최종 상태는 값까지 고정 — 임의 값이면 정상 가결 법이 경찰서 목록에서 빠진다
+                 (!(s0 != s1 && s1 in ['approved', 'veto_overridden']) || after.get('finalStatus', '') == 'final_approved') &&
+                 // 날짜는 서버 시각만(화면은 serverTimestamp), 재의결 기한은 지금 이후 8일 이내
+                 //   (기한은 화면 안내용이다 — 어디서도 강제하지 않는다. 화면은 기기 시각 + 7일을 쓴다)
+                 (!keys.hasAny(['updatedAt']) || after.updatedAt == request.time) &&
+                 (!keys.hasAny(['approvalDate']) || after.approvalDate == request.time) &&
+                 (!keys.hasAny(['finalApprovalDate']) || after.finalApprovalDate == request.time) &&
+                 (!keys.hasAny(['vetoDate']) || after.vetoDate == request.time) &&
+                 (!keys.hasAny(['vetoDeadline']) ||
+                  (after.vetoDeadline is timestamp && after.vetoDeadline > request.time &&
+                   after.vetoDeadline <= request.time + duration.value(8, 'd')));
         }
         function naStatusOk(classCode, before, after) {
           let s0 = before.get('status', 'pending');

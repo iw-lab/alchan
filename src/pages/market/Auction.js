@@ -166,23 +166,10 @@ export default function Auction() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classCode, currentUserId]);
 
+  // 선택이 풀리면 폼을 비운다. 고른 아이템의 정보는 선택 핸들러가 같은 이벤트 안에서 채운다 —
+  //   전엔 이 효과(렌더 뒤 실행)가 채워서, 그 사이 들어온 입력(시작가·설명)을 지우거나 덮었다.
   useEffect(() => {
-    if (selectedAssetForAuction) {
-      if (!selectedAssetForAuction.type || selectedAssetForAuction.type !== "item") {
-        showNotification("선택된 자산의 타입을 식별할 수 없거나 아이템이 아닙니다.", "error");
-        setSelectedAssetForAuction(null);
-        return;
-      }
-      setNewAuction((prev) => ({
-        ...prev,
-        assetId: selectedAssetForAuction.id,
-        assetType: selectedAssetForAuction.type,
-        name: selectedAssetForAuction.name || "이름 없음",
-        description: selectedAssetForAuction.description || "",
-        startPrice: "",
-        duration: "1",
-      }));
-    } else {
+    if (!selectedAssetForAuction) {
       setNewAuction((prev) => ({
         ...prev,
         assetId: null,
@@ -300,7 +287,7 @@ export default function Auction() {
       if (authContext.refreshUserDocument) authContext.refreshUserDocument();
 
       showNotification("입찰이 성공적으로 완료되었습니다.", "success");
-      setBidAmount({ ...bidAmount, [auctionId]: "" });
+      setBidAmount((prev) => ({ ...prev, [auctionId]: "" }));
     } catch (error) {
       logger.error("[Auction Bid] 입찰 오류:", error);
       showNotification(`입찰 실패: ${error.message}`, "error");
@@ -437,7 +424,9 @@ export default function Auction() {
     if (name === "startPrice" && value && !/^\d*\.?\d*$/.test(value)) {
       return;
     }
-    setNewAuction({ ...newAuction, [name]: value });
+    // 함수형 갱신 — 아이템을 고른 직후(다시 그려지기 전) 입력하면, 묵은 newAuction 을 펼친 값이
+    //   방금 채운 선택 정보를 지워 «아이템을 선택해주세요»로 등록이 막혔다(e2e 간헐 실패로 실측).
+    setNewAuction((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelectAssetForAuction = (event) => {
@@ -454,6 +443,13 @@ export default function Auction() {
         return;
       }
       setSelectedAssetForAuction(foundItem);
+      setNewAuction((prev) => ({
+        ...prev,
+        assetId: foundItem.id,
+        assetType: foundItem.type,
+        name: foundItem.name || "이름 없음",
+        description: foundItem.description || "",
+      }));
     } else {
       showNotification("선택한 ID에 해당하는 아이템을 찾을 수 없습니다.", "error");
       setSelectedAssetForAuction(null);
@@ -463,7 +459,7 @@ export default function Auction() {
   const handleBidAmountChange = (e, auctionId) => {
     const value = e.target.value;
     if (value === "" || /^\d+$/.test(value)) {
-      setBidAmount({ ...bidAmount, [auctionId]: value });
+      setBidAmount((prev) => ({ ...prev, [auctionId]: value }));
     }
   };
 

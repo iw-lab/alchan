@@ -56,6 +56,13 @@ function attach(page, who) {
     if (r.status() >= 400 && /127\.0\.0\.1|localhost/.test(u)) push("http", `${r.status()} ${r.request().method()} ${u.replace(/\?.*/, "")}`, { url: u });
   });
   page.on("dialog", (d) => { push("native-dialog", d.message()); d.dismiss().catch(() => {}); });
+  // 진행 중인 CF 호출 — 화면을 떠나기 전에 응답을 기다린다(사람도 결과를 보고 넘어간다).
+  // 안 기다리면 page.goto 가 fetch 를 끊고, SDK 는 그걸 «internal» 로 보고한다(하네스가 만든 가짜 오류).
+  page._inflightCalls = new Set();
+  const isCall = (r) => /:5001\//.test(r.url()) && r.method() === "POST";
+  page.on("request", (r) => { if (isCall(r)) page._inflightCalls.add(r); });
+  page.on("requestfinished", (r) => page._inflightCalls.delete(r));
+  page.on("requestfailed", (r) => page._inflightCalls.delete(r));
 }
 const fail = (msg) => { throw new Error(msg); };
 const expect = (cond, msg) => { if (!cond) fail(msg); };
@@ -118,7 +125,11 @@ async function dismissPopups(page) {
   }
 }
 async function shot(page, name) { if (SHOTS) await page.screenshot({ path: `${OUT}/${name}.png` }).catch(() => {}); }
-async function go(s, path) { await s.page.goto(`${BASE}${path}`); await settle(s.page); await dismissPopups(s.page); }
+async function drainCalls(page, timeout = 15000) {
+  const t0 = Date.now();
+  while (page._inflightCalls?.size && Date.now() - t0 < timeout) await sleep(100);
+}
+async function go(s, path) { await drainCalls(s.page); await s.page.goto(`${BASE}${path}`); await settle(s.page); await dismissPopups(s.page); }
 
 async function loginEmail(s, email, password) {
   const page = s.page;
@@ -530,6 +541,14 @@ if (want("tasks")) {
 if (want("assembly")) {
   let lawId;
   const lawsCol = () => `classes/${st.classCode}/nationalAssemblyLaws`;
+  // 새 반엔 국회 설정 문서가 없다(교사가 국회를 한 번 열어야 생긴다) — 학생이 먼저 열면 전엔 학생의 기본값
+  //   쓰기가 rules 에 막히고(설정 쓰기는 교사만), 그 실패로 설정이 null 로 남아 **무한 로딩**이었다.
+  await step("assembly: 설정 문서 없는 반 — 학생이 먼저 열어도 화면이 뜬다", async () => {
+    const adminSettings = await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).get();
+    expect(!adminSettings.exists, "새 반인데 설정 문서가 이미 있다(전제 깨짐)");
+    await go(S[1], "/national-assembly");
+    await S[1].page.getByRole("heading", { name: "국회 의사당" }).waitFor({ timeout: 10000 });
+  });
   // 3명 반으로 둔다 — 과반(절반 초과) = 2표. (학생1·3 찬성, 학생2 반대 흐름)
   await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).set({ totalStudents: 3 });
   await step("assembly: 교사 법안 제안(벌금 3,000)", async () => {
@@ -619,6 +638,25 @@ if (want("assembly")) {
     }
     await waitFor(async () => (await lawNow()).status === "veto_overridden", { msg: "재의결 가결" });
   });
+  // 교사 «수정»은 고친 칸만 써야 한다 — 전엔 화면 사본을 통째로 써서 날짜가 문자열로, 표·상태가 화면을 연
+  //   시점 값으로 되돌아갔다(가결된 법이 심의중으로 돌아갈 수 있었다).
+  await step("assembly: 교사가 가결된 법 제목 수정 → 표·상태·날짜 형식 보존", async () => {
+    const before = await lawNow();
+    await go(T, "/national-assembly");
+    await T.page.getByRole("button", { name: "우리반 법" }).click();
+    await T.page.getByRole("button", { name: "수정", exact: true }).first().click();
+    const title = T.page.locator(".modal-container .form-input").first();
+    await title.fill("복도에서 걷기");
+    await T.page.getByRole("button", { name: "저장하기" }).click();
+    await waitFor(async () => (await lawNow()).title === "복도에서 걷기", { msg: "제목 수정 반영" });
+    const raw = (await fdb.doc(`${lawsCol()}/${lawId}`).get()).data();
+    expect(raw.status === before.status && raw.finalStatus === "final_approved", `상태가 바뀜 ${raw.status}/${raw.finalStatus}`);
+    expect(raw.approvals === before.approvals && JSON.stringify(raw.voters) === JSON.stringify(before.voters), "표가 바뀜");
+    for (const k of ["timestamp", "vetoDeadline", "finalApprovalDate"]) {
+      expect(raw[k] && typeof raw[k].toDate === "function", `${k} 가 Timestamp 가 아님(${typeof raw[k]})`);
+    }
+    expect(!("id" in raw), "문서에 id 필드가 새로 생김");
+  });
 }
 
 // ══ 시나리오: 쿠폰 응모·판매 ═══════════════════════════════════════
@@ -687,10 +725,23 @@ if (want("auction")) {
     await S[0].page.getByRole("button", { name: "경매 등록", exact: true }).first().click();
     const sel = S[0].page.locator("#auctionAssetSelect");
     const val = await sel.locator("option").nth(1).getAttribute("value");
-    await sel.selectOption(val);
-    await S[0].page.locator("#startPrice").fill("100");
+    // 아이템 선택과 시작가 입력을 **한 작업 안에서** 보낸다 — 선택 효과가 돌기 전에 입력이 도착하는 최악의
+    //   타이밍을 결정적으로 만든다(전엔 묵은 상태를 펼친 입력이 선택을 지워 간헐적으로 등록이 막혔다).
+    await S[0].page.evaluate((v) => {
+      const setVal = (el, x) => Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, x);
+      const s = document.querySelector("#auctionAssetSelect");
+      setVal(s, v);
+      s.dispatchEvent(new Event("change", { bubbles: true }));
+      const p = document.querySelector("#startPrice");
+      setVal(p, "100");
+      p.dispatchEvent(new Event("input", { bubbles: true }));
+      const t = document.querySelector("#description");
+      setVal(t, "직접 쓴 설명");
+      t.dispatchEvent(new Event("input", { bubbles: true }));
+    }, val);
     await S[0].page.locator("button.register-button").click();
     const d = await waitFor(async () => (await auctionsCol().where("seller", "==", A.uid).get()).docs[0], { msg: "경매 문서" });
+    expect(d.data().description === "직접 쓴 설명", `직접 쓴 설명이 덮였다: «${d.data().description}»`);
     auctionId = d.id;
   });
   await step("auction: 학생2 150 입찰 → 학생3 200 상향 → 학생2 환불", async () => {

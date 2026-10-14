@@ -43,6 +43,10 @@ const processInitialLoadQueue = async () => {
  *   격리 경계를 반드시 포함할 것. 미지정 시 기존 동작 100% 동일.
  * @param {number} [options.cacheTTL] - 캐시 신선 기간(ms). 기본 = interval×0.9(폴링 tick은
  *   항상 MISS → 갱신 주기 유지, staleness 상한은 기존 폴링 이하). 주기보다 길게 주지 말 것(자동 캡).
+ * @param {*} [options.defaultValue] - 첫 조회가 끝나기 전·조회 실패 시 data 값(기본 null).
+ *   ⚠️ 2026-10-14 전엔 이 옵션을 받기만 하고 무시해, 이를 믿고 `data.필드` 를 바로 읽던 국회 화면이
+ *   «다른 폴링이 늦게 켜지는» 사이 null 을 읽고 투표가 TypeError 로 실패했다(e2e 실측).
+ * @param {Function} [options.onError] - 조회 실패 시 호출(err). 실패해도 data 는 직전 값을 유지한다.
  *
  * @returns {Object} { data, loading, error, refetch }  // refetch()는 항상 캐시 우회(force)
  */
@@ -52,10 +56,12 @@ export const usePolling = (queryFn, options = {}) => {
     enabled = true,
     deps = [],
     cacheKey = null,
-    cacheTTL = null
+    cacheTTL = null,
+    defaultValue = null,
+    onError = null
   } = options;
 
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(defaultValue);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const intervalRef = useRef(null);
@@ -65,10 +71,14 @@ export const usePolling = (queryFn, options = {}) => {
   // 🔥 캐시 옵션은 ref로만 소비 — effect deps 구조를 바꾸지 않아 재실행 루프 표면 0.
   const cacheKeyRef = useRef(cacheKey);
   const cacheTTLRef = useRef(cacheTTL);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
     queryFnRef.current = queryFn;
   }, [queryFn]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
   useEffect(() => {
     cacheKeyRef.current = cacheKey;
     // TTL 기본값 = 폴링 주기의 90% — tick 시점(나이≈interval)엔 반드시 MISS가 나서
@@ -100,7 +110,8 @@ export const usePolling = (queryFn, options = {}) => {
         setLoading(false);
       }
     } catch (err) {
-      logger.error('[usePolling] 데이터 조회 오류:', err);
+      if (onErrorRef.current) onErrorRef.current(err);
+      else logger.error('[usePolling] 데이터 조회 오류:', err);
       if (mountedRef.current) {
         setError(err);
         setLoading(false);

@@ -34,6 +34,9 @@ import { hasJobTitle } from "../../utils/jobPermissions";
 import { formatLawFine } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+// 과반 = 절반 «초과»(rules naStatusOk 와 같은 기준) — 투표 판정과 화면 안내가 같은 수를 쓴다.
+const majorityOf = (totalStudents) => Math.floor(totalStudents / 2) + 1;
+
 const NationalAssembly = () => {
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
@@ -113,7 +116,8 @@ const NationalAssembly = () => {
         return docSnap.data();
       } else {
         const defaultAdminSettings = { totalStudents: 25 };
-        await setDoc(adminSettingsDocRefNode, defaultAdminSettings);
+        // 설정 문서는 교사만 쓸 수 있다(rules) — 학생이 먼저 열면 만들지 않고 기본값으로 본다.
+        if (isAdmin()) await setDoc(adminSettingsDocRefNode, defaultAdminSettings);
         return defaultAdminSettings;
       }
     },
@@ -159,7 +163,7 @@ const NationalAssembly = () => {
             ((adminSettings?.totalStudents) || 25) * (2 / 3)
           ),
         };
-        await setDoc(govSettingsDocRefNode, defaultGovSettings);
+        if (isAdmin()) await setDoc(govSettingsDocRefNode, defaultGovSettings);
         return defaultGovSettings;
       }
     },
@@ -346,7 +350,7 @@ const NationalAssembly = () => {
       toast.error("관리자만 법안을 수정할 수 있습니다.");
       return;
     }
-    setEditingLaw({ ...law });
+    setEditingLaw({ ...law, _origStatus: law.status });
     setShowEditLawModal(true);
   };
 
@@ -377,13 +381,19 @@ const NationalAssembly = () => {
       previousEditingLaw.id
     );
     try {
-      const {
-        ...dataToUpdate
-      } = previousEditingLaw;
-      await updateDoc(lawDocRef, {
-        ...dataToUpdate,
-        updatedAt: serverTimestamp(),
-      });
+      // 🔴 2026-10-14: 전엔 화면 사본(...law)을 통째로 썼다 — 목록에서 ISO 문자열로 바꾼 날짜
+      //   (timestamp·vetoDeadline…)가 문자열로 저장되고, 모달을 연 뒤 들어온 표·상태(최대 3분 캐시)를
+      //   옛 값으로 되돌렸다(가결된 법이 심의중으로). 모달이 고치는 칸만 쓰고, 상태는 바꿨을 때만.
+      const { title, purpose, description, fine, status, _origStatus } = previousEditingLaw;
+      const dataToUpdate = { title, purpose: purpose ?? "", description, fine, updatedAt: serverTimestamp() };
+      if (status !== _origStatus) {
+        dataToUpdate.status = status;
+        // 경찰서 벌금 목록은 finalStatus 로 고른다 — 상태와 같이 맞춘다
+        const passed = status === "approved" || status === "veto_overridden";
+        dataToUpdate.finalStatus = passed ? "final_approved" : null;
+        dataToUpdate.finalApprovalDate = passed ? serverTimestamp() : null;
+      }
+      await updateDoc(lawDocRef, dataToUpdate);
 
       // 성공 시: 즉시 서버에서 최신 법안 목록을 가져옴
       await refetchLaws();
@@ -464,6 +474,10 @@ const NationalAssembly = () => {
 
         const lawData = lawDoc.data();
         const userVotesData = userVotesDoc.exists() ? userVotesDoc.data() : {};
+        // 재의결 정족수는 문서에서 직접 — 화면의 정부 설정은 다른 폴링 뒤에 늦게 온다(그 사이엔 기본값).
+        const govSnap = lawData.status === "vetoed"
+          ? await transaction.get(doc(db, "classes", classCode, "nationalAssemblySettings", "government"))
+          : null;
 
         // 중복 투표 확인 — 재의결 회차는 법안의 voters(거부권 때 비워짐)로, 그 외엔 1차 기록으로
         if (!isAdmin()) {
@@ -476,8 +490,10 @@ const NationalAssembly = () => {
         const totalStudents = adminSettings.totalStudents;
         // 과반 = 절반 «초과»(rules naStatusOk 와 같은 기준). 전엔 ceil(n/2) 라 짝수 반에선 동수(12:12)로
         //   가결·부결이 둘 다 열렸고, 부결된 법이 다음 찬성 한 표에 가결로 뒤집혔다.
-        const halfStudents = Math.floor(totalStudents / 2) + 1;
-        const vetoOverrideRequiredCount = governmentSettings.vetoOverrideRequired;
+        const halfStudents = majorityOf(totalStudents);
+        const vetoOverrideRequiredCount = Number.isInteger(govSnap?.data()?.vetoOverrideRequired)
+          ? govSnap.data().vetoOverrideRequired
+          : Math.ceil(totalStudents * (2 / 3)); // rules naOverrideOk 기본값과 같다
 
         const newApprovals = (lawData.approvals || 0) + (voteType === "approvals" ? 1 : 0);
         const newDisapprovals = (lawData.disapprovals || 0) + (voteType === "disapprovals" ? 1 : 0);
@@ -1019,7 +1035,7 @@ const NationalAssembly = () => {
                               </span>
                               {/* ✨ 수정된 부분: 필요 투표 수 안내 문구 변경 */}
                               <span className="vote-required">
-                                /{Math.ceil(adminSettings.totalStudents / 2)}표 필요 (정부 이송)
+                                /{majorityOf(adminSettings.totalStudents)}표 필요 (정부 이송)
                               </span>
                             </div>
                             <div className="vote-type disapproval">
@@ -1028,7 +1044,7 @@ const NationalAssembly = () => {
                                 {optimisticVotes[law.id]?.disapprovals ?? law.disapprovals ?? 0}
                               </span>
                               <span className="vote-required">
-                                /{Math.ceil(adminSettings.totalStudents / 2)}{" "}
+                                /{majorityOf(adminSettings.totalStudents)}{" "}
                                 필요 (부결)
                               </span>
                             </div>
@@ -1302,7 +1318,7 @@ const NationalAssembly = () => {
                     <p>
                       가결/부결 필요 투표 수:{" "}
                       <strong>
-                        {Math.ceil(((localAdminSettings || adminSettings).totalStudents || 25) / 2)}
+                        {majorityOf((localAdminSettings || adminSettings).totalStudents || 25)}
                       </strong>
                       명
                     </p>
