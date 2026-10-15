@@ -46,10 +46,20 @@ if (process.env.NODE_ENV === "development") {
   }
 }
 
-// Firebase App Check - reCAPTCHA v3 기반
-// 초기엔 Firebase Console > App Check에서 Enforcement(적용)를 꺼두고 모니터링 모드로 운영
-// 정상 트래픽 확인 후 단계적으로 Firestore/Functions별 Enforcement 활성화
-if (typeof window !== 'undefined' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
+// Firebase App Check - reCAPTCHA v3 기반. 강제 적용은 전부 꺼져 있다(모니터링 모드 — 메모리 appcheck_enforce_decision).
+//
+// ⏱ 첫 화면이 뜬 «뒤에» 켠다(2026-10-15 사용자 「첫 로딩시간이 너무 길어」).
+//   App Check 가 등록돼 있으면 Firestore·Auth·Functions 는 요청마다 토큰을 **기다린다**(제한시간 없음 —
+//   firestore FirebaseAppCheckTokenProvider.getToken). 그날 첫 접속이면 토큰이 없어 reCAPTCHA 스크립트
+//   2벌(약 700KB) 내려받기 → 실행 → 교환까지 끝나야 첫 읽기가 나간다. 운영 실측 2.5~3.4초(데스크톱).
+//   에뮬레이터에서 토큰을 3초 늦추자 로그인 유지 상태 첫 화면이 0.42초 → 3.44초가 됐다.
+//   늦게 켜도 SDK 가 알아서 붙는다(Firestore onInit 등록 · Auth/Functions 는 호출 때마다 조회).
+// ⚠️ 대가: 켜기 전 몇 초 동안의 CF 호출은 토큰이 없어 서버 «App Check token missing» 경고가 남는다.
+//   강제 적용(enforceAppCheck)을 다시 검토한다면 이 지연부터 걷어내야 한다 — 그때는 첫 화면이 다시 기다린다.
+let appCheckStarted = false;
+export function startAppCheck() {
+  if (appCheckStarted || typeof window === "undefined" || !process.env.REACT_APP_RECAPTCHA_SITE_KEY) return false;
+  appCheckStarted = true;
   if (process.env.NODE_ENV === 'development') {
     // eslint-disable-next-line no-restricted-globals
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
@@ -63,6 +73,22 @@ if (typeof window !== 'undefined' && process.env.REACT_APP_RECAPTCHA_SITE_KEY) {
   } catch (e) {
     logger.warn("[firebase.js] App Check 초기화 실패:", e);
   }
+  return true;
+}
+
+// 첫 화면의 읽기(대시보드 위젯 포함)가 나간 뒤 — delayMs 뒤 브라우저가 한가할 때 켠다. 반환값 = 취소 함수.
+export const APP_CHECK_DELAY_MS = 3000;
+export function startAppCheckSoon(delayMs = APP_CHECK_DELAY_MS) {
+  if (appCheckStarted || typeof window === "undefined") return () => {};
+  let idleId = null;
+  const timer = setTimeout(() => {
+    if (typeof window.requestIdleCallback === "function") idleId = window.requestIdleCallback(startAppCheck, { timeout: 2000 });
+    else startAppCheck();
+  }, delayMs);
+  return () => {
+    clearTimeout(timer);
+    if (idleId !== null && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+  };
 }
 
 const isInitialized = () => {

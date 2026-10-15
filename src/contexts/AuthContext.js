@@ -14,6 +14,7 @@ import {
   db,
   functions,
   isInitialized,
+  startAppCheckSoon,
   authStateListener,
   signInWithEmailAndPassword as fbSignIn,
   signOut as fbSignOut,
@@ -147,6 +148,14 @@ export const AuthProvider = ({ children }) => {
       window.__hideSplash();
     }
   }, [firebaseReady]);
+
+  // App Check 는 로그인한 사람의 첫 화면이 뜬 뒤에 켠다 — 일찍 켜면 첫 읽기가 reCAPTCHA 토큰을
+  // 기다린다(firebaseConfig.startAppCheck 주석). 로그인 화면에서는 안 켠다: 로그인 요청도 토큰을 기다린다.
+  const firstScreenReady = !loading && !!user && !!userDoc;
+  useEffect(() => {
+    if (!firstScreenReady) return undefined;
+    return startAppCheckSoon();
+  }, [firstScreenReady]);
 
   // 대폭 간소화된 학급 구성원만 계산하는 함수
   const calculateClassMembers = useCallback((classMembers, currentUserId) => {

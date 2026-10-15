@@ -9,6 +9,7 @@ export {
   storage,
   functions,
   isInitialized,
+  startAppCheckSoon,
 } from "./firebase/firebaseConfig";
 
 // Utils: DB 로깅, 캐시 시스템
