@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -172,6 +172,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   징검돌을 건넌다. 곡 33(퍼블릭 도메인 선율 20 + 자작 13) · 빙글 여정 24길 + 끝없는 단계 · 모드 10. 음악·수학·영어
   //   문제(5문제 중 4개)로 이용권을 받는다. 계정·개인정보 없음(학교 대항은 학교 합계만).
   { id: "siteBingleStep",        label: "빙글스텝(리듬 걷기)",       icon: "Footprints", url: "https://bingle-step.pages.dev/" },
+  // 2026-10-15 추가 — 블록 샌드박스(3D·여럿이 같이). 블록 1,026 · 아이템 433 · 동물·몹 96 · 바이옴 64 · 차원 4 · 회로 54.
+  //   창작·생존 모드는 문제 풀고 이용권. 작업실에서 블록·아이템·규칙을 만들어 번호로 나눈다(자유 글자 없음 — 낱말 고르기).
+  //   계정·개인정보 없음(이름은 생성 닉네임, 학교 대항은 학교 합계만).
+  { id: "siteBlocknuri",         label: "블록누리(블록 샌드박스)",   icon: "Pickaxe",    url: "https://blocknuri-2c1.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
