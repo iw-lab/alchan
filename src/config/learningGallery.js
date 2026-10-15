@@ -47,6 +47,7 @@ export const LEARNING_GALLERY = {
   siteArtQuest: {"image": "/images/learning/artquest.webp", "tagline": "진짜 명화 222점이 걸린 3D 미술관을 걸으며 잃어버린 이름표를 되찾는다"},
   siteWhirlwood: {"image": "/images/learning/whirlwood.webp", "tagline": "지휘봉을 저으면 숲속 동물 악단이 내 빠르기·셈여림대로 명곡 102곡을 연주한다"},
   siteTinHelmet: {"image": "/images/learning/tinhelmet.webp", "tagline": "태엽 장난감 로봇 군단을 막는 횡스크롤 액션 — 3장 15스테이지, 둘이 같이도 된다"},
+  siteBingleStep: {"image": "/images/learning/bingle-step.webp", "tagline": "두 친구가 색동 끈을 잡고 박자에 맞춰 빙글 돌며 징검돌을 건너는 원버튼 리듬 게임"},
 };
 
 export const galleryInfoFor = (id) => LEARNING_GALLERY[id] || null;

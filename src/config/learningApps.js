@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -168,6 +168,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   3장 15스테이지 · 보스 15종 · 혼자/둘이 같이 · 모드 5. 수학·영어·음악 문제(5문제 중 4개)로 이용권을 받는다.
   //   계정·개인정보 없음(학교 대항은 학교 합계만), 외부 서버 요청 0.
   { id: "siteTinHelmet",         label: "철모특공대(횡스크롤 액션)", icon: "HardHat",    url: "https://tinhelmet.pages.dev/" },
+  // 2026-10-15 추가 — 원버튼 리듬 게임(3D). 색동 끈을 맞잡은 두 친구가 박자에 맞춰 한 번 누를 때마다 빙글 돌며
+  //   징검돌을 건넌다. 곡 33(퍼블릭 도메인 선율 20 + 자작 13) · 빙글 여정 24길 + 끝없는 단계 · 모드 10. 음악·수학·영어
+  //   문제(5문제 중 4개)로 이용권을 받는다. 계정·개인정보 없음(학교 대항은 학교 합계만).
+  { id: "siteBingleStep",        label: "빙글스텝(리듬 걷기)",       icon: "Footprints", url: "https://bingle-step.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
