@@ -49,6 +49,7 @@ export const LEARNING_GALLERY = {
   siteTinHelmet: {"image": "/images/learning/tinhelmet.webp", "tagline": "태엽 장난감 로봇 군단을 막는 횡스크롤 액션 — 3장 15스테이지, 둘이 같이도 된다"},
   siteBingleStep: {"image": "/images/learning/bingle-step.webp", "tagline": "두 친구가 색동 끈을 잡고 박자에 맞춰 빙글 돌며 징검돌을 건너는 원버튼 리듬 게임"},
   siteBlocknuri: {"image": "/images/learning/blocknuri.webp", "tagline": "블록 1,026종으로 친구들과 한 세계를 짓고, 작업실에서 나만의 블록·규칙을 만들어 나눈다"},
+  siteWhileplay: {"image": "/images/learning/whileplay.webp", "tagline": "블록에서 파이썬·자바스크립트까지, 한 단계씩 진짜 게임을 지으며 배우는 코딩 수업 — 12개 프로젝트 62단계"},
 };
 
 export const galleryInfoFor = (id) => LEARNING_GALLERY[id] || null;
