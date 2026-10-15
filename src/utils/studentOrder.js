@@ -7,14 +7,20 @@ import { stripNumberPrefix } from "./alias";
  * 학번 맨 앞에 최대한 크게 써주고」. 화면마다 가나다순 정렬을 따로 들고 있었고, 이름에
  * 「3번 별칭」이 섞여 있어 가나다순이면 10번이 2번보다 먼저 왔다. 정렬은 여기 하나만 쓴다.
  *
- * 번호 출처: users.studentNumber(정수, 운영 실측 61/62) → 없으면 이름 앞 「N번」(buildDisplayName).
+ * 번호 출처: users.studentNumber(정수, 운영 실측 61/62) → 없으면 이름 앞 「N번」(buildDisplayName)
+ * → 없으면 알찬 학생 아이디(`alchan21@<학급>.alchan` → 21). 마지막 줄은 2026-10-15 「꿈꾸는 펭귄」:
+ * 3월에 만든 계정이라 studentNumber 가 비어 「–」로 맨 뒤에 갔다(사용자 「알찬 21로 되어 있잖아」).
  * 번호 없는 사람(교사·관리자·미입력)은 뒤로, 그 안에서는 가나다순.
  */
+const ALCHAN_ID_NUMBER = /^[a-z]*0*(\d{1,3})@[^@\s]+\.alchan$/i;
+
 export const studentNumberOf = (member) => {
   const n = Number(member?.studentNumber);
   if (Number.isInteger(n) && n > 0) return n;
   const m = String(member?.name || member?.nickname || "").match(/^\s*(\d+)\s*번/);
-  return m ? Number(m[1]) : null;
+  if (m) return Number(m[1]);
+  const e = String(member?.email || "").trim().match(ALCHAN_ID_NUMBER);
+  return e && Number(e[1]) > 0 ? Number(e[1]) : null;
 };
 
 /** 화면용 이름에서 「N번 」을 뗀 이름(번호는 따로 크게 보여 준다). */

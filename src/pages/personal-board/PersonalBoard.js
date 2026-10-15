@@ -31,7 +31,7 @@ import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { isBoardUnread, WALL_SEEN_EVENT } from "./wallUnread";
 import { useBackClose } from "../../hooks/useBackClose";
-import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import { compareByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
 import StudentNo from "../../components/ui/StudentNo";
 
 // ── 디자인 헬퍼 ─────────────────────────
@@ -125,7 +125,7 @@ const PersonalBoard = () => {
   // 담벼락 문서엔 학번이 없다 — 학급 구성원에서 찾아 붙인다(utils/studentOrder 의 학번 순·큰 번호)
   const memberById = useMemo(() => new Map((allClassMembers || []).map((m) => [m.id, m])), [allClassMembers]);
   const boardOwner = useCallback(
-    (b) => ({ studentNumber: memberById.get(b.ownerId)?.studentNumber, name: b.ownerName }),
+    (b) => ({ studentNumber: studentNumberOf(memberById.get(b.ownerId)), name: b.ownerName }),
     [memberById],
   );
   const byOwnerNumber = useCallback((a, b) => compareByStudentNumber(boardOwner(a), boardOwner(b)), [boardOwner]);

@@ -32,6 +32,21 @@ describe("학번 정렬", () => {
     expect(studentNumberOf(teacher)).toBeNull();
   });
 
+  it("학번 칸이 빈 옛 계정은 알찬 아이디 숫자로(꿈꾸는 펭귄 = alchan21) · 알찬 계정이 아니면 안 읽는다", () => {
+    expect(studentNumberOf({ name: "꿈꾸는 펭귄", email: "alchan21@bg6quc.alchan" })).toBe(21);
+    expect(studentNumberOf({ name: "가람", email: "alchan03@bg6quc.alchan" })).toBe(3);
+    expect(studentNumberOf({ name: "학생", email: "7@abc123.alchan" })).toBe(7);
+    expect(studentNumberOf({ name: "담임", email: "kim2010@gmail.com" })).toBeNull();
+    expect(studentNumberOf({ name: "관리", email: "simfeelgood@bg6quc.alchan" })).toBeNull();
+    expect(studentNumberOf({ studentNumber: 5, email: "alchan21@x.alchan" })).toBe(5); // 저장된 학번이 먼저
+    const list = sortByStudentNumber([
+      { id: "p", name: "꿈꾸는 펭귄", email: "alchan21@bg6quc.alchan" },
+      { id: "x", name: "나래", studentNumber: 20 },
+      teacher,
+    ]);
+    expect(list.map((m) => m.id)).toEqual(["x", "p", "t"]);
+  });
+
   it("10번이 2번보다 뒤 · 번호 없는 교사는 맨 뒤 · 원본 배열은 그대로", () => {
     const before = roster.map((m) => m.id);
     expect(sortByStudentNumber(roster).map((m) => m.id)).toEqual(["c", "b", "d", "a", "t"]);

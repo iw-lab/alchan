@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 
 import { logger } from "../../utils/logger";
 import { useBackClose } from "../../hooks/useBackClose";
-import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import { compareByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
 import StudentNo from "../ui/StudentNo";
 const DonationHistoryModal = memo(function DonationHistoryModal({
   showDonationHistoryModal,
@@ -165,7 +165,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
           // students 배열에서 학생 정보 추가
           validStudents.forEach((student) => {
             const studentId = student.id || student.uid || student.userId;
-            if (studentId) studentNoMap.set(studentId, student.studentNumber);
+            if (studentId) studentNoMap.set(studentId, studentNumberOf(student));
             const studentName =
               student.name || student.nickname || "알 수 없는 학생";
             if (studentId) {
