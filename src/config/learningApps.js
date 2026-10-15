@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -164,6 +164,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   그 빠르기·셈여림대로 연주한다. 퍼블릭 도메인 명곡 102곡(편곡은 자체) · 모드 8 · 연습실 12레슨. 음악·수학·영어
   //   문제(5문제 중 4개)로 이용권을 받는다. 계정·개인정보 없음(학교 대항은 학교 합계만).
   { id: "siteWhirlwood",         label: "휘휘! 숲속 오케스트라(지휘)", icon: "Music",    url: "https://whirlwood.pages.dev/" },
+  // 2026-10-15 추가 — 횡스크롤 런앤건(메탈 슬러그류) 액션. 적은 사람이 아니라 태엽 장난감 로봇이다(초등용).
+  //   3장 15스테이지 · 보스 15종 · 혼자/둘이 같이 · 모드 5. 수학·영어·음악 문제(5문제 중 4개)로 이용권을 받는다.
+  //   계정·개인정보 없음(학교 대항은 학교 합계만), 외부 서버 요청 0.
+  { id: "siteTinHelmet",         label: "철모특공대(횡스크롤 액션)", icon: "HardHat",    url: "https://tinhelmet.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지

@@ -84,7 +84,7 @@ describe("폴백 기본 목록", () => {
   it("기본 36개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
     // 절대 개수와 "하나도 안 떨어졌다"를 **둘 다** 본다. 앞은 항목이 실수로 지워지는 것을,
     // 뒤는 정규화가 조용히 걸러 내는 것을 잡는다 — 뒤만 두면 목록이 비어도 통과한다.
-    expect(DEFAULT_LEARNING_APPS).toHaveLength(44);   // 2026-10-15 휘휘! 숲속 오케스트라(지휘) — 앞서 명화 탐험대(3D 미술관)
+    expect(DEFAULT_LEARNING_APPS).toHaveLength(45);   // 2026-10-15 철모특공대(횡스크롤 액션) — 앞서 휘휘! 숲속 오케스트라(지휘)
     expect(defaultLearningAppItems()).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
