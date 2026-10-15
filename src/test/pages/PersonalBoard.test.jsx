@@ -184,8 +184,10 @@ describe("담벼락 — 학생", () => {
     const box = screen.getByDisplayValue("내가 쓴 글");
     fireEvent.change(box, { target: { value: "고친 글" } });
     fireEvent.click(screen.getByText("수정 완료"));
-    expect(await screen.findByText("고친 글")).toBeTruthy();
-    expect(screen.getByText("(수정됨)")).toBeTruthy();
+    // 편집칸(textarea)도 «고친 글»을 글자로 들고 있어 그것부터 잡힌다 — 저장된 글이 그려질 때까지 기다린다
+    // (CI 에서만 가끔 «(수정됨) 없음»으로 빨갛던 경합. getDocs 를 30ms 늦추면 매번 재현됐다)
+    expect(await screen.findByText("고친 글", { ignore: "script, style, textarea" })).toBeTruthy();
+    expect(await screen.findByText("(수정됨)")).toBeTruthy();
     const u = fs.updates.find((x) => x.path === `${B}/stu1/posts/p1`);
     expect(u.keys).toEqual(["content", "editedAt"]);
   });
