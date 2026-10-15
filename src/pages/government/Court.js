@@ -8,6 +8,7 @@ import SubmitComplaint from "./SubmitComplaint";
 import ComplaintStatus from "./ComplaintStatus";
 import TrialRoom, { cleanupStaleTrialRooms } from "./TrialRoom";
 import { usePolling } from "../../hooks/usePolling";
+import { numberedStudentName, sortByStudentNumber } from "../../utils/studentOrder";
 import { useBackClose } from "../../hooks/useBackClose";
 
 import { logger } from "../../utils/logger";
@@ -58,7 +59,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
  .filter((user) => user.id !== complaint.complainantId)
  .map((user) => (
  <option key={user.id} value={user.id}>
- {user.name || user.displayName || user.id}
+ {numberedStudentName(user)}
  </option>
  ));
 
@@ -261,7 +262,7 @@ const SettlementModal = ({
  .filter((u) => u.id !== recipientId)
  .map((user) => (
  <option key={user.id} value={user.id}>
- {getUserNameById(user.id)}
+ {numberedStudentName(user)}
  </option>
  ))}
  </select>
@@ -281,7 +282,7 @@ const SettlementModal = ({
  .filter((u) => u.id !== senderId)
  .map((user) => (
  <option key={user.id} value={user.id}>
- {getUserNameById(user.id)}
+ {numberedStudentName(user)}
  </option>
  ))}
  </select>
@@ -604,7 +605,7 @@ const Court = () => {
  // 🔥 [최적화] AuthContext에서 이미 로드한 학급 구성원 사용 (DB 호출 제거)
  useEffect(() => {
  if (!auth.loading && auth.allClassMembers) {
- setUsers(auth.allClassMembers || []);
+ setUsers(sortByStudentNumber(auth.allClassMembers));
  setUsersLoading(false);
  }
  }, [auth.loading, auth.allClassMembers]);

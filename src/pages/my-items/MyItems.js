@@ -15,6 +15,7 @@ import {
 // Firebase
 import { functions, httpsCallable } from "../../firebase";
 import { useBackClose } from "../../hooks/useBackClose";
+import { sortByStudentNumber, numberedStudentName } from "../../utils/studentOrder";
 
 const ITEM_DEFAULT_DURATION_MS = 5 * 60 * 1000;
 
@@ -986,12 +987,12 @@ const MyItems = () => {
                   <option value="" disabled>
                     -- 친구를 선택하세요 --
                   </option>
-                  {classmates.map((classmate) => (
+                  {sortByStudentNumber(classmates).map((classmate) => (
                     <option
                       key={classmate.uid || classmate.id}
                       value={classmate.uid || classmate.id}
                     >
-                      {classmate.name} ({classmate.nickname})
+                      {numberedStudentName(classmate)}
                     </option>
                   ))}
                 </select>

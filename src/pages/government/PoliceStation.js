@@ -10,6 +10,7 @@ import ReportStatus from "./ReportStatus";
 import ReportResults from "./ReportResults";
 import PoliceAdminSettings from "./PoliceAdminSettings";
 import { usePolling } from "../../hooks/usePolling";
+import { numberedStudentName, sortByStudentNumber } from "../../utils/studentOrder";
 import { useBackClose } from "../../hooks/useBackClose";
 
 import { logger } from "../../utils/logger";
@@ -59,7 +60,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
 
  const defendantOptions = users.map((user) => (
  <option key={user.id} value={user.id}>
- {user.name || user.displayName || user.id}
+ {numberedStudentName(user)}
  </option>
  ));
 
@@ -298,7 +299,7 @@ const SettlementModal = ({
  <option value="">-- 선택 --</option>
  {availableSenders.map((user) => (
  <option key={user.id} value={user.id}>
- {getUserNameById(user.id)}
+ {numberedStudentName(user)}
  </option>
  ))}
  </select>
@@ -317,7 +318,7 @@ const SettlementModal = ({
  <option value="">-- 선택 --</option>
  {availableRecipients.map((user) => (
  <option key={user.id} value={user.id}>
- {getUserNameById(user.id)}
+ {numberedStudentName(user)}
  </option>
  ))}
  </select>
@@ -490,8 +491,8 @@ const PoliceStation = () => {
 
  // AuthContext의 classmates 데이터 사용
  if (auth.classmates && auth.classmates.length > 0) {
- // 현재 사용자 포함
- const allUsers = auth.classmates;
+ // 현재 사용자 포함 — 복사본에 넣는다(AuthContext 의 classmates 배열을 직접 바꾸지 않는다)
+ const allUsers = [...auth.classmates];
  if (currentUser && !allUsers.find((u) => u.id === currentUser.id)) {
  allUsers.push({
  id: currentUser.id,
@@ -500,14 +501,14 @@ const PoliceStation = () => {
  ...currentUser,
  });
  }
- setUsers(allUsers);
+ setUsers(sortByStudentNumber(allUsers));
  setUsersLoading(false);
  } else if (!classCode) {
  setUsers([]);
  setUsersLoading(false);
  } else if (polledUsers) {
  // usePolling에서 가져온 데이터 사용
- setUsers(polledUsers);
+ setUsers(sortByStudentNumber(polledUsers));
  setUsersLoading(pollingUsersLoading);
  } else {
  setUsersLoading(pollingUsersLoading);

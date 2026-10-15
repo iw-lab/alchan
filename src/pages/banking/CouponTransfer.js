@@ -6,6 +6,8 @@ import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore
 import { useAuth } from "../../contexts/AuthContext";
 import "./CouponTransfer.css";
 import { logger } from '../../utils/logger';
+import { sortByStudentNumber, plainStudentName } from '../../utils/studentOrder';
+import StudentNo from '../../components/ui/StudentNo';
 
 function CouponTransfer() {
   // AuthContext에서 필요한 모든 데이터를 가져옵니다.
@@ -43,15 +45,10 @@ function CouponTransfer() {
   const adminId = isDelegated ? classAdmin?.id : userDoc?.uid;
   const adminClassCode = userDoc?.classCode;
 
-  // 초기 데이터 설정 및 가나다순 정렬
+  // 초기 데이터 설정 — 학번 순(utils/studentOrder)
   useEffect(() => {
     if (allClassMembers) {
-      const sortedUsers = [...allClassMembers].sort((a, b) => {
-        const nameA = a.name || '';
-        const nameB = b.name || '';
-        return nameA.localeCompare(nameB, 'ko-KR');
-      });
-      setLocalUsers(sortedUsers);
+      setLocalUsers(sortByStudentNumber(allClassMembers));
     }
   }, [allClassMembers]);
 
@@ -63,11 +60,7 @@ function CouponTransfer() {
   }, [userDoc]);
 
   // 화면에 표시할 사용자 목록 (로컬 상태 우선 사용)
-  const users = localUsers.length > 0 ? localUsers : (allClassMembers || []).sort((a, b) => {
-    const nameA = a.name || '';
-    const nameB = b.name || '';
-    return nameA.localeCompare(nameB, 'ko-KR');
-  });
+  const users = localUsers.length > 0 ? localUsers : sortByStudentNumber(allClassMembers);
 
   // 화면에 표시할 현재 사용자 정보 (로컬 상태 우선 사용)
   const displayUserDoc = localUserDoc || userDoc;
@@ -374,8 +367,9 @@ function CouponTransfer() {
                     onChange={() => handleUserSelection(user.id)} 
                   />
                   <span className="checkmark"></span>
+                  <StudentNo member={user} size="xl" />
                   <div className="user-info">
-                    <span className="user-name">{user.name}</span>
+                    <span className="user-name">{plainStudentName(user)}</span>
                     <span className="user-balance">쿠폰: {user.coupons?.toLocaleString() || 0}개</span>
                     {previewAmounts[user.id] !== undefined && (
                       <span className={`preview-amount ${action}`}>

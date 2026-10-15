@@ -36,6 +36,7 @@ import { httpsCallable } from "firebase/functions";
 import { logger } from "../utils/logger";
 import { invalidateCache as invalidateFetchCache } from "../utils/fetchCache";
 import { toast } from "../utils/toast";
+import { sortByStudentNumber } from "../utils/studentOrder";
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -153,20 +154,14 @@ export const AuthProvider = ({ children }) => {
       return { allMembers: [], classmates: [] };
     }
 
-    // 전체 학급 구성원
-    const allMembers = classMembers;
+    // 전체 학급 구성원 — 학번 순(utils/studentOrder). 여기 순서가 학생 목록 화면 전부의 기본값이다
+    const allMembers = sortByStudentNumber(classMembers);
 
-    // 나를 제외한 학급 친구들 (가나다순 정렬)
-    const classmates = allMembers
-      .filter((u) => {
-        const uid = u.id || u.uid;
-        return uid !== currentUserId;
-      })
-      .sort((a, b) => {
-        const nameA = a.name || a.nickname || "";
-        const nameB = b.name || b.nickname || "";
-        return nameA.localeCompare(nameB, "ko");
-      });
+    // 나를 제외한 학급 친구들 (학번 순)
+    const classmates = allMembers.filter((u) => {
+      const uid = u.id || u.uid;
+      return uid !== currentUserId;
+    });
 
     return { allMembers, classmates };
   }, []);

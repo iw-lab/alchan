@@ -52,6 +52,8 @@ import {
 } from "./ui/index";
 import { toast } from "../utils/toast";
 import { confirmDialog } from "../utils/confirmDialog";
+import { sortByStudentNumber, plainStudentName } from "../utils/studentOrder";
+import StudentNo from "./ui/StudentNo";
 
 // 랜덤 비밀번호 생성
 const generatePassword = (length = 8) => {
@@ -150,9 +152,10 @@ const StudentManager = () => {
 
   // 검색 필터링
   const filteredStudents = useMemo(() => {
-    if (!searchTerm) return students;
+    const ordered = sortByStudentNumber(students);
+    if (!searchTerm) return ordered;
     const term = searchTerm.toLowerCase();
-    return students.filter(
+    return ordered.filter(
       (s) =>
         s.name?.toLowerCase().includes(term) ||
         s.studentNumber?.toString().includes(term) ||
@@ -592,11 +595,11 @@ const StudentManager = () => {
                       className="w-4 h-4 rounded"
                     />
                   </TableCell>
-                  <TableCell className="font-medium">
-                    {student.studentNumber || "-"}
+                  <TableCell>
+                    <StudentNo member={student} />
                   </TableCell>
                   <TableCell className="font-semibold">
-                    {student.name}
+                    {plainStudentName(student)}
                   </TableCell>
                   <TableCell className="text-gray-500 text-sm">
                     {student.email}

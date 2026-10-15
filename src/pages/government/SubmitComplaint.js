@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useBackClose } from "../../hooks/useBackClose";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
+import { numberedStudentName } from "../../utils/studentOrder";
 
 // users: 사용자 목록 배열 (예: [{id: 'user1', name: '김민준'}, ...])
 // currentUserId: 현재 로그인한 사용자 ID
@@ -178,7 +179,7 @@ const SubmitComplaint = ({
     .filter((user) => user.id !== currentUserId) // 본인 제외
     .map((user) => (
       <option key={user.id} value={user.id}>
-        {user.name} {/* 필요시 ID도 같이 표시: {user.name} ({user.id}) */}
+        {numberedStudentName(user)}
       </option>
     ));
 

@@ -27,6 +27,7 @@ import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
+import { numberedStudentName } from "../../utils/studentOrder";
 // 재판방 3D 비주얼(CourtroomScene)은 2026-08-03 제거 — 활성화된 적 없는 WIP인데
 // 에셋 11MB를 배포마다 끌고 다녔다. 재판 기능 자체는 아래 패널에서 그대로 동작한다.
 
@@ -740,7 +741,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
                     .filter((u) => u.job === "검사")
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name || u.displayName}
+                        {numberedStudentName(u)}
                       </option>
                     ))}
                 </select>
@@ -757,7 +758,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
                     .filter((u) => u.job === "변호사")
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name || u.displayName}
+                        {numberedStudentName(u)}
                       </option>
                     ))}
                 </select>
@@ -778,7 +779,7 @@ const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
                     )
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name || u.displayName}
+                        {numberedStudentName(u)}
                       </option>
                     ))}
                 </select>

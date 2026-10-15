@@ -2,6 +2,7 @@
 import React, { memo } from "react";
 import { logger } from "../../utils/logger";
 import { useBackClose } from "../../hooks/useBackClose";
+import StudentPicker from "../ui/StudentPicker";
 
 const GiftCouponModal = memo(function GiftCouponModal({
   showGiftCouponModal,
@@ -63,25 +64,16 @@ const GiftCouponModal = memo(function GiftCouponModal({
           <label className="block mb-2 font-medium text-slate-700">
             받는 사람
           </label>
-          <select
+          <StudentPicker
+            members={validRecipients}
             value={giftRecipient}
-            // onChange 핸들러에서 setGiftRecipient가 함수인지 확인
-            onChange={(e) =>
+            onChange={(id) =>
               typeof setGiftRecipient === "function"
-                ? setGiftRecipient(e.target.value)
+                ? setGiftRecipient(id)
                 : logger.error("setGiftRecipient is not a function")
             }
-            className="w-full p-2.5 border border-slate-300 rounded-md text-sm bg-white text-slate-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition"
-          >
-            <option value="">받는 분을 선택하세요</option>
-            {validRecipients
-              .filter((recipient) => recipient.id !== userId)
-              .map((recipient) => (
-                <option key={recipient.id} value={recipient.id}>
-                  {recipient.name} ({recipient.id})
-                </option>
-              ))}
-          </select>
+            excludeId={userId}
+          />
         </div>
         <div className="form-group mb-6">
           <label className="block mb-2 font-medium text-slate-700">

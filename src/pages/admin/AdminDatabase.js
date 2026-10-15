@@ -10,6 +10,7 @@ import {
 } from '../../services/AdminDatabaseService';
 import './AdminDatabase.css';
 import { logger } from '../../utils/logger';
+import { sortByStudentNumber, numberedStudentName } from '../../utils/studentOrder';
 
 const AdminDatabase = () => {
  const { userDoc, allClassMembers } = useAuth();
@@ -465,9 +466,9 @@ const AdminDatabase = () => {
  className="w-full p-2 border rounded-md"
  >
  <option value="all">전체 학생</option>
- {allClassMembers && allClassMembers.map(member => (
+ {sortByStudentNumber(allClassMembers).map(member => (
  <option key={member.id || member.uid} value={member.id || member.id}>
- {member.name || member.nickname || '이름 없음'}
+ {numberedStudentName(member)}
  </option>
  ))}
  </select>

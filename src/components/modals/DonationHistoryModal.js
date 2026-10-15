@@ -5,6 +5,8 @@ import { useAuth } from "../../contexts/AuthContext";
 
 import { logger } from "../../utils/logger";
 import { useBackClose } from "../../hooks/useBackClose";
+import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import StudentNo from "../ui/StudentNo";
 const DonationHistoryModal = memo(function DonationHistoryModal({
   showDonationHistoryModal,
   setShowDonationHistoryModal,
@@ -157,9 +159,13 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
           // 학생 정보를 담을 Map 생성
           const studentInfoMap = new Map();
 
+          // 학번(utils/studentOrder) — 표 맨 앞에 크게, 순서도 학번 순
+          const studentNoMap = new Map();
+
           // students 배열에서 학생 정보 추가
           validStudents.forEach((student) => {
             const studentId = student.id || student.uid || student.userId;
+            if (studentId) studentNoMap.set(studentId, student.studentNumber);
             const studentName =
               student.name || student.nickname || "알 수 없는 학생";
             if (studentId) {
@@ -188,12 +194,12 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
               return {
                 id: studentId,
                 name: studentName,
+                studentNumber: studentNoMap.get(studentId),
                 cumulativeAmount: donationAmount,
                 isCurrentUser: isCurrentUser,
               };
             })
-            // 이름 기준으로 가나다순 정렬 (ㄱ, ㄴ, ㄷ 순)
-            .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+            .sort(compareByStudentNumber);
 
           logger.log("[DonationHistoryModal] 최종 학생 목록:", {
             totalStudents: summary.length,
@@ -327,7 +333,8 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                         }}
                       >
                         <td style={tableStyles.td}>
-                          {student.name}
+                          <StudentNo member={student} size="md" style={{ marginRight: 10, color: "#a5b4fc" }} />
+                          {plainStudentName(student)}
                           {student.isCurrentUser && (
                             <span className="ml-2 text-xs bg-indigo-900/60 text-indigo-300 px-1.5 py-0.5 rounded-lg font-semibold align-middle">
                               나

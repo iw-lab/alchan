@@ -61,6 +61,8 @@ import {
 } from "../../utils/salaryCalculator";
 import { randomId } from "../../utils/randomId";
 import { promptDialog } from "../../utils/promptDialog";
+import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import StudentNo from "../ui/StudentNo";
 
 // 🔒 교사가 학생에게 잠글(숨길) 수 있는 메뉴 항목 목록.
 // 카테고리(isCategory)·관리자전용(adminOnly/superAdminOnly)·위임전용(delegatedOnly)은 제외 —
@@ -1051,6 +1053,7 @@ const AdminSettingsModal = ({
               id: doc.id,
               nickname: userData.nickname || userData.name || "이름 없음",
               name: userData.name || "",
+              studentNumber: userData.studentNumber,
               email: userData.email || "",
               classCode: userClassCode,
               selectedJobIds: userData.selectedJobIds || [],
@@ -1093,6 +1096,7 @@ const AdminSettingsModal = ({
               id: doc.id,
               nickname: userData.nickname || userData.name || "이름 없음",
               name: userData.name || "",
+              studentNumber: userData.studentNumber,
               email: userData.email || "",
               classCode: userData.classCode || "미지정",
               selectedJobIds: userData.selectedJobIds || [],
@@ -1110,6 +1114,10 @@ const AdminSettingsModal = ({
         });
       }
 
+      // 학급별 → 학번 순(utils/studentOrder)
+      studentsList.sort(
+        (a, b) => String(a.classCode).localeCompare(String(b.classCode)) || compareByStudentNumber(a, b),
+      );
       setStudents(studentsList);
 
       try {
@@ -1416,6 +1424,7 @@ const AdminSettingsModal = ({
         usersList.push({
           id: doc.id,
           name: userData.name || userData.nickname || "이름 없음",
+          studentNumber: userData.studentNumber,
           email: userData.email,
           classCode: userData.classCode || "코드 없음",
           isAdmin: userData.isAdmin || false,
@@ -1423,6 +1432,10 @@ const AdminSettingsModal = ({
         });
       });
 
+      // 학급별 → 학번 순(번호 없는 교사·관리자는 학급 안에서 맨 뒤)
+      usersList.sort(
+        (a, b) => String(a.classCode).localeCompare(String(b.classCode)) || compareByStudentNumber(a, b),
+      );
       setClassMembers(usersList);
       logger.log(
         `[AdminSettingsModal] ${usersList.length}명의 구성원 로드 완료`,
@@ -2967,9 +2980,10 @@ const AdminSettingsModal = ({
                                   onChange={() => handleToggleStudentSelection(student.id)}
                                   className="w-4 h-4 accent-indigo-600 flex-shrink-0"
                                 />
+                                <StudentNo member={student} />
                                 <div className="flex-1 min-w-0">
                                   <div className="font-bold text-slate-800 text-sm truncate">
-                                    {student.nickname || student.name || "이름 없음"}
+                                    {plainStudentName({ name: student.nickname || student.name })}
                                   </div>
                                   <div className="text-[11px] text-slate-400 truncate">
                                     {student.email || "-"} · {student.classCode || "미지정"}
@@ -3530,9 +3544,10 @@ const AdminSettingsModal = ({
                         className="rounded-2xl border shadow-sm overflow-hidden flex flex-col"
                         style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
                       >
-                        <div className="px-4 py-3 border-b flex items-start justify-between gap-2" style={{ borderColor: "#f1f5f9" }}>
+                        <div className="px-4 py-3 border-b flex items-center justify-between gap-2" style={{ borderColor: "#f1f5f9" }}>
+                          <StudentNo member={member} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold truncate" style={{ color: "#0f172a" }}>{member.name || "(이름없음)"}</p>
+                            <p className="text-sm font-bold truncate" style={{ color: "#0f172a" }}>{plainStudentName(member)}</p>
                             <p className="text-[11px] mt-0.5 truncate" style={{ color: "#64748b" }}>{member.email}</p>
                           </div>
                           <span

@@ -8,6 +8,8 @@ import "./MoneyTransfer.css";
 import { logger } from "../../utils/logger";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { takeSignature, describeElapsed } from "../../utils/takeSignature";
+import { sortByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
@@ -66,31 +68,11 @@ function MoneyTransfer() {
   const adminName = isDelegated ? classAdmin?.name : userDoc?.name;
   const adminClassCode = userDoc?.classCode;
 
-  // 전체 사용자 목록을 가나다순으로 정렬
-  const users = useMemo(() => {
-    if (!allClassMembers || allClassMembers.length === 0) return [];
-    return [...allClassMembers].sort((a, b) => {
-      const nameA = a.name || a.nickname || "";
-      const nameB = b.name || b.nickname || "";
-      return nameA.localeCompare(nameB, "ko");
-    });
-  }, [allClassMembers]);
+  // 학번 순(utils/studentOrder) — 번호 없는 교사·관리자는 맨 뒤
+  const users = useMemo(() => sortByStudentNumber(allClassMembers), [allClassMembers]);
 
-  const duplicateNameCounts = useMemo(
-    () =>
-      users.reduce((acc, member) => {
-        const key = member.name || member.nickname || "이름없음";
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {}),
-    [users],
-  );
-
+  // 번호 없는 사람(교사 등)만 이름 옆에 구분 정보를 붙인다 — 학생은 앞의 큰 번호가 구분이다
   const getUserIdentityText = useCallback((member) => {
-    if (member.studentNumber) {
-      return `학번 ${member.studentNumber}`;
-    }
-
     if (member.email) {
       return member.email;
     }
@@ -573,16 +555,14 @@ function MoneyTransfer() {
                         className="checkbox-custom"
                       />
                       <span className="checkmark"></span>
+                      <StudentNo member={user} size="xl" />
                       <div className="user-info">
-                        <span className="user-name">
-                          {user.name}
-                          {duplicateNameCounts[user.name] > 1
-                            ? ` (${getUserIdentityText(user)})`
-                            : ""}
-                        </span>
-                        <span className="user-balance">
-                          {getUserIdentityText(user)}
-                        </span>
+                        <span className="user-name">{plainStudentName(user)}</span>
+                        {studentNumberOf(user) === null && (
+                          <span className="user-balance">
+                            {getUserIdentityText(user)}
+                          </span>
+                        )}
                         <span className="user-balance">
                           잔액: {user.cash?.toLocaleString() || 0}
                           {currencyUnit}

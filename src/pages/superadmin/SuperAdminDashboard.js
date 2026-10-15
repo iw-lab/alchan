@@ -65,6 +65,8 @@ import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { useBackClose } from "../../hooks/useBackClose";
+import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 // 탭 목록
 // Cloud Function 참조 (모듈 스코프)
 const listAllAuthUsersFn = httpsCallable(functions, "listAllAuthUsers");
@@ -777,7 +779,7 @@ export default function SuperAdminDashboard() {
         .filter(
           (u) => !u.isAdmin && !u.isSuperAdmin && !u.isTeacher,
         )
-        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        .sort(compareByStudentNumber);
       setClassStudents(students);
     } catch (error) {
       logger.error("학급 상세 로드 오류:", error);
@@ -2229,7 +2231,10 @@ export default function SuperAdminDashboard() {
                       <tbody>
                         {classStudents.map((s) => (
                           <tr key={s.id}>
-                            <td>{s.name || s.nickname || "-"}</td>
+                            <td>
+                              <StudentNo member={s} size="md" style={{ marginRight: 8 }} />
+                              {plainStudentName(s)}
+                            </td>
                             <td className="email-cell">
                               {(s.email || "").split("@")[0] || "-"}
                             </td>

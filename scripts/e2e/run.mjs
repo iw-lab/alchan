@@ -301,6 +301,13 @@ await step("collect-students", async () => {
   st.students.forEach((x) => { x.id = String(x.studentNumber); x.pw = x.studentNumber === 1 ? "pass1111" : `pass${String(x.studentNumber).repeat(4)}`; });
   expect(st.students.length === 4, "학생 4명이 아니다: " + st.students.length);
 });
+// roster(명시 때만 — 학생 이름을 바꾼다): 이름 가나다순 ≠ 학번 순이 되게 해 두고 «학번 순·맨 앞 큰 번호»를 잰다
+if (only.includes("roster")) {
+  await step("roster: 이름을 학번과 어긋나게", async () => {
+    const NAMES = { 1: "하늘", 2: "가람", 3: "다온", 4: "나래" }; // 가나다순이면 2·4·3·1
+    for (const x of st.students) await fdb.doc(`users/${x.uid}`).update({ name: NAMES[x.studentNumber], nickname: NAMES[x.studentNumber] });
+  });
+}
 const S = [];
 for (let i = 0; i < 4; i++) {
   const s = await newSession(`student${i + 1}`);
@@ -308,6 +315,45 @@ for (let i = 0; i < 4; i++) {
   // 에뮬레이터 계정은 거기 없으므로 여기선 학급코드 경로만 잰다(그 CF 는 키가 없으면 fail-closed 로 400 이 정상).
   await step(`student${i + 1}-login`, () => loginStudent(s, st.students[i].id, st.classCode, st.students[i].pw));
   S.push(s);
+}
+
+// ══ 시나리오: 학생 목록 = 학번 순 · 맨 앞 큰 번호 ══════════════════════
+if (only.includes("roster")) {
+  const readNos = (page, sel) => page.locator(sel).evaluateAll((els) => els.map((e) => ({ t: e.textContent, px: parseFloat(getComputedStyle(e).fontSize) })));
+  const ascending = (nos) => {
+    const nums = nos.filter((n) => n.t !== "–").map((n) => Number(n.t));
+    const dashAt = nos.findIndex((n) => n.t === "–");
+    return nums.join() === [...nums].sort((a, b) => a - b).join() && (dashAt === -1 || nos.slice(dashAt).every((n) => n.t === "–"));
+  };
+  for (const [path, sel] of [["/admin/money-transfer", ".money-transfer-container .user-item .student-no"], ["/admin/coupon-transfer", ".coupon-transfer-container .user-item .student-no"]]) {
+    await step(`roster: 교사 ${path}`, async () => {
+      await go(T, path);
+      await T.page.locator(sel).first().waitFor({ timeout: 15000 });
+      const nos = await readNos(T.page, sel);
+      note(`roster${path}`, nos.map((n) => n.t).join(","));
+      expect(nos.filter((n) => n.t !== "–").length >= 4, `${path} 학생 번호 ${nos.length}개`);
+      expect(ascending(nos), `${path} 학번 순 아님: ${nos.map((n) => n.t)}`);
+      expect(nos.every((n) => n.px >= 30), `${path} 번호가 작다: ${nos.map((n) => n.px)}`);
+      await T.page.locator(sel.replace(/ \.user-item \.student-no$/, " .user-list")).screenshot({ path: `${OUT}/roster-list${path.replace(/\//g, "-")}.png` }).catch(() => {});
+      await shot(T.page, `roster${path.replace(/\//g, "-")}`);
+    });
+  }
+  await step("roster: 학생 송금 받는 사람 칸", async () => {
+    await go(S[0], "/my-assets");
+    await S[0].page.getByRole("button", { name: /송금하기/ }).first().click();
+    const sel = '[role="radiogroup"][aria-label="받는 사람"] [role="radio"] .student-no';
+    await S[0].page.locator(sel).first().waitFor({ timeout: 15000 });
+    const nos = await readNos(S[0].page, sel);
+    note("roster/my-assets", nos.map((n) => n.t).join(","));
+    expect(!nos.some((n) => n.t === "1"), "받는 사람에 내(1번)가 있다");
+    expect(nos.filter((n) => n.t !== "–").length >= 3 && ascending(nos), `송금 칸 학번 순 아님: ${nos.map((n) => n.t)}`);
+    expect(nos.every((n) => n.px >= 30), `송금 칸 번호가 작다: ${nos.map((n) => n.px)}`);
+    // 이름이 «노래…»처럼 잘리지 않는다(칸 안에 다 보인다)
+    const clipped = await S[0].page.locator('[role="radiogroup"][aria-label="받는 사람"] [role="radio"] span:last-child').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).length);
+    expect(clipped === 0, `잘린 이름 ${clipped}개`);
+    await S[0].page.locator('[role="radiogroup"][aria-label="받는 사람"]').screenshot({ path: `${OUT}/roster-picker.png` }).catch(() => {});
+    await shot(S[0].page, "roster-my-assets-transfer");
+  });
 }
 
 // ══ 화면 순회(선택) ═════════════════════════════════════════════════
@@ -442,7 +488,10 @@ if (want("money")) {
     const a0 = (await userDoc(st.students[0].uid)).cash, b0 = (await userDoc(st.students[1].uid)).cash;
     await go(S[0], "/my-assets");
     await S[0].page.getByRole("button", { name: /송금하기/ }).first().click();
-    await S[0].page.locator("select").filter({ has: S[0].page.locator("option", { hasText: "받는 분을 선택하세요" }) }).selectOption(st.students[1].uid);
+    // 받는 사람 = 학번 칸(StudentPicker) — 학번 순으로 놓였는지도 본다
+    const order = await S[0].page.locator('[role="radiogroup"][aria-label="받는 사람"] [role="radio"]').evaluateAll((els) => els.map((e) => e.firstElementChild.textContent));
+    expect(order.join(",") === [...order].sort((x, y) => Number(x) - Number(y)).join(","), `받는 사람 칸 학번 순 아님: ${order}`);
+    await S[0].page.locator(`[data-student-id="${st.students[1].uid}"]`).click();
     await S[0].page.getByPlaceholder("송금할 금액을 입력하세요").fill("5000");
     await S[0].page.getByPlaceholder("송금할 금액을 입력하세요").locator("xpath=ancestor::form[1] | ancestor::div[.//button][1]").last().getByRole("button", { name: /^송금$/ }).click();
     await waitFor(async () => (await userDoc(st.students[1].uid)).cash !== b0, { msg: "받는 쪽 잔액 변화" });

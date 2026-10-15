@@ -3,6 +3,7 @@
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { memo } from "react";
 import { useBackClose } from "../../hooks/useBackClose";
+import StudentPicker from "../ui/StudentPicker";
 
 const TransferModal = memo(function TransferModal({
   showTransferModal,
@@ -22,14 +23,8 @@ const TransferModal = memo(function TransferModal({
     handleTransfer();
   };
 
-  // 유효한 수신자 목록 필터링 (본인 제외) 및 가나다순 정렬
-  const validRecipients = recipients
-    .filter((r) => r && r.id && r.id !== userId)
-    .sort((a, b) => {
-      const nameA = a.name || a.nickname || `사용자 ${a.id.substring(0, 6)}`;
-      const nameB = b.name || b.nickname || `사용자 ${b.id.substring(0, 6)}`;
-      return nameA.localeCompare(nameB, "ko");
-    });
+  // 유효한 수신자(본인 제외) — 순서는 StudentPicker 가 학번 순으로 정한다
+  const validRecipients = recipients.filter((r) => r && r.id && r.id !== userId);
 
   // 뒤로가기 = 모달 닫기(기존 닫기 단추와 동일)
   useBackClose(showTransferModal, () => setShowTransferModal(false));
@@ -84,32 +79,13 @@ const TransferModal = memo(function TransferModal({
             >
               받는 사람
             </label>
-            <select
+            <StudentPicker
+              members={validRecipients}
               value={transferRecipient}
-              onChange={(e) => setTransferRecipient(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer"
-              style={{
-                backgroundColor: "var(--bg-input)",
-                border: "1px solid #e2e8f0",
-                color: "var(--text-primary)",
-              }}
-              required
-            >
-              <option value="">받는 분을 선택하세요</option>
-              {validRecipients.length > 0 ? (
-                validRecipients.map((recipient) => (
-                  <option key={recipient.id} value={recipient.id}>
-                    {recipient.name ||
-                      recipient.nickname ||
-                      `사용자 ${recipient.id.substring(0, 6)}`}
-                  </option>
-                ))
-              ) : (
-                <option value="" disabled>
-                  송금 가능한 학급 친구가 없습니다
-                </option>
-              )}
-            </select>
+              onChange={setTransferRecipient}
+              excludeId={userId}
+              emptyText="송금 가능한 학급 친구가 없습니다"
+            />
             {validRecipients.length === 0 && (
               <p className="mt-2 text-xs" style={{ color: "#ff3366" }}>
                 ⚠️ 같은 학급의 다른 사용자가 없거나 데이터를 불러오는 중입니다.

@@ -14,6 +14,8 @@ import {
 import { Shield, CheckCircle, Search, Users } from "lucide-react";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
+import { compareByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 
 // 위임 가능한 권한 목록
 const PERMISSION_TYPES = [
@@ -58,7 +60,7 @@ const AdminPermissionManager = () => {
       const studentList = snapshot.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((u) => !u.isSuperAdmin)
-        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        .sort(compareByStudentNumber);
       setStudents(studentList);
     } catch (error) {
       logger.error("[AdminPermissionManager] 학생 목록 로드 실패:", error);
@@ -111,7 +113,7 @@ const AdminPermissionManager = () => {
     return students.filter(
       (s) =>
         (s.name || "").toLowerCase().includes(term) ||
-        (s.number?.toString() || "").includes(term),
+        String(studentNumberOf(s) ?? "").includes(term),
     );
   }, [students, searchTerm]);
 
@@ -222,12 +224,12 @@ const AdminPermissionManager = () => {
                 }}
               >
                 <div className="p-3 flex items-center gap-3">
+                  <StudentNo member={student} />
                   {/* 학생 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-slate-800">
-                        {student.number ? `${student.number}번 ` : ""}
-                        {student.name || "이름 없음"}
+                        {plainStudentName(student)}
                       </span>
                       {student.job && (
                         <span

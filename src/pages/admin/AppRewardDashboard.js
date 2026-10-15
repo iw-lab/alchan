@@ -28,6 +28,8 @@ import { promptDialog } from "../../utils/promptDialog";
 import { toast } from "../../utils/toast";
 import { logger } from "../../utils/logger";
 import { useBackClose } from "../../hooks/useBackClose";
+import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 
 /** KST 기준 오늘(YYYYMMDD). 서버(`learningRules.kstDayKey`)와 **같은 규칙**이어야 한다. */
 function kstDayKey(ms = Date.now()) {
@@ -102,9 +104,15 @@ export default function AppRewardDashboard() {
     [classmates],
   );
   const nameOf = useMemo(() => {
-    const map = new Map(students.map((s) => [s.id || s.uid, s.name || s.nickname || "이름 없음"]));
+    const map = new Map(students.map((s) => [s.id || s.uid, plainStudentName(s)]));
     return (uid) => map.get(uid) || `${String(uid).slice(0, 6)}…`;
   }, [students]);
+  // 표의 학생 줄은 학번 순 + 맨 앞 큰 번호(utils/studentOrder) — 명단에 없는 uid 는 맨 뒤
+  const memberOf = useMemo(() => {
+    const map = new Map(students.map((s) => [s.id || s.uid, s]));
+    return (uid) => map.get(uid) || { name: nameOf(uid) };
+  }, [students, nameOf]);
+  const byUidNumber = useCallback((a, b) => compareByStudentNumber(memberOf(a.uid), memberOf(b.uid)), [memberOf]);
 
   // ── 보상 지급 + 경보 ──────────────────────────────────────────
   const loadRewards = useCallback(async () => {
@@ -228,8 +236,8 @@ export default function AppRewardDashboard() {
       cur.apps.push({ appId: r.appId, sec: r.sec, events: r.events, best: r.best });
       map.set(r.uid, cur);
     }
-    return [...map.values()].sort((a, b) => b.sec - a.sec);
-  }, [learning]);
+    return [...map.values()].sort(byUidNumber);
+  }, [learning, byUidNumber]);
 
   const t = rewards?.totals;
   const caps = rewards?.caps;
@@ -381,11 +389,11 @@ export default function AppRewardDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rewards.students.map((s) => {
+                    {[...rewards.students].sort(byUidNumber).map((s) => {
                       const st = LEVEL_STYLE[s.level] || LEVEL_STYLE.ok;
                       return (
                         <tr key={s.uid} style={{ borderTop: "1px solid #f1f5f9" }}>
-                          <Td>{nameOf(s.uid)}</Td>
+                          <Td><StudentNo member={memberOf(s.uid)} size="md" style={{ marginRight: 8 }} />{nameOf(s.uid)}</Td>
                           <Td right>{num(s.cash)}</Td>
                           <Td right>{num(s.coupon)}</Td>
                           <Td right>{num(s.count)}{s.clawedCount > 0 ? ` (되돌림 ${s.clawedCount})` : ""}</Td>
@@ -508,7 +516,7 @@ export default function AppRewardDashboard() {
                 <tbody>
                   {learningByStudent.map((s) => (
                     <tr key={s.uid} style={{ borderTop: "1px solid #f1f5f9" }}>
-                      <Td>{nameOf(s.uid)}</Td>
+                      <Td><StudentNo member={memberOf(s.uid)} size="md" style={{ marginRight: 8 }} />{nameOf(s.uid)}</Td>
                       <Td right>
                         <span className="inline-flex items-center gap-1" style={{ color: "#0f172a", fontWeight: 700 }}>
                           <Clock size={12} color="#94a3b8" />{Math.round(s.sec / 60)}분

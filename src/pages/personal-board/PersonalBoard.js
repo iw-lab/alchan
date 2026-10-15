@@ -6,7 +6,7 @@
 //  - 쓰던 글·댓글은 기기(localStorage)에 임시 저장 → 새로고침·탭 전환에도 남는다. 올리면 지운다.
 //  - 학생이 글을 올리면 판 문서 lastPostAt, 교사가 판을 열면 teacherSeenAt → «새 글» 표시·사이드바 배지.
 //  - 남의 판을 열면 주소에 ?board=<uid> 를 남겨, 브라우저·폰 «뒤로가기»가 담벼락 첫 화면으로 돌아온다.
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
@@ -31,6 +31,8 @@ import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { isBoardUnread, WALL_SEEN_EVENT } from "./wallUnread";
 import { useBackClose } from "../../hooks/useBackClose";
+import { compareByStudentNumber, plainStudentName } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 
 // ── 디자인 헬퍼 ─────────────────────────
 const AVATAR_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#14b8a6", "#3b82f6", "#a855f7"];
@@ -119,7 +121,14 @@ const VisBadge = ({ v }) => (
 );
 
 const PersonalBoard = () => {
-  const { user, userDoc, isAdmin: isAdminFn, loading: authLoading } = useAuth();
+  const { user, userDoc, isAdmin: isAdminFn, loading: authLoading, allClassMembers } = useAuth();
+  // 담벼락 문서엔 학번이 없다 — 학급 구성원에서 찾아 붙인다(utils/studentOrder 의 학번 순·큰 번호)
+  const memberById = useMemo(() => new Map((allClassMembers || []).map((m) => [m.id, m])), [allClassMembers]);
+  const boardOwner = useCallback(
+    (b) => ({ studentNumber: memberById.get(b.ownerId)?.studentNumber, name: b.ownerName }),
+    [memberById],
+  );
+  const byOwnerNumber = useCallback((a, b) => compareByStudentNumber(boardOwner(a), boardOwner(b)), [boardOwner]);
   const currentUserId = user?.uid || userDoc?.id;
   const currentUserName = userDoc?.name || userDoc?.nickname || "이름없음";
   const classCode = userDoc?.classCode;
@@ -240,7 +249,7 @@ const PersonalBoard = () => {
     setRosterLoading(true);
     try {
       const snap = await getDocs(boardsCol(classCode));
-      setRoster(snap.docs.map((d) => ({ ownerId: d.id, ...d.data() })).sort((a, b) => (a.ownerName || "").localeCompare(b.ownerName || "")));
+      setRoster(snap.docs.map((d) => ({ ownerId: d.id, ...d.data() })));
     } catch (e) {
       logger.error("[담벼락] 명단 로드 오류:", e);
     } finally {
@@ -253,7 +262,7 @@ const PersonalBoard = () => {
     try {
       const snap = await getDocs(query(boardsCol(classCode), where("visibility", "==", "class")));
       setClassBoards(
-        snap.docs.map((d) => ({ ownerId: d.id, ...d.data() })).filter((b) => b.ownerId !== currentUserId).sort((a, b) => (a.ownerName || "").localeCompare(b.ownerName || "")),
+        snap.docs.map((d) => ({ ownerId: d.id, ...d.data() })).filter((b) => b.ownerId !== currentUserId),
       );
     } catch (e) {
       logger.error("[담벼락] 학급 담벼락 로드 오류:", e);
@@ -641,14 +650,15 @@ const PersonalBoard = () => {
             <EmptyBox emoji="🧑‍🏫" title="아직 담벼락을 시작한 학생이 없어요" desc="학생이 담벼락에 처음 들어가면 여기에 나타납니다." />
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 10 }}>
-              {[...roster].sort((a, b) => isBoardUnread(b) - isBoardUnread(a)).map((b) => {
+              {[...roster].sort(byOwnerNumber).map((b) => {
                 const v = b.visibility === "class" ? "class" : "private";
                 const unread = isBoardUnread(b);
                 return (
                   <div key={b.ownerId} style={{ ...CARD, padding: 14, display: "flex", flexDirection: "column", gap: 10, ...(unread ? { borderColor: "#fca5a5" } : null) }}>
                     <button onClick={() => openBoard(b)} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+                      <StudentNo member={boardOwner(b)} />
                       <Avatar name={b.ownerName} size={38} />
-                      <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.98rem" }}>{b.ownerName || "이름없음"}</span>
+                      <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.98rem" }}>{plainStudentName(boardOwner(b))}</span>
                       {unread && (
                         <span style={{ marginLeft: "auto", background: "#ef4444", color: "#fff", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>새 글</span>
                       )}
@@ -740,10 +750,11 @@ const PersonalBoard = () => {
           <EmptyBox emoji="🙌" title="아직 공개된 담벼락이 없어요" desc="친구가 담벼락을 학급에 공개하면 여기에 나타나요." />
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
-            {classBoards.map((b) => (
+            {[...classBoards].sort(byOwnerNumber).map((b) => (
               <button key={b.ownerId} onClick={() => openBoard(b)} style={{ ...CARD, padding: 14, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
+                <StudentNo member={boardOwner(b)} />
                 <Avatar name={b.ownerName} size={38} />
-                <span style={{ fontWeight: 700, color: "#334155" }}>{b.ownerName || "이름없음"}</span>
+                <span style={{ fontWeight: 700, color: "#334155" }}>{plainStudentName(boardOwner(b))}</span>
               </button>
             ))}
           </div>

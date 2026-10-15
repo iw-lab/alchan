@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
+import { numberedStudentName } from "../../utils/studentOrder";
 
 const SubmitReport = ({
   onSubmitReport,
@@ -111,7 +112,7 @@ const SubmitReport = ({
             <option value="">신고할 사람을 선택하세요</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.name}
+                {numberedStudentName(user)}
               </option>
             ))}
           </select>
@@ -133,7 +134,7 @@ const SubmitReport = ({
               .filter((user) => user.id !== reportData.reportedUserId)
               .map((user) => (
                 <option key={user.id} value={user.id}>
-                  {user.name}
+                  {numberedStudentName(user)}
                 </option>
               ))}
           </select>

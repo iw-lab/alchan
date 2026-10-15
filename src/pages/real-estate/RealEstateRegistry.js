@@ -37,6 +37,8 @@ import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
 import { useBackClose } from "../../hooks/useBackClose";
+import { sortByStudentNumber, plainStudentName, numberedStudentName } from "../../utils/studentOrder";
+import StudentNo from "../../components/ui/StudentNo";
 
 const DEFAULT_SETTINGS = {
   totalProperties: 30,
@@ -310,7 +312,7 @@ const RealEstateRegistry = () => {
 
     // AuthContext에서 이미 학급 구성원 데이터를 제공하므로 재사용
     if (allClassMembers && allClassMembers.length > 0) {
-      setAllUsersData(allClassMembers);
+      setAllUsersData(sortByStudentNumber(allClassMembers));
       setUsersLoading(false);
     } else {
       // AuthContext에서 데이터가 없을 경우에만 직접 조회
@@ -322,7 +324,7 @@ const RealEstateRegistry = () => {
       getDocs(usersQuery)
         .then((snapshot) => {
           setAllUsersData(
-            snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+            sortByStudentNumber(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
           );
         })
         .catch((error) => {
@@ -2400,7 +2402,8 @@ const RealEstateRegistry = () => {
                           })}
                           style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
                         />
-                        <span style={{ fontWeight: '500', color: '#0f172a', flex: 1 }}>{user.name}</span>
+                        <StudentNo member={user} size="md" />
+                        <span style={{ fontWeight: '500', color: '#0f172a', flex: 1 }}>{plainStudentName(user)}</span>
                         <button
                           onClick={() => handleAdminAssignSeat(user.id, user.name)}
                           disabled={operationLoading}
@@ -2458,7 +2461,7 @@ const RealEstateRegistry = () => {
                         <select value={giveUserId} onChange={(e) => setGiveUserId(e.target.value)}>
                           <option value="">— 학생 선택 —</option>
                           {students.map((u) => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
+                            <option key={u.id} value={u.id}>{numberedStudentName(u)}</option>
                           ))}
                         </select>
                       </div>
