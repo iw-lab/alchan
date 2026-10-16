@@ -175,7 +175,7 @@ export const DEFAULT_LEARNING_APPS = [
   // 2026-10-15 추가 — 블록 샌드박스(3D·여럿이 같이). 블록 1,026 · 아이템 433 · 동물·몹 96 · 바이옴 64 · 차원 4 · 회로 54.
   //   창작·생존 모드는 문제 풀고 이용권. 작업실에서 블록·아이템·규칙을 만들어 번호로 나눈다(자유 글자 없음 — 낱말 고르기).
   //   계정·개인정보 없음(이름은 생성 닉네임, 학교 대항은 학교 합계만).
-  { id: "siteBlocknuri",         label: "블록누리(블록 샌드박스)",   icon: "Pickaxe",    url: "https://blocknuri-2c1.pages.dev/" },
+  { id: "siteBlocknuri",         label: "블록누리(블록 샌드박스)",   icon: "Pickaxe",    url: "https://blocknuri-2xd.pages.dev/" },
   // 2026-10-15 추가 — 코딩 수업(블록 → 파이썬·자바스크립트). 프로젝트 12개 · 62단계 · 확인 항목 362 · 자유 만들기(그림 22).
   //   로그인 없이 바로 만들기(그 기기 저장) · 학급 코드로 들어오면 반 작품 모아보기. 학생 실명 없음(번호로 입장).
   { id: "siteWhileplay",         label: "와일플레이 코드스쿨(코딩 수업)", icon: "Code", url: "https://whileplay.pages.dev/" },
