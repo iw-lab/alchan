@@ -17,7 +17,7 @@ import { useMenuLocks } from "../../contexts/MenuLocksContext";
 import { getLearningAppItems, loadLearningAppItems, LEARNING_APPS_CHANGED } from "../../services/learningAppRegistry";
 import { launchLearningApp } from "../../services/appLaunch";
 import { loadFavorites, toggleFavorite, recordUse, pinnedSections } from "../../services/learningAppFavorites";
-import { galleryInfoFor } from "../../config/learningGallery";
+import { galleryInfoFor, GALLERY_SUBJECTS, GALLERY_KINDS } from "../../config/learningGallery";
 
 /** 검색: 이름·한 줄 소개에 들어 있으면 통과(대소문자·앞뒤 공백 무시). 빈 검색어는 전부. */
 export function filterApps(apps, query) {
@@ -27,6 +27,43 @@ export function filterApps(apps, query) {
     const info = galleryInfoFor(a.id);
     return `${a.label} ${info?.tagline || ""}`.toLowerCase().includes(q);
   });
+}
+
+/** 카테고리: 과목 하나·종류 하나를 고르면 둘 다 붙은 앱만(고르지 않은 줄은 통과). 태그는 갤러리 정보(learningGallery.js)에서 온다. */
+export function filterByTags(apps, subject, kind) {
+  if (!subject && !kind) return apps;
+  return apps.filter((a) => {
+    const tags = galleryInfoFor(a.id)?.tags || [];
+    return (!subject || tags.includes(subject)) && (!kind || tags.includes(kind));
+  });
+}
+
+function ChipRow({ label, all, options, value, onChange, apps }) {
+  // 앱이 하나도 없는 칸은 숨긴다(눌러도 빈 화면이 되는 칸 금지). 숫자는 «지금 다른 줄 선택» 기준.
+  const counts = options.map((o) => [o, apps.filter((a) => (galleryInfoFor(a.id)?.tags || []).includes(o)).length]).filter(([o, n]) => n > 0 || o === value);
+  const chip = (key, text, n, active, onClick) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+      style={active
+        ? { background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }
+        : { background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-primary)" }}
+    >
+      {text}{n != null ? <span className="ml-1 opacity-70">{n}</span> : null}
+    </button>
+  );
+  return (
+    <div className="flex items-start gap-2 mb-2" role="group" aria-label={`${label}로 고르기`}>
+      <span className="shrink-0 w-10 pt-1.5 text-xs font-bold" style={{ color: "var(--text-muted)" }}>{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {chip("_all", all, apps.length, !value, () => onChange(""))}
+        {counts.map(([o, n]) => chip(o, o, n, value === o, () => onChange(value === o ? "" : o)))}
+      </div>
+    </div>
+  );
 }
 
 function Thumb({ app, info }) {
@@ -122,6 +159,8 @@ export default function LearningSitesGallery() {
   const [favs, setFavs] = useState([]);
   const [useTick, setUseTick] = useState(0);
   const [query, setQuery] = useState("");
+  const [subject, setSubject] = useState("");
+  const [kind, setKind] = useState("");
   useEffect(() => { setFavs(loadFavorites(favUid)); }, [favUid]);
 
   // 교사가 잠근 앱은 학생에게 숨긴다(사이드바와 같은 규칙). 교사 본인은 전부 본다.
@@ -129,7 +168,8 @@ export default function LearningSitesGallery() {
     () => items.filter((a) => a.externalUrl && (isAdmin || !(lockedItemIds || []).includes(a.id))),
     [items, isAdmin, lockedItemIds],
   );
-  const filtered = useMemo(() => filterApps(visible, query), [visible, query]);
+  const searched = useMemo(() => filterApps(visible, query), [visible, query]);
+  const filtered = useMemo(() => filterByTags(searched, subject, kind), [searched, subject, kind]);
   const pinned = useMemo(() => {
     void useTick; void favs;      // 열 때마다·별을 바꿀 때마다 다시 센다
     return pinnedSections(favUid, visible);
@@ -142,7 +182,11 @@ export default function LearningSitesGallery() {
   }, [favUid]);
   const onToggleFav = useCallback((id) => setFavs(toggleFavorite(favUid, id)), [favUid]);
 
-  const searching = query.trim().length > 0;
+  const tagged = !!(subject || kind);
+  const searching = query.trim().length > 0 || tagged;
+  const resultTitle = tagged
+    ? `${[subject, kind].filter(Boolean).join(" · ")} ${filtered.length}개`
+    : `검색 결과 ${filtered.length}개`;
   return (
     <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-6">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
@@ -164,6 +208,11 @@ export default function LearningSitesGallery() {
         </label>
       </div>
 
+      <div className="mb-6">
+        <ChipRow label="과목" all="모든 과목" options={GALLERY_SUBJECTS} value={subject} onChange={setSubject} apps={filterByTags(searched, "", kind)} />
+        <ChipRow label="종류" all="모든 종류" options={GALLERY_KINDS} value={kind} onChange={setKind} apps={filterByTags(searched, subject, "")} />
+      </div>
+
       {!searching && (
         <>
           <Section title="★ 내 즐겨찾기" apps={pinned.favorites} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
@@ -171,7 +220,7 @@ export default function LearningSitesGallery() {
         </>
       )}
       {filtered.length > 0 ? (
-        <Section title={searching ? `검색 결과 ${filtered.length}개` : "전체"} apps={filtered} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
+        <Section title={searching ? resultTitle : "전체"} apps={filtered} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
       ) : (
         <p className="text-sm py-10 text-center" style={{ color: "var(--text-muted)" }}>찾는 사이트가 없어요. 다른 말로 찾아보세요.</p>
       )}

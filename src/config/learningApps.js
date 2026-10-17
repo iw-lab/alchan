@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, Wand,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, Wand,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -183,6 +183,10 @@ export const DEFAULT_LEARNING_APPS = [
   //   «지혜의 샘»에서 문제 10개 중 8개를 맞히면 별빛(쉬는 시간) 10분 — 수학·영어·국어·과학·사회 등 약 5만 문항.
   //   계정·개인정보 없음(진행은 그 기기에 저장) · 같은 사냥터 친구와 같이 사냥(채팅 없음).
   { id: "siteStarlightHeroes",   label: "별빛 용사단(3D 모험 RPG)",   icon: "Wand",       url: "https://starlight-heroes.pages.dev/" },
+  // 2026-10-17 추가 — 타자 연습 + 땅따먹기. 문장을 치면 우리 학교 깃발이 한국 지도(11,519칸)·세계 지도(9,000칸)에 꽂힌다.
+  //   문장 1,320개(속담·명심보감·논어·채근담·이솝 등 저작권 끝난 글 + 자작) · 모드 4종(깃발 꽂기·60초 돌격·성벽 쌓기·오늘의 문장).
+  //   계정·개인정보 없음(학교는 NEIS 목록에서 고르기만, 순위는 학교 합계).
+  { id: "siteTajawangguk",       label: "타자왕국 키우기(타자 땅따먹기)", icon: "MapPinned", url: "https://tajawangguk.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지

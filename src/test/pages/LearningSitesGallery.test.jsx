@@ -13,9 +13,9 @@ vi.mock("../../services/learningAppRegistry", async () => {
   const { defaultLearningAppItems } = await import("../../config/learningApps");
   return { getLearningAppItems: () => defaultLearningAppItems(), loadLearningAppItems: () => Promise.resolve(defaultLearningAppItems()), LEARNING_APPS_CHANGED: "learningApps:changed" };
 });
-import LearningSitesGallery, { filterApps } from "../../pages/learning/LearningSitesGallery";
+import LearningSitesGallery, { filterApps, filterByTags } from "../../pages/learning/LearningSitesGallery";
 import { DEFAULT_LEARNING_APPS } from "../../config/learningApps";
-import { LEARNING_GALLERY } from "../../config/learningGallery";
+import { LEARNING_GALLERY, GALLERY_SUBJECTS, GALLERY_KINDS } from "../../config/learningGallery";
 
 // test/setup.js 가 localStorage 를 «아무것도 저장 안 하는 vi.fn()» 으로 바꿔 둔다 — 즐겨찾기·사용 기록은 진짜 저장소가 있어야 시험할 수 있다.
 const mem = new Map();
@@ -36,6 +36,23 @@ describe("갤러리 데이터", () => {
   it("썸네일 파일이 두 앱에 겹쳐 쓰이지 않는다(다른 앱 그림이 붙는 사고 방지)", () => {
     const imgs = Object.values(LEARNING_GALLERY).map((g) => g.image);
     expect(new Set(imgs).size).toBe(imgs.length);
+  });
+});
+
+describe("카테고리", () => {
+  it("모든 앱이 종류 태그를 하나 이상 갖고, 태그는 정해진 낱말뿐이다(오타 태그 = 아무 칸에도 안 잡히는 앱)", () => {
+    const vocab = new Set([...GALLERY_SUBJECTS, ...GALLERY_KINDS]);
+    for (const a of DEFAULT_LEARNING_APPS) {
+      const tags = LEARNING_GALLERY[a.id]?.tags || [];
+      expect(tags.some((t) => GALLERY_KINDS.includes(t)), `${a.id} 종류 태그`).toBe(true);
+      for (const t of tags) expect(vocab.has(t), `${a.id} → «${t}»`).toBe(true);
+    }
+  });
+  it("과목·종류를 둘 다 고르면 둘 다 붙은 앱만", () => {
+    const apps = [{ id: "siteBeatOn" }, { id: "siteWhirlwood" }, { id: "siteMathCastle" }];
+    expect(filterByTags(apps, "음악", "").map((a) => a.id)).toEqual(["siteBeatOn", "siteWhirlwood"]);
+    expect(filterByTags(apps, "음악", "학교 대항").map((a) => a.id)).toEqual(["siteWhirlwood"]);
+    expect(filterByTags(apps, "", "")).toHaveLength(3);
   });
 });
 
@@ -63,6 +80,18 @@ describe("LearningSitesGallery", () => {
     expect(screen.getAllByRole("button", { name: /열기$/ })).toHaveLength(1);
     fireEvent.change(box, { target: { value: "zzzz없음" } });
     expect(screen.getByText(/찾는 사이트가 없어요/)).toBeTruthy();
+  });
+
+  it("카테고리 칸을 누르면 그 앱만 남고, 다시 누르면 풀린다", () => {
+    render(<LearningSitesGallery />);
+    const n = DEFAULT_LEARNING_APPS.filter((a) => LEARNING_GALLERY[a.id].tags.includes("타자")).length;
+    const chip = within(screen.getByRole("group", { name: "종류로 고르기" })).getByRole("button", { name: new RegExp(`^타자${n}$`) });
+    fireEvent.click(chip);
+    expect(screen.getAllByRole("button", { name: /열기$/ })).toHaveLength(n);
+    expect(screen.getByRole("button", { name: "타자왕국 키우기(타자 땅따먹기) 열기" })).toBeTruthy();
+    fireEvent.click(chip);
+    const all = screen.getByText("전체").closest("section");
+    expect(within(all).getAllByRole("button", { name: /열기$/ })).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
   it("교사가 잠근 앱은 학생에게 안 보이고 교사에게는 보인다", () => {
