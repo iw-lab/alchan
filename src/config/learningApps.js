@@ -188,6 +188,7 @@ export const DEFAULT_LEARNING_APPS = [
   //   계정·개인정보 없음(학교는 NEIS 목록에서 고르기만, 순위는 학교 합계).
   { id: "siteTajawangguk",       label: "타자왕국 키우기(타자 땅따먹기)", icon: "MapPinned", url: "https://tajawangguk.pages.dev/" },
   { id: "siteKkeutjinhwa",       label: "끝까지 진화(진화 생존 게임)", icon: "Dna", url: "https://kkeutjinhwa.pages.dev/" },
+  { id: "siteGongbuSnack",       label: "공부냥 간식가게(고양이 가게 게임)", icon: "Cat", url: "https://gongbu-snack.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
