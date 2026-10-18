@@ -52,6 +52,7 @@ export const LEARNING_GALLERY = {
   siteWhileplay: {"image": "/images/learning/whileplay.webp", "tagline": "블록에서 파이썬·자바스크립트까지, 한 단계씩 진짜 게임을 지으며 배우는 코딩 수업 — 12개 프로젝트 62단계", "tags": ["정보","만들기"]},
   siteStarlightHeroes: {"image": "/images/learning/starlight-heroes.webp", "tagline": "문제를 풀어 별빛을 모아 다섯 직업 용사로 10개 지역 몬스터 100종과 싸우는 3D 모험 RPG", "tags": ["수학","영어","국어","과학","사회","3D","액션"]},
   siteTajawangguk: {"image": "/images/learning/tajawangguk.webp", "tagline": "한 문장 칠 때마다 우리 학교 깃발이 한 칸 — 한국·세계 지도를 학교끼리 나눠 갖는 타자 땅따먹기", "tags": ["국어","타자","학교 대항"]},
+  siteKkeutjinhwa: {"image": "/images/learning/kkeutjinhwa.webp", "tagline": "원시 세포로 태어나 바다에서 뭍으로 — 먹고, 진화하고, 마지막 한 생명까지 버티는 실시간 생존 게임", "tags": ["여러 과목","액션","3D","학교 대항"]},
 };
 
 // 카테고리(킹수학처럼 두 줄로 고른다 — 2026-10-17 사용자 «카테고리도 만들어줘»). 과목은 그 앱이 실제로 내는 문제의 과목,

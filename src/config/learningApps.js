@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -187,6 +187,7 @@ export const DEFAULT_LEARNING_APPS = [
   //   문장 1,320개(속담·명심보감·논어·채근담·이솝 등 저작권 끝난 글 + 자작) · 모드 4종(깃발 꽂기·60초 돌격·성벽 쌓기·오늘의 문장).
   //   계정·개인정보 없음(학교는 NEIS 목록에서 고르기만, 순위는 학교 합계).
   { id: "siteTajawangguk",       label: "타자왕국 키우기(타자 땅따먹기)", icon: "MapPinned", url: "https://tajawangguk.pages.dev/" },
+  { id: "siteKkeutjinhwa",       label: "끝까지 진화(진화 생존 게임)", icon: "Dna", url: "https://kkeutjinhwa.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
