@@ -55,6 +55,7 @@ export const LEARNING_GALLERY = {
   siteKkeutjinhwa: {"image": "/images/learning/kkeutjinhwa.webp", "tagline": "원시 세포로 태어나 바다에서 뭍으로 — 먹고, 진화하고, 마지막 한 생명까지 버티는 실시간 생존 게임", "tags": ["여러 과목","액션","3D","학교 대항"]},
   siteGongbuSnack: {"image": "/images/learning/gongbu-snack.webp", "tagline": "고양이 손님에게 간식을 만들어 건네는 가게 게임 — 가끔 오는 «셈 손님»의 계산을 도우며 1~6학년 셈을 익힌다", "tags": ["수학","키우기·경영","학교 대항"]},
   siteDokdoLog: {"image": "/images/learning/dokdo-log.webp", "tagline": "울릉도에서 배를 타고 독도까지 — 항해·섬 탐사·기록 징검다리 미니게임 셋으로 독도의 지리와 역사 기록을 익힌다", "tags": ["사회","공부·연습","학교 대항"]},
+  siteDokkaebiRoad: {"image": "/images/learning/dokkaebi-road.webp", "tagline": "도깨비를 쫓아 조선 장터 골목을 달리는 3D 러너 — 앞에 선 홍살문 세 개가 곧 보기, 레인을 바꿔 3~6학년 다섯 과목 문제를 맞힌다", "tags": ["여러 과목","액션","3D","학교 대항"]},
 };
 
 // 카테고리(킹수학처럼 두 줄로 고른다 — 2026-10-17 사용자 «카테고리도 만들어줘»). 과목은 그 앱이 실제로 내는 문제의 과목,
