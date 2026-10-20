@@ -192,6 +192,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteDokdoLog",          label: "독도 탐사 일지(독도의 날 학습 미니게임)", icon: "Ship", url: "https://dokdo-log.pages.dev/" },
   { id: "siteDokkaebiRoad",      label: "도깨비 장터길(달리며 푸는 문제 러너)", icon: "PersonStanding", url: "https://dokkaebi-road.pages.dev/" },
   { id: "siteHobakbul",          label: "호박불 마을(핼러윈 등불 켜기 학습 게임)", icon: "Lamp", url: "https://hobakbul.pages.dev/" },
+  { id: "siteGuguGuardians2D",   label: "구구성 수호대 2D 오리지널(구구단)", icon: "Shield", url: "https://gugu-guardians-2d.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
