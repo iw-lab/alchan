@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -191,6 +191,7 @@ export const DEFAULT_LEARNING_APPS = [
   { id: "siteGongbuSnack",       label: "공부냥 간식가게(고양이 가게 게임)", icon: "Cat", url: "https://gongbu-snack.pages.dev/" },
   { id: "siteDokdoLog",          label: "독도 탐사 일지(독도의 날 학습 미니게임)", icon: "Ship", url: "https://dokdo-log.pages.dev/" },
   { id: "siteDokkaebiRoad",      label: "도깨비 장터길(달리며 푸는 문제 러너)", icon: "PersonStanding", url: "https://dokkaebi-road.pages.dev/" },
+  { id: "siteHobakbul",          label: "호박불 마을(핼러윈 등불 켜기 학습 게임)", icon: "Lamp", url: "https://hobakbul.pages.dev/" },
 ];
 
 const MAX_APPS = 60;          // 레지스트리 오염 시 사이드바가 무한히 길어지는 것 방지
