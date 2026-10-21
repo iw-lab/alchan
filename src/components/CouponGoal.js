@@ -102,18 +102,21 @@ export default function CouponGoal({
         border: goalAchieved ? "2px solid #10b981" : undefined,
       }}
     >
-      {/* 배경 장식 */}
+      {/* 배경 장식 — 클릭을 받지 않는다. 위치 지정(absolute) 요소라 위치 없는 헤더보다 위에 그려져
+          오른쪽 위 «초기화» 단추를 덮고 눌림을 가로챘다(2026-10-21 «초기화 버튼이 안 눌림») */}
       <div
         className="absolute -top-12 -right-12 w-36 h-36 rounded-full"
+        aria-hidden="true"
         style={{
+          pointerEvents: "none",
           background: goalAchieved
             ? "radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)"
             : "radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)",
         }}
       />
 
-      {/* 헤더 */}
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+      {/* 헤더 — 장식보다 위에(단추가 늘 눌리게) */}
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-2" style={{ position: "relative", zIndex: 1 }}>
         <div className="flex items-center gap-2.5">
           <div
             className="flex items-center justify-center rounded-xl"
