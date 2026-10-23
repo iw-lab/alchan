@@ -177,7 +177,7 @@ const calculateAccruedLoanInterest = (balance, dailyRate, startDate, lastRepayme
  return { interest, total: Math.round(total), elapsedDays };
 };
 
-const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) => {
+export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) => {
  const isMatured = product.maturityDate && startOfDay(new Date()) >= startOfDay(new Date(product.maturityDate));
  const daysRemaining = product.maturityDate
  ? Math.max(0, differenceInCalendarDays(new Date(product.maturityDate), new Date()))
@@ -265,7 +265,7 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  {formatCurrencyWithUnit(product.originalBalance || product.balance)}
  </span>
  </div>
- {product.repaymentType === "installment" && product.originalBalance && product.balance < product.originalBalance && (
+ {product.originalBalance && product.balance < product.originalBalance && (
  <div className="flex justify-between">
  <span className="font-medium">남은 원금:</span>
  <span className="font-bold text-amber-600">
@@ -401,13 +401,15 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  >
  만기 상환 ({formatCurrencyWithUnit(total)})
  </button>
- ) : product.repaymentType === "installment" ? (
+ ) : (
+ // 2026-10-23 사용자 «모든 대출 일부 상환 처리하게» — 일시 상환형도 만기 전에 일부만 먼저 갚을 수 있다
+ // (서버 repayLoan mode:installment 는 상환 방식과 무관하게 경과이자 기준으로 처리한다).
  <>
  <button
  onClick={() => onLoanRepay && onLoanRepay(product, "installment")}
  className={cls.button(false, "primary") + " px-5 py-2.5 text-[15px]"}
  >
- 분할 상환
+ 일부 상환
  </button>
  <button
  onClick={() => onLoanRepay && onLoanRepay(product, "lumpSum")}
@@ -416,13 +418,6 @@ const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRepay }) =
  전액 상환 ({formatCurrencyWithUnit(accruedTotal)})
  </button>
  </>
- ) : (
- <button
- onClick={() => onLoanRepay && onLoanRepay(product, "lumpSum")}
- className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
- >
- 일시 상환 ({formatCurrencyWithUnit(accruedTotal)})
- </button>
  )
  ) : isMatured ? (
  <button

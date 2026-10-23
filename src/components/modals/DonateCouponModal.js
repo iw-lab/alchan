@@ -11,6 +11,9 @@ const DonateCouponModal = memo(function DonateCouponModal({
   currentCoupons,
   onDonate,
   classCode, // 🔥 userId, currentGoalId는 더 이상 필요 없음
+  // 1인 상한(목표의 절반) — 안내용. 실제로 막는 건 서버 donateCoupon 이다. 없으면(옛 호출) 안내만 생략.
+  personalCap = null,
+  personalLeft = null,
 }) {
   const [donateAmount, setDonateAmount] = useState("");
   const [donateMessage, setDonateMessage] = useState("");
@@ -24,6 +27,14 @@ const DonateCouponModal = memo(function DonateCouponModal({
     }
     if (amount > currentCoupons) {
       toast.error("보유 쿠폰보다 많이 응모할 수 없습니다.");
+      return;
+    }
+    if (personalLeft !== null && amount > personalLeft) {
+      toast.error(
+        personalLeft > 0
+          ? `한 사람은 목표의 절반(${personalCap}개)까지만 응모할 수 있어요. 지금 ${personalLeft}개 더 응모할 수 있어요.`
+          : `한 사람은 목표의 절반(${personalCap}개)까지만 응모할 수 있어요. 이미 다 채웠어요.`,
+      );
       return;
     }
 
@@ -98,6 +109,14 @@ const DonateCouponModal = memo(function DonateCouponModal({
                 {currentCoupons.toLocaleString()} 개
               </span>
             </div>
+            {personalLeft !== null && (
+              <p className="mt-2 text-sm text-slate-600" data-testid="personal-cap">
+                한 사람은 목표의 절반({personalCap.toLocaleString()}개)까지만 응모할 수 있어요 ·{" "}
+                <b className={personalLeft > 0 ? "text-indigo-700" : "text-rose-600"}>
+                  {personalLeft > 0 ? `${personalLeft.toLocaleString()}개 더 가능` : "이미 다 채웠어요"}
+                </b>
+              </p>
+            )}
           </div>
 
           <div className="mb-4">
@@ -107,7 +126,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
             <input
               type="number"
               min="1"
-              max={currentCoupons}
+              max={personalLeft !== null ? Math.min(currentCoupons, personalLeft) : currentCoupons}
               value={donateAmount}
               onChange={(e) => setDonateAmount(e.target.value)}
               disabled={isDonating}

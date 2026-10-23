@@ -44,6 +44,7 @@ import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
+import { personalCap, remainingFor } from "../../utils/couponGoalCap";
 export default function CouponGoalPage() {
   const {
     user,
@@ -318,10 +319,12 @@ export default function CouponGoalPage() {
       });
       toast.error(`응모 오류: ${error.message}`);
 
-      // 실패 시 롤백
+      // 실패 시 롤백 — 쿠폰뿐 아니라 미리 올려 둔 내 기여·목표 진행도 되돌린다(1인 상한으로 거절될 때 화면에 남던 것)
       if (optimisticUpdate) {
         optimisticUpdate({ coupons: donationAmount });
       }
+      setMyContribution((prev) => prev - donationAmount);
+      setGoalProgress((prev) => prev - donationAmount);
 
       return false;
     } finally {
@@ -1066,6 +1069,8 @@ export default function CouponGoalPage() {
             currentCoupons={Number(userDoc?.coupons) || 0}
             onDonate={handleDonateCoupon}
             classCode={currentUserClassCode}
+            personalCap={personalCap(classCouponGoal)}
+            personalLeft={remainingFor(classCouponGoal, goalDonations, userId)}
           />
         )}
         {showSellCouponModal && (

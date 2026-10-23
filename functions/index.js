@@ -51,6 +51,7 @@ const {
 // 금액·가격 가드 단일 진실원(순수) — 같은 구멍에 두 번 뚫려서 모듈로 뽑았다.
 const { isValidStockPrice, isSafeAmount, MAX_MONEY } = require("./moneyGuards");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
+const { personalCap, remainingFor } = require("./couponGoalCap");
 
 // HTTP 호출을 위한 스케줄러 로직 (cron-job.org에서 호출 가능)
 const scheduler = require("./scheduler-http");
@@ -1271,6 +1272,20 @@ exports.donateCoupon = onCall(
         const currentCoupons = rawCoupons;
         if (currentCoupons < amount) {
           throw new Error("보유한 쿠폰이 부족합니다.");
+        }
+        // 🔒 1인 상한 — 한 사람이 목표의 절반을 넘겨 응모할 수 없다(2026-10-23 사용자). 같은 트랜잭션에서 읽은
+        //    목표 문서로 판정하므로 두 창에서 동시에 눌러도 합이 상한을 못 넘는다(트랜잭션이 다시 읽어 재판정).
+        //    목표 문서가 아직 없으면 아래에서 만드는 기본 목표(1000)로 판정한다.
+        const goalData = goalDoc.exists ? goalDoc.data() : {};
+        const target = goalDoc.exists ? goalData.targetAmount : 1000;
+        const left = remainingFor(target, goalData.donations, uid);
+        if (amount > left) {
+          const cap = personalCap(target);
+          throw new Error(
+            left > 0
+              ? `한 사람은 목표의 절반(${cap}개)까지만 응모할 수 있어요. 지금 ${left}개 더 응모할 수 있어요.`
+              : `한 사람은 목표의 절반(${cap}개)까지만 응모할 수 있어요. 이미 다 채웠어요.`,
+          );
         }
 
         // 쿠폰 가치 계산
