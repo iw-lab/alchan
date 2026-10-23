@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 // 갤러리는 «목록 출처·잠금·열기» 세 가지를 사이드바와 똑같이 지켜야 한다 — 그 세 가지를 고정한다.
 const launch = vi.fn();
@@ -15,10 +15,10 @@ vi.mock("../../services/learningAppRegistry", async () => {
   const all = () => normalizeLearningApps([...DEFAULT_LEARNING_APPS, ...RETIRED_LEARNING_APPS]);
   return { getLearningAppItems: all, loadLearningAppItems: () => Promise.resolve(all()), LEARNING_APPS_CHANGED: "learningApps:changed" };
 });
-import LearningSitesGallery, { filterApps, filterByTags } from "../../pages/learning/LearningSitesGallery";
+import LearningSitesGallery from "../../pages/learning/LearningSitesGallery";
 import { DEFAULT_LEARNING_APPS as NOW, RETIRED_LEARNING_APPS } from "../../config/learningApps";
 const DEFAULT_LEARNING_APPS = [...NOW, ...RETIRED_LEARNING_APPS];
-import { LEARNING_GALLERY, GALLERY_SUBJECTS, GALLERY_KINDS } from "../../config/learningGallery";
+import { LEARNING_GALLERY } from "../../config/learningGallery";
 
 // test/setup.js 가 localStorage 를 «아무것도 저장 안 하는 vi.fn()» 으로 바꿔 둔다 — 즐겨찾기·사용 기록은 진짜 저장소가 있어야 시험할 수 있다.
 const mem = new Map();
@@ -42,59 +42,19 @@ describe("갤러리 데이터", () => {
   });
 });
 
-describe("카테고리", () => {
-  it("모든 앱이 종류 태그를 하나 이상 갖고, 태그는 정해진 낱말뿐이다(오타 태그 = 아무 칸에도 안 잡히는 앱)", () => {
-    const vocab = new Set([...GALLERY_SUBJECTS, ...GALLERY_KINDS]);
-    for (const a of DEFAULT_LEARNING_APPS) {
-      const tags = LEARNING_GALLERY[a.id]?.tags || [];
-      expect(tags.some((t) => GALLERY_KINDS.includes(t)), `${a.id} 종류 태그`).toBe(true);
-      for (const t of tags) expect(vocab.has(t), `${a.id} → «${t}»`).toBe(true);
-    }
-  });
-  it("과목·종류를 둘 다 고르면 둘 다 붙은 앱만", () => {
-    const apps = [{ id: "siteBeatOn" }, { id: "siteWhirlwood" }, { id: "siteMathCastle" }];
-    expect(filterByTags(apps, "음악", "").map((a) => a.id)).toEqual(["siteBeatOn", "siteWhirlwood"]);
-    expect(filterByTags(apps, "음악", "학교 대항").map((a) => a.id)).toEqual(["siteWhirlwood"]);
-    expect(filterByTags(apps, "", "")).toHaveLength(3);
-  });
-});
-
-describe("filterApps", () => {
-  const apps = [{ id: "a", label: "물꼬(모래 물길 농장)" }, { id: "b", label: "구구성 수호대" }];
-  it("이름에 든 글자로 거른다·빈 검색어는 전부", () => {
-    expect(filterApps(apps, "물꼬").map((x) => x.id)).toEqual(["a"]);
-    expect(filterApps(apps, "  ")).toHaveLength(2);
-    expect(filterApps(apps, "없는말")).toHaveLength(0);
-  });
-});
-
 describe("LearningSitesGallery", () => {
-  it("등재된 앱 전부가 카드로 뜬다(전체 묶음)", () => {
+  it("🔴 2026-10-23 정리 — 검색·과목·종류 칸과 별(즐겨찾기)이 없다(분류는 모음 사이트 안에서)", () => {
     render(<LearningSitesGallery />);
-    const all = screen.getByText("전체").closest("section");
-    expect(within(all).getAllByRole("button", { name: /열기$/ })).toHaveLength(DEFAULT_LEARNING_APPS.length);
+    expect(screen.queryByLabelText("학습 사이트 검색")).toBeNull();
+    expect(screen.queryByRole("group", { name: "과목로 고르기" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "종류로 고르기" })).toBeNull();
+    expect(screen.queryAllByRole("button", { name: /즐겨찾기/ })).toHaveLength(0);
+  });
+
+  it("등재된 앱 전부가 카드로 뜬다", () => {
+    render(<LearningSitesGallery />);
+    expect(screen.getAllByRole("button", { name: /열기$/ })).toHaveLength(DEFAULT_LEARNING_APPS.length);
     expect(screen.getByRole("button", { name: "물꼬(모래 물길 농장) 열기" })).toBeTruthy();
-  });
-
-  it("검색하면 걸러지고, 없으면 안내 문구가 나온다", () => {
-    render(<LearningSitesGallery />);
-    const box = screen.getByLabelText("학습 사이트 검색");
-    fireEvent.change(box, { target: { value: "물꼬" } });
-    expect(screen.getAllByRole("button", { name: /열기$/ })).toHaveLength(1);
-    fireEvent.change(box, { target: { value: "zzzz없음" } });
-    expect(screen.getByText(/찾는 사이트가 없어요/)).toBeTruthy();
-  });
-
-  it("카테고리 칸을 누르면 그 앱만 남고, 다시 누르면 풀린다", () => {
-    render(<LearningSitesGallery />);
-    const n = DEFAULT_LEARNING_APPS.filter((a) => LEARNING_GALLERY[a.id].tags.includes("타자")).length;
-    const chip = within(screen.getByRole("group", { name: "종류로 고르기" })).getByRole("button", { name: new RegExp(`^타자${n}$`) });
-    fireEvent.click(chip);
-    expect(screen.getAllByRole("button", { name: /열기$/ })).toHaveLength(n);
-    expect(screen.getByRole("button", { name: "타자왕국 키우기(타자 땅따먹기) 열기" })).toBeTruthy();
-    fireEvent.click(chip);
-    const all = screen.getByText("전체").closest("section");
-    expect(within(all).getAllByRole("button", { name: /열기$/ })).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
   it("교사가 잠근 앱은 학생에게 안 보이고 교사에게는 보인다", () => {
@@ -114,14 +74,6 @@ describe("LearningSitesGallery", () => {
     expect(launch.mock.calls[0][0].id).toBe("siteMulkko");
     expect(launch.mock.calls[0][0].externalUrl).toBe("https://mulkko-a7z.pages.dev/");
     expect(JSON.parse(localStorage.getItem("alchan:appUse:stu1")).siteMulkko.n).toBe(1);
-  });
-
-  it("별을 누르면 «내 즐겨찾기» 가 위에 생기고 카드가 열리지는 않는다", () => {
-    render(<LearningSitesGallery />);
-    fireEvent.click(screen.getByRole("button", { name: "물꼬(모래 물길 농장) 즐겨찾기" }));
-    expect(launch).not.toHaveBeenCalled();
-    expect(screen.getByText("★ 내 즐겨찾기")).toBeTruthy();
-    expect(JSON.parse(localStorage.getItem("alchan:favApps:stu1"))).toEqual(["siteMulkko"]);
   });
 
   it("썸네일이 깨지면 카드는 아이콘 타일로 바뀌고 앱은 그대로 열린다", () => {

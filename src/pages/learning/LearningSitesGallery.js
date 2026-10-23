@@ -1,70 +1,22 @@
 // src/pages/learning/LearningSitesGallery.js
-// 🖼️ 학습 사이트 갤러리 — 사이드바의 «학습 사이트» 를 누르면 오른쪽 본문에 뜬다(2026-10-01 사용자 요청).
+// 🖼️ 학습 사이트 — 사이드바의 «학습 사이트» 를 누르면 오른쪽 본문에 뜬다(2026-10-01 사용자 요청).
 //
-// 왜: 학습 사이트가 40개가 되어 사이드바 글자 목록만으로는 고르기 어렵다. 심티처처럼 썸네일 카드로
-//     보고 고른다. 사이드바 목록은 그대로 둔다(익숙한 사람은 거기서 바로 누른다).
+// 2026-10-23 사용자 «첫째 선행쌤, 둘째 킹수학 — 나머지는 정리해, 과목·종류·이름 같은 거 필요없잖아, 저 안에서 분류돼 있음».
+//   카드가 두 개(모음 사이트)라 검색·과목/종류 칸·즐겨찾기·자주 쓴 것을 뺐다 — 분류는 각 모음 사이트 안에서 한다.
 //
 // 지켜야 할 것
 //   · 목록의 출처는 사이드바와 같다(레지스트리 → 폴백). 교사의 메뉴 잠금(useMenuLocks)도 같은 규칙으로 적용한다 —
 //     갤러리가 잠금을 우회하면 안 된다. 교사(관리자)는 잠겨도 보인다(사이드바와 같다).
 //   · 앱 열기는 사이드바와 같은 `launchLearningApp` — **클릭 핸들러 안에서 동기로** 부른다(await 로 기다리면
-//     사용자 제스처를 잃어 팝업이 막힌다 — appLaunch.js 주석). 열기 전에 `recordUse` 도 남긴다(「자주 쓴 것」 근거).
+//     사용자 제스처를 잃어 팝업이 막힌다 — appLaunch.js 주석). 열기 전에 `recordUse` 로 사용 기록을 남긴다.
 //   · 썸네일이 없거나 깨져도 카드는 깨지지 않는다(아이콘 타일로 대체).
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Star } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMenuLocks } from "../../contexts/MenuLocksContext";
 import { getLearningAppItems, loadLearningAppItems, LEARNING_APPS_CHANGED } from "../../services/learningAppRegistry";
 import { launchLearningApp } from "../../services/appLaunch";
-import { loadFavorites, toggleFavorite, recordUse, pinnedSections } from "../../services/learningAppFavorites";
-import { galleryInfoFor, GALLERY_SUBJECTS, GALLERY_KINDS } from "../../config/learningGallery";
-
-/** 검색: 이름·한 줄 소개에 들어 있으면 통과(대소문자·앞뒤 공백 무시). 빈 검색어는 전부. */
-export function filterApps(apps, query) {
-  const q = (query || "").trim().toLowerCase();
-  if (!q) return apps;
-  return apps.filter((a) => {
-    const info = galleryInfoFor(a.id);
-    return `${a.label} ${info?.tagline || ""}`.toLowerCase().includes(q);
-  });
-}
-
-/** 카테고리: 과목 하나·종류 하나를 고르면 둘 다 붙은 앱만(고르지 않은 줄은 통과). 태그는 갤러리 정보(learningGallery.js)에서 온다. */
-export function filterByTags(apps, subject, kind) {
-  if (!subject && !kind) return apps;
-  return apps.filter((a) => {
-    const tags = galleryInfoFor(a.id)?.tags || [];
-    return (!subject || tags.includes(subject)) && (!kind || tags.includes(kind));
-  });
-}
-
-function ChipRow({ label, all, options, value, onChange, apps }) {
-  // 앱이 하나도 없는 칸은 숨긴다(눌러도 빈 화면이 되는 칸 금지). 숫자는 «지금 다른 줄 선택» 기준.
-  const counts = options.map((o) => [o, apps.filter((a) => (galleryInfoFor(a.id)?.tags || []).includes(o)).length]).filter(([o, n]) => n > 0 || o === value);
-  const chip = (key, text, n, active, onClick) => (
-    <button
-      key={key}
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-      style={active
-        ? { background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }
-        : { background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-primary)" }}
-    >
-      {text}{n != null ? <span className="ml-1 opacity-70">{n}</span> : null}
-    </button>
-  );
-  return (
-    <div className="flex items-start gap-2 mb-2" role="group" aria-label={`${label}로 고르기`}>
-      <span className="shrink-0 w-10 pt-1.5 text-xs font-bold" style={{ color: "var(--text-muted)" }}>{label}</span>
-      <div className="flex flex-wrap gap-1.5">
-        {chip("_all", all, apps.length, !value, () => onChange(""))}
-        {counts.map(([o, n]) => chip(o, o, n, value === o, () => onChange(value === o ? "" : o)))}
-      </div>
-    </div>
-  );
-}
+import { recordUse } from "../../services/learningAppFavorites";
+import { galleryInfoFor } from "../../config/learningGallery";
 
 function Thumb({ app, info }) {
   const [broken, setBroken] = useState(false);
@@ -91,53 +43,24 @@ function Thumb({ app, info }) {
   );
 }
 
-function AppCard({ app, isFav, onOpen, onToggleFav }) {
+function AppCard({ app, onOpen }) {
   const info = galleryInfoFor(app.id);
   return (
-    <div
-      className="relative rounded-xl overflow-hidden transition-shadow"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-card)" }}
+    <button
+      type="button"
+      onClick={() => onOpen(app)}
+      className="block w-full text-left rounded-xl overflow-hidden transition-shadow focus:outline-none focus-visible:ring-2"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-card)", "--tw-ring-color": "var(--accent)" }}
+      aria-label={`${app.label} 열기`}
     >
-      <button
-        type="button"
-        onClick={() => onOpen(app)}
-        className="block w-full text-left focus:outline-none focus-visible:ring-2"
-        style={{ "--tw-ring-color": "var(--accent)" }}
-        aria-label={`${app.label} 열기`}
-      >
-        <Thumb app={app} info={info} />
-        <div className="px-3 py-2.5">
-          <div className="text-sm font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{app.label}</div>
-          {info?.tagline ? (
-            <div className="mt-1 text-xs leading-snug line-clamp-2" style={{ color: "var(--text-secondary)" }}>{info.tagline}</div>
-          ) : null}
-        </div>
-      </button>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onToggleFav(app.id); }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(255,255,255,0.9)", boxShadow: "var(--shadow-md)" }}
-        aria-label={isFav ? `${app.label} 즐겨찾기 해제` : `${app.label} 즐겨찾기`}
-        aria-pressed={isFav}
-      >
-        <Star className="w-4 h-4" style={{ color: isFav ? "#f59e0b" : "#94a3b8", fill: isFav ? "#f59e0b" : "none" }} />
-      </button>
-    </div>
-  );
-}
-
-function Section({ title, apps, favs, onOpen, onToggleFav }) {
-  if (!apps.length) return null;
-  return (
-    <section className="mb-8">
-      <h2 className="text-sm font-bold mb-3" style={{ color: "var(--text-secondary)" }}>{title}</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-        {apps.map((a) => (
-          <AppCard key={a.id} app={a} isFav={favs.includes(a.id)} onOpen={onOpen} onToggleFav={onToggleFav} />
-        ))}
+      <Thumb app={app} info={info} />
+      <div className="px-4 py-3">
+        <div className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>{app.label}</div>
+        {info?.tagline ? (
+          <div className="mt-1 text-sm leading-snug line-clamp-2" style={{ color: "var(--text-secondary)" }}>{info.tagline}</div>
+        ) : null}
       </div>
-    </section>
+    </button>
   );
 }
 
@@ -145,7 +68,7 @@ export default function LearningSitesGallery() {
   const { userDoc } = useAuth();
   const { lockedItemIds } = useMenuLocks();
   const isAdmin = !!(userDoc?.isAdmin || userDoc?.isSuperAdmin);
-  const favUid = userDoc?.id || "";
+  const uid = userDoc?.id || "";
 
   const [items, setItems] = useState(() => getLearningAppItems());
   useEffect(() => {
@@ -156,73 +79,27 @@ export default function LearningSitesGallery() {
     return () => { cancelled = true; window.removeEventListener(LEARNING_APPS_CHANGED, handler); };
   }, []);
 
-  const [favs, setFavs] = useState([]);
-  const [useTick, setUseTick] = useState(0);
-  const [query, setQuery] = useState("");
-  const [subject, setSubject] = useState("");
-  const [kind, setKind] = useState("");
-  useEffect(() => { setFavs(loadFavorites(favUid)); }, [favUid]);
-
   // 교사가 잠근 앱은 학생에게 숨긴다(사이드바와 같은 규칙). 교사 본인은 전부 본다.
   const visible = useMemo(
     () => items.filter((a) => a.externalUrl && (isAdmin || !(lockedItemIds || []).includes(a.id))),
     [items, isAdmin, lockedItemIds],
   );
-  const searched = useMemo(() => filterApps(visible, query), [visible, query]);
-  const filtered = useMemo(() => filterByTags(searched, subject, kind), [searched, subject, kind]);
-  const pinned = useMemo(() => {
-    void useTick; void favs;      // 열 때마다·별을 바꿀 때마다 다시 센다
-    return pinnedSections(favUid, visible);
-  }, [favUid, visible, useTick, favs]);
 
   const onOpen = useCallback((app) => {
-    recordUse(favUid, app.id);      // 열기 전에 남긴다(탭이 넘어가면 못 남긴다)
-    setUseTick((t) => t + 1);
+    recordUse(uid, app.id);         // 열기 전에 남긴다(탭이 넘어가면 못 남긴다)
     void launchLearningApp(app);    // ⚠️ await 금지 — 사용자 제스처 안에서 동기로 탭을 연다
-  }, [favUid]);
-  const onToggleFav = useCallback((id) => setFavs(toggleFavorite(favUid, id)), [favUid]);
+  }, [uid]);
 
-  const tagged = !!(subject || kind);
-  const searching = query.trim().length > 0 || tagged;
-  const resultTitle = tagged
-    ? `${[subject, kind].filter(Boolean).join(" · ")} ${filtered.length}개`
-    : `검색 결과 ${filtered.length}개`;
   return (
-    <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-6">
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-extrabold" style={{ color: "var(--text-primary)" }}>학습 사이트</h1>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>카드를 누르면 새 탭에서 열려요 · {visible.length}개</p>
+    <div className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-6">
+      <h1 className="text-xl font-extrabold" style={{ color: "var(--text-primary)" }}>학습 사이트</h1>
+      <p className="text-xs mt-1 mb-5" style={{ color: "var(--text-muted)" }}>카드를 누르면 새 탭에서 열려요</p>
+      {visible.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+          {visible.map((a) => <AppCard key={a.id} app={a} onOpen={onOpen} />)}
         </div>
-        <label className="relative block w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="이름·설명으로 찾기"
-            aria-label="학습 사이트 검색"
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm outline-none"
-            style={{ background: "var(--bg-input)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
-          />
-        </label>
-      </div>
-
-      <div className="mb-6">
-        <ChipRow label="과목" all="모든 과목" options={GALLERY_SUBJECTS} value={subject} onChange={setSubject} apps={filterByTags(searched, "", kind)} />
-        <ChipRow label="종류" all="모든 종류" options={GALLERY_KINDS} value={kind} onChange={setKind} apps={filterByTags(searched, subject, "")} />
-      </div>
-
-      {!searching && (
-        <>
-          <Section title="★ 내 즐겨찾기" apps={pinned.favorites} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
-          <Section title="⏱ 자주 쓴 것" apps={pinned.frequent} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
-        </>
-      )}
-      {filtered.length > 0 ? (
-        <Section title={searching ? resultTitle : "전체"} apps={filtered} favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} />
       ) : (
-        <p className="text-sm py-10 text-center" style={{ color: "var(--text-muted)" }}>찾는 사이트가 없어요. 다른 말로 찾아보세요.</p>
+        <p className="text-sm py-10 text-center" style={{ color: "var(--text-muted)" }}>열 수 있는 학습 사이트가 없어요.</p>
       )}
     </div>
   );
