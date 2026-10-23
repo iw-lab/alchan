@@ -2,6 +2,8 @@
 // 출처: 심티처 포트폴리오(iwsimteacher)의 같은 앱 항목. 새 앱을 등재할 때 여기에도 한 줄 + public/images/learning/<파일>.webp(1200×750)를 추가한다.
 // 없는 앱은 갤러리가 아이콘 타일로 그린다(깨지지 않는다).
 export const LEARNING_GALLERY = {
+  siteSsamzip: {"image": "/images/learning/ssamzip.webp", "tagline": "선행쌤이 교실에서 쓰라고 만든 학습 게임·사이트 전부 — 인기 순위·과목별로 골라 열기", "tags": ["여러 과목","수업 도구"]},
+  siteKingsmath: {"image": "/images/learning/kingsmath.webp", "tagline": "전자칠판에서 1분이면 끝나는 교실 게임 모음", "tags": ["수학","여러 과목","수업 도구"]},
   siteArtOn: {"image": "/images/learning/arton.webp", "tagline": "로그인 없이 바로 색칠하는 도안 라이브러리", "tags": ["미술","만들기","수업 도구"]},
   siteNarae: {"image": "/images/learning/papersky.webp", "tagline": "종이비행기를 날려 보드를 비우는 원터치 퍼즐", "tags": ["퍼즐"]},
   siteSeulgisem: {"image": "/images/learning/seulgisem.webp", "tagline": "내 수준에 맞춰 매일 10문제씩", "tags": ["수학","공부·연습"]},

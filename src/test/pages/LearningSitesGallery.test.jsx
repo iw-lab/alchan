@@ -10,11 +10,14 @@ vi.mock("../../contexts/AuthContext", () => ({ useAuth: () => auth }));
 vi.mock("../../contexts/MenuLocksContext", () => ({ useMenuLocks: () => locks }));
 vi.mock("../../services/appLaunch", () => ({ launchLearningApp: (a) => launch(a) }));
 vi.mock("../../services/learningAppRegistry", async () => {
-  const { defaultLearningAppItems } = await import("../../config/learningApps");
-  return { getLearningAppItems: () => defaultLearningAppItems(), loadLearningAppItems: () => Promise.resolve(defaultLearningAppItems()), LEARNING_APPS_CHANGED: "learningApps:changed" };
+  // 갤러리 동작(검색·카테고리·잠금·즐겨찾기)은 앱이 많아야 시험이 된다 — 지금 두 개에 2026-10-23 꺼 둔 옛 앱까지 다 넣어 본다.
+  const { normalizeLearningApps, DEFAULT_LEARNING_APPS, RETIRED_LEARNING_APPS } = await import("../../config/learningApps");
+  const all = () => normalizeLearningApps([...DEFAULT_LEARNING_APPS, ...RETIRED_LEARNING_APPS]);
+  return { getLearningAppItems: all, loadLearningAppItems: () => Promise.resolve(all()), LEARNING_APPS_CHANGED: "learningApps:changed" };
 });
 import LearningSitesGallery, { filterApps, filterByTags } from "../../pages/learning/LearningSitesGallery";
-import { DEFAULT_LEARNING_APPS } from "../../config/learningApps";
+import { DEFAULT_LEARNING_APPS as NOW, RETIRED_LEARNING_APPS } from "../../config/learningApps";
+const DEFAULT_LEARNING_APPS = [...NOW, ...RETIRED_LEARNING_APPS];
 import { LEARNING_GALLERY, GALLERY_SUBJECTS, GALLERY_KINDS } from "../../config/learningGallery";
 
 // test/setup.js 가 localStorage 를 «아무것도 저장 안 하는 vi.fn()» 으로 바꿔 둔다 — 즐겨찾기·사용 기록은 진짜 저장소가 있어야 시험할 수 있다.

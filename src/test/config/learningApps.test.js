@@ -3,6 +3,7 @@ import {
   normalizeLearningApps,
   defaultLearningAppItems,
   DEFAULT_LEARNING_APPS,
+  RETIRED_LEARNING_APPS,
 } from "../../config/learningApps";
 
 // 이 정규화는 **Firestore 에서 온 값**을 사이드바 링크로 바꾼다.
@@ -81,15 +82,16 @@ describe("normalizeLearningApps", () => {
 });
 
 describe("폴백 기본 목록", () => {
-  it("기본 36개가 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
+  it("기본 목록이 전부 정규화를 통과한다 (폴백이 조용히 비면 사이드바가 빈다)", () => {
     // 절대 개수와 "하나도 안 떨어졌다"를 **둘 다** 본다. 앞은 항목이 실수로 지워지는 것을,
     // 뒤는 정규화가 조용히 걸러 내는 것을 잡는다 — 뒤만 두면 목록이 비어도 통과한다.
-    expect(DEFAULT_LEARNING_APPS).toHaveLength(56);   // 2026-10-20 구구성 수호대 2D 오리지널(옛 2D판 되살림) — 앞서 호박불 마을(핼러윈 등불 켜기 학습 게임)
+    // 2026-10-23 사용자 «학습 사이트엔 선행쌤·킹수학 두 개만» — 순서도 그대로(첫째 선행쌤).
+    expect(DEFAULT_LEARNING_APPS.map((a) => a.id)).toEqual(["siteSsamzip", "siteKingsmath"]);
     expect(defaultLearningAppItems()).toHaveLength(DEFAULT_LEARNING_APPS.length);
   });
 
   it("기본 목록의 URL 은 전부 https 다", () => {
-    for (const a of DEFAULT_LEARNING_APPS) expect(a.url.startsWith("https://")).toBe(true);
+    for (const a of [...DEFAULT_LEARNING_APPS, ...RETIRED_LEARNING_APPS]) expect(a.url.startsWith("https://")).toBe(true);
   });
 
   it("🔴 학교망이 막는 도메인을 쓰지 않는다", () => {
@@ -124,5 +126,18 @@ describe("폴백 기본 목록", () => {
     ]);
     expect(item.aap).toBe(true);
     expect(item.aapUnknown).toBeUndefined();
+  });
+});
+
+describe("2026-10-23 정리", () => {
+  it("꺼 둔 옛 앱은 기본 목록과 id 가 겹치지 않고, 다시 켤 수 있게 전부 남아 있다", () => {
+    const now = new Set(DEFAULT_LEARNING_APPS.map((a) => a.id));
+    expect(RETIRED_LEARNING_APPS).toHaveLength(56);
+    for (const a of RETIRED_LEARNING_APPS) expect(now.has(a.id), a.id).toBe(false);
+    expect(normalizeLearningApps(RETIRED_LEARNING_APPS)).toHaveLength(56);
+  });
+  it("레지스트리에서 enabled:false 인 앱은 화면 목록에서 빠진다", () => {
+    const raw = [...DEFAULT_LEARNING_APPS, ...RETIRED_LEARNING_APPS.map((a) => ({ ...a, enabled: false }))];
+    expect(normalizeLearningApps(raw).map((i) => i.id)).toEqual(["siteSsamzip", "siteKingsmath"]);
   });
 });

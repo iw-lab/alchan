@@ -16,14 +16,14 @@ import {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp, Crown,
 } from "lucide-react";
 
 export const LEARNING_APP_ICONS = {
   Globe, Palette, Send, Calculator, Grid3x3, Keyboard,
   BookOpen, Gamepad2, Sparkles, Castle, Shield, Volleyball, KeyRound, SprayCan,
   Ticket, Hash, LandPlot, Dices, Brush, Swords, Music, Vote, Landmark, Fish, Sprout, PencilLine,
-  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp,
+  Gem, Target, Zap, Flag, Camera, Wind, MountainSnow, CircleDot, Goal, Cat, Star, Droplets, Building2, Rocket, HardHat, Footprints, Pickaxe, Code, MapPinned, Wand, Dna, Ship, PersonStanding, Lamp, Crown,
 };
 
 export const LEARNING_SITES_CATEGORY_ID = "learningSitesCategory";
@@ -49,6 +49,19 @@ export const DEFAULT_APP_OWNER = "알찬 기본";
  *    와 `platformAppPolicies/{appId}.launchUrl` 이라 **셋을 같이** 고쳐야 한다.
  */
 export const DEFAULT_LEARNING_APPS = [
+  // 2026-10-23 사용자 «학습 사이트엔 첫째 선행쌤, 둘째 킹수학 — 정리». 게임을 하나하나 늘어놓지 않고
+  //   두 모음 사이트로 보낸다(선행쌤 = 이 선생님이 만든 학습 게임·사이트 전부, 킹수학 = 교실 1분 게임 모음).
+  //   예전 56개는 아래 RETIRED_LEARNING_APPS 로 옮겼고, 정본 레지스트리에서도 지우지 않고 enabled:false 로만 껐다
+  //   (정책·보상 기록의 id 가 그대로 남는다 — 되살릴 땐 enabled 만 지우면 된다).
+  { id: "siteSsamzip",           label: "선행쌤(학습 게임·사이트 모음)", icon: "Star",       url: "https://ssamzip.com/" },
+  { id: "siteKingsmath",         label: "킹수학(교실 1분 게임)",          icon: "Crown",      url: "https://kingsmath.com/" },
+];
+
+/**
+ * 2026-10-23 까지 학습 사이트에 하나씩 걸려 있던 앱들 — 지금은 화면에 안 나온다(레지스트리 enabled:false).
+ * 갤러리 썸네일·태그(learningGallery.js)와 시험이 이 목록을 계속 본다. 되살릴 때 여기서 DEFAULT 로 옮긴다.
+ */
+export const RETIRED_LEARNING_APPS = [
   { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/coloring" },
   { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://narae-teal.vercel.app/" },
   { id: "siteSeulgisem",         label: "슬기셈(수학)",           icon: "Calculator", url: "https://word-e329c.web.app" },
