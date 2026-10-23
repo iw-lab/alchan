@@ -1376,6 +1376,19 @@ exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) 
     );
   }
 
+  // 새 목표 수(선택) — 초기화 창에서 바로 받는다. 없으면 기존 targetAmount 를 그대로 둔다(옛 클라이언트).
+  const rawTarget = request.data?.targetAmount;
+  let targetAmount = null;
+  if (rawTarget !== undefined && rawTarget !== null) {
+    targetAmount = Number(rawTarget);
+    if (!Number.isInteger(targetAmount) || targetAmount <= 0 || targetAmount > 1000000) {
+      throw new HttpsError(
+        "invalid-argument",
+        "새 목표는 1 이상 1,000,000 이하의 정수여야 합니다.",
+      );
+    }
+  }
+
   const goalRef = db.collection("goals").doc(`${classCode}_goal`);
 
   try {
@@ -1412,6 +1425,7 @@ exports.resetCouponGoal = onCall({ region: "asia-northeast3" }, async (request) 
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         resetAt: admin.firestore.FieldValue.serverTimestamp(),
         resetBy: uid,
+        ...(targetAmount !== null ? { targetAmount } : {}),
       },
       { merge: true },
     );

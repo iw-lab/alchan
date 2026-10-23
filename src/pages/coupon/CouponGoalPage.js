@@ -425,10 +425,17 @@ export default function CouponGoalPage() {
       toast.error("학급 코드나 목표 정보가 없어 초기화할 수 없습니다.");
       return;
     }
-    if (
-      !(await confirmDialog(
-        `정말로 ${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화하시겠습니까?`, { danger: true, confirmText: "초기화하기" }))
-    ) {
+    // 초기화하면 곧바로 새 목표를 정한다(2026-10-23 선생님 «초기화를 하면 새로운 목표 갯수 바로 입력하게»).
+    //   한 창에서 새 목표 수를 받고 «초기화하기»를 누르면 기여 기록 리셋과 새 목표 저장이 함께 된다.
+    const input = await promptDialog(
+      `${currentUserClassCode} 학급의 쿠폰 목표와 기여 기록을 초기화합니다.\n새 목표 쿠폰 수를 입력하세요.`,
+      String(classCouponGoal > 0 ? classCouponGoal : 100),
+      { inputMode: "numeric", confirmText: "초기화하기", danger: true },
+    );
+    if (input === null) return;
+    const newTarget = parseInt(String(input).trim(), 10);
+    if (!Number.isInteger(newTarget) || newTarget <= 0 || newTarget > 1000000) {
+      toast.error("새 목표는 1 이상 1,000,000 이하의 숫자로 입력해주세요.");
       return;
     }
 
@@ -438,7 +445,7 @@ export default function CouponGoalPage() {
       //    클라 writeBatch는 firestore.rules의 isAdmin()을 요구해 isTeacher-only
       //    교사 계정에서 권한 오류로 막혔으므로 CF 호출로 통일.
       const resetFn = httpsCallable(functions, "resetCouponGoal");
-      await resetFn({});
+      await resetFn({ targetAmount: newTarget });
 
       localStorage.removeItem(
         `goalDonationHistory_${currentUserClassCode}_goal`,
@@ -447,12 +454,14 @@ export default function CouponGoalPage() {
         `firestore_cache_goal_${currentGoalId}_${userId}`,
       );
 
+      setClassCouponGoal(newTarget);
       setMyContribution(0);
       setGoalProgress(0);
       setGoalDonations([]);
+      setGoalAchieved(false);
 
       toast.success(
-        `학급(${currentUserClassCode})의 쿠폰 목표와 기여 기록이 초기화되었습니다.`,
+        `초기화했습니다. 새 목표는 ${newTarget.toLocaleString()}쿠폰입니다.`,
       );
     } catch (error) {
       toast.error(`목표 초기화 오류: ${error.message}`);
