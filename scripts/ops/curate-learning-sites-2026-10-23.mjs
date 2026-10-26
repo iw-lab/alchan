@@ -15,7 +15,7 @@ const DRY = process.argv.includes("--dry");
 const RESTORE = process.argv.includes("--restore");
 const OWNER = "심인수";
 const KEEP = [
-  { id: "siteSsamzip", label: "선행쌤(학습 게임·사이트 모음)", icon: "Star", url: "https://ssamzip.com/" },
+  { id: "siteSsamzip", label: "선행쌤(학습 게임·사이트 모음)", icon: "Star", url: "https://sunhaengssam.web.app/" },
   { id: "siteKingsmath", label: "킹수학(교실 1분 게임)", icon: "Crown", url: "https://kingsmath.com/" },
 ];
 const keepIds = new Set(KEEP.map((a) => a.id));

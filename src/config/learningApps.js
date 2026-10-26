@@ -53,7 +53,7 @@ export const DEFAULT_LEARNING_APPS = [
   //   두 모음 사이트로 보낸다(선행쌤 = 이 선생님이 만든 학습 게임·사이트 전부, 킹수학 = 교실 1분 게임 모음).
   //   예전 56개는 아래 RETIRED_LEARNING_APPS 로 옮겼고, 정본 레지스트리에서도 지우지 않고 enabled:false 로만 껐다
   //   (정책·보상 기록의 id 가 그대로 남는다 — 되살릴 땐 enabled 만 지우면 된다).
-  { id: "siteSsamzip",           label: "선행쌤(학습 게임·사이트 모음)", icon: "Star",       url: "https://ssamzip.com/" },
+  { id: "siteSsamzip",           label: "선행쌤(학습 게임·사이트 모음)", icon: "Star",       url: "https://sunhaengssam.web.app/" },  // 학교 망이 ssamzip.com 을 막아 옛 주소(열리는 망에선 ssamzip.com 으로 넘김) · 2026-10-26
   { id: "siteKingsmath",         label: "킹수학(교실 1분 게임)",          icon: "Crown",      url: "https://kingsmath.com/" },
 ];
 
