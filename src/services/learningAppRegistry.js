@@ -18,7 +18,8 @@ import logger from "../utils/logger";
 
 // 🔴 기본 목록의 개수를 키에 넣는다 — 앱을 등재해 배포하면 키가 바뀌어, 이미 열려 있던 탭의 12시간 캐시가 자동으로 무효가 된다
 //    (2026-10-01: 물꼬를 등재했는데 «안 보인다» 던 원인 — 옛 세션 캐시가 옛 목록을 계속 보여 줬다).
-const CACHE_KEY = `alchan_learning_apps_v1_${DEFAULT_LEARNING_APPS.length}`;
+//    v2 = 2026-10-26 선행쌤 주소를 sunhaengssam.web.app 으로 바꿨는데 열려 있던 탭이 12시간 동안 막힌 ssamzip.com 을 열었다 — 주소만 바꿀 땐 판(v)을 올린다
+const CACHE_KEY = `alchan_learning_apps_v2_${DEFAULT_LEARNING_APPS.length}`;
 const TTL_MS = 12 * 60 * 60 * 1000; // 12시간 — 앱 목록은 거의 안 바뀐다
 export const LEARNING_APPS_CHANGED = "learningApps:changed";
 
