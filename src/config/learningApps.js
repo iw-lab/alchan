@@ -62,7 +62,7 @@ export const DEFAULT_LEARNING_APPS = [
  * 갤러리 썸네일·태그(learningGallery.js)와 시험이 이 목록을 계속 본다. 되살릴 때 여기서 DEFAULT 로 옮긴다.
  */
 export const RETIRED_LEARNING_APPS = [
-  { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/coloring" },
+  { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/" },
   { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://narae-teal.vercel.app/" },
   { id: "siteSeulgisem",         label: "슬기셈(수학)",           icon: "Calculator", url: "https://word-e329c.web.app" },
   { id: "siteNumeroQuest",       label: "칸채움",                 icon: "Grid3x3",    url: "https://kanchaeum.pages.dev/" },
