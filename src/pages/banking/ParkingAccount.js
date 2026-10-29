@@ -1009,18 +1009,15 @@ const ParkingAccount = ({
  if (!userId) return;
  setIsProcessing(true);
  try {
- const parkingRateProduct =
- depositProducts.length > 0 ? depositProducts[0] : null;
-
- if (parkingRateProduct) {
  // 🔒 batch7-c: 이자 적립을 accrueParkingInterest CF로 이관(financials rules 잠금 대비).
  //   서버가 KST 하루 1회·복리 0.1%로 balance를 적립(구 클라 로직 충실 이관). balance 직접
  //   클라 write는 이제 rules(if false)로 차단 — 위조→parkingWithdraw 민팅 봉인. 표시는 아래 onSnapshot.
+ //   예전엔 «예금 상품이 하나라도 있을 때만» 불렀다(이율을 첫 예금 상품에서 읽던 시절의 흔적). 이율이
+ //   서버 고정이 된 뒤로는 의미가 없고, 선생님이 예금 상품을 다 지우면 파킹 이자가 조용히 멈추는 덫이라 걷었다(2026-10-29).
  try {
  await httpsCallable(functions, "accrueParkingInterest")();
  } catch (e) {
  logger.error("[ParkingAccount] 이자 적립(CF) 오류:", e);
- }
  }
 
  // 파킹 잔액·이자 표시는 아래 onSnapshot 실시간 리스너가 담당(getDoc 캐시 stale 제거)
@@ -1054,7 +1051,7 @@ const ParkingAccount = ({
  } finally {
  setIsProcessing(false);
  }
- }, [userId, depositProducts]);
+ }, [userId]);
 
  useEffect(() => {
  if (!loading && userId) loadAllData();

@@ -505,9 +505,9 @@ const AdminSettingsModal = ({
   // ========================================
   // 파킹 통장 상태
   // ========================================
-  const [parkingInterestRate, setParkingInterestRate] = useState(0.1);
-  const [newInterestRate, setNewInterestRate] = useState("");
-  const [parkingMessage, setParkingMessage] = useState(null);
+  // 파킹 이자율은 서버(accrueParkingInterest)에 0.1%/일로 고정돼 있다. 예전 «이자율 변경»은
+  //   이 브라우저 localStorage 에만 저장돼 학생 이자에 아무 영향이 없었다(2026-10-29 점검) — 보여 주기만 한다.
+  const PARKING_DAILY_RATE = 0.1;
 
 
   // 급여 설정 상태
@@ -1837,39 +1837,6 @@ const AdminSettingsModal = ({
   // 파킹 통장 함수들
   // ========================================
 
-  // 파킹 이자율 로드
-  const loadParkingRate = useCallback(() => {
-    const savedRate = localStorage.getItem("parkingInterestRate");
-    if (savedRate) {
-      setParkingInterestRate(parseFloat(savedRate));
-    }
-  }, []);
-
-  // 파킹 이자율 변경
-  const handleParkingRateChange = useCallback(() => {
-    if (
-      !newInterestRate ||
-      isNaN(newInterestRate) ||
-      parseFloat(newInterestRate) < 0
-    ) {
-      setParkingMessage({
-        type: "error",
-        text: "유효한 이자율을 입력해주세요 (0 이상).",
-      });
-      return;
-    }
-
-    const rate = parseFloat(newInterestRate);
-    setParkingInterestRate(rate);
-    localStorage.setItem("parkingInterestRate", rate.toString());
-
-    setParkingMessage({
-      type: "success",
-      text: `파킹 통장 일일 이자율이 ${rate}%로 변경되었습니다.`,
-    });
-    setNewInterestRate("");
-    setTimeout(() => setParkingMessage(null), 3000);
-  }, [newInterestRate]);
 
   // 학급 코드 추가
   const handleAddClassCode = useCallback(async () => {
@@ -1924,9 +1891,8 @@ const AdminSettingsModal = ({
     if (showAdminSettingsModal) {
       setError("");
 
-      // 금융 상품 및 파킹 이자율 로드
+      // 금융 상품 로드
       loadFinancialProducts();
-      loadParkingRate();
     }
 
     if (!showAdminSettingsModal) {
@@ -1947,7 +1913,6 @@ const AdminSettingsModal = ({
       // 금융/시장/파킹 상태 초기화
       setFinancialMessage(null);
       setMarketMessage("");
-      setParkingMessage(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1957,7 +1922,6 @@ const AdminSettingsModal = ({
     loadStudents,
     loadSalarySettings,
     loadFinancialProducts,
-    loadParkingRate,
   ]); // 탭별 실제 로드는 아래의 서브탭 effect들(loadStudents/loadClassMembers/loadSalarySettings/loadMenuLocks)이 담당
 
   // 이전 탭 ID → 통합 탭 매핑 (하위 호환)
@@ -3405,66 +3369,23 @@ const AdminSettingsModal = ({
                     파킹 통장 이자율 관리
                   </h3>
                   <p className="text-xs mt-1.5 ml-9" style={{ color: "#475569" }}>
-                    파킹 통장의 일일 이자율을 설정합니다.
+                    파킹 통장의 일일 이자율입니다(모든 학급 공통 고정).
                   </p>
                 </div>
                 <div className="px-6 py-5">
-
-                {/* 메시지 */}
-                {parkingMessage && (
-                  <div
-                    className="p-3 mb-4 rounded-lg text-slate-800 dark:text-white"
-                    style={{
-                      background:
-                        parkingMessage.type === "success"
-                          ? "#065f46"
-                          : "#991b1b",
-                    }}
-                  >
-                    {parkingMessage.text}
-                  </div>
-                )}
 
                 {/* 현재 이자율 */}
                 <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
                   <div className="mb-4">
                     <p className="text-slate-500 dark:text-gray-400 text-sm">현재 일일 이자율</p>
                     <p className="text-green-500 text-[32px] font-bold">
-                      {parkingInterestRate}%
+                      {PARKING_DAILY_RATE}%
                     </p>
                   </div>
 
-                  <div className="form-group">
-                    <label className="block mb-2 text-slate-500 dark:text-gray-400">
-                      새 일일 이자율 (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={newInterestRate}
-                      onChange={(e) => setNewInterestRate(e.target.value)}
-                      placeholder="새 이자율 입력 (%)"
-                      min="0"
-                      step="0.01"
-                      className="mb-3"
-                      style={inputStyle}
-                    />
-                    <button
-                      onClick={handleParkingRateChange}
-                      className="w-full"
-                      style={saveBtnStyle}
-                      disabled={
-                        !newInterestRate ||
-                        isNaN(newInterestRate) ||
-                        parseFloat(newInterestRate) < 0
-                      }
-                    >
-                      이자율 변경
-                    </button>
-                  </div>
-
                   <p className="text-xs text-slate-500 dark:text-gray-400 mt-3">
-                    파킹 통장에 예치된 금액은 매일 설정된 이자율만큼 이자가
-                    발생합니다.
+                    파킹 통장 잔액에 하루 0.1%씩 복리 이자가 붙습니다. 학생이 은행 화면을 열 때
+                    밀린 날수만큼 한꺼번에 적립되고, 거래내역에 «파킹통장 이자»로 남습니다.
                   </p>
                 </div>
                 </div>
