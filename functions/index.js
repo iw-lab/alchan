@@ -2082,7 +2082,7 @@ exports.parkingWithdraw = onCall(
 exports.accrueParkingInterest = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    const { uid } = await checkAuthAndGetUserData(request);
+    const { uid, classCode, userData } = await checkAuthAndGetUserData(request);
     const parkingRef = db
       .collection("users")
       .doc(uid)
@@ -2136,6 +2136,24 @@ exports.accrueParkingInterest = onCall(
           transaction.update(parkingRef, {
             balance: admin.firestore.FieldValue.increment(interest),
             lastInterestDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          // 거래내역 — 이자는 잔액만 늘리고 기록이 없어 학생이 «어디서 늘었나»를 볼 수 없었다
+          //   (2026-10-29 bank-probe 실측). 입금·출금과 같은 형태로 남긴다. amount 는 자산 증가분이고
+          //   현금은 그대로다(metadata.cashDelta 0). 하루 1회 가드 안이라 기록도 하루 최대 1건.
+          const expireAt = new Date();
+          expireAt.setDate(expireAt.getDate() + 90);
+          transaction.set(db.collection("activity_logs").doc(), {
+            classCode: classCode || null,
+            userId: uid,
+            userName: userData.name || "사용자",
+            type: "파킹통장 이자",
+            description: `파킹통장 이자 ${interest.toLocaleString()}원 (${cappedDays}일치, 파킹통장에 적립)`,
+            amount: interest,
+            couponAmount: 0,
+            metadata: { parkingBalance: bal + interest, days: cappedDays, cashDelta: 0 },
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expireAt: admin.firestore.Timestamp.fromDate(expireAt),
           });
           return { accrued: interest };
         }

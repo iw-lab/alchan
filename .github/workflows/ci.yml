@@ -121,3 +121,28 @@ jobs:
         env:
           ALLOW_MISSING_ENV: "1"
         run: npm run build
+
+  bank-probe:
+    # 2026-10-29 «파킹통장 하루마다 이자 들어가니?» 점검: 에뮬레이터 e2e 는 파킹 «입금»만 봤고
+    #   이자·예금 만기·적금 자동납입·대출 상환은 한 번도 실제로 돌려 본 적이 없었다. 돌려 보니
+    #   파킹 이자가 잔액엔 붙는데 거래내역엔 0건이었다(19/20). 날짜를 과거로 돌려 CF 를 실제로 부르고
+    #   «공식대로·국고 반대계정까지» 움직였는지 대조한다. 운영 데이터에는 닿지 않는다(에뮬레이터).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: 의존성 설치
+        run: |
+          npm ci --legacy-peer-deps
+          (cd functions && npm ci --no-audit --no-fund)
+      - name: 은행 실측 탐침 (에뮬레이터)
+        env:
+          NODE_OPTIONS: --require ${{ github.workspace }}/scripts/e2e/emulator-admin-bind-patch.cjs
+        run: npx -y firebase-tools@latest emulators:exec --only auth,firestore,functions --project inconomysu-class "node scripts/e2e/bank-probe.mjs"

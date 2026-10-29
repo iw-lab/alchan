@@ -4,6 +4,7 @@
   { "id": "build-source-missing", "stage": "deploy", "class": "build-provenance", "mode": "block", "match": "build-source\\.json 이 없다", "cost_s": 1, "note": "deploy.yml — 지문 없는 build/(플러그인 밖에서 만든 번들) 배포 차단 (2026-10-14)" },
   { "id": "build-source-mismatch", "stage": "deploy", "class": "build-provenance", "mode": "block", "match": "커밋된 소스로 만들어지지 않았다", "cost_s": 1, "note": "deploy.yml — 다른 작업 트리로 만든 build/ 배포 차단. 실측: 지운 페이지 3개가 운영 번들에 살아 있었음 (2026-10-14)" },
   { "id": "callables-regex-blind", "stage": "ci", "class": "dead-wiring", "mode": "block", "match": "httpsCallable 호출을 하나도 못 찾았다", "cost_s": 1, "note": "ci.yml — 검사 정규식이 코드 모양과 어긋나면 조용히 통과하지 않게 (2026-10-14)" },
-  { "id": "callables-missing", "stage": "ci", "class": "dead-wiring", "mode": "block", "match": "화면이 부르는데 functions 에 없는", "cost_s": 1, "note": "ci.yml — 지운 CF 를 화면이 계속 부름. 실측: 시스템 모니터링 탭 9개월간 오류 (2026-10-14)" }
+  { "id": "callables-missing", "stage": "ci", "class": "dead-wiring", "mode": "block", "match": "화면이 부르는데 functions 에 없는", "cost_s": 1, "note": "ci.yml — 지운 CF 를 화면이 계속 부름. 실측: 시스템 모니터링 탭 9개월간 오류 (2026-10-14)" },
+  { "id": "bank-probe", "stage": "ci", "class": "money-flow", "mode": "block", "match": "BANK PROBE FAIL", "cost_s": 90, "note": "ci.yml bank-probe — 에뮬레이터에서 파킹 이자·예금 만기·적금 자동납입·대출 상환을 실제로 불러 공식·국고 합계·거래내역 대조. 실측: 파킹 이자 거래내역 0건(19/20) (2026-10-29)" }
  ]
 }
