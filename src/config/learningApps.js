@@ -75,7 +75,7 @@ export const RETIRED_LEARNING_APPS = [
   // 레지스트리에만 있고 여기 없어서 **폴백이 낡아 있었다**(2026-08-22 씨앗 가드가 잡았다).
   // 레지스트리를 못 읽는 날엔 학생 사이드바에서 이 앱만 사라졌다.
   // 2026-10-11 크로마폴(분수 블록 팡) → 새 게임 «딱1 로켓»(합이 딱 1이면 발사) · 새 주소. id 는 그대로(정책·보상 기록).
-  { id: "siteChromaFall",        label: "딱1 로켓(분수 덧셈)",     icon: "Rocket",     url: "https://ttak1-rocket.pages.dev/" },
+  { id: "siteChromaFall",        label: "딱1 로켓(분수 덧셈)",     icon: "Rocket",     url: "https://ttak1.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
   { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
   // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
@@ -180,7 +180,7 @@ export const RETIRED_LEARNING_APPS = [
   // 2026-10-15 추가 — 횡스크롤 런앤건(메탈 슬러그류) 액션. 적은 사람이 아니라 태엽 장난감 로봇이다(초등용).
   //   3장 15스테이지 · 보스 15종 · 혼자/둘이 같이 · 모드 5. 수학·영어·음악 문제(5문제 중 4개)로 이용권을 받는다.
   //   계정·개인정보 없음(학교 대항은 학교 합계만), 외부 서버 요청 0.
-  { id: "siteTinHelmet",         label: "철모특공대(횡스크롤 액션)", icon: "HardHat",    url: "https://tinhelmet.pages.dev/" },
+  { id: "siteTinHelmet",         label: "철모특공대(횡스크롤 액션)", icon: "HardHat",    url: "https://cheolmo.pages.dev/" },
   // 2026-10-15 추가 — 원버튼 리듬 게임(3D). 색동 끈을 맞잡은 두 친구가 박자에 맞춰 한 번 누를 때마다 빙글 돌며
   //   징검돌을 건넌다. 곡 33(퍼블릭 도메인 선율 20 + 자작 13) · 빙글 여정 24길 + 끝없는 단계 · 모드 10. 음악·수학·영어
   //   문제(5문제 중 4개)로 이용권을 받는다. 계정·개인정보 없음(학교 대항은 학교 합계만).
@@ -200,11 +200,11 @@ export const RETIRED_LEARNING_APPS = [
   //   문장 1,320개(속담·명심보감·논어·채근담·이솝 등 저작권 끝난 글 + 자작) · 모드 4종(깃발 꽂기·60초 돌격·성벽 쌓기·오늘의 문장).
   //   계정·개인정보 없음(학교는 NEIS 목록에서 고르기만, 순위는 학교 합계).
   { id: "siteTajawangguk",       label: "타자왕국 키우기(타자 땅따먹기)", icon: "MapPinned", url: "https://tajawangguk.pages.dev/" },
-  { id: "siteKkeutjinhwa",       label: "끝까지 진화(진화 생존 게임)", icon: "Dna", url: "https://kkeutjinhwa.pages.dev/" },
+  { id: "siteKkeutjinhwa",       label: "끝까지 진화(진화 생존 게임)", icon: "Dna", url: "https://jinhwa.pages.dev/" },
   { id: "siteGongbuSnack",       label: "공부냥 간식가게(고양이 가게 게임)", icon: "Cat", url: "https://gongbu-snack.pages.dev/" },
   { id: "siteDokdoLog",          label: "독도 탐사 일지(독도의 날 학습 미니게임)", icon: "Ship", url: "https://dokdo-log.pages.dev/" },
   { id: "siteDokkaebiRoad",      label: "도깨비 장터길(달리며 푸는 문제 러너)", icon: "PersonStanding", url: "https://dokkaebi-road.pages.dev/" },
-  { id: "siteHobakbul",          label: "호박불 마을(핼러윈 등불 켜기 학습 게임)", icon: "Lamp", url: "https://hobakbul.pages.dev/" },
+  { id: "siteHobakbul",          label: "호박불 마을(핼러윈 등불 켜기 학습 게임)", icon: "Lamp", url: "https://hobak-maeul.pages.dev/" },
   { id: "siteGuguGuardians2D",   label: "구구성 수호대 2D 오리지널(구구단)", icon: "Shield", url: "https://gugu-guardians-2d.pages.dev/" },
 ];
 
