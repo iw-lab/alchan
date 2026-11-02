@@ -37,6 +37,10 @@ import { getNetAssetsDetail } from "../../utils/netAssets";
 const noopRefetch = () => {};
 
 // --- Helper Components ---
+// Firestore 날짜(Timestamp) → 화면용 ISO 글자. 옛 수정 버그로 글자로 저장된 문서도 그대로 받는다.
+const toIsoDate = (v) =>
+ v?.toDate ? v.toDate().toISOString() : typeof v === "string" ? v : null;
+
 const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
  const [reason, setReason] = useState(complaint.reason);
  const [desiredResolution, setDesiredResolution] = useState(
@@ -638,12 +642,8 @@ const Court = () => {
  querySnapshot.docs.map((doc) => ({
  id: doc.id,
  ...doc.data(),
- submissionDate: doc.data().submissionDate?.toDate
- ? doc.data().submissionDate.toDate().toISOString()
- : null,
- indictmentDate: doc.data().indictmentDate?.toDate
- ? doc.data().indictmentDate.toDate().toISOString()
- : null,
+ submissionDate: toIsoDate(doc.data().submissionDate),
+ indictmentDate: toIsoDate(doc.data().indictmentDate),
  })),
  );
  setComplaintsLoading(false);
@@ -875,9 +875,11 @@ const Court = () => {
  "courtComplaints",
  editingComplaint.id,
  );
- const {
- ...dataToSave
- } = updatedComplaintData;
+ // 고친 칸 셋만 쓴다. 종전엔 화면용으로 바꾼 사건 전체(...complaint)를 그대로 덮어써서
+ // 접수일·기소일이 글자→null 로 망가졌다 — 접수일이 null 이면 «최근 100건» 목록에서
+ // 빠져 사건이 사라졌다(2026-11-02 «기소를 하면 사라져»). status·추천도 옛 값으로 되돌렸다.
+ const { reason, desiredResolution, defendantId } = updatedComplaintData;
+ const dataToSave = { reason, desiredResolution, defendantId };
 
  try {
  await updateDoc(complaintRef, {
