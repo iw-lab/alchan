@@ -6706,14 +6706,10 @@ exports.sellItemToTreasury = onCall(
 
         // 2) 학생 cash 증액 + 4) 국고 차감 — 자기판매(seller==국고)면 순변동 0이라 생략
         if (!isSelfTreasury) {
-          // 🔒 [보안] 국고 하한: 지급 전 국고 잔액이 지급액 이상인지 검사.
-          // 없으면 반복 되팔기로 국고(관리자 cash)가 무한 음수로 내려간다.
-          const adminCash = Number(adminDoc.data()?.cash) || 0;
-          if (adminCash < totalGain) {
-            throw new Error(
-              "국고 잔액이 부족해 지금은 되팔 수 없어요. 선생님께 문의하세요.",
-            );
-          }
+          // 국고 잔액 하한은 두지 않는다 — 국고가 모자라면 마이너스로 내려간다(2026-11-02 사용자 결정).
+          //   종전엔 «잔액 < 지급액»이면 거절했는데, 교사가 뽑기 상금을 국고에서 송금해 국고가
+          //   −1.4억이 되자 학급 전체 되팔기가 하루 종일 막혔다. 무한 반복 되팔기는 하한이 아니라
+          //   «보유 수량 차감 + 단가 = min(낸 값·기준선)×70%» 가 막는다(되판 물건은 사라진다).
           // 학생 cash 증액 (increment 필수)
           transaction.update(userRef, {
             cash: admin.firestore.FieldValue.increment(totalGain),

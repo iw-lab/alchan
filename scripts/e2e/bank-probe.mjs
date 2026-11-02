@@ -150,6 +150,17 @@ console.log(`   활동로그 종류: ${[...new Set(logs.map((l) => l.type))].joi
 const interestLogged = logs.filter((l) => l.type === "파킹통장 이자").reduce((a, l) => a + l.amount, 0);
 check("파킹 이자도 거래내역에 남는다(금액 일치)", interestLogged === a1.accrued + a3.accrued, `기록 ${interestLogged} · 실제 ${a1.accrued + a3.accrued}`);
 
+// ── 8. 국고가 마이너스여도 되팔기가 된다 (2026-11-02 — 국고 −1.4억 학급에서 되팔기 전부 막힘) ──
+await db.doc(`users/${T.uid}`).update({ cash: -5_000_000 });
+const itemRef = await db.collection("storeItems").add({ classCode: CC, name: "탐침연필", price: 1000, available: true });
+await db.doc(`users/${S.uid}/inventory/${itemRef.id}`).set({ itemId: itemRef.id, name: "탐침연필", quantity: 2, lastPurchaseUnitPrice: 1000 });
+sum0 = await total();
+const c6 = await cash(S.uid);
+const sellErr = await callErr("sellItemToTreasury", { itemId: itemRef.id, quantity: 1, idempotencyKey: key() });
+check("국고 마이너스여도 되팔기 성공", !sellErr, sellErr || "");
+check("되팔기 = 낸 값의 70%, 국고에서 빠짐(합계 보존)", (await cash(S.uid)) - c6 === 700 && (await cash(T.uid)) === -5_000_700 && (await total()) === sum0);
+check("되판 만큼 보유 수량 줄어듦", (await db.doc(`users/${S.uid}/inventory/${itemRef.id}`).get()).data().quantity === 1);
+
 const pass = results.filter(Boolean).length;
 console.log(pass === results.length ? `BANK PROBE PASS ${pass}/${results.length}` : `BANK PROBE FAIL ${pass}/${results.length}`);
 process.exit(pass === results.length ? 0 : 1);

@@ -194,3 +194,16 @@ describe("물가를 바꾸는 **모든** 경로가 캐시를 버린다", () => {
     }
   });
 });
+
+describe("국고가 모자라도 되팔기는 된다 (2026-11-02 사용자 결정)", () => {
+  // 교사가 뽑기 상금을 국고에서 송금해 국고가 −1.4억이 되자, «국고 잔액 부족» 거절로
+  // 학급 전체 되팔기가 막혔다. 국고는 마이너스로 내려가도 된다.
+  it("⭐ 국고 잔액으로 되팔기를 거절하지 않는다", () => {
+    expect(SELL).not.toContain("국고 잔액이 부족");
+    expect(SELL).not.toMatch(/adminCash\s*</);
+  });
+  it("⭐ 그래도 학생 지급만큼 국고에서 빠진다 (돈이 새로 생기지 않는다)", () => {
+    expect(SELL).toContain("cash: admin.firestore.FieldValue.increment(totalGain)");
+    expect(SELL).toContain("cash: admin.firestore.FieldValue.increment(-totalGain)");
+  });
+});
