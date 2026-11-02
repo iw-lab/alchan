@@ -28,7 +28,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 
-import { hasJobTitle } from "../../utils/jobPermissions";
+import { hasJobTitle, hasProsecutorJob } from "../../utils/jobPermissions";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -724,7 +724,7 @@ const Court = () => {
 
  // Check if user is prosecutor
  const isProsecutor = useMemo(
- () => hasJobTitle(currentUserDoc, jobs, "검찰총장"),
+ () => hasProsecutorJob(currentUserDoc, jobs),
  [currentUserDoc, jobs],
  );
 

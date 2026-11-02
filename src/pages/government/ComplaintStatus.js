@@ -6,7 +6,7 @@ const ComplaintStatus = ({
   complaints,
   users,
   isAdmin,
-  hasProsecutorPrivileges, // 검찰총장 + 관리자: 기소/기각 결정
+  hasProsecutorPrivileges, // 기소 담당(검찰총장·기소청장 등) + 관리자: 기소/기각 결정
   hasJudgePrivileges, // 판사 + 관리자: 재판/판결
   currentUserId,
   onVote,
@@ -17,7 +17,7 @@ const ComplaintStatus = ({
   onIndictComplaint, // 기소 핸들러 (필요시)
   onDismissComplaint, // 기각 핸들러 (필요시)
 }) => {
-  // 검찰총장 또는 판사 또는 관리자 중 하나라도 해당하면 수정/삭제 등 공통 권한
+  // 기소 담당 또는 판사 또는 관리자 중 하나라도 해당하면 수정/삭제 등 공통 권한
   const hasAnyPrivileges =
     isAdmin || hasProsecutorPrivileges || hasJudgePrivileges;
   const getUserNameById = (userId) =>
@@ -120,7 +120,7 @@ const ComplaintStatus = ({
                 {/* 권한별 액션 버튼 (조건부 렌더링) */}
                 {hasAnyPrivileges && (
                   <div className="complaint-card-actions">
-                    {/* pending: 기소/기각은 검찰총장+관리자만 */}
+                    {/* pending: 기소/기각은 기소 담당+관리자만 */}
                     {complaint.status === "pending" && (
                       <>
                         {(hasProsecutorPrivileges || isAdmin) && (

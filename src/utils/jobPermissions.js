@@ -40,6 +40,20 @@ export const getEffectiveJobIds = (userDoc) => [
   ]),
 ];
 
+/**
+ * 기소 담당 직함인지 — 학급마다 이름을 바꿔 쓴다(«검찰총장» → «기소청장», 2026-10-29 BG6QUC).
+ * 이름 하나로 비교하던 때 이름을 바꾸자 기소·기각 버튼이 통째로 사라졌다(2026-11-02).
+ */
+export const isProsecutorTitle = (title) =>
+  typeof title === "string" && /검찰|기소/.test(title);
+
+/** 유효 직업 중 기소 담당 직함이 있는지 — 화면 권한 표시용 */
+export const hasProsecutorJob = (userDoc, jobs) => {
+  if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return false;
+  const ids = getEffectiveJobIds(userDoc);
+  return jobs.some((job) => ids.includes(job.id) && isProsecutorTitle(job.title));
+};
+
 /** 유효 직업 중 해당 직함이 있는지 — 화면 권한 표시용 */
 export const hasJobTitle = (userDoc, jobs, title) => {
   if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return false;

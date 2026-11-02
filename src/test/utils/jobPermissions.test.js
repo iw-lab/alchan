@@ -4,6 +4,7 @@ import {
   toJobIdArray,
   getEffectiveJobIds,
   hasJobTitle,
+  hasProsecutorJob,
 } from "../../utils/jobPermissions";
 // 서버 규약(진실원)도 같은 스펙으로 고정한다 — 클라/서버 규칙이 갈라지면 여기서 깨진다.
 import {
@@ -154,5 +155,32 @@ describe("클라이언트 표시 헬퍼", () => {
     expect(hasJobTitle(president, JOBS, "대통령")).toBe(true);
     expect(hasJobTitle(farmer, JOBS, "대통령")).toBe(false);
     expect(hasJobTitle(farmer, JOBS, "농부")).toBe(true);
+  });
+});
+
+describe("기소 담당은 이름이 바뀌어도 기소한다 (2026-11-02 «기소청장»)", () => {
+  const jobs = [
+    { id: "p", title: "기소청장" },
+    { id: "o", title: "검찰총장" },
+    { id: "j", title: "판사" },
+  ];
+  it("⭐ 이름을 «기소청장»으로 바꾼 학급에서도 기소 권한", () => {
+    expect(hasProsecutorJob({ selectedJobIds: ["p"] }, jobs)).toBe(true);
+  });
+  it("옛 이름 «검찰총장»도 그대로", () => {
+    expect(hasProsecutorJob({ appointedJobIds: ["o"] }, jobs)).toBe(true);
+  });
+  it("판사·무직은 기소 담당이 아니다", () => {
+    expect(hasProsecutorJob({ selectedJobIds: ["j"] }, jobs)).toBe(false);
+    expect(hasProsecutorJob({}, jobs)).toBe(false);
+  });
+});
+
+describe("법원 화면이 직함 한 글자 비교로 기소 권한을 정하지 않는다", () => {
+  it("⭐ Court.js 가 hasProsecutorJob 을 쓴다", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/pages/government/Court.js", "utf8");
+    expect(src).toContain("hasProsecutorJob(currentUserDoc, jobs)");
+    expect(src).not.toContain('hasJobTitle(currentUserDoc, jobs, "검찰총장")');
   });
 });
