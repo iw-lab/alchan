@@ -1671,9 +1671,15 @@ exports.transferCash = onCall(
           throw new Error("같은 학급의 사용자에게만 송금할 수 있습니다.");
         }
 
-        // 3) 서버 잔액검증
+        // 3) 서버 잔액검증 — 보내는 사람이 학급 국고(승인 관리자)면 하한 없음.
+        //    국고는 모든 기능에서 마이너스 허용(2026-11-03 사용자 결정): 뽑기 상금·교사 지급이
+        //    국고 마이너스 때문에 학생에게 안 가던 것을 막는다. 학생 송금은 종전대로 잔액 한도.
         const senderCash = Number(senderData.cash) || 0;
-        if (senderCash < amount) throw new Error("보유 현금이 부족합니다.");
+        const senderIsTreasury =
+          senderData.isAdmin === true && hasAdminPower(senderData);
+        if (!senderIsTreasury && senderCash < amount) {
+          throw new Error("보유 현금이 부족합니다.");
+        }
 
         // 4) 쓰기: 양방향 increment (원자적)
         transaction.update(senderRef, {

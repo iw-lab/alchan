@@ -6,6 +6,7 @@
 
 const { db, admin, logger, findApprovedAdminSnap, bumpCatalogVersion } = require("./utils");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
+const { refundPerStudentFor } = require("./taxRefundMath");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -302,12 +303,8 @@ async function executeTaxRefund(classCode, params) {
   }
 
   const adminDoc = adminSnapshot.docs[0];
-  const treasuryAmount = adminDoc.data().cash || 0;
-
-  if (treasuryAmount <= 0) {
-    logger.info(`[경제이벤트] ${classCode}: 국고(관리자 현금)가 비어있어 환급 불가`);
-    return { affectedCount: 0, refundedAmount: 0 };
-  }
+  const treasuryAmount = Number(adminDoc.data().cash) || 0;
+  // 국고가 0 이하여도 환급은 나간다 — 국고는 마이너스 허용(2026-11-03 사용자 결정, taxRefundMath.js).
 
   const studentsSnapshot = await db
     .collection("users")
@@ -321,13 +318,26 @@ async function executeTaxRefund(classCode, params) {
     (d) => !d.data().isSuperAdmin,
   );
   const studentCount = studentDocs.length;
-  const totalRefund = Math.floor(treasuryAmount * refundRate);
-  const refundPerStudent = Math.floor(totalRefund / studentCount);
+  // 국고 비례액이 0원이 되는 경우(국고 ≤ 0 또는 아주 적음)에만 직전 환급액을 쓴다.
+  const proportional =
+    treasuryAmount > 0 ? Math.floor(Math.floor(treasuryAmount * refundRate) / studentCount) : 0;
+  const lastPerStudent = proportional > 0 ? null : await lastRefundPerStudent(classCode);
+  const { perStudent: refundPerStudent, basis } = refundPerStudentFor({
+    treasuryAmount,
+    refundRate,
+    studentCount,
+    lastPerStudent,
+  });
 
   if (refundPerStudent <= 0) {
-    logger.info(`[경제이벤트] ${classCode}: 1인당 환급액이 너무 적음 - 건너뜀`);
+    logger.info(`[경제이벤트] ${classCode}: 환급 대상 학생 없음 - 건너뜀`);
     return { affectedCount: 0, refundedAmount: 0 };
   }
+  const refundBasisText =
+    basis === "treasury"
+      ? `국고 ${treasuryAmount.toLocaleString()}원의 ${(refundRate * 100).toFixed(1)}%를 학급 ${studentCount}명에게 균등 환급`
+      : `국고 ${treasuryAmount.toLocaleString()}원(마이너스 허용) — ` +
+        (basis === "last" ? "직전 환급과 같은 금액으로 환급" : "기본 환급액으로 환급");
 
   const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
   let affectedCount = 0;
@@ -354,8 +364,7 @@ async function executeTaxRefund(classCode, params) {
           type: "세금 환급 (경제이벤트)",
           amount: refundPerStudent,
           description:
-            `[경제이벤트] 국고 ${treasuryAmount.toLocaleString()}원의 ` +
-            `${(refundRate * 100).toFixed(1)}%를 학급 ${studentCount}명에게 균등 환급 — ` +
+            `[경제이벤트] ${refundBasisText} — ` +
             `1인당 ${refundPerStudent.toLocaleString()}원`,
         },
         expireAt,
@@ -384,7 +393,29 @@ async function executeTaxRefund(classCode, params) {
     affectedCount,
     refundedAmount: actuallyRefunded,
     perStudent: refundPerStudent,
+    basis,
   };
+}
+
+/** 이 학급의 직전 정상 세금 환급 1인당액(없으면 null) — 국고가 0 이하일 때 환급 기준. */
+async function lastRefundPerStudent(classCode) {
+  try {
+    const snap = await db
+      .collection("economicEventLogs")
+      .doc(classCode)
+      .collection("entries")
+      .orderBy("triggeredAt", "desc")
+      .limit(400) // 이벤트는 하루 1건 — 1년 넘게 거슬러 찾는다(폴백 때만 읽는다)
+      .get();
+    for (const d of snap.docs) {
+      const data = d.data();
+      const per = Number(data.result?.perStudent);
+      if (data.event?.type === "TAX_REFUND" && Number.isInteger(per) && per > 0) return per;
+    }
+  } catch (err) {
+    logger.warn(`[경제이벤트] ${classCode}: 직전 환급 조회 실패 — 기본액 사용`, err.message);
+  }
+  return null;
 }
 
 /**

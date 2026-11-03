@@ -161,6 +161,30 @@ check("국고 마이너스여도 되팔기 성공", !sellErr, sellErr || "");
 check("되팔기 = 낸 값의 70%, 국고에서 빠짐(합계 보존)", (await cash(S.uid)) - c6 === 700 && (await cash(T.uid)) === -5_000_700 && (await total()) === sum0);
 check("되판 만큼 보유 수량 줄어듦", (await db.doc(`users/${S.uid}/inventory/${itemRef.id}`).get()).data().quantity === 1);
 
+// ── 9. 국고(교사) 송금은 국고가 마이너스여도 학생에게 간다 (2026-11-03 — 뽑기 상금이 국고 −1.28억에서 막힐 자리) ──
+await signInWithEmailAndPassword(auth, T.email, "probe-pass-1");
+sum0 = await total();
+const t9 = await cash(T.uid), s9 = await cash(S.uid);
+const tErr = await callErr("transferCash", { recipientId: S.uid, amount: 300_000, idempotencyKey: key() });
+check("국고 마이너스여도 교사 → 학생 송금 성공", !tErr, tErr || "");
+check("송금액만큼 국고에서 빠짐(합계 보존)", (await cash(S.uid)) - s9 === 300_000 && (await cash(T.uid)) === t9 - 300_000 && (await total()) === sum0);
+
+// ── 10. 세금 환급은 국고가 마이너스여도 나간다 (2026-11-03 — BG6QUC 11-02 환급 21명 전원 0원) ──
+await db.doc(`economicEventSettings/${CC}`).set({ classCode: CC, enabled: true });
+await db.doc(`economicEventLogs/${CC}/entries/prev`).set({
+  triggeredAt: TS.fromMillis(Date.now() - 7 * DAY),
+  event: { id: "tax_refund", type: "TAX_REFUND" },
+  result: { affectedCount: 1, refundedAmount: 123_456, perStudent: 123_456 },
+});
+sum0 = await total();
+const t10 = await cash(T.uid), s10 = await cash(S.uid);
+let refundErr = null, refundRes = null;
+try { refundRes = await call("triggerEconomicEventManual", { forceEventId: "tax_refund" }); } catch (e) { refundErr = e.message; }
+check("국고 마이너스에서 세금 환급 실행", !refundErr && t10 < 0, refundErr || `국고 ${t10}`);
+check("직전 환급 1인당액 그대로 지급·국고에서 빠짐(합계 보존)",
+  (await cash(S.uid)) - s10 === 123_456 && (await cash(T.uid)) === t10 - 123_456 && (await total()) === sum0,
+  JSON.stringify(refundRes?.result ?? refundRes));
+
 const pass = results.filter(Boolean).length;
 console.log(pass === results.length ? `BANK PROBE PASS ${pass}/${results.length}` : `BANK PROBE FAIL ${pass}/${results.length}`);
 process.exit(pass === results.length ? 0 : 1);

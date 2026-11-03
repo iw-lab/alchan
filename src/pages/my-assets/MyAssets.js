@@ -480,7 +480,10 @@ export default function MyAssets() {
         return;
       }
 
-      if ((Number(userDoc.cash) || 0) < amount) {
+      // 국고(승인 관리자)는 마이너스 허용 — 서버 transferCash 와 같은 기준
+      const isTreasury =
+        userDoc.isAdmin === true && (userDoc.isApproved === true || userDoc.isSuperAdmin === true);
+      if (!isTreasury && (Number(userDoc.cash) || 0) < amount) {
         toast.error("보유 현금이 부족합니다.");
         return;
       }
