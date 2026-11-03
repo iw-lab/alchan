@@ -7,7 +7,8 @@
  */
 import { firestoreBase, authHeaders } from "./_firestore-rest.mjs";
 const DRY = process.argv.includes("--dry");
-const TO = process.argv.includes("--back") ? "https://ssamzip.com/" : "https://sunhaengssam.web.app/";
+// 2026-11-04 --kr = 선행쌤 본 주소 ssamzip.kr(학교 와이파이 열림 실측). --back(ssamzip.com)은 막힌 도메인이라 없앴다.
+const TO = process.argv.includes("--kr") ? "https://ssamzip.kr/" : "https://sunhaengssam.web.app/";
 const BASE = firestoreBase(); const H = await authHeaders();
 const res = await fetch(`${BASE}/platformApps/_registry`, { headers: H });
 if (!res.ok) throw new Error(`레지스트리 읽기 실패 ${res.status}`);
