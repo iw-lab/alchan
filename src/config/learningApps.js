@@ -160,7 +160,7 @@ export const RETIRED_LEARNING_APPS = [
   // 2026-10-01 추가 — 최대 8명이 실시간으로 겨루는 3D 학교 대전(브롤형). 판이 끝나면 보너스 퀴즈로 별을 받는다.
   //   3~6학년 5과목 7,535문항을 학기·단원(212단원)으로 고를 수 있고, 교실 방은 선생님이 학년·학기·단원을 정한다.
   //   계정·개인정보 없음.
-  { id: "siteSchoolStars",       label: "스쿨 스타즈(8인 학교 대전)", icon: "Star",       url: "https://school-stars.pages.dev/" },
+  { id: "siteSchoolStars",       label: "스쿨 스타즈(8인 학교 대전)", icon: "Star",       url: "https://school-stars-kr.pages.dev/" },
   // 2026-10-01 추가 — 3D 모래놀이 물길 농장. 손가락으로 모래를 파고 쌓아 물길을 이어 밭에 물을 대면 곡식이 자란다.
   //   36개 미션 + 내 정원(농장 경영·계절·지구 환경). 학습 카드는 새참(문제) 자리. 계정 없음 — 온라인 순위는 선택이고 생성 닉네임만 쓴다.
   { id: "siteMulkko",            label: "물꼬(모래 물길 농장)",       icon: "Droplets",   url: "https://mulkko-a7z.pages.dev/" },
