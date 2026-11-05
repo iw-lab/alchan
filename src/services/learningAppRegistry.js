@@ -20,7 +20,8 @@ import logger from "../utils/logger";
 //    (2026-10-01: 물꼬를 등재했는데 «안 보인다» 던 원인 — 옛 세션 캐시가 옛 목록을 계속 보여 줬다).
 //    v2 = 2026-10-26 선행쌤 주소를 sunhaengssam.web.app 으로 바꿨는데 열려 있던 탭이 12시간 동안 막힌 ssamzip.com 을 열었다 — 주소만 바꿀 땐 판(v)을 올린다
 //    v3 = 2026-11-04 선행쌤 주소를 ssamzip.kr 로
-const CACHE_KEY = `alchan_learning_apps_v3_${DEFAULT_LEARNING_APPS.length}`;
+//    v4 = 2026-11-05 학교 망이 ssamzip.kr 도 막음 → sunhaengssam.web.app
+const CACHE_KEY = `alchan_learning_apps_v4_${DEFAULT_LEARNING_APPS.length}`;
 const TTL_MS = 12 * 60 * 60 * 1000; // 12시간 — 앱 목록은 거의 안 바뀐다
 export const LEARNING_APPS_CHANGED = "learningApps:changed";
 
