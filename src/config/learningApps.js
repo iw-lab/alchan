@@ -138,7 +138,7 @@ export const RETIRED_LEARNING_APPS = [
   //   한 편은 방 3칸·자물쇠 12개·제한 60분(무제한 모드 있음). 막히면 «힌트»를 사는데,
   //   값이 교과 문제다 — 1/2/3단계에 1·2·3문항(4지선다, 132문항 6영역). 오답 페널티 0이고
   //   3단계만 기록이 «힌트 사용»으로 남는다. 계정·로그인 없음 · 외부 요청 0(게이트가 잰다).
-  { id: "siteMichyeonsang",      label: "미현상(1인칭 방탈출)",     icon: "Camera",    url: "https://michyeonsang.vercel.app/" },
+  { id: "siteMichyeonsang",      label: "미현상(1인칭 방탈출)",     icon: "Camera",    url: "https://michyeonsang.pages.dev/" },
   // 2026-09-18 추가 — 풀 3D 양궁(70 m). 바람을 읽고 흔들림이 멎는 순간에 놓는 게 전부다:
   //   측풍 1 m/s = 과녁 한 칸, 상승·하강 기류는 짧은 돌풍으로 따로 온다. 한 기기 둘이서
   //   화살 교대 세트제(2/1/0점, 6점 선취) · AI 3단계 · «오늘의 바람» 12발 일일 순위.
