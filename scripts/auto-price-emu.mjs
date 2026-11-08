@@ -72,7 +72,11 @@ ok(r6.multiplier === 1 && r6.center === 1_000_000, "튀는 상하위(각 4명)�
 await seedClass("E", { cash: 3_000_000, items: { pen: { name: "연필", price: 1000 } }, enabled: false });
 await seedClass("F", { cash: 3_000_000, items: { pen: { name: "연필", price: 1000 } }, enabled: null });
 await S.applyAutoPriceForClass("E", "2026-W46"); await S.applyAutoPriceForClass("F", "2026-W46");
-ok((await prices("E")).pen.price === 1000 && (await prices("F")).pen.price === 1000, "꺼진 학급·안 켠 학급은 그대로");
+ok((await prices("E")).pen.price === 1000, "선생님이 끈 학급은 그대로");
+ok((await prices("F")).pen.price === 1000 && (await setting("F")).anchor === 3_000_000 && (await setting("F")).enabled === undefined, "설정 없는 학급(기본 켜짐) — 첫 주는 기준만 잡고 가격 그대로");
+for (let i = 0; i < 20; i++) await db.collection("users").doc(`F-s${i}`).update({ cash: 3_600_000 });
+await S.applyAutoPriceForClass("F", "2026-W47");
+ok((await prices("F")).pen.price === 1100, "기본 켜짐 학급 — 다음 주부터 따라감", String((await prices("F")).pen.price));
 
 // 8. 건너뛰기
 await seedClass("G", { cash: 2_000_000, items: { pen: { name: "연필", price: 1000 } } });
@@ -104,7 +108,15 @@ await seedClass("K", { cash: 2_000_000, items: { pen: { name: "연필", price: 1
 const all = await S.runAutoPriceAllClasses("2026-W47");
 ok((await prices("K")).pen.price === 1100, "금요일 일괄 — 켠 학급 K 적용", JSON.stringify(all));
 ok((await prices("A")).pen.price === before, "A 는 W47 이미 적용 — 일괄이 다시 올리지 않음");
-ok((await prices("E")).pen.price === 1000 && (await prices("F")).pen.price === 1000, "일괄도 꺼진 학급은 그대로");
+ok((await prices("E")).pen.price === 1000, "일괄도 끈 학급은 그대로");
+// 끄기와 금요일 실행이 겹쳐도 되살리지 않는다 — 실행 기록은 enabled 를 쓰지 않는다
+await seedClass("L", { cash: 2_000_000, items: { pen: { name: "연필", price: 1000 } }, enabled: null });
+await db.collection("autoPriceSettings").doc("L").set({ anchor: 1_000_000 });
+const runL = S.applyAutoPriceForClass("L", "2026-W48");
+await db.collection("autoPriceSettings").doc("L").set({ enabled: false }, { merge: true });
+await runL.catch(() => {});
+ok((await setting("L")).enabled === false, "실행 중에 끈 설정이 되살아나지 않는다");
+ok((await setting("E")).history === undefined, "끈 학급엔 기록도 안 남긴다");
 
 console.log(fails ? `AUTO-PRICE-EMU FAIL ${fails}` : "AUTO-PRICE-EMU PASS");
 process.exit(fails ? 1 : 0);

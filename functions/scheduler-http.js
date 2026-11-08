@@ -3640,24 +3640,31 @@ async function measureClassCenter(classCode) {
 
 /** 한 학급 적용 — 설정 확인·아이템 가격·기준·기록을 **한 트랜잭션**으로(가격만 바뀌고 기록이 없는 상태가 없다) */
 async function applyAutoPriceForClass(classCode, weekKey) {
+  // 🔛 기본 켜짐(2026-11-08 사용자 «기본으로 켜짐으로 해줘») — 선생님이 끈 학급(enabled:false)만 건너뛴다.
+  //    설정이 없는 학급은 첫 금요일에 «기준만 잡고» 가격은 그대로 → 배포 직후 모든 학급 가격이 한꺼번에 튀지 않는다.
+  const ref0 = db.collection("autoPriceSettings").doc(classCode);
+  const pre = await ref0.get();
+  if (pre.exists && pre.data().enabled === false) return { skipped: "꺼짐" };
   let m;
   try { m = await measureClassCenter(classCode); } catch (e) { m = { center: null, counted: 0, error: e?.message || String(e) }; }
   const ref = db.collection("autoPriceSettings").doc(classCode);
   const result = await db.runTransaction(async (tx) => {
     const sd = await tx.get(ref);
-    const st = sd.exists ? sd.data() : null;
-    if (!st || st.enabled !== true) return { skipped: "꺼짐" };
+    const st = sd.exists ? sd.data() : {};
+    if (st.enabled === false) return { skipped: "꺼짐" };
     if (st.lastRunWeekKey === weekKey) return { skipped: "이번 주 이미 적용" };
     const base = { weekKey, center: m.center ?? null, counted: m.counted || 0, at: admin.firestore.Timestamp.now() };
     let items = null;
     let plan = null;
     if (st.skipWeekKey !== weekKey && !m.error && st.anchor > 0) {
       plan = planStep({ center: m.center, anchor: st.anchor });
-      if (plan.changed) items = await tx.get(db.collection("storeItems").where("classCode", "==", classCode));
+      // 상한+1 개까지만 읽는다 — 넘는지 알려고 전부 읽지 않는다(교차검증 codex)
+      if (plan.changed) items = await tx.get(db.collection("storeItems").where("classCode", "==", classCode).limit(AUTO_PRICE_MAX_ITEMS + 1));
     }
     // ↓ 여기부터 쓰기(트랜잭션은 읽기를 모두 끝낸 뒤 쓴다)
     const finish = (entry, extra = {}) => {
-      tx.update(ref, { lastRunWeekKey: weekKey, history: [entry, ...(Array.isArray(st.history) ? st.history : [])].slice(0, AUTO_PRICE_HISTORY), ...extra });
+      // ⚠️ enabled 는 쓰지 않는다 — 없으면 켜짐(기본)이고, 선생님이 끄는 것과 겹쳐도 되살리지 않는다(교차검증 gemini)
+      tx.set(ref, { lastRunWeekKey: weekKey, history: [entry, ...(Array.isArray(st.history) ? st.history : [])].slice(0, AUTO_PRICE_HISTORY), ...extra }, { merge: true });
       return entry;
     };
     if (st.skipWeekKey === weekKey) return finish({ ...base, multiplier: 1, changed: 0, reason: "선생님이 이번 주 건너뜀" });
@@ -3690,15 +3697,19 @@ async function applyAutoPriceForClass(classCode, weekKey) {
   return result;
 }
 
-/** 금요일 — 켠 학급만(읽기 0 인 학급은 건드리지 않는다). 한 학급 실패가 다른 학급을 막지 않고, 실패는 모아서 던진다 */
+/** 금요일 — 학생이 있는 모든 학급(기본 켜짐). 끈 학급은 applyAutoPriceForClass 가 읽기 1 로 건너뛴다.
+ *  한 학급 실패가 다른 학급을 막지 않고, 실패는 모아서 던진다 */
 async function runAutoPriceAllClasses(weekKey) {
-  const on = await db.collection("autoPriceSettings").where("enabled", "==", true).get();
+  const codes = await getAllActiveClassCodes();
   const errors = [];
-  for (const d of on.docs) {
-    try { await applyAutoPriceForClass(d.id, weekKey); } catch (e) { logger.error(`[자동물가] ${d.id} 실패:`, e); errors.push(`${d.id}: ${e?.message || e}`); }
+  // 5학급씩 동시에 — 하나씩 돌면 학급이 많을 때 금요일 실행(재산세·월세와 합쳐 540초) 안에 못 끝난다(교차검증 gemini)
+  for (let i = 0; i < codes.length; i += 5) {
+    const part = codes.slice(i, i + 5);
+    const rs = await Promise.allSettled(part.map((cc) => applyAutoPriceForClass(cc, weekKey)));
+    rs.forEach((r, k) => { if (r.status === "rejected") { logger.error(`[자동물가] ${part[k]} 실패:`, r.reason); errors.push(`${part[k]}: ${r.reason?.message || r.reason}`); } });
   }
   if (errors.length) throw new Error(`자동 물가 실패 ${errors.length}학급 — ${errors.join(" / ")}`);
-  return { classes: on.size };
+  return { classes: codes.length };
 }
 
 /** 교사 화면 — 지금 대표 자산과 다음 금요일 예정을 보여준다(쓰기 0) */
@@ -3715,7 +3726,7 @@ exports.autoPricePreview = onCall({ region: "asia-northeast3" }, async (request)
   const plan = st.anchor > 0 && m.center != null ? planStep({ center: m.center, anchor: st.anchor }) : null;
   const nextKey = nextAutoPriceWeekKey();
   return {
-    enabled: st.enabled === true,
+    enabled: st.enabled !== false, // 기본 켜짐 — 끈 적이 있어야 꺼짐
     anchor: st.anchor || 0,
     center: m.center,
     counted: m.counted,

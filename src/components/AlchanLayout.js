@@ -53,6 +53,7 @@ import { WifiOff } from "lucide-react";
 // DailyReward 는 getStreakInfo 때문에 어차피 이 청크에 정적으로 들어온다 — lazy 로 감싸도 쪼개지지 않았다(빌드 경고)
 import { getStreakInfo, DailyRewardBanner } from "./DailyReward";
 import EconomicEventBanner from "./EconomicEventBanner";
+import AutoPriceNotice from "./AutoPriceNotice";
 import { EconomicEventProvider } from "../hooks/useActiveEconomicEvent";
 const EconomicEventPopup = lazyWithRetry(() => import("./EconomicEventPopup"));
 const NewBillPopup = lazyWithRetry(() => import("./NewBillPopup"));
@@ -530,6 +531,9 @@ export default function AlchanLayout() {
 
           {/* 경제 이벤트 배너 */}
           {!isImmersiveMusicRoom && <EconomicEventBanner />}
+
+          {/* 📢 자동 물가 기본 켜짐 — 선생님에게 한 번 안내 */}
+          {!isImmersiveMusicRoom && <AutoPriceNotice />}
 
           {/* 📢 투표 미참여 법안 전역 배너 */}
           {!isImmersiveMusicRoom && (

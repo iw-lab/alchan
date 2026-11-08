@@ -64,7 +64,7 @@ export default function AutoPricePanel({ styles }) {
         <div>
           <h2 style={styles.title}>자동 물가 {info && <span style={{ fontSize: 13, fontWeight: 700, color: on ? "#059669" : "#6b7280" }}>· {on ? "켜짐" : "꺼짐"}</span>}</h2>
           <p style={styles.subtitle}>
-            매주 금요일 아침, 학생들의 대표 자산이 늘거나 준 만큼 물가를 따라 움직여요. 너무 많거나 적은 위·아래 20%는 계산에서 빼고, 한 주에 최대 ±10%까지만 바뀌어요. 학생 돈은 건드리지 않아요.
+            매주 금요일 아침, 학생들의 대표 자산이 늘거나 준 만큼 물가를 따라 움직여요. 너무 많거나 적은 위·아래 20%는 계산에서 빼고, 한 주에 최대 ±10%까지만 바뀌어요. 학생 돈은 건드리지 않아요. 처음에는 기본으로 켜져 있고, 첫 금요일에는 기준만 잡아요.
           </p>
         </div>
       </div>
