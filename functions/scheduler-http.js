@@ -25,7 +25,7 @@ const {
   HttpsError,
 } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { checkAuthAndGetUserData, findApprovedAdminSnap, db, admin, logger } = require("./utils");
+const { checkAuthAndGetUserData, findApprovedAdminSnap, db, admin, logger, bumpCatalogVersion } = require("./utils");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
 const {
   updateRealStockPrices,
@@ -69,7 +69,8 @@ const {
 // 배치 분할 "언제 커밋하나" 판정 — 세 곳(주급·재산세·배당)이 손으로 복붙하던 것을 모았다.
 //   그 복붙이 2026-08-17 주급 전 학급 실패를 만들었다(functions/batchChunk.js 주석 참고).
 const { shouldFlush } = require("./batchChunk");
-const { classCodesFromStudentSnap, studentCountsFromSnap } = require("./studentScope");
+const { classCodesFromStudentSnap, studentCountsFromSnap, isStudentDoc } = require("./studentScope");
+const { robustCenter, planStep, itemPrice, STORE_PRICE_MIN, STORE_PRICE_MAX } = require("./autoPriceMath");
 // 직업 개수 상한 클램프 — 네 곳에 복붙돼 있던 것을 단일 정본으로.
 const { clampMaxJobs } = require("./jobUtils");
 const { expireVetoedLaws } = require("./vetoExpiry");
@@ -940,6 +941,7 @@ exports.reverseLastWeeklySalary = onRequest(
 const {
   runEconomicEventsForAllClasses,
   triggerClassEconomicEvent,
+  isStorePriceEventExcluded,
 } = require("./economicEvents");
 
 exports.economicEventScheduler = onRequest(
@@ -2548,16 +2550,20 @@ async function collectWeeklyRentLogic() {
 //   매주 금요일 부동산세 징수 직전에 실행되어 동적 세율 결정에 사용됨.
 //   classMacroStats/{classCode} 문서에 저장 → 학급 거시경제 대시보드 데이터 소스.
 // ──────────────────────────────────────────────────────────────────
-async function computeUserNetAssets(classCode, userId, userData, stockMap, couponValue = 1000) {
+async function computeUserNetAssets(classCode, userId, userData, stockMap, couponValue = 1000, opts = {}) {
+  // strict: 읽기 실패를 0 으로 바꾸지 않고 던진다 — 자동 물가는 «못 읽음»을 «0원»으로 착각하면
+  //   대표 자산이 거짓으로 출렁여 물가와 기준이 같이 움직인다(교차검증 codex·grok·meta 2026-11-08).
+  //   세금 경로는 지금 동작(0 처리)을 그대로 둔다.
+  const soft = (p, fallback) => (opts.strict ? p : p.catch(() => fallback));
   // 부동산 owner/ownerId 필드는 모두 소유자 UID로 저장된다(서버 거래/등록 로직 기준).
   // 과거 owner==userData.name(이름) 쿼리는 항상 빈 결과라 부동산이 과세 순자산에서
   // 누락됐다. ownerId·owner 둘 다 UID로 조회하고 seen Set으로 중복을 제거한다.
   const [parkingSnap, productsSnap, portfolioSnap, byIdSnap, byOwnerSnap] = await Promise.all([
-    db.collection("users").doc(userId).collection("financials").doc("parkingAccount").get().catch(() => null),
-    db.collection("users").doc(userId).collection("products").get().catch(() => ({ docs: [] })),
-    db.collection("users").doc(userId).collection("portfolio").get().catch(() => ({ docs: [] })),
-    db.collection("classes").doc(classCode).collection("realEstateProperties").where("ownerId", "==", userId).get().catch(() => ({ docs: [] })),
-    db.collection("classes").doc(classCode).collection("realEstateProperties").where("owner", "==", userId).get().catch(() => ({ docs: [] })),
+    soft(db.collection("users").doc(userId).collection("financials").doc("parkingAccount").get(), null),
+    soft(db.collection("users").doc(userId).collection("products").get(), { docs: [] }),
+    soft(db.collection("users").doc(userId).collection("portfolio").get(), { docs: [] }),
+    soft(db.collection("classes").doc(classCode).collection("realEstateProperties").where("ownerId", "==", userId).get(), { docs: [] }),
+    soft(db.collection("classes").doc(classCode).collection("realEstateProperties").where("owner", "==", userId).get(), { docs: [] }),
   ]);
 
   const cash = Number(userData.cash) || 0;
@@ -3142,6 +3148,8 @@ exports.weeklyEconomySchedulerV2 = onSchedule(
         const jobs = [
           { doc: "lastPropertyTax", label: "재산세", run: collectPropertyHoldingTaxesLogic },
           { doc: "lastWeeklyRent", label: "월세", run: collectWeeklyRentLogic },
+          // 🏷️ 자동 물가 — 세금·월세가 끝난 뒤의 자산으로 잰다. 학급별 멱등은 runAutoPriceAllClasses 안 트랜잭션이 맡는다.
+          { doc: "lastAutoPrice", label: "자동 물가", run: () => runAutoPriceAllClasses(taxWeekKey) },
         ];
         // 한 작업이 실패해도 다른 작업은 돌린다. 재산세가 터졌다고 월세까지 안 걷을 이유가 없고,
         // 둘은 서로 독립적인 락을 쓴다. 실패는 모아서 마지막에 던진다(재throw = 실패가 보이게).
@@ -3598,6 +3606,154 @@ exports.payDividendsManual = onRequest(
 // ===================================================================================
 // 외부에서 사용될 수 있도록 로직 함수들 export
 // ===================================================================================
+
+// ===================================================================================
+// 🏷️ 자동 물가 (2026-11-08 사용자 «학급 학생 총자산에서 적당히 맞추는 걸 자동으로 · 튀는 상하위는 조절»)
+//    설계·교차검증 결과 = docs/AUTO-PRICE-PLAN.md · 판정 = autoPriceMath.js(순수·시험됨)
+//    불변식: ① 학생 돈은 안 건드린다(가격만) ② 같은 학급·같은 주 두 번 없음 ③ 한 주 ±10%, 제외·basePrice 규칙은 수동 버튼과 같다.
+// ===================================================================================
+const AUTO_PRICE_HISTORY = 12;
+const AUTO_PRICE_MAX_ITEMS = 450; // 트랜잭션 500 쓰기 한도 아래(설정 문서 1 + 여유)
+
+/** 다음 자동 실행(금 08:30 KST)의 주 키 — 이 앱 주 키는 1/1 기준이라 월요일에 안 바뀐다(2026 은 목요일) */
+function nextAutoPriceWeekKey(now = new Date()) {
+  const kst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const day = kst.getUTCDay();
+  const minutes = kst.getUTCHours() * 60 + kst.getUTCMinutes();
+  let add = (5 - day + 7) % 7;
+  if (add === 0 && minutes >= 8 * 60 + 30) add = 7;
+  return computeWeekKey(new Date(now.getTime() + add * 86400000));
+}
+
+/** 학급 대표 자산 — 학생 순자산을 strict 로(못 읽으면 던진다) 모아 위·아래를 자른 평균 */
+async function measureClassCenter(classCode) {
+  const stockDoc = await db.collection("Settings").doc("centralStocksCache").get();
+  const stockMap = {};
+  if (stockDoc.exists) (stockDoc.data().stocks || []).forEach((st) => { if (st.isListed !== false) stockMap[st.id] = Number(st.price) || 0; });
+  const couponValue = couponValueFrom(await classCouponRef(db, classCode).get());
+  const snap = await db.collection("users").where("classCode", "==", classCode).where("isAdmin", "==", false).get();
+  const students = snap.docs.filter((d) => isStudentDoc(d.data()));
+  const values = await Promise.all(students.map((d) =>
+    computeUserNetAssets(classCode, d.id, d.data(), stockMap, couponValue, { strict: true }).then((a) => a.netAssets)));
+  return { center: robustCenter(values), counted: values.length };
+}
+
+/** 한 학급 적용 — 설정 확인·아이템 가격·기준·기록을 **한 트랜잭션**으로(가격만 바뀌고 기록이 없는 상태가 없다) */
+async function applyAutoPriceForClass(classCode, weekKey) {
+  let m;
+  try { m = await measureClassCenter(classCode); } catch (e) { m = { center: null, counted: 0, error: e?.message || String(e) }; }
+  const ref = db.collection("autoPriceSettings").doc(classCode);
+  const result = await db.runTransaction(async (tx) => {
+    const sd = await tx.get(ref);
+    const st = sd.exists ? sd.data() : null;
+    if (!st || st.enabled !== true) return { skipped: "꺼짐" };
+    if (st.lastRunWeekKey === weekKey) return { skipped: "이번 주 이미 적용" };
+    const base = { weekKey, center: m.center ?? null, counted: m.counted || 0, at: admin.firestore.Timestamp.now() };
+    let items = null;
+    let plan = null;
+    if (st.skipWeekKey !== weekKey && !m.error && st.anchor > 0) {
+      plan = planStep({ center: m.center, anchor: st.anchor });
+      if (plan.changed) items = await tx.get(db.collection("storeItems").where("classCode", "==", classCode));
+    }
+    // ↓ 여기부터 쓰기(트랜잭션은 읽기를 모두 끝낸 뒤 쓴다)
+    const finish = (entry, extra = {}) => {
+      tx.update(ref, { lastRunWeekKey: weekKey, history: [entry, ...(Array.isArray(st.history) ? st.history : [])].slice(0, AUTO_PRICE_HISTORY), ...extra });
+      return entry;
+    };
+    if (st.skipWeekKey === weekKey) return finish({ ...base, multiplier: 1, changed: 0, reason: "선생님이 이번 주 건너뜀" });
+    if (m.error) return finish({ ...base, multiplier: 1, changed: 0, reason: "자산을 다 읽지 못해 그대로 둠" });
+    if (!(st.anchor > 0)) {
+      if (m.center > 0) return finish({ ...base, multiplier: 1, changed: 0, reason: "기준을 처음 잡음" }, { anchor: m.center });
+      return finish({ ...base, multiplier: 1, changed: 0, reason: m.center == null ? "학생이 5명 미만" : "대표 자산이 0 이하 — 기준 대기" });
+    }
+    if (!plan.changed) return finish({ ...base, ratio: plan.ratio, multiplier: 1, changed: 0, reason: plan.reason });
+    if (items.size > AUTO_PRICE_MAX_ITEMS) return finish({ ...base, ratio: plan.ratio, multiplier: 1, changed: 0, reason: `아이템이 ${items.size}개라 자동 조정을 건너뜀` });
+    let changed = 0;
+    let excluded = 0;
+    for (const d of items.docs) {
+      const data = d.data();
+      if (isStorePriceEventExcluded(data)) { excluded++; continue; }
+      const cur = Number(data.price);
+      if (!Number.isFinite(cur) || cur <= 0) continue;
+      const next = itemPrice(cur, plan.multiplier, { min: STORE_PRICE_MIN, max: STORE_PRICE_MAX });
+      if (next === cur) continue;
+      const patch = { price: next, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+      // 되팔기 기준선 — 수동 버튼·경제 이벤트와 같은 규약(처음 바뀔 때 한 번만, 덮어쓰지 않음)
+      if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) patch.basePrice = cur;
+      tx.update(d.ref, patch);
+      changed++;
+    }
+    return finish({ ...base, ratio: plan.ratio, multiplier: plan.multiplier, changed, excluded, reason: plan.reason }, { anchor: plan.anchor });
+  });
+  if (result.changed > 0) await bumpCatalogVersion(classCode);
+  logger.info(`[자동물가] ${classCode} ${weekKey}: ${JSON.stringify({ ...result, at: undefined })}`);
+  return result;
+}
+
+/** 금요일 — 켠 학급만(읽기 0 인 학급은 건드리지 않는다). 한 학급 실패가 다른 학급을 막지 않고, 실패는 모아서 던진다 */
+async function runAutoPriceAllClasses(weekKey) {
+  const on = await db.collection("autoPriceSettings").where("enabled", "==", true).get();
+  const errors = [];
+  for (const d of on.docs) {
+    try { await applyAutoPriceForClass(d.id, weekKey); } catch (e) { logger.error(`[자동물가] ${d.id} 실패:`, e); errors.push(`${d.id}: ${e?.message || e}`); }
+  }
+  if (errors.length) throw new Error(`자동 물가 실패 ${errors.length}학급 — ${errors.join(" / ")}`);
+  return { classes: on.size };
+}
+
+/** 교사 화면 — 지금 대표 자산과 다음 금요일 예정을 보여준다(쓰기 0) */
+exports.autoPricePreview = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { classCode } = await checkAuthAndGetUserData(request, true);
+  if (!classCode) throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+  const sd = await db.collection("autoPriceSettings").doc(classCode).get();
+  const st = sd.exists ? sd.data() : {};
+  // 화면을 열 때는 설정·기록만(읽기 1) — 학생 자산 계산(학생당 읽기 5)은 «지금 계산해 보기»를 눌렀을 때만
+  let m = { center: null, counted: 0, error: null };
+  if (request.data?.measure === true) {
+    try { m = await measureClassCenter(classCode); } catch (e) { m = { center: null, counted: 0, error: "학생 자산을 다 읽지 못했어요" }; }
+  }
+  const plan = st.anchor > 0 && m.center != null ? planStep({ center: m.center, anchor: st.anchor }) : null;
+  const nextKey = nextAutoPriceWeekKey();
+  return {
+    enabled: st.enabled === true,
+    anchor: st.anchor || 0,
+    center: m.center,
+    counted: m.counted,
+    error: m.error || null,
+    plannedPercent: plan ? Math.round((plan.multiplier - 1) * 1000) / 10 : 0,
+    planReason: plan ? plan.reason : (st.enabled ? "기준 대기" : null),
+    skipNext: st.skipWeekKey === nextKey,
+    history: (st.history || []).map((h) => ({ ...h, at: h.at?.toMillis ? h.at.toMillis() : null })),
+  };
+});
+
+/** 교사 조작 — 켜기/끄기/다음 금요일 건너뛰기·되돌리기/기준 다시 잡기. 학생 돈·가격은 여기서 바뀌지 않는다 */
+exports.autoPriceControl = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { uid, classCode } = await checkAuthAndGetUserData(request, true);
+  if (!classCode) throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+  const action = request.data?.action;
+  const ref = db.collection("autoPriceSettings").doc(classCode);
+  const nextKey = nextAutoPriceWeekKey();
+  if (action === "enable" || action === "rebase") {
+    let center = null;
+    try { center = (await measureClassCenter(classCode)).center; } catch (e) {
+      throw new HttpsError("unavailable", "학생 자산을 다 읽지 못했어요. 잠시 뒤 다시 눌러 주세요.");
+    }
+    const anchor = center > 0 ? center : 0; // 0 이하면 «기준 대기» — 처음 양수가 되는 금요일에 가격 변경 없이 기준만 잡는다
+    const patch = { anchor, anchorAt: admin.firestore.FieldValue.serverTimestamp(), anchorBy: uid };
+    if (action === "enable") Object.assign(patch, { enabled: true, enabledAt: admin.firestore.FieldValue.serverTimestamp(), enabledBy: uid });
+    await ref.set(patch, { merge: true });
+    return { success: true, anchor };
+  }
+  if (action === "disable") { await ref.set({ enabled: false, disabledAt: admin.firestore.FieldValue.serverTimestamp(), disabledBy: uid }, { merge: true }); return { success: true }; }
+  if (action === "skipNext") { await ref.set({ skipWeekKey: nextKey }, { merge: true }); return { success: true }; }
+  if (action === "unskip") { await ref.set({ skipWeekKey: admin.firestore.FieldValue.delete() }, { merge: true }); return { success: true }; }
+  throw new HttpsError("invalid-argument", "알 수 없는 동작입니다.");
+});
+
+module.exports.applyAutoPriceForClass = applyAutoPriceForClass;
+module.exports.runAutoPriceAllClasses = runAutoPriceAllClasses;
+module.exports.nextAutoPriceWeekKey = nextAutoPriceWeekKey;
 module.exports.updateCentralStockMarketLogic = updateCentralStockMarketLogic; // 하위 호환성용 빈 함수
 module.exports.resetDailyTasksLogic = resetDailyTasksLogic;
 module.exports.resetTasksForClass = resetTasksForClass;

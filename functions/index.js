@@ -81,6 +81,8 @@ exports.listAppRewards = aap.listAppRewards; // 지급 원장 조회(교사 화�
 exports.economicEventScheduler = scheduler.economicEventScheduler; // 경제 이벤트 스케줄러 (매시간 실행)
 exports.triggerEconomicEventManual = scheduler.triggerEconomicEventManual; // 수동 경제 이벤트 실행
 exports.saveEconomicEventSettings = scheduler.saveEconomicEventSettings; // 경제 이벤트 설정 저장
+exports.autoPricePreview = scheduler.autoPricePreview; // 🏷️ 자동 물가 — 교사 미리보기(쓰기 0)
+exports.autoPriceControl = scheduler.autoPriceControl; // 🏷️ 자동 물가 — 켜기/끄기/건너뛰기/기준 다시 잡기
 exports.collectWeeklyTaxesManual = scheduler.collectWeeklyTaxesManual; // 주간 세금(순자산세+보유세) 수동 징수
 exports.collectWeeklyTaxesByOfficer = scheduler.collectWeeklyTaxesByOfficer; // 국세청장(임명 국세청 직원) 학생 주간 세금 징수 (주1회 쿨다운)
 
@@ -5997,8 +5999,8 @@ exports.deleteStoreItem = onCall(
  *     넘지 못한다(아래 sellItemToTreasury 참고). 여기 한 스텝 상한(±50%)은 그 위에 얹는
  *     오조작 방지선이다 — 0 을 하나 더 눌러 물가가 10배가 되는 사고를 막는다.
  */
-const STORE_PRICE_MIN = 100; // 경제이벤트(executeStorePriceChange)와 같은 하한
-const STORE_PRICE_MAX = 1000000000; // 10억 — MAX_MONEY(100억) 아래로 넉넉히 잡은 표시가 상한
+// 하한(경제이벤트와 같은 100)·상한(10억 — MAX_MONEY 100억 아래) 정본은 autoPriceMath.js — 자동 물가와 공유
+const { STORE_PRICE_MIN, STORE_PRICE_MAX } = require("./autoPriceMath");
 exports.adjustStorePrices = onCall(
   { region: "asia-northeast3" },
   async (request) => {

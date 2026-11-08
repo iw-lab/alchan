@@ -16,6 +16,7 @@ import {
 import { confirmDialog } from "../../utils/confirmDialog";
 import { useItems } from "../../contexts/ItemContext";
 import { toast } from "../../utils/toast";
+import AutoPricePanel from "./AutoPricePanel";
 
 const styles = {
   container: {
@@ -435,6 +436,8 @@ const AdminItemPage = ({
 
   return (
     <div style={styles.container}>
+      {/* 🏷️ 자동 물가 — 매주 금요일 학생 대표 자산을 따라 물가를 맞춘다 */}
+      <AutoPricePanel styles={styles} />
       {/* 🏷️ 전체 물가 조정 — 아이템을 하나씩 고치지 않고 학급 경제의 물가 수준을 움직인다 */}
       <div style={{ ...styles.card, marginBottom: "20px" }}>
         <div style={styles.header}>
