@@ -202,8 +202,13 @@ jobs:
             #    여기서 한 번 더 본다 — 안 그러면 린트를 켠 의미가 없다.
             npm run lint
             cd ..
-            firebase deploy --only functions --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+            # 🔁 일부 함수가 Quota Exceeded 로 «failed to update» 여도 CLI 는 0 으로 끝난다(2026-11-08 33개가 옛 버전에 남았는데 초록).
+            #    실패한 것만 다시 배포하고, 끝까지 남으면 이 스텝을 빨갛게 끝낸다. .env 는 성공·실패 모두 지운다.
+            set +e
+            bash scripts/deploy-functions.sh --project inconomysu-class --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive
+            DEPLOY_RC=$?
             rm -f functions/.env
+            exit $DEPLOY_RC
           else
             echo "⏭️  Functions 변경 없음 - 건너뜀"
           fi
