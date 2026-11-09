@@ -63,12 +63,12 @@ export const DEFAULT_LEARNING_APPS = [
  */
 export const RETIRED_LEARNING_APPS = [
   { id: "siteArtOn",             label: "미술아트온",             icon: "Palette",    url: "https://arton.simssijjang.workers.dev/" },
-  { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://narae-teal.vercel.app/" },
+  { id: "siteNarae",             label: "종이하늘",               icon: "Send",       url: "https://narae-4fe.pages.dev/" },
   { id: "siteSeulgisem",         label: "슬기셈(수학)",           icon: "Calculator", url: "https://word-e329c.web.app" },
   { id: "siteNumeroQuest",       label: "칸채움",                 icon: "Grid3x3",    url: "https://kanchaeum.pages.dev/" },
   { id: "siteTypingverse",       label: "타이핑버스",             icon: "Keyboard",   url: "https://typingverse.pages.dev" },
   { id: "siteEchoTale",          label: "에코테일(영어)",         icon: "BookOpen",   url: "https://echotale.simssijjang-d79.workers.dev/" },
-  { id: "siteVocawormDefense",   label: "보카웜 디펜스(영어단어)", icon: "Gamepad2",   url: "https://vocaworm-defense.vercel.app/" },
+  { id: "siteVocawormDefense",   label: "보카웜 디펜스(영어단어)", icon: "Gamepad2",   url: "https://vocaworm-defense.pages.dev/" },
   { id: "siteAraharu",           label: "아라하루(아침학습)",      icon: "Sparkles",   url: "https://araharu-ecp.pages.dev/" },
   { id: "siteMathCastle",        label: "수학성 수호자(수학)",     icon: "Castle",     url: "https://mathcastle.pages.dev/" },
   { id: "siteGuguGuardians",     label: "구구성 수호대(구구단)",   icon: "Shield",     url: "https://gugu-guardians.pages.dev/" },
@@ -77,16 +77,16 @@ export const RETIRED_LEARNING_APPS = [
   // 2026-10-11 크로마폴(분수 블록 팡) → 새 게임 «딱1 로켓»(합이 딱 1이면 발사) · 새 주소. id 는 그대로(정책·보상 기록).
   { id: "siteChromaFall",        label: "딱1 로켓(분수 덧셈)",     icon: "Rocket",     url: "https://ttak1.pages.dev/" },
   { id: "siteKongkongVolley",    label: "콩콩배구",                icon: "Volleyball", url: "https://kongkong-volley.pages.dev/" },
-  { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.vercel.app/" },
+  { id: "siteKeywordSchool",     label: "열쇠말 학교(방탈출)",     icon: "KeyRound",   url: "https://yeolsoemal-school.pages.dev/" },
   // 2026-08-30 추가. 물감 대항전 + 교과 문제(영어·수학·과학·사회) — 맞혀야 물감이 나온다.
   { id: "siteReloadArena",       label: "리로드 아레나(교과 대항전)", icon: "SprayCan",  url: "https://reload-arena.simssijjang-d79.workers.dev/" },
   // 2026-08-31 추가 — 킹수학 등재분 중 알찬에 없던 4개.
   // 넘버러시·한뼘 땅따먹기·한달음 윷놀이는 **전자칠판 핫시트**(한 기기를 4~6명이 교대)라
   // 개인 기기용 앱들과 성격이 다르다. 뽑기ON 은 교사가 쓰는 추첨 도구다.
   { id: "sitePickOn",            label: "뽑기ON(교실 추첨)",        icon: "Ticket",    url: "https://iwpick.pages.dev/" },
-  { id: "siteNumRush",           label: "넘버러시(수 감각)",        icon: "Hash",      url: "https://numrush.vercel.app" },
-  { id: "siteSpanLand",          label: "한뼘 땅따먹기(측정)",      icon: "LandPlot",  url: "https://spanland.vercel.app" },
-  { id: "siteYutDash",           label: "한달음 윷놀이(자료·확률)", icon: "Dices",     url: "https://yutdash.vercel.app" },
+  { id: "siteNumRush",           label: "넘버러시(수 감각)",        icon: "Hash",      url: "https://numrush-2qi.pages.dev" },
+  { id: "siteSpanLand",          label: "한뼘 땅따먹기(측정)",      icon: "LandPlot",  url: "https://spanland.pages.dev" },
+  { id: "siteYutDash",           label: "한달음 윷놀이(자료·확률)", icon: "Dices",     url: "https://yutdash.pages.dev" },
   // 2026-09-02 추가 — 급수별 한자를 손으로 쓰며 익히는 앱(획순 채점).
   { id: "sitePilhan",            label: "필한(한자 급수)",          icon: "Brush",     url: "https://pilhan.pages.dev/" },
   { id: "siteBeatOn",            label: "비트:온(리듬 게임)",       icon: "Music",     url: "https://beaton-evo.pages.dev" },
@@ -101,10 +101,10 @@ export const RETIRED_LEARNING_APPS = [
   { id: "siteLoopPark",          label: "루프 파크(놀이공원 경영)",  icon: "Ticket",   url: "https://loop-park-dyy.pages.dev/" },
   // 레지스트리에만 있고 폴백에 없어서 **또 어긋나 있었다**(2026-09-07 발견). 레지스트리를
   // 못 읽는 날엔 학생 사이드바에서 이 앱만 사라진다 — 2026-08-22 크로마폴과 같은 결함이다.
-  { id: "siteOreudap",           label: "오르답(구구단·영단어)",    icon: "Calculator", url: "https://oreudap.vercel.app" },
+  { id: "siteOreudap",           label: "오르답(구구단·영단어)",    icon: "Calculator", url: "https://muhan-61w.pages.dev" },
   // 2026-09-07 추가 — 국사편찬위원회 «우리역사넷» 한국사 연대기를 분석해 만든 오리지널 문제은행.
   // 5,446문항(심화·기본), 학습·모의고사·게임·오답노트. 계정 없음, 기록은 그 기기에만.
-  { id: "siteKoreaHis",          label: "한국사 문제은행(한국사)",  icon: "Landmark", url: "https://koreahis.vercel.app/" },
+  { id: "siteKoreaHis",          label: "한국사 문제은행(한국사)",  icon: "Landmark", url: "https://koreahis.pages.dev/" },
   // 2026-09-09 추가 — 찌를 기다리는 몇 초에 교과 문항 하나를 푸는 3D 낚시 게임.
   // 맞히면 황금미끼·물때가 올라 큰 물고기가 문다(오답 페널티 0). 3~6학년 5과목 2,491문항,
   // 어종 203종, 일일 랭킹. 계정·개인정보 없음.
@@ -112,7 +112,7 @@ export const RETIRED_LEARNING_APPS = [
   // 2026-09-09 추가 — 점프 플랫포머. 스테이지 곳곳의 «지혜의 돌»에서 국어·수학·영어·과학
   //   4지선다가 나온다(1913문항). 타이틀에서 학년·학기 출제 범위를 고를 수 있고, 문제를
   //   안 풀어도 클리어된다(학습은 상으로만 작동). 계정·개인정보 없음.
-  { id: "siteHopSquad",          label: "폴짝 원정대(교과 점프)",   icon: "Sprout",    url: "https://hop-squad-mu.vercel.app" },
+  { id: "siteHopSquad",          label: "폴짝 원정대(교과 점프)",   icon: "Sprout",    url: "https://hop-squad.pages.dev" },
   // 2026-09-14 추가 — 받아쓰기. 국어 537급 5,370문항 · 영어 229급 2,290문항이 음원까지
   //   내장이라 급수표를 안 만들어도 바로 된다. 자모/철자 채점, 칠판 모드, 인쇄물 5종.
   //   서버가 없어 아이 기록이 기기 밖으로 나가지 않는다. 계정·개인정보 없음.
@@ -148,7 +148,7 @@ export const RETIRED_LEARNING_APPS = [
   //   점수가 쌓이고, 빙판에서 조금만 무리하면 날이 걸려 넘어진다. 코스 6 · 스키어 5 · 데일리 랭킹
   //   (세 글자 이니셜은 가운데를 *로 가려 올라간다). 계정·개인정보 없음.
   { id: "siteSeolbongRush",      label: "설봉 러시(3D 스키)",      icon: "MountainSnow", url: "https://seolbong-rush.pages.dev/" },
-  { id: "siteRacketRush",        label: "래킷 러시(테니스)",        icon: "CircleDot",  url: "https://racket-rush.vercel.app" },
+  { id: "siteRacketRush",        label: "래킷 러시(테니스)",        icon: "CircleDot",  url: "https://racket-rush.pages.dev" },
   // 2026-09-22 추가 — 탑다운 2.5D 7인제 축구. 조작은 문맥 버튼 하나로 갈린다(공을 가지면 패스·슛,
   //   없으면 뺏기·슬라이딩) · 달리기를 «탭»하면 0.6초 순간 대시. 하프타임·프리킥에 작전판 문항이
   //   뜨고, 맞히면 그 경기 안에서만 쓰는 카드가 생긴다(+10.5%p · 못 풀어도 경기·랭킹은 100% 그대로).

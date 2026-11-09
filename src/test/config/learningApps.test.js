@@ -141,3 +141,16 @@ describe("2026-10-23 정리", () => {
     expect(normalizeLearningApps(raw).map((i) => i.id)).toEqual(["siteSsamzip", "siteKingsmath"]);
   });
 });
+
+// 게임 호스트 정본 = Cloudflare korea Pages(2026-11-09 사용자 «클라우드플레어로 옮겨» — Vercel 게임 10개 이사).
+// 폴백 목록에 vercel.app 이 다시 들어오면 실패. 정본(Firestore 레지스트리)은 scripts/ops/move-vercel-to-pages-2026-11-09.mjs 로 함께 바꿨다.
+describe("learning app hosts", () => {
+  const isVercel = (u) => /^https?:\/\/[a-z0-9-]+\.vercel\.app\b/i.test(u || "");
+  it("폴백 목록에 vercel.app 주소가 없다", () => {
+    expect([...DEFAULT_LEARNING_APPS, ...RETIRED_LEARNING_APPS].filter((a) => isVercel(a.url)).map((a) => a.id)).toEqual([]);
+  });
+  it("판정기가 vercel 주소를 잡는다(빨강 시험)", () => {
+    expect(isVercel("https://vocaworm-defense.vercel.app/")).toBe(true);
+    expect(isVercel("https://vocaworm-defense.pages.dev/")).toBe(false);
+  });
+});
