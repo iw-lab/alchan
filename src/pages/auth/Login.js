@@ -701,6 +701,7 @@ const Login = () => {
  if (loading || !firebaseReady) {
  return (
  <div
+ key="login-loading"
  className="fixed inset-0 flex flex-col items-center justify-center z-[9998]"
  style={{
  background:
@@ -794,6 +795,7 @@ const Login = () => {
  // ── 로그인 화면 ────────────────────────────────────────────
  return (
  <div
+ key="login-form"
  className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
  style={{
  background:
@@ -816,7 +818,7 @@ const Login = () => {
  />
  </div>
 
- <div className="w-full max-w-md relative z-10">
+ <main className="w-full max-w-md relative z-10">
  {/* 로고/타이틀 */}
  <div className="text-center mb-6">
  <div className="relative inline-block mb-3">
@@ -1017,7 +1019,9 @@ const Login = () => {
  <button
  type="button"
  onClick={() => setShowPassword(!showPassword)}
- className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+ aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+ aria-pressed={showPassword}
+ className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-500 hover:text-slate-700 transition-colors"
  >
  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
  </button>
@@ -1051,7 +1055,7 @@ const Login = () => {
  )}
  </div>
  </div>
- <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+ <span className="text-sm text-slate-500 group-hover:text-slate-700 transition-colors">
  아이디 저장
  </span>
  </label>
@@ -1083,7 +1087,7 @@ const Login = () => {
  <button
  type="button"
  onClick={() => handleTabChange("register")}
- className="text-sm text-indigo-400 font-semibold hover:text-indigo-300 transition-colors inline-flex items-center gap-1"
+ className="text-sm text-indigo-600 font-semibold hover:text-indigo-800 transition-colors inline-flex items-center gap-1"
  >
  선생님 계정 만들기
  <ChevronRight size={14} />
@@ -1093,7 +1097,7 @@ const Login = () => {
  {activeTab === "student" && (
  <p className="text-center text-xs text-slate-500 pt-1">
  계정이 없나요?{" "}
- <span className="text-indigo-400 font-medium">
+ <span className="text-indigo-600 font-medium">
  선생님께 문의하세요
  </span>
  </p>
@@ -1232,7 +1236,7 @@ const Login = () => {
  <div className="mt-5 text-center space-y-2">
  <Link
  to="/privacy"
- className="text-xs text-slate-600 hover:text-slate-400 transition-colors underline underline-offset-4"
+ className="text-xs text-slate-600 hover:text-slate-800 transition-colors underline underline-offset-4"
  >
  개인정보처리방침
  </Link>
@@ -1240,7 +1244,7 @@ const Login = () => {
  © 2026 알찬 경제교육. All rights reserved.
  </p>
  </div>
- </div>
+ </main>
 
  <style>{`
  @keyframes shake {

@@ -26,8 +26,7 @@ import Avatar from "./Avatar";
 import { buildAvatarOverlays } from "../utils/avatarShop";
 import { getLevelInfo } from "../utils/levelSystem";
 import {
-  getUserAchievements,
-  getAchievementById,
+  evaluateAchievements,
 } from "../utils/achievementSystem";
 import { formatKoreanNumber, getCurrencyUnit } from "../utils/numberFormatter";
 import { toast } from "../utils/toast";
@@ -133,22 +132,14 @@ const AlchanHeader = memo(
       userDoc?.itemValue,
     ]);
 
+    // 최고 배지 — 저장 없이 지금 상태로 계산(여기서 아는 값: 순자산·쿠폰). 근거는 achievementSystem.js.
     const bestAchievement = useMemo(() => {
       if (!user?.uid) return null;
-      const achievements = getUserAchievements(user.uid);
-      if (achievements.length === 0) return null;
-
-      const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
-      const sorted = [...achievements].sort((a, b) => {
-        const achA = getAchievementById(a.id);
-        const achB = getAchievementById(b.id);
-        return (
-          (rarityOrder[achA?.rarity] || 99) - (rarityOrder[achB?.rarity] || 99)
-        );
-      });
-
-      return getAchievementById(sorted[0].id);
-    }, [user?.uid]);
+      const netAssets =
+        (Number(userDoc?.cash) || 0) + (Number(userDoc?.stockValue) || 0) +
+        (Number(userDoc?.realEstateValue) || 0) + (Number(userDoc?.itemValue) || 0);
+      return evaluateAchievements({ totalAssets: netAssets, coupons: Number(userDoc?.coupons) || 0 }).best;
+    }, [user?.uid, userDoc?.cash, userDoc?.stockValue, userDoc?.realEstateValue, userDoc?.itemValue, userDoc?.coupons]);
 
     useEffect(() => {
       const handleClickOutside = (event) => {
@@ -335,6 +326,7 @@ const AlchanHeader = memo(
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleSidebar}
+                aria-label="메뉴 열기"
                 className="p-2.5 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <LayoutDashboard size={22} className="text-slate-800" />
@@ -425,6 +417,7 @@ const AlchanHeader = memo(
             {/* 사이드바 토글 버튼 */}
             <button
               onClick={onToggleSidebarCollapse}
+              aria-label={isSidebarCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
               className="p-2 rounded-lg cursor-pointer flex items-center justify-center"
               style={{ border: '1px solid var(--border-primary)', background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
             >

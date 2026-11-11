@@ -528,6 +528,7 @@ const ItemStore = () => {
                               <input
                                 type="number"
                                 min="1"
+                                aria-label={`${item.name} 살 개수`}
                                 max={item.stock <= 0 && item.initialStock > 0 ? item.initialStock : item.stock}
                                 value={purchaseQuantities[item.id] || 1}
                                 onChange={(e) =>

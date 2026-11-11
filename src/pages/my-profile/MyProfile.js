@@ -1,5 +1,5 @@
 // src/pages/my-profile/MyProfile.js - 내 프로필 페이지
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { verifyClassCode, db } from "../../firebase";
@@ -14,9 +14,9 @@ import Avatar from "../../components/Avatar";
 import { buildAvatarOverlays } from "../../utils/avatarShop";
 import { getLevelInfo, LEVEL_THRESHOLDS } from "../../utils/levelSystem";
 import {
- getUserAchievements,
- getAchievementById,
+ evaluateAchievements,
 } from "../../utils/achievementSystem";
+import { readGoal } from "../../utils/savingsGoal";
 import { StreakDisplay, StreakRewardInfo } from "../../components/DailyReward";
 import { makeAliasChoices, buildDisplayName } from "../../utils/alias";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
@@ -38,7 +38,6 @@ export default function MyProfile() {
  const userName =
  userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
- const [achievements, setAchievements] = useState([]);
  const navigate = useNavigate();
  const avatarOverlays = buildAvatarOverlays(userDoc);
 
@@ -71,11 +70,14 @@ export default function MyProfile() {
  // 레벨 정보
  const levelInfo = getLevelInfo(netAssets);
 
- useEffect(() => {
- if (userId) {
- setAchievements(getUserAchievements(userId));
- }
- }, [userId]);
+ // 배지 — 저장하지 않고 지금 상태로 계산한다(utils/achievementSystem.js evaluateAchievements).
+ //   여기서 아는 값(순자산·쿠폰·목표)만 넣는다. 통장·주식 배지는 「나의 자산」에서 판정한다.
+ const coupons = Number(userDoc?.coupons) || 0;
+ const goalSet = !!readGoal(userDoc?.savingsGoal);
+ const achievements = useMemo(
+ () => evaluateAchievements({ totalAssets: netAssets, coupons, goalSet }).earned,
+ [netAssets, coupons, goalSet],
+ );
 
  // 모달 초기화
  const resetModals = () => {
@@ -232,21 +234,9 @@ export default function MyProfile() {
  }
  };
 
- // 업적을 레어도 순으로 정렬 (legendary > epic > rare > common)
- const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
- const sortedAchievements = [...achievements].sort((a, b) => {
- const achA = getAchievementById(a.id);
- const achB = getAchievementById(b.id);
- return (
- (rarityOrder[achA?.rarity] || 99) - (rarityOrder[achB?.rarity] || 99)
- );
- });
-
- // 최고 업적 (가장 레어한 것)
- const bestAchievement =
- sortedAchievements.length > 0
- ? getAchievementById(sortedAchievements[0].id)
- : null;
+ // 귀한 순으로 이미 정렬돼 있다.
+ const sortedAchievements = achievements;
+ const bestAchievement = achievements[0] || null;
 
  if (!user) {
  return (
@@ -380,8 +370,7 @@ export default function MyProfile() {
  ) : (
  <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
  {sortedAchievements.map((ach) => {
- const achievement = getAchievementById(ach.id);
- if (!achievement) return null;
+ const achievement = ach;
 
  const rarityColors = {
  legendary: {
@@ -417,7 +406,7 @@ export default function MyProfile() {
  {achievement.name}
  </div>
  <div className="text-[10px] text-gray-500">
- {new Date(ach.unlockedAt).toLocaleDateString()}
+ {achievement.description}
  </div>
  </div>
  );

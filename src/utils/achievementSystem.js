@@ -5,7 +5,6 @@
  * 다양한 활동과 마일스톤에 대한 배지를 부여합니다.
  */
 
-import { logger } from './logger';
 // 화폐 단위는 학급 설정을 따르므로(기본 "알찬") 상수 객체에서도 getter로 지연 평가한다.
 import { getCurrencyUnit } from './numberFormatter';
 const ACHIEVEMENTS = {
@@ -232,6 +231,78 @@ const ACHIEVEMENTS = {
     rarity: "rare",
     points: 300,
   },
+  // 🏦 통장·목표·투자 — 2026-11-11 실사용 집계에서 잘 안 쓰이던 기능으로 이끄는 배지
+  FIRST_PARKING: {
+    id: "first_parking",
+    name: "통장 주인",
+    description: "파킹통장에 돈 넣어 두기",
+    icon: "🏦",
+    category: "saving",
+    condition: (stats) => stats.parkingBalance > 0,
+    rarity: "common",
+    points: 15,
+  },
+  GOAL_SETTER: {
+    id: "goal_setter",
+    name: "목표가 있는 사람",
+    description: "저축 목표 정하기",
+    icon: "🎯",
+    category: "saving",
+    condition: (stats) => stats.goalSet === true,
+    rarity: "common",
+    points: 15,
+  },
+  GOAL_ACHIEVER: {
+    id: "goal_achiever",
+    name: "목표 달성",
+    description: "저축 목표만큼 통장에 모으기",
+    icon: "🏆",
+    category: "saving",
+    condition: (stats) => stats.goalDone === true,
+    rarity: "rare",
+    points: 100,
+  },
+  FIRST_STOCK: {
+    id: "first_stock",
+    name: "꼬마 투자자",
+    description: "주식 한 주 이상 갖기",
+    icon: "📈",
+    category: "trading",
+    condition: (stats) => stats.stockValue > 0,
+    rarity: "uncommon",
+    points: 30,
+  },
+  // 🧠 오늘의 경제 퀴즈
+  QUIZ_STARTER: {
+    id: "quiz_starter",
+    name: "퀴즈 첫걸음",
+    description: "경제 퀴즈 1문제 맞히기",
+    icon: "🧠",
+    category: "special",
+    condition: (stats) => stats.quizCorrect >= 1,
+    rarity: "common",
+    points: 10,
+  },
+  QUIZ_TEN: {
+    id: "quiz_ten",
+    name: "경제 박사",
+    description: "경제 퀴즈 10문제 맞히기",
+    icon: "🎓",
+    category: "special",
+    condition: (stats) => stats.quizCorrect >= 10,
+    rarity: "rare",
+    points: 80,
+  },
+  QUIZ_STREAK: {
+    id: "quiz_streak",
+    name: "꾸준한 공부",
+    description: "경제 퀴즈 5일 이어서 풀기",
+    icon: "🔥",
+    category: "special",
+    condition: (stats) => stats.quizStreak >= 5,
+    rarity: "uncommon",
+    points: 40,
+  },
   EARLY_BIRD: {
     id: "early_bird",
     name: "얼리버드",
@@ -245,30 +316,28 @@ const ACHIEVEMENTS = {
 };
 
 
-/**
- * ID로 업적 정보를 찾습니다.
- * @param {string} achievementId - 업적 ID
- * @returns {object|null} 업적 정보 또는 null
- */
-export function getAchievementById(achievementId) {
-  return Object.values(ACHIEVEMENTS).find((a) => a.id === achievementId) || null;
-}
+const RARITY_ORDER = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
 
 /**
- * 사용자의 획득한 업적 목록을 로컬 스토리지에서 가져옵니다.
- * @param {string} userId - 사용자 ID
- * @returns {Array} 획득한 업적 목록 [{id, unlockedAt}, ...]
+ * 지금 상태(stats)로 딴 배지와 아직 못 딴 배지를 가른다. **저장하지 않는다** — 열 때마다 다시 계산한다.
+ *
+ * 왜 저장을 없앴나(2026-11-11 전수 점검): 예전에는 localStorage 에서 «딴 배지 목록»을 읽기만 하고
+ * 그 목록을 **쓰는 코드가 어디에도 없었다**. 그래서 프로필의 «최고 업적»은 한 번도 뜬 적이 없다.
+ * 조건이 전부 현재 상태(자산·쿠폰·보유 상품)로 판정되니, 저장 없이 그때그때 계산하면 기기를 바꿔도 같다.
+ *
+ * @param {object} stats { totalAssets, coupons, savingProducts, properties, parkingBalance, stockValue, goalSet, goalDone, … }
+ *   모르는 값은 넣지 않는다(undefined 는 어떤 조건도 통과하지 못한다).
+ * @return {{earned: object[], locked: object[], points: number, best: object|null}} earned 는 귀한 순
  */
-export function getUserAchievements(userId) {
-  if (!userId) return [];
-  try {
-    const key = `alchan_achievements_${userId}`;
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : [];
-  } catch (error) {
-    logger.error("업적 데이터 로드 실패:", error);
-    return [];
-  }
+export function evaluateAchievements(stats) {
+  const st = stats && typeof stats === "object" ? stats : {};
+  const all = Object.values(ACHIEVEMENTS);
+  const pass = (a) => {
+    try { return a.condition(st) === true; } catch { return false; }
+  };
+  const earned = all.filter(pass).sort((a, b) => (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0) || b.points - a.points);
+  const earnedIds = new Set(earned.map((a) => a.id));
+  // 수동 부여(조건이 늘 false)인 것은 «다음 목표»로 보여 주지 않는다.
+  const locked = all.filter((a) => !earnedIds.has(a.id) && a.id !== "early_bird");
+  return { earned, locked, points: earned.reduce((s, a) => s + a.points, 0), best: earned[0] || null };
 }
-
-

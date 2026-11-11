@@ -168,8 +168,8 @@
 
   /* Text */
   --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --text-secondary: #475569;
+  --text-muted: #586579;
   --text-highlight: #4f46e5;
 
   /* Accent */
@@ -1401,3 +1401,18 @@ footer, [class*="footer"] {
 [data-parking] .parking-interest { color: #059669 !important; }
 [data-parking] .parking-interest-icon { color: #059669 !important; }
 [data-parking] .parking-muted { color: #94a3b8 !important; }
+
+/* ============================================
+   인쇄 전용 틀 (components/PrintSheet.js)
+   화면에서는 숨기고, 인쇄할 때는 앱 대신 이것만 낸다.
+   ============================================ */
+.print-sheet { display: none; }
+@media print {
+  /* 선택자를 겹쳐 우선순위를 올린다(이 저장소는 !important 를 늘리지 않는다 — debt-ratchet). */
+  html body.has-print-sheet.has-print-sheet > :not(.print-sheet) { display: none; }
+  html body.has-print-sheet.has-print-sheet > .print-sheet { display: block; color: #000; background: #fff; }
+  html body.has-print-sheet.has-print-sheet { background: #fff; }
+  .print-sheet .print-page { break-after: page; page-break-after: always; }
+  .print-sheet .print-page:last-child { break-after: auto; page-break-after: auto; }
+  .print-sheet .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+}

@@ -175,7 +175,7 @@ export default function AppUpdateChecker() {
 
           <button
             onClick={() => setUpdate(null)}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/60 text-slate-400"
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/60 text-white"
           >
             <X className="w-4 h-4" />
           </button>

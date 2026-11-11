@@ -125,7 +125,7 @@ export default function IOSInstallPrompt() {
             {/* 닫기 */}
             <button
               onClick={handleDismiss}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/60 text-slate-400 hover:text-white transition-colors"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/60 text-white hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
