@@ -636,7 +636,7 @@ class GlobalCacheService {
   //    호출부는 0건이었다(실측: src 전체 grep). 즉 기능은 없고 크로스테넌트 조회 경로만
   //    남아 있던 코드다 — 같은 날 firestore.rules 의 storeItems 읽기를 학급 스코프로
   //    잠갔으므로, 이대로 뒀다면 누군가 되살리는 순간 permission-denied 로 터졌을 자리다.
-  //    학급 상점 조회는 src/firebase/db/store.js 의 getStoreItems(classCode) 를 쓸 것.
+  //    학급 상점 조회는 반드시 classCode 로 좁힌 쿼리를 쓸 것(rules 가 전량 조회를 막는다).
 
   // 사용자 아이템 가져오기 (캐시됨)
   async getUserItems(userId, forceRefresh = false) {
