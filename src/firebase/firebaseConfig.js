@@ -2,7 +2,13 @@
 
 import { initializeApp } from "firebase/app";
 import { initializeFirestore, memoryLocalCache, connectFirestoreEmulator } from "firebase/firestore";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
+import {
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  connectAuthEmulator,
+} from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
@@ -29,7 +35,18 @@ const db = initializeFirestore(app, {
 });
 logger.log("[firebase.js] Firestore 초기화 완료 (memory cache)");
 
-const auth = getAuth(app);
+// 🚀 getAuth() 대신 initializeAuth() — **팝업·리다이렉트 로그인 리졸버를 싣지 않는다** (2026-11-11).
+//    getAuth() 는 browserPopupRedirectResolver 를 함께 넣는데, 휴대폰·태블릿·사파리에서는 그 리졸버가
+//    인증 준비 도중 `firebaseapp.com/__/auth/iframe.js`(95KB)를 받아 올 때까지 **기다린다**
+//    (@firebase/auth 1.10.8 `_initializeWithPersistence`: `await this._popupRedirectResolver._initialize(this)`).
+//    알찬은 이메일·비밀번호 로그인만 쓴다(signInWithPopup/Redirect 0곳) — 안 쓰는 것을 매 접속마다 기다리고 있었다.
+// 🔒 저장소 순서는 getAuth() 기본값과 **글자 그대로 같아야 한다**(indexedDB → local → session).
+//    바꾸면 기존 로그인 세션을 못 찾아 전원이 로그아웃된다. 시험 = src/test/firebase/authInit.test.js
+// ⚠️ 팝업·리다이렉트 로그인(구글 로그인 등)을 붙이게 되면 그 호출에 리졸버를 직접 넘길 것:
+//    signInWithPopup(auth, provider, browserPopupRedirectResolver)
+const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 const storage = getStorage(app);
 const functions = getFunctions(app, "asia-northeast3");
 logger.log("[firebase.js] Firebase 앱 초기화 완료");

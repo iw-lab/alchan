@@ -9,7 +9,7 @@ import { join } from "node:path";
 const initializeAppCheck = vi.fn();
 vi.mock("firebase/app", () => ({ initializeApp: vi.fn(() => ({})) }));
 vi.mock("firebase/firestore", () => ({ initializeFirestore: vi.fn(() => ({})), memoryLocalCache: vi.fn(), connectFirestoreEmulator: vi.fn() }));
-vi.mock("firebase/auth", () => ({ getAuth: vi.fn(() => ({})), connectAuthEmulator: vi.fn() }));
+vi.mock("firebase/auth", () => ({ initializeAuth: vi.fn(() => ({})), indexedDBLocalPersistence: {}, browserLocalPersistence: {}, browserSessionPersistence: {}, connectAuthEmulator: vi.fn() }));
 vi.mock("firebase/storage", () => ({ getStorage: vi.fn(() => ({})) }));
 vi.mock("firebase/functions", () => ({ getFunctions: vi.fn(() => ({})), connectFunctionsEmulator: vi.fn() }));
 vi.mock("firebase/app-check", () => ({ initializeAppCheck: (...a) => initializeAppCheck(...a), ReCaptchaV3Provider: vi.fn() }));
