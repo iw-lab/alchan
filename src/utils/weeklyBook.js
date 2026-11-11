@@ -34,7 +34,7 @@ const INCOME_RULES = [
   ["reward", "보상", /보상|출석/],
   ["business", "장사", /shop_sale|매출|수익|되팔기|판매/],
   ["event", "경제 이벤트", /경제이벤트|환급/],
-  ["gift", "받은 돈", /송금 받|받았습니다|선물받|지급했습니다|지급/],
+  ["gift", "받은 돈", /송금 받|받았습니다|선물받|님으로부터|지급했습니다|지급/],
 ];
 const EXPENSE_RULES = [
   ["shop", "상점", /shop_purchase|가게에서/], // 개인 상점 구매 문구에는 «VAT» 가 들어 있다 — 세금보다 먼저 본다
@@ -44,7 +44,7 @@ const EXPENSE_RULES = [
   ["music", "음악 신청", /musicRequest|음악/],
   ["rent", "월세", /realEstateRent|월세|임대료/],
   ["fine", "벌금·회수", /벌금|회수|제거|합의금/],
-  ["gift", "보낸 돈", /송금했|선물|기부/],
+  ["gift", "보낸 돈", /송금했|님에게|선물|기부/],
 ];
 
 /** 한 줄을 { group: move|income|expense, id, label } 로. */
