@@ -123,6 +123,46 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── 🛡️ 재난 보험·💳 신용 기록 (2026-11-11): 둘 다 서버만 쓴다. 한도·상환 이력을 아이가 고치면
+  //    보험금과 대출 금리가 화면에서 정해진다.
+  tc("ALLOW", "🐤 학생이 자기 보험 정책을 읽는다", {
+    path: "/insurancePolicies/C1_stu1", method: "get", as: "stu1", before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 학생의 보험 정책을 읽는다", {
+    path: "/insurancePolicies/C1_stu1", method: "get", as: "tch1", before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 },
+  }),
+  tc("DENY", "학생이 친구의 보험 정책을 읽는다", {
+    path: "/insurancePolicies/C1_stu1", method: "get", as: "stu2", before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 },
+  }),
+  tc("DENY", "다른 학급 교사가 남의 학급 보험 정책을 읽는다", {
+    path: "/insurancePolicies/C1_stu1", method: "get", as: "tch2", before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 },
+  }),
+  tc("DENY", "학생이 자기 보험 한도를 늘린다", {
+    path: "/insurancePolicies/C1_stu1", method: "update", as: "stu1",
+    before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 }, after: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 999999 },
+  }),
+  tc("DENY", "학생이 보험 정책을 공짜로 만든다", {
+    path: "/insurancePolicies/C1_stu1", method: "create", as: "stu1", after: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 },
+  }),
+  tc("DENY", "교사가 보험 정책을 손으로 고친다 (서버 전용)", {
+    path: "/insurancePolicies/C1_stu1", method: "update", as: "tch1",
+    before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 }, after: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 0 },
+  }),
+  tc("ALLOW", "🐤 학생이 자기 신용 기록을 읽는다", {
+    path: "/creditRecords/stu1", method: "get", as: "stu1", before: { classCode: "C1", onTime: 1 },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 학생의 신용 기록을 읽는다", {
+    path: "/creditRecords/stu1", method: "get", as: "tch1", before: { classCode: "C1", onTime: 1 },
+  }),
+  tc("DENY", "학생이 친구의 신용 기록을 읽는다", {
+    path: "/creditRecords/stu1", method: "get", as: "stu2", before: { classCode: "C1", onTime: 1 },
+  }),
+  tc("DENY", "학생이 자기 신용 기록에 성실 완납을 적어 넣는다", {
+    path: "/creditRecords/stu1", method: "create", as: "stu1", after: { classCode: "C1", onTime: 3 },
+  }),
+  tc("DENY", "학생이 연체 기록을 지운다", {
+    path: "/creditRecords/stu1", method: "delete", as: "stu1", before: { classCode: "C1", late: 1 },
+  }),
   // ── 🔑 학급코드 없는 학생 로그인(2026-09-17): 조회 한도 카운터는 서버 전용이다.
   tc("DENY", "학생이 로그인 조회 한도 카운터를 읽는다", {
     path: "/studentLoginLookups/alchan01", method: "get", as: "stu1",

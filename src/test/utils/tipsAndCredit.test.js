@@ -45,28 +45,28 @@ describe("교사 시작 도우미", () => {
 describe("신용등급(연습용)", () => {
   const now = Date.parse("2026-11-11T00:00:00Z");
   it("빚 없고 잘 모으면 1등급", () => {
-    const r = creditGrade({ loans: [], netAssets: 1000, totalAssets: 1000, savedTotal: 400, savingProducts: 1 }, now);
+    const r = creditGrade({ loans: [], cash: 600, savedTotal: 400, savingProducts: 1 }, now);
     expect(r.grade).toBe(1);
     expect(r.bad).toEqual([]);
   });
-  it("아무것도 안 했으면 2등급(빚 없음) — 통장을 권한다", () => {
-    const r = creditGrade({ loans: [], netAssets: 500, totalAssets: 500, savedTotal: 0, savingProducts: 0 }, now);
-    expect(r.grade).toBe(2);
+  it("아무것도 안 했으면 3등급(빚 없음) — 통장을 권한다", () => {
+    const r = creditGrade({ loans: [], cash: 500, savedTotal: 0, savingProducts: 0 }, now);
+    expect(r.grade).toBe(3);
     expect(r.next).toMatch(/파킹통장/);
   });
   it("기한 지난 대출은 크게 깎는다", () => {
     const overdue = { maturityDate: new Date(now - 86400e3), balance: 100 };
-    const r = creditGrade({ loans: [overdue], netAssets: -50, totalAssets: 50, savedTotal: 0 }, now);
+    const r = creditGrade({ loans: [overdue], cash: 50, savedTotal: 0 }, now);
     expect(r.grade).toBe(5);
     expect(r.bad.join()).toMatch(/1건/);
     expect(r.next).toMatch(/기한이 지난/);
   });
   it("다 갚은 대출(잔액 0)은 빚으로 세지 않는다 · 점수는 0~100", () => {
-    expect(creditGrade({ loans: [{ maturityDate: new Date(now - 1), balance: 0 }], netAssets: 1 }, now).bad).toEqual([]);
+    expect(creditGrade({ loans: [{ maturityDate: new Date(now - 1), balance: 0 }], cash: 1 }, now).bad).toEqual([]);
     const many = Array.from({ length: 9 }, () => ({ maturityDate: new Date(now - 1), balance: 10 }));
-    const r = creditGrade({ loans: many, netAssets: -1 }, now);
+    const r = creditGrade({ loans: many, cash: -1 }, now);
     expect(r.score).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeLessThanOrEqual(100);
-    expect(creditGrade(null, now).grade).toBe(2);
+    expect(creditGrade(null, now).grade).toBe(3);
   });
 });

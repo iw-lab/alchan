@@ -7,6 +7,7 @@
 const { db, admin, logger, findApprovedAdminSnap, bumpCatalogVersion } = require("./utils");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
 const { refundPerStudentFor } = require("./taxRefundMath");
+const { isPolicyActive, computePayout } = require("./insuranceMath");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -831,7 +832,25 @@ async function executeCashPenalty(classCode, params) {
 
   if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
 
+  // 🛡️ 재난 보험(2026-11-11) — 유효한 정책을 가진 학생은 손실의 절반(남은 한도까지)을 덜 낸다.
+  //    못 읽으면 **이벤트를 중단**한다: 보험료를 받아 놓고 «못 읽었으니 없는 셈» 치고 전액을 걷으면 안 된다.
+  //    학급 설정에서 보험을 꺼도 이미 든 정책은 **끝까지 보상한다** — 낸 보험료의 약속은 지킨다.
+  //    끄는 것은 «새 가입»만 막는다(insuranceService).
+  const policyByUser = new Map();
+  try {
+    const polSnap = await db.collection("insurancePolicies").where("classCode", "==", classCode).get();
+    const nowMs = Date.now();
+    polSnap.docs.forEach((p) => {
+      const pol = p.data();
+      if (p.id !== `${classCode}_${pol.userId}`) return;
+      if (isPolicyActive(pol, nowMs, classCode, pol.userId)) policyByUser.set(pol.userId, { ref: p.ref, capRemaining: pol.capRemaining });
+    });
+  } catch (e) {
+    throw new Error(`[CashPenalty] 보험 가입 정보를 못 읽어 차감을 중단합니다: ${e.message}`);
+  }
+
   let totalPenalty = 0;
+  let totalPayout = 0;
   const penaltyItems = [];
 
   // 순차 처리 (학생당 ~3 read, 학급 100명 = 300 read 정도)
@@ -855,7 +874,12 @@ async function executeCashPenalty(classCode, params) {
     const target = Math.floor(netAssets * penaltyRate);
     const penalty = Math.min(target, cash);
     if (penalty > 0) {
+      const policy = policyByUser.get(d.id);
+      const payout = policy ? computePayout(penalty, policy.capRemaining) : 0;
+      totalPayout += payout;
       penaltyItems.push({
+        payout,
+        policyRef: payout > 0 ? policy.ref : null,
         ref: d.ref,
         studentId: d.id,
         studentName: studentDisplayName(data),
@@ -870,18 +894,44 @@ async function executeCashPenalty(classCode, params) {
   if (penaltyItems.length === 0)
     return { affectedCount: 0, collectedAmount: 0 };
 
-  const batchSize = 200; // 감사 로그 1건이 붙어 문서당 2쓰기 → 500 한도에 여유
+  // 학생당 쓰기 = 차감 1 + 손실 로그 1 (+ 보험 가입자는 보험금 로그 1 + 정책 1) → 최대 4. 100명×4+국고 1 = 401 ≤ 500.
+  const batchSize = 100;
   const expireAt = logExpiryTimestamp();
   const adminRef = db.collection("users").doc(adminDoc.id);
   for (let i = 0; i < penaltyItems.length; i += batchSize) {
     const batch = db.batch();
     let chunkCollected = 0;
     penaltyItems.slice(i, i + batchSize).forEach((item) => {
+      // 🔒 학생이 실제로 내는 돈 = 손실 − 보험금. 국고도 **같은 수**만 받는다(같은 배치) — 보험금은
+      //    어디서 새로 생기는 돈이 아니라 «덜 걷는 돈»이다. computePayout 이 0 ≤ 보험금 ≤ 손실을 보장한다.
+      const net = item.penalty - item.payout;
       batch.update(item.ref, {
-        cash: admin.firestore.FieldValue.increment(-item.penalty),
+        cash: admin.firestore.FieldValue.increment(-net),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      chunkCollected += item.penalty;
+      chunkCollected += net;
+      if (item.payout > 0) {
+        batch.update(item.policyRef, {
+          capRemaining: admin.firestore.FieldValue.increment(-item.payout),
+          payoutThisTerm: admin.firestore.FieldValue.increment(item.payout),
+          payoutTotal: admin.firestore.FieldValue.increment(item.payout),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        queueStudentLog(
+          batch,
+          {
+            classCode,
+            studentId: item.studentId,
+            studentName: item.studentName,
+            type: "보험금 지급",
+            amount: item.payout,
+            description:
+              `[재난 보험] 경제이벤트 손실 ${item.penalty.toLocaleString()}원의 절반을 보험이 대신 냈어요 — ` +
+              `보험금 ${item.payout.toLocaleString()}원`,
+          },
+          expireAt,
+        );
+      }
       // 📒 감사 로그 — 차감과 같은 배치. 이게 없어서 "경제 위기"로 현금이 줄어도
       //    학생 거래내역엔 아무것도 안 떴다(학급 단위 총계만 남았다).
       queueStudentLog(
@@ -919,16 +969,17 @@ async function executeCashPenalty(classCode, params) {
     .set(
       {
         economicEventRevenue:
-          admin.firestore.FieldValue.increment(totalPenalty),
+          admin.firestore.FieldValue.increment(totalPenalty - totalPayout),
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 현금 차감 - ${penaltyItems.length}명 총 ${totalPenalty.toLocaleString()}원 → 관리자(국고)`,
+    `[경제이벤트] ${classCode}: 현금 차감 - ${penaltyItems.length}명 손실 ${totalPenalty.toLocaleString()}원, ` +
+      `보험금 ${totalPayout.toLocaleString()}원 → 국고 ${(totalPenalty - totalPayout).toLocaleString()}원`,
   );
-  return { affectedCount: penaltyItems.length, collectedAmount: totalPenalty };
+  return { affectedCount: penaltyItems.length, collectedAmount: totalPenalty - totalPayout, insurancePayout: totalPayout };
 }
 
 /**

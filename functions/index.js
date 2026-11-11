@@ -30,6 +30,7 @@ const {
 } = require("./scheduler-http");
 // 관리자 회수의 0원 바닥 — 차감과 적립이 같은 값을 쓰게 하는 단일 진실원.
 const { clampTakeAmount } = require("./cashFloor");
+const { creditGrade, loanTerms, repaymentOutcome } = require("./creditMath");
 const {
   isAppointedJob,
   toJobIdArray,
@@ -131,6 +132,10 @@ exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
 exports.seedAvatarShop = avatarShopService.seedAvatarShop;
 exports.seedAvatarShopHttp = avatarShopService.seedAvatarShopHttp;
 exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
+
+// 🛡️ 재난 보험(2026-11-11) — 가입은 여기, 보험금은 economicEvents.executeCashPenalty 가 같은 배치로 지급.
+const insuranceService = require("./insuranceService");
+exports.buyInsurance = insuranceService.buyInsurance;
 
 // ⚠️ 아래 스케줄 함수들은 꺼 두고 **Cloud Scheduler v2**(…SchedulerV2)가 대신 돈다.
 //    (옛 주석은 "cron-job.org 의 simpleScheduler" 라고 했지만 그 경로는 죽었다 —
@@ -2319,14 +2324,28 @@ exports.subscribeProduct = onCall(
     );
     const inc = admin.firestore.FieldValue.increment;
 
+    let appliedInfo = null;
     try {
       await db.runTransaction(async (transaction) => {
+        let loanCredit = null; // 재시도마다 새로 계산
         // 읽기 먼저(모든 get은 write 이전). 대출이면 활성대출 확인 쿼리 포함.
         const keyRef = await checkIdempotent(transaction, idempotencyKey);
         let activeLoanSnap = null;
+        // 💳 신용등급 연동(2026-11-11) — 대출이면 본인 상품 전체·파킹통장·신용 기록을 **같은 트랜잭션**에서 읽는다.
+        //    클라가 보낸 값은 등급에 하나도 안 들어간다. 못 읽으면 대출이 거절된다(예금·적금 경로는 안 읽는다).
+        let allProductsSnap = null;
+        let parkingSnap = null;
+        let creditRecSnap = null;
         if (isLoan) {
-          activeLoanSnap = await transaction.get(
-            userRef.collection("products").where("type", "==", "loan"),
+          allProductsSnap = await transaction.get(userRef.collection("products"));
+          activeLoanSnap = {
+            docs: allProductsSnap.docs.filter((d) => d.data().type === "loan"),
+          };
+          parkingSnap = await transaction.get(
+            userRef.collection("financials").doc("parkingAccount"),
+          );
+          creditRecSnap = await transaction.get(
+            db.collection("creditRecords").doc(uid),
           );
         }
         const userDoc = await transaction.get(userRef);
@@ -2392,13 +2411,45 @@ exports.subscribeProduct = onCall(
               );
             }
           }
-          // 현금 1원 이상 + 보유 현금의 10배 레버리지(서버 강제)
+          // 현금 1원 이상 + 신용등급별 레버리지(서버 강제). 등급 연동을 끈 학급은 종전대로 10배·상품 금리 그대로.
           if (rawCash <= 0) {
             throw new Error(
               "대출은 현금을 1원 이상 보유해야 신청할 수 있습니다.",
             );
           }
-          if (amount > rawCash * 10) {
+          const creditLinkOn = bankingSnap.data().creditLink?.enabled !== false;
+          if (creditLinkOn) {
+            let savedTotal = 0;
+            let savingProducts = 0;
+            allProductsSnap.docs.forEach((d) => {
+              const pd = d.data();
+              if (pd.type === "deposit" || pd.type === "savings") {
+                savingProducts += 1;
+                savedTotal += Number(pd.balance) || 0;
+              }
+            });
+            const parkingBal = parkingSnap.exists
+              ? Number(parkingSnap.data().balance) || 0
+              : 0;
+            savedTotal += Math.max(0, parkingBal);
+            const credit = creditGrade(
+              {
+                cash: rawCash,
+                savedTotal,
+                savingProducts,
+                loans: activeLoanSnap.docs.map((d) => d.data()),
+                record: creditRecSnap.exists ? creditRecSnap.data() : null,
+              },
+              Date.now(),
+            );
+            const terms = loanTerms(credit.grade, dailyRate, rawCash);
+            if (amount > terms.limit) {
+              throw new Error(
+                `대출 한도 초과: 신용 ${credit.grade}등급은 보유 현금의 ${terms.limitMult}배(${terms.limit.toLocaleString()}원)까지만 가능합니다.`,
+              );
+            }
+            loanCredit = { grade: credit.grade, score: credit.score, rate: terms.rate };
+          } else if (amount > rawCash * 10) {
             throw new Error(
               "대출 한도 초과: 보유 현금의 10배까지만 가능합니다.",
             );
@@ -2418,11 +2469,13 @@ exports.subscribeProduct = onCall(
         }
 
         // 쓰기: 상품 문서 생성(클라 handleSubscribe 저장 필드 정확 보존)
+        // 💳 대출 금리는 등급 반영값을 **상품 문서에 굳힌다** — 상환은 저장된 rate 만 쓰므로 상환 수식은 그대로다.
+        const appliedRate = loanCredit ? loanCredit.rate : dailyRate;
         const newProductRef = userRef.collection("products").doc();
         const newProductData = {
           name: productName,
           termInDays,
-          rate: dailyRate,
+          rate: appliedRate,
           balance: amount,
           startDate: admin.firestore.FieldValue.serverTimestamp(),
           maturityDate,
@@ -2439,6 +2492,11 @@ exports.subscribeProduct = onCall(
             originalBalance: amount,
             lastRepaymentDate: null,
             totalInterestPaid: 0,
+            ...(loanCredit && {
+              baseRate: dailyRate,
+              creditGrade: loanCredit.grade,
+              creditScore: loanCredit.score,
+            }),
           }),
         };
         transaction.set(newProductRef, newProductData);
@@ -2465,6 +2523,9 @@ exports.subscribeProduct = onCall(
         }
 
         markIdempotent(transaction, keyRef);
+        appliedInfo = loanCredit
+          ? { creditGrade: loanCredit.grade, rate: appliedRate, baseRate: dailyRate }
+          : null;
 
         // 활동 로그 — 최상위 amount로 거래내역 표시 보존(클라 logActivity와 동일 형태).
         const cashChange = isLoan ? amount : -amount;
@@ -2482,7 +2543,8 @@ exports.subscribeProduct = onCall(
             productName,
             productType,
             termInDays,
-            dailyRate,
+            dailyRate: appliedRate,
+            ...(loanCredit && { baseRate: dailyRate, creditGrade: loanCredit.grade }),
             maturityDate: maturityDate.toDate().toISOString(),
             teacherId,
             teacherName,
@@ -2492,7 +2554,7 @@ exports.subscribeProduct = onCall(
           expireAt: admin.firestore.Timestamp.fromDate(expireAt),
         });
       });
-      return { success: true };
+      return { success: true, ...(appliedInfo || {}) };
     } catch (error) {
       logger.error(`[subscribeProduct] Error for user ${uid}:`, error);
       if (error instanceof HttpsError) throw error;
@@ -2870,6 +2932,8 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
 
       const userDoc = await transaction.get(userRef);
       const teacherDoc = await transaction.get(teacherRef);
+      const creditRecRef = db.collection("creditRecords").doc(uid);
+      const creditRecSnap = await transaction.get(creditRecRef);
       if (!userDoc.exists) throw new Error("사용자 정보가 없습니다.");
       if (!teacherDoc.exists) {
         throw new Error("선생님(은행) 계정을 찾을 수 없습니다.");
@@ -3022,6 +3086,42 @@ exports.repayLoan = onCall({ region: "asia-northeast3" }, async (request) => {
         });
       } else {
         transaction.delete(productRef);
+        // 💳 신용 기록(2026-11-11) — 대출을 **다 갚은 순간**에만 남긴다. 서버만 쓰는 문서(creditRecords/{uid}).
+        //    late = 만기 강제 상환에 돈이 모자랐다(현금이 마이너스가 됐다) · onTime = 하루 넘게 쓴 대출을 다 갚았다.
+        //    onTime 은 **7일에 한 번만** 센다 — 빌리고 하루 뒤 갚기를 되풀이해 점수를 쌓는 길을 막는다(교차검증).
+        if (creditRecSnap) {
+          const nowMs = Date.now();
+          const startMs = p.startDate?.toMillis ? p.startDate.toMillis() : 0;
+          const outcome = repaymentOutcome({
+            mode,
+            cashAfter: rawCash - repayAmount,
+            startMs,
+            maturityMs: p.maturityDate?.toMillis ? p.maturityDate.toMillis() : 0,
+            nowMs,
+          });
+          const rec = creditRecSnap.exists ? creditRecSnap.data() : {};
+          const lastOnMs = rec.lastOnTimeAt?.toMillis ? rec.lastOnTimeAt.toMillis() : 0;
+          const interestPaidTotal =
+            (Number(p.totalInterestPaid) || 0) +
+            (mode === "installment" ? interestPortion : accruedInterest);
+          if (outcome === "late") {
+            transaction.set(
+              creditRecRef,
+              { classCode, late: inc(1), lastLateAt: sts(), updatedAt: sts() },
+              { merge: true },
+            );
+          } else if (
+            outcome === "onTime" &&
+            interestPaidTotal > 0 &&
+            !(lastOnMs > 0 && nowMs - lastOnMs < 7 * 24 * 60 * 60 * 1000)
+          ) {
+            transaction.set(
+              creditRecRef,
+              { classCode, onTime: inc(1), lastOnTimeAt: sts(), updatedAt: sts() },
+              { merge: true },
+            );
+          }
+        }
       }
       markIdempotent(transaction, keyRef);
 

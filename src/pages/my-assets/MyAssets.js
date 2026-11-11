@@ -29,6 +29,8 @@ import WeeklyBookModal from "../../components/WeeklyBookModal";
 import SavingsGoalCard from "../../components/SavingsGoalCard";
 import BadgeShelf from "../../components/BadgeShelf";
 import CreditGradeCard from "../../components/CreditGradeCard";
+import InsuranceCard from "../../components/InsuranceCard";
+import { fetchCreditRecord, fetchFinanceSwitches } from "../../firebase/db/finance";
 import { readGoal, goalProgress } from "../../utils/savingsGoal";
 import { toast } from "../../utils/toast";
 export default function MyAssets() {
@@ -40,6 +42,7 @@ export default function MyAssets() {
     // 🔥 [추가] '나'를 포함한 학급 전체 구성원 목록 (기부 내역 모달용)
     loading: authLoading,
     optimisticUpdate,
+    refreshUserDocument,
   } = useAuth();
 
   const userId = user?.uid;
@@ -49,6 +52,17 @@ export default function MyAssets() {
   const [assetsLoading, setAssetsLoading] = useState(true);
   const loadingRef = useRef(false);  // 데이터 페치 시간 추적용
   const [parkingBalance, setParkingBalance] = useState(0);
+  // 💳 신용 기록(서버만 씀)·학급 스위치 — 못 읽어도 화면은 뜬다(기록 없음·켜짐으로 본다. 판정은 어차피 서버).
+  const [creditRecord, setCreditRecord] = useState(null);
+  const [creditLinkOn, setCreditLinkOn] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    if (!userId || !currentUserClassCode) return undefined;
+    Promise.all([fetchCreditRecord(userId), fetchFinanceSwitches(currentUserClassCode)])
+      .then(([rec, sw]) => { if (alive) { setCreditRecord(rec); setCreditLinkOn(sw.creditLink); } })
+      .catch((e) => logger.warn("[신용] 기록을 못 읽음", e?.code || e?.message));
+    return () => { alive = false; };
+  }, [userId, currentUserClassCode]);
   const [deposits, setDeposits] = useState([]); // 예금 상품 목록
   const [savings, setSavings] = useState([]); // 적금 상품 목록
   const [loans, setLoans] = useState([]);
@@ -513,12 +527,13 @@ export default function MyAssets() {
       savings.reduce((sum, sv) => sum + (Number(sv.balance) || 0), 0);
     const isTeacherAccount = userDoc?.isAdmin === true || userDoc?.isSuperAdmin === true;
     const myGoal = readGoal(userDoc?.savingsGoal);
+    // 신용등급 입력 — 서버(functions/creditMath.js)가 대출 때 보는 것과 같은 재료다.
     const creditStats = {
       loans,
-      netAssets: totalNetAssets,
-      totalAssets: Math.max(0, totalNetAssets),
+      cash: displayCash,
       savedTotal,
       savingProducts: deposits.length + savings.length,
+      record: creditRecord,
     };
     const badgeStats = {
       totalAssets: totalNetAssets,
@@ -610,7 +625,10 @@ export default function MyAssets() {
         </div>
 
         {/* 학생용 카드 — 교사 계정(국고)에는 뜻이 없어 보이지 않는다 */}
-        {!isTeacherAccount && !assetsLoading && <CreditGradeCard stats={creditStats} />}
+        {!isTeacherAccount && !assetsLoading && <CreditGradeCard stats={creditStats} linkOn={creditLinkOn} />}
+        {!isTeacherAccount && (
+          <InsuranceCard userId={userId} classCode={currentUserClassCode} cash={displayCash} onBought={refreshUserDocument} />
+        )}
         {!isTeacherAccount && !assetsLoading && <BadgeShelf stats={badgeStats} />}
         {!isTeacherAccount && (
           <SavingsGoalCard

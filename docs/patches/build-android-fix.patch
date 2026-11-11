@@ -1,0 +1,68 @@
+diff --git a/.github/workflows/build-android.yml b/.github/workflows/build-android.yml
+index 48d9724f..072dae39 100644
+--- a/.github/workflows/build-android.yml
++++ b/.github/workflows/build-android.yml
+@@ -1,19 +1,24 @@
+ name: Build & Release Android APK
+ 
++# 이 APK 는 운영 사이트를 띄우는 **웹뷰 껍데기**다(android/app — MainActivity 하나). 화면(src/)이 바뀌어도
++# APK 는 바뀌지 않는다 — 그런데 종전엔 src/** 푸시마다 돌아서, 2026-09-15 부터 99회 연속 실패하는 동안
++# 푸시마다 빨간 실행만 쌓였다. 껍데기(android/**)가 바뀔 때와 손으로 돌릴 때만 빌드한다(2026-11-11).
+ on:
+   push:
+     branches: [main]
+     paths:
+-      - 'src/**'
+-      - 'public/**'
+       - 'android/**'
+-      - 'package.json'
+   workflow_dispatch:
+     inputs:
+       version:
+         description: '버전 태그 (예: 1.2.0) - 비워두면 자동 생성'
+         required: false
+         default: ''
++      release:
++        description: '공개 릴리스로 올린다(앱에 «업데이트 가능»이 뜬다). 끄면 빌드만 하고 실행 결과에 APK 를 붙인다'
++        type: boolean
++        required: false
++        default: false
+ 
+ jobs:
+   build:
+@@ -48,8 +53,15 @@ jobs:
+           distribution: 'temurin'
+ 
+       # ── 4. Android SDK ────────────────────────────────────────
+-      - name: Setup Android SDK
+-        uses: android-actions/setup-android@v3
++      # android-actions/setup-android@v3 는 Node 20 용이라 러너가 Node 24 로 강제 실행하면서 죽는다
++      # (2026-09-15~ 실패 원인). ubuntu 러너에는 SDK 가 이미 깔려 있으니($ANDROID_HOME) 그걸 쓴다.
++      - name: Setup Android SDK (러너 기본 설치본)
++        run: |
++          test -n "$ANDROID_HOME" && test -d "$ANDROID_HOME" || { echo "::error::ANDROID_HOME 이 없습니다"; exit 1; }
++          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
++          yes | "$SDKM" --licenses > /dev/null || true
++          "$SDKM" "platforms;android-34" "build-tools;34.0.0" > /dev/null
++          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+ 
+       # ── 5. Gradle 캐시 ────────────────────────────────────────
+       - name: Cache Gradle
+@@ -107,7 +119,17 @@ jobs:
+         run: cp "${{ steps.apk.outputs.path }}" "alchan-v${{ steps.version.outputs.version }}.apk"
+ 
+       # ── 11. GitHub Releases 업로드 ────────────────────────────
++      # 손으로 돌릴 때는 기본이 «빌드만» — 공개 릴리스는 앱 사용자에게 업데이트 알림을 띄우므로 일부러 켜야 한다.
++      - name: Upload APK as run artifact (릴리스 없이 확인용)
++        if: github.event_name == 'workflow_dispatch' && inputs.release != true
++        uses: actions/upload-artifact@v4
++        with:
++          name: alchan-apk-${{ steps.version.outputs.version }}
++          path: alchan-v${{ steps.version.outputs.version }}.apk
++          retention-days: 7
++
+       - name: Upload to GitHub Releases
++        if: github.event_name == 'push' || inputs.release == true
+         uses: softprops/action-gh-release@v3
+         with:
+           tag_name: v${{ steps.version.outputs.version }}-apk

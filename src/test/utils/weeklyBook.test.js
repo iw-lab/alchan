@@ -142,3 +142,11 @@ describe("세 원장 합치기", () => {
     expect(mergeLedgerRows()).toEqual([]);
   });
 });
+
+describe("보험 줄 분류(2026-11-11)", () => {
+  it("보험료는 쓴 돈 «보험료», 보험금은 번 돈 «보험금» — 경제 이벤트·기타로 새지 않는다", () => {
+    expect(categorize({ type: "보험료 납부", amount: -500, description: "재난 보험 7일 가입 — 보험료 500원, 보장 한도 10,000원" })).toEqual({ group: "expense", id: "insurance", label: "보험료" });
+    expect(categorize({ type: "보험금 지급", amount: 1237, description: "[재난 보험] 경제이벤트 손실 2,475원의 절반을 보험이 대신 냈어요 — 보험금 1,237원" })).toEqual({ group: "income", id: "insurance", label: "보험금" });
+    expect(categorize({ type: "재산 손실 (경제이벤트)", amount: -2475, description: "[경제이벤트] 순자산 49,500원 기준 5.0% = 2,475원 부과. 차감 2,475원" })).toMatchObject({ group: "expense", id: "event" });
+  });
+});

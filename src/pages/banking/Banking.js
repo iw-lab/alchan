@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import ParkingAccount from "./ParkingAccount";
+import FinanceSwitches from "../../components/FinanceSwitches";
 import { getBankingProducts, updateBankingProducts, db } from "../../firebase";
 import {
  collection,
@@ -530,6 +531,7 @@ const Banking = () => {
  <h2 className="admin-header">
  관리자 - 금융 상품 관리 (일 복리 기준)
  </h2>
+ <FinanceSwitches classCode={auth?.userDoc?.classCode} />
  {/* Savings Products */}
  <div className="admin-section">
  <h3>파킹 예금 상품</h3>

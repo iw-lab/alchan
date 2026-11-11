@@ -6,6 +6,7 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 vi.mock("../../firebase", () => ({ db: {}, functions: {}, httpsCallable: () => vi.fn() }));
+vi.mock("../../firebase/db/finance", () => ({ fetchCreditRecord: async () => null, fetchFinanceSwitches: async () => ({ insurance: true, creditLink: true }) }));
 vi.mock("../../utils/firestoreHelpers", () => ({ logActivity: vi.fn(), ACTIVITY_TYPES: {} }));
 vi.mock("../../contexts/CurrencyContext", () => ({ useCurrency: () => ({ currencyUnit: "알찬" }) }));
 import { SubscribedProductItem } from "../../pages/banking/ParkingAccount";

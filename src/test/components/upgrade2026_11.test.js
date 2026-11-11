@@ -120,7 +120,7 @@ describe("저축 목표·신용·배지", () => {
     expect(screen.getByText("목표 정하기")).toBeTruthy();
   });
   it("신용등급·배지가 그려진다", () => {
-    render(<><CreditGradeCard stats={{ loans: [], netAssets: 100, totalAssets: 100, savedTotal: 50, savingProducts: 1 }} /><BadgeShelf stats={{ totalAssets: 2_000_000, parkingBalance: 10 }} /></>);
+    render(<><CreditGradeCard stats={{ loans: [], cash: 50, savedTotal: 50, savingProducts: 1 }} /><BadgeShelf stats={{ totalAssets: 2_000_000, parkingBalance: 10 }} /></>);
     expect(screen.getByLabelText("신용등급 1등급")).toBeTruthy();
     expect(screen.getByText("백만장자")).toBeTruthy();
     expect(screen.getByText("통장 주인")).toBeTruthy();

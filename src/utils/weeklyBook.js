@@ -29,6 +29,7 @@ const MOVE_RULES = [
   ["loan", "대출", /대출 (실행|상환)|대출 \(|대출 (일시|분할) 상환/],
 ];
 const INCOME_RULES = [
+  ["insurance", "보험금", /보험금/],
   ["salary", "주급", /salaryPayment|\[주급\]|주급|월급/],
   ["interest", "이자·배당", /이자|배당/],
   ["reward", "보상", /보상|출석/],
@@ -37,6 +38,7 @@ const INCOME_RULES = [
   ["gift", "받은 돈", /송금 받|받았습니다|선물받|님으로부터|지급했습니다|지급/],
 ];
 const EXPENSE_RULES = [
+  ["insurance", "보험료", /보험료/],
   ["shop", "상점", /shop_purchase|가게에서/], // 개인 상점 구매 문구에는 «VAT» 가 들어 있다 — 세금보다 먼저 본다
   ["tax", "세금", /taxPayment|세금|보유세|순자산세|VAT/],
   ["event", "경제 이벤트", /경제이벤트/],

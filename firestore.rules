@@ -1004,6 +1004,26 @@ service cloud.firestore {
     }
 
     // ========================================================
+    // 🛡️ 재난 보험 정책 (insurancePolicies/{classCode}_{uid}) · 💳 신용 기록 (creditRecords/{uid})
+    //    둘 다 **서버(Cloud Functions)만 쓴다**. 보험 한도·상환 이력을 아이가 고칠 수 있으면
+    //    보험금·대출 금리가 화면에서 정해지는 셈이 된다. 읽기는 본인과 그 학급 선생님만.
+    // ========================================================
+    match /insurancePolicies/{policyId} {
+      allow get: if isSignedIn() &&
+                    (resource == null ||
+                     resource.data.userId == request.auth.uid ||
+                     isClassAdmin(resource.data.classCode));
+      allow list: if isSignedIn() && isClassAdmin(resource.data.classCode);
+      allow write: if false;
+    }
+    match /creditRecords/{userId} {
+      allow get: if isOwner(userId) ||
+                    (resource != null && isClassAdmin(resource.data.classCode));
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // ========================================================
     // 🏦 국고 (nationalTreasuries)
     // ========================================================
     match /nationalTreasuries/{classCode} {

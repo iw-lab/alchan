@@ -38,6 +38,8 @@ import {
 } from "../../utils/netAssets";
 
 import { logger } from "../../utils/logger";
+import { fetchCreditRecord, fetchFinanceSwitches } from "../../firebase/db/finance";
+import { creditGrade, loanTerms } from "../../utils/creditGrade";
 import { useBackClose } from "../../hooks/useBackClose";
 import { confirmDialog } from "../../utils/confirmDialog";
 // 선생님(관리자) 계정 찾기 - 같은 학급의 관리자
@@ -548,6 +550,7 @@ const SubscriptionModal = ({
  productType,
  onConfirm,
  isProcessing,
+ loanCredit = null,
 }) => {
  const [amount, setAmount] = useState("");
  const [repaymentType, setRepaymentType] = useState("lumpSum");
@@ -555,7 +558,10 @@ const SubscriptionModal = ({
  if (!isOpen || !product) return null;
 
  const numAmount = parseFloat(amount);
- const dailyRate = product.dailyRate;
+ const isLoanProduct = productType === "loans";
+ // 💳 대출은 신용등급이 반영된 금리로 보여 준다(미리보기 — 실제 금리는 서버가 같은 규칙으로 굳힌다).
+ const creditTerms = isLoanProduct && loanCredit ? loanTerms(loanCredit.grade, Number(product.dailyRate) || 0, loanCredit.cash) : null;
+ const dailyRate = creditTerms ? creditTerms.rate : product.dailyRate;
  const isSavings = productType === "savings";
  const isLoan = productType === "loans";
 
@@ -589,8 +595,15 @@ const SubscriptionModal = ({
  <div className={`mb-5 p-4 rounded-[10px] border ${isLoan ? "bg-red-50 border-red-200" : "bg-indigo-50 border-indigo-200"}`}>
  <div className="text-[15px] text-slate-600 mb-2">
  <strong className={isLoan ? "text-red-600" : "text-indigo-600"}>금리:</strong> 일{" "}
- {product.dailyRate}% (일복리)
+ {dailyRate}% (일복리)
  </div>
+ {creditTerms && (
+ <div className="text-[13px] text-slate-700 mb-2" data-testid="loan-credit-terms">
+ 💳 내 신용 <strong>{loanCredit.grade}등급</strong>
+ {creditTerms.rateMult !== 1 ? ` — 상품 금리 ${product.dailyRate}%에서 ${creditTerms.rateMult < 1 ? "깎아" : "더해"} ${dailyRate}%` : " — 상품 금리 그대로"}
+ {` · 빌릴 수 있는 돈은 현금의 ${creditTerms.limitMult}배(${formatCurrencyWithUnit(creditTerms.limit)})까지`}
+ </div>
+ )}
  <div className="text-[15px] text-slate-600">
  <strong className={isLoan ? "text-red-600" : "text-indigo-600"}>기간:</strong>{" "}
  {product.termInDays}일
@@ -997,6 +1010,34 @@ const ParkingAccount = ({
  repayMode: "lumpSum",
  });
  const [currentCash, setCurrentCash] = useState(userDoc?.cash || 0);
+ // 💳 신용등급 → 대출 조건(2026-11-11). 기록은 서버만 쓰고(creditRecords), 여기는 미리 보여 주려고 읽는다.
+ //   못 읽으면 «기록 없음·연동 켜짐»으로 본다 — 실제 금리·한도는 서버(subscribeProduct)가 다시 정한다.
+ const [creditRecord, setCreditRecord] = useState(null);
+ const [creditLinkOn, setCreditLinkOn] = useState(true);
+ const creditClassCode = userDoc?.classCode;
+ useEffect(() => {
+ let alive = true;
+ if (!userId || !creditClassCode) return undefined;
+ Promise.all([fetchCreditRecord(userId), fetchFinanceSwitches(creditClassCode)])
+ .then(([rec, sw]) => { if (alive) { setCreditRecord(rec); setCreditLinkOn(sw.creditLink); } })
+ .catch((e) => logger.warn("[신용] 기록을 못 읽음", e?.code || e?.message));
+ return () => { alive = false; };
+ }, [userId, creditClassCode]);
+ const savedForCredit =
+ Math.max(0, Number(parkingBalance) || 0) +
+ [...userDeposits, ...userSavings].reduce((t, pr) => t + (Number(pr.balance) || 0), 0);
+ const loanCredit = creditLinkOn
+ ? {
+ cash: Number(currentCash) || 0,
+ grade: creditGrade({
+ cash: Number(currentCash) || 0,
+ savedTotal: savedForCredit,
+ savingProducts: userDeposits.length + userSavings.length,
+ loans: userLoans,
+ record: creditRecord,
+ }).grade,
+ }
+ : null;
  const { currencyUnit } = useCurrency();
 
  const displayMessage = (text, type = "info", duration = 3000) => {
@@ -1301,10 +1342,11 @@ const ParkingAccount = ({
  "error",
  );
  }
- const maxLoan = availableCash * 10;
+ const limitMult = loanCredit ? loanTerms(loanCredit.grade, 0, availableCash).limitMult : 10;
+ const maxLoan = Math.floor(availableCash * limitMult);
  if (amount > maxLoan) {
  return displayMessage(
- `대출 한도 초과: 보유 현금(${formatCurrency(availableCash)}${currencyUnit})의 10배(${formatCurrency(maxLoan)}${currencyUnit})까지만 가능합니다.`,
+ `대출 한도 초과: ${loanCredit ? `신용 ${loanCredit.grade}등급은 ` : ""}보유 현금(${formatCurrency(availableCash)}${currencyUnit})의 ${limitMult}배(${formatCurrency(maxLoan)}${currencyUnit})까지만 가능합니다.`,
  "error",
  );
  }
@@ -2069,6 +2111,7 @@ const ParkingAccount = ({
  productType={modal.type}
  onConfirm={handleSubscribe}
  isProcessing={isProcessing}
+ loanCredit={loanCredit}
  />
  <LoanRepaymentModal
  isOpen={loanRepayModal.isOpen}
