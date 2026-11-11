@@ -115,3 +115,46 @@ describe("카탈로그가 만드는 이미지 URL", () => {
     }
   });
 });
+
+// ④ 2026-11-11 운영 실측: /avatar-shop «착용 중» 미리보기에서 이미지 12장이 깨져 있었다.
+//    8월 WebP 이관 전에 산 아이템은 학생 문서에 `.png` 주소가 그대로 남아 있는데,
+//    상점 화면만 buildAvatarOverlays 를 안 쓰고 저장 주소를 그대로 그리는 사본을 들고 있었다.
+//    (머리띠·프로필은 멀쩡 — 본경로만 고친 전형.) 사본을 없애고 미리보기까지 한 함수가 맡는다.
+import { buildAvatarOverlays } from "../../utils/avatarShop";
+import fs from "node:fs";
+import path from "node:path";
+
+describe("④ 저장된 낡은 주소는 어느 화면에서도 그리지 않는다", () => {
+  const stale = (id) => ({ id, imageUrl: `/avatar-shop/${id}.png?v=20260521h` });
+  const userDoc = {
+    ownedAvatarItems: {
+      base_male: stale("base_male"),
+      bg_sunset_beach: stale("bg_sunset_beach"),
+      hair_messy_male: stale("hair_messy_male"),
+    },
+    equippedAvatarItems: { base: "base_male", background: "bg_sunset_beach", hair: "hair_messy_male" },
+  };
+
+  it("장착분은 카탈로그 주소로 해석한다", () => {
+    const o = buildAvatarOverlays(userDoc);
+    expect(o.baseUrl).toMatch(/base_male\.webp/);
+    expect(o.bgUrl).toMatch(/bg_sunset_beach\.webp/);
+    expect(o.slots.hair.url).toMatch(/hair_messy_male\.webp/);
+  });
+
+  it("미리보기 아이템이 그 슬롯을 덮는다(주소는 역시 카탈로그)", () => {
+    const o = buildAvatarOverlays(userDoc, {
+      id: "glasses_round_black", slot: "glasses", imageUrl: "/avatar-shop/glasses_round_black.png",
+    });
+    expect(o.slots.glasses.url).toMatch(/glasses_round_black\.webp/);
+    expect(o.slots.hair.url).toMatch(/hair_messy_male\.webp/); // 다른 슬롯은 그대로
+    const bg = buildAvatarOverlays(userDoc, { id: "x_custom", slot: "background", imageUrl: "/x.webp" });
+    expect(bg.bgUrl).toBe("/x.webp"); // 카탈로그에 없으면 넘겨받은 주소
+  });
+
+  it("상점 화면은 저장 주소로 직접 합성하지 않는다", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../../pages/market/AvatarShop.js"), "utf8");
+    expect(src).toMatch(/buildAvatarOverlays\(/);
+    expect(src).not.toMatch(/owned\[itemId\]/);
+  });
+});

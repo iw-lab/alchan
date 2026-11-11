@@ -172,9 +172,10 @@ export const ITEM_ANCHORS = {
 /**
  * userDoc에서 Avatar 컴포넌트가 쓸 overlays 객체 생성
  * @param {object} userDoc - users/{uid} 문서 데이터
+ * @param {object} [previewItem] - 상점 미리보기로 «가상 장착»할 아이템({id, slot, imageUrl})
  * @returns {object} { baseUrl, bgUrl, slots, presetUrl }
  */
-export function buildAvatarOverlays(userDoc) {
+export function buildAvatarOverlays(userDoc, previewItem) {
   const owned = userDoc?.ownedAvatarItems || {};
   const eq = userDoc?.equippedAvatarItems || {};
   const slots = {};
@@ -182,15 +183,14 @@ export function buildAvatarOverlays(userDoc) {
   let bgUrl = null;
   let presetUrl = null;
 
-  Object.entries(eq).forEach(([slot, itemId]) => {
-    if (!itemId) return;
-    const item = owned[itemId];
-    if (!item) return;
-    // ⚠️ 학생 문서(ownedAvatarItems)·avatarShopItems 컬렉션에 imageUrl이 복제 저장돼 있어
-    //    (functions/avatarShopService.js:293) 카탈로그에서 확장자·경로를 바꾸면 이미 산
-    //    아이템이 전부 404가 된다. 그래서 URL은 항상 카탈로그(단일 진실원)에서 해석하고,
-    //    카탈로그에 없는 항목(폐지된 아이템 등)만 저장값으로 폴백한다. 데이터 마이그레이션 불필요.
-    const imageUrl = CATALOG_IMAGE_URLS[itemId] || item.imageUrl;
+  // ⚠️ 학생 문서(ownedAvatarItems)·avatarShopItems 컬렉션에 imageUrl이 복제 저장돼 있어
+  //    (functions/avatarShopService.js:293) 카탈로그에서 확장자·경로를 바꾸면 이미 산
+  //    아이템이 전부 404가 된다. 그래서 URL은 항상 카탈로그(단일 진실원)에서 해석하고,
+  //    카탈로그에 없는 항목(폐지된 아이템 등)만 저장값으로 폴백한다. 데이터 마이그레이션 불필요.
+  // ⚠️ 이 합성을 화면에 복사하지 말 것 — 2026-11-11 상점 화면의 사본이 저장 주소를 그대로 그려
+  //    8월 이전 구매분이 전부 깨져 있었다. 미리보기가 필요하면 previewItem 으로 넘긴다.
+  const place = (slot, itemId, storedUrl) => {
+    const imageUrl = CATALOG_IMAGE_URLS[itemId] || storedUrl;
     if (!imageUrl) return;
     if (slot === "background") bgUrl = imageUrl;
     else if (slot === "preset") presetUrl = imageUrl;
@@ -201,7 +201,16 @@ export function buildAvatarOverlays(userDoc) {
         ? { url: imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
         : { url: imageUrl };
     }
+  };
+
+  Object.entries(eq).forEach(([slot, itemId]) => {
+    if (!itemId) return;
+    const item = owned[itemId];
+    if (!item) return;
+    place(slot, itemId, item.imageUrl);
   });
+
+  if (previewItem?.slot) place(previewItem.slot, previewItem.id, previewItem.imageUrl);
 
   return { baseUrl, bgUrl, slots, presetUrl };
 }

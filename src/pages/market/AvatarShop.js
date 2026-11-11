@@ -22,7 +22,7 @@ import {
   getRarity,
   getSlot,
   isOwned,
-  ITEM_ANCHORS,
+  buildAvatarOverlays,
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
@@ -154,47 +154,11 @@ export default function AvatarShop() {
   };
 
   // 현재 장착 상태 + 프리뷰 (장착 + 미리보기 합쳐서)
-  const equippedOverlays = useMemo(() => {
-    const eq = userDoc?.equippedAvatarItems || {};
-    const owned = userDoc?.ownedAvatarItems || {};
-    const slots = {};
-    let bgUrl = null;
-    let presetUrl = null;
-    let baseUrl = null;
-
-    // ITEM_ANCHORS를 적용해서 사이드바 AvatarHeaderWidget과 동일하게 합성
-    const applyAnchor = (slot, itemId, imageUrl) => {
-      const anchor = ITEM_ANCHORS[itemId];
-      return anchor
-        ? { url: imageUrl, anchorOverride: { x: anchor.x, y: anchor.y }, scale: 1, anchor }
-        : { url: imageUrl };
-    };
-
-    Object.entries(eq).forEach(([slot, itemId]) => {
-      if (!itemId) return;
-      const item = owned[itemId];
-      if (!item?.imageUrl) return;
-      if (slot === "background") {
-        bgUrl = item.imageUrl;
-      } else if (slot === "preset") {
-        presetUrl = item.imageUrl;
-      } else if (slot === "base") {
-        baseUrl = item.imageUrl;
-      } else {
-        slots[slot] = applyAnchor(slot, itemId, item.imageUrl);
-      }
-    });
-
-    // 프리뷰 (미리보기 아이템 가상 장착)
-    if (previewItem && previewItem.imageUrl) {
-      if (previewItem.slot === "background") bgUrl = previewItem.imageUrl;
-      else if (previewItem.slot === "preset") presetUrl = previewItem.imageUrl;
-      else if (previewItem.slot === "base") baseUrl = previewItem.imageUrl;
-      else slots[previewItem.slot] = applyAnchor(previewItem.slot, previewItem.id, previewItem.imageUrl);
-    }
-
-    return { baseUrl, bgUrl, slots, presetUrl };
-  }, [userDoc, previewItem]);
+  // 합성은 buildAvatarOverlays 한 곳에서만 — 저장된 낡은 주소(.png)를 여기서 직접 그리지 않는다.
+  const equippedOverlays = useMemo(
+    () => buildAvatarOverlays(userDoc, previewItem),
+    [userDoc, previewItem]
+  );
 
   // 필터링된 아이템
   const filteredItems = useMemo(() => {
