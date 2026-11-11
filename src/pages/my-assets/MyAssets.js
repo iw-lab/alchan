@@ -24,7 +24,12 @@ import { AlchanLoading } from "../../components/AlchanLayout";
 import { DailyRewardBanner } from "../../components/DailyReward";
 
 import { logger } from "../../utils/logger";
-import { dropDuplicateActivityRows } from "../../utils/ledgerDedupe";
+import { mergeLedgerRows } from "../../utils/ledgerDedupe";
+import WeeklyBookModal from "../../components/WeeklyBookModal";
+import SavingsGoalCard from "../../components/SavingsGoalCard";
+import BadgeShelf from "../../components/BadgeShelf";
+import CreditGradeCard from "../../components/CreditGradeCard";
+import { readGoal, goalProgress } from "../../utils/savingsGoal";
 import { toast } from "../../utils/toast";
 export default function MyAssets() {
   const {
@@ -94,6 +99,7 @@ export default function MyAssets() {
   const [transferSubmitting, setTransferSubmitting] = useState(false);
   const transferSubmittingRef = useRef(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false); // 거래 내역 펼치기/접기 상태
+  const [showWeeklyBook, setShowWeeklyBook] = useState(false);
 
   // URL 파라미터로 송금 모달 자동 열기
   useEffect(() => {
@@ -284,84 +290,15 @@ export default function MyAssets() {
       setRealEstateAssets(allRealEstateAssets);
       setStockValue(computedStockValue);
 
-      // 거래 내역 처리
-      const activityData = (activityLogsSnap.docs || [])
-        .map((doc) => {
-          const data = doc.data();
-          const desc = data.description || data.type || "거래 내역";
-          return {
-            id: doc.id,
-            amount: data.amount || 0,
-            description: desc === "undefined" ? "거래 내역" : desc,
-            timestamp: data.timestamp,
-            type: data.type,
-            weekKey: data.weekKey,
-            couponAmount: data.couponAmount || 0,
-            source: "activity_logs",
-          };
-        })
-        .filter((tx) => tx.amount !== 0 || tx.couponAmount !== 0);
-
-      const parseTransactionDocs = (docs) =>
-        (docs || [])
-          .map((doc) => {
-            const data = doc.data();
-            const desc = data.description || "거래 내역";
-            return {
-              id: doc.id,
-              amount: data.amount || 0,
-              description: !desc || desc === "undefined" ? "거래 내역" : desc,
-              timestamp: data.timestamp || data.createdAt,
-              type: data.type || "transaction",
-              weekKey: data.weekKey,
-              source: "transactions",
-            };
-          })
-          .filter((tx) => tx.amount !== 0);
-
-      const transactionsData = parseTransactionDocs(transactionsSnap.docs);
-      const rootTransactionsData = parseTransactionDocs(rootTransactionsSnap.docs);
-
-      // 중복 제거 (같은 ID의 문서)
-      const seenIds = new Set(transactionsData.map((tx) => tx.id));
-      const uniqueRootData = rootTransactionsData.filter((tx) => !seenIds.has(tx.id));
-
-      // 🔥 activity_logs와 transactions 서브컬렉션 사이 cross-dedupe
-      // payWeeklySalariesLogic 등 일부 함수가 두 컬렉션에 같은 거래를 각각 저장 →
-      // UI에서 1건이 2건으로 보이는 버그 방지. type+weekKey 기준 매칭.
-      const activityDedupeKey = new Set(
-        activityData
-          .filter((tx) => tx.weekKey && tx.type)
-          .map((tx) => `${tx.type}_${tx.weekKey}`),
+      // 거래 내역 처리 — 세 원장을 합치는 규칙은 utils/ledgerDedupe.js 의 mergeLedgerRows 한 곳에 있다
+      // (「이번 주 가계부」도 같은 함수를 쓴다. 근거·실측은 그 파일에).
+      // ⚠️ id 는 **뒤에** 쓴다 — 데이터에 `id` 라는 필드가 있어도 문서 id 가 이긴다(중복 제거 키가 문서 id 다).
+      const rowsOf = (snap) => (snap?.docs || []).map((d) => ({ ...d.data(), id: d.id }));
+      const allTransactions = mergeLedgerRows(
+        rowsOf(activityLogsSnap),
+        rowsOf(transactionsSnap),
+        rowsOf(rootTransactionsSnap),
       );
-      const dedupedTransactionsData = transactionsData.filter((tx) => {
-        if (!tx.weekKey || !tx.type) return true;
-        return !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
-      });
-      const dedupedUniqueRootData = uniqueRootData.filter((tx) => {
-        if (!tx.weekKey || !tx.type) return true;
-        return !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
-      });
-
-      // 🔴 **같은 돈 한 번이 두 줄로 보이던 문제** (2026-08-30 라이브 실측).
-      //    위 weekKey 대조는 **주급만** 걸렀다 — 상점 구매·국고 되팔기·송금은 그대로 두 줄이었다.
-      //    판정은 순수 함수로 뺐다(utils/ledgerDedupe.js). 근거·창 크기·1:1 인 이유는 그 파일에.
-      const ledgerRows = [...dedupedTransactionsData, ...dedupedUniqueRootData];
-      const activityWithoutDuplicates = dropDuplicateActivityRows(
-        activityData,
-        ledgerRows,
-      );
-
-      const allTransactions = [...activityWithoutDuplicates, ...ledgerRows];
-      allTransactions.sort((a, b) => {
-        const dateA = a.timestamp?.toDate
-          ? a.timestamp.toDate()
-          : new Date(a.timestamp?.seconds * 1000 || 0);
-        const dateB = b.timestamp?.toDate
-          ? b.timestamp.toDate()
-          : new Date(b.timestamp?.seconds * 1000 || 0);
-        return dateB - dateA;
-      });
       const recentTransactions = allTransactions.slice(0, 20);
       setTransactionHistory(recentTransactions);
 
@@ -569,6 +506,33 @@ export default function MyAssets() {
     const displayCash = Number(userDoc?.cash) || 0;
     const displayCoupons = Number(userDoc?.coupons) || 0;
 
+    // 통장에 따로 모아 둔 돈(저축 목표·배지가 같이 쓴다)
+    const savedTotal =
+      Number(parkingBalance) +
+      deposits.reduce((sum, d) => sum + (Number(d.balance) || 0), 0) +
+      savings.reduce((sum, sv) => sum + (Number(sv.balance) || 0), 0);
+    const isTeacherAccount = userDoc?.isAdmin === true || userDoc?.isSuperAdmin === true;
+    const myGoal = readGoal(userDoc?.savingsGoal);
+    const creditStats = {
+      loans,
+      netAssets: totalNetAssets,
+      totalAssets: Math.max(0, totalNetAssets),
+      savedTotal,
+      savingProducts: deposits.length + savings.length,
+    };
+    const badgeStats = {
+      totalAssets: totalNetAssets,
+      coupons: displayCoupons,
+      savingProducts: deposits.length + savings.length,
+      properties: realEstateAssets.length,
+      parkingBalance: Number(parkingBalance) || 0,
+      stockValue: Number(stockValue) || 0,
+      goalSet: !!myGoal,
+      goalDone: !!goalProgress(myGoal, savedTotal)?.done,
+      quizCorrect: Number(userDoc?.econQuiz?.correct) || 0,
+      quizStreak: Number(userDoc?.econQuiz?.streak) || 0,
+    };
+
     // 거래 내역 표시 개수 결정
     const displayedTransactions = showAllTransactions
       ? transactionHistory
@@ -645,11 +609,40 @@ export default function MyAssets() {
           </div>
         </div>
 
+        {/* 학생용 카드 — 교사 계정(국고)에는 뜻이 없어 보이지 않는다 */}
+        {!isTeacherAccount && !assetsLoading && <CreditGradeCard stats={creditStats} />}
+        {!isTeacherAccount && !assetsLoading && <BadgeShelf stats={badgeStats} />}
+        {!isTeacherAccount && (
+          <SavingsGoalCard
+            userId={userId}
+            rawGoal={userDoc?.savingsGoal}
+            saved={savedTotal}
+          />
+        )}
+
         {/* 최근 입출금 내역 */}
         <div className="mb-5">
-          <h4 className="text-[15px] text-slate-700 font-bold mb-3">
-            💳 최근 입출금 내역
-          </h4>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-[15px] text-slate-700 font-bold">
+              💳 최근 입출금 내역
+            </h4>
+            <button
+              type="button"
+              onClick={() => setShowWeeklyBook(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+            >
+              📒 이번 주 가계부
+            </button>
+          </div>
+          {showWeeklyBook && (
+            <WeeklyBookModal
+              isOpen={showWeeklyBook}
+              onClose={() => setShowWeeklyBook(false)}
+              userId={userId}
+              classCode={currentUserClassCode}
+              name={userDoc?.name || ""}
+            />
+          )}
           {transactionHistory.length > 0 ? (
             <div>
               <div className="flex flex-col gap-2">

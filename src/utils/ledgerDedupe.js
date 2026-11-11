@@ -109,3 +109,67 @@ export const dropDuplicateActivityRows = (
     return false; // 권위 있는 쪽(거래원장)을 남기고 표시용 사본을 뺀다
   });
 };
+
+
+/**
+ * 세 원장(activity_logs · users/{uid}/transactions · 루트 transactions)을 한 줄 목록으로 합친다.
+ * 「나의 자산」 거래내역과 「이번 주 가계부」가 **같은 함수**를 쓴다 — 합치는 규칙이 두 벌이면
+ * 한쪽만 고쳐져 화면마다 다른 숫자가 나온다.
+ *
+ * 입력은 `{ id, ...문서 데이터 }` 배열(스냅샷을 그대로 넘기지 않는다 — 순수 함수로 시험하기 위해).
+ * 규칙(2026-08 실측으로 정해진 순서 그대로):
+ *   ① activity_logs 는 금액·쿠폰이 모두 0 인 줄을 버린다(기록용 줄)
+ *   ② 서브컬렉션과 루트에 같은 id 가 있으면 서브컬렉션 것만
+ *   ③ 주급처럼 type+weekKey 가 같은 줄은 activity_logs 것만
+ *   ④ 같은 돈 한 번이 두 원장에 적힌 줄은 dropDuplicateActivityRows 로 하나만
+ *   ⑤ 최신순
+ */
+export const mergeLedgerRows = (activityRaw, transactionsRaw, rootTransactionsRaw) => {
+  const activityData = (activityRaw || [])
+    .map((data) => {
+      const desc = data.description || data.type || "거래 내역";
+      return {
+        id: data.id,
+        amount: data.amount || 0,
+        description: desc === "undefined" ? "거래 내역" : desc,
+        timestamp: data.timestamp,
+        type: data.type,
+        weekKey: data.weekKey,
+        couponAmount: data.couponAmount || 0,
+        source: "activity_logs",
+      };
+    })
+    .filter((tx) => tx.amount !== 0 || tx.couponAmount !== 0);
+
+  const parseTransactions = (rows) =>
+    (rows || [])
+      .map((data) => {
+        const desc = data.description || "거래 내역";
+        return {
+          id: data.id,
+          amount: data.amount || 0,
+          description: !desc || desc === "undefined" ? "거래 내역" : desc,
+          timestamp: data.timestamp || data.createdAt,
+          type: data.type || "transaction",
+          weekKey: data.weekKey,
+          source: "transactions",
+        };
+      })
+      .filter((tx) => tx.amount !== 0);
+
+  const transactionsData = parseTransactions(transactionsRaw);
+  const rootTransactionsData = parseTransactions(rootTransactionsRaw);
+
+  const seenIds = new Set(transactionsData.map((tx) => tx.id));
+  const uniqueRootData = rootTransactionsData.filter((tx) => !seenIds.has(tx.id));
+
+  const activityDedupeKey = new Set(
+    activityData.filter((tx) => tx.weekKey && tx.type).map((tx) => `${tx.type}_${tx.weekKey}`),
+  );
+  const notWeeklyDuplicate = (tx) => !tx.weekKey || !tx.type || !activityDedupeKey.has(`${tx.type}_${tx.weekKey}`);
+
+  const ledgerRows = [...transactionsData.filter(notWeeklyDuplicate), ...uniqueRootData.filter(notWeeklyDuplicate)];
+  const activityWithoutDuplicates = dropDuplicateActivityRows(activityData, ledgerRows);
+
+  return [...activityWithoutDuplicates, ...ledgerRows].sort((a, b) => toMillis(b.timestamp) - toMillis(a.timestamp));
+};

@@ -36,6 +36,9 @@ import {
  getEffectiveJobIds,
 } from "../../utils/jobPermissions";
 import JobList from "../../components/JobList";
+import TodayTip from "../../components/TodayTip";
+import EconQuizCard from "../../components/EconQuizCard";
+import TeacherStartGuide from "../../components/TeacherStartGuide";
 import CommonTaskList from "../../components/CommonTaskList";
 import { promptDialog } from "../../utils/promptDialog";
 import { useBackClose } from "../../hooks/useBackClose";
@@ -565,6 +568,7 @@ function Dashboard({ adminTabMode }) {
  refreshUserDocument,
  isAdmin,
  isSuperAdmin,
+ allClassMembers,
  } = useAuth();
 
  // Refs for cleanup
@@ -2548,6 +2552,19 @@ function Dashboard({ adminTabMode }) {
 
  {viewMode === "list" && !adminModalOpen && !adminTabMode && (
  <>
+ {/* 🧭 교사 = 시작 도우미 · 💡 학생 = 오늘의 제안 (둘 다 읽기 0) */}
+ {isAdmin?.() ? (
+ <TeacherStartGuide
+ classCode={userDoc?.classCode}
+ studentCount={(allClassMembers || []).filter((m) => !m.isAdmin && !m.isSuperAdmin).length}
+ jobCount={jobs.length}
+ />
+ ) : (
+ <>
+ <TodayTip userId={user?.uid} userDoc={userDoc} />
+ <EconQuizCard userId={user?.uid} rawStats={userDoc?.econQuiz} />
+ </>
+ )}
  {/* 나의 직업 할일 섹션 */}
  <div className="glass-card rounded-2xl overflow-hidden mb-6">
  {/* 나의 직업 할일 헤더 - 색상 배경 */}
