@@ -450,6 +450,14 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "adminCategory",
     adminOnly: true,
   },
+  {
+    id: "economyReport",
+    label: "학급 경제 리포트",
+    icon: BarChart3,
+    path: "/admin/economy-report",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
 
   // 🔥 SuperAdmin Category - 앱 관리자 전용 (isSuperAdmin만 접근 가능)
   {

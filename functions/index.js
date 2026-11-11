@@ -83,6 +83,7 @@ exports.triggerEconomicEventManual = scheduler.triggerEconomicEventManual; // �
 exports.saveEconomicEventSettings = scheduler.saveEconomicEventSettings; // 경제 이벤트 설정 저장
 exports.autoPricePreview = scheduler.autoPricePreview; // 🏷️ 자동 물가 — 교사 미리보기(쓰기 0)
 exports.autoPriceControl = scheduler.autoPriceControl; // 🏷️ 자동 물가 — 켜기/끄기/건너뛰기/기준 다시 잡기
+exports.classEconomyReport = scheduler.classEconomyReport; // 📊 학급 경제 리포트 — 교사 전용·읽기 전용(누를 때만 계산)
 exports.collectWeeklyTaxesManual = scheduler.collectWeeklyTaxesManual; // 주간 세금(순자산세+보유세) 수동 징수
 exports.collectWeeklyTaxesByOfficer = scheduler.collectWeeklyTaxesByOfficer; // 국세청장(임명 국세청 직원) 학생 주간 세금 징수 (주1회 쿨다운)
 

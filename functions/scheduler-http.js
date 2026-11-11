@@ -71,6 +71,7 @@ const {
 const { shouldFlush } = require("./batchChunk");
 const { classCodesFromStudentSnap, studentCountsFromSnap, isStudentDoc } = require("./studentScope");
 const { robustCenter, planStep, itemPrice, STORE_PRICE_MIN, STORE_PRICE_MAX } = require("./autoPriceMath");
+const { buildClassReport } = require("./classReportMath");
 // 직업 개수 상한 클램프 — 네 곳에 복붙돼 있던 것을 단일 정본으로.
 const { clampMaxJobs } = require("./jobUtils");
 const { expireVetoedLaws } = require("./vetoExpiry");
@@ -1221,7 +1222,9 @@ exports.updateRealStocksFunction = onCall(
       // ⚠️ listedDocs/appliedUpdates는 스냅샷 생성용 내부 값이다.
       //   callable 응답에 그대로 펼치면 Map은 {}로 뭉개지고 문서 22개가 통째로
       //   클라이언트에 실려 나간다 — 반드시 제외하고 반환할 것.
-      const { listedDocs: _ld, appliedUpdates: _au, ...publicResult } = result;
+      const publicResult = { ...result };
+      delete publicResult.listedDocs;
+      delete publicResult.appliedUpdates;
 
       return {
         success: true,
@@ -3760,6 +3763,40 @@ exports.autoPriceControl = onCall({ region: "asia-northeast3" }, async (request)
   if (action === "skipNext") { await ref.set({ skipWeekKey: nextKey }, { merge: true }); return { success: true }; }
   if (action === "unskip") { await ref.set({ skipWeekKey: admin.firestore.FieldValue.delete() }, { merge: true }); return { success: true }; }
   throw new HttpsError("invalid-argument", "알 수 없는 동작입니다.");
+});
+
+// ===================================================================================
+// 📊 학급 경제 리포트 — 교사가 누를 때만 계산(읽기 전용, 학생당 읽기 5). 돈·가격·설정을 바꾸지 않는다.
+//    자산 계산은 자동 물가와 같은 함수(computeUserNetAssets strict)를 쓴다 — «못 읽음»을 0원으로 세지 않는다.
+//    숫자 계산 = classReportMath.js(순수·시험됨). 학급은 호출한 교사의 학급으로만 정해진다(입력으로 받지 않는다).
+// ===================================================================================
+const CLASS_REPORT_MAX_STUDENTS = 200;
+exports.classEconomyReport = onCall({ region: "asia-northeast3" }, async (request) => {
+  const { classCode } = await checkAuthAndGetUserData(request, true);
+  if (!classCode) throw new HttpsError("failed-precondition", "학급 정보가 없습니다.");
+  const stockDoc = await db.collection("Settings").doc("centralStocksCache").get();
+  const stockMap = {};
+  if (stockDoc.exists) (stockDoc.data().stocks || []).forEach((st) => { if (st.isListed !== false) stockMap[st.id] = Number(st.price) || 0; });
+  const couponValue = couponValueFrom(await classCouponRef(db, classCode).get());
+  const snap = await db.collection("users").where("classCode", "==", classCode).where("isAdmin", "==", false).get();
+  const students = snap.docs.filter((d) => isStudentDoc(d.data()));
+  // 한 학급이 감당할 크기만 — 그 이상은 계산하지 않는다(읽기·시간 폭주 방지. 운영 최대 학급 22명).
+  if (students.length > CLASS_REPORT_MAX_STUDENTS) throw new HttpsError("failed-precondition", "학생이 너무 많아 계산하지 않았어요.");
+  const rows = [];
+  try {
+    // 10명씩 끊어 읽는다(학생당 읽기 5 — 한꺼번에 다 열지 않는다).
+    for (let i = 0; i < students.length; i += 10) {
+      rows.push(...await Promise.all(students.slice(i, i + 10).map(async (d) => {
+        const u = d.data();
+        const a = await computeUserNetAssets(classCode, d.id, u, stockMap, couponValue, { strict: true });
+        return { uid: d.id, name: String(u.name || u.nickname || ""), studentNumber: Number.isFinite(Number(u.studentNumber)) ? Number(u.studentNumber) : null, ...a };
+      })));
+    }
+  } catch (e) {
+    logger.warn("[classEconomyReport] 학생 자산 읽기 실패", { classCode, message: e?.message });
+    throw new HttpsError("unavailable", "학생 자산을 다 읽지 못했어요. 잠시 뒤 다시 눌러 주세요.");
+  }
+  return { success: true, classCode, couponValue, at: Date.now(), report: buildClassReport(rows), students: rows };
 });
 
 module.exports.applyAutoPriceForClass = applyAutoPriceForClass;

@@ -106,6 +106,9 @@ const AdminDatabase = lazyWithRetry(
 const AlchanPlaza = lazyWithRetry(() => import("../pages/plaza/AlchanPlaza"));
 // 🖼️ 학습 사이트 갤러리 — 사이드바 «학습 사이트» 를 누르면 오른쪽에 썸네일 카드로 뜬다.
 const LearningSitesGallery = lazyWithRetry(() => import("../pages/learning/LearningSitesGallery"));
+const ClassEconomyReport = lazyWithRetry(
+  () => import("../pages/admin/ClassEconomyReport"),
+);
 const AdminEconomicEvents = lazyWithRetry(
   () => import("../pages/admin/AdminEconomicEvents"),
 );
@@ -864,6 +867,14 @@ export default function AlchanLayout() {
                   element={
                     <AdminRoute>
                       <AdminEconomicEvents />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/admin/economy-report"
+                  element={
+                    <AdminRoute>
+                      <ClassEconomyReport />
                     </AdminRoute>
                   }
                 />

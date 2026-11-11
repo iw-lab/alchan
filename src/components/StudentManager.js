@@ -20,6 +20,7 @@ import {
   Users,
   UserPlus,
   Upload,
+  Printer,
   Download,
   Trash2,
   Edit2,
@@ -54,6 +55,8 @@ import { toast } from "../utils/toast";
 import { confirmDialog } from "../utils/confirmDialog";
 import { sortByStudentNumber, plainStudentName } from "../utils/studentOrder";
 import StudentNo from "./ui/StudentNo";
+import LoginCardsSheet from "./LoginCardsSheet";
+import { markGuideFlag } from "../utils/todayTip";
 
 // 랜덤 비밀번호 생성
 const generatePassword = (length = 8) => {
@@ -104,6 +107,7 @@ const StudentManager = () => {
   const [processing, setProcessing] = useState(false);
   const [results, setResults] = useState({ success: [], failed: [] });
   const [copiedId, setCopiedId] = useState(null);
+  const [printingCards, setPrintingCards] = useState(false);
 
   // 학생 목록 로드 함수
   const loadStudents = useCallback(async (forceRefresh = false) => {
@@ -472,12 +476,28 @@ const StudentManager = () => {
 
   return (
     <div className="space-y-6">
+      {printingCards && (
+        <LoginCardsSheet
+          students={selectedStudents.size > 0 ? students.filter((st) => selectedStudents.has(st.id)) : students}
+          classCode={classCode}
+          onDone={() => setPrintingCards(false)}
+        />
+      )}
       <PageHeader
         title="학생 관리"
         subtitle={`학급 ${classCode} · 총 ${students.length}명`}
         icon={Users}
         action={
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Printer}
+              disabled={students.length === 0}
+              onClick={() => { markGuideFlag(classCode, "cards"); setPrintingCards(true); }}
+            >
+              로그인 카드 인쇄
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -555,6 +575,7 @@ const StudentManager = () => {
                 <TableHead className="w-12">
                   <input
                     type="checkbox"
+                    aria-label="학생 전체 선택"
                     checked={selectedStudents.size === filteredStudents.length}
                     onChange={(e) => {
                       if (e.target.checked) {
@@ -582,6 +603,7 @@ const StudentManager = () => {
                   <TableCell>
                     <input
                       type="checkbox"
+                      aria-label={`${plainStudentName(student)} 선택`}
                       checked={selectedStudents.has(student.id)}
                       onChange={(e) => {
                         const newSet = new Set(selectedStudents);
@@ -615,12 +637,14 @@ const StudentManager = () => {
                           setEditingStudent(student);
                           setShowEditModal(true);
                         }}
+                        aria-label={`${plainStudentName(student)} 정보 고치기`}
                         className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                       >
                         <Edit2 size={16} className="text-gray-500" />
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(student)}
+                        aria-label={`${plainStudentName(student)} 삭제`}
                         className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
                       >
                         <Trash2 size={16} className="text-red-500" />
