@@ -5,8 +5,8 @@ import { loginIdOf, buildLoginCards, paginate } from "../../utils/loginCards";
 
 describe("로그인 카드", () => {
   const students = [
-    { id: "b", email: "alchan12@bg6quc.alchan", name: "12번 나", studentNumber: 12, password: "x" },
-    { id: "a", email: "alchan03@bg6quc.alchan", name: "3번 가", studentNumber: 3 },
+    { id: "b", email: "alchan12@t1abcd.alchan", name: "12번 나", studentNumber: 12, password: "x" },
+    { id: "a", email: "alchan03@t1abcd.alchan", name: "3번 가", studentNumber: 3 },
     { id: "c", email: "", name: "깨진 문서" },
   ];
 
@@ -17,14 +17,14 @@ describe("로그인 카드", () => {
   });
 
   it("번호순으로 놓고, 아이디 없는 문서는 뺀다", () => {
-    const cards = buildLoginCards(students, { classCode: "bg6quc" });
+    const cards = buildLoginCards(students, { classCode: "t1abcd" });
     expect(cards.map((c) => c.loginId)).toEqual(["alchan03", "alchan12"]);
-    expect(cards[0].classCode).toBe("BG6QUC");
+    expect(cards[0].classCode).toBe("T1ABCD");
     expect(cards[0].number).toBe(3);
   });
 
   it("🔒 카드에는 비밀번호가 실리지 않는다", () => {
-    const cards = buildLoginCards(students, { classCode: "bg6quc" });
+    const cards = buildLoginCards(students, { classCode: "t1abcd" });
     expect(JSON.stringify(cards)).not.toMatch(/password|"x"/);
     const sheet = fs.readFileSync(path.resolve(__dirname, "../../components/LoginCardsSheet.js"), "utf8");
     expect(sheet).not.toMatch(/\.password|initialPassword|tempPassword/);

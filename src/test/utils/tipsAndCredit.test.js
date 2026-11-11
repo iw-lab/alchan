@@ -31,8 +31,8 @@ describe("교사 시작 도우미", () => {
   it("표시는 학급별로 따로, 저장소가 깨져도 던지지 않는다", () => {
     const mem = new Map();
     const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
-    markGuideFlag("bg6quc", "cards", storage);
-    expect(readGuideFlags("BG6QUC", storage)).toEqual({ cards: true });
+    markGuideFlag("t1abcd", "cards", storage);
+    expect(readGuideFlags("T1ABCD", storage)).toEqual({ cards: true });
     expect(readGuideFlags("OTHER", storage)).toEqual({});
     mem.set("alchan_guide_BAD", "{깨짐");
     expect(readGuideFlags("bad", storage)).toEqual({});
