@@ -23,6 +23,7 @@ import {
   getSlot,
   isOwned,
   buildAvatarOverlays,
+  onlyCatalogItems,
 } from "../../utils/avatarShop";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
@@ -62,8 +63,8 @@ export default function AvatarShop() {
     try {
       // 복합 인덱스 회피 - 전체 가져온 후 클라이언트에서 필터/정렬
       const snap = await getDocs(collection(db, "avatarShopItems"));
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+      // 카탈로그에 없는 옛 문서는 버리고, 그림 주소는 카탈로그 것으로(utils/avatarShop.js onlyCatalogItems).
+      const list = onlyCatalogItems(snap.docs.map((d) => ({ ...d.data(), id: d.id })))
         .filter((i) => i.active !== false)
         .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       logger.log(`[AvatarShop] 로드된 아이템: ${list.length}개`);

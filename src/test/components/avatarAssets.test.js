@@ -158,3 +158,29 @@ describe("④ 저장된 낡은 주소는 어느 화면에서도 그리지 않는
     expect(src).not.toMatch(/owned\[itemId\]/);
   });
 });
+
+// ⑤ 2026-11-11 배포본 실측: 상점 목록에 깨진 이미지 4장이 남았다 — 카탈로그에서 없앤 옛 아이템
+//    (기본 얼굴형·눈·코·미소)이 avatarShopItems 컬렉션에 그대로 남아 «0알찬 · 구매하기»로 뜨고 있었다.
+//    시드는 카탈로그에 있는 것만 다시 쓰고, 없어진 것을 끄지 않는다. 화면이 카탈로그를 기준으로 거른다.
+import { onlyCatalogItems } from "../../utils/avatarShop";
+
+describe("⑤ 카탈로그에 없는 옛 아이템은 상점에 안 뜬다", () => {
+  const live = ALL_AVATAR_ITEMS.find((i) => i.imageUrl);
+  it("카탈로그에 있는 것만 남기고, 그림 주소는 카탈로그 것으로 바꾼다", () => {
+    const list = onlyCatalogItems([
+      { id: live.id, name: "살아 있는 아이템", imageUrl: `/avatar-shop/${live.id}.png?v=old`, price: 100 },
+      { id: "face_default", name: "기본 얼굴형", imageUrl: "/avatar-shop/face_default.png?v=20260523d", price: 0 },
+    ]);
+    expect(list.map((i) => i.id)).toEqual([live.id]);
+    expect(list[0].imageUrl).toBe(live.imageUrl);
+    expect(list[0].price).toBe(100); // 가격·이름 같은 나머지 값은 DB 것 그대로
+  });
+  it("빈 입력에 던지지 않는다", () => {
+    expect(onlyCatalogItems(null)).toEqual([]);
+    expect(onlyCatalogItems([null, undefined, {}])).toEqual([]);
+  });
+  it("상점 화면이 이 함수로 거른다", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../../pages/market/AvatarShop.js"), "utf8");
+    expect(src).toMatch(/onlyCatalogItems\(/);
+  });
+});

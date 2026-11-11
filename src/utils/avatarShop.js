@@ -7,6 +7,23 @@ const CATALOG_IMAGE_URLS = Object.fromEntries(
   ALL_AVATAR_ITEMS.filter((i) => i.imageUrl).map((i) => [i.id, i.imageUrl])
 );
 
+const CATALOG_IDS = new Set(ALL_AVATAR_ITEMS.map((i) => i.id));
+
+/**
+ * 상점에 보여 줄 목록 — **카탈로그에 있는 아이템만**, 그림 주소는 카탈로그 것으로.
+ *
+ * 왜(2026-11-11 배포본 실측): 카탈로그에서 없앤 옛 아이템(기본 얼굴형·눈·코·미소)이 avatarShopItems 컬렉션에
+ * 남아 깨진 그림과 함께 «0알찬 · 구매하기»로 떠 있었다. 시드는 카탈로그에 있는 것만 다시 쓰고, 없어진 문서를
+ * 끄지 않는다(대부분은 손으로 active:false 가 돼 있었고 넷이 빠졌다). 화면이 카탈로그를 기준으로 거르면
+ * DB 를 손대지 않아도 되고, 다음에 아이템을 없앨 때도 같은 일이 안 생긴다.
+ * 가격·이름·정렬 같은 나머지 값은 DB 것을 그대로 둔다(교사가 바꾼 가격이 거기 있다).
+ */
+export function onlyCatalogItems(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((i) => i && CATALOG_IDS.has(i.id))
+    .map((i) => (CATALOG_IMAGE_URLS[i.id] ? { ...i, imageUrl: CATALOG_IMAGE_URLS[i.id] } : i));
+}
+
 /**
  * 아바타 상점 아이템 카테고리 (오버레이 슬롯)
  * - 한 슬롯에는 한 번에 하나만 장착 가능
