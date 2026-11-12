@@ -157,6 +157,18 @@
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "redirects": [
+      {
+        "source": "/images/:path*",
+        "destination": "https://alchan-img.pages.dev/images/:path*",
+        "type": 301
+      },
+      {
+        "source": "/avatar-shop/:path*",
+        "destination": "https://alchan-img.pages.dev/avatar-shop/:path*",
+        "type": 301
+      }
     ]
   },
   "firestore": [

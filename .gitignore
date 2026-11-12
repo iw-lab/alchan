@@ -74,3 +74,4 @@ alchan-backups/
 *-backup-*.json
 ghost-cleanup-*.json
 scripts/ops/.deidentify-plan.json*
+.img-door/

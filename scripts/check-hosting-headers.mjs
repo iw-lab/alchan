@@ -122,3 +122,7 @@ if (failed) {
   process.exit(1);
 }
 console.log("\n통과 — 모든 경로가 의도한 헤더를 받습니다\n");
+
+// 그림 문(2026-11-12) — firebase.json 이 /images·/avatar-shop 을 alchan-img.pages.dev 로 301 하므로 build 그림이 거기 다 있어야 한다.
+// CI(deploy.yml «배포 전 산출물 검사»)가 이 파일을 부른다 — workflow 파일은 OAuth 범위 밖이라 여기서 잇는다.
+await import("./check-img-door.mjs");
