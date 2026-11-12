@@ -46,7 +46,3 @@ export async function saveSavingsGoal(userId, goal) {
   return updateDoc(ref, { savingsGoal: { name: goal.name, amount: goal.amount, setAt: serverTimestamp() } });
 }
 
-/** 오늘의 경제 퀴즈 기록 — 자기 문서의 표시용 필드(`econQuiz`). 돈·보상 판정에 쓰지 않는다(배지·연속 기록만). */
-export async function saveQuizStats(userId, stats) {
-  return updateDoc(doc(db, "users", userId), { econQuiz: stats });
-}

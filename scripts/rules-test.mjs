@@ -148,6 +148,23 @@ const CASES = [
     path: "/insurancePolicies/C1_stu1", method: "update", as: "tch1",
     before: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 2000 }, after: { classCode: "C1", userId: "stu1", premium: 100, cap: 2000, capRemaining: 0 },
   }),
+  // 🧠 퀴즈 상금 하루 1회 자물쇠 — 지우거나 미리 만들면 같은 날 또 받거나 남을 막는다.
+  tc("ALLOW", "🐤 학생이 오늘 퀴즈 기록을 읽는다", {
+    path: "/quizRewards/stu1_2026-11-13", method: "get", as: "stu1", before: { classCode: "C1", userId: "stu1", day: "2026-11-13", correct: true, reward: 10000 },
+  }),
+  tc("DENY", "학생이 자기 퀴즈 기록(연속·정답 수)을 고친다", {
+    path: "/users/stu1", method: "update", as: "stu1",
+    before: S, after: { ...S, econQuiz: { day: "2026-11-13", total: 99, correct: 99, streak: 99 } },
+  }),
+  tc("DENY", "학생이 퀴즈 자물쇠를 지운다 (같은 날 또 받기)", {
+    path: "/quizRewards/stu1_2026-11-13", method: "delete", as: "stu1", before: { classCode: "C1", userId: "stu1", day: "2026-11-13", correct: true, reward: 10000 },
+  }),
+  tc("DENY", "학생이 친구의 퀴즈 자물쇠를 미리 만든다 (친구 상금 막기)", {
+    path: "/quizRewards/stu2_2026-11-13", method: "create", as: "stu1", after: { classCode: "C1", userId: "stu2", day: "2026-11-13" },
+  }),
+  tc("DENY", "학생이 친구의 퀴즈 기록을 읽는다", {
+    path: "/quizRewards/stu1_2026-11-13", method: "get", as: "stu2", before: { classCode: "C1", userId: "stu1", day: "2026-11-13", correct: true, reward: 10000 },
+  }),
   tc("ALLOW", "🐤 학생이 자기 신용 기록을 읽는다", {
     path: "/creditRecords/stu1", method: "get", as: "stu1", before: { classCode: "C1", onTime: 1 },
   }),

@@ -22,10 +22,16 @@ export async function fetchCreditRecord(userId) {
 
 /** 학급 스위치. 문서·필드가 없으면 둘 다 켜짐. */
 export async function fetchFinanceSwitches(classCode) {
-  if (!classCode) return { insurance: true, creditLink: true };
+  if (!classCode) return { insurance: true, creditLink: true, quizReward: 10000 };
   const snap = await getDoc(doc(db, "bankingSettings", classCode));
   const d = snap.exists() ? snap.data() : {};
-  return { insurance: d?.insurance?.enabled !== false, creditLink: d?.creditLink?.enabled !== false };
+  const qr = d?.quizReward?.amount;
+  return {
+    insurance: d?.insurance?.enabled !== false,
+    creditLink: d?.creditLink?.enabled !== false,
+    // 서버 functions/econQuizMath.js quizRewardAmount 와 같은 규칙(없으면 1만, 이상하면 0)
+    quizReward: qr === undefined || qr === null ? 10000 : typeof qr === "number" && Number.isFinite(qr) ? Math.max(0, Math.min(30000, Math.floor(qr))) : 0,
+  };
 }
 
 /** 교사: 스위치 저장. key = "insurance" | "creditLink" */
@@ -40,4 +46,18 @@ export async function saveFinanceSwitch(classCode, key, enabled) {
 export async function buyInsurance() {
   const res = await httpsCallable(functions, "buyInsurance")({ idempotencyKey: crypto.randomUUID() });
   return res.data;
+}
+
+/** 오늘의 경제 퀴즈 답 제출 — 정답 판정·상금은 서버가 한다(하루 첫 답 1회). */
+export async function claimQuizReward(day, questionId, choice) {
+  const res = await httpsCallable(functions, "claimQuizReward")({ day, questionId, choice });
+  return res.data;
+}
+
+/** 교사: 퀴즈 정답 상금(원). 0 = 상금 없음. */
+export async function saveQuizRewardAmount(classCode, amount) {
+  if (!classCode) throw new Error("학급 코드가 필요합니다.");
+  const n = Math.max(0, Math.min(30000, Math.floor(Number(amount) || 0)));
+  await setDoc(doc(db, "bankingSettings", classCode), { quizReward: { amount: n }, updatedAt: serverTimestamp() }, { merge: true });
+  invalidateCache(`banking_${classCode}`);
 }

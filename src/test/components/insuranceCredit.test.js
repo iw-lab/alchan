@@ -15,6 +15,7 @@ vi.mock("../../firebase/db/finance", () => ({
   fetchCreditRecord: async () => null,
   buyInsurance: async (...args) => { state.buys.push(args); return { success: true, premium: 500, cap: 10000 }; },
   saveFinanceSwitch: async (...args) => { state.saves.push(args); },
+  saveQuizRewardAmount: async (...args) => { state.saves.push(["quiz", ...args]); },
 }));
 vi.mock("../../utils/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -22,7 +23,7 @@ import InsuranceCard from "../../components/InsuranceCard";
 import CreditGradeCard from "../../components/CreditGradeCard";
 import FinanceSwitches from "../../components/FinanceSwitches";
 
-beforeEach(() => { state.policy = null; state.switches = { insurance: true, creditLink: true }; state.buys = []; state.saves = []; state.failRead = false; });
+beforeEach(() => { state.policy = null; state.switches = { insurance: true, creditLink: true, quizReward: 10000 }; state.buys = []; state.saves = []; state.failRead = false; });
 afterEach(cleanup);
 
 const card = (props = {}) => render(<InsuranceCard userId="u1" classCode="t1abcd" cash={50000} {...props} />);
@@ -104,5 +105,13 @@ describe("교사 스위치", () => {
     await waitFor(() => expect(state.saves).toEqual([["t1abcd", "insurance", false]]));
     await waitFor(() => expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("false"));
     expect(screen.getAllByRole("switch")[1].getAttribute("aria-checked")).toBe("true");
+  });
+  it("퀴즈 상금 — 고른 금액만 저장하고 표시가 따라간다", async () => {
+    render(<FinanceSwitches classCode="t1abcd" />);
+    const radios = await screen.findAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-checked"))).toEqual(["false", "false", "true", "false"]);
+    fireEvent.click(radios[0]);
+    await waitFor(() => expect(state.saves).toEqual([["quiz", "t1abcd", 0]]));
+    await waitFor(() => expect(screen.getAllByRole("radio")[0].getAttribute("aria-checked")).toBe("true"));
   });
 });

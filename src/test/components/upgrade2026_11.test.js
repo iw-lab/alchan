@@ -1,7 +1,7 @@
 /**
  * 2026-11 업그레이드 화면 — 실제로 그려지고, 눌렀을 때 약속한 일만 하는지.
  *  ① 학급 경제 리포트는 열 때 계산하지 않는다(누를 때만) ② 가계부는 원장을 하나라도 못 읽으면 숫자를 내지 않는다
- *  ③ 로그인 카드에 비밀번호가 안 찍힌다 ④ 퀴즈는 하루 한 번만 저장한다 ⑤ 저축 목표는 검사를 통과한 값만 저장한다
+ *  ③ 로그인 카드에 비밀번호가 안 찍힌다 ④ 퀴즈는 고른 보기만 서버에 한 번 보낸다(판정·상금은 서버) ⑤ 저축 목표는 검사를 통과한 값만 저장한다
  */
 import React from "react";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
@@ -25,7 +25,15 @@ vi.mock("../../firebase", () => ({
 vi.mock("../../firebase/db/ledger", () => ({
   fetchLedgerSince: async () => ledger,
   saveSavingsGoal: async (uid, goal) => { saved.push(["goal", uid, goal]); },
-  saveQuizStats: async (uid, stats) => { saved.push(["quiz", uid, stats]); },
+}));
+let quizReply = { success: true, correct: true, reward: 10000 };
+vi.mock("../../firebase/db/finance", () => ({
+  fetchFinanceSwitches: async () => ({ insurance: true, creditLink: true, quizReward: 10000 }),
+  claimQuizReward: async (day, questionId, choice) => {
+    saved.push(["quiz", day, questionId, choice]);
+    if (quizReply instanceof Error) throw quizReply;
+    return quizReply;
+  },
 }));
 vi.mock("../../utils/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("qrcode.react", () => ({ QRCodeSVG: ({ value }) => <svg data-qr={value} /> }));
@@ -142,16 +150,32 @@ describe("대시보드 카드", () => {
     fireEvent.click(screen.getByText("그만 보기"));
     expect(screen.queryByText(/시작 도우미/)).toBeNull();
   });
-  it("퀴즈 — 답하면 해설이 뜨고 하루 한 번만 저장한다", async () => {
-    render(<EconQuizCard userId="u1" rawStats={null} />);
+  it("퀴즈 — 상금을 미리 알리고, 고른 보기만 서버에 한 번 보내고, 서버가 준 상금을 보여 준다", async () => {
+    quizReply = { success: true, correct: true, reward: 10000, stats: { day: dayKeyKST(), total: 1, correct: 1, streak: 1, lastCorrect: true } };
+    const onReward = vi.fn();
+    render(<EconQuizCard userId="u1" rawStats={null} classCode="t1abcd" onReward={onReward} />);
+    expect(await screen.findByText(/맞히면 1만/)).toBeTruthy();
+    fireEvent.click(screen.getByText("풀어 보기"));
+    const buttons = await waitFor(() => { const b = screen.getAllByRole("button"); expect(b.length).toBe(4); return b; });
+    fireEvent.click(buttons[2]);
+    await screen.findByRole("status");
+    expect(saved).toHaveLength(1);
+    expect(saved[0][0]).toBe("quiz");
+    expect(saved[0][1]).toBe(dayKeyKST());
+    expect(typeof saved[0][2]).toBe("string");
+    expect(saved[0][3]).toBe(buttons[2].textContent); // 위치가 아니라 보기 글을 보낸다
+    expect(await screen.findByText(/상금 1만.*들어왔어요/)).toBeTruthy();
+    expect(onReward).toHaveBeenCalledTimes(1);
+    fireEvent.click(buttons[1]);
+    expect(saved).toHaveLength(1);
+  });
+  it("퀴즈 — 서버가 실패하면 «상금은 안 들어왔다»고 말한다", async () => {
+    quizReply = Object.assign(new Error("unavailable"), { code: "functions/unavailable" });
+    render(<EconQuizCard userId="u1" rawStats={null} classCode="t1abcd" />);
     fireEvent.click(screen.getByText("풀어 보기"));
     const buttons = await waitFor(() => { const b = screen.getAllByRole("button"); expect(b.length).toBe(4); return b; });
     fireEvent.click(buttons[0]);
-    await screen.findByRole("status");
-    expect(saved).toHaveLength(1);
-    expect(saved[0][2]).toMatchObject({ day: dayKeyKST(), total: 1, streak: 1 });
-    fireEvent.click(buttons[1]);
-    expect(saved).toHaveLength(1);
+    expect(await screen.findByText(/상금은 안 들어왔어요/)).toBeTruthy();
   });
   it("퀴즈 — 오늘 이미 풀었으면 다시 풀 수 없다", () => {
     render(<EconQuizCard userId="u1" rawStats={{ day: dayKeyKST(), total: 3, correct: 2, streak: 3, lastCorrect: true }} />);

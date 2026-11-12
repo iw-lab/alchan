@@ -95,6 +95,7 @@ export function createFakeFirestore(seed = {}) {
           return refOrQuery.get();
         },
         set: (ref, data, opt) => { wrote = true; ops.push(() => applyData(ref.path, data, opt)); },
+        create: (ref, data) => { wrote = true; ops.push(() => { if (store.has(ref.path)) throw new Error(`ALREADY_EXISTS: ${ref.path}`); applyData(ref.path, data); }); },
         update: (ref, data) => { wrote = true; ops.push(() => applyData(ref.path, data, { isUpdate: true })); },
         delete: (ref) => { wrote = true; ops.push(() => store.delete(ref.path)); },
       };

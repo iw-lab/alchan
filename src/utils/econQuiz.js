@@ -1,5 +1,5 @@
 // src/utils/econQuiz.js — 「오늘의 경제 퀴즈」 판정(순수 함수).
-// 돈이 걸리지 않는다: 보상은 배지와 연속 기록뿐이다(현금 보상은 학급 경제 정책이라 선생님 결정 뒤에 서버로 만든다).
+// 정답 상금(2026-11-13)은 서버가 같은 규칙의 사본(functions/econQuizMath.js)으로 다시 판정해 준다 — 여기는 화면용.
 // 문항은 src/data/econQuiz.json — validateBank 를 통과해야 실린다(시험이 강제).
 
 export const TOPICS = {

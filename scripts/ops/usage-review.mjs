@@ -63,6 +63,7 @@ if (process.argv.includes("--metrics")) {
     deposit_users: u("예금 가입"),
     loan_users: u("대출 실행"),
     insurance_users: u("보험료 납부"),
+    quiz_reward_users: u("퀴즈 상금"),
     parking_users: u("파킹통장 입금"),
     shop_seller_users: u("shop_sale"),
     approvals: n("할일 승인 완료"),

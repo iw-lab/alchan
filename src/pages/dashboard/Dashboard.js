@@ -2562,7 +2562,7 @@ function Dashboard({ adminTabMode }) {
  ) : (
  <>
  <TodayTip userId={user?.uid} userDoc={userDoc} />
- <EconQuizCard userId={user?.uid} rawStats={userDoc?.econQuiz} />
+ <EconQuizCard userId={user?.uid} rawStats={userDoc?.econQuiz} classCode={userDoc?.classCode} onReward={refreshUserDocument} />
  </>
  )}
  {/* 나의 직업 할일 섹션 */}

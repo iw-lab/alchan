@@ -299,7 +299,9 @@ service cloud.firestore {
                        //    정상 가입 경로 두 곳은 이 필드들을 아예 쓰지 않는다 → 회귀 0.
                        !request.resource.data.keys().hasAny([
                          'gameRewardDaily', 'dailyItemUse', 'dailyItemBuy',
-                         'dailyDrawCount', 'dailySpinCount', 'role'
+                         'dailyDrawCount', 'dailySpinCount', 'role',
+                         // 🧠 퀴즈 기록은 상금과 함께 서버(claimQuizReward)만 쓴다(2026-11-13).
+                         'econQuiz'
                        ]) &&
                        isValidString(request.resource.data.name, 50));
 
@@ -376,7 +378,7 @@ service cloud.firestore {
                         //   "확인"으로 닫을 때 본인이 `deleteField()` 로 지운다
                         //   (WeeklyTaxSummaryPopup.js:26). 막으면 팝업이 안 닫힌다.
                         //   위조해 봐야 자기 화면의 안내 문구가 바뀔 뿐 징수액은 서버가 계산한다.
-                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount', 'lastSalaryWeekKey', 'lastWeeklyTaxWeekKey', 'lastSalaryDate', 'lastNetSalary', 'lastGrossSalary', 'lastTaxAmount', 'dailySpinDate', 'dailySpinCount', 'lastIncomingTransferAt', 'lastLoanRepaidAt', 'totalSalaryReceived', 'appRewardDaily']) &&
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isSuperAdmin', 'isTeacher', 'isApproved', 'role', 'selectedJobIds', 'appointedJobIds', 'jobName', 'jobTitle', 'delegatedPermissions', 'dailyItemUse', 'dailyItemBuy', 'dailyDrawCount', 'dailyDrawDate', 'gameRewardDaily', 'cash', 'classCode', 'coupons', 'completedTasks', 'completedJobTasks', 'tasksResetDate', 'email', 'isTestAccount', 'lastSalaryWeekKey', 'lastWeeklyTaxWeekKey', 'lastSalaryDate', 'lastNetSalary', 'lastGrossSalary', 'lastTaxAmount', 'dailySpinDate', 'dailySpinCount', 'lastIncomingTransferAt', 'lastLoanRepaidAt', 'totalSalaryReceived', 'appRewardDaily', 'econQuiz']) &&
                         // 필드 유효성 검증
                         (!('nickname' in request.resource.data) || isValidString(request.resource.data.nickname, 20))) ||
                        (isAdmin() &&
@@ -1014,6 +1016,15 @@ service cloud.firestore {
                      resource.data.userId == request.auth.uid ||
                      isClassAdmin(resource.data.classCode));
       allow list: if isSignedIn() && isClassAdmin(resource.data.classCode);
+      allow write: if false;
+    }
+    // 🧠 퀴즈 상금 하루 1회 자물쇠(quizRewards/{uid}_{day}) — 서버만 쓴다. 지우면 같은 날 또 받는다.
+    match /quizRewards/{lockId} {
+      allow get: if isSignedIn() &&
+                    (resource == null ||
+                     resource.data.userId == request.auth.uid ||
+                     isClassAdmin(resource.data.classCode));
+      allow list: if false;
       allow write: if false;
     }
     match /creditRecords/{userId} {
