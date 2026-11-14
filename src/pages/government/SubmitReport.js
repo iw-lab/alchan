@@ -1,5 +1,6 @@
 // src/SubmitReport.js
 import React, { useState } from "react";
+import NoRealNameNotice from "../../components/NoRealNameNotice";
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import { toast } from "../../utils/toast";
 import { numberedStudentName } from "../../utils/studentOrder";
@@ -209,6 +210,7 @@ const SubmitReport = ({
             placeholder="신고에 대한 상세 내용을 작성하세요 (선택사항)"
             rows="4"
           />
+          <NoRealNameNotice />
         </div>
 
         <div className="form-actions">

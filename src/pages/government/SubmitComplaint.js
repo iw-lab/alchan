@@ -1,5 +1,6 @@
 // src/SubmitComplaint.js
 import React, { useState, useEffect } from "react";
+import NoRealNameNotice from "../../components/NoRealNameNotice";
 import { useBackClose } from "../../hooks/useBackClose";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -261,6 +262,7 @@ const SubmitComplaint = ({
               placeholder="고소 사유를 직접 입력하세요"
               required
             />
+            <NoRealNameNotice />
           </div>
         )}
 
@@ -376,6 +378,7 @@ const SubmitComplaint = ({
             onChange={(e) => setDesiredResolution(e.target.value)}
             placeholder="원하는 처벌이나 결과를 입력하세요 (선택사항)"
           />
+          <NoRealNameNotice />
         </div>
 
         <button type="submit" className="submit-button">

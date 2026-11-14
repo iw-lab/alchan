@@ -20,7 +20,7 @@ const PrivacyPolicy = () => {
  </div>
  <div>
  <h1 className="text-3xl font-bold text-slate-800">개인정보처리방침</h1>
- <p className="text-slate-500 text-sm mt-1">최종 수정일: 2026년 8월 20일 · 시행일: 2026년 8월 20일</p>
+ <p className="text-slate-500 text-sm mt-1">최종 수정일: 2026년 11월 14일 · 시행일: 2026년 11월 14일</p>
  </div>
  </div>
 
@@ -65,7 +65,8 @@ const PrivacyPolicy = () => {
  <p className="text-slate-700 leading-relaxed mb-4">
  알찬 경제교육(이하 "서비스")은 초등학교 학급 경제 시뮬레이션을 통해 학생들에게
  경제 교육을 제공하는 교육용 웹 애플리케이션입니다.
- 담임교사가 직접 개발·운영하며, 해당 학급 학생에게만 제한적으로 제공됩니다.
+ 현직 초등교사가 직접 개발·운영하며, 학급 코드를 받은 학급의 담임교사와 그 학급 학생에게만 제공됩니다.
+ 각 학급의 학생 계정과 학급 데이터는 그 학급 담임교사가 관리합니다.
  </p>
  <p className="text-slate-700 leading-relaxed mb-4">
  본 방침은 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고
@@ -105,6 +106,10 @@ const PrivacyPolicy = () => {
  <li className="text-slate-700 flex items-start gap-2">
  <span className="text-violet-600 mt-1">•</span>
  <span><strong className="text-slate-800">서비스 이용 기록:</strong> 로그인 시간, 마지막 접속일, 가상 경제 활동 기록(가상 잔액·거래 내역·보유 주식·부동산·할일 수행 이력)</span>
+ </li>
+ <li className="text-slate-700 flex items-start gap-2">
+ <span className="text-violet-600 mt-1">•</span>
+ <span><strong className="text-slate-800">학생이 직접 쓴 글:</strong> 게시판 글, 법안, 경찰서 신고·법원 고소장의 사유 등 — 같은 학급 안에서만 보입니다. 입력란에 «친구의 실제 이름·연락처를 쓰지 말 것»을 안내하며, 적힌 경우 담임교사가 삭제합니다.</span>
  </li>
  </ul>
  <div className="mt-3 ml-6 text-xs text-slate-500 bg-slate-100/70 rounded-lg p-3">
@@ -295,7 +300,7 @@ const PrivacyPolicy = () => {
  <strong className="text-slate-800">전송 구간 암호화:</strong> 모든 통신은 HTTPS/TLS로 암호화 전송
  </ListItem>
  <ListItem>
- <strong className="text-slate-800">접근 권한 최소화:</strong> 학생 데이터는 해당 학급 담임교사 계정만 관리자 권한 보유, 학생 간 타인 정보 열람 불가
+ <strong className="text-slate-800">접근 권한 최소화:</strong> 학생 데이터는 해당 학급 담임교사 계정만 관리자 권한 보유. 다른 학급의 정보는 열람할 수 없으며, 같은 학급 안에서는 닉네임·직업·학급 활동 글(게시판·법안·신고·고소장)만 서로 볼 수 있습니다
  </ListItem>
  <ListItem>
  <strong className="text-slate-800">Firebase Security Rules:</strong> Firestore 보안 규칙으로 미인증 접근 및 권한 외 접근 차단

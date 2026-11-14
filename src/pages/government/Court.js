@@ -1,5 +1,6 @@
 // src/Court.js - Tailwind UI 리팩토링
 import React, { useState, useEffect, useMemo } from "react";
+import NoRealNameNotice from "../../components/NoRealNameNotice";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, httpsCallable } from "../../firebase";
@@ -111,6 +112,7 @@ const EditComplaintModal = ({ complaint, onSave, onCancel, users }) => {
  onChange={(e) => setReason(e.target.value)}
  rows={5}
  />
+ <NoRealNameNotice />
  </div>
  <div className="form-group">
  <label className="form-label">원하는 결과</label>
