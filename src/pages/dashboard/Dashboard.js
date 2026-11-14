@@ -247,8 +247,9 @@ function SelectMultipleJobsView({
  pendingJobIds = [],
  appointedJobIds = [],
 }) {
- // 🧑‍🏫 이미 **임명된** 직업 = 교사만 벗길 수 있다. 학생 화면에선 체크된 채 잠긴다.
- //    (서버도 학생 요청으로는 appointedJobIds 를 절대 지우지 않는다 — 두 쪽이 같은 말을 한다.)
+ // 🧑‍🏫 이미 **임명된** 직업(대통령·판사 등)도 학생이 스스로 그만둘 수 있다(2026-11-14 사용자 결정).
+ //    체크를 풀고 저장하면 «그만둘까요?»를 한 번 더 묻고, 그렇다고 한 직업 id 만
+ //    `resignAppointedJobIds` 로 서버에 **이름을 대어** 보낸다(서버는 추론하지 않는다).
  const appointedSet = useMemo(
  () => new Set(Array.isArray(appointedJobIds) ? appointedJobIds : []),
  [appointedJobIds],
@@ -276,6 +277,7 @@ function SelectMultipleJobsView({
  const [editingJobId, setEditingJobId] = useState(null);
  const [editingJobTitle, setEditingJobTitle] = useState("");
  const [editingJobAppointedOnly, setEditingJobAppointedOnly] = useState(false);
+ const [editingJobDesc, setEditingJobDesc] = useState("");
 
  const activeJobs = useMemo(() => {
  return Array.isArray(availableJobs)
@@ -308,10 +310,6 @@ function SelectMultipleJobsView({
  setTempSelection((prev) => {
  // 이미 선택 → 해제
  if (prev.includes(jobId)) {
- // 🔒 이미 임명된 직업은 학생이 못 벗는다 — 해임은 교사의 판단이다.
- //    (서버도 학생 요청으로 appointedJobIds 를 지우지 않으므로, 여기서 풀리게 두면
- //     화면만 거짓말을 하고 저장해도 아무 일이 안 일어난다.)
- if (!isAdmin && appointedSet.has(jobId)) return prev;
  return prev.filter((id) => id !== jobId);
  }
  // 추가 시 학생(비관리자)만 상한 적용. 선생님은 자유.
@@ -321,8 +319,29 @@ function SelectMultipleJobsView({
  return [...prev, jobId];
  });
  },
- [isAdmin, maxJobs, countTowardCap, appointedSet],
+ [isAdmin, maxJobs, countTowardCap],
  );
+
+ // 🚪 학생이 체크를 푼 임명직 = 그만두려는 직업. 저장 전에 한 번 더 묻는다.
+ const resignIds = useMemo(
+ () =>
+ isAdmin ? [] : [...appointedSet].filter((id) => !tempSelection.includes(id)),
+ [isAdmin, appointedSet, tempSelection],
+ );
+ const [confirmResign, setConfirmResign] = useState(false);
+ const titleOf = useCallback(
+ (id) =>
+ (Array.isArray(availableJobs) ? availableJobs : []).find((j) => j.id === id)
+ ?.title || "직업",
+ [availableJobs],
+ );
+ const handleSubmit = useCallback(() => {
+ if (resignIds.length > 0 && !confirmResign) {
+ setConfirmResign(true);
+ return;
+ }
+ onConfirmSelection(tempSelection, resignIds);
+ }, [resignIds, confirmResign, onConfirmSelection, tempSelection]);
 
  const handleAddNewJob = useCallback(() => {
  const title = newJobTitle.trim();
@@ -341,6 +360,10 @@ function SelectMultipleJobsView({
  setEditingJobId(job.id);
  setEditingJobTitle(job.title);
  setEditingJobAppointedOnly(isAppointedOnlyJob(job));
+ // 안내는 한 칸으로 고친다 — 기본값의 «뽑는 법»은 description 뒤에 이어 붙여 보여 준다.
+ setEditingJobDesc(
+ [job.description, job.howToSelect].filter(Boolean).join(" "),
+ );
  }, []);
 
  const handleSaveEdit = useCallback(() => {
@@ -350,12 +373,12 @@ function SelectMultipleJobsView({
  return;
  }
  if (onEditJob) {
- onEditJob(editingJobId, title, editingJobAppointedOnly);
+ onEditJob(editingJobId, title, editingJobAppointedOnly, editingJobDesc.trim());
  }
  setEditingJobId(null);
  setEditingJobTitle("");
  setEditingJobAppointedOnly(false);
- }, [editingJobId, editingJobTitle, editingJobAppointedOnly, onEditJob]);
+ }, [editingJobId, editingJobTitle, editingJobAppointedOnly, editingJobDesc, onEditJob]);
 
  const handleCancelEdit = useCallback(() => {
  setEditingJobId(null);
@@ -426,8 +449,16 @@ function SelectMultipleJobsView({
  onChange={(e) => setEditingJobAppointedOnly(e.target.checked)}
  className="w-3.5 h-3.5 accent-amber-500"
  />
- 선생님 지정 전용 (학생 자가신청 불가)
+ 권한직 (청문회로 뽑는 자리 — 직업 승인 화면에 강조돼요)
  </label>
+ <textarea
+ value={editingJobDesc}
+ onChange={(e) => setEditingJobDesc(e.target.value)}
+ rows={2}
+ maxLength={300}
+ placeholder="하는 일·뽑는 법 안내 (학생 직업 선택 화면에 보여요)"
+ className="w-full px-2 py-1 bg-gray-100 border border-slate-200 rounded text-slate-700 text-xs focus:outline-none focus:border-indigo-400"
+ />
  </div>
  ) : (
  <>
@@ -436,7 +467,7 @@ function SelectMultipleJobsView({
  const alreadyAppointed = !isAdmin && appointedSet.has(job.id);
  const capReached =
  !isAdmin && !checked && selectedValidCount >= maxJobs;
- const disabled = alreadyAppointed || capReached;
+ const disabled = capReached;
  return (
  <label
  className={`flex items-center gap-3 flex-1 ${
@@ -456,14 +487,28 @@ function SelectMultipleJobsView({
  }`}
  >
  {job.title}
- {alreadyAppointed && (
- <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 align-middle">
- 선생님만 해제
+ {alreadyAppointed && checked && (
+ <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 align-middle">
+ 맡는 중
+ </span>
+ )}
+ {alreadyAppointed && !checked && (
+ <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 align-middle">
+ 그만두기
  </span>
  )}
  {pendingSet.has(job.id) && (
  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 align-middle">
  신청 중
+ </span>
+ )}
+ {(job.description || job.howToSelect) && (
+ <span className="block mt-0.5 text-[11px] font-normal leading-snug text-slate-500">
+ {job.description}
+ {job.description && job.howToSelect ? " " : ""}
+ {job.howToSelect && (
+ <span className="text-indigo-500">{job.howToSelect}</span>
+ )}
  </span>
  )}
  </span>
@@ -538,9 +583,32 @@ function SelectMultipleJobsView({
 
  {!isAdmin && (
  <p className="mt-5 text-xs text-slate-500">
- 새로 고른 직업은 <b>선생님이 확인한 뒤</b> 붙어요. 체크를 풀면 바로 그만둘 수 있어요.
- {" "}<b>선생님만 해제</b> 표시가 붙은 직업은 선생님께 말해야 그만둘 수 있어요.
+ 새로 고른 직업은 <b>선생님이 확인한 뒤</b> 붙어요. 체크를 풀면 어떤 직업이든 바로 그만둘 수 있어요.
+ {" "}다시 하고 싶으면 새로 신청해서 승인을 받아야 해요.
  </p>
+ )}
+
+ {confirmResign && resignIds.length > 0 && (
+ <div
+ role="alertdialog"
+ aria-label="직업 그만두기 확인"
+ className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
+ >
+ <p className="font-semibold">
+ {resignIds.map(titleOf).join(" · ")} — 정말 그만둘까요?
+ </p>
+ <p className="mt-1 text-xs text-rose-700">
+ 그만두면 그 직업의 권한과 주급이 바로 사라져요. 다시 맡으려면 신청하고 선생님 승인을 받아야 해요.
+ </p>
+ <div className="mt-3 flex justify-end gap-2">
+ <ActionButton variant="secondary" size="sm" onClick={() => setConfirmResign(false)}>
+ 돌아가기
+ </ActionButton>
+ <ActionButton variant="danger" size="sm" onClick={handleSubmit}>
+ 그만두기
+ </ActionButton>
+ </div>
+ </div>
  )}
 
  <div className="flex justify-end gap-3 mt-6">
@@ -549,7 +617,7 @@ function SelectMultipleJobsView({
  </ActionButton>
  <ActionButton
  variant="primary"
- onClick={() => onConfirmSelection(tempSelection)}
+ onClick={handleSubmit}
  >
  {!isAdmin ? "저장 / 신청하기" : "선택 완료"}
  </ActionButton>
@@ -1781,7 +1849,7 @@ function Dashboard({ adminTabMode }) {
  }, [user?.uid, isAdmin, userDoc?.classCode]);
 
  const handleConfirmJobSelection = useCallback(
- async (newlySelectedJobIds) => {
+ async (newlySelectedJobIds, resignAppointedJobIds = []) => {
  if (!user?.uid) {
  toast.error("사용자 정보 오류.");
  return;
@@ -1802,10 +1870,21 @@ function Dashboard({ adminTabMode }) {
  const res = await saveSelectedJobsFn({
  jobIds: idsToSave,
  includesAppointed: true,
+ // 🚪 학생이 화면에서 체크를 풀고 «그만두기»를 누른 임명직 id. 서버는 여기
+ //    **이름이 적힌 것만** 지운다(payload 에 없다고 추론하지 않는다).
+ resignAppointedJobIds: Array.isArray(resignAppointedJobIds)
+ ? resignAppointedJobIds
+ : [],
  });
  const saved = res?.data?.selectedJobIds;
+ const savedAppointed = res?.data?.appointedJobIds;
  if (Array.isArray(saved)) {
- setUserDoc((prev) => ({ ...prev, selectedJobIds: saved }));
+ setUserDoc((prev) => ({
+ ...prev,
+ selectedJobIds: saved,
+ // 사임이 반영된 임명 목록(서버가 돌려준 값)
+ ...(Array.isArray(savedAppointed) ? { appointedJobIds: savedAppointed } : {}),
+ }));
  }
  // 승인제면 서버가 "지금 붙은 직업"과 "대기 중"을 나눠서 돌려준다.
  const pending = res?.data?.pendingJobIds;
@@ -1814,7 +1893,10 @@ function Dashboard({ adminTabMode }) {
  // 신청이 **생겼는지**로 문구를 가른다. 체크를 푸는 저장(그만두기)은 신청을 만들지
  // 않으므로, 그때까지 "신청했어요"라고 하면 학생이 그만둔 줄 모른다.
  const applied = res?.data?.appliedCount || 0;
- if (applied > 0) {
+ const resigned = res?.data?.resignedCount || 0;
+ if (resigned > 0 && applied === 0) {
+ toast.success(`직업 ${resigned}개를 그만두었어요.`);
+ } else if (applied > 0) {
  toast.success(
  `직업 ${applied}개를 신청했어요. 선생님이 확인한 뒤 붙습니다.`,
  );
@@ -2711,7 +2793,7 @@ function Dashboard({ adminTabMode }) {
  }
  }}
  onDeleteJob={(jobId) => handleDeleteJob(jobId)}
- onEditJob={async (jobId, newTitle, appointedOnly) => {
+ onEditJob={async (jobId, newTitle, appointedOnly, description) => {
  if (!db || !userDoc?.classCode) {
  toast.error("데이터베이스 연결 오류 또는 학급 코드 없음.");
  return;
@@ -2724,13 +2806,24 @@ function Dashboard({ adminTabMode }) {
  data: {
  title: newTitle,
  appointedOnly: appointedOnly === true,
+ // 안내 문구는 한 칸(description)으로 합쳐 저장하고 howToSelect 는 비운다.
+ ...(typeof description === "string"
+ ? { description: description.slice(0, 300), howToSelect: "" }
+ : {}),
  updatedAt: serverTimestamp(),
  },
  });
  setJobs((prev) =>
  prev.map((j) =>
  j.id === jobId
- ? { ...j, title: newTitle, appointedOnly: appointedOnly === true }
+ ? {
+ ...j,
+ title: newTitle,
+ appointedOnly: appointedOnly === true,
+ ...(typeof description === "string"
+ ? { description: description.slice(0, 300), howToSelect: "" }
+ : {}),
+ }
  : j
  )
  );

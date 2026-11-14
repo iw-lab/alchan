@@ -161,7 +161,7 @@ describe("직업 신청 — 저장 경로(saveSelectedJobs)", () => {
     // 그만둘 게 없을 때도 최소한 updatedAt 은 써야 전제조건이 붙는다.
     const write = SAVE.indexOf("const userUpdate =");
     expect(write, "신청 저장의 users 쓰기를 찾지 못했다").toBeGreaterThan(-1);
-    const body = SAVE.slice(write, write + 600);
+    const body = SAVE.slice(write, write + 1000); // 600→1000: 사임(appointedJobIds arrayRemove) 블록이 사이에 들어왔다(2026-11-14)
     expect(body, "이 쓰기에 lastUpdateTime 전제조건이 없다").toContain("userPrecondition");
     // 그만둘 게 없을 때도 updatedAt 은 쓴다 — 그래야 전제조건이 붙을 자리가 생긴다.
     expect(SAVE).toContain(

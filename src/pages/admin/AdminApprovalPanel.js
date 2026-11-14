@@ -18,8 +18,7 @@ import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
-import JobApplicationsPanel from "./JobApplicationsPanel";
-import { useBackClose } from "../../hooks/useBackClose";
+import { Link } from "react-router-dom";
 
 const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
@@ -31,11 +30,9 @@ const AdminApprovalPanel = () => {
   const [processingId, setProcessingId] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
-  // 상단 탭: 할일 승인 ↔ 직업 신청. 직업은 로직이 전혀 달라(보상 지급 없음, 직업 부여)
-  // 같은 목록에 섞지 않고 컴포넌트를 나눈다.
-  const [tab, setTab] = useState("tasks");
-  // 뒤로가기 = 기본 탭(할일 승인)으로
-  useBackClose(tab !== "tasks", () => setTab("tasks"));
+  // 직업 신청 승인은 별도 화면(/admin/job-approvals)이다 — 성격이 달라(보상 지급 ↔ 직업 부여)
+  // 2026-11-14 탭에서 메뉴로 분리했다. 국무총리(학생)는 이 화면만 본다.
+  const isTeacher = !!(userDoc?.isAdmin || userDoc?.isSuperAdmin);
 
   const processTaskApproval = useMemo(
     () => httpsCallable(functions, "processTaskApproval"),
@@ -227,34 +224,26 @@ const AdminApprovalPanel = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      {/* 헤더 - 컴팩트 */}
-      <h1 className="text-lg font-bold mb-4 px-1 text-slate-800">승인 관리</h1>
+      {/* 헤더 — 이 화면이 무엇을 하는 곳인지 한 줄로 */}
+      <h1 className="text-lg font-bold mb-1 px-1 text-slate-800">할일 승인</h1>
+      <p className="mb-4 px-1 text-sm text-slate-500">
+        학생이 «할일 완료»를 누르면 여기 쌓입니다. 실제로 했는지 확인하고 승인하면 보상이 지급됩니다.
+        {isTeacher
+          ? " 국무총리를 맡은 학생도 이 화면에서 대신 승인할 수 있어요(자기 할일은 제외)."
+          : " 내가 올린 할일은 선생님이 승인합니다."}
+      </p>
+      {isTeacher && (
+        <Link
+          to="/admin/job-approvals"
+          className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 no-underline hover:bg-indigo-100"
+        >
+          <span>
+            <b>직업 신청</b>은 «직업 승인» 메뉴로 옮겼어요.
+          </span>
+          <span className="shrink-0 font-bold">직업 승인으로 →</span>
+        </Link>
+      )}
 
-      {/* 상단 탭 */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {[
-          { key: "tasks", label: "할일 승인" },
-          { key: "jobs", label: "직업 신청" },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className="px-4 py-2 rounded-lg text-sm font-bold transition-all"
-            style={{
-              backgroundColor: tab === key ? "#4f46e5" : "#ffffff",
-              border: `1px solid ${tab === key ? "#4f46e5" : "#e2e8f0"}`,
-              color: tab === key ? "#ffffff" : "#64748b",
-              cursor: "pointer",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "jobs" && <JobApplicationsPanel />}
-
-      {tab === "tasks" && (
       <>
       {/* 필터 버튼 */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -508,7 +497,6 @@ const AdminApprovalPanel = () => {
         </div>
       )}
       </>
-      )}
     </div>
   );
 };

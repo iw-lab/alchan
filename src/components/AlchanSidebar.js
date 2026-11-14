@@ -50,8 +50,14 @@ import {
   MessageSquare,
   Activity,
   Star,
+  Compass,
+  Briefcase,
 } from "lucide-react";
-import { getEffectiveJobIds } from "../utils/jobPermissions";
+import {
+  getEffectiveJobIds,
+  isTaskApproverByJob,
+  toJobIdArray,
+} from "../utils/jobPermissions";
 import {
   getLearningAppItems,
   loadLearningAppItems,
@@ -378,11 +384,29 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "adminCategory",
     adminOnly: true,
   },
+  // 🧭 처음 쓰는 선생님용 — 무엇을 어떤 순서로 하는지 한 화면에.
+  {
+    id: "teacherGuide",
+    label: "시작 가이드",
+    icon: Compass,
+    path: "/admin/guide",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
   {
     id: "taskApprovals",
     label: "할일 승인",
     icon: CheckCircle,
     path: "/admin/approvals",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
+  // 직업 신청 승인은 할일 승인 안의 탭이었다 — 성격이 달라(보상 지급 ↔ 직업 부여) 메뉴를 나눴다.
+  {
+    id: "jobApprovals",
+    label: "직업 승인",
+    icon: Briefcase,
+    path: "/admin/job-approvals",
     parentId: "adminCategory",
     adminOnly: true,
   },
@@ -755,6 +779,8 @@ export default function AlchanSidebar({
   // 대통령 직업 체크 (학생만) — 대통령은 교사 지정 직업(appointedJobIds)에서만 인정.
   // 화면 표시용이며 실제 권한은 서버(functions)가 재검증한다.
   const [isPresident, setIsPresident] = useState(false);
+  // 🏛️ 직업으로 할일을 승인하는 학생(국무총리 · 국무총리 직업이 없는 학급은 대통령)
+  const [isTaskApprover, setIsTaskApprover] = useState(false);
   // ⚡ userDoc은 매 onSnapshot마다 새 객체(cash/xp 등 아무 필드 churn)이므로 deps에 통째로 넣으면
   //   아래 jobs getDocs가 매 상호작용마다 재실행(읽기폭주). 직업 id(appointedJobIds+selectedJobIds)가
   //   실제로 바뀔 때만 재계산되도록 join 문자열 키로 memo 안정화 → 동일 id면 같은 배열 참조 유지.
@@ -765,9 +791,18 @@ export default function AlchanSidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [effectiveJobIdsKey],
   );
+  // 승인자 판정은 임명 목록만 본다. userDoc 통째로 deps 에 넣으면 읽기 폭주(위 주석)라 키로 고정.
+  const appointedKey = toJobIdArray(userDoc?.appointedJobIds).join(",");
   useEffect(() => {
+    const appointedOnlyDoc = {
+      appointedJobIds: appointedKey ? appointedKey.split(",") : [],
+    };
     if (isAdmin || effectiveJobIds.length === 0 || !userDoc?.classCode)
-      return void setIsPresident(false);
+    {
+      setIsPresident(false);
+      setIsTaskApprover(false);
+      return;
+    }
     const classCode = userDoc.classCode;
     const cacheKey = `jobs_${classCode}`;
     const isPresidentIn = (jobs) =>
@@ -788,6 +823,7 @@ export default function AlchanSidebar({
     const cached = globalCacheService.get(cacheKey);
     if (cached) {
       setIsPresident(isPresidentIn(cached));
+      setIsTaskApprover(isTaskApproverByJob(appointedOnlyDoc, cached));
       return;
     }
 
@@ -800,9 +836,9 @@ export default function AlchanSidebar({
         );
         const snap = await getDocs(q);
         if (cancelled) return;
-        setIsPresident(
-          isPresidentIn(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-        );
+        const jobDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setIsPresident(isPresidentIn(jobDocs));
+        setIsTaskApprover(isTaskApproverByJob(appointedOnlyDoc, jobDocs));
       } catch {
         /* ignore */
       }
@@ -810,7 +846,7 @@ export default function AlchanSidebar({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, effectiveJobIds, userDoc?.classCode]);
+  }, [isAdmin, effectiveJobIds, appointedKey, userDoc?.classCode]);
 
   // 정부 이송 법안 개수 (대통령 학생에게 사이드바 배지 + 세션 1회 알림)
   const [pendingGovLawCount, setPendingGovLawCount] = useState(0);
@@ -1148,7 +1184,7 @@ export default function AlchanSidebar({
   const { lockedItemIds } = useMenuLocks();
 
   const hasDelegatedTaskApproval =
-    userDoc?.delegatedPermissions?.taskApproval === true || isPresident;
+    userDoc?.delegatedPermissions?.taskApproval === true || isTaskApprover;
   const hasDelegatedMoneyTransfer =
     userDoc?.delegatedPermissions?.moneyTransfer === true;
   const hasDelegatedCouponTransfer =
@@ -1175,19 +1211,19 @@ export default function AlchanSidebar({
       if (item.superAdminOnly && !isSuperAdmin) return false;
       // 🔒 교사가 잠근 메뉴는 학생에게만 숨김(교사 본인은 계속 보임)
       if (!isAdmin && lockedItemIds.includes(item.id)) return false;
-      // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생 또는 대통령 직업 학생에게 표시
-      // 대통령은 직업 자체로 할일 승인 권한을 가짐 (별도 위임 불필요)
+      // delegatedOnly 항목: 관리자가 아닌 학생 중 위임된 학생 또는 국무총리에게 표시
+      // 국무총리는 직업 자체로 할일 승인 권한을 가짐 (별도 위임 불필요 · 2026-11-14)
       if (item.delegatedOnly) {
         if (isAdmin) return false; // 관리자는 관리자 카테고리에서 이미 보임
-        if (item.delegatedOnly === "any") return hasAnyDelegation || isPresident;
-        if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval || isPresident;
+        if (item.delegatedOnly === "any") return hasAnyDelegation || isTaskApprover;
+        if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval;
         if (item.delegatedOnly === "moneyTransfer") return hasDelegatedMoneyTransfer;
         if (item.delegatedOnly === "couponTransfer") return hasDelegatedCouponTransfer;
         return false;
       }
       return true;
     },
-    [isAdmin, isSuperAdmin, isPresident, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer, lockedItemIds],
+    [isAdmin, isSuperAdmin, isTaskApprover, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer, lockedItemIds],
   );
 
   // 카테고리별 메뉴 렌더링

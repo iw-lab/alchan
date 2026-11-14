@@ -37,6 +37,7 @@ const {
   buildJobMap,
   resolveStudentJobs,
   hasJobTitle,
+  isTaskApproverByJob,
   clampMaxJobs,
 } = require("./jobUtils");
 // 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
@@ -926,7 +927,7 @@ exports.submitTaskApproval = onCall(
 exports.processTaskApproval = onCall(
   { region: "asia-northeast3" },
   async (request) => {
-    // 관리자 OR 대통령 OR 위임된 학생 모두 처리 가능
+    // 관리자 OR 국무총리 OR 위임된 학생이 처리한다.
     const {
       uid,
       classCode: adminClassCode,
@@ -934,15 +935,19 @@ exports.processTaskApproval = onCall(
       userData,
     } = await checkAuthAndGetUserData(request, false);
 
-    // 권한 체크: 관리자 / 대통령 직업 / delegatedPermissions.taskApproval
+    // 권한 체크: 관리자 / 국무총리 직업 / delegatedPermissions.taskApproval
     const hasTaskApprovalPermission =
       isSysAdmin ||
       userData?.isSuperAdmin ||
       userData?.delegatedPermissions?.taskApproval === true;
 
-    // 대통령 직업 체크 — 지정 전용 직업은 appointedJobIds(교사 write 전용)에서만 인정.
-    // 학생이 selectedJobIds에 대통령 id를 직접 써넣어도 권한이 생기지 않는다(jobUtils 규약).
-    let isPresident = false;
+    // 🏛️ 할일 승인은 **국무총리**의 일이다(2026-11-14 사용자 결정 — 전에는 대통령).
+    //   대통령은 법안 승인·거부권(rules), 국무총리는 할일 승인으로 일을 나눈다.
+    //   ⚠️ 학급에 «국무총리» 직업 문서가 **아예 없으면** 대통령이 계속 승인한다 —
+    //      옛 기본 직업 8종에는 국무총리가 없어서, 그런 학급은 승인할 학생이 사라진다
+    //      (2026-11-14 교차검증 grok·meta).
+    //   지정 전용 직업은 appointedJobIds(CF 전용 write)에서만 인정한다(jobUtils 규약).
+    let approverJobMap = null;
     const hasAnyJob =
       toJobIdArray(userData?.selectedJobIds).length > 0 ||
       toJobIdArray(userData?.appointedJobIds).length > 0;
@@ -951,10 +956,12 @@ exports.processTaskApproval = onCall(
         .collection("jobs")
         .where("classCode", "==", adminClassCode)
         .get();
-      isPresident = hasJobTitle(userData, buildJobMap(jobsSnapshot), "대통령");
+      approverJobMap = buildJobMap(jobsSnapshot);
     }
+    const isStudentApprover = (data) =>
+      !!approverJobMap && isTaskApproverByJob(data, approverJobMap);
 
-    if (!hasTaskApprovalPermission && !isPresident) {
+    if (!hasTaskApprovalPermission && !isStudentApprover(userData)) {
       throw new HttpsError("permission-denied", "할일 승인 권한이 없습니다.");
     }
 
@@ -996,6 +1003,19 @@ exports.processTaskApproval = onCall(
         //   애초에 만들지 않으므로 이 경로에 도달하지 않는다 = 정상 흐름 무영향.
         if (approval.studentId === uid) {
           throw new Error("본인의 승인 요청은 처리할 수 없습니다.");
+        }
+
+        // 🔒 직업으로 승인하는 학생은 **이 트랜잭션 안에서** 직업을 다시 읽는다.
+        //    위 판정은 함수 진입 시점 스냅샷이라, 그 사이 스스로 그만뒀거나(saveSelectedJobs
+        //    사임) 교사가 해임했어도 승인이 그대로 커밋됐다(2026-11-14 교차검증 gemini·grok).
+        //    교사·위임 학생은 이 경로가 아니다(위임 회수는 기존과 같은 진입 시점 판정).
+        if (!hasTaskApprovalPermission) {
+          const approverDoc = await transaction.get(
+            db.collection("users").doc(uid),
+          );
+          if (!approverDoc.exists || !isStudentApprover(approverDoc.data())) {
+            throw new Error("할일 승인 권한이 없습니다. 화면을 새로 고쳐 주세요.");
+          }
         }
 
         if (action === "approve") {
@@ -10073,7 +10093,21 @@ exports.saveSelectedJobs = onCall(
         (id) => jobMap.has(id) && isAppointedJob(jobMap.get(id)),
       );
       const freshAppointedSet = new Set(freshAppointed);
-      const appointedCountFresh = freshAppointed.length;
+      // 🚪 임명직 **사임** — 학생이 화면에서 직접 체크를 풀고 확인한 직업만(2026-11-14 사용자
+      //   결정 «판사·대통령도 학생이 뺄 수 있게»). 줄어드는 방향이라 악용할 이유가 없다.
+      //   🔴 payload 에 «없다»로 추론하지 않는다 — 클라가 `resignAppointedJobIds` 로
+      //      **이름을 대어 말한 것만** 지운다. 추론하면 ① 낡은 번들(임명직을 payload 에 안 담는다)
+      //      ② 화면을 연 뒤 교사가 새로 임명한 직업 — 둘 다 조용히 날아간다
+      //      (2026-11-14 교차검증 gemini·grok·codex). 지금 실제로 가진 임명직과의 교집합만 인정.
+      const resignRequested = new Set(
+        toJobIdArray(request.data?.resignAppointedJobIds),
+      );
+      const requestedSet = new Set(existing);
+      const resigned = freshAppointed.filter(
+        (id) => resignRequested.has(id) && !requestedSet.has(id),
+      );
+      // 사임분은 같은 배치에서 빠지므로 상한에서도 뺀다(사임 없으면 0).
+      const appointedCountFresh = freshAppointed.length - resigned.length;
 
       // 현재 보유 중인(유효한) 선택 직업
       const current = toJobIdArray(freshUser?.selectedJobIds).filter(
@@ -10082,7 +10116,6 @@ exports.saveSelectedJobs = onCall(
       const currentSet = new Set(current);
       // ⚠️ 요청 집합은 `validSelected`(일반직만)가 아니라 `existing`(임명직 포함)이다.
       //    임명직 신청서를 "체크가 풀렸다"고 오판해 방금 낸 신청을 스스로 취소하지 않도록.
-      const requestedSet = new Set(existing);
 
       // 유지 = 현재 ∩ 요청. 빠진 건 '그만두기'이고 **즉시 반영**한다 —
       //   직업이 줄면 주급도 줄어 악용할 이유가 없고, 승인 대기시키면 교사 일감만 는다.
@@ -10181,11 +10214,18 @@ exports.saveSelectedJobs = onCall(
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               }
             : { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        // 🚪 사임도 arrayRemove — 같은 배치·같은 전제조건(userPrecondition, 읽은 그 판일 때만).
+        if (resigned.length > 0) {
+          userUpdate.appointedJobIds = admin.firestore.FieldValue.arrayRemove(
+            ...resigned,
+          );
+        }
         // ⚠️ 취소만 하는 저장도 잠근다(2026-08-29 codex 2R). 신청 취소도 상태 변경이라,
         //    빼놓으면 '취소하는 탭'과 '그 신청을 살려둔 채 다른 직업을 신청하는 탭'이
         //    둘 다 성공하고 뒤쪽 응답이 거짓말을 한다.
         if (
           removed.length > 0 ||
+          resigned.length > 0 ||
           toApply.length > 0 ||
           canceledDocs.length > 0
         ) {
@@ -10253,7 +10293,7 @@ exports.saveSelectedJobs = onCall(
       }
 
       logger.info(
-        `[saveSelectedJobs] uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length}(임명 ${appointedToRequest.length}) · 취소 ${canceledDocs.length}`,
+        `[saveSelectedJobs] uid=${uid} 유지 ${kept.length} · 신청 ${toApply.length}(임명 ${appointedToRequest.length}) · 취소 ${canceledDocs.length} · 사임 ${resigned.length}`,
       );
 
       return {
@@ -10261,7 +10301,8 @@ exports.saveSelectedJobs = onCall(
         // 화면 호환용 — 이제 언제나 true 다(토글이 없어졌다).
         approvalRequired: true,
         selectedJobIds: kept,
-        appointedJobIds: freshAppointed,
+        appointedJobIds: freshAppointed.filter((id) => !resigned.includes(id)),
+        resignedCount: resigned.length,
         pendingJobIds: [...pendingJobIds, ...toApply],
         appliedCount: toApply.length,
         droppedCount: requested.length - existing.length,

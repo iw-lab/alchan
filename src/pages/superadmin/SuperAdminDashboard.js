@@ -668,6 +668,10 @@ export default function SuperAdminDashboard() {
         }));
         await addDoc(collection(db, "jobs"), {
           title: jobTpl.title,
+          // 하는 일·뽑는 법 안내와 권한직 표시까지 같이 심는다(정본 classroomDefaults.json).
+          description: jobTpl.description || "",
+          howToSelect: jobTpl.howToSelect || "",
+          appointedOnly: jobTpl.appointedOnly === true,
           active: true,
           tasks,
           classCode,

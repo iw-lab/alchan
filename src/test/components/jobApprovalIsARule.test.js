@@ -44,11 +44,13 @@ describe("학생 화면에서 '임명' 구분이 사라졌다", () => {
     expect(DASH).toContain('{!isAdmin ? "저장 / 신청하기" : "선택 완료"}');
   });
 
-  it("⭐ 잠긴 자리에는 이유가 보인다 (설명 없는 회색 체크박스 금지)", () => {
-    // 이미 맡은 권력직은 학생이 스스로 못 벗는다(해임은 교사 판단). 그 사실을
-    // 배지로 말하지 않으면 학생은 '눌리지 않는 칸'만 보게 된다.
-    expect(DASH).toContain("선생님만 해제");
-    expect(DASH).toContain("{alreadyAppointed && (");
+  it("⭐ 학생은 어떤 직업이든 스스로 그만둘 수 있다 (2026-11-14 사용자 결정)", () => {
+    // 전에는 임명된 권력직이 «선생님만 해제»로 잠겨 있었다. 이제 체크를 풀 수 있고,
+    // 대신 한 번 더 묻고(확인 상자) 그만둘 직업 id 를 **이름을 대어** 서버에 보낸다.
+    expect(DASH, "잠금 배지가 되살아났다").not.toContain("선생님만 해제");
+    expect(DASH).toContain("const disabled = capReached;");
+    expect(DASH).toContain("정말 그만둘까요?");
+    expect(DASH).toContain("resignAppointedJobIds:");
   });
 });
 
@@ -74,5 +76,36 @@ describe("승인제 토글이 사라졌다", () => {
     expect(save, "승인 여부를 학급 설정에서 다시 읽고 있다").not.toContain(
       "jobApprovalRequired",
     );
+  });
+});
+
+describe("임명직 사임은 **이름을 댄 것만** 지운다", () => {
+  const start = FN.indexOf("exports.saveSelectedJobs = onCall(");
+  const save = FN.slice(start, FN.indexOf("\nexports.", start + 10));
+
+  it("⭐ 서버는 payload 부재로 추론하지 않고 resignAppointedJobIds 만 본다", () => {
+    // 추론하면 낡은 번들(임명직을 payload 에 안 담는다)과 «화면을 연 뒤 교사가 새로 임명한
+    // 직업»이 조용히 날아간다(2026-11-14 교차검증 gemini·grok·codex).
+    expect(save).toContain("request.data?.resignAppointedJobIds");
+    expect(save).toMatch(
+      /freshAppointed\.filter\(\s*\(id\) => resignRequested\.has\(id\) && !requestedSet\.has\(id\)/,
+    );
+  });
+
+  it("⭐ 사임만 하는 저장도 배치에 실린다 (조건에서 빠지면 조용히 무시된다)", () => {
+    expect(save).toMatch(/removed\.length > 0 \|\|\s*resigned\.length > 0 \|\|/);
+    expect(save).toContain("userUpdate.appointedJobIds = admin.firestore.FieldValue.arrayRemove(");
+  });
+});
+
+describe("할일 승인은 국무총리의 일이다", () => {
+  const start = FN.indexOf("exports.processTaskApproval = onCall(");
+  const fn = FN.slice(start, FN.indexOf("\nexports.", start + 10));
+
+  it("⭐ 직업 판정은 한 함수로 하고, 트랜잭션 안에서 다시 본다", () => {
+    expect(fn).toContain("isTaskApproverByJob(data, approverJobMap)");
+    expect(fn, "대통령 직함을 직접 비교하는 옛 판정이 남아 있다").not.toContain('"대통령"');
+    // 진입 시점 판정만 믿으면 방금 그만둔 학생의 승인이 통과한다.
+    expect(fn).toMatch(/transaction\.get\(\s*db\.collection\("users"\)\.doc\(uid\)/);
   });
 });

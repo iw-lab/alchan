@@ -157,13 +157,15 @@ describe("대시보드 카드", () => {
     expect(await screen.findByText(/맞히면 1만/)).toBeTruthy();
     fireEvent.click(screen.getByText("풀어 보기"));
     const buttons = await waitFor(() => { const b = screen.getAllByRole("button"); expect(b.length).toBe(4); return b; });
+    // 글은 누르기 **전에** 적어 둔다 — 고른 보기가 정답인 날엔 누른 뒤 «✓»가 붙어 날짜에 따라 깨졌다(2026-11-14).
+    const pickedText = buttons[2].textContent;
     fireEvent.click(buttons[2]);
     await screen.findByRole("status");
     expect(saved).toHaveLength(1);
     expect(saved[0][0]).toBe("quiz");
     expect(saved[0][1]).toBe(dayKeyKST());
     expect(typeof saved[0][2]).toBe("string");
-    expect(saved[0][3]).toBe(buttons[2].textContent); // 위치가 아니라 보기 글을 보낸다
+    expect(saved[0][3]).toBe(pickedText); // 위치가 아니라 보기 글을 보낸다
     expect(await screen.findByText(/상금 1만.*들어왔어요/)).toBeTruthy();
     expect(onReward).toHaveBeenCalledTimes(1);
     fireEvent.click(buttons[1]);

@@ -3376,6 +3376,9 @@ async function initClassroomDefaultsServerSide(classCode) {
       const ref = db.collection("jobs").doc();
       batch.set(ref, {
         title: jobTpl.title,
+        description: jobTpl.description || "",
+        howToSelect: jobTpl.howToSelect || "",
+        appointedOnly: jobTpl.appointedOnly === true,
         active: true,
         tasks,
         classCode,

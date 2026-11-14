@@ -125,7 +125,27 @@ const hasJobTitle = (userData, jobMap, title) => {
 const clampMaxJobs = (raw) =>
   Number.isInteger(raw) && raw >= 1 ? Math.min(20, raw) : SALARY.DEFAULT_MAX_JOBS;
 
+/**
+ * 직업으로 할일을 승인할 수 있는 학생인지 — 국무총리(임명), 학급에 국무총리 직업이
+ * 없을 때만 대통령(임명). 호출부 processTaskApproval 주석 참고(2026-11-14).
+ */
+const TASK_APPROVER_TITLE = "국무총리";
+const TASK_APPROVER_FALLBACK_TITLE = "대통령";
+const isTaskApproverByJob = (userData, jobMap) => {
+  if (hasJobTitle(userData, jobMap, TASK_APPROVER_TITLE)) return true;
+  const classHasApproverJob = [...jobMap.values()].some(
+    (j) => j?.title === TASK_APPROVER_TITLE,
+  );
+  return (
+    !classHasApproverJob &&
+    hasJobTitle(userData, jobMap, TASK_APPROVER_FALLBACK_TITLE)
+  );
+};
+
 module.exports = {
+  TASK_APPROVER_TITLE,
+  TASK_APPROVER_FALLBACK_TITLE,
+  isTaskApproverByJob,
   APPOINTED_FALLBACK_TITLES,
   isAppointedJob,
   toJobIdArray,

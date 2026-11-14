@@ -98,6 +98,10 @@ const MyAssets = lazyWithRetry(() => import("../pages/my-assets/MyAssets"));
 const AdminApprovalPanel = lazyWithRetry(
   () => import("../pages/admin/AdminApprovalPanel"),
 );
+const JobApprovalsPage = lazyWithRetry(
+  () => import("../pages/admin/JobApprovalsPage"),
+);
+const TeacherGuide = lazyWithRetry(() => import("../pages/admin/TeacherGuide"));
 // AdminItemPage 는 여기서 직접 라우팅하지 않는다 — 아래 /admin/items 주석 참조.
 const AdminDatabase = lazyWithRetry(
   () => import("../pages/admin/AdminDatabase"),
@@ -815,6 +819,22 @@ export default function AlchanLayout() {
                     <ProtectedRoute>
                       <AdminApprovalPanel />
                     </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/job-approvals"
+                  element={
+                    <AdminRoute>
+                      <JobApprovalsPage />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/admin/guide"
+                  element={
+                    <AdminRoute>
+                      <TeacherGuide />
+                    </AdminRoute>
                   }
                 />
                 <Route

@@ -2572,7 +2572,7 @@ const AdminSettingsModal = ({
                       onChange={(e) => setAdminEditingJobAppointedOnly?.(e.target.checked)}
                       style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#f59e0b' }}
                     />
-                    🔒 선생님 지정 전용 (학생이 스스로 신청할 수 없고 선생님만 배정)
+                    🔒 권한직 (청문회로 뽑는 자리 — 학생이 신청하면 «직업 승인»에 강조돼요)
                   </label>
                 )}
               </div>

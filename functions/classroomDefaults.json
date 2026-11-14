@@ -1,0 +1,520 @@
+{
+ "jobs": [
+  {
+   "title": "대통령",
+   "appointedOnly": true,
+   "description": "우리 반의 대표입니다. 국회를 통과한 법안을 승인하거나 돌려보낼(거부권) 수 있고, 조직도를 살핍니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "법안 검토하기",
+     "reward": 3,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "학급 회의 진행하기",
+     "reward": 5,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "국무총리",
+   "appointedOnly": true,
+   "description": "친구들이 «할일 완료»를 누르면 실제로 했는지 확인하고 승인합니다(«특별 권한 → 할일 승인» 메뉴). 자기 할일은 선생님이 승인합니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "할일 승인하기",
+     "reward": 1,
+     "maxClicks": 20,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "할일 점검 결과 알리기",
+     "reward": 3,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "판사",
+   "appointedOnly": true,
+   "description": "재판을 진행하고 판결합니다. 재판은 교실에서 직접(오프라인) 엽니다 — 원고·피고·검사·변호사가 모여 말로 진행하고, 결과만 앱 «법원»에 기록합니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "재판 진행하기",
+     "reward": 10,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "판결문 기록하기",
+     "reward": 5,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "검찰총장",
+   "description": "경찰이 넘긴 사건을 살펴 재판에 넘길지(기소) 정합니다. 재판에서는 무엇을 잘못했는지 설명합니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "사건 검토하기",
+     "reward": 3,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "재판에서 설명하기",
+     "reward": 5,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "변호사",
+   "description": "재판에서 친구의 입장을 대신 설명하고 도와줍니다. 재판은 교실에서 직접(오프라인) 진행합니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "변호 준비하기",
+     "reward": 3,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "재판에서 변호하기",
+     "reward": 5,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "국회의원",
+   "description": "우리 반에 필요한 법안을 내고(발의), 다른 법안에 찬성·반대 투표를 합니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인(선거로 뽑아도 좋아요).",
+   "tasks": [
+    {
+     "name": "법안 발의하기",
+     "reward": 5,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "법안 투표하기",
+     "reward": 1,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "경찰청장",
+   "appointedOnly": true,
+   "description": "교실 규칙을 어긴 일을 접수하고 사건을 처리합니다. 합의금·벌금이 오가는 자리라 선생님 승인이 꼭 필요합니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "사건 처리",
+     "reward": 1,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "교실 질서 유지하기",
+     "reward": 2,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "국세청 직원",
+   "appointedOnly": true,
+   "description": "매주 세금을 걷고 세금에 대해 안내합니다. 친구들의 돈을 다루는 자리라 선생님 승인이 꼭 필요합니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "세금 안내하기",
+     "reward": 1,
+     "maxClicks": 25,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "가계부 점검하기",
+     "reward": 2,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "은행원",
+   "description": "예금·적금·대출을 안내하고 친구들의 통장 관리를 돕습니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "은행 업무 안내하기",
+     "reward": 2,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "통장 정리 도와주기",
+     "reward": 2,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "환경 미화원",
+   "description": "쓰레기통 비우기·쓸기·분리수거로 교실을 깨끗하게 합니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "쓰레기통 비우기",
+     "reward": 50,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "아침 쓸기",
+     "reward": 10,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "분리수거 정리하기",
+     "reward": 20,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "글씨 감사인",
+   "description": "친구들의 공책 글씨와 정리를 검사해 줍니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "검사해주기",
+     "reward": 1,
+     "maxClicks": 25,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "공책 정리 확인하기",
+     "reward": 2,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "아르바이트",
+   "description": "그때그때 필요한 심부름과 일을 돕습니다. 누구나 하기 좋은 첫 직업입니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "아르바이트",
+     "reward": 1,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "심부름하기",
+     "reward": 2,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "학급 반장",
+   "description": "조회·종회를 진행하고 출석을 확인합니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "조회/종회 진행하기",
+     "reward": 3,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "출석 확인하기",
+     "reward": 2,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "도서 관리인",
+   "description": "학급 문고를 정리하고 빌려 간 책을 기록합니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "도서 정리하기",
+     "reward": 5,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "대출/반납 기록하기",
+     "reward": 2,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "방송 담당",
+   "description": "아침 방송과 공지 전달을 맡습니다.",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "아침 방송하기",
+     "reward": 10,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "공지 전달하기",
+     "reward": 3,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  }
+ ],
+ "storeItems": [
+  {
+   "name": "자유 시간 10분",
+   "price": 2000,
+   "stock": 5,
+   "icon": "⏰",
+   "description": "10분간 자유 시간을 사용할 수 있습니다"
+  },
+  {
+   "name": "자리 바꾸기",
+   "price": 500,
+   "stock": 10,
+   "icon": "💺",
+   "description": "원하는 자리로 이동할 수 있습니다"
+  },
+  {
+   "name": "과자",
+   "price": 200,
+   "stock": 30,
+   "icon": "🍪",
+   "description": "맛있는 과자 1개"
+  },
+  {
+   "name": "사탕",
+   "price": 200,
+   "stock": 50,
+   "icon": "🍬",
+   "description": "달콤한 사탕 1개"
+  },
+  {
+   "name": "음료수",
+   "price": 200,
+   "stock": 20,
+   "icon": "🧃",
+   "description": "시원한 음료수 1개"
+  },
+  {
+   "name": "초콜릿",
+   "price": 200,
+   "stock": 20,
+   "icon": "🍫",
+   "description": "초콜릿 1개"
+  },
+  {
+   "name": "숙제 면제권",
+   "price": 500,
+   "stock": 5,
+   "icon": "📝",
+   "description": "숙제 1회 면제"
+  },
+  {
+   "name": "1일 반장 체험",
+   "price": 300,
+   "stock": 3,
+   "icon": "👑",
+   "description": "하루 동안 반장 역할 체험"
+  },
+  {
+   "name": "선생님 의자 사용권",
+   "price": 300,
+   "stock": 3,
+   "icon": "🪑",
+   "description": "하루 동안 선생님 의자 사용"
+  },
+  {
+   "name": "젤리",
+   "price": 200,
+   "stock": 30,
+   "icon": "🧸",
+   "description": "말랑말랑 젤리 1개"
+  },
+  {
+   "name": "원하는 친구와 짝꿍 하루",
+   "price": 500,
+   "stock": 5,
+   "icon": "🤝",
+   "description": "하루 동안 원하는 친구와 짝이 됩니다"
+  },
+  {
+   "name": "급식 먼저 먹기",
+   "price": 300,
+   "stock": 5,
+   "icon": "🍚",
+   "description": "급식 줄 맨 앞에 설 수 있습니다"
+  },
+  {
+   "name": "음악 신청권",
+   "price": 300,
+   "stock": 10,
+   "icon": "🎵",
+   "description": "쉬는 시간에 듣고 싶은 노래 1곡을 신청합니다"
+  },
+  {
+   "name": "청소 면제권",
+   "price": 500,
+   "stock": 5,
+   "icon": "🧹",
+   "description": "청소 당번 1회 면제"
+  }
+ ],
+ "banking": {
+  "deposits": [
+   {
+    "id": 1,
+    "name": "일복리예금 90일",
+    "annualRate": 0.01,
+    "termInDays": 90,
+    "minAmount": 500000
+   },
+   {
+    "id": 2,
+    "name": "일복리예금 180일",
+    "annualRate": 0.012,
+    "termInDays": 180,
+    "minAmount": 1000000
+   },
+   {
+    "id": 3,
+    "name": "일복리예금 365일",
+    "annualRate": 0.015,
+    "termInDays": 365,
+    "minAmount": 2000000
+   }
+  ],
+  "savings": [
+   {
+    "id": 1,
+    "name": "일복리적금 180일",
+    "annualRate": 0.011,
+    "termInDays": 180,
+    "minAmount": 100000
+   },
+   {
+    "id": 2,
+    "name": "일복리적금 365일",
+    "annualRate": 0.014,
+    "termInDays": 365,
+    "minAmount": 100000
+   },
+   {
+    "id": 3,
+    "name": "일복리적금 730일",
+    "annualRate": 0.018,
+    "termInDays": 730,
+    "minAmount": 50000
+   }
+  ],
+  "loans": [
+   {
+    "id": 1,
+    "name": "일복리대출 90일",
+    "annualRate": 0.05,
+    "termInDays": 90,
+    "maxAmount": 3000000
+   },
+   {
+    "id": 2,
+    "name": "일복리대출 365일",
+    "annualRate": 0.08,
+    "termInDays": 365,
+    "maxAmount": 10000000
+   },
+   {
+    "id": 3,
+    "name": "일복리대출 730일",
+    "annualRate": 0.1,
+    "termInDays": 730,
+    "maxAmount": 50000000
+   }
+  ]
+ },
+ "salaries": {
+  "경찰청장": 4500,
+  "환경 미화원": 4000,
+  "글씨 감사인": 4000,
+  "국세청 직원": 4500,
+  "아르바이트": 2000,
+  "학급 반장": 5000,
+  "도서 관리인": 3500,
+  "방송 담당": 3500,
+  "무직": 1000,
+  "대통령": 6000,
+  "국무총리": 5500,
+  "판사": 5500,
+  "검찰총장": 5000,
+  "변호사": 4500,
+  "국회의원": 4500,
+  "은행원": 4000
+ }
+}
