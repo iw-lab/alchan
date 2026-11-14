@@ -713,6 +713,8 @@ function Dashboard({ adminTabMode }) {
 
  const [editingJob, setEditingJob] = useState(null);
  const [adminNewJobTitle, setAdminNewJobTitle] = useState("");
+ // 직업 안내(하는 일·뽑는 법) — 관리자 설정의 직업 수정 칸
+ const [adminEditingJobDesc, setAdminEditingJobDesc] = useState("");
  // 관리자 설정 모달의 직업 '이름수정'에서 편집 중인 직업의 지정 전용(선생님만 배정) 토글 상태
  const [adminEditingJobAppointedOnly, setAdminEditingJobAppointedOnly] =
  useState(false);
@@ -1363,15 +1365,22 @@ function Dashboard({ adminTabMode }) {
  if (editingJob) {
  const jobRef = doc(db, "jobs", editingJob.id);
  const appointedOnly = adminEditingJobAppointedOnly === true;
+ // 안내는 한 칸(description)으로 합쳐 저장하고 howToSelect 는 비운다(직업 선택 화면의 연필과 같은 규약).
+ const description = adminEditingJobDesc.trim().slice(0, 300);
  await updateDoc(jobRef, {
  title,
  appointedOnly,
+ description,
+ howToSelect: "",
  updatedAt: serverTimestamp(),
  });
  // 로컬 state 즉시 반영
  setJobs((prev) => prev.map((j) =>
- j.id === editingJob.id ? { ...j, title, appointedOnly } : j
+ j.id === editingJob.id
+ ? { ...j, title, appointedOnly, description, howToSelect: "" }
+ : j
  ));
+ setAdminEditingJobDesc("");
  setAdminNewJobTitle("");
  setEditingJob(null);
  setAdminEditingJobAppointedOnly(false);
@@ -1404,7 +1413,7 @@ function Dashboard({ adminTabMode }) {
  } finally {
  setAppLoading(false);
  }
- }, [adminNewJobTitle, adminEditingJobAppointedOnly, editingJob, generateId, userDoc]);
+ }, [adminNewJobTitle, adminEditingJobAppointedOnly, adminEditingJobDesc, editingJob, generateId, userDoc]);
 
  const handleDeleteJob = useCallback(
  async (jobIdToDelete) => {
@@ -1508,6 +1517,9 @@ function Dashboard({ adminTabMode }) {
  setEditingJob(jobToEdit);
  setAdminNewJobTitle(jobToEdit.title);
  setAdminEditingJobAppointedOnly(isAppointedOnlyJob(jobToEdit));
+ setAdminEditingJobDesc(
+ [jobToEdit.description, jobToEdit.howToSelect].filter(Boolean).join(" "),
+ );
  setAdminSelectedMenu("jobSettings");
  setShowAdminSettingsModal(true);
  } else {
@@ -2861,6 +2873,8 @@ function Dashboard({ adminTabMode }) {
  setAdminEditingJob={setEditingJob}
  adminEditingJobAppointedOnly={adminEditingJobAppointedOnly}
  setAdminEditingJobAppointedOnly={setAdminEditingJobAppointedOnly}
+ adminEditingJobDesc={adminEditingJobDesc}
+ setAdminEditingJobDesc={setAdminEditingJobDesc}
  handleSaveJob={handleSaveJob}
  handleDeleteJob={handleDeleteJob}
  handleEditJob={handleEditJob}

@@ -356,6 +356,8 @@ const AdminSettingsModal = ({
   setAdminEditingJob,
   adminEditingJobAppointedOnly,
   setAdminEditingJobAppointedOnly,
+  adminEditingJobDesc,
+  setAdminEditingJobDesc,
   handleSaveJob,
   handleDeleteJob,
   handleEditJob,
@@ -2574,6 +2576,17 @@ const AdminSettingsModal = ({
                     />
                     🔒 권한직 (청문회로 뽑는 자리 — 학생이 신청하면 «직업 승인»에 강조돼요)
                   </label>
+                )}
+                {/* 직업 안내 — 학생 직업 선택 화면에 그대로 보인다. 수정 중일 때만 노출 */}
+                {adminEditingJob && (
+                  <textarea
+                    value={adminEditingJobDesc || ""}
+                    onChange={(e) => setAdminEditingJobDesc?.(e.target.value)}
+                    rows={2}
+                    maxLength={300}
+                    placeholder="하는 일·뽑는 법 안내 (예: 재판을 진행합니다. 뽑는 법: 인사청문회) — 학생 직업 선택 화면에 보여요"
+                    style={{ width: '100%', marginTop: '10px', padding: '8px 10px', fontSize: '13px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc', color: '#334155', resize: 'vertical' }}
+                  />
                 )}
               </div>
 
