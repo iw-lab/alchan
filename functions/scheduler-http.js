@@ -366,7 +366,12 @@ exports.stockPriceScheduler = onRequest(
 exports.stockPriceSchedulerV2 = onSchedule(
   {
     region: "asia-northeast3",
-    schedule: "*/20 * * * *",
+    // 💰 [2026-11-14] 깨우는 시각 자체를 장 시간으로 좁혔다 — 평일 08:00~15:40, 20분마다.
+    //    전에는 하루 72번(주말 포함) 깨워 놓고 아래 코드가 «장 시간 아님»으로 바로 끝냈는데,
+    //    깨우기만 해도 인스턴스가 떠서 과금 시간이 쌓였다(14일 1,008회 중 약 790회가 빈 실행).
+    //    ⚠️ 아래 시간 판정(08:00 정각 미국장 1회 · 09:00~15:45 한국장)과 **같이** 바꿀 것 —
+    //       이 줄이 더 좁으면 그 시각의 갱신이 조용히 사라진다(시험이 잡는다).
+    schedule: "*/20 8-15 * * 1-5",
     timeZone: "Asia/Seoul",
     timeoutSeconds: 540,
     memory: "512MiB",
