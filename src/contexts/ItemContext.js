@@ -113,7 +113,8 @@ export const ItemProvider = ({ children }) => {
         `itemCtx:${currentUserClassCode}:${userId}`,
         27 * 60 * 1000,
         async () => {
-          const result = await getItemContextData();
+          // fresh=false(내가 방금 바꾼 게 아님)면 서버가 학급 스냅샷 1문서로 답한다 — 품목 전부를 다시 읽지 않는다.
+          const result = await getItemContextData({ fresh: force });
           if (!result.data.success) {
             // 실패 응답은 throw → 캐시에 기록되지 않음(다음 요청 재시도)
             throw new Error(

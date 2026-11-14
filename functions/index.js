@@ -5885,32 +5885,26 @@ exports.sellStock = onCall({ region: "asia-northeast3" }, async (request) => {
 // 🔥 아이템 시스템 함수 구현
 // ===================================================================================
 
+const { loadStoreItems } = require("./storeCatalogSnapshot");
+
 exports.getItemContextData = onCall(
   { region: "asia-northeast3" },
   async (request) => {
     const { uid, classCode } = await checkAuthAndGetUserData(request);
 
     try {
-      // 4개 독립 쿼리를 병렬로 실행 (성능 ~3x 개선)
-      const [
-        storeItemsSnapshot,
-        userItemsSnapshot,
-      ] = await Promise.all([
-        db.collection("storeItems").where("classCode", "==", classCode).get(),
+      // 💰 [읽기 절감 2026-11-14] 상점 목록은 학급 공용인데 호출마다 전 품목(학급당 ~18문서)을 읽었다.
+      //    실측(14일·3학급): 이 함수가 전체 호출의 30%(4,822회), 상점 목록 읽기만 전체 읽기의 ~26%.
+      //    → «내가 방금 바꾼 뒤»(fresh, 화면의 refreshData)가 아니면 학급 스냅샷 1문서를 읽는다.
+      //    스냅샷은 ① catalogMeta 버전이 같고 ② 만든 지 10분 안일 때만 쓴다 — 가격·목록 변경은
+      //    버전이 올라 즉시 무효가 되고, 재고는 길어야 10분 묵는다(화면 캐시는 원래 27분이었다).
+      //    구매 가능 여부는 구매 함수가 트랜잭션에서 다시 보므로 묵은 재고로 살 수는 없다.
+      //    옛 화면(fresh 값을 안 보냄)은 전처럼 매번 전부 읽는다.
+      const wantFresh = request.data?.fresh !== false;
+      const [storeItems, userItemsSnapshot] = await Promise.all([
+        loadStoreItems({ db, logger, classCode, wantFresh }),
         db.collection("users").doc(uid).collection("inventory").get(),
       ]);
-
-      const storeItems = storeItemsSnapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .sort((a, b) => {
-          if (a.category !== b.category) {
-            return a.category.localeCompare(b.category);
-          }
-          return a.name.localeCompare(b.name);
-        });
 
       const userItems = userItemsSnapshot.docs.map((doc) => {
         const data = doc.data();

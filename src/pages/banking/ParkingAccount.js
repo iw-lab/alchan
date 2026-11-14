@@ -1,5 +1,6 @@
 // src/ParkingAccount.js
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { kstDateString } from "../../utils/kstDate";
 import {
   db,
   doc,
@@ -1055,10 +1056,19 @@ const ParkingAccount = ({
  //   클라 write는 이제 rules(if false)로 차단 — 위조→parkingWithdraw 민팅 봉인. 표시는 아래 onSnapshot.
  //   예전엔 «예금 상품이 하나라도 있을 때만» 불렀다(이율을 첫 예금 상품에서 읽던 시절의 흔적). 이율이
  //   서버 고정이 된 뒤로는 의미가 없고, 선생님이 예금 상품을 다 지우면 파킹 이자가 조용히 멈추는 덫이라 걷었다(2026-10-29).
+ //   💰 이자는 KST 하루 1회뿐이라, 오늘 이미 성공한 기기는 다시 부르지 않는다(2026-11-14 —
+ //   14일 실측 1,705회 중 대부분이 «오늘은 이미 적립됨»을 듣는 호출이었다). 표시는 기기에만 남는다.
+ const accruedKey = `parkingAccrued:${userId}`;
+ const today = kstDateString();
+ let accruedToday = false;
+ try { accruedToday = localStorage.getItem(accruedKey) === today; } catch { /* 저장소 불가 — 그냥 부른다 */ }
+ if (!accruedToday) {
  try {
  await httpsCallable(functions, "accrueParkingInterest")();
+ try { localStorage.setItem(accruedKey, today); } catch { /* 무시 */ }
  } catch (e) {
  logger.error("[ParkingAccount] 이자 적립(CF) 오류:", e);
+ }
  }
 
  // 파킹 잔액·이자 표시는 아래 onSnapshot 실시간 리스너가 담당(getDoc 캐시 stale 제거)
