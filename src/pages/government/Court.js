@@ -1,5 +1,6 @@
 // src/Court.js - Tailwind UI 리팩토링
 import React, { useState, useEffect, useMemo } from "react";
+import { recordExpireAt } from "../../utils/retention";
 import NoRealNameNotice from "../../components/NoRealNameNotice";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -762,6 +763,8 @@ const Court = () => {
  indictmentDate: null,
  settlementPaid: false,
  classCode: classCode,
+ // 🗑 보관 기한 — 접수 뒤 180일이 지나면 Firestore TTL 이 자동으로 지운다(utils/retention).
+ expireAt: recordExpireAt(),
  };
  try {
  const complaintsRef = collection(

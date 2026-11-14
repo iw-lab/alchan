@@ -3,6 +3,7 @@
 
 import classroomDefaults from "../../../functions/classroomDefaults.json";
 import React, { useState, useEffect, useRef } from "react";
+import { rememberWeakPassword } from "../../utils/weakPassword";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
@@ -275,6 +276,8 @@ const Login = () => {
 
  if (firebaseUser) {
  if (activeTab === "student") {
+ // 비밀번호가 아이디와 같으면 이 기기에 표시해 두고, 들어가서 «바꿔 주세요» 한 줄을 띄운다.
+ rememberWeakPassword(firebaseUser.uid, studentId, password);
  const sidKey = `studentEmail_${studentId.trim().toLowerCase()}`;
  if (saveId) {
  localStorage.setItem("savedStudentId", studentId.trim());

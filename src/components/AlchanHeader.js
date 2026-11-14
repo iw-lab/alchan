@@ -2,6 +2,7 @@
 // 알찬 UI 헤더 컴포넌트 - 새로운 슬레이트 기반 디자인
 
 import React, { useState, useRef, useEffect, memo, useMemo } from "react";
+import { hasWeakPassword, clearWeakPassword } from "../utils/weakPassword";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { verifyClassCode } from "../firebase";
@@ -212,6 +213,22 @@ const AlchanHeader = memo(
       setIsLoading(false);
     };
 
+    // 🔑 비밀번호가 아이디와 같은 학생에게 한 줄 안내(로그인 때 이 기기에 남긴 표시 — utils/weakPassword).
+    const [weakPw, setWeakPw] = useState(false);
+    useEffect(() => {
+      setWeakPw(!userDoc?.isAdmin && hasWeakPassword(user?.uid));
+    }, [user?.uid, userDoc?.isAdmin]);
+    const weakPwBar = weakPw ? (
+      <button
+        type="button"
+        data-weak-password
+        onClick={() => setActiveModal("password")}
+        className="block w-full border-0 bg-amber-100 px-3 py-2 text-center text-xs font-semibold text-amber-900 cursor-pointer"
+      >
+        🔑 비밀번호가 아이디와 같아요. 친구가 들어올 수 있으니 여기를 눌러 바꿔 주세요.
+      </button>
+    ) : null;
+
     // 비밀번호 변경
     const handleChangePassword = () => {
       setActiveModal("password");
@@ -230,6 +247,8 @@ const AlchanHeader = memo(
       try {
         await loginWithEmailPassword(user.email, currentPassword, true);
         await changePassword(newPassword);
+        clearWeakPassword();
+        setWeakPw(false);
         setPasswordSuccess(true);
         setTimeout(closeModal, 2000);
       } catch (error) {
@@ -410,6 +429,7 @@ const AlchanHeader = memo(
             </div>
           </div>
         </header>
+        {weakPwBar}
 
         {/* PC 헤더 */}
         <header className="hidden md:flex items-center justify-between z-10 h-16 min-h-16 max-h-16 px-4 sticky top-0" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(199,210,254,0.5)' }}>

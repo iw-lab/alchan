@@ -1,5 +1,6 @@
 // src/PoliceStation.js - Tailwind UI 리팩토링
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { recordExpireAt } from "../../utils/retention";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, processSettlement, functions, httpsCallable } from "../../firebase";
@@ -901,6 +902,8 @@ const PoliceStation = () => {
  defendantId: newReportData.reportedUserId,
  // 피해자(합의금 수령 대상). 지정 안 하면 null — 합의 모달에서 담당자가 직접 선택.
  victimId: newReportData.victimId || null,
+ // 🗑 보관 기한 — 접수 뒤 180일이 지나면 Firestore TTL 이 자동으로 지운다(utils/retention).
+ expireAt: recordExpireAt(),
  };
  try {
  await addDoc(reportsRef, newReport);

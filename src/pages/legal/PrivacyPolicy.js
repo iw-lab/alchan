@@ -173,6 +173,9 @@ const PrivacyPolicy = () => {
  <strong className="text-slate-800">휴면 계정:</strong> 1년 이상 로그인 기록 없는 경우 별도 고지 후 파기
  </ListItem>
  <ListItem>
+ <strong className="text-slate-800">경찰서 신고·법원 고소장:</strong> 접수일부터 180일이 지나면 자동 삭제(그 전에도 담임교사가 삭제할 수 있음)
+ </ListItem>
+ <ListItem>
  <strong className="text-slate-800">법령 의무 보존:</strong> 관련 법령에서 보존 의무를 부과하는 경우 해당 기간 준수
  </ListItem>
  </ul>
