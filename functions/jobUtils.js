@@ -126,26 +126,32 @@ const clampMaxJobs = (raw) =>
   Number.isInteger(raw) && raw >= 1 ? Math.min(20, raw) : SALARY.DEFAULT_MAX_JOBS;
 
 /**
- * 직업으로 할일을 승인할 수 있는 학생인지 — 국무총리(임명), 학급에 국무총리 직업이
- * 없을 때만 대통령(임명). 호출부 processTaskApproval 주석 참고(2026-11-14).
+ * 직업으로 할일을 승인할 수 있는 범위 — 호출부 processTaskApproval 주석 참고.
+ *   · 임명된 국무총리 → "all"(자기 것만 빼고 전부. 대통령의 할일도 국무총리가 승인한다)
+ *   · 임명된 대통령 → 학급에 국무총리 직업이 있으면 "approverOnly"(국무총리가 올린 할일만),
+ *     국무총리 직업이 아예 없으면 "all"(옛 기본 직업 8종에는 국무총리가 없다)
+ *   · 그 밖 → null
+ * 2026-11-14 사용자 결정: «대통령 할일은 국무총리가, 국무총리 할일은 대통령이. 둘 다 없으면 선생님».
  */
 const TASK_APPROVER_TITLE = "국무총리";
 const TASK_APPROVER_FALLBACK_TITLE = "대통령";
-const isTaskApproverByJob = (userData, jobMap) => {
-  if (hasJobTitle(userData, jobMap, TASK_APPROVER_TITLE)) return true;
+const taskApproverScope = (userData, jobMap) => {
+  if (hasJobTitle(userData, jobMap, TASK_APPROVER_TITLE)) return "all";
+  if (!hasJobTitle(userData, jobMap, TASK_APPROVER_FALLBACK_TITLE)) return null;
   const classHasApproverJob = [...jobMap.values()].some(
     (j) => j?.title === TASK_APPROVER_TITLE,
   );
-  return (
-    !classHasApproverJob &&
-    hasJobTitle(userData, jobMap, TASK_APPROVER_FALLBACK_TITLE)
-  );
+  return classHasApproverJob ? "approverOnly" : "all";
 };
+/** 모든 할일을 승인할 수 있는 학생인지(범위 "all"). */
+const isTaskApproverByJob = (userData, jobMap) =>
+  taskApproverScope(userData, jobMap) === "all";
 
 module.exports = {
   TASK_APPROVER_TITLE,
   TASK_APPROVER_FALLBACK_TITLE,
   isTaskApproverByJob,
+  taskApproverScope,
   APPOINTED_FALLBACK_TITLES,
   isAppointedJob,
   toJobIdArray,

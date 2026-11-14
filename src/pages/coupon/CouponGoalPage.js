@@ -23,7 +23,6 @@ import {
 } from "../../firebase";
 import CouponGoal from "../../components/CouponGoal";
 import LoginWarning from "../../components/LoginWarning";
-import { clearLocalStoragePreserving } from "../../utils/storageReset";
 import DonateCouponModal from "../../components/modals/DonateCouponModal";
 import SellCouponModal from "../../components/modals/SellCouponModal";
 import GiftCouponModal from "../../components/modals/GiftCouponModal";
@@ -40,7 +39,7 @@ import {
 } from "../../utils/pickOn";
 import { formatMoney } from "../../utils/numberFormatter";
 import { logger } from "../../utils/logger";
-import { Target, Wrench, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Target } from "lucide-react";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { promptDialog } from "../../utils/promptDialog";
@@ -330,93 +329,6 @@ export default function CouponGoalPage() {
     } finally {
       setAssetsLoading(false);
     }
-  };
-
-  const forceRefreshGoalData = async () => {
-    if (!currentGoalId || !currentUserClassCode) {
-      toast.error("학급 정보가 없습니다.");
-      return;
-    }
-
-    setAssetsLoading(true);
-
-    try {
-      localStorage.removeItem(
-        `firestore_cache_goal_${currentGoalId}_${userId}`,
-      );
-
-      const goalDocRef = doc(db, "goals", currentGoalId);
-      const goalDocSnap = await getDoc(goalDocRef);
-
-      if (goalDocSnap.exists()) {
-        const latestGoalData = goalDocSnap.data();
-
-        setClassCouponGoal(Number(latestGoalData.targetAmount) || 1000);
-        setGoalProgress(Number(latestGoalData.progress) || 0);
-
-        const freshDonations = Array.isArray(latestGoalData.donations)
-          ? latestGoalData.donations.map((donation) => {
-              let processedTimestamp;
-              if (donation.timestamp && donation.timestamp.toDate) {
-                processedTimestamp = donation.timestamp.toDate().toISOString();
-              } else if (donation.timestamp && donation.timestamp.seconds) {
-                processedTimestamp = new Date(
-                  donation.timestamp.seconds * 1000,
-                ).toISOString();
-              } else if (donation.timestampISO) {
-                processedTimestamp = donation.timestampISO;
-              } else if (typeof donation.timestamp === "string") {
-                processedTimestamp = donation.timestamp;
-              } else {
-                processedTimestamp = new Date().toISOString();
-              }
-
-              return {
-                ...donation,
-                amount: Number(donation.amount) || 0,
-                timestamp: processedTimestamp,
-                userId: donation.userId || "",
-                userName: donation.userName || "알 수 없는 사용자",
-                message: donation.message || "",
-                classCode: donation.classCode || currentUserClassCode,
-              };
-            })
-          : [];
-
-        setGoalDonations(freshDonations);
-        setCachedFirestoreData(`goal_${currentGoalId}`, userId, latestGoalData);
-
-        toast.success(
-          `목표 데이터 새로고침 완료!\n목표 진행률: ${latestGoalData.progress || 0}/${latestGoalData.targetAmount || 1000}\n응모 내역: ${freshDonations.length}개`,
-        );
-      } else {
-        toast.error("목표 문서를 찾을 수 없습니다. 관리자에게 문의해주세요.");
-      }
-    } catch (error) {
-      toast.error(`데이터 새로고침 중 오류가 발생했습니다: ${error.message}`);
-    } finally {
-      setAssetsLoading(false);
-    }
-  };
-
-  const showDebugInfo = () => {
-    const debugInfo = {
-      userId,
-      currentUserClassCode,
-      currentGoalId,
-      goalProgress,
-      classCouponGoal,
-      myContribution,
-      donationsCount: goalDonations.length,
-      donations: goalDonations,
-      userCoupons: userDoc?.coupons,
-      userCash: userDoc?.cash,
-    };
-
-    logger.log("[CouponGoalPage Debug]", debugInfo);
-    toast.success(
-      `디버그 정보가 콘솔에 출력되었습니다.\n응모 내역: ${goalDonations.length}개\n목표 진행률: ${goalProgress}/${classCouponGoal}`,
-    );
   };
 
   const resetCouponGoal = async () => {
@@ -955,110 +867,6 @@ export default function CouponGoalPage() {
               randomDrawButton={canManageGoal ? handleRandomDraw : null}
             />
 
-            {/* 🔒 개발/운영용 진단 도구 — 학생 화면에는 노출하지 않는다(교사만).
-                (캐시 삭제는 로컬 데이터를 지우므로 학생이 무심코 누르면 작성 중인 글이 날아감) */}
-            {canManageGoal && (
-            <div className="glass-card rounded-2xl mt-5 p-4">
-              <h4
-                style={{
-                  fontSize: "14px",
-                  color: "#475569",
-                  marginBottom: "10px",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <Wrench size={15} />
-                데이터 관리 도구
-              </h4>
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <button
-                  onClick={forceRefreshGoalData}
-                  disabled={assetsLoading}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: "#17a2b8",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <RefreshCw size={13} />
-                  목표 데이터 새로고침
-                </button>
-                <button
-                  onClick={showDebugInfo}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: "#6c757d",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Search size={13} />
-                  디버그 정보 확인
-                </button>
-                <button
-                  onClick={() => {
-                    // 게시판 작성 중 글·사용중 아이템 표시는 보존(utils/storageReset.js)
-                    clearLocalStoragePreserving();
-                    // ⚠️ 여기엔 토스트를 띄우지 않는다. alert 은 확인을 누른 **뒤에**
-                    //    새로고침했지만 토스트는 안 멈춘다 — 뜨자마자 reload 가 페이지째
-                    //    지워서 아무도 못 본다. 새로고침 자체가 눈에 보이는 결과라
-                    //    알림이 없어도 무슨 일이 일어났는지 안다.
-                    window.location.reload();
-                  }}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Trash2 size={13} />
-                  캐시 삭제 후 새로고침
-                </button>
-              </div>
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "#868e96",
-                  marginTop: "8px",
-                  marginBottom: "0",
-                  lineHeight: "1.4",
-                }}
-              >
-                • 응모 내역이 표시되지 않으면 "목표 데이터 새로고침" 버튼을
-                클릭하세요
-                <br />
-                • 문제가 지속되면 "캐시 삭제 후 새로고침"을 시도해보세요
-                <br />• 현재 상태: 응모 내역 {goalDonations.length}개, 목표
-                진행률 {goalProgress}/{classCouponGoal}
-              </p>
-            </div>
-            )}
           </>
         )}
 

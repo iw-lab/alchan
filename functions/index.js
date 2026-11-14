@@ -37,7 +37,8 @@ const {
   buildJobMap,
   resolveStudentJobs,
   hasJobTitle,
-  isTaskApproverByJob,
+  taskApproverScope,
+  TASK_APPROVER_TITLE,
   clampMaxJobs,
 } = require("./jobUtils");
 // 급여 계산 단일 진실원(scheduler-http.js와 공유) — 드리프트 과다지급 방지.
@@ -936,32 +937,27 @@ exports.processTaskApproval = onCall(
     } = await checkAuthAndGetUserData(request, false);
 
     // 권한 체크: 관리자 / 국무총리 직업 / delegatedPermissions.taskApproval
+    const hasTeacherPower = isSysAdmin || userData?.isSuperAdmin === true;
     const hasTaskApprovalPermission =
-      isSysAdmin ||
-      userData?.isSuperAdmin ||
+      hasTeacherPower ||
       userData?.delegatedPermissions?.taskApproval === true;
 
     // 🏛️ 할일 승인은 **국무총리**의 일이다(2026-11-14 사용자 결정 — 전에는 대통령).
-    //   대통령은 법안 승인·거부권(rules), 국무총리는 할일 승인으로 일을 나눈다.
-    //   ⚠️ 학급에 «국무총리» 직업 문서가 **아예 없으면** 대통령이 계속 승인한다 —
+    //   · 국무총리: 자기 것만 빼고 전부(대통령이 올린 할일도 국무총리가 승인).
+    //   · 대통령: **국무총리가 올린 할일만** 승인한다(서로 승인). 법안 승인·거부권은 rules.
+    //   · 둘 다 없거나 비어 있으면 선생님이 승인한다(선생님은 언제나 가능).
+    //   ⚠️ 학급에 «국무총리» 직업 문서가 **아예 없으면** 대통령이 전부 승인한다 —
     //      옛 기본 직업 8종에는 국무총리가 없어서, 그런 학급은 승인할 학생이 사라진다
     //      (2026-11-14 교차검증 grok·meta).
     //   지정 전용 직업은 appointedJobIds(CF 전용 write)에서만 인정한다(jobUtils 규약).
-    let approverJobMap = null;
+    //   🔒 직업(jobs)·승인자·신청자 문서는 전부 **승인 트랜잭션 안에서** 읽는다 — 진입 시점
+    //      스냅샷으로 범위를 정하면, 그 사이 국무총리 직업이 생기거나 누가 그만둬도 옛 범위로
+    //      지급이 커밋된다(2026-11-14 교차검증 4계열 일치). 여기서는 «직업이 하나도 없는
+    //      학생»만 미리 돌려보낸다(읽기 0건).
     const hasAnyJob =
       toJobIdArray(userData?.selectedJobIds).length > 0 ||
       toJobIdArray(userData?.appointedJobIds).length > 0;
-    if (!hasTaskApprovalPermission && hasAnyJob) {
-      const jobsSnapshot = await db
-        .collection("jobs")
-        .where("classCode", "==", adminClassCode)
-        .get();
-      approverJobMap = buildJobMap(jobsSnapshot);
-    }
-    const isStudentApprover = (data) =>
-      !!approverJobMap && isTaskApproverByJob(data, approverJobMap);
-
-    if (!hasTaskApprovalPermission && !isStudentApprover(userData)) {
+    if (!hasTaskApprovalPermission && !hasAnyJob) {
       throw new HttpsError("permission-denied", "할일 승인 권한이 없습니다.");
     }
 
@@ -1008,13 +1004,48 @@ exports.processTaskApproval = onCall(
         // 🔒 직업으로 승인하는 학생은 **이 트랜잭션 안에서** 직업을 다시 읽는다.
         //    위 판정은 함수 진입 시점 스냅샷이라, 그 사이 스스로 그만뒀거나(saveSelectedJobs
         //    사임) 교사가 해임했어도 승인이 그대로 커밋됐다(2026-11-14 교차검증 gemini·grok).
-        //    교사·위임 학생은 이 경로가 아니다(위임 회수는 기존과 같은 진입 시점 판정).
-        if (!hasTaskApprovalPermission) {
+        //    위임(delegatedPermissions.taskApproval)도 여기서 다시 본다 — 방금 회수된 위임으로
+        //    승인이 커밋되지 않게(2026-11-14 재검증 codex·gemini). 선생님은 다시 읽지 않는다.
+        if (!hasTeacherPower) {
           const approverDoc = await transaction.get(
             db.collection("users").doc(uid),
           );
-          if (!approverDoc.exists || !isStudentApprover(approverDoc.data())) {
+          const approverData =
+            approverDoc.exists &&
+            approverDoc.data().classCode === adminClassCode
+              ? approverDoc.data()
+              : null;
+          // 위임받은 학생은 범위 제한 없이 전부(직업을 읽지 않는다).
+          let scope =
+            approverData?.delegatedPermissions?.taskApproval === true
+              ? "all"
+              : null;
+          let approverJobMap = null;
+          if (!scope && approverData) {
+            const jobsSnapshot = await transaction.get(
+              db.collection("jobs").where("classCode", "==", adminClassCode),
+            );
+            approverJobMap = buildJobMap(jobsSnapshot);
+            scope = taskApproverScope(approverDoc.data(), approverJobMap);
+          }
+          if (!scope) {
             throw new Error("할일 승인 권한이 없습니다. 화면을 새로 고쳐 주세요.");
+          }
+          // 대통령(범위 approverOnly)은 **지금 국무총리인 학생**이 올린 할일만 처리한다.
+          //   신청자의 직업도 이 트랜잭션에서 읽는다 — 화면 목록은 표시용이라 믿지 않는다.
+          //   학급 일치는 위 approval.classCode 검사 + approverJobMap(내 학급 직업만)으로 보장된다.
+          if (scope === "approverOnly") {
+            const requesterDoc = await transaction.get(
+              db.collection("users").doc(String(approval.studentId)),
+            );
+            if (
+              !requesterDoc.exists ||
+              !hasJobTitle(requesterDoc.data(), approverJobMap, TASK_APPROVER_TITLE)
+            ) {
+              throw new Error(
+                "대통령은 국무총리가 올린 할일만 승인할 수 있습니다. 다른 할일은 국무총리나 선생님이 승인합니다.",
+              );
+            }
           }
         }
 

@@ -12,7 +12,13 @@ import {
   onSnapshot,
   limit as firestoreLimit,
   getCountFromServer,
+  getDocs,
 } from "firebase/firestore";
+import {
+  taskApproverScope,
+  TASK_APPROVER_TITLE,
+  toJobIdArray,
+} from "../../utils/jobPermissions";
 import { httpsCallable } from "firebase/functions";
 import { CheckCircle, XCircle, Clock, Filter, CheckSquare, Square } from "lucide-react";
 import { logger } from "../../utils/logger";
@@ -24,7 +30,7 @@ const AdminApprovalPanel = () => {
   const { userDoc } = useAuth();
   const classCode = userDoc?.classCode;
 
-  const [approvals, setApprovals] = useState([]);
+  const [rawApprovals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending"); // pending, approved, rejected, all
   const [processingId, setProcessingId] = useState(null);
@@ -33,6 +39,66 @@ const AdminApprovalPanel = () => {
   // 직업 신청 승인은 별도 화면(/admin/job-approvals)이다 — 성격이 달라(보상 지급 ↔ 직업 부여)
   // 2026-11-14 탭에서 메뉴로 분리했다. 국무총리(학생)는 이 화면만 본다.
   const isTeacher = !!(userDoc?.isAdmin || userDoc?.isSuperAdmin);
+
+  // 🏛️ 대통령은 **국무총리가 올린 할일만** 승인한다(서버 processTaskApproval 과 같은 규칙).
+  //    onlyFromUids: null = 전부 보여 준다(선생님·국무총리·위임 학생), Set = 그 학생들 것만.
+  //    ⚠️ 표시용 거르기다. 실제 권한은 서버가 승인 트랜잭션 안에서 다시 판정한다.
+  const appointedKey = toJobIdArray(userDoc?.appointedJobIds).join(",");
+  const hasDelegation = userDoc?.delegatedPermissions?.taskApproval === true;
+  // 임명직 학생은 범위를 확인할 때까지 목록을 비워 둔다(undefined) — 확인 전에 전체를
+  // 보여 주면 대통령 화면에 승인 못 할 할일이 잠깐 뜬다(2026-11-14 교차검증).
+  const needsScope = !!classCode && !isTeacher && !hasDelegation && !!appointedKey;
+  const [onlyFromUids, setOnlyFromUids] = useState(needsScope ? undefined : null);
+  useEffect(() => {
+    if (!needsScope) {
+      setOnlyFromUids(null);
+      return undefined;
+    }
+    setOnlyFromUids(undefined);
+    let cancelled = false;
+    (async () => {
+      try {
+        // 캐시(jobs_{classCode})를 쓰지 않는다 — 서버는 승인 때 jobs 를 새로 읽으므로
+        // 묵은 캐시로 범위를 정하면 화면과 서버가 어긋난다. 임명직 학생만 타는 길이다.
+        const jobsSnap = await getDocs(
+          query(firestoreCollection(db, "jobs"), where("classCode", "==", classCode))
+        );
+        const jobs = jobsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const scope = taskApproverScope({ appointedJobIds: appointedKey.split(",") }, jobs);
+        if (scope !== "approverOnly") {
+          if (!cancelled) setOnlyFromUids(null);
+          return;
+        }
+        const uids = new Set();
+        const pmJobIds = jobs.filter((j) => j?.title === TASK_APPROVER_TITLE).map((j) => j.id);
+        for (const jobId of pmJobIds) {
+          const snap = await getDocs(
+            query(
+              firestoreCollection(db, "users"),
+              where("classCode", "==", classCode),
+              where("appointedJobIds", "array-contains", jobId)
+            )
+          );
+          snap.docs.forEach((d) => uids.add(d.id));
+        }
+        if (!cancelled) setOnlyFromUids(uids);
+      } catch (e) {
+        logger.warn("[AdminApprovalPanel] 국무총리 조회 실패:", e?.code);
+        // 못 읽으면 아무것도 안 보여 준다 — 승인 못 할 목록을 보여 주는 것보다 낫다.
+        if (!cancelled) setOnlyFromUids(new Set());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classCode, needsScope, appointedKey]);
+  const presidentView = onlyFromUids instanceof Set;
+  const approvals = useMemo(() => {
+    if (onlyFromUids === undefined) return [];
+    return onlyFromUids
+      ? rawApprovals.filter((a) => onlyFromUids.has(a.studentId))
+      : rawApprovals;
+  }, [rawApprovals, onlyFromUids]);
 
   const processTaskApproval = useMemo(
     () => httpsCallable(functions, "processTaskApproval"),
@@ -152,7 +218,9 @@ const AdminApprovalPanel = () => {
     // approvals가 바뀌면(승인/거절 반영) 배지도 다시 집계한다
   }, [classCode, approvals]);
 
-  const pendingBadgeCount = pendingTotal >= 0 ? pendingTotal : pendingCount;
+  // 대통령 화면은 학급 전체 집계가 아니라 «내가 승인할 수 있는 것»만 센다.
+  const pendingBadgeCount =
+    onlyFromUids === null && pendingTotal >= 0 ? pendingTotal : pendingCount;
 
   const toggleSelect = useCallback((id) => {
     setSelectedIds((prev) => {
@@ -229,8 +297,10 @@ const AdminApprovalPanel = () => {
       <p className="mb-4 px-1 text-sm text-slate-500">
         학생이 «할일 완료»를 누르면 여기 쌓입니다. 실제로 했는지 확인하고 승인하면 보상이 지급됩니다.
         {isTeacher
-          ? " 국무총리를 맡은 학생도 이 화면에서 대신 승인할 수 있어요(자기 할일은 제외)."
-          : " 내가 올린 할일은 선생님이 승인합니다."}
+          ? " 국무총리를 맡은 학생도 이 화면에서 대신 승인할 수 있어요. 국무총리가 올린 할일은 대통령이 승인합니다."
+          : presidentView
+            ? " 대통령은 국무총리가 올린 할일만 승인합니다. 나머지는 국무총리와 선생님이 승인해요."
+            : " 내가 올린 할일은 내가 승인할 수 없어요 — 다른 승인자나 선생님이 승인합니다."}
       </p>
       {isTeacher && (
         <Link

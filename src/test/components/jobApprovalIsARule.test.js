@@ -103,7 +103,10 @@ describe("할일 승인은 국무총리의 일이다", () => {
   const fn = FN.slice(start, FN.indexOf("\nexports.", start + 10));
 
   it("⭐ 직업 판정은 한 함수로 하고, 트랜잭션 안에서 다시 본다", () => {
-    expect(fn).toContain("isTaskApproverByJob(data, approverJobMap)");
+    expect(fn).toContain("taskApproverScope(approverDoc.data(), approverJobMap)");
+    // 직업 목록도 트랜잭션 안에서 읽는다(밖에서 읽은 스냅샷으로 범위를 정하지 않는다).
+    expect(fn).toMatch(/transaction\.get\(\s*db\.collection\("jobs"\)\.where\("classCode", "==", adminClassCode\)/);
+    expect(fn).not.toMatch(/await db\s*\.collection\("jobs"\)/);
     expect(fn, "대통령 직함을 직접 비교하는 옛 판정이 남아 있다").not.toContain('"대통령"');
     // 진입 시점 판정만 믿으면 방금 그만둔 학생의 승인이 통과한다.
     expect(fn).toMatch(/transaction\.get\(\s*db\.collection\("users"\)\.doc\(uid\)/);

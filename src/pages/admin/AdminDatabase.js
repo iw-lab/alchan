@@ -20,7 +20,6 @@ const AdminDatabase = () => {
  const [error, setError] = useState(null);
  const [hasMore, setHasMore] = useState(false);
  const [lastDoc, setLastDoc] = useState(null);
- const [debugInfo, setDebugInfo] = useState('');
  const [searchTerm, setSearchTerm] = useState('');
  const [activityTypeFilter, setActivityTypeFilter] = useState('all');
 
@@ -101,117 +100,7 @@ const AdminDatabase = () => {
  setActivityData([]);
  setLastDoc(null);
  setHasMore(false);
- setDebugInfo('');
  loadData(true, null);
- };
-
- const handleDebugFirestore = async () => {
- setDebugInfo('조회 중...');
- try {
- let info = [];
-
- // 현재 로드된 데이터의 타입 분석
- const typeCounts = {};
- const typeExamples = {};
-
- activityData.forEach(log => {
- const type = log.type || 'undefined';
- typeCounts[type] = (typeCounts[type] || 0) + 1;
-
- if (!typeExamples[type]) {
- typeExamples[type] = {
- description: log.description,
- userName: log.userName,
- timestamp: log.timestamp
- };
- }
- });
-
- info.push('=== 현재 로드된 데이터 타입 분포 ===');
- info.push(`총 ${activityData.length}개의 로그`);
- info.push('');
-
- Object.entries(typeCounts)
- .sort((a, b) => b[1] - a[1])
- .forEach(([type, count]) => {
- info.push(`${type}: ${count}개`);
- if (typeExamples[type]) {
- info.push(` 예시: ${typeExamples[type].description}`);
- }
- // 쿠폰이나 아이템 관련 타입 강조
- if (type.includes('COUPON') || type.includes('쿠폰') ||
- type.includes('ITEM') || type.includes('아이템')) {
- info.push(` ⭐ 쿠폰/아이템 관련 타입 발견!`);
- }
- });
-
- info.push('');
- info.push('=== 필터별 매칭 결과 ===');
-
- // 각 필터별로 매칭되는 로그 수 계산
- const filters = {
- 'coupon': (log) => {
- const type = log.type?.toString() || '';
- const desc = log.description?.toString() || '';
- const couponTypes = [
- '쿠폰 획득', '쿠폰 사용', '쿠폰 지급', '쿠폰 회수',
- '쿠폰 송금', '쿠폰 수신', '쿠폰 기부', '쿠폰 판매',
- 'COUPON_EARN', 'COUPON_USE', 'COUPON_GIVE', 'COUPON_TAKE',
- 'COUPON_TRANSFER_SEND', 'COUPON_TRANSFER_RECEIVE',
- 'COUPON_DONATE', 'COUPON_SELL'
- ];
- return couponTypes.some(t => type === t) ||
- type.includes('쿠폰') ||
- desc.includes('쿠폰');
- },
- 'item': (log) => {
- const type = log.type?.toString() || '';
- const desc = log.description?.toString() || '';
- const itemTypes = [
- '아이템 구매', '아이템 사용', '아이템 판매',
- '아이템 시장 등록', '아이템 시장 구매', '아이템 획득', '아이템 이동',
- 'ITEM_PURCHASE', 'ITEM_USE', 'ITEM_SELL',
- 'ITEM_MARKET_LIST', 'ITEM_MARKET_BUY', 'ITEM_OBTAIN', 'ITEM_MOVE'
- ];
- return itemTypes.some(t => type === t) ||
- type.includes('아이템') ||
- desc.includes('아이템');
- },
- 'cash': (log) => {
- const type = log.type?.toString() || '';
- return type.includes('CASH') || type.includes('송금') ||
- type.includes('입금') || type.includes('출금') ||
- type.includes('ADMIN_CASH') || type.includes('TRANSFER') ||
- type.includes('현금');
- },
- 'stock': (log) => {
- const type = log.type?.toString() || '';
- return type.includes('STOCK') || type.includes('주식') ||
- type.includes('거래세') || type.includes('TAX');
- },
- 'game': (log) => {
- const type = log.type?.toString() || '';
- return type.includes('GAME') || type.includes('게임');
- }
- };
-
- Object.entries(filters).forEach(([filterName, filterFunc]) => {
- const matchedLogs = activityData.filter(log => filterFunc(log));
- info.push(`${filterName}: ${matchedLogs.length}개`);
-
- const matchedTypes = new Set(matchedLogs.map(log => log.type));
- if (matchedTypes.size > 0) {
- info.push(` 매칭된 타입: ${Array.from(matchedTypes).join(', ')}`);
- }
- });
-
- const debugText = info.join('\n');
- setDebugInfo(debugText);
-
- } catch (error) {
- logger.error('[AdminDatabase DEBUG] 오류:', error);
- setDebugInfo(`오류: ${error.message}`);
- }
  };
 
  const handleLoadMore = () => {
@@ -512,22 +401,9 @@ const AdminDatabase = () => {
  >
  새로고침
  </button>
- <button
- onClick={handleDebugFirestore}
- className="px-4 py-2 bg-yellow-500 text-slate-800 rounded-md hover:bg-yellow-600"
- >
- 디버그
- </button>
  </div>
  </div>
 
- {/* 디버그 정보 표시 */}
- {debugInfo && (
- <div className="mt-4 p-4 bg-gray-100 rounded-md">
- <h4 className="font-semibold mb-2">디버그 정보:</h4>
- <pre className="text-xs whitespace-pre-wrap">{debugInfo}</pre>
- </div>
- )}
  </div>
 
  {/* 통계 요약 */}

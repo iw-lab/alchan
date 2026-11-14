@@ -74,20 +74,23 @@ export const hasAppointedJobTitle = (userDoc, jobs, title) => {
 };
 
 /**
- * 직업으로 할일을 승인하는 학생인지 — 화면 메뉴 표시용(서버 functions/jobUtils.js
- * `isTaskApproverByJob` 와 같은 규칙, 2026-11-14 사용자 결정 «할일 승인은 국무총리»).
- *   · 임명된 국무총리 → 승인자
- *   · 학급에 국무총리 직업이 아예 없을 때만 임명된 대통령이 대신한다(옛 기본 직업엔 국무총리가 없다)
+ * 직업으로 할일을 승인할 수 있는 범위 — 화면 표시용(서버 functions/jobUtils.js
+ * `taskApproverScope` 와 같은 규칙, 2026-11-14 사용자 결정).
+ *   · 임명된 국무총리 → "all"(자기 것만 빼고 전부 — 대통령의 할일 포함)
+ *   · 임명된 대통령 → 학급에 국무총리 직업이 있으면 "approverOnly"(국무총리가 올린 할일만),
+ *     국무총리 직업이 아예 없으면 "all"(옛 기본 직업엔 국무총리가 없다)
+ *   · 그 밖 → null
  * ⚠️ 표시용. 실제 권한은 서버가 승인 트랜잭션 안에서 다시 판정한다.
  */
 export const TASK_APPROVER_TITLE = "국무총리";
 export const TASK_APPROVER_FALLBACK_TITLE = "대통령";
-export const isTaskApproverByJob = (userDoc, jobs) => {
-  if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return false;
-  if (hasAppointedJobTitle(userDoc, jobs, TASK_APPROVER_TITLE)) return true;
+export const taskApproverScope = (userDoc, jobs) => {
+  if (!userDoc || !Array.isArray(jobs) || jobs.length === 0) return null;
+  if (hasAppointedJobTitle(userDoc, jobs, TASK_APPROVER_TITLE)) return "all";
+  if (!hasAppointedJobTitle(userDoc, jobs, TASK_APPROVER_FALLBACK_TITLE)) return null;
   const classHasApproverJob = jobs.some((j) => j?.title === TASK_APPROVER_TITLE);
-  return (
-    !classHasApproverJob &&
-    hasAppointedJobTitle(userDoc, jobs, TASK_APPROVER_FALLBACK_TITLE)
-  );
+  return classHasApproverJob ? "approverOnly" : "all";
 };
+/** 모든 할일을 승인할 수 있는 학생인지(범위 "all"). */
+export const isTaskApproverByJob = (userDoc, jobs) =>
+  taskApproverScope(userDoc, jobs) === "all";

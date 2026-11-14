@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import {
   getEffectiveJobIds,
-  isTaskApproverByJob,
+  taskApproverScope,
   toJobIdArray,
 } from "../utils/jobPermissions";
 import {
@@ -823,7 +823,7 @@ export default function AlchanSidebar({
     const cached = globalCacheService.get(cacheKey);
     if (cached) {
       setIsPresident(isPresidentIn(cached));
-      setIsTaskApprover(isTaskApproverByJob(appointedOnlyDoc, cached));
+      setIsTaskApprover(!!taskApproverScope(appointedOnlyDoc, cached));
       return;
     }
 
@@ -838,7 +838,7 @@ export default function AlchanSidebar({
         if (cancelled) return;
         const jobDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setIsPresident(isPresidentIn(jobDocs));
-        setIsTaskApprover(isTaskApproverByJob(appointedOnlyDoc, jobDocs));
+        setIsTaskApprover(!!taskApproverScope(appointedOnlyDoc, jobDocs));
       } catch {
         /* ignore */
       }

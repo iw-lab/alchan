@@ -18,8 +18,8 @@ const read = (rel) => readFileSync(resolve(process.cwd(), rel), "utf8");
 describe("시작 가이드", () => {
   it("⭐ 누가 무엇을 승인하는지 규칙대로 말한다", () => {
     render(<MemoryRouter><TeacherGuide /></MemoryRouter>);
-    expect(screen.getByText("친구들의 할일 승인").previousSibling.textContent).toBe("국무총리");
-    expect(screen.getByText("통과된 법안 승인 / 거부권").previousSibling.textContent).toBe("대통령");
+    expect(screen.getByText("친구들의 할일 승인(대통령 포함)").previousSibling.textContent).toBe("국무총리");
+    expect(screen.getByText("통과된 법안 승인 / 거부권 · 국무총리의 할일 승인").previousSibling.textContent).toBe("대통령");
     expect(screen.getByText(/인사청문회/)).toBeTruthy();
     expect(screen.getByText(/교실에 모여 말로 진행/)).toBeTruthy();
   });
