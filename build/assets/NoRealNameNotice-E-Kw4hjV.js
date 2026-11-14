@@ -1,0 +1,1 @@
+import{j as e}from"./vendor-react-YK-Ep7GY.js";const r=({className:r=""})=>e.jsxs("p",{"data-no-real-name":!0,className:`mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 ${r}`,children:["✋ 친구의 ",e.jsx("b",{children:"실제 이름·전화번호·집 주소"}),"는 쓰지 마세요. 사람은 위 목록에서 고르고, 글에는 «무슨 일이 있었는지»만 적어요."]});export{r as N};
