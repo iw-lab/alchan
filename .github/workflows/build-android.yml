@@ -48,8 +48,13 @@ jobs:
           distribution: 'temurin'
 
       # ── 4. Android SDK ────────────────────────────────────────
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu 러너에는 Android SDK(라이선스 수락됨)가 이미 깔려 있다. 전에는 setup-android@v3 가
+      # 옛 cmdline-tools 를 새로 받아 `sdkmanager --licenses` 를 돌리다 exit 1 로 죽었다
+      # (2026-11-11~14 연속 실패). 깔린 것을 그대로 쓴다.
+      - name: Use preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}" >> $GITHUB_ENV
+          ls "${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}/platforms" | tail -3
 
       # ── 5. Gradle 캐시 ────────────────────────────────────────
       - name: Cache Gradle
