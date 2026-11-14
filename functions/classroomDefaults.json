@@ -3,13 +3,13 @@
   {
    "title": "대통령",
    "appointedOnly": true,
-   "description": "우리 반의 대표입니다. 국회를 통과한 법안을 승인하거나 돌려보낼(거부권) 수 있고, 국무위원(장관)을 정하며, 국무총리가 올린 할일을 승인합니다.",
+   "description": "우리 반의 대표입니다. 국회를 통과한 법안을 승인하거나 돌려보낼(거부권) 수 있고, 국무총리가 올린 할일을 승인합니다.",
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
    "tasks": [
     {
-     "name": "국무위원 임명",
-     "reward": 10,
-     "maxClicks": 5,
+     "name": "법안 승인/거부",
+     "reward": 0,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -22,31 +22,90 @@
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
    "tasks": [
     {
-     "name": "할일 승인하기",
-     "reward": 1,
-     "maxClicks": 20,
+     "name": "대통령과 회의",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "할일 승인 5회",
+     "reward": 0,
+     "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
   },
   {
-   "title": "교육부 장관",
-   "description": "수업·공부와 관련된 일을 챙기고 대통령을 돕는 국무위원입니다.",
-   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
-   "tasks": []
-  },
-  {
-   "title": "노동부 장관",
-   "description": "직업과 할일이 공평하게 돌아가는지 살피고 대통령을 돕는 국무위원입니다.",
-   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
-   "tasks": []
-  },
-  {
    "title": "법무부 장관",
-   "description": "법과 재판이 잘 지켜지는지 살피고 대통령을 돕는 국무위원입니다.",
+   "description": "법과 재판이 잘 지켜지는지 살피고 재판 진행을 돕는 국무위원입니다.",
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
-   "tasks": []
+   "tasks": [
+    {
+     "name": "재판진행",
+     "reward": 0,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "교육부장관",
+   "description": "수업·공부와 관련된 일을 챙기고 사회를 보는 국무위원입니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "법원 사회보기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "교육 사회보기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "환경부장관",
+   "description": "교실 청소와 자리 정돈을 챙기는 국무위원입니다.",
+   "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
+   "tasks": [
+    {
+     "name": "학생 자리 확인",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "아침쓸기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "쓰레기통 비우기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "분리수거",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
   },
   {
    "title": "국회의원",
@@ -54,9 +113,9 @@
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "법 하나 제안하기",
-     "reward": 5,
-     "maxClicks": 3,
+     "name": "법안 발의",
+     "reward": 0,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -65,12 +124,12 @@
   {
    "title": "판사",
    "appointedOnly": true,
-   "description": "재판을 진행하고 판결합니다. 재판은 교실에서 직접(오프라인) 엽니다 — 원고·피고·검사·변호인이 모여 말로 진행하고, 결과만 앱 «법원»에 기록합니다.",
+   "description": "재판을 진행하고 판결합니다. 재판은 교실에서 직접(오프라인) 엽니다 — 원고·피고·검사·변호사가 모여 말로 진행하고, 결과만 앱 «법원»에 기록합니다.",
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
    "tasks": [
     {
-     "name": "재판 진행",
-     "reward": 5,
+     "name": "재판참여",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -78,14 +137,14 @@
    ]
   },
   {
-   "title": "검찰총장",
+   "title": "기소청장",
    "description": "경찰이 넘긴 사건(고소장)을 살펴 재판에 넘길지(기소) 정합니다.",
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
    "tasks": [
     {
-     "name": "고소장 처리",
-     "reward": 1,
-     "maxClicks": 5,
+     "name": "고소장처리",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -97,15 +156,8 @@
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "재판 승리",
-     "reward": 5,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "재판 패배",
-     "reward": 1,
+     "name": "재판참여",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -113,34 +165,13 @@
    ]
   },
   {
-   "title": "변호인",
+   "title": "변호사",
    "description": "재판에서 친구의 입장을 대신 설명하고 도와줍니다. 재판은 교실에서 직접(오프라인) 진행합니다.",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "재판 승리",
-     "reward": 5,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "재판 패배",
-     "reward": 1,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "재판서기",
-   "description": "재판에서 오간 말과 판결을 기록합니다.",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "재판 서기 1회",
-     "reward": 3,
+     "name": "재판참여",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -156,7 +187,14 @@
     {
      "name": "사건 처리",
      "reward": 1,
-     "maxClicks": 10,
+     "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "교실 질서 유지하기",
+     "reward": 2,
+     "maxClicks": 2,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -164,13 +202,13 @@
   },
   {
    "title": "경찰",
-   "description": "교실과 급식실의 질서를 지키고 경찰청장을 돕습니다.",
+   "description": "규칙을 어긴 일을 신고하고 경찰청장을 돕습니다.",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "급식실 질서 유지",
-     "reward": 5,
-     "maxClicks": 1,
+     "name": "신고하기",
+     "reward": 0,
+     "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -179,29 +217,24 @@
   {
    "title": "국세청 직원",
    "appointedOnly": true,
-   "description": "매주 세금을 걷고 세금에 대해 안내합니다. 친구들의 돈을 다루는 자리라 선생님 승인이 꼭 필요합니다.",
+   "description": "매주 세금을 걷고 기록합니다. 친구들의 돈을 다루는 자리라 선생님 승인이 꼭 필요합니다.",
    "howToSelect": "뽑는 법: 인사청문회 — 하고 싶은 친구가 직업을 신청하고, 앞에 나와 포부를 말한 뒤 친구들 질문에 답합니다. 선생님이 «직업 승인»에서 승인하면 맡게 됩니다.",
    "tasks": [
     {
-     "name": "하루 기록",
-     "reward": 5,
+     "name": "기록 하루 한번",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "기록지 계산",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
-  },
-  {
-   "title": "학급회장",
-   "description": "학급 회의를 진행하고 우리 반을 대표합니다.",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": []
-  },
-  {
-   "title": "학급 부회장",
-   "description": "학급회장을 돕고, 회장이 없을 때 대신합니다.",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": []
   },
   {
    "title": "가수",
@@ -210,42 +243,7 @@
    "tasks": [
     {
      "name": "공연하기",
-     "reward": 10,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "간호사",
-   "description": "하는 일: 치료해주기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "치료해주기",
-     "reward": 3,
-     "maxClicks": 5,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "고민 상담사",
-   "description": "하는 일: 재판 후 상담 · 학생 고민 상담 1회",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "재판 후 상담",
-     "reward": 3,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "학생 고민 상담 1회",
-     "reward": 5,
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -254,13 +252,13 @@
   },
   {
    "title": "군인",
-   "description": "하는 일: 책상 나르기",
+   "description": "하는 일: 물건 나르기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "책상 나르기",
-     "reward": 3,
-     "maxClicks": 5,
+     "name": "물건 나르기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -268,7 +266,7 @@
   },
   {
    "title": "글씨 검사인",
-   "description": "하는 일: 검사해주기",
+   "description": "하는 일: 검사해주기 · 공책 정리 확인하기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
@@ -277,18 +275,25 @@
      "maxClicks": 25,
      "clicks": 0,
      "requiresApproval": true
+    },
+    {
+     "name": "공책 정리 확인하기",
+     "reward": 2,
+     "maxClicks": 10,
+     "clicks": 0,
+     "requiresApproval": true
     }
    ]
   },
   {
-   "title": "급식 검사인",
-   "description": "하는 일: 급식검사 2명",
+   "title": "급식검사",
+   "description": "하는 일: 급식 검사하기 3명",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "급식검사 2명",
-     "reward": 1,
-     "maxClicks": 10,
+     "name": "급식 검사하기 3명",
+     "reward": 0,
+     "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -296,26 +301,47 @@
   },
   {
    "title": "디자이너",
-   "description": "하는 일: 미술 도움",
+   "description": "하는 일: 가위질하기 · 뒷판 꾸미기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "미술 도움",
-     "reward": 1,
-     "maxClicks": 5,
+     "name": "가위질하기",
+     "reward": 0,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "뒷판 꾸미기",
+     "reward": 0,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
   },
   {
-   "title": "또래 중재인",
+   "title": "또래중재인",
    "description": "하는 일: 또래 중재하기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
      "name": "또래 중재하기",
-     "reward": 3,
+     "reward": 0,
+     "maxClicks": 2,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "라디오BJ",
+   "description": "하는 일: 음악 1회 틀기",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "음악 1회 틀기",
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -323,41 +349,13 @@
    ]
   },
   {
-   "title": "라디오 BJ",
-   "description": "하는 일: 노래 1곡 틀기 · 음악 1개 틀기",
+   "title": "매점관리인",
+   "description": "하는 일: 3명 간식 확인",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "노래 1곡 틀기",
-     "reward": 1,
-     "maxClicks": 25,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "음악 1개 틀기",
-     "reward": 1,
-     "maxClicks": 20,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "매점 관리인",
-   "description": "하는 일: 매점 관리 · 매점 물건 배치",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "매점 관리",
-     "reward": 1,
-     "maxClicks": 10,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "매점 물건 배치",
-     "reward": 5,
+     "name": "3명 간식 확인",
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -366,19 +364,12 @@
   },
   {
    "title": "미용사",
-   "description": "하는 일: 머리 묶어주기 · 머리끈 주기",
+   "description": "하는 일: 머리 묶어주기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
      "name": "머리 묶어주기",
-     "reward": 3,
-     "maxClicks": 5,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "머리끈 주기",
-     "reward": 1,
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -392,42 +383,7 @@
    "tasks": [
     {
      "name": "제티 타주기",
-     "reward": 3,
-     "maxClicks": 10,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "사육사",
-   "description": "하는 일: 먹이주기 · 사육 통 깨끗하게 하기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "먹이주기",
-     "reward": 3,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "사육 통 깨끗하게 하기",
-     "reward": 5,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "사진기자",
-   "description": "하는 일: 학급 행사 사진 찍기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "학급 행사 사진 찍기",
-     "reward": 3,
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -441,7 +397,21 @@
    "tasks": [
     {
      "name": "벌레 잡기",
-     "reward": 5,
+     "reward": 0,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "수학강사",
+   "description": "하는 일: 3문제 돕기",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "3문제 돕기",
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -449,49 +419,14 @@
    ]
   },
   {
-   "title": "수학 강사",
-   "description": "하는 일: 수학 3개 도와주기 · 수학 채점 1명",
+   "title": "시간표관리인",
+   "description": "하는 일: 시간표바꾸기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "수학 3개 도와주기",
-     "reward": 1,
-     "maxClicks": 10,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "수학 채점 1명",
-     "reward": 2,
-     "maxClicks": 10,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "시간표 관리인",
-   "description": "하는 일: 시간표 바꾸기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "시간표 바꾸기",
-     "reward": 3,
-     "maxClicks": 5,
-     "clicks": 0,
-     "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "신발장 관리인",
-   "description": "하는 일: 신발 정리하기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
-    {
-     "name": "신발 정리하기",
-     "reward": 3,
-     "maxClicks": 1,
+     "name": "시간표바꾸기",
+     "reward": 0,
+     "maxClicks": 2,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -499,19 +434,12 @@
   },
   {
    "title": "아나운서",
-   "description": "하는 일: 감정 진행 · 긴 글 읽기 진행",
+   "description": "하는 일: 읽기 사회",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "감정 진행",
-     "reward": 2,
-     "maxClicks": 1,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "긴 글 읽기 진행",
-     "reward": 5,
+     "name": "읽기 사회",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -526,27 +454,48 @@
     {
      "name": "아르바이트",
      "reward": 1,
-     "maxClicks": 10,
+     "maxClicks": 3,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "심부름하기",
+     "reward": 2,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
   },
   {
-   "title": "에너지 관리인",
-   "description": "하는 일: 에어컨 끄기 · 불 끄기",
+   "title": "양치 검사인",
+   "description": "하는 일: 양치 3명 검사",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "에어컨 끄기",
-     "reward": 1,
+     "name": "양치 3명 검사",
+     "reward": 0,
      "maxClicks": 5,
+     "clicks": 0,
+     "requiresApproval": true
+    }
+   ]
+  },
+  {
+   "title": "에너지관리인",
+   "description": "하는 일: 불끄기 · 에어컨 켜기",
+   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
+   "tasks": [
+    {
+     "name": "불끄기",
+     "reward": 0,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     },
     {
-     "name": "불 끄기",
-     "reward": 1,
+     "name": "에어컨 켜기",
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -555,33 +504,40 @@
   },
   {
    "title": "엔지니어",
-   "description": "하는 일: 학급 물품 고치기 · 물건 고치기",
+   "description": "하는 일: 물건 고치기 · 컴퓨터 돕기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "학급 물품 고치기",
-     "reward": 5,
-     "maxClicks": 5,
+     "name": "물건 고치기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     },
     {
-     "name": "물건 고치기",
-     "reward": 3,
-     "maxClicks": 5,
+     "name": "컴퓨터 돕기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
   },
   {
-   "title": "우유 배달원",
-   "description": "하는 일: 우유 배달",
+   "title": "우유배달",
+   "description": "하는 일: 우유 가져오기 · 우유통 가져다 놓기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "우유 배달",
-     "reward": 5,
+     "name": "우유 가져오기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "우유통 가져다 놓기",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -590,20 +546,13 @@
   },
   {
    "title": "우체부",
-   "description": "하는 일: 안내장 나눠주기 · 인쇄물 나눠주기",
+   "description": "하는 일: 안내장배부",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "안내장 나눠주기",
-     "reward": 1,
-     "maxClicks": 5,
-     "clicks": 0,
-     "requiresApproval": true
-    },
-    {
-     "name": "인쇄물 나눠주기",
-     "reward": 3,
-     "maxClicks": 1,
+     "name": "안내장배부",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -611,12 +560,12 @@
   },
   {
    "title": "의사",
-   "description": "하는 일: 치료해주기",
+   "description": "하는 일: 밴드 붙이기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "치료해주기",
-     "reward": 5,
+     "name": "밴드 붙이기",
+     "reward": 0,
      "maxClicks": 5,
      "clicks": 0,
      "requiresApproval": true
@@ -624,13 +573,20 @@
    ]
   },
   {
-   "title": "작가",
-   "description": "하는 일: 학생 글 점수주기",
+   "title": "창문관리인",
+   "description": "하는 일: 창문 열기 · 창문 닫기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "학생 글 점수주기",
-     "reward": 5,
+     "name": "창문 열기",
+     "reward": 0,
+     "maxClicks": 1,
+     "clicks": 0,
+     "requiresApproval": true
+    },
+    {
+     "name": "창문 닫기",
+     "reward": 0,
      "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
@@ -638,28 +594,21 @@
    ]
   },
   {
-   "title": "창문 관리인",
-   "description": "하는 일: 창문 열기",
+   "title": "칠판관리인",
+   "description": "하는 일: 칠판 지우기 · 칠판 공부 페이지 쓰기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "창문 열기",
-     "reward": 1,
-     "maxClicks": 5,
+     "name": "칠판 지우기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
-    }
-   ]
-  },
-  {
-   "title": "칠판 관리인",
-   "description": "하는 일: 학습 목표 활동 쓰기",
-   "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
-   "tasks": [
+    },
     {
-     "name": "학습 목표 활동 쓰기",
-     "reward": 3,
-     "maxClicks": 5,
+     "name": "칠판 공부 페이지 쓰기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -667,34 +616,34 @@
   },
   {
    "title": "탐정",
-   "description": "하는 일: 물건 찾기 · 물건 주인 찾아주기",
+   "description": "하는 일: 물건 찾아주기 · 증거 찾아주기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "물건 찾기",
-     "reward": 1,
-     "maxClicks": 5,
+     "name": "물건 찾아주기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     },
     {
-     "name": "물건 주인 찾아주기",
-     "reward": 2,
-     "maxClicks": 5,
+     "name": "증거 찾아주기",
+     "reward": 0,
+     "maxClicks": 3,
      "clicks": 0,
      "requiresApproval": true
     }
    ]
   },
   {
-   "title": "태블릿 충전함 관리인",
-   "description": "하는 일: 태블릿 정리",
+   "title": "태블릿관리인",
+   "description": "하는 일: 충전 검사",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
-     "name": "태블릿 정리",
-     "reward": 5,
-     "maxClicks": 5,
+     "name": "충전 검사",
+     "reward": 0,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -702,7 +651,7 @@
   },
   {
    "title": "환경 미화원",
-   "description": "하는 일: 쓰레기통 비우기 · 아침 쓸기 · 바닥 쓰레기 5개 줍기",
+   "description": "하는 일: 쓰레기통 비우기 · 아침 쓸기 · 분리수거 정리하기",
    "howToSelect": "뽑는 법: 직업 신청 → 선생님 승인.",
    "tasks": [
     {
@@ -720,9 +669,9 @@
      "requiresApproval": true
     },
     {
-     "name": "바닥 쓰레기 5개 줍기",
-     "reward": 3,
-     "maxClicks": 10,
+     "name": "분리수거 정리하기",
+     "reward": 20,
+     "maxClicks": 1,
      "clicks": 0,
      "requiresApproval": true
     }
@@ -731,124 +680,132 @@
  ],
  "storeItems": [
   {
-   "name": "자유시간",
+   "name": "비타민 c",
    "price": 20000,
-   "stock": 1,
-   "icon": "🎮",
-   "description": "자유시간을 쓸 수 있습니다",
+   "stock": 10,
+   "icon": "🧊",
+   "description": "비타민 한 알과 바꿉니다",
    "priceIncreasePercentage": 10
   },
   {
-   "name": "자리 바꾸기",
-   "price": 60000,
+   "name": "태블릿 사용권 10분",
+   "price": 30000,
    "stock": 10,
-   "icon": "🔑",
-   "description": "원하는 자리로 바꿀 수 있습니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "시간표 바꾸기",
-   "price": 500000,
-   "stock": 10,
-   "icon": "🔱",
-   "description": "하루 시간표의 순서를 바꿀 수 있습니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "음악 신청권",
-   "price": 60000,
-   "stock": 10,
-   "icon": "🔊",
-   "description": "듣고 싶은 음악을 신청할 수 있습니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "글쓰기 면제권",
-   "price": 70000,
-   "stock": 5,
-   "icon": "✨",
-   "description": "글쓰기 과제를 한 번 면제받습니다",
+   "icon": "⚙️",
+   "description": "태블릿(웨일북)을 10분 동안 쓸 수 있습니다",
    "priceIncreasePercentage": 10
   },
   {
-   "name": "고소 면제권",
-   "price": 90000,
-   "stock": 10,
-   "icon": "✨",
-   "description": "고소당한 일을 한 번 면제받습니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "퀴즈 환생권",
-   "price": 60000,
-   "stock": 10,
-   "icon": "💫",
-   "description": "퀴즈에서 탈락해도 한 번 다시 살아납니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "태블릿 사용권 40분",
-   "price": 400000,
-   "stock": 10,
-   "icon": "✨",
-   "description": "태블릿(웨일북)을 40분 동안 쓸 수 있습니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "과자류",
+   "name": "꽈배기",
    "price": 40000,
    "stock": 10,
    "icon": "✨",
-   "description": "과자 한 개와 바꿉니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "사탕류",
-   "price": 40000,
-   "stock": 10,
-   "icon": "🎁",
-   "description": "사탕 한 개와 바꿉니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "젤리류",
-   "price": 40000,
-   "stock": 10,
-   "icon": "✨",
-   "description": "젤리 한 개와 바꿉니다",
-   "priceIncreasePercentage": 50
-  },
-  {
-   "name": "쿠키류",
-   "price": 60000,
-   "stock": 10,
-   "icon": "🔥",
-   "description": "쿠키 한 개와 바꿉니다",
+   "description": "꽈배기 한 개와 바꿉니다",
    "priceIncreasePercentage": 10
-  },
-  {
-   "name": "시리얼",
-   "price": 40000,
-   "stock": 5,
-   "icon": "🧬",
-   "description": "시리얼 한 컵과 바꿉니다",
-   "priceIncreasePercentage": 20
-  },
-  {
-   "name": "제티",
-   "price": 60000,
-   "stock": 5,
-   "icon": "🌡️",
-   "description": "제티 한 잔을 타 마실 수 있습니다",
-   "priceIncreasePercentage": 20
   },
   {
    "name": "종이컵",
-   "price": 60000,
+   "price": 50000,
+   "stock": 10,
+   "icon": "🥛",
+   "description": "종이컵 한 개와 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "에어컨사용권(하루)",
+   "price": 70000,
+   "stock": 10,
+   "icon": "❄️",
+   "description": "하루 동안 에어컨 온도를 정할 수 있습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "제티",
+   "price": 75000,
+   "stock": 10,
+   "icon": "☕",
+   "description": "제티 한 잔을 타 마실 수 있습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "사탕류",
+   "price": 80000,
+   "stock": 10,
+   "icon": "🍬",
+   "description": "사탕 한 개와 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "급식 자리 우선권",
+   "price": 100000,
+   "stock": 10,
+   "icon": "🍎",
+   "description": "급식실에서 앉고 싶은 자리에 먼저 앉습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "급식 우선권",
+   "price": 110000,
+   "stock": 10,
+   "icon": "❗",
+   "description": "급식을 먼저 받습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "과자류",
+   "price": 120000,
+   "stock": 10,
+   "icon": "🍪",
+   "description": "과자 한 개와 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "젤리류",
+   "price": 140000,
+   "stock": 10,
+   "icon": "🍮",
+   "description": "젤리 한 개와 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "시간표 교체권",
+   "price": 165000,
+   "stock": 10,
+   "icon": "🪄",
+   "description": "하루 시간표의 순서를 바꿀 수 있습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "초콜렛류",
+   "price": 330000,
+   "stock": 10,
+   "icon": "🍫",
+   "description": "초콜렛 한 개와 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "자리바꾸기",
+   "price": 400000,
    "stock": 10,
    "icon": "✨",
-   "description": "종이컵 한 개와 바꿉니다",
-   "priceIncreasePercentage": 20
+   "description": "원하는 자리로 바꿀 수 있습니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "시리얼 1컵",
+   "price": 660000,
+   "stock": 10,
+   "icon": "🥧",
+   "description": "시리얼 한 컵과 바꿉니다",
+   "priceIncreasePercentage": 10
+  },
+  {
+   "name": "자유시간",
+   "price": 500000,
+   "stock": 1,
+   "icon": "🎮",
+   "description": "자유시간을 쓸 수 있습니다. 한 번 팔릴 때마다 값이 두 배가 됩니다",
+   "priceIncreasePercentage": 100
   }
  ],
  "banking": {
@@ -926,50 +883,42 @@
   "무직": 1000,
   "대통령": 6000,
   "국무총리": 5500,
-  "교육부 장관": 4000,
-  "노동부 장관": 4000,
   "법무부 장관": 4000,
+  "교육부장관": 4000,
+  "환경부장관": 4000,
   "국회의원": 4500,
   "판사": 5500,
-  "검찰총장": 5000,
+  "기소청장": 4000,
   "검사": 4000,
-  "변호인": 4000,
-  "재판서기": 4000,
+  "변호사": 4000,
   "경찰청장": 4500,
   "경찰": 4000,
   "국세청 직원": 4500,
-  "학급회장": 4000,
-  "학급 부회장": 4000,
   "가수": 4000,
-  "간호사": 4000,
-  "고민 상담사": 4000,
   "군인": 4000,
   "글씨 검사인": 4000,
-  "급식 검사인": 4000,
+  "급식검사": 4000,
   "디자이너": 4000,
-  "또래 중재인": 4000,
-  "라디오 BJ": 4000,
-  "매점 관리인": 4000,
+  "또래중재인": 4000,
+  "라디오BJ": 4000,
+  "매점관리인": 4000,
   "미용사": 4000,
   "바리스타": 4000,
-  "사육사": 4000,
-  "사진기자": 4000,
   "세스코": 4000,
-  "수학 강사": 4000,
-  "시간표 관리인": 4000,
-  "신발장 관리인": 4000,
+  "수학강사": 4000,
+  "시간표관리인": 4000,
   "아나운서": 4000,
   "아르바이트": 2000,
-  "에너지 관리인": 4000,
+  "양치 검사인": 4000,
+  "에너지관리인": 4000,
   "엔지니어": 4000,
-  "우유 배달원": 4000,
+  "우유배달": 4000,
   "우체부": 4000,
   "의사": 4000,
-  "작가": 4000,
-  "창문 관리인": 4000,
-  "칠판 관리인": 4000,
+  "창문관리인": 4000,
+  "칠판관리인": 4000,
   "탐정": 4000,
-  "태블릿 충전함 관리인": 4000,
+  "태블릿관리인": 4000,
   "환경 미화원": 4000
  }
 }
