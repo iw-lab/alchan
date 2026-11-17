@@ -1,0 +1,917 @@
+{
+ "rows": [
+  {
+   "no": 1,
+   "name": "학생01",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "30만",
+     "items": [
+      {
+       "times": 1,
+       "won": 300000
+      }
+     ],
+     "sure": false
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "3x 70만, 2x 100만",
+     "items": [
+      {
+       "times": 3,
+       "won": 700000
+      },
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": false
+    }
+   ]
+  },
+  {
+   "no": 2,
+   "name": "학생02",
+   "cells": [
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 3,
+   "name": "학생03",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 4,
+   "name": "학생04",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 5,
+   "name": "학생05",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "50만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "2x 70만",
+     "items": [
+      {
+       "times": 2,
+       "won": 700000
+      }
+     ],
+     "sure": false
+    }
+   ]
+  },
+  {
+   "no": 6,
+   "name": "학생06",
+   "cells": [
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "50만, 2x 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      },
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": false
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "2x 100만",
+     "items": [
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "50만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "상금",
+     "text": "10만 (상자)",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "2x 10만",
+     "items": [
+      {
+       "times": 2,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 7,
+   "name": "학생07",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "3x 10만",
+     "items": [
+      {
+       "times": 3,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "10만, 50만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 1,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "50만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 8,
+   "name": "학생08",
+   "cells": [
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "2x 50만",
+     "items": [
+      {
+       "times": 2,
+       "won": 500000
+      }
+     ],
+     "sure": false
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "2x 10만, 2x 100만",
+     "items": [
+      {
+       "times": 2,
+       "won": 100000
+      },
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "100만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 9,
+   "name": "학생09",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "3x 50만, 70만(지움)",
+     "items": [
+      {
+       "times": 3,
+       "won": 500000
+      }
+     ],
+     "sure": false
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "2x 100만",
+     "items": [
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "4X 10만, 2x 100만",
+     "items": [
+      {
+       "times": 4,
+       "won": 100000
+      },
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "70만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 700000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": false
+    }
+   ]
+  },
+  {
+   "no": 10,
+   "name": "학생10",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "50만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "2x 100만",
+     "items": [
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "10만, 2x 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "10만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 11,
+   "name": "학생11",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "2x 50만",
+     "items": [
+      {
+       "times": 2,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 12,
+   "name": "학생12",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "10만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "50만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 13,
+   "name": "학생13",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "200만",
+     "items": [
+      {
+       "times": 1,
+       "won": 2000000
+      }
+     ],
+     "sure": false
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "50만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 14,
+   "name": "학생14",
+   "cells": [
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "2x 100만",
+     "items": [
+      {
+       "times": 2,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "10만, 100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      },
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 15,
+   "name": "학생15",
+   "cells": [
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "2x 200만",
+     "items": [
+      {
+       "times": 2,
+       "won": 2000000
+      }
+     ],
+     "sure": false
+    }
+   ]
+  },
+  {
+   "no": 16,
+   "name": "학생16",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "4x 50만",
+     "items": [
+      {
+       "times": 4,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 17,
+   "name": "학생17",
+   "cells": [
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "50만, 500만, 10만 (상자)",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      },
+      {
+       "times": 1,
+       "won": 5000000
+      },
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": false
+    }
+   ]
+  },
+  {
+   "no": 18,
+   "name": "학생18",
+   "cells": [
+    {
+     "day": "월",
+     "col": "벌금",
+     "text": "2x 10만",
+     "items": [
+      {
+       "times": 2,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "수",
+     "col": "벌금",
+     "text": "50만",
+     "items": [
+      {
+       "times": 1,
+       "won": 500000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "목",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    },
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "100만",
+     "items": [
+      {
+       "times": 1,
+       "won": 1000000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 19,
+   "name": "학생19",
+   "cells": [
+    {
+     "day": "화",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 20,
+   "name": "학생20",
+   "cells": [
+    {
+     "day": "금",
+     "col": "벌금",
+     "text": "10만",
+     "items": [
+      {
+       "times": 1,
+       "won": 100000
+      }
+     ],
+     "sure": true
+    }
+   ]
+  },
+  {
+   "no": 21,
+   "name": "학생21",
+   "cells": []
+  }
+ ]
+}

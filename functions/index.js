@@ -141,6 +141,10 @@ exports.buyInsurance = insuranceService.buyInsurance;
 
 // 🧠 오늘의 경제 퀴즈 정답 상금(2026-11-13) — 국고 → 학생, 하루 첫 답 1회.
 exports.claimQuizReward = require("./quizRewardService").claimQuizReward;
+// 🧾 세금정산(2026-11-17) — 주간 정산표 사진 판독(돈 안 움직임) → 선생님이 확인한 합계만 적용. functions/taxSettlementService.js
+const taxSettlement = require("./taxSettlementService");
+exports.readTaxSheet = taxSettlement.readTaxSheet;
+exports.applyTaxSettlement = taxSettlement.applyTaxSettlement;
 
 // ⚠️ 아래 스케줄 함수들은 꺼 두고 **Cloud Scheduler v2**(…SchedulerV2)가 대신 돈다.
 //    (옛 주석은 "cron-job.org 의 simpleScheduler" 라고 했지만 그 경로는 죽었다 —

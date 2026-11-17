@@ -52,6 +52,7 @@ import {
   Star,
   Compass,
   Briefcase,
+  ReceiptText,
 } from "lucide-react";
 import {
   getEffectiveJobIds,
@@ -447,6 +448,15 @@ export const ALCHAN_MENU_ITEMS = [
     label: "쿠폰 보내기/가져오기",
     icon: Target,
     path: "/admin/coupon-transfer",
+    parentId: "adminCategory",
+    adminOnly: true,
+  },
+  // 🧾 세금정산(2026-11-17) — 주간 정산표 사진을 읽어 학생별 벌금·상금·쿠폰을 한 번에.
+  {
+    id: "taxSettlement",
+    label: "세금정산",
+    icon: ReceiptText,
+    path: "/admin/tax-settlement",
     parentId: "adminCategory",
     adminOnly: true,
   },

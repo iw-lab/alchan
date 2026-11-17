@@ -10,6 +10,9 @@
  *   node scripts/e2e/bank-probe.mjs        → 전부 맞으면 `BANK PROBE PASS n/n`, 하나라도 어긋나면 종료코드 1
  */
 import { createRequire } from "node:module";
+import { randomBytes } from "node:crypto";
+// 탐침 계정 비밀번호는 실행마다 새로 만든다(소스에 박지 않는다 — gitleaks 하드 게이트)
+const PROBE_PW = randomBytes(18).toString("base64url");
 import { initializeApp as initClient } from "firebase/app";
 import { getAuth, connectAuthEmulator, signInWithEmailAndPassword } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
@@ -48,7 +51,7 @@ const compound = (p, r, d) => Math.round(p * Math.pow(1 + r / 100, d));
 
 async function makeUser(role) {
   const email = `${role}-${tag}@bank.test`;
-  const u = await admin.auth().createUser({ email, password: "probe-pass-1" });
+  const u = await admin.auth().createUser({ email, password: PROBE_PW });
   const isT = role === "teacher";
   await db.doc(`users/${u.uid}`).set({
     name: isT ? "탐침교사" : "탐침학생", classCode: CC, cash: isT ? 10_000_000 : 1_000_000,
@@ -65,7 +68,7 @@ await db.doc(`bankingSettings/${CC}`).set({
   savings: [{ id: 2, name: "탐침적금", dailyRate: 1, termInDays: 5, minAmount: 0, maxAmount: 0 }],
   loans: [{ id: 3, name: "탐침대출", dailyRate: 1, termInDays: 7, minAmount: 0, maxAmount: 0 }],
 });
-await signInWithEmailAndPassword(auth, S.email, "probe-pass-1");
+await signInWithEmailAndPassword(auth, S.email, PROBE_PW);
 const total = async () => (await cash(S.uid)) + (await cash(T.uid));
 
 // ── 1. 파킹통장: 입금 → 3일 묵힘 → 이자 → 같은 날 재호출 ──
@@ -162,7 +165,7 @@ check("되팔기 = 낸 값의 70%, 국고에서 빠짐(합계 보존)", (await c
 check("되판 만큼 보유 수량 줄어듦", (await db.doc(`users/${S.uid}/inventory/${itemRef.id}`).get()).data().quantity === 1);
 
 // ── 9. 국고(교사) 송금은 국고가 마이너스여도 학생에게 간다 (2026-11-03 — 뽑기 상금이 국고 −1.28억에서 막힐 자리) ──
-await signInWithEmailAndPassword(auth, T.email, "probe-pass-1");
+await signInWithEmailAndPassword(auth, T.email, PROBE_PW);
 sum0 = await total();
 const t9 = await cash(T.uid), s9 = await cash(S.uid);
 const tErr = await callErr("transferCash", { recipientId: S.uid, amount: 300_000, idempotencyKey: key() });
