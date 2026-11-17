@@ -10,18 +10,21 @@ const require = createRequire(import.meta.url);
 const { cleanSheet, rowTotals, validateSettlementItems, LIMITS } = require("../../../functions/taxSettlementMath.js");
 
 const rows = cleanSheet(sheet);
-const members = rows.map((r, i) => ({ id: `u${i + 1}`, name: r.name, studentNumber: r.no, cash: 500000 }))
+const members = rows.map((r, i) => ({ id: `u${i + 1}`, name: `학생${i + 1}`, studentNumber: r.no, cash: 500000 }))
   .concat([{ id: "t1", name: "선생님", isAdmin: true, isApproved: true }]);
 
 describe("cleanSheet — 판독 JSON 을 믿을 수 있는 모양으로", () => {
-  it("실제 사진 21줄이 다 남는다", () => { expect(rows).toHaveLength(21); expect(rows[0].name).toBe("학생01"); });
+  it("실제 사진 21줄이 다 남는다", () => { expect(rows).toHaveLength(21); expect(rows.map((x) => x.no)).toEqual([...Array(21)].map((_, i) => i + 1)); });
+  it("AI 가 이름을 돌려줘도 버린다(개인정보 — 번호로만)", () => {
+    expect(rows.some((x) => "name" in x)).toBe(false);
+    expect(cleanSheet({ rows: [{ no: 3, name: "홍길동", cells: [] }] })).toEqual([{ no: 3, cells: [] }]);
+  });
   it("모르는 요일·칸·범위 밖 금액은 버린다", () => {
     const r = cleanSheet({ rows: [{ no: 1, name: "가<b>", cells: [
       { day: "토", col: "벌금", text: "x", sure: true, items: [{ won: 10000, times: 1 }] },
       { day: "월", col: "세금", text: "x", sure: true, items: [{ won: 10000, times: 1 }] },
       { day: "월", col: "벌금", text: "x", sure: true, items: [{ won: -5, times: 1 }, { won: 1e12, times: 1 }, { won: 50000, times: 999 }] },
     ] }] });
-    expect(r[0].name).toBe("가b");
     expect(r[0].cells).toHaveLength(1);
     expect(r[0].cells[0].items).toEqual([{ won: 50000, count: 0, times: 1 }]);
   });
@@ -54,34 +57,29 @@ describe("rowTotals — 배수(2X)·여러 금액·쿠폰", () => {
   it("화면 사본과 서버 정본이 실제 사진 21줄 모두에서 같다", () => {
     for (const r of rows) expect(clientTotals(r)).toEqual(rowTotals(r));
   });
-  it("실제 사진: 21번 학생21는 빈 줄, 1번 학생01는 벌금이 있다", () => {
+  it("실제 사진: 21번은 빈 줄, 1번은 벌금이 있다", () => {
     expect(rowTotals(rows[20]).fine).toBe(0);
     expect(rowTotals(rows[0]).fine).toBeGreaterThan(0);
   });
 });
 
-describe("matchRows — 표의 줄 ↔ 우리 반 학생", () => {
-  it("번호·이름이 같으면 확실, 선생님 계정은 후보가 아니다", () => {
+describe("matchRows — 표의 줄 ↔ 우리 반 학생(번호로만)", () => {
+  it("실제 사진 21줄이 번호로 다 짝지어지고, 선생님 계정은 후보가 아니다", () => {
     const m = matchRows(rows, members);
-    expect(m.every((x) => x.studentId && x.studentId !== "t1")).toBe(true);
-    expect(m[0]).toMatchObject({ studentId: "u1", how: "both" });
+    expect(m.every((x) => x.studentId && x.studentId !== "t1" && x.how === "no")).toBe(true);
+    expect(m[0].studentId).toBe("u1");
   });
-  it("번호가 틀려도 이름이 하나면 그 학생(번호 다름 표시)", () => {
-    const m = matchRows([{ no: 99, name: "학생01", cells: [] }], members);
-    expect(m[0]).toMatchObject({ studentId: "u1", how: "name" });
+  it("번호를 못 읽었거나 없는 번호면 비워 두고 선생님이 고른다", () => {
+    expect(matchRows([{ no: null, cells: [] }], members)[0]).toMatchObject({ studentId: null, how: "nono" });
+    expect(matchRows([{ no: 99, cells: [] }], members)[0]).toMatchObject({ studentId: null, how: "none" });
   });
-  it("이름을 못 읽었으면 번호로, 확인 필요", () => {
-    const m = matchRows([{ no: 2, name: "학생02X", cells: [] }], members);
-    expect(m[0]).toMatchObject({ studentId: "u2", how: "no" });
+  it("같은 번호 학생이 둘이면 고르지 않는다", () => {
+    const two = [{ id: "a", name: "가", studentNumber: 3 }, { id: "b", name: "나", studentNumber: 3 }];
+    expect(matchRows([{ no: 3, cells: [] }], two)[0]).toMatchObject({ studentId: null, how: "many" });
   });
-  it("같은 학생이 두 줄이면 뒤 줄은 비운다(두 번 넣지 않게)", () => {
-    const m = matchRows([{ no: 1, name: "학생01", cells: [] }, { no: 1, name: "학생01", cells: [] }], members);
+  it("같은 번호가 두 줄이면 뒤 줄은 비운다(두 번 넣지 않게)", () => {
+    const m = matchRows([{ no: 1, cells: [] }, { no: 1, cells: [] }], members);
     expect(m[1]).toMatchObject({ studentId: null, how: "dup" });
-  });
-  it("동명이인은 번호로 가른다", () => {
-    const twins = [{ id: "a", name: "김하늘", studentNumber: 3 }, { id: "b", name: "김하늘", studentNumber: 7 }];
-    expect(matchRows([{ no: 7, name: "김하늘", cells: [] }], twins)[0].studentId).toBe("b");
-    expect(matchRows([{ no: null, name: "김하늘", cells: [] }], twins)[0].studentId).toBe(null);
   });
 });
 

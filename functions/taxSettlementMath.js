@@ -46,8 +46,9 @@ function cleanSheet(raw) {
         }
         return { day: c.day, col: c.col, text: c.text, items: c.items, sure: c.sure && !altered };
       });
-    return { no: no > 0 && no < 1000 ? no : null, name: str(r?.name, 20).trim(), cells };
-  }).filter((r) => r.name || r.no);
+    // 이름은 받지 않는다 — AI 가 실수로 돌려줘도 버린다(개인정보: 번호로만 짝짓는다)
+    return { no: no > 0 && no < 1000 ? no : null, cells };
+  }).filter((r) => r.no || r.cells.length);
 }
 
 /** 한 줄 합계. 쿠폰 칸은 «개수»만 센다 — 금액(won)으로 읽혔으면 개수를 모르는 것이라 unsure 로 올려 선생님이 고치게 한다. */

@@ -1,5 +1,5 @@
 // 🧾 세금정산 — 교사 화면(2026-11-17 사용자 «관리자탭에 세금정산 · 사진을 찍어 넣으면 학생별로 자동으로»).
-//   ① 주간 정산표(번호·이름 + 요일별 벌금·상금·쿠폰) 사진을 올린다 → 서버 readTaxSheet 가 손글씨를 읽어 «초안»을 돌려준다(돈 0).
+//   ① 주간 정산표(번호 + 요일별 벌금·상금·쿠폰) 사진을 올린다 — 이름 칸은 가리고 찍는다(개인정보 국외 전송 방지, 번호로만 짝짓기) → 서버 readTaxSheet 가 손글씨를 읽어 «초안»을 돌려준다(돈 0).
 //   ② 선생님이 사진과 나란히 보며 학생·금액을 확인·고친다(애매한 칸은 노랗게).
 //   ③ «정산하기» → 서버 applyTaxSettlement 가 학생마다 벌금(→국고)·상금(국고→)·쿠폰을 넣는다.
 //   손글씨 판독은 틀릴 수 있다 — 그래서 ②를 건너뛰는 길은 없다.
@@ -34,7 +34,7 @@ const weekLabel = () => {
 };
 /** 숫자와 천 단위 쉼표만 받는다 — «-100»·«1.5»를 100·15 로 바꿔 넣지 않는다(8way codex). 아니면 null(입력 무시) */
 const toInt = (v) => { const t = String(v).trim(); if (t === "") return 0; if (!/^[\d,]+$/.test(t)) return null; const n = Number(t.replace(/,/g, "")); return Number.isSafeInteger(n) ? n : null; };
-const HOW = { both: "", name: "번호 다름", no: "이름 다름 — 확인", dup: "같은 학생이 위에 있음", "": "학생을 골라 주세요" };
+const HOW = { no: "", pick: "", nono: "번호를 못 읽었어요 — 학생을 골라 주세요", none: "이 번호 학생이 없어요 — 골라 주세요", many: "같은 번호 학생이 여럿 — 골라 주세요", dup: "같은 번호가 위에 있음 — 골라 주세요" };
 
 function MoneyInput({ value, onChange, label, unit = "원" }) {
   return (
@@ -169,7 +169,8 @@ export default function TaxSettlement() {
 
       <Card className="mb-4">
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
-          <li>번호·이름과 요일별 <b>벌금·상금·쿠폰</b> 칸이 있는 정산표를 <b>표 전체가 화면에 꽉 차게</b> 찍어 올려요.</li>
+          <li><b>이름 칸은 종이로 가리거나 접어서</b> 찍어 주세요. 번호만 보이면 돼요 — 학생은 <b>번호로</b> 찾아요.</li>
+          <li>번호와 요일별 <b>벌금·상금·쿠폰</b> 칸이 <b>화면에 꽉 차게</b> 찍어 올려요.</li>
           <li>«사진 읽기»를 누르면 30초쯤 뒤 학생별 합계가 나와요. <b>사진과 나란히 보며 꼭 확인</b>하세요 — 애매한 칸은 노랗게 표시돼요.</li>
           <li>«정산하기»를 누르면 벌금은 국고로, 상금은 국고에서 학생에게, 쿠폰은 학생에게 들어가요. 모두 거래내역에 남아요.</li>
         </ol>
@@ -177,7 +178,7 @@ export default function TaxSettlement() {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
           <Button icon={Camera} variant="outline" disabled={reading || applying} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "사진 찍기·고르기"}</Button>
           <Button onClick={read} disabled={!photo} loading={reading}>{reading ? "읽는 중… (30초쯤)" : "사진 읽기"}</Button>
-          <span className="text-xs text-slate-500">사진은 저장하지 않아요. 판독(Google Gemini)이 끝나면 버립니다.</span>
+          <span className="text-xs text-slate-500">사진은 판독을 위해 Google(Gemini, 국외 서버)로 보내지고, 저장하지 않아요. 그래서 <b>이름은 꼭 가리고</b> 찍어 주세요.</span>
         </div>
       </Card>
 
@@ -210,11 +211,11 @@ export default function TaxSettlement() {
                     </thead>
                     <tbody>
                       {lines.map((l) => {
-                        const warnRow = !l.studentId || l.how === "no" || usedTwice.has(l.studentId);
+                        const warnRow = !l.studentId || usedTwice.has(l.studentId);
                         return (
                           <tr key={l.key} className={`border-b border-slate-100 align-top ${l.unsure ? "bg-amber-50" : ""}`}>
                             <td className="py-2 pr-2">
-                              <div className="font-semibold text-slate-800">{l.row.no ?? "–"}. {l.row.name || "(이름 못 읽음)"}</div>
+                              <div className="font-semibold text-slate-800">{l.row.no != null ? `${l.row.no}번` : "번호 ?"}</div>
                               <div className="mt-0.5 flex flex-wrap gap-1">
                                 {l.row.cells.length === 0 && <span className="text-xs text-slate-400">빈 줄</span>}
                                 {l.row.cells.map((c, i) => (
@@ -228,8 +229,8 @@ export default function TaxSettlement() {
                               <select
                                 className={`max-w-[9.5rem] rounded-lg border px-1 py-1 ${warnRow ? "border-amber-400 bg-amber-50" : "border-slate-300"}`}
                                 value={l.studentId || ""}
-                                onChange={(e) => setLine(l.key, { studentId: e.target.value || null, how: e.target.value ? "both" : "" })}
-                                aria-label={`${l.row.name} 학생 고르기`}
+                                onChange={(e) => setLine(l.key, { studentId: e.target.value || null, how: e.target.value ? "pick" : "nono" })}
+                                aria-label={`${l.row.no ?? "?"}번 줄 학생 고르기`}
                               >
                                 <option value="">— 고르기 —</option>
                                 {students.map((s) => <option key={s.id} value={s.id}>{nameOf(s.id)}</option>)}
@@ -238,9 +239,9 @@ export default function TaxSettlement() {
                                 <div className="mt-0.5 text-xs text-amber-700">{usedTwice.has(l.studentId) ? "같은 학생이 두 줄에 있음" : HOW[l.how]}</div>
                               )}
                             </td>
-                            <td className="pr-2 text-right"><MoneyInput label={`${l.row.name} 벌금`} value={l.fine} onChange={(v) => setLine(l.key, { fine: v })} /></td>
-                            <td className="pr-2 text-right"><MoneyInput label={`${l.row.name} 상금`} value={l.prize} onChange={(v) => setLine(l.key, { prize: v })} /></td>
-                            <td className="text-right"><MoneyInput label={`${l.row.name} 쿠폰`} unit="개" value={l.coupon} onChange={(v) => setLine(l.key, { coupon: v })} /></td>
+                            <td className="pr-2 text-right"><MoneyInput label={`${l.row.no ?? "?"}번 벌금`} value={l.fine} onChange={(v) => setLine(l.key, { fine: v })} /></td>
+                            <td className="pr-2 text-right"><MoneyInput label={`${l.row.no ?? "?"}번 상금`} value={l.prize} onChange={(v) => setLine(l.key, { prize: v })} /></td>
+                            <td className="text-right"><MoneyInput label={`${l.row.no ?? "?"}번 쿠폰`} unit="개" value={l.coupon} onChange={(v) => setLine(l.key, { coupon: v })} /></td>
                           </tr>
                         );
                       })}

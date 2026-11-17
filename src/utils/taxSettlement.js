@@ -1,6 +1,6 @@
 // 세금정산 화면용 계산 — 합계 규칙의 정본은 functions/taxSettlementMath.js(rowTotals). 둘이 갈리면
-// src/test/functions/taxSettlement.test.js 가 빨개진다. 여기에만 있는 것: 판독된 줄 ↔ 우리 반 학생 짝짓기.
-import { studentNumberOf, plainStudentName } from "./studentOrder";
+// src/test/functions/taxSettlement.test.js 가 빨개진다. 여기에만 있는 것: 판독된 줄 ↔ 우리 반 학생 짝짓기(번호로만).
+import { studentNumberOf } from "./studentOrder";
 
 export function rowTotals(row) {
   let fine = 0; let prize = 0; let coupon = 0; let unsure = false;
@@ -20,31 +20,21 @@ export function rowTotals(row) {
   return { fine, prize, coupon, unsure };
 }
 
-const norm = (s) => String(s || "").replace(/\s+/g, "").replace(/^\d+번/, "");
-
 /**
- * 판독된 줄마다 우리 반 학생 한 명을 짝짓는다. 이름이 정본이고 번호는 거든다:
- *   ① 번호도 이름도 같은 학생 → 확실(how:"both")
- *   ② 이름이 같은 학생이 딱 한 명 → 그 학생(번호가 달라도 — 표의 번호가 틀렸을 수 있다)(how:"name")
- *   ③ 이름은 못 찾았는데 번호가 같은 학생 → 그 학생, 하지만 «확인 필요»(how:"no")
- *   ④ 없음 → 선생님이 고른다(studentId:null)
- * 한 학생이 두 줄에 짝지어지면 뒤 줄은 비운다(같은 학생에게 두 번 넣지 않게).
+ * 판독된 줄마다 우리 반 학생 한 명을 «번호로만» 짝짓는다(이름은 개인정보라 사진에서 가리고, AI 도 읽지 않는다).
+ *   ① 번호가 같은 학생이 딱 한 명 → 그 학생(how:"no")
+ *   ② 번호를 못 읽었다 → 선생님이 고른다(how:"nono")
+ *   ③ 그 번호 학생이 없거나 둘 이상 → 선생님이 고른다(how:"none"·"many")
+ * 한 학생이 두 줄에 짝지어지면 뒤 줄은 비운다(같은 학생에게 두 번 넣지 않게, how:"dup").
  */
 export function matchRows(rows, members) {
   const students = (members || []).filter((m) => m && m.id && !m.isAdmin && !m.isSuperAdmin && !m.isTeacher);
-  const byName = new Map();
-  for (const s of students) { const k = norm(plainStudentName(s)); byName.set(k, [...(byName.get(k) || []), s]); }
   const used = new Set();
   return (rows || []).map((row, i) => {
-    const nm = norm(row.name);
-    const sameName = byName.get(nm) || [];
-    let pick = null; let how = "";
-    const both = sameName.find((s) => row.no != null && studentNumberOf(s) === row.no);
-    if (both) { pick = both; how = "both"; }
-    else if (sameName.length === 1) { pick = sameName[0]; how = "name"; }
-    else if (row.no != null) {
+    let pick = null; let how = "nono";
+    if (row.no != null) {
       const byNo = students.filter((s) => studentNumberOf(s) === row.no);
-      if (byNo.length === 1) { pick = byNo[0]; how = "no"; }
+      if (byNo.length === 1) { pick = byNo[0]; how = "no"; } else how = byNo.length ? "many" : "none";
     }
     if (pick && used.has(pick.id)) { pick = null; how = "dup"; }
     if (pick) used.add(pick.id);
