@@ -221,7 +221,8 @@ export default function TaxSettlement() {
       </Card>
 
       {photo && (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          {/* grid-cols-1(=minmax(0,1fr)) — 없으면 휴대폰에서 한 칸이 판독 표 폭(780px)까지 늘어 사진·«정산하기»가 화면 오른쪽 밖으로 밀렸다(2026-11-17 사용자 «모바일 세로 오른쪽이 잘려서 정산이 안 돼»). 표만 옆으로 민다 */}
           <Card className="lg:sticky lg:top-3 self-start">
             <div className={`mb-2 rounded-lg p-2 text-sm ${photo.auto || strokes ? "bg-emerald-50 text-emerald-900" : "bg-amber-50 text-amber-900"}`}>
               {photo.auto
@@ -236,7 +237,7 @@ export default function TaxSettlement() {
             </div>
           </Card>
 
-          <div>
+          <div className="min-w-0">
             {sheet?.applied && (
               <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />

@@ -1016,6 +1016,78 @@ if (want("fuzz")) {
   expectRejections = false;
 }
 
+// ══ 시나리오: 세금정산(휴대폰 세로) — 판독(외부 AI)은 가짜 응답으로 바꾸고, 사진은 같은 양식 표를 그려 쓴다 ══
+//   2026-11-17 사용자 «모바일 세로로 했을 때 오른쪽이 잘려서 세금 정산이 안 되». 화면 밖으로 넘치는 것·정산 단추·금액 칸을 잰다.
+if (want("tax")) {
+  await step("tax: 휴대폰 세로에서 사진 → 판독 → 정산", async () => {
+    const ctx = await browser.newContext({ viewport: { width: Number(process.env.TAX_VW || 390), height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, locale: "ko-KR" });
+    await ctx.route(/recaptcha|content-firebaseappcheck|firebaseappcheck\.googleapis/, (r) => r.abort());
+    let sentImage = "";
+    await ctx.route(/\/readTaxSheet$/, async (r) => { // 외부 AI 대신 — 보낸 사진만 남겨 둔다
+      try { sentImage = JSON.parse(r.request().postData() || "{}")?.data?.image || ""; } catch {}
+      const cell = (day, col, items) => ({ day, col, text: items.map((i) => i.won || i.count).join("+"), sure: true, items });
+      const rows = [
+        { no: 1, cells: [cell("월", "상금", [{ won: 500 }])] },
+        { no: 2, cells: [cell("화", "벌금", [{ won: 1000 }]), cell("수", "벌금", [{ won: 500, times: 2 }])] },
+        { no: 3, cells: [cell("목", "쿠폰", [{ count: 2 }])] },
+        { no: 4, cells: [] },
+      ];
+      await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ result: { rows, sheetHash: `e2e${RUN}`, model: "stub", applied: null } }) });
+    });
+    const page = await ctx.newPage(); attach(page, "teacher-phone");
+    const P = { ctx, page, who: "teacher-phone" }; SESSIONS.push(P);
+    await loginEmail(P, TEACHER.email, TEACHER.password);
+    await go(P, "/admin/tax-settlement");
+    // 같은 양식 표(번호·이름·금액 15칸)를 세로 사진으로
+    const png = await page.evaluate(() => {
+      const W = 1600; const H = 900; const L = 140; const cols = [L, L + 48, L + 125]; for (let i = 1; i <= 15; i++) cols.push(L + 125 + i * 83);
+      const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+      g.fillStyle = "#d8d8d8"; g.fillRect(0, 0, W, H); g.fillStyle = "#3c3c3c";
+      for (const x of cols) g.fillRect(x, 50, 3, H - 80);
+      for (let y = 50; y < H - 30; y += 38) g.fillRect(cols[0], y, cols[cols.length - 1] - cols[0], 3);
+      g.font = "26px sans-serif"; for (let r = 0; r < 21; r++) { g.fillText(String(r + 1), cols[0] + 10, 80 + r * 38); g.fillText("김민재", cols[1] + 4, 80 + r * 38); }
+      const s = document.createElement("canvas"); s.width = H; s.height = W; const t = s.getContext("2d"); t.translate(H, 0); t.rotate(Math.PI / 2); t.drawImage(c, 0, 0);
+      return s.toDataURL("image/png").split(",")[1];
+    });
+    await page.locator('input[type="file"]').setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+    await page.getByRole("button", { name: /^사진 읽기$/ }).waitFor({ timeout: 15000 });
+    await waitFor(async () => page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled(), { msg: "이름 칸 자동 가리기" });
+    await page.getByRole("button", { name: /^사진 읽기$/ }).click();
+    await page.getByRole("button", { name: /정산하기/ }).waitFor({ timeout: 15000 });
+    await settle(page);
+    const lay = await page.evaluate(() => {
+      // 앱은 안쪽 칸이 스크롤한다(document 폭은 늘 화면 폭) — 표 자체의 옆 스크롤 상자(.overflow-x-auto)만 빼고, 옆으로 넘치는 칸이 하나라도 있으면 잘린다
+      const vw0 = window.innerWidth; const spill = [];
+      for (const e of document.querySelectorAll("body *")) {
+        if (e.closest(".overflow-x-auto")) continue;
+        const cs = getComputedStyle(e); if (cs.display === "none" || cs.position === "fixed") continue;
+        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(cs.overflowX) && e.clientWidth > 0) { const wide = [...e.querySelectorAll('*')].filter((x) => !x.closest('.overflow-x-auto') && x.getBoundingClientRect().right > vw0 + 1).slice(-3).map((x) => `${x.tagName}.${String(x.className).slice(0, 50)}=${Math.round(x.getBoundingClientRect().right)}`); const chain = []; for (let x = e; x && x !== document.body && chain.length < 5; x = x.parentElement) chain.push(`${x.tagName}.${String(x.className).replace(/\s+/g, ' ').slice(0, 30)}[${getComputedStyle(x).overflowX}]`); spill.push(`${e.tagName} ${e.scrollWidth}/${e.clientWidth} ← ${wide.join(' ; ')} ⟨${chain.join(' < ')}⟩ «${e.innerText.slice(0, 40).replace(/\s+/g, ' ')}»`); }
+        const r = e.getBoundingClientRect(); if (r.width && r.right > vw0 + 1 && !e.closest(".overflow-x-auto")) spill.push(`${e.tagName}.${String(e.className).slice(0, 40)} 오른쪽 ${Math.round(r.right)}`);
+      }
+      const vw = window.innerWidth; const btn = [...document.querySelectorAll("button")].find((b) => /정산하기/.test(b.textContent));
+      const r = (e) => (e ? e.getBoundingClientRect() : null); const bb = r(btn);
+      const coupon = document.querySelector('[aria-label="3번 쿠폰"]'); if (coupon) coupon.scrollIntoView({ block: "center", inline: "nearest" });
+      const cb = r(coupon);
+      return { spill: [...new Set(spill)].slice(0, 6), vw, docW: document.documentElement.scrollWidth, bodyW: document.body.scrollWidth, btn: bb && { l: Math.round(bb.left), r: Math.round(bb.right) }, coupon: cb && { l: Math.round(cb.left), r: Math.round(cb.right) } };
+    });
+    note("tax-phone-layout", lay);
+    await shot(page, "tax-phone");
+    expect(lay.spill.length === 0, `화면 밖으로 넘치는 칸 — 오른쪽이 잘린다: ${lay.spill.join(" | ")}`);
+    expect(lay.docW <= lay.vw + 1 && lay.bodyW <= lay.vw + 1, `쪽이 화면보다 넓다(가로 ${lay.docW}/${lay.vw}) — 오른쪽이 잘린다`);
+    expect(lay.btn && lay.btn.l >= 0 && lay.btn.r <= lay.vw + 1, `«정산하기» 단추가 화면 밖 ${JSON.stringify(lay.btn)}`);
+    expect(lay.coupon && lay.coupon.l >= 0 && lay.coupon.r <= lay.vw + 1, `3번 쿠폰 칸이 화면 밖 ${JSON.stringify(lay.coupon)}`);
+    // 보낸 사진: 이름 칸이 칠해진 사진만 나갔는가(가짜 응답이 받은 것을 잰다 — 비어 있지 않아야 한다)
+    expect(sentImage.length > 1000, "판독으로 보낸 사진이 비었다");
+    const b2 = (await userDoc(st.students[1].uid)).cash, c3 = (await userDoc(st.students[2].uid)).coupons || 0;
+    await page.getByRole("button", { name: /정산하기/ }).click();
+    await confirmModal(page);
+    await waitFor(async () => (await userDoc(st.students[1].uid)).cash !== b2, { timeout: 20000, msg: "2번 벌금 반영" });
+    const a2 = (await userDoc(st.students[1].uid)).cash, a3 = (await userDoc(st.students[2].uid)).coupons || 0;
+    note("tax-applied", { fine2: b2 - a2, coupon3: a3 - c3 });
+    expect(b2 - a2 === 2000, `2번 벌금 ${b2 - a2}(기대 2000)`);
+  });
+}
+
 report.state = { classCode: st.classCode, students: st.students.map((s) => `${s.id}:${s.uid}`) };
 report.findings = findings;
 report.finishedAt = new Date().toISOString();
