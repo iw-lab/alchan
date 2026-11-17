@@ -21,12 +21,14 @@ const {
   findApprovedAdminSnap, checkIdempotent, markIdempotent, sanitizeInput,
 } = require("./utils");
 const { cleanSheet, validateSettlementItems, LIMITS } = require("./taxSettlementMath");
+const { buildJobMap, hasJobTitle } = require("./jobUtils");
 
 const PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "inconomysu-class";
 // 서울 리전엔 Gemini 가 없다(2026-11-17 실측: asia-northeast3·northeast1 모두 404) → 전역 엔드포인트.
 const MODEL = process.env.TAX_SHEET_MODEL || "gemini-3.8-flash";
 const GEMINI_WAIT_MS = 170000; // 판독 기다리는 상한
 const DAILY_READS = 30; // 학급당 하루 판독 상한(비용·오남용 방지 — 한 장 약 1~2원)
+const CHIEF_DAILY_READS = 10; // 그중 국세청장 몫 — 학생이 학급 한도를 다 써서 선생님이 못 읽는 일이 없게(8way gemini)
 
 const PROMPT = `이 사진은 초등학교 학급경제 «주간 정산표»를 찍은 것이다(사진이 옆으로 누워 있을 수 있다). 표의 왼쪽에 번호 열이 있고(그 옆 이름 열은 개인정보라 검게 칠해져 있다 — 검은 띠는 무시하라), 그 오른쪽에 요일(월·화·수·목·금)마다 «벌금·상금·쿠폰» 세 칸이 있다. 칸에는 선생님이 손글씨로 금액을 적었다.
 
@@ -121,19 +123,23 @@ async function askGemini(imageBase64, mimeType) {
 
 const dayKeyKST = (ms) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 
-const requireTeacher = async (request) => {
+// 세금정산 권한 = 선생님(관리자) 또는 선생님이 임명한 «국세청 직원»(국세청장 · 2026-11-17 사용자 «이 세금정산 기능을 국세청장에게도 줘»).
+//   국세청 직원은 임명 전용 직업이라 hasJobTitle 이 appointedJobIds 로만 센다 — 학생이 스스로 고른 국세청 직원은 안 된다(jobUtils tax-lock).
+//   국세청장은 자기 줄을 넣지 못한다(applyTaxSettlement 의 userId === uid 건너뜀 — 스스로 상금을 주거나 벌금을 지우지 못하게).
+const TAX_CHIEF_TITLE = "국세청 직원";
+const requireSettler = async (request) => {
   const ctx = await checkAuthAndGetUserData(request);
-  if (!hasAdminPower(ctx.userData)) {
-    throw new HttpsError("permission-denied", "선생님(관리자)만 세금정산을 할 수 있습니다.");
-  }
   if (!ctx.classCode || typeof ctx.classCode !== "string" || ctx.classCode.includes("/")) {
     throw new HttpsError("failed-precondition", "학급 코드가 없습니다.");
   }
-  return ctx;
+  if (hasAdminPower(ctx.userData)) return { ...ctx, byChief: false };
+  const jobMap = buildJobMap(await db.collection("jobs").where("classCode", "==", ctx.classCode).get());
+  if (hasJobTitle(ctx.userData, jobMap, TAX_CHIEF_TITLE)) return { ...ctx, byChief: true, jobMap };
+  throw new HttpsError("permission-denied", "선생님이나 선생님이 임명한 국세청장만 세금정산을 할 수 있습니다.");
 };
 
 const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 240, memory: "512MiB" }, async (request) => {
-  const { classCode } = await requireTeacher(request);
+  const { uid, classCode, byChief } = await requireSettler(request);
   const { image, mimeType = "image/jpeg" } = request.data || {};
   if (typeof image !== "string" || image.length < 1000) {
     throw new HttpsError("invalid-argument", "사진이 비었습니다.");
@@ -151,11 +157,15 @@ const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 240, me
   await db.runTransaction(async (tx) => {
     const s = await tx.get(usageRef);
     const n = s.exists ? Number(s.data().count) || 0 : 0;
+    const nc = s.exists ? Number(s.data().chiefCount) || 0 : 0;
     if (n >= DAILY_READS) {
       throw new HttpsError("resource-exhausted", `오늘은 사진 판독을 ${DAILY_READS}번 했어요. 내일 다시 해 주세요.`);
     }
+    if (byChief && nc >= CHIEF_DAILY_READS) {
+      throw new HttpsError("resource-exhausted", `국세청장은 하루 ${CHIEF_DAILY_READS}번까지 사진을 읽을 수 있어요. 내일 다시 해 주세요.`);
+    }
     tx.set(usageRef, {
-      classCode, count: n + 1,
+      classCode, count: n + 1, ...(byChief ? { chiefCount: nc + 1 } : {}),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       expireAt: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 86400e3),
     }, { merge: true });
@@ -181,11 +191,17 @@ const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 240, me
     at: prev.docs[0].data().createdAt?.toMillis?.() || null,
     label: prev.docs[0].data().label || "",
   };
+  // 이 학급에서 읽은 사진 표시 — 국세청장 정산은 실제로 읽은 사진에만 묶인다(applyTaxSettlement)
+  await db.collection("taxSheetReads").doc(`${classCode}_${sheetHash}`).set({
+    classCode, sheetHash, readBy: uid, byChief: !!byChief,
+    at: admin.firestore.FieldValue.serverTimestamp(),
+    expireAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 86400e3),
+  }, { merge: true });
   return { rows, sheetHash, model: MODEL, applied };
 });
 
 const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 300 }, async (request) => {
-  const { uid, classCode, userData } = await requireTeacher(request);
+  const { uid, classCode, userData, byChief, jobMap } = await requireSettler(request);
   const { items, idempotencyKey, label = "", sheetHash = "" } = request.data || {};
   const problem = validateSettlementItems(items);
   if (problem) throw new HttpsError("invalid-argument", problem);
@@ -194,6 +210,15 @@ const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 3
   }
   const safeLabel = sanitizeInput(String(label || "").slice(0, 40)) || "세금정산";
   const safeHash = /^[0-9a-f]{32}$/.test(String(sheetHash)) ? String(sheetHash) : "";
+  // 국세청장은 이 학급에서 읽은 사진 한 장에 정산 한 번만(8way codex — 요청 번호만 바꿔 같은 정산을 거듭 넣거나 사진 없이 지급 못 하게).
+  //   한 장 = 한 정산 묶음은 학생 트랜잭션 안의 claim 문서로 원자적으로 잡는다(동시에 두 번 눌러도 하나만).
+  let claimRef = null;
+  if (byChief) {
+    if (!safeHash) throw new HttpsError("failed-precondition", "국세청장은 정산표 사진을 읽은 뒤에만 정산할 수 있어요.");
+    const read = await db.collection("taxSheetReads").doc(`${classCode}_${safeHash}`).get();
+    if (!read.exists || read.data().classCode !== classCode) throw new HttpsError("failed-precondition", "이 학급에서 읽은 정산표 사진이 아닙니다. «사진 읽기»부터 해 주세요.");
+    claimRef = db.collection("taxSheetClaims").doc(`${classCode}_${safeHash}`);
+  }
 
   const adminSnap = await findApprovedAdminSnap(classCode);
   if (adminSnap.empty) throw new HttpsError("failed-precondition", "국고(승인된 선생님) 계정을 찾을 수 없습니다.");
@@ -208,21 +233,29 @@ const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 3
   const expire90 = () => admin.firestore.Timestamp.fromMillis(Date.now() + 90 * 86400e3);
 
   const done = []; const skipped = []; const failures = [];
+  let claimStop = "";
   let fineSum = 0; let prizeSum = 0; let couponSum = 0;
   for (const it of items) {
     const { userId, fine, prize, coupon } = it;
-    if (userId === treasuryUserId || userId === uid) { skipped.push({ userId, reason: "선생님 계정" }); continue; }
+    if (userId === treasuryUserId) { skipped.push({ userId, reason: "선생님 계정" }); continue; }
+    if (userId === uid) { skipped.push({ userId, reason: byChief ? "본인 줄은 선생님이 넣어요" : "선생님 계정" }); continue; }
+    if (claimStop) { failures.push({ userId, reason: claimStop }); continue; }
     try {
       const r = await db.runTransaction(async (tx) => {
         const keyRef = await checkIdempotent(tx, `${idempotencyKey}_${userId}`);
         const userRef = db.collection("users").doc(userId);
-        const [uSnap, tSnap, recSnap] = await Promise.all([tx.get(userRef), tx.get(treasuryUserRef), tx.get(recRef)]);
+        const [uSnap, tSnap, recSnap, claimSnap] = await Promise.all([tx.get(userRef), tx.get(treasuryUserRef), tx.get(recRef), claimRef ? tx.get(claimRef) : null]);
+        if (claimSnap && claimSnap.exists && claimSnap.data().settlementId !== idempotencyKey) {
+          throw new HttpsError("failed-precondition", "이 사진은 이미 정산했어요. 다시 넣어야 하면 선생님이 넣어요.");
+        }
         if (recSnap.exists && recSnap.data().classCode !== classCode) throw new HttpsError("permission-denied", "정산 기록이 다른 학급 것입니다.");
         if (!uSnap.exists) throw new HttpsError("not-found", "학생을 찾을 수 없습니다.");
         if (!tSnap.exists) throw new HttpsError("failed-precondition", "국고 계정을 찾을 수 없습니다.");
         const u = uSnap.data(); const t = tSnap.data();
         if (u.classCode !== classCode) throw new HttpsError("permission-denied", "다른 학급 학생입니다.");
         if (hasAdminPower(u) || u.isAdmin === true) throw new HttpsError("failed-precondition", "선생님 계정에는 넣지 않습니다.");
+        // 국세청장이 둘 이상이면 서로의 줄을 넣어 주는 길도 막는다 — 국세청장 줄은 선생님이(8way gemini·codex)
+        if (byChief && hasJobTitle(u, jobMap, TAX_CHIEF_TITLE)) throw new HttpsError("failed-precondition", "국세청장 줄은 선생님이 넣어요.");
         if (t.classCode !== classCode || !hasAdminPower(t)) throw new HttpsError("failed-precondition", "유효한 국고 계정이 아닙니다.");
         // 정수가 정확한 범위만(9e15 넘으면 +1만 원이 반올림으로 사라져 한쪽만 바뀐다 — 민팅·소각)
         const safe = (v) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 9e15;
@@ -240,7 +273,7 @@ const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 3
         if (fine > 0) tx.set(statsRef, { otherTaxRevenue: inc(fine), lastUpdated: sts() }, { merge: true });
 
         // 원장 = activity_logs 하나(최상위 amount·couponAmount — 거래내역 화면이 읽는 곳). 다른 원장엔 안 쓴다(두 줄 방지).
-        const meta = { settlementId: idempotencyKey, label: safeLabel, issuedBy: uid, issuedByName: userData.name || "", treasuryUserId };
+        const meta = { settlementId: idempotencyKey, label: safeLabel, issuedBy: uid, issuedByName: userData.name || "", byChief: !!byChief, treasuryUserId };
         const log = (type, description, amount, couponAmount) => tx.set(db.collection("activity_logs").doc(), {
           classCode, userId, userName: u.name || "학생", type, description: sanitizeInput(description),
           amount, couponAmount, metadata: meta, timestamp: sts(), createdAt: sts(), expireAt: expire90(),
@@ -249,10 +282,11 @@ const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 3
         if (prize > 0) log("상금", `${safeLabel} 상금 ${prize.toLocaleString()}원`, prize, 0);
         if (coupon > 0) log("쿠폰 획득", `${safeLabel} 쿠폰 ${coupon}개`, 0, coupon);
         tx.set(recRef, {
-          classCode, label: safeLabel, sheetHash: safeHash, issuedBy: uid,
+          classCode, label: safeLabel, sheetHash: safeHash, issuedBy: uid, byChief: !!byChief,
           fine: inc(fine), prize: inc(prize), coupon: inc(coupon), students: inc(1),
           ...(recSnap.exists ? {} : { createdAt: sts() }), updatedAt: sts(),
         }, { merge: true });
+        if (claimRef && !(claimSnap && claimSnap.exists)) tx.set(claimRef, { classCode, sheetHash: safeHash, settlementId: idempotencyKey, by: uid, createdAt: sts(), expireAt: expire90() });
         markIdempotent(tx, keyRef, 24 * 30);
         return { newCash: u.cash + net };
       });
@@ -260,6 +294,7 @@ const applyTaxSettlement = onCall({ region: "asia-northeast3", timeoutSeconds: 3
       fineSum += fine; prizeSum += prize; couponSum += coupon;
     } catch (e) {
       if (e instanceof HttpsError && e.code === "already-exists") { skipped.push({ userId, reason: "이미 넣음" }); continue; }
+      if (e instanceof HttpsError && /이미 정산했어요/.test(e.message)) claimStop = e.message; // 나머지 학생도 같은 이유 — 트랜잭션을 더 돌리지 않는다
       logger.error(`[applyTaxSettlement] ${uid} → ${userId}`, e);
       failures.push({ userId, reason: e.message || "처리 실패" });
     }

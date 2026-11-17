@@ -894,9 +894,9 @@ export default function AlchanLayout() {
                 <Route
                   path="/admin/tax-settlement"
                   element={
-                    <AdminRoute>
+                    <ProtectedRoute>
                       <TaxSettlement />
-                    </AdminRoute>
+                    </ProtectedRoute>
                   }
                 />
                 <Route

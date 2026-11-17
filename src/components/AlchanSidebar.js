@@ -366,6 +366,15 @@ export const ALCHAN_MENU_ITEMS = [
     parentId: "delegationCategory",
     delegatedOnly: "couponTransfer",
   },
+  // 🧾 교사가 임명한 국세청장도 세금정산(2026-11-17 · 서버 taxSettlementService requireSettler 가 다시 판정)
+  {
+    id: "delegatedTaxSettlement",
+    label: "세금정산",
+    icon: ReceiptText,
+    path: "/admin/tax-settlement",
+    parentId: "delegationCategory",
+    delegatedOnly: "taxSettlement",
+  },
 
   // Admin Category - 관리자
   {
@@ -1202,8 +1211,9 @@ export default function AlchanSidebar({
     userDoc?.delegatedPermissions?.moneyTransfer === true || isAppointedPresident;
   const hasDelegatedCouponTransfer =
     userDoc?.delegatedPermissions?.couponTransfer === true || isAppointedPresident;
+  const isAppointedTaxChief = useAppointedJobTitle(userDoc, "국세청 직원");
   const hasAnyDelegation =
-    hasDelegatedTaskApproval || hasDelegatedMoneyTransfer || hasDelegatedCouponTransfer;
+    hasDelegatedTaskApproval || hasDelegatedMoneyTransfer || hasDelegatedCouponTransfer || isAppointedTaxChief;
 
   let userRole = "학생";
   if (userDoc?.isSuperAdmin) userRole = "앱 관리자";
@@ -1232,11 +1242,12 @@ export default function AlchanSidebar({
         if (item.delegatedOnly === "taskApproval") return hasDelegatedTaskApproval;
         if (item.delegatedOnly === "moneyTransfer") return hasDelegatedMoneyTransfer;
         if (item.delegatedOnly === "couponTransfer") return hasDelegatedCouponTransfer;
+        if (item.delegatedOnly === "taxSettlement") return isAppointedTaxChief;
         return false;
       }
       return true;
     },
-    [isAdmin, isSuperAdmin, isTaskApprover, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer, lockedItemIds],
+    [isAdmin, isSuperAdmin, isTaskApprover, hasAnyDelegation, hasDelegatedTaskApproval, hasDelegatedMoneyTransfer, hasDelegatedCouponTransfer, isAppointedTaxChief, lockedItemIds],
   );
 
   // 카테고리별 메뉴 렌더링

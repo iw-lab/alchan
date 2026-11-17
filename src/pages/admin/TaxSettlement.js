@@ -14,6 +14,7 @@ import { confirmDialog } from "../../utils/confirmDialog";
 import { sortByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
 import { matchRows, shortWon } from "../../utils/taxSettlement";
 import { maskNamesInPhoto, canvasToBase64 } from "../../utils/maskPhoto";
+import useAppointedJobTitle from "../../hooks/useAppointedJobTitle";
 
 const readSheetFn = httpsCallable(functions, "readTaxSheet", { timeout: 250000 }); // 서버 240s 보다 조금 길게
 const applyFn = httpsCallable(functions, "applyTaxSettlement", { timeout: 300000 });
@@ -82,6 +83,8 @@ function MoneyInput({ value, onChange, label, unit = "원", wide = false }) {
 
 export default function TaxSettlement() {
   const { userDoc, allClassMembers, refreshAllUsers } = useAuth();
+  const isTeacher = !!(userDoc?.isAdmin || userDoc?.isSuperAdmin || userDoc?.role === "admin");
+  const isTaxChief = useAppointedJobTitle(userDoc, "국세청 직원");
   const [photo, setPhoto] = useState(null);       // { canvas(이름 가린 것), auto(자동으로 가렸나), snap(가린 직후 모습) }
   const [strokes, setStrokes] = useState(0);      // 손으로 칠한 횟수
   const [painting, setPainting] = useState(false);
@@ -202,6 +205,15 @@ export default function TaxSettlement() {
   const nameOf = (id) => { const s = byId.get(id); return s ? `${studentNumberOf(s) ?? "–"}번 ${plainStudentName(s)}` : ""; };
 
   if (!userDoc) return null;
+  // 선생님 또는 선생님이 임명한 국세청장(2026-11-17) — 서버 requireSettler 가 다시 판정한다
+  if (!isTeacher && !isTaxChief) {
+    return (
+      <div className="mx-auto max-w-xl p-5">
+        <PageHeader title="세금정산" icon={ReceiptText} />
+        <Card><p className="text-sm text-slate-700" data-tax-denied>선생님이나 선생님이 임명한 <b>국세청장</b>만 세금정산을 할 수 있어요.</p></Card>
+      </div>
+    );
+  }
   return (
     <div className="mx-auto max-w-6xl p-3 sm:p-5">
       <PageHeader title="세금정산" icon={ReceiptText} subtitle="주간 정산표 사진 → 학생별 벌금·상금·쿠폰 자동 입력" />
@@ -211,6 +223,7 @@ export default function TaxSettlement() {
           <li>정산표를 <b>표 전체가 화면에 꽉 차게</b> 찍어 올려요. <b>이름 칸은 앱이 알아서 검게 가린 뒤</b> 보내요 — 학생은 <b>번호로</b> 찾아요.</li>
           <li>«사진 읽기»를 누르면 30초~1분쯤 뒤 학생별 합계가 나와요. <b>사진과 나란히 보며 꼭 확인</b>하세요 — 애매한 칸은 노랗게 표시돼요.</li>
           <li>«정산하기»를 누르면 벌금은 국고로, 상금은 국고에서 학생에게, 쿠폰은 학생에게 들어가요. 모두 거래내역에 남아요.</li>
+          {!isTeacher && <li data-tax-chief-note><b>국세청장 본인 줄</b>은 넣지 않고 건너뛰어요 — 본인 것은 선생님이 넣어요.</li>}
         </ol>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />

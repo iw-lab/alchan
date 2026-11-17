@@ -7,6 +7,7 @@
 // ========================================
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { db, getCachedDocument, invalidateCache } from "../../firebase";
 import {
   doc,
@@ -232,6 +233,10 @@ const NationalTaxService = ({ classCode }) => {
         setEditableSettings(newSettings);
         setLastTaxWeekKey(docSnap.data().lastWeeklyTaxWeekKey || null);
         invalidateCache(`doc_governmentSettings_${classCode}`);
+      } else if (!isAdminUser) {
+        // 설정 문서가 아직 없는 학급 — 학생(국세청장 포함)은 만들 권한이 없다(rules). 기본값으로 보여 주기만 한다
+        setTaxSettings(DEFAULT_TAX_SETTINGS);
+        setEditableSettings(DEFAULT_TAX_SETTINGS);
       } else {
         await setDoc(settingsRef, {
           taxSettings: {
@@ -248,7 +253,7 @@ const NationalTaxService = ({ classCode }) => {
       logger.error(`[${classCode}] 세금 정책 로드 실패:`, error);
       setLoadingSettings(false);
     }
-  }, [classCode]);
+  }, [classCode, isAdminUser]);
 
   // 🔥 [비용 최적화] 5분 → 1시간 (세금 설정은 거의 안 바뀜)
   const { refetch: refetchSettings } = usePolling(fetchTaxSettings, { interval: 60 * 60 * 1000, enabled: !!classCode });
@@ -532,6 +537,12 @@ const NationalTaxService = ({ classCode }) => {
               </div>
             );
           })()}
+          {/* 🧾 세금정산(주간 정산표 사진 → 벌금·상금·쿠폰) — 교사·국세청장(2026-11-17) */}
+          {canCollect && (
+            <Link to="/admin/tax-settlement" data-tax-settle-link className="block rounded-xl p-4 text-sm font-bold text-emerald-800" style={{ background: 'rgba(236, 253, 245, 0.9)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+              🧾 세금정산 — 주간 정산표 사진으로 벌금·상금·쿠폰 넣기 →
+            </Link>
+          )}
 
           {/* 최근 업데이트 - 인라인 */}
           <p className="text-xs px-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>

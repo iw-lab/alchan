@@ -1181,6 +1181,96 @@ if (want("president")) {
   expectRejections = false;
 }
 
+// ══ 시나리오: 국세청장 = 세금정산(2026-11-17 사용자 «이 세금정산 기능을 국세청장에게도 줘») ══
+//   교사가 임명한 «국세청 직원»만 된다(스스로 고른 국세청 직원·일반 학생은 서버가 거절). 본인 줄은 건너뛴다. 벌금은 국고로.
+if (want("taxchief")) {
+  const call = (i, name, data) => S[i].page.evaluate(async ({ name, data }) => {
+    const m = await import("/src/firebase.js");
+    try { const r = await m.httpsCallable(m.functions, name)(data); return { ok: true, data: r.data }; }
+    catch (e) { return { ok: false, code: e.code, msg: String(e.message).slice(0, 160) }; }
+  }, { name, data });
+  const key = () => `e2e-${RUN}-${Math.random().toString(36).slice(2, 12)}`;
+  await step("taxchief: 임명·자가선택 준비", async () => {
+    let job = (await fdb.collection("jobs").where("classCode", "==", st.classCode).where("title", "==", "국세청 직원").get()).docs[0];
+    if (!job) { const ref = fdb.collection("jobs").doc(); await ref.set({ classCode: st.classCode, title: "국세청 직원", salary: 0, active: true }); job = await ref.get(); }
+    await fdb.doc(`users/${st.students[1].uid}`).update({ appointedJobIds: [job.id] }); // 2번 = 교사 임명
+    await fdb.doc(`users/${st.students[2].uid}`).update({ selectedJobIds: [job.id] });  // 3번 = 스스로 고름(인정 안 됨)
+  });
+  await step("taxchief: 메뉴·화면·국세청 바로가기가 열린다(임명) / 안 열린다(자가선택)", async () => {
+    await go(S[1], "/admin/tax-settlement"); await settle(S[1].page, 1500);
+    const t = await S[1].page.evaluate(() => ({ denied: !!document.querySelector("[data-tax-denied]"), note: !!document.querySelector("[data-tax-chief-note]"), menu: [...document.querySelectorAll("a,button")].some((e) => e.textContent.trim() === "세금정산"), read: /사진 (올리기|찍기|고르기)|정산표/.test(document.body.innerText) }));
+    note("taxchief-page", t);
+    expect(!t.denied && t.note && t.read, `임명 국세청장인데 세금정산 화면이 막혔다 ${JSON.stringify(t)}`);
+    expect(t.menu, "임명 국세청장 사이드바에 세금정산 메뉴 없음");
+    await go(S[1], "/national-tax"); await settle(S[1].page, 1500);
+    const link = await S[1].page.locator("[data-tax-settle-link]").count();
+    note("taxchief-nts-link", link);
+    await go(S[2], "/admin/tax-settlement"); await settle(S[2].page, 1500);
+    expect(await S[2].page.locator("[data-tax-denied]").count() === 1, "스스로 고른 국세청 직원에게 세금정산 화면이 열렸다");
+  });
+  await step("taxchief: 정산 — 벌금은 국고로·상금은 국고에서·본인 줄은 건너뜀", async () => {
+    const s1 = st.students[0].uid, me = st.students[1].uid, s4 = st.students[3].uid, t = st.teacherUid;
+    const [a0, m0, d0, t0] = await Promise.all([s1, me, s4, t].map(async (u) => (await userDoc(u)).cash));
+    const c40 = (await userDoc(s4)).coupons || 0;
+    // 국세청장은 이 학급에서 읽은 사진에만 묶인다 — 사진 없이(해시 없음·읽지 않은 해시)는 거절
+    const hash = (RUN + "0".repeat(32)).replace(/[^0-9a-f]/g, "0").slice(0, 32);
+    expectRejections = true;
+    const noPhoto = await call(1, "applyTaxSettlement", { items: [{ userId: s1, fine: 0, prize: 100, coupon: 0 }], idempotencyKey: key() });
+    const unread = await call(1, "applyTaxSettlement", { items: [{ userId: s1, fine: 0, prize: 100, coupon: 0 }], idempotencyKey: key(), sheetHash: hash });
+    expectRejections = false;
+    expect(!noPhoto.ok && noPhoto.code === "functions/failed-precondition" && !unread.ok && unread.code === "functions/failed-precondition", `사진 없는 국세청장 정산이 통과 ${JSON.stringify([noPhoto, unread]).slice(0, 240)}`);
+    await fdb.doc(`taxSheetReads/${st.classCode}_${hash}`).set({ classCode: st.classCode, sheetHash: hash, readBy: me, byChief: true });
+    const items = [{ userId: s1, fine: 700, prize: 0, coupon: 0 }, { userId: me, fine: 0, prize: 5000, coupon: 0 }, { userId: s4, fine: 0, prize: 300, coupon: 2 }];
+    const k1 = key();
+    const r = await call(1, "applyTaxSettlement", { items, idempotencyKey: k1, label: "e2e 국세청장", sheetHash: hash });
+    const retry = await call(1, "applyTaxSettlement", { items, idempotencyKey: k1, label: "e2e 국세청장", sheetHash: hash }); // 같은 번호 다시 = 건너뜀
+    const again = await call(1, "applyTaxSettlement", { items, idempotencyKey: key(), label: "e2e 국세청장", sheetHash: hash }); // 번호만 바꿔 같은 사진 = 거절
+    note("taxchief-repeat", { retry: retry.data, again: again.data });
+    expect(retry.ok && retry.data.count === 0 && again.ok && again.data.count === 0 && again.data.failures.length === 2 && /이미 정산/.test(again.data.failures[0].reason), `같은 사진 거듭 정산 ${JSON.stringify([retry, again]).slice(0, 300)}`);
+    const [a1, m1, d1, t1] = await Promise.all([s1, me, s4, t].map(async (u) => (await userDoc(u)).cash));
+    const c41 = (await userDoc(s4)).coupons || 0;
+    note("taxchief-apply", { r: r.data || r, s1: a1 - a0, me: m1 - m0, s4: d1 - d0, coupon4: c41 - c40, treasury: t1 - t0 });
+    expect(r.ok && r.data.count === 2 && r.data.skipped.some((x) => x.userId === me), `정산 결과 ${JSON.stringify(r).slice(0, 240)}`);
+    expect(a1 - a0 === -700 && m1 === m0 && d1 - d0 === 300 && c41 - c40 === 2 && t1 - t0 === 400, `잔액 변화 1번 ${a1 - a0} 본인 ${m1 - m0} 4번 ${d1 - d0}/${c41 - c40} 국고 ${t1 - t0}`);
+    const log = (await fdb.collection("activity_logs").where("userId", "==", s1).where("type", "==", "벌금 납부").get()).docs.map((d) => d.data()).find((x) => x.metadata?.label === "e2e 국세청장");
+    expect(log && log.metadata.byChief === true && log.metadata.issuedBy === me, `거래내역에 국세청장 표시 없음 ${JSON.stringify(log?.metadata)}`);
+    // 사진 읽기도 권한은 통과(빈 사진이라 입력 오류로 끝난다 — 외부 AI 를 부르지 않는다)
+    expectRejections = true;
+    const rd = await call(1, "readTaxSheet", { image: "x" });
+    expectRejections = false;
+    expect(!rd.ok && rd.code === "functions/invalid-argument", `국세청장 사진 읽기 권한 ${JSON.stringify(rd)}`);
+  });
+  await step("taxchief: 다른 국세청장 줄은 못 넣는다 · 국세청장 판독은 하루 10번", async () => {
+    const job = (await fdb.collection("jobs").where("classCode", "==", st.classCode).where("title", "==", "국세청 직원").get()).docs[0];
+    const other = st.students[3].uid; const before = (await userDoc(other)).cash;
+    await fdb.doc(`users/${other}`).update({ appointedJobIds: [job.id] });
+    const hash = ("f" + RUN + "0".repeat(32)).replace(/[^0-9a-f]/g, "1").slice(0, 32);
+    await fdb.doc(`taxSheetReads/${st.classCode}_${hash}`).set({ classCode: st.classCode, sheetHash: hash });
+    const r = await call(1, "applyTaxSettlement", { items: [{ userId: other, fine: 0, prize: 900, coupon: 0 }], idempotencyKey: key(), sheetHash: hash });
+    await fdb.doc(`users/${other}`).update({ appointedJobIds: [] });
+    expect(r.ok && r.data.count === 0 && r.data.failures.length === 1 && (await userDoc(other)).cash === before, `국세청장끼리 넣어 주기 ${JSON.stringify(r).slice(0, 200)}`);
+    const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    await fdb.doc(`taxSheetUsage/${st.classCode}_${day}`).set({ classCode: st.classCode, count: 3, chiefCount: 10 });
+    expectRejections = true;
+    const rd = await call(1, "readTaxSheet", { image: "a".repeat(2000) });
+    expectRejections = false;
+    expect(!rd.ok && rd.code === "functions/resource-exhausted", `국세청장 판독 한도 ${JSON.stringify(rd).slice(0, 160)}`);
+    await fdb.doc(`taxSheetUsage/${st.classCode}_${day}`).delete();
+  });
+  expectRejections = true;
+  await step("taxchief: 스스로 고른 국세청 직원·일반 학생은 서버가 거절", async () => {
+    const before = (await userDoc(st.students[0].uid)).cash;
+    for (const i of [2, 3]) {
+      const r = await call(i, "applyTaxSettlement", { items: [{ userId: st.students[0].uid, fine: 0, prize: 1000, coupon: 0 }], idempotencyKey: key() });
+      expect(!r.ok && r.code === "functions/permission-denied", `${i + 1}번 학생 정산 거절 안 됨 ${JSON.stringify(r).slice(0, 160)}`);
+      const rd = await call(i, "readTaxSheet", { image: "x" });
+      expect(!rd.ok && rd.code === "functions/permission-denied", `${i + 1}번 학생 사진 읽기 거절 안 됨 ${JSON.stringify(rd).slice(0, 160)}`);
+    }
+    expect((await userDoc(st.students[0].uid)).cash === before, "거절됐는데 잔액이 바뀜");
+  });
+  expectRejections = false;
+}
+
 report.state = { classCode: st.classCode, students: st.students.map((s) => `${s.id}:${s.uid}`) };
 report.findings = findings;
 report.finishedAt = new Date().toISOString();
