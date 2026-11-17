@@ -909,7 +909,7 @@ if (want("fuzz")) {
   const ctx = {};
   await step("fuzz: 준비(현금·쿠폰 지급, 아이템 구매)", async () => {
     for (const u of [A, B]) await fdb.doc(`users/${u.uid}`).update({ cash: 100000, coupons: 50 });
-    const item = (await fdb.collection("storeItems").where("classCode", "==", st.classCode).get()).docs.find((d) => (d.data().price || 0) > 0 && (d.data().stock ?? 99) > 2);
+    const item = (await fdb.collection("storeItems").where("classCode", "==", st.classCode).get()).docs.find((d) => (d.data().price || 0) > 0 && d.data().price * 3 <= 100000 && (d.data().stock ?? 99) > 2); // 3개를 살 수 있는 값이어야 한다(시드 값이 오르면 «정상 구매 실패»로 빨갛던 2026-11-17)
     expect(!!item, "상점 아이템 없음");
     ctx.itemId = item.id;
     const r1 = await callAs(0, "purchaseStoreItem", { itemId: item.id, quantity: 3, idempotencyKey: "fz-buy-" + Date.now() });
@@ -1086,6 +1086,93 @@ if (want("tax")) {
     note("tax-applied", { fine2: b2 - a2, coupon3: a3 - c3 });
     expect(b2 - a2 === 2000, `2번 벌금 ${b2 - a2}(기대 2000)`);
   });
+}
+
+// ══ 시나리오: 대통령 = 돈·쿠폰 보내기/가져오기(2026-11-17 사용자 «대통령은 보내기 가져오기 관리자 기능을 열어줘») ══
+//   임명된 대통령만 된다(스스로 고른 대통령·일반 학생은 서버가 거절). 가져온 돈·쿠폰은 국고(교사)로. 자기 자신·교사 쿠폰은 못 건드린다.
+if (want("president")) {
+  const call = (i, name, data) => S[i].page.evaluate(async ({ name, data }) => {
+    const m = await import("/src/firebase.js");
+    try { const r = await m.httpsCallable(m.functions, name)(data); return { ok: true, data: r.data }; }
+    catch (e) { return { ok: false, code: e.code, msg: String(e.message).slice(0, 160) }; }
+  }, { name, data });
+  const key = () => `e2e-${RUN}-${Math.random().toString(36).slice(2, 10)}`;
+  await step("president: 임명·자가선택 준비", async () => {
+    const pres = (await fdb.collection("jobs").where("classCode", "==", st.classCode).where("title", "==", "대통령").get()).docs[0];
+    expect(!!pres, "학급에 대통령 직업 없음");
+    st.presJobId = pres.id;
+    await fdb.doc(`users/${st.students[1].uid}`).update({ appointedJobIds: [pres.id] }); // 2번 = 교사 임명
+    await fdb.doc(`users/${st.students[2].uid}`).update({ selectedJobIds: [pres.id] });  // 3번 = 스스로 고름(인정 안 됨)
+    await fdb.doc(`users/${st.students[0].uid}`).update({ coupons: 5 });
+  });
+  await step("president: 메뉴·화면이 열린다(임명 대통령) / 안 열린다(자가선택)", async () => {
+    await go(S[1], "/admin/coupon-transfer"); await settle(S[1].page, 1500);
+    const pTxt = await S[1].page.evaluate(() => document.body.innerText);
+    expect(!/권한이 없습니다/.test(pTxt), "대통령인데 쿠폰 화면이 막혔다");
+    expect(/쿠폰 보내기\/가져오기/.test(pTxt) && /돈 보내기\/가져오기/.test(pTxt), "대통령 사이드바에 보내기/가져오기 메뉴 없음");
+    await go(S[1], "/admin/money-transfer"); await settle(S[1].page, 1500);
+    expect(!/권한이 없습니다/.test(await S[1].page.evaluate(() => document.body.innerText)), "대통령인데 돈 화면이 막혔다");
+    await go(S[2], "/admin/money-transfer"); await settle(S[2].page, 1500);
+    expect(/권한이 없습니다/.test(await S[2].page.evaluate(() => document.body.innerText)), "스스로 고른 대통령에게 돈 화면이 열렸다");
+  });
+  await step("president: 돈 보내기·가져오기(국고로)", async () => {
+    const s1 = st.students[0].uid, t = st.teacherUid;
+    const a0 = (await userDoc(s1)).cash, t0 = (await userDoc(t)).cash;
+    const r1 = await call(1, "adminCashAction", { targetUserIds: [s1], action: "send", amountType: "fixed", amount: 1000, idempotencyKey: key() });
+    expect(r1.ok && r1.data.count === 1, `보내기 실패 ${JSON.stringify(r1).slice(0, 200)}`);
+    const r2 = await call(1, "adminCashAction", { targetUserIds: [s1], action: "take", takeMode: "toMe", amountType: "fixed", amount: 400, idempotencyKey: key() });
+    expect(r2.ok && r2.data.count === 1, `가져오기 실패 ${JSON.stringify(r2).slice(0, 200)}`);
+    const a1 = (await userDoc(s1)).cash, t1 = (await userDoc(t)).cash;
+    note("president-cash", { student1: a1 - a0, treasury: t1 - t0 });
+    expect(a1 - a0 === 600 && t1 - t0 === 400, `잔액 변화 학생 ${a1 - a0}(기대 600) 국고 ${t1 - t0}(기대 400)`);
+    const self = await call(1, "adminCashAction", { targetUserIds: [st.students[1].uid], action: "send", amountType: "fixed", amount: 999, idempotencyKey: key() });
+    expect(self.ok && self.data.count === 0, `대통령이 자기에게 보냈다 ${JSON.stringify(self).slice(0, 160)}`);
+  });
+  await step("president: 쿠폰 보내기·가져오기(국고로)·0개 바닥·교사 쿠폰 금지", async () => {
+    const s1 = st.students[0].uid, t = st.teacherUid;
+    const c0 = (await userDoc(s1)).coupons || 0, tc0 = (await userDoc(t)).coupons || 0;
+    const r1 = await call(1, "adminCouponAction", { targetUserIds: [s1], action: "send", amountType: "fixed", amount: 3, idempotencyKey: key() });
+    expect(r1.ok && r1.data.count === 1, `쿠폰 보내기 실패 ${JSON.stringify(r1).slice(0, 200)}`);
+    const k2 = key();
+    const r2 = await call(1, "adminCouponAction", { targetUserIds: [s1], action: "take", takeMode: "toMe", amountType: "fixed", amount: 2, idempotencyKey: k2 });
+    const again = await call(1, "adminCouponAction", { targetUserIds: [s1], action: "take", takeMode: "toMe", amountType: "fixed", amount: 2, idempotencyKey: k2 }); // 같은 요청 두 번
+    expect(r2.ok && r2.data.count === 1 && again.ok && again.data.count === 0 && again.data.alreadyCount === 1, `쿠폰 가져오기/멱등 ${JSON.stringify([r2, again]).slice(0, 240)}`);
+    const c1 = (await userDoc(s1)).coupons || 0, tc1 = (await userDoc(t)).coupons || 0;
+    note("president-coupon", { student1: c1 - c0, treasury: tc1 - tc0 });
+    expect(c1 - c0 === 1 && tc1 - tc0 === 2, `쿠폰 변화 학생 ${c1 - c0}(기대 1) 국고 ${tc1 - tc0}(기대 2)`);
+    const floor = await call(1, "adminCouponAction", { targetUserIds: [s1], action: "take", takeMode: "remove", amountType: "fixed", amount: 999, idempotencyKey: key() });
+    expect(floor.ok && ((await userDoc(s1)).coupons || 0) === 0, `0개 바닥 ${JSON.stringify(floor).slice(0, 160)} 남은 ${(await userDoc(s1)).coupons}`);
+    // 잔액이 숫자가 아닌 학생(옛 데이터 "10")은 건드리지 않는다 — increment 가 −n 으로 덮어 국고에 없던 쿠폰이 생겼다(8way codex)
+    await fdb.doc(`users/${st.students[3].uid}`).update({ coupons: "10" });
+    const bad = await call(1, "adminCouponAction", { targetUserIds: [st.students[3].uid], action: "take", takeMode: "toMe", amountType: "fixed", amount: 5, idempotencyKey: key() });
+    expect(bad.ok && bad.data.count === 0 && bad.data.failures.length === 1 && (await userDoc(st.students[3].uid)).coupons === "10" && ((await userDoc(t)).coupons || 0) === tc1, `숫자 아닌 쿠폰 잔액 처리 ${JSON.stringify(bad).slice(0, 200)}`);
+    await fdb.doc(`users/${st.students[3].uid}`).update({ coupons: 0 });
+    const teacherTake = await call(1, "adminCouponAction", { targetUserIds: [t], action: "take", takeMode: "remove", amountType: "fixed", amount: 1, idempotencyKey: key() });
+    expect(teacherTake.ok && teacherTake.data.count === 0 && teacherTake.data.failures.length === 1 && ((await userDoc(t)).coupons || 0) === tc1, `대통령이 교사 쿠폰을 건드렸다 ${JSON.stringify(teacherTake).slice(0, 200)}`);
+  });
+  await step("president: 쿠폰 화면(UI)으로 1번에게 2개 보내기 — 서버(adminCouponAction) 경유", async () => {
+    const s1 = st.students[0].uid; const c0 = (await userDoc(s1)).coupons || 0;
+    const p = S[1].page;
+    await go(S[1], "/admin/coupon-transfer"); await settle(p, 1200);
+    await p.locator(".user-item").first().locator(".user-label").click(); // 번호 순 첫 줄 = 1번(화면엔 실명 대신 별명). 체크 상자는 숨겨진 꾸밈 상자 — 이름표를 누른다
+    await p.locator('input[type="number"]').first().fill("2");
+    await p.locator('button[type="submit"]').click();
+    await waitFor(async () => ((await userDoc(s1)).coupons || 0) === c0 + 2, { timeout: 15000, msg: "UI 쿠폰 보내기 반영" });
+    const msg = await p.evaluate(() => document.body.innerText.match(/\d+명 쿠폰 처리 완료[^\n]*/)?.[0] || "");
+    note("president-coupon-ui", msg);
+    expect(/1명 쿠폰 처리 완료/.test(msg), `완료 문구 없음 «${msg}»`);
+  });
+  expectRejections = true;
+  await step("president: 스스로 고른 대통령·일반 학생은 서버가 거절", async () => {
+    const before = JSON.stringify([(await userDoc(st.students[0].uid)).cash, (await userDoc(st.students[0].uid)).coupons || 0]);
+    for (const i of [2, 3]) for (const fn of ["adminCashAction", "adminCouponAction"]) {
+      const r = await call(i, fn, { targetUserIds: [st.students[0].uid], action: "send", amountType: "fixed", amount: 1, idempotencyKey: key() });
+      expect(!r.ok && r.code === "functions/permission-denied", `${i + 1}번 학생 ${fn} 거절 안 됨 ${JSON.stringify(r).slice(0, 160)}`);
+    }
+    const after = JSON.stringify([(await userDoc(st.students[0].uid)).cash, (await userDoc(st.students[0].uid)).coupons || 0]);
+    expect(before === after, `거절됐는데 잔액이 바뀜 ${before} → ${after}`);
+  });
+  expectRejections = false;
 }
 
 report.state = { classCode: st.classCode, students: st.students.map((s) => `${s.id}:${s.uid}`) };

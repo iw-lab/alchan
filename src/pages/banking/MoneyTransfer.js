@@ -10,6 +10,7 @@ import { confirmDialog } from "../../utils/confirmDialog";
 import { takeSignature, describeElapsed } from "../../utils/takeSignature";
 import { sortByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
 import StudentNo from "../../components/ui/StudentNo";
+import useAppointedJobTitle from "../../hooks/useAppointedJobTitle";
 
 function MoneyTransfer() {
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
@@ -60,7 +61,9 @@ function MoneyTransfer() {
   const idemKeyRef = useRef(null);
 
   // 위임 학생인 경우 실제 관리자 정보 사용
-  const isDelegated = !userDoc?.isAdmin && !userDoc?.isSuperAdmin && userDoc?.delegatedPermissions?.moneyTransfer;
+  // 위임받은 학생 또는 교사가 임명한 대통령(2026-11-17) — 서버 transferPower.js 가 다시 판정한다
+  const isAppointedPresident = useAppointedJobTitle(userDoc, "대통령");
+  const isDelegated = !userDoc?.isAdmin && !userDoc?.isSuperAdmin && (userDoc?.delegatedPermissions?.moneyTransfer === true || isAppointedPresident);
   const classAdmin = isDelegated
     ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
     : null;
@@ -354,12 +357,12 @@ function MoneyTransfer() {
 
   // 관리자 또는 위임된 학생이 아닌 경우 접근 제한
   const isAdminUser = userDoc?.isAdmin || userDoc?.isSuperAdmin;
-  const hasDelegatedMoneyPermission = userDoc?.delegatedPermissions?.moneyTransfer === true;
+  const hasDelegatedMoneyPermission = userDoc?.delegatedPermissions?.moneyTransfer === true || isAppointedPresident;
   if (!isAdminUser && !hasDelegatedMoneyPermission) {
     return (
       <div className="money-transfer-container">
         <div style={{padding:'40px',textAlign:'center',color:'#f87171'}}>
-          권한이 없습니다. 관리자 또는 위임된 학생만 사용할 수 있습니다.
+          권한이 없습니다. 관리자, 위임받은 학생, 임명된 대통령만 사용할 수 있습니다.
         </div>
       </div>
     );

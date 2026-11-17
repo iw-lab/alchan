@@ -129,6 +129,9 @@ exports.joinGroupPurchase = groupPurchaseService.joinGroupPurchase;
 exports.deleteGroupPurchase = groupPurchaseService.deleteGroupPurchase;
 
 // 🎭 아바타 상점 구매 + 시드 (서버사이드)
+const { transferPowerOf } = require("./transferPower");
+// 🎟️ 관리자 쿠폰 지급/회수 — 위임 학생·대통령도 쓰게 서버로(2026-11-17)
+exports.adminCouponAction = require("./adminCouponService").adminCouponAction;
 const avatarShopService = require("./avatarShopService");
 exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
 exports.seedAvatarShop = avatarShopService.seedAvatarShop;
@@ -3416,14 +3419,15 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
     idempotencyKey,
   } = request.data;
 
-  // 1) 권한: 관리자 또는 위임(moneyTransfer) — 서버 강제
+  // 1) 권한: 관리자 · 위임(moneyTransfer) · 교사가 임명한 대통령(2026-11-17) — 서버 강제(transferPower.js)
   const isAdmin = hasAdminPower(userData);
-  const isDelegated =
-    !isAdmin && userData.delegatedPermissions?.moneyTransfer === true;
+  const power = await transferPowerOf(userData, classCode, "moneyTransfer", isAdmin);
+  // 위임과 대통령은 같은 제약을 받는다(국고 = 승인 교사 · 자기 자신 대상 금지 · 마이너스 회수 금지)
+  const isDelegated = !isAdmin && power.allowed;
   if (!isAdmin && !isDelegated) {
     throw new HttpsError(
       "permission-denied",
-      "관리자 또는 위임된 학생만 사용할 수 있습니다.",
+      "관리자, 위임받은 학생, 임명된 대통령만 사용할 수 있습니다.",
     );
   }
 

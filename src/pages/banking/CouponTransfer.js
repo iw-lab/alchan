@@ -1,13 +1,14 @@
 // src/CouponTransfer.js - 로컬 상태 업데이트로 Firestore 사용량 최적화
 
-import React, { useState, useEffect } from "react";
-import { db } from "../../firebase";
+import React, { useState, useEffect, useRef } from "react";
+import { db, functions, httpsCallable } from "../../firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
 import "./CouponTransfer.css";
 import { logger } from '../../utils/logger';
 import { sortByStudentNumber, plainStudentName } from '../../utils/studentOrder';
 import StudentNo from '../../components/ui/StudentNo';
+import useAppointedJobTitle from '../../hooks/useAppointedJobTitle';
 
 function CouponTransfer() {
   // AuthContext에서 필요한 모든 데이터를 가져옵니다.
@@ -37,7 +38,10 @@ function CouponTransfer() {
   const [localUserDoc, setLocalUserDoc] = useState(null);
 
   const isAdmin = userDoc?.isAdmin || false;
-  const isDelegated = !isAdmin && userDoc?.delegatedPermissions?.couponTransfer === true;
+  // 위임받은 학생 또는 교사가 임명한 대통령(2026-11-17) — 쿠폰은 rules 상 교사만 직접 쓸 수 있어 이 둘은 서버(adminCouponAction)로 처리한다
+  const isAppointedPresident = useAppointedJobTitle(userDoc, "대통령");
+  const isDelegated = !isAdmin && (userDoc?.delegatedPermissions?.couponTransfer === true || isAppointedPresident);
+  const idemKeyRef = useRef(null); // 같은 요청을 두 번 눌러도 한 번만 — 성공하면 비운다
   const classAdmin = isDelegated
     ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
     : null;
@@ -147,6 +151,21 @@ function CouponTransfer() {
     setError("");
 
     try {
+      if (!isAdmin) { // 위임·대통령 — 서버가 권한·0개 바닥·멱등·기록을 맡는다
+        const req = { targetUserIds: [...selectedUsers].sort(), action, takeMode: action === "take" ? (takeAction === "transfer" ? "toMe" : "remove") : undefined, amountType, amount: Number(couponAmount) };
+        const sig = JSON.stringify(req); // 입력이 바뀌면 새 요청 번호 — 옛 번호를 쓰면 바뀐 요청의 학생이 «이미 처리됨»으로 빠진다(8way codex·gemini)
+        if (!idemKeyRef.current || idemKeyRef.current.sig !== sig) idemKeyRef.current = { key: crypto.randomUUID(), sig };
+        const r = await httpsCallable(functions, "adminCouponAction")({ ...req, idempotencyKey: idemKeyRef.current.key });
+        const d = r.data || {};
+        setLocalUsers((prev) => prev.map((u) => { const hit = (d.updatedUsers || []).find((x) => x.id === u.id); return hit ? { ...u, coupons: hit.newCoupons } : u; }));
+        const extra = [d.alreadyCount ? `이미 처리됨 ${d.alreadyCount}명` : "", d.noBalanceCount ? `쿠폰이 없어 건너뜀 ${d.noBalanceCount}명` : "", d.clampedCount ? `가진 만큼만 ${d.clampedCount}명` : "", d.failures?.length ? `실패 ${d.failures.length}명(${d.failures.map((f) => f.reason).filter((v, i, a) => a.indexOf(v) === i).join(", ")})` : ""].filter(Boolean).join(" · ");
+        if (!d.failures?.length) idemKeyRef.current = null; // 실패가 있으면 같은 요청 그대로 다시 눌러 실패한 학생만
+        if (!d.count && !d.alreadyCount && d.failures?.length) { setError(`쿠폰을 처리하지 못했어요 — ${extra}`); setTimeout(() => setError(""), 6000); return; }
+        setMessage(`${d.count || 0}명 쿠폰 처리 완료 (총 ${(d.totalProcessed || 0).toLocaleString()}개)${extra ? ` — ${extra}` : ""}`);
+        if (!d.failures?.length) { setCouponAmount(""); setSelectedUsers([]); setSelectAll(false); }
+        setTimeout(() => setMessage(""), 5000);
+        return;
+      }
       const batch = writeBatch(db);
       let successCount = 0;
       let totalAmount = 0;
@@ -233,12 +252,12 @@ function CouponTransfer() {
   };
 
   // 관리자 또는 위임된 학생이 아닌 경우 접근 제한
-  const hasDelegatedCouponPermission = userDoc?.delegatedPermissions?.couponTransfer === true;
+  const hasDelegatedCouponPermission = userDoc?.delegatedPermissions?.couponTransfer === true || isAppointedPresident;
   if (!isAdmin && !hasDelegatedCouponPermission) {
     return (
       <div className="coupon-transfer-container">
         <div className="alert alert-error">
-          권한이 없습니다. 관리자 또는 위임된 학생만 사용할 수 있습니다.
+          권한이 없습니다. 관리자, 위임받은 학생, 임명된 대통령만 사용할 수 있습니다.
         </div>
       </div>
     );

@@ -69,6 +69,7 @@ import {
   DEFAULT_APP_OWNER,
 } from "../config/learningApps";
 import globalCacheService from "../services/globalCacheService";
+import useAppointedJobTitle from "../hooks/useAppointedJobTitle";
 import { fetchUnreadBoardCount, WALL_SEEN_EVENT } from "../pages/personal-board/wallUnread";
 import { toast } from "../utils/toast";
 import { launchLearningApp } from "../services/appLaunch";
@@ -1195,10 +1196,12 @@ export default function AlchanSidebar({
 
   const hasDelegatedTaskApproval =
     userDoc?.delegatedPermissions?.taskApproval === true || isTaskApprover;
+  // 🏛️ 교사가 임명한 대통령은 돈·쿠폰 보내기/가져오기를 직업으로 가진다(2026-11-17 · 서버 transferPower.js 가 다시 판정)
+  const isAppointedPresident = useAppointedJobTitle(userDoc, "대통령");
   const hasDelegatedMoneyTransfer =
-    userDoc?.delegatedPermissions?.moneyTransfer === true;
+    userDoc?.delegatedPermissions?.moneyTransfer === true || isAppointedPresident;
   const hasDelegatedCouponTransfer =
-    userDoc?.delegatedPermissions?.couponTransfer === true;
+    userDoc?.delegatedPermissions?.couponTransfer === true || isAppointedPresident;
   const hasAnyDelegation =
     hasDelegatedTaskApproval || hasDelegatedMoneyTransfer || hasDelegatedCouponTransfer;
 
