@@ -15,7 +15,7 @@ import { sortByStudentNumber, plainStudentName, studentNumberOf } from "../../ut
 import { matchRows, shortWon } from "../../utils/taxSettlement";
 import { maskNamesInPhoto, canvasToBase64 } from "../../utils/maskPhoto";
 
-const readSheetFn = httpsCallable(functions, "readTaxSheet", { timeout: 130000 });
+const readSheetFn = httpsCallable(functions, "readTaxSheet", { timeout: 250000 }); // 서버 240s 보다 조금 길게
 const applyFn = httpsCallable(functions, "applyTaxSettlement", { timeout: 300000 });
 
 /**
@@ -209,13 +209,13 @@ export default function TaxSettlement() {
       <Card className="mb-4">
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
           <li>정산표를 <b>표 전체가 화면에 꽉 차게</b> 찍어 올려요. <b>이름 칸은 앱이 알아서 검게 가린 뒤</b> 보내요 — 학생은 <b>번호로</b> 찾아요.</li>
-          <li>«사진 읽기»를 누르면 30초쯤 뒤 학생별 합계가 나와요. <b>사진과 나란히 보며 꼭 확인</b>하세요 — 애매한 칸은 노랗게 표시돼요.</li>
+          <li>«사진 읽기»를 누르면 30초~1분쯤 뒤 학생별 합계가 나와요. <b>사진과 나란히 보며 꼭 확인</b>하세요 — 애매한 칸은 노랗게 표시돼요.</li>
           <li>«정산하기»를 누르면 벌금은 국고로, 상금은 국고에서 학생에게, 쿠폰은 학생에게 들어가요. 모두 거래내역에 남아요.</li>
         </ol>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
           <Button icon={Camera} variant="outline" disabled={reading || applying || preparing} loading={preparing} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "사진 찍기·고르기"}</Button>
-          <Button onClick={read} disabled={!canRead} loading={reading}>{reading ? "읽는 중… (30초쯤)" : "사진 읽기"}</Button>
+          <Button onClick={read} disabled={!canRead} loading={reading}>{reading ? "읽는 중… (30초~1분)" : "사진 읽기"}</Button>
           <span className="text-xs text-slate-500">이름 칸은 휴대폰 안에서 가린 뒤, 가린 사진만 판독(Google Gemini, 국외 서버)으로 보내요. 사진은 저장하지 않아요.</span>
         </div>
       </Card>

@@ -25,6 +25,7 @@ const { cleanSheet, validateSettlementItems, LIMITS } = require("./taxSettlement
 const PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "inconomysu-class";
 // 서울 리전엔 Gemini 가 없다(2026-11-17 실측: asia-northeast3·northeast1 모두 404) → 전역 엔드포인트.
 const MODEL = process.env.TAX_SHEET_MODEL || "gemini-3.8-flash";
+const GEMINI_WAIT_MS = 170000; // 판독 기다리는 상한
 const DAILY_READS = 30; // 학급당 하루 판독 상한(비용·오남용 방지 — 한 장 약 1~2원)
 
 const PROMPT = `이 사진은 초등학교 학급경제 «주간 정산표»를 찍은 것이다(사진이 옆으로 누워 있을 수 있다). 표의 왼쪽에 번호 열이 있고(그 옆 이름 열은 개인정보라 검게 칠해져 있다 — 검은 띠는 무시하라), 그 오른쪽에 요일(월·화·수·목·금)마다 «벌금·상금·쿠폰» 세 칸이 있다. 칸에는 선생님이 손글씨로 금액을 적었다.
@@ -89,10 +90,14 @@ async function askGemini(imageBase64, mimeType) {
   const url = `https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${MODEL}:generateContent`;
   const body = {
     contents: [{ role: "user", parts: [{ inlineData: { mimeType, data: imageBase64 } }, { text: PROMPT }] }],
-    generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA },
+    // thinkingLevel low: 생각 토큰 편차를 없앤다(2026-11-17 실측 default 28~34s · low 27s 고정)
+    // maxOutputTokens: 21줄 표 출력 ≈5.6k 토큰. 60줄 상한 + 여유 — 같은 말을 되풀이하는 폭주를 끊는다
+    generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA, maxOutputTokens: 20000, thinkingConfig: { thinkingLevel: "low" } },
   };
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 100000);
+  // 2026-11-17 사용자 사진 2장이 100초에 끊겼다(우리 시험 사진은 27~39초) — 함수 제한(240s) 안에서 넉넉히
+  const timer = setTimeout(() => ctrl.abort(), GEMINI_WAIT_MS);
+  const t0 = Date.now();
   try {
     const r = await fetch(url, {
       method: "POST",
@@ -103,8 +108,11 @@ async function askGemini(imageBase64, mimeType) {
     const txt = await r.text();
     if (!r.ok) throw new Error(`판독 서버 ${r.status}: ${txt.slice(0, 300)}`);
     const data = JSON.parse(txt);
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const out = parts.map((p) => p.text || "").join("").trim();
+    const cand = data?.candidates?.[0];
+    const u = data?.usageMetadata || {};
+    logger.info(`[readTaxSheet] 판독 ${Math.round((Date.now() - t0) / 1000)}s finish=${cand?.finishReason} in=${u.promptTokenCount} out=${u.candidatesTokenCount} think=${u.thoughtsTokenCount || 0}`);
+    if (cand?.finishReason === "MAX_TOKENS") throw new Error("출력 상한 도달(표가 너무 크거나 판독이 되풀이됨)");
+    const out = (cand?.content?.parts || []).map((p) => p.text || "").join("").trim();
     return JSON.parse(out);
   } finally {
     clearTimeout(timer);
@@ -124,7 +132,7 @@ const requireTeacher = async (request) => {
   return ctx;
 };
 
-const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 120, memory: "512MiB" }, async (request) => {
+const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 240, memory: "512MiB" }, async (request) => {
   const { classCode } = await requireTeacher(request);
   const { image, mimeType = "image/jpeg" } = request.data || {};
   if (typeof image !== "string" || image.length < 1000) {
@@ -158,7 +166,9 @@ const readTaxSheet = onCall({ region: "asia-northeast3", timeoutSeconds: 120, me
     raw = await askGemini(image, mimeType);
   } catch (e) {
     logger.error(`[readTaxSheet] ${classCode} 판독 실패`, e);
-    throw new HttpsError("unavailable", "사진을 읽지 못했어요. 표가 화면에 꽉 차게, 밝은 곳에서 다시 찍어 주세요.");
+    // 시간 초과는 사진 탓이 아니다 — «다시 찍어 주세요»라고 하면 선생님이 멀쩡한 사진을 탓한다(2026-11-17 사용자 «화면 잘 보이는데 다시 찍으라네»)
+    if (e?.name === "AbortError") throw new HttpsError("deadline-exceeded", "판독이 너무 오래 걸려 멈췄어요. 잠시 뒤 «사진 읽기»를 한 번 더 눌러 주세요.");
+    throw new HttpsError("unavailable", "판독 서버가 답하지 않았어요. 잠시 뒤 «사진 읽기»를 한 번 더 눌러 주세요.");
   }
   const rows = cleanSheet(raw);
   if (!rows.length) {
