@@ -1,5 +1,6 @@
 // 🧾 세금정산 — 교사 화면(2026-11-17 사용자 «관리자탭에 세금정산 · 사진을 찍어 넣으면 학생별로 자동으로»).
-//   ① 주간 정산표(번호 + 요일별 벌금·상금·쿠폰) 사진을 올린다 — 이름 칸은 가리고 찍는다(개인정보 국외 전송 방지, 번호로만 짝짓기) → 서버 readTaxSheet 가 손글씨를 읽어 «초안»을 돌려준다(돈 0).
+//   ① 주간 정산표(번호 + 요일별 벌금·상금·쿠폰) 사진을 올린다 — 휴대폰 안에서 이름 칸을 찾아 검게 칠하고 그 사진만 보낸다
+//      (2026-11-17 사용자 «이름은 국외로 넘어가면 안 된다 · 니가 스스로 이름칸 전부 검게 가리고 보내». 못 찾으면 선생님이 칠해야 보낼 수 있다) → 서버 readTaxSheet 가 손글씨를 읽어 «초안»을 돌려준다(돈 0).
 //   ② 선생님이 사진과 나란히 보며 학생·금액을 확인·고친다(애매한 칸은 노랗게).
 //   ③ «정산하기» → 서버 applyTaxSettlement 가 학생마다 벌금(→국고)·상금(국고→)·쿠폰을 넣는다.
 //   손글씨 판독은 틀릴 수 있다 — 그래서 ②를 건너뛰는 길은 없다.
@@ -12,20 +13,46 @@ import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { sortByStudentNumber, plainStudentName, studentNumberOf } from "../../utils/studentOrder";
 import { matchRows, shortWon } from "../../utils/taxSettlement";
+import { maskNamesInPhoto, canvasToBase64 } from "../../utils/maskPhoto";
 
 const readSheetFn = httpsCallable(functions, "readTaxSheet", { timeout: 130000 });
 const applyFn = httpsCallable(functions, "applyTaxSettlement", { timeout: 300000 });
 
-/** 사진을 긴 변 2000px JPEG 로 줄여 base64 로(사진 방향은 브라우저가 EXIF 대로 세운다) */
-async function shrink(file) {
-  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-  const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-  bmp.close?.();
-  const url = c.toDataURL("image/jpeg", 0.85);
-  return url.slice(url.indexOf(",") + 1);
+/**
+ * 이름 칸을 가린 사진 캔버스를 보여 주고, «칠하기»를 켜면 손가락·마우스로 더 검게 칠할 수 있다.
+ * 칠하기를 켠 동안만 터치 스크롤을 막는다(꺼져 있으면 사진 위에서도 화면이 그대로 넘어간다).
+ */
+function PaintCanvas({ canvas, painting, onStroke }) {
+  const boxRef = useRef(null);
+  useEffect(() => {
+    const box = boxRef.current; if (!box || !canvas) return undefined;
+    canvas.className = "block w-full rounded-lg border border-slate-200";
+    box.replaceChildren(canvas);
+    return () => { if (canvas.parentNode === box) box.removeChild(canvas); };
+  }, [canvas]);
+  useEffect(() => {
+    if (!canvas) return undefined;
+    canvas.style.touchAction = painting ? "none" : "auto";
+    canvas.style.cursor = painting ? "crosshair" : "default";
+    if (!painting) return undefined;
+    const g = canvas.getContext("2d");
+    let last = null;
+    const at = (e) => { const b = canvas.getBoundingClientRect(); return [(e.clientX - b.left) * (canvas.width / b.width), (e.clientY - b.top) * (canvas.height / b.height)]; };
+    const line = (a, b) => {
+      g.save(); g.strokeStyle = "#000"; g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(18, canvas.width * 0.03);
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); g.restore();
+    };
+    const down = (e) => { e.preventDefault(); canvas.setPointerCapture?.(e.pointerId); last = at(e); line(last, last); };
+    const move = (e) => { if (!last) return; const p = at(e); line(last, p); last = p; };
+    const up = () => { if (last) onStroke(); last = null; };
+    canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
+    return () => {
+      canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
+      canvas.removeEventListener("pointerup", up); canvas.removeEventListener("pointercancel", up);
+    };
+  }, [canvas, painting, onStroke]);
+  return <div ref={boxRef} />;
 }
 
 const weekLabel = () => {
@@ -55,7 +82,10 @@ function MoneyInput({ value, onChange, label, unit = "원" }) {
 
 export default function TaxSettlement() {
   const { userDoc, allClassMembers, refreshAllUsers } = useAuth();
-  const [photo, setPhoto] = useState(null);       // { url, base64 }
+  const [photo, setPhoto] = useState(null);       // { canvas(이름 가린 것), auto(자동으로 가렸나), snap(가린 직후 모습) }
+  const [strokes, setStrokes] = useState(0);      // 손으로 칠한 횟수
+  const [painting, setPainting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [reading, setReading] = useState(false);
   const [sheet, setSheet] = useState(null);       // { sheetHash, applied, model }
   const [lines, setLines] = useState([]);
@@ -80,27 +110,32 @@ export default function TaxSettlement() {
     refreshedRef.current = true;
     refreshAllUsers().catch(() => {});
   }, [refreshAllUsers]);
-  useEffect(() => () => { if (photo?.url) URL.revokeObjectURL(photo.url); }, [photo]);
 
   const pick = useCallback(async (file) => {
     if (!file) return;
     if (!/^image\//.test(file.type)) { toast.error("사진 파일을 골라 주세요."); return; }
+    setPreparing(true);
     try {
-      const base64 = await shrink(file);
+      const { canvas, auto } = await maskNamesInPhoto(file);
+      const snap = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
       photoNoRef.current += 1;
-      setPhoto({ url: URL.createObjectURL(file), base64 });
+      setPhoto({ canvas, auto, snap }); setStrokes(0); setPainting(!auto);
       setSheet(null); setLines([]); setResult(null); idemKeyRef.current = null;
+      if (!auto) toast.error("이름 칸을 자동으로 못 찾았어요. 사진에서 이름 칸을 손가락으로 칠해 주세요.");
     } catch {
       toast.error("사진을 열지 못했어요. 다른 사진으로 해 주세요.");
+    } finally {
+      setPreparing(false);
     }
   }, []);
 
   const read = useCallback(async () => {
     if (!photo || reading) return;
-    setReading(true); setResult(null);
+    if (!photo.auto && strokes === 0) { toast.error("먼저 이름 칸을 칠해 주세요."); return; }
+    setReading(true); setResult(null); setPainting(false);
     const myPhoto = photoNoRef.current;
     try {
-      const r = await readSheetFn({ image: photo.base64, mimeType: "image/jpeg" });
+      const r = await readSheetFn({ image: canvasToBase64(photo.canvas), mimeType: "image/jpeg" }); // 이름 가린 캔버스만 나간다
       if (myPhoto !== photoNoRef.current) return; // 그새 다른 사진을 골랐다 — 이 응답은 버린다
       setSheet({ sheetHash: r.data.sheetHash, applied: r.data.applied, model: r.data.model });
       setLines(matchRows(r.data.rows, students));
@@ -111,7 +146,11 @@ export default function TaxSettlement() {
     } finally {
       setReading(false);
     }
-  }, [photo, reading, students]);
+  }, [photo, reading, students, strokes]);
+
+  const onStroke = useCallback(() => setStrokes((n) => n + 1), []);
+  const undoPaint = () => { if (!photo) return; photo.canvas.getContext("2d").putImageData(photo.snap, 0, 0); setStrokes(0); };
+  const canRead = !!photo && (photo.auto || strokes > 0);
 
   const setLine = (key, patch) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
@@ -169,23 +208,32 @@ export default function TaxSettlement() {
 
       <Card className="mb-4">
         <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
-          <li><b>이름 칸은 종이로 가리거나 접어서</b> 찍어 주세요. 번호만 보이면 돼요 — 학생은 <b>번호로</b> 찾아요.</li>
-          <li>번호와 요일별 <b>벌금·상금·쿠폰</b> 칸이 <b>화면에 꽉 차게</b> 찍어 올려요.</li>
+          <li>정산표를 <b>표 전체가 화면에 꽉 차게</b> 찍어 올려요. <b>이름 칸은 앱이 알아서 검게 가린 뒤</b> 보내요 — 학생은 <b>번호로</b> 찾아요.</li>
           <li>«사진 읽기»를 누르면 30초쯤 뒤 학생별 합계가 나와요. <b>사진과 나란히 보며 꼭 확인</b>하세요 — 애매한 칸은 노랗게 표시돼요.</li>
           <li>«정산하기»를 누르면 벌금은 국고로, 상금은 국고에서 학생에게, 쿠폰은 학생에게 들어가요. 모두 거래내역에 남아요.</li>
         </ol>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-          <Button icon={Camera} variant="outline" disabled={reading || applying} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "사진 찍기·고르기"}</Button>
-          <Button onClick={read} disabled={!photo} loading={reading}>{reading ? "읽는 중… (30초쯤)" : "사진 읽기"}</Button>
-          <span className="text-xs text-slate-500">사진은 판독을 위해 Google(Gemini, 국외 서버)로 보내지고, 저장하지 않아요. 그래서 <b>이름은 꼭 가리고</b> 찍어 주세요.</span>
+          <Button icon={Camera} variant="outline" disabled={reading || applying || preparing} loading={preparing} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "사진 찍기·고르기"}</Button>
+          <Button onClick={read} disabled={!canRead} loading={reading}>{reading ? "읽는 중… (30초쯤)" : "사진 읽기"}</Button>
+          <span className="text-xs text-slate-500">이름 칸은 휴대폰 안에서 가린 뒤, 가린 사진만 판독(Google Gemini, 국외 서버)으로 보내요. 사진은 저장하지 않아요.</span>
         </div>
       </Card>
 
       {photo && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <Card className="lg:sticky lg:top-3 self-start">
-            <img src={photo.url} alt="올린 정산표" className="w-full rounded-lg border border-slate-200" />
+            <div className={`mb-2 rounded-lg p-2 text-sm ${photo.auto || strokes ? "bg-emerald-50 text-emerald-900" : "bg-amber-50 text-amber-900"}`}>
+              {photo.auto
+                ? <>이름 칸을 <b>검게 가렸어요.</b> 이 사진만 보내요. 이름이 조금이라도 보이면 «더 칠하기»로 칠해 주세요.</>
+                : strokes ? <>칠한 사진만 보내요. 이름이 다 가려졌는지 확인하세요.</>
+                  : <><b>이름 칸을 자동으로 못 찾았어요.</b> 사진에서 이름 칸을 손가락으로 칠해 주세요 — 칠해야 보낼 수 있어요.</>}
+            </div>
+            <PaintCanvas canvas={photo.canvas} painting={painting && !reading} onStroke={onStroke} />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant={painting ? "primary" : "outline"} disabled={reading} onClick={() => setPainting((v) => !v)}>{painting ? "칠하기 끝" : "더 칠하기"}</Button>
+              {strokes > 0 && <Button size="sm" variant="outline" disabled={reading} onClick={undoPaint}>칠한 것 되돌리기</Button>}
+            </div>
           </Card>
 
           <div>

@@ -53,6 +53,7 @@
     "test:watch": "vitest",
     "test:all": "vitest run",
     "test:rules": "node scripts/rules-test.mjs",
+    "test:mask": "node scripts/e2e/name-mask-browser.mjs",
     "assets:snapshot": "node scripts/asset-snapshot.mjs",
     "preview": "vite preview",
     "debt": "node scripts/debt-ratchet.mjs",
