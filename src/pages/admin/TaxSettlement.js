@@ -253,7 +253,7 @@ export default function TaxSettlement() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                        <th className="py-2 pr-2">표에서 읽은 줄</th><th className="pr-2">학생</th>
+                        <th className="py-2 pr-2 min-w-[11rem]">표에서 읽은 줄</th><th className="pr-2">학생</th>
                         <th className="pr-2 text-right">벌금</th><th className="pr-2 text-right">상금</th><th className="text-right">쿠폰</th>
                       </tr>
                     </thead>
@@ -262,12 +262,12 @@ export default function TaxSettlement() {
                         const warnRow = !l.studentId || usedTwice.has(l.studentId);
                         return (
                           <tr key={l.key} className={`border-b border-slate-100 align-top ${l.unsure ? "bg-amber-50" : ""}`}>
-                            <td className="py-2 pr-2">
+                            <td className="py-2 pr-2 min-w-[11rem]">{/* 이름을 뺀 뒤 이 칸이 «1번»만큼 좁아져 칸 글씨가 한 자씩 꺾였다(2026-11-17 배포본 실측) */}
                               <div className="font-semibold text-slate-800">{l.row.no != null ? `${l.row.no}번` : "번호 ?"}</div>
                               <div className="mt-0.5 flex flex-wrap gap-1">
                                 {l.row.cells.length === 0 && <span className="text-xs text-slate-400">빈 줄</span>}
                                 {l.row.cells.map((c, i) => (
-                                  <span key={i} className={`rounded px-1.5 py-0.5 text-xs ${c.sure ? "bg-slate-100 text-slate-700" : "bg-amber-200 text-amber-900"}`} title={c.sure ? "" : "글씨가 애매해요 — 사진과 비교해 주세요"}>
+                                  <span key={i} className={`whitespace-nowrap rounded px-1.5 py-0.5 text-xs ${c.sure ? "bg-slate-100 text-slate-700" : "bg-amber-200 text-amber-900"}`} title={c.sure ? "" : "글씨가 애매해요 — 사진과 비교해 주세요"}>
                                     {c.day} {c.col} {c.text}{c.sure ? "" : " ?"}
                                   </span>
                                 ))}
