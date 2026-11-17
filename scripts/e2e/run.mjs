@@ -1028,7 +1028,7 @@ if (want("tax")) {
       const cell = (day, col, items) => ({ day, col, text: items.map((i) => i.won || i.count).join("+"), sure: true, items });
       const rows = [
         { no: 1, cells: [cell("월", "상금", [{ won: 500 }])] },
-        { no: 2, cells: [cell("화", "벌금", [{ won: 1000 }]), cell("수", "벌금", [{ won: 500, times: 2 }])] },
+        { no: 2, cells: [cell("화", "벌금", [{ won: 1000 }]), { ...cell("수", "벌금", [{ won: 500, times: 2 }]), sure: false }] }, // 노란 칸(애매) — 카드에서 고친다
         { no: 3, cells: [cell("목", "쿠폰", [{ count: 2 }])] },
         { no: 4, cells: [] },
       ];
@@ -1059,32 +1059,38 @@ if (want("tax")) {
       // 앱은 안쪽 칸이 스크롤한다(document 폭은 늘 화면 폭) — 표 자체의 옆 스크롤 상자(.overflow-x-auto)만 빼고, 옆으로 넘치는 칸이 하나라도 있으면 잘린다
       const vw0 = window.innerWidth; const spill = [];
       for (const e of document.querySelectorAll("body *")) {
-        if (e.closest(".overflow-x-auto")) continue;
         const cs = getComputedStyle(e); if (cs.display === "none" || cs.position === "fixed") continue;
-        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(cs.overflowX) && e.clientWidth > 0) { const wide = [...e.querySelectorAll('*')].filter((x) => !x.closest('.overflow-x-auto') && x.getBoundingClientRect().right > vw0 + 1).slice(-3).map((x) => `${x.tagName}.${String(x.className).slice(0, 50)}=${Math.round(x.getBoundingClientRect().right)}`); const chain = []; for (let x = e; x && x !== document.body && chain.length < 5; x = x.parentElement) chain.push(`${x.tagName}.${String(x.className).replace(/\s+/g, ' ').slice(0, 30)}[${getComputedStyle(x).overflowX}]`); spill.push(`${e.tagName} ${e.scrollWidth}/${e.clientWidth} ← ${wide.join(' ; ')} ⟨${chain.join(' < ')}⟩ «${e.innerText.slice(0, 40).replace(/\s+/g, ' ')}»`); }
-        const r = e.getBoundingClientRect(); if (r.width && r.right > vw0 + 1 && !e.closest(".overflow-x-auto")) spill.push(`${e.tagName}.${String(e.className).slice(0, 40)} 오른쪽 ${Math.round(r.right)}`);
+        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(cs.overflowX) && e.clientWidth > 0) { const wide = [...e.querySelectorAll('*')].filter((x) => x.getBoundingClientRect().right > vw0 + 1).slice(-3).map((x) => `${x.tagName}.${String(x.className).slice(0, 50)}=${Math.round(x.getBoundingClientRect().right)}`); const chain = []; for (let x = e; x && x !== document.body && chain.length < 5; x = x.parentElement) chain.push(`${x.tagName}.${String(x.className).replace(/\s+/g, ' ').slice(0, 30)}[${getComputedStyle(x).overflowX}]`); spill.push(`${e.tagName} ${e.scrollWidth}/${e.clientWidth} ← ${wide.join(' ; ')} ⟨${chain.join(' < ')}⟩ «${e.innerText.slice(0, 40).replace(/\s+/g, ' ')}»`); }
+        const r = e.getBoundingClientRect(); if (r.width && r.right > vw0 + 1) spill.push(`${e.tagName}.${String(e.className).slice(0, 40)} 오른쪽 ${Math.round(r.right)}`);
       }
       const vw = window.innerWidth; const btn = [...document.querySelectorAll("button")].find((b) => /정산하기/.test(b.textContent));
       const r = (e) => (e ? e.getBoundingClientRect() : null); const bb = r(btn);
-      const coupon = document.querySelector('[aria-label="3번 쿠폰"]'); if (coupon) coupon.scrollIntoView({ block: "center", inline: "nearest" });
+      const coupon = [...document.querySelectorAll('[aria-label="3번 쿠폰"]')].find((e) => e.offsetParent); if (coupon) coupon.scrollIntoView({ block: "center", inline: "nearest" });
       const cb = r(coupon);
       return { spill: [...new Set(spill)].slice(0, 6), vw, docW: document.documentElement.scrollWidth, bodyW: document.body.scrollWidth, btn: bb && { l: Math.round(bb.left), r: Math.round(bb.right) }, coupon: cb && { l: Math.round(cb.left), r: Math.round(cb.right) } };
     });
     note("tax-phone-layout", lay);
     await shot(page, "tax-phone");
+    if (SHOTS) { await page.locator('[data-tax-card="2"]').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${OUT}/tax-phone-cards.png` }); }
     expect(lay.spill.length === 0, `화면 밖으로 넘치는 칸 — 오른쪽이 잘린다: ${lay.spill.join(" | ")}`);
     expect(lay.docW <= lay.vw + 1 && lay.bodyW <= lay.vw + 1, `쪽이 화면보다 넓다(가로 ${lay.docW}/${lay.vw}) — 오른쪽이 잘린다`);
     expect(lay.btn && lay.btn.l >= 0 && lay.btn.r <= lay.vw + 1, `«정산하기» 단추가 화면 밖 ${JSON.stringify(lay.btn)}`);
     expect(lay.coupon && lay.coupon.l >= 0 && lay.coupon.r <= lay.vw + 1, `3번 쿠폰 칸이 화면 밖 ${JSON.stringify(lay.coupon)}`);
     // 보낸 사진: 이름 칸이 칠해진 사진만 나갔는가(가짜 응답이 받은 것을 잰다 — 비어 있지 않아야 한다)
     expect(sentImage.length > 1000, "판독으로 보낸 사진이 비었다");
+    // 노란 칸: 카드에 안내가 보이고, 2번 벌금 합계를 사진대로(3,000) 고치면 그 값이 들어간다
+    const hint = await page.evaluate(() => { const c = document.querySelector('[data-tax-card="2"]'); return c ? { hint: /노란 칸은 글씨가 애매해요/.test(c.innerText), yellow: !!c.querySelector(".bg-amber-200") } : null; });
+    note("tax-unsure", hint);
+    expect(hint && hint.hint && hint.yellow, `노란 칸 안내 없음 ${JSON.stringify(hint)}`);
+    const fine2 = page.locator('[data-tax-card="2"] input[aria-label="2번 벌금"]');
+    await fine2.fill("3000");
     const b2 = (await userDoc(st.students[1].uid)).cash, c3 = (await userDoc(st.students[2].uid)).coupons || 0;
     await page.getByRole("button", { name: /정산하기/ }).click();
     await confirmModal(page);
     await waitFor(async () => (await userDoc(st.students[1].uid)).cash !== b2, { timeout: 20000, msg: "2번 벌금 반영" });
     const a2 = (await userDoc(st.students[1].uid)).cash, a3 = (await userDoc(st.students[2].uid)).coupons || 0;
     note("tax-applied", { fine2: b2 - a2, coupon3: a3 - c3 });
-    expect(b2 - a2 === 2000, `2번 벌금 ${b2 - a2}(기대 2000)`);
+    expect(b2 - a2 === 3000, `2번 벌금 ${b2 - a2}(기대 고친 값 3000)`);
   });
 }
 

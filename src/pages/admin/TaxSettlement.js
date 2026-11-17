@@ -63,13 +63,13 @@ const weekLabel = () => {
 const toInt = (v) => { const t = String(v).trim(); if (t === "") return 0; if (!/^[\d,]+$/.test(t)) return null; const n = Number(t.replace(/,/g, "")); return Number.isSafeInteger(n) ? n : null; };
 const HOW = { no: "", pick: "", nono: "번호를 못 읽었어요 — 학생을 골라 주세요", none: "이 번호 학생이 없어요 — 골라 주세요", many: "같은 번호 학생이 여럿 — 골라 주세요", dup: "같은 번호가 위에 있음 — 골라 주세요" };
 
-function MoneyInput({ value, onChange, label, unit = "원" }) {
+function MoneyInput({ value, onChange, label, unit = "원", wide = false }) {
   return (
-    <label className="flex items-center gap-1">
+    <label className="flex min-w-0 items-center gap-1">
       <span className="sr-only">{label}</span>
       <input
         inputMode="numeric"
-        className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right tabular-nums"
+        className={`${wide ? "w-full min-w-0" : "w-28"} rounded-lg border border-slate-300 px-2 py-1 text-right tabular-nums`}
         value={value ? value.toLocaleString() : ""}
         placeholder="0"
         onChange={(e) => { const n = toInt(e.target.value); if (n !== null) onChange(n); }}
@@ -250,7 +250,45 @@ export default function TaxSettlement() {
                   <span className="font-semibold text-slate-700">정산 이름</span>
                   <input className="flex-1 rounded-lg border border-slate-300 px-2 py-1" value={label} maxLength={40} onChange={(e) => setLabel(e.target.value)} />
                 </label>
-                <div className="overflow-x-auto">
+                {/* 휴대폰 세로: 줄마다 카드 — 표는 옆으로 밀어야 금액 칸이 보여 «오른쪽이 잘린다»로 보였다(2026-11-17 사용자 2차). 옆 스크롤 0 */}
+                <div className="space-y-3 sm:hidden">
+                  {lines.map((l) => {
+                    const warnRow = !l.studentId || usedTwice.has(l.studentId);
+                    return (
+                      <div key={l.key} data-tax-card={l.row.no ?? "?"} className={`rounded-xl border p-3 ${l.unsure ? "border-amber-300 bg-amber-50" : "border-slate-200"}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-base font-bold text-slate-800">{l.row.no != null ? `${l.row.no}번` : "번호 ?"}</div>
+                          <select
+                            className={`min-w-0 max-w-[60%] flex-1 rounded-lg border px-2 py-1.5 ${warnRow ? "border-amber-400 bg-amber-50" : "border-slate-300"}`}
+                            value={l.studentId || ""}
+                            onChange={(e) => setLine(l.key, { studentId: e.target.value || null, how: e.target.value ? "pick" : "nono" })}
+                            aria-label={`${l.row.no ?? "?"}번 줄 학생 고르기`}
+                          >
+                            <option value="">— 고르기 —</option>
+                            {students.map((s) => <option key={s.id} value={s.id}>{nameOf(s.id)}</option>)}
+                          </select>
+                        </div>
+                        {(HOW[l.how] || usedTwice.has(l.studentId)) && <div className="mt-1 text-xs text-amber-700">{usedTwice.has(l.studentId) ? "같은 학생이 두 줄에 있음" : HOW[l.how]}</div>}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {l.row.cells.length === 0 && <span className="text-xs text-slate-400">빈 줄</span>}
+                          {l.row.cells.map((c, i) => (
+                            <span key={i} className={`rounded px-1.5 py-0.5 text-xs ${c.sure ? "bg-slate-100 text-slate-700" : "bg-amber-200 text-amber-900"}`}>{c.day} {c.col} {c.text}{c.sure ? "" : " ?"}</span>
+                          ))}
+                        </div>
+                        {l.unsure && <p className="mt-1.5 text-xs text-amber-800">노란 칸은 글씨가 애매해요 — 위 사진의 그 칸과 비교해 <b>아래 합계를 고쳐 주세요</b>(고친 숫자 그대로 들어가요).</p>}
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                          {[["벌금", "fine", "원"], ["상금", "prize", "원"], ["쿠폰", "coupon", "개"]].map(([name, k, unit]) => (
+                            <div key={k} className="min-w-0">
+                              <div className="mb-0.5 text-[11px] font-semibold text-slate-500">{name}</div>
+                              <MoneyInput wide label={`${l.row.no ?? "?"}번 ${name}`} unit={unit} value={l[k]} onChange={(v) => setLine(l.key, { [k]: v })} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden overflow-x-auto sm:block">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
