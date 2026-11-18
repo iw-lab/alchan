@@ -1049,6 +1049,16 @@ if (want("tax")) {
       const s = document.createElement("canvas"); s.width = H; s.height = W; const t = s.getContext("2d"); t.translate(H, 0); t.rotate(Math.PI / 2); t.drawImage(c, 0, 0);
       return s.toDataURL("image/png").split(",")[1];
     });
+    // 2026-11-18 «정산표 양식(이름 뺀) 한글 파일 + 예시» — 링크가 있고, 받은 파일이 진짜 한글 파일(HWP=OLE 머리·HWPX=zip)인지
+    const form = await page.evaluate(async () => {
+      const hwp = document.querySelector("[data-tax-form-hwp]"); if (!hwp) return null;
+      const head = async (u) => { const r = await fetch(u); const b = new Uint8Array(await r.arrayBuffer()); return { ok: r.ok, len: b.length, sig: [...b.slice(0, 4)].map((x) => x.toString(16).padStart(2, "0")).join("") }; };
+      const img = document.querySelector("[data-tax-form] img");
+      return { hwp: await head(hwp.getAttribute("href")), hwpx: await head("/forms/tax-sheet.hwpx"), img: img ? (await fetch(img.getAttribute("src"))).ok : false, name: hwp.getAttribute("download") };
+    });
+    note("tax-form", form);
+    if (SHOTS) { await page.locator("[data-tax-form] summary").click(); await page.locator("[data-tax-form] img").scrollIntoViewIfNeeded(); await page.waitForTimeout(400); await page.locator("[data-tax-form]").screenshot({ path: `${OUT}/tax-form.png` }); await page.locator("[data-tax-form] summary").click(); }
+    expect(form && form.hwp.ok && form.hwp.sig === "d0cf11e0" && form.hwpx.ok && form.hwpx.sig.startsWith("504b") && form.img && form.name === "세금정산표.hwp", `세금정산 양식 받기가 깨졌다 ${JSON.stringify(form)}`);
     // 2026-11-18 «사진 바로 찍기»: 카메라 칸(capture=environment)과 앨범 칸이 따로 — 카메라 칸이 정말 카메라를 여는지 속성으로 본다
     expect(await page.locator("[data-tax-camera]").getAttribute("capture") === "environment", "세금정산 «사진 찍기»가 카메라를 바로 열지 않는다(capture 없음)");
     expect(await page.getByRole("button", { name: /^사진 찍기$/ }).count() === 1 && await page.getByRole("button", { name: /^앨범에서 고르기$/ }).count() === 1, "세금정산 «사진 찍기»·«앨범에서 고르기» 버튼이 둘 다 있어야 한다");

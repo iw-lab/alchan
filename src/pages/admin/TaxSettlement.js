@@ -234,6 +234,24 @@ export default function TaxSettlement() {
           <li>«정산하기»를 누르면 벌금은 국고로, 상금은 국고에서 학생에게, 쿠폰은 학생에게 들어가요. 모두 거래내역에 남아요.</li>
           {!isTeacher && <li data-tax-chief-note><b>국세청장 본인 줄</b>은 넣지 않고 건너뛰어요 — 본인 것은 선생님이 넣어요.</li>}
         </ol>
+        {/* 2026-11-18 «세금정산 표도 이름 빼고 비슷하게 한글 파일로 넣어줘 — 예시로 이렇게 올리라고» */}
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" data-tax-form>
+          <div className="flex flex-wrap items-center gap-2">
+            <b className="text-slate-800">정산표 양식</b>
+            <a href="/forms/tax-sheet.hwp" download="세금정산표.hwp" className="rounded-md border border-indigo-200 bg-white px-3 py-1.5 font-semibold text-indigo-700 hover:bg-indigo-50" data-tax-form-hwp>한글 파일 받기(.hwp)</a>
+            <a href="/forms/tax-sheet.hwpx" download="세금정산표.hwpx" className="text-xs text-slate-500 underline">.hwpx</a>
+            <span className="text-xs text-slate-500">가로 A4 한 장 · 25명 · 이름 칸은 비어 있어요(반 명단을 넣어 인쇄)</span>
+          </div>
+          <details className="mt-2">
+            <summary className="cursor-pointer font-semibold text-slate-800">이렇게 찍어 올려요 (예시 보기)</summary>
+            <img src="/forms/tax-sheet-example.webp" alt="세금정산표를 찍어 올린 예시 — 이름 칸은 앱이 검게 가렸다" width={900} height={637} loading="lazy" className="mt-2 w-full max-w-xl rounded-lg border border-slate-200" />
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              <li><b>표 전체</b>가 화면에 꽉 차게, 위에서 <b>똑바로</b> 밝은 곳에서 찍어요. 거꾸로·옆으로 찍어도 괜찮아요.</li>
+              <li>금액은 «10만», 여러 번이면 «2x 50만», 여러 개면 «10만, 30만»처럼 적어요. 쿠폰은 «2개»처럼 개수로.</li>
+              <li>이름 칸은 앱이 검게 가려요(위 예시의 검은 띠). <b>가린 자리가 이름 칸이 맞는지</b> 꼭 보고 체크해요.</li>
+            </ul>
+          </details>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" data-tax-camera onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
           <input ref={fileRef} type="file" accept="image/*" className="hidden" data-tax-gallery onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
