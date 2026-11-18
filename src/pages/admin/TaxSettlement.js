@@ -5,7 +5,7 @@
 //   ③ «정산하기» → 서버 applyTaxSettlement 가 학생마다 벌금(→국고)·상금(국고→)·쿠폰을 넣는다.
 //   손글씨 판독은 틀릴 수 있다 — 그래서 ②를 건너뛰는 길은 없다.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, ReceiptText, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Camera, ImageIcon, ReceiptText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { functions, httpsCallable } from "../../firebase";
 import { PageHeader, Card, Button } from "../../components/ui/index";
@@ -98,6 +98,7 @@ export default function TaxSettlement() {
   const submittingRef = useRef(false);
   const idemKeyRef = useRef(null);                // 같은 정산을 다시 눌러도 이미 넣은 학생은 건너뛴다 — 성공·새 사진 때만 새로
   const fileRef = useRef(null);
+  const camRef = useRef(null); // 휴대폰·태블릿에서 바로 카메라를 연다(capture) — 2026-11-18 «찍은 사진 고를 수만 있네»
   const photoNoRef = useRef(0);                   // 사진마다 번호 — 늦게 온 판독 응답이 새 사진 화면을 덮지 않게(8way codex·gemini)
 
   const students = useMemo(
@@ -226,8 +227,10 @@ export default function TaxSettlement() {
           {!isTeacher && <li data-tax-chief-note><b>국세청장 본인 줄</b>은 넣지 않고 건너뛰어요 — 본인 것은 선생님이 넣어요.</li>}
         </ol>
         <div className="flex flex-wrap items-center gap-2">
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-          <Button icon={Camera} variant="outline" disabled={reading || applying || preparing} loading={preparing} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "사진 찍기·고르기"}</Button>
+          <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" data-tax-camera onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" data-tax-gallery onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
+          <Button icon={Camera} variant={photo ? "outline" : "primary"} disabled={reading || applying || preparing} loading={preparing} onClick={() => camRef.current?.click()}>{photo ? "다시 찍기" : "사진 찍기"}</Button>
+          <Button icon={ImageIcon} variant="outline" disabled={reading || applying || preparing} onClick={() => fileRef.current?.click()}>{photo ? "다른 사진 고르기" : "앨범에서 고르기"}</Button>
           <Button onClick={read} disabled={!canRead} loading={reading}>{reading ? "읽는 중… (30초~1분)" : "사진 읽기"}</Button>
           <span className="text-xs text-slate-500">이름 칸은 휴대폰 안에서 가린 뒤, 가린 사진만 판독(Google Gemini, 국외 서버)으로 보내요. 사진은 저장하지 않아요.</span>
         </div>

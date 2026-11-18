@@ -1049,7 +1049,10 @@ if (want("tax")) {
       const s = document.createElement("canvas"); s.width = H; s.height = W; const t = s.getContext("2d"); t.translate(H, 0); t.rotate(Math.PI / 2); t.drawImage(c, 0, 0);
       return s.toDataURL("image/png").split(",")[1];
     });
-    await page.locator('input[type="file"]').setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+    // 2026-11-18 «사진 바로 찍기»: 카메라 칸(capture=environment)과 앨범 칸이 따로 — 카메라 칸이 정말 카메라를 여는지 속성으로 본다
+    expect(await page.locator("[data-tax-camera]").getAttribute("capture") === "environment", "세금정산 «사진 찍기»가 카메라를 바로 열지 않는다(capture 없음)");
+    expect(await page.getByRole("button", { name: /^사진 찍기$/ }).count() === 1 && await page.getByRole("button", { name: /^앨범에서 고르기$/ }).count() === 1, "세금정산 «사진 찍기»·«앨범에서 고르기» 버튼이 둘 다 있어야 한다");
+    await page.locator("[data-tax-camera]").setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
     await page.getByRole("button", { name: /^사진 읽기$/ }).waitFor({ timeout: 15000 });
     await waitFor(async () => page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled(), { msg: "이름 칸 자동 가리기" });
     await page.getByRole("button", { name: /^사진 읽기$/ }).click();
