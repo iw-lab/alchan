@@ -37,7 +37,7 @@ export function fillPoly(canvas, poly, scale) {
 }
 
 /**
- * 파일 → { canvas, auto } — auto=true 면 이름 칸을 찾아 칠했다. false 면 못 찾았다(선생님이 손으로 칠해야 보낼 수 있다).
+ * 파일 → { canvas, auto, plain } — auto=true 면 이름 칸을 찾아 칠했다(plain = 칠하기 전 픽셀, 기기 밖으로 안 나간다). false 면 못 찾았다(선생님이 손으로 칠해야 보낼 수 있다).
  * 가로 사진은 그대로·거꾸로(180°는 찾기가 알아서 본다), 세로 사진은 90° 눕혀 본다. 못 찾으면 나머지 방향도 본다.
  */
 export async function maskNamesInPhoto(file) {
@@ -50,9 +50,14 @@ export async function maskNamesInPhoto(file) {
       if (!first) first = c;
       const { gray, w, h } = grayOf(c);
       const r = findNameColumn(gray, w, h);
-      if (r.ok) { fillPoly(c, r.poly, c.width / w); return { canvas: c, auto: true }; }
+      if (r.ok) {
+        // 가리기 전 모습 — 자동으로 고른 자리가 틀렸을 때 선생님이 지우고 직접 칠할 수 있게(2026-11-18 «이름을 잘못 가리거나 반대쪽을 가려»)
+        const plain = c.getContext("2d").getImageData(0, 0, c.width, c.height);
+        fillPoly(c, r.poly, c.width / w);
+        return { canvas: c, auto: true, plain };
+      }
     }
-    return { canvas: first, auto: false };
+    return { canvas: first, auto: false, plain: null };
   } finally {
     bmp.close?.();
   }

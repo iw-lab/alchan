@@ -1054,7 +1054,22 @@ if (want("tax")) {
     expect(await page.getByRole("button", { name: /^사진 찍기$/ }).count() === 1 && await page.getByRole("button", { name: /^앨범에서 고르기$/ }).count() === 1, "세금정산 «사진 찍기»·«앨범에서 고르기» 버튼이 둘 다 있어야 한다");
     await page.locator("[data-tax-camera]").setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
     await page.getByRole("button", { name: /^사진 읽기$/ }).waitFor({ timeout: 15000 });
-    await waitFor(async () => page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled(), { msg: "이름 칸 자동 가리기" });
+    // 2026-11-18 «이름을 잘못 가리거나 반대쪽을 가려»: 자동으로 가렸어도 선생님이 눈으로 확인(체크)하기 전엔 못 보낸다
+    await page.locator("[data-tax-confirm] input").waitFor({ timeout: 15000 });
+    expect(!(await page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled()), "이름 가림을 확인(체크)하기 전인데 «사진 읽기»가 켜져 있다");
+    // «지우고 직접 칠하기» → 검은 띠가 지워지고(가리기 전 모습), 칠하기 전엔 체크도 못 한다
+    const blackBefore = await page.evaluate(() => { const c = document.querySelector("canvas"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] === 0) n++; return n; });
+    await page.locator("[data-tax-clear-auto]").click();
+    const blackAfter = await page.evaluate(() => { const c = document.querySelector("canvas"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] === 0) n++; return n; });
+    note("tax-clear-auto", { blackBefore, blackAfter });
+    expect(blackBefore > 1000 && blackAfter < blackBefore / 10, `«지우고 직접 칠하기»가 검은 띠를 안 지웠다 ${blackBefore}→${blackAfter}`);
+    expect(await page.locator("[data-tax-confirm] input").isDisabled(), "칠하기 전인데 «확인했어요» 체크가 켜진다");
+    // 다시 같은 사진을 골라 자동 가림으로 진행
+    await page.locator("[data-tax-camera]").setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+    await waitFor(async () => (await page.locator("[data-tax-clear-auto]").count()) === 1, { msg: "다시 고른 사진 자동 가림" });
+    if (SHOTS) { await page.locator("[data-tax-confirm]").scrollIntoViewIfNeeded(); await page.screenshot({ path: `${OUT}/tax-confirm.png` }); }
+    await page.locator("[data-tax-confirm] input").check();
+    await waitFor(async () => page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled(), { msg: "이름 칸 자동 가리기 + 확인 체크" });
     await page.getByRole("button", { name: /^사진 읽기$/ }).click();
     await page.getByRole("button", { name: /정산하기/ }).waitFor({ timeout: 15000 });
     await settle(page);

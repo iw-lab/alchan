@@ -87,6 +87,7 @@ export default function TaxSettlement() {
   const isTaxChief = useAppointedJobTitle(userDoc, "국세청 직원");
   const [photo, setPhoto] = useState(null);       // { canvas(이름 가린 것), auto(자동으로 가렸나), snap(가린 직후 모습) }
   const [strokes, setStrokes] = useState(0);      // 손으로 칠한 횟수
+  const [checked, setChecked] = useState(false);  // 선생님이 «이름이 하나도 안 보인다»를 눈으로 확인했나 — 자동 가리기가 틀린 자리를 칠해도 이름이 그대로 나가지 않게(2026-11-18)
   const [painting, setPainting] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [reading, setReading] = useState(false);
@@ -120,10 +121,10 @@ export default function TaxSettlement() {
     if (!/^image\//.test(file.type)) { toast.error("사진 파일을 골라 주세요."); return; }
     setPreparing(true);
     try {
-      const { canvas, auto } = await maskNamesInPhoto(file);
+      const { canvas, auto, plain } = await maskNamesInPhoto(file);
       const snap = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
       photoNoRef.current += 1;
-      setPhoto({ canvas, auto, snap }); setStrokes(0); setPainting(!auto);
+      setPhoto({ canvas, auto, snap, plain }); setStrokes(0); setPainting(!auto); setChecked(false);
       setSheet(null); setLines([]); setResult(null); idemKeyRef.current = null;
       if (!auto) toast.error("이름 칸을 자동으로 못 찾았어요. 사진에서 이름 칸을 손가락으로 칠해 주세요.");
     } catch {
@@ -136,6 +137,7 @@ export default function TaxSettlement() {
   const read = useCallback(async () => {
     if (!photo || reading) return;
     if (!photo.auto && strokes === 0) { toast.error("먼저 이름 칸을 칠해 주세요."); return; }
+    if (!checked) { toast.error("사진에서 이름이 하나도 안 보이는지 확인하고 체크해 주세요."); return; }
     setReading(true); setResult(null); setPainting(false);
     const myPhoto = photoNoRef.current;
     try {
@@ -150,11 +152,17 @@ export default function TaxSettlement() {
     } finally {
       setReading(false);
     }
-  }, [photo, reading, students, strokes]);
+  }, [photo, reading, students, strokes, checked]);
 
   const onStroke = useCallback(() => setStrokes((n) => n + 1), []);
-  const undoPaint = () => { if (!photo) return; photo.canvas.getContext("2d").putImageData(photo.snap, 0, 0); setStrokes(0); };
-  const canRead = !!photo && (photo.auto || strokes > 0);
+  const undoPaint = () => { if (!photo) return; photo.canvas.getContext("2d").putImageData(photo.snap, 0, 0); setStrokes(0); setChecked(false); };
+  // 자동으로 가린 자리가 틀렸다 — 검은 띠를 지우고(가리기 전 모습으로) 선생님이 직접 칠한다
+  const clearAutoMask = () => {
+    if (!photo?.plain) return;
+    photo.canvas.getContext("2d").putImageData(photo.plain, 0, 0);
+    setPhoto({ ...photo, auto: false, snap: photo.plain, plain: null }); setStrokes(0); setPainting(true); setChecked(false);
+  };
+  const canRead = !!photo && (photo.auto || strokes > 0) && checked;
 
   const setLine = (key, patch) => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
@@ -242,7 +250,7 @@ export default function TaxSettlement() {
           <Card className="lg:sticky lg:top-3 self-start">
             <div className={`mb-2 rounded-lg p-2 text-sm ${photo.auto || strokes ? "bg-emerald-50 text-emerald-900" : "bg-amber-50 text-amber-900"}`}>
               {photo.auto
-                ? <>이름 칸을 <b>검게 가렸어요.</b> 이 사진만 보내요. 이름이 조금이라도 보이면 «더 칠하기»로 칠해 주세요.</>
+                ? <>이름 칸을 <b>자동으로 검게 가렸어요.</b> 가린 자리가 <b>이름 칸이 맞는지</b> 꼭 보세요. 이름이 조금이라도 보이면 «더 칠하기», 엉뚱한 칸을 가렸으면 «지우고 직접 칠하기».</>
                 : strokes ? <>칠한 사진만 보내요. 이름이 다 가려졌는지 확인하세요.</>
                   : <><b>이름 칸을 자동으로 못 찾았어요.</b> 사진에서 이름 칸을 손가락으로 칠해 주세요 — 칠해야 보낼 수 있어요.</>}
             </div>
@@ -250,7 +258,12 @@ export default function TaxSettlement() {
             <div className="mt-2 flex flex-wrap gap-2">
               <Button size="sm" variant={painting ? "primary" : "outline"} disabled={reading} onClick={() => setPainting((v) => !v)}>{painting ? "칠하기 끝" : "더 칠하기"}</Button>
               {strokes > 0 && <Button size="sm" variant="outline" disabled={reading} onClick={undoPaint}>칠한 것 되돌리기</Button>}
+              {photo.auto && photo.plain && <Button size="sm" variant="outline" disabled={reading} onClick={clearAutoMask} data-tax-clear-auto>가린 자리가 틀렸어요 — 지우고 직접 칠하기</Button>}
             </div>
+            <label className="mt-3 flex items-start gap-2 rounded-lg border border-slate-200 p-2 text-sm text-slate-800" data-tax-confirm>
+              <input type="checkbox" className="mt-0.5 h-5 w-5 flex-none" checked={checked} disabled={reading || (!photo.auto && strokes === 0)} onChange={(e) => setChecked(e.target.checked)} />
+              <span><b>사진을 보고 확인했어요:</b> 이름 칸이 검게 가려졌고, 학생 이름이 하나도 안 보여요. (체크해야 «사진 읽기»가 켜져요)</span>
+            </label>
           </Card>
 
           <div className="min-w-0">
