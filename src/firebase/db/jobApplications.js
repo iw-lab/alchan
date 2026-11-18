@@ -19,6 +19,14 @@ import {
 import { db } from "../firebaseConfig";
 import { logger } from "../../utils/logger";
 
+// 학급 직업 목록(한 번 읽기) — useAppointedJobTitle 이 캐시(jobs_{classCode})가 없을 때 쓴다.
+//   화면·훅이 firebase/firestore 를 직접 부르지 않게 여기로 옮겼다(2026-11-18 CI 부채 천장 +1 해소).
+export async function fetchClassJobs(classCode) {
+  if (!classCode) return [];
+  const snap = await getDocs(query(collection(db, "jobs"), where("classCode", "==", classCode)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 const COLLECTION = "jobApplications";
 const DEFAULT_LIMIT = 100;
 
@@ -96,3 +104,4 @@ export const fetchPendingJobIds = async (studentId, classCode) => {
     return null;
   }
 };
+

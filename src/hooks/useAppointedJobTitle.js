@@ -2,8 +2,7 @@
 //   학생이 스스로 고른 직업(selectedJobIds)은 보지 않는다 — 대통령 같은 임명 전용 권력직 게이팅용.
 //   학급 jobs 는 Dashboard 가 `jobs_{classCode}` 로 캐싱한 것을 읽기만 하고(쓰지 않는다 — AlchanSidebar 주석), 없으면 한 번 읽는다.
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { fetchClassJobs } from "../firebase/db/jobApplications";
 import globalCacheService from "../services/globalCacheService";
 import { toJobIdArray } from "../utils/jobPermissions";
 
@@ -22,8 +21,8 @@ export default function useAppointedJobTitle(userDoc, title) {
     let cancelled = false;
     (async () => {
       try {
-        const snap = await getDocs(query(collection(db, "jobs"), where("classCode", "==", classCode)));
-        if (!cancelled) setHas(pick(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+        const jobs = await fetchClassJobs(classCode);
+        if (!cancelled) setHas(pick(jobs));
       } catch { /* 표시용 — 못 읽으면 숨긴다 */ }
     })();
     return () => { cancelled = true; };
