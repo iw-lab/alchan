@@ -70,33 +70,57 @@ export function verticalLines(dark, w, h) {
  *   ② 칸 폭의 중앙값 m = 금액 칸 폭(칸 대부분이 금액 칸)
  *   ③ 정방향: 좁은 칸 → 이름 칸 → 그 뒤로 m 쯤 되는 칸이 10개 넘게  /  거꾸로(180°): 그 반대
  */
-export function pickNameColumn(lines) {
-  if (lines.length < 12) return null;
+export function nameCandidates(lines) {
+  if (lines.length < 12) return [];
   const vs = lines.map((l) => l.votes).sort((a, b) => b - a);
   const ref = vs[Math.floor(Math.min(vs.length, 16) / 2)];
   const strong = lines.filter((l) => l.votes >= ref * 0.68);
-  if (strong.length < 12) return null;
+  if (strong.length < 12) return [];
   const gaps = strong.slice(1).map((l, i) => l.x0 - strong[i].x0);
   const m = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
   const isMoney = (g) => g >= m * 0.75 && g <= m * 1.3;
   const isNarrow = (g) => g >= m * 0.35 && g <= m * 0.8;
   const isName = (g) => g >= m * 0.6 && g <= m * 2.4;
-  let best = null;
+  const out = [];
   for (let i = 0; i + 1 < gaps.length; i++) {
     // 정방향: gaps[i]=번호, gaps[i+1]=이름, 뒤로 금액 칸
     if (isNarrow(gaps[i]) && isName(gaps[i + 1])) {
-      const after = gaps.slice(i + 2, i + 17);
-      const n = after.filter(isMoney).length;
-      if (n >= 10 && (!best || n > best.n)) best = { left: strong[i + 1], right: strong[i + 2], n };
+      const n = gaps.slice(i + 2, i + 17).filter(isMoney).length;
+      if (n >= 10) out.push({ left: strong[i + 1], right: strong[i + 2], no: [strong[i], strong[i + 1]], n });
     }
     // 거꾸로: gaps[i]=이름, gaps[i+1]=번호, 앞으로 금액 칸
     if (isName(gaps[i]) && isNarrow(gaps[i + 1])) {
-      const before = gaps.slice(Math.max(0, i - 15), i);
-      const n = before.filter(isMoney).length;
-      if (n >= 10 && (!best || n > best.n)) best = { left: strong[i], right: strong[i + 1], n };
+      const n = gaps.slice(Math.max(0, i - 15), i).filter(isMoney).length;
+      if (n >= 10) out.push({ left: strong[i], right: strong[i + 1], no: [strong[i + 1], strong[i + 2]], n });
     }
   }
+  return out;
+}
+/** 무늬만 보고 고르기(금액 칸 수가 가장 많은 후보) — 글씨 확인은 findNameColumn 이 한다 */
+export function pickNameColumn(lines) {
+  let best = null;
+  for (const c of nameCandidates(lines)) if (!best || c.n > best.n) best = c;
   return best;
+}
+
+/**
+ * 두 선 사이 칸에 «글씨가 있는 줄»의 비율(0~1). 이름 칸은 거의 모든 줄에 이름이 인쇄돼 있고,
+ * 표 끝 바깥 선(종이 가장자리 그림자·바깥 테두리)이 만든 가짜 칸이나 금액 칸은 대부분 비어 있다.
+ *   2026-11-18 사용자 사진: 거꾸로 찍힌 표 + 금액 쪽 끝 바깥 선 → 무늬가 같은 후보 둘이 동점이라 먼저 찾은
+ *   가짜(금액 쪽 끝)를 가리고 이름은 그대로였다. 무늬가 같으면 «글씨가 찬 칸»이 이름 칸이다.
+ */
+export function inkCoverage(dark, w, h, left, right) {
+  const cy = h / 2; const bands = 24; const bh = h / bands; let inked = 0;
+  for (let b = 0; b < bands; b++) {
+    let c = 0;
+    for (let y = Math.floor(b * bh); y < Math.floor((b + 1) * bh); y++) {
+      const xl = left.x0 + (y - cy) * left.t; const xr = right.x0 + (y - cy) * right.t;
+      const pad = Math.max(2, (xr - xl) * 0.15);
+      for (let x = Math.ceil(xl + pad); x < xr - pad; x++) if (x >= 0 && x < w) c += dark[y * w + x];
+    }
+    if (c >= 3) inked++;
+  }
+  return inked / bands;
 }
 
 /**
@@ -135,12 +159,15 @@ export function traceLine(dark, w, h, line) {
 export function findNameColumn(gray, w, h) {
   const dark = darkMap(gray, w, h);
   const lines = verticalLines(dark, w, h);
-  const col = pickNameColumn(lines);
+  // 무늬가 맞는 후보마다 이름 글씨가 찬 정도를 재서 가장 찬 칸을 고른다(같으면 금액 칸이 많은 쪽).
+  //   글씨가 거의 없는 칸뿐이면 못 찾은 것으로 — 엉뚱한 칸을 «가렸어요»라고 하지 않는다.
+  const scored = nameCandidates(lines).map((c) => ({ ...c, ink: inkCoverage(dark, w, h, c.left, c.right) }));
+  const col = scored.filter((c) => c.ink >= 0.3).sort((a, b) => b.ink - a.ink || b.n - a.n)[0];
   if (!col) return { ok: false, lines };
-  const flipped = col.left.x0 > (lines[0].x0 + lines[lines.length - 1].x0) / 2; // 거꾸로 찍힘 — 번호 칸이 오른쪽
+  const flipped = col.no[0].x0 >= col.right.x0; // 거꾸로 찍힘 — 번호 칸이 이름 칸 오른쪽(가운데 기준으로 재면 바깥 선에 속는다)
   const padNo = Math.max(2, Math.round((col.right.x0 - col.left.x0) * 0.05));
   const L = traceLine(dark, w, h, col.left); const R = traceLine(dark, w, h, col.right);
   const lp = flipped ? 1 : -padNo; const rp = flipped ? padNo : -1; // 번호 쪽 바깥으로 padNo, 금액 쪽 안으로 1px
   const poly = [...L.map(([y, x]) => [x + lp, y]), ...R.reverse().map(([y, x]) => [x + rp, y])];
-  return { ok: true, poly, lines, moneyCols: col.n };
+  return { ok: true, poly, lines, moneyCols: col.n, ink: col.ink };
 }
