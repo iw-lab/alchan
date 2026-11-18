@@ -1,6 +1,6 @@
 // 정산표 사진 → (휴대폰 안에서) 이름 칸을 검게 칠한 캔버스. 이 캔버스만 서버(→ Google 판독)로 나간다.
 //   이름 칸 찾기는 nameMask.js(순수 계산). 세로로 찍은 사진은 눕혀서 본다(표는 가로가 긴 양식).
-import { findNameColumn } from "./nameMask";
+import { findNameColumn, shrinkDark } from "./nameMask";
 
 const MAX = 2000;   // 보낼 사진 긴 변
 const PROBE = 1000; // 이름 칸 찾을 때 쓰는 폭(빠르게)
@@ -12,6 +12,7 @@ function drawRotated(bmp, deg) {
   const side = deg % 180 !== 0;
   c.width = side ? h : w; c.height = side ? w : h;
   const g = c.getContext("2d");
+  g.imageSmoothingQuality = "high";
   g.translate(c.width / 2, c.height / 2); g.rotate((deg * Math.PI) / 180);
   g.drawImage(bmp, -w / 2, -h / 2, w, h);
   g.setTransform(1, 0, 0, 1, 0, 0); // 돌리기 변환을 남기면 뒤에 칠하는 검은 띠가 밀려 이름이 그대로 보인다(2026-11-17 실측)
@@ -19,14 +20,13 @@ function drawRotated(bmp, deg) {
 }
 
 function grayOf(canvas) {
-  const w = PROBE; const h = Math.round((canvas.height * PROBE) / canvas.width);
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
-  const g = c.getContext("2d", { willReadFrequently: true });
-  g.drawImage(canvas, 0, 0, w, h);
-  const d = g.getImageData(0, 0, w, h).data;
-  const out = new Uint8Array(w * h);
-  for (let i = 0, j = 0; j < out.length; i += 4, j++) out[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
-  return { gray: out, w, h };
+  // 보낼 크기(긴 변 2000)의 흑백을 통째로 읽고, «어두운 점 남기기»로 폭 1000 으로 줄인다 —
+  //   캔버스 축소(평균·건너뛰기)는 카메라 원본의 가는 칸 선을 지워 이름 칸을 못 찾거나 엉뚱한 칸을 골랐다(2026-11-18)
+  const W = canvas.width; const H = canvas.height;
+  const d = canvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+  const full = new Uint8Array(W * H);
+  for (let i = 0, j = 0; j < full.length; i += 4, j++) full[j] = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+  return W <= PROBE ? { gray: full, w: W, h: H } : shrinkDark(full, W, H, PROBE);
 }
 
 export function fillPoly(canvas, poly, scale) {

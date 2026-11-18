@@ -11,19 +11,21 @@ let fail = 0;
 try {
   const p = await b.newPage();
   await p.goto(URL, { waitUntil: "domcontentloaded" });
-  for (const portrait of [false, true]) {
-    const r = await p.evaluate(async (portrait) => {
+  // big = 휴대폰 카메라 원본 크기(4000px)·가는 선 — 2026-11-18 «사진 찍기로 하니까 이름을 잘못 가려»: 큰 사진을 빠른 축소로 줄이면
+  //   픽셀을 건너뛰어 가는 칸 선이 통째로 사라졌다(메신저로 받은 작은 사진은 멀쩡). 축소 품질 high 로 고쳤다.
+  for (const [portrait, big] of [[false, false], [true, false], [false, true]]) {
+    const r = await p.evaluate(async ([portrait, big]) => {
       const m = await import("/src/utils/maskPhoto.js");
       // 1600×900 표: 번호(48) · 이름(77) · 금액 15칸(83)
-      const W = 1600; const H = 900; const L = 140;
-      const cols = [L, L + 48, L + 125]; for (let i = 1; i <= 15; i++) cols.push(L + 125 + i * 83);
+      const Z = big ? 2.5 : 1; const W = 1600 * Z; const H = 900 * Z; const L = 140 * Z; const LW = big ? 3 : 3;
+      const cols = [L, L + 48 * Z, L + 125 * Z]; for (let i = 1; i <= 15; i++) cols.push(L + 125 * Z + i * 83 * Z);
       const c = document.createElement("canvas"); c.width = W; c.height = H;
       const g = c.getContext("2d"); g.fillStyle = "#d8d8d8"; g.fillRect(0, 0, W, H);
       g.fillStyle = "#3c3c3c";
-      for (const x of cols) g.fillRect(x, 50, 3, H - 80);
-      for (let y = 50; y < H - 30; y += 38) g.fillRect(cols[0], y, cols[cols.length - 1] - cols[0], 3);
-      g.font = "26px sans-serif";
-      for (let r = 0; r < 21; r++) { g.fillText(String(r + 1), cols[0] + 10, 80 + r * 38); g.fillText("김민재", cols[1] + 4, 80 + r * 38); }
+      for (const x of cols) g.fillRect(Math.round(x), 50 * Z, LW, H - 80 * Z);
+      for (let y = 50 * Z; y < H - 30 * Z; y += 38 * Z) g.fillRect(cols[0], y, cols[cols.length - 1] - cols[0], LW);
+      g.font = `${26 * Z}px sans-serif`;
+      for (let r = 0; r < 21; r++) { g.fillText(String(r + 1), cols[0] + 10 * Z, (80 + r * 38) * Z); g.fillText("김민재", cols[1] + 4 * Z, (80 + r * 38) * Z); }
       let src = c;
       if (portrait) { // 세로로 찍은 사진: 90° 돌린 그림
         src = document.createElement("canvas"); src.width = H; src.height = W;
@@ -33,18 +35,18 @@ try {
       const { canvas, auto } = await m.maskNamesInPhoto(blob);
       const k = canvas.width / W; const gg = canvas.getContext("2d");
       const px = (x, y) => { const d = gg.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data; return (d[0] + d[1] + d[2]) / 3; };
-      const ys = [100, 300, 500, 700];
-      const flip = px(cols[1] + 38, 300) > 40 && px(W - 1 - (cols[1] + 38), H - 300) < 40; // 세로 사진은 어느 쪽으로 눕혔는지 모른다
+      const ys = [100, 300, 500, 700].map((y) => y * Z);
+      const flip = px(cols[1] + 38 * Z, 300 * Z) > 40 && px(W - 1 - (cols[1] + 38 * Z), H - 300 * Z) < 40; // 세로 사진은 어느 쪽으로 눕혔는지 모른다
       const X = (x) => (flip ? W - 1 - x : x); const Y = (y) => (flip ? H - y : y);
       return {
         auto, w: canvas.width, h: canvas.height,
-        name: ys.map((y) => px(X(cols[1] + 38), Y(y))),      // 이름 칸 가운데 → 검정(<40)
-        no: ys.map((y) => px(X(cols[0] + 24), Y(y))),         // 번호 칸 가운데 → 안 검정
-        money: ys.map((y) => px(X(cols[2] + 40), Y(y))),      // 첫 금액 칸 → 안 검정
+        name: ys.map((y) => px(X(cols[1] + 38 * Z), Y(y))),      // 이름 칸 가운데 → 검정(<40)
+        no: ys.map((y) => px(X(cols[0] + 24 * Z), Y(y))),         // 번호 칸 가운데 → 안 검정
+        money: ys.map((y) => px(X(cols[2] + 40 * Z), Y(y))),      // 첫 금액 칸 → 안 검정
       };
-    }, portrait);
+    }, [portrait, big]);
     const ok = r.auto && r.w > r.h && r.name.every((v) => v < 40) && r.no.every((v) => v > 120) && r.money.every((v) => v > 120);
-    console.log(`${ok ? "PASS" : "FAIL"} ${portrait ? "세로 사진" : "가로 사진"} auto=${r.auto} ${r.w}x${r.h} 이름=${r.name.map(Math.round)} 번호=${r.no.map(Math.round)} 금액=${r.money.map(Math.round)}`);
+    console.log(`${ok ? "PASS" : "FAIL"} ${big ? "카메라 크기(4000px) 사진" : portrait ? "세로 사진" : "가로 사진"} auto=${r.auto} ${r.w}x${r.h} 이름=${r.name.map(Math.round)} 번호=${r.no.map(Math.round)} 금액=${r.money.map(Math.round)}`);
     if (!ok) fail++;
   }
 } finally {

@@ -35,7 +35,10 @@ export function verticalLines(dark, w, h) {
   for (let y = 0; y < h; y++) {
     const dy = y - cy;
     for (let x = 0; x < w; x++) {
-      if (!dark[y * w + x]) continue;
+      // 가로로 이어진 어두운 점은 첫 점만 센다 — 선 굵기(1px·2px)와 상관없이 줄마다 선 하나에 한 표.
+      //   2026-11-18 카메라 원본을 줄이면 같은 칸 선이 자리 따라 1px·2px 로 갈려 표가 반으로 갈렸고,
+      //   1px 선들이 «진한 선»에서 빠져 이름 칸을 못 찾았다.
+      if (!dark[y * w + x] || (x > 0 && dark[y * w + x - 1])) continue;
       for (let i = 0; i < THETAS.length; i++) {
         const b = Math.round((x - dy * THETAS[i]) / B);
         if (b >= 0 && b < nb) acc[i][b]++;
@@ -170,4 +173,25 @@ export function findNameColumn(gray, w, h) {
   const lp = flipped ? 1 : -padNo; const rp = flipped ? padNo : -1; // 번호 쪽 바깥으로 padNo, 금액 쪽 안으로 1px
   const poly = [...L.map(([y, x]) => [x + lp, y]), ...R.reverse().map(([y, x]) => [x + rp, y])];
   return { ok: true, poly, lines, moneyCols: col.n, ink: col.ink };
+}
+
+/**
+ * 큰 흑백 그림 → 폭 w 로 줄이기. 칸마다 «가장 어두운 점»을 남긴다(평균이 아니라).
+ *   2026-11-18 «사진 찍기로 하니까 이름을 잘못 가려»: 카메라 원본(4000px)을 평균으로 줄이면 1~3px 칸 선이
+ *   옅어지고 위치마다 진하기가 들쭉날쭉해 일부 선이 «진한 선»에서 빠졌다(메신저로 받은 작은 사진은 멀쩡).
+ *   어두운 점을 남기면 가는 선이 끊기지 않는다.
+ */
+export function shrinkDark(gray, W, H, w) {
+  const h = Math.max(1, Math.round((H * w) / W));
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.floor((y * H) / h), y1 = Math.max(y0 + 1, Math.floor(((y + 1) * H) / h));
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.floor((x * W) / w), x1 = Math.max(x0 + 1, Math.floor(((x + 1) * W) / w));
+      let m = 255;
+      for (let yy = y0; yy < y1; yy++) { const o = yy * W; for (let xx = x0; xx < x1; xx++) { const v = gray[o + xx]; if (v < m) m = v; } }
+      out[y * w + x] = m;
+    }
+  }
+  return { gray: out, w, h };
 }
