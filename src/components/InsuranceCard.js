@@ -64,12 +64,12 @@ export default function InsuranceCard({ userId, classCode, cash, onBought }) {
             <li>남은 보장 한도 <strong>{formatKoreanCurrency(view.capRemaining)}</strong></li>
             {view.payoutThisTerm > 0 && <li>이번 보험으로 받은 보험금 <strong>{formatKoreanCurrency(view.payoutThisTerm)}</strong></li>}
           </ul>
-          <p className="mt-2 text-[11px] text-slate-600">경제 이벤트로 현금이 깎이면 그 절반을 보험이 대신 내 줘요. 세금은 보험이 안 돼요.</p>
+          <p className="mt-2 text-[11px] text-slate-600">«경제 위기 긴급 부담금»으로 현금이 깎이면 그 절반을 보험이 대신 내 줘요. «긴급 세금 추징» 같은 세금은 보험이 안 돼요.</p>
         </>
       ) : (
         <>
           <p className="text-xs text-slate-700 mt-1">
-            경제 이벤트 «현금 긴급 차감»이 오면 잃는 돈의 <strong>절반</strong>을 보험이 대신 내 줘요. {TERM_DAYS}일 동안만 지켜 주고, 아무 일도 없으면 보험료는 돌아오지 않아요.
+            경제 이벤트 «경제 위기 긴급 부담금»이 오면 잃는 돈의 <strong>절반</strong>을 보험이 대신 내 줘요. <strong>«긴급 세금 추징» 같은 세금은 보험이 안 돼요.</strong> {TERM_DAYS}일 동안만 지켜 주고, 아무 일도 없으면 보험료는 돌아오지 않아요.
           </p>
           {quote.ok ? (
             asking ? (
