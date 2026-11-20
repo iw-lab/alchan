@@ -321,7 +321,7 @@ function CouponTransfer() {
                 checked={takeAction === 'transfer'} 
                 onChange={(e) => setTakeAction(e.target.value)} 
               /> 
-              나에게 가져오기
+              {isDelegated ? `국고(${adminName || "선생님"})로 가져오기` : "나에게 가져오기"}
             </label>
           </div>
         )}

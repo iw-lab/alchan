@@ -123,6 +123,20 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── ⚖️ 파산 신청(2026-11-20): 화면이 쓰는 그대로의 문서가 규칙을 지나는지 — 화면 쪽 결함
+  //    (학급코드 undefined)을 고치고도 규칙에서 막히면 학생은 여전히 «실패»만 본다.
+  tc("ALLOW", "🐤 학생이 자기 학급 법원에 파산 신청서를 낸다", {
+    path: "/classes/C1/courtComplaints/b1", method: "create", as: "stu1",
+    after: { complainantId: "stu1", complainantName: "학생1", caseType: "bankruptcy", defendantId: "system", defendantName: "시스템", status: "pending", reason: "순자산 -1,000알찬으로 인한 파산 신청", desiredResolution: "모든 부채를 청산하고 자산을 0으로 초기화 요청", likedBy: [], dislikedBy: [] },
+  }),
+  tc("DENY", "학생이 남의 이름으로 파산 신청서를 낸다", {
+    path: "/classes/C1/courtComplaints/b2", method: "create", as: "stu1", actors: ["stu2"],
+    after: { complainantId: "stu2", complainantName: "학생2", caseType: "bankruptcy", defendantId: "system", status: "pending" },
+  }),
+  tc("DENY", "다른 학급 법원에 파산 신청서를 낸다", {
+    path: "/classes/C2/courtComplaints/b3", method: "create", as: "stu1",
+    after: { complainantId: "stu1", complainantName: "학생1", caseType: "bankruptcy", defendantId: "system", status: "pending" },
+  }),
   // ── 🛡️ 재난 보험·💳 신용 기록 (2026-11-11): 둘 다 서버만 쓴다. 한도·상환 이력을 아이가 고치면
   //    보험금과 대출 금리가 화면에서 정해진다.
   tc("ALLOW", "🐤 학생이 자기 보험 정책을 읽는다", {

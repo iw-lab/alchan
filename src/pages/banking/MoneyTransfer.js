@@ -168,7 +168,7 @@ function MoneyTransfer() {
     //    체크박스 하나만으로는 오타(0 하나 더)와 의도를 못 가른다. 2026-07-27 사고도
     //    악의가 아니라 같은 회수를 28분 뒤 한 번 더 누른 것이었다. 금액과 결과를 글자로
     //    보여주고 확인을 받는다 — 자동으로 자르는 대신 **사람이 판단할 재료**를 준다.
-    if (action === "take" && allowNegative) {
+    if (action === "take" && allowNegative && !isDelegated) {
       const 대상 = selectedUsers.length;
       const 표기 =
         amountType === "percentage"
@@ -244,7 +244,7 @@ function MoneyTransfer() {
           amount: inputValue,
           taxRate,
           // 회수에만 의미가 있다. 서버도 action!=="send" 이고 **진짜 관리자**일 때만 받아들인다.
-          allowNegative: action === "take" ? allowNegative === true : undefined,
+          allowNegative: action === "take" && !isDelegated ? allowNegative === true : undefined,
           idempotencyKey: idemKeyRef.current,
         })
       ).data;
@@ -296,6 +296,18 @@ function MoneyTransfer() {
       const noBalance = Number(noBalanceCount) || 0;
       const noBalanceNote =
         noBalance > 0 ? ` · ${noBalance}명은 잔액이 없어 건너뜀` : "";
+      // 🔴 한 푼도 안 옮겨졌는데 «0명에게 … 가져오기 완료!»라고 하면 된 줄 안다(2026-11-20 —
+      //    대통령이 가져오기를 4번 눌렀고 4번 모두 대상 잔액이 마이너스라 서버가 건너뛰었다).
+      const movedNothing = action === "take" && !(count > 0) && failCount === 0;
+      if (movedNothing) {
+        setError(
+          `가져온 돈이 없습니다 — 고른 ${noBalance || selectedUsers.length}명의 잔액이 0${currencyUnit} 이하입니다.` +
+            (isDelegated
+              ? " 잔액이 있는 친구만 가져올 수 있어요(빚을 지게 하는 것은 선생님만)."
+              : " 빚이 되더라도 가져오려면 «마이너스 허용»을 체크하세요."),
+        );
+        setTimeout(() => setError(""), 9000);
+      } else
       setMessage(
         `${count}명에게 ${amountType === "percentage" ? `${inputValue}%` : `${inputValue.toLocaleString()}${currencyUnit}`} ${actionText} 완료! (총 ${totalProcessed.toLocaleString()}${currencyUnit} 처리${action === "send" && taxRate > 0 ? `, 세금 ${taxRate}% 적용` : ""})${failCount > 0 ? ` · ⚠️ ${failCount}명 처리 실패(다시 시도 시 실패분만 재처리)` : ""}${clampNote}${noBalanceNote}`,
       );
@@ -433,8 +445,12 @@ function MoneyTransfer() {
                 />
                 <span className="radio-custom"></span>
                 <span className="mode-text">
-                  <strong>💰 나에게 가져오기</strong>
-                  <small>선택한 학생들의 돈을 내 계좌로 가져옵니다</small>
+                  <strong>{isDelegated ? "💰 국고로 가져오기" : "💰 나에게 가져오기"}</strong>
+                  <small>
+                    {isDelegated
+                      ? `선택한 학생들의 돈을 국고(${adminName || "선생님"} 계좌)로 가져옵니다. 내 계좌로는 들어오지 않아요.`
+                      : "선택한 학생들의 돈을 내 계좌로 가져옵니다"}
+                  </small>
                 </span>
               </label>
               <label
@@ -454,6 +470,12 @@ function MoneyTransfer() {
                 </span>
               </label>
             </div>
+            {isDelegated ? (
+              <p className="take-floor-note" style={{ marginTop: "12px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc", fontSize: "13px", color: "#334155" }}>
+                잔액이 0{currencyUnit} 이하인 친구에게서는 가져올 수 없어요. 가진 만큼까지만 가져옵니다.
+                (빚을 지게 하는 것은 선생님만 할 수 있어요.)
+              </p>
+            ) : (
             <label
               style={{
                 display: "flex", alignItems: "flex-start", gap: "8px",
@@ -479,6 +501,7 @@ function MoneyTransfer() {
                 </small>
               </span>
             </label>
+            )}
           </div>
         )}
 

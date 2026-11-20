@@ -183,15 +183,15 @@ describe("마이너스 회수는 명시 플래그로만", () => {
     expect(UI).not.toMatch(/finally[^]{0,400}setAllowNegative\(/);
     // 체크는 사람이 바꾼다(onChange 는 남아 있어야 한다).
     expect(UI).toMatch(/onChange=\{\(e\) => setAllowNegative\(e\.target\.checked\)\}/);
-    // 회수(take)에만 실어 보낸다 — 지급에 실리면 서버가 무시하더라도 의미가 흐려진다.
-    expect(UI).toMatch(/allowNegative: action === "take" \? allowNegative === true : undefined,/);
+    // 회수(take)에만, 그리고 **교사만** 실어 보낸다 — 대통령·위임 학생은 서버가 무시하므로 화면도 안 보낸다(2026-11-20).
+    expect(UI).toMatch(/allowNegative: action === "take" && !isDelegated \? allowNegative === true : undefined,/);
   });
 
   it("⭐ 마이너스 회수는 **매번** 금액을 보여주고 확인을 받는다", () => {
     // 기본 켜짐이 된 뒤로 이것이 유일한 관문이다. 조건·확인창·조기반환 셋이 다 있어야 한다.
-    expect(UI).toMatch(/if \(action === "take" && allowNegative\) \{/);
+    expect(UI).toMatch(/if \(action === "take" && allowNegative && !isDelegated\) \{/);
     const gate = UI.slice(
-      UI.indexOf('if (action === "take" && allowNegative) {'),
+      UI.indexOf('if (action === "take" && allowNegative && !isDelegated) {'),
       UI.indexOf("if (submittingRef.current) return;"),
     );
     expect(gate).toContain("await confirmDialog(");

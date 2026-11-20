@@ -391,7 +391,11 @@ const BankruptcySection = ({ refetchComplaints }) => {
  //   AuthContext 가 `{ id: snap.id, uid: snap.id, ...snap.data() }` 순서로 합쳐서
  //   users 문서에 `id` 필드가 생기면 그게 문서ID를 **가린다**(규칙은 `id` 를 막지 않는다).
  //   지금은 45명 중 0명이라 안 깨졌지만, 그때 가서 파산 신청이 조용히 다시 고장난다.
- const { userDoc, classCode, user } = useAuth();
+ // ⚠️ 학급코드는 컨텍스트가 따로 내보내지 않는다 — `useAuth().classCode` 는 늘 undefined 다.
+ //   2026-11-20 까지 여기서 그걸 꺼내 써서, 신청 저장이 `classes/undefined/…` 경로에서 매번 터졌다
+ //   (순자산 마이너스 학생 5명·파산 사건 0건). 🔒 src/test/contexts/useAuthKeys.test.js
+ const { userDoc, user } = useAuth();
+ const classCode = userDoc?.classCode;
  const myUid = user?.uid || userDoc?.id;
  const [hasPendingBankruptcyCase, setHasPendingBankruptcyCase] =
  useState(false);
