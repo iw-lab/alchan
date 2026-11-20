@@ -133,6 +133,37 @@ const CASES = [
     path: "/classes/C1/courtComplaints/b2", method: "create", as: "stu1", actors: ["stu2"],
     after: { complainantId: "stu2", complainantName: "학생2", caseType: "bankruptcy", defendantId: "system", status: "pending" },
   }),
+  tc("ALLOW", "🐤 학생이 자기 고소장의 사유를 고친다(잠금이 편집을 막지 않는다)", {
+    path: "/classes/C1/courtComplaints/g1", method: "update", as: "stu1",
+    before: { complainantId: "stu1", caseType: "general", defendantId: "stu2", status: "pending", reason: "가" },
+    after: { complainantId: "stu1", caseType: "general", defendantId: "stu2", status: "pending", reason: "나" },
+  }),
+  tc("DENY", "학생이 남의 고소장을 파산 사건으로 바꾼다", {
+    path: "/classes/C1/courtComplaints/g1", method: "update", as: "stu2", actors: ["stu1"],
+    before: { complainantId: "stu1", caseType: "general", defendantId: "stu2", status: "pending", reason: "가" },
+    after: { complainantId: "stu1", caseType: "bankruptcy", defendantId: "stu2", status: "pending", reason: "가" },
+  }),
+  tc("DENY", "학생이 파산 처리 표식을 스스로 지운다(다시 처리받기)", {
+    path: "/classes/C1/courtComplaints/b1", method: "update", as: "stu1",
+    before: { complainantId: "stu1", caseType: "bankruptcy", defendantId: "system", status: "resolved", bankruptcyProcessedAt: "t", bankruptcyProcessedBy: "tch1" },
+    after: { complainantId: "stu1", caseType: "bankruptcy", defendantId: "system", status: "resolved" },
+  }),
+  tc("DENY", "학생이 파산 처리 원본(남의 자산 내역)을 읽는다", {
+    path: "/classes/C1/bankruptcyRecords/b1", method: "get", as: "stu1", before: { classCode: "C1", userId: "stu2" },
+  }),
+  tc("DENY", "학생이 파산 처리 원본을 고친다", {
+    path: "/classes/C1/bankruptcyRecords/b1", method: "update", as: "stu1", before: { classCode: "C1", userId: "stu1", before: { cash: -5 } }, after: { classCode: "C1", userId: "stu1", before: { cash: 99999999 } },
+  }),
+  tc("ALLOW", "🐤 교사가 자기 학급 파산 처리 원본을 읽는다", {
+    path: "/classes/C1/bankruptcyRecords/b1", method: "get", as: "tch1", before: { classCode: "C1", userId: "stu1" },
+  }),
+  tc("DENY", "다른 학급 교사가 파산 처리 원본을 읽는다", {
+    path: "/classes/C1/bankruptcyRecords/b1", method: "get", as: "tch2", before: { classCode: "C1", userId: "stu1" },
+  }),
+  tc("DENY", "학생이 «이미 처리됨» 표식을 박은 파산 신청서를 만든다", {
+    path: "/classes/C1/courtComplaints/b4", method: "create", as: "stu1",
+    after: { complainantId: "stu1", caseType: "bankruptcy", defendantId: "system", status: "pending", bankruptcyUndoneAt: "t" },
+  }),
   tc("DENY", "다른 학급 법원에 파산 신청서를 낸다", {
     path: "/classes/C2/courtComplaints/b3", method: "create", as: "stu1",
     after: { complainantId: "stu1", complainantName: "학생1", caseType: "bankruptcy", defendantId: "system", status: "pending" },

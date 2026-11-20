@@ -18,9 +18,9 @@ const COUPON = strip(readFileSync(resolve(process.cwd(), "src/pages/banking/Coup
 const SERVER = strip(readFileSync(resolve(process.cwd(), "functions/index.js"), "utf8"));
 
 describe("대통령·위임 학생의 가져오기 화면", () => {
-  it("전제: 서버는 마이너스 회수를 진짜 관리자에게만 열어 둔다", () => {
+  it("전제: 서버는 마이너스 회수를 교사와 임명 대통령에게만 열어 둔다", () => {
     // 이 전제가 바뀌면(대통령에게도 열면) 아래 화면 규칙도 함께 바꿔야 한다.
-    expect(SERVER).toMatch(/allowNegativeTake\s*=\s*action !== "send" && allowNegative === true && isAdmin === true/);
+    expect(SERVER).toMatch(/allowNegativeTake\s*=\s*action !== "send" && allowNegative === true && \(isAdmin === true \|\| power\.byJob === true\)/);
   });
 
   it("⭐ 가져온 돈이 가는 곳을 «내 계좌»라고만 말하지 않는다", () => {
@@ -29,10 +29,14 @@ describe("대통령·위임 학생의 가져오기 화면", () => {
     expect(COUPON).toMatch(/isDelegated \? `국고\(/);
   });
 
-  it("⭐ 서버가 무시할 «마이너스 허용»을 대통령에게 보여 주지도 보내지도 않는다", () => {
-    expect(MONEY).toMatch(/\{isDelegated \? \([\s\S]{0,400}take-floor-note/);
-    expect(MONEY).toContain('action === "take" && allowNegative && !isDelegated');
-    expect(MONEY).toContain('allowNegative: action === "take" && !isDelegated ?');
+  it("⭐ 서버가 무시할 «마이너스 허용»을 위임만 받은 학생에게 보여 주지도 보내지도 않는다", () => {
+    expect(MONEY).toMatch(/\{!canGoNegative \? \([\s\S]{0,400}take-floor-note/);
+    expect(MONEY).toContain('action === "take" && allowNegative && canGoNegative');
+    expect(MONEY).toContain('allowNegative: action === "take" && canGoNegative ?');
+  });
+
+  it("⭐ 위임·대통령은 선생님(국고) 계정의 돈을 건드리지 못한다", () => {
+    expect(SERVER).toMatch(/if \(isDelegated && \(tData\.isAdmin \|\| tData\.isSuperAdmin \|\| tData\.isTeacher\)\) \{\s*throw new Error\("선생님 계정은 처리할 수 없습니다\."\)/);
   });
 
   it("⭐ 한 푼도 못 가져왔으면 «완료!»가 아니라 까닭을 말한다", () => {

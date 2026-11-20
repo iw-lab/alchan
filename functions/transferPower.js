@@ -19,7 +19,8 @@ async function transferPowerOf(userData, classCode, kind, isAdmin) {
   if (isAdmin) return { allowed: true, isAdmin: true, byDelegation: false, byJob: false };
   const byDelegation = userData?.delegatedPermissions?.[kind] === true;
   let byJob = false;
-  if (!byDelegation && classCode) {
+  // 위임과 대통령을 둘 다 가진 학생도 대통령으로 센다 — byJob 은 마이너스 회수 권한을 가른다(index.js allowNegativeTake).
+  if (classCode) {
     const jobsSnap = await db.collection("jobs").where("classCode", "==", classCode).get();
     byJob = hasJobTitle(userData, buildJobMap(jobsSnap), TRANSFER_JOB_TITLE);
   }

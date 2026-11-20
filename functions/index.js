@@ -132,6 +132,8 @@ exports.deleteGroupPurchase = groupPurchaseService.deleteGroupPurchase;
 const { transferPowerOf } = require("./transferPower");
 // 🎟️ 관리자 쿠폰 지급/회수 — 위임 학생·대통령도 쓰게 서버로(2026-11-17)
 exports.adminCouponAction = require("./adminCouponService").adminCouponAction;
+exports.processBankruptcy = require("./bankruptcyService").processBankruptcy; // ⚖️ 파산 처리(교사 전용)
+exports.undoBankruptcy = require("./bankruptcyService").undoBankruptcy;
 const avatarShopService = require("./avatarShopService");
 exports.purchaseAvatarItem = avatarShopService.purchaseAvatarItem;
 exports.seedAvatarShop = avatarShopService.seedAvatarShop;
@@ -3485,11 +3487,14 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
   //    때문에 생겼고, 그때 주석에 "되돌리려면 블록을 걷어내지 말고 **호출부에서 명시
   //    플래그를 받도록 넓힐 것**"이라고 적어 뒀다. 그대로 한다 — 사고와 의도를 가른다.
   //    · 기본값(플래그 없음)은 종전과 완전히 동일하다(회귀 0).
-  //    · **위임받은 학생은 못 쓴다.** 남을 빚지게 만드는 건 교사의 판단이어야 한다.
+  //    · **위임만 받은 학생은 못 쓴다.** 남을 빚지게 만드는 건 교사(와 교사가 임명한 대통령)의 판단이어야 한다.
   //    · 돈은 여전히 보존된다: 학생 −N · 국고 +N 으로 같은 baseAmount 를 쓰므로,
   //      학생의 마이너스 잔액이 곧 그만큼의 빚이다(불변식 2 유지).
+  //    · 2026-11-20 사용자 결정: **교사가 임명한 대통령에게도 연다**(«대통령에게도 열기»). 학급 21명 중 16명이
+  //      현금 0 이하라 대통령 가져오기가 사실상 아무에게도 안 됐다. 위임만 받은 학생은 여전히 못 쓴다.
+  //      가져온 돈은 그대로 국고(승인 교사)로 간다 — 대통령 계좌로는 안 들어온다.
   const allowNegativeTake =
-    action !== "send" && allowNegative === true && isAdmin === true;
+    action !== "send" && allowNegative === true && (isAdmin === true || power.byJob === true);
 
   const increment = admin.firestore.FieldValue.increment;
   const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
@@ -3531,6 +3536,11 @@ exports.adminCashAction = onCall({ region: "asia-northeast3" }, async (request) 
         // 같은 학급만(학급 밖 cash 조작 차단)
         if (tData.classCode !== classCode) {
           throw new Error("같은 학급의 학생만 처리할 수 있습니다.");
+        }
+        // 위임·대통령은 교사(국고) 계정의 돈을 건드리지 못한다(2026-11-20 — 쿠폰 쪽 adminCouponService 와 같은 규칙).
+        //   종전엔 «돈 없애기»로 국고를 0까지 지울 수 있었고, 대통령에게 마이너스 회수를 열면 그 아래로도 내려간다.
+        if (isDelegated && (tData.isAdmin || tData.isSuperAdmin || tData.isTeacher)) {
+          throw new Error("선생님 계정은 처리할 수 없습니다.");
         }
         // 🧾 돈이 하나도 안 옮겨진 **회수 시도**를 기록으로 남긴다(2026-08-20 codex WARNING).
         //   종전엔 그냥 `return` 이라 activity_logs 에도, 거래기록에도, 멱등 원장에도 안 남았다.

@@ -385,6 +385,82 @@ const TrialResults = ({ complaints, users, onOpenSettlementModal, canSettle }) =
  );
 };
 
+// ⚖️ 선생님 전용 — 파산 사건을 실제 자산에 반영한다(2026-11-20, 서버 processBankruptcy/undoBankruptcy).
+//   신청은 문서 1건일 뿐이라 그동안은 선생님이 보내기·가져오기로 손수 맞춰야 했다.
+//   판사·대통령에게는 안 보인다(서버도 교사만 받는다).
+const BankruptcyTeacherPanel = ({ complaints, refetchComplaints, getUserNameById }) => {
+ const [busyId, setBusyId] = useState(null);
+ const cases = (complaints || []).filter((c) => c.caseType === "bankruptcy");
+
+ const run = async (c, fnName) => {
+ const name = getUserNameById(c.complainantId);
+ const ok = await confirmDialog(
+ fnName === "processBankruptcy"
+ ? `${name} 학생을 파산 처리합니다.\n\n현금·파킹·예금·적금·주식·부동산을 모두 거두고 빚(마이너스 현금·대출)을 지워 0에서 다시 시작합니다. 쿠폰은 그대로 둡니다.\n\n처리 전 상태는 저장되어 «되돌리기»로 복원할 수 있습니다.`
+ : `${name} 학생의 파산 처리를 되돌립니다.\n\n그때 거둔 현금·예금·주식·부동산과 빚을 다시 돌려놓습니다. 처리 뒤에 새로 번 돈은 그대로 둡니다.`,
+ { danger: true, confirmText: fnName === "processBankruptcy" ? "파산 처리" : "되돌리기" },
+ );
+ if (!ok || busyId) return;
+ setBusyId(c.id);
+ try {
+ // again = 한 번 되돌린 사건을 선생님이 다시 처리한다는 뜻(서버는 이게 없으면 되돌린 사건을 다시 지우지 않는다).
+ // 이름을 글자 그대로 적는다 — scripts/check-callables.mjs 가 «없는 함수를 부르는 화면»을 이 글자로 찾는다.
+ const fn = fnName === "processBankruptcy" ? httpsCallable(functions, "processBankruptcy") : httpsCallable(functions, "undoBankruptcy");
+ const { data } = await fn({ complaintId: c.id, again: fnName === "processBankruptcy" && !!c.bankruptcyUndoneAt });
+ if (fnName === "processBankruptcy") {
+ toast.success(`${name} 파산 처리 완료 — 순자산 ${Math.round(data.net).toLocaleString()}${getCurrencyUnit()} → 0`);
+ } else if (data.skipped?.length) {
+ toast.error(`되돌렸지만 ${data.skipped.length}건은 복원하지 못했습니다: ${data.skipped.join(", ")}`);
+ } else {
+ toast.success(`${name} 파산 처리를 되돌렸습니다.`);
+ }
+ refetchComplaints();
+ } catch (error) {
+ logger.error(`${fnName} 실패:`, error);
+ toast.error(error?.message || "처리에 실패했습니다. 아무것도 바뀌지 않았습니다.");
+ } finally {
+ setBusyId(null);
+ }
+ };
+
+ return (
+ <div className="bankruptcy-section bankruptcy-teacher-panel">
+ <h3>파산 사건 처리 (선생님 전용)</h3>
+ <p>
+ «파산 처리»를 누르면 그 학생의 현금·파킹·예금·적금·주식·부동산을 모두 거두고 빚을 지워 0에서 다시 시작하게 합니다.
+ 쿠폰은 그대로입니다. 순자산이 마이너스인 학생만 처리되고, 잘못 눌렀으면 «되돌리기»로 복원합니다.
+ </p>
+ {cases.length === 0 ? (
+ <p className="empty-state">접수된 파산 신청이 없습니다.</p>
+ ) : (
+ cases.map((c) => (
+ <div key={c.id} className="result-card">
+ <div className="result-header">
+ <span className="case-id">사건번호: {c.id.slice(-6)}</span>
+ <span className="parties">{getUserNameById(c.complainantId)}</span>
+ <span className="case-status">{c.bankruptcyProcessedAt ? "파산 처리됨" : c.bankruptcyUndoneAt ? "되돌림" : "처리 전"}</span>
+ </div>
+ <div className="result-content">
+ <p className="summary">{c.reason}</p>
+ </div>
+ <div className="result-actions">
+ {c.bankruptcyProcessedAt ? (
+ <button className="settlement-button" disabled={busyId === c.id} onClick={() => run(c, "undoBankruptcy")}>
+ 되돌리기
+ </button>
+ ) : (
+ <button className="action-button delete" disabled={busyId === c.id} onClick={() => run(c, "processBankruptcy")}>
+ {c.bankruptcyUndoneAt ? "다시 파산 처리" : "파산 처리"}
+ </button>
+ )}
+ </div>
+ </div>
+ ))
+ )}
+ </div>
+ );
+};
+
 // 파산 신청 컴포넌트
 const BankruptcySection = ({ refetchComplaints }) => {
  // ⚠️ `user.uid` 를 함께 받는다. 규칙이 비교하는 값은 `request.auth.uid` 인데,
@@ -1204,7 +1280,16 @@ const Court = () => {
  </>
  );
  case "bankruptcy":
- return <BankruptcySection refetchComplaints={refetchComplaints} />;
+ // 선생님은 신청할 일이 없다 — 처리 화면을 보여 준다.
+ return isAdmin ? (
+ <BankruptcyTeacherPanel
+ complaints={complaints}
+ refetchComplaints={refetchComplaints}
+ getUserNameById={(id) => { const u = users.find((x) => x.id === id); return u ? numberedStudentName(u) : id || "알 수 없음"; }}
+ />
+ ) : (
+ <BankruptcySection refetchComplaints={refetchComplaints} />
+ );
  case "status":
  return (
  <ComplaintStatus

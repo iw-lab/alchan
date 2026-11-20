@@ -64,6 +64,12 @@ function MoneyTransfer() {
   // 위임받은 학생 또는 교사가 임명한 대통령(2026-11-17) — 서버 transferPower.js 가 다시 판정한다
   const isAppointedPresident = useAppointedJobTitle(userDoc, "대통령");
   const isDelegated = !userDoc?.isAdmin && !userDoc?.isSuperAdmin && (userDoc?.delegatedPermissions?.moneyTransfer === true || isAppointedPresident);
+  // 마이너스(빚)까지 가져오기: 교사 · 교사가 임명한 대통령만(2026-11-20). 위임만 받은 학생은 서버가 무시한다.
+  const canGoNegative = !isDelegated || isAppointedPresident;
+  // 대통령은 «마이너스 허용»이 꺼진 채로 시작한다 — 켜는 것은 대통령이 직접 고른다(교사 화면 기본값은 그대로).
+  useEffect(() => {
+    if (isAppointedPresident) setAllowNegative(false);
+  }, [isAppointedPresident]);
   const classAdmin = isDelegated
     ? allClassMembers?.find(m => m.isAdmin || m.isSuperAdmin)
     : null;
@@ -168,7 +174,7 @@ function MoneyTransfer() {
     //    체크박스 하나만으로는 오타(0 하나 더)와 의도를 못 가른다. 2026-07-27 사고도
     //    악의가 아니라 같은 회수를 28분 뒤 한 번 더 누른 것이었다. 금액과 결과를 글자로
     //    보여주고 확인을 받는다 — 자동으로 자르는 대신 **사람이 판단할 재료**를 준다.
-    if (action === "take" && allowNegative && !isDelegated) {
+    if (action === "take" && allowNegative && canGoNegative) {
       const 대상 = selectedUsers.length;
       const 표기 =
         amountType === "percentage"
@@ -244,7 +250,7 @@ function MoneyTransfer() {
           amount: inputValue,
           taxRate,
           // 회수에만 의미가 있다. 서버도 action!=="send" 이고 **진짜 관리자**일 때만 받아들인다.
-          allowNegative: action === "take" && !isDelegated ? allowNegative === true : undefined,
+          allowNegative: action === "take" && canGoNegative ? allowNegative === true : undefined,
           idempotencyKey: idemKeyRef.current,
         })
       ).data;
@@ -302,7 +308,7 @@ function MoneyTransfer() {
       if (movedNothing) {
         setError(
           `가져온 돈이 없습니다 — 고른 ${noBalance || selectedUsers.length}명의 잔액이 0${currencyUnit} 이하입니다.` +
-            (isDelegated
+            (!canGoNegative
               ? " 잔액이 있는 친구만 가져올 수 있어요(빚을 지게 하는 것은 선생님만)."
               : " 빚이 되더라도 가져오려면 «마이너스 허용»을 체크하세요."),
         );
@@ -470,7 +476,7 @@ function MoneyTransfer() {
                 </span>
               </label>
             </div>
-            {isDelegated ? (
+            {!canGoNegative ? (
               <p className="take-floor-note" style={{ marginTop: "12px", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc", fontSize: "13px", color: "#334155" }}>
                 잔액이 0{currencyUnit} 이하인 친구에게서는 가져올 수 없어요. 가진 만큼까지만 가져옵니다.
                 (빚을 지게 하는 것은 선생님만 할 수 있어요.)

@@ -77,7 +77,7 @@ describe("배선 — 확인창이 실제로 이 기억을 쓴다", () => {
 
   it("⭐ 확인창이 중복 문구를 끼워 넣는다", () => {
     const gate = SRC.slice(
-      SRC.indexOf('if (action === "take" && allowNegative && !isDelegated) {'),
+      SRC.indexOf('if (action === "take" && allowNegative && canGoNegative) {'),
       SRC.indexOf("if (submittingRef.current) return;"),
     );
     expect(gate).toContain("lastTakeRef.current");

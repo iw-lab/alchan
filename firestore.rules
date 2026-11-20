@@ -1835,8 +1835,12 @@ service cloud.firestore {
         // 🔒 court-lock Tier-2 방어층(2026-07-18): 고소인은 반드시 본인(request.auth.uid) — 학생이 타인을
         //   고소인으로 위조("B가 C를 고소")하는 것 차단. 클라는 항상 complainantId=self로 생성(Court.js) = 회귀 0.
         //   (admin은 대리 생성 가능하도록 || isAdmin() 유지.)
+        // ⚖️ 2026-11-20: 파산 처리 표식(CF 전용)을 미리 박아 만들지 못한다 · caseType 은 두 값뿐(본인 사건이라 스스로 고르는 건 정상).
         allow create: if (isSignedIn() && isSameClass(classCode)
-                          && request.resource.data.complainantId == request.auth.uid)
+                          && request.resource.data.complainantId == request.auth.uid
+                          && request.resource.data.get('caseType', 'general') in ['general', 'bankruptcy']
+                          && request.resource.data.get('settlementPaid', false) == false
+                          && !request.resource.data.keys().hasAny(['bankruptcyProcessedAt', 'bankruptcyProcessedBy', 'bankruptcyUndoneAt']))
                          || isAdmin();
         // 🔒 2026-07-17 배치6-b: 합의금 결과필드(settlementPaid/Amount/Date/ProcessedBy)는
         //   processCourtSettlement CF(admin SDK, rules 우회)만 기록. 클라 직접 update가 이 필드를
@@ -1847,8 +1851,18 @@ service cloud.firestore {
         //   defendantId는 편집 기능(EditComplaintModal) 있어 잠그지 않음.
         allow update: if isSignedIn() && isSameClass(classCode) &&
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'complainantId']);
+            .hasAny(['settlementPaid', 'settlementAmount', 'settlementDate', 'settlementProcessedBy', 'complainantId',
+                     // ⚖️ 파산 처리(2026-11-20): 표식은 processBankruptcy CF 만 쓴다. caseType 도 잠근다 —
+                     //   남의 일반 고소장을 "bankruptcy" 로 바꿔 놓으면 선생님의 «파산 처리»가 그 학생 자산을 지운다.
+                     //   (caseType 을 고치는 화면 경로는 0 — 생성 때만 적는다.)
+                     'caseType', 'bankruptcyProcessedAt', 'bankruptcyProcessedBy', 'bankruptcyUndoneAt']);
         allow delete: if isAdmin();
+      }
+
+      // ⚖️ 파산 처리 원본(되돌리기용) — processBankruptcy/undoBankruptcy CF(Admin SDK)만 쓴다. 학생 자산 내역이라 교사만 읽는다.
+      match /bankruptcyRecords/{complaintId} {
+        allow read: if isClassAdmin(classCode);
+        allow write: if false;
       }
 
       // ⚖️ 재판방 서브컬렉션 (classes/{classCode}/trialRooms/{roomId})
