@@ -144,12 +144,15 @@ async function claimDailyReward(userId) {
     }
     return data;
   } catch (error) {
-    // 이미 받은 경우(서버 재판정) — 정상 흐름으로 처리
+    // 이미 받은 날(다른 기기에서 받았거나 받는 도중 새로고침) — 이 기기의 낡은 기록을 서버 값으로 바꿔 둔다.
+    // 안 바꾸면 앱을 열 때마다 «받기» 팝업이 또 뜬다.
     if (error?.code === "functions/already-exists") {
-      return { success: false, message: "오늘 이미 보상을 받았습니다." };
+      localStorage.removeItem(`streakCache_${userId}`);
+      await getStreakInfo(userId);
+      return { success: false, already: true };
     }
     logger.error("claimDailyReward error:", error);
-    return { success: false, message: "보상 지급에 실패했습니다. 다시 시도해주세요." };
+    return { success: false, message: "보상을 못 받았어요. 인터넷을 확인하고 다시 눌러 주세요." };
   }
 }
 
@@ -161,16 +164,20 @@ async function claimDailyReward(userId) {
  *   AlchanLayout 은 팝업을 띄울지 판단하려고 앱 진입 시 한 번 부르는데, 그 판단이 참이면
  *   배너도 마운트돼 **같은 문서를 또** 읽었다. 넘겨 주면 그 두 번째 읽기가 사라진다.
  *   안 넘어오면 종전대로 직접 읽는다 — MyAssets 처럼 prop 없이 쓰는 호출부가 있다.
+ * @param {() => void} [onHide] 배너가 사라질 때(받음·이미 받은 날) 부른다 — 팝업으로 감싼 쪽은 이때 같이 닫아야
+ *   빈 팝업이 화면을 덮은 채 남지 않는다.
  */
 export function DailyRewardBanner({
   userId,
   onClaim,
+  onHide,
   prefetchedStreakInfo = null,
 }) {
   const [streakInfo, setStreakInfo] = useState(null);
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [rewardResult, setRewardResult] = useState(null);
+  const [errorText, setErrorText] = useState("");
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -190,19 +197,23 @@ export function DailyRewardBanner({
     // 중복 클릭 가드 — 서버가 idempotency로 이중지급은 막지만, 실패 응답이 성공 UI로
     // 새는 것을 막기 위해 진행 중/완료 상태에서는 재호출하지 않는다.
     if (claiming || claimed) return;
+    const hide = () => {
+      setIsVisible(false);
+      onHide?.();
+    };
     setClaiming(true);
+    setErrorText("");
     try {
       const result = await claimDailyReward(userId);
       if (result.success) {
         setRewardResult(result);
         setClaimed(true);
         if (onClaim) onClaim(result.reward);
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 5000);
+        setTimeout(hide, 5000);
+      } else if (result.already) {
+        hide();
       } else {
-        // 실패(이미 받음 등) — 성공 화면으로 전환하지 않고 배너만 닫는다.
-        setIsVisible(false);
+        setErrorText(result.message); // 배너를 남겨 다시 누를 수 있게 한다
       }
     } finally {
       setClaiming(false);
@@ -270,16 +281,26 @@ export function DailyRewardBanner({
             </div>
             <button
               onClick={handleClaim}
-              className="border-none py-3.5 px-7 rounded-xl text-base font-bold cursor-pointer transition-all"
+              disabled={claiming}
+              className="border-none py-3.5 px-7 rounded-xl text-base font-bold cursor-pointer transition-all whitespace-nowrap disabled:opacity-70 disabled:cursor-wait"
               style={{
                 background: "rgba(255,255,255,0.95)",
                 color: isBigReward ? "#ea580c" : "#6366f1",
                 boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
               }}
             >
-              받기! 🎉
+              {claiming ? "받는 중…" : "받기! 🎉"}
             </button>
           </div>
+          {errorText && (
+            <div
+              role="alert"
+              className="mt-3 px-3 py-2 rounded-lg text-sm font-semibold text-white"
+              style={{ background: "rgba(0,0,0,0.45)" }}
+            >
+              {errorText}
+            </div>
+          )}
 
           <div className="mt-4">
             <div className="flex justify-between gap-1">
@@ -297,7 +318,7 @@ export function DailyRewardBanner({
                     }}
                   />
                   {(idx === 0 || idx === 4 || idx === 9) && (
-                    <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.7)" }}>
+                    <span className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.7)" }}>
                       {idx + 1}일
                     </span>
                   )}
@@ -360,7 +381,7 @@ export function StreakDisplay({ userId }) {
           ? "linear-gradient(135deg, #f59e0b20 0%, #ea580c20 100%)"
           : "linear-gradient(135deg, #8b5cf620 0%, #6366f120 100%)",
         border: `1px solid ${currentStreak >= 10 ? "#f59e0b40" : "#8b5cf640"}`,
-        color: currentStreak >= 10 ? "#f59e0b" : "#a78bfa",
+        color: currentStreak >= 10 ? "#b45309" : "#6d28d9",
       }}
     >
       <span>🔥</span>

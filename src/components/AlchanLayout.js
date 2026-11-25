@@ -41,14 +41,14 @@ import { ALCHAN_MENU_ITEMS } from "./AlchanSidebar";
 import AlchanHeader from "./AlchanHeader";
 import MobileNav from "./MobileNav";
 import PWAInstallPrompt from "./PWAInstallPrompt";
-import UpdateNotification from "./UpdateNotification";
-import { useServiceWorker } from "../hooks/useServiceWorker";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { useStudentProducts } from "../hooks/useStudentProducts";
 import { useAutoLoanRepay } from "../hooks/useAutoLoanRepay";
 import { useAutoSavingsDeposit } from "../hooks/useAutoSavingsDeposit";
 import { useAutoDepositMature } from "../hooks/useAutoDepositMature";
 import { useBackClose } from "../hooks/useBackClose";
 import { AlchanLoadingScreen } from "./ui/Skeleton";
+import { isCompactViewport } from "../utils/viewport";
 import { WifiOff } from "lucide-react";
 // DailyReward 는 getStreakInfo 때문에 어차피 이 청크에 정적으로 들어온다 — lazy 로 감싸도 쪼개지지 않았다(빌드 경고)
 import { getStreakInfo, DailyRewardBanner } from "./DailyReward";
@@ -66,7 +66,6 @@ const FinancialRestrictionBanner = lazyWithRetry(() =>
 const WelcomePopup = lazyWithRetry(() => import("./WelcomePopup"));
 const HelpButton = lazyWithRetry(() => import("./HelpButton"));
 const IOSInstallPrompt = lazyWithRetry(() => import("./IOSInstallPrompt"));
-const AppUpdateChecker = lazyWithRetry(() => import("./AppUpdateChecker"));
 const NicknameSetupPopup = lazyWithRetry(() => import("./NicknameSetupPopup"));
 const WeeklyTaxSummaryPopup = lazyWithRetry(() => import("./WeeklyTaxSummaryPopup"));
 import globalCacheService from "../services/globalCacheService";
@@ -316,23 +315,12 @@ export default function AlchanLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [showUpdateDismissed, setShowUpdateDismissed] = useState(() => {
-    try {
-      const dismissed = localStorage.getItem("alchan_update_dismissed");
-      if (!dismissed) return false;
-      // 24시간 이내에 닫았으면 계속 숨김
-      return Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000;
-    } catch {
-      return false;
-    }
-  });
+  const [isMobile, setIsMobile] = useState(isCompactViewport);
   const [showDailyRewardPopup, setShowDailyRewardPopup] = useState(false);
   // 아래 게이트 체크가 읽은 출석 정보. 배너에 넘겨 같은 문서를 두 번 읽지 않는다.
   const [dailyStreakInfo, setDailyStreakInfo] = useState(null);
 
-  // PWA 서비스 워커 훅
-  const { updateAvailable, updateServiceWorker, isOnline } = useServiceWorker();
+  const isOnline = useOnlineStatus();
 
   // 🎁 출석 보상 팝업 - 앱 진입(탭 열기) 시 자동 표시
   useEffect(() => {
@@ -373,7 +361,6 @@ export default function AlchanLayout() {
     [userDoc?.uid],
   );
 
-  // Jua 폰트는 index.html에서 preload로 로드됨 (중복 제거)
 
   // 🔥 페이지 이동 시 스크롤 최상단으로 이동
   useEffect(() => {
@@ -396,7 +383,7 @@ export default function AlchanLayout() {
     const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        const mobile = window.innerWidth < 768;
+        const mobile = isCompactViewport();
         setIsMobile(mobile);
         if (mobile) {
           setIsSidebarOpen(false);
@@ -427,6 +414,8 @@ export default function AlchanLayout() {
   const toggleSidebarCollapse = useCallback(() => {
     setIsSidebarCollapsed((prev) => !prev);
   }, []);
+
+  const expandSidebar = useCallback(() => setIsSidebarCollapsed(false), []);
 
   // 🔥 비로그인 상태면 즉시 로그인 페이지로 리다이렉트 (흰화면 방지)
   if (!loading && !user) {
@@ -459,7 +448,7 @@ export default function AlchanLayout() {
           <p className="text-gray-500 mb-2">
             앱 관리자의 승인을 기다리고 있습니다.
           </p>
-          <p className="text-slate-500 dark:text-gray-400 text-sm mb-6">
+          <p className="text-slate-500 text-sm mb-6">
             승인이 완료되면 모든 기능을 사용할 수 있습니다.
           </p>
           <div className="flex gap-3 justify-center">
@@ -513,17 +502,18 @@ export default function AlchanLayout() {
       {/* 🔒 메뉴 잠금은 사이드바(표시)와 ProtectedRoute(접근 차단)가 **같은 값**을 봐야 한다.
           둘 다 이 안에 있어야 하므로 여기(레이아웃 최상위)에 둔다 — 읽기는 여전히 1회. */}
       <MenuLocksProvider>
-      <div className="min-h-screen text-slate-800 font-sans selection:bg-indigo-500/30 selection:text-indigo-800 flex flex-col md:flex-row">
+      <div className="min-h-screen text-slate-800 font-sans selection:bg-indigo-500/30 selection:text-indigo-800 flex flex-col lg:flex-row">
         {/* PC 사이드바 */}
         <AlchanSidebar
           isOpen={isSidebarOpen}
           onClose={closeSidebar}
           isCollapsed={isSidebarCollapsed}
+          onExpand={expandSidebar}
         />
 
         {/* 메인 콘텐츠 영역 - 스크롤 문제 수정 + sticky footer 패턴 */}
         <main
-          className={`flex-1 min-w-0 md:min-h-screen relative flex flex-col ${
+          className={`flex-1 min-w-0 lg:min-h-screen relative flex flex-col ${
             isImmersiveMusicRoom ? "overflow-hidden" : ""
           }`}
         >
@@ -534,33 +524,34 @@ export default function AlchanLayout() {
               isMobile={isMobile}
               isSidebarCollapsed={isSidebarCollapsed}
               onToggleSidebarCollapse={toggleSidebarCollapse}
+              helpButton={
+                <Suspense fallback={null}>
+                  <HelpButton />
+                </Suspense>
+              }
             />
           )}
 
-          {/* 경제 이벤트 배너 */}
-          {!isImmersiveMusicRoom && <EconomicEventBanner />}
-
-          {/* 📢 자동 물가 기본 켜짐 — 선생님에게 한 번 안내 */}
-          {!isImmersiveMusicRoom && <AutoPriceNotice />}
-
-          {/* 📢 투표 미참여 법안 전역 배너 */}
+          {/* 알림 배너 4종 — 본문과 같은 폭에서 멈춘다(index.css .app-banner) */}
           {!isImmersiveMusicRoom && (
-            <Suspense fallback={null}>
-              <VoteReminderBanner />
-            </Suspense>
-          )}
-
-          {/* 💸 재정 제한 상태 안내 (순자산 마이너스 / 미상환 대출) */}
-          {!isImmersiveMusicRoom && (
-            <Suspense fallback={null}>
-              <FinancialRestrictionBanner />
-            </Suspense>
+            <div className="app-banner">
+              {/* 경제 이벤트 */}
+              <EconomicEventBanner />
+              {/* 📢 자동 물가 기본 켜짐 — 선생님에게 한 번 안내 */}
+              <AutoPriceNotice />
+              <Suspense fallback={null}>
+                {/* 📢 투표 미참여 법안 */}
+                <VoteReminderBanner />
+                {/* 💸 재정 제한 상태 안내 (순자산 마이너스 / 미상환 대출) */}
+                <FinancialRestrictionBanner />
+              </Suspense>
+            </div>
           )}
 
           {/* 콘텐츠 영역 - 🔥 Suspense로 lazy loading 지원 */}
           {/* flex-1: main이 flex-col일 때 남은 수직 공간을 차지 → 푸터가 바닥에 고정 */}
           <div
-            className={`w-full flex-1 ${isImmersiveMusicRoom ? "pb-0" : "pb-20 md:pb-4"}`}
+            className={`w-full flex-1 ${isImmersiveMusicRoom ? "pb-0" : "app-content-wrap"}`}
           >
             <Suspense fallback={<AlchanLoading message="페이지 로딩 중..." />}>
               <Routes>
@@ -957,44 +948,30 @@ export default function AlchanLayout() {
 
           {/* 푸터 - PC만 */}
           {!isImmersiveMusicRoom && (
-          <footer className="hidden md:block py-8 text-center text-sm text-slate-500 dark:text-gray-400 font-medium">
+          <footer className="hidden lg:block py-8 text-center text-sm text-slate-500 font-medium">
             © 2026 알찬 Corp. All rights reserved.
           </footer>
           )}
         </main>
 
         {/* 모바일 하단 네비게이션 */}
-        {!isImmersiveMusicRoom && <MobileNav />}
+        {!isImmersiveMusicRoom && (
+          <MobileNav
+            onOpenMenu={toggleSidebar}
+            isTeacher={Boolean(userDoc?.isAdmin || userDoc?.isSuperAdmin || userDoc?.isTeacher)}
+          />
+        )}
 
         {/* PWA 설치 프롬프트 */}
         <PWAInstallPrompt />
 
-        {/* 업데이트 알림 */}
-        {updateAvailable && !showUpdateDismissed && (
-          <UpdateNotification
-            onUpdate={updateServiceWorker}
-            onDismiss={() => {
-              setShowUpdateDismissed(true);
-              try {
-                localStorage.setItem(
-                  "alchan_update_dismissed",
-                  Date.now().toString(),
-                );
-              } catch {}
-            }}
-          />
-        )}
-
         {/* 오프라인 알림 */}
         {!isOnline && (
-          <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-center py-2 text-sm font-medium z-50 flex items-center justify-center gap-2">
+          <div className="fixed top-0 left-0 right-0 bg-amber-700 text-white text-center py-2 text-sm font-medium z-50 flex items-center justify-center gap-2">
             <WifiOff size={16} />
             오프라인 상태입니다. 일부 기능이 제한될 수 있습니다.
           </div>
         )}
-
-        {/* 플로팅 도움말 버튼 */}
-        {!isImmersiveMusicRoom && <HelpButton />}
 
         {/* 🎓 첫 로그인 닉네임 설정 팝업 (학생 전용) */}
         <Suspense fallback={null}>
@@ -1017,11 +994,6 @@ export default function AlchanLayout() {
         {/* 📱 iOS 홈화면 설치 안내 */}
         <Suspense fallback={null}>
           <IOSInstallPrompt />
-        </Suspense>
-
-        {/* 🔄 Android 앱 업데이트 체커 */}
-        <Suspense fallback={null}>
-          <AppUpdateChecker />
         </Suspense>
 
         {/* 📊 주간 세금 안내 팝업 (학생 전용, pendingTaxSummary가 있을 때만) */}
@@ -1048,7 +1020,7 @@ export default function AlchanLayout() {
               <div className="text-right mb-2">
                 <button
                   onClick={() => setShowDailyRewardPopup(false)}
-                  className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-slate-800 dark:text-white flex items-center justify-center ml-auto bg-white/20"
+                  className="w-8 h-8 rounded-full border-none cursor-pointer text-lg text-slate-800 flex items-center justify-center ml-auto bg-white/20"
                 >
                   ✕
                 </button>
@@ -1056,9 +1028,10 @@ export default function AlchanLayout() {
               <DailyRewardBanner
                 userId={userDoc.uid}
                 onClaim={handleDailyRewardClaim}
+                onHide={() => setShowDailyRewardPopup(false)}
                 prefetchedStreakInfo={dailyStreakInfo}
               />
-              <div className="text-center mt-3 text-[13px] text-slate-800 dark:text-white/60">
+              <div className="text-center mt-3 text-[13px] text-slate-800">
                 배경을 터치하면 닫힙니다
               </div>
             </div>
