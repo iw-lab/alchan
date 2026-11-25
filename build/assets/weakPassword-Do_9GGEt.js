@@ -1,0 +1,1 @@
+const t="alchan_weak_pw_uid",e=(e,r,a)=>{try{e&&((t,e)=>!!t&&!!e&&String(t).trim().toLowerCase()===String(e).trim().toLowerCase())(r,a)?localStorage.setItem(t,e):localStorage.removeItem(t)}catch{}},r=e=>{try{return!!e&&localStorage.getItem(t)===e}catch{return!1}},a=()=>{try{localStorage.removeItem(t)}catch{}};export{a as c,r as h,e as r};
