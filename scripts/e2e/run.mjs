@@ -77,16 +77,23 @@ async function newSession(who) {
   const page = await ctx.newPage();
   page.setDefaultTimeout(30000 * SLOW);
   attach(page, who);
+  await closeLatePopups(page);
   const sess = { ctx, page, who };
   SESSIONS.push(sess);
   return sess;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 바쁜 기계에서는 환영·출석 팝업이 한참 뒤(글을 쓰는 중)에 떠서 단추를 가린다 — 누르려는 순간 가려 있으면 사람처럼 닫는다.
+async function closeLatePopups(page) {
+  for (const name of [/^오늘은 닫기$/, /^나중에$/, /^확인했어요( ✓)?$/, /^받기! 🎉$/]) {
+    await page.addLocatorHandler(page.getByRole("button", { name }).first(), (b) => b.click({ timeout: 4000 * SLOW }).catch(() => {}), { noWaitAfter: true });
+  }
+}
 // Firestore WebChannel 이 늘 열려 있어 networkidle 은 오지 않는다 — DOM 준비 + 로딩 문구가 사라질 때까지만 본다.
 async function settle(page, ms = 700) {
   await page.waitForLoadState("domcontentloaded").catch(() => {});
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 20 * SLOW; i++) {
     const busy = await page.evaluate(() => /로딩 중|불러오는 중|Loading\.\.\./.test(document.body?.innerText || "")).catch(() => false);
     if (!busy) break;
     await sleep(250);
