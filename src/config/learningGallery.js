@@ -63,9 +63,4 @@ export const LEARNING_GALLERY = {
   siteGuguGuardians2D: {"image": "/images/learning/gugu-2d.webp", "tagline": "처음 그 2D 민화풍 그림 그대로 — 계산이 빨라질수록 내 군대가 강해지는 연산 라인 디펜스(덧셈·뺄셈·곱셈구구)", "tags": ["수학","공부·연습","학교 대항"]},
 };
 
-// 카테고리(킹수학처럼 두 줄로 고른다 — 2026-10-17 사용자 «카테고리도 만들어줘»). 과목은 그 앱이 실제로 내는 문제의 과목,
-// 종류는 노는 방식. 심티처(iwsimteacher) 카탈로그와 같은 낱말을 쓴다 — 바꿀 땐 두 곳을 같이.
-export const GALLERY_SUBJECTS = ["수학", "국어", "영어", "사회", "과학", "음악", "미술", "체육", "한자", "정보", "여러 과목"];
-export const GALLERY_KINDS = ["액션", "퍼즐", "리듬", "스포츠", "디펜스", "방탈출", "3D", "만들기", "키우기·경영", "보드·놀이", "타자", "학교 대항", "공부·연습", "수업 도구"];
-
 export const galleryInfoFor = (id) => LEARNING_GALLERY[id] || null;

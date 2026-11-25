@@ -49,26 +49,4 @@ export const logger = {
     : () => {},
 };
 
-/**
- * 특정 모듈용 로거 생성
- * @param {string} moduleName - 모듈 이름
- * @returns {object} 모듈별 로거
- */
-export const createLogger = (moduleName) => ({
-  log: isDev
-    ? (...args) => console.log(`[${moduleName}]`, ...args)
-    : () => {},
-
-  info: isDev
-    ? (...args) => console.info(`[${moduleName}]`, ...args)
-    : () => {},
-
-  debug: isDev
-    ? (...args) => console.debug(`[${moduleName}]`, ...args)
-    : () => {},
-
-  warn: (...args) => console.warn(`[${moduleName}]`, ...args),
-  error: (...args) => console.error(`[${moduleName}]`, ...args),
-});
-
 export default logger;

@@ -99,13 +99,6 @@ export function nameCandidates(lines) {
   }
   return out;
 }
-/** 무늬만 보고 고르기(금액 칸 수가 가장 많은 후보) — 글씨 확인은 findNameColumn 이 한다 */
-export function pickNameColumn(lines) {
-  let best = null;
-  for (const c of nameCandidates(lines)) if (!best || c.n > best.n) best = c;
-  return best;
-}
-
 /**
  * 두 선 사이 칸에 «글씨가 있는 줄»의 비율(0~1). 이름 칸은 거의 모든 줄에 이름이 인쇄돼 있고,
  * 표 끝 바깥 선(종이 가장자리 그림자·바깥 테두리)이 만든 가짜 칸이나 금액 칸은 대부분 비어 있다.

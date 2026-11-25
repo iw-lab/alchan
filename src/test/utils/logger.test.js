@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { logger, createLogger } from '../../utils/logger';
+import { logger } from '../../utils/logger';
 
 describe('logger', () => {
   let consoleSpy;
@@ -332,94 +332,6 @@ describe('logger', () => {
       process.env.NODE_ENV = originalEnv;
       timeSpy.mockRestore();
       timeEndSpy.mockRestore();
-    });
-  });
-});
-
-describe('createLogger', () => {
-  let consoleSpy;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('Module-specific Logger', () => {
-    // ⚠️ logger.js 는 `const isDev = process.env.NODE_ENV === 'development'` 를
-    //    **모듈 로드 시점에 한 번** 확정한다. 그래서 import 한 뒤에 NODE_ENV 를 바꿔도
-    //    아무 효과가 없다 — 종전 테스트가 그렇게 돼 있어서 항상 실패했고,
-    //    'production' 쪽 테스트는 반대로 **우연히** 통과하고 있었다(테스트 환경에선
-    //    어차피 isDev=false 라 아무것도 안 찍힌다 → 무엇을 넣어도 통과하는 가짜 초록).
-    //    환경을 먼저 세우고 모듈을 새로 읽어야 실제 분기를 검증할 수 있다.
-    const importLoggerWithEnv = async (env) => {
-      const prev = process.env.NODE_ENV;
-      process.env.NODE_ENV = env;
-      vi.resetModules();
-      try {
-        return await import('../../utils/logger');
-      } finally {
-        process.env.NODE_ENV = prev;
-      }
-    };
-
-    it('should create a logger with module name prefix in development', async () => {
-      const { createLogger: createDev } = await importLoggerWithEnv('development');
-
-      const moduleLogger = createDev('TestModule');
-      consoleSpy = vi.spyOn(console, 'log');
-
-      moduleLogger.log('Test message');
-      expect(consoleSpy).toHaveBeenCalledWith('[TestModule]', 'Test message');
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should create a logger that does not log in production', async () => {
-      const { createLogger: createProd } = await importLoggerWithEnv('production');
-
-      const moduleLogger = createProd('TestModule');
-      consoleSpy = vi.spyOn(console, 'log');
-
-      moduleLogger.log('Test message');
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should always log warnings with module prefix', () => {
-      const moduleLogger = createLogger('TestModule');
-      consoleSpy = vi.spyOn(console, 'warn');
-
-      moduleLogger.warn('Warning message');
-      expect(consoleSpy).toHaveBeenCalledWith('[TestModule]', 'Warning message');
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should always log errors with module prefix', () => {
-      const moduleLogger = createLogger('TestModule');
-      consoleSpy = vi.spyOn(console, 'error');
-
-      moduleLogger.error('Error message');
-      expect(consoleSpy).toHaveBeenCalledWith('[TestModule]', 'Error message');
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle multiple loggers with different module names', async () => {
-      const { createLogger: createDev } = await importLoggerWithEnv('development');
-
-      const logger1 = createDev('Module1');
-      const logger2 = createDev('Module2');
-
-      consoleSpy = vi.spyOn(console, 'log');
-
-      logger1.log('Message from Module1');
-      expect(consoleSpy).toHaveBeenCalledWith('[Module1]', 'Message from Module1');
-
-      logger2.log('Message from Module2');
-      expect(consoleSpy).toHaveBeenCalledWith('[Module2]', 'Message from Module2');
-
-      consoleSpy.mockRestore();
     });
   });
 });

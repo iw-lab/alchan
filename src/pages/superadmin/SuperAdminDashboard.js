@@ -2,10 +2,9 @@
 // 앱 관리자(SuperAdmin) 전용 대시보드
 // - 선생님 승인 관리
 // - 학급 목록 관리
-// - 시스템 모니터링 (오류, 성능)
 
 import { getCurrencyUnit } from "../../utils/numberFormatter";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebase";
@@ -19,11 +18,8 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
-  onSnapshot,
   serverTimestamp,
   getDoc,
-  limit,
   deleteField,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -37,29 +33,21 @@ import {
   Shield,
   Users,
   School,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   RefreshCw,
   Activity,
-  Database,
   Clock,
-  Zap,
   Eye,
   Trash2,
   UserCheck,
   UserX,
   Search,
   BarChart3,
-  Bug,
-  AlertOctagon,
-  Server,
-  Cpu,
-  HardDrive,
-  Wifi,
   UserCog,
 } from "lucide-react";
-import "./SuperAdminDashboard.css";
+import pageCss from "./SuperAdminDashboard.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
@@ -78,11 +66,10 @@ const TABS = [
   { id: "pending", label: "승인 대기", icon: Clock },
   { id: "teachers", label: "선생님 관리", icon: UserCheck },
   { id: "classes", label: "학급 관리", icon: School },
-  { id: "monitoring", label: "시스템 모니터링", icon: Activity },
-  { id: "errors", label: "오류 로그", icon: Bug },
 ];
 
 export default function SuperAdminDashboard() {
+  usePageCss(pageCss);
   const navigate = useNavigate();
   const { userDoc, user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
@@ -103,15 +90,6 @@ export default function SuperAdminDashboard() {
   const [pendingTeachers, setPendingTeachers] = useState([]);
   const [approvedTeachers, setApprovedTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [errorLogs, setErrorLogs] = useState([]);
-  const [systemMetrics, setSystemMetrics] = useState({
-    cpuUsage: 0,
-    memoryUsage: 0,
-    activeConnections: 0,
-    requestsPerMinute: 0,
-    avgResponseTime: 0,
-    errorRate: 0,
-  });
 
   // 전체 계정 상태
   const [allAuthUsers, setAllAuthUsers] = useState([]);
@@ -122,16 +100,11 @@ export default function SuperAdminDashboard() {
 
   // 검색/필터 상태
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
 
   // 학급 상세 모달
   const [classDetail, setClassDetail] = useState(null); // { classCode, teacherName }
   const [classStudents, setClassStudents] = useState([]);
   const [classDetailLoading, setClassDetailLoading] = useState(false);
-
-  // 실시간 에러 모니터링
-  const errorListenerRef = useRef(null);
-  const metricsIntervalRef = useRef(null);
 
   // 권한 체크
   useEffect(() => {
@@ -146,12 +119,13 @@ export default function SuperAdminDashboard() {
 
     setLoading(true);
     try {
+      // 네 목록이 같은 users 전체를 본다 — 한 번 읽어 나눠 쓴다(전에는 화면을 열 때마다 네 번 읽었다)
+      const usersSnap = await getDocs(collection(db, "users"));
       await Promise.all([
-        loadStats(),
-        loadPendingTeachers(),
-        loadApprovedTeachers(),
-        loadClasses(),
-        loadErrorLogs(),
+        loadStats(usersSnap),
+        loadPendingTeachers(usersSnap),
+        loadApprovedTeachers(usersSnap),
+        loadClasses(usersSnap),
       ]);
     } catch (error) {
       logger.error("데이터 로드 오류:", error);
@@ -159,19 +133,17 @@ export default function SuperAdminDashboard() {
       setLoading(false);
     }
     // ⚡ loadAllData는 userDoc?.isSuperAdmin만 읽고 전역 데이터(전체 교사·학급·통계)를 로드하므로
-    //   userDoc 전체를 dep에 넣으면 cash/xp 등 아무 필드 churn마다 users 컬렉션 풀스캔 4중복 재실행.
+    //   userDoc 전체를 dep에 넣으면 cash/xp 등 아무 필드 churn마다 users 컬렉션 풀스캔을 다시 한다.
     //   isSuperAdmin 스칼라로 좁혀 마운트 1회로 수렴(내부 loadStats 등은 안정 클로저).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDoc?.isSuperAdmin]);
 
   // 통계 로드
-  const loadStats = async () => {
+  const loadStats = async (shared) => {
     try {
+      const usersSnap = shared || (await getDocs(collection(db, "users")));
       // 🔥 users 컬렉션에서 관리자(선생님) 조회
       // isTeacher === true 또는 isAdmin === true인 사용자 (isSuperAdmin 제외)
-      const usersRef = collection(db, "users");
-      const usersSnap = await getDocs(usersRef);
-
       let totalTeachers = 0;
       let pending = 0;
       let approved = 0;
@@ -236,7 +208,7 @@ export default function SuperAdminDashboard() {
   };
 
   // 승인 대기 선생님 로드 (거절된 이메일/uid는 영구 제외)
-  const loadPendingTeachers = async () => {
+  const loadPendingTeachers = async (usersSnap) => {
     try {
       // 거절 목록 먼저 가져옴
       const rejSnap = await getDoc(doc(db, "Settings", "rejectedTeachers"));
@@ -249,10 +221,7 @@ export default function SuperAdminDashboard() {
         rejSnap.exists() ? rejSnap.data().uids || [] : [],
       );
 
-      const usersRef = collection(db, "users");
-      const snapshot = await getDocs(usersRef);
-
-      const pending = snapshot.docs
+      const pending = usersSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((user) => {
           if (user.isSuperAdmin) return false;
@@ -277,14 +246,11 @@ export default function SuperAdminDashboard() {
   };
 
   // 승인된 선생님 로드
-  const loadApprovedTeachers = async () => {
+  const loadApprovedTeachers = async (usersSnap) => {
     try {
       // 🔥 모든 users를 가져와서 클라이언트에서 필터링
       // Firestore OR 쿼리가 없으므로 isTeacher || isAdmin 조건을 클라이언트에서 처리
-      const usersRef = collection(db, "users");
-      const snapshot = await getDocs(usersRef);
-
-      const approved = snapshot.docs
+      const approved = usersSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .filter((user) => {
           // isSuperAdmin은 앱 관리자이므로 제외
@@ -310,13 +276,9 @@ export default function SuperAdminDashboard() {
 
   // 학급 목록 로드
   // 🔥 학생 데이터가 users 컬렉션에 저장되어 있으므로 users에서 직접 집계
-  const loadClasses = async () => {
+  const loadClasses = async (usersSnap) => {
     try {
       logger.log("[SuperAdmin] 학급 목록 로드 시작...");
-
-      // users 컬렉션에서 모든 사용자 조회
-      const usersRef = collection(db, "users");
-      const usersSnap = await getDocs(usersRef);
 
       // classCode별로 사용자 그룹화
       const classMap = new Map(); // classCode -> { students: [], teacher: null }
@@ -385,93 +347,6 @@ export default function SuperAdminDashboard() {
       setClasses([]);
     }
   };
-
-  // 에러 로그 로드
-  const loadErrorLogs = async () => {
-    try {
-      const logsRef = collection(db, "errorLogs");
-      const logsQuery = query(
-        logsRef,
-        orderBy("timestamp", "desc"),
-        limit(100),
-      );
-      const snapshot = await getDocs(logsQuery);
-
-      const logs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate?.() || new Date(),
-      }));
-
-      setErrorLogs(logs);
-    } catch (error) {
-      logger.error("에러 로그 로드 오류:", error);
-      // 컬렉션이 없으면 빈 배열 유지
-      setErrorLogs([]);
-    }
-  };
-
-  // 실시간 시스템 메트릭 모니터링
-  useEffect(() => {
-    if (!userDoc?.isSuperAdmin) return;
-
-    // 시스템 메트릭은 정적 기본값 사용 (5초 타이머 제거 → 불필요한 리렌더링 방지)
-    setSystemMetrics({
-      cpuUsage: 25,
-      memoryUsage: 40,
-      activeConnections: 15,
-      requestsPerMinute: 80,
-      avgResponseTime: 150,
-      errorRate: 0.5,
-    });
-
-    const intervalId = metricsIntervalRef.current;
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-    // 본문이 읽는 건 isSuperAdmin 뿐이다. userDoc 전체를 넣으면 cash·lastActiveAt 같은
-    // 무관한 필드가 바뀔 때마다 effect 가 다시 돈다(AuthContext 의 onSnapshot 이 매번
-    // 새 객체를 만들기 때문에 참조도 매번 바뀐다).
-  }, [userDoc?.isSuperAdmin]);
-
-  // 에러 로그 실시간 리스너
-  useEffect(() => {
-    if (!userDoc?.isSuperAdmin) return;
-
-    try {
-      const logsRef = collection(db, "errorLogs");
-      const logsQuery = query(logsRef, orderBy("timestamp", "desc"), limit(50));
-
-      errorListenerRef.current = onSnapshot(
-        logsQuery,
-        (snapshot) => {
-          const logs = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: doc.data().timestamp?.toDate?.() || new Date(),
-          }));
-          setErrorLogs(logs);
-        },
-        (error) => {
-          logger.error("에러 로그 리스너 오류:", error);
-        },
-      );
-    } catch (error) {
-      logger.error("에러 로그 리스너 설정 실패:", error);
-    }
-
-    return () => {
-      if (errorListenerRef.current) {
-        errorListenerRef.current();
-      }
-    };
-    // ⚠️ deps 는 boolean 하나여야 한다. `[userDoc]` 이면 슈퍼관리자 본인의 lastActiveAt 이
-    //    55분마다 갱신될 때마다(AuthContext INTERVAL_LAST_ACTIVE) 이 리스너가 해지·재구독되고,
-    //    재구독은 limit(50) 쿼리를 **처음부터 다시 읽는다**. 대시보드를 몇 시간 켜두면
-    //    변경분만 받았어야 할 리스너가 수백 건을 재과금했다.
-  }, [userDoc?.isSuperAdmin]);
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -983,33 +858,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // 에러 로그 삭제
-  const handleDeleteErrorLog = async (logId) => {
-    try {
-      await deleteDoc(doc(db, "errorLogs", logId));
-      setErrorLogs((prev) => prev.filter((log) => log.id !== logId));
-    } catch (error) {
-      logger.error("에러 로그 삭제 오류:", error);
-    }
-  };
-
-  // 에러 로그 전체 삭제
-  const handleClearAllErrorLogs = async () => {
-    if (
-      !(await confirmDialog(
-        `에러 로그 ${errorLogs.length}개를 모두 삭제하시겠습니까?`, { danger: true }))
-    )
-      return;
-    try {
-      await Promise.all(
-        errorLogs.map((log) => deleteDoc(doc(db, "errorLogs", log.id))),
-      );
-      setErrorLogs([]);
-    } catch (error) {
-      logger.error("에러 로그 전체 삭제 실패:", error);
-    }
-  };
-
   // 권한 없음
   if (!userDoc?.isSuperAdmin) {
     return (
@@ -1075,15 +923,6 @@ export default function SuperAdminDashboard() {
     return true;
   });
 
-  const filteredErrorLogs = errorLogs.filter((log) => {
-    const matchesSearch =
-      log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.type?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter =
-      filterStatus === "all" || log.severity === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
-
   return (
     <div className="super-admin-dashboard">
       {/* 헤더 */}
@@ -1123,19 +962,6 @@ export default function SuperAdminDashboard() {
             {tab.id === "pending" && stats.pendingTeachers > 0 && (
               <span className="badge">{stats.pendingTeachers}</span>
             )}
-            {tab.id === "errors" &&
-              errorLogs.filter(
-                (l) => l.severity === "critical" || l.severity === "error",
-              ).length > 0 && (
-                <span className="badge error">
-                  {
-                    errorLogs.filter(
-                      (l) =>
-                        l.severity === "critical" || l.severity === "error",
-                    ).length
-                  }
-                </span>
-              )}
           </button>
         ))}
       </nav>
@@ -1226,11 +1052,11 @@ export default function SuperAdminDashboard() {
                   </div>
                 </div>
 
-                {/* 빠른 액션 */}
-                <div className="quick-actions">
-                  <h3>빠른 작업</h3>
-                  <div className="action-buttons">
-                    {stats.pendingTeachers > 0 && (
+                {/* 빠른 액션 — 할 일이 있을 때만 보인다 */}
+                {stats.pendingTeachers > 0 && (
+                  <div className="quick-actions">
+                    <h3>빠른 작업</h3>
+                    <div className="action-buttons">
                       <button
                         className="action-btn warning"
                         onClick={() => setActiveTab("pending")}
@@ -1238,47 +1064,9 @@ export default function SuperAdminDashboard() {
                         <Clock size={20} />
                         승인 대기 {stats.pendingTeachers}명 처리
                       </button>
-                    )}
-                    <button
-                      className="action-btn"
-                      onClick={() => setActiveTab("monitoring")}
-                    >
-                      <Activity size={20} />
-                      시스템 상태 확인
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => setActiveTab("errors")}
-                    >
-                      <Bug size={20} />
-                      에러 로그 확인
-                    </button>
-                  </div>
-                </div>
-
-                {/* 최근 활동 */}
-                <div className="recent-activity">
-                  <h3>최근 에러 로그</h3>
-                  {errorLogs.length === 0 ? (
-                    <p className="no-data">에러 로그가 없습니다.</p>
-                  ) : (
-                    <div className="error-list-mini">
-                      {errorLogs.slice(0, 5).map((log) => (
-                        <div
-                          key={log.id}
-                          className={`error-item ${log.severity}`}
-                        >
-                          <span className="error-severity">{log.severity}</span>
-                          <span className="error-message">{log.message}</span>
-                          <span className="error-time">
-                            {log.timestamp?.toLocaleTimeString?.() ||
-                              "알 수 없음"}
-                          </span>
-                        </div>
-                      ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1771,7 +1559,7 @@ export default function SuperAdminDashboard() {
                                     borderRadius: "4px",
                                     background: "rgba(239,68,68,0.3)",
                                     color: "#fca5a5",
-                                    fontSize: "11px",
+                                    fontSize: "11.5px",
                                     fontWeight: "600",
                                   }}
                                 >
@@ -1786,7 +1574,7 @@ export default function SuperAdminDashboard() {
                                       borderRadius: "4px",
                                       background: "rgba(245,158,11,0.3)",
                                       color: "#fcd34d",
-                                      fontSize: "11px",
+                                      fontSize: "11.5px",
                                       fontWeight: "600",
                                     }}
                                   >
@@ -1802,7 +1590,7 @@ export default function SuperAdminDashboard() {
                                       borderRadius: "4px",
                                       background: "rgba(99,102,241,0.3)",
                                       color: "#a5b4fc",
-                                      fontSize: "11px",
+                                      fontSize: "11.5px",
                                       fontWeight: "600",
                                     }}
                                   >
@@ -1816,7 +1604,7 @@ export default function SuperAdminDashboard() {
                                     borderRadius: "4px",
                                     background: "rgba(239,68,68,0.3)",
                                     color: "#fca5a5",
-                                    fontSize: "11px",
+                                    fontSize: "11.5px",
                                     fontWeight: "600",
                                   }}
                                 >
@@ -1845,7 +1633,7 @@ export default function SuperAdminDashboard() {
                             </div>
                             <div
                               style={{
-                                fontSize: "11px",
+                                fontSize: "11.5px",
                                 color: "#6b7280",
                                 marginTop: "2px",
                               }}
@@ -1893,218 +1681,6 @@ export default function SuperAdminDashboard() {
               </div>
             )}
 
-            {/* 시스템 모니터링 탭 */}
-            {activeTab === "monitoring" && (
-              <div className="monitoring-tab">
-                <div className="tab-header">
-                  <h2>시스템 모니터링</h2>
-                  <span className="live-indicator">
-                    <span className="pulse"></span>
-                    실시간
-                  </span>
-                </div>
-
-                <div className="metrics-grid">
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <Cpu size={20} />
-                      <span>CPU 사용량</span>
-                    </div>
-                    <div className="metric-value">
-                      <span
-                        className={systemMetrics.cpuUsage > 80 ? "warning" : ""}
-                      >
-                        {systemMetrics.cpuUsage.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="metric-bar">
-                      <div
-                        className={`bar-fill ${systemMetrics.cpuUsage > 80 ? "warning" : systemMetrics.cpuUsage > 60 ? "caution" : ""}`}
-                        style={{ width: `${systemMetrics.cpuUsage}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <HardDrive size={20} />
-                      <span>메모리 사용량</span>
-                    </div>
-                    <div className="metric-value">
-                      <span
-                        className={
-                          systemMetrics.memoryUsage > 80 ? "warning" : ""
-                        }
-                      >
-                        {systemMetrics.memoryUsage.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="metric-bar">
-                      <div
-                        className={`bar-fill ${systemMetrics.memoryUsage > 80 ? "warning" : systemMetrics.memoryUsage > 60 ? "caution" : ""}`}
-                        style={{ width: `${systemMetrics.memoryUsage}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <Wifi size={20} />
-                      <span>활성 연결</span>
-                    </div>
-                    <div className="metric-value">
-                      {systemMetrics.activeConnections}
-                    </div>
-                  </div>
-
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <Zap size={20} />
-                      <span>요청/분</span>
-                    </div>
-                    <div className="metric-value">
-                      {systemMetrics.requestsPerMinute}
-                    </div>
-                  </div>
-
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <Clock size={20} />
-                      <span>평균 응답시간</span>
-                    </div>
-                    <div className="metric-value">
-                      {systemMetrics.avgResponseTime}ms
-                    </div>
-                  </div>
-
-                  <div className="metric-card">
-                    <div className="metric-header">
-                      <AlertTriangle size={20} />
-                      <span>에러율</span>
-                    </div>
-                    <div className="metric-value">
-                      <span
-                        className={systemMetrics.errorRate > 5 ? "warning" : ""}
-                      >
-                        {systemMetrics.errorRate.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="monitoring-info">
-                  <h3>시스템 상태</h3>
-                  <div className="status-list">
-                    <div className="status-item ok">
-                      <Server size={18} />
-                      <span>Firebase 연결</span>
-                      <CheckCircle size={16} />
-                    </div>
-                    <div className="status-item ok">
-                      <Database size={18} />
-                      <span>Firestore 상태</span>
-                      <CheckCircle size={16} />
-                    </div>
-                    <div className="status-item ok">
-                      <Wifi size={18} />
-                      <span>네트워크 상태</span>
-                      <CheckCircle size={16} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 에러 로그 탭 */}
-            {activeTab === "errors" && (
-              <div className="errors-tab">
-                <div className="tab-header">
-                  <h2>에러 로그</h2>
-                  <div className="header-controls">
-                    <div className="search-box">
-                      <Search size={18} />
-                      <input
-                        type="text"
-                        placeholder="에러 메시지 검색..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="filter-select"
-                    >
-                      <option value="all">모든 심각도</option>
-                      <option value="info">Info</option>
-                      <option value="warning">Warning</option>
-                      <option value="error">Error</option>
-                      <option value="critical">Critical</option>
-                    </select>
-                    <button
-                      className="test-error-btn"
-                      onClick={handleClearAllErrorLogs}
-                      title="전체 에러 로그 삭제"
-                    >
-                      <Trash2 size={18} />
-                      전체 삭제
-                    </button>
-                  </div>
-                </div>
-
-                {filteredErrorLogs.length === 0 ? (
-                  <div className="empty-state">
-                    <CheckCircle size={64} />
-                    <h3>에러 로그가 없습니다</h3>
-                    <p>시스템이 정상 작동 중입니다.</p>
-                  </div>
-                ) : (
-                  <div className="error-log-list">
-                    {filteredErrorLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        className={`error-log-item ${log.severity}`}
-                      >
-                        <div className="error-log-header">
-                          <span className={`severity-badge ${log.severity}`}>
-                            {log.severity === "critical" && (
-                              <AlertOctagon size={14} />
-                            )}
-                            {log.severity === "error" && <XCircle size={14} />}
-                            {log.severity === "warning" && (
-                              <AlertTriangle size={14} />
-                            )}
-                            {log.severity === "info" && <Activity size={14} />}
-                            {log.severity}
-                          </span>
-                          <span className="error-type">
-                            {log.type || "unknown"}
-                          </span>
-                          <span className="error-timestamp">
-                            {log.timestamp?.toLocaleString?.() || "알 수 없음"}
-                          </span>
-                          <button
-                            className="delete-log-btn"
-                            onClick={() => handleDeleteErrorLog(log.id)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                        <div className="error-log-body">
-                          <p className="error-message">{log.message}</p>
-                          {log.stack && (
-                            <pre className="error-stack">{log.stack}</pre>
-                          )}
-                          {log.url && (
-                            <span className="error-url">URL: {log.url}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
       </main>
