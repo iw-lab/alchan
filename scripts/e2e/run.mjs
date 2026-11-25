@@ -84,11 +84,20 @@ async function newSession(who) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// 바쁜 기계에서는 환영·출석 팝업이 한참 뒤(글을 쓰는 중)에 떠서 단추를 가린다 — 누르려는 순간 가려 있으면 사람처럼 닫는다.
+// 첫 로그인 팝업(환영·별명·출석·앱 설치·경제 이벤트). 바쁜 기계에서는 한참 뒤(글을 쓰는 중)에 떠서 단추를 가린다.
+// 팝업끼리 겹치면 아래 것은 «보이지만 못 누르는» 상태라, 마우스 대신 DOM 클릭으로 닫는다.
+const POPUP_BTNS = [/^오늘은 닫기$/, /^나중에$/, /^확인했어요( ✓)?$/, /^받기! 🎉$/]; // 출석은 «받기»로 실제 지급(claimDailyReward)까지 지나간다
+const domClick = (loc) => loc.evaluate((e) => e.click(), null, { timeout: 3000 }).catch(() => {});
+async function pickNickname(page, btn) {
+  await domClick(page.locator("div.grid.grid-cols-1.gap-2 > button").first());
+  await sleep(300);
+  await domClick(btn);
+  await btn.waitFor({ state: "hidden", timeout: 10000 * SLOW }).catch(() => {});
+}
 async function closeLatePopups(page) {
-  for (const name of [/^오늘은 닫기$/, /^나중에$/, /^확인했어요( ✓)?$/, /^받기! 🎉$/]) {
-    await page.addLocatorHandler(page.getByRole("button", { name }).first(), (b) => b.click({ timeout: 4000 * SLOW }).catch(() => {}), { noWaitAfter: true });
-  }
+  const nick = page.getByRole("button", { name: "이걸로 할래요" });
+  await page.addLocatorHandler(nick, (b) => pickNickname(page, b), { noWaitAfter: true });
+  for (const name of POPUP_BTNS) await page.addLocatorHandler(page.getByRole("button", { name }).first(), domClick, { noWaitAfter: true });
 }
 // Firestore WebChannel 이 늘 열려 있어 networkidle 은 오지 않는다 — DOM 준비 + 로딩 문구가 사라질 때까지만 본다.
 async function settle(page, ms = 700) {
@@ -115,22 +124,16 @@ async function confirmModal(page) {
   await sleep(700); // ARM_DELAY — 열리자마자 누르는 클릭은 무시된다
   await host.getByRole("button").filter({ hasNotText: /취소/ }).last().click();
 }
-// 첫 로그인 팝업(환영·별명·앱 설치·고지서·경제 이벤트)을 사람처럼 닫는다.
 async function dismissPopups(page) {
   for (let i = 0; i < 6; i++) {
     const nick = page.getByRole("button", { name: "이걸로 할래요" });
-    if (await nick.isVisible().catch(() => false)) {
-      const cand = page.locator("div.grid.grid-cols-1.gap-2 > button").first();
-      if (!(await cand.isVisible().catch(() => false))) { await sleep(600); continue; }
-      await cand.click({ timeout: 4000 * SLOW }).catch(() => {});
-      await nick.click({ timeout: 4000 * SLOW }).catch(() => {});
-      await sleep(800);
-      continue;
+    if (await nick.isVisible().catch(() => false)) { await pickNickname(page, nick); continue; }
+    let hit = false;
+    for (const name of POPUP_BTNS) {
+      const btn = page.getByRole("button", { name }).first();
+      if (await btn.isVisible().catch(() => false)) { await domClick(btn); hit = true; }
     }
-    // 출석 보상은 «받기»를 눌러 실제 지급(claimDailyReward CF)까지 지나가게 한다 — 그것도 잴 대상이다
-    const btn = page.getByRole("button", { name: /^(받기!?.*|오늘은 닫기|나중에|확인했어요 ✓|확인했어요)$/ }).first();
-    if (await btn.isVisible().catch(() => false)) { await btn.click().catch(() => {}); await sleep(900); continue; }
-    if (i === 0) { await sleep(900); continue; } // 출석 팝업은 0.5초 늦게 뜬다
+    if (hit || i === 0) { await sleep(900); continue; } // 출석 팝업은 0.5초 늦게 뜬다
     break;
   }
 }
@@ -460,7 +463,7 @@ if (want("wall")) {
   });
   await step("wall: 교사 명단에 «새 글» 표시 → 학급공개로", async () => {
     await go(T, "/personal-board");
-    const name = (await fdb.doc(wallOf(0)).get()).data().ownerName;
+    const name = (await fdb.doc(wallOf(0)).get()).data().ownerName.replace(/^\d+번 /, ""); // 명단은 번호를 따로 크게 쓴다(StudentNo)
     const card = T.page.locator("div").filter({ hasText: name }).filter({ has: T.page.getByRole("button", { name: "학급공개로" }) }).last();
     await card.waitFor({ timeout: 8000 * SLOW });
     const txt = await card.innerText();
@@ -472,7 +475,7 @@ if (want("wall")) {
     await go(S[1], "/personal-board");
     await S[1].page.getByRole("button", { name: "학급 담벼락" }).click();
     await settle(S[1].page);
-    const name = (await fdb.doc(wallOf(0)).get()).data().ownerName;
+    const name = (await fdb.doc(wallOf(0)).get()).data().ownerName.replace(/^\d+번 /, ""); // 명단은 번호를 따로 크게 쓴다(StudentNo)
     await S[1].page.getByRole("button", { name: new RegExp(name) }).first().click();
     await settle(S[1].page);
     await S[1].page.getByPlaceholder("댓글 달기").first().fill("멋진 글!");
@@ -1146,7 +1149,9 @@ if (want("president")) {
     expect(!!pres, "학급에 대통령 직업 없음");
     st.presJobId = pres.id;
     await fdb.doc(`users/${st.students[1].uid}`).update({ appointedJobIds: [pres.id] }); // 2번 = 교사 임명
-    await fdb.doc(`users/${st.students[2].uid}`).update({ selectedJobIds: [pres.id] });  // 3번 = 스스로 고름(인정 안 됨)
+    await fdb.doc(`users/${st.students[2].uid}`).update({ selectedJobIds: [pres.id], appointedJobIds: [] });  // 3번 = 스스로 고름(인정 안 됨)
+    // 4번 = 일반 학생. «국회» 시나리오가 4번을 대통령으로 임명해 둔 채 끝난다 — 안 비우면 전수 실행에서만 «거절 안 됨»(2026-11-25)
+    await fdb.doc(`users/${st.students[3].uid}`).update({ selectedJobIds: [], appointedJobIds: [], delegatedPermissions: {} });
     await fdb.doc(`users/${st.students[0].uid}`).update({ coupons: 5 });
   });
   await step("president: 메뉴·화면이 열린다(임명 대통령) / 안 열린다(자가선택)", async () => {
@@ -1202,7 +1207,9 @@ if (want("president")) {
     await p.locator('input[type="number"]').first().fill("2");
     await p.locator('button[type="submit"]').click();
     await waitFor(async () => ((await userDoc(s1)).coupons || 0) === c0 + 2, { timeout: 15000 * SLOW, msg: "UI 쿠폰 보내기 반영" });
-    const msg = await p.evaluate(() => document.body.innerText.match(/\d+명 쿠폰 처리 완료[^\n]*/)?.[0] || "");
+    // 서버 반영을 먼저 보고 왔으니 화면 문구는 그보다 늦을 수 있다(부하 실측: 반영 직후 빈 문구)
+    let msg = "";
+    await waitFor(async () => !!(msg = await p.evaluate(() => document.body.innerText.match(/\d+명 쿠폰 처리 완료[^\n]*/)?.[0] || "")), { timeout: 15000 * SLOW, msg: "쿠폰 처리 완료 문구" });
     note("president-coupon-ui", msg);
     expect(/1명 쿠폰 처리 완료/.test(msg), `완료 문구 없음 «${msg}»`);
   });
