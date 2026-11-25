@@ -123,6 +123,11 @@ function tc(expect, label, { path, method, as, before, after, token, actors = []
 const S = DOCS.stu1; // 학생1 기존 문서 (update 의 before)
 
 const CASES = [
+  // ── 쓰는 코드가 없는 컬렉션은 열어 두지 않는다(2026-11-25): errorLogs 는 기록하는 화면·서버가 한 곳도 없는데
+  //    로그인한 누구나 무한정 쓸 수 있었다 — 규칙 블록을 지워 기본 거부로 돌렸다.
+  tc("DENY", "학생이 쓰이지 않는 errorLogs 에 아무 문서나 쌓는다", {
+    path: "/errorLogs/x1", method: "create", as: "stu1", after: { message: "x" },
+  }),
   // ── ⚖️ 파산 신청(2026-11-20): 화면이 쓰는 그대로의 문서가 규칙을 지나는지 — 화면 쪽 결함
   //    (학급코드 undefined)을 고치고도 규칙에서 막히면 학생은 여전히 «실패»만 본다.
   tc("ALLOW", "🐤 학생이 자기 학급 법원에 파산 신청서를 낸다", {

@@ -20,14 +20,13 @@
 | index.js | 6,756 | 93 |
 | scheduler-http.js | 3,422 | 38 |
 | avatarShopService.js | — | 4 |
-| initializeSettings.js | — | 3 |
 | groupPurchaseService.js | 330 | 1 |
-| (유틸: utils, taxUtils, realStockService, jobUtils, initialStocks) | — | 0 |
+| (유틸: utils, taxUtils, realStockService, jobUtils) | — | 0 |
 
 - 고유 export 이름 104개 vs 클라 `httpsCallable` 참조 59개 → **미참조 48개** (scratchpad `cf-unused-candidates.txt`). 스케줄러/HTTP 트리거·onCall 외 트리거 포함이므로 P4에서 트리거 유형별 분류 후 판정.
 
-## Firestore 컬렉션 (클라 코드 기준 23개)
-activities, activity_logs, avatarShopItems, CentralStocks, chessGames, classes, donations, economicEventLogs, errorLogs, groupPurchases, jobs, laws, marketItems, musicRooms, omokGames, personalShops, realEstate, settlements, shopProducts, storeItems, taxRecords, transactions, users
+## Firestore 컬렉션 (클라 코드 기준 22개)
+activities, activity_logs, avatarShopItems, CentralStocks, chessGames, classes, donations, economicEventLogs, groupPurchases, jobs, laws, marketItems, musicRooms, omokGames, personalShops, realEstate, settlements, shopProducts, storeItems, taxRecords, transactions, users
 - ⚠️ 서브컬렉션·CF 전용 컬렉션(catalogMeta, settings/menuLocks, personalBoards, realEstateProperties, dailyItemUse 등 메모리에 등장하는 것들)이 이 grep에 안 잡힘 → P2 rules 매트릭스 작성 때 rules 파일 기준으로 완전 목록화.
 
 ## 대형 파일 Top 10 (리팩토링 P7 후보)

@@ -1177,18 +1177,6 @@ service cloud.firestore {
     }
 
     // ========================================================
-    // 🔴 에러 로그 (errorLogs) - SuperAdmin 전용
-    // ========================================================
-    match /errorLogs/{logId} {
-      // 읽기: SuperAdmin만
-      allow read: if isSuperAdminFast();
-      // 쓰기: 모든 로그인 사용자 (에러 발생 시 자동 기록) 또는 SuperAdmin
-      allow create: if isSignedIn();
-      allow update: if isSuperAdmin();
-      allow delete: if isSuperAdmin();
-    }
-
-    // ========================================================
     // 🚨 경찰서 (policeReports)
     // ========================================================
     match /policeReports/{reportId} {
