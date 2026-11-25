@@ -5,12 +5,19 @@ import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { useBackClose } from "../../hooks/useBackClose";
 
-const back = async () => {
-  await act(async () => {
-    window.history.back();
-    await new Promise((r) => setTimeout(r, 30));
+// 기록 이동은 비동기다. «몇 ms 기다리기»로 두면 바쁜 컴퓨터에서 이동이 다음 검사로 밀린다
+// (2026-11-25 부하 80: 6번 중 2번 실패) → popstate 가 실제로 n 번 올 때까지 기다린다.
+const settle = () => new Promise((r) => setTimeout(r, 30));
+const pops = async (fn, n = 1) => {
+  let left = n;
+  const done = new Promise((r) => {
+    const on = () => { left -= 1; if (left <= 0) { window.removeEventListener("popstate", on); r(); } };
+    window.addEventListener("popstate", on);
   });
+  fn(); // act 밖에서 — 안에서 부르면 두 클릭이 한 번에 묶여 «닫힘»이 아예 안 일어난다
+  await act(async () => { await done; await settle(); });
 };
+const back = () => pops(() => window.history.back());
 
 let loc;
 const Page = () => {
@@ -56,6 +63,7 @@ const App = () => (
 );
 
 beforeEach(async () => {
+  await settle(); // 앞 시험이 닫히며 예약한 기록 이동이 다 끝난 뒤 시작한다
   window.history.replaceState(null, "", "/");
   window.history.pushState({ idx: 1 }, "", "/page");
 });
@@ -85,8 +93,7 @@ describe("useBackClose", () => {
   it("단추로 닫으면 칸도 지워진다 — 다음 뒤로가기는 바로 이전 메뉴", async () => {
     render(<App />);
     fireEvent.click(screen.getByText("항목 열기"));
-    fireEvent.click(screen.getByText("← 목록"));
-    await act(async () => new Promise((r) => setTimeout(r, 30)));
+    await pops(() => fireEvent.click(screen.getByText("← 목록")));
     await back();
     await waitFor(() => expect(screen.getByText("홈")).toBeTruthy());
   });
@@ -97,9 +104,10 @@ describe("useBackClose", () => {
     window.history.go = (n) => setTimeout(() => realGo(n), 20);
     render(<App />);
     fireEvent.click(screen.getByText("항목 열기"));
-    fireEvent.click(screen.getByText("← 목록"));
-    fireEvent.click(screen.getByText("항목 열기")); // 지우기(back)가 끝나기 전에 다시 연다
-    await act(async () => new Promise((r) => setTimeout(r, 60)));
+    await pops(() => {
+      fireEvent.click(screen.getByText("← 목록"));
+      fireEvent.click(screen.getByText("항목 열기")); // 지우기(back)가 끝나기 전에 다시 연다
+    });
     expect(screen.getByText("상세:가")).toBeTruthy();
     window.history.go = realGo;
     await back();
@@ -111,7 +119,7 @@ describe("useBackClose", () => {
     render(<App />);
     fireEvent.click(screen.getByText("항목 열기"));
     fireEvent.click(screen.getByText("다른 메뉴"));
-    await act(async () => new Promise((r) => setTimeout(r, 60)));
+    await act(settle);
     expect(screen.getByText("다른 화면")).toBeTruthy();
   });
 
@@ -135,8 +143,7 @@ describe("useBackClose", () => {
     render(<App />);
     fireEvent.click(screen.getByText("항목 열기"));
     fireEvent.click(screen.getByText("모달 열기"));
-    fireEvent.click(screen.getByText("둘 다 닫기"));
-    await act(async () => new Promise((r) => setTimeout(r, 40)));
+    await pops(() => fireEvent.click(screen.getByText("둘 다 닫기")));
     await back();
     await waitFor(() => expect(screen.getByText("홈")).toBeTruthy());
   });
@@ -144,9 +151,8 @@ describe("useBackClose", () => {
   it("단추로 닫은 뒤 앞으로가기로 주인 없는 칸에 내려앉으면 건너뛴다", async () => {
     render(<App />);
     fireEvent.click(screen.getByText("항목 열기"));
-    fireEvent.click(screen.getByText("← 목록"));
-    await act(async () => new Promise((r) => setTimeout(r, 40)));
-    await act(async () => { window.history.forward(); await new Promise((r) => setTimeout(r, 60)); });
+    await pops(() => fireEvent.click(screen.getByText("← 목록")));
+    await pops(() => window.history.forward(), 2); // 내려앉기 + 건너뛰기
     expect(screen.getByText("쪽:/page")).toBeTruthy();
     await back();
     await waitFor(() => expect(screen.getByText("홈")).toBeTruthy()); // 헛도는 뒤로가기 없음

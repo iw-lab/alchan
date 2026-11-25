@@ -13,6 +13,8 @@ import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 const BASE = process.env.E2E_BASE || "http://127.0.0.1:5199";
 const SHOTS = process.argv.includes("--shots");
 const VISIT = process.argv.includes("--visit");
+// 기계가 붐비면(다른 작업 여럿) 15초 제한에 앱과 상관없이 첫 단계가 죽고 뒤가 줄줄이 실패한다 — 기다림만 늘린다.
+const SLOW = Number(process.env.E2E_SLOW) || 1;
 const OUT = process.env.E2E_OUT || "/tmp/alchan-e2e";
 mkdirSync(OUT, { recursive: true });
 
@@ -73,6 +75,7 @@ async function newSession(who) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: "ko-KR" });
   await ctx.route(/recaptcha|content-firebaseappcheck|firebaseappcheck\.googleapis/, (r) => r.abort());
   const page = await ctx.newPage();
+  page.setDefaultTimeout(30000 * SLOW);
   attach(page, who);
   const sess = { ctx, page, who };
   SESSIONS.push(sess);
@@ -90,7 +93,7 @@ async function settle(page, ms = 700) {
   }
   await sleep(ms);
 }
-async function waitFor(fn, { timeout = 10000, every = 300, msg = "조건 시간 초과" } = {}) {
+async function waitFor(fn, { timeout = 10000 * SLOW, every = 300, msg = "조건 시간 초과" } = {}) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
     const v = await fn();
@@ -101,7 +104,7 @@ async function waitFor(fn, { timeout = 10000, every = 300, msg = "조건 시간 
 }
 async function confirmModal(page) {
   const host = page.getByTestId("confirm-host");
-  await host.waitFor({ timeout: 6000 });
+  await host.waitFor({ timeout: 6000 * SLOW });
   await sleep(700); // ARM_DELAY — 열리자마자 누르는 클릭은 무시된다
   await host.getByRole("button").filter({ hasNotText: /취소/ }).last().click();
 }
@@ -112,8 +115,8 @@ async function dismissPopups(page) {
     if (await nick.isVisible().catch(() => false)) {
       const cand = page.locator("div.grid.grid-cols-1.gap-2 > button").first();
       if (!(await cand.isVisible().catch(() => false))) { await sleep(600); continue; }
-      await cand.click({ timeout: 4000 }).catch(() => {});
-      await nick.click({ timeout: 4000 }).catch(() => {});
+      await cand.click({ timeout: 4000 * SLOW }).catch(() => {});
+      await nick.click({ timeout: 4000 * SLOW }).catch(() => {});
       await sleep(800);
       continue;
     }
@@ -125,7 +128,7 @@ async function dismissPopups(page) {
   }
 }
 async function shot(page, name) { if (SHOTS) await page.screenshot({ path: `${OUT}/${name}.png` }).catch(() => {}); }
-async function drainCalls(page, timeout = 15000) {
+async function drainCalls(page, timeout = 15000 * SLOW) {
   const t0 = Date.now();
   while (page._inflightCalls?.size && Date.now() - t0 < timeout) await sleep(100);
 }
@@ -138,7 +141,7 @@ async function loginEmail(s, email, password) {
   await page.getByPlaceholder("이메일을 입력하세요").fill(email);
   await page.getByPlaceholder("비밀번호를 입력하세요").fill(password);
   await page.getByRole("button", { name: /^로그인/ }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 });
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 * SLOW });
   await settle(page);
   await dismissPopups(page);
 }
@@ -149,7 +152,7 @@ async function loginStudent(s, id, classCode, password) {
   await page.getByPlaceholder("비워도 됩니다").fill(classCode || "");
   await page.getByPlaceholder("비밀번호를 입력하세요").fill(password);
   await page.getByRole("button", { name: /^로그인/ }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 });
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20000 * SLOW });
   await settle(page);
   await dismissPopups(page);
 }
@@ -248,7 +251,7 @@ await step("teacher-register(UI)", async () => {
   await p.getByPlaceholder("6자 이상").fill(TEACHER.password);
   await p.getByPlaceholder("재입력").fill(TEACHER.password);
   await p.locator('form button[type="submit"]').click();
-  await p.getByText(/가입 완료/).waitFor({ timeout: 15000 });
+  await p.getByText(/가입 완료/).waitFor({ timeout: 15000 * SLOW });
 });
 await step("super-approve(UI)", async () => {
   await loginEmail(SA, SUPER.email, SUPER.password);
@@ -257,17 +260,17 @@ await step("super-approve(UI)", async () => {
   await p.getByRole("button", { name: /^승인 대기/ }).first().click();
   await settle(p);
   const card = p.locator("div").filter({ hasText: TEACHER.email }).filter({ has: p.getByRole("button", { name: /^승인$/ }) }).last();
-  await card.waitFor({ timeout: 10000 });
+  await card.waitFor({ timeout: 10000 * SLOW });
   await card.getByRole("button", { name: /^승인$/ }).click();
   await confirmModal(p);
   const d = await waitFor(async () => {
     const s = await fdb.collection("users").where("email", "==", TEACHER.email).get();
     const x = s.docs[0]?.data();
     return x?.isApproved && x.classCode && x.classCode !== "미지정" ? { ...x, uid: s.docs[0].id } : null;
-  }, { timeout: 15000, msg: "승인 후 학급코드 발급" });
+  }, { timeout: 15000 * SLOW, msg: "승인 후 학급코드 발급" });
   st.classCode = d.classCode; st.teacherUid = d.uid;
   // 승인 화면은 user 문서 → classes 문서 → 기본값(직업·상점…) 순서로 쓴다 — 마지막 것까지 기다린다
-  await waitFor(async () => (await fdb.doc(`bankingSettings/${st.classCode}`).get()).exists, { timeout: 20000, msg: "학급 기본값 시딩" });
+  await waitFor(async () => (await fdb.doc(`bankingSettings/${st.classCode}`).get()).exists, { timeout: 20000 * SLOW, msg: "학급 기본값 시딩" });
   const cls = await fdb.doc(`classes/${st.classCode}`).get();
   const jobs = await fdb.collection("jobs").where("classCode", "==", st.classCode).get();
   const items = await fdb.collection("storeItems").where("classCode", "==", st.classCode).get();
@@ -328,7 +331,7 @@ if (only.includes("roster")) {
   for (const [path, sel] of [["/admin/money-transfer", ".money-transfer-container .user-item .student-no"], ["/admin/coupon-transfer", ".coupon-transfer-container .user-item .student-no"]]) {
     await step(`roster: 교사 ${path}`, async () => {
       await go(T, path);
-      await T.page.locator(sel).first().waitFor({ timeout: 15000 });
+      await T.page.locator(sel).first().waitFor({ timeout: 15000 * SLOW });
       const nos = await readNos(T.page, sel);
       note(`roster${path}`, nos.map((n) => n.t).join(","));
       expect(nos.filter((n) => n.t !== "–").length >= 4, `${path} 학생 번호 ${nos.length}개`);
@@ -342,7 +345,7 @@ if (only.includes("roster")) {
     await go(S[0], "/my-assets");
     await S[0].page.getByRole("button", { name: /송금하기/ }).first().click();
     const sel = '[role="radiogroup"][aria-label="받는 사람"] [role="radio"] .student-no';
-    await S[0].page.locator(sel).first().waitFor({ timeout: 15000 });
+    await S[0].page.locator(sel).first().waitFor({ timeout: 15000 * SLOW });
     const nos = await readNos(S[0].page, sel);
     note("roster/my-assets", nos.map((n) => n.t).join(","));
     expect(!nos.some((n) => n.t === "1"), "받는 사람에 내(1번)가 있다");
@@ -452,7 +455,7 @@ if (want("wall")) {
     await go(T, "/personal-board");
     const name = (await fdb.doc(wallOf(0)).get()).data().ownerName;
     const card = T.page.locator("div").filter({ hasText: name }).filter({ has: T.page.getByRole("button", { name: "학급공개로" }) }).last();
-    await card.waitFor({ timeout: 8000 });
+    await card.waitFor({ timeout: 8000 * SLOW });
     const txt = await card.innerText();
     note("wall-teacher-card", txt.replace(/\s+/g, " ").slice(0, 80));
     await card.getByRole("button", { name: "학급공개로" }).click();
@@ -515,7 +518,7 @@ if (want("money")) {
     const c0 = (await userDoc(st.students[0].uid)).cash;
     await go(S[0], "/item-shop");
     const btn = S[0].page.locator(".buy-item-button:not([disabled])").first();
-    await btn.waitFor({ timeout: 8000 });
+    await btn.waitFor({ timeout: 8000 * SLOW });
     await btn.click();
     await settle(S[0].page);
     const inv = await waitFor(async () => { const q = await fdb.collection(`users/${st.students[0].uid}/inventory`).get(); return q.size > 0 ? q : null; }, { msg: "인벤토리 반영" });
@@ -542,7 +545,7 @@ if (want("music")) {
     await go(S[1], `/student-request/${roomId}`);
     await S[1].page.getByRole("button", { name: /URL로 입력/ }).first().click();
     await S[1].page.getByPlaceholder("https://youtu.be/xxxxx 여기에 붙여넣기").fill("https://youtu.be/dQw4w9WgXcQ");
-    await S[1].page.getByText("영상 확인됨").waitFor({ timeout: 15000 });
+    await S[1].page.getByText("영상 확인됨").waitFor({ timeout: 15000 * SLOW });
     const nameBox = S[1].page.getByPlaceholder("신청자 이름을 입력하세요");
     if (await nameBox.isVisible().catch(() => false)) await nameBox.fill("학생2");
     await S[1].page.locator("button.request-btn").click();
@@ -596,7 +599,7 @@ if (want("assembly")) {
     // --visit 순회에서 교사가 먼저 국회를 열면 문서가 생긴다 — 교사가 한 번도 안 연 반으로 되돌린다
     for (const id of ["admin", "government"]) await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/${id}`).delete();
     await go(S[1], "/national-assembly");
-    await S[1].page.getByRole("heading", { name: "국회 의사당" }).waitFor({ timeout: 10000 });
+    await S[1].page.getByRole("heading", { name: "국회 의사당" }).waitFor({ timeout: 10000 * SLOW });
   });
   // 3명 반으로 둔다 — 과반(절반 초과) = 2표. (학생1·3 찬성, 학생2 반대 흐름)
   await fdb.doc(`classes/${st.classCode}/nationalAssemblySettings/admin`).set({ totalStudents: 3 });
@@ -655,7 +658,7 @@ if (want("assembly")) {
     note("assembly-fake-president", fake);
     expect(fake === "permission-denied", "대통령 아닌 학생의 승인이 허용됐다 " + fake);
     await go(S[3], "/organization-chart");
-    await S[3].page.getByText("대통령 권한").first().waitFor({ timeout: 15000 });
+    await S[3].page.getByText("대통령 권한").first().waitFor({ timeout: 15000 * SLOW });
     await S[3].page.locator(".law-approval-section .veto-button").first().click();
     const dlg = S[3].page.getByRole("dialog", { name: "입력" });
     await dlg.locator("textarea").fill("벌금이 너무 큽니다");
@@ -665,7 +668,7 @@ if (want("assembly")) {
   await step("assembly: 대통령실 재의결 목록에 보임 + 남은 시간 정상", async () => {
     await go(S[3], "/organization-chart");
     const sec = S[3].page.locator(".vetoed-laws-section");
-    await sec.getByText("복도에서 뛰지 않기").waitFor({ timeout: 15000 });
+    await sec.getByText("복도에서 뛰지 않기").waitFor({ timeout: 15000 * SLOW });
     const txt = await sec.innerText();
     expect(!/NaN/.test(txt) && /남음/.test(txt), "남은 시간 표시 이상: " + txt.slice(0, 200));
   });
@@ -719,7 +722,7 @@ if (want("assembly")) {
     await go(S[0], "/national-assembly");
     await S[0].page.getByRole("button", { name: "재의결 법안" }).click();
     const card = S[0].page.locator(".law-card.discarded", { hasText: "급식 남기면 벌금" });
-    await card.waitFor({ timeout: 10000 });
+    await card.waitFor({ timeout: 10000 * SLOW });
     expect(await card.getByText("폐기 (재의결 기한 만료)").isVisible(), "폐기 표시 없음");
     expect((await card.getByRole("button", { name: "재의결 찬성" }).count()) === 0, "폐기된 법에 재의결 찬성 버튼이 있다");
     const forged = await forge(S[0], `${lawsCol()}/${ref.id}`, { [`voters.${st.students[0].uid}`]: "approvals" }, { approvals: 1 });
@@ -730,7 +733,7 @@ if (want("assembly")) {
     expect(after.status === "veto_expired" && !!after.vetoExpiredAt, "폐기 상태 확정 안 됨: " + after.status);
     await go(S[3], "/organization-chart");
     const sec = S[3].page.locator(".vetoed-laws-section");
-    await sec.waitFor({ timeout: 10000 });
+    await sec.waitFor({ timeout: 10000 * SLOW });
     expect(!(await sec.innerText()).includes("급식 남기면 벌금"), "대통령실 «재의결 진행 중»에 폐기된 법이 보인다");
   });
 }
@@ -834,7 +837,7 @@ if (want("auction")) {
     await auctionsCol().doc(auctionId).update({ endTime: new Date(Date.now() - 1000) });
     // 종료된 경매를 여러 학생이 동시에 열면 모두 정산을 부른다 — 409 없이 한 번만 정산돼야 한다
     await Promise.all([go(S[1], "/auction"), go(S[2], "/auction")]);
-    await waitFor(async () => (await auctionsCol().doc(auctionId).get()).data().status !== "ongoing", { timeout: 20000, msg: "정산" });
+    await waitFor(async () => (await auctionsCol().doc(auctionId).get()).data().status !== "ongoing", { timeout: 20000 * SLOW, msg: "정산" });
     const dA = (await cash(A.uid)) - base[A.uid], dB = (await cash(B.uid)) - base[B.uid], dC = (await cash(C.uid)) - base[C.uid], dT = (await cash(teacherUid)) - base.teacher;
     note("auction-deltas", { dA, dB, dC, dT });
     expect(dC === -200 && dB === 0 && dA > 0 && dA + dT === 200, `돈 보존 실패 ${JSON.stringify({ dA, dB, dC, dT })}`);
@@ -1063,9 +1066,9 @@ if (want("tax")) {
     expect(await page.locator("[data-tax-camera]").getAttribute("capture") === "environment", "세금정산 «사진 찍기»가 카메라를 바로 열지 않는다(capture 없음)");
     expect(await page.getByRole("button", { name: /^사진 찍기$/ }).count() === 1 && await page.getByRole("button", { name: /^앨범에서 고르기$/ }).count() === 1, "세금정산 «사진 찍기»·«앨범에서 고르기» 버튼이 둘 다 있어야 한다");
     await page.locator("[data-tax-camera]").setInputFiles({ name: "sheet.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
-    await page.getByRole("button", { name: /^사진 읽기$/ }).waitFor({ timeout: 15000 });
+    await page.getByRole("button", { name: /^사진 읽기$/ }).waitFor({ timeout: 15000 * SLOW });
     // 2026-11-18 «이름을 잘못 가리거나 반대쪽을 가려»: 자동으로 가렸어도 선생님이 눈으로 확인(체크)하기 전엔 못 보낸다
-    await page.locator("[data-tax-confirm] input").waitFor({ timeout: 15000 });
+    await page.locator("[data-tax-confirm] input").waitFor({ timeout: 15000 * SLOW });
     expect(!(await page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled()), "이름 가림을 확인(체크)하기 전인데 «사진 읽기»가 켜져 있다");
     // «지우고 직접 칠하기» → 검은 띠가 지워지고(가리기 전 모습), 칠하기 전엔 체크도 못 한다
     const blackBefore = await page.evaluate(() => { const c = document.querySelector("canvas"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] === 0) n++; return n; });
@@ -1081,7 +1084,7 @@ if (want("tax")) {
     await page.locator("[data-tax-confirm] input").check();
     await waitFor(async () => page.getByRole("button", { name: /^사진 읽기$/ }).isEnabled(), { msg: "이름 칸 자동 가리기 + 확인 체크" });
     await page.getByRole("button", { name: /^사진 읽기$/ }).click();
-    await page.getByRole("button", { name: /정산하기/ }).waitFor({ timeout: 15000 });
+    await page.getByRole("button", { name: /정산하기/ }).waitFor({ timeout: 15000 * SLOW });
     await settle(page);
     const lay = await page.evaluate(() => {
       // 앱은 안쪽 칸이 스크롤한다(document 폭은 늘 화면 폭) — 표 자체의 옆 스크롤 상자(.overflow-x-auto)만 빼고, 옆으로 넘치는 칸이 하나라도 있으면 잘린다
@@ -1115,7 +1118,7 @@ if (want("tax")) {
     const b2 = (await userDoc(st.students[1].uid)).cash, c3 = (await userDoc(st.students[2].uid)).coupons || 0;
     await page.getByRole("button", { name: /정산하기/ }).click();
     await confirmModal(page);
-    await waitFor(async () => (await userDoc(st.students[1].uid)).cash !== b2, { timeout: 20000, msg: "2번 벌금 반영" });
+    await waitFor(async () => (await userDoc(st.students[1].uid)).cash !== b2, { timeout: 20000 * SLOW, msg: "2번 벌금 반영" });
     const a2 = (await userDoc(st.students[1].uid)).cash, a3 = (await userDoc(st.students[2].uid)).coupons || 0;
     note("tax-applied", { fine2: b2 - a2, coupon3: a3 - c3 });
     expect(b2 - a2 === 3000, `2번 벌금 ${b2 - a2}(기대 고친 값 3000)`);
@@ -1191,7 +1194,7 @@ if (want("president")) {
     await p.locator(".user-item").first().locator(".user-label").click(); // 번호 순 첫 줄 = 1번(화면엔 실명 대신 별명). 체크 상자는 숨겨진 꾸밈 상자 — 이름표를 누른다
     await p.locator('input[type="number"]').first().fill("2");
     await p.locator('button[type="submit"]').click();
-    await waitFor(async () => ((await userDoc(s1)).coupons || 0) === c0 + 2, { timeout: 15000, msg: "UI 쿠폰 보내기 반영" });
+    await waitFor(async () => ((await userDoc(s1)).coupons || 0) === c0 + 2, { timeout: 15000 * SLOW, msg: "UI 쿠폰 보내기 반영" });
     const msg = await p.evaluate(() => document.body.innerText.match(/\d+명 쿠폰 처리 완료[^\n]*/)?.[0] || "");
     note("president-coupon-ui", msg);
     expect(/1명 쿠폰 처리 완료/.test(msg), `완료 문구 없음 «${msg}»`);

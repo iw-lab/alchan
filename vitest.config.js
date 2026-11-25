@@ -23,6 +23,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.js',
+    // 기본 5초는 이 컴퓨터가 바쁠 때(부하 80~110 — 다른 세션이 같이 돈다) 멀쩡한 시험을 떨어뜨린다.
+    // 2026-11-25 실측: 전체 1475개 중 3개가 5.3·5.8·7.5초로 «시간 초과», 하나씩 돌리면 통과.
+    testTimeout: 30000,
+    hookTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

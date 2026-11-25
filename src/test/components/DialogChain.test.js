@@ -11,7 +11,7 @@
  * 확인 버튼이 `disabled=false` 인 채 떠서 초기화가 실행됐다.
  */
 import { render, screen, act } from "@testing-library/react";
-import { beforeEach, afterEach, describe, it, expect } from "vitest";
+import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import ConfirmHost from "../../components/ConfirmHost";
 import PromptHost from "../../components/PromptHost";
 import { confirmDialog, __resetConfirm } from "../../utils/confirmDialog";
@@ -21,8 +21,19 @@ const reset = () => {
   __resetConfirm();
   __resetPrompt();
 };
-beforeEach(reset);
-afterEach(reset);
+// 시계를 세운다 — 잠금은 0.4초라, 컴퓨터가 바쁘면 «잠겨 있다»를 보기도 전에 진짜 시간이 지나 풀린다
+// (2026-11-25 부하 140 에서 실측: 멀쩡한 코드인데 빨강).
+beforeEach(() => {
+  reset();
+  vi.useFakeTimers();
+});
+afterEach(() => {
+  vi.useRealTimers();
+  reset();
+});
+/** 밀린 약속·렌더만 흘려보낸다(시계는 안 간다). */
+const settle = () => act(async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); });
+const see = async (text) => { await settle(); return screen.getByText(text); };
 
 /** 실제 호출부 모양: 입력을 받고 곧바로 danger 확인을 묻는다. */
 function startChain() {
@@ -54,12 +65,12 @@ describe("입력창 → 확인창 연쇄", () => {
       </>,
     );
     const result = startChain();
-    await screen.findByText("새 목표 수량?");
+    await see("새 목표 수량?");
 
     // 클릭 ①: 입력 확정
     await act(async () => screen.getByText("확인").click());
     // 확인창이 같은 자리에 떴다
-    await screen.findByText("기여 기록을 초기화하시겠습니까?");
+    await see("기여 기록을 초기화하시겠습니까?");
 
     // 클릭 ②: 더블클릭의 두 번째가 여기 꽂힌다 — 잠겨 있어야 한다
     const btn = screen.getByText("확인");
@@ -79,14 +90,14 @@ describe("입력창 → 확인창 연쇄", () => {
       </>,
     );
     const result = startChain();
-    await screen.findByText("새 목표 수량?");
+    await see("새 목표 수량?");
     await act(async () => screen.getByText("확인").click());
-    await screen.findByText("기여 기록을 초기화하시겠습니까?");
+    await see("기여 기록을 초기화하시겠습니까?");
 
-    await act(async () => new Promise((r) => setTimeout(r, 450)));
+    await act(async () => vi.advanceTimersByTime(450));
     expect(screen.getByText("확인")).not.toBeDisabled();
     await act(async () => screen.getByText("확인").click());
-    await act(async () => {});
+    await settle();
     expect(result()).toBe("초기화 실행");
   });
 
@@ -100,14 +111,14 @@ describe("입력창 → 확인창 연쇄", () => {
       </>,
     );
     const result = startChain();
-    await screen.findByText("새 목표 수량?");
+    await see("새 목표 수량?");
     await act(async () => screen.getByText("확인").click());
-    await screen.findByText("기여 기록을 초기화하시겠습니까?");
+    await see("기여 기록을 초기화하시겠습니까?");
 
     // 확인은 잠겼지만 취소는 즉시 눌려야 한다
     expect(screen.getByText("확인")).toBeDisabled();
     await act(async () => screen.getByText("취소").click());
-    await act(async () => {});
+    await settle();
     expect(result()).toBe("초기화 안 함");
   });
 
@@ -117,7 +128,7 @@ describe("입력창 → 확인창 연쇄", () => {
     act(() => {
       answer = confirmDialog("삭제할까요?");
     });
-    await screen.findByText("삭제할까요?");
+    await see("삭제할까요?");
     expect(screen.getByText("확인")).not.toBeDisabled();
     await act(async () => screen.getByText("확인").click());
     await expect(answer).resolves.toBe(true);
