@@ -251,8 +251,7 @@
 - **퀴즈 현금 보상**: 11-11 엔 만들지 않음 → 11-13 선생님 결정으로 만들었다(«3차»).
 - **학부모 메일**: 하지 않음 — 가계부 인쇄본 유지.
 - **Android APK 빌드**: 원인은 `android-actions/setup-android@v3` 가 Node 24 강제 실행에서 죽는 것. 러너에 깔린 SDK 를 쓰도록 고치고, APK 가 웹뷰 껍데기라 `android/**` 가 바뀔 때만 빌드하게 했다(수동 실행은 기본이 릴리스 없이 산출물만).
-  ⚠️ 이 수정은 **아직 못 올렸다** — 제 GitHub 토큰에 워크플로 파일을 고칠 권한(`workflow` scope)이 없어 푸시가 거절됐다.
-  패치는 `docs/patches/build-android-fix.patch` 에 있다. 올리는 법: `gh auth refresh -s workflow` → `git apply docs/patches/build-android-fix.patch` → 커밋·푸시.
+  ✅ SDK 수정은 먼저 올라갔고, «android/** 때만 빌드»는 2026-11-26 `b023bed9` 로 올렸다(패치 파일은 지움).
 - 판정 숫자에 `insurance_users`(보험 가입 학생 수, 30일) 추가 — 7일마다 다시 잰다.
 
 ## 3차 — 경제 퀴즈 정답 상금 (2026-11-13, `3350d7cb`·`93007e27` 배포)
