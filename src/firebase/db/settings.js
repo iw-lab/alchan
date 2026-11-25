@@ -73,21 +73,23 @@ export const getBankingProducts = async (classCode, useCache = true, tab = 'unkn
     if (useCache) setCache(cacheKey, data);
     return data;
   } else {
+    // 이율 칸은 **dailyRate(하루 %)** 다 — 화면(Banking.js)과 서버(index.js 상품 가입)가 이 칸만 읽는다.
+    // 종전 기본값은 annualRate 만 적어 둬서 새 학급의 예금·적금·대출이 전부 0% 로 굴러갔다(2026-11-25 S9TQ9Z 실측: 공짜 대출).
     const defaultProducts = {
       deposits: [
-        { id: 1, name: "일복리예금 90일", annualRate: 0.01, termInDays: 90, minAmount: 500000 },
-        { id: 2, name: "일복리예금 180일", annualRate: 0.012, termInDays: 180, minAmount: 1000000 },
-        { id: 3, name: "일복리예금 365일", annualRate: 0.015, termInDays: 365, minAmount: 2000000 },
+        { id: 1, name: "일복리예금 90일", dailyRate: 0.01, termInDays: 90, minAmount: 500000 },
+        { id: 2, name: "일복리예금 180일", dailyRate: 0.012, termInDays: 180, minAmount: 1000000 },
+        { id: 3, name: "일복리예금 365일", dailyRate: 0.015, termInDays: 365, minAmount: 2000000 },
       ],
       savings: [
-        { id: 1, name: "일복리적금 180일", annualRate: 0.011, termInDays: 180, minAmount: 100000 },
-        { id: 2, name: "일복리적금 365일", annualRate: 0.014, termInDays: 365, minAmount: 100000 },
-        { id: 3, name: "일복리적금 730일", annualRate: 0.018, termInDays: 730, minAmount: 50000 },
+        { id: 1, name: "일복리적금 180일", dailyRate: 0.011, termInDays: 180, minAmount: 100000 },
+        { id: 2, name: "일복리적금 365일", dailyRate: 0.014, termInDays: 365, minAmount: 100000 },
+        { id: 3, name: "일복리적금 730일", dailyRate: 0.018, termInDays: 730, minAmount: 50000 },
       ],
       loans: [
-        { id: 1, name: "일복리대출 90일", annualRate: 0.05, termInDays: 90, maxAmount: 3000000 },
-        { id: 2, name: "일복리대출 365일", annualRate: 0.08, termInDays: 365, maxAmount: 10000000 },
-        { id: 3, name: "일복리대출 730일", annualRate: 0.1, termInDays: 730, maxAmount: 50000000 },
+        { id: 1, name: "일복리대출 90일", dailyRate: 0.05, termInDays: 90, maxAmount: 3000000 },
+        { id: 2, name: "일복리대출 365일", dailyRate: 0.08, termInDays: 365, maxAmount: 10000000 },
+        { id: 3, name: "일복리대출 730일", dailyRate: 0.1, termInDays: 730, maxAmount: 50000000 },
       ]
     };
     logDbOperation('WRITE', 'bankingSettings', classCode, { tab, extra: '기본값 생성' });
