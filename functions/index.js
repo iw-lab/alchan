@@ -140,7 +140,7 @@ exports.seedAvatarShop = avatarShopService.seedAvatarShop;
 exports.seedAvatarShopHttp = avatarShopService.seedAvatarShopHttp;
 exports.updateAvatarShopPrice = avatarShopService.updateAvatarShopPrice;
 
-// 🛡️ 재난 보험(2026-11-11) — 가입은 여기, 보험금은 economicEvents.executeCashPenalty 가 같은 배치로 지급.
+// 🛡️ 재난 보험(2026-11-11) — 가입은 여기, 보험금은 economicEvents 의 executeCashPenalty·executeTaxExtra 가 같은 배치로 지급.
 const insuranceService = require("./insuranceService");
 exports.buyInsurance = insuranceService.buyInsurance;
 
@@ -151,101 +151,7 @@ const taxSettlement = require("./taxSettlementService");
 exports.readTaxSheet = taxSettlement.readTaxSheet;
 exports.applyTaxSettlement = taxSettlement.applyTaxSettlement;
 
-// ⚠️ 아래 스케줄 함수들은 꺼 두고 **Cloud Scheduler v2**(…SchedulerV2)가 대신 돈다.
-//    (옛 주석은 "cron-job.org 의 simpleScheduler" 라고 했지만 그 경로는 죽었다 —
-//     cron-job.org 잡은 토큰 폐기로 전부 401 이고, simpleScheduler 는 2026-08-20 제거됐다.)
-//    다시 켜려면 **import 부터 되살려야 한다** — 주석 안에서만 쓰이는 상태라
-//    린트가 미사용으로 잡아 지웠다(2026-08-04):
-//      const { onSchedule } = require("firebase-functions/v2/scheduler");
-//      const { updateCentralStockMarketLogic, createCentralMarketNewsLogic,
-//              autoManageStocksLogic, cleanupExpiredCentralNewsLogic,
-//              resetDailyTasksLogic } = require("./scheduler-http");
-//      const { initialStocks } = require("./initialStocks");
-//    (주석만 풀면 `onSchedule is not defined` 로 배포가 통째로 죽는다)
-
-// 5분마다 주식 가격 업데이트
-// exports.updateCentralStockMarket = onSchedule({
-//   region: "asia-northeast3",
-//   schedule: "every 5 minutes",
-//   timeoutSeconds: 540,
-// }, updateCentralStockMarketLogic);
-
-// 🔥 뉴스 기능은 제거됨(simpleScheduler 와 함께 2026-08-20 정리).
-// 3분마다 뉴스 생성
-// exports.createCentralMarketNews = onSchedule({
-//   region: "asia-northeast3",
-//   schedule: "every 3 minutes",
-//   timeoutSeconds: 540,
-// }, createCentralMarketNewsLogic);
-
-// 10분마다 자동 상장/폐지
-// exports.autoManageStocks = onSchedule({
-//   region: "asia-northeast3",
-//   schedule: "every 10 minutes",
-//   timeoutSeconds: 540,
-// }, autoManageStocksLogic);
-
-// 3분마다 만료된 뉴스 정리
-// exports.cleanupExpiredCentralNews = onSchedule({
-//   region: "asia-northeast3",
-//   schedule: "every 3 minutes",
-//   timeoutSeconds: 540,
-// }, cleanupExpiredCentralNewsLogic);
-
-// 매일 자정 작업 리셋
-// exports.resetDailyTasks = onSchedule({
-//   region: "asia-northeast3",
-//   schedule: "0 0 * * *",
-//   timezone: "Asia/Seoul",
-//   timeoutSeconds: 540,
-// }, resetDailyTasksLogic);
-
-// exports.seedStocks = onCall({region: "asia-northeast3"}, async (request) => {
-//   await checkAuthAndGetUserData(request, true); // 관리자만 실행 가능
-//
-//   logger.info("🌱 [데이터 시딩] 초기 주식 데이터 추가 시작");
-//
-//   try {
-//     const stocksCollection = db.collection("CentralStocks");
-//     const snapshot = await stocksCollection.limit(1).get();
-//
-//     // 데이터가 이미 있는 경우 실행 중단
-//     if (!snapshot.empty) {
-//       const message = "초기 주식 데이터가 이미 존재합니다. 중복 추가를 방지하기 위해 작업을 중단합니다.";
-//       logger.warn(`[데이터 시딩] ${message}`);
-//       return { success: false, message };
-//     }
-//
-//     const batch = db.batch();
-//     let count = 0;
-//
-//     initialStocks.forEach(stock => {
-//       const docRef = stocksCollection.doc(); // 자동 ID 생성
-//       const stockData = {
-//         ...stock,
-//         holderCount: 0,
-//         tradingVolume: 1000,
-//         buyVolume: 0,
-//         sellVolume: 0,
-//         recentBuyVolume: 0,
-//         recentSellVolume: 0,
-//         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-//       };
-//       batch.set(docRef, stockData);
-//       count++;
-//     });
-//
-//     await batch.commit();
-//     const message = `총 ${count}개의 초기 주식 데이터 추가 완료.`;
-//     logger.info(`✅ [데이터 시딩] ${message}`);
-//     return { success: true, message };
-//
-//   } catch (error) {
-//     logger.error("❌ [데이터 시딩] 초기 주식 데이터 추가 중 오류:", error);
-//     throw new HttpsError("internal", "초기 주식 데이터 추가에 실패했습니다.");
-//   }
-// });
+// 주기 작업(주가·할일 초기화·정리)은 이 파일의 …SchedulerV2 들이 돈다.
 
 exports.completeTask = onCall(
   { region: "asia-northeast3" },
