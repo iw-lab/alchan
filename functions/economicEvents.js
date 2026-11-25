@@ -4,10 +4,12 @@
  * 배포 시 SCHEDULER_AUTH_TOKEN 환경변수 필수 (deploy.yml에서 자동 주입)
  */
 
+const { HttpsError } = require("firebase-functions/v2/https");
 const { db, admin, logger, findApprovedAdminSnap, bumpCatalogVersion } = require("./utils");
 const { classCouponRef, couponValueFrom } = require("./classCoupon");
 const { refundPerStudentFor } = require("./taxRefundMath");
 const { isPolicyActive, computePayout } = require("./insuranceMath");
+const { claimEventRun, releaseEventRun } = require("./eventRunLock");
 
 // 기본 이벤트 템플릿 (학급별로 커스터마이즈 가능)
 const DEFAULT_EVENT_TEMPLATES = [
@@ -171,6 +173,56 @@ function queueStudentLog(batch, entry, expireAt) {
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
     expireAt: expireAt || logExpiryTimestamp(),
   });
+}
+
+/**
+ * 🛡️ 이 학급에서 지금 유효한 재난 보험: uid → {ref, capRemaining}.
+ *    못 읽으면 **던진다**(이벤트 중단): 보험료를 받아 놓고 «못 읽었으니 없는 셈» 치고 전액을 걷으면 안 된다.
+ *    학급 설정에서 보험을 꺼도 이미 든 정책은 **끝까지 보상한다** — 끄는 것은 «새 가입»만 막는다(insuranceService).
+ */
+async function loadActivePolicies(classCode, label) {
+  const policyByUser = new Map();
+  try {
+    const polSnap = await db.collection("insurancePolicies").where("classCode", "==", classCode).get();
+    const nowMs = Date.now();
+    polSnap.docs.forEach((p) => {
+      const pol = p.data();
+      if (p.id !== `${classCode}_${pol.userId}`) return;
+      if (isPolicyActive(pol, nowMs, classCode, pol.userId)) policyByUser.set(pol.userId, { ref: p.ref, capRemaining: pol.capRemaining });
+    });
+  } catch (e) {
+    throw new Error(`[${label}] 보험 가입 정보를 못 읽어 차감을 중단합니다: ${e.message}`);
+  }
+  return policyByUser;
+}
+
+/**
+ * 보험금 지급분을 배치에 싣는다 — 정책 한도 차감 1 + 학생 로그 1. **차감·국고 입금과 같은 배치**에서만 부른다.
+ * @param {FirebaseFirestore.WriteBatch} batch
+ * @param {{classCode:string, studentId:string, studentName:string, lossName:string, loss:number,
+ *          payout:number, policyRef:FirebaseFirestore.DocumentReference}} item payout > 0
+ */
+function queueInsurancePayout(batch, item, expireAt) {
+  batch.update(item.policyRef, {
+    capRemaining: admin.firestore.FieldValue.increment(-item.payout),
+    payoutThisTerm: admin.firestore.FieldValue.increment(item.payout),
+    payoutTotal: admin.firestore.FieldValue.increment(item.payout),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  queueStudentLog(
+    batch,
+    {
+      classCode: item.classCode,
+      studentId: item.studentId,
+      studentName: item.studentName,
+      type: "보험금 지급",
+      amount: item.payout,
+      description:
+        `[재난 보험] ${item.lossName} ${item.loss.toLocaleString()}원 중 ${item.payout.toLocaleString()}원을 보험이 대신 냈어요` +
+        (item.payout < Math.floor(item.loss / 2) ? " (남은 보장 한도까지)" : ""),
+    },
+    expireAt,
+  );
 }
 
 /** 학생 문서에서 표시 이름을 뽑는다(로그가 "학생"으로만 남지 않게). */
@@ -422,7 +474,7 @@ async function lastRefundPerStudent(classCode) {
 /**
  * 추가 세금 부과 이벤트 - 학생 "순자산"의 일정 비율 징수
  * 순자산 = 현금 + 쿠폰가치 + 파킹잔액 + 주식평가액 + 부동산가치 - 대출잔액
- * 현금 부족 시 가진 현금까지만 징수하고 나머지는 미납 처리 (월세 징수 패턴)
+ * 현금이 모자라도 전액 걷는다(마이너스 허용). 재난 보험 가입자는 세금의 절반(남은 한도까지)을 덜 낸다.
  */
 async function executeTaxExtra(classCode, params) {
   const { taxRate = 0.03 } = params;
@@ -443,6 +495,9 @@ async function executeTaxExtra(classCode, params) {
     .get();
 
   if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
+
+  // 🛡️ 재난 보험(2026-11-25 «보험이 세금도 막아줘») — 유효한 정책을 가진 학생은 세금의 절반(남은 한도까지)을 덜 낸다.
+  const policyByUser = await loadActivePolicies(classCode, "TaxExtra");
 
   // === 학급 공통 데이터 1회 로드 (쿠폰가치, 주식시세, 부동산 전체) ===
   // 🔒 학급 **공통** 입력은 fail-open 하면 안 된다(2026-08-12 codex CRITICAL).
@@ -551,19 +606,18 @@ async function executeTaxExtra(classCode, params) {
       const assessedTax = Math.floor(netWorth * taxRate);
       if (assessedTax <= 0) return null;
 
-      // 순자산 기준 전액 징수 — 현금 잔고와 무관 (마이너스 허용)
-      const actualDeduct = assessedTax;
-      const unpaid = 0;
+      // 순자산 기준 전액 부과 — 현금 잔고와 무관 (마이너스 허용). 보험금만큼은 «덜 걷는다».
+      const policy = policyByUser.get(studentId);
+      const payout = policy ? computePayout(assessedTax, policy.capRemaining) : 0;
 
       return {
         ref: sDoc.ref,
         studentId,
         studentName: sData.name || sData.nickname || "학생",
-        cash,
         netWorth,
         assessedTax,
-        actualDeduct,
-        unpaid,
+        payout,
+        policyRef: payout > 0 ? policy.ref : null,
       };
     }),
   );
@@ -573,47 +627,50 @@ async function executeTaxExtra(classCode, params) {
 
   // === 학생 cash 차감 + activity_logs 기록 (배치) ===
   let totalCollected = 0;
+  let totalPayout = 0;
   const adminRef = db.collection("users").doc(adminDoc.id);
-  const batchSize = 200; // activity_logs 1건 추가되어 문서당 2쓰기 → 한 배치 500 제한 여유
+  // 학생당 쓰기 = 차감 1 + 세금 로그 1 (+ 보험 가입자는 보험금 로그 1 + 정책 1) → 최대 4. 100명×4+국고 1 = 401 ≤ 500.
+  const batchSize = 100;
   for (let i = 0; i < taxItems.length; i += batchSize) {
     const batch = db.batch();
     let chunkCollected = 0;
     taxItems.slice(i, i + batchSize).forEach((item) => {
-      if (item.actualDeduct > 0) {
-        batch.update(item.ref, {
-          cash: admin.firestore.FieldValue.increment(-item.actualDeduct),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
-      // 학생에게 activity_logs 기록 (내 자산에서 확인)
-      const logRef = db.collection("activity_logs").doc();
-      const baseDesc =
-        `[경제이벤트] 순자산 ${item.netWorth.toLocaleString()}원 기준 ` +
-        `세금 ${(taxRate * 100).toFixed(1)}% = ${item.assessedTax.toLocaleString()}원 부과. ` +
-        `납부 ${item.actualDeduct.toLocaleString()}원` +
-        (item.unpaid > 0 ? ` (미납 ${item.unpaid.toLocaleString()}원)` : "");
-      batch.set(logRef, {
-        userId: item.studentId,
-        userName: item.studentName,
-        classCode,
-        type: "세금 납부 (경제이벤트)",
-        amount: -item.actualDeduct,
-        description: baseDesc,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        expireAt: logExpireAt,
+      // 🔒 학생이 실제로 내는 돈 = 세금 − 보험금. 국고도 **같은 수**만 받는다(같은 배치) — 새로 찍는 돈이 아니다.
+      const net = item.assessedTax - item.payout;
+      batch.update(item.ref, {
+        cash: admin.firestore.FieldValue.increment(-net),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      totalCollected += item.actualDeduct;
-      chunkCollected += item.actualDeduct;
+      // 학생에게 activity_logs 기록 (내 자산에서 확인) — 세금은 전액, 보험금은 따로 한 줄. 둘을 더하면 실제 변화다.
+      queueStudentLog(
+        batch,
+        {
+          classCode,
+          studentId: item.studentId,
+          studentName: item.studentName,
+          type: "세금 납부 (경제이벤트)",
+          amount: -item.assessedTax,
+          description:
+            `[경제이벤트] 순자산 ${item.netWorth.toLocaleString()}원 기준 ` +
+            `세금 ${(taxRate * 100).toFixed(1)}% = ${item.assessedTax.toLocaleString()}원 부과. ` +
+            `납부 ${item.assessedTax.toLocaleString()}원`,
+        },
+        logExpireAt,
+      );
+      if (item.payout > 0) {
+        queueInsurancePayout(batch, { ...item, classCode, lossName: "긴급 세금 추징", loss: item.assessedTax }, logExpireAt);
+      }
+      totalCollected += net;
+      totalPayout += item.payout;
+      chunkCollected += net;
     });
     // 🔒 국고 입금을 **같은 배치**에(2026-08-12, 형제 3함수와 통일).
     //    종전엔 학생 배치를 전부 커밋한 뒤 관리자 cash 를 별도로 갱신했다 —
     //    그 쓰기가 실패하면 **학생 돈만 사라진다**(소각).
-    if (chunkCollected > 0) {
-      batch.update(adminRef, {
-        cash: admin.firestore.FieldValue.increment(chunkCollected),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    batch.update(adminRef, {
+      cash: admin.firestore.FieldValue.increment(chunkCollected),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     await batch.commit();
   }
 
@@ -631,11 +688,10 @@ async function executeTaxExtra(classCode, params) {
     );
 
   logger.info(
-    `[경제이벤트] ${classCode}: 순자산세 추징 - ${taxItems.length}명 부과 ${taxItems
-      .reduce((s, t) => s + t.assessedTax, 0)
-      .toLocaleString()}원 / 실징수 ${totalCollected.toLocaleString()}원`,
+    `[경제이벤트] ${classCode}: 순자산세 추징 - ${taxItems.length}명 부과 ${(totalCollected + totalPayout).toLocaleString()}원, ` +
+      `보험금 ${totalPayout.toLocaleString()}원 → 국고 ${totalCollected.toLocaleString()}원`,
   );
-  return { affectedCount: taxItems.length, collectedAmount: totalCollected };
+  return { affectedCount: taxItems.length, collectedAmount: totalCollected, insurancePayout: totalPayout };
 }
 
 /**
@@ -710,9 +766,9 @@ async function executeCashBonus(classCode, params) {
 
 /**
  * 한 학생의 순자산 계산 — netAssets.js의 computeNetAssets와 동일 공식
- * 순자산 = cash + coupons*1000 + parking + stockValue + realEstateValue - loanBalance
+ * 순자산 = cash + coupons×(반에서 정한 쿠폰 값) + parking + 예적금 + stockValue + realEstateValue - loanBalance
  */
-async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPON_VALUE = 1000) {
+async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, couponValue) {
   const userId = userDoc.id;
   const userData = userDoc.data();
   const cash = Number(userData.cash) || 0;
@@ -774,7 +830,7 @@ async function calcNetAssetsForUser(userDoc, stocksMap, realEstateByOwner, COUPO
   const myRealEstate = realEstateByOwner.get(userId) || [];
   const realEstateValue = myRealEstate.reduce((sum, p) => sum + (Number(p.price) || Number(p.value) || 0), 0);
 
-  return cash + coupons * COUPON_VALUE + parking + depositSavingsTotal + stockValue + realEstateValue - loanBalance;
+  return cash + coupons * couponValue + parking + depositSavingsTotal + stockValue + realEstateValue - loanBalance;
 }
 
 /**
@@ -833,20 +889,15 @@ async function executeCashPenalty(classCode, params) {
   if (studentsSnapshot.empty) return { affectedCount: 0, collectedAmount: 0 };
 
   // 🛡️ 재난 보험(2026-11-11) — 유효한 정책을 가진 학생은 손실의 절반(남은 한도까지)을 덜 낸다.
-  //    못 읽으면 **이벤트를 중단**한다: 보험료를 받아 놓고 «못 읽었으니 없는 셈» 치고 전액을 걷으면 안 된다.
-  //    학급 설정에서 보험을 꺼도 이미 든 정책은 **끝까지 보상한다** — 낸 보험료의 약속은 지킨다.
-  //    끄는 것은 «새 가입»만 막는다(insuranceService).
-  const policyByUser = new Map();
+  const policyByUser = await loadActivePolicies(classCode, "CashPenalty");
+
+  // 쿠폰은 **이 반에서 정한 값**으로 센다(«긴급 세금 추징»과 같은 기준). 종전엔 기본값 1,000 고정이라
+  // 1,500 인 반의 순자산이 작게 잡혔다(2026-11-25). 못 읽으면 추정하지 않고 중단한다.
+  let couponValue;
   try {
-    const polSnap = await db.collection("insurancePolicies").where("classCode", "==", classCode).get();
-    const nowMs = Date.now();
-    polSnap.docs.forEach((p) => {
-      const pol = p.data();
-      if (p.id !== `${classCode}_${pol.userId}`) return;
-      if (isPolicyActive(pol, nowMs, classCode, pol.userId)) policyByUser.set(pol.userId, { ref: p.ref, capRemaining: pol.capRemaining });
-    });
+    couponValue = couponValueFrom(await classCouponRef(db, classCode).get());
   } catch (e) {
-    throw new Error(`[CashPenalty] 보험 가입 정보를 못 읽어 차감을 중단합니다: ${e.message}`);
+    throw new Error(`[CashPenalty] 쿠폰 값을 못 읽어 차감을 중단합니다: ${e.message}`);
   }
 
   let totalPenalty = 0;
@@ -863,7 +914,7 @@ async function executeCashPenalty(classCode, params) {
     // 순자산을 못 읽은 학생은 **과세하지 않는다**. 추정치로 돈을 걷는 것보다 한 번 거르는 게 낫다.
     let netAssets;
     try {
-      netAssets = await calcNetAssetsForUser(d, stocksMap, realEstateByOwner);
+      netAssets = await calcNetAssetsForUser(d, stocksMap, realEstateByOwner, couponValue);
     } catch (e) {
       logger.warn(`[CashPenalty] ${d.id} 순자산 계산 실패 — 이번 이벤트에서 제외: ${e.message}`);
       continue;
@@ -911,26 +962,7 @@ async function executeCashPenalty(classCode, params) {
       });
       chunkCollected += net;
       if (item.payout > 0) {
-        batch.update(item.policyRef, {
-          capRemaining: admin.firestore.FieldValue.increment(-item.payout),
-          payoutThisTerm: admin.firestore.FieldValue.increment(item.payout),
-          payoutTotal: admin.firestore.FieldValue.increment(item.payout),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        queueStudentLog(
-          batch,
-          {
-            classCode,
-            studentId: item.studentId,
-            studentName: item.studentName,
-            type: "보험금 지급",
-            amount: item.payout,
-            description:
-              `[재난 보험] 경제이벤트 손실 ${item.penalty.toLocaleString()}원의 절반을 보험이 대신 냈어요 — ` +
-              `보험금 ${item.payout.toLocaleString()}원`,
-          },
-          expireAt,
-        );
+        queueInsurancePayout(batch, { ...item, classCode, lossName: "경제 위기 긴급 부담금", loss: item.penalty }, expireAt);
       }
       // 📒 감사 로그 — 차감과 같은 배치. 이게 없어서 "경제 위기"로 현금이 줄어도
       //    학생 거래내역엔 아무것도 안 떴다(학급 단위 총계만 남았다).
@@ -1296,6 +1328,24 @@ async function triggerClassEconomicEvent(classCode, forceEventId = null) {
     `[경제이벤트] ${classCode}: 이벤트 시작 - "${selectedEvent.title}"`,
   );
 
+  const runToken = await claimEventRun(classCode);
+  if (!runToken) {
+    if (forceEventId) {
+      throw new HttpsError("failed-precondition", "다른 경제 이벤트가 아직 실행되고 있어요. 잠시 뒤 다시 실행해 주세요.");
+    }
+    // 예약 실행은 그날을 점유하기 전에 물러난다 — 다음 시간에 다시 온다.
+    logger.info(`[경제이벤트] ${classCode}: 다른 이벤트 실행 중 - 다음 시간에 다시`);
+    return null;
+  }
+  try {
+    return await runClaimedEvent(classCode, selectedEvent, forceEventId, todayStr);
+  } finally {
+    await releaseEventRun(classCode, runToken);
+  }
+}
+
+/** 자물쇠를 잡은 뒤의 실제 실행 — 그날 점유 → 이벤트 → 기록. */
+async function runClaimedEvent(classCode, selectedEvent, forceEventId, todayStr) {
   // 🔒 그날을 **실행 전에** 원자적으로 점유한다(2026-08-12 codex CRITICAL).
   //    종전엔 완료 마커(lastEventDate)를 실행이 다 끝난 **뒤** 썼다. 그런데 이 이벤트는
   //    학생 단위 멱등 마커가 없고, hourlySchedulerV2 가 평일 8~17시에 **매시간** 돈다.

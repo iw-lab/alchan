@@ -1,8 +1,9 @@
 /**
  * 메모리 Firestore(Admin SDK 모양) — 서버 함수의 **돈 불변식**을 실제로 돌려 보기 위한 최소 구현.
  * 지원: collection/doc/하위 컬렉션, where(==)·limit·get, batch(set/update/delete/commit),
- *       runTransaction(get/set/update/delete — 쓰기는 끝에 한꺼번에), increment·serverTimestamp, Timestamp.
- * 일부러 안 하는 것: 경합 재시도·인덱스·규칙. (경합은 이 시험의 대상이 아니다.)
+ *       runTransaction(get/set/update/delete — 쓰기는 끝에 한꺼번에·한 번에 하나씩), increment·serverTimestamp, Timestamp,
+ *       readTime(서버 시각 — clock.serverOffsetMs 로 «내 시계와 서버 시계가 어긋난 경우»를 만든다).
+ * 일부러 안 하는 것: 인덱스·규칙.
  */
 import { createRequire } from "node:module";
 
@@ -21,6 +22,7 @@ class Ts {
 export function createFakeFirestore(seed = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, { ...v }]));
   const writes = [];
+  const clock = { serverOffsetMs: 0 };
 
   const applyData = (path, data, { merge = false, isUpdate = false } = {}) => {
     if (isUpdate && !store.has(path)) throw new Error(`NOT_FOUND: ${path}`);
@@ -36,6 +38,7 @@ export function createFakeFirestore(seed = {}) {
 
   const snapOf = (ref) => ({
     id: ref.id, ref, exists: store.has(ref.path),
+    readTime: new Ts(Date.now() + clock.serverOffsetMs), // 서버가 읽은 시각(함수 인스턴스 시계와 다를 수 있다)
     data: () => (store.has(ref.path) ? { ...store.get(ref.path) } : undefined),
   });
 
@@ -45,6 +48,7 @@ export function createFakeFirestore(seed = {}) {
     get: async () => snapOf(docRef(path)),
     set: async (data, opt) => applyData(path, data, opt),
     update: async (data) => applyData(path, data, { isUpdate: true }),
+    delete: async () => { store.delete(path); },
   });
 
   let autoId = 0;
@@ -68,6 +72,7 @@ export function createFakeFirestore(seed = {}) {
   const colRef = (colPath) => ({
     ...queryOf(colPath),
     doc: (id) => docRef(`${colPath}/${id || `auto${++autoId}`}`),
+    add: async (data) => { const ref = docRef(`${colPath}/auto${++autoId}`); applyData(ref.path, data); return ref; },
   });
 
   const db = {
@@ -86,24 +91,31 @@ export function createFakeFirestore(seed = {}) {
         },
       };
     },
-    runTransaction: async (fn) => {
-      const ops = [];
-      let wrote = false;
-      const tx = {
-        get: async (refOrQuery) => {
-          if (wrote) throw new Error("fake: 트랜잭션에서 쓰기 뒤에 읽었다(Firestore 는 거부한다)");
-          return refOrQuery.get();
-        },
-        set: (ref, data, opt) => { wrote = true; ops.push(() => applyData(ref.path, data, opt)); },
-        create: (ref, data) => { wrote = true; ops.push(() => { if (store.has(ref.path)) throw new Error(`ALREADY_EXISTS: ${ref.path}`); applyData(ref.path, data); }); },
-        update: (ref, data) => { wrote = true; ops.push(() => applyData(ref.path, data, { isUpdate: true })); },
-        delete: (ref) => { wrote = true; ops.push(() => store.delete(ref.path)); },
-      };
-      const out = await fn(tx);
-      const backup = new Map([...store].map(([k, v]) => [k, { ...v }]));
-      try { ops.forEach((op) => op()); } catch (e) { store.clear(); backup.forEach((v, k) => store.set(k, v)); throw e; }
-      return out;
+    // 실제 트랜잭션은 직렬화된다(부딪히면 다시 돈다) — 여기서는 앞 것이 끝난 뒤에 다음 것을 돌려 같은 결과를 낸다.
+    runTransaction: (fn) => {
+      const run = txTail.then(() => runTx(fn));
+      txTail = run.catch(() => {});
+      return run;
     },
+  };
+  let txTail = Promise.resolve();
+  const runTx = async (fn) => {
+    const ops = [];
+    let wrote = false;
+    const tx = {
+      get: async (refOrQuery) => {
+        if (wrote) throw new Error("fake: 트랜잭션에서 쓰기 뒤에 읽었다(Firestore 는 거부한다)");
+        return refOrQuery.get();
+      },
+      set: (ref, data, opt) => { wrote = true; ops.push(() => applyData(ref.path, data, opt)); },
+      create: (ref, data) => { wrote = true; ops.push(() => { if (store.has(ref.path)) throw new Error(`ALREADY_EXISTS: ${ref.path}`); applyData(ref.path, data); }); },
+      update: (ref, data) => { wrote = true; ops.push(() => applyData(ref.path, data, { isUpdate: true })); },
+      delete: (ref) => { wrote = true; ops.push(() => store.delete(ref.path)); },
+    };
+    const out = await fn(tx);
+    const backup = new Map([...store].map(([k, v]) => [k, { ...v }]));
+    try { ops.forEach((op) => op()); } catch (e) { store.clear(); backup.forEach((v, k) => store.set(k, v)); throw e; }
+    return out;
   };
 
   const admin = {
@@ -114,7 +126,7 @@ export function createFakeFirestore(seed = {}) {
   };
 
   return {
-    db, admin, store, writes, Ts,
+    db, admin, store, writes, Ts, clock,
     get: (path) => store.get(path),
     /** 학급 전체 현금 합(학생 + 국고) — 보존 불변식 확인용 */
     totalCash: (classCode) => [...store].filter(([p, v]) => /^users\/[^/]+$/.test(p) && v.classCode === classCode).reduce((t, [, v]) => t + (Number(v.cash) || 0), 0),

@@ -2,7 +2,8 @@
 // ⚠️ 정본은 functions/insuranceMath.js — 보험료·보험금은 서버가 그 파일로 정한다. 규칙을 고치면 두 파일을 같이
 //    (src/test/functions/insuranceMath.test.js 가 표로 대조한다).
 const MAX_MONEY = 10000000000;
-const PREMIUM_RATE = 0.01;
+const PREMIUM_PERMILLE = 15; // 1.5% — 정수 천분율로 계산한다(0.015 를 곱하면 소수 오차로 1원 더 받는 값이 있다)
+const PREMIUM_RATE = PREMIUM_PERMILLE / 1000;
 const MIN_PREMIUM = 100;
 const CAP_MULTIPLIER = 20;
 const COVERAGE_RATE = 0.5;
@@ -27,7 +28,7 @@ export function toMs(v) {
  */
 export function quotePremium(cash) {
   if (typeof cash !== "number" || !Number.isFinite(cash)) return { ok: false, reason: "bad-cash" };
-  const premium = Math.max(MIN_PREMIUM, Math.ceil(cash * PREMIUM_RATE));
+  const premium = Math.max(MIN_PREMIUM, Math.ceil((cash * PREMIUM_PERMILLE) / 1000));
   if (!isMoney(premium)) return { ok: false, reason: "bad-cash" };
   if (cash < premium) return { ok: false, reason: "not-enough-cash" };
   const cap = premium * CAP_MULTIPLIER;
@@ -51,13 +52,14 @@ export function isPolicyActive(policy, nowMs, classCode, uid) {
  * @return {number} 정수, 0 ≤ 값 ≤ min(loss, capRemaining)
  */
 export function computePayout(loss, capRemaining, coverageRate = COVERAGE_RATE) {
-  if (!isMoney(loss) || !isMoney(capRemaining)) return 0;
+  // 손실은 100억을 넘을 수 있다(순자산 기준 세금) — 정확히 셀 수 있는 정수면 받는다. 나가는 돈은 남은 한도(≤100억)가 막는다.
+  if (!Number.isSafeInteger(loss) || loss < 0 || !isMoney(capRemaining)) return 0;
   const rate = typeof coverageRate === "number" && coverageRate > 0 && coverageRate <= 1 ? coverageRate : 0;
   const payout = Math.min(Math.floor(loss * rate), capRemaining, loss);
   return isMoney(payout) ? payout : 0;
 }
 
-export { PREMIUM_RATE, MIN_PREMIUM, CAP_MULTIPLIER, COVERAGE_RATE, TERM_DAYS, TERM_MS };
+export { PREMIUM_PERMILLE, PREMIUM_RATE, MIN_PREMIUM, CAP_MULTIPLIER, COVERAGE_RATE, TERM_DAYS, TERM_MS };
 
 /**
  * 화면에 보여 줄 보험 상태.

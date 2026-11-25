@@ -1,5 +1,5 @@
 // 🛡️ 재난 보험 — 「나의 자산」 카드(2026-11-11). 가입은 서버(buyInsurance CF)가 하고 여기는 보여 주고 부르기만 한다.
-//    규칙: 보험료 = 현금의 1%(최소 100원) · 7일 · 경제이벤트 «현금 긴급 차감» 손실의 절반을 보험이 대신 낸다(한도 = 보험료 20배).
+//    규칙: 보험료 = 현금의 1.5%(최소 100원) · 7일 · 경제이벤트 «경제 위기 긴급 부담금»·«긴급 세금 추징»의 절반을 보험이 대신 낸다(한도 = 보험료 20배).
 import React, { useCallback, useEffect, useState } from "react";
 import { fetchInsurancePolicy, fetchFinanceSwitches, buyInsurance } from "../firebase/db/finance";
 import { quotePremium, policyView, TERM_DAYS } from "../utils/insurance";
@@ -64,12 +64,12 @@ export default function InsuranceCard({ userId, classCode, cash, onBought }) {
             <li>남은 보장 한도 <strong>{formatKoreanCurrency(view.capRemaining)}</strong></li>
             {view.payoutThisTerm > 0 && <li>이번 보험으로 받은 보험금 <strong>{formatKoreanCurrency(view.payoutThisTerm)}</strong></li>}
           </ul>
-          <p className="mt-2 text-[11px] text-slate-600">«경제 위기 긴급 부담금»으로 현금이 깎이면 그 절반을 보험이 대신 내 줘요. «긴급 세금 추징» 같은 세금은 보험이 안 돼요.</p>
+          <p className="mt-2 text-xs text-slate-600">«경제 위기 긴급 부담금»이나 «긴급 세금 추징»이 오면 그 절반을 남은 한도까지 보험이 대신 내 줘요. 매주 내는 보통 세금은 해당하지 않아요.</p>
         </>
       ) : (
         <>
           <p className="text-xs text-slate-700 mt-1">
-            경제 이벤트 «경제 위기 긴급 부담금»이 오면 잃는 돈의 <strong>절반</strong>을 보험이 대신 내 줘요. <strong>«긴급 세금 추징» 같은 세금은 보험이 안 돼요.</strong> {TERM_DAYS}일 동안만 지켜 주고, 아무 일도 없으면 보험료는 돌아오지 않아요.
+            경제 이벤트 «경제 위기 긴급 부담금»이나 «긴급 세금 추징»이 오면 나가는 돈의 <strong>절반</strong>을 한도까지 보험이 대신 내 줘요. 매주 내는 보통 세금은 해당하지 않아요. {TERM_DAYS}일 동안만 지켜 주고, 아무 일도 없으면 보험료는 돌아오지 않아요.
           </p>
           {quote.ok ? (
             asking ? (

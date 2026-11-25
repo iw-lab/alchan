@@ -13,7 +13,7 @@ vi.mock("../../firebase/db/finance", () => ({
   fetchInsurancePolicy: async () => { if (state.failRead) throw new Error("permission-denied"); return state.policy; },
   fetchFinanceSwitches: async () => state.switches,
   fetchCreditRecord: async () => null,
-  buyInsurance: async (...args) => { state.buys.push(args); return { success: true, premium: 500, cap: 10000 }; },
+  buyInsurance: async (...args) => { state.buys.push(args); return { success: true, premium: 750, cap: 15000 }; },
   saveFinanceSwitch: async (...args) => { state.saves.push(args); },
   saveQuizRewardAmount: async (...args) => { state.saves.push(["quiz", ...args]); },
 }));
@@ -32,7 +32,7 @@ describe("재난 보험 카드", () => {
   it("보험료와 한도를 보여 주고, 두 번째 확인을 눌러야 가입한다 — 서버에 금액을 보내지 않는다", async () => {
     card();
     const open = await screen.findByText("보험 들기");
-    expect(screen.getByText(/보험료 500원 · 최대 1만원까지 보장|보험료 .*500.* · 최대 .*까지 보장/)).toBeTruthy();
+    expect(screen.getByText(/보험료 .*750.* · 최대 .*까지 보장/)).toBeTruthy();
     fireEvent.click(open);
     expect(state.buys).toEqual([]);
     fireEvent.click(screen.getByText("네, 가입해요"));

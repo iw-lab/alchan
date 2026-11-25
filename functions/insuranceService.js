@@ -1,7 +1,7 @@
 /**
- * 재난 보험 — 가입(buyInsurance). 계산 규칙은 insuranceMath.js, 보험금 지급은 economicEvents.js(executeCashPenalty).
+ * 재난 보험 — 가입(buyInsurance). 계산 규칙은 insuranceMath.js, 보험금 지급은 economicEvents.js(executeCashPenalty·executeTaxExtra).
  *
- * 돈의 길: 보험료 = 학생 → 국고(승인 교사 cash). 보험금 = «현금 긴급 차감»에서 덜 걷는 것으로 지급
+ * 돈의 길: 보험료 = 학생 → 국고(승인 교사 cash). 보험금 = «경제 위기 긴급 부담금»·«긴급 세금 추징»에서 덜 걷는 것으로 지급
  *   (학생은 손실−보험금만 내고, 국고도 그만큼만 받는다 — 어느 쪽에서도 돈이 생기거나 사라지지 않는다).
  * 정책 문서: insurancePolicies/{classCode}_{uid} — 서버만 쓴다(rules write:false).
  *
@@ -15,6 +15,7 @@ const {
   checkIdempotent, markIdempotent,
 } = require("./utils");
 const { quotePremium, toMs, TERM_MS, TERM_DAYS, COVERAGE_RATE } = require("./insuranceMath");
+const { eventRunRef, isEventRunning } = require("./eventRunLock");
 
 const REBUY_GAP_MS = 10 * 60 * 1000;
 
@@ -58,8 +59,8 @@ const buyInsurance = onCall({ region: "asia-northeast3" }, async (request) => {
     let result = null;
     await db.runTransaction(async (tx) => {
       const keyRef = await checkIdempotent(tx, idempotencyKey);
-      const [uSnap, tSnap, pSnap, sSnap] = await Promise.all([
-        tx.get(userRef), tx.get(teacherRef), tx.get(polRef), tx.get(settingsRef),
+      const [uSnap, tSnap, pSnap, sSnap, runSnap] = await Promise.all([
+        tx.get(userRef), tx.get(teacherRef), tx.get(polRef), tx.get(settingsRef), tx.get(eventRunRef(classCode)),
       ]);
       if (!uSnap.exists) throw new HttpsError("not-found", "사용자 정보가 없습니다.");
       if (!tSnap.exists) throw new HttpsError("failed-precondition", "선생님(국고) 계정을 찾을 수 없습니다.");
@@ -74,6 +75,10 @@ const buyInsurance = onCall({ region: "asia-northeast3" }, async (request) => {
       }
       if (!insuranceEnabled(sSnap.exists ? sSnap.data() : null)) {
         throw new HttpsError("failed-precondition", "우리 반은 지금 보험을 운영하지 않아요.");
+      }
+      // 이벤트는 시작할 때 보험 명단을 한 번 읽는다 — 도는 사이에 들면 «들었는데 세금을 다 냈다»가 된다(2026-11-25 codex).
+      if (isEventRunning(runSnap)) {
+        throw new HttpsError("failed-precondition", "지금 우리 반 경제 이벤트를 처리하고 있어요. 1분 뒤에 다시 눌러 주세요.");
       }
       const now = Date.now();
       const prev = pSnap.exists ? pSnap.data() : null;

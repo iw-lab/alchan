@@ -10,9 +10,9 @@ const m = require("../../../functions/insuranceMath.js");
 import * as client from "../../utils/insurance";
 
 describe("보험료", () => {
-  it("현금의 1%(올림), 최소 100원, 한도는 20배", () => {
-    expect(m.quotePremium(50_000)).toEqual({ ok: true, premium: 500, cap: 10_000 });
-    expect(m.quotePremium(12_345)).toEqual({ ok: true, premium: 124, cap: 2_480 });
+  it("현금의 1.5%(올림), 최소 100원, 한도는 20배", () => {
+    expect(m.quotePremium(50_000)).toEqual({ ok: true, premium: 750, cap: 15_000 });
+    expect(m.quotePremium(12_345)).toEqual({ ok: true, premium: 186, cap: 3_720 });
     expect(m.quotePremium(3_000)).toEqual({ ok: true, premium: 100, cap: 2_000 });
     expect(m.quotePremium(100)).toEqual({ ok: true, premium: 100, cap: 2_000 });
   });
@@ -21,6 +21,13 @@ describe("보험료", () => {
     expect(m.quotePremium(0).ok).toBe(false);
     expect(m.quotePremium(-500).ok).toBe(false);
     for (const bad of [NaN, Infinity, -Infinity, "1000", null, undefined, 1e300]) expect(m.quotePremium(bad).ok).toBe(false);
+  });
+  it("딱 떨어지는 현금은 소수 오차로 1원 더 받지 않는다", () => {
+    // 현금이 200 의 배수면 1.5% 는 정수다 — Math.ceil(cash * 0.015) 는 여기서 1원을 더 받는 값이 있다.
+    for (let cash = 200_000; cash <= 40_000_000; cash += 200) {
+      const want = (cash / 200) * 3;
+      if (m.quotePremium(cash).premium !== want) throw new Error(`${cash} → ${m.quotePremium(cash).premium} (기대 ${want})`);
+    }
   });
   it("보험료는 언제나 현금 이하", () => {
     for (const cash of [100, 101, 9_999, 1_000_001, 9_999_999_999]) {
@@ -39,6 +46,11 @@ describe("보험금", () => {
     expect(m.computePayout(1_000, 300)).toBe(300);
     expect(m.computePayout(1, 10_000)).toBe(0);
     expect(m.computePayout(0, 10_000)).toBe(0);
+  });
+  it("손실이 100억을 넘어도 보험금은 나온다(남은 한도까지) — 큰 세금일수록 0원이 되던 결함", () => {
+    expect(m.computePayout(10_000_000_002, 2_000)).toBe(2_000);
+    expect(m.computePayout(400_000_000_000, 10_000_000_000)).toBe(10_000_000_000);
+    expect(m.computePayout(Number.MAX_SAFE_INTEGER + 1, 2_000)).toBe(0); // 정확히 못 세는 수는 종전대로 0
   });
   it("0 ≤ 보험금 ≤ min(손실, 한도) — 이상한 입력 포함", () => {
     const vals = [0, 1, 2, 999, 1e6, 1e10, 1e11, -1, 0.5, NaN, Infinity, "5", null];
@@ -70,8 +82,8 @@ describe("정책 유효성", () => {
 describe("서버 ↔ 화면 대조", () => {
   it("보험료·보험금·유효 판정이 같다", () => {
     for (const cash of [-5, 0, 50, 99, 100, 101, 12_345, 5e6, 9_999_999_999, 1e12, NaN]) expect(client.quotePremium(cash)).toEqual(m.quotePremium(cash));
-    for (const loss of [0, 1, 999, 1e6, -1, 0.5]) for (const cap of [0, 1, 300, 1e7]) expect(client.computePayout(loss, cap)).toBe(m.computePayout(loss, cap));
-    for (const k of ["PREMIUM_RATE", "MIN_PREMIUM", "CAP_MULTIPLIER", "COVERAGE_RATE", "TERM_DAYS", "TERM_MS"]) expect(client[k]).toBe(m[k]);
+    for (const loss of [0, 1, 999, 1e6, 1e10 + 2, 4e11, -1, 0.5]) for (const cap of [0, 1, 300, 1e7]) expect(client.computePayout(loss, cap)).toBe(m.computePayout(loss, cap));
+    for (const k of ["PREMIUM_PERMILLE", "PREMIUM_RATE", "MIN_PREMIUM", "CAP_MULTIPLIER", "COVERAGE_RATE", "TERM_DAYS", "TERM_MS"]) expect(client[k]).toBe(m[k]);
     const now = 1_800_000_000_000;
     for (const pol of [null, { classCode: "t1abcd", userId: "u1", capRemaining: 5, expiresAt: now + 1 }, { classCode: "t1abcd", userId: "u1", capRemaining: 0, expiresAt: now + 1 }, { classCode: "t1abcd", userId: "u1", capRemaining: 5, expiresAt: now - 1 }]) {
       expect(client.isPolicyActive(pol, now, "t1abcd", "u1")).toBe(m.isPolicyActive(pol, now, "t1abcd", "u1"));
