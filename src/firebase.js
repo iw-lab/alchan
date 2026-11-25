@@ -12,11 +12,6 @@ export {
   startAppCheckSoon,
 } from "./firebase/firebaseConfig";
 
-// Utils: DB 로깅, 캐시 시스템
-export {
-  invalidateCache,
-} from "./firebase/firebaseUtils";
-
 // Auth: 인증 함수
 export {
   authStateListener,
@@ -28,8 +23,6 @@ export {
 
 // DB: Firestore CRUD, 트랜잭션, 모든 비즈니스 로직
 export {
-  // 학급 관리자
-  // CRUD
   // 학급 구성원
   getClassmates,
   // 학습앱(AAP) 교사 화면 조회
@@ -46,11 +39,6 @@ export {
   // 현금/쿠폰/송금/벌금
   updateUserCashInFirestore,
   updateUserCouponsInFirestore,
-  // 주식/세금
-  // 기부/합의
-  // 상점
-  // 인벤토리
-  // 마켓
   // 학급 코드
   verifyClassCode,
   // 조회
@@ -58,9 +46,6 @@ export {
   // 뱅킹
   getBankingProducts,
   updateBankingProducts,
-  // 마켓 요약
-  // 배치
-  // 네트워크
   // 캐시 문서
   getCachedDocument,
   // Cloud Functions

@@ -1,7 +1,7 @@
 // src/App.js
 // 알찬(Alchan) - 학급 경제 시뮬레이션 앱
 
-import React, { useEffect, Suspense, lazy, Component } from "react";
+import React, { Suspense, lazy, Component } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -201,33 +201,6 @@ class ErrorBoundary extends Component {
 }
 
 function App() {
-  // FCM 서비스 워커에 설정 전달
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready
-        .then((registration) => {
-          if (registration.active) {
-            const firebaseConfig = {
-              apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-              authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-              projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-              storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-              messagingSenderId:
-                process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-              appId: process.env.REACT_APP_FIREBASE_APP_ID,
-            };
-            registration.active.postMessage({
-              type: "FIREBASE_CONFIG",
-              config: firebaseConfig,
-            });
-          }
-        })
-        .catch((err) => {
-          logger.warn("[알찬] 서비스워커 준비 실패 (무시):", err);
-        });
-    }
-  }, []);
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

@@ -15,40 +15,6 @@ import { logger } from '../../utils/logger';
 import { logDbOperation, setCache, getCache } from "../firebaseUtils";
 
 // =================================================================
-// 학급 관리자 uid 조회 헬퍼
-// =================================================================
-export const getClassAdminUid = async (classCode) => {
-  if (!db) throw new Error("Firestore가 초기화되지 않았습니다.");
-  if (!classCode) throw new Error("학급 코드가 필요합니다.");
-
-  const cacheKey = `admin_uid_${classCode}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const usersQuery = originalFirebaseQuery(
-      collection(db, "users"),
-      originalFirebaseWhere("classCode", "==", classCode),
-      originalFirebaseWhere("isAdmin", "==", true)
-    );
-    const querySnapshot = await getDocs(usersQuery);
-
-    if (querySnapshot.empty) {
-      logger.warn(`[firebase.js] 학급(${classCode})에 관리자가 없습니다.`);
-      return null;
-    }
-
-    const adminUid = querySnapshot.docs[0].id;
-    setCache(cacheKey, adminUid);
-    return adminUid;
-  } catch (error) {
-    logger.error(`[firebase.js] 학급 관리자 조회 오류:`, error);
-    return null;
-  }
-};
-
-
-// =================================================================
 // 학급 구성원 조회
 // =================================================================
 export const getClassmates = async (classCode, forceRefresh = false, tab = 'unknown') => {

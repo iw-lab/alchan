@@ -55,21 +55,6 @@ export const queryKeys = {
 };
 
 
-// 실시간 최적화 헬퍼
-export const realtimeOptimizer = {
-  // 연결 상태에 따른 전략 조정
-  shouldUseRealtime: () => {
-    return navigator.onLine && !document.hidden;
-  },
-
-  // 데이터 크기에 따른 전략 조정
-  getOptimalCacheTime: (dataSize) => {
-    if (dataSize < 1000) return 10 * 60 * 1000; // 10분
-    if (dataSize < 5000) return 5 * 60 * 1000;  // 5분
-    return 2 * 60 * 1000; // 2분
-  },
-};
-
 // 로컬 스토리지 백업 (오프라인 대응)
 export const localBackup = {
   save: (key, data) => {

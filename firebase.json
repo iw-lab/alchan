@@ -107,16 +107,7 @@
         ]
       },
       {
-        "source": "/sw.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "/firebase-messaging-sw.js",
+        "source": "/@(sw|service-worker).js",
         "headers": [
           {
             "key": "Cache-Control",

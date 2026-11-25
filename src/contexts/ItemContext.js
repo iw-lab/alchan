@@ -20,6 +20,7 @@ const ItemContext = createContext(null);
 
 export const useItems = () => {
   const context = useContext(ItemContext);
+  useNeedItems(context);
   if (!context) {
     // This fallback is for components that might render outside the provider.
     // It provides a safe, non-functional version of the context values.
@@ -55,6 +56,14 @@ export const useItems = () => {
   return context;
 };
 
+/** 아이템을 쓰는 화면(상점·내 아이템·경매…)이 떴다는 신호 — 그 순간 바로 받는다. */
+function useNeedItems(context) {
+  const needNow = context?.needNow;
+  useEffect(() => {
+    if (needNow) needNow();
+  }, [needNow]);
+}
+
 export const ItemProvider = ({ children }) => {
   const {
     user,
@@ -65,6 +74,16 @@ export const ItemProvider = ({ children }) => {
   } = useAuth() || {};
   const userId = user?.uid;
   const currentUserClassCode = userDoc?.classCode;
+
+  // ⏱️ 아이템 목록은 첫 화면(할일)에 안 쓰인다. 종전엔 접속하자마자 서버 함수를 불러 첫 화면과 겨뤘다(2026-11-25).
+  //    쓰는 화면이 뜨면 곧바로, 아니면 첫 화면이 다 그려진 뒤(4초) 미리 받아 둔다.
+  const [active, setActive] = useState(false);
+  const needNow = useCallback(() => setActive(true), []);
+  useEffect(() => {
+    if (active) return undefined;
+    const t = setTimeout(needNow, 4000);
+    return () => clearTimeout(t);
+  }, [active, needNow]);
 
   // State for all economic data
   const [items, setItems] = useState([]);
@@ -146,8 +165,8 @@ export const ItemProvider = ({ children }) => {
   // 🔥 [최적화] 아이템 데이터는 자주 변경되지 않으므로 10분 간격으로 변경 (읽기 비용 90% 절감)
   usePolling(fetchData, {
     interval: 30 * 60 * 1000, // 🔥 [최적화] 30분마다 자동 갱신 (10분에서 변경)
-    enabled: !authLoading && !!userId && !!currentUserClassCode,
-    deps: [authLoading, userId, currentUserClassCode],
+    enabled: active && !authLoading && !!userId && !!currentUserClassCode,
+    deps: [active, authLoading, userId, currentUserClassCode],
   });
 
   // 🔥 [읽기 절감 2단계] 카탈로그 버전 구독 — 관리자의 상품 추가/수정/삭제·재입고 가격인상 시
@@ -160,7 +179,7 @@ export const ItemProvider = ({ children }) => {
   }, [fetchData]);
 
   useEffect(() => {
-    if (!userId || !currentUserClassCode) return undefined;
+    if (!active || !userId || !currentUserClassCode) return undefined;
     const verKey = `catalogVer:${currentUserClassCode}`;
     const ssGet = () => {
       try {
@@ -237,7 +256,7 @@ export const ItemProvider = ({ children }) => {
       if (trailingTimer) clearTimeout(trailingTimer);
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [userId, currentUserClassCode]);
+  }, [active, userId, currentUserClassCode]);
 
   // 🔔 남이 내 인벤토리를 바꿨을 때의 신호 (2026-09-17)
   //
@@ -795,6 +814,7 @@ export const ItemProvider = ({ children }) => {
   // Final context value
   const contextValue = useMemo(
     () => ({
+      needNow,
       items,
       userItems,
       loading,
@@ -811,6 +831,7 @@ export const ItemProvider = ({ children }) => {
       updateLocalUserItems,
     }),
     [
+      needNow,
       items,
       userItems,
       loading,

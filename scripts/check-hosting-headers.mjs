@@ -74,7 +74,7 @@ const EXPECTED = [
   { path: "/index.html", want: /no-cache/, why: "새 배포를 즉시 받아야 한다" },
   { path: "/manifest.json", want: /no-cache/, why: "PWA 메타" },
   { path: "/sw.js", want: /no-cache/, why: "서비스워커가 오래 묵으면 갱신이 그만큼 늦는다" },
-  { path: "/firebase-messaging-sw.js", want: /no-cache/, why: "같은 이유" },
+  { path: "/service-worker.js", want: /no-cache/, why: "같은 이유(옛 워커를 스스로 없애는 파일)" },
   {
     path: "/assets/index-abc123.js",
     want: /immutable/,

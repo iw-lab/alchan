@@ -22,6 +22,46 @@ const buildSourceStamp = () => ({
   },
 });
 
+// ⑥ 로그인해 둔 사람의 첫 화면 조각을 **HTML 이 읽히는 순간** 미리 받는다(2026-11-25).
+//    종전엔 «로그인 확인 → 레이아웃 조각 요청 → 할일 화면 조각 요청» 이 한 줄로 이어져 조각 요청이 1.4초에야 나갔다.
+//    로그인 흔적(currentUserAuthUID — AuthContext 가 로그인 때 쓰고 로그아웃 때 지운다)이 없으면 아무것도 안 받는다.
+const bootPreload = () => ({
+  name: "boot-preload",
+  apply: "build",
+  transformIndexHtml: {
+    order: "post",
+    handler(html, { bundle }) {
+      const chunks = Object.values(bundle || {}).filter((c) => c.type === "chunk");
+      const byFile = new Map(chunks.map((c) => [c.fileName, c]));
+      // facadeModuleId 로 찾으면 안 된다 — 다른 모듈과 한 조각으로 합쳐지면 null 이 된다(AlchanLayout 이 그랬다).
+      const find = (src) => chunks.find((c) => c.moduleIds.some((m) => m.replaceAll("\\", "/").endsWith(src)));
+      const collect = (chunk, js, css) => {
+        if (!chunk || js.has(chunk.fileName)) return;
+        js.add(chunk.fileName);
+        (chunk.viteMetadata?.importedCss || []).forEach((f) => css.add(f));
+        chunk.imports.forEach((f) => collect(byFile.get(f), js, css));
+      };
+      const entry = chunks.find((c) => c.isEntry);
+      const layout = find("/src/components/AlchanLayout.js");
+      const dash = find("/src/pages/dashboard/Dashboard.js");
+      if (!entry || !layout || !dash) throw new Error("boot-preload: 첫 화면 조각을 못 찾았다 — 파일을 옮겼으면 vite.config.js 도 고칠 것");
+      const base = [new Set(), new Set()], lay = [new Set(), new Set()], all = [new Set(), new Set()];
+      collect(entry, ...base); collect(layout, ...lay); collect(dash, ...all);
+      const minus = (a, ...bs) => [...a].filter((f) => !bs.some((b) => b.has(f))).map((f) => `/${f}`);
+      const data = {
+        l: [minus(lay[0], base[0]), minus(lay[1], base[1])],
+        d: [minus(all[0], base[0], lay[0]), minus(all[1], base[1], lay[1])],
+      };
+      const code =
+        `try{if(localStorage.getItem('currentUserAuthUID')&&!/^\\/(login|privacy|consent)/.test(location.pathname)){` +
+        `var P=${JSON.stringify(data)},A=function(u,r,s){var l=document.createElement('link');l.rel=r;if(s)l.as=s;if(r==='modulepreload')l.crossOrigin='';l.href=u;document.head.appendChild(l)},` +
+        `G=function(x){x[0].forEach(function(u){A(u,'modulepreload')});x[1].forEach(function(u){A(u,'preload','style')})};` +
+        `G(P.l);if(/^\\/($|dashboard)/.test(location.pathname))G(P.d)}}catch(e){}`;
+      return [{ tag: "script", children: code, injectTo: "head" }];
+    },
+  },
+});
+
 export default defineConfig(({ mode, command }) => {
   // ① 환경변수: 소스 17곳이 `process.env.REACT_APP_*` 를 쓴다.
   //    이름을 VITE_* 로 바꾸면 소스 17곳 + .env + 배포 설정을 동시에 건드려야 해서,
@@ -89,6 +129,7 @@ export default defineConfig(({ mode, command }) => {
       //    파일 100개를 `.jsx` 로 rename 하는 방법도 있지만, 기반 교체와 무관한
       //    대량 변경이 섞이고 git 이력이 끊긴다. 플러그인에 확장자를 알려주는 쪽을 택했다.
       react({ include: /\.(jsx?|tsx?)$/ }),
+      bootPreload(),
       buildSourceStamp(),
     ],
     // esbuild 도 같은 사실을 알아야 한다(플러그인 전/후 단계가 갈린다).
@@ -144,6 +185,8 @@ export default defineConfig(({ mode, command }) => {
             // 라우터는 @remix-run/router 를 끌고 온다 — 같이 묶어야 갈라지지 않는다.
             if (["react", "react-dom", "react-router", "react-router-dom", "scheduler"].includes(pkg) ||
                 pkg.startsWith("@remix-run")) return "vendor-react";
+            // 아이콘은 화면마다 낱개로 쪼개져 1 kB 남짓한 파일이 수십 개 생긴다 — 첫 화면이 파일 10여 개를 따로 요청했다.
+            if (pkg === "lucide-react") return "vendor-icons";
           },
         },
       },
