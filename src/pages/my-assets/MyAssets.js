@@ -501,13 +501,13 @@ export default function MyAssets() {
 
   const renderTitle = () => (
     <div className="flex justify-between items-center mb-5">
-      <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-2.5 m-0">
-        나의 자산 현황 💳
+      <h2 className="text-xl sm:text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-2 m-0 whitespace-nowrap">
+        나의 자산 현황
       </h2>
       <button
         onClick={handleForceRefresh}
         disabled={assetsLoading}
-        className={`btn-glass px-4 py-2 text-sm ${
+        className={`btn-glass px-3 sm:px-4 py-2 text-sm whitespace-nowrap ${
           assetsLoading ? "cursor-not-allowed opacity-60" : "cursor-pointer"
         }`}
       >
@@ -556,15 +556,17 @@ export default function MyAssets() {
     return (
       <div className="p-0 bg-transparent mb-6">
         {/* 보유 현금 - 메인 강조 카드 (glass) */}
-        <div className="glass-card-strong rounded-3xl p-[30px] mb-5">
+        <div className="glass-card-strong rounded-3xl p-5 sm:p-[30px] mb-4">
           <div className="mb-2.5">
-            <span className="text-lg font-bold gradient-text">💰 보유 현금</span>
+            <span className="text-lg font-bold" aria-hidden="true">💰 </span><span className="text-lg font-bold gradient-text">보유 현금</span>
           </div>
-          <div
-            className="text-[40px] font-extrabold tracking-tight mb-4 text-right"
-            style={{ color: displayCash < 0 ? "#dc2626" : "#0f172a" }}
-          >
-            {formatKoreanCurrency(displayCash)}
+          <div className="fit-box mb-4">
+            <div
+              className="fit-money-xl font-extrabold tracking-tight text-right"
+              style={{ color: displayCash < 0 ? "#dc2626" : "#0f172a" }}
+            >
+              {formatKoreanCurrency(displayCash)}
+            </div>
           </div>
           <div className="flex justify-end">
             <button
@@ -579,46 +581,46 @@ export default function MyAssets() {
 
         {/* 총 순자산 + 파킹통장 + 보유 쿠폰 — 가장 중요한 요약이라 거래 내역보다 위에 둔다
             (기존엔 내역 아래라 스크롤해야 보였다. 2026-07-25 리뷰 C7) */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
           {/* 총 순자산 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#ec4899" }}>
+          <div className="glass-card rounded-2xl p-4 border-l-4 col-span-2 sm:col-span-1 fit-box" style={{ borderLeftColor: "#ec4899" }}>
             <div className="mb-1">
               <span className="text-sm font-semibold text-pink-600">📊 총 순자산</span>
             </div>
             <div
-              className="text-xl md:text-2xl font-extrabold tracking-tight text-right"
+              className="fit-money-md font-extrabold tracking-tight text-right"
               style={{ color: Number(totalNetAssets) < 0 ? "#dc2626" : "#0f172a" }}
             >
               {formatKoreanCurrency(Number(totalNetAssets))}
             </div>
-            <p className="mt-1 text-[10px] text-slate-500 leading-tight">
+            <p className="mt-1 text-[11.5px] text-slate-500 leading-tight">
               현금+쿠폰+파킹+예적금+부동산-대출
             </p>
           </div>
 
           {/* 파킹통장 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#06b6d4" }}>
+          <div className="glass-card rounded-2xl p-4 border-l-4 fit-box" style={{ borderLeftColor: "#06b6d4" }}>
             <div className="mb-1">
               <span className="text-sm font-semibold text-cyan-600">🅿️ 파킹통장</span>
             </div>
-            <div className="text-xl md:text-2xl font-extrabold tracking-tight text-right text-slate-900">
+            <div className="fit-money-md font-extrabold tracking-tight text-right text-slate-900">
               {formatKoreanCurrency(Number(parkingBalance))}
             </div>
-            <p className="mt-1 text-[10px] text-slate-500 text-right">
+            <p className="mt-1 text-[11.5px] text-slate-500 text-right">
               입출금 및 상품 가입
             </p>
           </div>
 
           {/* 보유 쿠폰 */}
-          <div className="glass-card rounded-2xl p-4 border-l-4" style={{ borderLeftColor: "#f59e0b" }}>
+          <div className="glass-card rounded-2xl p-4 border-l-4 fit-box" style={{ borderLeftColor: "#f59e0b" }}>
             <div className="mb-1">
               <span className="text-sm font-semibold text-amber-600">🎟️ 보유 쿠폰</span>
             </div>
-            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-right text-slate-900">
+            <div className="fit-money-md font-extrabold tracking-tight text-right text-slate-900">
               {displayCoupons.toLocaleString()}
               <span className="text-base font-semibold text-slate-600"> 개</span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-500 text-right">
+            <p className="mt-1 text-[11.5px] text-slate-500 text-right">
               1쿠폰 = {Number(couponValue).toLocaleString()}{getCurrencyUnit()}
             </p>
           </div>
@@ -755,7 +757,7 @@ export default function MyAssets() {
 
   return (
     <div className="w-full min-h-full">
-      <div className="w-full px-4 md:px-6 lg:px-8 py-6">
+      <div className="w-full pb-4">
         {renderTitle()}
 
         {/* 일일 출석 보상 배너 */}

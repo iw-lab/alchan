@@ -115,78 +115,19 @@ export default function VoteReminderBanner() {
   return (
     <div
       onClick={() => navigate("/national-assembly")}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        background: "#fffbeb",
-        border: "1px solid #fbbf24",
-        borderRadius: 10,
-        padding: "12px 16px",
-        margin: "12px 16px 0",
-        cursor: "pointer",
-        transition: "all 0.2s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "#fef3c7";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "#fffbeb";
-      }}
+      className="app-notice flex items-center gap-2.5 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-400 cursor-pointer transition-colors"
     >
-      <div
-        style={{
-          flexShrink: 0,
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          background: "linear-gradient(135deg, #fde68a, #fbbf24)",
-          color: "#b45309",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Megaphone size={20} strokeWidth={2.2} />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          flex: 1,
-          minWidth: 0,
-          fontSize: "0.95rem",
-          color: "#1e293b",
-          fontWeight: 500,
-        }}
-      >
-        <strong style={{ color: "#b45309", fontSize: "1rem" }}>
-          투표 참여 안내
-        </strong>
-        <span>
-          아직 투표하지 않은 심의중 법안이{" "}
-          <strong style={{ color: "#b45309" }}>{unvotedCount}건</strong>{" "}
-          있습니다. 찬반 투표에 참여해주세요!
-        </span>
-      </div>
+      <Megaphone size={20} strokeWidth={2.2} className="flex-shrink-0 text-amber-700" aria-hidden="true" />
+      <p className="flex-1 min-w-0 text-[13px] sm:text-sm text-slate-800 leading-snug">
+        <strong className="text-amber-800">투표 안 한 법안 {unvotedCount}건</strong>
+        <span className="hidden sm:inline"> · 심의 중인 법안에 찬반 투표해 주세요!</span>
+      </p>
       <button
         onClick={(e) => {
           e.stopPropagation();
           navigate("/national-assembly");
         }}
-        style={{
-          background: "linear-gradient(135deg, #f59e0b, #d97706)",
-          border: "none",
-          borderRadius: 8,
-          color: "#ffffff",
-          cursor: "pointer",
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          padding: "8px 16px",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
+        className="flex-shrink-0 px-3 min-h-[40px] rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold whitespace-nowrap"
       >
         투표하러 가기
       </button>

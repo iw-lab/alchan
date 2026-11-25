@@ -50,15 +50,11 @@ export default function IOSInstallPrompt() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-[9990] p-4"
+      className="fixed left-0 right-0 bottom-[calc(64px+env(safe-area-inset-bottom))] lg:bottom-0 z-[9990] p-3"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
     >
       <div
-        className="relative rounded-2xl overflow-hidden shadow-2xl border border-indigo-500/30"
-        style={{
-          background: "linear-gradient(135deg, #1a1a2e 0%, #111128 100%)",
-          backdropFilter: "blur(20px)",
-        }}
+        className="relative mx-auto max-w-md rounded-2xl overflow-hidden shadow-2xl border border-indigo-200 bg-white"
       >
         {/* 상단 글로우 */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent" />
@@ -88,32 +84,32 @@ export default function IOSInstallPrompt() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-slate-800 dark:text-white font-bold text-base">앱으로 설치하기</p>
-              <p className="text-slate-400 text-sm mt-0.5">
+              <p className="text-slate-800 font-bold text-base">앱으로 설치하기</p>
+              <p className="text-slate-600 text-sm mt-0.5">
                 홈 화면에 추가하면 앱처럼 사용할 수 있어요!
               </p>
 
               {/* 설치 방법 */}
               <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <div className="w-6 h-6 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-indigo-400 font-bold text-xs">1</span>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-800 font-bold text-xs">1</span>
                   </div>
                   <span>
                     하단{" "}
-                    <span className="inline-flex items-center gap-1 bg-slate-700/60 px-1.5 py-0.5 rounded-md text-blue-300 font-medium">
+                    <span className="inline-flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded-md text-blue-800 font-medium">
                       <Share className="w-3 h-3" />
                       공유
                     </span>{" "}
                     버튼 탭
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <div className="w-6 h-6 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-indigo-400 font-bold text-xs">2</span>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-800 font-bold text-xs">2</span>
                   </div>
                   <span>
-                    <span className="inline-flex items-center gap-1 bg-slate-700/60 px-1.5 py-0.5 rounded-md text-slate-700 dark:text-slate-200 font-medium">
+                    <span className="inline-flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded-md text-slate-800 font-medium">
                       <Plus className="w-3 h-3" />홈 화면에 추가
                     </span>{" "}
                     선택
@@ -125,7 +121,7 @@ export default function IOSInstallPrompt() {
             {/* 닫기 */}
             <button
               onClick={handleDismiss}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/60 text-white hover:text-white transition-colors"
+              className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-700"
             >
               <X className="w-4 h-4" />
             </button>

@@ -11,10 +11,12 @@ import {
 import { searchVideos, parseVideoId, getQuotaExhausted } from "../../utils/youtube-api";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../utils/logger";
-import "./StudentRequest.css";
+import pageCss from "./StudentRequest.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { toast } from "../../utils/toast";
 
 const StudentRequest = () => {
+  usePageCss(pageCss);
   const { roomId } = useParams();
   const { user, userDoc } = useAuth();
   const [roomName, setRoomName] = useState("");

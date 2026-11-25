@@ -46,19 +46,14 @@
 }
 
 .my-item-name-compact {
-  font-size: 1.1rem;
+  font-size: 1.0625rem;
   font-weight: 700;
-  color: #4338ca;
+  color: #3730a3;
   margin: 0;
-  padding: 6px 12px;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  border-radius: 10px;
-  display: inline-block;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  line-height: 1.35;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .my-item-description-compact {
@@ -164,8 +159,9 @@
 
 .my-item-actions {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
   margin-top: auto;
 }
 
@@ -181,7 +177,9 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.8125rem;
+  min-height: 42px;
+  white-space: nowrap;
   transition: background-color 0.2s;
   width: 100%;
 }
@@ -594,14 +592,8 @@
     반응형 (모바일) 스타일 추가
    ======================================== */
 @media (max-width: 640px) {
-  .my-item-actions {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
   .my-item-actions button {
-    padding: 12px;
-    font-size: 1rem;
+    padding: 10px 4px;
   }
 
   .items-grid {

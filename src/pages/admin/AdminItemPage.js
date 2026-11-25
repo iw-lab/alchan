@@ -46,6 +46,7 @@ const styles = {
   headerIcon: {
     width: '40px',
     height: '40px',
+    flexShrink: 0,
     borderRadius: '12px',
     background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
     display: 'flex',

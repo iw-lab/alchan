@@ -549,7 +549,7 @@ const Login = () => {
  </svg>
  </div>
  </div>
- <h1 className="text-3xl font-bold text-slate-800 font-jua">알찬</h1>
+ <h1 className="text-3xl font-normal text-slate-800 font-jua">알찬</h1>
  <p className="text-slate-400 text-sm mt-1">학급 경제 교육</p>
  </div>
 

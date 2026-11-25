@@ -31,26 +31,26 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
       fontSize: "14px",
       borderRadius: "8px",
       overflow: "hidden",
-      border: "1px solid #475569",
+      border: "1px solid #e2e8f0",
     },
     thead: {
-      backgroundColor: "#1e293b",
+      backgroundColor: "#f1f5f9",
     },
     th: {
       padding: "12px 16px",
       textAlign: "left",
       fontWeight: "600",
-      color: "#cbd5e1",
-      borderBottom: "1px solid #475569",
+      color: "#334155",
+      borderBottom: "1px solid #e2e8f0",
       position: "sticky",
       top: 0,
-      backgroundColor: "#1e293b",
+      backgroundColor: "#f1f5f9",
       zIndex: 1,
     },
     td: {
       padding: "12px 16px",
-      borderBottom: "1px solid #334155",
-      color: "#cbd5e1",
+      borderBottom: "1px solid #e2e8f0",
+      color: "#1e293b",
     },
     tr: {
       transition: "background-color 0.2s",
@@ -61,11 +61,11 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
       alignItems: "center",
       justifyContent: "center",
       padding: "40px 20px",
-      backgroundColor: "#1e293b",
+      backgroundColor: "#f8fafc",
       borderRadius: "8px",
-      border: "1px dashed #475569",
+      border: "1px dashed #cbd5e1",
       textAlign: "center",
-      color: "#94a3b8",
+      color: "#64748b",
     },
     emptyIcon: {
       fontSize: "36px",
@@ -238,57 +238,57 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
 
   return (
     <div
-      className={`${showDonationHistoryModal ? "flex" : "hidden"} fixed inset-0 bg-black/60 items-center justify-center z-[1000] p-5`}
+      className={`${showDonationHistoryModal ? "flex" : "hidden"} fixed inset-0 bg-black/60 items-center justify-center z-[1000] p-3 sm:p-5`}
       onClick={handleClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-lg w-full max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col border border-slate-600"
+        className="bg-white rounded-xl shadow-lg w-full max-w-[600px] max-h-[85dvh] overflow-hidden flex flex-col border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-slate-600 flex justify-between items-center bg-slate-800">
-          <h3 className="m-0 text-lg font-semibold text-slate-700 dark:text-slate-100">
+        <div className="px-4 sm:px-5 py-3 border-b border-slate-200 flex justify-between items-center gap-2">
+          <h3 className="m-0 text-lg font-semibold text-slate-800">
             우리 학급 응모 현황
             {userClassCode && (
-              <span className="ml-2 text-sm bg-indigo-900/60 text-indigo-300 px-2 py-1 rounded-xl font-medium">
+              <span className="ml-2 text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-xl font-medium">
                 {userClassCode}
               </span>
             )}
           </h3>
           <button
             onClick={handleClose}
-            className="bg-transparent border-0 cursor-pointer text-xl text-slate-400 p-0 leading-none hover:text-slate-200"
+            className="bg-transparent border-0 cursor-pointer text-2xl text-slate-500 w-10 h-10 -mr-2 shrink-0 leading-none hover:text-slate-800"
             aria-label="닫기"
           >
             &times;
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto max-h-[calc(85vh-120px)]">
-          <div className="bg-indigo-900/30 px-4 py-3 rounded-lg mb-5 border border-indigo-700/50">
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1 min-h-0">
+          <div className="bg-indigo-50 px-4 py-3 rounded-lg mb-4 border border-indigo-200">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-indigo-300">
+              <span className="text-sm font-medium text-indigo-900">
                 내 누적 응모액
               </span>
-              <span className="text-base font-semibold text-indigo-400">
+              <span className="text-base font-semibold text-indigo-700">
                 {formatAmount(myTotalDonation)} 쿠폰
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-indigo-300">
+              <span className="text-sm font-medium text-indigo-900">
                 우리 학급 총 응모액
               </span>
-              <span className="text-base font-semibold text-indigo-400">
+              <span className="text-base font-semibold text-indigo-700">
                 {formatAmount(totalDonationForThisClassGoal)} 쿠폰
               </span>
             </div>
           </div>
 
           {loading ? (
-            <div className="text-center py-10 text-slate-400">
+            <div className="text-center py-10 text-slate-500">
               응모 현황을 불러오는 중...
             </div>
           ) : error ? (
-            <div className="text-red-400 text-center py-10">{error}</div>
+            <div className="text-red-600 text-center py-10">{error}</div>
           ) : (
             <>
               {studentDonationSummary.length > 0 ? (
@@ -314,10 +314,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                         style={{
                           ...tableStyles.tr,
                           backgroundColor: student.isCurrentUser
-                            ? "rgba(99, 102, 241, 0.2)"
+                            ? "#e0e7ff"
                             : index % 2 === 0
-                              ? "#1e293b"
-                              : "var(--bg-card)",
+                              ? "#ffffff"
+                              : "#f8fafc",
                         }}
                         onMouseOver={(e) => {
                           if (!student.isCurrentUser) {
@@ -328,15 +328,15 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                         onMouseOut={(e) => {
                           if (!student.isCurrentUser) {
                             e.currentTarget.style.backgroundColor =
-                              index % 2 === 0 ? "#1e293b" : "var(--bg-card)";
+                              index % 2 === 0 ? "#ffffff" : "#f8fafc";
                           }
                         }}
                       >
                         <td style={tableStyles.td}>
-                          <StudentNo member={student} size="md" style={{ marginRight: 10, color: "#a5b4fc" }} />
+                          <StudentNo member={student} size="md" style={{ marginRight: 10, color: "#3730a3" }} />
                           {plainStudentName(student)}
                           {student.isCurrentUser && (
-                            <span className="ml-2 text-xs bg-indigo-900/60 text-indigo-300 px-1.5 py-0.5 rounded-lg font-semibold align-middle">
+                            <span className="ml-2 text-xs bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-lg font-semibold align-middle">
                               나
                             </span>
                           )}
@@ -347,7 +347,7 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
                             textAlign: "right",
                             color:
                               student.cumulativeAmount > 0
-                                ? "#818cf8"
+                                ? "#4338ca"
                                 : "#64748b",
                             fontWeight:
                               student.cumulativeAmount > 0 ? "600" : "normal",
@@ -362,10 +362,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
               ) : (
                 <div style={tableStyles.emptyContainer}>
                   <div style={tableStyles.emptyIcon}>👥</div>
-                  <p className="m-0 mb-2 text-base font-medium text-slate-600 dark:text-slate-300">
+                  <p className="m-0 mb-2 text-base font-medium text-slate-700">
                     학급 학생 정보를 불러올 수 없거나 등록된 학생이 없습니다
                   </p>
-                  <p className="m-0 text-sm text-slate-400">
+                  <p className="m-0 text-sm text-slate-500">
                     관리자에게 문의하여 학급 설정을 확인해주세요.
                   </p>
                 </div>
@@ -374,10 +374,10 @@ const DonationHistoryModal = memo(function DonationHistoryModal({
           )}
         </div>
 
-        <div className="px-5 py-4 border-t border-slate-600 flex justify-end">
+        <div className="px-4 sm:px-5 py-3 border-t border-slate-200 flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 bg-slate-600 text-slate-700 dark:text-slate-200 border-0 rounded-md cursor-pointer font-medium transition-all duration-200 hover:bg-slate-500"
+            className="px-5 min-h-[44px] bg-slate-100 text-slate-800 border border-slate-200 rounded-lg cursor-pointer font-medium hover:bg-slate-200"
           >
             닫기
           </button>

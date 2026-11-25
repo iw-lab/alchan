@@ -8,7 +8,6 @@ import {
  getTransactionsData,
  convertTransactionsToLogs
 } from '../../services/AdminDatabaseService';
-import './AdminDatabase.css';
 import { logger } from '../../utils/logger';
 import { sortByStudentNumber, numberedStudentName } from '../../utils/studentOrder';
 
@@ -397,7 +396,7 @@ const AdminDatabase = () => {
  <button
  onClick={handleRefresh}
  disabled={loading}
- className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-300"
+ className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300"
  >
  새로고침
  </button>

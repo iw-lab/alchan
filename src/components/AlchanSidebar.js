@@ -7,6 +7,7 @@ import AvatarHeaderWidget from "./AvatarHeaderWidget";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useMenuLocks } from "../contexts/MenuLocksContext";
+import { isCompactViewport } from "../utils/viewport";
 import { getIsIdle } from "../utils/idleManager";
 import { db as firebaseDb } from "../firebase";
 import {
@@ -539,7 +540,7 @@ const CATEGORY_LABELS = {
 // ============================================
 const MenuSection = memo(({ title, children }) => (
   <div className="mb-2">
-    <h3 className="px-4 py-1 text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#4338ca' }}>
+    <h3 className="px-4 py-1 text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#4338ca' }}>
       {title}
     </h3>
     <ul className="space-y-0.5">{children}</ul>
@@ -574,7 +575,7 @@ const MenuItem = memo(({ icon: Icon, label, active, hasSubmenu, onClick, badgeCo
       <div className="flex items-center gap-2">
         {badgeCount > 0 && (
           <span
-            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full"
+            className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[11.5px] font-bold rounded-full"
             style={{ background: '#ef4444', color: '#fff', lineHeight: 1 }}
             aria-label={`${badgeCount}건의 새로운 알림`}
           >
@@ -606,7 +607,7 @@ const SubMenuItem = memo(({ icon: Icon, label, active, onClick, badgeCount = 0, 
     <span className="flex-1 text-left truncate">{label}</span>
     {badgeCount > 0 && (
       <span
-        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[10px] font-bold rounded-full"
+        className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-[11.5px] font-bold rounded-full"
         style={{ background: '#ef4444', color: '#fff', lineHeight: 1 }}
         aria-label={`${badgeCount}건의 새로운 알림`}
       >
@@ -702,6 +703,7 @@ export default function AlchanSidebar({
   isOpen,
   onClose,
   isCollapsed = false,
+  onExpand,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -718,14 +720,14 @@ export default function AlchanSidebar({
   }, [favUid]);
 
   const [expandedCategories, setExpandedCategories] = useState({});
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(isCompactViewport);
   const [learningBoards, setLearningBoards] = useState([]);
 
   useEffect(() => {
     let timeoutId;
     const handleResize = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => setIsMobile(window.innerWidth < 768), 150);
+      timeoutId = setTimeout(() => setIsMobile(isCompactViewport()), 150);
     };
     window.addEventListener("resize", handleResize);
     return () => {
@@ -1017,6 +1019,8 @@ export default function AlchanSidebar({
       "세금 납부 (보유세)",
       "세금 납부 (주식)",
       "세금 납부 (경제이벤트)",
+      "재산 손실 (경제이벤트)",
+      "보험금 지급",
       "벌금 납부",
       "송금",
       "송금 수신",
@@ -1332,7 +1336,7 @@ export default function AlchanSidebar({
                   if (child.isSubGroup) {
                     return (
                       <div key={child.id} className="mt-3 mb-1 first:mt-0">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-2">
                           {child.label}
                         </span>
                       </div>
@@ -1408,7 +1412,7 @@ export default function AlchanSidebar({
   // PC 접힌 상태
   if (isCollapsed && !isMobile) {
     return (
-      <aside className="hidden md:flex flex-col w-20 h-screen sticky top-0 left-0 z-50 transition-all duration-300" style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderRight: '1px solid rgba(199,210,254,0.5)', boxShadow: '0 8px 32px -8px rgba(79, 70, 229, 0.08)' }}>
+      <aside className="hidden lg:flex flex-col w-20 h-screen sticky top-0 left-0 z-50 transition-all duration-300" style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)', borderRight: '1px solid rgba(199,210,254,0.5)', boxShadow: '0 8px 32px -8px rgba(79, 70, 229, 0.08)' }}>
         {/* 로고 */}
         <div className="h-16 min-h-16 flex items-center justify-center" style={{ borderBottom: '1px solid var(--border-primary)' }}>
           <div className="p-1.5 rounded-lg" style={{ border: '1px solid var(--border-primary)' }}>
@@ -1419,18 +1423,26 @@ export default function AlchanSidebar({
         {/* 아이콘 메뉴 */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-2">
           {ALCHAN_MENU_ITEMS.filter(
-            (item) => !item.parentId && !item.isCategory,
+            (item) => !item.parentId,
           ).map((item) => {
-            if (item.adminOnly && !isAdmin) return null;
-            if (item.superAdminOnly && !isSuperAdmin) return null;
-            if (!isAdmin && lockedItemIds.includes(item.id)) return null;
+            if (!shouldShowItem(item)) return null;
+            // 보이는 하위가 하나도 없는 묶음은 펼친 메뉴에서도 안 나온다 — 여기서도 같은 규칙.
+            if (item.isCategory && !allMenuItems.some((c) => c.parentId === item.id && shouldShowItem(c))) return null;
             const Icon = item.icon;
-            const active = isActive(item.path);
+            const active = item.isCategory ? hasActiveChild(item.id) : isActive(item.path);
             return (
               <button
                 key={item.id}
-                onClick={() => handleItemClick(item)}
+                // 접힌 줄에서도 묶음(아이템·금융·공공기관…)에 닿게 한다 — 예전엔 묶음이 통째로 사라졌다.
+                onClick={() => {
+                  if (item.id === LEARNING_SITES_CATEGORY_ID) navigate("/learning-sites");
+                  else if (item.isCategory) {
+                    setExpandedCategories((p) => ({ ...p, [item.id]: true }));
+                    onExpand?.();
+                  } else handleItemClick(item);
+                }}
                 title={item.label}
+                aria-label={item.label}
                 className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center transition-all duration-200"
                 style={active ? {
                   background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
@@ -1463,7 +1475,7 @@ export default function AlchanSidebar({
       {/* 모바일 오버레이 */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-slate-900/45 z-[49] lg:hidden"
           onClick={onClose}
         />
       )}
@@ -1471,20 +1483,27 @@ export default function AlchanSidebar({
       {/* 사이드바 */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 w-72 max-w-[86vw] transform transition-transform duration-200 ease-out
           ${
             isMobile
               ? isOpen
-                ? "translate-x-0 h-screen overflow-y-auto"
-                : "-translate-x-full h-screen overflow-y-auto"
+                ? "translate-x-0 h-dvh overflow-y-auto overscroll-contain"
+                : "-translate-x-full h-dvh overflow-y-auto"
               : "sticky top-0 min-h-screen translate-x-0"
           }
-          lg:sticky lg:top-0 lg:min-h-screen lg:translate-x-0 lg:w-72 flex flex-col shrink-0
+          lg:sticky lg:top-0 lg:min-h-screen lg:translate-x-0 lg:w-60 xl:w-72 flex flex-col shrink-0
         `}
+        // 닫힌 서랍 안 버튼에 키보드·스크린리더가 들어가지 않게 한다.
+        inert={isMobile && !isOpen}
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(238,242,255,0.75) 50%, rgba(245,243,255,0.75) 100%)',
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          // 서랍(폰·태블릿)은 불투명 — 유리 효과면 뒤 글자가 비쳐 메뉴가 안 읽힌다.
+          background: isMobile
+            ? '#f8f9ff'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(238,242,255,0.75) 50%, rgba(245,243,255,0.75) 100%)',
+          ...(isMobile ? {} : {
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          }),
           borderRight: '2px solid #a5b4fc',
           boxShadow: '4px 0 24px rgba(99, 102, 241, 0.12)',
         }}
@@ -1499,7 +1518,7 @@ export default function AlchanSidebar({
               <span className="text-[22px] font-black leading-tight font-jua" style={{ color: '#ffffff' }}>
                 알찬
               </span>
-              <span className="text-[11px] font-bold tracking-[0.2em] leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              <span className="text-xs font-bold tracking-[0.2em] leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 ALCHAN
               </span>
             </div>
@@ -1508,8 +1527,9 @@ export default function AlchanSidebar({
           {isMobile && (
             <button
               onClick={onClose}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full border-0 cursor-pointer"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
+              aria-label="메뉴 닫기"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full border-0 cursor-pointer flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,0.22)', color: '#fff' }}
             >
               <X size={20} />
             </button>
@@ -1517,7 +1537,7 @@ export default function AlchanSidebar({
         </div>
 
         {/* 아바타 위젯 (사이드바 로고 바로 아래) */}
-        <AvatarHeaderWidget size={150} />
+        <AvatarHeaderWidget size={isMobile ? 112 : 150} />
 
         {/* 네비게이션 메뉴 - PC는 자연 높이(스크롤 없음), 모바일만 overflow (aside에 적용됨) */}
         <nav className="flex-1 py-3 px-4 space-y-1">

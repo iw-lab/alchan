@@ -5,7 +5,8 @@ import NoRealNameNotice from "../../components/NoRealNameNotice";
 import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, httpsCallable } from "../../firebase";
-import "./Court.css";
+import pageCss from "./Court.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import SubmitComplaint from "./SubmitComplaint";
 import ComplaintStatus from "./ComplaintStatus";
 import TrialRoom, { cleanupStaleTrialRooms } from "./TrialRoom";
@@ -651,6 +652,7 @@ const BankruptcySection = ({ refetchComplaints }) => {
 
 // --- Main Court Component ---
 const Court = () => {
+  usePageCss(pageCss);
  const auth = useAuth();
  const currentUserDoc = auth?.userDoc;
  const currentUserId = currentUserDoc?.id;

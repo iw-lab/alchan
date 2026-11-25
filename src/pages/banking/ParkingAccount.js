@@ -73,27 +73,27 @@ const getTeacherAccount = async (classCode) => {
 
 // --- Tailwind class helpers ---
 const cls = {
- container: "font-sans bg-transparent p-4 md:p-6 min-h-0",
+ container: "font-sans bg-transparent min-h-0",
  message: (type) =>
  `px-5 py-4 rounded-xl mb-7 text-center text-base font-medium shadow-sm ${
  type === "error"
  ? "text-red-600 bg-red-50 border border-red-200"
  : "text-emerald-600 bg-emerald-50 border border-emerald-200"
  }`,
- grid: "grid grid-cols-1 md:grid-cols-2 gap-5 w-full",
- card: "bg-white shadow-[0_2px_12px_rgba(99,102,241,0.08)] rounded-2xl p-6 border border-[#e0e7ff]",
- cardHeader: "flex items-center gap-4 mb-5 pb-4 border-b-2 border-slate-100",
+ grid: "grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 xl:gap-5 w-full items-start",
+ card: "bg-white shadow-[0_2px_12px_rgba(99,102,241,0.08)] rounded-2xl p-4 lg:p-5 xl:p-6 border border-[#e0e7ff] min-w-0",
+ cardHeader: "flex items-center gap-3 mb-4 pb-3 border-b border-slate-900/10",
  cardTitle:
- "text-xl font-bold text-slate-800 tracking-tight",
- tabContainer: "flex border-b-2 border-slate-200 mb-5 gap-2",
+ "text-lg sm:text-xl font-bold text-slate-800 tracking-tight",
+ tabContainer: "flex border-b-2 border-slate-200 mb-4 gap-1 sm:gap-2 overflow-x-auto",
  tabButton: (isActive) =>
- `px-6 py-3 border-none cursor-pointer text-[17px] rounded-t-lg transition-all duration-200 -mb-0.5 ${
+ `px-3.5 sm:px-6 py-3 min-h-[44px] border-none cursor-pointer text-[15px] sm:text-[17px] whitespace-nowrap shrink-0 rounded-t-lg transition-all duration-200 -mb-0.5 ${
  isActive
  ? "bg-indigo-50 font-bold text-indigo-600 border-b-[3px] border-b-indigo-500"
- : "font-medium text-slate-400 border-b-[3px] border-b-transparent hover:text-slate-600"
+ : "font-medium text-slate-600 border-b-[3px] border-b-transparent hover:text-slate-800"
  }`,
  button: (disabled, variant = "primary") =>
- `text-white px-5 py-3 rounded-xl border-none text-[15px] font-semibold transition-all duration-200 ${
+ `text-white px-5 py-3 min-h-[44px] rounded-xl border-none text-[15px] font-semibold whitespace-nowrap transition-all duration-200 ${
  disabled
  ? "cursor-not-allowed opacity-50"
  : "cursor-pointer shadow-md hover:-translate-y-0.5 hover:shadow-lg"
@@ -103,20 +103,20 @@ const cls = {
  : variant === "danger"
  ? "bg-red-500 hover:bg-red-600"
  : variant === "success"
- ? "bg-emerald-500 hover:bg-emerald-600"
+ ? "bg-emerald-600 hover:bg-emerald-700"
  : "bg-slate-400 hover:bg-slate-500"
  }`,
- noProduct: "text-center text-slate-400 py-8 text-base italic",
+ noProduct: "text-center text-slate-600 py-5 text-sm",
  input:
  "w-full py-3.5 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl mb-4 text-base text-slate-800 transition-colors duration-200 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100",
  modalOverlay:
- "fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] backdrop-blur-[4px]",
+ "fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] backdrop-blur-[4px] p-4",
  modalContent:
- "bg-white p-8 rounded-2xl w-[90%] max-w-[450px] relative shadow-2xl border border-slate-200 text-slate-700",
+ "bg-white p-5 sm:p-8 rounded-2xl w-full max-w-[450px] max-h-[calc(100dvh-2rem)] overflow-y-auto relative shadow-2xl border border-slate-200 text-slate-700",
  modalTitle:
- "text-xl font-bold mb-5 text-slate-800",
+ "text-xl font-bold mb-5 pr-9 text-slate-800",
  modalCloseBtn:
- "absolute top-5 right-5 bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-slate-700",
+ "absolute top-3 right-3 w-10 h-10 flex items-center justify-center bg-transparent border-none cursor-pointer text-slate-400 transition-colors duration-200 hover:text-slate-700",
 };
 
 // --- Helper Functions & Sub-Components ---
@@ -239,12 +239,12 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  </div>
  <div className="flex gap-2 mt-1">
  {isMatured && (
- <span className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[13px] font-semibold">
+ <span className="bg-emerald-600 text-white px-3 py-1 rounded-full text-[13px] font-semibold">
  만기
  </span>
  )}
  {isLoan && (
- <span className="bg-red-50 text-red-400 px-3 py-1 rounded-full text-[13px] font-semibold border border-red-200">
+ <span className="bg-red-50 text-red-700 px-3 py-1 rounded-full text-[13px] font-semibold border border-red-200">
  {repaymentTypeLabel}
  </span>
  )}
@@ -264,7 +264,7 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  <>
  <div className="flex justify-between">
  <span className="font-medium">대출 원금:</span>
- <span className="font-bold text-red-400">
+ <span className="font-bold text-red-600">
  {formatCurrencyWithUnit(product.originalBalance || product.balance)}
  </span>
  </div>
@@ -282,20 +282,20 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  </div>
  <div className="flex justify-between">
  <span className="font-medium">현재 누적 이자:</span>
- <span className="font-bold text-red-400">
+ <span className="font-bold text-red-600">
  +{formatCurrencyWithUnit(accruedInterest)}
  </span>
  </div>
  <div className="flex justify-between">
  <span className="font-medium">일일 이자:</span>
- <span className="font-bold text-red-400">
+ <span className="font-bold text-red-600">
  +{formatCurrencyWithUnit(dailyInterestAmount)}/일
  </span>
  </div>
  {product.totalInterestPaid > 0 && (
  <div className="flex justify-between">
  <span className="font-medium">기납부 이자:</span>
- <span className="font-bold text-emerald-400">
+ <span className="font-bold text-emerald-700">
  {formatCurrencyWithUnit(product.totalInterestPaid)}
  </span>
  </div>
@@ -325,7 +325,7 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  ) : (
  <div className="flex justify-between">
  <span className="font-medium">일일 이자:</span>
- <span className="font-bold text-emerald-400">
+ <span className="font-bold text-emerald-700">
  +{formatCurrencyWithUnit(dailyInterestAmount)}/일
  </span>
  </div>
@@ -356,7 +356,7 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  <div className="text-[15px] text-slate-700 grid gap-2.5 bg-red-50 p-4 rounded-lg border border-red-200">
  <div className="flex justify-between">
  <span className="font-semibold">현재 상환 금액:</span>
- <span className="font-bold text-red-400 text-[17px]">
+ <span className="font-bold text-red-600 text-[17px]">
  {formatCurrencyWithUnit(accruedTotal)}
  </span>
  </div>
@@ -382,7 +382,7 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  )}
  <div className="flex justify-between">
  <span className="font-semibold">만기 시 이자 (세전):</span>
- <span className="font-bold text-emerald-400 text-[17px]">
+ <span className="font-bold text-emerald-700 text-[17px]">
  +{formatCurrencyWithUnit(interest)}
  </span>
  </div>
@@ -395,14 +395,14 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  </div>
  )}
 
- <div className="mt-5 text-right flex gap-2 justify-end">
+ <div className="mt-5 flex flex-wrap gap-2 justify-end">
  {isLoan ? (
  isMatured ? (
  <button
  onClick={onMaturity}
- className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
+ className={cls.button(false, "danger") + " !whitespace-normal px-5 py-2.5 text-[15px]"}
  >
- 만기 상환 ({formatCurrencyWithUnit(total)})
+ 만기 상환 <span className="whitespace-nowrap">({formatCurrencyWithUnit(total)})</span>
  </button>
  ) : (
  // 2026-10-23 사용자 «모든 대출 일부 상환 처리하게» — 일시 상환형도 만기 전에 일부만 먼저 갚을 수 있다
@@ -416,18 +416,18 @@ export const SubscribedProductItem = ({ product, onCancel, onMaturity, onLoanRep
  </button>
  <button
  onClick={() => onLoanRepay && onLoanRepay(product, "lumpSum")}
- className={cls.button(false, "danger") + " px-5 py-2.5 text-[15px]"}
+ className={cls.button(false, "danger") + " !whitespace-normal px-5 py-2.5 text-[15px]"}
  >
- 전액 상환 ({formatCurrencyWithUnit(accruedTotal)})
+ 전액 상환 <span className="whitespace-nowrap">({formatCurrencyWithUnit(accruedTotal)})</span>
  </button>
  </>
  )
  ) : isMatured ? (
  <button
  onClick={onMaturity}
- className={cls.button(false, "success") + " px-5 py-2.5 text-[15px]"}
+ className={cls.button(false, "success") + " !whitespace-normal px-5 py-2.5 text-[15px]"}
  >
- 만기 수령 ({formatCurrencyWithUnit(total)})
+ 만기 수령 <span className="whitespace-nowrap">({formatCurrencyWithUnit(total)})</span>
  </button>
  ) : (
  <button
@@ -460,7 +460,7 @@ const AvailableProductItem = ({ product, onSubscribe }) => {
  <strong className="text-indigo-600">일 {product.dailyRate}%</strong>{" "}
  · {product.termInDays}일
  </div>
- <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+ <div className="text-xs text-emerald-700 font-semibold mt-0.5">
  <TrendingUp size={11} className="inline mr-0.5" />
  10만 가입 시 +{formatCurrencyWithUnit(projectedInterest)}
  </div>
@@ -488,28 +488,15 @@ const ProductSection = ({
 }) => {
  return (
  <div
- className={cls.card}
- style={{
- ...sectionStyle,
- display: "flex",
- flexDirection: "column",
- maxHeight: "calc(100vh - 320px)",
- minHeight: 360,
- }}
+ className={cls.card + " flex flex-col"}
+ style={sectionStyle}
  >
  <div className={cls.cardHeader}>
  {icon}
  <h2 className={cls.cardTitle}>{title}</h2>
  </div>
- <div
- style={{
- flex: 1,
- minHeight: 0,
- overflowY: "auto",
- paddingRight: 4,
- }}
- >
- <h3 className="text-sm font-bold text-slate-700 mb-2 pb-1.5 border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur-sm z-[1]">
+ <div>
+ <h3 className="text-sm font-bold text-slate-700 mb-2 pb-1.5 border-b border-slate-900/10">
  가입 가능한 상품
  </h3>
  {availableProducts.length > 0 ? (
@@ -523,7 +510,7 @@ const ProductSection = ({
  ) : (
  <p className={cls.noProduct}>가입 가능한 상품이 없습니다.</p>
  )}
- <h3 className="text-sm font-bold text-slate-700 mt-4 mb-2 pb-1.5 border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur-sm z-[1]">
+ <h3 className="text-sm font-bold text-slate-700 mt-4 mb-2 pb-1.5 border-b border-slate-900/10">
  가입한 상품
  </h3>
  {subscribedProducts.length > 0 ? (
@@ -762,7 +749,7 @@ const LoanRepaymentModal = ({
 
  <div className="mb-5 p-4 bg-red-50 rounded-[10px] border border-red-200">
  <div className="text-[15px] text-slate-400 mb-2">
- <strong className="text-slate-200">{product.name}</strong>
+ <strong className="text-slate-800">{product.name}</strong>
  </div>
  <div className="grid gap-2 text-[15px]">
  <div className="flex justify-between">
@@ -775,11 +762,11 @@ const LoanRepaymentModal = ({
  </div>
  <div className="flex justify-between">
  <span className="text-slate-400">누적 이자:</span>
- <span className="font-bold text-red-400">+{formatCurrencyWithUnit(accruedInterest)}</span>
+ <span className="font-bold text-red-600">+{formatCurrencyWithUnit(accruedInterest)}</span>
  </div>
  <div className="flex justify-between border-t border-slate-200 pt-2 mt-1">
- <span className="text-slate-200 font-semibold">총 상환 필요금:</span>
- <span className="font-bold text-red-400 text-[17px]">{formatCurrencyWithUnit(accruedTotal)}</span>
+ <span className="text-slate-800 font-semibold">총 상환 필요금:</span>
+ <span className="font-bold text-red-600 text-[17px]">{formatCurrencyWithUnit(accruedTotal)}</span>
  </div>
  </div>
  </div>
@@ -889,8 +876,8 @@ const ParkingAccountSection = ({
  const [amount, setAmount] = useState("");
 
  return (
- <div data-parking="true" className="parking-wrap bg-gradient-to-br from-indigo-100 to-blue-100 shadow-[0_4px_16px_rgba(99,102,241,0.15)] rounded-2xl p-6 border border-indigo-300">
- <div className="flex items-center gap-3 mb-5 pb-4 border-b-2 border-indigo-100">
+ <div data-parking="true" className="parking-wrap bg-gradient-to-br from-indigo-100 to-blue-100 shadow-[0_4px_16px_rgba(99,102,241,0.15)] rounded-2xl p-4 lg:p-5 xl:p-6 border border-indigo-300 min-w-0">
+ <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-900/10">
  <Wallet size={28} className="parking-icon" />
  <h2 className="text-xl font-bold parking-title">
  파킹통장
@@ -905,8 +892,10 @@ const ParkingAccountSection = ({
  </span>
  </div>
 
- <div className="text-[36px] font-bold mb-1 parking-balance">
+ <div className="fit-box mb-1">
+ <div className="fit-money font-bold parking-balance">
  {formatCurrencyWithUnit(balance)}
+ </div>
  </div>
 
  <p className="text-sm mb-4 font-medium parking-desc">
@@ -920,21 +909,23 @@ const ParkingAccountSection = ({
  일일 이자 수익
  </span>
  </div>
- <div className="text-2xl font-bold parking-interest">
- +{formatCurrencyWithUnit(dailyInterest)}/일
+ <div className="text-xl sm:text-2xl font-bold parking-interest">
+ +{formatCurrencyWithUnit(dailyInterest)}<span className="whitespace-nowrap">/일</span>
  </div>
  <div className="text-xs mt-1 parking-muted">
  (일 {parkingRate}% 복리 기준)
  </div>
  </div>
 
- <div className="flex gap-2.5">
+ <div className="grid grid-cols-2 gap-2.5">
  <input
  type="number"
+ inputMode="numeric"
  value={amount}
  onChange={(e) => setAmount(e.target.value)}
  placeholder="금액 입력"
- className="flex-1 py-3 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+ aria-label="입금하거나 출금할 금액"
+ className="col-span-2 min-w-0 w-full py-3 px-4 bg-white border border-slate-200 rounded-xl text-base text-slate-800 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
  disabled={isProcessing}
  />
  <button
@@ -944,7 +935,7 @@ const ParkingAccountSection = ({
  }}
  disabled={isProcessing}
  className={
- cls.button(isProcessing, "success") + " text-base px-6 py-3"
+ cls.button(isProcessing, "success") + " text-base"
  }
  >
  입금
@@ -957,7 +948,7 @@ const ParkingAccountSection = ({
  disabled={isProcessing}
  className={
  cls.button(isProcessing) +
- " !bg-slate-400 text-base px-6 py-3"
+ " !bg-slate-600 text-base"
  }
  >
  출금
@@ -1897,16 +1888,16 @@ const ParkingAccount = ({
  if (!user) return <div className={cls.container}>로그인이 필요합니다.</div>;
 
  const mainTabClass = (isActive) =>
- `px-6 py-3 border-none cursor-pointer text-base rounded-t-lg transition-all duration-200 -mb-0.5 ${
+ `px-3 sm:px-6 py-3 shrink-0 border-none cursor-pointer text-base rounded-t-lg transition-all duration-200 -mb-0.5 ${
  isActive
  ? "bg-indigo-50 font-bold text-indigo-600 border-b-[3px] border-b-indigo-500"
- : "font-medium text-slate-400 border-b-[3px] border-b-transparent hover:text-slate-600"
+ : "font-medium text-slate-600 border-b-[3px] border-b-transparent hover:text-slate-800"
  }`;
 
  return (
  <div className={cls.container}>
  {/* 탭 메뉴 */}
- <div className="flex gap-2.5 mb-6 border-b-2 border-slate-200 relative">
+ <div className="flex gap-1 sm:gap-2.5 mb-6 border-b-2 border-slate-200 relative overflow-x-auto whitespace-nowrap">
  <button
  onClick={() => onViewChange && onViewChange("parking")}
  className={mainTabClass(activeView === "parking")}
@@ -1956,7 +1947,7 @@ const ParkingAccount = ({
  </p>
  ) : (
  <div className="overflow-x-auto">
- <table className="w-full border-collapse">
+ <table className="w-full border-collapse [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
  <thead>
  <tr className="bg-white/5 border-b-2 border-slate-200">
  <th className="p-3 text-left text-sm font-semibold text-slate-400">

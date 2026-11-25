@@ -17,10 +17,7 @@
 .personal-shop-container {
   max-width: 100%;
   margin: 0;
-  padding: 20px;
   color: var(--text-main);
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #ede9fe 100%);
-  min-height: 100vh;
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
 
@@ -101,8 +98,8 @@
 }
 
 .search-box {
-  flex: 1;
-  min-width: 200px;
+  flex: 1 1 180px;
+  min-width: 0;
 }
 
 .search-input,
@@ -118,7 +115,7 @@
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .search-input:focus,
@@ -129,9 +126,9 @@
   outline: none;
 }
 
-.category-filter {
-  min-width: 150px;
-  flex: 0 0 auto;
+select.category-filter {
+  width: auto;
+  flex: 0 1 180px;
 }
 
 /* 상점 그리드 */
@@ -1257,7 +1254,7 @@
 }
 
 .record-badge {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 10px;
@@ -1333,10 +1330,6 @@
 
 /* 반응형 */
 @media (max-width: 768px) {
-  .personal-shop-container {
-    padding: 15px;
-  }
-
   .market-header h1 {
     font-size: 1rem;
   }
@@ -1346,24 +1339,24 @@
   }
 
   .tab-button {
-    padding: 10px 14px;
-    font-size: 0.9rem;
-  }
-
-  .tab-label {
-    display: none;
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 10px 6px;
+    gap: 5px;
+    font-size: 0.8125rem;
+    white-space: nowrap;
   }
 
   .tab-icon {
-    font-size: 1.3rem;
+    font-size: 1rem;
   }
 
   .controls-section {
-    flex-direction: column;
+    gap: 8px;
   }
 
-  .category-filter {
-    width: 100%;
+  select.category-filter {
+    flex: 0 1 132px;
   }
 
   .shops-grid,

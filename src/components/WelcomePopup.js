@@ -8,6 +8,9 @@ import { WELCOME_GUIDE } from "../utils/helpContent";
 const STORAGE_KEY_NEVER = "alchan_welcome_never_show";
 const STORAGE_KEY_TODAY = "alchan_welcome_closed_date";
 
+// 기기 시간대의 오늘(YYYY-MM-DD). UTC 로 자르면 한국에선 아침 9시에 날짜가 바뀌어 «오늘은 닫기» 가 풀린다.
+const localToday = () => new Date().toLocaleDateString("sv-SE");
+
 function shouldShowPopup() {
   try {
     // "다시 열지 않기" 체크
@@ -16,7 +19,7 @@ function shouldShowPopup() {
     // "오늘은 닫기" 체크
     const closedDate = localStorage.getItem(STORAGE_KEY_TODAY);
     if (closedDate) {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localToday();
       if (closedDate === today) return false;
     }
 
@@ -89,7 +92,7 @@ export default function WelcomePopup() {
 
   const handleCloseToday = () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localToday();
       localStorage.setItem(STORAGE_KEY_TODAY, today);
     } catch {}
     setIsVisible(false);

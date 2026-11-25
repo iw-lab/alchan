@@ -1,6 +1,7 @@
 /* src/pages/real-estate/RealEstateRegistry.js (모든 함수가 포함된 최종본 - 관리자 기능 강화) */
 import React, { useState, useEffect } from "react";
-import "./RealEstateRegistry.css";
+import pageCss from "./RealEstateRegistry.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { useAuth } from "../../contexts/AuthContext";
 
 // firebase.js에서 익스포트하는 함수들
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const RealEstateRegistry = () => {
+  usePageCss(pageCss);
   const {
     userDoc: currentUser,
     loading: authLoading,
@@ -1568,7 +1570,7 @@ const RealEstateRegistry = () => {
                       <span className="layout-cell-tenant">🏠 {property.tenantName || "세입자"}</span>
                     )}
                     {property.forSale && (
-                      <span className="layout-cell-tenant" style={{color:'#f87171'}}>판매중</span>
+                      <span className="layout-cell-tenant" style={{color:'#b91c1c'}}>판매중</span>
                     )}
                   </>
                 ) : (
@@ -2348,7 +2350,7 @@ const RealEstateRegistry = () => {
                 <label>월세 비율 (%)</label>
                 <input type="number" min="0" max="20" step="0.1" value={adminInputs.rentPercentage} onChange={(e) => setAdminInputs(prev => ({ ...prev, rentPercentage: e.target.value }))} />
               </div>
-              <p style={{fontSize:'0.8rem',color:'#818cf8',margin:'0 0 8px'}}>💡 설정 저장 시 부동산 개수가 변경되면 자동으로 초기화 여부를 묻습니다. 가격/월세 변경은 기존 부동산에 즉시 반영됩니다.</p>
+              <p style={{fontSize:'0.8rem',color:'#4f46e5',margin:'0 0 8px'}}>💡 설정 저장 시 부동산 개수가 변경되면 자동으로 초기화 여부를 묻습니다. 가격/월세 변경은 기존 부동산에 즉시 반영됩니다.</p>
               <div className="non-tenant-list">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ margin: 0 }}>⚠️ 미입주 학생 ({nonTenants.length}명){excludedFromAssign.size > 0 && <span style={{color:'#f59e0b',fontSize:'0.85em'}}> / 제외 {excludedFromAssign.size}명</span>}</h4>

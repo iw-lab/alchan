@@ -1,6 +1,7 @@
 // 🎰 랜덤뽑기 돌림판 — 순수 CSS 회전. 서버가 정한 winningIndex 칸이 포인터(12시)에 멈춘다.
 import React, { useEffect, useRef, useState } from "react";
-import "./RandomDrawWheel.css";
+import pageCss from "./RandomDrawWheel.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 
 const COLORS = [
   "#fca5a5", "#fdba74", "#fde047", "#86efac",
@@ -8,6 +9,7 @@ const COLORS = [
 ];
 
 export default function RandomDrawWheel({ segments = [], winningIndex = 0, onDone }) {
+  usePageCss(pageCss);
   const n = segments.length;
   const seg = n > 0 ? 360 / n : 360;
   const [rotation, setRotation] = useState(0);

@@ -11,7 +11,8 @@ import React, {
  Suspense,
 } from "react";
 import { useLocation } from "react-router-dom";
-import "./Dashboard.css";
+import pageCss from "./Dashboard.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, copyDefaultDataToNewClass } from "../../firebase";
 import {
@@ -409,7 +410,7 @@ function SelectMultipleJobsView({
  key={job.id}
  className={`p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${
  tempSelection.includes(job.id)
- ? "border-indigo-400 bg-cyan-900/30"
+ ? "border-indigo-500 bg-indigo-50"
  : "border-slate-200 bg-white hover:border-indigo-300"
  }`}
  >
@@ -429,14 +430,14 @@ function SelectMultipleJobsView({
  />
  <button
  onClick={handleSaveEdit}
- className="p-1 text-green-400 hover:text-green-300 transition-colors shrink-0"
+ className="p-1 text-green-700 hover:text-green-800 transition-colors shrink-0"
  title="저장"
  >
  <Check className="w-4 h-4" />
  </button>
  <button
  onClick={handleCancelEdit}
- className="p-1 text-slate-400 hover:text-slate-300 transition-colors shrink-0"
+ className="p-1 text-slate-500 hover:text-slate-700 transition-colors shrink-0"
  title="취소"
  >
  <X className="w-4 h-4" />
@@ -479,31 +480,31 @@ function SelectMultipleJobsView({
  checked={checked}
  disabled={disabled}
  onChange={() => handleCheckboxChange(job.id)}
- className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer accent-cyan-400"
+ className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 disabled:cursor-not-allowed cursor-pointer accent-indigo-600"
  />
  <span
  className={`font-medium ${
- checked ? "text-cyan-300" : "text-slate-800"
+ checked ? "text-indigo-800" : "text-slate-800"
  }`}
  >
  {job.title}
  {alreadyAppointed && checked && (
- <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 align-middle">
+ <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 align-middle">
  맡는 중
  </span>
  )}
  {alreadyAppointed && !checked && (
- <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 align-middle">
+ <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 align-middle">
  그만두기
  </span>
  )}
  {pendingSet.has(job.id) && (
- <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 align-middle">
+ <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 align-middle">
  신청 중
  </span>
  )}
  {(job.description || job.howToSelect) && (
- <span className="block mt-0.5 text-[11px] font-normal leading-snug text-slate-500">
+ <span className="block mt-0.5 text-xs font-normal leading-snug text-slate-500">
  {job.description}
  {job.description && job.howToSelect ? " " : ""}
  {job.howToSelect && (
@@ -572,7 +573,7 @@ function SelectMultipleJobsView({
  ) : (
  <button
  onClick={() => setShowAddForm(true)}
- className="w-full p-3 rounded-xl border-2 border-dashed border-cyan-900/40 text-cyan-400 hover:border-indigo-400 hover:bg-cyan-900/20 transition-all flex items-center justify-center gap-2"
+ className="w-full p-3 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-700 hover:border-indigo-400 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
  >
  <Plus className="w-4 h-4" />
  직업 추가
@@ -627,6 +628,7 @@ function SelectMultipleJobsView({
 }
 
 function Dashboard({ adminTabMode }) {
+  usePageCss(pageCss);
  const {
  user,
  userDoc,
@@ -2583,10 +2585,10 @@ function Dashboard({ adminTabMode }) {
  userDoc?.name || userDoc?.nickname || user?.displayName || "사용자";
 
  return (
- <div className="min-h-full w-full px-2 pt-1 pb-0">
+ <div className="min-h-full w-full">
  {/* 페이지 헤더 - 컴팩트 버전 (관리자 탭 모드가 아닐 때만 표시) */}
  {!adminTabMode && (
- <section className="glass-card rounded-2xl px-3 py-1.5 flex flex-col md:flex-row md:items-center justify-between gap-1.5 mb-2">
+ <section className="glass-card rounded-2xl px-3 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
  <div className="flex items-center gap-2">
  <div className="w-7 h-7 bg-indigo-100 rounded-md flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-200">
  <ListTodo className="w-4 h-4" />
@@ -2595,19 +2597,19 @@ function Dashboard({ adminTabMode }) {
  <h2 className="text-sm md:text-base font-bold text-slate-800">
  오늘의 할일
  </h2>
- <p className="text-[11px] text-slate-400">
+ <p className="text-xs text-slate-500">
  {userNickname}님, 오늘도 화이팅!
  </p>
  </div>
  </div>
  {isAdmin?.() && viewMode === "list" && !adminModalOpen && (
- <div className="flex flex-wrap gap-1.5">
+ <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap">
  <ActionButton
  variant="primary"
  icon={Settings}
  onClick={() => handleOpenAdminSettings("generalSettings")}
  size="sm"
- className="!bg-gradient-to-r !from-red-500 !to-orange-500 !text-white !font-bold !shadow-lg !shadow-red-500/30 !border-2 !border-red-400 !text-sm"
+ className="whitespace-nowrap !px-2 sm:!px-3"
  >
  관리자 기능
  </ActionButton>
@@ -2616,16 +2618,18 @@ function Dashboard({ adminTabMode }) {
  icon={RefreshCw}
  onClick={handleForceRefresh}
  size="sm"
+ className="whitespace-nowrap !px-2 sm:!px-3"
  >
  새로고침
  </ActionButton>
  {/* 파괴적 작업이라 자주 쓰는 '새로고침'과 붙여두지 않는다 — 구분선으로 떼어놓는다. */}
- <span className="self-stretch w-px bg-slate-200 mx-1" aria-hidden="true" />
+ <span className="hidden self-stretch w-px bg-slate-200 mx-1 sm:block" aria-hidden="true" />
  <ActionButton
  variant="danger"
  icon={RotateCcw}
  onClick={handleManualTaskReset}
  size="sm"
+ className="whitespace-nowrap !px-2 sm:!px-3"
  title="이 클래스의 모든 사용자 할일을 리셋합니다 (되돌릴 수 없음)"
  >
  할일 리셋
@@ -2660,9 +2664,9 @@ function Dashboard({ adminTabMode }) {
  </>
  )}
  {/* 나의 직업 할일 섹션 */}
- <div className="glass-card rounded-2xl overflow-hidden mb-6">
+ <div className="glass-card rounded-2xl overflow-hidden mb-4">
  {/* 나의 직업 할일 헤더 - 색상 배경 */}
- <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+ <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 md:px-5 py-3 flex items-center justify-between gap-2">
  <div className="flex items-center gap-2">
  <Briefcase className="w-5 h-5 text-white" />
  <h3 className="text-base md:text-lg font-bold text-white">
@@ -2674,13 +2678,13 @@ function Dashboard({ adminTabMode }) {
  icon={Plus}
  onClick={handleSelectJobClick}
  size="sm"
- className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
+ className="whitespace-nowrap shrink-0 !bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
  >
  직업 추가/선택
  </ActionButton>
  </div>
- <div className="p-4 md:p-6">
- <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+ <div className="p-3 sm:p-4 md:p-5">
+ <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
  {jobsToShow.length > 0 ? (
  jobsToShow.map((job) => (
  <JobList
@@ -2722,10 +2726,13 @@ function Dashboard({ adminTabMode }) {
  )}
  </div>
 
- {/* 공통 할일 섹션 */}
- <div className="mt-6 rounded-xl overflow-hidden border border-emerald-200 bg-white">
+ </div>
+ </div>
+
+ {/* 공통 할일 섹션 — 직업 할일과 같은 폭의 나란한 카드(예전엔 직업 카드 안에 끼어 두 번 들여써졌다) */}
+ <div className="rounded-2xl overflow-hidden border border-emerald-200 bg-white mb-2">
  {/* 공통 할일 헤더 - 색상 배경 */}
- <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+ <div className="bg-gradient-to-r from-emerald-700 to-teal-700 px-4 md:px-5 py-3 flex items-center justify-between gap-2">
  <div className="flex items-center gap-2">
  <ListTodo className="w-5 h-5 text-white" />
  <h3 className="text-base md:text-lg font-bold text-white">
@@ -2738,14 +2745,14 @@ function Dashboard({ adminTabMode }) {
  icon={Plus}
  onClick={() => handleAddTaskClick(null, false)}
  size="sm"
- className="!bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
+ className="whitespace-nowrap shrink-0 !bg-white/20 !text-white !border-white/30 hover:!bg-white/30"
  >
  공통 할일 추가
  </ActionButton>
  )}
  </div>
 
- <div className="p-4 md:p-6 bg-white">
+ <div className="p-3 sm:p-4 md:p-5 bg-white">
  <CommonTaskList
  tasks={commonTasksWithUserProgress}
  isAdmin={isAdmin?.()}
@@ -2756,8 +2763,6 @@ function Dashboard({ adminTabMode }) {
  onDeleteTask={handleDeleteTask}
  isHandlingTask={isHandlingTask}
  />
- </div>
- </div>
  </div>
  </div>
  </>

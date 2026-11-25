@@ -2,8 +2,6 @@
 .national-assembly-container {
   max-width: 100%;
   margin: 0;
-  padding: 20px;
-  font-family: 'Rajdhani', "Noto Sans KR", sans-serif;
   color: #1e293b;
 }
 
@@ -87,7 +85,7 @@
 }
 
 .vote-reminder-btn {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: #92400e;
   border: none;
   border-radius: 8px;
   color: #ffffff;
@@ -272,8 +270,8 @@
 }
 
 .law-status.pending {
-  background: rgba(245, 158, 11, 0.3);
-  color: #d97706;
+  background: #fef3c7;
+  color: #92400e;
   border: 1px solid rgba(245, 158, 11, 0.5);
 }
 
@@ -790,7 +788,7 @@ input:checked+.slider:before {
   opacity: 0.5;
   cursor: not-allowed;
   background: #f1f5f9;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 /* 모바일 화면에서 카드가 전체 너비를 차지하도록 조정 */

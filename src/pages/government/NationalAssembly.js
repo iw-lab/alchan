@@ -1,7 +1,8 @@
 // src/NationalAssembly.js
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import "./NationalAssembly.css";
+import pageCss from "./NationalAssembly.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
 import { usePolling } from "../../hooks/usePolling";
@@ -39,6 +40,7 @@ import { isVetoDiscarded, vetoDeadlineOf } from "../../utils/vetoDeadline";
 const majorityOf = (totalStudents) => Math.floor(totalStudents / 2) + 1;
 
 const NationalAssembly = () => {
+  usePageCss(pageCss);
   const { userDoc: currentUser, loading: authLoading, isAdmin } = useAuth();
 
   const { data: jobs } = usePolling(
@@ -762,26 +764,6 @@ const NationalAssembly = () => {
       return true;
     });
   }, [displayLaws, currentUser?.id, isAdmin, optimisticUserVotes, userVotes]);
-
-  // 하루에 한번 투표 미참여 알림
-  useEffect(() => {
-    if (unvotedPendingLaws.length === 0 || !currentUser?.id) return;
-
-    const storageKey = `alchan-vote-reminder-${currentUser.id}`;
-    const today = new Date().toDateString();
-    const lastReminder = localStorage.getItem(storageKey);
-
-    if (lastReminder === today) return;
-
-    // 오늘 처음 방문 시 알림 표시
-    localStorage.setItem(storageKey, today);
-    const lawTitles = unvotedPendingLaws.map(l => `• ${l.title}`).join('\n');
-    setTimeout(() => {
-      toast.error(
-        `📢 투표 참여 안내\n\n아직 투표하지 않은 법안이 ${unvotedPendingLaws.length}건 있습니다:\n\n${lawTitles}\n\n법안 심의에 참여해주세요!`
-      );
-    }, 500);
-  }, [unvotedPendingLaws, currentUser?.id]);
 
   const approvedLaws = displayLaws.filter(
     (law) =>

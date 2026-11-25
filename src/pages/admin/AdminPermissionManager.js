@@ -223,11 +223,11 @@ const AdminPermissionManager = () => {
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
                 }}
               >
-                <div className="p-3 flex items-center gap-3">
+                <div className="p-3 flex flex-wrap items-center gap-x-3 gap-y-2 md:flex-nowrap">
                   <StudentNo member={student} />
                   {/* 학생 정보 */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-slate-800">
                         {plainStudentName(student)}
                       </span>
@@ -245,7 +245,8 @@ const AdminPermissionManager = () => {
                     </div>
                   </div>
 
-                  {/* 권한 토글 */}
+                  {/* 권한 토글 — 좁은 화면에선 이름 아래 한 줄을 통째로 쓴다(예전엔 이름이 세로로 찌그러졌다) */}
+                  <div className="grid w-full grid-cols-3 gap-2 md:flex md:w-auto">
                   {PERMISSION_TYPES.map((perm) => {
                     const isEnabled =
                       student.delegatedPermissions?.[perm.key] === true;
@@ -257,7 +258,8 @@ const AdminPermissionManager = () => {
                           togglePermission(student.id, perm.key, isEnabled)
                         }
                         disabled={isSavingThis}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer"
+                        aria-pressed={isEnabled}
+                        className="flex min-h-[44px] items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium leading-tight transition-all cursor-pointer md:min-h-[40px] md:gap-1.5 md:px-3 md:whitespace-nowrap"
                         style={{
                           backgroundColor: isEnabled
                             ? "rgba(34, 197, 94, 0.12)"
@@ -271,12 +273,16 @@ const AdminPermissionManager = () => {
                           opacity: isSavingThis ? 0.5 : 1,
                         }}
                       >
-                        <CheckCircle size={14} />
-                        {perm.label}
-                        {isEnabled ? " ON" : " OFF"}
+                        <CheckCircle size={14} className="hidden shrink-0 md:block" />
+                        <span className="break-keep">
+                          {perm.label.replace("/", "·")}
+                          {" "}
+                          <b className="whitespace-nowrap">{isEnabled ? "켜짐" : "꺼짐"}</b>
+                        </span>
                       </button>
                     );
                   })}
+                  </div>
                 </div>
               </div>
             );

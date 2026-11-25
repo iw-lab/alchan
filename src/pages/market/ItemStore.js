@@ -1,11 +1,13 @@
 // src/ItemStore.js
 import React, { useState, useEffect, useCallback } from "react";
 import { collection, getDocs, query, limit } from "firebase/firestore";
+import { Settings, ShoppingCart } from "lucide-react";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext"; // ItemContext가 classCode를 사용하도록 수정되어야 함
-import "./ItemStore.css";
-import "../admin/AdminPanel.css";
+import pageCss from "./ItemStore.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
+import pageCss2 from "../admin/AdminPanel.css?inline";
 import LoginWarning from "../../components/LoginWarning";
 import AdminItemPage from "../admin/AdminItemPage"; // AdminPanel 대신 AdminItemPage를 import 합니다.
 import { logger } from "../../utils/logger";
@@ -38,6 +40,8 @@ const StockBadge = ({ stock, autoRestock }) => {
 };
 
 const ItemStore = () => {
+  usePageCss(pageCss);
+  usePageCss(pageCss2);
   const { user, userDoc, isAdmin } = useAuth() || {
     user: null,
     userDoc: null,
@@ -67,7 +71,6 @@ const ItemStore = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [purchaseQuantities, setPurchaseQuantities] = useState({});
   // 🔥 중복 결제 방지 — 진행 중인 아이템 id 추적
   const [purchasingIds, setPurchasingIds] = useState(new Set());
@@ -134,12 +137,6 @@ const ItemStore = () => {
   useEffect(() => {
   }, [adminPriceIncreasePercentage]);
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   const showNotification = (type, message) => {
     setNotification({ type, message });
@@ -388,9 +385,15 @@ const ItemStore = () => {
             className="admin-icon-button"
             title={showAdminPanel ? "상점 보기" : "아이템 상점 설정"}
           >
-            {showAdminPanel && canOpenAdminPanel
-              ? "🛒 상점 보기"
-              : "⚙️ 아이템 상점 설정"}
+            {showAdminPanel && canOpenAdminPanel ? (
+              <>
+                <ShoppingCart size={16} aria-hidden="true" /> 상점 보기
+              </>
+            ) : (
+              <>
+                <Settings size={16} aria-hidden="true" /> 아이템 상점 설정
+              </>
+            )}
           </button>
         )}
       </div>
@@ -484,9 +487,7 @@ const ItemStore = () => {
                             </p>
                           )}
                           <div
-                            className={`item-actions-primary ${
-                              isMobile ? "flex-col" : ""
-                            }`}
+                            className="item-actions-primary"
                             style={{
                               display: "flex",
                               flexDirection: "row",
@@ -539,9 +540,7 @@ const ItemStore = () => {
                               />
                               <button
                                 onClick={() => handlePurchase(item)}
-                                className={`buy-item-button ${
-                                  isMobile ? "w-full" : ""
-                                }`}
+                                className="buy-item-button"
                                 disabled={
                                   !user ||
                                   purchasingIds.has(item.id) ||

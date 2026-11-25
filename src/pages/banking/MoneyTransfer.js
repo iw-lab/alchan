@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { functions, httpsCallable } from "../../firebase";
-import "./MoneyTransfer.css";
+import pageCss from "./MoneyTransfer.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { logger } from "../../utils/logger";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { takeSignature, describeElapsed } from "../../utils/takeSignature";
@@ -13,6 +14,7 @@ import StudentNo from "../../components/ui/StudentNo";
 import useAppointedJobTitle from "../../hooks/useAppointedJobTitle";
 
 function MoneyTransfer() {
+  usePageCss(pageCss);
   // AuthContext에서 필요한 데이터와 함수를 가져옵니다.
   const {
     userDoc,

@@ -1,104 +1,5 @@
 /* src/Banking.css - Light Theme */
 
-.banking-container {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 20px;
-  font-family: 'Noto Sans KR', sans-serif;
-  background-color: transparent;
-  /* AlchanLayout handles background */
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 25px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.78), rgba(238,242,255,0.7));
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 24px 24px 0 0;
-  border-bottom: 1px solid rgba(199,210,254,0.5);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.9) inset,
-    0 4px 20px rgba(79,70,229,0.08);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  position: relative;
-  width: 100%;
-  justify-content: center;
-}
-
-.bank-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1e293b;
-  margin: 0;
-  margin-left: 12px;
-  text-shadow: none;
-}
-
-.logo-circle {
-  width: 30px;
-  height: 30px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #4338ca;
-  font-weight: bold;
-  font-size: 16px;
-  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
-}
-
-.admin-button {
-  padding: 8px 16px;
-  border-radius: 12px;
-  border: 1px solid;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.admin-active {
-  background: rgba(99, 102, 241, 0.1);
-  color: #4338ca;
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
-}
-
-.admin-inactive {
-  background: #ffffff;
-  color: #64748b;
-  border-color: #e0e7ff;
-}
-
-.admin-inactive:hover {
-  background: #f8faff;
-  color: #1e293b;
-}
-
-.content-container {
-  padding: 25px;
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-radius: 0 0 24px 24px;
-  border: 1px solid rgba(199, 210, 254, 0.5);
-  border-top: none;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.85) inset,
-    0 12px 40px -12px rgba(79,70,229,0.12);
-}
-
 .message {
   padding: 12px 15px;
   margin-bottom: 20px;
@@ -106,69 +7,6 @@
   font-size: 14px;
   border-left-width: 4px;
   border-left-style: solid;
-}
-
-.success-message {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #34d399;
-  border-color: #059669;
-}
-
-.warning-message {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
-  border-color: #d97706;
-}
-
-.error-message {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-  border-color: #dc2626;
-}
-
-.info-message {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
-  border-color: #2563eb;
-}
-
-.tab-container {
-  margin-bottom: 20px;
-  border-bottom: 1px solid #e0e7ff;
-}
-
-.tab-menu {
-  display: flex;
-}
-
-.tab-button {
-  padding: 10px 20px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  color: #64748b;
-  border-bottom: 2px solid transparent;
-  transition: all 0.3s ease;
-  margin-right: 10px;
-}
-
-.parking-tab-active {
-  color: #4338ca;
-  border-bottom-color: #4338ca;
-  font-weight: bold;
-  text-shadow: none;
-}
-
-.parking-tab-inactive {
-  color: #64748b;
-  border-bottom-color: transparent;
-  font-weight: 500;
-}
-
-.parking-tab-inactive:hover {
-  color: #1e293b;
 }
 
 .content-box {
@@ -204,17 +42,6 @@
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 15px;
-}
-
-.admin-th {
-  background-color: #f8faff;
-  padding: 10px 12px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
-  border-bottom: 1px solid #e0e7ff;
-  text-transform: uppercase;
 }
 
 .admin-td {
@@ -255,7 +82,7 @@
 
 .save-button {
   background-color: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: #047857;
   border: 1px solid rgba(16, 185, 129, 0.4);
   margin-right: 5px;
 }
@@ -266,7 +93,7 @@
 
 .delete-button {
   background-color: rgba(239, 68, 68, 0.2);
-  color: #f87171;
+  color: #b91c1c;
   border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
@@ -276,7 +103,7 @@
 
 .add-button {
   background-color: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  color: #1d4ed8;
   border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
@@ -296,31 +123,6 @@
   text-align: right;
 }
 
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.3);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-}
-
-.loading-spinner {
-  background-color: #ffffff;
-  padding: 20px 40px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #1e293b;
-  border: 1px solid #e0e7ff;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
-}
-
 .disabled-button {
   background-color: #4b5563;
   color: #64748b;
@@ -336,26 +138,6 @@
 }
 
 @media (max-width: 768px) {
-  .banking-container {
-    padding: 10px;
-  }
-
-  .header {
-    padding: 10px 15px;
-  }
-
-  .bank-title {
-    font-size: 18px;
-  }
-
-  .content-container {
-    padding: 15px;
-  }
-
-  .tab-button {
-    padding: 10px 15px;
-    font-size: 14px;
-  }
 
   .admin-table thead tr {
     position: absolute;

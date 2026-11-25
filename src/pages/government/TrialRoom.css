@@ -1,11 +1,6 @@
 /* TrialRoom.css - ZEP 스타일 인터랙티브 모의재판 시스템 (수정됨) */
 
 /* ===== 전역 설정 ===== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
 /* ===== 메인 컨테이너 ===== */
 .trial-room-container {
@@ -188,7 +183,7 @@
 
 .avatar-role {
   color: #a0aec0;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   text-align: center;
   margin-top: 2px;
 }
@@ -761,7 +756,7 @@
   }
   
   .avatar-name {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     padding: 2px 5px;
   }
 }
@@ -939,11 +934,11 @@
   }
 
   .avatar-name {
-    font-size: 0.65rem;
+    font-size: 0.72rem;
   }
   
   .avatar-role {
-      font-size: 0.6rem;
+      font-size: 0.72rem;
   }
 
   .jury-seats {

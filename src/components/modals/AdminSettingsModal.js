@@ -250,31 +250,31 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
   }
 
   return (
-    <div className="section-card mt-6 border-2 border-red-500/50 bg-red-900/10">
+    <div className="section-card mt-6 border-2 border-red-300 bg-red-50">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">⚠️</span>
-        <h3 className="text-xl font-bold text-red-400">
+        <h3 className="text-lg font-bold text-red-700">
           위험 구역: 학급 데이터 삭제
         </h3>
       </div>
 
-      <div className="bg-red-900/20 rounded-lg p-4 mb-4 border border-red-500/30">
-        <p className="text-sm text-red-200 mb-2">
+      <div className="bg-white rounded-lg p-4 mb-4 border border-red-200">
+        <p className="text-sm text-red-800 mb-2">
           <strong>이 작업은 되돌릴 수 없습니다!</strong>
         </p>
-        <p className="text-sm text-red-200 mb-2">
+        <p className="text-sm text-red-800 mb-2">
           개인정보 파기 의무를 위해 학년 말에 사용하세요.
         </p>
-        <p className="text-sm text-slate-600 dark:text-gray-300 mb-2">삭제 대상:</p>
-        <ul className="text-sm text-slate-600 dark:text-gray-300 list-disc list-inside ml-2 space-y-1">
+        <p className="text-sm text-slate-600 mb-2">삭제 대상:</p>
+        <ul className="text-sm text-slate-600 list-disc list-inside ml-2 space-y-1">
           <li>학생 계정 (role: 'student')</li>
           <li>활동 로그 (activity_logs)</li>
           <li>거래 내역 (transactions)</li>
         </ul>
-        <p className="text-sm text-green-300 mt-2">
+        <p className="text-sm text-green-800 mt-2">
           ✓ 선생님(admin) 계정은 유지됩니다.
         </p>
-        <p className="text-sm text-green-300">
+        <p className="text-sm text-green-800">
           ✓ 직업, 할일, 상점 아이템 설정은 유지됩니다.
         </p>
       </div>
@@ -282,14 +282,14 @@ const ClassDataDeletionSection = ({ userClassCode, isAdmin, isSuperAdmin }) => {
       {!showConfirmation ? (
         <button
           onClick={() => setShowConfirmation(true)}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-slate-800 dark:text-white rounded-lg font-medium transition-colors"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
         >
           학급 데이터 삭제 시작
         </button>
       ) : (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-600 mb-2">
               확인을 위해 "<strong className="text-red-400">삭제</strong>"를
               정확히 입력하세요:
             </label>
@@ -2294,7 +2294,7 @@ const AdminSettingsModal = ({
                             style={{
                               background: enabled ? "#f0fdf4" : "#f8fafc",
                               border: `1px solid ${enabled ? "#bbf7d0" : "#e2e8f0"}`,
-                              color: enabled ? "#166534" : "#94a3b8",
+                              color: enabled ? "#166534" : "#64748b",
                             }}
                           >
                             <input
@@ -2332,7 +2332,7 @@ const AdminSettingsModal = ({
                   <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>💼</span>
                   직업 & 할일 관리
                 </h3>
-                <span className="text-[11px] px-3 py-1 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                <span className="text-xs px-3 py-1 rounded-full font-semibold" style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
                   ⚠️ 모든 할일 관리자 승인 필수
                 </span>
               </div>
@@ -2454,7 +2454,7 @@ const AdminSettingsModal = ({
                       onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave("common"); }}
                       style={{ width: '50px', padding: '6px 6px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }}
                     />
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
+                    <span style={{ fontSize: '11.5px', color: '#64748b' }}>회</span>
                     <button onClick={() => handleInlineTaskSave("common")} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
                     <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
                   </div>
@@ -2471,15 +2471,15 @@ const AdminSettingsModal = ({
                             <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, null); }}
                               style={{ width: '50px', padding: '5px 4px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
-                            <button onClick={() => handleInlineEditSave(task.id, null)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
-                            <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                            <span style={{ fontSize: '11.5px', color: '#64748b' }}>회</span>
+                            <button onClick={() => handleInlineEditSave(task.id, null)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
+                            <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11.5px', cursor: 'pointer' }}>취소</button>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
                               <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
-                              <span style={{ fontSize: '11px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                              <span style={{ fontSize: '11.5px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
                             </div>
                             <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                               <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
@@ -2613,20 +2613,20 @@ const AdminSettingsModal = ({
                           aria-expanded={isOpen}
                           style={{ background: 'none', border: 'none', padding: 0, margin: 0, color: '#4f46e5', fontWeight: 700, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', textAlign: 'left', minWidth: 0 }}
                         >
-                          <span style={{ fontSize: '10px', color: '#818cf8', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
+                          <span style={{ fontSize: '11.5px', color: '#818cf8', flexShrink: 0 }}>{isOpen ? '▼' : '▶'}</span>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💼 {job.title}</span>
                         </button>
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', color: '#64748b' }}>할일 {Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
+                          <span style={{ fontSize: '11.5px', color: '#64748b' }}>할일 {Array.isArray(job.tasks) ? job.tasks.length : 0}개</span>
                           <button
                             onClick={() => { handleJobEdit(job); }}
-                            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#4f46e5', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             이름수정
                           </button>
                           <button
                             onClick={() => { handleJobDelete(job.id); }}
-                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             삭제
                           </button>
@@ -2646,15 +2646,15 @@ const AdminSettingsModal = ({
                                   <input type="number" min="1" value={inlineEditMaxClicks} onChange={(e) => setInlineEditMaxClicks(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleInlineEditSave(task.id, job.id); }}
                                     style={{ width: '50px', padding: '5px 4px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }} />
-                                  <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
-                                  <button onClick={() => handleInlineEditSave(task.id, job.id)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
-                                  <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>취소</button>
+                                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>회</span>
+                                  <button onClick={() => handleInlineEditSave(task.id, job.id)} style={{ padding: '4px 8px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '11.5px', cursor: 'pointer', fontWeight: 600 }}>저장</button>
+                                  <button onClick={() => setInlineEditingTaskId(null)} style={{ padding: '4px 6px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '11.5px', cursor: 'pointer' }}>취소</button>
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
                                     <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
-                                    <span style={{ fontSize: '11px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
+                                    <span style={{ fontSize: '11.5px', color: '#64748b', flexShrink: 0 }}>{task.maxClicks || 5}회</span>
                                   </div>
                                   <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                                     <button onClick={() => { setInlineEditingTaskId(task.id); setInlineEditName(task.name); setInlineEditMaxClicks(String(task.maxClicks || 5)); }}
@@ -2693,7 +2693,7 @@ const AdminSettingsModal = ({
                               onKeyDown={(e) => { if (e.key === 'Enter') handleInlineTaskSave(job.id); }}
                               style={{ width: '50px', padding: '6px 6px', background: '#ffffff', border: '1px solid rgba(99, 102, 241, 0.35)', borderRadius: '6px', color: '#0f172a', fontSize: '13px', textAlign: 'center', outline: 'none' }}
                             />
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>회</span>
+                            <span style={{ fontSize: '11.5px', color: '#64748b' }}>회</span>
                             <button onClick={() => handleInlineTaskSave(job.id)} style={{ padding: '5px 10px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.4)', color: '#10b981', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 600 }}>추가</button>
                             <button onClick={() => { setInlineAddingFor(null); setInlineTaskName(""); setInlineTaskMaxClicks("5"); }} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#dc2626', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>취소</button>
                           </div>
@@ -2779,37 +2779,37 @@ const AdminSettingsModal = ({
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: "#f1f5f9" }}>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
-                    <p className="text-[11px]" style={{ color: "#64748b" }}>기본 주급</p>
+                    <p className="text-xs" style={{ color: "#64748b" }}>기본 주급</p>
                     <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>
                       {(effectiveBaseSalary / 10000).toFixed(0)}만 {getCurrencyUnit()}
                     </p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
-                    <p className="text-[11px]" style={{ color: "#64748b" }}>추가 직업당</p>
+                    <p className="text-xs" style={{ color: "#64748b" }}>추가 직업당</p>
                     <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>+50만 {getCurrencyUnit()}</p>
                     {/* 직업 개수 상한이 여기 없어서, 상한 1인데도 "추가 직업당 +50만"만 보이던
                         문제(2026-07-27). 상한 1이면 가산이 영원히 발생하지 않는다. */}
                     <p
-                      className="text-[10px] mt-0.5"
-                      style={{ color: effectiveMaxJobs <= 1 ? "#b45309" : "#94a3b8" }}
+                      className="text-[11.5px] mt-0.5"
+                      style={{ color: effectiveMaxJobs <= 1 ? "#b45309" : "#64748b" }}
                     >
                       직업 상한 {effectiveMaxJobs}개
                       {effectiveMaxJobs <= 1 ? " · 가산 없음" : ""}
                     </p>
                   </div>
                   <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
-                    <p className="text-[11px]" style={{ color: "#64748b" }}>세율 / 인상률</p>
+                    <p className="text-xs" style={{ color: "#64748b" }}>세율 / 인상률</p>
                     <p className="text-sm font-bold mt-1 tabular-nums" style={{ color: "#0f172a" }}>
                       {(salarySettings.taxRate * 100).toFixed(1)}% / {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}%
                     </p>
                   </div>
                   <div className="px-4 py-3 text-center">
-                    <p className="text-[11px]" style={{ color: "#64748b" }}>마지막 지급</p>
+                    <p className="text-xs" style={{ color: "#64748b" }}>마지막 지급</p>
                     <p className="text-xs font-semibold mt-1.5 break-keep" style={{ color: "#334155" }}>{formatLastSalaryDate()}</p>
                   </div>
                 </div>
                 <div className="px-6 py-3 border-t" style={{ background: "#fafbfc", borderColor: "#f1f5f9" }}>
-                  <p className="text-[11px] flex items-center gap-1" style={{ color: "#475569" }}>
+                  <p className="text-xs flex items-center gap-1" style={{ color: "#475569" }}>
                     <span>⏰</span>
                     자동 주급 지급: 매주 <strong style={{ color: "#4338ca" }}>월요일 오전 8시 30분</strong> (서버 자동 실행)
                   </p>
@@ -2836,8 +2836,8 @@ const AdminSettingsModal = ({
                 </div>
                 <details className="px-6 pb-4">
                   <summary
-                    className="cursor-pointer text-[11px] font-semibold select-none py-1"
-                    style={{ color: "#94a3b8" }}
+                    className="cursor-pointer text-xs font-semibold select-none py-1"
+                    style={{ color: "#64748b" }}
                   >
                     되돌리기 · 일회성 도구
                   </summary>
@@ -2962,7 +2962,7 @@ const AdminSettingsModal = ({
                                   <div className="font-bold text-slate-800 text-sm truncate">
                                     {plainStudentName({ name: student.nickname || student.name })}
                                   </div>
-                                  <div className="text-[11px] text-slate-400 truncate">
+                                  <div className="text-xs text-slate-400 truncate">
                                     {student.email || "-"} · {student.classCode || "미지정"}
                                   </div>
                                 </div>
@@ -2987,8 +2987,8 @@ const AdminSettingsModal = ({
                                       }
                                       className={
                                         c.needsAppointment
-                                          ? "text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 line-through"
-                                          : "text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                                          ? "text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 line-through"
+                                          : "text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
                                       }
                                     >
                                       {c.title}
@@ -2998,11 +2998,11 @@ const AdminSettingsModal = ({
                                     </span>
                                   ))
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">직업 없음</span>
+                                  <span className="text-xs text-slate-400">직업 없음</span>
                                 )}
                               </div>
                               {unpaidCount > 0 && (
-                                <div className="mb-2 text-[10px] text-slate-500">
+                                <div className="mb-2 text-[11.5px] text-slate-500">
                                   회색 {unpaidCount}개는 <b>급여에 포함되지 않습니다</b> — 「직업
                                   설정」에서 임명하거나 목록에서 빼 주세요.
                                 </div>
@@ -3013,26 +3013,26 @@ const AdminSettingsModal = ({
                                   "그날 이 금액을 줬다"로 읽었다(2026-07-27 오석모 학급 신고:
                                   화면 10만 vs 실지급 270만 — 09:00 지급 후 16:14에 세율·직업상한을
                                   바꾼 게 원인이었고 계산은 양쪽 다 정확했다). */}
-                              <div className="text-[10px] text-slate-400 mb-1">
+                              <div className="text-[11.5px] text-slate-400 mb-1">
                                 다음 지급 예상{" "}
                                 <span className="text-slate-300">· 현재 설정 기준</span>
                               </div>
                               {/* 급여/현금 그리드 */}
                               <div className="grid grid-cols-3 gap-1.5 mb-2">
                                 <div className="rounded-lg bg-slate-50 border border-slate-200 px-2 py-1.5 text-center">
-                                  <div className="text-[10px] text-slate-500">총급여</div>
+                                  <div className="text-[11.5px] text-slate-500">총급여</div>
                                   <div className="text-xs font-bold text-slate-700">
                                     {(salaryCalc.gross / 10000).toFixed(0)}만
                                   </div>
                                 </div>
                                 <div className="rounded-lg bg-rose-50 border border-rose-200 px-2 py-1.5 text-center">
-                                  <div className="text-[10px] text-rose-500">세금</div>
+                                  <div className="text-[11.5px] text-rose-500">세금</div>
                                   <div className="text-xs font-bold text-rose-700">
                                     -{(salaryCalc.tax / 10000).toFixed(0)}만
                                   </div>
                                 </div>
                                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-1.5 text-center">
-                                  <div className="text-[10px] text-emerald-500">실급여</div>
+                                  <div className="text-[11.5px] text-emerald-500">실급여</div>
                                   <div className="text-xs font-bold text-emerald-700">
                                     {(salaryCalc.net / 10000).toFixed(0)}만
                                   </div>
@@ -3042,7 +3042,7 @@ const AdminSettingsModal = ({
                               {/* 최근 '실제' 지급액 — 지급 시점 설정으로 서버가 확정한 금액.
                                   lastNetSalary는 예전부터 불러오고 있었는데 화면에 쓰지 않아,
                                   교사가 대조할 수단이 예상치밖에 없었다. */}
-                              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-100">
+                              <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
                                 <span className="text-slate-500">
                                   최근 실지급{" "}
                                   {student.lastSalaryDate
@@ -3055,7 +3055,7 @@ const AdminSettingsModal = ({
                                     : "-"}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
                                 <span>보유</span>
                                 <span className="font-semibold text-slate-700 tabular-nums">
                                   {(student.cash || 0).toLocaleString()}{getCurrencyUnit()}
@@ -3178,7 +3178,7 @@ const AdminSettingsModal = ({
                 {/* 메시지 */}
                 {financialMessage && (
                   <div
-                    className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-slate-800 dark:text-white`}
+                    className={`message-box ${financialMessage.type} p-3 mb-4 rounded-lg text-slate-800`}
                     style={{
                       background:
                         financialMessage.type === "success"
@@ -3202,7 +3202,7 @@ const AdminSettingsModal = ({
                   </h4>
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 text-xs">
                         상품명
                       </label>
                       <input
@@ -3215,7 +3215,7 @@ const AdminSettingsModal = ({
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 text-xs">
                         기간 (일)
                       </label>
                       <input
@@ -3229,7 +3229,7 @@ const AdminSettingsModal = ({
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-slate-500 dark:text-gray-400 text-xs">
+                      <label className="block mb-1 text-slate-500 text-xs">
                         이율 (%)
                       </label>
                       <input
@@ -3296,11 +3296,11 @@ const AdminSettingsModal = ({
                             </div>
                             <div className="px-4 py-3 grid grid-cols-2 gap-2">
                               <div className="text-center rounded-lg py-2" style={{ background: "#f8fafc" }}>
-                                <p className="text-[10px]" style={{ color: "#64748b" }}>기간</p>
-                                <p className="text-sm font-bold tabular-nums" style={{ color: "#0f172a" }}>{product.period}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>일</span></p>
+                                <p className="text-[11.5px]" style={{ color: "#64748b" }}>기간</p>
+                                <p className="text-sm font-bold tabular-nums" style={{ color: "#0f172a" }}>{product.period}<span className="text-xs ml-0.5" style={{ color: "#64748b" }}>일</span></p>
                               </div>
                               <div className="text-center rounded-lg py-2" style={{ background: "#fef3c7" }}>
-                                <p className="text-[10px]" style={{ color: "#92400e" }}>이율</p>
+                                <p className="text-[11.5px]" style={{ color: "#92400e" }}>이율</p>
                                 <p className="text-sm font-bold tabular-nums" style={{ color: "#92400e" }}>{product.rate}<span className="text-xs ml-0.5">%</span></p>
                               </div>
                             </div>
@@ -3347,7 +3347,7 @@ const AdminSettingsModal = ({
 
                 {/* 메시지 */}
                 {marketMessage && (
-                  <div className="p-3 mb-4 rounded-lg bg-amber-600 text-slate-800 dark:text-white text-center">
+                  <div className="p-3 mb-4 rounded-lg bg-amber-100 text-amber-900 text-center">
                     {marketMessage}
                   </div>
                 )}
@@ -3355,13 +3355,13 @@ const AdminSettingsModal = ({
                 {/* 주식 초기화 */}
                 <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
                   <h4 className="mb-3 text-red-500">⚠️ 주식 정보 초기화</h4>
-                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-3">
+                  <p className="text-xs text-slate-500 mb-3">
                     주의: 이 버튼을 누르면 모든 주식의 가격과 거래 내역이
                     기본값으로 초기화됩니다. 이 작업은 되돌릴 수 없습니다.
                   </p>
                   <button
                     onClick={handleInitializeStocks}
-                    className="w-full p-3 rounded-lg bg-orange-600 text-slate-800 dark:text-white border-0 cursor-pointer font-semibold"
+                    className="w-full p-3 rounded-lg bg-orange-600 text-slate-800 border-0 cursor-pointer font-semibold"
                   >
                     모든 주식 정보 초기화
                   </button>
@@ -3390,13 +3390,13 @@ const AdminSettingsModal = ({
                 {/* 현재 이자율 */}
                 <div className="p-4 rounded-xl mb-4 bg-slate-50 border border-slate-200">
                   <div className="mb-4">
-                    <p className="text-slate-500 dark:text-gray-400 text-sm">현재 일일 이자율</p>
+                    <p className="text-slate-500 text-sm">현재 일일 이자율</p>
                     <p className="text-green-500 text-[32px] font-bold">
                       {PARKING_DAILY_RATE}%
                     </p>
                   </div>
 
-                  <p className="text-xs text-slate-500 dark:text-gray-400 mt-3">
+                  <p className="text-xs text-slate-500 mt-3">
                     파킹 통장 잔액에 하루 0.1%씩 복리 이자가 붙습니다. 학생이 은행 화면을 열 때
                     밀린 날수만큼 한꺼번에 적립되고, 거래내역에 «파킹통장 이자»로 남습니다.
                   </p>
@@ -3440,16 +3440,16 @@ const AdminSettingsModal = ({
                       return (
                         <>
                           <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
-                            <p className="text-[11px]" style={{ color: "#64748b" }}>전체</p>
-                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0f172a" }}>{total}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                            <p className="text-xs" style={{ color: "#64748b" }}>전체</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0f172a" }}>{total}<span className="text-xs ml-0.5" style={{ color: "#64748b" }}>명</span></p>
                           </div>
                           <div className="px-4 py-3 text-center" style={{ borderColor: "#f1f5f9" }}>
-                            <p className="text-[11px]" style={{ color: "#64748b" }}>학생</p>
-                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0284c7" }}>{students}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                            <p className="text-xs" style={{ color: "#64748b" }}>학생</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#0284c7" }}>{students}<span className="text-xs ml-0.5" style={{ color: "#64748b" }}>명</span></p>
                           </div>
                           <div className="px-4 py-3 text-center">
-                            <p className="text-[11px]" style={{ color: "#64748b" }}>관리자</p>
-                            <p className="text-lg font-bold tabular-nums" style={{ color: "#d97706" }}>{admins}<span className="text-xs ml-0.5" style={{ color: "#94a3b8" }}>명</span></p>
+                            <p className="text-xs" style={{ color: "#64748b" }}>관리자</p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: "#d97706" }}>{admins}<span className="text-xs ml-0.5" style={{ color: "#64748b" }}>명</span></p>
                           </div>
                         </>
                       );
@@ -3482,10 +3482,10 @@ const AdminSettingsModal = ({
                           <StudentNo member={member} />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold truncate" style={{ color: "#0f172a" }}>{plainStudentName(member)}</p>
-                            <p className="text-[11px] mt-0.5 truncate" style={{ color: "#64748b" }}>{member.email}</p>
+                            <p className="text-xs mt-0.5 truncate" style={{ color: "#64748b" }}>{member.email}</p>
                           </div>
                           <span
-                            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap"
+                            className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11.5px] font-bold whitespace-nowrap"
                             style={{ background: roleConfig.bg, color: roleConfig.color }}
                           >
                             <span>{roleConfig.icon}</span>
@@ -3494,7 +3494,7 @@ const AdminSettingsModal = ({
                         </div>
                         <div className="px-4 py-2.5 flex items-center gap-2 text-xs" style={{ color: "#64748b" }}>
                           <span className="font-semibold" style={{ color: "#475569" }}>학급</span>
-                          <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold" style={{ background: "#f1f5f9", color: "#1e293b" }}>{member.classCode || "—"}</span>
+                          <span className="px-2 py-0.5 rounded-md font-mono text-xs font-bold" style={{ background: "#f1f5f9", color: "#1e293b" }}>{member.classCode || "—"}</span>
                         </div>
                         {/* 🔑 비밀번호 초기화 — 2026-08-27 교사에게도 연다.
                             여태 이 블록이 통째로 `isSuperAdmin &&` 이라 교사에겐 버튼이 없었는데,
@@ -3593,7 +3593,7 @@ const AdminSettingsModal = ({
                   <div>
                     <label className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-slate-700">세율</span>
-                      <span className="text-[11px] text-slate-400">단위 %</span>
+                      <span className="text-xs text-slate-400">단위 %</span>
                     </label>
                     <div className="relative">
                       <input
@@ -3608,13 +3608,13 @@ const AdminSettingsModal = ({
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">학생 주급에서 공제되는 세율</p>
+                    <p className="text-xs text-slate-500 mt-1.5 ml-1">학생 주급에서 공제되는 세율</p>
                   </div>
 
                   <div>
                     <label className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-slate-700">기본급 주간 인상률</span>
-                      <span className="text-[11px] text-slate-400">단위 %</span>
+                      <span className="text-xs text-slate-400">단위 %</span>
                     </label>
                     <div className="relative">
                       <input
@@ -3629,13 +3629,13 @@ const AdminSettingsModal = ({
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">%</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">매주 자동 지급 때 기본급이 이 비율만큼 복리로 인상됩니다 (직업가산·보너스는 고정)</p>
+                    <p className="text-xs text-slate-500 mt-1.5 ml-1">매주 자동 지급 때 기본급이 이 비율만큼 복리로 인상됩니다 (직업가산·보너스는 고정)</p>
                   </div>
 
                   <div>
                     <label className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-slate-700">직업 개수 상한</span>
-                      <span className="text-[11px] text-slate-400">개</span>
+                      <span className="text-xs text-slate-400">개</span>
                     </label>
                     <div className="relative">
                       <input
@@ -3650,7 +3650,7 @@ const AdminSettingsModal = ({
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">개</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">학생 1명이 가질 수 있는 최대 직업 수(급여 계산·신청·배정 모두 적용)</p>
+                    <p className="text-xs text-slate-500 mt-1.5 ml-1">학생 1명이 가질 수 있는 최대 직업 수(급여 계산·신청·배정 모두 적용)</p>
                   </div>
 
                   {/* 직업 신청 승인 — 2026-08-29 부터 끄고 켤 수 없는 규칙이다.
@@ -3659,7 +3659,7 @@ const AdminSettingsModal = ({
                     <span className="text-sm font-semibold text-slate-700">
                       직업은 모두 신청 → 선생님 허가
                     </span>
-                    <span className="block text-[11px] text-slate-500 mt-1">
+                    <span className="block text-xs text-slate-500 mt-1">
                       학생이 고른 직업은 바로 붙지 않고 <b>신청</b>으로 쌓입니다.
                       「할일 승인」 화면의 <b>직업 신청</b> 탭에서 하나씩 허가·거절하세요.
                       직업을 <b>그만두는 건</b> 허가 없이 바로 됩니다.
@@ -3686,7 +3686,7 @@ const AdminSettingsModal = ({
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
                   <div className="px-4 py-4 text-center">
-                    <p className="text-[11px] text-slate-500 mb-1">현재 기본급</p>
+                    <p className="text-xs text-slate-500 mb-1">현재 기본급</p>
                     {/* 바로 아래 '계산 예시'와 **같은 값**을 써야 한다. 2026-07-27에 두 칸이
                         다른 숫자를 보이는 사고가 있었는데, 그때 수정은 예시 쪽만 하고 이 칸은
                         인라인 공식으로 남아 있었다(2026-08-11 M4에서 발견). 둘 다 effectiveBaseSalary. */}
@@ -3694,27 +3694,27 @@ const AdminSettingsModal = ({
                       {effectiveBaseSalary.toLocaleString()}
                       <span className="text-sm text-slate-500 ml-0.5">{currencyUnit}</span>
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[11.5px] text-slate-400 mt-0.5">
                       기준 {(CLIENT_SALARY.BASE / 10000).toLocaleString()}만 ×{" "}
                       {(salarySettings.salaryBaseMultiplier || 1).toFixed(3)}배
                     </p>
                   </div>
                   <div className="px-4 py-4 text-center">
-                    <p className="text-[11px] text-slate-500 mb-1">세율</p>
+                    <p className="text-xs text-slate-500 mb-1">세율</p>
                     <p className="text-lg font-bold text-slate-800 tabular-nums">
                       {(salarySettings.taxRate * 100).toFixed(1)}
                       <span className="text-sm text-slate-500 ml-0.5">%</span>
                     </p>
                   </div>
                   <div className="px-4 py-4 text-center">
-                    <p className="text-[11px] text-slate-500 mb-1">기본급 주간 인상률</p>
+                    <p className="text-xs text-slate-500 mb-1">기본급 주간 인상률</p>
                     <p className="text-lg font-bold text-emerald-600 tabular-nums">
                       {(salarySettings.salaryIncreaseRate * 100).toFixed(1)}
                       <span className="text-sm text-slate-500 ml-0.5">%</span>
                     </p>
                   </div>
                   <div className="px-4 py-4 text-center">
-                    <p className="text-[11px] text-slate-500 mb-1">마지막 자동 지급</p>
+                    <p className="text-xs text-slate-500 mb-1">마지막 자동 지급</p>
                     <p className="text-xs font-semibold text-slate-700 mt-1.5 break-keep">
                       {formatLastSalaryDate()}
                     </p>
@@ -3752,7 +3752,7 @@ const AdminSettingsModal = ({
                     );
                   })}
                   {effectiveMaxJobs < 3 && (
-                    <div className="px-6 py-2.5 text-[11px] text-slate-400">
+                    <div className="px-6 py-2.5 text-xs text-slate-400">
                       직업 개수 상한이 {effectiveMaxJobs}개라 그 이상은 지급되지 않습니다.
                     </div>
                   )}
@@ -3890,7 +3890,7 @@ const AdminSettingsModal = ({
               >
                 <span className="text-base">🌐</span>
                 <span className="text-sm font-medium" style={{ color: "#831843" }}>시스템 전체 관리</span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#fce7f3", color: "#9d174d" }}>최고 관리자</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: "#fce7f3", color: "#9d174d" }}>최고 관리자</span>
               </div>
             )}
 
@@ -3901,7 +3901,7 @@ const AdminSettingsModal = ({
                   <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "#0f172a" }}>
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-sm" style={{ background: "#e0e7ff", color: "#4f46e5" }}>🏷️</span>
                     학급 코드 관리
-                    <span className="text-[11px] font-normal" style={{ color: "#64748b" }}>· {Array.isArray(classCodes) ? classCodes.length : 0}개</span>
+                    <span className="text-xs font-normal" style={{ color: "#64748b" }}>· {Array.isArray(classCodes) ? classCodes.length : 0}개</span>
                   </h3>
                 </div>
                 {error && (

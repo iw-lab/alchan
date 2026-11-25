@@ -316,12 +316,12 @@ const AdminApprovalPanel = () => {
 
       <>
       {/* 필터 버튼 */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="grid grid-cols-4 gap-1.5 mb-5 sm:flex sm:gap-2">
         {filterButtons.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            className="flex min-h-[40px] items-center justify-center gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
             style={{
               backgroundColor:
                 filter === key
@@ -333,11 +333,11 @@ const AdminApprovalPanel = () => {
               cursor: "pointer",
             }}
           >
-            <Icon size={14} />
+            <Icon size={14} className="hidden shrink-0 sm:block" />
             {label}
             {key === "pending" && pendingBadgeCount > 0 && (
               <span
-                className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold"
+                className="px-1.5 py-0.5 rounded-full text-xs font-bold sm:ml-1"
                 style={{
                   backgroundColor: "rgba(245, 158, 11, 0.18)",
                   color: "#b45309",
@@ -372,14 +372,14 @@ const AdminApprovalPanel = () => {
           <button
             onClick={() => handleBulkAction("approve")}
             disabled={bulkProcessing || selectedIds.size === 0}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+            className="flex min-h-[40px] items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
             style={{
               backgroundColor:
                 selectedIds.size > 0
                   ? "rgba(34, 197, 94, 0.12)"
                   : "rgba(34, 197, 94, 0.04)",
               border: `1px solid ${selectedIds.size > 0 ? "rgba(34, 197, 94, 0.45)" : "rgba(34, 197, 94, 0.15)"}`,
-              color: selectedIds.size > 0 ? "#15803d" : "#86efac",
+              color: selectedIds.size > 0 ? "#15803d" : "#64748b",
               opacity: bulkProcessing ? 0.5 : 1,
             }}
           >
@@ -389,14 +389,14 @@ const AdminApprovalPanel = () => {
           <button
             onClick={() => handleBulkAction("reject")}
             disabled={bulkProcessing || selectedIds.size === 0}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+            className="flex min-h-[40px] items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
             style={{
               backgroundColor:
                 selectedIds.size > 0
                   ? "rgba(239, 68, 68, 0.12)"
                   : "rgba(239, 68, 68, 0.04)",
               border: `1px solid ${selectedIds.size > 0 ? "rgba(239, 68, 68, 0.45)" : "rgba(239, 68, 68, 0.15)"}`,
-              color: selectedIds.size > 0 ? "#b91c1c" : "#fca5a5",
+              color: selectedIds.size > 0 ? "#b91c1c" : "#64748b",
               opacity: bulkProcessing ? 0.5 : 1,
             }}
           >
@@ -456,12 +456,14 @@ const AdminApprovalPanel = () => {
                 boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05)",
               }}
             >
-              <div className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+              <div className="p-3 sm:p-4 flex flex-wrap items-center gap-3 sm:flex-nowrap">
                 {/* 체크박스 (대기중만) */}
                 {approval.status === "pending" && (
                   <button
                     onClick={() => toggleSelect(approval.id)}
-                    className="flex-shrink-0 cursor-pointer"
+                    className="flex-shrink-0 cursor-pointer p-2 -m-2"
+                    aria-label={`${approval.studentName} 선택`}
+                    aria-pressed={selectedIds.has(approval.id)}
                     style={{
                       color: selectedIds.has(approval.id)
                         ? "#4f46e5"
@@ -505,7 +507,7 @@ const AdminApprovalPanel = () => {
                           : "거절됨"}
                     </span>
                   </div>
-                  <p className="text-sm mb-1 truncate text-slate-600">
+                  <p className="text-sm mb-1 break-keep text-slate-600">
                     {approval.isJobTask && approval.jobTitle
                       ? `[${approval.jobTitle}] `
                       : ""}
@@ -514,8 +516,8 @@ const AdminApprovalPanel = () => {
                   <div className="flex items-center gap-3 text-xs text-slate-500">
                     <span>
                       {approval.cardType === "cash"
-                        ? `💰 ${approval.rewardAmount?.toLocaleString()}${getCurrencyUnit()}`
-                        : `🎫 ${approval.rewardAmount}쿠폰`}
+                        ? `💰 ${(approval.rewardAmount || 0).toLocaleString()}${getCurrencyUnit()}`
+                        : `🎫 쿠폰 ${approval.rewardAmount || 0}개`}
                     </span>
                     <span>{formatDate(approval.requestedAt)}</span>
                   </div>
@@ -523,11 +525,11 @@ const AdminApprovalPanel = () => {
 
                 {/* 액션 버튼 */}
                 {approval.status === "pending" && (
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-shrink-0">
                     <button
                       onClick={() => handleAction(approval.id, "approve")}
                       disabled={processingId === approval.id}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                      className="flex min-h-[40px] items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                       style={{
                         backgroundColor: "rgba(34, 197, 94, 0.12)",
                         border: "1px solid rgba(34, 197, 94, 0.45)",
@@ -541,7 +543,7 @@ const AdminApprovalPanel = () => {
                     <button
                       onClick={() => handleAction(approval.id, "reject")}
                       disabled={processingId === approval.id}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+                      className="flex min-h-[40px] items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                       style={{
                         backgroundColor: "rgba(239, 68, 68, 0.12)",
                         border: "1px solid rgba(239, 68, 68, 0.45)",

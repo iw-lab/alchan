@@ -36,7 +36,7 @@ export default function AvatarHeaderWidget({ size = 140 }) {
         <button
           onClick={() => setHidden(false)}
           title="아바타 표시"
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-500 text-[11px]"
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 text-slate-500 text-xs"
         >
           <Eye className="w-3 h-3" />
           내 아바타
@@ -71,9 +71,9 @@ export default function AvatarHeaderWidget({ size = 140 }) {
         aria-label="아바타 위젯 숨기기"
         /* 터치 기기(hover 없음)엔 상시 노출, 마우스가 있는 기기만 hover 시 노출.
            기존 md: 기준은 화면 폭만 봐서 아이패드 가로(≥768px·터치)에선 버튼이 영영 안 보였다. */
-        className="absolute top-2 right-4 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex items-center justify-center"
+        className="absolute top-1 right-2 w-9 h-9 !min-w-0 !min-h-0 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex items-center justify-center"
       >
-        <X className="w-3 h-3" />
+        <X className="w-4 h-4" />
       </button>
     </div>
   );

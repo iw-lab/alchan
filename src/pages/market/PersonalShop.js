@@ -20,7 +20,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useItems } from "../../contexts/ItemContext";
 import { useBackClose } from "../../hooks/useBackClose";
-import "./PersonalShop.css";
+import pageCss from "./PersonalShop.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { logger } from "../../utils/logger";
 import { formatKoreanCurrency } from "../../utils/numberFormatter";
 import {
@@ -643,6 +644,7 @@ const ProductCard = ({ product, shop, onBuy, isOwner, onEdit, onDelete }) => {
 
 // ==================== 메인 컴포넌트 ====================
 const PersonalShop = () => {
+  usePageCss(pageCss);
   const {
     user: currentUser,
     userDoc: userProfile,

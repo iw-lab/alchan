@@ -262,7 +262,7 @@ export default function AvatarShop() {
             <Sparkles className="w-5 h-5 text-purple-500" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 font-jua">아바타 상점</h1>
+            <h1 className="text-xl font-bold text-slate-800">아바타 상점</h1>
             <p className="text-xs text-slate-500">알찬 화폐로 나만의 아바타를 꾸며봐요!</p>
           </div>
         </div>
@@ -279,7 +279,7 @@ export default function AvatarShop() {
             shopOverlays={equippedOverlays}
           />
           {previewItem && (
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-purple-600 text-white text-[11px] font-bold shadow-lg whitespace-nowrap z-50 animate-pulse">
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-purple-600 text-white text-xs font-bold shadow-lg whitespace-nowrap z-50 animate-pulse">
               👁️ 미리보기: {previewItem.name}
             </div>
           )}
@@ -331,9 +331,9 @@ export default function AvatarShop() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+              className={`flex shrink-0 items-center gap-1.5 px-3 min-h-[40px] rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                 isActive
-                  ? "bg-purple-500 text-white border border-purple-600 shadow-md"
+                  ? "bg-indigo-600 text-white border border-indigo-700 shadow-sm"
                   : "bg-slate-100 text-slate-600 border border-transparent hover:bg-slate-200"
               }`}
             >
@@ -428,7 +428,7 @@ export default function AvatarShop() {
                   )}
                   {/* 등급 배지 */}
                   <div
-                    className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[11.5px] font-bold"
                     style={{
                       background: rar.color,
                       color: "white",
@@ -443,7 +443,7 @@ export default function AvatarShop() {
                   </div>
                   {/* 장착중 표시 */}
                   {equipped && (
-                    <div className="absolute bottom-2 right-2 bg-green-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <div className="absolute bottom-2 right-2 bg-green-600 text-white text-[11.5px] font-bold rounded-full px-2 py-0.5 flex items-center gap-1">
                       <Check className="w-3 h-3" /> 착용중
                     </div>
                   )}
@@ -455,14 +455,14 @@ export default function AvatarShop() {
                     {item.name}
                   </h3>
                   {item.description && (
-                    <p className="text-[11px] text-slate-500 line-clamp-2">{item.description}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2">{item.description}</p>
                   )}
                   <div className="flex items-center justify-between mt-auto">
                     <div className="text-sm font-bold flex items-center gap-1" style={{ color: rar.color }}>
                       💰 {formatKoreanNumber(displayPrice)}{getCurrencyUnit()}
                       {hasOverride && (
                         <span
-                          className="text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300"
+                          className="text-[11.5px] px-1 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300"
                           title={`기본가: ${formatKoreanNumber(item.price)}${getCurrencyUnit()}`}
                         >
                           학급
@@ -574,7 +574,7 @@ export default function AvatarShop() {
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-800 text-lg font-bold focus:border-purple-500 focus:outline-none"
                   placeholder="0"
                 />
-                <p className="text-[11px] text-slate-400 mt-1.5">
+                <p className="text-xs text-slate-400 mt-1.5">
                   💡 이 학급의 학생들에게만 적용됩니다. 다른 학급에는 영향 없음.
                 </p>
               </div>

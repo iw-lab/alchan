@@ -100,7 +100,7 @@ export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
                   <p className="text-sm font-bold" style={{ color: "#0f172a" }}>
                     {item.label}
                   </p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "#64748b" }}>
+                  <p className="text-xs mt-0.5" style={{ color: "#64748b" }}>
                     {item.basisLabel} {formatWon(item.basis)} × {formatPct(item.rate)}
                   </p>
                 </div>
@@ -115,7 +115,7 @@ export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
                 </div>
               </div>
               {/* 계산식 / 비고 */}
-              <div className="text-[11px] mt-1" style={{ color: "#64748b" }}>
+              <div className="text-xs mt-1" style={{ color: "#64748b" }}>
                 {item.note ? (
                   <span style={{ color: item.amount > 0 ? "#b91c1c" : "#15803d" }}>
                     ℹ️ {item.note}
@@ -161,7 +161,7 @@ export default function WeeklyTaxSummaryPopup({ userDoc, userId }) {
           >
             {closing ? "확인 중..." : "확인했어요 ✓"}
           </button>
-          <p className="text-center text-[11px] mt-2" style={{ color: "#94a3b8" }}>
+          <p className="text-center text-xs mt-2" style={{ color: "#64748b" }}>
             왜 이런 세금이 부과되는지 궁금하면 선생님께 물어보세요!
           </p>
         </div>

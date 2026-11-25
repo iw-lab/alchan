@@ -192,7 +192,7 @@ export default function NewBillPopup() {
               {/* 태그 */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Vote style={{ width: 14, height: 14, color: "#f59e0b" }} />
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: "#f59e0b", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: "0.1em", color: "#f59e0b", textTransform: "uppercase" }}>
                   새 법안 제안
                 </span>
               </div>

@@ -8,7 +8,8 @@
 import { getCurrencyUnit } from "../../utils/numberFormatter";
 import React, { useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { db, getCachedDocument, invalidateCache } from "../../firebase";
+import { db, getCachedDocument } from "../../firebase";
+import { invalidateCache } from "../../firebase/firebaseUtils"; // firebase.js 를 거치면 조각끼리 서로 물린다(빌드 경고)
 import {
   doc,
   getDoc,
@@ -422,7 +423,7 @@ const NationalTaxService = ({ classCode }) => {
         {!isAdminUser && isTaxOfficer && (
           <span
             className="px-3 py-1 rounded-full text-xs font-bold"
-            style={{ background: 'rgba(163, 230, 53, 0.15)', border: '1px solid rgba(163, 230, 53, 0.4)', color: '#65a30d', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}
+            style={{ background: 'rgba(163, 230, 53, 0.15)', border: '1px solid rgba(163, 230, 53, 0.4)', color: '#4d7c0f', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.5px' }}
           >
             🎖️ 국세청장
           </span>
@@ -448,7 +449,7 @@ const NationalTaxService = ({ classCode }) => {
                 }
               : {
                   background: 'transparent',
-                  color: 'rgba(71, 85, 105, 0.7)',
+                  color: '#475569',
                   border: '1px solid transparent',
                   fontFamily: 'Rajdhani, sans-serif',
                   letterSpacing: '0.5px',
@@ -464,21 +465,21 @@ const NationalTaxService = ({ classCode }) => {
       {/* 개요 탭 */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4">
             {[
-              { icon: "💰", label: "총 국고", value: adminCash, sub: "= 학급 관리자 현금", accent: "var(--accent)", bg: "rgba(99, 102, 241, 0.08)", border: "rgba(99, 102, 241, 0.25)" },
-              { icon: "📈", label: "주식 거래세 수입", value: treasuryData.stockTaxRevenue, accent: "#60a5fa", bg: "rgba(96, 165, 250, 0.08)", border: "rgba(96, 165, 250, 0.25)" },
-              { icon: "📊", label: "주식 수수료 수입", value: treasuryData.stockCommissionRevenue, accent: "#818cf8", bg: "rgba(129, 140, 248, 0.08)", border: "rgba(129, 140, 248, 0.25)" },
-              { icon: "🏠", label: "부동산 거래세", value: treasuryData.realEstateTransactionTaxRevenue, accent: "#fbbf24", bg: "rgba(251, 191, 36, 0.08)", border: "rgba(251, 191, 36, 0.25)" },
-              { icon: "🛒", label: "부가세 수입", value: treasuryData.vatRevenue, accent: "#f472b6", bg: "rgba(244, 114, 182, 0.08)", border: "rgba(244, 114, 182, 0.25)" },
-              { icon: "🔨", label: "경매장 거래세", value: treasuryData.auctionTaxRevenue, accent: "#22d3ee", bg: "rgba(34, 211, 238, 0.08)", border: "rgba(34, 211, 238, 0.25)" },
-              { icon: "🏘️", label: "부동산 보유세", value: treasuryData.propertyHoldingTaxRevenue, accent: "#a3e635", bg: "rgba(163, 230, 53, 0.08)", border: "rgba(163, 230, 53, 0.25)" },
-              { icon: "🏦", label: "순자산세", value: treasuryData.netAssetTaxRevenue, accent: "#34d399", bg: "rgba(52, 211, 153, 0.08)", border: "rgba(52, 211, 153, 0.25)" },
-              { icon: "🏪", label: "아이템 시장세", value: treasuryData.itemMarketTaxRevenue, accent: "#fb923c", bg: "rgba(251, 146, 60, 0.08)", border: "rgba(251, 146, 60, 0.25)" },
+              { icon: "💰", label: "총 국고", value: adminCash, sub: "= 학급 관리자 현금", accent: "#4338ca", bg: "rgba(99, 102, 241, 0.08)", border: "rgba(99, 102, 241, 0.25)" },
+              { icon: "📈", label: "주식 거래세 수입", value: treasuryData.stockTaxRevenue, accent: "#2563eb", bg: "rgba(96, 165, 250, 0.08)", border: "rgba(96, 165, 250, 0.25)" },
+              { icon: "📊", label: "주식 수수료 수입", value: treasuryData.stockCommissionRevenue, accent: "#4f46e5", bg: "rgba(129, 140, 248, 0.08)", border: "rgba(129, 140, 248, 0.25)" },
+              { icon: "🏠", label: "부동산 거래세", value: treasuryData.realEstateTransactionTaxRevenue, accent: "#b45309", bg: "rgba(251, 191, 36, 0.08)", border: "rgba(251, 191, 36, 0.25)" },
+              { icon: "🛒", label: "부가세 수입", value: treasuryData.vatRevenue, accent: "#be185d", bg: "rgba(244, 114, 182, 0.08)", border: "rgba(244, 114, 182, 0.25)" },
+              { icon: "🔨", label: "경매장 거래세", value: treasuryData.auctionTaxRevenue, accent: "#0e7490", bg: "rgba(34, 211, 238, 0.08)", border: "rgba(34, 211, 238, 0.25)" },
+              { icon: "🏘️", label: "부동산 보유세", value: treasuryData.propertyHoldingTaxRevenue, accent: "#4d7c0f", bg: "rgba(163, 230, 53, 0.08)", border: "rgba(163, 230, 53, 0.25)" },
+              { icon: "🏦", label: "순자산세", value: treasuryData.netAssetTaxRevenue, accent: "#047857", bg: "rgba(52, 211, 153, 0.08)", border: "rgba(52, 211, 153, 0.25)" },
+              { icon: "🏪", label: "아이템 시장세", value: treasuryData.itemMarketTaxRevenue, accent: "#c2410c", bg: "rgba(251, 146, 60, 0.08)", border: "rgba(251, 146, 60, 0.25)" },
             ].map((card) => (
               <div
                 key={card.label}
-                className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]"
+                className="fit-box rounded-xl p-3.5 sm:p-5 transition-all duration-300 hover:scale-[1.02]"
                 style={{
                   background: `linear-gradient(135deg, ${card.bg}, rgba(255, 255, 255, 0.9))`,
                   border: `1px solid ${card.border}`,
@@ -488,10 +489,10 @@ const NationalTaxService = ({ classCode }) => {
                 <p className="text-xs font-semibold mb-2 tracking-wide" style={{ color: card.accent, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
                   {card.icon} {card.label}
                 </p>
-                <p className="text-xl font-bold text-slate-800" style={{ fontFamily: 'Rajdhani, sans-serif', textShadow: `0 0 8px ${card.bg}` }}>
+                <p className="fit-money fit-money-md font-bold text-slate-800">
                   {formatKoreanCurrency(card.value)}
                 </p>
-                {card.sub && <p className="text-xs mt-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>{card.sub}</p>}
+                {card.sub && <p className="text-xs mt-1" style={{ color: '#475569' }}>{card.sub}</p>}
               </div>
             ))}
           </div>
@@ -505,15 +506,15 @@ const NationalTaxService = ({ classCode }) => {
               <div className="rounded-xl p-5" style={{ background: 'rgba(240, 253, 244, 0.8)', border: '1px solid rgba(163, 230, 53, 0.2)' }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold mb-1" style={{ color: '#a3e635', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
+                    <h3 className="text-sm font-bold mb-1" style={{ color: '#4d7c0f', fontFamily: 'Rajdhani, sans-serif', letterSpacing: '1px' }}>
                       🏦 이번 주 세금 징수
                     </h3>
-                    <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>
+                    <p className="text-xs" style={{ color: '#475569' }}>
                       순자산세(순자산 있는 모든 학생) + 부동산 보유세를 금요일 자동 징수와 동일하게 걷습니다.
                       {!isAdminUser && " 국세청장은 한 주에 한 번만 징수할 수 있어요."}
                     </p>
                     {officerBlocked && (
-                      <p className="text-xs mt-1 font-semibold" style={{ color: '#65a30d' }}>
+                      <p className="text-xs mt-1 font-semibold" style={{ color: '#4d7c0f' }}>
                         ✅ 이번 주 세금은 이미 징수되었습니다 (다음 주에 다시 징수 가능)
                       </p>
                     )}
@@ -525,7 +526,7 @@ const NationalTaxService = ({ classCode }) => {
                     style={{
                       background: btnDisabled ? 'rgba(75, 85, 99, 0.3)' : 'linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(163, 230, 53, 0.1))',
                       border: `1px solid ${btnDisabled ? 'rgba(75, 85, 99, 0.5)' : 'rgba(163, 230, 53, 0.4)'}`,
-                      color: btnDisabled ? '#64748b' : '#a3e635',
+                      color: btnDisabled ? '#64748b' : '#4d7c0f',
                       cursor: btnDisabled ? 'not-allowed' : 'pointer',
                       fontFamily: 'Rajdhani, sans-serif',
                       letterSpacing: '1px',
@@ -545,7 +546,7 @@ const NationalTaxService = ({ classCode }) => {
           )}
 
           {/* 최근 업데이트 - 인라인 */}
-          <p className="text-xs px-1" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>
+          <p className="text-xs px-1" style={{ color: '#475569' }}>
             최근 업데이트: {formatDate(treasuryData.lastUpdated)} · 정책: {formatDate(taxSettings.lastUpdated)}
           </p>
         </div>
@@ -559,21 +560,21 @@ const NationalTaxService = ({ classCode }) => {
               💰 세수 현황 분석
             </h3>
             <div className="text-right">
-              <p className="text-xs" style={{ color: 'rgba(71, 85, 105, 0.6)' }}>세수 총합</p>
+              <p className="text-xs" style={{ color: '#475569' }}>세수 총합</p>
               <p className="text-xl font-bold text-slate-800" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{formatKoreanCurrency(totalTaxRevenue)}</p>
             </div>
           </div>
 
           <div className="space-y-3">
             {[
-              { label: "주식 거래세", amount: treasuryData.stockTaxRevenue, color: "#60a5fa" },
-              { label: "주식 수수료", amount: treasuryData.stockCommissionRevenue, color: "#818cf8" },
-              { label: "부동산 거래세", amount: treasuryData.realEstateTransactionTaxRevenue, color: "#fbbf24" },
-              { label: "부가세", amount: treasuryData.vatRevenue, color: "#f472b6" },
-              { label: "경매장 거래세", amount: treasuryData.auctionTaxRevenue, color: "#22d3ee" },
-              { label: "부동산 보유세", amount: treasuryData.propertyHoldingTaxRevenue, color: "#a3e635" },
-              { label: "순자산세", amount: treasuryData.netAssetTaxRevenue, color: "#34d399" },
-              { label: "아이템 시장세", amount: treasuryData.itemMarketTaxRevenue, color: "#fb923c" },
+              { label: "주식 거래세", amount: treasuryData.stockTaxRevenue, color: "#2563eb" },
+              { label: "주식 수수료", amount: treasuryData.stockCommissionRevenue, color: "#4f46e5" },
+              { label: "부동산 거래세", amount: treasuryData.realEstateTransactionTaxRevenue, color: "#b45309" },
+              { label: "부가세", amount: treasuryData.vatRevenue, color: "#be185d" },
+              { label: "경매장 거래세", amount: treasuryData.auctionTaxRevenue, color: "#0e7490" },
+              { label: "부동산 보유세", amount: treasuryData.propertyHoldingTaxRevenue, color: "#4d7c0f" },
+              { label: "순자산세", amount: treasuryData.netAssetTaxRevenue, color: "#047857" },
+              { label: "아이템 시장세", amount: treasuryData.itemMarketTaxRevenue, color: "#c2410c" },
             ].map((item) => {
               const percentage = totalTaxRevenue > 0 ? ((item.amount / totalTaxRevenue) * 100).toFixed(1) : "0.0";
               return (
@@ -591,7 +592,7 @@ const NationalTaxService = ({ classCode }) => {
                   </div>
                   <div className="w-36 text-right text-xs">
                     <span className="font-bold text-slate-800">{formatKoreanCurrency(item.amount)}</span>
-                    <span className="ml-1.5" style={{ color: 'rgba(71, 85, 105, 0.5)' }}>({percentage}%)</span>
+                    <span className="ml-1.5" style={{ color: '#475569' }}>({percentage}%)</span>
                   </div>
                 </div>
               );
@@ -718,16 +719,16 @@ const NationalTaxService = ({ classCode }) => {
           {/* 세수 비율 시각화 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             {[
-              { label: "주식 관련", amount: (treasuryData.stockTaxRevenue || 0) + (treasuryData.stockCommissionRevenue || 0), color: "#60a5fa" },
-              { label: "부동산 관련", amount: (treasuryData.realEstateTransactionTaxRevenue || 0) + (treasuryData.propertyHoldingTaxRevenue || 0), color: "#fbbf24" },
-              { label: "아이템/상점", amount: (treasuryData.vatRevenue || 0) + (treasuryData.itemMarketTaxRevenue || 0), color: "#f472b6" },
-              { label: "경매/기타", amount: (treasuryData.auctionTaxRevenue || 0) + (treasuryData.otherTaxRevenue || 0), color: "#22d3ee" },
+              { label: "주식 관련", amount: (treasuryData.stockTaxRevenue || 0) + (treasuryData.stockCommissionRevenue || 0), color: "#2563eb" },
+              { label: "부동산 관련", amount: (treasuryData.realEstateTransactionTaxRevenue || 0) + (treasuryData.propertyHoldingTaxRevenue || 0), color: "#b45309" },
+              { label: "아이템/상점", amount: (treasuryData.vatRevenue || 0) + (treasuryData.itemMarketTaxRevenue || 0), color: "#be185d" },
+              { label: "경매/기타", amount: (treasuryData.auctionTaxRevenue || 0) + (treasuryData.otherTaxRevenue || 0), color: "#0e7490" },
             ].map((cat) => {
               const pct = totalTaxRevenue > 0 ? ((cat.amount / totalTaxRevenue) * 100).toFixed(1) : "0.0";
               return (
                 <div key={cat.label} className="rounded-lg p-4 text-center" style={{ background: `${cat.color}08`, border: `1px solid ${cat.color}25` }}>
                   <p className="text-2xl font-bold" style={{ color: cat.color, fontFamily: 'Rajdhani, sans-serif' }}>{pct}%</p>
-                  <p className="text-xs mt-1" style={{ color: 'rgba(71, 85, 105, 0.7)' }}>{cat.label}</p>
+                  <p className="text-xs mt-1" style={{ color: '#475569' }}>{cat.label}</p>
                   <p className="text-xs font-semibold mt-0.5 text-slate-800">{formatKoreanCurrency(cat.amount)}</p>
                 </div>
               );

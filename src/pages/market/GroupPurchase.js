@@ -379,7 +379,7 @@ export default function GroupPurchase() {
             <Users className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 font-jua">함께구매</h1>
+            <h1 className="text-xl font-bold text-slate-800">함께구매</h1>
             <p className="text-xs text-slate-500">
               친구들과 모금하고, 최다 기여자가 아이템을 획득해요!
             </p>
@@ -387,7 +387,7 @@ export default function GroupPurchase() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+          className="flex shrink-0 items-center gap-1.5 px-3.5 min-h-[44px] whitespace-nowrap rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
         >
           <Plus className="w-4 h-4" />새 함께구매
         </button>
@@ -506,7 +506,7 @@ export default function GroupPurchase() {
                           style={{ width: `${progress}%` }}
                         />
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-slate-800">
+                          <span className="text-[11.5px] font-bold text-slate-800">
                             {progress}%
                           </span>
                         </div>
@@ -713,7 +713,7 @@ export default function GroupPurchase() {
           >
             {/* 모달 헤더 */}
             <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-b border-purple-500/20">
-              <h2 className="text-lg font-bold text-slate-800 font-jua flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Plus className="w-5 h-5 text-purple-400" />새 함께구매
               </h2>
               <button
@@ -779,7 +779,7 @@ export default function GroupPurchase() {
                     ? `${formatKoreanNumber(newCampaign.targetPrice)}${currencyUnit}`
                     : "아이템을 먼저 선택하세요"}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   💡 품절 시 자동 가격 상승이 함께구매에도 적용됩니다.
                   한 아이템은 한 번에 한 건만 진행 가능합니다.
                 </p>
@@ -813,7 +813,7 @@ export default function GroupPurchase() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-b border-purple-500/20">
-              <h2 className="text-lg font-bold text-slate-800 font-jua flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <HandCoins className="w-5 h-5 text-purple-400" />
                 모금 참여
               </h2>

@@ -481,24 +481,24 @@ export default function AdminEconomicEvents() {
  switch (event.type) {
  case "REAL_ESTATE_PRICE_CHANGE":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">변동률</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">변동률</span>
  <input
  type="number"
  value={event.params?.changePercent ?? 20}
  onChange={(e) =>
  updateEventParam(event.id, "changePercent", e.target.value)
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  step="5"
  />
- <span className="text-xs text-slate-400">% (음수 = 하락)</span>
+ <span className="text-xs text-slate-600">% (음수 = 하락)</span>
  </div>
  );
  case "TAX_REFUND":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">국고 환급 비율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">국고 환급 비율</span>
  <input
  type="number"
  value={Math.round((event.params?.refundRate ?? 0.3) * 100)}
@@ -509,18 +509,18 @@ export default function AdminEconomicEvents() {
  (parseFloat(e.target.value) || 0) / 100,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="1"
  max="100"
  step="5"
  />
- <span className="text-xs text-slate-400">%</span>
+ <span className="text-xs text-slate-600">%</span>
  </div>
  );
  case "TAX_EXTRA":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">추징율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">추징율</span>
  <input
  type="number"
  value={Math.round((event.params?.taxRate ?? 0.03) * 100)}
@@ -531,35 +531,35 @@ export default function AdminEconomicEvents() {
  (parseFloat(e.target.value) || 0) / 100,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="1"
  max="30"
  step="1"
  />
- <span className="text-xs text-slate-400">% (현금 기준)</span>
+ <span className="text-xs text-slate-600">% (순자산 기준)</span>
  </div>
  );
  case "CASH_BONUS":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">1인당 지급액</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">1인당 지급액</span>
  <input
  type="number"
  value={event.params?.amount ?? 50000}
  onChange={(e) =>
  updateEventParam(event.id, "amount", e.target.value)
  }
- className="w-28 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-28 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  step="10000"
  min="1000"
  />
- <span className="text-xs text-slate-400">{currencyUnit}</span>
+ <span className="text-xs text-slate-600">{currencyUnit}</span>
  </div>
  );
  case "CASH_PENALTY":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">차감율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">차감율</span>
  <input
  type="number"
  value={Math.round((event.params?.penaltyRate ?? 0.05) * 100)}
@@ -570,18 +570,18 @@ export default function AdminEconomicEvents() {
  (parseFloat(e.target.value) || 0) / 100,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="1"
  max="50"
  step="1"
  />
- <span className="text-xs text-slate-400">% (현금 기준)</span>
+ <span className="text-xs text-slate-600">% (순자산 기준)</span>
  </div>
  );
  case "STORE_PRICE_CHANGE":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">가격 배율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">가격 배율</span>
  <input
  type="number"
  value={event.params?.multiplier ?? 2}
@@ -592,18 +592,18 @@ export default function AdminEconomicEvents() {
  parseFloat(e.target.value) || 1,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="0.1"
  max="10"
  step="0.5"
  />
- <span className="text-xs text-slate-400">배 (0.5 = 절반)</span>
+ <span className="text-xs text-slate-600">배 (0.5 = 절반)</span>
  </div>
  );
  case "STOCK_TAX_CHANGE":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">세금 배율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">세금 배율</span>
  <input
  type="number"
  value={event.params?.multiplier ?? 0}
@@ -614,20 +614,20 @@ export default function AdminEconomicEvents() {
  parseFloat(e.target.value) ?? 0,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="0"
  max="5"
  step="1"
  />
- <span className="text-xs text-slate-400">
+ <span className="text-xs text-slate-600">
  배 (0 = 면제, 24시간)
  </span>
  </div>
  );
  case "MARKET_FEE_CHANGE":
  return (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">수수료 배율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">수수료 배율</span>
  <input
  type="number"
  value={event.params?.multiplier ?? 0}
@@ -638,12 +638,12 @@ export default function AdminEconomicEvents() {
  parseFloat(e.target.value) ?? 0,
  )
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  min="0"
  max="5"
  step="1"
  />
- <span className="text-xs text-slate-400">
+ <span className="text-xs text-slate-600">
  배 (0 = 면제, 24시간)
  </span>
  </div>
@@ -656,7 +656,7 @@ export default function AdminEconomicEvents() {
  if (loading) {
  return (
  <div className="flex items-center justify-center h-64">
- <div className="text-slate-400">설정 불러오는 중...</div>
+ <div className="text-slate-500">설정 불러오는 중...</div>
  </div>
  );
  }
@@ -666,15 +666,15 @@ export default function AdminEconomicEvents() {
  ).length;
 
  return (
- <div className="max-w-3xl mx-auto p-4 space-y-5">
+ <div className="max-w-4xl mx-auto p-4 space-y-5">
  {/* 헤더 */}
  <div className="flex items-center gap-3">
  <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
- <Zap className="w-5 h-5 text-purple-400" />
+ <Zap className="w-5 h-5 text-purple-600" />
  </div>
  <div>
  <h1 className="text-xl font-bold text-slate-800">경제 이벤트 관리</h1>
- <p className="text-sm text-slate-400">
+ <p className="text-sm text-slate-500">
  평일 정해진 시간에 랜덤 경제 이벤트가 자동 발생합니다
  </p>
  </div>
@@ -685,8 +685,8 @@ export default function AdminEconomicEvents() {
  <div
  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
  message.type === "success"
- ? "bg-emerald-900/50 border border-emerald-500/30 text-emerald-300"
- : "bg-red-900/50 border border-red-500/30 text-red-300"
+ ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+ : "bg-red-50 border border-red-200 text-red-700"
  }`}
  >
  {message.type === "success" ? (
@@ -699,14 +699,14 @@ export default function AdminEconomicEvents() {
  )}
 
  {/* 기본 설정 카드 */}
- <div className="bg-slate-100 border border-slate-300 rounded-2xl p-5 space-y-4">
+ <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
  <h2 className="text-base font-bold text-slate-800">기본 설정</h2>
 
  {/* 활성화 토글 */}
  <div className="flex items-center justify-between">
  <div>
  <p className="text-sm font-medium text-slate-800">경제 이벤트 시스템</p>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  평일 설정된 시간에 자동으로 이벤트가 발생합니다
  </p>
  </div>
@@ -732,12 +732,12 @@ export default function AdminEconomicEvents() {
  className="flex items-center gap-2"
  >
  {settings.enabled ? (
- <ToggleRight className="w-8 h-8 text-emerald-400" />
+ <ToggleRight className="w-8 h-8 text-emerald-600" />
  ) : (
  <ToggleLeft className="w-8 h-8 text-slate-500" />
  )}
  <span
- className={`text-sm font-medium ${settings.enabled ? "text-emerald-400" : "text-slate-500"}`}
+ className={`text-sm font-medium ${settings.enabled ? "text-emerald-700" : "text-slate-500"}`}
  >
  {settings.enabled ? "ON" : "OFF"}
  </span>
@@ -746,10 +746,10 @@ export default function AdminEconomicEvents() {
 
  {/* 트리거 시간 */}
  <div className="flex items-center gap-4">
- <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+ <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
  <div className="flex-1">
  <p className="text-sm font-medium text-slate-800">이벤트 발생 시간</p>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  평일 매일 이 시간에 이벤트가 랜덤으로 발생합니다 (KST)
  </p>
  </div>
@@ -784,24 +784,24 @@ export default function AdminEconomicEvents() {
  <Play className="w-3.5 h-3.5" />
  {triggering ? "실행 중..." : "지금 바로 랜덤 실행"}
  </button>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  활성 이벤트 {enabledEventCount}개 중 랜덤 선택
  </p>
  </div>
  </div>
 
  {/* 이벤트 목록 */}
- <div className="bg-slate-100 border border-slate-300 rounded-2xl p-5 space-y-4">
+ <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
  <div className="flex items-center justify-between">
  <div>
  <h2 className="text-base font-bold text-slate-800">이벤트 목록</h2>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  랜덤 추첨에 포함될 이벤트를 관리합니다
  </p>
  </div>
  <button
  onClick={() => setShowAddForm(!showAddForm)}
- className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 hover:bg-slate-200/80 text-slate-400 text-sm rounded-lg transition-colors"
+ className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm rounded-lg transition-colors"
  >
  <Plus className="w-3.5 h-3.5" />
  이벤트 추가
@@ -814,13 +814,13 @@ export default function AdminEconomicEvents() {
  <h3 className="text-sm font-medium text-slate-800">새 이벤트 추가</h3>
  <div className="grid grid-cols-2 gap-3">
  <div>
- <label className="text-xs text-slate-400 block mb-1">
+ <label className="text-xs text-slate-500 block mb-1">
  이벤트 타입
  </label>
  <select
  value={newEvent.type}
  onChange={(e) => handleNewEventTypeChange(e.target.value)}
- className="w-full bg-slate-200 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
+ className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
  >
  {EVENT_TYPES.map((t) => (
  <option key={t.value} value={t.value}>
@@ -830,7 +830,7 @@ export default function AdminEconomicEvents() {
  </select>
  </div>
  <div>
- <label className="text-xs text-slate-400 block mb-1">
+ <label className="text-xs text-slate-500 block mb-1">
  아이콘 이모지
  </label>
  <input
@@ -839,13 +839,13 @@ export default function AdminEconomicEvents() {
  onChange={(e) =>
  setNewEvent((prev) => ({ ...prev, emoji: e.target.value }))
  }
- className="w-full bg-slate-200 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
+ className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
  placeholder="⚡"
  />
  </div>
  </div>
  <div>
- <label className="text-xs text-slate-400 block mb-1">
+ <label className="text-xs text-slate-500 block mb-1">
  이벤트 제목 *
  </label>
  <input
@@ -854,12 +854,12 @@ export default function AdminEconomicEvents() {
  onChange={(e) =>
  setNewEvent((prev) => ({ ...prev, title: e.target.value }))
  }
- className="w-full bg-slate-200 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
+ className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
  placeholder="예: 부동산 특별 호황!"
  />
  </div>
  <div>
- <label className="text-xs text-slate-400 block mb-1">설명</label>
+ <label className="text-xs text-slate-500 block mb-1">설명</label>
  <input
  type="text"
  value={newEvent.description}
@@ -869,17 +869,17 @@ export default function AdminEconomicEvents() {
  description: e.target.value,
  }))
  }
- className="w-full bg-slate-200 border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
+ className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
  placeholder="학생들에게 보여질 설명"
  />
  </div>
 
  {/* 타입별 파라미터 입력 */}
  <div className="bg-slate-200 rounded-lg p-3">
- <p className="text-xs text-slate-400 mb-2">이벤트 수치 설정</p>
+ <p className="text-xs text-slate-500 mb-2">이벤트 수치 설정</p>
  {newEvent.type === "REAL_ESTATE_PRICE_CHANGE" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">변동률</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">변동률</span>
  <input
  type="number"
  step="5"
@@ -893,16 +893,16 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">
+ <span className="text-xs text-slate-600">
  % (음수 = 하락)
  </span>
  </div>
  )}
  {newEvent.type === "TAX_REFUND" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">국고 환급 비율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">국고 환급 비율</span>
  <input
  type="number"
  min="1"
@@ -920,14 +920,14 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">%</span>
+ <span className="text-xs text-slate-600">%</span>
  </div>
  )}
  {newEvent.type === "TAX_EXTRA" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">추징율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">추징율</span>
  <input
  type="number"
  min="1"
@@ -943,14 +943,14 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">% (현금 기준)</span>
+ <span className="text-xs text-slate-600">% (순자산 기준)</span>
  </div>
  )}
  {newEvent.type === "CASH_BONUS" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">1인당 지급액</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">1인당 지급액</span>
  <input
  type="number"
  step="10000"
@@ -965,14 +965,14 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-28 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-28 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">{currencyUnit}</span>
+ <span className="text-xs text-slate-600">{currencyUnit}</span>
  </div>
  )}
  {newEvent.type === "CASH_PENALTY" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">차감율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">차감율</span>
  <input
  type="number"
  min="1"
@@ -990,14 +990,14 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">% (현금 기준)</span>
+ <span className="text-xs text-slate-600">% (순자산 기준)</span>
  </div>
  )}
  {newEvent.type === "STORE_PRICE_CHANGE" && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">가격 배율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">가격 배율</span>
  <input
  type="number"
  min="0.1"
@@ -1013,17 +1013,17 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">
+ <span className="text-xs text-slate-600">
  배 (0.5 = 절반)
  </span>
  </div>
  )}
  {(newEvent.type === "STOCK_TAX_CHANGE" ||
  newEvent.type === "MARKET_FEE_CHANGE") && (
- <div className="flex items-center gap-2">
- <span className="text-xs text-slate-400">배율</span>
+ <div className="flex items-center gap-2 flex-wrap">
+ <span className="text-xs text-slate-600">배율</span>
  <input
  type="number"
  min="0"
@@ -1039,16 +1039,16 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-20 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-20 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">
+ <span className="text-xs text-slate-600">
  배 (0 = 면제, 24시간)
  </span>
  </div>
  )}
  {newEvent.type === "FAKE_LOTTERY_PLACEHOLDER" && (
  <div className="flex items-center gap-2 flex-wrap">
- <span className="text-xs text-slate-400">상금</span>
+ <span className="text-xs text-slate-600">상금</span>
  <input
  type="number"
  step="50000"
@@ -1063,9 +1063,9 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-28 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-28 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">원, 당첨자</span>
+ <span className="text-xs text-slate-600">원, 당첨자</span>
  <input
  type="number"
  min="1"
@@ -1080,9 +1080,9 @@ export default function AdminEconomicEvents() {
  },
  }))
  }
- className="w-16 text-xs bg-slate-200 border border-slate-300 rounded px-2 py-1 text-slate-800"
+ className="w-16 text-sm bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800"
  />
- <span className="text-xs text-slate-400">명</span>
+ <span className="text-xs text-slate-600">명</span>
  </div>
  )}
  </div>
@@ -1096,7 +1096,7 @@ export default function AdminEconomicEvents() {
  </button>
  <button
  onClick={() => setShowAddForm(false)}
- className="px-4 py-2 bg-slate-200 hover:bg-slate-200/80 text-slate-400 text-sm rounded-lg transition-colors"
+ className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm rounded-lg transition-colors"
  >
  취소
  </button>
@@ -1131,13 +1131,13 @@ export default function AdminEconomicEvents() {
  <span className="text-sm font-medium text-slate-800">
  {event.title}
  </span>
- <span className="text-xs px-1.5 py-0.5 rounded bg-slate-200 text-slate-400">
+ <span className="text-xs px-1.5 py-0.5 rounded bg-slate-200 text-slate-500">
  {EVENT_TYPES.find((t) => t.value === event.type)?.label ||
  event.type}
  </span>
  </div>
  {event.description && (
- <p className="text-xs text-slate-400">{event.description}</p>
+ <p className="text-xs text-slate-500">{event.description}</p>
  )}
  {/* 파라미터 수정 */}
  <div className="pt-1">{getParamInputs(event)}</div>
@@ -1149,17 +1149,17 @@ export default function AdminEconomicEvents() {
  onClick={() => handleTriggerNow(event.id)}
  disabled={triggering || event.enabled === false}
  title="이 이벤트 지금 실행"
- className="p-1.5 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+ className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-500/20 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
  >
  <Play className="w-3.5 h-3.5" />
  </button>
  <button
  onClick={() => toggleEvent(event.id)}
  title={event.enabled !== false ? "비활성화" : "활성화"}
- className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-200 rounded-lg transition-colors"
+ className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-200 rounded-lg transition-colors"
  >
  {event.enabled !== false ? (
- <ToggleRight className="w-4 h-4 text-emerald-400" />
+ <ToggleRight className="w-4 h-4 text-emerald-600" />
  ) : (
  <ToggleLeft className="w-4 h-4 text-slate-500" />
  )}
@@ -1193,15 +1193,15 @@ export default function AdminEconomicEvents() {
  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-200/50 transition-colors"
  >
  <div className="flex items-center gap-2">
- <History className="w-4 h-4 text-slate-400" />
+ <History className="w-4 h-4 text-slate-500" />
  <span className="text-sm font-medium text-slate-800">
  이벤트 발생 기록
  </span>
  </div>
  {showHistory ? (
- <ChevronUp className="w-4 h-4 text-slate-400" />
+ <ChevronUp className="w-4 h-4 text-slate-500" />
  ) : (
- <ChevronDown className="w-4 h-4 text-slate-400" />
+ <ChevronDown className="w-4 h-4 text-slate-500" />
  )}
  </button>
 
@@ -1229,11 +1229,11 @@ export default function AdminEconomicEvents() {
  <p className="text-sm text-slate-800 font-medium">
  {entry.event?.title}
  </p>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  {getResultText(entry)}
  </p>
  </div>
- <span className="text-xs text-slate-400 flex-shrink-0">
+ <span className="text-xs text-slate-600 flex-shrink-0">
  {formatTriggeredAt(entry.triggeredAt)}
  </span>
  </div>
@@ -1246,19 +1246,19 @@ export default function AdminEconomicEvents() {
 
  {/* cron 설정 안내 */}
  <div className="bg-slate-100/50 border border-slate-300 rounded-xl p-4">
- <p className="text-xs font-medium text-slate-400 mb-2">
+ <p className="text-xs font-medium text-slate-500 mb-2">
  ⚙️ cron-job.org 설정 안내
  </p>
- <p className="text-xs text-slate-400">
+ <p className="text-xs text-slate-500">
  자동 이벤트가 작동하려면 cron-job.org에서{" "}
- <code className="bg-slate-200 px-1 rounded text-slate-400">
+ <code className="bg-slate-200 px-1 rounded text-slate-500">
  economicEventScheduler
  </code>{" "}
  엔드포인트를
- <strong className="text-slate-400"> 매시간</strong> 호출하도록
+ <strong className="text-slate-500"> 매시간</strong> 호출하도록
  설정하세요.
  </p>
- <p className="text-xs text-slate-400 mt-1">
+ <p className="text-xs text-slate-500 mt-1">
  현재 설정된 시간(
  {HOUR_OPTIONS.find((o) => o.value === settings.triggerHour)?.label})에
  이벤트가 발생합니다.

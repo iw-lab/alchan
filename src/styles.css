@@ -5,10 +5,6 @@
 .page-container {
   max-width: 100%;
   margin: 0;
-  padding: 1.5rem;
-  background-color: var(--bg-card);
-  border-radius: 0;
-  box-shadow: none;
   position: relative;
   width: 100%;
   border: none;
@@ -414,15 +410,6 @@ h2, h3 {
    모바일 반응성 개선
    ============================================ */
 @media (max-width: 768px) {
-  body {
-    padding: 0.5rem;
-  }
-
-  .page-container {
-    padding: 1rem;
-    border-radius: 12px;
-  }
-
   .section-title {
     font-size: 1.1rem;
     margin-bottom: 0.8rem;
@@ -494,15 +481,6 @@ h2, h3 {
 
 /* 더 작은 모바일 화면 */
 @media (max-width: 480px) {
-  body {
-    padding: 0.25rem;
-  }
-
-  .page-container {
-    padding: 0.75rem;
-    border-radius: 8px;
-  }
-
   .items-grid {
     gap: 0.75rem;
   }

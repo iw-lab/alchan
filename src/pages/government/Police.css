@@ -26,22 +26,11 @@
   --box-shadow-lg: 0 4px 16px rgba(99, 102, 241, 0.1);
 }
 
-body {
-  font-family: "Noto Sans KR", sans-serif;
-  background-color: var(--white-color);
-  color: var(--text-color);
-  line-height: 1.6;
-}
 
 /* --- 기본 컨테이너 --- */
 .police-container {
   max-width: 100%;
   margin: 0;
-  padding: 30px;
-  background-color: var(--white-color);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--box-shadow-lg);
-  border: 1px solid var(--medium-gray);
   overflow: visible;
   position: relative;
   font-family: 'Rajdhani', sans-serif;
@@ -183,7 +172,7 @@ body {
 }
 
 /* --- 공통 버튼 스타일 --- */
-button {
+.police-container button {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   font-family: inherit;
@@ -1156,11 +1145,6 @@ button {
 
 /* --- 반응형 디자인 --- */
 @media (max-width: 768px) {
-  .police-container {
-    padding: 20px;
-    overflow: visible;
-  }
-
   .police-header-container {
     flex-direction: column;
     align-items: flex-start;
@@ -1178,17 +1162,20 @@ button {
   }
 
   .police-tabs {
-    flex-direction: column;
-    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 12px;
     border-bottom: none;
   }
 
   .police-tab-button {
+    flex: 1 1 0;
+    min-height: 44px;
+    padding: 8px 4px;
     text-align: center;
-    border-bottom: none;
+    font-size: 0.875rem;
+    white-space: nowrap;
     border: 1px solid var(--medium-gray);
     border-radius: var(--border-radius-md);
-    margin-bottom: 5px;
   }
 
   .police-tab-button.active {

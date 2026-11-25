@@ -1,407 +1,470 @@
-/* src/Auction.css - Light Theme */
+/* 경매장 — 화면 하나, 스타일 하나.
+   예전에는 이 파일(밝은 테마)과 Auction.js 안 <style>(어두운 테마)이 겹쳐 카드 제목이 흰 바탕에 흰 글씨였다. */
 
 .auction-container {
-    padding: 20px;
-    background-color: #ffffff;
-    color: #1f2937;
-    min-height: 100vh;
+  padding: 4px 0 24px;
+  color: #1e293b;
+}
+
+.auction-container .login-required-container,
+.login-required-container {
+  text-align: center;
+  padding: 40px 20px;
+  color: #475569;
 }
 
 .auction-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 8px 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
 }
 
 .auction-header h1 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
 }
 
 .auction-balance {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.4rem;
-    color: #374151;
-    font-weight: 600;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  background: #eef2ff;
+  font-size: 0.875rem;
+  color: #475569;
+  white-space: nowrap;
 }
 
-.balance-amount {
-    color: #059669;
-    font-weight: bold;
-    font-size: 1.8rem;
-    text-shadow: none;
-    margin-left: 0.5rem;
+.auction-balance .balance-amount {
+  font-weight: 800;
+  color: #4338ca;
 }
 
-/* Tabs */
-.tab-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e0e7ff;
-    padding-bottom: 5px;
-    overflow-x: auto;
+/* 탭 — 다섯 칸이 폰에서도 한 줄 */
+.auction-container .tab-container {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #e8ebf5;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.tab {
-    background: transparent;
-    border: 1px solid transparent;
-    color: #64748b;
-    padding: 10px 20px;
-    cursor: pointer;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border-radius: 8px 8px 0 0;
+.auction-container .tab-container::-webkit-scrollbar { display: none; }
+
+.auction-container .tab {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 9px;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.tab:hover {
-    color: #1f2937;
-    background: #f3f4f6;
+.auction-container .tab:hover { color: #1e293b !important; }
+
+.auction-container .tab.active {
+  background: #ffffff !important;
+  color: #4338ca !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
 }
 
-.tab.active {
-    color: #3b82f6;
-    border: 1px solid #e0e7ff;
-    border-bottom: 1px solid #ffffff;
-    /* Hide bottom border */
-    background: #ffffff;
-    box-shadow: 0 -2px 10px rgba(59, 130, 246, 0.1);
-    margin-bottom: -1px;
-    /* Overlap border */
+.auction-container .tab-content { padding: 0; background: none; border: none; box-shadow: none; min-height: 0; }
+
+.auction-container .search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.tab.register-tab {
-    margin-left: auto;
-    color: #059669;
+.auction-container .search-bar input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 16px;
 }
 
-.tab.register-tab.active {
-    color: #059669;
-    border-color: #e0e7ff;
-    box-shadow: 0 -2px 10px rgba(5, 150, 105, 0.1);
+.auction-container .search-bar input:focus,
+.auction-container .bid-input:focus,
+.auction-container .form-control:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
-/* Content Area */
-.tab-content {
-    padding: 20px 0;
+.auction-container .search-reset-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #334155;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.search-bar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.search-bar input {
-    flex: 1;
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    color: #1f2937;
-    padding: 12px;
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-}
-
-.search-bar input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    outline: none;
-}
-
-.search-reset-button {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    color: #374151;
-    padding: 0 20px;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.search-reset-button:hover {
-    background: #e5e7eb;
-    color: #1f2937;
-}
-
-/* Auction Grid */
+/* 카드 */
 .auctions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
 }
 
 .auction-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    backdrop-filter: none;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
-.auction-card:hover {
-    transform: translateY(-5px);
-    border-color: #3b82f6;
-    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* specificity 강화: index.css 글로벌 [class*="-info"], [class*="-header"] 무력화 */
 .auction-card .auction-info {
-    padding: 20px !important;
-    flex: 1;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
 .auction-card .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* 내 경매 / 완료 경매 리스트 뷰의 item-info 등 */
-.list-item .item-info,
-.list-item .bid-info,
-.list-item .winner-info,
-.list-item .highest-bidder-info {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-}
-
-.card-header h3 {
-    font-size: 1.2rem;
-    color: #1f2937;
-    margin: 0;
-    display: flex;
-    align-items: center;
+.auction-card .card-header h3,
+.auction-container .list-item h3 {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #1e293b;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .time-left-badge {
-    background: #eff6ff;
-    color: #3b82f6;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    border: 1px solid #dbeafe;
-    white-space: nowrap;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .time-left-badge.error {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
 }
 
 .auction-description {
-    color: #64748b;
-    font-size: 0.9rem;
-    margin-bottom: 15px;
-    line-height: 1.5;
-    height: 40px;
-    /* Limit height */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+  margin: 0;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .auction-price-details {
-    background: #f8faff;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .auction-price-details p {
-    display: flex;
-    justify-content: space-between;
-    margin: 5px 0;
-    font-size: 0.9rem;
-    color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.8125rem;
 }
 
-.price {
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 1px;
+.auction-price-details .price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
 }
 
-.start-price {
-    color: #64748b;
-}
-
-.current-price {
-    color: #f59e0b;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
+.auction-price-details .current-price { color: #b45309; }
 
 .auction-meta {
-    font-size: 0.8rem;
-    color: #64748b;
-    text-align: right;
-    margin-top: 10px;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8125rem;
 }
 
 .bid-status-indicator.highest {
-    color: #059669;
-    font-weight: bold;
-    text-align: center;
-    margin-top: 10px;
-    padding: 5px;
-    background: rgba(5, 150, 105, 0.1);
-    border-radius: 4px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
 }
 
-/* Auction Actions */
 .auction-actions {
-    padding: 15px 20px;
-    background: #f8faff;
-    border-top: 1px solid #e0e7ff;
-}
-
-.bid-input-group {
-    display: flex;
-    gap: 10px;
-}
-
-.bid-input {
-    flex: 1;
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    color: #1f2937;
-    padding: 8px;
-    border-radius: 6px;
-    font-family: 'Rajdhani', sans-serif;
-}
-
-.bid-button {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    border: 1px solid #3b82f6;
-    color: #ffffff;
-    padding: 8px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-
-.bid-button:hover:not(:disabled) {
-    background: #2563eb;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.bid-button:disabled {
-    border-color: #475569;
-    color: #64748b;
-    cursor: not-allowed;
-    background: #f3f4f6;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .owner-notice {
-    text-align: center;
-    color: #64748b;
-    font-style: italic;
+  text-align: center;
+  color: #4338ca;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
-/* Notifications */
-.notification {
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    text-align: center;
-    font-weight: bold;
-    animation: slideDown 0.3s ease-out;
+.bid-input-group { display: flex; gap: 8px; }
+
+.auction-container .bid-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 16px;
 }
 
-.notification-success {
-    background: #f0fdf4;
-    color: #16a34a;
-    border: 1px solid #bbf7d0;
+.bid-button {
+  min-height: 44px;
+  padding: 8px 22px;
+  border: none;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #ffffff;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.notification-error {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+.bid-button:hover:not(:disabled) { background: #4338ca; }
+
+.bid-button:disabled {
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
 }
 
-.notification-info {
-    background: #eff6ff;
-    color: #2563eb;
-    border: 1px solid #dbeafe;
+/* 목록 */
+.my-auctions-content h2,
+.my-bids-content h2,
+.completed-auctions-content h2,
+.register-auction-content h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1e293b;
 }
 
-@keyframes slideDown {
-    from {
-        transform: translateY(-20px);
-        opacity: 0;
-    }
+.auction-container .list-view { display: flex; flex-direction: column; gap: 12px; }
 
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+.auction-container .list-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #c7d2fe;
+  border-radius: 12px;
+  background: #ffffff;
 }
 
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: #64748b;
-    background: #f9fafb;
-    border-radius: 12px;
-    border: 1px dashed #d1d5db;
+.auction-container .list-item .item-info,
+.auction-container .list-item .bid-info,
+.auction-container .list-item .winner-info,
+.auction-container .list-item .highest-bidder-info {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
-/* Register Form */
-.register-form {
-    background: #ffffff;
-    padding: 30px;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    max-width: 600px;
-    margin: 0 auto;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+.auction-container .list-item .item-info { flex: 1; min-width: 0; }
+
+.auction-container .list-item p { margin: 4px 0 0; font-size: 0.875rem; color: #475569; }
+
+.auction-container .list-item .price-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: #475569;
 }
 
-.form-group {
-    margin-bottom: 20px;
+.auction-container .list-item .bid-info .price { color: #4338ca; font-weight: 700; }
+.auction-container .list-item .status-indicator .won,
+.auction-container .list-item .status-indicator .highest { color: #047857; font-weight: 700; margin-left: 4px; }
+.auction-container .list-item .status-indicator .outbid { color: #b45309; font-weight: 700; margin-left: 4px; }
+.auction-container .list-item .status-indicator .lost { color: #b91c1c; font-weight: 700; margin-left: 4px; }
+.auction-container .list-item .item-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.auction-container .completed-item .final-result { font-weight: 700; color: #1e293b; }
+
+.my-bid-item.status-highest, .completed-item.result-won { border-left-color: #059669 !important; }
+.my-bid-item.status-outbid { border-left-color: #d97706 !important; }
+.completed-item.result-sold { border-left-color: #2563eb !important; }
+.completed-item.result-unsold { border-left-color: #dc2626 !important; }
+
+/* 단추 */
+.auction-container .action-button {
+  min-height: 44px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.form-group label {
-    display: block;
-    color: #1f2937;
-    margin-bottom: 8px;
-    font-weight: bold;
+.auction-container .action-button.primary { background: #4f46e5; color: #ffffff; }
+.auction-container .action-button.primary:hover:not(:disabled) { background: #4338ca; }
+.auction-container .action-button.cancel-button { background: #fee2e2; color: #b91c1c; }
+.auction-container .action-button.rebid-button { background: #b45309; color: #ffffff; }
+.auction-container .action-button.admin-cancel-button { width: 100%; background: #f1f5f9; border: 1px solid #cbd5e1; color: #b91c1c; }
+.auction-container .action-button:disabled { background: #e2e8f0; color: #64748b; cursor: not-allowed; }
+
+.auction-container .action-status-text {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    color: #1f2937;
-    padding: 12px;
-    border-radius: 8px;
+.auction-container .action-status-text.sold,
+.auction-container .action-status-text.won { background: #ecfdf5; color: #047857; }
+.auction-container .action-status-text.unsold,
+.auction-container .action-status-text.lost,
+.auction-container .action-status-text.error { background: #fef2f2; color: #b91c1c; }
+.auction-container .error-text { margin-left: 5px; color: #b91c1c; font-weight: 700; }
+
+.auction-container .badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.auction-container .badge.won { background: #047857; }
+.auction-container .badge.sold { background: #1d4ed8; }
+.auction-container .badge.unsold,
+.auction-container .badge.error { background: #b91c1c; }
+.auction-container .badge.neutral { background: #475569; }
+
+/* 등록 양식 */
+.auction-form {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.auction-form .form-group { margin-bottom: 16px; }
+.auction-form .form-group label { display: block; margin-bottom: 6px; font-size: 0.875rem; }
+
+.auction-form .form-control {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.auction-form .form-control[readonly] { background: #f1f5f9; color: #475569; }
+.auction-form .form-hint { margin: 6px 0 0; font-size: 0.8125rem; color: #475569; }
+.auction-form .form-hint.error { color: #b91c1c; }
+.auction-form .form-actions { display: flex; gap: 8px; margin-top: 20px; }
+.auction-form .form-actions .register-button { flex: 1; }
+
+/* 알림 */
+.auction-container .notification {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  z-index: 1001;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 12px;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
+
+.auction-container .notification-success { background: #047857; }
+.auction-container .notification-error { background: #b91c1c; }
+.auction-container .notification-info { background: #1d4ed8; }
+
+.auction-container .no-results-message {
+  padding: 36px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #475569;
+  text-align: center;
+}
+
+.auction-container .no-results-message p { margin: 0 0 12px; }
+
+@media (max-width: 767px) {
+  .auction-container .tab { padding: 8px 6px; font-size: 0.8125rem; }
+  .auction-container .list-item { flex-direction: column; align-items: stretch; gap: 10px; }
+  .auction-container .list-item .item-actions { width: 100%; }
+  .auction-container .list-item .item-actions .action-button { flex: 1; }
 }

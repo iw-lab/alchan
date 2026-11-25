@@ -1,7 +1,8 @@
 // src/pages/learning/LearningBoard.js
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import "./LearningBoard.css";
+import pageCss from "./LearningBoard.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage, functions, addActivityLog } from "../../firebase";
 import { httpsCallable } from "firebase/functions";
@@ -110,6 +111,7 @@ const formatDateShort = (isoString) => {
 
 
 const LearningBoard = () => {
+  usePageCss(pageCss);
   const {
     userDoc: currentUser,
     isAdmin,

@@ -416,7 +416,7 @@ export default function AppRewardDashboard() {
               지급 내역
             </div>
             {rewards.rows.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm" style={{ color: "#94a3b8" }}>
+              <p className="px-4 py-8 text-center text-sm" style={{ color: "#64748b" }}>
                 이 날 지급된 학습앱 보상이 없습니다.
               </p>
             ) : (
@@ -437,7 +437,7 @@ export default function AppRewardDashboard() {
                           <Td>{nameOf(r.uid)}</Td>
                           <Td>
                             <div style={{ color: "#0f172a" }}>{r.label || r.achievementId}</div>
-                            <div className="text-xs" style={{ color: "#94a3b8" }}>{appLabel(r.appId)}</div>
+                            <div className="text-xs" style={{ color: "#64748b" }}>{appLabel(r.appId)}</div>
                           </Td>
                           <Td right>
                             <span style={{ color: r.rewardType === "cash" ? "#047857" : "#7c3aed", fontWeight: 700 }}>
@@ -451,7 +451,7 @@ export default function AppRewardDashboard() {
                                 {r.clawback.shortfall > 0 ? ` (부족 ${num(r.clawback.shortfall)})` : ""}
                               </span>
                             ) : r.revocable === false ? (
-                              <span className="text-xs" style={{ color: "#94a3b8" }}>되돌릴 수 없음</span>
+                              <span className="text-xs" style={{ color: "#64748b" }}>되돌릴 수 없음</span>
                             ) : (
                               <span className="text-xs" style={{ color: "#64748b" }}>지급됨</span>
                             )}
@@ -498,11 +498,11 @@ export default function AppRewardDashboard() {
           {!classCode ? (
             // 슈퍼관리자는 지급 원장을 전 학급으로 볼 수 있지만, 학습현황은 **명단이 있어야**
             // 학생별로 돌 수 있다. "기록이 없다"로 뭉개면 없는 것과 못 보는 것이 같아진다.
-            <p className="px-4 py-8 text-center text-sm" style={{ color: "#94a3b8" }}>
+            <p className="px-4 py-8 text-center text-sm" style={{ color: "#64748b" }}>
               학급이 지정되지 않은 계정이라 학습 현황을 불러올 수 없습니다.
             </p>
           ) : learningByStudent.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm" style={{ color: "#94a3b8" }}>
+            <p className="px-4 py-8 text-center text-sm" style={{ color: "#64748b" }}>
               {loading ? "불러오는 중…" : "이 날 기록된 학습이 없습니다."}
             </p>
           ) : (
@@ -519,7 +519,7 @@ export default function AppRewardDashboard() {
                       <Td><StudentNo member={memberOf(s.uid)} size="md" style={{ marginRight: 8 }} />{nameOf(s.uid)}</Td>
                       <Td right>
                         <span className="inline-flex items-center gap-1" style={{ color: "#0f172a", fontWeight: 700 }}>
-                          <Clock size={12} color="#94a3b8" />{Math.round(s.sec / 60)}분
+                          <Clock size={12} color="#64748b" />{Math.round(s.sec / 60)}분
                         </span>
                       </Td>
                       <Td right>{num(s.events)}</Td>
@@ -549,7 +549,7 @@ function Stat({ icon: Icon, label, value, sub }) {
         <Icon size={13} /> {label}
       </div>
       <div className="text-lg font-bold" style={{ color: "#0f172a" }}>{value}</div>
-      {sub ? <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>{sub}</div> : null}
+      {sub ? <div className="text-xs mt-0.5" style={{ color: "#64748b" }}>{sub}</div> : null}
     </div>
   );
 }

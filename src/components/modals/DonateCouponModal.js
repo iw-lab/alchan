@@ -191,7 +191,7 @@ const DonateCouponModal = memo(function DonateCouponModal({
                   ? "#4b5563"
                   : "#4f46e5",
             }}
-            className={`px-4 py-2 text-slate-800 dark:text-white border-0 rounded-md font-medium ${
+            className={`px-4 py-2 text-slate-800 border-0 rounded-md font-medium ${
               isDonating ||
               !donateAmount ||
               isNaN(parseInt(donateAmount, 10)) ||

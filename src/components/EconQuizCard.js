@@ -92,7 +92,7 @@ export default function EconQuizCard({ userId, rawStats, classCode, onReward }) 
       {open && !loadFailed && !question && <p className="mt-2 text-sm text-slate-600">문제를 가져오고 있어요…</p>}
       {open && question && (
         <div className="mt-2">
-          <p className="text-[11px] font-semibold text-indigo-700">{TOPICS[question.topic]}</p>
+          <p className="text-xs font-semibold text-indigo-700">{TOPICS[question.topic]}</p>
           <p className="text-[15px] font-bold text-slate-900 mb-2">{question.q}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
             {question.choices.map((c, i) => {

@@ -1,6 +1,7 @@
 // src/pages/organization/OrganizationChart.js
 import React, { useState, useCallback, useMemo } from "react";
-import "./OrganizationChart.css";
+import pageCss from "./OrganizationChart.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -35,6 +36,7 @@ const govSettingsRef = (classCode) =>
   doc(db, "classes", classCode, "nationalAssemblySettings", "government");
 
 const OrganizationChart = ({ classCode }) => {
+  usePageCss(pageCss);
   const { isAdmin: isAuthAdmin, userDoc } = useAuth() || {};
 
   // 직업 목록 로드 (selectedJobIds 기반 대통령 체크용)

@@ -79,6 +79,9 @@ export default function EconomicEventBanner() {
     if (type === "TAX_EXTRA") {
       return `총 ${result.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 추가 징수 (${result.affectedCount || 0}명)`;
     }
+    if (type === "CASH_PENALTY") {
+      return `총 ${result.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()} 차감 (${result.affectedCount || 0}명)`;
+    }
     if (type === "CASH_BONUS") {
       return `1인당 ${result.perStudent?.toLocaleString() || 0}${getCurrencyUnit()} 지급 (${result.affectedCount || 0}명)`;
     }
@@ -116,8 +119,8 @@ export default function EconomicEventBanner() {
     <div
       className={`relative flex items-start gap-3 px-4 py-3 rounded-xl mx-1 mb-2 ${
         isPositive
-          ? "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 dark:from-emerald-900/60 dark:to-teal-900/40 dark:border-emerald-500/20"
-          : "bg-gradient-to-r from-red-50 to-rose-50 border border-red-300 dark:from-red-900/60 dark:to-rose-900/40 dark:border-red-500/20"
+          ? "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300"
+          : "bg-gradient-to-r from-red-50 to-rose-50 border border-red-300"
       }`}
       style={{ backdropFilter: 'blur(8px)' }}
     >
@@ -133,7 +136,7 @@ export default function EconomicEventBanner() {
 
       {/* 아이콘 */}
       <div
-        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isPositive ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-red-500/20 text-red-700 dark:text-red-300"}`}
+        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isPositive ? "bg-emerald-500/20 text-emerald-700" : "bg-red-500/20 text-red-700"}`}
       >
         {(() => {
           const IconComp = EVENT_ICONS[event.type] || Zap;
@@ -145,19 +148,19 @@ export default function EconomicEventBanner() {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className={`text-xs font-bold uppercase tracking-wide ${isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}
+            className={`text-xs font-bold uppercase tracking-wide ${isPositive ? "text-emerald-600" : "text-red-600"}`}
           >
             경제 이벤트
           </span>
-          <span className="text-xs text-slate-500 dark:text-gray-400">
+          <span className="text-xs text-slate-500">
             {dateStr} {timeStr}
           </span>
         </div>
-        <p className="text-sm font-bold text-slate-800 dark:text-white mt-0.5">{event.title}</p>
-        <p className="text-xs text-slate-600 dark:text-gray-300 mt-0.5">{event.description}</p>
+        <p className="text-sm font-bold text-slate-800 mt-0.5">{event.title}</p>
+        <p className="text-xs text-slate-600 mt-0.5">{event.description}</p>
         {getResultSummary() && (
           <p
-            className={`text-xs mt-1 font-medium ${isPositive ? "text-emerald-300" : "text-red-300"}`}
+            className={`text-xs mt-1 font-medium ${isPositive ? "text-emerald-700" : "text-red-700"}`}
           >
             → {getResultSummary()}
           </p>
@@ -172,7 +175,7 @@ export default function EconomicEventBanner() {
           }
           setDismissed(true);
         }}
-        className="relative z-10 flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors"
+        className="relative z-10 flex-shrink-0 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
         aria-label="배너 닫기"
       >
         <X className="w-5 h-5" />

@@ -72,39 +72,32 @@ export default function NicknameSetupPopup() {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center p-5 bg-black/80 backdrop-blur-sm z-[10000]"
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm z-[10000] overflow-y-auto"
       style={{ animation: "fadeIn 0.3s ease-out" }}
     >
       <div
-        className="w-full max-w-[380px] rounded-2xl overflow-hidden"
+        className="w-full max-w-[400px] m-auto rounded-2xl overflow-hidden bg-white shadow-2xl"
         style={{
-          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-          border: "1px solid rgba(0, 212, 255, 0.3)",
-          boxShadow: "0 0 40px rgba(0, 212, 255, 0.15), 0 20px 60px rgba(0, 0, 0, 0.5)",
           animation: "slideUp 0.4s ease-out",
         }}
       >
         {/* 헤더 */}
         <div
-          className="text-center py-6 px-5"
-          style={{
-            background: "linear-gradient(180deg, rgba(0, 212, 255, 0.15) 0%, transparent 100%)",
-          }}
+          className="text-center pt-6 pb-4 px-5"
         >
           <div className="text-4xl mb-3">🎭</div>
           <h2
-            className="text-xl font-bold text-white m-0"
-            style={{ fontFamily: "'Orbitron', 'Rajdhani', sans-serif" }}
+            className="text-xl font-bold text-slate-800 m-0"
           >
             별명을 골라주세요!
           </h2>
-          <p className="text-sm text-white/60 mt-2">
+          <p className="text-sm text-slate-600 mt-2">
             마음에 드는 게 없으면 다시 뽑을 수 있어요
           </p>
         </div>
 
         {/* 고르기 영역 */}
-        <div className="px-6 pb-6">
+        <div className="px-5 pb-5">
           <div className="grid grid-cols-1 gap-2 mb-3">
             {choices.map((c) => {
               const isPicked = picked === c;
@@ -117,15 +110,11 @@ export default function NicknameSetupPopup() {
                     setError("");
                   }}
                   disabled={isLoading}
-                  className="w-full py-3 px-4 rounded-xl text-white text-base font-medium cursor-pointer transition-all text-left"
+                  aria-pressed={isPicked}
+                  className="w-full py-3 px-4 rounded-xl text-slate-800 text-base font-medium cursor-pointer transition-all text-left"
                   style={{
-                    background: isPicked
-                      ? "linear-gradient(135deg, rgba(0, 212, 255, 0.25) 0%, rgba(0, 153, 204, 0.25) 100%)"
-                      : "rgba(255, 255, 255, 0.08)",
-                    border: isPicked
-                      ? "1px solid rgba(0, 212, 255, 0.7)"
-                      : "1px solid rgba(0, 212, 255, 0.15)",
-                    boxShadow: isPicked ? "0 0 12px rgba(0, 212, 255, 0.2)" : "none",
+                    background: isPicked ? "#eef2ff" : "#f8fafc",
+                    border: `2px solid ${isPicked ? "#4f46e5" : "#e2e8f0"}`,
                   }}
                 >
                   <span className="mr-2">{isPicked ? "✅" : "⬜"}</span>
@@ -139,11 +128,7 @@ export default function NicknameSetupPopup() {
             type="button"
             onClick={reroll}
             disabled={isLoading}
-            className="w-full py-2 rounded-xl text-cyan-200 text-sm font-medium cursor-pointer transition-all mb-4"
-            style={{
-              background: "rgba(255, 255, 255, 0.05)",
-              border: "1px dashed rgba(0, 212, 255, 0.3)",
-            }}
+            className="w-full min-h-[44px] rounded-xl border border-dashed border-indigo-300 bg-white text-indigo-700 text-sm font-medium cursor-pointer mb-4"
           >
             🎲 다시 뽑기
           </button>
@@ -151,11 +136,7 @@ export default function NicknameSetupPopup() {
           {error && (
             <div
               className="text-sm text-center py-2 px-3 rounded-lg mb-4"
-              style={{
-                background: "rgba(255, 80, 80, 0.1)",
-                color: "#ff6b6b",
-                border: "1px solid rgba(255, 80, 80, 0.2)",
-              }}
+              style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
             >
               {error}
             </div>
@@ -164,21 +145,12 @@ export default function NicknameSetupPopup() {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !picked}
-            className="w-full py-3 rounded-xl text-white font-bold text-base cursor-pointer transition-all border-none"
-            style={{
-              background:
-                isLoading || !picked
-                  ? "rgba(100, 100, 100, 0.3)"
-                  : "linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)",
-              boxShadow:
-                isLoading || !picked ? "none" : "0 4px 15px rgba(0, 212, 255, 0.3)",
-              opacity: isLoading || !picked ? 0.5 : 1,
-            }}
+            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-base cursor-pointer border-none disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed"
           >
             {isLoading ? "설정 중..." : "이걸로 할래요"}
           </button>
 
-          <p className="text-center text-xs text-white/40 mt-3">
+          <p className="text-center text-xs text-slate-500 mt-3">
             나중에 프로필에서 바꿀 수 있어요
           </p>
         </div>

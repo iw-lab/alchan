@@ -75,32 +75,30 @@ export default function FinancialRestrictionBanner() {
 
   return (
     <div
-      className="relative flex items-start gap-3 px-4 py-3 rounded-xl mx-1 mb-2 bg-gradient-to-r from-red-50 to-rose-50 border border-red-300"
+      className="app-notice flex items-center gap-2.5 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-red-50 border border-red-300"
       role="alert"
     >
-      <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-red-500/20 text-red-700">
-        <AlertTriangle size={20} strokeWidth={2.2} />
-      </div>
+      <AlertTriangle size={20} strokeWidth={2.2} className="flex-shrink-0 text-red-600" aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold uppercase tracking-wide text-red-600">
-          이용 제한 안내
-        </div>
-        <p className="text-sm font-bold text-slate-800 mt-0.5">
+        <p className="text-[13px] sm:text-sm font-bold text-slate-800 leading-snug">
           {isNegative
-            ? `순자산이 마이너스입니다 (${Number(status.net).toLocaleString()}${getCurrencyUnit()})`
-            : `미상환 대출이 남아있습니다 (${Number(status.loan).toLocaleString()}${getCurrencyUnit()})`}
+            ? <>순자산이 마이너스입니다 <span className="whitespace-nowrap">({Number(status.net).toLocaleString()}{getCurrencyUnit()})</span></>
+            : <>미상환 대출이 남아 있어요 <span className="whitespace-nowrap">({Number(status.loan).toLocaleString()}{getCurrencyUnit()})</span></>}
         </p>
-        <p className="text-xs text-slate-600 mt-0.5">
+        <p className="hidden sm:block text-xs text-slate-600 mt-0.5">
           {isNegative
             ? hasLoan
               ? "상점 구매·주식/부동산 투자·대출 신청·경매·함께구매가 제한됩니다. 대출 상환으로 자산을 회복해주세요."
               : "상점 구매·주식/부동산 투자·대출 신청·경매·함께구매가 제한됩니다. 과제·급여로 현금을 모으거나 보유 주식·부동산을 매각해 회복해주세요."
             : "기존 대출을 전부 상환하기 전까지 추가 대출을 신청할 수 없습니다."}
         </p>
+        <p className="sm:hidden text-xs text-slate-600 leading-snug">
+          {isNegative ? "사기·투자·대출이 막혀 있어요." : "다 갚아야 새 대출을 받을 수 있어요."}
+        </p>
       </div>
       <button
         onClick={goBanking}
-        className="flex-shrink-0 self-center px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm"
+        className="flex-shrink-0 px-3 min-h-[40px] rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold whitespace-nowrap"
       >
         은행으로 가기
       </button>

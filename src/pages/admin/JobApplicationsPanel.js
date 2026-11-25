@@ -152,7 +152,7 @@ const JobApplicationsPanel = () => {
             >
               <Briefcase size={15} style={{ color: "#6366f1" }} />
               {g.studentName}
-              <span className="text-xs font-normal" style={{ color: "#94a3b8" }}>
+              <span className="text-xs font-normal" style={{ color: "#64748b" }}>
                 {g.items.length}개
               </span>
             </div>
@@ -169,7 +169,7 @@ const JobApplicationsPanel = () => {
                            **이 허가가 권한을 준다**는 사실 하나다. */}
                     {a.appointedOnly === true && (
                       <span
-                        className="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold align-middle"
+                        className="ml-2 px-1.5 py-0.5 rounded text-xs font-bold align-middle"
                         style={{ backgroundColor: "rgba(245, 158, 11, 0.18)", color: "#b45309" }}
                       >
                         권한
@@ -204,7 +204,7 @@ const JobApplicationsPanel = () => {
                       </button>
                     </div>
                   ) : (
-                    <span className="text-xs" style={{ color: "#94a3b8" }}>
+                    <span className="text-xs" style={{ color: "#64748b" }}>
                       {filter === "approved" ? "허가함" : "거절함"}
                     </span>
                   )}

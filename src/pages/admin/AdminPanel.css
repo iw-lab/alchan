@@ -135,7 +135,7 @@
 
 .item-details p {
   margin: 0 0 10px 0;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.85rem;
   line-height: 1.5;
 }
@@ -176,7 +176,7 @@
   font-size: 1.1rem;
   line-height: 1;
   transition: all 0.2s;
-  color: #94a3b8;
+  color: #64748b;
   background-color: transparent;
 }
 
@@ -248,7 +248,7 @@
 
 .setting-description {
   margin-top: 12px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.85rem;
   line-height: 1.5;
 }

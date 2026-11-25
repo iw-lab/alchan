@@ -1,7 +1,9 @@
 // src/components/HelpButton.js
-// 플로팅 도움말 버튼 + 모달 컴포넌트 (모든 페이지에서 표시)
+// 도움말 단추(헤더 안) + 모달.
+// 예전에는 오른쪽 아래에 떠 있어서 폰·태블릿에서 구매·출금 버튼을 덮었다(2026-11-25) — 헤더로 옮겼다.
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { HelpCircle, X } from "lucide-react";
 import { getHelpContent } from "../utils/helpContent";
@@ -20,17 +22,18 @@ export default function HelpButton() {
 
   return (
     <>
-      {/* 플로팅 도움말 버튼 - 우측 하단 고정 */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 md:bottom-6 right-4 z-40 w-11 h-11 rounded-full bg-indigo-600/90 border border-indigo-400/50 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-110 transition-all duration-200 backdrop-blur-sm"
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-indigo-600 hover:bg-indigo-50 shrink-0"
         title="도움말"
+        aria-label="이 화면 도움말"
       >
-        <HelpCircle className="w-5 h-5" />
+        <HelpCircle className="w-[22px] h-[22px]" />
       </button>
 
       {/* 도움말 모달 */}
-      {isOpen && (
+      {/* 헤더는 backdrop-filter 가 있어 그 안의 fixed 는 헤더 크기에 갇힌다 → body 로 뺀다 */}
+      {isOpen && createPortal(
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-4"
           onClick={() => setIsOpen(false)}
@@ -94,7 +97,8 @@ export default function HelpButton() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

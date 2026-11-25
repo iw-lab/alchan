@@ -503,7 +503,7 @@ const PersonalBoard = () => {
     <div style={{ ...CARD, borderStyle: "dashed", borderColor: "#dbe0ea", textAlign: "center", padding: "40px 20px", boxShadow: "none" }}>
       <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>{emoji}</div>
       <div style={{ fontWeight: 700, color: "#334155", marginBottom: 4 }}>{title}</div>
-      {desc && <div style={{ color: "#94a3b8", fontSize: "0.86rem" }}>{desc}</div>}
+      {desc && <div style={{ color: "#64748b", fontSize: "0.86rem" }}>{desc}</div>}
     </div>
   );
 
@@ -522,7 +522,7 @@ const PersonalBoard = () => {
             style={{ ...WRITE_BOX, border: "1px solid #e2e8f0" }}
           />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-            <span style={{ fontSize: "0.72rem", color: "#cbd5e1" }}>{newPost.length}/2000</span>
+            <span style={{ fontSize: "0.72rem", color: "#64748b" }}>{newPost.length}/2000</span>
             <button
               onClick={handleSubmitPost}
               disabled={submitting || !newPost.trim()}
@@ -535,7 +535,7 @@ const PersonalBoard = () => {
       )}
 
       {loadingPosts ? (
-        <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>불러오는 중…</div>
+        <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>불러오는 중…</div>
       ) : posts.length === 0 ? (
         <EmptyBox emoji="🌱" title="아직 글이 없어요" desc={canWritePost ? "첫 글을 남겨보세요!" : ""} />
       ) : (
@@ -547,16 +547,16 @@ const PersonalBoard = () => {
                 <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.92rem" }}>
                   {post.isTeacher ? "선생님" : post.authorName || "이름없음"}
                 </div>
-                <div style={{ color: "#94a3b8", fontSize: "0.74rem" }}>
+                <div style={{ color: "#64748b", fontSize: "0.74rem" }}>
                   {tsToStr(post.createdAt)}
                   {post.editedAt && <span style={{ marginLeft: 6 }}>(수정됨)</span>}
                 </div>
               </div>
               {post.authorId === currentUserId && editingId !== post.id && (
-                <button onClick={() => startEdit(post)} style={{ background: "none", border: "none", color: "#818cf8", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}>수정</button>
+                <button onClick={() => startEdit(post)} style={{ background: "none", border: "none", color: "#4f46e5", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700 }}>수정</button>
               )}
               {(post.authorId === currentUserId || isTeacher) && editingId !== post.id && (
-                <button onClick={() => handleDeletePost(post)} style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: "0.78rem" }}>삭제</button>
+                <button onClick={() => handleDeletePost(post)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.78rem" }}>삭제</button>
               )}
             </div>
             {editingId === post.id ? (
@@ -605,12 +605,12 @@ const PersonalBoard = () => {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: "0.78rem", color: c.isTeacher ? "#b45309" : "#475569" }}>
                       {c.isTeacher ? "선생님" : c.authorName || "이름없음"}
-                      <span style={{ color: "#cbd5e1", fontWeight: 400, marginLeft: 6, fontSize: "0.7rem" }}>{tsToStr(c.createdAt)}</span>
+                      <span style={{ color: "#64748b", fontWeight: 400, marginLeft: 6, fontSize: "0.72rem" }}>{tsToStr(c.createdAt)}</span>
                     </div>
                     <div style={{ fontSize: "0.88rem", color: "#334155", whiteSpace: "pre-wrap", marginTop: 1 }}>{linkify(c.content)}</div>
                   </div>
                   {(c.authorId === currentUserId || isTeacher) && (
-                    <button onClick={() => handleDeleteComment(post.id, c.id)} style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: "0.8rem" }}>×</button>
+                    <button onClick={() => handleDeleteComment(post.id, c.id)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.8rem" }}>×</button>
                   )}
                 </div>
               ))}
@@ -645,7 +645,7 @@ const PersonalBoard = () => {
         <Header subtitle="학생별 담벼락을 열어 칭찬·피드백을 남기고, 공개범위를 정할 수 있어요." />
         {!viewBoard ? (
           rosterLoading ? (
-            <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}>불러오는 중…</div>
+            <div style={{ padding: 30, textAlign: "center", color: "#64748b" }}>불러오는 중…</div>
           ) : roster.length === 0 ? (
             <EmptyBox emoji="🧑‍🏫" title="아직 담벼락을 시작한 학생이 없어요" desc="학생이 담벼락에 처음 들어가면 여기에 나타납니다." />
           ) : (
@@ -660,7 +660,7 @@ const PersonalBoard = () => {
                       <Avatar name={b.ownerName} size={38} />
                       <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.98rem" }}>{plainStudentName(boardOwner(b))}</span>
                       {unread && (
-                        <span style={{ marginLeft: "auto", background: "#ef4444", color: "#fff", fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>새 글</span>
+                        <span style={{ marginLeft: "auto", background: "#ef4444", color: "#fff", fontSize: "0.72rem", fontWeight: 800, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>새 글</span>
                       )}
                     </button>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -678,7 +678,7 @@ const PersonalBoard = () => {
               <BackBtn onClick={closeBoard} />
               <Avatar name={viewBoard.ownerName} size={30} />
               <b style={{ color: "#0f172a" }}>{viewBoard.ownerName || "이름없음"}</b>
-              <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>의 담벼락</span>
+              <span style={{ color: "#64748b", fontSize: "0.85rem" }}>의 담벼락</span>
               <span style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
                 <VisBadge v={viewBoard.visibility === "class" ? "class" : "private"} />
                 <button onClick={() => handleToggleVisibility(viewBoard)} style={BTN_SOFT}>{viewBoard.visibility === "class" ? "비공개로" : "학급공개로"}</button>
@@ -710,7 +710,7 @@ const PersonalBoard = () => {
               border: "none",
               borderRadius: 9,
               background: studentTab === t.k ? "#fff" : "transparent",
-              color: studentTab === t.k ? "#4338ca" : "#818cf8",
+              color: studentTab === t.k ? "#4338ca" : "#64748b",
               fontWeight: 700,
               cursor: "pointer",
               boxShadow: studentTab === t.k ? "0 1px 3px rgba(67,56,202,0.18)" : "none",
@@ -726,7 +726,7 @@ const PersonalBoard = () => {
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <VisBadge v={viewBoard.visibility === "class" ? "class" : "private"} />
-            <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+            <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
               {viewBoard.visibility === "class" ? "친구들이 내 담벼락을 볼 수 있어요" : "선생님과 나만 볼 수 있어요"}
             </span>
           </div>
@@ -741,7 +741,7 @@ const PersonalBoard = () => {
               <BackBtn onClick={closeBoard} />
               <Avatar name={viewBoard.ownerName} size={30} />
               <b style={{ color: "#0f172a" }}>{viewBoard.ownerName || "이름없음"}</b>
-              <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>의 담벼락</span>
+              <span style={{ color: "#64748b", fontSize: "0.85rem" }}>의 담벼락</span>
               <span style={{ marginLeft: "auto" }}><VisBadge v="class" /></span>
             </div>
             {renderPosts()}

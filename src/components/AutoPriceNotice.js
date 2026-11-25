@@ -16,16 +16,21 @@ export default function AutoPriceNotice() {
   if (!uid || closed || !isClassTeacher(userDoc)) return null;
   const close = () => { try { localStorage.setItem(KEY(uid), "1"); } catch { /* 저장 못 해도 이번엔 닫는다 */ } setClosed(true); };
   return (
-    <div role="status" data-testid="auto-price-notice" style={{ margin: "12px 16px 0", padding: "12px 14px", borderRadius: 12, background: "#eef2ff", border: "1px solid #c7d2fe", color: "#1e1b4b", display: "flex", gap: 12, alignItems: "flex-start" }}>
-      <Gauge size={20} style={{ flexShrink: 0, marginTop: 2, color: "#4f46e5" }} />
-      <div style={{ flex: 1, fontSize: 14, lineHeight: 1.6 }}>
-        <b>새 기능 · 자동 물가가 기본으로 켜졌어요.</b> 매주 금요일 아침, 학생들의 대표 자산(너무 많거나 적은 위·아래 20%는 빼고)이 늘거나 준 만큼 상점 물가를 맞춰요. 한 주에 최대 ±10%만 바뀌고, 첫 금요일에는 기준만 잡아요. 학생 돈은 건드리지 않아요.
-        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => { close(); navigate("/item-shop"); }} style={{ minHeight: 40, padding: "8px 14px", borderRadius: 10, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 700, cursor: "pointer" }}>설정 보기 (아이템 상점 → 관리자 페이지)</button>
-          <button type="button" onClick={close} style={{ minHeight: 40, padding: "8px 14px", borderRadius: 10, border: "1px solid #c7d2fe", background: "#fff", color: "#3730a3", fontWeight: 700, cursor: "pointer" }}>알겠어요</button>
+    <div role="status" data-testid="auto-price-notice" className="flex gap-2 items-start rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-950 pl-3 py-2.5 sm:gap-3 sm:pl-3.5">
+      <Gauge size={20} className="shrink-0 mt-0.5 text-indigo-600" />
+      <div className="flex-1 min-w-0 text-sm leading-relaxed md:flex md:items-center md:gap-4">
+        <div className="min-w-0 md:flex-1">
+          <b>새 기능 · 자동 물가가 켜졌어요.</b>{" "}
+          <span className="hidden sm:inline">매주 금요일 아침, 학생들의 대표 자산(너무 많거나 적은 위·아래 20%는 빼고)이 늘거나 준 만큼 상점 물가를 맞춰요. 한 주에 최대 ±10%만 바뀌고, 첫 금요일에는 기준만 잡아요. </span>
+          <span className="sm:hidden">금요일마다 상점 물가를 최대 ±10% 맞춰요. </span>
+          학생 돈은 건드리지 않아요.
+        </div>
+        <div className="mt-2 flex gap-2 md:mt-0 md:shrink-0">
+          <button type="button" onClick={() => { close(); navigate("/item-shop"); }} title="아이템 상점 → 관리자 페이지" className="min-h-[40px] px-3.5 rounded-lg bg-indigo-600 text-white font-bold whitespace-nowrap">설정 보기</button>
+          <button type="button" onClick={close} className="min-h-[40px] px-3.5 rounded-lg border border-indigo-200 bg-white text-indigo-800 font-bold whitespace-nowrap">알겠어요</button>
         </div>
       </div>
-      <button type="button" aria-label="안내 닫기" onClick={close} style={{ minWidth: 40, minHeight: 40, border: "none", background: "transparent", cursor: "pointer", color: "#6366f1" }}><X size={18} /></button>
+      <button type="button" aria-label="안내 닫기" onClick={close} className="min-w-[40px] min-h-[40px] -mt-1.5 flex items-center justify-center text-indigo-500 shrink-0"><X size={18} /></button>
     </div>
   );
 }

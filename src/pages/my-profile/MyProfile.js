@@ -248,7 +248,7 @@ export default function MyProfile() {
 
  return (
  <div className="w-full min-h-full">
- <div className="w-full max-w-4xl mx-auto px-4 md:px-6 py-6">
+ <div className="w-full max-w-4xl mx-auto pb-6">
  {/* 페이지 제목 */}
  <h1 className="text-lg font-bold text-slate-800 mb-4 px-1">
  내 프로필
@@ -298,12 +298,12 @@ export default function MyProfile() {
  style={{
  color:
  bestAchievement.rarity === "legendary"
- ? "#f59e0b"
+ ? "#b45309"
  : bestAchievement.rarity === "epic"
- ? "#a78bfa"
+ ? "#7c3aed"
  : bestAchievement.rarity === "rare"
- ? "#3b82f6"
- : "#9ca3af",
+ ? "#2563eb"
+ : "#475569",
  }}
  >
  {bestAchievement.name}
@@ -376,14 +376,14 @@ export default function MyProfile() {
  legendary: {
  bg: "#f59e0b20",
  border: "#f59e0b",
- text: "#f59e0b",
+ text: "#b45309",
  },
- epic: { bg: "#a78bfa20", border: "#a78bfa", text: "#a78bfa" },
- rare: { bg: "#3b82f620", border: "#3b82f6", text: "#3b82f6" },
+ epic: { bg: "#a78bfa20", border: "#a78bfa", text: "#7c3aed" },
+ rare: { bg: "#3b82f620", border: "#3b82f6", text: "#2563eb" },
  common: {
  bg: "#6b728020",
  border: "#6b7280",
- text: "#9ca3af",
+ text: "#475569",
  },
  };
  const colors =
@@ -405,7 +405,7 @@ export default function MyProfile() {
  >
  {achievement.name}
  </div>
- <div className="text-[10px] text-gray-500">
+ <div className="text-[11.5px] text-gray-500">
  {achievement.description}
  </div>
  </div>
@@ -441,7 +441,7 @@ export default function MyProfile() {
  setShowNicknameModal(true);
  setError("");
  }}
- className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+ className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <User size={20} className="text-[#a78bfa]" />
  <span className="text-slate-800 text-sm flex-1 text-left">
@@ -456,7 +456,7 @@ export default function MyProfile() {
  setShowPasswordModal(true);
  setError("");
  }}
- className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+ className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <Key size={20} className="text-[#a78bfa]" />
  <span className="text-slate-800 text-sm flex-1 text-left">
@@ -472,7 +472,7 @@ export default function MyProfile() {
  setShowClassCodeModal(true);
  setError("");
  }}
- className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
+ className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer transition-all duration-200 hover:border-[#a78bfa]/50"
  >
  <Building2 size={20} className="text-[#a78bfa]" />
  <span className="text-slate-800 text-sm flex-1 text-left">
@@ -485,7 +485,7 @@ export default function MyProfile() {
  {/* 로그아웃 */}
  <button
  onClick={logout}
- className="flex items-center gap-3 p-4 bg-gray-100 rounded-xl border border-gray-700 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
+ className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer transition-all duration-200 hover:border-gray-500 mt-2"
  >
  <LogOut size={20} className="text-slate-500" />
  <span className="text-slate-800 text-sm flex-1 text-left">
@@ -759,7 +759,7 @@ export default function MyProfile() {
  className={`flex-1 p-3 border-none rounded-[10px] text-slate-800 text-sm font-semibold cursor-pointer disabled:cursor-not-allowed ${
  deleteConfirmText === "계정삭제"
  ? "bg-red-500 opacity-100"
- : "bg-gray-700 opacity-50"
+ : "bg-slate-300 opacity-60"
  } ${isLoading ? "opacity-50" : ""}`}
  >
  {isLoading ? "삭제 중..." : "삭제"}

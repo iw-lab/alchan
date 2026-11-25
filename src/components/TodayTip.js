@@ -38,11 +38,11 @@ export default function TodayTip({ userId, userDoc }) {
     try { localStorage.setItem("alchan_tip_hidden", todayKey()); } catch { /* 저장소가 막혀도 이번 화면에서는 닫힌다 */ }
   };
   return (
-    <div className="glass-card rounded-2xl px-3 py-2.5 mb-2 flex items-center gap-2 border border-amber-200 bg-amber-50/70">
+    <div className="glass-card rounded-2xl px-3 py-2 mb-2 flex items-center gap-2 border border-amber-200 bg-amber-50/70">
       <span aria-hidden="true">💡</span>
       <p className="flex-1 text-sm text-slate-800"><span className="font-bold">오늘의 제안</span> · {tip.text}</p>
-      <Link to={tip.to} className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">{tip.label}</Link>
-      <button type="button" onClick={close} aria-label="오늘의 제안 닫기" className="shrink-0 px-1.5 text-slate-600 text-lg leading-none">×</button>
+      <Link to={tip.to} className="shrink-0 inline-flex items-center min-h-[40px] rounded-lg bg-indigo-600 px-3 text-xs font-bold text-white whitespace-nowrap">{tip.label}</Link>
+      <button type="button" onClick={close} aria-label="오늘의 제안 닫기" className="shrink-0 w-9 h-10 text-slate-600 text-lg leading-none">×</button>
     </div>
   );
 }

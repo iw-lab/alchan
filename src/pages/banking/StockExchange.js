@@ -6,7 +6,8 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import "./StockExchange.css";
+import pageCss from "./StockExchange.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebase";
 // 🔥 자동 상장/폐지: Firebase Functions에서 처리 (10분마다)
@@ -535,7 +536,7 @@ const AdminPanel = React.memo(
                     <span className="stock-name">
                       {getProductIcon(stock.productType)} {stock.name}
                       {stock.isRealStock && (
-                        <span className="ml-1.5 bg-emerald-500 text-white text-[0.65rem] px-1 py-px rounded-sm font-bold">
+                        <span className="ml-1.5 bg-emerald-600 text-white text-[0.72rem] px-1 py-px rounded-sm font-bold">
                           실시간
                         </span>
                       )}
@@ -894,6 +895,7 @@ const StockChartModal = ({ stock, onClose, formatCurrency }) => {
 
 // === 메인 컴포넌트 ===
 const StockExchange = () => {
+  usePageCss(pageCss);
   const {
     user,
     userDoc,
@@ -2079,7 +2081,7 @@ const StockExchange = () => {
         <header className="stock-header">
           <div className="stock-header-content">
             <div className="logo-title">
-              <BarChart3 size={32} color="white" />
+              <BarChart3 size={22} />
               <h1>투자 거래소</h1>
             </div>
           </div>
@@ -2130,7 +2132,7 @@ const StockExchange = () => {
       <header className="stock-header">
         <div className="stock-header-content">
           <div className="logo-title">
-            <BarChart3 size={32} color="white" />
+            <BarChart3 size={22} />
             <h1>투자 거래소 ({classCode})</h1>
           </div>
           <div className={`market-status ${marketOpen ? "open" : "closed"}`}>
@@ -2180,7 +2182,7 @@ const StockExchange = () => {
                   <p className="value">
                     {formatCurrency(portfolioStats.totalValue)}
                   </p>
-                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, wordBreak: "keep-all" }}>
                     보유 주식·ETF·국채 현재가
                   </p>
                 </div>
@@ -2194,7 +2196,7 @@ const StockExchange = () => {
                   <p className="value">
                     {formatCurrency(totalNetAssets)}
                   </p>
-                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, wordBreak: "keep-all" }}>
                     현금+파킹+예금+적금+부동산+주식−대출
                   </p>
                 </div>
@@ -2210,7 +2212,7 @@ const StockExchange = () => {
                   >
                     {formatCurrency(portfolioStats.totalProfit)}
                   </p>
-                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, wordBreak: "keep-all" }}>
                     투자 평가액 − 매수 원가
                   </p>
                 </div>
@@ -2218,9 +2220,9 @@ const StockExchange = () => {
                   className={`asset-card-icon ${portfolioStats.totalProfit >= 0 ? "red" : "blue"}`}
                 >
                   {portfolioStats.totalProfit >= 0 ? (
-                    <TrendingUp size={24} color="white" />
+                    <TrendingUp size={20} />
                   ) : (
-                    <TrendingDown size={24} color="white" />
+                    <TrendingDown size={20} />
                   )}
                 </div>
               </div>
@@ -2234,7 +2236,7 @@ const StockExchange = () => {
                   >
                     {formatPercent(portfolioStats.profitPercent)}
                   </p>
-                  <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                  <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, wordBreak: "keep-all" }}>
                     평가손익 ÷ 매수 원가
                   </p>
                 </div>
@@ -2242,9 +2244,9 @@ const StockExchange = () => {
                   className={`asset-card-icon ${portfolioStats.profitPercent >= 0 ? "red" : "blue"}`}
                 >
                   {portfolioStats.profitPercent >= 0 ? (
-                    <TrendingUp size={24} color="white" />
+                    <TrendingUp size={20} />
                   ) : (
-                    <TrendingDown size={24} color="white" />
+                    <TrendingDown size={20} />
                   )}
                 </div>
               </div>
@@ -2259,9 +2261,9 @@ const StockExchange = () => {
               <button
                 onClick={handleManualRefresh}
                 disabled={isFetching}
-                className="btn btn-secondary px-2 py-1 text-xs"
+                className="btn btn-secondary"
               >
-                <RefreshCw size={12} />
+                <RefreshCw size={14} />
                 {isFetching ? "갱신중..." : "새로고침"}
               </button>
               {lastUpdated && (
@@ -2326,7 +2328,7 @@ const StockExchange = () => {
                       </h3>
                       <div className="stock-badges">
                         {isRealStock && (
-                          <span className="stock-badge real bg-gradient-to-br from-emerald-500 to-emerald-600 text-slate-800 text-slate-800 font-bold text-[0.7rem] px-1.5 py-0.5 rounded mr-1">
+                          <span className="stock-badge real bg-emerald-700 text-white font-bold text-xs px-1.5 py-0.5 rounded mr-1">
                             실시간
                           </span>
                         )}
@@ -2355,15 +2357,15 @@ const StockExchange = () => {
                         <span>{formatPercent(priceChange)}</span>
                       </div>
                       {isRealStock && (
-                        <div className="text-[0.7rem] text-gray-500 mt-0.5">
+                        <div className="text-xs text-gray-600 mt-0.5">
                           {getMarketStateLabel(stock) || "장마감"}
                         </div>
                       )}
                       {/* 실물가 그대로 미러링 — gap/×N 배지 제거 (가격=실물가) */}
                       {(stock.dividendYieldAnnual || 0) > 0 && (
-                        <div className="text-[0.7rem] text-emerald-600 mt-0.5 font-semibold leading-tight">
+                        <div className="text-xs text-emerald-700 mt-0.5 font-semibold leading-tight">
                           💎 배당 {Number(stock.dividendYieldAnnual).toFixed(1)}%/년
-                          <span className="ml-1 text-[0.6rem] text-gray-400 font-normal">
+                          <span className="ml-1 text-gray-600 font-normal">
                             (월{(Number(stock.dividendYieldAnnual) / 12).toFixed(2)}%)
                           </span>
                         </div>

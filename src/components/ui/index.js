@@ -21,8 +21,8 @@ const buttonVariants = {
   outline: "border border-indigo-300 text-indigo-600 hover:bg-indigo-50 bg-white",
   ghost: "text-slate-600 hover:bg-slate-100",
   danger: "bg-red-500 hover:bg-red-600 text-white shadow-sm",
-  success: "bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm",
-  warning: "bg-amber-500 hover:bg-amber-600 text-white shadow-sm",
+  success: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+  warning: "bg-amber-700 hover:bg-amber-800 text-white shadow-sm",
 };
 
 const buttonSizes = {
@@ -117,30 +117,6 @@ export const Card = forwardRef(
 );
 
 Card.displayName = "Card";
-
-export const CardHeader = ({ children, className = "", ...props }) => (
-  <div
-    className={`flex items-center justify-between mb-4 ${className}`}
-    {...props}
-  >
-    {children}
-  </div>
-);
-
-export const CardTitle = ({ children, className = "", ...props }) => (
-  <h3
-    className={`text-lg font-bold text-slate-800 ${className}`}
-    {...props}
-  >
-    {children}
-  </h3>
-);
-
-export const CardContent = ({ children, className = "", ...props }) => (
-  <div className={`text-slate-700 ${className}`} {...props}>
-    {children}
-  </div>
-);
 
 // ============================================
 // 입력 컴포넌트
@@ -278,7 +254,7 @@ const Textarea = forwardRef(
     return (
       <div className={`space-y-1.5 ${containerClassName}`}>
         {label && (
-          <label className="block text-sm font-medium text-slate-600 dark:text-slate-300">
+          <label className="block text-sm font-medium text-slate-600">
             {label}
           </label>
         )}
@@ -462,44 +438,6 @@ export const Alert = ({
         </button>
       )}
     </div>
-  );
-};
-
-// ============================================
-// 뱃지 컴포넌트
-// ============================================
-const badgeVariants = {
-  primary: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-  secondary: "bg-slate-100 text-slate-700 border border-slate-200",
-  success: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  warning: "bg-amber-50 text-amber-700 border border-amber-200",
-  danger: "bg-red-50 text-red-700 border border-red-200",
-  info: "bg-blue-50 text-blue-700 border border-blue-200",
-};
-
-export const Badge = ({
-  children,
-  variant = "primary",
-  size = "md",
-  className = "",
-}) => {
-  const sizeClasses = {
-    sm: "px-2 py-0.5 text-xs",
-    md: "px-2.5 py-1 text-xs",
-    lg: "px-3 py-1.5 text-sm",
-  };
-
-  return (
-    <span
-      className={`
-      inline-flex items-center font-medium rounded-full
-      ${badgeVariants[variant]}
-      ${sizeClasses[size]}
-      ${className}
-    `}
-    >
-      {children}
-    </span>
   );
 };
 

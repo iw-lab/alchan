@@ -32,6 +32,8 @@ import {
 import { formatKoreanNumber, getCurrencyUnit } from "../utils/numberFormatter";
 import { toast } from "../utils/toast";
 
+const HEADER_GLASS = { background: 'rgba(255,255,255,0.86)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(199,210,254,0.6)' };
+
 // 금액 포맷 - numberFormatter.js 사용 (화폐 단위 포함)
 const formatMoney = (amount) => formatKoreanNumber(amount, getCurrencyUnit());
 
@@ -67,7 +69,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 };
 
 const AlchanHeader = memo(
-  ({ toggleSidebar, isSidebarCollapsed, onToggleSidebarCollapse }) => {
+  ({ toggleSidebar, isSidebarCollapsed, onToggleSidebarCollapse, helpButton = null }) => {
     const navigate = useNavigate();
     const {
       user,
@@ -335,228 +337,141 @@ const AlchanHeader = memo(
       }
     };
 
+    // 현금·쿠폰 — 두 헤더가 같은 알약을 쓴다(금액은 줄바꿈 없이, 좁으면 말줄임)
+    const cashPill = (extra) => (
+      <div className={`flex items-center gap-2 pl-3 pr-1 h-11 rounded-xl border border-emerald-200 bg-emerald-50 min-w-0 ${extra}`}>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-xs font-semibold text-emerald-800 whitespace-nowrap">
+            {userDoc?.isAdmin ? "현금(국고)" : "현금"}
+          </span>
+          <span className="block text-sm font-bold text-slate-900 truncate tabular-nums" title={formatMoney(userDoc?.cash || 0)}>
+            {formatMoney(userDoc?.cash || 0)}
+          </span>
+        </span>
+        {!userDoc?.isAdmin ? (
+          <button
+            onClick={() => navigate("/my-assets?transfer=true")}
+            className="w-9 h-9 !min-w-0 !min-h-0 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0"
+            title="송금"
+            aria-label="송금하기"
+          >
+            <Send size={15} />
+          </button>
+        ) : <span className="w-2 shrink-0" />}
+      </div>
+    );
+    const couponPill = (extra) => (
+      <div className={`flex items-center px-3 h-11 rounded-xl border border-rose-200 bg-rose-50 shrink-0 ${extra}`}>
+        <span className="leading-tight whitespace-nowrap">
+          <span className="flex items-center gap-1 text-xs font-semibold text-rose-800"><Gift size={12} />쿠폰</span>
+          <span className="block text-sm font-bold text-slate-900 tabular-nums">{userDoc?.coupons || 0}개</span>
+        </span>
+      </div>
+    );
+
     return (
       <>
-        {/* 모바일 헤더 */}
-        <header className="md:hidden sticky top-0 z-30" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(199,210,254,0.5)' }}>
-          {/* 상단 헤더 바 */}
-          <div className="h-14 px-3 flex items-center justify-between">
-            {/* 왼쪽: 메뉴 버튼 + 앱 이름 */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleSidebar}
-                aria-label="메뉴 열기"
-                className="p-2.5 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <LayoutDashboard size={22} className="text-slate-800" />
-              </button>
-              <h2 className="text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
-                오늘도 <span style={{ color: 'var(--accent)' }}>알찬</span> 하루!
-              </h2>
+        {/* 폰·세로 태블릿 헤더 (1024px 미만)
+            · 폰: 1줄(메뉴·이름·레벨·도움말·아바타) + 2줄(현금·쿠폰)
+            · 세로 태블릿(768~1023): 현금·쿠폰까지 한 줄 */}
+        <header className="lg:hidden sticky top-0 z-30" style={HEADER_GLASS}>
+          <div className="h-14 px-3 flex items-center gap-1.5 min-w-0">
+            <button
+              onClick={toggleSidebar}
+              aria-label="메뉴 열기"
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 hover:bg-slate-100"
+            >
+              <LayoutDashboard size={22} className="text-slate-800" />
+            </button>
+            <h2 className="flex-1 min-w-0 truncate text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>
+              오늘도 <span style={{ color: 'var(--accent)' }}>알찬</span> 하루!
+            </h2>
+
+            <div className="hidden md:flex items-center gap-2 shrink-0">
+              {cashPill("")}
+              {couponPill("")}
             </div>
 
-            {/* 오른쪽: 레벨/업적 + 아바타 */}
-            <div className="flex items-center gap-2">
-              {/* 레벨 & 업적 배지 */}
-              <div
-                onClick={() => navigate("/my-profile")}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg cursor-pointer bg-[#a78bfa]/20"
-              >
-                <span className="text-sm">{levelInfo?.icon || "🌟"}</span>
-                <div className="flex flex-col leading-none">
-                  <span className="text-[9px] text-slate-500">LEVEL</span>
-                  <span
-                    className="text-xs font-bold"
-                    style={{ color: levelInfo?.color || "#a78bfa" }}
-                  >
-                    {levelInfo?.level || 1}
-                  </span>
-                </div>
-                {bestAchievement && (
-                  <span className="text-sm ml-0.5">{bestAchievement.icon}</span>
-                )}
-              </div>
-
-              {/* 아바타 - 모바일에서 프로필로 이동 */}
-              <div
-                onClick={() => navigate("/my-profile")}
-                className="cursor-pointer"
-              >
-                <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
-              </div>
-            </div>
+            <button
+              onClick={() => navigate("/my-profile")}
+              aria-label={`내 레벨 ${levelInfo?.level || 1}`}
+              className="h-11 px-2 rounded-xl flex items-center gap-1 shrink-0 text-sm font-bold bg-violet-100 text-violet-800"
+            >
+              <span aria-hidden="true">{levelInfo?.icon || "🌟"}</span>
+              Lv.{levelInfo?.level || 1}
+              {bestAchievement && <span aria-hidden="true">{bestAchievement.icon}</span>}
+            </button>
+            {helpButton}
+            <button
+              onClick={() => navigate("/my-profile")}
+              aria-label="내 프로필"
+              className="w-11 h-11 shrink-0 flex items-center justify-center"
+            >
+              <Avatar shopOverlays={avatarOverlays} size={40} showBorder={true} />
+            </button>
           </div>
 
-          {/* 모바일 자산 정보 바 */}
-          <div className="px-4 pb-3 flex gap-3">
-            {/* 현금 */}
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-emerald-900/10 rounded-xl border border-emerald-500/20">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm flex-shrink-0">
-                <span className="font-bold text-xs">₩</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider leading-none">
-                  {userDoc?.isAdmin ? "현금(국고)" : "현금"}
-                </p>
-                <p className="text-sm font-bold text-slate-800 truncate">
-                  {formatMoney(userDoc?.cash || 0)}
-                </p>
-              </div>
-              {!userDoc?.isAdmin && (
-                <button
-                  onClick={() => navigate("/my-assets?transfer=true")}
-                  className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
-                  title="송금"
-                >
-                  <Send size={12} />
-                </button>
-              )}
-            </div>
-
-            {/* 쿠폰 */}
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-rose-900/10 rounded-xl border border-rose-500/20">
-              <div className="w-8 h-8 rounded-lg bg-rose-600 text-slate-800 flex items-center justify-center shadow-sm flex-shrink-0">
-                <Gift size={14} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[9px] text-rose-400 font-bold uppercase tracking-wider leading-none">
-                  쿠폰
-                </p>
-                <p className="text-sm font-bold text-slate-800 truncate">
-                  {userDoc?.coupons || 0}개
-                </p>
-              </div>
-            </div>
+          <div className="md:hidden px-3 pb-2 flex gap-2 min-w-0">
+            {cashPill("flex-1")}
+            {couponPill("")}
           </div>
         </header>
         {weakPwBar}
 
-        {/* PC 헤더 */}
-        <header className="hidden md:flex items-center justify-between z-10 h-16 min-h-16 max-h-16 px-4 sticky top-0" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', borderBottom: '1px solid rgba(199,210,254,0.5)' }}>
-          <div className="flex items-center gap-3">
-            {/* 사이드바 토글 버튼 */}
+        {/* 가로 태블릿·PC 헤더 (1024px 이상) — 1024~1279 에서는 인사말·아이콘 상자를 접는다 */}
+        <header className="hidden lg:flex items-center justify-between gap-3 z-10 h-16 min-h-16 max-h-16 px-4 sticky top-0 min-w-0" style={HEADER_GLASS}>
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onToggleSidebarCollapse}
               aria-label={isSidebarCollapsed ? "메뉴 펼치기" : "메뉴 접기"}
-              className="p-2 rounded-lg cursor-pointer flex items-center justify-center"
+              className="w-11 h-11 rounded-lg cursor-pointer flex items-center justify-center shrink-0"
               style={{ border: '1px solid var(--border-primary)', background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
             >
-              {isSidebarCollapsed ? (
-                <ChevronRight size={16} />
-              ) : (
-                <ChevronLeft size={16} />
-              )}
+              {isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[15px] font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
-                오늘도 <span className="font-jua" style={{ color: 'var(--accent)' }}>알찬</span> 하루! 👋
-              </span>
-              <span className="text-[13px] text-slate-400 whitespace-nowrap">
-                {displayName}님 환영합니다
-              </span>
-            </div>
+            <span className="hidden xl:inline text-[15px] font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+              오늘도 <span className="font-jua" style={{ color: 'var(--accent)' }}>알찬</span> 하루! 👋
+            </span>
+            <span className="hidden 2xl:inline text-[13px] text-slate-500 whitespace-nowrap">
+              {displayName}님 환영합니다
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* 현금 위젯 */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-900/10 rounded-lg text-emerald-400">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-                ₩
-              </div>
-              <div>
-                <div className="text-[10px] font-semibold opacity-70 leading-tight">
-                  {userDoc?.isAdmin ? "현금(국고)" : "현금"}
-                </div>
-                <div className="text-[13px] font-bold whitespace-nowrap leading-tight">
-                  {formatMoney(userDoc?.cash || 0)}
-                </div>
-              </div>
-              {!userDoc?.isAdmin && (
-                <button
-                  onClick={() => navigate("/my-assets?transfer=true")}
-                  className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center hover:bg-emerald-500/30 transition-colors"
-                  title="송금"
-                >
-                  <Send size={13} />
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-2 xl:gap-3 min-w-0">
+            {cashPill("")}
+            {couponPill("")}
 
-            {/* 쿠폰 위젯 */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-900/10 rounded-lg text-rose-400">
-              <div className="w-8 h-8 rounded-lg bg-rose-600 text-slate-800 flex items-center justify-center">
-                <Gift size={14} />
-              </div>
-              <div>
-                <div className="text-[10px] font-semibold opacity-70 leading-tight">
-                  쿠폰
-                </div>
-                <div className="text-[13px] font-bold whitespace-nowrap leading-tight">
-                  {userDoc?.coupons || 0}개
-                </div>
-              </div>
-            </div>
-
-            {/* 레벨 & 업적 위젯 */}
-            <div
+            {/* 레벨 & 업적 */}
+            <button
               onClick={() => navigate("/my-profile")}
-              className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 rounded-lg cursor-pointer transition-all duration-200 hover:bg-violet-500/20"
+              aria-label={`내 레벨 ${levelInfo?.level || 1} ${levelInfo?.title || ""}`}
+              className="flex items-center gap-2 px-3 h-11 rounded-xl cursor-pointer bg-violet-100 hover:bg-violet-200 shrink-0"
             >
-              <div
-                className="flex items-center justify-center w-7 h-7 rounded-md text-sm"
-                style={{ background: levelInfo?.color || "#a78bfa" }}
-              >
-                {levelInfo?.icon || "🌟"}
-              </div>
-              <div>
-                <div
-                  className="text-[10px] font-semibold leading-tight"
-                  style={{ color: levelInfo?.color || "#a78bfa" }}
-                >
-                  Lv.{levelInfo?.level || 1}
-                </div>
-                <div className="text-[11px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
-                  {levelInfo?.title || "새싹"}
-                </div>
-              </div>
-              {bestAchievement && (
-                <div
-                  className="flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded"
-                  style={{
-                    background:
-                      bestAchievement.rarity === "legendary"
-                        ? "rgba(245, 158, 11, 0.2)"
-                        : bestAchievement.rarity === "epic"
-                          ? "rgba(167, 139, 250, 0.2)"
-                          : bestAchievement.rarity === "rare"
-                            ? "rgba(59, 130, 246, 0.2)"
-                            : "rgba(107, 114, 128, 0.2)",
-                  }}
-                >
-                  <span className="text-xs">{bestAchievement.icon}</span>
-                </div>
-              )}
-            </div>
+              <span aria-hidden="true" className="text-base">{levelInfo?.icon || "🌟"}</span>
+              <span className="text-left leading-tight whitespace-nowrap">
+                <span className="block text-[13px] font-bold text-violet-800">Lv.{levelInfo?.level || 1}</span>
+                <span className="hidden xl:block text-xs font-semibold text-slate-700">{levelInfo?.title || "새싹"}</span>
+              </span>
+              {bestAchievement && <span aria-hidden="true">{bestAchievement.icon}</span>}
+            </button>
+
+            {helpButton}
 
             {/* 사용자 메뉴 */}
-            <div className="relative" ref={userMenuRef}>
+            <div className="relative min-w-0" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 pl-3 border-none bg-transparent cursor-pointer"
+                className="flex items-center gap-1.5 pl-1 h-11 border-none bg-transparent cursor-pointer max-w-[190px]"
               >
-                <div className="text-right">
-                  <div className="text-[13px] font-bold whitespace-nowrap leading-tight" style={{ color: 'var(--text-primary)' }}>
+                <span className="text-right min-w-0">
+                  <span className="block text-sm font-bold truncate leading-tight" style={{ color: 'var(--text-primary)' }}>
                     {displayName}
-                  </div>
-                  <div className="text-[11px] text-indigo-400 font-medium whitespace-nowrap leading-tight">
+                  </span>
+                  <span className="block text-xs text-indigo-600 font-medium whitespace-nowrap leading-tight">
                     {userRole}
-                  </div>
-                </div>
-                {/* 흉상 Avatar 제거 - AvatarHeaderWidget로 대체 */}
-                <ChevronDown
-                  size={16}
-                  className="text-slate-400"
-                />
+                  </span>
+                </span>
+                <ChevronDown size={16} className="text-slate-500 shrink-0" />
               </button>
 
               {/* 드롭다운 메뉴 */}
@@ -576,22 +491,6 @@ const AlchanHeader = memo(
                     </p>
                   </div>
 
-                  {/* 모바일: 자산 정보 */}
-                  <div className="md:hidden px-5 py-4" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)' }}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-slate-400">{userDoc?.isAdmin ? "현금(국고)" : "현금"}</span>
-                      <span className="font-bold text-emerald-400">
-                        {formatMoney(userDoc?.cash || 0)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-400">쿠폰</span>
-                      <span className="font-bold text-rose-400">
-                        {userDoc?.coupons || 0}개
-                      </span>
-                    </div>
-                  </div>
-
                   <div className="p-2">
                     {/* 내 프로필 - 첫 번째로 배치 */}
                     <button
@@ -607,7 +506,7 @@ const AlchanHeader = memo(
                       </span>
                     </button>
 
-                    <div className="h-px bg-slate-700 my-2" />
+                    <div className="h-px bg-slate-200 my-2" />
 
                     <button
                       onClick={handleChangeNickname}
@@ -650,10 +549,10 @@ const AlchanHeader = memo(
                         (code-reviewer: 전역 헤더의 이 버튼이 MyProfile과 별개 삭제경로였고 admin-gate 누락돼 있었음.) */}
                     {(userDoc?.isAdmin || userDoc?.isTeacher || userDoc?.isSuperAdmin) && (
                       <>
-                        <div className="h-px bg-slate-600 my-2" />
+                        <div className="h-px bg-slate-200 my-2" />
                         <button
                           onClick={handleDeleteAccount}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                         >
                           <Trash2 size={18} />
                           계정 삭제
@@ -661,7 +560,7 @@ const AlchanHeader = memo(
                       </>
                     )}
 
-                    <div className="h-px bg-slate-600 my-2" />
+                    <div className="h-px bg-slate-200 my-2" />
 
                     <button
                       onClick={handleLogout}
@@ -700,14 +599,14 @@ const AlchanHeader = memo(
               />
             </div>
             {nicknameError && (
-              <p className="text-sm text-red-400 bg-red-900/10 p-3 rounded-xl">
+              <p className="text-sm text-red-700 bg-red-50 p-3 rounded-xl">
                 {nicknameError}
               </p>
             )}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white transition-colors"
+                className="flex-1 py-3 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 취소
               </button>
@@ -765,19 +664,19 @@ const AlchanHeader = memo(
               />
             </div>
             {passwordError && (
-              <p className="text-sm text-red-400 bg-red-900/10 p-3 rounded-xl">
+              <p className="text-sm text-red-700 bg-red-50 p-3 rounded-xl">
                 {passwordError}
               </p>
             )}
             {passwordSuccess && (
-              <p className="text-sm text-green-400 bg-green-900/10 p-3 rounded-xl">
+              <p className="text-sm text-green-800 bg-green-50 p-3 rounded-xl">
                 비밀번호가 변경되었습니다!
               </p>
             )}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white transition-colors"
+                className="flex-1 py-3 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 취소
               </button>
@@ -827,19 +726,19 @@ const AlchanHeader = memo(
               </p>
             </div>
             {classCodeError && (
-              <p className="text-sm text-red-400 bg-red-900/10 p-3 rounded-xl">
+              <p className="text-sm text-red-700 bg-red-50 p-3 rounded-xl">
                 {classCodeError}
               </p>
             )}
             {classCodeSuccess && (
-              <p className="text-sm text-green-400 bg-green-900/10 p-3 rounded-xl">
+              <p className="text-sm text-green-800 bg-green-50 p-3 rounded-xl">
                 학급 코드가 저장되었습니다!
               </p>
             )}
             <div className="flex gap-3 pt-2">
               <button
                 onClick={closeModal}
-                className="flex-1 py-3 border border-slate-700 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white transition-colors"
+                className="flex-1 py-3 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 취소
               </button>

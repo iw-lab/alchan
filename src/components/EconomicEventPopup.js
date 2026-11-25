@@ -8,6 +8,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { useActiveEconomicEvent } from "../hooks/useActiveEconomicEvent";
 import { X, TrendingUp, TrendingDown, Zap } from "lucide-react";
 
+// 재난 보험이 대신 낸 돈이 있으면 한 마디 덧붙인다(보험 든 학생 전체 합).
+const insuranceNote = (result) =>
+  result?.insurancePayout > 0 ? ` (재난 보험이 대신 낸 돈 ${result.insurancePayout.toLocaleString()}${getCurrencyUnit()})` : "";
+
 // 이벤트 타입별 상세 설명
 const EVENT_DETAILS = {
   REAL_ESTATE_PRICE_CHANGE: (params, result) => {
@@ -35,7 +39,7 @@ const EVENT_DETAILS = {
   TAX_EXTRA: (params, result) => ({
     isPositive: false,
     impact: `모든 시민에게 추가 세금이 부과되었습니다. (순자산의 ${((params?.taxRate || 0) * 100).toFixed(0)}%)`,
-    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.`,
+    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.${insuranceNote(result)}`,
   }),
   CASH_BONUS: (params, result) => ({
     isPositive: true,
@@ -45,7 +49,7 @@ const EVENT_DETAILS = {
   CASH_PENALTY: (params, result) => ({
     isPositive: false,
     impact: `경제 위기 — 순자산의 ${((params?.penaltyRate || 0) * 100).toFixed(0)}%만큼 현금이 차감되었습니다 (현금 잔고 한도 내).`,
-    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.`,
+    tip: `총 ${result?.collectedAmount?.toLocaleString() || 0}${getCurrencyUnit()}이 국고로 이전되었습니다.${insuranceNote(result)}`,
   }),
   STORE_PRICE_CHANGE: (params, result) => {
     const mult = params?.multiplier || 1;
@@ -212,12 +216,12 @@ export default function EconomicEventPopup() {
                 ) : (
                   <TrendingDown className="w-3.5 h-3.5" style={{ color: accent }} />
                 )}
-                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accent }}>
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accent }}>
                   경제 이벤트
                 </span>
               </div>
 
-              <h2 className="text-lg font-bold text-slate-800 leading-tight font-jua">
+              <h2 className="text-lg font-bold text-slate-800 leading-tight">
                 {event.title}
               </h2>
 
@@ -264,7 +268,7 @@ export default function EconomicEventPopup() {
           <div className="px-5 pb-5">
             <button
               onClick={handleClose}
-              className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-white font-jua"
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] text-white"
               style={{ background: accent }}
             >
               확인했어요 ✓

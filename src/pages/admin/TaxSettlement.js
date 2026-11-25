@@ -239,7 +239,7 @@ export default function TaxSettlement() {
           <div className="flex flex-wrap items-center gap-2">
             <b className="text-slate-800">정산표 양식</b>
             <a href="/forms/tax-sheet.hwp" download="세금정산표.hwp" className="rounded-md border border-indigo-200 bg-white px-3 py-1.5 font-semibold text-indigo-700 hover:bg-indigo-50" data-tax-form-hwp>한글 파일 받기(.hwp)</a>
-            <a href="/forms/tax-sheet.hwpx" download="세금정산표.hwpx" className="text-xs text-slate-500 underline">.hwpx</a>
+            <a href="/forms/tax-sheet.hwpx" download="세금정산표.hwpx" className="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">.hwpx</a>
             <span className="text-xs text-slate-500">가로 A4 한 장 · 25명 · 이름 칸은 비어 있어요(반 명단을 넣어 인쇄)</span>
           </div>
           <details className="mt-2">
@@ -326,7 +326,7 @@ export default function TaxSettlement() {
                         <div className="mt-2 grid grid-cols-3 gap-2">
                           {[["벌금", "fine", "원"], ["상금", "prize", "원"], ["쿠폰", "coupon", "개"]].map(([name, k, unit]) => (
                             <div key={k} className="min-w-0">
-                              <div className="mb-0.5 text-[11px] font-semibold text-slate-500">{name}</div>
+                              <div className="mb-0.5 text-xs font-semibold text-slate-500">{name}</div>
                               <MoneyInput wide label={`${l.row.no ?? "?"}번 ${name}`} unit={unit} value={l[k]} onChange={(v) => setLine(l.key, { [k]: v })} />
                             </div>
                           ))}

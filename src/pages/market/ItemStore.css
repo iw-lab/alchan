@@ -35,14 +35,6 @@
 }
 
 /* --- Cyberpunk 기본 설정 및 레이아웃 --- */
-body {
-  margin: 0;
-  font-family: "Rajdhani", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
 
 .page-container {
   padding: 12px 20px;
@@ -105,7 +97,7 @@ body {
 /* --- 아이템 그리드: 한 줄 배치 가능한 너비 보장 --- */
 .shop-content .items-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)) !important;
   gap: 14px !important;
 }
 
@@ -214,7 +206,7 @@ body {
   align-items: center;
   padding: 0;
   border-radius: 0;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
   white-space: nowrap;
   border: none;
@@ -730,19 +722,6 @@ body {
     flex-direction: row;
   }
 
-  .item-actions-primary {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .item-price {
-    margin-left: 0;
-    padding-left: 0;
-    margin-bottom: 8px;
-    margin-right: 0;
-  }
-
-  .buy-item-button,
   .edit-item-button,
   .delete-item-button {
     width: 100%;
@@ -806,20 +785,6 @@ body {
   .admin-panel-full-container .admin-button {
     width: 100% !important;
     margin: 0.5rem 0 !important;
-  }
-
-  /* 모바일에서 아이템 가격과 버튼 정렬 */
-  .item-actions-primary.flex-col {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .item-price.mb-2 {
-    margin-bottom: 0.5rem;
-  }
-
-  .buy-item-button.w-full {
-    width: 100%;
   }
 
   .header-actions {
@@ -887,7 +852,7 @@ body {
 .compact-card .item-header-compact {
   display: flex !important;
   flex-direction: row !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   justify-content: space-between !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -898,22 +863,16 @@ body {
 }
 
 .compact-card .item-name-compact {
-  font-size: 1rem !important;
+  font-size: 1.0625rem !important;
   font-weight: 700 !important;
-  color: #4338ca !important;
+  color: #3730a3 !important;
   margin: 0 !important;
-  padding: 6px 12px !important;
-  background: #eef2ff !important;
-  border: 1px solid #c7d2fe !important;
-  border-radius: 10px !important;
-  display: inline-block !important;
+  padding: 0 !important;
   flex: 1 1 auto !important;
   min-width: 0 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  line-height: 1.3 !important;
-  box-shadow: none !important;
+  line-height: 1.35 !important;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .compact-card .stock-badge {
@@ -1094,22 +1053,8 @@ body {
 
 .quantity-input:disabled {
   background-color: #f1f5f9;
-  color: #94a3b8;
+  color: #64748b;
   cursor: not-allowed;
   border-color: #e2e8f0;
 }
 
-/* 모바일 대응 */
-@media (max-width: 768px) {
-  .quantity-and-buy-container {
-    width: 100%;
-  }
-
-  .quantity-input {
-    width: 50px;
-  }
-
-  .buy-item-button {
-    flex: 1;
-  }
-}

@@ -5,7 +5,8 @@ import ReactDOM from "react-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, processSettlement, functions, httpsCallable } from "../../firebase";
 
-import "./Police.css";
+import pageCss from "./Police.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import SubmitReport from "./SubmitReport";
 import ReportStatus from "./ReportStatus";
 import ReportResults from "./ReportResults";
@@ -388,6 +389,7 @@ const defaultReasons = [
 
 
 const PoliceStation = () => {
+  usePageCss(pageCss);
  const auth = useAuth();
  const currentUser = auth.userDoc;
  const currentUserId = currentUser?.id;

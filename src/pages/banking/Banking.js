@@ -16,7 +16,8 @@ import { PageContainer, PageHeader } from "../../components/PageWrapper";
 import { Landmark, ChevronLeft } from "lucide-react";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import "./Banking.css";
+import pageCss from "./Banking.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
@@ -53,6 +54,7 @@ const convertAdminProductsToAccountFormat = (adminProducts) => {
 };
 
 const Banking = () => {
+  usePageCss(pageCss);
  const auth = useAuth();
  const { currencyUnit } = useCurrency();
  const [message, setMessage] = useState(null);
@@ -471,12 +473,12 @@ const Banking = () => {
  <PageContainer>
  {/* 로딩 오버레이 */}
  {isLoading && (
- <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
- <AlchanLoading />
+ <div className="sticky top-0 z-20 h-1 overflow-hidden rounded-full bg-indigo-100" role="progressbar" aria-label="은행 정보를 불러오는 중">
+ <div className="h-full w-1/3 bg-indigo-500 animate-pulse" />
  </div>
  )}
 
- <div className="px-4 py-6 sm:px-6">
+ <div>
  {/* 페이지 헤더 */}
  <PageHeader
  title="통합 금융 관리"
@@ -490,10 +492,10 @@ const Banking = () => {
  <div
  className={`mb-4 p-4 rounded-xl ${
  messageType === "error"
- ? "bg-red-900/40 text-red-200 border border-red-800/50"
+ ? "bg-red-50 text-red-700 border border-red-200"
  : messageType === "success"
- ? "bg-emerald-900/40 text-emerald-200 border border-emerald-800/50"
- : "bg-blue-900/40 text-blue-200 border border-blue-800/50"
+ ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+ : "bg-blue-50 text-blue-800 border border-blue-200"
  }`}
  >
  {message}
@@ -539,7 +541,8 @@ const Banking = () => {
  일 이율(%)과 기간(일)을 입력합니다. 변경 후 '저장' 버튼을
  클릭하세요.
  </p>
- <table className="admin-table">
+ <div className="overflow-x-auto">
+ <table className="admin-table min-w-[620px]">
  <thead>
  <tr>
  <th style={{ width: "25%" }}>상품명</th>
@@ -568,11 +571,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -590,11 +588,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -614,11 +607,6 @@ const Banking = () => {
  className="admin-input"
  placeholder="예: 0.01"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -636,11 +624,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -658,6 +641,7 @@ const Banking = () => {
  ))}
  </tbody>
  </table>
+ </div>
  <div className="admin-action-buttons">
  <button
  onClick={() => addParkingProduct("deposits")}
@@ -683,7 +667,8 @@ const Banking = () => {
  일 이율(%)과 기간(일)을 입력합니다. 변경 후 '저장' 버튼을
  클릭하세요.
  </p>
- <table className="admin-table">
+ <div className="overflow-x-auto">
+ <table className="admin-table min-w-[620px]">
  <thead>
  <tr>
  <th style={{ width: "25%" }}>상품명</th>
@@ -712,11 +697,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -734,11 +714,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -758,11 +733,6 @@ const Banking = () => {
  className="admin-input"
  placeholder="예: 0.011"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -780,11 +750,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -802,6 +767,7 @@ const Banking = () => {
  ))}
  </tbody>
  </table>
+ </div>
  <div className="admin-action-buttons">
  <button
  onClick={() => addParkingProduct("installments")}
@@ -827,7 +793,8 @@ const Banking = () => {
  일 이율(%)과 기간(일)을 입력합니다. 변경 후 '저장' 버튼을
  클릭하세요.
  </p>
- <table className="admin-table">
+ <div className="overflow-x-auto">
+ <table className="admin-table min-w-[620px]">
  <thead>
  <tr>
  <th style={{ width: "25%" }}>상품명</th>
@@ -856,11 +823,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -878,11 +840,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -902,11 +859,6 @@ const Banking = () => {
  className="admin-input"
  placeholder="예: 0.05"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -924,11 +876,6 @@ const Banking = () => {
  }
  className="admin-input"
  disabled={isLoading}
- style={{
- backgroundColor: "rgba(255,255,255,0.05)",
- color: "#fff",
- border: "1px solid rgba(255,255,255,0.1)",
- }}
  />
  </td>
  <td className="admin-td">
@@ -946,6 +893,7 @@ const Banking = () => {
  ))}
  </tbody>
  </table>
+ </div>
  <div className="admin-action-buttons">
  <button
  onClick={() => addParkingProduct("loans")}

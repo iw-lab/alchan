@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, functions, httpsCallable } from "../../firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
-import "./CouponTransfer.css";
+import pageCss from "./CouponTransfer.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { logger } from '../../utils/logger';
 import { sortByStudentNumber, plainStudentName } from '../../utils/studentOrder';
 import StudentNo from '../../components/ui/StudentNo';
 import useAppointedJobTitle from '../../hooks/useAppointedJobTitle';
 
 function CouponTransfer() {
+  usePageCss(pageCss);
   // AuthContext에서 필요한 모든 데이터를 가져옵니다.
   const {
     userDoc,

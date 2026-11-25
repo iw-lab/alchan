@@ -1,7 +1,7 @@
 // src/components/StudentManager.js
 // 학생 일괄 생성 및 관리 컴포넌트
 
-import { getCurrencyUnit } from "../utils/numberFormatter";
+import { formatKoreanCurrency, getCurrencyUnit } from "../utils/numberFormatter";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { db, functions as firebaseFunctions } from "../firebase";
@@ -488,7 +488,7 @@ const StudentManager = () => {
         subtitle={`학급 ${classCode} · 총 ${students.length}명`}
         icon={Users}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -519,15 +519,15 @@ const StudentManager = () => {
 
       {/* 검색 및 필터 */}
       <Card>
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="relative flex-1 min-w-[200px] sm:max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="이름, 번호, 이메일로 검색..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
+              className="w-full !pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
             />
           </div>
           <div className="flex gap-2">
@@ -573,6 +573,7 @@ const StudentManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
+                  <label className="inline-flex items-center justify-center w-9 h-9 -m-2 cursor-pointer">
                   <input
                     type="checkbox"
                     aria-label="학생 전체 선택"
@@ -586,12 +587,13 @@ const StudentManager = () => {
                         setSelectedStudents(new Set());
                       }
                     }}
-                    className="w-4 h-4 rounded"
+                    className="w-5 h-5 rounded"
                   />
+                  </label>
                 </TableHead>
                 <TableHead>번호</TableHead>
                 <TableHead>이름</TableHead>
-                <TableHead>이메일</TableHead>
+                <TableHead className="hidden lg:table-cell">이메일</TableHead>
                 <TableHead>현금</TableHead>
                 <TableHead>쿠폰</TableHead>
                 <TableHead className="text-right">관리</TableHead>
@@ -601,6 +603,7 @@ const StudentManager = () => {
               {filteredStudents.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell>
+                    <label className="inline-flex items-center justify-center w-9 h-9 -m-2 cursor-pointer">
                     <input
                       type="checkbox"
                       aria-label={`${plainStudentName(student)} 선택`}
@@ -614,8 +617,9 @@ const StudentManager = () => {
                         }
                         setSelectedStudents(newSet);
                       }}
-                      className="w-4 h-4 rounded"
+                      className="w-5 h-5 rounded"
                     />
+                    </label>
                   </TableCell>
                   <TableCell>
                     <StudentNo member={student} />
@@ -623,13 +627,14 @@ const StudentManager = () => {
                   <TableCell className="font-semibold">
                     {plainStudentName(student)}
                   </TableCell>
-                  <TableCell className="text-gray-500 text-sm">
+                  <TableCell className="hidden lg:table-cell text-gray-500 text-sm">
                     {student.email}
                   </TableCell>
-                  <TableCell>
-                    {(student.cash || 0).toLocaleString()}{getCurrencyUnit()}
+                  <TableCell className="whitespace-nowrap">
+                    <span className="lg:hidden">{formatKoreanCurrency(student.cash || 0)}</span>
+                    <span className="hidden lg:inline">{(student.cash || 0).toLocaleString()}{getCurrencyUnit()}</span>
                   </TableCell>
-                  <TableCell>{student.coupons || 0}장</TableCell>
+                  <TableCell className="whitespace-nowrap">{student.coupons || 0}장</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -645,7 +650,7 @@ const StudentManager = () => {
                       <button
                         onClick={() => handleDeleteStudent(student)}
                         aria-label={`${plainStudentName(student)} 삭제`}
-                        className="p-2 hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 size={16} className="text-red-500" />
                       </button>
@@ -809,7 +814,7 @@ const StudentManager = () => {
             </Alert>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-600 mb-1">
                   접두어
                 </label>
                 <input
@@ -824,7 +829,7 @@ const StudentManager = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
                     시작 번호
                   </label>
                   <input
@@ -845,7 +850,7 @@ const StudentManager = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-600 mb-1">
                     학생 수
                   </label>
                   <input
@@ -930,7 +935,7 @@ const StudentManager = () => {
               </div>
             </div>
 
-            <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-700">
+            <div className="max-h-80 overflow-y-auto rounded-xl border border-slate-200">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 sticky top-0">
                   <tr>
@@ -978,7 +983,7 @@ const StudentManager = () => {
                     <p className="text-2xl font-bold text-emerald-400">
                       {results.success.length}
                     </p>
-                    <p className="text-sm text-emerald-300">성공</p>
+                    <p className="text-sm text-emerald-800">성공</p>
                   </div>
                 </div>
               </div>
@@ -995,7 +1000,7 @@ const StudentManager = () => {
                     <p className="text-2xl font-bold text-red-400">
                       {results.failed.length}
                     </p>
-                    <p className="text-sm text-red-300">실패</p>
+                    <p className="text-sm text-red-700">실패</p>
                   </div>
                 </div>
               </div>
@@ -1006,7 +1011,7 @@ const StudentManager = () => {
                 <h4 className="font-semibold text-emerald-400 mb-2">
                   생성된 계정
                 </h4>
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-700">
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 sticky top-0">
                       <tr>
@@ -1041,7 +1046,7 @@ const StudentManager = () => {
                               {copiedId === index ? (
                                 <Check size={16} className="text-emerald-500" />
                               ) : (
-                                <Copy size={16} className="text-slate-500 dark:text-gray-400" />
+                                <Copy size={16} className="text-slate-500" />
                               )}
                             </button>
                           </td>
@@ -1058,7 +1063,7 @@ const StudentManager = () => {
                 <h4 className="font-semibold text-red-400 mb-2">실패한 항목</h4>
                 <div className="space-y-2">
                   {results.failed.map((student, index) => (
-                    <div key={index} className="p-3 bg-red-900/20 rounded-lg">
+                    <div key={index} className="p-3 bg-red-50 rounded-lg">
                       <p className="font-medium">
                         {student.name} ({student.email})
                       </p>
@@ -1140,7 +1145,7 @@ const StudentManager = () => {
               }
             />
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-600 dark:text-gray-300">
+              <label className="block text-sm font-medium text-slate-600">
                 이메일 (읽기 전용)
               </label>
               <input

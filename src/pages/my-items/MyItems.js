@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useItems } from "../../contexts/ItemContext";
 import RandomDrawWheel from "./RandomDrawWheel";
-import "./MyItems.css";
+import pageCss from "./MyItems.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import LoginWarning from "../../components/LoginWarning";
 
 import { logger } from "../../utils/logger";
@@ -46,6 +47,7 @@ const QuantityBadge = ({ quantity }) => {
 };
 
 const MyItems = () => {
+  usePageCss(pageCss);
   const { user, userDoc, classmates } = useAuth() || {};
   const {
     items: storeItems,

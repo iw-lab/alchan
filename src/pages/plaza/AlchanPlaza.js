@@ -333,12 +333,12 @@ function PostsTab({ posts, myUid, myName, isSuperAdmin, loading, busy, setBusy, 
           <article key={post.id} className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex items-start gap-2 flex-wrap">
               <span
-                className="px-2 py-0.5 rounded text-[11px] font-bold"
+                className="px-2 py-0.5 rounded text-xs font-bold"
                 style={{ backgroundColor: st.bg, color: st.fg }}
               >
                 {st.label}
               </span>
-              <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">
+              <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500">
                 {categoryLabel(post.category)}
               </span>
               <h3 className="w-full font-semibold text-slate-800 mt-1">{post.title}</h3>
@@ -660,7 +660,7 @@ function AppsTab({ apps, myUid, myName, isSuperAdmin, loading, busy, setBusy, re
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-slate-800">{app.label}</span>
-                <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">
+                <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500">
                   {APP_STATUS_LABEL[app.status] || app.status}
                 </span>
                 <span className="text-xs text-slate-400">{app.ownerName || DEFAULT_APP_OWNER}</span>

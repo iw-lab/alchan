@@ -5,11 +5,7 @@ import { Loader2 } from "lucide-react";
 // 페이지 컨테이너
 // ============================================
 export const PageContainer = ({ children, className = "" }) => (
-  <div className={`min-h-full w-full bg-gray-100 ${className}`}>
-    <div className="w-full max-w-none px-2 md:px-3 lg:px-4 py-1 md:py-2">
-      {children}
-    </div>
-  </div>
+  <div className={`min-h-full w-full ${className}`}>{children}</div>
 );
 
 // ============================================
@@ -25,12 +21,12 @@ export const PageHeader = ({
   className = "",
 }) => (
   <section
-    className={`bg-white backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-lg border border-cyan-900/30 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
+    className={`bg-white backdrop-blur-sm rounded-lg px-3 py-1.5 md:px-4 md:py-2 shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-1.5 md:gap-2 mb-2 md:mb-3 ${className}`}
   >
     <div className="flex items-center gap-3">
       {backButton}
       {Icon && (
-        <div className="w-9 h-9 md:w-10 md:h-10 bg-cyan-900/30 rounded-lg flex items-center justify-center text-cyan-400 shrink-0 shadow-sm border border-cyan-500/30">
+        <div className="w-9 h-9 md:w-10 md:h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-200">
           <Icon className="w-5 h-5" />
         </div>
       )}
@@ -42,7 +38,7 @@ export const PageHeader = ({
           {badge}
         </div>
         {subtitle && (
-          <p className="text-xs md:text-sm text-slate-400 font-medium">
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
             {subtitle}
           </p>
         )}
@@ -119,7 +115,7 @@ export const ActionButton = ({
     danger:
       "bg-rose-500 text-white hover:bg-rose-600 shadow-md shadow-rose-500/30",
     success:
-      "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/30",
+      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/30",
     ghost: "text-slate-600 hover:bg-white/60 hover:text-indigo-700",
     indigo: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200",
   };

@@ -21,7 +21,8 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
-import "./TrialRoom.css";
+import pageCss from "./TrialRoom.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
@@ -101,6 +102,7 @@ export async function cleanupStaleTrialRooms(
 }
 
 const TrialRoom = ({ roomId, classCode, currentUser, users, onClose }) => {
+  usePageCss(pageCss);
   const [roomData, setRoomData] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");

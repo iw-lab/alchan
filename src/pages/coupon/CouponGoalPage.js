@@ -839,7 +839,7 @@ export default function CouponGoalPage() {
 
   return (
     <div className="w-full min-h-full">
-      <div className="w-full px-4 md:px-6 lg:px-8 py-6">
+      <div className="w-full pb-4">
         <h2 className="text-2xl font-bold gradient-text border-b-2 border-indigo-200 pb-3 mb-6 flex items-center gap-2">
           <Target size={26} className="text-indigo-600" />
           쿠폰 목표
