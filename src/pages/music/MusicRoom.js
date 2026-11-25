@@ -13,7 +13,8 @@ import {
 } from "firebase/firestore";
 import YouTube from "react-youtube";
 import { usePolling } from "../../hooks/usePolling";
-import "../../MusicRoom.css";
+import pageCss from "../../MusicRoom.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { AlchanLoading } from "../../components/AlchanLayout";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
@@ -53,16 +54,18 @@ const normalizeVideoId = (value) => {
 };
 
 const MusicRoom = ({ user }) => {
+  usePageCss(pageCss);
   const { roomId } = useParams();
   const [room, setRoom] = useState(null);
   const [playlist, setPlaylist] = useState([]);
-  const [currentVideoId, setCurrentVideoId] = useState(null);
   const [playerRef, setPlayerRef] = useState(null);
   const [needsPlay, setNeedsPlay] = useState(false);
   const [playerError, setPlayerError] = useState("");
   const navigate = useNavigate();
 
   const currentSong = useMemo(() => playlist[0] || null, [playlist]);
+  const currentSongId = currentSong?.id ?? null;
+  const currentVideoId = useMemo(() => normalizeVideoId(currentSong?.videoId), [currentSong?.videoId]);
 
   const tryStartPlayback = useCallback(
     (player, videoId) => {
@@ -165,30 +168,18 @@ const MusicRoom = ({ user }) => {
   }, [user, navigate]);
 
   useEffect(() => {
-    if (!currentSong) {
-      setCurrentVideoId(null);
-      setNeedsPlay(false);
-      setPlayerError("");
-      return;
-    }
-
-    const nextVideoId = normalizeVideoId(currentSong.videoId);
-    setCurrentVideoId(nextVideoId);
-
-    if (!nextVideoId) {
-      setNeedsPlay(false);
-      setPlayerError("이 곡의 유튜브 영상 주소가 올바르지 않습니다.");
-      return;
-    }
-
     setNeedsPlay(false);
-    setPlayerError("");
-  }, [currentSong]);
+    setPlayerError(currentSongId && !currentVideoId ? "이 곡의 유튜브 영상 주소가 올바르지 않습니다." : "");
+    // 틀 곡이 없으면 화면의 재생기도 사라진다 — 없어진 재생기를 붙들고 있으면 다음 곡을 거기에 튼다.
+    if (!currentVideoId) setPlayerRef(null);
+  }, [currentSongId, currentVideoId]);
 
+  // 🔁 «영상»이 아니라 «곡(신청 건)»이 바뀔 때마다 튼다 — 같은 노래가 연달아 신청되면 영상 주소는 그대로라
+  //    주소만 보고 있으면 두 번째 곡이 시작되지 않는다(2026-11-25). 새 신청이 들어와도 맨 앞 곡은 그대로라 다시 틀지 않는다.
   useEffect(() => {
-    if (!playerRef || !currentVideoId) return;
+    if (!playerRef || !currentSongId || !currentVideoId) return;
     tryStartPlayback(playerRef, currentVideoId);
-  }, [playerRef, currentVideoId, tryStartPlayback]);
+  }, [playerRef, currentSongId, currentVideoId, tryStartPlayback]);
 
   const onReady = (event) => {
     setPlayerRef(event.target);
@@ -320,7 +311,7 @@ const MusicRoom = ({ user }) => {
                     transform: "translate(-50%, -50%)",
                     zIndex: 10,
                     background: "rgba(99, 102, 241, 0.2)",
-                    border: "2px solid #00fff2",
+                    border: "2px solid var(--accent)",
                     borderRadius: "50%",
                     width: "80px",
                     height: "80px",

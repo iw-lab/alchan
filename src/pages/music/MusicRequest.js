@@ -13,13 +13,15 @@ import {
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { usePolling } from "../../hooks/usePolling";
-import "../../MusicRequest.css";
+import pageCss from "../../MusicRequest.css?inline";
+import { usePageCss } from "../../hooks/usePageCss";
 import { logger } from "../../utils/logger";
 import { toast } from "../../utils/toast";
 import { confirmDialog } from "../../utils/confirmDialog";
 import { useAuth } from "../../contexts/AuthContext";
 
 const MusicRequest = ({ user }) => {
+  usePageCss(pageCss);
   const [roomName, setRoomName] = useState("");
   const [pricePerSong, setPricePerSong] = useState(0);
   const [createdRoom, setCreatedRoom] = useState(null); // 새로 생성된 방 정보
