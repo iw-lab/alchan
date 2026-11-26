@@ -499,7 +499,8 @@ export default function CouponGoalPage() {
     const money = prize
       ? `\n\n💰 상금 ${formatMoney(prize)}` +
         (tax > 0 ? ` · 세금 ${taxRate}% ${formatMoney(tax)}` : " · 세금 없음") +
-        `\n   → 당첨자에게 실제 지급 ${formatMoney(net)} (선생님의 국고에서 나갑니다)` +
+        `\n   → 당첨자 1명마다 실제 지급 ${formatMoney(net)} (선생님의 국고에서 나갑니다)`
+        + `\n   (추첨 화면에서 당첨자 수를 늘리면 당첨자 모두에게 같은 금액이 나갑니다.)` +
         `\n\n🔁 추첨 화면에서 '다시 추첨'을 누르면 판마다 같은 금액이 또 지급됩니다.`
         + `\n   (2·3등처럼 금액을 바꾸려면 이 화면에서 랜덤뽑기를 다시 누르세요.)`
       : "\n\n(상금 지급 없이 추첨만 합니다.)";
@@ -550,77 +551,87 @@ export default function CouponGoalPage() {
     }
 
     const nameToUserId = new Map(entries.map((e) => [e.name, e.userId]));
+    // 당첨자 한 명에게 지급. 실패하면 그 학생만 다시 묻고, 다음 학생으로 넘어간다.
+    const payOne = async (w, round) => {
+      const { userId: winnerId, name } = w;
+      if (!winnerId) {
+        toast.error(
+          `당첨자는 ${name}인데 학생을 찾지 못해 지급하지 못했습니다. ` +
+            `직접 송금해 주세요.`,
+        );
+        return;
+      }
+      if (winnerId === userId) {
+        toast.error("당첨자가 선생님 본인이라 지급하지 않았습니다.");
+        return;
+      }
+      // 같은 추첨·같은 학생은 같은 멱등키를 쓴다 — 서버가 두 번 나가는 것을 막으므로
+      // 재시도해도 안전하다. 학생 id 를 넣어야 한 판의 당첨자 여럿이 서로를 «이미 처리»로 막지 않는다.
+      const key = `pickon_${userId}_${round || r.rid}_${w.userId}`;
+      const pay = () =>
+        httpsCallable(functions, "transferCash")({
+          recipientId: winnerId,
+          amount: net,
+          message:
+            tax > 0
+              ? `🎰 뽑기 상금 ${formatMoney(prize)} (세금 ${taxRate}% 공제)`
+              : "🎰 뽑기 상금",
+          idempotencyKey: key,
+        });
+      const ok = () => {
+        prizePaidRef.current = true;
+        toast.success(
+          `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
+            (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
+        );
+      };
+      try {
+        await pay();
+        ok();
+      } catch (e) {
+        logger.error("뽑기ON 상금 지급 실패", e);
+        // 추첨 창은 이미 닫혔을 수 있다 — 여기 말고는 '누구에게 얼마를' 이 남는 곳이 없다.
+        const retry = await confirmDialog(
+          `${name}님에게 상금 ${formatMoney(net)}을 지급하지 못했습니다.\n\n` +
+            `사유: ${e?.message || "알 수 없는 오류"}\n\n` +
+            `다시 시도할까요? (이미 지급됐다면 두 번 나가지 않습니다)`,
+          { confirmText: "다시 시도" },
+        );
+        if (retry) {
+          try {
+            await pay();
+            ok();
+            return;
+          } catch (e2) {
+            logger.error("뽑기ON 상금 재지급 실패", e2);
+          }
+        }
+        toast.error(
+          `${name}님에게 상금 ${formatMoney(net)}이 지급되지 않았습니다. ` +
+            `송금 화면에서 직접 보내 주세요.`,
+        );
+      }
+    };
     prizeWatchRef.current = listenForPickOnResult({
       rid: r.rid,
       entries,
       nameToUserId,
-      onWinner: async ({ userId: winnerId, name, mismatch, round }) => {
+      onResult: async ({ winners, mismatch, round }) => {
         // 판마다 지급한다 — 리스너는 살려 둔다(교사가 '다시 추첨'을 누를 수 있다).
         // 같은 판이 두 번 오는 것은 listenForPickOnResult 가 이미 막는다.
         if (mismatch) {
           toast.error(
-            `당첨자가 ${name}으로 왔는데 명단의 자리와 맞지 않아 지급하지 않았습니다. ` +
+            `당첨자가 ${winners[0]?.name || ""}으로 왔는데 명단의 자리와 맞지 않아 이번 판은 아무에게도 지급하지 않았습니다. ` +
               `추첨 화면에서 명단을 바꾸셨다면 다시 추첨해 주세요.`,
           );
           return;
         }
-        if (!winnerId) {
-          toast.error(
-            `당첨자는 ${name}인데 학생을 찾지 못해 지급하지 못했습니다. ` +
-              `직접 송금해 주세요.`,
-          );
-          return;
-        }
-        if (winnerId === userId) {
-          toast.error("당첨자가 선생님 본인이라 지급하지 않았습니다.");
-          return;
-        }
-        // 같은 추첨은 같은 멱등키를 쓴다 — 서버가 두 번 나가는 것을 막으므로
-        // 재시도해도 안전하다(실패했을 때만 다시 부른다).
-        const key = `pickon_${userId}_${round || r.rid}`;
-        const pay = () =>
-          httpsCallable(functions, "transferCash")({
-            recipientId: winnerId,
-            amount: net,
-            message:
-              tax > 0
-                ? `🎰 뽑기 상금 ${formatMoney(prize)} (세금 ${taxRate}% 공제)`
-                : "🎰 뽑기 상금",
-            idempotencyKey: key,
-          });
-        try {
-          await pay();
-          prizePaidRef.current = true;
-          toast.success(
-            `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
-              (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
-          );
-        } catch (e) {
-          logger.error("뽑기ON 상금 지급 실패", e);
-          // 추첨 창은 이미 닫혔을 수 있다 — 여기 말고는 '누구에게 얼마를' 이 남는 곳이 없다.
-          const retry = await confirmDialog(
-            `${name}님에게 상금 ${formatMoney(net)}을 지급하지 못했습니다.\n\n` +
-              `사유: ${e?.message || "알 수 없는 오류"}\n\n` +
-              `다시 시도할까요? (이미 지급됐다면 두 번 나가지 않습니다)`,
-            { confirmText: "다시 시도" },
-          );
-          if (retry) {
-            try {
-              await pay();
-              prizePaidRef.current = true;
-              toast.success(
-                `🎉 ${name}님에게 상금 ${formatMoney(net)}을 지급했습니다.` +
-              (tax > 0 ? ` (세금 ${taxRate}% ${formatMoney(tax)} 공제)` : ""),
-              );
-              return;
-            } catch (e2) {
-              logger.error("뽑기ON 상금 재지급 실패", e2);
-            }
-          }
-          toast.error(
-            `${name}님에게 상금 ${formatMoney(net)}이 지급되지 않았습니다. ` +
-              `송금 화면에서 직접 보내 주세요.`,
-          );
+        // 🎯 당첨자가 여럿이면(추첨 화면에서 «당첨자 수»를 바꾼 경우) **한 명씩 차례로** 준다.
+        //    ⚠️ 2026-11-26: 예전엔 첫 번째만 지급해 5명을 뽑으면 4명이 빠졌다.
+        //    동시에 부르지 않는 까닭 — 같은 국고에서 빠지므로 차례대로 해야 잔액 부족이
+        //    누구에게서 났는지 정확히 알린다.
+        for (const w of winners) {
+          await payOne(w, round);
         }
       },
     });
