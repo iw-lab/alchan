@@ -22,6 +22,7 @@
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -45,7 +46,7 @@ try {
 }
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const BUILD = join(ROOT, "build");
+const BUILD = process.env.CHECK_BUILD_DIR || join(ROOT, "build"); // 시험용으로 다른 빌드를 볼 수 있다
 
 if (!existsSync(join(BUILD, "index.html"))) {
   console.error("❌ build/index.html 이 없습니다. npm run build 를 먼저 실행하세요.");
@@ -218,6 +219,29 @@ if (orphans.length) {
   );
   for (const n of orphans.slice(0, 5)) console.log(`     assets/${n}`);
   if (orphans.length > 5) console.log(`     … 외 ${orphans.length - 5}개`);
+}
+
+// Firebase 묶음 크기 상한 — 첫 화면 전에 받는 가장 큰 파일이다.
+// 2026-11-26 실측(gzip): 11.10 = 146KB · 12.14 = 145KB · 12.19 = 206KB · 13.4 = 216KB.
+// 12.15 부터 Firestore 가 정규식 엔진(re2js)·Pipeline 코드를 같이 싣는다(알찬은 안 씀) —
+// «^12» 처럼 열어 두면 npm 이 조용히 올려 첫 접속이 느려진다. 그래서 판은 정확히 고정하고 여기서 잰다.
+const FIREBASE_GZ_BUDGET = 160_000;
+const fbChunks = onDisk.filter((n) => /^vendor-firebase-.*\.js$/.test(n));
+if (fbChunks.length === 0) {
+  console.error(`\n❌ vendor-firebase 묶음을 못 찾았습니다 — 크기 검사가 고장났습니다(vite.config.js manualChunks 확인).`);
+  process.exit(1);
+}
+for (const n of fbChunks) {
+  const gz = gzipSync(readFileSync(join(assetsDir, n))).length;
+  if (gz > FIREBASE_GZ_BUDGET) {
+    console.error(
+      `\n❌ ${n} gzip ${Math.round(gz / 1000)}KB > 상한 ${FIREBASE_GZ_BUDGET / 1000}KB.\n` +
+        `  Firebase 판이 올라가며 안 쓰는 코드가 실렸을 수 있습니다(12.15+ 의 re2js·Pipeline).\n` +
+        `  package.json 의 firebase 판을 확인하세요 — 첫 접속이 그만큼 느려집니다.\n`,
+    );
+    process.exit(1);
+  }
+  console.log(`  Firebase 묶음   gzip ${Math.round(gz / 1000)}KB (상한 ${FIREBASE_GZ_BUDGET / 1000}KB)`);
 }
 
 console.log("\n통과 — 참조된 자산이 모두 존재합니다\n");
