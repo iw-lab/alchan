@@ -550,7 +550,7 @@ export default function CouponGoalPage() {
       return;
     }
 
-    const nameToUserId = new Map(entries.map((e) => [e.name, e.userId]));
+    let payQueue = Promise.resolve(); // 판 단위 지급 순서
     // 당첨자 한 명에게 지급. 실패하면 그 학생만 다시 묻고, 다음 학생으로 넘어간다.
     const payOne = async (w, round) => {
       const { userId: winnerId, name } = w;
@@ -607,15 +607,14 @@ export default function CouponGoalPage() {
           }
         }
         toast.error(
-          `${name}님에게 상금 ${formatMoney(net)}이 지급되지 않았습니다. ` +
-            `송금 화면에서 직접 보내 주세요.`,
+          `${name}님에게 상금 ${formatMoney(net)}이 지급되지 않았을 수 있습니다. ` +
+            `${name}님의 거래내역에 «🎰 뽑기 상금»이 없는지 먼저 확인한 뒤 직접 보내 주세요.`,
         );
       }
     };
     prizeWatchRef.current = listenForPickOnResult({
       rid: r.rid,
       entries,
-      nameToUserId,
       onResult: async ({ winners, mismatch, round }) => {
         // 판마다 지급한다 — 리스너는 살려 둔다(교사가 '다시 추첨'을 누를 수 있다).
         // 같은 판이 두 번 오는 것은 listenForPickOnResult 가 이미 막는다.
@@ -630,9 +629,15 @@ export default function CouponGoalPage() {
         //    ⚠️ 2026-11-26: 예전엔 첫 번째만 지급해 5명을 뽑으면 4명이 빠졌다.
         //    동시에 부르지 않는 까닭 — 같은 국고에서 빠지므로 차례대로 해야 잔액 부족이
         //    누구에게서 났는지 정확히 알린다.
-        for (const w of winners) {
-          await payOne(w, round);
-        }
+        // 판이 연달아 오면(«다시 추첨») 앞 판 지급이 끝난 뒤에 다음 판을 시작한다 —
+        // 섞이면 국고가 모자랄 때 앞 판 당첨자가 뒷 판에 밀려 못 받는다(교차검증 지적).
+        const run = payQueue.then(async () => {
+          for (const w of winners) {
+            await payOne(w, round);
+          }
+        });
+        payQueue = run.catch(() => {});
+        await run;
       },
     });
     toast.success("추첨이 끝나면 당첨자에게 상금이 자동으로 지급됩니다.");

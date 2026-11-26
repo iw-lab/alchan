@@ -9,7 +9,7 @@ const entries = ["가윤", "나래", "다솜", "라희", "마루", "바다", "�
   weight: 1,
   userId: `u${i}`,
 }));
-const nameToUserId = new Map(entries.map((e) => [e.name, e.userId]));
+const nameToUserId = null; // 더 쓰지 않는다(이름으로 찾지 않는다)
 
 function send(data, origin = ORIGIN) {
   const source = { postMessage: vi.fn() };
@@ -50,6 +50,24 @@ describe("뽑기ON 결과 — 당첨자 여럿", () => {
     const src = send({ type: "iwpick:result", rid: "r1", winners: ["가윤", "나래", "다솜"], indexes: [0, 2, 2] });
     const r = onResult.mock.calls[0][0];
     expect(r.mismatch).toBe(true);
+    expect(r.winners.every((w) => !w.userId)).toBe(true);
+    expect(src.postMessage).toHaveBeenCalledWith({ type: "iwpick:ack", rid: "r1", refused: true }, ORIGIN);
+  });
+
+  // 교차검증(codex·gemini·meta) 지적 — 자리 번호가 없거나 이름이 비면 대조를 건너뛰고 지급됐다.
+  it.each([
+    ["이름이 비었다", { winners: [""], indexes: [0] }],
+    ["자리 번호가 없다", { winners: ["가윤"], indexes: [] }],
+    ["자리 번호가 -1(명단에 없음)", { winners: ["가윤"], indexes: [-1] }],
+    ["자리 번호가 null(Number(null)=0)", { winners: ["가윤"], indexes: [null] }],
+    ["자리 번호가 범위 밖", { winners: ["가윤"], indexes: [99] }],
+    ["둘째만 자리 번호가 없다", { winners: ["가윤", "나래"], indexes: [0] }],
+    ["21명(뽑기ON 상한 20 초과)", { winners: Array(21).fill("가윤"), indexes: Array(21).fill(0) }],
+  ])("%s → 그 판 전체를 지급하지 않는다", (_, msg) => {
+    const onResult = listen();
+    const src = send({ type: "iwpick:result", rid: "r1", ...msg });
+    const r = onResult.mock.calls[0]?.[0];
+    expect(r?.mismatch).toBe(true);
     expect(r.winners.every((w) => !w.userId)).toBe(true);
     expect(src.postMessage).toHaveBeenCalledWith({ type: "iwpick:ack", rid: "r1", refused: true }, ORIGIN);
   });

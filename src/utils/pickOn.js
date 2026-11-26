@@ -178,12 +178,12 @@ export function openPickOnForPrize(entries, opts = {}) {
  * 추첨 결과를 기다린다. 정리 함수를 돌려준다.
  * @param {string} rid          openPickOnForPrize 가 준 번호
  * @param {Array}  entries      보낸 명단(이름 순서가 그대로여야 한다)
- * @param {Map}    nameToUserId 이름 → 학생 uid
+ * (예전의 nameToUserId 는 더 쓰지 않는다 — 이름으로 사람을 찾지 않는다. 넘겨도 무시한다.)
  * @param {Function} onResult   ({ round, mismatch, winners: [{ userId, name, rank }] }) => void
  *   당첨자가 여럿이면(뽑기ON 화면에서 «당첨자 수»를 바꾼 경우) **전원**이 winners 에 담긴다.
  *   ⚠️ 2026-11-26 사고: 예전엔 winners[0] 만 읽어 5명 뽑으면 1명만 상금을 받았다.
  */
-export function listenForPickOnResult({ rid, entries, nameToUserId, onResult }) {
+export function listenForPickOnResult({ rid, entries, onResult }) {
   const done = new Set(); // 이미 지급한 판
   const handler = (ev) => {
     if (ev.origin !== PICKON_ORIGIN) return;      // ① 다른 사이트 메시지는 버린다
@@ -200,34 +200,39 @@ export function listenForPickOnResult({ rid, entries, nameToUserId, onResult }) 
     if (!names.length) return;
 
     // 당첨자 **전원**을 먼저 확인한 뒤에 넘긴다(한 명이라도 어긋나면 그 판 전체를 멈춘다).
+    const refuse = (name, rank) => {
+      // 거절했다는 것도 알려 준다 — 안 알리면 "응답 없음"과 구분이 안 된다
+      try {
+        ev.source?.postMessage({ type: "iwpick:ack", rid: got, refused: true }, ev.origin);
+      } catch { /* 못 알려도 거절은 유효하다 */ }
+      onResult({ round: got, mismatch: true, winners: [{ userId: "", name, rank }] });
+    };
+    // 뽑기ON 의 당첨자 수 상한은 20 이다. 넘게 오면 일부만 주고 «잘 받았다»고 답하지 않는다.
+    if (names.length > 20) return refuse(String(names[20] || ""), 21);
     const winners = [];
     const seen = new Set();
-    for (let k = 0; k < names.length && k < 20; k++) {
-      // 자리 번호를 먼저 믿는다 — 그리고 **그 엔트리의 userId 를 그대로 쓴다**.
-      // ⚠️ 여기서 다시 이름으로 Map 을 조회하면 자리 번호를 믿는 의미가 없다.
-      //    표시용으로 붙는 "(2)" 접미사가 다른 학생의 실제 이름과 겹치면
-      //    Map 의 그 키는 나중 사람으로 덮어써져 엉뚱한 학생에게 상금이 간다.
-      const i = Number(idxs[k]);
-      const byIndex = Number.isInteger(i) && i >= 0 && i < entries.length ? entries[i] : null;
-      const reported = String(names[k] || "");
-      // 🔴 자리 번호와 이름이 서로 다르면 둘 중 하나가 어긋난 것이다 — 믿지 말고 멈춘다.
-      //    (추첨 화면에서 명단을 섞거나 고치면 번호가 밀릴 수 있다. 돈이 나가는 자리라
-      //     "둘 중 그럴듯한 쪽"을 고르면 안 된다.) 한 명이 밀렸으면 나머지도 믿을 수 없다.
-      if (byIndex && reported && byIndex.name !== reported) {
-        // 자리와 이름이 어긋났다는 것도 알려 준다 — 안 알리면 "응답 없음"과 구분이 안 된다
-        try {
-          ev.source?.postMessage({ type: "iwpick:ack", rid: got, refused: true }, ev.origin);
-        } catch { /* 못 알려도 거절은 유효하다 */ }
-        onResult({ round: got, mismatch: true, winners: [{ userId: "", name: reported, rank: k + 1 }] });
-        return;
+    for (let k = 0; k < names.length; k++) {
+      // 🔴 **자리 번호와 이름이 둘 다 있고 서로 맞을 때만** 그 자리 학생의 userId 를 쓴다.
+      //    · 이름으로 Map 을 다시 조회하지 않는다 — 표시용 "(2)" 접미사가 다른 학생의 실제
+      //      이름과 겹치면 Map 의 그 키는 나중 사람으로 덮어써져 엉뚱한 학생에게 상금이 간다.
+      //    · 자리 번호가 없거나(-1·범위 밖·null) 이름이 비었으면 대조를 «건너뛰지» 않고 멈춘다
+      //      (2026-11-26 교차검증: 빈 이름 + 자리 0 → 0번 학생에게 대조 없이 지급되던 길).
+      //    추첨 화면에서 명단을 섞거나 고치면 번호가 밀릴 수 있다. 돈이 나가는 자리라
+      //    "둘 중 그럴듯한 쪽"을 고르면 안 된다. 한 명이 밀렸으면 나머지도 믿을 수 없다.
+      const raw = idxs[k];
+      const byIndex = typeof raw === "number" && Number.isInteger(raw) && raw >= 0 && raw < entries.length
+        ? entries[raw]
+        : null;
+      const reported = typeof names[k] === "string" ? names[k] : "";
+      if (!byIndex || !reported || byIndex.name !== reported) {
+        return refuse(reported, k + 1);
       }
-      const name = byIndex ? byIndex.name : reported;
-      const userId = byIndex ? byIndex.userId || "" : nameToUserId.get(name) || "";
+      // 자리는 맞는데 학생 id 가 없는 칸(옛 응모 기록)은 그 사람만 «직접 송금» 안내로 넘긴다.
       // 같은 사람이 두 번 오면 한 번만 준다(정상이면 일어나지 않는다)
-      const dedupe = userId || `name:${name}`;
+      const dedupe = byIndex.userId || `name:${byIndex.name}`;
       if (seen.has(dedupe)) continue;
       seen.add(dedupe);
-      winners.push({ userId, name, rank: k + 1 });
+      winners.push({ userId: byIndex.userId || "", name: byIndex.name, rank: k + 1 });
     }
     // 보낸 쪽에 잘 받았다고 알린다 — 이게 없으면 뽑기ON 은 아무도 안 듣고 있어도
     // "전달했습니다"라고 표시한다(postMessage 는 수신 여부를 알려 주지 않는다).
