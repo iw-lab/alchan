@@ -231,17 +231,17 @@ if (fbChunks.length === 0) {
   console.error(`\n❌ vendor-firebase 묶음을 못 찾았습니다 — 크기 검사가 고장났습니다(vite.config.js manualChunks 확인).`);
   process.exit(1);
 }
-for (const n of fbChunks) {
-  const gz = gzipSync(readFileSync(join(assetsDir, n))).length;
-  if (gz > FIREBASE_GZ_BUDGET) {
-    console.error(
-      `\n❌ ${n} gzip ${Math.round(gz / 1000)}KB > 상한 ${FIREBASE_GZ_BUDGET / 1000}KB.\n` +
-        `  Firebase 판이 올라가며 안 쓰는 코드가 실렸을 수 있습니다(12.15+ 의 re2js·Pipeline).\n` +
-        `  package.json 의 firebase 판을 확인하세요 — 첫 접속이 그만큼 느려집니다.\n`,
-    );
-    process.exit(1);
-  }
-  console.log(`  Firebase 묶음   gzip ${Math.round(gz / 1000)}KB (상한 ${FIREBASE_GZ_BUDGET / 1000}KB)`);
+// 파일마다가 아니라 **합계**로 잰다 — 묶음이 둘로 갈라지면 하나씩은 상한 안이어도
+// 첫 화면에 받는 양은 그대로 늘어난다(교차검증 codex·gemini·meta 지적).
+const fbGz = fbChunks.reduce((sum, n) => sum + gzipSync(readFileSync(join(assetsDir, n))).length, 0);
+if (fbGz > FIREBASE_GZ_BUDGET) {
+  console.error(
+    `\n❌ Firebase 묶음(${fbChunks.length}개) gzip 합계 ${Math.round(fbGz / 1000)}KB > 상한 ${FIREBASE_GZ_BUDGET / 1000}KB.\n` +
+      `  Firebase 판이 올라가며 안 쓰는 코드가 실렸을 수 있습니다(12.15+ 의 re2js·Pipeline).\n` +
+      `  package.json 의 firebase 판을 확인하세요 — 첫 접속이 그만큼 느려집니다.\n`,
+  );
+  process.exit(1);
 }
+console.log(`  Firebase 묶음   ${fbChunks.length}개 gzip 합계 ${Math.round(fbGz / 1000)}KB (상한 ${FIREBASE_GZ_BUDGET / 1000}KB)`);
 
 console.log("\n통과 — 참조된 자산이 모두 존재합니다\n");
