@@ -13,6 +13,14 @@ const control = httpsCallable(functions, "autoPriceControl");
 
 const won = (n) => (Number.isFinite(n) ? `${Math.round(n).toLocaleString()}${getCurrencyUnit()}` : "—");
 const pct = (m) => (m && m !== 1 ? `${m > 1 ? "+" : ""}${(Math.round((m - 1) * 1000) / 10).toFixed(1)}%` : "그대로");
+// 기록 한 줄 — «가격이 실제로 어떻게 됐나»를 적는다. 올릴(내릴) 주였어도 바뀐 아이템이 0개면 «그대로»다.
+//   2026-11-27 실측: 아이템 16개가 전부 «가격 변동 제외»인 학급에 두 주 연속 «+10.0%»가 찍혔다(바뀐 아이템 0개).
+const historyLine = (h) => {
+  const moved = !!h.multiplier && h.multiplier !== 1;
+  const excluded = h.excluded > 0 ? `제외 ${h.excluded}개` : "";
+  if (moved && !h.changed) return { m: 1, text: `${h.reason} · 바뀐 아이템이 없어요${excluded ? ` (${excluded})` : ""}` };
+  return { m: h.multiplier, text: [h.reason, h.changed ? `${h.changed}개 변경` : "", moved ? excluded : ""].filter(Boolean).join(" · ") };
+};
 
 export default function AutoPricePanel({ styles }) {
   const [info, setInfo] = useState(null);
@@ -95,13 +103,16 @@ export default function AutoPricePanel({ styles }) {
         {info?.history?.length > 0 && (
           <div style={{ fontSize: 13, color: "#4b5563" }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>최근 기록</div>
-            {info.history.slice(0, 6).map((h) => (
-              <div key={`${h.weekKey}-${h.at}`} style={{ display: "flex", gap: 10, padding: "4px 0", borderTop: "1px solid #eef0f3" }}>
-                <span style={{ minWidth: 92 }}>{h.at ? new Date(h.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }) : h.weekKey}</span>
-                <b style={{ minWidth: 56, color: h.multiplier > 1 ? "#dc2626" : h.multiplier < 1 ? "#2563eb" : "#6b7280" }}>{pct(h.multiplier)}</b>
-                <span>{h.reason}{h.changed ? ` · ${h.changed}개 변경` : ""}</span>
-              </div>
-            ))}
+            {info.history.slice(0, 6).map((h) => {
+              const line = historyLine(h);
+              return (
+                <div key={`${h.weekKey}-${h.at}`} data-testid={`auto-price-history-${h.weekKey}`} style={{ display: "flex", gap: 10, padding: "4px 0", borderTop: "1px solid #eef0f3" }}>
+                  <span style={{ minWidth: 92 }}>{h.at ? new Date(h.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }) : h.weekKey}</span>
+                  <b style={{ minWidth: 56, color: line.m > 1 ? "#dc2626" : line.m < 1 ? "#2563eb" : "#6b7280" }}>{pct(line.m)}</b>
+                  <span>{line.text}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
