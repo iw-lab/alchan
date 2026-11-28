@@ -5900,6 +5900,17 @@ exports.updateStoreItem = onCall(
         ...updatesToApply,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
+      // 🏷️ 선생님이 가격을 직접 고치면 그 값이 «맞는 값»이다 — 금요일 자동 물가가 옛 값으로 되돌리지 않는다
+      //    제외 체크(또는 이름)가 바뀌어도 다시 잡는다 — 제외돼 있던 동안의 옛 맞는 값이 되살아나지 않게(교차검증 gemini·codex).
+      delete updates.fairPrice;
+      const prevItem = itemDoc.data();
+      const newPrice = Number(updatesToApply.price);
+      const hasNewPrice = updatesToApply.price !== undefined && Number.isFinite(newPrice) && newPrice > 0;
+      const effPrice = hasNewPrice ? newPrice : Number(prevItem.price);
+      const exclusionFlipped = isStorePriceEventExcluded(prevItem) !== isStorePriceEventExcluded({ ...prevItem, ...updatesToApply });
+      if (((hasNewPrice && newPrice !== Number(prevItem.price)) || exclusionFlipped) && Number.isFinite(effPrice) && effPrice > 0) {
+        updates.fairPrice = effPrice;
+      }
 
       await itemRef.update(updates);
       await bumpCatalogVersion(itemDoc.data().classCode);
@@ -5989,6 +6000,8 @@ exports.addStoreItem = onRequest({ region: "asia-northeast3" }, (req, res) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
+      // 🏷️ 새 아이템의 «맞는 값» = 선생님이 정한 처음 가격(첫 금요일 전에 품절 인상이 맞는 값으로 굳지 않게)
+      if (Number.isFinite(Number(itemData.price)) && Number(itemData.price) > 0) itemData.fairPrice = Number(itemData.price);
       const docRef = await db.collection("storeItems").add(itemData);
       await bumpCatalogVersion(userData.classCode);
 
@@ -6145,6 +6158,7 @@ exports.adjustStorePrices = onCall(
         //       "인상 → 되팔기" 를 반복해도 기준선이 따라 오르지 않는다.
         const patch = {
           price: next,
+          fairPrice: next, // 선생님이 직접 움직인 물가 = 맞는 값(금요일 자동 물가가 되돌리지 않는다)
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
         if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) {

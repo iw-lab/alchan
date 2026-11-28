@@ -74,6 +74,17 @@ describe("자동 물가 교사 화면", () => {
     expect(first.textContent).toMatch(/그대로/);
     expect(first.textContent).not.toMatch(/제외|바뀐 아이템/);
   });
+  it("자산은 그대로인데 벌어진 가격을 당긴 주는 «맞춤»과 개수를 보여준다", async () => {
+    state = { enabled: true, anchor: 9_000_000, center: null, counted: 0, history: [
+      { weekKey: "2026-W49", at: 1796340600000, multiplier: 1, changed: 16, excluded: 2, fitted: 16, pending: 16, reason: "벌어진 가격을 맞춤" },
+    ] };
+    render(<AutoPricePanel styles={styles} />);
+    const row = await screen.findByTestId("auto-price-history-2026-W49");
+    expect(row.textContent).toMatch(/맞춤/);
+    expect(row.textContent).not.toMatch(/그대로/);
+    expect(row.textContent).toMatch(/16개 변경/);
+    expect(row.textContent).toMatch(/16개는 다음 주에도/);
+  });
 });
 
 // 짝 맞추기 — 서버 자동 물가가 «경제이벤트 가격 변동 제외» 체크를 같이 따르는 동안에는

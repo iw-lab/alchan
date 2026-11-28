@@ -47,4 +47,35 @@ function itemPrice(current, multiplier, { min = STORE_PRICE_MIN, max = STORE_PRI
   return Math.min(hi, Math.max(lo, Math.round(current * multiplier)));
 }
 
-module.exports = { robustCenter, planStep, itemPrice, STORE_PRICE_MIN, STORE_PRICE_MAX, TRIM, MIN_STUDENTS, DEADBAND, MAX_STEP };
+/**
+ * 맞는 값 따라가기(2026-11-28 사용자 «일주일마다 확인하고 맞을 때까지 최대 50%씩 맞춰가») —
+ * 경제이벤트(×1.33·×0.75)·품절 인상(+10%)은 가격만 바꾸고 «맞는 값»(fairPrice)은 안 바꾼다.
+ * 금요일마다 가격을 맞는 값 쪽으로 한 주 최대 ±50% 옮긴다. 맞는 값 자체는 학생 자산을 따라 ±10% 움직인다.
+ */
+const FIT_STEP = 0.5;
+function fitPrice(current, fair, { min = STORE_PRICE_MIN, max = STORE_PRICE_MAX } = {}) {
+  if (!(Number.isFinite(current) && current > 0) || !(Number.isFinite(fair) && fair > 0)) return current;
+  const lo = Math.max(min, Math.ceil(current * (1 - FIT_STEP)));
+  const hi = Math.min(max, Math.floor(current * (1 + FIT_STEP)));
+  if (lo > hi) return current;
+  return Math.min(hi, Math.max(lo, Math.round(fair)));
+}
+
+/**
+ * 한 아이템의 금요일 — 맞는 값이 없으면(처음) 지금 가격이 맞는 값이다(가격이 튀지 않는다).
+ * @return {{fair:number,next:number,fitted:boolean,pending:boolean}} fitted = 벌어진 가격을 이번에 당김 · pending = 아직 덜 맞음
+ */
+function planItem(current, fairStored, multiplier, { min = STORE_PRICE_MIN, max = STORE_PRICE_MAX } = {}) {
+  if (!(Number.isFinite(current) && current > 0)) return { fair: current, next: current, fitted: false, pending: false };
+  const has = Number.isFinite(fairStored) && fairStored > 0;
+  // 하한보다 싼 가격(옛 데이터)은 ±50% 로는 하한에 닿지 못한다 — 건드리지 않고 «덜 맞음»으로도 세지 않는다(교차검증 gemini·codex)
+  if (current < min || current > max) return { fair: has ? fairStored : current, next: current, fitted: false, pending: false };
+  // 맞는 값이 없고 자산도 그대로면 아무것도 안 바꾼다(95 → 100 처럼 하한 보정으로 튀지 않게)
+  if (!has && !(multiplier > 0 && multiplier !== 1)) return { fair: current, next: current, fitted: false, pending: false };
+  const fair0 = Math.min(max, Math.max(min, has ? Math.round(fairStored) : current));
+  const fair = multiplier > 0 && multiplier !== 1 ? itemPrice(fair0, multiplier, { min, max }) : fair0;
+  const next = has ? fitPrice(current, fair, { min, max }) : itemPrice(current, multiplier > 0 ? multiplier : 1, { min, max });
+  return { fair: has ? fair : next, next, fitted: has && fair0 !== current && next !== current, pending: has && next !== fair };
+}
+
+module.exports = { fitPrice, planItem, FIT_STEP, robustCenter, planStep, itemPrice, STORE_PRICE_MIN, STORE_PRICE_MAX, TRIM, MIN_STUDENTS, DEADBAND, MAX_STEP };

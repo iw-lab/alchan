@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { robustCenter, planStep, itemPrice, DEADBAND, MAX_STEP, MIN_STUDENTS } = require("../../../functions/autoPriceMath.js");
+const { robustCenter, planStep, itemPrice, planItem, fitPrice, DEADBAND, MAX_STEP, MIN_STUDENTS } = require("../../../functions/autoPriceMath.js");
 
 describe("대표 자산 — 위·아래를 잘라낸 평균", () => {
   it("부자 한 명이 대표값을 끌고 가지 않는다", () => {
@@ -78,4 +78,38 @@ describe("아이템 가격 — 수동 버튼과 같은 하한·상한, 한 주 �
   });
   it("하한 100 아래로 내려가지 않는다", () => { expect(itemPrice(100, 0.9)).toBe(100); expect(itemPrice(105, 0.9)).toBe(100); });
   it("이상한 값은 그대로", () => { expect(itemPrice(0, 1.1)).toBe(0); expect(itemPrice(NaN, 1.1)).toBeNaN(); expect(itemPrice(500, 0)).toBe(500); });
+});
+
+// 2026-11-28 사용자 «가격은 일주일마다 확인하고 맞을 때까지 최대 50%씩 맞춰가»
+// 실측: 폭등 ×2·안정 ×0.75 가 13번씩 와서 195배 — 자동 물가는 자산만 보고 가격 수준은 안 봤다.
+describe("맞는 값 따라가기", () => {
+  it("맞는 값이 없으면(처음) 지금 가격이 맞는 값 — 예전처럼 자산 배율만 따른다", () => {
+    expect(planItem(1000, NaN, 1)).toMatchObject({ fair: 1000, next: 1000, fitted: false, pending: false });
+    expect(planItem(105, undefined, 1.1)).toMatchObject({ fair: 115, next: 115, fitted: false });
+  });
+  it("이벤트로 2배가 된 가격은 한 주에 제자리로(−50%)", () => {
+    expect(planItem(2000, 1000, 1)).toMatchObject({ fair: 1000, next: 1000, fitted: true, pending: false });
+  });
+  it("많이 벌어졌으면 한 주 −50% 까지만, 몇 주에 걸쳐 맞춘다", () => {
+    let price = 22_065_945; const fair = 4_514_000; const seen = [];
+    for (let w = 0; w < 4; w++) { const s = planItem(price, fair, 1); expect(s.next).toBeGreaterThanOrEqual(Math.ceil(price * 0.5)); price = s.next; seen.push(s.pending); }
+    expect(price).toBe(fair);
+    expect(seen).toEqual([true, true, false, false]);
+  });
+  it("안정 이벤트로 싸진 가격은 한 주 +50% 까지만 올린다", () => {
+    expect(planItem(1000, 4000, 1)).toMatchObject({ next: 1500, fitted: true, pending: true });
+    expect(planItem(750, 1000, 1)).toMatchObject({ next: 1000, pending: false });
+  });
+  it("맞는 값은 자산을 따라 ±10% 움직이고, 가격은 그 값으로 간다", () => {
+    expect(planItem(1000, 1000, 1.1)).toMatchObject({ fair: 1100, next: 1100, fitted: false, pending: false });
+    expect(planItem(1100, 1000, 0.9)).toMatchObject({ fair: 900, next: 900, fitted: true });
+  });
+  it("하한 100·못 쓰는 값은 그대로", () => {
+    expect(fitPrice(150, 10)).toBe(100);
+    expect(planItem(150, 10, 1)).toMatchObject({ fair: 100, next: 100 });
+    expect(planItem(95, NaN, 1)).toMatchObject({ next: 95, fair: 95 }); // 자산 그대로인 주에 95 → 100 으로 튀지 않는다
+    expect(planItem(50, 100, 1)).toMatchObject({ next: 50, pending: false }); // 하한 밑 옛 가격은 건드리지 않고 «덜 맞음»도 아니다
+    expect(planItem(0, 500, 1.1).next).toBe(0);
+    expect(fitPrice(100, NaN)).toBe(100);
+  });
 });

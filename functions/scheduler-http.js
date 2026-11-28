@@ -70,7 +70,7 @@ const {
 //   그 복붙이 2026-08-17 주급 전 학급 실패를 만들었다(functions/batchChunk.js 주석 참고).
 const { shouldFlush } = require("./batchChunk");
 const { classCodesFromStudentSnap, studentCountsFromSnap, isStudentDoc } = require("./studentScope");
-const { robustCenter, planStep, itemPrice, STORE_PRICE_MIN, STORE_PRICE_MAX } = require("./autoPriceMath");
+const { robustCenter, planStep, planItem, STORE_PRICE_MIN, STORE_PRICE_MAX } = require("./autoPriceMath");
 const { buildClassReport } = require("./classReportMath");
 // 직업 개수 상한 클램프 — 네 곳에 복붙돼 있던 것을 단일 정본으로.
 const { clampMaxJobs } = require("./jobUtils");
@@ -3670,7 +3670,8 @@ async function applyAutoPriceForClass(classCode, weekKey) {
     if (st.skipWeekKey !== weekKey && !m.error && st.anchor > 0) {
       plan = planStep({ center: m.center, anchor: st.anchor });
       // 상한+1 개까지만 읽는다 — 넘는지 알려고 전부 읽지 않는다(교차검증 codex)
-      if (plan.changed) items = await tx.get(db.collection("storeItems").where("classCode", "==", classCode).limit(AUTO_PRICE_MAX_ITEMS + 1));
+      // 자산이 그대로인 주에도 읽는다 — 경제이벤트·품절로 벌어진 가격을 맞는 값으로 당겨야 한다(2026-11-28)
+      items = await tx.get(db.collection("storeItems").where("classCode", "==", classCode).limit(AUTO_PRICE_MAX_ITEMS + 1));
     }
     // ↓ 여기부터 쓰기(트랜잭션은 읽기를 모두 끝낸 뒤 쓴다)
     const finish = (entry, extra = {}) => {
@@ -3684,24 +3685,33 @@ async function applyAutoPriceForClass(classCode, weekKey) {
       if (m.center > 0) return finish({ ...base, multiplier: 1, changed: 0, reason: "기준을 처음 잡음" }, { anchor: m.center });
       return finish({ ...base, multiplier: 1, changed: 0, reason: m.center == null ? "학생이 5명 미만" : "대표 자산이 0 이하 — 기준 대기" });
     }
-    if (!plan.changed) return finish({ ...base, ratio: plan.ratio, multiplier: 1, changed: 0, reason: plan.reason });
     if (items.size > AUTO_PRICE_MAX_ITEMS) return finish({ ...base, ratio: plan.ratio, multiplier: 1, changed: 0, reason: `아이템이 ${items.size}개라 자동 조정을 건너뜀` });
     let changed = 0;
     let excluded = 0;
+    let fitted = 0; // 이벤트·품절로 벌어진 가격을 이번 주에 당긴 아이템
+    let pending = 0; // 한 주 ±50% 로는 덜 맞아 다음 주에도 이어지는 아이템
     for (const d of items.docs) {
       const data = d.data();
       if (isStorePriceEventExcluded(data)) { excluded++; continue; }
       const cur = Number(data.price);
       if (!Number.isFinite(cur) || cur <= 0) continue;
-      const next = itemPrice(cur, plan.multiplier, { min: STORE_PRICE_MIN, max: STORE_PRICE_MAX });
-      if (next === cur) continue;
-      const patch = { price: next, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-      // 되팔기 기준선 — 수동 버튼·경제 이벤트와 같은 규약(처음 바뀔 때 한 번만, 덮어쓰지 않음)
-      if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) patch.basePrice = cur;
-      tx.update(d.ref, patch);
-      changed++;
+      const step = planItem(cur, Number(data.fairPrice), plan.changed ? plan.multiplier : 1, { min: STORE_PRICE_MIN, max: STORE_PRICE_MAX });
+      if (step.fitted) fitted++;
+      if (step.pending) pending++;
+      const patch = {};
+      if (step.next !== cur) {
+        patch.price = step.next;
+        patch.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        // 되팔기 기준선 — 수동 버튼·경제 이벤트와 같은 규약(처음 바뀔 때 한 번만, 덮어쓰지 않음)
+        //   벌어진 가격을 당기는 주라면 부풀어 있던 지금 가격이 아니라 맞는 값을 기준선으로(되팔기 상한이 부푼 값에 박히지 않게 — 교차검증 codex·meta)
+        if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) patch.basePrice = step.fitted ? Math.min(cur, step.fair) : cur;
+        changed++;
+      }
+      if (step.fair !== Number(data.fairPrice)) patch.fairPrice = step.fair;
+      if (Object.keys(patch).length) tx.update(d.ref, patch);
     }
-    return finish({ ...base, ratio: plan.ratio, multiplier: plan.multiplier, changed, excluded, reason: plan.reason }, { anchor: plan.anchor });
+    const reason = plan.changed || !fitted ? plan.reason : "벌어진 가격을 맞춤";
+    return finish({ ...base, ratio: plan.ratio, multiplier: plan.multiplier, changed, excluded, fitted, pending, reason }, plan.changed ? { anchor: plan.anchor } : {});
   });
   if (result.changed > 0) await bumpCatalogVersion(classCode);
   logger.info(`[자동물가] ${classCode} ${weekKey}: ${JSON.stringify({ ...result, at: undefined })}`);
@@ -3765,6 +3775,19 @@ exports.autoPriceControl = onCall({ region: "asia-northeast3" }, async (request)
     const patch = { anchor, anchorAt: admin.firestore.FieldValue.serverTimestamp(), anchorBy: uid };
     if (action === "enable") Object.assign(patch, { enabled: true, enabledAt: admin.firestore.FieldValue.serverTimestamp(), enabledBy: uid });
     await ref.set(patch, { merge: true });
+    // «지금 물가가 적당하다» = 지금 가격이 맞는 값이다 — 금요일에 이벤트 전 값으로 되돌리지 않게 맞는 값을 지금 가격으로 잡는다
+    const its = await db.collection("storeItems").where("classCode", "==", classCode).get();
+    const todo = its.docs.filter((d) => {
+      const data = d.data();
+      const cur = Number(data.price);
+      return !isStorePriceEventExcluded(data) && Number.isFinite(cur) && cur > 0 && Number(data.fairPrice) !== cur;
+    });
+    // 전부 잡는다(앞쪽 N개만 잡으면 나머지가 옛 값으로 되돌아간다 — 교차검증 codex·meta). 배치 상한 500 아래로 끊는다.
+    for (let i = 0; i < todo.length; i += 400) {
+      const fb = db.batch();
+      todo.slice(i, i + 400).forEach((d) => fb.update(d.ref, { fairPrice: Number(d.data().price) }));
+      await fb.commit();
+    }
     return { success: true, anchor };
   }
   if (action === "disable") { await ref.set({ enabled: false, disabledAt: admin.firestore.FieldValue.serverTimestamp(), disabledBy: uid }, { merge: true }); return { success: true }; }

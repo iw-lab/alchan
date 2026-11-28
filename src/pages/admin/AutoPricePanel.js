@@ -19,7 +19,9 @@ const historyLine = (h) => {
   const moved = !!h.multiplier && h.multiplier !== 1;
   const excluded = h.excluded > 0 ? `제외 ${h.excluded}개` : "";
   if (moved && !h.changed) return { m: 1, text: `${h.reason} · 바뀐 아이템이 없어요${excluded ? ` (${excluded})` : ""}` };
-  return { m: h.multiplier, text: [h.reason, h.changed ? `${h.changed}개 변경` : "", moved ? excluded : ""].filter(Boolean).join(" · ") };
+  // 맞춤 = 경제이벤트·품절로 벌어진 가격을 맞는 값 쪽으로 당김(한 주 최대 ±50%)
+  const fit = h.fitted > 0 ? `벌어진 ${h.fitted}개 맞춤${h.pending > 0 ? `(${h.pending}개는 다음 주에도)` : ""}` : "";
+  return { m: h.multiplier, label: !moved && h.fitted > 0 ? "맞춤" : null, text: [!moved && fit ? "" : h.reason, h.changed ? `${h.changed}개 변경` : "", fit, moved || fit ? excluded : ""].filter(Boolean).join(" · ") };
 };
 
 export default function AutoPricePanel({ styles }) {
@@ -72,7 +74,7 @@ export default function AutoPricePanel({ styles }) {
         <div>
           <h2 style={styles.title}>자동 물가 {info && <span style={{ fontSize: 13, fontWeight: 700, color: on ? "#059669" : "#6b7280" }}>· {on ? "켜짐" : "꺼짐"}</span>}</h2>
           <p style={styles.subtitle}>
-            매주 금요일 아침, 학생들의 대표 자산이 늘거나 준 만큼 물가를 따라 움직여요. 너무 많거나 적은 위·아래 20%는 계산에서 빼고, 한 주에 최대 ±10%까지만 바뀌어요. 학생 돈은 건드리지 않아요. 처음에는 기본으로 켜져 있고, 첫 금요일에는 기준만 잡아요.
+            매주 금요일 아침, 학생들의 대표 자산이 늘거나 준 만큼 물가를 따라 움직여요. 너무 많거나 적은 위·아래 20%는 계산에서 빼고, 한 주에 최대 ±10%까지만 바뀌어요. 경제이벤트나 품절 인상으로 벌어진 가격은 금요일마다 한 주 최대 ±50%씩 제자리로 맞춰요(지금 가격이 적당하면 «기준 다시 잡기»). 학생 돈은 건드리지 않아요. 처음에는 기본으로 켜져 있고, 첫 금요일에는 기준만 잡아요.
           </p>
         </div>
       </div>
@@ -95,7 +97,7 @@ export default function AutoPricePanel({ styles }) {
             <>
               <button type="button" style={btn(true)} disabled={!!busy} onClick={() => load(true)}>{busy === "measure" ? "계산 중…" : "지금 계산해 보기"}</button>
               <button type="button" style={btn(false)} disabled={!!busy} onClick={() => act(info.skipNext ? "unskip" : "skipNext")}>{info.skipNext ? "건너뛰기 취소" : "이번 금요일 건너뛰기"}</button>
-              <button type="button" style={btn(false)} disabled={!!busy} onClick={() => act("rebase", { text: "지금 물가가 적당하다고 보고, 지금 대표 자산을 새 기준으로 잡아요.\n가격은 지금 바뀌지 않아요.", ok: "기준 다시 잡기" })}>기준 다시 잡기</button>
+              <button type="button" style={btn(false)} disabled={!!busy} onClick={() => act("rebase", { text: "지금 물가가 적당하다고 보고, 지금 대표 자산과 지금 가격을 새 기준으로 잡아요.\n가격은 지금 바뀌지 않아요.", ok: "기준 다시 잡기" })}>기준 다시 잡기</button>
               <button type="button" style={btn(false)} disabled={!!busy} onClick={() => act("disable", { text: "자동 물가를 꺼요. 지금 가격은 그대로 남아요.", ok: "끄기" })}>끄기</button>
             </>
           )}
@@ -108,7 +110,7 @@ export default function AutoPricePanel({ styles }) {
               return (
                 <div key={`${h.weekKey}-${h.at}`} data-testid={`auto-price-history-${h.weekKey}`} style={{ display: "flex", gap: 10, padding: "4px 0", borderTop: "1px solid #eef0f3" }}>
                   <span style={{ minWidth: 92 }}>{h.at ? new Date(h.at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric", weekday: "short" }) : h.weekKey}</span>
-                  <b style={{ minWidth: 56, color: line.m > 1 ? "#dc2626" : line.m < 1 ? "#2563eb" : "#6b7280" }}>{pct(line.m)}</b>
+                  <b style={{ minWidth: 56, color: line.m > 1 ? "#dc2626" : line.m < 1 ? "#2563eb" : "#6b7280" }}>{line.label || pct(line.m)}</b>
                   <span>{line.text}</span>
                 </div>
               );

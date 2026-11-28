@@ -118,5 +118,30 @@ await runL.catch(() => {});
 ok((await setting("L")).enabled === false, "실행 중에 끈 설정이 되살아나지 않는다");
 ok((await setting("E")).history === undefined, "끈 학급엔 기록도 안 남긴다");
 
+// 13. 맞는 값 따라가기(2026-11-28) — 이벤트·품절로 벌어진 가격을 금요일마다 최대 ±50%씩 당긴다. 자산은 그대로.
+const EE = require("../functions/economicEvents.js");
+await seedClass("M", { cash: 1_000_000, items: { pen: { name: "연필", price: 1000 }, gum: { name: "껌", price: 400 }, free: { name: "자유 시간 10분", price: 5000 } } });
+await S.applyAutoPriceForClass("M", "2026-W46");
+p = await prices("M");
+ok(p.pen.price === 1000 && p.pen.fairPrice === 1000 && p.free.fairPrice === undefined, "첫 금요일 — 가격 그대로, 맞는 값 = 지금 가격(제외 아이템은 안 잡음)");
+await EE.executeStorePriceChange("M", { multiplier: 2 }); await EE.executeStorePriceChange("M", { multiplier: 2 }); await EE.executeStorePriceChange("M", { multiplier: 2 });
+p = await prices("M");
+ok(p.pen.price === 8000 && p.pen.fairPrice === 1000, "이벤트 3번(×8) — 가격만 오르고 맞는 값은 그대로", `${p.pen.price}/${p.pen.fairPrice}`);
+const cashM = await cashes("M");
+const r13 = await S.applyAutoPriceForClass("M", "2026-W47");
+p = await prices("M");
+ok(p.pen.price === 4000 && p.gum.price === 1600 && r13.fitted === 2 && r13.pending === 2 && r13.multiplier === 1, "금요일 — 한 주 −50% 까지만", JSON.stringify({ pen: p.pen.price, f: r13.fitted, pd: r13.pending, m: r13.multiplier }));
+await S.applyAutoPriceForClass("M", "2026-W48"); const r13c = await S.applyAutoPriceForClass("M", "2026-W49");
+p = await prices("M");
+ok(p.pen.price === 1000 && p.gum.price === 400 && r13c.pending === 0 && p.free.price === 5000, "3주면 제자리 · 제외 아이템은 그대로", `${p.pen.price}/${p.gum.price}`);
+ok((await cashes("M")) === cashM && (await setting("M")).anchor === 1_000_000, "학생 돈·기준 자산은 그대로");
+const r13d = await S.applyAutoPriceForClass("M", "2026-W50");
+ok(r13d.changed === 0 && r13d.fitted === 0, "맞은 뒤에는 건드리지 않는다");
+// 이벤트가 먼저 온 새 아이템(맞는 값 없음) — 이벤트 전 가격이 맞는 값
+await db.collection("storeItems").doc("M-new").set({ classCode: "M", available: true, name: "새 과자", price: 300 });
+await EE.executeStorePriceChange("M", { multiplier: 2 });
+p = await prices("M");
+ok(p.new.price === 600 && p.new.fairPrice === 300, "맞는 값 없는 아이템에 이벤트 → 이벤트 전 가격을 맞는 값으로", `${p.new.price}/${p.new.fairPrice}`);
+
 console.log(fails ? `AUTO-PRICE-EMU FAIL ${fails}` : "AUTO-PRICE-EMU PASS");
 process.exit(fails ? 1 : 0);

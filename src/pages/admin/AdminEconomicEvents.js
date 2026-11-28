@@ -107,10 +107,10 @@ const DEFAULT_EVENTS = [
  {
  id: "store_price_up",
  type: "STORE_PRICE_CHANGE",
- title: "물가 폭등!",
+ title: "물가 상승!",
  description:
- "인플레이션으로 관리자 상점의 모든 상품 가격이 2배로 올랐습니다!",
- params: { multiplier: 2 },
+ "인플레이션으로 관리자 상점의 모든 상품 가격이 33% 올랐습니다!",
+ params: { multiplier: 1.33 },
  emoji: "🛒📈",
  enabled: true,
  },

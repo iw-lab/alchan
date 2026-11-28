@@ -74,10 +74,11 @@ const DEFAULT_EVENT_TEMPLATES = [
   {
     id: "store_price_up",
     type: "STORE_PRICE_CHANGE",
-    title: "물가 폭등!",
+    // 2026-11-28 사용자 «폭등을 1.33으로» — ×2 ↔ ×0.75 는 같은 횟수여도 13쌍에 195배가 됐다. 1.33×0.75≈1
+    title: "물가 상승!",
     description:
-      "인플레이션으로 관리자 상점의 모든 상품 가격이 2배로 올랐습니다!",
-    params: { multiplier: 2 },
+      "인플레이션으로 관리자 상점의 모든 상품 가격이 33% 올랐습니다!",
+    params: { multiplier: 1.33 },
     emoji: "🛒📈",
     enabled: true,
   },
@@ -1067,6 +1068,9 @@ async function executeStorePriceChange(classCode, params) {
         if (!Number.isFinite(Number(data.basePrice)) || Number(data.basePrice) <= 0) {
           patch.basePrice = currentPrice;
         }
+        // 🏷️ 맞는 값이 아직 없으면 이벤트 전 가격으로 잡는다 — 금요일 자동 물가가 이 값으로 최대 ±50%씩 당긴다.
+        //    있으면 건드리지 않는다(이벤트는 가격만 흔든다).
+        if (!Number.isFinite(Number(data.fairPrice)) || Number(data.fairPrice) <= 0) patch.fairPrice = currentPrice;
         batch.update(doc.ref, patch);
         affectedCount++;
       }
@@ -1630,4 +1634,5 @@ module.exports = {
   // 가치 고정 아이템(자유시간 등) 판별 — 물가 이벤트·국고 되팔기에서 공통 제외
   isStorePriceEventExcluded,
   STORE_PRICE_EVENT_EXCLUDED_KEYWORDS,
+  executeStorePriceChange, // 에뮬레이터 시험(scripts/auto-price-emu.mjs)에서 직접 부른다
 };
